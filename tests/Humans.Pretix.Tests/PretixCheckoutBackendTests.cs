@@ -155,7 +155,7 @@ public class PretixCheckoutBackendTests
     }
 
     [HumansFact]
-    public async Task Status_PaidOrder_ReportsMethodFeeAndCompletedRefunds()
+    public async Task Status_PaidOrder_ReportsMethodAndCompletedRefunds()
     {
         var pretix = new FakePretix().On("GET", OrderPath, HttpStatusCode.OK, Order(
             Code, status: "p", total: 1015.52m,
@@ -170,7 +170,9 @@ public class PretixCheckoutBackendTests
         var status = await Create(pretix).GetStatusAsync($"nowhere2027/{Code}", TestContext.Current.CancellationToken);
 
         status.State.Should().Be(CheckoutState.Paid);
-        status.FeeMinor.Should().Be(1552);
+        // What Stripe kept is unknown to pretix; the 15.52 is a surcharge, which the port forbids.
+        status.FeeMinor.Should().BeNull();
+        status.RefundFailed.Should().BeTrue();
         status.PaymentMethod.Should().Be("stripe_ideal");
         status.PaidAt.Should().Be(Instant.FromDateTimeOffset(
             DateTimeOffset.Parse("2026-11-21T00:09:33.022364Z", System.Globalization.CultureInfo.InvariantCulture)));
@@ -224,6 +226,68 @@ public class PretixCheckoutBackendTests
 
         status.State.Should().Be(CheckoutState.Paid);
         status.PaidAt.Should().NotBeNull();
+    }
+
+    [HumansFact]
+    public async Task Status_CancelledOrderHoldingMoney_IsPaid()
+    {
+        var pretix = new FakePretix().On("GET", OrderPath, HttpStatusCode.OK, Order(
+            Code, status: "c", total: 1000m,
+            payments: [new { local_id = 1, state = "confirmed", amount = "1000.00", provider = "stripe_klarna", payment_date = "2026-11-21T00:09:33Z" }]));
+
+        var status = await Create(pretix).GetStatusAsync($"nowhere2027/{Code}", TestContext.Current.CancellationToken);
+
+        status.State.Should().Be(CheckoutState.Paid);
+    }
+
+    [HumansFact]
+    public async Task Cancel_ExpiredOrderALatePaymentCovers_Throws()
+    {
+        var pretix = new FakePretix().On("GET", OrderPath, HttpStatusCode.OK, Order(
+            Code, status: "e", total: 1000m,
+            payments: [new { local_id = 1, state = "confirmed", amount = "1000.00", provider = "stripe_ideal" }]));
+
+        var cancel = () => Create(pretix).CancelAsync($"nowhere2027/{Code}", TestContext.Current.CancellationToken);
+
+        await cancel.Should().ThrowAsync<TicketCheckoutException>();
+        pretix.Requests.Should().ContainSingle();
+    }
+
+    [HumansFact]
+    public async Task Erase_BuyersOrder_ClearsEmailAndAnyAttendeeData()
+    {
+        var order = new
+        {
+            code = Code, status = "p", email = "Bea@Example.org", url = "https://pretix.test/x/", total = "225.00",
+            positions = new object[]
+            {
+                new { id = 41, positionid = 1, price = "225.00", tax_rate = "21.00", canceled = false, attendee_name = "Ana", attendee_email = (string?)null },
+                new { id = 42, positionid = 2, price = "0.00", tax_rate = "0.00", canceled = false, attendee_name = (string?)null, attendee_email = (string?)null },
+            },
+            fees = Array.Empty<object>(), payments = Array.Empty<object>(), refunds = Array.Empty<object>(),
+        };
+        var pretix = new FakePretix()
+            .On("GET", OrderPath, HttpStatusCode.OK, order)
+            .On("PATCH", $"{Api}orderpositions/41/", HttpStatusCode.OK, new { })
+            .On("PATCH", OrderPath, HttpStatusCode.OK, new { });
+
+        await Create(pretix).ErasePersonalDataAsync($"nowhere2027/{Code}", "bea@example.org", TestContext.Current.CancellationToken);
+
+        JsonNode.Parse(pretix.BodiesFor("PATCH", OrderPath).Single()!)!["email"].Should().BeNull();
+        var position = JsonNode.Parse(pretix.BodiesFor("PATCH", $"{Api}orderpositions/41/").Single()!)!.AsObject();
+        position.ContainsKey("attendee_name").Should().BeTrue();
+        position["attendee_name"].Should().BeNull();
+        pretix.BodiesFor("PATCH", $"{Api}orderpositions/42/").Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task Erase_AlreadyErased_DoesNothing()
+    {
+        var pretix = new FakePretix().On("GET", OrderPath, HttpStatusCode.OK, Order(Code, status: "p"));
+
+        await Create(pretix).ErasePersonalDataAsync($"nowhere2027/{Code}", "bea@example.org", TestContext.Current.CancellationToken);
+
+        pretix.Requests.Should().ContainSingle();
     }
 
     private static object PaidOrder(params object[] refunds) => Order(

@@ -132,7 +132,7 @@ internal sealed class PretixCheckoutBackend(
         EnsureConfigured();
         var (eventSlug, code) = ParseBackendOrderId(backendOrderId);
         var order = await SendAsync<PretixOrder>(HttpMethod.Get, OrderPath(eventSlug, code), body: null, ct);
-        return MapStatus(order);
+        return MapStatus(order, logger);
     }
 
     public async Task<RefundResult> RefundAsync(RefundRequest request, CancellationToken ct = default)
@@ -225,16 +225,33 @@ internal sealed class PretixCheckoutBackend(
         EnsureConfigured();
         var (eventSlug, code) = ParseBackendOrderId(backendOrderId);
         var order = await SendAsync<PretixOrder>(HttpMethod.Get, OrderPath(eventSlug, code), body: null, ct);
-        switch (order.Status)
+        if (MapStatus(order, logger).State == CheckoutState.Paid)
+            throw new TicketCheckoutException($"pretix order {code} is already paid.");
+        // Expired is cancelled too: pretix still accepts a late payment on an expired order.
+        if (!string.Equals(order.Status, "c", StringComparison.Ordinal))
+            await CancelOrderAsync(eventSlug, code, ct);
+    }
+
+    public async Task ErasePersonalDataAsync(string backendOrderId, string email, CancellationToken ct = default)
+    {
+        EnsureConfigured();
+        var (eventSlug, code) = ParseBackendOrderId(backendOrderId);
+        var order = await SendAsync<PretixOrder>(HttpMethod.Get, OrderPath(eventSlug, code), body: null, ct);
+        var isBuyer = string.Equals(order.Email, email, StringComparison.OrdinalIgnoreCase);
+
+        // Humans sends no names, but a person may have added some in pretix's own admin.
+        foreach (var position in order.Positions.Where(p =>
+                     (isBuyer || string.Equals(p.AttendeeEmail, email, StringComparison.OrdinalIgnoreCase))
+                     && (p.AttendeeName is not null || p.AttendeeEmail is not null)))
         {
-            case "p":
-                throw new TicketCheckoutException($"pretix order {code} is already paid.");
-            case "c":
-                return;
-            default:
-                // Expired is cancelled too: pretix still accepts a late payment on an expired order.
-                await CancelOrderAsync(eventSlug, code, ct);
-                return;
+            await SendAsync<JsonElement>(HttpMethod.Patch, $"{EventPath(eventSlug)}orderpositions/{position.Id}/",
+                new JsonObject { ["attendee_name"] = null, ["attendee_email"] = null }, ct);
+        }
+
+        if (isBuyer)
+        {
+            await SendAsync<JsonElement>(HttpMethod.Patch, OrderPath(eventSlug, code),
+                new JsonObject { ["email"] = null, ["phone"] = null }, ct);
         }
     }
 
@@ -264,7 +281,7 @@ internal sealed class PretixCheckoutBackend(
         return (parts[0], parts[1]);
     }
 
-    internal static CheckoutStatus MapStatus(PretixOrder order)
+    internal static CheckoutStatus MapStatus(PretixOrder order, ILogger logger)
     {
         var state = order.Status switch
         {
@@ -275,13 +292,14 @@ internal sealed class PretixCheckoutBackend(
             _ => throw new HttpRequestException($"pretix order {order.Code} has unknown status '{order.Status}'."),
         };
 
-        // pretix keeps a payment confirmed after expiry but leaves the order expired when it cannot be marked paid,
-        // and a refund made outside this adapter can reopen a paid order. The money decides: an order its confirmed
-        // payments cover is paid, so a late payment is honoured rather than stranded.
-        if (state is CheckoutState.Pending or CheckoutState.Expired && IsCovered(order))
+        if (IsCovered(order, state))
             state = CheckoutState.Paid;
 
-        var paymentFees = order.Fees.Where(f => string.Equals(f.FeeType, "payment", StringComparison.Ordinal) && !f.Canceled).ToList();
+        // The buyer pays exactly the lines, so bootstrap.py sets every method's fee to zero. A surcharge here is
+        // misconfiguration; it is logged rather than thrown, because a throw would hide a real payment from Humans.
+        if (order.Fees.Any(f => string.Equals(f.FeeType, "payment", StringComparison.Ordinal) && !f.Canceled))
+            logger.LogError("pretix order {Code} carries a payment surcharge; set the payment method fees to zero", order.Code);
+
         // A full refund drops the total to zero and pretix confirms a 0.00 "free" payment; that is not how they paid.
         var lastPayment = order.Payments.LastOrDefault(p => string.Equals(p.State, "confirmed", StringComparison.Ordinal) && p.Amount > 0)
             ?? order.Payments.LastOrDefault(p => string.Equals(p.State, "refunded", StringComparison.Ordinal));
@@ -289,14 +307,20 @@ internal sealed class PretixCheckoutBackend(
 
         return new CheckoutStatus(
             state,
-            paymentFees.Count == 0 ? null : paymentFees.Sum(f => ToMinor(f.Value)),
+            // pretix does not know what Stripe kept.
+            null,
             lastPayment?.Provider,
             // The order's own payment_date is a date only; the confirmed payment carries the time.
             state == CheckoutState.Paid ? ParseInstant(lastPayment?.PaymentDate) : null,
-            refunded);
+            refunded,
+            order.Refunds.Any(r => r.State is "failed" or "canceled"));
     }
 
-    private static bool IsCovered(PretixOrder order)
+    /// <summary>
+    /// pretix keeps a payment confirmed after expiry or cancellation but cannot mark the order paid, and a refund made
+    /// outside this adapter can reopen a paid order. The money decides, so a late payment is reported, never stranded.
+    /// </summary>
+    private static bool IsCovered(PretixOrder order, CheckoutState state)
     {
         var paid = order.Payments
             .Where(p => p.State is "confirmed" or "refunded")
@@ -304,7 +328,12 @@ internal sealed class PretixCheckoutBackend(
         var refunded = order.Refunds
             .Where(r => r.State is "done" or "transit" or "created")
             .Sum(r => r.Amount);
-        return paid > 0 && paid - refunded >= order.Total;
+        return state switch
+        {
+            CheckoutState.Pending or CheckoutState.Expired => paid > 0 && paid - refunded >= order.Total,
+            CheckoutState.Cancelled => paid - refunded > 0,
+            _ => false,
+        };
     }
 
     private static int CarrierItem(PretixPage<PretixItem> items, string internalName) =>
@@ -534,6 +563,7 @@ internal sealed class PretixCheckoutBackend(
     internal sealed record PretixOrder(
         string Code,
         string Status,
+        string? Email,
         string Url,
         decimal Total,
         IReadOnlyList<PretixPosition> Positions,
@@ -542,7 +572,8 @@ internal sealed class PretixCheckoutBackend(
         IReadOnlyList<PretixRefund> Refunds,
         IReadOnlyDictionary<string, JsonElement>? ApiMeta);
 
-    internal sealed record PretixPosition(int Positionid, decimal Price, decimal TaxRate, bool Canceled);
+    internal sealed record PretixPosition(
+        int Id, int Positionid, decimal Price, decimal TaxRate, bool Canceled, string? AttendeeName, string? AttendeeEmail);
 
     internal sealed record PretixFee(int Id, string FeeType, decimal Value, bool Canceled, string? InternalType);
 

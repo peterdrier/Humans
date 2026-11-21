@@ -22,7 +22,7 @@ pretix only takes the payment.
    ```
 
 5. In pretix's control panel, per event: connect Stripe (Payment, Stripe), enable card, iDEAL
-   and Klarna, and set each method's fee if the price may differ by method. Put the event live.
+   and Klarna, and leave every method's fee at zero (Humans charges exactly the lines). Put the event live.
 6. In Humans, set `Pretix:BaseUrl`, `Pretix:Organizer` and the env vars `PRETIX_API_TOKEN`,
    `PRETIX_WEBHOOK_SECRET` from the bootstrap output (once per instance), then at
    `/Tickets/Admin/Sales` pick backend `pretix` and the event slug. Each further event only needs

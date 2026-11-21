@@ -4,8 +4,8 @@
 #       -e EVENT_NAME="Nowhere 2027" -e EVENT_DATE=2027-06-08 -e TICKET_VAT=21 \
 #       <pretix container> bash -c 'cd /pretix/src && python3 manage.py shell' < bootstrap.py
 #
-# Prints the API token and webhook secret that go into Humans' Pretix settings. Stripe keys, payment-method fees and the
-# admin user's password are set by a person in pretix's control panel afterwards.
+# Prints the API token and webhook secret that go into Humans' Pretix settings. Stripe keys and the admin user's
+# password are set by a person in pretix's control panel afterwards.
 import os
 import secrets
 from datetime import datetime
@@ -43,6 +43,10 @@ with scopes_disabled():
     s.set("mail_sales_channel_download_reminder", [])
     s.set("mail_days_order_expire_warning", 0)
     s.set("invoice_generate", "False")
+    # The buyer pays exactly the lines: no payment method may add a surcharge.
+    for provider in ("stripe", "stripe_ideal", "stripe_klarna", "manual", "banktransfer"):
+        s.set(f"payment_{provider}__fee_abs", "0.00")
+        s.set(f"payment_{provider}__fee_percent", "0")
 
     vat, _ = TaxRule.objects.get_or_create(
         event=event, name=f"IVA {os.environ.get('TICKET_VAT', '21')}%",
