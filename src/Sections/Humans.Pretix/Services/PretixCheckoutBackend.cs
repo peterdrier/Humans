@@ -329,7 +329,7 @@ internal sealed partial class PretixCheckoutBackend(
                 ? new(true, "The shop is live.")
                 : new(false, "The shop is offline, so buyers cannot reach the pay page."));
             if (details.Testmode)
-                findings.Add(new(false, "The event is in test mode: its orders are pretix test orders. Turn it off before selling."));
+                findings.Add(new(false, "The event is in pretix test mode; whether payments are real depends on the Stripe keys set in pretix."));
 
             var items = await SendAsync<PretixPage<PretixItem>>(
                 HttpMethod.Get, $"{EventPath(backendEventRef)}items/?active=true", body: null, ct);
@@ -657,7 +657,7 @@ internal sealed partial class PretixCheckoutBackend(
 
     internal sealed record PretixEvent(string Currency);
 
-    [GeneratedRegex("^[A-Za-z0-9][A-Za-z0-9.-]*$", RegexOptions.CultureInvariant, 1000)]
+    [GeneratedRegex("^[A-Za-z0-9][A-Za-z0-9._-]*$", RegexOptions.CultureInvariant, 1000)]
     private static partial Regex EventSlug();
 
     private sealed record PretixEventCheck(string Currency, bool Live, bool Testmode);
