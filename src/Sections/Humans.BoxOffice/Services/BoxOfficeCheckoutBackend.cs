@@ -205,6 +205,13 @@ internal sealed class BoxOfficeCheckoutBackend(
     }
 
     /// <summary>
+    /// Stripe keeps checkout and payment records as the payment processor under its own legal obligations, and offers
+    /// no way to strip them from a session; Humans holds nothing else here.
+    /// </summary>
+    public Task ErasePersonalDataAsync(string backendOrderId, string email, CancellationToken ct = default) =>
+        Task.CompletedTask;
+
+    /// <summary>
     /// The session ids a verified webhook is about: the session itself for <c>checkout.session.*</c>, and for a
     /// refund the sessions of the refunded payment. Empty for an invalid signature or an unrelated event.
     /// </summary>

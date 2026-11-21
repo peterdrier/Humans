@@ -385,6 +385,27 @@
   <data name="Tickets_Resale_Email_Invite_Body" xml:space="preserve">
     <value>&lt;p&gt;Hi,&lt;/p&gt;&lt;p&gt;{0} can't make it to &lt;strong&gt;{1}&lt;/strong&gt; and has invited you to buy their returned ticket ahead of the resale queue.&lt;/p&gt;&lt;p&gt;You pay the current ticket price to the association and get a new ticket in your own name: the name must match your ID at the gate. Sign in or create your Humans account with this email address, then use this link:&lt;/p&gt;&lt;p&gt;&lt;a href="{2}"&gt;{2}&lt;/a&gt;&lt;/p&gt;&lt;p&gt;The link works for {3} days.&lt;/p&gt;</value>
   </data>
+  <data name="Tickets_Public_PriceToday" xml:space="preserve">
+    <value>{0} today</value>
+  </data>
+  <data name="Tickets_Public_ResaleOnly" xml:space="preserve">
+    <value>(returned tickets only)</value>
+  </data>
+  <data name="Tickets_Public_Intro" xml:space="preserve">
+    <value>Every ticket carries the holder's legal name and is bought from a Humans account. Enter your email: we send you a link to sign in, or to create your account with your legal name, and you land straight on the buy page.</value>
+  </data>
+  <data name="Tickets_Public_Email" xml:space="preserve">
+    <value>Your email</value>
+  </data>
+  <data name="Tickets_Public_Send" xml:space="preserve">
+    <value>Send me the link</value>
+  </data>
+  <data name="Tickets_Public_Sent" xml:space="preserve">
+    <value>Check your inbox: a link to continue is on its way. It works for 15 minutes.</value>
+  </data>
+  <data name="Tickets_Public_PriceNote" xml:space="preserve">
+    <value>This is the public price. Once signed in you see your own price, which may be lower if you hold a ticket grant.</value>
+  </data>
   <data name="Tickets_Delivery_Ticket_Subject" xml:space="preserve">
     <value>Your ticket for {0}</value>
   </data>

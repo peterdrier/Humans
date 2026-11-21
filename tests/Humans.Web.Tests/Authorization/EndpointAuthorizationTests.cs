@@ -293,6 +293,10 @@ public class EndpointAuthorizationTests
             "ICalFeedApiController.GetFeed",
             // The ticket email's QR image: mail clients fetch it signed out. Renders only a token Humans minted.
             "TicketCodeController.Code",
+            // The signed-out way into buying a ticket: public prices and a sign-in link; Index only redirects there.
+            "TicketBuyController.Index",
+            "TicketBuyController.Public",
+            "TicketBuyController.SendLink",
         };
 
         var controllerTypes = AllControllerTypes(includeApiControllers: true)

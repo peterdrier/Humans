@@ -238,6 +238,7 @@ Lifecycle: `Attended` is permanent (only a missing `CheckedInAt` may be filled);
 | `/Tickets/Buy` | GET + POST | `[Authorize]` | One section per selling event; the POST names its `salesEventId`: own ticket at the member's price, optional partner at the public price, supporter total, donation; POST redirects to the backend's payment page |
 | `/Tickets/Buy/Order/{id}` | GET | `[Authorize]` | Order status, refreshed from the backend; the payer sees the whole order, a holder only their own line; anyone else 404 |
 | `/Tickets/Buy/Order/{id}/Cancel` | POST | `[Authorize]` | The payer abandons an unpaid order |
+| `/Tickets/Buy/Public` | GET + POST | Anonymous | Signed-out way in: events on sale at today's public price, and an email form that sends the Auth sign-in or sign-up link returning to `/Tickets/Buy`; the POST never says whether the address has an account. A signed-out `/Tickets/Buy` redirects here |
 | `/Tickets/Buy/Mine` | GET | `[Authorize]` | The member's live checkout tickets with their QR codes, resale queue position and actions |
 | `/Tickets/Buy/Mine/{ticketId}/Offer`, `/Withdraw`, `/Invite`, `/CancelInvite` | POST | `[Authorize]` | Holder only (anyone else 404): return a ticket to the queue, take it back (not while a checkout holds it), invite one buyer by email, cancel the invitation |
 | `/Tickets/Buy/Resale/{token}` | GET | `[Authorize]` | Buy page for a directed offer; only the invited email, while the link is live |
