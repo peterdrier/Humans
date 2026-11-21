@@ -42,6 +42,7 @@ graph LR
     Governance
     Grants
     Guide
+    HiEvents
     Holded
     Issues
     LowIncome
@@ -193,6 +194,7 @@ graph LR
     Guide --> Auth
     Guide -.-> Camps
     Guide -.-> Teams
+    HiEvents -.-> Tickets
     Holded -.-> Finance
     Issues --> AuditLog
     Issues --> Auth
