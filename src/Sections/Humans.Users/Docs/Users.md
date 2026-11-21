@@ -428,7 +428,7 @@ The private-email label on self-profile cards uses the same localized email labe
 | Property | Type | Notes |
 |----------|------|-------|
 | Id | Guid | PK |
-| UserId | Guid? | FK → User (Cascade). The owning user and the key every read uses. Written on every new row and on account merge; the `users.profile-children-user-id` fill is retired (production reported `pending: 0, done: true` on 2026-11-19) |
+| UserId | Guid | FK → User (Cascade), required. The owning user and the key every read uses. Written on every new row and on account merge; the `users.profile-children-user-id` fill is retired (production reported `pending: 0, done: true` on 2026-11-19) |
 | FieldType | ContactFieldType | Stored as string (max 50) |
 | CustomLabel | string? (100) | Required when `FieldType == Other` |
 | Value | string (500) | Required |
@@ -507,7 +507,7 @@ Sub-aggregate of Profile — no separate service. Written through `IProfileEdito
 | Property | Type | Notes |
 |----------|------|-------|
 | Id | Guid | PK |
-| UserId | Guid? | FK → User (Cascade). The owning user and the key every read uses. Written on every new row and on account merge; the `users.profile-children-user-id` fill is retired (production reported `pending: 0, done: true` on 2026-11-19) |
+| UserId | Guid | FK → User (Cascade), required. The owning user and the key every read uses. Written on every new row and on account merge; the `users.profile-children-user-id` fill is retired (production reported `pending: 0, done: true` on 2026-11-19) |
 | Date | LocalDate | Required; users may enter a full date or first-of-month. Displayed as e.g. `Mar'25`. |
 | EventName | string (256) | Required |
 | Description | string? (2000) | Optional |
@@ -524,7 +524,7 @@ Sub-aggregate of Profile — no separate service. Records languages spoken with 
 | Property | Type | Notes |
 |----------|------|-------|
 | Id | Guid | PK |
-| UserId | Guid? | FK → User (Cascade). The owning user and the key every read uses. Written on every new row and on account merge; the `users.profile-children-user-id` fill is retired (production reported `pending: 0, done: true` on 2026-11-19) |
+| UserId | Guid | FK → User (Cascade), required. The owning user and the key every read uses. Written on every new row and on account merge; the `users.profile-children-user-id` fill is retired (production reported `pending: 0, done: true` on 2026-11-19) |
 | LanguageCode | string (10) | ISO 639-1 two-letter code (e.g., `en`, `es`, `de`) |
 | Proficiency | LanguageProficiency | Stored as string (max 50) |
 
