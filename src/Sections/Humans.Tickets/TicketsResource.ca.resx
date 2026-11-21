@@ -435,12 +435,6 @@
   <data name="Tickets_Buy_PaymentProcessing" xml:space="preserve">
     <value>Aquest pagament ja és en camí i ja no es pot cancel·lar.</value>
   </data>
-  <data name="Tickets_Buy_TermsFailed" xml:space="preserve">
-    <value>No s'ha pogut registrar la teva acceptació de les normes. Comprova que el perfil estigui complet i torna-ho a provar.</value>
-  </data>
-  <data name="Tickets_Buy_PartnerHolds" xml:space="preserve">
-    <value>Aquesta persona ja té una entrada per a aquest esdeveniment.</value>
-  </data>
   <data name="Tickets_Delivery_Ticket_Subject" xml:space="preserve">
     <value>La teva entrada per a {0}</value>
   </data>

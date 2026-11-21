@@ -435,12 +435,6 @@
   <data name="Tickets_Buy_PaymentProcessing" xml:space="preserve">
     <value>Questo pagamento è già in arrivo e non può più essere annullato.</value>
   </data>
-  <data name="Tickets_Buy_TermsFailed" xml:space="preserve">
-    <value>Non è stato possibile registrare l'accettazione delle regole. Controlla che il profilo sia completo e riprova.</value>
-  </data>
-  <data name="Tickets_Buy_PartnerHolds" xml:space="preserve">
-    <value>Quella persona ha già un biglietto per questo evento.</value>
-  </data>
   <data name="Tickets_Delivery_Ticket_Subject" xml:space="preserve">
     <value>Il tuo biglietto per {0}</value>
   </data>

@@ -435,12 +435,6 @@
   <data name="Tickets_Buy_PaymentProcessing" xml:space="preserve">
     <value>Diese Zahlung ist bereits unterwegs und kann nicht mehr abgebrochen werden.</value>
   </data>
-  <data name="Tickets_Buy_TermsFailed" xml:space="preserve">
-    <value>Deine Zustimmung zu den Ticketregeln konnte nicht gespeichert werden. Prüfe, ob dein Profil vollständig ist, und versuche es erneut.</value>
-  </data>
-  <data name="Tickets_Buy_PartnerHolds" xml:space="preserve">
-    <value>Diese Person hat schon ein Ticket für diese Veranstaltung.</value>
-  </data>
   <data name="Tickets_Delivery_Ticket_Subject" xml:space="preserve">
     <value>Dein Ticket für {0}</value>
   </data>

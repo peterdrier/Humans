@@ -435,12 +435,6 @@
   <data name="Tickets_Buy_PaymentProcessing" xml:space="preserve">
     <value>Este pago ya está en camino y ya no se puede cancelar.</value>
   </data>
-  <data name="Tickets_Buy_TermsFailed" xml:space="preserve">
-    <value>No se ha podido registrar tu aceptación de las normas. Comprueba que tu perfil esté completo y vuelve a intentarlo.</value>
-  </data>
-  <data name="Tickets_Buy_PartnerHolds" xml:space="preserve">
-    <value>Esa persona ya tiene una entrada para este evento.</value>
-  </data>
   <data name="Tickets_Delivery_Ticket_Subject" xml:space="preserve">
     <value>Tu entrada para {0}</value>
   </data>

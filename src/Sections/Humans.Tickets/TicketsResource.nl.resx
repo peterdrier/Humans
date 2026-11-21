@@ -435,12 +435,6 @@
   <data name="Tickets_Buy_PaymentProcessing" xml:space="preserve">
     <value>Deze betaling is al onderweg en kan niet meer worden geannuleerd.</value>
   </data>
-  <data name="Tickets_Buy_TermsFailed" xml:space="preserve">
-    <value>Je akkoord met de ticketregels kon niet worden vastgelegd. Controleer of je profiel volledig is en probeer het opnieuw.</value>
-  </data>
-  <data name="Tickets_Buy_PartnerHolds" xml:space="preserve">
-    <value>Die persoon heeft al een ticket voor dit evenement.</value>
-  </data>
   <data name="Tickets_Delivery_Ticket_Subject" xml:space="preserve">
     <value>Je ticket voor {0}</value>
   </data>

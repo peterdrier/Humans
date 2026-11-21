@@ -435,12 +435,6 @@
   <data name="Tickets_Buy_PaymentProcessing" xml:space="preserve">
     <value>Ce paiement est déjà en cours et ne peut plus être annulé.</value>
   </data>
-  <data name="Tickets_Buy_TermsFailed" xml:space="preserve">
-    <value>Ton acceptation des règles n'a pas pu être enregistrée. Vérifie que ton profil est complet et réessaie.</value>
-  </data>
-  <data name="Tickets_Buy_PartnerHolds" xml:space="preserve">
-    <value>Cette personne a déjà un billet pour cet événement.</value>
-  </data>
   <data name="Tickets_Delivery_Ticket_Subject" xml:space="preserve">
     <value>Ton billet pour {0}</value>
   </data>
