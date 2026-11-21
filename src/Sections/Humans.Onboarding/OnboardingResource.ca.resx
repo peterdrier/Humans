@@ -66,7 +66,6 @@
   <data name="Onboarding_LegalNameExplainerPost" xml:space="preserve"><value>exportem aquesta informació, i només la divulgaríem si ho exigís la llei o una auditoria formal.</value></data>
   <data name="Onboarding_LegalNameExplainerPre" xml:space="preserve"><value>Es guarda internament, només visible per als administradors, i s'utilitza només on la llei espanyola ho requereix — per exemple, el nostre registre d'auditoria que vas acceptar l'acord de voluntariat en una data i hora concretes. Explícitament</value></data>
   <data name="Onboarding_LegalNameLabel" xml:space="preserve"><value>Nom legal</value></data>
-  <data name="Onboarding_NameRequiredBeforeShifts" xml:space="preserve"><value>Afegeix primer el teu nom — el necessitem abans que puguis apuntar-te a torns.</value></data>
   <data name="Onboarding_NamesSubtitle" xml:space="preserve"><value>Dos passos breus abans de triar un torn.</value></data>
   <data name="Onboarding_NamesTitle" xml:space="preserve"><value>Benvingut/da — comencem pel teu nom</value></data>
   <data name="Onboarding_PriorityCritical" xml:space="preserve"><value>Crític</value></data>
