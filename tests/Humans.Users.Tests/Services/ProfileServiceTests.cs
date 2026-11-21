@@ -721,7 +721,6 @@ public sealed class ProfileServiceTests : ServiceTestHarness
         Db.ProfileLanguages.Add(new ProfileLanguage
         {
             Id = Guid.NewGuid(),
-            ProfileId = profileId,
             UserId = userId,
             LanguageCode = "es",
             Proficiency = LanguageProficiency.Native,
@@ -799,7 +798,6 @@ public sealed class ProfileServiceTests : ServiceTestHarness
         Db.VolunteerHistoryEntries.Add(new VolunteerHistoryEntry
         {
             Id = Guid.NewGuid(),
-            ProfileId = profileId,
             UserId = userId,
             Date = new LocalDate(2025, 7, 1),
             EventName = "Existing history",
@@ -831,7 +829,6 @@ public sealed class ProfileServiceTests : ServiceTestHarness
             Db.VolunteerHistoryEntries.Add(new VolunteerHistoryEntry
             {
                 Id = Guid.NewGuid(),
-                ProfileId = profileId,
                 UserId = userId,
                 Date = new LocalDate(2025, 7, 1),
                 EventName = "Original history",
@@ -856,7 +853,7 @@ public sealed class ProfileServiceTests : ServiceTestHarness
         await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("CV save failed");
         (await Db.Profiles.AsNoTracking().SingleAsync(p => p.Id == profileId, ct))
             .NoPriorBurnExperience.Should().Be(!hadHistory);
-        var savedHistory = await Db.VolunteerHistoryEntries.AsNoTracking().Where(h => h.ProfileId == profileId).ToListAsync(ct);
+        var savedHistory = await Db.VolunteerHistoryEntries.AsNoTracking().Where(h => h.UserId == userId).ToListAsync(ct);
         if (hadHistory)
             savedHistory.Should().ContainSingle().Which.EventName.Should().Be("Original history");
         else
@@ -921,7 +918,7 @@ public sealed class ProfileServiceTests : ServiceTestHarness
 
         (await Db.Profiles.AsNoTracking().SingleAsync(p => p.Id == profileId, ct))
             .NoPriorBurnExperience.Should().BeFalse();
-        (await Db.VolunteerHistoryEntries.AsNoTracking().Where(h => h.ProfileId == profileId).ToListAsync(ct))
+        (await Db.VolunteerHistoryEntries.AsNoTracking().Where(h => h.UserId == userId).ToListAsync(ct))
             .Should().ContainSingle().Which.EventName.Should().Be("Nowhere");
     }
 

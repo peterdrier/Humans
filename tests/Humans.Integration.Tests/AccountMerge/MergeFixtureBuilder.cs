@@ -138,7 +138,6 @@ public sealed class MergeFixtureBuilder
             db.ContactFields.Add(new ContactField
             {
                 Id = Guid.NewGuid(),
-                ProfileId = profile.Id,
                 UserId = profile.UserId,
                 FieldType = type,
                 Value = value,
@@ -164,7 +163,6 @@ public sealed class MergeFixtureBuilder
             db.VolunteerHistoryEntries.Add(new VolunteerHistoryEntry
             {
                 Id = Guid.NewGuid(),
-                ProfileId = profile.Id,
                 UserId = profile.UserId,
                 Date = new LocalDate(year, 1, 1),
                 EventName = eventName,
@@ -189,7 +187,6 @@ public sealed class MergeFixtureBuilder
             db.ProfileLanguages.Add(new ProfileLanguage
             {
                 Id = Guid.NewGuid(),
-                ProfileId = profile.Id,
                 UserId = profile.UserId,
                 LanguageCode = code,
                 Proficiency = proficiency,

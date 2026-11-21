@@ -114,7 +114,6 @@ internal sealed class ContactFieldService(
                 field = new ContactField
                 {
                     Id = Guid.NewGuid(),
-                    ProfileId = profileId,
                     UserId = ownerUserId,
                     CreatedAt = now
                 };

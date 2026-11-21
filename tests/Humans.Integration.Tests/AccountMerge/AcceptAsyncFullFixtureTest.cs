@@ -191,16 +191,11 @@ public class AcceptAsyncFullFixtureTest(HumansTestDatabase database)
             .Should().Be(0);
 
         // Profile is the exception: the source row stays as an anonymized tombstone while its child rows re-FK.
-        var sourceProfileId = await db.Profiles.AsNoTracking()
-            .Where(p => p.UserId == sourceId).Select(p => p.Id).SingleAsync(TestContext.Current.CancellationToken);
-        var targetProfileId = await db.Profiles.AsNoTracking()
-            .Where(p => p.UserId == targetId).Select(p => p.Id).SingleAsync(TestContext.Current.CancellationToken);
-
-        (await db.ContactFields.AsNoTracking().CountAsync(cf => cf.ProfileId == sourceProfileId, TestContext.Current.CancellationToken))
+        (await db.ContactFields.AsNoTracking().CountAsync(cf => cf.UserId == sourceId, TestContext.Current.CancellationToken))
             .Should().Be(0);
-        (await db.ProfileLanguages.AsNoTracking().CountAsync(pl => pl.ProfileId == sourceProfileId, TestContext.Current.CancellationToken))
+        (await db.ProfileLanguages.AsNoTracking().CountAsync(pl => pl.UserId == sourceId, TestContext.Current.CancellationToken))
             .Should().Be(0);
-        (await db.VolunteerHistoryEntries.AsNoTracking().CountAsync(v => v.ProfileId == sourceProfileId, TestContext.Current.CancellationToken))
+        (await db.VolunteerHistoryEntries.AsNoTracking().CountAsync(v => v.UserId == sourceId, TestContext.Current.CancellationToken))
             .Should().Be(0);
 
         // Append-only sections keep the source rows for chain-follow.
@@ -230,17 +225,17 @@ public class AcceptAsyncFullFixtureTest(HumansTestDatabase database)
             .Should().BeTrue("source login re-FK'd to target");
 
         (await db.ContactFields.AsNoTracking()
-                .AnyAsync(cf => cf.ProfileId == targetProfileId
+                .AnyAsync(cf => cf.UserId == targetId
                     && cf.FieldType == ContactFieldType.Telegram
                     && cf.Value == $"@src-{runTag}", TestContext.Current.CancellationToken))
             .Should().BeTrue("source-only Telegram contact field moved to target profile");
 
         (await db.VolunteerHistoryEntries.AsNoTracking()
-                .AnyAsync(v => v.ProfileId == targetProfileId && v.EventName == $"BurnFest-{runTag}", TestContext.Current.CancellationToken))
+                .AnyAsync(v => v.UserId == targetId && v.EventName == $"BurnFest-{runTag}", TestContext.Current.CancellationToken))
             .Should().BeTrue("source volunteer-history row re-FK'd to target profile");
 
         (await db.ProfileLanguages.AsNoTracking()
-                .AnyAsync(pl => pl.ProfileId == targetProfileId
+                .AnyAsync(pl => pl.UserId == targetId
                     && pl.LanguageCode == $"x-{runTag.Substring(0, 4)}", TestContext.Current.CancellationToken))
             .Should().BeTrue("source-only language re-FK'd to target profile");
 

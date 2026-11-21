@@ -661,7 +661,6 @@ public class CachingUserServiceTests
         profile.Languages.Add(new ProfileLanguage
         {
             Id = languageId,
-            ProfileId = profileId,
             UserId = userId,
             LanguageCode = "es",
             Proficiency = LanguageProficiency.Native,
@@ -669,7 +668,6 @@ public class CachingUserServiceTests
         profile.VolunteerHistory.Add(new VolunteerHistoryEntry
         {
             Id = historyId,
-            ProfileId = profileId,
             UserId = userId,
             Date = new LocalDate(2025, 3, 1),
             EventName = "Nowhere 2025",
@@ -677,7 +675,6 @@ public class CachingUserServiceTests
         var contactField = new ContactField
         {
             Id = contactFieldId,
-            ProfileId = profileId,
             UserId = userId,
             FieldType = ContactFieldType.Phone,
             Value = "+34 555 0001",
@@ -897,7 +894,6 @@ public class CachingUserServiceTests
             .Select((cf, i) => new ContactField
             {
                 Id = Guid.NewGuid(),
-                ProfileId = profile.Id,
                 UserId = profile.UserId,
                 FieldType = cf.Type,
                 Value = cf.Value,
@@ -910,7 +906,6 @@ public class CachingUserServiceTests
             .Select(v => new VolunteerHistoryEntry
             {
                 Id = Guid.NewGuid(),
-                ProfileId = profile.Id,
                 UserId = profile.UserId,
                 Date = new LocalDate(2025, 1, 1),
                 EventName = v.EventName,
@@ -1332,7 +1327,6 @@ public class CachingUserServiceTests
         profile.Languages.Add(new ProfileLanguage
         {
             Id = Guid.NewGuid(),
-            ProfileId = profileId,
             UserId = userId,
             LanguageCode = "es",
             Proficiency = LanguageProficiency.Native,
@@ -1371,7 +1365,6 @@ public class CachingUserServiceTests
         profile.VolunteerHistory.Add(new VolunteerHistoryEntry
         {
             Id = Guid.NewGuid(),
-            ProfileId = profileId,
             UserId = userId,
             Date = new LocalDate(2025, 3, 1),
             EventName = "Nowhere 2025",
