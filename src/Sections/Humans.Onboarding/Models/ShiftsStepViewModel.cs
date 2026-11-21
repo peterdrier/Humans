@@ -25,9 +25,8 @@ internal sealed class ShiftsStepViewModel
     /// <summary>The event's shifts already filtered to <see cref="SelectedPriority"/>.</summary>
     public IReadOnlyList<UrgentShiftInfo> Shifts { get; init; } = [];
 
-    public HashSet<Guid> UserSignupShiftIds { get; init; } = [];
-
-    public Dictionary<Guid, SignupStatus> UserSignupStatuses { get; init; } = new();
+    /// <summary>The resolved account, after any merge.</summary>
+    public Guid ViewerUserId { get; init; }
 
     /// <summary>Every early-entry rota in the step’s source list is locked for this viewer.</summary>
     public bool EarlyEntrySignupsClosed { get; init; }

@@ -89,7 +89,7 @@ Three aggregates and one content proxy, each with a single writer:
 - Auth: `/Consent` any signed-in human (`Controllers/ConsentController.cs:14`); `/Legal`
   anonymous (`Controllers/LegalController.cs:13`); `/Legal/Admin/*` Board or Admin only
   (`Controllers/AdminLegalDocumentsController.cs:13`), so a Consent Coordinator cannot manage
-  documents; `/Consent/ReviewQueue` readable by ConsentCoordinator, ShiftsAdmin, Board, Admin, its
+  documents; `/Consent/ReviewQueue` readable by ConsentCoordinator, Board, Admin, its
   writes by ConsentCoordinator, Board, Admin only (`Controllers/ConsentReviewQueueController.cs`).
 
 ## Seams

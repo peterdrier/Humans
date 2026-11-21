@@ -202,12 +202,12 @@ too wide to keep in step by hand. Derive it from the call sites.
 registered as `ISettingsService`, `ISettingsWriteService` and `IEventSettingsSeeding`)
 **Owned tables:** `settings_system_values`, `settings_events`
 **Status:** (A) — own project, own context, repository-only data access.
-`CachingSettingsService` holds every event row and the timezone in memory, so the
-event reads never reach the database. It loads at startup, and `Service` reloads it on
-every event or timezone write, before it tells the `IEventSettingsChangeListener`s.
+`CachingSettingsService` holds every event row, the timezone and every
+`settings_system_values` row in memory, so neither the event reads nor the key reads
+(`GetValueAsync`) reach the database. It loads at startup, and `Service` reloads it on
+every key, event or timezone write, before it tells the `IEventSettingsChangeListener`s.
 `GetActiveEventSettings()` is synchronous: it only reads that copy, and the database-backed
-`Service` throws `NotSupportedException` for it. Plain key reads (`GetValueAsync`) are not
-cached.
+`Service` throws `NotSupportedException` for it.
 **Contributes:** through `Section`: `ISectionSettings` — the `/Settings#event`
 tab, rendered by `EventSettingsTabViewComponent`; `ISectionChrome` — the
 `/Settings` link in the signed-in user menu (`user-menu` slot); `ISectionAdminNav`

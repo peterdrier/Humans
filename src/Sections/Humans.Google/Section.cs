@@ -6,6 +6,7 @@ using Humans.Base.Configuration;
 using Humans.Base.Constants;
 using Humans.Base.Hosting;
 using Humans.Base.Interfaces;
+using Humans.Base.Interfaces.Caching;
 using Humans.Email.Contracts;
 using Humans.Gdpr.Contracts;
 using Humans.Google.Authorization;
@@ -105,7 +106,11 @@ public sealed class Section :
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<GoogleSyncLogService>());
         // Temporary: backs /Google/Admin/SyncHistoryMigration; remove with the six Google columns on audit_log.
         services.AddScoped<IGoogleSyncHistoryMigrationService, GoogleSyncHistoryMigrationService>();
-        services.AddScoped<ISyncSettingsService, SyncSettingsService>();
+        services.AddKeyedScoped<ISyncSettingsService, SyncSettingsService>(CachingSyncSettingsService.InnerServiceKey);
+        services.AddSingleton<CachingSyncSettingsService>();
+        services.AddSingleton<ISyncSettingsService>(sp => sp.GetRequiredService<CachingSyncSettingsService>());
+        services.AddSingleton<ICacheStats>(sp => sp.GetRequiredService<CachingSyncSettingsService>());
+        services.AddHostedService(sp => sp.GetRequiredService<CachingSyncSettingsService>());
         // This section owns its email copy and gallery samples; Email keeps the mechanics.
         services.AddScoped<GoogleEmails>();
         services.AddScoped<IEmailPreviewContributor, GoogleEmailPreviews>();

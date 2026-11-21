@@ -35,7 +35,9 @@ internal sealed class GovernanceIndexViewModel
     public int ColaboradorCount { get; set; }
     public int AsociadoCount { get; set; }
 
+    /// <summary>Office holders first, in office order, then by burner name.</summary>
     public IReadOnlyList<Guid> BoardMemberIds { get; set; } = [];
+    public IReadOnlyDictionary<Guid, BoardPosition> BoardPositions { get; set; } = new Dictionary<Guid, BoardPosition>();
     public IReadOnlyList<AssemblyVoteListItem> OpenVotes { get; set; } = [];
     public int UnvotedApplicationCount { get; set; }
 
@@ -47,8 +49,11 @@ internal sealed class GovernanceBodyViewModel
 {
     public required GovernanceBody Body { get; init; }
 
-    /// <summary>Ordered by burner name.</summary>
+    /// <summary>Ordered by burner name; on the Board page, office holders come first in office order.</summary>
     public required IReadOnlyList<Guid> MemberIds { get; init; }
+
+    /// <summary>Board page only: each member's office.</summary>
+    public IReadOnlyDictionary<Guid, BoardPosition> Positions { get; init; } = new Dictionary<Guid, BoardPosition>();
 
     /// <summary>Null when the viewer may not see them, or the body has none.</summary>
     public GovernanceBodyAccess? Links { get; init; }
