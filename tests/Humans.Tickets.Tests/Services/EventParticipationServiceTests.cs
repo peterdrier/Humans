@@ -56,7 +56,8 @@ public sealed class EventParticipationServiceTests : IDisposable
             Substitute.For<ITicketTransferRepository>(), Substitute.For<IBudgetService>(),
             Substitute.For<ICampaignService>(), _users, Substitute.For<IUserEmailService>(),
             Substitute.For<ITeamService>(), Substitute.For<IGovernanceService>(),
-            Substitute.For<ISettingsService>(), _audit, _clock, repo);
+            Substitute.For<ISettingsService>(), _audit, _clock, repo,
+            Substitute.For<Humans.Tickets.Services.Checkout.ITicketCheckoutService>());
         _sut = new EventParticipationService(repo, _queries, _audit, _clock,
             NullLogger<EventParticipationService>.Instance);
     }
