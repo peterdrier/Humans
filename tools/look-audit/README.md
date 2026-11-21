@@ -16,6 +16,6 @@ Flow (run from `tools/look-audit`, `npm install` once; playwright + chromium com
 
 Only routes marked `safe` in `route-review.json` are visited. That file comes from reading every GET action for writes, audit entries, peeks, sends, syncs and downloads; when `routes.json` gains or changes a route, review it first (it stays unvisited until then). `SKIP_RE` in `capture.mjs` is a second net; templates with params are filled from links found on visited pages, else marked `no-sample`.
 
-Looking at a few pages of one change (not the whole app): `node shoot.mjs <outName> <persona|anon> <name=/path>...` with `LOOK_BASE_URL` set to a preview or a local run; see the `look-check` skill.
+Looking at a few pages of one change (not the whole app): `node shoot.mjs <outName> <persona|anon> <name=/path>...` with `LOOK_AUDIT_BASE_URL` set to a preview or a local run (default `http://localhost:5080`); see the `look-check` skill.
 
 `out/` holds screenshots with real member data: never commit, attach or publish it.
