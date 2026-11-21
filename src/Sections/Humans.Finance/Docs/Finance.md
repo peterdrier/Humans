@@ -289,6 +289,8 @@ The provisioning preview, unmatched queue, creditor overview (including member-n
 
 ## Invariants
 
+- `RunSepaBookingSweepAsync` owns the scheduled bank-line sweep directly; `GetSepaTransfersAsync` owns the transfer booking-state read reused by the SEPA pairing workflow. Neither entry point forwards through a second name for the same operation.
+
 - Creditor open-document counts, SEPA payment selection and duplicate review consume Holded's `HoldedPurchaseDocInfo` mirror directly. Approval and nullable payment state are preserved; FIFO uses the mirrored accounting date and document id. No conversion back to connector payloads or midnight instants occurs.
 
 
@@ -484,7 +486,7 @@ The overview and cash-flow view models supply their page totals: in-progress SEP
 | `IFinanceAdminService` | internal | What only Finance's own pages and jobs call, the SEPA bank-line sweep (`RunSepaBookingSweepAsync`) included. Injected by `FinanceController` and `SepaBankBookingJob`. |
 | `IPaymentDetailsManagement` | internal | The IBAN owner: `GetIbanAsync` / `SetIbanAsync` behind the public faces, and `RevealIbanAsync` for `PaymentDetailsAdminController`. |
 
-`GetCategoryMapAsync` and `GetSepaTransfersAsync` (added for peterdrier/Humans#1838) expose, read-only, the category map and what `/Finance/Sepa` already renders: `GetCategoryMapAsync` returns the `CategoryAccountRow` projection with category and group names, and `GetSepaTransfersAsync` shares `GetSepaPayoutsAsync`'s pre-feed booking-state logic (`GetSepaPayoutRowsWithReasonsAsync`) but skips the live Holded bank-feed read — it exists only to offer `/Finance/Sepa`'s own "book this" button, and Backdoor never projects the candidate-bank-line/unmatched-movement fields it would fill. Both DTOs (`CategoryAccountRow`, `SepaPayoutTransferRow`) live in the contracts leaf now, not this section's `Models/`.
+`GetCategoryMapAsync` and `GetSepaTransfersAsync` (added for peterdrier/Humans#1838) expose, read-only, the category map and what `/Finance/Sepa` already renders: `GetCategoryMapAsync` returns the `CategoryAccountRow` projection with category and group names, and `GetSepaTransfersAsync` owns the pre-feed booking-state logic shared with `GetSepaPayoutsAsync` but skips the live Holded bank-feed read — it exists only to offer `/Finance/Sepa`'s own "book this" button, and Backdoor never projects the candidate-bank-line/unmatched-movement fields it would fill. Both DTOs (`CategoryAccountRow`, `SepaPayoutTransferRow`) live in the contracts leaf now, not this section's `Models/`.
 
 **Controllers.** `/Finance` is this section's `FinanceController`: the index, Holded, creditor, SEPA-payout and cash-flow surface in the routing table above. Budget CRUD is `Humans.Budget.Controllers.BudgetAdminController` at `/Budget/Admin`; see [`Budget.md`](../../Humans.Budget/Docs/Budget.md).
 
