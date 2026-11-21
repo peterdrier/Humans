@@ -62,7 +62,7 @@ Two parallel tracks (either order):
     │
     └── If Colaborador/Asociado Application exists → Board Voting queue (parallel)
             │
-            ├── Board approves → Colaboradors/Asociados team (2-year term)
+            ├── Board approves → Colaboradores/Asociados body (2-year term)
             └── Board rejects → notification, stays as Volunteer
 ```
 
@@ -172,7 +172,7 @@ This review is an audit annotation on the Volunteer only. It does not evaluate t
 **Actions:**
 - Application appears on Board Voting dashboard
 - Board members vote, then finalize decision
-- Approve → Colaboradors/Asociados team with term
+- Approve → Colaboradores/Asociados body with term
 - Reject → notification, human remains Volunteer
 
 ## Onboarding Widget (Low-Friction Variant)

@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Humans.Workgroups.Authorization;
+using Humans.Auth.Contracts;
 using Humans.Base.Authorization;
 using Humans.Base.Constants;
 using Humans.Base.Controllers;
@@ -25,7 +26,7 @@ namespace Humans.Workgroups.Controllers;
 internal sealed class WorkgroupsController(
     IWorkgroupService workgroups,
     IUserService users,
-    ITeamService teams,
+    IRoleAssignmentService roles,
     IGovernanceService governance,
     IStringLocalizer<WorkgroupsResource> localizer,
     IStringLocalizer<CalendarResource> calendarLocalizer,
@@ -83,7 +84,7 @@ internal sealed class WorkgroupsController(
         if (await ResolveAsync(slug, ct) is not { } workgroup) return NotFound();
 
         var people = await PeopleAsync(workgroup, ct);
-        var board = await teams.GetTeamAsync(SystemTeamIds.Board, ct);
+        var board = await roles.GetActiveUserIdsInRoleAsync(RoleNames.Board, ct);
         var canAdminister = await MayAdministerAsync(workgroup);
         var tiers = await governance.GetMembershipTiersAsync(ct);
         var canSeeBudget = canAdminister
@@ -99,7 +100,7 @@ internal sealed class WorkgroupsController(
             CurrentUserId = user.Id,
             People = people,
             Tiers = tiers,
-            BoardUserIds = board?.Members.Select(m => m.UserId).ToHashSet() ?? [],
+            BoardUserIds = board.ToHashSet(),
             IsMember = workgroup.IsMember(user.Id),
             IsCoordinator = workgroup.IsCoordinator(user.Id),
             IsPendingMember = workgroup.IsPendingMember(user.Id),

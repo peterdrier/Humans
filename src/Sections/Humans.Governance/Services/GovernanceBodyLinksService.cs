@@ -10,8 +10,8 @@ using NodaTime;
 namespace Humans.Governance.Services;
 
 /// <summary>
-/// Each body's Google group and files. Until the switch to Governance's own Google claims, the copy from the
-/// body's old system team is pending whenever it differs from Teams, so a re-apply picks up later edits there.
+/// Each body's Google group and files. Governance claims them in Google, so its stored copy is the source of truth:
+/// the copy from the body's old system team runs once per body and never overwrites a stored row.
 /// </summary>
 internal sealed class GovernanceBodyLinksService(
     IGovernanceBodyRepository repository,
@@ -31,7 +31,7 @@ internal sealed class GovernanceBodyLinksService(
     public Task<IReadOnlyList<GovernanceBodyLinks>> GetAllAsync(CancellationToken ct = default) =>
         repository.GetAllAsync(ct);
 
-    /// <summary>The bodies whose stored links differ from their old team's, as (stored, from Teams).</summary>
+    /// <summary>The bodies with no stored row yet, as (null, from Teams).</summary>
     public async Task<IReadOnlyList<(GovernanceBodyLinks? Stored, GovernanceBodyLinks FromTeams)>> GetPendingCopiesAsync(
         CancellationToken ct = default)
     {
@@ -39,10 +39,10 @@ internal sealed class GovernanceBodyLinksService(
         var fromTeams = await ReadFromTeamsAsync(ct);
         return [.. fromTeams
             .Select(t => (Stored: stored.GetValueOrDefault(t.Body), FromTeams: t))
-            .Where(p => p.Stored is null || !SameLinks(p.Stored, p.FromTeams))];
+            .Where(p => p.Stored is null)];
     }
 
-    /// <summary>Overwrites every pending body with its old team's links. Returns how many bodies it wrote.</summary>
+    /// <summary>Stores every pending body's links from its old team. Returns how many bodies it wrote.</summary>
     public async Task<int> CopyFromTeamsAsync(Guid actorUserId, CancellationToken ct = default)
     {
         var pending = await GetPendingCopiesAsync(ct);
@@ -90,11 +90,4 @@ internal sealed class GovernanceBodyLinksService(
 
         return result;
     }
-
-    private static bool SameLinks(GovernanceBodyLinks a, GovernanceBodyLinks b) =>
-        string.Equals(a.GoogleGroupPrefix, b.GoogleGroupPrefix, StringComparison.Ordinal)
-        && FileKeys(a).SetEquals(FileKeys(b));
-
-    private static HashSet<(string, GoogleResourceType, string, string?, DrivePermissionLevel)> FileKeys(GovernanceBodyLinks links) =>
-        [.. links.Files.Select(f => (f.GoogleId, f.ResourceType, f.Name, f.Url, f.PermissionLevel))];
 }

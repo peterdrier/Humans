@@ -191,7 +191,5 @@ internal sealed class OnboardingService(
     private async Task DeprovisionApprovalGatedSystemTeamsAsync(Guid userId)
     {
         await syncJob.SyncMembershipForUserAsync(userId, SystemTeamType.Volunteers, CancellationToken.None);
-        await syncJob.SyncMembershipForUserAsync(userId, SystemTeamType.Colaboradors, CancellationToken.None);
-        await syncJob.SyncMembershipForUserAsync(userId, SystemTeamType.Asociados, CancellationToken.None);
     }
 }

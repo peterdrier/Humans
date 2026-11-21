@@ -1,14 +1,12 @@
 using Humans.Consent.Contracts;
 using Humans.Base.Extensions;
 using Humans.Google.Contracts;
-using Humans.Auth.Contracts;
 using Hangfire;
 using Microsoft.Extensions.DependencyInjection;
 using NodaTime;
 using Humans.Base.Interfaces;
 using Humans.AuditLog.Contracts;
 using Humans.Email.Contracts;
-using Humans.Governance.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Camps.Contracts;
 using Humans.Base.Constants;
@@ -39,12 +37,6 @@ internal sealed class SystemTeamSyncJob(
 {
     // Lazy via IServiceProvider to break DI cycles: these services depend on ISystemTeamSync.
 
-    private IGovernanceService ApplicationDecisionService =>
-        serviceProvider.GetRequiredService<IGovernanceService>();
-
-    private IRoleAssignmentService RoleAssignmentService =>
-        serviceProvider.GetRequiredService<IRoleAssignmentService>();
-
     private ITeamResourceService TeamResourceService =>
         serviceProvider.GetRequiredService<ITeamResourceService>();
 
@@ -62,9 +54,6 @@ internal sealed class SystemTeamSyncJob(
             await SyncVolunteersTeamAsync(report, cancellationToken);
             await ReconcileCoordinatorRolesAsync(report, cancellationToken);
             await SyncCoordinatorsTeamAsync(report, cancellationToken);
-            await SyncBoardTeamAsync(report, cancellationToken);
-            await SyncAsociadosTeamAsync(report, cancellationToken);
-            await SyncColaboradorsTeamAsync(report, cancellationToken);
             await SyncBarrioLeadsTeamAsync(report, cancellationToken);
 
             // Without credentials the group reconciler runs against in-memory stubs and would record successful
@@ -217,69 +206,6 @@ internal sealed class SystemTeamSyncJob(
         report?.Steps.Add(step);
     }
 
-    public async Task SyncBoardTeamAsync(SyncReport? report = null, CancellationToken cancellationToken = default)
-    {
-        logger.LogDebug("Syncing Board team");
-        var step = new SyncStepResult("Board");
-
-        var team = await GetSystemTeamSnapshotAsync(SystemTeamType.Board, cancellationToken);
-        if (team is null)
-        {
-            logger.LogWarning("Board system team not found");
-            report?.Steps.Add(step);
-            return;
-        }
-
-        var boardMemberIds = await RoleAssignmentService.GetActiveUserIdsInRoleAsync(
-            RoleNames.Board, cancellationToken);
-
-        var eligibleSet = await ConsentService.GetUsersWithAllRequiredConsentsForTeamAsync(
-            boardMemberIds, SystemTeamIds.Board, cancellationToken);
-
-        await SyncTeamMembershipAsync(team, eligibleSet.ToList(), cancellationToken, step: step);
-        report?.Steps.Add(step);
-    }
-
-    public Task SyncAsociadosTeamAsync(SyncReport? report = null, CancellationToken cancellationToken = default) =>
-        SyncTierTeamAsync(MembershipTier.Asociado, SystemTeamType.Asociados, SystemTeamIds.Asociados, report, cancellationToken);
-
-    /// <summary>Also requires membership of the Volunteers team.</summary>
-    public Task SyncColaboradorsTeamAsync(SyncReport? report = null, CancellationToken cancellationToken = default) =>
-        SyncTierTeamAsync(MembershipTier.Colaborador, SystemTeamType.Colaboradors, SystemTeamIds.Colaboradors, report, cancellationToken);
-
-    private async Task SyncTierTeamAsync(MembershipTier tier, SystemTeamType teamType, Guid teamId,
-        SyncReport? report, CancellationToken cancellationToken)
-    {
-        logger.LogDebug("Syncing {TeamType} team", teamType);
-        var step = new SyncStepResult(teamType.ToString());
-
-        var team = await GetSystemTeamSnapshotAsync(teamType, cancellationToken);
-        if (team is null)
-        {
-            logger.LogWarning("{TeamType} system team not found", teamType);
-            report?.Steps.Add(step);
-            return;
-        }
-
-        var today = clock.GetCurrentInstant().InUtc().Date;
-
-        var applicationUserIds = await ApplicationDecisionService
-            .GetActiveApprovedTierUserIdsAsync(tier, today, cancellationToken);
-
-        var activeSet = (await userService.GetAllUserInfosAsync(cancellationToken).ConfigureAwait(false))
-            .Where(u => u.IsActive)
-            .Select(u => u.Id)
-            .ToHashSet();
-        var userIds = applicationUserIds.Where(activeSet.Contains).ToList();
-
-        var eligibleSet = await ConsentService.GetUsersWithAllRequiredConsentsForTeamAsync(
-            userIds, teamId, cancellationToken);
-        var eligibleUserIds = eligibleSet.ToList();
-
-        await SyncTeamMembershipAsync(team, eligibleUserIds, cancellationToken, step: step);
-        report?.Steps.Add(step);
-    }
-
     public Task SyncMembershipForUserAsync(
         Guid userId,
         SystemTeamType teamType,
@@ -293,10 +219,6 @@ internal sealed class SystemTeamSyncJob(
         {
             SystemTeamType.Volunteers => SyncVolunteersMembershipForUserAsync(userId, cancellationToken),
             SystemTeamType.Coordinators => SyncCoordinatorsMembershipForUserAsync(userId, cancellationToken),
-            SystemTeamType.Colaboradors => SyncTierMembershipForUserAsync(
-                userId, MembershipTier.Colaborador, SystemTeamType.Colaboradors, SystemTeamIds.Colaboradors, cancellationToken),
-            SystemTeamType.Asociados => SyncTierMembershipForUserAsync(
-                userId, MembershipTier.Asociado, SystemTeamType.Asociados, SystemTeamIds.Asociados, cancellationToken),
             SystemTeamType.BarrioLeads => SyncBarrioLeadsMembershipForUserAsync(userId, cancellationToken),
             _ => throw new ArgumentOutOfRangeException(nameof(teamType), teamType, "System team does not support per-user sync.")
         };
@@ -340,34 +262,6 @@ internal sealed class SystemTeamSyncJob(
 
         var isEligible = isCoordinatorAnywhere
             && await ConsentService.HasAllRequiredConsentsForTeamAsync(userId, SystemTeamIds.Coordinators, cancellationToken);
-
-        var eligibleUserIds = isEligible ? [userId] : new List<Guid>();
-        await SyncTeamMembershipAsync(team, eligibleUserIds, cancellationToken, singleUserSync: userId);
-    }
-
-    private async Task SyncTierMembershipForUserAsync(Guid userId, MembershipTier tier,
-        SystemTeamType teamType, Guid teamId, CancellationToken cancellationToken)
-    {
-        var team = await GetSystemTeamSnapshotAsync(teamType, cancellationToken);
-        if (team is null)
-        {
-            logger.LogWarning("{TeamType} system team not found", teamType);
-            return;
-        }
-
-        var today = clock.GetCurrentInstant().InUtc().Date;
-
-        var info = await userService.GetUserInfoAsync(userId, cancellationToken);
-        if (info is not null)
-            userId = info.Id; // applications and membership were re-pointed to the survivor on merge
-
-        var hasApprovedApp = await ApplicationDecisionService
-            .HasActiveApprovedTierAsync(userId, tier, today, cancellationToken);
-
-        var isEligible = hasApprovedApp
-            && info is { Profile: not null, IsSuspended: false }
-            && (await ConsentService.GetConsentReviewAsync(userId, cancellationToken)).IsApproved
-            && await ConsentService.HasAllRequiredConsentsForTeamAsync(userId, teamId, cancellationToken);
 
         var eligibleUserIds = isEligible ? [userId] : new List<Guid>();
         await SyncTeamMembershipAsync(team, eligibleUserIds, cancellationToken, singleUserSync: userId);

@@ -2,7 +2,7 @@ using AwesomeAssertions;
 using Humans.Base.Constants;
 using Humans.Base.Enums;
 using Humans.Google.Contracts;
-using Humans.Teams.Contracts;
+using Humans.Auth.Contracts;
 using Humans.Users.Contracts;
 using Humans.Workgroups.Domain;
 using Humans.Workgroups.Services.Contributors;
@@ -20,7 +20,7 @@ namespace Humans.Workgroups.Tests.Services.Contributors;
 /// </summary>
 public sealed class WorkgroupDriveAccessSourceTests : WorkgroupsTestHarness
 {
-    private WorkgroupDriveAccessSource NewSource() => new(NewService(), Teams);
+    private WorkgroupDriveAccessSource NewSource() => new(NewService(), Roles);
 
     [HumansFact]
     public async Task WithdrawnGroup_ClaimsAnEmptyRosterToRevokeExistingGrants()
@@ -95,12 +95,7 @@ public sealed class WorkgroupDriveAccessSourceTests : WorkgroupsTestHarness
     public async Task RootFolder_BoardMembersOnly_GetViewer()
     {
         var boardUserId = Guid.NewGuid();
-        Teams.GetTeamAsync(SystemTeamIds.Board, Arg.Any<CancellationToken>())
-            .Returns(new TeamInfo(
-                SystemTeamIds.Board, "Board", null, "board", true, true,
-                SystemTeamType.Board, false, false, false, false, Instant.FromUtc(2026, 1, 1, 0, 0),
-                [new TeamMemberInfo(Guid.NewGuid(), boardUserId, "Board Member", null, null, TeamMemberRole.Member,
-                    Instant.FromUtc(2026, 1, 1, 0, 0))]));
+        Roles.GetActiveUserIdsInRoleAsync(RoleNames.Board, Arg.Any<CancellationToken>()).Returns([boardUserId]);
 
         var colaborador = SeedUser("Colaborador", profile: UserFixtures.Profile());
         var asociado = SeedUser("Asociado", profile: UserFixtures.Profile());

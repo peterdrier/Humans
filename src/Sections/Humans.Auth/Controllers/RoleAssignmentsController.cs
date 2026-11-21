@@ -99,7 +99,7 @@ internal sealed class RoleAssignmentsController(
 
         if (RoleAssignmentRules.IsAddedInGovernance(model.RoleName))
         {
-            SetError("Board members are added on the Board page in Governance (/Governance/Board).");
+            SetError(BoardInGovernanceMessage);
             return RedirectToAction("AdminDetail", "UsersAdmin", new { id });
         }
 
@@ -132,6 +132,9 @@ internal sealed class RoleAssignmentsController(
         return RedirectToAction("AdminDetail", "UsersAdmin", new { id });
     }
 
+    private const string BoardInGovernanceMessage =
+        "Board seats are added and ended on the Board page in Governance (/Governance/Board).";
+
     [HttpPost("Auth/Admin/{id:guid}/Roles/{roleId:guid}/End")]
     [Authorize(Policy = UsersPolicies.Manage)]
     [ValidateAntiForgeryToken]
@@ -142,6 +145,13 @@ internal sealed class RoleAssignmentsController(
         if (roleAssignment is null)
         {
             return NotFound();
+        }
+
+        // Ending a seat here would skip Governance's Board office cleanup and its Google sync request.
+        if (RoleAssignmentRules.IsAddedInGovernance(roleAssignment.RoleName))
+        {
+            SetError(BoardInGovernanceMessage);
+            return RedirectToAction("AdminDetail", "UsersAdmin", new { id = roleAssignment.UserId });
         }
 
         var currentUser = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);

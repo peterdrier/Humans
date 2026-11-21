@@ -135,12 +135,6 @@ internal sealed class DevPersonaSeeder(
             await systemTeamSync.SyncMembershipForUserAsync(id, SystemTeamType.BarrioLeads);
         }
 
-        // Board membership has no per-user sync arm in SystemTeamSyncJob, so apply directly.
-        if (roleName is not null && string.Equals(roleName, RoleNames.Board, StringComparison.Ordinal))
-        {
-            await teamWrite.ApplySystemTeamMembershipDeltaAsync(SystemTeamIds.Board, [id], [], now);
-        }
-
         foreach (var role in roles)
         {
             await EnsureSeededRoleAsync(id, role, id);

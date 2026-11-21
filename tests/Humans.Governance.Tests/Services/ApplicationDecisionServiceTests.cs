@@ -23,6 +23,7 @@ using NodaTime.Testing;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Humans.AuditLog.Contracts;
 using Humans.Governance.Contracts;
+using Humans.Google.Contracts;
 using AwesomeAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
@@ -105,7 +106,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
     private readonly IEmailService _emailService = Substitute.For<IEmailService>();
     private readonly GovernanceEmails _emailMessages = TestGovernanceEmails.Create();
     private readonly INotificationEmitter _notificationService = Substitute.For<INotificationEmitter>();
-    private readonly ISystemTeamSync _syncJob = Substitute.For<ISystemTeamSync>();
+    private readonly IGoogleGroupSync _groupSync = Substitute.For<IGoogleGroupSync>();
     private readonly IHumansMetrics _metrics = Substitute.For<IHumansMetrics>();
     private readonly IRoleAssignmentService _roleAssignmentService = Substitute.For<IRoleAssignmentService>();
     private readonly IMemoryCache _cache = new MemoryCache(new MemoryCacheOptions());
@@ -136,7 +137,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         _emailService,
         _emailMessages,
         _notificationService,
-        _syncJob,
+        new GovernanceBodySync(new GovernanceBodyRepository(GovernanceDbFactory), _groupSync, Substitute.For<IGoogleSyncWrite>()),
         _metrics,
         _cache,
         Clock,
@@ -375,7 +376,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         (await stored.BoardVotes.CountAsync(TestContext.Current.CancellationToken)).Should().Be(0);
         AuditLog.ReceivedCalls().Should().BeEmpty();
         _emailService.ReceivedCalls().Should().BeEmpty();
-        _syncJob.ReceivedCalls().Should().BeEmpty();
+        _groupSync.ReceivedCalls().Should().BeEmpty();
     }
 
     [HumansTheory]
@@ -731,7 +732,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         }
         else tier.Should().BeNull();
         AuditLog.ReceivedCalls().Should().BeEmpty();
-        _syncJob.ReceivedCalls().Should().BeEmpty();
+        _groupSync.ReceivedCalls().Should().BeEmpty();
         _emailService.ReceivedCalls().Should().BeEmpty();
         _notificationService.ReceivedCalls().Should().BeEmpty();
     }
@@ -862,34 +863,26 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         votes.Should().BeEmpty();
     }
 
-    [HumansFact]
-    public async Task ApproveAsync_SyncsColaboradorTeam()
+    [HumansTheory]
+    [InlineData(MembershipTier.Colaborador, "colaboradores@nobodies.team")]
+    [InlineData(MembershipTier.Asociado, "asociados@nobodies.team")]
+    public async Task ApproveAsync_RequestsASyncOfTheTiersBodyGroup(MembershipTier tier, string group)
     {
-        var userId = Guid.NewGuid();
-        var app = await SeedSubmittedApplicationAsync(userId);
+        await SeedBodyGroupsAsync();
+        var app = await SeedSubmittedApplicationAsync(Guid.NewGuid(), tier);
         await SeedBoardVoteAsync(app.Id);
 
         await _service.ApproveAsync(app.Id, Guid.NewGuid(), null, new LocalDate(2026, 3, 1), TestContext.Current.CancellationToken);
 
-        await _syncJob.Received().SyncMembershipForUserAsync(
-            userId, SystemTeamType.Colaboradors, Arg.Any<CancellationToken>());
-        await _syncJob.DidNotReceive().SyncMembershipForUserAsync(
-            Arg.Any<Guid>(), SystemTeamType.Asociados, Arg.Any<CancellationToken>());
+        await _groupSync.Received(1).RequestSyncAsync(Arg.Any<string>(), Arg.Any<CancellationToken>(), Arg.Any<GoogleSyncSource>());
+        await _groupSync.Received(1).RequestSyncAsync(group, Arg.Any<CancellationToken>(), Arg.Any<GoogleSyncSource>());
     }
 
-    [HumansFact]
-    public async Task ApproveAsync_SyncsAsociadoTeam()
+    private async Task SeedBodyGroupsAsync()
     {
-        var userId = Guid.NewGuid();
-        var app = await SeedSubmittedApplicationAsync(userId, MembershipTier.Asociado);
-        await SeedBoardVoteAsync(app.Id);
-
-        await _service.ApproveAsync(app.Id, Guid.NewGuid(), null, new LocalDate(2026, 3, 1), TestContext.Current.CancellationToken);
-
-        await _syncJob.Received().SyncMembershipForUserAsync(
-            userId, SystemTeamType.Asociados, Arg.Any<CancellationToken>());
-        await _syncJob.DidNotReceive().SyncMembershipForUserAsync(
-            Arg.Any<Guid>(), SystemTeamType.Colaboradors, Arg.Any<CancellationToken>());
+        var bodies = new GovernanceBodyRepository(GovernanceDbFactory);
+        foreach (var (body, prefix) in new[] { (GovernanceBody.Asociados, "asociados"), (GovernanceBody.Colaboradores, "colaboradores") })
+            await bodies.ReplaceAsync(new GovernanceBodyLinks { Body = body, GoogleGroupPrefix = prefix }, TestContext.Current.CancellationToken);
     }
 
     [HumansFact]
@@ -1258,15 +1251,13 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
     [HumansFact]
     public async Task RejectAsync_DoesNotSyncTeams()
     {
+        await SeedBodyGroupsAsync();
         var app = await SeedSubmittedApplicationAsync(Guid.NewGuid());
         await SeedBoardVoteAsync(app.Id);
 
         await _service.RejectAsync(app.Id, Guid.NewGuid(), "reason", new LocalDate(2026, 3, 1), TestContext.Current.CancellationToken);
 
-        await _syncJob.DidNotReceive().SyncMembershipForUserAsync(
-            Arg.Any<Guid>(), SystemTeamType.Colaboradors, Arg.Any<CancellationToken>());
-        await _syncJob.DidNotReceive().SyncMembershipForUserAsync(
-            Arg.Any<Guid>(), SystemTeamType.Asociados, Arg.Any<CancellationToken>());
+        _groupSync.ReceivedCalls().Should().BeEmpty();
     }
 
     [HumansFact]
