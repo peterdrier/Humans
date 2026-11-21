@@ -25,12 +25,12 @@ Then detail, most used first. Reference text, explanations and rarely used actio
 
 ## Layout
 
-- **Group by meaning.** A card is one topic with one heading. Two to four cards on a page; a seventh block of equal weight means the page needs splitting or the blocks need ranking.
-- **Reading width.** Forms and prose stay at most about 720px wide (`col-lg-8`, or `col-lg-6` for a short form). An input is as wide as what goes in it: a name is not a full-width field. Tables and dashboards may use the full width.
-- **Member forms**: the summary of what you are getting and what it costs sits beside the form on desktop (`col-lg-4`, sticky) and directly above the pay button on a phone. The total is display type, not a bold line in a paragraph.
-- **Admin pages**: stat tiles, then one `_Table` per question, each with an `<empty-state>` when it has no rows. Never a header row over nothing. Row actions are a button group or a menu, not a run of text links.
-- **Spacing** comes from Bootstrap's scale (`mb-3` inside a group, `mb-4` between groups). No inline `style=`.
-- **Phone first for member pages**: at 390px nothing scrolls sideways, tap targets are at least 44px, and the primary button is reachable without hunting. Admin-shell pages are desktop only.
+- **Group by meaning.** A card is one topic with one heading. Keep the count low and rank them: one card is primary, the rest recede. Many blocks of equal weight mean the page needs splitting or ranking.
+- **Reading width.** Forms and prose do not span the page: `col-lg-8`, or `col-lg-6` for a short form. An input is as wide as what goes in it: a name is not a full-width field. Tables and dashboards may use the full width.
+- **Member forms**: the summary of what you are getting and what it costs sits beside the form on desktop (`col-lg-4`, sticky) and directly above the pay button on a phone. The total is display type (`.display`, or the `.stat .value` scale), not a bold line in a paragraph.
+- **Admin pages**: stat tiles, then one `_Table` per question, each with its empty message (`.Empty("...")` on the builder). A hand-written table never shows a header row over nothing. Row actions are a button group or a menu, not a run of text links.
+- **Spacing** comes from Bootstrap's scale (`mb-3` inside a group, `mb-4` between groups). No inline `style=`, except a component's own custom property (`style="--stats-cols: 3"` on a `.stats` grid).
+- **Phone first for member pages**: at 390px nothing scrolls sideways, tap targets are at least 40px (the house `.btn` height on phones), and the primary button is reachable without hunting. Admin-shell pages are desktop only.
 
 ## Use what exists
 
@@ -40,7 +40,7 @@ Then detail, most used first. Reference text, explanations and rarely used actio
 | A state (order, sale, sync) | `<status-badge value="@enum" />` with an `EnumBadgeMap` row from the section | `<span class="badge bg-success">`, raw `@Model.Status` |
 | A key number | `<partial name="_StatTile" />` in `<div class="stats">` | a hand-built card, a dot-joined sentence |
 | A list of rows | `_Table` via `TableModel.For(...)`, `_Pager` | a hand-written `<table>` |
-| Nothing to show | `<empty-state>` | "None." in a paragraph |
+| Nothing to show | `<empty-state>` for a block; `.Empty("...")` for a `_Table` (never `<empty-state>` inside a table) | "None." in a paragraph |
 | A person | `<vc:human>` | a name string |
 | Money | `amount.ToEuro()` | a local `Eur()` helper, `ToString("C")` |
 | A date or time | `DateFormattingExtensions` | an inline format string |
@@ -48,7 +48,7 @@ Then detail, most used first. Reference text, explanations and rarely used actio
 | A colour, radius, shadow | a `--h-*` token | a hex value |
 | A technical value (key, URL, id) | `<code>` styled from tokens | Bootstrap's default pink |
 
-A page needs something this table lacks: build it once in Base, add it to `/Debug/WidgetGallery` and to this table, with Peter's approval for the new surface. A one-off in a section view is debt.
+Plain Bootstrap forms, grid and cards need no component. A page needs a reusable widget this table lacks: one section uses it, it is a partial or view component in that section; several sections share it, it goes in Base with Peter's approval for the new surface. Either way it gets a gallery card ([`widget-gallery-up-to-date`](../../memory/process/widget-gallery-up-to-date.md)) and, when shared, a row here. The same hand-built block pasted into a second view is debt.
 
 ## Words
 
@@ -56,4 +56,4 @@ Short labels, sentence case, no jargon a first-time buyer would not know. Say a 
 
 ## Check your work by looking
 
-Reading the markup does not tell you how a page looks. Before calling a view done, open it at 1440px and 390px (the `look-check` skill), compare it with the rubric in `tools/look-audit/rubric.md`, and fix what you see. Aim for 4; below 3, try again while there is time. Scores advise, they never block a merge. Serious accessibility findings (axe) on what you changed do get fixed.
+Reading the markup does not tell you how a page looks. Before calling a view done, open it at 1440px and 390px (the `look-check` skill; admin-shell pages at 1440px only), compare it with the rubric in `tools/look-audit/rubric.md`, and fix what you see. Aim for 4; below 3, try again while there is time. Scores advise, they never block a merge. Serious accessibility findings (axe) on what you changed do get fixed.

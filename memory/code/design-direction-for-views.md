@@ -1,6 +1,6 @@
 ---
 name: design-direction-for-views
-description: Adding or changing a `.cshtml` page: read `docs/design/DESIGN.md` first, build from the shared components, then look at the rendered page (`look-check`) before calling it done.
+description: Adding a `.cshtml` page or changing a page's layout: read `docs/design/DESIGN.md` first, build from the shared components, then look at the rendered page (`look-check`) before calling it done.
 ---
 
 Before writing or reshaping a view, read [`docs/design/DESIGN.md`](../../docs/design/DESIGN.md) and build the page from the shared components it lists. Before calling the work done, look at the rendered page at desktop and phone width and fix what you see.

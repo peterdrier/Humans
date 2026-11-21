@@ -73,6 +73,11 @@ html { scrollbar-gutter: stable; }
     --bs-dark-border-subtle: var(--h-aged-ink);
 }
 
+/* Code on a dark band (card-header bg-danger text-white) follows the band's text colour. */
+.text-white code {
+    color: inherit;
+}
+
 /* --- Environment Banner (non-production) --- */
 .env-banner {
     background: var(--h-rust);
