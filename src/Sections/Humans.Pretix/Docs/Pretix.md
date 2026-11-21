@@ -11,6 +11,16 @@
 
 The pretix option behind Tickets' checkout port: Humans sets the price, pretix takes the payment.
 
+## Purpose
+
+pretix is an open-source ticketing system, self-hosted (`deploy/pretix/` for Coolify) or rented as pretix Hosted. This section lets Humans use stock pretix as a payment desk: it turns a Tickets order into a pretix order at Humans' exact prices, sends the buyer to pretix's pay page, and reports back what pretix holds.
+
+**What good looks like.** A Humans order and its pretix order always agree on amount, payment and refund state. A retry never makes a second order or a second refund. Nothing in pretix sells on its own: waves, classes, capacity and buyer email stay in Humans.
+
+**Deliberate choices.** Stock pretix, no fork. Two free-price carrier items per event instead of mirroring Humans' catalogue. No names sent to pretix. The webhook is a nudge, never trusted for state. Refunds go through the API (Peter, 2026-11-21), and an exact negative fee stops pretix asking the buyer for refunded money again.
+
+**Out of scope.** pretix's own shop, vouchers, seating, check-in app and mail to buyers; pretixSCAN at the gate (Gate's call); any per-event setting in Humans beyond the event slug.
+
 ## Concepts
 
 - The **port** is `Humans.Tickets.Contracts.ITicketCheckoutBackend` (key `pretix`). Tickets owns it; this section implements it and publishes nothing.

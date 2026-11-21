@@ -15,7 +15,17 @@
 
 # Tickets — Section Invariants
 
-External ticket vendor sync (orders + attendees), Stripe-fee enrichment, auto-matching to humans by email, event-participation derivation.
+External ticket vendor sync (orders + attendees), Stripe-fee enrichment, auto-matching to humans by email, event-participation derivation, and the 2027 checkout lane that sells tickets from Humans itself.
+
+## Purpose
+
+Tickets answers who may come to the event, what they paid, and how the money reconciles. Up to 2026 the answer came from Ticket Tailor and this section mirrored it. From 2027 Humans sells the tickets itself: it decides who may buy which ticket at what price, owns the order and the named ticket, and lets a payment backend (Box Office on Stripe, pretix or Hi.Events) do nothing but take the money and refund it. The backends are interchangeable behind one port, so the collective can switch vendor without moving its rules.
+
+**What good looks like.** A member buys at their own price in a few clicks and gets a ticket with a QR code. Every ticket names a person, and the gate admits exactly the tickets Humans issued and still holds valid. The ticketing team can find any order, see its whole history, refund it and run the resale queue without opening the vendor's dashboard. Every cent our side recorded matches what the backend says it charged, refunded and lost to chargebacks, per period, and a difference can be drilled into.
+
+**Deliberate choices.** Prices are computed in Humans and sent as exact amounts; a backend never discounts or surcharges. Tickets are named and never renamed by a holder: a ticket goes back through Humans' resale queue, which voids it and issues a new one. A signed-out buyer signs in before paying; there is no guest checkout. Backend connection settings are server configuration, never stored in Humans; the per-event backend choice is the sales setup. Every order step lands on an append-only timeline. The resale rules (queue order, resale price, directed invitations) are this collective's scheme; the per-event knobs today are mode (`Closed` / `Open` / `ResaleOnly`), `ResaleOpensAtSold` and `DirectedResaleDays`.
+
+**Out of scope.** Signing anything at checkout or at the gate, and any use of Consent for ticketing (Peter, 2026-11-21). Manual IBAN payment. Discount codes. Purchases that bypass Humans' price rule. The check-in record itself, which is Gate's scan row.
 
 Dashboard statistics, break-even budget and vendor-capacity reads honor request cancellation through the page builder and service decorator. Requested cancellation propagates; an unrelated vendor-capacity failure retains the zero-capacity fallback. The local stale-sync recovery save uses the same request token.
 
