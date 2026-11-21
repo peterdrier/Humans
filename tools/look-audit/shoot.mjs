@@ -27,7 +27,8 @@ for (const [width, height, label] of [[1440, 900, 'desktop'], [390, 844, 'mobile
   const page = await context.newPage();
   if (persona !== 'anon') await page.goto(`${BASE}/dev/login/${persona}`, { waitUntil: 'networkidle' });
   for (const entry of pages) {
-    const [name, route] = entry.split('=');
+    const cut = entry.indexOf('=');
+    const [name, route] = [entry.slice(0, cut), entry.slice(cut + 1)];
     const response = await page.goto(BASE + route, { waitUntil: 'networkidle' });
     await page.screenshot({ path: path.join(out, `${name}-${label}-fold.png`) });
     await page.screenshot({ path: path.join(out, `${name}-${label}.png`), fullPage: true });
