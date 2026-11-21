@@ -552,7 +552,8 @@ internal sealed partial class PleoBooking(
         var total = -amount;
         var docId = row.Purchase?.DocumentId;
         var approved = row.Purchase?.Approved ?? false;
-        var pending = row.Purchase is null ? total : row.Purchase.PaymentsPending;
+        // A draft carries no payment and Holded omits its balance, so an unapproved purchase still owes all of it.
+        var pending = approved ? row.Purchase!.PaymentsPending : total;
         var outcome = PleoBookingOutcome.Posted;
         var notes = new List<string>();
         var account = row.Account ?? 0;

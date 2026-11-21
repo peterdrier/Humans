@@ -63,8 +63,8 @@ internal sealed record HoldedPurchaseDocListItemDto
     public required decimal Tax { get; init; }
     public required decimal Total { get; init; }
     /// <summary>`payments_pending` — what is still unpaid on this doc. Required when <c>draft</c> is false;
-    /// an absent balance on a draft or unknown approval state reads as 0, and those docs are not bookable.</summary>
-    public decimal PaymentsPending { get; init; }
+    /// null when a draft or unknown-approval doc omits it.</summary>
+    public decimal? PaymentsPending { get; init; }
     // v2 list items carry no approval timestamp (only the single GET does) but do carry `draft`. Null when
     // Holded doesn't report it, which Finance treats as not yet approved.
     public bool? IsDraft { get; init; }
