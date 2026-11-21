@@ -158,6 +158,13 @@ internal sealed class PretixCheckoutBackend(
                 $"No confirmed payment on pretix order {code} has {FormatMoney(request.AmountMinor)} left to refund.");
         }
 
+        // pretix reopens a paid order for payment whenever a refund leaves its total uncovered, so the order total
+        // drops by the refund first, as a negative fee that also marks the refund. The order then stays paid and
+        // nobody can pay the refunded amount again.
+        var fee = order.Fees.FirstOrDefault(f => !f.Canceled && string.Equals(f.InternalType, comment, StringComparison.Ordinal));
+        var feeIsNew = fee is null;
+        fee ??= await AddRefundFeeAsync(eventSlug, code, comment, request.AmountMinor, ct);
+
         var body = new JsonObject
         {
             ["amount"] = FormatMoney(request.AmountMinor),
@@ -169,11 +176,18 @@ internal sealed class PretixCheckoutBackend(
 
         if (response.Status == HttpStatusCode.BadRequest)
         {
-            // Typically the payment method cannot refund automatically (bank transfer, or a partial refund the
-            // provider does not support). A person issues it in pretix; the status read picks it up.
-            logger.LogWarning(
-                "pretix declined an automatic refund on {Code}: {Body}", code, response.Body);
-            return new RefundResult(RefundState.ManualRequired, null, response.Body, AdminOrderUrl(eventSlug, code));
+            logger.LogWarning("pretix declined an automatic refund on {Code}: {Body}", code, response.Body);
+            if (IsManualOnly(response.Body))
+            {
+                // The fee stays: pretix then shows the order as overpaid by exactly this amount, which is what a
+                // person refunds by hand, and the status read picks that refund up.
+                return new RefundResult(RefundState.ManualRequired, null, response.Body, AdminOrderUrl(eventSlug, code));
+            }
+
+            // Only a fee this call added comes off; an older one may already stand for a refund made by hand.
+            if (feeIsNew)
+                await CancelFeeAsync(eventSlug, code, fee.Id, ct);
+            return new RefundResult(RefundState.Failed, null, response.Body);
         }
 
         EnsureSuccess(response, "refund");
@@ -239,6 +253,12 @@ internal sealed class PretixCheckoutBackend(
             _ => throw new HttpRequestException($"pretix order {order.Code} has unknown status '{order.Status}'."),
         };
 
+        // pretix keeps a payment confirmed after expiry but leaves the order expired when it cannot be marked paid,
+        // and a refund made outside this adapter can reopen a paid order. The money decides: an order its confirmed
+        // payments cover is paid, so a late payment is honoured rather than stranded.
+        if (state is CheckoutState.Pending or CheckoutState.Expired && IsCovered(order))
+            state = CheckoutState.Paid;
+
         var paymentFees = order.Fees.Where(f => string.Equals(f.FeeType, "payment", StringComparison.Ordinal) && !f.Canceled).ToList();
         var lastPayment = order.Payments.LastOrDefault(p => string.Equals(p.State, "confirmed", StringComparison.Ordinal));
         var refunded = order.Refunds.Where(r => string.Equals(r.State, "done", StringComparison.Ordinal)).Sum(r => ToMinor(r.Amount));
@@ -250,6 +270,17 @@ internal sealed class PretixCheckoutBackend(
             // The order's own payment_date is a date only; the confirmed payment carries the time.
             state == CheckoutState.Paid ? ParseInstant(lastPayment?.PaymentDate) : null,
             refunded);
+    }
+
+    private static bool IsCovered(PretixOrder order)
+    {
+        var paid = order.Payments
+            .Where(p => p.State is "confirmed" or "refunded")
+            .Sum(p => p.Amount);
+        var refunded = order.Refunds
+            .Where(r => r.State is "done" or "transit" or "created")
+            .Sum(r => r.Amount);
+        return paid > 0 && paid - refunded >= order.Total;
     }
 
     private static int CarrierItem(PretixPage<PretixItem> items, string internalName) =>
@@ -269,8 +300,6 @@ internal sealed class PretixCheckoutBackend(
                 ["item"] = line.Kind == CheckoutLineKind.Ticket ? ticketItem : donationItem,
                 ["price"] = FormatMoney(line.AmountMinor),
             };
-            if (line.Kind == CheckoutLineKind.Ticket)
-                position["attendee_name"] = line.AttendeeName;
             positions.Add(position);
         }
 
@@ -284,7 +313,8 @@ internal sealed class PretixCheckoutBackend(
             // Humans owns capacity, and pretix's own order mails would duplicate Humans' ticket mail.
             ["force"] = true,
             ["send_email"] = false,
-            ["comment"] = $"Humans order {request.OrderId:D}, paid by {request.BuyerName}",
+            // No names: pretix needs only the email to take a payment, and Humans keeps the rest.
+            ["comment"] = $"Humans order {request.OrderId:D}",
             ["api_meta"] = new JsonObject { [HumansOrderIdMeta] = request.OrderId.ToString("D") },
             ["positions"] = positions,
         };
@@ -296,8 +326,6 @@ internal sealed class PretixCheckoutBackend(
             throw new TicketCheckoutException("A checkout needs at least one line.");
         if (request.Lines.Any(l => l.AmountMinor < 0))
             throw new TicketCheckoutException("pretix cannot charge a negative line.");
-        if (request.Lines.Any(l => l.Kind == CheckoutLineKind.Ticket && string.IsNullOrWhiteSpace(l.AttendeeName)))
-            throw new TicketCheckoutException("Every ticket line needs the attendee's name.");
     }
 
     /// <summary>
@@ -359,6 +387,42 @@ internal sealed class PretixCheckoutBackend(
         _ => new RefundResult(
             RefundState.Failed, refund.LocalId.ToString(CultureInfo.InvariantCulture), $"pretix refund {refund.State}"),
     };
+
+    /// <summary>pretix's 400 for a provider that cannot refund this amount itself; every other 400 is a decline.</summary>
+    internal static bool IsManualOnly(string body) =>
+        body.Contains("refund not available for this payment method", StringComparison.Ordinal);
+
+    private async Task<PretixFee> AddRefundFeeAsync(
+        string eventSlug, string code, string marker, long amountMinor, CancellationToken ct)
+    {
+        var body = new JsonObject
+        {
+            ["send_email"] = false,
+            ["reissue_invoice"] = false,
+            ["create_fees"] = new JsonArray(new JsonObject
+            {
+                ["fee_type"] = "other",
+                ["value"] = "-" + FormatMoney(amountMinor),
+                ["description"] = "Refund",
+                ["internal_type"] = marker,
+            }),
+        };
+        var order = await SendAsync<PretixOrder>(HttpMethod.Post, $"{OrderPath(eventSlug, code)}change/", body, ct);
+        return order.Fees.First(f => !f.Canceled && string.Equals(f.InternalType, marker, StringComparison.Ordinal));
+    }
+
+    private async Task CancelFeeAsync(string eventSlug, string code, int feeId, CancellationToken ct)
+    {
+        var body = new JsonObject
+        {
+            ["send_email"] = false,
+            ["reissue_invoice"] = false,
+            ["cancel_fees"] = new JsonArray(new JsonObject { ["fee"] = feeId }),
+        };
+        var response = await SendRawAsync(HttpMethod.Post, $"{OrderPath(eventSlug, code)}change/", body, ct);
+        if ((int)response.Status is < 200 or > 299)
+            logger.LogError("Could not take refund fee {FeeId} off pretix order {Code}: {Body}", feeId, code, response.Body);
+    }
 
     private Uri AdminOrderUrl(string eventSlug, string code) =>
         new(new Uri(Settings.BaseUrl), $"control/event/{Settings.Organizer}/{eventSlug}/orders/{code}/");
@@ -456,7 +520,7 @@ internal sealed class PretixCheckoutBackend(
 
     internal sealed record PretixPosition(int Positionid, decimal Price, decimal TaxRate, bool Canceled);
 
-    internal sealed record PretixFee(string FeeType, decimal Value, bool Canceled);
+    internal sealed record PretixFee(int Id, string FeeType, decimal Value, bool Canceled, string? InternalType);
 
     internal sealed record PretixPayment(int LocalId, string State, decimal Amount, string Provider, string? PaymentDate);
 

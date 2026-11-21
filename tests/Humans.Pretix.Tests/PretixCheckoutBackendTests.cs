@@ -61,10 +61,10 @@ public class PretixCheckoutBackendTests
         var positions = body["positions"]!.AsArray();
         positions[0]!["item"]!.GetValue<int>().Should().Be(7);
         positions[0]!["price"]!.GetValue<string>().Should().Be("225.00");
-        positions[0]!["attendee_name"]!.GetValue<string>().Should().Be("Ana Attendee");
         positions[1]!["item"]!.GetValue<int>().Should().Be(8);
         positions[1]!["price"]!.GetValue<string>().Should().Be("775.00");
-        positions[1]!.AsObject().ContainsKey("attendee_name").Should().BeFalse();
+        // Names stay in Humans, where an erasure reaches them.
+        pretix.BodiesFor("POST", $"{Api}orders/").Single().Should().NotContain("Ana Attendee").And.NotContain("Bea Buyer");
     }
 
     [HumansFact]
@@ -192,17 +192,44 @@ public class PretixCheckoutBackendTests
         status.FeeMinor.Should().BeNull();
     }
 
+    [HumansTheory]
+    [InlineData("n")]
+    [InlineData("e")]
+    public async Task Status_OrderItsPaymentsCover_IsPaid(string pretixStatus)
+    {
+        // A payment confirmed after expiry, or an order a refund made in pretix reopened.
+        var pretix = new FakePretix().On("GET", OrderPath, HttpStatusCode.OK, Order(
+            Code, status: pretixStatus, total: 1000m,
+            payments: [new { local_id = 1, state = "confirmed", amount = "1000.00", provider = "stripe_ideal", payment_date = "2026-11-21T00:09:33Z" }]));
+
+        var status = await Create(pretix).GetStatusAsync($"nowhere2027/{Code}", TestContext.Current.CancellationToken);
+
+        status.State.Should().Be(CheckoutState.Paid);
+        status.PaidAt.Should().NotBeNull();
+    }
+
     private static object PaidOrder(params object[] refunds) => Order(
         Code, status: "p",
         payments: [new { local_id = 1, state = "confirmed", amount = "1000.00", provider = "stripe" }],
         refunds: refunds);
 
+    private static object RefundFee(Guid refundId, bool canceled = false) =>
+        new { id = 7, fee_type = "other", value = "-225.00", canceled, internal_type = $"humans-refund:{refundId}" };
+
+    private static object PaidOrderWithFee(Guid refundId) => Order(
+        Code, status: "p", total: 775m,
+        fees: [RefundFee(refundId)],
+        payments: [new { local_id = 1, state = "confirmed", amount = "1000.00", provider = "stripe" }]);
+
+    private static FakePretix RefundablePretix(Guid refundId) => new FakePretix()
+        .On("GET", OrderPath, HttpStatusCode.OK, PaidOrder())
+        .On("POST", $"{OrderPath}change/", HttpStatusCode.OK, PaidOrderWithFee(refundId));
+
     [HumansFact]
     public async Task Refund_RefundsTheExactAmountAgainstThePayment()
     {
         var refundId = Guid.NewGuid();
-        var pretix = new FakePretix()
-            .On("GET", OrderPath, HttpStatusCode.OK, PaidOrder())
+        var pretix = RefundablePretix(refundId)
             .On("POST", $"{OrderPath}payments/1/refund/", HttpStatusCode.OK,
                 new { local_id = 3, state = "done", amount = "225.00", payment = 1, comment = "", provider = "stripe" });
 
@@ -215,6 +242,46 @@ public class PretixCheckoutBackendTests
         body["amount"]!.GetValue<string>().Should().Be("225.00");
         body["mark_canceled"]!.GetValue<bool>().Should().BeFalse();
         body["comment"]!.GetValue<string>().Should().StartWith($"humans-refund:{refundId}");
+
+        // The order total drops first, so pretix keeps the order paid instead of asking for the refunded amount.
+        pretix.Requests.Select(r => r.Route).Should().ContainInOrder($"POST {OrderPath}change/", $"POST {OrderPath}payments/1/refund/");
+        var fee = JsonNode.Parse(pretix.BodiesFor("POST", $"{OrderPath}change/").Single()!)!["create_fees"]![0]!;
+        fee["value"]!.GetValue<string>().Should().Be("-225.00");
+        fee["internal_type"]!.GetValue<string>().Should().Be($"humans-refund:{refundId}");
+    }
+
+    [HumansFact]
+    public async Task Refund_RetryAfterTheFeeWasAdded_DoesNotLowerTheTotalTwice()
+    {
+        var refundId = Guid.NewGuid();
+        var pretix = new FakePretix()
+            .On("GET", OrderPath, HttpStatusCode.OK, PaidOrderWithFee(refundId))
+            .On("POST", $"{OrderPath}payments/1/refund/", HttpStatusCode.OK,
+                new { local_id = 3, state = "done", amount = "225.00", payment = 1, comment = "", provider = "stripe" });
+
+        var result = await Create(pretix).RefundAsync(
+            new RefundRequest(refundId, $"nowhere2027/{Code}", 22500, "Resold"), TestContext.Current.CancellationToken);
+
+        result.State.Should().Be(RefundState.Succeeded);
+        pretix.BodiesFor("POST", $"{OrderPath}change/").Should().BeEmpty();
+    }
+
+    [HumansTheory]
+    [InlineData("{\"detail\": \"External error: card_declined\"}")]
+    [InlineData("{\"detail\": \"Invalid state of payment.\"}")]
+    [InlineData("{\"amount\": [\"Invalid refund amount, only 100.00 are available to refund.\"]}")]
+    public async Task Refund_PretixDeclines_FailsAndRestoresTheTotal(string declined)
+    {
+        var refundId = Guid.NewGuid();
+        var pretix = RefundablePretix(refundId)
+            .On("POST", $"{OrderPath}payments/1/refund/", HttpStatusCode.BadRequest, declined);
+
+        var result = await Create(pretix).RefundAsync(
+            new RefundRequest(refundId, $"nowhere2027/{Code}", 22500, "Resold"), TestContext.Current.CancellationToken);
+
+        result.State.Should().Be(RefundState.Failed);
+        var cancel = JsonNode.Parse(pretix.BodiesFor("POST", $"{OrderPath}change/").Last()!)!;
+        cancel["cancel_fees"]![0]!["fee"]!.GetValue<int>().Should().Be(7);
     }
 
     [HumansFact]
@@ -235,16 +302,18 @@ public class PretixCheckoutBackendTests
     [HumansFact]
     public async Task Refund_MethodCannotRefundAutomatically_AsksForAPersonInPretix()
     {
-        var pretix = new FakePretix()
-            .On("GET", OrderPath, HttpStatusCode.OK, PaidOrder())
+        var refundId = Guid.NewGuid();
+        var pretix = RefundablePretix(refundId)
             .On("POST", $"{OrderPath}payments/1/refund/", HttpStatusCode.BadRequest,
                 new { amount = new[] { "Partial refund not available for this payment method." } });
 
         var result = await Create(pretix).RefundAsync(
-            new RefundRequest(Guid.NewGuid(), $"nowhere2027/{Code}", 22500, "Resold"), TestContext.Current.CancellationToken);
+            new RefundRequest(refundId, $"nowhere2027/{Code}", 22500, "Resold"), TestContext.Current.CancellationToken);
 
         result.State.Should().Be(RefundState.ManualRequired);
         result.ManualRefundUrl!.AbsoluteUri.Should().Be($"https://pretix.test/control/event/nobodies/nowhere2027/orders/{Code}/");
+        // The lowered total stays, so pretix shows exactly this amount as owed back to the buyer.
+        pretix.BodiesFor("POST", $"{OrderPath}change/").Should().ContainSingle();
     }
 
     [HumansFact]

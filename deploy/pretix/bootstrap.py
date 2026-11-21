@@ -53,22 +53,26 @@ with scopes_disabled():
     donation, _ = Item.objects.get_or_create(event=event, internal_name="humans-donation", defaults={
         "name": "Donation", "default_price": Decimal("0"), "admission": False, "free_price": True})
 
-    team, _ = Team.objects.get_or_create(organizer=org, name="Humans API", defaults={"all_events": True})
-    for flag in ("all_event_permissions", "can_view_orders", "can_change_orders"):
-        if hasattr(team, flag):
-            setattr(team, flag, True)
+    # Orders only, on the events Humans sells; reading the event and its items needs no further permission.
+    if not hasattr(Team, "limit_event_permissions"):
+        raise SystemExit("This pretix has no Team.limit_event_permissions; update the permission setup in bootstrap.py.")
+    team, _ = Team.objects.get_or_create(organizer=org, name="Humans API")
+    team.all_events = False
+    team.all_event_permissions = False
+    team.limit_event_permissions = {"event.orders:read": True, "event.orders:write": True}
     team.save()
+    team.limit_events.add(event)
     token = team.tokens.filter(active=True).first() or team.tokens.create(name="humans")
 
-    target = f"{humans}/Pretix/Webhook/{webhook_secret}"
-    hook = WebHook.objects.filter(organizer=org, target_url__startswith=f"{humans}/Pretix/Webhook/").first()
+    target = f"{humans}/Pretix/Webhook?secret={webhook_secret}"
+    hook = WebHook.objects.filter(organizer=org, target_url__startswith=f"{humans}/Pretix/Webhook?secret=").first()
     if hook is None:
         hook = WebHook.objects.create(organizer=org, target_url=target, enabled=True, all_events=True)
         for action in ("placed", "paid", "canceled", "expired", "modified", "payment.confirmed",
                        "refund.created", "refund.done", "refund.failed", "refund.canceled"):
             hook.listeners.create(action_type=f"pretix.event.order.{action}")
     else:
-        webhook_secret = hook.target_url.rsplit("/", 1)[-1]
+        webhook_secret = hook.target_url.split("?secret=", 1)[1]
 
     print(f"Pretix__BaseUrl        = <this pretix's URL>")
     print(f"Pretix__Organizer      = {org.slug}")
