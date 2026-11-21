@@ -1,6 +1,6 @@
 # Ticket checkout (2027)
 
-Design: the "Ticketing 2027 design" doc. Humans decides who may buy which ticket at what price and owns the order and
+Design record: [`checkout-design.md`](checkout-design.md). Humans decides who may buy which ticket at what price and owns the order and
 the named ticket; whatever sits behind Humans only takes the payment and refunds it.
 
 ## The port
