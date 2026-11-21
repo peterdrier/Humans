@@ -24,7 +24,12 @@ public sealed class TicketPaymentReconTests
     {
         var order = new TicketCheckoutOrder
         {
-            Id = Guid.NewGuid(), BackendKey = backendKey, State = state, TotalMinor = total, FeeMinor = fee, CreatedAt = Mid,
+            Id = Guid.NewGuid(),
+            BackendKey = backendKey,
+            State = state,
+            TotalMinor = total,
+            FeeMinor = fee,
+            CreatedAt = Mid,
         };
         _orders.Add(order);
         return order;
