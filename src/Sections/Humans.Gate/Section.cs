@@ -16,6 +16,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Humans.AuditLog.Contracts;
+using Humans.Base.Models.Tables;
 
 namespace Humans.Gate;
 
@@ -41,6 +42,15 @@ public sealed class Section : ISection, ISectionAdminNav, ISectionJobs, ISection
         services.AddScoped<IUserMerge>(sp => sp.GetRequiredService<GateService>());
         services.AddScoped<IGateAdmissions, GateAdmissionReads>();
 
+        // Only admit verdicts reach the arrivals report's badge column.
+        EnumBadgeMap.Register(new Dictionary<Enum, string>
+        {
+            [GateVerdict.Admitted] = "bg-success",
+            [GateVerdict.AdmittedEarly] = "bg-success",
+            [GateVerdict.AdmittedEarlyOverride] = "bg-warning text-dark",
+            [GateVerdict.AdmittedChildWithAdult] = "bg-warning text-dark",
+        });
+
         services.AddScoped<GateRetentionJob>();
         services.AddScoped<GateVendorCheckInJob>();
     }
@@ -49,6 +59,7 @@ public sealed class Section : ISection, ISectionAdminNav, ISectionJobs, ISection
     [
         new("Gate", [
             new("Terminal",   "TicketsGateAdmin", "Index", null, null, "fa-solid fa-key",     TicketsPolicies.Read),
+            new("Arrivals",   "GateReport",       "Index", null, null, "fa-solid fa-person-walking-arrow-right", TicketsPolicies.Read),
             new("Vendor check-in backfill", "GateVendorBackfillAdmin", "Index", null, null, "fa-solid fa-cloud-arrow-up", PolicyNames.AdminOnly)
         ])
     ];

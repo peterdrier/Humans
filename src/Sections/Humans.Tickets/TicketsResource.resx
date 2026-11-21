@@ -245,6 +245,12 @@
   <data name="Tickets_Buy_TermsRequired" xml:space="preserve">
     <value>Please accept the ticket rules to continue.</value>
   </data>
+  <data name="Tickets_Buy_TermsChanged" xml:space="preserve">
+    <value>The ticket rules have changed since you opened this page. Please read them again and accept them to continue.</value>
+  </data>
+  <data name="Tickets_Buy_TermsUnavailable" xml:space="preserve">
+    <value>The ticket rules cannot be loaded right now, so tickets cannot be bought. Please try again in a few minutes.</value>
+  </data>
   <data name="Tickets_Resale_InviteInvalid" xml:space="preserve">
     <value>This invitation link is no longer valid, or it was sent to a different email address than the one you are signed in with.</value>
   </data>

@@ -66,6 +66,13 @@
         </div>
     }
 
+    @if (Model.AllowUndo)
+    {
+        <button type="button" class="gate-btn gate-undo-btn" data-override="undo" data-barcode="@Model.Barcode">
+            <i class="fa-solid fa-rotate-left" aria-hidden="true"></i> Undo — admitted by mistake
+        </button>
+    }
+
     @if (Model.AllowSupervisorOverride)
     {
         <button type="button" class="gate-btn gate-override-btn" data-override="early" data-barcode="@Model.Barcode">

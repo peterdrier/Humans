@@ -184,7 +184,9 @@ internal sealed record SalesEventSave(
     public long? ChildPriceMinor { get; init; }
     public int? ChildMaxAge { get; init; }
     public TicketSalesSwitches Switches { get; init; } = new();
-    public string? TermsUrl { get; init; }
+
+    /// <summary>The ticket rules folder in the legal repo, no leading or trailing slash.</summary>
+    public string? TermsFolder { get; init; }
 }
 
 /// <summary><paramref name="ResaleOnly"/>: only returned tickets are left.</summary>
@@ -204,8 +206,11 @@ internal sealed record BuyPage(
     string BuyerName,
     IReadOnlyList<TicketCheckoutOrder> Orders)
 {
-    /// <summary>The ticket rules the buyer accepts with each checkout; null for none.</summary>
-    public string? TermsUrl { get; init; }
+    /// <summary>
+    /// The ticket rules the buyer accepts with each checkout; null for none, or while they cannot be read (then
+    /// <c>Unavailable</c> says so).
+    /// </summary>
+    public TicketRules? Terms { get; init; }
 
     /// <summary>True when the person has never said yes or no to the mailing list.</summary>
     public bool AskMarketing { get; init; }
@@ -244,6 +249,12 @@ internal sealed record StartCheckout(
     public IReadOnlyList<string?> OtherEmails { get; init; } = [];
 
     public bool AcceptTerms { get; init; }
+
+    /// <summary>The ticket rules folder the buy page showed; with <see cref="TermsVersion"/> it names the text accepted.</summary>
+    public string? TermsFolder { get; init; }
+
+    /// <summary>The ticket rules version the buy page showed, which the order records.</summary>
+    public string? TermsVersion { get; init; }
 
     public bool MarketingOptIn { get; init; }
 

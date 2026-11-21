@@ -100,6 +100,14 @@ namespace Humans.Tickets.Data.Migrations
                         .HasMaxLength(16)
                         .HasColumnType("character varying(16)");
 
+                    b.Property<string>("TermsFolder")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("TermsVersion")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
                     b.Property<long>("TotalMinor")
                         .HasColumnType("bigint");
 
@@ -451,9 +459,9 @@ namespace Humans.Tickets.Data.Migrations
                         .IsRequired()
                         .HasColumnType("bigint[]");
 
-                    b.Property<string>("TermsUrl")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)");
+                    b.Property<string>("TermsFolder")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
 
                     b.Property<decimal>("TicketVatRate")
                         .HasPrecision(5, 4)
@@ -693,6 +701,26 @@ namespace Humans.Tickets.Data.Migrations
                         .IsUnique();
 
                     b.ToTable("ticket_orders", (string)null);
+                });
+
+            modelBuilder.Entity("Humans.Tickets.Domain.TicketSettings", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("IsScheduledSyncEnabled")
+                        .HasColumnType("boolean");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("ticket_settings", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            IsScheduledSyncEnabled = false
+                        });
                 });
 
             modelBuilder.Entity("Humans.Tickets.Domain.TicketSyncState", b =>

@@ -2,6 +2,7 @@ using System.Globalization;
 using Humans.Auth.Contracts;
 using Humans.Base.Attributes;
 using Humans.Base.Controllers;
+using Humans.EarlyEntry.Contracts;
 using Humans.Tickets.Domain.Checkout;
 using Humans.Tickets.Services.Checkout;
 using Humans.Users.Contracts;
@@ -17,6 +18,7 @@ namespace Humans.Tickets.Controllers;
 internal sealed class TicketBuyController(
     ITicketCheckoutService checkout,
     IMagicLinkService magicLinks,
+    IEarlyEntryService earlyEntry,
     IUserService userService,
     IStringLocalizer<TicketsResource> localizer,
     ILogger<TicketBuyController> logger) : HumansControllerBase(userService)
@@ -89,8 +91,8 @@ internal sealed class TicketBuyController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Start(
         Guid salesEventId, bool forSelf, string?[]? otherEmails, long? supporterTotalMinor, decimal? donation,
-        TicketDonationPurpose donationPurpose, string?[]? childNames, bool acceptTerms, bool marketingOptIn,
-        string? directedToken, CancellationToken ct)
+        TicketDonationPurpose donationPurpose, string?[]? childNames, bool acceptTerms, string? termsFolder, string? termsVersion,
+        bool marketingOptIn, string? directedToken, CancellationToken ct)
     {
         var (errorResult, user) = await RequireCurrentUserAsync(ct);
         if (errorResult is not null) return errorResult;
@@ -116,6 +118,8 @@ internal sealed class TicketBuyController(
             ChildNames = childNames ?? [],
             OtherEmails = otherEmails ?? [],
             AcceptTerms = acceptTerms,
+            TermsFolder = termsFolder,
+            TermsVersion = termsVersion,
             MarketingOptIn = marketingOptIn,
             DirectedToken = string.IsNullOrWhiteSpace(directedToken) ? null : directedToken,
         }, user.Id, CancellationToken.None); // a buyer who leaves mid-request must not strand a half-made checkout
@@ -136,6 +140,8 @@ internal sealed class TicketBuyController(
         var (errorResult, user) = await RequireCurrentUserAsync(ct);
         if (errorResult is not null) return errorResult;
 
+        // Children ride on the adult's entry, so the viewer's own Early Entry applies to every ticket listed.
+        ViewData["EarlyEntryDate"] = (await earlyEntry.GetForUserAsync(user.Id, ct))?.EarliestEntryDate;
         return View("~/Views/Tickets/Buy/Mine.cshtml", await checkout.GetHeldTicketsAsync(user.Id, ct));
     }
 
