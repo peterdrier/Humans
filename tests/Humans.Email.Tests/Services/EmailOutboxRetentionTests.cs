@@ -5,6 +5,7 @@ using Microsoft.Extensions.Options;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
+using Humans.Users.Contracts;
 using Humans.Base.Enums;
 using Humans.Email.Data;
 using Humans.Email.Domain;
@@ -17,7 +18,7 @@ namespace Humans.Email.Tests.Services;
 public class EmailOutboxRetentionTests : IDisposable
 {
     private readonly EmailDbContext _dbContext;
-    private readonly IEmailOutboxRetention _retention;
+    private readonly IEmailOutboxManagement _retention;
 
     // "Now" is 2026-03-14. With 150-day retention, cutoff is 2025-10-15.
     private static readonly Instant Now = Instant.FromUtc(2026, 3, 14, 12, 0);
@@ -33,7 +34,8 @@ public class EmailOutboxRetentionTests : IDisposable
         var repo = new EmailOutboxRepository(new TestDbContextFactory<EmailDbContext>(options));
 
         _retention = new EmailOutboxService(
-            repo, Substitute.For<ISettingsService>(), settings, new FakeClock(Now), Substitute.For<IAuditLogService>());
+            repo, Substitute.For<ISettingsService>(), settings, new FakeClock(Now), Substitute.For<IAuditLogService>(),
+            Substitute.For<IUserService>());
     }
 
     public void Dispose()

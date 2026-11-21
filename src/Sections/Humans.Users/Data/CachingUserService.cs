@@ -1,3 +1,4 @@
+using Humans.Users.Domain;
 using System.Globalization;
 using System.Resources;
 using System.Runtime.CompilerServices;
@@ -243,7 +244,6 @@ internal sealed class CachingUserService(
                 return [
                     new HumanSearchResult(
                         UserId: byId.Id,
-                        ProfileId: byId.Profile.Id,
                         BurnerName: byId.BurnerName,
                         ProfilePictureUrl: byId.ProfilePictureUrl,
                         MatchField: SearchResources.GetString("Users_AdminHuman_UserId", CultureInfo.CurrentUICulture),
@@ -269,7 +269,6 @@ internal sealed class CachingUserService(
 
             results.Add(new HumanSearchResult(
                 UserId: u.Id,
-                ProfileId: u.Profile.Id,
                 BurnerName: u.BurnerName,
                 ProfilePictureUrl: u.ProfilePictureUrl,
                 MatchField: match.Field,
@@ -547,15 +546,14 @@ internal sealed class CachingUserService(
         });
 
     public Task<UserProfileLanguagesSaveResult> SaveProfileLanguagesAsync(
-        Guid profileId,
+        Guid userId,
         IReadOnlyList<ProfileLanguageInfo> languages,
         CancellationToken ct = default) =>
         MutateAsync(async () =>
         {
             var result = await WithInnerAsync(inner =>
-                inner.SaveProfileLanguagesAsync(profileId, languages, ct));
-            if (result.UserId is { } userId)
-                await RefreshEntryAsync(userId);
+                inner.SaveProfileLanguagesAsync(userId, languages, ct));
+            await RefreshEntryAsync(userId);
             return result;
         });
 

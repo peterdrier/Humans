@@ -11,7 +11,7 @@ namespace Humans.Email.ViewComponents;
 /// Renders only for an admin viewer who passes the host page's policy, even at zero messages; nothing for anyone else.
 /// </summary>
 internal sealed class OutboxCardViewComponent(
-    IEmailOutboxService outbox,
+    IEmailOutboxManagement outbox,
     IAuthorizationService authorization) : ViewComponent
 {
     public async Task<IViewComponentResult> InvokeAsync(Guid userId, ProfileCardViewMode viewMode)

@@ -51,19 +51,31 @@ function Get-TestSubjectName {
 }
 
 function Find-ProductionMatches {
-    param([string]$SubjectName)
+    param([string]$SubjectName, [string]$RepoPath)
     if ([string]::IsNullOrWhiteSpace($SubjectName)) {
         return @()
     }
 
     $pattern = "$SubjectName.cs"
-    return @(Get-ChildItem -Path (Join-Path $Root 'src') -Recurse -Filter $pattern -File -ErrorAction SilentlyContinue |
-        Where-Object { $_.FullName -notmatch '\\bin\\|\\obj\\|\\Migrations\\|\.Designer\.cs$|DbContextModelSnapshot\.cs$' } |
+    $productionPaths = @(Get-ChildItem -Path (Join-Path $Root 'src') -Recurse -Filter $pattern -File -ErrorAction SilentlyContinue |
+        Where-Object { $_.FullName -notmatch '[\\/](bin|obj|Migrations)[\\/]|\.Designer\.cs$|DbContextModelSnapshot\.cs$' } |
         ForEach-Object { Convert-ToRepoPath $_.FullName })
+
+    # Service.cs recurs across sections; credit the test project's owner when it has a match.
+    $testProjectName = ($RepoPath -split '/')[1] -replace '\.Tests$', ''
+    $ownerRoots = @("src/Sections/$testProjectName/", "src/$testProjectName/")
+    $ownedPaths = @($productionPaths | Where-Object {
+        $_.StartsWith($ownerRoots[0], [StringComparison]::OrdinalIgnoreCase) -or
+        $_.StartsWith($ownerRoots[1], [StringComparison]::OrdinalIgnoreCase)
+    })
+    if ($ownedPaths.Count -gt 0) {
+        return $ownedPaths
+    }
+    return $productionPaths
 }
 
 $testFiles = Get-ChildItem -Path (Join-Path $Root 'tests') -Recurse -Filter '*.cs' -File |
-    Where-Object { $_.FullName -notmatch '\\bin\\|\\obj\\' }
+    Where-Object { $_.FullName -notmatch '[\\/](bin|obj)[\\/]' }
 
 $rows = foreach ($file in $testFiles) {
     $text = Get-Content -Raw -Path $file.FullName
@@ -84,7 +96,7 @@ $rows = foreach ($file in $testFiles) {
     $ratchetCount = Count-Matches $text '\bRatchetTestRunner\.Run\('
     $assertionCount += $ratchetCount
     $subject = Get-TestSubjectName $repoPath
-    $productionMatches = Find-ProductionMatches $subject
+    $productionMatches = Find-ProductionMatches $subject $repoPath
     $category = Get-Category $repoPath
 
     $publicMethodNames = @()
@@ -111,13 +123,11 @@ $rows = foreach ($file in $testFiles) {
         if ($publicMethodNames.Count -gt 0 -and $testCount -gt 0) {
             $testNameMatches = [regex]::Matches($text,
                 '(?m)^\s+public\s+(?:async\s+)?(?:Task<[^>]+>|Task|void|ValueTask|ValueTask<[^>]+>)\s+(\w+)\s*\(')
-            $testedPrefixes = New-Object System.Collections.Generic.HashSet[string]
             $prefixCounts = @{}
             foreach ($tm in $testNameMatches) {
                 $tn = $tm.Groups[1].Value
                 $idx = $tn.IndexOf('_')
                 $prefix = if ($idx -gt 0) { $tn.Substring(0, $idx) } else { $tn }
-                [void]$testedPrefixes.Add($prefix)
                 if ($prefixCounts.ContainsKey($prefix)) { $prefixCounts[$prefix]++ } else { $prefixCounts[$prefix] = 1 }
             }
             $methodMatchedCounts = @{}
@@ -145,11 +155,7 @@ $rows = foreach ($file in $testFiles) {
                     ForEach-Object { "$($_.Key)($($_.Value))" }) -join ', ')
             }
             $untestedPublicMethods = @($publicMethodNames | Where-Object {
-                $name = $_
-                $stripped = if ($name.EndsWith('Async', [StringComparison]::Ordinal)) {
-                    $name.Substring(0, $name.Length - 5)
-                } else { $null }
-                -not $testedPrefixes.Contains($name) -and -not ($stripped -and $testedPrefixes.Contains($stripped))
+                -not $methodMatchedCounts.ContainsKey($_)
             })
             $testsPerPublicMethod = [math]::Round($testCount / $publicMethodNames.Count, 2)
         }

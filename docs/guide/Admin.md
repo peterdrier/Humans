@@ -104,7 +104,7 @@ Board can open these pages and read them; every action on them is **Admin only**
 
 ### Resolve duplicate accounts
 
-`/Users/Admin/AccountMerges` is the single merge surface. It lists, in one queue, both user-submitted merge requests and auto-detected duplicate pairs (humans whose email addresses overlap across `User.Email` and `UserEmail.Email`, with Gmail / Googlemail equivalence). For any row you pick the survivor and merge; merging tombstones the archived account, re-FKs its data to the survivor, and consolidates all associated data onto the surviving account. You can also dismiss a request, or close an orphan request whose accounts were already merged.
+People merge their own accounts: adding an address that another account has confirmed mails a link, and confirming it while signed in merges the two. `/Users/Admin/AccountMerges` is for the rest. It lists auto-detected duplicate pairs (humans whose email addresses overlap across `User.Email` and `UserEmail.Email`, with Gmail / Googlemail equivalence) and lets you pick any two accounts by hand. For a pair you pick the survivor and merge; merging tombstones the archived account, re-FKs its data to the survivor, and consolidates all associated data onto the surviving account. **Recently merged** at the bottom shows every merge, self-service or by hand; a merge that stopped part-way is finished by merging the same two accounts again.
 
 ### Purge (non-production only)
 

@@ -143,18 +143,21 @@ public sealed class RoleAssignmentsControllerTests
     }
 
     [HumansFact]
-    public async Task AddRole_does_not_offer_or_assign_Board_which_is_added_in_Governance()
+    public async Task Board_is_neither_assigned_nor_ended_here_but_in_Governance()
     {
         GivenKnownUsers();
+        var seatId = Guid.NewGuid();
+        _write.GetByIdAsync(seatId, Arg.Any<CancellationToken>())
+            .Returns(new RoleAssignmentDetailSnapshot(TargetId, RoleNames.Board, "Member"));
 
         RoleAssignmentRules.Assignable(BuildController().User, _catalog).Select(r => r.Name)
             .Should().NotContain(RoleNames.Board);
-        var result = await BuildController().AddRole(
-            TargetId, new CreateRoleAssignmentViewModel { RoleName = RoleNames.Board });
+        (await BuildController().AddRole(TargetId, new CreateRoleAssignmentViewModel { RoleName = RoleNames.Board }))
+            .Should().BeOfType<RedirectToActionResult>();
+        (await BuildController().EndRole(TargetId, seatId, null)).Should().BeOfType<RedirectToActionResult>();
 
-        result.Should().BeOfType<RedirectToActionResult>();
-        await _write.DidNotReceive().AssignRoleAsync(
-            Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
+        await _write.DidNotReceiveWithAnyArgs().AssignRoleAsync(default, default!, default, default);
+        await _write.DidNotReceiveWithAnyArgs().EndRoleAsync(default, default, default, default);
     }
 
     [HumansFact]
@@ -190,8 +193,9 @@ public sealed class RoleAssignmentsControllerTests
     {
         GivenKnownUsers();
         var roleId = Guid.NewGuid();
-        _roles.GetByIdAsync(roleId, Arg.Any<CancellationToken>())
-            .Returns(new RoleAssignmentDetailSnapshot(TargetId, RoleNames.Board, "Member"));
+        _write.GetByIdAsync(roleId, Arg.Any<CancellationToken>())
+            .Returns(new RoleAssignmentDetailSnapshot(TargetId, TeamsRoles.TeamsAdmin, "Member"));
+        GivenAuthorization(TeamsRoles.TeamsAdmin, succeeds: true);
         _write.EndRoleAsync(roleId, ActorId, "done", Arg.Any<CancellationToken>()).Returns(new RoleAssignmentResult(true));
 
         var result = await BuildController().EndRole(Guid.NewGuid(), roleId, "done");
@@ -216,7 +220,7 @@ public sealed class RoleAssignmentsControllerTests
     {
         GivenKnownUsers();
         var roleId = Guid.NewGuid();
-        _roles.GetByIdAsync(roleId, Arg.Any<CancellationToken>())
+        _write.GetByIdAsync(roleId, Arg.Any<CancellationToken>())
             .Returns(new RoleAssignmentDetailSnapshot(TargetId, RoleNames.Admin, "Member"));
         GivenAuthorization(RoleNames.Admin, succeeds: false);
 
@@ -237,12 +241,12 @@ public sealed class RoleAssignmentsControllerTests
         GivenKnownUsers();
         using var request = new CancellationTokenSource();
         var roleId = Guid.NewGuid();
-        _roles.GetByIdAsync(roleId, Arg.Any<CancellationToken>())
+        _write.GetByIdAsync(roleId, Arg.Any<CancellationToken>())
             .Returns(call =>
             {
                 if (endRole && !actorLookup)
                     call.Arg<CancellationToken>().ThrowIfCancellationRequested();
-                return new RoleAssignmentDetailSnapshot(TargetId, RoleNames.Board, "Member");
+                return new RoleAssignmentDetailSnapshot(TargetId, TeamsRoles.TeamsAdmin, "Member");
             });
         _users.GetRawUserInfoAsync(TargetId, Arg.Any<CancellationToken>())
             .Returns(call =>
@@ -269,7 +273,9 @@ public sealed class RoleAssignmentsControllerTests
             : () => controller.AddRole(TargetId, new CreateRoleAssignmentViewModel { RoleName = TeamsRoles.TeamsAdmin });
 
         await invoke.Should().ThrowAsync<OperationCanceledException>();
-        _write.ReceivedCalls().Should().BeEmpty();
+        _write.ReceivedCalls()
+            .Where(call => call.GetMethodInfo().DeclaringType == typeof(IRoleAssignmentWrite))
+            .Should().BeEmpty();
         _authorization.ReceivedCalls().Should().BeEmpty();
     }
 

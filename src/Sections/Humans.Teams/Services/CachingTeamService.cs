@@ -211,6 +211,9 @@ internal sealed class CachingTeamService(
     public Task<TeamDeactivationResult> DeleteTeamAsync(Guid teamId, Guid actorUserId, CancellationToken cancellationToken = default) =>
         MutateAsync(inner => inner.DeleteTeamAsync(teamId, actorUserId, cancellationToken), static result => result.Succeeded);
 
+    public Task<int> RetireGovernanceBodyTeamsAsync(Guid actorUserId, CancellationToken cancellationToken = default) =>
+        MutateAsync(inner => inner.RetireGovernanceBodyTeamsAsync(actorUserId, cancellationToken), static retired => retired > 0);
+
     public Task<TeamJoinResult> JoinTeamAsync(
         Guid teamId,
         Guid userId,
@@ -276,29 +279,6 @@ internal sealed class CachingTeamService(
         CancellationToken cancellationToken = default) =>
         MutateAsync(inner => inner.RemoveMemberAsync(
             teamId, userId, actorUserId, cancellationToken));
-
-    public async Task<IReadOnlyDictionary<Guid, string>> GetManagementRoleNamesByTeamIdsAsync(
-        IEnumerable<Guid> teamIds,
-        CancellationToken cancellationToken = default)
-    {
-        // The definition flagged both IsManagement and IsPublic; teams without one are omitted.
-        var teamsById = await GetTeamsByIdAsync(cancellationToken);
-        var result = new Dictionary<Guid, string>();
-        foreach (var teamId in teamIds)
-        {
-            if (!teamsById.TryGetValue(teamId, out var team) || team.RoleDefinitions is null)
-                continue;
-            var mgmt = team.RoleDefinitions
-                .Where(d => d.IsManagement && d.IsPublic)
-                // arch:db-sort-ok first authored public management-role selector (FirstOrDefault)
-                .OrderBy(d => d.SortOrder)
-                .ThenBy(d => d.Name, StringComparer.CurrentCulture)
-                .FirstOrDefault();
-            if (mgmt is not null)
-                result[teamId] = mgmt.Name;
-        }
-        return result;
-    }
 
     public Task<(bool Updated, string? PreviousPrefix)> SetGoogleGroupPrefixAsync(
         Guid teamId,

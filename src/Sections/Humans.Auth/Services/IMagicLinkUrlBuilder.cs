@@ -1,16 +1,21 @@
+using NodaTime;
+
 namespace Humans.Auth.Services;
+
+/// <summary>A decoded link token. Expiry is the caller's check, so an expired link can still name whom it was for.</summary>
+internal sealed record MagicLinkToken(string Payload, Instant ExpiresAt);
 
 internal interface IMagicLinkUrlBuilder
 {
     /// <summary>The token expires after 15 minutes.</summary>
     string BuildLoginUrl(Guid userId, string? returnUrl);
 
-    /// <summary>Returns the user id as a string, or null if malformed or expired.</summary>
-    string? UnprotectLoginToken(string token);
+    /// <summary>The payload is the user id as a string. Null if malformed or not issued by us.</summary>
+    MagicLinkToken? UnprotectLoginToken(string token);
 
     /// <summary>The token expires after 15 minutes.</summary>
     string BuildSignupUrl(string email, string? returnUrl);
 
-    /// <summary>Returns the email, or null if malformed or expired.</summary>
-    string? UnprotectSignupToken(string token);
+    /// <summary>The payload is the email. Null if malformed or not issued by us.</summary>
+    MagicLinkToken? UnprotectSignupToken(string token);
 }

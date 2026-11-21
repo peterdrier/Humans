@@ -11,7 +11,7 @@ public interface IContactFieldService
 
     /// <summary>Every field, for the owner's editor.</summary>
     Task<IReadOnlyList<ContactFieldEditDto>> GetAllContactFieldsAsync(
-        Guid profileId,
+        Guid userId,
         CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -20,7 +20,7 @@ public interface IContactFieldService
     /// <paramref name="removedLegacyContactFieldIds"/>.
     /// </summary>
     Task<ProfileEditResult> SaveContactFieldsAsync(
-        Guid profileId,
+        Guid userId,
         IReadOnlyList<ContactFieldEditDto> fields,
         CancellationToken cancellationToken = default,
         IReadOnlyCollection<Guid>? removedLegacyContactFieldIds = null);

@@ -18,9 +18,6 @@ public interface IBudgetService : IApplicationService
     /// <summary>With its group, year and line items.</summary>
     Task<BudgetCategorySnapshot?> GetCategoryByIdAsync(Guid id, CancellationToken ct = default);
 
-    /// <summary>Includes teams inherited through the team hierarchy.</summary>
-    Task<HashSet<Guid>> GetEffectiveCoordinatorTeamIdsAsync(Guid userId, CancellationToken ct = default);
-
     /// <summary>Pure computation over <paramref name="groups"/>; no I/O.</summary>
     BudgetSummaryResult ComputeBudgetSummary(IReadOnlyList<BudgetGroupDetail> groups);
 }

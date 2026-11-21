@@ -294,5 +294,5 @@ public sealed class SearchServiceTests
             .Returns(Task.FromResult<IReadOnlyList<EventSearchHit>>(hits));
 
     private static HumanSearchResult MakeHuman(string burnerName) =>
-        new(Guid.NewGuid(), Guid.NewGuid(), burnerName, null, "Name", null, null, ScoreExact);
+        new(Guid.NewGuid(), burnerName, null, "Name", null, null, ScoreExact);
 }

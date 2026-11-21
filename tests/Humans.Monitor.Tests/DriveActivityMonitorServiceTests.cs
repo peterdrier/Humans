@@ -216,6 +216,18 @@ public class DriveActivityMonitorServiceTests
         // Directory API should be hit exactly once per unique people/ id (per-run cache).
         await _client.Received(1).TryResolvePersonEmailAsync("people/9999", Arg.Any<CancellationToken>());
         await _userService.DidNotReceive().GetAllUserInfosAsync(Arg.Any<CancellationToken>());
+
+        _client.TryResolvePersonEmailAsync("people/9999", Arg.Any<CancellationToken>())
+            .Returns("next@example.com");
+        (await _service.CheckForAnomalousActivityAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(1);
+
+        await _client.Received(2).TryResolvePersonEmailAsync("people/9999", Arg.Any<CancellationToken>());
+        await _auditLog.Received(1).LogAsync(
+            GoogleAuditActions.AnomalousPermissionDetected,
+            TeamGoogleResource.AuditEntityType,
+            resource.Id,
+            Arg.Is<string>(d => d.Contains("next@example.com", StringComparison.Ordinal)),
+            JobName);
     }
 
     [HumansFact]

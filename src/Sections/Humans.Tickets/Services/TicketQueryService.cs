@@ -11,6 +11,8 @@ using Humans.Teams.Contracts;
 using Humans.Tickets.Contracts;
 using Humans.Tickets.Data;
 using Humans.Tickets.Domain;
+using Humans.Tickets.Domain.Checkout;
+using Humans.Tickets.Services.Checkout;
 using Humans.Tickets.Services.Dtos;
 using Humans.Gdpr.Contracts;
 using Humans.Governance.Contracts;
@@ -31,13 +33,25 @@ internal sealed class TicketQueryService(
     ISettingsService settingsService,
     IAuditLogService auditLog,
     IClock clock,
-    IEventParticipationManagement participations) : ITicketManagement
+    IEventParticipationRepository participations,
+    ITicketCheckoutService checkout) : ITicketManagement
 {
-    public Task<IReadOnlyList<EventParticipationInfo>> GetParticipationsAsync(Guid userId, CancellationToken ct = default) =>
-        participations.GetParticipationsAsync(userId, ct);
+    public async Task<IReadOnlyList<EventParticipationInfo>> GetParticipationsAsync(
+        Guid userId, CancellationToken ct = default)
+    {
+        var info = await userService.GetUserInfoAsync(userId, ct);
+        var id = info?.Id ?? userId;
+        return ToParticipationInfos(await participations.GetByUserIdAsync(id, ct));
+    }
 
-    public Task<IReadOnlyList<EventParticipationInfo>> GetAllParticipationsAsync(CancellationToken ct = default) =>
-        participations.GetAllParticipationsAsync(ct);
+    public async Task<IReadOnlyList<EventParticipationInfo>> GetAllParticipationsAsync(CancellationToken ct = default) =>
+        ToParticipationInfos(await participations.GetAllAsync(ct));
+
+    private static List<EventParticipationInfo> ToParticipationInfos(IReadOnlyList<EventParticipation> rows) =>
+        [.. rows.Where(r => r.Status is not null).Select(ToParticipationInfo)];
+
+    private static EventParticipationInfo ToParticipationInfo(EventParticipation r) =>
+        new(r.UserId, r.Year, r.Status!.Value, r.Source, r.DeclaredAt, r.CheckedInAt);
 
     public async Task<IReadOnlyList<TicketOrderInfo>> GetTicketOrdersAsync(CancellationToken ct = default)
     {
@@ -133,18 +147,33 @@ internal sealed class TicketQueryService(
     public async Task<List<DonationExportRow>> GetDonationExportDataAsync(Guid actorUserId, CancellationToken ct = default)
     {
         var orders = (await ticketRepository.GetOrderExportDataAsync(ct))
-            .Where(o => string.Equals(o.PaymentStatus, nameof(TicketPaymentStatus.Paid), StringComparison.Ordinal))
-            .OrderBy(o => o.PurchasedAt);
+            .Where(o => string.Equals(o.PaymentStatus, nameof(TicketPaymentStatus.Paid), StringComparison.Ordinal));
 
         var rows = new List<DonationExportRow>();
         foreach (var o in orders)
         {
             var date = o.PurchasedAt.InZone(OrgZone).Date.ToInvariantDate();
             if (o.VipDonations > 0)
-                rows.Add(new DonationExportRow(date, o.VendorOrderId, o.BuyerName, o.BuyerEmail, DonationExportRow.VipTicket, o.VipDonations));
+                rows.Add(new DonationExportRow(o.PurchasedAt, date, o.VendorOrderId, o.BuyerName, o.BuyerEmail, DonationExportRow.VipTicket, o.VipDonations));
             if (o.DonationAmount > 0)
-                rows.Add(new DonationExportRow(date, o.VendorOrderId, o.BuyerName, o.BuyerEmail, DonationExportRow.SeparateDonation, o.DonationAmount));
+                rows.Add(new DonationExportRow(o.PurchasedAt, date, o.VendorOrderId, o.BuyerName, o.BuyerEmail, DonationExportRow.SeparateDonation, o.DonationAmount));
         }
+
+        // Orders taken through Humans' own checkout: each donation line is one row, never refunded.
+        var checkoutOrders = new List<TicketCheckoutOrder>();
+        foreach (var salesEvent in await checkout.GetSalesEventsAsync(ct))
+            checkoutOrders.AddRange((await checkout.GetOrdersForSalesEventAsync(salesEvent.Id, ct))
+                .Where(o => o.State == TicketCheckoutOrderState.Paid));
+        foreach (var o in checkoutOrders.OrderBy(o => o.PaidAt))
+        {
+            var paidAt = o.PaidAt ?? o.UpdatedAt;
+            var date = paidAt.InZone(OrgZone).Date.ToInvariantDate();
+            foreach (var line in o.Lines.Where(l => l.Kind == CheckoutLineKind.Donation))
+                rows.Add(new DonationExportRow(paidAt, date, o.Reference, o.BuyerName, o.BuyerEmail,
+                    $"Donation: {line.DonationPurpose ?? TicketDonationPurpose.General}", line.AmountMinor / 100m));
+        }
+
+        rows = rows.OrderBy(r => r.PurchasedAt).ToList();
 
         await auditLog.LogAsync(
             TicketsAuditActions.TicketDonationsExported,
@@ -237,7 +266,7 @@ internal sealed class TicketQueryService(
         HashSet<Guid> notAttendingSet = [];
         if (activeEvent is not null && activeEvent.Year > 0)
         {
-            notAttendingSet = (await participations.GetAllParticipationsAsync(ct))
+            notAttendingSet = (await GetAllParticipationsAsync(ct))
                 .Where(ep => ep.Year == activeEvent.Year && ep.Status == ParticipationStatus.NotAttending)
                 .Select(ep => ep.UserId)
                 .ToHashSet();

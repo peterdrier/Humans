@@ -5,8 +5,8 @@
         (await AuthService.AuthorizeAsync(User, Humans.Teams.Contracts.TeamsPolicies.Read)).Succeeded;
     IReadOnlyList<string> visibleHiddenTeams =
         canSeeHiddenTeams ? Model.HiddenTeams : [];
-    var canSeeCamp =
-        (await AuthService.AuthorizeAsync(User, PolicyNames.AnyAdminRole)).Succeeded;
+    var canSeeCamp = Model.CampVisibleToViewer
+        || (await AuthService.AuthorizeAsync(User, PolicyNames.AnyAdminRole)).Succeeded;
 }
 
 <div class="d-flex align-items-center" style="min-width: 200px;">
@@ -20,6 +20,10 @@
                 <span class="@Model.PreferredLanguage.ToFlagClass() ms-1" title="@Model.PreferredLanguage.ToDisplayLanguageName()"></span>
             }
         </div>
+        @if (!string.IsNullOrWhiteSpace(Model.LegalName))
+        {
+            <div class="small">@Model.LegalName</div>
+        }
         @if (!Model.HasProfile)
         {
             <span class="badge bg-secondary" style="font-size: 0.7rem;" title="@Localizer["Users_ProfilePopover_ImportedNoProfileHelp"]">@Localizer["Users_ProfilePopover_ImportedNoProfile"]</span>

@@ -91,7 +91,7 @@ public class GateControllerClaimTests
         var ct = TestContext.Current.CancellationToken;
         var id = Guid.NewGuid();
         _users.SearchUsersAsync("ann", PersonSearchFields.Name, Arg.Any<int>(), Arg.Any<CancellationToken>())
-            .Returns(new[] { new HumanSearchResult(id, Guid.NewGuid(), "Annie", "/pic.jpg", "Name", null, null, 100) });
+            .Returns(new[] { new HumanSearchResult(id, "Annie", "/pic.jpg", "Name", null, null, 100) });
 
         _users.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, UserInfo>());

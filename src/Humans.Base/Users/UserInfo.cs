@@ -54,6 +54,7 @@ public sealed record ProfileInfo(
     string? EmergencyContactRelationship,
     bool HasCustomPicture,
     string? ProfilePictureContentType,
+    string? ProfilePictureFileKey,
     Instant CreatedAt,
     Instant UpdatedAt,
     string? AdminNotes,

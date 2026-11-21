@@ -7,6 +7,7 @@ using Microsoft.Extensions.Options;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
+using Humans.Users.Contracts;
 using NSubstitute.ExceptionExtensions;
 using Humans.Base.Enums;
 using Humans.Email.Data;
@@ -53,7 +54,8 @@ public class EmailOutboxProcessorTests : IDisposable
         // Settings' repository, service and DbContext are internal to it, so this test
         // substitutes the contract.
         _settingsStore = Substitute.For<ISettingsService>();
-        _outboxService = new EmailOutboxService(_repo, _settingsStore, _settings, _clock, Substitute.For<IAuditLogService>());
+        _outboxService = new EmailOutboxService(_repo, _settingsStore, _settings, _clock, Substitute.For<IAuditLogService>(),
+            Substitute.For<IUserService>());
 
         _job = NewProcessor(_settings);
     }
@@ -98,7 +100,7 @@ public class EmailOutboxProcessorTests : IDisposable
         var failure = new OperationCanceledException(shutdown ? jobCancellation.Token : dependencyCancellation.Token);
         var processor = Substitute.For<IEmailOutboxProcessor>();
         processor.ProcessQueuedAsync(jobCancellation.Token).ThrowsAsync(failure);
-        var retention = Substitute.For<IEmailOutboxRetention>();
+        var retention = Substitute.For<IEmailOutboxManagement>();
         retention.PurgeExpiredAsync(jobCancellation.Token).ThrowsAsync(failure);
         var logger = new CapturingLogger<CleanupEmailOutboxJob>();
         IRecurringJob job = cleanup
@@ -626,7 +628,8 @@ public class EmailOutboxProcessorTests : IDisposable
         {
             AutoAdvance = Duration.FromSeconds(40)
         };
-        var outboxService = new EmailOutboxService(_repo, _settingsStore, _settings, clock, Substitute.For<IAuditLogService>());
+        var outboxService = new EmailOutboxService(_repo, _settingsStore, _settings, clock, Substitute.For<IAuditLogService>(),
+            Substitute.For<IUserService>());
         var processor = WithoutThrottle(new EmailOutboxProcessor(
             _repo, outboxService, _transport, _metrics, _meters, clock, _settings,
             NullLogger<EmailOutboxProcessor>.Instance));

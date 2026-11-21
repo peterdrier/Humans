@@ -102,7 +102,6 @@ public sealed class SearchControllerTests
     {
         var hit = new HumanSearchResult(
             UserId: Guid.NewGuid(),
-            ProfileId: Guid.NewGuid(),
             BurnerName: "Sparkle",
             ProfilePictureUrl: "/uploads/profiles/sparkle.jpg",
             MatchField: "Bio",
@@ -194,5 +193,5 @@ public sealed class SearchControllerTests
         hits.Select(h => h with { Type = type }).ToList();
 
     private static HumanSearchResult Human(string burnerName, int score) =>
-        new(Guid.NewGuid(), Guid.NewGuid(), burnerName, null, "Name", null, null, score);
+        new(Guid.NewGuid(), burnerName, null, "Name", null, null, score);
 }

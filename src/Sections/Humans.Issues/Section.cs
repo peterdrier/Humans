@@ -48,7 +48,6 @@ public sealed class Section : ISection, ISectionAdminNav, ISectionChrome, ISecti
 
         services.AddScoped<IssuesService>();
         services.AddScoped<IIssuesService>(sp => sp.GetRequiredService<IssuesService>());
-        services.AddScoped<IIssuesRetention>(sp => sp.GetRequiredService<IssuesService>());
         services.AddScoped<IIssueTriage>(sp => sp.GetRequiredService<IssuesService>());
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<IssuesService>());
 

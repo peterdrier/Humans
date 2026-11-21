@@ -2,7 +2,6 @@ using System.Security.Claims;
 using Humans.Base.Constants;
 using Humans.Consent.Contracts;
 using Humans.Notifications.Contracts;
-using Humans.Shifts.Contracts;
 using Humans.Users.Contracts;
 using Microsoft.Extensions.Localization;
 
@@ -10,7 +9,7 @@ namespace Humans.Consent.Services;
 
 /// <summary>
 /// The review queue's pending count, read live like the queue's nav pill: users come from Users' in-RAM snapshot.
-/// Board and Shifts Admin see the same count under a label that matches how they think of it.
+/// The Board sees the same count under a label that matches how it thinks of it.
 /// </summary>
 internal sealed class ConsentNotificationMeters(
     IUserService userService,
@@ -22,8 +21,7 @@ internal sealed class ConsentNotificationMeters(
     {
         var isReviewer = viewer.IsInRole(RoleNames.Admin) || viewer.IsInRole(ConsentRoles.ConsentCoordinator);
         var isBoard = viewer.IsInRole(RoleNames.Board);
-        var isOnboarder = isBoard || viewer.IsInRole(ShiftsRoles.ShiftsAdmin);
-        if (!isReviewer && !isOnboarder)
+        if (!isReviewer && !isBoard)
             return [];
 
         var reviews = await consentService.GetConsentReviewsAsync(ct);
@@ -45,14 +43,14 @@ internal sealed class ConsentNotificationMeters(
             });
         }
 
-        if (isOnboarder)
+        if (isBoard)
         {
             meters.Add(new NotificationMeter
             {
                 Title = localizer["Consent_Meter_OnboardingProfilesPending"],
                 Count = pending,
                 ActionUrl = "/Consent/ReviewQueue",
-                Audience = localizer[isBoard ? "Consent_Meter_AudienceBoard" : "Consent_Meter_AudienceShiftsAdmin"],
+                Audience = localizer["Consent_Meter_AudienceBoard"],
                 Priority = 6,
             });
         }

@@ -11,7 +11,7 @@ namespace Humans.Email.Controllers;
 [Authorize]
 internal sealed class MemberOutboxController(
     IUserService userService,
-    IEmailOutboxService outbox) : HumansControllerBase(userService)
+    IEmailOutboxManagement outbox) : HumansControllerBase(userService)
 {
     /// <summary>Never takes a user id.</summary>
     [HttpGet("Email/Outbox")]

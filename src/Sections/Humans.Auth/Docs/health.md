@@ -72,7 +72,7 @@ Written fresh from the shapes above, not from today's tree.
   data. The repository exposes exactly the queries the shapes need — no method exists for a
   caller that does not exist.
 - **The service holds the invariants.** Temporal overlap, the ended/not-yet-active guard, the
-  audit row, the notification, the Board team sync, the cache pokes. Nothing else may write, and
+  audit row, the notification, the cache pokes. Nothing else may write, and
   no member exists on the service for a question only its own write path asks.
 - **The caching decorator wraps the service interface**, holding the whole row set in memory and
   deriving S1–S3 from it at the caller's clock instant. It is a decorator, so it may reach the
@@ -111,21 +111,20 @@ Stated so a violation is recognisable, each with the line that enforces it. Thes
    (`Services/RoleAssignmentService.cs:172`).
 4. One *semantics* of "active at *t*" — `ValidFrom <= t && (ValidTo is null || ValidTo > t)` —
    governs every read, in SQL and in memory alike. It is necessarily implemented more than
-   once (`Domain/RoleAssignment.cs:38`, `Contracts/RoleAssignmentRow.cs:23`,
-   `Contracts/IRoleAssignmentService.cs:87`, and the repository's EF expressions, which cannot
+   once (`Domain/RoleAssignment.cs:38`, `Services/RoleAssignmentRow.cs`,
+   `Contracts/IRoleAssignmentService.cs`, and the repository's EF expressions, which cannot
    call a method and be translated). What this forbids is a second *predicate*, not a second
    implementation: an in-memory read that spells the comparison out where a method is in reach
    is the violation.
 5. Assign, end, the bulk revoke and the merge fold (`ReassignAsync`) clear the row cache right
-   after their repository write, before the Board team sync reads roles back
-   (`Services/RoleAssignmentService.cs`). There is no claims cache to flush: the Shell's
+   after their repository write (`Services/RoleAssignmentService.cs`). There is no claims cache to flush: the Shell's
    claims transformation derives claims per request from the row cache.
 6. Every single-row write leaves an audit entry attributed to the actor
    (`Services/RoleAssignmentService.cs:125`, `Services/RoleAssignmentService.cs:188`), and
    best-effort notifies the affected person; a notification failure never fails the write
    (`Services/RoleAssignmentService.cs:145`, `Services/RoleAssignmentService.cs:208`).
-7. Granting or ending `Board` reconciles the Board system team
-   (`Services/RoleAssignmentService.cs:152`, `Services/RoleAssignmentService.cs:215`).
+7. A role write calls out to no other section. Governance asks Google to sync the Board's group
+   and files after a Board change it makes; the hourly group sweep catches the rest.
 8. Only an Admin may assign `Admin`; Board and HumanAdmin are confined to
    `RoleNames.BoardManageableRoles` (`Authorization/RoleAssignmentAuthorizationHandler.cs:22`,
    `Authorization/RoleAssignmentAuthorizationHandler.cs:30`).

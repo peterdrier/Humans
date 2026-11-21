@@ -137,7 +137,7 @@ All roles are stored as temporal `RoleAssignment` records. Role claims are added
 | Role | Description |
 |------|-------------|
 | **ConsentCoordinator** | Safety checks on new humans (clear/flag consent checks) |
-| **ShiftsAdmin** | Read-only onboarding queue access; assists new humans |
+| **ShiftsAdmin** | Assists new humans |
 
 ### Section Admin Roles (scoped to one functional area)
 

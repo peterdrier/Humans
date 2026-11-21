@@ -11,13 +11,16 @@ internal interface IMagicLinkRateLimiter
     /// <summary>For a redemption that accomplished nothing, so the link keeps working for its lifetime.</summary>
     void ReleaseTokenReservation(string token);
 
-    Task<bool> TryReserveUserSendAsync(Guid userId, TimeSpan cooldown);
+    /// <summary>0 when reserved; otherwise how many sends this cooldown has refused, this one included.</summary>
+    Task<int> ReserveUserSendAsync(Guid userId, TimeSpan cooldown);
 
     /// <summary>When preparation or sending failed.</summary>
     void ReleaseUserSendReservation(Guid userId);
 
-    /// <summary>False if a signup was sent to the same address within the cooldown.</summary>
-    Task<bool> TryReserveSignupSendAsync(string email, TimeSpan cooldown);
+    /// <summary>
+    /// 0 when reserved; otherwise how many sends to the same inbox this cooldown has refused, this one included.
+    /// </summary>
+    Task<int> ReserveSignupSendAsync(string email, TimeSpan cooldown);
 
     /// <summary>After a downstream failure, so the caller can retry without waiting out the cooldown.</summary>
     void ReleaseSignupReservation(string email);

@@ -6,6 +6,10 @@ namespace Humans.Email.Services;
 internal interface ICommunicationPreferenceManagement
     : ICommunicationPreferenceService, ICommunicationPreferenceWrite, IApplicationService
 {
+    /// <summary>Recorded rows only; missing categories are left out.</summary>
+    Task<IReadOnlyList<CommunicationPreferenceSnapshot>> GetPreferencesReadOnlyAsync(
+        Guid userId, CancellationToken cancellationToken = default);
+
     /// <summary>
     /// Idempotent. Audits the actor when given, else the service. Returns false and writes nothing when an
     /// <see cref="ICommunicationPreferenceLock"/> locks the category for the human.

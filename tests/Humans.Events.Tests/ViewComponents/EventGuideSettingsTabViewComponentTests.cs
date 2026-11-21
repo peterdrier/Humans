@@ -1,3 +1,4 @@
+using Humans.Events.Services.Dtos;
 using AwesomeAssertions;
 using Humans.Events.Contracts;
 using Humans.Events.Models;

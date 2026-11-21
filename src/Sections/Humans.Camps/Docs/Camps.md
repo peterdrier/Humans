@@ -137,11 +137,13 @@ Aggregate-local navs: `CampRoleAssignment.CampSeason`, `CampRoleAssignment.Defin
 
 ### Camp enums
 
+`CampSpecialRole` belongs to the internal domain; the public contracts do not expose it. Its stored strings and role-seeding behavior remain unchanged.
+
 | Enum | Values |
 |------|--------|
 | CampSeasonStatus | Pending, Active, Full, Rejected, Withdrawn |
 | CampMemberStatus | Pending, Active, Removed |
-| CampSpecialRole | None, Lead, Workshop |
+| CampSpecialRole (internal domain) | None = 0, Lead = 1, Workshop = 2 |
 | CampVibe | Adult, ChillOut, ElectronicMusic, Games, Queer, Sober, Lecture, LiveMusic, Wellness, Workshop |
 | CampNameSource | Manual, NameChange |
 | YesNoMaybe | Yes, No, Maybe |
@@ -351,6 +353,8 @@ The admin summary projection supplies total reported members, joined members, gr
 - `CampRoleService` owns role-definition and assignment lookups, panel and directory summaries, compliance and drill-down projections, and expected Google group memberships. Event scoping, active-member filters, lead fallback, assignment chronology and cancellation are unchanged.
 - `CampRoleService` lives in `Humans.Camps.Services.CampRoleService` and goes through `ICampRepository` (`Humans.Camps.Data`) for all data access. The role-heavy methods are grouped in `CampRepository.Roles.cs`; `CampRepository` owns `camp_role_definitions` and `camp_role_assignments` alongside the rest of the Camps tables. Display-name stitching for `AssignedByUserId` routes through `IUserService.GetUserInfosAsync`. Plain pass-through (no caching decorator); add `IMemoryCache` later if list-of-definitions reads dominate.
 - **Architecture test** — `tests/Humans.Camps.Tests/Architecture/CampsArchitectureTests.cs`.
+- `MyCampsViewComponent` stays public for Razor discovery from Users; its three models are internal to Camps. `CampOperationRequirement` is internal: external camp controllers inherit the existing public `HumansCampControllerBase`, whose methods retain the authorization checks. Membership rendering, cancellation and authorization behavior are unchanged.
+
 - **Public contract.** `ICampService` (GetCampsForYearAsync, GetCampsForEventAsync, GetCampBySlugAsync, GetCampByIdAsync, GetCampSeasonByIdAsync, GetSettingsAsync, SearchAsync, GetCampUserInfoAsync) is the public cross-section contract — returns only CampInfo-family projections (CampInfo with computed `Active`, CampSeasonInfo, CampUserInfo), CampSettingsInfo, CampSearchHit; no EF entities. `GetCampUserInfoAsync(userId)` resolves a user's active-event camp membership (the attached `CampSeasonInfo` plus the named camp roles they hold, ordered by role sort order) from the cached projection — no DB hit; returns `CampUserInfo.None` when the user is not an Active member of any camp for that event. It feeds the admin human card; Shifts summaries resolve membership from their shared event-scoped snapshot; `CachingCampService` serves it from the warm projection (the active event's year is always warm). Camps' own pages, auth handler, search, early-entry grants, compliance and role drill-down all read by event; `GetCampsForYearAsync`, `PublicYear`, `OpenSeasons` and `GetLeadSeasonIdForYear` stay for sections not yet keyed by event. `ICampManagement : ICampService` adds writes, cache invalidation, per-user/lead/membership reads, and Camps-internal reads. External sections inject `ICampService`; the other public contracts are `ICampLeadDirectory` (year-agnostic lead reads consumed by `SystemTeamSyncJob`), `ICampDeletionListener` (implemented by sections whose rows key on camp seasons; called inside the camp-delete transaction) and the dev-seeder-only `ICampSeeding` / `ICampRoleSeeding`. CampLookup/CampSeasonLookup were folded into CampInfo/CampSeasonInfo.
 
 - Account and camp reads before contact, membership request/withdrawal/leave, admin approval/rejection, EE slot-count changes, role-definition edits and system-role seeding observe the request token. Cancellation stops before mutation; service calls retain their existing detached or action-token boundaries.

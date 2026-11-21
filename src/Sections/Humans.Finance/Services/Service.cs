@@ -96,8 +96,6 @@ internal sealed class Service(
             id => members.GetValueOrDefault(id)?.BurnerName ?? id.ToString(), OrgZone);
     }
 
-    public Task RunSepaBookingSweepAsync(CancellationToken ct = default) => RunAsync(ct);
-
     internal const string HoldedExpenseAccount = "HoldedExpenseAccount";
 
     /// <summary>First number of the P&amp;L expense block both provisioning paths allocate from.</summary>
@@ -376,7 +374,7 @@ internal sealed class Service(
     }
 
     /// <summary>Category and group names resolved from the active budget year.</summary>
-    private async Task<IReadOnlyList<CategoryAccountRow>> BuildCategoryMapAsync(CancellationToken ct)
+    public async Task<IReadOnlyList<CategoryAccountRow>> GetCategoryMapAsync(CancellationToken ct = default)
     {
         var map = await repo.GetCategoryMapAsync(ct);
         var categories = await ActiveYearCategoriesAsync(ct);
@@ -390,9 +388,6 @@ internal sealed class Service(
             m.Tag,
             m.UpdatedAt)).ToList();
     }
-
-    public Task<IReadOnlyList<CategoryAccountRow>> GetCategoryMapAsync(CancellationToken ct = default) =>
-        BuildCategoryMapAsync(ct);
 
     /// <summary>Empty when no year is active.</summary>
     private async Task<Dictionary<Guid, (string Name, string Group)>> ActiveYearCategoriesAsync(CancellationToken ct)
@@ -1640,10 +1635,6 @@ internal sealed class Service(
     /// <summary>The bank can value-date a day early, and the feed's dates are org-zone days.</summary>
     private const int GenerationSlackDays = IFinanceAdminService.DefaultSepaMatchToleranceDays;
 
-    /// <summary>Without the bank-feed read, which only serves <c>/Finance/Sepa</c>'s own "book this" button.</summary>
-    public async Task<(IReadOnlyList<SepaPayoutTransferRow> Transfers, string? UnavailableReason)>
-        GetSepaTransfersAsync(CancellationToken ct = default) => await GetSepaPayoutRowsWithReasonsAsync(ct);
-
     public async Task<(IReadOnlyList<SepaPayoutTransferRow> Rows, string? UnavailableReason,
         IReadOnlyList<SepaBankMovementVm> UnmatchedMovements, string? BankFeedError, Instant? BankFeedSyncedAt)>
         GetSepaPayoutsAsync(int toleranceDays = IFinanceAdminService.DefaultSepaMatchToleranceDays,
@@ -1667,7 +1658,7 @@ internal sealed class Service(
         IReadOnlyList<SepaBankMovementVm> UnmatchedMovements, string? BankFeedError)>
         PairAsync(int tolerance, Func<Task<IReadOnlyList<HoldedBankMovementDto>>> feed, CancellationToken ct)
     {
-        var (withReasons, unavailable) = await GetSepaPayoutRowsWithReasonsAsync(ct);
+        var (withReasons, unavailable) = await GetSepaTransfersAsync(ct);
         if (withReasons.Count == 0 || unavailable is not null) return (withReasons, unavailable, [], null);
         // A withdrawn transfer renders on its row and nowhere else: no line can be its payment.
         var live = Live(withReasons);
@@ -1808,10 +1799,9 @@ internal sealed class Service(
                 .FirstOrDefault());
     }
 
-    /// <summary>The pre-feed half of <see cref="PairAsync"/>, so <see cref="GetSepaTransfersAsync"/> can
-    /// reuse it without the bank-feed call.</summary>
-    private async Task<(IReadOnlyList<SepaPayoutTransferRow> Rows, string? UnavailableReason)>
-        GetSepaPayoutRowsWithReasonsAsync(CancellationToken ct)
+    /// <summary>The transfer booking state shared with <see cref="PairAsync"/>, without reading the bank feed.</summary>
+    public async Task<(IReadOnlyList<SepaPayoutTransferRow> Transfers, string? UnavailableReason)>
+        GetSepaTransfersAsync(CancellationToken ct = default)
     {
         var rows = await repo.GetSepaPayoutTransferRowsAsync(ct);
         var unavailable = BookingUnavailableReason();
@@ -1853,7 +1843,7 @@ internal sealed class Service(
         return null;
     }
 
-    public async Task RunAsync(CancellationToken ct = default)
+    public async Task RunSepaBookingSweepAsync(CancellationToken ct = default)
     {
         if (BookingUnavailableReason() is not null || !holded.IsConfigured) return;
 

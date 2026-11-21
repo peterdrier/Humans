@@ -62,7 +62,7 @@ Board voting only applies to tier applications (Colaborador and Asociado). Volun
   - Application.Status → Approved
   - Application.TermExpiresAt set (Dec 31 of appropriate odd year)
   - Membership tier row granted (`governance_membership_tiers`) in the same save as the decision, history and Board-vote removal; a failed grant preserves the pending application and votes
-  - Added to Colaboradors/Asociados system team
+  - Colaboradores/Asociados body's group and files synced
   - Approval email attempted best-effort, including recipient lookup; email failure does not skip the in-app notice.
 - On reject:
   - Application.Status → Rejected
@@ -205,7 +205,7 @@ Admin finalizes decision
     │   ├── Application.BoardMeetingDate = entered date
     │   ├── Application.DecisionNote = entered note
     │   ├── Membership tier row → Application's tier
-    │   ├── Add to Colaboradors/Asociados system team
+    │   ├── Sync the Colaboradores/Asociados body's group and files
     │   ├── Delete all BoardVote records for this Application
     │   └── Send approval notification email
     │

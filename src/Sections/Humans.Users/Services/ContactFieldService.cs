@@ -50,10 +50,10 @@ internal sealed class ContactFieldService(
     }
 
     public async Task<IReadOnlyList<ContactFieldEditDto>> GetAllContactFieldsAsync(
-        Guid profileId,
+        Guid userId,
         CancellationToken cancellationToken = default)
     {
-        var fields = await userRepository.GetByProfileIdReadOnlyAsync(profileId, cancellationToken);
+        var fields = await userRepository.GetContactFieldsByUserIdReadOnlyAsync(userId, cancellationToken);
 
         return fields.Select(cf => new ContactFieldEditDto(
             cf.Id,
@@ -66,21 +66,21 @@ internal sealed class ContactFieldService(
     }
 
     public async Task<ProfileEditResult> SaveContactFieldsAsync(
-        Guid profileId,
+        Guid userId,
         IReadOnlyList<ContactFieldEditDto> fields,
         CancellationToken cancellationToken = default,
         IReadOnlyCollection<Guid>? removedLegacyContactFieldIds = null)
     {
         if (ValidateContactFields(fields) is { } refusal)
         {
-            logger.LogWarning("Contact field save refused for profile {ProfileId}: {ErrorKey}", profileId, refusal.ErrorKey);
+            logger.LogWarning("Contact field save refused for {UserId}: {ErrorKey}", userId, refusal.ErrorKey);
             return refusal;
         }
 
         var now = clock.GetCurrentInstant();
 
         // Detached: mutations go back explicitly through BatchSaveAsync.
-        var existingFields = await userRepository.GetByProfileIdForMutationAsync(profileId, cancellationToken);
+        var existingFields = await userRepository.GetContactFieldsByUserIdForMutationAsync(userId, cancellationToken);
 
         var existingById = existingFields.ToDictionary(cf => cf.Id);
         var incomingIds = fields.Where(f => f.Id.HasValue).Select(f => f.Id!.Value).ToHashSet();
@@ -92,9 +92,6 @@ internal sealed class ContactFieldService(
 
         var toAdd = new List<ContactField>();
         var toUpdate = new List<ContactField>();
-
-        // Also the cache key: resolved before committing, so a failed lookup can't skip the refresh.
-        var ownerUserId = await userRepository.GetOwnerUserIdAsync(profileId, cancellationToken);
 
         foreach (var dto in fields)
         {
@@ -110,8 +107,7 @@ internal sealed class ContactFieldService(
                 field = new ContactField
                 {
                     Id = Guid.NewGuid(),
-                    ProfileId = profileId,
-                    UserId = ownerUserId,
+                    UserId = userId,
                     CreatedAt = now
                 };
                 toAdd.Add(field);
@@ -131,23 +127,20 @@ internal sealed class ContactFieldService(
         }
         finally
         {
-            if (ownerUserId is not null)
+            try
             {
-                try
-                {
-                    // The write may have committed even if its acknowledgement failed. Finish the refresh
-                    // independently of the request so old contact values and visibility cannot remain cached.
-                    await userInfoRefresher.RefreshAsync(ownerUserId.Value, CancellationToken.None);
-                }
-                catch (Exception ex)
-                {
-                    logger.LogError(ex,
-                        "UserInfo refresh failed after contact field write for {UserId}",
-                        ownerUserId.Value);
-                }
+                // The write may have committed even if its acknowledgement failed. Finish the refresh
+                // independently of the request so old contact values and visibility cannot remain cached.
+                await userInfoRefresher.RefreshAsync(userId, CancellationToken.None);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex,
+                    "UserInfo refresh failed after contact field write for {UserId}",
+                    userId);
             }
         }
-        return new(true, profileId);
+        return new(true);
     }
 
     internal static bool IsValidPhone(string? phone) =>

@@ -67,6 +67,7 @@ jobs:
           dotnet test tests/Humans.Integration.Tests/Humans.Integration.Tests.csproj \
             --filter "$(python3 .github/scripts/integration-shard.py ${{ matrix.shard }} 4)" \
             --configuration Release \
+            -p:RunAnalyzersDuringBuild=false \
             --verbosity quiet \
             --blame-hang-timeout 5m \
             --logger "trx;LogFileName=integration-results.trx" \

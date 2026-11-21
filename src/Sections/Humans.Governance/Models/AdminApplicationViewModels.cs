@@ -1,3 +1,4 @@
+using Humans.Governance.Domain;
 using Humans.Governance.Contracts;
 using Humans.Base.Models;
 

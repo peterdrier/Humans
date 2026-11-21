@@ -15,7 +15,7 @@
     and it names no type from this project.
 
     Everything with no consumer outside the section stays internal: the outbox interfaces
-    (IEmailOutboxService, IEmailOutboxProcessor, IEmailOutboxRetention, IEmailOutboxManagement,
+    (IEmailOutboxProcessor, IEmailOutboxManagement,
     IImmediateOutboxProcessor), the MessageCategory rules, the facilitated-message builder, the body composer, the SMTP
     transport, the repository and the entity.
 

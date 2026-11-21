@@ -237,7 +237,9 @@ Admin pages live under the section's URL space, not `/Admin`; they are localizat
 
 `PreapprovalService` is one class (partial files by area: grants, programs, GDPR) holding reads,
 the three Expenses transitions, program create and edit, export/erasure/merge and audit text.
-`PreapprovalInput` is a static class for the money and text rules.
+`PreapprovalInput` owns the money and text rules; grant and program mutations call it directly.
+`GetGrantsAsync` builds the public grant options directly from the repository, preserving all statuses,
+manager/holder identities and the org-date claimability rule. Neither path has a forwarding alias.
 
 Admin manager and batch-recipient lists share `Humans.initHumanSelectionList` in `site.js`.
 

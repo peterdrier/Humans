@@ -1,5 +1,7 @@
 using AwesomeAssertions;
-using Humans.Calendar.Contracts;
+using Humans.Calendar.Services;
+using Humans.Base.Configuration;
+using Microsoft.Extensions.Options;
 using Humans.Calendar.Controllers;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -10,18 +12,17 @@ namespace Humans.Calendar.Tests.Controllers;
 
 public class ICalFeedApiControllerTests
 {
-    private readonly IICalFeedService _feed = Substitute.For<IICalFeedService>();
     private readonly IUserService _users = Substitute.For<IUserService>();
 
-    private ICalFeedApiController CreateController() =>
-        new(_feed, _users, NullLogger<ICalFeedApiController>.Instance);
+    private ICalFeedApiController CreateController(ICalendarFeedTokenService? tokens = null) =>
+        new(new ICalFeedService(_users, tokens ?? Substitute.For<ICalendarFeedTokenService>(), [],
+                Options.Create(new EmailSettings { BaseUrl = "https://calendar.example" }),
+                NullLogger<ICalFeedService>.Instance),
+            _users, NullLogger<ICalFeedApiController>.Instance);
 
     [HumansFact]
     public async Task GetFeed_ServiceReturnsNull_Returns404()
     {
-        _feed.GetFeedIcsAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns((string?)null);
-
         var result = await CreateController().GetFeed(Guid.NewGuid(), Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
 
         result.Should().BeOfType<NotFoundResult>();
@@ -32,10 +33,12 @@ public class ICalFeedApiControllerTests
     {
         var userId = Guid.NewGuid();
         var token = Guid.NewGuid();
-        _feed.GetFeedIcsAsync(userId, token, Arg.Any<CancellationToken>())
-            .Returns("BEGIN:VCALENDAR\r\nEND:VCALENDAR\r\n");
-
-        var result = await CreateController().GetFeed(userId, token, Xunit.TestContext.Current.CancellationToken);
+        var user = UserInfo.Create(new User { Id = userId }, [], [], null);
+        _users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<UserInfo?>(user));
+        var tokens = Substitute.For<ICalendarFeedTokenService>();
+        tokens.GetAsync(userId, Arg.Any<CancellationToken>()).Returns((Guid?)token);
+        var result = await CreateController(tokens).GetFeed(userId, token, Xunit.TestContext.Current.CancellationToken);
 
         var file = result.Should().BeOfType<FileContentResult>().Subject;
         file.ContentType.Should().Be("text/calendar");
@@ -45,8 +48,8 @@ public class ICalFeedApiControllerTests
     [HumansFact]
     public async Task GetFeed_ServiceThrows_Returns500()
     {
-        _feed.GetFeedIcsAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns<string?>(_ => throw new InvalidOperationException("boom"));
+        _users.GetUserInfoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(_ => ValueTask.FromException<UserInfo?>(new InvalidOperationException("boom")));
 
         var result = await CreateController().GetFeed(Guid.NewGuid(), Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
 
@@ -59,8 +62,8 @@ public class ICalFeedApiControllerTests
     {
         using var cancellation = new CancellationTokenSource();
         await cancellation.CancelAsync();
-        _feed.GetFeedIcsAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), cancellation.Token)
-            .Returns<string?>(_ => throw new OperationCanceledException(cancellation.Token));
+        _users.GetUserInfoAsync(Arg.Any<Guid>(), cancellation.Token)
+            .Returns(_ => ValueTask.FromException<UserInfo?>(new OperationCanceledException(cancellation.Token)));
 
         var act = () => CreateController().GetFeed(Guid.NewGuid(), Guid.NewGuid(), cancellation.Token);
 

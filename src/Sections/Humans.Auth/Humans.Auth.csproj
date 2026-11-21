@@ -32,8 +32,7 @@
                         MagicLinkService uses its raw identity projection and IUserEmailService.
       Email.Contracts — IEmailService, which MagicLinkService injects to send the
                         login/signup mail built by the section's own AuthEmails.
-      Teams.Contracts — ISystemTeamSync, which RoleAssignmentService injects to reconcile
-                        the Board system team.
+      Teams.Contracts — TeamsRoles, for the Teams Admin role check.
       No Onboarding.Contracts reference.
     -->
     <ProjectReference Include="..\Humans.Email.Contracts\Humans.Email.Contracts.csproj" />

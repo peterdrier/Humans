@@ -1,3 +1,4 @@
+using Humans.Base.Constants;
 using Humans.Google.Contracts;
 using Humans.Auth.Contracts;
 using Microsoft.Extensions.DependencyInjection;
@@ -317,11 +318,6 @@ internal sealed class TeamService(
         return member;
     }
 
-    public Task<IReadOnlyDictionary<Guid, string>> GetManagementRoleNamesByTeamIdsAsync(
-        IEnumerable<Guid> teamIds,
-        CancellationToken cancellationToken = default) =>
-        repo.GetPublicManagementRoleNamesByTeamIdsAsync(teamIds.ToList(), cancellationToken);
-
     // CachingTeamService owns the cache.
     public void InvalidateActiveTeamsCache() { }
 
@@ -370,6 +366,13 @@ internal sealed class TeamService(
         return await repo.ApplySystemTeamMembershipDeltaAsync(
             teamId, userIdsToAdd, userIdsToRemove, now, cancellationToken);
     }
+
+    /// <summary>
+    /// The Asociados, Colaboradores and Board teams. Governance owns these bodies and claims their Google group and
+    /// files, so Teams neither claims nor syncs them, and they are only ever retired.
+    /// </summary>
+    internal static readonly IReadOnlySet<Guid> GovernanceBodyTeamIds =
+        new HashSet<Guid> { SystemTeamIds.Asociados, SystemTeamIds.Colaboradors, SystemTeamIds.Board };
 
     internal const string TeamMemberships = "TeamMemberships";
     internal const string TeamJoinRequests = "TeamJoinRequests";
@@ -562,7 +565,7 @@ internal sealed class TeamService(
 
         var teams = await repo.GetAllActiveAsync(ct);
         var groupTeams = teams
-            .Where(t => t.GoogleGroupEmail is not null)
+            .Where(t => t.GoogleGroupEmail is not null && !GovernanceBodyTeamIds.Contains(t.Id))
             .Where(t => requestedKey is null
                 || string.Equals(t.GoogleGroupEmail, requestedKey, StringComparison.OrdinalIgnoreCase))
             .ToList();
@@ -1137,6 +1140,32 @@ internal sealed class TeamService(
             "Deactivated team {TeamId} ({TeamName}); closed {MemberCount} memberships",
             teamId, team.Name, closedUsers.Count);
         return new();
+    }
+
+    public async Task<int> RetireGovernanceBodyTeamsAsync(Guid actorUserId, CancellationToken cancellationToken = default)
+    {
+        var retired = 0;
+        foreach (var teamId in GovernanceBodyTeamIds)
+        {
+            if (await repo.GetByIdAsync(teamId, cancellationToken) is not { IsActive: true } team)
+                continue;
+
+            var closedUsers = await repo.DeactivateTeamAsync(teamId, clock.GetCurrentInstant(), cancellationToken);
+            foreach (var userId in closedUsers)
+            {
+                await auditLogService.LogAsync(
+                    TeamsAuditActions.TeamMemberRemoved, nameof(Team), teamId,
+                    $"Membership ended when {team.Name} was deactivated",
+                    actorUserId, relatedEntityId: userId, relatedEntityType: AuditSubjectTypes.User);
+            }
+
+            logger.LogInformation(
+                "Retired governance body team {TeamId} ({TeamName}); closed {MemberCount} memberships",
+                teamId, team.Name, closedUsers.Count);
+            retired++;
+        }
+
+        return retired;
     }
 
     public async Task<bool> PermanentlyDeleteTeamAsync(

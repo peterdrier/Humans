@@ -136,22 +136,14 @@ internal sealed class UserService(
             throw new InvalidOperationException("Cannot reconcile email addresses for a deleted or merged account.");
 
         await repo.ApplyUserEmailReconcilePlanAsync(
-            displacedRowToDelete: command.DisplacedRowToDelete,
             rowToDelete: command.RowToDelete,
             rowToUpdate: command.RowToUpdate,
             rowToInsert: command.RowToInsert,
             ct);
 
-        var mutatedUserIds = new HashSet<Guid> { userId };
-        if (command.DisplacedRowToDelete is not null)
-            mutatedUserIds.Add(command.DisplacedRowToDelete.UserId);
+        await EnsurePrimaryInvariantAsync(userId, ct);
 
-        foreach (var mutatedUserId in mutatedUserIds)
-        {
-            await EnsurePrimaryInvariantAsync(mutatedUserId, ct);
-        }
-
-        return new UserEmailReconcilePlanResult(mutatedUserIds);
+        return new UserEmailReconcilePlanResult(new HashSet<Guid> { userId });
     }
 
     private static readonly IReadOnlyDictionary<string, string?> Erasure =
@@ -206,15 +198,85 @@ internal sealed class UserService(
         var sourceProfile = await repo.GetByUserIdReadOnlyAsync(mergedFromUserId, ct);
         var previousKey = sourceProfile is null ? null : ProfilePictureKeys.Resolve(
             sourceProfile.Id, sourceProfile.ProfilePictureContentType, sourceProfile.ProfilePictureStorageKey);
+        var keptProfile = await repo.GetByUserIdReadOnlyAsync(mergedToUserId, ct);
+        var keptNames = sourceProfile is null || keptProfile is null ? null : KeepProfileDetails(
+            keptProfile, await repo.GetByIdAsync(mergedToUserId, ct),
+            sourceProfile, await repo.GetByIdAsync(mergedFromUserId, ct), now);
         try
         {
-            await repo.ReassignSubAggregatesToUserAsync(mergedFromUserId, mergedToUserId, now, ct);
+            await repo.ReassignSubAggregatesToUserAsync(
+                mergedFromUserId, mergedToUserId, now, keptProfile, keptNames, ct);
         }
         finally
         {
-            if (sourceProfile is not null && previousKey is not null)
+            // A picture the kept profile took over is still in use.
+            var kept = await repo.GetByUserIdReadOnlyAsync(mergedToUserId, CancellationToken.None);
+            var keptKey = kept is null ? null : ProfilePictureKeys.Resolve(
+                kept.Id, kept.ProfilePictureContentType, kept.ProfilePictureStorageKey);
+            if (sourceProfile is not null && previousKey is not null
+                && !string.Equals(previousKey, keptKey, StringComparison.Ordinal))
                 await DeleteSupersededPictureAsync(sourceProfile.Id, previousKey);
         }
+    }
+
+    /// <summary>
+    /// A merge loses nothing: <paramref name="kept"/> takes every detail it has blank from
+    /// <paramref name="archived"/>, and the notes of both. What the kept profile already has wins, so
+    /// re-running is a no-op.
+    /// </summary>
+    /// <returns>The names the kept account takes over, when nobody filled it in; otherwise null.</returns>
+    internal static UserNames? KeepProfileDetails(
+        Profile kept, User? keptUser, Profile archived, User? archivedUser, Instant now)
+    {
+        kept.Bio = Blank(kept.Bio) ? archived.Bio : kept.Bio;
+        kept.Pronouns = Blank(kept.Pronouns) ? archived.Pronouns : kept.Pronouns;
+        kept.ContributionInterests = Blank(kept.ContributionInterests) ? archived.ContributionInterests : kept.ContributionInterests;
+        kept.MedicalConditions = Blank(kept.MedicalConditions) ? archived.MedicalConditions : kept.MedicalConditions;
+        kept.DateOfBirth ??= archived.DateOfBirth;
+        kept.AdminNotes = BothNotes(kept.AdminNotes, archived.AdminNotes);
+        kept.BoardNotes = BothNotes(kept.BoardNotes, archived.BoardNotes);
+
+        // A place is one unit: never a city from one account on the other's coordinates.
+        if (Blank(kept.City) && Blank(kept.CountryCode) && kept.PlaceId is null)
+        {
+            kept.City = archived.City;
+            kept.CountryCode = archived.CountryCode;
+            kept.Latitude = archived.Latitude;
+            kept.Longitude = archived.Longitude;
+            kept.PlaceId = archived.PlaceId;
+        }
+
+        if (Blank(kept.EmergencyContactName) && Blank(kept.EmergencyContactPhone))
+        {
+            kept.EmergencyContactName = archived.EmergencyContactName;
+            kept.EmergencyContactPhone = archived.EmergencyContactPhone;
+            kept.EmergencyContactRelationship = archived.EmergencyContactRelationship;
+        }
+
+        // The file stays where it is; the kept profile points at it by its stored key.
+        if (kept.ProfilePictureContentType is null && archived.ProfilePictureContentType is not null)
+        {
+            kept.ProfilePictureContentType = archived.ProfilePictureContentType;
+            kept.ProfilePictureStorageKey = ProfilePictureKeys.Resolve(
+                archived.Id, archived.ProfilePictureContentType, archived.ProfilePictureStorageKey);
+        }
+
+        kept.UpdatedAt = now;
+
+        // An account nobody filled in takes the whole name, burner name included, from the one that was.
+        return keptUser is not null && archivedUser is not null
+            && (Blank(keptUser.FirstName) || Blank(keptUser.LastName))
+            && !Blank(archivedUser.FirstName) && !Blank(archivedUser.LastName)
+                ? new UserNames(archivedUser.BurnerName ?? archivedUser.FirstName!, archivedUser.FirstName!, archivedUser.LastName!)
+                : null;
+
+        static bool Blank(string? value) => string.IsNullOrWhiteSpace(value);
+
+        static string? BothNotes(string? keptNotes, string? archivedNotes) =>
+            Blank(archivedNotes) || string.Equals(keptNotes, archivedNotes, StringComparison.Ordinal) ? keptNotes
+            : Blank(keptNotes) ? archivedNotes
+            : keptNotes!.Contains(archivedNotes!, StringComparison.Ordinal) ? keptNotes
+            : $"{keptNotes}\n\n[From merged account]\n{archivedNotes}";
     }
 
     public async Task<IReadOnlyList<Guid>> GetUsersWithLoginsButNoEmailsAsync(CancellationToken ct = default)
@@ -294,18 +356,14 @@ internal sealed class UserService(
 
         var profile = await repo.GetByUserIdReadOnlyAsync(userId, ct);
 
-        var contactFields = profile is not null
-            ? await repo.GetByProfileIdReadOnlyAsync(profile.Id, ct)
-            : [];
+        var contactFields = await repo.GetContactFieldsByUserIdReadOnlyAsync(userId, ct);
 
         var volunteerHistory = profile?.VolunteerHistory
             .OrderByDescending(v => v.Date)
             .ThenByDescending(v => v.CreatedAt)
             .ToList() ?? (IReadOnlyList<VolunteerHistoryEntry>)[];
 
-        var profileLanguages = profile is not null
-            ? await repo.GetLanguagesAsync(profile.Id, ct)
-            : [];
+        var profileLanguages = await repo.GetLanguagesAsync(userId, ct);
 
         var profileSlice = profile is null
             ? new UserDataSlice(Profile, null)
@@ -798,7 +856,7 @@ internal sealed class UserService(
         {
             await repo.UpdateAsync(profile, ct, volunteerHistory,
                 new UserNames(command.BurnerName, command.FirstName, command.LastName));
-            return new UserProfileSaveResult(profile.Id, previousPictureKey, currentPictureKey);
+            return new UserProfileSaveResult(previousPictureKey, currentPictureKey);
         }
         finally
         {
@@ -863,7 +921,7 @@ internal sealed class UserService(
     }
 
     public async Task<UserProfileLanguagesSaveResult> SaveProfileLanguagesAsync(
-        Guid profileId,
+        Guid userId,
         IReadOnlyList<ProfileLanguageInfo> languages,
         CancellationToken ct = default)
     {
@@ -871,17 +929,14 @@ internal sealed class UserService(
             .Select(l => new ProfileLanguage
             {
                 Id = l.Id == Guid.Empty ? Guid.NewGuid() : l.Id,
-                ProfileId = profileId,
+                UserId = userId,
                 LanguageCode = l.LanguageCode,
                 Proficiency = l.Proficiency,
             })
             .ToList();
 
-        var ownerUserId = await repo.GetOwnerUserIdAsync(profileId, ct);
-        await repo.ReplaceLanguagesAsync(profileId, rows, ct);
-        return new UserProfileLanguagesSaveResult(
-            ownerUserId is not null,
-            ownerUserId);
+        await repo.ReplaceLanguagesAsync(userId, rows, ct);
+        return new UserProfileLanguagesSaveResult(true, userId);
     }
 
     public async ValueTask<UserInfo?> GetUserInfoAsync(Guid userId, CancellationToken ct = default)
@@ -901,7 +956,7 @@ internal sealed class UserService(
         IReadOnlyList<VolunteerHistoryEntry> volunteerHistory = [];
         if (profile is not null)
         {
-            contactFields = await repo.GetByProfileIdReadOnlyAsync(profile.Id, ct);
+            contactFields = await repo.GetContactFieldsByUserIdReadOnlyAsync(userId, ct);
             languages = profile.Languages.ToList();
             volunteerHistory = profile.VolunteerHistory.ToList();
         }
@@ -931,8 +986,9 @@ internal sealed class UserService(
         var profileByUser = profiles.ToDictionary(p => p.UserId);
 
         var allContactFields = await repo.GetAllContactFieldsAsync(ct);
-        var contactFieldsByProfile = allContactFields
-            .GroupBy(c => c.ProfileId)
+        var contactFieldsByUser = allContactFields
+            .Where(c => c.UserId is not null)
+            .GroupBy(c => c.UserId!.Value)
             .ToDictionary(g => g.Key, g => (IReadOnlyList<ContactField>)g.ToList());
 
         var result = new List<UserInfo>(users.Count);
@@ -946,7 +1002,7 @@ internal sealed class UserService(
             IReadOnlyList<VolunteerHistoryEntry> volunteerHistory = [];
             if (profile is not null)
             {
-                contactFields = contactFieldsByProfile.TryGetValue(profile.Id, out var cf) ? cf : [];
+                contactFields = contactFieldsByUser.TryGetValue(user.Id, out var cf) ? cf : [];
                 languages = profile.Languages.ToList();
                 volunteerHistory = profile.VolunteerHistory.ToList();
             }

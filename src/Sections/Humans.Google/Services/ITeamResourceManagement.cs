@@ -7,6 +7,13 @@ namespace Humans.Google.Services;
 
 internal interface ITeamResourceManagement : ITeamResourceService, IApplicationService
 {
+    /// <summary>TeamsAdmin always can; coordinators only when AllowCoordinatorsToManageResources is on.</summary>
+    Task<bool> CanManageTeamResourcesAsync(Guid teamId, Guid userId, CancellationToken ct = default);
+
+    Task<string> GetServiceAccountEmailAsync(CancellationToken ct = default);
+
+    Task<GoogleResourceSnapshot?> GetResourceByIdAsync(Guid resourceId, CancellationToken ct = default);
+
     /// <summary>The item must be on a Shared Drive shared with the service account as Editor.</summary>
     Task<LinkResourceResult> LinkDriveResourceAsync(Guid teamId, string url, DrivePermissionLevel permissionLevel = DrivePermissionLevel.Contributor, Guid? actorUserId = null, CancellationToken ct = default);
 

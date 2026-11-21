@@ -1,6 +1,5 @@
 using System.Security.Claims;
 using Humans.Base.Constants;
-using Humans.Google.Contracts;
 using Humans.Notifications.Contracts;
 using Microsoft.Extensions.Localization;
 
@@ -8,7 +7,7 @@ namespace Humans.Google.Services;
 
 /// <summary>Admin's failed sync events: one count query, asked only for Admins.</summary>
 internal sealed class GoogleNotificationMeters(
-    IGoogleSyncService googleSyncService,
+    IGoogleSyncManagement googleSyncService,
     IStringLocalizer<GoogleResource> localizer) : INotificationMeterContributor
 {
     public async Task<IReadOnlyList<NotificationMeter>> GetMetersAsync(

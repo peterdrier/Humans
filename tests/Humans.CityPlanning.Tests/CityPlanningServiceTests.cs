@@ -1,3 +1,4 @@
+using Humans.Containers.Contracts;
 using Xunit;
 using AwesomeAssertions;
 using Humans.CityPlanning.Contracts;
@@ -39,7 +40,7 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
         var repo = new CityPlanningRepository(CityPlanningDbFactory);
         _sut = new CityPlanningService(
             repo, Clock, Options.Create(_options),
-            _campService, _teamService, _userService, _auditLog, _settingsService);
+            _campService, _teamService, _userService, _auditLog, _settingsService, Substitute.For<IContainerService>());
     }
 
     /// <summary>Camps' public year and the active event's year — city planning's current year — both <paramref name="publicYear"/>.</summary>
@@ -478,7 +479,7 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
 
         var sut = new CityPlanningService(
             repo, Clock, Options.Create(_options),
-            _campService, _teamService, _userService, _auditLog, _settingsService);
+            _campService, _teamService, _userService, _auditLog, _settingsService, Substitute.For<IContainerService>());
 
         await sut.OpenPlacementAsync(userId, cts.Token);
 
@@ -525,7 +526,7 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
 
         var sut = new CityPlanningService(
             repo, Clock, Options.Create(_options),
-            _campService, _teamService, _userService, _auditLog, _settingsService);
+            _campService, _teamService, _userService, _auditLog, _settingsService, Substitute.For<IContainerService>());
 
         await sut.OpenPlacementAsync(userId, cts.Token);
 

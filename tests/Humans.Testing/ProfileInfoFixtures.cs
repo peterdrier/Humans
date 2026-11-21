@@ -66,6 +66,7 @@ public static class UserFixtures
             // Derived as UserInfoFactory does, so no fixture can have a picture without a content type.
             HasCustomPicture: profilePictureContentType is not null,
             ProfilePictureContentType: profilePictureContentType,
+            ProfilePictureFileKey: null,
             CreatedAt: createdAt ?? DefaultInstant,
             UpdatedAt: updatedAt ?? createdAt ?? DefaultInstant,
             AdminNotes: adminNotes,

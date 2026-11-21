@@ -1,7 +1,9 @@
 using Humans.Auth.Contracts;
 using Humans.Base.Caching;
+using Humans.Base.Constants;
 using Microsoft.Extensions.DependencyInjection;
 using NodaTime;
+using Humans.Teams.Contracts;
 
 namespace Humans.Auth.Services;
 
@@ -91,28 +93,33 @@ internal sealed class CachingRoleAssignmentService
         MutateAsync(inner => inner.EndRoleAsync(assignmentId, enderId, notes, ct), static result => result.Success);
 
     public Task<bool> IsUserAdminAsync(Guid userId, CancellationToken cancellationToken = default) =>
-        WithInnerAsync(inner => inner.IsUserAdminAsync(userId, cancellationToken));
+        HasActiveRoleAsync(userId, RoleNames.Admin, cancellationToken);
 
     public Task<bool> IsUserBoardMemberAsync(Guid userId, CancellationToken cancellationToken = default) =>
-        WithInnerAsync(inner => inner.IsUserBoardMemberAsync(userId, cancellationToken));
+        HasActiveRoleAsync(userId, RoleNames.Board, cancellationToken);
 
     public Task<bool> IsUserTeamsAdminAsync(Guid userId, CancellationToken cancellationToken = default) =>
-        WithInnerAsync(inner => inner.IsUserTeamsAdminAsync(userId, cancellationToken));
+        HasActiveRoleAsync(userId, TeamsRoles.TeamsAdmin, cancellationToken);
 
-    public Task<bool> HasActiveRoleAsync(Guid userId, string roleName, CancellationToken cancellationToken = default) =>
-        WithInnerAsync(inner => inner.HasActiveRoleAsync(userId, roleName, cancellationToken));
+    public async Task<bool> HasActiveRoleAsync(Guid userId, string roleName, CancellationToken cancellationToken = default) =>
+        (await ActiveRowsAsync(cancellationToken)).Any(row =>
+            row.UserId == userId && string.Equals(row.RoleName, roleName, StringComparison.Ordinal));
 
-    public Task<bool> HasAnyActiveAssignmentAsync(Guid userId, CancellationToken cancellationToken = default) =>
-        WithInnerAsync(inner => inner.HasAnyActiveAssignmentAsync(userId, cancellationToken));
+    public async Task<bool> HasAnyActiveAssignmentAsync(Guid userId, CancellationToken cancellationToken = default) =>
+        (await ActiveRowsAsync(cancellationToken)).Any(row => row.UserId == userId);
 
-    public Task<IReadOnlyList<Guid>> GetUserIdsWithActiveAssignmentsAsync(CancellationToken cancellationToken = default) =>
-        WithInnerAsync(inner => inner.GetUserIdsWithActiveAssignmentsAsync(cancellationToken));
+    public async Task<IReadOnlyList<Guid>> GetUserIdsWithActiveAssignmentsAsync(CancellationToken cancellationToken = default) =>
+        (await ActiveRowsAsync(cancellationToken)).Select(row => row.UserId).Distinct().ToList();
 
     public Task<int> RevokeAllActiveAsync(Guid userId, CancellationToken ct = default) =>
         MutateAsync(inner => inner.RevokeAllActiveAsync(userId, ct), static count => count > 0);
 
-    public Task<IReadOnlyList<Guid>> GetActiveUserIdsInRoleAsync(string roleName, CancellationToken ct = default) =>
-        WithInnerAsync(inner => inner.GetActiveUserIdsInRoleAsync(roleName, ct));
+    public async Task<IReadOnlyList<Guid>> GetActiveUserIdsInRoleAsync(string roleName, CancellationToken ct = default) =>
+        (await ActiveRowsAsync(ct))
+            .Where(row => string.Equals(row.RoleName, roleName, StringComparison.Ordinal))
+            .Select(row => row.UserId)
+            .Distinct()
+            .ToList();
 
     public async Task<IReadOnlyList<RoleAssignmentSnapshot>> GetActiveForUserAsync(Guid userId, CancellationToken ct = default)
     {
@@ -123,6 +130,14 @@ internal sealed class CachingRoleAssignmentService
             .OrderBy(row => row.RoleName, StringComparer.Ordinal)
             .Select(row => new RoleAssignmentSnapshot(row.RoleName, row.ValidTo))
             .ToList();
+    }
+
+    /// <summary>Rows carry canonical role names, so callers pass a role's current name.</summary>
+    private async Task<IEnumerable<RoleAssignmentRow>> ActiveRowsAsync(CancellationToken ct)
+    {
+        await EnsureWarmedAsync(ct);
+        var now = _clock.GetCurrentInstant();
+        return AsReadOnlyDictionary.Values.Where(row => row.IsActiveAt(now));
     }
 
     private async Task<TResult> MutateAsync<TResult>(

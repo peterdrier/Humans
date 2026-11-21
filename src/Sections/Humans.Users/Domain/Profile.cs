@@ -80,8 +80,6 @@ internal sealed class Profile
 
     public bool HasCustomProfilePicture => ProfilePictureContentType is not null;
 
-    public ICollection<ContactField> ContactFields { get; } = new List<ContactField>();
-
     /// <summary>When true, Burner CV entries are not required.</summary>
     public bool NoPriorBurnExperience { get; set; }
 

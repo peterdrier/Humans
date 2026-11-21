@@ -9,11 +9,10 @@
 
 ## Tickets
 
-Project: `src/Sections/Humans.Tickets` is split across **two projects
-plus a contracts leaf**: `src/Sections/Humans.Tickets` (orders, attendees,
+Project: `src/Sections/Humans.Tickets` spans these projects: `src/Sections/Humans.Tickets` (orders, attendees,
 transfers, sync orchestration, the admin surface — everything `internal
 sealed`), `src/Sections/Humans.Tickets.Contracts` (the leaf:
-`ITicketService`, `ITicketSync`, `ITicketDiscountCodes`,
+`ITicketService`, `ITicketDiscountCodes`,
 `ITicketVendorMirror`, `ITicketWrite`), and
 `src/Sections/Humans.TicketTailor` (the vendor adapter — the sole
 implementation of the vendor port; owns no tables, publishes nothing, and
@@ -26,8 +25,8 @@ references `Humans.Tickets` directly to name the port).
 `EventParticipations` (`ticket_event_participations`, Users decomposition commit 13).
 
 The section's public surface is small: `ITicketService` (no `SurfaceBudget` pinned; adds
-`GetParticipationsAsync` / `GetAllParticipationsAsync`), `ITicketSync` (2), `ITicketDiscountCodes` (1),
-`ITicketVendorMirror` (1), `ITicketWrite` (1: `RecordParticipationAsync`, Gate's admit). `TicketDashboardDtos` (24 public types), the
+`GetParticipationsAsync` / `GetAllParticipationsAsync`), `ITicketDiscountCodes`,
+`ITicketVendorMirror`, `ITicketWrite` (`RecordParticipationAsync`, Gate's admit). `TicketDashboardDtos`, the
 transfer wizard (including the `ITicketTransferQueue` badge count), and the
 admin decision DTOs are `internal`. Campaigns' grant waves call `ITicketDiscountCodes.GenerateAsync`
 (in the application's own `TicketDiscountCodeRequest`/`TicketDiscountKind`
@@ -40,13 +39,15 @@ its own `TicketVendorHealthCheck` included. `TicketStubViewComponent` lives in t
 section's own `Contracts/` folder — its model names Tickets DTOs, so it
 can't live in `Humans.UI`.
 
+Sync orchestration and its result (`ITicketSyncService`, `TicketSyncResult`) are internal.
+
 The read path is split: `TicketQueryService` is the **inner** read service,
 registered keyed under `CachingTicketQueryService.InnerServiceKey`
 (`"ticket-query-inner"`), and is wrapped by the Singleton
 `CachingTicketQueryService` decorator (`Services/Stores/`).
 The decorator is the registered
 `ITicketManagement`, the budgeted cross-section `ITicketService`, and every
-interface whose writes touch cached rows: `ITicketSync` / `ITicketSyncService`,
+interface whose writes touch cached rows: `ITicketSyncService`,
 `ITicketTransferService` / `ITicketTransferQueue`, `IAttendeeContactImportService`,
 and the section's `IUserDataContributor` and `IUserMerge`. Each write delegates to
 its keyed inner (all keyed under the same `InnerServiceKey`) and evicts in a
@@ -59,12 +60,13 @@ freshness deadline embedded in the cached value).
 
 ### TicketQueryService (Scoped, keyed `"ticket-query-inner"` — inner of CachingTicketQueryService)
 
-Repositories: `ITicketRepository`, `ITicketTransferRepository`.
+Repositories: `ITicketRepository`, `ITicketTransferRepository`, `IEventParticipationRepository`.
 
 | Table | R/W |
 |-------|-----|
 | TicketOrders | R/W (W: GDPR Art. 17 erasure tombstones `BuyerName`/`BuyerEmail` and stamps `PiiErasedAt`, which sync then never clears) |
 | TicketAttendees | R/W (W: GDPR Art. 17 erasure tombstones `AttendeeName`/`AttendeeEmail` and stamps `PiiErasedAt`, which sync then never clears) |
+| EventParticipations (`ticket_event_participations`) | R (merge-aware member history and all participation snapshots; uncached) |
 | TicketSyncStates | R |
 | TicketTransferRequests | R/W (R: approved transfers joined into the orders projection — void attendees carry recipient/decided-at; W: GDPR erasure scrubs receiver name/email + free-text reason/notes, via `ITicketTransferRepository.ErasePiiForUserAsync`) |
 
@@ -229,10 +231,11 @@ Repository: `IEventParticipationRepository` (Singleton, `IDbContextFactory<Ticke
 
 Implements the internal `IEventParticipationManagement` (and so `ITicketWrite`),
 `IUserDataContributor` (slice `EventParticipations`, retained on erasure) and
-`IUserMerge`. `TicketQueryService` forwards `ITicketService.GetParticipationsAsync` /
-`GetAllParticipationsAsync` to it. Cross-section calls via `IUserService`
-(`GetUserInfoAsync` to forward-resolve a merged id) and `IAuditLogService`
-(`ParticipationBackfilled`). No cache.
+`IUserMerge`. Participation reads belong to `TicketQueryService` through the same repository;
+its `ITicketService.GetParticipationsAsync` resolves merged ids through `IUserService`,
+and both participation read methods remain uncached through the decorator.
+The export contributor reads through `ITicketService`; writes and retention policy stay here.
+Audit calls use `IAuditLogService` (`ParticipationBackfilled`). No cache.
 
 ### UserParticipationBackfillService (Scoped)
 
@@ -243,7 +246,7 @@ No repository. Parses the `/Tickets/Participation/Backfill` CSV and calls
 ### OnsiteRosterService (Scoped)
 
 No repository. "Who's onsite" roster orchestrator. Pure read
-orchestration over `IEventParticipationManagement` (this year's onsite
+orchestration over `ITicketService` (this year's onsite
 participations), `IUserService`, `ICampService`, `ITeamService`,
 `IRoleAssignmentService` (the controller resolves the active year via
 `ISettingsService`). Implements
@@ -271,11 +274,16 @@ section's public service surface.
 ### TicketVendorGateway (Scoped)
 
 No repository. Thin design-rules-compliant facade over `ITicketVendorService` (the
-vendor port, `src/Sections/Humans.Tickets/Contracts/`) — same
-shape as `GoogleTranslationService`. Implements `ITicketDiscountCodes` +
-`ITicketVendorMirror` (`Humans.Tickets.Contracts`) so cross-section callers
+vendor port, `src/Sections/Humans.Tickets/Contracts/`). Implements `ITicketDiscountCodes` (`Humans.Tickets.Contracts`) so cross-section callers
 (`CampaignService`'s discount-code grant waves) depend on the section's own
-leaf rather than the raw vendor port. `GateVendorCheckInJob` (`Humans.Gate`)
-is the other consumer, via `ITicketVendorMirror`. No DB access, no cache.
+leaf rather than the raw vendor port. Gate's `ITicketVendorMirror` resolves directly to the
+existing `CachingTicketVendorService`; check-in writes keep its keyed inner vendor path
+without passing through the discount mapper. No DB access, no cache in this gateway.
 
 ---
+### TicketCheckoutRepository (Singleton)
+
+`ITicketCheckoutRepository` over `IDbContextFactory<TicketsDbContext>`: `ticket_sales_events`,
+`ticket_checkout_orders`, `ticket_checkout_refunds`, `ticket_checkout_order_events` (append-only), `ticket_checkout_tickets`, `ticket_resale_offers`. Updates load the
+tracked row and copy values in, because the jsonb owned lists cannot be attached detached. `TryClaimPaidAsync` is a conditional `ExecuteUpdate`, and `AddTicketsAsync` returns false on the (`OrderId`, `LineIndex`) unique violation, so concurrent fulfilment issues once. Only `TicketCheckoutService` calls it; Delivery and the donor list read through `ITicketCheckoutService`. Holder lookups load the
+whole orders table and filter the jsonb lines in memory.

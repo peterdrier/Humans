@@ -1,3 +1,4 @@
+using Humans.Containers.Contracts;
 using AwesomeAssertions;
 using Humans.CityPlanning.Contracts;
 using Humans.AuditLog.Contracts;
@@ -32,7 +33,7 @@ public sealed class ContainerPlacementPhaseTests : CityPlanningTestBase
             Substitute.For<ITeamService>(),
             Substitute.For<IUserService>(),
             Substitute.For<IAuditLogService>(),
-            ActiveEvent(2026));
+            ActiveEvent(2026), Substitute.For<IContainerService>());
     }
 
     [HumansFact]

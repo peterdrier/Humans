@@ -20,7 +20,7 @@ internal sealed class UsersEmailPreviews(UsersEmails emails, IOptions<EmailSetti
     {
         ArgumentNullException.ThrowIfNull(persona);
         var (culture, name, email) = (persona.Culture, persona.Name, persona.Email);
-        var verificationUrl = $"{_settings.BaseUrl}/Profile/VerifyEmail?token=sample-token";
+        var verificationUrl = $"{_settings.BaseUrl}/Users/Emails/Confirm?token=sample-token";
 
         return
         [
@@ -33,6 +33,9 @@ internal sealed class UsersEmailPreviews(UsersEmails emails, IOptions<EmailSetti
                 emails.EmailVerification(Guid.Empty, "newemail@example.com", name, verificationUrl, isConflict: false, culture)),
             new EmailPreviewSample("email-verification-merge", "Email Verification (Merge)",
                 emails.EmailVerification(Guid.Empty, "duplicate@example.com", name, verificationUrl, isConflict: true, culture)),
+
+            new EmailPreviewSample("accounts-merged", "Accounts Merged",
+                emails.AccountsMerged(Guid.Empty, email, name, culture)),
 
             new EmailPreviewSample("deletion-requested", "Account Deletion Requested",
                 emails.AccountDeletionRequested(Guid.Empty, email, name, SampleDeletionDate, culture)),

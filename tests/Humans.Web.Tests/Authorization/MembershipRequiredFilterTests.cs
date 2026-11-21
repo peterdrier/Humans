@@ -172,6 +172,9 @@ public class MembershipRequiredFilterTests
             (typeof(ProfileEmailsController), nameof(ProfileEmailsController.Link)),
             (typeof(ProfileEmailsController), nameof(ProfileEmailsController.Unlink)),
             (typeof(ProfileEmailsController), nameof(ProfileEmailsController.UnlinkLinkedAccount)),
+            (typeof(UserEmailConfirmationController), nameof(UserEmailConfirmationController.Confirm)),
+            (typeof(UserEmailConfirmationController), nameof(UserEmailConfirmationController.ConfirmAddress)),
+            (typeof(UserEmailConfirmationController), nameof(UserEmailConfirmationController.Merge)),
         })
         {
             foreach (var method in type.GetMethods().Where(m => string.Equals(m.Name, action, StringComparison.Ordinal)))
@@ -195,7 +198,7 @@ public class MembershipRequiredFilterTests
         // through the onboarding form.
         foreach (var type in new[]
         {
-            typeof(ProfileController), typeof(ProfileEmailsController),
+            typeof(ProfileController), typeof(ProfileEmailsController), typeof(UserEmailConfirmationController),
             OnboardingWidgetControllerType, UserControllerType, MemberOutboxControllerType,
             MemberDataControllerType, MyDataControllerType, CantinaProfileControllerType,
             CommunicationPreferencesControllerType,
@@ -227,7 +230,6 @@ public class MembershipRequiredFilterTests
             ("Account", nameof(AccountController.Logout)),
             ("Language", nameof(LanguageController.SetLanguage)),
             ("ProfileView", nameof(ProfileViewController.PublicPopover)),
-            ("ProfileEmails", nameof(ProfileEmailsController.VerifyEmail)),
         })
         {
             var (result, nextCalled) = await RunAsync(
@@ -297,7 +299,6 @@ public class MembershipRequiredFilterTests
     }
 
     [HumansTheory]
-    [InlineData("ProfileEmails", nameof(ProfileEmailsController.VerifyEmail))]
     [InlineData("ProfileView", nameof(ProfileViewController.Picture))]
     [InlineData("ProfileView", nameof(ProfileViewController.PublicPopover))]
     public async Task Public_profile_actions_remain_reachable_for_suspended_users(string controller, string action)

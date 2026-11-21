@@ -4,18 +4,11 @@ using Humans.Onboarding.Contracts;
 namespace Humans.Consent.Contracts;
 
 /// <summary>
-/// <see cref="RecordConsentCheckAsync"/> writes its own audit row; the other writes leave audit and logging to the
-/// caller, which owns the workflow. The rejection state is a separate write, <c>IUserWrite.SetRejectedAsync</c>.
+/// These writes leave audit and logging to the caller, which owns the workflow.
+/// The rejection state is a separate write, <c>IUserWrite.SetRejectedAsync</c>.
 /// </summary>
 public interface IConsentWrite : IApplicationService
 {
-    /// <summary>
-    /// Cleared or Flagged only; sets <see cref="ConsentReviewInfo.IsApproved"/> = cleared. <c>NotFound</c> without a
-    /// profile; <c>AlreadyRejected</c> when clearing a rejected member.
-    /// </summary>
-    Task<OnboardingResult> RecordConsentCheckAsync(
-        Guid userId, ConsentCheckStatus status, Guid? reviewerId, string? notes, CancellationToken ct = default);
-
     /// <summary><c>NotFound</c> without a profile.</summary>
     Task<OnboardingResult> SetConsentCheckPendingAsync(Guid userId, CancellationToken ct = default);
 

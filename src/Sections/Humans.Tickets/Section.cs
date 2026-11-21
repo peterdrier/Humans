@@ -17,6 +17,8 @@ using Humans.Tickets.Health;
 using Humans.Tickets.Jobs;
 using Humans.Tickets.Models;
 using Humans.Tickets.Services;
+using Humans.Tickets.Services.Checkout;
+using Humans.Tickets.Services.Delivery;
 using Humans.Tickets.Services.Stores;
 using Humans.Tickets.ViewComponents;
 using Humans.Users.Contracts;
@@ -85,7 +87,6 @@ public sealed class Section :
         services.AddSingleton<ITicketManagement>(sp => sp.GetRequiredService<CachingTicketQueryService>());
         services.AddSingleton<ITicketService>(sp => sp.GetRequiredService<CachingTicketQueryService>());
         services.AddSingleton<ITicketSyncService>(sp => sp.GetRequiredService<CachingTicketQueryService>());
-        services.AddSingleton<ITicketSync>(sp => sp.GetRequiredService<CachingTicketQueryService>());
         services.AddSingleton<ITicketTransferService>(sp => sp.GetRequiredService<CachingTicketQueryService>());
         services.AddSingleton<ITicketTransferQueue>(sp => sp.GetRequiredService<CachingTicketQueryService>());
         services.AddSingleton<IAttendeeContactImportService>(sp => sp.GetRequiredService<CachingTicketQueryService>());
@@ -108,7 +109,7 @@ public sealed class Section :
 
         services.AddScoped<TicketVendorGateway>();
         services.AddScoped<ITicketDiscountCodes>(sp => sp.GetRequiredService<TicketVendorGateway>());
-        services.AddScoped<ITicketVendorMirror>(sp => sp.GetRequiredService<TicketVendorGateway>());
+        services.AddScoped<ITicketVendorMirror>(sp => sp.GetRequiredService<CachingTicketVendorService>());
 
         services.AddScoped<TicketDashboardPageBuilder>();
 
@@ -134,6 +135,20 @@ public sealed class Section :
         });
 
         services.AddScoped<TicketSyncJob>();
+
+        // The checkout lane: each backend is its own adapter section registering an ITicketCheckoutBackend.
+        services.AddSingleton<ITicketCheckoutRepository, TicketCheckoutRepository>();
+        services.AddScoped<TicketCheckoutService>();
+        services.AddScoped<ITicketCheckoutService>(sp => sp.GetRequiredService<TicketCheckoutService>());
+        services.AddScoped<ITicketCheckoutEvents>(sp => sp.GetRequiredService<TicketCheckoutService>());
+        services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<TicketCheckoutService>());
+        services.AddScoped<IUserMerge>(sp => sp.GetRequiredService<TicketCheckoutService>());
+        services.AddScoped<ITicketGateLookup>(sp => sp.GetRequiredService<TicketCheckoutService>());
+        services.AddSingleton<TicketCodeImages>();
+        services.AddScoped<TicketDeliveryService>();
+        services.AddScoped<ITicketDelivery, TicketDeliveryHandOff>();
+        services.AddScoped<TicketCheckoutReconcileJob>();
+        services.AddScoped<TicketReconJob>();
     }
 
     string IIssueQueueOwner.QueueKey => "Tickets";
@@ -168,7 +183,8 @@ public sealed class Section :
             new("Transfer requests", "TicketTransferAdmin",  "Index", null, null, "fa-solid fa-right-left",  TicketsPolicies.Read, Weight: 10,
                  PillCount: PillCounts.TransferQueueAsync),
             new("Attendee contacts", "TicketsContactsAdmin", "Index", null, null, "fa-solid fa-address-book", TicketsPolicies.Read, Weight: 20),
-            new("Onsite roster",     "TicketsOnsiteAdmin",   "Index", null, null, "fa-solid fa-clipboard-list", PolicyNames.ScannerAccess, Weight: 30)
+            new("Onsite roster",     "TicketsOnsiteAdmin",   "Index", null, null, "fa-solid fa-clipboard-list", PolicyNames.ScannerAccess, Weight: 30),
+            new("Sales",             "TicketsSalesAdmin",    "Index", null, null, "fa-solid fa-cash-register", TicketsPolicies.Read, Weight: 40)
         ])
     ];
 
@@ -203,6 +219,13 @@ public sealed class Section :
 
         yield return new RecurringJobDescriptor(
             "tickets-vendor-sync", typeof(TicketSyncJob), $"*/{syncIntervalMinutes} * * * *");
+
+        // Catches webhooks that never arrived; the webhook is only a nudge.
+        yield return new RecurringJobDescriptor(
+            "tickets-checkout-reconcile", typeof(TicketCheckoutReconcileJob), "*/5 * * * *");
+
+        // The daily financial check of every backend against Humans' orders; reads only.
+        yield return new RecurringJobDescriptor("tickets-checkout-recon", typeof(TicketReconJob), "30 4 * * *");
     }
 
     IEnumerable<ChromeComponent> ISectionMemberDashboard.Components() =>
@@ -250,6 +273,8 @@ public sealed class Section :
         new(UserPartSlots.Profile, typeof(OnsiteChipViewComponent), Weight: 10),
         new(UserPartSlots.ProfileSidebar, typeof(TicketHoldingsViewComponent)),
         new(UserPartSlots.AdminDetailSidebar, typeof(TicketHoldingsViewComponent)),
+        new(UserPartSlots.ProfileSidebar, typeof(IssuedTicketsViewComponent)),
+        new(UserPartSlots.AdminDetailSidebar, typeof(IssuedTicketsViewComponent)),
     ];
 }
 

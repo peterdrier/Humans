@@ -1,3 +1,4 @@
+using Humans.Users.Domain;
 using System.Transactions;
 using Humans.Users.Data;
 using NSubstitute.ExceptionExtensions;
@@ -93,13 +94,13 @@ public class AccountProvisioningServiceTests
         public Task<IReadOnlyDictionary<Guid, IReadOnlyList<(string Provider, string ProviderKey)>>>
             GetExternalLoginsByUserIdsAsync(IReadOnlyCollection<Guid> userIds, CancellationToken ct = default) =>
             throw new NotSupportedException();
-        public Task<IReadOnlyList<ContactField>> GetByProfileIdReadOnlyAsync(
-            Guid profileId, CancellationToken ct = default) =>
+        public Task<IReadOnlyList<ContactField>> GetContactFieldsByUserIdReadOnlyAsync(
+            Guid userId, CancellationToken ct = default) =>
             throw new NotSupportedException();
         public Task<IReadOnlyList<ContactField>> GetAllContactFieldsAsync(CancellationToken ct = default) =>
             throw new NotSupportedException();
-        public Task<IReadOnlyList<ContactField>> GetByProfileIdForMutationAsync(
-            Guid profileId, CancellationToken ct = default) =>
+        public Task<IReadOnlyList<ContactField>> GetContactFieldsByUserIdForMutationAsync(
+            Guid userId, CancellationToken ct = default) =>
             throw new NotSupportedException();
         public Task BatchSaveAsync(
             IReadOnlyList<ContactField> toAdd,
@@ -115,12 +116,6 @@ public class AccountProvisioningServiceTests
         public Task<Profile?> GetByUserIdReadOnlyAsync(Guid userId, CancellationToken ct = default) =>
             throw new NotSupportedException();
         public Task<IReadOnlyList<Profile>> GetAllProfilesAsync(CancellationToken ct = default) =>
-            throw new NotSupportedException();
-        public Task<Guid?> GetOwnerUserIdAsync(Guid profileId, CancellationToken ct = default) =>
-            throw new NotSupportedException();
-        public Task<IReadOnlyList<ProfileChildRowsWithoutUser>> GetProfileChildRowsWithoutUserAsync(CancellationToken ct = default) =>
-            throw new NotSupportedException();
-        public Task<int> FillProfileChildUserIdsAsync(CancellationToken ct = default) =>
             throw new NotSupportedException();
         public Task<(string ContentType, string? StorageKey)?> GetProfilePictureLocationAsync(
             Guid profileId, CancellationToken ct = default) =>
@@ -143,7 +138,8 @@ public class AccountProvisioningServiceTests
             IReadOnlyCollection<Guid> userIds, CancellationToken ct = default) =>
             throw new NotSupportedException();
         public Task ReassignSubAggregatesToUserAsync(
-            Guid sourceUserId, Guid targetUserId, Instant updatedAt, CancellationToken ct = default) =>
+            Guid sourceUserId, Guid targetUserId, Instant updatedAt, Profile? keptProfile, UserNames? keptNames,
+            CancellationToken ct = default) =>
             throw new NotSupportedException();
         public Task<bool> SetSuspensionAsync(
             Guid userId, bool suspended, bool adminSuspension, CancellationToken ct = default) =>
@@ -189,7 +185,6 @@ public class AccountProvisioningServiceTests
             string prefix, string suffix, CancellationToken ct = default) =>
             throw new NotSupportedException();
         public Task ApplyUserEmailReconcilePlanAsync(
-            UserEmail? displacedRowToDelete,
             UserEmail? rowToDelete,
             UserEmail? rowToUpdate,
             UserEmail? rowToInsert,

@@ -202,33 +202,38 @@ builder.Services.AddHumansAuthorizationPolicies();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddTransient<Microsoft.AspNetCore.Authentication.IClaimsTransformation, RoleAssignmentClaimsTransformation>();
 
-// Skip Hangfire entirely in Testing: AddHangfire registers IBackgroundJobClient with a factory reading
-// JobStorage.Current at resolution, so without storage every DI graph touching it throws.
-// HumansWebApplicationFactory binds a substitute instead.
-if (!builder.Environment.IsEnvironment("Testing"))
+// Storage is this host's own DI singleton, so Hangfire's client, recurring-job manager, server and dashboard never
+// read the per-process JobStorage.Current that parallel test hosts overwrite. (The health-check package still does.)
+builder.Services.AddSingleton<JobStorage>(sp =>
 {
-    builder.Services.AddHangfire((sp, config) =>
+    // DistributedLockTimeout is NOT an acquisition wait: it is the age after which a
+    // held lock counts as abandoned and another worker may take it. At 5 s any drain
+    // longer than that lost its lock mid-run and the next minute's run re-pushed the same
+    // outbox events to Holded in parallel. 30 min exceeds the longest job (every outbox
+    // drain is bounded by [DisableConcurrentExecution(300)]); a crashed worker's lock
+    // frees after that. Library default is 10 min.
+    var options = new PostgreSqlStorageOptions
     {
-        config.SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
-            .UseSimpleAssemblyNameTypeSerializer()
-            .UseRecommendedSerializerSettings();
+        DistributedLockTimeout = TimeSpan.FromMinutes(30),
+        // No database means no app: fail at once so LogStartupFailure names it, instead of the library's
+        // default backoff stalling startup and every storage call after it.
+        StartupConnectionMaxRetries = 0,
+    };
+    var connectionString = sp.GetRequiredService<IConfiguration>().GetConnectionString("DefaultConnection")!;
+    return new PostgreSqlStorage(new Hangfire.PostgreSql.Factories.NpgsqlConnectionFactory(connectionString, options), options);
+});
 
-        config.UsePostgreSqlStorage(options =>
-            options.UseNpgsqlConnection(
-                sp.GetRequiredService<IConfiguration>()
-                    .GetConnectionString("DefaultConnection")!),
-            // DistributedLockTimeout is NOT an acquisition wait: it is the age after which a
-            // held lock counts as abandoned and another worker may take it. At 5 s any drain
-            // longer than that lost its lock mid-run and the next minute's run re-pushed the same
-            // outbox events to Holded in parallel. 30 min exceeds the longest job (every outbox
-            // drain is bounded by [DisableConcurrentExecution(300)]); a crashed worker's lock
-            // frees after that. Library default is 10 min.
-            new PostgreSqlStorageOptions
-            {
-                DistributedLockTimeout = TimeSpan.FromMinutes(30)
-            });
-    });
+builder.Services.AddHangfire((sp, config) => config
+    .SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
+    .UseSimpleAssemblyNameTypeSerializer()
+    .UseRecommendedSerializerSettings()
+    .UseStorage(sp.GetRequiredService<JobStorage>()));
 
+// Off for hosts that must not run jobs, such as test hosts, where a cron tick would mutate the database mid-assertion.
+var hangfireServerEnabled = builder.Configuration.GetSettingValue(
+    configRegistry, "Hangfire:ServerEnabled", "Hangfire", defaultValue: true);
+if (hangfireServerEnabled)
+{
     builder.Services.AddHangfireServer();
 }
 
@@ -274,12 +279,8 @@ foreach (var contributor in SectionDiscoveryExtensions.DiscoverImplementations<I
     contributor.AddHealthChecks(healthChecks, builder.Configuration);
 }
 
-// Hangfire health check reads JobStorage.Current; only register it when
-// the rest of the Hangfire stack is wired (i.e. outside Testing).
-if (!builder.Environment.IsEnvironment("Testing"))
-{
-    healthChecks.AddHangfire(options => options.MinimumAvailableServers = 1, name: "hangfire");
-}
+healthChecks.AddHangfire(
+    options => options.MinimumAvailableServers = hangfireServerEnabled ? 1 : null, name: "hangfire");
 
 builder.Services.AddHumansInfrastructure(builder.Configuration, builder.Environment, configRegistry);
 
@@ -787,20 +788,6 @@ app.MapGet("/api/version", () =>
     return Results.Ok(new { version, commit, informationalVersion });
 }).AllowAnonymous();
 
-// Admin and Board in prod, read-only for Board. Skipped in Testing — JobStorage.Current isn't set until after migrations.
-if (!app.Environment.IsEnvironment("Testing"))
-{
-    app.MapHangfireDashboard("/hangfire", new DashboardOptions
-    {
-        Authorization = app.Environment.IsDevelopment()
-            ? []
-            : [new Humans.Web.HangfireAuthorizationFilter()],
-        IsReadOnlyFunc = app.Environment.IsDevelopment()
-            ? _ => false
-            : context => !Humans.Base.Authorization.RoleChecks.IsAdmin(context.GetHttpContext().User)
-    });
-}
-
 app.MapControllerRoute(
     name: "default",
     pattern: "{controller=Home}/{action=Index}/{id?}");
@@ -821,17 +808,22 @@ app.MapFallback("{*path}", () => Results.NotFound()).AllowAnonymous();
 
 // DB migrations run via DatabaseMigrationHostedService during StartAsync, before Hangfire takes locks.
 
-// Covers the Hangfire block too: a preview env without its database fails here first. Each recurring-job
-// registration then logs a loud but incidental WARNING; the fatal cause is whichever of this block or
-// DatabaseMigrationHostedService.StartingAsync throws first.
+// Covers the Hangfire block too: mapping the dashboard opens the job storage, so a preview env without its
+// database fails here first, with the FATAL line below naming it.
 try
 {
-    if (!app.Environment.IsEnvironment("Testing"))
+    // Admin and Board in prod, read-only for Board.
+    app.MapHangfireDashboard("/hangfire", new DashboardOptions
     {
-        // Force IGlobalConfiguration resolution so JobStorage.Current is set before RecurringJob.AddOrUpdate uses it.
-        app.Services.GetRequiredService<IGlobalConfiguration>();
-        app.UseHumansRecurringJobs();
-    }
+        Authorization = app.Environment.IsDevelopment()
+            ? []
+            : [new Humans.Web.HangfireAuthorizationFilter()],
+        IsReadOnlyFunc = app.Environment.IsDevelopment()
+            ? _ => false
+            : context => !Humans.Base.Authorization.RoleChecks.IsAdmin(context.GetHttpContext().User)
+    });
+
+    app.UseHumansRecurringJobs();
 
     await app.RunAsync();
 }

@@ -132,7 +132,6 @@ jobs:
               # SystemDbContext + its factory live here (not under Migrations/**);
               # a DbSet added there must trigger the System checks.
               - 'src/Humans.Web/Data/**'
-              - 'src/Humans.Domain/**'
               # Shared leaf: enums here are EF-mapped by section configurations
               # (e.g. Teams maps SystemTeamType with HasConversion<string> and
               # seeds rows via HasData keyed on the member names), so a rename
@@ -177,13 +176,13 @@ jobs:
           done
           echo "Known contexts:$pairs"
           # Changed file -> owning project dir -> pair. A .Contracts leaf maps to
-          # its owning section; the shared leaves (Humans.Domain, Humans.Base)
-          # and this workflow can affect any context -> all pairs.
+          # its owning section; the shared leaf (Humans.Base) and this
+          # workflow can affect any context -> all pairs.
           all=false
           declare -A hit
           for f in ${{ steps.filter.outputs.migrations_files }}; do
             case "$f" in
-              src/Humans.Domain/*|src/Humans.Base/*|Directory.Packages.props|.github/workflows/build.yml) all=true ;;
+              src/Humans.Base/*|Directory.Packages.props|.github/workflows/build.yml) all=true ;;
               src/Sections/*) proj="$(echo "$f" | cut -d/ -f3)"; hit["src/Sections/${proj%.Contracts}"]=1 ;;
               src/Humans.Web/*) hit[src/Humans.Web]=1 ;;
             esac
@@ -302,21 +301,6 @@ jobs:
                 --no-build --configuration Release
           done
 
-      - name: Verify model snapshots are in sync (post-apply)
-        env:
-          ConnectionStrings__DefaultConnection: "Host=${{ steps.pg.outputs.container }};Port=5432;Database=humans;Username=humans;Password=humans"
-        run: |
-          # Belt-and-suspenders: Layer 1 already runs this in the build job,
-          # but re-checking after a real apply guards against any state the
-          # apply step might have observed differently from a static check.
-          for pair in ${{ needs.detect-migration-changes.outputs.contexts }}; do
-            dotnet ef migrations has-pending-model-changes \
-              --context "${pair%%:*}" \
-              --project "${pair#*:}" \
-              --startup-project src/Humans.Web \
-              --no-build --configuration Release
-          done
-
       - name: Tear down ephemeral Postgres
         if: always() && steps.pg.outputs.container != ''
         run: |
@@ -351,7 +335,7 @@ jobs:
       # + TreatWarningsAsErrors surface every warning-or-higher rule as a build
       # error there, and the full three-pass format check spent ~200s per run
       # re-running the same analysis for no additional signal.
-      run: dotnet format whitespace Humans.slnx --verify-no-changes --no-restore --exclude src/Humans.Web/Migrations/
+      run: dotnet format whitespace Humans.slnx --verify-no-changes --no-restore
 
     - name: Forbid RS0030 suppressions in test code
       # The BannedApiAnalyzers rule RS0030 enforces "no bare [Fact] / [Theory]

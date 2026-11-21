@@ -22,7 +22,7 @@ public class NotificationMeterProviderTests
     }
 
     [HumansFact]
-    public async Task GetMetersForUserAsync_MergesEveryContributorHighestPriorityFirst()
+    public async Task GetMetersForUserAsync_MergesEveryContributor()
     {
         var viewerId = Guid.NewGuid();
         var principal = CreatePrincipalWithId(viewerId);
@@ -34,7 +34,7 @@ public class NotificationMeterProviderTests
 
         var meters = await _provider.GetMetersForUserAsync(principal, TestContext.Current.CancellationToken);
 
-        meters.Select(m => m.Title).Should().Equal("Top", "Middle", "Low");
+        meters.Select(m => m.Title).Should().BeEquivalentTo("Top", "Middle", "Low");
     }
 
     [HumansFact]

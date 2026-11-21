@@ -1,10 +1,24 @@
 using Humans.Base.Interfaces;
+using Humans.Base.Enums;
 using NodaTime;
 
 namespace Humans.Email.Services;
 
-internal interface IEmailOutboxManagement : IEmailOutboxService, IEmailOutboxRetention, IApplicationService
+internal interface IEmailOutboxManagement : IApplicationService
 {
+    /// <summary>
+    /// Newest first. <see cref="EmailOutboxMessageDto.HtmlBody"/> is null for mail that went to an address
+    /// the account has not confirmed.
+    /// </summary>
+    Task<IReadOnlyList<EmailOutboxMessageDto>> GetMessagesForUserAsync(
+        Guid userId, CancellationToken cancellationToken = default);
+
+    Task<int> GetMessageCountForUserAsync(
+        Guid userId, CancellationToken cancellationToken = default);
+
+    /// <summary>Deletes sent rows older than <c>Email:OutboxRetentionDays</c>. Returns rows deleted.</summary>
+    Task<int> PurgeExpiredAsync(CancellationToken cancellationToken = default);
+
     Task<EmailOutboxStats> GetOutboxStatsAsync(
         int recentMessageCount = 50, CancellationToken cancellationToken = default);
 
@@ -57,3 +71,17 @@ internal sealed record EmailOutboxStats(
     int FailedCount,
     bool IsPaused,
     IReadOnlyList<EmailOutboxMessageDto> RecentMessages);
+
+internal sealed record EmailOutboxMessageDto(
+    Guid Id,
+    string RecipientEmail,
+    string? RecipientName,
+    string Subject,
+    string? HtmlBody,
+    string TemplateName,
+    Guid? UserId,
+    EmailOutboxStatus Status,
+    Instant CreatedAt,
+    Instant? SentAt,
+    int RetryCount,
+    string? LastError);

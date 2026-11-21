@@ -478,19 +478,6 @@ internal sealed class TeamRepository(IDbContextFactory<TeamsDbContext> factory) 
                 && d.IsManagement, ct);
     }
 
-    public async Task<IReadOnlyDictionary<Guid, string>> GetPublicManagementRoleNamesByTeamIdsAsync(
-        IReadOnlyCollection<Guid> teamIds, CancellationToken ct = default)
-    {
-        if (teamIds.Count == 0)
-            return new Dictionary<Guid, string>();
-
-        await using var db = await factory.CreateDbContextAsync(ct);
-        return await db.Set<TeamRoleDefinition>()
-            .AsNoTracking()
-            .Where(d => teamIds.Contains(d.TeamId) && d.IsManagement && d.IsPublic)
-            .ToDictionaryAsync(d => d.TeamId, d => d.Name, ct);
-    }
-
     public async Task AddRoleDefinitionAsync(TeamRoleDefinition definition, CancellationToken ct = default)
     {
         await using var db = await factory.CreateDbContextAsync(ct);

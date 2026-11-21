@@ -1,0 +1,43 @@
+@model MergeAccountCardViewModel
+@{
+    var radioId = "keep-" + Model.Summary.UserId.ToString("N");
+}
+
+<div class="card h-100">
+    <div class="card-header">
+        <i class="fa-solid @(Model.IsSignedIn ? "fa-user-check" : "fa-user") me-1"></i>
+        @Localizer[Model.IsSignedIn ? "Users_MergeAccounts_SignedInCard" : "Users_MergeAccounts_OtherCard"]
+    </div>
+    <div class="card-body">
+        <partial name="_HumanPopover" model="Model.Summary" />
+
+        <dl class="row small mt-3 mb-0">
+            <dt class="col-5 text-muted fw-normal">@Localizer["Users_MergeAccounts_SignsInWith"]</dt>
+            <dd class="col-7">
+                @foreach (var signIn in Model.SignIns)
+                {
+                    <div class="text-break">@signIn</div>
+                }
+            </dd>
+            <dt class="col-5 text-muted fw-normal">@Localizer["Users_MergeAccounts_Roles"]</dt>
+            <dd class="col-7">@(Model.Roles.Count == 0 ? "–" : string.Join(", ", Model.Roles))</dd>
+            <dt class="col-5 text-muted fw-normal">@Localizer["Users_MergeAccounts_Shifts"]</dt>
+            <dd class="col-7">@Localizer["Users_MergeAccounts_ShiftsValue", Model.ShiftsAhead, Model.ShiftsWorked]</dd>
+            <dt class="col-5 text-muted fw-normal">@Localizer["Users_MergeAccounts_Tickets"]</dt>
+            <dd class="col-7">@Model.Tickets</dd>
+            <dt class="col-5 text-muted fw-normal">@Localizer["Users_MergeAccounts_Created"]</dt>
+            <dd class="col-7">@Model.Created.ToDate()</dd>
+            <dt class="col-5 text-muted fw-normal">@Localizer["Users_MergeAccounts_LastSignIn"]</dt>
+            <dd class="col-7 mb-0">@(Model.LastSignIn?.ToDate() ?? "–")</dd>
+        </dl>
+    </div>
+    @if (Model.MustChoose)
+    {
+        <div class="card-footer">
+            <div class="form-check mb-0">
+                <input class="form-check-input" type="radio" name="keepUserId" id="@radioId" value="@Model.Summary.UserId" required />
+                <label class="form-check-label fw-semibold" for="@radioId">@Localizer["Users_MergeAccounts_KeepThis"]</label>
+            </div>
+        </div>
+    }
+</div>

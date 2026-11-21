@@ -518,9 +518,6 @@ internal sealed class BudgetService(
             e.OccurredAt)).ToList();
     }
 
-    public async Task<HashSet<Guid>> GetEffectiveCoordinatorTeamIdsAsync(Guid userId, CancellationToken ct = default) =>
-        (await teamService.GetEffectiveBudgetCoordinatorTeamIdsAsync(userId, ct)).ToHashSet();
-
     public async Task<int> GetProjectedRemainingTicketsAsync(
         Guid budgetGroupId, CancellationToken ct = default)
     {

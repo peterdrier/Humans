@@ -115,7 +115,7 @@ public class ProfileControllerEditTests
         _profileEditorService.SaveProfileAsync(
                 Arg.Any<Guid>(), Arg.Any<ProfileSaveRequest>(),
                 Arg.Any<CancellationToken>(), Arg.Any<IReadOnlyList<ContactFieldEditDto>?>(), Arg.Any<IReadOnlyList<ProfileLanguageInfo>?>(), Arg.Any<IReadOnlyCollection<Guid>?>())
-            .Returns(new ProfileEditResult(true, _profileId));
+            .Returns(new ProfileEditResult(true));
         _userService.SaveProfileLanguagesAsync(
                 Arg.Any<Guid>(), Arg.Any<IReadOnlyList<ProfileLanguageInfo>>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(new UserProfileLanguagesSaveResult(true, _userId)));
@@ -264,7 +264,6 @@ public class ProfileControllerEditTests
         var legacy = new ContactField
         {
             Id = Guid.NewGuid(),
-            ProfileId = _profileId,
             FieldType = default,
             Value = "legacy@example.org",
             Visibility = ContactFieldVisibility.BoardOnly

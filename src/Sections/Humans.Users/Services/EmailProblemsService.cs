@@ -82,12 +82,11 @@ internal sealed class EmailProblemsService(
                 continue;
             if (!emailAddition.Added)
             {
-                // The user already has an unverified row for the address. Verify it instead; a conflict
-                // with another account becomes a merge request and the row stays listed until it resolves.
+                // The user already has an unverified row for the address. Verify it instead; an address
+                // another account has confirmed is refused, and the row stays listed until the two are merged.
                 var verification = await userEmailService.AdminMarkVerifiedAsync(
                     info.Id, emailAddition.EmailId, actorUserId, ct);
-                if (verification.NoPendingVerification || verification.MergeRequestCreated
-                    || verification.ErrorKey is not null)
+                if (verification.NoPendingVerification || verification.ErrorKey is not null)
                     continue;
             }
             await audit.LogAsync(
