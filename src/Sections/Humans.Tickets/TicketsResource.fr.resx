@@ -426,4 +426,13 @@
   <data name="Tickets_Buy_CancelAndRestart" xml:space="preserve">
     <value>Annuler et recommencer</value>
   </data>
+  <data name="Tickets_Buy_State_Processing" xml:space="preserve">
+    <value>Paiement en cours</value>
+  </data>
+  <data name="Tickets_Buy_ProcessingHelp" xml:space="preserve">
+    <value>Votre paiement est en cours. Les paiements bancaires peuvent prendre quelques jours ; votre billet reste réservé jusqu'à son arrivée et nous vous écrirons une fois payé.</value>
+  </data>
+  <data name="Tickets_Buy_PaymentProcessing" xml:space="preserve">
+    <value>Ce paiement est déjà en cours et ne peut plus être annulé.</value>
+  </data>
 </root>
