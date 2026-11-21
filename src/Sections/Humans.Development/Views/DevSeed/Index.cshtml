@@ -6,21 +6,24 @@
 <page-header title="Seed data" subtitle="Demo data for dev, preview and QA hosts. Never in production." />
 
 <h2 class="h5">Demo world</h2>
-<div class="d-flex flex-wrap gap-2 mb-2">
-    <form method="post" action="/dev/seed/demo" class="m-0">
-        @Html.AntiForgeryToken()
-        <button type="submit" class="btn btn-primary" disabled="@Model.IsRunning">
-            <i class="fa-solid fa-seedling me-1"></i>Build or top up demo world
-        </button>
-    </form>
-    <form method="post" action="/dev/seed/demo" class="m-0">
-        @Html.AntiForgeryToken()
-        <input type="hidden" name="reset" value="true" />
-        <button type="submit" class="btn btn-outline-danger" disabled="@Model.IsRunning">
-            <i class="fa-solid fa-rotate me-1"></i>Reset demo world
-        </button>
-    </form>
-</div>
+@if (!Model.IsRunning)
+{
+    <div class="d-flex flex-wrap gap-2 mb-2">
+        <form method="post" action="/dev/seed/demo" class="m-0">
+            @Html.AntiForgeryToken()
+            <button type="submit" class="btn btn-primary">
+                <i class="fa-solid fa-seedling me-1"></i>Build or top up demo world
+            </button>
+        </form>
+        <form method="post" action="/dev/seed/demo" class="m-0">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="reset" value="true" />
+            <button type="submit" class="btn btn-outline-danger">
+                <i class="fa-solid fa-rotate me-1"></i>Reset demo world
+            </button>
+        </form>
+    </div>
+}
 @if (Model.IsRunning || Model.Lines.Count > 0)
 {
     <div class="card mb-4">

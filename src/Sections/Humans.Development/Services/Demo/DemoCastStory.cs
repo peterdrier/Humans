@@ -67,7 +67,7 @@ internal sealed class DemoCastStory(
             await world.EnsureAsync(
                 $"{HumanKeyPrefix}{number:D3}",
                 async (id, _) => await userService.GetUserInfoAsync(id) is { IsTombstone: false },
-                (planned, token) => CreateAsync(planned, number, world.Generation, token),
+                (planned, token) => CreateAsync(planned, number, world, token),
                 ct);
         }
     }
@@ -89,7 +89,7 @@ internal sealed class DemoCastStory(
     /// queue has people in it, every 15th skips the consents, and every 25th stops before the profile, mid-onboarding.
     /// Each step skips what is already done, so a second call finishes a human a cut-off run left half-made.
     /// </summary>
-    private async Task<Guid> CreateAsync(Guid userId, int n, int generation, CancellationToken ct)
+    private async Task<Guid> CreateAsync(Guid userId, int n, IDemoWorld world, CancellationToken ct)
     {
         var place = Places[n % Places.Length];
         var firstName = place.FirstNames[n / Places.Length % place.FirstNames.Length];
@@ -108,7 +108,7 @@ internal sealed class DemoCastStory(
         }
 
         // @localhost: not a .local tombstone, and Email never sends to it.
-        var email = $"demo-{generation}-{n:D3}@localhost";
+        var email = $"demo-{world.Generation}-{n:D3}@localhost";
         var added = await userEmailService.AddVerifiedEmailAsync(userId, email, ct);
         if (added.ErrorKey is not null)
             throw new InvalidOperationException($"Could not add {email}: {added.ErrorKey}");
@@ -130,7 +130,7 @@ internal sealed class DemoCastStory(
             throw new InvalidOperationException($"Demo human {n}'s profile was refused.");
 
         if (n % 10 != 0)
-            await userWrite.MarkFakeAsync(userId, userId, FakeReason, ct);
+            await userWrite.MarkFakeAsync(userId, world.ActorUserId, FakeReason, ct);
 
         if (n % 15 != 0)
             await personaSeeder.EnsureActiveAsync(userId);

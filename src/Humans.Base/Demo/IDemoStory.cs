@@ -21,8 +21,9 @@ public interface IDemoStory
     Task TellAsync(IDemoWorld world, CancellationToken ct);
 
     /// <summary>
-    /// Ends what this story made in the current generation through actions the app already has; never deletes.
-    /// What cannot be ended is marked left behind.
+    /// Ends what this story made in the current generation through actions the app already has (cancel, withdraw,
+    /// deactivate, the non-production account purge); never through a delete verb added for the demo. What cannot
+    /// be ended is marked left behind. Runs after a top-up, so nothing this story began is still half-made.
     /// </summary>
     Task RetireAsync(IDemoWorld world, CancellationToken ct);
 }

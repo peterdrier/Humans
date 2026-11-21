@@ -35,7 +35,11 @@ internal sealed class DemoWorldRunner(
 
         if (reset)
         {
-            var retiring = new DemoWorld(generation, actorUserId, entries, repository, clock, report);
+            // A cut-off run can leave rows still Pending, which retire can't see; topping up first finishes them.
+            if (!await TellAllAsync(ordered, new DemoWorld(generation, actorUserId, entries, repository, clock, report), report, ct))
+                return report;
+
+            var retiring = new DemoWorld(generation, actorUserId, await repository.GetAllAsync(ct), repository, clock, report);
             foreach (var story in ordered.Reverse())
             {
                 if (!await RunStoryAsync(story, s => s.RetireAsync(retiring, ct), "retire", report))
@@ -47,12 +51,8 @@ internal sealed class DemoWorldRunner(
             entries = await repository.GetAllAsync(ct);
         }
 
-        var world = new DemoWorld(generation, actorUserId, entries, repository, clock, report);
-        foreach (var story in ordered)
-        {
-            if (!await RunStoryAsync(story, s => s.TellAsync(world, ct), "tell", report))
-                return report;
-        }
+        if (!await TellAllAsync(ordered, new DemoWorld(generation, actorUserId, entries, repository, clock, report), report, ct))
+            return report;
 
         report.Add($"Generation {generation} is up to date ({ordered.Count} stories).");
         return report;
@@ -84,6 +84,18 @@ internal sealed class DemoWorldRunner(
         }
 
         return ordered;
+    }
+
+    private async Task<bool> TellAllAsync(
+        IReadOnlyList<IDemoStory> ordered, DemoWorld world, List<string> report, CancellationToken ct)
+    {
+        foreach (var story in ordered)
+        {
+            if (!await RunStoryAsync(story, s => s.TellAsync(world, ct), "tell", report))
+                return false;
+        }
+
+        return true;
     }
 
     private async Task<bool> RunStoryAsync(
