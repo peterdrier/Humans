@@ -1,0 +1,85 @@
+@model Humans.Tickets.Controllers.ReportViewModel
+@{
+    ViewData["Title"] = "Sales report";
+    string Eur(long minor) => (minor / 100m).ToEuro();
+    var r = Model.Report;
+}
+
+@section Crumbs {
+    <a asp-controller="TicketsSalesAdmin" asp-action="Index">Sales</a>
+    <span>Report</span>
+}
+
+<page-header title="Sales report: @Model.EventName" />
+
+<p>
+    @r.TicketsLive live tickets of @Model.Capacity (@r.TicketsIssued issued, resales included) · @Eur(r.TicketRevenueMinor) tickets · @Eur(r.DonationsMinor) donations ·
+    @Eur(r.FeesMinor) fees · @Eur(r.RefundedMinor) refunded · @Eur(r.DisputedMinor) charged back
+    · <a asp-action="Refunds" asp-route-id="@Model.SalesEventId">refund list</a>
+    · <a asp-action="Resale" asp-route-id="@Model.SalesEventId">resale queue</a>
+</p>
+
+<h2 class="h5">By wave and class</h2>
+<table class="table table-sm">
+    <thead><tr><th>Priced at</th><th class="text-end">Tickets issued</th><th class="text-end">Amount</th></tr></thead>
+    <tbody>
+        @foreach (var row in r.ByPrice)
+        {
+            <tr><td>@row.Label</td><td class="text-end">@row.Count</td><td class="text-end">@Eur(row.AmountMinor)</td></tr>
+        }
+    </tbody>
+</table>
+
+<h2 class="h5">By day paid</h2>
+<table class="table table-sm">
+    <thead><tr><th>Day</th><th class="text-end">Tickets</th><th class="text-end">Tickets amount</th><th class="text-end">Donations</th><th class="text-end">Running tickets</th></tr></thead>
+    <tbody>
+        @{ var running = 0; }
+        @foreach (var row in r.ByDay)
+        {
+            running += row.Tickets;
+            <tr>
+                <td>@row.Day.ToInvariantDate()</td>
+                <td class="text-end">@row.Tickets</td>
+                <td class="text-end">@Eur(row.TicketsMinor)</td>
+                <td class="text-end">@Eur(row.DonationsMinor)</td>
+                <td class="text-end">@running</td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+<h2 class="h5">Donations by purpose</h2>
+<table class="table table-sm">
+    <thead><tr><th>Purpose</th><th class="text-end">Gifts</th><th class="text-end">Amount</th></tr></thead>
+    <tbody>
+        @foreach (var row in r.DonationsByPurpose)
+        {
+            <tr><td>@row.Purpose</td><td class="text-end">@row.Count</td><td class="text-end">@Eur(row.AmountMinor)</td></tr>
+        }
+    </tbody>
+</table>
+
+<h2 class="h5">Refunds asked</h2>
+<table class="table table-sm">
+    <thead><tr><th>State</th><th class="text-end">Refunds</th><th class="text-end">Amount</th></tr></thead>
+    <tbody>
+        @foreach (var row in r.RefundsByState)
+        {
+            <tr><td><a asp-action="Refunds" asp-route-id="@Model.SalesEventId" asp-route-state="@row.State">@row.State</a></td><td class="text-end">@row.Count</td><td class="text-end">@Eur(row.AmountMinor)</td></tr>
+        }
+    </tbody>
+</table>
+
+<h2 class="h5">Resale</h2>
+<table class="table table-sm">
+    <thead><tr><th>Offers</th><th class="text-end">Count</th><th class="text-end">Paid by holders</th></tr></thead>
+    <tbody>
+        @foreach (var row in r.ResaleByState)
+        {
+            <tr><td>@row.State</td><td class="text-end">@row.Count</td><td class="text-end">@Eur(row.OwedMinor)</td></tr>
+        }
+    </tbody>
+</table>
+
+<p class="text-muted">Check-ins are not reported yet: the gate does not record check-ins per event for these tickets.</p>

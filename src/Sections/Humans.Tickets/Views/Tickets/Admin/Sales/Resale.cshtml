@@ -1,0 +1,125 @@
+@using Humans.Tickets.Domain.Checkout
+@model Humans.Tickets.Controllers.ResaleViewModel
+@{
+    ViewData["Title"] = "Resale queue";
+    string Eur(long minor) => (minor / 100m).ToEuro();
+    var waiting = Model.Rows.Where(r => r.Offer.State is TicketResaleOfferState.Open or TicketResaleOfferState.Reserved).ToList();
+    var closed = Model.Rows.Except(waiting).ToList();
+}
+
+@section Crumbs {
+    <a asp-controller="TicketsSalesAdmin" asp-action="Index">Sales</a>
+    <span>Resale queue</span>
+}
+
+<page-header title="Resale queue: @Model.EventName" />
+
+<p>
+    @waiting.Count waiting · @Eur(waiting.Sum(r => r.Offer.RefundOwedMinor)) owed if they all sell · sales mode @Model.Mode.
+    @if (Model.ResaleOpen)
+    {
+        <span>Resale is open.</span>
+    }
+    else if (Model.Mode == TicketSalesMode.Closed)
+    {
+        <span class="text-warning">Sales are closed, so nothing in the queue sells.</span>
+    }
+    else
+    {
+        <span class="text-warning">Resale opens at @Model.OpensAtSold tickets sold; @Model.Sold so far, so the queue is not moving yet.</span>
+    }
+</p>
+<p class="text-muted">An invited buyer's offer sells only to them until the link lapses or is used, so it holds nobody back; its place is where it stands if the link lapses.</p>
+
+@if (waiting.Count == 0)
+{
+    <p class="text-muted">Nobody is waiting.</p>
+}
+else
+{
+    <table class="table table-sm">
+        <thead><tr><th>#</th><th>Holder</th><th>Ticket</th><th>Waiting since</th><th class="text-end">Owed</th><th>State</th><th>Invited buyer</th></tr></thead>
+        <tbody>
+            @foreach (var row in waiting)
+            {
+                var o = row.Offer;
+                <tr>
+                    <td>@row.Position</td>
+                    <td>@row.Ticket?.HolderName · <vc:human user-id="@o.HolderUserId" link="Admin" /></td>
+                    <td>
+                        @if (row.Ticket is { } t)
+                        {
+                            <a asp-action="Ticket" asp-route-orderId="@t.OrderId" asp-route-ticketId="@t.Id"><code>@t.Barcode</code></a>
+                        }
+                    </td>
+                    <td>@o.OfferedAt.ToDateTime()</td>
+                    <td class="text-end">@Eur(o.RefundOwedMinor)</td>
+                    <td>@(o.State == TicketResaleOfferState.Reserved ? "In a buyer's checkout" : "Waiting")</td>
+                    <td>
+                        @if (row.DirectedLive)
+                        {
+                            <span>@o.DirectedEmail, until @o.DirectedExpiresAt!.Value.ToDateTime()</span>
+                        }
+                        else if (o.DirectedEmail is not null && o.DirectedUsedAt is null)
+                        {
+                            <span class="text-muted">@o.DirectedEmail (lapsed or cancelled)</span>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@if (closed.Count > 0)
+{
+    <h2 class="h5">Sold and withdrawn</h2>
+    <table class="table table-sm">
+        <thead><tr><th>Holder</th><th>Ticket</th><th>Offered</th><th>Outcome</th><th class="text-end">Refund</th></tr></thead>
+        <tbody>
+            @foreach (var row in closed)
+            {
+                var o = row.Offer;
+                <tr>
+                    <td>@row.Ticket?.HolderName</td>
+                    <td>
+                        @if (row.Ticket is { } t)
+                        {
+                            <a asp-action="Ticket" asp-route-orderId="@t.OrderId" asp-route-ticketId="@t.Id"><code>@t.Barcode</code></a>
+                        }
+                    </td>
+                    <td>@o.OfferedAt.ToDateTime()</td>
+                    <td>
+                        @if (o.State == TicketResaleOfferState.Sold)
+                        {
+                            <span>Sold @o.SoldAt?.ToDateTime() @(o.DirectedUsedAt is not null ? "to the invited buyer" : "")</span>
+                            @if (o.SoldToOrderId is { } buyer)
+                            {
+                                <a asp-controller="TicketsSalesAdmin" asp-action="Order" asp-route-id="@buyer">buyer's order</a>
+                            }
+                        }
+                        else
+                        {
+                            <span>Withdrawn @o.WithdrawnAt?.ToDateTime()</span>
+                        }
+                    </td>
+                    <td class="text-end">
+                        @if (o.State == TicketResaleOfferState.Sold)
+                        {
+                            @Eur(o.RefundOwedMinor)
+                            @if (row.Refund is not { } refund)
+                            {
+                                <span class="text-danger">not requested</span>
+                            }
+                            else
+                            {
+                                <span class="@(refund.State is Humans.Tickets.Contracts.RefundState.Failed or Humans.Tickets.Contracts.RefundState.ManualRequired ? "text-danger" : "")">@refund.State</span>
+                                <a asp-controller="TicketsSupportAdmin" asp-action="Refunds" asp-route-id="@Model.SalesEventId" asp-route-state="@refund.State">list</a>
+                            }
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}

@@ -87,6 +87,23 @@ internal interface ITicketCheckoutService : ITicketCheckoutEvents, IApplicationS
 
     Task<CheckoutMutationResult> CancelInviteAsync(Guid ticketId, Guid userId, CancellationToken ct = default);
 
+    /// <summary>
+    /// The ticketing team's exception: a valid full-price adult ticket with no dependents moves to another named
+    /// person, whose account is found or created.
+    /// </summary>
+    Task<CheckoutMutationResult> RenameTicketAsync(
+        Guid ticketId, string holderName, string holderEmail, string reason, Guid actorUserId, CancellationToken ct = default);
+
+    /// <summary>Voids a valid or offered ticket and its dependents, withdrawing any open offer. Refunds stay separate.</summary>
+    Task<CheckoutMutationResult> VoidTicketAsync(Guid ticketId, string reason, Guid actorUserId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Issues a free companion ticket attached to a valid adult ticket, on a zero-total order of its own, within
+    /// capacity. The email is optional: a companion without one holds no account.
+    /// </summary>
+    Task<CheckoutMutationResult> IssueCompanionAsync(
+        Guid parentTicketId, string holderName, string? holderEmail, string reason, Guid actorUserId, CancellationToken ct = default);
+
     /// <summary>Refreshes every open order and sweeps the resale queue; returns how many changed.</summary>
     Task<int> ReconcileOpenOrdersAsync(CancellationToken ct = default);
 
@@ -201,10 +218,11 @@ internal sealed record CheckoutOrderDetail(
 {
     /// <summary>
     /// What may still be refunded: ticket lines only, net of what has gone back (the backend's total, dashboard refunds
-    /// included, or Humans' own settled refunds if the backend has not caught up) and of refunds not settled yet.
+    /// included, or Humans' own settled refunds if the backend has not caught up), of refunds not settled yet, and of
+    /// what a chargeback took.
     /// </summary>
     public long RefundableMinor =>
-        Math.Max(0, Order.TicketTotalMinor
+        Math.Max(0, Order.TicketTotalMinor - Order.DisputedMinor
             - Math.Max(Order.RefundedMinor, Refunds.Where(r => r.State == RefundState.Succeeded).Sum(r => r.AmountMinor))
             - Refunds.Where(r => r.State is RefundState.Pending or RefundState.ManualRequired).Sum(r => r.AmountMinor));
 }

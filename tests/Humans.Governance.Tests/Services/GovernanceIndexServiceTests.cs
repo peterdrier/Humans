@@ -257,7 +257,8 @@ public sealed class GovernanceIndexServiceTests
 
     private GovernanceController CreateController(Guid userId, IAuthorizationService authorization, CancellationToken ct = default) =>
         new(Users, CreateService(),
-            new GovernanceBoardSeats(Roles, Substitute.For<IRoleAssignmentWrite>(), Users, NodaTime.SystemClock.Instance),
+            new GovernanceBoardSeats(Roles, Substitute.For<IRoleAssignmentWrite>(), Users, _bodies,
+                Substitute.For<IAuditLogService>(), NodaTime.SystemClock.Instance),
             authorization,
             Substitute.For<Microsoft.Extensions.Localization.IStringLocalizer<GovernanceResource>>())
         {

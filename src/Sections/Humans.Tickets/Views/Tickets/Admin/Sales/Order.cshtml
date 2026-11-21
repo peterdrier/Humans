@@ -23,6 +23,10 @@
     <dt class="col-sm-3">Paid</dt><dd class="col-sm-9">@(o.PaidAt?.ToDateTime() ?? "—") @o.PaymentMethod</dd>
     <dt class="col-sm-3">Fee</dt><dd class="col-sm-9">@(o.FeeMinor is { } fee ? Eur(fee) : "—")</dd>
     <dt class="col-sm-3">Refunded</dt><dd class="col-sm-9">@Eur(o.RefundedMinor)</dd>
+    @if (o.DisputedMinor > 0)
+    {
+        <dt class="col-sm-3">Charged back</dt><dd class="col-sm-9 text-danger">@Eur(o.DisputedMinor)</dd>
+    }
 </dl>
 
 <table class="table table-sm">
@@ -57,7 +61,7 @@ else
                 <tr>
                     <td>@t.HolderName @(t.HolderEmail is null ? "" : $"({t.HolderEmail})")</td>
                     <td>@t.Kind</td>
-                    <td><code>@t.Barcode</code></td>
+                    <td><a asp-controller="TicketsSupportAdmin" asp-action="Ticket" asp-route-orderId="@o.Id" asp-route-ticketId="@t.Id"><code>@t.Barcode</code></a></td>
                     <td>@t.State @t.VoidReason</td>
                     <td class="text-end">@Eur(t.PricePaidMinor)</td>
                 </tr>

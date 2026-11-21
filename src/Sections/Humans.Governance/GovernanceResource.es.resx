@@ -815,4 +815,13 @@
   <data name="Governance_Meter_AudienceBoard" xml:space="preserve"><value>la Junta</value></data>
   <data name="Governance_Status_Board" xml:space="preserve"><value>Junta</value></data>
   <data name="Governance_MemberSince" xml:space="preserve"><value>Miembro desde</value></data>
+  <data name="Governance_Position" xml:space="preserve"><value>Cargo</value></data>
+  <data name="Governance_Position_President" xml:space="preserve"><value>Presidencia</value></data>
+  <data name="Governance_Position_VicePresident" xml:space="preserve"><value>Vicepresidencia</value></data>
+  <data name="Governance_Position_Secretary" xml:space="preserve"><value>Secretaría</value></data>
+  <data name="Governance_Position_Treasurer" xml:space="preserve"><value>Tesorería</value></data>
+  <data name="Governance_Position_None" xml:space="preserve"><value>Sin cargo</value></data>
+  <data name="Governance_Save" xml:space="preserve"><value>Guardar</value></data>
+  <data name="Governance_BoardPositionSaved" xml:space="preserve"><value>Cargo de la Junta guardado.</value></data>
+  <data name="Governance_BoardPositionNotOnBoard" xml:space="preserve"><value>Solo un miembro actual de la Junta puede ocupar un cargo.</value></data>
 </root>

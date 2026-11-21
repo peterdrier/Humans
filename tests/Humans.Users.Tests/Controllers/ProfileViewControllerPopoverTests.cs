@@ -93,6 +93,20 @@ public class ProfileViewControllerPopoverTests
     }
 
     [HumansTheory]
+    [InlineData(638000000000000000L, "max-age=31536000, private, immutable")]
+    [InlineData(null, "max-age=3600, private")]
+    public async Task Picture_VersionedUrl_IsCachedForAYear(long? version, string expected)
+    {
+        var profileId = Guid.NewGuid();
+        _profilePictureService.GetProfilePictureAsync(profileId, Arg.Any<CancellationToken>())
+            .Returns(((byte[] Data, string ContentType)?)(new byte[] { 1, 2, 3 }, "image/jpeg"));
+
+        await _controller.Picture(profileId, version, TestContext.Current.CancellationToken);
+
+        _controller.Response.Headers.CacheControl.ToString().Should().Be(expected);
+    }
+
+    [HumansTheory]
     [InlineData(true, false)]
     [InlineData(false, false)]
     [InlineData(false, true)]

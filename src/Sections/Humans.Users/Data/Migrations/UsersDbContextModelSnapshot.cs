@@ -663,6 +663,11 @@ namespace Humans.Users.Data.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("Humans.Users.Contracts.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
                     b.Navigation("Profile");
                 });
 
@@ -678,10 +683,15 @@ namespace Humans.Users.Data.Migrations
             modelBuilder.Entity("Humans.Users.Domain.ProfileLanguage", b =>
                 {
                     b.HasOne("Humans.Users.Domain.Profile", "Profile")
-                        .WithMany("Languages")
+                        .WithMany()
                         .HasForeignKey("ProfileId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.HasOne("Humans.Users.Contracts.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade);
 
                     b.Navigation("Profile");
                 });
@@ -689,10 +699,15 @@ namespace Humans.Users.Data.Migrations
             modelBuilder.Entity("Humans.Users.Domain.VolunteerHistoryEntry", b =>
                 {
                     b.HasOne("Humans.Users.Domain.Profile", "Profile")
-                        .WithMany("VolunteerHistory")
+                        .WithMany()
                         .HasForeignKey("ProfileId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.HasOne("Humans.Users.Contracts.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade);
 
                     b.Navigation("Profile");
                 });
@@ -756,10 +771,6 @@ namespace Humans.Users.Data.Migrations
             modelBuilder.Entity("Humans.Users.Domain.Profile", b =>
                 {
                     b.Navigation("ContactFields");
-
-                    b.Navigation("Languages");
-
-                    b.Navigation("VolunteerHistory");
                 });
 #pragma warning restore 612, 618
         }

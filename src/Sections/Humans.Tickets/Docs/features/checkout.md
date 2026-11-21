@@ -31,14 +31,16 @@ Rules every backend follows:
   the end even if the buyer's request is aborted, so a half-made order always has its backend session.
 - **Payment on its way.** A backend reports `Processing` once the buyer finished paying with a method that settles
   later (a SEPA debit, a bank transfer, sometimes the next day). The order then holds its tickets past `ExpiresAt`, is
-  never cancelled by Tickets or the buyer (the buy page offers no "start again" for it), and ends Paid or Failed.
+  never cancelled by Tickets or the buyer (the buy page offers no "start again" for it), and ends Paid or Failed. One
+  still on its way 14 days after it was created goes to the audit log as needing attention, once.
 - **Chargebacks.** `DisputedMinor` is what the buyer's bank has taken back and the event has not won. Each change goes on
-  the timeline and to the audit log as needing attention; tickets stay valid until the ticketing team decides.
+  the timeline and to the audit log as needing attention; tickets stay valid until the ticketing team decides. It comes
+  off what can still be refunded, and the order's tickets cannot be offered for resale while it stands.
 - **Refund outcome.** `RefundedMinor` moves only once money went back. On every status read Tickets settles its
   `Pending` and `ManualRequired` refunds, oldest first. A pending refund the backend knows by id is repeated under that
-  id and takes the state the backend answers (`RefundFailed` may follow only the newest refund), so a refund made in the
-  backend's dashboard never settles one of Tickets' own. The rest settle from the part of `RefundedMinor` that Tickets'
-  succeeded refunds do not explain. Failed refunds stop counting against what can still be refunded. The reconcile job re-reads paid orders with
+  id and takes the state the backend answers (`RefundFailed` may follow only the newest refund); one whose call got no
+  answer waits for the reconcile job's resend. So a refund made in the backend's dashboard never settles one of Tickets'
+  own. Only `ManualRequired` refunds settle from the part of `RefundedMinor` that Tickets' succeeded refunds do not explain. Failed refunds stop counting against what can still be refunded. The reconcile job re-reads paid orders with
   unsettled refunds and resends any refund whose backend call threw.
 - **Erasure.** A member's deletion calls `ErasePersonalDataAsync` for each of their orders before Tickets tombstones its
   own copy; a backend failure throws, so the deletion retries with the emails still known. Box Office is a no-op: Stripe
@@ -142,6 +144,13 @@ one, and returns them to the buy page, which then prefills them and shows their 
   the holder's order timeline. One invitation is live at a time, and a ticket gets at most three over all its offers; the invited email is
   cleared once the invitation ends.
 
+## The ticketing team
+
+`/Tickets/Admin/Sales/Lookup` finds orders across events. Per event, the sales index links the refund list, the resale
+queue (directed offers marked with the invited email and expiry) and the sales report. Each issued ticket has an admin
+page, reached from its order, with the three exceptions: rename (full price adults only), void (no refund; refund from
+the order), and a free companion ticket.
+
 Every step lands in the order's append-only timeline (`ticket_checkout_order_events`) with who did it, shown on the
 admin order page beside a link to the order in the backend's own admin (`CheckoutSession.AdminUrl`).
 
@@ -152,12 +161,15 @@ admin order page beside a link to the order in the backend's own admin (`Checkou
 
 ## Not yet
 
-- Companion tickets and the admin resale and ticket views (admin thread); ticket email with QR and the post-purchase
+- Ticket email with QR and the post-purchase
   shifts email (delivery thread, through `ITicketDelivery`).
 - Checkout tickets in holdings, the gate list and the scanner.
 - Chargebacks and disputes: a dispute is read only as `RefundedMinor` and nothing voids the ticket yet.
 - Payment-method-dependent prices.
-- Order, sales and check-in reports across events (the keying and the timeline are in place for them).
+- Check-in report: the gate's per-event check-in is not built and Gate has no read Tickets may call.
+- Moving a ticket to another person moves its order line, so the order is no longer the previous holder's and erasing them
+  never asks the backend to erase its copy of that order (pretix, Hi.Events; Box Office keeps none).
+- A renamed ticket is not emailed to its new holder (`ITicketDelivery` is per order, sent once); they see it in their profile.
 - Reconciliation of payouts (what Stripe paid into the bank) and of fees; the reconciliation covers what each order
   charged, refunded and lost to chargebacks.
 - Reconciliation follow-ups: a notification or audit entry when out of balance (today only the error log); signing off a

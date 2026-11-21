@@ -65,6 +65,10 @@ None — the section owns no tables.
   when Stripe fails a refund it had accepted.
 - Late payment: a payment that lands after Humans cancelled the checkout, or after it expired, is kept by the fork (it
   never auto-refunds orders created here) and reads as `Paid`.
+- `Processing` is never reported: Hi.Events has no state for a Stripe payment that settles later (SEPA debit, bank
+  transfer), and leaves such an order reserved until it expires. Keep delayed methods off in the Stripe account used by
+  Hi.Events; if one slips through, the settled payment still arrives as a late payment and reads as `Paid`.
+- `DisputedMinor` is always 0: Hi.Events does not track chargebacks.
 - Cancel: a no-op on a cancelled order, `TicketCheckoutException` on a paid one, otherwise Hi.Events' cancel without
   refund.
 - Webhook: 503 without a secret, 401 on a bad signature, 200 and no call for anything but `order.*`.
