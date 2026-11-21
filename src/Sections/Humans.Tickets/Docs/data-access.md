@@ -60,12 +60,13 @@ freshness deadline embedded in the cached value).
 
 ### TicketQueryService (Scoped, keyed `"ticket-query-inner"` — inner of CachingTicketQueryService)
 
-Repositories: `ITicketRepository`, `ITicketTransferRepository`.
+Repositories: `ITicketRepository`, `ITicketTransferRepository`, `IEventParticipationRepository`.
 
 | Table | R/W |
 |-------|-----|
 | TicketOrders | R/W (W: GDPR Art. 17 erasure tombstones `BuyerName`/`BuyerEmail` and stamps `PiiErasedAt`, which sync then never clears) |
 | TicketAttendees | R/W (W: GDPR Art. 17 erasure tombstones `AttendeeName`/`AttendeeEmail` and stamps `PiiErasedAt`, which sync then never clears) |
+| EventParticipations (`ticket_event_participations`) | R (merge-aware member history and all participation snapshots; uncached) |
 | TicketSyncStates | R |
 | TicketTransferRequests | R/W (R: approved transfers joined into the orders projection — void attendees carry recipient/decided-at; W: GDPR erasure scrubs receiver name/email + free-text reason/notes, via `ITicketTransferRepository.ErasePiiForUserAsync`) |
 
@@ -230,10 +231,11 @@ Repository: `IEventParticipationRepository` (Singleton, `IDbContextFactory<Ticke
 
 Implements the internal `IEventParticipationManagement` (and so `ITicketWrite`),
 `IUserDataContributor` (slice `EventParticipations`, retained on erasure) and
-`IUserMerge`. `TicketQueryService` forwards `ITicketService.GetParticipationsAsync` /
-`GetAllParticipationsAsync` to it. Cross-section calls via `IUserService`
-(`GetUserInfoAsync` to forward-resolve a merged id) and `IAuditLogService`
-(`ParticipationBackfilled`). No cache.
+`IUserMerge`. Participation reads belong to `TicketQueryService` through the same repository;
+its `ITicketService.GetParticipationsAsync` resolves merged ids through `IUserService`,
+and both participation read methods remain uncached through the decorator.
+The export contributor reads through `ITicketService`; writes and retention policy stay here.
+Audit calls use `IAuditLogService` (`ParticipationBackfilled`). No cache.
 
 ### UserParticipationBackfillService (Scoped)
 
@@ -244,7 +246,7 @@ No repository. Parses the `/Tickets/Participation/Backfill` CSV and calls
 ### OnsiteRosterService (Scoped)
 
 No repository. "Who's onsite" roster orchestrator. Pure read
-orchestration over `IEventParticipationManagement` (this year's onsite
+orchestration over `ITicketService` (this year's onsite
 participations), `IUserService`, `ICampService`, `ITeamService`,
 `IRoleAssignmentService` (the controller resolves the active year via
 `ISettingsService`). Implements

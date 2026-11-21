@@ -39,7 +39,7 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
     private readonly ITeamService _teamService = Substitute.For<ITeamService>();
     private readonly ISettingsService _shiftManagementService = Substitute.For<ISettingsService>();
     private readonly IAuditLogService _auditLog = Substitute.For<IAuditLogService>();
-    private readonly IEventParticipationManagement _participations = Substitute.For<IEventParticipationManagement>();
+    private readonly IEventParticipationRepository _participations = Substitute.For<IEventParticipationRepository>();
     private readonly TicketQueryService _service;
 
     public TicketQueryServiceTests()
@@ -67,7 +67,7 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
         _teamService.GetTeamAsync(SystemTeamIds.Volunteers, Arg.Any<CancellationToken>())
             .Returns(VolunteersTeam([]));
 
-        _participations.GetAllParticipationsAsync(Arg.Any<CancellationToken>())
+        _participations.GetAllAsync(Arg.Any<CancellationToken>())
             .Returns([]);
 
         StubUserInfos(_userService);

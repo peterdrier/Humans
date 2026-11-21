@@ -44,7 +44,7 @@ public sealed class TicketQueryService_HoldingsTests
             Substitute.For<ISettingsService>(),
             Substitute.For<IAuditLogService>(),
             SystemClock.Instance,
-            Substitute.For<IEventParticipationManagement>());
+            Substitute.For<IEventParticipationRepository>());
 
         // Default: no orders, no visible attendees
         _ticketRepo.GetOrdersMatchedToUserAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())

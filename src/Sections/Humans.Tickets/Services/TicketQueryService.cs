@@ -31,13 +31,24 @@ internal sealed class TicketQueryService(
     ISettingsService settingsService,
     IAuditLogService auditLog,
     IClock clock,
-    IEventParticipationManagement participations) : ITicketManagement
+    IEventParticipationRepository participations) : ITicketManagement
 {
-    public Task<IReadOnlyList<EventParticipationInfo>> GetParticipationsAsync(Guid userId, CancellationToken ct = default) =>
-        participations.GetParticipationsAsync(userId, ct);
+    public async Task<IReadOnlyList<EventParticipationInfo>> GetParticipationsAsync(
+        Guid userId, CancellationToken ct = default)
+    {
+        var info = await userService.GetUserInfoAsync(userId, ct);
+        var id = info?.Id ?? userId;
+        return ToParticipationInfos(await participations.GetByUserIdAsync(id, ct));
+    }
 
-    public Task<IReadOnlyList<EventParticipationInfo>> GetAllParticipationsAsync(CancellationToken ct = default) =>
-        participations.GetAllParticipationsAsync(ct);
+    public async Task<IReadOnlyList<EventParticipationInfo>> GetAllParticipationsAsync(CancellationToken ct = default) =>
+        ToParticipationInfos(await participations.GetAllAsync(ct));
+
+    private static List<EventParticipationInfo> ToParticipationInfos(IReadOnlyList<EventParticipation> rows) =>
+        [.. rows.Where(r => r.Status is not null).Select(ToParticipationInfo)];
+
+    private static EventParticipationInfo ToParticipationInfo(EventParticipation r) =>
+        new(r.UserId, r.Year, r.Status!.Value, r.Source, r.DeclaredAt, r.CheckedInAt);
 
     public async Task<IReadOnlyList<TicketOrderInfo>> GetTicketOrdersAsync(CancellationToken ct = default)
     {
@@ -236,7 +247,7 @@ internal sealed class TicketQueryService(
         HashSet<Guid> notAttendingSet = [];
         if (activeEvent is not null && activeEvent.Year > 0)
         {
-            notAttendingSet = (await participations.GetAllParticipationsAsync(ct))
+            notAttendingSet = (await GetAllParticipationsAsync(ct))
                 .Where(ep => ep.Year == activeEvent.Year && ep.Status == ParticipationStatus.NotAttending)
                 .Select(ep => ep.UserId)
                 .ToHashSet();

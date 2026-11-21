@@ -47,8 +47,8 @@ public sealed class TicketSyncServiceTests : TicketsTestHarness
 
         _stripeService = Substitute.For<IStripeService>();
         _userService = NewDbBackedUserService();
-        _participations = Substitute.For<IEventParticipationManagement>();
-        _participations.GetAllParticipationsAsync(Arg.Any<CancellationToken>())
+        _participations = Substitute.For<IEventParticipationManagement, ITicketService>();
+        ((ITicketService)_participations).GetAllParticipationsAsync(Arg.Any<CancellationToken>())
             .Returns([]);
         _campaignService = Substitute.For<ICampaignWrite>();
         _shiftManagementService = Substitute.For<ISettingsService>();
@@ -64,7 +64,7 @@ public sealed class TicketSyncServiceTests : TicketsTestHarness
             settings,
             NullLogger<TicketSyncService>.Instance,
             _userService,
-            _participations,
+            _participations, (ITicketService)_participations,
             _campaignService,
             _shiftManagementService);
 
@@ -130,7 +130,7 @@ public sealed class TicketSyncServiceTests : TicketsTestHarness
         var service = new TicketSyncService(_ticketRepository, new TicketTransferRepository(TicketsDbFactory),
             _vendorService, _stripeService, Clock, Options.Create(new TicketVendorSettings
             { EventId = "ev_test_123", ApiKey = "test_key" }), logger,
-            _userService, _participations, _campaignService, _shiftManagementService);
+            _userService, _participations, (ITicketService)_participations, _campaignService, _shiftManagementService);
 
         var error = await Xunit.Record.ExceptionAsync(() => service.SyncOrdersAndAttendeesAsync(shutdown.Token));
 
@@ -170,7 +170,7 @@ public sealed class TicketSyncServiceTests : TicketsTestHarness
         var service = new TicketSyncService(repository, new TicketTransferRepository(TicketsDbFactory),
             _vendorService, _stripeService, Clock, Options.Create(new TicketVendorSettings
             { EventId = "ev_test_123", ApiKey = "test_key" }), logger,
-            _userService, _participations, _campaignService, _shiftManagementService);
+            _userService, _participations, (ITicketService)_participations, _campaignService, _shiftManagementService);
 
         var error = await Xunit.Record.ExceptionAsync(() => service.SyncOrdersAndAttendeesAsync(shutdown.Token));
 
@@ -285,7 +285,7 @@ public sealed class TicketSyncServiceTests : TicketsTestHarness
         var service = new TicketSyncService(repository, new TicketTransferRepository(TicketsDbFactory),
             _vendorService, _stripeService, Clock, Options.Create(new TicketVendorSettings
             { EventId = "ev_test_123", ApiKey = "test_key" }), logger,
-            _userService, _participations, _campaignService, _shiftManagementService);
+            _userService, _participations, (ITicketService)_participations, _campaignService, _shiftManagementService);
 
         var observed = await Xunit.Record.ExceptionAsync(() => service.SyncOrdersAndAttendeesAsync(cancellation.Token));
 
@@ -326,7 +326,7 @@ public sealed class TicketSyncServiceTests : TicketsTestHarness
             new TicketRepository(new TestDbContextFactory<TicketsDbContext>(options), Clock),
             transferRepository, _vendorService, _stripeService, Clock,
             Options.Create(new TicketVendorSettings()), NullLogger<TicketSyncService>.Instance,
-            _userService, _participations, _campaignService, _shiftManagementService);
+            _userService, _participations, (ITicketService)_participations, _campaignService, _shiftManagementService);
 
         if (failTransferWrite)
         {
@@ -649,6 +649,7 @@ public sealed class TicketSyncServiceTests : TicketsTestHarness
             NullLogger<TicketSyncService>.Instance,
             _userService,
             Substitute.For<IEventParticipationManagement>(),
+            Substitute.For<ITicketService>(),
             Substitute.For<ICampaignWrite>(),
             Substitute.For<ISettingsService>());
 
@@ -967,7 +968,7 @@ public sealed class TicketSyncServiceTests : TicketsTestHarness
         _shiftManagementService.GetActiveEventSettings()
             .Returns(BurnFixtures.Burn(year: 2026));
 
-        _participations.GetAllParticipationsAsync(Arg.Any<CancellationToken>())
+        ((ITicketService)_participations).GetAllParticipationsAsync(Arg.Any<CancellationToken>())
             .Returns(new List<EventParticipationInfo>
             {
                 new(userId, 2026, ParticipationStatus.Ticketed, ParticipationSource.TicketSync, null, null)
@@ -1002,7 +1003,7 @@ public sealed class TicketSyncServiceTests : TicketsTestHarness
         _shiftManagementService.GetActiveEventSettings()
             .Returns(BurnFixtures.Burn(year: 2026));
 
-        _participations.GetAllParticipationsAsync(Arg.Any<CancellationToken>())
+        ((ITicketService)_participations).GetAllParticipationsAsync(Arg.Any<CancellationToken>())
             .Returns(new List<EventParticipationInfo>
             {
                 new(userId, 2026, ParticipationStatus.Ticketed, ParticipationSource.TicketSync, null, null)
@@ -1038,7 +1039,7 @@ public sealed class TicketSyncServiceTests : TicketsTestHarness
         _shiftManagementService.GetActiveEventSettings()
             .Returns(BurnFixtures.Burn(year: 2026));
 
-        _participations.GetAllParticipationsAsync(Arg.Any<CancellationToken>())
+        ((ITicketService)_participations).GetAllParticipationsAsync(Arg.Any<CancellationToken>())
             .Returns(new List<EventParticipationInfo>
             {
                 new(userId, 2026, ParticipationStatus.Ticketed, ParticipationSource.TicketSync, null, null)
