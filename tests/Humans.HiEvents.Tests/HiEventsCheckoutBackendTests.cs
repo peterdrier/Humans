@@ -341,6 +341,8 @@ public class HiEventsCheckoutBackendTests
         Backend(apiUrl: "").IsConfigured.Should().BeFalse();
         Backend(apiUrl: "tickets example/api").IsConfigured.Should().BeFalse();
         Backend(apiUrl: "ftp://tickets.example/api").IsConfigured.Should().BeFalse();
+        Backend(appUrl: "tickets.example").IsConfigured.Should().BeFalse();
+        Backend(appUrl: "https://admin.tickets.example/").IsConfigured.Should().BeTrue();
     }
 
     [HumansTheory]
@@ -418,13 +420,11 @@ public class HiEventsCheckoutBackendTests
     [HumansFact]
     public async Task Setup_WithAnAppUrlWithoutScheme_HasNoAdminLinkAndFailsTheCheck()
     {
-        _handler.Enqueue(HttpStatusCode.OK, new { data = new { id = 1 } });
-        var backend = new HiEventsCheckoutBackend(new HttpClient(_handler),
-            Options.Create(new HiEventsSettings { ApiUrl = "https://tickets.example/api", ApiKey = "key", AppUrl = "tickets.example" }),
-            new FakeClock(Now), NullLogger<HiEventsCheckoutBackend>.Instance);
+        var backend = Backend(appUrl: "tickets.example");
 
         backend.Setup.AdminUrl.Should().BeNull();
         (await backend.CheckAsync(null, Ct)).Should().Contain(f => !f.Ok && f.Text.Contains("HiEvents:AppUrl"));
+        _handler.Requests.Should().BeEmpty();
     }
 
     [HumansFact]
@@ -447,11 +447,12 @@ public class HiEventsCheckoutBackendTests
         setup.WebhookPath.Should().Be("/HiEvents/Webhook");
     }
 
-    private HiEventsCheckoutBackend Backend(string apiKey = "key", string apiUrl = "https://tickets.example/api") => new(
+    private HiEventsCheckoutBackend Backend(string apiKey = "key", string apiUrl = "https://tickets.example/api", string appUrl = "") => new(
         new HttpClient(_handler),
         Options.Create(new HiEventsSettings
         {
             ApiUrl = apiUrl,
+            AppUrl = appUrl,
             ApiKey = apiKey,
         }),
         new FakeClock(Now),

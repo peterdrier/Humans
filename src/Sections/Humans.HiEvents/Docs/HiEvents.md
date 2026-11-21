@@ -22,7 +22,8 @@ price, the named ticket and the QR code.
   `idempotency_key` on `POST .../orders/{order_id}/refund`. Stock Hi.Events has neither.
 - A **backend order id** is `{eventId}:{orderId}`: every Hi.Events order route is scoped to its event.
 - **Settings**, all owned here: `HiEvents:ApiUrl` (ends in `/api`); `HiEvents:AppUrl` (the web app, for the order's
-  admin link; defaults to `ApiUrl` without `/api`); and the environment variables `HIEVENTS_API_KEY` (a Hi.Events API key whose owner can
+  admin link; defaults to `ApiUrl` without `/api`; both must be absolute http(s), or the backend reads as unconfigured and
+  Tickets opens no checkout on it); and the environment variables `HIEVENTS_API_KEY` (a Hi.Events API key whose owner can
   edit the event, see financials and issue refunds) and `HIEVENTS_WEBHOOK_SECRET`. Only infrastructure lives in
   configuration: there is no per-event mapping to keep, because each event's carrier products are found in Hi.Events.
 - **Carrier products**: Humans owns the catalogue and prices every line, so each Hi.Events event needs exactly one
@@ -77,7 +78,7 @@ None — the section owns no tables.
 - A malformed `HiEvents:ApiUrl` only makes this backend unconfigured; it never throws while Tickets resolves backends.
 - Buyer names go in 50 characters of first name and 50 of last name, split at a space; attendee lines carry the full
   legal name (Hi.Events allows 255 on this endpoint).
-- `Setup` shows the URLs and only set or missing for the key and secret; an API host on `hi.events` reads as Hi.Events Cloud, unsupported because it lacks the fork's checkout endpoint, and never passes the check. `CheckAsync` reads `users/me` (a body without a user, such as the web app's HTML, fails; so does an `AppUrl` that is not an absolute http(s) address), the event's status and products, then posts an empty body to the checkout endpoint: the fork answers 422 before creating anything, stock Hi.Events 404 or 405.
+- `Setup` shows the URLs and only set or missing for the key and secret; an API host on `hi.events` reads as Hi.Events Cloud, unsupported because it lacks the fork's checkout endpoint, and never passes the check. `CheckAsync` reads `users/me` (a body without a user, such as the web app's HTML, fails), the event's status and products, then posts an empty body to the checkout endpoint: the fork answers 422 before creating anything, stock Hi.Events 404 or 405.
 
 ## Personal data and erasure
 

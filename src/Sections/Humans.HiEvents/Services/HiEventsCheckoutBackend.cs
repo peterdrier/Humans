@@ -212,9 +212,7 @@ internal sealed class HiEventsCheckoutBackend : ITicketCheckoutBackend
     public CheckoutBackendSetup Setup => new(
         "Hi.Events",
         Hosting(),
-        _settings.ApiBaseUri is not null && Uri.TryCreate(_settings.ResolvedAppUrl + "/manage/events", UriKind.Absolute, out var admin)
-            ? admin
-            : null,
+        _settings.AppBaseUri is { } app ? new Uri(app, "manage/events") : null,
         [
             new("HiEvents:ApiUrl", "API root of our Hi.Events fork, ending in /api", IsSecret: false,
                 !string.IsNullOrWhiteSpace(_settings.ApiUrl), string.IsNullOrWhiteSpace(_settings.ApiUrl) ? null : _settings.ApiUrl),
@@ -245,7 +243,7 @@ internal sealed class HiEventsCheckoutBackend : ITicketCheckoutBackend
     public async Task<IReadOnlyList<CheckoutBackendFinding>> CheckAsync(string? backendEventRef, CancellationToken ct = default)
     {
         if (!IsConfigured)
-            return [new(false, "HiEvents:ApiUrl (an absolute http(s) address) and HIEVENTS_API_KEY must both be set.")];
+            return [new(false, "HiEvents:ApiUrl and HIEVENTS_API_KEY must be set, and HiEvents:ApiUrl and HiEvents:AppUrl (when set) must be absolute http(s) addresses.")];
 
         var findings = new List<CheckoutBackendFinding>
         {
@@ -255,9 +253,6 @@ internal sealed class HiEventsCheckoutBackend : ITicketCheckoutBackend
         };
         if (IsCloud)
             findings.Add(new(false, "Hi.Events Cloud cannot sell Humans orders: it has no checkout endpoint taking Humans' prices."));
-        if (!string.IsNullOrWhiteSpace(_settings.AppUrl)
-            && !(Uri.TryCreate(_settings.AppUrl, UriKind.Absolute, out var app) && app.Scheme is "https" or "http"))
-            findings.Add(new(false, "HiEvents:AppUrl is not an absolute http(s) address, so checkout cannot build the order's admin link."));
         try
         {
             using (var me = await _http.GetAsync("users/me", ct))
@@ -349,9 +344,10 @@ internal sealed class HiEventsCheckoutBackend : ITicketCheckoutBackend
         _ => throw new HttpRequestException($"Hi.Events order {order.Id} has unknown status '{order.Status}'."),
     };
 
-    private Uri AdminUrl(int eventId, int orderId) =>
-        new(string.Create(CultureInfo.InvariantCulture,
-            $"{_settings.ResolvedAppUrl}/manage/event/{eventId}/orders#order-{orderId}"));
+    private Uri? AdminUrl(int eventId, int orderId) =>
+        _settings.AppBaseUri is { } app
+            ? new Uri(app, string.Create(CultureInfo.InvariantCulture, $"manage/event/{eventId}/orders#order-{orderId}"))
+            : null;
 
     private async Task<IReadOnlyList<HiEventsProduct>> GetProductsAsync(int eventId, CancellationToken ct)
     {

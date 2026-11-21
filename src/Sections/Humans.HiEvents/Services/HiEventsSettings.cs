@@ -19,17 +19,21 @@ internal sealed class HiEventsSettings
     /// <summary>From <c>HIEVENTS_WEBHOOK_SECRET</c>, never appsettings.</summary>
     public string WebhookSecret { get; set; } = string.Empty;
 
-    public bool IsConfigured => ApiBaseUri is not null && !string.IsNullOrEmpty(ApiKey);
+    /// <summary>Both URLs must be absolute http(s), so a typo stops checkout before any order is made in Hi.Events.</summary>
+    public bool IsConfigured => ApiBaseUri is not null && AppBaseUri is not null && !string.IsNullOrEmpty(ApiKey);
 
     /// <summary>Null when <c>ApiUrl</c> is unset or not an absolute http(s) address.</summary>
-    public Uri? ApiBaseUri =>
-        Uri.TryCreate(ApiUrl.TrimEnd('/') + "/", UriKind.Absolute, out var uri)
+    public Uri? ApiBaseUri => HttpUri(ApiUrl.TrimEnd('/') + "/");
+
+    /// <summary><c>AppUrl</c>, or <c>ApiUrl</c> without <c>/api</c>; null when that is not an absolute http(s) address.</summary>
+    public Uri? AppBaseUri => HttpUri((!string.IsNullOrEmpty(AppUrl)
+        ? AppUrl.TrimEnd('/')
+        : ApiUrl.TrimEnd('/') is var api && api.EndsWith("/api", StringComparison.OrdinalIgnoreCase) ? api[..^4] : api) + "/");
+
+    private static Uri? HttpUri(string value) =>
+        Uri.TryCreate(value, UriKind.Absolute, out var uri)
         && (string.Equals(uri.Scheme, Uri.UriSchemeHttps, StringComparison.Ordinal) || string.Equals(uri.Scheme, Uri.UriSchemeHttp, StringComparison.Ordinal))
             ? uri
             : null;
-
-    public string ResolvedAppUrl => !string.IsNullOrEmpty(AppUrl)
-        ? AppUrl.TrimEnd('/')
-        : ApiUrl.TrimEnd('/') is var api && api.EndsWith("/api", StringComparison.OrdinalIgnoreCase) ? api[..^4] : api;
 }
 
