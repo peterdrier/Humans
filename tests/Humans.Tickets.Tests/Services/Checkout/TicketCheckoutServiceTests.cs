@@ -810,6 +810,23 @@ public sealed class TicketCheckoutServiceTests
     }
 
     [HumansFact]
+    public async Task Pausing_resale_also_stops_the_invite_link()
+    {
+        var old = await OfferedTicketAsync();
+        EmailMessage? sent = null;
+        await _email.SendAsync(Arg.Do<EmailMessage>(m => sent = m), Arg.Any<CancellationToken>());
+        await _service.InviteBuyerAsync(old.Id, _buyerId, "bo@example.com", new Uri("https://h.example/r/"), "en", Ct);
+        var token = sent!.HtmlBody["https://h.example/r/".Length..];
+
+        _salesEvent.Mode = TicketSalesMode.Open;
+        await _service.SetResaleOpenAsync(_salesEvent.Id, false, _buyerId, Ct);
+
+        (await _service.StartCheckoutAsync(Buy() with { DirectedToken = token }, _otherBuyerId, Ct))
+            .Refusal.Should().Be("Tickets_Resale_InviteInvalid");
+        (await _service.GetDirectedBuyPageAsync(token, _otherBuyerId, Ct))!.Unavailable.Should().Be("Tickets_Resale_InviteInvalid");
+    }
+
+    [HumansFact]
     public async Task Resale_opens_and_pauses_by_hand_and_is_audited()
     {
         _salesEvent.ResaleOpenedAt = null;

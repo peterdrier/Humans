@@ -222,7 +222,8 @@ internal sealed partial class TicketCheckoutService
 
     /// <summary>The invited offer when the link is live, bound to the signed-in buyer's email and the queue still open.</summary>
     private static TicketResaleOffer? DirectedOfferFor(TicketResaleOffer offer, BuyContext context) =>
-        offer.State == TicketResaleOfferState.Open && offer.HasLiveInvite
+        context.SalesEvent.ResaleSelling
+        && offer.State == TicketResaleOfferState.Open && offer.HasLiveInvite
         && string.Equals(offer.DirectedEmail, context.Buyer?.Email, StringComparison.OrdinalIgnoreCase)
         && offer.SalesEventId == context.SalesEvent.Id
             ? offer
