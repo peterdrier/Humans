@@ -56,13 +56,24 @@ internal sealed class GovernanceBodyRepository(IDbContextFactory<GovernanceDbCon
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
         var rows = await ctx.GovernanceBoardPositions.ToListAsync(ct);
-        ctx.GovernanceBoardPositions.RemoveRange(rows.Where(r => r.Position == position || r.UserId == userId));
-        await ctx.SaveChangesAsync(ct);
-        if (userId is { } holder)
+        var slot = rows.Find(r => r.Position == position);
+        ctx.GovernanceBoardPositions.RemoveRange(rows.Where(r => r.UserId == userId && r.Position != position));
+        if (userId is not { } holder)
+        {
+            if (slot is not null)
+                ctx.GovernanceBoardPositions.Remove(slot);
+        }
+        else if (slot is null)
         {
             ctx.GovernanceBoardPositions.Add(new GovernanceBoardPosition { Position = position, UserId = holder, UpdatedAt = now });
-            await ctx.SaveChangesAsync(ct);
         }
+        else
+        {
+            slot.UserId = holder;
+            slot.UpdatedAt = now;
+        }
+
+        await ctx.SaveChangesAsync(ct);
     }
 
     public async Task ClearBoardPositionForUserAsync(Guid userId, CancellationToken ct = default)
@@ -78,12 +89,16 @@ internal sealed class GovernanceBodyRepository(IDbContextFactory<GovernanceDbCon
         var rows = await ctx.GovernanceBoardPositions.Where(r => r.UserId == fromUserId || r.UserId == toUserId).ToListAsync(ct);
         if (rows.Find(r => r.UserId == fromUserId) is not { } from)
             return;
-        ctx.GovernanceBoardPositions.Remove(from);
-        await ctx.SaveChangesAsync(ct);
-        if (!rows.Exists(r => r.UserId == toUserId))
+        if (rows.Exists(r => r.UserId == toUserId))
         {
-            ctx.GovernanceBoardPositions.Add(new GovernanceBoardPosition { Position = from.Position, UserId = toUserId, UpdatedAt = now });
-            await ctx.SaveChangesAsync(ct);
+            ctx.GovernanceBoardPositions.Remove(from);
         }
+        else
+        {
+            from.UserId = toUserId;
+            from.UpdatedAt = now;
+        }
+
+        await ctx.SaveChangesAsync(ct);
     }
 }

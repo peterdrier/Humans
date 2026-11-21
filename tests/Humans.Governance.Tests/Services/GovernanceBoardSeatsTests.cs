@@ -64,6 +64,21 @@ public sealed class GovernanceBoardSeatsTests
     }
 
     [HumansFact]
+    public async Task Clearing_empties_the_members_office_and_is_a_no_op_without_one()
+    {
+        var ana = Guid.NewGuid();
+        OnBoard(ana);
+        (await Seats().ClearPositionAsync(ana, Guid.NewGuid())).Success.Should().BeTrue();
+        await Seats().SetPositionAsync(BoardPosition.Secretary, ana, Guid.NewGuid());
+
+        await Seats().ClearPositionAsync(ana, Guid.NewGuid());
+
+        (await _repo.GetBoardPositionsAsync()).Should().BeEmpty();
+        await _audit.Received(1).LogAsync(GovernanceAuditActions.BoardPositionSet, Arg.Any<string>(), ana,
+            "Board office Secretary removed", Arg.Any<Guid>(), Arg.Any<Guid?>(), Arg.Any<string?>());
+    }
+
+    [HumansFact]
     public async Task Only_a_current_Board_member_can_hold_an_office_and_ending_the_seat_drops_it()
     {
         var (ana, outsider) = (Guid.NewGuid(), Guid.NewGuid());

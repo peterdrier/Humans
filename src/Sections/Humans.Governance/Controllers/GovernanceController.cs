@@ -138,9 +138,7 @@ internal sealed class GovernanceController(
 
         var result = position is { } office
             ? await boardSeats.SetPositionAsync(office, userId, actor.Id, ct)
-            : (await boardSeats.GetPositionsAsync(ct)).TryGetValue(userId, out var held)
-                ? await boardSeats.SetPositionAsync(held, null, actor.Id, ct)
-                : new RoleAssignmentResult(true);
+            : await boardSeats.ClearPositionAsync(userId, actor.Id, ct);
         if (result.Success)
             SetSuccess(localizer["Governance_BoardPositionSaved"].Value);
         else

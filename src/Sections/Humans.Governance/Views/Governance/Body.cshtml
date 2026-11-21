@@ -67,10 +67,24 @@
                                     <input type="hidden" name="userId" value="@memberId" />
                                     @{ var held = Model.Positions.TryGetValue(memberId, out var current) ? current : (BoardPosition?)null; }
                                     <select name="position" class="form-select form-select-sm" aria-label="@Localizer["Governance_Position"]">
-                                        <option value="" selected="@(held is null)">@Localizer["Governance_Position_None"]</option>
+                                        @if (held is null)
+                                        {
+                                            <option value="" selected>@Localizer["Governance_Position_None"]</option>
+                                        }
+                                        else
+                                        {
+                                            <option value="">@Localizer["Governance_Position_None"]</option>
+                                        }
                                         @foreach (var option in Enum.GetValues<BoardPosition>())
                                         {
-                                            <option value="@option" selected="@(held == option)">@Localizer[$"Governance_Position_{option}"]</option>
+                                            if (held == option)
+                                            {
+                                                <option value="@option" selected>@Localizer[$"Governance_Position_{option}"]</option>
+                                            }
+                                            else
+                                            {
+                                                <option value="@option">@Localizer[$"Governance_Position_{option}"]</option>
+                                            }
                                         }
                                     </select>
                                     <button type="submit" class="btn btn-sm btn-outline-primary">@Localizer["Governance_Save"]</button>

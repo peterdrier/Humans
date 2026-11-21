@@ -88,6 +88,15 @@ internal sealed class GovernanceBoardSeats(
         return new RoleAssignmentResult(true);
     }
 
+    /// <summary>Empties whatever office the member holds; holding none is a no-op success.</summary>
+    public async Task<RoleAssignmentResult> ClearPositionAsync(Guid userId, Guid actorUserId, CancellationToken ct = default)
+    {
+        var held = (await repository.GetBoardPositionsAsync(ct)).FirstOrDefault(p => p.UserId == userId);
+        return held is null
+            ? new RoleAssignmentResult(true)
+            : await SetPositionAsync(held.Position, null, actorUserId, ct);
+    }
+
     private Task LogPositionAsync(Guid userId, string description, Guid actorUserId) =>
         audit.LogAsync(GovernanceAuditActions.BoardPositionSet, AuditSubjectTypes.User, userId, description, actorUserId);
 
