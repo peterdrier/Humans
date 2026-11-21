@@ -127,7 +127,7 @@ internal sealed record MemberTicketStatusViewModel(
 {
     public const string TicketPurchaseUrl = "https://tickets.nobodies.team";
 
-    /// <summary>Valid tickets from Humans' own checkout; <see cref="UserTicketCount"/> counts the vendor sync's.</summary>
+    /// <summary>Held tickets (Valid or Offered) from Humans' own checkout, for the active event and any open sale; <see cref="UserTicketCount"/> counts the vendor sync's.</summary>
     public int HumansTicketCount { get; init; }
 
     public bool HasTicket => UserTicketCount + HumansTicketCount > 0;
