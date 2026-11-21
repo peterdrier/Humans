@@ -10,6 +10,8 @@ using Humans.Tickets.Data;
 using Humans.Tickets.Services;
 using Humans.Tickets.Domain.Checkout;
 using Humans.Tickets.Services.Checkout;
+using Humans.Tickets.Services.Stores;
+using Microsoft.Extensions.DependencyInjection;
 using Humans.Users.Contracts;
 using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -42,6 +44,8 @@ public sealed class TicketCheckoutServiceTests
     private readonly Humans.Gate.Contracts.IGateAdmissions _gate = Substitute.For<Humans.Gate.Contracts.IGateAdmissions>();
     private readonly HashSet<string> _admitted = new(StringComparer.Ordinal);
     private readonly FakeClock _clock = new(Now);
+    private readonly ITicketManagement _holdingsInner = Substitute.For<ITicketManagement>();
+    private readonly CachingTicketQueryService _holdings;
     private readonly Guid _otherBuyerId = Guid.NewGuid();
     private int _sessions;
     private readonly Guid _buyerId = Guid.NewGuid();
@@ -106,9 +110,13 @@ public sealed class TicketCheckoutServiceTests
 
         _gate.GetAdmittedAsync(Arg.Any<IReadOnlyCollection<string>>(), Arg.Any<CancellationToken>())
             .Returns(ci => (IReadOnlySet<string>)ci.Arg<IReadOnlyCollection<string>>().Where(_admitted.Contains).ToHashSet(StringComparer.Ordinal));
+        var services = new ServiceCollection();
+        services.AddKeyedScoped(CachingTicketQueryService.InnerServiceKey, (_, _) => _holdingsInner);
+        _holdings = new CachingTicketQueryService(services.BuildServiceProvider().GetRequiredService<IServiceScopeFactory>(),
+            _clock, NullLogger<CachingTicketQueryService>.Instance);
         _service = new TicketCheckoutService(_repo, [_backend], _grants, _settings, _users, _provisioning, _userEmails,
             _preferenceReads, _preferences, _email, emails, [_delivery], _gate, localizer, _audit,
-            _clock, NullLogger<TicketCheckoutService>.Instance);
+            _clock, _holdings, NullLogger<TicketCheckoutService>.Instance);
     }
 
     private StartCheckout Buy(
@@ -973,6 +981,27 @@ public sealed class TicketCheckoutServiceTests
     {
         var order = await BuyAndPayAsync(Buy(), _buyerId);
         return _repo.Tickets.Single(t => t.OrderId == order.Id && t.Kind == TicketHolderKind.Adult);
+    }
+
+    [HumansFact]
+    public async Task Issuing_and_renaming_drop_the_new_holders_cached_deletion_hold()
+    {
+        var newHolder = Guid.NewGuid();
+        _holdingsInner.GetUserTicketHoldingsAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(new UserTicketHoldings(0, []));
+        await _holdings.GetUserTicketHoldingsAsync(_buyerId, Ct);
+        await _holdings.GetUserTicketHoldingsAsync(newHolder, Ct);
+
+        var ticket = await PaidAdultAsync();
+        await _holdings.GetUserTicketHoldingsAsync(_buyerId, Ct);
+        _provisioning.FindOrCreateUserByEmailAsync("cy@example.com", null, ContactSource.Manual, Arg.Any<CancellationToken>())
+            .Returns(new AccountProvisioningResult(newHolder, Created: true));
+        (await _service.RenameTicketAsync(ticket.Id, "Cy", "cy@example.com", "Agreed by the ticketing lead", _adminId, Ct))
+            .Refusal.Should().BeNull();
+        await _holdings.GetUserTicketHoldingsAsync(newHolder, Ct);
+
+        await _holdingsInner.Received(2).GetUserTicketHoldingsAsync(_buyerId, Arg.Any<CancellationToken>());
+        await _holdingsInner.Received(2).GetUserTicketHoldingsAsync(newHolder, Arg.Any<CancellationToken>());
     }
 
     [HumansFact]

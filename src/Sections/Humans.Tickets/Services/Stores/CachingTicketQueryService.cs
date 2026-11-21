@@ -44,6 +44,12 @@ internal sealed class CachingTicketQueryService
     public ICacheStats OrdersCacheStats => _orders;
     public ICacheStats UserHoldingsCacheStats => _userHoldings;
 
+    /// <summary>
+    /// Checkout writes no interface this decorator fronts, but a Humans-issued ticket feeds the holdings' deletion
+    /// hold: checkout calls this when someone gains one, so a deletion due within the TTL cannot miss it.
+    /// </summary>
+    internal void InvalidateHoldings(Guid userId) => _userHoldings.Invalidate(userId);
+
     public async Task<IReadOnlyList<TicketOrderInfo>> GetTicketOrdersAsync(CancellationToken ct = default)
     {
         await _orders.EnsureWarmedForReadAsync(ct);
