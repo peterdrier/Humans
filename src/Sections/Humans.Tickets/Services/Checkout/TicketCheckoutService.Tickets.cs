@@ -470,35 +470,46 @@ internal sealed partial class TicketCheckoutService
         if (refundId is null)
         {
             logger.LogError("Resale refund for ticket {TicketId} could not start: {Refusal}", old.Id, result.Refusal);
-            await repository.AddRefundAsync(new TicketCheckoutRefund
-            {
-                Id = offer.Id,
-                OrderId = old.OrderId,
-                AmountMinor = offer.RefundOwedMinor,
-                Reason = "Ticket resold",
-                State = RefundState.Failed,
-                FailureReason = Truncate(result.Refusal ?? "Refused"),
-                CreatedAt = clock.GetCurrentInstant(),
-            }, ct);
-            await auditLog.LogAsync(TicketsAuditActions.TicketCheckoutNeedsAttention, AuditEntityType, old.OrderId,
-                $"Resale refund of {FormatMinor(offer.RefundOwedMinor)} could not start ({Truncate(result.Refusal ?? "refused")}); " +
-                "the ticketing team must refund it by hand", JobName);
-            await TimelineAsync(old.OrderId, TicketCheckoutOrderEventKind.RefundSettled,
-                $"Resale refund of {FormatMinor(offer.RefundOwedMinor)} could not start ({Truncate(result.Refusal ?? "refused")}); " +
-                "the ticketing team must refund it by hand", null, ct);
+            var why = Truncate(result.Refusal ?? "refused");
+            await RecordResaleRefundNotSentAsync(offer, old, why,
+                $"Resale refund of {FormatMinor(offer.RefundOwedMinor)} could not start ({why}); the ticketing team must refund it by hand", ct);
+            return false;
         }
         if (offer.RefundId is null)
         {
             offer.RefundId = offer.Id;
             await repository.UpdateOfferAsync(offer, ct);
         }
-        return refundId is not null;
+        return true;
+    }
+
+    /// <summary>
+    /// A failed refund under the offer's id: the batch never sends it later, and it stays among the failed refunds the
+    /// reconciliation lists until the team settles it.
+    /// </summary>
+    private async Task RecordResaleRefundNotSentAsync(
+        TicketResaleOffer offer, TicketCheckoutTicket old, string failureReason, string detail, CancellationToken ct)
+    {
+        await repository.AddRefundAsync(new TicketCheckoutRefund
+        {
+            Id = offer.Id,
+            OrderId = old.OrderId,
+            AmountMinor = offer.RefundOwedMinor,
+            Reason = "Ticket resold",
+            State = RefundState.Failed,
+            FailureReason = Truncate(failureReason),
+            CreatedAt = clock.GetCurrentInstant(),
+        }, ct);
+        await auditLog.LogAsync(TicketsAuditActions.TicketCheckoutNeedsAttention, AuditEntityType, old.OrderId, detail, JobName);
+        await TimelineAsync(old.OrderId, TicketCheckoutOrderEventKind.RefundSettled, detail, null, ct);
+        offer.RefundId = offer.Id;
+        await repository.UpdateOfferAsync(offer, ct);
     }
 
     /// <summary>
     /// The evening batch: refunds each holder whose returned ticket sold at least <see cref="ResaleRefundHold"/> ago to
     /// a buyer whose order is still paid with nothing refunded, being refunded or charged back. A sale that did not hold is left for
-    /// the ticketing team, flagged once. One audit row per sales event carries the batch's count and total.
+    /// the ticketing team as a failed refund. One audit row per sales event carries the batch's count and total.
     /// </summary>
     public async Task<ResaleRefundBatch> RunResaleRefundBatchAsync(CancellationToken ct = default)
     {
@@ -517,10 +528,25 @@ internal sealed partial class TicketCheckoutService
                     continue;
                 }
                 var buyerOrder = offer.SoldToOrderId is { } buyerOrderId ? await repository.GetOrderAsync(buyerOrderId, ct) : null;
+                try
+                {
+                    // A missed webhook must not pay out: both orders are read from their backend first, so a refund or
+                    // chargeback only the backend knows of still holds the refund back or lowers what can be refunded.
+                    if (buyerOrder is not null)
+                        await RefreshAsync(buyerOrder, ct);
+                    if (await repository.GetTicketAsync(offer.TicketId, ct) is { } old
+                        && await repository.GetOrderAsync(old.OrderId, ct) is { } holderOrder)
+                        await RefreshAsync(holderOrder, ct);
+                }
+                catch (Exception ex) when (ex is not OperationCanceledException)
+                {
+                    logger.LogWarning(ex, "Resale refund for offer {OfferId} waits: its orders could not be read from the backend", offer.Id);
+                    waiting++;
+                    continue;
+                }
                 if (buyerOrder is not { State: TicketCheckoutOrderState.Paid, RefundedMinor: 0, DisputedMinor: 0 }
                     || (await repository.GetRefundsAsync(buyerOrder.Id, ct)).Any(r => r.State != RefundState.Failed))
                 {
-                    // Counted only when first flagged, so one held-back sale is not reported again every evening.
                     if (await HoldBackResaleRefundAsync(offer, buyerOrder, ct))
                         heldBack++;
                     continue;
@@ -542,21 +568,28 @@ internal sealed partial class TicketCheckoutService
                 await auditLog.LogAsync(TicketsAuditActions.TicketResaleRefundBatch, SalesEventAuditEntityType, salesEvent.Id,
                     $"Evening resale refund batch: {started} refund(s) started, {FormatMinor(startedMinor)} in total; " +
                     $"{heldBack} held back because the buyer's order was refunded or charged back; " +
-                    $"{waiting} sold too recently, for a later batch", JobName);
+                    $"{waiting} left for a later batch", JobName);
             batch = new(batch.Started + started, batch.StartedMinor + startedMinor, batch.HeldBack + heldBack, batch.Waiting + waiting);
         }
         return batch;
     }
 
+    /// <summary>Held back for good: the ticketing team decides, and a later batch never pays it on its own.</summary>
     private async Task<bool> HoldBackResaleRefundAsync(TicketResaleOffer offer, TicketCheckoutOrder? buyerOrder, CancellationToken ct)
     {
-        if (await repository.GetTicketAsync(offer.TicketId, ct) is not { } old
-            || (await repository.GetOrderEventsAsync(old.OrderId, ct)).Any(e => e.Detail.StartsWith(RefundHeldBack, StringComparison.Ordinal)))
+        if (await repository.GetTicketAsync(offer.TicketId, ct) is not { } old)
             return false;
-        await NeedsAttentionAsync(old.OrderId,
-            $"{RefundHeldBack}: ticket {old.Barcode} resold on order {buyerOrder?.Reference ?? "unknown"}, which is " +
-            (buyerOrder is null ? "gone" : $"{buyerOrder.State} with {FormatMinor(buyerOrder.RefundedMinor)} refunded and {FormatMinor(buyerOrder.DisputedMinor)} charged back") +
-            $"; the ticketing team decides on the {FormatMinor(offer.RefundOwedMinor)} owed", ct);
+        if ((await repository.GetRefundsAsync(old.OrderId, ct)).Any(r => r.Id == offer.Id))
+        {
+            // Asked for before a crash kept the offer from recording it: that refund is already on its way.
+            offer.RefundId = offer.Id;
+            await repository.UpdateOfferAsync(offer, ct);
+            return false;
+        }
+        var why = $"{RefundHeldBack}: the buyer's order {buyerOrder?.Reference ?? "unknown"} is " +
+            (buyerOrder is null ? "gone" : $"{buyerOrder.State} with {FormatMinor(buyerOrder.RefundedMinor)} refunded and {FormatMinor(buyerOrder.DisputedMinor)} charged back");
+        await RecordResaleRefundNotSentAsync(offer, old, why,
+            $"{why}; the ticketing team decides on the {FormatMinor(offer.RefundOwedMinor)} owed for ticket {old.Barcode}", ct);
         return true;
     }
 

@@ -190,10 +190,13 @@ addresses were typed. Directed resale links buy only the buyer's own ticket.
   voided, the buyer gets a new ticket, and the holder is told it sold (`ticket_resale_sold`).
 - **Evening refund batch** (`TicketResaleRefundJob`, daily 19:00 UTC, H11): the holder is refunded what they paid
   (adult plus children) through the original order's backend, once the buyer's order has held for 12 hours, under the
-  offer's id so a repeat finds the same refund and a call that threw is retried. A sale whose buyer order is no longer
-  paid, or has a refund (ours or the backend's) or a chargeback, is held back and flagged once for the team
-  (`TicketCheckoutNeedsAttention`, "Resale refund held back"). A refund that cannot even start is recorded as a
-  `Failed` refund on the holder's order for the team to pay by hand; the timeline of both orders records it. Each run
+  offer's id so a repeat finds the same refund and a call that threw is retried. Both orders are read from their
+  backend first, so a refund or chargeback a missed webhook never reported still counts; when a backend cannot be
+  read, the refund waits for the next batch. A sale whose buyer order is no longer paid, or has a refund (ours or the
+  backend's) or a chargeback, is held back for good and flagged for the team (`TicketCheckoutNeedsAttention`,
+  "Resale refund held back"): it is recorded as a `Failed` refund on the holder's order, so no later batch pays it and
+  reconciliation lists it among failed refunds until the team settles it. A refund that cannot even start is recorded
+  the same way, for the team to pay by hand; the timeline of both orders records it. Each run
   leaves one `TicketResaleRefundBatch` audit row per event with the count and total started, held back and waiting;
   the batch refunds are reconciled with the backend like every other refund. The resale queue page shows a sold offer
   without its refund as waiting for the batch.

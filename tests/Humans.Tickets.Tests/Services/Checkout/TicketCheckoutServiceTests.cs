@@ -675,7 +675,7 @@ public sealed class TicketCheckoutServiceTests
     [HumansFact]
     public async Task The_evening_batch_holds_back_a_refund_when_the_buyers_order_was_refunded()
     {
-        await OfferedTicketAsync();
+        var old = await OfferedTicketAsync();
         var buyer = await BuyAndPayAsync(Buy(), _otherBuyerId);
         (await _service.RefundAsync(buyer.Id, 22500, "changed their mind", _adminId, Ct)).Succeeded.Should().BeTrue();
         _backend.ClearReceivedCalls();
@@ -684,11 +684,44 @@ public sealed class TicketCheckoutServiceTests
         (await _service.RunResaleRefundBatchAsync(Ct)).HeldBack.Should().Be(0);
 
         await _backend.DidNotReceive().RefundAsync(Arg.Any<RefundRequest>(), Arg.Any<CancellationToken>());
-        _repo.Offers.Single().RefundId.Should().BeNull();
+        var offer = _repo.Offers.Single();
+        offer.RefundId.Should().Be(offer.Id, "held back for good: a later batch never pays it on its own");
+        _repo.Refunds.Select(r => r.Refund).Should().ContainSingle(r => r.Id == offer.Id && r.OrderId == old.OrderId && r.State == RefundState.Failed
+            && r.FailureReason!.StartsWith("Resale refund held back", StringComparison.Ordinal));
         await _audit.Received(1).LogAsync(TicketsAuditActions.TicketCheckoutNeedsAttention, Arg.Any<string>(), Arg.Any<Guid>(),
             Arg.Is<string>(d => d.StartsWith("Resale refund held back", StringComparison.Ordinal)), Arg.Any<string>());
         await _audit.Received(1).LogAsync(TicketsAuditActions.TicketResaleRefundBatch, Arg.Any<string>(), _salesEvent.Id,
             Arg.Any<string>(), Arg.Any<string>());
+    }
+
+    [HumansFact]
+    public async Task The_evening_batch_reads_the_buyers_order_from_the_backend_so_a_missed_chargeback_holds_the_refund_back()
+    {
+        await OfferedTicketAsync();
+        var buyer = await BuyAndPayAsync(Buy(), _otherBuyerId);
+        _backend.GetStatusAsync(buyer.BackendOrderId!, Arg.Any<CancellationToken>())
+            .Returns(new CheckoutStatus(CheckoutState.Paid, 0, "card", Now, DisputedMinor: 22500));
+
+        (await RefundBatchAsync()).HeldBack.Should().Be(1);
+
+        await _backend.DidNotReceive().RefundAsync(Arg.Any<RefundRequest>(), Arg.Any<CancellationToken>());
+        _repo.Orders.Single(o => o.Id == buyer.Id).DisputedMinor.Should().Be(22500);
+    }
+
+    [HumansFact]
+    public async Task The_evening_batch_pays_nothing_while_the_backend_cannot_be_read_and_pays_once_it_can()
+    {
+        await OfferedTicketAsync();
+        var buyer = await BuyAndPayAsync(Buy(), _otherBuyerId);
+        _backend.GetStatusAsync(buyer.BackendOrderId!, Arg.Any<CancellationToken>())
+            .Returns<CheckoutStatus>(_ => throw new HttpRequestException("down"));
+
+        (await RefundBatchAsync()).Should().Be(new ResaleRefundBatch(0, 0, 0, 1));
+        await _backend.DidNotReceive().RefundAsync(Arg.Any<RefundRequest>(), Arg.Any<CancellationToken>());
+
+        _backend.GetStatusAsync(buyer.BackendOrderId!, Arg.Any<CancellationToken>())
+            .Returns(new CheckoutStatus(CheckoutState.Paid, 0, "card", Now));
+        (await _service.RunResaleRefundBatchAsync(Ct)).Should().Be(new ResaleRefundBatch(1, 22500, 0, 0));
     }
 
     [HumansFact]
