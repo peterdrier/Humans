@@ -549,4 +549,58 @@
   <data name="Tickets_Buy_OtherHolds" xml:space="preserve">
     <value>La persona amb {0} ja té una entrada per a aquest esdeveniment, així que no li'n pots comprar una altra.</value>
   </data>
+  <data name="Tickets_Companion_Ask" xml:space="preserve">
+    <value>Demana una entrada d'acompanyant</value>
+  </data>
+  <data name="Tickets_Companion_AskHelp" xml:space="preserve">
+    <value>Si necessites algú amb tu per participar, per exemple per una discapacitat, pot venir amb una entrada d'acompanyant gratuïta. Ha de ser ja a Humans. L'equip d'entrades llegeix la teva petició i respon aquí.</value>
+  </data>
+  <data name="Tickets_Companion_Email" xml:space="preserve">
+    <value>El correu del teu acompanyant a Humans</value>
+  </data>
+  <data name="Tickets_Companion_Note" xml:space="preserve">
+    <value>Per què necessites acompanyant</value>
+  </data>
+  <data name="Tickets_Companion_NoteHelp" xml:space="preserve">
+    <value>N'hi ha prou amb una frase. Només la llegeix l'equip d'entrades; no calen detalls mèdics.</value>
+  </data>
+  <data name="Tickets_Companion_Send" xml:space="preserve">
+    <value>Envia la petició</value>
+  </data>
+  <data name="Tickets_Companion_Requested" xml:space="preserve">
+    <value>La teva petició d'acompanyant s'ha enviat a l'equip d'entrades.</value>
+  </data>
+  <data name="Tickets_Companion_Pending" xml:space="preserve">
+    <value>La teva petició d'acompanyant està pendent de l'equip d'entrades.</value>
+  </data>
+  <data name="Tickets_Companion_Withdraw" xml:space="preserve">
+    <value>Retira la petició</value>
+  </data>
+  <data name="Tickets_Companion_Withdrawn" xml:space="preserve">
+    <value>Petició d'acompanyant retirada.</value>
+  </data>
+  <data name="Tickets_Companion_Declined" xml:space="preserve">
+    <value>L'equip d'entrades ha rebutjat la teva petició d'acompanyant: {0}</value>
+  </data>
+  <data name="Tickets_Companion_NotAllowed" xml:space="preserve">
+    <value>Aquesta entrada no admet una petició d'acompanyant: ha de ser una entrada d'adult vàlida, sense acompanyant ni petició pendent.</value>
+  </data>
+  <data name="Tickets_Companion_NoteRequired" xml:space="preserve">
+    <value>Explica breument per què necessites acompanyant, en 500 caràcters com a màxim.</value>
+  </data>
+  <data name="Tickets_Companion_NothingPending" xml:space="preserve">
+    <value>No hi ha cap petició d'acompanyant pendent en aquesta entrada.</value>
+  </data>
+  <data name="Tickets_Companion_NotFound" xml:space="preserve">
+    <value>Ningú a Humans té aquest correu confirmat. El teu acompanyant s'ha d'unir primer a Humans.</value>
+  </data>
+  <data name="Tickets_Companion_IsYou" xml:space="preserve">
+    <value>Aquest és el teu propi correu; indica el del teu acompanyant.</value>
+  </data>
+  <data name="Tickets_Companion_NeedsName" xml:space="preserve">
+    <value>El teu acompanyant encara no ha indicat el seu nom legal a Humans. L'entrada porta el nom legal, així que primer l'ha d'afegir.</value>
+  </data>
+  <data name="Tickets_Companion_Holds" xml:space="preserve">
+    <value>El teu acompanyant ja té una entrada per a aquest esdeveniment, així que no en necessita una d'acompanyant.</value>
+  </data>
 </root>

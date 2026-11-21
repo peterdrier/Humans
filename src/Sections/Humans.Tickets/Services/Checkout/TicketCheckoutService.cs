@@ -261,9 +261,9 @@ internal sealed partial class TicketCheckoutService(
         var others = new List<UserInfo>();
         foreach (var otherEmail in otherEmails)
         {
-            var (other, refusal) = await FindOtherAsync(otherEmail, buyer, salesEvent.Id, now, ct);
-            if (refusal is not null)
-                return StartCheckoutResult.Refused(refusal, otherEmail);
+            var (other, problem) = await FindOtherAsync(otherEmail, buyer.Id, salesEvent.Id, now, ct);
+            if (problem is not null)
+                return StartCheckoutResult.Refused("Tickets_Buy_Other" + problem, otherEmail);
             if (others.All(o => o.Id != other!.Id))
                 others.Add(other!);
         }
@@ -817,6 +817,7 @@ internal sealed partial class TicketCheckoutService(
     internal const string OrdersSlice = "TicketCheckoutOrders";
     internal const string TicketsSlice = "TicketCheckoutTickets";
     internal const string OffersSlice = "TicketResaleOffers";
+    internal const string CompanionRequestsSlice = "TicketCompanionRequests";
 
     public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
     {
@@ -826,6 +827,7 @@ internal sealed partial class TicketCheckoutService(
         var offers = new List<TicketResaleOffer>();
         foreach (var salesEventId in tickets.Select(t => t.SalesEventId).Distinct())
             offers.AddRange((await repository.GetOffersForSalesEventAsync(salesEventId, ct)).Where(o => o.HolderUserId == userId));
+        var companionRequests = await repository.GetCompanionRequestsForUserAsync(userId, ct);
         return
         [
             new UserDataSlice(OrdersSlice, orders.Select(o => new
@@ -874,6 +876,18 @@ internal sealed partial class TicketCheckoutService(
                 WithdrawnAt = o.WithdrawnAt.ToIso8601(),
                 o.DirectedEmail,
             }).ToList()),
+            new UserDataSlice(CompanionRequestsSlice, companionRequests.Select(r => new
+            {
+                r.Id,
+                r.TicketId,
+                AskedForCompanion = r.HolderUserId == userId,
+                // The holder's reason is about the holder; the companion sees only that they were asked for.
+                Note = r.HolderUserId == userId ? r.Note : null,
+                State = r.State.ToString(),
+                RequestedAt = r.RequestedAt.ToIso8601(),
+                DecidedAt = r.DecidedAt.ToIso8601(),
+                DecisionNote = r.HolderUserId == userId ? r.DecisionNote : null,
+            }).ToList()),
         ];
     }
 
@@ -891,6 +905,9 @@ internal sealed partial class TicketCheckoutService(
             [OffersSlice] =
                 "Partly retained: the invited buyer's email and the invitation are cleared; dates, state and the refund " +
                 "owed stay as the accounting record of the resale.",
+            [CompanionRequestsSlice] =
+                "Partly retained: the holder's note is replaced by the tombstone and the team's answer cleared; state and dates stay as the record of " +
+                "why a free ticket was issued.",
         };
 
     public IReadOnlyDictionary<string, string?> ErasureDeclaration => Erasure;
@@ -946,6 +963,13 @@ internal sealed partial class TicketCheckoutService(
                 offer.WithdrawnAt = now;
                 await repository.UpdateOfferAsync(offer, ct);
             }
+        foreach (var request in (await repository.GetCompanionRequestsForUserAsync(userId, ct))
+                     .Where(r => r.State == TicketCompanionRequestState.Pending))
+        {
+            request.State = TicketCompanionRequestState.Withdrawn;
+            request.DecidedAt = now;
+            await repository.UpdateCompanionRequestAsync(request, ct);
+        }
         await repository.ErasePiiForUserAsync(userId, addresses, ct);
     }
 
@@ -1137,25 +1161,32 @@ internal sealed partial class TicketCheckoutService(
     };
 
     /// <summary>
-    /// The person behind an address added to an order, or the refusal key. Only an address verified on exactly one
-    /// live account counts, and nobody gets an account made for them: they must already be in Humans.
+    /// The person behind an address someone gives for another person (on an order, as a companion), or the problem:
+    /// <c>NotFound</c>, <c>IsYou</c>, <c>NeedsName</c> or <c>Holds</c>, the suffix of the caller's refusal key. Only an
+    /// address verified on exactly one live account counts; nobody gets an account made for them.
     /// </summary>
-    private async Task<(UserInfo? Person, string? Refusal)> FindOtherAsync(
-        string email, UserInfo buyer, Guid salesEventId, Instant now, CancellationToken ct)
+    private async Task<(UserInfo? Person, string? Problem)> FindOtherAsync(
+        string email, Guid askerId, Guid salesEventId, Instant now, CancellationToken ct)
     {
         if (!LooksLikeEmail(email) || email.Length > MaxEmailLength)
-            return (null, "Tickets_Buy_OtherNotFound");
+            return (null, "NotFound");
         var owners = (await userEmails.FindByAddressAsync(email, aliased: true, verifiedOnly: true, ct))
             .Select(r => r.UserId).Distinct().ToList();
-        if (owners.Count != 1 || await users.GetUserInfoAsync(owners[0], ct) is not { } person
+        return owners.Count != 1 ? (null, "NotFound") : await CheckOtherAsync(owners[0], askerId, salesEventId, now, ct);
+    }
+
+    private async Task<(UserInfo? Person, string? Problem)> CheckOtherAsync(
+        Guid userId, Guid askerId, Guid salesEventId, Instant now, CancellationToken ct)
+    {
+        if (await users.GetUserInfoAsync(userId, ct) is not { } person
             || person.IsTombstone || person.IsFake || person.State is UserState.DeletePending or UserState.Rejected)
-            return (null, "Tickets_Buy_OtherNotFound");
-        if (person.Id == buyer.Id)
-            return (null, "Tickets_Buy_OtherIsYou");
+            return (null, "NotFound");
+        if (person.Id == askerId)
+            return (null, "IsYou");
         if (!person.HasRequiredNameFields || string.IsNullOrWhiteSpace(person.Email))
-            return (null, "Tickets_Buy_OtherNeedsName");
+            return (null, "NeedsName");
         if (await HoldsTicketAsync(salesEventId, person.Id, now, ct))
-            return (null, "Tickets_Buy_OtherHolds");
+            return (null, "Holds");
         return (person, null);
     }
 

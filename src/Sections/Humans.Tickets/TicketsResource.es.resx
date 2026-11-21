@@ -549,4 +549,58 @@
   <data name="Tickets_Buy_OtherHolds" xml:space="preserve">
     <value>La persona con {0} ya tiene una entrada para este evento, así que no puedes comprarle otra.</value>
   </data>
+  <data name="Tickets_Companion_Ask" xml:space="preserve">
+    <value>Pedir una entrada de acompañante</value>
+  </data>
+  <data name="Tickets_Companion_AskHelp" xml:space="preserve">
+    <value>Si necesitas a alguien contigo para participar, por ejemplo por una discapacidad, puede venir con una entrada de acompañante gratuita. Tiene que estar ya en Humans. El equipo de entradas lee tu petición y responde aquí.</value>
+  </data>
+  <data name="Tickets_Companion_Email" xml:space="preserve">
+    <value>El correo de tu acompañante en Humans</value>
+  </data>
+  <data name="Tickets_Companion_Note" xml:space="preserve">
+    <value>Por qué necesitas acompañante</value>
+  </data>
+  <data name="Tickets_Companion_NoteHelp" xml:space="preserve">
+    <value>Basta con una frase. Solo la lee el equipo de entradas; no hacen falta detalles médicos.</value>
+  </data>
+  <data name="Tickets_Companion_Send" xml:space="preserve">
+    <value>Enviar petición</value>
+  </data>
+  <data name="Tickets_Companion_Requested" xml:space="preserve">
+    <value>Tu petición de acompañante se ha enviado al equipo de entradas.</value>
+  </data>
+  <data name="Tickets_Companion_Pending" xml:space="preserve">
+    <value>Tu petición de acompañante está pendiente del equipo de entradas.</value>
+  </data>
+  <data name="Tickets_Companion_Withdraw" xml:space="preserve">
+    <value>Retirar petición</value>
+  </data>
+  <data name="Tickets_Companion_Withdrawn" xml:space="preserve">
+    <value>Petición de acompañante retirada.</value>
+  </data>
+  <data name="Tickets_Companion_Declined" xml:space="preserve">
+    <value>El equipo de entradas ha rechazado tu petición de acompañante: {0}</value>
+  </data>
+  <data name="Tickets_Companion_NotAllowed" xml:space="preserve">
+    <value>Esta entrada no admite una petición de acompañante: tiene que ser una entrada de adulto válida, sin acompañante ni petición pendiente.</value>
+  </data>
+  <data name="Tickets_Companion_NoteRequired" xml:space="preserve">
+    <value>Explica brevemente por qué necesitas acompañante, en 500 caracteres como máximo.</value>
+  </data>
+  <data name="Tickets_Companion_NothingPending" xml:space="preserve">
+    <value>No hay ninguna petición de acompañante pendiente en esta entrada.</value>
+  </data>
+  <data name="Tickets_Companion_NotFound" xml:space="preserve">
+    <value>Nadie en Humans tiene ese correo confirmado. Tu acompañante tiene que unirse primero a Humans.</value>
+  </data>
+  <data name="Tickets_Companion_IsYou" xml:space="preserve">
+    <value>Ese es tu propio correo; indica el de tu acompañante.</value>
+  </data>
+  <data name="Tickets_Companion_NeedsName" xml:space="preserve">
+    <value>Tu acompañante aún no ha indicado su nombre legal en Humans. La entrada lleva el nombre legal, así que primero tiene que añadirlo.</value>
+  </data>
+  <data name="Tickets_Companion_Holds" xml:space="preserve">
+    <value>Tu acompañante ya tiene una entrada para este evento, así que no necesita una de acompañante.</value>
+  </data>
 </root>

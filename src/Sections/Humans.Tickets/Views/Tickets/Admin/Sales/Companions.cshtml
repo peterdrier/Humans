@@ -1,0 +1,84 @@
+@using Humans.Tickets.Domain.Checkout
+@model Humans.Tickets.Controllers.CompanionsViewModel
+@{
+    ViewData["Title"] = "Companion requests";
+    var pending = Model.Rows.Where(r => r.Request.State == TicketCompanionRequestState.Pending).ToList();
+    var answered = Model.Rows.Where(r => r.Request.State != TicketCompanionRequestState.Pending).ToList();
+}
+
+@section Crumbs {
+    <a asp-controller="TicketsSalesAdmin" asp-action="Index">Sales</a>
+    <span>Companion requests</span>
+}
+
+<page-header title="Companion requests: @Model.EventName" />
+
+<p class="text-muted">
+    Holders ask here for a free companion who is already in Humans. Approving issues the companion's ticket on a free
+    order of its own and emails it; declining shows your note to the holder. The holder's note is for this check only:
+    it never goes on the order timeline or the audit log.
+</p>
+
+<h2 class="h4">Waiting (@pending.Count)</h2>
+@if (pending.Count == 0)
+{
+    <p class="text-muted">None.</p>
+}
+else
+{
+    <div class="list-group mb-4">
+        @foreach (var row in pending)
+        {
+            var r = row.Request;
+            <div class="list-group-item">
+                <div class="d-flex flex-wrap justify-content-between gap-2">
+                    <div>
+                        <div class="fw-semibold">@row.HolderName asks for @row.CompanionName</div>
+                        <div class="small text-muted">
+                            @r.RequestedAt.ToDateTime() · ticket
+                            <a asp-action="Ticket" asp-route-orderId="@row.TicketOrderId" asp-route-ticketId="@r.TicketId"><code>@row.TicketBarcode</code></a>
+                        </div>
+                    </div>
+                </div>
+                <p class="my-2">@r.Note</p>
+                <form method="post" asp-action="DecideCompanion" asp-route-id="@Model.SalesEventId" asp-route-requestId="@r.Id"
+                      class="row g-2 align-items-end" authorize-policy="@TicketsPolicies.Manage">
+                    @Html.AntiForgeryToken()
+                    <div class="col-md-7">
+                        <label class="form-label small" for="note-@r.Id">Note (needed to decline; the holder sees it)</label>
+                        <input class="form-control form-control-sm" id="note-@r.Id" name="note" maxlength="500" />
+                    </div>
+                    <div class="col-md-5 d-flex gap-2">
+                        <button type="submit" name="approve" value="true" class="btn btn-primary btn-sm">Approve</button>
+                        <button type="submit" name="approve" value="false" class="btn btn-outline-danger btn-sm">Decline</button>
+                    </div>
+                </form>
+            </div>
+        }
+    </div>
+}
+
+<h2 class="h4">Answered</h2>
+@if (answered.Count == 0)
+{
+    <p class="text-muted">None.</p>
+}
+else
+{
+    <table class="table table-sm">
+        <thead><tr><th>Asked</th><th>Holder</th><th>Companion</th><th>State</th><th>Team note</th></tr></thead>
+        <tbody>
+            @foreach (var row in answered)
+            {
+                var r = row.Request;
+                <tr>
+                    <td>@r.RequestedAt.ToDateTime()</td>
+                    <td><a asp-action="Ticket" asp-route-orderId="@row.TicketOrderId" asp-route-ticketId="@r.TicketId">@row.HolderName</a></td>
+                    <td>@row.CompanionName</td>
+                    <td><status-badge value="@r.State" text="@r.State.ToString()" /></td>
+                    <td>@r.DecisionNote</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}

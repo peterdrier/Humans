@@ -169,10 +169,20 @@ addresses were typed. Directed resale links buy only the buyer's own ticket.
   the holder's order timeline. One invitation is live at a time, and a ticket gets at most three over all its offers; the invited email is
   cleared once the invitation ends.
 
+## Companion tickets
+
+A holder of a valid adult ticket can ask, on `/Tickets/Buy/Mine`, for a free companion ticket for someone already in
+Humans: their email (the same lookup as buying for others: one live verified account with a legal name, not the holder,
+not already holding a ticket) and a short note on why. One ask is pending at a time; the holder can withdraw it. The
+ticketing team answers from the event's Companions queue: approve rechecks the companion and issues the free ticket to
+their account (the usual ticket email; the holder gets the zero receipt), decline needs a note the holder sees on their
+ticket. Nobody's account is created and the companion is never mailed an invitation. The ask and the answer land on the
+order timeline and the answer is audited.
+
 ## The ticketing team
 
 `/Tickets/Admin/Sales/Lookup` finds orders across events. Per event, the sales index links the refund list, the resale
-queue (directed offers marked with the invited email) and the sales report. Each issued ticket has an admin
+queue (directed offers marked with the invited email), the companion requests and the sales report. Each issued ticket has an admin
 page, reached from its order, with the three exceptions: rename (full price adults only), void (no refund; refund from
 the order), and a free companion ticket.
 

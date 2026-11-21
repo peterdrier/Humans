@@ -57,6 +57,7 @@ internal sealed partial class TicketCheckoutService
             var queue = offers.Where(o => o.State is TicketResaleOfferState.Open or TicketResaleOfferState.Reserved).ToList();
             var positions = TicketSupportReports.QueuePositions(offers);
             var eventTickets = salesEvent is null ? [] : await repository.GetTicketsForSalesEventAsync(group.Key, ct);
+            var companionRequests = await repository.GetCompanionRequestsForSalesEventAsync(group.Key, ct);
             foreach (var ticket in group.OrderBy(t => t.IssuedAt))
             {
                 var offer = queue.FirstOrDefault(o => o.TicketId == ticket.Id);
@@ -67,6 +68,8 @@ internal sealed partial class TicketCheckoutService
                     DirectedActive: offer?.HasLiveInvite == true)
                 {
                     CanInvite = salesEvent?.EffectiveSwitches.Resale == ResaleScheme.QueueAndDirected,
+                    CompanionRequest = companionRequests.Where(r => r.TicketId == ticket.Id).MaxBy(r => r.RequestedAt),
+                    CanAskCompanion = CanAskCompanion(ticket, salesEvent, eventTickets, companionRequests),
                 });
                 // A child ticket has no account of its own: it shows under the adult who holds it.
                 foreach (var child in eventTickets.Where(t => t.ParentTicketId == ticket.Id && t.State == TicketCheckoutTicketState.Valid))

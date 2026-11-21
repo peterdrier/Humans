@@ -51,6 +51,9 @@ internal sealed class TicketsAuditActions : AuditActionContributor
     public static readonly AuditActionDefinition TicketCheckoutTicketVoided = new("TicketCheckoutTicketVoided");
 
     public static readonly AuditActionDefinition TicketCompanionIssued = new("TicketCompanionIssued");
+
+    /// <summary>The ticketing team approved or declined a holder's companion request.</summary>
+    public static readonly AuditActionDefinition TicketCompanionRequestDecided = new("TicketCompanionRequestDecided");
     /// <summary>Ticket emails and the receipt, queued automatically once an order's tickets were issued.</summary>
     public static readonly AuditActionDefinition TicketDeliverySent = new("TicketDeliverySent");
 

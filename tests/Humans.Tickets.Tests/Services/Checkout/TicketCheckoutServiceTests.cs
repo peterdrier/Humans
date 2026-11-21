@@ -1206,6 +1206,120 @@ public sealed class TicketCheckoutServiceTests
     }
 
     [HumansFact]
+    public async Task A_holder_asks_for_a_companion_in_Humans_and_approval_issues_it_to_their_account()
+    {
+        var adult = await PaidAdultAsync();
+        var helper = Human("helper@example.com", "Helper", "Ruiz");
+        _delivery.ClearReceivedCalls();
+
+        (await _service.RequestCompanionAsync(adult.Id, _buyerId, " HELPER@example.com ", " Wheelchair user ", Ct))
+            .Refusal.Should().BeNull();
+        (await _service.RequestCompanionAsync(adult.Id, _buyerId, "helper@example.com", "Again", Ct))
+            .Refusal.Should().Be("Tickets_Companion_NotAllowed");
+        var request = _repo.CompanionRequests.Single();
+        request.State.Should().Be(TicketCompanionRequestState.Pending);
+        request.CompanionUserId.Should().Be(helper);
+        request.Note.Should().Be("Wheelchair user");
+        _repo.Events.Should().Contain(e => e.Kind == TicketCheckoutOrderEventKind.CompanionRequested)
+            .And.NotContain(e => e.Detail.Contains("Wheelchair"));
+        _repo.Tickets.Should().NotContain(t => t.Kind == TicketHolderKind.Companion);
+
+        (await _service.DecideCompanionRequestAsync(request.Id, approve: true, null, _adminId, Ct)).Refusal.Should().BeNull();
+
+        var companion = _repo.Tickets.Single(t => t.Kind == TicketHolderKind.Companion);
+        companion.HolderUserId.Should().Be(helper);
+        companion.HolderName.Should().Be("Helper Ruiz");
+        companion.ParentTicketId.Should().Be(adult.Id);
+        companion.PricePaidMinor.Should().Be(0);
+        request.State.Should().Be(TicketCompanionRequestState.Approved);
+        request.CompanionTicketId.Should().Be(companion.Id);
+        request.DecidedByUserId.Should().Be(_adminId);
+        await _provisioning.DidNotReceiveWithAnyArgs().FindOrCreateUserByEmailAsync(default!, default, default, default);
+        await _delivery.Received(1).TicketsIssuedAsync(companion.OrderId, Arg.Any<CancellationToken>());
+        await _audit.Received(1).LogAsync(TicketsAuditActions.TicketCompanionRequestDecided, Arg.Any<string>(), request.Id,
+            Arg.Any<string>(), _adminId, _buyerId, AuditSubjectTypes.User);
+        (await _service.RequestCompanionAsync(adult.Id, _buyerId, "helper@example.com", "A second one", Ct))
+            .Refusal.Should().Be("Tickets_Companion_NotAllowed");
+    }
+
+    [HumansFact]
+    public async Task A_companion_request_is_refused_for_someone_elses_ticket_without_a_note_or_without_a_live_account()
+    {
+        var adult = await PaidAdultAsync();
+        Human("helper@example.com", "Helper", "Ruiz");
+        Human("noname@example.com", "", "", u => { u.FirstName = ""; u.LastName = ""; });
+        _userEmails.FindByAddressAsync("ana@example.com", true, true, Arg.Any<CancellationToken>()).Returns([Row(_buyerId, verified: true)]);
+
+        (await _service.RequestCompanionAsync(adult.Id, _otherBuyerId, "helper@example.com", "Help", Ct))
+            .Refusal.Should().Be("Tickets_Resale_NotFound");
+        (await _service.RequestCompanionAsync(adult.Id, _buyerId, "helper@example.com", "  ", Ct))
+            .Refusal.Should().Be("Tickets_Companion_NoteRequired");
+        (await _service.RequestCompanionAsync(adult.Id, _buyerId, "nobody@example.com", "Help", Ct))
+            .Refusal.Should().Be("Tickets_Companion_NotFound");
+        (await _service.RequestCompanionAsync(adult.Id, _buyerId, "ana@example.com", "Help", Ct))
+            .Refusal.Should().Be("Tickets_Companion_IsYou");
+        (await _service.RequestCompanionAsync(adult.Id, _buyerId, "noname@example.com", "Help", Ct))
+            .Refusal.Should().Be("Tickets_Companion_NeedsName");
+        _repo.CompanionRequests.Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task A_decline_needs_a_note_the_holder_sees_and_lets_them_ask_again()
+    {
+        var adult = await PaidAdultAsync();
+        Human("helper@example.com", "Helper", "Ruiz");
+        await _service.RequestCompanionAsync(adult.Id, _buyerId, "helper@example.com", "Help", Ct);
+        var request = _repo.CompanionRequests.Single();
+
+        (await _service.DecideCompanionRequestAsync(request.Id, approve: false, " ", _adminId, Ct)).Succeeded.Should().BeFalse();
+        (await _service.DecideCompanionRequestAsync(request.Id, approve: false, "Not eligible", _adminId, Ct)).Refusal.Should().BeNull();
+        (await _service.DecideCompanionRequestAsync(request.Id, approve: true, null, _adminId, Ct)).Succeeded.Should().BeFalse();
+
+        request.State.Should().Be(TicketCompanionRequestState.Declined);
+        request.DecisionNote.Should().Be("Not eligible");
+        _repo.Tickets.Should().NotContain(t => t.Kind == TicketHolderKind.Companion);
+        var held = (await _service.GetHeldTicketsAsync(_buyerId, Ct)).Single(t => t.Ticket.Id == adult.Id);
+        held.CompanionRequest!.DecisionNote.Should().Be("Not eligible");
+        held.CanAskCompanion.Should().BeTrue();
+    }
+
+    [HumansFact]
+    public async Task Approval_rechecks_the_companion_and_a_withdrawn_request_cannot_be_approved()
+    {
+        var adult = await PaidAdultAsync();
+        var helper = Human("helper@example.com", "Helper", "Ruiz");
+        await _service.RequestCompanionAsync(adult.Id, _buyerId, "helper@example.com", "Help", Ct);
+        var request = _repo.CompanionRequests.Single();
+        await BuyAndPayAsync(Buy(), helper);
+
+        (await _service.DecideCompanionRequestAsync(request.Id, approve: true, null, _adminId, Ct))
+            .Refusal.Should().StartWith("The companion now holds a ticket");
+        request.State.Should().Be(TicketCompanionRequestState.Pending);
+
+        (await _service.WithdrawCompanionRequestAsync(adult.Id, _buyerId, Ct)).Refusal.Should().BeNull();
+        (await _service.WithdrawCompanionRequestAsync(adult.Id, _buyerId, Ct)).Refusal.Should().Be("Tickets_Companion_NothingPending");
+        (await _service.DecideCompanionRequestAsync(request.Id, approve: false, "Late", _adminId, Ct)).Succeeded.Should().BeFalse();
+        request.State.Should().Be(TicketCompanionRequestState.Withdrawn);
+    }
+
+    [HumansFact]
+    public async Task Erasure_withdraws_a_pending_companion_request_and_the_companions_export_hides_the_note()
+    {
+        var adult = await PaidAdultAsync();
+        var helper = Human("helper@example.com", "Helper", "Ruiz");
+        await _service.RequestCompanionAsync(adult.Id, _buyerId, "helper@example.com", "Uses a wheelchair", Ct);
+
+        async Task<string> ExportAsync(Guid userId) => System.Text.Json.JsonSerializer.Serialize(
+            (await _service.ContributeForUserAsync(userId, Ct)).Select(slice => slice.Data));
+        (await ExportAsync(helper)).Should().Contain(_repo.CompanionRequests.Single().Id.ToString()).And.NotContain("wheelchair");
+        (await ExportAsync(_buyerId)).Should().Contain("Uses a wheelchair");
+
+        await _service.EraseForUserAsync(helper, Ct);
+
+        _repo.CompanionRequests.Single().State.Should().Be(TicketCompanionRequestState.Withdrawn);
+    }
+
+    [HumansFact]
     public async Task A_lapsed_hold_is_closed_at_the_backend_and_a_late_payment_still_issues_flagged_tickets()
     {
         var offerTicket = await OfferedTicketAsync();
@@ -1940,6 +2054,20 @@ public sealed class TicketCheckoutServiceTests
             Task.FromResult(Offers.FirstOrDefault(o => string.Equals(o.DirectedTokenHash, tokenHash, StringComparison.Ordinal)));
         public Task<IReadOnlyList<TicketResaleOffer>> GetOffersForSalesEventAsync(Guid salesEventId, CancellationToken ct = default) =>
             Task.FromResult<IReadOnlyList<TicketResaleOffer>>(Offers.Where(o => o.SalesEventId == salesEventId).ToList());
+        public List<TicketCompanionRequest> CompanionRequests { get; } = [];
+        public Task AddCompanionRequestAsync(TicketCompanionRequest request, CancellationToken ct = default)
+        {
+            CompanionRequests.Add(request);
+            return Task.CompletedTask;
+        }
+        public Task UpdateCompanionRequestAsync(TicketCompanionRequest request, CancellationToken ct = default) => Task.CompletedTask;
+        public Task<TicketCompanionRequest?> GetCompanionRequestAsync(Guid id, CancellationToken ct = default) =>
+            Task.FromResult(CompanionRequests.FirstOrDefault(r => r.Id == id));
+        public Task<IReadOnlyList<TicketCompanionRequest>> GetCompanionRequestsForSalesEventAsync(Guid salesEventId, CancellationToken ct = default) =>
+            Task.FromResult<IReadOnlyList<TicketCompanionRequest>>(CompanionRequests.Where(r => r.SalesEventId == salesEventId).ToList());
+        public Task<IReadOnlyList<TicketCompanionRequest>> GetCompanionRequestsForUserAsync(Guid userId, CancellationToken ct = default) =>
+            Task.FromResult<IReadOnlyList<TicketCompanionRequest>>(
+                CompanionRequests.Where(r => r.HolderUserId == userId || r.CompanionUserId == userId).ToList());
         public Task<IReadOnlyList<TicketCheckoutRefund>> GetRefundsForSalesEventAsync(Guid salesEventId, CancellationToken ct = default) =>
             Task.FromResult<IReadOnlyList<TicketCheckoutRefund>>(Refunds.Select(r => r.Refund)
                 .Where(r => Orders.Any(o => o.Id == r.OrderId && o.SalesEventId == salesEventId)).ToList());

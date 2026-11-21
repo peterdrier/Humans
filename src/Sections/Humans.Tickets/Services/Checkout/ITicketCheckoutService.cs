@@ -107,6 +107,26 @@ internal interface ITicketCheckoutService : ITicketCheckoutEvents, IApplicationS
     Task<CheckoutMutationResult> IssueCompanionAsync(
         Guid parentTicketId, string holderName, string? holderEmail, string reason, Guid actorUserId, CancellationToken ct = default);
 
+    /// <summary>
+    /// The holder of a valid adult ticket asks for a free companion who is already in Humans, found by the address they
+    /// verified there, with a short note for the ticketing team. Refusals are resource keys.
+    /// </summary>
+    Task<CheckoutMutationResult> RequestCompanionAsync(
+        Guid ticketId, Guid holderUserId, string companionEmail, string note, CancellationToken ct = default);
+
+    /// <summary>The holder takes back their request while it waits. Refusals are resource keys.</summary>
+    Task<CheckoutMutationResult> WithdrawCompanionRequestAsync(Guid ticketId, Guid holderUserId, CancellationToken ct = default);
+
+    /// <summary>Every companion request on the sales event, newest first, with names for the team's queue.</summary>
+    Task<IReadOnlyList<CompanionRequestRow>> GetCompanionRequestsAsync(Guid salesEventId, CancellationToken ct = default);
+
+    /// <summary>
+    /// The team's light check: approving issues the companion ticket (as <see cref="IssueCompanionAsync"/>, to the
+    /// companion's own account), declining tells the holder why. Audited either way.
+    /// </summary>
+    Task<CheckoutMutationResult> DecideCompanionRequestAsync(
+        Guid requestId, bool approve, string? note, Guid actorUserId, CancellationToken ct = default);
+
     /// <summary>Refreshes every open order and sweeps the resale queue; returns how many changed.</summary>
     Task<int> ReconcileOpenOrdersAsync(CancellationToken ct = default);
 
@@ -278,4 +298,18 @@ internal sealed record HeldTicket(
 {
     /// <summary>The event runs directed resale (<see cref="ResaleScheme.QueueAndDirected"/>).</summary>
     public bool CanInvite { get; init; }
+
+    /// <summary>A valid adult ticket with no companion and no request waiting: the holder may ask for one.</summary>
+    public bool CanAskCompanion { get; init; }
+
+    /// <summary>The newest companion request on this ticket, if any.</summary>
+    public TicketCompanionRequest? CompanionRequest { get; init; }
 }
+
+/// <summary>A companion request with the names the ticketing team needs to judge it.</summary>
+internal sealed record CompanionRequestRow(
+    TicketCompanionRequest Request,
+    string HolderName,
+    string CompanionName,
+    string TicketBarcode,
+    Guid TicketOrderId);

@@ -141,32 +141,46 @@ internal sealed partial class TicketCheckoutService
             return refusal;
         if (holderName.Length == 0 || (holderEmail is not null && !LooksLikeEmail(holderEmail)))
             return new("A companion needs a legal name; the email is optional but must be valid.");
+        return (await IssueCompanionCoreAsync(parentTicketId, holderName, holderEmail, async c =>
+        {
+            if (holderEmail is null)
+                return (null, null);
+            var (resolved, problem) = await ResolveAccountAsync(holderEmail, c);
+            return resolved is null
+                ? (null, $"That email cannot take the ticket: {problem}. Leave it empty to issue the companion without an account.")
+                : (resolved, null);
+        }, reason.Trim(), actorUserId, ct)).Result;
+    }
+
+    /// <summary>
+    /// Every check that needs no companion account runs before <paramref name="holder"/> is asked for one, so a refused
+    /// issue leaves no account behind.
+    /// </summary>
+    private async Task<(CheckoutMutationResult Result, TicketCheckoutTicket? Companion)> IssueCompanionCoreAsync(
+        Guid parentTicketId, string holderName, string? holderEmail,
+        Func<CancellationToken, Task<(Guid? UserId, string? Refusal)>> holder, string why, Guid actorUserId, CancellationToken ct)
+    {
         var parent = await repository.GetTicketAsync(parentTicketId, ct);
         if (parent is null)
-            return new("That ticket does not exist.");
+            return (new("That ticket does not exist."), null);
         if (parent.State != TicketCheckoutTicketState.Valid || parent.Kind != TicketHolderKind.Adult || parent.HolderUserId is not { } parentHolderId)
-            return new("A companion attaches to a valid adult ticket with a holder.");
+            return (new("A companion attaches to a valid adult ticket with a holder."), null);
         var salesEvent = await repository.GetSalesEventAsync(parent.SalesEventId, ct);
         if (salesEvent is null)
-            return new("That ticket's sales event no longer exists.");
+            return (new("That ticket's sales event no longer exists."), null);
         var now = clock.GetCurrentInstant();
         var eventTickets = await repository.GetTicketsForSalesEventAsync(parent.SalesEventId, ct);
         if (eventTickets.Any(t => t.ParentTicketId == parent.Id && t.Kind == TicketHolderKind.Companion && t.State == TicketCheckoutTicketState.Valid))
-            return new("This ticket already has a companion.");
+            return (new("This ticket already has a companion."), null);
         if ((await LoadStockAsync(salesEvent, now, ct)).Held >= salesEvent.Capacity)
-            return new("The event is at capacity.");
+            return (new("The event is at capacity."), null);
 
-        Guid? holderUserId = null;
-        if (holderEmail is not null)
-        {
-            var (resolved, problem) = await ResolveAccountAsync(holderEmail, ct);
-            if (resolved is null)
-                return new($"That email cannot take the ticket: {problem}. Leave it empty to issue the companion without an account.");
-            holderUserId = resolved;
-        }
+        var (holderUserId, holderRefusal) = await holder(ct);
+        if (holderRefusal is not null)
+            return (new(holderRefusal), null);
         if (holderUserId is { } companionId && (companionId == parentHolderId || eventTickets.Any(t =>
                 t.HolderUserId == companionId && t.State is TicketCheckoutTicketState.Valid or TicketCheckoutTicketState.Offered)))
-            return new("That person already holds a ticket for this event.");
+            return (new("That person already holds a ticket for this event."), null);
         var parentOrder = await repository.GetOrderAsync(parent.OrderId, ct);
         var order = new TicketCheckoutOrder
         {
@@ -215,7 +229,6 @@ internal sealed partial class TicketCheckoutService
         };
         await repository.AddTicketsAsync([companion], ct);
 
-        var why = reason.Trim();
         await TimelineAsync(order.Id, TicketCheckoutOrderEventKind.CompanionIssued,
             $"Free companion ticket {companion.Barcode} for ticket {parent.Barcode}: {why}", actorUserId, ct);
         await TimelineAsync(parent.OrderId, TicketCheckoutOrderEventKind.CompanionIssued,
@@ -224,7 +237,7 @@ internal sealed partial class TicketCheckoutService
             $"Companion ticket {companion.Barcode} issued for ticket {parent.Barcode}: {why}",
             actorUserId, parentHolderId, AuditSubjectTypes.User);
         await HandOffToDeliveryAsync(order.Id, ct);
-        return CheckoutMutationResult.Ok;
+        return (CheckoutMutationResult.Ok, companion);
     }
 
     private static CheckoutMutationResult? ReasonRefusal(string reason) =>

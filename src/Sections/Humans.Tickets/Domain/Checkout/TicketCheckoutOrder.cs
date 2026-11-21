@@ -202,4 +202,6 @@ internal enum TicketCheckoutOrderEventKind
     TicketsEmailed = 20,
     TicketsResent = 21,
     TicketMailSkipped = 22,
+    CompanionRequested = 23,
+    CompanionRequestDecided = 24,
 }

@@ -165,6 +165,17 @@ internal sealed class TicketBuyController(
     public Task<IActionResult> CancelInvite(Guid ticketId, CancellationToken ct) =>
         OnTicketAsync(userId => checkout.CancelInviteAsync(ticketId, userId, ct), "Tickets_Resale_InviteCancelled", ct);
 
+    [HttpPost("Mine/{ticketId:guid}/Companion")]
+    [ValidateAntiForgeryToken]
+    public Task<IActionResult> AskCompanion(Guid ticketId, string? companionEmail, string? note, CancellationToken ct) =>
+        OnTicketAsync(userId => checkout.RequestCompanionAsync(ticketId, userId, companionEmail ?? string.Empty, note ?? string.Empty, ct),
+            "Tickets_Companion_Requested", ct);
+
+    [HttpPost("Mine/{ticketId:guid}/Companion/Withdraw")]
+    [ValidateAntiForgeryToken]
+    public Task<IActionResult> WithdrawCompanion(Guid ticketId, CancellationToken ct) =>
+        OnTicketAsync(userId => checkout.WithdrawCompanionRequestAsync(ticketId, userId, ct), "Tickets_Companion_Withdrawn", ct);
+
     private async Task<IActionResult> OnTicketAsync(
         Func<Guid, Task<CheckoutMutationResult>> act, string successKey, CancellationToken ct)
     {

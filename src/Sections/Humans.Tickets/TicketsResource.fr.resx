@@ -549,4 +549,58 @@
   <data name="Tickets_Buy_OtherHolds" xml:space="preserve">
     <value>La personne avec {0} a déjà un billet pour cet événement, tu ne peux donc pas lui en acheter un autre.</value>
   </data>
+  <data name="Tickets_Companion_Ask" xml:space="preserve">
+    <value>Demander un billet d'accompagnant</value>
+  </data>
+  <data name="Tickets_Companion_AskHelp" xml:space="preserve">
+    <value>Si tu as besoin de quelqu'un avec toi pour participer, par exemple à cause d'un handicap, cette personne peut venir avec un billet d'accompagnant gratuit. Elle doit déjà être dans Humans. L'équipe billetterie lit ta demande et répond ici.</value>
+  </data>
+  <data name="Tickets_Companion_Email" xml:space="preserve">
+    <value>L'e-mail de ton accompagnant dans Humans</value>
+  </data>
+  <data name="Tickets_Companion_Note" xml:space="preserve">
+    <value>Pourquoi tu as besoin d'un accompagnant</value>
+  </data>
+  <data name="Tickets_Companion_NoteHelp" xml:space="preserve">
+    <value>Une phrase suffit. Seule l'équipe billetterie la lit ; aucun détail médical n'est nécessaire.</value>
+  </data>
+  <data name="Tickets_Companion_Send" xml:space="preserve">
+    <value>Envoyer la demande</value>
+  </data>
+  <data name="Tickets_Companion_Requested" xml:space="preserve">
+    <value>Ta demande d'accompagnant a été envoyée à l'équipe billetterie.</value>
+  </data>
+  <data name="Tickets_Companion_Pending" xml:space="preserve">
+    <value>Ta demande d'accompagnant attend l'équipe billetterie.</value>
+  </data>
+  <data name="Tickets_Companion_Withdraw" xml:space="preserve">
+    <value>Retirer la demande</value>
+  </data>
+  <data name="Tickets_Companion_Withdrawn" xml:space="preserve">
+    <value>Demande d'accompagnant retirée.</value>
+  </data>
+  <data name="Tickets_Companion_Declined" xml:space="preserve">
+    <value>L'équipe billetterie a refusé ta demande d'accompagnant : {0}</value>
+  </data>
+  <data name="Tickets_Companion_NotAllowed" xml:space="preserve">
+    <value>Ce billet ne peut pas recevoir de demande d'accompagnant : il doit s'agir d'un billet adulte valide, sans accompagnant ni demande en attente.</value>
+  </data>
+  <data name="Tickets_Companion_NoteRequired" xml:space="preserve">
+    <value>Explique brièvement pourquoi tu as besoin d'un accompagnant, en 500 caractères au plus.</value>
+  </data>
+  <data name="Tickets_Companion_NothingPending" xml:space="preserve">
+    <value>Aucune demande d'accompagnant n'attend sur ce billet.</value>
+  </data>
+  <data name="Tickets_Companion_NotFound" xml:space="preserve">
+    <value>Personne dans Humans n'a cet e-mail confirmé. Ton accompagnant doit d'abord rejoindre Humans.</value>
+  </data>
+  <data name="Tickets_Companion_IsYou" xml:space="preserve">
+    <value>C'est ton propre e-mail ; indique celui de ton accompagnant.</value>
+  </data>
+  <data name="Tickets_Companion_NeedsName" xml:space="preserve">
+    <value>Ton accompagnant n'a pas encore indiqué son nom légal dans Humans. Le billet porte le nom légal, il doit donc l'ajouter d'abord.</value>
+  </data>
+  <data name="Tickets_Companion_Holds" xml:space="preserve">
+    <value>Ton accompagnant a déjà un billet pour cet événement, il n'a donc pas besoin d'un billet d'accompagnant.</value>
+  </data>
 </root>

@@ -549,4 +549,58 @@
   <data name="Tickets_Buy_OtherHolds" xml:space="preserve">
     <value>Die Person mit {0} hat schon ein Ticket für diese Veranstaltung, also kannst du ihr kein weiteres kaufen.</value>
   </data>
+  <data name="Tickets_Companion_Ask" xml:space="preserve">
+    <value>Begleitticket anfragen</value>
+  </data>
+  <data name="Tickets_Companion_AskHelp" xml:space="preserve">
+    <value>Wenn du jemanden an deiner Seite brauchst, um teilzunehmen, zum Beispiel wegen einer Behinderung, kann diese Person mit einem kostenlosen Begleitticket kommen. Sie muss schon in Humans sein. Das Ticketteam liest deine Anfrage und antwortet hier.</value>
+  </data>
+  <data name="Tickets_Companion_Email" xml:space="preserve">
+    <value>E-Mail deiner Begleitperson in Humans</value>
+  </data>
+  <data name="Tickets_Companion_Note" xml:space="preserve">
+    <value>Warum du eine Begleitperson brauchst</value>
+  </data>
+  <data name="Tickets_Companion_NoteHelp" xml:space="preserve">
+    <value>Ein Satz reicht. Nur das Ticketteam liest ihn; medizinische Details sind nicht nötig.</value>
+  </data>
+  <data name="Tickets_Companion_Send" xml:space="preserve">
+    <value>Anfrage senden</value>
+  </data>
+  <data name="Tickets_Companion_Requested" xml:space="preserve">
+    <value>Deine Anfrage für eine Begleitperson ging an das Ticketteam.</value>
+  </data>
+  <data name="Tickets_Companion_Pending" xml:space="preserve">
+    <value>Deine Anfrage für eine Begleitperson wartet auf das Ticketteam.</value>
+  </data>
+  <data name="Tickets_Companion_Withdraw" xml:space="preserve">
+    <value>Anfrage zurückziehen</value>
+  </data>
+  <data name="Tickets_Companion_Withdrawn" xml:space="preserve">
+    <value>Anfrage für eine Begleitperson zurückgezogen.</value>
+  </data>
+  <data name="Tickets_Companion_Declined" xml:space="preserve">
+    <value>Das Ticketteam hat deine Anfrage für eine Begleitperson abgelehnt: {0}</value>
+  </data>
+  <data name="Tickets_Companion_NotAllowed" xml:space="preserve">
+    <value>Für dieses Ticket geht keine Begleitanfrage: Es muss ein gültiges Erwachsenenticket ohne Begleitperson und ohne offene Anfrage sein.</value>
+  </data>
+  <data name="Tickets_Companion_NoteRequired" xml:space="preserve">
+    <value>Sag kurz, warum du eine Begleitperson brauchst, in höchstens 500 Zeichen.</value>
+  </data>
+  <data name="Tickets_Companion_NothingPending" xml:space="preserve">
+    <value>Für dieses Ticket wartet keine Begleitanfrage.</value>
+  </data>
+  <data name="Tickets_Companion_NotFound" xml:space="preserve">
+    <value>Niemand in Humans hat diese bestätigte E-Mail-Adresse. Deine Begleitperson muss zuerst Humans beitreten.</value>
+  </data>
+  <data name="Tickets_Companion_IsYou" xml:space="preserve">
+    <value>Das ist deine eigene Adresse; gib die deiner Begleitperson an.</value>
+  </data>
+  <data name="Tickets_Companion_NeedsName" xml:space="preserve">
+    <value>Deine Begleitperson hat ihren amtlichen Namen in Humans noch nicht eingetragen. Das Ticket trägt den amtlichen Namen, also muss sie ihn zuerst ergänzen.</value>
+  </data>
+  <data name="Tickets_Companion_Holds" xml:space="preserve">
+    <value>Deine Begleitperson hat schon ein Ticket für diese Veranstaltung und braucht kein Begleitticket.</value>
+  </data>
 </root>

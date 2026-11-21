@@ -549,4 +549,58 @@
   <data name="Tickets_Buy_OtherHolds" xml:space="preserve">
     <value>De persoon met {0} heeft al een ticket voor dit evenement, dus je kunt geen tweede voor die persoon kopen.</value>
   </data>
+  <data name="Tickets_Companion_Ask" xml:space="preserve">
+    <value>Begeleidersticket aanvragen</value>
+  </data>
+  <data name="Tickets_Companion_AskHelp" xml:space="preserve">
+    <value>Als je iemand bij je nodig hebt om mee te doen, bijvoorbeeld vanwege een beperking, kan die persoon mee op een gratis begeleidersticket. Die persoon moet al in Humans zitten. Het ticketteam leest je verzoek en antwoordt hier.</value>
+  </data>
+  <data name="Tickets_Companion_Email" xml:space="preserve">
+    <value>E-mail van je begeleider in Humans</value>
+  </data>
+  <data name="Tickets_Companion_Note" xml:space="preserve">
+    <value>Waarom je een begeleider nodig hebt</value>
+  </data>
+  <data name="Tickets_Companion_NoteHelp" xml:space="preserve">
+    <value>Eén zin is genoeg. Alleen het ticketteam leest het; medische details zijn niet nodig.</value>
+  </data>
+  <data name="Tickets_Companion_Send" xml:space="preserve">
+    <value>Verzoek versturen</value>
+  </data>
+  <data name="Tickets_Companion_Requested" xml:space="preserve">
+    <value>Je verzoek voor een begeleider is naar het ticketteam gestuurd.</value>
+  </data>
+  <data name="Tickets_Companion_Pending" xml:space="preserve">
+    <value>Je verzoek voor een begeleider wacht op het ticketteam.</value>
+  </data>
+  <data name="Tickets_Companion_Withdraw" xml:space="preserve">
+    <value>Verzoek intrekken</value>
+  </data>
+  <data name="Tickets_Companion_Withdrawn" xml:space="preserve">
+    <value>Verzoek voor een begeleider ingetrokken.</value>
+  </data>
+  <data name="Tickets_Companion_Declined" xml:space="preserve">
+    <value>Het ticketteam heeft je verzoek voor een begeleider afgewezen: {0}</value>
+  </data>
+  <data name="Tickets_Companion_NotAllowed" xml:space="preserve">
+    <value>Voor dit ticket kan geen begeleider worden aangevraagd: het moet een geldig volwassenenticket zijn zonder begeleider en zonder openstaand verzoek.</value>
+  </data>
+  <data name="Tickets_Companion_NoteRequired" xml:space="preserve">
+    <value>Zeg kort waarom je een begeleider nodig hebt, in hoogstens 500 tekens.</value>
+  </data>
+  <data name="Tickets_Companion_NothingPending" xml:space="preserve">
+    <value>Er staat geen verzoek voor een begeleider open op dit ticket.</value>
+  </data>
+  <data name="Tickets_Companion_NotFound" xml:space="preserve">
+    <value>Niemand in Humans heeft dat bevestigde e-mailadres. Je begeleider moet eerst lid worden van Humans.</value>
+  </data>
+  <data name="Tickets_Companion_IsYou" xml:space="preserve">
+    <value>Dat is je eigen adres; geef dat van je begeleider.</value>
+  </data>
+  <data name="Tickets_Companion_NeedsName" xml:space="preserve">
+    <value>Je begeleider heeft de wettelijke naam nog niet ingevuld in Humans. Een ticket draagt de wettelijke naam, dus die moet eerst worden toegevoegd.</value>
+  </data>
+  <data name="Tickets_Companion_Holds" xml:space="preserve">
+    <value>Je begeleider heeft al een ticket voor dit evenement en heeft dus geen begeleidersticket nodig.</value>
+  </data>
 </root>
