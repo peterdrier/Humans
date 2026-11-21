@@ -63,16 +63,20 @@ public sealed class MemberTicketStatusViewComponent(
         });
     }
 
-    /// <summary>Valid tickets the person holds from Humans' own checkout, for the active event when there is one.</summary>
+    /// <summary>
+    /// Tickets the person holds (Valid, or Offered for resale until it sells) from Humans' own checkout: for the active
+    /// event, and for any sale still open, matching the events the buy page offers.
+    /// </summary>
     private static async Task<int> HumansTicketCountAsync(
         Services.Checkout.ITicketCheckoutService checkout, Guid userId, EventSettingsInfo? activeEvent,
         IReadOnlyList<Domain.Checkout.TicketSalesEvent> salesEvents, CancellationToken ct)
     {
         var forEvent = salesEvents
-            .Where(e => activeEvent is null || e.EventSettingsId == activeEvent.Id)
+            .Where(e => activeEvent is null || e.EventSettingsId == activeEvent.Id || e.Mode != Domain.Checkout.TicketSalesMode.Closed)
             .Select(e => e.Id).ToHashSet();
         return (await checkout.GetTicketsForHolderAsync(userId, ct))
-            .Count(t => t.State == Domain.Checkout.TicketCheckoutTicketState.Valid && forEvent.Contains(t.SalesEventId));
+            .Count(t => t.State is Domain.Checkout.TicketCheckoutTicketState.Valid or Domain.Checkout.TicketCheckoutTicketState.Offered
+                && forEvent.Contains(t.SalesEventId));
     }
 
     /// <summary>Null when the holdings read failed.</summary>
@@ -123,7 +127,7 @@ internal sealed record MemberTicketStatusViewModel(
 {
     public const string TicketPurchaseUrl = "https://tickets.nobodies.team";
 
-    /// <summary>Valid tickets from Humans' own checkout; <see cref="UserTicketCount"/> counts the vendor sync's.</summary>
+    /// <summary>Held tickets (Valid or Offered) from Humans' own checkout, for the active event and any open sale; <see cref="UserTicketCount"/> counts the vendor sync's.</summary>
     public int HumansTicketCount { get; init; }
 
     public bool HasTicket => UserTicketCount + HumansTicketCount > 0;

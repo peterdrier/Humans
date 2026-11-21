@@ -126,4 +126,18 @@ public sealed class MemberTicketStatusViewComponentTests
         model.HumansTicketCount.Should().Be(1);
         model.HasTicket.Should().BeTrue();
     }
+
+    [HumansFact]
+    public async Task InvokeAsync_TicketOfferedForAnotherEventsOpenSale_StillCounts()
+    {
+        _settings.GetActiveEventSettings().Returns(Event(isOffSeason: true));
+        var nextYear = new TicketSalesEvent { Id = Guid.NewGuid(), EventSettingsId = Guid.NewGuid(), BackendKey = "boxoffice", Mode = TicketSalesMode.Open };
+        var held = new TicketCheckoutTicket { Id = Guid.NewGuid(), SalesEventId = nextYear.Id, State = TicketCheckoutTicketState.Offered };
+
+        var result = await BuildSut(sale: nextYear, held: held).InvokeAsync();
+
+        var model = (MemberTicketStatusViewModel)((ViewViewComponentResult)result).ViewData!.Model!;
+        model.HumansTicketCount.Should().Be(1);
+        model.HasTicket.Should().BeTrue();
+    }
 }
