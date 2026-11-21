@@ -38,8 +38,10 @@ with scopes_disabled():
     s.set("returnurl_prefix", humans + "/")
     # Humans owns the ticket, its QR code and the mail; pretix only takes the money.
     s.set("ticket_download", False)
-    s.set("mail_send_order_placed", False)
-    s.set("mail_send_order_paid", False)
+    # pretix has no on/off switch for buyer order mail; an empty sales-channel list is the off switch.
+    s.set("mail_sales_channel_placed_paid", [])
+    s.set("mail_sales_channel_download_reminder", [])
+    s.set("mail_days_order_expire_warning", 0)
     s.set("invoice_generate", "False")
 
     vat, _ = TaxRule.objects.get_or_create(

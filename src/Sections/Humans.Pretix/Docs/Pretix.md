@@ -61,7 +61,7 @@ None. The section owns no tables. pretix's order is the record of the payment; T
 
 ## pretix setup
 
-Per event: the two carrier items, the `returnurl` plugin with Humans' return URL prefix, the Stripe plugin with card, iDEAL and Klarna enabled and their fees, a webhook for the order actions to `https://<humans>/Pretix/Webhook/<secret>`, and ticket download and order mails off. Hosting: `deploy/pretix/` in the repo root.
+Per event: the two carrier items, the `returnurl` plugin with Humans' return URL prefix, the Stripe plugin with card, iDEAL and Klarna enabled and their fees, a webhook for the order actions to `https://<humans>/Pretix/Webhook/<secret>`, and ticket download and every buyer mail off (`send_email: false` covers only the create call; a payment confirmed later by Stripe sends pretix's paid mail unless the event's `mail_sales_channel_placed_paid` is empty, which `bootstrap.py` sets). Hosting: `deploy/pretix/` in the repo root.
 
 ## Architecture
 
