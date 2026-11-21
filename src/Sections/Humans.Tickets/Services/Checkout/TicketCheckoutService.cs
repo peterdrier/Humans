@@ -224,9 +224,11 @@ internal sealed partial class TicketCheckoutService(
         var rules = await RulesForAsync(context.SalesEvent, ct);
         if (!InviteIsFor(offer, tokenHash, context) || !context.SalesEvent.ResaleSelling)
             return ToBuyPage(context, rules, "Tickets_Resale_InviteInvalid", directed: true);
-        return DirectedOfferFor(offer, tokenHash, context) is not null
-            ? ToBuyPage(context, rules, null, directed: true)
-            : ToBuyPage(context, rules, null, directed: false) with { InviteTaken = true };
+        if (DirectedOfferFor(offer, tokenHash, context) is not null)
+            return ToBuyPage(context, rules, null, directed: true);
+        var stock = await LoadStockAsync(context.SalesEvent, context.Now, ct);
+        var queued = stock.ResaleOpen && stock.Offers.Any(o => o.State == TicketResaleOfferState.Open && o.HolderUserId != userId);
+        return ToBuyPage(context, rules, null, directed: queued) with { InviteTaken = true };
     }
 
     private async Task<TicketRules?> RulesForAsync(TicketSalesEvent salesEvent, CancellationToken ct) =>
@@ -321,7 +323,7 @@ internal sealed partial class TicketCheckoutService(
             if (invited is null || !InviteIsFor(invited, tokenHash, context) || !salesEvent.ResaleSelling
                 || !command.ForSelf || others.Count > 0)
                 return StartCheckoutResult.Refused("Tickets_Resale_InviteInvalid");
-            // Gone to someone else first: the link buys the next ticket in the queue, like any other buyer.
+            // Gone to someone else first: the link buys the next ticket in the queue, at the resale price like the invitation.
             directed = DirectedOfferFor(invited, tokenHash, context);
             if (directed is not null && await IsAdmittedAsync(directed.TicketId, ct))
                 directed = null;
@@ -336,7 +338,7 @@ internal sealed partial class TicketCheckoutService(
         // A returned ticket sells only at the resale price (current public wave, credits kept), so a buyer with a class
         // price or a pinned wave is served from fresh stock while there is any.
         var takesQueue = salesEvent.Mode == TicketSalesMode.ResaleOnly || !IsDiscounted(context)
-            || stock.Held + 1 > salesEvent.Capacity;
+            || stock.Held + 1 > salesEvent.Capacity || command.DirectedToken is not null;
         var resaleForSelf = command.ForSelf ? directed ?? (takesQueue && queue.Count > 0 ? queue.Dequeue() : null) : null;
         var selfPrice = resaleForSelf is null ? context.OwnPrice! : context.ResalePrice!;
         if (command.SupporterTotalMinor is { } total && total <= selfPrice.AmountMinor)

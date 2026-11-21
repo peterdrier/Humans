@@ -331,9 +331,10 @@ internal sealed partial class TicketCheckoutService
     private Task HandOffToDeliveryAsync(Guid orderId, CancellationToken ct) =>
         TellDeliveryAsync(d => d.TicketsIssuedAsync(orderId, ct), orderId);
 
-    /// <summary>A mail that cannot be queued is logged and never undoes the change it reports.</summary>
-    private async Task TellDeliveryAsync(Func<ITicketDelivery, Task> tell, Guid subjectId)
+    /// <summary>A mail that cannot be queued is logged and never undoes the change it reports. False when one failed.</summary>
+    private async Task<bool> TellDeliveryAsync(Func<ITicketDelivery, Task> tell, Guid subjectId)
     {
+        var queued = true;
         foreach (var delivery in deliveries)
         {
             try
@@ -343,8 +344,10 @@ internal sealed partial class TicketCheckoutService
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
                 logger.LogError(ex, "Ticket delivery for {SubjectId} failed", subjectId);
+                queued = false;
             }
         }
+        return queued;
     }
 
     /// <summary>
@@ -668,11 +671,9 @@ internal sealed partial class TicketCheckoutService
             var closed = salesEvent.Mode == TicketSalesMode.Closed || (salesEvent.SalesCloseAt is { } close && now >= close);
             foreach (var offer in await repository.GetOffersForSalesEventAsync(salesEvent.Id, ct))
             {
-                if (closed && offer is { State: TicketResaleOfferState.Open, UnsoldNotifiedAt: null })
-                {
-                    await NotifyUnsoldAsync(offer, now, ct);
+                if (closed && offer is { State: TicketResaleOfferState.Open, UnsoldNotifiedAt: null }
+                    && await NotifyUnsoldAsync(offer, now, ct))
                     changed++;
-                }
                 if (offer is { State: TicketResaleOfferState.Reserved, ReservedByOrderId: { } orderId }
                          && await repository.GetOrderAsync(orderId, ct) is { } holder
                          && !holder.IsOpen)
@@ -689,14 +690,18 @@ internal sealed partial class TicketCheckoutService
     }
 
     /// <summary>The offer stays in the queue (sales may reopen); the ticket admits its holder once sales are closed.</summary>
-    private async Task NotifyUnsoldAsync(TicketResaleOffer offer, Instant now, CancellationToken ct)
+    private async Task<bool> NotifyUnsoldAsync(TicketResaleOffer offer, Instant now, CancellationToken ct)
     {
+        // Marked only once the mail is queued, so a failed hand-off is tried again by the next sweep; the delivery id
+        // keeps a repeat from mailing twice.
+        if (!await TellDeliveryAsync(d => d.ResaleUnsoldAsync(offer.TicketId, ct), offer.TicketId))
+            return false;
         offer.UnsoldNotifiedAt = now;
         await repository.UpdateOfferAsync(offer, ct);
         if (await repository.GetTicketAsync(offer.TicketId, ct) is { } ticket)
             await TimelineAsync(ticket.OrderId, TicketCheckoutOrderEventKind.ResaleUnsold,
                 $"Sales closed with ticket {ticket.Barcode} unsold in the resale queue: the holder is told there is no refund and the ticket still admits them",
                 null, ct);
-        await TellDeliveryAsync(d => d.ResaleUnsoldAsync(offer.TicketId, ct), offer.TicketId);
+        return true;
     }
 }

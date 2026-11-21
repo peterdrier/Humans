@@ -653,6 +653,35 @@ public sealed class TicketCheckoutServiceTests
     }
 
     [HumansFact]
+    public async Task A_taken_link_still_sells_the_next_returned_ticket_to_a_class_priced_buyer_while_fresh_stock_is_open()
+    {
+        var dan = Human("dan@example.com", "Dan", "Ruiz");
+        var cy = Human("cy@example.com", "Cy", "Doe");
+        var dansOrder = await BuyAndPayAsync(Buy(), dan);
+        var mine = await OfferedTicketAsync();
+        var dans = _repo.Tickets.Single(t => t.OrderId == dansOrder.Id);
+        (await _service.OfferForResaleAsync(dans.Id, dan, Ct)).Refusal.Should().BeNull();
+        var link = new Uri("https://h.example/r/");
+        var sent = new List<EmailMessage>();
+        await _email.SendAsync(Arg.Do<EmailMessage>(sent.Add), Arg.Any<CancellationToken>());
+        (await _service.InviteBuyersAsync(mine.Id, _buyerId, ["bo@example.com", "cy@example.com"], link, "en", Ct)).Refusal.Should().BeNull();
+        string TokenFor(string address) => sent.Single(m => string.Equals(m.RecipientEmail, address, StringComparison.Ordinal)).HtmlBody[link.ToString().Length..];
+        var boToken = TokenFor("bo@example.com");
+        await BuyAndPayAsync(Buy() with { DirectedToken = TokenFor("cy@example.com") }, cy);
+        _salesEvent.Mode = TicketSalesMode.Open;
+        _grants.GetActiveGrantsAsync(_otherBuyerId, Arg.Any<CancellationToken>())
+            .Returns([new ActiveGrantInfo(Guid.NewGuid(), LowIncomeProgram, "Low income", _event.Id, Now)]);
+
+        var page = await _service.GetDirectedBuyPageAsync(boToken, _otherBuyerId, Ct);
+        var bosOrder = await BuyAndPayAsync(Buy() with { DirectedToken = boToken }, _otherBuyerId);
+
+        page!.InviteTaken.Should().BeTrue();
+        var line = bosOrder.Lines.Single();
+        line.ResaleOfferId.Should().Be(_repo.Offers.Single(o => o.TicketId == dans.Id).Id, "a link buys from the queue, like the invitation it was");
+        line.AmountMinor.Should().Be(page.OwnPrice!.AmountMinor).And.NotBe(12500);
+    }
+
+    [HumansFact]
     public async Task The_evening_batch_waits_for_the_hold_refunds_once_and_audits_its_totals()
     {
         var old = await OfferedTicketAsync();
@@ -739,6 +768,24 @@ public sealed class TicketCheckoutServiceTests
         _repo.Offers.Single().UnsoldNotifiedAt.Should().Be(Now);
         _repo.Offers.Single().State.Should().Be(TicketResaleOfferState.Open);
         _repo.Events.Should().Contain(e => e.OrderId == old.OrderId && e.Kind == TicketCheckoutOrderEventKind.ResaleUnsold);
+    }
+
+    [HumansFact]
+    public async Task An_unsold_notice_that_could_not_be_queued_is_tried_again_by_the_next_sweep()
+    {
+        var old = await OfferedTicketAsync();
+        _salesEvent.Mode = TicketSalesMode.Closed;
+        _delivery.ResaleUnsoldAsync(old.Id, Arg.Any<CancellationToken>())
+            .Returns(_ => throw new InvalidOperationException("queue down"), _ => Task.CompletedTask);
+
+        await _service.ReconcileOpenOrdersAsync(Ct);
+        _repo.Offers.Single().UnsoldNotifiedAt.Should().BeNull();
+        await _service.ReconcileOpenOrdersAsync(Ct);
+        await _service.ReconcileOpenOrdersAsync(Ct);
+
+        await _delivery.Received(2).ResaleUnsoldAsync(old.Id, Arg.Any<CancellationToken>());
+        _repo.Offers.Single().UnsoldNotifiedAt.Should().Be(Now);
+        _repo.Events.Count(e => e.Kind == TicketCheckoutOrderEventKind.ResaleUnsold).Should().Be(1);
     }
 
     [HumansFact]

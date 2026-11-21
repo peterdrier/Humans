@@ -202,14 +202,16 @@ addresses were typed. Directed resale links buy only the buyer's own ticket.
   without its refund as waiting for the batch.
 - **Did not sell** (H12): once sales close (mode `Closed` or `SalesCloseAt` passed), the reconcile job tells each
   holder whose offer is still open, once (`UnsoldNotifiedAt`, `ResaleUnsold` on the timeline, `ticket_resale_unsold`):
-  no refund, and the ticket admits them. The offer stays open in case sales reopen.
+  no refund, and the ticket admits them. It is marked only once the mail is queued, so a failed hand-off is retried
+  by the next sweep. The offer stays open in case sales reopen.
 - While fresh stock is sold out, a class-price buyer in `Open` mode takes a queue ticket at the resale price.
 - A checkout that fails, expires or is cancelled releases its offers to their original place.
 - **Directed resale** (H10): a holder whose offer is open emails one or more people each their own link
   (`/Tickets/Buy/Resale/{token}`, one token per address, only its SHA-256 is stored in the offer's `directed_invites`).
   Only a signed-in buyer with that address can use a link, for themselves, and only while resale is open. The links
   have no expiry and the offer stays in the public queue meanwhile, so whoever buys first gets it; a later invitee's
-  link then sells the next ticket in the queue ("someone else bought it first"). A ticket gets at most ten invitations
+  link then sells the next ticket in the queue at the resale price, even to a buyer with a class price or pinned wave
+  while fresh stock is on sale ("someone else bought it first"); only an empty queue sells fresh stock. A ticket gets at most ten invitations
   over all its offers, each address once. Invitation, use and cancel are on the holder's order timeline; cancel
   clears every invitation, and the switch to `Queue`, a void or erasure clears them too.
 
