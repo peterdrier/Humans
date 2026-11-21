@@ -3113,3 +3113,9 @@ body.city-map-fullscreen main {
     gap: .35rem 1rem;
     align-items: baseline;
 }
+
+/* --- Ticket rules on the buy page: legal markdown inside a form, so its headings stay small --- */
+.ticket-rules .document-content :is(h1, h2, h3) {
+    font-size: 1.15rem;
+    margin-top: 1rem;
+}
