@@ -563,7 +563,6 @@ internal sealed partial class TicketCheckoutService
     /// </summary>
     private async Task<int> SweepOffersAsync(CancellationToken ct)
     {
-        var now = clock.GetCurrentInstant();
         var changed = 0;
         foreach (var salesEvent in await repository.GetSalesEventsAsync(ct))
         {

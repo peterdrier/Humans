@@ -143,7 +143,7 @@ public sealed class TicketSupportReportsTests
         var refund = Refund(order.Id, 22500, RefundState.Failed);
         done.RefundId = refund.Id;
 
-        var rows = TicketSupportReports.ResaleQueue([newer, done, older, directed], [first, second, invited, sold], [refund], Now);
+        var rows = TicketSupportReports.ResaleQueue([newer, done, older, directed], [first, second, invited, sold], [refund]);
 
         rows.Select(r => (r.Offer, r.Position, r.DirectedLive)).Should().Equal(
             (directed, (int?)1, true), (older, 2, false), (newer, 3, false), (done, null, false));

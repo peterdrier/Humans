@@ -62,8 +62,7 @@ internal static class TicketSupportReports
     public static IReadOnlyList<ResaleQueueRow> ResaleQueue(
         IReadOnlyList<TicketResaleOffer> offers,
         IReadOnlyList<TicketCheckoutTicket> tickets,
-        IReadOnlyList<TicketCheckoutRefund> refunds,
-        Instant now)
+        IReadOnlyList<TicketCheckoutRefund> refunds)
     {
         var byId = tickets.ToDictionary(t => t.Id);
         var refundsById = refunds.ToDictionary(r => r.Id);

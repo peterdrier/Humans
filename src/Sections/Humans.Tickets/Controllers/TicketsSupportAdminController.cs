@@ -19,7 +19,6 @@ namespace Humans.Tickets.Controllers;
 internal sealed class TicketsSupportAdminController(
     ITicketCheckoutService checkout,
     ISettingsService settings,
-    IClock clock,
     IUserService userService) : HumansControllerBase(userService)
 {
     [HttpGet("Lookup")]
@@ -62,8 +61,7 @@ internal sealed class TicketsSupportAdminController(
             return NotFound();
         var tickets = await checkout.GetTicketsForSalesEventAsync(id, ct);
         var rows = TicketSupportReports.ResaleQueue(
-            await checkout.GetOffersForSalesEventAsync(id, ct), tickets, await checkout.GetRefundsForSalesEventAsync(id, ct),
-            clock.GetCurrentInstant());
+            await checkout.GetOffersForSalesEventAsync(id, ct), tickets, await checkout.GetRefundsForSalesEventAsync(id, ct));
         return View("~/Views/Tickets/Admin/Sales/Resale.cshtml", new ResaleViewModel(
             id, await EventNameAsync(salesEvent, ct), salesEvent, rows));
     }

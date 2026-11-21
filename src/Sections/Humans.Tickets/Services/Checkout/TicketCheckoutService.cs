@@ -115,7 +115,7 @@ internal sealed partial class TicketCheckoutService(
             PriceRules = save.PriceRules.ToList(),
             ChildPriceMinor = save.ChildPriceMinor,
             ChildMaxAge = save.ChildMaxAge,
-            ResaleOpenedAt = existing?.ResaleOpenedAt,
+            ResaleOpenedAt = save.Switches.Resale == ResaleScheme.Off ? null : existing?.ResaleOpenedAt,
             Switches = save.Switches,
             TermsUrl = save.TermsUrl,
             UpdatedAt = now,
@@ -132,7 +132,8 @@ internal sealed partial class TicketCheckoutService(
             $"rules {string.Join(", ", salesEvent.PriceRules.Select(r => $"{r.Kind} {FormatMinor(r.AmountMinor)} for {r.GrantProgramId}"))}; " +
             $"supporter totals {string.Join(", ", salesEvent.SupporterTotalsMinor.Select(FormatMinor))}; " +
             $"child {(salesEvent.ChildPriceMinor is { } child ? FormatMinor(child) : "none")}; " +
-            $"ticket rules {salesEvent.TermsUrl ?? "none"}; resale {save.Switches.Resale}, " +
+            $"ticket rules {salesEvent.TermsUrl ?? "none"}; resale {save.Switches.Resale}" +
+            (existing?.ResaleOpenedAt is not null && salesEvent.ResaleOpenedAt is null ? " (resale paused)" : string.Empty) + ", " +
             $"partner tickets {OnOff(save.Switches.PartnerTickets)}, donations {OnOff(save.Switches.Donations)}, " +
             $"mailing list opt-in {OnOff(save.Switches.MailingListOptIn)}", actorUserId);
         return CheckoutMutationResult.Ok;
@@ -146,6 +147,8 @@ internal sealed partial class TicketCheckoutService(
             return new("That sales event no longer exists.");
         if (open && salesEvent.EffectiveSwitches.Resale == ResaleScheme.Off)
             return new("Resale is switched off in the sales setup.");
+        if (!open && salesEvent.Mode == TicketSalesMode.ResaleOnly)
+            return new("Resale only mode always sells resale; close sales to stop it.");
         if (salesEvent.ResaleOpenedAt is not null == open)
             return CheckoutMutationResult.Ok;
 
@@ -1184,7 +1187,6 @@ internal sealed partial class TicketCheckoutService(
     /// </summary>
     private async Task EndInvitationsAsync(Guid salesEventId, Guid actorUserId, CancellationToken ct)
     {
-        var now = clock.GetCurrentInstant();
         foreach (var offer in (await repository.GetOffersForSalesEventAsync(salesEventId, ct))
                      .Where(o => o.State == TicketResaleOfferState.Open && o.HasLiveInvite))
         {

@@ -109,7 +109,6 @@ internal sealed class TicketResaleOffer
     /// <summary>SHA-256 of the emailed link's token; the token itself is never stored.</summary>
     public string? DirectedTokenHash { get; set; }
 
-
     public Instant? DirectedUsedAt { get; set; }
 
     /// <summary>Invitations sent for this offer, capped so a holder cannot mail addresses without end.</summary>

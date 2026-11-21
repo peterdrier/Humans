@@ -7,6 +7,11 @@
     var closed = Model.Rows.Except(waiting).ToList();
 }
 
+@section Crumbs {
+    <a asp-controller="TicketsSalesAdmin" asp-action="Index">Sales</a>
+    <span>Resale queue</span>
+}
+
 <page-header title="Resale queue: @Model.EventName" />
 
 <p>
@@ -75,10 +80,6 @@ else
                         @if (row.DirectedLive)
                         {
                             <span>@o.DirectedEmail</span>
-                        }
-                        else if (o.DirectedEmail is not null && o.DirectedUsedAt is null)
-                        {
-                            <span class="text-muted">@o.DirectedEmail (cancelled)</span>
                         }
                     </td>
                 </tr>

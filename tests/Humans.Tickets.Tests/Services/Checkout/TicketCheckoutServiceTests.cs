@@ -864,6 +864,22 @@ public sealed class TicketCheckoutServiceTests
         (await _service.SaveSalesEventAsync(save, _buyerId, Ct)).Refusal.Should().BeNull();
 
         _repo.SalesEvents.Single().ResaleOpenedAt.Should().Be(Now);
+
+        (await _service.SaveSalesEventAsync(save with { Switches = new TicketSalesSwitches { Resale = ResaleScheme.Off } }, _buyerId, Ct))
+            .Refusal.Should().BeNull();
+        _repo.SalesEvents.Single().ResaleOpenedAt.Should().BeNull();
+    }
+
+    [HumansFact]
+    public async Task Resale_only_mode_cannot_be_paused()
+    {
+        _salesEvent.Mode = TicketSalesMode.ResaleOnly;
+
+        (await _service.SetResaleOpenAsync(_salesEvent.Id, false, _buyerId, Ct)).Refusal
+            .Should().Be("Resale only mode always sells resale; close sales to stop it.");
+        _salesEvent.ResaleOpenedAt.Should().NotBeNull();
+        await _audit.DidNotReceive().LogAsync(TicketsAuditActions.TicketResaleOpenSet, Arg.Any<string>(), Arg.Any<Guid>(),
+            Arg.Any<string>(), Arg.Any<Guid>());
     }
 
     [HumansFact]
