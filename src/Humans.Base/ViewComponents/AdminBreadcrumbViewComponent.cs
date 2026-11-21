@@ -31,7 +31,7 @@ public sealed class AdminBreadcrumbViewComponent(
         var title = ViewData["Title"] as string;
         var location = AdminNavComposition.Locate(AdminNavComposition.Compose(navContributors),
             (string?)RouteData.Values["controller"], (string?)RouteData.Values["action"],
-            ViewData[AdminNavComposition.ParentKey] as string);
+            ViewData[AdminNavComposition.ParentKey] as string, RouteData.Values);
 
         return View(location is null
             ? new AdminBreadcrumbViewModel(null, null, IsSubpage: false, null, title)

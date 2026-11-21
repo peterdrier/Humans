@@ -5,7 +5,7 @@
     <div class="col-lg-8">
         <div class="card border-0 shadow-sm">
             <div class="card-body">
-                @if (!Model.TicketsConfigured)
+                @if (!Model.TicketsConfigured && !Model.SellsInHumans)
                 {
                     <div class="d-flex align-items-center">
                         <div class="dashboard-action-icon dashboard-action-icon-sm dashboard-action-icon-warning me-3">
@@ -83,10 +83,16 @@
                                 <i class="fa-solid fa-ticket me-1"></i> @Localizer["Tickets_Buy_Title"]
                             </a>
                         }
-                        <a href="@MemberTicketStatusViewModel.TicketPurchaseUrl" target="_blank" rel="noopener" class="btn btn-primary">
-                            <i class="fa-solid fa-external-link-alt me-1"></i> @SharedLocalizer["Dashboard_BuyTicket"]
-                        </a>
-                        <a asp-controller="ProfileEmails" asp-action="Emails" class="btn btn-outline-secondary btn-sm">@SharedLocalizer["Dashboard_DifferentEmail"]</a>
+                        else
+                        {
+                            <a href="@MemberTicketStatusViewModel.TicketPurchaseUrl" target="_blank" rel="noopener" class="btn btn-primary">
+                                <i class="fa-solid fa-external-link-alt me-1"></i> @SharedLocalizer["Dashboard_BuyTicket"]
+                            </a>
+                        }
+                        @if (Model.TicketsConfigured)
+                        {
+                            <a asp-controller="ProfileEmails" asp-action="Emails" class="btn btn-outline-secondary btn-sm">@SharedLocalizer["Dashboard_DifferentEmail"]</a>
+                        }
                     </div>
                     @if (Model.EventYear.HasValue)
                     {

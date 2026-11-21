@@ -38,20 +38,7 @@ internal sealed class TicketsSalesAdminController(
 
     [HttpGet("Backends")]
     public async Task<IActionResult> Backends(CancellationToken ct) =>
-        View("~/Views/Tickets/Admin/Sales/Backends.cshtml", await BackendsModelAsync(null, ct));
-
-    /// <summary>Changes nothing; Manage only because it calls the vendor with Humans' credentials.</summary>
-    [HttpPost("Backends/{key}/Check")]
-    [Authorize(Policy = TicketsPolicies.Manage)]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> CheckBackend(string key, string? backendEventRef, CancellationToken ct)
-    {
-        var findings = await checkout.CheckBackendAsync(key, backendEventRef, ct);
-        if (findings is null)
-            return NotFound();
-        return View("~/Views/Tickets/Admin/Sales/Backends.cshtml",
-            await BackendsModelAsync(new BackendCheckResult(key, backendEventRef, findings), ct));
-    }
+        View("~/Views/Tickets/Admin/Sales/Backends.cshtml", await BackendsModelAsync(ct));
 
     [HttpGet("Edit/{id:guid?}")]
     public async Task<IActionResult> Edit(Guid? id, CancellationToken ct)
@@ -166,8 +153,8 @@ internal sealed class TicketsSalesAdminController(
     private static LocalDate? ReconDate(string? value) =>
         value is not null && LocalDatePattern.Iso.Parse(value) is { Success: true } parsed ? parsed.Value : null;
 
-    private async Task<BackendsViewModel> BackendsModelAsync(BackendCheckResult? check, CancellationToken ct) =>
-        new(checkout.Backends, await checkout.GetSalesEventsAsync(ct), await settings.GetAllEventSettingsAsync(ct), check);
+    private async Task<BackendsViewModel> BackendsModelAsync(CancellationToken ct) =>
+        new(checkout.Backends, await checkout.GetSalesEventsAsync(ct), await settings.GetAllEventSettingsAsync(ct), null);
 
     private async Task<SalesEditViewModel> EditModelAsync(SalesEditForm form, string? error, CancellationToken ct) =>
         new(form, error, await settings.GetAllEventSettingsAsync(ct), await grants.GetProgramSummariesAsync(ct), checkout.Backends);

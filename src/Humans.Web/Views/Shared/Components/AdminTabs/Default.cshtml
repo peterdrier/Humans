@@ -5,7 +5,7 @@
         @foreach (var tab in Model)
         {
             <a class="@(tab.IsActive ? "active" : null)" aria-current="@(tab.IsActive ? "page" : null)"
-               href="@(tab.RawHref ?? Url.Action(tab.Action, tab.Controller))">
+               href="@(tab.RawHref ?? Url.Action(tab.Action, tab.Controller, tab.RouteValues))">
                 <span>@tab.Label</span>
                 @if (tab.PillCount.HasValue)
                 {

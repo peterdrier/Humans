@@ -1,7 +1,9 @@
+using AwesomeAssertions;
 using Humans.Base.Enums;
 using System.Globalization;
 using Humans.Base.ViewComponents;
 using Humans.Base.Extensions;
+using Humans.Tickets.Domain.Checkout;
 using Humans.Tickets.Models;
 using Humans.Tickets.Services.Dtos;
 using Humans.Tickets.Contracts;
@@ -220,6 +222,66 @@ public class TicketDashboardViewTests
             }],
         }, language);
         Assert.True(aggregates.Split(System.Text.Encodings.Web.HtmlEncoder.Default.Encode(amount)).Length >= 36);
+    }
+
+    /// <summary>Selling through Humans needs no ticket vendor sync: the card offers the buy page, not the vendor's shop.</summary>
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task MemberTicketCard_SellingInHumans_OffersTheBuyPage_WhateverTheVendorSync(bool vendorConfigured)
+    {
+        var html = await RenderAsync("MemberTicketStatus",
+            new MemberTicketStatusViewModel(Guid.NewGuid(), vendorConfigured, 0, 2027, null) { SellsInHumans = true },
+            viewPath: "/Views/Shared/Components/MemberTicketStatus/Default.cshtml");
+
+        Assert.Contains("Buy tickets", html);
+        Assert.DoesNotContain("Get your ticket", html);
+        Assert.DoesNotContain("t info isn", html);
+    }
+
+    [HumansFact]
+    public async Task MemberTicketCard_NothingSellingAndNoVendor_SaysNotConfigured()
+    {
+        var html = await RenderAsync("MemberTicketStatus",
+            new MemberTicketStatusViewModel(Guid.NewGuid(), false, 0, 2027, null),
+            viewPath: "/Views/Shared/Components/MemberTicketStatus/Default.cshtml");
+
+        Assert.Contains("t info isn", html);
+        Assert.DoesNotContain("Buy tickets", html);
+    }
+
+    [HumansFact]
+    public async Task BackendStatusPage_ListsStuckOrdersAndUnsettledRefunds_NotSettledOnes()
+    {
+        var now = Instant.FromUtc(2027, 3, 1, 12, 0);
+        TicketCheckoutOrder Order(TicketCheckoutOrderState state, string? backendId, Instant created, Instant expires) => new()
+        {
+            Id = Guid.NewGuid(), BackendKey = "pretix", State = state, BackendOrderId = backendId,
+            CreatedAt = created, ExpiresAt = expires, TotalMinor = 22500,
+        };
+        var neverOpened = Order(TicketCheckoutOrderState.Created, null, now - Duration.FromHours(1), now + Duration.FromHours(1));
+        var pastExpiry = Order(TicketCheckoutOrderState.Pending, "E:1", now - Duration.FromHours(3), now - Duration.FromHours(1));
+        var fresh = Order(TicketCheckoutOrderState.Pending, "E:2", now - Duration.FromMinutes(5), now + Duration.FromMinutes(25));
+        var paid = Order(TicketCheckoutOrderState.Paid, "E:3", now - Duration.FromDays(1), now - Duration.FromDays(1));
+        var refunds = new[]
+        {
+            new TicketCheckoutRefund { Id = Guid.NewGuid(), OrderId = paid.Id, AmountMinor = 1000, State = RefundState.ManualRequired, FailureReason = "issue by hand" },
+            new TicketCheckoutRefund { Id = Guid.NewGuid(), OrderId = paid.Id, AmountMinor = 500, State = RefundState.Succeeded, FailureReason = "settled one" },
+        };
+        var info = new Humans.Tickets.Services.Checkout.CheckoutBackendInfo("pretix", true,
+            new CheckoutBackendSetup("pretix", "Self-hosted", null, [], "/Pretix/Webhook", []));
+        var model = new Humans.Tickets.Controllers.BackendStatusViewModel(
+            new Humans.Tickets.Controllers.BackendsViewModel([info], [], [], null),
+            [fresh, pastExpiry, neverOpened, paid], refunds, now);
+
+        model.Stuck.Should().BeEquivalentTo([pastExpiry, neverOpened]);
+        model.OpenRefunds.Should().ContainSingle().Which.AmountMinor.Should().Be(1000);
+
+        var html = await RenderAsync("Backend", model, viewPath: "/Views/Tickets/Admin/Backends/Index.cshtml");
+        Assert.Contains("Stuck orders", html);
+        Assert.Contains(pastExpiry.Reference, html);
+        Assert.Contains("issue by hand", html);
+        Assert.DoesNotContain("settled one", html);
     }
 
     private static async Task<string> RenderAsync(string page, object model, string cultureName = "en", string? viewPath = null)
