@@ -3,15 +3,9 @@
     ViewData["Title"] = "Checkout backends";
 }
 
-@section Crumbs {
-    <a asp-controller="Ticket" asp-action="Index">Tickets</a>
-    <a asp-action="Index">Sales</a>
-    <span>Backends</span>
-}
+<page-header title="Checkout backends" subtitle="Connection settings and a connection test for each backend" />
 
-<page-header title="Checkout backends" />
-
-<p class="text-muted">
+<p class="small text-muted mb-4">
     Each event picks its backend in its <a asp-action="Index">sales setup</a>. Connection settings are server
     configuration: change them in the deployment and restart. Secrets show only as set or missing.
 </p>
@@ -19,10 +13,10 @@
 @foreach (var b in Model.Backends)
 {
     <partial name="~/Views/Tickets/Admin/Backends/_BackendCard.cshtml" model="(Model, b)" />
-    <p class="mb-4"><a asp-controller="TicketsBackendAdmin" asp-action="Index" asp-route-key="@b.Key">@b.Setup.DisplayName status, orders and connection test</a></p>
+    <p class="small mb-4"><a asp-controller="TicketsBackendAdmin" asp-action="Index" asp-route-key="@b.Key">@b.Setup.DisplayName status and orders</a></p>
 }
 
 @if (Model.Backends.Count == 0)
 {
-    <p>No backend section is registered.</p>
+    <empty-state>No backend section is registered.</empty-state>
 }
