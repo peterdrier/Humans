@@ -43,7 +43,7 @@ public class HumansWebApplicationFactory(string connectionString)
 
     public IStripeService StripeServiceStub { get; } = Substitute.For<IStripeService>();
 
-    /// <summary>Program.cs skips Hangfire in Testing; assert enqueues against ReceivedCalls().</summary>
+    /// <summary>Replaces Hangfire's client so enqueues are asserted against ReceivedCalls(), not job storage.</summary>
     public IBackgroundJobClient BackgroundJobClientStub { get; } = Substitute.For<IBackgroundJobClient>();
 
     /// <summary>Hand-written rather than substituted because the interface yields an IAsyncEnumerable.</summary>
@@ -57,6 +57,10 @@ public class HumansWebApplicationFactory(string connectionString)
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Testing");
+
+        // Real job storage in this host's own database, but no workers: a cron tick mid-test would mutate rows the
+        // test asserts on. UseSetting, because Program reads it before the app configuration below is applied.
+        builder.UseSetting("Hangfire:ServerEnabled", "false");
 
         // WebApplicationBuilder composes static web assets only in Development; without this every /_content/<Rcl>/ URL
         // 404s here and asp-append-version silently drops the ?v= hash.
@@ -93,7 +97,7 @@ public class HumansWebApplicationFactory(string connectionString)
             services.RemoveAll<Humans.Base.Logging.InMemoryLogSink>();
             services.AddSingleton(LogSink);
 
-            // No-op email: Hangfire's job-storage globals are disabled in Testing.
+            // No-op email: nothing here may send real mail.
             var emailDescriptor = services.SingleOrDefault(
                 d => d.ServiceType == typeof(IEmailService));
             if (emailDescriptor != null)
@@ -122,7 +126,6 @@ public class HumansWebApplicationFactory(string connectionString)
             if (mailerDescriptor != null) services.Remove(mailerDescriptor);
             services.AddSingleton<IMailerLiteService>(MailerLiteServiceStub);
 
-            // Hangfire's registration is skipped in Testing, so consumers like HangfireImmediateOutboxProcessor need this.
             services.AddSingleton(BackgroundJobClientStub);
 
             RegisteredServices = services.ToList();
