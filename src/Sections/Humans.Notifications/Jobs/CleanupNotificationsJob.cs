@@ -1,12 +1,12 @@
 using Hangfire;
 using Humans.Base.Interfaces;
-using Humans.Notifications.Contracts;
+using Humans.Notifications.Services;
 
 namespace Humans.Notifications.Jobs;
 
 [DisableConcurrentExecution(timeoutInSeconds: 300)]
 internal sealed class CleanupNotificationsJob(
-    INotificationRetention notifications,
+    INotificationInboxService notifications,
     IHumansMetrics metrics,
     ILogger<CleanupNotificationsJob> logger) : IRecurringJob
 {

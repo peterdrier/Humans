@@ -228,6 +228,7 @@ Stored as **string** via `HasConversion<string>()`. The column carried a `Paid` 
 
 - Authorization’s account, event-timezone, camp-season, camp-lead and department reads retain HTTP request cancellation; callers without an HTTP context use the non-cancellable default. Membership checks resolve the cookie identity through `IUserService` and use the surviving account's camp leadership and department roles. A missing account or membership held only under the stale cookie ID grants no membership-based access. Existing role-based administrator bypasses remain in effect.
 
+- Account choices exclude archived chart rows and are split into the three permitted account blocks by `CatalogService`. The shared `_AccountPicker` partial owns ascending account-number display order for product editing and bulk mapping, preserving the empty option, selected account and flagged stale selection. Validation depends on membership, not order.
 - `CatalogService` owns catalog reads, create/update/deactivate, draft validation and operator save-result handling. Product creation and updates share one editable-field mapping, including trimmed names, year, pricing, VAT, deposits, revenue account, ordering cutoff and active state. Identity, creation/update timestamps and price-change audit handling remain owned by their respective write paths.
 
 - Add/remove line operations forward caller cancellation to the read-only event-timezone lookup before changing line rows or writing their audit entries.

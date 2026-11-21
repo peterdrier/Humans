@@ -60,6 +60,7 @@ public sealed class TicketSyncServiceNullOrderTests : TicketsTestHarness
             NullLogger<TicketSyncService>.Instance,
             _userService,
             Substitute.For<IEventParticipationManagement>(),
+            Substitute.For<ITicketService>(),
             _campaignService,
             _shiftManagementService);
 

@@ -1,4 +1,5 @@
 using Humans.Base.Enums;
+using Humans.Camps.Models;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Humans.Camps.ViewComponents;
@@ -15,7 +16,6 @@ public sealed class MyCampsViewComponent(ICampService campService, ILogger<MyCam
         var ct = HttpContext.RequestAborted;
         try
         {
-
             var settings = await campService.GetSettingsAsync(ct);
             // Open events plus the active one, latest gate opening first.
             var events = settings.Events
@@ -57,22 +57,4 @@ public sealed class MyCampsViewComponent(ICampService campService, ILogger<MyCam
             return Content(string.Empty);
         }
     }
-}
-
-internal sealed class MyCampsViewModel
-{
-    public List<MyCampsEventGroup> Events { get; set; } = [];
-}
-
-internal sealed class MyCampsEventGroup
-{
-    public string EventName { get; set; } = string.Empty;
-    public List<MyCampsMembership> Memberships { get; set; } = [];
-}
-
-internal sealed class MyCampsMembership
-{
-    public string CampSlug { get; set; } = string.Empty;
-    public string CampName { get; set; } = string.Empty;
-    public CampMemberStatus Status { get; set; }
 }

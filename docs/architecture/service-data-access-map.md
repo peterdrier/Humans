@@ -281,8 +281,7 @@ Every table is owned by exactly one repository; there are no HUM0025
     repository. `IGoogleTranslationService` (Google section)
     is the translation bridge for the admin pre-fill helper. No
     cross-section table reads. There is no public `ISurveyService` contract — no other
-    section consumes one; the section's outbound contracts are the
-    single-member `ISurveyReminderSender` (its own reminder job) and
+    section consumes one; the section's only outbound service contract is
     `ISurveyAnalysisRead` (Backdoor's machine API).
 
 13. **ICalFeed is a pure fan-out orchestrator.** `ICalFeedService`

@@ -1314,4 +1314,5 @@
     <value>Gestisci turni</value>
   </data>
   <data name="Shifts_Search_Category" xml:space="preserve"><value>Turni</value></data>
+  <data name="Shifts_NameRequiredBeforeShifts" xml:space="preserve"><value>Aggiungi prima il tuo nome — ci serve prima che tu possa iscriverti ai turni.</value></data>
 </root>

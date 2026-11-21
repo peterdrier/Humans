@@ -1,5 +1,6 @@
 using Humans.Base.Caching;
 using Humans.Google.Contracts;
+using Humans.Google.Domain;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Humans.Google.Services;

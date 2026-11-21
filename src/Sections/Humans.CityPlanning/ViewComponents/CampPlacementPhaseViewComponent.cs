@@ -15,7 +15,6 @@ namespace Humans.CityPlanning.ViewComponents;
 /// </summary>
 internal sealed class CampPlacementPhaseViewComponent(
     CityPlanningService cityPlanning,
-    ICampService camps,
     IUserService users,
     IAuthorizationService authorization) : ViewComponent
 {
@@ -42,9 +41,8 @@ internal sealed class CampPlacementPhaseViewComponent(
             || await users.GetUserInfoAsync(claimedId, ct) is not { } viewer)
             return false;
 
-        return (await camps.GetCampsForYearAsync(year, ct))
-            .FirstOrDefault(c => c.Id == campId)?
-            .Seasons.Any(s => s.Year == year && s.IsLead(viewer.Id)) == true;
+        return (await cityPlanning.GetLeadCampsAsync(viewer.Id, year, ct))
+            .Any(camp => camp.Id == campId);
     }
 }
 

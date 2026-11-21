@@ -2,8 +2,4 @@
 # /debt-sweep pools every src/Sections/*/Docs/debt.yml into the same inbox as the central ledger.
 version: 1
 next_id: 13
-inbox:
-  - added: 2026-11-20
-    id: TICKETS-12
-    what: "Humans.Tickets.Contracts.ITicketSync has no cross-section caller since the ticket-sync meter moved into TicketsNotificationMeters; public surface with no consumer (peters-hard-rules: public surface is a promise). Move it into the section as internal. Found migrating the notification meters."
-    review: light
+inbox: []

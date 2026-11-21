@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using Humans.Users.Contracts;
 
 namespace Humans.Users.Data.Configurations;
 
@@ -20,12 +21,11 @@ internal sealed class ProfileLanguageConfiguration : IEntityTypeConfiguration<Pr
             .HasConversion<string>()
             .HasMaxLength(50);
 
-        builder.HasOne(pl => pl.Profile)
-            .WithMany(p => p.Languages)
-            .HasForeignKey(pl => pl.ProfileId)
+        builder.HasOne<User>()
+            .WithMany()
+            .HasForeignKey(pl => pl.UserId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        builder.HasIndex(pl => pl.ProfileId);
         builder.HasIndex(pl => pl.UserId);
     }
 }

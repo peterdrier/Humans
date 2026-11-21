@@ -8,10 +8,6 @@ public interface IConsentService : IApplicationService
     Task<IReadOnlySet<Guid>> GetConsentedVersionIdsAsync(
         Guid userId, CancellationToken ct = default);
 
-    /// <summary>Every input user id appears, with an empty set when it has no consents.</summary>
-    Task<IReadOnlyDictionary<Guid, IReadOnlySet<Guid>>> GetConsentMapForUsersAsync(
-        IReadOnlyList<Guid> userIds, CancellationToken ct = default);
-
     /// <summary>One row per active, required document scoped to <paramref name="teamId"/>. No side effects.</summary>
     Task<IReadOnlyList<RequiredConsentRow>> GetRequiredConsentRowsForUserAsync(
         Guid userId, Guid teamId, CancellationToken ct = default);

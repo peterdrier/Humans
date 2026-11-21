@@ -49,9 +49,7 @@ internal sealed class ICalFeedService(
         return items;
     }
 
-    public async Task<bool> HasFeedAsync(Guid userId, CancellationToken ct = default) =>
-        await tokens.GetAsync(userId, ct) is not null;
-
+    /// <summary>Null when the user is missing or merged or the token is wrong: one 404 for all, so no oracle.</summary>
     public async Task<string?> GetFeedIcsAsync(Guid userId, Guid token, CancellationToken ct = default)
     {
         // The read resolves merges forward; comparing ids keeps a merged user's feed a 404, so an old URL

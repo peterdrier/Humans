@@ -33,7 +33,7 @@
     -->
     <ProjectReference Include="..\..\Humans.Base\Humans.Base.csproj" />
     <ProjectReference Include="..\Humans.Tickets.Contracts\Humans.Tickets.Contracts.csproj" />
-    <ProjectReference Include="..\Humans.Shifts.Contracts\Humans.Shifts.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.Shifts\Humans.Shifts.csproj" />
     <ProjectReference Include="..\Humans.Users.Contracts\Humans.Users.Contracts.csproj" />
     <!-- ICommunicationPreferenceService/Write (Users decomposition commit 14): the Marketing opt-in the
          audiences, dashboard and import read and write. Acyclic: Email.Contracts references only Base and

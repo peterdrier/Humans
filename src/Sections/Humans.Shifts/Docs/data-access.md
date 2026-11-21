@@ -39,8 +39,7 @@ section's only `IUserMerge`, running the three inner merges in their old order.
 
 Reads come from the inner `IShiftRotaRows` (`ShiftManagementService.GetRotaRowsAsync` →
 `IShiftManagementRepository.GetRotaRowsAsync`). Browse, user views, ownership checks and the
-staffing reports (`ShiftDashboardMetrics`, `ShiftCoverageReports`, `ShiftCoordinatorActivity`,
-`ShiftCampSummary`) read the cached rows; the other readers move onto `IShiftRotaRows` one area at a time.
+staffing reports on `ShiftManagementService` read the cached rows; the other readers move onto `IShiftRotaRows` one area at a time.
 
 ### ShiftManagementService (Scoped, keyed inner of CachingShiftService)
 
@@ -101,9 +100,9 @@ event profile, availability/build-status rows (via
 `IVolunteerTrackingRepository.DeleteVolunteerTrackingForUserAsync`), and
 shift-tag preferences. No `IMemoryCache`.
 
-### ShiftSignupNotices (constructed by ShiftSignupService, not DI-registered)
+### ShiftSignupService notice delivery
 
-No repository, no `IMemoryCache`, no table access. Post-save notice delivery for signups: the volunteer's
+These methods use no repository, `IMemoryCache` or table access. Post-save notice delivery for signups: the volunteer's
 assignment notice and the team coordinators' coverage-gap and signup-change notices. A lookup or channel failure
 is logged and never changes the saved signup outcome. Cross-section calls via `INotificationEmitter`,
 `IUserService` (recipient culture), `EventCalendarResolver` (gate-opening date, via `ISettingsService`), and
@@ -210,20 +209,19 @@ Stateless calculators / projections — no DI dependencies, no DB access.
 
 
 
-### ShiftBrowseReader (internal, owned by ShiftManagementService)
+### ShiftManagementService browse reads
 
 Repository: `IShiftManagementRepository`. Assembles urgent/general browse rows
 through the existing event calendar resolver, urgency ranking and department
 aggregation helpers. Resolves Teams, Users and Auth lazily through the existing
 service provider; owns unchanged coordinator/approval read predicates used by
 browse eligibility. Shared shift/rota projection also serves existing management
-reads. No writes, cache or separate DI registration.
+reads. These read methods reuse the service’s dependencies and registration and add no cache.
 
-### ShiftDashboardMetrics (internal, owned by ShiftManagementService)
+### ShiftManagementService dashboard metrics
 
 Repository: `IShiftManagementRepository` (event `CreatedAt` only). Computes the dashboard overview,
-trends and post-event figures from the cached rota rows (`IShiftRotaRows`). Read-only; no DI
-registration, no cache.
+trends and post-event figures from the cached rota rows (`IShiftRotaRows`). These read methods reuse the service’s dependencies and registration and add no cache.
 
 | Table | R/W |
 |-------|-----|
@@ -232,36 +230,36 @@ registration, no cache.
 Cross-section reads, lazy-resolved through `IServiceProvider`: `ITeamService`, `ITicketService`,
 `IUserService`; `IClock` for the windows.
 
-### ShiftCoordinatorActivity (internal, owned by ShiftManagementService)
+### ShiftManagementService coordinator activity
 
 No repository: computes the per-coordinator activity rows for the dashboard from the cached rota
-rows (`IShiftRotaRows`). Read-only; no DI registration, no cache.
+rows (`IShiftRotaRows`). These read methods reuse the service’s dependencies and registration and add no cache.
 
 Cross-section reads, lazy-resolved through `IServiceProvider`: `ITeamService` (coordinators),
 `IUserService` (display names).
 
-### ShiftCoverageReports (internal, owned by ShiftManagementService)
+### ShiftManagementService coverage reports
 
 No repository: staffing snapshot and department coverage figures from the cached rota rows
-(`IShiftRotaRows`). Read-only; no DI registration, no cache.
+(`IShiftRotaRows`). These read methods reuse the service’s dependencies and registration and add no cache.
 
 Cross-section reads via `ITeamService`, lazy-resolved through `IServiceProvider`.
 
-### ShiftCampSummary (internal, owned by ShiftManagementService)
+### ShiftManagementService camp summary
 
 No repository: the read-only shift summary by camp. Confirmed signup totals come from the cached
 rota rows (`IShiftRotaRows`); camp labels and the active-camp roster from `ICampService`, display
 names from `IUserService`, team scoping from `ITeamService`, all lazy-resolved through
-`IServiceProvider` and stitched in memory. No DI registration, no cache.
+`IServiceProvider` and stitched in memory. These read methods reuse the service’s dependencies and registration and add no cache.
 | Rotas | R |
 | EventSettings | R |
 
-### ShiftSignupPersonalData (internal, owned by ShiftSignupService)
+### ShiftSignupService personal-data reads
 
 Repositories: `IShiftManagementRepository`, `IVolunteerTrackingRepository`. Builds the member's GDPR
 export slices (`ShiftSignups`, `VolunteerEventProfiles`, `GeneralAvailability`,
 `VolunteerBuildStatuses`, `ShiftTagPreferences`) behind `ShiftSignupService`'s
-`IUserDataContributor`. Read-only; no DI registration, no cache.
+`IUserDataContributor`. These projections are read-only and reuse the service’s existing registration and dependencies; no cache.
 
 | Table | R/W |
 |-------|-----|

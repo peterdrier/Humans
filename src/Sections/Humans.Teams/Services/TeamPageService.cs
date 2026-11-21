@@ -15,7 +15,98 @@ internal sealed class TeamPageService(
         CancellationToken cancellationToken = default)
     {
         var teamsById = await teamService.GetTeamsAsync(cancellationToken);
-        return await TeamDirectoryBuilder.BuildAsync(teamsById, roleAssignmentService, userId, cancellationToken);
+        if (!userId.HasValue)
+        {
+            var publicDepartments = teamsById.Values
+                .Where(t => !t.IsSystemTeam && !t.IsHidden
+                    && t.IsActive
+                    && ((t.ParentTeamId is null && t.IsPublicPage)
+                        || (t.ParentTeamId is not null && t.IsPromotedToDirectory)))
+                .Select(t => CreateDirectorySummary(t, teamsById, userId, canSeeHiddenTeams: false))
+                .ToList();
+
+            return new TeamDirectoryResult(
+                IsAuthenticated: false,
+                CanCreateTeam: false,
+                MyTeams: [],
+                Departments: publicDepartments,
+                SystemTeams: [],
+                HiddenTeams: []);
+        }
+
+        var isBoardMember = await roleAssignmentService.IsUserBoardMemberAsync(userId.Value, cancellationToken);
+        var isAdmin = await roleAssignmentService.IsUserAdminAsync(userId.Value, cancellationToken);
+        var isTeamsAdmin = await roleAssignmentService.IsUserTeamsAdminAsync(userId.Value, cancellationToken);
+        var canCreateTeam = isAdmin || isTeamsAdmin;
+        var canSeeHiddenTeams = canCreateTeam || isBoardMember;
+
+        var visibleTeams = canSeeHiddenTeams
+            ? teamsById.Values
+            : teamsById.Values.Where(t => !t.IsHidden);
+
+        var directoryTeams = visibleTeams
+            .Where(t => t.IsActive)
+            .Where(t => t.ParentTeamId is null || t.IsPromotedToDirectory);
+
+        var summaries = directoryTeams
+            .Select(t => CreateDirectorySummary(t, teamsById, userId, canSeeHiddenTeams))
+            .ToList();
+
+        var myTeams = summaries
+            .Where(t => t.IsCurrentUserMember)
+            .ToList();
+
+        var departments = summaries
+            .Where(t => !t.IsCurrentUserMember && !t.IsSystemTeam && !t.IsHidden)
+            .ToList();
+
+        var systemTeams = summaries
+            .Where(t => !t.IsCurrentUserMember && t.IsSystemTeam && !t.IsHidden)
+            .ToList();
+
+        var hiddenTeams = summaries
+            .Where(t => !t.IsCurrentUserMember && t.IsHidden)
+            .ToList();
+
+        return new TeamDirectoryResult(
+            IsAuthenticated: true,
+            CanCreateTeam: canCreateTeam,
+            MyTeams: myTeams,
+            Departments: departments,
+            SystemTeams: systemTeams,
+            HiddenTeams: hiddenTeams);
+    }
+
+    private static TeamDirectorySummary CreateDirectorySummary(
+        TeamInfo team,
+        IReadOnlyDictionary<Guid, TeamInfo> teamById,
+        Guid? userId,
+        bool canSeeHiddenTeams)
+    {
+        TeamInfo? parent = team.ParentTeamId.HasValue
+            && teamById.TryGetValue(team.ParentTeamId.Value, out var resolvedParent)
+            && (!resolvedParent.IsHidden || canSeeHiddenTeams)
+            ? resolvedParent
+            : null;
+        var isCurrentUserMember = userId.HasValue && team.Members.Any(m => m.UserId == userId.Value);
+        var isCurrentUserCoordinator = userId.HasValue && team.Members.Any(m =>
+            m.UserId == userId.Value &&
+            m.Role == TeamMemberRole.Coordinator);
+
+        return new TeamDirectorySummary(
+            team.Id,
+            team.Name,
+            team.Description,
+            team.Slug,
+            team.Members.Count,
+            team.IsSystemTeam,
+            team.IsHidden,
+            team.RequiresApproval,
+            team.IsPublicPage,
+            isCurrentUserMember,
+            isCurrentUserCoordinator,
+            parent?.Name,
+            parent?.Slug);
     }
 
     public async Task<IReadOnlyList<TeamRosterSlotSummary>> GetRosterAsync(
@@ -325,13 +416,7 @@ internal sealed class TeamPageService(
         var directMemberUserIds = new HashSet<Guid>(directMembers.Select(m => m.UserId));
         var addedUserIds = new HashSet<Guid>();
 
-        var childTeamIds = childTeams.Select(c => c.Id).ToList();
-        var managementRolesByTeam = await teamService.GetManagementRoleNamesByTeamIdsAsync(childTeamIds, cancellationToken);
         var teamsById = await teamService.GetTeamsAsync(cancellationToken);
-
-        var childMembersByTeam = childTeamIds
-            .Where(teamsById.ContainsKey)
-            .ToDictionary(id => id, id => teamsById[id].Members);
 
         var leads = new List<TeamPageChildTeamMemberSummary>();
         var rollupMembers = new List<TeamPageChildTeamMemberSummary>();
@@ -339,11 +424,16 @@ internal sealed class TeamPageService(
         // First child wins a repeated human's affiliation and role metadata; preserve that selection order.
         foreach (var child in childTeams.OrderBy(child => child.Name, StringComparer.Ordinal))
         {
-            if (!childMembersByTeam.TryGetValue(child.Id, out var childMembers))
+            if (!teamsById.TryGetValue(child.Id, out var team))
                 continue;
-            var managementRoleName = managementRolesByTeam.GetValueOrDefault(child.Id);
+            var managementRoleName = team.RoleDefinitions?
+                .Where(d => d.IsManagement && d.IsPublic)
+                // First authored public management-role selector, not display ordering.
+                .OrderBy(d => d.SortOrder)
+                .ThenBy(d => d.Name, StringComparer.CurrentCulture)
+                .FirstOrDefault()?.Name;
 
-            foreach (var cm in childMembers)
+            foreach (var cm in team.Members)
             {
                 var isCoordinator = cm.Role == TeamMemberRole.Coordinator;
 

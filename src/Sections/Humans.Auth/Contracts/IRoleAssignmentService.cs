@@ -9,8 +9,6 @@ public interface IRoleAssignmentService : IApplicationService
         string? roleFilter, bool activeOnly, int page, int pageSize, Instant now,
         CancellationToken ct = default);
 
-    Task<RoleAssignmentDetailSnapshot?> GetByIdAsync(Guid assignmentId, CancellationToken ct = default);
-
     Task<IReadOnlyList<RoleAssignmentSummarySnapshot>> GetByUserIdAsync(Guid userId, CancellationToken ct = default);
 
     Task<bool> IsUserAdminAsync(Guid userId, CancellationToken cancellationToken = default);
@@ -36,11 +34,6 @@ public interface IRoleAssignmentService : IApplicationService
 public sealed record RoleAssignmentSnapshot(
     string RoleName,
     Instant? ValidTo);
-
-public sealed record RoleAssignmentDetailSnapshot(
-    Guid UserId,
-    string RoleName,
-    string UserDisplayName);
 
 public sealed record RoleAssignmentSummarySnapshot(
     Guid Id,

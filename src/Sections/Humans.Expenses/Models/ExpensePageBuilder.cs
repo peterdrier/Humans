@@ -7,12 +7,14 @@ using Humans.Expenses.Services;
 using Humans.Finance.Contracts;
 using Humans.Preapprovals.Contracts;
 using Humans.Users.Contracts;
+using Humans.Teams.Contracts;
 using Microsoft.Extensions.Localization;
 using NodaTime;
 
 namespace Humans.Expenses.Models;
 
 internal sealed class ExpensePageBuilder(
+    ITeamService teams,
     IOrgTimeZone orgTimeZone,
     IExpenseReportManagement service,
     IExpenseReview review,
@@ -36,7 +38,7 @@ internal sealed class ExpensePageBuilder(
         var bookingLabels = await ResolveBookingLabelsAsync(reports, ct);
 
         var coordinatorQueue = await review.GetCoordinatorQueueAsync(userId, ct);
-        var coordinatorTeamIds = await budgetService.GetEffectiveCoordinatorTeamIdsAsync(userId, ct);
+        var coordinatorTeamIds = await teams.GetEffectiveBudgetCoordinatorTeamIdsAsync(userId, ct);
         var openGrants = (await PreapprovalGrantQueries.ListClaimableAsync(preapprovals, viewer.AllUserIds, ct))
             .OrderBy(g => g.ClaimBy).ThenBy(g => g.ProgramName, StringComparer.OrdinalIgnoreCase).ToList();
 

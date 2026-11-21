@@ -23,7 +23,7 @@ internal sealed class SurveyInvitationDelivery(
     SurveysEmails emailMessages,
     ISurveyInviteTokenProvider tokenProvider,
     SurveyAudience audience,
-    ILogger<SurveyInvitationDelivery> logger) : ISurveyInvitations, ISurveyReminderSender
+    ILogger<SurveyInvitationDelivery> logger) : ISurveyInvitations
 {
     public async Task<int> PreviewAudienceCountAsync(Guid surveyId, CancellationToken ct = default)
     {

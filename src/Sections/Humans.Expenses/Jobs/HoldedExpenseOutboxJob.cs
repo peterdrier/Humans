@@ -1,6 +1,6 @@
 using Hangfire;
 using Humans.Base.Interfaces;
-using Humans.Expenses.Contracts;
+using Humans.Expenses.Services;
 
 namespace Humans.Expenses.Jobs;
 

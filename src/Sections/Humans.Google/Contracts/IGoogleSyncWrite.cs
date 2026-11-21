@@ -34,13 +34,6 @@ public interface IGoogleSyncWrite : IApplicationService
     Task RequestSyncAsync(string folderId, CancellationToken cancellationToken = default);
 }
 
-public sealed record GroupSettingsRemediationResult(bool Succeeded, string? ErrorMessage)
-{
-    public static GroupSettingsRemediationResult Success() => new(true, null);
-
-    public static GroupSettingsRemediationResult Failure(string message) => new(false, message);
-}
-
 /// <summary>Whether team provisioning actually established acceptance of the Google address.</summary>
 public enum GoogleResourceGrantOutcome
 {

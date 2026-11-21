@@ -4,7 +4,7 @@ using Humans.Finance.Contracts;
 namespace Humans.Finance.Models;
 
 /// <summary>Flipped from Holded's sign: positive means the organisation owes the member. <see cref="ExpenseReports"/>
-/// are the reports booked to this account, to check the ledger against; <see cref="SepaTransfers"/> are the transfers our
+/// are the reports on this account (<see cref="ReportsFor"/>), to check the ledger against; <see cref="SepaTransfers"/> are the transfers our
 /// SEPA files sent to it, newest first. <see cref="Match"/> is null when the reconciliation is unavailable
 /// (<see cref="MatchUnavailable"/> says why) or has nothing on this account.</summary>
 internal sealed record CreditorStatementVm(
@@ -16,6 +16,20 @@ internal sealed record CreditorStatementVm(
     IReadOnlyList<SepaPayoutTransferRow> SepaTransfers)
 {
     public decimal OwedBalance => -Ledger.Balance;
+
+    /// <summary>The reports booked to the account, plus every report whose expected lines <see cref="CreditorMatchVm"/>
+    /// counts on it (its bound members' lines), so an approved report not yet booked is listed beside its Missing
+    /// warning. Newest first.</summary>
+    public static IReadOnlyList<ExpenseReportDto> ReportsFor(
+        IReadOnlyList<ExpenseReportDto> queue, ExpenseReconReport recon, int supplierAccountNum)
+    {
+        var users = recon.Members.Where(m => m.SupplierAccountNum == supplierAccountNum).Select(m => m.UserId).ToHashSet();
+        var matched = recon.Lines.Where(l => users.Contains(l.CreditorUserId)).Select(l => l.ExpenseReportId).ToHashSet();
+        return queue
+            .Where(r => r.HoldedSupplierAccountNum == supplierAccountNum || matched.Contains(r.Id))
+            .OrderByDescending(r => r.ApprovedAt ?? r.SubmittedAt ?? r.CreatedAt)
+            .ToList();
+    }
 }
 
 /// <summary>One row of the statement: a single ledger line, or one day's payment lines in one direction, which Holded

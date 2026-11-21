@@ -141,7 +141,8 @@ public sealed class Section :
 
         // ExternalLoginService keeps its Humans.Application.Services.Users namespace: HUM0005
         // names it by full name as the sole caller of ReconcileOAuthIdentityAsync.
-        services.AddScoped<IAccountDeletionService, AccountDeletionService>();
+        services.AddScoped<AccountDeletionService>();
+        services.AddScoped<IAccountDeletionService>(sp => sp.GetRequiredService<AccountDeletionService>());
         services.AddScoped<IExternalLoginService, ExternalLoginService>();
         services.AddScoped<IUserSignInService, UserSignInService>();
 
@@ -239,33 +240,13 @@ public sealed class Section :
 
     internal const string LegacyIdentityEmailsKey = "users.legacy-identity-emails";
 
-    internal const string ProfileChildrenUserIdKey = "users.profile-children-user-id";
-
     IEnumerable<DataMigration> ISectionDataMigrations.Migrations() =>
     [
         new(LegacyIdentityEmailsKey, SectionName,
             "Create a verified UserEmail row from the legacy User.Email Identity column",
             "The legacy-column fallback in User.Email / UserInfo.Email",
             LegacyEmailsStatusAsync, ApplyLegacyEmailsAsync),
-        new(ProfileChildrenUserIdKey, SectionName,
-            "Stamp the owning user id onto contact fields, profile languages and volunteer history",
-            "The ProfileId key on user_contact_fields, user_profile_languages and user_volunteer_history_entries",
-            ProfileChildrenStatusAsync, ApplyProfileChildrenAsync),
     ];
-
-    private static async Task<DataMigrationStatus> ProfileChildrenStatusAsync(IServiceProvider sp, CancellationToken ct) =>
-        new(["User", "Contact fields", "Languages", "Volunteer history"],
-            [.. (await sp.GetRequiredService<ProfileService>().GetProfileChildRowsWithoutUserAsync(ct))
-                .Select(r => (IReadOnlyList<string>)
-                [
-                    r.UserId.ToString(),
-                    r.ContactFields.ToString(CultureInfo.InvariantCulture),
-                    r.Languages.ToString(CultureInfo.InvariantCulture),
-                    r.VolunteerHistory.ToString(CultureInfo.InvariantCulture),
-                ])]);
-
-    private static Task<int> ApplyProfileChildrenAsync(IServiceProvider sp, Guid actorUserId, CancellationToken ct) =>
-        sp.GetRequiredService<ProfileService>().FillProfileChildUserIdsAsync(ct);
 
     private static async Task<DataMigrationStatus> LegacyEmailsStatusAsync(IServiceProvider sp, CancellationToken ct) =>
         new(["User", "Legacy User.Email"],

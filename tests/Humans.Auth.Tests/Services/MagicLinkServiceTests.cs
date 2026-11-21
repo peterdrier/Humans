@@ -48,8 +48,8 @@ public sealed class MagicLinkServiceTests
 
         _rateLimiter = Substitute.For<IMagicLinkRateLimiter>();
         _rateLimiter.TryConsumeTokenAsync(Arg.Any<string>(), Arg.Any<TimeSpan>()).Returns(true);
-        _rateLimiter.TryReserveSignupSendAsync(Arg.Any<string>(), Arg.Any<TimeSpan>()).Returns(true);
-        _rateLimiter.TryReserveUserSendAsync(Arg.Any<Guid>(), Arg.Any<TimeSpan>()).Returns(true);
+        _rateLimiter.ReserveSignupSendAsync(Arg.Any<string>(), Arg.Any<TimeSpan>()).Returns(0);
+        _rateLimiter.ReserveUserSendAsync(Arg.Any<Guid>(), Arg.Any<TimeSpan>()).Returns(0);
 
         _service = new MagicLinkService(
             _userEmailService,
@@ -58,6 +58,7 @@ public sealed class MagicLinkServiceTests
             _emailMessages,
             _urlBuilder,
             _rateLimiter,
+            Clock,
             NullLogger<MagicLinkService>.Instance);
     }
 
@@ -170,7 +171,7 @@ public sealed class MagicLinkServiceTests
             .FindByAddressAsync("alice@gmail.com", true, true, Arg.Any<CancellationToken>())
             .Returns([UserEmailFixtures.Row(userId, "alice@gmail.com")]);
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(CreateUserInfo(user));
-        _rateLimiter.TryReserveUserSendAsync(userId, Arg.Any<TimeSpan>()).Returns(false);
+        _rateLimiter.ReserveUserSendAsync(userId, Arg.Any<TimeSpan>()).Returns(1);
 
         await _service.SendMagicLinkAsync("alice@gmail.com", null, Xunit.TestContext.Current.CancellationToken);
 
@@ -185,7 +186,7 @@ public sealed class MagicLinkServiceTests
         await _service.SendMagicLinkAsync("newperson@example.com", null, Xunit.TestContext.Current.CancellationToken);
         _emailService.ClearReceivedCalls();
 
-        _rateLimiter.TryReserveSignupSendAsync(Arg.Any<string>(), Arg.Any<TimeSpan>()).Returns(false);
+        _rateLimiter.ReserveSignupSendAsync(Arg.Any<string>(), Arg.Any<TimeSpan>()).Returns(1);
 
         await _service.SendMagicLinkAsync("newperson@example.com", null, Xunit.TestContext.Current.CancellationToken);
 
@@ -218,7 +219,7 @@ public sealed class MagicLinkServiceTests
         var userId = Guid.NewGuid();
         using var cache = new MemoryCache(new MemoryCacheOptions());
         var service = new MagicLinkService(_userEmailService, _userService, _emailService,
-            _emailMessages, _urlBuilder, new MagicLinkRateLimiter(cache), NullLogger<MagicLinkService>.Instance);
+            _emailMessages, _urlBuilder, new MagicLinkRateLimiter(cache), Clock, NullLogger<MagicLinkService>.Instance);
         _userEmailService.FindByAddressAsync("first@example.com", true, true, Arg.Any<CancellationToken>())
             .Returns([UserEmailFixtures.Row(userId, "first@example.com")]);
         _userEmailService.FindByAddressAsync("second@example.com", true, true, Arg.Any<CancellationToken>())
@@ -310,7 +311,7 @@ public sealed class MagicLinkServiceTests
     [HumansFact]
     public void VerifySignupToken_InvalidToken_ReturnsNull()
     {
-        _urlBuilder.UnprotectSignupToken(Arg.Any<string>()).Returns((string?)null);
+        _urlBuilder.UnprotectSignupToken(Arg.Any<string>()).Returns((MagicLinkToken?)null);
         var result = _service.VerifySignupToken("not-a-valid-token");
         result.Should().BeNull();
     }
@@ -331,7 +332,7 @@ public sealed class MagicLinkServiceTests
         var userId = Guid.NewGuid();
         var user = new User { Id = userId, UserName = "test@test.com" };
         _userService.GetRawUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(CreateUserInfo(user));
-        _urlBuilder.UnprotectLoginToken("bad-token").Returns((string?)null);
+        _urlBuilder.UnprotectLoginToken("bad-token").Returns((MagicLinkToken?)null);
 
         var result = await _service.VerifyLoginTokenAsync(userId, "bad-token", Xunit.TestContext.Current.CancellationToken);
 
@@ -344,7 +345,7 @@ public sealed class MagicLinkServiceTests
         var userId = Guid.NewGuid();
         var user = new User { Id = userId, UserName = "test@test.com" };
         _userService.GetRawUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(CreateUserInfo(user));
-        _urlBuilder.UnprotectLoginToken("good-token").Returns(userId.ToString());
+        _urlBuilder.UnprotectLoginToken("good-token").Returns(Token(userId.ToString()));
         _rateLimiter.TryConsumeTokenAsync("good-token", Arg.Any<TimeSpan>()).Returns(false);
 
         var result = await _service.VerifyLoginTokenAsync(userId, "good-token", Xunit.TestContext.Current.CancellationToken);
@@ -353,12 +354,34 @@ public sealed class MagicLinkServiceTests
     }
 
     [HumansFact]
+    public async Task VerifyLoginTokenAsync_ExpiredToken_ReturnsFalseWithoutConsumingIt()
+    {
+        var userId = Guid.NewGuid();
+        _userService.GetRawUserInfoAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(CreateUserInfo(new User { Id = userId, UserName = "test@test.com" }));
+        _urlBuilder.UnprotectLoginToken("old-token").Returns(ExpiredToken(userId.ToString()));
+
+        var result = await _service.VerifyLoginTokenAsync(userId, "old-token", Xunit.TestContext.Current.CancellationToken);
+
+        result.Should().BeFalse();
+        await _rateLimiter.DidNotReceiveWithAnyArgs().TryConsumeTokenAsync(default!, default);
+    }
+
+    [HumansFact]
+    public void VerifySignupToken_ExpiredToken_ReturnsNull()
+    {
+        _urlBuilder.UnprotectSignupToken("old-token").Returns(ExpiredToken("new@test.com"));
+
+        _service.VerifySignupToken("old-token").Should().BeNull();
+    }
+
+    [HumansFact]
     public async Task VerifyLoginTokenAsync_ValidToken_ReturnsTrue()
     {
         var userId = Guid.NewGuid();
         var user = new User { Id = userId, UserName = "test@test.com" };
         _userService.GetRawUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(CreateUserInfo(user));
-        _urlBuilder.UnprotectLoginToken("good-token").Returns(userId.ToString());
+        _urlBuilder.UnprotectLoginToken("good-token").Returns(Token(userId.ToString()));
 
         var result = await _service.VerifyLoginTokenAsync(userId, "good-token", Xunit.TestContext.Current.CancellationToken);
 
@@ -376,7 +399,7 @@ public sealed class MagicLinkServiceTests
         _userService.GetRawUserInfoAsync(userId, ct).Returns(CreateUserInfo(
             new User { Id = userId, State = UserState.Merged, MergedToUserId = survivorId }));
         _urlBuilder.UnprotectLoginToken("merged-token")
-            .Returns((survivorPayload ? survivorId : userId).ToString());
+            .Returns(Token((survivorPayload ? survivorId : userId).ToString()));
 
         var result = await _service.VerifyLoginTokenAsync(userId, "merged-token", ct);
 
@@ -423,7 +446,7 @@ public sealed class MagicLinkServiceTests
     [HumansFact]
     public async Task VerifyAndConsumeSignupTokenAsync_ValidUnusedToken_ReturnsEmail()
     {
-        _urlBuilder.UnprotectSignupToken("good-token").Returns("new@test.com");
+        _urlBuilder.UnprotectSignupToken("good-token").Returns(Token("new@test.com"));
 
         var result = await _service.VerifyAndConsumeSignupTokenAsync(
             "good-token", ct: Xunit.TestContext.Current.CancellationToken);
@@ -437,7 +460,7 @@ public sealed class MagicLinkServiceTests
     {
         // A consumed signup link must not redeem again. The payload still decodes —
         // only the reservation stops the second redemption.
-        _urlBuilder.UnprotectSignupToken("good-token").Returns("new@test.com");
+        _urlBuilder.UnprotectSignupToken("good-token").Returns(Token("new@test.com"));
         _rateLimiter.TryConsumeTokenAsync("good-token", Arg.Any<TimeSpan>()).Returns(false);
 
         var result = await _service.VerifyAndConsumeSignupTokenAsync(
@@ -449,7 +472,7 @@ public sealed class MagicLinkServiceTests
     [HumansFact]
     public async Task VerifyAndConsumeSignupTokenAsync_InvalidToken_NeverReachesTheReservation()
     {
-        _urlBuilder.UnprotectSignupToken("bad-token").Returns((string?)null);
+        _urlBuilder.UnprotectSignupToken("bad-token").Returns((MagicLinkToken?)null);
 
         var result = await _service.VerifyAndConsumeSignupTokenAsync(
             "bad-token", ct: Xunit.TestContext.Current.CancellationToken);
@@ -462,7 +485,7 @@ public sealed class MagicLinkServiceTests
     public void VerifySignupToken_DoesNotConsume_SoScannersCannotBurnTheLink()
     {
         // The GET that renders the signup form decodes only; redemption is the POST's job.
-        _urlBuilder.UnprotectSignupToken("good-token").Returns("new@test.com");
+        _urlBuilder.UnprotectSignupToken("good-token").Returns(Token("new@test.com"));
 
         var result = _service.VerifySignupToken("good-token");
 
@@ -481,4 +504,8 @@ public sealed class MagicLinkServiceTests
 
         _rateLimiter.Received(1).ReleaseTokenReservation("good-token");
     }
+
+    private MagicLinkToken Token(string payload) => new(payload, Clock.GetCurrentInstant() + Duration.FromMinutes(15));
+
+    private MagicLinkToken ExpiredToken(string payload) => new(payload, Clock.GetCurrentInstant() - Duration.FromMinutes(1));
 }

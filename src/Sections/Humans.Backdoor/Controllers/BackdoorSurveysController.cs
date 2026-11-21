@@ -7,7 +7,6 @@ using Humans.Surveys.Contracts;
 using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Mvc;
 using NodaTime;
-using NodaTime.Text;
 using Microsoft.AspNetCore.Authorization;
 
 namespace Humans.Backdoor.Controllers;
@@ -25,7 +24,6 @@ internal sealed class BackdoorSurveysController(ISurveyAnalysisRead surveys, IUs
 {
     private const int DefaultLimit = 100;
     private const int MaxLimit = 1000;
-    private static readonly InstantPattern SubmittedPattern = InstantPattern.General; // ISO-8601 UTC, invariant.
 
     /// <summary>All surveys with participation counts.</summary>
     [HttpGet]
@@ -102,7 +100,7 @@ internal sealed class BackdoorSurveysController(ISurveyAnalysisRead surveys, IUs
         Instant? sinceInstant = null;
         if (!string.IsNullOrWhiteSpace(since))
         {
-            var parsed = SubmittedPattern.Parse(since);
+            var parsed = DateFormattingExtensions.Iso8601InstantPattern.Parse(since);
             if (!parsed.Success) return BadRequest(new { error = "Invalid 'since' — expected an ISO-8601 instant." });
             sinceInstant = parsed.Value;
         }
@@ -196,7 +194,7 @@ internal sealed class BackdoorSurveysController(ISurveyAnalysisRead surveys, IUs
             anonymity = row.Anonymity.ToString(),
             inputMethod = row.InputMethod.ToString(),
             culture = row.Culture,
-            submittedAt = row.SubmittedAt is { } at ? SubmittedPattern.Format(at) : null,
+            submittedAt = row.SubmittedAt.ToIso8601(),
             userId = row.UserId,        // null for non-Identified rows (enforced by the export DTO)
             userName = row.UserName,    // null for non-Identified rows
             answers = questions

@@ -14,7 +14,7 @@
         <page-header title="@(Localizer["Email_CommPrefs_Title"].Value)" subtitle="@(Localizer["Email_CommPrefs_Description"].Value)" />
 
 
-        <vc:communication-preferences-panel user-id="@userId" read-only="false" />
+        @await Component.InvokeAsync(typeof(Humans.Email.ViewComponents.CommunicationPreferencesPanelViewComponent), new { userId, readOnly = false })
 
         <a asp-controller="Profile" asp-action="Index" class="btn btn-outline-secondary">@Localizer["Email_CommPrefs_BackToProfile"]</a>
     </div>

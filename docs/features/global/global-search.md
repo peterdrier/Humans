@@ -12,7 +12,7 @@
   src/Sections/Humans.Shifts/Controllers/ShiftsController.cs
   src/Sections/Humans.Shifts/Models/ShiftBrowsePageBuilder.cs
   src/Sections/Humans.Camps.Contracts/CampSearchHit.cs
-  src/Sections/Humans.Shifts.Contracts/IShiftService.cs
+  src/Sections/Humans.Shifts/Contracts/IShiftService.cs
   src/Sections/Humans.Teams.Contracts/TeamSearchHit.cs
   src/Humans.Base/Interfaces/ISearchContributor.cs
   src/Sections/Humans.Users/Section.cs

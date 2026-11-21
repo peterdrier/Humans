@@ -19,7 +19,7 @@ using Humans.Base.Interfaces;
 
 namespace Humans.Agent.Services;
 
-internal sealed class AgentService : IAgentService, IAgentConversationRetention
+internal sealed class AgentService : IAgentService
 {
     // Keep turns for one user serialized through final usage billing, across request scopes.
     private static readonly ConcurrentDictionary<Guid, TrackedLock> TurnLocks = new();

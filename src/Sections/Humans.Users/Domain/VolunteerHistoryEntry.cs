@@ -7,15 +7,8 @@ internal sealed class VolunteerHistoryEntry
 {
     public Guid Id { get; init; }
 
-    public Guid ProfileId { get; init; }
-
-    /// <summary>
-    /// The owning user: the key this table is moving to. Null only on rows written before the column existed, until
-    /// the <c>users.profile-children-user-id</c> data migration fills them.
-    /// </summary>
+    /// <summary>The owning user.</summary>
     public Guid? UserId { get; set; }
-
-    public Profile Profile { get; set; } = null!;
 
     /// <summary>Full date, or the first of the month; displayed as "Mar'25".</summary>
     public LocalDate Date { get; set; }

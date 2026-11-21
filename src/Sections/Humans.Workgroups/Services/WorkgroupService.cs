@@ -34,6 +34,7 @@ internal sealed partial class WorkgroupService(
     IFinanceWrite finance,
     IHoldedService holded,
     INotificationService notifications,
+    INotificationEmitter notificationEmitter,
     IEmailService email,
     WorkgroupsEmails emailFactory,
     IAuditLogService auditLog,
@@ -1478,7 +1479,7 @@ internal sealed partial class WorkgroupService(
                 var culture = System.Globalization.CultureInfo.GetCultureInfo(group.Key);
                 var title = $"{NoticeResources.GetString(titleKey, culture)}: {w.Name}";
                 var ids = group.Select(person => person.Id).ToList();
-                await notifications.SendAsync(source, NotificationClass.Informational, NotificationPriority.Normal,
+                await notificationEmitter.SendAsync(source, NotificationClass.Informational, NotificationPriority.Normal,
                     title, ids, body,
                     actionUrl: PageUrl(w), sourceKey: w.Id.ToString(), cancellationToken: ct);
                 dispatched += ids.Count;

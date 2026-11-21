@@ -35,7 +35,6 @@
   <!-- ======================== -->
   <!-- Common / Shared          -->
   <!-- ======================== -->
-  <data name="Onboarding_NameRequiredBeforeShifts" xml:space="preserve"><value>Add your name first — we need it before you can sign up for shifts.</value></data>
   <data name="Onboarding_ReviewProfileSummary" xml:space="preserve"><value>Profile Summary</value></data>
   <data name="Onboarding_ReviewLegalName" xml:space="preserve"><value>Legal Name</value></data>
   <data name="Onboarding_ReviewApplicationMotivation" xml:space="preserve"><value>Application Motivation</value></data>

@@ -1,3 +1,4 @@
+using Humans.Google.Domain;
 using Humans.Teams.Contracts;
 using Humans.Base.Models.Tables;
 using Humans.Base.Authorization;
@@ -135,6 +136,7 @@ public sealed class Section :
         if (hasGoogleCredentials)
         {
             services.AddScoped<IGoogleSyncManagement, GoogleWorkspaceSyncService>();
+            services.AddScoped<IGoogleDriveSync, GoogleDriveAccessSyncService>();
             services.AddScoped<IGoogleSyncService>(sp => sp.GetRequiredService<IGoogleSyncManagement>());
             services.AddScoped<IGoogleSyncWrite>(sp => sp.GetRequiredService<IGoogleSyncManagement>());
             services.AddScoped<ITeamResourceGoogleClient, TeamResourceGoogleClient>();
@@ -148,11 +150,13 @@ public sealed class Section :
             services.AddScoped<IGoogleDrivePermissionsClient, GoogleDrivePermissionsClient>();
             services.AddScoped<IGoogleDirectoryClient, GoogleDirectoryClient>();
 
-            services.AddHttpClient<IGoogleTranslationClient, GoogleTranslationClient>();
+            services.AddHttpClient<GoogleTranslationClient>();
+            services.AddScoped<IGoogleTranslationService>(sp => sp.GetRequiredService<GoogleTranslationClient>());
         }
         else
         {
             services.AddScoped<IGoogleSyncManagement, StubGoogleSyncService>();
+            services.AddScoped<IGoogleDriveSync>(sp => (StubGoogleSyncService)sp.GetRequiredService<IGoogleSyncManagement>());
             services.AddScoped<IGoogleSyncService>(sp => sp.GetRequiredService<IGoogleSyncManagement>());
             services.AddScoped<IGoogleSyncWrite>(sp => sp.GetRequiredService<IGoogleSyncManagement>());
             services.AddScoped<ITeamResourceGoogleClient, StubTeamResourceGoogleClient>();
@@ -165,15 +169,14 @@ public sealed class Section :
             services.AddSingleton<IGoogleGroupProvisioningClient, StubGoogleGroupProvisioningClient>();
             services.AddSingleton<IGoogleDrivePermissionsClient, StubGoogleDrivePermissionsClient>();
             services.AddSingleton<IGoogleDirectoryClient, StubGoogleDirectoryClient>();
-            services.AddSingleton<IGoogleTranslationClient, StubGoogleTranslationClient>();
+            services.AddSingleton<StubGoogleTranslationClient>();
+            services.AddScoped<IGoogleTranslationService>(sp => sp.GetRequiredService<StubGoogleTranslationClient>());
         }
 
         services.AddScoped<IGoogleSyncOutboxProcessor, GoogleSyncOutboxProcessor>();
         services.AddScoped<IGoogleGroupSyncScheduler, HangfireGoogleGroupSyncScheduler>();
         services.AddScoped<IGoogleGroupSync, GoogleGroupSyncService>();
         services.AddScoped<IGoogleDriveAccessSyncScheduler, HangfireGoogleDriveAccessSyncScheduler>();
-        services.AddScoped<IGoogleDriveSync, GoogleDriveAccessSyncService>();
-        services.AddScoped<IGoogleTranslationService, GoogleTranslationService>();
 
         services.AddScoped<GoogleResourceReconciliationJob>();
         services.AddScoped<ProcessGoogleSyncOutboxJob>();

@@ -1315,4 +1315,5 @@
     <value>Gestionar turnos</value>
   </data>
   <data name="Shifts_Search_Category" xml:space="preserve"><value>Turnos</value></data>
+  <data name="Shifts_NameRequiredBeforeShifts" xml:space="preserve"><value>Añade tu nombre primero — lo necesitamos antes de que puedas apuntarte a turnos.</value></data>
 </root>

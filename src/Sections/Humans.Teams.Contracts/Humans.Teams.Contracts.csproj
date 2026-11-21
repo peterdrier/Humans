@@ -6,7 +6,7 @@
     It holds exactly what lives outside the section: the read surface every other section
     injects, the few members other sections call on the full service, the system-sync and
     seeding contracts, and the flat projections those signatures name
-    (TeamMemberRole, RolePeriod, TeamJoinRequestStatus, SlotPriority, CallToAction).
+    (TeamMemberRole, RolePeriod, SlotPriority, CallToAction).
     Everything else — the directory, detail, admin list, roster, join-request,
     role-management and early-entry DTOs — is internal to Humans.Teams.
 

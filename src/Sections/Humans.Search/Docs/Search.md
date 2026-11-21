@@ -12,7 +12,7 @@
   src/Sections/Humans.Camps/Services/CachingCampService.cs
   src/Sections/Humans.Shifts/Services/ShiftManagementService.cs
   src/Sections/Humans.Shifts/Data/ShiftRepository.Management.cs
-  src/Sections/Humans.Shifts.Contracts/IShiftService.cs
+  src/Sections/Humans.Shifts/Contracts/IShiftService.cs
   src/Sections/Humans.Users/Services/PersonSearchMatcher.cs
   src/Sections/Humans.Camps/Controllers/CampController.cs
   src/Sections/Humans.Teams/Controllers/TeamController.cs

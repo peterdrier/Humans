@@ -170,17 +170,7 @@ https://{baseUrl}/Account/MagicLinkConfirm?userId={userId}&token={urlEncodedToke
 
 When the email doesn't match any existing user, there's no `User` row to generate an Identity token against. Use **DataProtection** instead — same pattern as the existing unsubscribe magic links in `CommunicationPreferenceService`:
 
-```csharp
-var protector = _dataProtectionProvider
-    .CreateProtector("MagicLinkSignup")
-    .ToTimeLimitedDataProtector();
-
-// Generate — payload is the email address, encrypted with 15min expiry
-var token = protector.Protect(email, TimeSpan.FromMinutes(15));
-
-// Verify — returns the email, throws CryptographicException if expired/tampered
-var email = protector.Unprotect(token);
-```
+`MagicLinkUrlBuilder` writes the same purpose and layout as `ToTimeLimitedDataProtector` (expiry ticks, then the email) but decodes it itself, so an expired link still reveals whom it was for and logs differently from a tampered one.
 
 The token is self-contained (encrypted email + expiry). No database row needed.
 
@@ -280,7 +270,7 @@ Both login and signup token validation require the canonical Base64url spelling 
 ### Rate Limiting
 
 To prevent abuse of the magic link endpoint:
-- Login sends are cooled down per user: an exclusive 60-second reservation (`IMagicLinkRateLimiter.TryReserveUserSendAsync`) is taken before the message is prepared, so overlapping requests cannot both enqueue, and a request inside the window is silently skipped. A preparation/send failure releases the reservation; a successful send keeps it and persists nothing (the cooldown does not survive a restart, by decision 2026-10-20). Signup sends use a separate per-inbox reservation in `IMagicLinkRateLimiter`: Gmail dots, plus-tags and googlemail aliases share the cooldown, while non-Gmail plus-addresses stay distinct. Normalization affects only the reservation key; the message and token retain the entered address.
+- Login sends are cooled down per user: an exclusive 60-second reservation (`IMagicLinkRateLimiter.ReserveUserSendAsync`) is taken before the message is prepared, so overlapping requests cannot both enqueue, and a request inside the window is silently skipped. A preparation/send failure releases the reservation; a successful send keeps it and persists nothing (the cooldown does not survive a restart, by decision 2026-10-20). Signup sends use a separate per-inbox reservation in `IMagicLinkRateLimiter`: Gmail dots, plus-tags and googlemail aliases share the cooldown, while non-Gmail plus-addresses stay distinct. Normalization affects only the reservation key; the message and token retain the entered address.
 - Always show the same "If that email exists, we've sent a link" message regardless of whether the email exists (prevents account enumeration)
 - Log suspicious patterns (multiple requests for different emails from same IP) but don't block at this scale
 

@@ -1,5 +1,4 @@
 using Humans.Tickets.Contracts;
-using NodaTime;
 
 namespace Humans.Tickets.Services;
 
@@ -8,16 +7,13 @@ namespace Humans.Tickets.Services;
 /// apart without recompiling any consumer.
 /// </summary>
 internal sealed class TicketVendorGateway(ITicketVendorService vendor)
-    : ITicketDiscountCodes, ITicketVendorMirror
+    : ITicketDiscountCodes
 {
     public Task<IReadOnlyList<string>> GenerateAsync(
         TicketDiscountCodeRequest request, CancellationToken ct = default) =>
         vendor.GenerateDiscountCodesAsync(
             new DiscountCodeSpec(request.Count, ToVendorType(request.Kind), request.Value, request.ExpiresAt),
             ct);
-
-    public Task CreateCheckInAsync(string vendorTicketId, Instant occurredAt, CancellationToken ct = default) =>
-        vendor.CreateCheckInAsync(vendorTicketId, occurredAt, ct);
 
     private static DiscountType ToVendorType(TicketDiscountKind kind) => kind switch
     {

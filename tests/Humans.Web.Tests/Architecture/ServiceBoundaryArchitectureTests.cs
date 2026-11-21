@@ -83,7 +83,6 @@ public class ServiceBoundaryArchitectureTests
         typeof(Users.Contracts.UserEmail),
         typeof(Google.Contracts.TeamGoogleResource),
         typeof(Google.Contracts.GoogleSyncOutboxEvent),
-        typeof(Google.Contracts.SyncServiceSettings),
     ];
 
     internal static IEnumerable<string> ScanApplicationServiceEntityReadReturns()
@@ -94,7 +93,7 @@ public class ServiceBoundaryArchitectureTests
             .Where(t => string.Equals(t.Namespace, "Humans.Domain.Entities", StringComparison.Ordinal))
             .Concat(SectionAssemblies()
                 .SelectMany(a => a.GetTypes())
-                .Where(t => t.Namespace?.EndsWith(".Domain", StringComparison.Ordinal) == true))
+                .Where(t => t.IsClass && t.Namespace?.EndsWith(".Domain", StringComparison.Ordinal) == true))
             .Concat(LeafResidentEntities)
             .ToHashSet();
 

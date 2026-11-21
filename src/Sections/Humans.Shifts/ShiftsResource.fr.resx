@@ -1314,4 +1314,5 @@
     <value>Gérer les quarts</value>
   </data>
   <data name="Shifts_Search_Category" xml:space="preserve"><value>Quarts</value></data>
+  <data name="Shifts_NameRequiredBeforeShifts" xml:space="preserve"><value>Ajoutez d'abord votre nom — nous en avons besoin avant que vous puissiez vous inscrire aux quarts.</value></data>
 </root>

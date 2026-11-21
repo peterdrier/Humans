@@ -17,7 +17,7 @@ namespace Humans.Email.Tests.Services;
 public class EmailOutboxRetentionTests : IDisposable
 {
     private readonly EmailDbContext _dbContext;
-    private readonly IEmailOutboxRetention _retention;
+    private readonly IEmailOutboxManagement _retention;
 
     // "Now" is 2026-03-14. With 150-day retention, cutoff is 2025-10-15.
     private static readonly Instant Now = Instant.FromUtc(2026, 3, 14, 12, 0);
