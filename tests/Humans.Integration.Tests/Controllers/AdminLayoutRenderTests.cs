@@ -70,7 +70,6 @@ public partial class AdminLayoutRenderTests(HumansTestDatabase database) : Integ
         ("/Shifts/Summary", "Humans.Shifts — inline override in Shifts/Summary.cshtml"),
         ("/Store/Admin/Catalog", "Humans.Store — Views/StoreAdmin/_ViewStart"),
         ("/Tickets", "Humans.Tickets — Views/Ticket/_ViewStart"),
-        ("/Tickets/Admin/Transfers", "Humans.Tickets — Views/TicketTransferAdmin/_ViewStart"),
     ];
 
     [HumansFact(Timeout = 600000)]

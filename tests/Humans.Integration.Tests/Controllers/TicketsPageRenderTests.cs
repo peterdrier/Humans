@@ -12,8 +12,8 @@ namespace Humans.Integration.Tests.Controllers;
 /// throws instead. The admin controllers name views by absolute path, so moving those folders compiles and then 500s.
 /// </para>
 /// <para>
-/// The database is empty: every admin page renders its no-data branch, and the transfer wizard renders all the copy
-/// with no tickets held.
+/// The database is empty: every admin page renders its no-data branch, and the member's ticket page renders its
+/// no-tickets copy.
 /// </para>
 /// </remarks>
 public class TicketsPageRenderTests(HumansTestDatabase database) : IntegrationTestBase(database)
@@ -27,7 +27,6 @@ public class TicketsPageRenderTests(HumansTestDatabase database) : IntegrationTe
         ("/Tickets/SalesAggregates", "Aggregates"),
         ("/Tickets/WhoHasntBought", "Humans &amp; Tickets"),
         ("/Tickets/Participation/Backfill", "Backfill Participation Data"),
-        ("/Tickets/Admin/Transfers", "Ticket transfer requests"),
         ("/Tickets/Admin/Onsite", "Who&#x27;s Onsite"),
         ("/Tickets/Admin/Sales/Edit", "Price waves"),
         // /Tickets/Admin/Contacts is left out: it throws by design until a vendor sync has run. Its view is covered by
@@ -51,7 +50,7 @@ public class TicketsPageRenderTests(HumansTestDatabase database) : IntegrationTe
             // ReSharper can rewrite <vc:name> to <name-view-component>, which also renders inert.
             html.Should().NotContain("-view-component", $"GET {url} has a rewritten vc tag");
 
-            html.Should().NotContain("TicketTransfer_", $"GET {url} rendered a raw resource key");
+            html.Should().NotContain("Tickets_", $"GET {url} rendered a raw resource key");
         }
     }
 
@@ -68,24 +67,18 @@ public class TicketsPageRenderTests(HumansTestDatabase database) : IntegrationTe
     }
 
     [HumansFact(Timeout = 120000)]
-    public async Task The_transfer_wizard_renders_the_sections_own_resource_set_and_ticket_stub()
+    public async Task The_members_ticket_page_renders_the_sections_own_resource_set()
     {
-        // Every Localizer call in the section is on this page, and it is the only section view reaching <vc:ticket-stub>.
         var ct = Xunit.TestContext.Current.CancellationToken;
         await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Volunteer);
 
-        var response = await Client.GetAsync("/Tickets/Transfers", ct);
+        var response = await Client.GetAsync("/Tickets/Buy/Mine", ct);
         response.StatusCode.Should().Be(HttpStatusCode.OK);
 
         var html = await response.Content.ReadAsStringAsync(ct);
-        // The no-tickets branch. The apostrophe in NoTickets is typographic and encodes to an entity, so the check
-        // stays on an ASCII run.
-        html.Should().Contain("Transfer a ticket");                    // Tickets_TicketTransfer_Title
-        html.Should().Contain("have any tickets to transfer");         // Tickets_TicketTransfer_NoTickets
-        html.Should().Contain("Your transfer requests");               // Tickets_TicketTransfer_YourRequests
-        html.Should().Contain("Back");                                 // Common_Back, from SharedResource
-        html.Should().NotContain("TicketTransfer_", "a carved key rendered as its own name");
-        html.Should().NotContain("Common_", "a shared key rendered as its own name");
+        html.Should().Contain("My tickets");                                   // Tickets_Mine_Title
+        html.Should().Contain("You hold no tickets bought through Humans.");   // Tickets_Mine_None
+        html.Should().NotContain("Tickets_", "a carved key rendered as its own name");
     }
 
     [HumansFact(Timeout = 120000)]
@@ -95,7 +88,7 @@ public class TicketsPageRenderTests(HumansTestDatabase database) : IntegrationTe
         var ct = Xunit.TestContext.Current.CancellationToken;
         await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Volunteer);
 
-        foreach (var url in new[] { "/Tickets", "/Tickets/Orders", "/Tickets/Admin/Transfers" })
+        foreach (var url in new[] { "/Tickets", "/Tickets/Orders", "/Tickets/Admin/Sales/Edit" })
         {
             var response = await Client.GetAsync(url, ct);
             response.StatusCode.Should().Be(HttpStatusCode.Found, $"GET {url} must be gated");
@@ -105,7 +98,7 @@ public class TicketsPageRenderTests(HumansTestDatabase database) : IntegrationTe
     }
 
     [HumansFact(Timeout = 120000)]
-    public async Task The_transfer_wizard_renders_in_spanish_from_the_sections_satellite_assemblies()
+    public async Task The_members_ticket_page_renders_in_spanish_from_the_sections_satellite_assemblies()
     {
         // The neutral set is embedded in the main assembly and fallback is silent, so only Spanish proves the
         // satellites. HtmlEncoder escapes non-ASCII, so the checks stay on ASCII runs.
@@ -114,7 +107,7 @@ public class TicketsPageRenderTests(HumansTestDatabase database) : IntegrationTe
 
         // Accept-Language doesn't reach a signed-in user: the PreferredLanguage provider short-circuits the chain. Switch
         // the way the UI does.
-        var switcherPage = await (await Client.GetAsync("/Tickets/Transfers", ct)).Content.ReadAsStringAsync(ct);
+        var switcherPage = await (await Client.GetAsync("/Tickets/Buy/Mine", ct)).Content.ReadAsStringAsync(ct);
         var token = ExtractAntiForgeryToken(switcherPage);
         token.Should().NotBeNullOrEmpty();
         await Client.PostAsync("/Language/SetLanguage", new FormUrlEncodedContent(
@@ -123,14 +116,14 @@ public class TicketsPageRenderTests(HumansTestDatabase database) : IntegrationTe
                 new KeyValuePair<string, string>("culture", "es"),
             ]), ct);
 
-        var response = await Client.GetAsync("/Tickets/Transfers", ct);
+        var response = await Client.GetAsync("/Tickets/Buy/Mine", ct);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var html = await response.Content.ReadAsStringAsync(ct);
 
-        html.Should().Contain("Transferir una entrada");         // Tickets_TicketTransfer_Title
-        html.Should().Contain("Tus solicitudes de transferencia"); // Tickets_TicketTransfer_YourRequests
-        html.Should().NotContain("Transfer a ticket");
+        html.Should().Contain("Mis entradas");                                  // Tickets_Mine_Title
+        html.Should().Contain("No tienes entradas compradas a trav");          // Tickets_Mine_None
+        html.Should().NotContain("You hold no tickets");
     }
 
     [HumansFact(Timeout = 120000)]
