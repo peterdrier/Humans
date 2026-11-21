@@ -89,7 +89,7 @@ internal sealed class TicketBuyController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Start(
         Guid salesEventId, bool forSelf, string? partnerName, string? partnerEmail, long? supporterTotalMinor, decimal? donation,
-        TicketDonationPurpose donationPurpose, string[]? childNames, bool acceptTerms, bool marketingOptIn,
+        TicketDonationPurpose donationPurpose, string?[]? childNames, bool acceptTerms, bool marketingOptIn,
         string? directedToken, CancellationToken ct)
     {
         var (errorResult, user) = await RequireCurrentUserAsync(ct);

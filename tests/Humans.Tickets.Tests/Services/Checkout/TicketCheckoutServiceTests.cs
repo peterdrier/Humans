@@ -547,6 +547,16 @@ public sealed class TicketCheckoutServiceTests
     }
 
     [HumansFact]
+    public async Task Blank_child_name_boxes_are_ignored()
+    {
+        _salesEvent.ChildPriceMinor = 5000;
+        var order = await BuyAndPayAsync(Buy() with { ChildNames = [null, "  ", "Kid García"] }, _buyerId);
+
+        order.TotalMinor.Should().Be(27500);
+        _repo.Tickets.Should().ContainSingle(t => t.Kind == TicketHolderKind.Child);
+    }
+
+    [HumansFact]
     public async Task Children_are_issued_with_the_adult_and_need_a_child_price()
     {
         (await _service.StartCheckoutAsync(Buy() with { ChildNames = ["Kid García"] }, _buyerId, Ct))
