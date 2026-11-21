@@ -932,7 +932,6 @@ internal sealed class UserService(
             .Select(l => new ProfileLanguage
             {
                 Id = l.Id == Guid.Empty ? Guid.NewGuid() : l.Id,
-                ProfileId = profileId,
                 UserId = ownerUserId,
                 LanguageCode = l.LanguageCode,
                 Proficiency = l.Proficiency,

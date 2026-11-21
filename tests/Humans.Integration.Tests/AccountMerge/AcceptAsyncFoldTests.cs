@@ -218,15 +218,9 @@ public class AcceptAsyncFoldTests(HumansTestDatabase database) : IntegrationTest
         await using var assertScope = Factory.Services.CreateAsyncScope();
         var db = assertScope.ServiceProvider.GetRequiredService<UsersDbContext>();
 
-        var targetProfileId = await db.Profiles
-            .AsNoTracking()
-            .Where(p => p.UserId == targetId)
-            .Select(p => p.Id)
-            .SingleAsync(TestContext.Current.CancellationToken);
-
         var targetEntries = await db.VolunteerHistoryEntries
             .AsNoTracking()
-            .Where(v => v.ProfileId == targetProfileId)
+            .Where(v => v.UserId == targetId)
             .ToListAsync(TestContext.Current.CancellationToken);
 
         targetEntries.Should().HaveCount(3, "dedup keeps one of the dup pair plus the two unique entries");
@@ -234,15 +228,9 @@ public class AcceptAsyncFoldTests(HumansTestDatabase database) : IntegrationTest
         targetEntries.Should().ContainSingle(v => v.Date.Year == 2023 && v.EventName == "Build 2023");
         targetEntries.Should().ContainSingle(v => v.Date.Year == 2025 && v.EventName == "Cleanup 2025");
 
-        var sourceProfileId = await db.Profiles
-            .AsNoTracking()
-            .Where(p => p.UserId == sourceId)
-            .Select(p => p.Id)
-            .SingleAsync(TestContext.Current.CancellationToken);
-
         var sourceEntries = await db.VolunteerHistoryEntries
             .AsNoTracking()
-            .Where(v => v.ProfileId == sourceProfileId)
+            .Where(v => v.UserId == sourceId)
             .ToListAsync(TestContext.Current.CancellationToken);
         sourceEntries.Should().BeEmpty();
     }
@@ -270,15 +258,9 @@ public class AcceptAsyncFoldTests(HumansTestDatabase database) : IntegrationTest
         await using var assertScope = Factory.Services.CreateAsyncScope();
         var db = assertScope.ServiceProvider.GetRequiredService<UsersDbContext>();
 
-        var targetProfileId = await db.Profiles
-            .AsNoTracking()
-            .Where(p => p.UserId == targetId)
-            .Select(p => p.Id)
-            .SingleAsync(TestContext.Current.CancellationToken);
-
         var targetLangs = await db.ProfileLanguages
             .AsNoTracking()
-            .Where(l => l.ProfileId == targetProfileId)
+            .Where(l => l.UserId == targetId)
             .ToListAsync(TestContext.Current.CancellationToken);
 
         targetLangs.Should().HaveCount(3);
@@ -491,15 +473,9 @@ public class AcceptAsyncFoldTests(HumansTestDatabase database) : IntegrationTest
         await using var assertScope = Factory.Services.CreateAsyncScope();
         var db = assertScope.ServiceProvider.GetRequiredService<UsersDbContext>();
 
-        var targetProfileId = await db.Profiles
-            .AsNoTracking()
-            .Where(p => p.UserId == targetId)
-            .Select(p => p.Id)
-            .SingleAsync(TestContext.Current.CancellationToken);
-
         var targetFields = await db.ContactFields
             .AsNoTracking()
-            .Where(cf => cf.ProfileId == targetProfileId)
+            .Where(cf => cf.UserId == targetId)
             .ToListAsync(TestContext.Current.CancellationToken);
 
         // Target's two rows plus the source-only Telegram; the source's duplicate Phone was dropped.
@@ -508,15 +484,9 @@ public class AcceptAsyncFoldTests(HumansTestDatabase database) : IntegrationTest
         targetFields.Should().ContainSingle(cf => cf.FieldType == ContactFieldType.Telegram && cf.Value == "@target-handle");
         targetFields.Should().ContainSingle(cf => cf.FieldType == ContactFieldType.Telegram && cf.Value == "@source-handle");
 
-        var sourceProfileId = await db.Profiles
-            .AsNoTracking()
-            .Where(p => p.UserId == sourceId)
-            .Select(p => p.Id)
-            .SingleAsync(TestContext.Current.CancellationToken);
-
         var sourceFields = await db.ContactFields
             .AsNoTracking()
-            .Where(cf => cf.ProfileId == sourceProfileId)
+            .Where(cf => cf.UserId == sourceId)
             .ToListAsync(TestContext.Current.CancellationToken);
         sourceFields.Should().BeEmpty();
     }

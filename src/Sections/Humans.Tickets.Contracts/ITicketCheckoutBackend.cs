@@ -69,7 +69,39 @@ public interface ITicketCheckoutBackend : IApplicationService
     /// event is ready to sell through Humans. Never throws; every problem is a finding that is not ok.
     /// </summary>
     Task<IReadOnlyList<CheckoutBackendFinding>> CheckAsync(string? backendEventRef, CancellationToken ct = default);
+
+    /// <summary>
+    /// The backend's side of Tickets' financial reconciliation: every order it holds that was created in
+    /// [<paramref name="from"/>, <paramref name="to"/>), for <paramref name="backendEventRef"/> where the backend keeps
+    /// orders per event, read from the backend itself. Includes orders Humans did not open (one made in the vendor's
+    /// own dashboard), which reconcile as extra. Changes nothing; throws when any page cannot be read, so a partial
+    /// list is never taken for the whole.
+    /// </summary>
+    Task<IReadOnlyList<BackendOrderSummary>> ListOrdersAsync(
+        string? backendEventRef, Instant from, Instant to, CancellationToken ct = default);
+
+    /// <summary>
+    /// The backend event ref <paramref name="backendOrderId"/> was sold under, so an order is still reconciled after its
+    /// sales setup moved to another event or backend; null for a backend that keeps no events.
+    /// </summary>
+    string? EventRefOf(string backendOrderId);
 }
+
+/// <summary>
+/// One order as the backend holds it. <paramref name="HumansOrderId"/> is the Humans order id the backend stores with
+/// it, null when it has none. <paramref name="TotalMinor"/> is what the order charges (its lines, before refunds);
+/// <paramref name="RefundedMinor"/> and <paramref name="DisputedMinor"/> mean what they do on <see cref="CheckoutStatus"/>.
+/// <paramref name="TicketCount"/> counts ticket lines, free ones included; null when the backend cannot tell.
+/// </summary>
+public sealed record BackendOrderSummary(
+    string BackendOrderId,
+    Guid? HumansOrderId,
+    Instant CreatedAt,
+    CheckoutState State,
+    long TotalMinor,
+    int? TicketCount,
+    long RefundedMinor,
+    long DisputedMinor);
 
 /// <summary>
 /// <paramref name="Hosting"/> says who runs the backend and where: Humans' own instance, the vendor's hosted service,

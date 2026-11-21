@@ -151,7 +151,6 @@ public class AccountMergeServiceMergeTests
         var field = new ContactField
         {
             Id = Guid.NewGuid(),
-            ProfileId = sourceProfile.Id,
             UserId = sourceProfile.UserId,
             FieldType = ContactFieldType.Phone,
             Value = "contact-number",
@@ -172,7 +171,7 @@ public class AccountMergeServiceMergeTests
             var fields = await read.ContactFields.AsNoTracking().ToListAsync(token);
             return new[] { (source, sourceProfile), (target, targetProfile) }
                 .Select(pair => UserInfoFactory.Create(pair.Item1, [], [], pair.Item2,
-                    fields.Where(f => f.ProfileId == pair.Item2.Id).ToList(), [], [])).ToList();
+                    fields.Where(f => f.UserId == pair.Item1.Id).ToList(), [], [])).ToList();
         }
         _userService.GetAllUserInfosAsync(Arg.Any<CancellationToken>())
             .Returns(call => ReadUsersAsync(call.Arg<CancellationToken>()));
@@ -203,7 +202,7 @@ public class AccountMergeServiceMergeTests
         (await merge.Should().ThrowAsync<IOException>()).Which.Should().BeSameAs(failure);
 
         await using var verify = new UsersDbContext(options);
-        (await verify.ContactFields.SingleAsync(ct)).ProfileId.Should().Be(targetProfile.Id);
+        (await verify.ContactFields.SingleAsync(ct)).UserId.Should().Be(target.Id);
         (await cache.GetRawUserInfoAsync(source.Id, ct))!.Profile!.ContactFields.Should().BeEmpty();
         (await cache.GetRawUserInfoAsync(target.Id, ct))!.Profile!.ContactFields.Should().ContainSingle(f => f.Id == field.Id);
         await _userService.DidNotReceive().AnonymizeForMergeAsync(

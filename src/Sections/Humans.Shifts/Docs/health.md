@@ -43,7 +43,7 @@ The shapes imply:
   (availability, build status).
 - Three owning services, each one shape family: **management** (describe the work + the event
   calendar + analytics), **signups** (take + review a slot), **tracking** (build-week tracking).
-  Cross-section reads through `.Contracts` leaf interfaces only; the full interfaces stay
+  Cross-section reads through the public `Contracts/` interfaces only; the full interfaces stay
   `internal`.
 - Analytics is the largest shape with no external caller. Its natural home is a fourth
   internal service (`WorkloadService` is already that shape for one report) so
@@ -97,7 +97,7 @@ The shapes imply:
   from them per request; there is no second cache to keep in step.
 - **No analytics-service split this run** — it is the right direction but a structural move
   across 2 k lines with no behaviour change to pin it; it needs Peter's go and its own PR.
-- **No `IShiftSignupService` read/write split** — the leaf `IShiftSignups` already is the
+- **No `IShiftSignupService` read/write split** — the public `IShiftSignups` already is the
   cross-section face; the full interface is internal.
 - **No test asserting absences** (`no-tests-for-absences`).
 
@@ -105,7 +105,7 @@ The shapes imply:
 
 - `IShiftView` and `IShiftRowView` resolve to the **singleton** `CachingShiftService`, which
   opens a scope per call to reach the keyed-scoped `ShiftViewService`.
-- `GetRotaAsync` on the read leaf applies **no visibility filter**: the id comes from a
+- `GetRotaAsync` on `IShiftService` applies **no visibility filter**: the id comes from a
   filtered search and the destination page enforces access.
 - `ExportXlsx` writes **no** audit entry on purpose (burner names only).
 - Sub-team managers manage only their sub-team; department coordinators manage the whole
