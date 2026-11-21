@@ -19,7 +19,7 @@
 | `TicketsContactsAdminController` | Class | `TicketsAdmin, Board, Admin` | `TicketsPolicies.Read`; `Apply` carries `TicketsPolicies.Manage` |
 | `TicketsOnsiteAdminController` | Class | `TicketsAdmin, Admin, Board` OR the gate-terminal shared account (by well-known id) | `PolicyNames.ScannerAccess` (gate staff check the onsite roster from the door alongside the scanner) |
 | `TicketsGateAdminController` (`/Tickets/Admin/Gate`) | Class | `TicketsAdmin, Board, Admin` | `TicketsPolicies.Read` (gate-terminal credential status); `SetPassword` carries `TicketsPolicies.Manage` |
-| `TicketsSupportAdminController` (`/Tickets/Admin/Sales/...` support pages) | Class | `TicketsAdmin, Board, Admin` | `TicketsPolicies.Read`; writes (`Resale/Open`, `Resale/{offerId}/Withdraw`, companions, `Rename`, `Void`, `Companion`) carry `TicketsPolicies.Manage`; `Restore`, `OverrideRename`, `OverrideCompanion` carry `TicketsPolicies.Override` (`TicketsOverride, Admin`); `Cancel` POST carries `PolicyNames.AdminOnly` |
+| `TicketsSupportAdminController` (`/Tickets/Admin/Sales/...` support pages) | Class | `TicketsAdmin, Board, Admin` | `TicketsPolicies.Read`; writes (`Resale/Open`, `Resale/{offerId}/Withdraw`, companions, `Rename`, `Void`, `Companion`) carry `TicketsPolicies.Manage`; `Restore`, `OverrideRename`, `OverrideCompanion` and `Cancel` POST carry `PolicyNames.AdminOnly` |
 
 ### `IAuthorizationService.AuthorizeAsync` note
 

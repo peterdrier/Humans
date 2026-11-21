@@ -225,14 +225,14 @@ internal sealed class TicketsSupportAdminController(
     }
 
     [HttpPost("Order/{orderId:guid}/Ticket/{ticketId:guid}/Restore")]
-    [Authorize(Policy = TicketsPolicies.Override)]
+    [Authorize(Policy = PolicyNames.AdminOnly)]
     [ValidateAntiForgeryToken]
     public Task<IActionResult> Restore(Guid orderId, Guid ticketId, string? reason, CancellationToken ct) =>
         ActAsync(orderId, ticketId, "Override: ticket restored.", (actor, c) =>
             checkout.RestoreTicketAsync(ticketId, reason ?? string.Empty, actor, c), ct);
 
     [HttpPost("Order/{orderId:guid}/Ticket/{ticketId:guid}/OverrideRename")]
-    [Authorize(Policy = TicketsPolicies.Override)]
+    [Authorize(Policy = PolicyNames.AdminOnly)]
     [ValidateAntiForgeryToken]
     public Task<IActionResult> OverrideRename(Guid orderId, Guid ticketId, string? holderName, string? holderEmail, string? reason, CancellationToken ct) =>
         ActAsync(orderId, ticketId, "Override: ticket renamed.", (actor, c) =>
@@ -240,7 +240,7 @@ internal sealed class TicketsSupportAdminController(
                 overrideRules: true, actor, c), ct);
 
     [HttpPost("Order/{orderId:guid}/Ticket/{ticketId:guid}/OverrideCompanion")]
-    [Authorize(Policy = TicketsPolicies.Override)]
+    [Authorize(Policy = PolicyNames.AdminOnly)]
     [ValidateAntiForgeryToken]
     public Task<IActionResult> OverrideCompanion(Guid orderId, Guid ticketId, string? holderName, string? holderEmail, string? reason, CancellationToken ct) =>
         ActAsync(orderId, ticketId, "Override: companion ticket issued.", (actor, c) =>

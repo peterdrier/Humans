@@ -53,7 +53,7 @@ internal sealed class TicketsAuditActions : AuditActionContributor
 
     public static readonly AuditActionDefinition TicketCompanionIssued = new("TicketCompanionIssued");
 
-    /// <summary>Someone holding Tickets Override stepped past a ticket rule by hand.</summary>
+    /// <summary>An Admin stepped past a ticket rule by hand.</summary>
     public static readonly AuditActionDefinition TicketOverride = new("TicketOverride");
 
     /// <summary>A super admin cancelled an event; the reconcile job then voids and refunds its orders.</summary>

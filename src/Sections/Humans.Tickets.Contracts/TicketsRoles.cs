@@ -8,10 +8,4 @@ public static class TicketsRoles
     /// ticket data. Stored as <c>TicketAdmin</c> before 2026-10.
     /// </summary>
     public const string TicketsAdmin = "TicketsAdmin";
-
-    /// <summary>
-    /// Tickets Override: the one or two people who may step past the ticket rules by hand (restore a voided ticket, move
-    /// a reduced price ticket, a companion past capacity). Every override is audited.
-    /// </summary>
-    public const string TicketsOverride = "TicketsOverride";
 }

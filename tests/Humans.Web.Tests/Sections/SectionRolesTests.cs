@@ -37,7 +37,6 @@ public class SectionRolesTests
         "TeamsAdmin",
         "CampsAdmin", "CampAdmin",
         "TicketsAdmin", "TicketAdmin",
-        "TicketsOverride",
         "ConsentCoordinator",
         "EventsAdmin",
         "FinanceAdmin",

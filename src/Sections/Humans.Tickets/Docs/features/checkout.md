@@ -194,7 +194,7 @@ page, reached from its order, with the three exceptions: rename (full price adul
 with no refund, said plainly), and a free companion ticket. The resale queue marks a reserved offer Stuck once its
 buyer's order closed or expired, and the team can take an open offer out for its holder.
 
-Overrides (`TicketsOverride` role or Admin) repair what the rules miss: restore a voided ticket, move a class priced
+Overrides (Admin only) repair what the rules miss: restore a voided ticket, move a class priced
 ticket, a companion past capacity. Each needs a reason and is audited `TicketOverride`.
 
 Cancelling an event (Admin only, `/Tickets/Admin/Sales/{id}/Cancel`) closes sales and resale for good. The reconcile

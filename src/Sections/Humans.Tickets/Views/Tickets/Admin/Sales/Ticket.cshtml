@@ -173,7 +173,7 @@
 
     @if (t.State == TicketCheckoutTicketState.Void || renamable || canCompanion)
     {
-        <div class="col-lg-5 ms-lg-auto" authorize-policy="@TicketsPolicies.Override">
+        <div class="col-lg-5 ms-lg-auto" authorize-policy="@PolicyNames.AdminOnly">
             <div class="card mb-4 border-warning">
                 <div class="card-header">Overrides</div>
                 <div class="card-body">

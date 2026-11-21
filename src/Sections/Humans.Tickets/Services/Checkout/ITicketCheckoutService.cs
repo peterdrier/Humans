@@ -92,7 +92,7 @@ internal interface ITicketCheckoutService : ITicketCheckoutEvents, IApplicationS
 
     /// <summary>
     /// The ticketing team's exception: a valid full-price adult ticket with no dependents moves to another named
-    /// person, whose account is found or created. With <paramref name="overrideRules"/> (Tickets Override only) a class
+    /// person, whose account is found or created. With <paramref name="overrideRules"/> (Admin only) a class
     /// price or credit ticket may move too.
     /// </summary>
     Task<CheckoutMutationResult> RenameTicketAsync(
@@ -106,7 +106,7 @@ internal interface ITicketCheckoutService : ITicketCheckoutEvents, IApplicationS
     Task<CheckoutMutationResult> VoidTicketAsync(
         Guid ticketId, string reason, long refundMinor, Guid actorUserId, CancellationToken ct = default);
 
-    /// <summary>Tickets Override: a voided ticket works again, unless its holder holds another or the event is cancelled.</summary>
+    /// <summary>Admin override: a voided ticket works again, unless its holder holds another or the event is cancelled.</summary>
     Task<CheckoutMutationResult> RestoreTicketAsync(Guid ticketId, string reason, Guid actorUserId, CancellationToken ct = default);
 
     /// <summary>The ticketing team takes a holder's ticket out of the resale queue; the holder keeps it.</summary>
@@ -123,7 +123,7 @@ internal interface ITicketCheckoutService : ITicketCheckoutEvents, IApplicationS
 
     /// <summary>
     /// Issues a free companion ticket attached to a valid adult ticket, on a zero-total order of its own, within
-    /// capacity, or past it with <paramref name="overrideCapacity"/> (Tickets Override only). The email is optional: a
+    /// capacity, or past it with <paramref name="overrideCapacity"/> (Admin only). The email is optional: a
     /// companion without one holds no account.
     /// </summary>
     Task<CheckoutMutationResult> IssueCompanionAsync(
