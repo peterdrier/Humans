@@ -103,7 +103,7 @@ sold under is read (`EventRefOf`), beside the events the setups sell through now
    does; an address on several accounts leaves the ticket unattached and says so on the timeline; a partner who already
    holds a ticket is flagged for the team, on the timeline and as a `TicketCheckoutNeedsAttention` audit entry), issues one `ticket_checkout_tickets` row per ticket line (unique per order
    and line: barcode, holder, price paid, wave or class, children pointing at their adult) and tells every
-   `ITicketDelivery` (the ticket email with QR lives there). A delivery failure never undoes the sale; delivery steps go
+   `ITicketDelivery` (the ticket email with QR, the receipt and the volunteer invitation: [ticket-delivery.md](ticket-delivery.md)). A delivery failure never undoes the sale; delivery steps go
    on the timeline through `RecordDeliveryAsync`. Reconcile hands an order to delivery again when it was paid 30 minutes to 7 days ago,
    has tickets and has no emailed or skipped entry; delivery dedupes the repeat. The reconcile job finishes any paid order a crash left without
    tickets or without its resale refund.

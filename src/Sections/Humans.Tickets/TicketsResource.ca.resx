@@ -435,4 +435,112 @@
   <data name="Tickets_Buy_PaymentProcessing" xml:space="preserve">
     <value>Aquest pagament ja és en camí i ja no es pot cancel·lar.</value>
   </data>
+  <data name="Tickets_Delivery_Ticket_Subject" xml:space="preserve">
+    <value>La teva entrada per a {0}</value>
+  </data>
+  <data name="Tickets_Delivery_Ticket_Heading" xml:space="preserve">
+    <value>La teva entrada per a {0}</value>
+  </data>
+  <data name="Tickets_Delivery_Ticket_Intro" xml:space="preserve">
+    <value>Hola {0}, aquí tens la teva entrada. Guarda aquest correu o obre l'entrada a Humans quan vulguis.</value>
+  </data>
+  <data name="Tickets_Delivery_Ticket_BoughtBy" xml:space="preserve">
+    <value>{0} ha comprat aquesta entrada per a tu. És només teva i porta el teu nom.</value>
+  </data>
+  <data name="Tickets_Delivery_Kind_Adult" xml:space="preserve">
+    <value>Entrada d'adult</value>
+  </data>
+  <data name="Tickets_Delivery_Kind_Child" xml:space="preserve">
+    <value>Entrada infantil</value>
+  </data>
+  <data name="Tickets_Delivery_Kind_Companion" xml:space="preserve">
+    <value>Entrada d'acompanyant</value>
+  </data>
+  <data name="Tickets_Delivery_Ticket_AtTheGate" xml:space="preserve">
+    <value>A l'entrada, mostra aquest codi al mòbil o en paper, juntament amb un document d'identitat amb foto.</value>
+  </data>
+  <data name="Tickets_Delivery_Ticket_Open" xml:space="preserve">
+    <value>Obrir les meves entrades a Humans</value>
+  </data>
+  <data name="Tickets_Delivery_Rules_Heading" xml:space="preserve">
+    <value>Normes de l'entrada</value>
+  </data>
+  <data name="Tickets_Delivery_Rules_Named" xml:space="preserve">
+    <value>Aquesta entrada és personal i porta un únic nom legal. El nom ha de coincidir amb el teu document d'identitat a la porta; si no, es denega l'accés.</value>
+  </data>
+  <data name="Tickets_Delivery_Rules_NoTransfer" xml:space="preserve">
+    <value>Les entrades no es poden transferir, regalar ni vendre a ningú altre. Una entrada comprada a una altra persona o en un web de revenda no és vàlida.</value>
+  </data>
+  <data name="Tickets_Delivery_Rules_Return" xml:space="preserve">
+    <value>Si no pots venir, retorna la teva entrada a través de Humans. Quan una altra persona la compri, el preu de l'entrada es reemborsa a qui la va pagar; les donacions no es reemborsen.</value>
+  </data>
+  <data name="Tickets_Delivery_Rules_Private" xml:space="preserve">
+    <value>L'esdeveniment és un esdeveniment privat de l'associació Nobodies Collective. En fer servir aquesta entrada n'acceptes les condicions.</value>
+  </data>
+  <data name="Tickets_Delivery_Receipt_Subject" xml:space="preserve">
+    <value>Rebut de la teva comanda {0}</value>
+  </data>
+  <data name="Tickets_Delivery_Receipt_Heading" xml:space="preserve">
+    <value>Rebut: {0}</value>
+  </data>
+  <data name="Tickets_Delivery_Receipt_Intro" xml:space="preserve">
+    <value>Hola {0}, gràcies per la teva comanda. Aquest és el teu rebut.</value>
+  </data>
+  <data name="Tickets_Delivery_Receipt_Reference" xml:space="preserve">
+    <value>Referència de la comanda: {0}</value>
+  </data>
+  <data name="Tickets_Delivery_Receipt_PaidOn" xml:space="preserve">
+    <value>Pagat el: {0}</value>
+  </data>
+  <data name="Tickets_Delivery_Receipt_Method" xml:space="preserve">
+    <value>Mètode de pagament: {0}</value>
+  </data>
+  <data name="Tickets_Delivery_Receipt_TicketLine" xml:space="preserve">
+    <value>Entrada de {0} (IVA del {1}% inclòs)</value>
+  </data>
+  <data name="Tickets_Delivery_Receipt_DonationLine" xml:space="preserve">
+    <value>Donació: {0} (sense IVA)</value>
+  </data>
+  <data name="Tickets_Delivery_Receipt_Refunded" xml:space="preserve">
+    <value>Reemborsat</value>
+  </data>
+  <data name="Tickets_Delivery_Receipt_DonationNote" xml:space="preserve">
+    <value>Una donació és un regal a l'associació. No porta IVA, es registra a part de la teva entrada i no es reemborsa.</value>
+  </data>
+  <data name="Tickets_Delivery_Receipt_NotInvoice" xml:space="preserve">
+    <value>Això és un rebut, no una factura.</value>
+  </data>
+  <data name="Tickets_Delivery_Receipt_Open" xml:space="preserve">
+    <value>Veure la teva comanda a Humans</value>
+  </data>
+  <data name="Tickets_Delivery_Join_Subject" xml:space="preserve">
+    <value>Ajuda a fer realitat {0}</value>
+  </data>
+  <data name="Tickets_Delivery_Join_Heading" xml:space="preserve">
+    <value>Ajuda a fer realitat {0}</value>
+  </data>
+  <data name="Tickets_Delivery_Join_Intro" xml:space="preserve">
+    <value>Hola {0}, ja tens la teva entrada per a {1}. Ara ve el millor: aquest esdeveniment el fan les persones que hi vénen.</value>
+  </data>
+  <data name="Tickets_Delivery_Join_Why" xml:space="preserve">
+    <value>Tot, des de la porta fins a les cuines, funciona amb voluntariat, i unes poques hores del teu temps marquen una gran diferència.</value>
+  </data>
+  <data name="Tickets_Delivery_Join_StepProfile" xml:space="preserve">
+    <value>&lt;a href="{0}"&gt;Completa el teu perfil de Humans&lt;/a&gt; per unir-te com a voluntari o voluntària, si encara no ho has fet.</value>
+  </data>
+  <data name="Tickets_Delivery_Join_StepShifts" xml:space="preserve">
+    <value>&lt;a href="{0}"&gt;Tria un torn&lt;/a&gt; que et vagi bé.</value>
+  </data>
+  <data name="Tickets_Delivery_Join_Closing" xml:space="preserve">
+    <value>Ens veiem allà.</value>
+  </data>
+  <data name="Tickets_Mine_AtTheGate" xml:space="preserve">
+    <value>Mostra aquest codi a la porta juntament amb un document d'identitat amb foto. El nom ha de coincidir amb el teu document.</value>
+  </data>
+  <data name="Tickets_Mine_Show" xml:space="preserve">
+    <value>Mostrar l'entrada</value>
+  </data>
+  <data name="Tickets_Delivery_Ticket_Riders" xml:space="preserve">
+    <value>Aquí també hi ha les entrades dels infants que vénen amb tu. Cadascuna té el seu codi: mostra-les a la porta juntament amb la teva.</value>
+  </data>
 </root>
