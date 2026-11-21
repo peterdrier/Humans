@@ -173,6 +173,10 @@ internal sealed partial class TicketCheckoutService(
     {
         TermsToAccept = context.TermsToAccept,
         AskMarketing = context.AskMarketing,
+        OpenOrder = context.UserOrders
+            .Where(o => o.SalesEventId == context.SalesEvent.Id && o.BuyerUserId == context.Buyer?.Id
+                && o.State != TicketCheckoutOrderState.Paid && o.HoldsTickets(context.Now))
+            .MaxBy(o => o.CreatedAt),
     };
 
     public async Task<StartCheckoutResult> StartCheckoutAsync(

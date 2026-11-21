@@ -329,6 +329,24 @@ public sealed class TicketCheckoutServiceTests
     }
 
     [HumansFact]
+    public async Task A_stuck_unpaid_checkout_shows_on_the_buy_page_and_cancelling_it_frees_the_buyer_to_start_again()
+    {
+        var started = await _service.StartCheckoutAsync(Buy(), _buyerId, Ct);
+        _backend.GetStatusAsync("cs_1", Arg.Any<CancellationToken>())
+            .Returns(new CheckoutStatus(CheckoutState.Pending, null, null, null));
+
+        var page = (await _service.GetBuyPagesAsync(_buyerId, Ct)).Single();
+        page.AlreadyHoldsTicket.Should().BeTrue();
+        page.OpenOrder!.Id.Should().Be(started.OrderId!.Value);
+
+        (await _service.CancelAsync(started.OrderId.Value, _buyerId, Ct)).Refusal.Should().BeNull();
+        page = (await _service.GetBuyPagesAsync(_buyerId, Ct)).Single();
+        page.OpenOrder.Should().BeNull();
+        page.AlreadyHoldsTicket.Should().BeFalse();
+        (await _service.StartCheckoutAsync(Buy(), _buyerId, Ct)).Refusal.Should().BeNull();
+    }
+
+    [HumansFact]
     public async Task Two_events_sell_at_once_each_with_its_own_holding_check_and_no_active_event_needed()
     {
         _settings.GetActiveEventSettings().Returns((EventSettingsInfo?)null);
