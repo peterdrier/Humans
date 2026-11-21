@@ -35,7 +35,7 @@ var p = sale.SalesEvent.Id.ToString("N");
 <div class="row g-4">
 @if (sale.Unavailable is not null)
 {
-    <div class="col-lg-7">
+    <div class="col-lg-8">
         <div class="alert alert-info mb-0">@Localizer[sale.Unavailable]</div>
     </div>
 }
@@ -43,7 +43,7 @@ else
 {
     var own = sale.OwnPrice!;
     var nothingToBuy = sale.AlreadyHoldsTicket && (!sale.OffersPartner || directedToken is not null) && !sale.OffersDonations;
-    <div class="col-lg-5 order-lg-2">
+    <div class="col-lg-4 order-lg-2">
         <div class="stat buy-summary">
             <div class="label">@Localizer["Tickets_Buy_YourPrice"]</div>
             <div class="value buy-total">@Eur(own.AmountMinor)</div>
@@ -64,7 +64,7 @@ else
         </div>
     </div>
 
-    <div class="col-lg-7 order-lg-1">
+    <div class="col-lg-8 order-lg-1">
         <form asp-action="Start" method="post" class="card card-body">
             @Html.AntiForgeryToken()
             <input type="hidden" name="salesEventId" value="@sale.SalesEvent.Id" />
@@ -210,7 +210,7 @@ else
 
 @if (sale.Orders.Count > 0)
 {
-    <div class="col-lg-7 order-lg-3">
+    <div class="col-lg-8 order-lg-3">
         <h3 class="h4">@Localizer["Tickets_Buy_YourOrders"]</h3>
         <div class="list-group">
             @foreach (var order in sale.Orders)
