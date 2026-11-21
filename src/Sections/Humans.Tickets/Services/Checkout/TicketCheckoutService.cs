@@ -11,6 +11,7 @@ using Humans.Settings.Contracts;
 using Humans.Tickets.Contracts;
 using Humans.Tickets.Data;
 using Humans.Tickets.Domain.Checkout;
+using Humans.Tickets.Services.Stores;
 using Humans.Users.Contracts;
 using Microsoft.Extensions.Localization;
 using NodaTime;
@@ -35,6 +36,7 @@ internal sealed partial class TicketCheckoutService(
     IStringLocalizer<TicketsResource> localizer,
     IAuditLogService auditLog,
     IClock clock,
+    CachingTicketQueryService holdings,
     ILogger<TicketCheckoutService> logger) : ITicketCheckoutService, IUserDataContributor, IUserMerge
 {
     private const int MaxChildren = 6;

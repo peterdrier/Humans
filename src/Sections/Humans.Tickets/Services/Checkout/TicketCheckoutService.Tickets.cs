@@ -299,6 +299,8 @@ internal sealed partial class TicketCheckoutService
                 .ToList();
             if (!await repository.AddTicketsAsync(tickets, ct))
                 return;
+            foreach (var holder in tickets.Select(t => t.HolderUserId).OfType<Guid>().Distinct())
+                holdings.InvalidateHoldings(holder);
             issuedNow = true;
             await TimelineAsync(order.Id, TicketCheckoutOrderEventKind.TicketsIssued,
                 $"{tickets.Count} ticket(s) issued: {string.Join(", ", tickets.Select(t => t.Barcode))}", null, ct);

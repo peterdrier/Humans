@@ -58,6 +58,12 @@ internal sealed class ProcessAccountDeletionsJob(
                 try
                 {
                     cancellationToken.ThrowIfCancellationRequested();
+                    if (await accountDeletionService.ExtendTicketHoldAsync(userId, cancellationToken) is { } hold)
+                    {
+                        logger.LogInformation("Deletion of account {UserId} held for a ticket until {Hold}", userId, hold);
+                        continue;
+                    }
+
                     var summary = await accountDeletionService.AnonymizeExpiredAccountAsync(
                         userId, cancellationToken);
 
