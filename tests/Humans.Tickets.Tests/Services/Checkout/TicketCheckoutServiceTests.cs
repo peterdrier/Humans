@@ -519,7 +519,7 @@ public sealed class TicketCheckoutServiceTests
     }
 
     [HumansFact]
-    public async Task Queue_only_resale_offers_no_invitations_and_ignores_a_directed_link()
+    public async Task Switching_to_queue_only_ends_live_invitations_and_the_offer_sells_from_the_queue()
     {
         var old = await OfferedTicketAsync();
         EmailMessage? sent = null;
@@ -529,16 +529,26 @@ public sealed class TicketCheckoutServiceTests
         var token = sent!.HtmlBody["https://h.example/r/".Length..];
         (await _service.GetDirectedBuyPageAsync(token, _otherBuyerId, Ct)).Should().NotBeNull();
 
-        _salesEvent.Switches = new TicketSalesSwitches { Resale = ResaleScheme.Queue };
+        var save = new SalesEventSave(_salesEvent.Id, _event.Id, "test", null, TicketSalesMode.ResaleOnly, null, 3000, 0.10m,
+            _salesEvent.Waves, [], [])
+        {
+            Switches = new TicketSalesSwitches { Resale = ResaleScheme.Queue },
+        };
+        (await _service.SaveSalesEventAsync(save, _buyerId, Ct)).Refusal.Should().BeNull();
 
+        _repo.Offers.Single().DirectedTokenHash.Should().BeNull();
+        _repo.Events.Should().Contain(e => e.Kind == TicketCheckoutOrderEventKind.ResaleInviteCancelled);
         var held = (await _service.GetHeldTicketsAsync(_buyerId, Ct)).Single();
-        held.Offer.Should().NotBeNull();
+        held.DirectedActive.Should().BeFalse();
         held.CanInvite.Should().BeFalse();
         (await _service.InviteBuyerAsync(old.Id, _buyerId, "bo@example.com", new Uri("https://h.example/r/"), "en", Ct))
             .Refusal.Should().Be("Tickets_Resale_NotFound");
         (await _service.GetDirectedBuyPageAsync(token, _otherBuyerId, Ct)).Should().BeNull();
         (await _service.StartCheckoutAsync(Buy() with { DirectedToken = token }, _otherBuyerId, Ct))
             .Refusal.Should().Be("Tickets_Resale_InviteInvalid");
+
+        var queued = await BuyAndPayAsync(Buy(), _otherBuyerId);
+        queued.Lines.Single().ResaleOfferId.Should().Be(_repo.Offers.Single().Id);
     }
 
     [HumansFact]

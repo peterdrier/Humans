@@ -114,6 +114,8 @@ internal sealed partial class TicketCheckoutService(
             UpdatedAt = now,
         };
         await repository.SaveSalesEventAsync(salesEvent, ct);
+        if (salesEvent.EffectiveSwitches.Resale != ResaleScheme.QueueAndDirected)
+            await EndInvitationsAsync(salesEvent.Id, actorUserId, ct);
 
         await auditLog.LogAsync(TicketsAuditActions.TicketSalesEventSaved, SalesEventAuditEntityType, salesEvent.Id,
             $"Sales setup saved: backend {salesEvent.BackendKey}, mode {salesEvent.Mode}, capacity {salesEvent.Capacity}; " +
@@ -1135,6 +1137,27 @@ internal sealed partial class TicketCheckoutService(
     }
 
     internal static string FormatMinor(long minor) => (minor / 100m).ToString("0.00", CultureInfo.InvariantCulture);
+
+    /// <summary>
+    /// Directed resale switched off: a live link could no longer be used, and an invited offer would sit out of the
+    /// queue until it lapsed, so each one goes back to its place now. An offer in a checkout keeps its buyer.
+    /// </summary>
+    private async Task EndInvitationsAsync(Guid salesEventId, Guid actorUserId, CancellationToken ct)
+    {
+        var now = clock.GetCurrentInstant();
+        foreach (var offer in (await repository.GetOffersForSalesEventAsync(salesEventId, ct))
+                     .Where(o => o.State == TicketResaleOfferState.Open && o.IsDirectedTo(now)))
+        {
+            offer.DirectedTokenHash = null;
+            offer.DirectedExpiresAt = null;
+            offer.DirectedEmail = null;
+            await repository.UpdateOfferAsync(offer, ct);
+            if (await repository.GetTicketAsync(offer.TicketId, ct) is { } ticket)
+                await TimelineAsync(ticket.OrderId, TicketCheckoutOrderEventKind.ResaleInviteCancelled,
+                    $"Invitation for ticket {ticket.Barcode} ended: directed resale switched off; it keeps its place in the queue",
+                    actorUserId, ct);
+        }
+    }
 
     private static string OnOff(bool on) => on ? "on" : "off";
 }

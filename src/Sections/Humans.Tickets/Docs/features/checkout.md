@@ -88,7 +88,7 @@ part of the audited sales setup save.
 
 | Switch | Values | Off means |
 |---|---|---|
-| `Resale` | `Off`, `Queue`, `QueueAndDirected` (default) | `Off`: holders cannot return a ticket, the queue never sells, and `ResaleOnly` mode is refused. `Queue`: no directed invitations, and a live link stops working. |
+| `Resale` | `Off`, `Queue`, `QueueAndDirected` (default) | `Off`: holders cannot return a ticket, the queue never sells, and `ResaleOnly` mode is refused. `Queue`: no directed invitations; saving the switch ends live ones (on the order timeline) and those offers sell from their place in the queue. |
 | `PartnerTickets` | on (default) / off | No partner ticket on the buy page; a partner line is refused. |
 | `Donations` | on (default) / off | No VIP buttons and no free donation; donation lines are refused. |
 | `MailingListOptIn` | on (default) / off | Checkout never asks about the mailing list. |
