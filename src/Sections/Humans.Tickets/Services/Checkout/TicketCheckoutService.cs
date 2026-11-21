@@ -123,7 +123,8 @@ internal sealed partial class TicketCheckoutService(
             $"waves {string.Join(", ", salesEvent.Waves.Select(w => $"{w.Name} {FormatMinor(w.PriceMinor)} to {w.EndsOn.ToInvariantDate()}"))}; " +
             $"rules {string.Join(", ", salesEvent.PriceRules.Select(r => $"{r.Kind} {FormatMinor(r.AmountMinor)} for {r.GrantProgramId}"))}; " +
             $"supporter totals {string.Join(", ", salesEvent.SupporterTotalsMinor.Select(FormatMinor))}; " +
-            $"child {(salesEvent.ChildPriceMinor is { } child ? FormatMinor(child) : "none")}", actorUserId);
+            $"child {(salesEvent.ChildPriceMinor is { } child ? FormatMinor(child) : "none")}; " +
+            $"ticket rules {salesEvent.TermsUrl ?? "none"}", actorUserId);
         return CheckoutMutationResult.Ok;
     }
 
@@ -536,6 +537,10 @@ internal sealed partial class TicketCheckoutService(
         order.DisputedMinor = status.DisputedMinor;
 
         var refundsSettled = order.State == TicketCheckoutOrderState.Paid && await SettleRefundsAsync(order, status, ct);
+        if (order.State == TicketCheckoutOrderState.Processing && now - order.CreatedAt >= ProcessingAttention
+            && !(await repository.GetOrderEventsAsync(order.Id, ct)).Any(e => e.Detail.StartsWith(ProcessingStuck, StringComparison.Ordinal)))
+            await NeedsAttentionAsync(order.Id,
+                $"{ProcessingStuck} for {ProcessingAttention.Days} days; it holds its tickets until {order.BackendKey} settles it", ct);
         if (before == (order.State, order.RefundedMinor, order.FeeMinor, order.DisputedMinor))
             return refundsSettled;
 
@@ -597,9 +602,10 @@ internal sealed partial class TicketCheckoutService(
     }
 
     /// <summary>
-    /// Settles open refunds, oldest first. A refund the backend knows by id is asked for its own state by repeating it
-    /// under its id, so a refund made in the backend's dashboard never settles one of Tickets' own; the rest (manual
-    /// refunds, and any whose state cannot be read now) settle from what the refunded total does not already explain.
+    /// Settles open refunds, oldest first. A pending refund waits for its own answer: the state the backend gives for its
+    /// id, or the resend in <c>RepairPaidAsync</c> when the call that made it never got one, so a refund made in the
+    /// backend's dashboard never settles one of Tickets' own. Only manual refunds settle from what the refunded total
+    /// does not already explain.
     /// </summary>
     private async Task<bool> SettleRefundsAsync(TicketCheckoutOrder order, CheckoutStatus status, CancellationToken ct)
     {
@@ -612,7 +618,8 @@ internal sealed partial class TicketCheckoutService(
                 && order.BackendOrderId is not null && BackendFor(order.BackendKey) is { } backend
                 ? await OwnRefundStateAsync(backend, order, refund, ct)
                 : null;
-            if (own is { State: RefundState.Succeeded } || (own is null && refund.AmountMinor <= covered))
+            if (own is { State: RefundState.Succeeded }
+                || (refund.State == RefundState.ManualRequired && refund.AmountMinor <= covered))
             {
                 covered -= refund.AmountMinor;
                 refund.State = RefundState.Succeeded;
@@ -682,7 +689,8 @@ internal sealed partial class TicketCheckoutService(
             return (new("Only a paid order can be refunded."), null);
         // The guard Peter set for API refunds: tied to this payment, never above what its tickets cost.
         if (amountMinor > detail.RefundableMinor)
-            return (new($"At most {FormatMinor(detail.RefundableMinor)} {order.Currency} of this order's tickets can still be refunded."), null);
+            return (new($"At most {FormatMinor(detail.RefundableMinor)} {order.Currency} of this order's tickets can still be refunded" +
+                (order.DisputedMinor > 0 ? $"; the buyer's bank took {FormatMinor(order.DisputedMinor)} back in a chargeback." : ".")), null);
         var backend = BackendFor(order.BackendKey);
         if (backend is null)
             return (new($"Backend '{order.BackendKey}' is not registered."), null);
@@ -783,6 +791,11 @@ internal sealed partial class TicketCheckoutService(
 
 
     private static readonly Duration UnpaidPartnerRetention = Duration.FromDays(30);
+
+    /// <summary>A SEPA debit settles within about two weeks; one still on its way after that needs a person.</summary>
+    private static readonly Duration ProcessingAttention = Duration.FromDays(14);
+
+    private const string ProcessingStuck = "Payment on its way";
 
     internal const string OrdersSlice = "TicketCheckoutOrders";
     internal const string TicketsSlice = "TicketCheckoutTickets";
