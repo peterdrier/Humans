@@ -292,8 +292,11 @@ public sealed class CachingTeamServiceGetTeamDetailTests : IDisposable
         })
             team.Members.Add(new TeamMember
             {
-                Id = Guid.NewGuid(), TeamId = team.Id, UserId = userId,
-                Role = role, JoinedAt = team.CreatedAt,
+                Id = Guid.NewGuid(),
+                TeamId = team.Id,
+                UserId = userId,
+                Role = role,
+                JoinedAt = team.CreatedAt,
             });
         SeedTeams(parent, child, privateRoleChild);
         var teams = (await _innerTeamService.GetTeamsAsync(ct)).ToDictionary(pair => pair.Key, pair => pair.Value);
