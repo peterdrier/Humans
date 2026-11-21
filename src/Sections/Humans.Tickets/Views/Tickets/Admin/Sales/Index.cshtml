@@ -45,9 +45,10 @@
         }
     </text>;
     Func<CheckoutBackendInfo, IHtmlContent> backendLinksCell = @<text>
-        <a asp-controller="TicketsBackendAdmin" asp-action="Index" asp-route-key="@item.Key">Status</a>
-        <span class="text-muted mx-1" aria-hidden="true">|</span>
-        <a asp-action="Recon" asp-route-backend="@item.Key">Reconciliation</a>
+        <div class="btn-group btn-group-sm">
+            <a class="btn btn-outline-secondary" asp-controller="TicketsBackendAdmin" asp-action="Index" asp-route-key="@item.Key">Status</a>
+            <a class="btn btn-outline-secondary" asp-action="Recon" asp-route-backend="@item.Key">Reconciliation</a>
+        </div>
     </text>;
     var backendsTable = TableModel.For(Model.Backends)
         .Column("Backend", b => b.Setup.DisplayName)
