@@ -1,3 +1,4 @@
+using Humans.Containers.Contracts;
 using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
@@ -67,7 +68,7 @@ public sealed class CampPlacementPhaseViewComponentTests : CityPlanningTestBase
         var service = new CityPlanningService(
             new CityPlanningRepository(CityPlanningDbFactory), Clock,
             Options.Create(new CityPlanningOptions { CityPlanningTeamSlug = "city-planning" }),
-            _camps, Substitute.For<ITeamService>(), _users, Substitute.For<IAuditLogService>(), settings);
+            _camps, Substitute.For<ITeamService>(), _users, Substitute.For<IAuditLogService>(), settings, Substitute.For<IContainerService>());
         var component = new CampPlacementPhaseViewComponent(service, _users, _authorization);
         component.ViewComponentContext = new ViewComponentContext
         {

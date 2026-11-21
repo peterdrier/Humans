@@ -19,7 +19,7 @@ Repository: `ICityPlanningRepository`.
 | CampPolygonHistories | R/W |
 
 Cross-section calls via `ICampService`, `ITeamService`,
-`IUserService`, `ISettingsService` (active event), plus the `IAuditLogService` crosscut for settings
+`IUserService`, `ISettingsService` (active event), `IContainerService` (container export reads), plus the `IAuditLogService` crosscut for settings
 writes. `GetLeadCampsAsync` composes the shared year-scoped leadership lookup from Camps’ read models for this section’s pages, exports and camp placement component. Uses `CityPlanningOptions`. No `IMemoryCache`.
 
 ---
