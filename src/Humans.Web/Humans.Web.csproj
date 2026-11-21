@@ -60,6 +60,7 @@
     <ProjectReference Include="..\Sections\Humans.Workgroups\Humans.Workgroups.csproj" />
     <ProjectReference Include="..\Sections\Humans.Scanner\Humans.Scanner.csproj" />
     <ProjectReference Include="..\Sections\Humans.Monitor\Humans.Monitor.csproj" />
+    <ProjectReference Include="..\Sections\Humans.Permissions\Humans.Permissions.csproj" />
     <ProjectReference Include="..\Sections\Humans.Search\Humans.Search.csproj" />
     <ProjectReference Include="..\Sections\Humans.Shifts\Humans.Shifts.csproj" />
     <ProjectReference Include="..\Sections\Humans.Store\Humans.Store.csproj" />
