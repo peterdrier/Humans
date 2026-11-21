@@ -132,10 +132,7 @@ internal sealed class TicketResaleOfferConfiguration : IEntityTypeConfiguration<
         builder.HasKey(x => x.Id);
         builder.HasIndex(x => x.SalesEventId);
         builder.HasIndex(x => x.TicketId);
-        builder.HasIndex(x => x.DirectedTokenHash);
         builder.Property(x => x.State).IsRequired().HasConversion<string>().HasMaxLength(16);
-        builder.Property(x => x.DirectedEmail).HasMaxLength(320);
-        builder.Property(x => x.DirectedTokenHash).HasMaxLength(64);
         builder.OwnsMany(x => x.Invites, i => i.ToJson("directed_invites"));
     }
 }
