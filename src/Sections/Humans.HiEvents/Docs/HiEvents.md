@@ -63,8 +63,7 @@ None — the section owns no tables.
   (`N` format) is the `external_reference`, so a retried create returns the same Hi.Events order. The event's products are read
   first: ticket lines go to its one `TICKET` product with the line's attendee name, donation lines to its one `GENERAL`
   product, and none or several of the kind a line needs throws `TicketCheckoutException` before any order is made. A 409 or 422 from Hi.Events, a currency other than the request's, or a total
-  other than the sum of the lines throws `TicketCheckoutException`. The products must carry no taxes or fees in
-  Hi.Events.
+  other than the sum of the lines throws `TicketCheckoutException`.
 - Checkout returns `AdminUrl`, the order in Hi.Events' event order list, so the ticketing team can jump to it.
 - Status: `COMPLETED` with `PAYMENT_RECEIVED` is Paid; other `COMPLETED` is Failed; `CANCELLED` is Cancelled;
   Processing as below; otherwise `ABANDONED`, or `RESERVED` past `reserved_until`, is Expired; other `RESERVED` is Pending (a failed card attempt can
@@ -96,7 +95,8 @@ None — the section owns no tables.
   `notify_buyer: false`); Humans owns the ticket, receipt and refund emails. Organizer and team notices in Hi.Events
   still go out.
 - Offline payment must be off on every Hi.Events event Humans sells through; an order moved to
-  `AWAITING_OFFLINE_PAYMENT` reads as `Pending` until it expires.
+  `AWAITING_OFFLINE_PAYMENT` reads as `Pending` and Hi.Events never expires it, so Tickets cancels it at Hi.Events
+  when its hold lapses, like any unpaid order.
 - A reserved order whose `reserved_until` does not parse is an error, not `Pending`.
 - A malformed `HiEvents:ApiUrl` only makes this backend unconfigured; it never throws while Tickets resolves backends.
 - Buyer names go in 50 characters of first name and 50 of last name, split at a space; attendee lines carry the full
