@@ -282,6 +282,20 @@ public class PretixCheckoutBackendTests
     }
 
     [HumansFact]
+    public async Task Status_CancelledOrderRefundedInTheStripeDashboard_StaysCancelled()
+    {
+        var pretix = new FakePretix().On("GET", OrderPath, HttpStatusCode.OK, Order(
+            Code, status: "c", total: 1000m,
+            payments: [new { local_id = 1, state = "confirmed", amount = "1000.00", provider = "stripe", payment_date = "2026-11-21T00:09:33Z" }],
+            refunds: [new { local_id = 1, state = "external", source = "external", amount = "1000.00", payment = 1, comment = (string?)null, provider = "stripe", details = new { id = "re_1" } }]));
+
+        var status = await Create(pretix).GetStatusAsync($"nowhere2027/{Code}", TestContext.Current.CancellationToken);
+
+        status.State.Should().Be(CheckoutState.Cancelled, "the money has already gone back");
+        status.RefundedMinor.Should().Be(100000);
+    }
+
+    [HumansFact]
     public async Task Status_CancelledOrderHoldingMoney_IsPaid()
     {
         var pretix = new FakePretix().On("GET", OrderPath, HttpStatusCode.OK, Order(

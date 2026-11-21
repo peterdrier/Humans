@@ -500,7 +500,7 @@ internal sealed partial class PretixCheckoutBackend(
 
     private static decimal NetPaid(PretixOrder order) =>
         order.Payments.Where(p => p.State is "confirmed" or "refunded").Sum(p => p.Amount)
-        - order.Refunds.Where(r => r.State is "done" or "transit" or "created").Sum(r => r.Amount);
+        - order.Refunds.Where(r => r.State is "done" or "transit" or "created" or "external").Sum(r => r.Amount);
 
     private static bool IsCovered(PretixOrder order, CheckoutState state)
     {
