@@ -1,12 +1,10 @@
 using Humans.Base.Controllers;
 using Humans.Settings.Contracts;
 using Humans.Tickets.Contracts;
-using Humans.Tickets.Domain.Checkout;
 using Humans.Tickets.Services.Checkout;
 using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using NodaTime;
 
 namespace Humans.Tickets.Controllers;
 
@@ -19,7 +17,6 @@ namespace Humans.Tickets.Controllers;
 internal sealed class TicketsBackendAdminController(
     ITicketCheckoutService checkout,
     ISettingsService settings,
-    IClock clock,
     IUserService userService) : HumansControllerBase(userService)
 {
     [HttpGet("")]
@@ -40,51 +37,16 @@ internal sealed class TicketsBackendAdminController(
 
     private async Task<IActionResult> StatusAsync(string key, BackendCheckResult? check, CancellationToken ct)
     {
-        var backend = checkout.Backends.FirstOrDefault(b => string.Equals(b.Key, key, StringComparison.Ordinal));
-        if (backend is null)
+        if (await checkout.GetBackendLedgerAsync(key, ct) is not { } ledger)
             return NotFound();
 
-        var salesEvents = await checkout.GetSalesEventsAsync(ct);
-        var orders = new List<TicketCheckoutOrder>();
-        var refunds = new List<TicketCheckoutRefund>();
-        foreach (var salesEvent in salesEvents)
-        {
-            var eventOrders = (await checkout.GetOrdersForSalesEventAsync(salesEvent.Id, ct))
-                .Where(o => string.Equals(o.BackendKey, key, StringComparison.Ordinal)).ToList();
-            if (eventOrders.Count == 0)
-                continue;
-            orders.AddRange(eventOrders);
-            var ids = eventOrders.Select(o => o.Id).ToHashSet();
-            refunds.AddRange((await checkout.GetRefundsForSalesEventAsync(salesEvent.Id, ct)).Where(r => ids.Contains(r.OrderId)));
-        }
-
         return View("~/Views/Tickets/Admin/Backends/Index.cshtml", new BackendStatusViewModel(
-            new BackendsViewModel([backend], salesEvents, await settings.GetAllEventSettingsAsync(ct), check),
-            orders.OrderByDescending(o => o.CreatedAt).ToList(),
-            refunds,
-            clock.GetCurrentInstant()));
+            new BackendsViewModel([ledger.Backend], await checkout.GetSalesEventsAsync(ct), await settings.GetAllEventSettingsAsync(ct), check),
+            ledger));
     }
 }
 
-/// <summary>
-/// <see cref="Stuck"/> are orders the backend has not settled when it should have: never opened at the backend, or
-/// still open past their expiry, which means neither a webhook nor the five-minute reconcile has landed.
-/// </summary>
-internal sealed record BackendStatusViewModel(
-    BackendsViewModel Backend,
-    IReadOnlyList<TicketCheckoutOrder> Orders,
-    IReadOnlyList<TicketCheckoutRefund> Refunds,
-    Instant Now)
+internal sealed record BackendStatusViewModel(BackendsViewModel Backend, BackendLedger Ledger)
 {
-    private static readonly Duration Grace = Duration.FromMinutes(15);
-
     public CheckoutBackendInfo Info => Backend.Backends[0];
-
-    public IReadOnlyList<TicketCheckoutOrder> Stuck => Orders.Where(o =>
-            (o.State == TicketCheckoutOrderState.Created && o.BackendOrderId is null && o.CreatedAt + Grace < Now)
-            || (o.State is TicketCheckoutOrderState.Created or TicketCheckoutOrderState.Pending && o.ExpiresAt + Grace < Now))
-        .ToList();
-
-    public IReadOnlyList<TicketCheckoutRefund> OpenRefunds =>
-        Refunds.Where(r => r.State is not RefundState.Succeeded).OrderBy(r => r.State).ToList();
 }

@@ -64,6 +64,34 @@ internal sealed partial class TicketCheckoutService
         return TicketReconBuilder.Build(backendKey, from, to, orders, backendOrders, tickets);
     }
 
+    /// <summary>Three reconcile runs: past this, a missed webhook should have been caught.</summary>
+    private static readonly Duration StuckGrace = Duration.FromMinutes(15);
+
+    public async Task<BackendLedger?> GetBackendLedgerAsync(string backendKey, CancellationToken ct = default)
+    {
+        var info = Backends.FirstOrDefault(b => string.Equals(b.Key, backendKey, StringComparison.Ordinal));
+        if (info is null)
+            return null;
+
+        var now = clock.GetCurrentInstant();
+        var orders = (await AllOrdersAsync(await repository.GetSalesEventsAsync(ct), ct))
+            .Where(o => string.Equals(o.BackendKey, backendKey, StringComparison.Ordinal))
+            .OrderByDescending(o => o.CreatedAt).ToList();
+        var refunds = new List<TicketCheckoutRefund>();
+        foreach (var salesEventId in orders.Select(o => o.SalesEventId).Distinct())
+            refunds.AddRange(await repository.GetRefundsForSalesEventAsync(salesEventId, ct));
+        var orderIds = orders.Select(o => o.Id).ToHashSet();
+
+        var stuck = orders.Where(o =>
+                (o.State == TicketCheckoutOrderState.Created && o.BackendOrderId is null && o.CreatedAt + StuckGrace < now)
+                || (o.State is TicketCheckoutOrderState.Created or TicketCheckoutOrderState.Pending && o.ExpiresAt + StuckGrace < now))
+            .ToList();
+        var openRefunds = refunds
+            .Where(r => orderIds.Contains(r.OrderId) && r.State is not RefundState.Succeeded)
+            .OrderBy(r => r.CreatedAt).ToList();
+        return new BackendLedger(info, orders, stuck, openRefunds);
+    }
+
     private async Task<List<TicketCheckoutOrder>> AllOrdersAsync(IReadOnlyList<TicketSalesEvent> salesEvents, CancellationToken ct)
     {
         var orders = new List<TicketCheckoutOrder>();

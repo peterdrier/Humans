@@ -150,6 +150,36 @@ public sealed class TicketCheckoutServiceTests
     }
 
     [HumansFact]
+    public async Task Backend_ledger_flags_orders_never_accepted_or_open_past_expiry_and_unsettled_refunds()
+    {
+        TicketCheckoutOrder Order(TicketCheckoutOrderState state, string? backendId, Duration age, Duration expiresIn, string key = "test")
+        {
+            var order = new TicketCheckoutOrder
+            {
+                Id = Guid.NewGuid(), SalesEventId = _salesEvent.Id, BackendKey = key, State = state, BackendOrderId = backendId,
+                CreatedAt = Now - age, ExpiresAt = Now + expiresIn,
+            };
+            _repo.Orders.Add(order);
+            return order;
+        }
+        var neverAccepted = Order(TicketCheckoutOrderState.Created, null, Duration.FromHours(1), Duration.FromHours(1));
+        var pastExpiry = Order(TicketCheckoutOrderState.Pending, "cs_1", Duration.FromHours(3), -Duration.FromHours(1));
+        Order(TicketCheckoutOrderState.Pending, "cs_2", Duration.FromMinutes(5), Duration.FromMinutes(25));
+        Order(TicketCheckoutOrderState.Pending, "cs_3", Duration.FromMinutes(40), -Duration.FromMinutes(10));
+        var paid = Order(TicketCheckoutOrderState.Paid, "cs_4", Duration.FromDays(1), -Duration.FromDays(1));
+        Order(TicketCheckoutOrderState.Pending, "other_1", Duration.FromDays(2), -Duration.FromDays(2), key: "other");
+        _repo.Refunds.Add((Guid.NewGuid(), new TicketCheckoutRefund { Id = Guid.NewGuid(), OrderId = paid.Id, AmountMinor = 1000, State = RefundState.ManualRequired }));
+        _repo.Refunds.Add((Guid.NewGuid(), new TicketCheckoutRefund { Id = Guid.NewGuid(), OrderId = paid.Id, AmountMinor = 500, State = RefundState.Succeeded }));
+
+        var ledger = await _service.GetBackendLedgerAsync("test", TestContext.Current.CancellationToken);
+
+        ledger!.Orders.Should().HaveCount(5).And.BeInDescendingOrder(o => o.CreatedAt);
+        ledger.Stuck.Should().BeEquivalentTo([neverAccepted, pastExpiry]);
+        ledger.OpenRefunds.Should().ContainSingle().Which.AmountMinor.Should().Be(1000);
+        (await _service.GetBackendLedgerAsync("nope", TestContext.Current.CancellationToken)).Should().BeNull();
+    }
+
+    [HumansFact]
     public async Task Recon_keeps_reading_a_backend_and_event_its_orders_were_sold_under_after_the_setup_moved()
     {
         var from = Instant.FromUtc(2027, 1, 1, 0, 0);

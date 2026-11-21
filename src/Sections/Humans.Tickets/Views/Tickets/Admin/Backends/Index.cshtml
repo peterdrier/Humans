@@ -5,11 +5,11 @@
     var info = Model.Info;
     ViewData["Title"] = info.Setup.DisplayName;
     string Eur(long minor) => (minor / 100m).ToString("0.00", System.Globalization.CultureInfo.InvariantCulture) + " €";
-    var paid = Model.Orders.Where(o => o.State == TicketCheckoutOrderState.Paid).ToList();
-    var byState = Model.Orders.GroupBy(o => o.State).OrderBy(g => g.Key).ToList();
-    var stuck = Model.Stuck;
-    var openRefunds = Model.OpenRefunds;
-    var orderById = Model.Orders.ToDictionary(o => o.Id);
+    var paid = Model.Ledger.Orders.Where(o => o.State == TicketCheckoutOrderState.Paid).ToList();
+    var byState = Model.Ledger.Orders.GroupBy(o => o.State).OrderBy(g => g.Key).ToList();
+    var stuck = Model.Ledger.Stuck;
+    var openRefunds = Model.Ledger.OpenRefunds;
+    var orderById = Model.Ledger.Orders.ToDictionary(o => o.Id);
 }
 
 <page-header title="@info.Setup.DisplayName" />
@@ -43,7 +43,7 @@
 <partial name="~/Views/Tickets/Admin/Backends/_BackendCard.cshtml" model="(Model.Backend, info)" />
 
 <h2 class="h5">Orders by state</h2>
-@if (Model.Orders.Count == 0)
+@if (Model.Ledger.Orders.Count == 0)
 {
     <p class="text-muted">No orders on this backend yet.</p>
 }
@@ -111,7 +111,7 @@ else
 }
 
 <h2 class="h5">Orders, newest first</h2>
-@if (Model.Orders.Count == 0)
+@if (Model.Ledger.Orders.Count == 0)
 {
     <p class="text-muted">None.</p>
 }
@@ -120,7 +120,7 @@ else
     <table class="table table-sm">
         <thead><tr><th>Reference</th><th>Created</th><th>Buyer</th><th>Tickets</th><th class="text-end">Total</th><th>State</th><th></th></tr></thead>
         <tbody>
-            @foreach (var o in Model.Orders)
+            @foreach (var o in Model.Ledger.Orders)
             {
                 <tr>
                     <td><a asp-controller="TicketsSalesAdmin" asp-action="Order" asp-route-id="@o.Id"><code>@o.Reference</code></a></td>

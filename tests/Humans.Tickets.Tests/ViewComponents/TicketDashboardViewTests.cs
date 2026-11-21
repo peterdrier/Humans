@@ -251,37 +251,29 @@ public class TicketDashboardViewTests
     }
 
     [HumansFact]
-    public async Task BackendStatusPage_ListsStuckOrdersAndUnsettledRefunds_NotSettledOnes()
+    public async Task BackendStatusPage_ListsStuckOrdersAndUnsettledRefunds()
     {
-        var now = Instant.FromUtc(2027, 3, 1, 12, 0);
-        TicketCheckoutOrder Order(TicketCheckoutOrderState state, string? backendId, Instant created, Instant expires) => new()
+        var at = Instant.FromUtc(2027, 3, 1, 12, 0);
+        var stuck = new TicketCheckoutOrder
         {
-            Id = Guid.NewGuid(), BackendKey = "pretix", State = state, BackendOrderId = backendId,
-            CreatedAt = created, ExpiresAt = expires, TotalMinor = 22500,
+            Id = Guid.NewGuid(), BackendKey = "pretix", State = TicketCheckoutOrderState.Pending, BackendOrderId = "E:1",
+            CreatedAt = at, ExpiresAt = at, TotalMinor = 22500,
         };
-        var neverOpened = Order(TicketCheckoutOrderState.Created, null, now - Duration.FromHours(1), now + Duration.FromHours(1));
-        var pastExpiry = Order(TicketCheckoutOrderState.Pending, "E:1", now - Duration.FromHours(3), now - Duration.FromHours(1));
-        var fresh = Order(TicketCheckoutOrderState.Pending, "E:2", now - Duration.FromMinutes(5), now + Duration.FromMinutes(25));
-        var paid = Order(TicketCheckoutOrderState.Paid, "E:3", now - Duration.FromDays(1), now - Duration.FromDays(1));
-        var refunds = new[]
+        var refund = new TicketCheckoutRefund
         {
-            new TicketCheckoutRefund { Id = Guid.NewGuid(), OrderId = paid.Id, AmountMinor = 1000, State = RefundState.ManualRequired, FailureReason = "issue by hand" },
-            new TicketCheckoutRefund { Id = Guid.NewGuid(), OrderId = paid.Id, AmountMinor = 500, State = RefundState.Succeeded, FailureReason = "settled one" },
+            Id = Guid.NewGuid(), OrderId = stuck.Id, AmountMinor = 1000, State = RefundState.ManualRequired, FailureReason = "issue by hand",
         };
         var info = new Humans.Tickets.Services.Checkout.CheckoutBackendInfo("pretix", true,
             new CheckoutBackendSetup("pretix", "Self-hosted", null, [], "/Pretix/Webhook", []));
         var model = new Humans.Tickets.Controllers.BackendStatusViewModel(
             new Humans.Tickets.Controllers.BackendsViewModel([info], [], [], null),
-            [fresh, pastExpiry, neverOpened, paid], refunds, now);
-
-        model.Stuck.Should().BeEquivalentTo([pastExpiry, neverOpened]);
-        model.OpenRefunds.Should().ContainSingle().Which.AmountMinor.Should().Be(1000);
+            new Humans.Tickets.Services.Checkout.BackendLedger(info, [stuck], [stuck], [refund]));
 
         var html = await RenderAsync("Backend", model, viewPath: "/Views/Tickets/Admin/Backends/Index.cshtml");
+
         Assert.Contains("Stuck orders", html);
-        Assert.Contains(pastExpiry.Reference, html);
+        Assert.Contains(stuck.Reference, html);
         Assert.Contains("issue by hand", html);
-        Assert.DoesNotContain("settled one", html);
     }
 
     private static async Task<string> RenderAsync(string page, object model, string cultureName = "en", string? viewPath = null)

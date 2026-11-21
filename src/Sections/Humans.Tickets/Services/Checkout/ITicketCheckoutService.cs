@@ -114,11 +114,25 @@ internal interface ITicketCheckoutService : ITicketCheckoutEvents, IApplicationS
     /// </summary>
     Task<TicketRecon?> ReconcileBackendAsync(string backendKey, Instant from, Instant to, CancellationToken ct = default);
 
+    /// <summary>Every order opened on one backend, newest first, with its stuck orders and unsettled refunds; null for an unknown key.</summary>
+    Task<BackendLedger?> GetBackendLedgerAsync(string backendKey, CancellationToken ct = default);
+
     /// <summary>The backends some sales setup sells through, for the reconciliation page and its daily run.</summary>
     Task<IReadOnlyList<string>> GetBackendsInUseAsync(CancellationToken ct = default);
 }
 
 internal sealed record CheckoutBackendInfo(string Key, bool IsConfigured, CheckoutBackendSetup Setup);
+
+/// <summary>
+/// <paramref name="Stuck"/>: orders the backend should have settled by now, either never accepted by it or still open
+/// past their expiry, so neither a webhook nor the five-minute reconcile has landed. <paramref name="OpenRefunds"/>:
+/// refunds pending, failed or waiting on a person.
+/// </summary>
+internal sealed record BackendLedger(
+    CheckoutBackendInfo Backend,
+    IReadOnlyList<TicketCheckoutOrder> Orders,
+    IReadOnlyList<TicketCheckoutOrder> Stuck,
+    IReadOnlyList<TicketCheckoutRefund> OpenRefunds);
 
 /// <summary>Admin pages are English-only, so the refusal is shown as is.</summary>
 internal sealed record CheckoutMutationResult(string? Refusal = null)
