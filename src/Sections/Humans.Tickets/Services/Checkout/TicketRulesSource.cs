@@ -14,8 +14,8 @@ namespace Humans.Tickets.Services.Checkout;
 internal interface ITicketRulesSource
 {
     /// <summary>
-    /// The rules as of the last commit changing the folder; null when it has no Spanish or no English text, or GitHub
-    /// cannot be read. Cached for a few minutes, so the version a buyer is shown is the one their checkout records.
+    /// The rules as of the last commit changing the folder; null when it has no Spanish or no English text, holds more
+    /// than one set of rules (several suffix-less files), or GitHub cannot be read. Cached for a few minutes, so the version a buyer is shown is the one their checkout records.
     /// </summary>
     Task<TicketRules?> GetAsync(string folder, CancellationToken ct = default);
 
@@ -32,7 +32,7 @@ internal sealed partial class GitHubTicketRulesSource : ITicketRulesSource
     private static readonly TimeSpan Fresh = TimeSpan.FromMinutes(10);
     private static readonly TimeSpan AfterFailure = TimeSpan.FromMinutes(1);
 
-    [GeneratedRegex(@"^[^/]+?(?:-(?<lang>[A-Za-z]{2}))?\.md$", RegexOptions.ExplicitCapture, 1000)]
+    [GeneratedRegex(@"^(?<name>[^/]+?)(?:-(?<lang>[A-Za-z]{2}))?\.md$", RegexOptions.ExplicitCapture, 1000)]
     private static partial Regex LanguageFile();
 
     private readonly GitHubClient _client;
@@ -65,7 +65,7 @@ internal sealed partial class GitHubTicketRulesSource : ITicketRulesSource
         {
             rules = await LoadAsync(folder, ct);
             if (rules is null)
-                _logger.LogWarning("The ticket rules folder {Folder} has no Spanish or no English text", folder);
+                _logger.LogWarning("The ticket rules folder {Folder} has no Spanish or no English text, or more than one Spanish file", folder);
         }
         catch (ApiException ex) when (!ct.IsCancellationRequested)
         {
@@ -92,20 +92,41 @@ internal sealed partial class GitHubTicketRulesSource : ITicketRulesSource
         // Everything is read at that commit, so the text always matches the version recorded.
         var files = await _client.Repository.Content.GetAllContentsByRef(
             _settings.Owner, _settings.Repository, folder, version).WaitAsync(ct);
+        if (RulesFiles(files.Where(f => f.Type == ContentType.File).Select(f => f.Path).ToList()) is not { } rulesFiles)
+            return null;
+
         var texts = new Dictionary<string, string>(StringComparer.Ordinal);
-        foreach (var file in files.Where(f => f.Type == ContentType.File))
+        foreach (var (path, lang) in rulesFiles)
         {
-            var match = LanguageFile().Match(file.Name);
-            if (!match.Success)
-                continue;
-            var lang = match.Groups["lang"].Success ? match.Groups["lang"].Value.ToLowerInvariant() : "es";
-            if (texts.ContainsKey(lang))
-                continue;
             var bytes = await _client.Repository.Content.GetRawContentByRef(
-                _settings.Owner, _settings.Repository, file.Path, version).WaitAsync(ct);
+                _settings.Owner, _settings.Repository, path, version).WaitAsync(ct);
             texts[lang] = Encoding.UTF8.GetString(bytes);
         }
 
-        return texts.ContainsKey("es") && texts.ContainsKey("en") ? new TicketRules(folder, version, texts) : null;
+        return new TicketRules(folder, version, texts);
+    }
+
+    /// <summary>
+    /// The rules' files among a folder's paths, with their language: the one suffix-less file is Spanish and names the
+    /// set, and only files sharing its name count. Null without Spanish and English, or with a second suffix-less file
+    /// (a README beside the rules), which would otherwise read as Spanish.
+    /// </summary>
+    internal static IReadOnlyList<(string Path, string Lang)>? RulesFiles(IReadOnlyList<string> paths)
+    {
+        var candidates = paths
+            .Select(path => (Path: path, Match: LanguageFile().Match(path[(path.LastIndexOf('/') + 1)..])))
+            .Where(c => c.Match.Success)
+            .Select(c => (c.Path, Name: c.Match.Groups["name"].Value,
+                Lang: c.Match.Groups["lang"].Success ? c.Match.Groups["lang"].Value.ToLowerInvariant() : "es"))
+            .ToList();
+        var spanish = candidates.Where(c => string.Equals(c.Lang, "es", StringComparison.Ordinal)).ToList();
+        if (spanish.Count != 1)
+            return null;
+        var set = candidates
+            .Where(c => string.Equals(c.Name, spanish[0].Name, StringComparison.Ordinal))
+            .DistinctBy(c => c.Lang, StringComparer.Ordinal)
+            .Select(c => (c.Path, c.Lang))
+            .ToList();
+        return set.Exists(c => string.Equals(c.Lang, "en", StringComparison.Ordinal)) ? set : null;
     }
 }

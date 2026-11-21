@@ -101,7 +101,7 @@ internal sealed partial class TicketCheckoutService(
         if (save.TermsFolder is { } newFolder && !string.Equals(newFolder, existing?.TermsFolder, StringComparison.Ordinal)
             && await rulesSource.GetAsync(newFolder, ct) is null)
             return new($"The legal repo has no Spanish and English ticket rules in {newFolder}, or GitHub could not be read. " +
-                "The folder needs name.md (Spanish) and name-en.md (English).");
+                "The folder needs one name.md (Spanish) and name-en.md (English), and no other markdown without a language suffix.");
         var clash = await repository.GetSalesEventForEventAsync(save.EventSettingsId, ct);
         if (clash is not null && clash.Id != existing?.Id)
             return new("That event already has a sales setup.");

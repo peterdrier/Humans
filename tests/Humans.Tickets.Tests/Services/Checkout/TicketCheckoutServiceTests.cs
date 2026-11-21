@@ -676,7 +676,8 @@ public sealed class TicketCheckoutServiceTests
     public async Task A_new_ticket_rules_folder_must_be_a_plain_path_holding_spanish_and_english_rules()
     {
         SalesEventSave Save(string folder) => new(_salesEvent.Id, _event.Id, "test", null, TicketSalesMode.Open, null, 3000, 0.10m,
-            _salesEvent.Waves, [], []) { TermsFolder = folder };
+            _salesEvent.Waves, [], [])
+        { TermsFolder = folder };
 
         (await _service.SaveSalesEventAsync(Save("../secrets"), _buyerId, Ct)).Refusal.Should().Contain("path in the legal repo");
         (await _service.SaveSalesEventAsync(Save("TicketRules/2027"), _buyerId, Ct)).Refusal.Should().Contain("no Spanish and English");

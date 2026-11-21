@@ -183,7 +183,8 @@ Partners do not sign the ticket rules: the buyer accepts for the whole order (de
 
 The rules are markdown in the legal GitHub repo (`GitHubSettings`, the repo the legal pages read), in the folder the
 sales setup names: `name.md` is Spanish, `name-en.md` English, more languages optional (`name-de.md`). Spanish and
-English are required: the setup refuses a new folder without both. Display only (Peter, 2026-11-21): nothing is signed
+English are required: the setup refuses a new folder without both, or with a second markdown file lacking a language
+suffix (a README beside the rules), since that one would read as Spanish. Display only (Peter, 2026-11-21): nothing is signed
 and nothing goes to Consent.
 
 - The version is the last commit changing the folder; the text is read at that commit, so the text shown and the version
