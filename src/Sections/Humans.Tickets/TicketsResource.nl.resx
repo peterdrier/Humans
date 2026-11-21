@@ -318,9 +318,6 @@
   <data name="Tickets_Buy_TermsRequired" xml:space="preserve">
     <value>Ga akkoord met de ticketregels om verder te gaan.</value>
   </data>
-  <data name="Tickets_Buy_TermsFailed" xml:space="preserve">
-    <value>Je akkoord met de ticketregels kon niet worden vastgelegd. Controleer of je profiel volledig is en probeer het opnieuw.</value>
-  </data>
   <data name="Tickets_Resale_InviteInvalid" xml:space="preserve">
     <value>Deze uitnodigingslink is niet meer geldig, of hij is naar een ander e-mailadres gestuurd dan waarmee je bent ingelogd.</value>
   </data>
@@ -428,6 +425,18 @@
   </data>
   <data name="Tickets_Buy_CancelAndRestart" xml:space="preserve">
     <value>Annuleren en opnieuw beginnen</value>
+  </data>
+  <data name="Tickets_Buy_State_Processing" xml:space="preserve">
+    <value>Betaling onderweg</value>
+  </data>
+  <data name="Tickets_Buy_ProcessingHelp" xml:space="preserve">
+    <value>Je betaling is onderweg. Bankbetalingen kunnen een paar dagen duren; je ticket blijft gereserveerd tot hij binnen is, en we mailen je zodra hij betaald is.</value>
+  </data>
+  <data name="Tickets_Buy_PaymentProcessing" xml:space="preserve">
+    <value>Deze betaling is al onderweg en kan niet meer worden geannuleerd.</value>
+  </data>
+  <data name="Tickets_Buy_TermsFailed" xml:space="preserve">
+    <value>Je akkoord met de ticketregels kon niet worden vastgelegd. Controleer of je profiel volledig is en probeer het opnieuw.</value>
   </data>
   <data name="Tickets_Buy_PartnerHolds" xml:space="preserve">
     <value>Die persoon heeft al een ticket voor dit evenement.</value>

@@ -318,9 +318,6 @@
   <data name="Tickets_Buy_TermsRequired" xml:space="preserve">
     <value>Accepte les règles des billets pour continuer.</value>
   </data>
-  <data name="Tickets_Buy_TermsFailed" xml:space="preserve">
-    <value>Ton acceptation des règles n'a pas pu être enregistrée. Vérifie que ton profil est complet et réessaie.</value>
-  </data>
   <data name="Tickets_Resale_InviteInvalid" xml:space="preserve">
     <value>Ce lien d'invitation n'est plus valide, ou il a été envoyé à une autre adresse que celle de ton compte.</value>
   </data>
@@ -428,6 +425,18 @@
   </data>
   <data name="Tickets_Buy_CancelAndRestart" xml:space="preserve">
     <value>Annuler et recommencer</value>
+  </data>
+  <data name="Tickets_Buy_State_Processing" xml:space="preserve">
+    <value>Paiement en cours</value>
+  </data>
+  <data name="Tickets_Buy_ProcessingHelp" xml:space="preserve">
+    <value>Votre paiement est en cours. Les paiements bancaires peuvent prendre quelques jours ; votre billet reste réservé jusqu'à son arrivée et nous vous écrirons une fois payé.</value>
+  </data>
+  <data name="Tickets_Buy_PaymentProcessing" xml:space="preserve">
+    <value>Ce paiement est déjà en cours et ne peut plus être annulé.</value>
+  </data>
+  <data name="Tickets_Buy_TermsFailed" xml:space="preserve">
+    <value>Ton acceptation des règles n'a pas pu être enregistrée. Vérifie que ton profil est complet et réessaie.</value>
   </data>
   <data name="Tickets_Buy_PartnerHolds" xml:space="preserve">
     <value>Cette personne a déjà un billet pour cet événement.</value>

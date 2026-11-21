@@ -152,7 +152,7 @@ internal sealed class SalesEditForm
     public int? ChildMaxAge { get; set; }
     public int? ResaleOpensAtSold { get; set; }
     public int DirectedResaleDays { get; set; } = 3;
-    public Guid? TermsTeamId { get; set; }
+    public string? TermsUrl { get; set; }
 
     private static readonly LocalDatePattern DatePattern = LocalDatePattern.Iso;
     private static readonly InstantPattern InstantPattern = InstantPattern.General;
@@ -173,7 +173,7 @@ internal sealed class SalesEditForm
         ChildMaxAge = e.ChildMaxAge,
         ResaleOpensAtSold = e.ResaleOpensAtSold,
         DirectedResaleDays = e.DirectedResaleDays,
-        TermsTeamId = e.TermsTeamId,
+        TermsUrl = e.TermsUrl,
     };
 
     public (SalesEventSave? Save, string? Error) ToSave(Guid? id)
@@ -226,7 +226,7 @@ internal sealed class SalesEditForm
             ChildMaxAge = ChildMaxAge,
             ResaleOpensAtSold = ResaleOpensAtSold,
             DirectedResaleDays = DirectedResaleDays,
-            TermsTeamId = TermsTeamId,
+            TermsUrl = string.IsNullOrWhiteSpace(TermsUrl) ? null : TermsUrl.Trim(),
         }, null);
     }
 

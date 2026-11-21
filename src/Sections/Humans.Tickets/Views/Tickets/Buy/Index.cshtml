@@ -151,15 +151,10 @@ else
         </div>
         <p class="small text-muted">@Localizer["Tickets_Buy_DonationNote"]</p>
 
-        @if (sale.TermsToAccept.Any(t => !t.Signed))
+        @if (sale.TermsUrl is { } termsUrl)
         {
             <h3 class="h6">@Localizer["Tickets_Buy_Terms"]</h3>
-            <ul class="small mb-2">
-                @foreach (var term in sale.TermsToAccept.Where(t => !t.Signed))
-                {
-                    <li><a asp-controller="Consent" asp-action="Review" asp-route-id="@term.DocumentVersionId" target="_blank" rel="noopener">@term.Title</a></li>
-                }
-            </ul>
+            <p class="small mb-2"><a href="@termsUrl" target="_blank" rel="noopener">@Localizer["Tickets_Buy_Terms"]</a></p>
             <div class="form-check mb-3">
                 <input class="form-check-input" type="checkbox" id="acceptTerms-@p" name="acceptTerms" value="true" required />
                 <label class="form-check-label" for="acceptTerms-@p">@Localizer["Tickets_Buy_TermsAccept"]</label>

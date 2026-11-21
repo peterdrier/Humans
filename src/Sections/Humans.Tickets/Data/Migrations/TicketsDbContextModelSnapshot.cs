@@ -69,6 +69,9 @@ namespace Humans.Tickets.Data.Migrations
                         .HasMaxLength(3)
                         .HasColumnType("character varying(3)");
 
+                    b.Property<long>("DisputedMinor")
+                        .HasColumnType("bigint");
+
                     b.Property<Instant>("ExpiresAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -401,8 +404,9 @@ namespace Humans.Tickets.Data.Migrations
                         .IsRequired()
                         .HasColumnType("bigint[]");
 
-                    b.Property<Guid?>("TermsTeamId")
-                        .HasColumnType("uuid");
+                    b.Property<string>("TermsUrl")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
 
                     b.Property<decimal>("TicketVatRate")
                         .HasPrecision(5, 4)

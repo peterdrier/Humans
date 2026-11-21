@@ -117,8 +117,6 @@ internal sealed class TicketBuyController(
             AcceptTerms = acceptTerms,
             MarketingOptIn = marketingOptIn,
             DirectedToken = string.IsNullOrWhiteSpace(directedToken) ? null : directedToken,
-            IpAddress = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
-            UserAgent = Request.Headers.UserAgent.ToString(),
         }, user.Id, CancellationToken.None); // a buyer who leaves mid-request must not strand a half-made checkout
 
         if (result.Refusal is { } refusal)

@@ -114,7 +114,7 @@ internal sealed record SalesEventSave(
     public int? ChildMaxAge { get; init; }
     public int? ResaleOpensAtSold { get; init; }
     public int DirectedResaleDays { get; init; } = 3;
-    public Guid? TermsTeamId { get; init; }
+    public string? TermsUrl { get; init; }
 }
 
 /// <summary><paramref name="ResaleOnly"/>: only returned tickets are left.</summary>
@@ -134,8 +134,8 @@ internal sealed record BuyPage(
     string BuyerName,
     IReadOnlyList<TicketCheckoutOrder> Orders)
 {
-    /// <summary>The ticket rules the buyer has not yet accepted are the unsigned rows.</summary>
-    public IReadOnlyList<Humans.Consent.Contracts.RequiredConsentRow> TermsToAccept { get; init; } = [];
+    /// <summary>The ticket rules the buyer accepts with each checkout; null for none.</summary>
+    public string? TermsUrl { get; init; }
 
     /// <summary>True when the person has never said yes or no to the mailing list.</summary>
     public bool AskMarketing { get; init; }
@@ -170,10 +170,6 @@ internal sealed record StartCheckout(
     /// <summary>The token from a directed-resale link.</summary>
     public string? DirectedToken { get; init; }
 
-    /// <summary>Recorded with the consent to the ticket rules.</summary>
-    public string IpAddress { get; init; } = "unknown";
-
-    public string UserAgent { get; init; } = string.Empty;
 }
 
 /// <summary><paramref name="Refusal"/> is a resource key; <paramref name="PaymentUrl"/> is null for a free order.</summary>
@@ -191,10 +187,11 @@ internal sealed record CheckoutOrderDetail(
 {
     /// <summary>
     /// What may still be refunded: ticket lines only, net of what has gone back (the backend's total, dashboard refunds
-    /// included, or Humans' own settled refunds if the backend has not caught up) and of refunds not settled yet.
+    /// included, or Humans' own settled refunds if the backend has not caught up), of refunds not settled yet, and of
+    /// what a chargeback took.
     /// </summary>
     public long RefundableMinor =>
-        Math.Max(0, Order.TicketTotalMinor
+        Math.Max(0, Order.TicketTotalMinor - Order.DisputedMinor
             - Math.Max(Order.RefundedMinor, Refunds.Where(r => r.State == RefundState.Succeeded).Sum(r => r.AmountMinor))
             - Refunds.Where(r => r.State is RefundState.Pending or RefundState.ManualRequired).Sum(r => r.AmountMinor));
 }
