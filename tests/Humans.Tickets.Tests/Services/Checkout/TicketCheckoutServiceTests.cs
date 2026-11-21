@@ -155,8 +155,13 @@ public sealed class TicketCheckoutServiceTests
     {
         var order = new TicketCheckoutOrder
         {
-            Id = Guid.NewGuid(), SalesEventId = _salesEvent.Id, BackendKey = "test", State = TicketCheckoutOrderState.Failed,
-            TotalMinor = 30000, FeeMinor = 450, CreatedAt = Now - Duration.FromDays(20),
+            Id = Guid.NewGuid(),
+            SalesEventId = _salesEvent.Id,
+            BackendKey = "test",
+            State = TicketCheckoutOrderState.Failed,
+            TotalMinor = 30000,
+            FeeMinor = 450,
+            CreatedAt = Now - Duration.FromDays(20),
         };
         _repo.Orders.Add(order);
         var from = Now - Duration.FromDays(30);
