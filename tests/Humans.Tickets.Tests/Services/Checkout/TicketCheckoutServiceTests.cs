@@ -64,6 +64,7 @@ public sealed class TicketCheckoutServiceTests
             Mode = TicketSalesMode.Open,
             Capacity = 3000,
             TicketVatRate = 0.10m,
+            ResaleOpenedAt = Instant.FromUtc(2026, 12, 1, 0, 0),
             Waves =
             [
                 new TicketSalesWave { Name = "Wave 1", EndsOn = new LocalDate(2027, 1, 31), PriceMinor = 22500 },
@@ -822,7 +823,6 @@ public sealed class TicketCheckoutServiceTests
         sent!.RecipientEmail.Should().Be("bo@example.com");
         var token = sent.HtmlBody["https://h.example/Tickets/Buy/Resale/".Length..];
         _repo.Offers.Single().DirectedTokenHash.Should().Be(TicketCheckoutService.HashToken(token)).And.NotBe(token);
-        (await _service.StartCheckoutAsync(Buy(), _otherBuyerId, Ct)).Refusal.Should().Be("Tickets_Buy_ResaleOnly");
         (await _service.StartCheckoutAsync(Buy() with { DirectedToken = "wrong" }, _otherBuyerId, Ct))
             .Refusal.Should().Be("Tickets_Resale_InviteInvalid");
 
@@ -835,24 +835,101 @@ public sealed class TicketCheckoutServiceTests
     }
 
     [HumansFact]
-    public async Task A_lapsed_invitation_rejoins_the_queue_at_its_place()
+    public async Task An_invited_ticket_stays_in_the_queue_and_the_first_buyer_gets_it()
     {
         var old = await OfferedTicketAsync();
+        EmailMessage? sent = null;
+        await _email.SendAsync(Arg.Do<EmailMessage>(m => sent = m), Arg.Any<CancellationToken>());
         await _service.InviteBuyerAsync(old.Id, _buyerId, "someone@example.com", new Uri("https://h.example/r/"), "en", Ct);
-        (await _service.StartCheckoutAsync(Buy(), _otherBuyerId, Ct)).Refusal.Should().Be("Tickets_Buy_ResaleOnly");
+        var token = sent!.HtmlBody["https://h.example/r/".Length..];
 
-        _clock.Advance(Duration.FromDays(_salesEvent.DirectedResaleDays) + Duration.FromMinutes(1));
+        _clock.Advance(Duration.FromDays(60));
         await _service.ReconcileOpenOrdersAsync(Ct);
+        _repo.Offers.Single().DirectedTokenHash.Should().NotBeNull();
 
-        _repo.Offers.Single().DirectedTokenHash.Should().BeNull();
-        _repo.Events.Should().Contain(e => e.OrderId == old.OrderId && e.Kind == TicketCheckoutOrderEventKind.ResaleInviteLapsed);
-        (await _service.StartCheckoutAsync(Buy(), _otherBuyerId, Ct)).Refusal.Should().BeNull();
+        var queued = await BuyAndPayAsync(Buy(), _otherBuyerId);
+
+        queued.Lines.Single().ResaleOfferId.Should().Be(_repo.Offers.Single().Id);
+        _repo.Offers.Single().DirectedUsedAt.Should().BeNull();
+        _repo.Events.Should().NotContain(e => e.Kind == TicketCheckoutOrderEventKind.ResaleInviteUsed);
+        (await _service.GetDirectedBuyPageAsync(token, _otherBuyerId, Ct))!.Unavailable.Should().Be("Tickets_Resale_InviteInvalid");
+    }
+
+    [HumansFact]
+    public async Task Pausing_resale_also_stops_the_invite_link()
+    {
+        var old = await OfferedTicketAsync();
+        EmailMessage? sent = null;
+        await _email.SendAsync(Arg.Do<EmailMessage>(m => sent = m), Arg.Any<CancellationToken>());
+        await _service.InviteBuyerAsync(old.Id, _buyerId, "bo@example.com", new Uri("https://h.example/r/"), "en", Ct);
+        var token = sent!.HtmlBody["https://h.example/r/".Length..];
+
+        _salesEvent.Mode = TicketSalesMode.Open;
+        await _service.SetResaleOpenAsync(_salesEvent.Id, false, _buyerId, Ct);
+
+        (await _service.StartCheckoutAsync(Buy() with { DirectedToken = token }, _otherBuyerId, Ct))
+            .Refusal.Should().Be("Tickets_Resale_InviteInvalid");
+        (await _service.GetDirectedBuyPageAsync(token, _otherBuyerId, Ct))!.Unavailable.Should().Be("Tickets_Resale_InviteInvalid");
+    }
+
+    [HumansFact]
+    public async Task Resale_opens_and_pauses_by_hand_and_is_audited()
+    {
+        _salesEvent.ResaleOpenedAt = null;
+        var order = await BuyAndPayAsync(Buy(), _buyerId);
+        var ticket = _repo.Tickets.Single(t => t.OrderId == order.Id);
+        await _service.OfferForResaleAsync(ticket.Id, _buyerId, Ct);
+        (await _service.InviteBuyerAsync(ticket.Id, _buyerId, "bo@example.com", new Uri("https://h.example/r/"), "en", Ct))
+            .Refusal.Should().Be("Tickets_Resale_NotOpenYet");
+
+        (await _service.SetResaleOpenAsync(_salesEvent.Id, true, _otherBuyerId, Ct)).Refusal.Should().BeNull();
+
+        _salesEvent.ResaleOpenedAt.Should().Be(Now);
+        (await _service.InviteBuyerAsync(ticket.Id, _buyerId, "bo@example.com", new Uri("https://h.example/r/"), "en", Ct))
+            .Refusal.Should().BeNull();
+        (await _service.SetResaleOpenAsync(_salesEvent.Id, false, _otherBuyerId, Ct)).Refusal.Should().BeNull();
+        _salesEvent.ResaleOpenedAt.Should().BeNull();
+        await _audit.Received(2).LogAsync(TicketsAuditActions.TicketResaleOpenSet, Arg.Any<string>(), _salesEvent.Id,
+            Arg.Any<string>(), _otherBuyerId);
+    }
+
+    [HumansFact]
+    public async Task Resale_cannot_open_while_switched_off_and_a_saved_setup_keeps_the_open_state()
+    {
+        _salesEvent.Switches = new TicketSalesSwitches { Resale = ResaleScheme.Off };
+        _salesEvent.ResaleOpenedAt = null;
+        (await _service.SetResaleOpenAsync(_salesEvent.Id, true, _buyerId, Ct)).Refusal
+            .Should().Be("Resale is switched off in the sales setup.");
+
+        _salesEvent.Switches = null;
+        await _service.SetResaleOpenAsync(_salesEvent.Id, true, _buyerId, Ct);
+        var save = new SalesEventSave(_salesEvent.Id, _event.Id, "test", null, TicketSalesMode.Open, null, 3000, 0.10m,
+            _salesEvent.Waves, [], []);
+        (await _service.SaveSalesEventAsync(save, _buyerId, Ct)).Refusal.Should().BeNull();
+
+        _repo.SalesEvents.Single().ResaleOpenedAt.Should().Be(Now);
+
+        (await _service.SaveSalesEventAsync(save with { Switches = new TicketSalesSwitches { Resale = ResaleScheme.Off } }, _buyerId, Ct))
+            .Refusal.Should().BeNull();
+        _repo.SalesEvents.Single().ResaleOpenedAt.Should().BeNull();
+    }
+
+    [HumansFact]
+    public async Task Resale_only_mode_cannot_be_paused()
+    {
+        _salesEvent.Mode = TicketSalesMode.ResaleOnly;
+
+        (await _service.SetResaleOpenAsync(_salesEvent.Id, false, _buyerId, Ct)).Refusal
+            .Should().Be("Resale only mode always sells resale; close sales to stop it.");
+        _salesEvent.ResaleOpenedAt.Should().NotBeNull();
+        await _audit.DidNotReceive().LogAsync(TicketsAuditActions.TicketResaleOpenSet, Arg.Any<string>(), Arg.Any<Guid>(),
+            Arg.Any<string>(), Arg.Any<Guid>());
     }
 
     [HumansFact]
     public async Task Invitations_wait_until_resale_opens()
     {
-        _salesEvent.ResaleOpensAtSold = 2;
+        _salesEvent.ResaleOpenedAt = null;
         var order = await BuyAndPayAsync(Buy(), _buyerId);
         var ticket = _repo.Tickets.Single(t => t.OrderId == order.Id);
         await _service.OfferForResaleAsync(ticket.Id, _buyerId, Ct);

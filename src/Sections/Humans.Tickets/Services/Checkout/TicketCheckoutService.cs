@@ -76,15 +76,15 @@ internal sealed partial class TicketCheckoutService(
         if (save.Capacity < 0)
             return new("Capacity cannot be negative.");
         if (save.TicketVatRate is < 0 or >= 1)
-            return new("VAT is a fraction between 0 and 1, e.g. 0.10.");
+            return new("Ticket VAT is a percentage from 0 to under 100.");
         if (save.Waves.Any(w => w.PriceMinor < 0) || save.Waves.GroupBy(w => w.EndsOn).Any(g => g.Count() > 1))
             return new("Waves need distinct end dates and non-negative prices.");
         if (save.PriceRules.Any(r => r.AmountMinor < 0))
             return new("Price rule amounts cannot be negative.");
         if (save.SupporterTotalsMinor.Any(t => t <= 0))
             return new("Supporter totals must be positive.");
-        if (save.ChildPriceMinor < 0 || save.ChildMaxAge is <= 0 || save.ResaleOpensAtSold < 0 || save.DirectedResaleDays is < 1 or > 30)
-            return new("Child price, child age, resale threshold and invitation days must be sensible numbers.");
+        if (save.ChildPriceMinor < 0 || save.ChildMaxAge is <= 0)
+            return new("Child price and child age cannot be negative.");
         if (save.Mode == TicketSalesMode.ResaleOnly && save.Switches.Resale == ResaleScheme.Off)
             return new("Resale only needs resale switched on.");
         if (save.TermsUrl is { } terms && (terms.Length > 500 || !Uri.TryCreate(terms, UriKind.Absolute, out var termsUri)
@@ -115,8 +115,7 @@ internal sealed partial class TicketCheckoutService(
             PriceRules = save.PriceRules.ToList(),
             ChildPriceMinor = save.ChildPriceMinor,
             ChildMaxAge = save.ChildMaxAge,
-            ResaleOpensAtSold = save.ResaleOpensAtSold,
-            DirectedResaleDays = save.DirectedResaleDays,
+            ResaleOpenedAt = save.Switches.Resale == ResaleScheme.Off ? null : existing?.ResaleOpenedAt,
             Switches = save.Switches,
             TermsUrl = save.TermsUrl,
             UpdatedAt = now,
@@ -133,9 +132,32 @@ internal sealed partial class TicketCheckoutService(
             $"rules {string.Join(", ", salesEvent.PriceRules.Select(r => $"{r.Kind} {FormatMinor(r.AmountMinor)} for {r.GrantProgramId}"))}; " +
             $"supporter totals {string.Join(", ", salesEvent.SupporterTotalsMinor.Select(FormatMinor))}; " +
             $"child {(salesEvent.ChildPriceMinor is { } child ? FormatMinor(child) : "none")}; " +
-            $"ticket rules {salesEvent.TermsUrl ?? "none"}; resale {save.Switches.Resale}, " +
+            $"ticket rules {salesEvent.TermsUrl ?? "none"}; resale {save.Switches.Resale}" +
+            (existing?.ResaleOpenedAt is not null && salesEvent.ResaleOpenedAt is null ? " (resale paused)" : string.Empty) + ", " +
             $"partner tickets {OnOff(save.Switches.PartnerTickets)}, donations {OnOff(save.Switches.Donations)}, " +
             $"mailing list opt-in {OnOff(save.Switches.MailingListOptIn)}", actorUserId);
+        return CheckoutMutationResult.Ok;
+    }
+
+    public async Task<CheckoutMutationResult> SetResaleOpenAsync(
+        Guid salesEventId, bool open, Guid actorUserId, CancellationToken ct = default)
+    {
+        var salesEvent = await repository.GetSalesEventAsync(salesEventId, ct);
+        if (salesEvent is null)
+            return new("That sales event no longer exists.");
+        if (open && salesEvent.EffectiveSwitches.Resale == ResaleScheme.Off)
+            return new("Resale is switched off in the sales setup.");
+        if (!open && salesEvent.Mode == TicketSalesMode.ResaleOnly)
+            return new("Resale only mode always sells resale; close sales to stop it.");
+        if (salesEvent.ResaleOpenedAt is not null == open)
+            return CheckoutMutationResult.Ok;
+
+        var now = clock.GetCurrentInstant();
+        salesEvent.ResaleOpenedAt = open ? now : null;
+        salesEvent.UpdatedAt = now;
+        await repository.SaveSalesEventAsync(salesEvent, ct);
+        await auditLog.LogAsync(TicketsAuditActions.TicketResaleOpenSet, SalesEventAuditEntityType, salesEvent.Id,
+            open ? "Resale opened by hand." : "Resale paused by hand.", actorUserId);
         return CheckoutMutationResult.Ok;
     }
 
@@ -256,8 +278,7 @@ internal sealed partial class TicketCheckoutService(
         var stock = await LoadStockAsync(salesEvent, now, ct);
         var queue = stock.ResaleOpen
             ? new Queue<TicketResaleOffer>(stock.Offers
-                .Where(o => o.State == TicketResaleOfferState.Open && o.HolderUserId != buyer.Id
-                    && (switches.Resale != ResaleScheme.QueueAndDirected || !o.IsDirectedTo(now)))
+                .Where(o => o.State == TicketResaleOfferState.Open && o.HolderUserId != buyer.Id && o.Id != directed?.Id)
                 .OrderBy(o => o.OfferedAt))
             : new Queue<TicketResaleOffer>();
         // A returned ticket sells only at the resale price (current public wave, credits kept), so a buyer with a class
@@ -880,7 +901,6 @@ internal sealed partial class TicketCheckoutService(
                 SoldAt = o.SoldAt.ToIso8601(),
                 WithdrawnAt = o.WithdrawnAt.ToIso8601(),
                 o.DirectedEmail,
-                DirectedExpiresAt = o.DirectedExpiresAt.ToIso8601(),
             }).ToList()),
         ];
     }
@@ -1087,7 +1107,7 @@ internal sealed partial class TicketCheckoutService(
         var pending = (await repository.GetOrdersForSalesEventAsync(salesEvent.Id, ct))
             .Where(o => o.State != TicketCheckoutOrderState.Paid && o.HoldsTickets(now))
             .Sum(o => o.Lines.Count(l => l.Kind == CheckoutLineKind.Ticket && l.ResaleOfferId is null));
-        var resaleOpen = salesEvent.ResaleOpenAt(sold);
+        var resaleOpen = salesEvent.ResaleSelling;
         // A returned ticket its holder already used to get in can never sell: the gate's admit is the check-in record.
         var offers = await repository.GetOffersForSalesEventAsync(salesEvent.Id, ct);
         var offeredCodes = tickets
@@ -1162,17 +1182,15 @@ internal sealed partial class TicketCheckoutService(
     internal static string FormatMinor(long minor) => (minor / 100m).ToString("0.00", CultureInfo.InvariantCulture);
 
     /// <summary>
-    /// Directed resale switched off: a live link could no longer be used, and an invited offer would sit out of the
-    /// queue until it lapsed, so each one goes back to its place now. An offer in a checkout keeps its buyer.
+    /// Directed resale switched off: a live link could no longer be used, so it is ended and the holder sees it gone.
+    /// The offer was never out of the queue. An offer in a checkout keeps its buyer.
     /// </summary>
     private async Task EndInvitationsAsync(Guid salesEventId, Guid actorUserId, CancellationToken ct)
     {
-        var now = clock.GetCurrentInstant();
         foreach (var offer in (await repository.GetOffersForSalesEventAsync(salesEventId, ct))
-                     .Where(o => o.State == TicketResaleOfferState.Open && o.IsDirectedTo(now)))
+                     .Where(o => o.State == TicketResaleOfferState.Open && o.HasLiveInvite))
         {
             offer.DirectedTokenHash = null;
-            offer.DirectedExpiresAt = null;
             offer.DirectedEmail = null;
             await repository.UpdateOfferAsync(offer, ct);
             if (await repository.GetTicketAsync(offer.TicketId, ct) is { } ticket)
@@ -1199,7 +1217,6 @@ internal sealed partial class TicketCheckoutService(
         offer.WithdrawnAt = clock.GetCurrentInstant();
         offer.ReservedByOrderId = null;
         offer.DirectedTokenHash = null;
-        offer.DirectedExpiresAt = null;
         offer.DirectedEmail = null;
         await repository.UpdateOfferAsync(offer, ct);
         if (await repository.GetTicketAsync(offer.TicketId, ct) is not { } ticket)

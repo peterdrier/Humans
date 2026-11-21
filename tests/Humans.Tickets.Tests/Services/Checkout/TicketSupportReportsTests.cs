@@ -130,7 +130,7 @@ public sealed class TicketSupportReportsTests
     }
 
     [HumansFact]
-    public void Resale_queue_lists_waiting_offers_oldest_first_and_a_live_invitation_holds_nobody_back()
+    public void Resale_queue_lists_waiting_offers_oldest_first_and_an_invited_offer_keeps_its_place()
     {
         var order = Order(lines: Line());
         var (first, second, invited, sold) = (Ticket(order), Ticket(order), Ticket(order), Ticket(order));
@@ -139,31 +139,16 @@ public sealed class TicketSupportReportsTests
         var directed = Offer(invited, day: 1);
         directed.DirectedTokenHash = "hash";
         directed.DirectedEmail = "friend@example.com";
-        directed.DirectedExpiresAt = Now + Duration.FromDays(2);
         var done = Offer(sold, day: 1, TicketResaleOfferState.Sold);
         var refund = Refund(order.Id, 22500, RefundState.Failed);
         done.RefundId = refund.Id;
 
-        var rows = TicketSupportReports.ResaleQueue([newer, done, older, directed], [first, second, invited, sold], [refund], Now);
+        var rows = TicketSupportReports.ResaleQueue([newer, done, older, directed], [first, second, invited, sold], [refund]);
 
         rows.Select(r => (r.Offer, r.Position, r.DirectedLive)).Should().Equal(
-            (directed, (int?)1, true), (older, 1, false), (newer, 2, false), (done, null, false));
+            (directed, (int?)1, true), (older, 2, false), (newer, 3, false), (done, null, false));
         rows[1].Ticket.Should().BeSameAs(first);
         rows[3].Refund.Should().BeSameAs(refund);
-    }
-
-    [HumansFact]
-    public void A_lapsed_invitation_holds_its_original_place()
-    {
-        var order = Order(lines: Line());
-        var (first, second) = (Ticket(order), Ticket(order));
-        var lapsed = Offer(first, day: 1);
-        lapsed.DirectedTokenHash = "hash";
-        lapsed.DirectedExpiresAt = Now - Duration.FromHours(1);
-        var later = Offer(second, day: 3);
-
-        TicketSupportReports.QueuePositions([later, lapsed], Now).Should().BeEquivalentTo(
-            new Dictionary<Guid, int> { [lapsed.Id] = 1, [later.Id] = 2 });
     }
 
     [HumansFact]

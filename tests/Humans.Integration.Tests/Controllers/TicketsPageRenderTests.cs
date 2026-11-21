@@ -29,6 +29,7 @@ public class TicketsPageRenderTests(HumansTestDatabase database) : IntegrationTe
         ("/Tickets/Participation/Backfill", "Backfill Participation Data"),
         ("/Tickets/Admin/Transfers", "Ticket transfer requests"),
         ("/Tickets/Admin/Onsite", "Who&#x27;s Onsite"),
+        ("/Tickets/Admin/Sales/Edit", "Price waves"),
         // /Tickets/Admin/Contacts is left out: it throws by design until a vendor sync has run. Its view is covered by
         // TicketsContactsAdminControllerTests.
     ];

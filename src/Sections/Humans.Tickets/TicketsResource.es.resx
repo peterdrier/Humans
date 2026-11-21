@@ -373,7 +373,7 @@
     <value>Invitar a alguien</value>
   </data>
   <data name="Tickets_Resale_InviteHelp" xml:space="preserve">
-    <value>¿Conoces a alguien que quiera tu entrada? Invítale: recibirá un enlace para comprarla antes que la cola, al precio actual y a su nombre. Se te reembolsa lo que pagaste. No hay dinero entre vosotros.</value>
+    <value>¿Conoces a alguien que quiera tu entrada? Invítale: recibirá un enlace para comprarla antes que la cola, al precio actual y a su nombre. Se te reembolsa lo que pagaste. No hay dinero entre vosotros. Hasta que la compre, tu entrada sigue en la cola y puede venderse antes a otra persona.</value>
   </data>
   <data name="Tickets_Resale_OfferHelp" xml:space="preserve">
     <value>¿No puedes venir? Devuelve tu entrada a la cola de reventa. Cuando alguien la compre se te reembolsará lo que pagaste por la entrada (no las donaciones ni las comisiones).</value>
@@ -388,7 +388,7 @@
     <value>Una entrada para {0} te está esperando</value>
   </data>
   <data name="Tickets_Resale_Email_Invite_Body" xml:space="preserve">
-    <value>&lt;p&gt;Hola,&lt;/p&gt;&lt;p&gt;{0} no puede ir a &lt;strong&gt;{1}&lt;/strong&gt; y te ha invitado a comprar su entrada devuelta antes que la cola de reventa.&lt;/p&gt;&lt;p&gt;Pagas el precio actual de la entrada a la asociación y recibes una entrada nueva a tu nombre: el nombre debe coincidir con tu documento en la puerta. Inicia sesión o crea tu cuenta de Humans con este correo y usa este enlace:&lt;/p&gt;&lt;p&gt;&lt;a href="{2}"&gt;{2}&lt;/a&gt;&lt;/p&gt;&lt;p&gt;El enlace funciona durante {3} días.&lt;/p&gt;</value>
+    <value>&lt;p&gt;Hola,&lt;/p&gt;&lt;p&gt;{0} no puede ir a &lt;strong&gt;{1}&lt;/strong&gt; y te ha invitado a comprar su entrada devuelta antes que la cola de reventa.&lt;/p&gt;&lt;p&gt;Pagas el precio actual de la entrada a la asociación y recibes una entrada nueva a tu nombre: el nombre debe coincidir con tu documento en la puerta. Inicia sesión o crea tu cuenta de Humans con este correo y usa este enlace:&lt;/p&gt;&lt;p&gt;&lt;a href="{2}"&gt;{2}&lt;/a&gt;&lt;/p&gt;&lt;p&gt;El enlace funciona mientras la entrada siga a la venta, así que no esperes mucho.&lt;/p&gt;</value>
   </data>
   <data name="Tickets_Public_PriceToday" xml:space="preserve">
     <value>{0} hoy</value>

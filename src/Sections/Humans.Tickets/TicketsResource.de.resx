@@ -373,7 +373,7 @@
     <value>Käufer einladen</value>
   </data>
   <data name="Tickets_Resale_InviteHelp" xml:space="preserve">
-    <value>Kennst du jemanden, der dein Ticket möchte? Lade die Person ein: Sie bekommt einen Link, um es vor der Schlange zu kaufen, zum aktuellen Preis und auf ihren Namen. Du bekommst zurück, was du bezahlt hast. Zwischen euch fließt kein Geld.</value>
+    <value>Kennst du jemanden, der dein Ticket möchte? Lade die Person ein: Sie bekommt einen Link, um es vor der Schlange zu kaufen, zum aktuellen Preis und auf ihren Namen. Du bekommst zurück, was du bezahlt hast. Zwischen euch fließt kein Geld. Bis die Person kauft, bleibt dein Ticket in der Schlange und kann vorher an jemand anderen gehen.</value>
   </data>
   <data name="Tickets_Resale_OfferHelp" xml:space="preserve">
     <value>Du kannst nicht kommen? Gib dein Ticket in die Weiterverkaufsschlange. Wenn es jemand kauft, bekommst du den Ticketpreis zurück (keine Spenden oder Gebühren).</value>
@@ -388,7 +388,7 @@
     <value>Ein Ticket für {0} wartet auf dich</value>
   </data>
   <data name="Tickets_Resale_Email_Invite_Body" xml:space="preserve">
-    <value>&lt;p&gt;Hallo,&lt;/p&gt;&lt;p&gt;{0} kann nicht zu &lt;strong&gt;{1}&lt;/strong&gt; kommen und hat dich eingeladen, das zurückgegebene Ticket vor der Weiterverkaufsschlange zu kaufen.&lt;/p&gt;&lt;p&gt;Du zahlst den aktuellen Ticketpreis an den Verein und bekommst ein neues Ticket auf deinen Namen: Der Name muss am Einlass mit deinem Ausweis übereinstimmen. Melde dich mit dieser E-Mail-Adresse bei Humans an oder lege ein Konto an und nutze dann diesen Link:&lt;/p&gt;&lt;p&gt;&lt;a href="{2}"&gt;{2}&lt;/a&gt;&lt;/p&gt;&lt;p&gt;Der Link gilt {3} Tage.&lt;/p&gt;</value>
+    <value>&lt;p&gt;Hallo,&lt;/p&gt;&lt;p&gt;{0} kann nicht zu &lt;strong&gt;{1}&lt;/strong&gt; kommen und hat dich eingeladen, das zurückgegebene Ticket vor der Weiterverkaufsschlange zu kaufen.&lt;/p&gt;&lt;p&gt;Du zahlst den aktuellen Ticketpreis an den Verein und bekommst ein neues Ticket auf deinen Namen: Der Name muss am Einlass mit deinem Ausweis übereinstimmen. Melde dich mit dieser E-Mail-Adresse bei Humans an oder lege ein Konto an und nutze dann diesen Link:&lt;/p&gt;&lt;p&gt;&lt;a href="{2}"&gt;{2}&lt;/a&gt;&lt;/p&gt;&lt;p&gt;Der Link funktioniert, solange das Ticket noch zu haben ist, also warte nicht zu lange.&lt;/p&gt;</value>
   </data>
   <data name="Tickets_Public_PriceToday" xml:space="preserve">
     <value>{0} heute</value>
