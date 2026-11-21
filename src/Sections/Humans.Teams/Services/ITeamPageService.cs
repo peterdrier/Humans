@@ -81,14 +81,6 @@ internal sealed record TeamPageResourceSummary(
     GoogleResourceType ResourceType,
     Instant ProvisionedAt);
 
-internal sealed record TeamPageShiftsSummary(
-    int TotalSlots,
-    int ConfirmedCount,
-    int PendingCount,
-    int UniqueVolunteerCount,
-    bool CanManageShifts,
-    int IncludesSubTeamCount = 0);
-
 internal sealed record TeamPageTeamLink(Guid Id, string Name, string Slug);
 
 /// <summary>
@@ -136,7 +128,6 @@ internal sealed record TeamPageDetailResult(
     bool CanCurrentUserEditTeam,
     Guid? CurrentUserPendingRequestId,
     int PendingRequestCount,
-    TeamPageShiftsSummary? ShiftsSummary,
     IReadOnlyList<TeamPageChildTeamMemberSummary> SubteamLeads,
     IReadOnlyList<TeamPageChildTeamMemberSummary> SubteamMembers);
 
@@ -158,6 +149,5 @@ internal interface ITeamPageService : IApplicationService
     Task<TeamPageDetailResult?> GetTeamPageDetailAsync(
         string slug,
         Guid? userId,
-        bool canManageShiftsByRole,
         CancellationToken cancellationToken = default);
 }

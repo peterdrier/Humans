@@ -1,0 +1,6 @@
+@model Guid
+@inject IEnumerable<IShiftsPageBanner> Banners
+@foreach (var banner in Banners)
+{
+    @await Component.InvokeAsync(banner.Banner, new ShiftsPageBannerArgs(Model))
+}

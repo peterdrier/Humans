@@ -87,7 +87,8 @@ internal sealed class TeamDetailViewModel
     public bool CanManageEarlyEntry { get; set; }
     public Guid? CurrentUserPendingRequestId { get; set; }
     public int PendingRequestCount { get; set; }
-    public ShiftsSummaryCardViewModel? ShiftsSummary { get; set; }
+    /// <summary>Null when signed out or without a profile.</summary>
+    public Guid? ViewerUserId { get; init; }
 
     /// <summary>Departments only.</summary>
     public List<ChildTeamMemberViewModel> SubteamLeads { get; set; } = [];
@@ -456,7 +457,6 @@ internal sealed class AdminTeamViewModel
     public int RoleSlotCount { get; set; }
     public DateTime CreatedAt { get; set; }
     public bool IsChildTeam { get; set; }
-    public int PendingShiftSignupCount { get; set; }
     public bool IsHidden { get; set; }
 }
 

@@ -10,13 +10,6 @@
     <ProjectReference Include="..\..\src\Sections\Humans.Google\Humans.Google.csproj" />
     <ProjectReference Include="..\..\src\Sections\Humans.Teams\Humans.Teams.csproj" />
     <!--
-      TeamsTestHarness declares a lazy ShiftsDbContext pair and TeamServiceTests seeds
-      rotas/shifts/signups through it. Temporary, and the mirror of Humans.Shifts'
-      InternalsVisibleTo("Humans.Teams.Tests") — it goes when those fixtures stop
-      reaching into another section's tables.
-    -->
-    <ProjectReference Include="..\..\src\Sections\Humans.Shifts\Humans.Shifts.csproj" />
-    <!--
       Temporary, and the condition that removes it: this project's harness seeds Users rows
       through an in-memory UsersDbContext, which lives in Humans.Users.
       It drops out when the harness stops building the other section's context directly.
@@ -28,7 +21,6 @@
     <ProjectReference Include="..\..\src\Sections\Humans.Notifications.Contracts\Humans.Notifications.Contracts.csproj" />
     <ProjectReference Include="..\..\src\Sections\Humans.Tickets.Contracts\Humans.Tickets.Contracts.csproj" />
     <ProjectReference Include="..\..\src\Sections\Humans.Teams.Contracts\Humans.Teams.Contracts.csproj" />
-    <ProjectReference Include="..\..\src\Sections\Humans.Shifts.Contracts\Humans.Shifts.Contracts.csproj" />
     <ProjectReference Include="..\..\src\Humans.Base\Humans.Base.csproj" />
   </ItemGroup>
 

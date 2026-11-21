@@ -8,6 +8,7 @@ using Humans.Base.Interfaces;
 using Humans.Cantina.Contracts;
 using Humans.Cantina.Data;
 using Humans.Cantina.Services;
+using Humans.Cantina.ViewComponents;
 using Humans.Gdpr.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Users.Contracts;
@@ -24,7 +25,8 @@ public sealed class Section :
     ISectionRoles,
     ISectionAdminNav,
     ISectionPolicies,
-    ISectionThingsToDo
+    ISectionThingsToDo,
+    IShiftsPageBanner
 {
     IReadOnlyList<RoleDefinition> ISectionRoles.Roles { get; } =
     [
@@ -46,6 +48,8 @@ public sealed class Section :
 
         services.AddScoped<ICantinaRosterService, CantinaRosterService>();
     }
+
+    Type IShiftsPageBanner.Banner => typeof(DietaryMissingBannerViewComponent);
 
     IEnumerable<AdminNavGroup> ISectionAdminNav.Groups() =>
     [

@@ -10,7 +10,6 @@ using Humans.EarlyEntry.Contracts;
 using Humans.Gdpr.Contracts;
 using Humans.Notifications.Contracts;
 using Humans.Teams.Data;
-using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Teams.Domain;
 using Humans.Base.Enums;
@@ -29,7 +28,6 @@ internal sealed class TeamService(
     ITeamRepository repo,
     IAuditLogService auditLogService,
     INotificationEmitter notificationService,
-    IShiftService shiftManagementService,
     IAdminAuthorizationService adminAuthorization,
     IServiceProvider serviceProvider,
     IClock clock,
@@ -2198,17 +2196,14 @@ internal sealed class TeamService(
     public async Task<IReadOnlyList<AdminTeamSummary>> GetAdminTeamListAsync(CancellationToken cancellationToken = default)
     {
         var teams = await repo.GetAllForAdminAsync(cancellationToken);
-        var pendingShiftCounts = await shiftManagementService
-            .GetActivePendingShiftSignupCountsByTeamAsync(cancellationToken);
         var resourceSummaries = await TeamResourceService
             .GetTeamResourceSummariesAsync(teams.Select(t => t.Id).ToList(), cancellationToken);
 
-        return teams.Select(team => CreateAdminTeamSummary(team, pendingShiftCounts, resourceSummaries)).ToList();
+        return teams.Select(team => CreateAdminTeamSummary(team, resourceSummaries)).ToList();
     }
 
     private static AdminTeamSummary CreateAdminTeamSummary(
         Team team,
-        IReadOnlyDictionary<Guid, int> pendingShiftCounts,
         IReadOnlyDictionary<Guid, TeamResourceSummary> resourceSummaries)
     {
         var systemTeamType = team.SystemTeamType != SystemTeamType.None
@@ -2234,7 +2229,6 @@ internal sealed class TeamService(
             team.RoleDefinitions.Sum(role => role.SlotCount),
             team.CreatedAt,
             team.ParentTeamId,
-            pendingShiftCounts.GetValueOrDefault(team.Id),
             team.IsHidden);
     }
 

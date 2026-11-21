@@ -287,17 +287,6 @@ internal sealed class ShiftManagementService(
     public Task<bool> SetVolunteerTagPreferencesAsync(Guid userId, IReadOnlyList<Guid> tagIds) =>
         volunteerProfiles.SetVolunteerTagPreferencesAsync(userId, tagIds);
 
-    public async Task<IReadOnlyDictionary<Guid, int>> GetActivePendingShiftSignupCountsByTeamAsync(
-        CancellationToken cancellationToken = default)
-    {
-        var eventSettings = await calendarResolver.GetActiveAsync(cancellationToken);
-        if (eventSettings is null)
-            return new Dictionary<Guid, int>();
-
-        return (await RotaRows.GetEventShiftsAsync(new ShiftEventQuery(eventSettings.Id), cancellationToken))
-            .PendingCountsByTeam();
-    }
-
     public Task UpdateShiftProfileAsync(ShiftVolunteerProfileInfo profile) =>
         volunteerProfiles.UpdateShiftProfileAsync(profile);
 

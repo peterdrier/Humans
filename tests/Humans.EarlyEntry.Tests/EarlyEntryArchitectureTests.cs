@@ -1,11 +1,13 @@
-using Humans.Shifts.Contracts;
 using System.Reflection;
 using AwesomeAssertions;
 using Humans.Base.Authorization;
+using Humans.Base.Constants;
+using Humans.Base.Interfaces;
 using Humans.EarlyEntry.Contracts;
 using Humans.EarlyEntry.Controllers;
 using Humans.EarlyEntry.Services;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Authorization.Infrastructure;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -39,12 +41,15 @@ public class EarlyEntryArchitectureTests
     }
 
     [HumansFact]
-    public void RosterRequiresShiftsRead()
+    public void RosterIsGatedByEarlyEntrysOwnRoles()
     {
         var authorize = typeof(EarlyEntryRosterController).GetCustomAttribute<AuthorizeAttribute>(inherit: false);
+        var options = new AuthorizationOptions();
+        ((ISectionPolicies)new Section()).AddPolicies(options);
 
-        authorize.Should().NotBeNull();
-        authorize.Policy.Should().Be(ShiftsPolicies.Read);
+        authorize!.Policy.Should().Be(EarlyEntryPolicies.Roster);
+        options.GetPolicy(EarlyEntryPolicies.Roster)!.Requirements.OfType<RolesAuthorizationRequirement>()
+            .Should().ContainSingle().Which.AllowedRoles.Should().BeEquivalentTo(
+                RoleNames.Admin, RoleNames.Board, EarlyEntryRoles.EarlyEntryAdmin);
     }
 }
-

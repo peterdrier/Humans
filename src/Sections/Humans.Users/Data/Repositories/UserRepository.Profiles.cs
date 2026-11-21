@@ -1,7 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
 using Humans.Users.Contracts;
-using Humans.Users.Data.Configurations;
 
 namespace Humans.Users.Data.Repositories;
 
@@ -107,9 +106,6 @@ internal sealed partial class UserRepository
         // could delete related rows that are simply unloaded on this entity.
         ctx.Attach(profile);
         ctx.Entry(profile).State = EntityState.Modified;
-        // A detached profile carries no value for the legacy name columns; leave them as stored.
-        foreach (var legacyName in ProfileConfiguration.LegacyNameColumns)
-            ctx.Entry(profile).Property(legacyName).IsModified = false;
         if (volunteerHistory is not null)
             await ReconcileCVEntriesAsync(ctx, profile, volunteerHistory, ct);
         await UpdateUserFromProfileAsync(ctx, profile, names, ct);
@@ -135,15 +131,10 @@ internal sealed partial class UserRepository
         user.LastName = names.LastName;
     }
 
-    /// <summary>
-    /// Replaces a tombstoned human's names on the users row, and blanks the legacy profile columns so
-    /// the real names do not outlive the erasure there.
-    /// </summary>
+    /// <summary>Replaces a tombstoned human's names on the users row.</summary>
     private static async Task SetTombstoneNamesAsync(
         UsersDbContext ctx, Profile profile, UserNames names, CancellationToken ct)
     {
-        foreach (var legacyName in ProfileConfiguration.LegacyNameColumns)
-            ctx.Entry(profile).Property(legacyName).CurrentValue = string.Empty;
         var user = await ctx.Users.FindAsync([profile.UserId], ct);
         if (user is not null)
             SetNames(user, names);

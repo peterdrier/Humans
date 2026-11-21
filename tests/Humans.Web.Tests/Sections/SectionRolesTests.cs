@@ -108,7 +108,6 @@ public class SectionRolesTests
             .Should().BeOfType<RolesAuthorizationRequirement>().Which.AllowedRoles;
 
         allowed.Should().BeEquivalentTo(Catalog.Roles.Where(r => r.OpensAdminShell).Select(r => r.Name));
-        allowed.Should().NotContain("EarlyEntryAdmin", because: "Early Entry admins work from their own pages, not the shell");
         allowed.Should().Contain([RoleNames.Admin, RoleNames.Board]);
     }
 

@@ -1326,49 +1326,4 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
             targetTeamId,
             nameof(Team));
     }
-
-    [HumansFact]
-    public async Task GetActivePendingShiftSignupCountsByTeam_returns_empty_dict_when_no_active_event()
-    {
-        // No EventSettings seeded in ShiftsDb → NewCalendarResolver() resolves no active event.
-        var result = await _service.GetActivePendingShiftSignupCountsByTeamAsync(Xunit.TestContext.Current.CancellationToken);
-
-        result.Should().BeEmpty();
-    }
-
-    [HumansFact]
-    public async Task GetActivePendingShiftSignupCountsByTeam_counts_a_signup_range_once()
-    {
-        var (_, rota) = SeedRotaScenario(RotaPeriod.Event);
-        var first = SeedShift(rota, 1);
-        var second = SeedShift(rota, 2);
-        var blockId = Guid.NewGuid();
-        foreach (var shift in new[] { first, second })
-        {
-            ShiftsDb.ShiftSignups.Add(new ShiftSignup
-            {
-                Id = Guid.NewGuid(),
-                ShiftId = shift.Id,
-                UserId = Guid.NewGuid(),
-                SignupBlockId = blockId,
-                Status = SignupStatus.Pending,
-                CreatedAt = TestNow,
-                UpdatedAt = TestNow
-            });
-        }
-        ShiftsDb.ShiftSignups.Add(new ShiftSignup
-        {
-            Id = Guid.NewGuid(),
-            ShiftId = first.Id,
-            UserId = Guid.NewGuid(),
-            Status = SignupStatus.Pending,
-            CreatedAt = TestNow,
-            UpdatedAt = TestNow
-        });
-        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
-
-        var result = await _service.GetActivePendingShiftSignupCountsByTeamAsync(Xunit.TestContext.Current.CancellationToken);
-
-        result.Should().BeEquivalentTo(new Dictionary<Guid, int> { [rota.TeamId] = 2 });
-    }
 }

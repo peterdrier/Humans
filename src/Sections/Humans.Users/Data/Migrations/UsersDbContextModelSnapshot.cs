@@ -340,11 +340,6 @@ namespace Humans.Users.Data.Migrations
                     b.Property<string>("BoardNotes")
                         .HasColumnType("text");
 
-                    b.Property<string>("BurnerName")
-                        .IsRequired()
-                        .HasMaxLength(256)
-                        .HasColumnType("character varying(256)");
-
                     b.Property<string>("City")
                         .HasMaxLength(256)
                         .HasColumnType("character varying(256)");
@@ -373,16 +368,6 @@ namespace Humans.Users.Data.Migrations
                     b.Property<string>("EmergencyContactRelationship")
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
-
-                    b.Property<string>("FirstName")
-                        .IsRequired()
-                        .HasMaxLength(256)
-                        .HasColumnType("character varying(256)");
-
-                    b.Property<string>("LastName")
-                        .IsRequired()
-                        .HasMaxLength(256)
-                        .HasColumnType("character varying(256)");
 
                     b.Property<double?>("Latitude")
                         .HasColumnType("double precision");
