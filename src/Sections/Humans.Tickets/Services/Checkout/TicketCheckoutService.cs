@@ -89,6 +89,8 @@ internal sealed partial class TicketCheckoutService(
             return new("Child price and child age cannot be negative.");
         if (save.Mode == TicketSalesMode.ResaleOnly && save.Switches.Resale == ResaleScheme.Off)
             return new("Resale only needs resale switched on.");
+        if (save.Mode == TicketSalesMode.InvitedOnly && save.PriceRules.All(r => r.Kind != TicketPriceRuleKind.EarlyAccess))
+            return new("Invited only needs an early access price rule naming the grant program that is invited.");
         if (save.TermsUrl is { } terms && (terms.Length > 500 || !Uri.TryCreate(terms, UriKind.Absolute, out var termsUri)
             || !string.Equals(termsUri.Scheme, Uri.UriSchemeHttps, StringComparison.Ordinal)))
             return new("The ticket rules page must be an https address of at most 500 characters.");
@@ -172,6 +174,8 @@ internal sealed partial class TicketCheckoutService(
                 continue;
             if (await LoadBuyContextAsync(salesEvent.Id, userId, ct) is not { } context)
                 continue;
+            if (salesEvent.Mode == TicketSalesMode.InvitedOnly && !context.Invited)
+                continue;
             pages.Add((context.Event.GateOpeningDate, ToBuyPage(context, null, directed: false)));
         }
         return pages.OrderBy(p => p.GatesOpen).Select(p => p.Page).ToList();
@@ -183,7 +187,8 @@ internal sealed partial class TicketCheckoutService(
         var sales = new List<(LocalDate GatesOpen, PublicSale Sale)>();
         foreach (var salesEvent in await repository.GetSalesEventsAsync(ct))
         {
-            if (salesEvent.Mode == TicketSalesMode.Closed || (salesEvent.SalesCloseAt is { } close && now >= close)
+            if (salesEvent.Mode is TicketSalesMode.Closed or TicketSalesMode.InvitedOnly
+                || (salesEvent.SalesCloseAt is { } close && now >= close)
                 || BackendFor(salesEvent.BackendKey) is not { IsConfigured: true }
                 || await settings.GetEventSettingsByIdAsync(salesEvent.EventSettingsId, ct) is not { } evt
                 || TicketPrice.Public(salesEvent, now.InZone(evt.TimeZone).Date) is not { } price)
@@ -216,7 +221,7 @@ internal sealed partial class TicketCheckoutService(
     {
         TermsUrl = context.SalesEvent.TermsUrl,
         AskMarketing = context.AskMarketing,
-        OffersPartner = context.SalesEvent.EffectiveSwitches.PartnerTickets,
+        OffersPartner = context.SalesEvent.EffectiveSwitches.PartnerTickets && context.SalesEvent.Mode != TicketSalesMode.InvitedOnly,
         OffersDonations = context.SalesEvent.EffectiveSwitches.Donations,
         OpenOrder = context.UserOrders
             .Where(o => o.SalesEventId == context.SalesEvent.Id && o.BuyerUserId == context.Buyer?.Id
@@ -239,7 +244,7 @@ internal sealed partial class TicketCheckoutService(
 
         // Every check that needs no partner account runs first, so a refused order leaves nothing behind.
         var hasPartner = !string.IsNullOrWhiteSpace(command.PartnerName) || !string.IsNullOrWhiteSpace(command.PartnerEmail);
-        if (hasPartner && !switches.PartnerTickets)
+        if (hasPartner && (!switches.PartnerTickets || salesEvent.Mode == TicketSalesMode.InvitedOnly))
             return StartCheckoutResult.Refused("Tickets_Buy_Invalid");
         if (!switches.Donations && (command.SupporterTotalMinor is not null || command.DonationMinor > 0))
             return StartCheckoutResult.Refused("Tickets_Buy_Invalid");
@@ -293,7 +298,7 @@ internal sealed partial class TicketCheckoutService(
             return StartCheckoutResult.Refused("Tickets_Buy_Invalid");
         var resaleForPartner = hasPartner && queue.Count > 0 ? queue.Dequeue() : null;
         var fresh = (command.ForSelf && resaleForSelf is null ? 1 : 0) + (hasPartner && resaleForPartner is null ? 1 : 0) + children.Count;
-        if (fresh > 0 && salesEvent.Mode != TicketSalesMode.Open)
+        if (fresh > 0 && salesEvent.Mode is not (TicketSalesMode.Open or TicketSalesMode.InvitedOnly))
             return StartCheckoutResult.Refused("Tickets_Buy_ResaleOnly");
         if (stock.Held + fresh > salesEvent.Capacity)
             return StartCheckoutResult.Refused("Tickets_Buy_SoldOut");
@@ -1028,7 +1033,8 @@ internal sealed partial class TicketCheckoutService(
         IReadOnlyList<TicketCheckoutOrder> UserOrders,
         bool AskMarketing,
         Instant Now,
-        bool FreshSoldOut);
+        bool FreshSoldOut,
+        bool Invited);
 
     private async Task<BuyContext?> LoadBuyContextAsync(Guid salesEventId, Guid userId, CancellationToken ct)
     {
@@ -1049,7 +1055,9 @@ internal sealed partial class TicketCheckoutService(
         var pinnedOn = activeGrants.Where(g => pinPrograms.Contains(g.ProgramId))
             .Select(g => (LocalDate?)g.IssuedAt.InZone(zone).Date)
             .Min();
-        var ownPrice = TicketPrice.For(salesEvent, today, programIds, pinnedOn);
+        var invited = salesEvent.PriceRules.Any(r => r.Kind == TicketPriceRuleKind.EarlyAccess && programIds.Contains(r.GrantProgramId));
+        var early = salesEvent.Mode == TicketSalesMode.InvitedOnly;
+        var ownPrice = TicketPrice.For(salesEvent, today, programIds, pinnedOn, early);
         var publicPrice = TicketPrice.Public(salesEvent, today);
         var creditPrograms = salesEvent.PriceRules.Where(r => r.Kind == TicketPriceRuleKind.Credit)
             .Select(r => r.GrantProgramId).Where(programIds.Contains).ToHashSet();
@@ -1061,7 +1069,7 @@ internal sealed partial class TicketCheckoutService(
         string? unavailable = null;
         if (salesEvent.Mode == TicketSalesMode.Closed || (salesEvent.SalesCloseAt is { } close && now >= close))
             unavailable = "Tickets_Buy_Closed";
-        else if (ownPrice is null || publicPrice is null)
+        else if (ownPrice is null || publicPrice is null || (early && !invited))
             unavailable = "Tickets_Buy_NotOnSale";
         else if (BackendFor(salesEvent.BackendKey) is not { IsConfigured: true })
             unavailable = "Tickets_Buy_NotOnSale";
@@ -1070,7 +1078,7 @@ internal sealed partial class TicketCheckoutService(
 
         var freshSoldOut = (await LoadStockAsync(salesEvent, now, ct)).Held + 1 > salesEvent.Capacity;
         return new BuyContext(salesEvent, evt, buyer, ownPrice, publicPrice, resalePrice, unavailable, holds, userOrders,
-            askMarketing, now, freshSoldOut);
+            askMarketing, now, freshSoldOut, invited);
     }
 
     /// <summary>The line's name on the payment page, in the buyer's language (the request culture at checkout).</summary>

@@ -62,7 +62,7 @@ internal sealed partial class TicketCheckoutService
                 var offer = queue.FirstOrDefault(o => o.TicketId == ticket.Id);
                 var hasDependents = eventTickets.Any(t => t.ParentTicketId == ticket.Id && t.State == TicketCheckoutTicketState.Valid);
                 held.Add(new HeldTicket(ticket, eventName, offer, offer is null ? null : positions[offer.Id],
-                    CanOffer: salesEvent?.EffectiveSwitches.Resale is not (null or ResaleScheme.Off) && offer is null && ticket.Kind == TicketHolderKind.Adult && salesEvent is { Mode: not TicketSalesMode.Closed },
+                    CanOffer: salesEvent?.EffectiveSwitches.Resale is not (null or ResaleScheme.Off) && offer is null && ticket.Kind == TicketHolderKind.Adult && salesEvent is { Mode: not (TicketSalesMode.Closed or TicketSalesMode.InvitedOnly) },
                     HasDependents: hasDependents,
                     DirectedActive: offer?.HasLiveInvite == true)
                 {
@@ -84,7 +84,8 @@ internal sealed partial class TicketCheckoutService
         if (ticket.State != TicketCheckoutTicketState.Valid || ticket.Kind != TicketHolderKind.Adult)
             return new("Tickets_Resale_NotOfferable");
         var salesEvent = await repository.GetSalesEventAsync(ticket.SalesEventId, ct);
-        if (salesEvent is null || salesEvent.Mode == TicketSalesMode.Closed || salesEvent.EffectiveSwitches.Resale == ResaleScheme.Off)
+        if (salesEvent is null || salesEvent.Mode is TicketSalesMode.Closed or TicketSalesMode.InvitedOnly
+            || salesEvent.EffectiveSwitches.Resale == ResaleScheme.Off)
             return new("Tickets_Resale_Closed");
         // The bank already took this order's money back: a resale would owe a refund of money Humans no longer holds.
         if (await repository.GetOrderAsync(ticket.OrderId, ct) is { DisputedMinor: > 0 })
