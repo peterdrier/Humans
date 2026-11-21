@@ -35,7 +35,7 @@ public class AcceptAsyncFullFixtureTest(HumansTestDatabase database)
     : IntegrationTestBase(database)
 {
     [HumansFact(Timeout = 60_000)]
-    public async Task AcceptAsync_FullFixture_FoldsAllSectionsAndTombstonesSource()
+    public async Task MergeAsync_FullFixture_FoldsAllSectionsAndTombstonesSource()
     {
         var runTag = Guid.NewGuid().ToString("N");
         var sourceOnlyEmail = $"src-only-{runTag}@example.com";
@@ -133,8 +133,12 @@ public class AcceptAsyncFullFixtureTest(HumansTestDatabase database)
         var adminId = await SeedAdminUserAsync();
         await using (var actScope = Factory.Services.CreateAsyncScope())
         {
+            var pendingEmailId = await actScope.ServiceProvider.GetRequiredService<UsersDbContext>().AccountMergeRequests
+                .AsNoTracking().Where(r => r.Id == requestId).Select(r => r.PendingEmailId)
+                .SingleAsync(TestContext.Current.CancellationToken);
             var mergeService = actScope.ServiceProvider.GetRequiredService<IAccountMergeService>();
-            await mergeService.AcceptAsync(requestId, adminId, survivorUserId: targetId, ct: TestContext.Current.CancellationToken);
+            await mergeService.MergeAsync(targetId, sourceId, adminId,
+                pendingEmailIdToVerify: pendingEmailId, ct: TestContext.Current.CancellationToken);
         }
 
         await using var assertScope = Factory.Services.CreateAsyncScope();

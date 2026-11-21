@@ -57,7 +57,6 @@ internal sealed class EmailsViewModelBuilder(
                 IsPrimary = e.IsPrimary,
                 Visibility = e.Visibility,
                 IsPendingVerification = e.IsPendingVerification,
-                IsMergePending = e.IsMergePending,
                 Provider = e.Provider,
                 HasOrphanProviderTag = RowHasOrphanProviderTag(e.Provider, e.ProviderKey),
                 IsTicketLinked = RowIsTicketLinked(e.Email),

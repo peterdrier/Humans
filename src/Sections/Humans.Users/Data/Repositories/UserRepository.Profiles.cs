@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
 using Humans.Users.Contracts;
+using Humans.Users.Services;
 
 namespace Humans.Users.Data.Repositories;
 
@@ -222,7 +223,7 @@ internal sealed partial class UserRepository
     }
 
     public async Task ReassignSubAggregatesToUserAsync(
-        Guid sourceUserId, Guid targetUserId, Instant updatedAt,
+        Guid sourceUserId, Guid targetUserId, Instant updatedAt, Profile? keptProfile, UserNames? keptNames,
         CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
@@ -286,6 +287,13 @@ internal sealed partial class UserRepository
                 src.UserId = targetUserId;
                 targetLanguageByCode[src.LanguageCode] = src;
             }
+        }
+
+        if (keptProfile is not null)
+        {
+            ctx.Entry(targetProfile).CurrentValues.SetValues(keptProfile);
+            if (keptNames is not null)
+                await UpdateUserFromProfileAsync(ctx, targetProfile, keptNames, ct);
         }
 
         // The row stays as the tombstone counterpart to User.MergedToUserId; only identifying

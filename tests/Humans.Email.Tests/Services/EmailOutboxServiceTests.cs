@@ -11,6 +11,7 @@ using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
 using Humans.Email.Contracts;
+using Humans.Users.Contracts;
 
 namespace Humans.Email.Tests.Services;
 
@@ -20,13 +21,14 @@ public sealed class EmailOutboxServiceTests
     private readonly IEmailOutboxRepository _repo = Substitute.For<IEmailOutboxRepository>();
     private readonly ISettingsService _settingsStore = Substitute.For<ISettingsService>();
     private readonly IAuditLogService _audit = Substitute.For<IAuditLogService>();
+    private readonly IUserService _users = Substitute.For<IUserService>();
     private readonly Guid _actorId = Guid.NewGuid();
     private readonly EmailOutboxService _service;
 
     public EmailOutboxServiceTests()
     {
         _service = new EmailOutboxService(
-            _repo, _settingsStore, Options.Create(new EmailSettings()), new FakeClock(_now), _audit);
+            _repo, _settingsStore, Options.Create(new EmailSettings()), new FakeClock(_now), _audit, _users);
     }
 
     [HumansTheory]
@@ -134,6 +136,34 @@ public sealed class EmailOutboxServiceTests
         var result = await _service.GetMessagesForUserAsync(userId, Xunit.TestContext.Current.CancellationToken);
 
         result.Select(m => m.Id).Should().Equal(newer.Id, older.Id);
+    }
+
+    [HumansFact]
+    public async Task HistoryAndExport_ShowABodyOnlyForMailToAnAddressTheAccountConfirmed()
+    {
+        // The confirmation mail goes to an address the account has yet to prove it reads. Its link must not
+        // be readable from the account's own history or export, or nobody would need the mailbox.
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var userId = Guid.NewGuid();
+        var own = BuildMessage(_now, userId);
+        var unconfirmed = BuildMessage(_now, userId);
+        unconfirmed.RecipientEmail = "someone-else@example.org";
+        unconfirmed.HtmlBody = "<a href=\"https://x/Users/Emails/Confirm?token=secret\">Confirm</a>";
+        _repo.GetForUserAsync(userId, Arg.Any<CancellationToken>()).Returns([own, unconfirmed]);
+        _users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(UserInfo.Create(
+            new User { Id = userId },
+            [
+                new UserEmail { Id = Guid.NewGuid(), UserId = userId, Email = "Human@Example.org", IsVerified = true },
+                new UserEmail { Id = Guid.NewGuid(), UserId = userId, Email = "someone-else@example.org" },
+            ],
+            [], profile: null));
+
+        var history = await _service.GetMessagesForUserAsync(userId, ct);
+        var export = System.Text.Json.JsonSerializer.Serialize(
+            (await _service.ContributeForUserAsync(userId, ct)).Single().Data);
+
+        history.Select(m => m.HtmlBody).Should().Equal("<p>Body</p>", null);
+        export.Should().Contain("someone-else@example.org").And.NotContain("secret");
     }
 
     [HumansFact]

@@ -525,7 +525,7 @@ public sealed class EmailProblemsServiceTests : ServiceTestHarness
         _userEmailService.AddVerifiedEmailAsync(userId, "legacy@x.com", Arg.Any<CancellationToken>())
             .Returns(new UserEmailAddResult(pending.Id, Added: false, IsConflict: false));
         _userEmailService.AdminMarkVerifiedAsync(userId, pending.Id, actorId, Arg.Any<CancellationToken>())
-            .Returns(new VerifyEmailResult("legacy@x.com", MergeRequestCreated: false));
+            .Returns(new VerifyEmailResult("legacy@x.com"));
 
         var result = await Sut.BackfillLegacyIdentityEmailsAsync(actorId, Xunit.TestContext.Current.CancellationToken);
 
@@ -543,7 +543,7 @@ public sealed class EmailProblemsServiceTests : ServiceTestHarness
         _userEmailService.AddVerifiedEmailAsync(userId, "legacy@x.com", Arg.Any<CancellationToken>())
             .Returns(new UserEmailAddResult(pending.Id, Added: false, IsConflict: false));
         _userEmailService.AdminMarkVerifiedAsync(userId, pending.Id, Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns(new VerifyEmailResult("legacy@x.com", MergeRequestCreated: true));
+            .Returns(new VerifyEmailResult(string.Empty, "Users_Profile_EmailVerifiedOnAnotherAccount"));
 
         var result = await Sut.BackfillLegacyIdentityEmailsAsync(Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
 

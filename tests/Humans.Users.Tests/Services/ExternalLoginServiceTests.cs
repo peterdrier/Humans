@@ -50,7 +50,7 @@ public sealed class ExternalLoginServiceTests : ServiceTestHarness
                 Arg.Any<string>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
             .Returns(new OAuthReconcileResult(
                 ReconcileOutcome.NoChange, null, Guid.NewGuid(),
-                null, null, null, false));
+                null, null, null));
 
         _service = new ExternalLoginService(
             _userManager,
@@ -198,6 +198,32 @@ public sealed class ExternalLoginServiceTests : ServiceTestHarness
             userA.Id, null, null, null, Arg.Any<CancellationToken>(), userA.Id);
         await _userEmailService.Received(1).ReconcileOAuthIdentityAsync(
             userA.Id, Provider, providerKey, "fresh@example.com", true, Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task CompleteExternalLogin_LinkingALoginWhoseAddressAnotherAccountConfirmed_ChangesNothing()
+    {
+        // Two accounts of one person: they merge through the mailed link, never by a login moving the address.
+        var userA = await CreateUserAsync();
+        var userB = await CreateUserAsync();
+        const string providerKey = "sub-new";
+        StubVerifiedEmailOwner("b@example.com", userB);
+
+        var result = await _service.CompleteExternalLoginAsync(
+            new ExternalLoginAttempt(
+                MakeLoginInfo(providerKey, "b@example.com"),
+                "b@example.com",
+                "User B",
+                EmailVerified: true,
+                ProviderSignInSucceeded: false,
+                ProviderSignInLockedOut: false,
+                CurrentUserId: userA.Id),
+            Xunit.TestContext.Current.CancellationToken);
+
+        result.Outcome.Should().Be(ExternalLoginOutcome.LinkToCurrentUserFailed);
+        (await _userManager.FindByLoginAsync(Provider, providerKey)).Should().BeNull();
+        await _userEmailService.DidNotReceiveWithAnyArgs()
+            .ReconcileOAuthIdentityAsync(default, default!, default!, default!, default);
     }
 
     [HumansFact]

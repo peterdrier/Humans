@@ -11,7 +11,6 @@ using Humans.Base.Helpers;
 using Humans.Base.Threading;
 using Humans.Users.Helpers;
 using Humans.Base.Interfaces;
-using System.Web;
 using Humans.Base.Configuration;
 using Humans.Base.Extensions;
 using Humans.Email.Contracts;
@@ -352,17 +351,12 @@ internal sealed class UserEmailService(
         CancellationToken cancellationToken = default) =>
         ReconcileAsync(userId, provider, providerKey, claimEmail, claimEmailVerified, cancellationToken);
 
-    // Lazy: merge resolution reaches Teams, whose service also reads email data.
-    private IAccountMergeService MergeService => serviceProvider.GetRequiredService<IAccountMergeService>();
-
     public async Task<IReadOnlyList<UserEmailEditDto>> GetUserEmailsAsync(
         Guid userId, CancellationToken cancellationToken = default)
     {
         var info = await userService.GetUserInfoAsync(userId, cancellationToken);
         if (info is null) return [];
 
-        var emailIds = info.UserEmails.Select(e => e.Id).ToList();
-        var mergePendingSet = await MergeService.GetPendingEmailIdsAsync(emailIds, cancellationToken);
         var verifiedCount = info.UserEmails.Count(e => e.IsVerified);
 
         return info.UserEmails.Select(e => new UserEmailEditDto(
@@ -374,7 +368,6 @@ internal sealed class UserEmailService(
             e.IsPrimary,
             e.Visibility,
             IsPendingVerification: !e.IsVerified && e.VerificationSentAt.HasValue,
-            IsMergePending: mergePendingSet.Contains(e.Id),
             CanUnlink: !string.IsNullOrEmpty(e.Provider) && !string.IsNullOrEmpty(e.ProviderKey)
                 && UserEmailService.CanUnlink(verifiedCount, e.IsVerified)
         )).ToList();
@@ -575,7 +568,7 @@ internal sealed class UserEmailService(
             string.Equals(tagged.Email, claimEmail, StringComparison.OrdinalIgnoreCase))
         {
             return new OAuthReconcileResult(
-                ReconcileOutcome.NoChange, null, tagged.Id, null, null, null, false);
+                ReconcileOutcome.NoChange, null, tagged.Id, null, null, null);
         }
 
         var siblingAtClaim = rows.FirstOrDefault(r =>
@@ -589,25 +582,23 @@ internal sealed class UserEmailService(
                 normalizedClaim, alternateClaim, cancellationToken))
             .FirstOrDefault(e => e.IsVerified && e.UserId != userId);
 
-        // 2. CrossUserBlocked: another user verified-holds the claim and the claim is unverified.
-        if (blocker is not null && !claimEmailVerified)
+        // 2. CrossUserBlocked: another account has the claim address confirmed. A sign-in never moves an
+        //    address between accounts, whatever the provider asserts; the two accounts merge through the
+        //    emailed confirmation link instead.
+        if (blocker is not null)
         {
             var blockerRows = await repository.GetUserEmailsByUserIdForMutationAsync(
                 blocker.UserId, cancellationToken);
 
             var blockedDescription = await BuildCrossUserDiagnosticAsync(
-                kind: "BLOCKED (unverified provider claim)",
                 userId, signingRows: rows,
                 provider, providerKey, claimEmail, claimEmailVerified,
                 previousEmail: tagged?.Email,
-                displaced: blocker,
-                displacedRows: blockerRows,
-                displacedUserLeftWithoutVerifiedEmail: false,
+                holder: blocker,
+                holderRows: blockerRows,
                 cancellationToken);
 
-            logger.LogError(
-                "OAuth cross-user collision BLOCKED (unverified claim): {Description}",
-                blockedDescription);
+            logger.LogWarning("OAuth cross-user collision blocked: {Description}", blockedDescription);
 
             await auditLogService.LogAsync(
                 UsersAuditActions.OAuthRenameCollisionBlocked,
@@ -620,44 +611,12 @@ internal sealed class UserEmailService(
                 ReconcileOutcome.CrossUserBlocked,
                 PreviousEmail: tagged?.Email,
                 AffectedRowId: null,
-                DisplacedUserId: blocker.UserId,
-                DisplacedRowId: blocker.Id,
-                DisplacedEmail: blocker.Email,
-                DisplacedUserLeftWithoutVerifiedEmail: false);
+                BlockingUserId: blocker.UserId,
+                BlockingRowId: blocker.Id,
+                BlockingEmail: blocker.Email);
         }
 
-        // 3. Decide cross-user displacement (snapshot only; commits with step 5).
-        var displaced = false;
-        Guid? displacedUserId = null;
-        Guid? displacedRowId = null;
-        string? displacedEmail = null;
-        var displacedUserLeftWithoutVerifiedEmail = false;
-        string? collisionDiagnostic = null;
-
-        if (blocker is not null && claimEmailVerified)
-        {
-            var displacedUsersRows = await repository.GetUserEmailsByUserIdForMutationAsync(
-                blocker.UserId, cancellationToken);
-            displacedUserLeftWithoutVerifiedEmail = displacedUsersRows
-                .Count(r => r.IsVerified && r.Id != blocker.Id) == 0;
-
-            displaced = true;
-            displacedUserId = blocker.UserId;
-            displacedRowId = blocker.Id;
-            displacedEmail = blocker.Email;
-
-            collisionDiagnostic = await BuildCrossUserDiagnosticAsync(
-                kind: "DISPLACED",
-                userId, signingRows: rows,
-                provider, providerKey, claimEmail, claimEmailVerified,
-                previousEmail: tagged?.Email,
-                displaced: blocker,
-                displacedRows: displacedUsersRows,
-                displacedUserLeftWithoutVerifiedEmail: displacedUserLeftWithoutVerifiedEmail,
-                cancellationToken);
-        }
-
-        // 4. Build the signing user's mutation plan (in memory).
+        // 3. Build the signing user's mutation plan (in memory).
         ReconcileOutcome outcome;
         Guid affectedRowId;
         string? previousEmail = tagged?.Email;
@@ -744,61 +703,22 @@ internal sealed class UserEmailService(
                 $"(provider={provider}, sub={providerKey}, email={claimEmail}).";
         }
 
-        // 5. Apply displacement + signing-user mutation atomically and repair UserEmail invariants.
+        // 4. Apply the mutation atomically and repair UserEmail invariants.
         await userService.ApplyUserEmailReconcilePlanAsync(
             userId,
             new UserEmailReconcilePlanCommand(
-                DisplacedRowToDelete: displaced ? blocker : null,
                 RowToDelete: rowToDelete,
                 RowToUpdate: rowToUpdate,
                 RowToInsert: rowToInsert),
             cancellationToken);
 
-        // Addresses that left an account: a tag-move deletes the old row, a rewrite renames it in
-        // place, a displacement deletes the other user's row. Each stops being a Google identity.
+        // An address that left the account (a tag-move deletes the old row, a rewrite renames it in
+        // place) stops being a Google identity.
         if (previousEmail is not null && outcome is ReconcileOutcome.TagMoved or ReconcileOutcome.EmailRewritten
             && !string.Equals(previousEmail, claimEmail, StringComparison.OrdinalIgnoreCase))
             await GoogleIdentity.ClearIfAddressAsync(userId, previousEmail, cancellationToken);
-        if (displaced)
-            await GoogleIdentity.ClearIfAddressAsync(blocker!.UserId, blocker.Email, cancellationToken);
 
-        // 6. Audit. A displacement writes the OAuthRenameCollision pair instead.
-        if (displaced)
-        {
-            logger.LogError(
-                "OAuth cross-user displacement (verified claim): {Description}",
-                collisionDiagnostic);
-
-            await auditLogService.LogAsync(
-                UsersAuditActions.OAuthRenameCollision,
-                AuditSubjectTypes.User, userId,
-                collisionDiagnostic!,
-                actorUserId: userId,
-                relatedEntityId: blocker!.Id, relatedEntityType: AuditSubjectTypes.UserEmail);
-
-            var displacedAuditDescription =
-                $"Row `{blocker.Email}` deleted by OAuth callback for user {userId} " +
-                $"(provider={provider}, sub={providerKey})." +
-                (displacedUserLeftWithoutVerifiedEmail
-                    ? " Displaced user left with zero verified emails."
-                    : string.Empty);
-            await auditLogService.LogAsync(
-                UsersAuditActions.UserEmailDisplacedByOAuthRename,
-                AuditSubjectTypes.User, blocker.UserId,
-                displacedAuditDescription,
-                actorUserId: userId,
-                relatedEntityId: blocker.Id, relatedEntityType: AuditSubjectTypes.UserEmail);
-
-            return new OAuthReconcileResult(
-                ReconcileOutcome.CrossUserDisplaced,
-                previousEmail,
-                affectedRowId,
-                displacedUserId,
-                displacedRowId,
-                displacedEmail,
-                displacedUserLeftWithoutVerifiedEmail);
-        }
-
+        // 5. Audit.
         await auditLogService.LogAsync(
             signingAction,
             AuditSubjectTypes.User, userId,
@@ -806,18 +726,10 @@ internal sealed class UserEmailService(
             actorUserId: userId,
             relatedEntityId: affectedRowId, relatedEntityType: AuditSubjectTypes.UserEmail);
 
-        return new OAuthReconcileResult(
-            outcome,
-            previousEmail,
-            affectedRowId,
-            displacedUserId,
-            displacedRowId,
-            displacedEmail,
-            displacedUserLeftWithoutVerifiedEmail);
+        return new OAuthReconcileResult(outcome, previousEmail, affectedRowId, null, null, null);
     }
 
     private async Task<string> BuildCrossUserDiagnosticAsync(
-        string kind,
         Guid signingUserId,
         IReadOnlyList<UserEmail> signingRows,
         string provider,
@@ -825,32 +737,27 @@ internal sealed class UserEmailService(
         string claimEmail,
         bool claimEmailVerified,
         string? previousEmail,
-        UserEmail displaced,
-        IReadOnlyList<UserEmail> displacedRows,
-        bool displacedUserLeftWithoutVerifiedEmail,
+        UserEmail holder,
+        IReadOnlyList<UserEmail> holderRows,
         CancellationToken ct)
     {
-        var loginsByUser = await userService.GetExternalLoginsByUserIdsAsync([signingUserId, displaced.UserId], ct);
+        var loginsByUser = await userService.GetExternalLoginsByUserIdsAsync([signingUserId, holder.UserId], ct);
         var signingLogins = loginsByUser.TryGetValue(signingUserId, out var sl) ? sl : [];
-        var displacedLogins = loginsByUser.TryGetValue(displaced.UserId, out var dl) ? dl : [];
+        var holderLogins = loginsByUser.TryGetValue(holder.UserId, out var hl) ? hl : [];
 
         var inv = System.Globalization.CultureInfo.InvariantCulture;
         var sb = new System.Text.StringBuilder();
-        sb.Append(inv, $"OAuth cross-user {kind}: provider={provider} sub={providerKey} ");
+        sb.Append(inv, $"OAuth cross-user BLOCKED (address is confirmed on another account): provider={provider} sub={providerKey} ");
         sb.Append(inv, $"claimEmail={claimEmail} claimEmailVerified={claimEmailVerified} ");
         sb.Append(inv, $"previousEmail={previousEmail ?? "(none)"} attemptedAt={clock.GetCurrentInstant()}. ");
         sb.Append(inv, $"SigningUser={signingUserId} rows=[");
         sb.Append(string.Join(", ", signingRows.Select(FormatRow)));
         sb.Append("] logins=[");
         sb.Append(string.Join(", ", signingLogins.Select(l => $"{l.Provider}/{l.ProviderKey}")));
-        sb.Append(inv, $"]. DisplacedUser={displaced.UserId} displacedRowId={displaced.Id} ");
-        sb.Append(inv, $"displacedEmail={displaced.Email}");
-        if (displacedUserLeftWithoutVerifiedEmail)
-            sb.Append(" — displaced user left with zero verified emails after delete");
-        sb.Append(" rows=[");
-        sb.Append(string.Join(", ", displacedRows.Select(FormatRow)));
+        sb.Append(inv, $"]. HolderUser={holder.UserId} holderRowId={holder.Id} holderEmail={holder.Email} rows=[");
+        sb.Append(string.Join(", ", holderRows.Select(FormatRow)));
         sb.Append("] logins=[");
-        sb.Append(string.Join(", ", displacedLogins.Select(l => $"{l.Provider}/{l.ProviderKey}")));
+        sb.Append(string.Join(", ", holderLogins.Select(l => $"{l.Provider}/{l.ProviderKey}")));
         sb.Append("].");
         return sb.ToString();
 
@@ -859,9 +766,8 @@ internal sealed class UserEmailService(
             $"Provider={r.Provider ?? "(none)"} Key={r.ProviderKey ?? "(none)"}}}";
     }
 
-    private const string EmailVerificationTokenPurpose = "UserEmailVerification";
-
-    // Lazy: breaks DI cycle TeamService -> IEmailService -> IUserEmailService -> IAccountMergeService -> ITeamService.
+    // Lazy: the confirmation service reaches the merge fan-out, which resolves this service.
+    private EmailConfirmationService Confirmation => serviceProvider.GetRequiredService<EmailConfirmationService>();
 
     public async Task<AddEmailResult> AddEmailAsync(
         Guid userId, string email, CancellationToken cancellationToken = default, Guid? actorUserId = null)
@@ -877,11 +783,6 @@ internal sealed class UserEmailService(
         if (held.Any(e => e.UserId == userId))
             return Refuse("Users_Profile_EmailAlreadyAdded");
 
-        if (await MergeService.HasPendingForUserAndEmailAsync(
-                userId, normalizedEmail, alternateEmail, cancellationToken))
-            return Refuse("Users_Profile_EmailMergePending");
-
-        // FindByIdAsync, not cache: UserManager token APIs read SecurityStamp directly and cache-rehydrated Users lack it.
         var user = await userManager.FindByIdAsync(userId.ToString());
         if (user is null)
             return Refuse("Users_EmailUpdate_AccountUnavailable");
@@ -897,7 +798,7 @@ internal sealed class UserEmailService(
             cancellationToken);
 
         if (addResult.ErrorKey is { } errorKey)
-            return new AddEmailResult(Guid.Empty, string.Empty, false, errorKey);
+            return new AddEmailResult(Guid.Empty, string.Empty, errorKey);
 
         if (!addResult.Added)
             return Refuse("Users_Profile_EmailAlreadyAdded");
@@ -912,19 +813,11 @@ internal sealed class UserEmailService(
             await auditLogService.LogAsync(UsersAuditActions.UserEmailAdded, AuditSubjectTypes.User, userId,
                 description, nameof(UserEmailService), relatedEntityId: addResult.EmailId, relatedEntityType: AuditSubjectTypes.UserEmail);
 
-        var token = await userManager.GenerateUserTokenAsync(
-            user,
-            TokenOptions.DefaultEmailProvider,
-            $"{EmailVerificationTokenPurpose}:{addResult.EmailId}");
+        var token = Confirmation.CreateToken(userId, addResult.EmailId);
 
         var baseUrl = serviceProvider.GetRequiredService<IOptions<EmailSettings>>().Value.BaseUrl;
-        var verificationUrl = QueryHelpers.AddQueryString($"{baseUrl.TrimEnd('/')}/Profile/Me/Emails/Verify",
-            new Dictionary<string, string?>(StringComparer.Ordinal)
-            {
-                ["userId"] = userId.ToString(),
-                ["emailId"] = addResult.EmailId.ToString(),
-                ["token"] = HttpUtility.UrlEncode(token)
-            });
+        var verificationUrl = QueryHelpers.AddQueryString(
+            $"{baseUrl.TrimEnd('/')}/Users/Emails/Confirm", "token", token);
         var info = await userService.GetUserInfoAsync(userId, cancellationToken);
         var message = serviceProvider.GetRequiredService<UsersEmails>().EmailVerification(
             userId, email, info?.BurnerName ?? string.Empty, verificationUrl, addResult.IsConflict,
@@ -932,57 +825,12 @@ internal sealed class UserEmailService(
                 ? user.PreferredLanguage : CultureCatalog.DefaultCultureCode);
         await serviceProvider.GetRequiredService<IEmailService>().SendAsync(message, cancellationToken);
 
-        return new AddEmailResult(addResult.EmailId, token, addResult.IsConflict);
+        return new AddEmailResult(addResult.EmailId, token);
 
         AddEmailResult Refuse(string key)
         {
             logger.LogWarning("Email addition refused for user {UserId}: {ErrorKey}", userId, key);
-            return new AddEmailResult(Guid.Empty, string.Empty, false, key);
-        }
-    }
-
-    public async Task<VerifyEmailResult> VerifyEmailAsync(
-        Guid userId, Guid emailId, string token, CancellationToken cancellationToken = default)
-    {
-        // Not the cache: a UserInfo-rehydrated User lacks the SecurityStamp that
-        // VerifyUserTokenAsync reads.
-        var user = await userManager.FindByIdAsync(userId.ToString());
-        if (user is null) return Refuse("User not found");
-
-        // The token is bound to this row's Id via the purpose suffix.
-        var pendingEmail = await repository.GetUserEmailByIdAndUserIdAsync(emailId, userId, cancellationToken);
-        if (pendingEmail is null || pendingEmail.IsVerified || pendingEmail.Provider is not null)
-        {
-            return Refuse("No email pending verification");
-        }
-
-        var isValid = await userManager.VerifyUserTokenAsync(
-            user,
-            TokenOptions.DefaultEmailProvider,
-            $"{EmailVerificationTokenPurpose}:{pendingEmail.Id}",
-            token);
-
-        if (!isValid)
-            return Refuse("Invalid verification token");
-
-        if (await RequestMergeForVerificationConflictAsync(userId, pendingEmail, cancellationToken))
-            return new VerifyEmailResult(pendingEmail.Email, MergeRequestCreated: true);
-
-        // Flipping unverified→verified may newly satisfy the primary invariant.
-        var update = await userService.UpdateUserEmailAsync(
-            userId,
-            pendingEmail.Id,
-            new UserEmailUpdateCommand(MarkVerified: true),
-            cancellationToken);
-        if (!update.Succeeded) return Refuse("Email update refused");
-
-        return new VerifyEmailResult(pendingEmail.Email, MergeRequestCreated: false);
-
-        VerifyEmailResult Refuse(string reason)
-        {
-            logger.LogWarning("Email verification rejected for user {UserId}, email row {EmailId}: {Reason}",
-                userId, emailId, reason);
-            return new VerifyEmailResult(string.Empty, false, "Users_Profile_InvalidVerificationLink");
+            return new AddEmailResult(Guid.Empty, string.Empty, key);
         }
     }
 
@@ -993,19 +841,27 @@ internal sealed class UserEmailService(
         var pendingEmail = await repository.GetUserEmailByIdAndUserIdAsync(emailId, userId, cancellationToken);
         if (pendingEmail is null || pendingEmail.IsVerified || pendingEmail.Provider is not null)
         {
-            return new VerifyEmailResult(string.Empty, false) { NoPendingVerification = true };
+            return new VerifyEmailResult(string.Empty) { NoPendingVerification = true };
         }
 
-        // As in VerifyEmailAsync: an address verified on another account becomes a merge request.
-        if (await RequestMergeForVerificationConflictAsync(userId, pendingEmail, cancellationToken))
-            return new VerifyEmailResult(pendingEmail.Email, MergeRequestCreated: true);
+        // The table, not the cache: the decision must see this call's row state. An address confirmed on
+        // another account is two accounts of one person: they are merged, never verified twice.
+        var normalized = EmailNormalization.NormalizeForComparison(pendingEmail.Email);
+        var held = await repository.GetUserEmailsByAddressAsync(
+            normalized, EmailLookupAliases.GetAlternate(normalized), cancellationToken);
+        if (held.Any(e => e.IsVerified && e.Id != pendingEmail.Id))
+        {
+            logger.LogWarning("Admin verification refused for user {UserId}, email row {EmailId}: confirmed on another account",
+                userId, emailId);
+            return new VerifyEmailResult(string.Empty, "Users_Profile_EmailVerifiedOnAnotherAccount");
+        }
 
         var update = await userService.UpdateUserEmailAsync(
             userId,
             pendingEmail.Id,
             new UserEmailUpdateCommand(MarkVerified: true),
             cancellationToken);
-        if (!update.Succeeded) return new VerifyEmailResult(string.Empty, false, update.ErrorKey);
+        if (!update.Succeeded) return new VerifyEmailResult(string.Empty, update.ErrorKey);
 
         await auditLogService.LogAsync(
             UsersAuditActions.UserEmailManuallyVerified,
@@ -1014,39 +870,6 @@ internal sealed class UserEmailService(
             actorUserId,
             relatedEntityId: pendingEmail.Id, relatedEntityType: AuditSubjectTypes.UserEmail);
 
-        return new VerifyEmailResult(pendingEmail.Email, MergeRequestCreated: false);
-    }
-
-    // Reads the table, not the cache: the decision must see this call's row state. Any verified
-    // row for the same address on another row id, either user's, is the conflict.
-    private async Task<bool> RequestMergeForVerificationConflictAsync(
-        Guid userId, UserEmail pendingEmail, CancellationToken cancellationToken)
-    {
-        var normalized = EmailNormalization.NormalizeForComparison(pendingEmail.Email);
-        var rows = await repository.GetUserEmailsByAddressAsync(
-            normalized, EmailLookupAliases.GetAlternate(normalized), cancellationToken);
-        var conflictingEmail = rows.FirstOrDefault(e => e.IsVerified && e.Id != pendingEmail.Id);
-        if (conflictingEmail is null)
-            return false;
-
-        // Link prefetch, double-clicks and repeat admin verification would duplicate it.
-        if (!await MergeService.HasPendingForEmailIdAsync(pendingEmail.Id, cancellationToken))
-        {
-            var now = clock.GetCurrentInstant();
-            var mergeRequest = new AccountMergeRequest
-            {
-                Id = Guid.NewGuid(),
-                TargetUserId = userId,
-                SourceUserId = conflictingEmail.UserId,
-                Email = pendingEmail.Email,
-                PendingEmailId = pendingEmail.Id,
-                Status = AccountMergeRequestStatus.Pending,
-                CreatedAt = now
-            };
-
-            await MergeService.CreateAsync(mergeRequest, cancellationToken);
-        }
-
-        return true;
+        return new VerifyEmailResult(pendingEmail.Email);
     }
 }

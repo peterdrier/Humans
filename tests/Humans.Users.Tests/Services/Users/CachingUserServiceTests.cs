@@ -1412,7 +1412,7 @@ public class CachingUserServiceTests
 
         await sut.ApplyUserEmailReconcilePlanAsync(
             signingUserId,
-            new UserEmailReconcilePlanCommand(null, null, null, null), Xunit.TestContext.Current.CancellationToken);
+            new UserEmailReconcilePlanCommand(null, null, null), Xunit.TestContext.Current.CancellationToken);
 
         var signing = await sut.GetUserInfoAsync(signingUserId, Xunit.TestContext.Current.CancellationToken);
         var displaced = await sut.GetUserInfoAsync(displacedUserId, Xunit.TestContext.Current.CancellationToken);

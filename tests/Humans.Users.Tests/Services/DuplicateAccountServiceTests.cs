@@ -91,13 +91,17 @@ public sealed class DuplicateAccountServiceTests
     {
         var a = Guid.NewGuid();
         var b = Guid.NewGuid();
+        var typedIt = Guid.NewGuid();
         SetUsers(
             MakeInfo(a, emails: [Email(a, "dup@foo.com", verified: true, primary: true)]),
-            MakeInfo(b, emails: [Email(b, "dup@foo.com", verified: true, primary: true)]));
+            MakeInfo(b, emails: [Email(b, "dup@foo.com", verified: true, primary: true)]),
+            MakeInfo(typedIt, emails: [Email(typedIt, "dup@foo.com", verified: false)]));
 
         var groups = await Sut.DetectDuplicatesAsync(Xunit.TestContext.Current.CancellationToken);
 
-        groups.Should().ContainSingle("two live accounts sharing a verified email is a real duplicate");
+        // Anyone can type anyone's address: an unconfirmed one makes no pair.
+        groups.Should().ContainSingle("two live accounts sharing a verified email is a real duplicate")
+            .Which.Accounts.Select(x => x.UserId).Should().BeEquivalentTo([a, b]);
     }
 
     [HumansFact]
