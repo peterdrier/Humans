@@ -108,8 +108,8 @@ internal static class TicketSupportReports
             .ToList();
 
         var byPurpose = donations
-            .GroupBy(l => l.DonationPurpose ?? TicketDonationPurpose.General)
-            .OrderBy(g => g.Key)
+            .GroupBy(l => l.DonationPurpose, StringComparer.Ordinal)
+            .OrderBy(g => g.Key, StringComparer.Ordinal)
             .Select(g => new DonationRow(g.Key, g.Count(), g.Sum(l => l.AmountMinor)))
             .ToList();
 
@@ -188,7 +188,8 @@ internal sealed record SalesRow(string Label, int Count, long AmountMinor);
 /// <summary>The day the order was paid, in the event's time zone.</summary>
 internal sealed record DayRow(LocalDate Day, int Tickets, long TicketsMinor, long DonationsMinor);
 
-internal sealed record DonationRow(TicketDonationPurpose Purpose, int Count, long AmountMinor);
+/// <summary><paramref name="Purpose"/> is null for general donations.</summary>
+internal sealed record DonationRow(string? Purpose, int Count, long AmountMinor);
 
 internal sealed record RefundStateRow(RefundState State, int Count, long AmountMinor);
 

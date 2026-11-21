@@ -36,7 +36,7 @@ public sealed class TicketSupportReportsTests
         AttendeeName = "Ana García",
     };
 
-    private static TicketCheckoutOrderLine Donation(long amount, TicketDonationPurpose purpose = TicketDonationPurpose.General) => new()
+    private static TicketCheckoutOrderLine Donation(long amount, string? purpose = null) => new()
     {
         Kind = CheckoutLineKind.Donation,
         Description = "Donation",
@@ -154,7 +154,7 @@ public sealed class TicketSupportReportsTests
     [HumansFact]
     public void Sales_report_groups_issued_tickets_by_class_or_wave_and_splits_donations()
     {
-        var wave = Order(lines: [Line(), Donation(17500, TicketDonationPurpose.LowIncomePool)]);
+        var wave = Order(lines: [Line(), Donation(17500, "Low income pool")]);
         var lowIncome = Order(lines: Line(12500));
         lowIncome.DisputedMinor = 12500;
         var unpaid = Order(TicketCheckoutOrderState.Pending, lines: Line());
@@ -175,7 +175,7 @@ public sealed class TicketSupportReportsTests
         report.DisputedMinor.Should().Be(12500);
         report.ByPrice.Should().BeEquivalentTo(
             [new SalesRow("Companion", 1, 0), new SalesRow("Low income", 1, 12500), new SalesRow("Wave 1", 1, 22500)]);
-        report.DonationsByPurpose.Should().Equal(new DonationRow(TicketDonationPurpose.LowIncomePool, 1, 17500));
+        report.DonationsByPurpose.Should().Equal(new DonationRow("Low income pool", 1, 17500));
     }
 
     [HumansFact]

@@ -221,12 +221,13 @@ internal sealed class SalesEditForm
     public List<WaveRow> Waves { get; set; } = [];
     public List<SupporterRow> SupporterLevels { get; set; } = [];
     public List<PriceRuleRow> PriceRules { get; set; } = [];
-    public string? ChildPrice { get; set; }
-    public int? ChildMaxAge { get; set; }
+    public List<ChildTypeRow> ChildTypes { get; set; } = [];
+    public List<DonationPurposeRow> DonationPurposes { get; set; } = [];
     public ResaleScheme Resale { get; set; } = ResaleScheme.QueueAndDirected;
     public bool PartnerTickets { get; set; } = true;
     public bool Donations { get; set; } = true;
     public bool MailingListOptIn { get; set; } = true;
+    public bool CompanionTickets { get; set; } = true;
     public string? TermsFolder { get; set; }
 
     internal sealed class WaveRow
@@ -239,6 +240,18 @@ internal sealed class SalesEditForm
     internal sealed class SupporterRow
     {
         public string? Total { get; set; }
+    }
+
+    internal sealed class ChildTypeRow
+    {
+        public string? Name { get; set; }
+        public int? UnderAge { get; set; }
+        public string? Price { get; set; }
+    }
+
+    internal sealed class DonationPurposeRow
+    {
+        public string? Name { get; set; }
     }
 
     internal sealed class PriceRuleRow
@@ -270,12 +283,13 @@ internal sealed class SalesEditForm
             Amount = r.Kind == TicketPriceRuleKind.WavePin ? null : Eur(r.AmountMinor),
             Label = r.Label,
         }).ToList(),
-        ChildPrice = e.ChildPriceMinor is { } child ? Eur(child) : null,
-        ChildMaxAge = e.ChildMaxAge,
+        ChildTypes = e.ChildTypes.Select(c => new ChildTypeRow { Name = c.Name, UnderAge = c.UnderAge, Price = Eur(c.PriceMinor) }).ToList(),
+        DonationPurposes = e.DonationPurposes.Select(p => new DonationPurposeRow { Name = p }).ToList(),
         Resale = e.EffectiveSwitches.Resale,
         PartnerTickets = e.EffectiveSwitches.PartnerTickets,
         Donations = e.EffectiveSwitches.Donations,
         MailingListOptIn = e.EffectiveSwitches.MailingListOptIn,
+        CompanionTickets = e.EffectiveSwitches.CompanionTicketsOn,
         TermsFolder = e.TermsFolder,
     };
 
@@ -323,24 +337,30 @@ internal sealed class SalesEditForm
             rules.Add(new TicketPriceRule { GrantProgramId = programId, Kind = row.Kind, AmountMinor = amount, Label = label });
         }
 
-        long? childPrice = null;
-        if (!Blank(ChildPrice))
+        var childTypes = new List<TicketChildType>();
+        foreach (var row in ChildTypes.Where(r => r.UnderAge is not null || !Blank(r.Name, r.Price)))
         {
-            if (!TryMinor(ChildPrice, out var child)) return (null, "Child ticket price is not an amount.");
-            childPrice = child;
+            var name = row.Name?.Trim();
+            if (string.IsNullOrEmpty(name)) return (null, "Every child ticket needs a name.");
+            if (row.UnderAge is not { } underAge) return (null, $"Child ticket '{name}' needs an age.");
+            if (!TryMinor(row.Price, out var price)) return (null, $"Child ticket '{name}' needs a price.");
+            childTypes.Add(new TicketChildType { Name = name, UnderAge = underAge, PriceMinor = price });
         }
+
+        var purposes = DonationPurposes.Where(r => !Blank(r.Name)).Select(r => r.Name!.Trim()).ToList();
 
         return (new SalesEventSave(id, EventSettingsId, BackendKey.Trim(), BackendEventRef, Mode, close, Capacity,
             vatPercent / 100m, waves, totals, rules)
         {
-            ChildPriceMinor = childPrice,
-            ChildMaxAge = ChildMaxAge,
+            ChildTypes = childTypes,
+            DonationPurposes = purposes,
             Switches = new TicketSalesSwitches
             {
                 Resale = Resale,
                 PartnerTickets = PartnerTickets,
                 Donations = Donations,
                 MailingListOptIn = MailingListOptIn,
+                CompanionTickets = CompanionTickets,
             },
             TermsFolder = string.IsNullOrWhiteSpace(TermsFolder) ? null : TermsFolder.Trim().Trim('/'),
         }, null);

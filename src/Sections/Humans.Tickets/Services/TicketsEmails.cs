@@ -85,7 +85,7 @@ internal sealed class TicketsEmails(
             {
                 var label = line.Kind == CheckoutLineKind.Ticket
                     ? Lf("Tickets_Delivery_Receipt_TicketLine", Encode(line.AttendeeName ?? string.Empty), (line.VatRate * 100m).ToString("0.##", CultureInfo.CurrentCulture))
-                    : Lf("Tickets_Delivery_Receipt_DonationLine", Encode(localizer[$"Tickets_Buy_Purpose_{line.DonationPurpose ?? TicketDonationPurpose.General}"].Value));
+                    : Lf("Tickets_Delivery_Receipt_DonationLine", Encode(line.DonationPurpose ?? localizer["Tickets_Buy_Purpose_General"].Value));
                 return $"<tr><td>{label}</td><td style=\"text-align: right;\">{Money(line.AmountMinor)}</td></tr>";
             }));
             var refunded = receipt.RefundedMinor > 0

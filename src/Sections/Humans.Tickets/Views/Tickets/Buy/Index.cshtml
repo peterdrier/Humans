@@ -102,19 +102,37 @@ else
                     <label class="form-check-label" for="forSelf-@p">@string.Format(Localizer["Tickets_Buy_ForSelf"].Value, sale.BuyerName)</label>
                 </div>
 
-                @if (sale.SalesEvent.ChildPriceMinor is { } childPrice && directedToken is null)
+                @if (sale.SalesEvent.ChildTypes.Count > 0 && directedToken is null)
                 {
+                    var childTypes = sale.SalesEvent.ChildTypes;
+                    string ChildTypeText(TicketChildType t) => string.Format(Localizer["Tickets_Buy_ChildType"].Value, t.Name,
+                        t.UnderAge.ToString(System.Globalization.CultureInfo.CurrentCulture), (t.PriceMinor / 100m).ToEuro());
                     <hr class="my-4" />
                     <h3 class="h4">@Localizer["Tickets_Buy_Children"]</h3>
-                    <p class="small text-muted">@string.Format(Localizer["Tickets_Buy_ChildrenHelp"].Value, (childPrice / 100m).ToEuro(), sale.SalesEvent.ChildMaxAge?.ToString(System.Globalization.CultureInfo.CurrentCulture) ?? "")</p>
+                    <p class="small text-muted mb-1">@Localizer["Tickets_Buy_ChildrenHelp"]</p>
+                    @if (childTypes.Count == 1)
+                    {
+                        <p class="small text-muted">@ChildTypeText(childTypes[0])</p>
+                    }
                     <div class="row g-2">
                         @for (var c = 0; c < 3; c++)
                         {
+                            var childLabel = string.Format(Localizer["Tickets_Buy_ChildName"].Value, c + 1);
                             <div class="col-md-8">
                                 <input class="form-control" name="childNames" maxlength="513" autocomplete="off"
-                                       aria-label="@string.Format(Localizer["Tickets_Buy_ChildName"].Value, c + 1)"
-                                       placeholder="@string.Format(Localizer["Tickets_Buy_ChildName"].Value, c + 1)" />
+                                       aria-label="@childLabel" placeholder="@childLabel" />
                             </div>
+                            @if (childTypes.Count > 1)
+                            {
+                                <div class="col-md-4">
+                                    <select class="form-select" name="childTypes" aria-label="@string.Format(Localizer["Tickets_Buy_ChildTypeLabel"].Value, c + 1)">
+                                        @foreach (var t in childTypes)
+                                        {
+                                            <option value="@t.Name">@ChildTypeText(t)</option>
+                                        }
+                                    </select>
+                                </div>
+                            }
                         }
                     </div>
                 }
@@ -170,13 +188,18 @@ else
                             <span class="input-group-text">€</span>
                         </div>
                     </div>
-                    <div class="col-12 col-md-8">
-                        <select class="form-select" name="donationPurpose" aria-label="@Localizer["Tickets_Buy_DonationPurpose"]">
-                            <option value="@TicketDonationPurpose.General">@Localizer["Tickets_Buy_Purpose_General"]</option>
-                            <option value="@TicketDonationPurpose.Creativity">@Localizer["Tickets_Buy_Purpose_Creativity"]</option>
-                            <option value="@TicketDonationPurpose.LowIncomePool">@Localizer["Tickets_Buy_Purpose_LowIncomePool"]</option>
-                        </select>
-                    </div>
+                    @if (sale.SalesEvent.DonationPurposes.Count > 0)
+                    {
+                        <div class="col-12 col-md-8">
+                            <select class="form-select" name="donationPurpose" aria-label="@Localizer["Tickets_Buy_DonationPurpose"]">
+                                <option value="">@Localizer["Tickets_Buy_Purpose_General"]</option>
+                                @foreach (var purpose in sale.SalesEvent.DonationPurposes)
+                                {
+                                    <option value="@purpose">@purpose</option>
+                                }
+                            </select>
+                        </div>
+                    }
                 </div>
                 <p class="small text-muted mb-0">@Localizer["Tickets_Buy_DonationNote"]</p>
             }

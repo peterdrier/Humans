@@ -136,7 +136,7 @@ internal sealed partial class TicketCheckoutService
         TicketCheckoutTicket ticket, TicketSalesEvent? salesEvent,
         IReadOnlyList<TicketCheckoutTicket> eventTickets, IReadOnlyList<TicketCompanionRequest> requests) =>
         ticket is { State: TicketCheckoutTicketState.Valid, Kind: TicketHolderKind.Adult, HolderUserId: not null }
-        && salesEvent is { Mode: not TicketSalesMode.Closed }
+        && salesEvent is { Mode: not TicketSalesMode.Closed, EffectiveSwitches.CompanionTicketsOn: true }
         && !eventTickets.Any(t => t.ParentTicketId == ticket.Id && t.Kind == TicketHolderKind.Companion && t.State == TicketCheckoutTicketState.Valid)
         && !requests.Any(r => r.TicketId == ticket.Id && r.State == TicketCompanionRequestState.Pending);
 }

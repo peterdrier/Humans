@@ -26,10 +26,17 @@ internal sealed class TicketSalesEventConfiguration : IEntityTypeConfiguration<T
             r.ToJson("price_rules");
             r.Property(p => p.Kind).HasConversion<string>();
         });
+        builder.Property(x => x.DonationPurposes).HasDefaultValueSql("'{}'::text[]");
+        builder.OwnsMany(x => x.ChildTypes, c =>
+        {
+            c.ToJson("child_types");
+            c.Property(p => p.Name).HasMaxLength(64);
+        });
         builder.OwnsOne(x => x.Switches, s =>
         {
             s.ToJson("switches");
             s.Property(p => p.Resale).HasConversion<string>();
+            s.Ignore(p => p.CompanionTicketsOn);
         });
     }
 }
@@ -60,7 +67,6 @@ internal sealed class TicketCheckoutOrderConfiguration : IEntityTypeConfiguratio
         {
             l.ToJson("lines");
             l.Property(p => p.Kind).HasConversion<string>();
-            l.Property(p => p.DonationPurpose).HasConversion<string>();
             l.Property(p => p.HolderKind).HasConversion<string>();
         });
     }
