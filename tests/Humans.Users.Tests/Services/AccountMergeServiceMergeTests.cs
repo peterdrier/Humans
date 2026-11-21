@@ -361,7 +361,7 @@ public class AccountMergeServiceMergeTests
         await db.SaveChangesAsync(TestContext.Current.CancellationToken);
         var repository = new AccountMergeRepository(new TestDbContextFactory(options));
 
-        var result = await BuildSut(repository).HasPendingForUserAndEmailAsync(
+        var result = await repository.HasPendingForUserAndEmailAsync(
             targetId, email, alternate, TestContext.Current.CancellationToken);
 
         result.Should().Be(expected);

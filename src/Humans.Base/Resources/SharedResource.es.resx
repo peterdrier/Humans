@@ -1023,15 +1023,6 @@
   <data name="Todo_Consents_Action" xml:space="preserve">
     <value>Revisar acuerdos</value>
   </data>
-  <data name="Todo_ConsentCheck_Title" xml:space="preserve">
-    <value>Revisión del coordinador</value>
-  </data>
-  <data name="Todo_ConsentCheck_Done" xml:space="preserve">
-    <value>Un coordinador ha revisado y aprobado tus documentos.</value>
-  </data>
-  <data name="Todo_ConsentCheck_Pending" xml:space="preserve">
-    <value>Un coordinador revisará tus documentos una vez que el perfil y los acuerdos estén completos.</value>
-  </data>
   <data name="Todo_ShiftInfo_Title" xml:space="preserve">
     <value>Configura tus preferencias de turno</value>
   </data>

@@ -99,11 +99,11 @@ graph LR
     Campaigns -.-> Teams
     Campaigns -.-> Tickets
     Campaigns -.-> Users
-    Camps --> CityPlanning
     Camps --> EarlyEntry
     Camps --> Google
     Camps --> Issues
     Camps --> Settings
+    Camps -.-> CityPlanning
     Camps -.-> Email
     Camps -.-> Notifications
     Camps -.-> Shifts
@@ -125,6 +125,7 @@ graph LR
     Consent -.-> Shifts
     Consent -.-> Teams
     Consent -.-> Users
+    Containers --> Settings
     Containers -.-> Camps
     Containers -.-> CityPlanning
     Debug --> Consent
@@ -226,11 +227,6 @@ graph LR
     Scanner --> Issues
     Scanner --> Settings
     Scanner --> Tickets
-    Search --> Camps
-    Search --> Events
-    Search --> Shifts
-    Search --> Teams
-    Search --> Users
     Shifts --> Auth
     Shifts --> Calendar
     Shifts --> Consent
@@ -289,13 +285,12 @@ graph LR
     Tickets -.-> Users
     Users --> AuditLog
     Users --> Auth
-    Users --> Camps
     Users --> Cantina
     Users --> Consent
     Users --> Gdpr
     Users --> Google
     Users --> Issues
-    Users --> Settings
+    Users -.-> Camps
     Users -.-> Email
     Users -.-> Governance
     Users -.-> Notifications

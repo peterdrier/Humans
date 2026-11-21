@@ -37,19 +37,6 @@ internal interface IAccountMergeService : IApplicationService
     /// merged.
     /// </summary>
     Task<AccountMergeResult> ReconcileMergedRequestAsync(Guid requestId, Guid adminUserId, CancellationToken ct = default);
-
-    /// <summary>The subset of <paramref name="emailIds"/> with a pending merge request.</summary>
-    Task<IReadOnlySet<Guid>> GetPendingEmailIdsAsync(
-        IReadOnlyList<Guid> emailIds, CancellationToken ct = default);
-
-    /// <summary>Case-insensitive, including the gmail/googlemail twin.</summary>
-    Task<bool> HasPendingForUserAndEmailAsync(
-        Guid targetUserId, string normalizedEmail, string? alternateEmail,
-        CancellationToken ct = default);
-
-    Task<bool> HasPendingForEmailIdAsync(Guid pendingEmailId, CancellationToken ct = default);
-
-    Task CreateAsync(AccountMergeRequest request, CancellationToken ct = default);
 }
 
 public sealed record AccountMergeRequestSnapshot(

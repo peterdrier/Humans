@@ -76,15 +76,14 @@ public class UserEmailServiceTests
             return IdentityResult.Success;
         });
         if (overlap == RemovalOverlap.DeleteThenUnlink)
-            _ticketService.GetTicketOrdersAsync(Arg.Any<CancellationToken>()).Returns(async _ =>
+            _emailLock.GetLockedAddressesAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(async _ =>
             {
                 firstReachedRemoval.SetResult();
                 await releaseFirst.Task.WaitAsync(ct);
-                return (IReadOnlyList<TicketOrderInfo>)[];
+                return (IReadOnlyCollection<string>)[];
             });
 
-        var secondScope = new UserEmailService(_repository, _userService, _userManager, _clock,
-            _auditLogService, _serviceProvider, NullLogger<UserEmailService>.Instance);
+        var secondScope = NewService();
         var first = RemoveFirstAsync();
         await firstReachedRemoval.Task.WaitAsync(ct);
         var second = RemoveSecondAsync();
@@ -106,16 +105,15 @@ public class UserEmailServiceTests
     }
 
     private readonly IUserRepository _repository = Substitute.For<IUserRepository>();
-    private readonly IAccountMergeService _mergeService = Substitute.For<IAccountMergeService>();
+    private readonly IAccountMergeRepository _mergeRepository = Substitute.For<IAccountMergeRepository>();
     private readonly IUserManagement _userService = Substitute.For<IUserManagement>();
-    private readonly ITicketService _ticketService = Substitute.For<ITicketService>();
+    private readonly IUserEmailLock _emailLock = Substitute.For<IUserEmailLock>();
     private readonly UserManager<User> _userManager;
     private readonly FakeClock _clock = new(Instant.FromUtc(2026, 4, 21, 12, 0));
     private readonly IUserInfoSliceRefresher _userInfoRefresher = Substitute.For<IUserInfoSliceRefresher>();
     private readonly IAuditLogService _auditLogService = Substitute.For<IAuditLogService>();
-    private readonly IGoogleWrite _googleIdentity = Substitute.For<IGoogleWrite>();
+    private readonly IUserEmailRemovalListener _googleIdentity = Substitute.For<IUserEmailRemovalListener>();
     private readonly IEmailService _emailService = Substitute.For<IEmailService>();
-    private readonly IServiceProvider _serviceProvider;
     private readonly UserEmailService _service;
 
     public UserEmailServiceTests()
@@ -123,30 +121,28 @@ public class UserEmailServiceTests
         var store = Substitute.For<IUserStore<User>>();
         _userManager = Substitute.For<UserManager<User>>(
             store, null, null, null, null, null, null, null, null);
-        // Default: user holds no ticket-linked emails, so the ticket-linked delete
-        // guard is a no-op unless a test overrides GetTicketOrdersAsync.
-        _ticketService.GetTicketOrdersAsync(Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<IReadOnlyList<TicketOrderInfo>>([]));
-        _serviceProvider = new ServiceLocatorBuilder()
-            .With(_mergeService)
-            .With(_ticketService)
-            .With(_googleIdentity)
-            .With(_emailService)
-            .With(TestUsersEmails.Create())
-            .With(Options.Create(new EmailSettings { BaseUrl = TestUsersEmails.BaseUrl }))
-            .Build();
+        // Default: no section locks an address, so the delete guard is a no-op unless a test overrides it.
+        _emailLock.GetLockedAddressesAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyCollection<string>>([]));
 
-        _service = new UserEmailService(
-            _repository,
-            _userService,
-            _userManager,
-            _clock,
-            _auditLogService,
-            _serviceProvider,
-            NullLogger<UserEmailService>.Instance);
+        _service = NewService();
 
         StubUserServiceEmailMutations();
     }
+
+    private UserEmailService NewService() => new(
+        _repository,
+        _userService,
+        _userManager,
+        _clock,
+        _auditLogService,
+        _mergeRepository,
+        [_emailLock],
+        [_googleIdentity],
+        TestUsersEmails.Create(),
+        Options.Create(new EmailSettings { BaseUrl = TestUsersEmails.BaseUrl }),
+        _emailService,
+        NullLogger<UserEmailService>.Instance);
 
     private void StubUserServiceEmailMutations()
     {
@@ -524,7 +520,7 @@ public class UserEmailServiceTests
         await _repository.Received(1).RemoveUserEmailAsync(Arg.Any<UserEmail>(), Arg.Any<CancellationToken>());
         await _userInfoRefresher.Received(1).RefreshAsync(userId, Arg.Any<CancellationToken>(), Arg.Any<string>(), Arg.Any<string>());
         // A deleted address stops being the member's Google Workspace identity.
-        await _googleIdentity.Received(1).ClearIfAddressAsync(userId, "secondary@example.com", Arg.Any<CancellationToken>());
+        await _googleIdentity.Received(1).AddressRemovedAsync(userId, "secondary@example.com", Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -710,7 +706,7 @@ public class UserEmailServiceTests
         };
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
             .Returns(BuildStubUserInfo(userId, [onlyVerifiedGoogle, unverifiedLinked]));
-        _mergeService.GetPendingEmailIdsAsync(Arg.Any<IReadOnlyList<Guid>>(), Arg.Any<CancellationToken>())
+        _mergeRepository.GetPendingEmailIdsAsync(Arg.Any<IReadOnlyList<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new HashSet<Guid>() as IReadOnlySet<Guid>);
         var rows = await _service.GetUserEmailsAsync(userId, Xunit.TestContext.Current.CancellationToken);
 
@@ -748,34 +744,9 @@ public class UserEmailServiceTests
             .Returns(ticketEmail);
         _repository.GetUserEmailsByUserIdForMutationAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new List<UserEmail> { ticketEmail, primary });
-        _ticketService.GetTicketOrdersAsync(Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<IReadOnlyList<TicketOrderInfo>>([
-                new TicketOrderInfo(
-                    Guid.NewGuid(),
-                    "vendor-order",
-                    "Buyer",
-                    null,
-                    100m,
-                    "USD",
-                    null,
-                    TicketPaymentStatus.Paid,
-                    "event",
-                    _clock.GetCurrentInstant(),
-                    null,
-                    true,
-                    [
-                        new TicketAttendeeInfo(
-                            Guid.NewGuid(),
-                            "vendor-ticket",
-                            "Katja",
-                            // googlemail alternate must still match the gmail row.
-                            "katja@googlemail.com",
-                            "Full Week",
-                            100m,
-                            TicketAttendeeStatus.Valid,
-                            userId)
-                    ])
-            ]));
+        // The googlemail alternate must still match the gmail row.
+        _emailLock.GetLockedAddressesAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyCollection<string>>(["katja@googlemail.com"]));
 
         var result = await _service.DeleteEmailAsync(userId, ticketEmailId, Xunit.TestContext.Current.CancellationToken);
 
@@ -1040,7 +1011,7 @@ public class UserEmailServiceTests
         await _userManager.Received(1).RemoveLoginAsync(user, "Google", "sub-Z");
         await _repository.Received(1).RemoveUserEmailAsync(row, Arg.Any<CancellationToken>());
         await _userInfoRefresher.Received(1).RefreshAsync(userId, Arg.Any<CancellationToken>(), Arg.Any<string>(), Arg.Any<string>());
-        await _googleIdentity.Received(1).ClearIfAddressAsync(userId, "linked@example.com", CancellationToken.None);
+        await _googleIdentity.Received(1).AddressRemovedAsync(userId, "linked@example.com", CancellationToken.None);
         await _auditLogService.Received(1).LogAsync(
             UsersAuditActions.UserEmailUnlinked,
             Arg.Any<string>(), userId,
@@ -1438,7 +1409,7 @@ public class UserEmailServiceTests
     {
         var userId = Guid.NewGuid();
         var email = pendingMerge ? "new@example.com" : "not an email";
-        _mergeService.HasPendingForUserAndEmailAsync(
+        _mergeRepository.HasPendingForUserAndEmailAsync(
             userId, Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(pendingMerge);
 
@@ -1633,7 +1604,7 @@ public class UserEmailServiceTests
         result.Succeeded.Should().BeTrue();
         await _userService.Received(1).RemoveUserEmailAsync(userId, linked.Id,
             Arg.Is<UserEmailRemoveCommand>(command => command.Mode == UserEmailRemovalMode.ProviderLinkedEmail), CancellationToken.None);
-        await _googleIdentity.Received(1).ClearIfAddressAsync(userId, linked.Email, CancellationToken.None);
+        await _googleIdentity.Received(1).AddressRemovedAsync(userId, linked.Email, CancellationToken.None);
     }
 
     [HumansTheory]
@@ -1949,14 +1920,14 @@ public class UserEmailServiceTests
             .Returns(pending);
         _repository.GetUserEmailsByAddressAsync(Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns([conflicting]);
-        _mergeService.HasPendingForEmailIdAsync(rowId, Arg.Any<CancellationToken>())
+        _mergeRepository.HasPendingForEmailIdAsync(rowId, Arg.Any<CancellationToken>())
             .Returns(alreadyPending);
 
         var result = await _service.AdminMarkVerifiedAsync(userId, rowId, actorId, Xunit.TestContext.Current.CancellationToken);
 
         result.MergeRequestCreated.Should().BeTrue();
         pending.IsVerified.Should().BeFalse();
-        await _mergeService.Received(alreadyPending ? 0 : 1).CreateAsync(
+        await _mergeRepository.Received(alreadyPending ? 0 : 1).AddAsync(
             Arg.Is<AccountMergeRequest>(m =>
                 m.TargetUserId == userId
                 && m.SourceUserId == otherUserId

@@ -13,7 +13,6 @@ using Microsoft.Extensions.Localization;
 using Humans.Base.Constants;
 using Humans.Users.Models;
 using Microsoft.Extensions.Options;
-using Humans.Tickets.Contracts;
 using Humans.Users.Contracts;
 using Humans.Base;
 using Humans.Base.Authorization;
@@ -31,13 +30,13 @@ internal sealed class ProfileEmailsController(
     ILogger<ProfileEmailsController> logger,
     IStringLocalizer<UsersResource> localizer,
     IStringLocalizer<SharedResource> sharedLocalizer,
-    ITicketService ticketQueryService,
+    IEnumerable<IUserEmailLock> emailLocks,
     IAuthorizationService authorizationService,
     SignInManager<User> signInManager,
     IOptions<GoogleWorkspaceOptions> googleWorkspaceOptions) : HumansControllerBase(userService)
 {
     private readonly EmailsViewModelBuilder emailsViewModelBuilder = new(
-        userService, userManager, userEmailService, ticketQueryService, googleWorkspaceOptions.Value);
+        userService, userManager, userEmailService, emailLocks, googleWorkspaceOptions.Value);
     private readonly IUserManagement _userService = userService;
 
     [HttpGet("Me/Emails")]

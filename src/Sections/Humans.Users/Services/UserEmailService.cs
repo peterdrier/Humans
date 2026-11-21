@@ -1,8 +1,6 @@
-using Humans.Google.Contracts;
 using System.Collections.Concurrent;
 using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.Extensions.DependencyInjection;
 using NodaTime;
 using Humans.AuditLog.Contracts;
 using Humans.Users.Data.Repositories;
@@ -26,18 +24,16 @@ internal sealed class UserEmailService(
     UserManager<User> userManager,
     IClock clock,
     IAuditLogService auditLogService,
-    IServiceProvider serviceProvider,
+    IAccountMergeRepository mergeRepository,
+    IEnumerable<IUserEmailLock> emailLocks,
+    IEnumerable<IUserEmailRemovalListener> removalListeners,
+    UsersEmails usersEmails,
+    IOptions<EmailSettings> emailSettings,
+    IEmailService emailService,
     ILogger<UserEmailService> logger) : IUserEmailService, IUserMerge
 {
     // Keep the last-sign-in check and removal together across request scopes.
     private static readonly ConcurrentDictionary<Guid, TrackedLock> RemovalLocks = new();
-
-    // Lazy: breaks DI cycle TicketQueryService -> IUserEmailService -> ITicketService.
-    private Humans.Tickets.Contracts.ITicketService TicketService =>
-        serviceProvider.GetRequiredService<Humans.Tickets.Contracts.ITicketService>();
-
-    // Lazy: Google's identity service reads IUserService.
-    private IGoogleWrite GoogleIdentity => serviceProvider.GetRequiredService<IGoogleWrite>();
 
     public async Task<UpdateEmailResult> SetPrimaryAsync(
         Guid userId, Guid emailId, CancellationToken cancellationToken = default, Guid? actorUserId = null)
@@ -102,8 +98,7 @@ internal sealed class UserEmailService(
             }
         }
 
-        // Block removing a ticket-linked email: the next vendor re-sync could un-match the ticket.
-        if (await IsAddressTicketLinkedAsync(userId, email.Email, cancellationToken))
+        if (await IsAddressLockedAsync(userId, email.Email, cancellationToken))
         {
             return new DeleteEmailResult(false, "Users_EmailGrid_DeleteTicketLinkedBlocked");
         }
@@ -115,7 +110,7 @@ internal sealed class UserEmailService(
             cancellationToken);
         if (removed)
         {
-            await GoogleIdentity.ClearIfAddressAsync(userId, email.Email, CancellationToken.None);
+            await AddressRemovedAsync(userId, email.Email, CancellationToken.None);
             // Without an actor the caller is transactional provisioning, which audits after its commit.
             if (actorUserId.HasValue)
                 await LogEmailChangeAsync(UsersAuditActions.UserEmailDeleted, userId, emailId,
@@ -151,24 +146,23 @@ internal sealed class UserEmailService(
         return result;
     }
 
-    // Order buyer or matched attendee, read through the Tickets section's own interface.
-    private async Task<bool> IsAddressTicketLinkedAsync(
+    private async Task<bool> IsAddressLockedAsync(
         Guid userId, string address, CancellationToken cancellationToken)
     {
-        var orders = await TicketService.GetTicketOrdersAsync(cancellationToken);
-
-        foreach (var order in orders)
+        foreach (var emailLock in emailLocks)
         {
-            if (order.MatchedUserId == userId
-                && EmailNormalization.EmailsMatch(address, order.BuyerEmail))
-                return true;
-
-            if (order.Attendees.Any(a => a.MatchedUserId == userId
-                    && EmailNormalization.EmailsMatch(address, a.AttendeeEmail)))
+            if ((await emailLock.GetLockedAddressesAsync(userId, cancellationToken))
+                .Any(locked => EmailNormalization.EmailsMatch(address, locked)))
                 return true;
         }
 
         return false;
+    }
+
+    private async Task AddressRemovedAsync(Guid userId, string email, CancellationToken cancellationToken)
+    {
+        foreach (var listener in removalListeners)
+            await listener.AddressRemovedAsync(userId, email, cancellationToken);
     }
     /// <inheritdoc />
     public async Task AddProvisionedEmailAsync(
@@ -230,7 +224,7 @@ internal sealed class UserEmailService(
             ct);
         if (removed)
         {
-            await GoogleIdentity.ClearIfAddressAsync(row.UserId, row.Email, CancellationToken.None);
+            await AddressRemovedAsync(row.UserId, row.Email, CancellationToken.None);
             const string description = "Orphan UserEmail row deleted by EmailProblems action";
             if (actorUserId is { } actor)
                 await auditLogService.LogAsync(UsersAuditActions.OrphanUserEmailDeleted,
@@ -309,7 +303,7 @@ internal sealed class UserEmailService(
                     PreserveLastVerifiedEmail: false),
                 cancellationToken);
             if (!removed) return new(false);
-            await GoogleIdentity.ClearIfAddressAsync(userId, row.Email, cancellationToken);
+            await AddressRemovedAsync(userId, row.Email, cancellationToken);
         }
 
         await auditLogService.LogAsync(
@@ -352,9 +346,6 @@ internal sealed class UserEmailService(
         CancellationToken cancellationToken = default) =>
         ReconcileAsync(userId, provider, providerKey, claimEmail, claimEmailVerified, cancellationToken);
 
-    // Lazy: merge resolution reaches Teams, whose service also reads email data.
-    private IAccountMergeService MergeService => serviceProvider.GetRequiredService<IAccountMergeService>();
-
     public async Task<IReadOnlyList<UserEmailEditDto>> GetUserEmailsAsync(
         Guid userId, CancellationToken cancellationToken = default)
     {
@@ -362,7 +353,7 @@ internal sealed class UserEmailService(
         if (info is null) return [];
 
         var emailIds = info.UserEmails.Select(e => e.Id).ToList();
-        var mergePendingSet = await MergeService.GetPendingEmailIdsAsync(emailIds, cancellationToken);
+        var mergePendingSet = await mergeRepository.GetPendingEmailIdsAsync(emailIds, cancellationToken);
         var verifiedCount = info.UserEmails.Count(e => e.IsVerified);
 
         return info.UserEmails.Select(e => new UserEmailEditDto(
@@ -758,9 +749,9 @@ internal sealed class UserEmailService(
         // place, a displacement deletes the other user's row. Each stops being a Google identity.
         if (previousEmail is not null && outcome is ReconcileOutcome.TagMoved or ReconcileOutcome.EmailRewritten
             && !string.Equals(previousEmail, claimEmail, StringComparison.OrdinalIgnoreCase))
-            await GoogleIdentity.ClearIfAddressAsync(userId, previousEmail, cancellationToken);
+            await AddressRemovedAsync(userId, previousEmail, cancellationToken);
         if (displaced)
-            await GoogleIdentity.ClearIfAddressAsync(blocker!.UserId, blocker.Email, cancellationToken);
+            await AddressRemovedAsync(blocker!.UserId, blocker.Email, cancellationToken);
 
         // 6. Audit. A displacement writes the OAuthRenameCollision pair instead.
         if (displaced)
@@ -861,8 +852,6 @@ internal sealed class UserEmailService(
 
     private const string EmailVerificationTokenPurpose = "UserEmailVerification";
 
-    // Lazy: breaks DI cycle TeamService -> IEmailService -> IUserEmailService -> IAccountMergeService -> ITeamService.
-
     public async Task<AddEmailResult> AddEmailAsync(
         Guid userId, string email, CancellationToken cancellationToken = default, Guid? actorUserId = null)
     {
@@ -877,7 +866,7 @@ internal sealed class UserEmailService(
         if (held.Any(e => e.UserId == userId))
             return Refuse("Users_Profile_EmailAlreadyAdded");
 
-        if (await MergeService.HasPendingForUserAndEmailAsync(
+        if (await mergeRepository.HasPendingForUserAndEmailAsync(
                 userId, normalizedEmail, alternateEmail, cancellationToken))
             return Refuse("Users_Profile_EmailMergePending");
 
@@ -917,7 +906,7 @@ internal sealed class UserEmailService(
             TokenOptions.DefaultEmailProvider,
             $"{EmailVerificationTokenPurpose}:{addResult.EmailId}");
 
-        var baseUrl = serviceProvider.GetRequiredService<IOptions<EmailSettings>>().Value.BaseUrl;
+        var baseUrl = emailSettings.Value.BaseUrl;
         var verificationUrl = QueryHelpers.AddQueryString($"{baseUrl.TrimEnd('/')}/Profile/Me/Emails/Verify",
             new Dictionary<string, string?>(StringComparer.Ordinal)
             {
@@ -926,11 +915,11 @@ internal sealed class UserEmailService(
                 ["token"] = HttpUtility.UrlEncode(token)
             });
         var info = await userService.GetUserInfoAsync(userId, cancellationToken);
-        var message = serviceProvider.GetRequiredService<UsersEmails>().EmailVerification(
+        var message = usersEmails.EmailVerification(
             userId, email, info?.BurnerName ?? string.Empty, verificationUrl, addResult.IsConflict,
             user.PreferredLanguage.IsSupportedCultureCode()
                 ? user.PreferredLanguage : CultureCatalog.DefaultCultureCode);
-        await serviceProvider.GetRequiredService<IEmailService>().SendAsync(message, cancellationToken);
+        await emailService.SendAsync(message, cancellationToken);
 
         return new AddEmailResult(addResult.EmailId, token, addResult.IsConflict);
 
@@ -1030,7 +1019,7 @@ internal sealed class UserEmailService(
             return false;
 
         // Link prefetch, double-clicks and repeat admin verification would duplicate it.
-        if (!await MergeService.HasPendingForEmailIdAsync(pendingEmail.Id, cancellationToken))
+        if (!await mergeRepository.HasPendingForEmailIdAsync(pendingEmail.Id, cancellationToken))
         {
             var now = clock.GetCurrentInstant();
             var mergeRequest = new AccountMergeRequest
@@ -1044,7 +1033,7 @@ internal sealed class UserEmailService(
                 CreatedAt = now
             };
 
-            await MergeService.CreateAsync(mergeRequest, cancellationToken);
+            await mergeRepository.AddAsync(mergeRequest, cancellationToken);
         }
 
         return true;

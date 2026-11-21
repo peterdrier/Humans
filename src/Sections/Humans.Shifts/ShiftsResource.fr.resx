@@ -1313,4 +1313,5 @@
   <data name="ShiftsSummary_ManageShifts" xml:space="preserve">
     <value>Gérer les quarts</value>
   </data>
+  <data name="Shifts_Search_Category" xml:space="preserve"><value>Quarts</value></data>
 </root>

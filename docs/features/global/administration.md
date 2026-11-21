@@ -192,7 +192,7 @@ Each active section implementing `ISectionAdminTiles` contributes `AdminTile`s (
 |---|---|---|---|---|
 | `users.total` | Total users | Users | — | `IUserService` snapshot count |
 | `users.profiles` | Active (has profile) | Users | — | Snapshot count where `IsActive` |
-| `users.tickets` | Ticket holders | Users | — | Snapshot count with a ticket for the active event year; 0 with no active event |
+| `tickets.holders` | Ticket holders | Tickets | — | Living users (`IUserService` snapshot) with a ticket for the active event year; 0 with no active event |
 | `shifts.coverage` | Shifts staffed | Shifts | — | `IShiftManagement.GetOverallCoverageAsync` (section-internal) |
 | `shell.online.now` | Online now | Shell | — | `IUserActivityTracker`, 5-minute window |
 | `shell.online.hour` | Active (1h) | Shell | — | `IUserActivityTracker`, 1-hour window |

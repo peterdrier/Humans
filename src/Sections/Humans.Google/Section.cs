@@ -95,7 +95,7 @@ public sealed class Section :
         services.AddScoped<WorkspaceIdentityService>();
         services.AddScoped<IWorkspaceIdentityManagement>(sp => sp.GetRequiredService<WorkspaceIdentityService>());
         services.AddScoped<IGoogleService>(sp => sp.GetRequiredService<WorkspaceIdentityService>());
-        services.AddScoped<IGoogleWrite>(sp => sp.GetRequiredService<WorkspaceIdentityService>());
+        services.AddScoped<IUserEmailRemovalListener>(sp => sp.GetRequiredService<WorkspaceIdentityService>());
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<WorkspaceIdentityService>());
         services.AddScoped<IUserMerge>(sp => sp.GetRequiredService<WorkspaceIdentityService>());
 

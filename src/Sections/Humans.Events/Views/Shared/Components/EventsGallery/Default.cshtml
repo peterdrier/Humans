@@ -40,7 +40,7 @@
         @if (Model.EventId is { } eventId)
         {
             <div class="list-group">
-                <vc:events-search-result event-id="@eventId" />
+                <vc:events-search-result key="@eventId" />
             </div>
         }
         else

@@ -1313,4 +1313,5 @@
   <data name="ShiftsSummary_ManageShifts" xml:space="preserve">
     <value>Gestionar torns</value>
   </data>
+  <data name="Shifts_Search_Category" xml:space="preserve"><value>Torns</value></data>
 </root>

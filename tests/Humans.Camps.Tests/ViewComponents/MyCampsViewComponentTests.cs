@@ -1,10 +1,11 @@
 using AwesomeAssertions;
+using Humans.Base.Enums;
+using Humans.Camps.ViewComponents;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.AspNetCore.Mvc.ViewComponents;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
-using System.Security.Claims;
 
 namespace Humans.Camps.Tests.ViewComponents;
 
@@ -18,19 +19,33 @@ public sealed class MyCampsViewComponentTests
         var camps = Substitute.For<ICampService>();
         camps.GetSettingsAsync(aborted.Token)
             .Returns(Task.FromException<CampSettingsInfo>(new OperationCanceledException(aborted.Token)));
-        var httpContext = new DefaultHttpContext { RequestAborted = aborted.Token };
-        httpContext.User = new ClaimsPrincipal(new ClaimsIdentity(
-            [new Claim(ClaimTypes.NameIdentifier, Guid.NewGuid().ToString())], "test"));
-        var component = new MyCampsViewComponent(camps, NullLogger<MyCampsViewComponent>.Instance)
+        var component = Build(camps, new DefaultHttpContext { RequestAborted = aborted.Token });
+
+        var act = () => component.InvokeAsync(Guid.NewGuid(), ProfileCardViewMode.Self);
+
+        await act.Should().ThrowAsync<OperationCanceledException>();
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(ProfileCardViewMode.Public)]
+    [Xunit.InlineData(ProfileCardViewMode.Admin)]
+    public async Task InvokeAsync_NotOwnProfile_RendersNothingAndReadsNothing(ProfileCardViewMode viewMode)
+    {
+        var camps = Substitute.For<ICampService>();
+        var component = Build(camps, new DefaultHttpContext());
+
+        var result = await component.InvokeAsync(Guid.NewGuid(), viewMode);
+
+        result.Should().BeOfType<ContentViewComponentResult>().Which.Content.Should().BeEmpty();
+        camps.ReceivedCalls().Should().BeEmpty();
+    }
+
+    private static MyCampsViewComponent Build(ICampService camps, HttpContext httpContext) =>
+        new(camps, NullLogger<MyCampsViewComponent>.Instance)
         {
             ViewComponentContext = new ViewComponentContext
             {
                 ViewContext = new ViewContext { HttpContext = httpContext }
             }
         };
-
-        var act = () => component.InvokeAsync();
-
-        await act.Should().ThrowAsync<OperationCanceledException>();
-    }
 }

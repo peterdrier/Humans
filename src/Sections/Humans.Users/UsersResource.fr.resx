@@ -801,4 +801,5 @@
   <data name="Users_Status_Board" xml:space="preserve"><value>Conseil</value></data>
   <data name="Users_Meter_PendingAccountDeletions" xml:space="preserve"><value>Suppressions de comptes en attente</value></data>
   <data name="Users_Meter_AudienceAdmin" xml:space="preserve"><value>administrateurs</value></data>
+  <data name="Users_Search_Category" xml:space="preserve"><value>Humans</value></data>
 </root>

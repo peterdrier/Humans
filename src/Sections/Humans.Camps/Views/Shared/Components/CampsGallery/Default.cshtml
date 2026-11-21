@@ -61,7 +61,7 @@
         @if (Model.CampId is { } campId)
         {
             <div class="list-group">
-                <vc:camps-search-result camp-id="@campId" />
+                <vc:camps-search-result key="@campId" />
             </div>
         }
         else

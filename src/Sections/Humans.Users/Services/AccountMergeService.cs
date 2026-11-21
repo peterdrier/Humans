@@ -333,20 +333,4 @@ internal sealed class AccountMergeService(
 
     public Task EraseForUserAsync(Guid userId, CancellationToken ct) =>
         mergeRepository.ScrubPiiForUserAsync(userId, ct);
-
-    public Task<IReadOnlySet<Guid>> GetPendingEmailIdsAsync(
-        IReadOnlyList<Guid> emailIds, CancellationToken ct = default) =>
-        mergeRepository.GetPendingEmailIdsAsync(emailIds, ct);
-
-    public Task<bool> HasPendingForUserAndEmailAsync(
-        Guid targetUserId, string normalizedEmail, string? alternateEmail,
-        CancellationToken ct = default) =>
-        mergeRepository.HasPendingForUserAndEmailAsync(
-            targetUserId, normalizedEmail, alternateEmail, ct);
-
-    public Task<bool> HasPendingForEmailIdAsync(Guid pendingEmailId, CancellationToken ct = default) =>
-        mergeRepository.HasPendingForEmailIdAsync(pendingEmailId, ct);
-
-    public Task CreateAsync(AccountMergeRequest request, CancellationToken ct = default) =>
-        mergeRepository.AddAsync(request, ct);
 }

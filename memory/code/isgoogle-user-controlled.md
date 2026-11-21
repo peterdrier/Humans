@@ -7,8 +7,8 @@ A member's Google Workspace identity — Google's `google_workspace_identities` 
 
 - **Never write it during merges, syncs, account folds, or duplicate resolution.** A merge deletes the archived account's row and leaves the survivor's alone; a sync writes only the verdict (`SetStatusFromSyncAsync`, for the attempted address), never the address.
 - **Defaults are resolved at read time, never stamped.** With no usable designation, `GetWorkspaceIdentityAsync` picks a verified @nobodies.team address, else the verified primary, else the first verified address. A verified @nobodies.team address outranks a non-@nobodies designation. Don't reintroduce an "invariant helper" that writes a winner after each email mutation.
-- **An address leaving the account clears the designation** (`IGoogleWrite.ClearIfAddressAsync`, a cleared row so the frozen legacy flag can't resurrect it) — the only automatic write.
+- **An address leaving the account clears the designation** (Google's `IUserEmailRemovalListener.AddressRemovedAsync`, a cleared row so the frozen legacy flag can't resurrect it) — the only automatic write.
 
 **Why:** the user's choice is sticky; merges and syncs that overrode user-set state were the original bug. The old add-row invariant helper (`EnsureGoogleInvariantAsync`) became a read-time resolution when the identity moved to Google.
 
-**How to apply:** designing a merge/sync/repair flow → never touch the identity. An address-removal flow → call `ClearIfAddressAsync` after the commit. If unsure which category applies, ask.
+**How to apply:** designing a merge/sync/repair flow → never touch the identity. An address-removal flow in Users → fan out `IUserEmailRemovalListener` after the commit. If unsure which category applies, ask.

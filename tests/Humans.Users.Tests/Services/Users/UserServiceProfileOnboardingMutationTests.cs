@@ -776,11 +776,10 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
             Substitute.For<IUserStore<User>>(), null, null, null, null, null, null, null, null);
         manager.FindByIdAsync(userId.ToString()).Returns(new User { Id = userId });
         manager.GenerateUserTokenAsync(Arg.Any<User>(), Arg.Any<string>(), Arg.Any<string>()).Returns("verification-token");
-        var services = new ServiceLocatorBuilder().With(Substitute.For<IAccountMergeService>())
-            .With(Substitute.For<IEmailService>()).With(TestUsersEmails.Create())
-            .With(Options.Create(new EmailSettings { BaseUrl = TestUsersEmails.BaseUrl })).Build();
         UserEmailService BuildEmailService() => new(
-            repository, BuildWithUserRepository(repository), manager, Clock, AuditLog, services,
+            repository, BuildWithUserRepository(repository), manager, Clock, AuditLog,
+            Substitute.For<IAccountMergeRepository>(), [], [], TestUsersEmails.Create(),
+            Options.Create(new EmailSettings { BaseUrl = TestUsersEmails.BaseUrl }), Substitute.For<IEmailService>(),
             NullLogger<UserEmailService>.Instance);
 
         var first = BuildEmailService().AddEmailAsync(userId, "same@example.com", ct);
