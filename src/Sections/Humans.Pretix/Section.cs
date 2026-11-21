@@ -36,5 +36,5 @@ public sealed class Section : ISection, ISectionConfiguration, ISectionAdminNav
     }
 
     IEnumerable<AdminNavGroup> ISectionAdminNav.Groups() =>
-        [TicketsBackendAdminNav.Group("pretix", PretixCheckoutBackend.BackendKey, "fa-solid fa-ticket")];
+        [TicketsBackendAdminNav.Group("pretix", PretixCheckoutBackend.BackendKey, "fa-solid fa-store")];
 }
