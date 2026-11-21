@@ -150,9 +150,9 @@ public sealed class TicketCheckoutServiceTests
     }
 
     [HumansFact]
-    public async Task Backend_ledger_flags_orders_never_accepted_or_open_past_expiry_and_unsettled_refunds()
+    public async Task Backend_ledger_flags_orders_open_past_expiry_splits_failed_refunds_and_leaves_free_orders_out_of_paid()
     {
-        TicketCheckoutOrder Order(TicketCheckoutOrderState state, string? backendId, Duration age, Duration expiresIn, string key = "test")
+        TicketCheckoutOrder Order(TicketCheckoutOrderState state, string? backendId, Duration age, Duration expiresIn, string key = "test", long total = 1000)
         {
             var order = new TicketCheckoutOrder
             {
@@ -163,24 +163,33 @@ public sealed class TicketCheckoutServiceTests
                 BackendOrderId = backendId,
                 CreatedAt = Now - age,
                 ExpiresAt = Now + expiresIn,
+                TotalMinor = total,
             };
             _repo.Orders.Add(order);
             return order;
         }
-        var neverAccepted = Order(TicketCheckoutOrderState.Created, null, Duration.FromHours(1), Duration.FromHours(1));
+        Order(TicketCheckoutOrderState.Created, null, Duration.FromHours(1), Duration.FromHours(1));
         var pastExpiry = Order(TicketCheckoutOrderState.Pending, "cs_1", Duration.FromHours(3), -Duration.FromHours(1));
         Order(TicketCheckoutOrderState.Pending, "cs_2", Duration.FromMinutes(5), Duration.FromMinutes(25));
         Order(TicketCheckoutOrderState.Pending, "cs_3", Duration.FromMinutes(40), -Duration.FromMinutes(10));
         var paid = Order(TicketCheckoutOrderState.Paid, "cs_4", Duration.FromDays(1), -Duration.FromDays(1));
+        Order(TicketCheckoutOrderState.Paid, null, Duration.FromDays(1), -Duration.FromDays(1), total: 0);
+        var refused = Order(TicketCheckoutOrderState.Paid, "cs_5", Duration.FromDays(1), -Duration.FromDays(1));
+        var retried = Order(TicketCheckoutOrderState.Paid, "cs_6", Duration.FromDays(1), -Duration.FromDays(1));
         Order(TicketCheckoutOrderState.Pending, "other_1", Duration.FromDays(2), -Duration.FromDays(2), key: "other");
         _repo.Refunds.Add((Guid.NewGuid(), new TicketCheckoutRefund { Id = Guid.NewGuid(), OrderId = paid.Id, AmountMinor = 1000, State = RefundState.ManualRequired }));
         _repo.Refunds.Add((Guid.NewGuid(), new TicketCheckoutRefund { Id = Guid.NewGuid(), OrderId = paid.Id, AmountMinor = 500, State = RefundState.Succeeded }));
+        _repo.Refunds.Add((Guid.NewGuid(), new TicketCheckoutRefund { Id = Guid.NewGuid(), OrderId = refused.Id, AmountMinor = 700, State = RefundState.Failed, CreatedAt = Now }));
+        _repo.Refunds.Add((Guid.NewGuid(), new TicketCheckoutRefund { Id = Guid.NewGuid(), OrderId = retried.Id, AmountMinor = 300, State = RefundState.Failed, CreatedAt = Now - Duration.FromHours(2) }));
+        _repo.Refunds.Add((Guid.NewGuid(), new TicketCheckoutRefund { Id = Guid.NewGuid(), OrderId = retried.Id, AmountMinor = 300, State = RefundState.Succeeded, CreatedAt = Now - Duration.FromHours(1) }));
 
         var ledger = await _service.GetBackendLedgerAsync("test", TestContext.Current.CancellationToken);
 
-        ledger!.Orders.Should().HaveCount(5).And.BeInDescendingOrder(o => o.CreatedAt);
-        ledger.Stuck.Should().BeEquivalentTo([neverAccepted, pastExpiry]);
-        ledger.OpenRefunds.Should().ContainSingle().Which.AmountMinor.Should().Be(1000);
+        ledger!.Orders.Should().HaveCount(8).And.BeInDescendingOrder(o => o.CreatedAt);
+        ledger.Stuck.Should().BeEquivalentTo([pastExpiry]);
+        ledger.Paid.Should().BeEquivalentTo([paid, refused, retried]);
+        ledger.UnsettledRefunds.Should().ContainSingle().Which.AmountMinor.Should().Be(1000);
+        ledger.FailedRefunds.Should().ContainSingle().Which.OrderId.Should().Be(refused.Id);
         (await _service.GetBackendLedgerAsync("nope", TestContext.Current.CancellationToken)).Should().BeNull();
     }
 

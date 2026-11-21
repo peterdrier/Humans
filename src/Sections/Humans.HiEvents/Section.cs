@@ -34,5 +34,5 @@ public sealed class Section : ISection, ISectionConfiguration, ISectionAdminNav
     }
 
     IEnumerable<AdminNavGroup> ISectionAdminNav.Groups() =>
-        [TicketsBackendAdminNav.Group("Hi.Events", HiEventsCheckoutBackend.BackendKey, "fa-solid fa-ticket-simple")];
+        [TicketsBackendAdminNav.Group("Hi.Events", HiEventsCheckoutBackend.BackendKey, "fa-solid fa-calendar-check")];
 }

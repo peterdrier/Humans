@@ -124,15 +124,18 @@ internal interface ITicketCheckoutService : ITicketCheckoutEvents, IApplicationS
 internal sealed record CheckoutBackendInfo(string Key, bool IsConfigured, CheckoutBackendSetup Setup);
 
 /// <summary>
-/// <paramref name="Stuck"/>: orders the backend should have settled by now, either never accepted by it or still open
-/// past their expiry, so neither a webhook nor the five-minute reconcile has landed. <paramref name="OpenRefunds"/>:
-/// refunds pending, failed or waiting on a person.
+/// <paramref name="Paid"/>: paid orders as reconciliation counts them, free orders left out. <paramref name="Stuck"/>:
+/// orders still open well past their expiry, which neither a webhook nor the five-minute reconcile has settled.
+/// <paramref name="UnsettledRefunds"/>: pending or waiting on a person. <paramref name="FailedRefunds"/>: failed, with
+/// no later attempt on the order that went through.
 /// </summary>
 internal sealed record BackendLedger(
     CheckoutBackendInfo Backend,
     IReadOnlyList<TicketCheckoutOrder> Orders,
+    IReadOnlyList<TicketCheckoutOrder> Paid,
     IReadOnlyList<TicketCheckoutOrder> Stuck,
-    IReadOnlyList<TicketCheckoutRefund> OpenRefunds);
+    IReadOnlyList<TicketCheckoutRefund> UnsettledRefunds,
+    IReadOnlyList<TicketCheckoutRefund> FailedRefunds);
 
 /// <summary>Admin pages are English-only, so the refusal is shown as is.</summary>
 internal sealed record CheckoutMutationResult(string? Refusal = null)

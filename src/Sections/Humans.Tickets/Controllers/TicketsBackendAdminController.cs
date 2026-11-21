@@ -1,10 +1,12 @@
 using Humans.Base.Controllers;
+using Humans.Base.Interfaces;
 using Humans.Settings.Contracts;
 using Humans.Tickets.Contracts;
 using Humans.Tickets.Services.Checkout;
 using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using NodaTime.Text;
 
 namespace Humans.Tickets.Controllers;
 
@@ -17,6 +19,7 @@ namespace Humans.Tickets.Controllers;
 internal sealed class TicketsBackendAdminController(
     ITicketCheckoutService checkout,
     ISettingsService settings,
+    IOrgTimeZone orgTimeZone,
     IUserService userService) : HumansControllerBase(userService)
 {
     [HttpGet("")]
@@ -42,11 +45,13 @@ internal sealed class TicketsBackendAdminController(
 
         return View("~/Views/Tickets/Admin/Backends/Index.cshtml", new BackendStatusViewModel(
             new BackendsViewModel([ledger.Backend], await checkout.GetSalesEventsAsync(ct), await settings.GetAllEventSettingsAsync(ct), check),
-            ledger));
+            ledger,
+            ledger.Orders.Count == 0 ? null : LocalDatePattern.Iso.Format(ledger.Orders[^1].CreatedAt.InZone(orgTimeZone.Zone).Date)));
     }
 }
 
-internal sealed record BackendStatusViewModel(BackendsViewModel Backend, BackendLedger Ledger)
+/// <summary><c>ReconFrom</c> is the oldest order's day in the organisation's zone, so the reconciliation link covers every order.</summary>
+internal sealed record BackendStatusViewModel(BackendsViewModel Backend, BackendLedger Ledger, string? ReconFrom)
 {
     public CheckoutBackendInfo Info => Backend.Backends[0];
 }

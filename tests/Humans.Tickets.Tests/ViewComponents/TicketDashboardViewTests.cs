@@ -272,17 +272,28 @@ public class TicketDashboardViewTests
             State = RefundState.ManualRequired,
             FailureReason = "issue by hand",
         };
+        var failed = new TicketCheckoutRefund
+        {
+            Id = Guid.NewGuid(),
+            OrderId = stuck.Id,
+            AmountMinor = 500,
+            State = RefundState.Failed,
+            FailureReason = "card expired",
+        };
         var info = new Humans.Tickets.Services.Checkout.CheckoutBackendInfo("pretix", true,
             new CheckoutBackendSetup("pretix", "Self-hosted", null, [], "/Pretix/Webhook", []));
         var model = new Humans.Tickets.Controllers.BackendStatusViewModel(
             new Humans.Tickets.Controllers.BackendsViewModel([info], [], [], null),
-            new Humans.Tickets.Services.Checkout.BackendLedger(info, [stuck], [stuck], [refund]));
+            new Humans.Tickets.Services.Checkout.BackendLedger(info, [stuck], [], [stuck], [refund], [failed]),
+            "2027-03-01");
 
         var html = await RenderAsync("Backend", model, viewPath: "/Views/Tickets/Admin/Backends/Index.cshtml");
 
         Assert.Contains("Stuck orders", html);
         Assert.Contains(stuck.Reference, html);
         Assert.Contains("issue by hand", html);
+        Assert.Contains("Failed refunds", html);
+        Assert.Contains("card expired", html);
     }
 
     private static async Task<string> RenderAsync(string page, object model, string cultureName = "en", string? viewPath = null)
