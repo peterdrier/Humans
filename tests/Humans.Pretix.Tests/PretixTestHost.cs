@@ -30,14 +30,12 @@ internal static class PretixTestHost
         object[]? fees = null,
         object[]? payments = null,
         object[]? refunds = null,
-        string? paymentDate = null,
         object? apiMeta = null) => new
         {
             code,
             status,
             url = $"https://pretix.test/nobodies/nowhere2027/order/{code}/secret/",
             total = total.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture),
-            payment_date = paymentDate,
             positions = positions ?? [Position(1, "225.00", "21.00"), Position(2, "775.00", "0.00")],
             fees = fees ?? [],
             payments = payments ?? [],

@@ -247,7 +247,8 @@ internal sealed class PretixCheckoutBackend(
             state,
             paymentFees.Count == 0 ? null : paymentFees.Sum(f => ToMinor(f.Value)),
             lastPayment?.Provider,
-            state == CheckoutState.Paid ? ParseInstant(order.PaymentDate) : null,
+            // The order's own payment_date is a date only; the confirmed payment carries the time.
+            state == CheckoutState.Paid ? ParseInstant(lastPayment?.PaymentDate) : null,
             refunded);
     }
 
@@ -447,7 +448,6 @@ internal sealed class PretixCheckoutBackend(
         string Status,
         string Url,
         decimal Total,
-        string? PaymentDate,
         IReadOnlyList<PretixPosition> Positions,
         IReadOnlyList<PretixFee> Fees,
         IReadOnlyList<PretixPayment> Payments,
@@ -458,7 +458,7 @@ internal sealed class PretixCheckoutBackend(
 
     internal sealed record PretixFee(string FeeType, decimal Value, bool Canceled);
 
-    internal sealed record PretixPayment(int LocalId, string State, decimal Amount, string Provider);
+    internal sealed record PretixPayment(int LocalId, string State, decimal Amount, string Provider, string? PaymentDate);
 
     internal sealed record PretixRefund(
         int LocalId, string State, decimal Amount, int? Payment, string? Comment, string? Provider);

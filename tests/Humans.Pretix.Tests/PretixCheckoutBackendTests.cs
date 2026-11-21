@@ -158,9 +158,9 @@ public class PretixCheckoutBackendTests
     public async Task Status_PaidOrder_ReportsMethodFeeAndCompletedRefunds()
     {
         var pretix = new FakePretix().On("GET", OrderPath, HttpStatusCode.OK, Order(
-            Code, status: "p", total: 1015.52m, paymentDate: "2026-11-21T00:09:33.022364Z",
+            Code, status: "p", total: 1015.52m,
             fees: [new { fee_type = "payment", value = "15.52", canceled = false }],
-            payments: [new { local_id = 1, state = "confirmed", amount = "1015.52", provider = "stripe_ideal" }],
+            payments: [new { local_id = 1, state = "confirmed", amount = "1015.52", provider = "stripe_ideal", payment_date = "2026-11-21T00:09:33.022364Z" }],
             refunds:
             [
                 new { local_id = 1, state = "done", amount = "225.00", payment = 1, comment = "", provider = "stripe_ideal" },
