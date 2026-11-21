@@ -78,6 +78,8 @@ None — the section owns no tables.
 
 Hi.Events holds each buyer's name and email and each attendee's legal name for orders created here.
 `ErasePersonalDataAsync` calls the fork's `POST .../orders/{order_id}/anonymize`, which scrubs the buyer and every
-attendee on the order and keeps amounts, statuses and dates. The whole order goes, not just the named person, because
+attendee on the order (soft-deleted rows too, using Hi.Events' own account-deletion anonymiser), the buyer's saved
+Stripe customer row and the webhook delivery logs that carried the order, and keeps amounts, statuses and dates. The
+customer record inside Stripe itself stays: Stripe holds it as payment processor. The whole order goes, not just the named person, because
 Hi.Events copies the buyer's email onto every attendee row, so the person cannot be told apart from the others; Humans
 keeps the names it needs. A failure throws, so Tickets retries before tombstoning its own copy.
