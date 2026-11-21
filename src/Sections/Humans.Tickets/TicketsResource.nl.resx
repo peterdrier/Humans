@@ -231,9 +231,6 @@
   <data name="Tickets_Buy_PartnerIsYou" xml:space="preserve">
     <value>Dat e-mailadres is van jou; vink in plaats daarvan je eigen ticket aan.</value>
   </data>
-  <data name="Tickets_Buy_PartnerHolds" xml:space="preserve">
-    <value>Die persoon heeft al een ticket voor dit evenement.</value>
-  </data>
   <data name="Tickets_Buy_Invalid" xml:space="preserve">
     <value>Die keuze is niet beschikbaar. Probeer het opnieuw.</value>
   </data>
@@ -395,5 +392,35 @@
   </data>
   <data name="Tickets_Resale_Email_Invite_Body" xml:space="preserve">
     <value>&lt;p&gt;Hoi,&lt;/p&gt;&lt;p&gt;{0} kan niet naar &lt;strong&gt;{1}&lt;/strong&gt; komen en heeft je uitgenodigd om het teruggegeven ticket vóór de doorverkoopwachtrij te kopen.&lt;/p&gt;&lt;p&gt;Je betaalt de huidige ticketprijs aan de vereniging en krijgt een nieuw ticket op je eigen naam: de naam moet bij de ingang overeenkomen met je identiteitsbewijs. Log in of maak je Humans-account aan met dit e-mailadres en gebruik dan deze link:&lt;/p&gt;&lt;p&gt;&lt;a href="{2}"&gt;{2}&lt;/a&gt;&lt;/p&gt;&lt;p&gt;De link werkt {3} dagen.&lt;/p&gt;</value>
+  </data>
+  <data name="Tickets_Public_PriceToday" xml:space="preserve">
+    <value>{0} vandaag</value>
+  </data>
+  <data name="Tickets_Public_ResaleOnly" xml:space="preserve">
+    <value>(alleen teruggegeven tickets)</value>
+  </data>
+  <data name="Tickets_Public_Intro" xml:space="preserve">
+    <value>Elk ticket staat op de wettelijke naam van de houder en wordt gekocht vanuit een Humans-account. Vul je e-mailadres in: we sturen je een link om in te loggen, of om je account aan te maken met je wettelijke naam, en je komt direct op de kooppagina.</value>
+  </data>
+  <data name="Tickets_Public_Email" xml:space="preserve">
+    <value>Je e-mailadres</value>
+  </data>
+  <data name="Tickets_Public_Send" xml:space="preserve">
+    <value>Stuur me de link</value>
+  </data>
+  <data name="Tickets_Public_Sent" xml:space="preserve">
+    <value>Kijk in je inbox: er komt een link om verder te gaan. Hij werkt 15 minuten.</value>
+  </data>
+  <data name="Tickets_Public_PriceNote" xml:space="preserve">
+    <value>Dit is de publieke prijs. Na het inloggen zie je je eigen prijs, die lager kan zijn als je een ticketregeling hebt.</value>
+  </data>
+  <data name="Tickets_Resale_InviteLive" xml:space="preserve">
+    <value>Er staat nog een uitnodiging open voor dit ticket. Annuleer die voordat je iemand anders uitnodigt.</value>
+  </data>
+  <data name="Tickets_Resale_InviteLimit" xml:space="preserve">
+    <value>Voor dit ticket zijn al zoveel uitnodigingen verstuurd als mag. Het blijft in de wachtrij voor iedereen.</value>
+  </data>
+  <data name="Tickets_Buy_Reference" xml:space="preserve">
+    <value>Bestelreferentie</value>
   </data>
 </root>

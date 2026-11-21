@@ -20,6 +20,7 @@ graph LR
     AuditLog
     Auth
     Backdoor
+    BoxOffice
     Budget
     Calendar
     Campaigns
@@ -87,6 +88,7 @@ graph LR
     Backdoor --> Surveys
     Backdoor -.-> Finance
     Backdoor -.-> Notifications
+    BoxOffice -.-> Tickets
     Budget --> Issues
     Budget -.-> Camps
     Budget -.-> Finance
@@ -99,11 +101,11 @@ graph LR
     Campaigns -.-> Teams
     Campaigns -.-> Tickets
     Campaigns -.-> Users
-    Camps --> CityPlanning
     Camps --> EarlyEntry
     Camps --> Google
     Camps --> Issues
     Camps --> Settings
+    Camps -.-> CityPlanning
     Camps -.-> Email
     Camps -.-> Notifications
     Camps -.-> Shifts
@@ -125,6 +127,7 @@ graph LR
     Consent -.-> Shifts
     Consent -.-> Teams
     Consent -.-> Users
+    Containers --> Settings
     Containers -.-> Camps
     Containers -.-> CityPlanning
     Debug --> Consent
@@ -277,6 +280,7 @@ graph LR
     Tickets --> Campaigns
     Tickets --> Consent
     Tickets --> EarlyEntry
+    Tickets --> Grants
     Tickets --> Issues
     Tickets --> Settings
     Tickets --> Stripe

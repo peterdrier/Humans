@@ -57,14 +57,16 @@ public class TicketCheckoutRepositoryTests(HumansTestDatabase database) : Integr
             Lines = [new TicketCheckoutOrderLine { Kind = CheckoutLineKind.Ticket, Description = "Ticket", AmountMinor = 22500, AttendeeUserId = holder }],
         };
         await repo.AddOrderAsync(order, ct);
+        (await repo.TryClaimPaidAsync(order.Id, Now, ct)).Should().BeTrue();
+        (await repo.TryClaimPaidAsync(order.Id, Now, ct)).Should().BeFalse();
         var loaded = (await repo.GetOrderAsync(order.Id, ct))!;
+        loaded.State.Should().Be(TicketCheckoutOrderState.Paid);
         loaded.BackendOrderId = "cs_1";
-        loaded.State = TicketCheckoutOrderState.Paid;
         loaded.Lines[0].WaveName = "Wave 1";
         await repo.UpdateOrderAsync(loaded, ct);
         await repo.UpdateOrderAsync(loaded, ct);
 
-        await repo.ErasePiiForUserAsync(holder, ct);
+        await repo.ErasePiiForUserAsync(holder, ["ana@example.com"], ct);
         await repo.ReassignAsync(holder, Guid.NewGuid(), ct);
 
         var stored = (await repo.GetOrderAsync(order.Id, ct))!;
@@ -106,12 +108,40 @@ public class TicketCheckoutRepositoryTests(HumansTestDatabase database) : Integr
             OrderId = adult.OrderId,
             Kind = TicketHolderKind.Child,
             ParentTicketId = adult.Id,
+            LineIndex = 1,
             HolderName = "Kid García",
             Barcode = "H" + Guid.NewGuid().ToString("N")[..16],
             WaveName = "Child",
             IssuedAt = Now,
         };
-        await repo.AddTicketsAsync([adult, child], ct);
+        (await repo.AddTicketsAsync([adult, child], ct)).Should().BeTrue();
+        (await repo.AddTicketsAsync([new TicketCheckoutTicket
+        {
+            Id = Guid.NewGuid(), SalesEventId = salesEventId, OrderId = adult.OrderId, HolderName = "Twice",
+            Barcode = "H" + Guid.NewGuid().ToString("N")[..16], IssuedAt = Now,
+        }], ct)).Should().BeFalse();
+        var invitedElsewhere = new TicketResaleOffer
+        {
+            Id = Guid.NewGuid(),
+            SalesEventId = salesEventId,
+            TicketId = Guid.NewGuid(),
+            HolderUserId = Guid.NewGuid(),
+            OfferedAt = Now,
+            DirectedEmail = "Ana@Example.com",
+            DirectedTokenHash = "DEF",
+        };
+        await repo.AddOfferAsync(invitedElsewhere, ct);
+        var unattached = new TicketCheckoutTicket
+        {
+            Id = Guid.NewGuid(),
+            SalesEventId = salesEventId,
+            OrderId = Guid.NewGuid(),
+            HolderName = "Ana García",
+            HolderEmail = "ANA@example.com",
+            Barcode = "H" + Guid.NewGuid().ToString("N")[..16],
+            IssuedAt = Now,
+        };
+        await repo.AddTicketsAsync([unattached], ct);
         var offer = new TicketResaleOffer
         {
             Id = Guid.NewGuid(),
@@ -132,8 +162,11 @@ public class TicketCheckoutRepositoryTests(HumansTestDatabase database) : Integr
         (await repo.GetTicketsForOrderAsync(adult.OrderId, ct)).Should().HaveCount(2);
         (await repo.GetOfferByTokenHashAsync("ABC", ct))!.Id.Should().Be(offer.Id);
 
-        await repo.ErasePiiForUserAsync(holder, ct);
+        await repo.ErasePiiForUserAsync(holder, ["ana@example.com"], ct);
 
+        (await repo.GetTicketAsync(child.Id, ct))!.HolderName.Should().NotBe("Kid García");
+        (await repo.GetOfferAsync(invitedElsewhere.Id, ct))!.DirectedEmail.Should().BeNull();
+        (await repo.GetTicketAsync(unattached.Id, ct))!.HolderName.Should().NotBe("Ana García");
         var stored = (await repo.GetTicketAsync(adult.Id, ct))!;
         stored.HolderName.Should().NotBe("Ana García");
         stored.HolderEmail.Should().NotBe("ana@example.com");

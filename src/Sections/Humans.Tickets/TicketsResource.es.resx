@@ -231,9 +231,6 @@
   <data name="Tickets_Buy_PartnerIsYou" xml:space="preserve">
     <value>Ese correo es tuyo; marca la casilla de tu propia entrada.</value>
   </data>
-  <data name="Tickets_Buy_PartnerHolds" xml:space="preserve">
-    <value>Esa persona ya tiene una entrada para este evento.</value>
-  </data>
   <data name="Tickets_Buy_Invalid" xml:space="preserve">
     <value>Esa opción no está disponible. Inténtalo de nuevo.</value>
   </data>
@@ -395,5 +392,35 @@
   </data>
   <data name="Tickets_Resale_Email_Invite_Body" xml:space="preserve">
     <value>&lt;p&gt;Hola,&lt;/p&gt;&lt;p&gt;{0} no puede ir a &lt;strong&gt;{1}&lt;/strong&gt; y te ha invitado a comprar su entrada devuelta antes que la cola de reventa.&lt;/p&gt;&lt;p&gt;Pagas el precio actual de la entrada a la asociación y recibes una entrada nueva a tu nombre: el nombre debe coincidir con tu documento en la puerta. Inicia sesión o crea tu cuenta de Humans con este correo y usa este enlace:&lt;/p&gt;&lt;p&gt;&lt;a href="{2}"&gt;{2}&lt;/a&gt;&lt;/p&gt;&lt;p&gt;El enlace funciona durante {3} días.&lt;/p&gt;</value>
+  </data>
+  <data name="Tickets_Public_PriceToday" xml:space="preserve">
+    <value>{0} hoy</value>
+  </data>
+  <data name="Tickets_Public_ResaleOnly" xml:space="preserve">
+    <value>(solo entradas devueltas)</value>
+  </data>
+  <data name="Tickets_Public_Intro" xml:space="preserve">
+    <value>Cada entrada lleva el nombre legal de quien la usa y se compra desde una cuenta de Humans. Escribe tu correo: te enviamos un enlace para iniciar sesión, o para crear tu cuenta con tu nombre legal, y llegas directamente a la página de compra.</value>
+  </data>
+  <data name="Tickets_Public_Email" xml:space="preserve">
+    <value>Tu correo electrónico</value>
+  </data>
+  <data name="Tickets_Public_Send" xml:space="preserve">
+    <value>Envíame el enlace</value>
+  </data>
+  <data name="Tickets_Public_Sent" xml:space="preserve">
+    <value>Revisa tu bandeja de entrada: te llega un enlace para continuar. Funciona durante 15 minutos.</value>
+  </data>
+  <data name="Tickets_Public_PriceNote" xml:space="preserve">
+    <value>Este es el precio público. Al iniciar sesión verás tu propio precio, que puede ser menor si tienes una ayuda para entradas.</value>
+  </data>
+  <data name="Tickets_Resale_InviteLive" xml:space="preserve">
+    <value>Ya hay una invitación abierta para esta entrada. Cancélala antes de invitar a otra persona.</value>
+  </data>
+  <data name="Tickets_Resale_InviteLimit" xml:space="preserve">
+    <value>Esta entrada ya ha tenido el máximo de invitaciones permitidas. Sigue en la cola para quien quiera comprarla.</value>
+  </data>
+  <data name="Tickets_Buy_Reference" xml:space="preserve">
+    <value>Referencia del pedido</value>
   </data>
 </root>

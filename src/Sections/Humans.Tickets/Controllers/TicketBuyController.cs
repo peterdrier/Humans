@@ -1,4 +1,6 @@
 using System.Globalization;
+using Humans.Auth.Contracts;
+using Humans.Base.Attributes;
 using Humans.Base.Controllers;
 using Humans.Tickets.Domain.Checkout;
 using Humans.Tickets.Services.Checkout;
@@ -14,20 +16,59 @@ namespace Humans.Tickets.Controllers;
 [Route("Tickets/Buy")]
 internal sealed class TicketBuyController(
     ITicketCheckoutService checkout,
+    IMagicLinkService magicLinks,
     IUserService userService,
-    IStringLocalizer<TicketsResource> localizer) : HumansControllerBase(userService)
+    IStringLocalizer<TicketsResource> localizer,
+    ILogger<TicketBuyController> logger) : HumansControllerBase(userService)
 {
     /// <summary>Euros. Larger gifts go through the organisers, and the cap keeps the cents conversion in range.</summary>
     private const decimal MaxDonation = 100_000m;
 
     [HttpGet("")]
+    [AllowAnonymous]
     public async Task<IActionResult> Index(CancellationToken ct)
     {
+        if (User.Identity?.IsAuthenticated != true)
+            return RedirectToAction(nameof(Public));
         var (errorResult, user) = await RequireCurrentUserAsync(ct);
         if (errorResult is not null) return errorResult;
 
         var pages = await checkout.GetBuyPagesAsync(user.Id, ct);
         return View("~/Views/Tickets/Buy/Index.cshtml", pages);
+    }
+
+    /// <summary>
+    /// The signed-out way in: what is on sale at the public price, and a sign-in or sign-up link by email that lands
+    /// on the buy page. Tickets are named and bought from an account, so the account comes first.
+    /// </summary>
+    [HttpGet("Public")]
+    [AllowAnonymous]
+    public async Task<IActionResult> Public(CancellationToken ct)
+    {
+        if (User.Identity?.IsAuthenticated == true)
+            return RedirectToAction(nameof(Index));
+        return View("~/Views/Tickets/Buy/Public.cshtml", await checkout.GetPublicSalesAsync(ct));
+    }
+
+    [HttpPost("Public")]
+    [AllowAnonymous]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> SendLink(string? email, CancellationToken ct)
+    {
+        if (!string.IsNullOrWhiteSpace(email))
+        {
+            try
+            {
+                await magicLinks.SendMagicLinkAsync(email.Trim(), Url.Action(nameof(Index)), ct);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                // Same answer either way: the page never says whether an address has an account.
+                logger.LogError(ex, "Ticket buy link could not be sent");
+            }
+            SetSuccess(localizer["Tickets_Public_Sent"].Value);
+        }
+        return RedirectToAction(nameof(Public));
     }
 
     /// <summary>An invited buyer's directed-resale link: the same buy page, holding that one ticket.</summary>
@@ -88,7 +129,9 @@ internal sealed class TicketBuyController(
             : RedirectToAction(nameof(Order), new { id = result.OrderId });
     }
 
+    // A partner whose account was made at payment follows the ticket email here before finishing onboarding.
     [HttpGet("Mine")]
+    [AllowBeforeActiveMembership]
     public async Task<IActionResult> Mine(CancellationToken ct)
     {
         var (errorResult, user) = await RequireCurrentUserAsync(ct);

@@ -231,9 +231,6 @@
   <data name="Tickets_Buy_PartnerIsYou" xml:space="preserve">
     <value>Diese E-Mail-Adresse ist deine; wähle stattdessen dein eigenes Ticket.</value>
   </data>
-  <data name="Tickets_Buy_PartnerHolds" xml:space="preserve">
-    <value>Diese Person hat schon ein Ticket für diese Veranstaltung.</value>
-  </data>
   <data name="Tickets_Buy_Invalid" xml:space="preserve">
     <value>Diese Auswahl ist nicht verfügbar. Bitte versuch es noch einmal.</value>
   </data>
@@ -395,5 +392,35 @@
   </data>
   <data name="Tickets_Resale_Email_Invite_Body" xml:space="preserve">
     <value>&lt;p&gt;Hallo,&lt;/p&gt;&lt;p&gt;{0} kann nicht zu &lt;strong&gt;{1}&lt;/strong&gt; kommen und hat dich eingeladen, das zurückgegebene Ticket vor der Weiterverkaufsschlange zu kaufen.&lt;/p&gt;&lt;p&gt;Du zahlst den aktuellen Ticketpreis an den Verein und bekommst ein neues Ticket auf deinen Namen: Der Name muss am Einlass mit deinem Ausweis übereinstimmen. Melde dich mit dieser E-Mail-Adresse bei Humans an oder lege ein Konto an und nutze dann diesen Link:&lt;/p&gt;&lt;p&gt;&lt;a href="{2}"&gt;{2}&lt;/a&gt;&lt;/p&gt;&lt;p&gt;Der Link gilt {3} Tage.&lt;/p&gt;</value>
+  </data>
+  <data name="Tickets_Public_PriceToday" xml:space="preserve">
+    <value>{0} heute</value>
+  </data>
+  <data name="Tickets_Public_ResaleOnly" xml:space="preserve">
+    <value>(nur zurückgegebene Tickets)</value>
+  </data>
+  <data name="Tickets_Public_Intro" xml:space="preserve">
+    <value>Jedes Ticket trägt den amtlichen Namen der Person und wird über ein Humans-Konto gekauft. Gib deine E-Mail-Adresse ein: Wir schicken dir einen Link zum Anmelden oder zum Anlegen deines Kontos mit deinem amtlichen Namen, und du landest direkt auf der Kaufseite.</value>
+  </data>
+  <data name="Tickets_Public_Email" xml:space="preserve">
+    <value>Deine E-Mail-Adresse</value>
+  </data>
+  <data name="Tickets_Public_Send" xml:space="preserve">
+    <value>Link schicken</value>
+  </data>
+  <data name="Tickets_Public_Sent" xml:space="preserve">
+    <value>Schau in dein Postfach: Ein Link zum Weitermachen ist unterwegs. Er gilt 15 Minuten.</value>
+  </data>
+  <data name="Tickets_Public_PriceNote" xml:space="preserve">
+    <value>Das ist der öffentliche Preis. Nach der Anmeldung siehst du deinen eigenen Preis, der mit einer Ticketförderung niedriger sein kann.</value>
+  </data>
+  <data name="Tickets_Resale_InviteLive" xml:space="preserve">
+    <value>Für dieses Ticket ist noch eine Einladung offen. Brich sie ab, bevor du jemand anderen einlädst.</value>
+  </data>
+  <data name="Tickets_Resale_InviteLimit" xml:space="preserve">
+    <value>Für dieses Ticket wurden schon so viele Einladungen verschickt wie erlaubt. Es bleibt in der Schlange für alle.</value>
+  </data>
+  <data name="Tickets_Buy_Reference" xml:space="preserve">
+    <value>Bestellnummer</value>
   </data>
 </root>

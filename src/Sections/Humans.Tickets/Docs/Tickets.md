@@ -56,11 +56,11 @@ Bulk cache warmups publish through the shared mutation guard. A refresh, deletio
 
 ### TicketCheckoutTicket
 
-**Table:** `ticket_checkout_tickets` — unique `Barcode`; indexes on `OrderId`, `SalesEventId`, `HolderUserId`. `ParentTicketId` links a child or companion to its adult. Erasure tombstones `HolderName` and `HolderEmail`.
+**Table:** `ticket_checkout_tickets` — unique `Barcode`; unique (`OrderId`, `LineIndex`), so a paid order issues each line once; indexes on `SalesEventId`, `HolderUserId`, `ParentTicketId`. `ParentTicketId` links a child or companion to its adult. Erasure tombstones `HolderName` and `HolderEmail`, children's names included.
 
 ### TicketResaleOffer
 
-**Table:** `ticket_resale_offers` — one per return to the queue (`Open` → `Reserved` → `Sold`, or `Withdrawn`). `DirectedTokenHash` is the SHA-256 of an emailed link's token; the token is never stored. Erasure clears `DirectedEmail` and the token.
+**Table:** `ticket_resale_offers` — one per return to the queue (`Open` → `Reserved` → `Sold`, or `Withdrawn`). `DirectedTokenHash` is the SHA-256 of an emailed link's token; the token is never stored. `DirectedInviteCount`, summed over a ticket's offers, caps its invitations at three. Erasure clears `DirectedEmail` and the token, also on another holder's offer that invited the erased member.
 
 ### TicketCheckoutOrderEvent
 
@@ -234,6 +234,7 @@ Lifecycle: `Attended` is permanent (only a missing `CheckedInAt` may be filled);
 | `/Tickets/Buy` | GET + POST | `[Authorize]` | One section per selling event; the POST names its `salesEventId`: own ticket at the member's price, optional partner at the public price, supporter total, donation; POST redirects to the backend's payment page |
 | `/Tickets/Buy/Order/{id}` | GET | `[Authorize]` | Order status, refreshed from the backend; the payer sees the whole order, a holder only their own line; anyone else 404 |
 | `/Tickets/Buy/Order/{id}/Cancel` | POST | `[Authorize]` | The payer abandons an unpaid order |
+| `/Tickets/Buy/Public` | GET + POST | Anonymous | Signed-out way in: events on sale at today's public price, and an email form that sends the Auth sign-in or sign-up link returning to `/Tickets/Buy`; the POST never says whether the address has an account. A signed-out `/Tickets/Buy` redirects here |
 | `/Tickets/Buy/Mine` | GET | `[Authorize]` | The member's live checkout tickets, resale queue position and actions |
 | `/Tickets/Buy/Mine/{ticketId}/Offer`, `/Withdraw`, `/Invite`, `/CancelInvite` | POST | `[Authorize]` | Holder only (anyone else 404): return a ticket to the queue, take it back (not while a checkout holds it), invite one buyer by email, cancel the invitation |
 | `/Tickets/Buy/Resale/{token}` | GET | `[Authorize]` | Buy page for a directed offer; only the invited email, while the link is live |

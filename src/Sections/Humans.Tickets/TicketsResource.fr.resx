@@ -231,9 +231,6 @@
   <data name="Tickets_Buy_PartnerIsYou" xml:space="preserve">
     <value>Cet e-mail est le tien ; coche plutôt la case de ton propre billet.</value>
   </data>
-  <data name="Tickets_Buy_PartnerHolds" xml:space="preserve">
-    <value>Cette personne a déjà un billet pour cet événement.</value>
-  </data>
   <data name="Tickets_Buy_Invalid" xml:space="preserve">
     <value>Ce choix n'est pas disponible. Réessaie.</value>
   </data>
@@ -395,5 +392,35 @@
   </data>
   <data name="Tickets_Resale_Email_Invite_Body" xml:space="preserve">
     <value>&lt;p&gt;Bonjour,&lt;/p&gt;&lt;p&gt;{0} ne peut pas venir à &lt;strong&gt;{1}&lt;/strong&gt; et t'invite à acheter son billet rendu avant la file de revente.&lt;/p&gt;&lt;p&gt;Tu paies le prix actuel du billet à l'association et reçois un nouveau billet à ton nom : le nom doit correspondre à ta pièce d'identité à l'entrée. Connecte-toi ou crée ton compte Humans avec cette adresse e-mail, puis utilise ce lien :&lt;/p&gt;&lt;p&gt;&lt;a href="{2}"&gt;{2}&lt;/a&gt;&lt;/p&gt;&lt;p&gt;Le lien est valable {3} jours.&lt;/p&gt;</value>
+  </data>
+  <data name="Tickets_Public_PriceToday" xml:space="preserve">
+    <value>{0} aujourd'hui</value>
+  </data>
+  <data name="Tickets_Public_ResaleOnly" xml:space="preserve">
+    <value>(billets rendus uniquement)</value>
+  </data>
+  <data name="Tickets_Public_Intro" xml:space="preserve">
+    <value>Chaque billet porte le nom légal de son titulaire et s'achète depuis un compte Humans. Saisis ton adresse e-mail : nous t'envoyons un lien pour te connecter, ou pour créer ton compte avec ton nom légal, et tu arrives directement sur la page d'achat.</value>
+  </data>
+  <data name="Tickets_Public_Email" xml:space="preserve">
+    <value>Ton adresse e-mail</value>
+  </data>
+  <data name="Tickets_Public_Send" xml:space="preserve">
+    <value>Envoie-moi le lien</value>
+  </data>
+  <data name="Tickets_Public_Sent" xml:space="preserve">
+    <value>Regarde ta boîte de réception : un lien pour continuer arrive. Il est valable 15 minutes.</value>
+  </data>
+  <data name="Tickets_Public_PriceNote" xml:space="preserve">
+    <value>C'est le prix public. Une fois connecté·e, tu vois ton propre prix, qui peut être plus bas si tu as une aide pour les billets.</value>
+  </data>
+  <data name="Tickets_Resale_InviteLive" xml:space="preserve">
+    <value>Une invitation pour ce billet est encore ouverte. Annule-la avant d'inviter quelqu'un d'autre.</value>
+  </data>
+  <data name="Tickets_Resale_InviteLimit" xml:space="preserve">
+    <value>Ce billet a déjà eu le nombre maximum d'invitations. Il reste dans la file pour qui veut l'acheter.</value>
+  </data>
+  <data name="Tickets_Buy_Reference" xml:space="preserve">
+    <value>Référence de la commande</value>
   </data>
 </root>
