@@ -368,29 +368,34 @@ public class PretixCheckoutBackendTests
     }
 
     [HumansFact]
-    public async Task Refund_CallFailsButTheRefundWasMade_ReturnsIt()
-    {
-        var refundId = Guid.NewGuid();
-        var pretix = new FakePretix()
-            .On("GET", OrderPath, HttpStatusCode.OK, PaidOrder())
-            .On("GET", OrderPath, HttpStatusCode.OK, PaidOrder(
-                new { local_id = 3, state = "done", amount = "225.00", payment = 1, comment = $"humans-refund:{refundId} Resold", provider = "stripe" }))
-            .On("POST", $"{OrderPath}change/", HttpStatusCode.OK, PaidOrderWithFee(refundId))
-            .On("POST", $"{OrderPath}payments/1/refund/", HttpStatusCode.BadGateway, "");
-
-        var result = await Create(pretix).RefundAsync(
-            new RefundRequest(refundId, $"nowhere2027/{Code}", 22500, "Resold"), TestContext.Current.CancellationToken);
-
-        result.State.Should().Be(RefundState.Succeeded);
-        pretix.BodiesFor("POST", $"{OrderPath}change/").Should().ContainSingle();
-    }
-
-    [HumansFact]
-    public async Task Refund_CallFailsAndNoRefundWasMade_FailsAndRestoresTheTotal()
+    public async Task Refund_PretixServerError_ThrowsAndTheRetryReusesTheFee()
     {
         var refundId = Guid.NewGuid();
         var pretix = RefundablePretix(refundId)
-            .On("POST", $"{OrderPath}payments/1/refund/", HttpStatusCode.ServiceUnavailable, "");
+            .On("POST", $"{OrderPath}payments/1/refund/", HttpStatusCode.BadGateway, "");
+
+        var first = () => Create(pretix).RefundAsync(
+            new RefundRequest(refundId, $"nowhere2027/{Code}", 22500, "Resold"), TestContext.Current.CancellationToken);
+        await first.Should().ThrowAsync<HttpRequestException>();
+
+        // Tickets retries under the same id: the fee is found, not added again, and the refund goes through.
+        var retry = new FakePretix()
+            .On("GET", OrderPath, HttpStatusCode.OK, PaidOrderWithFee(refundId))
+            .On("POST", $"{OrderPath}payments/1/refund/", HttpStatusCode.OK,
+                new { local_id = 3, state = "done", amount = "225.00", payment = 1, comment = "", provider = "stripe" });
+        var result = await Create(retry).RefundAsync(
+            new RefundRequest(refundId, $"nowhere2027/{Code}", 22500, "Resold"), TestContext.Current.CancellationToken);
+
+        result.State.Should().Be(RefundState.Succeeded);
+        retry.BodiesFor("POST", $"{OrderPath}change/").Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task Refund_PretixRefusesTheCall_FailsAndRestoresTheTotal()
+    {
+        var refundId = Guid.NewGuid();
+        var pretix = RefundablePretix(refundId)
+            .On("POST", $"{OrderPath}payments/1/refund/", HttpStatusCode.Forbidden, "{\"detail\": \"no permission\"}");
 
         var result = await Create(pretix).RefundAsync(
             new RefundRequest(refundId, $"nowhere2027/{Code}", 22500, "Resold"), TestContext.Current.CancellationToken);

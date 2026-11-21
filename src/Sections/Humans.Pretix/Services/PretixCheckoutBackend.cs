@@ -171,30 +171,20 @@ internal sealed class PretixCheckoutBackend(
             ["comment"] = $"{comment} {request.Reason}".Trim(),
             ["mark_canceled"] = false,
         };
-        RawResponse? response = null;
-        try
-        {
-            response = await SendRawAsync(
-                HttpMethod.Post, $"{OrderPath(eventSlug, code)}payments/{payment.LocalId}/refund/", body, ct);
-        }
-        catch (Exception ex) when (ex is HttpRequestException || (ex is TaskCanceledException && !ct.IsCancellationRequested))
-        {
-            logger.LogWarning(ex, "pretix refund call on {Code} failed", code);
-        }
+        // No answer, or a pretix 5xx, throws: Tickets keeps the refund pending and retries it under the same id, and
+        // the marker on the fee and the refund makes that retry safe whether or not this one went through.
+        var response = await SendRawAsync(
+            HttpMethod.Post, $"{OrderPath(eventSlug, code)}payments/{payment.LocalId}/refund/", body, ct);
+        if ((int)response.Status >= 500)
+            EnsureSuccess(response, "refund");
 
-        if (response is null || ((int)response.Status is < 200 or > 299 && response.Status != HttpStatusCode.BadRequest))
+        if ((int)response.Status is < 200 or > 299 && response.Status != HttpStatusCode.BadRequest)
         {
-            // The refund may or may not have happened, and Tickets never retries this refund id, so the order says
-            // which: a refund carrying the marker stands; otherwise the fee comes off so the total stays right.
-            var after = await SendAsync<PretixOrder>(HttpMethod.Get, OrderPath(eventSlug, code), body: null, ct);
-            var made = after.Refunds.FirstOrDefault(r =>
-                r.Comment?.Contains(comment, StringComparison.Ordinal) == true && r.State is not ("failed" or "canceled"));
-            if (made is not null)
-                return MapRefund(made, AdminOrderUrl(eventSlug, code));
+            // Refused outright (401, 403, 404): no refund was made, so the fee comes off.
+            logger.LogWarning("pretix refused the refund call on {Code}: {Status} {Body}", code, (int)response.Status, response.Body);
             if (feeIsNew)
                 await CancelFeeAsync(eventSlug, code, fee.Id, ct);
-            return new RefundResult(RefundState.Failed, null,
-                response is null ? "pretix could not be reached." : $"pretix answered {(int)response.Status}: {response.Body}");
+            return new RefundResult(RefundState.Failed, null, $"pretix answered {(int)response.Status}: {response.Body}");
         }
 
         if (response.Status == HttpStatusCode.BadRequest)
