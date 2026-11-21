@@ -28,6 +28,7 @@ public sealed class Section : ISection, ISectionConfiguration
     void ISectionConfiguration.DeclareSettings(IConfiguration configuration, ConfigurationRegistry registry)
     {
         configuration.GetOptionalSetting(registry, "HiEvents:ApiUrl", "Hi.Events");
+        configuration.GetOptionalSetting(registry, "HiEvents:AppUrl", "Hi.Events");
         foreach (var hiEvent in configuration.GetSection("HiEvents:Events").GetChildren())
         {
             configuration.GetOptionalSetting(registry, $"{hiEvent.Path}:TicketProductId", "Hi.Events");

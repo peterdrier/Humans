@@ -31,6 +31,7 @@ public class HiEventsCheckoutBackendTests
 
         session.BackendOrderId.Should().Be("7:42");
         session.PaymentUrl.Should().Be(new Uri("https://tickets.example/pay/42"));
+        session.AdminUrl.Should().Be(new Uri("https://tickets.example/manage/event/7/orders#order-42"));
 
         var (request, body) = _handler.Requests.Single();
         request.Method.Should().Be(HttpMethod.Post);
@@ -234,7 +235,7 @@ public class HiEventsCheckoutBackendTests
         NullLogger<HiEventsCheckoutBackend>.Instance);
 
     private static CheckoutRequest Request(params CheckoutLine[] lines) => new(
-        OrderId, "7", "Ana Buyer", "ana@example.org", "EUR", "es-ES", lines,
+        OrderId, Guid.NewGuid(), "7", "Ana Buyer", "ana@example.org", "EUR", "es-ES", lines,
         Now.Plus(Duration.FromMinutes(30)), new Uri("https://humans.example/Tickets/Return"));
 
     private static object Order(

@@ -21,7 +21,8 @@ price, the named ticket and the QR code.
   order at the prices given, with buyer and attendee names filled in, and returns `payment_link_url`. It also accepts
   `idempotency_key` on `POST .../orders/{order_id}/refund`. Stock Hi.Events has neither.
 - A **backend order id** is `{eventId}:{orderId}`: every Hi.Events order route is scoped to its event.
-- **Settings**, all owned here: `HiEvents:ApiUrl` (ends in `/api`); per Hi.Events event id,
+- **Settings**, all owned here: `HiEvents:ApiUrl` (ends in `/api`); `HiEvents:AppUrl` (the web app, for the order's
+  admin link; defaults to `ApiUrl` without `/api`); per Hi.Events event id,
   `HiEvents:Events:{id}:TicketProductId` and `HiEvents:Events:{id}:DonationProductId`, so several events sell at once;
   and the environment variables `HIEVENTS_API_KEY` (a Hi.Events API key whose owner can
   edit the event, see financials and issue refunds) and `HIEVENTS_WEBHOOK_SECRET`.
@@ -34,7 +35,7 @@ None — the section owns no tables.
 
 | Actor | Capabilities |
 |-------|--------------|
-| Tickets | Resolves the backend by key and calls the port |
+| Tickets | Resolves the backend by key and calls the port; an event is set up at `/Tickets/Admin/Sales` with backend key `hievents` and the Hi.Events event id |
 | Hi.Events | Posts signed webhooks to `/HiEvents/Webhook` |
 | Any human | None — the section has no views; the webhook is anonymous and signature-checked |
 
@@ -47,6 +48,7 @@ None — the section owns no tables.
   set throws `TicketCheckoutException`. A 409 or 422 from Hi.Events, a currency other than the request's, or a total
   other than the sum of the lines throws `TicketCheckoutException`. The products must carry no taxes or fees in
   Hi.Events.
+- Checkout returns `AdminUrl`, the order in Hi.Events' event order list, so the ticketing team can jump to it.
 - Status: `COMPLETED` with `PAYMENT_RECEIVED` is Paid; other `COMPLETED` is Failed; `CANCELLED` is Cancelled;
   `ABANDONED`, or `RESERVED` past `reserved_until`, is Expired; other `RESERVED` is Pending (a failed card attempt can
   be retried on the same link). `RefundedMinor` is `total_refunded`. Fee and paid time are not exposed by Hi.Events and

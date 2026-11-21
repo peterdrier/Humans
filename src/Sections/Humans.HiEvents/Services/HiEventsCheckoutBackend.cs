@@ -112,7 +112,7 @@ internal sealed class HiEventsCheckoutBackend : ITicketCheckoutBackend
         var paymentUrl = order.PaymentLinkUrl
             ?? throw new HttpRequestException($"Hi.Events order {order.Id} came back without a payment link.");
 
-        return new CheckoutSession(ToBackendOrderId(eventId, order.Id), new Uri(paymentUrl));
+        return new CheckoutSession(ToBackendOrderId(eventId, order.Id), new Uri(paymentUrl), AdminUrl(eventId, order.Id));
     }
 
     public async Task<CheckoutStatus> GetStatusAsync(string backendOrderId, CancellationToken ct = default)
@@ -196,6 +196,10 @@ internal sealed class HiEventsCheckoutBackend : ITicketCheckoutBackend
         "RESERVED" => CheckoutState.Pending,
         _ => throw new HttpRequestException($"Hi.Events order {order.Id} has unknown status '{order.Status}'."),
     };
+
+    private Uri AdminUrl(int eventId, int orderId) =>
+        new(string.Create(CultureInfo.InvariantCulture,
+            $"{_settings.ResolvedAppUrl}/manage/event/{eventId}/orders#order-{orderId}"));
 
     private static CheckoutOrderItem ToItem(CheckoutLine line, int eventId, HiEventsEventProducts products)
     {
