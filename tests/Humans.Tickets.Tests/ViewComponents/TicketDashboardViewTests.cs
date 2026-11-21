@@ -256,12 +256,21 @@ public class TicketDashboardViewTests
         var at = Instant.FromUtc(2027, 3, 1, 12, 0);
         var stuck = new TicketCheckoutOrder
         {
-            Id = Guid.NewGuid(), BackendKey = "pretix", State = TicketCheckoutOrderState.Pending, BackendOrderId = "E:1",
-            CreatedAt = at, ExpiresAt = at, TotalMinor = 22500,
+            Id = Guid.NewGuid(),
+            BackendKey = "pretix",
+            State = TicketCheckoutOrderState.Pending,
+            BackendOrderId = "E:1",
+            CreatedAt = at,
+            ExpiresAt = at,
+            TotalMinor = 22500,
         };
         var refund = new TicketCheckoutRefund
         {
-            Id = Guid.NewGuid(), OrderId = stuck.Id, AmountMinor = 1000, State = RefundState.ManualRequired, FailureReason = "issue by hand",
+            Id = Guid.NewGuid(),
+            OrderId = stuck.Id,
+            AmountMinor = 1000,
+            State = RefundState.ManualRequired,
+            FailureReason = "issue by hand",
         };
         var info = new Humans.Tickets.Services.Checkout.CheckoutBackendInfo("pretix", true,
             new CheckoutBackendSetup("pretix", "Self-hosted", null, [], "/Pretix/Webhook", []));

@@ -156,8 +156,13 @@ public sealed class TicketCheckoutServiceTests
         {
             var order = new TicketCheckoutOrder
             {
-                Id = Guid.NewGuid(), SalesEventId = _salesEvent.Id, BackendKey = key, State = state, BackendOrderId = backendId,
-                CreatedAt = Now - age, ExpiresAt = Now + expiresIn,
+                Id = Guid.NewGuid(),
+                SalesEventId = _salesEvent.Id,
+                BackendKey = key,
+                State = state,
+                BackendOrderId = backendId,
+                CreatedAt = Now - age,
+                ExpiresAt = Now + expiresIn,
             };
             _repo.Orders.Add(order);
             return order;
