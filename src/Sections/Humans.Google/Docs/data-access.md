@@ -212,13 +212,14 @@ No repository. Wraps `IUserEmailService` + `IUserService` +
 `IEmailService` to send notifications when access is removed. No direct
 DB access, no cache.
 
-### GoogleTranslationService (Scoped)
+### GoogleTranslationClient / StubGoogleTranslationClient (`IGoogleTranslationService`, Scoped alias)
 
-No repository. Thin design-rules-compliant facade over `IGoogleTranslationClient`
-(`Services/Workspace/`). Exists so cross-section callers (Survey authoring —
-`SurveyService.PreFillTranslationsAsync`) depend on a Google
-service interface rather than the raw connector client. No DB access,
-no cache.
+No repository or cache. The internal real HTTP client and dev stub directly implement the
+existing public text-translation contract. Survey authoring and Governance assembly-vote
+translation still depend only on
+`IGoogleTranslationService`. The real typed HTTP client is resolved once per scope through the
+public alias; the stub remains singleton-backed. Credential selection, batch size, response
+validation, ordering and cancellation are unchanged.
 
 ---
 

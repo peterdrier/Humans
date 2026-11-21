@@ -144,7 +144,8 @@ public sealed class Section :
             services.AddScoped<IGoogleDrivePermissionsClient, GoogleDrivePermissionsClient>();
             services.AddScoped<IGoogleDirectoryClient, GoogleDirectoryClient>();
 
-            services.AddHttpClient<IGoogleTranslationClient, GoogleTranslationClient>();
+            services.AddHttpClient<GoogleTranslationClient>();
+            services.AddScoped<IGoogleTranslationService>(sp => sp.GetRequiredService<GoogleTranslationClient>());
         }
         else
         {
@@ -161,7 +162,8 @@ public sealed class Section :
             services.AddSingleton<IGoogleGroupProvisioningClient, StubGoogleGroupProvisioningClient>();
             services.AddSingleton<IGoogleDrivePermissionsClient, StubGoogleDrivePermissionsClient>();
             services.AddSingleton<IGoogleDirectoryClient, StubGoogleDirectoryClient>();
-            services.AddSingleton<IGoogleTranslationClient, StubGoogleTranslationClient>();
+            services.AddSingleton<StubGoogleTranslationClient>();
+            services.AddScoped<IGoogleTranslationService>(sp => sp.GetRequiredService<StubGoogleTranslationClient>());
         }
 
         services.AddScoped<IGoogleSyncOutboxProcessor, GoogleSyncOutboxProcessor>();
@@ -169,7 +171,6 @@ public sealed class Section :
         services.AddScoped<IGoogleGroupSync, GoogleGroupSyncService>();
         services.AddScoped<IGoogleDriveAccessSyncScheduler, HangfireGoogleDriveAccessSyncScheduler>();
         services.AddScoped<IGoogleDriveSync, GoogleDriveAccessSyncService>();
-        services.AddScoped<IGoogleTranslationService, GoogleTranslationService>();
 
         services.AddScoped<GoogleResourceReconciliationJob>();
         services.AddScoped<ProcessGoogleSyncOutboxJob>();

@@ -272,8 +272,7 @@ section's public service surface.
 ### TicketVendorGateway (Scoped)
 
 No repository. Thin design-rules-compliant facade over `ITicketVendorService` (the
-vendor port, `src/Sections/Humans.Tickets/Contracts/`) — same
-shape as `GoogleTranslationService`. Implements `ITicketDiscountCodes` +
+vendor port, `src/Sections/Humans.Tickets/Contracts/`). Implements `ITicketDiscountCodes` +
 `ITicketVendorMirror` (`Humans.Tickets.Contracts`) so cross-section callers
 (`CampaignService`'s discount-code grant waves) depend on the section's own
 leaf rather than the raw vendor port. `GateVendorCheckInJob` (`Humans.Gate`)

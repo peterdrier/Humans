@@ -38,7 +38,7 @@ pages render for a resource or a person.
 | "Which resources does this team have?" | Teams' pages, Users, Monitor | `ITeamResourceService` (reads); linking, unlinking and per-resource sync are this section's own team-resources page |
 | "Provision `name@nobodies.team` for this person" | Teams' team-admin page, this section's person page | `IEmailProvisioningService.ProvisionNobodiesEmailAsync` |
 | "What happened in these Drive folders since T?" | Monitor | `IGoogleDriveActivityClient` + `ITeamResourceService.GetActiveDriveFoldersAsync` |
-| "Translate this text" | Surveys | `IGoogleTranslationService.TranslateAsync` |
+| "Translate this text" | Surveys, Governance | `IGoogleTranslationService.TranslateAsync` |
 | "How many sync events have failed?" | Admin's notification meter (`GoogleNotificationMeters`) | `IGoogleSyncManagement.GetFailedSyncEventCountAsync` |
 | "What did sync do to this resource / person / overall?" | `/Google/Resource/{id}`, `/Google/Human/{id}`, `/Google/ActivityLog` | `IGoogleSyncLogViewer` / `IGoogleSyncLogService` |
 | Everything an admin does by hand: modes, outbox, accounts, groups, renames, flags, checks | the section's own `/Google/*` screens and its `/Settings` tab | `GoogleController` → internal services |

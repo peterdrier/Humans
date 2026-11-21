@@ -68,7 +68,7 @@ The rows written before the split are still on `audit_log_entries`. **`/Google/A
 
 ### External-API surfaces
 
-`IGoogleSyncManagement` (`GoogleWorkspaceSyncService`), `IGoogleAdminService`, `IGoogleWorkspaceUserService`, and `IGoogleTranslationService` (`GoogleTranslationService`) wrap Google Drive / Groups / Admin SDK / Drive Activity / Cloud Translation HTTP APIs. They own no persistent tables; their "repository" surface is the Google HTTP client (via the connector interfaces listed under [Connector clients](#connector-clients) below), not EF Core.
+`IGoogleSyncManagement` (`GoogleWorkspaceSyncService`), `IGoogleAdminService`, `IGoogleWorkspaceUserService`, and `IGoogleTranslationService` (`GoogleTranslationClient` or its stub) wrap Google Drive / Groups / Admin SDK / Drive Activity / Cloud Translation HTTP APIs. They own no persistent tables; their "repository" surface is the Google HTTP client (via the connector interfaces listed under [Connector clients](#connector-clients) below), not EF Core.
 
 ## Routing
 
@@ -321,7 +321,7 @@ The internal `DriveAccessClaims` owns source collection, per-folder claim unions
 
 The internal `DrivePermissionPlanning` owns the pure expected-versus-actual Drive permission plan, including Gmail alias grouping, inherited access floors and direct-grant classification. `GoogleDriveAccessSyncService` retains hydration, API mutations, retry/error policy, sync logs and removal notices. Planning still selects the highest claimed access level with the same user-ID tie-break; no permission decisions, DI registrations or public contracts change.
 
-**Owning services:** `GoogleWorkspaceSyncService` (implements `IGoogleSyncManagement`), `GoogleGroupSyncService` (implements `IGoogleGroupSync`), `GoogleDriveAccessSyncService` (implements `IGoogleDriveSync`), `GoogleAdminService`, `GoogleWorkspaceUserService`, `SyncSettingsService`, `EmailProvisioningService`, `GoogleTranslationService` (implements `IGoogleTranslationService`)
+**Owning services:** `GoogleWorkspaceSyncService` (implements `IGoogleSyncManagement`), `GoogleGroupSyncService` (implements `IGoogleGroupSync`), `GoogleDriveAccessSyncService` (implements `IGoogleDriveSync`), `GoogleAdminService`, `GoogleWorkspaceUserService`, `SyncSettingsService`, `EmailProvisioningService`, `GoogleTranslationClient` / `StubGoogleTranslationClient` (implement `IGoogleTranslationService` directly)
 **Owned tables:** `google_sync_service_settings`, `google_sync_outbox`, `google_sync_log_entries`, `google_resources`, `google_workspace_identities`
 **Status:** (A) Migrated.
 
@@ -363,7 +363,9 @@ The GDPR sync-log export preserves the viewer fields and resolves resource names
 
 ### Connector clients
 
-Section services depend only on shape-neutral connector interfaces in `Humans.Google.Services.Workspace` (`IGoogleDriveActivityClient` is in the section's `Contracts/` folder, because Monitor consumes it across an assembly boundary) — `IGoogleDirectoryClient`, `IGoogleDrivePermissionsClient`, `IGoogleGroupMembershipClient`, `IGoogleGroupProvisioningClient`, `ITeamResourceGoogleClient`, `IGoogleDriveActivityClient`, `IWorkspaceUserDirectoryClient`, `IGoogleTranslationClient` — so they never import `Google.Apis.*` (the connector rule in design-rules.md, *Layers and projects*). Real Google-backed implementations and dev-mode stubs live beside them in `src/Sections/Humans.Google/Services/Workspace/`. `IGoogleDirectoryClient` lists domain groups only and requests only the group-read scope. Workspace account enumeration and lifecycle operations use `IWorkspaceUserDirectoryClient`; there is no parallel primary-email-only listing path. `IGoogleDrivePermissionsClient.CreateFolderAsync` is the one folder-creation capability on that connector — used by `IGoogleSyncWrite.CreateSubfolderAsync`, not by any reconciliation path.
+Section services depend only on shape-neutral connector interfaces in `Humans.Google.Services.Workspace` (`IGoogleDriveActivityClient` is in the section's `Contracts/` folder, because Monitor consumes it across an assembly boundary) — `IGoogleDirectoryClient`, `IGoogleDrivePermissionsClient`, `IGoogleGroupMembershipClient`, `IGoogleGroupProvisioningClient`, `ITeamResourceGoogleClient`, `IGoogleDriveActivityClient`, `IWorkspaceUserDirectoryClient` — so they never import `Google.Apis.*` (the connector rule in design-rules.md, *Layers and projects*). Real Google-backed implementations and dev-mode stubs live beside them in `src/Sections/Humans.Google/Services/Workspace/`. `IGoogleDirectoryClient` lists domain groups only and requests only the group-read scope. Workspace account enumeration and lifecycle operations use `IWorkspaceUserDirectoryClient`; there is no parallel primary-email-only listing path. `IGoogleDrivePermissionsClient.CreateFolderAsync` is the one folder-creation capability on that connector — used by `IGoogleSyncWrite.CreateSubfolderAsync`, not by any reconciliation path.
+
+Cloud Translation has no separate forwarding service or duplicate client interface: its internal real and stub implementations directly implement `IGoogleTranslationService`. The public contract still exposes only text and language codes. Scoped resolution reuses the selected real HTTP client or singleton stub; credential selection, batching, cancellation and response validation are unchanged.
 
 ### Touch-and-clean guidance
 
