@@ -11,7 +11,7 @@ internal sealed class StubGoogleSyncService(
     IGoogleSyncOutboxRepository outboxRepository,
     IGoogleDrivePermissionsClient drivePermissions,
     IGoogleDriveAccessSyncScheduler driveAccessSyncScheduler,
-    IAuditLogService auditLogService) : IGoogleSyncManagement
+    IAuditLogService auditLogService) : IGoogleSyncManagement, IGoogleDriveSync
 {
     public async Task<string> CreateSubfolderAsync(
         string parentFolderId,
@@ -85,14 +85,24 @@ internal sealed class StubGoogleSyncService(
         return Task.FromResult(0);
     }
 
-    public Task<SyncPreviewResult> SyncResourcesByTypeAsync(
-        GoogleResourceType resourceType,
+    public Task<SyncPreviewResult> ReconcileAllAsync(
         SyncAction action,
-        CancellationToken cancellationToken = default,
-        GoogleSyncSource syncSource = GoogleSyncSource.ManualSync)
+        CancellationToken ct = default,
+        GoogleResourceType? resourceType = null,
+        GoogleSyncSource syncSource = GoogleSyncSource.ScheduledSync)
     {
         logger.LogInformation("[STUB] Would sync resources of type {ResourceType} with action {Action}", resourceType, action);
         return Task.FromResult(new SyncPreviewResult());
+    }
+
+    public Task<ResourceSyncDiff> ReconcileOneAsync(
+        string folderId,
+        SyncAction action,
+        CancellationToken ct = default,
+        GoogleSyncSource syncSource = GoogleSyncSource.ScheduledSync)
+    {
+        logger.LogInformation("[STUB] Would sync Drive folder {FolderId} with action {Action}", folderId, action);
+        return Task.FromResult(new ResourceSyncDiff { GoogleId = folderId });
     }
 
     public Task<ResourceSyncDiff> SyncSingleResourceAsync(

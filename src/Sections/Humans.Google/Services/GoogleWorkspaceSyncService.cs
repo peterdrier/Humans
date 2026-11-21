@@ -1,3 +1,4 @@
+using Humans.Google.Domain;
 using Humans.Google.Contracts;
 using Humans.AuditLog.Contracts;
 using Humans.Users.Contracts;
@@ -247,18 +248,6 @@ internal sealed class GoogleWorkspaceSyncService(
         }
 
         await googleGroupSync.RequestSyncAsync(groupKey, cancellationToken, syncSource);
-    }
-
-    /// <inheritdoc />
-    public Task<SyncPreviewResult> SyncResourcesByTypeAsync(
-        GoogleResourceType resourceType,
-        SyncAction action,
-        CancellationToken cancellationToken = default,
-        GoogleSyncSource syncSource = GoogleSyncSource.ManualSync)
-    {
-        if (resourceType == GoogleResourceType.Group)
-            throw new InvalidOperationException("Google Group membership sync is handled by IGoogleGroupSync.");
-        return googleDriveSync.ReconcileAllAsync(action, cancellationToken, resourceType, syncSource);
     }
 
     /// <inheritdoc />

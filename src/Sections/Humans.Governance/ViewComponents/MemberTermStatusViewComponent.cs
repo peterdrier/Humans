@@ -13,6 +13,7 @@ namespace Humans.Governance.ViewComponents;
 internal sealed class MemberTermStatusViewComponent(
     ITeamService teamService,
     IGovernanceManagement applicationService,
+    IGovernanceService membershipTiers,
     IClock clock) : ViewComponent
 {
     public async Task<IViewComponentResult> InvokeAsync()
@@ -23,7 +24,7 @@ internal sealed class MemberTermStatusViewComponent(
             return Content(string.Empty);
         }
 
-        var tier = await applicationService.GetMembershipTierAsync(userId, ct);
+        var tier = await membershipTiers.GetMembershipTierAsync(userId, ct);
         var isVolunteerMember = (await teamService.GetTeamAsync(SystemTeamIds.Volunteers, ct))
             is { IsActive: true } volunteers && volunteers.Members.Any(m => m.UserId == userId);
 

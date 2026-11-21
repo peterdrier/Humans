@@ -98,7 +98,8 @@ public abstract class WorkgroupsTestHarness : IDisposable
                 call.Arg<int?>() ?? 62900150, $"acc-{call.Arg<int?>() ?? 62900150}", call.Arg<string>(),
                 Created: call.Arg<int?>() is null));
 
-        Notifications = Substitute.For<INotificationService>();
+        Notifications = Substitute.For<INotificationEmitter, INotificationService>();
+        RoleNotifications = (INotificationService)Notifications;
         Email = Substitute.For<IEmailService>();
         EmailFactory = TestWorkgroupsEmails.Create();
 
@@ -127,7 +128,8 @@ public abstract class WorkgroupsTestHarness : IDisposable
     private protected IGoogleGroupSync GoogleGroupSync { get; }
     private protected IFinanceWrite Finance { get; }
     private protected IHoldedService Holded { get; }
-    private protected INotificationService Notifications { get; }
+    private protected INotificationEmitter Notifications { get; }
+    private protected INotificationService RoleNotifications { get; }
     private protected IEmailService Email { get; }
     private protected WorkgroupsEmails EmailFactory { get; }
     private protected IAuditLogService AuditLog { get; }
@@ -138,7 +140,7 @@ public abstract class WorkgroupsTestHarness : IDisposable
     /// <summary>The undecorated service over the real repository and the substitutes above.</summary>
     private protected WorkgroupService NewService(IWorkgroupRepository? repository = null) => new(
         repository ?? new WorkgroupRepository(DbFactory), Users, Surveys, Roles, Settings, GoogleSyncRead,
-        GoogleSync, GoogleGroupSync, Finance, Holded, Notifications, Email, EmailFactory, AuditLog, Clock, Logger);
+        GoogleSync, GoogleGroupSync, Finance, Holded, RoleNotifications, Notifications, Email, EmailFactory, AuditLog, Clock, Logger);
 
     /// <summary>A fresh context over the same store — what a test reads back through.</summary>
     private protected WorkgroupsDbContext OpenContext() => DbFactory.CreateDbContext();

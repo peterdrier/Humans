@@ -9,6 +9,7 @@ using Humans.Tickets.Contracts;
 using Humans.Base.Constants;
 using Humans.Gate.Data;
 using Humans.Gate.Domain;
+using Humans.Gate.Models;
 using Humans.Gate.Services;
 using Humans.Gate.Services.Stores;
 using Humans.Gate.Jobs;
@@ -81,6 +82,7 @@ public class GateServiceTests
     private static readonly Guid AgentId = Guid.NewGuid();
 
     private readonly ITicketService _tickets = Substitute.For<ITicketService>();
+    private readonly ITicketGateLookup _issued = Substitute.For<ITicketGateLookup>();
     private readonly IEarlyEntryService _earlyEntry = Substitute.For<IEarlyEntryService>();
     private readonly ISettingsService _burn = Substitute.For<ISettingsService>();
     private readonly IShiftService _shifts = Substitute.For<IShiftService>();
@@ -103,7 +105,8 @@ public class GateServiceTests
         _burn.GetActiveEventSettings().Returns((EventSettingsInfo?)null);
         _earlyEntry.GetForUserAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns((EarlyEntryRosterRow?)null);
-        _svc = new GateService(new GateRepository(GateDbFactory), _tickets, _earlyEntry, _burn, _shifts, _roles, _users, _pinHasher, _auditLog, _jobs, _ledger, new GatePinThrottle(new MemoryCache(new MemoryCacheOptions()), Clock), _config, NullLogger<GateService>.Instance, Clock);
+        _svc = new GateService(new GateRepository(GateDbFactory), _tickets, _earlyEntry, _burn, _shifts, _roles, _users,
+            _issued, _pinHasher, _auditLog, _jobs, _ledger, new GatePinThrottle(new MemoryCache(new MemoryCacheOptions()), Clock), _config, NullLogger<GateService>.Instance, Clock);
 
         // Baseline: a past cutoff, so general entry is open; without one every scan fails safe to
         // AMBER. Seeded sync (the ctor can't await) into the store the repository's factory shares.
@@ -1192,5 +1195,108 @@ public class GateServiceTests
         snapshot.AdmitCount.Should().Be(0);
         snapshot.Pending.Should().BeEmpty();
         snapshot.Unmirrorable.Should().BeEmpty();
+    }
+
+    // Tickets issued by Humans' own checkout (the 2027 lane): the gate's row is the only check-in record.
+
+    private const string IssuedBarcode = "H0123456789ABCDEF";
+
+    private readonly EventSettingsInfo _activeEvent = new(Guid.NewGuid(), "Nowhere 2027", 2027, "Europe/Madrid",
+        new LocalDate(2026, 3, 5), -10, 5, 8, new Dictionary<int, int>(), null, null);
+
+    private IssuedTicketInfo StubIssued(
+        bool valid = true, Guid? eventId = null, Guid? holder = null, Guid? entryUser = null, string label = "Wave 1",
+        bool inResaleQueue = false)
+    {
+        _burn.GetActiveEventSettings().Returns(_activeEvent);
+        _tickets.GetTicketOrdersAsync(Arg.Any<CancellationToken>()).Returns(new List<TicketOrderInfo>());
+        var ticket = new IssuedTicketInfo(Guid.NewGuid(), eventId ?? _activeEvent.Id, IssuedBarcode, "Ana Ruiz",
+            holder, entryUser ?? holder, label, valid, inResaleQueue);
+        _issued.FindIssuedTicketAsync(IssuedBarcode, Arg.Any<CancellationToken>()).Returns(ticket);
+        return ticket;
+    }
+
+    private Task<GateDecisionResult> RecordIssuedAsync() =>
+        _svc.RecordDecisionAsync(
+            new GateDecisionInput(IssuedBarcode.ToLowerInvariant(), IdConfirmed: true, ChildWithAdult: false, "L1", null, null),
+            AgentId);
+
+    [HumansFact]
+    public async Task IssuedTicket_ForTheActiveEvent_AdmitsAsTheOnlyCheckInRecord()
+    {
+        var ticket = StubIssued(holder: GuestId);
+
+        var eval = await _svc.EvaluateAsync(IssuedBarcode.ToLowerInvariant());
+        eval.Outcome.Should().Be(GatePreCheckOutcome.NeedsIdCheck);
+        eval.GuestName.Should().Be("Ana Ruiz");
+        eval.TicketTypeName.Should().Be("Wave 1");
+
+        var result = await RecordIssuedAsync();
+
+        result.Verdict.Should().Be(GateVerdict.Admitted);
+        var row = (await GateDb.GateScanEvents.AsNoTracking().SingleAsync(Xunit.TestContext.Current.CancellationToken));
+        row.CheckoutTicketId.Should().Be(ticket.Id);
+        row.TicketAttendeeId.Should().BeNull();
+        row.GuestUserId.Should().Be(GuestId);
+        _jobs.DidNotReceive().Create(Arg.Any<Job>(), Arg.Any<IState>());
+        await _users.Received(1).RecordParticipationAsync(
+            GuestId, 2027, ParticipationStatus.Attended, Arg.Any<Instant?>(), Arg.Any<CancellationToken>());
+
+        (await _svc.EvaluateAsync(IssuedBarcode)).Outcome.Should().Be(GatePreCheckOutcome.Duplicate);
+        (await _svc.GetVendorCheckInBackfillAsync()).AdmitCount.Should().Be(0);
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(false, false)]
+    [Xunit.InlineData(true, true)]
+    public async Task IssuedTicket_VoidOrForAnotherEvent_IsInvalid(bool valid, bool otherEvent)
+    {
+        StubIssued(valid: valid, eventId: otherEvent ? Guid.NewGuid() : null, holder: GuestId);
+
+        (await _svc.EvaluateAsync(IssuedBarcode)).Outcome.Should().Be(GatePreCheckOutcome.Invalid);
+        (await RecordIssuedAsync()).Verdict.Should().Be(GateVerdict.RejectedInvalid);
+        (await GateDb.GateScanEvents.AsNoTracking().SingleAsync(Xunit.TestContext.Current.CancellationToken)).AdmitDedupeKey.Should().BeNull();
+    }
+
+    [HumansFact]
+    public async Task IssuedChildTicket_BeforeGeneralEntry_UsesTheAdultsEarlyEntry()
+    {
+        await _svc.SaveSettingsAsync(new GateSettingsDto(Clock.GetCurrentInstant().Plus(Duration.FromDays(2)), 16));
+        StubIssued(holder: null, entryUser: GuestId, label: "Child · Wave 1");
+        _earlyEntry.GetForUserAsync(GuestId, Arg.Any<CancellationToken>())
+            .Returns(new EarlyEntryRosterRow(GuestId, Clock.GetCurrentInstant().InUtc().Date, new[] { "Build crew" }, false));
+
+        var eval = await _svc.EvaluateAsync(IssuedBarcode);
+
+        eval.Outcome.Should().Be(GatePreCheckOutcome.NeedsIdCheckEarly);
+        eval.GuestUserId.Should().BeNull();
+        (await RecordIssuedAsync()).Verdict.Should().Be(GateVerdict.AdmittedEarly);
+        await _users.DidNotReceive().RecordParticipationAsync(
+            Arg.Any<Guid>(), Arg.Any<int>(), Arg.Any<ParticipationStatus>(), Arg.Any<Instant?>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task IssuedTicket_StillOnResale_Stops_WithWhatTheHolderCanDo()
+    {
+        StubIssued(valid: false, holder: GuestId, inResaleQueue: true);
+
+        var eval = await _svc.EvaluateAsync(IssuedBarcode);
+
+        eval.Outcome.Should().Be(GatePreCheckOutcome.Invalid);
+        GateScanCardViewModel.FromEvaluation(eval).Reason.Should().Contain("withdraw");
+    }
+
+    [HumansFact]
+    public async Task Admissions_ReportTheAdmittedCodes_AsTheCallerSpeltThem()
+    {
+        StubIssued(holder: GuestId);
+        await RecordIssuedAsync();
+        var reads = new GateAdmissionReads(new GateRepository(GateDbFactory));
+
+        var admitted = await reads.GetAdmittedAsync(
+            [IssuedBarcode.ToLowerInvariant(), "HOTHERCODE", " "], Xunit.TestContext.Current.CancellationToken);
+
+        admitted.Should().BeEquivalentTo([IssuedBarcode.ToLowerInvariant()]);
+        (await reads.GetAdmittedAsync([], Xunit.TestContext.Current.CancellationToken)).Should().BeEmpty();
     }
 }

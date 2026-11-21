@@ -27,7 +27,6 @@ namespace Humans.Governance.Services;
 internal sealed class ApplicationDecisionService(
     IApplicationRepository repository,
     IUserService userService,
-    MembershipTierService membershipTiers,
     IRoleAssignmentService roleAssignmentService,
     IAuditLogService auditLogService,
     IEmailService emailService,
@@ -383,24 +382,6 @@ internal sealed class ApplicationDecisionService(
     public Task MarkRenewalReminderSentAsync(
         Guid applicationId, Instant sentAt, CancellationToken ct = default) =>
         repository.MarkRenewalReminderSentAsync(applicationId, sentAt, ct);
-
-    public Task<IReadOnlyList<Guid>> GetActiveApprovedTierUserIdsAsync(
-        MembershipTier tier, LocalDate today, CancellationToken ct = default) =>
-        repository.GetActiveApprovedTierUserIdsAsync(tier, today, ct);
-
-    public Task<bool> HasActiveApprovedTierAsync(
-        Guid userId, MembershipTier tier, LocalDate today, CancellationToken ct = default) =>
-        repository.HasActiveApprovedTierAsync(userId, tier, today, ct);
-
-    public Task<MembershipTier> GetMembershipTierAsync(Guid userId, CancellationToken ct = default) =>
-        membershipTiers.GetTierAsync(userId, ct);
-
-    public Task<IReadOnlyDictionary<Guid, MembershipTier>> GetMembershipTiersAsync(CancellationToken ct = default) =>
-        membershipTiers.GetTiersAsync(ct);
-
-    public Task<IReadOnlyList<(Guid UserId, MembershipTier NewTier)>> ExpireMembershipTiersAsync(
-        MembershipTier tier, LocalDate today, CancellationToken ct = default) =>
-        membershipTiers.ExpireAsync(tier, today, ct);
 
     public Task ReassignAsync(Guid sourceUserId, Guid targetUserId, Guid actorUserId, Instant updatedAt,
         CancellationToken ct) =>

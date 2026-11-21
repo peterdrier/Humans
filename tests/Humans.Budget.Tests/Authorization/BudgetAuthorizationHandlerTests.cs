@@ -1,4 +1,5 @@
 using Humans.Users.Contracts;
+using Humans.Teams.Contracts;
 using Humans.Finance.Contracts;
 using System.Security.Claims;
 using AwesomeAssertions;
@@ -15,7 +16,7 @@ namespace Humans.Budget.Tests.Authorization;
 public sealed class BudgetAuthorizationHandlerTests
 {
     private readonly IUserService _users = Substitute.For<IUserService>();
-    private readonly IBudgetService _budgetService = Substitute.For<IBudgetService>();
+    private readonly ITeamService _teams = Substitute.For<ITeamService>();
     private readonly BudgetAuthorizationHandler _handler;
 
     private static readonly Guid CoordinatorTeamId = Guid.NewGuid();
@@ -26,8 +27,8 @@ public sealed class BudgetAuthorizationHandlerTests
     {
         _users.GetUserInfoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(call => UserInfo.Create(new User { Id = call.Arg<Guid>() }, [], [], null));
-        _handler = new BudgetAuthorizationHandler(_budgetService, _users, new Microsoft.AspNetCore.Http.HttpContextAccessor());
-        _budgetService.GetEffectiveCoordinatorTeamIdsAsync(UserId)
+        _handler = new BudgetAuthorizationHandler(_teams, _users, new Microsoft.AspNetCore.Http.HttpContextAccessor());
+        _teams.GetEffectiveBudgetCoordinatorTeamIdsAsync(UserId)
             .Returns([CoordinatorTeamId]);
     }
 
@@ -47,7 +48,7 @@ public sealed class BudgetAuthorizationHandlerTests
             ? UserInfo.Create(new User { Id = survivorId }, [], [], null)
             : null);
         if (!survivorAuthorized)
-            _budgetService.GetEffectiveCoordinatorTeamIdsAsync(survivorId, Arg.Any<CancellationToken>()).Returns([]);
+            _teams.GetEffectiveBudgetCoordinatorTeamIdsAsync(survivorId, Arg.Any<CancellationToken>()).Returns([]);
 
         var allowed = await EvaluateAsync(CreateUserWithId(cookieId), CreateCategory("coordinator"),
             viewing ? BudgetOperationRequirement.View : BudgetOperationRequirement.Edit);
@@ -76,14 +77,14 @@ public sealed class BudgetAuthorizationHandlerTests
             ct.ThrowIfCancellationRequested();
             return UserInfo.Create(new User { Id = UserId }, [], [], null);
         });
-        _budgetService.GetEffectiveCoordinatorTeamIdsAsync(UserId, Arg.Any<CancellationToken>()).Returns(call =>
+        _teams.GetEffectiveBudgetCoordinatorTeamIdsAsync(UserId, Arg.Any<CancellationToken>()).Returns(call =>
         {
             observed = call.Arg<CancellationToken>();
             if (!atUser) request.Cancel();
             observed.ThrowIfCancellationRequested();
             return new HashSet<Guid> { CoordinatorTeamId };
         });
-        var handler = new BudgetAuthorizationHandler(_budgetService, _users, http);
+        var handler = new BudgetAuthorizationHandler(_teams, _users, http);
         var requirement = viewing ? BudgetOperationRequirement.View : BudgetOperationRequirement.Edit;
         var context = new AuthorizationHandlerContext([requirement], CreateUser("coordinator"), CreateCategory("coordinator"));
         Func<Task> authorize = () => handler.HandleAsync(context);
@@ -126,7 +127,7 @@ public sealed class BudgetAuthorizationHandlerTests
     {
         if (string.Equals(userKind, "regular", StringComparison.Ordinal))
         {
-            _budgetService.GetEffectiveCoordinatorTeamIdsAsync(Arg.Any<Guid>())
+            _teams.GetEffectiveBudgetCoordinatorTeamIdsAsync(Arg.Any<Guid>())
                 .Returns([]);
         }
 
@@ -154,7 +155,7 @@ public sealed class BudgetAuthorizationHandlerTests
         string userKind, string teamKind, bool restricted, bool deleted, bool ticketing, bool expected)
     {
         if (string.Equals(userKind, "regular", StringComparison.Ordinal))
-            _budgetService.GetEffectiveCoordinatorTeamIdsAsync(Arg.Any<Guid>()).Returns([]);
+            _teams.GetEffectiveBudgetCoordinatorTeamIdsAsync(Arg.Any<Guid>()).Returns([]);
 
         var allowed = await EvaluateAsync(CreateUser(userKind),
             CreateCategory(teamKind, restricted, deleted, ticketing), BudgetOperationRequirement.View);

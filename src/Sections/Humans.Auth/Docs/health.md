@@ -111,8 +111,8 @@ Stated so a violation is recognisable, each with the line that enforces it. Thes
    (`Services/RoleAssignmentService.cs:172`).
 4. One *semantics* of "active at *t*" — `ValidFrom <= t && (ValidTo is null || ValidTo > t)` —
    governs every read, in SQL and in memory alike. It is necessarily implemented more than
-   once (`Domain/RoleAssignment.cs:38`, `Contracts/RoleAssignmentRow.cs:23`,
-   `Contracts/IRoleAssignmentService.cs:87`, and the repository's EF expressions, which cannot
+   once (`Domain/RoleAssignment.cs:38`, `Services/RoleAssignmentRow.cs`,
+   `Contracts/IRoleAssignmentService.cs`, and the repository's EF expressions, which cannot
    call a method and be translated). What this forbids is a second *predicate*, not a second
    implementation: an in-memory read that spells the comparison out where a method is in reach
    is the violation.

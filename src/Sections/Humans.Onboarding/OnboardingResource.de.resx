@@ -66,7 +66,6 @@
   <data name="Onboarding_LegalNameExplainerPost" xml:space="preserve"><value>und würden sie nur offenlegen, wenn das Gesetz oder eine förmliche Prüfung es erfordert.</value></data>
   <data name="Onboarding_LegalNameExplainerPre" xml:space="preserve"><value>Wird intern gespeichert, ist nur für Admins sichtbar und wird nur dort verwendet, wo das spanische Recht es verlangt — zum Beispiel für unseren Prüfnachweis, dass du der Volunteer-Vereinbarung zu einem bestimmten Datum und einer bestimmten Uhrzeit zugestimmt hast. Wir exportieren diese Information ausdrücklich</value></data>
   <data name="Onboarding_LegalNameLabel" xml:space="preserve"><value>Bürgerlicher Name</value></data>
-  <data name="Onboarding_NameRequiredBeforeShifts" xml:space="preserve"><value>Füge zuerst deinen Namen hinzu — wir brauchen ihn, bevor du dich für Schichten anmelden kannst.</value></data>
   <data name="Onboarding_NamesSubtitle" xml:space="preserve"><value>Zwei kurze Schritte, bevor du eine Schicht auswählst.</value></data>
   <data name="Onboarding_NamesTitle" xml:space="preserve"><value>Willkommen — fangen wir mit deinem Namen an</value></data>
   <data name="Onboarding_PriorityCritical" xml:space="preserve"><value>Kritisch</value></data>

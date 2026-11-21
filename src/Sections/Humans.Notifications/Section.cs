@@ -35,7 +35,6 @@ public sealed class Section : ISection, ISectionChrome, ISectionJobs
         services.AddScoped<NotificationInboxService>();
         services.AddScoped<INotificationInboxService>(sp => sp.GetRequiredService<NotificationInboxService>());
         services.AddScoped<INotificationAutoResolve>(sp => sp.GetRequiredService<NotificationInboxService>());
-        services.AddScoped<INotificationRetention>(sp => sp.GetRequiredService<NotificationInboxService>());
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<NotificationInboxService>());
 
         services.AddScoped<NotificationMeterProvider>();

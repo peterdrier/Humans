@@ -94,7 +94,13 @@ internal sealed record GateScanResult(
     string? VendorTicketId = null,
     LocalDate? EarliestEntryDate = null,
     LocalDate? Today = null,
-    LocalDate? GeneralEntryDate = null);
+    LocalDate? GeneralEntryDate = null)
+{
+    public Guid? CheckoutTicketId { get; init; }
+
+    /// <summary>An Invalid checkout ticket that is only waiting in the resale queue: the holder can withdraw it.</summary>
+    public bool InResaleQueue { get; init; }
+}
 
 /// <summary>
 /// Carries no scanner identity: the controller supplies it from the authenticated principal, so it can't be forged on the wire. The

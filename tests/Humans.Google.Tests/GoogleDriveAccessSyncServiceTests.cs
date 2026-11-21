@@ -1,3 +1,4 @@
+using Humans.Google.Domain;
 using Humans.Google.Contracts;
 using Humans.Google.Data;
 using Humans.Teams.Contracts;
@@ -1311,15 +1312,16 @@ public sealed class GoogleDriveAccessSyncServiceTests
     }
 
     [HumansTheory]
-    [Xunit.InlineData(SyncAction.Preview, SyncMode.AddAndRemove, false)]
-    [Xunit.InlineData(SyncAction.Preview, SyncMode.AddAndRemove, true)]
-    [Xunit.InlineData(SyncAction.Execute, SyncMode.None, false)]
-    [Xunit.InlineData(SyncAction.Execute, SyncMode.None, true)]
-    [Xunit.InlineData(SyncAction.Execute, SyncMode.AddOnly, false)]
-    [Xunit.InlineData(SyncAction.Execute, SyncMode.AddOnly, true)]
+    [Xunit.InlineData(SyncAction.Preview, (int)SyncMode.AddAndRemove, false)]
+    [Xunit.InlineData(SyncAction.Preview, (int)SyncMode.AddAndRemove, true)]
+    [Xunit.InlineData(SyncAction.Execute, (int)SyncMode.None, false)]
+    [Xunit.InlineData(SyncAction.Execute, (int)SyncMode.None, true)]
+    [Xunit.InlineData(SyncAction.Execute, (int)SyncMode.AddOnly, false)]
+    [Xunit.InlineData(SyncAction.Execute, (int)SyncMode.AddOnly, true)]
     public async Task ReconcileOneAsync_MixedDowngrade_RespectsPreviewAndSyncMode(
-        SyncAction action, SyncMode mode, bool departed)
+        SyncAction action, int modeValue, bool departed)
     {
+        var mode = (SyncMode)modeValue;
         var alice = Guid.NewGuid();
         var service = CreateService(departed
             ? new StaticSource("folder-1")

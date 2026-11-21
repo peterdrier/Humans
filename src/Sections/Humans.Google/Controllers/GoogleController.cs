@@ -1,3 +1,4 @@
+using Humans.Google.Domain;
 using Humans.Base.Enums;
 using Humans.Google.Contracts;
 using Humans.Base.Controllers;
@@ -17,6 +18,7 @@ internal sealed class GoogleController(
     IUserService userService,
     IGoogleSyncManagement googleSyncService,
     IGoogleGroupSync googleGroupSync,
+    IGoogleDriveSync googleDriveSync,
     ITeamResourceManagement teamResourceService,
     IEmailProvisioningService emailProvisioningService,
     IGoogleAdminService googleAdminService,
@@ -304,7 +306,7 @@ internal sealed class GoogleController(
     {
         var result = resourceType == GoogleResourceType.Group
             ? await googleGroupSync.ReconcileAllAsync(SyncAction.Preview, CancellationToken.None, GoogleSyncSource.ManualSync)
-            : await googleSyncService.SyncResourcesByTypeAsync(resourceType, SyncAction.Preview, CancellationToken.None);
+            : await googleDriveSync.ReconcileAllAsync(SyncAction.Preview, CancellationToken.None, resourceType, GoogleSyncSource.ManualSync);
 
         result.Diffs.Sort((a, b) =>
             string.Compare(a.ResourceName, b.ResourceName, StringComparison.Ordinal));
@@ -361,7 +363,7 @@ internal sealed class GoogleController(
             // Not RequestAborted: see SyncExecute.
             var result = resourceType == GoogleResourceType.Group
                 ? await googleGroupSync.ReconcileAllAsync(SyncAction.Execute, CancellationToken.None, GoogleSyncSource.ManualSync)
-                : await googleSyncService.SyncResourcesByTypeAsync(resourceType, SyncAction.Execute, CancellationToken.None);
+                : await googleDriveSync.ReconcileAllAsync(SyncAction.Execute, CancellationToken.None, resourceType, GoogleSyncSource.ManualSync);
             return Json(result);
         }
         catch (Exception ex)

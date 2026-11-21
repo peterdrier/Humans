@@ -15,12 +15,13 @@ and `AssemblyVoteRepository` inject
 All four repositories (`GovernanceBodyRepository` included) are registered **Singleton** in `Section.cs`; they hold no state
 and take an `IDbContextFactory`. The services below are Scoped.
 
-`IGovernanceManagement` (internal) extends the public `IGovernanceService` (reads) with the
-membership-tier expiry and the section's own members. Readers outside this section inject
+`IGovernanceManagement` (internal) carries application reads, admin counts and renewal reminders
+on `ApplicationDecisionService`. The existing `MembershipTierService` implements the public
+`IGovernanceService` directly. Readers outside this section inject
 `IGovernanceService` — tier reads from Users (popover, human summary, admin detail, duplicate
 accounts), Onboarding, Workgroups, Tickets, Surveys, Agent and Teams. Nothing outside the section
 writes Governance data: the section's own `MembershipTierExpiryJob` calls
-`IGovernanceManagement.ExpireMembershipTiersAsync`; `MembershipTierService` records each `TierDowngraded` audit after its tier mutation commits.
+the existing `MembershipTierService.ExpireAsync` directly; `MembershipTierService` records each `TierDowngraded` audit after its tier mutation commits.
 
 Cross-section reads inside the section go through the read surfaces
 (`IUserService`, `ITeamService`, `IConsentService`).

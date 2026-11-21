@@ -1,3 +1,8 @@
+using Humans.AuditLog.Contracts;
+using Humans.Base.Enums;
+using Humans.Google.Contracts;
+using Humans.Google.Data;
+using NSubstitute;
 using AwesomeAssertions;
 using Humans.Base.Configuration;
 using Humans.Google.Health;
@@ -55,6 +60,35 @@ public sealed class GoogleCredentiallessProductionTests
         services.Should().ContainSingle(descriptor =>
             descriptor.ServiceType == typeof(IGoogleSyncManagement) &&
             descriptor.ImplementationType == typeof(StubGoogleSyncService));
+    }
+
+    [HumansFact]
+    public async Task DriveReconciliation_WithoutCredentials_UsesTheExistingNoOpBackend()
+    {
+        var services = new ServiceCollection();
+        services.AddLogging();
+        new Section().Register(services, new ConfigurationBuilder().Build());
+        var outbox = Substitute.For<IGoogleSyncOutboxRepository>();
+        var audit = Substitute.For<IAuditLogService>();
+        var scheduler = Substitute.For<IGoogleDriveAccessSyncScheduler>();
+        services.AddSingleton(outbox);
+        services.AddSingleton(audit);
+        services.AddSingleton(scheduler);
+        using var provider = services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true });
+        using var scope = provider.CreateScope();
+        var drive = scope.ServiceProvider.GetRequiredService<IGoogleDriveSync>();
+
+        drive.Should().BeSameAs(scope.ServiceProvider.GetRequiredService<IGoogleSyncManagement>());
+        foreach (var action in new[] { SyncAction.Preview, SyncAction.Execute })
+        {
+            (await drive.ReconcileAllAsync(action, Xunit.TestContext.Current.CancellationToken,
+                GoogleResourceType.DriveFolder, GoogleSyncSource.ManualSync)).Diffs.Should().BeEmpty();
+            (await drive.ReconcileOneAsync("folder", action, Xunit.TestContext.Current.CancellationToken))
+                .GoogleId.Should().Be("folder");
+        }
+        outbox.ReceivedCalls().Should().BeEmpty();
+        audit.ReceivedCalls().Should().BeEmpty();
+        scheduler.ReceivedCalls().Should().BeEmpty();
     }
 
     [HumansFact]

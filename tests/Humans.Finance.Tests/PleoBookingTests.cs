@@ -231,6 +231,26 @@ public class PleoBookingTests
             Arg.Any<string?>(), CancellationToken.None);
     }
 
+    [HumansTheory]
+    [InlineData(-40, null)]
+    [InlineData(-40, 0)]
+    [InlineData(25, null)]
+    [InlineData(25, 0)]
+    public async Task Book_ADraftLeftByAFailedApproval_IsApprovedAndPaidInFull(int amount, int? mirrorPending)
+    {
+        // Holded omits a draft's balance; the mirror must not read that as already paid.
+        GivenPurchase("draft", -amount, approved: false, pending: mirrorPending);
+        GivenEntries(Entry("draft", amount));
+
+        var run = await Booking().BookAsync(null, null);
+
+        run.Lines.Should().ContainSingle().Which.Outcome.Should().Be(PleoBookingOutcome.Posted);
+        _created.Should().BeEmpty();
+        await _write.Received(1).EnsurePurchaseDocumentApprovedAsync("doc-draft", CancellationToken.None);
+        await _write.Received(1).PayPurchaseDocumentAsync("doc-draft", -amount, Treasury, Arg.Any<LocalDate>(),
+            Arg.Any<string?>(), CancellationToken.None);
+    }
+
     [HumansFact]
     public async Task Book_AClaimedEntryHoldedDoesNotList_IsNeverCreatedAgain()
     {

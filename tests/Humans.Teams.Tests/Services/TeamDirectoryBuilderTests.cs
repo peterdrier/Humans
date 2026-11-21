@@ -2,6 +2,7 @@ using Humans.Base.Constants;
 using AwesomeAssertions;
 using Humans.Auth.Contracts;
 using Humans.Base.Enums;
+using Humans.Google.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Teams.Services;
 using NodaTime;
@@ -45,6 +46,15 @@ public sealed class TeamDirectoryBuilderTests
     private static IReadOnlyDictionary<Guid, TeamInfo> Graph(params TeamInfo[] teams) =>
         teams.ToDictionary(t => t.Id);
 
+    private async Task<TeamDirectoryResult> GetDirectoryAsync(
+        IReadOnlyDictionary<Guid, TeamInfo> graph, Guid? userId, CancellationToken ct)
+    {
+        var teams = Substitute.For<ITeamManagementService>();
+        teams.GetTeamsAsync(ct).Returns(graph);
+        var pages = new TeamPageService(teams, Substitute.For<ITeamResourceService>(), _roles);
+        return await pages.GetTeamDirectoryAsync(userId, ct);
+    }
+
     [HumansTheory]
     [Xunit.InlineData("anonymous")]
     [Xunit.InlineData("member")]
@@ -60,7 +70,7 @@ public sealed class TeamDirectoryBuilderTests
         var parent = Team("Private", isHidden: true);
         var child = Team("Visible", parentId: parent.Id, isPromoted: true);
 
-        var result = await TeamDirectoryBuilder.BuildAsync(Graph(parent, child), _roles,
+        var result = await GetDirectoryAsync(Graph(parent, child),
             string.Equals(role, "anonymous", StringComparison.Ordinal) ? null : viewer, Xunit.TestContext.Current.CancellationToken);
 
         var row = result.Departments.Should().ContainSingle().Subject;
@@ -80,9 +90,9 @@ public sealed class TeamDirectoryBuilderTests
         var plainChild = Team("Signs", parentId: publicDept.Id);
         var system = Team("Volunteers", isPublicPage: true, systemType: SystemTeamType.Volunteers);
 
-        var result = await TeamDirectoryBuilder.BuildAsync(
+        var result = await GetDirectoryAsync(
             Graph(publicDept, privateDept, hiddenPublic, inactivePublic, promotedChild, plainChild, system),
-            _roles, userId: null, Xunit.TestContext.Current.CancellationToken);
+            userId: null, Xunit.TestContext.Current.CancellationToken);
 
         result.IsAuthenticated.Should().BeFalse();
         result.Departments.Select(t => t.Name).Should().BeEquivalentTo("Build", "Logo");
@@ -102,9 +112,9 @@ public sealed class TeamDirectoryBuilderTests
         var plainChild = Team("Signs", parentId: dept.Id);
         var system = Team("Volunteers", systemType: SystemTeamType.Volunteers);
 
-        var result = await TeamDirectoryBuilder.BuildAsync(
+        var result = await GetDirectoryAsync(
             Graph(dept, hidden, otherDept, plainChild, system),
-            _roles, user, Xunit.TestContext.Current.CancellationToken);
+            user, Xunit.TestContext.Current.CancellationToken);
 
         result.CanCreateTeam.Should().BeFalse();
         result.MyTeams.Select(t => t.Name).Should().BeEquivalentTo("Build");
@@ -121,8 +131,8 @@ public sealed class TeamDirectoryBuilderTests
         var dept = Team("Build");
         var hidden = Team("Secret", isHidden: true);
 
-        var result = await TeamDirectoryBuilder.BuildAsync(
-            Graph(dept, hidden), _roles, admin, Xunit.TestContext.Current.CancellationToken);
+        var result = await GetDirectoryAsync(
+            Graph(dept, hidden), admin, Xunit.TestContext.Current.CancellationToken);
 
         result.CanCreateTeam.Should().BeTrue();
         result.Departments.Select(t => t.Name).Should().BeEquivalentTo("Build");
@@ -136,8 +146,8 @@ public sealed class TeamDirectoryBuilderTests
         _roles.IsUserBoardMemberAsync(board, Arg.Any<CancellationToken>()).Returns(true);
         var hidden = Team("Secret", isHidden: true);
 
-        var result = await TeamDirectoryBuilder.BuildAsync(
-            Graph(hidden), _roles, board, Xunit.TestContext.Current.CancellationToken);
+        var result = await GetDirectoryAsync(
+            Graph(hidden), board, Xunit.TestContext.Current.CancellationToken);
 
         result.CanCreateTeam.Should().BeFalse();
         result.HiddenTeams.Select(t => t.Name).Should().BeEquivalentTo("Secret");

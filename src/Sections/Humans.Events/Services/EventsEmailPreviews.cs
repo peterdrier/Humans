@@ -1,3 +1,4 @@
+using Humans.Events.Domain;
 using Humans.Email.Contracts;
 using Humans.Events.Contracts;
 

@@ -64,8 +64,8 @@ public class GoogleResourceReconciliationJobTests : IDisposable
 
         await _job.ExecuteAsync(Xunit.TestContext.Current.CancellationToken);
 
-        await _googleSyncService.DidNotReceiveWithAnyArgs()
-            .SyncResourcesByTypeAsync(default, default, default, default);
+        _googleSyncService.ReceivedCalls().Should().NotContain(call =>
+            call.GetMethodInfo().ReturnType == typeof(Task<SyncPreviewResult>));
         await _googleGroupSync.Received(1)
             .ReconcileAllAsync(SyncAction.Execute, Arg.Any<CancellationToken>());
         await _googleDriveSync.Received(1)
@@ -81,8 +81,7 @@ public class GoogleResourceReconciliationJobTests : IDisposable
 
         _metrics.Received(1).RecordJobRun("google_resource_reconciliation", "skipped");
         _metrics.DidNotReceive().RecordJobRun("google_resource_reconciliation", "success");
-        await _googleSyncService.DidNotReceiveWithAnyArgs()
-            .SyncResourcesByTypeAsync(default, default, default, default);
+        _googleSyncService.ReceivedCalls().Should().BeEmpty();
         await _googleGroupSync.DidNotReceiveWithAnyArgs()
             .ReconcileAllAsync(default);
         await _googleDriveSync.DidNotReceiveWithAnyArgs()

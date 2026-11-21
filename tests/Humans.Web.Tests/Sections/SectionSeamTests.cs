@@ -2,6 +2,7 @@ using Humans.Camps.Contracts;
 using System.Linq.Expressions;
 using System.Security.Claims;
 using AwesomeAssertions;
+using Hangfire;
 using Humans.Base.Authorization;
 using Humans.Base.Interfaces;
 using Humans.Web.Extensions;
@@ -201,7 +202,8 @@ public class SectionSeamTests
             new RecurringJobDescriptor("bad-job", typeof(NotAJob), "* * * * *"));
 
         listing.Should().NotThrow();
-        listing().Schedule.Should().Throw<InvalidOperationException>();
+        listing().Invoking(job => job.Schedule(Substitute.For<IRecurringJobManager>()))
+            .Should().Throw<InvalidOperationException>();
     }
 
     private sealed class MemberNav(params MemberNavItem[] items) : ISectionNav

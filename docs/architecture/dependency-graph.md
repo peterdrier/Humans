@@ -20,6 +20,7 @@ graph LR
     AuditLog
     Auth
     Backdoor
+    BoxOffice
     Budget
     Calendar
     Campaigns
@@ -50,6 +51,7 @@ graph LR
     Onboarding
     Pleo
     Preapprovals
+    Pretix
     Rideshare
     Scanner
     Search
@@ -87,6 +89,7 @@ graph LR
     Backdoor --> Surveys
     Backdoor -.-> Finance
     Backdoor -.-> Notifications
+    BoxOffice -.-> Tickets
     Budget --> Issues
     Budget -.-> Camps
     Budget -.-> Finance
@@ -99,11 +102,11 @@ graph LR
     Campaigns -.-> Teams
     Campaigns -.-> Tickets
     Campaigns -.-> Users
-    Camps --> CityPlanning
     Camps --> EarlyEntry
     Camps --> Google
     Camps --> Issues
     Camps --> Settings
+    Camps -.-> CityPlanning
     Camps -.-> Email
     Camps -.-> Notifications
     Camps -.-> Shifts
@@ -122,9 +125,9 @@ graph LR
     Consent -.-> Governance
     Consent -.-> Notifications
     Consent -.-> Onboarding
-    Consent -.-> Shifts
     Consent -.-> Teams
     Consent -.-> Users
+    Containers --> Settings
     Containers -.-> Camps
     Containers -.-> CityPlanning
     Debug --> Consent
@@ -217,6 +220,7 @@ graph LR
     Preapprovals -.-> Email
     Preapprovals -.-> Finance
     Preapprovals -.-> Notifications
+    Pretix -.-> Tickets
     Rideshare --> Settings
     Rideshare -.-> Notifications
     Scanner --> Calendar
@@ -236,12 +240,12 @@ graph LR
     Shifts --> Consent
     Shifts --> EarlyEntry
     Shifts --> Issues
-    Shifts --> Onboarding
     Shifts --> Settings
     Shifts --> Teams
     Shifts -.-> Camps
     Shifts -.-> Email
     Shifts -.-> Notifications
+    Shifts -.-> Onboarding
     Shifts -.-> Tickets
     Store --> AuditLog
     Store --> Budget
@@ -275,8 +279,9 @@ graph LR
     Tickets --> Auth
     Tickets --> Budget
     Tickets --> Campaigns
-    Tickets --> Consent
     Tickets --> EarlyEntry
+    Tickets --> Gate
+    Tickets --> Grants
     Tickets --> Issues
     Tickets --> Settings
     Tickets --> Stripe

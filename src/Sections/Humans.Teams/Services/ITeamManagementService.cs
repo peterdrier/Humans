@@ -207,11 +207,6 @@ internal interface ITeamManagementService : ITeamManagement
         Guid actorUserId,
         CancellationToken cancellationToken = default);
 
-    /// <summary>Teams without a management role are absent.</summary>
-    Task<IReadOnlyDictionary<Guid, string>> GetManagementRoleNamesByTeamIdsAsync(
-        IEnumerable<Guid> teamIds,
-        CancellationToken cancellationToken = default);
-
     /// <summary>All teams with admin counts. Hierarchy and display ordering belong to the caller.</summary>
     Task<IReadOnlyList<AdminTeamSummary>> GetAdminTeamListAsync(CancellationToken cancellationToken = default);
 

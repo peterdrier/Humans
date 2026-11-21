@@ -147,7 +147,7 @@ public sealed class RoleAssignmentsControllerTests
     {
         GivenKnownUsers();
         var seatId = Guid.NewGuid();
-        _roles.GetByIdAsync(seatId, Arg.Any<CancellationToken>())
+        _write.GetByIdAsync(seatId, Arg.Any<CancellationToken>())
             .Returns(new RoleAssignmentDetailSnapshot(TargetId, RoleNames.Board, "Member"));
 
         RoleAssignmentRules.Assignable(BuildController().User, _catalog).Select(r => r.Name)
@@ -156,7 +156,8 @@ public sealed class RoleAssignmentsControllerTests
             .Should().BeOfType<RedirectToActionResult>();
         (await BuildController().EndRole(TargetId, seatId, null)).Should().BeOfType<RedirectToActionResult>();
 
-        _write.ReceivedCalls().Should().BeEmpty();
+        await _write.DidNotReceiveWithAnyArgs().AssignRoleAsync(default, default!, default, default);
+        await _write.DidNotReceiveWithAnyArgs().EndRoleAsync(default, default, default, default);
     }
 
     [HumansFact]
@@ -192,7 +193,7 @@ public sealed class RoleAssignmentsControllerTests
     {
         GivenKnownUsers();
         var roleId = Guid.NewGuid();
-        _roles.GetByIdAsync(roleId, Arg.Any<CancellationToken>())
+        _write.GetByIdAsync(roleId, Arg.Any<CancellationToken>())
             .Returns(new RoleAssignmentDetailSnapshot(TargetId, TeamsRoles.TeamsAdmin, "Member"));
         GivenAuthorization(TeamsRoles.TeamsAdmin, succeeds: true);
         _write.EndRoleAsync(roleId, ActorId, "done", Arg.Any<CancellationToken>()).Returns(new RoleAssignmentResult(true));
@@ -219,7 +220,7 @@ public sealed class RoleAssignmentsControllerTests
     {
         GivenKnownUsers();
         var roleId = Guid.NewGuid();
-        _roles.GetByIdAsync(roleId, Arg.Any<CancellationToken>())
+        _write.GetByIdAsync(roleId, Arg.Any<CancellationToken>())
             .Returns(new RoleAssignmentDetailSnapshot(TargetId, RoleNames.Admin, "Member"));
         GivenAuthorization(RoleNames.Admin, succeeds: false);
 
@@ -240,7 +241,7 @@ public sealed class RoleAssignmentsControllerTests
         GivenKnownUsers();
         using var request = new CancellationTokenSource();
         var roleId = Guid.NewGuid();
-        _roles.GetByIdAsync(roleId, Arg.Any<CancellationToken>())
+        _write.GetByIdAsync(roleId, Arg.Any<CancellationToken>())
             .Returns(call =>
             {
                 if (endRole && !actorLookup)
@@ -272,7 +273,9 @@ public sealed class RoleAssignmentsControllerTests
             : () => controller.AddRole(TargetId, new CreateRoleAssignmentViewModel { RoleName = TeamsRoles.TeamsAdmin });
 
         await invoke.Should().ThrowAsync<OperationCanceledException>();
-        _write.ReceivedCalls().Should().BeEmpty();
+        _write.ReceivedCalls()
+            .Where(call => call.GetMethodInfo().DeclaringType == typeof(IRoleAssignmentWrite))
+            .Should().BeEmpty();
         _authorization.ReceivedCalls().Should().BeEmpty();
     }
 
