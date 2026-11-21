@@ -72,6 +72,14 @@ public class FinanceOverviewServiceTests
         sources[44100005].ReconcileUrl.Should().Be("/Settings#finance");
     }
 
+    [HumansFact]
+    public void TheGeneric441Account_IsNotAStripeGateway()
+    {
+        FinanceOverviewService.IsStripeGateway(44100000).Should().BeFalse();
+        FinanceOverviewService.IsStripeGateway(44100001).Should().BeTrue();
+        FinanceOverviewService.IsStripeGateway(57200001).Should().BeFalse();
+    }
+
     private readonly IHoldedService _holded = Substitute.For<IHoldedService>();
     private readonly Humans.Finance.Data.IFinanceRepository _repo = Substitute.For<Humans.Finance.Data.IFinanceRepository>();
     private readonly IStripeMirrorService _stripe = Substitute.For<IStripeMirrorService>();
