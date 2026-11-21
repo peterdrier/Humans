@@ -1,8 +1,8 @@
-namespace Humans.Google.Contracts;
+namespace Humans.Google.Services;
 
-public record GroupSettingDrift(string SettingName, string ExpectedValue, string ActualValue);
+internal sealed record GroupSettingDrift(string SettingName, string ExpectedValue, string ActualValue);
 
-public class GroupSettingsDriftReport
+internal sealed class GroupSettingsDriftReport
 {
     public string GroupEmail { get; init; } = string.Empty;
     public string GroupName { get; init; } = string.Empty;
@@ -16,7 +16,7 @@ public class GroupSettingsDriftReport
     public bool IsOk => !HasDrift && !HasError;
 }
 
-public class GroupSettingsDriftResult
+internal sealed class GroupSettingsDriftResult
 {
     public List<GroupSettingsDriftReport> Reports { get; init; } = [];
     public Dictionary<string, string> ExpectedSettings { get; init; } = [];

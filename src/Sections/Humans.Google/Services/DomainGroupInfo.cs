@@ -1,6 +1,6 @@
-namespace Humans.Google.Contracts;
+namespace Humans.Google.Services;
 
-public class DomainGroupInfo
+internal sealed class DomainGroupInfo
 {
     public string GroupEmail { get; init; } = string.Empty;
     public string DisplayName { get; init; } = string.Empty;
@@ -15,7 +15,7 @@ public class DomainGroupInfo
     public string? ErrorMessage { get; init; }
 }
 
-public class AllGroupsResult
+internal sealed class AllGroupsResult
 {
     public List<DomainGroupInfo> Groups { get; init; } = [];
     public Dictionary<string, string> ExpectedSettings { get; init; } = [];

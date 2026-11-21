@@ -2,6 +2,7 @@ using Humans.Base.Attributes;
 using Humans.Base.Enums;
 using Humans.Base.Interfaces;
 using Humans.Google.Contracts;
+using NodaTime;
 
 namespace Humans.Google.Services;
 
@@ -60,4 +61,22 @@ internal interface IGoogleSyncManagement : IGoogleSyncService, IGoogleSyncWrite,
 
     Task<IReadOnlyList<GoogleSyncOutboxEventSnapshot>> GetRecentOutboxEventsAsync(
         int take, CancellationToken cancellationToken = default);
+}
+
+internal sealed record GoogleSyncOutboxEventSnapshot(
+    Guid Id,
+    string EventType,
+    Guid TeamId,
+    Guid UserId,
+    Instant OccurredAt,
+    Instant? ProcessedAt,
+    int RetryCount,
+    string? LastError,
+    bool FailedPermanently);
+
+internal sealed record GroupSettingsRemediationResult(bool Succeeded, string? ErrorMessage)
+{
+    public static GroupSettingsRemediationResult Success() => new(true, null);
+
+    public static GroupSettingsRemediationResult Failure(string message) => new(false, message);
 }
