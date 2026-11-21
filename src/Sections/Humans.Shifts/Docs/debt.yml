@@ -1,5 +1,9 @@
 # Section debt ledger for Humans.Shifts. Shape + routing: memory/process/debt-ledger-additions.md.
 # /debt-sweep pools every src/Sections/*/Docs/debt.yml into the same inbox as the central ledger.
 version: 1
-next_id: 11
-inbox: []
+next_id: 12
+inbox:
+  - added: 2026-11-21
+    id: SHIFTS-11
+    what: "ShiftSignupService constructs ShiftSignupNotices, ShiftSignupPersonalData and ShiftSignupSelection; ShiftManagementService constructs ShiftRotaManagement, ShiftEventSettings, ShiftScheduling, ShiftDeletion, ShiftVolunteerProfiles, ShiftDashboardMetrics, ShiftCoordinatorActivity, ShiftCoverageReports, ShiftCampSummary and ShiftBrowseReader, then forwards its operations to them. These dependency-bearing helpers violate one-service-class-no-helpers and standing policy D14. Fold their members into the existing owning services and remove the constructed helpers and forwarding methods, preserving enrollment locks, notices, GDPR paths, lazy dependencies, cache behavior, authorization and persistence order. Found while folding VolunteerTrackingReport back into VolunteerTrackingService; these mutation and cached-management workflows need their own invariant review and validation."
+    review: panel
