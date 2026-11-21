@@ -96,6 +96,7 @@ public class SystemTeamSyncJobBarrioLeadsTests
             EmergencyContactRelationship: null,
             HasCustomPicture: false,
             ProfilePictureContentType: null,
+            ProfilePictureFileKey: null,
             CreatedAt: _clock.GetCurrentInstant(),
             UpdatedAt: _clock.GetCurrentInstant(),
             AdminNotes: null,

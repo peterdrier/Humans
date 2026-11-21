@@ -377,5 +377,4 @@
   <data name="Consent_Meter_OnboardingProfilesPending" xml:space="preserve"><value>Profils d’inscription en attente</value></data>
   <data name="Consent_Meter_AudienceConsentCoordinator" xml:space="preserve"><value>coordinateurs du consentement</value></data>
   <data name="Consent_Meter_AudienceBoard" xml:space="preserve"><value>le Conseil</value></data>
-  <data name="Consent_Meter_AudienceShiftsAdmin" xml:space="preserve"><value>administrateurs des créneaux</value></data>
 </root>

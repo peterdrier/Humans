@@ -108,7 +108,7 @@ No repository. Read-only gallery contributor (`IEmailPreviewContributor`,
 registered in `Section.cs`) — builds one sample per template via
 `GoogleEmails` for `/Email/EmailPreview`. No DB access, no cache.
 
-### SyncSettingsService (Scoped)
+### SyncSettingsService (Scoped, keyed inner)
 
 Repository: `ISyncSettingsRepository`.
 
@@ -116,7 +116,11 @@ Repository: `ISyncSettingsRepository`.
 |-------|-----|
 | SyncServiceSettings | R/W |
 
-Calls `IAuditLogService` after each successful mode save, using the persisted row id and admin actor. No cache.
+Calls `IAuditLogService` after each successful mode save, using the persisted row id and admin actor.
+Wrapped by `CachingSyncSettingsService` (Singleton, `TrackedCache<SyncServiceType, SyncServiceSettingsInfo>`,
+warmed at startup), registered as `ISyncSettingsService`: it holds every row, so the per-member
+`GetModeAsync` reads in each sync never query, and it clears itself after `UpdateModeAsync`, the
+table's only write.
 
 ### GoogleSyncOutboxService (Scoped)
 

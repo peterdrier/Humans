@@ -16,21 +16,48 @@ internal sealed partial class UserRepository
     public async Task<Profile?> GetByUserIdReadOnlyAsync(Guid userId, CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
-        return await ctx.Profiles
+        var profile = await ctx.Profiles
             .AsNoTracking()
-            .Include(p => p.VolunteerHistory)
-            .Include(p => p.Languages)
             .FirstOrDefaultAsync(p => p.UserId == userId, ct);
+        if (profile is null)
+            return null;
+
+        AttachChildren(
+            [profile],
+            await ctx.VolunteerHistoryEntries.AsNoTracking().Where(v => v.UserId == userId).ToListAsync(ct),
+            await ctx.ProfileLanguages.AsNoTracking().Where(l => l.UserId == userId).ToListAsync(ct));
+        return profile;
     }
 
     public async Task<IReadOnlyList<Profile>> GetAllProfilesAsync(CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
-        return await ctx.Profiles
-            .AsNoTracking()
-            .Include(p => p.VolunteerHistory)
-            .Include(p => p.Languages)
-            .ToListAsync(ct);
+        var profiles = await ctx.Profiles.AsNoTracking().ToListAsync(ct);
+        AttachChildren(
+            profiles,
+            await ctx.VolunteerHistoryEntries.AsNoTracking().ToListAsync(ct),
+            await ctx.ProfileLanguages.AsNoTracking().ToListAsync(ct));
+        return profiles;
+    }
+
+    /// <summary>Volunteer history and languages hang off the user id, so they are joined here, not by EF.</summary>
+    private static void AttachChildren(
+        IReadOnlyList<Profile> profiles,
+        IReadOnlyList<VolunteerHistoryEntry> history,
+        IReadOnlyList<ProfileLanguage> languages)
+    {
+        var byUser = profiles.ToDictionary(p => p.UserId);
+        foreach (var entry in history)
+        {
+            if (entry.UserId is { } userId && byUser.TryGetValue(userId, out var profile))
+                profile.VolunteerHistory.Add(entry);
+        }
+
+        foreach (var language in languages)
+        {
+            if (language.UserId is { } userId && byUser.TryGetValue(userId, out var profile))
+                profile.Languages.Add(language);
+        }
     }
 
     public async Task<Guid?> GetOwnerUserIdAsync(Guid profileId, CancellationToken ct = default)
@@ -58,34 +85,23 @@ internal sealed partial class UserRepository
     }
 
     public async Task<IReadOnlyList<ProfileLanguage>> GetLanguagesAsync(
-        Guid profileId, CancellationToken ct = default)
+        Guid userId, CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
         return await ctx.ProfileLanguages
             .AsNoTracking()
-            .Where(pl => pl.ProfileId == profileId)
+            .Where(pl => pl.UserId == userId)
             .ToListAsync(ct);
     }
 
-    public async Task ReplaceLanguagesAsync(Guid profileId, IReadOnlyList<ProfileLanguage> languages, CancellationToken ct = default)
+    public async Task ReplaceLanguagesAsync(Guid userId, IReadOnlyList<ProfileLanguage> languages, CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
         var existing = await ctx.ProfileLanguages
-            .Where(pl => pl.ProfileId == profileId)
+            .Where(pl => pl.UserId == userId)
             .ToListAsync(ct);
         ctx.ProfileLanguages.RemoveRange(existing);
-
-        if (languages.Count > 0)
-        {
-            var ownerUserId = await ctx.Profiles
-                .Where(p => p.Id == profileId)
-                .Select(p => (Guid?)p.UserId)
-                .FirstOrDefaultAsync(ct);
-            foreach (var language in languages)
-                language.UserId = ownerUserId;
-            ctx.ProfileLanguages.AddRange(languages);
-        }
-
+        ctx.ProfileLanguages.AddRange(languages);
         await ctx.SaveChangesAsync(ct);
     }
 
@@ -140,45 +156,6 @@ internal sealed partial class UserRepository
             SetNames(user, names);
     }
 
-    public async Task<IReadOnlyList<ProfileChildRowsWithoutUser>> GetProfileChildRowsWithoutUserAsync(
-        CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        var owners = await ProfileOwnersAsync(ctx, ct);
-        var contactFields = await ctx.ContactFields.Where(r => r.UserId == null).Select(r => r.ProfileId).ToListAsync(ct);
-        var languages = await ctx.ProfileLanguages.Where(r => r.UserId == null).Select(r => r.ProfileId).ToListAsync(ct);
-        var history = await ctx.VolunteerHistoryEntries.Where(r => r.UserId == null).Select(r => r.ProfileId).ToListAsync(ct);
-
-        Dictionary<Guid, int> CountByUser(List<Guid> profileIds) => profileIds
-            .GroupBy(id => owners[id])
-            .ToDictionary(g => g.Key, g => g.Count());
-        var (byContact, byLanguage, byHistory) = (CountByUser(contactFields), CountByUser(languages), CountByUser(history));
-
-        return [.. byContact.Keys.Concat(byLanguage.Keys).Concat(byHistory.Keys).Distinct().Order()
-            .Select(userId => new ProfileChildRowsWithoutUser(
-                userId,
-                byContact.GetValueOrDefault(userId),
-                byLanguage.GetValueOrDefault(userId),
-                byHistory.GetValueOrDefault(userId)))];
-    }
-
-    public async Task<int> FillProfileChildUserIdsAsync(CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        var owners = await ProfileOwnersAsync(ctx, ct);
-        var contactFields = await ctx.ContactFields.Where(r => r.UserId == null).ToListAsync(ct);
-        var languages = await ctx.ProfileLanguages.Where(r => r.UserId == null).ToListAsync(ct);
-        var history = await ctx.VolunteerHistoryEntries.Where(r => r.UserId == null).ToListAsync(ct);
-        foreach (var row in contactFields) row.UserId = owners[row.ProfileId];
-        foreach (var row in languages) row.UserId = owners[row.ProfileId];
-        foreach (var row in history) row.UserId = owners[row.ProfileId];
-        await ctx.SaveChangesAsync(ct);
-        return contactFields.Count + languages.Count + history.Count;
-    }
-
-    private static Task<Dictionary<Guid, Guid>> ProfileOwnersAsync(UsersDbContext ctx, CancellationToken ct) =>
-        ctx.Profiles.AsNoTracking().ToDictionaryAsync(p => p.Id, p => p.UserId, ct);
-
     public async Task<int> EraseProfileExtrasForUserAsync(Guid userId, CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
@@ -190,7 +167,7 @@ internal sealed partial class UserRepository
             profile.MedicalConditions = null;
 
             var languages = await ctx.ProfileLanguages
-                .Where(pl => pl.ProfileId == profile.Id)
+                .Where(pl => pl.UserId == userId)
                 .ToListAsync(ct);
             ctx.ProfileLanguages.RemoveRange(languages);
         }
@@ -261,17 +238,17 @@ internal sealed partial class UserRepository
             return;
 
         var sourceVolunteerHistory = await ctx.VolunteerHistoryEntries
-            .Where(v => v.ProfileId == sourceProfile.Id)
+            .Where(v => v.UserId == sourceUserId)
             .ToListAsync(ct);
         var targetVolunteerHistory = await ctx.VolunteerHistoryEntries
-            .Where(v => v.ProfileId == targetProfile.Id)
+            .Where(v => v.UserId == targetUserId)
             .ToListAsync(ct);
 
         var sourceLanguages = await ctx.ProfileLanguages
-            .Where(l => l.ProfileId == sourceProfile.Id)
+            .Where(l => l.UserId == sourceUserId)
             .ToListAsync(ct);
         var targetLanguages = await ctx.ProfileLanguages
-            .Where(l => l.ProfileId == targetProfile.Id)
+            .Where(l => l.UserId == targetUserId)
             .ToListAsync(ct);
 
         // EventName comparison is case-sensitive, matching CV reconciliation.
@@ -368,12 +345,12 @@ internal sealed partial class UserRepository
         profile.BoardNotes = null;
 
         var contactFields = await ctx.ContactFields
-            .Where(cf => cf.ProfileId == profile.Id)
+            .Where(cf => cf.UserId == userId)
             .ToListAsync(ct);
         ctx.ContactFields.RemoveRange(contactFields);
 
         var volunteerHistory = await ctx.VolunteerHistoryEntries
-            .Where(vh => vh.ProfileId == profile.Id)
+            .Where(vh => vh.UserId == userId)
             .ToListAsync(ct);
         ctx.VolunteerHistoryEntries.RemoveRange(volunteerHistory);
 
@@ -389,7 +366,7 @@ internal sealed partial class UserRepository
     {
         // Tracked, so the change tracker sees in-place mutations.
         var existing = await ctx.VolunteerHistoryEntries
-            .Where(v => v.ProfileId == profile.Id)
+            .Where(v => v.UserId == profile.UserId)
             .ToListAsync(ct);
 
         var existingLookup = existing.ToDictionary(v => v.Id);

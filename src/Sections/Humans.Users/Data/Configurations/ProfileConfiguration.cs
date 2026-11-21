@@ -68,5 +68,8 @@ internal sealed class ProfileConfiguration : IEntityTypeConfiguration<Profile>
             .OnDelete(DeleteBehavior.Cascade);
 
         builder.Ignore(p => p.HasCustomProfilePicture);
+        // Loaded by user id in the repository, not through an EF relationship.
+        builder.Ignore(p => p.VolunteerHistory);
+        builder.Ignore(p => p.Languages);
     }
 }

@@ -93,13 +93,13 @@ public class AccountProvisioningServiceTests
         public Task<IReadOnlyDictionary<Guid, IReadOnlyList<(string Provider, string ProviderKey)>>>
             GetExternalLoginsByUserIdsAsync(IReadOnlyCollection<Guid> userIds, CancellationToken ct = default) =>
             throw new NotSupportedException();
-        public Task<IReadOnlyList<ContactField>> GetByProfileIdReadOnlyAsync(
-            Guid profileId, CancellationToken ct = default) =>
+        public Task<IReadOnlyList<ContactField>> GetContactFieldsByUserIdReadOnlyAsync(
+            Guid userId, CancellationToken ct = default) =>
             throw new NotSupportedException();
         public Task<IReadOnlyList<ContactField>> GetAllContactFieldsAsync(CancellationToken ct = default) =>
             throw new NotSupportedException();
-        public Task<IReadOnlyList<ContactField>> GetByProfileIdForMutationAsync(
-            Guid profileId, CancellationToken ct = default) =>
+        public Task<IReadOnlyList<ContactField>> GetContactFieldsByUserIdForMutationAsync(
+            Guid userId, CancellationToken ct = default) =>
             throw new NotSupportedException();
         public Task BatchSaveAsync(
             IReadOnlyList<ContactField> toAdd,
@@ -117,10 +117,6 @@ public class AccountProvisioningServiceTests
         public Task<IReadOnlyList<Profile>> GetAllProfilesAsync(CancellationToken ct = default) =>
             throw new NotSupportedException();
         public Task<Guid?> GetOwnerUserIdAsync(Guid profileId, CancellationToken ct = default) =>
-            throw new NotSupportedException();
-        public Task<IReadOnlyList<ProfileChildRowsWithoutUser>> GetProfileChildRowsWithoutUserAsync(CancellationToken ct = default) =>
-            throw new NotSupportedException();
-        public Task<int> FillProfileChildUserIdsAsync(CancellationToken ct = default) =>
             throw new NotSupportedException();
         public Task<(string ContentType, string? StorageKey)?> GetProfilePictureLocationAsync(
             Guid profileId, CancellationToken ct = default) =>

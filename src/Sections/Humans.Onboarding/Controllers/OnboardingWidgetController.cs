@@ -24,7 +24,6 @@ internal sealed class OnboardingWidgetController(
     IShiftSignups signupService,
     IShiftService shiftMgmt,
     ISettingsService settingsService,
-    IShiftView shiftView,
     IOnboardingService onboardingService,
     IStringLocalizer<OnboardingResource> localizer,
     ILogger<OnboardingWidgetController> logger) : HumansControllerBase(userService)
@@ -122,10 +121,7 @@ internal sealed class OnboardingWidgetController(
         var urgentShifts = await shiftMgmt.GetBrowseShiftsAsync(new ShiftBrowseQuery(
             es.Id,
             Flags: ShiftBrowseQueryFlags.IncludeSignups, ViewerUserId: userId), ct);
-        var userShiftView = await shiftView.GetUserAsync(userId, ct);
-        var (shiftIds, statuses) = ShiftSignupHelper.ResolveActiveStatuses(userShiftView.Signups);
-        var vm = OnboardingShiftsStepBuilder.Build(
-            es, urgentShifts, shiftIds, statuses, priority ?? string.Empty);
+        var vm = OnboardingShiftsStepBuilder.Build(es, urgentShifts, userId, priority ?? string.Empty);
         return View(vm);
     }
 

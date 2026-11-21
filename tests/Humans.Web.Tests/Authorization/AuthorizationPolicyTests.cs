@@ -169,7 +169,7 @@ public class AuthorizationPolicyTests : IDisposable
         { FinancePolicies.Manage, TeamsRoles.TeamsAdmin, false },
 
         { PolicyNames.ReviewQueueAccess, ConsentRoles.ConsentCoordinator, true },
-        { PolicyNames.ReviewQueueAccess, ShiftsRoles.ShiftsAdmin, true },
+        { PolicyNames.ReviewQueueAccess, ShiftsRoles.ShiftsAdmin, false },
         { PolicyNames.ReviewQueueAccess, RoleNames.Board, true },
         { PolicyNames.ReviewQueueAccess, RoleNames.Admin, true },
         { PolicyNames.ReviewQueueAccess, TeamsRoles.TeamsAdmin, false },
@@ -437,7 +437,7 @@ public class AuthorizationPolicyTests : IDisposable
 
     [HumansTheory]
     [InlineData(ConsentRoles.ConsentCoordinator, true)]
-    [InlineData(ShiftsRoles.ShiftsAdmin, true)]
+    [InlineData(ShiftsRoles.ShiftsAdmin, false)]
     [InlineData(RoleNames.Board, true)]
     [InlineData(RoleNames.Admin, true)]
     [InlineData(TeamsRoles.TeamsAdmin, false)]

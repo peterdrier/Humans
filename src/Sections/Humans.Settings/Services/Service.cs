@@ -18,6 +18,9 @@ internal sealed class Service(
     public Task<string?> GetValueAsync(string key, CancellationToken cancellationToken = default) =>
         repository.GetValueAsync(key, cancellationToken);
 
+    public Task<IReadOnlyDictionary<string, string>> GetAllValuesAsync(CancellationToken cancellationToken = default) =>
+        repository.GetAllValuesAsync(cancellationToken);
+
     public async Task SetValueAsync(
         string key,
         string value,
@@ -29,8 +32,7 @@ internal sealed class Service(
         }
         finally
         {
-            if (string.Equals(key, SettingKeys.EventTimeZoneId, StringComparison.Ordinal))
-                await cache.ReloadAsync();
+            await cache.ReloadAsync();
         }
     }
 
