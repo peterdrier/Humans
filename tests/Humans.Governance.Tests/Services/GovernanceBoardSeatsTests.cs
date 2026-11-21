@@ -2,6 +2,7 @@ using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
 using Humans.Auth.Contracts;
+using Humans.Governance;
 using Humans.Governance.Data;
 using Humans.Governance.Domain;
 using Microsoft.EntityFrameworkCore;
@@ -33,7 +34,9 @@ public sealed class GovernanceBoardSeatsTests
         new DbContextOptionsBuilder<GovernanceDbContext>().UseInMemoryDatabase(Guid.NewGuid().ToString()).Options));
 
     private GovernanceBoardSeats Seats() =>
-        new(_roles, _write, _users, _repo, Substitute.For<IAuditLogService>(), new FakeClock(Now));
+        new(_roles, _write, _users, _repo, _audit, new FakeClock(Now));
+
+    private readonly IAuditLogService _audit = Substitute.For<IAuditLogService>();
 
     private void OnBoard(params Guid[] userIds)
     {
@@ -54,6 +57,10 @@ public sealed class GovernanceBoardSeatsTests
 
         (await Seats().GetPositionsAsync()).Should().BeEquivalentTo(
             new Dictionary<Guid, BoardPosition> { [ben] = BoardPosition.President });
+        await _audit.Received(1).LogAsync(GovernanceAuditActions.BoardPositionSet, Arg.Any<string>(), ana,
+            "Board office President removed", Arg.Any<Guid>(), Arg.Any<Guid?>(), Arg.Any<string?>());
+        await _audit.Received(1).LogAsync(GovernanceAuditActions.BoardPositionSet, Arg.Any<string>(), ben,
+            "Board office President given (gave up Treasurer)", Arg.Any<Guid>(), Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 
     [HumansFact]

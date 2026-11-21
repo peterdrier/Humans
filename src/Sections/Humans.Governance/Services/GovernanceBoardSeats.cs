@@ -43,8 +43,13 @@ internal sealed class GovernanceBoardSeats(
             return new RoleAssignmentResult(false, "RoleNotActive");
 
         var result = await roleWrite.EndRoleAsync(seat.Id, actorUserId, notes: null, ct);
-        if (result.Success)
+        if (result.Success
+            && (await repository.GetBoardPositionsAsync(ct)).FirstOrDefault(p => p.UserId == userId) is { } held)
+        {
             await repository.ClearBoardPositionForUserAsync(userId, ct);
+            await LogPositionAsync(userId, $"Board office {held.Position} dropped as the Board seat ended", actorUserId);
+        }
+
         return result;
     }
 
@@ -67,19 +72,24 @@ internal sealed class GovernanceBoardSeats(
         if (userId is { } holder && !await roles.IsUserBoardMemberAsync(holder, ct))
             return new RoleAssignmentResult(false, NotOnBoard);
 
-        var previous = (await repository.GetBoardPositionsAsync(ct)).FirstOrDefault(p => p.Position == position);
+        var rows = await repository.GetBoardPositionsAsync(ct);
+        var previousHolder = rows.FirstOrDefault(p => p.Position == position)?.UserId;
+        var holderOldOffice = rows.FirstOrDefault(p => p.UserId == userId)?.Position;
         await repository.SetBoardPositionAsync(position, userId, clock.GetCurrentInstant(), ct);
-        var subject = userId ?? previous?.UserId;
-        if (subject is { } subjectId)
+
+        if (previousHolder is { } previous && previous != userId)
+            await LogPositionAsync(previous, $"Board office {position} removed", actorUserId);
+        if (userId is { } given && holderOldOffice != position)
         {
-            await audit.LogAsync(
-                GovernanceAuditActions.BoardPositionSet, AuditSubjectTypes.User, subjectId,
-                userId is null ? $"Board office {position} left empty" : $"Board office {position} given",
-                actorUserId);
+            var was = holderOldOffice is { } old ? $" (gave up {old})" : string.Empty;
+            await LogPositionAsync(given, $"Board office {position} given{was}", actorUserId);
         }
 
         return new RoleAssignmentResult(true);
     }
+
+    private Task LogPositionAsync(Guid userId, string description, Guid actorUserId) =>
+        audit.LogAsync(GovernanceAuditActions.BoardPositionSet, AuditSubjectTypes.User, userId, description, actorUserId);
 
     public async Task ReassignAsync(
         Guid mergedFromUserId, Guid mergedToUserId, Guid actorUserId, Instant now, CancellationToken ct) =>
