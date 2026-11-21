@@ -39,7 +39,7 @@
     <ProjectReference Include="..\Humans.Google\Humans.Google.csproj" />
     <ProjectReference Include="..\Humans.Notifications.Contracts\Humans.Notifications.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Teams.Contracts\Humans.Teams.Contracts.csproj" />
-    <ProjectReference Include="..\Humans.Shifts.Contracts\Humans.Shifts.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.Shifts\Humans.Shifts.csproj" />
     <ProjectReference Include="..\Humans.Settings\Humans.Settings.csproj" />
     <!-- ITicketService: the early-entry edit reads whether a member is through the gate. A leaf
          referencing only Base, so acyclic (Tickets reaches Camps through Humans.Camps.Contracts). -->

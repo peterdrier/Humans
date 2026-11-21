@@ -9,7 +9,7 @@
   src/Humans.Web/Authorization/RoleAssignmentClaimsTransformation.cs
   src/Sections/Humans.Consent/Views/ConsentReviewQueue/**
   src/Humans.Base/Constants/RoleNames.cs
-  src/Sections/Humans.Shifts.Contracts/ShiftsRoles.cs
+  src/Sections/Humans.Shifts/Contracts/ShiftsRoles.cs
 -->
 <!-- freshness:flag-on-change
   ConsentCoordinator/ShiftsAdmin capabilities, review queue authorization, and role-management permissions — review when role names, ConsentReviewQueueController, or membership filter change.
@@ -87,7 +87,7 @@ These roles complement the existing Board and Admin roles. Coordinators handle d
 ## Data Model
 
 ### Role name constants
-`RoleNames` (Base) carries only `Admin` and `Board`. Each section owns its roles: `ConsentRoles.ConsentCoordinator` (Consent) and `ShiftsRoles.ShiftsAdmin` (Shifts.Contracts).
+`RoleNames` (Base) carries only `Admin` and `Board`. Each section owns its roles: `ConsentRoles.ConsentCoordinator` (Consent) and `ShiftsRoles.ShiftsAdmin` (Shifts).
 
 ### Role Assignment
 Uses existing `RoleAssignment` entity — no new tables needed:

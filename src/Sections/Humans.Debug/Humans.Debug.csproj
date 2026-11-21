@@ -33,7 +33,7 @@
       gallery itself references no section: every section-owned card arrives through the
       ChromeSlots.WidgetGallery slot.
     -->
-    <ProjectReference Include="..\Humans.Shifts.Contracts\Humans.Shifts.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.Shifts\Humans.Shifts.csproj" />
     <ProjectReference Include="..\Humans.Tickets.Contracts\Humans.Tickets.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Consent\Humans.Consent.csproj" />
     <!-- The user-set membership card reads ISettingsService. -->
