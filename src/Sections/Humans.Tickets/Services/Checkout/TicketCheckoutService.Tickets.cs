@@ -143,8 +143,8 @@ internal sealed partial class TicketCheckoutService
         Guid ticketId, Guid userId, string inviteeEmail, Uri claimUrlBase, string culture, CancellationToken ct = default)
     {
         var (ticket, offer) = await OwnOfferAsync(ticketId, userId, ct);
-        if (ticket is null || offer is null
-            || (await repository.GetSalesEventAsync(ticket.SalesEventId, ct))?.EffectiveSwitches.Resale != ResaleScheme.QueueAndDirected)
+        var salesEvent = ticket is null ? null : await repository.GetSalesEventAsync(ticket.SalesEventId, ct);
+        if (ticket is null || offer is null || salesEvent?.EffectiveSwitches.Resale != ResaleScheme.QueueAndDirected)
             return new("Tickets_Resale_NotFound");
         if (offer.State != TicketResaleOfferState.Open)
             return new("Tickets_Resale_InCheckout");
@@ -158,7 +158,6 @@ internal sealed partial class TicketCheckoutService
         inviteeEmail = inviteeEmail.Trim();
         if (!LooksLikeEmail(inviteeEmail) || string.Equals(inviteeEmail, ticket.HolderEmail, StringComparison.OrdinalIgnoreCase))
             return new("Tickets_Resale_InviteEmailInvalid");
-        var salesEvent = (await repository.GetSalesEventAsync(ticket.SalesEventId, ct))!;
         if (!(await LoadStockAsync(salesEvent, now, ct)).ResaleOpen)
             return new("Tickets_Resale_NotOpenYet");
 
@@ -234,6 +233,11 @@ internal sealed partial class TicketCheckoutService
             var offer = await repository.GetOfferAsync(offerId, ct);
             if (offer is not { State: TicketResaleOfferState.Reserved } || offer.ReservedByOrderId != order.Id)
                 continue;
+            if ((await repository.GetSalesEventAsync(offer.SalesEventId, ct))?.EffectiveSwitches.Resale == ResaleScheme.Off)
+            {
+                await WithdrawSwitchedOffAsync(offer, null, ct);
+                continue;
+            }
             offer.State = TicketResaleOfferState.Open;
             offer.ReservedByOrderId = null;
             await repository.UpdateOfferAsync(offer, ct);

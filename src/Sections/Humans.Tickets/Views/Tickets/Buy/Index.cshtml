@@ -34,6 +34,7 @@ var p = sale.SalesEvent.Id.ToString("N");
 else
 {
     var own = sale.OwnPrice!;
+    var nothingToBuy = sale.AlreadyHoldsTicket && (!sale.OffersPartner || directedToken is not null) && !sale.OffersDonations;
     <form asp-action="Start" method="post" class="card card-body mb-4">
         @Html.AntiForgeryToken()
         <input type="hidden" name="salesEventId" value="@sale.SalesEvent.Id" />
@@ -154,6 +155,8 @@ else
         <p class="small text-muted">@Localizer["Tickets_Buy_DonationNote"]</p>
         }
 
+        @if (!nothingToBuy)
+        {
         @if (sale.TermsUrl is { } termsUrl)
         {
             <h3 class="h6">@Localizer["Tickets_Buy_Terms"]</h3>
@@ -174,6 +177,7 @@ else
         <div>
             <button type="submit" class="btn btn-primary">@Localizer["Tickets_Buy_Pay"]</button>
         </div>
+        }
     </form>
     @if (sale.OpenOrder is { } openOrder)
     {

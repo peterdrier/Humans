@@ -519,6 +519,44 @@ public sealed class TicketCheckoutServiceTests
     }
 
     [HumansFact]
+    public async Task Switching_resale_off_withdraws_open_offers_and_hands_the_tickets_back()
+    {
+        var ticket = await OfferedTicketAsync();
+
+        await SaveResaleOffAsync();
+
+        _repo.Offers.Single().State.Should().Be(TicketResaleOfferState.Withdrawn);
+        ticket.State.Should().Be(TicketCheckoutTicketState.Valid);
+        _repo.Events.Should().Contain(e => e.Kind == TicketCheckoutOrderEventKind.ResaleWithdrawn && e.Detail.Contains("resale switched off"));
+    }
+
+    [HumansFact]
+    public async Task An_offer_in_a_checkout_when_resale_is_switched_off_is_withdrawn_once_that_checkout_ends()
+    {
+        var ticket = await OfferedTicketAsync();
+        var pending = await _service.StartCheckoutAsync(Buy(), _otherBuyerId, Ct);
+
+        await SaveResaleOffAsync();
+        _repo.Offers.Single().State.Should().Be(TicketResaleOfferState.Reserved);
+
+        _backend.GetStatusAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(new CheckoutStatus(CheckoutState.Pending, null, null, null));
+        (await _service.CancelAsync(pending.OrderId!.Value, _otherBuyerId, Ct)).Refusal.Should().BeNull();
+        _repo.Offers.Single().State.Should().Be(TicketResaleOfferState.Withdrawn);
+        ticket.State.Should().Be(TicketCheckoutTicketState.Valid);
+    }
+
+    private async Task SaveResaleOffAsync()
+    {
+        var save = new SalesEventSave(_salesEvent.Id, _event.Id, "test", null, TicketSalesMode.Open, null, 3000, 0.10m,
+            _salesEvent.Waves, [], [])
+        {
+            Switches = new TicketSalesSwitches { Resale = ResaleScheme.Off },
+        };
+        (await _service.SaveSalesEventAsync(save, _buyerId, Ct)).Refusal.Should().BeNull();
+    }
+
+    [HumansFact]
     public async Task Switching_to_queue_only_ends_live_invitations_and_the_offer_sells_from_the_queue()
     {
         var old = await OfferedTicketAsync();

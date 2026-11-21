@@ -114,7 +114,9 @@ internal sealed partial class TicketCheckoutService(
             UpdatedAt = now,
         };
         await repository.SaveSalesEventAsync(salesEvent, ct);
-        if (salesEvent.EffectiveSwitches.Resale != ResaleScheme.QueueAndDirected)
+        if (salesEvent.EffectiveSwitches.Resale == ResaleScheme.Off)
+            await WithdrawOpenOffersAsync(salesEvent.Id, actorUserId, ct);
+        else if (salesEvent.EffectiveSwitches.Resale != ResaleScheme.QueueAndDirected)
             await EndInvitationsAsync(salesEvent.Id, actorUserId, ct);
 
         await auditLog.LogAsync(TicketsAuditActions.TicketSalesEventSaved, SalesEventAuditEntityType, salesEvent.Id,
@@ -244,7 +246,8 @@ internal sealed partial class TicketCheckoutService(
         var stock = await LoadStockAsync(salesEvent, now, ct);
         var queue = stock.ResaleOpen
             ? new Queue<TicketResaleOffer>(stock.Offers
-                .Where(o => o.State == TicketResaleOfferState.Open && !o.IsDirectedTo(now) && o.HolderUserId != buyer.Id)
+                .Where(o => o.State == TicketResaleOfferState.Open && o.HolderUserId != buyer.Id
+                    && (switches.Resale != ResaleScheme.QueueAndDirected || !o.IsDirectedTo(now)))
                 .OrderBy(o => o.OfferedAt))
             : new Queue<TicketResaleOffer>();
         // A returned ticket sells only at the resale price (current public wave, credits kept), so a buyer with a class
@@ -1074,8 +1077,7 @@ internal sealed partial class TicketCheckoutService(
         var pending = (await repository.GetOrdersForSalesEventAsync(salesEvent.Id, ct))
             .Where(o => o.State != TicketCheckoutOrderState.Paid && o.HoldsTickets(now))
             .Sum(o => o.Lines.Count(l => l.Kind == CheckoutLineKind.Ticket && l.ResaleOfferId is null));
-        var resaleOpen = salesEvent.EffectiveSwitches.Resale != ResaleScheme.Off && salesEvent.Mode != TicketSalesMode.Closed && sold >= (salesEvent.ResaleOpensAtSold ?? 0);
-        return new Stock(sold + pending, sold, resaleOpen, await repository.GetOffersForSalesEventAsync(salesEvent.Id, ct));
+        return new Stock(sold + pending, sold, salesEvent.ResaleOpenAt(sold), await repository.GetOffersForSalesEventAsync(salesEvent.Id, ct));
     }
 
     private static TicketCheckoutOrderLine TicketLine(
@@ -1157,6 +1159,34 @@ internal sealed partial class TicketCheckoutService(
                     $"Invitation for ticket {ticket.Barcode} ended: directed resale switched off; it keeps its place in the queue",
                     actorUserId, ct);
         }
+    }
+
+    /// <summary>
+    /// Resale switched off: a queued ticket would never sell, so each open offer is withdrawn and the ticket is the
+    /// holder's again. An offer in a checkout keeps its buyer; if that checkout fails it is withdrawn on release.
+    /// </summary>
+    private async Task WithdrawOpenOffersAsync(Guid salesEventId, Guid actorUserId, CancellationToken ct)
+    {
+        foreach (var offer in (await repository.GetOffersForSalesEventAsync(salesEventId, ct))
+                     .Where(o => o.State == TicketResaleOfferState.Open))
+            await WithdrawSwitchedOffAsync(offer, actorUserId, ct);
+    }
+
+    private async Task WithdrawSwitchedOffAsync(TicketResaleOffer offer, Guid? actorUserId, CancellationToken ct)
+    {
+        offer.State = TicketResaleOfferState.Withdrawn;
+        offer.WithdrawnAt = clock.GetCurrentInstant();
+        offer.ReservedByOrderId = null;
+        offer.DirectedTokenHash = null;
+        offer.DirectedExpiresAt = null;
+        offer.DirectedEmail = null;
+        await repository.UpdateOfferAsync(offer, ct);
+        if (await repository.GetTicketAsync(offer.TicketId, ct) is not { } ticket)
+            return;
+        ticket.State = TicketCheckoutTicketState.Valid;
+        await repository.UpdateTicketAsync(ticket, ct);
+        await TimelineAsync(ticket.OrderId, TicketCheckoutOrderEventKind.ResaleWithdrawn,
+            $"Ticket {ticket.Barcode} taken back out of the resale queue: resale switched off for this event", actorUserId, ct);
     }
 
     private static string OnOff(bool on) => on ? "on" : "off";

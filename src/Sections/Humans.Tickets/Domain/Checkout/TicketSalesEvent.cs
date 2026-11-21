@@ -49,6 +49,10 @@ internal sealed class TicketSalesEvent
 
     public TicketSalesSwitches EffectiveSwitches => Switches ?? new();
 
+    /// <summary>Whether returned tickets sell, given how many live tickets the event has sold.</summary>
+    public bool ResaleOpenAt(int sold) =>
+        EffectiveSwitches.Resale != ResaleScheme.Off && Mode != TicketSalesMode.Closed && sold >= (ResaleOpensAtSold ?? 0);
+
     /// <summary>The page with the ticket rules every buyer accepts; null for none. A new address is a new version.</summary>
     public string? TermsUrl { get; set; }
 
@@ -74,6 +78,9 @@ internal enum TicketSalesMode
 /// <summary>
 /// The schemes an organisation may or may not run. The defaults are the Nobodies scheme; another organisation turns
 /// off what it does not sell. Enforced in the checkout service, not only hidden on the buy page.
+/// Warning: stored as JSON, and a member missing from a stored row reads as the CLR default (false, Off), not as the
+/// initializer below. A switch added later must default to false (name it so) or be nullable with null as the
+/// default. Never rename a <see cref="ResaleScheme"/> member: an unknown string fails every sales event read.
 /// </summary>
 internal sealed class TicketSalesSwitches
 {

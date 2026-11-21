@@ -40,7 +40,11 @@ public class TicketCheckoutRepositoryTests(HumansTestDatabase database) : Integr
         var loadedEvent = (await repo.GetSalesEventAsync(salesEvent.Id, ct))!;
         loadedEvent.Waves.Add(new TicketSalesWave { Name = "Wave 2", EndsOn = new LocalDate(2027, 2, 28), PriceMinor = 25000 });
         loadedEvent.PriceRules.Add(new TicketPriceRule { GrantProgramId = Guid.NewGuid(), Kind = TicketPriceRuleKind.Credit, AmountMinor = 5000, Label = "Credit" });
+        loadedEvent.Switches.Should().BeNull();
+        loadedEvent.Switches = new TicketSalesSwitches { Resale = ResaleScheme.Queue, Donations = false };
         await repo.SaveSalesEventAsync(loadedEvent, ct);
+        var switches = (await repo.GetSalesEventAsync(salesEvent.Id, ct))!.Switches;
+        switches.Should().BeEquivalentTo(new TicketSalesSwitches { Resale = ResaleScheme.Queue, Donations = false });
 
         var order = new TicketCheckoutOrder
         {

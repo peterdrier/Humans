@@ -20,6 +20,10 @@
     {
         <span>Resale is open.</span>
     }
+    else if (Model.SwitchedOff)
+    {
+        <span class="text-warning">Resale is switched off for this event in its sales setup, so nothing in the queue sells.</span>
+    }
     else if (Model.Mode == TicketSalesMode.Closed)
     {
         <span class="text-warning">Sales are closed, so nothing in the queue sells.</span>
