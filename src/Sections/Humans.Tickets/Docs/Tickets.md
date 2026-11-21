@@ -58,7 +58,7 @@ Bulk cache warmups publish through the shared mutation guard. A refresh, deletio
 
 ### TicketCheckoutOrder
 
-**Table:** `ticket_checkout_orders` — `Lines` is jsonb. Unique (`BackendKey`, `BackendOrderId`). `BuyerUserId` and each line's `AttendeeUserId` are bare user ids (no FK).
+**Table:** `ticket_checkout_orders` — `Lines` is jsonb. Unique (`BackendKey`, `BackendOrderId`). `TermsFolder` and `TermsVersion` (a legal repo commit) record the ticket rules the buyer accepted. `BuyerUserId` and each line's `AttendeeUserId` are bare user ids (no FK).
 
 ### TicketCheckoutRefund
 
@@ -244,7 +244,7 @@ Lifecycle: `Attended` is permanent (only a missing `CheckedInAt` may be filled);
 | `/Tickets/Admin/Sales/Order/{id}/Refund` | POST | `TicketsPolicies.Manage` | Refund an exact amount through the order's backend, capped at the ticket lines net of earlier refunds (audited `TicketCheckoutRefunded`) |
 | `/Tickets/Admin/Sales/Order/{id}/Resend` | POST | `TicketsPolicies.Manage` | Queue every ticket email and the receipt of a paid order again (audited `TicketDeliveryResent`) |
 | `/Tickets/Code/{token}` | GET | `[AllowAnonymous]` | PNG QR of the barcode in a Humans-minted token; what the ticket email's image loads. 404 for any other token |
-| `/Tickets/Admin/Sales/Lookup?q=` | GET | `TicketsPolicies.Read` | Find checkout orders across every event by buyer or holder name or email (substring, 3+ characters), order id, backend reference or ticket code (exact); newest 100 |
+| `/Tickets/Admin/Sales/Lookup?q=` | GET | `TicketsPolicies.Read` | Find checkout orders across every event by buyer or holder name or email (substring, 3+ characters), order id, backend reference or ticket code (exact); newest 100. Its "Find an order" tab also places the support pages (report, refunds, resale queue, order, ticket) in the admin shell, under Sales |
 | `/Tickets/Admin/Sales/{id}/Refunds?state=` | GET | `TicketsPolicies.Read` | Every refund asked for on the event, newest first, filterable Pending / Done / Failed / Manual |
 | `/Tickets/Admin/Sales/{id}/Resale` | GET | `TicketsPolicies.Read` | The resale queue: waiting offers in selling order with place, waiting since and refund owed; an invited offer also shows the invited email (it keeps its place; whoever buys first gets it); an Open resale / Pause resale button; then sold and withdrawn offers with their refund |
 | `/Tickets/Admin/Sales/{id}/Resale/Open` | POST | `TicketsPolicies.Manage` | Open (`open=true`) or pause resale by hand; opening is refused while resale is switched off, pausing in Resale only mode (audited `TicketResaleOpenSet`) |

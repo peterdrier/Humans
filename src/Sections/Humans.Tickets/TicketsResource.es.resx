@@ -272,6 +272,12 @@
   <data name="Tickets_Buy_TermsRequired" xml:space="preserve">
     <value>Acepta las normas de las entradas para continuar.</value>
   </data>
+  <data name="Tickets_Buy_TermsChanged" xml:space="preserve">
+    <value>Las normas de las entradas han cambiado desde que abriste esta página. Léelas de nuevo y acéptalas para continuar.</value>
+  </data>
+  <data name="Tickets_Buy_TermsUnavailable" xml:space="preserve">
+    <value>Ahora mismo no se pueden cargar las normas de las entradas, así que no se pueden comprar entradas. Inténtalo de nuevo en unos minutos.</value>
+  </data>
   <data name="Tickets_Resale_InviteInvalid" xml:space="preserve">
     <value>Este enlace de invitación ya no es válido, o se envió a otro correo distinto del de tu sesión.</value>
   </data>

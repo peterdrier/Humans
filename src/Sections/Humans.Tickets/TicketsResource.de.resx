@@ -272,6 +272,12 @@
   <data name="Tickets_Buy_TermsRequired" xml:space="preserve">
     <value>Bitte akzeptiere die Ticketregeln, um fortzufahren.</value>
   </data>
+  <data name="Tickets_Buy_TermsChanged" xml:space="preserve">
+    <value>Die Ticketregeln haben sich geändert, seit du diese Seite geöffnet hast. Bitte lies sie erneut und akzeptiere sie, um fortzufahren.</value>
+  </data>
+  <data name="Tickets_Buy_TermsUnavailable" xml:space="preserve">
+    <value>Die Ticketregeln können gerade nicht geladen werden, daher können keine Tickets gekauft werden. Bitte versuche es in ein paar Minuten erneut.</value>
+  </data>
   <data name="Tickets_Resale_InviteInvalid" xml:space="preserve">
     <value>Dieser Einladungslink ist nicht mehr gültig oder wurde an eine andere E-Mail-Adresse als deine geschickt.</value>
   </data>
