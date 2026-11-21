@@ -223,9 +223,10 @@ internal sealed class HiEventsCheckoutBackend : ITicketCheckoutBackend
         _ => throw new HttpRequestException($"Hi.Events order {order.Id} has unknown status '{order.Status}'."),
     };
 
-    private Uri AdminUrl(int eventId, int orderId) =>
-        new(string.Create(CultureInfo.InvariantCulture,
-            $"{_settings.ResolvedAppUrl}/manage/event/{eventId}/orders#order-{orderId}"));
+    private Uri? AdminUrl(int eventId, int orderId) =>
+        _settings.AppBaseUri is { } app
+            ? new Uri(app, string.Create(CultureInfo.InvariantCulture, $"manage/event/{eventId}/orders#order-{orderId}"))
+            : null;
 
     private async Task<IReadOnlyList<HiEventsProduct>> GetProductsAsync(int eventId, CancellationToken ct)
     {

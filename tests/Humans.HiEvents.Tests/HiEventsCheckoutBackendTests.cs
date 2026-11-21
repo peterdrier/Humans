@@ -341,6 +341,8 @@ public class HiEventsCheckoutBackendTests
         Backend(apiUrl: "").IsConfigured.Should().BeFalse();
         Backend(apiUrl: "tickets example/api").IsConfigured.Should().BeFalse();
         Backend(apiUrl: "ftp://tickets.example/api").IsConfigured.Should().BeFalse();
+        Backend(appUrl: "tickets.example").IsConfigured.Should().BeFalse();
+        Backend(appUrl: "https://admin.tickets.example/").IsConfigured.Should().BeTrue();
     }
 
     [HumansTheory]
@@ -361,11 +363,12 @@ public class HiEventsCheckoutBackendTests
         last.Should().HaveLength(50);
     }
 
-    private HiEventsCheckoutBackend Backend(string apiKey = "key", string apiUrl = "https://tickets.example/api") => new(
+    private HiEventsCheckoutBackend Backend(string apiKey = "key", string apiUrl = "https://tickets.example/api", string appUrl = "") => new(
         new HttpClient(_handler),
         Options.Create(new HiEventsSettings
         {
             ApiUrl = apiUrl,
+            AppUrl = appUrl,
             ApiKey = apiKey,
         }),
         new FakeClock(Now),

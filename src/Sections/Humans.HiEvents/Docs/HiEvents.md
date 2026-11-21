@@ -22,7 +22,8 @@ price, the named ticket and the QR code.
   `idempotency_key` on `POST .../orders/{order_id}/refund`. Stock Hi.Events has neither.
 - A **backend order id** is `{eventId}:{orderId}`: every Hi.Events order route is scoped to its event.
 - **Settings**, all owned here: `HiEvents:ApiUrl` (ends in `/api`); `HiEvents:AppUrl` (the web app, for the order's
-  admin link; defaults to `ApiUrl` without `/api`); and the environment variables `HIEVENTS_API_KEY` (a Hi.Events API key whose owner can
+  admin link; defaults to `ApiUrl` without `/api`; both must be absolute http(s), or the backend reads as unconfigured and
+  Tickets opens no checkout on it); and the environment variables `HIEVENTS_API_KEY` (a Hi.Events API key whose owner can
   edit the event, see financials and issue refunds) and `HIEVENTS_WEBHOOK_SECRET`. Only infrastructure lives in
   configuration: there is no per-event mapping to keep, because each event's carrier products are found in Hi.Events.
 - **Carrier products**: Humans owns the catalogue and prices every line, so each Hi.Events event needs exactly one
