@@ -1,3 +1,4 @@
+using Humans.Roles.Contracts;
 using System.Globalization;
 using System.Resources;
 using Humans.Base.Interfaces;
@@ -99,6 +100,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
     private readonly IGoogleSyncWrite _googleSyncService = Substitute.For<IGoogleSyncWrite>();
     private readonly IGoogleService _googleIdentities = Substitute.For<IGoogleService>();
     private readonly ISystemTeamSync _systemTeamSync = Substitute.For<ISystemTeamSync>();
+    private readonly IRoleWrite _roleWrite = Substitute.For<IRoleWrite>();
 
     public TeamServiceTests()
     {
@@ -135,6 +137,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
             .With(_emailService)
             .With(TestTeamsEmails.Create())
             .With(_systemTeamSync)
+            .With(_roleWrite)
             .With(_googleSyncService)
             .With<IGoogleSyncOutboxService>(googleOutboxService)
             .With(_googleIdentities)

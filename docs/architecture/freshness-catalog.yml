@@ -291,6 +291,7 @@ editorial_trees:
   - docs/sections/
   - docs/features/
   - docs/guide/
+  - docs/design/
   # Sections in their own project carry their invariants + feature docs in-project
   # rather than in docs/sections/.
   - src/Sections/
