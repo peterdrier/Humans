@@ -42,6 +42,7 @@ internal sealed class TicketCheckoutOrderConfiguration : IEntityTypeConfiguratio
         builder.Property(x => x.BackendKey).IsRequired().HasMaxLength(32);
         builder.Property(x => x.BackendOrderId).HasMaxLength(256);
         builder.Property(x => x.PaymentUrl).HasMaxLength(2048);
+        builder.Property(x => x.AdminUrl).HasMaxLength(2048);
         builder.Property(x => x.State).IsRequired().HasConversion<string>().HasMaxLength(16);
         builder.Property(x => x.Currency).IsRequired().HasMaxLength(3);
         builder.Property(x => x.PaymentMethod).HasMaxLength(64);
@@ -67,5 +68,17 @@ internal sealed class TicketCheckoutRefundConfiguration : IEntityTypeConfigurati
         builder.Property(x => x.BackendRefundId).HasMaxLength(256);
         builder.Property(x => x.FailureReason).HasMaxLength(1000);
         builder.Property(x => x.ManualRefundUrl).HasMaxLength(2048);
+    }
+}
+
+internal sealed class TicketCheckoutOrderEventConfiguration : IEntityTypeConfiguration<TicketCheckoutOrderEvent>
+{
+    public void Configure(EntityTypeBuilder<TicketCheckoutOrderEvent> builder)
+    {
+        builder.ToTable("ticket_checkout_order_events");
+        builder.HasKey(x => x.Id);
+        builder.HasIndex(x => x.OrderId);
+        builder.Property(x => x.Kind).IsRequired().HasConversion<string>().HasMaxLength(32);
+        builder.Property(x => x.Detail).IsRequired().HasMaxLength(2000);
     }
 }

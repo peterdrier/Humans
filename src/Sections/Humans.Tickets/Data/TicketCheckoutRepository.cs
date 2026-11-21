@@ -26,11 +26,25 @@ internal sealed class TicketCheckoutRepository(IDbContextFactory<TicketsDbContex
     public async Task SaveSalesEventAsync(TicketSalesEvent salesEvent, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
-        var exists = await ctx.TicketSalesEvents.AnyAsync(e => e.Id == salesEvent.Id, ct);
-        if (exists)
-            ctx.TicketSalesEvents.Update(salesEvent);
-        else
+        var tracked = await ctx.TicketSalesEvents.FirstOrDefaultAsync(e => e.Id == salesEvent.Id, ct);
+        if (tracked is null)
+        {
             ctx.TicketSalesEvents.Add(salesEvent);
+        }
+        else
+        {
+            // Owned JSON lists carry shadow ordinal keys, so a detached graph cannot be attached with Update().
+            ctx.Entry(tracked).CurrentValues.SetValues(salesEvent);
+            tracked.Waves = salesEvent.Waves.Select(w => new TicketSalesWave { Name = w.Name, EndsOn = w.EndsOn, PriceMinor = w.PriceMinor }).ToList();
+            tracked.SupporterTotalsMinor = salesEvent.SupporterTotalsMinor.ToList();
+            tracked.PriceRules = salesEvent.PriceRules.Select(r => new TicketPriceRule
+            {
+                GrantProgramId = r.GrantProgramId,
+                Kind = r.Kind,
+                AmountMinor = r.AmountMinor,
+                Label = r.Label,
+            }).ToList();
+        }
         await ctx.SaveChangesAsync(ct);
     }
 
@@ -54,7 +68,6 @@ internal sealed class TicketCheckoutRepository(IDbContextFactory<TicketsDbContex
         await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.TicketCheckoutOrders.AsNoTracking()
             .Where(o => o.SalesEventId == salesEventId)
-            .OrderByDescending(o => o.CreatedAt)
             .ToListAsync(ct);
     }
 
@@ -65,7 +78,6 @@ internal sealed class TicketCheckoutRepository(IDbContextFactory<TicketsDbContex
         var orders = await ctx.TicketCheckoutOrders.AsNoTracking().ToListAsync(ct);
         return orders
             .Where(o => o.BuyerUserId == userId || o.Lines.Any(l => l.AttendeeUserId == userId))
-            .OrderByDescending(o => o.CreatedAt)
             .ToList();
     }
 
@@ -87,7 +99,10 @@ internal sealed class TicketCheckoutRepository(IDbContextFactory<TicketsDbContex
     public async Task UpdateOrderAsync(TicketCheckoutOrder order, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
-        ctx.TicketCheckoutOrders.Update(order);
+        var tracked = await ctx.TicketCheckoutOrders.FirstAsync(o => o.Id == order.Id, ct);
+        // Owned JSON lines carry shadow ordinal keys, so a detached graph cannot be attached with Update().
+        ctx.Entry(tracked).CurrentValues.SetValues(order);
+        tracked.Lines = order.Lines.Select(CopyLine).ToList();
         await ctx.SaveChangesAsync(ct);
     }
 
@@ -96,7 +111,6 @@ internal sealed class TicketCheckoutRepository(IDbContextFactory<TicketsDbContex
         await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.TicketCheckoutRefunds.AsNoTracking()
             .Where(r => r.OrderId == orderId)
-            .OrderBy(r => r.CreatedAt)
             .ToListAsync(ct);
     }
 
@@ -112,6 +126,21 @@ internal sealed class TicketCheckoutRepository(IDbContextFactory<TicketsDbContex
         await using var ctx = await factory.CreateDbContextAsync(ct);
         ctx.TicketCheckoutRefunds.Update(refund);
         await ctx.SaveChangesAsync(ct);
+    }
+
+    public async Task AddOrderEventAsync(TicketCheckoutOrderEvent orderEvent, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        ctx.TicketCheckoutOrderEvents.Add(orderEvent);
+        await ctx.SaveChangesAsync(ct);
+    }
+
+    public async Task<IReadOnlyList<TicketCheckoutOrderEvent>> GetOrderEventsAsync(Guid orderId, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        return await ctx.TicketCheckoutOrderEvents.AsNoTracking()
+            .Where(e => e.OrderId == orderId)
+            .ToListAsync(ct);
     }
 
     public async Task<int> ErasePiiForUserAsync(Guid userId, CancellationToken ct = default)
@@ -162,6 +191,21 @@ internal sealed class TicketCheckoutRepository(IDbContextFactory<TicketsDbContex
             }
             if (touched) ctx.TicketCheckoutOrders.Update(order);
         }
+        foreach (var orderEvent in await ctx.TicketCheckoutOrderEvents.Where(e => e.ActorUserId == fromUserId).ToListAsync(ct))
+            orderEvent.ActorUserId = toUserId;
         await ctx.SaveChangesAsync(ct);
     }
+
+    private static TicketCheckoutOrderLine CopyLine(TicketCheckoutOrderLine l) => new()
+    {
+        Kind = l.Kind,
+        Description = l.Description,
+        AmountMinor = l.AmountMinor,
+        VatRate = l.VatRate,
+        AttendeeName = l.AttendeeName,
+        AttendeeEmail = l.AttendeeEmail,
+        AttendeeUserId = l.AttendeeUserId,
+        Barcode = l.Barcode,
+        DonationPurpose = l.DonationPurpose,
+    };
 }

@@ -23,14 +23,14 @@ internal sealed class TicketBuyController(
         var (errorResult, user) = await RequireCurrentUserAsync(ct);
         if (errorResult is not null) return errorResult;
 
-        var page = await checkout.GetBuyPageAsync(user.Id, ct);
-        return View("~/Views/Tickets/Buy/Index.cshtml", page);
+        var pages = await checkout.GetBuyPagesAsync(user.Id, ct);
+        return View("~/Views/Tickets/Buy/Index.cshtml", pages);
     }
 
     [HttpPost("")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Start(
-        bool forSelf, string? partnerName, string? partnerEmail, long? supporterTotalMinor, decimal? donation,
+        Guid salesEventId, bool forSelf, string? partnerName, string? partnerEmail, long? supporterTotalMinor, decimal? donation,
         TicketDonationPurpose donationPurpose, CancellationToken ct)
     {
         var (errorResult, user) = await RequireCurrentUserAsync(ct);
@@ -41,7 +41,7 @@ internal sealed class TicketBuyController(
         var donationMinor = donation is > 0 ? (long)Math.Round(donation.Value * 100m, MidpointRounding.AwayFromZero) : 0;
 
         var result = await checkout.StartCheckoutAsync(new StartCheckout(
-            forSelf, partnerName, partnerEmail, supporterTotalMinor, donationMinor, donationPurpose,
+            salesEventId, forSelf, partnerName, partnerEmail, supporterTotalMinor, donationMinor, donationPurpose,
             returnBase, CultureInfo.CurrentUICulture.Name), user.Id, ct);
 
         if (result.Refusal is { } refusal)

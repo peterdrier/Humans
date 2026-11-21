@@ -2,10 +2,13 @@ using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.Settings.Contracts;
 using Humans.Tickets.Contracts;
+using Humans.Tickets.Services.Checkout;
 using Humans.Tickets.ViewComponents;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.Rendering;
+using Microsoft.AspNetCore.Mvc.ViewEngines;
 using Microsoft.AspNetCore.Mvc.ViewComponents;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NodaTime;
@@ -27,7 +30,15 @@ public sealed class MemberTicketStatusViewComponentTests
 
     private MemberTicketStatusViewComponent BuildSut(TicketVendorSettings? vendor = null)
     {
-        var httpContext = new DefaultHttpContext();
+        var checkout = Substitute.For<ITicketCheckoutService>();
+        checkout.GetSalesEventsAsync(Arg.Any<CancellationToken>()).Returns([]);
+        var httpContext = new DefaultHttpContext
+        {
+            RequestServices = new ServiceCollection()
+                .AddSingleton(checkout)
+                .AddSingleton(Substitute.For<ICompositeViewEngine>())
+                .BuildServiceProvider(),
+        };
         httpContext.User = new ClaimsPrincipal(new ClaimsIdentity(
             [new Claim(ClaimTypes.NameIdentifier, Guid.NewGuid().ToString())], "test"));
         return new MemberTicketStatusViewComponent(

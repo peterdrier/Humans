@@ -14,6 +14,22 @@ namespace Humans.Tickets.Data.Migrations
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.CreateTable(
+                name: "ticket_checkout_order_events",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    OrderId = table.Column<Guid>(type: "uuid", nullable: false),
+                    At = table.Column<Instant>(type: "timestamp with time zone", nullable: false),
+                    Kind = table.Column<string>(type: "character varying(32)", maxLength: 32, nullable: false),
+                    Detail = table.Column<string>(type: "character varying(2000)", maxLength: 2000, nullable: false),
+                    ActorUserId = table.Column<Guid>(type: "uuid", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_ticket_checkout_order_events", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "ticket_checkout_orders",
                 columns: table => new
                 {
@@ -25,6 +41,7 @@ namespace Humans.Tickets.Data.Migrations
                     BackendKey = table.Column<string>(type: "character varying(32)", maxLength: 32, nullable: false),
                     BackendOrderId = table.Column<string>(type: "character varying(256)", maxLength: 256, nullable: true),
                     PaymentUrl = table.Column<string>(type: "character varying(2048)", maxLength: 2048, nullable: true),
+                    AdminUrl = table.Column<string>(type: "character varying(2048)", maxLength: 2048, nullable: true),
                     State = table.Column<string>(type: "character varying(16)", maxLength: 16, nullable: false),
                     Currency = table.Column<string>(type: "character varying(3)", maxLength: 3, nullable: false),
                     TotalMinor = table.Column<long>(type: "bigint", nullable: false),
@@ -86,6 +103,11 @@ namespace Humans.Tickets.Data.Migrations
                 });
 
             migrationBuilder.CreateIndex(
+                name: "IX_ticket_checkout_order_events_OrderId",
+                table: "ticket_checkout_order_events",
+                column: "OrderId");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_ticket_checkout_orders_BackendKey_BackendOrderId",
                 table: "ticket_checkout_orders",
                 columns: new[] { "BackendKey", "BackendOrderId" },
@@ -116,6 +138,9 @@ namespace Humans.Tickets.Data.Migrations
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.DropTable(
+                name: "ticket_checkout_order_events");
+
             migrationBuilder.DropTable(
                 name: "ticket_checkout_orders");
 

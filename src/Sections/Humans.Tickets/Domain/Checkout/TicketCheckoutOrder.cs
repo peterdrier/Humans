@@ -28,6 +28,9 @@ internal sealed class TicketCheckoutOrder
 
     public string? PaymentUrl { get; set; }
 
+    /// <summary>The order in the backend's own admin, for the ticketing team.</summary>
+    public string? AdminUrl { get; set; }
+
     public TicketCheckoutOrderState State { get; set; }
 
     public string Currency { get; init; } = "EUR";
@@ -122,4 +125,36 @@ internal sealed class TicketCheckoutRefund
     public Guid RequestedByUserId { get; init; }
 
     public Instant CreatedAt { get; init; }
+}
+
+/// <summary>
+/// One step in an order's life, append-only: never updated or deleted, so customer service can see what happened and
+/// who did it. <see cref="ActorUserId"/> is null for automation (a webhook, the reconcile poll); <see cref="Detail"/>
+/// carries amounts and states, never names or emails.
+/// </summary>
+internal sealed class TicketCheckoutOrderEvent
+{
+    public Guid Id { get; init; }
+
+    public Guid OrderId { get; init; }
+
+    public Instant At { get; init; }
+
+    public TicketCheckoutOrderEventKind Kind { get; init; }
+
+    public string Detail { get; init; } = string.Empty;
+
+    public Guid? ActorUserId { get; set; }
+}
+
+internal enum TicketCheckoutOrderEventKind
+{
+    Created = 0,
+    CheckoutOpened = 1,
+    BackendRefused = 2,
+    StateChanged = 3,
+    RefundedTotalChanged = 4,
+    RefundRequested = 5,
+    RefundSettled = 6,
+    Cancelled = 7,
 }

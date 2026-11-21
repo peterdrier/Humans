@@ -15,12 +15,16 @@ Stripe hosted Checkout), `Humans.Pretix`, `Humans.HiEvents`.
 ## Flow
 
 1. A TicketsAdmin sets up the event at `/Tickets/Admin/Sales`: backend, mode, waves, supporter totals, grant price rules.
-2. A member opens `/Tickets/Buy` (linked from the dashboard ticket card while the active event sells through Humans),
-   sees their price, optionally adds a partner (name and email; Humans finds or creates the partner's account) and a
+2. A member opens `/Tickets/Buy` (linked from the dashboard ticket card while any event sells through Humans), which
+   lists every event that is not Closed, each priced in its own time zone and checked for holdings on its own. They see
+   their price, optionally adds a partner (name and email; Humans finds or creates the partner's account) and a
    donation, and continues to the backend's payment page.
 3. The backend returns them to `/Tickets/Buy/Order/{id}`, which refreshes the status. The webhook and the 5-minute
    reconcile job catch the rest. On `Paid` each ticket line gets a barcode.
 4. A TicketsAdmin refunds from the order page: only paid orders, never above the ticket lines net of earlier refunds.
+
+Every step lands in the order's append-only timeline (`ticket_checkout_order_events`) with who did it, shown on the
+admin order page beside a link to the order in the backend's own admin (`CheckoutSession.AdminUrl`).
 
 ## Not yet
 
@@ -29,3 +33,4 @@ Stripe hosted Checkout), `Humans.Pretix`, `Humans.HiEvents`.
 - Low income wave pin (the price rule takes a pricing date, so a pin plugs in there).
 - Checkout tickets in holdings, the gate list and the scanner: they live in their own table until a backend is chosen.
 - Dependents (child, companion) and payment-method-dependent prices.
+- Order, sales and check-in reports across events (the keying and the timeline are in place for them).

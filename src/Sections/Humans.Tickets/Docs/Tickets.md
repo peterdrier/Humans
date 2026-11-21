@@ -52,6 +52,10 @@ Bulk cache warmups publish through the shared mutation guard. A refresh, deletio
 
 **Table:** `ticket_checkout_refunds` — one row per refund request, saved before the backend call so a crash still counts it; `Id` is the backend's idempotency key.
 
+### TicketCheckoutOrderEvent
+
+**Table:** `ticket_checkout_order_events` — the order's timeline, append-only (the repository has no update or delete): created, checkout opened, backend refused, state changed, refunded total changed, refund requested and settled, cancelled. `ActorUserId` is the person, null for automation. `Detail` holds amounts, states and backend refs, never names or emails, so erasure leaves it; merge reassigns `ActorUserId`.
+
 ### TicketOrder
 
 **Table:** `ticket_orders`
@@ -111,7 +115,7 @@ Lifecycle: `Attended` is permanent (only a missing `CheckedInAt` may be filled);
 | Any authenticated user with attendees on their orders (Sender) | Send any `Valid` attendee from their own order to another Humans user; cancel a `Pending` transfer they created |
 | TicketsAdmin, Board, Admin | View the ticket dashboard, orders, attendees, codes, gate list, sales aggregates, and the "Who Hasn't Bought" report (controller-wide policy `TicketsPolicies.Read`) |
 | TicketsAdmin, Admin | Trigger an incremental ticket sync. Export attendee/order CSV (each download audits the actor, export kind and row count). Generate discount codes for campaigns (Campaign section, policy `TicketsPolicies.Manage`). Approve or reject pending transfer requests from `/Tickets/Admin/Transfers` (policy `TicketsPolicies.Manage`). Import attendee contacts (preview + selectively apply) from `/Tickets/Admin/Contacts` (policy `TicketsPolicies.Manage`). Set/rotate the gate-terminal password from `/Tickets/Admin/Gate` (policy `TicketsPolicies.Manage`; see `src/Sections/Humans.Scanner/Docs/features/gate-terminal-login.md`) |
-| Any authenticated member | Buy a ticket for themselves and/or one named partner for the active event, see orders they paid for or hold a line in, cancel their own unpaid order. Never sees another payer's order |
+| Any authenticated member | Buy a ticket for themselves and/or one named partner for any event that is not Closed (several can sell at once; nothing assumes the active event), see orders they paid for or hold a line in, cancel their own unpaid order. Never sees another payer's order |
 | TicketsAdmin, Board, Admin (Read) | See sales setups, checkout orders and refunds. Board can never save a setup or refund |
 | TicketsAdmin, Admin (Manage) | Save a sales setup; refund a paid checkout order up to its ticket lines (donations never) |
 | Admin | Trigger a full re-sync (clears the `LastSyncAt` cursor). Open and submit the participation backfill page (`/Tickets/Participation/Backfill`). Download the donor list CSV (`/Tickets/Export/Donations`, audited) |
@@ -217,7 +221,7 @@ Lifecycle: `Attended` is permanent (only a missing `CheckedInAt` may be filled);
 | `/Tickets/Export/Orders` | GET | `TicketsPolicies.Manage` | CSV export of orders |
 | `/Tickets/Export/AccountantReport` | GET | `TicketsPolicies.Manage` | CSV of monthly ticket income for the accountant: gross split into taxable ticket income, 10% VAT, VIP + standalone donations, fees, and refunded gross by purchase month |
 | `/Tickets/Export/Donations` | GET | `AdminOnly` | CSV donor list for the accountant: one row per donation on a paid order (type `VIP ticket` = amount above the threshold over live seats, or `Separate donation` = checkout donation line) — purchase date in Europe/Madrid (same bucketing as the monthly report), order id, buyer name, email, type, amount, plus a total row. Every download writes a `TicketDonationsExported` audit entry (actor, donation row count, total). Spec: `Docs/features/accountant-donor-list.md` |
-| `/Tickets/Buy` | GET + POST | `[Authorize]` | Buy for the active event: own ticket at the member's price, optional partner at the public price, supporter total, donation; POST redirects to the backend's payment page |
+| `/Tickets/Buy` | GET + POST | `[Authorize]` | One section per selling event; the POST names its `salesEventId`: own ticket at the member's price, optional partner at the public price, supporter total, donation; POST redirects to the backend's payment page |
 | `/Tickets/Buy/Order/{id}` | GET | `[Authorize]` | Order status, refreshed from the backend; the payer sees the whole order, a holder only their own line; anyone else 404 |
 | `/Tickets/Buy/Order/{id}/Cancel` | POST | `[Authorize]` | The payer abandons an unpaid order |
 | `/Tickets/Admin/Sales` | GET | `TicketsPolicies.Read` | Sales setups per event and each registered backend's configured state |

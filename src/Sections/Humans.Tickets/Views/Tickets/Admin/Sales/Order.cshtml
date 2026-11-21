@@ -17,7 +17,7 @@
 <dl class="row">
     <dt class="col-sm-3">Buyer</dt><dd class="col-sm-9">@o.BuyerName (@o.BuyerEmail) <a asp-controller="UsersAdmin" asp-action="AdminDetail" asp-route-id="@o.BuyerUserId">profile</a></dd>
     <dt class="col-sm-3">State</dt><dd class="col-sm-9">@o.State</dd>
-    <dt class="col-sm-3">Backend</dt><dd class="col-sm-9"><code>@o.BackendKey</code> @o.BackendOrderId</dd>
+    <dt class="col-sm-3">Backend</dt><dd class="col-sm-9"><code>@o.BackendKey</code> @o.BackendOrderId @if (o.AdminUrl is not null) { <a href="@o.AdminUrl" target="_blank" rel="noopener">open in @o.BackendKey</a> }</dd>
     <dt class="col-sm-3">Created</dt><dd class="col-sm-9">@o.CreatedAt.ToDateTime()</dd>
     <dt class="col-sm-3">Paid</dt><dd class="col-sm-9">@(o.PaidAt?.ToDateTime() ?? "—") @o.PaymentMethod</dd>
     <dt class="col-sm-3">Fee</dt><dd class="col-sm-9">@(o.FeeMinor is { } fee ? Eur(fee) : "—")</dd>
@@ -64,6 +64,31 @@ else
         </tbody>
     </table>
 }
+
+<h2 class="h5">Timeline</h2>
+<table class="table table-sm">
+    <thead><tr><th>When</th><th>What</th><th>Detail</th><th>Who</th></tr></thead>
+    <tbody>
+        @foreach (var e in Model.Timeline)
+        {
+            <tr>
+                <td>@e.At.ToDateTime()</td>
+                <td>@e.Kind</td>
+                <td>@e.Detail</td>
+                <td>
+                    @if (e.ActorUserId is { } actor)
+                    {
+                        <a asp-controller="UsersAdmin" asp-action="AdminDetail" asp-route-id="@actor">@(actor == o.BuyerUserId ? "buyer" : "person")</a>
+                    }
+                    else
+                    {
+                        <span class="text-muted">automation</span>
+                    }
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
 
 @if (o.State == TicketCheckoutOrderState.Paid && Model.RefundableMinor > 0)
 {

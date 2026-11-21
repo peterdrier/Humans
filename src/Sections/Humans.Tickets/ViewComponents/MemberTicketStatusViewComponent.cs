@@ -47,7 +47,7 @@ public sealed class MemberTicketStatusViewComponent(
             eventYear,
             eventYear is null ? null : await ParticipationStatusAsync(userId, eventYear.Value, ct))
         {
-            SellsInHumans = activeEvent is not null && await SellsInHumansAsync(activeEvent.Id, ct),
+            SellsInHumans = await SellsInHumansAsync(ct),
         });
     }
 
@@ -55,11 +55,10 @@ public sealed class MemberTicketStatusViewComponent(
     /// Resolved per call: the checkout service is internal, and a public view component cannot name it in its
     /// constructor.
     /// </summary>
-    private async Task<bool> SellsInHumansAsync(Guid eventSettingsId, CancellationToken ct)
+    private async Task<bool> SellsInHumansAsync(CancellationToken ct)
     {
         var checkout = HttpContext.RequestServices.GetRequiredService<Services.Checkout.ITicketCheckoutService>();
-        return (await checkout.GetSalesEventsAsync(ct))
-            .Any(e => e.EventSettingsId == eventSettingsId && e.Mode != Domain.Checkout.TicketSalesMode.Closed);
+        return (await checkout.GetSalesEventsAsync(ct)).Any(e => e.Mode != Domain.Checkout.TicketSalesMode.Closed);
     }
 
     /// <summary>Null when the holdings read failed.</summary>

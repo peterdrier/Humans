@@ -30,6 +30,10 @@ namespace Humans.Tickets.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<string>("AdminUrl")
+                        .HasMaxLength(2048)
+                        .HasColumnType("character varying(2048)");
+
                     b.Property<string>("BackendKey")
                         .IsRequired()
                         .HasMaxLength(32)
@@ -104,6 +108,38 @@ namespace Humans.Tickets.Data.Migrations
                         .IsUnique();
 
                     b.ToTable("ticket_checkout_orders", (string)null);
+                });
+
+            modelBuilder.Entity("Humans.Tickets.Domain.Checkout.TicketCheckoutOrderEvent", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("ActorUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Instant>("At")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Detail")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<Guid>("OrderId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OrderId");
+
+                    b.ToTable("ticket_checkout_order_events", (string)null);
                 });
 
             modelBuilder.Entity("Humans.Tickets.Domain.Checkout.TicketCheckoutRefund", b =>

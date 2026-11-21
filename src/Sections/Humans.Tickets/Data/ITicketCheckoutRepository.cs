@@ -37,6 +37,11 @@ internal interface ITicketCheckoutRepository : IRepository
 
     Task UpdateRefundAsync(TicketCheckoutRefund refund, CancellationToken ct = default);
 
+    /// <summary>The timeline is append-only: there is no update or delete.</summary>
+    Task AddOrderEventAsync(TicketCheckoutOrderEvent orderEvent, CancellationToken ct = default);
+
+    Task<IReadOnlyList<TicketCheckoutOrderEvent>> GetOrderEventsAsync(Guid orderId, CancellationToken ct = default);
+
     /// <summary>Replaces names and emails on the person's orders and ticket lines; amounts stay for the books.</summary>
     Task<int> ErasePiiForUserAsync(Guid userId, CancellationToken ct = default);
 

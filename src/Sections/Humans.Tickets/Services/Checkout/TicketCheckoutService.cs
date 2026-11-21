@@ -95,22 +95,28 @@ internal sealed class TicketCheckoutService(
         return CheckoutMutationResult.Ok;
     }
 
-    public async Task<BuyPage?> GetBuyPageAsync(Guid userId, CancellationToken ct = default)
+    public async Task<IReadOnlyList<BuyPage>> GetBuyPagesAsync(Guid userId, CancellationToken ct = default)
     {
-        var context = await LoadBuyContextAsync(userId, ct);
-        if (context is null)
-            return null;
-
-        return new BuyPage(
-            context.SalesEvent, context.Event.EventName, context.OwnPrice, context.PublicPrice,
-            context.Unavailable, context.AlreadyHoldsTicket, context.Buyer?.FullName ?? string.Empty,
-            context.UserOrders.Where(o => o.SalesEventId == context.SalesEvent.Id).ToList());
+        var pages = new List<(LocalDate GatesOpen, BuyPage Page)>();
+        foreach (var salesEvent in await repository.GetSalesEventsAsync(ct))
+        {
+            if (salesEvent.Mode == TicketSalesMode.Closed)
+                continue;
+            if (await LoadBuyContextAsync(salesEvent.Id, userId, ct) is not { } context)
+                continue;
+            pages.Add((context.Event.GateOpeningDate, new BuyPage(
+                context.SalesEvent, context.Event.EventName, context.OwnPrice, context.PublicPrice,
+                context.Unavailable, context.AlreadyHoldsTicket, context.Buyer?.FullName ?? string.Empty,
+                context.UserOrders.Where(o => o.SalesEventId == context.SalesEvent.Id)
+                    .OrderByDescending(o => o.CreatedAt).ToList())));
+        }
+        return pages.OrderBy(p => p.GatesOpen).Select(p => p.Page).ToList();
     }
 
     public async Task<StartCheckoutResult> StartCheckoutAsync(
         StartCheckout command, Guid userId, CancellationToken ct = default)
     {
-        var context = await LoadBuyContextAsync(userId, ct);
+        var context = await LoadBuyContextAsync(command.SalesEventId, userId, ct);
         if (context is null)
             return StartCheckoutResult.Refused("Tickets_Buy_NotOnSale");
         if (context.Unavailable is { } unavailable)
@@ -185,12 +191,15 @@ internal sealed class TicketCheckoutService(
             Lines = lines,
         };
         await repository.AddOrderAsync(order, ct);
+        await TimelineAsync(order.Id, TicketCheckoutOrderEventKind.Created,
+            $"{ticketCount} ticket(s), {FormatMinor(order.TotalMinor)} {order.Currency} on {order.BackendKey}", buyer.Id, ct);
 
         if (order.TotalMinor == 0)
         {
             // Nothing to charge (a free companion, credits covering the price): no backend has a zero checkout.
             MarkPaid(order, null, null, context.Now);
             await repository.UpdateOrderAsync(order, ct);
+            await TimelineAsync(order.Id, TicketCheckoutOrderEventKind.StateChanged, "Paid: nothing to charge", null, ct);
             await auditLog.LogAsync(TicketsAuditActions.TicketCheckoutPaid, AuditEntityType, order.Id,
                 $"Free order issued {ticketCount} ticket(s) without a payment", buyer.Id);
             return new StartCheckoutResult(order.Id, null, null);
@@ -213,9 +222,12 @@ internal sealed class TicketCheckoutService(
 
             order.BackendOrderId = session.BackendOrderId;
             order.PaymentUrl = session.PaymentUrl.ToString();
+            order.AdminUrl = session.AdminUrl?.ToString();
             order.State = TicketCheckoutOrderState.Pending;
             order.UpdatedAt = clock.GetCurrentInstant();
             await repository.UpdateOrderAsync(order, ct);
+            await TimelineAsync(order.Id, TicketCheckoutOrderEventKind.CheckoutOpened,
+                $"{order.BackendKey} opened checkout {session.BackendOrderId}", null, ct);
             return new StartCheckoutResult(order.Id, session.PaymentUrl, null);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
@@ -224,20 +236,25 @@ internal sealed class TicketCheckoutService(
             order.State = TicketCheckoutOrderState.Failed;
             order.UpdatedAt = clock.GetCurrentInstant();
             await repository.UpdateOrderAsync(order, ct);
+            await TimelineAsync(order.Id, TicketCheckoutOrderEventKind.BackendRefused, Truncate(ex.Message), null, ct);
             return StartCheckoutResult.Refused("Tickets_Buy_BackendFailed");
         }
     }
 
-    public Task<IReadOnlyList<TicketCheckoutOrder>> GetOrdersForUserAsync(Guid userId, CancellationToken ct = default) =>
-        repository.GetOrdersForUserAsync(userId, ct);
+    public async Task<IReadOnlyList<TicketCheckoutOrder>> GetOrdersForUserAsync(Guid userId, CancellationToken ct = default) =>
+        (await repository.GetOrdersForUserAsync(userId, ct)).OrderByDescending(o => o.CreatedAt).ToList();
 
-    public Task<IReadOnlyList<TicketCheckoutOrder>> GetOrdersForSalesEventAsync(Guid salesEventId, CancellationToken ct = default) =>
-        repository.GetOrdersForSalesEventAsync(salesEventId, ct);
+    public async Task<IReadOnlyList<TicketCheckoutOrder>> GetOrdersForSalesEventAsync(Guid salesEventId, CancellationToken ct = default) =>
+        (await repository.GetOrdersForSalesEventAsync(salesEventId, ct)).OrderByDescending(o => o.CreatedAt).ToList();
 
     public async Task<CheckoutOrderDetail?> GetOrderDetailAsync(Guid orderId, CancellationToken ct = default)
     {
         var order = await repository.GetOrderAsync(orderId, ct);
-        return order is null ? null : new CheckoutOrderDetail(order, await repository.GetRefundsAsync(orderId, ct));
+        if (order is null)
+            return null;
+        var refunds = (await repository.GetRefundsAsync(orderId, ct)).OrderBy(r => r.CreatedAt).ToList();
+        var timeline = (await repository.GetOrderEventsAsync(orderId, ct)).OrderBy(e => e.At).ToList();
+        return new CheckoutOrderDetail(order, refunds, timeline);
     }
 
     public async Task CheckoutChangedAsync(string backendKey, string backendOrderId, CancellationToken ct = default)
@@ -291,6 +308,7 @@ internal sealed class TicketCheckoutService(
             order.State = TicketCheckoutOrderState.Expired;
             order.UpdatedAt = now;
             await repository.UpdateOrderAsync(order, ct);
+            await TimelineAsync(order.Id, TicketCheckoutOrderEventKind.StateChanged, "Expired: never reached the backend", null, ct);
             return true;
         }
 
@@ -330,6 +348,15 @@ internal sealed class TicketCheckoutService(
 
         order.UpdatedAt = now;
         await repository.UpdateOrderAsync(order, ct);
+
+        if (before.State != order.State)
+            await TimelineAsync(order.Id, TicketCheckoutOrderEventKind.StateChanged,
+                $"{order.BackendKey} reports {order.State}" +
+                (order.PaymentMethod is { } paidBy && order.State == TicketCheckoutOrderState.Paid ? $" by {paidBy}" : string.Empty) +
+                (order.FeeMinor is { } fee ? $", fee {FormatMinor(fee)}" : string.Empty), null, ct);
+        if (before.RefundedMinor != order.RefundedMinor)
+            await TimelineAsync(order.Id, TicketCheckoutOrderEventKind.RefundedTotalChanged,
+                $"{order.BackendKey} reports {FormatMinor(order.RefundedMinor)} {order.Currency} refunded in total", null, ct);
 
         if (before.State != order.State)
         {
@@ -376,6 +403,8 @@ internal sealed class TicketCheckoutService(
         };
         // Saved first, so a crash after the backend call still counts against what can be refunded.
         await repository.AddRefundAsync(refund, ct);
+        await TimelineAsync(order.Id, TicketCheckoutOrderEventKind.RefundRequested,
+            $"Refund of {FormatMinor(amountMinor)} {order.Currency} requested: {Truncate(refund.Reason)}", actorUserId, ct);
 
         RefundResult result;
         try
@@ -394,6 +423,9 @@ internal sealed class TicketCheckoutService(
         refund.FailureReason = result.FailureReason;
         refund.ManualRefundUrl = result.ManualRefundUrl?.ToString();
         await repository.UpdateRefundAsync(refund, ct);
+        await TimelineAsync(order.Id, TicketCheckoutOrderEventKind.RefundSettled,
+            $"{order.BackendKey} answered {result.State}" + (result.BackendRefundId is { } refundRef ? $" ({refundRef})" : string.Empty) +
+            (result.FailureReason is { } failure ? $": {Truncate(failure)}" : string.Empty), null, ct);
 
         await auditLog.LogAsync(TicketsAuditActions.TicketCheckoutRefunded, AuditEntityType, order.Id,
             $"Refund of {FormatMinor(amountMinor)} {order.Currency} through {order.BackendKey}: {result.State}" +
@@ -427,6 +459,7 @@ internal sealed class TicketCheckoutService(
         order.State = TicketCheckoutOrderState.Cancelled;
         order.UpdatedAt = clock.GetCurrentInstant();
         await repository.UpdateOrderAsync(order, ct);
+        await TimelineAsync(order.Id, TicketCheckoutOrderEventKind.Cancelled, "Abandoned by the buyer", userId, ct);
         return CheckoutMutationResult.Ok;
     }
 
@@ -474,6 +507,20 @@ internal sealed class TicketCheckoutService(
     public Task ReassignAsync(Guid mergedFromUserId, Guid mergedToUserId, Guid actorUserId, Instant now, CancellationToken ct) =>
         repository.ReassignAsync(mergedFromUserId, mergedToUserId, ct);
 
+    private Task TimelineAsync(
+        Guid orderId, TicketCheckoutOrderEventKind kind, string detail, Guid? actorUserId, CancellationToken ct) =>
+        repository.AddOrderEventAsync(new TicketCheckoutOrderEvent
+        {
+            Id = Guid.NewGuid(),
+            OrderId = orderId,
+            At = clock.GetCurrentInstant(),
+            Kind = kind,
+            Detail = Truncate(detail, 2000),
+            ActorUserId = actorUserId,
+        }, ct);
+
+    private static string Truncate(string text, int max = 500) => text.Length <= max ? text : text[..max];
+
     private void MarkPaid(TicketCheckoutOrder order, long? feeMinor, string? method, Instant paidAt)
     {
         order.State = TicketCheckoutOrderState.Paid;
@@ -496,12 +543,11 @@ internal sealed class TicketCheckoutService(
         IReadOnlyList<TicketCheckoutOrder> UserOrders,
         Instant Now);
 
-    private async Task<BuyContext?> LoadBuyContextAsync(Guid userId, CancellationToken ct)
+    private async Task<BuyContext?> LoadBuyContextAsync(Guid salesEventId, Guid userId, CancellationToken ct)
     {
-        if (settings.GetActiveEventSettings() is not { } evt)
+        if (await repository.GetSalesEventAsync(salesEventId, ct) is not { } salesEvent)
             return null;
-        var salesEvent = await repository.GetSalesEventForEventAsync(evt.Id, ct);
-        if (salesEvent is null)
+        if (await settings.GetEventSettingsByIdAsync(salesEvent.EventSettingsId, ct) is not { } evt)
             return null;
 
         var now = clock.GetCurrentInstant();
@@ -532,15 +578,15 @@ internal sealed class TicketCheckoutService(
 
     private static TicketCheckoutOrderLine TicketLine(
         TicketSalesEvent salesEvent, TicketPrice price, string name, string email, Guid userId) => new()
-    {
-        Kind = CheckoutLineKind.Ticket,
-        Description = price.ClassPrice is { } cls ? $"Ticket: {cls.Label}" : $"Ticket: {price.Wave.Name}",
-        AmountMinor = price.AmountMinor,
-        VatRate = salesEvent.TicketVatRate,
-        AttendeeName = name,
-        AttendeeEmail = email,
-        AttendeeUserId = userId,
-    };
+        {
+            Kind = CheckoutLineKind.Ticket,
+            Description = price.ClassPrice is { } cls ? $"Ticket: {cls.Label}" : $"Ticket: {price.Wave.Name}",
+            AmountMinor = price.AmountMinor,
+            VatRate = salesEvent.TicketVatRate,
+            AttendeeName = name,
+            AttendeeEmail = email,
+            AttendeeUserId = userId,
+        };
 
     private static TicketCheckoutOrderLine DonationLine(long amountMinor, TicketDonationPurpose purpose) => new()
     {
