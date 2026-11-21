@@ -2,6 +2,7 @@ using Humans.AuditLog.Contracts;
 using Humans.Email.Data;
 using Humans.Base.Configuration;
 using Humans.Base.Extensions;
+using Humans.Base.Helpers;
 using Microsoft.Extensions.Options;
 using Humans.Gdpr.Contracts;
 using Humans.Settings.Contracts;
@@ -18,7 +19,8 @@ internal sealed class EmailOutboxService(
     ISettingsService settingsStore,
     IOptions<EmailSettings> settings,
     IClock clock,
-    IAuditLogService audit) : IEmailOutboxManagement, IUserDataContributor, IUserMerge
+    IAuditLogService audit,
+    IUserService userService) : IEmailOutboxManagement, IUserDataContributor, IUserMerge
 {
     internal const string EmailOutbox = "EmailOutbox";
     internal const string EmailOutboxMergedAccounts = "EmailOutboxMergedAccounts";
@@ -77,7 +79,22 @@ internal sealed class EmailOutboxService(
         Guid userId, CancellationToken cancellationToken = default)
     {
         var messages = await repo.GetForUserAsync(userId, cancellationToken);
-        return messages.Select(ToDto).ToList();
+        var readable = await BodyReadableByAsync(userId, cancellationToken);
+        return messages.Select(m => readable(m) ? ToDto(m) : ToDto(m) with { HtmlBody = null }).ToList();
+    }
+
+    /// <summary>
+    /// An account's history and export show a body only for mail that went to an address the account has
+    /// confirmed. Mail to any other address is the confirmation mail itself: its link is the proof that
+    /// somebody reads that mailbox, so the asking account must not find it here instead.
+    /// </summary>
+    private async Task<Func<EmailOutboxMessage, bool>> BodyReadableByAsync(Guid userId, CancellationToken ct)
+    {
+        var info = await userService.GetUserInfoAsync(userId, ct);
+        var confirmed = (info?.AllVerifiedEmails ?? [])
+            .Select(EmailNormalization.NormalizeForComparison)
+            .ToHashSet(StringComparer.Ordinal);
+        return m => confirmed.Contains(EmailNormalization.NormalizeForComparison(m.RecipientEmail));
     }
 
     public Task<int> GetMessageCountForUserAsync(
@@ -177,7 +194,7 @@ internal sealed class EmailOutboxService(
     public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
     {
         var messages = await repo.GetForUserAsync(userId, ct);
-        return [new UserDataSlice(EmailOutbox, Shape(messages))];
+        return [new UserDataSlice(EmailOutbox, Shape(messages, await BodyReadableByAsync(userId, ct)))];
     }
 
     /// <summary>
@@ -196,16 +213,16 @@ internal sealed class EmailOutboxService(
             messages.AddRange(await repo.GetForUserAsync(id, ct));
 
         return [new UserDataSlice(EmailOutboxMergedAccounts,
-            Shape(messages.OrderByDescending(m => m.CreatedAt).ToList()))];
+            Shape(messages.OrderByDescending(m => m.CreatedAt).ToList(), await BodyReadableByAsync(userId, ct)))];
     }
 
-    private static List<object> Shape(IEnumerable<EmailOutboxMessage> messages) =>
+    private static List<object> Shape(IEnumerable<EmailOutboxMessage> messages, Func<EmailOutboxMessage, bool> readable) =>
         messages.Select(object (m) => new
         {
             m.RecipientEmail,
             m.RecipientName,
             m.Subject,
-            m.HtmlBody,
+            HtmlBody = readable(m) ? m.HtmlBody : null,
             m.TemplateName,
             m.Status,
             CreatedAt = m.CreatedAt.ToIso8601(),

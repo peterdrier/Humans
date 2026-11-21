@@ -7,7 +7,10 @@ namespace Humans.Email.Services;
 /// <summary>Per-user outbox history.</summary>
 internal interface IEmailOutboxService : IApplicationService
 {
-    /// <summary>Newest first.</summary>
+    /// <summary>
+    /// Newest first. <see cref="EmailOutboxMessageDto.HtmlBody"/> is null for mail that went to an address
+    /// the account has not confirmed.
+    /// </summary>
     Task<IReadOnlyList<EmailOutboxMessageDto>> GetMessagesForUserAsync(
         Guid userId, CancellationToken cancellationToken = default);
 
@@ -20,7 +23,7 @@ internal sealed record EmailOutboxMessageDto(
     string RecipientEmail,
     string? RecipientName,
     string Subject,
-    string HtmlBody,
+    string? HtmlBody,
     string TemplateName,
     Guid? UserId,
     EmailOutboxStatus Status,

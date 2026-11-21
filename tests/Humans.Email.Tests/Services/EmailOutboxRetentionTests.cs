@@ -5,6 +5,7 @@ using Microsoft.Extensions.Options;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
+using Humans.Users.Contracts;
 using Humans.Base.Enums;
 using Humans.Email.Data;
 using Humans.Email.Domain;
@@ -33,7 +34,8 @@ public class EmailOutboxRetentionTests : IDisposable
         var repo = new EmailOutboxRepository(new TestDbContextFactory<EmailDbContext>(options));
 
         _retention = new EmailOutboxService(
-            repo, Substitute.For<ISettingsService>(), settings, new FakeClock(Now), Substitute.For<IAuditLogService>());
+            repo, Substitute.For<ISettingsService>(), settings, new FakeClock(Now), Substitute.For<IAuditLogService>(),
+            Substitute.For<IUserService>());
     }
 
     public void Dispose()
