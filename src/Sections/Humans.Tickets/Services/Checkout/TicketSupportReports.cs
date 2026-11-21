@@ -4,17 +4,20 @@ using NodaTime;
 
 namespace Humans.Tickets.Services.Checkout;
 
-/// <summary>The ticketing team's lookup and reports, computed in memory over one event's orders.</summary>
+/// <summary>The ticketing team's lookup and reports, computed in memory over one event's records.</summary>
 internal static class TicketSupportReports
 {
     /// <summary>Shorter queries match too much to be useful.</summary>
     public const int MinimumQueryLength = 3;
 
+    /// <summary>Enough for a person to scan; a broader query should be narrowed, not paged.</summary>
+    public const int MaxHits = 100;
+
     /// <summary>
     /// Matches an order id or backend reference exactly, a ticket code exactly, or part of a buyer or holder name or
-    /// email. Case and surrounding spaces are ignored.
+    /// email. Case and surrounding spaces are ignored. <paramref name="tickets"/> are the order's own.
     /// </summary>
-    public static bool Matches(TicketCheckoutOrder order, string query)
+    public static bool Matches(TicketCheckoutOrder order, IEnumerable<TicketCheckoutTicket> tickets, string query)
     {
         var q = query.Trim();
         if (q.Length < MinimumQueryLength)
@@ -22,11 +25,13 @@ internal static class TicketSupportReports
 
         if (Guid.TryParse(q, out var id))
             return order.Id == id;
-        if (Same(order.BackendOrderId, q) || order.Lines.Any(l => Same(l.Barcode, q)))
+        var own = tickets.ToList();
+        if (Same(order.BackendOrderId, q) || own.Any(t => Same(t.Barcode, q)))
             return true;
 
         return Contains(order.BuyerName, q) || Contains(order.BuyerEmail, q)
-            || order.Lines.Any(l => Contains(l.AttendeeName, q) || Contains(l.AttendeeEmail, q));
+            || order.Lines.Any(l => Contains(l.AttendeeName, q) || Contains(l.AttendeeEmail, q))
+            || own.Any(t => Contains(t.HolderName, q) || Contains(t.HolderEmail, q));
     }
 
     public static IReadOnlyList<RefundListRow> RefundList(
@@ -41,16 +46,45 @@ internal static class TicketSupportReports
             .ToList();
     }
 
+    /// <summary>
+    /// The waiting offers first, in the order they sell (a live invitation skips the public queue, so it has no
+    /// position), then sold and withdrawn offers, newest first.
+    /// </summary>
+    public static IReadOnlyList<ResaleQueueRow> ResaleQueue(
+        IReadOnlyList<TicketResaleOffer> offers, IReadOnlyList<TicketCheckoutTicket> tickets, Instant now)
+    {
+        var byId = tickets.ToDictionary(t => t.Id);
+        var rows = new List<ResaleQueueRow>();
+        var position = 0;
+        foreach (var offer in offers
+                     .Where(o => o.State is TicketResaleOfferState.Open or TicketResaleOfferState.Reserved)
+                     .OrderBy(o => o.OfferedAt))
+        {
+            var directed = offer.IsDirectedTo(now);
+            rows.Add(new ResaleQueueRow(offer, byId.GetValueOrDefault(offer.TicketId), directed ? null : ++position, directed));
+        }
+        rows.AddRange(offers
+            .Where(o => o.State is TicketResaleOfferState.Sold or TicketResaleOfferState.Withdrawn)
+            .OrderByDescending(o => o.SoldAt ?? o.WithdrawnAt ?? o.OfferedAt)
+            .Select(o => new ResaleQueueRow(o, byId.GetValueOrDefault(o.TicketId), null, false)));
+        return rows;
+    }
+
     public static SalesReport Sales(
-        IReadOnlyList<TicketCheckoutOrder> orders, IReadOnlyList<TicketCheckoutRefund> refunds, DateTimeZone zone)
+        IReadOnlyList<TicketCheckoutOrder> orders,
+        IReadOnlyList<TicketCheckoutTicket> tickets,
+        IReadOnlyList<TicketCheckoutRefund> refunds,
+        IReadOnlyList<TicketResaleOffer> offers,
+        DateTimeZone zone)
     {
         var paid = orders.Where(o => o.State == TicketCheckoutOrderState.Paid).ToList();
-        var tickets = paid.SelectMany(o => o.Lines.Where(l => l.Kind == CheckoutLineKind.Ticket)).ToList();
+        var paidIds = paid.Select(o => o.Id).ToHashSet();
+        var issued = tickets.Where(t => paidIds.Contains(t.OrderId)).ToList();
         var donations = paid.SelectMany(o => o.Lines.Where(l => l.Kind == CheckoutLineKind.Donation)).ToList();
 
-        var byPrice = tickets
-            .GroupBy(l => l.Description, StringComparer.Ordinal)
-            .Select(g => new SalesRow(g.Key, g.Count(), g.Sum(l => l.AmountMinor)))
+        var byPrice = issued
+            .GroupBy(PriceLabel, StringComparer.Ordinal)
+            .Select(g => new SalesRow(g.Key, g.Count(), g.Sum(t => t.PricePaidMinor)))
             .OrderByDescending(r => r.Count).ThenBy(r => r.Label, StringComparer.Ordinal)
             .ToList();
 
@@ -71,21 +105,35 @@ internal static class TicketSupportReports
             .ToList();
 
         var orderIds = orders.Select(o => o.Id).ToHashSet();
-        var byState = refunds
+        var refundsByState = refunds
             .Where(r => orderIds.Contains(r.OrderId))
             .GroupBy(r => r.State)
             .OrderBy(g => g.Key)
             .Select(g => new RefundStateRow(g.Key, g.Count(), g.Sum(r => r.AmountMinor)))
             .ToList();
 
+        var resaleByState = offers
+            .GroupBy(o => o.State)
+            .OrderBy(g => g.Key)
+            .Select(g => new ResaleStateRow(g.Key, g.Count(), g.Sum(o => o.RefundOwedMinor)))
+            .ToList();
+
         return new SalesReport(
-            tickets.Count,
+            issued.Count,
+            issued.Count(t => t.State is TicketCheckoutTicketState.Valid or TicketCheckoutTicketState.Offered),
             paid.Sum(o => o.TicketTotalMinor),
             donations.Sum(l => l.AmountMinor),
             paid.Sum(o => o.FeeMinor ?? 0),
             paid.Sum(o => o.RefundedMinor),
-            byPrice, byDay, byPurpose, byState);
+            byPrice, byDay, byPurpose, refundsByState, resaleByState);
     }
+
+    /// <summary>The class an adult ticket was priced at, else its wave; children and companions by kind.</summary>
+    public static string PriceLabel(TicketCheckoutTicket ticket) => ticket.Kind switch
+    {
+        TicketHolderKind.Adult => ticket.ClassLabel ?? (ticket.WaveName.Length > 0 ? ticket.WaveName : "Unpriced"),
+        _ => ticket.Kind.ToString(),
+    };
 
     private static bool Same(string? value, string query) =>
         value is not null && string.Equals(value.Trim(), query, StringComparison.OrdinalIgnoreCase);
@@ -96,12 +144,17 @@ internal static class TicketSupportReports
 
 internal sealed record RefundListRow(TicketCheckoutRefund Refund, TicketCheckoutOrder Order);
 
+/// <summary><paramref name="Position"/> is the place in the public queue; null for a live invitation or a closed offer.</summary>
+internal sealed record ResaleQueueRow(TicketResaleOffer Offer, TicketCheckoutTicket? Ticket, int? Position, bool DirectedLive);
+
 /// <summary>
-/// Totals over paid orders. <paramref name="RefundedMinor"/> is what the backends report as refunded;
-/// <paramref name="RefundsByState"/> is every refund Humans asked for, failed ones included.
+/// Totals over paid orders. <paramref name="TicketsIssued"/> counts every ticket ever issued (a resale issues a new
+/// one); <paramref name="TicketsLive"/> only those still valid or offered. <paramref name="RefundedMinor"/> is what the
+/// backends report as refunded; <paramref name="RefundsByState"/> is every refund Humans asked for.
 /// </summary>
 internal sealed record SalesReport(
-    int TicketsSold,
+    int TicketsIssued,
+    int TicketsLive,
     long TicketRevenueMinor,
     long DonationsMinor,
     long FeesMinor,
@@ -109,7 +162,8 @@ internal sealed record SalesReport(
     IReadOnlyList<SalesRow> ByPrice,
     IReadOnlyList<DayRow> ByDay,
     IReadOnlyList<DonationRow> DonationsByPurpose,
-    IReadOnlyList<RefundStateRow> RefundsByState);
+    IReadOnlyList<RefundStateRow> RefundsByState,
+    IReadOnlyList<ResaleStateRow> ResaleByState);
 
 /// <summary><paramref name="Label"/> is the wave or class the ticket was priced at.</summary>
 internal sealed record SalesRow(string Label, int Count, long AmountMinor);
@@ -120,3 +174,6 @@ internal sealed record DayRow(LocalDate Day, int Tickets, long TicketsMinor, lon
 internal sealed record DonationRow(TicketDonationPurpose Purpose, int Count, long AmountMinor);
 
 internal sealed record RefundStateRow(RefundState State, int Count, long AmountMinor);
+
+/// <summary><paramref name="OwedMinor"/> is what the holders paid: refunded on Sold, owed while waiting.</summary>
+internal sealed record ResaleStateRow(TicketResaleOfferState State, int Count, long OwedMinor);

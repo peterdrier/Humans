@@ -17,7 +17,7 @@
     <span>Refunds</span>
 }
 
-<page-header title="Refunds" />
+<page-header title="Refunds: @Model.EventName" />
 
 <ul class="nav nav-pills mb-3">
     <li class="nav-item"><a class="nav-link @(Model.State is null ? "active" : "")" asp-action="Refunds" asp-route-id="@Model.SalesEventId">All</a></li>

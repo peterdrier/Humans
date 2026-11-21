@@ -21,6 +21,9 @@ internal interface ITicketCheckoutService : ITicketCheckoutEvents, IApplicationS
     /// <summary>One page per event selling through Humans (not Closed); several events may sell at once.</summary>
     Task<IReadOnlyList<BuyPage>> GetBuyPagesAsync(Guid userId, CancellationToken ct = default);
 
+    /// <summary>The buy page for an invited buyer's link; null when the link names no offer.</summary>
+    Task<BuyPage?> GetDirectedBuyPageAsync(string token, Guid userId, CancellationToken ct = default);
+
     Task<StartCheckoutResult> StartCheckoutAsync(StartCheckout command, Guid userId, CancellationToken ct = default);
 
     Task<IReadOnlyList<TicketCheckoutOrder>> GetOrdersForUserAsync(Guid userId, CancellationToken ct = default);
@@ -42,7 +45,54 @@ internal interface ITicketCheckoutService : ITicketCheckoutEvents, IApplicationS
     /// <summary>The buyer abandons an unpaid order.</summary>
     Task<CheckoutMutationResult> CancelAsync(Guid orderId, Guid userId, CancellationToken ct = default);
 
-    /// <summary>Refreshes every open order; returns how many changed state.</summary>
+    Task<IReadOnlyList<TicketCheckoutTicket>> GetTicketsForOrderAsync(Guid orderId, CancellationToken ct = default);
+
+    /// <summary>Every ticket the person holds or held, any event and state, newest first.</summary>
+    Task<IReadOnlyList<TicketCheckoutTicket>> GetTicketsForHolderAsync(Guid userId, CancellationToken ct = default);
+
+    Task<IReadOnlyList<TicketCheckoutTicket>> GetTicketsForSalesEventAsync(Guid salesEventId, CancellationToken ct = default);
+
+    /// <summary>The resale queue and its history, oldest offer first.</summary>
+    Task<IReadOnlyList<TicketResaleOffer>> GetOffersForSalesEventAsync(Guid salesEventId, CancellationToken ct = default);
+
+    Task<IReadOnlyList<TicketCheckoutRefund>> GetRefundsForSalesEventAsync(Guid salesEventId, CancellationToken ct = default);
+
+    /// <summary>The person's valid or offered tickets with their resale state, for "my tickets".</summary>
+    Task<IReadOnlyList<HeldTicket>> GetHeldTicketsAsync(Guid userId, CancellationToken ct = default);
+
+    /// <summary>The holder returns an adult ticket to the resale queue; its child tickets go with it.</summary>
+    Task<CheckoutMutationResult> OfferForResaleAsync(Guid ticketId, Guid userId, CancellationToken ct = default);
+
+    /// <summary>The holder takes an offered ticket back, unless a checkout is paying for it right now.</summary>
+    Task<CheckoutMutationResult> WithdrawOfferAsync(Guid ticketId, Guid userId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Directed resale: emails one person a single-use link to buy this offered ticket ahead of the queue. The buyer
+    /// still pays the association and gets a new ticket in their own name.
+    /// </summary>
+    Task<CheckoutMutationResult> InviteBuyerAsync(
+        Guid ticketId, Guid userId, string inviteeEmail, Uri claimUrlBase, string culture, CancellationToken ct = default);
+
+    Task<CheckoutMutationResult> CancelInviteAsync(Guid ticketId, Guid userId, CancellationToken ct = default);
+
+    /// <summary>
+    /// The ticketing team's exception: a valid full-price adult ticket with no dependents moves to another named
+    /// person, whose account is found or created.
+    /// </summary>
+    Task<CheckoutMutationResult> RenameTicketAsync(
+        Guid ticketId, string holderName, string holderEmail, string reason, Guid actorUserId, CancellationToken ct = default);
+
+    /// <summary>Voids a valid or offered ticket and its dependents, withdrawing any open offer. Refunds stay separate.</summary>
+    Task<CheckoutMutationResult> VoidTicketAsync(Guid ticketId, string reason, Guid actorUserId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Issues a free companion ticket attached to a valid adult ticket, on a zero-total order of its own, within
+    /// capacity. The email is optional: a companion without one holds no account.
+    /// </summary>
+    Task<CheckoutMutationResult> IssueCompanionAsync(
+        Guid parentTicketId, string holderName, string? holderEmail, string reason, Guid actorUserId, CancellationToken ct = default);
+
+    /// <summary>Refreshes every open order and sweeps the resale queue; returns how many changed.</summary>
     Task<int> ReconcileOpenOrdersAsync(CancellationToken ct = default);
 }
 
@@ -67,7 +117,14 @@ internal sealed record SalesEventSave(
     decimal TicketVatRate,
     IReadOnlyList<TicketSalesWave> Waves,
     IReadOnlyList<long> SupporterTotalsMinor,
-    IReadOnlyList<TicketPriceRule> PriceRules);
+    IReadOnlyList<TicketPriceRule> PriceRules)
+{
+    public long? ChildPriceMinor { get; init; }
+    public int? ChildMaxAge { get; init; }
+    public int? ResaleOpensAtSold { get; init; }
+    public int DirectedResaleDays { get; init; } = 3;
+    public Guid? TermsTeamId { get; init; }
+}
 
 /// <summary>
 /// What the buyer sees. <paramref name="Unavailable"/> is a resource key naming why buying is closed to them, null
@@ -81,7 +138,14 @@ internal sealed record BuyPage(
     string? Unavailable,
     bool AlreadyHoldsTicket,
     string BuyerName,
-    IReadOnlyList<TicketCheckoutOrder> Orders);
+    IReadOnlyList<TicketCheckoutOrder> Orders)
+{
+    /// <summary>The ticket rules the buyer has not yet accepted are the unsigned rows.</summary>
+    public IReadOnlyList<Humans.Consent.Contracts.RequiredConsentRow> TermsToAccept { get; init; } = [];
+
+    /// <summary>True when the person has never said yes or no to the mailing list.</summary>
+    public bool AskMarketing { get; init; }
+}
 
 /// <summary>
 /// <paramref name="SupporterTotalMinor"/> is one of the event's VIP totals: the part above the buyer's own ticket is a
@@ -97,7 +161,23 @@ internal sealed record StartCheckout(
     long DonationMinor,
     TicketDonationPurpose DonationPurpose,
     Uri ReturnUrlBase,
-    string Culture);
+    string Culture)
+{
+    /// <summary>Legal names of children on the buyer's own ticket.</summary>
+    public IReadOnlyList<string> ChildNames { get; init; } = [];
+
+    public bool AcceptTerms { get; init; }
+
+    public bool MarketingOptIn { get; init; }
+
+    /// <summary>The token from a directed-resale link.</summary>
+    public string? DirectedToken { get; init; }
+
+    /// <summary>Recorded with the consent to the ticket rules.</summary>
+    public string IpAddress { get; init; } = "unknown";
+
+    public string UserAgent { get; init; } = string.Empty;
+}
 
 /// <summary><paramref name="Refusal"/> is a resource key; <paramref name="PaymentUrl"/> is null for a free order.</summary>
 internal sealed record StartCheckoutResult(Guid? OrderId, Uri? PaymentUrl, string? Refusal)
@@ -109,7 +189,8 @@ internal sealed record StartCheckoutResult(Guid? OrderId, Uri? PaymentUrl, strin
 internal sealed record CheckoutOrderDetail(
     TicketCheckoutOrder Order,
     IReadOnlyList<TicketCheckoutRefund> Refunds,
-    IReadOnlyList<TicketCheckoutOrderEvent> Timeline)
+    IReadOnlyList<TicketCheckoutOrderEvent> Timeline,
+    IReadOnlyList<TicketCheckoutTicket> Tickets)
 {
     /// <summary>What may still be refunded: ticket lines only, net of every refund that did not fail.</summary>
     public long RefundableMinor =>
@@ -117,3 +198,16 @@ internal sealed record CheckoutOrderDetail(
             Order.RefundedMinor,
             Refunds.Where(r => r.State != RefundState.Failed).Sum(r => r.AmountMinor)));
 }
+
+/// <summary>
+/// One of the person's tickets. <paramref name="QueuePosition"/> is 1-based among offers waiting to sell, null when not
+/// offered. <paramref name="HasDependents"/>: valid child tickets that are returned with it.
+/// </summary>
+internal sealed record HeldTicket(
+    TicketCheckoutTicket Ticket,
+    string EventName,
+    TicketResaleOffer? Offer,
+    int? QueuePosition,
+    bool CanOffer,
+    bool HasDependents,
+    bool DirectedActive);

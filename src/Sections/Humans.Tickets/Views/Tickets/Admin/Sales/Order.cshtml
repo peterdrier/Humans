@@ -25,14 +25,14 @@
 </dl>
 
 <table class="table table-sm">
-    <thead><tr><th>Line</th><th>Holder</th><th>Code</th><th class="text-end">VAT</th><th class="text-end">Amount</th></tr></thead>
+    <thead><tr><th>Line</th><th>Holder</th><th>Resale</th><th class="text-end">VAT</th><th class="text-end">Amount</th></tr></thead>
     <tbody>
         @foreach (var l in o.Lines)
         {
             <tr>
                 <td>@l.Description</td>
                 <td>@l.AttendeeName @(l.AttendeeEmail is null ? "" : $"({l.AttendeeEmail})")</td>
-                <td><code>@l.Barcode</code></td>
+                <td>@(l.ResaleOfferId is null ? "" : "from queue")</td>
                 <td class="text-end">@((l.VatRate * 100).ToString("0.##", System.Globalization.CultureInfo.InvariantCulture))%</td>
                 <td class="text-end">@Eur(l.AmountMinor)</td>
             </tr>
@@ -40,6 +40,30 @@
     </tbody>
     <tfoot><tr class="fw-semibold"><td colspan="4">Total</td><td class="text-end">@Eur(o.TotalMinor)</td></tr></tfoot>
 </table>
+
+<h2 class="h5">Tickets</h2>
+@if (Model.Tickets.Count == 0)
+{
+    <p class="text-muted">None issued.</p>
+}
+else
+{
+    <table class="table table-sm">
+        <thead><tr><th>Holder</th><th>Kind</th><th>Code</th><th>State</th><th class="text-end">Paid</th></tr></thead>
+        <tbody>
+            @foreach (var t in Model.Tickets)
+            {
+                <tr>
+                    <td>@t.HolderName @(t.HolderEmail is null ? "" : $"({t.HolderEmail})")</td>
+                    <td>@t.Kind</td>
+                    <td><a asp-controller="TicketsSupportAdmin" asp-action="Ticket" asp-route-orderId="@o.Id" asp-route-ticketId="@t.Id"><code>@t.Barcode</code></a></td>
+                    <td>@t.State @t.VoidReason</td>
+                    <td class="text-end">@Eur(t.PricePaidMinor)</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
 
 <h2 class="h5">Refunds</h2>
 @if (Model.Refunds.Count == 0)

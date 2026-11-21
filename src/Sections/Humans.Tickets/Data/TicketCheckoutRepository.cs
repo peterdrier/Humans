@@ -114,15 +114,6 @@ internal sealed class TicketCheckoutRepository(IDbContextFactory<TicketsDbContex
             .ToListAsync(ct);
     }
 
-    public async Task<IReadOnlyList<TicketCheckoutRefund>> GetRefundsForSalesEventAsync(
-        Guid salesEventId, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.TicketCheckoutRefunds.AsNoTracking()
-            .Where(r => ctx.TicketCheckoutOrders.Any(o => o.Id == r.OrderId && o.SalesEventId == salesEventId))
-            .ToListAsync(ct);
-    }
-
     public async Task AddRefundAsync(TicketCheckoutRefund refund, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
@@ -152,6 +143,90 @@ internal sealed class TicketCheckoutRepository(IDbContextFactory<TicketsDbContex
             .ToListAsync(ct);
     }
 
+    public async Task AddTicketsAsync(IReadOnlyList<TicketCheckoutTicket> tickets, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        ctx.TicketCheckoutTickets.AddRange(tickets);
+        await ctx.SaveChangesAsync(ct);
+    }
+
+    public async Task UpdateTicketAsync(TicketCheckoutTicket ticket, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        ctx.TicketCheckoutTickets.Update(ticket);
+        await ctx.SaveChangesAsync(ct);
+    }
+
+    public async Task<TicketCheckoutTicket?> GetTicketAsync(Guid id, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        return await ctx.TicketCheckoutTickets.AsNoTracking().FirstOrDefaultAsync(t => t.Id == id, ct);
+    }
+
+    public async Task<TicketCheckoutTicket?> GetTicketByBarcodeAsync(string barcode, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        return await ctx.TicketCheckoutTickets.AsNoTracking().FirstOrDefaultAsync(t => t.Barcode == barcode, ct);
+    }
+
+    public async Task<IReadOnlyList<TicketCheckoutTicket>> GetTicketsForOrderAsync(Guid orderId, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        return await ctx.TicketCheckoutTickets.AsNoTracking().Where(t => t.OrderId == orderId).ToListAsync(ct);
+    }
+
+    public async Task<IReadOnlyList<TicketCheckoutTicket>> GetTicketsForHolderAsync(Guid userId, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        return await ctx.TicketCheckoutTickets.AsNoTracking().Where(t => t.HolderUserId == userId).ToListAsync(ct);
+    }
+
+    public async Task<IReadOnlyList<TicketCheckoutTicket>> GetTicketsForSalesEventAsync(Guid salesEventId, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        return await ctx.TicketCheckoutTickets.AsNoTracking().Where(t => t.SalesEventId == salesEventId).ToListAsync(ct);
+    }
+
+    public async Task AddOfferAsync(TicketResaleOffer offer, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        ctx.TicketResaleOffers.Add(offer);
+        await ctx.SaveChangesAsync(ct);
+    }
+
+    public async Task UpdateOfferAsync(TicketResaleOffer offer, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        ctx.TicketResaleOffers.Update(offer);
+        await ctx.SaveChangesAsync(ct);
+    }
+
+    public async Task<TicketResaleOffer?> GetOfferAsync(Guid id, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        return await ctx.TicketResaleOffers.AsNoTracking().FirstOrDefaultAsync(o => o.Id == id, ct);
+    }
+
+    public async Task<TicketResaleOffer?> GetOfferByTokenHashAsync(string tokenHash, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        return await ctx.TicketResaleOffers.AsNoTracking().FirstOrDefaultAsync(o => o.DirectedTokenHash == tokenHash, ct);
+    }
+
+    public async Task<IReadOnlyList<TicketResaleOffer>> GetOffersForSalesEventAsync(Guid salesEventId, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        return await ctx.TicketResaleOffers.AsNoTracking().Where(o => o.SalesEventId == salesEventId).ToListAsync(ct);
+    }
+
+    public async Task<IReadOnlyList<TicketCheckoutRefund>> GetRefundsForSalesEventAsync(Guid salesEventId, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        return await ctx.TicketCheckoutRefunds.AsNoTracking()
+            .Where(r => ctx.TicketCheckoutOrders.Any(o => o.Id == r.OrderId && o.SalesEventId == salesEventId))
+            .ToListAsync(ct);
+    }
+
     public async Task<int> ErasePiiForUserAsync(Guid userId, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
@@ -175,6 +250,18 @@ internal sealed class TicketCheckoutRepository(IDbContextFactory<TicketsDbContex
             if (!touched) continue;
             // Owned JSON lists are only rewritten when EF sees the owner as changed.
             ctx.TicketCheckoutOrders.Update(order);
+            changed++;
+        }
+        foreach (var ticket in await ctx.TicketCheckoutTickets.Where(t => t.HolderUserId == userId).ToListAsync(ct))
+        {
+            ticket.HolderName = TicketPiiTombstone.Name;
+            ticket.HolderEmail = TicketPiiTombstone.EmailFor(userId);
+            changed++;
+        }
+        foreach (var offer in await ctx.TicketResaleOffers.Where(o => o.HolderUserId == userId && o.DirectedEmail != null).ToListAsync(ct))
+        {
+            offer.DirectedEmail = null;
+            offer.DirectedTokenHash = null;
             changed++;
         }
         await ctx.SaveChangesAsync(ct);
@@ -202,6 +289,10 @@ internal sealed class TicketCheckoutRepository(IDbContextFactory<TicketsDbContex
         }
         foreach (var orderEvent in await ctx.TicketCheckoutOrderEvents.Where(e => e.ActorUserId == fromUserId).ToListAsync(ct))
             orderEvent.ActorUserId = toUserId;
+        foreach (var ticket in await ctx.TicketCheckoutTickets.Where(t => t.HolderUserId == fromUserId).ToListAsync(ct))
+            ticket.HolderUserId = toUserId;
+        foreach (var offer in await ctx.TicketResaleOffers.Where(o => o.HolderUserId == fromUserId).ToListAsync(ct))
+            offer.HolderUserId = toUserId;
         await ctx.SaveChangesAsync(ct);
     }
 
@@ -214,7 +305,13 @@ internal sealed class TicketCheckoutRepository(IDbContextFactory<TicketsDbContex
         AttendeeName = l.AttendeeName,
         AttendeeEmail = l.AttendeeEmail,
         AttendeeUserId = l.AttendeeUserId,
-        Barcode = l.Barcode,
+        HolderKind = l.HolderKind,
+        ParentLineIndex = l.ParentLineIndex,
+        WaveName = l.WaveName,
+        ClassProgramId = l.ClassProgramId,
+        ClassLabel = l.ClassLabel,
+        CreditsMinor = l.CreditsMinor,
+        ResaleOfferId = l.ResaleOfferId,
         DonationPurpose = l.DonationPurpose,
     };
 }

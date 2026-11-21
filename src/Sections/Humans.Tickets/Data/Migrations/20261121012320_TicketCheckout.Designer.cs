@@ -14,7 +14,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Humans.Tickets.Data.Migrations
 {
     [DbContext(typeof(TicketsDbContext))]
-    [Migration("20261121003817_TicketCheckout")]
+    [Migration("20261121012320_TicketCheckout")]
     partial class TicketCheckout
     {
         /// <inheritdoc />
@@ -61,6 +61,11 @@ namespace Humans.Tickets.Data.Migrations
 
                     b.Property<Instant>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Culture")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
 
                     b.Property<string>("Currency")
                         .IsRequired()
@@ -177,7 +182,7 @@ namespace Humans.Tickets.Data.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
 
-                    b.Property<Guid>("RequestedByUserId")
+                    b.Property<Guid?>("RequestedByUserId")
                         .HasColumnType("uuid");
 
                     b.Property<string>("State")
@@ -190,6 +195,156 @@ namespace Humans.Tickets.Data.Migrations
                     b.HasIndex("OrderId");
 
                     b.ToTable("ticket_checkout_refunds", (string)null);
+                });
+
+            modelBuilder.Entity("Humans.Tickets.Domain.Checkout.TicketCheckoutTicket", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Barcode")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<string>("ClassLabel")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<Guid?>("ClassProgramId")
+                        .HasColumnType("uuid");
+
+                    b.Property<long>("CreditsMinor")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("HolderEmail")
+                        .HasMaxLength(320)
+                        .HasColumnType("character varying(320)");
+
+                    b.Property<string>("HolderName")
+                        .IsRequired()
+                        .HasMaxLength(513)
+                        .HasColumnType("character varying(513)");
+
+                    b.Property<Guid?>("HolderUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Instant>("IssuedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<Guid>("OrderId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("ParentTicketId")
+                        .HasColumnType("uuid");
+
+                    b.Property<long>("PricePaidMinor")
+                        .HasColumnType("bigint");
+
+                    b.Property<Guid>("SalesEventId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("State")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<string>("VoidReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<Instant?>("VoidedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("WaveName")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Barcode")
+                        .IsUnique();
+
+                    b.HasIndex("HolderUserId");
+
+                    b.HasIndex("OrderId");
+
+                    b.HasIndex("SalesEventId");
+
+                    b.ToTable("ticket_checkout_tickets", (string)null);
+                });
+
+            modelBuilder.Entity("Humans.Tickets.Domain.Checkout.TicketResaleOffer", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("DirectedEmail")
+                        .HasMaxLength(320)
+                        .HasColumnType("character varying(320)");
+
+                    b.Property<Instant?>("DirectedExpiresAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("DirectedTokenHash")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<Instant?>("DirectedUsedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("HolderUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Instant>("OfferedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("RefundId")
+                        .HasColumnType("uuid");
+
+                    b.Property<long>("RefundOwedMinor")
+                        .HasColumnType("bigint");
+
+                    b.Property<Guid?>("ReservedByOrderId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("SalesEventId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Instant?>("SoldAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("SoldToOrderId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("State")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<Guid>("TicketId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Instant?>("WithdrawnAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DirectedTokenHash");
+
+                    b.HasIndex("SalesEventId");
+
+                    b.HasIndex("TicketId");
+
+                    b.ToTable("ticket_resale_offers", (string)null);
                 });
 
             modelBuilder.Entity("Humans.Tickets.Domain.Checkout.TicketSalesEvent", b =>
@@ -210,8 +365,17 @@ namespace Humans.Tickets.Data.Migrations
                     b.Property<int>("Capacity")
                         .HasColumnType("integer");
 
+                    b.Property<int?>("ChildMaxAge")
+                        .HasColumnType("integer");
+
+                    b.Property<long?>("ChildPriceMinor")
+                        .HasColumnType("bigint");
+
                     b.Property<Instant>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("DirectedResaleDays")
+                        .HasColumnType("integer");
 
                     b.Property<Guid>("EventSettingsId")
                         .HasColumnType("uuid");
@@ -221,12 +385,18 @@ namespace Humans.Tickets.Data.Migrations
                         .HasMaxLength(16)
                         .HasColumnType("character varying(16)");
 
+                    b.Property<int?>("ResaleOpensAtSold")
+                        .HasColumnType("integer");
+
                     b.Property<Instant?>("SalesCloseAt")
                         .HasColumnType("timestamp with time zone");
 
                     b.PrimitiveCollection<List<long>>("SupporterTotalsMinor")
                         .IsRequired()
                         .HasColumnType("bigint[]");
+
+                    b.Property<Guid?>("TermsTeamId")
+                        .HasColumnType("uuid");
 
                     b.Property<decimal>("TicketVatRate")
                         .HasPrecision(5, 4)
@@ -608,17 +778,29 @@ namespace Humans.Tickets.Data.Migrations
 
                             b1.Property<Guid?>("AttendeeUserId");
 
-                            b1.Property<string>("Barcode");
+                            b1.Property<string>("ClassLabel");
+
+                            b1.Property<Guid?>("ClassProgramId");
+
+                            b1.Property<long>("CreditsMinor");
 
                             b1.Property<string>("Description")
                                 .IsRequired();
 
                             b1.Property<string>("DonationPurpose");
 
+                            b1.Property<string>("HolderKind");
+
                             b1.Property<string>("Kind")
                                 .IsRequired();
 
+                            b1.Property<int?>("ParentLineIndex");
+
+                            b1.Property<Guid?>("ResaleOfferId");
+
                             b1.Property<decimal>("VatRate");
+
+                            b1.Property<string>("WaveName");
 
                             b1.HasKey("TicketCheckoutOrderId", "__synthesizedOrdinal");
 

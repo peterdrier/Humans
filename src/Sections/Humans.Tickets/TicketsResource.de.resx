@@ -258,4 +258,142 @@
   <data name="Tickets_Buy_DonationTooLarge" xml:space="preserve">
     <value>Für eine so große Spende wende dich bitte an das Orga-Team.</value>
   </data>
+  <data name="Tickets_Buy_Line_Child" xml:space="preserve">
+    <value>Kinderticket</value>
+  </data>
+  <data name="Tickets_Buy_DonationLineNote" xml:space="preserve">
+    <value>Eine Spende an den Verein: ohne MwSt., wird nicht erstattet.</value>
+  </data>
+  <data name="Tickets_Buy_TicketsSubtotal" xml:space="preserve">
+    <value>Tickets</value>
+  </data>
+  <data name="Tickets_Buy_DonationSubtotal" xml:space="preserve">
+    <value>Spende</value>
+  </data>
+  <data name="Tickets_Buy_YourTickets" xml:space="preserve">
+    <value>Tickets</value>
+  </data>
+  <data name="Tickets_Ticket_State_Valid" xml:space="preserve">
+    <value>Gültig</value>
+  </data>
+  <data name="Tickets_Ticket_State_Offered" xml:space="preserve">
+    <value>Zum Weiterverkauf angeboten</value>
+  </data>
+  <data name="Tickets_Ticket_State_Resold" xml:space="preserve">
+    <value>Weiterverkauft</value>
+  </data>
+  <data name="Tickets_Ticket_State_Void" xml:space="preserve">
+    <value>Ungültig</value>
+  </data>
+  <data name="Tickets_Mine_Title" xml:space="preserve">
+    <value>Meine Tickets</value>
+  </data>
+  <data name="Tickets_Mine_None" xml:space="preserve">
+    <value>Du hast keine über Humans gekauften Tickets.</value>
+  </data>
+  <data name="Tickets_Resale_DirectedIntro" xml:space="preserve">
+    <value>Du wurdest eingeladen, ein bestimmtes zurückgegebenes Ticket zu kaufen. Du zahlst den aktuellen Preis an den Verein und bekommst ein neues Ticket auf deinen Namen.</value>
+  </data>
+  <data name="Tickets_Buy_Children" xml:space="preserve">
+    <value>Kinder, die mit dir kommen</value>
+  </data>
+  <data name="Tickets_Buy_ChildrenHelp" xml:space="preserve">
+    <value>{0} pro Kind, für Kinder unter {1} Jahren am ersten Tag. Ihr amtlicher Name wie im Ausweis. Ihre Tickets gehören zu deinem.</value>
+  </data>
+  <data name="Tickets_Buy_ChildName" xml:space="preserve">
+    <value>Kind {0}: amtlicher Name</value>
+  </data>
+  <data name="Tickets_Buy_SupporterIntro" xml:space="preserve">
+    <value>Mach dein Erlebnis größer und hilf uns, das beste Event zu machen. Dein Ticket bleibt bei deinem Preis; der Rest ist eine Spende an den Verein, ohne MwSt., und wird nicht erstattet.</value>
+  </data>
+  <data name="Tickets_Buy_SupporterBreakdown" xml:space="preserve">
+    <value>{0} Ticket + {1} Spende</value>
+  </data>
+  <data name="Tickets_Buy_Terms" xml:space="preserve">
+    <value>Ticketregeln</value>
+  </data>
+  <data name="Tickets_Buy_TermsAccept" xml:space="preserve">
+    <value>Ich habe die oben genannten Ticketregeln gelesen und akzeptiere sie.</value>
+  </data>
+  <data name="Tickets_Buy_Marketing" xml:space="preserve">
+    <value>Schickt mir den Newsletter des Vereins.</value>
+  </data>
+  <data name="Tickets_Buy_TermsRequired" xml:space="preserve">
+    <value>Bitte akzeptiere die Ticketregeln, um fortzufahren.</value>
+  </data>
+  <data name="Tickets_Buy_TermsFailed" xml:space="preserve">
+    <value>Deine Zustimmung zu den Ticketregeln konnte nicht gespeichert werden. Prüfe, ob dein Profil vollständig ist, und versuche es erneut.</value>
+  </data>
+  <data name="Tickets_Resale_InviteInvalid" xml:space="preserve">
+    <value>Dieser Einladungslink ist nicht mehr gültig oder wurde an eine andere E-Mail-Adresse als deine geschickt.</value>
+  </data>
+  <data name="Tickets_Resale_NotFound" xml:space="preserve">
+    <value>Ticket nicht gefunden.</value>
+  </data>
+  <data name="Tickets_Resale_NotOfferable" xml:space="preserve">
+    <value>Dieses Ticket kann nicht zum Weiterverkauf angeboten werden.</value>
+  </data>
+  <data name="Tickets_Resale_Closed" xml:space="preserve">
+    <value>Rückgaben sind für dieses Event geschlossen.</value>
+  </data>
+  <data name="Tickets_Resale_InCheckout" xml:space="preserve">
+    <value>Jemand bezahlt dieses Ticket gerade. Versuche es in einer Stunde erneut.</value>
+  </data>
+  <data name="Tickets_Resale_InviteEmailInvalid" xml:space="preserve">
+    <value>Gib die E-Mail-Adresse der Person ein, die du einladen möchtest.</value>
+  </data>
+  <data name="Tickets_Resale_NotOpenYet" xml:space="preserve">
+    <value>Der Weiterverkauf ist für dieses Event noch nicht geöffnet, daher kann noch niemand dein Ticket kaufen.</value>
+  </data>
+  <data name="Tickets_Resale_Offered" xml:space="preserve">
+    <value>Dein Ticket ist in der Weiterverkaufsschlange.</value>
+  </data>
+  <data name="Tickets_Resale_Withdrawn" xml:space="preserve">
+    <value>Dein Ticket ist aus der Weiterverkaufsschlange genommen und wieder gültig.</value>
+  </data>
+  <data name="Tickets_Resale_Invited" xml:space="preserve">
+    <value>Einladung verschickt.</value>
+  </data>
+  <data name="Tickets_Resale_InviteCancelled" xml:space="preserve">
+    <value>Einladung zurückgezogen. Dein Ticket behält seinen Platz in der Schlange.</value>
+  </data>
+  <data name="Tickets_Resale_InQueue" xml:space="preserve">
+    <value>In der Weiterverkaufsschlange auf Platz {0}. Wenn es verkauft ist, bekommst du {1} erstattet.</value>
+  </data>
+  <data name="Tickets_Resale_QueueNote" xml:space="preserve">
+    <value>Dein Ticket bleibt gültig, bis es verkauft ist. Wird es bis zum Event nicht verkauft, gibt es keine Erstattung, und du kannst es zurücknehmen und kommen.</value>
+  </data>
+  <data name="Tickets_Resale_Withdraw" xml:space="preserve">
+    <value>Zurücknehmen</value>
+  </data>
+  <data name="Tickets_Resale_InvitedTo" xml:space="preserve">
+    <value>Eingeladen: {0}</value>
+  </data>
+  <data name="Tickets_Resale_CancelInvite" xml:space="preserve">
+    <value>Einladung zurückziehen</value>
+  </data>
+  <data name="Tickets_Resale_InviteEmail" xml:space="preserve">
+    <value>Ihre E-Mail</value>
+  </data>
+  <data name="Tickets_Resale_Invite" xml:space="preserve">
+    <value>Käufer einladen</value>
+  </data>
+  <data name="Tickets_Resale_InviteHelp" xml:space="preserve">
+    <value>Kennst du jemanden, der dein Ticket möchte? Lade die Person ein: Sie bekommt einen Link, um es vor der Schlange zu kaufen, zum aktuellen Preis und auf ihren Namen. Du bekommst zurück, was du bezahlt hast. Zwischen euch fließt kein Geld.</value>
+  </data>
+  <data name="Tickets_Resale_OfferHelp" xml:space="preserve">
+    <value>Du kannst nicht kommen? Gib dein Ticket in die Weiterverkaufsschlange. Wenn es jemand kauft, bekommst du den Ticketpreis zurück (keine Spenden oder Gebühren).</value>
+  </data>
+  <data name="Tickets_Resale_OfferWithChildren" xml:space="preserve">
+    <value>Die zugehörigen Kindertickets werden mit zurückgegeben und ebenfalls erstattet.</value>
+  </data>
+  <data name="Tickets_Resale_Offer" xml:space="preserve">
+    <value>Mein Ticket zurückgeben</value>
+  </data>
+  <data name="Tickets_Resale_Email_Invite_Subject" xml:space="preserve">
+    <value>Ein Ticket für {0} wartet auf dich</value>
+  </data>
+  <data name="Tickets_Resale_Email_Invite_Body" xml:space="preserve">
+    <value>&lt;p&gt;Hallo,&lt;/p&gt;&lt;p&gt;{0} kann nicht zu &lt;strong&gt;{1}&lt;/strong&gt; kommen und hat dich eingeladen, das zurückgegebene Ticket vor der Weiterverkaufsschlange zu kaufen.&lt;/p&gt;&lt;p&gt;Du zahlst den aktuellen Ticketpreis an den Verein und bekommst ein neues Ticket auf deinen Namen: Der Name muss am Einlass mit deinem Ausweis übereinstimmen. Melde dich mit dieser E-Mail-Adresse bei Humans an oder lege ein Konto an und nutze dann diesen Link:&lt;/p&gt;&lt;p&gt;&lt;a href="{2}"&gt;{2}&lt;/a&gt;&lt;/p&gt;&lt;p&gt;Der Link gilt {3} Tage.&lt;/p&gt;</value>
+  </data>
 </root>

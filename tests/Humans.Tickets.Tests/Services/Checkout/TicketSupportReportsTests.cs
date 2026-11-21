@@ -5,6 +5,7 @@ using Humans.Tickets.Controllers;
 using Humans.Tickets.Domain.Checkout;
 using Humans.Tickets.Services.Checkout;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using NodaTime;
 using Xunit;
 
@@ -13,6 +14,7 @@ namespace Humans.Tickets.Tests.Services.Checkout;
 public sealed class TicketSupportReportsTests
 {
     private static readonly DateTimeZone Madrid = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
+    private static readonly Instant Now = Instant.FromUtc(2027, 2, 1, 12, 0);
 
     private static TicketCheckoutOrder Order(
         TicketCheckoutOrderState state = TicketCheckoutOrderState.Paid,
@@ -30,16 +32,13 @@ public sealed class TicketSupportReportsTests
             Lines = lines.ToList(),
         };
 
-    private static TicketCheckoutOrderLine Ticket(string description = "Ticket: Wave 1", long amount = 22500,
-        string holder = "Ana García", string? barcode = "HX-7Q2") => new()
-        {
-            Kind = CheckoutLineKind.Ticket,
-            Description = description,
-            AmountMinor = amount,
-            AttendeeName = holder,
-            AttendeeEmail = "holder@example.com",
-            Barcode = barcode,
-        };
+    private static TicketCheckoutOrderLine Line(long amount = 22500) => new()
+    {
+        Kind = CheckoutLineKind.Ticket,
+        Description = "Ticket: Wave 1",
+        AmountMinor = amount,
+        AttendeeName = "Ana García",
+    };
 
     private static TicketCheckoutOrderLine Donation(long amount, TicketDonationPurpose purpose = TicketDonationPurpose.General) => new()
     {
@@ -48,6 +47,24 @@ public sealed class TicketSupportReportsTests
         AmountMinor = amount,
         DonationPurpose = purpose,
     };
+
+    private static TicketCheckoutTicket Ticket(
+        TicketCheckoutOrder order, long paid = 22500, string? classLabel = null,
+        TicketCheckoutTicketState state = TicketCheckoutTicketState.Valid, TicketHolderKind kind = TicketHolderKind.Adult) => new()
+        {
+            Id = Guid.NewGuid(),
+            OrderId = order.Id,
+            SalesEventId = order.SalesEventId,
+            Kind = kind,
+            HolderName = "Bo Smith",
+            HolderEmail = "bo@example.com",
+            Barcode = "HX7Q2K",
+            PricePaidMinor = paid,
+            WaveName = "Wave 1",
+            ClassLabel = classLabel,
+            State = state,
+            IssuedAt = Now,
+        };
 
     private static TicketCheckoutRefund Refund(Guid orderId, long amount, RefundState state, int minute = 0) => new()
     {
@@ -58,39 +75,51 @@ public sealed class TicketSupportReportsTests
         CreatedAt = Instant.FromUtc(2027, 2, 1, 10, minute),
     };
 
+    private static TicketResaleOffer Offer(TicketCheckoutTicket ticket, int day, TicketResaleOfferState state = TicketResaleOfferState.Open) => new()
+    {
+        Id = Guid.NewGuid(),
+        TicketId = ticket.Id,
+        SalesEventId = ticket.SalesEventId,
+        OfferedAt = Instant.FromUtc(2027, 1, day, 9, 0),
+        State = state,
+        RefundOwedMinor = ticket.PricePaidMinor,
+    };
+
     [HumansTheory]
     [InlineData("garc")]
     [InlineData("ANA@EXAMPLE")]
-    [InlineData("holder@")]
-    [InlineData("hx-7q2")]
+    [InlineData("bo smi")]
+    [InlineData("hx7q2k")]
     [InlineData(" cs_abc123 ")]
     public void Lookup_matches_names_emails_ticket_codes_and_backend_references(string query)
     {
-        TicketSupportReports.Matches(Order(lines: Ticket()), query).Should().BeTrue();
+        var order = Order(lines: Line());
+        TicketSupportReports.Matches(order, [Ticket(order)], query).Should().BeTrue();
     }
 
     [HumansFact]
     public void Lookup_matches_an_order_id_only_exactly()
     {
-        var order = Order(lines: Ticket());
+        var order = Order(lines: Line());
 
-        TicketSupportReports.Matches(order, order.Id.ToString()).Should().BeTrue();
-        TicketSupportReports.Matches(order, Guid.NewGuid().ToString()).Should().BeFalse();
+        TicketSupportReports.Matches(order, [], order.Id.ToString()).Should().BeTrue();
+        TicketSupportReports.Matches(order, [], Guid.NewGuid().ToString()).Should().BeFalse();
     }
 
     [HumansTheory]
     [InlineData("an")]
-    [InlineData("HX-7")]
+    [InlineData("HX7Q")]
     [InlineData("cs_ABC")]
     public void Lookup_ignores_short_queries_and_partial_codes(string query)
     {
-        TicketSupportReports.Matches(Order(lines: Ticket()), query).Should().BeFalse();
+        var order = Order(lines: Line());
+        TicketSupportReports.Matches(order, [Ticket(order)], query).Should().BeFalse();
     }
 
     [HumansFact]
     public void Refund_list_filters_by_state_newest_first_and_drops_refunds_of_other_events()
     {
-        var order = Order(lines: Ticket());
+        var order = Order(lines: Line());
         var failed = Refund(order.Id, 22500, RefundState.Failed, minute: 1);
         var manual = Refund(order.Id, 22500, RefundState.ManualRequired, minute: 2);
         var elsewhere = Refund(Guid.NewGuid(), 100, RefundState.Failed);
@@ -102,19 +131,60 @@ public sealed class TicketSupportReportsTests
     }
 
     [HumansFact]
-    public void Sales_report_counts_paid_orders_only_and_splits_tickets_from_donations()
+    public void Resale_queue_numbers_waiting_offers_oldest_first_and_a_live_invitation_has_no_place()
     {
-        var wave1 = Order(lines: [Ticket(), Donation(17500, TicketDonationPurpose.LowIncomePool)]);
-        var lowIncome = Order(lines: Ticket("Ticket: Low income", 12500));
-        var unpaid = Order(TicketCheckoutOrderState.Pending, lines: Ticket());
+        var order = Order(lines: Line());
+        var (first, second, invited, sold) = (Ticket(order), Ticket(order), Ticket(order), Ticket(order));
+        var newer = Offer(second, day: 5);
+        var older = Offer(first, day: 2);
+        var directed = Offer(invited, day: 1);
+        directed.DirectedTokenHash = "hash";
+        directed.DirectedEmail = "friend@example.com";
+        directed.DirectedExpiresAt = Now + Duration.FromDays(2);
+        var done = Offer(sold, day: 1, TicketResaleOfferState.Sold);
 
-        var report = TicketSupportReports.Sales([wave1, lowIncome, unpaid], [], Madrid);
+        var rows = TicketSupportReports.ResaleQueue([newer, done, older, directed], [first, second, invited, sold], Now);
 
-        report.TicketsSold.Should().Be(2);
+        rows.Select(r => (r.Offer, r.Position, r.DirectedLive)).Should().Equal(
+            (directed, (int?)null, true), (older, 1, false), (newer, 2, false), (done, null, false));
+        rows[1].Ticket.Should().BeSameAs(first);
+    }
+
+    [HumansFact]
+    public void Resale_queue_numbers_a_lapsed_invitation_at_its_original_place()
+    {
+        var order = Order(lines: Line());
+        var (first, second) = (Ticket(order), Ticket(order));
+        var lapsed = Offer(first, day: 1);
+        lapsed.DirectedTokenHash = "hash";
+        lapsed.DirectedExpiresAt = Now - Duration.FromHours(1);
+
+        TicketSupportReports.ResaleQueue([Offer(second, day: 3), lapsed], [first, second], Now)
+            .First().Should().Match<ResaleQueueRow>(r => r.Offer == lapsed && r.Position == 1);
+    }
+
+    [HumansFact]
+    public void Sales_report_groups_issued_tickets_by_class_or_wave_and_splits_donations()
+    {
+        var wave = Order(lines: [Line(), Donation(17500, TicketDonationPurpose.LowIncomePool)]);
+        var lowIncome = Order(lines: Line(12500));
+        var unpaid = Order(TicketCheckoutOrderState.Pending, lines: Line());
+        var tickets = new[]
+        {
+            Ticket(wave, state: TicketCheckoutTicketState.Resold),
+            Ticket(lowIncome, 12500, classLabel: "Low income"),
+            Ticket(lowIncome, 0, kind: TicketHolderKind.Companion),
+            Ticket(unpaid),
+        };
+
+        var report = TicketSupportReports.Sales([wave, lowIncome, unpaid], tickets, [], [], Madrid);
+
+        report.TicketsIssued.Should().Be(3);
+        report.TicketsLive.Should().Be(2);
         report.TicketRevenueMinor.Should().Be(35000);
         report.DonationsMinor.Should().Be(17500);
         report.ByPrice.Should().BeEquivalentTo(
-            [new SalesRow("Ticket: Low income", 1, 12500), new SalesRow("Ticket: Wave 1", 1, 22500)]);
+            [new SalesRow("Companion", 1, 0), new SalesRow("Low income", 1, 12500), new SalesRow("Wave 1", 1, 22500)]);
         report.DonationsByPurpose.Should().Equal(new DonationRow(TicketDonationPurpose.LowIncomePool, 1, 17500));
     }
 
@@ -122,33 +192,48 @@ public sealed class TicketSupportReportsTests
     public void Sales_by_day_uses_the_event_time_zone()
     {
         // 23:30 UTC on 10 January is already 11 January in Madrid.
-        var late = Order(paidAt: Instant.FromUtc(2027, 1, 10, 23, 30), lines: [Ticket(), Donation(1000)]);
-        var early = Order(paidAt: Instant.FromUtc(2027, 1, 10, 9, 0), lines: Ticket());
+        var late = Order(paidAt: Instant.FromUtc(2027, 1, 10, 23, 30), lines: [Line(), Donation(1000)]);
+        var early = Order(paidAt: Instant.FromUtc(2027, 1, 10, 9, 0), lines: Line());
 
-        TicketSupportReports.Sales([late, early], [], Madrid).ByDay.Should().Equal(
+        TicketSupportReports.Sales([late, early], [], [], [], Madrid).ByDay.Should().Equal(
             new DayRow(new LocalDate(2027, 1, 10), 1, 22500, 0),
             new DayRow(new LocalDate(2027, 1, 11), 1, 22500, 1000));
     }
 
     [HumansFact]
-    public void Sales_report_totals_refunds_by_state()
+    public void Sales_report_totals_refunds_and_resale_offers_by_state()
     {
-        var order = Order(lines: Ticket());
-        var report = TicketSupportReports.Sales([order],
-            [Refund(order.Id, 22500, RefundState.Failed), Refund(order.Id, 22500, RefundState.Succeeded)], Madrid);
+        var order = Order(lines: Line());
+        var ticket = Ticket(order);
+        var report = TicketSupportReports.Sales([order], [ticket],
+            [Refund(order.Id, 22500, RefundState.Failed), Refund(order.Id, 22500, RefundState.Succeeded)],
+            [Offer(ticket, 1, TicketResaleOfferState.Sold), Offer(ticket, 2)], Madrid);
 
         report.RefundsByState.Should().Equal(
             new RefundStateRow(RefundState.Succeeded, 1, 22500),
             new RefundStateRow(RefundState.Failed, 1, 22500));
+        report.ResaleByState.Should().Equal(
+            new ResaleStateRow(TicketResaleOfferState.Open, 1, 22500),
+            new ResaleStateRow(TicketResaleOfferState.Sold, 1, 22500));
     }
 
     [HumansFact]
-    public void Support_pages_admit_Board_TicketsAdmin_and_Admin_and_change_nothing()
+    public void Board_reads_every_support_page_but_only_Manage_changes_a_ticket()
     {
-        // TicketsPolicies.Read: Board reads every page here; nothing on this controller writes, so nothing needs Manage.
-        typeof(TicketsSupportAdminController).GetCustomAttribute<AuthorizeAttribute>(inherit: false)!.Policy
-            .Should().Be(TicketsPolicies.Read);
-        typeof(TicketsSupportAdminController).GetMethods(BindingFlags.Instance | BindingFlags.Public | BindingFlags.DeclaredOnly)
-            .Should().AllSatisfy(m => m.GetCustomAttributes<Microsoft.AspNetCore.Mvc.HttpGetAttribute>().Should().NotBeEmpty());
+        var controller = typeof(TicketsSupportAdminController);
+        controller.GetCustomAttribute<AuthorizeAttribute>(inherit: false)!.Policy.Should().Be(TicketsPolicies.Read);
+
+        var actions = controller.GetMethods(BindingFlags.Instance | BindingFlags.Public | BindingFlags.DeclaredOnly);
+        var posts = actions.Where(m => m.GetCustomAttribute<HttpPostAttribute>() is not null).ToList();
+        posts.Select(m => m.Name).Should().BeEquivalentTo(
+            nameof(TicketsSupportAdminController.Rename), nameof(TicketsSupportAdminController.Void),
+            nameof(TicketsSupportAdminController.Companion));
+        posts.Should().AllSatisfy(m =>
+        {
+            m.GetCustomAttribute<AuthorizeAttribute>(inherit: false)!.Policy.Should().Be(TicketsPolicies.Manage,
+                because: "the class policy admits Board, which must never rename, void or issue a ticket");
+            m.GetCustomAttribute<ValidateAntiForgeryTokenAttribute>().Should().NotBeNull();
+        });
+        actions.Except(posts).Should().AllSatisfy(m => m.GetCustomAttribute<HttpGetAttribute>().Should().NotBeNull());
     }
 }

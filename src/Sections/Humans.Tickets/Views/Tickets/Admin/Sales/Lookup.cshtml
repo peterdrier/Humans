@@ -40,14 +40,14 @@ else if (Model.Hits.Count > 0)
                     <td><a asp-controller="TicketsSalesAdmin" asp-action="Order" asp-route-id="@o.Id">@o.CreatedAt.ToDateTime()</a></td>
                     <td>@h.EventName</td>
                     <td>@o.BuyerName <span class="text-muted">@o.BuyerEmail</span></td>
-                    <td>@string.Join(", ", o.Lines.Where(l => l.Kind == Humans.Tickets.Contracts.CheckoutLineKind.Ticket).Select(l => l.AttendeeName))</td>
+                    <td>@string.Join(", ", h.Tickets.Count > 0 ? h.Tickets.Select(t => $"{t.HolderName} ({t.Barcode}, {t.State})") : o.Lines.Where(l => l.Kind == Humans.Tickets.Contracts.CheckoutLineKind.Ticket).Select(l => l.AttendeeName))</td>
                     <td class="text-end">@Eur(o.TotalMinor)</td>
                     <td>@o.State</td>
                 </tr>
             }
         </tbody>
     </table>
-    @if (Model.Hits.Count == Humans.Tickets.Services.Checkout.TicketSupportService.MaxHits)
+    @if (Model.Hits.Count == Humans.Tickets.Services.Checkout.TicketSupportReports.MaxHits)
     {
         <p class="text-muted">Showing the newest @Model.Hits.Count. Narrow the search to see older orders.</p>
     }
