@@ -33,6 +33,8 @@
     <ProjectReference Include="..\Humans.Settings\Humans.Settings.csproj" />
     <ProjectReference Include="..\Humans.Users.Contracts\Humans.Users.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Governance.Contracts\Humans.Governance.Contracts.csproj" />
+    <!-- IGrantService: the active grants a ticket price rule maps to. Acyclic: Grants names no Tickets type. -->
+    <ProjectReference Include="..\Humans.Grants\Humans.Grants.csproj" />
     <ProjectReference Include="..\Humans.AuditLog\Humans.AuditLog.csproj" />
     <!-- TicketTransferAdmin/Detail.cshtml renders <vc:audit-log>, the AuditLog section's component. -->
     <!--
@@ -49,9 +51,8 @@
     <ProjectReference Include="..\Humans.Email.Contracts\Humans.Email.Contracts.csproj" />
     <!-- INotificationMeterContributor: the ticket-sync error meter. Acyclic: Notifications.Contracts references only Base and Email.Contracts. -->
     <ProjectReference Include="..\Humans.Notifications.Contracts\Humans.Notifications.Contracts.csproj" />
-    <!-- IConsentWrite: the gate-terminal seeder clears the account's consent check. -->
-    <ProjectReference Include="..\Humans.Consent\Humans.Consent.csproj" />
     <ProjectReference Include="..\Humans.EarlyEntry\Humans.EarlyEntry.csproj" />
+    <ProjectReference Include="..\Humans.Gate\Humans.Gate.csproj" />
     <!--
       Stripe fee enrichment on TicketOrder, through Humans.Stripe.Contracts. Direct
       section reference, acyclic — Humans.Stripe references no section.

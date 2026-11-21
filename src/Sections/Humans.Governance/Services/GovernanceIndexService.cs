@@ -11,6 +11,7 @@ namespace Humans.Governance.Services;
 
 internal sealed class GovernanceIndexService(
     IGovernanceManagement applicationDecisionService,
+    IGovernanceService membershipTiers,
     ILegalDocumentService legalDocService,
     IAssemblyVoteService assemblyVotes,
     IRoleAssignmentService roleAssignments,
@@ -82,8 +83,8 @@ internal sealed class GovernanceIndexService(
         var today = clock.GetCurrentInstant().InUtc().Date;
         var raw = new Dictionary<GovernanceBody, IReadOnlyList<Guid>>
         {
-            [GovernanceBody.Asociados] = await applicationDecisionService.GetActiveApprovedTierUserIdsAsync(MembershipTier.Asociado, today, ct),
-            [GovernanceBody.Colaboradores] = await applicationDecisionService.GetActiveApprovedTierUserIdsAsync(MembershipTier.Colaborador, today, ct),
+            [GovernanceBody.Asociados] = await membershipTiers.GetActiveApprovedTierUserIdsAsync(MembershipTier.Asociado, today, ct),
+            [GovernanceBody.Colaboradores] = await membershipTiers.GetActiveApprovedTierUserIdsAsync(MembershipTier.Colaborador, today, ct),
             [GovernanceBody.Board] = await roleAssignments.GetActiveUserIdsInRoleAsync(RoleNames.Board, ct),
         };
         var infos = await users.GetUserInfosAsync(raw.Values.SelectMany(ids => ids), ct);

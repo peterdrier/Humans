@@ -1,3 +1,4 @@
+using Humans.Containers.Contracts;
 using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
 using Humans.Base.Enums;
@@ -48,7 +49,7 @@ public sealed class PlacementScheduleTests : CityPlanningTestBase
         _sut = new CityPlanningService(
             new CityPlanningRepository(CityPlanningDbFactory), Clock,
             Options.Create(new CityPlanningOptions { CityPlanningTeamSlug = "city-planning" }),
-            _campService, _teamService, Substitute.For<IUserService>(), _auditLog, _settingsService);
+            _campService, _teamService, Substitute.For<IUserService>(), _auditLog, _settingsService, Substitute.For<IContainerService>());
     }
 
     private async Task SeedScheduleAsync(

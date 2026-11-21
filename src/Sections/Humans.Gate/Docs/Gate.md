@@ -41,6 +41,18 @@ after the retention window.
   `gate_scan_events` row. This makes Humans the **system of record for gate admission** — a
   deliberate posture distinct from the rest of the app, where ticket check-in is inbound-only from
   the vendor.
+- **Two ticket sources, one check-in record.** A scanned code is looked up first among the current
+  event's Ticket Tailor attendees, then among the tickets Humans' own checkout issued
+  (`ITicketGateLookup.FindIssuedTicketAsync`, live), accepted only when the ticket's event is the
+  active event. A `Valid` checkout ticket scans valid; an `Offered` one (in the resale queue) STOPs
+  with "withdraw it first" while it can still sell, and is valid once sales close; `Resold` and
+  `Void` STOP. Tickets reads Gate's `IGateAdmissions` (`GateAdmissionReads`, live) so an admitted
+  ticket is never offered or sold. Its scan row carries `CheckoutTicketId` instead of
+  `TicketAttendeeId`, it is never mirrored to a vendor and never appears in the vendor backfill: the
+  gate row is its only check-in record. A child or companion ticket without an account takes the
+  Early Entry of the adult it belongs to (`IssuedTicketInfo.EntryUserId`) and STOPs while that adult's
+  ticket is on resale (it would be voided with it); with no guest account, no
+  attendance row is written.
 - **Verdict precedence** (`GateAdmissionRules.Evaluate`, fresh per scan): not-found/void → STOP;
   already-admitted-locally or vendor-checked-in → STOP duplicate; **cutoff not configured →
   AMBER** (fail-safe — see below); `now ≥ cutoff` → needs-ID; before cutoff + unmatched → AMBER
@@ -124,7 +136,8 @@ after the retention window.
 ## Data Model
 
 - **`gate_scan_events`** (owned) — append-only. `OccurredAt` (server), `ScannedByUserId`,
-  `Barcode`, `TicketAttendeeId?`, `GuestUserId?`, `Verdict`, `LaneId?`, `ClientScanAt?`
+  `Barcode`, `TicketAttendeeId?` (Ticket Tailor), `CheckoutTicketId?` (Humans checkout),
+  `GuestUserId?`, `Verdict`, `LaneId?`, `ClientScanAt?`
   (audit only, never trusted for the cutoff), `Note?`, `OverrideByUserId?` (the authorizing
   supervisor on an override admit), `AdmitDedupeKey?`. Cross-section links are bare Guid columns
   (no nav/FK); `GuestUserId`/`ScannedByUserId`/`OverrideByUserId` are re-pointed on account merge.
@@ -221,7 +234,9 @@ nobodies-collective/Humans#933.)
 ## Cross-Section Dependencies
 
 - **Audit actions:** declared on `GateAuditActions` (`src/Sections/Humans.Gate/GateAuditActions.cs`), one `AuditActionDefinition` each, written through `IAuditLogService`: `GateStaffPinSet`, `GateStaffPinReset`.
-- **Tickets** — `ITicketService.GetTicketOrdersAsync` (barcode lookup) and
+- **Tickets** — `ITicketGateLookup.FindIssuedTicketAsync` (checkout-issued tickets, live); Tickets
+  in turn reads Gate's `IGateAdmissions` before offering or selling a returned ticket. Also
+  `ITicketService.GetTicketOrdersAsync` (Ticket Tailor barcode lookup) and
   `ITicketVendorMirror.CreateCheckInAsync` (vendor mirror, via the Gate job).
   **Cache freshness:** the barcode lookup reads the cached Tickets projection, so a ticket bought,
   transferred, or refunded at the door won't scan correctly until the next Tickets sync. The window
@@ -267,9 +282,9 @@ nobodies-collective/Humans#933.)
 ## Architecture
 
 **Project:** `src/Sections/Humans.Gate`, its own assembly. Everything in it is `internal`
-except `Section`; there is no `GateResource` because the kiosk carries no resource keys
-(every string is inline English by design — a staff-facing, single-locale terminal).
-There is no `Contracts/` folder: nothing outside the section calls into it.
+except `Section` and `Contracts/`: `IGateAdmissions` (Tickets' read of admits); there is no `GateResource` because the
+kiosk carries no resource keys (every string is inline English by design — a staff-facing,
+single-locale terminal).
 **Owning service:** `GateService` (`Humans.Gate.Services`) — also implements `IUserMerge`,
 `IUserDataContributor`.
 **Owned tables:** `gate_scan_events`, `gate_settings`, `gate_staff_pins` via `IGateRepository`.

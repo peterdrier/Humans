@@ -2,16 +2,6 @@ using System.ComponentModel.DataAnnotations;
 
 namespace Humans.Containers.Contracts;
 
-public class ContainerIndexViewModel
-{
-    public string CampSlug { get; set; } = string.Empty;
-    public string CampName { get; set; } = string.Empty;
-    public List<ContainerDto> Containers { get; set; } = [];
-    public Dictionary<Guid, ContainerPlacementDto> PlacementsByContainerId { get; set; } = new();
-    public int CurrentYear { get; set; }
-    public bool IsLeadButPhaseClosed { get; set; }
-}
-
 public class ContainerFormModel
 {
     [Required(ErrorMessage = "Validation_Required")]

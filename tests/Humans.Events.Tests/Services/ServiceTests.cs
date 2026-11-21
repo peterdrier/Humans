@@ -591,10 +591,11 @@ public sealed class EventServiceTests
     }
 
     [HumansTheory]
-    [InlineData(EventStatus.Pending)]
-    [InlineData(EventStatus.Rejected)]
-    public async Task AddFavouriteAsync_RejectsUnpublishedEvents(EventStatus status)
+    [InlineData((int)EventStatus.Pending)]
+    [InlineData((int)EventStatus.Rejected)]
+    public async Task AddFavouriteAsync_RejectsUnpublishedEvents(int statusValue)
     {
+        var status = (EventStatus)statusValue;
         var ev = new Event { Id = Guid.NewGuid(), Status = status };
         _repo.Events.Add(ev);
         var outcome = await _service.AddFavouriteAsync(Guid.NewGuid(), ev.Id, null, TestContext.Current.CancellationToken);
@@ -1080,13 +1081,14 @@ public sealed class EventServiceTests
     }
 
     [HumansTheory]
-    [InlineData(EventStatus.Pending, false, true)]
-    [InlineData(EventStatus.Draft, false, true)]
-    [InlineData(EventStatus.Draft, true, false)]
-    [InlineData(EventStatus.Rejected, false, false)]
-    [InlineData(EventStatus.Withdrawn, false, false)]
-    public async Task ModeratorWithdrawAsync_FollowsTheSubmitterWithdrawRule(EventStatus status, bool isCampEvent, bool expected)
+    [InlineData((int)EventStatus.Pending, false, true)]
+    [InlineData((int)EventStatus.Draft, false, true)]
+    [InlineData((int)EventStatus.Draft, true, false)]
+    [InlineData((int)EventStatus.Rejected, false, false)]
+    [InlineData((int)EventStatus.Withdrawn, false, false)]
+    public async Task ModeratorWithdrawAsync_FollowsTheSubmitterWithdrawRule(int statusValue, bool isCampEvent, bool expected)
     {
+        var status = (EventStatus)statusValue;
         var guideEvent = new Event { Id = Guid.NewGuid(), Status = status, CampId = isCampEvent ? Guid.NewGuid() : null };
         _repo.Events.Add(guideEvent);
 

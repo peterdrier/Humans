@@ -37,7 +37,7 @@ internal sealed class NotificationsController(
                 .OrderByDescending(r => r.CreatedAt).ToList(),
             Resolved = result.Resolved
                 .OrderByDescending(r => r.CreatedAt).ToList(),
-            Meters = meters,
+            Meters = meters.OrderByDescending(m => m.Priority).ToList(),
             UnreadCount = result.UnreadCount,
             SearchTerm = search,
             ActiveFilter = filter,
@@ -61,7 +61,7 @@ internal sealed class NotificationsController(
                 .OrderByDescending(r => r.CreatedAt).ToList(),
             Informational = result.Informational
                 .OrderByDescending(r => r.CreatedAt).ToList(),
-            Meters = meters,
+            Meters = meters.OrderByDescending(m => m.Priority).ToList(),
         });
     }
 

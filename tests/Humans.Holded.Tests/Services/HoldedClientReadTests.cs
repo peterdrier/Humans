@@ -296,7 +296,7 @@ public class HoldedClientReadTests
         docs.Single(d => string.Equals(d.Id, "d1", StringComparison.Ordinal)).IsDraft.Should().Be(false);
         docs.Single(d => string.Equals(d.Id, "d2", StringComparison.Ordinal)).IsDraft.Should().Be(true);
         docs.Single(d => string.Equals(d.Id, "d3", StringComparison.Ordinal)).IsDraft.Should().BeNull();
-        docs.Should().OnlyContain(d => d.PaymentsPending == 0m);
+        docs.Select(d => d.PaymentsPending).Should().Equal(0m, null, null);
     }
 
     [HumansFact]

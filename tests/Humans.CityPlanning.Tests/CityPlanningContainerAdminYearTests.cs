@@ -49,7 +49,7 @@ public sealed class CityPlanningContainerAdminYearTests : CityPlanningTestBase
         _service = new CityPlanningService(
             new CityPlanningRepository(CityPlanningDbFactory), Clock,
             Options.Create(new CityPlanningOptions { CityPlanningTeamSlug = "city-planning" }),
-            _campService, Substitute.For<ITeamService>(), _userService, Substitute.For<IAuditLogService>(), ActiveEvent(PublicYear));
+            _campService, Substitute.For<ITeamService>(), _userService, Substitute.For<IAuditLogService>(), ActiveEvent(PublicYear), Substitute.For<IContainerService>());
 
         var testUser = new User { Id = _userId, UserName = "test@test.com", Email = "test@test.com", DisplayName = "Test User", BurnerName = "Test User" };
         _userService.GetUserInfoAsync(_userId, Arg.Any<CancellationToken>())
@@ -170,7 +170,7 @@ public sealed class CityPlanningContainerAdminYearTests : CityPlanningTestBase
         var service = new CityPlanningService(
             new CityPlanningRepository(CityPlanningDbFactory), Clock,
             Options.Create(new CityPlanningOptions { CityPlanningTeamSlug = "city-planning" }),
-            _campService, Substitute.For<ITeamService>(), _userService, Substitute.For<IAuditLogService>(), ActiveEvent(null));
+            _campService, Substitute.For<ITeamService>(), _userService, Substitute.For<IAuditLogService>(), ActiveEvent(null), Substitute.For<IContainerService>());
         var controller = CreateController(service, MapAdminAuthorization(service), CampsRoles.CampsAdmin);
 
         var result = await controller.ContainerMap(RouteYear, TestContext.Current.CancellationToken);
@@ -213,7 +213,7 @@ public sealed class CityPlanningContainerAdminYearTests : CityPlanningTestBase
         CityPlanningService service, IAuthorizationService authorization, params string[] roles)
     {
         var controller = new CityPlanningController(
-            service, _campService, _containerService, Substitute.For<IStringLocalizer<ContainersResource>>(), _userService,
+            service, _containerService, Substitute.For<IStringLocalizer<ContainersResource>>(), _userService,
             authorization, NullLogger<CityPlanningController>.Instance);
 
         var claims = new List<Claim> { new(ClaimTypes.NameIdentifier, _userId.ToString()) };

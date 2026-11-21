@@ -5,8 +5,15 @@ using Humans.Notifications.Data;
 namespace Humans.Notifications.Services;
 
 internal interface INotificationInboxService
-    : IApplicationService, INotificationAutoResolve, INotificationRetention
+    : IApplicationService, INotificationAutoResolve
 {
+    /// <summary>
+    /// Resolved older than 7 days, unresolved informational older than 30, and every unresolved row of a retired
+    /// source. Other actionable rows are never purged: they are real work.
+    /// </summary>
+    Task<(int Resolved, int StaleInformational, int RetiredSource)> PurgeExpiredAsync(
+        CancellationToken ct = default);
+
     Task<NotificationInboxResult> GetInboxAsync(
         Guid userId, string? search, string filter, string tab,
         CancellationToken ct = default);

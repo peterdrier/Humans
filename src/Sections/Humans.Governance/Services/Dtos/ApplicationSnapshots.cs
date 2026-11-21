@@ -1,3 +1,4 @@
+using Humans.Governance.Domain;
 using NodaTime;
 
 using Humans.Governance.Contracts;

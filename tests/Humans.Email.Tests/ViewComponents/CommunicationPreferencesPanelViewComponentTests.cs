@@ -1,6 +1,7 @@
 using AwesomeAssertions;
 using Humans.Email.Contracts;
 using Humans.Email.Models;
+using Humans.Email.Services;
 using Humans.Email.ViewComponents;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.Rendering;
@@ -19,7 +20,7 @@ public class CommunicationPreferencesPanelViewComponentTests
     {
         using var aborted = new CancellationTokenSource();
         await aborted.CancelAsync();
-        var commPrefs = Substitute.For<ICommunicationPreferenceService>();
+        var commPrefs = Substitute.For<ICommunicationPreferenceManagement>();
         commPrefs.GetPreferencesReadOnlyAsync(Arg.Any<Guid>(), aborted.Token)
             .Returns(Task.FromException<IReadOnlyList<CommunicationPreferenceSnapshot>>(
                 new OperationCanceledException(aborted.Token)));
@@ -102,7 +103,7 @@ public class CommunicationPreferencesPanelViewComponentTests
     private static async Task<CommunicationPreferencesViewModel> InvokeWithAsync(
         IReadOnlyList<CommunicationPreferenceSnapshot> prefs, bool ticketingLocked = false)
     {
-        var commPrefs = Substitute.For<ICommunicationPreferenceService>();
+        var commPrefs = Substitute.For<ICommunicationPreferenceManagement>();
         commPrefs.GetPreferencesReadOnlyAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(prefs);
 

@@ -38,11 +38,4 @@ public interface ITeamResourceService : IApplicationService
         CancellationToken ct = default);
 
     Task<IReadOnlyList<GoogleResourceSnapshot>> GetActiveDriveFoldersAsync(CancellationToken ct = default);
-
-    /// <summary>TeamsAdmin always can; coordinators only when AllowCoordinatorsToManageResources is on.</summary>
-    Task<bool> CanManageTeamResourcesAsync(Guid teamId, Guid userId, CancellationToken ct = default);
-
-    Task<string> GetServiceAccountEmailAsync(CancellationToken ct = default);
-
-    Task<GoogleResourceSnapshot?> GetResourceByIdAsync(Guid resourceId, CancellationToken ct = default);
 }

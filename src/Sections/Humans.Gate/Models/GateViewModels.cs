@@ -31,6 +31,9 @@ internal sealed record GateScanCardViewModel(
 {
     public static GateScanCardViewModel FromEvaluation(GateScanResult r) => r.Outcome switch
     {
+        GatePreCheckOutcome.Invalid when r.InResaleQueue =>
+            new(GateCardKind.Stop, "Stop", r.GuestName,
+                "Offered for resale — the holder must withdraw it in Humans, then scan again", false, r.Barcode, false),
         GatePreCheckOutcome.Invalid =>
             new(GateCardKind.Stop, "Stop", null, "Not a valid ticket for this gate", false, r.Barcode, false),
         GatePreCheckOutcome.Duplicate =>

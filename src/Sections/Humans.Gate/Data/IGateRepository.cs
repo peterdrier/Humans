@@ -9,6 +9,9 @@ internal interface IGateRepository : IRepository
     /// <summary>Null when none. Feeds the duplicate pre-check and the "already admitted at / by" card.</summary>
     Task<GateScanEvent?> GetAdmitForBarcodeAsync(string admitDedupeKey, CancellationToken ct = default);
 
+    /// <summary>The keys among <paramref name="admitDedupeKeys"/> that have an admit.</summary>
+    Task<IReadOnlyList<string>> GetAdmittedKeysAsync(IReadOnlyCollection<string> admitDedupeKeys, CancellationToken ct = default);
+
     /// <summary>
     /// For admits this is the dedupe gate: an existing admit for the barcode returns
     /// <see cref="GateRecordOutcome.DuplicateAdmitRejected"/>. Other verdicts always record.

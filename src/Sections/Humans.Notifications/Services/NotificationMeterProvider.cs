@@ -40,6 +40,6 @@ internal sealed class NotificationMeterProvider(
             }
         }
 
-        return meters.OrderByDescending(m => m.Priority).ToList();
+        return meters;
     }
 }

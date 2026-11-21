@@ -1,4 +1,4 @@
-using Humans.Agent.Contracts;
+using Humans.Agent.Services;
 using Humans.Agent.Services.Preload;
 using Humans.Base.Interfaces;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
@@ -10,7 +10,7 @@ namespace Humans.Agent.Health;
 /// <see cref="IGuideContentSource"/> directly, not the cached readers, so every probe really re-tests GitHub.
 /// </summary>
 internal sealed class AgentDocsHealthCheck(
-    IAgentAvailability agent,
+    IAgentSettingsService agent,
     IGuideContentSource source,
     ILogger<AgentDocsHealthCheck> logger) : IHealthCheck
 {
@@ -29,7 +29,7 @@ internal sealed class AgentDocsHealthCheck(
         HealthCheckContext context,
         CancellationToken cancellationToken = default)
     {
-        if (!agent.IsEnabled)
+        if (!agent.Current.Enabled)
             return HealthCheckResult.Healthy("agent disabled");
 
         if (!await TryFetchAsync(SectionsFolder, ProbeSectionDoc, cancellationToken))

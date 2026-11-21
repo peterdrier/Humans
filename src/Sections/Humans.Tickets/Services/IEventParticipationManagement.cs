@@ -5,12 +5,6 @@ namespace Humans.Tickets.Services;
 
 internal interface IEventParticipationManagement : ITicketWrite, IApplicationService
 {
-    /// <inheritdoc cref="ITicketService.GetParticipationsAsync"/>
-    Task<IReadOnlyList<EventParticipationInfo>> GetParticipationsAsync(Guid userId, CancellationToken ct = default);
-
-    /// <inheritdoc cref="ITicketService.GetAllParticipationsAsync"/>
-    Task<IReadOnlyList<EventParticipationInfo>> GetAllParticipationsAsync(CancellationToken ct = default);
-
     /// <summary>The member declares they are not attending <paramref name="year"/>. Refused (false) once
     /// they are Attended; a ticket held later overrides the declaration.</summary>
     Task<bool> DeclareNotAttendingAsync(Guid userId, int year, CancellationToken ct = default);

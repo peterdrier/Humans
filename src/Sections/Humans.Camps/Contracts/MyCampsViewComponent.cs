@@ -1,3 +1,4 @@
+using Humans.Camps.Models;
 using Humans.Base.Extensions;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
@@ -56,22 +57,4 @@ public class MyCampsViewComponent(ICampService campService, ILogger<MyCampsViewC
             return Content(string.Empty);
         }
     }
-}
-
-public class MyCampsViewModel
-{
-    public List<MyCampsEventGroup> Events { get; set; } = [];
-}
-
-public class MyCampsEventGroup
-{
-    public string EventName { get; set; } = string.Empty;
-    public List<MyCampsMembership> Memberships { get; set; } = [];
-}
-
-public class MyCampsMembership
-{
-    public string CampSlug { get; set; } = string.Empty;
-    public string CampName { get; set; } = string.Empty;
-    public CampMemberStatus Status { get; set; }
 }

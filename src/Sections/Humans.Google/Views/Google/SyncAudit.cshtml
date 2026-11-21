@@ -14,5 +14,10 @@
     }
 </page-header>
 
-<vc:google-sync-log resource-id="@Model.ResourceId" user-id="@Model.UserId"
-                    title="Sync entries" empty-text="No sync log entries found." />
+@await Component.InvokeAsync(typeof(GoogleSyncLogViewComponent), new
+{
+    resourceId = Model.ResourceId,
+    userId = Model.UserId,
+    title = "Sync entries",
+    emptyText = "No sync log entries found.",
+})

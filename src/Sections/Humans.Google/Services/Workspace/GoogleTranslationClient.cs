@@ -1,3 +1,4 @@
+using Humans.Google.Contracts;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using Humans.Base.Extensions;
@@ -10,7 +11,7 @@ namespace Humans.Google.Services.Workspace;
 internal sealed class GoogleTranslationClient(
     HttpClient httpClient,
     IOptions<GoogleWorkspaceSettings> settings,
-    ILogger<GoogleTranslationClient> logger) : IGoogleTranslationClient
+    ILogger<GoogleTranslationClient> logger) : IGoogleTranslationService
 {
     private const string Scope = "https://www.googleapis.com/auth/cloud-translation";
     private const string Endpoint = "https://translation.googleapis.com/language/translate/v2";

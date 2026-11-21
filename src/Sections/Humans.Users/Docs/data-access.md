@@ -14,13 +14,14 @@ The account-merge surface (`AccountMergeService`, `DuplicateAccountService`,
 [Users](#users) below; the `AccountMergeRequests` table is owned there, not
 by Profiles. `DuplicateAccountService` is detection-only (no repository, no
 DB access; its one write is the `DuplicateAccountFlagged` audit entry through
-`IAuditLogService`).
+`IAuditLogService`). The picture, duplicate-account, email-diagnostic and merge interfaces
+and their diagnostic/snapshot DTOs stay internal beside the owning services.
 
 Per-user persistence is a single `IUserRepository`, which owns `Users`,
 `Profiles`, `UserEmails`, `ContactFields`, `ProfileLanguages`,
 `VolunteerHistoryEntries` and the ASP.NET-Identity
 `IdentityUserLogins` bridge. `ProfileService` exposes only
-`IProfilePictureService`; the unified User+Profile read-model lives behind
+internal `IProfilePictureService` under `Services/`; the unified User+Profile read-model lives behind
 `IUserService.GetUserInfoAsync`. Repositories are **Singletons**
 (`IDbContextFactory` pattern).
 
