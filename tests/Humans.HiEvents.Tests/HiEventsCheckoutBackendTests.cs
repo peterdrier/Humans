@@ -364,7 +364,7 @@ public class HiEventsCheckoutBackendTests
     [HumansFact]
     public async Task Check_ReadyEventOnTheFork_PassesWithoutWritingAnything()
     {
-        _handler.Enqueue(HttpStatusCode.OK, new { id = 1 });
+        _handler.Enqueue(HttpStatusCode.OK, new { data = new { id = 1 } });
         _handler.Enqueue(HttpStatusCode.OK, new { data = new { id = 7, status = "LIVE" } });
         _handler.Enqueue(HttpStatusCode.OK, Products());
         _handler.Enqueue(HttpStatusCode.UnprocessableEntity, new { message = "items required" });
@@ -382,7 +382,7 @@ public class HiEventsCheckoutBackendTests
     [HumansFact]
     public async Task Check_StockHiEvents_SaysItIsNotTheFork()
     {
-        _handler.Enqueue(HttpStatusCode.OK, new { id = 1 });
+        _handler.Enqueue(HttpStatusCode.OK, new { data = new { id = 1 } });
         _handler.Enqueue(HttpStatusCode.OK, new { data = new { id = 7, status = "DRAFT" } });
         _handler.Enqueue(HttpStatusCode.OK, Products(("TICKET", 100), ("TICKET", 101)));
         _handler.Enqueue(HttpStatusCode.NotFound, new { message = "not found" });
@@ -393,6 +393,36 @@ public class HiEventsCheckoutBackendTests
             .And.Contain(t => t.Contains("DRAFT"))
             .And.Contain(t => t.Contains("2 TICKET products"))
             .And.Contain(t => t.Contains("0 GENERAL products"));
+    }
+
+    [HumansFact]
+    public async Task Check_AnApiUrlServingTheWebApp_IsNotAnAcceptedKey()
+    {
+        _handler.EnqueueRaw(HttpStatusCode.OK, "<!doctype html><html></html>", "text/html");
+
+        var findings = await Backend().CheckAsync(null, Ct);
+
+        findings.Should().Contain(f => !f.Ok && f.Text.Contains("/api"));
+    }
+
+    [HumansFact]
+    public async Task Check_HiEventsCloud_IsNeverGreen()
+    {
+        _handler.Enqueue(HttpStatusCode.OK, new { data = new { id = 1 } });
+
+        var findings = await Backend(apiUrl: "https://api.hi.events/api").CheckAsync(null, Ct);
+
+        findings.Should().Contain(f => !f.Ok && f.Text.Contains("Cloud"));
+    }
+
+    [HumansFact]
+    public void Setup_WithAnAppUrlWithoutScheme_HasNoAdminLinkAndDoesNotThrow()
+    {
+        var backend = new HiEventsCheckoutBackend(new HttpClient(_handler),
+            Options.Create(new HiEventsSettings { ApiUrl = "https://tickets.example/api", ApiKey = "key", AppUrl = "tickets.example" }),
+            new FakeClock(Now), NullLogger<HiEventsCheckoutBackend>.Instance);
+
+        backend.Setup.AdminUrl.Should().BeNull();
     }
 
     [HumansFact]
@@ -477,6 +507,9 @@ public class HiEventsCheckoutBackendTests
         private readonly Queue<HttpResponseMessage> _responses = new();
 
         public List<(HttpRequestMessage Request, string? Body)> Requests { get; } = [];
+
+        public void EnqueueRaw(HttpStatusCode status, string body, string mediaType) =>
+            _responses.Enqueue(new HttpResponseMessage(status) { Content = new StringContent(body, Encoding.UTF8, mediaType) });
 
         public void Enqueue(HttpStatusCode status, object body) =>
             _responses.Enqueue(new HttpResponseMessage(status)

@@ -37,8 +37,9 @@ public class PretixCheckTests
 
         var findings = await Create(pretix).CheckAsync("nowhere2027", Ct);
 
-        findings.Where(f => !f.Ok).Select(f => f.Text).Should().HaveCount(2)
+        findings.Where(f => !f.Ok).Select(f => f.Text).Should().HaveCount(3)
             .And.Contain(t => t.Contains("offline"))
+            .And.Contain(t => t.Contains("test mode"))
             .And.Contain(t => t.Contains("humans-donation"));
     }
 
@@ -67,6 +68,17 @@ public class PretixCheckTests
     }
 
     [HumansFact]
+    public async Task A_path_like_event_id_is_refused_before_any_event_call()
+    {
+        var pretix = Organizer();
+
+        var findings = await Create(pretix).CheckAsync("..", Ct);
+
+        findings.Should().Contain(f => !f.Ok && f.Text.Contains("not a pretix event slug"));
+        pretix.Requests.Should().ContainSingle();
+    }
+
+    [HumansFact]
     public void Setup_labels_pretix_hosted_and_hides_secrets()
     {
         var settings = PretixTestHost.Settings();
@@ -75,6 +87,7 @@ public class PretixCheckTests
         var setup = Create(new FakePretix(), settings).Setup;
 
         setup.Hosting.Should().Be("pretix Hosted (pretix.eu)");
+        setup.Notes.Should().Contain(n => n.Contains("by hand"));
         setup.AdminUrl.Should().Be(new Uri("https://pretix.eu/control/organizer/nobodies/"));
         setup.Settings.Single(s => string.Equals(s.Name, "Pretix:Organizer", StringComparison.Ordinal)).Value.Should().Be("nobodies");
         setup.Settings.Where(s => s.IsSecret).Should().OnlyContain(s => s.IsSet && s.Value == null);

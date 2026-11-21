@@ -212,7 +212,9 @@ internal sealed class HiEventsCheckoutBackend : ITicketCheckoutBackend
     public CheckoutBackendSetup Setup => new(
         "Hi.Events",
         Hosting(),
-        _settings.ApiBaseUri is null ? null : new Uri(_settings.ResolvedAppUrl + "/manage/events"),
+        _settings.ApiBaseUri is not null && Uri.TryCreate(_settings.ResolvedAppUrl + "/manage/events", UriKind.Absolute, out var admin)
+            ? admin
+            : null,
         [
             new("HiEvents:ApiUrl", "API root of our Hi.Events fork, ending in /api", IsSecret: false,
                 !string.IsNullOrWhiteSpace(_settings.ApiUrl), string.IsNullOrWhiteSpace(_settings.ApiUrl) ? null : _settings.ApiUrl),
@@ -230,15 +232,15 @@ internal sealed class HiEventsCheckoutBackend : ITicketCheckoutBackend
             "The webhook goes on the order events.",
         ]);
 
-    private string Hosting()
-    {
-        if (_settings.ApiBaseUri is not { } api)
-            return "Not set";
-        return api.Host.Equals("hi.events", StringComparison.OrdinalIgnoreCase)
-            || api.Host.EndsWith(".hi.events", StringComparison.OrdinalIgnoreCase)
+    private bool IsCloud => _settings.ApiBaseUri is { } api
+        && (api.Host.Equals("hi.events", StringComparison.OrdinalIgnoreCase)
+            || api.Host.EndsWith(".hi.events", StringComparison.OrdinalIgnoreCase));
+
+    private string Hosting() => _settings.ApiBaseUri is not { } api
+        ? "Not set"
+        : IsCloud
             ? "Hi.Events Cloud (not supported: it lacks the fork's checkout endpoint)"
             : $"Self-hosted at {api.Host}";
-    }
 
     public async Task<IReadOnlyList<CheckoutBackendFinding>> CheckAsync(string? backendEventRef, CancellationToken ct = default)
     {
@@ -251,13 +253,17 @@ internal sealed class HiEventsCheckoutBackend : ITicketCheckoutBackend
                 ? new(false, "HIEVENTS_WEBHOOK_SECRET is unset: the webhook answers 503 and outcomes arrive only from Tickets' poll.")
                 : new(true, "Webhook signing secret is set."),
         };
+        if (IsCloud)
+            findings.Add(new(false, "Hi.Events Cloud cannot sell Humans orders: it has no checkout endpoint taking Humans' prices."));
         try
         {
             using (var me = await _http.GetAsync("users/me", ct))
             {
-                findings.Add(me.IsSuccessStatusCode
-                    ? new(true, "The API key is accepted.")
-                    : new(false, $"Hi.Events answered {(int)me.StatusCode} to the API key."));
+                findings.Add(!me.IsSuccessStatusCode
+                    ? new(false, $"Hi.Events answered {(int)me.StatusCode} to the API key.")
+                    : await IsUserAsync(me, ct)
+                        ? new(true, "The API key is accepted.")
+                        : new(false, "users/me did not answer a Hi.Events user: check that HiEvents:ApiUrl ends in /api."));
             }
 
             if (string.IsNullOrWhiteSpace(backendEventRef) || !findings[^1].Ok)
@@ -312,6 +318,18 @@ internal sealed class HiEventsCheckoutBackend : ITicketCheckoutBackend
         }
 
         return findings;
+    }
+
+    private static async Task<bool> IsUserAsync(HttpResponseMessage response, CancellationToken ct)
+    {
+        try
+        {
+            return (await response.Content.ReadFromJsonAsync<UserEnvelope>(JsonOptions, ct))?.Data?.Id is not null;
+        }
+        catch (JsonException)
+        {
+            return false;
+        }
     }
 
     private CheckoutState ToState(HiEventsOrder order) => order.Status switch
@@ -448,6 +466,10 @@ internal sealed class HiEventsCheckoutBackend : ITicketCheckoutBackend
     private sealed record Envelope(HiEventsOrder? Data);
 
     private sealed record EventEnvelope(EventStatus? Data);
+
+    private sealed record UserEnvelope(UserId? Data);
+
+    private sealed record UserId(int? Id);
 
     private sealed record EventStatus(string? Status);
 

@@ -7,6 +7,7 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
+using System.Text.RegularExpressions;
 using Humans.Tickets.Contracts;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -27,7 +28,7 @@ namespace Humans.Pretix.Services;
 /// order it already made instead of making a second one.
 /// </para>
 /// </summary>
-internal sealed class PretixCheckoutBackend(
+internal sealed partial class PretixCheckoutBackend(
     HttpClient http,
     IOptions<PretixSettings> options,
     ILogger<PretixCheckoutBackend> logger) : ITicketCheckoutBackend
@@ -270,19 +271,20 @@ internal sealed class PretixCheckoutBackend(
         ],
         "/Pretix/Webhook?secret=<PRETIX_WEBHOOK_SECRET>",
         [
-            $"Each event needs two active free-price items with internal names {TicketItemName} and {DonationItemName}, the returnurl plugin, Stripe with card, iDEAL and Klarna and no method fees, and buyer mails off. deploy/pretix/bootstrap.py sets this up.",
+            $"Each event needs two active free-price items with internal names {TicketItemName} and {DonationItemName}, the returnurl plugin, Stripe with card, iDEAL and Klarna and no method fees, and buyer mails off.",
+            IsHosted
+                ? "pretix Hosted gives no shell for deploy/pretix/bootstrap.py: make the same settings by hand in the pretix control panel, following what bootstrap.py does."
+                : "deploy/pretix/bootstrap.py, run in the pretix container, sets this up.",
             "The webhook goes on the order actions; the sales setup's event id is the pretix event slug.",
         ]);
 
-    private string Hosting()
-    {
-        if (!Uri.TryCreate(Settings.BaseUrl, UriKind.Absolute, out var root))
-            return "Not set";
-        return root.Host.Equals("pretix.eu", StringComparison.OrdinalIgnoreCase)
-            || root.Host.EndsWith(".pretix.eu", StringComparison.OrdinalIgnoreCase)
-            ? "pretix Hosted (pretix.eu)"
-            : $"Self-hosted at {root.Host}";
-    }
+    private bool IsHosted => Uri.TryCreate(Settings.BaseUrl, UriKind.Absolute, out var root)
+        && (root.Host.Equals("pretix.eu", StringComparison.OrdinalIgnoreCase)
+            || root.Host.EndsWith(".pretix.eu", StringComparison.OrdinalIgnoreCase));
+
+    private string Hosting() => !Uri.TryCreate(Settings.BaseUrl, UriKind.Absolute, out var root)
+        ? "Not set"
+        : IsHosted ? "pretix Hosted (pretix.eu)" : $"Self-hosted at {root.Host}";
 
     private static string? NullIfBlank(string value) => string.IsNullOrWhiteSpace(value) ? null : value;
 
@@ -306,6 +308,11 @@ internal sealed class PretixCheckoutBackend(
                 : new(false, $"pretix answered {(int)events.Status} for organizer {Settings.Organizer}: check the token and slug."));
             if (string.IsNullOrWhiteSpace(backendEventRef) || !findings[^1].Ok)
                 return findings;
+            if (!EventSlug().IsMatch(backendEventRef))
+            {
+                findings.Add(new(false, $"'{backendEventRef}' is not a pretix event slug."));
+                return findings;
+            }
 
             var ev = await SendRawAsync(HttpMethod.Get, EventPath(backendEventRef), body: null, ct);
             if ((int)ev.Status is < 200 or > 299)
@@ -322,7 +329,7 @@ internal sealed class PretixCheckoutBackend(
                 ? new(true, "The shop is live.")
                 : new(false, "The shop is offline, so buyers cannot reach the pay page."));
             if (details.Testmode)
-                findings.Add(new(true, "The event is in test mode: payments are not real."));
+                findings.Add(new(false, "The event is in test mode: its orders are pretix test orders. Turn it off before selling."));
 
             var items = await SendAsync<PretixPage<PretixItem>>(
                 HttpMethod.Get, $"{EventPath(backendEventRef)}items/?active=true", body: null, ct);
@@ -649,6 +656,9 @@ internal sealed class PretixCheckoutBackend(
     private sealed record RawResponse(HttpStatusCode Status, string Body);
 
     internal sealed record PretixEvent(string Currency);
+
+    [GeneratedRegex("^[A-Za-z0-9][A-Za-z0-9.-]*$", RegexOptions.CultureInvariant, 1000)]
+    private static partial Regex EventSlug();
 
     private sealed record PretixEventCheck(string Currency, bool Live, bool Testmode);
 

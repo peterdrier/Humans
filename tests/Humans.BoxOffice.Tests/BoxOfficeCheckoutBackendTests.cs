@@ -81,6 +81,17 @@ public sealed class BoxOfficeCheckoutBackendTests
     }
 
     [HumansFact]
+    public async Task Check_reports_an_unreachable_Stripe_instead_of_throwing()
+    {
+        _http.MakeRequestAsync(Arg.Any<StripeRequest>(), Arg.Any<CancellationToken>())
+            .Returns<StripeResponse>(_ => throw new HttpRequestException("no route"));
+
+        var findings = await Backend().CheckAsync(null, TestContext.Current.CancellationToken);
+
+        findings.Should().Contain(f => !f.Ok && f.Text.Contains("could not be reached"));
+    }
+
+    [HumansFact]
     public async Task Checkout_charges_each_line_exactly_and_is_idempotent_per_order()
     {
         Respond(Session("open", "unpaid"));

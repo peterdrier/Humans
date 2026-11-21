@@ -276,7 +276,11 @@ internal sealed class BoxOfficeCheckoutBackend(
         }
         catch (StripeException ex)
         {
-            findings.Add(new(false, $"Stripe refused the key: {ex.Message}"));
+            findings.Add(new(false, $"Stripe refused the key ({(int)ex.HttpStatusCode} {ex.StripeError?.Code ?? ex.StripeError?.Type ?? "error"})."));
+        }
+        catch (Exception ex) when (ex is HttpRequestException or OperationCanceledException)
+        {
+            findings.Add(new(false, $"Stripe could not be reached: {ex.Message}"));
         }
 
         findings.Add(_settings.IsWebhookConfigured
