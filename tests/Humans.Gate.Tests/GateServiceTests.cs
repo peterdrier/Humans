@@ -1334,7 +1334,7 @@ public class GateServiceTests
         row.UndoneByUserId.Should().Be(AgentId);
         row.UndoneAt.Should().Be(Clock.GetCurrentInstant());
         row.UndoReason.Should().Be(GateService.UndoneAtGateReason);
-        await _users.Received(1).UndoCheckInAsync(GuestId, 2027, Arg.Any<CancellationToken>());
+        await _users.Received(1).UndoCheckInAsync(GuestId, 2027, CancellationToken.None);
         await _auditLog.Received(1).LogAsync(GateAuditActions.GateAdmitUndone, nameof(GateScanEvent), row.Id,
             Arg.Any<string>(), AgentId, relatedEntityId: GuestId, relatedEntityType: Arg.Any<string?>());
         (await new GateAdmissionReads(new GateRepository(GateDbFactory)).GetAdmittedAsync([IssuedBarcode], Ct))

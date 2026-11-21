@@ -371,8 +371,9 @@ internal sealed class GateService(
             $"Undid a gate admit ({undone.Verdict}, {undone.OccurredAt.ToIso8601()}): {reason}", actorUserId,
             relatedEntityId: undone.GuestUserId, relatedEntityType: undone.GuestUserId is null ? null : AuditSubjectTypes.User);
 
+        // The undo is committed: finish the rollback even if the kiosk disconnects, since a retry finds nothing to undo.
         if (undone.GuestUserId is { } guest)
-            await ClearAttendedAsync(guest, undone.OccurredAt, ct);
+            await ClearAttendedAsync(guest, undone.OccurredAt, CancellationToken.None);
 
         return new GateUndoResult(GateUndoOutcome.Undone);
     }
