@@ -438,7 +438,7 @@ Sections contribute a tab to `/Settings` via `ISectionSettings`; the old standal
 
 ### Dashboard Indicators
 - **Health Check URL**: `/health/ready` (Debug sidebar group, not a dashboard indicator)
-- **Sync System Teams**: Button on the Google "Overview" page (`/Google`, `POST /Google/SyncSystemTeams`) to manually trigger `SystemTeamSyncJob`, which recalculates membership for Volunteers, Coordinators, and Board teams. Not on the `/Admin` dashboard itself. Useful for fixing users whose name or consent state changed before the scheduled sync ran.
+- **Sync System Teams**: Button on the Google "Overview" page (`/Google`, `POST /Google/SyncSystemTeams`) to manually trigger `SystemTeamSyncJob`, which recalculates membership for the Volunteers, Coordinators and Barrio Leads teams. Not on the `/Admin` dashboard itself. Useful for fixing users whose name or consent state changed before the scheduled sync ran.
 
 ### Prometheus Metrics
 - Available at `/metrics`

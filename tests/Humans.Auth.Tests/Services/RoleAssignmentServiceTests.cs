@@ -31,7 +31,6 @@ public sealed class RoleAssignmentServiceTests : AuthTestHarness
     private readonly IRoleAssignmentRepository _repository;
     private readonly IUserService _userService;
     private readonly CachingRoleAssignmentService _rowCache;
-    private readonly ISystemTeamSync _systemTeamSync;
     private readonly RoleAssignmentService _service;
 
     public RoleAssignmentServiceTests()
@@ -40,8 +39,6 @@ public sealed class RoleAssignmentServiceTests : AuthTestHarness
         _repository = new RoleAssignmentRepository(AuthDbFactory);
 
         _userService = NewStubUserService();
-
-        _systemTeamSync = Substitute.For<ISystemTeamSync>();
 
         // The real row cache, wrapping the service under test the way Section.cs wires it,
         // so eviction is asserted on what a cached read returns, not on a call count.
@@ -58,7 +55,6 @@ public sealed class RoleAssignmentServiceTests : AuthTestHarness
             _userService,
             AuditLog,
             Notifier,
-            _systemTeamSync,
             _rowCache,
             TestRoles.Catalog(),
             Clock,
@@ -109,96 +105,6 @@ public sealed class RoleAssignmentServiceTests : AuthTestHarness
             AuthAuditActions.RoleEnded, nameof(User), userId,
             Arg.Is<string>(d => d.Contains(RoleNames.Board, StringComparison.Ordinal)),
             enderId, Arg.Any<Guid?>(), Arg.Any<string?>());
-    }
-
-    [HumansFact]
-    public async Task AssignRoleAsync_Board_SyncsBoardSystemTeam_OtherRolesDoNot()
-    {
-        // The Board system team's membership mirrors the Board role. The sync is
-        // guarded on the role name, so both arms of that guard are behaviour.
-        var boardUser = Guid.NewGuid();
-        var adminUser = Guid.NewGuid();
-        var assignerId = Guid.NewGuid();
-        await SeedUserAsync(boardUser, "Board Member");
-        await SeedUserAsync(adminUser, "Admin Member");
-        await SeedUserAsync(assignerId, "Assigner");
-
-        await _service.AssignRoleAsync(
-            adminUser, RoleNames.Admin, assignerId, null, TestContext.Current.CancellationToken);
-        await _systemTeamSync.DidNotReceive().SyncBoardTeamAsync();
-
-        await _service.AssignRoleAsync(
-            boardUser, RoleNames.Board, assignerId, null, TestContext.Current.CancellationToken);
-        await _systemTeamSync.Received(1).SyncBoardTeamAsync();
-    }
-
-    [HumansFact]
-    public async Task EndRoleAsync_Board_SyncsBoardSystemTeam_OtherRolesDoNot()
-    {
-        var boardUser = Guid.NewGuid();
-        var adminUser = Guid.NewGuid();
-        var enderId = Guid.NewGuid();
-        await SeedUserAsync(boardUser, "Board Member");
-        await SeedUserAsync(adminUser, "Admin Member");
-        await SeedUserAsync(enderId, "Ender");
-        var yesterday = Clock.GetCurrentInstant() - Duration.FromDays(1);
-        var adminRow = await AddAssignmentAsync(adminUser, RoleNames.Admin, yesterday, null);
-        var boardRow = await AddAssignmentAsync(boardUser, RoleNames.Board, yesterday, null);
-
-        await _service.EndRoleAsync(adminRow.Id, enderId, null, TestContext.Current.CancellationToken);
-        await _systemTeamSync.DidNotReceive().SyncBoardTeamAsync();
-
-        await _service.EndRoleAsync(boardRow.Id, enderId, null, TestContext.Current.CancellationToken);
-        await _systemTeamSync.Received(1).SyncBoardTeamAsync();
-    }
-
-    [HumansFact]
-    public async Task AssignRoleAsync_Board_RowCacheShowsTheNewHolderWhenBoardTeamSyncRuns()
-    {
-        // Ordering pin: the row cache is evicted right after the repository write and
-        // BEFORE SyncBoardTeamAsync, so a read through the cached service during the
-        // Board sync already sees the new holder. Moving the eviction to after the
-        // write method returns would hand the sync a stale row set.
-        var ct = TestContext.Current.CancellationToken;
-        var userId = Guid.NewGuid();
-        var assignerId = Guid.NewGuid();
-        await SeedUserAsync(userId, "Board Member");
-        await SeedUserAsync(assignerId, "Assigner");
-        (await _rowCache.GetActiveForUserAsync(userId, ct)).Should().BeEmpty();
-        IReadOnlyList<RoleAssignmentSnapshot>? seenBySync = null;
-        IReadOnlyDictionary<string, int>? countsSeenBySync = null;
-        _systemTeamSync.SyncBoardTeamAsync(Arg.Any<SyncReport?>(), Arg.Any<CancellationToken>())
-            .Returns(async _ =>
-            {
-                seenBySync = await _rowCache.GetActiveForUserAsync(userId, ct);
-                countsSeenBySync = await _rowCache.GetActiveCountsByRoleAsync(ct);
-            });
-
-        await _service.AssignRoleAsync(userId, RoleNames.Board, assignerId, null, ct);
-
-        seenBySync.Should().NotBeNull();
-        seenBySync!.Select(r => r.RoleName).Should().Equal(RoleNames.Board);
-        countsSeenBySync![RoleNames.Board].Should().Be(1);
-    }
-
-    [HumansFact]
-    public async Task EndRoleAsync_Board_RowCacheDropsTheHolderBeforeBoardTeamSyncRuns()
-    {
-        var ct = TestContext.Current.CancellationToken;
-        var userId = Guid.NewGuid();
-        var enderId = Guid.NewGuid();
-        await SeedUserAsync(userId, "Board Member");
-        await SeedUserAsync(enderId, "Ender");
-        var row = await AddAssignmentAsync(
-            userId, RoleNames.Board, Clock.GetCurrentInstant() - Duration.FromDays(1), null);
-        (await _rowCache.GetActiveForUserAsync(userId, ct)).Should().ContainSingle();
-        IReadOnlyList<RoleAssignmentSnapshot>? seenBySync = null;
-        _systemTeamSync.SyncBoardTeamAsync(Arg.Any<SyncReport?>(), Arg.Any<CancellationToken>())
-            .Returns(async _ => { seenBySync = await _rowCache.GetActiveForUserAsync(userId, ct); });
-
-        await _service.EndRoleAsync(row.Id, enderId, null, ct);
-
-        seenBySync.Should().NotBeNull().And.BeEmpty();
     }
 
     [HumansFact]
@@ -314,7 +220,6 @@ public sealed class RoleAssignmentServiceTests : AuthTestHarness
             notice.GetArguments()[6].Should().Be("/Profile");
             notice.GetArguments()[10].Should().Be(CancellationToken.None);
         }
-        await _systemTeamSync.Received(2).SyncBoardTeamAsync(Arg.Any<SyncReport?>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]

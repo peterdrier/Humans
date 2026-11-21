@@ -79,7 +79,7 @@ public sealed class GovernanceBodyLinksServiceTests
     }
 
     [HumansFact]
-    public async Task A_later_change_on_the_team_makes_only_that_body_pending_and_reapply_overwrites_it()
+    public async Task A_later_change_on_the_team_never_overwrites_the_stored_copy()
     {
         _resourcesByTeam[SystemTeamIds.Asociados] = [Resource(SystemTeamIds.Asociados, "old", GoogleResourceType.DriveFolder)];
         await _sut.CopyFromTeamsAsync(Guid.NewGuid(), Ct);
@@ -87,13 +87,11 @@ public sealed class GovernanceBodyLinksServiceTests
         _resourcesByTeam[SystemTeamIds.Asociados] = [Resource(SystemTeamIds.Asociados, "new", GoogleResourceType.DriveFolder)];
         SetPrefix(SystemTeamIds.Asociados, "asociados-2");
 
-        var pending = await _sut.GetPendingCopiesAsync(Ct);
-        pending.Should().ContainSingle().Which.FromTeams.Body.Should().Be(GovernanceBody.Asociados);
-
-        (await _sut.CopyFromTeamsAsync(Guid.NewGuid(), Ct)).Should().Be(1);
+        (await _sut.GetPendingCopiesAsync(Ct)).Should().BeEmpty();
+        (await _sut.CopyFromTeamsAsync(Guid.NewGuid(), Ct)).Should().Be(0);
         var asociados = (await _sut.GetAllAsync(Ct)).Single(b => b.Body == GovernanceBody.Asociados);
-        asociados.GoogleGroupPrefix.Should().Be("asociados-2");
-        asociados.Files.Select(f => f.GoogleId).Should().Equal("new");
+        asociados.GoogleGroupPrefix.Should().Be("asociados");
+        asociados.Files.Select(f => f.GoogleId).Should().Equal("old");
     }
 
     [HumansFact]

@@ -12,6 +12,7 @@ using Humans.Base.Models;
 using Humans.Base.Models.Tables;
 using Humans.Email.Contracts;
 using Humans.Gdpr.Contracts;
+using Humans.Google.Contracts;
 using Humans.Governance.Contracts;
 using Humans.Governance.Data;
 using Humans.Governance.Domain;
@@ -76,6 +77,11 @@ public sealed class Section :
 
         services.AddSingleton<IGovernanceBodyRepository, GovernanceBodyRepository>();
         services.AddScoped<GovernanceBodyLinksService>();
+        services.AddScoped<GovernanceBodyRosters>();
+        services.AddScoped<GovernanceBodySync>();
+        services.AddScoped<GovernanceBodyGoogleSource>();
+        services.AddScoped<IGoogleGroupMembershipSource>(sp => sp.GetRequiredService<GovernanceBodyGoogleSource>());
+        services.AddScoped<IGoogleDriveAccessSource>(sp => sp.GetRequiredService<GovernanceBodyGoogleSource>());
         services.AddScoped<GovernanceBoardSeats>();
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<GovernanceBoardSeats>());
         services.AddScoped<IUserMerge>(sp => sp.GetRequiredService<GovernanceBoardSeats>());
@@ -184,14 +190,9 @@ public sealed class Section :
     ];
 
     private static async Task<DataMigrationStatus> BodyLinksCopyStatusAsync(IServiceProvider sp, CancellationToken ct) =>
-        new(["Body", "Stored (group / files)", "From Teams (group / files)"],
+        new(["Body", "From Teams (group / files)"],
             [.. (await sp.GetRequiredService<GovernanceBodyLinksService>().GetPendingCopiesAsync(ct))
-                .Select(p => (IReadOnlyList<string>)
-                [
-                    p.FromTeams.Body.ToString(),
-                    p.Stored is null ? "none" : Describe(p.Stored),
-                    Describe(p.FromTeams),
-                ])]);
+                .Select(p => (IReadOnlyList<string>)[p.FromTeams.Body.ToString(), Describe(p.FromTeams)])]);
 
     private static string Describe(GovernanceBodyLinks links) =>
         $"{links.GoogleGroupPrefix ?? "no group"} / {string.Join(", ", links.Files.Select(f => $"{f.Name} ({f.PermissionLevel})"))}";

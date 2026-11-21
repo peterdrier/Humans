@@ -132,7 +132,7 @@ public sealed class OnboardingServiceTests
             userId,
             "Signup rejected: duplicate account",
             originalReviewer);
-        await _syncJob.Received(3).SyncMembershipForUserAsync(
+        await _syncJob.Received(1).SyncMembershipForUserAsync(
             userId, Arg.Any<SystemTeamType>(), Arg.Any<CancellationToken>());
     }
 
@@ -168,7 +168,7 @@ public sealed class OnboardingServiceTests
             await _emailService.DidNotReceive().SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>());
         }
         _auditLogService.ReceivedCalls().Should().ContainSingle();
-        _syncJob.ReceivedCalls().Should().HaveCount(3);
+        _syncJob.ReceivedCalls().Should().HaveCount(1);
     }
 
     [HumansTheory]
@@ -220,7 +220,7 @@ public sealed class OnboardingServiceTests
         await _auditLogService.Received(1).LogAsync(
             OnboardingAuditActions.SignupRejected, AuditEntityTypes.Profile, userId,
             "Signup rejected: " + reason, reviewerId);
-        _syncJob.ReceivedCalls().Should().HaveCount(3);
+        _syncJob.ReceivedCalls().Should().HaveCount(1);
     }
 
     [HumansFact]
@@ -271,16 +271,11 @@ public sealed class OnboardingServiceTests
             $"Signup rejected: {reason}",
             reviewerId);
 
-        // All three approval-gated system teams, and nothing else. Asserting each team
-        // individually plus the total is what makes a dropped sync fail rather than pass.
+        // The Volunteers team only; Governance's bodies drop the account on Google's next sweep.
+        await _syncJob.Received(1).SyncMembershipForUserAsync(
+            Arg.Any<Guid>(), Arg.Any<SystemTeamType>(), Arg.Any<CancellationToken>());
         await _syncJob.Received(1).SyncMembershipForUserAsync(
             userId, SystemTeamType.Volunteers, Arg.Any<CancellationToken>());
-        await _syncJob.Received(1).SyncMembershipForUserAsync(
-            userId, SystemTeamType.Colaboradors, Arg.Any<CancellationToken>());
-        await _syncJob.Received(1).SyncMembershipForUserAsync(
-            userId, SystemTeamType.Asociados, Arg.Any<CancellationToken>());
-        await _syncJob.Received(3).SyncMembershipForUserAsync(
-            Arg.Any<Guid>(), Arg.Any<SystemTeamType>(), Arg.Any<CancellationToken>());
 
         await _emailService.Received(1).SendAsync(
             Arg.Is<EmailMessage>(m => m.TemplateName == "signup_rejected"

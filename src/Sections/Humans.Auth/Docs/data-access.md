@@ -37,7 +37,7 @@ Repository: `IRoleAssignmentRepository`.
 
 | Cache | Invalidate |
 |-------|------------|
-| `Auth.RoleAssignmentRow` TrackedCache (`CachingRoleAssignmentService`, injected concretely) | yes (wholesale `Clear()` right after each repository write, before the Board team sync reads roles back) |
+| `Auth.RoleAssignmentRow` TrackedCache (`CachingRoleAssignmentService`, injected concretely) | yes (wholesale `Clear()` right after each repository write) |
 
 Cross-section calls via `IUserService`, `ISystemTeamSync`,
 `IAuditLogService`, `INotificationEmitter`. Implements `IUserDataContributor` for GDPR exports

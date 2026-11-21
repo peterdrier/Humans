@@ -150,6 +150,12 @@ internal interface ITeamManagementService : ITeamManagement
     /// <summary>Deactivates; nothing is deleted.</summary>
     Task<TeamDeactivationResult> DeleteTeamAsync(Guid teamId, Guid actorUserId, CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Deactivates whichever of the Asociados, Colaboradores and Board teams are still active, ending their memberships.
+    /// Returns how many it deactivated.
+    /// </summary>
+    Task<int> RetireGovernanceBodyTeamsAsync(Guid actorUserId, CancellationToken cancellationToken = default);
+
     /// <summary>Approval-required teams get a pending request, open teams an immediate membership.</summary>
     Task<TeamJoinResult> JoinTeamAsync(
         Guid teamId,

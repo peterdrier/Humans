@@ -41,7 +41,7 @@ Repository: `IApplicationRepository`.
 
 Cross-section calls via `IUserService`,
 `IRoleAssignmentService`, `IEmailService`, `IUserEmailService`, `INotificationEmitter`,
-`ISystemTeamSync`, `IAuditLogService`, `IHumansMetrics`,
+`IAuditLogService`, `IHumansMetrics`, the section's `GovernanceBodySync`,
 and the section's own `GovernanceEmails` builder. Implements `IGovernanceManagement` (which
 extends `IGovernanceService`), `IUserDataContributor`, `IUserMerge`.
 `EraseForUserAsync` calls `IApplicationRepository.ScrubFreeTextForUserAsync`,
@@ -79,9 +79,27 @@ Repository: `IGovernanceBodyRepository` (`GovernanceBodyRepository`).
 | GovernanceBodyFiles | R/W |
 
 Each body's (Asociados, Colaboradores, Board) Google group prefix and Google files. Cross-section reads for
-the `governance.body-links-from-teams` data migration only: `ITeamService.GetTeamAsync` (the old system
+the one-time `governance.body-links-from-teams` data migration only: `ITeamService.GetTeamAsync` (the old system
 team's `GoogleGroupPrefix`) and `ITeamResourceService.GetResourcesByTeamIdsAsync` (its active non-Group
 resources). No personal data.
+
+### GovernanceBodyRosters (Scoped, internal)
+
+Each body's members before account filtering: `IApplicationRepository.GetActiveApprovedTierUserIdsAsync`
+(Asociados, Colaboradores) and `IRoleAssignmentService.GetActiveUserIdsInRoleAsync(Board)`. Reads no
+Governance service, so Google's sync can reach it without a cycle. Used by `GovernanceIndexService` (which
+filters through `IUserService`) and `GovernanceBodyGoogleSource`.
+
+### GovernanceBodyGoogleSource (Scoped, internal)
+
+`IGoogleGroupMembershipSource` and `IGoogleDriveAccessSource` for the bodies: reads `IGovernanceBodyRepository`
+(R) and `GovernanceBodyRosters`. User ids only, no `IUserService`.
+
+### GovernanceBodySync (Scoped, internal)
+
+Reads `IGovernanceBodyRepository` (R) and asks `IGoogleGroupSync.RequestSyncAsync` /
+`IGoogleSyncWrite.RequestSyncAsync` to sync one body's group and files. Called by `ApplicationDecisionService`
+on approval and by `GovernanceBoardSeats` after a seat is added or ended.
 
 ### GovernanceBoardSeats (Scoped, internal)
 

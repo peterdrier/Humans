@@ -139,8 +139,6 @@ The shapes imply:
 - **The reconciler applies Inactive-before-Active-style deltas per team through the
   service** and fans out Google/audit calls itself; the service's bulk-apply members are
   its private protocol, not a general write API.
-- **`ApplySystemTeamMembershipDeltaAsync` is also driven by `DevPersonaSeeder`** to put
-  personas on the Board system team — the one non-job caller of the bulk-apply protocol.
 - **Two admin surfaces for sync live under `/Google/*`**, not here: the job is Teams' own,
   the buttons are Google's.
 
