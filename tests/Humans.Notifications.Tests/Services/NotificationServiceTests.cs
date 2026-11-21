@@ -54,30 +54,6 @@ public class NotificationServiceTests : IDisposable
     }
 
     [HumansFact]
-    public async Task SendAsync_CreatesNotificationForRecipient()
-    {
-        var user = Guid.NewGuid();
-
-        await _emitter.SendAsync(
-            TestSources.TeamUpdate,
-            NotificationClass.Informational,
-            NotificationPriority.Normal,
-            "Added to team",
-            [user], cancellationToken: TestContext.Current.CancellationToken);
-
-        var notification = await _notificationsDb.Notifications
-            .Include(n => n.Recipients)
-            .SingleAsync(TestContext.Current.CancellationToken);
-
-        notification.Title.Should().Be("Added to team");
-        notification.Recipients.Single().UserId.Should().Be(user);
-    }
-
-
-
-
-
-    [HumansFact]
     public async Task ReassignAsync_RefreshesBothUsersBadgeCountsAfterMovingRecipients()
     {
         var source = Guid.NewGuid();

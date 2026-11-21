@@ -29,7 +29,6 @@ fan-out):
 | `ICalendarFeedContributor` | implemented by `Humans.Shifts` (`ShiftSignupService`), `Humans.Events` (`EventService`) and `Humans.Workgroups` (`WorkgroupCalendarContributor`) |
 | `CalendarFeedItem` | the item every contributor returns; `Humans.Scanner` renders it on the ticket card. Optional `RecurrenceRule` + `RecurrenceTimezone` make it a series: the personal feed writes one repeating VEVENT with a zoned `DTSTART`, the community calendar expands it within the window |
 | `IICalFeedService` | `Humans.Scanner`'s ticket card; the section's internal admin widget (feed items only) |
-| `UserCalendarViewComponent` / `UserCalendarViewModel` | `<vc:user-calendar>` in Debug's widget gallery; the `IUserPart` seam (`SectionUserParts`) in Users' admin detail |
 
 **Folder, not a `.Contracts` leaf.** A leaf exists only where a cycle forces one, and a
 contributor fan-out inverts the arrow: the implementers reference Calendar, Calendar

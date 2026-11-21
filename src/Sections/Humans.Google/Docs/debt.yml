@@ -2,8 +2,4 @@
 # /debt-sweep pools every src/Sections/*/Docs/debt.yml into the same inbox as the central ledger.
 version: 1
 next_id: 9
-inbox:
-  - added: 2026-11-21
-    id: GOOGLE-8
-    what: "IGoogleGroupSync exposes ReconcileAllAsync and ReconcileOneAsync plus their result DTO closure publicly, while external Teams and Workgroups consumers only call RequestSyncAsync. Split the queue-request contract from a section-internal reconciliation contract on the existing GoogleGroupSyncService, preserving scoped alias identity, controller/job behavior and Hangfire dispatch. Sibling Google services must continue to call reconciliation through an interface. Found by the debt sweep."
-    review: panel
+inbox: []

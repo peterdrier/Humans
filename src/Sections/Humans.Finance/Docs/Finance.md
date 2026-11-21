@@ -289,8 +289,6 @@ The provisioning preview, unmatched queue, creditor overview (including member-n
 
 ## Invariants
 
-- `RunSepaBookingSweepAsync` owns the scheduled bank-line sweep directly; `GetSepaTransfersAsync` owns the transfer booking-state read reused by the SEPA pairing workflow. Neither entry point forwards through a second name for the same operation.
-
 - Creditor open-document counts, SEPA payment selection and duplicate review consume Holded's `HoldedPurchaseDocInfo` mirror directly. Approval and nullable payment state are preserved; FIFO uses the mirrored accounting date and document id. No conversion back to connector payloads or midnight instants occurs.
 
 
