@@ -147,4 +147,20 @@ public sealed class GovernanceBodyLinksServiceTests
         await _audit.Received(2).LogAsync(GovernanceAuditActions.GovernanceBodyLinksChanged, Arg.Any<string>(), SystemTeamIds.Board,
             Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<Guid?>(), Arg.Any<string?>());
     }
+
+    [HumansFact]
+    public async Task Edits_keep_the_files_a_body_already_has()
+    {
+        _resourcesByTeam[SystemTeamIds.Board] = [Resource(SystemTeamIds.Board, "kept", GoogleResourceType.DriveFolder)];
+        await _sut.CopyFromTeamsAsync(Guid.NewGuid(), Ct);
+        _resources.LookUpDriveLinkAsync("https://drive/new", Arg.Any<CancellationToken>()).Returns(new DriveLinkLookup(
+            new DriveLinkItem("new", GoogleResourceType.DriveFile, "New", null)));
+
+        (await _sut.AddFileAsync(GovernanceBody.Board, "https://drive/new", DrivePermissionLevel.Viewer, Guid.NewGuid(), Ct)).Success.Should().BeTrue();
+        (await _sut.SetGroupAsync(GovernanceBody.Board, "board-2", Guid.NewGuid(), Ct)).Success.Should().BeTrue();
+
+        var board = (await _sut.GetAllAsync(Ct)).Single(b => b.Body == GovernanceBody.Board);
+        board.GoogleGroupPrefix.Should().Be("board-2");
+        board.Files.Select(f => f.GoogleId).Should().BeEquivalentTo(["kept", "new"]);
+    }
 }
