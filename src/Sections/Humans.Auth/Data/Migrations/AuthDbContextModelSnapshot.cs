@@ -64,7 +64,7 @@ namespace Humans.Auth.Data.Migrations
 
                     b.HasIndex("UserId", "RoleName", "ValidFrom");
 
-                    b.ToTable("role_assignments", null, t =>
+                    b.ToTable("auth_role_assignments", null, t =>
                         {
                             t.HasCheckConstraint("CK_role_assignments_valid_window", "\"ValidTo\" IS NULL OR \"ValidTo\" > \"ValidFrom\"");
                         });
