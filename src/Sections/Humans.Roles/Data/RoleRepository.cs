@@ -22,7 +22,7 @@ internal sealed class RoleRepository(IDbContextFactory<RolesDbContext> factory) 
     public async Task UpdateAsync(Role role, CancellationToken ct = default)
     {
         await using var db = await factory.CreateDbContextAsync(ct);
-        db.Roles.Update(role);
+        db.Entry(role).State = EntityState.Modified;
         await db.SaveChangesAsync(ct);
     }
 
