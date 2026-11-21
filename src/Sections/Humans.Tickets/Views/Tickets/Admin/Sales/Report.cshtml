@@ -60,6 +60,7 @@
 <page-header title="Sales report" subtitle="@Model.EventName">
     <a class="btn btn-outline-secondary btn-sm" asp-action="Refunds" asp-route-id="@Model.SalesEventId">Refunds</a>
     <a class="btn btn-outline-secondary btn-sm" asp-action="Resale" asp-route-id="@Model.SalesEventId">Resale queue</a>
+    <a class="btn btn-outline-secondary btn-sm" asp-action="Companions" asp-route-id="@Model.SalesEventId">Companion requests</a>
 </page-header>
 
 <div class="stats" style="--stats-cols: 3">

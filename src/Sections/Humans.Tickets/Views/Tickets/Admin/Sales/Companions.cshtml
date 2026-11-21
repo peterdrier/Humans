@@ -1,0 +1,85 @@
+@using Humans.Tickets.Domain.Checkout
+@using Humans.Tickets.Services.Checkout
+@model Humans.Tickets.Controllers.CompanionsViewModel
+@{
+    ViewData["Title"] = "Companion requests";
+    ViewData[AdminNavComposition.ParentKey] = "TicketsSalesAdmin/Index";
+    var pending = Model.Rows.Where(r => r.Request.State == TicketCompanionRequestState.Pending).ToList();
+    var answered = Model.Rows.Where(r => r.Request.State != TicketCompanionRequestState.Pending).ToList();
+    var culture = System.Globalization.CultureInfo.CurrentCulture;
+    StatTileViewModel[] tiles =
+    [
+        new("Waiting", pending.Count.ToString(culture)),
+        new("Approved", answered.Count(r => r.Request.State == TicketCompanionRequestState.Approved).ToString(culture)),
+        new("Declined", answered.Count(r => r.Request.State == TicketCompanionRequestState.Declined).ToString(culture),
+            Subline: $"{answered.Count(r => r.Request.State == TicketCompanionRequestState.Withdrawn).ToString(culture)} withdrawn"),
+    ];
+
+    Func<CompanionRequestRow, IHtmlContent> holderCell = @<text><a asp-action="Ticket" asp-route-orderId="@item.TicketOrderId" asp-route-ticketId="@item.Request.TicketId">@item.HolderName</a></text>;
+    Func<CompanionRequestRow, IHtmlContent> stateCell = @<text><status-badge value="@item.Request.State" /></text>;
+    var answeredTable = TableModel.For(answered)
+        .Column("Asked", r => r.Request.RequestedAt, o => o.DateTime())
+        .Template("Holder", holderCell, sortBy: r => r.HolderName)
+        .Column("Companion", r => r.CompanionName)
+        .Template("State", stateCell, sortBy: r => r.Request.State.ToString())
+        .Column("Team note", r => r.Request.DecisionNote)
+        .Empty("Nothing answered yet.")
+        .Build();
+}
+
+<page-header title="Companion requests" subtitle="@Model.EventName" />
+
+<div class="stats" style="--stats-cols: 3">
+    @foreach (var tile in tiles)
+    {
+        <partial name="_StatTile" model="tile" />
+    }
+</div>
+
+<p class="small text-muted mb-4">
+    Holders ask here for a free companion who is already in Humans. Approving issues the companion's ticket on a free
+    order of its own and emails it; declining shows your note to the holder. The holder's note is for this check only:
+    it never goes on the order timeline or the audit log.
+</p>
+
+<div class="card mb-4">
+    <div class="card-header">Waiting, newest first</div>
+    @if (pending.Count == 0)
+    {
+        <div class="card-body text-muted">Nobody is waiting.</div>
+    }
+    else
+    {
+        <div class="list-group list-group-flush">
+            @foreach (var row in pending)
+            {
+                var r = row.Request;
+                <div class="list-group-item">
+                    <div class="fw-semibold">@row.HolderName asks for @row.CompanionName</div>
+                    <div class="small text-muted">
+                        @r.RequestedAt.ToDateTime() · ticket
+                        <a asp-action="Ticket" asp-route-orderId="@row.TicketOrderId" asp-route-ticketId="@r.TicketId"><code>@row.TicketBarcode</code></a>
+                    </div>
+                    <p class="my-2">@r.Note</p>
+                    <form method="post" asp-action="DecideCompanion" asp-route-id="@Model.SalesEventId" asp-route-requestId="@r.Id"
+                          class="row g-2 align-items-end" authorize-policy="@TicketsPolicies.Manage">
+                        @Html.AntiForgeryToken()
+                        <div class="col-md-7">
+                            <label class="form-label small" for="note-@r.Id">Note (needed to decline; the holder sees it)</label>
+                            <input class="form-control form-control-sm" id="note-@r.Id" name="note" maxlength="500" />
+                        </div>
+                        <div class="col-md-5 d-flex gap-2">
+                            <button type="submit" name="approve" value="true" class="btn btn-primary btn-sm">Approve</button>
+                            <button type="submit" name="approve" value="false" class="btn btn-outline-danger btn-sm">Decline</button>
+                        </div>
+                    </form>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+<div class="card mb-4">
+    <div class="card-header">Answered</div>
+    <partial name="_Table" model="answeredTable" />
+</div>

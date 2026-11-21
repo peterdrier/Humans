@@ -101,6 +101,39 @@
                         </form>
                     </details>
                 }
+
+                @if (held.CompanionRequest is { State: TicketCompanionRequestState.Pending })
+                {
+                    <div class="d-flex flex-wrap align-items-center gap-2 mt-3">
+                        <span class="small">@Localizer["Tickets_Companion_Pending"]</span>
+                        <form asp-action="WithdrawCompanion" asp-route-ticketId="@t.Id" method="post">
+                            @Html.AntiForgeryToken()
+                            <button type="submit" class="btn btn-outline-secondary btn-sm">@Localizer["Tickets_Companion_Withdraw"]</button>
+                        </form>
+                    </div>
+                }
+                else if (held.CanAskCompanion)
+                {
+                    @if (held.CompanionRequest is { State: TicketCompanionRequestState.Declined } declined)
+                    {
+                        <p class="small mt-3 mb-0">@string.Format(Localizer["Tickets_Companion_Declined"].Value, declined.DecisionNote)</p>
+                    }
+                    <details class="mt-2">
+                        <summary class="small">@Localizer["Tickets_Companion_Ask"]</summary>
+                        <p class="small text-muted mt-2">@Localizer["Tickets_Companion_AskHelp"]</p>
+                        <form asp-action="AskCompanion" asp-route-ticketId="@t.Id" method="post">
+                            @Html.AntiForgeryToken()
+                            <label class="form-label small" for="companion-email-@t.Id">@Localizer["Tickets_Companion_Email"]</label>
+                            <input class="form-control form-control-sm mb-2" id="companion-email-@t.Id" name="companionEmail" type="email"
+                                   maxlength="320" required autocomplete="off" />
+                            <label class="form-label small" for="companion-note-@t.Id">@Localizer["Tickets_Companion_Note"]</label>
+                            <textarea class="form-control form-control-sm" id="companion-note-@t.Id" name="note" rows="2" maxlength="500"
+                                      required aria-describedby="companion-note-help-@t.Id"></textarea>
+                            <div class="form-text mb-2" id="companion-note-help-@t.Id">@Localizer["Tickets_Companion_NoteHelp"]</div>
+                            <button type="submit" class="btn btn-outline-primary btn-sm">@Localizer["Tickets_Companion_Send"]</button>
+                        </form>
+                    </details>
+                }
             </div>
         </div>
     </div>

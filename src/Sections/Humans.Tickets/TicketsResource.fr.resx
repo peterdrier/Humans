@@ -86,18 +86,6 @@
   <data name="Tickets_Buy_SupporterOption" xml:space="preserve">
     <value>{0} au total : ton billet plus un don de {1}</value>
   </data>
-  <data name="Tickets_Buy_Partner" xml:space="preserve">
-    <value>Un billet pour quelqu'un d'autre</value>
-  </data>
-  <data name="Tickets_Buy_PartnerHelp" xml:space="preserve">
-    <value>Son nom légal et son e-mail. La personne reçoit son propre compte et le billet est à elle. Il coûte le prix public ({0}).</value>
-  </data>
-  <data name="Tickets_Buy_PartnerName" xml:space="preserve">
-    <value>Nom légal</value>
-  </data>
-  <data name="Tickets_Buy_PartnerEmail" xml:space="preserve">
-    <value>E-mail</value>
-  </data>
   <data name="Tickets_Buy_Donation" xml:space="preserve">
     <value>Ajouter un don</value>
   </data>
@@ -181,12 +169,6 @@
   </data>
   <data name="Tickets_Buy_AlreadyHolds" xml:space="preserve">
     <value>Tu as déjà un billet pour cet événement.</value>
-  </data>
-  <data name="Tickets_Buy_PartnerIncomplete" xml:space="preserve">
-    <value>Pour le billet de quelqu'un d'autre, indique son nom légal et un e-mail valide.</value>
-  </data>
-  <data name="Tickets_Buy_PartnerIsYou" xml:space="preserve">
-    <value>Cet e-mail est le tien ; coche plutôt la case de ton propre billet.</value>
   </data>
   <data name="Tickets_Buy_Invalid" xml:space="preserve">
     <value>Ce choix n'est pas disponible. Réessaie.</value>
@@ -502,5 +484,86 @@
   </data>
   <data name="Tickets_Delivery_Ticket_Riders" xml:space="preserve">
     <value>Les billets des enfants qui viennent avec toi sont ici aussi. Chacun a son propre code : montre-les à l'entrée avec le tien.</value>
+  </data>
+  <data name="Tickets_Buy_Others" xml:space="preserve">
+    <value>Billets pour d'autres personnes</value>
+  </data>
+  <data name="Tickets_Buy_OthersHelp" xml:space="preserve">
+    <value>Ajoute des personnes déjà dans Humans, avec l'e-mail qu'elles y utilisent. Chacune reçoit un billet à son propre nom légal. Chaque billet coûte le prix public ({0}).</value>
+  </data>
+  <data name="Tickets_Buy_OtherEmail" xml:space="preserve">
+    <value>E-mail de la personne {0}</value>
+  </data>
+  <data name="Tickets_Buy_OthersAdd" xml:space="preserve">
+    <value>Ajouter une autre personne</value>
+  </data>
+  <data name="Tickets_Buy_OthersTooMany" xml:space="preserve">
+    <value>Une commande peut contenir des billets pour {0} autres personnes au plus.</value>
+  </data>
+  <data name="Tickets_Buy_OtherNotFound" xml:space="preserve">
+    <value>Personne dans Humans n'a {0} comme e-mail confirmé. La personne doit d'abord rejoindre Humans ; tu pourras ensuite acheter son billet.</value>
+  </data>
+  <data name="Tickets_Buy_OtherIsYou" xml:space="preserve">
+    <value>{0} est ton propre e-mail ; coche plutôt la case de ton propre billet.</value>
+  </data>
+  <data name="Tickets_Buy_OtherNeedsName" xml:space="preserve">
+    <value>La personne avec {0} n'a pas encore indiqué son nom légal dans Humans. Le billet porte le nom légal, elle doit donc l'ajouter d'abord.</value>
+  </data>
+  <data name="Tickets_Buy_OtherHolds" xml:space="preserve">
+    <value>La personne avec {0} a déjà un billet pour cet événement, tu ne peux donc pas lui en acheter un autre.</value>
+  </data>
+  <data name="Tickets_Companion_Ask" xml:space="preserve">
+    <value>Demander un billet d'accompagnant</value>
+  </data>
+  <data name="Tickets_Companion_AskHelp" xml:space="preserve">
+    <value>Si tu as besoin de quelqu'un avec toi pour participer, par exemple à cause d'un handicap, cette personne peut venir avec un billet d'accompagnant gratuit. Elle doit déjà être dans Humans. L'équipe billetterie lit ta demande et répond ici.</value>
+  </data>
+  <data name="Tickets_Companion_Email" xml:space="preserve">
+    <value>L'e-mail de ton accompagnant dans Humans</value>
+  </data>
+  <data name="Tickets_Companion_Note" xml:space="preserve">
+    <value>Pourquoi tu as besoin d'un accompagnant</value>
+  </data>
+  <data name="Tickets_Companion_NoteHelp" xml:space="preserve">
+    <value>Une phrase suffit. Seule l'équipe billetterie la lit ; aucun détail médical n'est nécessaire.</value>
+  </data>
+  <data name="Tickets_Companion_Send" xml:space="preserve">
+    <value>Envoyer la demande</value>
+  </data>
+  <data name="Tickets_Companion_Requested" xml:space="preserve">
+    <value>Ta demande d'accompagnant a été envoyée à l'équipe billetterie.</value>
+  </data>
+  <data name="Tickets_Companion_Pending" xml:space="preserve">
+    <value>Ta demande d'accompagnant attend l'équipe billetterie.</value>
+  </data>
+  <data name="Tickets_Companion_Withdraw" xml:space="preserve">
+    <value>Retirer la demande</value>
+  </data>
+  <data name="Tickets_Companion_Withdrawn" xml:space="preserve">
+    <value>Demande d'accompagnant retirée.</value>
+  </data>
+  <data name="Tickets_Companion_Declined" xml:space="preserve">
+    <value>L'équipe billetterie a refusé ta demande d'accompagnant : {0}</value>
+  </data>
+  <data name="Tickets_Companion_NotAllowed" xml:space="preserve">
+    <value>Ce billet ne peut pas recevoir de demande d'accompagnant : il doit s'agir d'un billet adulte valide, sans accompagnant ni demande en attente.</value>
+  </data>
+  <data name="Tickets_Companion_NoteRequired" xml:space="preserve">
+    <value>Explique brièvement pourquoi tu as besoin d'un accompagnant, en 500 caractères au plus.</value>
+  </data>
+  <data name="Tickets_Companion_NothingPending" xml:space="preserve">
+    <value>Aucune demande d'accompagnant n'attend sur ce billet.</value>
+  </data>
+  <data name="Tickets_Companion_NotFound" xml:space="preserve">
+    <value>Personne dans Humans n'a cet e-mail confirmé. Ton accompagnant doit d'abord rejoindre Humans.</value>
+  </data>
+  <data name="Tickets_Companion_IsYou" xml:space="preserve">
+    <value>C'est ton propre e-mail ; indique celui de ton accompagnant.</value>
+  </data>
+  <data name="Tickets_Companion_NeedsName" xml:space="preserve">
+    <value>Ton accompagnant n'a pas encore indiqué son nom légal dans Humans. Le billet porte le nom légal, il doit donc l'ajouter d'abord.</value>
+  </data>
+  <data name="Tickets_Companion_Holds" xml:space="preserve">
+    <value>Ton accompagnant a déjà un billet pour cet événement, il n'a donc pas besoin d'un billet d'accompagnant.</value>
   </data>
 </root>

@@ -82,6 +82,32 @@ internal sealed class TicketsSupportAdminController(
         return RedirectToAction(nameof(Resale), new { id });
     }
 
+    [HttpGet("{id:guid}/Companions")]
+    public async Task<IActionResult> Companions(Guid id, CancellationToken ct)
+    {
+        var salesEvent = await checkout.GetSalesEventAsync(id, ct);
+        if (salesEvent is null)
+            return NotFound();
+        return View("~/Views/Tickets/Admin/Sales/Companions.cshtml", new CompanionsViewModel(
+            id, await EventNameAsync(salesEvent, ct), await checkout.GetCompanionRequestsAsync(id, ct)));
+    }
+
+    [HttpPost("{id:guid}/Companions/{requestId:guid}")]
+    [Authorize(Policy = TicketsPolicies.Manage)]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> DecideCompanion(Guid id, Guid requestId, bool approve, string? note, CancellationToken ct)
+    {
+        var (errorResult, user) = await RequireCurrentUserAsync(ct);
+        if (errorResult is not null) return errorResult;
+
+        var result = await checkout.DecideCompanionRequestAsync(requestId, approve, note, user.Id, ct);
+        if (result.Succeeded)
+            SetSuccess(approve ? "Approved: the companion ticket is issued and emailed." : "Declined: the holder sees your note.");
+        else
+            SetError(result.Refusal!);
+        return RedirectToAction(nameof(Companions), new { id });
+    }
+
     [HttpGet("{id:guid}/Report")]
     public async Task<IActionResult> Report(Guid id, CancellationToken ct)
     {
@@ -168,6 +194,8 @@ internal sealed record ResaleViewModel(
     public bool ResaleSelling => SalesEvent.ResaleSelling;
     public bool SwitchedOff => SalesEvent.EffectiveSwitches.Resale == ResaleScheme.Off;
 }
+
+internal sealed record CompanionsViewModel(Guid SalesEventId, string EventName, IReadOnlyList<CompanionRequestRow> Rows);
 
 internal sealed record ReportViewModel(Guid SalesEventId, string EventName, int Capacity, SalesReport Report);
 

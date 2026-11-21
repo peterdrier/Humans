@@ -130,3 +130,17 @@ internal sealed class TicketResaleOfferConfiguration : IEntityTypeConfiguration<
     }
 }
 
+internal sealed class TicketCompanionRequestConfiguration : IEntityTypeConfiguration<TicketCompanionRequest>
+{
+    public void Configure(EntityTypeBuilder<TicketCompanionRequest> builder)
+    {
+        builder.ToTable("ticket_companion_requests");
+        builder.HasKey(x => x.Id);
+        builder.HasIndex(x => x.SalesEventId);
+        builder.HasIndex(x => x.TicketId);
+        builder.Property(x => x.State).IsRequired().HasConversion<string>().HasMaxLength(16);
+        builder.Property(x => x.Note).IsRequired().HasMaxLength(500);
+        builder.Property(x => x.DecisionNote).HasMaxLength(500);
+    }
+}
+

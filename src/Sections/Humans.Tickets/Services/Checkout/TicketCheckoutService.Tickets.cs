@@ -57,6 +57,7 @@ internal sealed partial class TicketCheckoutService
             var queue = offers.Where(o => o.State is TicketResaleOfferState.Open or TicketResaleOfferState.Reserved).ToList();
             var positions = TicketSupportReports.QueuePositions(offers);
             var eventTickets = salesEvent is null ? [] : await repository.GetTicketsForSalesEventAsync(group.Key, ct);
+            var companionRequests = await repository.GetCompanionRequestsForSalesEventAsync(group.Key, ct);
             foreach (var ticket in group.OrderBy(t => t.IssuedAt))
             {
                 var offer = queue.FirstOrDefault(o => o.TicketId == ticket.Id);
@@ -67,6 +68,8 @@ internal sealed partial class TicketCheckoutService
                     DirectedActive: offer?.HasLiveInvite == true)
                 {
                     CanInvite = salesEvent?.EffectiveSwitches.Resale == ResaleScheme.QueueAndDirected,
+                    CompanionRequest = companionRequests.Where(r => r.TicketId == ticket.Id).MaxBy(r => r.RequestedAt),
+                    CanAskCompanion = CanAskCompanion(ticket, salesEvent, eventTickets, companionRequests),
                 });
                 // A child ticket has no account of its own: it shows under the adult who holds it.
                 foreach (var child in eventTickets.Where(t => t.ParentTicketId == ticket.Id && t.State == TicketCheckoutTicketState.Valid))
@@ -270,7 +273,7 @@ internal sealed partial class TicketCheckoutService
         if ((await repository.GetTicketsForOrderAsync(order.Id, ct)).Count == 0
             && order.Lines.Any(l => l.Kind == CheckoutLineKind.Ticket))
         {
-            await ResolvePartnersAsync(order, ct);
+            await FlagDoubleHoldersAsync(order, ct);
             var now = clock.GetCurrentInstant();
             var ids = order.Lines.Select(_ => Guid.NewGuid()).ToList();
             var tickets = order.Lines
@@ -299,6 +302,8 @@ internal sealed partial class TicketCheckoutService
                 .ToList();
             if (!await repository.AddTicketsAsync(tickets, ct))
                 return;
+            foreach (var holder in tickets.Select(t => t.HolderUserId).OfType<Guid>().Distinct())
+                holdings.InvalidateHoldings(holder);
             issuedNow = true;
             await TimelineAsync(order.Id, TicketCheckoutOrderEventKind.TicketsIssued,
                 $"{tickets.Count} ticket(s) issued: {string.Join(", ", tickets.Select(t => t.Barcode))}", null, ct);
@@ -326,41 +331,19 @@ internal sealed partial class TicketCheckoutService
         }
     }
 
-    /// <summary>Finds or makes each partner's account now the order is paid (see <see cref="ResolveAccountAsync"/>).</summary>
-    private async Task ResolvePartnersAsync(TicketCheckoutOrder order, CancellationToken ct)
+    /// <summary>
+    /// Holding a ticket is checked before payment, but a lapsed checkout can still pay late after the person bought
+    /// one of their own: the team then refunds one of the two.
+    /// </summary>
+    private async Task FlagDoubleHoldersAsync(TicketCheckoutOrder order, CancellationToken ct)
     {
-        var changed = false;
-        foreach (var line in order.Lines.Where(l =>
-                     l is { Kind: CheckoutLineKind.Ticket, AttendeeUserId: null, AttendeeEmail: not null } && l.HolderKind != TicketHolderKind.Child))
-        {
-            Guid? holder = null;
-            string? problem = null;
-            try
-            {
-                (holder, problem) = await ResolveAccountAsync(line.AttendeeEmail!, ct);
-            }
-            catch (Exception ex) when (ex is not OperationCanceledException)
-            {
-                logger.LogError(ex, "Partner account for order {OrderId} could not be resolved", order.Id);
-                problem = "finding or creating the account failed";
-            }
-
-            if (holder is { } holderId)
-            {
-                line.AttendeeUserId = holderId;
-                changed = true;
-                if (await HoldsTicketAsync(order.SalesEventId, holderId, clock.GetCurrentInstant(), ct))
-                    await NeedsAttentionAsync(order.Id,
-                        "The partner already held a ticket for this event; the ticketing team should refund one", ct);
-            }
-            else
-            {
+        var now = clock.GetCurrentInstant();
+        foreach (var (line, index) in order.Lines.Select((l, i) => (l, i + 1))
+                     .Where(x => x.l is { Kind: CheckoutLineKind.Ticket, AttendeeUserId: not null } && x.l.HolderKind != TicketHolderKind.Child)
+                     .DistinctBy(x => x.l.AttendeeUserId))
+            if (await HoldsTicketAsync(order.SalesEventId, line.AttendeeUserId!.Value, now, ct))
                 await NeedsAttentionAsync(order.Id,
-                    $"Partner ticket issued without an account because {problem}; the ticketing team must attach it", ct);
-            }
-        }
-        if (changed)
-            await repository.UpdateOrderAsync(order, ct);
+                    $"The holder of line {index} already held a ticket for this event; the ticketing team should refund one", ct);
     }
 
     /// <summary>
