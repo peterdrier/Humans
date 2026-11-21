@@ -16,11 +16,11 @@
     Members buy at <a asp-controller="TicketBuy" asp-action="Index">/Tickets/Buy</a> for the active event.
 </p>
 
-<h2 class="h5">Backends</h2>
+<h2 class="h5">Backends <a class="small" asp-action="Backends">settings and connection test</a></h2>
 <ul>
     @foreach (var b in Model.Backends)
     {
-        <li><code>@b.Key</code>: @(b.IsConfigured ? "configured" : "not configured (credentials unset)")</li>
+        <li>@b.Setup.DisplayName (<code>@b.Key</code>, @b.Setup.Hosting): @(b.IsConfigured ? "configured" : "not configured (credentials unset)")</li>
     }
     @if (Model.Backends.Count == 0)
     {

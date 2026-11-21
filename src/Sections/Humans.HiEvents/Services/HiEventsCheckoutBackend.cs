@@ -209,6 +209,111 @@ internal sealed class HiEventsCheckoutBackend : ITicketCheckoutBackend
         await ReadOrderAsync(response, ct);
     }
 
+    public CheckoutBackendSetup Setup => new(
+        "Hi.Events",
+        Hosting(),
+        _settings.ApiBaseUri is null ? null : new Uri(_settings.ResolvedAppUrl + "/manage/events"),
+        [
+            new("HiEvents:ApiUrl", "API root of our Hi.Events fork, ending in /api", IsSecret: false,
+                !string.IsNullOrWhiteSpace(_settings.ApiUrl), string.IsNullOrWhiteSpace(_settings.ApiUrl) ? null : _settings.ApiUrl),
+            new("HiEvents:AppUrl", "Web app root for order links; optional, defaults to ApiUrl without /api", IsSecret: false,
+                !string.IsNullOrWhiteSpace(_settings.AppUrl), string.IsNullOrWhiteSpace(_settings.AppUrl) ? null : _settings.AppUrl),
+            new("HIEVENTS_API_KEY", "API key of a user who can edit the event, see financials and refund", IsSecret: true,
+                !string.IsNullOrEmpty(_settings.ApiKey), null),
+            new("HIEVENTS_WEBHOOK_SECRET", "Signing secret of the webhook below", IsSecret: true,
+                !string.IsNullOrEmpty(_settings.WebhookSecret), null),
+        ],
+        "/HiEvents/Webhook",
+        [
+            "Needs the Humans fork (peterdrier/Hi.Events): stock Hi.Events and Hi.Events Cloud have no checkout endpoint that takes Humans' prices.",
+            "Each event needs exactly one TICKET and one GENERAL product, both hidden, without taxes or fees, offline payment off, and the event live. The sales setup's event id is the numeric Hi.Events event id.",
+            "The webhook goes on the order events.",
+        ]);
+
+    private string Hosting()
+    {
+        if (_settings.ApiBaseUri is not { } api)
+            return "Not set";
+        return api.Host.Equals("hi.events", StringComparison.OrdinalIgnoreCase)
+            || api.Host.EndsWith(".hi.events", StringComparison.OrdinalIgnoreCase)
+            ? "Hi.Events Cloud (not supported: it lacks the fork's checkout endpoint)"
+            : $"Self-hosted at {api.Host}";
+    }
+
+    public async Task<IReadOnlyList<CheckoutBackendFinding>> CheckAsync(string? backendEventRef, CancellationToken ct = default)
+    {
+        if (!IsConfigured)
+            return [new(false, "HiEvents:ApiUrl (an absolute http(s) address) and HIEVENTS_API_KEY must both be set.")];
+
+        var findings = new List<CheckoutBackendFinding>
+        {
+            string.IsNullOrEmpty(_settings.WebhookSecret)
+                ? new(false, "HIEVENTS_WEBHOOK_SECRET is unset: the webhook answers 503 and outcomes arrive only from Tickets' poll.")
+                : new(true, "Webhook signing secret is set."),
+        };
+        try
+        {
+            using (var me = await _http.GetAsync("users/me", ct))
+            {
+                findings.Add(me.IsSuccessStatusCode
+                    ? new(true, "The API key is accepted.")
+                    : new(false, $"Hi.Events answered {(int)me.StatusCode} to the API key."));
+            }
+
+            if (string.IsNullOrWhiteSpace(backendEventRef) || !findings[^1].Ok)
+                return findings;
+            if (!int.TryParse(backendEventRef, NumberStyles.None, CultureInfo.InvariantCulture, out var eventId))
+            {
+                findings.Add(new(false, $"The event id must be the numeric Hi.Events event id, not '{backendEventRef}'."));
+                return findings;
+            }
+
+            using (var ev = await _http.GetAsync($"events/{eventId}", ct))
+            {
+                if (!ev.IsSuccessStatusCode)
+                {
+                    findings.Add(new(false, $"Hi.Events answered {(int)ev.StatusCode} for event {eventId}."));
+                    return findings;
+                }
+
+                var status = (await ev.Content.ReadFromJsonAsync<EventEnvelope>(JsonOptions, ct))?.Data?.Status;
+                findings.Add(string.Equals(status, "LIVE", StringComparison.Ordinal)
+                    ? new(true, "The event is live.")
+                    : new(false, $"The event is {status ?? "in an unknown state"}; the pay page needs it live."));
+            }
+
+            var products = await GetProductsAsync(eventId, ct);
+            foreach (var type in new[] { "TICKET", "GENERAL" })
+            {
+                var carriers = products.Where(p => string.Equals(p.ProductType, type, StringComparison.Ordinal)).ToList();
+                findings.Add(carriers.Count == 1
+                    ? new(true, $"One {type} carrier product found.")
+                    : new(false, $"The event has {carriers.Count} {type} products; it needs exactly one."));
+            }
+
+            var visible = products.Where(p => p.ProductType is "TICKET" or "GENERAL" && p.IsHidden != true).Select(p => p.Id).ToList();
+            if (visible.Count > 0)
+                findings.Add(new(false, $"Products {string.Join(", ", visible)} are visible and would sell on the event's public page; hide them."));
+
+            // Fails validation before anything is made; tells the fork apart from stock Hi.Events.
+            using var probe = await _http.PostAsJsonAsync($"events/{eventId}/orders/checkout", new { }, JsonOptions, ct);
+            findings.Add(probe.StatusCode switch
+            {
+                HttpStatusCode.UnprocessableEntity => new(true, "The fork's checkout endpoint answers."),
+                HttpStatusCode.Forbidden => new(false, "The API key's user cannot edit this event."),
+                HttpStatusCode.NotFound or HttpStatusCode.MethodNotAllowed =>
+                    new(false, "This instance has no checkout endpoint: it is not the Humans fork."),
+                _ => new(false, $"The checkout endpoint answered {(int)probe.StatusCode}."),
+            });
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException)
+        {
+            findings.Add(new(false, $"Hi.Events could not be read: {ex.Message}"));
+        }
+
+        return findings;
+    }
+
     private CheckoutState ToState(HiEventsOrder order) => order.Status switch
     {
         "COMPLETED" when string.Equals(order.PaymentStatus, "PAYMENT_RECEIVED", StringComparison.Ordinal) => CheckoutState.Paid,
@@ -341,6 +446,10 @@ internal sealed class HiEventsCheckoutBackend : ITicketCheckoutBackend
     private sealed record RefundBody(decimal Amount, bool NotifyBuyer, bool CancelOrder, string IdempotencyKey);
 
     private sealed record Envelope(HiEventsOrder? Data);
+
+    private sealed record EventEnvelope(EventStatus? Data);
+
+    private sealed record EventStatus(string? Status);
 
     private sealed record ProductPage(List<HiEventsProduct>? Data);
 

@@ -34,14 +34,14 @@
             <select class="form-select" id="BackendKey" name="BackendKey">
                 @foreach (var b in Model.Backends)
                 {
-                    <option value="@b.Key" selected="@(b.Key == f.BackendKey)">@b.Key@(b.IsConfigured ? "" : " (not configured)")</option>
+                    <option value="@b.Key" selected="@(b.Key == f.BackendKey)">@b.Setup.DisplayName@(b.IsConfigured ? "" : " (not configured)")</option>
                 }
             </select>
         </div>
         <div class="col-md-3">
             <label class="form-label" for="BackendEventRef">Event id in the backend</label>
             <input class="form-control" id="BackendEventRef" name="BackendEventRef" value="@f.BackendEventRef" />
-            <div class="form-text">The pretix event slug or Hi.Events event id; blank for Box Office.</div>
+            <div class="form-text">The pretix event slug or Hi.Events event id; blank for Box Office. <a asp-action="Backends">Test it</a>.</div>
         </div>
         <div class="col-md-3">
             <label class="form-label" for="Mode">Mode</label>

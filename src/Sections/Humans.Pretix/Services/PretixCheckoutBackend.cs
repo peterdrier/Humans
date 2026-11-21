@@ -252,6 +252,96 @@ internal sealed class PretixCheckoutBackend(
         }
     }
 
+    public CheckoutBackendSetup Setup => new(
+        "pretix",
+        Hosting(),
+        Uri.TryCreate(Settings.BaseUrl, UriKind.Absolute, out var root) && !string.IsNullOrWhiteSpace(Settings.Organizer)
+            ? new Uri(root, $"control/organizer/{Uri.EscapeDataString(Settings.Organizer)}/")
+            : null,
+        [
+            new("Pretix:BaseUrl", "Instance root: our own instance, or https://pretix.eu/ for pretix Hosted", IsSecret: false,
+                !string.IsNullOrWhiteSpace(Settings.BaseUrl), NullIfBlank(Settings.BaseUrl)),
+            new("Pretix:Organizer", "Organizer slug", IsSecret: false, !string.IsNullOrWhiteSpace(Settings.Organizer),
+                NullIfBlank(Settings.Organizer)),
+            new("PRETIX_API_TOKEN", "Team API token with order read and write on the events Humans sells", IsSecret: true,
+                !string.IsNullOrWhiteSpace(Settings.ApiToken), null),
+            new("PRETIX_WEBHOOK_SECRET", "The secret in the webhook URL below", IsSecret: true,
+                !string.IsNullOrWhiteSpace(Settings.WebhookSecret), null),
+        ],
+        "/Pretix/Webhook?secret=<PRETIX_WEBHOOK_SECRET>",
+        [
+            $"Each event needs two active free-price items with internal names {TicketItemName} and {DonationItemName}, the returnurl plugin, Stripe with card, iDEAL and Klarna and no method fees, and buyer mails off. deploy/pretix/bootstrap.py sets this up.",
+            "The webhook goes on the order actions; the sales setup's event id is the pretix event slug.",
+        ]);
+
+    private string Hosting()
+    {
+        if (!Uri.TryCreate(Settings.BaseUrl, UriKind.Absolute, out var root))
+            return "Not set";
+        return root.Host.Equals("pretix.eu", StringComparison.OrdinalIgnoreCase)
+            || root.Host.EndsWith(".pretix.eu", StringComparison.OrdinalIgnoreCase)
+            ? "pretix Hosted (pretix.eu)"
+            : $"Self-hosted at {root.Host}";
+    }
+
+    private static string? NullIfBlank(string value) => string.IsNullOrWhiteSpace(value) ? null : value;
+
+    public async Task<IReadOnlyList<CheckoutBackendFinding>> CheckAsync(string? backendEventRef, CancellationToken ct = default)
+    {
+        if (!IsConfigured)
+            return [new(false, "Pretix:BaseUrl, Pretix:Organizer and PRETIX_API_TOKEN must all be set.")];
+
+        var findings = new List<CheckoutBackendFinding>
+        {
+            string.IsNullOrWhiteSpace(Settings.WebhookSecret)
+                ? new(false, "PRETIX_WEBHOOK_SECRET is unset: the webhook answers 503 and outcomes arrive only from Tickets' poll.")
+                : new(true, "Webhook secret is set."),
+        };
+        try
+        {
+            var events = await SendRawAsync(HttpMethod.Get,
+                $"api/v1/organizers/{Uri.EscapeDataString(Settings.Organizer)}/events/?page_size=1", body: null, ct);
+            findings.Add((int)events.Status is >= 200 and <= 299
+                ? new(true, $"The token reads organizer {Settings.Organizer}.")
+                : new(false, $"pretix answered {(int)events.Status} for organizer {Settings.Organizer}: check the token and slug."));
+            if (string.IsNullOrWhiteSpace(backendEventRef) || !findings[^1].Ok)
+                return findings;
+
+            var ev = await SendRawAsync(HttpMethod.Get, EventPath(backendEventRef), body: null, ct);
+            if ((int)ev.Status is < 200 or > 299)
+            {
+                findings.Add(new(false, $"pretix answered {(int)ev.Status} for event {backendEventRef}."));
+                return findings;
+            }
+
+            var details = Deserialize<PretixEventCheck>(ev.Body);
+            findings.Add(string.Equals(details.Currency, "EUR", StringComparison.OrdinalIgnoreCase)
+                ? new(true, "The event sells in EUR.")
+                : new(false, $"The event sells in {details.Currency}, Humans sells in EUR."));
+            findings.Add(details.Live
+                ? new(true, "The shop is live.")
+                : new(false, "The shop is offline, so buyers cannot reach the pay page."));
+            if (details.Testmode)
+                findings.Add(new(true, "The event is in test mode: payments are not real."));
+
+            var items = Deserialize<PretixPage<PretixItem>>(
+                (await SendRawAsync(HttpMethod.Get, $"{EventPath(backendEventRef)}items/?active=true", body: null, ct)).Body);
+            foreach (var name in new[] { TicketItemName, DonationItemName })
+            {
+                var count = items.Results.Count(i => string.Equals(i.InternalName, name, StringComparison.Ordinal));
+                findings.Add(count == 1
+                    ? new(true, $"Carrier item {name} found.")
+                    : new(false, $"The event has {count} active items with internal name {name}; it needs exactly one."));
+            }
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException)
+        {
+            findings.Add(new(false, $"pretix could not be read: {ex.Message}"));
+        }
+
+        return findings;
+    }
+
     internal static string OrderCode(Guid orderId)
     {
         // Hashed, not the Guid's own bytes: a version 7 Guid starts with a timestamp, which would make the codes of
@@ -553,6 +643,8 @@ internal sealed class PretixCheckoutBackend(
     private sealed record RawResponse(HttpStatusCode Status, string Body);
 
     internal sealed record PretixEvent(string Currency);
+
+    private sealed record PretixEventCheck(string Currency, bool Live, bool Testmode);
 
     internal sealed record PretixPage<T>(IReadOnlyList<T> Results);
 

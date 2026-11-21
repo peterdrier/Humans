@@ -116,6 +116,16 @@ public sealed class TicketCheckoutServiceTests
             new Uri("https://humans.example/Tickets/Buy/Order/"), "es-ES");
 
     [HumansFact]
+    public async Task Backend_check_passes_the_trimmed_event_id_and_refuses_an_unknown_key()
+    {
+        IReadOnlyList<CheckoutBackendFinding> ok = [new(true, "fine")];
+        _backend.CheckAsync("slug", Arg.Any<CancellationToken>()).Returns(ok);
+
+        (await _service.CheckBackendAsync("test", " slug ", TestContext.Current.CancellationToken)).Should().BeSameAs(ok);
+        (await _service.CheckBackendAsync("nope", "slug", TestContext.Current.CancellationToken)).Should().BeNull();
+    }
+
+    [HumansFact]
     public void Price_is_the_wave_on_the_pricing_date_then_the_last_wave()
     {
         TicketPrice.For(_salesEvent, new LocalDate(2027, 1, 31), []).Should().NotBeNull()

@@ -77,6 +77,7 @@ None — the section owns no tables.
 - A malformed `HiEvents:ApiUrl` only makes this backend unconfigured; it never throws while Tickets resolves backends.
 - Buyer names go in 50 characters of first name and 50 of last name, split at a space; attendee lines carry the full
   legal name (Hi.Events allows 255 on this endpoint).
+- `Setup` shows the URLs and only set or missing for the key and secret; an API host on `hi.events` reads as Hi.Events Cloud, unsupported because it lacks the fork's checkout endpoint. `CheckAsync` reads `users/me`, the event's status and products, then posts an empty body to the checkout endpoint: the fork answers 422 before creating anything, stock Hi.Events 404 or 405.
 
 ## Personal data and erasure
 

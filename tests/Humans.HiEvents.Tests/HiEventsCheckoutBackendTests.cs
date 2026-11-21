@@ -361,6 +361,60 @@ public class HiEventsCheckoutBackendTests
         last.Should().HaveLength(50);
     }
 
+    [HumansFact]
+    public async Task Check_ReadyEventOnTheFork_PassesWithoutWritingAnything()
+    {
+        _handler.Enqueue(HttpStatusCode.OK, new { id = 1 });
+        _handler.Enqueue(HttpStatusCode.OK, new { data = new { id = 7, status = "LIVE" } });
+        _handler.Enqueue(HttpStatusCode.OK, Products());
+        _handler.Enqueue(HttpStatusCode.UnprocessableEntity, new { message = "items required" });
+
+        var findings = await Backend().CheckAsync("7", Ct);
+
+        findings.Where(f => !f.Ok).Select(f => f.Text).Should().ContainSingle()
+            .Which.Should().Contain("HIEVENTS_WEBHOOK_SECRET");
+        _handler.Requests.Select(r => $"{r.Request.Method} {r.Request.RequestUri!.AbsolutePath}").Should().Equal(
+            "GET /api/users/me", "GET /api/events/7", "GET /api/events/7/products",
+            "POST /api/events/7/orders/checkout");
+        _handler.Requests[^1].Body.Should().Be("{}");
+    }
+
+    [HumansFact]
+    public async Task Check_StockHiEvents_SaysItIsNotTheFork()
+    {
+        _handler.Enqueue(HttpStatusCode.OK, new { id = 1 });
+        _handler.Enqueue(HttpStatusCode.OK, new { data = new { id = 7, status = "DRAFT" } });
+        _handler.Enqueue(HttpStatusCode.OK, Products(("TICKET", 100), ("TICKET", 101)));
+        _handler.Enqueue(HttpStatusCode.NotFound, new { message = "not found" });
+
+        var findings = await Backend().CheckAsync("7", Ct);
+
+        findings.Where(f => !f.Ok).Select(f => f.Text).Should().Contain(t => t.Contains("not the Humans fork"))
+            .And.Contain(t => t.Contains("DRAFT"))
+            .And.Contain(t => t.Contains("2 TICKET products"))
+            .And.Contain(t => t.Contains("0 GENERAL products"));
+    }
+
+    [HumansFact]
+    public async Task Check_Unconfigured_CallsNothing()
+    {
+        var findings = await Backend(apiKey: "").CheckAsync("7", Ct);
+
+        findings.Should().ContainSingle().Which.Ok.Should().BeFalse();
+        _handler.Requests.Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public void Setup_NamesCloudUnsupportedAndNeverShowsSecrets()
+    {
+        var setup = Backend(apiUrl: "https://api.hi.events/api").Setup;
+
+        setup.Hosting.Should().Contain("not supported");
+        setup.Settings.Where(x => x.IsSecret).Should().OnlyContain(x => x.Value == null);
+        setup.Settings.Single(x => string.Equals(x.Name, "HIEVENTS_API_KEY", StringComparison.Ordinal)).IsSet.Should().BeTrue();
+        setup.WebhookPath.Should().Be("/HiEvents/Webhook");
+    }
+
     private HiEventsCheckoutBackend Backend(string apiKey = "key", string apiUrl = "https://tickets.example/api") => new(
         new HttpClient(_handler),
         Options.Create(new HiEventsSettings

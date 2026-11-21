@@ -35,6 +35,7 @@ and reads it back. Spec: `src/Sections/Humans.Tickets/Docs/features/checkout.md`
 - The webhook (`POST /BoxOffice/StripeWebhook`, anonymous, Stripe-signature verified, 503 while unset) only names
   sessions to `ITicketCheckoutEvents`: `checkout.session.*` events by their session, `charge.refunded` by the sessions
   of the refunded PaymentIntent. An invalid signature answers 400, so a wrong secret shows as failed deliveries in Stripe. `refund.*` events are mapped like `charge.refunded`.
+- `Setup` shows both variables only as set or missing, and test or live mode from the key prefix. `CheckAsync` lists one Checkout Session and reports a missing webhook secret; it cannot test the refund permission without refunding.
 
 ## Settings
 

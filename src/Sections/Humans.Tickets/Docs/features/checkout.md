@@ -9,7 +9,9 @@ the named ticket; whatever sits behind Humans only takes the payment and refunds
 amounts and VAT, buyer prefilled, expiry, return URL; returns the backend order id and payment URL), `GetStatusAsync`
 (state, fee, method, paid at, refunded total), `RefundAsync` (exact amount, `RefundId` idempotent; may answer
 `ManualRequired` with a dashboard link), `CancelAsync`, `ErasePersonalDataAsync` (GDPR: one person's name and email off
-one order). Adapters call `ITicketCheckoutEvents.CheckoutChangedAsync` from
+one order), `Setup` (display name, hosting, its server settings with secrets only as set or missing, webhook path,
+setup notes) and `CheckAsync` (read-only connection test, optionally for one backend event; never throws, answers
+findings). Adapters call `ITicketCheckoutEvents.CheckoutChangedAsync` from
 their webhook; Tickets then re-reads the status. Each backend is its own section: `Humans.BoxOffice` (`boxoffice`,
 Stripe hosted Checkout), `Humans.Pretix`, `Humans.HiEvents`.
 

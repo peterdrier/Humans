@@ -48,6 +48,7 @@ None. The section owns no tables. pretix's order is the record of the payment; T
 - The webhook is a nudge only: a constant-time match of the URL secret against `PRETIX_WEBHOOK_SECRET`, 503 while unset, 404 on a mismatch, 200 and nothing for another organizer. Tickets re-reads the order from pretix, so a forged call costs one read.
 - Several Humans events can sell at once, each on its own pretix event; nothing in the settings is per event.
 - The backend is live in every environment once configured (`BaseUrl`, `Organizer`, `PRETIX_API_TOKEN`); unconfigured, `IsConfigured` is false and every call throws `TicketCheckoutException`.
+- `Setup` shows `BaseUrl` and `Organizer` and only set or missing for the token and secret; a `BaseUrl` on `pretix.eu` reads as pretix Hosted, which the adapter serves unchanged. `CheckAsync` only reads: the organizer, then for an event slug its currency, live and test mode, and exactly one active item per carrier name.
 
 ## Negative Access Rules
 
