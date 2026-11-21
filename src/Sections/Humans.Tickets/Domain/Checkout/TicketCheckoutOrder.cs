@@ -209,4 +209,6 @@ internal enum TicketCheckoutOrderEventKind
     CompanionRequestDecided = 24,
     EventCancelled = 25,
     Restored = 26,
+    /// <summary>Sales closed with the ticket still offered; its holder was told.</summary>
+    ResaleUnsold = 40,
 }

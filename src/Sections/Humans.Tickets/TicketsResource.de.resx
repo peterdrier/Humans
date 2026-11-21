@@ -306,16 +306,16 @@
     <value>Eingeladen: {0}</value>
   </data>
   <data name="Tickets_Resale_CancelInvite" xml:space="preserve">
-    <value>Einladung zurückziehen</value>
+    <value>Einladungen zurückziehen</value>
   </data>
   <data name="Tickets_Resale_InviteEmail" xml:space="preserve">
-    <value>Ihre E-Mail</value>
+    <value>Ihre E-Mail (mehrere mit Kommas trennen)</value>
   </data>
   <data name="Tickets_Resale_Invite" xml:space="preserve">
     <value>Käufer einladen</value>
   </data>
   <data name="Tickets_Resale_InviteHelp" xml:space="preserve">
-    <value>Kennst du jemanden, der dein Ticket möchte? Lade die Person ein: Sie bekommt einen Link, um es vor der Schlange zu kaufen, zum aktuellen Preis und auf ihren Namen. Du bekommst zurück, was du bezahlt hast. Zwischen euch fließt kein Geld. Bis die Person kauft, bleibt dein Ticket in der Schlange und kann vorher an jemand anderen gehen.</value>
+    <value>Kennst du jemanden, der dein Ticket möchte? Lade die Person ein, oder mehrere: Alle bekommen einen Link, um es vor der Warteschlange zu kaufen, zum aktuellen Preis und auf den eigenen Namen. Wer zuerst kauft, bekommt es; alle Späteren bekommen das nächste zurückgegebene Ticket angeboten. Du bekommst erstattet, was du bezahlt hast. Zwischen euch fließt kein Geld. Bis jemand kauft, bleibt dein Ticket in der Warteschlange und kann vorher an jemand anderen gehen.</value>
   </data>
   <data name="Tickets_Resale_OfferHelp" xml:space="preserve">
     <value>Du kannst nicht kommen? Gib dein Ticket in die Weiterverkaufsschlange. Wenn es jemand kauft, bekommst du den Ticketpreis zurück (keine Spenden oder Gebühren).</value>
@@ -330,7 +330,7 @@
     <value>Ein Ticket für {0} wartet auf dich</value>
   </data>
   <data name="Tickets_Resale_Email_Invite_Body" xml:space="preserve">
-    <value>&lt;p&gt;Hallo,&lt;/p&gt;&lt;p&gt;{0} kann nicht zu &lt;strong&gt;{1}&lt;/strong&gt; kommen und hat dich eingeladen, das zurückgegebene Ticket vor der Weiterverkaufsschlange zu kaufen.&lt;/p&gt;&lt;p&gt;Du zahlst den aktuellen Ticketpreis an den Verein und bekommst ein neues Ticket auf deinen Namen: Der Name muss am Einlass mit deinem Ausweis übereinstimmen. Melde dich mit dieser E-Mail-Adresse bei Humans an oder lege ein Konto an und nutze dann diesen Link:&lt;/p&gt;&lt;p&gt;&lt;a href="{2}"&gt;{2}&lt;/a&gt;&lt;/p&gt;&lt;p&gt;Der Link funktioniert, solange das Ticket noch zu haben ist, also warte nicht zu lange.&lt;/p&gt;</value>
+    <value>&lt;p&gt;Hallo,&lt;/p&gt;&lt;p&gt;{0} kann nicht zu &lt;strong&gt;{1}&lt;/strong&gt; kommen und hat dich eingeladen, das zurückgegebene Ticket vor der Weiterverkaufsschlange zu kaufen.&lt;/p&gt;&lt;p&gt;Du zahlst den aktuellen Ticketpreis an den Verein und bekommst ein neues Ticket auf deinen Namen: Der Name muss am Einlass mit deinem Ausweis übereinstimmen. Melde dich mit dieser E-Mail-Adresse bei Humans an oder lege ein Konto an und nutze dann diesen Link:&lt;/p&gt;&lt;p&gt;&lt;a href="{2}"&gt;{2}&lt;/a&gt;&lt;/p&gt;&lt;p&gt;Der Link funktioniert, solange das Ticket noch im Verkauf ist. Kauft es jemand anderes zuerst, bietet dir der Link stattdessen das nächste zurückgegebene Ticket an.&lt;/p&gt;</value>
   </data>
   <data name="Tickets_Public_PriceToday" xml:space="preserve">
     <value>{0} heute</value>
@@ -352,9 +352,6 @@
   </data>
   <data name="Tickets_Public_PriceNote" xml:space="preserve">
     <value>Das ist der öffentliche Preis. Nach der Anmeldung siehst du deinen eigenen Preis, der mit einer Ticketförderung niedriger sein kann.</value>
-  </data>
-  <data name="Tickets_Resale_InviteLive" xml:space="preserve">
-    <value>Für dieses Ticket ist noch eine Einladung offen. Brich sie ab, bevor du jemand anderen einlädst.</value>
   </data>
   <data name="Tickets_Resale_InviteLimit" xml:space="preserve">
     <value>Für dieses Ticket wurden schon so viele Einladungen verschickt wie erlaubt. Es bleibt in der Schlange für alle.</value>
@@ -565,6 +562,51 @@
   </data>
   <data name="Tickets_Companion_Holds" xml:space="preserve">
     <value>Deine Begleitperson hat schon ein Ticket für diese Veranstaltung und braucht kein Begleitticket.</value>
+  </data>
+  <data name="Tickets_Email_PaymentFailed_Subject" xml:space="preserve">
+    <value>Deine Zahlung für {0} ist nicht durchgegangen</value>
+  </data>
+  <data name="Tickets_Email_PaymentFailed_Intro" xml:space="preserve">
+    <value>Hallo {0}, die Zahlung für deine Bestellung {1} für {2} wurde abgelehnt, daher wurden keine Tickets ausgestellt.</value>
+  </data>
+  <data name="Tickets_Email_PaymentLapsed_Subject" xml:space="preserve">
+    <value>Deine Bestellung für {0} wurde nicht abgeschlossen</value>
+  </data>
+  <data name="Tickets_Email_PaymentLapsed_Intro" xml:space="preserve">
+    <value>Hallo {0}, deine Bestellung {1} für {2} wurde nicht rechtzeitig bezahlt. Sie ist verfallen und die Tickets sind wieder im Verkauf.</value>
+  </data>
+  <data name="Tickets_Email_PaymentEnded_Late" xml:space="preserve">
+    <value>Falls die Zahlung später doch noch durchgeht, stellen wir deine Tickets aus und schicken sie dir per E-Mail.</value>
+  </data>
+  <data name="Tickets_Email_PaymentEnded_Retry" xml:space="preserve">
+    <value>Erneut versuchen</value>
+  </data>
+  <data name="Tickets_Email_ResaleSold_Subject" xml:space="preserve">
+    <value>Dein zurückgegebenes Ticket für {0} wurde verkauft</value>
+  </data>
+  <data name="Tickets_Email_ResaleSold_Intro" xml:space="preserve">
+    <value>Hallo {0}, jemand anderes hat dein zurückgegebenes Ticket für {1} gekauft. Es gewährt dir keinen Einlass mehr.</value>
+  </data>
+  <data name="Tickets_Email_ResaleSold_Refund" xml:space="preserve">
+    <value>Wir erstatten dir {0} in unserem abendlichen Erstattungslauf, sobald die Zahlung der neuen Käuferin oder des neuen Käufers sicher ist. Deine Bank braucht danach meist ein paar Werktage.</value>
+  </data>
+  <data name="Tickets_Email_ResaleUnsold_Subject" xml:space="preserve">
+    <value>Dein zurückgegebenes Ticket für {0} wurde nicht verkauft</value>
+  </data>
+  <data name="Tickets_Email_ResaleUnsold_Intro" xml:space="preserve">
+    <value>Hallo {0}, der Verkauf für {1} ist beendet, und niemand hat dein zurückgegebenes Ticket gekauft.</value>
+  </data>
+  <data name="Tickets_Email_ResaleUnsold_NoRefund" xml:space="preserve">
+    <value>Es gibt keine Erstattung. Dein Ticket ist weiterhin gültig, du kannst also gerne kommen.</value>
+  </data>
+  <data name="Tickets_Email_Resale_Open" xml:space="preserve">
+    <value>Deine Tickets ansehen</value>
+  </data>
+  <data name="Tickets_Resale_InviteTaken" xml:space="preserve">
+    <value>Das Ticket, zu dessen Kauf du eingeladen wurdest, hat jemand anderes bekommen. Du kannst stattdessen das nächste zurückgegebene Ticket kaufen.</value>
+  </data>
+  <data name="Tickets_Resale_InviteAlready" xml:space="preserve">
+    <value>Alle, die du eingegeben hast, sind für dieses Ticket schon eingeladen.</value>
   </data>
   <data name="Tickets_Cancel_Email_Subject" xml:space="preserve">
     <value>{0} ist abgesagt</value>

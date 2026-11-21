@@ -306,16 +306,16 @@
     <value>Uitgenodigd: {0}</value>
   </data>
   <data name="Tickets_Resale_CancelInvite" xml:space="preserve">
-    <value>Uitnodiging intrekken</value>
+    <value>Uitnodigingen intrekken</value>
   </data>
   <data name="Tickets_Resale_InviteEmail" xml:space="preserve">
-    <value>Hun e-mail</value>
+    <value>Hun e-mail (scheid meerdere met komma's)</value>
   </data>
   <data name="Tickets_Resale_Invite" xml:space="preserve">
     <value>Koper uitnodigen</value>
   </data>
   <data name="Tickets_Resale_InviteHelp" xml:space="preserve">
-    <value>Ken je iemand die je ticket wil? Nodig diegene uit: die krijgt een link om het vóór de wachtrij te kopen, tegen de huidige prijs en op eigen naam. Jij krijgt terug wat je betaalde. Er gaat geen geld tussen jullie. Tot diegene koopt, blijft je ticket in de wachtrij en kan het eerst aan iemand anders verkocht worden.</value>
+    <value>Ken je iemand die je ticket wil? Nodig die persoon uit, of meerdere mensen: iedereen krijgt een link om het vóór de wachtrij te kopen, tegen de huidige prijs en op eigen naam. Wie het eerst koopt, krijgt het; wie later komt, krijgt het volgende teruggegeven ticket aangeboden. Je krijgt terug wat je betaald hebt. Tussen jullie gaat geen geld om. Tot iemand het koopt, blijft je ticket in de wachtrij en kan het eerder aan iemand anders worden verkocht.</value>
   </data>
   <data name="Tickets_Resale_OfferHelp" xml:space="preserve">
     <value>Kun je niet komen? Geef je ticket terug aan de doorverkoopwachtrij. Als iemand het koopt, krijg je terug wat je voor het ticket betaalde (geen donaties of kosten).</value>
@@ -330,7 +330,7 @@
     <value>Er wacht een ticket voor {0} op je</value>
   </data>
   <data name="Tickets_Resale_Email_Invite_Body" xml:space="preserve">
-    <value>&lt;p&gt;Hoi,&lt;/p&gt;&lt;p&gt;{0} kan niet naar &lt;strong&gt;{1}&lt;/strong&gt; komen en heeft je uitgenodigd om het teruggegeven ticket vóór de doorverkoopwachtrij te kopen.&lt;/p&gt;&lt;p&gt;Je betaalt de huidige ticketprijs aan de vereniging en krijgt een nieuw ticket op je eigen naam: de naam moet bij de ingang overeenkomen met je identiteitsbewijs. Log in of maak je Humans-account aan met dit e-mailadres en gebruik dan deze link:&lt;/p&gt;&lt;p&gt;&lt;a href="{2}"&gt;{2}&lt;/a&gt;&lt;/p&gt;&lt;p&gt;De link werkt zolang het ticket nog te koop is, dus wacht niet te lang.&lt;/p&gt;</value>
+    <value>&lt;p&gt;Hoi,&lt;/p&gt;&lt;p&gt;{0} kan niet naar &lt;strong&gt;{1}&lt;/strong&gt; komen en heeft je uitgenodigd om het teruggegeven ticket vóór de doorverkoopwachtrij te kopen.&lt;/p&gt;&lt;p&gt;Je betaalt de huidige ticketprijs aan de vereniging en krijgt een nieuw ticket op je eigen naam: de naam moet bij de ingang overeenkomen met je identiteitsbewijs. Log in of maak je Humans-account aan met dit e-mailadres en gebruik dan deze link:&lt;/p&gt;&lt;p&gt;&lt;a href="{2}"&gt;{2}&lt;/a&gt;&lt;/p&gt;&lt;p&gt;De link werkt zolang het ticket te koop is. Koopt iemand anders het eerst, dan biedt de link je het volgende teruggegeven ticket aan.&lt;/p&gt;</value>
   </data>
   <data name="Tickets_Public_PriceToday" xml:space="preserve">
     <value>{0} vandaag</value>
@@ -352,9 +352,6 @@
   </data>
   <data name="Tickets_Public_PriceNote" xml:space="preserve">
     <value>Dit is de publieke prijs. Na het inloggen zie je je eigen prijs, die lager kan zijn als je een ticketregeling hebt.</value>
-  </data>
-  <data name="Tickets_Resale_InviteLive" xml:space="preserve">
-    <value>Er staat nog een uitnodiging open voor dit ticket. Annuleer die voordat je iemand anders uitnodigt.</value>
   </data>
   <data name="Tickets_Resale_InviteLimit" xml:space="preserve">
     <value>Voor dit ticket zijn al zoveel uitnodigingen verstuurd als mag. Het blijft in de wachtrij voor iedereen.</value>
@@ -565,6 +562,51 @@
   </data>
   <data name="Tickets_Companion_Holds" xml:space="preserve">
     <value>Je begeleider heeft al een ticket voor dit evenement en heeft dus geen begeleidersticket nodig.</value>
+  </data>
+  <data name="Tickets_Email_PaymentFailed_Subject" xml:space="preserve">
+    <value>Je betaling voor {0} is niet gelukt</value>
+  </data>
+  <data name="Tickets_Email_PaymentFailed_Intro" xml:space="preserve">
+    <value>Hoi {0}, de betaling voor je bestelling {1} voor {2} is geweigerd, dus er zijn geen tickets uitgegeven.</value>
+  </data>
+  <data name="Tickets_Email_PaymentLapsed_Subject" xml:space="preserve">
+    <value>Je bestelling voor {0} is niet afgerond</value>
+  </data>
+  <data name="Tickets_Email_PaymentLapsed_Intro" xml:space="preserve">
+    <value>Hoi {0}, je bestelling {1} voor {2} is niet op tijd betaald. Ze is verlopen en de tickets zijn weer te koop.</value>
+  </data>
+  <data name="Tickets_Email_PaymentEnded_Late" xml:space="preserve">
+    <value>Als de betaling later toch nog lukt, geven we je tickets uit en mailen we ze naar je.</value>
+  </data>
+  <data name="Tickets_Email_PaymentEnded_Retry" xml:space="preserve">
+    <value>Opnieuw proberen</value>
+  </data>
+  <data name="Tickets_Email_ResaleSold_Subject" xml:space="preserve">
+    <value>Je teruggegeven ticket voor {0} is verkocht</value>
+  </data>
+  <data name="Tickets_Email_ResaleSold_Intro" xml:space="preserve">
+    <value>Hoi {0}, iemand anders heeft je teruggegeven ticket voor {1} gekocht, dus het geeft je geen toegang meer.</value>
+  </data>
+  <data name="Tickets_Email_ResaleSold_Refund" xml:space="preserve">
+    <value>We betalen je {0} terug in onze avondronde van terugbetalingen, zodra de betaling van de nieuwe koper vaststaat. Je bank doet er daarna meestal een paar werkdagen over.</value>
+  </data>
+  <data name="Tickets_Email_ResaleUnsold_Subject" xml:space="preserve">
+    <value>Je teruggegeven ticket voor {0} is niet verkocht</value>
+  </data>
+  <data name="Tickets_Email_ResaleUnsold_Intro" xml:space="preserve">
+    <value>Hoi {0}, de verkoop voor {1} is gesloten en niemand heeft je teruggegeven ticket gekocht.</value>
+  </data>
+  <data name="Tickets_Email_ResaleUnsold_NoRefund" xml:space="preserve">
+    <value>Er is geen terugbetaling. Je ticket is nog geldig, dus je bent welkom.</value>
+  </data>
+  <data name="Tickets_Email_Resale_Open" xml:space="preserve">
+    <value>Je tickets bekijken</value>
+  </data>
+  <data name="Tickets_Resale_InviteTaken" xml:space="preserve">
+    <value>Het ticket dat je mocht kopen is naar iemand anders gegaan. Je kunt in plaats daarvan het volgende teruggegeven ticket kopen.</value>
+  </data>
+  <data name="Tickets_Resale_InviteAlready" xml:space="preserve">
+    <value>Iedereen die je hebt ingevuld, is al uitgenodigd voor dit ticket.</value>
   </data>
   <data name="Tickets_Cancel_Email_Subject" xml:space="preserve">
     <value>{0} gaat niet door</value>

@@ -85,6 +85,7 @@ internal sealed partial class TicketCheckoutService
         if (!samePerson && fromUserId is { } previous)
             await auditLog.LogAsync(action, AuditEntityType, ticket.OrderId,
                 description, actorUserId, previous, AuditSubjectTypes.User);
+        await TellDeliveryAsync(d => d.TicketRenamedAsync(ticket.Id, ct), ticket.Id);
         return CheckoutMutationResult.Ok;
     }
 
@@ -136,7 +137,7 @@ internal sealed partial class TicketCheckoutService
         {
             offer.State = TicketResaleOfferState.Withdrawn;
             offer.WithdrawnAt = now;
-            offer.DirectedTokenHash = null;
+            offer.Invites = [];
             await repository.UpdateOfferAsync(offer, ct);
         }
 

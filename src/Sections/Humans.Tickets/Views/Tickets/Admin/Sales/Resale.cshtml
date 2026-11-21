@@ -62,7 +62,7 @@
         .Column("Waiting since", r => r.Offer.OfferedAt, o => o.DateTime())
         .Column("Owed (€)", r => r.Offer.RefundOwedMinor / 100m, o => o.Currency().End())
         .Template("State", waitingStateCell, sortBy: r => r.Offer.State.ToString())
-        .Column("Invited buyer", r => r.DirectedLive ? r.Offer.DirectedEmail : null)
+        .Column("Invited buyers", r => r.DirectedLive ? string.Join(", ", r.Offer.Invites.Select(i => i.Email)) : null)
         .Template("", waitingActionsCell, o => o.NoSort().End())
         .Empty("Nobody is waiting.")
         .Build();
@@ -92,7 +92,7 @@
             }
             else
             {
-                <span class="text-danger">not requested</span>
+                <span class="text-muted small">in the evening refund batch</span>
             }
         }
     </text>;
@@ -144,7 +144,8 @@
     {
         <span class="d-block">Opening lets returned tickets sell, oldest first, before fresh stock.</span>
     }
-    <span class="d-block">An invited ticket keeps its place: the invited buyer can buy it through their link, and the queue can sell it too. Whoever buys first gets it.</span>
+    <span class="d-block">An invited ticket keeps its place: any invited buyer can buy it through their link, and the queue can sell it too. Whoever buys first gets it; a later link offers the next returned ticket.</span>
+    <span class="d-block">Refunds for sold tickets go out in the evening batch once the buyer's order has held for 12 hours. A buyer order that was refunded or disputed holds the refund back for the team.</span>
     <span class="d-block">Taking a ticket out gives it back to its holder, valid. To void it and refund instead, open the ticket.</span>
 </p>
 

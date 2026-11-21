@@ -6,6 +6,7 @@ using Humans.Testing;
 using Humans.Tickets.Contracts;
 using Humans.Tickets.Controllers;
 using Humans.Tickets.Domain.Checkout;
+using Humans.Tickets.Services.Checkout;
 using Humans.Users.Contracts;
 using NodaTime;
 using NSubstitute;
@@ -168,6 +169,26 @@ public sealed partial class TicketCheckoutServiceTests
         progress.DonationsMinor.Should().Be(1000);
         (progress.TicketMoneyMinor - progress.DisputedMinor - progress.RefundedMinor - progress.InFlightMinor - progress.StillRefundableMinor)
             .Should().Be(0);
+    }
+
+    [HumansFact]
+    public async Task The_evening_resale_batch_skips_a_cancelled_event_whose_cancellation_refunded_both_orders()
+    {
+        var old = await OfferedTicketAsync();
+        var buyer = await BuyAndPayAsync(Buy(), _otherBuyerId);
+        await _service.CancelSalesEventAsync(_salesEvent.Id, "Storm", _adminId, Ct);
+        await _service.ReconcileOpenOrdersAsync(Ct);
+        _backend.ClearReceivedCalls();
+        _audit.ClearReceivedCalls();
+
+        (await RefundBatchAsync()).Should().Be(new ResaleRefundBatch(0, 0, 0, 0));
+
+        await _backend.DidNotReceive().RefundAsync(Arg.Any<RefundRequest>(), Arg.Any<CancellationToken>());
+        _repo.Offers.Single().RefundId.Should().BeNull("nothing is held back: the cancellation already refunded the seller");
+        _repo.Refunds.Select(r => r.Refund).Where(r => r.OrderId == old.OrderId || r.OrderId == buyer.Id)
+            .Should().HaveCount(2).And.OnlyContain(r => r.AmountMinor == 22500 && r.State != RefundState.Failed);
+        await _audit.DidNotReceive().LogAsync(TicketsAuditActions.TicketCheckoutNeedsAttention, Arg.Any<string>(), Arg.Any<Guid>(),
+            Arg.Any<string>(), Arg.Any<string>());
     }
 
     [HumansFact]

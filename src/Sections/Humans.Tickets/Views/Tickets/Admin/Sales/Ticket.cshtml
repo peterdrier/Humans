@@ -80,9 +80,9 @@
                         <dt class="col-sm-4">Resale</dt>
                         <dd class="col-sm-8">
                             <status-badge value="@offer.State" /> since @offer.OfferedAt.ToDateTime(), @((offer.RefundOwedMinor / 100m).ToEuro()) owed
-                            @if (offer.DirectedEmail is not null)
+                            @if (offer.Invites.Count > 0)
                             {
-                                <span class="small d-block">Invited @offer.DirectedEmail</span>
+                                <span class="small d-block">Invited @string.Join(", ", offer.Invites.Select(i => i.Email))</span>
                             }
                             <a class="small d-block" asp-action="Resale" asp-route-id="@t.SalesEventId">Resale queue</a>
                         </dd>

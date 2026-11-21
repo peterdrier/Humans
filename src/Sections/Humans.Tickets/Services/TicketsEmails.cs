@@ -191,6 +191,67 @@ internal sealed class TicketsEmails(
         }
     }
 
+    /// <summary>
+    /// The checkout ended without payment: <paramref name="failed"/> when the payment was declined, otherwise the hold
+    /// lapsed. A payment that still lands later issues the tickets anyway, so the mail never says nothing was charged.
+    /// </summary>
+    public EmailMessage PaymentEnded(
+        Guid buyerUserId, string buyerEmail, string buyerName, string eventName, string reference, bool failed, Uri buyUrl,
+        Guid? deliveryId, string? culture = null)
+    {
+        using (new CultureScope(culture, logger))
+        {
+            var kind = failed ? "Failed" : "Lapsed";
+            var body = $"""
+                <p>{Lf($"Tickets_Email_Payment{kind}_Intro", Encode(buyerName), Encode(reference), Encode(eventName))}</p>
+                <p>{localizer["Tickets_Email_PaymentEnded_Late"].Value}</p>
+                <p><a href="{Encode(buyUrl.ToString())}">{localizer["Tickets_Email_PaymentEnded_Retry"].Value}</a></p>
+                """;
+            return new EmailMessage(
+                buyerEmail, buyerName, buyerUserId,
+                Lf($"Tickets_Email_Payment{kind}_Subject", eventName),
+                body, "ticket_payment_ended", MessageCategory.System, Culture: culture, DeliveryId: deliveryId);
+        }
+    }
+
+    /// <summary>The holder's returned ticket sold; the refund follows in the evening batch.</summary>
+    public EmailMessage ResaleSold(
+        Guid holderUserId, string holderEmail, string holderName, string eventName, long refundMinor, Uri ticketsUrl,
+        Guid? deliveryId, string? culture = null)
+    {
+        using (new CultureScope(culture, logger))
+        {
+            var body = $"""
+                <p>{Lf("Tickets_Email_ResaleSold_Intro", Encode(holderName), Encode(eventName))}</p>
+                <p>{Lf("Tickets_Email_ResaleSold_Refund", Money(refundMinor))}</p>
+                <p><a href="{Encode(ticketsUrl.ToString())}">{localizer["Tickets_Email_Resale_Open"].Value}</a></p>
+                """;
+            return new EmailMessage(
+                holderEmail, holderName, holderUserId,
+                Lf("Tickets_Email_ResaleSold_Subject", eventName),
+                body, "ticket_resale_sold", MessageCategory.System, Culture: culture, DeliveryId: deliveryId);
+        }
+    }
+
+    /// <summary>Sales closed with the holder's ticket still in the queue: no refund, and the ticket still admits them.</summary>
+    public EmailMessage ResaleUnsold(
+        Guid holderUserId, string holderEmail, string holderName, string eventName, Uri ticketsUrl,
+        Guid? deliveryId, string? culture = null)
+    {
+        using (new CultureScope(culture, logger))
+        {
+            var body = $"""
+                <p>{Lf("Tickets_Email_ResaleUnsold_Intro", Encode(holderName), Encode(eventName))}</p>
+                <p>{localizer["Tickets_Email_ResaleUnsold_NoRefund"].Value}</p>
+                <p><a href="{Encode(ticketsUrl.ToString())}">{localizer["Tickets_Email_Resale_Open"].Value}</a></p>
+                """;
+            return new EmailMessage(
+                holderEmail, holderName, holderUserId,
+                Lf("Tickets_Email_ResaleUnsold_Subject", eventName),
+                body, "ticket_resale_unsold", MessageCategory.System, Culture: culture, DeliveryId: deliveryId);
+        }
+    }
+
     private static string Money(long minor) =>
         WebUtility.HtmlEncode((minor / 100m).ToString("N2", CultureInfo.CurrentCulture) + " €");
 

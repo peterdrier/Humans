@@ -26,8 +26,7 @@ internal sealed partial class TicketCheckoutService
 
         offer.State = TicketResaleOfferState.Withdrawn;
         offer.WithdrawnAt = clock.GetCurrentInstant();
-        offer.DirectedTokenHash = null;
-        offer.DirectedEmail = null;
+        offer.Invites = [];
         await repository.UpdateOfferAsync(offer, ct);
         var ticket = await repository.GetTicketAsync(offer.TicketId, ct);
         if (ticket?.State == TicketCheckoutTicketState.Offered)
@@ -125,7 +124,7 @@ internal sealed partial class TicketCheckoutService
         {
             offer.State = TicketResaleOfferState.Withdrawn;
             offer.WithdrawnAt = now;
-            offer.DirectedTokenHash = null;
+            offer.Invites = [];
             await repository.UpdateOfferAsync(offer, ct);
         }
         foreach (var ticket in live)

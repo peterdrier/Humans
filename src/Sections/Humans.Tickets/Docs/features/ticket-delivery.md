@@ -18,6 +18,10 @@ so every named person gets their own ticket by email, and can open it in Humans 
 | `ticket_issued` | each valid or offered ticket with an email, to its holder; a ticket without one (a child) rides on its adult's mail | System | as soon as the order's tickets are issued |
 | `ticket_order_receipt` | the payer | System | with the tickets |
 | `ticket_join_invitation` | each holder of an adult or companion ticket with an account | VolunteerUpdates (opt-out honoured, never locked) | two days later, only if the ticket is still `Valid` |
+| `ticket_payment_ended` | the buyer | System | when a checkout that reached its backend ends `Failed` (declined) or `Expired` (lapsed unpaid), with a link to try again (B16, B17) |
+| `ticket_resale_sold` | the holder of a resold ticket | System | at the sale; says the refund follows in the evening batch (H11) |
+| `ticket_resale_unsold` | the holder whose offer is still open at sales close | System | once; no refund, the ticket still admits them (H12) |
+| `ticket_issued` again | the holder of a renamed ticket | System | after a team rename, with fresh ids (H14) |
 
 - **Ticket email:** one card per ticket (the holder's, then any child riding on it): event, holder name, ticket kind, the QR code of the ticket's `Barcode` (the code the gate scans),
   the barcode as text, a link to `/Tickets/Buy/Mine`, and the ticket rules (named ticket matching photo ID, no transfers or
@@ -45,7 +49,9 @@ screen. `/Tickets/Buy/Mine` embeds the same image as a `data:` URI.
 is retried instead of lost inside the paid transition. Each mail's `EmailMessage.DeliveryId` derives from the template
 and the ticket or order id, so a retry queues each mail once while the outbox keeps the first row. A ticket with no
 address is logged and counted as skipped. Each delivery and resend goes on the order timeline (`TicketsEmailed`,
-`TicketsResent` with the actor, `TicketMailSkipped`) as well as the audit log. The audit says what was handed to Email; Email applies
+`TicketsResent` with the actor, `TicketMailSkipped`) as well as the audit log. The payment, resale and rename mails
+go through the same hand-off (`ITicketDelivery`), each audited `TicketHolderNotified`; the payment and resale ones have
+stable delivery ids, and each sends nothing once the order or ticket has moved on. The audit says what was handed to Email; Email applies
 opt-outs itself. A TicketsAdmin's **Resend** on the admin order page (refused when no ticket is live) sends
 everything again with fresh ids and no second invitation, audited with the actor.
 

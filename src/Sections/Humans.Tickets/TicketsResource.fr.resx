@@ -306,16 +306,16 @@
     <value>Invité·e : {0}</value>
   </data>
   <data name="Tickets_Resale_CancelInvite" xml:space="preserve">
-    <value>Annuler l'invitation</value>
+    <value>Annuler les invitations</value>
   </data>
   <data name="Tickets_Resale_InviteEmail" xml:space="preserve">
-    <value>Son e-mail</value>
+    <value>Son e-mail (sépare plusieurs adresses par des virgules)</value>
   </data>
   <data name="Tickets_Resale_Invite" xml:space="preserve">
     <value>Inviter un·e acheteur·se</value>
   </data>
   <data name="Tickets_Resale_InviteHelp" xml:space="preserve">
-    <value>Tu connais quelqu'un qui veut ton billet ? Invite-le : il recevra un lien pour l'acheter avant la file, au prix actuel et à son nom. Tu es remboursé·e de ce que tu as payé. Aucun argent ne passe entre vous. Tant qu'il ne l'a pas acheté, ton billet reste dans la file et peut être vendu avant à quelqu'un d'autre.</value>
+    <value>Tu connais quelqu'un qui veut ton billet ? Invite cette personne, ou plusieurs : chacune reçoit un lien pour l'acheter avant la file, au prix actuel et à son nom. La première qui achète l'obtient, et les suivantes se voient proposer le prochain billet rendu. Tu es remboursé de ce que tu as payé. Aucun argent ne passe entre vous. Tant que personne ne l'achète, ton billet reste dans la file et peut être vendu avant à quelqu'un d'autre.</value>
   </data>
   <data name="Tickets_Resale_OfferHelp" xml:space="preserve">
     <value>Tu ne peux pas venir ? Remets ton billet dans la file de revente. Quand quelqu'un l'achète, tu es remboursé·e du prix du billet (pas des dons ni des frais).</value>
@@ -330,7 +330,7 @@
     <value>Un billet pour {0} t'attend</value>
   </data>
   <data name="Tickets_Resale_Email_Invite_Body" xml:space="preserve">
-    <value>&lt;p&gt;Bonjour,&lt;/p&gt;&lt;p&gt;{0} ne peut pas venir à &lt;strong&gt;{1}&lt;/strong&gt; et t'invite à acheter son billet rendu avant la file de revente.&lt;/p&gt;&lt;p&gt;Tu paies le prix actuel du billet à l'association et reçois un nouveau billet à ton nom : le nom doit correspondre à ta pièce d'identité à l'entrée. Connecte-toi ou crée ton compte Humans avec cette adresse e-mail, puis utilise ce lien :&lt;/p&gt;&lt;p&gt;&lt;a href="{2}"&gt;{2}&lt;/a&gt;&lt;/p&gt;&lt;p&gt;Le lien fonctionne tant que le billet est encore en vente, alors n'attends pas trop.&lt;/p&gt;</value>
+    <value>&lt;p&gt;Bonjour,&lt;/p&gt;&lt;p&gt;{0} ne peut pas venir à &lt;strong&gt;{1}&lt;/strong&gt; et t'invite à acheter son billet rendu avant la file de revente.&lt;/p&gt;&lt;p&gt;Tu paies le prix actuel du billet à l'association et reçois un nouveau billet à ton nom : le nom doit correspondre à ta pièce d'identité à l'entrée. Connecte-toi ou crée ton compte Humans avec cette adresse e-mail, puis utilise ce lien :&lt;/p&gt;&lt;p&gt;&lt;a href="{2}"&gt;{2}&lt;/a&gt;&lt;/p&gt;&lt;p&gt;Le lien fonctionne tant que le billet est en vente. Si quelqu'un d'autre l'achète avant toi, le lien te propose le prochain billet rendu.&lt;/p&gt;</value>
   </data>
   <data name="Tickets_Public_PriceToday" xml:space="preserve">
     <value>{0} aujourd'hui</value>
@@ -352,9 +352,6 @@
   </data>
   <data name="Tickets_Public_PriceNote" xml:space="preserve">
     <value>C'est le prix public. Une fois connecté·e, tu vois ton propre prix, qui peut être plus bas si tu as une aide pour les billets.</value>
-  </data>
-  <data name="Tickets_Resale_InviteLive" xml:space="preserve">
-    <value>Une invitation pour ce billet est encore ouverte. Annule-la avant d'inviter quelqu'un d'autre.</value>
   </data>
   <data name="Tickets_Resale_InviteLimit" xml:space="preserve">
     <value>Ce billet a déjà eu le nombre maximum d'invitations. Il reste dans la file pour qui veut l'acheter.</value>
@@ -565,6 +562,51 @@
   </data>
   <data name="Tickets_Companion_Holds" xml:space="preserve">
     <value>Ton accompagnant a déjà un billet pour cet événement, il n'a donc pas besoin d'un billet d'accompagnant.</value>
+  </data>
+  <data name="Tickets_Email_PaymentFailed_Subject" xml:space="preserve">
+    <value>Ton paiement pour {0} n'a pas abouti</value>
+  </data>
+  <data name="Tickets_Email_PaymentFailed_Intro" xml:space="preserve">
+    <value>Bonjour {0}, le paiement de ta commande {1} pour {2} a été refusé, aucun billet n'a donc été émis.</value>
+  </data>
+  <data name="Tickets_Email_PaymentLapsed_Subject" xml:space="preserve">
+    <value>Ta commande pour {0} n'a pas été finalisée</value>
+  </data>
+  <data name="Tickets_Email_PaymentLapsed_Intro" xml:space="preserve">
+    <value>Bonjour {0}, ta commande {1} pour {2} n'a pas été payée à temps : elle a expiré et ses billets sont de nouveau en vente.</value>
+  </data>
+  <data name="Tickets_Email_PaymentEnded_Late" xml:space="preserve">
+    <value>Si le paiement aboutit finalement plus tard, nous émettrons tes billets et te les enverrons par e-mail.</value>
+  </data>
+  <data name="Tickets_Email_PaymentEnded_Retry" xml:space="preserve">
+    <value>Réessayer</value>
+  </data>
+  <data name="Tickets_Email_ResaleSold_Subject" xml:space="preserve">
+    <value>Ton billet rendu pour {0} a été vendu</value>
+  </data>
+  <data name="Tickets_Email_ResaleSold_Intro" xml:space="preserve">
+    <value>Bonjour {0}, quelqu'un d'autre a acheté le billet que tu as rendu pour {1} : il ne te donne plus accès.</value>
+  </data>
+  <data name="Tickets_Email_ResaleSold_Refund" xml:space="preserve">
+    <value>Nous te remboursons {0} lors de notre lot de remboursements du soir, une fois le paiement du nouvel acheteur confirmé. Ta banque met ensuite généralement quelques jours ouvrés.</value>
+  </data>
+  <data name="Tickets_Email_ResaleUnsold_Subject" xml:space="preserve">
+    <value>Ton billet rendu pour {0} n'a pas été vendu</value>
+  </data>
+  <data name="Tickets_Email_ResaleUnsold_Intro" xml:space="preserve">
+    <value>Bonjour {0}, les ventes pour {1} sont closes et personne n'a acheté le billet que tu as rendu.</value>
+  </data>
+  <data name="Tickets_Email_ResaleUnsold_NoRefund" xml:space="preserve">
+    <value>Il n'y a pas de remboursement. Ton billet reste valable, tu peux donc venir.</value>
+  </data>
+  <data name="Tickets_Email_Resale_Open" xml:space="preserve">
+    <value>Voir tes billets</value>
+  </data>
+  <data name="Tickets_Resale_InviteTaken" xml:space="preserve">
+    <value>Le billet que l'on t'a invité à acheter est parti à quelqu'un d'autre. Tu peux acheter le prochain billet rendu à la place.</value>
+  </data>
+  <data name="Tickets_Resale_InviteAlready" xml:space="preserve">
+    <value>Toutes les personnes que tu as saisies sont déjà invitées pour ce billet.</value>
   </data>
   <data name="Tickets_Cancel_Email_Subject" xml:space="preserve">
     <value>{0} est annulé</value>
