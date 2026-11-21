@@ -987,8 +987,7 @@ internal sealed class UserService(
 
         var allContactFields = await repo.GetAllContactFieldsAsync(ct);
         var contactFieldsByUser = allContactFields
-            .Where(c => c.UserId is not null)
-            .GroupBy(c => c.UserId!.Value)
+            .GroupBy(c => c.UserId)
             .ToDictionary(g => g.Key, g => (IReadOnlyList<ContactField>)g.ToList());
 
         var result = new List<UserInfo>(users.Count);

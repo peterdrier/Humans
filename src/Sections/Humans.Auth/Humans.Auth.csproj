@@ -19,7 +19,7 @@
     <InternalsVisibleTo Include="Humans.Auth.Tests" />
     <!-- The one assembly allowed to see many sections. -->
     <InternalsVisibleTo Include="Humans.Integration.Tests" />
-    <!-- Temporary: TeamsTestHarness seeds role_assignments rows for Teams' own role tests; comes out when that fixture is rewritten. -->
+    <!-- Temporary: TeamsTestHarness seeds auth_role_assignments rows for Teams' own role tests; comes out when that fixture is rewritten. -->
     <InternalsVisibleTo Include="Humans.Teams.Tests" />
   </ItemGroup>
 

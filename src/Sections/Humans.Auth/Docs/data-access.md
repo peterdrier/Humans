@@ -12,7 +12,7 @@ directly. Owns `RoleAssignments`.
 The inner `IRoleAssignmentManagement` is wrapped by
 `Humans.Auth.Services.CachingRoleAssignmentService`
 (Singleton decorator inheriting `TrackedCache<Guid, RoleAssignmentRow>`).
-The full `role_assignments` row set is held in memory so
+The full `auth_role_assignments` row set is held in memory so
 every active-role read (`GetActiveCountsByRoleAsync`, `GetActiveForUserAsync`,
 `HasActiveRoleAsync` and its `IsUser*` shorthands, `HasAnyActiveAssignmentAsync`,
 `GetActiveUserIdsInRoleAsync`, `GetUserIdsWithActiveAssignmentsAsync`) derives at any
