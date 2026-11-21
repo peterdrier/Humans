@@ -340,6 +340,9 @@ public sealed class TicketCheckoutServiceTests
         public Task UpdateOrderAsync(TicketCheckoutOrder order, CancellationToken ct = default) => Task.CompletedTask;
         public Task<IReadOnlyList<TicketCheckoutRefund>> GetRefundsAsync(Guid orderId, CancellationToken ct = default) =>
             Task.FromResult<IReadOnlyList<TicketCheckoutRefund>>(Refunds.Select(r => r.Refund).Where(r => r.OrderId == orderId).ToList());
+        public Task<IReadOnlyList<TicketCheckoutRefund>> GetRefundsForSalesEventAsync(Guid salesEventId, CancellationToken ct = default) =>
+            Task.FromResult<IReadOnlyList<TicketCheckoutRefund>>(Refunds.Select(r => r.Refund)
+                .Where(r => Orders.Any(o => o.Id == r.OrderId && o.SalesEventId == salesEventId)).ToList());
         public Task AddRefundAsync(TicketCheckoutRefund refund, CancellationToken ct = default)
         {
             Refunds.Add((refund.Id, refund));

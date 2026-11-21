@@ -143,6 +143,7 @@ public sealed class Section :
         services.AddScoped<ITicketCheckoutEvents>(sp => sp.GetRequiredService<TicketCheckoutService>());
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<TicketCheckoutService>());
         services.AddScoped<IUserMerge>(sp => sp.GetRequiredService<TicketCheckoutService>());
+        services.AddScoped<ITicketSupportService, TicketSupportService>();
         services.AddScoped<TicketCheckoutReconcileJob>();
     }
 

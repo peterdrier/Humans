@@ -1,0 +1,58 @@
+@using Humans.Tickets.Contracts
+@model Humans.Tickets.Controllers.RefundsViewModel
+@{
+    ViewData["Title"] = "Refunds";
+    string Eur(long minor) => (minor / 100m).ToString("0.00", System.Globalization.CultureInfo.InvariantCulture) + " €";
+    string Label(RefundState s) => s switch
+    {
+        RefundState.Succeeded => "Done",
+        RefundState.ManualRequired => "Manual",
+        _ => s.ToString(),
+    };
+    RefundState[] states = [RefundState.Pending, RefundState.Succeeded, RefundState.Failed, RefundState.ManualRequired];
+}
+
+@section Crumbs {
+    <a asp-controller="TicketsSalesAdmin" asp-action="Index">Sales</a>
+    <span>Refunds</span>
+}
+
+<page-header title="Refunds" />
+
+<ul class="nav nav-pills mb-3">
+    <li class="nav-item"><a class="nav-link @(Model.State is null ? "active" : "")" asp-action="Refunds" asp-route-id="@Model.SalesEventId">All</a></li>
+    @foreach (var s in states)
+    {
+        <li class="nav-item"><a class="nav-link @(Model.State == s ? "active" : "")" asp-action="Refunds" asp-route-id="@Model.SalesEventId" asp-route-state="@s">@Label(s)</a></li>
+    }
+</ul>
+
+@if (Model.State == RefundState.ManualRequired)
+{
+    <p class="text-muted">These need a person to issue them in the backend's dashboard; the order page links there.</p>
+}
+
+@if (Model.Rows.Count == 0)
+{
+    <p class="text-muted">None.</p>
+}
+else
+{
+    <table class="table table-sm">
+        <thead><tr><th>Asked</th><th>Buyer</th><th class="text-end">Amount</th><th>State</th><th>Reason</th></tr></thead>
+        <tbody>
+            @foreach (var row in Model.Rows)
+            {
+                var r = row.Refund;
+                <tr>
+                    <td><a asp-controller="TicketsSalesAdmin" asp-action="Order" asp-route-id="@r.OrderId">@r.CreatedAt.ToDateTime()</a></td>
+                    <td>@row.Order.BuyerName</td>
+                    <td class="text-end">@Eur(r.AmountMinor)</td>
+                    <td>@Label(r.State) <span class="text-muted">@r.FailureReason</span></td>
+                    <td>@r.Reason</td>
+                </tr>
+            }
+        </tbody>
+        <tfoot><tr class="fw-semibold"><td colspan="2">@Model.Rows.Count refunds</td><td class="text-end">@Eur(Model.Rows.Sum(x => x.Refund.AmountMinor))</td><td colspan="2"></td></tr></tfoot>
+    </table>
+}

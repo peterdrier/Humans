@@ -114,6 +114,15 @@ internal sealed class TicketCheckoutRepository(IDbContextFactory<TicketsDbContex
             .ToListAsync(ct);
     }
 
+    public async Task<IReadOnlyList<TicketCheckoutRefund>> GetRefundsForSalesEventAsync(
+        Guid salesEventId, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        return await ctx.TicketCheckoutRefunds.AsNoTracking()
+            .Where(r => ctx.TicketCheckoutOrders.Any(o => o.Id == r.OrderId && o.SalesEventId == salesEventId))
+            .ToListAsync(ct);
+    }
+
     public async Task AddRefundAsync(TicketCheckoutRefund refund, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);

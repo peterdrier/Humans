@@ -33,6 +33,9 @@ internal interface ITicketCheckoutRepository : IRepository
 
     Task<IReadOnlyList<TicketCheckoutRefund>> GetRefundsAsync(Guid orderId, CancellationToken ct = default);
 
+    /// <summary>Every refund on the event's orders, for the ticketing team's refund list.</summary>
+    Task<IReadOnlyList<TicketCheckoutRefund>> GetRefundsForSalesEventAsync(Guid salesEventId, CancellationToken ct = default);
+
     Task AddRefundAsync(TicketCheckoutRefund refund, CancellationToken ct = default);
 
     Task UpdateRefundAsync(TicketCheckoutRefund refund, CancellationToken ct = default);
