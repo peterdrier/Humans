@@ -21,12 +21,12 @@ references `Humans.Tickets` directly to name the port).
 `src/Sections/Humans.Tickets/Contracts/`. **DbContext:** `TicketsDbContext`.
 `TicketRepository`, `TicketTransferRepository` and `EventParticipationRepository` inject
 `IDbContextFactory<TicketsDbContext>` directly. Owns `TicketOrders`,
-`TicketAttendees`, `TicketSyncStates`, `TicketTransferRequests`,
+`TicketAttendees`, `TicketSyncStates`, `TicketSettings`, `TicketTransferRequests`,
 `EventParticipations` (`ticket_event_participations`, Users decomposition commit 13).
 
 The section's public surface is small: `ITicketService` (no `SurfaceBudget` pinned; adds
 `GetParticipationsAsync` / `GetAllParticipationsAsync`), `ITicketDiscountCodes`,
-`ITicketVendorMirror`, `ITicketWrite` (`RecordParticipationAsync`, Gate's admit). `TicketDashboardDtos` is `internal`. Campaigns' grant waves call `ITicketDiscountCodes.GenerateAsync`
+`ITicketVendorMirror`, `ITicketWrite` (`RecordParticipationAsync`, Gate's admit; `UndoCheckInAsync`, Gate's undo). `TicketDashboardDtos` is `internal`. Campaigns' grant waves call `ITicketDiscountCodes.GenerateAsync`
 (in the application's own `TicketDiscountCodeRequest`/`TicketDiscountKind`
 vocabulary — `TicketVendorGateway` in `Humans.Tickets` maps that to the
 port's `DiscountCodeSpec`/`DiscountType` at the edge), and
@@ -144,6 +144,7 @@ Repositories: `ITicketRepository`, `ITicketTransferRepository`.
 | TicketOrders | R/W |
 | TicketAttendees | R/W |
 | TicketSyncStates | R/W |
+| TicketSettings | R/W (the scheduled-sync switch) |
 | TicketTransferRequests | W (merge reassignment of sender/receiver) |
 
 Cache-free; the decorators evict around it (see above).
@@ -199,7 +200,7 @@ Repository: `IEventParticipationRepository` (Singleton, `IDbContextFactory<Ticke
 
 | Table | R/W |
 |-------|-----|
-| EventParticipations (`ticket_event_participations`) | R/W (W: member declaration, ticket sync, Gate admit via `ITicketWrite`, admin backfill, merge fold; a `null` `Status` is a historical cleared row) |
+| EventParticipations (`ticket_event_participations`) | R/W (W: member declaration, ticket sync, Gate admit and its undo via `ITicketWrite`, admin backfill, merge fold; a `null` `Status` is a historical cleared row) |
 
 Implements the internal `IEventParticipationManagement` (and so `ITicketWrite`),
 `IUserDataContributor` (slice `EventParticipations`, retained on erasure) and

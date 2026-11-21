@@ -1,0 +1,85 @@
+@model GateReportViewModel?
+@{
+    ViewData["Title"] = "Arrivals";
+}
+
+@if (Model is null)
+{
+    <page-header title="Arrivals" />
+    <empty-state>No active event is configured, so there are no arrivals to show.</empty-state>
+    return;
+}
+
+@{
+    var r = Model.Report;
+    var shown = Model.ShownDay;
+    var shownStats = Model.Days.FirstOrDefault(d => d.Day == shown);
+    var toArrive = Math.Max(0, r.TicketsHeld - r.Arrived);
+}
+
+<page-header title="Arrivals" subtitle="@r.EventName">
+    <a class="btn btn-outline-secondary btn-sm" asp-controller="TicketsOnsiteAdmin" asp-action="Index">
+        <i class="fa-solid fa-clipboard-list me-1" aria-hidden="true"></i>Who's onsite
+    </a>
+</page-header>
+
+<div class="stats mb-4" style="--stats-cols: 4">
+    <partial name="_StatTile" model='new StatTileViewModel("Arrived", r.Arrived.ToString(), Subline: $"of {r.TicketsHeld} tickets")' />
+    <partial name="_StatTile" model='new StatTileViewModel("Still to arrive", toArrive.ToString())' />
+    <partial name="_StatTile" model='new StatTileViewModel($"Arrived {shown.ToWeekdayDayMonth()}", (shownStats?.Admitted ?? 0).ToString())' />
+    <partial name="_StatTile" model='new StatTileViewModel($"Refused {shown.ToWeekdayDayMonth()}", (shownStats?.Refused ?? 0).ToString())' />
+</div>
+
+<h2 class="h5 mb-3">Each day</h2>
+@{
+    var daysTable = TableModel.For(Model.Days)
+        .Link("Day", d => d.Day.ToWeekdayDayMonth(), d => Url.Action("Index", new { day = d.Day.ToInvariantDate() }),
+            c => c.NoSort())
+        .Column("Arrived", d => d.Admitted, c => c.Number())
+        .Column("With early entry", d => d.Early, c => c.Number())
+        .Column("Supervisor override", d => d.Overrides, c => c.Number())
+        .Column("Refused", d => d.Refused, c => c.Number())
+        .Column("Undone", d => d.Undone, c => c.Number())
+        .RowCss(d => d.Day == shown ? "table-active" : null)
+        .Empty("Nobody has been scanned at the gate yet.")
+        .Build();
+}
+<partial name="_Table" model="daysTable" />
+
+<h2 class="h5 mt-4 mb-3">Check-ins on @shown.ToWeekdayDayMonth()</h2>
+@{
+    // The reason is required, so an undo is never a stray click.
+    Func<GateArrival, IHtmlContent> undoCell = @<text>
+        @if (item.UndoneAt is { } undoneAt)
+        {
+            <span class="text-muted small">Undone @undoneAt.ToMonthDayTime(r.Zone): @item.UndoReason</span>
+        }
+        else if (Model.CanUndo)
+        {
+            <form method="post" asp-action="Undo" class="d-flex gap-2 align-items-center">
+                <input type="hidden" name="scanId" value="@item.ScanId" />
+                <input type="hidden" name="day" value="@item.Day.ToInvariantDate()" />
+                <input type="text" name="reason" class="form-control form-control-sm w-auto" size="18" maxlength="1000" required
+                       placeholder="Why?" aria-label="Why undo this check-in?" />
+                <button type="submit" class="btn btn-outline-danger btn-sm text-nowrap">Undo</button>
+            </form>
+        }
+    </text>;
+    Func<GateArrival, IHtmlContent> howCell = @<text><span class="badge @EnumBadgeMap.For(item.Verdict)">@(item.Verdict switch
+        {
+            GateVerdict.AdmittedEarly => "Early entry",
+            GateVerdict.AdmittedEarlyOverride => "Early, supervisor",
+            GateVerdict.AdmittedChildWithAdult => "Child with adult",
+            _ => "Admitted",
+        })</span></text>;
+    var checkIns = TableModel.For(Model.DayArrivals)
+        .Column("Time", a => a.AdmittedAt.ToTime(r.Zone), c => c.NoSort())
+        .Column("Name on ticket", a => a.Name)
+        .Human("Human", a => a.GuestUserId)
+        .Column("Ticket", a => a.TicketLabel ?? "—")
+        .Template("How", howCell, c => c.NoSort())
+        .Template("Undo", undoCell, c => c.NoSort())
+        .Empty("No check-ins on this day.")
+        .Build();
+}
+<partial name="_Table" model="checkIns" />

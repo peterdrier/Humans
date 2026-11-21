@@ -59,6 +59,9 @@ internal sealed class EventParticipationService(
             userId, year, status, ParticipationSource.TicketSync,
             declaredAt: null, checkedInAt, ct);
 
+    public Task<bool> UndoCheckInAsync(Guid userId, int year, CancellationToken ct = default) =>
+        repo.UndoCheckInAsync(userId, year, ct);
+
     public async Task RemoveTicketSyncParticipationAsync(Guid userId, int year, CancellationToken ct = default) =>
         await repo.ClearAsync(
             userId, year, ParticipationSource.TicketSync, ct);

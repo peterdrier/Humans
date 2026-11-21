@@ -48,6 +48,7 @@ public sealed class Section :
     ISectionJobs,
     ISectionMemberDashboard,
     ISectionPolicies,
+    ISectionSettings,
     IUserPart
 {
     IEnumerable<ChromeComponent> ISectionChrome.Components() =>
@@ -255,6 +256,11 @@ public sealed class Section :
         // The daily financial check of every backend against Humans' orders; reads only.
         yield return new RecurringJobDescriptor("tickets-checkout-recon", typeof(TicketReconJob), "30 4 * * *");
     }
+
+    IEnumerable<SettingsTab> ISectionSettings.Tabs() =>
+    [
+        new SettingsTab("tickets", "Settings_TabTickets", typeof(TicketsSettingsTabViewComponent), TicketsPolicies.Manage)
+    ];
 
     IEnumerable<ChromeComponent> ISectionMemberDashboard.Components() =>
     [

@@ -1,0 +1,29 @@
+@model GateFindResultsViewModel
+
+@if (Model.Query.Length < 2)
+{
+    <p class="gate-find-hint">Type at least two letters of their burner name or legal name</p>
+}
+else if (Model.Matches.Count == 0)
+{
+    <p class="gate-find-hint">No ticket found for “@Model.Query” · check the spelling, or get the gate lead</p>
+}
+else
+{
+    <div class="gate-find-list">
+        @foreach (var m in Model.Matches)
+        {
+            <button type="button" class="gate-find-pick" data-barcode="@m.Barcode">
+                <span class="gate-find-name">@m.Name</span>
+                @if (!string.IsNullOrEmpty(m.TicketLabel))
+                {
+                    <span class="gate-find-type">@m.TicketLabel</span>
+                }
+            </button>
+        }
+    </div>
+    @if (Model.Matches.Count >= 20)
+    {
+        <p class="gate-find-hint">Showing the first 20 · type more of the name</p>
+    }
+}

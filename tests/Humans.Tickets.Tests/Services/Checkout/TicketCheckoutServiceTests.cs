@@ -1927,6 +1927,21 @@ public sealed class TicketCheckoutServiceTests
         found.TicketLabel.Should().Be("Child · Wave 1");
     }
 
+    [HumansFact]
+    public async Task Gate_lists_every_issued_ticket_of_an_event_for_name_search()
+    {
+        var adult = AddTicket(holder: _buyerId);
+        var child = AddTicket(TicketHolderKind.Child, parent: adult.Id);
+        var gone = AddTicket(holder: _buyerId, state: TicketCheckoutTicketState.Void);
+
+        var all = await _service.GetIssuedTicketsForEventAsync(_event.Id, Ct);
+
+        all.Select(t => t.Id).Should().BeEquivalentTo([adult.Id, child.Id, gone.Id]);
+        all.Single(t => t.Id == child.Id).EntryUserId.Should().Be(_buyerId);
+        all.Single(t => t.Id == gone.Id).IsValid.Should().BeFalse();
+        (await _service.GetIssuedTicketsForEventAsync(Guid.NewGuid(), Ct)).Should().BeEmpty();
+    }
+
     private sealed class FakeCheckoutRepository : ITicketCheckoutRepository
     {
         public List<TicketSalesEvent> SalesEvents { get; } = [];
