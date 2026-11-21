@@ -251,7 +251,7 @@ internal sealed partial class TicketCheckoutService(
             return StartCheckoutResult.Refused("Tickets_Buy_AlreadyHolds");
         if (command.DonationMinor < 0)
             return StartCheckoutResult.Refused("Tickets_Buy_Invalid");
-        var children = command.ChildNames.Select(n => n.Trim()).Where(n => n.Length > 0).ToList();
+        var children = command.ChildNames.Where(n => !string.IsNullOrWhiteSpace(n)).Select(n => n!.Trim()).ToList();
         if (children.Count > MaxChildren || children.Any(n => n.Length > MaxNameLength)
             || (children.Count > 0 && (!command.ForSelf || salesEvent.ChildPriceMinor is null)))
             return StartCheckoutResult.Refused("Tickets_Buy_Invalid");
