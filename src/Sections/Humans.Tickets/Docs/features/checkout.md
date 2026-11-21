@@ -33,7 +33,8 @@ Rules every backend follows:
   it never blocks a deletion: a backend's data is exported or erased before its adapter is removed. Tickets then voids
   the member's live tickets and their children's, withdraws their offers, tombstones their names and emails (children's
   names included) clears any resale invitation sent to one of their addresses, and tombstones partner lines and tickets without an
-  account that carry one of those addresses. A partner on an order that ended unpaid is forgotten 30 days after its
+  account that carry one of those addresses (the account's primary address and those on the member's own orders; such
+  a ticket is tombstoned but left valid, and one issued to another of their addresses is missed). A partner on an order that ended unpaid is forgotten 30 days after its
   hold lapsed, once a late payment can no longer arrive.
 
 ## Flow

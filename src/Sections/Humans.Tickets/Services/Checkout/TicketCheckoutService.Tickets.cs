@@ -486,7 +486,9 @@ internal sealed partial class TicketCheckoutService
                 try
                 {
                     await RefundCoreAsync(unsent.OrderId, unsent.AmountMinor, unsent.Reason, null, ct, unsent.Id);
-                    repaired++;
+                    if ((await repository.GetRefundsAsync(unsent.OrderId, ct)).FirstOrDefault(r => r.Id == unsent.Id)
+                        is not { State: RefundState.Pending, BackendRefundId: null })
+                        repaired++;
                 }
                 catch (Exception ex) when (ex is not OperationCanceledException)
                 {

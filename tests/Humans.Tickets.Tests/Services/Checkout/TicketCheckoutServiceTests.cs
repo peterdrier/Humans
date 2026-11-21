@@ -809,13 +809,16 @@ public sealed class TicketCheckoutServiceTests
 
         _repo.Refunds.Single().Refund.State.Should().Be(RefundState.Pending);
         (await _service.GetOrderDetailAsync(order.Id, Ct))!.RefundableMinor.Should().Be(12500);
+        var rows = _repo.Events.Count;
+        await _service.ReconcileOpenOrdersAsync(Ct);
+        _repo.Events.Should().HaveCount(rows, "a resend that changes nothing adds no rows");
 
         _backend.RefundAsync(Arg.Any<RefundRequest>(), Arg.Any<CancellationToken>())
             .Returns(new RefundResult(RefundState.Succeeded, "re_5", null));
         await _service.ReconcileOpenOrdersAsync(Ct);
 
         _repo.Refunds.Single().Refund.State.Should().Be(RefundState.Succeeded);
-        await _backend.Received(2).RefundAsync(
+        await _backend.Received(3).RefundAsync(
             Arg.Is<RefundRequest>(r => r.RefundId == _repo.Refunds[0].RefundId), Arg.Any<CancellationToken>());
     }
 

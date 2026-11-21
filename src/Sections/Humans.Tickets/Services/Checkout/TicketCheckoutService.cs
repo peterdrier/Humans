@@ -439,6 +439,8 @@ internal sealed partial class TicketCheckoutService(
                     line.AttendeeEmail = null;
                 }
                 await repository.UpdateOrderAsync(order, ct);
+                await TimelineAsync(order.Id, TicketCheckoutOrderEventKind.StateChanged,
+                    "Partner details removed: the order was never paid", null, ct);
                 forgotten++;
             }
         return forgotten;
@@ -578,10 +580,6 @@ internal sealed partial class TicketCheckoutService(
     }
 
     /// <summary>
-    /// Settles pending and manual refunds from the backend's refunded total, oldest first; when the backend reports a
-    /// failed refund, the ones that total does not cover failed. True when any changed.
-    /// </summary>
-    /// <summary>
     /// Settles pending refunds from the refunded total, oldest first. <see cref="CheckoutStatus.RefundFailed"/> says only
     /// that some refund on the payment failed, so each uncovered refund the backend knows is asked for its own state by
     /// repeating it under its id.
@@ -648,7 +646,7 @@ internal sealed partial class TicketCheckoutService(
             if (existing is { State: RefundState.Pending, BackendRefundId: null }
                 && await repository.GetOrderAsync(orderId, ct) is { BackendOrderId: not null } paidOrder
                 && BackendFor(paidOrder.BackendKey) is { } retryBackend)
-                await CallBackendRefundAsync(retryBackend, paidOrder, existing, actorUserId, ct);
+                await CallBackendRefundAsync(retryBackend, paidOrder, existing, actorUserId, ct, resend: true);
             return (CheckoutMutationResult.Ok, existing.Id);
         }
 
@@ -691,8 +689,10 @@ internal sealed partial class TicketCheckoutService(
             : CheckoutMutationResult.Ok, refund.Id);
     }
 
+    /// <summary>A <paramref name="resend"/> that changes nothing is only logged, so a backend that stays down adds no rows.</summary>
     private async Task<RefundResult> CallBackendRefundAsync(
-        ITicketCheckoutBackend backend, TicketCheckoutOrder order, TicketCheckoutRefund refund, Guid? actorUserId, CancellationToken ct)
+        ITicketCheckoutBackend backend, TicketCheckoutOrder order, TicketCheckoutRefund refund, Guid? actorUserId,
+        CancellationToken ct, bool resend = false)
     {
         var amountMinor = refund.AmountMinor;
         RefundResult result;
@@ -706,6 +706,12 @@ internal sealed partial class TicketCheckoutService(
             // A timeout leaves the outcome unknown and the money may have gone: the status read settles it.
             logger.LogError(ex, "Refund {RefundId} of order {OrderId} threw in {Backend}", refund.Id, order.Id, order.BackendKey);
             result = new RefundResult(RefundState.Pending, null, ex.Message);
+        }
+
+        if (resend && result.State == refund.State && string.Equals(result.BackendRefundId, refund.BackendRefundId, StringComparison.Ordinal))
+        {
+            logger.LogInformation("Resent refund {RefundId} of order {OrderId} is still {State}", refund.Id, order.Id, result.State);
+            return result;
         }
 
         refund.State = result.State;
