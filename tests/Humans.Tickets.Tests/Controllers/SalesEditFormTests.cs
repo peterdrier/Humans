@@ -30,6 +30,7 @@ public sealed class SalesEditFormTests
             [
                 new() { GrantProgramId = LowIncome, Kind = TicketPriceRuleKind.WavePin, Amount = null, Label = "Low income" },
                 new() { GrantProgramId = LowIncome, Kind = TicketPriceRuleKind.ClassPrice, Amount = "125.50", Label = "Low income" },
+                new() { GrantProgramId = LowIncome, Kind = TicketPriceRuleKind.EarlyAccess, Amount = "", Label = "Testers" },
             ],
         };
 
@@ -41,7 +42,7 @@ public sealed class SalesEditFormTests
         save.Waves.Should().ContainSingle().Which.PriceMinor.Should().Be(22500);
         save.SupporterTotalsMinor.Should().Equal(40000);
         save.PriceRules.Select(r => (r.Kind, r.AmountMinor)).Should().Equal(
-            (TicketPriceRuleKind.WavePin, 0L), (TicketPriceRuleKind.ClassPrice, 12550L));
+            (TicketPriceRuleKind.WavePin, 0L), (TicketPriceRuleKind.ClassPrice, 12550L), (TicketPriceRuleKind.EarlyAccess, 0L));
     }
 
     [HumansFact]

@@ -87,11 +87,16 @@ sold under is read (`EventRefOf`), beside the events the setups sell through now
 ## Flow
 
 1. A TicketsAdmin sets up the event at `/Tickets/Admin/Sales`: backend, mode, capacity, waves, supporter totals (VIP
-   buttons), grant price rules (`ClassPrice`, `Credit`, `WavePin`), child price and age, the ticket rules page
+   buttons), grant price rules (`ClassPrice`, `Credit`, `WavePin`, `EarlyAccess`), child price and age, the ticket rules page
    (an https address; a changed version gets a new address) and the ticketing switches (below). The form edits waves,
    price rules and supporter levels as rows, the VAT as a percentage and sales close in the organisation's time zone.
+   **Early sales** (and test purchases): mode `InvitedOnly` sells only to members holding an active grant in a program
+   with an `EarlyAccess` rule (e.g. asociados and colaboradores in a wave zero, or a few testers), with the rule's
+   amount off while the mode lasts (none when left empty; someone in several early access programs gets the largest
+   amount, not the sum). The dashboard ticket card links the invited to the buy page. Everyone else sees nothing on sale; partner tickets and
+   resale wait for general sale. Switching to `Open` ends the early amount.
 2. A member opens `/Tickets/Buy` (linked from the dashboard ticket card while any event sells through Humans), which
-   lists every event that is not Closed, each priced in its own time zone and checked for holdings on its own. They see
+   lists every event that is not Closed (an `InvitedOnly` one only to the invited), each priced in its own time zone and checked for holdings on its own. They see
    their price, may add children (child price, issued on their own ticket), a partner (name and email; public price;
    the account is found or made once the order is paid), a VIP upgrade (shown as the ticket plus a donation) and a donation.
    They tick the ticket rules on every checkout (the page's address goes on the order's timeline; no Consent signing) and may opt in to the mailing list

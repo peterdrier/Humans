@@ -967,6 +967,63 @@ public sealed class TicketCheckoutServiceTests
         page.PublicPrice!.AmountMinor.Should().Be(25000);
     }
 
+    [HumansFact]
+    public async Task Invited_only_sells_fresh_tickets_to_early_access_holders_with_the_largest_early_amount_off_and_to_nobody_else()
+    {
+        var invitedProgram = Guid.NewGuid();
+        _salesEvent.PriceRules.Add(new TicketPriceRule
+        {
+            GrantProgramId = invitedProgram,
+            Kind = TicketPriceRuleKind.EarlyAccess,
+            AmountMinor = 2500,
+            Label = "Wave zero",
+        });
+        var secondProgram = Guid.NewGuid();
+        _salesEvent.PriceRules.Add(new TicketPriceRule
+        {
+            GrantProgramId = secondProgram,
+            Kind = TicketPriceRuleKind.EarlyAccess,
+            AmountMinor = 1000,
+            Label = "Colaboradores",
+        });
+        _salesEvent.Mode = TicketSalesMode.InvitedOnly;
+        _grants.GetActiveGrantsAsync(_buyerId, Arg.Any<CancellationToken>())
+            .Returns([
+                new ActiveGrantInfo(Guid.NewGuid(), invitedProgram, "Asociados", _event.Id, Now),
+                new ActiveGrantInfo(Guid.NewGuid(), secondProgram, "Colaboradores", _event.Id, Now),
+            ]);
+
+        (await _service.GetBuyPagesAsync(_otherBuyerId, Ct)).Should().BeEmpty();
+        (await _service.GetPublicSalesAsync(Ct)).Should().BeEmpty();
+        (await _service.StartCheckoutAsync(Buy(), _otherBuyerId, Ct)).Refusal.Should().Be("Tickets_Buy_NotOnSale");
+
+        var page = (await _service.GetBuyPagesAsync(_buyerId, Ct)).Single();
+        page.OwnPrice!.AmountMinor.Should().Be(20000);
+        page.OffersPartner.Should().BeFalse();
+        (await _service.StartCheckoutAsync(Buy(partnerName: "Cy", partnerEmail: "cy@example.com"), _buyerId, Ct))
+            .Refusal.Should().Be("Tickets_Buy_Invalid");
+        (await _service.StartCheckoutAsync(Buy(), _buyerId, Ct)).Refusal.Should().BeNull();
+        _repo.Orders.Single().TotalMinor.Should().Be(20000);
+
+        _salesEvent.Mode = TicketSalesMode.Open;
+        (await _service.GetBuyPagesAsync(_buyerId, Ct)).Single().OwnPrice!.AmountMinor.Should().Be(22500);
+    }
+
+    [HumansFact]
+    public async Task Invited_only_sells_no_resale_and_needs_an_early_access_rule()
+    {
+        var ticket = await PaidAdultAsync();
+        _salesEvent.Mode = TicketSalesMode.InvitedOnly;
+
+        _salesEvent.ResaleSelling.Should().BeFalse();
+        (await _service.GetHeldTicketsAsync(_buyerId, Ct)).Single(t => t.Ticket.Id == ticket.Id).CanOffer.Should().BeFalse();
+        (await _service.OfferForResaleAsync(ticket.Id, _buyerId, Ct)).Refusal.Should().Be("Tickets_Resale_Closed");
+        var save = new SalesEventSave(_salesEvent.Id, _event.Id, "test", null, TicketSalesMode.InvitedOnly, null, 100, 0.1m,
+            [], [], _salesEvent.PriceRules);
+        (await _service.SaveSalesEventAsync(save, _adminId, Ct)).Refusal
+            .Should().Be("Invited only needs an early access price rule naming the grant program that is invited.");
+    }
+
     private readonly Guid _adminId = Guid.NewGuid();
 
     private async Task<TicketCheckoutTicket> PaidAdultAsync()
