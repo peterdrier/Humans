@@ -78,7 +78,7 @@ internal enum TicketSalesMode
     ResaleOnly = 2,
     /// <summary>
     /// Early sales before general sale opens: only holders of an <see cref="TicketPriceRuleKind.EarlyAccess"/> grant
-    /// buy, fresh stock only, no partner tickets and no resale. Also how a few people make a test purchase.
+    /// buy, fresh stock only, no tickets for others and no resale. Also how a few people make a test purchase.
     /// </summary>
     InvitedOnly = 3,
 }
@@ -94,7 +94,7 @@ internal sealed class TicketSalesSwitches
 {
     public ResaleScheme Resale { get; set; } = ResaleScheme.QueueAndDirected;
 
-    /// <summary>A buyer may add one more adult ticket for someone else, at the public price.</summary>
+    /// <summary>A buyer may add other people already in Humans to the order, each an adult ticket at the public price.</summary>
     public bool PartnerTickets { get; set; } = true;
 
     /// <summary>Donation lines at checkout: the VIP buttons and the free donation.</summary>

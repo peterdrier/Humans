@@ -200,7 +200,7 @@ internal sealed class TicketDeliveryService(
     }
 
     /// <summary>
-    /// A partner account made by someone else's checkout carries the default language, not a choice; until its
+    /// An account that has never signed in carries the default language, not a choice; until its
     /// holder has signed in, the language the order was placed in is the better guess.
     /// </summary>
     private static string CultureOf(UserInfo? holder, TicketCheckoutOrder order) =>

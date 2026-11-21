@@ -86,18 +86,6 @@
   <data name="Tickets_Buy_SupporterOption" xml:space="preserve">
     <value>{0} en total: la teva entrada més una donació de {1}</value>
   </data>
-  <data name="Tickets_Buy_Partner" xml:space="preserve">
-    <value>Una entrada per a una altra persona</value>
-  </data>
-  <data name="Tickets_Buy_PartnerHelp" xml:space="preserve">
-    <value>El seu nom legal i el correu. Tindrà el seu propi compte i l'entrada serà seva. Costa el preu públic ({0}).</value>
-  </data>
-  <data name="Tickets_Buy_PartnerName" xml:space="preserve">
-    <value>Nom legal</value>
-  </data>
-  <data name="Tickets_Buy_PartnerEmail" xml:space="preserve">
-    <value>Correu electrònic</value>
-  </data>
   <data name="Tickets_Buy_Donation" xml:space="preserve">
     <value>Afegir una donació</value>
   </data>
@@ -181,12 +169,6 @@
   </data>
   <data name="Tickets_Buy_AlreadyHolds" xml:space="preserve">
     <value>Ja tens una entrada per a aquest esdeveniment.</value>
-  </data>
-  <data name="Tickets_Buy_PartnerIncomplete" xml:space="preserve">
-    <value>Per a l'entrada d'una altra persona, indica el seu nom legal i un correu vàlid.</value>
-  </data>
-  <data name="Tickets_Buy_PartnerIsYou" xml:space="preserve">
-    <value>Aquest correu és teu; marca la casella de la teva pròpia entrada.</value>
   </data>
   <data name="Tickets_Buy_Invalid" xml:space="preserve">
     <value>Aquesta opció no està disponible. Torna-ho a provar.</value>
@@ -502,5 +484,86 @@
   </data>
   <data name="Tickets_Delivery_Ticket_Riders" xml:space="preserve">
     <value>Aquí també hi ha les entrades dels infants que vénen amb tu. Cadascuna té el seu codi: mostra-les a la porta juntament amb la teva.</value>
+  </data>
+  <data name="Tickets_Buy_Others" xml:space="preserve">
+    <value>Entrades per a altres persones</value>
+  </data>
+  <data name="Tickets_Buy_OthersHelp" xml:space="preserve">
+    <value>Afegeix persones que ja són a Humans, amb el correu que hi fan servir. Cadascuna rep una entrada al seu propi nom legal. Cada entrada costa el preu públic ({0}).</value>
+  </data>
+  <data name="Tickets_Buy_OtherEmail" xml:space="preserve">
+    <value>Correu de la persona {0}</value>
+  </data>
+  <data name="Tickets_Buy_OthersAdd" xml:space="preserve">
+    <value>Afegeix una altra persona</value>
+  </data>
+  <data name="Tickets_Buy_OthersTooMany" xml:space="preserve">
+    <value>Una comanda pot incloure entrades per a fins a {0} persones més.</value>
+  </data>
+  <data name="Tickets_Buy_OtherNotFound" xml:space="preserve">
+    <value>Ningú a Humans té {0} com a correu confirmat. Primer s'ha d'unir a Humans; després podràs comprar la seva entrada.</value>
+  </data>
+  <data name="Tickets_Buy_OtherIsYou" xml:space="preserve">
+    <value>{0} és el teu propi correu; marca la casella de la teva pròpia entrada.</value>
+  </data>
+  <data name="Tickets_Buy_OtherNeedsName" xml:space="preserve">
+    <value>La persona amb {0} encara no ha indicat el seu nom legal a Humans. L'entrada porta el nom legal, així que primer l'ha d'afegir.</value>
+  </data>
+  <data name="Tickets_Buy_OtherHolds" xml:space="preserve">
+    <value>La persona amb {0} ja té una entrada per a aquest esdeveniment, així que no li'n pots comprar una altra.</value>
+  </data>
+  <data name="Tickets_Companion_Ask" xml:space="preserve">
+    <value>Demana una entrada d'acompanyant</value>
+  </data>
+  <data name="Tickets_Companion_AskHelp" xml:space="preserve">
+    <value>Si necessites algú amb tu per participar, per exemple per una discapacitat, pot venir amb una entrada d'acompanyant gratuïta. Ha de ser ja a Humans. L'equip d'entrades llegeix la teva petició i respon aquí.</value>
+  </data>
+  <data name="Tickets_Companion_Email" xml:space="preserve">
+    <value>El correu del teu acompanyant a Humans</value>
+  </data>
+  <data name="Tickets_Companion_Note" xml:space="preserve">
+    <value>Per què necessites acompanyant</value>
+  </data>
+  <data name="Tickets_Companion_NoteHelp" xml:space="preserve">
+    <value>N'hi ha prou amb una frase. Només la llegeix l'equip d'entrades; no calen detalls mèdics.</value>
+  </data>
+  <data name="Tickets_Companion_Send" xml:space="preserve">
+    <value>Envia la petició</value>
+  </data>
+  <data name="Tickets_Companion_Requested" xml:space="preserve">
+    <value>La teva petició d'acompanyant s'ha enviat a l'equip d'entrades.</value>
+  </data>
+  <data name="Tickets_Companion_Pending" xml:space="preserve">
+    <value>La teva petició d'acompanyant està pendent de l'equip d'entrades.</value>
+  </data>
+  <data name="Tickets_Companion_Withdraw" xml:space="preserve">
+    <value>Retira la petició</value>
+  </data>
+  <data name="Tickets_Companion_Withdrawn" xml:space="preserve">
+    <value>Petició d'acompanyant retirada.</value>
+  </data>
+  <data name="Tickets_Companion_Declined" xml:space="preserve">
+    <value>L'equip d'entrades ha rebutjat la teva petició d'acompanyant: {0}</value>
+  </data>
+  <data name="Tickets_Companion_NotAllowed" xml:space="preserve">
+    <value>Aquesta entrada no admet una petició d'acompanyant: ha de ser una entrada d'adult vàlida, sense acompanyant ni petició pendent.</value>
+  </data>
+  <data name="Tickets_Companion_NoteRequired" xml:space="preserve">
+    <value>Explica breument per què necessites acompanyant, en 500 caràcters com a màxim.</value>
+  </data>
+  <data name="Tickets_Companion_NothingPending" xml:space="preserve">
+    <value>No hi ha cap petició d'acompanyant pendent en aquesta entrada.</value>
+  </data>
+  <data name="Tickets_Companion_NotFound" xml:space="preserve">
+    <value>Ningú a Humans té aquest correu confirmat. El teu acompanyant s'ha d'unir primer a Humans.</value>
+  </data>
+  <data name="Tickets_Companion_IsYou" xml:space="preserve">
+    <value>Aquest és el teu propi correu; indica el del teu acompanyant.</value>
+  </data>
+  <data name="Tickets_Companion_NeedsName" xml:space="preserve">
+    <value>El teu acompanyant encara no ha indicat el seu nom legal a Humans. L'entrada porta el nom legal, així que primer l'ha d'afegir.</value>
+  </data>
+  <data name="Tickets_Companion_Holds" xml:space="preserve">
+    <value>El teu acompanyant ja té una entrada per a aquest esdeveniment, així que no en necessita una d'acompanyant.</value>
   </data>
 </root>

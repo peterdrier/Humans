@@ -121,10 +121,21 @@ public sealed class TicketCheckoutServiceTests
     }
 
     private StartCheckout Buy(
-        bool forSelf = true, string? partnerName = null, string? partnerEmail = null, long? supporter = null, long donation = 0,
-        Guid? salesEventId = null) =>
-        new(salesEventId ?? _salesEvent.Id, forSelf, partnerName, partnerEmail, supporter, donation, TicketDonationPurpose.General,
-            new Uri("https://humans.example/Tickets/Buy/Order/"), "es-ES");
+        bool forSelf = true, long? supporter = null, long donation = 0, Guid? salesEventId = null, string?[]? others = null) =>
+        new(salesEventId ?? _salesEvent.Id, forSelf, supporter, donation, TicketDonationPurpose.General,
+            new Uri("https://humans.example/Tickets/Buy/Order/"), "es-ES")
+        { OtherEmails = others ?? [] };
+
+    /// <summary>A person in Humans who has verified <paramref name="email"/>.</summary>
+    private Guid Human(string email, string first, string last, Action<User>? shape = null)
+    {
+        var user = new User { Id = Guid.NewGuid(), BurnerName = first, FirstName = first, LastName = last, Email = email };
+        shape?.Invoke(user);
+        _users.GetUserInfoAsync(user.Id, Arg.Any<CancellationToken>()).Returns(UserInfo.Create(user, [], [], UserFixtures.Profile()));
+        _userEmails.FindByAddressAsync(Arg.Is<string>(e => string.Equals(e, email, StringComparison.OrdinalIgnoreCase)), true, true,
+            Arg.Any<CancellationToken>()).Returns([Row(user.Id, verified: true)]);
+        return user.Id;
+    }
 
     [HumansFact]
     public async Task Backend_check_passes_the_trimmed_event_id_and_refuses_an_unknown_key()
@@ -271,76 +282,102 @@ public sealed class TicketCheckoutServiceTests
     }
 
     [HumansFact]
-    public async Task Partner_pays_the_public_price_and_gets_an_account_only_once_the_order_is_paid()
+    public async Task Others_already_in_Humans_each_get_a_ticket_in_their_legal_name_at_the_public_price()
     {
         _grants.GetActiveGrantsAsync(_buyerId, Arg.Any<CancellationToken>())
             .Returns([new ActiveGrantInfo(Guid.NewGuid(), LowIncomeProgram, "Low income", _event.Id, Now)]);
-        var partnerId = Guid.NewGuid();
-        _provisioning.FindOrCreateUserByEmailAsync("bo@example.com", null, ContactSource.Manual, Arg.Any<CancellationToken>())
-            .Returns(new AccountProvisioningResult(partnerId, Created: true));
+        var katie = Human("katie@example.com", "Katie", "Jones");
+        var sarah = Human("sarah@example.com", "Sarah", "Lee");
 
         var result = await _service.StartCheckoutAsync(
-            Buy(partnerName: "Bo Smith", partnerEmail: "bo@example.com"), _buyerId, TestContext.Current.CancellationToken);
+            Buy(others: ["katie@example.com", " SARAH@example.com ", ""]), _buyerId, Ct);
 
         result.Refusal.Should().BeNull();
         var lines = _repo.Orders.Single().Lines;
-        lines.Should().HaveCount(2);
-        lines[0].AmountMinor.Should().Be(12500);
-        lines[1].AmountMinor.Should().Be(22500);
-        lines[1].AttendeeUserId.Should().BeNull();
+        lines.Select(l => (l.AttendeeUserId, l.AttendeeName, l.AmountMinor)).Should().Equal(
+            (_buyerId, "Ana García", 12500), (katie, "Katie Jones", 22500), (sarah, "Sarah Lee", 22500));
+        _repo.Orders.Single().TotalMinor.Should().Be(57500);
+
+        await PayAsync("cs_1");
+
+        _repo.Tickets.Select(t => t.HolderUserId).Should().BeEquivalentTo(new Guid?[] { _buyerId, katie, sarah });
         await _provisioning.DidNotReceiveWithAnyArgs().FindOrCreateUserByEmailAsync(default!, default, default, default);
-
-        await PayAsync("cs_1");
-
-        lines[1].AttendeeUserId.Should().Be(partnerId);
-        _repo.Tickets.Should().Contain(t => t.HolderUserId == partnerId && t.HolderName == "Bo Smith");
+        await _provisioning.DidNotReceiveWithAnyArgs().ReplaceUnverifiedEmailAndProvisionAsync(default, default, default!, default, default, default);
     }
 
     [HumansFact]
-    public async Task A_verified_partner_address_attaches_the_ticket_to_that_account()
+    public async Task Someone_who_already_holds_a_ticket_is_refused_by_address_before_anything_is_saved()
     {
-        var partnerId = Guid.NewGuid();
-        _userEmails.FindByAddressAsync("bo@example.com", true, true, Arg.Any<CancellationToken>())
-            .Returns([Row(partnerId, verified: true)]);
+        var katie = Human("katie@example.com", "Katie", "Jones");
+        await BuyAndPayAsync(Buy(), katie);
+        var orders = _repo.Orders.Count;
+        Human("sarah@example.com", "Sarah", "Lee");
 
-        await _service.StartCheckoutAsync(Buy(partnerName: "Bo Smith", partnerEmail: "bo@example.com"), _buyerId, Ct);
-        await PayAsync("cs_1");
+        var result = await _service.StartCheckoutAsync(Buy(others: ["sarah@example.com", "katie@example.com"]), _buyerId, Ct);
 
-        _repo.Tickets.Should().Contain(t => t.HolderUserId == partnerId);
-        await _provisioning.DidNotReceiveWithAnyArgs().FindOrCreateUserByEmailAsync(default!, default, default, default);
+        result.Refusal.Should().Be("Tickets_Buy_OtherHolds");
+        result.RefusalArgument.Should().Be("katie@example.com");
+        _repo.Orders.Should().HaveCount(orders);
     }
 
     [HumansFact]
-    public async Task A_single_unverified_partner_address_is_replaced_by_a_new_account()
+    public async Task Someone_on_another_unpaid_checkout_counts_as_holding_a_ticket()
     {
-        var owner = Guid.NewGuid();
-        var row = Row(owner, verified: false);
-        var partnerId = Guid.NewGuid();
-        _userEmails.FindByAddressAsync("bo@example.com", true, false, Arg.Any<CancellationToken>()).Returns([row]);
-        _provisioning.ReplaceUnverifiedEmailAndProvisionAsync(owner, row.Id, "bo@example.com", null, ContactSource.Manual,
-                Arg.Any<CancellationToken>())
-            .Returns(new AccountProvisioningResult(partnerId, Created: true));
+        Human("katie@example.com", "Katie", "Jones");
+        (await _service.StartCheckoutAsync(Buy(forSelf: false, others: ["katie@example.com"]), _otherBuyerId, Ct))
+            .Refusal.Should().BeNull();
 
-        await _service.StartCheckoutAsync(Buy(partnerName: "Bo Smith", partnerEmail: "bo@example.com"), _buyerId, Ct);
-        await PayAsync("cs_1");
-
-        _repo.Tickets.Should().Contain(t => t.HolderUserId == partnerId);
+        (await _service.StartCheckoutAsync(Buy(others: ["katie@example.com"]), _buyerId, Ct))
+            .Refusal.Should().Be("Tickets_Buy_OtherHolds");
     }
 
     [HumansFact]
-    public async Task An_ambiguous_partner_address_issues_the_ticket_without_an_account_and_says_so()
+    public async Task Only_a_single_live_verified_account_with_a_legal_name_can_be_bought_for()
     {
-        _userEmails.FindByAddressAsync("bo@example.com", true, true, Arg.Any<CancellationToken>())
+        Human("noname@example.com", "", "", u => { u.FirstName = ""; u.LastName = ""; });
+        Human("gone@example.com", "Gone", "Person", u => u.MergedToUserId = Guid.NewGuid());
+        _userEmails.FindByAddressAsync("twice@example.com", true, true, Arg.Any<CancellationToken>())
             .Returns([Row(Guid.NewGuid(), verified: true), Row(Guid.NewGuid(), verified: true)]);
 
-        await _service.StartCheckoutAsync(Buy(partnerName: "Bo Smith", partnerEmail: "bo@example.com"), _buyerId, Ct);
+        async Task<string?> RefusalAsync(string email) =>
+            (await _service.StartCheckoutAsync(Buy(others: [email]), _buyerId, Ct)).Refusal;
+
+        (await RefusalAsync("nobody@example.com")).Should().Be("Tickets_Buy_OtherNotFound");
+        (await RefusalAsync("not an email")).Should().Be("Tickets_Buy_OtherNotFound");
+        (await RefusalAsync("twice@example.com")).Should().Be("Tickets_Buy_OtherNotFound");
+        (await RefusalAsync("gone@example.com")).Should().Be("Tickets_Buy_OtherNotFound");
+        (await RefusalAsync("noname@example.com")).Should().Be("Tickets_Buy_OtherNeedsName");
+        _userEmails.FindByAddressAsync("ana@example.com", true, true, Arg.Any<CancellationToken>()).Returns([Row(_buyerId, verified: true)]);
+        (await RefusalAsync("ana@example.com")).Should().Be("Tickets_Buy_OtherIsYou");
+        _repo.Orders.Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task Two_addresses_of_one_person_buy_one_ticket_and_more_than_ten_people_are_refused()
+    {
+        var katie = Human("katie@example.com", "Katie", "Jones");
+        _userEmails.FindByAddressAsync("k@example.com", true, true, Arg.Any<CancellationToken>()).Returns([Row(katie, verified: true)]);
+
+        (await _service.StartCheckoutAsync(Buy(others: ["katie@example.com", "k@example.com"]), _buyerId, Ct)).Refusal.Should().BeNull();
+        _repo.Orders.Single().Lines.Count(l => l.AttendeeUserId == katie).Should().Be(1);
+
+        var many = Enumerable.Range(0, 11).Select(i => (string?)$"p{i}@example.com").ToArray();
+        (await _service.StartCheckoutAsync(Buy(forSelf: false, others: many), _otherBuyerId, Ct))
+            .Refusal.Should().Be("Tickets_Buy_OthersTooMany");
+    }
+
+    [HumansFact]
+    public async Task A_late_payment_for_someone_who_meanwhile_bought_their_own_is_flagged_for_the_team()
+    {
+        var katie = Human("katie@example.com", "Katie", "Jones");
+        await _service.StartCheckoutAsync(Buy(forSelf: false, others: ["katie@example.com"]), _buyerId, Ct);
+        _clock.Advance(TicketCheckoutService.CheckoutLifetime + Duration.FromMinutes(1));
+        await BuyAndPayAsync(Buy(), katie);
+
         await PayAsync("cs_1");
 
-        _repo.Tickets.Should().HaveCount(2).And.Contain(t => t.HolderUserId == null && t.HolderName == "Bo Smith");
-        _repo.Events.Should().Contain(e => e.Detail.Contains("verified on more than one account", StringComparison.Ordinal));
         await _audit.Received(1).LogAsync(TicketsAuditActions.TicketCheckoutNeedsAttention, Arg.Any<string>(), Arg.Any<Guid>(),
-            Arg.Is<string>(d => d.Contains("verified on more than one account")), Arg.Any<string>(), Arg.Any<Guid?>(), Arg.Any<string?>());
-        await _provisioning.DidNotReceiveWithAnyArgs().FindOrCreateUserByEmailAsync(default!, default, default, default);
+            Arg.Is<string>(d => d.Contains("already held a ticket")), Arg.Any<string>(), Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 
     private static UserEmailRowSnapshot Row(Guid userId, bool verified) =>
@@ -351,17 +388,6 @@ public sealed class TicketCheckoutServiceTests
         _backend.GetStatusAsync(session, Arg.Any<CancellationToken>())
             .Returns(new CheckoutStatus(CheckoutState.Paid, 100, "card", paidAt ?? Now));
         await _service.CheckoutChangedAsync("test", session, Ct);
-    }
-
-    [HumansFact]
-    public async Task A_refused_supporter_total_creates_no_partner_account()
-    {
-        var result = await _service.StartCheckoutAsync(
-            Buy(partnerName: "Bo Smith", partnerEmail: "bo@example.com", supporter: 12345), _buyerId, TestContext.Current.CancellationToken);
-
-        result.Refusal.Should().Be("Tickets_Buy_Invalid");
-        await _provisioning.DidNotReceiveWithAnyArgs().FindOrCreateUserByEmailAsync(default!, default, default, default);
-        _repo.Orders.Should().BeEmpty();
     }
 
     [HumansFact]
@@ -637,15 +663,16 @@ public sealed class TicketCheckoutServiceTests
     }
 
     [HumansFact]
-    public async Task Switched_off_partner_tickets_donations_and_mailing_list_are_refused_and_not_offered()
+    public async Task Switched_off_tickets_for_others_donations_and_mailing_list_are_refused_and_not_offered()
     {
         _salesEvent.Switches = new TicketSalesSwitches { PartnerTickets = false, Donations = false, MailingListOptIn = false };
 
         var page = (await _service.GetBuyPagesAsync(_buyerId, Ct)).Single();
-        page.OffersPartner.Should().BeFalse();
+        page.OffersOthers.Should().BeFalse();
         page.OffersDonations.Should().BeFalse();
         page.AskMarketing.Should().BeFalse();
-        (await _service.StartCheckoutAsync(Buy(partnerName: "Bo Smith", partnerEmail: "bo@example.com"), _buyerId, Ct))
+        Human("katie@example.com", "Katie", "Jones");
+        (await _service.StartCheckoutAsync(Buy(others: ["katie@example.com"]), _buyerId, Ct))
             .Refusal.Should().Be("Tickets_Buy_Invalid");
         (await _service.StartCheckoutAsync(Buy(supporter: 40000), _buyerId, Ct)).Refusal.Should().Be("Tickets_Buy_Invalid");
         (await _service.StartCheckoutAsync(Buy(donation: 1000), _buyerId, Ct)).Refusal.Should().Be("Tickets_Buy_Invalid");
@@ -661,7 +688,7 @@ public sealed class TicketCheckoutServiceTests
         _salesEvent.Switches = null;
 
         var page = (await _service.GetBuyPagesAsync(_buyerId, Ct)).Single();
-        page.OffersPartner.Should().BeTrue();
+        page.OffersOthers.Should().BeTrue();
         page.OffersDonations.Should().BeTrue();
     }
 
@@ -1064,8 +1091,8 @@ public sealed class TicketCheckoutServiceTests
 
         var page = (await _service.GetBuyPagesAsync(_buyerId, Ct)).Single();
         page.OwnPrice!.AmountMinor.Should().Be(20000);
-        page.OffersPartner.Should().BeFalse();
-        (await _service.StartCheckoutAsync(Buy(partnerName: "Cy", partnerEmail: "cy@example.com"), _buyerId, Ct))
+        page.OffersOthers.Should().BeFalse();
+        (await _service.StartCheckoutAsync(Buy(others: ["cy@example.com"]), _buyerId, Ct))
             .Refusal.Should().Be("Tickets_Buy_Invalid");
         (await _service.StartCheckoutAsync(Buy(), _buyerId, Ct)).Refusal.Should().BeNull();
         _repo.Orders.Single().TotalMinor.Should().Be(20000);
@@ -1319,6 +1346,122 @@ public sealed class TicketCheckoutServiceTests
         (await _service.IssueCompanionAsync(adult.Id, "Helper Ruiz", null, "Wheelchair user", _adminId, Ct))
             .Refusal.Should().Contain("capacity");
         _repo.Tickets.Should().ContainSingle();
+    }
+
+    [HumansFact]
+    public async Task A_holder_asks_for_a_companion_in_Humans_and_approval_issues_it_to_their_account()
+    {
+        var adult = await PaidAdultAsync();
+        var helper = Human("helper@example.com", "Helper", "Ruiz");
+        _delivery.ClearReceivedCalls();
+
+        (await _service.RequestCompanionAsync(adult.Id, _buyerId, " HELPER@example.com ", " Wheelchair user ", Ct))
+            .Refusal.Should().BeNull();
+        (await _service.RequestCompanionAsync(adult.Id, _buyerId, "helper@example.com", "Again", Ct))
+            .Refusal.Should().Be("Tickets_Companion_NotAllowed");
+        var request = _repo.CompanionRequests.Single();
+        request.State.Should().Be(TicketCompanionRequestState.Pending);
+        request.CompanionUserId.Should().Be(helper);
+        request.Note.Should().Be("Wheelchair user");
+        _repo.Events.Should().Contain(e => e.Kind == TicketCheckoutOrderEventKind.CompanionRequested)
+            .And.NotContain(e => e.Detail.Contains("Wheelchair"));
+        _repo.Tickets.Should().NotContain(t => t.Kind == TicketHolderKind.Companion);
+
+        (await _service.DecideCompanionRequestAsync(request.Id, approve: true, null, _adminId, Ct)).Refusal.Should().BeNull();
+
+        var companion = _repo.Tickets.Single(t => t.Kind == TicketHolderKind.Companion);
+        companion.HolderUserId.Should().Be(helper);
+        companion.HolderName.Should().Be("Helper Ruiz");
+        companion.ParentTicketId.Should().Be(adult.Id);
+        companion.PricePaidMinor.Should().Be(0);
+        request.State.Should().Be(TicketCompanionRequestState.Approved);
+        request.CompanionTicketId.Should().Be(companion.Id);
+        request.DecidedByUserId.Should().Be(_adminId);
+        await _provisioning.DidNotReceiveWithAnyArgs().FindOrCreateUserByEmailAsync(default!, default, default, default);
+        await _delivery.Received(1).TicketsIssuedAsync(companion.OrderId, Arg.Any<CancellationToken>());
+        await _audit.Received(1).LogAsync(TicketsAuditActions.TicketCompanionRequestDecided, Arg.Any<string>(), request.Id,
+            Arg.Any<string>(), _adminId, _buyerId, AuditSubjectTypes.User);
+        (await _service.RequestCompanionAsync(adult.Id, _buyerId, "helper@example.com", "A second one", Ct))
+            .Refusal.Should().Be("Tickets_Companion_NotAllowed");
+        (await _service.StartCheckoutAsync(Buy(forSelf: false, others: ["helper@example.com"]), _otherBuyerId, Ct))
+            .Refusal.Should().Be("Tickets_Buy_OtherHolds");
+    }
+
+    [HumansFact]
+    public async Task A_companion_request_is_refused_for_someone_elses_ticket_without_a_note_or_without_a_live_account()
+    {
+        var adult = await PaidAdultAsync();
+        Human("helper@example.com", "Helper", "Ruiz");
+        Human("noname@example.com", "", "", u => { u.FirstName = ""; u.LastName = ""; });
+        _userEmails.FindByAddressAsync("ana@example.com", true, true, Arg.Any<CancellationToken>()).Returns([Row(_buyerId, verified: true)]);
+
+        (await _service.RequestCompanionAsync(adult.Id, _otherBuyerId, "helper@example.com", "Help", Ct))
+            .Refusal.Should().Be("Tickets_Resale_NotFound");
+        (await _service.RequestCompanionAsync(adult.Id, _buyerId, "helper@example.com", "  ", Ct))
+            .Refusal.Should().Be("Tickets_Companion_NoteRequired");
+        (await _service.RequestCompanionAsync(adult.Id, _buyerId, "nobody@example.com", "Help", Ct))
+            .Refusal.Should().Be("Tickets_Companion_NotFound");
+        (await _service.RequestCompanionAsync(adult.Id, _buyerId, "ana@example.com", "Help", Ct))
+            .Refusal.Should().Be("Tickets_Companion_IsYou");
+        (await _service.RequestCompanionAsync(adult.Id, _buyerId, "noname@example.com", "Help", Ct))
+            .Refusal.Should().Be("Tickets_Companion_NeedsName");
+        _repo.CompanionRequests.Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task A_decline_needs_a_note_the_holder_sees_and_lets_them_ask_again()
+    {
+        var adult = await PaidAdultAsync();
+        Human("helper@example.com", "Helper", "Ruiz");
+        await _service.RequestCompanionAsync(adult.Id, _buyerId, "helper@example.com", "Help", Ct);
+        var request = _repo.CompanionRequests.Single();
+
+        (await _service.DecideCompanionRequestAsync(request.Id, approve: false, " ", _adminId, Ct)).Succeeded.Should().BeFalse();
+        (await _service.DecideCompanionRequestAsync(request.Id, approve: false, "Not eligible", _adminId, Ct)).Refusal.Should().BeNull();
+        (await _service.DecideCompanionRequestAsync(request.Id, approve: true, null, _adminId, Ct)).Succeeded.Should().BeFalse();
+
+        request.State.Should().Be(TicketCompanionRequestState.Declined);
+        request.DecisionNote.Should().Be("Not eligible");
+        _repo.Tickets.Should().NotContain(t => t.Kind == TicketHolderKind.Companion);
+        var held = (await _service.GetHeldTicketsAsync(_buyerId, Ct)).Single(t => t.Ticket.Id == adult.Id);
+        held.CompanionRequest!.DecisionNote.Should().Be("Not eligible");
+        held.CanAskCompanion.Should().BeTrue();
+    }
+
+    [HumansFact]
+    public async Task Approval_rechecks_the_companion_and_a_withdrawn_request_cannot_be_approved()
+    {
+        var adult = await PaidAdultAsync();
+        var helper = Human("helper@example.com", "Helper", "Ruiz");
+        await _service.RequestCompanionAsync(adult.Id, _buyerId, "helper@example.com", "Help", Ct);
+        var request = _repo.CompanionRequests.Single();
+        await BuyAndPayAsync(Buy(), helper);
+
+        (await _service.DecideCompanionRequestAsync(request.Id, approve: true, null, _adminId, Ct))
+            .Refusal.Should().StartWith("The companion now holds a ticket");
+        request.State.Should().Be(TicketCompanionRequestState.Pending);
+
+        (await _service.WithdrawCompanionRequestAsync(adult.Id, _buyerId, Ct)).Refusal.Should().BeNull();
+        (await _service.WithdrawCompanionRequestAsync(adult.Id, _buyerId, Ct)).Refusal.Should().Be("Tickets_Companion_NothingPending");
+        (await _service.DecideCompanionRequestAsync(request.Id, approve: false, "Late", _adminId, Ct)).Succeeded.Should().BeFalse();
+        request.State.Should().Be(TicketCompanionRequestState.Withdrawn);
+    }
+
+    [HumansFact]
+    public async Task Erasure_withdraws_a_pending_companion_request_and_the_companions_export_hides_the_note()
+    {
+        var adult = await PaidAdultAsync();
+        var helper = Human("helper@example.com", "Helper", "Ruiz");
+        await _service.RequestCompanionAsync(adult.Id, _buyerId, "helper@example.com", "Uses a wheelchair", Ct);
+
+        async Task<string> ExportAsync(Guid userId) => System.Text.Json.JsonSerializer.Serialize(
+            (await _service.ContributeForUserAsync(userId, Ct)).Select(slice => slice.Data));
+        (await ExportAsync(helper)).Should().Contain(_repo.CompanionRequests.Single().Id.ToString()).And.NotContain("wheelchair");
+        (await ExportAsync(_buyerId)).Should().Contain("Uses a wheelchair");
+
+        await _service.EraseForUserAsync(helper, Ct);
+
+        _repo.CompanionRequests.Single().State.Should().Be(TicketCompanionRequestState.Withdrawn);
     }
 
     [HumansFact]
@@ -1699,25 +1842,6 @@ public sealed class TicketCheckoutServiceTests
     }
 
     [HumansFact]
-    public async Task An_unpaid_partner_is_forgotten_once_a_late_payment_can_no_longer_arrive()
-    {
-        var result = await _service.StartCheckoutAsync(Buy(partnerName: "Bo Smith", partnerEmail: "bo@example.com"), _buyerId, Ct);
-        _backend.GetStatusAsync("cs_1", Arg.Any<CancellationToken>())
-            .Returns(new CheckoutStatus(CheckoutState.Pending, null, null, null));
-        await _service.CancelAsync(result.OrderId!.Value, _buyerId, Ct);
-        var partner = _repo.Orders.Single().Lines[1];
-
-        await _service.ReconcileOpenOrdersAsync(Ct);
-        partner.AttendeeEmail.Should().Be("bo@example.com");
-
-        _clock.Advance(Duration.FromDays(31));
-        await _service.ReconcileOpenOrdersAsync(Ct);
-
-        partner.AttendeeEmail.Should().BeNull();
-        partner.AttendeeName.Should().NotBe("Bo Smith");
-    }
-
-    [HumansFact]
     public async Task One_invitation_at_a_time_and_at_most_three_per_ticket()
     {
         var old = await OfferedTicketAsync();
@@ -1753,18 +1877,16 @@ public sealed class TicketCheckoutServiceTests
     }
 
     [HumansFact]
-    public async Task A_partners_export_shows_their_own_line_but_not_who_paid()
+    public async Task The_export_of_someone_bought_for_shows_their_own_line_but_not_who_paid()
     {
-        var partnerId = Guid.NewGuid();
-        _provisioning.FindOrCreateUserByEmailAsync("bo@example.com", null, ContactSource.Manual, Arg.Any<CancellationToken>())
-            .Returns(new AccountProvisioningResult(partnerId, Created: true));
-        await _service.StartCheckoutAsync(Buy(partnerName: "Bo Smith", partnerEmail: "bo@example.com", supporter: 100000), _buyerId, Ct);
+        var katie = Human("katie@example.com", "Katie", "Jones");
+        await _service.StartCheckoutAsync(Buy(supporter: 100000, others: ["katie@example.com"]), _buyerId, Ct);
         await PayAsync("cs_1");
 
         var json = System.Text.Json.JsonSerializer.Serialize(
-            (await _service.ContributeForUserAsync(partnerId, Ct)).Select(slice => slice.Data));
+            (await _service.ContributeForUserAsync(katie, Ct)).Select(slice => slice.Data));
 
-        json.Should().Contain("Bo Smith").And.NotContain("ana@example.com").And.NotContain("Ana García");
+        json.Should().Contain("Katie Jones").And.NotContain("ana@example.com").And.NotContain("Ana García");
     }
 
     [HumansFact]
@@ -2092,6 +2214,20 @@ public sealed class TicketCheckoutServiceTests
             Task.FromResult(Offers.FirstOrDefault(o => string.Equals(o.DirectedTokenHash, tokenHash, StringComparison.Ordinal)));
         public Task<IReadOnlyList<TicketResaleOffer>> GetOffersForSalesEventAsync(Guid salesEventId, CancellationToken ct = default) =>
             Task.FromResult<IReadOnlyList<TicketResaleOffer>>(Offers.Where(o => o.SalesEventId == salesEventId).ToList());
+        public List<TicketCompanionRequest> CompanionRequests { get; } = [];
+        public Task AddCompanionRequestAsync(TicketCompanionRequest request, CancellationToken ct = default)
+        {
+            CompanionRequests.Add(request);
+            return Task.CompletedTask;
+        }
+        public Task UpdateCompanionRequestAsync(TicketCompanionRequest request, CancellationToken ct = default) => Task.CompletedTask;
+        public Task<TicketCompanionRequest?> GetCompanionRequestAsync(Guid id, CancellationToken ct = default) =>
+            Task.FromResult(CompanionRequests.FirstOrDefault(r => r.Id == id));
+        public Task<IReadOnlyList<TicketCompanionRequest>> GetCompanionRequestsForSalesEventAsync(Guid salesEventId, CancellationToken ct = default) =>
+            Task.FromResult<IReadOnlyList<TicketCompanionRequest>>(CompanionRequests.Where(r => r.SalesEventId == salesEventId).ToList());
+        public Task<IReadOnlyList<TicketCompanionRequest>> GetCompanionRequestsForUserAsync(Guid userId, CancellationToken ct = default) =>
+            Task.FromResult<IReadOnlyList<TicketCompanionRequest>>(
+                CompanionRequests.Where(r => r.HolderUserId == userId || r.CompanionUserId == userId).ToList());
         public Task<IReadOnlyList<TicketCheckoutRefund>> GetRefundsForSalesEventAsync(Guid salesEventId, CancellationToken ct = default) =>
             Task.FromResult<IReadOnlyList<TicketCheckoutRefund>>(Refunds.Select(r => r.Refund)
                 .Where(r => Orders.Any(o => o.Id == r.OrderId && o.SalesEventId == salesEventId)).ToList());

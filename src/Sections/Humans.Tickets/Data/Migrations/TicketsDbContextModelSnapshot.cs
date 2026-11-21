@@ -295,6 +295,59 @@ namespace Humans.Tickets.Data.Migrations
                     b.ToTable("ticket_checkout_tickets", (string)null);
                 });
 
+            modelBuilder.Entity("Humans.Tickets.Domain.Checkout.TicketCompanionRequest", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("CompanionTicketId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CompanionUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Instant?>("DecidedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("DecidedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("DecisionNote")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<Guid>("HolderUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Note")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<Instant>("RequestedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("SalesEventId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("State")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<Guid>("TicketId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SalesEventId");
+
+                    b.HasIndex("TicketId");
+
+                    b.ToTable("ticket_companion_requests", (string)null);
+                });
+
             modelBuilder.Entity("Humans.Tickets.Domain.Checkout.TicketResaleOffer", b =>
                 {
                     b.Property<Guid>("Id")

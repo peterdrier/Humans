@@ -74,13 +74,24 @@ internal interface ITicketCheckoutRepository : IRepository
 
     Task<IReadOnlyList<TicketResaleOffer>> GetOffersForSalesEventAsync(Guid salesEventId, CancellationToken ct = default);
 
+    Task AddCompanionRequestAsync(TicketCompanionRequest request, CancellationToken ct = default);
+
+    Task UpdateCompanionRequestAsync(TicketCompanionRequest request, CancellationToken ct = default);
+
+    Task<TicketCompanionRequest?> GetCompanionRequestAsync(Guid id, CancellationToken ct = default);
+
+    Task<IReadOnlyList<TicketCompanionRequest>> GetCompanionRequestsForSalesEventAsync(Guid salesEventId, CancellationToken ct = default);
+
+    /// <summary>Requests where the person is the holder or the companion.</summary>
+    Task<IReadOnlyList<TicketCompanionRequest>> GetCompanionRequestsForUserAsync(Guid userId, CancellationToken ct = default);
+
     /// <summary>Every refund on the sales event's orders.</summary>
     Task<IReadOnlyList<TicketCheckoutRefund>> GetRefundsForSalesEventAsync(Guid salesEventId, CancellationToken ct = default);
 
     /// <summary>
-    /// Tombstones the person's names and emails, their children's names on their orders and tickets, partner lines and
-    /// tickets without an account that carry one of <paramref name="emails"/>, and invitations sent to any of them.
-    /// Amounts stay for the books.
+    /// Tombstones the person's names and emails, their children's names on their orders and tickets, lines and
+    /// tickets without an account that carry one of <paramref name="emails"/>, invitations sent to any of them and the
+    /// notes on companion requests they are part of. Amounts stay for the books.
     /// </summary>
     Task<int> ErasePiiForUserAsync(Guid userId, IReadOnlyCollection<string> emails, CancellationToken ct = default);
 

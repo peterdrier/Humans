@@ -233,4 +233,38 @@ public class TicketCheckoutRepositoryTests(HumansTestDatabase database) : Integr
         (await repo.GetOrderAsync(order.Id, ct))!.Lines.Should().ContainSingle().Which.AttendeeName.Should().NotBe("Helper Ruiz");
         (await repo.GetTicketAsync(companion.Id, ct))!.HolderName.Should().NotBe("Helper Ruiz");
     }
+
+    [HumansFact]
+    public async Task Companion_requests_round_trip_and_erasure_of_either_person_clears_the_notes()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        await using var scope = Factory.Services.CreateAsyncScope();
+        var repo = scope.ServiceProvider.GetRequiredService<ITicketCheckoutRepository>();
+        var holder = Guid.NewGuid();
+        var companion = Guid.NewGuid();
+        var request = new TicketCompanionRequest
+        {
+            Id = Guid.NewGuid(),
+            SalesEventId = Guid.NewGuid(),
+            TicketId = Guid.NewGuid(),
+            HolderUserId = holder,
+            CompanionUserId = companion,
+            Note = "Ana uses a wheelchair",
+            RequestedAt = Now,
+        };
+        await repo.AddCompanionRequestAsync(request, ct);
+        var loaded = (await repo.GetCompanionRequestAsync(request.Id, ct))!;
+        loaded.State = TicketCompanionRequestState.Declined;
+        loaded.DecisionNote = "Ana already has a carer ticket";
+        loaded.DecidedAt = Now;
+        await repo.UpdateCompanionRequestAsync(loaded, ct);
+        (await repo.GetCompanionRequestsForUserAsync(companion, ct)).Should().ContainSingle()
+            .Which.State.Should().Be(TicketCompanionRequestState.Declined);
+
+        await repo.ErasePiiForUserAsync(companion, [], ct);
+
+        var erased = (await repo.GetCompanionRequestAsync(request.Id, ct))!;
+        erased.Note.Should().NotContain("Ana");
+        erased.DecisionNote.Should().BeNull();
+    }
 }

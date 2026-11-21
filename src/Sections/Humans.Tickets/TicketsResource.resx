@@ -77,18 +77,6 @@
   <data name="Tickets_Buy_SupporterOption" xml:space="preserve">
     <value>{0} in total: your ticket plus a {1} donation</value>
   </data>
-  <data name="Tickets_Buy_Partner" xml:space="preserve">
-    <value>A ticket for someone else</value>
-  </data>
-  <data name="Tickets_Buy_PartnerHelp" xml:space="preserve">
-    <value>Their legal name and email. They get their own account and the ticket is theirs. It costs the public price ({0}).</value>
-  </data>
-  <data name="Tickets_Buy_PartnerName" xml:space="preserve">
-    <value>Legal name</value>
-  </data>
-  <data name="Tickets_Buy_PartnerEmail" xml:space="preserve">
-    <value>Email</value>
-  </data>
   <data name="Tickets_Buy_Donation" xml:space="preserve">
     <value>Add a donation</value>
   </data>
@@ -172,12 +160,6 @@
   </data>
   <data name="Tickets_Buy_AlreadyHolds" xml:space="preserve">
     <value>You already have a ticket for this event.</value>
-  </data>
-  <data name="Tickets_Buy_PartnerIncomplete" xml:space="preserve">
-    <value>For someone else's ticket, give both their legal name and a valid email.</value>
-  </data>
-  <data name="Tickets_Buy_PartnerIsYou" xml:space="preserve">
-    <value>That email is yours; tick the box for your own ticket instead.</value>
   </data>
   <data name="Tickets_Buy_Invalid" xml:space="preserve">
     <value>That choice is not available. Please try again.</value>
@@ -493,5 +475,86 @@
   </data>
   <data name="Tickets_Delivery_Ticket_Riders" xml:space="preserve">
     <value>The tickets of the children coming with you are here too. Each one has its own code: show them at the gate with yours.</value>
+  </data>
+  <data name="Tickets_Buy_Others" xml:space="preserve">
+    <value>Tickets for other people</value>
+  </data>
+  <data name="Tickets_Buy_OthersHelp" xml:space="preserve">
+    <value>Add people who are already in Humans, by the email address they use there. Each gets a ticket in their own legal name, sent to them. Each ticket costs the public price ({0}).</value>
+  </data>
+  <data name="Tickets_Buy_OtherEmail" xml:space="preserve">
+    <value>Email of person {0}</value>
+  </data>
+  <data name="Tickets_Buy_OthersAdd" xml:space="preserve">
+    <value>Add another person</value>
+  </data>
+  <data name="Tickets_Buy_OthersTooMany" xml:space="preserve">
+    <value>One order can hold tickets for up to {0} other people.</value>
+  </data>
+  <data name="Tickets_Buy_OtherNotFound" xml:space="preserve">
+    <value>Nobody in Humans has {0} as a confirmed email address. They need to join Humans first; then you can buy their ticket.</value>
+  </data>
+  <data name="Tickets_Buy_OtherIsYou" xml:space="preserve">
+    <value>{0} is your own address; tick the box for your own ticket instead.</value>
+  </data>
+  <data name="Tickets_Buy_OtherNeedsName" xml:space="preserve">
+    <value>The person with {0} has not filled in their legal name in Humans yet. A ticket carries the legal name, so they need to add it first.</value>
+  </data>
+  <data name="Tickets_Buy_OtherHolds" xml:space="preserve">
+    <value>The person with {0} already has a ticket for this event, so you cannot buy them another.</value>
+  </data>
+  <data name="Tickets_Companion_Ask" xml:space="preserve">
+    <value>Ask for a companion ticket</value>
+  </data>
+  <data name="Tickets_Companion_AskHelp" xml:space="preserve">
+    <value>If you need someone with you to take part, for example because of a disability, they can come on a free companion ticket. They must already be in Humans. The ticketing team reads your request and answers here.</value>
+  </data>
+  <data name="Tickets_Companion_Email" xml:space="preserve">
+    <value>Your companion's email in Humans</value>
+  </data>
+  <data name="Tickets_Companion_Note" xml:space="preserve">
+    <value>Why you need a companion</value>
+  </data>
+  <data name="Tickets_Companion_NoteHelp" xml:space="preserve">
+    <value>A sentence is enough. Only the ticketing team reads it; no medical details are needed.</value>
+  </data>
+  <data name="Tickets_Companion_Send" xml:space="preserve">
+    <value>Send request</value>
+  </data>
+  <data name="Tickets_Companion_Requested" xml:space="preserve">
+    <value>Your companion request was sent to the ticketing team.</value>
+  </data>
+  <data name="Tickets_Companion_Pending" xml:space="preserve">
+    <value>Your companion request is waiting for the ticketing team.</value>
+  </data>
+  <data name="Tickets_Companion_Withdraw" xml:space="preserve">
+    <value>Withdraw request</value>
+  </data>
+  <data name="Tickets_Companion_Withdrawn" xml:space="preserve">
+    <value>Companion request withdrawn.</value>
+  </data>
+  <data name="Tickets_Companion_Declined" xml:space="preserve">
+    <value>The ticketing team declined your companion request: {0}</value>
+  </data>
+  <data name="Tickets_Companion_NotAllowed" xml:space="preserve">
+    <value>This ticket cannot take a companion request: it needs to be a valid adult ticket with no companion and no request waiting.</value>
+  </data>
+  <data name="Tickets_Companion_NoteRequired" xml:space="preserve">
+    <value>Say briefly why you need a companion, in at most 500 characters.</value>
+  </data>
+  <data name="Tickets_Companion_NothingPending" xml:space="preserve">
+    <value>There is no companion request waiting on this ticket.</value>
+  </data>
+  <data name="Tickets_Companion_NotFound" xml:space="preserve">
+    <value>Nobody in Humans has that confirmed email address. Your companion needs to join Humans first.</value>
+  </data>
+  <data name="Tickets_Companion_IsYou" xml:space="preserve">
+    <value>That is your own address; give your companion's.</value>
+  </data>
+  <data name="Tickets_Companion_NeedsName" xml:space="preserve">
+    <value>Your companion has not filled in their legal name in Humans yet. A ticket carries the legal name, so they need to add it first.</value>
+  </data>
+  <data name="Tickets_Companion_Holds" xml:space="preserve">
+    <value>Your companion already has a ticket for this event, so they do not need a companion ticket.</value>
   </data>
 </root>

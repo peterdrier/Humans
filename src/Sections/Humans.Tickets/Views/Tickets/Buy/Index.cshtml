@@ -65,7 +65,7 @@ var p = sale.SalesEvent.Id.ToString("N");
 else
 {
     var own = sale.OwnPrice!;
-    var nothingToBuy = sale.AlreadyHoldsTicket && (!sale.OffersPartner || directedToken is not null) && !sale.OffersDonations;
+    var nothingToBuy = sale.AlreadyHoldsTicket && (!sale.OffersOthers || directedToken is not null) && !sale.OffersDonations;
     <div class="col-lg-4 order-lg-2 d-none d-lg-block">
         @{ Summary(own); }
     </div>
@@ -140,21 +140,23 @@ else
                 }
             }
 
-            @if (directedToken is null && sale.OffersPartner)
+            @if (directedToken is null && sale.OffersOthers)
             {
                 <hr class="my-4" />
-                <h3 class="h4">@Localizer["Tickets_Buy_Partner"]</h3>
-                <p class="small text-muted">@string.Format(Localizer["Tickets_Buy_PartnerHelp"].Value, (sale.PublicPrice!.AmountMinor / 100m).ToEuro())</p>
-                <div class="row g-3">
-                    <div class="col-md-6">
-                        <label class="form-label" for="partnerName-@p">@Localizer["Tickets_Buy_PartnerName"]</label>
-                        <input class="form-control" id="partnerName-@p" name="partnerName" maxlength="513" autocomplete="off" />
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label" for="partnerEmail-@p">@Localizer["Tickets_Buy_PartnerEmail"]</label>
-                        <input class="form-control" id="partnerEmail-@p" name="partnerEmail" type="email" maxlength="320" autocomplete="off" />
-                    </div>
+                <h3 class="h4">@Localizer["Tickets_Buy_Others"]</h3>
+                <p class="small text-muted">@string.Format(Localizer["Tickets_Buy_OthersHelp"].Value, (sale.PublicPrice!.AmountMinor / 100m).ToEuro())</p>
+                <div class="row g-2" data-buy-others>
+                    @for (var o = 0; o < 3; o++)
+                    {
+                        var label = string.Format(Localizer["Tickets_Buy_OtherEmail"].Value, o + 1);
+                        <div class="col-md-8" data-buy-other>
+                            <input class="form-control" name="otherEmails" type="email" maxlength="320" autocomplete="off"
+                                   aria-label="@label" placeholder="@label" />
+                        </div>
+                    }
                 </div>
+                <button type="button" class="btn btn-outline-secondary btn-sm mt-2 align-self-start d-none" data-buy-others-add
+                        data-label="@Localizer["Tickets_Buy_OtherEmail"].Value">@Localizer["Tickets_Buy_OthersAdd"]</button>
             }
 
             @if (sale.OffersDonations)
@@ -254,4 +256,28 @@ else
 }
 </div>
 </section>
+}
+
+@section Scripts {
+    <script>
+        (function () {
+            document.querySelectorAll('[data-buy-others-add]').forEach(function (button) {
+                var list = button.previousElementSibling;
+                var max = 10;
+                button.classList.remove('d-none');
+                button.addEventListener('click', function () {
+                    var rows = list.querySelectorAll('[data-buy-other]');
+                    var row = rows[rows.length - 1].cloneNode(true);
+                    var input = row.querySelector('input');
+                    var label = button.dataset.label.replace('{0}', rows.length + 1);
+                    input.value = '';
+                    input.placeholder = label;
+                    input.setAttribute('aria-label', label);
+                    list.appendChild(row);
+                    input.focus();
+                    if (rows.length + 1 >= max) button.classList.add('d-none');
+                });
+            });
+        })();
+    </script>
 }
