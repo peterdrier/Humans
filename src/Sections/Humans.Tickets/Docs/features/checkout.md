@@ -192,7 +192,7 @@ and nothing goes to Consent.
 - When GitHub cannot be read, the folder's last good rules stay in use (kept in memory without expiry, retried every
   minute), so an outage does not stop sales. A folder that reads but holds no valid rules drops them. The setup's save
   check reads GitHub afresh, so a fixed folder is accepted at once.
-- The buy page shows the rules in language tabs and sends the version it showed. Checkout refuses a version that is no
+- The buy page shows the rules in language tabs and sends the folder and version it showed. Checkout refuses either one no
   longer current (`Tickets_Buy_TermsChanged`), so the buyer reads the new text first. While there are no rules to show
   (never read since the app started, or invalid), the event is unavailable to buy (`Tickets_Buy_TermsUnavailable`).
 - The order keeps `TermsFolder` and `TermsVersion`; its `TermsAccepted` timeline entry links that exact version on GitHub.

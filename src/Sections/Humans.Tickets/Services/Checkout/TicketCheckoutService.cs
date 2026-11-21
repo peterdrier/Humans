@@ -279,8 +279,10 @@ internal sealed partial class TicketCheckoutService(
             terms = await rulesSource.GetAsync(termsFolder, ct: ct);
             if (terms is null)
                 return StartCheckoutResult.Refused("Tickets_Buy_TermsUnavailable");
-            // The buyer accepts the text they were shown; rules changed since then are shown again first.
-            if (!string.Equals(terms.Version, command.TermsVersion, StringComparison.Ordinal))
+            // The buyer accepts the text they were shown; rules changed since then are shown again first. The folder
+            // counts too: two folders changed in one commit share a version.
+            if (!string.Equals(terms.Folder, command.TermsFolder, StringComparison.Ordinal)
+                || !string.Equals(terms.Version, command.TermsVersion, StringComparison.Ordinal))
                 return StartCheckoutResult.Refused("Tickets_Buy_TermsChanged");
         }
 

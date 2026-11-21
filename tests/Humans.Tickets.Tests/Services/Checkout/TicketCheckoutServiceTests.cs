@@ -587,10 +587,10 @@ public sealed class TicketCheckoutServiceTests
         var page = (await _service.GetBuyPagesAsync(_buyerId, Ct)).Single();
         page.Unavailable.Should().BeNull();
         page.Terms!.Texts.Keys.Should().BeEquivalentTo("es", "en");
-        (await _service.StartCheckoutAsync(Buy() with { TermsVersion = "abc123" }, _buyerId, Ct)).Refusal.Should().Be("Tickets_Buy_TermsRequired");
+        (await _service.StartCheckoutAsync(Buy() with { TermsFolder = "TicketRules/2027", TermsVersion = "abc123" }, _buyerId, Ct)).Refusal.Should().Be("Tickets_Buy_TermsRequired");
         _repo.Orders.Should().BeEmpty();
 
-        (await _service.StartCheckoutAsync(Buy() with { AcceptTerms = true, TermsVersion = "abc123" }, _buyerId, Ct)).Refusal.Should().BeNull();
+        (await _service.StartCheckoutAsync(Buy() with { AcceptTerms = true, TermsFolder = "TicketRules/2027", TermsVersion = "abc123" }, _buyerId, Ct)).Refusal.Should().BeNull();
         var order = _repo.Orders.Single();
         order.TermsFolder.Should().Be("TicketRules/2027");
         order.TermsVersion.Should().Be("abc123");
@@ -604,12 +604,16 @@ public sealed class TicketCheckoutServiceTests
         _salesEvent.TermsFolder = "TicketRules/2027";
         _rules.GetAsync("TicketRules/2027", Arg.Any<bool>(), Arg.Any<CancellationToken>()).Returns(RulesAt("def456"));
 
-        (await _service.StartCheckoutAsync(Buy() with { AcceptTerms = true, TermsVersion = "abc123" }, _buyerId, Ct))
+        (await _service.StartCheckoutAsync(Buy() with { AcceptTerms = true, TermsFolder = "TicketRules/2027", TermsVersion = "abc123" }, _buyerId, Ct))
+            .Refusal.Should().Be("Tickets_Buy_TermsChanged");
+
+        _rules.GetAsync("TicketRules/2027", Arg.Any<bool>(), Arg.Any<CancellationToken>()).Returns(RulesAt("abc123"));
+        (await _service.StartCheckoutAsync(Buy() with { AcceptTerms = true, TermsFolder = "TicketRules/2026", TermsVersion = "abc123" }, _buyerId, Ct))
             .Refusal.Should().Be("Tickets_Buy_TermsChanged");
 
         _rules.GetAsync("TicketRules/2027", Arg.Any<bool>(), Arg.Any<CancellationToken>()).Returns((TicketRules?)null);
         (await _service.GetBuyPagesAsync(_buyerId, Ct)).Single().Unavailable.Should().Be("Tickets_Buy_TermsUnavailable");
-        (await _service.StartCheckoutAsync(Buy() with { AcceptTerms = true, TermsVersion = "abc123" }, _buyerId, Ct))
+        (await _service.StartCheckoutAsync(Buy() with { AcceptTerms = true, TermsFolder = "TicketRules/2027", TermsVersion = "abc123" }, _buyerId, Ct))
             .Refusal.Should().Be("Tickets_Buy_TermsUnavailable");
         _repo.Orders.Should().BeEmpty();
     }

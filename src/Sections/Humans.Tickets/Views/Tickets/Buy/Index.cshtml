@@ -200,6 +200,7 @@ else
                             <partial name="_TabbedMarkdownDocuments" model="termsTabs" />
                         </div>
                     </details>
+                    <input type="hidden" name="termsFolder" value="@terms.Folder" />
                     <input type="hidden" name="termsVersion" value="@terms.Version" />
                     <div class="form-check mb-3">
                         <input class="form-check-input" type="checkbox" id="acceptTerms-@p" name="acceptTerms" value="true" required />

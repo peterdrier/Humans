@@ -226,6 +226,9 @@ internal sealed record StartCheckout(
 
     public bool AcceptTerms { get; init; }
 
+    /// <summary>The ticket rules folder the buy page showed; with <see cref="TermsVersion"/> it names the text accepted.</summary>
+    public string? TermsFolder { get; init; }
+
     /// <summary>The ticket rules version the buy page showed, which the order records.</summary>
     public string? TermsVersion { get; init; }
 
