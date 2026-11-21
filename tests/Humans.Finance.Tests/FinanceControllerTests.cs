@@ -860,10 +860,19 @@ public class FinanceControllerTests
             .Returns(new CreditorLedger(40000002, 0m, 0m, []));
         ExpenseReportDto Report(int? bookedTo, int days) => new()
         {
-            Id = Guid.NewGuid(), SubmitterUserId = Ana, HoldedAccountNumber = 0, BudgetCategoryId = null,
-            BudgetYearId = null, Status = ExpenseReportStatus.Approved, PayeeName = "Ana", PayeeIban = "", Total = 10m,
-            HoldedSupplierAccountNum = bookedTo, CreatedAt = Instant.FromUtc(2026, 3, days, 0, 0),
-            UpdatedAt = Instant.FromUtc(2026, 3, days, 0, 0), Lines = [],
+            Id = Guid.NewGuid(),
+            SubmitterUserId = Ana,
+            HoldedAccountNumber = 0,
+            BudgetCategoryId = null,
+            BudgetYearId = null,
+            Status = ExpenseReportStatus.Approved,
+            PayeeName = "Ana",
+            PayeeIban = "",
+            Total = 10m,
+            HoldedSupplierAccountNum = bookedTo,
+            CreatedAt = Instant.FromUtc(2026, 3, days, 0, 0),
+            UpdatedAt = Instant.FromUtc(2026, 3, days, 0, 0),
+            Lines = [],
         };
         var booked = Report(40000002, 1);
         var unbooked = Report(null, 2);
