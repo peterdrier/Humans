@@ -18,33 +18,43 @@ public sealed class TicketSupportReportsTests
         TicketCheckoutOrderState state = TicketCheckoutOrderState.Paid,
         Instant? paidAt = null,
         params TicketCheckoutOrderLine[] lines) => new()
-    {
-        Id = Guid.NewGuid(),
-        SalesEventId = Guid.NewGuid(),
-        BuyerName = "Ana García",
-        BuyerEmail = "ana@example.com",
-        BackendOrderId = "cs_ABC123",
-        State = state,
-        PaidAt = state == TicketCheckoutOrderState.Paid ? paidAt ?? Instant.FromUtc(2027, 1, 10, 12, 0) : null,
-        TotalMinor = lines.Sum(l => l.AmountMinor),
-        Lines = lines.ToList(),
-    };
+        {
+            Id = Guid.NewGuid(),
+            SalesEventId = Guid.NewGuid(),
+            BuyerName = "Ana García",
+            BuyerEmail = "ana@example.com",
+            BackendOrderId = "cs_ABC123",
+            State = state,
+            PaidAt = state == TicketCheckoutOrderState.Paid ? paidAt ?? Instant.FromUtc(2027, 1, 10, 12, 0) : null,
+            TotalMinor = lines.Sum(l => l.AmountMinor),
+            Lines = lines.ToList(),
+        };
 
     private static TicketCheckoutOrderLine Ticket(string description = "Ticket: Wave 1", long amount = 22500,
         string holder = "Ana García", string? barcode = "HX-7Q2") => new()
-    {
-        Kind = CheckoutLineKind.Ticket, Description = description, AmountMinor = amount,
-        AttendeeName = holder, AttendeeEmail = "holder@example.com", Barcode = barcode,
-    };
+        {
+            Kind = CheckoutLineKind.Ticket,
+            Description = description,
+            AmountMinor = amount,
+            AttendeeName = holder,
+            AttendeeEmail = "holder@example.com",
+            Barcode = barcode,
+        };
 
     private static TicketCheckoutOrderLine Donation(long amount, TicketDonationPurpose purpose = TicketDonationPurpose.General) => new()
     {
-        Kind = CheckoutLineKind.Donation, Description = "Donation", AmountMinor = amount, DonationPurpose = purpose,
+        Kind = CheckoutLineKind.Donation,
+        Description = "Donation",
+        AmountMinor = amount,
+        DonationPurpose = purpose,
     };
 
     private static TicketCheckoutRefund Refund(Guid orderId, long amount, RefundState state, int minute = 0) => new()
     {
-        Id = Guid.NewGuid(), OrderId = orderId, AmountMinor = amount, State = state,
+        Id = Guid.NewGuid(),
+        OrderId = orderId,
+        AmountMinor = amount,
+        State = state,
         CreatedAt = Instant.FromUtc(2027, 2, 1, 10, minute),
     };
 
