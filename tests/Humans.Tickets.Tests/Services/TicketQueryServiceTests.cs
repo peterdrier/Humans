@@ -1317,7 +1317,7 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
     }
 
     [HumansFact]
-    public async Task GetDonationExportDataAsync_PaidDonorsOldestFirst_AndAudited()
+    public async Task GetDonationExportDataAsync_PaidDonorsCarryPurchaseInstants_AndAudited()
     {
         var ct = TestContext.Current.CancellationToken;
         TicketsDb.TicketOrders.Add(MakeOrder("ord_plain", TicketPaymentStatus.Paid,
@@ -1336,13 +1336,18 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
 
         var rows = await _service.GetDonationExportDataAsync(actor);
 
-        rows.Select(r => (r.VendorOrderId, r.Type, r.Amount)).Should().Equal(
+        rows.OrderBy(r => r.PurchasedAt).Select(r => (r.VendorOrderId, r.Type, r.Amount)).Should().Equal(
             ("ord_gift", DonationExportRow.SeparateDonation, 50m),
             ("ord_both", DonationExportRow.VipTicket, 85m),
             ("ord_both", DonationExportRow.SeparateDonation, 50m),
             ("ord_vip", DonationExportRow.VipTicket, 85m));
-        rows[1].Date.Should().Be("2026-04-01");
-        rows[0].BuyerEmail.Should().Be("buyer@example.com");
+        rows.Where(r => string.Equals(r.VendorOrderId, "ord_both", StringComparison.Ordinal))
+            .Should().AllSatisfy(r =>
+            {
+                r.Date.Should().Be("2026-04-01");
+                r.PurchasedAt.Should().Be(Instant.FromUtc(2026, 3, 31, 23, 30));
+            });
+        rows.Should().AllSatisfy(r => r.BuyerEmail.Should().Be("buyer@example.com"));
         await _auditLog.Received(1).LogAsync(
             TicketsAuditActions.TicketDonationsExported, "Tickets", Guid.Empty,
             Arg.Is<string>(d => d.Contains("4 donation rows", StringComparison.Ordinal) && d.Contains("270.00", StringComparison.Ordinal)),

@@ -258,6 +258,8 @@ Inbound (who injects `Humans.Tickets.Contracts`):
 - **`ITicketWrite`** (`RecordParticipationAsync`) — Gate's admit records `Attended` with the check-in time. The member declaration, ticket-sync clears and the admin backfill stay internal (`IEventParticipationManagement`).
 - **`ITicketDiscountCodes`** — Campaigns' grant waves. **`ITicketVendorMirror`** — Gate's `GateVendorCheckInJob` mirrors admits to the vendor (best-effort, behind `Gate:VendorMirrorEnabled`, default off; Gate's own `gate_scan_events` remains the dedupe authority). Each vendor check-in POST creates a record, so the job always uses zero retry attempts. Sync orchestration and its error-state meter use internal `ITicketSyncService` and `TicketSyncResult`. The transfer-queue count behind the admin nav badge (`ITicketTransferQueue`) is internal: no cross-section caller.
 
+Donation export rows carry their purchase instant internally; the CSV controller orders them oldest first, preserving VIP-before-separate-donation order within each purchase. The CSV keeps its date-only column in the organization time zone.
+
 ## Architecture
 
 `TicketQueryService` owns the Who Hasn't Bought report and its current-event holder lookup, combining Volunteer membership, participation exclusions, visible-team names, tiers and verified-email search through existing section interfaces. `TicketQueryService` delegates its existing report entry point. Read order, candidate selection, ticket matching, filters, paging and cancellation are unchanged.

@@ -133,17 +133,16 @@ internal sealed class TicketQueryService(
     public async Task<List<DonationExportRow>> GetDonationExportDataAsync(Guid actorUserId, CancellationToken ct = default)
     {
         var orders = (await ticketRepository.GetOrderExportDataAsync(ct))
-            .Where(o => string.Equals(o.PaymentStatus, nameof(TicketPaymentStatus.Paid), StringComparison.Ordinal))
-            .OrderBy(o => o.PurchasedAt);
+            .Where(o => string.Equals(o.PaymentStatus, nameof(TicketPaymentStatus.Paid), StringComparison.Ordinal));
 
         var rows = new List<DonationExportRow>();
         foreach (var o in orders)
         {
             var date = o.PurchasedAt.InZone(OrgZone).Date.ToInvariantDate();
             if (o.VipDonations > 0)
-                rows.Add(new DonationExportRow(date, o.VendorOrderId, o.BuyerName, o.BuyerEmail, DonationExportRow.VipTicket, o.VipDonations));
+                rows.Add(new DonationExportRow(o.PurchasedAt, date, o.VendorOrderId, o.BuyerName, o.BuyerEmail, DonationExportRow.VipTicket, o.VipDonations));
             if (o.DonationAmount > 0)
-                rows.Add(new DonationExportRow(date, o.VendorOrderId, o.BuyerName, o.BuyerEmail, DonationExportRow.SeparateDonation, o.DonationAmount));
+                rows.Add(new DonationExportRow(o.PurchasedAt, date, o.VendorOrderId, o.BuyerName, o.BuyerEmail, DonationExportRow.SeparateDonation, o.DonationAmount));
         }
 
         await auditLog.LogAsync(
