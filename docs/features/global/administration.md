@@ -170,15 +170,12 @@ Google sync, settings, account provisioning, and audit routes have been extracte
 
 ### UsersAdminAccountMergesController (`/Users/Admin/AccountMerges/`) — Admin only
 
-The single unified account-merge surface (PR #899 consolidation). It combines duplicate-account detection (`IDuplicateAccountService`, detection-only) and user-submitted merge requests (`IAccountMergeService`) into one queue. The old separate `/Admin/DuplicateAccounts` and `/Admin/MergeRequests` screens (and their controllers) were deleted. Both `AccountMergeService` and `DuplicateAccountService` are now Users-section services.
+The admin's merge tools. People merge their own two accounts through the emailed confirmation link (`EmailConfirmationService`, Users section); this page covers the pairs that never go through it and the look-back. Both `AccountMergeService` and `DuplicateAccountService` are Users-section services.
 
 | Route | Action | Description |
 |-------|--------|-------------|
-| `/Users/Admin/AccountMerges` | Index | Unified queue of pending merge requests + detected duplicate pairs |
-| `/Users/Admin/AccountMerges/Merge` | Merge | POST: Merge an ad-hoc survivor/archived pair |
-| `/Users/Admin/AccountMerges/{requestId}/Merge` | MergeRequest | POST: Accept a merge request (admin picks survivor) |
-| `/Users/Admin/AccountMerges/{requestId}/Dismiss` | Dismiss | POST: Reject a merge request, no account changes |
-| `/Users/Admin/AccountMerges/{requestId}/Close` | Close | POST: Reconcile an orphan request whose accounts already merged |
+| `/Users/Admin/AccountMerges` | Index | Detected duplicate pairs, a pair picked by hand (`?a=&b=`), and the recently merged list read from the audit log |
+| `/Users/Admin/AccountMerges/Merge` | Merge | POST: Merge the chosen survivor/archived pair |
 
 ## Dashboard Metrics
 

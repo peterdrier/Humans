@@ -9,10 +9,12 @@ using Humans.Gdpr.Contracts;
 using Humans.Base.Constants;
 using Humans.Integration.Tests.Infrastructure;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using NodaTime;
 using Xunit;
 using Humans.Users.Contracts;
+using Humans.Users.Data;
 
 namespace Humans.Integration.Tests.AccountMerge;
 
@@ -34,7 +36,7 @@ public class ChainFollowReadTests(HumansTestDatabase database) : IntegrationTest
         var requestId = await Factory.SeedMergeRequestAsync(sourceId, targetId);
 
         var adminId = await SeedAdminUserAsync();
-        await AcceptAsync(requestId, adminId);
+        await MergeRequestedPairAsync(requestId, adminId);
 
         await using var assertScope = Factory.Services.CreateAsyncScope();
         var auditReader = assertScope.ServiceProvider.GetRequiredService<IAuditLogReader>();
@@ -65,7 +67,7 @@ public class ChainFollowReadTests(HumansTestDatabase database) : IntegrationTest
         var requestId = await Factory.SeedMergeRequestAsync(sourceId, targetId);
 
         var adminId = await SeedAdminUserAsync();
-        await AcceptAsync(requestId, adminId);
+        await MergeRequestedPairAsync(requestId, adminId);
 
         // Only the source consented to this version, so a match under a target read proves the union.
         await using var assertScope = Factory.Services.CreateAsyncScope();
@@ -96,7 +98,7 @@ public class ChainFollowReadTests(HumansTestDatabase database) : IntegrationTest
         var requestId = await Factory.SeedMergeRequestAsync(sourceId, targetId);
 
         var adminId = await SeedAdminUserAsync();
-        await AcceptAsync(requestId, adminId);
+        await MergeRequestedPairAsync(requestId, adminId);
 
         // BudgetService has one DI registration, as IBudgetService; cast for the contributor method.
         await using var assertScope = Factory.Services.CreateAsyncScope();
@@ -118,7 +120,7 @@ public class ChainFollowReadTests(HumansTestDatabase database) : IntegrationTest
 
     private async Task<Guid> SeedAdminUserAsync()
     {
-        // An admin user with an active Admin role: AcceptAsync FKs the request and audit row to it, and team folds
+        // An admin user with an active Admin role: the merge FKs the request and audit row to it, and team folds
         // need an actor allowed to remove members.
         await using var scope = Factory.Services.CreateAsyncScope();
         var um = scope.ServiceProvider.GetRequiredService<UserManager<User>>();
@@ -156,13 +158,14 @@ public class ChainFollowReadTests(HumansTestDatabase database) : IntegrationTest
         return adminId;
     }
 
-    private async Task AcceptAsync(Guid requestId, Guid adminUserId)
+    private async Task MergeRequestedPairAsync(Guid requestId, Guid adminUserId)
     {
         await using var scope = Factory.Services.CreateAsyncScope();
-        var mergeService = scope.ServiceProvider.GetRequiredService<IAccountMergeService>();
-        // These tests assert source to target, so the request target survives.
-        var request = await mergeService.GetByIdAsync(requestId, TestContext.Current.CancellationToken)
-            ?? throw new InvalidOperationException($"Merge request {requestId} not found.");
-        await mergeService.AcceptAsync(requestId, adminUserId, survivorUserId: request.TargetUser.Id, ct: TestContext.Current.CancellationToken);
+        // The self-service shape: the account that asked is kept and its pending address confirmed.
+        var request = await scope.ServiceProvider.GetRequiredService<UsersDbContext>().AccountMergeRequests
+            .AsNoTracking().SingleAsync(r => r.Id == requestId, TestContext.Current.CancellationToken);
+        await scope.ServiceProvider.GetRequiredService<IAccountMergeService>().MergeAsync(
+            request.TargetUserId, request.SourceUserId, adminUserId,
+            pendingEmailIdToVerify: request.PendingEmailId, ct: TestContext.Current.CancellationToken);
     }
 }

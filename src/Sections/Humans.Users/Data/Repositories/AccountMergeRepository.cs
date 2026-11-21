@@ -14,13 +14,6 @@ internal sealed class AccountMergeRepository(IDbContextFactory<UsersDbContext> f
             .ToListAsync(ct);
     }
 
-    public async Task<AccountMergeRequest?> GetByIdAsync(Guid id, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.AccountMergeRequests
-            .FirstOrDefaultAsync(r => r.Id == id, ct);
-    }
-
     public async Task<AccountMergeRequest?> GetByIdPlainAsync(Guid id, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
@@ -75,48 +68,6 @@ internal sealed class AccountMergeRepository(IDbContextFactory<UsersDbContext> f
 
         await ctx.SaveChangesAsync(ct);
         return rows.Count;
-    }
-
-    public async Task<IReadOnlySet<Guid>> GetPendingEmailIdsAsync(
-        IReadOnlyList<Guid> emailIds, CancellationToken ct = default)
-    {
-        if (emailIds.Count == 0)
-            return new HashSet<Guid>();
-
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        var ids = await ctx.AccountMergeRequests
-            .Where(r => emailIds.Contains(r.PendingEmailId)
-                && r.Status == AccountMergeRequestStatus.Pending)
-            .Select(r => r.PendingEmailId)
-            .ToListAsync(ct);
-
-        return ids.ToHashSet();
-    }
-
-    public async Task<bool> HasPendingForUserAndEmailAsync(
-        Guid targetUserId, string normalizedEmail, string? alternateEmail,
-        CancellationToken ct = default)
-    {
-        return (await GetPendingAsync(ct)).Any(r =>
-            r.TargetUserId == targetUserId
-            && (string.Equals(r.Email, normalizedEmail, StringComparison.OrdinalIgnoreCase)
-                || (alternateEmail is not null
-                    && string.Equals(r.Email, alternateEmail, StringComparison.OrdinalIgnoreCase))));
-    }
-
-    public async Task<bool> HasPendingForEmailIdAsync(Guid pendingEmailId, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.AccountMergeRequests
-            .AnyAsync(r => r.PendingEmailId == pendingEmailId
-                && r.Status == AccountMergeRequestStatus.Pending, ct);
-    }
-
-    public async Task AddAsync(AccountMergeRequest request, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        ctx.AccountMergeRequests.Add(request);
-        await ctx.SaveChangesAsync(ct);
     }
 
     public async Task UpdateAsync(AccountMergeRequest request, CancellationToken ct = default)

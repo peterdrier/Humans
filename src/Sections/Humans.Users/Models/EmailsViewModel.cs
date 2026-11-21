@@ -105,7 +105,6 @@ internal sealed class EmailRowViewModel
     public bool IsPrimary { get; set; }
     public ContactFieldVisibility? Visibility { get; set; }
     public bool IsPendingVerification { get; set; }
-    public bool IsMergePending { get; set; }
 
     /// <summary>
     /// Linked to the user's event ticket: the grid hides Delete and the service re-validates.

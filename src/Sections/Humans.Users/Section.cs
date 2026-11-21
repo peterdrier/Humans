@@ -25,6 +25,7 @@ using Humans.Users.Contracts;
 using Humans.Users.Data;
 using Humans.Users.Data.Repositories;
 using Humans.Users.Jobs;
+using Humans.Users.Models;
 using Humans.Users.Services;
 using Humans.Users.ViewComponents;
 using Microsoft.AspNetCore.Authorization;
@@ -137,6 +138,8 @@ public sealed class Section :
 
         services.AddScoped<ProfileService>();
         services.AddScoped<MedicalConditionsService>();
+        services.AddScoped<EmailConfirmationService>();
+        services.AddScoped<MergeAccountCardBuilder>();
         services.AddScoped<IProfilePictureService>(sp => sp.GetRequiredService<ProfileService>());
 
         services.AddScoped<IHumanLifecycleService, HumanLifecycleService>();
@@ -258,6 +261,8 @@ public sealed class Section :
 
     internal const string ProfileChildrenUserIdKey = "users.profile-children-user-id";
 
+    internal const string LeftoverMergeRequestsKey = "users.leftover-merge-requests";
+
     IEnumerable<DataMigration> ISectionDataMigrations.Migrations() =>
     [
         new(LegacyIdentityEmailsKey, SectionName,
@@ -268,7 +273,33 @@ public sealed class Section :
             "Stamp the owning user id onto contact fields, profile languages and volunteer history",
             "The ProfileId key on user_contact_fields, user_profile_languages and user_volunteer_history_entries",
             ProfileChildrenStatusAsync, ApplyProfileChildrenAsync),
+        new(LeftoverMergeRequestsKey, SectionName,
+            "Dismiss merge requests left from before merges were self-service: removes each pending email, the accounts are untouched",
+            "The leftover-request listing and dismiss code in AccountMergeService",
+            LeftoverMergeRequestsStatusAsync, ApplyLeftoverMergeRequestsAsync),
     ];
+
+    private static async Task<DataMigrationStatus> LeftoverMergeRequestsStatusAsync(IServiceProvider sp, CancellationToken ct) =>
+        new(["Address", "Asked by", "Already on", "Asked"],
+            [.. (await sp.GetRequiredService<IAccountMergeService>().GetPendingRequestsAsync(ct))
+                .Select(r => (IReadOnlyList<string>)
+                [
+                    r.Email, r.TargetUser.Id.ToString(), r.SourceUser.Id.ToString(),
+                    r.CreatedAt.ToInvariantTimestamp(),
+                ])]);
+
+    private static async Task<int> ApplyLeftoverMergeRequestsAsync(IServiceProvider sp, Guid actorUserId, CancellationToken ct)
+    {
+        var merges = sp.GetRequiredService<IAccountMergeService>();
+        var dismissed = 0;
+        foreach (var request in await merges.GetPendingRequestsAsync(ct))
+        {
+            var result = await merges.RejectAsync(
+                request.Id, actorUserId, "Dismissed: merges are self-service now.", ct);
+            if (result.Refusal is null) dismissed++;
+        }
+        return dismissed;
+    }
 
     private static async Task<DataMigrationStatus> ProfileChildrenStatusAsync(IServiceProvider sp, CancellationToken ct) =>
         new(["User", "Contact fields", "Languages", "Volunteer history"],

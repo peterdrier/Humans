@@ -4,7 +4,6 @@ using Humans.Users.Services;
 using Humans.Base.Attributes;
 using Humans.Base.Controllers;
 using System.Globalization;
-using System.Web;
 using Humans.Users.Authorization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
@@ -76,70 +75,11 @@ internal sealed class ProfileEmailsController(
             return View(nameof(Emails), await BuildEmailsViewModelAsync(user, HttpContext.RequestAborted));
         }
 
-        logger.LogInformation(
-            "Sent email verification to {Email} for user {UserId} (conflict: {IsConflict})",
-            model.NewEmail.Trim(), user.Id, result.IsConflict);
-        SetAddedEmailFlash(model.NewEmail, result.IsConflict);
+        logger.LogInformation("Sent email confirmation to {Email} for user {UserId}", model.NewEmail.Trim(), user.Id);
+        // The same words whether or not another account has the address: only its mailbox learns that.
+        SetSuccess(string.Format(CultureInfo.CurrentCulture, localizer["Users_Profile_VerificationSent"].Value, model.NewEmail.Trim()));
 
         return RedirectToAction(nameof(Emails));
-    }
-
-    private void SetAddedEmailFlash(string email, bool isConflict)
-    {
-        if (isConflict)
-        {
-            SetInfo(localizer["Users_Profile_EmailLinkedToAnotherAccount"].Value);
-            return;
-        }
-
-        SetSuccess(string.Format(CultureInfo.CurrentCulture, localizer["Users_Profile_VerificationSent"].Value, email.Trim()));
-    }
-
-    [HttpGet("Me/Emails/Verify")]
-    [AllowAnonymous]
-    public async Task<IActionResult> VerifyEmail(Guid userId, Guid emailId, string token)
-    {
-        if (string.IsNullOrEmpty(token) || emailId == Guid.Empty)
-        {
-            return VerifyEmailError(localizer["Users_Profile_InvalidVerificationLink"].Value);
-        }
-
-        var decodedToken = HttpUtility.UrlDecode(token);
-        var result = await userEmailService.VerifyEmailAsync(userId, emailId, decodedToken);
-        return result.ErrorKey is { } errorKey
-            ? VerifyEmailError(localizer[errorKey].Value)
-            : VerifyEmailSuccess(userId, result);
-    }
-
-    private IActionResult VerifyEmailSuccess(Guid userId, VerifyEmailResult result)
-    {
-        if (result.MergeRequestCreated)
-        {
-            logger.LogInformation(
-                "User {UserId} verified email {Email} - merge request created",
-                userId, result.Email);
-
-            ViewData["Success"] = true;
-            ViewData["Message"] = string.Format(
-                CultureInfo.CurrentCulture,
-                localizer["Users_Profile_EmailVerifiedMergeRequested"].Value,
-                result.Email);
-            return View("VerifyEmailResult");
-        }
-
-        logger.LogInformation(
-            "User {UserId} verified email {Email}",
-            userId, result.Email);
-
-        ViewData["Success"] = true;
-        ViewData["Message"] = string.Format(localizer["Users_Profile_EmailVerified"].Value, result.Email);
-        return View("VerifyEmailResult");
-    }
-    private IActionResult VerifyEmailError(string message)
-    {
-        ViewData["Success"] = false;
-        ViewData["Message"] = message;
-        return View("VerifyEmailResult");
     }
 
     [HttpPost("Me/Emails/SetPrimary")]
@@ -527,10 +467,6 @@ internal sealed class ProfileEmailsController(
         {
             logger.LogWarning("Admin email verification refused for email {EmailId}, user {UserId}: {ErrorKey}", emailId, id, errorKey);
             SetError(LocalizeEmailRefusal(errorKey));
-        }
-        else if (result.MergeRequestCreated)
-        {
-            SetSuccess(localizer["Users_EmailGrid_AdminVerifyMergeRequested"].Value);
         }
         else
         {

@@ -189,7 +189,6 @@ public class AccountProvisioningServiceTests
             string prefix, string suffix, CancellationToken ct = default) =>
             throw new NotSupportedException();
         public Task ApplyUserEmailReconcilePlanAsync(
-            UserEmail? displacedRowToDelete,
             UserEmail? rowToDelete,
             UserEmail? rowToUpdate,
             UserEmail? rowToInsert,

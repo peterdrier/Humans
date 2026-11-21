@@ -430,9 +430,6 @@
   <data name="Users_EmailGrid_Actions" xml:space="preserve">
     <value>Accions</value>
   </data>
-  <data name="Users_EmailGrid_StatusMergePending" xml:space="preserve">
-    <value>Fusió pendent</value>
-  </data>
   <data name="Users_EmailGrid_StatusVerified" xml:space="preserve">
     <value>Verificat</value>
   </data>
@@ -496,9 +493,6 @@
   <data name="Users_EmailGrid_AdminVerifySuccess" xml:space="preserve">
     <value>Correu verificat manualment.</value>
   </data>
-  <data name="Users_EmailGrid_AdminVerifyMergeRequested" xml:space="preserve">
-    <value>Aquesta adreça ja està verificada en un altre compte. S’ha creat una sol·licitud de fusió en lloc de verificar-la.</value>
-  </data>
   <data name="Users_EmailGrid_OrphanProviderTag" xml:space="preserve"><value>Etiquetat amb {0} però sense cap fila AspNetUserLogins coincident — s'autorepara en el proper inici de sessió OAuth.</value></data>
   <data name="Users_EmailGrid_WorkspaceLocked" xml:space="preserve"><value>Bloquejat per la fila del correu de Workspace</value></data>
 
@@ -521,9 +515,6 @@
   </data>
   <data name="Users_VerifyEmail_GoToSettings" xml:space="preserve">
     <value>Ves a la configuració de correu</value>
-  </data>
-  <data name="Users_VerifyEmail_GoHome" xml:space="preserve">
-    <value>Ves a la pàgina d'inici</value>
   </data>
 
   <!-- ======================== -->
@@ -672,18 +663,24 @@
     <value>Verifica la teva adreça de correu electrònic</value>
   </data>
   <data name="Users_Email_EmailVerification_Body" xml:space="preserve">
-    <value>&lt;h2&gt;Verificació del correu electrònic&lt;/h2&gt;
-&lt;p&gt;Hola {0},&lt;/p&gt;
-&lt;p&gt;Has sol·licitat afegir &lt;strong&gt;{1}&lt;/strong&gt; al teu compte.&lt;/p&gt;
-&lt;p&gt;Fes clic a l’enllaç següent per verificar aquesta adreça:&lt;/p&gt;
-&lt;p&gt;&lt;a href="{2}" style="display:inline-block; padding:12px 24px; background-color:#0d6efd; color:#ffffff; text-decoration:none; border-radius:6px; font-weight:bold; font-size:16px;"&gt;Verifica l’adreça de correu&lt;/a&gt;&lt;/p&gt;
-&lt;p&gt;Aquest enllaç expira en 24 hores.&lt;/p&gt;
-&lt;p&gt;Si no has sol·licitat aquest canvi, pots ignorar aquest correu.&lt;/p&gt;
-&lt;p&gt;L’equip de Humans&lt;/p&gt;</value>
+    <value>&lt;h2&gt;Confirma aquesta adreça de correu&lt;/h2&gt;
+&lt;p&gt;Algú amb la sessió iniciada a Humans com a &lt;strong&gt;{0}&lt;/strong&gt; ha demanat afegir &lt;strong&gt;{1}&lt;/strong&gt; a aquest compte.&lt;/p&gt;
+&lt;p&gt;Si has estat tu, obre l'enllaç amb la sessió iniciada com a {0} i prem el botó de la pàgina:&lt;/p&gt;
+&lt;p&gt;&lt;a href="{2}" style="display:inline-block; padding:12px 24px; background-color:#0d6efd; color:#ffffff; text-decoration:none; border-radius:6px; font-weight:bold; font-size:16px;"&gt;Confirma l'adreça de correu&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;L'enllaç serveix una sola vegada, durant una hora.&lt;/p&gt;
+&lt;p&gt;Si no has estat tu, ignora aquest correu i no canvia res.&lt;/p&gt;
+&lt;p&gt;L'equip de Humans&lt;/p&gt;</value>
     <comment>{0} = user name, {1} = email address, {2} = verification URL</comment>
   </data>
   <data name="Users_Email_EmailVerification_Merge_Body" xml:space="preserve">
-    <value>&lt;h2&gt;Verificació de fusió de comptes&lt;/h2&gt;&lt;p&gt;Hola {0},&lt;/p&gt;&lt;p&gt;Has sol·licitat afegir &lt;strong&gt;{1}&lt;/strong&gt; al teu compte. Aquesta adreça de correu està actualment vinculada a un altre compte.&lt;/p&gt;&lt;p&gt;Si verifies aquest correu, s’enviarà una sol·licitud de fusió per a revisió de l’administrador. Un cop aprovada, les dades de l’altre compte es fusionaran amb les teves i el compte duplicat quedarà arxivat.&lt;/p&gt;&lt;p&gt;Fes clic a l’enllaç següent per verificar i sol·licitar la fusió:&lt;/p&gt;&lt;p&gt;&lt;a href="{2}" style="display:inline-block; padding:12px 24px; background-color:#0d6efd; color:#ffffff; text-decoration:none; border-radius:6px; font-weight:bold; font-size:16px;"&gt;Verifica i sol·licita la fusió&lt;/a&gt;&lt;/p&gt;&lt;p&gt;Aquest enllaç expira en 24 hores.&lt;/p&gt;&lt;p&gt;Si no has sol·licitat això, pots ignorar aquest correu. No es farà cap canvi.&lt;/p&gt;&lt;p&gt;L’equip de Humans&lt;/p&gt;</value>
+    <value>&lt;h2&gt;Confirma aquesta adreça i uneix dos comptes&lt;/h2&gt;
+&lt;p&gt;Algú amb la sessió iniciada a Humans com a &lt;strong&gt;{0}&lt;/strong&gt; ha demanat afegir &lt;strong&gt;{1}&lt;/strong&gt; a aquest compte.&lt;/p&gt;
+&lt;p&gt;Aquesta adreça ja té el seu propi compte a Humans. Si els dos comptes són teus, en confirmar s'uneixen en un de sol. La pàgina mostra els dos comptes abans de fer res.&lt;/p&gt;
+&lt;p&gt;Obre l'enllaç amb la sessió iniciada com a {0}:&lt;/p&gt;
+&lt;p&gt;&lt;a href="{2}" style="display:inline-block; padding:12px 24px; background-color:#0d6efd; color:#ffffff; text-decoration:none; border-radius:6px; font-weight:bold; font-size:16px;"&gt;Revisa i uneix&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;L'enllaç serveix una sola vegada, durant una hora. No reenviïs aquest correu: qui obri l'enllaç com a {0} pot unir els comptes.&lt;/p&gt;
+&lt;p&gt;Si no has estat tu, ignora aquest correu i no canvia res. Ningú pot quedar-se aquesta adreça sense aquest enllaç.&lt;/p&gt;
+&lt;p&gt;L'equip de Humans&lt;/p&gt;</value>
   </data>
   <data name="Users_Email_DeletionRequested_Subject" xml:space="preserve">
     <value>Sol·licitud d'eliminació de compte</value>
@@ -709,8 +706,6 @@
 &lt;p&gt;Una salutació,&lt;br/&gt;L’equip de Humans&lt;/p&gt;</value>
     <comment>{0} = user name</comment>
   </data>
-  <data name="Users_Profile_EmailLinkedToAnotherAccount" xml:space="preserve"><value>Aquest correu està vinculat a un altre compte. En verificar-lo se sol·licitarà una fusió de comptes. Consulta la safata d'entrada per a l'enllaç de verificació.</value></data>
-  <data name="Users_Profile_EmailVerifiedMergeRequested" xml:space="preserve"><value>Correu verificat. S'ha enviat una sol·licitud de fusió per a la revisió administrativa. El correu {0} s'afegirà al teu compte quan s'aprovi.</value><comment>{0} = email address</comment></data>
   <data name="Users_ProfilePopover_ImportedNoProfile" xml:space="preserve"><value>Importat · encara sense perfil</value></data>
   <data name="Users_ProfilePopover_ImportedNoProfileHelp" xml:space="preserve"><value>Aquesta persona existeix al sistema però encara no ha completat un perfil (per exemple, s'ha importat d'una llista de correu o de ticketing).</value></data>
   <data name="Users_Notification_AdminSuspendedWithReason" xml:space="preserve"><value>El teu accés ha estat suspès: {0}</value></data>
@@ -721,9 +716,6 @@
   </data>
   <data name="Users_Profile_EmailVerifiedOnAnotherAccount" xml:space="preserve">
     <value>Aquesta adreça de correu ja està verificada en un altre compte.</value>
-  </data>
-  <data name="Users_Profile_EmailMergePending" xml:space="preserve">
-    <value>Ja hi ha una sol·licitud de fusió pendent per a aquesta adreça de correu.</value>
   </data>
   <data name="Users_EmailDelete_LastVerifiedBlocked" xml:space="preserve">
     <value>No pots eliminar el teu últim correu verificat. Afegeix primer un altre correu verificat per continuar rebent notificacions del sistema.</value>
@@ -801,4 +793,36 @@
   <data name="Users_Status_Board" xml:space="preserve"><value>Junta</value></data>
   <data name="Users_Meter_PendingAccountDeletions" xml:space="preserve"><value>Eliminacions de comptes pendents</value></data>
   <data name="Users_Meter_AudienceAdmin" xml:space="preserve"><value>administradors</value></data>
+  <data name="Users_ConfirmEmail_Prompt" xml:space="preserve"><value>Vols afegir {0} al teu compte?</value></data>
+  <data name="Users_ConfirmEmail_Button" xml:space="preserve"><value>Confirma aquesta adreça</value></data>
+  <data name="Users_ConfirmEmail_Invalid" xml:space="preserve"><value>Aquest enllaç ja no funciona. Un enllaç serveix una sola vegada, durant una hora. Per rebre'n un de nou, treu l'adreça a la configuració de correu i torna-la a afegir.</value></data>
+  <data name="Users_ConfirmEmail_WrongAccount" xml:space="preserve"><value>Aquest enllaç l'ha creat un compte diferent del que tens obert.</value></data>
+  <data name="Users_ConfirmEmail_LinkMadeBy" xml:space="preserve"><value>Enllaç creat per:</value></data>
+  <data name="Users_ConfirmEmail_SignedInAs" xml:space="preserve"><value>Has iniciat sessió com a:</value></data>
+  <data name="Users_ConfirmEmail_WrongAccountHelp" xml:space="preserve"><value>Tanca la sessió, entra amb el compte que va crear l'enllaç i torna'l a obrir.</value></data>
+  <data name="Users_MergeAccounts_Title" xml:space="preserve"><value>Uneix els teus dos comptes</value></data>
+  <data name="Users_MergeAccounts_Intro" xml:space="preserve"><value>{0} ja pertany a un altre compte. En confirmar-la, els dos comptes s'uneixen en un de sol. No es pot desfer.</value></data>
+  <data name="Users_MergeAccounts_KeepsEverything" xml:space="preserve"><value>Es conserva tot el que hi ha als dos comptes: equips, torns, entrades, rols, barri, consentiments i totes les adreces amb què inicies sessió.</value></data>
+  <data name="Users_MergeAccounts_SignedInCard" xml:space="preserve"><value>El compte amb què has iniciat sessió</value></data>
+  <data name="Users_MergeAccounts_OtherCard" xml:space="preserve"><value>El teu altre compte</value></data>
+  <data name="Users_MergeAccounts_OtherEmpty" xml:space="preserve"><value>El teu altre compte no es va omplir mai, així que el teu perfil es queda com està.</value></data>
+  <data name="Users_MergeAccounts_Choose" xml:space="preserve"><value>Els dos comptes tenen perfil. Tria quin conservar. El que li falti es completa amb l'altre.</value></data>
+  <data name="Users_MergeAccounts_KeepThis" xml:space="preserve"><value>Conserva aquest perfil</value></data>
+  <data name="Users_MergeAccounts_Button" xml:space="preserve"><value>Uneix aquests comptes</value></data>
+  <data name="Users_MergeAccounts_NotNow" xml:space="preserve"><value>Ara no</value></data>
+  <data name="Users_MergeAccounts_Blocked" xml:space="preserve"><value>Aquests dos comptes no es poden unir aquí. Escriu a {0} i ho resoldrem.</value></data>
+  <data name="Users_MergeAccounts_Done" xml:space="preserve"><value>Els teus dos comptes ja són un de sol.</value></data>
+  <data name="Users_MergeAccounts_SignsInWith" xml:space="preserve"><value>Inicia sessió amb</value></data>
+  <data name="Users_MergeAccounts_Roles" xml:space="preserve"><value>Rols</value></data>
+  <data name="Users_MergeAccounts_Shifts" xml:space="preserve"><value>Torns</value></data>
+  <data name="Users_MergeAccounts_ShiftsValue" xml:space="preserve"><value>{0} propers, {1} fets</value></data>
+  <data name="Users_MergeAccounts_Tickets" xml:space="preserve"><value>Entrades</value></data>
+  <data name="Users_MergeAccounts_Created" xml:space="preserve"><value>Creat</value></data>
+  <data name="Users_MergeAccounts_LastSignIn" xml:space="preserve"><value>Últim accés</value></data>
+  <data name="Users_Email_AccountsMerged_Subject" xml:space="preserve"><value>Els teus dos comptes s'han unit</value></data>
+  <data name="Users_Email_AccountsMerged_Body" xml:space="preserve"><value>&lt;h2&gt;Comptes units&lt;/h2&gt;
+&lt;p&gt;Hola, {0}:&lt;/p&gt;
+&lt;p&gt;Dos comptes de Humans que eren teus s'han unit en un de sol. Tot el que hi havia als dos és al compte que queda, i totes les adreces amb què iniciaves sessió continuen funcionant.&lt;/p&gt;
+&lt;p&gt;Si no has estat tu, escriu a {1} de seguida.&lt;/p&gt;
+&lt;p&gt;L'equip de Humans&lt;/p&gt;</value></data>
 </root>

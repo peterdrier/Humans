@@ -255,7 +255,7 @@ Note: `IsOAuth` was dropped (nobodies-collective/Humans#507). Provider-linked (O
 - Lists all emails, sorted alphabetically by address; OAuth-linked rows are removed via Unlink, not Delete
 - Each row: email address, verified badge, notification target control, visibility dropdown, delete button
 - "Add email" form sends verification, shows pending state
-- Verification uses `UserManager.GenerateUserTokenAsync` / `VerifyUserTokenAsync`
+- Verification is a one-hour signed link (`EmailConfirmationService`); it works only in a browser signed in as the account that added the address, on a button press
 - 5-minute cooldown between verification requests
 
 ### Service Interface
@@ -266,11 +266,9 @@ IUserEmailService
 ├── GetVisibleEmailsAsync(userId, accessLevel)
 │   → Emails visible on profile based on viewer access
 ├── AddEmailAsync(userId, email)
-│   → Adds new email and returns verification token, or ErrorKey before any mutation
-│     for invalid format, an existing account address, or a pending merge
-├── VerifyEmailAsync(userId, emailId, token)
-│   → Verifies email, returns verified address (emailId disambiguates when
-│     the user has multiple pending rows)
+│   → Adds new email and returns the signed link token, or ErrorKey before any mutation
+│     for invalid format or an existing account address. The emailed link is
+│     consumed by EmailConfirmationService (confirm, or merge two accounts)
 ├── SetPrimaryAsync(userId, emailId)
 │   → Sets which verified email receives notifications
 ├── SetVisibilityAsync(userId, emailId, visibility)

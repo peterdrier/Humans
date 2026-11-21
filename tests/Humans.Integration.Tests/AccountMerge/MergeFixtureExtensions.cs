@@ -30,8 +30,8 @@ public static class MergeFixtureExtensions
     }
 
     /// <summary>
-    /// A pending unverified email on the target and a Pending request pointing at it, the shape <c>AcceptAsync</c>
-    /// consumes.
+    /// A pending unverified email on the target and a leftover Pending request pointing at it: the pair a
+    /// self-service merge works on.
     /// </summary>
     public static async Task<Guid> SeedMergeRequestAsync(
         this HumansWebApplicationFactory fx,

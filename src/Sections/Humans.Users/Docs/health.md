@@ -32,7 +32,7 @@ and the guest data pages (people with no session or no profile) are Email's and 
 | **Account life** | create (OAuth callback, magic link, import), suspend / unsuspend / reject / restore, request and cancel deletion, anonymize on expiry, purge (non-prod), merge two accounts | `IExternalLoginService`, `IAccountProvisioningService`, `IHumanLifecycleService`, `IAccountDeletionService`, `IAccountMergeService` + `IDuplicateAccountService`, `INonCompliantMemberSuspension` |
 | **Cache signal** | "this person changed" from a write the service did not see | section-internal: `IUserInfoSliceRefresher` + `UserInfoSaveChangesInterceptor` |
 | **Repair** | email-invariant violations; the one remaining data migration (legacy Identity emails) | `IEmailProblemsService` behind `/Profile/Admin/EmailProblems`; `ISectionDataMigrations` on `Section.cs` |
-| **Admin views** | list / detail / audience; suspend, unsuspend, reject, purge; merge requests | `UsersAdminController`, `UsersAdminAccountMergesController` |
+| **Admin views** | list / detail / audience; suspend, unsuspend, reject, purge; account merges | `UsersAdminController`, `UsersAdminAccountMergesController` |
 | **Directory views** | whose birthday is this month; where everyone is | `UsersController` (`/Users/Birthdays`, `/Users/Map`) |
 
 Recurring jobs: nightly deletion expiry, nightly non-compliance suspension.
@@ -75,8 +75,8 @@ The shapes imply one register with one cache and one write funnel:
   transition and never derived on read — `src/Humans.Web/Authorization/MembershipRequiredFilter.cs:70`.
 - A verified account holds exactly one verified `IsPrimary` address — `EnsurePrimaryInvariantAsync`,
   `src/Sections/Humans.Users/Services/UserService.cs`. A verified address belongs to at
-  most one account: verifying an address another account holds verified opens a merge request
-  instead — `src/Sections/Humans.Users/Services/UserEmailService.cs:132`. `user_emails.IsGoogle`
+  most one account: confirming an address another account holds verified merges the two accounts
+  instead — `src/Sections/Humans.Users/Services/EmailConfirmationService.cs`. `user_emails.IsGoogle`
   is dropped; the Workspace identity is Google's.
 - An address is rewritten by exactly one path, the OAuth reconcile matched on
   `(Provider, ProviderKey)` — `src/Humans.Analyzers/EmailMutationPathsAnalyzer.cs`.

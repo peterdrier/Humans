@@ -136,22 +136,14 @@ internal sealed class UserService(
             throw new InvalidOperationException("Cannot reconcile email addresses for a deleted or merged account.");
 
         await repo.ApplyUserEmailReconcilePlanAsync(
-            displacedRowToDelete: command.DisplacedRowToDelete,
             rowToDelete: command.RowToDelete,
             rowToUpdate: command.RowToUpdate,
             rowToInsert: command.RowToInsert,
             ct);
 
-        var mutatedUserIds = new HashSet<Guid> { userId };
-        if (command.DisplacedRowToDelete is not null)
-            mutatedUserIds.Add(command.DisplacedRowToDelete.UserId);
+        await EnsurePrimaryInvariantAsync(userId, ct);
 
-        foreach (var mutatedUserId in mutatedUserIds)
-        {
-            await EnsurePrimaryInvariantAsync(mutatedUserId, ct);
-        }
-
-        return new UserEmailReconcilePlanResult(mutatedUserIds);
+        return new UserEmailReconcilePlanResult(new HashSet<Guid> { userId });
     }
 
     private static readonly IReadOnlyDictionary<string, string?> Erasure =
@@ -212,7 +204,12 @@ internal sealed class UserService(
         }
         finally
         {
-            if (sourceProfile is not null && previousKey is not null)
+            // A picture the kept profile took over is still in use.
+            var kept = await repo.GetByUserIdReadOnlyAsync(mergedToUserId, CancellationToken.None);
+            var keptKey = kept is null ? null : ProfilePictureKeys.Resolve(
+                kept.Id, kept.ProfilePictureContentType, kept.ProfilePictureStorageKey);
+            if (sourceProfile is not null && previousKey is not null
+                && !string.Equals(previousKey, keptKey, StringComparison.Ordinal))
                 await DeleteSupersededPictureAsync(sourceProfile.Id, previousKey);
         }
     }

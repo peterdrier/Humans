@@ -720,7 +720,7 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
         if (reconcile)
         {
             Func<Task> act = () => _service.ApplyUserEmailReconcilePlanAsync(userId,
-                new UserEmailReconcilePlanCommand(null, null, null,
+                new UserEmailReconcilePlanCommand(null, null,
                     new UserEmail { Id = Guid.NewGuid(), UserId = userId, Email = "recreated@example.com", IsVerified = verified }),
                 TestContext.Current.CancellationToken);
             await act.Should().ThrowAsync<InvalidOperationException>();
@@ -739,7 +739,7 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
     }
 
     [HumansFact]
-    public async Task AddEmailAsync_OverlappingRequests_CreateOneRowAndOneVerificationToken()
+    public async Task AddEmailAsync_OverlappingRequests_CreateOneRowAndOneVerificationMail()
     {
         var ct = TestContext.Current.CancellationToken;
         var userId = Guid.NewGuid();
@@ -775,10 +775,15 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
         var manager = Substitute.For<UserManager<User>>(
             Substitute.For<IUserStore<User>>(), null, null, null, null, null, null, null, null);
         manager.FindByIdAsync(userId.ToString()).Returns(new User { Id = userId });
-        manager.GenerateUserTokenAsync(Arg.Any<User>(), Arg.Any<string>(), Arg.Any<string>()).Returns("verification-token");
+        var emailService = Substitute.For<IEmailService>();
         var services = new ServiceLocatorBuilder().With(Substitute.For<IAccountMergeService>())
-            .With(Substitute.For<IEmailService>()).With(TestUsersEmails.Create())
-            .With(Options.Create(new EmailSettings { BaseUrl = TestUsersEmails.BaseUrl })).Build();
+            .With(emailService).With(TestUsersEmails.Create())
+            .With(Options.Create(new EmailSettings { BaseUrl = TestUsersEmails.BaseUrl }))
+            .With(new EmailConfirmationService(
+                new Microsoft.AspNetCore.DataProtection.EphemeralDataProtectionProvider(), repository,
+                Substitute.For<IUserManagement>(), Substitute.For<IAccountMergeService>(),
+                Substitute.For<IServiceProvider>(), NullLogger<EmailConfirmationService>.Instance))
+            .Build();
         UserEmailService BuildEmailService() => new(
             repository, BuildWithUserRepository(repository), manager, Clock, AuditLog, services,
             NullLogger<UserEmailService>.Instance);
@@ -798,10 +803,10 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
 
         (await Db.UserEmails.AsNoTracking().Where(email => email.UserId == userId).ToListAsync(ct))
             .Should().ContainSingle();
-        results.Should().ContainSingle(result => result.ErrorKey == null && result.Token == "verification-token");
+        results.Should().ContainSingle(result => result.ErrorKey == null && result.Token != string.Empty);
         results.Should().ContainSingle(result => result.ErrorKey == "Users_Profile_EmailAlreadyAdded"
             && result.EmailId == Guid.Empty && result.Token == string.Empty);
-        await manager.Received(1).GenerateUserTokenAsync(Arg.Any<User>(), Arg.Any<string>(), Arg.Any<string>());
+        await emailService.Received(1).SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>());
     }
 
     [HumansTheory]
@@ -922,6 +927,37 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
             await _fileStorage.DidNotReceive().DeleteAsync(previousKey, Arg.Any<CancellationToken>());
         }
         await _fileStorage.DidNotReceive().DeleteAsync(survivorKey, Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task ReassignAsync_KeptProfileTakesWhatItLacksAndTheNotesOfBoth()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var sourceUserId = Guid.NewGuid();
+        var targetUserId = Guid.NewGuid();
+        var sourceProfileId = await SeedUserWithProfileAsync(sourceUserId);
+        var targetProfileId = await SeedUserWithProfileAsync(targetUserId);
+        var source = await Db.Profiles.SingleAsync(p => p.Id == sourceProfileId, ct);
+        (source.Bio, source.Pronouns, source.MedicalConditions) = ("Archived bio", "they", "Archived medical");
+        (source.City, source.CountryCode) = ("Madrid", "ES");
+        (source.AdminNotes, source.BoardNotes) = ("Archived admin note", "Archived board note");
+        source.ProfilePictureContentType = "image/png";
+        var pictureKey = ProfilePictureStorageKeys.ProfilePictureKey(sourceProfileId, "image/png");
+        var target = await Db.Profiles.SingleAsync(p => p.Id == targetProfileId, ct);
+        (target.Bio, target.City, target.CountryCode, target.AdminNotes) = ("Kept bio", "Berlin", "DE", "Kept admin note");
+        await Db.SaveChangesAsync(ct);
+
+        await _service.ReassignAsync(sourceUserId, targetUserId, Guid.NewGuid(), Clock.GetCurrentInstant(), ct);
+
+        var kept = await Db.Profiles.AsNoTracking().SingleAsync(p => p.Id == targetProfileId, ct);
+        // What the kept profile has wins; a place is never mixed from both.
+        (kept.Bio, kept.City, kept.CountryCode).Should().Be(("Kept bio", "Berlin", "DE"));
+        (kept.Pronouns, kept.MedicalConditions).Should().Be(("they", "Archived medical"));
+        kept.AdminNotes.Should().Contain("Kept admin note").And.Contain("Archived admin note");
+        kept.BoardNotes.Should().Be("Archived board note");
+        // The picture file is still in use, by the kept profile.
+        (kept.ProfilePictureContentType, kept.ProfilePictureStorageKey).Should().Be(("image/png", pictureKey));
+        await _fileStorage.DidNotReceive().DeleteAsync(pictureKey, Arg.Any<CancellationToken>());
     }
 
     [HumansTheory]

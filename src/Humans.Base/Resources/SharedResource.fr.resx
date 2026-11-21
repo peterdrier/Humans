@@ -1258,7 +1258,7 @@
     <value>N/D</value>
   </data>
   <data name="EmailGrid_LinkFailed" xml:space="preserve">
-    <value>Nous n'avons pas pu associer ce compte Google. Veuillez réessayer.</value>
+    <value>Nous n'avons pas pu associer ce compte Google. Si ce compte, ou son adresse, appartient déjà à un autre de vos comptes, ajoutez plutôt cette adresse via « Ajouter un e-mail » et suivez le lien que nous vous envoyons pour fusionner les deux.</value>
   </data>
   <data name="Profile_BuildStrip_Title" xml:space="preserve">
     <value>Disponibilité et suivi du montage</value>

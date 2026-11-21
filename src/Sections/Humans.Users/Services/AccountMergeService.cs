@@ -31,16 +31,6 @@ internal sealed class AccountMergeService(
         return requests.Select(r => ToSnapshot(r, users)).ToList();
     }
 
-    public async Task<AccountMergeRequestSnapshot?> GetByIdAsync(Guid id, CancellationToken ct = default)
-    {
-        var request = await mergeRepository.GetByIdAsync(id, ct);
-        if (request is null) return null;
-
-        var userIds = CollectUserIds([request]);
-        var users = await GetRawUserInfosAsync(userIds, ct);
-        return ToSnapshot(request, users);
-    }
-
     /// <summary>
     /// Raw rows: merge code needs a tombstone's own <c>MergedToUserId</c>, which the cross-section
     /// read resolves away. Filtering the warmed snapshot costs no query.
@@ -66,31 +56,8 @@ internal sealed class AccountMergeService(
         return ids;
     }
 
-    public async Task<AccountMergeResult> AcceptAsync(
-        Guid requestId, Guid adminUserId, Guid survivorUserId,
-        string? notes = null, CancellationToken ct = default)
-    {
-        var request = await mergeRepository.GetByIdPlainAsync(requestId, ct);
-        if (request is null) return new(Refusal: "Merge request not found.");
-        if (request.Status != AccountMergeRequestStatus.Pending)
-            return new(Refusal: "Merge request is not pending.");
-        if (survivorUserId != request.TargetUserId && survivorUserId != request.SourceUserId)
-            return new(Refusal: "Survivor must be one of the request's two accounts.");
-
-        var archivedUserId = survivorUserId == request.TargetUserId
-            ? request.SourceUserId : request.TargetUserId;
-
-        // Verify the pending email only when its owner survives; if the admin flipped direction,
-        // the fan-out moves it to the survivor instead.
-        var pendingEmailToVerify = survivorUserId == request.TargetUserId
-            ? request.PendingEmailId : (Guid?)null;
-
-        // MergeAsync.CloseRequestsForPairAsync closes this request (and any siblings) as Accepted.
-        return await MergeAsync(survivorUserId, archivedUserId, adminUserId, notes, pendingEmailToVerify, ct);
-    }
-
     public async Task<AccountMergeResult> MergeAsync(
-        Guid survivorUserId, Guid archivedUserId, Guid adminUserId,
+        Guid survivorUserId, Guid archivedUserId, Guid actorUserId,
         string? notes = null, Guid? pendingEmailIdToVerify = null,
         CancellationToken ct = default)
     {
@@ -113,20 +80,20 @@ internal sealed class AccountMergeService(
                 : $"Archived user {archivedUserId} is already tombstoned.");
 
         ct.ThrowIfCancellationRequested();
-        // Section writes commit independently: finish the fold even if the admin stops watching.
+        // Section writes commit independently: finish the fold even if the browser stops watching.
         ct = CancellationToken.None;
         var now = clock.GetCurrentInstant();
 
         logger.LogInformation(
-            "Admin {AdminId} merging: folding archived {ArchivedId} into survivor {SurvivorId}",
-            adminUserId, archivedUserId, survivorUserId);
+            "{ActorId} merging: folding archived {ArchivedId} into survivor {SurvivorId}",
+            actorUserId, archivedUserId, survivorUserId);
 
         try
         {
             // 1. Move every section's user-keyed rows archived -> survivor. Each commits
             //    independently and re-moving is a no-op, so the step is retryable.
             foreach (var merger in userMerges)
-                await merger.ReassignAsync(archivedUserId, survivorUserId, adminUserId, now, ct);
+                await merger.ReassignAsync(archivedUserId, survivorUserId, actorUserId, now, ct);
 
             // 2. Settle the pending email the row-collapse missed. A missing or consumed one is
             //    the desired end state, so the result is ignored.
@@ -142,15 +109,32 @@ internal sealed class AccountMergeService(
                 UsersAuditActions.AccountMergeAccepted,
                 AuditSubjectTypes.User, archivedUserId,
                 $"Folded archived {archivedUserId} into survivor {survivorUserId}. Notes: {notes ?? "(none)"}",
-                adminUserId,
+                actorUserId,
                 relatedEntityId: survivorUserId, relatedEntityType: AuditSubjectTypes.User);
 
             // 5. Best-effort: the tombstone already makes leftover requests self-reconcilable.
-            await CloseRequestsForPairAsync(survivorUserId, archivedUserId, adminUserId, now, notes, ct);
+            await CloseRequestsForPairAsync(survivorUserId, archivedUserId, actorUserId, now, notes, ct);
             return new();
         }
-        catch
+        catch (Exception failure)
         {
+            // A half-done merge must be visible: the retry is a hand merge of the same two accounts.
+            try
+            {
+                await auditLogService.LogAsync(
+                    UsersAuditActions.AccountMergeFailed,
+                    AuditSubjectTypes.User, archivedUserId,
+                    $"Merge of archived {archivedUserId} into survivor {survivorUserId} stopped part-way " +
+                    $"({failure.GetType().Name}). Merge the same two accounts again to finish it.",
+                    actorUserId,
+                    relatedEntityId: survivorUserId, relatedEntityType: AuditSubjectTypes.User);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Audit of the incomplete merge {Archived} -> {Survivor} failed",
+                    archivedUserId, survivorUserId);
+            }
+
             // Earlier contributors may already have moved Users-owned rows. Reload both raw accounts
             // even when a later contributor prevents the final tombstone/cache refresh.
             foreach (var id in new[] { archivedUserId, survivorUserId })
@@ -273,36 +257,6 @@ internal sealed class AccountMergeService(
         return new();
     }
 
-    public async Task<AccountMergeResult> ReconcileMergedRequestAsync(
-        Guid requestId, Guid adminUserId, CancellationToken ct = default)
-    {
-        var request = await mergeRepository.GetByIdPlainAsync(requestId, ct);
-        if (request is null) return new(Refusal: "Merge request not found.");
-        if (request.Status != AccountMergeRequestStatus.Pending)
-            return new(Refusal: "Merge request is not pending.");
-
-        var source = await userService.GetRawUserInfoAsync(request.SourceUserId, ct);
-        var target = await userService.GetRawUserInfoAsync(request.TargetUserId, ct);
-        // Close only when the pair merged into each other. A side merged into a third account
-        // is a different conflict, and closing would drop its unresolved pending email.
-        var mergedIntoEachOther =
-            source?.MergedToUserId == request.TargetUserId ||
-            target?.MergedToUserId == request.SourceUserId;
-        if (!mergedIntoEachOther)
-            return new(Refusal: "These two accounts are not merged into each other — resolve this request via Merge or Dismiss instead.");
-
-        await CloseRequestsForPairAsync(
-            request.TargetUserId, request.SourceUserId, adminUserId,
-            clock.GetCurrentInstant(), "Reconciled: accounts already merged.", ct);
-
-        await auditLogService.LogAsync(
-            UsersAuditActions.AccountMergeAccepted,
-            nameof(AccountMergeRequest), request.Id,
-            $"Reconciled orphan merge request — accounts already merged (source {request.SourceUserId}, target {request.TargetUserId}).",
-            adminUserId);
-        return new();
-    }
-
     public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
     {
         var info = await userService.GetUserInfoAsync(userId, ct);
@@ -333,20 +287,4 @@ internal sealed class AccountMergeService(
 
     public Task EraseForUserAsync(Guid userId, CancellationToken ct) =>
         mergeRepository.ScrubPiiForUserAsync(userId, ct);
-
-    public Task<IReadOnlySet<Guid>> GetPendingEmailIdsAsync(
-        IReadOnlyList<Guid> emailIds, CancellationToken ct = default) =>
-        mergeRepository.GetPendingEmailIdsAsync(emailIds, ct);
-
-    public Task<bool> HasPendingForUserAndEmailAsync(
-        Guid targetUserId, string normalizedEmail, string? alternateEmail,
-        CancellationToken ct = default) =>
-        mergeRepository.HasPendingForUserAndEmailAsync(
-            targetUserId, normalizedEmail, alternateEmail, ct);
-
-    public Task<bool> HasPendingForEmailIdAsync(Guid pendingEmailId, CancellationToken ct = default) =>
-        mergeRepository.HasPendingForEmailIdAsync(pendingEmailId, ct);
-
-    public Task CreateAsync(AccountMergeRequest request, CancellationToken ct = default) =>
-        mergeRepository.AddAsync(request, ct);
 }
