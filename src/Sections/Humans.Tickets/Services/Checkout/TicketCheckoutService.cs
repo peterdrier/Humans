@@ -4,6 +4,7 @@ using Humans.AuditLog.Contracts;
 using Humans.Base.Extensions;
 using Humans.Consent.Contracts;
 using Humans.Email.Contracts;
+using Humans.Gate.Contracts;
 using Humans.Gdpr.Contracts;
 using Humans.Grants.Contracts;
 using Humans.Settings.Contracts;
@@ -31,6 +32,7 @@ internal sealed partial class TicketCheckoutService(
     IEmailService email,
     TicketsEmails emails,
     IEnumerable<ITicketDelivery> deliveries,
+    IGateAdmissions gateAdmissions,
     IStringLocalizer<TicketsResource> localizer,
     IAuditLogService auditLog,
     IClock clock,
@@ -212,6 +214,8 @@ internal sealed partial class TicketCheckoutService(
         {
             var invited = await repository.GetOfferByTokenHashAsync(HashToken(token), ct);
             directed = invited is null ? null : DirectedOfferFor(invited, context);
+            if (directed is not null && await IsAdmittedAsync(directed.TicketId, ct))
+                directed = null;
             if (directed is null || !command.ForSelf)
                 return StartCheckoutResult.Refused("Tickets_Resale_InviteInvalid");
         }
@@ -968,13 +972,18 @@ internal sealed partial class TicketCheckoutService(
 
     private async Task<Stock> LoadStockAsync(TicketSalesEvent salesEvent, Instant now, CancellationToken ct)
     {
-        var sold = (await repository.GetTicketsForSalesEventAsync(salesEvent.Id, ct))
-            .Count(t => t.State is TicketCheckoutTicketState.Valid or TicketCheckoutTicketState.Offered);
+        var tickets = await repository.GetTicketsForSalesEventAsync(salesEvent.Id, ct);
+        var sold = tickets.Count(t => t.State is TicketCheckoutTicketState.Valid or TicketCheckoutTicketState.Offered);
         var pending = (await repository.GetOrdersForSalesEventAsync(salesEvent.Id, ct))
             .Where(o => o.State != TicketCheckoutOrderState.Paid && o.HoldsTickets(now))
             .Sum(o => o.Lines.Count(l => l.Kind == CheckoutLineKind.Ticket && l.ResaleOfferId is null));
         var resaleOpen = salesEvent.Mode != TicketSalesMode.Closed && sold >= (salesEvent.ResaleOpensAtSold ?? 0);
-        return new Stock(sold + pending, sold, resaleOpen, await repository.GetOffersForSalesEventAsync(salesEvent.Id, ct));
+        // A returned ticket its holder already used to get in can never sell: the gate's admit is the check-in record.
+        var offers = await repository.GetOffersForSalesEventAsync(salesEvent.Id, ct);
+        var offered = tickets.Where(t => t.State == TicketCheckoutTicketState.Offered).ToDictionary(t => t.Id, t => t.Barcode);
+        var admitted = await gateAdmissions.GetAdmittedAsync(offered.Values.ToList(), ct);
+        return new Stock(sold + pending, sold, resaleOpen,
+            offers.Where(o => !(offered.TryGetValue(o.TicketId, out var code) && admitted.Contains(code))).ToList());
     }
 
     private static TicketCheckoutOrderLine TicketLine(

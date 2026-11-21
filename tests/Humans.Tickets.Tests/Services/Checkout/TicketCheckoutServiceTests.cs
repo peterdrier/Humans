@@ -42,6 +42,8 @@ public sealed class TicketCheckoutServiceTests
     private readonly ICommunicationPreferenceWrite _preferences = Substitute.For<ICommunicationPreferenceWrite>();
     private readonly IEmailService _email = Substitute.For<IEmailService>();
     private readonly ITicketDelivery _delivery = Substitute.For<ITicketDelivery>();
+    private readonly Humans.Gate.Contracts.IGateAdmissions _gate = Substitute.For<Humans.Gate.Contracts.IGateAdmissions>();
+    private readonly HashSet<string> _admitted = new(StringComparer.Ordinal);
     private readonly FakeClock _clock = new(Now);
     private readonly Guid _otherBuyerId = Guid.NewGuid();
     private int _sessions;
@@ -104,8 +106,10 @@ public sealed class TicketCheckoutServiceTests
         localizer["Tickets_Resale_Email_Invite_Body"].Returns(new LocalizedString("body", "{2}"));
         var emails = new TicketsEmails(Options.Create(new EmailSettings()), localizer, NullLogger<TicketsEmails>.Instance);
 
+        _gate.GetAdmittedAsync(Arg.Any<IReadOnlyCollection<string>>(), Arg.Any<CancellationToken>())
+            .Returns(ci => (IReadOnlySet<string>)ci.Arg<IReadOnlyCollection<string>>().Where(_admitted.Contains).ToHashSet(StringComparer.Ordinal));
         _service = new TicketCheckoutService(_repo, [_backend], _grants, _settings, _users, _provisioning, _userEmails,
-            _consents, _consentSubmission, _preferenceReads, _preferences, _email, emails, [_delivery], localizer, _audit,
+            _consents, _consentSubmission, _preferenceReads, _preferences, _email, emails, [_delivery], _gate, localizer, _audit,
             _clock, NullLogger<TicketCheckoutService>.Instance);
     }
 
@@ -526,6 +530,41 @@ public sealed class TicketCheckoutServiceTests
     }
 
     [HumansFact]
+    public async Task A_ticket_used_at_the_gate_cannot_be_offered_for_resale()
+    {
+        var order = await BuyAndPayAsync(Buy(), _buyerId);
+        var ticket = _repo.Tickets.Single(t => t.OrderId == order.Id);
+        _admitted.Add(ticket.Barcode);
+
+        (await _service.OfferForResaleAsync(ticket.Id, _buyerId, Ct)).Refusal.Should().Be("Tickets_Resale_NotOfferable");
+        ticket.State.Should().Be(TicketCheckoutTicketState.Valid);
+        _repo.Offers.Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task A_ticket_whose_child_was_used_at_the_gate_cannot_be_offered()
+    {
+        _salesEvent.ChildPriceMinor = 5000;
+        var order = await BuyAndPayAsync(Buy() with { ChildNames = ["Kid García"] }, _buyerId);
+        var adult = _repo.Tickets.Single(t => t.OrderId == order.Id && t.Kind == TicketHolderKind.Adult);
+        _admitted.Add(_repo.Tickets.Single(t => t.OrderId == order.Id && t.Kind == TicketHolderKind.Child).Barcode);
+
+        (await _service.OfferForResaleAsync(adult.Id, _buyerId, Ct)).Refusal.Should().Be("Tickets_Resale_NotOfferable");
+    }
+
+    [HumansFact]
+    public async Task An_offered_ticket_used_at_the_gate_never_sells_or_takes_an_invitation()
+    {
+        var old = await OfferedTicketAsync();
+        _admitted.Add(old.Barcode);
+
+        (await _service.StartCheckoutAsync(Buy(), _otherBuyerId, Ct)).Refusal.Should().Be("Tickets_Buy_ResaleOnly");
+        (await _service.InviteBuyerAsync(old.Id, _buyerId, "bo@example.com", new Uri("https://h.example/r/"), "en", Ct))
+            .Refusal.Should().Be("Tickets_Resale_NotOfferable");
+        _repo.Offers.Single().State.Should().Be(TicketResaleOfferState.Open);
+    }
+
+    [HumansFact]
     public async Task Only_the_holder_can_offer_withdraw_or_invite()
     {
         var order = await BuyAndPayAsync(Buy(), _buyerId);
@@ -921,9 +960,17 @@ public sealed class TicketCheckoutServiceTests
     {
         var ticket = new TicketCheckoutTicket
         {
-            Id = Guid.NewGuid(), SalesEventId = _salesEvent.Id, OrderId = Guid.NewGuid(), Kind = kind,
-            ParentTicketId = parent, HolderUserId = holder, HolderName = "Ana García",
-            Barcode = TicketCheckoutService.NewBarcode(), WaveName = "Wave 1", ClassLabel = classLabel, State = state,
+            Id = Guid.NewGuid(),
+            SalesEventId = _salesEvent.Id,
+            OrderId = Guid.NewGuid(),
+            Kind = kind,
+            ParentTicketId = parent,
+            HolderUserId = holder,
+            HolderName = "Ana García",
+            Barcode = TicketCheckoutService.NewBarcode(),
+            WaveName = "Wave 1",
+            ClassLabel = classLabel,
+            State = state,
         };
         _repo.Tickets.Add(ticket);
         return ticket;
@@ -943,16 +990,22 @@ public sealed class TicketCheckoutServiceTests
     }
 
     [HumansTheory]
-    [InlineData((int)TicketCheckoutTicketState.Valid, true)]
-    [InlineData((int)TicketCheckoutTicketState.Offered, true)]
-    [InlineData((int)TicketCheckoutTicketState.Resold, false)]
-    [InlineData((int)TicketCheckoutTicketState.Void, false)]
-    public async Task Gate_admits_a_ticket_waiting_for_resale_but_not_a_resold_or_void_one(int state, bool valid)
+    [InlineData((int)TicketCheckoutTicketState.Valid, false, true, false)]
+    [InlineData((int)TicketCheckoutTicketState.Offered, false, false, true)]
+    [InlineData((int)TicketCheckoutTicketState.Offered, true, true, false)]
+    [InlineData((int)TicketCheckoutTicketState.Resold, false, false, false)]
+    [InlineData((int)TicketCheckoutTicketState.Void, false, false, false)]
+    public async Task Gate_refuses_a_ticket_that_can_still_sell_on_resale_and_resold_or_void_ones(
+        int state, bool salesClosed, bool valid, bool inQueue)
     {
         var ticket = AddTicket(holder: _buyerId, state: (TicketCheckoutTicketState)state);
+        if (salesClosed)
+            _salesEvent.Mode = TicketSalesMode.Closed;
 
-        (await _service.FindIssuedTicketAsync(ticket.Barcode, TestContext.Current.CancellationToken))!
-            .IsValid.Should().Be(valid);
+        var found = await _service.FindIssuedTicketAsync(ticket.Barcode, TestContext.Current.CancellationToken);
+
+        found!.IsValid.Should().Be(valid);
+        found.InResaleQueue.Should().Be(inQueue);
     }
 
     [HumansFact]
@@ -966,23 +1019,6 @@ public sealed class TicketCheckoutServiceTests
         found!.HolderUserId.Should().BeNull();
         found.EntryUserId.Should().Be(_buyerId);
         found.TicketLabel.Should().Be("Child · Wave 1");
-    }
-
-    [HumansFact]
-    public async Task Gate_asks_a_holder_to_sign_on_paper_each_ticket_rule_they_never_accepted()
-    {
-        var teamId = Guid.NewGuid();
-        var unsigned = Guid.NewGuid();
-        _salesEvent.TermsTeamId = teamId;
-        _consents.GetRequiredConsentRowsForUserAsync(_otherBuyerId, teamId, Arg.Any<CancellationToken>())
-            .Returns([new RequiredConsentRow(Guid.NewGuid(), "Code of conduct", true), new RequiredConsentRow(unsigned, "Ticket rules", false)]);
-
-        var items = await _service.GetOutstandingAsync(_otherBuyerId, _event.Id, TestContext.Current.CancellationToken);
-
-        items.Should().ContainSingle().Which.Should().Be(
-            new Humans.Gate.Contracts.GateEntryRequirement($"ticket-rules:{unsigned}", "Sign the paper copy of “Ticket rules”"));
-        (await _service.GetOutstandingAsync(_otherBuyerId, Guid.NewGuid(), TestContext.Current.CancellationToken))
-            .Should().BeEmpty();
     }
 
     private sealed class FakeCheckoutRepository : ITicketCheckoutRepository

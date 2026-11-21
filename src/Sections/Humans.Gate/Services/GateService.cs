@@ -108,6 +108,7 @@ internal sealed class GateService(
             GeneralEntryDate: settings.IsCutoffConfigured ? settings.GeneralEntryOpensAt.InZone(zone).Date : null)
         {
             CheckoutTicketId = ticket.CheckoutTicketId,
+            InResaleQueue = ticket.InResaleQueue,
             Requirements = requirements,
         };
     }
@@ -130,7 +131,8 @@ internal sealed class GateService(
                 IsVoid: attendee.Status == TicketAttendeeStatus.Void,
                 CheckedInAtVendor: attendee.CheckedInAt is not null || attendee.Status == TicketAttendeeStatus.CheckedIn,
                 GuestUserId: attendee.MatchedUserId, EntryUserId: attendee.MatchedUserId,
-                TicketAttendeeId: attendee.Id, CheckoutTicketId: null, VendorTicketId: attendee.VendorTicketId);
+                TicketAttendeeId: attendee.Id, CheckoutTicketId: null, VendorTicketId: attendee.VendorTicketId,
+                InResaleQueue: false);
 
         if (burn is null || await issuedTickets.FindIssuedTicketAsync(code, ct) is not { } issued
             || issued.EventSettingsId != burn.Id)
@@ -140,7 +142,8 @@ internal sealed class GateService(
             issued.HolderName, issued.TicketLabel,
             IsVoid: !issued.IsValid, CheckedInAtVendor: false,
             GuestUserId: issued.HolderUserId, EntryUserId: issued.EntryUserId,
-            TicketAttendeeId: null, CheckoutTicketId: issued.Id, VendorTicketId: null);
+            TicketAttendeeId: null, CheckoutTicketId: issued.Id, VendorTicketId: null,
+            InResaleQueue: issued.InResaleQueue);
     }
 
     private sealed record ScannedTicket(
@@ -152,7 +155,8 @@ internal sealed class GateService(
         Guid? EntryUserId,
         Guid? TicketAttendeeId,
         Guid? CheckoutTicketId,
-        string? VendorTicketId);
+        string? VendorTicketId,
+        bool InResaleQueue);
 
     /// <summary>
     /// A source that fails becomes an item of its own: the agent fetches the gate lead rather than the gate silently

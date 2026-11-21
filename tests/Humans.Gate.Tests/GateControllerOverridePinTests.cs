@@ -210,7 +210,8 @@ public class GateControllerOverridePinTests
     {
         var item = new Humans.Gate.Contracts.GateEntryRequirement("rules", "Sign the paper copy of the ticket rules");
         var pending = new GateScanResult(GatePreCheckOutcome.NeedsIdCheck, Barcode, "Ana Ruiz", "Wave 1", false, null,
-            null, null, null, null) { Requirements = [item] };
+            null, null, null, null)
+        { Requirements = [item] };
         _gate.RecordDecisionAsync(Arg.Any<GateDecisionInput>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(new GateDecisionResult(GateVerdict.Unresolved, "Ana Ruiz", "Wave 1", false, null, null,
                 UnconfirmedRequirements: pending));

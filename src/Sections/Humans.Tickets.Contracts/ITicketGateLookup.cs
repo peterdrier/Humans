@@ -10,8 +10,10 @@ public interface ITicketGateLookup : IApplicationService
 }
 
 /// <summary>
-/// <paramref name="IsValid"/> includes a ticket waiting in the resale queue. <paramref name="EntryUserId"/> is the
-/// holder, or for a child or companion ticket without an account the adult it belongs to: whose Early Entry applies.
+/// <paramref name="InResaleQueue"/>: offered back and still able to sell, so it is not valid until the holder withdraws
+/// it (else it could admit its holder and then sell to someone else); once sales close an offered ticket is valid again.
+/// <paramref name="EntryUserId"/> is the holder, or for a child or companion ticket without an account the adult it
+/// belongs to: whose Early Entry applies. Both null is an adult ticket whose holder has no account.
 /// </summary>
 public sealed record IssuedTicketInfo(
     Guid Id,
@@ -21,4 +23,5 @@ public sealed record IssuedTicketInfo(
     Guid? HolderUserId,
     Guid? EntryUserId,
     string TicketLabel,
-    bool IsValid);
+    bool IsValid,
+    bool InResaleQueue = false);

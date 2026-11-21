@@ -1,11 +1,10 @@
-using Humans.Gate.Contracts;
 using Humans.Tickets.Contracts;
 using Humans.Tickets.Domain.Checkout;
 
 namespace Humans.Tickets.Services.Checkout;
 
-/// <summary>What the gate reads: the scanned ticket, and the ticket rules a holder has not accepted.</summary>
-internal sealed partial class TicketCheckoutService : ITicketGateLookup, IGateEntryRequirementSource
+/// <summary>What the gate reads: the scanned ticket.</summary>
+internal sealed partial class TicketCheckoutService : ITicketGateLookup
 {
     public async Task<IssuedTicketInfo?> FindIssuedTicketAsync(string? barcode, CancellationToken ct = default)
     {
@@ -21,6 +20,9 @@ internal sealed partial class TicketCheckoutService : ITicketGateLookup, IGateEn
             entryUserId = (await repository.GetTicketAsync(parentId, ct))?.HolderUserId;
 
         var label = ticket.ClassLabel ?? ticket.WaveName;
+        var now = clock.GetCurrentInstant();
+        var canStillSell = salesEvent.Mode != TicketSalesMode.Closed && !(salesEvent.SalesCloseAt is { } close && now >= close);
+        var inResaleQueue = ticket.State == TicketCheckoutTicketState.Offered && canStillSell;
         return new IssuedTicketInfo(
             ticket.Id,
             salesEvent.EventSettingsId,
@@ -29,23 +31,8 @@ internal sealed partial class TicketCheckoutService : ITicketGateLookup, IGateEn
             ticket.HolderUserId,
             entryUserId,
             ticket.Kind == TicketHolderKind.Adult ? label : $"{ticket.Kind} · {label}",
-            IsValid: ticket.State is TicketCheckoutTicketState.Valid or TicketCheckoutTicketState.Offered);
-    }
-
-    /// <summary>
-    /// A holder who never accepted the event's ticket rules online (a partner the buyer named, or a rules change since)
-    /// signs the paper copy at the gate.
-    /// </summary>
-    public async Task<IReadOnlyList<GateEntryRequirement>> GetOutstandingAsync(
-        Guid userId, Guid eventSettingsId, CancellationToken ct = default)
-    {
-        if (await repository.GetSalesEventForEventAsync(eventSettingsId, ct) is not { TermsTeamId: { } termsTeam })
-            return [];
-
-        var rows = await consents.GetRequiredConsentRowsForUserAsync(userId, termsTeam, ct);
-        return rows.Where(r => !r.Signed)
-            .Select(r => new GateEntryRequirement(
-                $"ticket-rules:{r.DocumentVersionId}", $"Sign the paper copy of “{r.Title}”"))
-            .ToList();
+            IsValid: ticket.State == TicketCheckoutTicketState.Valid
+                || (ticket.State == TicketCheckoutTicketState.Offered && !canStillSell),
+            InResaleQueue: inResaleQueue);
     }
 }

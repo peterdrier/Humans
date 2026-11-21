@@ -10,6 +10,7 @@ using Humans.Base.Constants;
 using Humans.Gate.Contracts;
 using Humans.Gate.Data;
 using Humans.Gate.Domain;
+using Humans.Gate.Models;
 using Humans.Gate.Services;
 using Humans.Gate.Services.Stores;
 using Humans.Gate.Jobs;
@@ -1208,12 +1209,13 @@ public class GateServiceTests
         new LocalDate(2026, 3, 5), -10, 5, 8, new Dictionary<int, int>(), null, null);
 
     private IssuedTicketInfo StubIssued(
-        bool valid = true, Guid? eventId = null, Guid? holder = null, Guid? entryUser = null, string label = "Wave 1")
+        bool valid = true, Guid? eventId = null, Guid? holder = null, Guid? entryUser = null, string label = "Wave 1",
+        bool inResaleQueue = false)
     {
         _burn.GetActiveEventSettings().Returns(_activeEvent);
         _tickets.GetTicketOrdersAsync(Arg.Any<CancellationToken>()).Returns(new List<TicketOrderInfo>());
         var ticket = new IssuedTicketInfo(Guid.NewGuid(), eventId ?? _activeEvent.Id, IssuedBarcode, "Ana Ruiz",
-            holder, entryUser ?? holder, label, valid);
+            holder, entryUser ?? holder, label, valid, inResaleQueue);
         _issued.FindIssuedTicketAsync(IssuedBarcode, Arg.Any<CancellationToken>()).Returns(ticket);
         return ticket;
     }
@@ -1276,6 +1278,7 @@ public class GateServiceTests
 
         eval.Outcome.Should().Be(GatePreCheckOutcome.NeedsIdCheckEarly);
         eval.GuestUserId.Should().BeNull();
+        eval.Requirements.Should().BeEmpty();
         (await RecordIssuedAsync()).Verdict.Should().Be(GateVerdict.AdmittedEarly);
         await _users.DidNotReceive().RecordParticipationAsync(
             Arg.Any<Guid>(), Arg.Any<int>(), Arg.Any<ParticipationStatus>(), Arg.Any<Instant?>(), Arg.Any<CancellationToken>());
@@ -1343,5 +1346,30 @@ public class GateServiceTests
 
         result.InputTooLong.Should().BeTrue();
         GateDb.GateScanEvents.AsNoTracking().Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task IssuedTicket_StillOnResale_Stops_WithWhatTheHolderCanDo()
+    {
+        StubIssued(valid: false, holder: GuestId, inResaleQueue: true);
+
+        var eval = await _svc.EvaluateAsync(IssuedBarcode);
+
+        eval.Outcome.Should().Be(GatePreCheckOutcome.Invalid);
+        GateScanCardViewModel.FromEvaluation(eval).Reason.Should().Contain("withdraw");
+    }
+
+    [HumansFact]
+    public async Task Admissions_ReportTheAdmittedCodes_AsTheCallerSpeltThem()
+    {
+        StubIssued(holder: GuestId);
+        await RecordIssuedAsync();
+        var reads = new GateAdmissionReads(new GateRepository(GateDbFactory));
+
+        var admitted = await reads.GetAdmittedAsync(
+            [IssuedBarcode.ToLowerInvariant(), "HOTHERCODE", " "], Xunit.TestContext.Current.CancellationToken);
+
+        admitted.Should().BeEquivalentTo([IssuedBarcode.ToLowerInvariant()]);
+        (await reads.GetAdmittedAsync([], Xunit.TestContext.Current.CancellationToken)).Should().BeEmpty();
     }
 }

@@ -48,6 +48,8 @@ export function initGate(refs) {
 
     function armAutoReset(card, kind) {
         clearResetTimer();
+        // The guest may be signing on paper: an open item keeps the card up until it is ticked or the agent moves on.
+        if (card.querySelector('[data-requirement]:not(:checked)')) return;
         resetMs = RESET_MS[kind] || 10000;
         // The ID-confirm card is mid-decision: a visible "auto-clears" hint instead of a Next button, so it can't
         // vanish unannounced.
@@ -251,7 +253,10 @@ export function initGate(refs) {
             const open = Array.from(requirementBoxes).some(b => !b.checked);
             admitButtons.forEach(b => { if (open) b.setAttribute('disabled', 'disabled'); else b.removeAttribute('disabled'); });
         };
-        requirementBoxes.forEach(b => b.addEventListener('change', lockAdmit));
+        requirementBoxes.forEach(b => b.addEventListener('change', () => {
+            lockAdmit();
+            if (!overrideOpen()) armAutoReset(card, kind);
+        }));
         lockAdmit();
 
         const overrideBtn = card.querySelector('[data-override="early"]');

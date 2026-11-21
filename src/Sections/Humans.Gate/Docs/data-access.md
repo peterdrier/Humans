@@ -35,7 +35,8 @@ its original admit timestamp; the admin controller holds no ledger or job-client
 | tickets_event_participations | W via `ITicketWrite.RecordParticipationAsync` (**not** a foreign table access — an admit projects an `Attended` participation row through the owning Tickets service, so consumed camp EE can't be revoked) |
 
 Checkout-issued tickets come from `ITicketGateLookup` (Tickets, live, no cache); outstanding
-items from every `IGateEntryRequirementSource` (Gate's contract, implemented by Tickets).
+items from every `IGateEntryRequirementSource` (Gate's contract; none registered yet). `GateAdmissionReads` serves
+`IGateAdmissions` (admitted codes) to Tickets from `gate_scan_events`.
 Cross-section calls via `ITicketService` (barcode → attendee resolved by
 filtering the cached orders projection in memory — no new interface method),
 `IEarlyEntryService` (cached per-user EE for the too-early rule),

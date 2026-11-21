@@ -71,7 +71,7 @@ consent needs a real profile, so the account always comes before the order.
 
 - `/Tickets/Buy/Mine` lists the member's live tickets with the valid child tickets under their adult. Its GET is
   open before the account is active, so a partner reaches their ticket from the email (name entry still comes first). A holder offers an adult ticket back while the event is not
-  Closed; it joins `ticket_resale_offers` (oldest first) and stays valid at the gate until it sells. They see their
+  Closed; it joins `ticket_resale_offers` (oldest first) and the gate refuses it while it can still sell (the holder withdraws it to get in; once sales close it is valid again). They see their
   queue position and can withdraw, except while a buyer's checkout holds it.
 - Resale opens once the event has sold `ResaleOpensAtSold` tickets (always, when unset). A buyer's ticket lines take
   the queue head before fresh stock; in `ResaleOnly` mode only queue tickets sell. A returned ticket sells only at the
@@ -98,15 +98,15 @@ admin order page beside a link to the order in the backend's own admin (`Checkou
 ## At the gate
 
 Gate looks codes up through `ITicketGateLookup.FindIssuedTicketAsync` (exact code, any event; Gate keeps only the
-active event's). `Valid` and `Offered` scan valid. A child or companion ticket without an account carries the adult's
-user as `EntryUserId`, whose Early Entry applies. Tickets also answers Gate's `IGateEntryRequirementSource`: each
-ticket rules document (the event's `TermsTeamId`) the holder has not accepted becomes "sign the paper copy" at the
-gate. The gate's scan row is the only check-in record; no backend is told.
+active event's). `Valid` scans valid; `Offered` scans valid only once sales are closed, so a ticket can never admit its holder and then sell. A ticket the gate admitted (or whose child ticket it admitted) cannot be offered, and an admitted offer is never sold (`IGateAdmissions`, Gate's read). A child or companion ticket without an account carries the adult's
+user as `EntryUserId`, whose Early Entry applies. Nobody signs the ticket rules at the gate: the buyer's acceptance
+covers every ticket on the order (Peter, 2026-11-21). The gate's scan row is the only check-in record; no backend is told.
+
+Partners do not sign the ticket rules: the buyer accepts for the whole order (decided by Peter, 2026-11-21).
 
 ## Assumptions to confirm
 
 - Only adult tickets can be offered; children go with the adult and are refunded with it.
-- Partners do not sign the ticket rules at purchase; the buyer accepts for the order.
 
 ## Not yet
 

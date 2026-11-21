@@ -44,23 +44,27 @@ after the retention window.
 - **Two ticket sources, one check-in record.** A scanned code is looked up first among the current
   event's Ticket Tailor attendees, then among the tickets Humans' own checkout issued
   (`ITicketGateLookup.FindIssuedTicketAsync`, live), accepted only when the ticket's event is the
-  active event. A checkout ticket that is `Valid` or `Offered` (waiting in the resale queue) scans
-  valid; `Resold` and `Void` STOP. Its scan row carries `CheckoutTicketId` instead of
+  active event. A `Valid` checkout ticket scans valid; an `Offered` one (in the resale queue) STOPs
+  with "withdraw it first" while it can still sell, and is valid once sales close; `Resold` and
+  `Void` STOP. Tickets reads Gate's `IGateAdmissions` (`GateAdmissionReads`, live) so an admitted
+  ticket is never offered or sold. Its scan row carries `CheckoutTicketId` instead of
   `TicketAttendeeId`, it is never mirrored to a vendor and never appears in the vendor backfill: the
   gate row is its only check-in record. A child or companion ticket without an account takes the
   Early Entry of the adult it belongs to (`IssuedTicketInfo.EntryUserId`); with no guest account, no
   attendance row is written.
 - **Outstanding items** — before an admit the gate asks every registered
   `IGateEntryRequirementSource` (Gate's own contract, `Contracts/`) "what must this person do before
-  entry" for the matched guest and the active event. Each item (e.g. "sign the paper copy of the
-  ticket rules") is shown as a checkbox on any card that can admit, and the admit buttons stay locked
+  entry" for the matched guest and the active event. Each item (e.g. "sign the volunteer agreement on
+  paper") is shown as a checkbox on any card that can admit, and the admit buttons stay locked
   until all are ticked. `RecordDecisionAsync` re-reads the items and refuses an admit unless every
   current key was confirmed (no row is written; the card comes back asking for them), then stores
   the confirmed instructions on the admit row (`ConfirmedRequirements`). Turning someone away never
   needs them. A source that throws becomes an item of its own ("ask the gate lead"), so a failure
-  never admits silently. Order on the card: valid → date allowed → outstanding items → ID matches.
-  Tickets answers with the event's ticket rules (`TermsTeamId` documents) the holder never accepted
-  online; signing on paper is recorded only on the gate row, not in Consent.
+  never admits silently. While an item is unticked the card does not auto-clear (the guest may be
+  signing). Order on the card: valid → date allowed → outstanding items → ID matches.
+  No source is registered yet (ticket rules need no gate signature: the buyer's acceptance covers the
+  order). Limit: sources are asked only for a ticket matched to an account, so a future source can't
+  cover an account-less adult ticket (a partner with an ambiguous email) until the seam takes the ticket.
 - **Verdict precedence** (`GateAdmissionRules.Evaluate`, fresh per scan): not-found/void → STOP;
   already-admitted-locally or vendor-checked-in → STOP duplicate; **cutoff not configured →
   AMBER** (fail-safe — see below); `now ≥ cutoff` → needs-ID; before cutoff + unmatched → AMBER
@@ -245,8 +249,8 @@ nobodies-collective/Humans#933.)
 ## Cross-Section Dependencies
 
 - **Audit actions:** declared on `GateAuditActions` (`src/Sections/Humans.Gate/GateAuditActions.cs`), one `AuditActionDefinition` each, written through `IAuditLogService`: `GateStaffPinSet`, `GateStaffPinReset`.
-- **Tickets** — `ITicketGateLookup.FindIssuedTicketAsync` (checkout-issued tickets, live), and
-  Tickets implements `IGateEntryRequirementSource` (ticket rules not yet accepted).
+- **Tickets** — `ITicketGateLookup.FindIssuedTicketAsync` (checkout-issued tickets, live); Tickets
+  in turn reads Gate's `IGateAdmissions` before offering or selling a returned ticket.
 - **Outstanding-item sources** — every `IGateEntryRequirementSource` registered in DI; Gate only
   shows, gates and records their items.
 - **Tickets** — `ITicketService.GetTicketOrdersAsync` (Ticket Tailor barcode lookup) and
@@ -295,8 +299,8 @@ nobodies-collective/Humans#933.)
 ## Architecture
 
 **Project:** `src/Sections/Humans.Gate`, its own assembly. Everything in it is `internal`
-except `Section` and `Contracts/` (`IGateEntryRequirementSource`, `GateEntryRequirement`: the seam
-other sections implement; nothing outside calls into Gate); there is no `GateResource` because the
+except `Section` and `Contracts/`: `IGateEntryRequirementSource` + `GateEntryRequirement` (the seam
+other sections implement) and `IGateAdmissions` (Tickets' read of admits); there is no `GateResource` because the
 kiosk carries no resource keys (every string is inline English by design — a staff-facing,
 single-locale terminal, outstanding-item instructions included).
 **Owning service:** `GateService` (`Humans.Gate.Services`) — also implements `IUserMerge`,
