@@ -681,12 +681,14 @@ public sealed class TicketCheckoutServiceTests
         _backend.ClearReceivedCalls();
 
         (await RefundBatchAsync()).HeldBack.Should().Be(1);
-        await _service.RunResaleRefundBatchAsync(Ct);
+        (await _service.RunResaleRefundBatchAsync(Ct)).HeldBack.Should().Be(0);
 
         await _backend.DidNotReceive().RefundAsync(Arg.Any<RefundRequest>(), Arg.Any<CancellationToken>());
         _repo.Offers.Single().RefundId.Should().BeNull();
         await _audit.Received(1).LogAsync(TicketsAuditActions.TicketCheckoutNeedsAttention, Arg.Any<string>(), Arg.Any<Guid>(),
             Arg.Is<string>(d => d.StartsWith("Resale refund held back", StringComparison.Ordinal)), Arg.Any<string>());
+        await _audit.Received(1).LogAsync(TicketsAuditActions.TicketResaleRefundBatch, Arg.Any<string>(), _salesEvent.Id,
+            Arg.Any<string>(), Arg.Any<string>());
     }
 
     [HumansFact]

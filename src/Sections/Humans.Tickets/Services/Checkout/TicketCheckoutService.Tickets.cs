@@ -520,8 +520,9 @@ internal sealed partial class TicketCheckoutService
                 if (buyerOrder is not { State: TicketCheckoutOrderState.Paid, RefundedMinor: 0, DisputedMinor: 0 }
                     || (await repository.GetRefundsAsync(buyerOrder.Id, ct)).Any(r => r.State != RefundState.Failed))
                 {
-                    heldBack++;
-                    await HoldBackResaleRefundAsync(offer, buyerOrder, ct);
+                    // Counted only when first flagged, so one held-back sale is not reported again every evening.
+                    if (await HoldBackResaleRefundAsync(offer, buyerOrder, ct))
+                        heldBack++;
                     continue;
                 }
                 try
@@ -547,15 +548,16 @@ internal sealed partial class TicketCheckoutService
         return batch;
     }
 
-    private async Task HoldBackResaleRefundAsync(TicketResaleOffer offer, TicketCheckoutOrder? buyerOrder, CancellationToken ct)
+    private async Task<bool> HoldBackResaleRefundAsync(TicketResaleOffer offer, TicketCheckoutOrder? buyerOrder, CancellationToken ct)
     {
         if (await repository.GetTicketAsync(offer.TicketId, ct) is not { } old
             || (await repository.GetOrderEventsAsync(old.OrderId, ct)).Any(e => e.Detail.StartsWith(RefundHeldBack, StringComparison.Ordinal)))
-            return;
+            return false;
         await NeedsAttentionAsync(old.OrderId,
             $"{RefundHeldBack}: ticket {old.Barcode} resold on order {buyerOrder?.Reference ?? "unknown"}, which is " +
             (buyerOrder is null ? "gone" : $"{buyerOrder.State} with {FormatMinor(buyerOrder.RefundedMinor)} refunded and {FormatMinor(buyerOrder.DisputedMinor)} charged back") +
             $"; the ticketing team decides on the {FormatMinor(offer.RefundOwedMinor)} owed", ct);
+        return true;
     }
 
     /// <summary>Finishes what a crash left behind: paid orders without their tickets, resale refund or delivery, and refunds that never reached the backend.</summary>
