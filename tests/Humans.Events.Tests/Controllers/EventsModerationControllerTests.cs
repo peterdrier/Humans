@@ -202,12 +202,15 @@ public sealed class EventsModerationControllerTests
     }
 
     [HumansTheory]
-    [Xunit.InlineData(EventStatus.Rejected, true)]
-    [Xunit.InlineData(EventStatus.ResubmitRequested, true)]
-    [Xunit.InlineData(EventStatus.Pending, false)]
-    [Xunit.InlineData(EventStatus.Draft, false)]
-    public void EventInfo_IsResubmission_only_after_moderation_sent_it_back(EventStatus status, bool expected)
-        => MakeEvent(null, status).IsResubmission.Should().Be(expected);
+    [Xunit.InlineData((int)EventStatus.Rejected, true)]
+    [Xunit.InlineData((int)EventStatus.ResubmitRequested, true)]
+    [Xunit.InlineData((int)EventStatus.Pending, false)]
+    [Xunit.InlineData((int)EventStatus.Draft, false)]
+    public void EventInfo_IsResubmission_only_after_moderation_sent_it_back(int statusValue, bool expected)
+    {
+        var status = (EventStatus)statusValue;
+        MakeEvent(null, status).IsResubmission.Should().Be(expected);
+    }
 
     [HumansFact]
     public async Task Withdraw_approved_event_records_the_moderator()

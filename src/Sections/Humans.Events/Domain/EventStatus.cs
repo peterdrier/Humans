@@ -1,6 +1,6 @@
-namespace Humans.Events.Contracts;
+namespace Humans.Events.Domain;
 
-public enum EventStatus
+internal enum EventStatus
 {
     /// <summary>Saved but not submitted.</summary>
     Draft = 0,

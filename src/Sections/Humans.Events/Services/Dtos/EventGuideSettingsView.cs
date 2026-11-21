@@ -1,12 +1,12 @@
 using NodaTime;
 
-namespace Humans.Events.Contracts;
+namespace Humans.Events.Services.Dtos;
 
 /// <summary>
 /// Carries <see cref="TimeZoneId"/> from Settings' event row so views can render <c>Instant</c>s in local time. An
 /// event-settings save marks it stale.
 /// </summary>
-public sealed record EventGuideSettingsView(
+internal sealed record EventGuideSettingsView(
     Guid Id,
     Guid EventSettingsId,
     Instant SubmissionOpenAt,

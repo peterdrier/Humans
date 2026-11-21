@@ -12,11 +12,6 @@ public interface IEventService : IApplicationService
 
     Task<ApprovedEventView?> GetApprovedEventByIdAsync(Guid id, CancellationToken ct = default);
 
-    /// <summary>Carries <c>TimeZoneId</c> for rendering start times in the burn's local zone.</summary>
-    Task<EventGuideSettingsView?> GetGuideSettingsAsync(CancellationToken ct = default);
-
-    Task<HashSet<Guid>> GetFavouriteEventIdsAsync(Guid userId, CancellationToken ct = default);
-
     /// <summary>
     /// Case-insensitive Title or Description match, scored per <see cref="EventSearchHit"/>. Capped at
     /// <paramref name="max"/> highest-scoring matches; the caller controls presentation order.

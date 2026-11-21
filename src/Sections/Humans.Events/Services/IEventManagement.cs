@@ -10,6 +10,11 @@ namespace Humans.Events.Services;
 
 internal interface IEventManagement : IApplicationService, IEventService
 {
+    /// <summary>Carries <c>TimeZoneId</c> for rendering start times in the burn's local zone.</summary>
+    Task<EventGuideSettingsView?> GetGuideSettingsAsync(CancellationToken ct = default);
+
+    Task<HashSet<Guid>> GetFavouriteEventIdsAsync(Guid userId, CancellationToken ct = default);
+
     IReadOnlyList<EventSettingsInfo> GetEventSettingsOptions();
     Task<EventSettingsInfo?> GetEventSettingsByIdAsync(Guid id, CancellationToken ct = default);
     /// <summary>False when the selected event edition no longer exists; dependency failures propagate.</summary>
