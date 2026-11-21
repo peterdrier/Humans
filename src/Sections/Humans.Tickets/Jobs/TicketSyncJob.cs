@@ -6,7 +6,8 @@ using Microsoft.Extensions.Options;
 
 namespace Humans.Tickets.Jobs;
 
-[DisableConcurrentExecution(timeoutInSeconds: 300)]
+// An explicit resource: the default lock key includes the method name, so ExecuteAsync and RunNowAsync would not exclude each other.
+[DisableConcurrentExecution("tickets-vendor-sync", 300)]
 internal sealed class TicketSyncJob(
     ITicketSyncService syncService,
     IOptions<TicketVendorSettings> settings,
