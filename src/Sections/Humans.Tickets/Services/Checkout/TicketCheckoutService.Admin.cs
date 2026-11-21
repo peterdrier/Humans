@@ -57,6 +57,7 @@ internal sealed partial class TicketCheckoutService
         ticket.HolderName = holderName;
         ticket.HolderEmail = holderEmail;
         await repository.UpdateTicketAsync(ticket, ct);
+        holdings.InvalidateHoldings(holderUserId);
         // The order line follows the ticket, so the new holder can open the order and the old one no longer can.
         var order = await repository.GetOrderAsync(ticket.OrderId, ct);
         var line = order?.Lines.FirstOrDefault(l =>
@@ -214,6 +215,8 @@ internal sealed partial class TicketCheckoutService
             IssuedAt = now,
         };
         await repository.AddTicketsAsync([companion], ct);
+        if (holderUserId is { } companionHolder)
+            holdings.InvalidateHoldings(companionHolder);
 
         var why = reason.Trim();
         await TimelineAsync(order.Id, TicketCheckoutOrderEventKind.CompanionIssued,
