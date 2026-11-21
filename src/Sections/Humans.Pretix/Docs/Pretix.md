@@ -21,6 +21,9 @@ pretix is an open-source ticketing system, self-hosted (`deploy/pretix/` for Coo
 
 **Out of scope.** pretix's own shop, vouchers, seating, check-in app and mail to buyers; pretixSCAN at the gate (Gate's call); any per-event setting in Humans beyond the event slug.
 
+
+**Admin.** The section's only page is its admin sidebar row, "pretix" (`TicketsBackendAdminNav`, `TicketsPolicies.Read`), which opens Tickets' status page for key `pretix` at `/Tickets/Admin/Backends/pretix`: settings, connection test, orders, stuck orders, unsettled refunds and a link to reconciliation. The data is Tickets'; this section contributes only the row.
+
 ## Concepts
 
 - The **port** is `Humans.Tickets.Contracts.ITicketCheckoutBackend` (key `pretix`). Tickets owns it; this section implements it and publishes nothing.

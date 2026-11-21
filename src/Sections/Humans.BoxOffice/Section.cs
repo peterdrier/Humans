@@ -11,7 +11,7 @@ namespace Humans.BoxOffice;
 /// Humans' own ticket checkout: Stripe hosted Checkout behind Tickets' <see cref="ITicketCheckoutBackend"/>, key
 /// <c>boxoffice</c>. Declares its own <c>STRIPE_BOXOFFICE_*</c> variables; rename both places together.
 /// </summary>
-public sealed class Section : ISection, ISectionConfiguration
+public sealed class Section : ISection, ISectionConfiguration, ISectionAdminNav
 {
     internal const string KeyVariable = "STRIPE_BOXOFFICE_KEY";
     internal const string WebhookSecretVariable = "STRIPE_BOXOFFICE_WEBHOOK_SECRET";
@@ -32,4 +32,7 @@ public sealed class Section : ISection, ISectionConfiguration
         registry.RegisterEnvironmentVariable(KeyVariable, "Box Office (Stripe)", isSensitive: true);
         registry.RegisterEnvironmentVariable(WebhookSecretVariable, "Box Office (Stripe)", isSensitive: true);
     }
+
+    IEnumerable<AdminNavGroup> ISectionAdminNav.Groups() =>
+        [TicketsBackendAdminNav.Group("Box Office", BoxOfficeCheckoutBackend.BackendKey, "fa-solid fa-cash-register")];
 }

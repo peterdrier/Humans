@@ -12,7 +12,7 @@ namespace Humans.Pretix;
 /// own, and QA needs a real instance to try the option against. Unconfigured, <c>IsConfigured</c> is false and
 /// Tickets opens no checkout on it.
 /// </summary>
-public sealed class Section : ISection, ISectionConfiguration
+public sealed class Section : ISection, ISectionConfiguration, ISectionAdminNav
 {
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
@@ -34,4 +34,7 @@ public sealed class Section : ISection, ISectionConfiguration
         registry.RegisterEnvironmentVariable("PRETIX_API_TOKEN", "Pretix", isSensitive: true);
         registry.RegisterEnvironmentVariable("PRETIX_WEBHOOK_SECRET", "Pretix", isSensitive: true);
     }
+
+    IEnumerable<AdminNavGroup> ISectionAdminNav.Groups() =>
+        [TicketsBackendAdminNav.Group("pretix", PretixCheckoutBackend.BackendKey, "fa-solid fa-ticket")];
 }

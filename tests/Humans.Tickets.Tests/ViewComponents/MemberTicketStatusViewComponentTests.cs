@@ -2,6 +2,7 @@ using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.Settings.Contracts;
 using Humans.Tickets.Contracts;
+using Humans.Tickets.Domain.Checkout;
 using Humans.Tickets.Services.Checkout;
 using Humans.Tickets.ViewComponents;
 using Microsoft.AspNetCore.Http;
@@ -23,15 +24,19 @@ public sealed class MemberTicketStatusViewComponentTests
     private readonly ITicketService _tickets = Substitute.For<ITicketService>();
     private readonly ISettingsService _settings = Substitute.For<ISettingsService>();
 
+    private static readonly Guid EventId = Guid.NewGuid();
+
     private static EventSettingsInfo Event(bool isOffSeason) => new(
-        Guid.NewGuid(), "Test Event", 2026, "UTC", new LocalDate(2026, 7, 1),
+        EventId, "Test Event", 2026, "UTC", new LocalDate(2026, 7, 1),
         -14, 6, 9, new Dictionary<int, int>(), null, null,
         IsOffSeason: isOffSeason);
 
-    private MemberTicketStatusViewComponent BuildSut(TicketVendorSettings? vendor = null)
+    private MemberTicketStatusViewComponent BuildSut(
+        TicketVendorSettings? vendor = null, TicketSalesEvent? sale = null, TicketCheckoutTicket? held = null)
     {
         var checkout = Substitute.For<ITicketCheckoutService>();
-        checkout.GetSalesEventsAsync(Arg.Any<CancellationToken>()).Returns([]);
+        checkout.GetSalesEventsAsync(Arg.Any<CancellationToken>()).Returns(sale is null ? [] : [sale]);
+        checkout.GetTicketsForHolderAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(held is null ? [] : [held]);
         var httpContext = new DefaultHttpContext
         {
             RequestServices = new ServiceCollection()
@@ -91,5 +96,34 @@ public sealed class MemberTicketStatusViewComponentTests
         var model = (MemberTicketStatusViewModel)((ViewViewComponentResult)result).ViewData!.Model!;
         model.HoldingsUnavailable.Should().Be(fails);
         model.HasTicket.Should().BeFalse();
+    }
+
+    private static TicketSalesEvent Sale(TicketSalesMode mode) =>
+        new() { Id = Guid.NewGuid(), EventSettingsId = EventId, BackendKey = "boxoffice", Mode = mode };
+
+    [HumansFact]
+    public async Task InvokeAsync_OffSeasonWithASaleOpen_StillOffersTheBuyPage()
+    {
+        _settings.GetActiveEventSettings().Returns(Event(isOffSeason: true));
+
+        var result = await BuildSut(sale: Sale(TicketSalesMode.Open)).InvokeAsync();
+
+        var model = (MemberTicketStatusViewModel)((ViewViewComponentResult)result).ViewData!.Model!;
+        model.SellsInHumans.Should().BeTrue();
+    }
+
+    [HumansFact]
+    public async Task InvokeAsync_HumansTicketHolderWithNoVendorSync_HasTicket()
+    {
+        _settings.GetActiveEventSettings().Returns(Event(isOffSeason: false));
+        var sale = Sale(TicketSalesMode.Closed);
+        var held = new TicketCheckoutTicket { Id = Guid.NewGuid(), SalesEventId = sale.Id, State = TicketCheckoutTicketState.Valid };
+
+        var result = await BuildSut(sale: sale, held: held).InvokeAsync();
+
+        var model = (MemberTicketStatusViewModel)((ViewViewComponentResult)result).ViewData!.Model!;
+        model.TicketsConfigured.Should().BeFalse();
+        model.HumansTicketCount.Should().Be(1);
+        model.HasTicket.Should().BeTrue();
     }
 }
