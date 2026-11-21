@@ -3,8 +3,7 @@ using Humans.Base.Interfaces;
 
 namespace Humans.Users.Services;
 
-internal sealed class ProfileService(
-    IUserService userService,
+internal sealed class ProfileService(IUserService userService,
     IFileStorage fileStorage) : IProfilePictureService
 {
     /// <summary>
