@@ -33,6 +33,23 @@ internal sealed class TicketsSalesAdminController(
             new SalesAdminIndexViewModel(salesEvents, events, checkout.Backends));
     }
 
+    [HttpGet("Backends")]
+    public async Task<IActionResult> Backends(CancellationToken ct) =>
+        View("~/Views/Tickets/Admin/Sales/Backends.cshtml", await BackendsModelAsync(null, ct));
+
+    /// <summary>Changes nothing; Manage only because it calls the vendor with Humans' credentials.</summary>
+    [HttpPost("Backends/{key}/Check")]
+    [Authorize(Policy = TicketsPolicies.Manage)]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> CheckBackend(string key, string? backendEventRef, CancellationToken ct)
+    {
+        var findings = await checkout.CheckBackendAsync(key, backendEventRef, ct);
+        if (findings is null)
+            return NotFound();
+        return View("~/Views/Tickets/Admin/Sales/Backends.cshtml",
+            await BackendsModelAsync(new BackendCheckResult(key, backendEventRef, findings), ct));
+    }
+
     [HttpGet("Edit/{id:guid?}")]
     public async Task<IActionResult> Edit(Guid? id, CancellationToken ct)
     {
@@ -113,6 +130,9 @@ internal sealed class TicketsSalesAdminController(
         return RedirectToAction(nameof(Order), new { id });
     }
 
+    private async Task<BackendsViewModel> BackendsModelAsync(BackendCheckResult? check, CancellationToken ct) =>
+        new(checkout.Backends, await checkout.GetSalesEventsAsync(ct), await settings.GetAllEventSettingsAsync(ct), check);
+
     private async Task<SalesEditViewModel> EditModelAsync(SalesEditForm form, string? error, CancellationToken ct) =>
         new(form, error, await settings.GetAllEventSettingsAsync(ct), await grants.GetProgramSummariesAsync(ct), checkout.Backends);
 }
@@ -124,6 +144,17 @@ internal sealed record SalesAdminIndexViewModel(
 {
     public string EventName(Guid id) => Events.FirstOrDefault(e => e.Id == id)?.EventName ?? id.ToString();
 }
+
+internal sealed record BackendsViewModel(
+    IReadOnlyList<CheckoutBackendInfo> Backends,
+    IReadOnlyList<TicketSalesEvent> SalesEvents,
+    IReadOnlyList<EventSettingsInfo> Events,
+    BackendCheckResult? Check)
+{
+    public string EventName(Guid id) => Events.FirstOrDefault(e => e.Id == id)?.EventName ?? id.ToString();
+}
+
+internal sealed record BackendCheckResult(string Key, string? BackendEventRef, IReadOnlyList<CheckoutBackendFinding> Findings);
 
 internal sealed record SalesEditViewModel(
     SalesEditForm Form,
@@ -152,6 +183,10 @@ internal sealed class SalesEditForm
     public int? ChildMaxAge { get; set; }
     public int? ResaleOpensAtSold { get; set; }
     public int DirectedResaleDays { get; set; } = 3;
+    public ResaleScheme Resale { get; set; } = ResaleScheme.QueueAndDirected;
+    public bool PartnerTickets { get; set; } = true;
+    public bool Donations { get; set; } = true;
+    public bool MailingListOptIn { get; set; } = true;
     public string? TermsUrl { get; set; }
 
     private static readonly LocalDatePattern DatePattern = LocalDatePattern.Iso;
@@ -173,6 +208,10 @@ internal sealed class SalesEditForm
         ChildMaxAge = e.ChildMaxAge,
         ResaleOpensAtSold = e.ResaleOpensAtSold,
         DirectedResaleDays = e.DirectedResaleDays,
+        Resale = e.EffectiveSwitches.Resale,
+        PartnerTickets = e.EffectiveSwitches.PartnerTickets,
+        Donations = e.EffectiveSwitches.Donations,
+        MailingListOptIn = e.EffectiveSwitches.MailingListOptIn,
         TermsUrl = e.TermsUrl,
     };
 
@@ -226,6 +265,13 @@ internal sealed class SalesEditForm
             ChildMaxAge = ChildMaxAge,
             ResaleOpensAtSold = ResaleOpensAtSold,
             DirectedResaleDays = DirectedResaleDays,
+            Switches = new TicketSalesSwitches
+            {
+                Resale = Resale,
+                PartnerTickets = PartnerTickets,
+                Donations = Donations,
+                MailingListOptIn = MailingListOptIn,
+            },
             TermsUrl = string.IsNullOrWhiteSpace(TermsUrl) ? null : TermsUrl.Trim(),
         }, null);
     }

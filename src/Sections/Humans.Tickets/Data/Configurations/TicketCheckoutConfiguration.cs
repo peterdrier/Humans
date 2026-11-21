@@ -26,6 +26,11 @@ internal sealed class TicketSalesEventConfiguration : IEntityTypeConfiguration<T
             r.ToJson("price_rules");
             r.Property(p => p.Kind).HasConversion<string>();
         });
+        builder.OwnsOne(x => x.Switches, s =>
+        {
+            s.ToJson("switches");
+            s.Property(p => p.Resale).HasConversion<string>();
+        });
     }
 }
 

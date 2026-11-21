@@ -262,6 +262,56 @@ internal sealed class BoxOfficeCheckoutBackend(
     public Task ErasePersonalDataAsync(string backendOrderId, string email, CancellationToken ct = default) =>
         Task.CompletedTask;
 
+    public CheckoutBackendSetup Setup => new(
+        "Box Office (Stripe)",
+        $"Stripe, Humans' ticket account ({ModeLabel})",
+        new Uri(IsTestKey ? "https://dashboard.stripe.com/test/payments" : "https://dashboard.stripe.com/payments"),
+        [
+            new(Section.KeyVariable, "Restricted key: Checkout Sessions write, PaymentIntents, Charges and Balance transactions read, Refunds write",
+                IsSecret: true, _settings.IsConfigured, null),
+            new(Section.WebhookSecretVariable, "Signing secret of the webhook endpoint below", IsSecret: true,
+                _settings.IsWebhookConfigured, null),
+        ],
+        "/BoxOffice/StripeWebhook",
+        [
+            "Webhook events: checkout.session.completed, checkout.session.async_payment_succeeded, checkout.session.async_payment_failed, checkout.session.expired, charge.refunded, refund.updated, refund.failed, charge.dispute.created, charge.dispute.closed, charge.dispute.funds_withdrawn, charge.dispute.funds_reinstated.",
+            "Payment methods (card, iDEAL, Klarna) are switched on in the Stripe dashboard; Humans never lists them.",
+            "Needs no event id in the sales setup.",
+        ]);
+
+    private bool IsTestKey => _settings.SecretKey.StartsWith("sk_test_", StringComparison.Ordinal)
+        || _settings.SecretKey.StartsWith("rk_test_", StringComparison.Ordinal);
+
+    private string ModeLabel => !_settings.IsConfigured ? "key unset" : IsTestKey ? "test mode" : "live mode";
+
+    public async Task<IReadOnlyList<CheckoutBackendFinding>> CheckAsync(string? backendEventRef, CancellationToken ct = default)
+    {
+        if (!_settings.IsConfigured)
+            return [new(false, $"{Section.KeyVariable} is unset.")];
+
+        var findings = new List<CheckoutBackendFinding>();
+        try
+        {
+            await new SessionService(Client()).ListAsync(new SessionListOptions { Limit = 1 }, cancellationToken: ct);
+            findings.Add(new(true, $"The key reads Checkout Sessions ({ModeLabel})."));
+        }
+        catch (StripeException ex)
+        {
+            findings.Add(new(false, $"Stripe refused the key ({(int)ex.HttpStatusCode} {ex.StripeError?.Code ?? ex.StripeError?.Type ?? "error"})."));
+        }
+        catch (Exception ex) when (ex is HttpRequestException or OperationCanceledException)
+        {
+            findings.Add(new(false, $"Stripe could not be reached: {ex.Message}"));
+        }
+
+        findings.Add(_settings.IsWebhookConfigured
+            ? new(true, "Webhook signing secret is set.")
+            : new(false, $"{Section.WebhookSecretVariable} is unset: the webhook answers 503 and outcomes arrive only from the return page and the 5-minute poll."));
+        if (!string.IsNullOrWhiteSpace(backendEventRef))
+            findings.Add(new(false, "Box Office takes no event id; clear it in the sales setup."));
+        return findings;
+    }
+
     /// <summary>
     /// The session ids a verified webhook is about: the session itself for <c>checkout.session.*</c>, and for a
     /// charge or refund the sessions of its payment. Empty for an unrelated event; null for an invalid signature.

@@ -49,7 +49,13 @@ internal sealed partial class TicketCheckoutService(
     private readonly IReadOnlyList<ITicketCheckoutBackend> _backends = backends.ToList();
 
     public IReadOnlyList<CheckoutBackendInfo> Backends =>
-        _backends.Select(b => new CheckoutBackendInfo(b.Key, b.IsConfigured)).OrderBy(b => b.Key, StringComparer.Ordinal).ToList();
+        _backends.Select(b => new CheckoutBackendInfo(b.Key, b.IsConfigured, b.Setup)).OrderBy(b => b.Key, StringComparer.Ordinal).ToList();
+
+    public async Task<IReadOnlyList<CheckoutBackendFinding>?> CheckBackendAsync(
+        string key, string? backendEventRef, CancellationToken ct = default) =>
+        BackendFor(key) is { } backend
+            ? await backend.CheckAsync(string.IsNullOrWhiteSpace(backendEventRef) ? null : backendEventRef.Trim(), ct)
+            : null;
 
     private ITicketCheckoutBackend? BackendFor(string key) =>
         _backends.FirstOrDefault(b => string.Equals(b.Key, key, StringComparison.Ordinal));
@@ -79,6 +85,8 @@ internal sealed partial class TicketCheckoutService(
             return new("Supporter totals must be positive.");
         if (save.ChildPriceMinor < 0 || save.ChildMaxAge is <= 0 || save.ResaleOpensAtSold < 0 || save.DirectedResaleDays is < 1 or > 30)
             return new("Child price, child age, resale threshold and invitation days must be sensible numbers.");
+        if (save.Mode == TicketSalesMode.ResaleOnly && save.Switches.Resale == ResaleScheme.Off)
+            return new("Resale only needs resale switched on.");
         if (save.TermsUrl is { } terms && (terms.Length > 500 || !Uri.TryCreate(terms, UriKind.Absolute, out var termsUri)
             || !string.Equals(termsUri.Scheme, Uri.UriSchemeHttps, StringComparison.Ordinal)))
             return new("The ticket rules page must be an https address of at most 500 characters.");
@@ -109,10 +117,15 @@ internal sealed partial class TicketCheckoutService(
             ChildMaxAge = save.ChildMaxAge,
             ResaleOpensAtSold = save.ResaleOpensAtSold,
             DirectedResaleDays = save.DirectedResaleDays,
+            Switches = save.Switches,
             TermsUrl = save.TermsUrl,
             UpdatedAt = now,
         };
         await repository.SaveSalesEventAsync(salesEvent, ct);
+        if (salesEvent.EffectiveSwitches.Resale == ResaleScheme.Off)
+            await WithdrawOpenOffersAsync(salesEvent.Id, actorUserId, ct);
+        else if (salesEvent.EffectiveSwitches.Resale != ResaleScheme.QueueAndDirected)
+            await EndInvitationsAsync(salesEvent.Id, actorUserId, ct);
 
         await auditLog.LogAsync(TicketsAuditActions.TicketSalesEventSaved, SalesEventAuditEntityType, salesEvent.Id,
             $"Sales setup saved: backend {salesEvent.BackendKey}, mode {salesEvent.Mode}, capacity {salesEvent.Capacity}; " +
@@ -120,7 +133,9 @@ internal sealed partial class TicketCheckoutService(
             $"rules {string.Join(", ", salesEvent.PriceRules.Select(r => $"{r.Kind} {FormatMinor(r.AmountMinor)} for {r.GrantProgramId}"))}; " +
             $"supporter totals {string.Join(", ", salesEvent.SupporterTotalsMinor.Select(FormatMinor))}; " +
             $"child {(salesEvent.ChildPriceMinor is { } child ? FormatMinor(child) : "none")}; " +
-            $"ticket rules {salesEvent.TermsUrl ?? "none"}", actorUserId);
+            $"ticket rules {salesEvent.TermsUrl ?? "none"}; resale {save.Switches.Resale}, " +
+            $"partner tickets {OnOff(save.Switches.PartnerTickets)}, donations {OnOff(save.Switches.Donations)}, " +
+            $"mailing list opt-in {OnOff(save.Switches.MailingListOptIn)}", actorUserId);
         return CheckoutMutationResult.Ok;
     }
 
@@ -158,7 +173,8 @@ internal sealed partial class TicketCheckoutService(
     public async Task<BuyPage?> GetDirectedBuyPageAsync(string token, Guid userId, CancellationToken ct = default)
     {
         var offer = await repository.GetOfferByTokenHashAsync(HashToken(token), ct);
-        if (offer is null || await LoadBuyContextAsync(offer.SalesEventId, userId, ct) is not { } context)
+        if (offer is null || await LoadBuyContextAsync(offer.SalesEventId, userId, ct) is not { } context
+            || context.SalesEvent.EffectiveSwitches.Resale != ResaleScheme.QueueAndDirected)
             return null;
         return ToBuyPage(context, DirectedOfferFor(offer, context) is null ? "Tickets_Resale_InviteInvalid" : null, directed: true);
     }
@@ -176,6 +192,8 @@ internal sealed partial class TicketCheckoutService(
     {
         TermsUrl = context.SalesEvent.TermsUrl,
         AskMarketing = context.AskMarketing,
+        OffersPartner = context.SalesEvent.EffectiveSwitches.PartnerTickets,
+        OffersDonations = context.SalesEvent.EffectiveSwitches.Donations,
         OpenOrder = context.UserOrders
             .Where(o => o.SalesEventId == context.SalesEvent.Id && o.BuyerUserId == context.Buyer?.Id
                 && o.State is TicketCheckoutOrderState.Created or TicketCheckoutOrderState.Pending && o.HoldsTickets(context.Now))
@@ -192,10 +210,15 @@ internal sealed partial class TicketCheckoutService(
             return StartCheckoutResult.Refused(unavailable);
         var buyer = context.Buyer!;
         var salesEvent = context.SalesEvent;
+        var switches = salesEvent.EffectiveSwitches;
         var now = context.Now;
 
         // Every check that needs no partner account runs first, so a refused order leaves nothing behind.
         var hasPartner = !string.IsNullOrWhiteSpace(command.PartnerName) || !string.IsNullOrWhiteSpace(command.PartnerEmail);
+        if (hasPartner && !switches.PartnerTickets)
+            return StartCheckoutResult.Refused("Tickets_Buy_Invalid");
+        if (!switches.Donations && (command.SupporterTotalMinor is not null || command.DonationMinor > 0))
+            return StartCheckoutResult.Refused("Tickets_Buy_Invalid");
         if (hasPartner && (string.IsNullOrWhiteSpace(command.PartnerName) || !LooksLikeEmail(command.PartnerEmail)))
             return StartCheckoutResult.Refused("Tickets_Buy_PartnerIncomplete");
         if (hasPartner && string.Equals(command.PartnerEmail!.Trim(), buyer.Email, StringComparison.OrdinalIgnoreCase))
@@ -219,7 +242,9 @@ internal sealed partial class TicketCheckoutService(
         TicketResaleOffer? directed = null;
         if (command.DirectedToken is { } token)
         {
-            var invited = await repository.GetOfferByTokenHashAsync(HashToken(token), ct);
+            var invited = switches.Resale == ResaleScheme.QueueAndDirected
+                ? await repository.GetOfferByTokenHashAsync(HashToken(token), ct)
+                : null;
             directed = invited is null ? null : DirectedOfferFor(invited, context);
             if (directed is not null && await IsAdmittedAsync(directed.TicketId, ct))
                 directed = null;
@@ -231,7 +256,8 @@ internal sealed partial class TicketCheckoutService(
         var stock = await LoadStockAsync(salesEvent, now, ct);
         var queue = stock.ResaleOpen
             ? new Queue<TicketResaleOffer>(stock.Offers
-                .Where(o => o.State == TicketResaleOfferState.Open && !o.IsDirectedTo(now) && o.HolderUserId != buyer.Id)
+                .Where(o => o.State == TicketResaleOfferState.Open && o.HolderUserId != buyer.Id
+                    && (switches.Resale != ResaleScheme.QueueAndDirected || !o.IsDirectedTo(now)))
                 .OrderBy(o => o.OfferedAt))
             : new Queue<TicketResaleOffer>();
         // A returned ticket sells only at the resale price (current public wave, credits kept), so a buyer with a class
@@ -1008,7 +1034,7 @@ internal sealed partial class TicketCheckoutService(
         var resalePrice = TicketPrice.For(salesEvent, today, creditPrograms);
         var userOrders = await repository.GetOrdersForUserAsync(userId, ct);
         var holds = await HoldsTicketAsync(salesEvent.Id, userId, now, ct);
-        var askMarketing = await preferenceReads.GetPreferenceOrNullAsync(userId, MessageCategory.Marketing, ct) is null;
+        var askMarketing = salesEvent.EffectiveSwitches.MailingListOptIn && await preferenceReads.GetPreferenceOrNullAsync(userId, MessageCategory.Marketing, ct) is null;
 
         string? unavailable = null;
         if (salesEvent.Mode == TicketSalesMode.Closed || (salesEvent.SalesCloseAt is { } close && now >= close))
@@ -1061,7 +1087,7 @@ internal sealed partial class TicketCheckoutService(
         var pending = (await repository.GetOrdersForSalesEventAsync(salesEvent.Id, ct))
             .Where(o => o.State != TicketCheckoutOrderState.Paid && o.HoldsTickets(now))
             .Sum(o => o.Lines.Count(l => l.Kind == CheckoutLineKind.Ticket && l.ResaleOfferId is null));
-        var resaleOpen = salesEvent.Mode != TicketSalesMode.Closed && sold >= (salesEvent.ResaleOpensAtSold ?? 0);
+        var resaleOpen = salesEvent.ResaleOpenAt(sold);
         // A returned ticket its holder already used to get in can never sell: the gate's admit is the check-in record.
         var offers = await repository.GetOffersForSalesEventAsync(salesEvent.Id, ct);
         var offeredCodes = tickets
@@ -1134,4 +1160,62 @@ internal sealed partial class TicketCheckoutService(
     }
 
     internal static string FormatMinor(long minor) => (minor / 100m).ToString("0.00", CultureInfo.InvariantCulture);
+
+    /// <summary>
+    /// Directed resale switched off: a live link could no longer be used, and an invited offer would sit out of the
+    /// queue until it lapsed, so each one goes back to its place now. An offer in a checkout keeps its buyer.
+    /// </summary>
+    private async Task EndInvitationsAsync(Guid salesEventId, Guid actorUserId, CancellationToken ct)
+    {
+        var now = clock.GetCurrentInstant();
+        foreach (var offer in (await repository.GetOffersForSalesEventAsync(salesEventId, ct))
+                     .Where(o => o.State == TicketResaleOfferState.Open && o.IsDirectedTo(now)))
+        {
+            offer.DirectedTokenHash = null;
+            offer.DirectedExpiresAt = null;
+            offer.DirectedEmail = null;
+            await repository.UpdateOfferAsync(offer, ct);
+            if (await repository.GetTicketAsync(offer.TicketId, ct) is { } ticket)
+                await TimelineAsync(ticket.OrderId, TicketCheckoutOrderEventKind.ResaleInviteCancelled,
+                    $"Invitation for ticket {ticket.Barcode} ended: directed resale switched off; it keeps its place in the queue",
+                    actorUserId, ct);
+        }
+    }
+
+    /// <summary>
+    /// Resale switched off: a queued ticket would never sell, so each open offer is withdrawn and the ticket is the
+    /// holder's again. An offer in a checkout keeps its buyer; if that checkout fails it is withdrawn on release.
+    /// </summary>
+    private async Task WithdrawOpenOffersAsync(Guid salesEventId, Guid actorUserId, CancellationToken ct)
+    {
+        foreach (var offer in (await repository.GetOffersForSalesEventAsync(salesEventId, ct))
+                     .Where(o => o.State == TicketResaleOfferState.Open))
+            await WithdrawSwitchedOffAsync(offer, actorUserId, ct);
+    }
+
+    private async Task WithdrawSwitchedOffAsync(TicketResaleOffer offer, Guid? actorUserId, CancellationToken ct)
+    {
+        offer.State = TicketResaleOfferState.Withdrawn;
+        offer.WithdrawnAt = clock.GetCurrentInstant();
+        offer.ReservedByOrderId = null;
+        offer.DirectedTokenHash = null;
+        offer.DirectedExpiresAt = null;
+        offer.DirectedEmail = null;
+        await repository.UpdateOfferAsync(offer, ct);
+        if (await repository.GetTicketAsync(offer.TicketId, ct) is not { } ticket)
+            return;
+        ticket.State = TicketCheckoutTicketState.Valid;
+        await repository.UpdateTicketAsync(ticket, ct);
+        await TimelineAsync(ticket.OrderId, TicketCheckoutOrderEventKind.ResaleWithdrawn,
+            $"Ticket {ticket.Barcode} taken back out of the resale queue: resale switched off for this event", actorUserId, ct);
+        const string detail = "withdrawn from resale: resale switched off for this event";
+        if (actorUserId is { } actor)
+            await auditLog.LogAsync(TicketsAuditActions.TicketResaleWithdrawn, AuditEntityType, ticket.OrderId,
+                $"Ticket {ticket.Barcode} {detail}", actor);
+        else
+            await auditLog.LogAsync(TicketsAuditActions.TicketResaleWithdrawn, AuditEntityType, ticket.OrderId,
+                $"Ticket {ticket.Barcode} {detail}", JobName);
+    }
+
+    private static string OnOff(bool on) => on ? "on" : "off";
 }
