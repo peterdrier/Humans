@@ -435,6 +435,42 @@ public class PretixCheckoutBackendTests
     }
 
     [HumansFact]
+    public async Task Refund_RetryDeclinedAfterAnUnansweredAttempt_RestoresTheTotal()
+    {
+        var refundId = Guid.NewGuid();
+        var pretix = new FakePretix()
+            .On("GET", OrderPath, HttpStatusCode.OK, PaidOrderWithFee(refundId))
+            .On("POST", $"{OrderPath}payments/1/refund/", HttpStatusCode.BadRequest, "{\"detail\": \"External error: card_declined\"}")
+            .On("POST", $"{OrderPath}change/", HttpStatusCode.OK, PaidOrder());
+
+        var result = await Create(pretix).RefundAsync(
+            new RefundRequest(refundId, $"nowhere2027/{Code}", 22500, "Resold"), TestContext.Current.CancellationToken);
+
+        result.State.Should().Be(RefundState.Failed);
+        var cancel = JsonNode.Parse(pretix.BodiesFor("POST", $"{OrderPath}change/").Single()!)!;
+        cancel["cancel_fees"]![0]!["fee"]!.GetValue<int>().Should().Be(7);
+    }
+
+    [HumansFact]
+    public async Task Refund_DeclinedAfterARefundByHand_KeepsTheFee()
+    {
+        var refundId = Guid.NewGuid();
+        var pretix = new FakePretix()
+            .On("GET", OrderPath, HttpStatusCode.OK, Order(
+                Code, status: "p", total: 775m,
+                fees: [RefundFee(refundId)],
+                payments: [new { local_id = 1, state = "confirmed", amount = "1000.00", provider = "stripe" }],
+                refunds: [new { local_id = 2, state = "done", amount = "225.00", payment = 1, comment = "", provider = "manual" }]))
+            .On("POST", $"{OrderPath}payments/1/refund/", HttpStatusCode.BadRequest, "{\"detail\": \"Invalid state of payment.\"}");
+
+        var result = await Create(pretix).RefundAsync(
+            new RefundRequest(refundId, $"nowhere2027/{Code}", 22500, "Resold"), TestContext.Current.CancellationToken);
+
+        result.State.Should().Be(RefundState.Failed);
+        pretix.BodiesFor("POST", $"{OrderPath}change/").Should().BeEmpty();
+    }
+
+    [HumansFact]
     public async Task Refund_RepeatedRefundId_DoesNotRefundTwice()
     {
         var refundId = Guid.NewGuid();

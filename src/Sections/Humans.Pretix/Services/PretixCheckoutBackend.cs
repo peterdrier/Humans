@@ -188,7 +188,7 @@ internal sealed class PretixCheckoutBackend(
         {
             // Refused outright (401, 403, 404): no refund was made, so the fee comes off.
             logger.LogWarning("pretix refused the refund call on {Code}: {Status} {Body}", code, (int)response.Status, response.Body);
-            if (feeIsNew)
+            if (feeIsNew || StillHolds(order, request.AmountMinor))
                 await CancelFeeAsync(eventSlug, code, fee.Id, ct);
             return new RefundResult(RefundState.Failed, null, $"pretix answered {(int)response.Status}: {response.Body}");
         }
@@ -203,8 +203,9 @@ internal sealed class PretixCheckoutBackend(
                 return new RefundResult(RefundState.ManualRequired, null, response.Body, AdminOrderUrl(eventSlug, code));
             }
 
-            // Only a fee this call added comes off; an older one may already stand for a refund made by hand.
-            if (feeIsNew)
+            // An older fee is left by an attempt that got no answer, or stands for a refund made by hand; it comes off
+            // unless that hand refund has taken the money.
+            if (feeIsNew || StillHolds(order, request.AmountMinor))
                 await CancelFeeAsync(eventSlug, code, fee.Id, ct);
             return new RefundResult(RefundState.Failed, null, response.Body);
         }
@@ -321,18 +322,23 @@ internal sealed class PretixCheckoutBackend(
     /// pretix keeps a payment confirmed after expiry or cancellation but cannot mark the order paid, and a refund made
     /// outside this adapter can reopen a paid order. The money decides, so a late payment is reported, never stranded.
     /// </summary>
+    /// <summary>The order still holds <paramref name="amountMinor"/> beyond its total: no refund has paid it out.</summary>
+    private static bool StillHolds(PretixOrder order, long amountMinor) =>
+        ToMinor(NetPaid(order) - order.Total) >= amountMinor;
+
+    private static decimal NetPaid(PretixOrder order) =>
+        order.Payments.Where(p => p.State is "confirmed" or "refunded").Sum(p => p.Amount)
+        - order.Refunds.Where(r => r.State is "done" or "transit" or "created").Sum(r => r.Amount);
+
     private static bool IsCovered(PretixOrder order, CheckoutState state)
     {
         var paid = order.Payments
             .Where(p => p.State is "confirmed" or "refunded")
             .Sum(p => p.Amount);
-        var refunded = order.Refunds
-            .Where(r => r.State is "done" or "transit" or "created")
-            .Sum(r => r.Amount);
         return state switch
         {
-            CheckoutState.Pending or CheckoutState.Expired => paid > 0 && paid - refunded >= order.Total,
-            CheckoutState.Cancelled => paid - refunded > 0,
+            CheckoutState.Pending or CheckoutState.Expired => paid > 0 && NetPaid(order) >= order.Total,
+            CheckoutState.Cancelled => NetPaid(order) > 0,
             _ => false,
         };
     }
