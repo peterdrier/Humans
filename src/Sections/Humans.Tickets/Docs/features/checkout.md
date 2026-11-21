@@ -112,8 +112,8 @@ sold under is read (`EventRefOf`), beside the events the setups sell through now
 ## Flow
 
 1. A TicketsAdmin sets up the event at `/Tickets/Admin/Sales`: backend, mode, capacity, waves, supporter totals (VIP
-   buttons), grant price rules (`ClassPrice`, `Credit`, `WavePin`, `EarlyAccess`), child price and age, the ticket rules page
-   (an https address; a changed version gets a new address) and the ticketing switches (below). The form edits waves,
+   buttons), grant price rules (`ClassPrice`, `Credit`, `WavePin`, `EarlyAccess`), child price and age, the ticket rules folder
+   (a path in the legal GitHub repo, see "Ticket rules" below) and the ticketing switches (below). The form edits waves,
    price rules and supporter levels as rows, the VAT as a percentage and sales close in the organisation's time zone.
    **Early sales** (and test purchases): mode `InvitedOnly` sells only to members holding an active grant in a program
    with an `EarlyAccess` rule (e.g. asociados and colaboradores in a wave zero, or a few testers), with the rule's
@@ -124,7 +124,7 @@ sold under is read (`EventRefOf`), beside the events the setups sell through now
    lists every event that is not Closed (an `InvitedOnly` one only to the invited), each priced in its own time zone and checked for holdings on its own. They see
    their price, may add children (child price, issued on their own ticket), a partner (name and email; public price;
    the account is found or made once the order is paid), a VIP upgrade (shown as the ticket plus a donation) and a donation.
-   They tick the ticket rules on every checkout (the page's address goes on the order's timeline; no Consent signing) and may opt in to the mailing list
+   They read the ticket rules on the page and tick them on every checkout (the version goes on the order; no Consent signing) and may opt in to the mailing list
    (asked only while they have no Marketing choice on record), then continue to the backend's payment page.
 3. The backend returns them to `/Tickets/Buy/Order/{id}`, which refreshes the status and splits ticket and donation
    subtotals. The webhook and the 5-minute reconcile job catch the rest. The move to `Paid` is one conditional update,
@@ -210,6 +210,25 @@ covers every ticket on the order (Peter, 2026-11-21). The gate's scan row is the
 arrivals report. The holder sees the date their Early Entry starts on My tickets.
 
 Partners do not sign the ticket rules: the buyer accepts for the whole order (decided by Peter, 2026-11-21).
+
+## Ticket rules
+
+The rules are markdown in the legal GitHub repo (`GitHubSettings`, the repo the legal pages read), in the folder the
+sales setup names: `name.md` is Spanish, `name-en.md` English, more languages optional (`name-de.md`). Spanish and
+English are required: the setup refuses a new folder without both, or with a second markdown file lacking a language
+suffix (a README beside the rules), since that one would read as Spanish. Display only (Peter, 2026-11-21): nothing is signed
+and nothing goes to Consent.
+
+- The version is the last commit changing the folder; the text is read at that commit, so the text shown and the version
+  recorded always match. Reads are cached for 10 minutes; GitHub requests time out after 5 seconds.
+- When GitHub cannot be read, the folder's last good rules stay in use (kept in memory without expiry, retried every
+  minute), so an outage does not stop sales. A folder that reads but holds no valid rules drops them. The setup's save
+  check reads GitHub afresh, so a fixed folder is accepted at once.
+- The buy page shows the rules in language tabs and sends the folder and version it showed. Checkout refuses either one no
+  longer current (`Tickets_Buy_TermsChanged`), so the buyer reads the new text first. While there are no rules to show
+  (never read since the app started, or invalid), the event is unavailable to buy (`Tickets_Buy_TermsUnavailable`).
+- The order keeps `TermsFolder` and `TermsVersion`; its `TermsAccepted` timeline entry links that exact version on GitHub.
+- The earlier `TermsUrl` column (an external page address) was dropped: 2027 ticketing had no live data (Peter, 2026-11-21).
 
 ## Assumptions to confirm
 

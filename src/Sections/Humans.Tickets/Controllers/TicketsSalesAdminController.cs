@@ -33,8 +33,8 @@ internal sealed class TicketsSalesAdminController(
     {
         var events = await settings.GetAllEventSettingsAsync(ct);
         var salesEvents = await checkout.GetSalesEventsAsync(ct);
-        return View("~/Views/Tickets/Admin/Sales/Index.cshtml",
-            new SalesAdminIndexViewModel(salesEvents, events, checkout.Backends));
+        return View("~/Views/Tickets/Admin/Sales/Index.cshtml", new SalesAdminIndexViewModel(
+            salesEvents, events, checkout.Backends, clock.GetCurrentInstant().InZone(orgTimeZone.Zone).Date));
     }
 
     [HttpGet("Backends")]
@@ -75,7 +75,9 @@ internal sealed class TicketsSalesAdminController(
         if (salesEvent is null)
             return NotFound();
         var orders = await checkout.GetOrdersForSalesEventAsync(id, ct);
-        return View("~/Views/Tickets/Admin/Sales/Orders.cshtml", (salesEvent, orders));
+        var eventName = (await settings.GetEventSettingsByIdAsync(salesEvent.EventSettingsId, ct))?.EventName
+            ?? salesEvent.EventSettingsId.ToString();
+        return View("~/Views/Tickets/Admin/Sales/Orders.cshtml", (salesEvent, eventName, orders));
     }
 
     [HttpGet("Order/{id:guid}")]
@@ -169,7 +171,8 @@ internal sealed class TicketsSalesAdminController(
 internal sealed record SalesAdminIndexViewModel(
     IReadOnlyList<TicketSalesEvent> SalesEvents,
     IReadOnlyList<EventSettingsInfo> Events,
-    IReadOnlyList<CheckoutBackendInfo> Backends)
+    IReadOnlyList<CheckoutBackendInfo> Backends,
+    LocalDate Today)
 {
     public string EventName(Guid id) => Events.FirstOrDefault(e => e.Id == id)?.EventName ?? id.ToString();
 }
@@ -229,7 +232,7 @@ internal sealed class SalesEditForm
     public bool PartnerTickets { get; set; } = true;
     public bool Donations { get; set; } = true;
     public bool MailingListOptIn { get; set; } = true;
-    public string? TermsUrl { get; set; }
+    public string? TermsFolder { get; set; }
 
     internal sealed class WaveRow
     {
@@ -278,7 +281,7 @@ internal sealed class SalesEditForm
         PartnerTickets = e.EffectiveSwitches.PartnerTickets,
         Donations = e.EffectiveSwitches.Donations,
         MailingListOptIn = e.EffectiveSwitches.MailingListOptIn,
-        TermsUrl = e.TermsUrl,
+        TermsFolder = e.TermsFolder,
     };
 
     public (SalesEventSave? Save, string? Error) ToSave(Guid? id, DateTimeZone zone)
@@ -344,7 +347,7 @@ internal sealed class SalesEditForm
                 Donations = Donations,
                 MailingListOptIn = MailingListOptIn,
             },
-            TermsUrl = string.IsNullOrWhiteSpace(TermsUrl) ? null : TermsUrl.Trim(),
+            TermsFolder = string.IsNullOrWhiteSpace(TermsFolder) ? null : TermsFolder.Trim().Trim('/'),
         }, null);
     }
 

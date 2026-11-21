@@ -1,55 +1,63 @@
-@using Humans.Tickets.Domain.Checkout
+@using Humans.Tickets.Services.Checkout
 @model Humans.Tickets.Controllers.LookupViewModel
 @{
     ViewData["Title"] = "Find an order";
-    string Eur(long minor) => (minor / 100m).ToEuro();
-}
+    var tooShort = Model.Query.Length > 0 && Model.Query.Length < TicketSupportReports.MinimumQueryLength;
 
-@section Crumbs {
-    <a asp-controller="TicketsSalesAdmin" asp-action="Index">Sales</a>
-    <span>Find an order</span>
+    Func<OrderSearchHit, IHtmlContent> createdCell = @<text><a asp-controller="TicketsSalesAdmin" asp-action="Order" asp-route-id="@item.Order.Id">@item.Order.CreatedAt.ToDateTime()</a></text>;
+    Func<OrderSearchHit, IHtmlContent> buyerCell = @<text>@item.Order.BuyerName <span class="small">(<vc:human user-id="@item.Order.BuyerUserId" link="Admin" />)</span> <span class="small d-block">@item.Order.BuyerEmail</span></text>;
+    Func<OrderSearchHit, IHtmlContent> holdersCell = @<text>
+        @if (item.Tickets.Count > 0)
+        {
+            @foreach (var t in item.Tickets)
+            {
+                <span class="d-block">@t.HolderName @if (t.HolderUserId is { } hid) { <span class="small">(<vc:human user-id="@hid" link="Admin" />)</span> } <code class="small">@t.Barcode</code> <status-badge value="@t.State" /></span>
+            }
+        }
+        else
+        {
+            @string.Join(", ", item.Order.Lines.Where(l => l.Kind == CheckoutLineKind.Ticket).Select(l => l.AttendeeName))
+        }
+    </text>;
+    var table = TableModel.For(Model.Hits)
+        .Template("Created", createdCell, o => o.Css("text-nowrap"), sortBy: h => h.Order.CreatedAt.ToUnixTimeTicks())
+        .Column("Reference", h => h.Order.Reference, o => o.Code())
+        .Column("Event", h => h.EventName)
+        .Template("Buyer", buyerCell, sortBy: h => h.Order.BuyerName)
+        .Template("Holders", holdersCell, o => o.NoSort())
+        .Column("Total (€)", h => h.Order.TotalMinor / 100m, o => o.Currency().End())
+        .Column("State", h => h.Order.State, o => o.EnumBadge())
+        .RowHref(h => Url.Action("Order", "TicketsSalesAdmin", new { id = h.Order.Id }))
+        .Empty("No order matches.")
+        .Build();
 }
 
 <page-header title="Find an order" />
 
-<form method="get" asp-action="Lookup" class="row g-2 mb-3">
-    <div class="col-md-8">
-        <input class="form-control" name="q" value="@Model.Query" autofocus
+<form method="get" asp-action="Lookup" class="row g-2 mb-4" role="search">
+    <div class="col-md-6">
+        <label class="visually-hidden" for="q">Search orders</label>
+        <input class="form-control" id="q" name="q" value="@Model.Query" autofocus
                placeholder="Buyer or holder name, email, order reference or ticket code" />
     </div>
-    <div class="col-md-2"><button class="btn btn-primary" type="submit">Search</button></div>
+    <div class="col-auto"><button class="btn btn-primary" type="submit">Search</button></div>
 </form>
 
-@if (Model.Query.Length > 0 && Model.Query.Length < Humans.Tickets.Services.Checkout.TicketSupportReports.MinimumQueryLength)
+@if (Model.Query.Length == 0)
 {
-    <p class="text-muted">Type at least @Humans.Tickets.Services.Checkout.TicketSupportReports.MinimumQueryLength characters.</p>
+    <empty-state>Search by a buyer's or holder's name, an email, an order reference or a ticket code.</empty-state>
 }
-else if (Model.Query.Length > 0 && Model.Hits.Count == 0)
+else if (tooShort)
 {
-    <p class="text-muted">No order matches.</p>
+    <empty-state>Type at least @TicketSupportReports.MinimumQueryLength characters.</empty-state>
 }
-else if (Model.Hits.Count > 0)
+else
 {
-    <table class="table table-sm">
-        <thead><tr><th>Created</th><th>Reference</th><th>Event</th><th>Buyer</th><th>Holders</th><th class="text-end">Total</th><th>State</th></tr></thead>
-        <tbody>
-            @foreach (var h in Model.Hits)
-            {
-                var o = h.Order;
-                <tr>
-                    <td><a asp-controller="TicketsSalesAdmin" asp-action="Order" asp-route-id="@o.Id">@o.CreatedAt.ToDateTime()</a></td>
-                    <td><code>@o.Reference</code></td>
-                    <td>@h.EventName</td>
-                    <td>@o.BuyerName <span class="text-muted">@o.BuyerEmail</span></td>
-                    <td>@string.Join(", ", h.Tickets.Count > 0 ? h.Tickets.Select(t => $"{t.HolderName} ({t.Barcode}, {t.State})") : o.Lines.Where(l => l.Kind == Humans.Tickets.Contracts.CheckoutLineKind.Ticket).Select(l => l.AttendeeName))</td>
-                    <td class="text-end">@Eur(o.TotalMinor)</td>
-                    <td>@o.State</td>
-                </tr>
-            }
-        </tbody>
-    </table>
-    @if (Model.Hits.Count == Humans.Tickets.Services.Checkout.TicketSupportReports.MaxHits)
+    <div class="card mb-3">
+        <partial name="_Table" model="table" />
+    </div>
+    @if (Model.Hits.Count == TicketSupportReports.MaxHits)
     {
-        <p class="text-muted">Showing the newest @Model.Hits.Count. Narrow the search to see older orders.</p>
+        <p class="small text-muted">Showing the newest @Model.Hits.Count. Narrow the search to see older orders.</p>
     }
 }

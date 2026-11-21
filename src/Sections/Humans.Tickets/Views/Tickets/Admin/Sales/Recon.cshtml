@@ -4,10 +4,7 @@
 @model Humans.Tickets.Controllers.ReconViewModel
 @{
     ViewData["Title"] = "Reconciliation";
-    string Eur(long minor) => TicketReconLabels.Eur(minor);
-    string Diff(long humans, long backend) => humans == backend ? "" : (backend - humans > 0 ? "+" : "") + (backend - humans);
-    string EurDiff(long humans, long backend) => humans == backend ? "" : (backend - humans > 0 ? "+" : "−") + Eur(Math.Abs(backend - humans));
-    string? Money(long? minor) => minor is { } m ? Eur(m) : null;
+    string Eur(long minor) => (minor / 100m).ToEuro();
     string Kind(PaymentLedgerEntryKind kind) => kind switch
     {
         PaymentLedgerEntryKind.Charge => "payment",
@@ -17,19 +14,53 @@
         PaymentLedgerEntryKind.Payout => "payout",
         _ => "other",
     };
-    var range = $"{Model.From:yyyy-MM-dd} to {Model.To:yyyy-MM-dd}";
+    var culture = System.Globalization.CultureInfo.CurrentCulture;
+    var range = $"{Model.From.ToInvariantDate()} to {Model.To.ToInvariantDate()}";
+
+    Func<TicketReconRow, IHtmlContent> humansCell = @<text>
+        @if (item.Order is { } o)
+        {
+            <a asp-action="Order" asp-route-id="@o.Id"><code>@o.Reference</code></a>
+        }
+        else
+        {
+            <span class="text-muted">none</span>
+        }
+    </text>;
+    Func<TicketReconRow, IHtmlContent> backendCell = @<text>
+        @if (item.Backend is { } b)
+        {
+            @if (item.Order?.AdminUrl is { } adminUrl && b.BackendOrderId == item.Order.BackendOrderId)
+            {
+                <a href="@adminUrl" target="_blank" rel="noopener"><code>@b.BackendOrderId</code></a>
+            }
+            else
+            {
+                <code>@b.BackendOrderId</code>
+            }
+        }
+        else
+        {
+            <span class="text-muted">none</span>
+        }
+    </text>;
+    string Pair(string? humans, string? backend) => $"{humans ?? "–"} / {backend ?? "–"}";
+    string? Money(long? minor) => minor is { } m ? (m / 100m).ToEuro() : null;
 }
 
 <page-header title="Reconciliation" />
 
-<p class="text-muted">
-    Humans' orders against each backend's own order list, by the day the order was created (@Model.Zone.Id).
-    Totals count paid orders; every order is matched whatever its state, so a missing, extra or doubled one shows.
-    A difference where no money moved on either side is listed but leaves the backend balanced.
-    Where Humans can read the backend's payment account (Box Office), its payments, refunds, chargebacks, fees and payouts
-    are checked too, by the day the money moved.
-    A daily run checks the whole sale and mails the ticketing team (@TicketConstants.TicketsTeamEmail) whatever is out of balance.
-</p>
+<p class="text-muted mb-2">Humans' orders against each backend's own order list, by the day the order was created (@Model.Zone.Id).</p>
+<details class="small text-muted mb-3">
+    <summary>How it is counted</summary>
+    <p class="mt-2 mb-0">
+        Totals count paid orders; every order is matched whatever its state, so a missing, extra or doubled one shows.
+        A difference where no money moved on either side is listed but leaves the backend balanced.
+        Where Humans can read the backend's payment account (Box Office), its payments, refunds, chargebacks, fees and payouts
+        are checked too, by the day the money moved.
+        A daily run checks the whole sale and mails the ticketing team (@TicketConstants.TicketsTeamEmail) whatever is out of balance.
+    </p>
+</details>
 
 <form method="get" class="row g-2 align-items-end mb-4">
     <div class="col-auto">
@@ -57,7 +88,7 @@
         <label class="form-label" for="to">To (included)</label>
         <input class="form-control" type="date" id="to" name="to" value="@Model.To.ToString("yyyy-MM-dd", null)" />
     </div>
-    <div class="col-auto form-check mb-2">
+    <div class="col-auto form-check mb-2 ms-2">
         @if (Model.All)
         {
             <input class="form-check-input" type="checkbox" id="all" name="all" value="true" checked />
@@ -73,7 +104,7 @@
 
 @if (Model.Recons.Count == 0)
 {
-    <p>No sales setup sells through a backend yet.</p>
+    <empty-state>No sales setup sells through a backend yet.</empty-state>
 }
 
 @foreach (var r in Model.Recons)
@@ -81,7 +112,7 @@
     var rows = Model.All ? r.Rows : r.Problems.ToList();
     <section class="card mb-4" id="recon-@r.BackendKey">
         <div class="card-header d-flex justify-content-between align-items-center">
-            <h2 class="h5 mb-0"><code>@r.BackendKey</code> · @range</h2>
+            <h2 class="h5 mb-0"><code>@r.BackendKey</code> <span class="small text-muted ms-2">@range</span></h2>
             @if (r.Error is not null)
             {
                 <span class="badge bg-secondary">Not checked</span>
@@ -94,104 +125,83 @@
         <div class="card-body">
             @if (r.Error is not null)
             {
-                <p class="text-danger mb-0">@r.Error</p>
+                <div class="alert alert-warning mb-0">@r.Error</div>
             }
             else
             {
-                <table class="table table-sm w-auto">
-                    <thead><tr><th></th><th class="text-end">Humans</th><th class="text-end">Backend</th><th class="text-end">Difference</th></tr></thead>
-                    <tbody>
-                        <tr><th>Paid orders</th><td class="text-end">@r.Humans.Orders</td><td class="text-end">@r.Backend.Orders</td><td class="text-end text-danger">@Diff(r.Humans.Orders, r.Backend.Orders)</td></tr>
-                        <tr><th>Tickets sold</th><td class="text-end">@r.Humans.Tickets</td><td class="text-end">@r.Backend.Tickets</td><td class="text-end text-danger">@Diff(r.Humans.Tickets, r.Backend.Tickets)</td></tr>
-                        <tr><th>Charged</th><td class="text-end">@Eur(r.Humans.GrossMinor)</td><td class="text-end">@Eur(r.Backend.GrossMinor)</td><td class="text-end text-danger">@EurDiff(r.Humans.GrossMinor, r.Backend.GrossMinor)</td></tr>
-                        <tr><th>Refunded</th><td class="text-end">@Eur(r.Humans.RefundedMinor)</td><td class="text-end">@Eur(r.Backend.RefundedMinor)</td><td class="text-end text-danger">@EurDiff(r.Humans.RefundedMinor, r.Backend.RefundedMinor)</td></tr>
-                        <tr><th>Chargebacks</th><td class="text-end">@Eur(r.Humans.DisputedMinor)</td><td class="text-end">@Eur(r.Backend.DisputedMinor)</td><td class="text-end text-danger">@EurDiff(r.Humans.DisputedMinor, r.Backend.DisputedMinor)</td></tr>
-                        <tr><th>Net</th><td class="text-end"><strong>@Eur(r.Humans.NetMinor)</strong></td><td class="text-end"><strong>@Eur(r.Backend.NetMinor)</strong></td><td class="text-end text-danger">@EurDiff(r.Humans.NetMinor, r.Backend.NetMinor)</td></tr>
-                        <tr><th>Tickets issued</th><td class="text-end">@r.TicketsIssued</td><td></td><td class="text-end text-danger">@Diff(r.Humans.Tickets, r.TicketsIssued)</td></tr>
-                    </tbody>
-                </table>
+                var netDiff = r.Backend.NetMinor - r.Humans.NetMinor;
+                StatTileViewModel[] tiles =
+                [
+                    new("Net in Humans", (r.Humans.NetMinor / 100m).ToEuro(), Subline: $"{r.Humans.Orders.ToString(culture)} paid orders"),
+                    new("Net at the backend", (r.Backend.NetMinor / 100m).ToEuro(), Subline: $"{r.Backend.Orders.ToString(culture)} paid orders"),
+                    new("Difference", (netDiff / 100m).ToSignedEuro(),
+                        Subline: netDiff == 0 ? "backend minus Humans" : "backend minus Humans: check the rows below",
+                        Severity: netDiff == 0 ? TileSeverity.Normal : TileSeverity.Critical),
+                ];
+                ReconLine[] lines =
+                [
+                    new("Paid orders", r.Humans.Orders.ToString(culture), r.Backend.Orders.ToString(culture), r.Backend.Orders - r.Humans.Orders, false),
+                    new("Tickets sold", r.Humans.Tickets.ToString(culture), r.Backend.Tickets.ToString(culture), r.Backend.Tickets - r.Humans.Tickets, false),
+                    new("Charged", Money(r.Humans.GrossMinor)!, Money(r.Backend.GrossMinor)!, r.Backend.GrossMinor - r.Humans.GrossMinor, true),
+                    new("Refunded", Money(r.Humans.RefundedMinor)!, Money(r.Backend.RefundedMinor)!, r.Backend.RefundedMinor - r.Humans.RefundedMinor, true),
+                    new("Chargebacks", Money(r.Humans.DisputedMinor)!, Money(r.Backend.DisputedMinor)!, r.Backend.DisputedMinor - r.Humans.DisputedMinor, true),
+                    new("Tickets issued", r.TicketsIssued.ToString(culture), "", r.TicketsIssued - r.Humans.Tickets, false),
+                ];
+                var totals = TableModel.For(lines)
+                    .Column("", l => l.Label, c => c.NoSort().Css("fw-semibold"))
+                    .Column("Humans", l => l.Humans, c => c.NoSort().End())
+                    .Column("Backend", l => l.Backend, c => c.NoSort().End())
+                    .Column("Difference", l => l.Diff == 0 ? "" : l.IsMoney ? (l.Diff / 100m).ToSignedEuro() : l.Diff.ToString("+#;−#", culture), c => c.NoSort().End().Css("text-danger"))
+                    .Build();
 
-                <h3 class="h6">@(Model.All ? $"Orders ({rows.Count})" : $"Differences ({rows.Count})")</h3>
-                @if (rows.Count == 0)
-                {
-                    <p class="text-muted mb-0">@(Model.All ? "No orders in this period." : "Every order matches.")</p>
-                }
-                else
-                {
-                    <table class="table table-sm">
-                        <thead>
-                            <tr>
-                                <th>Created</th><th>Humans order</th><th>Backend order</th><th>State</th>
-                                <th class="text-end">Total</th><th class="text-end">Refunded</th><th class="text-end">Tickets</th><th>Issues</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach (var row in rows)
-                            {
-                                var o = row.Order;
-                                var b = row.Backend;
-                                <tr class="@(row.Issues.Count == 0 ? null : row.MoneyMoved ? "table-warning" : "table-light")">
-                                    <td>@row.CreatedAt.ToDateTime(Model.Zone)</td>
-                                    <td>
-                                        @if (o is not null)
-                                        {
-                                            <a asp-action="Order" asp-route-id="@o.Id"><code>@o.Reference</code></a>
-                                        }
-                                        else
-                                        {
-                                            <span class="text-muted">none</span>
-                                        }
-                                    </td>
-                                    <td>
-                                        @if (b is not null)
-                                        {
-                                            @if (o?.AdminUrl is { } adminUrl && b.BackendOrderId == o.BackendOrderId)
-                                            {
-                                                <a href="@adminUrl" target="_blank" rel="noopener"><code>@b.BackendOrderId</code></a>
-                                            }
-                                            else
-                                            {
-                                                <code>@b.BackendOrderId</code>
-                                            }
-                                        }
-                                        else
-                                        {
-                                            <span class="text-muted">none</span>
-                                        }
-                                    </td>
-                                    <td>@(o?.State.ToString() ?? "–") / @(b?.State.ToString() ?? "–")</td>
-                                    <td class="text-end">@(Money(o?.TotalMinor) ?? "–") / @(Money(b?.TotalMinor) ?? "–")</td>
-                                    <td class="text-end">@(Money(o?.RefundedMinor) ?? "–") / @(Money(b?.RefundedMinor) ?? "–")</td>
-                                    <td class="text-end">
-                                        @(o?.Lines.Count(l => l.Kind == CheckoutLineKind.Ticket).ToString() ?? "–") /
-                                        @(b?.TicketCount?.ToString() ?? "–")@(row.TicketsIssued is { } issued ? $" · {issued} issued" : "")
-                                    </td>
-                                    <td>@string.Join(", ", row.Issues.Select(i => i.Label()))@(row.Issues.Count > 0 && !row.MoneyMoved ? " (no money moved)" : "")</td>
-                                </tr>
-                            }
-                        </tbody>
-                    </table>
-                    <p class="small text-muted mb-0">Each pair reads Humans / backend.</p>
-                }
+                Func<TicketReconRow, IHtmlContent> issuesCell = @<text>@string.Join(", ", item.Issues.Select(i => i.Label()))@(item.Issues.Count > 0 && !item.MoneyMoved ? " (no money moved)" : "")</text>;
+                var table = TableModel.For(rows)
+                    .Column("Created", x => x.CreatedAt.ToDateTime(Model.Zone), c => c.Css("text-nowrap"))
+                    .Template("Humans order", humansCell, c => c.NoSort())
+                    .Template("Backend order", backendCell, c => c.NoSort())
+                    .Column("State", x => Pair(x.Order?.State.ToString(), x.Backend?.State.ToString()))
+                    .Column("Total", x => Pair(Money(x.Order?.TotalMinor), Money(x.Backend?.TotalMinor)), c => c.End().Css("text-nowrap"))
+                    .Column("Refunded", x => Pair(Money(x.Order?.RefundedMinor), Money(x.Backend?.RefundedMinor)), c => c.End().Css("text-nowrap"))
+                    .Column("Tickets", x => Pair(x.Order?.Lines.Count(l => l.Kind == CheckoutLineKind.Ticket).ToString(culture), x.Backend?.TicketCount?.ToString(culture))
+                        + (x.TicketsIssued is { } issued ? $", {issued.ToString(culture)} issued" : ""), c => c.End())
+                    .Template("Issues", issuesCell, c => c.NoSort())
+                    .RowCss(x => x.Issues.Count == 0 ? null : x.MoneyMoved ? "table-warning" : null)
+                    .Empty(Model.All ? "No orders in this period." : "Every order matches.")
+                    .Build();
+
+                <div class="stats" style="--stats-cols: 3">
+                    @foreach (var tile in tiles)
+                    {
+                        <partial name="_StatTile" model="tile" />
+                    }
+                </div>
+
+                <div class="row g-4">
+                    <div class="col-xl-4">
+                        <h3 class="h6">Totals</h3>
+                        <partial name="_Table" model="totals" />
+                    </div>
+                    <div class="col-xl-8">
+                        <h3 class="h6">@(Model.All ? $"Orders ({rows.Count})" : $"Differences ({rows.Count})")</h3>
+                        <partial name="_Table" model="table" />
+                        @if (rows.Count > 0)
+                        {
+                            <p class="small text-muted mt-2 mb-0">Each pair reads Humans / backend. Highlighted rows moved money.</p>
+                        }
+                    </div>
+                </div>
 
                 @if (r.OtherInstance.Count > 0)
                 {
+                    var others = TableModel.For(r.OtherInstance)
+                        .Column("Created", x => x.CreatedAt.ToDateTime(Model.Zone), c => c.Css("text-nowrap"))
+                        .Column("Backend order", x => x.BackendOrderId, c => c.Css("font-monospace"))
+                        .Column("State", x => x.State.ToString())
+                        .Column("Total", x => Eur(x.TotalMinor), c => c.End().Css("text-nowrap"))
+                        .Build();
                     <details class="mt-3">
                         <summary class="small text-muted">@r.OtherInstance.Count order(s) from another Humans instance on this test account, not counted</summary>
-                        <table class="table table-sm w-auto mt-2 mb-0">
-                            <thead><tr><th>Created</th><th>Backend order</th><th>State</th><th class="text-end">Total</th></tr></thead>
-                            <tbody>
-                                @foreach (var b in r.OtherInstance)
-                                {
-                                    <tr>
-                                        <td>@b.CreatedAt.ToDateTime(Model.Zone)</td>
-                                        <td><code>@b.BackendOrderId</code></td>
-                                        <td>@b.State</td>
-                                        <td class="text-end">@Eur(b.TotalMinor)</td>
-                                    </tr>
-                                }
-                            </tbody>
-                        </table>
+                        <div class="mt-2"><partial name="_Table" model="others" /></div>
                     </details>
                 }
             }
@@ -208,146 +218,132 @@
             else if (p.Error is not null)
             {
                 <h3 class="h6 mt-4">Payments, fees and payouts</h3>
-                <p class="text-danger mb-0">@p.Error</p>
+                <div class="alert alert-warning mb-0">@p.Error</div>
             }
             else
             {
-                <h3 class="h6 mt-4">Payments, fees and payouts</h3>
                 var moves = Model.All ? p.Rows.Where(x => x.Entry.Kind != PaymentLedgerEntryKind.Payout).ToList() : p.Problems.ToList();
+                var feeDiff = p.PaymentFeesMinor - p.HumansPaymentFeesMinor;
+                StatTileViewModel[] payTiles =
+                [
+                    new("Net into the balance", Eur(p.Totals.NetMinor), Subline: $"charged {Eur(p.Totals.ChargedMinor)}"),
+                    new("Paid out to the bank", Eur(p.Totals.PaidOutMinor), Subline: $"{p.Payouts.Count.ToString(culture)} payout(s)"),
+                    new("Fees on order payments", Eur(p.PaymentFeesMinor),
+                        Subline: feeDiff == 0 ? "same as Humans recorded" : $"Humans recorded {Eur(p.HumansPaymentFeesMinor)}",
+                        Severity: feeDiff == 0 ? TileSeverity.Normal : TileSeverity.Critical),
+                ];
+                (string Label, long Minor)[] payLines =
+                [
+                    ("Charged", p.Totals.ChargedMinor),
+                    ("Refunded", p.Totals.RefundedMinor),
+                    ("Chargebacks", p.Totals.DisputedMinor),
+                    ("Fees", p.Totals.FeesMinor),
+                    ("Other movements", p.Totals.OtherMinor),
+                    ("Net into the balance", p.Totals.NetMinor),
+                    ("Paid out to the bank", p.Totals.PaidOutMinor),
+                ];
+                var payTotals = TableModel.For(payLines.Where(l => l.Minor != 0 || l.Label != "Other movements")
+                        .Select(l => new PayLine(l.Label, Eur(l.Minor))).ToList())
+                    .Column("", l => l.Label, c => c.NoSort().Css("fw-semibold"))
+                    .Column("Payment account", l => l.Amount, c => c.NoSort().End().Css("text-nowrap"))
+                    .Build();
+
+                Func<TicketPaymentRow, IHtmlContent> payOrderCell = @<text>
+                    @if (item.Order is { } o)
+                    {
+                        <a asp-action="Order" asp-route-id="@o.Id"><code>@o.Reference</code></a>
+                        <span class="small text-muted">@o.State, @Eur(o.TotalMinor), fee @(Money(o.FeeMinor) ?? "unknown")</span>
+                    }
+                    else
+                    {
+                        <span class="text-muted">none</span>
+                    }
+                </text>;
+                var moveTable = TableModel.For(moves)
+                    .Column("When", x => x.Entry.CreatedAt.ToDateTime(Model.Zone), c => c.Css("text-nowrap"))
+                    .Column("Kind", x => Kind(x.Entry.Kind))
+                    .Column("Movement", x => x.Entry.Id, c => c.Css("font-monospace"))
+                    .Template("Humans order", payOrderCell, c => c.NoSort())
+                    .Column("Amount", x => Eur(x.Entry.AmountMinor), c => c.End().Css("text-nowrap"))
+                    .Column("Fee", x => Eur(x.Entry.FeeMinor), c => c.End().Css("text-nowrap"))
+                    .Column("Issues", x => string.Join(", ", x.Issues.Select(i => i.Label())))
+                    .RowCss(x => x.Issues.Count == 0 ? null : "table-warning")
+                    .Empty(Model.All ? "No movements in this period." : "Every payment, refund and chargeback matches its order.")
+                    .Build();
+
                 var otherFees = p.OtherFees.ToList();
-                <p>
+                var feeTable = TableModel.For(otherFees)
+                    .Column("When", x => x.Entry.CreatedAt.ToDateTime(Model.Zone), c => c.Css("text-nowrap"))
+                    .Column("Kind", x => Kind(x.Entry.Kind))
+                    .Column("Description", x => x.Entry.Description ?? "")
+                    .Column("Fee", x => Eur(x.Entry.Kind == PaymentLedgerEntryKind.Fee ? x.Entry.FeeMinor - x.Entry.AmountMinor : x.Entry.FeeMinor), c => c.End().Css("text-nowrap"))
+                    .Build();
+
+                var payoutTable = TableModel.For(p.Payouts)
+                    .Column("Made", x => x.Payout.CreatedAt.ToDateTime(Model.Zone), c => c.Css("text-nowrap"))
+                    .Column("Arrives", x => x.Payout.ArrivalAt is { } arrives ? arrives.InZone(Model.Zone).Date.ToString("yyyy-MM-dd", null) : "–")
+                    .Column("Payout", x => x.Payout.Id, c => c.Css("font-monospace"))
+                    .Column("Status", x => x.Payout.Status)
+                    .Column("Amount", x => Eur(x.Payout.AmountMinor), c => c.End().Css("text-nowrap"))
+                    .Column("Contents", x => x.Payout.ContentsNetMinor is { } net ? $"{Eur(net)} in {x.Payout.ContentsCount.ToString(culture)}" : "not listed (made by hand or not reconciled yet)", c => c.End())
+                    .Column("Issues", x => string.Join(", ", x.Issues.Select(i => i.Label())))
+                    .RowCss(x => x.Issues.Count == 0 ? null : "table-warning")
+                    .Empty("No payout was made in this period.")
+                    .Build();
+
+                <div class="d-flex align-items-center gap-2 mt-4 mb-2">
+                    <h3 class="h6 mb-0">Payments, fees and payouts</h3>
                     <span class="badge @(p.Balanced ? "bg-success" : "bg-danger")">@(p.Balanced ? "Balanced" : "Out of balance")</span>
-                    <span class="small text-muted">By the day the money moved in the payment account.</span>
-                </p>
-                <table class="table table-sm w-auto">
-                    <tbody>
-                        <tr><th>Charged</th><td class="text-end">@Eur(p.Totals.ChargedMinor)</td></tr>
-                        <tr><th>Refunded</th><td class="text-end">@Eur(p.Totals.RefundedMinor)</td></tr>
-                        <tr><th>Chargebacks</th><td class="text-end">@Eur(p.Totals.DisputedMinor)</td></tr>
-                        <tr><th>Fees</th><td class="text-end">@Eur(p.Totals.FeesMinor)</td></tr>
-                        @if (p.Totals.OtherMinor != 0)
+                    <span class="small text-muted">by the day the money moved in the payment account</span>
+                </div>
+
+                <div class="stats" style="--stats-cols: 3">
+                    @foreach (var tile in payTiles)
+                    {
+                        <partial name="_StatTile" model="tile" />
+                    }
+                </div>
+
+                <div class="row g-4">
+                    <div class="col-xl-4">
+                        <h4 class="h6">Totals</h4>
+                        <partial name="_Table" model="payTotals" />
+                    </div>
+                    <div class="col-xl-8">
+                        <h4 class="h6">@(Model.All ? $"Movements ({moves.Count})" : $"Movement differences ({moves.Count})")</h4>
+                        <partial name="_Table" model="moveTable" />
+
+                        @if (otherFees.Count > 0)
                         {
-                            <tr><th>Other movements</th><td class="text-end">@Eur(p.Totals.OtherMinor)</td></tr>
+                            <h4 class="h6 mt-3">Fees not on a payment (@otherFees.Count)</h4>
+                            <partial name="_Table" model="feeTable" />
                         }
-                        <tr><th>Net into the balance</th><td class="text-end"><strong>@Eur(p.Totals.NetMinor)</strong></td></tr>
-                        <tr><th>Paid out to the bank</th><td class="text-end">@Eur(p.Totals.PaidOutMinor)</td></tr>
-                    </tbody>
-                </table>
-                <table class="table table-sm w-auto">
-                    <thead><tr><th></th><th class="text-end">Humans</th><th class="text-end">Payment account</th><th class="text-end">Difference</th></tr></thead>
-                    <tbody>
-                        <tr><th>Fees on order payments</th><td class="text-end">@Eur(p.HumansPaymentFeesMinor)</td><td class="text-end">@Eur(p.PaymentFeesMinor)</td><td class="text-end text-danger">@EurDiff(p.HumansPaymentFeesMinor, p.PaymentFeesMinor)</td></tr>
-                    </tbody>
-                </table>
 
-                <h4 class="h6">@(Model.All ? $"Movements ({moves.Count})" : $"Movement differences ({moves.Count})")</h4>
-                @if (moves.Count == 0)
-                {
-                    <p class="text-muted">@(Model.All ? "No movements in this period." : "Every payment, refund and chargeback matches its order.")</p>
-                }
-                else
-                {
-                    <table class="table table-sm">
-                        <thead>
-                            <tr><th>When</th><th>Kind</th><th>Movement</th><th>Humans order</th><th class="text-end">Amount</th><th class="text-end">Fee</th><th>Issues</th></tr>
-                        </thead>
-                        <tbody>
-                            @foreach (var row in moves)
-                            {
-                                <tr class="@(row.Issues.Count == 0 ? null : "table-warning")">
-                                    <td>@row.Entry.CreatedAt.ToDateTime(Model.Zone)</td>
-                                    <td>@Kind(row.Entry.Kind)</td>
-                                    <td><code>@row.Entry.Id</code></td>
-                                    <td>
-                                        @if (row.Order is { } o)
-                                        {
-                                            <a asp-action="Order" asp-route-id="@o.Id"><code>@o.Reference</code></a>
-                                            <span class="small text-muted">@o.State, @Eur(o.TotalMinor), fee @(Money(o.FeeMinor) ?? "unknown")</span>
-                                        }
-                                        else
-                                        {
-                                            <span class="text-muted">none</span>
-                                        }
-                                    </td>
-                                    <td class="text-end">@Eur(row.Entry.AmountMinor)</td>
-                                    <td class="text-end">@Eur(row.Entry.FeeMinor)</td>
-                                    <td>@string.Join(", ", row.Issues.Select(i => i.Label()))</td>
-                                </tr>
-                            }
-                        </tbody>
-                    </table>
-                }
+                        <h4 class="h6 mt-3">Payouts (@p.Payouts.Count)</h4>
+                        <partial name="_Table" model="payoutTable" />
 
-                @if (otherFees.Count > 0)
-                {
-                    <h4 class="h6">Fees not on a payment (@otherFees.Count)</h4>
-                    <table class="table table-sm w-auto">
-                        <thead><tr><th>When</th><th>Kind</th><th>Description</th><th class="text-end">Fee</th></tr></thead>
-                        <tbody>
-                            @foreach (var row in otherFees)
-                            {
-                                <tr>
-                                    <td>@row.Entry.CreatedAt.ToDateTime(Model.Zone)</td>
-                                    <td>@Kind(row.Entry.Kind)</td>
-                                    <td>@row.Entry.Description</td>
-                                    <td class="text-end">@Eur(row.Entry.Kind == PaymentLedgerEntryKind.Fee ? row.Entry.FeeMinor - row.Entry.AmountMinor : row.Entry.FeeMinor)</td>
-                                </tr>
-                            }
-                        </tbody>
-                    </table>
-                }
-
-                @if (p.OtherInstance.Count > 0)
-                {
-                    <details class="mb-3">
-                        <summary class="small text-muted">@p.OtherInstance.Count movement(s) from another Humans instance on this test account, counted in the totals but never a difference</summary>
-                        <table class="table table-sm w-auto mt-2 mb-0">
-                            <thead><tr><th>When</th><th>Kind</th><th>Movement</th><th class="text-end">Amount</th><th class="text-end">Fee</th></tr></thead>
-                            <tbody>
-                                @foreach (var e in p.OtherInstance)
-                                {
-                                    <tr>
-                                        <td>@e.CreatedAt.ToDateTime(Model.Zone)</td>
-                                        <td>@Kind(e.Kind)</td>
-                                        <td><code>@e.Id</code></td>
-                                        <td class="text-end">@Eur(e.AmountMinor)</td>
-                                        <td class="text-end">@Eur(e.FeeMinor)</td>
-                                    </tr>
-                                }
-                            </tbody>
-                        </table>
-                    </details>
-                }
-
-                <h4 class="h6">Payouts (@p.Payouts.Count)</h4>
-                @if (p.Payouts.Count == 0)
-                {
-                    <p class="text-muted mb-0">No payout was made in this period.</p>
-                }
-                else
-                {
-                    <table class="table table-sm mb-0">
-                        <thead>
-                            <tr><th>Made</th><th>Arrives</th><th>Payout</th><th>Status</th><th class="text-end">Amount</th><th class="text-end">Contents</th><th>Issues</th></tr>
-                        </thead>
-                        <tbody>
-                            @foreach (var row in p.Payouts)
-                            {
-                                var po = row.Payout;
-                                <tr class="@(row.Issues.Count == 0 ? null : "table-warning")">
-                                    <td>@po.CreatedAt.ToDateTime(Model.Zone)</td>
-                                    <td>@(po.ArrivalAt is { } arrives ? arrives.InZone(Model.Zone).Date.ToString("yyyy-MM-dd", null) : "–")</td>
-                                    <td><code>@po.Id</code></td>
-                                    <td>@po.Status</td>
-                                    <td class="text-end">@Eur(po.AmountMinor)</td>
-                                    <td class="text-end">@(po.ContentsNetMinor is { } net ? $"{Eur(net)} in {po.ContentsCount}" : "not listed (made by hand or not reconciled yet)")</td>
-                                    <td>@string.Join(", ", row.Issues.Select(i => i.Label()))</td>
-                                </tr>
-                            }
-                        </tbody>
-                    </table>
-                }
+                        @if (p.OtherInstance.Count > 0)
+                        {
+                            var otherMoves = TableModel.For(p.OtherInstance)
+                                .Column("When", x => x.CreatedAt.ToDateTime(Model.Zone), c => c.Css("text-nowrap"))
+                                .Column("Kind", x => Kind(x.Kind))
+                                .Column("Movement", x => x.Id, c => c.Css("font-monospace"))
+                                .Column("Amount", x => Eur(x.AmountMinor), c => c.End().Css("text-nowrap"))
+                                .Column("Fee", x => Eur(x.FeeMinor), c => c.End().Css("text-nowrap"))
+                                .Build();
+                            <details class="mt-3">
+                                <summary class="small text-muted">@p.OtherInstance.Count movement(s) from another Humans instance on this test account, counted in the totals but never a difference</summary>
+                                <div class="mt-2"><partial name="_Table" model="otherMoves" /></div>
+                            </details>
+                        }
+                    </div>
+                </div>
             }
         </div>
     </section>
+}
+
+@functions {
+    private sealed record ReconLine(string Label, string Humans, string Backend, long Diff, bool IsMoney);
+    private sealed record PayLine(string Label, string Amount);
 }
