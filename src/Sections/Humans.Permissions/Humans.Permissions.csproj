@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Humans.Permissions.Tests" />
+    <InternalsVisibleTo Include="Humans.Integration.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- No EF Core: Permissions owns no tables. Auth gives the system roles a person holds. -->
+    <ProjectReference Include="..\..\Humans.Base\Humans.Base.csproj" />
+    <ProjectReference Include="..\Humans.Auth\Humans.Auth.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="**\*.md" />
+  </ItemGroup>
+
+</Project>
