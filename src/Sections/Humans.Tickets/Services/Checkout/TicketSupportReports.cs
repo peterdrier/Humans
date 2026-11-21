@@ -7,7 +7,7 @@ namespace Humans.Tickets.Services.Checkout;
 /// <summary>The ticketing team's lookup and reports, computed in memory over one event's orders.</summary>
 internal static class TicketSupportReports
 {
-    /// <summary>Shorter queries match too much to be useful, except an exact code or reference.</summary>
+    /// <summary>Shorter queries match too much to be useful.</summary>
     public const int MinimumQueryLength = 3;
 
     /// <summary>
