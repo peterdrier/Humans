@@ -4,12 +4,22 @@ using Humans.Base.Configuration;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.Options;
+using NodaTime;
+using NodaTime.Testing;
 using Xunit;
 
 namespace Humans.Auth.Tests.Services;
 
 public sealed class MagicLinkUrlBuilderTests
 {
+    // Real time: the framework protector checks expiry against the system clock.
+    private readonly FakeClock _clock = new(SystemClock.Instance.GetCurrentInstant());
+
+    private MagicLinkUrlBuilder Builder(IDataProtectionProvider provider) =>
+        new(provider, Options.Create(new EmailSettings { BaseUrl = "https://test.example.com" }), _clock);
+
+    private static string TokenOf(string url) => QueryHelpers.ParseQuery(new Uri(url).Query)["token"].ToString();
+
     [HumansTheory]
     [InlineData(true, null)]
     [InlineData(false, null)]
@@ -21,9 +31,7 @@ public sealed class MagicLinkUrlBuilderTests
     [InlineData(false, "a")]
     public void Missing_or_malformed_token_is_invalid(bool login, string? token)
     {
-        var builder = new MagicLinkUrlBuilder(
-            new EphemeralDataProtectionProvider(),
-            Options.Create(new EmailSettings { BaseUrl = "https://test.example.com" }));
+        var builder = Builder(new EphemeralDataProtectionProvider());
 
         var payload = login
             ? builder.UnprotectLoginToken(token!)
@@ -33,17 +41,44 @@ public sealed class MagicLinkUrlBuilderTests
     }
 
     [HumansFact]
-    public void Generated_tokens_still_resolve_their_payloads()
+    public void Generated_tokens_resolve_their_payloads_and_expiry()
     {
-        var builder = new MagicLinkUrlBuilder(
-            new EphemeralDataProtectionProvider(),
-            Options.Create(new EmailSettings { BaseUrl = "https://test.example.com" }));
+        var builder = Builder(new EphemeralDataProtectionProvider());
         var userId = Guid.NewGuid();
-        var loginToken = QueryHelpers.ParseQuery(new Uri(builder.BuildLoginUrl(userId, null)).Query)["token"].ToString();
-        var signupToken = QueryHelpers.ParseQuery(new Uri(builder.BuildSignupUrl("member@example.com", null)).Query)["token"].ToString();
+        var expiresAt = _clock.GetCurrentInstant() + Duration.FromMinutes(15);
 
-        builder.UnprotectLoginToken(loginToken).Should().Be(userId.ToString());
-        builder.UnprotectSignupToken(signupToken).Should().Be("member@example.com");
+        builder.UnprotectLoginToken(TokenOf(builder.BuildLoginUrl(userId, null)))
+            .Should().Be(new MagicLinkToken(userId.ToString(), expiresAt));
+        builder.UnprotectSignupToken(TokenOf(builder.BuildSignupUrl("member@example.com", null)))
+            .Should().Be(new MagicLinkToken("member@example.com", expiresAt));
+    }
+
+    [HumansFact]
+    public void Expired_token_still_decodes_so_it_can_be_told_apart_from_a_forged_one()
+    {
+        var builder = Builder(new EphemeralDataProtectionProvider());
+        var token = TokenOf(builder.BuildSignupUrl("member@example.com", null));
+        _clock.Advance(Duration.FromHours(1));
+
+        builder.UnprotectSignupToken(token)!.Payload.Should().Be("member@example.com");
+    }
+
+    [HumansTheory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void Tokens_issued_by_the_framework_time_limited_protector_still_redeem(bool login)
+    {
+        // Links already in inboxes at deploy were issued by ToTimeLimitedDataProtector.
+        var provider = new EphemeralDataProtectionProvider();
+        var builder = Builder(provider);
+        var expiresAt = DateTimeOffset.UtcNow.AddMinutes(15);
+        var token = provider.CreateProtector(login ? "MagicLinkLogin" : "MagicLinkSignup")
+            .ToTimeLimitedDataProtector()
+            .Protect("payload", expiresAt);
+
+        var decoded = login ? builder.UnprotectLoginToken(token) : builder.UnprotectSignupToken(token);
+
+        decoded.Should().Be(new MagicLinkToken("payload", Instant.FromDateTimeOffset(expiresAt)));
     }
 
     [HumansTheory]
@@ -52,8 +87,7 @@ public sealed class MagicLinkUrlBuilderTests
     public void Alternate_encoding_of_a_valid_token_is_invalid(bool login)
     {
         var provider = new EphemeralDataProtectionProvider();
-        var builder = new MagicLinkUrlBuilder(provider,
-            Options.Create(new EmailSettings { BaseUrl = "https://test.example.com" }));
+        var builder = Builder(provider);
         var url = login
             ? builder.BuildLoginUrl(Guid.NewGuid(), null)
             : builder.BuildSignupUrl("member@example.com", null);

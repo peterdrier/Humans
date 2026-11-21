@@ -53,7 +53,8 @@ Sidebar groups, alphabetical: Agent, Audit, Backdoor, Barrios, Budget, Campaigns
 | GrantsAdmin | Grants (Programs) |
 | SurveysAdmin | Surveys (Surveys, Approvals) |
 | ConsentCoordinator | Onboarding (Review) |
-| ShiftsAdmin | Early Entry, Onboarding (Review), Shifts (Dashboard, Summary by camp, Volunteer tracking, Workload, Post-event stats) |
+| EarlyEntryAdmin | Early Entry |
+| ShiftsAdmin | Shifts (Dashboard, Summary by camp, Volunteer tracking, Workload, Post-event stats) |
 | TeamsAdmin | Google (Resource sync) |
 | CampsAdmin | Barrios (Overview, Roles, Compliance), City Planning (Barrio map) |
 | ShiftsNoInfo | Early Entry, Shifts (Dashboard, Summary by camp, Volunteer tracking, Workload, Post-event stats) |

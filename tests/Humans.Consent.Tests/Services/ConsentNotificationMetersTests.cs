@@ -3,7 +3,6 @@ using AwesomeAssertions;
 using Humans.Base.Constants;
 using Humans.Consent.Contracts;
 using Humans.Consent.Services;
-using Humans.Shifts.Contracts;
 using Humans.Users.Contracts;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
@@ -52,27 +51,27 @@ public sealed class ConsentNotificationMetersTests : IDisposable
         meter.Priority.Should().Be(10);
     }
 
-    [HumansTheory]
-    [InlineData(RoleNames.Board, "the Board")]
-    [InlineData(ShiftsRoles.ShiftsAdmin, "Shifts Admins")]
-    public async Task BoardAndShiftsAdmin_SeeTheSameCountAsOnboardingProfiles(string role, string audience)
+    [HumansFact]
+    public async Task Board_SeesTheSameCountAsOnboardingProfiles()
     {
         _users.GetAllUserInfosAsync(Arg.Any<CancellationToken>()).Returns(NeedsConsentReview(1));
 
-        var meters = await _sut.GetMetersAsync(Viewer(role), Guid.NewGuid(), TestContext.Current.CancellationToken);
+        var meters = await _sut.GetMetersAsync(Viewer(RoleNames.Board), Guid.NewGuid(), TestContext.Current.CancellationToken);
 
         var meter = meters.Should().ContainSingle().Subject;
         meter.Title.Should().Be("Onboarding profiles pending");
         meter.Count.Should().Be(1);
         meter.ActionUrl.Should().Be("/Consent/ReviewQueue");
-        meter.Audience.Should().Be(audience);
+        meter.Audience.Should().Be("the Board");
         meter.Priority.Should().Be(6);
     }
 
-    [HumansFact]
-    public async Task OtherViewers_GetNoMeterAndNoReads()
+    [HumansTheory]
+    [InlineData]
+    [InlineData("ShiftsAdmin")]
+    public async Task OtherViewers_GetNoMeterAndNoReads(params string[] roles)
     {
-        var meters = await _sut.GetMetersAsync(Viewer(), Guid.NewGuid(), TestContext.Current.CancellationToken);
+        var meters = await _sut.GetMetersAsync(Viewer(roles), Guid.NewGuid(), TestContext.Current.CancellationToken);
 
         meters.Should().BeEmpty();
         await _users.DidNotReceiveWithAnyArgs().GetAllUserInfosAsync(default);
