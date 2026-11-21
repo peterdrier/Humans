@@ -101,9 +101,9 @@ event profile, availability/build-status rows (via
 `IVolunteerTrackingRepository.DeleteVolunteerTrackingForUserAsync`), and
 shift-tag preferences. No `IMemoryCache`.
 
-### ShiftSignupNotices (constructed by ShiftSignupService, not DI-registered)
+### ShiftSignupService notice delivery
 
-No repository, no `IMemoryCache`, no table access. Post-save notice delivery for signups: the volunteer's
+These methods use no repository, `IMemoryCache` or table access. Post-save notice delivery for signups: the volunteer's
 assignment notice and the team coordinators' coverage-gap and signup-change notices. A lookup or channel failure
 is logged and never changes the saved signup outcome. Cross-section calls via `INotificationEmitter`,
 `IUserService` (recipient culture), `EventCalendarResolver` (gate-opening date, via `ISettingsService`), and
@@ -256,12 +256,12 @@ names from `IUserService`, team scoping from `ITeamService`, all lazy-resolved t
 | Rotas | R |
 | EventSettings | R |
 
-### ShiftSignupPersonalData (internal, owned by ShiftSignupService)
+### ShiftSignupService personal-data reads
 
 Repositories: `IShiftManagementRepository`, `IVolunteerTrackingRepository`. Builds the member's GDPR
 export slices (`ShiftSignups`, `VolunteerEventProfiles`, `GeneralAvailability`,
 `VolunteerBuildStatuses`, `ShiftTagPreferences`) behind `ShiftSignupService`'s
-`IUserDataContributor`. Read-only; no DI registration, no cache.
+`IUserDataContributor`. These projections are read-only and reuse the service’s existing registration and dependencies; no cache.
 
 | Table | R/W |
 |-------|-----|
