@@ -68,7 +68,7 @@ public sealed class CampPlacementPhaseViewComponentTests : CityPlanningTestBase
             new CityPlanningRepository(CityPlanningDbFactory), Clock,
             Options.Create(new CityPlanningOptions { CityPlanningTeamSlug = "city-planning" }),
             _camps, Substitute.For<ITeamService>(), _users, Substitute.For<IAuditLogService>(), settings);
-        var component = new CampPlacementPhaseViewComponent(service, _camps, _users, _authorization);
+        var component = new CampPlacementPhaseViewComponent(service, _users, _authorization);
         component.ViewComponentContext = new ViewComponentContext
         {
             ViewContext = new ViewContext

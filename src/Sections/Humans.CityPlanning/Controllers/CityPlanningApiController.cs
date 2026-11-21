@@ -31,13 +31,6 @@ internal sealed class CityPlanningApiController(
     private async Task<bool> IsMapAdminAsync() =>
         (await authorizationService.AuthorizeAsync(User, PolicyNames.CityPlanningMapAdmin)).Succeeded;
 
-    private async Task<HashSet<Guid>> FindUserLeadCampIdsAsync(Guid userId, int year, CancellationToken ct)
-    {
-        var camps = await campService.GetCampsForYearAsync(year, ct);
-        return camps.Where(camp => camp.GetLeadSeasonIdForYear(userId, year).HasValue)
-            .Select(camp => camp.Id).ToHashSet();
-    }
-
     /// <summary>Settings, all camp polygons, and unmapped seasons.</summary>
     [HttpGet("state")]
     public async Task<IActionResult> GetState(CancellationToken cancellationToken)
@@ -213,7 +206,8 @@ internal sealed class CityPlanningApiController(
         if (userError is not null) return userError;
         var userId = user.Id;
         var isMapAdmin = await IsMapAdminAsync();
-        var userCampIds = await FindUserLeadCampIdsAsync(userId, year, cancellationToken);
+        var userCampIds = (await cityPlanningService.GetLeadCampsAsync(userId, year, cancellationToken))
+            .Select(camp => camp.Id).ToHashSet();
 
         if (!isMapAdmin && userCampIds.Count == 0)
         {

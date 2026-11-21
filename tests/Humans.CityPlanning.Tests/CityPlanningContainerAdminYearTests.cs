@@ -213,7 +213,7 @@ public sealed class CityPlanningContainerAdminYearTests : CityPlanningTestBase
         CityPlanningService service, IAuthorizationService authorization, params string[] roles)
     {
         var controller = new CityPlanningController(
-            service, _campService, _containerService, Substitute.For<IStringLocalizer<ContainersResource>>(), _userService,
+            service, _containerService, Substitute.For<IStringLocalizer<ContainersResource>>(), _userService,
             authorization, NullLogger<CityPlanningController>.Instance);
 
         var claims = new List<Claim> { new(ClaimTypes.NameIdentifier, _userId.ToString()) };

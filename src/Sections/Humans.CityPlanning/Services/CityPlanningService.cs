@@ -447,6 +447,13 @@ internal sealed class CityPlanningService(
         return team is { IsActive: true } && team.Members.Any(m => m.UserId == userId);
     }
 
+    public async Task<IReadOnlyList<CampInfo>> GetLeadCampsAsync(
+        Guid userId, int year, CancellationToken cancellationToken = default)
+    {
+        var camps = await campService.GetCampsForYearAsync(year, cancellationToken);
+        return camps.Where(camp => camp.GetLeadSeasonIdForYear(userId, year).HasValue).ToList();
+    }
+
     public async Task<bool> CanUserEditAsync(
         Guid userId, Guid campSeasonId, CancellationToken cancellationToken = default)
     {

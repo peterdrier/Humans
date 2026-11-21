@@ -49,7 +49,7 @@ public sealed class CityPlanningControllerSettingsRedirectTests : CityPlanningTe
             _campService, Substitute.For<ITeamService>(), _userService, Substitute.For<IAuditLogService>(), ActiveEvent(2026));
 
         _controller = new CityPlanningController(
-            _service, _campService, Substitute.For<IContainerService>(), Substitute.For<IStringLocalizer<ContainersResource>>(), _userService,
+            _service, Substitute.For<IContainerService>(), Substitute.For<IStringLocalizer<ContainersResource>>(), _userService,
             MapAdminAuthorization(_service), NullLogger<CityPlanningController>.Instance);
 
         var claims = new[]
