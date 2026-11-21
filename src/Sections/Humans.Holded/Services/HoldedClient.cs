@@ -458,11 +458,14 @@ internal sealed class HoldedClient : IHoldedClient
         }
     }
 
-    public async Task ApprovePurchaseDocumentAsync(string documentId, CancellationToken ct = default)
+    public Task ApprovePurchaseDocumentAsync(string documentId, CancellationToken ct = default) =>
+        ApproveDocumentAsync("purchases", documentId, ct);
+
+    private async Task ApproveDocumentAsync(string segment, string documentId, CancellationToken ct)
     {
         // A bodyless POST 411s through Holded's proxy without an explicit Content-Length; empty content sets one.
         using var req = new HttpRequestMessage(
-            HttpMethod.Post, $"/api/v2/purchases/{documentId}/approve")
+            HttpMethod.Post, $"/api/v2/{segment}/{documentId}/approve")
         { Content = new ByteArrayContent([]) };
         try
         {
@@ -473,7 +476,8 @@ internal sealed class HoldedClient : IHoldedClient
         catch (HoldedPermanentException ex) when (ex.StatusCode == 400
             && ex.ResponseBody?.Contains("Document already approved", StringComparison.Ordinal) == true)
         {
-            _logger.LogWarning("Holded purchase document {DocumentId} was already approved — treated as success", documentId);
+            _logger.LogWarning("Holded {Segment} document {DocumentId} was already approved — treated as success",
+                segment, documentId);
         }
     }
 
@@ -583,13 +587,9 @@ internal sealed class HoldedClient : IHoldedClient
         }
     }
 
-    public async Task ApproveSalesDocumentAsync(
-        HoldedSalesDocumentKind kind, string documentId, CancellationToken ct = default)
-    {
-        using var req = new HttpRequestMessage(
-            HttpMethod.Post, $"/api/v2/{SalesSegment(kind)}/{documentId}/approve");
-        using var resp = await _transport.SendAsync(req, ct);
-    }
+    public Task ApproveSalesDocumentAsync(
+        HoldedSalesDocumentKind kind, string documentId, CancellationToken ct = default) =>
+        ApproveDocumentAsync(SalesSegment(kind), documentId, ct);
 
     public async Task<IReadOnlyList<string>> FindSalesDocumentIdsByTagAsync(
         HoldedSalesDocumentKind kind, string tag, CancellationToken ct = default)

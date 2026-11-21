@@ -165,6 +165,7 @@ tax keys: an empty list books the line with no tax, omitted applies the contact'
 `FindSalesDocumentsByTagAsync` (both kinds, read live: the issuance guard), `IssueSalesDocumentAsync`
 (create, approve, read back; each line's `AccountNum` resolved through the chart mirror, an unknown
 number refused; `DiscountPercent` sets a whole-document discount) and `ApproveSalesDocumentAsync`.
+Approving a purchase or sales document Holded already approved succeeds (logged), so a retry never fails on it.
 For the Store's one-shot booking: on `IHoldedService`, `GetSalesDocumentAsync` (live, no mirror holds sales documents:
 totals, `payments_pending`, `payments_detail`, contact and the contact's 430 account) and `GetSalesDocumentPdfAsync`; on
 `IHoldedWrite`, `SendSalesDocumentAsync` (Holded emails it;
