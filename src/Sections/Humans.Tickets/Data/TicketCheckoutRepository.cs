@@ -250,6 +250,39 @@ internal sealed class TicketCheckoutRepository(IDbContextFactory<TicketsDbContex
         return await ctx.TicketResaleOffers.AsNoTracking().Where(o => o.SalesEventId == salesEventId).ToListAsync(ct);
     }
 
+    public async Task AddCompanionRequestAsync(TicketCompanionRequest request, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        ctx.TicketCompanionRequests.Add(request);
+        await ctx.SaveChangesAsync(ct);
+    }
+
+    public async Task UpdateCompanionRequestAsync(TicketCompanionRequest request, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        ctx.TicketCompanionRequests.Update(request);
+        await ctx.SaveChangesAsync(ct);
+    }
+
+    public async Task<TicketCompanionRequest?> GetCompanionRequestAsync(Guid id, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        return await ctx.TicketCompanionRequests.AsNoTracking().FirstOrDefaultAsync(r => r.Id == id, ct);
+    }
+
+    public async Task<IReadOnlyList<TicketCompanionRequest>> GetCompanionRequestsForSalesEventAsync(Guid salesEventId, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        return await ctx.TicketCompanionRequests.AsNoTracking().Where(r => r.SalesEventId == salesEventId).ToListAsync(ct);
+    }
+
+    public async Task<IReadOnlyList<TicketCompanionRequest>> GetCompanionRequestsForUserAsync(Guid userId, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        return await ctx.TicketCompanionRequests.AsNoTracking()
+            .Where(r => r.HolderUserId == userId || r.CompanionUserId == userId).ToListAsync(ct);
+    }
+
     public async Task<IReadOnlyList<TicketCheckoutRefund>> GetRefundsForSalesEventAsync(Guid salesEventId, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
@@ -262,7 +295,7 @@ internal sealed class TicketCheckoutRepository(IDbContextFactory<TicketsDbContex
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
         var addresses = new HashSet<string>(emails, StringComparer.OrdinalIgnoreCase);
-        // A partner line or ticket without an account (unpaid order, ambiguous address) is theirs by its email alone.
+        // A line or ticket without an account (a companion the team issued by email) is theirs by its email alone.
         bool Theirs(Guid? holder, string? email) =>
             holder == userId || (holder is null && email is not null && addresses.Contains(email));
         var held = (await ctx.TicketCheckoutTickets.Where(t => t.HolderUserId == userId || (t.HolderUserId == null && t.HolderEmail != null))
@@ -313,6 +346,14 @@ internal sealed class TicketCheckoutRepository(IDbContextFactory<TicketsDbContex
             offer.DirectedTokenHash = null;
             changed++;
         }
+        foreach (var request in await ctx.TicketCompanionRequests
+                     .Where(r => (r.HolderUserId == userId || r.CompanionUserId == userId) && r.Note != TicketPiiTombstone.Name)
+                     .ToListAsync(ct))
+        {
+            request.Note = TicketPiiTombstone.Name;
+            request.DecisionNote = null;
+            changed++;
+        }
         await ctx.SaveChangesAsync(ct);
         return changed;
     }
@@ -342,6 +383,14 @@ internal sealed class TicketCheckoutRepository(IDbContextFactory<TicketsDbContex
             ticket.HolderUserId = toUserId;
         foreach (var offer in await ctx.TicketResaleOffers.Where(o => o.HolderUserId == fromUserId).ToListAsync(ct))
             offer.HolderUserId = toUserId;
+        foreach (var request in await ctx.TicketCompanionRequests
+                     .Where(r => r.HolderUserId == fromUserId || r.CompanionUserId == fromUserId || r.DecidedByUserId == fromUserId)
+                     .ToListAsync(ct))
+        {
+            if (request.HolderUserId == fromUserId) request.HolderUserId = toUserId;
+            if (request.CompanionUserId == fromUserId) request.CompanionUserId = toUserId;
+            if (request.DecidedByUserId == fromUserId) request.DecidedByUserId = toUserId;
+        }
         await ctx.SaveChangesAsync(ct);
     }
 

@@ -31,54 +31,14 @@
   <resheader name="version"><value>1.3</value></resheader>
   <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
   <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
-  <data name="Tickets_TicketTransfer_Pending" xml:space="preserve"><value>Pending review</value></data>
-  <data name="Tickets_TicketTransfer_AlreadyPending" xml:space="preserve"><value>Transfer already pending</value></data>
-  <data name="Tickets_TicketTransfer_CancelRequest" xml:space="preserve"><value>Cancel request</value></data>
-  <data name="Tickets_TicketTransfer_CheckedIn" xml:space="preserve"><value>Already checked in — can’t be transferred</value></data>
-  <data name="Tickets_TicketTransfer_ConfirmDetails" xml:space="preserve"><value>This will request transferring ticket {0} ({1}) to {2}.</value></data>
-  <data name="Tickets_TicketTransfer_ConfirmNote" xml:space="preserve"><value>Our ticketing team will process this and let you know shortly.</value></data>
-  <data name="Tickets_TicketTransfer_Continue" xml:space="preserve"><value>Continue</value></data>
-  <data name="Tickets_TicketTransfer_NoneTransferable" xml:space="preserve"><value>None of your tickets can be transferred right now.</value></data>
-  <data name="Tickets_TicketTransfer_NoRequests" xml:space="preserve"><value>You haven’t requested any transfers.</value></data>
-  <data name="Tickets_TicketTransfer_NoTickets" xml:space="preserve"><value>You don’t have any tickets to transfer.</value></data>
-  <data name="Tickets_TicketTransfer_NotTransferable" xml:space="preserve"><value>Not transferable</value></data>
-  <data name="Tickets_TicketTransfer_ReasonLabel" xml:space="preserve"><value>Reason for the transfer (optional, visible to the ticket team)</value></data>
-  <data name="Tickets_TicketTransfer_RecipientPlaceholder" xml:space="preserve"><value>Search by name, or paste their exact email…</value></data>
-  <data name="Tickets_TicketTransfer_Requested" xml:space="preserve"><value>Requested</value></data>
-  <data name="Tickets_TicketTransfer_RequestTransfer" xml:space="preserve"><value>Request transfer</value></data>
-  <data name="Tickets_TicketTransfer_StatusApproved" xml:space="preserve"><value>Completed</value></data>
-  <data name="Tickets_TicketTransfer_StatusCancelled" xml:space="preserve"><value>Cancelled</value></data>
-  <data name="Tickets_TicketTransfer_StatusRejected" xml:space="preserve"><value>Cancelled by team</value></data>
-  <data name="Tickets_TicketTransfer_Step1" xml:space="preserve"><value>1. Choose the ticket to transfer</value></data>
-  <data name="Tickets_TicketTransfer_Step2" xml:space="preserve"><value>2. Who are you sending it to?</value></data>
-  <data name="Tickets_TicketTransfer_Step3" xml:space="preserve"><value>3. Confirm</value></data>
-  <data name="Tickets_TicketTransfer_Title" xml:space="preserve"><value>Transfer a ticket</value></data>
-  <data name="Tickets_TicketTransfer_YourRequests" xml:space="preserve"><value>Your transfer requests</value></data>
-  <data name="Tickets_TicketTransfer_InvalidSelection" xml:space="preserve"><value>Couldn't set up that transfer — choose one of your tickets and a valid recipient other than yourself.</value></data>
-  <data name="Tickets_TicketTransfer_RequestSubmitted" xml:space="preserve"><value>Transfer requested. Our ticketing team will process it and let you know shortly.</value></data>
-  <data name="Tickets_TicketTransfer_Cancelled" xml:space="preserve"><value>Transfer cancelled.</value></data>
-  <data name="Tickets_TicketTransfer_NotFound" xml:space="preserve"><value>Transfer not found.</value></data>
-  <data name="Tickets_TicketTransfer_OnlyPendingCanBeCancelled" xml:space="preserve"><value>Only pending transfers can be cancelled.</value></data>
-  <data name="Tickets_TicketTransfer_OnlySenderCanCancel" xml:space="preserve"><value>Only the sender can cancel this transfer.</value></data>
-  <data name="Tickets_TicketTransfer_CancelFailed" xml:space="preserve"><value>Couldn't cancel the transfer. Refresh the page or contact the ticketing team.</value></data>
-  <data name="Tickets_TicketTransfer_NotCurrentHolder" xml:space="preserve"><value>You can only transfer tickets you currently hold.</value></data>
   <data name="Tickets_TicketStub_EventLabel" xml:space="preserve"><value>{0} · Admit One</value></data>
   <data name="Tickets_TicketStub_CheckedIn" xml:space="preserve"><value>Checked in</value></data>
   <data name="Tickets_TicketStub_Void" xml:space="preserve"><value>Void</value></data>
   <data name="Tickets_TicketStub_EarlyEntry" xml:space="preserve"><value>Early entry {0}</value><comment>{0} = entry date</comment></data>
-  <data name="Tickets_TicketStub_TransferPending" xml:space="preserve"><value>Transfer pending</value></data>
   <data name="Tickets_TicketHoldings_Title" xml:space="preserve"><value>Tickets</value></data>
   <data name="Tickets_TicketHoldings_OrderSingular" xml:space="preserve"><value>order</value></data>
   <data name="Tickets_TicketHoldings_OrderPlural" xml:space="preserve"><value>orders</value></data>
   <data name="Tickets_TicketHoldings_Empty" xml:space="preserve"><value>No tickets.</value></data>
-  <data name="Tickets_MemberTicketStatus_Transfers" xml:space="preserve"><value>Transfers…</value></data>
-  <data name="Tickets_TicketTransfer_Email_Requested_Subject" xml:space="preserve"><value>Ticket transfer requested</value></data>
-  <data name="Tickets_TicketTransfer_Email_Requested_Body" xml:space="preserve"><value>&lt;p&gt;Hi {0},&lt;/p&gt;&lt;p&gt;We've received your request to transfer ticket &lt;strong&gt;{1}&lt;/strong&gt; to &lt;strong&gt;{2}&lt;/strong&gt;.&lt;/p&gt;&lt;p&gt;Our ticketing team will process this and let you know shortly. No further action is needed from you.&lt;/p&gt;</value></data>
-  <data name="Tickets_TicketTransfer_Email_Completed_Subject" xml:space="preserve"><value>Ticket transfer complete</value></data>
-  <data name="Tickets_TicketTransfer_Email_Completed_Body" xml:space="preserve"><value>&lt;p&gt;Hi {0},&lt;/p&gt;&lt;p&gt;The transfer of ticket &lt;strong&gt;{1}&lt;/strong&gt; to &lt;strong&gt;{2}&lt;/strong&gt; is complete.&lt;/p&gt;</value></data>
-  <data name="Tickets_TicketTransfer_Email_Cancelled_Subject" xml:space="preserve"><value>Ticket transfer cancelled</value></data>
-  <data name="Tickets_TicketTransfer_Email_Cancelled_Body" xml:space="preserve"><value>&lt;p&gt;Hi {0},&lt;/p&gt;&lt;p&gt;The requested transfer of ticket &lt;strong&gt;{1}&lt;/strong&gt; to &lt;strong&gt;{2}&lt;/strong&gt; was not completed.&lt;/p&gt;{3}&lt;p&gt;If you have questions, reply to this email and our ticketing team will help.&lt;/p&gt;</value></data>
-  <data name="Tickets_TicketTransfer_Email_Cancelled_Reason" xml:space="preserve"><value>&lt;p&gt;&lt;strong&gt;Reason:&lt;/strong&gt; {0}&lt;/p&gt;</value></data>
   <data name="Tickets_Onsite_Since" xml:space="preserve"><value>Onsite since {0}</value></data>
   <data name="Tickets_Onsite_Title" xml:space="preserve"><value>Checked in at the gate</value></data>
   <data name="Tickets_NotAttending_Declared" xml:space="preserve"><value>You've been marked as not attending this year.</value></data>
@@ -88,7 +48,6 @@
   <data name="Tickets_NotAttending_Undone" xml:space="preserve"><value>Your declaration has been removed.</value></data>
   <data name="Tickets_NotAttending_UndoFailed" xml:space="preserve"><value>Could not undo — your status may have been updated by ticket sync.</value></data>
   <data name="Tickets_MemberTicketStatus_Unavailable" xml:space="preserve"><value>Your ticket status is unavailable right now. Please try again later.</value></data>
-  <data name="Tickets_TicketTransfer_ReasonTooLong" xml:space="preserve"><value>Reasons cannot exceed 1,000 characters.</value></data>
   <data name="Tickets_Meter_SyncError" xml:space="preserve"><value>Ticket sync error</value></data>
   <data name="Tickets_Meter_AudienceAdmin" xml:space="preserve"><value>Admins</value></data>
   <data name="Tickets_Buy_Title" xml:space="preserve">
@@ -100,11 +59,11 @@
   <data name="Tickets_Buy_YourPrice" xml:space="preserve">
     <value>Your price</value>
   </data>
-  <data name="Tickets_Buy_WavePrice" xml:space="preserve">
-    <value>Current wave: {0}, {1}</value>
-  </data>
   <data name="Tickets_Buy_Total" xml:space="preserve">
     <value>Total</value>
+  </data>
+  <data name="Tickets_Buy_ForSelfHeading" xml:space="preserve">
+    <value>Your ticket</value>
   </data>
   <data name="Tickets_Buy_ForSelf" xml:space="preserve">
     <value>A ticket for me ({0})</value>
@@ -117,18 +76,6 @@
   </data>
   <data name="Tickets_Buy_SupporterOption" xml:space="preserve">
     <value>{0} in total: your ticket plus a {1} donation</value>
-  </data>
-  <data name="Tickets_Buy_Partner" xml:space="preserve">
-    <value>A ticket for someone else</value>
-  </data>
-  <data name="Tickets_Buy_PartnerHelp" xml:space="preserve">
-    <value>Their legal name and email. They get their own account and the ticket is theirs. It costs the public price ({0}).</value>
-  </data>
-  <data name="Tickets_Buy_PartnerName" xml:space="preserve">
-    <value>Legal name</value>
-  </data>
-  <data name="Tickets_Buy_PartnerEmail" xml:space="preserve">
-    <value>Email</value>
   </data>
   <data name="Tickets_Buy_Donation" xml:space="preserve">
     <value>Add a donation</value>
@@ -214,12 +161,6 @@
   <data name="Tickets_Buy_AlreadyHolds" xml:space="preserve">
     <value>You already have a ticket for this event.</value>
   </data>
-  <data name="Tickets_Buy_PartnerIncomplete" xml:space="preserve">
-    <value>For someone else's ticket, give both their legal name and a valid email.</value>
-  </data>
-  <data name="Tickets_Buy_PartnerIsYou" xml:space="preserve">
-    <value>That email is yours; tick the box for your own ticket instead.</value>
-  </data>
   <data name="Tickets_Buy_Invalid" xml:space="preserve">
     <value>That choice is not available. Please try again.</value>
   </data>
@@ -292,9 +233,6 @@
   <data name="Tickets_Buy_SupporterIntro" xml:space="preserve">
     <value>Upgrade your experience and help us make the best event we can. Your ticket stays at your price; the rest is a donation to the association, with no VAT, and it is not refunded.</value>
   </data>
-  <data name="Tickets_Buy_SupporterBreakdown" xml:space="preserve">
-    <value>{0} ticket + {1} donation</value>
-  </data>
   <data name="Tickets_Buy_Terms" xml:space="preserve">
     <value>Ticket rules</value>
   </data>
@@ -306,6 +244,12 @@
   </data>
   <data name="Tickets_Buy_TermsRequired" xml:space="preserve">
     <value>Please accept the ticket rules to continue.</value>
+  </data>
+  <data name="Tickets_Buy_TermsChanged" xml:space="preserve">
+    <value>The ticket rules have changed since you opened this page. Please read them again and accept them to continue.</value>
+  </data>
+  <data name="Tickets_Buy_TermsUnavailable" xml:space="preserve">
+    <value>The ticket rules cannot be loaded right now, so tickets cannot be bought. Please try again in a few minutes.</value>
   </data>
   <data name="Tickets_Resale_InviteInvalid" xml:space="preserve">
     <value>This invitation link is no longer valid, or it was sent to a different email address than the one you are signed in with.</value>
@@ -531,5 +475,86 @@
   </data>
   <data name="Tickets_Delivery_Ticket_Riders" xml:space="preserve">
     <value>The tickets of the children coming with you are here too. Each one has its own code: show them at the gate with yours.</value>
+  </data>
+  <data name="Tickets_Buy_Others" xml:space="preserve">
+    <value>Tickets for other people</value>
+  </data>
+  <data name="Tickets_Buy_OthersHelp" xml:space="preserve">
+    <value>Add people who are already in Humans, by the email address they use there. Each gets a ticket in their own legal name, sent to them. Each ticket costs the public price ({0}).</value>
+  </data>
+  <data name="Tickets_Buy_OtherEmail" xml:space="preserve">
+    <value>Email of person {0}</value>
+  </data>
+  <data name="Tickets_Buy_OthersAdd" xml:space="preserve">
+    <value>Add another person</value>
+  </data>
+  <data name="Tickets_Buy_OthersTooMany" xml:space="preserve">
+    <value>One order can hold tickets for up to {0} other people.</value>
+  </data>
+  <data name="Tickets_Buy_OtherNotFound" xml:space="preserve">
+    <value>Nobody in Humans has {0} as a confirmed email address. They need to join Humans first; then you can buy their ticket.</value>
+  </data>
+  <data name="Tickets_Buy_OtherIsYou" xml:space="preserve">
+    <value>{0} is your own address; tick the box for your own ticket instead.</value>
+  </data>
+  <data name="Tickets_Buy_OtherNeedsName" xml:space="preserve">
+    <value>The person with {0} has not filled in their legal name in Humans yet. A ticket carries the legal name, so they need to add it first.</value>
+  </data>
+  <data name="Tickets_Buy_OtherHolds" xml:space="preserve">
+    <value>The person with {0} already has a ticket for this event, so you cannot buy them another.</value>
+  </data>
+  <data name="Tickets_Companion_Ask" xml:space="preserve">
+    <value>Ask for a companion ticket</value>
+  </data>
+  <data name="Tickets_Companion_AskHelp" xml:space="preserve">
+    <value>If you need someone with you to take part, for example because of a disability, they can come on a free companion ticket. They must already be in Humans. The ticketing team reads your request and answers here.</value>
+  </data>
+  <data name="Tickets_Companion_Email" xml:space="preserve">
+    <value>Your companion's email in Humans</value>
+  </data>
+  <data name="Tickets_Companion_Note" xml:space="preserve">
+    <value>Why you need a companion</value>
+  </data>
+  <data name="Tickets_Companion_NoteHelp" xml:space="preserve">
+    <value>A sentence is enough. Only the ticketing team reads it; no medical details are needed.</value>
+  </data>
+  <data name="Tickets_Companion_Send" xml:space="preserve">
+    <value>Send request</value>
+  </data>
+  <data name="Tickets_Companion_Requested" xml:space="preserve">
+    <value>Your companion request was sent to the ticketing team.</value>
+  </data>
+  <data name="Tickets_Companion_Pending" xml:space="preserve">
+    <value>Your companion request is waiting for the ticketing team.</value>
+  </data>
+  <data name="Tickets_Companion_Withdraw" xml:space="preserve">
+    <value>Withdraw request</value>
+  </data>
+  <data name="Tickets_Companion_Withdrawn" xml:space="preserve">
+    <value>Companion request withdrawn.</value>
+  </data>
+  <data name="Tickets_Companion_Declined" xml:space="preserve">
+    <value>The ticketing team declined your companion request: {0}</value>
+  </data>
+  <data name="Tickets_Companion_NotAllowed" xml:space="preserve">
+    <value>This ticket cannot take a companion request: it needs to be a valid adult ticket with no companion and no request waiting.</value>
+  </data>
+  <data name="Tickets_Companion_NoteRequired" xml:space="preserve">
+    <value>Say briefly why you need a companion, in at most 500 characters.</value>
+  </data>
+  <data name="Tickets_Companion_NothingPending" xml:space="preserve">
+    <value>There is no companion request waiting on this ticket.</value>
+  </data>
+  <data name="Tickets_Companion_NotFound" xml:space="preserve">
+    <value>Nobody in Humans has that confirmed email address. Your companion needs to join Humans first.</value>
+  </data>
+  <data name="Tickets_Companion_IsYou" xml:space="preserve">
+    <value>That is your own address; give your companion's.</value>
+  </data>
+  <data name="Tickets_Companion_NeedsName" xml:space="preserve">
+    <value>Your companion has not filled in their legal name in Humans yet. A ticket carries the legal name, so they need to add it first.</value>
+  </data>
+  <data name="Tickets_Companion_Holds" xml:space="preserve">
+    <value>Your companion already has a ticket for this event, so they do not need a companion ticket.</value>
   </data>
 </root>

@@ -1,5 +1,6 @@
 using Humans.Tickets.Contracts;
 using Humans.Tickets.Domain.Checkout;
+using Microsoft.Extensions.Hosting;
 using NodaTime;
 
 namespace Humans.Tickets.Services.Checkout;
@@ -14,6 +15,9 @@ internal sealed partial class TicketCheckoutService
             .Concat((await AllOrdersAsync(salesEvents, ct)).Select(o => o.BackendKey))
             .Distinct(StringComparer.Ordinal).Where(key => BackendFor(key) is not null).Order(StringComparer.Ordinal).ToList();
     }
+
+    /// <summary>QA, previews and dev share the backends' test accounts, so each sees the others' orders.</summary>
+    private bool SharedAccount => !environment.IsProduction();
 
     public async Task<TicketRecon?> ReconcileBackendAsync(
         string backendKey, Instant from, Instant to, CancellationToken ct = default)
@@ -61,7 +65,37 @@ internal sealed partial class TicketCheckoutService
                      .Select(o => o.SalesEventId).Distinct())
             tickets.AddRange(await repository.GetTicketsForSalesEventAsync(salesEventId, ct));
 
-        return TicketReconBuilder.Build(backendKey, from, to, orders, backendOrders, tickets);
+        return TicketReconBuilder.Build(backendKey, from, to, orders, backendOrders, tickets, SharedAccount);
+    }
+
+    public async Task<TicketPaymentRecon?> ReconcilePaymentsAsync(
+        string backendKey, Instant from, Instant to, CancellationToken ct = default)
+    {
+        if (BackendFor(backendKey) is not { IsConfigured: true } backend)
+            return null;
+
+        var orders = await AllOrdersAsync(await repository.GetSalesEventsAsync(ct), ct);
+        PaymentLedger? ledger;
+        IReadOnlyCollection<Guid>? returnedLater = null;
+        try
+        {
+            ledger = await backend.GetPaymentLedgerAsync(from, to, ct);
+            var now = clock.GetCurrentInstant();
+            if (ledger is not null && to < now && TicketPaymentReconBuilder.AwaitsReturn(ledger, orders, backendKey)
+                && await backend.GetPaymentLedgerAsync(to, now, ct) is { } later)
+                returnedLater = TicketPaymentReconBuilder.Returned(later);
+        }
+        catch (Exception ex) when (ex is TicketCheckoutException or HttpRequestException
+                                       || (ex is TaskCanceledException && !ct.IsCancellationRequested))
+        {
+            logger.LogWarning(ex, "Payment reconciliation could not read {Backend}", backendKey);
+            return TicketPaymentReconBuilder.Unreadable(backendKey, from, to,
+                $"{backendKey}'s payment account could not be read: {ex.Message}");
+        }
+
+        if (ledger is null)
+            return null;
+        return TicketPaymentReconBuilder.Build(backendKey, from, to, ledger, orders, returnedLater, SharedAccount);
     }
 
     /// <summary>Three reconcile runs past expiry: by then the reconcile should have settled the order either way.</summary>

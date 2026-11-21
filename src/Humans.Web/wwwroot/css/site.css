@@ -3075,6 +3075,43 @@ body.city-map-fullscreen main {
     .stats { grid-template-columns: 1fr; }
 }
 
+/* Member checkout pages (/Tickets/Buy): the price summary beside the form, its lines, the pay button. */
+.buy-total {
+    font-family: var(--h-font-display);
+    font-size: 3rem;
+    font-weight: 700;
+    line-height: 1.05;
+    color: var(--h-aged-ink);
+    font-variant-numeric: tabular-nums;
+}
+
+.buy-lines {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    row-gap: 6px;
+    margin: 16px 0 0;
+    padding-top: 12px;
+    border-top: 1px solid var(--h-border-light);
+    font-variant-numeric: tabular-nums;
+}
+
+.buy-lines dt { font-weight: 400; }
+.buy-lines dd { margin: 0; padding-left: 16px; text-align: right; white-space: nowrap; }
+.buy-lines .buy-lines-sub { border-top: 1px solid var(--h-border-light); padding-top: 6px; }
+
+@media (min-width: 992px) {
+    .buy-summary { position: sticky; top: 24px; }
+}
+
+@media (max-width: 767.98px) {
+    .buy-pay { width: 100%; }
+}
+
+.ticket-code {
+    max-width: 260px;
+    image-rendering: pixelated;
+}
+
 /* /Users/Me: section-contributed cards packed into columns so a short card never leaves a hole beside a tall one. */
 .profile-tiles {
     columns: 2 300px;
@@ -3112,4 +3149,10 @@ body.city-map-fullscreen main {
     grid-template-columns: 4.5rem minmax(0, 11rem) minmax(0, 1fr);
     gap: .35rem 1rem;
     align-items: baseline;
+}
+
+/* --- Ticket rules on the buy page: legal markdown inside a form, so its headings stay small --- */
+.ticket-rules .document-content :is(h1, h2, h3) {
+    font-size: 1.15rem;
+    margin-top: 1rem;
 }

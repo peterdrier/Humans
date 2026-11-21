@@ -5,6 +5,7 @@ namespace Humans.Tickets;
 /// <summary>The audit actions Tickets writes. Names are stored on audit rows: never rename one.</summary>
 internal sealed class TicketsAuditActions : AuditActionContributor
 {
+    // Retired with the transfer-request pages: nothing writes them; declared so stored 2026 rows keep their verb.
     public static readonly AuditActionDefinition TicketTransferRequested = new("TicketTransferRequested");
 
     public static readonly AuditActionDefinition TicketTransferApproved = new("TicketTransferApproved");
@@ -39,7 +40,7 @@ internal sealed class TicketsAuditActions : AuditActionContributor
 
     public static readonly AuditActionDefinition TicketCheckoutRefunded = new("TicketCheckoutRefunded");
 
-    /// <summary>Automation left the ticketing team something to do: a duplicate or unattached partner ticket, a refund to pay by hand.</summary>
+    /// <summary>Automation left the ticketing team something to do: someone who ended up with two tickets, a refund to pay by hand.</summary>
     public static readonly AuditActionDefinition TicketCheckoutNeedsAttention = new("TicketCheckoutNeedsAttention");
 
     public static readonly AuditActionDefinition TicketResaleOffered = new("TicketResaleOffered");
@@ -51,10 +52,17 @@ internal sealed class TicketsAuditActions : AuditActionContributor
     public static readonly AuditActionDefinition TicketCheckoutTicketVoided = new("TicketCheckoutTicketVoided");
 
     public static readonly AuditActionDefinition TicketCompanionIssued = new("TicketCompanionIssued");
+
+    /// <summary>The ticketing team approved or declined a holder's companion request.</summary>
+    public static readonly AuditActionDefinition TicketCompanionRequestDecided = new("TicketCompanionRequestDecided");
     /// <summary>Ticket emails and the receipt, queued automatically once an order's tickets were issued.</summary>
     public static readonly AuditActionDefinition TicketDeliverySent = new("TicketDeliverySent");
 
     public static readonly AuditActionDefinition TicketDeliveryResent = new("TicketDeliveryResent");
 
     public static readonly AuditActionDefinition TicketJoinInvitationSent = new("TicketJoinInvitationSent");
+
+    public static readonly AuditActionDefinition TicketScheduledSyncEnabled = new("TicketScheduledSyncEnabled");
+
+    public static readonly AuditActionDefinition TicketScheduledSyncDisabled = new("TicketScheduledSyncDisabled");
 }

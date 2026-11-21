@@ -11,6 +11,8 @@ internal sealed class UsersAuditActions : AuditActionContributor
 
     public static readonly AuditActionDefinition AccountAnonymized = new("AccountAnonymized");
 
+    public static readonly AuditActionDefinition DeletionHeldForTicket = new("DeletionHeldForTicket");
+
     public static readonly AuditActionDefinition MembershipsRevokedOnDeletionRequest = new("MembershipsRevokedOnDeletionRequest");
 
     public static readonly AuditActionDefinition AccountMergeAccepted = new("AccountMergeAccepted");

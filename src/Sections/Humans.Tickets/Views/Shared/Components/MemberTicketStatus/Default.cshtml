@@ -56,11 +56,6 @@
                         {
                             <a class="btn btn-sm btn-outline-secondary" asp-controller="TicketBuy" asp-action="Index">@Localizer["Tickets_Buy_Title"]</a>
                         }
-                        @if (Model.UserTicketCount > 0)
-                        {
-                            <a class="btn btn-sm btn-outline-secondary"
-                               asp-controller="TicketTransfer" asp-action="Index">@Localizer["Tickets_MemberTicketStatus_Transfers"]</a>
-                        }
                     </div>
                 }
                 else if (Model.ParticipationStatus == ParticipationStatus.NotAttending)

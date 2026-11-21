@@ -47,13 +47,9 @@ Matching is by **attendee email**, not buyer email. The sync compares each atten
 
 If you have paid but your card still says you do not have a ticket, the attendee email on the order probably is not on your profile. Go to `/Profile/Me/Emails`, add the email you used at checkout, verify it, and the next sync picks it up. You buy tickets on the vendor's site — the Dashboard ticket card links out when you do not already have one matched.
 
-### Pass your ticket to someone else
-
-Can't make it, or bought a ticket under your name for a friend? You can transfer a ticket you hold to another person from **Tickets → Transfers** (`/Tickets/Transfers`). You start the request, the ticketing team completes the swap with the vendor, and you both get an email. A ticket that has already been scanned at the gate can no longer be transferred. Full walkthrough: [Transferring your ticket](TicketTransfers.md).
-
 ## As a Board member / Admin (Tickets Admin)
 
-Tickets Admin, Admin, and Board all see the Tickets dashboard, the transfer queue, the attendee-contacts preview, and the gate-account page. Board can view everything but cannot trigger sync, export, generate codes, decide transfers, apply the contact import, or set the gate password — those require Tickets Admin or Admin.
+Tickets Admin, Admin, and Board all see the Tickets dashboard, the attendee-contacts preview, and the gate-account page. Board can view everything but cannot trigger sync, export, generate codes, apply the contact import, or set the gate password — those require Tickets Admin or Admin.
 
 ### Dashboard, orders, and attendees
 
@@ -88,10 +84,6 @@ A separate **Full Re-sync** button (Admin-only, with a confirmation prompt) clea
 ### Backfilling participation
 
 When you import historical attendance from outside the vendor (e.g. from a previous year's spreadsheet), Admins can paste a CSV of `UserId,Status` rows at `/Tickets/Participation/Backfill`. The page is scoped to the active event year. Tickets Admin and Board do not have access to this page.
-
-### Process ticket transfers
-
-When a Volunteer requests a ticket transfer (see [Transferring your ticket](TicketTransfers.md)), it lands in the admin queue at `/Tickets/Admin/Transfers`. Open a request's detail to review it, then process it. **Process transfer** does the void-and-reissue at the vendor automatically — the original ticket is voided to a hold and the same ticket type is reissued to the recipient at the original price, with no refund or order change. Or do the swap by hand in the vendor dashboard and use **Mark successful** to record it (the next sync reconciles the local attendee rows). If the automated path half-fails (ticket voided but the reissue failed), a **Retry reissue** button finishes it from the held seat. If the recipient has no email on file, Process transfer and Retry reissue refuse and tell you to finish the swap in the vendor dashboard and use **Mark successful**. Either way both people are emailed. **Cancel transfer** requires a reason, which is emailed to the sender and recipient. Process transfer is not offered once the ticket has been scanned at the gate or is no longer valid; cancel the request, or use Mark successful only if the swap was already done at the vendor. Tickets Admin and Admin make the decisions; Board can open the queue and requests read-only.
 
 ### Import attendee contacts
 

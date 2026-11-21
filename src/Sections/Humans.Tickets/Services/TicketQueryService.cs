@@ -59,7 +59,7 @@ internal sealed class TicketQueryService(
         var currentEventId = syncState?.VendorEventId;
         var orders = await ticketRepository.GetAllOrdersWithAttendeesAsync(ct);
 
-        var approved = await ticketTransferRepository.GetByStatusAsync(TicketTransferStatus.Approved, ct);
+        var approved = await ticketTransferRepository.GetApprovedAsync(ct);
         var transfersByAttendee = approved
             .GroupBy(t => t.OriginalTicketAttendeeId)
             .ToDictionary(g => g.Key, g => g.OrderByDescending(t => t.DecidedAt).First());
@@ -243,9 +243,6 @@ internal sealed class TicketQueryService(
         await ticketRepository.EraseUserPiiAsync(userId, ct);
         await ticketTransferRepository.ErasePiiForUserAsync(userId, ct);
     }
-
-    public Task<IReadOnlyList<OrderDriftRow>> GetOrderDriftAsync(CancellationToken ct = default) =>
-        ticketRepository.GetOrderDriftAsync(ct);
 
     public async Task<WhoHasntBoughtResult> GetWhoHasntBoughtAsync(
         string? search, string? filterTeam, string? filterTier, string? filterTicketStatus,
@@ -817,11 +814,6 @@ internal sealed class TicketQueryService(
             .ToList();
 
         var attendees = await ticketRepository.GetAttendeesVisibleToUserAsync(userId, ct);
-        // GroupBy, not ToDictionary: stray duplicate pendings must not crash the dashboard read.
-        var pendingByAttendee = (await ticketTransferRepository.GetBySenderAsync(userId, ct))
-            .Where(r => r.Status == TicketTransferStatus.Pending)
-            .GroupBy(r => r.OriginalTicketAttendeeId)
-            .ToDictionary(g => g.Key, g => g.First().Id);
         var tickets = attendees
             .Where(a => TicketAttendeeOwnership.IsCurrentOwner(a, userId))
             .Select(a => new UserTicketHoldingRow(
@@ -831,10 +823,6 @@ internal sealed class TicketQueryService(
                 a.VendorTicketId,
                 a.TicketTypeName,
                 a.Status,
-                HasPendingOutgoingTransfer: pendingByAttendee.ContainsKey(a.Id),
-                PendingTransferRequestId: pendingByAttendee.TryGetValue(a.Id, out var transferId)
-                    ? transferId
-                    : null,
                 CheckedInAt: a.CheckedInAt))
             .ToList();
 
@@ -843,9 +831,7 @@ internal sealed class TicketQueryService(
         var hasCurrentEventTicket = syncState is not null
             && !string.IsNullOrEmpty(syncState.VendorEventId)
             && await ticketRepository.HasEventTicketAsync(userId, syncState.VendorEventId, ct);
-        var postEventHoldDate = hasCurrentEventTicket
-            ? GetPostEventHoldDate()
-            : null;
+        var postEventHoldDate = await GetPostEventHoldDateAsync(userId, hasCurrentEventTicket, ct);
 
         return new UserTicketHoldings(
             orderCount,
@@ -859,22 +845,39 @@ internal sealed class TicketQueryService(
         };
     }
 
-    private Instant? GetPostEventHoldDate()
+    /// <summary>
+    /// The latest hold over the active event (a vendor-synced ticket) and every event the person holds a Humans-issued
+    /// ticket for; null once all of them are past.
+    /// </summary>
+    private async Task<Instant?> GetPostEventHoldDateAsync(Guid userId, bool hasCurrentEventTicket, CancellationToken ct)
     {
-        var activeEvent = settingsService.GetActiveEventSettings();
-        if (activeEvent is null)
-            return null;
+        var events = new List<EventSettingsInfo>();
+        if (hasCurrentEventTicket && settingsService.GetActiveEventSettings() is { } activeEvent)
+            events.Add(activeEvent);
 
-        var tz = activeEvent.TimeZone;
-        var postEventDate = activeEvent.GateOpeningDate
-            .PlusDays(activeEvent.StrikeEndOffset + 1);
-        var postEventInstant = postEventDate
-            .AtStartOfDayInZone(tz)
-            .ToInstant();
+        var heldSalesEventIds = (await checkout.GetTicketsForHolderAsync(userId, ct))
+            .Where(t => t.State is TicketCheckoutTicketState.Valid or TicketCheckoutTicketState.Offered)
+            .Select(t => t.SalesEventId)
+            .Distinct();
+        foreach (var salesEventId in heldSalesEventIds)
+        {
+            if (await checkout.GetSalesEventAsync(salesEventId, ct) is { } salesEvent
+                && await settingsService.GetEventSettingsByIdAsync(salesEvent.EventSettingsId, ct) is { } ev)
+                events.Add(ev);
+        }
 
         var now = clock.GetCurrentInstant();
-        return postEventInstant > now ? postEventInstant : null;
+        return events.Select(PostEventHoldDate)
+            .Where(hold => hold > now)
+            .Select(hold => (Instant?)hold)
+            .Max();
     }
+
+    /// <summary>A ticket holder's deletion waits until about 30 days after the event (use case H19).</summary>
+    private static readonly Period PostEventHold = Period.FromDays(30);
+
+    private static Instant PostEventHoldDate(EventSettingsInfo ev) =>
+        ev.GateOpeningDate.PlusDays(ev.StrikeEndOffset + 1).Plus(PostEventHold).AtStartOfDayInZone(ev.TimeZone).ToInstant();
 
     private async Task<int> ComputeUserTicketCountAsync(Guid userId, CancellationToken ct)
     {

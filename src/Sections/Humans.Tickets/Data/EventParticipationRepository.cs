@@ -62,6 +62,22 @@ internal sealed class EventParticipationRepository(IDbContextFactory<TicketsDbCo
         return true;
     }
 
+    public async Task<bool> UndoCheckInAsync(Guid userId, int year, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        var existing = await ctx.EventParticipations
+            .FirstOrDefaultAsync(ep => ep.UserId == userId && ep.Year == year, ct);
+        if (existing is not { Status: ParticipationStatus.Attended })
+            return false;
+
+        existing.Status = ParticipationStatus.Ticketed;
+        existing.Source = ParticipationSource.TicketSync;
+        existing.DeclaredAt = null;
+        existing.CheckedInAt = null;
+        await ctx.SaveChangesAsync(ct);
+        return true;
+    }
+
     public async Task<bool> ClearAsync(
         Guid userId, int year, ParticipationSource requiredSource,
         CancellationToken ct = default)

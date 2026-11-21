@@ -40,56 +40,14 @@
   <resheader name="writer">
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
-  <data name="Tickets_TicketTransfer_Pending" xml:space="preserve">
-    <value>In attesa di revisione</value>
-  </data>
-  <data name="Tickets_TicketTransfer_AlreadyPending" xml:space="preserve"><value>Trasferimento già in sospeso</value></data>
-  <data name="Tickets_TicketTransfer_CancelRequest" xml:space="preserve"><value>Annulla richiesta</value></data>
-  <data name="Tickets_TicketTransfer_CheckedIn" xml:space="preserve"><value>Check-in già effettuato — non può essere trasferito</value></data>
-  <data name="Tickets_TicketTransfer_ConfirmDetails" xml:space="preserve"><value>Questo richiederà il trasferimento del biglietto {0} ({1}) a {2}.</value></data>
-  <data name="Tickets_TicketTransfer_ConfirmNote" xml:space="preserve"><value>Il nostro team biglietti lo elaborerà e ti farà sapere a breve.</value></data>
-  <data name="Tickets_TicketTransfer_Continue" xml:space="preserve"><value>Continua</value></data>
-  <data name="Tickets_TicketTransfer_NoneTransferable" xml:space="preserve"><value>Nessuno dei tuoi biglietti può essere trasferito in questo momento.</value></data>
-  <data name="Tickets_TicketTransfer_NoRequests" xml:space="preserve"><value>Non hai richiesto alcun trasferimento.</value></data>
-  <data name="Tickets_TicketTransfer_NoTickets" xml:space="preserve"><value>Non hai biglietti da trasferire.</value></data>
-  <data name="Tickets_TicketTransfer_NotTransferable" xml:space="preserve"><value>Non trasferibile</value></data>
-  <data name="Tickets_TicketTransfer_ReasonLabel" xml:space="preserve"><value>Motivo del trasferimento (facoltativo, visibile al team biglietti)</value></data>
-  <data name="Tickets_TicketTransfer_RecipientPlaceholder" xml:space="preserve"><value>Cerca per nome, o incolla la sua email esatta…</value></data>
-  <data name="Tickets_TicketTransfer_Requested" xml:space="preserve"><value>Richiesto</value></data>
-  <data name="Tickets_TicketTransfer_RequestTransfer" xml:space="preserve"><value>Richiedi trasferimento</value></data>
-  <data name="Tickets_TicketTransfer_StatusApproved" xml:space="preserve"><value>Completato</value></data>
-  <data name="Tickets_TicketTransfer_StatusCancelled" xml:space="preserve"><value>Annullato</value></data>
-  <data name="Tickets_TicketTransfer_StatusRejected" xml:space="preserve"><value>Annullato dal team</value></data>
-  <data name="Tickets_TicketTransfer_Step1" xml:space="preserve"><value>1. Scegli il biglietto da trasferire</value></data>
-  <data name="Tickets_TicketTransfer_Step2" xml:space="preserve"><value>2. A chi lo stai inviando?</value></data>
-  <data name="Tickets_TicketTransfer_Step3" xml:space="preserve"><value>3. Conferma</value></data>
-  <data name="Tickets_TicketTransfer_Title" xml:space="preserve"><value>Trasferisci un biglietto</value></data>
-  <data name="Tickets_TicketTransfer_YourRequests" xml:space="preserve"><value>Le tue richieste di trasferimento</value></data>
-  <data name="Tickets_TicketTransfer_InvalidSelection" xml:space="preserve"><value>Impossibile preparare il trasferimento: scegli uno dei tuoi biglietti e una persona destinataria valida diversa da te.</value></data>
-  <data name="Tickets_TicketTransfer_RequestSubmitted" xml:space="preserve"><value>Trasferimento richiesto. Il nostro team biglietti lo elaborerà e ti farà sapere a breve.</value></data>
-  <data name="Tickets_TicketTransfer_Cancelled" xml:space="preserve"><value>Trasferimento annullato.</value></data>
-  <data name="Tickets_TicketTransfer_NotFound" xml:space="preserve"><value>Trasferimento non trovato.</value></data>
-  <data name="Tickets_TicketTransfer_OnlyPendingCanBeCancelled" xml:space="preserve"><value>È possibile annullare solo i trasferimenti in sospeso.</value></data>
-  <data name="Tickets_TicketTransfer_OnlySenderCanCancel" xml:space="preserve"><value>Solo il mittente può annullare questo trasferimento.</value></data>
-  <data name="Tickets_TicketTransfer_CancelFailed" xml:space="preserve"><value>Impossibile annullare il trasferimento. Aggiorna la pagina o contatta il team biglietti.</value></data>
-  <data name="Tickets_TicketTransfer_NotCurrentHolder" xml:space="preserve"><value>Puoi trasferire solo i biglietti di cui sei attualmente titolare.</value></data>
   <data name="Tickets_TicketStub_EventLabel" xml:space="preserve"><value>{0} · Ingresso singolo</value></data>
   <data name="Tickets_TicketStub_CheckedIn" xml:space="preserve"><value>Check-in effettuato</value></data>
   <data name="Tickets_TicketStub_Void" xml:space="preserve"><value>Annullato</value></data>
   <data name="Tickets_TicketStub_EarlyEntry" xml:space="preserve"><value>Ingresso anticipato {0}</value><comment>{0} = data di ingresso</comment></data>
-  <data name="Tickets_TicketStub_TransferPending" xml:space="preserve"><value>Trasferimento in attesa</value></data>
   <data name="Tickets_TicketHoldings_Title" xml:space="preserve"><value>Biglietti</value></data>
   <data name="Tickets_TicketHoldings_OrderSingular" xml:space="preserve"><value>ordine</value></data>
   <data name="Tickets_TicketHoldings_OrderPlural" xml:space="preserve"><value>ordini</value></data>
   <data name="Tickets_TicketHoldings_Empty" xml:space="preserve"><value>Nessun biglietto.</value></data>
-  <data name="Tickets_MemberTicketStatus_Transfers" xml:space="preserve"><value>Trasferimenti…</value></data>
-  <data name="Tickets_TicketTransfer_Email_Requested_Subject" xml:space="preserve"><value>Richiesta di trasferimento del biglietto</value></data>
-  <data name="Tickets_TicketTransfer_Email_Requested_Body" xml:space="preserve"><value>&lt;p&gt;Ciao {0},&lt;/p&gt;&lt;p&gt;Abbiamo ricevuto la tua richiesta di trasferire il biglietto &lt;strong&gt;{1}&lt;/strong&gt; a &lt;strong&gt;{2}&lt;/strong&gt;.&lt;/p&gt;&lt;p&gt;Il nostro team biglietti la elaborerà e ti aggiornerà a breve. Non devi fare altro.&lt;/p&gt;</value></data>
-  <data name="Tickets_TicketTransfer_Email_Completed_Subject" xml:space="preserve"><value>Trasferimento del biglietto completato</value></data>
-  <data name="Tickets_TicketTransfer_Email_Completed_Body" xml:space="preserve"><value>&lt;p&gt;Ciao {0},&lt;/p&gt;&lt;p&gt;Il trasferimento del biglietto &lt;strong&gt;{1}&lt;/strong&gt; a &lt;strong&gt;{2}&lt;/strong&gt; è stato completato.&lt;/p&gt;</value></data>
-  <data name="Tickets_TicketTransfer_Email_Cancelled_Subject" xml:space="preserve"><value>Trasferimento del biglietto annullato</value></data>
-  <data name="Tickets_TicketTransfer_Email_Cancelled_Body" xml:space="preserve"><value>&lt;p&gt;Ciao {0},&lt;/p&gt;&lt;p&gt;Il trasferimento richiesto del biglietto &lt;strong&gt;{1}&lt;/strong&gt; a &lt;strong&gt;{2}&lt;/strong&gt; non è stato completato.&lt;/p&gt;{3}&lt;p&gt;Se hai domande, rispondi a questa email e il nostro team biglietti ti aiuterà.&lt;/p&gt;</value></data>
-  <data name="Tickets_TicketTransfer_Email_Cancelled_Reason" xml:space="preserve"><value>&lt;p&gt;&lt;strong&gt;Motivo:&lt;/strong&gt; {0}&lt;/p&gt;</value></data>
   <data name="Tickets_Onsite_Since" xml:space="preserve"><value>Sul posto da {0}</value></data>
   <data name="Tickets_Onsite_Title" xml:space="preserve"><value>Check-in effettuato al gate</value></data>
   <data name="Tickets_NotAttending_Declared" xml:space="preserve"><value>Sei stato/a contrassegnato/a come non partecipante quest'anno.</value></data>
@@ -99,7 +57,6 @@
   <data name="Tickets_NotAttending_Undone" xml:space="preserve"><value>La tua dichiarazione è stata rimossa.</value></data>
   <data name="Tickets_NotAttending_UndoFailed" xml:space="preserve"><value>Impossibile annullare: la sincronizzazione dei biglietti potrebbe aver aggiornato il tuo stato.</value></data>
   <data name="Tickets_MemberTicketStatus_Unavailable" xml:space="preserve"><value>Lo stato del tuo biglietto non è disponibile al momento. Riprova più tardi.</value></data>
-  <data name="Tickets_TicketTransfer_ReasonTooLong" xml:space="preserve"><value>Le motivazioni non possono superare i 1000 caratteri.</value></data>
   <data name="Tickets_Meter_SyncError" xml:space="preserve"><value>Errore di sincronizzazione dei biglietti</value></data>
   <data name="Tickets_Meter_AudienceAdmin" xml:space="preserve"><value>amministratori</value></data>
   <data name="Tickets_Buy_Title" xml:space="preserve">
@@ -111,11 +68,11 @@
   <data name="Tickets_Buy_YourPrice" xml:space="preserve">
     <value>Il tuo prezzo</value>
   </data>
-  <data name="Tickets_Buy_WavePrice" xml:space="preserve">
-    <value>Fase attuale: {0}, {1}</value>
-  </data>
   <data name="Tickets_Buy_Total" xml:space="preserve">
     <value>Totale</value>
+  </data>
+  <data name="Tickets_Buy_ForSelfHeading" xml:space="preserve">
+    <value>Il tuo biglietto</value>
   </data>
   <data name="Tickets_Buy_ForSelf" xml:space="preserve">
     <value>Un biglietto per me ({0})</value>
@@ -128,18 +85,6 @@
   </data>
   <data name="Tickets_Buy_SupporterOption" xml:space="preserve">
     <value>{0} in totale: il tuo biglietto più una donazione di {1}</value>
-  </data>
-  <data name="Tickets_Buy_Partner" xml:space="preserve">
-    <value>Un biglietto per un'altra persona</value>
-  </data>
-  <data name="Tickets_Buy_PartnerHelp" xml:space="preserve">
-    <value>Nome legale ed email. Avrà un proprio account e il biglietto sarà suo. Costa il prezzo pubblico ({0}).</value>
-  </data>
-  <data name="Tickets_Buy_PartnerName" xml:space="preserve">
-    <value>Nome legale</value>
-  </data>
-  <data name="Tickets_Buy_PartnerEmail" xml:space="preserve">
-    <value>Email</value>
   </data>
   <data name="Tickets_Buy_Donation" xml:space="preserve">
     <value>Aggiungi una donazione</value>
@@ -225,12 +170,6 @@
   <data name="Tickets_Buy_AlreadyHolds" xml:space="preserve">
     <value>Hai già un biglietto per questo evento.</value>
   </data>
-  <data name="Tickets_Buy_PartnerIncomplete" xml:space="preserve">
-    <value>Per il biglietto di un'altra persona, indica il nome legale e un'email valida.</value>
-  </data>
-  <data name="Tickets_Buy_PartnerIsYou" xml:space="preserve">
-    <value>Quell'email è tua; seleziona invece il tuo biglietto.</value>
-  </data>
   <data name="Tickets_Buy_Invalid" xml:space="preserve">
     <value>Questa scelta non è disponibile. Riprova.</value>
   </data>
@@ -303,9 +242,6 @@
   <data name="Tickets_Buy_SupporterIntro" xml:space="preserve">
     <value>Migliora la tua esperienza e aiutaci a fare il miglior evento possibile. Il tuo biglietto resta al tuo prezzo; il resto è una donazione all'associazione, senza IVA e non rimborsabile.</value>
   </data>
-  <data name="Tickets_Buy_SupporterBreakdown" xml:space="preserve">
-    <value>{0} di biglietto + {1} di donazione</value>
-  </data>
   <data name="Tickets_Buy_Terms" xml:space="preserve">
     <value>Regole dei biglietti</value>
   </data>
@@ -317,6 +253,12 @@
   </data>
   <data name="Tickets_Buy_TermsRequired" xml:space="preserve">
     <value>Accetta le regole dei biglietti per continuare.</value>
+  </data>
+  <data name="Tickets_Buy_TermsChanged" xml:space="preserve">
+    <value>Le regole dei biglietti sono cambiate da quando hai aperto questa pagina. Rileggile e accettale per continuare.</value>
+  </data>
+  <data name="Tickets_Buy_TermsUnavailable" xml:space="preserve">
+    <value>Al momento non è possibile caricare le regole dei biglietti, quindi non si possono acquistare biglietti. Riprova tra qualche minuto.</value>
   </data>
   <data name="Tickets_Resale_InviteInvalid" xml:space="preserve">
     <value>Questo link di invito non è più valido, oppure è stato inviato a un'email diversa da quella con cui hai effettuato l'accesso.</value>
@@ -542,5 +484,86 @@
   </data>
   <data name="Tickets_Delivery_Ticket_Riders" xml:space="preserve">
     <value>Qui ci sono anche i biglietti dei bambini che vengono con te. Ognuno ha il suo codice: mostrali all'ingresso insieme al tuo.</value>
+  </data>
+  <data name="Tickets_Buy_Others" xml:space="preserve">
+    <value>Biglietti per altre persone</value>
+  </data>
+  <data name="Tickets_Buy_OthersHelp" xml:space="preserve">
+    <value>Aggiungi persone che sono già su Humans, con l'email che usano lì. Ognuna riceve un biglietto a proprio nome legale. Ogni biglietto costa il prezzo pubblico ({0}).</value>
+  </data>
+  <data name="Tickets_Buy_OtherEmail" xml:space="preserve">
+    <value>Email della persona {0}</value>
+  </data>
+  <data name="Tickets_Buy_OthersAdd" xml:space="preserve">
+    <value>Aggiungi un'altra persona</value>
+  </data>
+  <data name="Tickets_Buy_OthersTooMany" xml:space="preserve">
+    <value>Un ordine può contenere biglietti per al massimo {0} altre persone.</value>
+  </data>
+  <data name="Tickets_Buy_OtherNotFound" xml:space="preserve">
+    <value>Nessuno su Humans ha {0} come email confermata. Prima deve iscriversi a Humans; poi potrai comprare il suo biglietto.</value>
+  </data>
+  <data name="Tickets_Buy_OtherIsYou" xml:space="preserve">
+    <value>{0} è la tua email; seleziona invece il tuo biglietto.</value>
+  </data>
+  <data name="Tickets_Buy_OtherNeedsName" xml:space="preserve">
+    <value>La persona con {0} non ha ancora inserito il nome legale su Humans. Il biglietto riporta il nome legale, quindi deve prima aggiungerlo.</value>
+  </data>
+  <data name="Tickets_Buy_OtherHolds" xml:space="preserve">
+    <value>La persona con {0} ha già un biglietto per questo evento, quindi non puoi comprargliene un altro.</value>
+  </data>
+  <data name="Tickets_Companion_Ask" xml:space="preserve">
+    <value>Chiedi un biglietto per accompagnatore</value>
+  </data>
+  <data name="Tickets_Companion_AskHelp" xml:space="preserve">
+    <value>Se hai bisogno di qualcuno con te per partecipare, per esempio per una disabilità, può venire con un biglietto per accompagnatore gratuito. Deve essere già su Humans. Il team biglietti legge la tua richiesta e risponde qui.</value>
+  </data>
+  <data name="Tickets_Companion_Email" xml:space="preserve">
+    <value>L'email del tuo accompagnatore su Humans</value>
+  </data>
+  <data name="Tickets_Companion_Note" xml:space="preserve">
+    <value>Perché hai bisogno di un accompagnatore</value>
+  </data>
+  <data name="Tickets_Companion_NoteHelp" xml:space="preserve">
+    <value>Basta una frase. La legge solo il team biglietti; non servono dettagli medici.</value>
+  </data>
+  <data name="Tickets_Companion_Send" xml:space="preserve">
+    <value>Invia richiesta</value>
+  </data>
+  <data name="Tickets_Companion_Requested" xml:space="preserve">
+    <value>La tua richiesta di accompagnatore è stata inviata al team biglietti.</value>
+  </data>
+  <data name="Tickets_Companion_Pending" xml:space="preserve">
+    <value>La tua richiesta di accompagnatore è in attesa del team biglietti.</value>
+  </data>
+  <data name="Tickets_Companion_Withdraw" xml:space="preserve">
+    <value>Ritira la richiesta</value>
+  </data>
+  <data name="Tickets_Companion_Withdrawn" xml:space="preserve">
+    <value>Richiesta di accompagnatore ritirata.</value>
+  </data>
+  <data name="Tickets_Companion_Declined" xml:space="preserve">
+    <value>Il team biglietti ha rifiutato la tua richiesta di accompagnatore: {0}</value>
+  </data>
+  <data name="Tickets_Companion_NotAllowed" xml:space="preserve">
+    <value>Questo biglietto non accetta una richiesta di accompagnatore: deve essere un biglietto adulto valido, senza accompagnatore né richiesta in attesa.</value>
+  </data>
+  <data name="Tickets_Companion_NoteRequired" xml:space="preserve">
+    <value>Spiega brevemente perché hai bisogno di un accompagnatore, in massimo 500 caratteri.</value>
+  </data>
+  <data name="Tickets_Companion_NothingPending" xml:space="preserve">
+    <value>Non c'è nessuna richiesta di accompagnatore in attesa su questo biglietto.</value>
+  </data>
+  <data name="Tickets_Companion_NotFound" xml:space="preserve">
+    <value>Nessuno su Humans ha quell'email confermata. Il tuo accompagnatore deve prima iscriversi a Humans.</value>
+  </data>
+  <data name="Tickets_Companion_IsYou" xml:space="preserve">
+    <value>Questa è la tua email; indica quella del tuo accompagnatore.</value>
+  </data>
+  <data name="Tickets_Companion_NeedsName" xml:space="preserve">
+    <value>Il tuo accompagnatore non ha ancora inserito il nome legale su Humans. Il biglietto riporta il nome legale, quindi deve prima aggiungerlo.</value>
+  </data>
+  <data name="Tickets_Companion_Holds" xml:space="preserve">
+    <value>Il tuo accompagnatore ha già un biglietto per questo evento, quindi non gli serve un biglietto per accompagnatore.</value>
   </data>
 </root>

@@ -352,6 +352,10 @@ internal sealed partial class PretixCheckoutBackend(
 
     public string? EventRefOf(string backendOrderId) => ParseBackendOrderId(backendOrderId).EventSlug;
 
+    /// <summary>pretix takes payments through its own payment account, whose keys Humans does not hold.</summary>
+    public Task<PaymentLedger?> GetPaymentLedgerAsync(Instant from, Instant to, CancellationToken ct = default) =>
+        Task.FromResult<PaymentLedger?>(null);
+
     public async Task<IReadOnlyList<BackendOrderSummary>> ListOrdersAsync(
         string? backendEventRef, Instant from, Instant to, CancellationToken ct = default)
     {
@@ -389,13 +393,15 @@ internal sealed partial class PretixCheckoutBackend(
         var refundFees = order.Fees
             .Where(f => !f.Canceled && f.InternalType?.StartsWith(RefundCommentPrefix, StringComparison.Ordinal) == true)
             .Sum(f => f.Value);
+        var received = order.Payments.Where(p => p.State is "confirmed" or "refunded").Sum(p => p.Amount);
+        // Tickets never takes a paid order back, but pretix cancels or reopens one once a person processes a refund or
+        // chargeback, and keeps a late-paid one expired. For the list, an order that took its money stays paid,
+        // whatever went back afterwards; GetStatusAsync keeps the net rule because it decides whether tickets issue.
+        var state = status.State != CheckoutState.Paid && received > 0 && received >= order.Total - refundFees
+            ? CheckoutState.Paid
+            : status.State;
         // A paid order is charged what pretix received, so one paid twice or short shows as a total difference.
-        var charged = status.State == CheckoutState.Paid
-            ? order.Payments.Where(p => p.State is "confirmed" or "refunded").Sum(p => p.Amount)
-            : order.Total - refundFees;
-        // A refund made outside pretix (Stripe dashboard, chargeback) waits as "external" until someone processes it;
-        // the money is gone, so reconciliation counts it though GetStatusAsync does not.
-        var external = order.Refunds.Where(r => string.Equals(r.State, "external", StringComparison.Ordinal)).Sum(r => ToMinor(r.Amount));
+        var charged = state == CheckoutState.Paid ? received : order.Total - refundFees;
         return new BackendOrderSummary(
             FormatBackendOrderId(eventSlug, order.Code),
             order.ApiMeta?.TryGetValue(HumansOrderIdMeta, out var meta) == true
@@ -403,10 +409,10 @@ internal sealed partial class PretixCheckoutBackend(
                 ? orderId
                 : null,
             ParseInstant(order.Datetime) ?? throw new HttpRequestException($"pretix order {order.Code} has no datetime."),
-            status.State,
+            state,
             ToMinor(charged),
             order.Positions.Count(p => !p.Canceled && ticketItems.Contains(p.Item)),
-            status.RefundedMinor + external,
+            status.RefundedMinor,
             status.DisputedMinor);
     }
 
@@ -461,7 +467,11 @@ internal sealed partial class PretixCheckoutBackend(
         // A full refund drops the total to zero and pretix confirms a 0.00 "free" payment; that is not how they paid.
         var lastPayment = order.Payments.LastOrDefault(p => string.Equals(p.State, "confirmed", StringComparison.Ordinal) && p.Amount > 0)
             ?? order.Payments.LastOrDefault(p => string.Equals(p.State, "refunded", StringComparison.Ordinal));
-        var refunded = order.Refunds.Where(r => string.Equals(r.State, "done", StringComparison.Ordinal)).Sum(r => ToMinor(r.Amount));
+        // A refund made outside pretix (Stripe dashboard, chargeback) waits as "external" until a person processes it,
+        // but the money has already gone, so it counts from the moment pretix records it.
+        var gone = order.Refunds.Where(r => r.State is "done" or "external").ToList();
+        var disputed = gone.Where(IsChargeback).Sum(r => ToMinor(r.Amount));
+        var refunded = gone.Where(r => !IsChargeback(r)).Sum(r => ToMinor(r.Amount));
 
         return new CheckoutStatus(
             state,
@@ -472,8 +482,23 @@ internal sealed partial class PretixCheckoutBackend(
             state == CheckoutState.Paid ? ParseInstant(lastPayment?.PaymentDate) : null,
             refunded,
             // Only the newest refund counts: a retry after a failure must not read as failed while its money moves.
-            order.Refunds.MaxBy(r => r.LocalId)?.State is "failed" or "canceled");
+            // An external one cancelled in pretix is a won chargeback or a mistaken record, not a failed refund.
+            order.Refunds.Where(r => !string.Equals(r.Source, "external", StringComparison.Ordinal))
+                .MaxBy(r => r.LocalId)?.State is "failed" or "canceled",
+            disputed);
     }
+
+    /// <summary>
+    /// pretix's Stripe plugin records a chargeback as an external refund carrying the Stripe dispute's id, and never
+    /// updates it. A won dispute or an inquiry clears only when a person cancels that refund in pretix, which pretix
+    /// allows only while it is still <c>external</c>; once processed (or completed by pretix itself) it stays disputed.
+    /// </summary>
+    private static bool IsChargeback(PretixRefund refund) =>
+        string.Equals(refund.Source, "external", StringComparison.Ordinal)
+        && refund.Details is { ValueKind: JsonValueKind.Object } details
+        && details.TryGetProperty("id", out var id) && id.ValueKind == JsonValueKind.String
+        && id.GetString() is { } stripeId
+        && (stripeId.StartsWith("dp_", StringComparison.Ordinal) || stripeId.StartsWith("du_", StringComparison.Ordinal));
 
     /// <summary>
     /// pretix keeps a payment confirmed after expiry or cancellation but cannot mark the order paid, and a refund made
@@ -485,7 +510,7 @@ internal sealed partial class PretixCheckoutBackend(
 
     private static decimal NetPaid(PretixOrder order) =>
         order.Payments.Where(p => p.State is "confirmed" or "refunded").Sum(p => p.Amount)
-        - order.Refunds.Where(r => r.State is "done" or "transit" or "created").Sum(r => r.Amount);
+        - order.Refunds.Where(r => r.State is "done" or "transit" or "created" or "external").Sum(r => r.Amount);
 
     private static bool IsCovered(PretixOrder order, CheckoutState state)
     {
@@ -757,5 +782,6 @@ internal sealed partial class PretixCheckoutBackend(
     internal sealed record PretixPayment(int LocalId, string State, decimal Amount, string Provider, string? PaymentDate);
 
     internal sealed record PretixRefund(
-        int LocalId, string State, decimal Amount, int? Payment, string? Comment, string? Provider);
+        int LocalId, string State, decimal Amount, int? Payment, string? Comment, string? Provider,
+        string? Source = null, JsonElement? Details = null);
 }

@@ -138,7 +138,8 @@ internal sealed class HiEventsCheckoutBackend : ITicketCheckoutBackend
             PaymentMethod: order.PaymentProvider?.ToLowerInvariant(),
             PaidAt: null,
             RefundedMinor: ToMinor(order.TotalRefunded ?? 0m),
-            RefundFailed: string.Equals(order.RefundStatus, "REFUND_FAILED", StringComparison.Ordinal));
+            RefundFailed: string.Equals(order.RefundStatus, "REFUND_FAILED", StringComparison.Ordinal),
+            DisputedMinor: ToMinor(order.TotalDisputed ?? 0m));
     }
 
     public async Task<RefundResult> RefundAsync(RefundRequest request, CancellationToken ct = default)
@@ -184,6 +185,8 @@ internal sealed class HiEventsCheckoutBackend : ITicketCheckoutBackend
         {
             case CheckoutState.Paid:
                 throw new TicketCheckoutException($"Hi.Events order {backendOrderId} is paid and cannot be cancelled.");
+            case CheckoutState.Processing:
+                throw new TicketCheckoutException($"Hi.Events order {backendOrderId} has a payment on its way and cannot be cancelled.");
             case CheckoutState.Cancelled:
                 return;
         }
@@ -228,6 +231,7 @@ internal sealed class HiEventsCheckoutBackend : ITicketCheckoutBackend
             "Needs the Humans fork (peterdrier/Hi.Events): stock Hi.Events and Hi.Events Cloud have no checkout endpoint that takes Humans' prices.",
             "Each event needs exactly one TICKET and one GENERAL product, both hidden, without taxes or fees, offline payment off, and the event live. The sales setup's event id is the numeric Hi.Events event id.",
             "The webhook goes on the order events.",
+            "The fork's Stripe webhook must include payment_intent.processing and the charge.dispute.* events, or slow bank payments get cancelled at the hold and chargebacks never reach Humans.",
         ]);
 
     private bool IsCloud => _settings.ApiBaseUri is { } api
@@ -321,6 +325,10 @@ internal sealed class HiEventsCheckoutBackend : ITicketCheckoutBackend
     public string? EventRefOf(string backendOrderId) =>
         ParseBackendOrderId(backendOrderId).EventId.ToString(CultureInfo.InvariantCulture);
 
+    /// <summary>Hi.Events takes payments through its own payment account, whose keys Humans does not hold.</summary>
+    public Task<PaymentLedger?> GetPaymentLedgerAsync(Instant from, Instant to, CancellationToken ct = default) =>
+        Task.FromResult<PaymentLedger?>(null);
+
     public async Task<IReadOnlyList<BackendOrderSummary>> ListOrdersAsync(
         string? backendEventRef, Instant from, Instant to, CancellationToken ct = default)
     {
@@ -348,7 +356,7 @@ internal sealed class HiEventsCheckoutBackend : ITicketCheckoutBackend
                 ToMinor(order.TotalGross),
                 order.Attendees?.Count,
                 ToMinor(order.TotalRefunded ?? 0m),
-                0);
+                ToMinor(order.TotalDisputed ?? 0m));
             if (page < meta.LastPage)
                 continue;
             // Orders sharing a created_at second may change places between pages; one skipped shows here.
@@ -383,6 +391,8 @@ internal sealed class HiEventsCheckoutBackend : ITicketCheckoutBackend
         "COMPLETED" when string.Equals(order.PaymentStatus, "PAYMENT_RECEIVED", StringComparison.Ordinal) => CheckoutState.Paid,
         "COMPLETED" => CheckoutState.Failed,
         "CANCELLED" => CheckoutState.Cancelled,
+        // The buyer finished a method that settles later (a SEPA debit): the money is on its way, whatever the hold.
+        "RESERVED" or "ABANDONED" when order.PaymentProcessingAt is not null => CheckoutState.Processing,
         "ABANDONED" => CheckoutState.Expired,
         "RESERVED" => DateFormattingExtensions.ParseInvariantTimestamp(order.ReservedUntil) is { } until
             ? until <= _clock.GetCurrentInstant() ? CheckoutState.Expired : CheckoutState.Pending
@@ -549,5 +559,7 @@ internal sealed class HiEventsCheckoutBackend : ITicketCheckoutBackend
         string? ReservedUntil, // UTC, "yyyy-MM-dd HH:mm:ss" with no offset
         string? ExternalReference = null,
         string? CreatedAt = null,
-        List<HiEventsAttendee>? Attendees = null);
+        List<HiEventsAttendee>? Attendees = null,
+        decimal? TotalDisputed = null,
+        string? PaymentProcessingAt = null);
 }

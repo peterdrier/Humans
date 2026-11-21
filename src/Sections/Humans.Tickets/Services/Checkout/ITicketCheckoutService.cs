@@ -107,6 +107,26 @@ internal interface ITicketCheckoutService : ITicketCheckoutEvents, IApplicationS
     Task<CheckoutMutationResult> IssueCompanionAsync(
         Guid parentTicketId, string holderName, string? holderEmail, string reason, Guid actorUserId, CancellationToken ct = default);
 
+    /// <summary>
+    /// The holder of a valid adult ticket asks for a free companion who is already in Humans, found by the address they
+    /// verified there, with a short note for the ticketing team. Refusals are resource keys.
+    /// </summary>
+    Task<CheckoutMutationResult> RequestCompanionAsync(
+        Guid ticketId, Guid holderUserId, string companionEmail, string note, CancellationToken ct = default);
+
+    /// <summary>The holder takes back their request while it waits. Refusals are resource keys.</summary>
+    Task<CheckoutMutationResult> WithdrawCompanionRequestAsync(Guid ticketId, Guid holderUserId, CancellationToken ct = default);
+
+    /// <summary>Every companion request on the sales event, newest first, with names for the team's queue.</summary>
+    Task<IReadOnlyList<CompanionRequestRow>> GetCompanionRequestsAsync(Guid salesEventId, CancellationToken ct = default);
+
+    /// <summary>
+    /// The team's light check: approving issues the companion ticket (as <see cref="IssueCompanionAsync"/>, to the
+    /// companion's own account), declining tells the holder why. Audited either way.
+    /// </summary>
+    Task<CheckoutMutationResult> DecideCompanionRequestAsync(
+        Guid requestId, bool approve, string? note, Guid actorUserId, CancellationToken ct = default);
+
     /// <summary>Refreshes every open order and sweeps the resale queue; returns how many changed.</summary>
     Task<int> ReconcileOpenOrdersAsync(CancellationToken ct = default);
 
@@ -116,6 +136,13 @@ internal interface ITicketCheckoutService : ITicketCheckoutEvents, IApplicationS
     /// result carrying the error, never a partial comparison.
     /// </summary>
     Task<TicketRecon?> ReconcileBackendAsync(string backendKey, Instant from, Instant to, CancellationToken ct = default);
+
+    /// <summary>
+    /// Fee and payout reconciliation of one backend for [<paramref name="from"/>, <paramref name="to"/>): the payment
+    /// account's own movements against Humans' orders. Reads only. Null for an unknown or unconfigured backend and for one
+    /// whose payment account Humans cannot read; an account that cannot be read gives a result carrying the error.
+    /// </summary>
+    Task<TicketPaymentRecon?> ReconcilePaymentsAsync(string backendKey, Instant from, Instant to, CancellationToken ct = default);
 
     /// <summary>Every order opened on one backend, newest first, with its stuck orders and unsettled refunds; null for an unknown key.</summary>
     Task<BackendLedger?> GetBackendLedgerAsync(string backendKey, CancellationToken ct = default);
@@ -164,7 +191,9 @@ internal sealed record SalesEventSave(
     public long? ChildPriceMinor { get; init; }
     public int? ChildMaxAge { get; init; }
     public TicketSalesSwitches Switches { get; init; } = new();
-    public string? TermsUrl { get; init; }
+
+    /// <summary>The ticket rules folder in the legal repo, no leading or trailing slash.</summary>
+    public string? TermsFolder { get; init; }
 }
 
 /// <summary><paramref name="ResaleOnly"/>: only returned tickets are left.</summary>
@@ -172,7 +201,7 @@ internal sealed record PublicSale(string EventName, long PriceMinor, bool Resale
 
 /// <summary>
 /// What the buyer sees. <paramref name="Unavailable"/> is a resource key naming why buying is closed to them, null
-/// when they can buy. <paramref name="PublicPrice"/> is what a partner pays.
+/// when they can buy. <paramref name="PublicPrice"/> is what each other person on the order pays.
 /// </summary>
 internal sealed record BuyPage(
     TicketSalesEvent SalesEvent,
@@ -184,14 +213,17 @@ internal sealed record BuyPage(
     string BuyerName,
     IReadOnlyList<TicketCheckoutOrder> Orders)
 {
-    /// <summary>The ticket rules the buyer accepts with each checkout; null for none.</summary>
-    public string? TermsUrl { get; init; }
+    /// <summary>
+    /// The ticket rules the buyer accepts with each checkout; null for none, or while they cannot be read (then
+    /// <c>Unavailable</c> says so).
+    /// </summary>
+    public TicketRules? Terms { get; init; }
 
     /// <summary>True when the person has never said yes or no to the mailing list.</summary>
     public bool AskMarketing { get; init; }
 
-    /// <summary>The event sells partner tickets (<see cref="TicketSalesSwitches.PartnerTickets"/>).</summary>
-    public bool OffersPartner { get; init; }
+    /// <summary>The buyer may add other people to the order (<see cref="TicketSalesSwitches.PartnerTickets"/>).</summary>
+    public bool OffersOthers { get; init; }
 
     /// <summary>The event takes donations at checkout (<see cref="TicketSalesSwitches.Donations"/>).</summary>
     public bool OffersDonations { get; init; }
@@ -202,14 +234,12 @@ internal sealed record BuyPage(
 
 /// <summary>
 /// <paramref name="SupporterTotalMinor"/> is one of the event's VIP totals: the part above the buyer's own ticket is a
-/// donation. <paramref name="DonationMinor"/> is a free donation on top, for <paramref name="DonationPurpose"/>. A
-/// partner always pays the public price.
+/// donation. <paramref name="DonationMinor"/> is a free donation on top, for <paramref name="DonationPurpose"/>. Each
+/// other person always pays the public price.
 /// </summary>
 internal sealed record StartCheckout(
     Guid SalesEventId,
     bool ForSelf,
-    string? PartnerName,
-    string? PartnerEmail,
     long? SupporterTotalMinor,
     long DonationMinor,
     TicketDonationPurpose DonationPurpose,
@@ -219,7 +249,19 @@ internal sealed record StartCheckout(
     /// <summary>Legal names of children on the buyer's own ticket; blank entries (unfilled form boxes) are ignored.</summary>
     public IReadOnlyList<string?> ChildNames { get; init; } = [];
 
+    /// <summary>
+    /// Addresses of other people already in Humans who each get an adult ticket in their own legal name; blank
+    /// entries are ignored. Knowing the address someone verified in Humans is the light check that it is them.
+    /// </summary>
+    public IReadOnlyList<string?> OtherEmails { get; init; } = [];
+
     public bool AcceptTerms { get; init; }
+
+    /// <summary>The ticket rules folder the buy page showed; with <see cref="TermsVersion"/> it names the text accepted.</summary>
+    public string? TermsFolder { get; init; }
+
+    /// <summary>The ticket rules version the buy page showed, which the order records.</summary>
+    public string? TermsVersion { get; init; }
 
     public bool MarketingOptIn { get; init; }
 
@@ -228,10 +270,17 @@ internal sealed record StartCheckout(
 
 }
 
-/// <summary><paramref name="Refusal"/> is a resource key; <paramref name="PaymentUrl"/> is null for a free order.</summary>
+/// <summary>
+/// <paramref name="Refusal"/> is a resource key, formatted with <see cref="RefusalArgument"/> when it names one;
+/// <paramref name="PaymentUrl"/> is null for a free order.
+/// </summary>
 internal sealed record StartCheckoutResult(Guid? OrderId, Uri? PaymentUrl, string? Refusal)
 {
-    public static StartCheckoutResult Refused(string key) => new(null, null, key);
+    /// <summary>What the refusal is about, such as the address of a person who already holds a ticket.</summary>
+    public string? RefusalArgument { get; init; }
+
+    public static StartCheckoutResult Refused(string key, string? argument = null) =>
+        new(null, null, key) { RefusalArgument = argument };
 }
 
 /// <summary><paramref name="Timeline"/> is oldest first.</summary>
@@ -267,4 +316,18 @@ internal sealed record HeldTicket(
 {
     /// <summary>The event runs directed resale (<see cref="ResaleScheme.QueueAndDirected"/>).</summary>
     public bool CanInvite { get; init; }
+
+    /// <summary>A valid adult ticket with no companion and no request waiting: the holder may ask for one.</summary>
+    public bool CanAskCompanion { get; init; }
+
+    /// <summary>The newest companion request on this ticket, if any.</summary>
+    public TicketCompanionRequest? CompanionRequest { get; init; }
 }
+
+/// <summary>A companion request with the names the ticketing team needs to judge it.</summary>
+internal sealed record CompanionRequestRow(
+    TicketCompanionRequest Request,
+    string HolderName,
+    string CompanionName,
+    string TicketBarcode,
+    Guid TicketOrderId);

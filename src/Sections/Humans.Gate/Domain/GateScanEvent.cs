@@ -2,7 +2,10 @@ using NodaTime;
 
 namespace Humans.Gate.Domain;
 
-/// <summary>Append-only. The unique index on <see cref="AdmitDedupeKey"/> is the duplicate guard; it doesn't wait for a vendor sync.</summary>
+/// <summary>
+/// Append-only, except that undoing an admit stamps its row and frees <see cref="AdmitDedupeKey"/>. The unique index on
+/// that key is the duplicate guard; it doesn't wait for a vendor sync.
+/// </summary>
 internal sealed class GateScanEvent
 {
     internal const int BarcodeMaxLength = 128;
@@ -46,8 +49,18 @@ internal sealed class GateScanEvent
 
     /// <summary>
     /// The normalized barcode for an admit, null otherwise. Its unique index makes the first admit win atomically
-    /// across lanes; Postgres excludes nulls, so rejects never collide.
+    /// across lanes; Postgres excludes nulls, so rejects never collide. Cleared by an undo so the ticket can scan again.
     /// </summary>
-    public string? AdmitDedupeKey { get; init; }
+    public string? AdmitDedupeKey { get; set; }
+
+    /// <summary>Set when the admit was undone; the row stays as the record that it happened.</summary>
+    public Instant? UndoneAt { get; set; }
+
+    /// <summary>Who undid it. Settable so account merge can re-point it.</summary>
+    public Guid? UndoneByUserId { get; set; }
+
+    public string? UndoReason { get; set; }
+
+    public bool IsLiveAdmit => AdmitDedupeKey is not null;
 }
 

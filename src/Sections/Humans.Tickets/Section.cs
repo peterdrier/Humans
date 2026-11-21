@@ -15,6 +15,7 @@ using Humans.Issues.Contracts;
 using Humans.Notifications.Contracts;
 using Humans.Tickets.Contracts;
 using Humans.Tickets.Data;
+using Humans.Tickets.Domain.Checkout;
 using Humans.Tickets.Health;
 using Humans.Tickets.Jobs;
 using Humans.Tickets.Models;
@@ -47,6 +48,7 @@ public sealed class Section :
     ISectionJobs,
     ISectionMemberDashboard,
     ISectionPolicies,
+    ISectionSettings,
     IUserPart
 {
     IEnumerable<ChromeComponent> ISectionChrome.Components() =>
@@ -82,7 +84,6 @@ public sealed class Section :
         // interfaces (and the GDPR / merge fan-outs) resolve to the decorator.
         services.AddKeyedScoped<ITicketManagement, TicketQueryService>(CachingTicketQueryService.InnerServiceKey);
         services.AddKeyedScoped<ITicketSyncService, TicketSyncService>(CachingTicketQueryService.InnerServiceKey);
-        services.AddKeyedScoped<ITicketTransferService, TicketTransferService>(CachingTicketQueryService.InnerServiceKey);
         services.AddKeyedScoped<IAttendeeContactImportService, AttendeeContactImportService>(
             CachingTicketQueryService.InnerServiceKey);
 
@@ -90,8 +91,6 @@ public sealed class Section :
         services.AddSingleton<ITicketManagement>(sp => sp.GetRequiredService<CachingTicketQueryService>());
         services.AddSingleton<ITicketService>(sp => sp.GetRequiredService<CachingTicketQueryService>());
         services.AddSingleton<ITicketSyncService>(sp => sp.GetRequiredService<CachingTicketQueryService>());
-        services.AddSingleton<ITicketTransferService>(sp => sp.GetRequiredService<CachingTicketQueryService>());
-        services.AddSingleton<ITicketTransferQueue>(sp => sp.GetRequiredService<CachingTicketQueryService>());
         services.AddSingleton<IAttendeeContactImportService>(sp => sp.GetRequiredService<CachingTicketQueryService>());
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<CachingTicketQueryService>());
         services.AddScoped<IUserMerge>(sp => sp.GetRequiredService<CachingTicketQueryService>());
@@ -136,12 +135,36 @@ public sealed class Section :
             [TicketPaymentStatus.Pending] = "bg-warning text-dark",
             [TicketPaymentStatus.Refunded] = "bg-danger",
             [TicketPaymentStatus.Cancelled] = "bg-secondary",
+            [TicketSalesMode.Open] = "bg-success",
+            [TicketSalesMode.ResaleOnly] = "bg-info",
+            [TicketSalesMode.Closed] = "bg-secondary",
+            [TicketSalesMode.InvitedOnly] = "bg-warning text-dark",
+            [TicketCheckoutOrderState.Created] = "bg-secondary",
+            [TicketCheckoutOrderState.Pending] = "bg-warning text-dark",
+            [TicketCheckoutOrderState.Processing] = "bg-warning text-dark",
+            [TicketCheckoutOrderState.Paid] = "bg-success",
+            [TicketCheckoutOrderState.Failed] = "bg-danger",
+            [TicketCheckoutOrderState.Expired] = "bg-secondary",
+            [TicketCheckoutOrderState.Cancelled] = "bg-secondary",
+            [TicketCheckoutTicketState.Valid] = "bg-success",
+            [TicketCheckoutTicketState.Offered] = "bg-info",
+            [TicketCheckoutTicketState.Resold] = "bg-secondary",
+            [TicketCheckoutTicketState.Void] = "bg-danger",
+            [TicketResaleOfferState.Open] = "bg-info",
+            [TicketResaleOfferState.Reserved] = "bg-warning text-dark",
+            [TicketResaleOfferState.Sold] = "bg-success",
+            [TicketResaleOfferState.Withdrawn] = "bg-secondary",
+            [RefundState.Succeeded] = "bg-success",
+            [RefundState.Pending] = "bg-warning text-dark",
+            [RefundState.Failed] = "bg-danger",
+            [RefundState.ManualRequired] = "bg-danger",
         });
 
         services.AddScoped<TicketSyncJob>();
 
         // The checkout lane: each backend is its own adapter section registering an ITicketCheckoutBackend.
         services.AddSingleton<ITicketCheckoutRepository, TicketCheckoutRepository>();
+        services.AddSingleton<ITicketRulesSource, GitHubTicketRulesSource>();
         services.AddScoped<TicketCheckoutService>();
         services.AddScoped<ITicketCheckoutService>(sp => sp.GetRequiredService<TicketCheckoutService>());
         services.AddScoped<ITicketCheckoutEvents>(sp => sp.GetRequiredService<TicketCheckoutService>());
@@ -184,11 +207,11 @@ public sealed class Section :
     [
         new("Tickets", [
             new("Tickets",           "Ticket",               "Index", null, null, "fa-solid fa-ticket",      TicketsPolicies.Read, Weight: 0),
-            new("Transfer requests", "TicketTransferAdmin",  "Index", null, null, "fa-solid fa-right-left",  TicketsPolicies.Read, Weight: 10,
-                 PillCount: PillCounts.TransferQueueAsync),
             new("Attendee contacts", "TicketsContactsAdmin", "Index", null, null, "fa-solid fa-address-book", TicketsPolicies.Read, Weight: 20),
             new("Onsite roster",     "TicketsOnsiteAdmin",   "Index", null, null, "fa-solid fa-clipboard-list", PolicyNames.ScannerAccess, Weight: 30),
-            new("Sales",             "TicketsSalesAdmin",    "Index", null, null, "fa-solid fa-cash-register", TicketsPolicies.Read, Weight: 40)
+            new("Sales",             "TicketsSalesAdmin",    "Index", null, null, "fa-solid fa-cash-register", TicketsPolicies.Read, Weight: 40),
+            // Also places the support pages (report, refunds, resale queue, ticket) in the admin shell; they name Sales as their parent.
+            new("Find an order",     "TicketsSupportAdmin",  "Lookup", null, null, "fa-solid fa-magnifying-glass", TicketsPolicies.Read, Weight: 50)
         ])
     ];
 
@@ -249,6 +272,11 @@ public sealed class Section :
         yield return new RecurringJobDescriptor("tickets-checkout-recon", typeof(TicketReconJob), "30 4 * * *");
     }
 
+    IEnumerable<SettingsTab> ISectionSettings.Tabs() =>
+    [
+        new SettingsTab("tickets", "Settings_TabTickets", typeof(TicketsSettingsTabViewComponent), TicketsPolicies.Manage)
+    ];
+
     IEnumerable<ChromeComponent> ISectionMemberDashboard.Components() =>
     [
         new ChromeComponent(ChromeSlots.MemberDashboard, typeof(MemberTicketStatusViewComponent), Weight: 20),
@@ -297,14 +325,4 @@ public sealed class Section :
         new(UserPartSlots.ProfileSidebar, typeof(IssuedTicketsViewComponent)),
         new(UserPartSlots.AdminDetailSidebar, typeof(IssuedTicketsViewComponent)),
     ];
-}
-
-internal static class PillCounts
-{
-    public static async ValueTask<int?> TransferQueueAsync(IServiceProvider sp)
-    {
-        var transfers = sp.GetRequiredService<ITicketTransferQueue>();
-        var count = await transfers.CountPendingAsync();
-        return count > 0 ? count : null;
-    }
 }

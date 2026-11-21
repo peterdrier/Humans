@@ -67,7 +67,7 @@ None — the section owns no tables.
   Hi.Events.
 - Checkout returns `AdminUrl`, the order in Hi.Events' event order list, so the ticketing team can jump to it.
 - Status: `COMPLETED` with `PAYMENT_RECEIVED` is Paid; other `COMPLETED` is Failed; `CANCELLED` is Cancelled;
-  `ABANDONED`, or `RESERVED` past `reserved_until`, is Expired; other `RESERVED` is Pending (a failed card attempt can
+  Processing as below; otherwise `ABANDONED`, or `RESERVED` past `reserved_until`, is Expired; other `RESERVED` is Pending (a failed card attempt can
   be retried on the same link). `RefundedMinor` is `total_refunded`. Fee and paid time are not exposed by Hi.Events and
   stay null.
 - Refund: the Humans refund id is the idempotency key. Hi.Events answers with the Stripe refund made under it
@@ -78,11 +78,17 @@ None — the section owns no tables.
   when Stripe fails a refund it had accepted.
 - Late payment: a payment that lands after Humans cancelled the checkout, or after it expired, is kept by the fork (it
   never auto-refunds orders created here) and reads as `Paid`.
-- `Processing` is never reported: Hi.Events has no state for a Stripe payment that settles later (SEPA debit, bank
-  transfer), and leaves such an order reserved until it expires. Keep delayed methods off in the Stripe account used by
-  Hi.Events; if one slips through, the settled payment still arrives as a late payment and reads as `Paid`.
-- `DisputedMinor` is always 0: Hi.Events does not track chargebacks.
-- Cancel: a no-op on a cancelled order, `TicketCheckoutException` on a paid one, otherwise Hi.Events' cancel without
+- `Processing`: a `RESERVED` or `ABANDONED` order with `payment_processing_at` set, whatever `reserved_until` says. The
+  fork sets it when Stripe reports a payment that settles later (`payment_intent.processing`, a SEPA debit), or when the
+  pay page's return check finds one, and sends the buyer on to `ReturnUrl`; it clears it when the payment fails (the
+  order reads Pending or Expired again) or succeeds (Paid). Tickets never cancels a Processing order at its hold.
+- `DisputedMinor` is the fork's `total_disputed`: what Stripe chargebacks on the order's payments hold back (a dispute
+  counts until won; an inquiry, `warning_*`, and a `prevented` one, which Stripe settles as a refund, take nothing), in
+  `GetStatusAsync` and `ListOrdersAsync` alike. On every `charge.dispute.*` event the fork re-lists all disputes on the
+  order's payments from Stripe and sends `order.updated`, which nudges Tickets.
+- The fork's Stripe webhook must carry `payment_intent.processing` and the `charge.dispute.*` events, or neither state
+  reaches Humans.
+- Cancel: a no-op on a cancelled order, `TicketCheckoutException` on a paid or Processing one, otherwise Hi.Events' cancel without
   refund.
 - Webhook: 503 without a secret, 401 on a bad signature, 200 and no call for anything but `order.*`.
 - After paying, Hi.Events' payment return page sends the buyer to `CheckoutRequest.ReturnUrl`.
@@ -96,7 +102,7 @@ None — the section owns no tables.
 - Buyer names go in 50 characters of first name and 50 of last name, split at a space; attendee lines carry the full
   legal name (Hi.Events allows 255 on this endpoint).
 - `Setup` shows the URLs and only set or missing for the key and secret; an API host on `hi.events` reads as Hi.Events Cloud, unsupported because it lacks the fork's checkout endpoint, and never passes the check. `CheckAsync` reads `users/me` (a body without a user, such as the web app's HTML, fails), the event's status and products, then posts an empty body to the checkout endpoint: the fork answers 422 before creating anything, stock Hi.Events 404 or 405.
-- `ListOrdersAsync` pages through an event's orders by `created_at` (100 a page, to `meta.last_page`), reading the Humans order id from `external_reference` and counting attendees as tickets. It throws when the distinct orders read differ from `meta.total`, since ties in a second can move across pages. The list leaves out `RESERVED` and `ABANDONED` orders. It needs the key's user to see financials, as refunds already do. `EventRefOf` reads the event id from the order id.
+- `ListOrdersAsync` pages through an event's orders by `created_at` (100 a page, to `meta.last_page`), reading the Humans order id from `external_reference` and counting attendees as tickets. It throws when the distinct orders read differ from `meta.total`, since ties in a second can move across pages. The list leaves out `RESERVED` and `ABANDONED` orders. It needs the key's user to see financials, as refunds already do. `EventRefOf` reads the event id from the order id. `GetPaymentLedgerAsync` answers null: Hi.Events takes payments through its own Stripe account, so its fees and payouts are not reconciled in Humans.
 
 ## Personal data and erasure
 

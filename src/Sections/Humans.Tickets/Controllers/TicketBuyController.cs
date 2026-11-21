@@ -2,6 +2,7 @@ using System.Globalization;
 using Humans.Auth.Contracts;
 using Humans.Base.Attributes;
 using Humans.Base.Controllers;
+using Humans.EarlyEntry.Contracts;
 using Humans.Tickets.Domain.Checkout;
 using Humans.Tickets.Services.Checkout;
 using Humans.Users.Contracts;
@@ -17,6 +18,7 @@ namespace Humans.Tickets.Controllers;
 internal sealed class TicketBuyController(
     ITicketCheckoutService checkout,
     IMagicLinkService magicLinks,
+    IEarlyEntryService earlyEntry,
     IUserService userService,
     IStringLocalizer<TicketsResource> localizer,
     ILogger<TicketBuyController> logger) : HumansControllerBase(userService)
@@ -88,16 +90,16 @@ internal sealed class TicketBuyController(
     [HttpPost("")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Start(
-        Guid salesEventId, bool forSelf, string? partnerName, string? partnerEmail, long? supporterTotalMinor, decimal? donation,
-        TicketDonationPurpose donationPurpose, string?[]? childNames, bool acceptTerms, bool marketingOptIn,
-        string? directedToken, CancellationToken ct)
+        Guid salesEventId, bool forSelf, string?[]? otherEmails, long? supporterTotalMinor, decimal? donation,
+        TicketDonationPurpose donationPurpose, string?[]? childNames, bool acceptTerms, string? termsFolder, string? termsVersion,
+        bool marketingOptIn, string? directedToken, CancellationToken ct)
     {
         var (errorResult, user) = await RequireCurrentUserAsync(ct);
         if (errorResult is not null) return errorResult;
 
-        IActionResult Back(string key)
+        IActionResult Back(string key, string? argument = null)
         {
-            SetError(localizer[key].Value);
+            SetError(argument is null ? localizer[key].Value : localizer[key, argument].Value);
             return string.IsNullOrEmpty(directedToken)
                 ? RedirectToAction(nameof(Index))
                 : RedirectToAction(nameof(Resale), new { token = directedToken });
@@ -110,24 +112,27 @@ internal sealed class TicketBuyController(
         var donationMinor = donation is > 0 ? (long)Math.Round(donation.Value * 100m, MidpointRounding.AwayFromZero) : 0;
 
         var result = await checkout.StartCheckoutAsync(new StartCheckout(
-            salesEventId, forSelf, partnerName, partnerEmail, supporterTotalMinor, donationMinor, donationPurpose,
+            salesEventId, forSelf, supporterTotalMinor, donationMinor, donationPurpose,
             returnBase, CultureInfo.CurrentUICulture.Name)
         {
             ChildNames = childNames ?? [],
+            OtherEmails = otherEmails ?? [],
             AcceptTerms = acceptTerms,
+            TermsFolder = termsFolder,
+            TermsVersion = termsVersion,
             MarketingOptIn = marketingOptIn,
             DirectedToken = string.IsNullOrWhiteSpace(directedToken) ? null : directedToken,
         }, user.Id, CancellationToken.None); // a buyer who leaves mid-request must not strand a half-made checkout
 
         if (result.Refusal is { } refusal)
-            return Back(refusal);
+            return Back(refusal, result.RefusalArgument);
 
         return result.PaymentUrl is { } paymentUrl
             ? Redirect(paymentUrl.ToString())
             : RedirectToAction(nameof(Order), new { id = result.OrderId });
     }
 
-    // A partner whose account was made at payment follows the ticket email here before finishing onboarding.
+    // Someone bought for may follow the ticket email here before finishing onboarding.
     [HttpGet("Mine")]
     [AllowBeforeActiveMembership]
     public async Task<IActionResult> Mine(CancellationToken ct)
@@ -135,6 +140,8 @@ internal sealed class TicketBuyController(
         var (errorResult, user) = await RequireCurrentUserAsync(ct);
         if (errorResult is not null) return errorResult;
 
+        // Children ride on the adult's entry, so the viewer's own Early Entry applies to every ticket listed.
+        ViewData["EarlyEntryDate"] = (await earlyEntry.GetForUserAsync(user.Id, ct))?.EarliestEntryDate;
         return View("~/Views/Tickets/Buy/Mine.cshtml", await checkout.GetHeldTicketsAsync(user.Id, ct));
     }
 
@@ -163,6 +170,17 @@ internal sealed class TicketBuyController(
     [ValidateAntiForgeryToken]
     public Task<IActionResult> CancelInvite(Guid ticketId, CancellationToken ct) =>
         OnTicketAsync(userId => checkout.CancelInviteAsync(ticketId, userId, ct), "Tickets_Resale_InviteCancelled", ct);
+
+    [HttpPost("Mine/{ticketId:guid}/Companion")]
+    [ValidateAntiForgeryToken]
+    public Task<IActionResult> AskCompanion(Guid ticketId, string? companionEmail, string? note, CancellationToken ct) =>
+        OnTicketAsync(userId => checkout.RequestCompanionAsync(ticketId, userId, companionEmail ?? string.Empty, note ?? string.Empty, ct),
+            "Tickets_Companion_Requested", ct);
+
+    [HttpPost("Mine/{ticketId:guid}/Companion/Withdraw")]
+    [ValidateAntiForgeryToken]
+    public Task<IActionResult> WithdrawCompanion(Guid ticketId, CancellationToken ct) =>
+        OnTicketAsync(userId => checkout.WithdrawCompanionRequestAsync(ticketId, userId, ct), "Tickets_Companion_Withdrawn", ct);
 
     private async Task<IActionResult> OnTicketAsync(
         Func<Guid, Task<CheckoutMutationResult>> act, string successKey, CancellationToken ct)

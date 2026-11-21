@@ -33,6 +33,48 @@ internal enum TicketReconIssue
     TicketsNotIssued,
 }
 
+/// <summary>The words the reconciliation page and the ticketing team's alert use for each difference.</summary>
+internal static class TicketReconLabels
+{
+    public static string Label(this TicketReconIssue issue) => issue switch
+    {
+        TicketReconIssue.MissingAtBackend => "missing at backend",
+        TicketReconIssue.ExtraAtBackend => "extra at backend",
+        TicketReconIssue.Duplicate => "duplicate",
+        TicketReconIssue.NotRecorded => "backend order not recorded in Humans",
+        TicketReconIssue.PaidMismatch => "paid on one side only",
+        TicketReconIssue.TotalMismatch => "total differs",
+        TicketReconIssue.RefundMismatch => "refunded differs",
+        TicketReconIssue.DisputeMismatch => "chargeback differs",
+        TicketReconIssue.TicketCountMismatch => "ticket count differs",
+        TicketReconIssue.TicketsNotIssued => "tickets not issued",
+        _ => issue.ToString(),
+    };
+
+    public static string Label(this TicketPaymentIssue issue) => issue switch
+    {
+        TicketPaymentIssue.NoOrder => "no Humans order",
+        TicketPaymentIssue.NotPaidInHumans => "order not paid in Humans",
+        TicketPaymentIssue.AmountMismatch => "amount differs from the order",
+        TicketPaymentIssue.FeeMismatch => "fee differs from Humans'",
+        _ => issue.ToString(),
+    };
+
+    public static string Label(this TicketPayoutIssue issue) => issue switch
+    {
+        TicketPayoutIssue.ContentsMismatch => "amount differs from its contents",
+        TicketPayoutIssue.Failed => "failed",
+        _ => issue.ToString(),
+    };
+
+    public static string Eur(long minor) =>
+        (minor / 100m).ToString("0.00", System.Globalization.CultureInfo.InvariantCulture) + " €";
+
+    /// <summary>"total differs 2, duplicate 1": each label with how often it occurs.</summary>
+    public static string Counted(IEnumerable<string> labels) =>
+        string.Join(", ", labels.GroupBy(l => l, StringComparer.Ordinal).Select(g => $"{g.Key} {g.Count()}"));
+}
+
 /// <summary>One order as both sides see it; either side may be missing.</summary>
 internal sealed record TicketReconRow(
     TicketCheckoutOrder? Order,
@@ -48,6 +90,10 @@ internal sealed record TicketReconRow(
         || Backend is { } b && (b.State == CheckoutState.Paid || b.RefundedMinor > 0 || b.DisputedMinor > 0);
 }
 
+/// <summary>
+/// <see cref="OtherInstance"/> holds backend orders that name a Humans order this database never held, outside
+/// production only: another Humans instance on the same test account made them. They are neither counted nor a difference.
+/// </summary>
 internal sealed record TicketRecon(
     string BackendKey,
     Instant From,
@@ -56,6 +102,7 @@ internal sealed record TicketRecon(
     TicketReconTotals Backend,
     int TicketsIssued,
     IReadOnlyList<TicketReconRow> Rows,
+    IReadOnlyList<BackendOrderSummary> OtherInstance,
     string? Error)
 {
     public IEnumerable<TicketReconRow> Problems => Rows.Where(r => r.Issues.Count > 0);
@@ -87,13 +134,18 @@ internal static class TicketReconBuilder
     /// <param name="orders">Every Humans order on any backend, so an order of another period is told from an extra one.</param>
     /// <param name="backendOrders">The backend's list for the widened period.</param>
     /// <param name="tickets">Tickets issued from the period's orders.</param>
+    /// <param name="sharedAccount">
+    /// Outside production, where QA, previews and dev share one test account: a backend order naming a Humans order this
+    /// database never held is another instance's, not an extra one.
+    /// </param>
     public static TicketRecon Build(
         string backendKey,
         Instant from,
         Instant to,
         IReadOnlyCollection<TicketCheckoutOrder> orders,
         IReadOnlyCollection<BackendOrderSummary> backendOrders,
-        IReadOnlyCollection<TicketCheckoutTicket> tickets)
+        IReadOnlyCollection<TicketCheckoutTicket> tickets,
+        bool sharedAccount = false)
     {
         var known = orders.ToDictionary(o => o.Id);
         var inPeriod = orders
@@ -131,11 +183,18 @@ internal static class TicketReconBuilder
             rows.AddRange(mine.Where(b => b != primary).Select(b => new TicketReconRow(order, b, null, [other])));
         }
 
+        var otherInstance = new List<BackendOrderSummary>();
         foreach (var b in backend.Where(b => b.CreatedAt >= from && b.CreatedAt < to))
         {
             var owner = b.HumansOrderId is { } id ? known.GetValueOrDefault(id) : null;
             if (owner is not null && string.Equals(owner.BackendKey, backendKey, StringComparison.Ordinal))
                 continue; // Paired above, or belongs to its order's own period.
+            if (sharedAccount && owner is null && b.HumansOrderId is not null)
+            {
+                otherInstance.Add(b);
+                continue;
+            }
+
             rows.Add(new TicketReconRow(owner, b, null, [TicketReconIssue.ExtraAtBackend]));
         }
 
@@ -154,13 +213,14 @@ internal static class TicketReconBuilder
             Totals(counted.Where(b => b.State == CheckoutState.Paid).ToList(), rows),
             paidHere.Sum(o => issued.GetValueOrDefault(o.Id)),
             rows.OrderBy(r => r.CreatedAt).ToList(),
+            otherInstance.OrderBy(b => b.CreatedAt).ToList(),
             null);
     }
 
     public static TicketRecon Unreadable(string backendKey, Instant from, Instant to, string error)
     {
         var none = new TicketReconTotals(0, 0, 0, 0, 0);
-        return new TicketRecon(backendKey, from, to, none, none, 0, [], error);
+        return new TicketRecon(backendKey, from, to, none, none, 0, [], [], error);
     }
 
     /// <summary>A backend that cannot count tickets is given Humans' count for the order, so it never reads as a gap.</summary>

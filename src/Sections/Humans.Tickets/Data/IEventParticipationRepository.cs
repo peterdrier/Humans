@@ -19,6 +19,9 @@ internal interface IEventParticipationRepository : IRepository
         Guid userId, int year, ParticipationStatus status, ParticipationSource source,
         Instant? declaredAt, Instant? checkedInAt, CancellationToken ct = default);
 
+    /// <summary>Attended back to Ticketed (TicketSync) with no arrival; false when the record is not Attended.</summary>
+    Task<bool> UndoCheckInAsync(Guid userId, int year, CancellationToken ct = default);
+
     /// <summary>
     /// Deletes only when the source is <paramref name="requiredSource"/> and not Attended.
     /// </summary>

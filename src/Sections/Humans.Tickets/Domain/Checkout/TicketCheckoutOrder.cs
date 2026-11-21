@@ -55,6 +55,12 @@ internal sealed class TicketCheckoutOrder
     /// <summary>As the backend reports it: taken back by the buyer's bank in a chargeback not (yet) won.</summary>
     public long DisputedMinor { get; set; }
 
+    /// <summary>The legal repo folder of the ticket rules the buyer accepted; null when the sale had none.</summary>
+    public string? TermsFolder { get; init; }
+
+    /// <summary>The commit of <see cref="TermsFolder"/> whose text the buyer was shown and accepted.</summary>
+    public string? TermsVersion { get; init; }
+
     public Instant CreatedAt { get; init; }
 
     public Instant ExpiresAt { get; init; }
@@ -104,7 +110,7 @@ internal sealed class TicketCheckoutOrderLine
 
     public string? AttendeeEmail { get; set; }
 
-    /// <summary>The ticket holder when known; null for a partner who has no account yet.</summary>
+    /// <summary>The ticket holder when known; null for a child or a companion issued without an account.</summary>
     public Guid? AttendeeUserId { get; set; }
 
     public TicketHolderKind? HolderKind { get; set; }
@@ -202,4 +208,6 @@ internal enum TicketCheckoutOrderEventKind
     TicketsEmailed = 20,
     TicketsResent = 21,
     TicketMailSkipped = 22,
+    CompanionRequested = 23,
+    CompanionRequestDecided = 24,
 }

@@ -33,8 +33,8 @@ internal sealed class TicketsSalesAdminController(
     {
         var events = await settings.GetAllEventSettingsAsync(ct);
         var salesEvents = await checkout.GetSalesEventsAsync(ct);
-        return View("~/Views/Tickets/Admin/Sales/Index.cshtml",
-            new SalesAdminIndexViewModel(salesEvents, events, checkout.Backends));
+        return View("~/Views/Tickets/Admin/Sales/Index.cshtml", new SalesAdminIndexViewModel(
+            salesEvents, events, checkout.Backends, clock.GetCurrentInstant().InZone(orgTimeZone.Zone).Date));
     }
 
     [HttpGet("Backends")]
@@ -75,7 +75,9 @@ internal sealed class TicketsSalesAdminController(
         if (salesEvent is null)
             return NotFound();
         var orders = await checkout.GetOrdersForSalesEventAsync(id, ct);
-        return View("~/Views/Tickets/Admin/Sales/Orders.cshtml", (salesEvent, orders));
+        var eventName = (await settings.GetEventSettingsByIdAsync(salesEvent.EventSettingsId, ct))?.EventName
+            ?? salesEvent.EventSettingsId.ToString();
+        return View("~/Views/Tickets/Admin/Sales/Orders.cshtml", (salesEvent, eventName, orders));
     }
 
     [HttpGet("Order/{id:guid}")]
@@ -141,15 +143,18 @@ internal sealed class TicketsSalesAdminController(
         var start = fromDate.AtStartOfDayInZone(zone).ToInstant();
         var end = toDate.PlusDays(1).AtStartOfDayInZone(zone).ToInstant();
         var recons = new List<TicketRecon>();
+        var payments = new Dictionary<string, TicketPaymentRecon>(StringComparer.Ordinal);
         foreach (var key in keys)
         {
             if (await checkout.ReconcileBackendAsync(key, start, end, ct) is not { } recon)
                 return NotFound();
             recons.Add(recon);
+            if (await checkout.ReconcilePaymentsAsync(key, start, end, ct) is { } payment)
+                payments[key] = payment;
         }
 
         return View("~/Views/Tickets/Admin/Sales/Recon.cshtml",
-            new ReconViewModel(recons, inUse, backend, fromDate, toDate, all, zone));
+            new ReconViewModel(recons, payments, inUse, backend, fromDate, toDate, all, zone));
     }
 
     private static LocalDate? ReconDate(string? value) =>
@@ -166,7 +171,8 @@ internal sealed class TicketsSalesAdminController(
 internal sealed record SalesAdminIndexViewModel(
     IReadOnlyList<TicketSalesEvent> SalesEvents,
     IReadOnlyList<EventSettingsInfo> Events,
-    IReadOnlyList<CheckoutBackendInfo> Backends)
+    IReadOnlyList<CheckoutBackendInfo> Backends,
+    LocalDate Today)
 {
     public string EventName(Guid id) => Events.FirstOrDefault(e => e.Id == id)?.EventName ?? id.ToString();
 }
@@ -180,8 +186,10 @@ internal sealed record BackendsViewModel(
     public string EventName(Guid id) => Events.FirstOrDefault(e => e.Id == id)?.EventName ?? id.ToString();
 }
 
+/// <summary><c>Payments</c> holds a backend only where Humans can read its payment account.</summary>
 internal sealed record ReconViewModel(
     IReadOnlyList<TicketRecon> Recons,
+    IReadOnlyDictionary<string, TicketPaymentRecon> Payments,
     IReadOnlyList<string> BackendsInUse,
     string? Backend,
     LocalDate From,
@@ -224,7 +232,7 @@ internal sealed class SalesEditForm
     public bool PartnerTickets { get; set; } = true;
     public bool Donations { get; set; } = true;
     public bool MailingListOptIn { get; set; } = true;
-    public string? TermsUrl { get; set; }
+    public string? TermsFolder { get; set; }
 
     internal sealed class WaveRow
     {
@@ -273,7 +281,7 @@ internal sealed class SalesEditForm
         PartnerTickets = e.EffectiveSwitches.PartnerTickets,
         Donations = e.EffectiveSwitches.Donations,
         MailingListOptIn = e.EffectiveSwitches.MailingListOptIn,
-        TermsUrl = e.TermsUrl,
+        TermsFolder = e.TermsFolder,
     };
 
     public (SalesEventSave? Save, string? Error) ToSave(Guid? id, DateTimeZone zone)
@@ -314,7 +322,8 @@ internal sealed class SalesEditForm
             var label = row.Label?.Trim();
             if (string.IsNullOrEmpty(label)) return (null, "Every price rule needs the label the buyer sees.");
             long amount = 0;
-            if (row.Kind != TicketPriceRuleKind.WavePin && !TryMinor(row.Amount, out amount))
+            var optional = row.Kind == TicketPriceRuleKind.WavePin || (row.Kind == TicketPriceRuleKind.EarlyAccess && Blank(row.Amount));
+            if (!optional && !TryMinor(row.Amount, out amount))
                 return (null, $"Price rule '{label}' needs an amount.");
             rules.Add(new TicketPriceRule { GrantProgramId = programId, Kind = row.Kind, AmountMinor = amount, Label = label });
         }
@@ -338,7 +347,7 @@ internal sealed class SalesEditForm
                 Donations = Donations,
                 MailingListOptIn = MailingListOptIn,
             },
-            TermsUrl = string.IsNullOrWhiteSpace(TermsUrl) ? null : TermsUrl.Trim(),
+            TermsFolder = string.IsNullOrWhiteSpace(TermsFolder) ? null : TermsFolder.Trim().Trim('/'),
         }, null);
     }
 

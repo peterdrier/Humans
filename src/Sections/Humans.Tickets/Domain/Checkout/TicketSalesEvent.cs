@@ -51,10 +51,13 @@ internal sealed class TicketSalesEvent
 
     /// <summary>Whether returned tickets sell now. Resale only mode sells nothing else, so it opens resale too.</summary>
     public bool ResaleSelling =>
-        EffectiveSwitches.Resale != ResaleScheme.Off && Mode != TicketSalesMode.Closed && (ResaleOpenedAt is not null || Mode == TicketSalesMode.ResaleOnly);
+        EffectiveSwitches.Resale != ResaleScheme.Off && Mode is (TicketSalesMode.Open or TicketSalesMode.ResaleOnly) && (ResaleOpenedAt is not null || Mode == TicketSalesMode.ResaleOnly);
 
-    /// <summary>The page with the ticket rules every buyer accepts; null for none. A new address is a new version.</summary>
-    public string? TermsUrl { get; set; }
+    /// <summary>
+    /// The folder in the legal repo holding the ticket rules every buyer accepts, one markdown file per language; null
+    /// for none. Every commit changing the folder is a new version.
+    /// </summary>
+    public string? TermsFolder { get; set; }
 
     /// <summary>Price of a child ticket attached to an adult's; null when children are not sold.</summary>
     public long? ChildPriceMinor { get; set; }
@@ -73,6 +76,11 @@ internal enum TicketSalesMode
     Open = 1,
     /// <summary>Fresh sales stopped; only returned tickets sell.</summary>
     ResaleOnly = 2,
+    /// <summary>
+    /// Early sales before general sale opens: only holders of an <see cref="TicketPriceRuleKind.EarlyAccess"/> grant
+    /// buy, fresh stock only, no tickets for others and no resale. Also how a few people make a test purchase.
+    /// </summary>
+    InvitedOnly = 3,
 }
 
 /// <summary>
@@ -86,7 +94,7 @@ internal sealed class TicketSalesSwitches
 {
     public ResaleScheme Resale { get; set; } = ResaleScheme.QueueAndDirected;
 
-    /// <summary>A buyer may add one more adult ticket for someone else, at the public price.</summary>
+    /// <summary>A buyer may add other people already in Humans to the order, each an adult ticket at the public price.</summary>
     public bool PartnerTickets { get; set; } = true;
 
     /// <summary>Donation lines at checkout: the VIP buttons and the free donation.</summary>
@@ -144,4 +152,9 @@ internal enum TicketPriceRuleKind
     /// pin: an applicant keeps their wave whether or not they get a low income place). The amount is unused.
     /// </summary>
     WavePin = 2,
+    /// <summary>
+    /// The holder may buy while sales are <see cref="TicketSalesMode.InvitedOnly"/>, with the amount (zero for none)
+    /// taken off while they do. Does nothing once sales open to everyone.
+    /// </summary>
+    EarlyAccess = 3,
 }

@@ -1,60 +1,93 @@
+@using Humans.Tickets.Domain.Checkout
+@using Humans.Tickets.Services.Checkout
 @model Humans.Tickets.Controllers.SalesAdminIndexViewModel
 @{
     ViewData["Title"] = "Ticket sales";
-    string Eur(long minor) => (minor / 100m).ToString("0.00", System.Globalization.CultureInfo.InvariantCulture) + " €";
+
+    Func<TicketSalesEvent, IHtmlContent> modeCell = @<text><status-badge value="@item.Mode" /></text>;
+    Func<TicketSalesEvent, IHtmlContent> waveCell = @<text>
+        @if (TicketPrice.WaveOn(item, Model.Today) is { } wave)
+        {
+            <span class="text-nowrap">@wave.Name, @((wave.PriceMinor / 100m).ToEuro())</span>
+        }
+    </text>;
+    Func<TicketSalesEvent, IHtmlContent> actionsCell = @<text>
+        <div class="btn-group btn-group-sm">
+            <a class="btn btn-outline-secondary" asp-action="Orders" asp-route-id="@item.Id">Orders</a>
+            <button type="button" class="btn btn-outline-secondary dropdown-toggle dropdown-toggle-split"
+                    data-bs-toggle="dropdown" data-bs-popper-config='{"strategy":"fixed"}' aria-expanded="false" aria-label="More for this event"></button>
+            <ul class="dropdown-menu dropdown-menu-end">
+                <li><a class="dropdown-item" asp-controller="TicketsSupportAdmin" asp-action="Report" asp-route-id="@item.Id">Sales report</a></li>
+                <li><a class="dropdown-item" asp-controller="TicketsSupportAdmin" asp-action="Refunds" asp-route-id="@item.Id">Refunds</a></li>
+                <li><a class="dropdown-item" asp-controller="TicketsSupportAdmin" asp-action="Resale" asp-route-id="@item.Id">Resale queue</a></li>
+                <li><a class="dropdown-item" asp-controller="TicketsSupportAdmin" asp-action="Companions" asp-route-id="@item.Id">Companion requests</a></li>
+                <li><a class="dropdown-item" asp-action="Edit" asp-route-id="@item.Id">Sales setup</a></li>
+            </ul>
+        </div>
+    </text>;
+    var eventsTable = TableModel.For(Model.SalesEvents)
+        .Link("Event", e => Model.EventName(e.EventSettingsId), e => Url.Action("Orders", new { id = e.Id }))
+        .Column("Backend", e => Model.Backends.FirstOrDefault(b => b.Key == e.BackendKey)?.Setup.DisplayName ?? e.BackendKey)
+        .Template("Mode", modeCell, sortBy: e => e.Mode.ToString())
+        .Column("Capacity", e => e.Capacity, o => o.Number().End())
+        .Template("On sale now", waveCell, o => o.NoSort())
+        .Template("", actionsCell, o => o.NoSort().End())
+        .Empty("No event sells tickets yet. Set one up to open sales.")
+        .Build();
+
+    Func<CheckoutBackendInfo, IHtmlContent> configuredCell = @<text>
+        @if (item.IsConfigured)
+        {
+            <span class="badge bg-success">Configured</span>
+        }
+        else
+        {
+            <span class="badge bg-secondary">Not configured</span>
+        }
+    </text>;
+    Func<CheckoutBackendInfo, IHtmlContent> backendLinksCell = @<text>
+        <div class="btn-group btn-group-sm">
+            <a class="btn btn-outline-secondary" asp-controller="TicketsBackendAdmin" asp-action="Index" asp-route-key="@item.Key">Status</a>
+            <a class="btn btn-outline-secondary" asp-action="Recon" asp-route-backend="@item.Key">Reconciliation</a>
+        </div>
+    </text>;
+    var backendsTable = TableModel.For(Model.Backends)
+        .Column("Backend", b => b.Setup.DisplayName)
+        .Column("Hosting", b => b.Setup.Hosting)
+        .Template("Connection", configuredCell, sortBy: b => b.IsConfigured)
+        .Template("", backendLinksCell, o => o.NoSort().End())
+        .Empty("No checkout backend is registered.")
+        .Build();
 }
 
-@section Crumbs {
-    <a asp-controller="Ticket" asp-action="Index">Tickets</a>
-    <span>Sales</span>
-}
+<page-header title="Ticket sales">
+    <a class="btn btn-primary" asp-action="Edit" authorize-policy="@TicketsPolicies.Manage">
+        <i class="fa-solid fa-plus me-1" aria-hidden="true"></i>Set up an event
+    </a>
+</page-header>
 
-<page-header title="Ticket sales" />
+<form method="get" asp-controller="TicketsSupportAdmin" asp-action="Lookup" class="row g-2 mb-4" role="search">
+    <div class="col-md-6">
+        <label class="visually-hidden" for="order-search">Find an order</label>
+        <input class="form-control" id="order-search" name="q" placeholder="Find an order: name, email, order reference or ticket code" />
+    </div>
+    <div class="col-auto"><button class="btn btn-outline-secondary" type="submit">Find</button></div>
+</form>
 
-<p class="text-muted">
+<div class="card mb-4">
+    <div class="card-header">Events on sale</div>
+    <partial name="_Table" model="eventsTable" />
+</div>
+
+<div class="card mb-4">
+    <div class="card-header d-flex justify-content-between align-items-baseline">
+        <span>Checkout backends</span>
+        <a class="small" asp-action="Backends">Settings and connection test</a>
+    </div>
+    <partial name="_Table" model="backendsTable" />
+</div>
+
+<p class="small text-muted">
     Each event sells through one checkout backend. Humans sets every price; the backend only takes the money.
     Members buy at <a asp-controller="TicketBuy" asp-action="Index">/Tickets/Buy</a> for the active event.
 </p>
-
-<form method="get" asp-controller="TicketsSupportAdmin" asp-action="Lookup" class="row g-2 mb-3">
-    <div class="col-md-8"><input class="form-control" name="q" placeholder="Find an order: name, email, order reference or ticket code" /></div>
-    <div class="col-md-2"><button class="btn btn-outline-primary" type="submit">Find</button></div>
-</form>
-
-<h2 class="h5">Backends <a class="small" asp-action="Backends">settings and connection test</a> · <a class="small" asp-action="Recon">reconciliation</a></h2>
-<ul>
-    @foreach (var b in Model.Backends)
-    {
-        <li>@b.Setup.DisplayName (<code>@b.Key</code>, @b.Setup.Hosting): @(b.IsConfigured ? "configured" : "not configured (credentials unset)")</li>
-    }
-    @if (Model.Backends.Count == 0)
-    {
-        <li>No backend section is registered.</li>
-    }
-</ul>
-
-<h2 class="h5">Events</h2>
-<table class="table">
-    <thead><tr><th>Event</th><th>Backend</th><th>Mode</th><th>Capacity</th><th>Waves</th><th></th></tr></thead>
-    <tbody>
-        @foreach (var e in Model.SalesEvents)
-        {
-            <tr>
-                <td>@Model.EventName(e.EventSettingsId)</td>
-                <td><code>@e.BackendKey</code></td>
-                <td>@e.Mode</td>
-                <td>@e.Capacity</td>
-                <td>@string.Join(", ", e.Waves.Select(w => $"{w.Name} {Eur(w.PriceMinor)}"))</td>
-                <td class="text-end">
-                    <a asp-action="Orders" asp-route-id="@e.Id">Orders</a> ·
-                    <a asp-controller="TicketsSupportAdmin" asp-action="Report" asp-route-id="@e.Id">Report</a> ·
-                    <a asp-controller="TicketsSupportAdmin" asp-action="Refunds" asp-route-id="@e.Id">Refunds</a> ·
-                    <a asp-controller="TicketsSupportAdmin" asp-action="Resale" asp-route-id="@e.Id">Resale queue</a> ·
-                    <a asp-action="Edit" asp-route-id="@e.Id">Edit</a>
-                </td>
-            </tr>
-        }
-    </tbody>
-</table>
-
-<a class="btn btn-primary" asp-action="Edit" authorize-policy="@TicketsPolicies.Manage">Set up an event</a>

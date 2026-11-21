@@ -3,26 +3,19 @@ using Humans.Tickets.Domain;
 
 namespace Humans.Tickets.Data;
 
-
+/// <summary>
+/// The retired transfer-request table: nothing creates requests any more, but its 2026 rows stay. Approved ones still
+/// name who a voided ticket went to, and account merge and GDPR erasure still reach every row.
+/// </summary>
 internal interface ITicketTransferRepository : IRepository
 {
-    Task<TicketTransferRequest?> GetByIdAsync(Guid id, CancellationToken ct = default);
-
-    Task<IReadOnlyList<TicketTransferRequest>> GetBySenderAsync(Guid userId, CancellationToken ct = default);
-
-    Task<IReadOnlyList<TicketTransferRequest>> GetByStatusAsync(TicketTransferStatus status, CancellationToken ct = default);
-
-    Task<int> CountPendingAsync(CancellationToken ct = default);
-
-    Task AddAsync(TicketTransferRequest request, CancellationToken ct = default);
-
-    Task UpdateAsync(TicketTransferRequest request, CancellationToken ct = default);
+    Task<IReadOnlyList<TicketTransferRequest>> GetApprovedAsync(CancellationToken ct = default);
 
     Task ReassignUserAsync(Guid sourceUserId, Guid targetUserId, CancellationToken ct = default);
 
     /// <summary>
     /// Tombstones the receiver snapshot and clears the sender's reason and the admin notes on every request naming
-    /// the user. The row stays: it is the ticket's chain of custody.
+    /// the user.
     /// </summary>
     Task<int> ErasePiiForUserAsync(Guid userId, CancellationToken ct = default);
 }

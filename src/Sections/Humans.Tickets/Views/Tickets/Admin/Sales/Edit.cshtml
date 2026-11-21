@@ -10,6 +10,7 @@
     {
         TicketSalesMode.ResaleOnly => "Resale only: fresh sales stopped, returned tickets still sell",
         TicketSalesMode.Open => "Open",
+        TicketSalesMode.InvitedOnly => "Invited only: early sales for the programs with an early access rule",
         _ => "Closed",
     };
     (ResaleScheme Scheme, string Label, string Help)[] schemes =
@@ -23,10 +24,11 @@
         (TicketPriceRuleKind.ClassPrice, "Fixed ticket price"),
         (TicketPriceRuleKind.Credit, "Amount off"),
         (TicketPriceRuleKind.WavePin, "Price of the wave on sale when the grant was given"),
+        (TicketPriceRuleKind.EarlyAccess, "Early access: buys while sales are invited only"),
     ];
 }
 
-<page-header title="Sales setup" />
+<page-header title="Sales setup" subtitle="Backend, prices and checkout options for one event" />
 
 @if (Model.Error is not null)
 {
@@ -71,7 +73,7 @@
         <div class="card-header fw-semibold">Sales</div>
         <div class="card-body">
             <div class="row g-3">
-                <div class="col-md-4">
+                <div class="col-md-5">
                     <label class="form-label" for="Mode">Sales are</label>
                     <select class="form-select" id="Mode" name="Mode">
                         @foreach (var m in Enum.GetValues<TicketSalesMode>())
@@ -80,7 +82,7 @@
                         }
                     </select>
                 </div>
-                <div class="col-md-4">
+                <div class="col-md-3">
                     <label class="form-label" for="SalesCloseAt">Sales close</label>
                     <input class="form-control" id="SalesCloseAt" name="SalesCloseAt" type="datetime-local" value="@f.SalesCloseAt" />
                     <div class="form-text">@Model.Zone.Id time. Empty: sales stay open until you close them.</div>
@@ -146,6 +148,8 @@
                 <strong>Fixed ticket price</strong> replaces the wave price (the cheapest wins if several apply).
                 <strong>Amount off</strong> is taken off whatever the ticket costs (several add up).
                 <strong>Price of the wave on sale when the grant was given</strong> keeps the applicant's wave if it was cheaper, so applying early never costs them.
+                <strong>Early access</strong> lets the program's members buy while sales are <em>Invited only</em>, with the amount (leave empty for none) taken off while they do; it does nothing once sales open.
+                For a test purchase, give a few people a grant in a test program with early access and no amount.
             </p>
             @if (Model.Programs.Count == 0)
             {
@@ -221,7 +225,7 @@
                     @foreach (var (name, label, help, on) in new[]
                     {
                         (nameof(f.Donations), "Donations", "Supporter tickets below, and a free donation field.", f.Donations),
-                        (nameof(f.PartnerTickets), "Partner ticket", "The buyer may add one more adult ticket for someone else, at the public price.", f.PartnerTickets),
+                        (nameof(f.PartnerTickets), "Tickets for others", "The buyer may add people already in Humans to the order; each gets an adult ticket at the public price.", f.PartnerTickets),
                         (nameof(f.MailingListOptIn), "Mailing list", "Buyers who have not chosen yet are asked to join the mailing list.", f.MailingListOptIn),
                     })
                     {
@@ -232,9 +236,9 @@
                             <div class="form-text mt-0">@help</div>
                         </div>
                     }
-                    <label class="form-label mt-2" for="TermsUrl">Ticket rules page</label>
-                    <input class="form-control" id="TermsUrl" name="TermsUrl" type="url" maxlength="500" value="@f.TermsUrl" placeholder="https://" />
-                    <div class="form-text">Every buyer ticks that they accept it, and the address is kept on the order, so give a changed version a new address. Empty: no checkbox.</div>
+                    <label class="form-label mt-2" for="TermsFolder">Ticket rules folder in the legal repo</label>
+                    <input class="form-control" id="TermsFolder" name="TermsFolder" maxlength="200" value="@f.TermsFolder" placeholder="TicketRules/2027" />
+                    <div class="form-text">The folder holds name.md in Spanish and name-en.md in English (more languages optional, such as name-de.md). Buyers read the rules at checkout and tick that they accept them; the order keeps the exact version, the folder's last commit. Empty: no rules.</div>
                 </div>
                 <div class="col-md-6">
                     <div class="d-flex justify-content-between align-items-center mb-1">

@@ -11,6 +11,7 @@ internal sealed class TicketsDbContext(DbContextOptions<TicketsDbContext> option
     public DbSet<TicketOrder> TicketOrders => Set<TicketOrder>();
     public DbSet<TicketAttendee> TicketAttendees => Set<TicketAttendee>();
     public DbSet<TicketSyncState> TicketSyncStates => Set<TicketSyncState>();
+    public DbSet<TicketSettings> TicketSettings => Set<TicketSettings>();
     public DbSet<TicketTransferRequest> TicketTransferRequests => Set<TicketTransferRequest>();
     public DbSet<EventParticipation> EventParticipations => Set<EventParticipation>();
     public DbSet<TicketSalesEvent> TicketSalesEvents => Set<TicketSalesEvent>();
@@ -19,6 +20,7 @@ internal sealed class TicketsDbContext(DbContextOptions<TicketsDbContext> option
     public DbSet<TicketCheckoutOrderEvent> TicketCheckoutOrderEvents => Set<TicketCheckoutOrderEvent>();
     public DbSet<TicketCheckoutTicket> TicketCheckoutTickets => Set<TicketCheckoutTicket>();
     public DbSet<TicketResaleOffer> TicketResaleOffers => Set<TicketResaleOffer>();
+    public DbSet<TicketCompanionRequest> TicketCompanionRequests => Set<TicketCompanionRequest>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -27,6 +29,7 @@ internal sealed class TicketsDbContext(DbContextOptions<TicketsDbContext> option
         builder.ApplyConfiguration(new TicketOrderConfiguration());
         builder.ApplyConfiguration(new TicketAttendeeConfiguration());
         builder.ApplyConfiguration(new TicketSyncStateConfiguration());
+        builder.ApplyConfiguration(new TicketSettingsConfiguration());
         builder.ApplyConfiguration(new TicketTransferRequestConfiguration());
         builder.ApplyConfiguration(new EventParticipationConfiguration());
         builder.ApplyConfiguration(new TicketSalesEventConfiguration());
@@ -35,5 +38,6 @@ internal sealed class TicketsDbContext(DbContextOptions<TicketsDbContext> option
         builder.ApplyConfiguration(new TicketCheckoutOrderEventConfiguration());
         builder.ApplyConfiguration(new TicketCheckoutTicketConfiguration());
         builder.ApplyConfiguration(new TicketResaleOfferConfiguration());
+        builder.ApplyConfiguration(new TicketCompanionRequestConfiguration());
     }
 }

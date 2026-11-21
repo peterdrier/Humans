@@ -3,7 +3,7 @@ using Humans.Tickets.Domain.Checkout;
 
 namespace Humans.Tickets.Services.Checkout;
 
-/// <summary>What the gate reads: the scanned ticket.</summary>
+/// <summary>What the gate reads: the scanned ticket, and the event's tickets for its name search and report.</summary>
 internal sealed partial class TicketCheckoutService : ITicketGateLookup
 {
     public async Task<IssuedTicketInfo?> FindIssuedTicketAsync(string? barcode, CancellationToken ct = default)
@@ -16,6 +16,24 @@ internal sealed partial class TicketCheckoutService : ITicketGateLookup
             return null;
 
         var parent = ticket.ParentTicketId is { } parentId ? await repository.GetTicketAsync(parentId, ct) : null;
+        return ToGateInfo(ticket, parent, salesEvent);
+    }
+
+    public async Task<IReadOnlyList<IssuedTicketInfo>> GetIssuedTicketsForEventAsync(
+        Guid eventSettingsId, CancellationToken ct = default)
+    {
+        if (await repository.GetSalesEventForEventAsync(eventSettingsId, ct) is not { } salesEvent)
+            return [];
+
+        var tickets = await repository.GetTicketsForSalesEventAsync(salesEvent.Id, ct);
+        var byId = tickets.ToDictionary(t => t.Id);
+        return tickets
+            .Select(t => ToGateInfo(t, t.ParentTicketId is { } parentId ? byId.GetValueOrDefault(parentId) : null, salesEvent))
+            .ToList();
+    }
+
+    private IssuedTicketInfo ToGateInfo(TicketCheckoutTicket ticket, TicketCheckoutTicket? parent, TicketSalesEvent salesEvent)
+    {
         var entryUserId = ticket.HolderUserId ?? parent?.HolderUserId;
 
         var label = ticket.ClassLabel ?? ticket.WaveName;

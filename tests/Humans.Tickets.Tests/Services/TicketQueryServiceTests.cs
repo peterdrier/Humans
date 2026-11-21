@@ -50,7 +50,7 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
     {
         _repo = new TicketRepository(TicketsDbFactory, Clock);
 
-        _transferRepo.GetByStatusAsync(Arg.Any<TicketTransferStatus>(), Arg.Any<CancellationToken>())
+        _transferRepo.GetApprovedAsync(Arg.Any<CancellationToken>())
             .Returns([]);
 
         _service = new TicketQueryService(
@@ -208,7 +208,6 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
         var repository = Substitute.For<ITicketRepository>();
         repository.GetOrdersMatchedToUserAsync(userId, Arg.Any<CancellationToken>()).Returns([]);
         repository.GetAttendeesVisibleToUserAsync(userId, Arg.Any<CancellationToken>()).Returns([]);
-        _transferRepo.GetBySenderAsync(userId, Arg.Any<CancellationToken>()).Returns([]);
         repository.CountValidAttendeesMatchedToUserAsync(userId, Arg.Any<CancellationToken>())
             .Returns(boundary is "matched" or "hold" ? 1 : 0);
         repository.GetValidAttendeeEmailsAsync(Arg.Any<CancellationToken>()).Returns(["fallback@example.org"]);
@@ -267,6 +266,35 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
             result.TicketCount.Should().Be(boundary is "matched" or "hold" ? 1 : 0);
             result.HasCurrentEventTicket.Should().Be(string.Equals(boundary, "hold", StringComparison.Ordinal));
         }
+    }
+
+    [HumansTheory]
+    [InlineData("Valid", 2026, true)]
+    [InlineData("Offered", 2026, true)]
+    [InlineData("Void", 2026, false)]
+    [InlineData("Valid", 2025, false)]
+    public async Task Holdings_HumansIssuedTicket_HoldsDeletionUntil30DaysAfterStrike(string state, int year, bool held)
+    {
+        var userId = Guid.NewGuid();
+        var salesEvent = new TicketSalesEvent { Id = Guid.NewGuid(), EventSettingsId = Guid.NewGuid() };
+        _checkout.GetTicketsForHolderAsync(userId, Arg.Any<CancellationToken>()).Returns(
+        [
+            new TicketCheckoutTicket { Id = Guid.NewGuid(), SalesEventId = salesEvent.Id, HolderUserId = userId, State = Enum.Parse<TicketCheckoutTicketState>(state) },
+        ]);
+        _checkout.GetSalesEventAsync(salesEvent.Id, Arg.Any<CancellationToken>()).Returns(salesEvent);
+        _shiftManagementService.GetEventSettingsByIdAsync(salesEvent.EventSettingsId, Arg.Any<CancellationToken>())
+            .Returns(new EventSettingsInfo(salesEvent.EventSettingsId, "Nowhere", year, "Europe/Madrid",
+                new LocalDate(year, 7, 1), -10, 5, 9, new Dictionary<int, int>(), null, null));
+        var service = new TicketQueryService(FixedOrgTimeZone.Madrid, _repo, _transferRepo, _budgetService, _campaignService,
+            _userService, _userEmailService, _teamService, Substitute.For<IGovernanceService>(), _shiftManagementService,
+            _auditLog, Clock, _participations, _checkout);
+
+        var holdings = await service.GetUserTicketHoldingsAsync(userId, TestContext.Current.CancellationToken);
+
+        // Strike's last day is 10 July; the hold runs to the start of 10 August, Madrid time.
+        holdings.PostEventHoldDate.Should().Be(held
+            ? new LocalDate(year, 8, 10).AtStartOfDayInZone(DateTimeZoneProviders.Tzdb["Europe/Madrid"]).ToInstant()
+            : null);
     }
 
     [HumansTheory]
@@ -1467,7 +1495,7 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
             DecidedAt = decidedAt,
         };
 
-        _transferRepo.GetByStatusAsync(TicketTransferStatus.Approved, Arg.Any<CancellationToken>())
+        _transferRepo.GetApprovedAsync(Arg.Any<CancellationToken>())
             .Returns([transfer]);
 
         var result = await _service.GetTicketOrdersAsync(TestContext.Current.CancellationToken);

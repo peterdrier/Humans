@@ -7,14 +7,11 @@ namespace Humans.Tickets.Services;
 
 internal sealed class TicketsEmailPreviews(TicketsEmails emails, TicketCodeImages codeImages) : IEmailPreviewContributor
 {
-    private const string SampleTicket = "Nobodies 2026 — Early Bird (TT-10482)";
     private const string SampleReceiver = "Alex Firestone";
-    private const string SampleReason = "The receiver could not be verified as a member.";
     private const string SampleEvent = "Elsewhere 2027";
     private const string SampleBarcode = "H7K2M9QX4T8VB3NRP";
     private const string SampleChildBarcode = "HC4W8N2R6T0YZ5KMB";
     private static readonly Uri SampleBase = new("https://humans.nobodies.team/");
-    private const string SampleReviewUrl = "/Tickets/Admin/Transfers/Detail/00000000-0000-0000-0000-000000000001";
 
     public IReadOnlyList<EmailPreviewSample> Samples(EmailPreviewPersona persona)
     {
@@ -23,17 +20,13 @@ internal sealed class TicketsEmailPreviews(TicketsEmails emails, TicketCodeImage
 
         return
         [
-            new EmailPreviewSample("ticket-transfer-requested", "Ticket Transfer Requested",
-                emails.TicketTransferRequested(Guid.Empty, email, name, SampleReceiver, SampleTicket, culture)),
-            new EmailPreviewSample("ticket-transfer-team-notification", "Ticket Transfer — Team Notification",
-                emails.TicketTransferTeamNotification(name, SampleReceiver, "alex@example.com", SampleTicket, SampleReason, SampleReviewUrl)),
-
-            // Both branches of the decision, so the gallery shows the cancellation reason
-            // rather than only the empty success body.
-            new EmailPreviewSample("ticket-transfer-decision-approved", "Ticket Transfer Complete",
-                emails.TicketTransferDecision(Guid.Empty, email, name, successful: true, SampleTicket, SampleReceiver, reason: null, culture)),
-            new EmailPreviewSample("ticket-transfer-decision-rejected", "Ticket Transfer Cancelled",
-                emails.TicketTransferDecision(Guid.Empty, email, name, successful: false, SampleTicket, SampleReceiver, SampleReason, culture)),
+            new EmailPreviewSample("ticket-reconciliation-alert", "Ticket Reconciliation — Team Alert",
+                emails.ReconciliationAlert(
+                    [
+                        "boxoffice orders: out of balance; Humans 412 paid orders, 9,870.00 € net; backend 413, 9,995.00 € net; 1 order(s) differ: extra at backend 1",
+                        "boxoffice payments and payouts: 2 movement(s) differ: fee differs from Humans' 2",
+                    ],
+                    "/Tickets/Admin/Sales/Recon?from=2026-12-01&to=2027-01-09")),
             new EmailPreviewSample("ticket-resale-invitation", "Ticket Resale Invitation",
                 emails.ResaleInvitation(email, SampleReceiver, "Elsewhere 2027", "https://humans.example/Tickets/Buy/Resale/sample-token", culture)),
 

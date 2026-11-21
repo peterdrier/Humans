@@ -13,7 +13,7 @@ internal sealed class TicketSalesEventConfiguration : IEntityTypeConfiguration<T
         builder.HasIndex(x => x.EventSettingsId).IsUnique();
         builder.Property(x => x.BackendKey).IsRequired().HasMaxLength(32);
         builder.Property(x => x.BackendEventRef).HasMaxLength(128);
-        builder.Property(x => x.TermsUrl).HasMaxLength(500);
+        builder.Property(x => x.TermsFolder).HasMaxLength(200);
         builder.Property(x => x.Mode).IsRequired().HasConversion<string>().HasMaxLength(16);
         builder.Property(x => x.TicketVatRate).HasPrecision(5, 4);
         builder.OwnsMany(x => x.Waves, w =>
@@ -53,6 +53,8 @@ internal sealed class TicketCheckoutOrderConfiguration : IEntityTypeConfiguratio
         builder.Property(x => x.Currency).IsRequired().HasMaxLength(3);
         builder.Property(x => x.Culture).IsRequired().HasMaxLength(16);
         builder.Property(x => x.PaymentMethod).HasMaxLength(64);
+        builder.Property(x => x.TermsFolder).HasMaxLength(200);
+        builder.Property(x => x.TermsVersion).HasMaxLength(40);
         builder.Ignore(x => x.TicketTotalMinor);
         builder.OwnsMany(x => x.Lines, l =>
         {
@@ -125,6 +127,20 @@ internal sealed class TicketResaleOfferConfiguration : IEntityTypeConfiguration<
         builder.Property(x => x.State).IsRequired().HasConversion<string>().HasMaxLength(16);
         builder.Property(x => x.DirectedEmail).HasMaxLength(320);
         builder.Property(x => x.DirectedTokenHash).HasMaxLength(64);
+    }
+}
+
+internal sealed class TicketCompanionRequestConfiguration : IEntityTypeConfiguration<TicketCompanionRequest>
+{
+    public void Configure(EntityTypeBuilder<TicketCompanionRequest> builder)
+    {
+        builder.ToTable("ticket_companion_requests");
+        builder.HasKey(x => x.Id);
+        builder.HasIndex(x => x.SalesEventId);
+        builder.HasIndex(x => x.TicketId);
+        builder.Property(x => x.State).IsRequired().HasConversion<string>().HasMaxLength(16);
+        builder.Property(x => x.Note).IsRequired().HasMaxLength(500);
+        builder.Property(x => x.DecisionNote).HasMaxLength(500);
     }
 }
 
