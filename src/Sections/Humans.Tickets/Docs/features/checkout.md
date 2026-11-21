@@ -12,7 +12,8 @@ amounts and VAT, buyer prefilled, expiry, return URL; returns the backend order 
 one order), `Setup` (display name, hosting, its server settings with secrets only as set or missing, webhook path,
 setup notes), `CheckAsync` (read-only connection test, optionally for one backend event; never throws, answers
 findings) and `ListOrdersAsync` (every order the backend holds created in a period, for reconciliation; read-only,
-throws rather than answer a partial list). Adapters call `ITicketCheckoutEvents.CheckoutChangedAsync` from
+throws rather than answer a partial list) and `GetPaymentLedgerAsync` (the payment account's balance movements and
+payouts in a period, for fee and payout reconciliation; null where Humans cannot read the account). Adapters call `ITicketCheckoutEvents.CheckoutChangedAsync` from
 their webhook; Tickets then re-reads the status. Each backend is its own section: `Humans.BoxOffice` (`boxoffice`,
 Stripe hosted Checkout), `Humans.Pretix`, `Humans.HiEvents`.
 
@@ -74,8 +75,31 @@ be read gives an error, never a partial comparison.
 only or every order, each row linking to the Humans order and the backend's admin. It is open to Read, Board included:
 checking the money is oversight, and it changes nothing. `TicketReconJob` runs daily at 04:30 over the whole sale (from
 the first sales setup to the start of today), so a late refund on an old order is caught too. It logs an error per
-backend out of balance or unreadable, an information line per balanced one, and goes on to the next backend when one
-fails. A backend stays in use while it holds orders, whatever the sales setups point at now.
+check out of balance or unreadable, an information line per balanced one, and goes on to the next backend when one
+fails. When any check is out of balance or could not run, it queues one email to the ticketing team's mailbox
+(`tickets@`) listing each finding, with a link to the page for that range; the mail repeats every night until the
+reconciliation balances. A backend stays in use while it holds orders, whatever the sales setups point at now.
+
+Outside production, QA, previews and dev share the backends' test accounts, so each sees the others' orders and
+payments. There, a backend order or a payment movement that names a Humans order this database never held (on any
+backend) is another instance's: it is shown apart, collapsed, and is never a difference, never in the totals of the
+order check, never unbalances and is never mailed. A payment movement still counts in the account's totals, since it
+moved through the account. In production nothing is set apart, and an entry naming no Humans order at all is a
+difference everywhere.
+
+### Fees and payouts
+
+Where Humans can read the backend's payment account (Box Office: the ticket Stripe account), the page and the daily run
+also reconcile it by the day the money moved (`GetPaymentLedgerAsync`), so a refund months after the sale counts in the
+month it was made. Every balance movement is tied to the Humans order its payment carries in metadata. A payment must
+name a paid (or settling) order on that backend, for the order's total, with the fee Humans recorded on the order (a
+failed delayed debit whose payment came back, in the period or any time after it, may be Failed); a refund or chargeback must name an order; a payout must
+send exactly the net of the movements Stripe says it contains. A failed payout is shown but does not unbalance: Stripe
+returns the money and pays it out again, and it would otherwise hold the nightly alert forever. Totals show charged, refunded, chargebacks, fees, net into the balance and paid out to the
+bank, and the fees on order payments Humans against Stripe. Fees not on a payment (Stripe's own billing, a chargeback
+fee) name no order: they are listed and counted, not a difference. A manual payout's contents cannot be listed, nor an
+automatic one's until Stripe has finished reconciling it, so only its status is checked. pretix and Hi.Events take payments through their own Stripe accounts, which Humans holds no
+keys for, so their fees and payouts are not reconciled here.
 
 Per backend: Box Office lists every Checkout Session on the ticket Stripe account (it has no events) and reads the ticket
 count from the session's `humans_ticket_count` metadata, since free lines never reach Stripe; a session without it
@@ -251,9 +275,6 @@ and nothing goes to Consent.
 - Moving a ticket to another person moves its order line, so the order is no longer the previous holder's and erasing them
   never asks the backend to erase its copy of that order (pretix, Hi.Events; Box Office keeps none).
 - A renamed ticket is not emailed to its new holder (`ITicketDelivery` is per order, sent once); they see it in their profile.
-- Reconciliation of payouts (what Stripe paid into the bank) and of fees; the reconciliation covers what each order
-  charged, refunded and lost to chargebacks.
-- Reconciliation follow-ups: a notification or audit entry when out of balance (today only the error log); signing off a
-  difference; a vendor admin link on extra rows; currency on backend rows (all are summed as EUR cents); comparing
-  refunds with Humans' own refund records rather than the backend's copy; telling a Stripe test account shared by QA and
-  previews apart (each sees the others' sessions as extra).
+- Fees and payouts of pretix's and Hi.Events' own payment accounts; matching a payout to the bank statement.
+- Reconciliation follow-ups: signing off a difference (an unresolved one is mailed every night); a vendor admin link on extra rows; currency on backend rows (all are summed as EUR cents); comparing
+  refunds with Humans' own refund records rather than the backend's copy.

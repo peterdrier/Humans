@@ -13,6 +13,7 @@ using Humans.Tickets.Services.Checkout;
 using Humans.Tickets.Services.Stores;
 using Microsoft.Extensions.DependencyInjection;
 using Humans.Users.Contracts;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -45,6 +46,7 @@ public sealed class TicketCheckoutServiceTests
     private readonly ITicketRulesSource _rules = Substitute.For<ITicketRulesSource>();
     private readonly HashSet<string> _admitted = new(StringComparer.Ordinal);
     private readonly FakeClock _clock = new(Now);
+    private readonly IHostEnvironment _environment = Substitute.For<IHostEnvironment>();
     private readonly ITicketManagement _holdingsInner = Substitute.For<ITicketManagement>();
     private readonly CachingTicketQueryService _holdings;
     private readonly Guid _otherBuyerId = Guid.NewGuid();
@@ -84,6 +86,7 @@ public sealed class TicketCheckoutServiceTests
         };
         _repo.SalesEvents.Add(_salesEvent);
 
+        _environment.EnvironmentName.Returns(Environments.Production);
         _backend.Key.Returns("test");
         _backend.IsConfigured.Returns(true);
         _backend.CreateCheckoutAsync(Arg.Any<CheckoutRequest>(), Arg.Any<CancellationToken>())
@@ -107,7 +110,7 @@ public sealed class TicketCheckoutServiceTests
         var localizer = Substitute.For<IStringLocalizer<TicketsResource>>();
         localizer[Arg.Any<string>()].Returns(ci => new LocalizedString(ci.Arg<string>(), ci.Arg<string>()));
         localizer["Tickets_Resale_Email_Invite_Body"].Returns(new LocalizedString("body", "{2}"));
-        var emails = new TicketsEmails(localizer, NullLogger<TicketsEmails>.Instance);
+        var emails = new TicketsEmails(Options.Create(new EmailSettings()), localizer, NullLogger<TicketsEmails>.Instance);
 
         _gate.GetAdmittedAsync(Arg.Any<IReadOnlyCollection<string>>(), Arg.Any<CancellationToken>())
             .Returns(ci => (IReadOnlySet<string>)ci.Arg<IReadOnlyCollection<string>>().Where(_admitted.Contains).ToHashSet(StringComparer.Ordinal));
@@ -116,7 +119,7 @@ public sealed class TicketCheckoutServiceTests
         _holdings = new CachingTicketQueryService(services.BuildServiceProvider().GetRequiredService<IServiceScopeFactory>(),
             _clock, NullLogger<CachingTicketQueryService>.Instance);
         _service = new TicketCheckoutService(_repo, [_backend], _grants, _settings, _users, _provisioning, _userEmails,
-            _preferenceReads, _preferences, _email, emails, [_delivery], _gate, _rules, localizer, _audit,
+            _preferenceReads, _preferences, _email, emails, [_delivery], _gate, _rules, localizer, _audit, _environment,
             _clock, _holdings, NullLogger<TicketCheckoutService>.Instance);
     }
 
@@ -168,6 +171,36 @@ public sealed class TicketCheckoutServiceTests
         failed!.Error.Should().Contain("down");
         failed.Rows.Should().BeEmpty();
         failed.Balanced.Should().BeFalse();
+    }
+
+    [HumansFact]
+    public async Task Payment_recon_looks_past_the_period_for_a_failed_debit_coming_back()
+    {
+        var order = new TicketCheckoutOrder
+        {
+            Id = Guid.NewGuid(),
+            SalesEventId = _salesEvent.Id,
+            BackendKey = "test",
+            State = TicketCheckoutOrderState.Failed,
+            TotalMinor = 30000,
+            FeeMinor = 450,
+            CreatedAt = Now - Duration.FromDays(20),
+        };
+        _repo.Orders.Add(order);
+        var from = Now - Duration.FromDays(30);
+        var to = Now - Duration.FromDays(10);
+        _backend.GetPaymentLedgerAsync(from, to, Arg.Any<CancellationToken>()).Returns(new PaymentLedger(
+            [new PaymentLedgerEntry("txn_c", Now - Duration.FromDays(20), PaymentLedgerEntryKind.Charge, 30000, 450, order.Id, null)], []));
+        _backend.GetPaymentLedgerAsync(to, Now, Arg.Any<CancellationToken>()).Returns(new PaymentLedger([], []));
+        var ct = TestContext.Current.CancellationToken;
+
+        (await _service.ReconcilePaymentsAsync("test", from, to, ct))!.Problems.Should().ContainSingle()
+            .Which.Issues.Should().Equal(TicketPaymentIssue.NotPaidInHumans);
+
+        _backend.GetPaymentLedgerAsync(to, Now, Arg.Any<CancellationToken>()).Returns(new PaymentLedger(
+            [new PaymentLedgerEntry("txn_back", Now - Duration.FromDays(5), PaymentLedgerEntryKind.Charge, -30000, 0, order.Id, null)], []));
+
+        (await _service.ReconcilePaymentsAsync("test", from, to, ct))!.Balanced.Should().BeTrue();
     }
 
     [HumansFact]

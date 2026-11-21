@@ -141,6 +141,13 @@ internal interface ITicketCheckoutService : ITicketCheckoutEvents, IApplicationS
     /// </summary>
     Task<TicketRecon?> ReconcileBackendAsync(string backendKey, Instant from, Instant to, CancellationToken ct = default);
 
+    /// <summary>
+    /// Fee and payout reconciliation of one backend for [<paramref name="from"/>, <paramref name="to"/>): the payment
+    /// account's own movements against Humans' orders. Reads only. Null for an unknown or unconfigured backend and for one
+    /// whose payment account Humans cannot read; an account that cannot be read gives a result carrying the error.
+    /// </summary>
+    Task<TicketPaymentRecon?> ReconcilePaymentsAsync(string backendKey, Instant from, Instant to, CancellationToken ct = default);
+
     /// <summary>Every order opened on one backend, newest first, with its stuck orders and unsettled refunds; null for an unknown key.</summary>
     Task<BackendLedger?> GetBackendLedgerAsync(string backendKey, CancellationToken ct = default);
 

@@ -20,6 +20,13 @@ internal sealed class TicketsEmailPreviews(TicketsEmails emails, TicketCodeImage
 
         return
         [
+            new EmailPreviewSample("ticket-reconciliation-alert", "Ticket Reconciliation — Team Alert",
+                emails.ReconciliationAlert(
+                    [
+                        "boxoffice orders: out of balance; Humans 412 paid orders, 9,870.00 € net; backend 413, 9,995.00 € net; 1 order(s) differ: extra at backend 1",
+                        "boxoffice payments and payouts: 2 movement(s) differ: fee differs from Humans' 2",
+                    ],
+                    "/Tickets/Admin/Sales/Recon?from=2026-12-01&to=2027-01-09")),
             new EmailPreviewSample("ticket-resale-invitation", "Ticket Resale Invitation",
                 emails.ResaleInvitation(email, SampleReceiver, "Elsewhere 2027", "https://humans.example/Tickets/Buy/Resale/sample-token", culture)),
 

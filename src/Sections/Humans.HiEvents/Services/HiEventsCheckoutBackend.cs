@@ -325,6 +325,10 @@ internal sealed class HiEventsCheckoutBackend : ITicketCheckoutBackend
     public string? EventRefOf(string backendOrderId) =>
         ParseBackendOrderId(backendOrderId).EventId.ToString(CultureInfo.InvariantCulture);
 
+    /// <summary>Hi.Events takes payments through its own payment account, whose keys Humans does not hold.</summary>
+    public Task<PaymentLedger?> GetPaymentLedgerAsync(Instant from, Instant to, CancellationToken ct = default) =>
+        Task.FromResult<PaymentLedger?>(null);
+
     public async Task<IReadOnlyList<BackendOrderSummary>> ListOrdersAsync(
         string? backendEventRef, Instant from, Instant to, CancellationToken ct = default)
     {
