@@ -55,6 +55,18 @@ public class PretixCheckTests
     }
 
     [HumansFact]
+    public async Task A_refused_items_read_is_a_finding_not_a_throw()
+    {
+        var pretix = Organizer()
+            .On("GET", Api, HttpStatusCode.OK, new { currency = "EUR", live = true, testmode = false })
+            .On("GET", Api + "items/", HttpStatusCode.Forbidden, new { detail = "No permission." });
+
+        var findings = await Create(pretix).CheckAsync("nowhere2027", Ct);
+
+        findings.Should().Contain(f => !f.Ok && f.Text.Contains("403"));
+    }
+
+    [HumansFact]
     public void Setup_labels_pretix_hosted_and_hides_secrets()
     {
         var settings = PretixTestHost.Settings();

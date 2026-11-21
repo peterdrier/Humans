@@ -324,8 +324,8 @@ internal sealed class PretixCheckoutBackend(
             if (details.Testmode)
                 findings.Add(new(true, "The event is in test mode: payments are not real."));
 
-            var items = Deserialize<PretixPage<PretixItem>>(
-                (await SendRawAsync(HttpMethod.Get, $"{EventPath(backendEventRef)}items/?active=true", body: null, ct)).Body);
+            var items = await SendAsync<PretixPage<PretixItem>>(
+                HttpMethod.Get, $"{EventPath(backendEventRef)}items/?active=true", body: null, ct);
             foreach (var name in new[] { TicketItemName, DonationItemName })
             {
                 var count = items.Results.Count(i => string.Equals(i.InternalName, name, StringComparison.Ordinal));
