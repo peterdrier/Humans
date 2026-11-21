@@ -23,6 +23,10 @@
     <dt class="col-sm-3">Paid</dt><dd class="col-sm-9">@(o.PaidAt?.ToDateTime() ?? "—") @o.PaymentMethod</dd>
     <dt class="col-sm-3">Fee</dt><dd class="col-sm-9">@(o.FeeMinor is { } fee ? Eur(fee) : "—")</dd>
     <dt class="col-sm-3">Refunded</dt><dd class="col-sm-9">@Eur(o.RefundedMinor)</dd>
+    @if (o.DisputedMinor > 0)
+    {
+        <dt class="col-sm-3">Charged back</dt><dd class="col-sm-9 text-danger">@Eur(o.DisputedMinor)</dd>
+    }
 </dl>
 
 <table class="table table-sm">
