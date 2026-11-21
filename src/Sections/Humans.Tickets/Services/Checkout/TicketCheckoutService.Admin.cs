@@ -5,13 +5,13 @@ using Humans.Tickets.Domain.Checkout;
 
 namespace Humans.Tickets.Services.Checkout;
 
-/// <summary>The ticketing team's exceptions on issued tickets: rename, void, free companion. All audited.</summary>
+/// <summary>The ticketing team's exceptions on issued tickets: rename, void and refund, free companion, and the overrides. All audited.</summary>
 internal sealed partial class TicketCheckoutService
 {
     internal const int MaxReasonLength = 500;
 
     public async Task<CheckoutMutationResult> RenameTicketAsync(
-        Guid ticketId, string holderName, string holderEmail, string reason, Guid actorUserId, CancellationToken ct = default)
+        Guid ticketId, string holderName, string holderEmail, string reason, bool overrideRules, Guid actorUserId, CancellationToken ct = default)
     {
         holderName = holderName.Trim();
         holderEmail = holderEmail.Trim();
@@ -31,7 +31,7 @@ internal sealed partial class TicketCheckoutService
         // Correcting the same person's legal name is always allowed; moving the ticket to someone else is the exception.
         if (!samePerson)
         {
-            if (ticket.ClassLabel is not null || ticket.CreditsMinor > 0)
+            if (!overrideRules && (ticket.ClassLabel is not null || ticket.CreditsMinor > 0))
                 return new("Only a full price ticket can move to another person; this one was bought at a class price or with credits.");
             if ((await repository.GetTicketsForSalesEventAsync(ticket.SalesEventId, ct))
                 .Any(t => t.ParentTicketId == ticket.Id && t.State == TicketCheckoutTicketState.Valid))
@@ -71,25 +71,30 @@ internal sealed partial class TicketCheckoutService
         }
 
         var why = reason.Trim();
-        var what = samePerson ? "name corrected" : "moved to another person";
+        // Only a move of a reduced price ticket steps past a rule; anything else is a plain rename.
+        var overridden = overrideRules && !samePerson && (ticket.ClassLabel is not null || ticket.CreditsMinor > 0);
+        var what = (samePerson ? "name corrected" : "moved to another person") + (overridden ? " by an override" : string.Empty);
         // Names stay out of the timeline (erasure leaves it); the audit rows link the people by id.
         await TimelineAsync(ticket.OrderId, TicketCheckoutOrderEventKind.Renamed,
             $"Ticket {ticket.Barcode} {what} by the ticketing team: {why}", actorUserId, ct);
-        var description = $"Ticket {ticket.Barcode} {what}" +
+        var description = (overridden ? "Override: " : string.Empty) + $"Ticket {ticket.Barcode} {what}" +
             (samePerson ? string.Empty : $" (from user {fromUserId?.ToString() ?? "none"} to user {holderUserId})") + $": {why}";
-        await auditLog.LogAsync(TicketsAuditActions.TicketCheckoutTicketRenamed, AuditEntityType, ticket.OrderId,
+        var action = overridden ? TicketsAuditActions.TicketOverride : TicketsAuditActions.TicketCheckoutTicketRenamed;
+        await auditLog.LogAsync(action, AuditEntityType, ticket.OrderId,
             description, actorUserId, holderUserId, AuditSubjectTypes.User);
         if (!samePerson && fromUserId is { } previous)
-            await auditLog.LogAsync(TicketsAuditActions.TicketCheckoutTicketRenamed, AuditEntityType, ticket.OrderId,
+            await auditLog.LogAsync(action, AuditEntityType, ticket.OrderId,
                 description, actorUserId, previous, AuditSubjectTypes.User);
         return CheckoutMutationResult.Ok;
     }
 
     public async Task<CheckoutMutationResult> VoidTicketAsync(
-        Guid ticketId, string reason, Guid actorUserId, CancellationToken ct = default)
+        Guid ticketId, string reason, long refundMinor, Guid actorUserId, CancellationToken ct = default)
     {
         if (ReasonRefusal(reason) is { } refusal)
             return refusal;
+        if (refundMinor < 0)
+            return new("The refund cannot be negative.");
         var ticket = await repository.GetTicketAsync(ticketId, ct);
         if (ticket is null)
             return new("That ticket does not exist.");
@@ -103,6 +108,29 @@ internal sealed partial class TicketCheckoutService
         if (offer?.State == TicketResaleOfferState.Reserved)
             return new("A buyer's checkout is paying for this ticket right now; try again once it settles.");
 
+        var why = reason.Trim();
+        // Refund first: a refund the backend turns down leaves the ticket working, so the team can try again.
+        if (refundMinor > 0)
+        {
+            var (refunded, _) = await RefundCoreAsync(ticket.OrderId, refundMinor, $"Ticket {ticket.Barcode} voided: {why}", actorUserId, ct);
+            if (!refunded.Succeeded)
+                return new($"{refunded.Refusal} Nothing was voided.");
+        }
+
+        var dependents = await VoidWithDependentsAsync(ticket, offer, why, actorUserId,
+            refundMinor > 0 ? $"; {FormatMinor(refundMinor)} refunded" : "; no refund: no money goes back", ct);
+        await auditLog.LogAsync(TicketsAuditActions.TicketCheckoutTicketVoided, AuditEntityType, ticket.OrderId,
+            $"Ticket {ticket.Barcode} voided" + (dependents > 0 ? $" with {dependents} dependent ticket(s)" : string.Empty) +
+            (offer is not null ? ", withdrawing its resale offer" : string.Empty) +
+            (refundMinor > 0 ? $", refunding {FormatMinor(refundMinor)}" : ", with no refund") + $": {why}",
+            actorUserId, ticket.HolderUserId, ticket.HolderUserId is null ? null : AuditSubjectTypes.User);
+        return CheckoutMutationResult.Ok;
+    }
+
+    /// <summary>Voids the ticket and its valid dependents and withdraws <paramref name="offer"/>; returns how many dependents went with it.</summary>
+    private async Task<int> VoidWithDependentsAsync(
+        TicketCheckoutTicket ticket, TicketResaleOffer? offer, string why, Guid? actorUserId, string note, CancellationToken ct)
+    {
         var now = clock.GetCurrentInstant();
         if (offer is not null)
         {
@@ -115,7 +143,6 @@ internal sealed partial class TicketCheckoutService
         var dependents = (await repository.GetTicketsForSalesEventAsync(ticket.SalesEventId, ct))
             .Where(t => t.ParentTicketId == ticket.Id && t.State == TicketCheckoutTicketState.Valid)
             .ToList();
-        var why = reason.Trim();
         foreach (var voided in dependents.Prepend(ticket))
         {
             voided.State = TicketCheckoutTicketState.Void;
@@ -123,18 +150,49 @@ internal sealed partial class TicketCheckoutService
             voided.VoidReason = voided == ticket ? why : "Voided with the adult's ticket";
             await repository.UpdateTicketAsync(voided, ct);
             await TimelineAsync(voided.OrderId, TicketCheckoutOrderEventKind.Voided,
-                $"Ticket {voided.Barcode} voided by the ticketing team: {voided.VoidReason}" +
-                (voided == ticket && offer is not null ? "; taken out of the resale queue" : string.Empty), actorUserId, ct);
+                $"Ticket {voided.Barcode} voided: {voided.VoidReason}" +
+                (voided == ticket ? note + (offer is not null ? "; taken out of the resale queue" : string.Empty) : string.Empty),
+                actorUserId, ct);
         }
-        await auditLog.LogAsync(TicketsAuditActions.TicketCheckoutTicketVoided, AuditEntityType, ticket.OrderId,
-            $"Ticket {ticket.Barcode} voided" + (dependents.Count > 0 ? $" with {dependents.Count} dependent ticket(s)" : string.Empty) +
-            (offer is not null ? ", withdrawing its resale offer" : string.Empty) + $": {why}",
+        return dependents.Count;
+    }
+
+    /// <summary>The override for a ticket voided by mistake: it works again, whatever was refunded for it.</summary>
+    public async Task<CheckoutMutationResult> RestoreTicketAsync(
+        Guid ticketId, string reason, Guid actorUserId, CancellationToken ct = default)
+    {
+        if (ReasonRefusal(reason) is { } refusal)
+            return refusal;
+        var ticket = await repository.GetTicketAsync(ticketId, ct);
+        if (ticket is null)
+            return new("That ticket does not exist.");
+        if (ticket.State != TicketCheckoutTicketState.Void)
+            return new("Only a voided ticket can be restored.");
+        if ((await repository.GetSalesEventAsync(ticket.SalesEventId, ct))?.CancelledAt is not null)
+            return new("The event is cancelled; its tickets stay void.");
+        if (ticket.ParentTicketId is { } parentId && (await repository.GetTicketAsync(parentId, ct))?.State != TicketCheckoutTicketState.Valid)
+            return new("Restore the adult's ticket first.");
+        if (ticket.HolderUserId is { } holder && await HoldsTicketAsync(ticket.SalesEventId, holder, clock.GetCurrentInstant(), ct))
+            return new("The holder already holds another ticket for this event.");
+
+        var why = reason.Trim();
+        var wasVoided = ticket.VoidReason;
+        ticket.State = TicketCheckoutTicketState.Valid;
+        ticket.VoidedAt = null;
+        ticket.VoidReason = null;
+        await repository.UpdateTicketAsync(ticket, ct);
+        if (ticket.HolderUserId is { } holderId)
+            holdings.InvalidateHoldings(holderId);
+        await TimelineAsync(ticket.OrderId, TicketCheckoutOrderEventKind.Restored,
+            $"Ticket {ticket.Barcode} restored by an override: {why} (it was voided: {wasVoided})", actorUserId, ct);
+        await auditLog.LogAsync(TicketsAuditActions.TicketOverride, AuditEntityType, ticket.OrderId,
+            $"Override: ticket {ticket.Barcode} restored after it was voided ({wasVoided}): {why}",
             actorUserId, ticket.HolderUserId, ticket.HolderUserId is null ? null : AuditSubjectTypes.User);
         return CheckoutMutationResult.Ok;
     }
 
     public async Task<CheckoutMutationResult> IssueCompanionAsync(
-        Guid parentTicketId, string holderName, string? holderEmail, string reason, Guid actorUserId, CancellationToken ct = default)
+        Guid parentTicketId, string holderName, string? holderEmail, string reason, bool overrideCapacity, Guid actorUserId, CancellationToken ct = default)
     {
         holderName = holderName.Trim();
         holderEmail = string.IsNullOrWhiteSpace(holderEmail) ? null : holderEmail.Trim();
@@ -150,7 +208,7 @@ internal sealed partial class TicketCheckoutService
             return resolved is null
                 ? (null, $"That email cannot take the ticket: {problem}. Leave it empty to issue the companion without an account.")
                 : (resolved, null);
-        }, reason.Trim(), actorUserId, ct)).Result;
+        }, reason.Trim(), overrideCapacity, actorUserId, ct)).Result;
     }
 
     /// <summary>
@@ -159,7 +217,8 @@ internal sealed partial class TicketCheckoutService
     /// </summary>
     private async Task<(CheckoutMutationResult Result, TicketCheckoutTicket? Companion)> IssueCompanionCoreAsync(
         Guid parentTicketId, string holderName, string? holderEmail,
-        Func<CancellationToken, Task<(Guid? UserId, string? Refusal)>> holder, string why, Guid actorUserId, CancellationToken ct)
+        Func<CancellationToken, Task<(Guid? UserId, string? Refusal)>> holder, string why, bool overrideCapacity, Guid actorUserId,
+        CancellationToken ct)
     {
         var parent = await repository.GetTicketAsync(parentTicketId, ct);
         if (parent is null)
@@ -173,7 +232,10 @@ internal sealed partial class TicketCheckoutService
         var eventTickets = await repository.GetTicketsForSalesEventAsync(parent.SalesEventId, ct);
         if (eventTickets.Any(t => t.ParentTicketId == parent.Id && t.Kind == TicketHolderKind.Companion && t.State == TicketCheckoutTicketState.Valid))
             return (new("This ticket already has a companion."), null);
-        if ((await LoadStockAsync(salesEvent, now, ct)).Held >= salesEvent.Capacity)
+        if (salesEvent.CancelledAt is not null)
+            return (new("The event is cancelled."), null);
+        var overCapacity = (await LoadStockAsync(salesEvent, now, ct)).Held >= salesEvent.Capacity;
+        if (overCapacity && !overrideCapacity)
             return (new("The event is at capacity."), null);
 
         var (holderUserId, holderRefusal) = await holder(ct);
@@ -236,8 +298,9 @@ internal sealed partial class TicketCheckoutService
             $"Free companion ticket {companion.Barcode} for ticket {parent.Barcode}: {why}", actorUserId, ct);
         await TimelineAsync(parent.OrderId, TicketCheckoutOrderEventKind.CompanionIssued,
             $"Free companion ticket {companion.Barcode} attached to ticket {parent.Barcode}", actorUserId, ct);
-        await auditLog.LogAsync(TicketsAuditActions.TicketCompanionIssued, AuditEntityType, order.Id,
-            $"Companion ticket {companion.Barcode} issued for ticket {parent.Barcode}: {why}",
+        var overridden = overCapacity && overrideCapacity;
+        await auditLog.LogAsync(overridden ? TicketsAuditActions.TicketOverride : TicketsAuditActions.TicketCompanionIssued, AuditEntityType, order.Id,
+            (overridden ? "Override: past capacity, c" : "C") + $"ompanion ticket {companion.Barcode} issued for ticket {parent.Barcode}: {why}",
             actorUserId, parentHolderId, AuditSubjectTypes.User);
         await HandOffToDeliveryAsync(order.Id, ct);
         return (CheckoutMutationResult.Ok, companion);

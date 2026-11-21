@@ -155,6 +155,7 @@ public sealed class TicketsEmailsTests
         if (type == typeof(OrderReceiptMail)) return SampleReceipt();
         if (type == typeof(bool)) return flag;
         if (type == typeof(int)) return 3;
+        if (type == typeof(long)) return 2500L;
         if (type == typeof(string)) return string.Equals(parameter.Name, "culture", StringComparison.Ordinal) ? "en" : "sample";
         throw new NotSupportedException(
             $"TicketsEmails.{parameter.Member.Name} takes a {type.Name}; teach this test how to sample one.");

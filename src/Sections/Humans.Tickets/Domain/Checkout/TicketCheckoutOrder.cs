@@ -210,4 +210,6 @@ internal enum TicketCheckoutOrderEventKind
     TicketMailSkipped = 22,
     CompanionRequested = 23,
     CompanionRequestDecided = 24,
+    EventCancelled = 25,
+    Restored = 26,
 }

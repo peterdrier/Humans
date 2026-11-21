@@ -8,4 +8,7 @@ public static class TicketsPolicies
 
     /// <summary>Tickets Admin or Admin: syncs, exports, transfer decisions, discount codes and gate settings.</summary>
     public const string Manage = "TicketsManage";
+
+    /// <summary>Tickets Override or Admin: the audited manual overrides that step past the ticket rules.</summary>
+    public const string Override = "TicketsOverride";
 }

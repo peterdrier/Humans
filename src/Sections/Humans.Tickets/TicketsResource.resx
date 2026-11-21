@@ -557,4 +557,16 @@
   <data name="Tickets_Companion_Holds" xml:space="preserve">
     <value>Your companion already has a ticket for this event, so they do not need a companion ticket.</value>
   </data>
+  <data name="Tickets_Cancel_Email_Subject" xml:space="preserve">
+    <value>{0} is cancelled</value>
+  </data>
+  <data name="Tickets_Cancel_Email_Body" xml:space="preserve">
+    <value>&lt;p&gt;Hi {0},&lt;/p&gt;&lt;p&gt;We are very sorry: &lt;strong&gt;{1}&lt;/strong&gt; is cancelled. Your tickets for it no longer work.&lt;/p&gt;</value>
+  </data>
+  <data name="Tickets_Cancel_Email_Refund" xml:space="preserve">
+    <value>We are refunding {0} to the way you paid. It can take a few days to show on your account.</value>
+  </data>
+  <data name="Tickets_Cancel_Email_Donation" xml:space="preserve">
+    <value>Donations are not refunded automatically. If you want yours back, reply to this email.</value>
+  </data>
 </root>

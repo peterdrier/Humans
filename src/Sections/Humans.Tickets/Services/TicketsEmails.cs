@@ -144,6 +144,29 @@ internal sealed class TicketsEmails(
         }
     }
 
+    /// <summary>
+    /// To the payer of each order of a cancelled event. System: it says their ticket is void and their money is coming
+    /// back, which is not optional mail.
+    /// </summary>
+    public EmailMessage EventCancelled(
+        Guid buyerUserId, string buyerEmail, string buyerName, string eventName, long refundMinor, bool hadDonation, string? culture = null)
+    {
+        using (new CultureScope(culture, logger))
+        {
+            var refund = refundMinor > 0 ? $"<p>{Lf("Tickets_Cancel_Email_Refund", Money(refundMinor))}</p>" : string.Empty;
+            var donation = hadDonation ? $"<p>{localizer["Tickets_Cancel_Email_Donation"].Value}</p>" : string.Empty;
+            var body = $"""
+                {Lf("Tickets_Cancel_Email_Body", Encode(buyerName), Encode(eventName))}
+                {refund}
+                {donation}
+                """;
+            return new EmailMessage(
+                buyerEmail, buyerName, buyerUserId,
+                Lf("Tickets_Cancel_Email_Subject", eventName),
+                body, "ticket_event_cancelled", MessageCategory.System, Culture: culture, Urgent: true);
+        }
+    }
+
     private static string Money(long minor) =>
         WebUtility.HtmlEncode((minor / 100m).ToString("N2", CultureInfo.CurrentCulture) + " €");
 

@@ -566,4 +566,16 @@
   <data name="Tickets_Companion_Holds" xml:space="preserve">
     <value>Ton accompagnant a déjà un billet pour cet événement, il n'a donc pas besoin d'un billet d'accompagnant.</value>
   </data>
+  <data name="Tickets_Cancel_Email_Subject" xml:space="preserve">
+    <value>{0} est annulé</value>
+  </data>
+  <data name="Tickets_Cancel_Email_Body" xml:space="preserve">
+    <value>&lt;p&gt;Bonjour {0},&lt;/p&gt;&lt;p&gt;Nous sommes vraiment désolés : &lt;strong&gt;{1}&lt;/strong&gt; est annulé. Tes billets ne sont plus valables.&lt;/p&gt;</value>
+  </data>
+  <data name="Tickets_Cancel_Email_Refund" xml:space="preserve">
+    <value>Nous te remboursons {0} par le moyen de paiement que tu as utilisé. Cela peut prendre quelques jours avant d’apparaître sur ton compte.</value>
+  </data>
+  <data name="Tickets_Cancel_Email_Donation" xml:space="preserve">
+    <value>Les dons ne sont pas remboursés automatiquement. Si tu veux récupérer le tien, réponds à cet e-mail.</value>
+  </data>
 </root>

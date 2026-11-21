@@ -107,7 +107,7 @@ internal sealed partial class TicketCheckoutService
                 });
             var (result, issued) = await IssueCompanionCoreAsync(request.TicketId, companion!.FullName, companion.Email,
                 _ => Task.FromResult<(Guid?, string?)>((companion.Id, null)),
-                "approved companion request" + (note is null ? string.Empty : $": {note}"), actorUserId, ct);
+                "approved companion request" + (note is null ? string.Empty : $": {note}"), overrideCapacity: false, actorUserId, ct);
             if (!result.Succeeded)
                 return result;
             companionTicket = issued;

@@ -566,4 +566,16 @@
   <data name="Tickets_Companion_Holds" xml:space="preserve">
     <value>El teu acompanyant ja té una entrada per a aquest esdeveniment, així que no en necessita una d'acompanyant.</value>
   </data>
+  <data name="Tickets_Cancel_Email_Subject" xml:space="preserve">
+    <value>{0} queda cancel·lat</value>
+  </data>
+  <data name="Tickets_Cancel_Email_Body" xml:space="preserve">
+    <value>&lt;p&gt;Hola {0},&lt;/p&gt;&lt;p&gt;Ho sentim molt: &lt;strong&gt;{1}&lt;/strong&gt; queda cancel·lat. Les teves entrades ja no són vàlides.&lt;/p&gt;</value>
+  </data>
+  <data name="Tickets_Cancel_Email_Refund" xml:space="preserve">
+    <value>Et retornem {0} pel mateix mitjà amb què vas pagar. Pot trigar uns dies a aparèixer al teu compte.</value>
+  </data>
+  <data name="Tickets_Cancel_Email_Donation" xml:space="preserve">
+    <value>Les donacions no es retornen automàticament. Si vols que et retornem la teva, respon a aquest correu.</value>
+  </data>
 </root>

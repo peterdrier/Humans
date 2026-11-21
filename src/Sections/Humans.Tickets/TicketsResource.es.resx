@@ -566,4 +566,16 @@
   <data name="Tickets_Companion_Holds" xml:space="preserve">
     <value>Tu acompañante ya tiene una entrada para este evento, así que no necesita una de acompañante.</value>
   </data>
+  <data name="Tickets_Cancel_Email_Subject" xml:space="preserve">
+    <value>{0} se cancela</value>
+  </data>
+  <data name="Tickets_Cancel_Email_Body" xml:space="preserve">
+    <value>&lt;p&gt;Hola {0},&lt;/p&gt;&lt;p&gt;Lo sentimos mucho: &lt;strong&gt;{1}&lt;/strong&gt; se cancela. Tus entradas ya no son válidas.&lt;/p&gt;</value>
+  </data>
+  <data name="Tickets_Cancel_Email_Refund" xml:space="preserve">
+    <value>Te devolvemos {0} por el mismo medio con el que pagaste. Puede tardar unos días en aparecer en tu cuenta.</value>
+  </data>
+  <data name="Tickets_Cancel_Email_Donation" xml:space="preserve">
+    <value>Las donaciones no se devuelven automáticamente. Si quieres que te devolvamos la tuya, responde a este correo.</value>
+  </data>
 </root>

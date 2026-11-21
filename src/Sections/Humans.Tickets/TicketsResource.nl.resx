@@ -566,4 +566,16 @@
   <data name="Tickets_Companion_Holds" xml:space="preserve">
     <value>Je begeleider heeft al een ticket voor dit evenement en heeft dus geen begeleidersticket nodig.</value>
   </data>
+  <data name="Tickets_Cancel_Email_Subject" xml:space="preserve">
+    <value>{0} gaat niet door</value>
+  </data>
+  <data name="Tickets_Cancel_Email_Body" xml:space="preserve">
+    <value>&lt;p&gt;Hoi {0},&lt;/p&gt;&lt;p&gt;Het spijt ons heel erg: &lt;strong&gt;{1}&lt;/strong&gt; gaat niet door. Je tickets zijn niet meer geldig.&lt;/p&gt;</value>
+  </data>
+  <data name="Tickets_Cancel_Email_Refund" xml:space="preserve">
+    <value>We betalen {0} terug via de manier waarop je hebt betaald. Het kan een paar dagen duren voordat het op je rekening staat.</value>
+  </data>
+  <data name="Tickets_Cancel_Email_Donation" xml:space="preserve">
+    <value>Donaties worden niet automatisch terugbetaald. Wil je de jouwe terug, antwoord dan op deze e-mail.</value>
+  </data>
 </root>

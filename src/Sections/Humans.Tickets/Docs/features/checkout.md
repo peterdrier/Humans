@@ -190,8 +190,20 @@ order timeline and the answer is audited.
 
 `/Tickets/Admin/Sales/Lookup` finds orders across events. Per event, the sales index links the refund list, the resale
 queue (directed offers marked with the invited email), the companion requests and the sales report. Each issued ticket has an admin
-page, reached from its order, with the three exceptions: rename (full price adults only), void (no refund; refund from
-the order), and a free companion ticket.
+page, reached from its order, with the three exceptions: rename (full price adults only), void and refund (or void
+with no refund, said plainly), and a free companion ticket. The resale queue marks a reserved offer Stuck once its
+buyer's order closed or expired, and the team can take an open offer out for its holder.
+
+Overrides (`TicketsOverride` role or Admin) repair what the rules miss: restore a voided ticket, move a class priced
+ticket, a companion past capacity. Each needs a reason and is audited `TicketOverride`.
+
+Cancelling an event (Admin only, `/Tickets/Admin/Sales/{id}/Cancel`) closes sales and resale for good. The reconcile
+job then works the paid orders within a two minute budget per run: withdraw open offers, void live tickets, refund the
+ticket lines through the order's backend, timeline `EventCancelled`, email the buyer. A repeat is safe: void stays void,
+and a refund asked for since the cancellation is not asked again, so one the backend turns down stays failed for the
+team to do by hand. Donations are not refunded; the email asks buyers to reply if they want theirs back. An order with
+a returned ticket a buyer is paying for waits until that settles. The cancel page balances the ticket money: taken =
+chargebacks + refunded + in flight + still refundable; the vendor side is on the reconciliation page.
 
 Every step lands in the order's append-only timeline (`ticket_checkout_order_events`) with who did it, shown on the
 admin order page beside a link to the order in the backend's own admin (`CheckoutSession.AdminUrl`).

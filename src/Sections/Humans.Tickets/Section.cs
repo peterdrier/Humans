@@ -60,6 +60,9 @@ public sealed class Section :
             "They conjure tickets from vendor APIs, match purchases to humans, and make sure the numbers add up before the gates open.",
             "fa-solid fa-ticket",
             FormerNames: ["TicketAdmin"]),
+        new(TicketsRoles.TicketsOverride, "Tickets Override",
+            "They fix the rare ticket the rules cannot: restore a wrongly voided ticket, move a reduced price ticket, seat a companion past capacity. Every fix is audited.",
+            "fa-solid fa-screwdriver-wrench"),
     ];
 
     public void Register(IServiceCollection services, IConfiguration configuration)
@@ -290,6 +293,9 @@ public sealed class Section :
 
         options.AddPolicy(TicketsPolicies.Manage, policy =>
             policy.RequireRole(TicketsRoles.TicketsAdmin, RoleNames.Admin));
+
+        options.AddPolicy(TicketsPolicies.Override, policy =>
+            policy.RequireRole(TicketsRoles.TicketsOverride, RoleNames.Admin));
 
         // Tickets owns these because every consumer (Gate, Scanner, the onsite roster) already depends on Tickets.
         options.AddPolicy(PolicyNames.ScannerAccess, policy =>

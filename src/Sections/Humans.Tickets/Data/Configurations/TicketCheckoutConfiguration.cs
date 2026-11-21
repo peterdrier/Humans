@@ -14,6 +14,7 @@ internal sealed class TicketSalesEventConfiguration : IEntityTypeConfiguration<T
         builder.Property(x => x.BackendKey).IsRequired().HasMaxLength(32);
         builder.Property(x => x.BackendEventRef).HasMaxLength(128);
         builder.Property(x => x.TermsFolder).HasMaxLength(200);
+        builder.Property(x => x.CancelReason).HasMaxLength(500);
         builder.Property(x => x.Mode).IsRequired().HasConversion<string>().HasMaxLength(16);
         builder.Property(x => x.TicketVatRate).HasPrecision(5, 4);
         builder.OwnsMany(x => x.Waves, w =>

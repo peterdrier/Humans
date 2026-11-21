@@ -23,7 +23,7 @@ using Xunit;
 
 namespace Humans.Tickets.Tests.Services.Checkout;
 
-public sealed class TicketCheckoutServiceTests
+public sealed partial class TicketCheckoutServiceTests
 {
     private static readonly Instant Now = Instant.FromUtc(2027, 1, 10, 12, 0);
     private static readonly Guid LowIncomeProgram = Guid.NewGuid();
@@ -1137,7 +1137,7 @@ public sealed class TicketCheckoutServiceTests
         await _holdings.GetUserTicketHoldingsAsync(_buyerId, Ct);
         _provisioning.FindOrCreateUserByEmailAsync("cy@example.com", null, ContactSource.Manual, Arg.Any<CancellationToken>())
             .Returns(new AccountProvisioningResult(newHolder, Created: true));
-        (await _service.RenameTicketAsync(ticket.Id, "Cy", "cy@example.com", "Agreed by the ticketing lead", _adminId, Ct))
+        (await _service.RenameTicketAsync(ticket.Id, "Cy", "cy@example.com", "Agreed by the ticketing lead", false, _adminId, Ct))
             .Refusal.Should().BeNull();
         await _holdings.GetUserTicketHoldingsAsync(newHolder, Ct);
 
@@ -1153,7 +1153,7 @@ public sealed class TicketCheckoutServiceTests
         _provisioning.FindOrCreateUserByEmailAsync("cy@example.com", null, ContactSource.Manual, Arg.Any<CancellationToken>())
             .Returns(new AccountProvisioningResult(newHolder, Created: true));
 
-        (await _service.RenameTicketAsync(ticket.Id, " Cy Pérez ", "cy@example.com", "Agreed by the ticketing lead", _adminId, Ct))
+        (await _service.RenameTicketAsync(ticket.Id, " Cy Pérez ", "cy@example.com", "Agreed by the ticketing lead", false, _adminId, Ct))
             .Refusal.Should().BeNull();
 
         ticket.HolderUserId.Should().Be(newHolder);
@@ -1177,7 +1177,7 @@ public sealed class TicketCheckoutServiceTests
         _userEmails.FindByAddressAsync("bo@example.com", true, true, Arg.Any<CancellationToken>())
             .Returns([Row(_otherBuyerId, verified: true)]);
 
-        (await _service.RenameTicketAsync(ticket.Id, "Bo", "bo@example.com", "Asked nicely", _adminId, Ct))
+        (await _service.RenameTicketAsync(ticket.Id, "Bo", "bo@example.com", "Asked nicely", false, _adminId, Ct))
             .Refusal.Should().Be("That person already holds a ticket for this event.");
         ticket.HolderUserId.Should().Be(_buyerId);
     }
@@ -1193,7 +1193,7 @@ public sealed class TicketCheckoutServiceTests
                 Arg.Any<CancellationToken>())
             .Returns(new AccountProvisioningResult(fresh, Created: true));
 
-        (await _service.RenameTicketAsync(ticket.Id, "Bo Smith", "bo@example.com", "Asked nicely", _adminId, Ct))
+        (await _service.RenameTicketAsync(ticket.Id, "Bo Smith", "bo@example.com", "Asked nicely", false, _adminId, Ct))
             .Refusal.Should().BeNull();
         ticket.HolderUserId.Should().Be(fresh);
         await _provisioning.DidNotReceiveWithAnyArgs().FindOrCreateUserByEmailAsync(default!, default!, default, default);
@@ -1204,9 +1204,9 @@ public sealed class TicketCheckoutServiceTests
     {
         var ticket = await PaidAdultAsync();
 
-        (await _service.RenameTicketAsync(ticket.Id, "Cy", "cy@example.com", " ", _adminId, Ct))
+        (await _service.RenameTicketAsync(ticket.Id, "Cy", "cy@example.com", " ", false, _adminId, Ct))
             .Refusal.Should().StartWith("Give a reason");
-        (await _service.RenameTicketAsync(ticket.Id, "Cy", "cy@example.com", new string('x', 501), _adminId, Ct))
+        (await _service.RenameTicketAsync(ticket.Id, "Cy", "cy@example.com", new string('x', 501), false, _adminId, Ct))
             .Refusal.Should().StartWith("Keep the reason under");
         await _provisioning.DidNotReceiveWithAnyArgs().FindOrCreateUserByEmailAsync(default!, default!, default, default);
     }
@@ -1220,12 +1220,12 @@ public sealed class TicketCheckoutServiceTests
         var buyer = await _users.GetUserInfoAsync(_buyerId, Ct);
         _users.GetByEmailOrAlternateAsync("ana@example.com", Arg.Any<CancellationToken>()).Returns(buyer);
 
-        (await _service.RenameTicketAsync(ticket.Id, "Cy", "cy@example.com", "Asked nicely", _adminId, Ct))
+        (await _service.RenameTicketAsync(ticket.Id, "Cy", "cy@example.com", "Asked nicely", false, _adminId, Ct))
             .Refusal.Should().StartWith("Only a full price ticket");
         ticket.HolderUserId.Should().Be(_buyerId);
         await _provisioning.DidNotReceiveWithAnyArgs().FindOrCreateUserByEmailAsync(default!, default!, default, default);
 
-        (await _service.RenameTicketAsync(ticket.Id, "Ana María García", "ana@example.com", "Typo in the legal name", _adminId, Ct))
+        (await _service.RenameTicketAsync(ticket.Id, "Ana María García", "ana@example.com", "Typo in the legal name", false, _adminId, Ct))
             .Refusal.Should().BeNull();
         ticket.HolderName.Should().Be("Ana María García");
         _repo.Orders.Single(o => o.Id == ticket.OrderId).Lines.Single(l => l.Kind == CheckoutLineKind.Ticket)
@@ -1241,7 +1241,7 @@ public sealed class TicketCheckoutServiceTests
         var adult = await OfferedTicketAsync(Buy() with { ChildNames = ["Kid García"] });
         var child = _repo.Tickets.Single(t => t.Kind == TicketHolderKind.Child);
 
-        (await _service.VoidTicketAsync(adult.Id, "Duplicate purchase", _adminId, Ct)).Refusal.Should().BeNull();
+        (await _service.VoidTicketAsync(adult.Id, "Duplicate purchase", 0, _adminId, Ct)).Refusal.Should().BeNull();
 
         adult.State.Should().Be(TicketCheckoutTicketState.Void);
         adult.VoidReason.Should().Be("Duplicate purchase");
@@ -1250,7 +1250,7 @@ public sealed class TicketCheckoutServiceTests
         await _audit.Received(1).LogAsync(TicketsAuditActions.TicketCheckoutTicketVoided, Arg.Any<string>(), adult.OrderId,
             Arg.Is<string>(d => d.Contains("withdrawing its resale offer", StringComparison.Ordinal)), _adminId,
             _buyerId, AuditSubjectTypes.User);
-        (await _service.VoidTicketAsync(adult.Id, "Again", _adminId, Ct)).Succeeded.Should().BeFalse();
+        (await _service.VoidTicketAsync(adult.Id, "Again", 0, _adminId, Ct)).Succeeded.Should().BeFalse();
     }
 
     [HumansFact]
@@ -1259,7 +1259,7 @@ public sealed class TicketCheckoutServiceTests
         var adult = await OfferedTicketAsync();
         _repo.Offers.Single().State = TicketResaleOfferState.Reserved;
 
-        (await _service.VoidTicketAsync(adult.Id, "Fraud", _adminId, Ct)).Succeeded.Should().BeFalse();
+        (await _service.VoidTicketAsync(adult.Id, "Fraud", 0, _adminId, Ct)).Succeeded.Should().BeFalse();
         adult.State.Should().Be(TicketCheckoutTicketState.Offered);
     }
 
@@ -1269,7 +1269,7 @@ public sealed class TicketCheckoutServiceTests
         var adult = await PaidAdultAsync();
         _delivery.ClearReceivedCalls();
 
-        (await _service.IssueCompanionAsync(adult.Id, "Helper Ruiz", null, "Wheelchair user", _adminId, Ct)).Refusal.Should().BeNull();
+        (await _service.IssueCompanionAsync(adult.Id, "Helper Ruiz", null, "Wheelchair user", false, _adminId, Ct)).Refusal.Should().BeNull();
 
         var companion = _repo.Tickets.Single(t => t.Kind == TicketHolderKind.Companion);
         companion.ParentTicketId.Should().Be(adult.Id);
@@ -1283,7 +1283,7 @@ public sealed class TicketCheckoutServiceTests
         await _audit.Received(1).LogAsync(TicketsAuditActions.TicketCompanionIssued, Arg.Any<string>(), order.Id,
             Arg.Any<string>(), _adminId, _buyerId, AuditSubjectTypes.User);
 
-        (await _service.IssueCompanionAsync(adult.Id, "Second Helper", null, "Again", _adminId, Ct)).Succeeded.Should().BeFalse();
+        (await _service.IssueCompanionAsync(adult.Id, "Second Helper", null, "Again", false, _adminId, Ct)).Succeeded.Should().BeFalse();
     }
 
     [HumansFact]
@@ -1293,7 +1293,7 @@ public sealed class TicketCheckoutServiceTests
         await OfferedTicketAsync(Buy() with { ChildNames = ["Kid García"] });
         var child = _repo.Tickets.Single(t => t.Kind == TicketHolderKind.Child);
 
-        (await _service.VoidTicketAsync(child.Id, "Not coming", _adminId, Ct))
+        (await _service.VoidTicketAsync(child.Id, "Not coming", 0, _adminId, Ct))
             .Refusal.Should().StartWith("The adult's ticket is in the resale queue");
         child.State.Should().Be(TicketCheckoutTicketState.Valid);
     }
@@ -1302,7 +1302,7 @@ public sealed class TicketCheckoutServiceTests
     public async Task A_companion_on_its_own_order_is_voided_when_its_adult_resells()
     {
         var adult = await PaidAdultAsync();
-        (await _service.IssueCompanionAsync(adult.Id, "Helper Ruiz", null, "Wheelchair user", _adminId, Ct)).Refusal.Should().BeNull();
+        (await _service.IssueCompanionAsync(adult.Id, "Helper Ruiz", null, "Wheelchair user", false, _adminId, Ct)).Refusal.Should().BeNull();
         var companion = _repo.Tickets.Single(t => t.Kind == TicketHolderKind.Companion);
         (await _service.OfferForResaleAsync(adult.Id, _buyerId, Ct)).Refusal.Should().BeNull();
         _salesEvent.Mode = TicketSalesMode.ResaleOnly;
@@ -1321,7 +1321,7 @@ public sealed class TicketCheckoutServiceTests
         _userEmails.FindByAddressAsync("ana@example.com", true, true, Arg.Any<CancellationToken>())
             .Returns([Row(_buyerId, verified: true)]);
 
-        (await _service.IssueCompanionAsync(adult.Id, "Ana", "ana@example.com", "Helper", _adminId, Ct))
+        (await _service.IssueCompanionAsync(adult.Id, "Ana", "ana@example.com", "Helper", false, _adminId, Ct))
             .Refusal.Should().Be("That person already holds a ticket for this event.");
     }
 
@@ -1332,7 +1332,7 @@ public sealed class TicketCheckoutServiceTests
         _userEmails.FindByAddressAsync("bo@example.com", true, true, Arg.Any<CancellationToken>())
             .Returns([Row(Guid.NewGuid(), verified: true), Row(Guid.NewGuid(), verified: true)]);
 
-        (await _service.IssueCompanionAsync(adult.Id, "Bo", "bo@example.com", "Helper", _adminId, Ct))
+        (await _service.IssueCompanionAsync(adult.Id, "Bo", "bo@example.com", "Helper", false, _adminId, Ct))
             .Refusal.Should().StartWith("That email cannot take the ticket: the address is verified on more than one account");
         _repo.Tickets.Should().NotContain(t => t.Kind == TicketHolderKind.Companion);
     }
@@ -1343,7 +1343,7 @@ public sealed class TicketCheckoutServiceTests
         var adult = await PaidAdultAsync();
         _salesEvent.Capacity = 1;
 
-        (await _service.IssueCompanionAsync(adult.Id, "Helper Ruiz", null, "Wheelchair user", _adminId, Ct))
+        (await _service.IssueCompanionAsync(adult.Id, "Helper Ruiz", null, "Wheelchair user", false, _adminId, Ct))
             .Refusal.Should().Contain("capacity");
         _repo.Tickets.Should().ContainSingle();
     }
