@@ -1459,6 +1459,20 @@ public class GateServiceTests
         matches.Select(m => m.Name).Should().BeEquivalentTo(["Jane Donovan", "Ana Ruiz", "Kid Ruiz"]);
     }
 
+    [HumansFact]
+    public async Task Find_SearchesEveryMatchingHuman_NotOnlyTheTopFew()
+    {
+        var crowd = Enumerable.Range(0, 60).Select(_ => Guid.NewGuid()).Append(GuestId).ToList();
+        StubTicket();
+        _burn.GetActiveEventSettings().Returns(_activeEvent);
+        _issued.GetIssuedTicketsForEventAsync(_activeEvent.Id, Arg.Any<CancellationToken>())
+            .Returns([IssuedFor("Luna Vidal", holder: GuestId)]);
+        _people.SearchUsersAsync("Moon", PersonSearchFields.Name | PersonSearchFields.LegalName, Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns(ci => crowd.Take(ci.ArgAt<int>(2)).Select(id => new HumanSearchResult(id, "x", null, null, null, null, 1)).ToList());
+
+        (await _svc.FindTicketsByNameAsync("Moon")).Should().ContainSingle(m => m.Name == "Luna Vidal");
+    }
+
     // Arrivals report (G8).
 
     [HumansFact]

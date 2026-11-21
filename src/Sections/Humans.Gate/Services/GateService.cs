@@ -295,7 +295,7 @@ internal sealed class GateService(
 
         // Legal names are searched on purpose (G3): the guest says a name, the agent then checks it against the photo ID.
         // The card shows only the ticket's own name, never the burner name or the legal name it matched on.
-        var people = (await users.SearchUsersAsync(q, PersonSearchFields.Name | PersonSearchFields.LegalName, 50, ct))
+        var people = (await users.SearchUsersAsync(q, PersonSearchFields.Name | PersonSearchFields.LegalName, int.MaxValue, ct))
             .Select(m => m.UserId)
             .ToHashSet();
         bool Matches(string? ticketName, params Guid?[] userIds) =>
