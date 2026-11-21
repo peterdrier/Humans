@@ -358,4 +358,18 @@
   <data name="Governance_Save" xml:space="preserve"><value>Save</value></data>
   <data name="Governance_BoardPositionSaved" xml:space="preserve"><value>Board office saved.</value></data>
   <data name="Governance_BoardPositionNotOnBoard" xml:space="preserve"><value>Only a current Board member can hold a Board office.</value></data>
+  <data name="Governance_Manage_Title" xml:space="preserve"><value>Manage group and files</value></data>
+  <data name="Governance_Manage_GroupName" xml:space="preserve"><value>Google group</value></data>
+  <data name="Governance_Manage_NoFiles" xml:space="preserve"><value>No Drive folders or files yet.</value></data>
+  <data name="Governance_Manage_Remove" xml:space="preserve"><value>Remove</value></data>
+  <data name="Governance_Manage_DriveLink" xml:space="preserve"><value>Drive link</value></data>
+  <data name="Governance_Manage_Access" xml:space="preserve"><value>Access</value></data>
+  <data name="Governance_Manage_AddFile" xml:space="preserve"><value>Add</value></data>
+  <data name="Governance_Manage_GroupSaved" xml:space="preserve"><value>Google group saved.</value></data>
+  <data name="Governance_Manage_FileAdded" xml:space="preserve"><value>Drive folder or file added.</value></data>
+  <data name="Governance_Manage_FileRemoved" xml:space="preserve"><value>Drive folder or file removed. Its sharing stays as it is.</value></data>
+  <data name="Governance_Manage_InvalidGroupName" xml:space="preserve"><value>Use only lowercase letters, numbers and hyphens for the group name.</value></data>
+  <data name="Governance_Manage_GroupNameTaken" xml:space="preserve"><value>Another body already uses this group.</value></data>
+  <data name="Governance_Manage_FileAlreadyLinked" xml:space="preserve"><value>This Drive folder or file is already on the list.</value></data>
+  <data name="Governance_Manage_FileNotFound" xml:space="preserve"><value>That Drive folder or file is no longer on the list.</value></data>
 </root>
