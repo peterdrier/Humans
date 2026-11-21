@@ -38,7 +38,8 @@ public interface IDemoWorld
     /// <summary>
     /// Returns the ledger's row for <paramref name="key"/> when <paramref name="exists"/> still finds it; otherwise
     /// runs <paramref name="create"/> with a planned id (a verb that takes an id should use it) and records the id
-    /// it returns.
+    /// it returns. A run cut off mid-create calls <paramref name="create"/> again with the same id, so it must finish
+    /// a row it half-made rather than fail on it.
     /// </summary>
     Task<Guid> EnsureAsync(
         string key,

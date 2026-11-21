@@ -36,14 +36,12 @@ internal sealed class DemoWorld(
                 return entry.EntityId;
             case DemoLedgerState.Made when await exists(entry.EntityId, ct):
                 return entry.EntityId;
-            case DemoLedgerState.Pending when await exists(entry.EntityId, ct):
-                await SaveAsync(entry, DemoLedgerState.Made, entry.EntityId, null, ct);
-                return entry.EntityId;
             case DemoLedgerState.Made:
                 Report($"{key}: was gone, made again");
                 break;
         }
 
+        // A pending row may be half-built, so create runs again on the same id and finishes it.
         // A made-then-vanished row gets a fresh id: the old one may now belong to a tombstone.
         var planned = entry?.State == DemoLedgerState.Pending ? entry.EntityId : Guid.NewGuid();
         var now = clock.GetCurrentInstant();

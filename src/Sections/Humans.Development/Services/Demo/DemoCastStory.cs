@@ -87,6 +87,7 @@ internal sealed class DemoCastStory(
     /// <summary>
     /// Most of the crowd is an active, consented volunteer marked fake. Every 10th stays unmarked so Consent's review
     /// queue has people in it, every 15th skips the consents, and every 25th stops before the profile, mid-onboarding.
+    /// Each step skips what is already done, so a second call finishes a human a cut-off run left half-made.
     /// </summary>
     private async Task<Guid> CreateAsync(Guid userId, int n, int generation, CancellationToken ct)
     {
@@ -96,12 +97,15 @@ internal sealed class DemoCastStory(
         var burnerName = $"{BurnerFirst[n % BurnerFirst.Length]} {BurnerSecond[n * 3 % BurnerSecond.Length]} {n:D3}";
         var now = clock.GetCurrentInstant();
 
-        var errors = await accountProvisioning.CreateAccountAsync(
-            userId, burnerName,
-            createdAt: now.Minus(Duration.FromDays(n * 3 % 700)),
-            lastLoginAt: now.Minus(Duration.FromDays(n % 60)));
-        if (errors.Count > 0)
-            throw new InvalidOperationException($"Could not create demo human {n}: {string.Join(", ", errors)}");
+        if (await userService.GetUserInfoAsync(userId) is null)
+        {
+            var errors = await accountProvisioning.CreateAccountAsync(
+                userId, burnerName,
+                createdAt: now.Minus(Duration.FromDays(n * 3 % 700)),
+                lastLoginAt: now.Minus(Duration.FromDays(n % 60)));
+            if (errors.Count > 0)
+                throw new InvalidOperationException($"Could not create demo human {n}: {string.Join(", ", errors)}");
+        }
 
         // @localhost: not a .local tombstone, and Email never sends to it.
         var email = $"demo-{generation}-{n:D3}@localhost";

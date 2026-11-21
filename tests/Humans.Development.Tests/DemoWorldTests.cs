@@ -53,11 +53,12 @@ public class DemoWorldTests
         repaired.Should().NotBe(first, "a vanished row is made again under a fresh id");
         creates.Should().Be(2);
 
-        // A run cut off after the create but before the ledger said Made.
+        // A run cut off mid-create: the row may be half-built, so create runs again on the same id to finish it.
         var entry = repository.Entries.Single();
         entry.State = DemoLedgerState.Pending;
-        await World(repository).EnsureAsync("k", ExistsAsync, CreateAsync, default);
-        creates.Should().Be(2, "the pending row exists, so it is adopted, not made twice");
+        var finished = await World(repository).EnsureAsync("k", ExistsAsync, CreateAsync, default);
+        finished.Should().Be(repaired, "the pending row keeps its planned id");
+        creates.Should().Be(3);
         repository.Entries.Single().State.Should().Be(DemoLedgerState.Made);
     }
 
