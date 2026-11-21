@@ -413,7 +413,9 @@ internal sealed partial class TicketCheckoutService
             return;
 
         var now = clock.GetCurrentInstant();
-        var directed = offer.DirectedTokenHash is not null;
+        // The queue also sells an invited ticket, so only the invited buyer's own purchase counts as using the invitation.
+        var directed = offer.HasLiveInvite
+            && string.Equals(offer.DirectedEmail, buyerOrder.BuyerEmail, StringComparison.OrdinalIgnoreCase);
         offer.State = TicketResaleOfferState.Sold;
         offer.SoldAt = now;
         offer.SoldToOrderId = buyerOrder.Id;

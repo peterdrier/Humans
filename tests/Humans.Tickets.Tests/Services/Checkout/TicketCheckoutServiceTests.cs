@@ -806,6 +806,8 @@ public sealed class TicketCheckoutServiceTests
         var queued = await BuyAndPayAsync(Buy(), _otherBuyerId);
 
         queued.Lines.Single().ResaleOfferId.Should().Be(_repo.Offers.Single().Id);
+        _repo.Offers.Single().DirectedUsedAt.Should().BeNull();
+        _repo.Events.Should().NotContain(e => e.Kind == TicketCheckoutOrderEventKind.ResaleInviteUsed);
         (await _service.GetDirectedBuyPageAsync(token, _otherBuyerId, Ct))!.Unavailable.Should().Be("Tickets_Resale_InviteInvalid");
     }
 
