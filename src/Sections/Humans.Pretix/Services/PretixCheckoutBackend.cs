@@ -171,8 +171,30 @@ internal sealed class PretixCheckoutBackend(
             ["comment"] = $"{comment} {request.Reason}".Trim(),
             ["mark_canceled"] = false,
         };
-        var response = await SendRawAsync(
-            HttpMethod.Post, $"{OrderPath(eventSlug, code)}payments/{payment.LocalId}/refund/", body, ct);
+        RawResponse? response = null;
+        try
+        {
+            response = await SendRawAsync(
+                HttpMethod.Post, $"{OrderPath(eventSlug, code)}payments/{payment.LocalId}/refund/", body, ct);
+        }
+        catch (Exception ex) when (ex is HttpRequestException || (ex is TaskCanceledException && !ct.IsCancellationRequested))
+        {
+            logger.LogWarning(ex, "pretix refund call on {Code} failed", code);
+        }
+
+        if (response is null || ((int)response.Status is < 200 or > 299 && response.Status != HttpStatusCode.BadRequest))
+        {
+            // The refund may or may not have happened, and Tickets never retries this refund id, so the order says
+            // which: a refund carrying the marker stands; otherwise the fee comes off so the total stays right.
+            var after = await SendAsync<PretixOrder>(HttpMethod.Get, OrderPath(eventSlug, code), body: null, ct);
+            var made = after.Refunds.FirstOrDefault(r => r.Comment?.Contains(comment, StringComparison.Ordinal) == true);
+            if (made is not null)
+                return MapRefund(made, AdminOrderUrl(eventSlug, code));
+            if (feeIsNew)
+                await CancelFeeAsync(eventSlug, code, fee.Id, ct);
+            return new RefundResult(RefundState.Failed, null,
+                response is null ? "pretix could not be reached." : $"pretix answered {(int)response.Status}: {response.Body}");
+        }
 
         if (response.Status == HttpStatusCode.BadRequest)
         {
@@ -260,7 +282,9 @@ internal sealed class PretixCheckoutBackend(
             state = CheckoutState.Paid;
 
         var paymentFees = order.Fees.Where(f => string.Equals(f.FeeType, "payment", StringComparison.Ordinal) && !f.Canceled).ToList();
-        var lastPayment = order.Payments.LastOrDefault(p => string.Equals(p.State, "confirmed", StringComparison.Ordinal));
+        // A full refund drops the total to zero and pretix confirms a 0.00 "free" payment; that is not how they paid.
+        var lastPayment = order.Payments.LastOrDefault(p => string.Equals(p.State, "confirmed", StringComparison.Ordinal) && p.Amount > 0)
+            ?? order.Payments.LastOrDefault(p => string.Equals(p.State, "refunded", StringComparison.Ordinal));
         var refunded = order.Refunds.Where(r => string.Equals(r.State, "done", StringComparison.Ordinal)).Sum(r => ToMinor(r.Amount));
 
         return new CheckoutStatus(

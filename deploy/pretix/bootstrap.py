@@ -65,7 +65,12 @@ with scopes_disabled():
     token = team.tokens.filter(active=True).first() or team.tokens.create(name="humans")
 
     target = f"{humans}/Pretix/Webhook?secret={webhook_secret}"
-    hook = WebHook.objects.filter(organizer=org, target_url__startswith=f"{humans}/Pretix/Webhook?secret=").first()
+    hook = WebHook.objects.filter(organizer=org, target_url__startswith=f"{humans}/Pretix/Webhook").first()
+    if hook is not None and "?secret=" not in hook.target_url:
+        # A hook from before the secret moved to the query: keep its secret, fix its URL.
+        webhook_secret = hook.target_url.rstrip("/").rsplit("/", 1)[-1]
+        hook.target_url = f"{humans}/Pretix/Webhook?secret={webhook_secret}"
+        hook.save()
     if hook is None:
         hook = WebHook.objects.create(organizer=org, target_url=target, enabled=True, all_events=True)
         for action in ("placed", "paid", "canceled", "expired", "modified", "payment.confirmed",

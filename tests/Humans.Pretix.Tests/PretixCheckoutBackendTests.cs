@@ -192,6 +192,24 @@ public class PretixCheckoutBackendTests
         status.FeeMinor.Should().BeNull();
     }
 
+    [HumansFact]
+    public async Task Status_AfterAFullRefund_KeepsTheRealPaymentMethod()
+    {
+        var pretix = new FakePretix().On("GET", OrderPath, HttpStatusCode.OK, Order(
+            Code, status: "p", total: 0m,
+            payments:
+            [
+                new { local_id = 1, state = "refunded", amount = "225.00", provider = "stripe_ideal", payment_date = "2026-11-21T00:09:33Z" },
+                new { local_id = 2, state = "confirmed", amount = "0.00", provider = "free", payment_date = "2026-11-22T10:00:00Z" },
+            ],
+            refunds: [new { local_id = 1, state = "done", amount = "225.00", payment = 1, comment = "", provider = "stripe_ideal" }]));
+
+        var status = await Create(pretix).GetStatusAsync($"nowhere2027/{Code}", TestContext.Current.CancellationToken);
+
+        status.PaymentMethod.Should().Be("stripe_ideal");
+        status.RefundedMinor.Should().Be(22500);
+    }
+
     [HumansTheory]
     [InlineData("n")]
     [InlineData("e")]
@@ -264,6 +282,39 @@ public class PretixCheckoutBackendTests
 
         result.State.Should().Be(RefundState.Succeeded);
         pretix.BodiesFor("POST", $"{OrderPath}change/").Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task Refund_CallFailsButTheRefundWasMade_ReturnsIt()
+    {
+        var refundId = Guid.NewGuid();
+        var pretix = new FakePretix()
+            .On("GET", OrderPath, HttpStatusCode.OK, PaidOrder())
+            .On("GET", OrderPath, HttpStatusCode.OK, PaidOrder(
+                new { local_id = 3, state = "done", amount = "225.00", payment = 1, comment = $"humans-refund:{refundId} Resold", provider = "stripe" }))
+            .On("POST", $"{OrderPath}change/", HttpStatusCode.OK, PaidOrderWithFee(refundId))
+            .On("POST", $"{OrderPath}payments/1/refund/", HttpStatusCode.BadGateway, "");
+
+        var result = await Create(pretix).RefundAsync(
+            new RefundRequest(refundId, $"nowhere2027/{Code}", 22500, "Resold"), TestContext.Current.CancellationToken);
+
+        result.State.Should().Be(RefundState.Succeeded);
+        pretix.BodiesFor("POST", $"{OrderPath}change/").Should().ContainSingle();
+    }
+
+    [HumansFact]
+    public async Task Refund_CallFailsAndNoRefundWasMade_FailsAndRestoresTheTotal()
+    {
+        var refundId = Guid.NewGuid();
+        var pretix = RefundablePretix(refundId)
+            .On("POST", $"{OrderPath}payments/1/refund/", HttpStatusCode.ServiceUnavailable, "");
+
+        var result = await Create(pretix).RefundAsync(
+            new RefundRequest(refundId, $"nowhere2027/{Code}", 22500, "Resold"), TestContext.Current.CancellationToken);
+
+        result.State.Should().Be(RefundState.Failed);
+        var cancel = JsonNode.Parse(pretix.BodiesFor("POST", $"{OrderPath}change/").Last()!)!;
+        cancel["cancel_fees"]![0]!["fee"]!.GetValue<int>().Should().Be(7);
     }
 
     [HumansTheory]
