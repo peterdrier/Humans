@@ -973,7 +973,10 @@ public sealed class TicketCheckoutServiceTests
         var invitedProgram = Guid.NewGuid();
         _salesEvent.PriceRules.Add(new TicketPriceRule
         {
-            GrantProgramId = invitedProgram, Kind = TicketPriceRuleKind.EarlyAccess, AmountMinor = 2500, Label = "Wave zero",
+            GrantProgramId = invitedProgram,
+            Kind = TicketPriceRuleKind.EarlyAccess,
+            AmountMinor = 2500,
+            Label = "Wave zero",
         });
         _salesEvent.Mode = TicketSalesMode.InvitedOnly;
         _grants.GetActiveGrantsAsync(_buyerId, Arg.Any<CancellationToken>())
