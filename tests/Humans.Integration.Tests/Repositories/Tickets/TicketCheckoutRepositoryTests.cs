@@ -187,6 +187,37 @@ public class TicketCheckoutRepositoryTests(HumansTestDatabase database) : Integr
     }
 
     [HumansFact]
+    public async Task An_offer_with_several_invites_updates_twice_and_keeps_its_list()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        await using var scope = Factory.Services.CreateAsyncScope();
+        var repo = scope.ServiceProvider.GetRequiredService<ITicketCheckoutRepository>();
+        var offer = new TicketResaleOffer
+        {
+            Id = Guid.NewGuid(), SalesEventId = Guid.NewGuid(), TicketId = Guid.NewGuid(), HolderUserId = Guid.NewGuid(), OfferedAt = Now,
+            Invites =
+            [
+                new TicketResaleInvite { Email = "a@example.com", TokenHash = "A", SentAt = Now },
+                new TicketResaleInvite { Email = "b@example.com", TokenHash = "B", SentAt = Now },
+            ],
+        };
+        await repo.AddOfferAsync(offer, ct);
+
+        var loaded = (await repo.GetOfferAsync(offer.Id, ct))!;
+        loaded.Invites = [.. loaded.Invites, new TicketResaleInvite { Email = "c@example.com", TokenHash = "C", SentAt = Now }];
+        await repo.UpdateOfferAsync(loaded, ct);
+        var again = (await repo.GetOfferAsync(offer.Id, ct))!;
+        again.State = TicketResaleOfferState.Sold;
+        again.RefundId = Guid.NewGuid();
+        await repo.UpdateOfferAsync(again, ct);
+
+        var stored = (await repo.GetOfferAsync(offer.Id, ct))!;
+        stored.Invites.Select(i => i.TokenHash).Should().Equal("A", "B", "C");
+        stored.State.Should().Be(TicketResaleOfferState.Sold);
+        stored.RefundId.Should().Be(again.RefundId);
+    }
+
+    [HumansFact]
     public async Task Erasure_clears_a_companion_on_an_order_of_its_own()
     {
         var ct = TestContext.Current.CancellationToken;

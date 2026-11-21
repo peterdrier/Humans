@@ -228,7 +228,11 @@ internal sealed class TicketCheckoutRepository(IDbContextFactory<TicketsDbContex
     public async Task UpdateOfferAsync(TicketResaleOffer offer, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
-        ctx.TicketResaleOffers.Update(offer);
+        var tracked = await ctx.TicketResaleOffers.FirstAsync(o => o.Id == offer.Id, ct);
+        // Owned JSON invites carry shadow ordinal keys, so a detached graph cannot be attached with Update().
+        ctx.Entry(tracked).CurrentValues.SetValues(offer);
+        tracked.Invites = offer.Invites
+            .Select(i => new TicketResaleInvite { Email = i.Email, TokenHash = i.TokenHash, SentAt = i.SentAt }).ToList();
         await ctx.SaveChangesAsync(ct);
     }
 
