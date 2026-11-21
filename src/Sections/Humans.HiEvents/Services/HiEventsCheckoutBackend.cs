@@ -4,6 +4,7 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Humans.Base.Extensions;
 using Humans.Tickets.Contracts;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -142,16 +143,10 @@ internal sealed class HiEventsCheckoutBackend : ITicketCheckoutBackend
 
         using var response = await _http.PostAsJsonAsync($"events/{eventId}/orders/{orderId}/refund", body, JsonOptions, ct);
 
+        // A retry of this refund under its key succeeds in Hi.Events, so a 422 is always a refund that did not happen.
         if (response.StatusCode == HttpStatusCode.UnprocessableEntity)
         {
             var reason = await response.Content.ReadAsStringAsync(ct);
-            var current = await GetOrderAsync(eventId, orderId, ct);
-
-            // A refund already in flight is most likely this one, retried after a lost response; the order status
-            // shows the outcome either way.
-            if (string.Equals(current.RefundStatus, "REFUND_PENDING", StringComparison.Ordinal))
-                return new RefundResult(RefundState.Pending, null, null);
-
             _logger.LogWarning("Hi.Events declined refund {RefundId} on {BackendOrderId}: {Reason}",
                 request.RefundId, request.BackendOrderId, reason);
             return new RefundResult(RefundState.Failed, null, reason);
@@ -191,7 +186,7 @@ internal sealed class HiEventsCheckoutBackend : ITicketCheckoutBackend
         "COMPLETED" => CheckoutState.Failed,
         "CANCELLED" => CheckoutState.Cancelled,
         "ABANDONED" => CheckoutState.Expired,
-        "RESERVED" when ParseUtc(order.ReservedUntil) is { } until && until <= _clock.GetCurrentInstant()
+        "RESERVED" when DateFormattingExtensions.ParseInvariantTimestamp(order.ReservedUntil) is { } until && until <= _clock.GetCurrentInstant()
             => CheckoutState.Expired,
         "RESERVED" => CheckoutState.Pending,
         _ => throw new HttpRequestException($"Hi.Events order {order.Id} has unknown status '{order.Status}'."),
@@ -242,13 +237,6 @@ internal sealed class HiEventsCheckoutBackend : ITicketCheckoutBackend
         return SupportedLocales.Contains(language) ? language : "en";
     }
 
-    /// <summary>Hi.Events stores times in UTC and serializes them as <c>yyyy-MM-dd HH:mm:ss</c>, without an offset.</summary>
-    private static Instant? ParseUtc(string? value) =>
-        DateTimeOffset.TryParse(value, CultureInfo.InvariantCulture,
-            DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal, out var parsed)
-            ? Instant.FromDateTimeOffset(parsed)
-            : null;
-
     private static long ToMinor(decimal amount) => (long)decimal.Round(amount * 100m, MidpointRounding.AwayFromZero);
 
     internal static string ToBackendOrderId(int eventId, int orderId) =>
@@ -288,11 +276,10 @@ internal sealed class HiEventsCheckoutBackend : ITicketCheckoutBackend
         int Id,
         string Status,
         string? PaymentStatus,
-        string? RefundStatus,
         string Currency,
         decimal TotalGross,
         decimal? TotalRefunded,
         string? PaymentProvider,
         string? PaymentLinkUrl,
-        string? ReservedUntil);
+        string? ReservedUntil); // UTC, "yyyy-MM-dd HH:mm:ss" with no offset
 }

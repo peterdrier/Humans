@@ -1,7 +1,7 @@
 using System.Security.Cryptography;
 using System.Text;
 using AwesomeAssertions;
-using Humans.HiEvents.Controllers;
+using Humans.HiEvents.Services;
 
 namespace Humans.HiEvents.Tests;
 

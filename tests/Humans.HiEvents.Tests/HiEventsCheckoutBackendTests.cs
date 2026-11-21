@@ -155,27 +155,15 @@ public class HiEventsCheckoutBackendTests
     }
 
     [HumansFact]
-    public async Task Refund_DeclinedWhileARefundIsPending_IsPending()
+    public async Task Refund_Declined_FailsWithHiEventsReason()
     {
-        _handler.Enqueue(HttpStatusCode.UnprocessableEntity, new { message = "pending" });
-        _handler.Enqueue(HttpStatusCode.OK, Order(id: 42, total: 225m, status: "COMPLETED", paymentStatus: "PAYMENT_RECEIVED",
-            refundStatus: "REFUND_PENDING"));
+        _handler.Enqueue(HttpStatusCode.UnprocessableEntity, new { message = "There is already a refund pending" });
 
         var result = await Backend().RefundAsync(new RefundRequest(Guid.NewGuid(), "7:42", 22500, "resold"), Ct);
 
-        result.State.Should().Be(RefundState.Pending);
-    }
-
-    [HumansFact]
-    public async Task Refund_DeclinedOtherwise_Fails()
-    {
-        _handler.Enqueue(HttpStatusCode.UnprocessableEntity, new { message = "too much" });
-        _handler.Enqueue(HttpStatusCode.OK, Order(id: 42, total: 225m, status: "COMPLETED", paymentStatus: "PAYMENT_RECEIVED"));
-
-        var result = await Backend().RefundAsync(new RefundRequest(Guid.NewGuid(), "7:42", 99900, "resold"), Ct);
-
         result.State.Should().Be(RefundState.Failed);
-        result.FailureReason.Should().Contain("too much");
+        result.FailureReason.Should().Contain("already a refund pending");
+        _handler.Requests.Should().ContainSingle();
     }
 
     [HumansFact]
@@ -247,8 +235,7 @@ public class HiEventsCheckoutBackendTests
         string paymentStatus = "AWAITING_PAYMENT",
         string? paymentLink = null,
         string? reservedUntil = null,
-        decimal refunded = 0m,
-        string? refundStatus = null) => new
+        decimal refunded = 0m) => new
         {
             data = new Dictionary<string, object?>(StringComparer.Ordinal)
             {
@@ -256,7 +243,6 @@ public class HiEventsCheckoutBackendTests
                 ["event_id"] = 7,
                 ["status"] = status,
                 ["payment_status"] = paymentStatus,
-                ["refund_status"] = refundStatus,
                 ["currency"] = "EUR",
                 ["total_gross"] = total,
                 ["total_refunded"] = refunded,

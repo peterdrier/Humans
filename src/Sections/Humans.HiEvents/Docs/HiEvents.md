@@ -55,8 +55,8 @@ None — the section owns no tables.
   stay null.
 - Refund: always `Pending` on acceptance, because Hi.Events refunds through Stripe asynchronously; the amount shows in
   `RefundedMinor` once Stripe confirms. The Humans refund id is the idempotency key, so a retry after a completed
-  refund refunds nothing. A 422 while the order has a refund pending answers `Pending`; any other 422 answers `Failed`
-  with Hi.Events' message.
+  refund, or while that same refund is still pending in Stripe, refunds nothing and is accepted. Every 422 is a refund
+  that did not happen and answers `Failed` with Hi.Events' message.
 - Cancel: a no-op on a cancelled order, `TicketCheckoutException` on a paid one, otherwise Hi.Events' cancel without
   refund.
 - Webhook: 503 without a secret, 401 on a bad signature, 200 and no call for anything but `order.*`.

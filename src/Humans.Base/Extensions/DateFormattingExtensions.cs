@@ -102,6 +102,15 @@ public static class DateFormattingExtensions
     public static string ToInvariantTimestamp(this Instant value) => value.ToDateTimeUtc().ToInvariantTimestamp();
     public static string? ToInvariantTimestamp(this Instant? value) => value?.ToInvariantTimestamp();
 
+    /// <summary>The inverse of <see cref="ToInvariantTimestamp(Instant)"/>: a UTC "yyyy-MM-dd HH:mm:ss"; null when malformed.</summary>
+    public static Instant? ParseInvariantTimestamp(string? value) =>
+        value is not null && InvariantTimestamp.Parse(value) is { Success: true } parsed
+            ? parsed.Value.InUtc().ToInstant()
+            : null;
+
+    private static readonly LocalDateTimePattern InvariantTimestamp =
+        LocalDateTimePattern.CreateWithInvariantCulture("uuuu'-'MM'-'dd HH':'mm':'ss");
+
     /// <summary>Invariant year-month label, "yyyy-MM".</summary>
     public static string ToInvariantYearMonth(this YearMonth value) =>
         value.ToString("yyyy-MM", CultureInfo.InvariantCulture);
