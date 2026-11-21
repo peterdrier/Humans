@@ -12,6 +12,11 @@ internal interface ITicketSyncService : IApplicationService
 
     Task ResetSyncStateForFullResyncAsync();
 
+    /// <summary>Whether the recurring sync job runs; the admin sync buttons ignore it.</summary>
+    Task<bool> IsScheduledSyncEnabledAsync(CancellationToken ct = default);
+
+    Task SetScheduledSyncEnabledAsync(bool enabled, Guid actorUserId, CancellationToken ct = default);
+
     Task ReassignAsync(Guid mergedFromUserId, Guid mergedToUserId, Guid actorUserId, Instant now, CancellationToken ct);
 }
 

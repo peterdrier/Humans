@@ -37,7 +37,7 @@ Bulk cache warmups publish through the shared mutation guard. A refresh, deletio
 - A **Ticket Order** represents a purchase (one per transaction). It carries the gross total, currency, vendor discount/donation line-item amounts, computed VAT (using VIP-split logic, not the vendor's tax line), and is enriched with Stripe fee data (payment method, Stripe fee, application fee, fee VAT, withheld tax) during sync via `IStripeService.GetPaymentDetailsAsync` keyed by the vendor's payment-intent id.
 - A **Ticket Attendee** represents an individual ticket holder (one per issued ticket, multiple per order). Tickets above `TicketConstants.VipThresholdEuros` (315 EUR) are treated as VIP — the portion above the threshold is a VAT-free donation, the portion at-or-below is taxable at `TicketConstants.VatRate` (10%) inclusive.
 - **Auto-matching** links orders to humans by buyer email and attendees to humans by attendee email. The lookup runs only against **verified** `UserEmails` rows under `NormalizingEmailComparer` so gmail/googlemail aliases collapse. A normalized verified email is supposed to be owned by exactly one user — if a normalized email maps to multiple verified users (data-integrity error, should not happen), the email is left unmatched and a `LogError` is emitted. Unverified emails never participate in matching.
-- **Ticket Sync** is a background Hangfire job (`TicketSyncJob`, interval from `TicketVendor:SyncIntervalMinutes` — default 15, `appsettings.json` sets 5) that pulls order, attendee, and gate check-in data from the vendor through `ITicketVendorService`.
+- **Ticket Sync** is a background Hangfire job (`TicketSyncJob`, interval from `TicketVendor:SyncIntervalMinutes` — default 15, `appsettings.json` sets 5) that pulls order, attendee, and gate check-in data from the vendor through `ITicketVendorService`. The scheduled run only syncs while **Scheduled sync** is on at `/Settings#tickets` (off by default, for between sales seasons); the admin **Sync now** and **Full resync** buttons run regardless.
 - **TicketTransferRequest** is a retired 2026 record: a member asked the ticket team to move a TicketTailor ticket to another Humans member. The request pages, service and emails are gone and nothing creates or changes a request; directed resale replaces them. The `ticket_transfer_requests` table and its 2026 rows stay until the old system is cleaned up: approved rows still name who a voided ticket went to, and account merge and GDPR erasure still reach every row.
 - **Vendor connector** is a thin adapter (`Humans.TicketTailor`) behind `ITicketVendorService`. Production binds `TicketTailorService` (HTTP client against `https://api.tickettailor.com/v1`); non-production binds `StubTicketVendorService` (deterministic in-memory fixture with ~450 orders / ~600 tickets).
 - **Attendee Contact Import** is a manually-triggered admin job (`IAttendeeContactImportService`) that creates a no-profile Humans user for each unmatched ticket attendee whose email doesn't already resolve to an existing UserEmail. Mirrors the MailerLite import's plan/apply shape with squatter protection (Users atomically replaces an unverified row and provisions the new verified owner, preserving the original row if provisioning fails). Runs only when an admin triggers it; the sync does not invoke it.
@@ -107,6 +107,12 @@ The Codes and Humans & Tickets display rows carry recipient/user IDs for `<vc:hu
 **Table:** `ticket_sync_states`
 
 Singleton (`Id` always 1) tracking ticket sync operational state. `VendorEventId` records the event currently being synced. `LastSyncAt` doubles as the resume cursor passed to the vendor's `updated_at.gte` filter on the next run. `SyncStatus` is `Idle` / `Running` / `Error`; if a sync is found stuck in `Running` for >30 min, `GetDashboardStatsAsync` auto-resets it to `Error` with a stale-state message. `FullResync` clears `LastSyncAt` so the next run pulls all orders again.
+
+### TicketSettings
+
+**Table:** `ticket_settings`
+
+Singleton (`Id` always 1, seeded) of admin-editable section settings, edited on `/Settings#tickets` (TicketsPolicies.Manage). `IsScheduledSyncEnabled` gates the recurring `TicketSyncJob`; each change is audited as `TicketScheduledSyncEnabled` / `TicketScheduledSyncDisabled`.
 
 ### TicketTransferRequest
 
@@ -327,7 +333,7 @@ Donation export rows carry their purchase instant internally; the CSV controller
 - `UserParticipationBackfillService` — parses the `/Tickets/Participation/Backfill` CSV and hands valid rows to `EventParticipationService`.
 - `GateTerminalAccountSeeder` — provisions the roleless gate-terminal user lazily on first password set and rotates its password. Until a password exists, every attempt completes account and profile setup on the existing user; a refused setup step returns failure before setting a password or auditing success. Every password set marks the account fake in Users, which keeps it out of the Consent Coordinator review queue. Established-account rotations do not repeat setup, and a rejected password leaves the existing credential intact. Backs `/Tickets/Admin/Gate`. Its status-page user lookup honors request cancellation before querying password state; provisioning and password rotation retain independent write boundaries.
 
-**Owned tables:** `ticket_orders`, `ticket_attendees`, `ticket_sync_states`, `ticket_transfer_requests`, `ticket_event_participations`
+**Owned tables:** `ticket_orders`, `ticket_attendees`, `ticket_sync_states`, `ticket_settings`, `ticket_transfer_requests`, `ticket_event_participations`
 
 
 Automated processing and reissue retry also refuse a missing or whitespace-only stored receiver email before any vendor call or local state change. Invalid legacy requests retain their pending/partial state and any held seat; operators receive manual-completion guidance. Manual “Mark successful” remains available for work completed in TicketTailor.
@@ -390,7 +396,7 @@ Vendor event summaries require a readable response with a nonblank name and an e
 
 ### Repositories
 
-- **`ITicketRepository`** (Tickets-owned) — owns reads/writes for `ticket_orders`, `ticket_attendees`, `ticket_sync_states`. Aggregate-local navs kept (`TicketOrder.Attendees`, `TicketAttendee.TicketOrder`). Cross-domain `MatchedUser` nav properties have been stripped from both entities; FK (`MatchedUserId`) is retained; grid views render it through `<vc:human>` without copying a user name into the row.
+- **`ITicketRepository`** (Tickets-owned) — owns reads/writes for `ticket_orders`, `ticket_attendees`, `ticket_sync_states`, `ticket_settings`. Aggregate-local navs kept (`TicketOrder.Attendees`, `TicketAttendee.TicketOrder`). Cross-domain `MatchedUser` nav properties have been stripped from both entities; FK (`MatchedUserId`) is retained; grid views render it through `<vc:human>` without copying a user name into the row.
 - **`ITicketTransferRepository`** (Tickets-owned) — owns `ticket_transfer_requests`: the approved-row read for the order projection, merge reassignment and GDPR erasure. Nothing creates a request.
 - **`IEventParticipationRepository`** (Tickets-owned, Singleton) — owns reads/writes for `ticket_event_participations`, including the lifecycle rules and the merge fold.
 
