@@ -175,8 +175,10 @@ internal sealed class RolesController(
     private string RoleUrl(OwnerView owner, RoleInfo role) =>
         Url.Action(nameof(Role), new { kind = owner.Owner.Kind, key = owner.Key, slug = role.CustomSlug ?? role.Slug })!;
 
-    private static string OwnerLabel(OwnerView owner, IReadOnlyList<OwnerView> owners) =>
-        owner.ParentId is { } parentId && owners.FirstOrDefault(o => o.Owner == new Owner(owner.Owner.Kind, parentId)) is { } parent
+    /// <summary>"Parent › Child", leaving out a hidden parent so the board never names it.</summary>
+    internal static string OwnerLabel(OwnerView owner, IReadOnlyList<OwnerView> owners) =>
+        owner.ParentId is { } parentId
+        && owners.FirstOrDefault(o => o.Owner == new Owner(owner.Owner.Kind, parentId)) is { IsHidden: false } parent
             ? $"{parent.Name} › {owner.Name}"
             : owner.Name;
 }
