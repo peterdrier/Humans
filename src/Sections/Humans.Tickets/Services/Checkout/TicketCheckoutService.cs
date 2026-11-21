@@ -2,7 +2,6 @@ using System.Globalization;
 using System.Security.Cryptography;
 using Humans.AuditLog.Contracts;
 using Humans.Base.Extensions;
-using Humans.Consent.Contracts;
 using Humans.Email.Contracts;
 using Humans.Gdpr.Contracts;
 using Humans.Grants.Contracts;
@@ -24,8 +23,6 @@ internal sealed partial class TicketCheckoutService(
     IUserService users,
     IAccountProvisioningService provisioning,
     IUserEmailService userEmails,
-    IConsentService consents,
-    IConsentSubmission consentSubmission,
     ICommunicationPreferenceService preferenceReads,
     ICommunicationPreferenceWrite preferences,
     IEmailService email,
@@ -80,6 +77,9 @@ internal sealed partial class TicketCheckoutService(
             return new("Supporter totals must be positive.");
         if (save.ChildPriceMinor < 0 || save.ChildMaxAge is <= 0 || save.ResaleOpensAtSold < 0 || save.DirectedResaleDays is < 1 or > 30)
             return new("Child price, child age, resale threshold and invitation days must be sensible numbers.");
+        if (save.TermsUrl is { } terms && (terms.Length > 500 || !Uri.TryCreate(terms, UriKind.Absolute, out var termsUri)
+            || !string.Equals(termsUri.Scheme, Uri.UriSchemeHttps, StringComparison.Ordinal)))
+            return new("The ticket rules page must be an https address of at most 500 characters.");
 
         var existing = save.Id is { } id ? await repository.GetSalesEventAsync(id, ct) : null;
         if (save.Id is not null && existing is null)
@@ -107,7 +107,7 @@ internal sealed partial class TicketCheckoutService(
             ChildMaxAge = save.ChildMaxAge,
             ResaleOpensAtSold = save.ResaleOpensAtSold,
             DirectedResaleDays = save.DirectedResaleDays,
-            TermsTeamId = save.TermsTeamId,
+            TermsUrl = save.TermsUrl,
             UpdatedAt = now,
         };
         await repository.SaveSalesEventAsync(salesEvent, ct);
@@ -171,7 +171,7 @@ internal sealed partial class TicketCheckoutService(
         directedRefusal ?? context.Unavailable, context.AlreadyHoldsTicket, context.Buyer?.FullName ?? string.Empty,
         context.UserOrders.Where(o => o.SalesEventId == context.SalesEvent.Id).OrderByDescending(o => o.CreatedAt).ToList())
     {
-        TermsToAccept = context.TermsToAccept,
+        TermsUrl = context.SalesEvent.TermsUrl,
         AskMarketing = context.AskMarketing,
         OpenOrder = context.UserOrders
             .Where(o => o.SalesEventId == context.SalesEvent.Id && o.BuyerUserId == context.Buyer?.Id
@@ -210,8 +210,7 @@ internal sealed partial class TicketCheckoutService(
         if (command.SupporterTotalMinor is { } requested
             && (!command.ForSelf || !salesEvent.SupporterTotalsMinor.Contains(requested)))
             return StartCheckoutResult.Refused("Tickets_Buy_Invalid");
-        var unsignedTerms = context.TermsToAccept.Where(t => !t.Signed).ToList();
-        if (unsignedTerms.Count > 0 && !command.AcceptTerms)
+        if (salesEvent.TermsUrl is not null && !command.AcceptTerms)
             return StartCheckoutResult.Refused("Tickets_Buy_TermsRequired");
 
         TicketResaleOffer? directed = null;
@@ -270,13 +269,6 @@ internal sealed partial class TicketCheckoutService(
         if (lines.Count == 0)
             return StartCheckoutResult.Refused("Tickets_Buy_Empty");
 
-        foreach (var term in unsignedTerms)
-        {
-            var consent = await consentSubmission.SubmitConsentAsync(
-                buyer.Id, term.DocumentVersionId, explicitConsent: true, command.IpAddress, command.UserAgent, ct);
-            if (!consent.Success && !string.Equals(consent.ErrorKey, "AlreadyConsented", StringComparison.Ordinal))
-                return StartCheckoutResult.Refused("Tickets_Buy_TermsFailed");
-        }
         if (command.MarketingOptIn && context.AskMarketing)
             await preferences.UpdatePreferenceAsync(buyer.Id, MessageCategory.Marketing, optedOut: false, JobName, ct);
 
@@ -301,9 +293,9 @@ internal sealed partial class TicketCheckoutService(
         await TimelineAsync(order.Id, TicketCheckoutOrderEventKind.Created,
             $"{ticketCount} ticket(s), {FormatMinor(order.TotalMinor)} {order.Currency} on {order.BackendKey}" +
             (lines.Any(l => l.ResaleOfferId is not null) ? ", from the resale queue" : string.Empty), buyer.Id, ct);
-        if (unsignedTerms.Count > 0)
-            await TimelineAsync(order.Id, TicketCheckoutOrderEventKind.TermsAccepted,
-                "Accepted " + string.Join(", ", unsignedTerms.Select(t => t.Title)), buyer.Id, ct);
+        if (salesEvent.TermsUrl is { } termsUrl)
+            await TimelineAsync(order.Id, TicketCheckoutOrderEventKind.TermsAccepted, "Accepted the ticket rules at " + termsUrl,
+                buyer.Id, ct);
         foreach (var offer in new[] { resaleForSelf, resaleForPartner }.OfType<TicketResaleOffer>())
             await ReserveOfferAsync(offer, order.Id, ct);
 
@@ -951,7 +943,6 @@ internal sealed partial class TicketCheckoutService(
         string? Unavailable,
         bool AlreadyHoldsTicket,
         IReadOnlyList<TicketCheckoutOrder> UserOrders,
-        IReadOnlyList<RequiredConsentRow> TermsToAccept,
         bool AskMarketing,
         Instant Now,
         bool FreshSoldOut);
@@ -982,9 +973,6 @@ internal sealed partial class TicketCheckoutService(
         var resalePrice = TicketPrice.For(salesEvent, today, creditPrograms);
         var userOrders = await repository.GetOrdersForUserAsync(userId, ct);
         var holds = await HoldsTicketAsync(salesEvent.Id, userId, now, ct);
-        var terms = salesEvent.TermsTeamId is { } termsTeam
-            ? await consents.GetRequiredConsentRowsForUserAsync(userId, termsTeam, ct)
-            : [];
         var askMarketing = await preferenceReads.GetPreferenceOrNullAsync(userId, MessageCategory.Marketing, ct) is null;
 
         string? unavailable = null;
@@ -998,7 +986,7 @@ internal sealed partial class TicketCheckoutService(
             unavailable = "Tickets_Buy_NeedLegalName";
 
         var freshSoldOut = (await LoadStockAsync(salesEvent, now, ct)).Held + 1 > salesEvent.Capacity;
-        return new BuyContext(salesEvent, evt, buyer, ownPrice, publicPrice, resalePrice, unavailable, holds, userOrders, terms,
+        return new BuyContext(salesEvent, evt, buyer, ownPrice, publicPrice, resalePrice, unavailable, holds, userOrders,
             askMarketing, now, freshSoldOut);
     }
 

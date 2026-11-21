@@ -318,9 +318,6 @@
   <data name="Tickets_Buy_TermsRequired" xml:space="preserve">
     <value>Accetta le regole dei biglietti per continuare.</value>
   </data>
-  <data name="Tickets_Buy_TermsFailed" xml:space="preserve">
-    <value>Non è stato possibile registrare l'accettazione delle regole. Controlla che il profilo sia completo e riprova.</value>
-  </data>
   <data name="Tickets_Resale_InviteInvalid" xml:space="preserve">
     <value>Questo link di invito non è più valido, oppure è stato inviato a un'email diversa da quella con cui hai effettuato l'accesso.</value>
   </data>
