@@ -10,6 +10,7 @@ using Humans.Permissions.Contracts;
 using Humans.Roles.Contracts;
 using Humans.Roles.Data;
 using Humans.Roles.Domain;
+using Microsoft.Extensions.Localization;
 using NodaTime;
 
 namespace Humans.Roles.Services;
@@ -27,7 +28,8 @@ internal sealed class RoleService(
     IEnumerable<IEntityNameContributor> names,
     IRoleAssignmentService systemRoles,
     IAuditLogService audit,
-    IClock clock) : IRoleManagementService
+    IClock clock,
+    IStringLocalizer<RolesResource> localizer) : IRoleManagementService
 {
     internal const string ExportSection = "Roles";
     internal const string AuditEntityType = "Role";
@@ -40,22 +42,89 @@ internal sealed class RoleService(
 
     public async Task<bool> CanManageAsync(Owner owner, Guid userId, CancellationToken ct = default)
     {
-        if (await IsRolesAdminAsync(userId, ct))
+        if (await HasSystemRoleAsync(userId, ct, RoleNames.Admin, RolesSystemRoles.RolesAdmin))
             return true;
 
         var tree = await GetTreeAsync(owner.Kind, ct);
-        if (!tree.TryGetValue(owner.Id, out var target))
-            return false;
+        return Coordinates(owner, tree, CoordinatorOf(await repository.GetAllAsync(ct), owner.Kind, userId));
+    }
 
-        var coordinatorOf = (await repository.GetAllAsync(ct))
+    public async Task<IReadOnlyList<OwnerView>> GetOwnersAsync(CancellationToken ct = default)
+    {
+        var owners = new List<OwnerView>();
+        foreach (var section in roleOwners)
+        {
+            var tree = await GetTreeAsync(section.Kind, ct);
+            foreach (var info in await section.ListAsync(ct))
+            {
+                var node = tree.GetValueOrDefault(info.Id);
+                owners.Add(new OwnerView(new Owner(section.Kind, info.Id), info.Key, info.Name, info.Url, info.IsHidden,
+                    IsActive: node is { IsActive: true, IsSystem: false }, node?.ParentId));
+            }
+        }
+
+        return owners;
+    }
+
+    public async Task<IReadOnlyList<RoleInfo>> GetVisibleRolesAsync(Guid userId, CancellationToken ct = default)
+    {
+        var roles = await repository.GetAllAsync(ct);
+        var owners = (await GetOwnersAsync(ct)).ToDictionary(o => o.Owner);
+        var seesAll = await HasSystemRoleAsync(userId, ct, RoleNames.Admin, RolesSystemRoles.RolesAdmin, RoleNames.Board);
+        var trees = new Dictionary<string, Dictionary<Guid, OwnerNode>>(StringComparer.Ordinal);
+        foreach (var kind in owners.Keys.Select(o => o.Kind).Distinct(StringComparer.Ordinal))
+            trees[kind] = await GetTreeAsync(kind, ct);
+
+        return roles
+            .Where(r => owners.TryGetValue(OwnerOf(r), out var o) && o.IsActive
+                        && ((r.IsPublic && !o.IsHidden) || seesAll
+                            || Coordinates(o.Owner, trees[o.Owner.Kind], CoordinatorOf(roles, o.Owner.Kind, userId))))
+            .Select(ToInfo)
+            .ToList();
+    }
+
+    public async Task<IReadOnlyList<Guid>> GetContactsAsync(Owner owner, CancellationToken ct = default)
+    {
+        var roles = await repository.GetAllAsync(ct);
+        var tree = await GetTreeAsync(owner.Kind, ct);
+        var visited = new HashSet<Guid>();
+        for (var node = tree.GetValueOrDefault(owner.Id); node is not null && visited.Add(node.Id);
+             node = node.ParentId is { } parentId ? tree.GetValueOrDefault(parentId) : null)
+        {
+            var holders = roles
+                .Where(r => r.IsCoordinator && OwnedBy(r, new Owner(owner.Kind, node.Id)))
+                .SelectMany(r => r.Assignments.OrderBy(a => a.Slot).Select(a => a.UserId))
+                .ToList();
+            if (holders.Count > 0)
+                return holders;
+        }
+
+        return [];
+    }
+
+    public async Task<IReadOnlyList<Permission>> GetPermissionChoicesAsync(Owner owner, CancellationToken ct = default)
+    {
+        var topLevel = (await GetTreeAsync(owner.Kind, ct)).GetValueOrDefault(owner.Id)?.ParentId is null;
+        return sectionPermissions
+            .SelectMany(s => s.Permissions)
+            .Where(p => p.OwnerKinds.Contains(owner.Kind, StringComparer.Ordinal) && (topLevel || !p.TopLevelOnly))
+            .OrderBy(p => p.Title, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+    }
+
+    private static HashSet<Guid> CoordinatorOf(IEnumerable<Role> roles, string kind, Guid userId) =>
+        roles
             .Where(r => r.IsCoordinator
-                        && string.Equals(r.OwnerKind, owner.Kind, StringComparison.Ordinal)
+                        && string.Equals(r.OwnerKind, kind, StringComparison.Ordinal)
                         && r.Assignments.Any(a => a.UserId == userId))
             .Select(r => r.OwnerId)
             .ToHashSet();
 
+    /// <summary>A coordinator role on the owner or an ancestor, counted only on active, non-system owners.</summary>
+    private static bool Coordinates(Owner owner, Dictionary<Guid, OwnerNode> tree, HashSet<Guid> coordinatorOf)
+    {
         var visited = new HashSet<Guid>();
-        for (OwnerNode? node = target; node is not null && visited.Add(node.Id);
+        for (var node = tree.GetValueOrDefault(owner.Id); node is not null && visited.Add(node.Id);
              node = node.ParentId is { } parentId ? tree.GetValueOrDefault(parentId) : null)
         {
             if (node.IsActive && !node.IsSystem && coordinatorOf.Contains(node.Id))
@@ -69,9 +138,9 @@ internal sealed class RoleService(
     {
         var tree = await GetTreeAsync(owner.Kind, ct);
         if (!tree.TryGetValue(owner.Id, out var node) || FindOwnerSection(owner.Kind) is null)
-            return Refuse("That owner doesn't exist.");
+            return Refuse(T("Roles_Refusal_NoOwner"));
         if (!await CanTouchAsync(owner, input.IsCoordinator, actorUserId, ct))
-            return Refuse("You can't manage roles here.");
+            return Refuse(T("Roles_Refusal_NotAllowed"));
 
         var roles = await repository.GetAllAsync(ct);
         if (InputRefusal(input, owner.Kind, node, roles.Where(r => OwnedBy(r, owner)).ToList(), excluding: null) is { } refusal)
@@ -100,19 +169,19 @@ internal sealed class RoleService(
         var roles = await repository.GetAllAsync(ct);
         var role = roles.FirstOrDefault(r => r.Id == roleId);
         if (role is null)
-            return Refuse("That role doesn't exist.");
+            return Refuse(T("Roles_Refusal_NoRole"));
 
         var owner = OwnerOf(role);
         if (!await CanTouchAsync(owner, role.IsCoordinator || input.IsCoordinator, actorUserId, ct))
-            return Refuse("You can't manage roles here.");
+            return Refuse(T("Roles_Refusal_NotAllowed"));
         if (role.IsCoordinator != input.IsCoordinator && role.Assignments.Count > 0)
-            return Refuse("Empty the role before changing whether it is the coordinator role.");
+            return Refuse(T("Roles_Refusal_CoordinatorHasHolders"));
         if (input.SlotCount < role.Assignments.Count || role.Assignments.Any(a => a.Slot >= input.SlotCount))
-            return Refuse("Take people out of the slots being removed first.");
+            return Refuse(T("Roles_Refusal_SlotsInUse"));
 
         var tree = await GetTreeAsync(owner.Kind, ct);
         if (!tree.TryGetValue(owner.Id, out var node))
-            return Refuse("That owner doesn't exist.");
+            return Refuse(T("Roles_Refusal_NoOwner"));
         if (InputRefusal(input, owner.Kind, node, roles.Where(r => OwnedBy(r, owner)).ToList(), excluding: role.Id) is { } refusal)
             return Refuse(refusal);
 
@@ -135,14 +204,14 @@ internal sealed class RoleService(
     {
         var role = (await repository.GetAllAsync(ct)).FirstOrDefault(r => r.Id == roleId);
         if (role is null)
-            return Refuse("That role doesn't exist.");
+            return Refuse(T("Roles_Refusal_NoRole"));
 
         var owner = OwnerOf(role);
         if (!await CanTouchAsync(owner, role.IsCoordinator, actorUserId, ct))
-            return Refuse("You can't manage roles here.");
+            return Refuse(T("Roles_Refusal_NotAllowed"));
 
         if (!await repository.DeleteAsync(roleId, ct))
-            return Refuse("That role doesn't exist.");
+            return Refuse(T("Roles_Refusal_NoRole"));
 
         await audit.LogAsync(RolesAuditActions.RoleDeleted, AuditEntityType, role.Id,
             $"Role '{role.Name}' on {await OwnerNameAsync(owner, ct)} deleted with {role.Assignments.Count} holder(s)",
@@ -155,21 +224,21 @@ internal sealed class RoleService(
     {
         var role = (await repository.GetAllAsync(ct)).FirstOrDefault(r => r.Id == roleId);
         if (role is null)
-            return Refuse("That role doesn't exist.");
+            return Refuse(T("Roles_Refusal_NoRole"));
 
         var owner = OwnerOf(role);
         if (!await CanTouchAsync(owner, role.IsCoordinator, actorUserId, ct))
-            return Refuse("You can't manage roles here.");
+            return Refuse(T("Roles_Refusal_NotAllowed"));
         if (role.Assignments.Any(a => a.UserId == userId))
-            return Refuse("They already hold this role.");
+            return Refuse(T("Roles_Refusal_AlreadyHolds"));
 
         var taken = role.Assignments.Select(a => a.Slot).ToHashSet();
         var slot = Enumerable.Range(0, role.SlotCount).Cast<int?>().FirstOrDefault(s => !taken.Contains(s!.Value));
         if (slot is null)
-            return Refuse("Every slot is filled.");
+            return Refuse(T("Roles_Refusal_Full"));
 
         if (FindOwnerSection(owner.Kind) is not { } ownerSection)
-            return Refuse("That owner doesn't exist.");
+            return Refuse(T("Roles_Refusal_NoOwner"));
         if (await ownerSection.EnsureMemberAsync(owner.Id, userId, actorUserId, ct) is { } ownerRefusal)
             return Refuse(ownerRefusal);
 
@@ -182,7 +251,7 @@ internal sealed class RoleService(
             AssignedAt = clock.GetCurrentInstant(),
         };
         if (!await repository.AddAssignmentAsync(assignment, ct))
-            return Refuse("Someone else just changed this role. Try again.");
+            return Refuse(T("Roles_Refusal_Conflict"));
 
         await audit.LogAsync(RolesAuditActions.HolderAdded, AuditEntityType, role.Id,
             $"Assigned to role '{role.Name}' on {await OwnerNameAsync(owner, ct)}",
@@ -196,13 +265,13 @@ internal sealed class RoleService(
     {
         var role = (await repository.GetAllAsync(ct)).FirstOrDefault(r => r.Id == roleId);
         if (role is null)
-            return Refuse("That role doesn't exist.");
+            return Refuse(T("Roles_Refusal_NoRole"));
 
         var owner = OwnerOf(role);
         if (!await CanTouchAsync(owner, role.IsCoordinator, actorUserId, ct))
-            return Refuse("You can't manage roles here.");
+            return Refuse(T("Roles_Refusal_NotAllowed"));
         if (!await repository.RemoveAssignmentAsync(roleId, userId, ct))
-            return Refuse("They don't hold this role.");
+            return Refuse(T("Roles_Refusal_NotHolder"));
 
         if (role.Assignments.FirstOrDefault(a => a.UserId == userId) is { } removed)
             role.Assignments.Remove(removed);
@@ -266,57 +335,57 @@ internal sealed class RoleService(
     }
 
     private async Task<bool> CanTouchAsync(Owner owner, bool coordinatorRole, Guid actorUserId, CancellationToken ct) =>
-        coordinatorRole ? await IsRolesAdminAsync(actorUserId, ct) : await CanManageAsync(owner, actorUserId, ct);
+        coordinatorRole
+            ? await HasSystemRoleAsync(actorUserId, ct, RoleNames.Admin, RolesSystemRoles.RolesAdmin)
+            : await CanManageAsync(owner, actorUserId, ct);
 
-    private async Task<bool> IsRolesAdminAsync(Guid userId, CancellationToken ct) =>
-        (await systemRoles.GetActiveForUserAsync(userId, ct)).Any(r =>
-            string.Equals(r.RoleName, RoleNames.Admin, StringComparison.Ordinal)
-            || string.Equals(r.RoleName, RolesSystemRoles.RolesAdmin, StringComparison.Ordinal));
+    private async Task<bool> HasSystemRoleAsync(Guid userId, CancellationToken ct, params string[] roleNames) =>
+        (await systemRoles.GetActiveForUserAsync(userId, ct)).Any(r => roleNames.Contains(r.RoleName, StringComparer.Ordinal));
 
     private string? InputRefusal(RoleInput input, string ownerKind, OwnerNode owner, IReadOnlyList<Role> siblings, Guid? excluding)
     {
         var others = siblings.Where(r => r.Id != excluding).ToList();
 
         if (string.IsNullOrWhiteSpace(input.Name))
-            return "Give the role a name.";
+            return T("Roles_Refusal_NoName");
         if (input.Name.Trim().Length > 100)
-            return "A role name can't be longer than 100 characters.";
+            return T("Roles_Refusal_NameTooLong");
         if (others.Any(r => string.Equals(r.Name, input.Name.Trim(), StringComparison.OrdinalIgnoreCase)))
-            return "Another role here already has that name.";
+            return T("Roles_Refusal_NameTaken");
 
         var slug = SlugHelper.GenerateSlug(input.Name.Trim());
         var customSlug = string.IsNullOrWhiteSpace(input.CustomSlug) ? null : SlugHelper.GenerateSlug(input.CustomSlug);
         if (slug.Length == 0)
-            return "A role name needs at least one letter or digit.";
+            return T("Roles_Refusal_NameNoLetters");
         if (customSlug is { Length: 0 })
-            return "A custom link needs at least one letter or digit.";
+            return T("Roles_Refusal_LinkNoLetters");
         var taken = others.SelectMany(r => new[] { r.Slug, r.CustomSlug }).OfType<string>().ToHashSet(StringComparer.Ordinal);
         if (taken.Contains(slug) || (customSlug is not null && (taken.Contains(customSlug) || string.Equals(customSlug, slug, StringComparison.Ordinal))))
-            return "Another role here already uses that link.";
+            return T("Roles_Refusal_LinkTaken");
 
         if (input.SlotCount < 1)
-            return "A role needs at least one slot.";
+            return T("Roles_Refusal_NoSlots");
         if (input.Priorities.Count != input.SlotCount || input.Priorities.Any(p => !Enum.IsDefined(p)))
-            return "Give each slot a priority.";
+            return T("Roles_Refusal_Priorities");
         if (input.EstimatedHours is < 0)
-            return "Hours can't be negative.";
+            return T("Roles_Refusal_NegativeHours");
         if (!Enum.IsDefined(input.Period))
-            return "Pick a period.";
+            return T("Roles_Refusal_Period");
 
         if (input.IsCoordinator && others.Any(r => r.IsCoordinator))
-            return "This owner already has a coordinator role.";
+            return T("Roles_Refusal_SecondCoordinator");
         if (input.IsCoordinator && input.PermissionKeys.Count > 0)
-            return "The coordinator role holds every permission already.";
+            return T("Roles_Refusal_CoordinatorKeys");
 
         var catalog = sectionPermissions.SelectMany(s => s.Permissions).ToDictionary(p => p.Key, StringComparer.Ordinal);
         foreach (var key in input.PermissionKeys)
         {
             if (!catalog.TryGetValue(key, out var permission))
-                return $"No section declares the permission '{key}'.";
+                return T("Roles_Refusal_UnknownPermission", key);
             if (!permission.OwnerKinds.Contains(ownerKind, StringComparer.Ordinal))
-                return $"'{permission.Title}' doesn't apply here.";
+                return T("Roles_Refusal_PermissionNotHere", permission.Title);
             if (permission.TopLevelOnly && owner.ParentId is not null)
-                return $"'{permission.Title}' can only be held on a top-level owner.";
+                return T("Roles_Refusal_PermissionTopLevel", permission.Title);
         }
 
         return null;
@@ -374,6 +443,8 @@ internal sealed class RoleService(
     private static Owner OwnerOf(Role role) => new(role.OwnerKind, role.OwnerId);
 
     private static RoleResult Refuse(string refusal) => new(Refusal: refusal);
+
+    private string T(string key, params object[] args) => localizer[key, args].Value;
 
     internal static RoleInfo ToInfo(Role role) => new(
         role.Id,

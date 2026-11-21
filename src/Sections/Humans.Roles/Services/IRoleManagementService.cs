@@ -1,5 +1,6 @@
 using Humans.Base.Authorization;
 using Humans.Gdpr.Contracts;
+using Humans.Permissions.Contracts;
 using Humans.Roles.Contracts;
 using Humans.Teams.Contracts;
 using NodaTime;
@@ -22,6 +23,21 @@ internal interface IRoleManagementService : IRoleService, IRoleWrite
     /// </summary>
     Task<bool> CanManageAsync(Owner owner, Guid userId, CancellationToken ct = default);
 
+    /// <summary>Every owner of every registered kind, with its place in the tree.</summary>
+    Task<IReadOnlyList<OwnerView>> GetOwnersAsync(CancellationToken ct = default);
+
+    /// <summary>
+    /// The roles this person may see: public roles on active, visible owners, plus private roles and hidden owners'
+    /// roles where they manage the roles, or are Board. Never an inactive owner's roles.
+    /// </summary>
+    Task<IReadOnlyList<RoleInfo>> GetVisibleRolesAsync(Guid userId, CancellationToken ct = default);
+
+    /// <summary>Who to talk to about the owner's roles: its coordinators, or the nearest ancestor's.</summary>
+    Task<IReadOnlyList<Guid>> GetContactsAsync(Owner owner, CancellationToken ct = default);
+
+    /// <summary>The declared permissions a role on this owner may carry.</summary>
+    Task<IReadOnlyList<Permission>> GetPermissionChoicesAsync(Owner owner, CancellationToken ct = default);
+
     Task<RoleResult> CreateAsync(Owner owner, RoleInput input, Guid actorUserId, CancellationToken ct = default);
 
     Task<RoleResult> UpdateAsync(Guid roleId, RoleInput input, Guid actorUserId, CancellationToken ct = default);
@@ -33,6 +49,9 @@ internal interface IRoleManagementService : IRoleService, IRoleWrite
 
     Task<RoleResult> UnassignAsync(Guid roleId, Guid userId, Guid actorUserId, CancellationToken ct = default);
 }
+
+/// <summary>An owner with its link key and place in the tree.</summary>
+internal sealed record OwnerView(Owner Owner, string Key, string Name, string Url, bool IsHidden, bool IsActive, Guid? ParentId);
 
 /// <summary>What a role form sends.</summary>
 internal sealed record RoleInput(

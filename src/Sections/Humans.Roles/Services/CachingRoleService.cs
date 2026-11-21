@@ -42,6 +42,18 @@ internal sealed class CachingRoleService(
     public Task<bool> CanManageAsync(Owner owner, Guid userId, CancellationToken ct = default) =>
         WithInnerAsync(inner => inner.CanManageAsync(owner, userId, ct));
 
+    public Task<IReadOnlyList<OwnerView>> GetOwnersAsync(CancellationToken ct = default) =>
+        WithInnerAsync(inner => inner.GetOwnersAsync(ct));
+
+    public Task<IReadOnlyList<RoleInfo>> GetVisibleRolesAsync(Guid userId, CancellationToken ct = default) =>
+        WithInnerAsync(inner => inner.GetVisibleRolesAsync(userId, ct));
+
+    public Task<IReadOnlyList<Guid>> GetContactsAsync(Owner owner, CancellationToken ct = default) =>
+        WithInnerAsync(inner => inner.GetContactsAsync(owner, ct));
+
+    public Task<IReadOnlyList<Permission>> GetPermissionChoicesAsync(Owner owner, CancellationToken ct = default) =>
+        WithInnerAsync(inner => inner.GetPermissionChoicesAsync(owner, ct));
+
     public Task<RoleResult> CreateAsync(Owner owner, RoleInput input, Guid actorUserId, CancellationToken ct = default) =>
         MutateAsync(inner => inner.CreateAsync(owner, input, actorUserId, ct));
 
