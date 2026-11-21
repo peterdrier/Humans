@@ -92,9 +92,10 @@ internal sealed class TicketCheckoutTicketConfiguration : IEntityTypeConfigurati
         builder.ToTable("ticket_checkout_tickets");
         builder.HasKey(x => x.Id);
         builder.HasIndex(x => x.Barcode).IsUnique();
-        builder.HasIndex(x => x.OrderId);
+        builder.HasIndex(x => new { x.OrderId, x.LineIndex }).IsUnique();
         builder.HasIndex(x => x.SalesEventId);
         builder.HasIndex(x => x.HolderUserId);
+        builder.HasIndex(x => x.ParentTicketId);
         builder.Property(x => x.Kind).IsRequired().HasConversion<string>().HasMaxLength(16);
         builder.Property(x => x.State).IsRequired().HasConversion<string>().HasMaxLength(16);
         builder.Property(x => x.HolderName).IsRequired().HasMaxLength(513);

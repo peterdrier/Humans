@@ -134,13 +134,37 @@ internal sealed class BoxOfficeCheckoutBackend(
         Instant? paidAt = charge is { Paid: true }
             ? Instant.FromDateTimeUtc(DateTime.SpecifyKind(charge.Created, DateTimeKind.Utc))
             : null;
+        // charge.amount_refunded counts a refund from the moment it is created, pending included, and a failed one
+        // drops back out: read the refunds themselves so only money that went back counts.
+        var refunds = session.PaymentIntentId is { } paymentIntentId ? await ListRefundsAsync(paymentIntentId, ct) : [];
         return new CheckoutStatus(
             state,
             charge?.BalanceTransaction?.Fee,
             charge?.PaymentMethodDetails?.Type,
             paidAt,
-            charge?.AmountRefunded ?? 0);
+            refunds.Where(r => StateOf(r) == RefundState.Succeeded).Sum(r => r.Amount),
+            refunds.Any(r => StateOf(r) == RefundState.Failed && r.Metadata?.ContainsKey(RefundMetadataKey) == true));
     }
+
+    private async Task<IReadOnlyList<Refund>> ListRefundsAsync(string paymentIntentId, CancellationToken ct)
+    {
+        try
+        {
+            return (await new RefundService(Client()).ListAsync(
+                new RefundListOptions { PaymentIntent = paymentIntentId, Limit = 100 }, cancellationToken: ct)).Data;
+        }
+        catch (StripeException ex)
+        {
+            throw new TicketCheckoutException($"Stripe could not list the refunds of {paymentIntentId}: {ex.Message}", ex);
+        }
+    }
+
+    private static RefundState StateOf(Refund refund) => refund.Status switch
+    {
+        "succeeded" => RefundState.Succeeded,
+        "failed" or "canceled" => RefundState.Failed,
+        _ => RefundState.Pending,
+    };
 
     public async Task<RefundResult> RefundAsync(RefundRequest request, CancellationToken ct = default)
     {
@@ -151,6 +175,12 @@ internal sealed class BoxOfficeCheckoutBackend(
         var charge = session.PaymentIntent?.LatestCharge;
         if (charge is not { Paid: true })
             return new RefundResult(RefundState.Failed, null, "The checkout has no settled payment to refund.");
+        // A repeat of a refund whose answer was lost gets that refund's own state, not the cap's refusal.
+        var earlier = (await ListRefundsAsync(session.PaymentIntentId!, ct)).FirstOrDefault(r =>
+            r.Metadata?.TryGetValue(RefundMetadataKey, out var id) == true
+            && string.Equals(id, request.RefundId.ToString(), StringComparison.Ordinal));
+        if (earlier is not null)
+            return new RefundResult(StateOf(earlier), earlier.Id, StateOf(earlier) == RefundState.Failed ? earlier.FailureReason : null);
         // Second guard behind Tickets' own: never more than this one payment still holds.
         var remaining = charge.Amount - charge.AmountRefunded;
         if (request.AmountMinor > remaining)
@@ -173,18 +203,18 @@ internal sealed class BoxOfficeCheckoutBackend(
                 },
                 new RequestOptions { IdempotencyKey = $"humans_ticket_refund_{request.RefundId}" }, ct);
 
-            var state = refund.Status switch
-            {
-                "succeeded" => RefundState.Succeeded,
-                "failed" or "canceled" => RefundState.Failed,
-                _ => RefundState.Pending,
-            };
+            var state = StateOf(refund);
             return new RefundResult(state, refund.Id, state == RefundState.Failed ? refund.FailureReason : null);
+        }
+        catch (StripeException ex) when (ex.StripeError is not null)
+        {
+            logger.LogWarning("Stripe refused refund {RefundId}: {Message}", request.RefundId, ex.Message);
+            return new RefundResult(RefundState.Failed, null, ex.StripeError.Message ?? ex.Message);
         }
         catch (StripeException ex)
         {
-            logger.LogWarning("Stripe refused refund {RefundId}: {Message}", request.RefundId, ex.Message);
-            return new RefundResult(RefundState.Failed, null, ex.StripeError?.Message ?? ex.Message);
+            // No answer from Stripe: the refund may exist, so Tickets keeps it pending and the repeat finds it.
+            throw new TicketCheckoutException($"Stripe did not answer refund {request.RefundId}: {ex.Message}", ex);
         }
     }
 
@@ -213,9 +243,9 @@ internal sealed class BoxOfficeCheckoutBackend(
 
     /// <summary>
     /// The session ids a verified webhook is about: the session itself for <c>checkout.session.*</c>, and for a
-    /// refund the sessions of the refunded payment. Empty for an invalid signature or an unrelated event.
+    /// charge or refund the sessions of its payment. Empty for an unrelated event; null for an invalid signature.
     /// </summary>
-    internal async Task<IReadOnlyList<string>> ParseWebhookAsync(string body, string signature, CancellationToken ct)
+    internal async Task<IReadOnlyList<string>?> ParseWebhookAsync(string body, string signature, CancellationToken ct)
     {
         Event stripeEvent;
         try
@@ -226,21 +256,25 @@ internal sealed class BoxOfficeCheckoutBackend(
             or FormatException or OverflowException)
         {
             logger.LogWarning("Invalid Box Office webhook ({ExceptionType})", ex.GetType().Name);
-            return [];
+            return null;
         }
 
         switch (stripeEvent.Data?.Object)
         {
             case Session session:
                 return [session.Id];
-            case Charge { PaymentIntentId: { } paymentIntentId }:
-                var sessions = await new SessionService(Client()).ListAsync(
-                    new SessionListOptions { PaymentIntent = paymentIntentId, Limit = 10 }, cancellationToken: ct);
-                return sessions.Data.Select(s => s.Id).ToList();
+            case Charge { PaymentIntentId: { } chargeIntent }:
+                return await SessionsForAsync(chargeIntent, ct);
+            case Refund { PaymentIntentId: { } refundIntent }:
+                return await SessionsForAsync(refundIntent, ct);
             default:
                 return [];
         }
     }
+
+    private async Task<IReadOnlyList<string>> SessionsForAsync(string paymentIntentId, CancellationToken ct) =>
+        (await new SessionService(Client()).ListAsync(
+            new SessionListOptions { PaymentIntent = paymentIntentId, Limit = 10 }, cancellationToken: ct)).Data.Select(s => s.Id).ToList();
 
     private async Task<Session> GetSessionAsync(string sessionId, CancellationToken ct)
     {

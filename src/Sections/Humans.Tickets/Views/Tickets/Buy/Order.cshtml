@@ -15,6 +15,7 @@
 <page-header title="@(Localizer["Tickets_Buy_OrderTitle"].Value)" />
 
 <p>
+    <span class="me-2">@Localizer["Tickets_Buy_Reference"]: <code>@order.Reference</code></span>
     <span class="badge @(order.State == TicketCheckoutOrderState.Paid ? "bg-success" : open ? "bg-warning text-dark" : "bg-secondary")">
         @Localizer[$"Tickets_Buy_State_{order.State}"]
     </span>

@@ -1,3 +1,4 @@
+using NodaTime;
 using Humans.Base.Interfaces.Repositories;
 using Humans.Tickets.Domain.Checkout;
 
@@ -42,7 +43,14 @@ internal interface ITicketCheckoutRepository : IRepository
 
     Task<IReadOnlyList<TicketCheckoutOrderEvent>> GetOrderEventsAsync(Guid orderId, CancellationToken ct = default);
 
-    Task AddTicketsAsync(IReadOnlyList<TicketCheckoutTicket> tickets, CancellationToken ct = default);
+    /// <summary>False when the order's tickets were already issued: another caller got there first.</summary>
+    Task<bool> AddTicketsAsync(IReadOnlyList<TicketCheckoutTicket> tickets, CancellationToken ct = default);
+
+    /// <summary>
+    /// Moves the order to Paid only if it is not Paid yet, in one conditional update. False when another caller
+    /// already did: only the caller that gets true fulfils the order.
+    /// </summary>
+    Task<bool> TryClaimPaidAsync(Guid orderId, Instant paidAt, CancellationToken ct = default);
 
     Task UpdateTicketAsync(TicketCheckoutTicket ticket, CancellationToken ct = default);
 
@@ -70,7 +78,11 @@ internal interface ITicketCheckoutRepository : IRepository
     Task<IReadOnlyList<TicketCheckoutRefund>> GetRefundsForSalesEventAsync(Guid salesEventId, CancellationToken ct = default);
 
     /// <summary>Replaces names and emails on the person's orders and ticket lines; amounts stay for the books.</summary>
-    Task<int> ErasePiiForUserAsync(Guid userId, CancellationToken ct = default);
+    /// <summary>
+    /// Tombstones the person's names and emails, their children's names on their orders and tickets, and invitations
+    /// sent to any of <paramref name="emails"/>.
+    /// </summary>
+    Task<int> ErasePiiForUserAsync(Guid userId, IReadOnlyCollection<string> emails, CancellationToken ct = default);
 
     Task ReassignAsync(Guid fromUserId, Guid toUserId, CancellationToken ct = default);
 }

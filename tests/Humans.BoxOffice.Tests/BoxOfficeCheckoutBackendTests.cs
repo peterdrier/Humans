@@ -37,6 +37,14 @@ public sealed class BoxOfficeCheckoutBackendTests
          "payment_intent":{"id":"pi_1","object":"payment_intent","status":"succeeded","latest_charge":{{{charge}}}}}
         """;
 
+    private static string RefundList(params string[] refunds) =>
+        $$"""{"object":"list","url":"/v1/refunds","has_more":false,"data":[{{string.Join(",", refunds)}}]}""";
+
+    private static string Refund(string id, string status, long amount, Guid? refundId = null) => $$$"""
+        {"id":"{{{id}}}","object":"refund","status":"{{{status}}}","amount":{{{amount}}},"currency":"eur",
+         "payment_intent":"pi_1","metadata":{{{(refundId is { } rid ? $"{{\"humans_ticket_refund_id\":\"{rid}\"}}" : "{}")}}}}
+        """;
+
     private const string PaidCharge = """
         {"id":"ch_1","object":"charge","paid":true,"amount":25000,"amount_refunded":5000,"created":1799582400,
          "payment_method_details":{"type":"ideal"},
@@ -89,7 +97,8 @@ public sealed class BoxOfficeCheckoutBackendTests
     [HumansFact]
     public async Task Status_of_a_paid_session_carries_fee_method_and_refunded_total()
     {
-        Respond(Session("complete", "paid", PaidCharge));
+        Respond(Session("complete", "paid", PaidCharge),
+            RefundList(Refund("re_1", "succeeded", 5000), Refund("re_2", "pending", 3000), Refund("re_3", "failed", 2000, Guid.NewGuid())));
 
         var status = await Backend().GetStatusAsync("cs_test_1", TestContext.Current.CancellationToken);
 
@@ -97,6 +106,7 @@ public sealed class BoxOfficeCheckoutBackendTests
         status.FeeMinor.Should().Be(29);
         status.PaymentMethod.Should().Be("ideal");
         status.RefundedMinor.Should().Be(5000);
+        status.RefundFailed.Should().BeTrue();
         status.PaidAt.Should().NotBeNull();
     }
 
@@ -106,7 +116,7 @@ public sealed class BoxOfficeCheckoutBackendTests
     [Xunit.InlineData("complete", "unpaid", CheckoutState.Pending)]
     public async Task Status_maps_open_expired_and_async_in_flight(string status, string paymentStatus, CheckoutState expected)
     {
-        Respond(Session(status, paymentStatus));
+        Respond(Session(status, paymentStatus), RefundList());
 
         (await Backend().GetStatusAsync("cs_test_1", TestContext.Current.CancellationToken)).State.Should().Be(expected);
     }
@@ -114,19 +124,19 @@ public sealed class BoxOfficeCheckoutBackendTests
     [HumansFact]
     public async Task Refund_above_what_the_payment_still_holds_is_refused_without_a_refund_call()
     {
-        Respond(Session("complete", "paid", PaidCharge));
+        Respond(Session("complete", "paid", PaidCharge), RefundList());
 
         var result = await Backend().RefundAsync(
             new RefundRequest(Guid.NewGuid(), "cs_test_1", 20001, "too much"), TestContext.Current.CancellationToken);
 
         result.State.Should().Be(RefundState.Failed);
-        _requests.Should().ContainSingle();
+        _requests.Should().HaveCount(2).And.OnlyContain(r => r.Method == HttpMethod.Get);
     }
 
     [HumansFact]
     public async Task Refund_sends_the_exact_amount_against_the_sessions_payment_with_the_refund_id_as_idempotency_key()
     {
-        Respond(Session("complete", "paid", PaidCharge),
+        Respond(Session("complete", "paid", PaidCharge), RefundList(),
             """{"id":"re_1","object":"refund","status":"succeeded","amount":12000,"currency":"eur"}""");
         var refundId = Guid.NewGuid();
 
@@ -135,9 +145,34 @@ public sealed class BoxOfficeCheckoutBackendTests
 
         result.State.Should().Be(RefundState.Succeeded);
         result.BackendRefundId.Should().Be("re_1");
-        var refund = _requests[1];
+        var refund = _requests[2];
         refund.StripeHeaders["Idempotency-Key"].Should().Be($"humans_ticket_refund_{refundId}");
         var body = Uri.UnescapeDataString(await refund.Content!.ReadAsStringAsync(TestContext.Current.CancellationToken));
         body.Should().Contain("amount=12000").And.Contain("payment_intent=pi_1");
+    }
+
+    [HumansFact]
+    public async Task A_repeated_refund_gets_the_earlier_refunds_state_without_a_second_refund()
+    {
+        var refundId = Guid.NewGuid();
+        Respond(Session("complete", "paid", PaidCharge), RefundList(Refund("re_7", "pending", 30000, refundId)));
+
+        var result = await Backend().RefundAsync(
+            new RefundRequest(refundId, "cs_test_1", 30000, "returned"), TestContext.Current.CancellationToken);
+
+        result.State.Should().Be(RefundState.Pending);
+        result.BackendRefundId.Should().Be("re_7");
+        _requests.Should().HaveCount(2).And.OnlyContain(r => r.Method == HttpMethod.Get);
+    }
+
+    [HumansFact]
+    public async Task A_webhook_with_a_bad_signature_is_rejected()
+    {
+        var backend = new BoxOfficeCheckoutBackend(
+            Options.Create(new BoxOfficeSettings { SecretKey = "sk_test_boxoffice", WebhookSecret = "whsec_test" }), new FakeClock(Now),
+            NullLogger<BoxOfficeCheckoutBackend>.Instance, _http);
+
+        (await backend.ParseWebhookAsync("{}", "t=1,v1=bad", TestContext.Current.CancellationToken)).Should().BeNull();
+        _requests.Should().BeEmpty();
     }
 }
