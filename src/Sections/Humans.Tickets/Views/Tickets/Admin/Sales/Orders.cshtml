@@ -1,37 +1,47 @@
 @using Humans.Tickets.Domain.Checkout
-@model (TicketSalesEvent SalesEvent, IReadOnlyList<TicketCheckoutOrder> Orders)
+@model (TicketSalesEvent SalesEvent, string EventName, IReadOnlyList<TicketCheckoutOrder> Orders)
 @{
     ViewData["Title"] = "Ticket orders";
-    string Eur(long minor) => (minor / 100m).ToString("0.00", System.Globalization.CultureInfo.InvariantCulture) + " €";
     var paid = Model.Orders.Where(o => o.State == TicketCheckoutOrderState.Paid).ToList();
+    var ticketsPaid = paid.Sum(o => o.Lines.Count(l => l.Kind == CheckoutLineKind.Ticket));
+    var refunded = paid.Sum(o => o.RefundedMinor);
+    var culture = System.Globalization.CultureInfo.CurrentCulture;
+    StatTileViewModel[] tiles =
+    [
+        new("Tickets paid", ticketsPaid.ToString(culture), Secondary: $"/ {Model.SalesEvent.Capacity.ToString(culture)}"),
+        new("Taken", (paid.Sum(o => o.TotalMinor) / 100m).ToEuro(), Subline: $"{paid.Count.ToString(culture)} paid orders"),
+        new("Refunded", (refunded / 100m).ToEuro(), Severity: refunded > 0 ? TileSeverity.Warning : TileSeverity.Normal),
+        new("Fees", (paid.Sum(o => o.FeeMinor ?? 0) / 100m).ToEuro()),
+    ];
+
+    Func<TicketCheckoutOrder, IHtmlContent> referenceCell = @<text><a asp-action="Order" asp-route-id="@item.Id"><code>@item.Reference</code></a></text>;
+    Func<TicketCheckoutOrder, IHtmlContent> totalCell = @<text>@((item.TotalMinor / 100m).ToEuro())</text>;
+    Func<TicketCheckoutOrder, IHtmlContent> stateCell = @<text><status-badge value="@item.State" /></text>;
+    var ordersTable = TableModel.For(Model.Orders)
+        .Template("Reference", referenceCell, sortBy: o => o.Reference)
+        .Column("Created", o => o.CreatedAt.ToDateTime(), o => o.Css("text-nowrap"))
+        .Column("Buyer", o => o.BuyerName, o => o.TextFilter())
+        .Column("Tickets", o => o.Lines.Count(l => l.Kind == CheckoutLineKind.Ticket), o => o.End())
+        .Template("Total", totalCell, o => o.End().Css("text-nowrap"), sortBy: o => o.TotalMinor)
+        .Template("State", stateCell, o => o.SelectFilter(), sortBy: o => o.State.ToString())
+        .RowHref(o => Url.Action("Order", new { id = o.Id }))
+        .Empty("No orders yet for this event.")
+        .Build();
 }
 
-@section Crumbs {
-    <span>Orders</span>
-}
+<page-header title="Ticket orders" subtitle="@Model.EventName">
+    <a class="btn btn-outline-secondary btn-sm" asp-controller="TicketsSupportAdmin" asp-action="Report" asp-route-id="@Model.SalesEvent.Id">Sales report</a>
+    <a class="btn btn-outline-secondary btn-sm" asp-controller="TicketsSupportAdmin" asp-action="Refunds" asp-route-id="@Model.SalesEvent.Id">Refunds</a>
+</page-header>
 
-<page-header title="Ticket orders" />
+<div class="stats">
+    @foreach (var tile in tiles)
+    {
+        <partial name="_StatTile" model="tile" />
+    }
+</div>
 
-<p>
-    @paid.Sum(o => o.Lines.Count(l => l.Kind == CheckoutLineKind.Ticket)) tickets paid of @Model.SalesEvent.Capacity ·
-    @Eur(paid.Sum(o => o.TotalMinor)) taken · @Eur(paid.Sum(o => o.RefundedMinor)) refunded ·
-    @Eur(paid.Sum(o => o.FeeMinor ?? 0)) fees
-</p>
-
-<table class="table table-sm">
-    <thead><tr><th>Reference</th><th>Created</th><th>Buyer</th><th>Tickets</th><th class="text-end">Total</th><th>State</th><th>Backend</th></tr></thead>
-    <tbody>
-        @foreach (var o in Model.Orders)
-        {
-            <tr>
-                <td><a asp-action="Order" asp-route-id="@o.Id"><code>@o.Reference</code></a></td>
-                <td>@o.CreatedAt.ToDateTime()</td>
-                <td>@o.BuyerName</td>
-                <td>@o.Lines.Count(l => l.Kind == CheckoutLineKind.Ticket)</td>
-                <td class="text-end">@Eur(o.TotalMinor)</td>
-                <td>@o.State</td>
-                <td><code>@o.BackendKey</code></td>
-            </tr>
-        }
-    </tbody>
-</table>
+<div class="card mb-4">
+    <div class="card-header">Orders, newest first</div>
+    <partial name="_Table" model="ordersTable" />
+</div>

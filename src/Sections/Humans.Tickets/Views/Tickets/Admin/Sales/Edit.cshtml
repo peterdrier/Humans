@@ -26,7 +26,7 @@
     ];
 }
 
-<page-header title="Sales setup" />
+<page-header title="Sales setup" subtitle="Backend, prices and checkout options for one event" />
 
 @if (Model.Error is not null)
 {
@@ -71,7 +71,7 @@
         <div class="card-header fw-semibold">Sales</div>
         <div class="card-body">
             <div class="row g-3">
-                <div class="col-md-4">
+                <div class="col-md-5">
                     <label class="form-label" for="Mode">Sales are</label>
                     <select class="form-select" id="Mode" name="Mode">
                         @foreach (var m in Enum.GetValues<TicketSalesMode>())
@@ -80,7 +80,7 @@
                         }
                     </select>
                 </div>
-                <div class="col-md-4">
+                <div class="col-md-3">
                     <label class="form-label" for="SalesCloseAt">Sales close</label>
                     <input class="form-control" id="SalesCloseAt" name="SalesCloseAt" type="datetime-local" value="@f.SalesCloseAt" />
                     <div class="form-text">@Model.Zone.Id time. Empty: sales stay open until you close them.</div>
@@ -109,7 +109,7 @@
         </div>
         <div class="card-body">
             <p class="form-text mt-0">Each wave sells until the end of its last day. After the last wave ends, its price holds until sales close.</p>
-            <table class="table table-sm align-middle mb-0">
+            <table class="table table-sm align-middle mb-0" style="max-width:42rem">
                 <thead><tr><th>Name</th><th style="width:12rem">Last day</th><th style="width:10rem">Price</th><th style="width:3rem"></th></tr></thead>
                 <tbody data-rows="waves">
                     @foreach (var w in waves)

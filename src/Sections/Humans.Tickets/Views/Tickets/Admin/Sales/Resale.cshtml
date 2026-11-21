@@ -1,142 +1,133 @@
 @using Humans.Tickets.Domain.Checkout
+@using Humans.Tickets.Services.Checkout
 @model Humans.Tickets.Controllers.ResaleViewModel
 @{
     ViewData["Title"] = "Resale queue";
-    string Eur(long minor) => (minor / 100m).ToEuro();
+    ViewData[AdminNavComposition.ParentKey] = "TicketsSalesAdmin/Index";
     var waiting = Model.Rows.Where(r => r.Offer.State is TicketResaleOfferState.Open or TicketResaleOfferState.Reserved).ToList();
     var closed = Model.Rows.Except(waiting).ToList();
-}
+    var culture = System.Globalization.CultureInfo.CurrentCulture;
+    var canToggle = !Model.SwitchedOff && Model.Mode != TicketSalesMode.ResaleOnly;
+    var (resaleState, resaleBadge, whyStill) = Model.ResaleSelling
+        ? ("Selling", "bg-success", null)
+        : Model.SwitchedOff
+            ? ("Switched off", "bg-secondary", "Resale is switched off for this event in its sales setup, so nothing in the queue sells.")
+            : Model.Mode == TicketSalesMode.Closed
+                ? ("Sales closed", "bg-secondary", "Sales are closed, so nothing in the queue sells.")
+                : ("Paused", "bg-warning text-dark", "Resale is paused, so the queue is not moving yet.");
+    StatTileViewModel[] tiles =
+    [
+        new("Waiting", waiting.Count.ToString(culture)),
+        new("Owed if all sell", (waiting.Sum(r => r.Offer.RefundOwedMinor) / 100m).ToEuro()),
+        new("Sold", closed.Count(r => r.Offer.State == TicketResaleOfferState.Sold).ToString(culture),
+            Subline: $"{closed.Count(r => r.Offer.State == TicketResaleOfferState.Withdrawn).ToString(culture)} withdrawn"),
+    ];
 
-@section Crumbs {
-    <a asp-controller="TicketsSalesAdmin" asp-action="Index">Sales</a>
-    <span>Resale queue</span>
-}
-
-<page-header title="Resale queue: @Model.EventName" />
-
-<p>
-    @waiting.Count waiting · @Eur(waiting.Sum(r => r.Offer.RefundOwedMinor)) owed if they all sell · sales mode @Model.Mode.
-    @if (Model.ResaleSelling)
-    {
-        <span>Resale is open.</span>
-    }
-    else if (Model.SwitchedOff)
-    {
-        <span class="text-warning">Resale is switched off for this event in its sales setup, so nothing in the queue sells.</span>
-    }
-    else if (Model.Mode == TicketSalesMode.Closed)
-    {
-        <span class="text-warning">Sales are closed, so nothing in the queue sells.</span>
-    }
-    else
-    {
-        <span class="text-warning">Resale is paused, so the queue is not moving yet.</span>
-    }
-</p>
-@if (!Model.SwitchedOff && Model.Mode != TicketSalesMode.ResaleOnly)
-{
-    <form method="post" asp-action="SetResaleOpen" asp-route-id="@Model.SalesEventId" class="mb-3" authorize-policy="@TicketsPolicies.Manage">
-        @Html.AntiForgeryToken()
-        <input type="hidden" name="open" value="@(Model.SalesEvent.ResaleOpenedAt is null ? "true" : "false")" />
-        @if (Model.SalesEvent.ResaleOpenedAt is { } openedAt)
+    Func<ResaleQueueRow, IHtmlContent> holderCell = @<text>@item.Ticket?.HolderName <span class="small"><vc:human user-id="@item.Offer.HolderUserId" link="Admin" /></span></text>;
+    Func<ResaleQueueRow, IHtmlContent> ticketCell = @<text>
+        @if (item.Ticket is { } t)
         {
-            <button type="submit" class="btn btn-outline-secondary btn-sm">Pause resale</button>
-            <span class="form-text ms-2">Opened @openedAt.ToDateTime(). Pausing stops returned tickets selling; they keep their place.</span>
+            <a asp-action="Ticket" asp-route-orderId="@t.OrderId" asp-route-ticketId="@t.Id"><code>@t.Barcode</code></a>
+        }
+    </text>;
+    Func<ResaleQueueRow, IHtmlContent> waitingStateCell = @<text><status-badge value="@item.Offer.State" text="@(item.Offer.State == TicketResaleOfferState.Reserved ? "In a checkout" : "Waiting")" /></text>;
+    var waitingTable = TableModel.For(waiting)
+        .Column("#", r => r.Position, o => o.Number())
+        .Template("Holder", holderCell, o => o.NoSort())
+        .Template("Ticket", ticketCell, o => o.NoSort())
+        .Column("Waiting since", r => r.Offer.OfferedAt, o => o.DateTime())
+        .Column("Owed (€)", r => r.Offer.RefundOwedMinor / 100m, o => o.Currency().End())
+        .Template("State", waitingStateCell, sortBy: r => r.Offer.State.ToString())
+        .Column("Invited buyer", r => r.DirectedLive ? r.Offer.DirectedEmail : null)
+        .Empty("Nobody is waiting.")
+        .Build();
+
+    Func<ResaleQueueRow, IHtmlContent> outcomeCell = @<text>
+        <status-badge value="@item.Offer.State" />
+        @if (item.Offer.State == TicketResaleOfferState.Sold)
+        {
+            <span class="small">@item.Offer.SoldAt?.ToDateTime()@(item.Offer.DirectedUsedAt is not null ? ", to the invited buyer" : "")</span>
+            @if (item.Offer.SoldToOrderId is { } buyer)
+            {
+                <a class="small" asp-controller="TicketsSalesAdmin" asp-action="Order" asp-route-id="@buyer">buyer's order</a>
+            }
         }
         else
         {
-            <button type="submit" class="btn btn-primary btn-sm">Open resale</button>
-            <span class="form-text ms-2">Returned tickets then sell, oldest first, before fresh stock.</span>
+            <span class="small">@item.Offer.WithdrawnAt?.ToDateTime()</span>
         }
-    </form>
-}
-<p class="text-muted">An invited ticket keeps its place: the invited buyer can buy it through their link, and the queue can sell it too. Whoever buys first gets it.</p>
-
-@if (waiting.Count == 0)
-{
-    <p class="text-muted">Nobody is waiting.</p>
-}
-else
-{
-    <table class="table table-sm">
-        <thead><tr><th>#</th><th>Holder</th><th>Ticket</th><th>Waiting since</th><th class="text-end">Owed</th><th>State</th><th>Invited buyer</th></tr></thead>
-        <tbody>
-            @foreach (var row in waiting)
+    </text>;
+    Func<ResaleQueueRow, IHtmlContent> refundCell = @<text>
+        @if (item.Offer.State == TicketResaleOfferState.Sold)
+        {
+            <span class="me-1">@((item.Offer.RefundOwedMinor / 100m).ToEuro())</span>
+            @if (item.Refund is { } refund)
             {
-                var o = row.Offer;
-                <tr>
-                    <td>@row.Position</td>
-                    <td>@row.Ticket?.HolderName · <vc:human user-id="@o.HolderUserId" link="Admin" /></td>
-                    <td>
-                        @if (row.Ticket is { } t)
-                        {
-                            <a asp-action="Ticket" asp-route-orderId="@t.OrderId" asp-route-ticketId="@t.Id"><code>@t.Barcode</code></a>
-                        }
-                    </td>
-                    <td>@o.OfferedAt.ToDateTime()</td>
-                    <td class="text-end">@Eur(o.RefundOwedMinor)</td>
-                    <td>@(o.State == TicketResaleOfferState.Reserved ? "In a buyer's checkout" : "Waiting")</td>
-                    <td>
-                        @if (row.DirectedLive)
-                        {
-                            <span>@o.DirectedEmail</span>
-                        }
-                    </td>
-                </tr>
+                <a asp-action="Refunds" asp-route-id="@Model.SalesEventId" asp-route-state="@refund.State"><status-badge value="@refund.State" /></a>
             }
-        </tbody>
-    </table>
+            else
+            {
+                <span class="text-danger">not requested</span>
+            }
+        }
+    </text>;
+    var closedTable = TableModel.For(closed)
+        .Column("Holder", r => r.Ticket?.HolderName)
+        .Template("Ticket", ticketCell, o => o.NoSort())
+        .Column("Offered", r => r.Offer.OfferedAt, o => o.DateTime())
+        .Template("Outcome", outcomeCell, sortBy: r => r.Offer.State.ToString())
+        .Template("Refund", refundCell, o => o.End(), sortBy: r => r.Offer.RefundOwedMinor)
+        .Empty("Nothing sold or withdrawn yet.")
+        .Build();
 }
 
-@if (closed.Count > 0)
-{
-    <h2 class="h5">Sold and withdrawn</h2>
-    <table class="table table-sm">
-        <thead><tr><th>Holder</th><th>Ticket</th><th>Offered</th><th>Outcome</th><th class="text-end">Refund</th></tr></thead>
-        <tbody>
-            @foreach (var row in closed)
+<page-header title="Resale queue" subtitle="@Model.EventName" badge="@resaleState" badge-class="@resaleBadge">
+    @if (canToggle)
+    {
+        <form method="post" asp-action="SetResaleOpen" asp-route-id="@Model.SalesEventId" authorize-policy="@TicketsPolicies.Manage">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="open" value="@(Model.SalesEvent.ResaleOpenedAt is null ? "true" : "false")" />
+            @if (Model.SalesEvent.ResaleOpenedAt is null)
             {
-                var o = row.Offer;
-                <tr>
-                    <td>@row.Ticket?.HolderName</td>
-                    <td>
-                        @if (row.Ticket is { } t)
-                        {
-                            <a asp-action="Ticket" asp-route-orderId="@t.OrderId" asp-route-ticketId="@t.Id"><code>@t.Barcode</code></a>
-                        }
-                    </td>
-                    <td>@o.OfferedAt.ToDateTime()</td>
-                    <td>
-                        @if (o.State == TicketResaleOfferState.Sold)
-                        {
-                            <span>Sold @o.SoldAt?.ToDateTime() @(o.DirectedUsedAt is not null ? "to the invited buyer" : "")</span>
-                            @if (o.SoldToOrderId is { } buyer)
-                            {
-                                <a asp-controller="TicketsSalesAdmin" asp-action="Order" asp-route-id="@buyer">buyer's order</a>
-                            }
-                        }
-                        else
-                        {
-                            <span>Withdrawn @o.WithdrawnAt?.ToDateTime()</span>
-                        }
-                    </td>
-                    <td class="text-end">
-                        @if (o.State == TicketResaleOfferState.Sold)
-                        {
-                            @Eur(o.RefundOwedMinor)
-                            @if (row.Refund is not { } refund)
-                            {
-                                <span class="text-danger">not requested</span>
-                            }
-                            else
-                            {
-                                <span class="@(refund.State is Humans.Tickets.Contracts.RefundState.Failed or Humans.Tickets.Contracts.RefundState.ManualRequired ? "text-danger" : "")">@refund.State</span>
-                                <a asp-controller="TicketsSupportAdmin" asp-action="Refunds" asp-route-id="@Model.SalesEventId" asp-route-state="@refund.State">list</a>
-                            }
-                        }
-                    </td>
-                </tr>
+                <button type="submit" class="btn btn-primary">Open resale</button>
             }
-        </tbody>
-    </table>
-}
+            else
+            {
+                <button type="submit" class="btn btn-outline-secondary">Pause resale</button>
+            }
+        </form>
+    }
+</page-header>
+
+<div class="stats" style="--stats-cols: 3">
+    @foreach (var tile in tiles)
+    {
+        <partial name="_StatTile" model="tile" />
+    }
+</div>
+
+<p class="small text-muted mb-4">
+    @if (whyStill is not null)
+    {
+        <span class="d-block">@whyStill</span>
+    }
+    @if (canToggle && Model.SalesEvent.ResaleOpenedAt is { } openedAt)
+    {
+        <span class="d-block">Opened @openedAt.ToDateTime(). Pausing stops returned tickets selling; they keep their place.</span>
+    }
+    else if (canToggle)
+    {
+        <span class="d-block">Opening lets returned tickets sell, oldest first, before fresh stock.</span>
+    }
+    <span class="d-block">An invited ticket keeps its place: the invited buyer can buy it through their link, and the queue can sell it too. Whoever buys first gets it.</span>
+</p>
+
+<div class="card mb-4">
+    <div class="card-header">Waiting, in queue order</div>
+    <partial name="_Table" model="waitingTable" />
+</div>
+
+<div class="card mb-4">
+    <div class="card-header">Sold and withdrawn</div>
+    <partial name="_Table" model="closedTable" />
+</div>

@@ -4,158 +4,150 @@
 @{
     var info = Model.Info;
     ViewData["Title"] = info.Setup.DisplayName;
-    string Eur(long minor) => (minor / 100m).ToString("0.00", System.Globalization.CultureInfo.InvariantCulture) + " €";
     var paid = Model.Ledger.Paid;
-    var byState = Model.Ledger.Orders.GroupBy(o => o.State).OrderBy(g => g.Key).ToList();
     var stuck = Model.Ledger.Stuck;
     var openRefunds = Model.Ledger.UnsettledRefunds;
     var failedRefunds = Model.Ledger.FailedRefunds;
     var orderById = Model.Ledger.Orders.ToDictionary(o => o.Id);
+    var culture = System.Globalization.CultureInfo.CurrentCulture;
+    StatTileViewModel[] tiles =
+    [
+        new("Paid orders", paid.Count.ToString(culture),
+            Subline: $"{paid.Sum(o => o.Lines.Count(l => l.Kind == CheckoutLineKind.Ticket)).ToString(culture)} tickets, free orders left out"),
+        new("Taken", (paid.Sum(o => o.TotalMinor) / 100m).ToEuro(),
+            Subline: $"{(paid.Sum(o => o.RefundedMinor) / 100m).ToEuro()} refunded, {(paid.Sum(o => o.DisputedMinor) / 100m).ToEuro()} disputed"),
+        new("Stuck orders", stuck.Count.ToString(culture), Subline: "still open past expiry",
+            Severity: stuck.Count > 0 ? TileSeverity.Critical : TileSeverity.Normal),
+        new("Refunds not settled", openRefunds.Count.ToString(culture), Subline: $"pending or manual; {failedRefunds.Count.ToString(culture)} failed",
+            Severity: failedRefunds.Count > 0 ? TileSeverity.Critical : openRefunds.Count > 0 ? TileSeverity.Warning : TileSeverity.Normal),
+    ];
+
+    string Reference(Guid orderId) => orderById.TryGetValue(orderId, out var o) ? o.Reference : orderId.ToString();
+    Func<TicketCheckoutOrder, IHtmlContent> referenceCell = @<text><a asp-controller="TicketsSalesAdmin" asp-action="Order" asp-route-id="@item.Id"><code>@item.Reference</code></a></text>;
+    Func<TicketCheckoutRefund, IHtmlContent> refundOrderCell = @<text><a asp-controller="TicketsSalesAdmin" asp-action="Order" asp-route-id="@item.OrderId"><code>@Reference(item.OrderId)</code></a></text>;
+
+    var byState = Model.Ledger.Orders.GroupBy(o => o.State).OrderBy(g => g.Key)
+        .Select(g => new StateLine(g.Key, g.Count(), g.Sum(o => o.TotalMinor))).ToList();
+    var byStateTable = TableModel.For(byState)
+        .Column("State", x => x.State, c => c.EnumBadge())
+        .Column("Orders", x => x.Count, c => c.Number().End())
+        .Column("Order value (€)", x => x.TotalMinor / 100m, c => c.Currency().End())
+        .Empty("No orders on this backend yet.")
+        .Build();
+
+    var stuckTable = TableModel.For(stuck)
+        .Template("Reference", referenceCell, sortBy: o => o.Reference)
+        .Column("Created", o => o.CreatedAt, c => c.DateTime())
+        .Column("Expires", o => o.ExpiresAt, c => c.DateTime())
+        .Column("State", o => o.State, c => c.EnumBadge())
+        .Column("Backend order", o => o.BackendOrderId ?? "none", c => c.Code())
+        .Empty("No stuck orders.")
+        .Build();
+
+    Func<TicketCheckoutRefund, IHtmlContent> refundDetailCell = @<text>
+        @item.FailureReason
+        @if (item.ManualRefundUrl is not null)
+        {
+            <a href="@item.ManualRefundUrl" target="_blank" rel="noopener">issue in the backend</a>
+        }
+    </text>;
+    var openRefundsTable = TableModel.For(openRefunds)
+        .Template("Order", refundOrderCell, c => c.NoSort())
+        .Column("Requested", r => r.CreatedAt, c => c.DateTime())
+        .Column("Amount (€)", r => r.AmountMinor / 100m, c => c.Currency().End())
+        .Column("State", r => r.State, c => c.EnumBadge())
+        .Template("Detail", refundDetailCell, c => c.NoSort())
+        .Empty("Every refund has settled.")
+        .Build();
+
+    var failedRefundsTable = TableModel.For(failedRefunds)
+        .Template("Order", refundOrderCell, c => c.NoSort())
+        .Column("Requested", r => r.CreatedAt, c => c.DateTime())
+        .Column("Amount (€)", r => r.AmountMinor / 100m, c => c.Currency().End())
+        .Column("Reason", r => r.FailureReason)
+        .Empty("No failed refunds.")
+        .Build();
+
+    Func<TicketCheckoutOrder, IHtmlContent> vendorCell = @<text>
+        @if (item.AdminUrl is not null)
+        {
+            <a href="@item.AdminUrl" target="_blank" rel="noopener">in @info.Setup.DisplayName</a>
+        }
+    </text>;
+    var ordersTable = TableModel.For(Model.Ledger.Orders)
+        .Template("Reference", referenceCell, sortBy: o => o.Reference)
+        .Column("Created", o => o.CreatedAt, c => c.DateTime())
+        .Column("Buyer", o => o.BuyerName, c => c.TextFilter())
+        .Column("Tickets", o => o.Lines.Count(l => l.Kind == CheckoutLineKind.Ticket), c => c.Number().End())
+        .Column("Total (€)", o => o.TotalMinor / 100m, c => c.Currency().End())
+        .Column("State", o => o.State, c => c.EnumBadge().SelectFilter())
+        .Template("", vendorCell, c => c.NoSort().End())
+        .RowHref(o => Url.Action("Order", "TicketsSalesAdmin", new { id = o.Id }))
+        .Empty("No orders on this backend yet.")
+        .Build();
 }
 
-<page-header title="@info.Setup.DisplayName" />
+<page-header title="@info.Setup.DisplayName" subtitle="Orders and refunds Humans opened on this backend, for every event">
+    <a class="btn btn-outline-secondary btn-sm" asp-controller="TicketsSalesAdmin" asp-action="Recon" asp-route-backend="@info.Key" asp-route-from="@Model.ReconFrom">Reconciliation</a>
+</page-header>
 
-<p class="text-muted">
-    Orders and refunds Humans opened on this backend, whichever event they were sold for. Pick the backend and open or
-    close sales per event in its <a asp-controller="TicketsSalesAdmin" asp-action="Index">sales setup</a>.
-    Check the money against the backend's own books in
-    <a asp-controller="TicketsSalesAdmin" asp-action="Recon" asp-route-backend="@info.Key" asp-route-from="@Model.ReconFrom">reconciliation</a>.
-</p>
-
-<div class="row g-3 mb-4">
-    <div class="col-sm-6 col-lg-3"><div class="card"><div class="card-body">
-        <div class="text-muted small">Paid orders</div><div class="h4 mb-0">@paid.Count</div>
-        <div class="small">@paid.Sum(o => o.Lines.Count(l => l.Kind == CheckoutLineKind.Ticket)) tickets, free orders left out</div>
-    </div></div></div>
-    <div class="col-sm-6 col-lg-3"><div class="card"><div class="card-body">
-        <div class="text-muted small">Taken</div><div class="h4 mb-0">@Eur(paid.Sum(o => o.TotalMinor))</div>
-        <div class="small">@Eur(paid.Sum(o => o.RefundedMinor)) refunded · @Eur(paid.Sum(o => o.DisputedMinor)) disputed</div>
-    </div></div></div>
-    <div class="col-sm-6 col-lg-3"><div class="card"><div class="card-body">
-        <div class="text-muted small">Stuck orders</div><div class="h4 mb-0 @(stuck.Count > 0 ? "text-danger" : "")">@stuck.Count</div>
-        <div class="small">still open past expiry</div>
-    </div></div></div>
-    <div class="col-sm-6 col-lg-3"><div class="card"><div class="card-body">
-        <div class="text-muted small">Refunds not settled</div><div class="h4 mb-0 @(openRefunds.Count > 0 ? "text-warning" : "")">@openRefunds.Count</div>
-        <div class="small">pending or manual; @failedRefunds.Count failed</div>
-    </div></div></div>
+<div class="stats">
+    @foreach (var tile in tiles)
+    {
+        <partial name="_StatTile" model="tile" />
+    }
 </div>
-
-<partial name="~/Views/Tickets/Admin/Backends/_BackendCard.cshtml" model="(Model.Backend, info)" />
-
-<h2 class="h5">Orders by state</h2>
-@if (Model.Ledger.Orders.Count == 0)
-{
-    <p class="text-muted">No orders on this backend yet.</p>
-}
-else
-{
-    <table class="table table-sm w-auto">
-        <thead><tr><th>State</th><th class="text-end">Orders</th><th class="text-end">Order value</th></tr></thead>
-        <tbody>
-            @foreach (var g in byState)
-            {
-                <tr><td>@g.Key</td><td class="text-end">@g.Count()</td><td class="text-end">@Eur(g.Sum(o => o.TotalMinor))</td></tr>
-            }
-        </tbody>
-    </table>
-}
 
 @if (stuck.Count > 0)
 {
-    <h2 class="h5 text-danger">Stuck orders</h2>
-    <p class="small text-muted">
-        Still open well after they should have expired: neither a webhook nor the five-minute reconcile has settled
-        them. Opening an order asks the backend for its state.
-    </p>
-    <table class="table table-sm">
-        <thead><tr><th>Reference</th><th>Created</th><th>Expires</th><th>State</th><th>Backend order</th></tr></thead>
-        <tbody>
-            @foreach (var o in stuck)
-            {
-                <tr>
-                    <td><a asp-controller="TicketsSalesAdmin" asp-action="Order" asp-route-id="@o.Id"><code>@o.Reference</code></a></td>
-                    <td>@o.CreatedAt.ToDateTime()</td>
-                    <td>@o.ExpiresAt.ToDateTime()</td>
-                    <td>@o.State</td>
-                    <td>@(o.BackendOrderId ?? "none")</td>
-                </tr>
-            }
-        </tbody>
-    </table>
-}
-
-@if (openRefunds.Count > 0)
-{
-    <h2 class="h5">Refunds not settled</h2>
-    <table class="table table-sm">
-        <thead><tr><th>Order</th><th>Requested</th><th class="text-end">Amount</th><th>State</th><th>Detail</th></tr></thead>
-        <tbody>
-            @foreach (var r in openRefunds)
-            {
-                <tr>
-                    <td><a asp-controller="TicketsSalesAdmin" asp-action="Order" asp-route-id="@r.OrderId"><code>@(orderById.TryGetValue(r.OrderId, out var ro) ? ro.Reference : r.OrderId.ToString())</code></a></td>
-                    <td>@r.CreatedAt.ToDateTime()</td>
-                    <td class="text-end">@Eur(r.AmountMinor)</td>
-                    <td>@r.State</td>
-                    <td>
-                        @r.FailureReason
-                        @if (r.ManualRefundUrl is not null)
-                        {
-                            <a href="@r.ManualRefundUrl" target="_blank" rel="noopener">issue in the backend</a>
-                        }
-                    </td>
-                </tr>
-            }
-        </tbody>
-    </table>
+    <div class="card mb-4">
+        <div class="card-header text-danger">Stuck orders</div>
+        <partial name="_Table" model="stuckTable" />
+        <div class="card-footer small text-muted">
+            Still open well after they should have expired: neither a webhook nor the five-minute reconcile has settled
+            them. Opening an order asks the backend for its state.
+        </div>
+    </div>
 }
 
 @if (failedRefunds.Count > 0)
 {
-    <h2 class="h5 text-danger">Failed refunds</h2>
-    <p class="small text-muted">The backend refused these and no later refund on the order went through.</p>
-    <table class="table table-sm">
-        <thead><tr><th>Order</th><th>Requested</th><th class="text-end">Amount</th><th>Reason</th></tr></thead>
-        <tbody>
-            @foreach (var r in failedRefunds)
-            {
-                <tr>
-                    <td><a asp-controller="TicketsSalesAdmin" asp-action="Order" asp-route-id="@r.OrderId"><code>@(orderById.TryGetValue(r.OrderId, out var fo) ? fo.Reference : r.OrderId.ToString())</code></a></td>
-                    <td>@r.CreatedAt.ToDateTime()</td>
-                    <td class="text-end">@Eur(r.AmountMinor)</td>
-                    <td>@r.FailureReason</td>
-                </tr>
-            }
-        </tbody>
-    </table>
+    <div class="card mb-4">
+        <div class="card-header text-danger">Failed refunds</div>
+        <partial name="_Table" model="failedRefundsTable" />
+        <div class="card-footer small text-muted">The backend refused these and no later refund on the order went through.</div>
+    </div>
 }
 
-<h2 class="h5">Orders, newest first</h2>
-@if (Model.Ledger.Orders.Count == 0)
+@if (openRefunds.Count > 0)
 {
-    <p class="text-muted">None.</p>
+    <div class="card mb-4">
+        <div class="card-header">Refunds not settled</div>
+        <partial name="_Table" model="openRefundsTable" />
+    </div>
 }
-else
-{
-    <table class="table table-sm">
-        <thead><tr><th>Reference</th><th>Created</th><th>Buyer</th><th>Tickets</th><th class="text-end">Total</th><th>State</th><th></th></tr></thead>
-        <tbody>
-            @foreach (var o in Model.Ledger.Orders)
-            {
-                <tr>
-                    <td><a asp-controller="TicketsSalesAdmin" asp-action="Order" asp-route-id="@o.Id"><code>@o.Reference</code></a></td>
-                    <td>@o.CreatedAt.ToDateTime()</td>
-                    <td>@o.BuyerName</td>
-                    <td>@o.Lines.Count(l => l.Kind == CheckoutLineKind.Ticket)</td>
-                    <td class="text-end">@Eur(o.TotalMinor)</td>
-                    <td>@o.State</td>
-                    <td>@if (o.AdminUrl is not null)
-                        {
-                            <a href="@o.AdminUrl" target="_blank" rel="noopener">in @info.Setup.DisplayName</a>
-                        }</td>
-                </tr>
-            }
-        </tbody>
-    </table>
+
+<div class="row g-4 mb-4">
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-header">Orders by state</div>
+            <partial name="_Table" model="byStateTable" />
+        </div>
+    </div>
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">Orders, newest first</div>
+            <partial name="_Table" model="ordersTable" />
+        </div>
+    </div>
+</div>
+
+<partial name="~/Views/Tickets/Admin/Backends/_BackendCard.cshtml" model="(Model.Backend, info)" />
+
+<p class="small text-muted">
+    Pick the backend and open or close sales per event in its <a asp-controller="TicketsSalesAdmin" asp-action="Index">sales setup</a>.
+</p>
+
+@functions {
+    private sealed record StateLine(TicketCheckoutOrderState State, int Count, long TotalMinor);
 }

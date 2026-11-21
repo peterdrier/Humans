@@ -1,9 +1,9 @@
 @using Humans.Tickets.Domain.Checkout
 @model Humans.Tickets.Controllers.TicketAdminViewModel
 @{
-    ViewData["Title"] = "Ticket";
-    string Eur(long minor) => (minor / 100m).ToEuro();
     var t = Model.Ticket;
+    ViewData["Title"] = $"Ticket {t.Barcode}";
+    ViewData[AdminNavComposition.ParentKey] = "TicketsSalesAdmin/Index";
     var live = t.State is TicketCheckoutTicketState.Valid or TicketCheckoutTicketState.Offered;
     var renamable = t.State == TicketCheckoutTicketState.Valid && t.Kind == TicketHolderKind.Adult;
     var canCompanion = t.State == TicketCheckoutTicketState.Valid && t.Kind == TicketHolderKind.Adult
@@ -11,85 +11,144 @@
 }
 
 @section Crumbs {
-    <a asp-controller="TicketsSalesAdmin" asp-action="Index">Sales</a>
-    <a asp-controller="TicketsSalesAdmin" asp-action="Order" asp-route-id="@Model.Order.Id">Order</a>
-    <span>Ticket</span>
+    <a asp-controller="TicketsSalesAdmin" asp-action="Orders" asp-route-id="@t.SalesEventId">Orders</a>
+    <a asp-controller="TicketsSalesAdmin" asp-action="Order" asp-route-id="@Model.Order.Id">@Model.Order.Reference</a>
+    <span>@t.Barcode</span>
 }
 
-<page-header title="Ticket @t.Barcode" />
+<page-header title="Ticket @t.Barcode" subtitle="@t.HolderName">
+    <page-header-badge><status-badge value="@t.State" /></page-header-badge>
+    <a class="btn btn-outline-secondary btn-sm" asp-controller="TicketsSalesAdmin" asp-action="Order" asp-route-id="@Model.Order.Id">Order @Model.Order.Reference</a>
+</page-header>
 
-<dl class="row">
-    <dt class="col-sm-3">Holder</dt>
-    <dd class="col-sm-9">@t.HolderName @(t.HolderEmail is null ? "" : $"({t.HolderEmail})")
-        @if (t.HolderUserId is { } holder) { <span>· <vc:human user-id="@holder" link="Admin" /></span> }</dd>
-    <dt class="col-sm-3">Kind</dt><dd class="col-sm-9">@t.Kind</dd>
-    <dt class="col-sm-3">State</dt><dd class="col-sm-9">@t.State @t.VoidReason</dd>
-    <dt class="col-sm-3">Priced at</dt><dd class="col-sm-9">@Humans.Tickets.Services.Checkout.TicketSupportReports.PriceLabel(t) · paid @Eur(t.PricePaidMinor) @(t.CreditsMinor > 0 ? $"after {Eur(t.CreditsMinor)} credits" : "")</dd>
-    <dt class="col-sm-3">Issued</dt><dd class="col-sm-9">@t.IssuedAt.ToDateTime()</dd>
-    @if (Model.Parent is { } parent)
-    {
-        <dt class="col-sm-3">Attached to</dt>
-        <dd class="col-sm-9"><a asp-action="Ticket" asp-route-orderId="@parent.OrderId" asp-route-ticketId="@parent.Id"><code>@parent.Barcode</code></a> @parent.HolderName</dd>
-    }
-    @if (Model.Dependents.Count > 0)
-    {
-        <dt class="col-sm-3">Dependents</dt>
-        <dd class="col-sm-9">
-            @foreach (var d in Model.Dependents)
-            {
-                <div><a asp-action="Ticket" asp-route-orderId="@d.OrderId" asp-route-ticketId="@d.Id"><code>@d.Barcode</code></a> @d.Kind @d.HolderName (@d.State)</div>
-            }
-        </dd>
-    }
-    @if (Model.LatestOffer is { } offer)
-    {
-        <dt class="col-sm-3">Resale</dt>
-        <dd class="col-sm-9">@offer.State since @offer.OfferedAt.ToDateTime(), @Eur(offer.RefundOwedMinor) owed
-            @if (offer.DirectedEmail is not null) { <span>· invited @offer.DirectedEmail</span> }
-            · <a asp-action="Resale" asp-route-id="@t.SalesEventId">queue</a></dd>
-    }
-</dl>
+<div class="row g-4">
+    <div class="col-lg-7">
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-baseline">
+                <span>Ticket</span>
+                <span class="fs-5 fw-bold">@((t.PricePaidMinor / 100m).ToEuro())</span>
+            </div>
+            <div class="card-body">
+                <dl class="row mb-0">
+                    <dt class="col-sm-4">Holder</dt>
+                    <dd class="col-sm-8">
+                        @t.HolderName
+                        @if (t.HolderUserId is { } holder)
+                        {
+                            <span class="small">(<vc:human user-id="@holder" link="Admin" />)</span>
+                        }
+                        <span class="small d-block">@t.HolderEmail</span>
+                    </dd>
+                    <dt class="col-sm-4">Kind</dt>
+                    <dd class="col-sm-8">@SharedLocalizer.EnumDisplay(t.Kind)</dd>
+                    @if (t.VoidReason is not null)
+                    {
+                        <dt class="col-sm-4">Voided because</dt>
+                        <dd class="col-sm-8">@t.VoidReason</dd>
+                    }
+                    <dt class="col-sm-4">Priced at</dt>
+                    <dd class="col-sm-8">
+                        @Humans.Tickets.Services.Checkout.TicketSupportReports.PriceLabel(t)
+                        @if (t.CreditsMinor > 0)
+                        {
+                            <span class="small d-block">after @((t.CreditsMinor / 100m).ToEuro()) credits</span>
+                        }
+                    </dd>
+                    <dt class="col-sm-4">Issued</dt>
+                    <dd class="col-sm-8">@t.IssuedAt.ToDateTime()</dd>
+                    @if (Model.Parent is { } parent)
+                    {
+                        <dt class="col-sm-4">Attached to</dt>
+                        <dd class="col-sm-8"><a asp-action="Ticket" asp-route-orderId="@parent.OrderId" asp-route-ticketId="@parent.Id"><code>@parent.Barcode</code></a> @parent.HolderName</dd>
+                    }
+                    @if (Model.Dependents.Count > 0)
+                    {
+                        <dt class="col-sm-4">Dependents</dt>
+                        <dd class="col-sm-8">
+                            @foreach (var d in Model.Dependents)
+                            {
+                                <div>
+                                    <a asp-action="Ticket" asp-route-orderId="@d.OrderId" asp-route-ticketId="@d.Id"><code>@d.Barcode</code></a>
+                                    @d.HolderName, @SharedLocalizer.EnumDisplay(d.Kind).ToLowerInvariant()
+                                    <status-badge value="@d.State" />
+                                </div>
+                            }
+                        </dd>
+                    }
+                    @if (Model.LatestOffer is { } offer)
+                    {
+                        <dt class="col-sm-4">Resale</dt>
+                        <dd class="col-sm-8">
+                            <status-badge value="@offer.State" /> since @offer.OfferedAt.ToDateTime(), @((offer.RefundOwedMinor / 100m).ToEuro()) owed
+                            @if (offer.DirectedEmail is not null)
+                            {
+                                <span class="small d-block">Invited @offer.DirectedEmail</span>
+                            }
+                            <a class="small d-block" asp-action="Resale" asp-route-id="@t.SalesEventId">Resale queue</a>
+                        </dd>
+                    }
+                </dl>
+            </div>
+        </div>
+    </div>
 
-<div authorize-policy="@TicketsPolicies.Manage">
-    @if (renamable)
+    @if (renamable || canCompanion || live)
     {
-        <h2 class="h5">Rename</h2>
-        <p class="text-muted">
-            With the holder's own email, this corrects their legal name. With a different email it moves the ticket to
-            that person, which is only an agreed exception: tickets are not transferable, and only a full price ticket
-            without child or companion tickets can move. The new holder's account is found or created.
-        </p>
-        <form asp-action="Rename" asp-route-orderId="@Model.Order.Id" asp-route-ticketId="@t.Id" method="post" class="row g-2 align-items-end mb-4">
-            @Html.AntiForgeryToken()
-            <div class="col-md-3"><label class="form-label" for="rename-name">Legal name</label><input class="form-control" id="rename-name" name="holderName" maxlength="200" required /></div>
-            <div class="col-md-3"><label class="form-label" for="rename-email">Email</label><input class="form-control" id="rename-email" name="holderEmail" type="email" maxlength="256" required /></div>
-            <div class="col-md-4"><label class="form-label" for="rename-reason">Reason</label><input class="form-control" id="rename-reason" name="reason" maxlength="500" required /><div class="form-text">Goes on the order's timeline: no names or emails.</div></div>
-            <div class="col-md-2"><button type="submit" class="btn btn-warning">Rename</button></div>
-        </form>
-    }
+        <div class="col-lg-5" authorize-policy="@TicketsPolicies.Manage">
+            <div class="card mb-4">
+                <div class="card-header">Actions</div>
+                <div class="card-body">
+                    <p class="small text-muted">Each reason goes on the order's timeline: no names or emails in it.</p>
 
-    @if (canCompanion)
-    {
-        <h2 class="h5">Free companion ticket</h2>
-        <p class="text-muted">For a helper this holder needs on site. It is attached to this ticket, counts against capacity and costs nothing.</p>
-        <form asp-action="Companion" asp-route-orderId="@Model.Order.Id" asp-route-ticketId="@t.Id" method="post" class="row g-2 align-items-end mb-4">
-            @Html.AntiForgeryToken()
-            <div class="col-md-3"><label class="form-label" for="companion-name">Legal name</label><input class="form-control" id="companion-name" name="holderName" maxlength="200" required /></div>
-            <div class="col-md-3"><label class="form-label" for="companion-email">Email (optional)</label><input class="form-control" id="companion-email" name="holderEmail" type="email" maxlength="256" /></div>
-            <div class="col-md-4"><label class="form-label" for="companion-reason">Reason</label><input class="form-control" id="companion-reason" name="reason" maxlength="500" required /><div class="form-text">Goes on the order's timeline: no names or emails.</div></div>
-            <div class="col-md-2"><button type="submit" class="btn btn-primary">Issue</button></div>
-        </form>
-    }
+                    @if (renamable)
+                    {
+                        <details class="mb-3">
+                            <summary class="fw-semibold">Rename</summary>
+                            <p class="small text-muted mt-2">
+                                With the holder's own email, this corrects their legal name. With a different email it moves the ticket to
+                                that person, which is only an agreed exception: tickets are not transferable, and only a full price ticket
+                                without child or companion tickets can move. The new holder's account is found or created.
+                            </p>
+                            <form asp-action="Rename" asp-route-orderId="@Model.Order.Id" asp-route-ticketId="@t.Id" method="post">
+                                @Html.AntiForgeryToken()
+                                <div class="mb-2"><label class="form-label" for="rename-name">Legal name</label><input class="form-control" id="rename-name" name="holderName" maxlength="200" required /></div>
+                                <div class="mb-2"><label class="form-label" for="rename-email">Email</label><input class="form-control" id="rename-email" name="holderEmail" type="email" maxlength="256" required /></div>
+                                <div class="mb-2"><label class="form-label" for="rename-reason">Reason</label><input class="form-control" id="rename-reason" name="reason" maxlength="500" required /></div>
+                                <button type="submit" class="btn btn-outline-secondary btn-sm">Rename</button>
+                            </form>
+                        </details>
+                    }
 
-    @if (live)
-    {
-        <h2 class="h5">Void</h2>
-        <p class="text-muted">The ticket stops working at the gate, with its child and companion tickets. Nothing is refunded here; refund from the order page if money is owed.</p>
-        <form asp-action="Void" asp-route-orderId="@Model.Order.Id" asp-route-ticketId="@t.Id" method="post" class="row g-2 align-items-end"
-              data-confirm="Void ticket @t.Barcode@(Model.Dependents.Any(d => d.State == TicketCheckoutTicketState.Valid) ? " and its dependent tickets" : "")? This cannot be undone.">
-            @Html.AntiForgeryToken()
-            <div class="col-md-8"><label class="form-label" for="void-reason">Reason</label><input class="form-control" id="void-reason" name="reason" maxlength="500" required /><div class="form-text">Goes on the order's timeline: no names or emails.</div></div>
-            <div class="col-md-2"><button type="submit" class="btn btn-danger">Void</button></div>
-        </form>
+                    @if (canCompanion)
+                    {
+                        <details class="mb-3">
+                            <summary class="fw-semibold">Free companion ticket</summary>
+                            <p class="small text-muted mt-2">For a helper this holder needs on site. It is attached to this ticket, counts against capacity and costs nothing.</p>
+                            <form asp-action="Companion" asp-route-orderId="@Model.Order.Id" asp-route-ticketId="@t.Id" method="post">
+                                @Html.AntiForgeryToken()
+                                <div class="mb-2"><label class="form-label" for="companion-name">Legal name</label><input class="form-control" id="companion-name" name="holderName" maxlength="200" required /></div>
+                                <div class="mb-2"><label class="form-label" for="companion-email">Email (optional)</label><input class="form-control" id="companion-email" name="holderEmail" type="email" maxlength="256" /></div>
+                                <div class="mb-2"><label class="form-label" for="companion-reason">Reason</label><input class="form-control" id="companion-reason" name="reason" maxlength="500" required /></div>
+                                <button type="submit" class="btn btn-outline-secondary btn-sm">Issue companion ticket</button>
+                            </form>
+                        </details>
+                    }
+
+                    @if (live)
+                    {
+                        <details>
+                            <summary class="fw-semibold text-danger">Void</summary>
+                            <p class="small text-muted mt-2">The ticket stops working at the gate, with its child and companion tickets. Nothing is refunded here; refund from the order page if money is owed.</p>
+                            <form asp-action="Void" asp-route-orderId="@Model.Order.Id" asp-route-ticketId="@t.Id" method="post"
+                                  data-confirm="Void ticket @t.Barcode@(Model.Dependents.Any(d => d.State == TicketCheckoutTicketState.Valid) ? " and its dependent tickets" : "")? This cannot be undone.">
+                                @Html.AntiForgeryToken()
+                                <div class="mb-2"><label class="form-label" for="void-reason">Reason</label><input class="form-control" id="void-reason" name="reason" maxlength="500" required /></div>
+                                <button type="submit" class="btn btn-outline-danger btn-sm">Void ticket</button>
+                            </form>
+                        </details>
+                    }
+                </div>
+            </div>
+        </div>
     }
 </div>
