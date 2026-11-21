@@ -272,10 +272,10 @@ section's public service surface.
 ### TicketVendorGateway (Scoped)
 
 No repository. Thin design-rules-compliant facade over `ITicketVendorService` (the
-vendor port, `src/Sections/Humans.Tickets/Contracts/`). Implements `ITicketDiscountCodes` +
-`ITicketVendorMirror` (`Humans.Tickets.Contracts`) so cross-section callers
+vendor port, `src/Sections/Humans.Tickets/Contracts/`). Implements `ITicketDiscountCodes` (`Humans.Tickets.Contracts`) so cross-section callers
 (`CampaignService`'s discount-code grant waves) depend on the section's own
-leaf rather than the raw vendor port. `GateVendorCheckInJob` (`Humans.Gate`)
-is the other consumer, via `ITicketVendorMirror`. No DB access, no cache.
+leaf rather than the raw vendor port. Gate's `ITicketVendorMirror` resolves directly to the
+existing `CachingTicketVendorService`; check-in writes keep its keyed inner vendor path
+without passing through the discount mapper. No DB access, no cache in this gateway.
 
 ---

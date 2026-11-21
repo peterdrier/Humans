@@ -107,7 +107,7 @@ public sealed class Section :
 
         services.AddScoped<TicketVendorGateway>();
         services.AddScoped<ITicketDiscountCodes>(sp => sp.GetRequiredService<TicketVendorGateway>());
-        services.AddScoped<ITicketVendorMirror>(sp => sp.GetRequiredService<TicketVendorGateway>());
+        services.AddScoped<ITicketVendorMirror>(sp => sp.GetRequiredService<CachingTicketVendorService>());
 
         services.AddScoped<TicketDashboardPageBuilder>();
 
