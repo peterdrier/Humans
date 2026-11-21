@@ -26,7 +26,9 @@ and paid out to the bank reconciles against Humans' orders per period, with a dr
 
 **Deliberate choices.** Its own restricted key and webhook on the ticket
 Stripe account, apart from the Store's Stripe integration. API refunds are allowed here as the one money-out exception.
-Nothing is stored in this section.
+This section stores nothing: every order, refund, ticket and timeline entry lives in Tickets' tables
+(`ticket_checkout_orders`, `ticket_checkout_refunds`, `ticket_checkout_tickets`, `ticket_checkout_order_events`), the
+same for all three backends.
 
 **Out of scope.** Stripe products, prices, coupons and invoices; erasing data inside
 Stripe, which keeps it as the payment processor.
