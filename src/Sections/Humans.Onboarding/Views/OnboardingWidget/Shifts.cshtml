@@ -78,9 +78,8 @@
                    property to bind to a parameter, so a renamed argument fails the build instead of a 500. *@
                 @await Component.InvokeAsync(ShiftsStep.ShiftsList, new OnboardingShiftsStepArgs(
                     EventSettingsId: Model.EventSettings!.Id,
-                    Shifts: Model.Shifts,
-                    UserSignupShiftIds: Model.UserSignupShiftIds,
-                    UserSignupStatuses: Model.UserSignupStatuses))
+                    ViewerUserId: Model.ViewerUserId,
+                    ShiftIds: Model.Shifts.Select(u => u.Shift.Id).ToList()))
             }
         </div>
     </div>

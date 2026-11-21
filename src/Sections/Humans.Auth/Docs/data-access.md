@@ -13,8 +13,10 @@ The inner `IRoleAssignmentManagement` is wrapped by
 `Humans.Auth.Services.CachingRoleAssignmentService`
 (Singleton decorator inheriting `TrackedCache<Guid, RoleAssignmentRow>`).
 The full `role_assignments` row set is held in memory so
-cross-section reads (`GetActiveCountsByRoleAsync`, `GetActiveForUserAsync`)
-derive at any clock instant without a query. Invalidation is service-level:
+every active-role read (`GetActiveCountsByRoleAsync`, `GetActiveForUserAsync`,
+`HasActiveRoleAsync` and its `IsUser*` shorthands, `HasAnyActiveAssignmentAsync`,
+`GetActiveUserIdsInRoleAsync`, `GetUserIdsWithActiveAssignmentsAsync`) derives at any
+clock instant without a query. Cached rows carry canonical role names. Invalidation is service-level:
 the inner service clears the decorator's cache (`CachingRoleAssignmentService.Clear()`,
 the concrete owner, no invalidator interface) right after each of its repository writes,
 merge fold and erasure included (single writer, so no EF interceptor needed).

@@ -4,7 +4,9 @@ using Humans.Users.Services;
 using Humans.Base.Controllers;
 using Humans.Base.Extensions;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Net.Http.Headers;
 using Microsoft.Extensions.Localization;
 using Humans.Base.Enums;
 using Humans.Users.Models;
@@ -38,8 +40,7 @@ internal sealed class ProfileViewController(
 
     [HttpGet("Picture")]
     [AllowAnonymous]
-    [ResponseCache(Duration = 3600, Location = ResponseCacheLocation.Client)]
-    public async Task<IActionResult> Picture(Guid id, CancellationToken ct)
+    public async Task<IActionResult> Picture(Guid id, long? v, CancellationToken ct)
     {
         // The picture service owns the file read and the GDPR gate.
         var result = await profilePictureService.GetProfilePictureAsync(id, ct);
@@ -47,6 +48,16 @@ internal sealed class ProfileViewController(
         {
             return NotFound();
         }
+
+        // UserInfo.ProfilePictureUrl stamps v with the profile's UpdatedAt, so a new picture is a new URL.
+        var cacheControl = new CacheControlHeaderValue
+        {
+            Private = true,
+            MaxAge = v is null ? TimeSpan.FromHours(1) : TimeSpan.FromDays(365),
+        };
+        if (v is not null)
+            cacheControl.Extensions.Add(new NameValueHeaderValue("immutable"));
+        Response.GetTypedHeaders().CacheControl = cacheControl;
 
         return File(result.Value.Data, result.Value.ContentType);
     }

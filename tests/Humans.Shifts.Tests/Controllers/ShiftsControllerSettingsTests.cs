@@ -4,7 +4,6 @@ using System.Security.Claims;
 using System.Globalization;
 using Humans.Base.Constants;
 using AwesomeAssertions;
-using Humans.Onboarding;
 using Humans.AuditLog.Contracts;
 using Humans.Shifts.Services;
 using Humans.Shifts.Contracts;
@@ -43,7 +42,6 @@ public sealed class ShiftsControllerSettingsTests
     private readonly IAuditLogService _auditLogService = Substitute.For<IAuditLogService>();
     private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly IStringLocalizer<ShiftsResource> _localizer = Substitute.For<IStringLocalizer<ShiftsResource>>();
-    private readonly IStringLocalizer<OnboardingResource> _onboardingLocalizer = Substitute.For<IStringLocalizer<OnboardingResource>>();
     private readonly IClock _clock = Substitute.For<IClock>();
     private readonly ShiftBrowsePageBuilder _builder;
     private readonly ILogger<ShiftsController> _logger = NullLogger<ShiftsController>.Instance;
@@ -137,7 +135,7 @@ public sealed class ShiftsControllerSettingsTests
     {
         var ctrl = new ShiftsController(
             _shiftMgmt, _burnSettings, _signupService, _volunteerTrackingService, _shiftView, _teamService,
-            _userService, _localizer, _onboardingLocalizer, _clock, _builder, _logger);
+            _userService, _localizer, _clock, _builder, _logger);
         var actorId = Guid.NewGuid();
         _userService.GetUserInfoAsync(actorId, Arg.Any<CancellationToken>())
             .Returns(UserFixtures.MakeUserInfo(actorId));

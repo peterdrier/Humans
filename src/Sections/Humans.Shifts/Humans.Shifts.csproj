@@ -39,6 +39,8 @@
     -->
     <ProjectReference Include="..\Humans.Shifts.Contracts\Humans.Shifts.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Camps.Contracts\Humans.Camps.Contracts.csproj" />
+    <!-- Fills Onboarding's IOnboardingShiftsStep slot. The leaf only, which references Base alone. -->
+    <ProjectReference Include="..\Humans.Onboarding.Contracts\Humans.Onboarding.Contracts.csproj" />
     <!--
       Outbound section references, all acyclic — none of these names a Humans.Shifts
       type (they may name Humans.Shifts.Contracts, which is
@@ -50,11 +52,6 @@
         Email         — the "email a rota" coordinator message.
         Governance    — early-entry capacity reads the membership tier.
         Notifications — signup approval/refusal notifies the volunteer.
-        Onboarding    — the section project, not the leaf: /Shifts renders Onboarding's
-                        name-gate copy through IStringLocalizer&lt;OnboardingResource&gt;, and a
-                        resource marker is a section type (CityPlanning's rule, design
-                        §15 step 3b). Acyclic: Humans.Onboarding names only
-                        Humans.Shifts.Contracts.
         Settings      — ISettingsService: the app-wide event calendar (nobodies-collective/Humans#1630).
         Teams         — a rota's department is a team row. The *section* project, not
                         only the leaf: ShiftAdminController derives from
@@ -76,7 +73,6 @@
     <ProjectReference Include="..\Humans.Email.Contracts\Humans.Email.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Consent\Humans.Consent.csproj" />
     <ProjectReference Include="..\Humans.Notifications.Contracts\Humans.Notifications.Contracts.csproj" />
-    <ProjectReference Include="..\Humans.Onboarding\Humans.Onboarding.csproj" />
     <ProjectReference Include="..\Humans.Teams\Humans.Teams.csproj" />
     <ProjectReference Include="..\Humans.Teams.Contracts\Humans.Teams.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Tickets.Contracts\Humans.Tickets.Contracts.csproj" />

@@ -42,3 +42,17 @@ internal sealed class GovernanceBodyFileConfiguration : IEntityTypeConfiguration
         builder.HasIndex(f => new { f.Body, f.GoogleId }).IsUnique();
     }
 }
+
+internal sealed class GovernanceBoardPositionConfiguration : IEntityTypeConfiguration<GovernanceBoardPosition>
+{
+    public void Configure(EntityTypeBuilder<GovernanceBoardPosition> builder)
+    {
+        builder.ToTable("governance_board_positions");
+
+        builder.HasKey(p => p.Position);
+        builder.Property(p => p.Position).HasConversion<string>().HasMaxLength(50);
+        builder.Property(p => p.UpdatedAt).IsRequired();
+
+        builder.HasIndex(p => p.UserId).IsUnique();
+    }
+}
