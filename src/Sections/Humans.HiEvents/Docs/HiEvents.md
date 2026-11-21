@@ -83,8 +83,9 @@ None — the section owns no tables.
   pay page's return check finds one, and sends the buyer on to `ReturnUrl`; it clears it when the payment fails (the
   order reads Pending or Expired again) or succeeds (Paid). Tickets never cancels a Processing order at its hold.
 - `DisputedMinor` is the fork's `total_disputed`: what Stripe chargebacks on the order's payments hold back (a dispute
-  counts until won; an inquiry, `warning_*`, takes nothing), in `GetStatusAsync` and `ListOrdersAsync` alike. The fork
-  reads each dispute back from Stripe on every `charge.dispute.*` event and sends `order.updated`, which nudges Tickets.
+  counts until won; an inquiry, `warning_*`, and a `prevented` one, which Stripe settles as a refund, take nothing), in
+  `GetStatusAsync` and `ListOrdersAsync` alike. On every `charge.dispute.*` event the fork re-lists all disputes on the
+  order's payments from Stripe and sends `order.updated`, which nudges Tickets.
 - The fork's Stripe webhook must carry `payment_intent.processing` and the `charge.dispute.*` events, or neither state
   reaches Humans.
 - Cancel: a no-op on a cancelled order, `TicketCheckoutException` on a paid or Processing one, otherwise Hi.Events' cancel without
