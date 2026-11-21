@@ -8,10 +8,16 @@ using NodaTime;
 
 namespace Humans.Tickets.Services.Checkout;
 
-/// <summary>Issued tickets and the resale queue: return, withdraw, directed resale, and the refund when one sells.</summary>
+/// <summary>Issued tickets and the resale queue: return, withdraw, directed resale, and the evening refund batch.</summary>
 internal sealed partial class TicketCheckoutService
 {
-    private const int MaxInvitesPerTicket = 3;
+    /// <summary>Links a holder may send for one ticket over all its offers: enough for friends, too few to spam with.</summary>
+    internal const int MaxInvitesPerTicket = 10;
+
+    /// <summary>How long a resale buyer's payment must stand before the evening batch refunds the old holder.</summary>
+    internal static readonly Duration ResaleRefundHold = Duration.FromHours(12);
+
+    private const string RefundHeldBack = "Resale refund held back";
     private static readonly Duration DeliveryGrace = Duration.FromMinutes(30);
     private static readonly Duration DeliveryRepairWindow = Duration.FromDays(7);
 
@@ -133,8 +139,6 @@ internal sealed partial class TicketCheckoutService
 
         offer.State = TicketResaleOfferState.Withdrawn;
         offer.WithdrawnAt = clock.GetCurrentInstant();
-        offer.DirectedTokenHash = null;
-        offer.DirectedEmail = null;
         await repository.UpdateOfferAsync(offer, ct);
         ticket.State = TicketCheckoutTicketState.Valid;
         await repository.UpdateTicketAsync(ticket, ct);
@@ -145,8 +149,12 @@ internal sealed partial class TicketCheckoutService
         return CheckoutMutationResult.Ok;
     }
 
-    public async Task<CheckoutMutationResult> InviteBuyerAsync(
-        Guid ticketId, Guid userId, string inviteeEmail, Uri claimUrlBase, string culture, CancellationToken ct = default)
+    /// <summary>
+    /// Emails the link to each new address. Every link sells this one ticket to whoever buys first; anyone later buys the
+    /// next ticket in the queue. An address already sent this offer's link is skipped.
+    /// </summary>
+    public async Task<CheckoutMutationResult> InviteBuyersAsync(
+        Guid ticketId, Guid userId, IReadOnlyList<string> inviteeEmails, Uri claimUrlBase, string culture, CancellationToken ct = default)
     {
         var (ticket, offer) = await OwnOfferAsync(ticketId, userId, ct);
         var salesEvent = ticket is null ? null : await repository.GetSalesEventAsync(ticket.SalesEventId, ct);
@@ -156,48 +164,50 @@ internal sealed partial class TicketCheckoutService
             return new("Tickets_Resale_InCheckout");
         if (await IsAdmittedAsync(ticket, ct))
             return new("Tickets_Resale_NotOfferable");
-        var now = clock.GetCurrentInstant();
-        if (offer.HasLiveInvite)
-            return new("Tickets_Resale_InviteLive");
+        var addresses = inviteeEmails.Select(e => e.Trim()).Where(e => e.Length > 0).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+        if (addresses.Count == 0 || addresses.Any(e => !LooksLikeEmail(e) || string.Equals(e, ticket.HolderEmail, StringComparison.OrdinalIgnoreCase)))
+            return new("Tickets_Resale_InviteEmailInvalid");
+        addresses.RemoveAll(e => offer.Invites.Any(i => string.Equals(i.Email, e, StringComparison.OrdinalIgnoreCase)));
+        if (addresses.Count == 0)
+            return new("Tickets_Resale_InviteAlready");
         // Counted over all of the ticket's offers, so withdrawing and offering again does not start a fresh allowance.
         if ((await repository.GetOffersForSalesEventAsync(ticket.SalesEventId, ct))
-                .Where(o => o.TicketId == ticket.Id).Sum(o => o.DirectedInviteCount) >= MaxInvitesPerTicket)
+                .Where(o => o.TicketId == ticket.Id).Sum(o => o.DirectedInviteCount) + addresses.Count > MaxInvitesPerTicket)
             return new("Tickets_Resale_InviteLimit");
-        inviteeEmail = inviteeEmail.Trim();
-        if (!LooksLikeEmail(inviteeEmail) || string.Equals(inviteeEmail, ticket.HolderEmail, StringComparison.OrdinalIgnoreCase))
-            return new("Tickets_Resale_InviteEmailInvalid");
+        var now = clock.GetCurrentInstant();
         if (!(await LoadStockAsync(salesEvent, now, ct)).ResaleOpen)
             return new("Tickets_Resale_NotOpenYet");
 
-        var token = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32))
-            .TrimEnd('=').Replace('+', '-').Replace('/', '_');
-        offer.DirectedEmail = inviteeEmail;
-        offer.DirectedTokenHash = HashToken(token);
-        offer.DirectedUsedAt = null;
-        offer.DirectedInviteCount++;
+        var links = addresses.Select(address =>
+        {
+            var token = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32)).TrimEnd('=').Replace('+', '-').Replace('/', '_');
+            return (Address: address, Token: token);
+        }).ToList();
+        offer.Invites = [.. offer.Invites, .. links.Select(l => new TicketResaleInvite { Email = l.Address, TokenHash = HashToken(l.Token), SentAt = now })];
+        offer.DirectedInviteCount += links.Count;
         await repository.UpdateOfferAsync(offer, ct);
 
         var eventName = (await settings.GetEventSettingsByIdAsync(salesEvent.EventSettingsId, ct))?.EventName ?? string.Empty;
-        await email.SendAsync(emails.ResaleInvitation(
-            inviteeEmail, ticket.HolderName, eventName, new Uri(claimUrlBase, token).ToString(), culture), ct);
+        foreach (var (address, token) in links)
+            await email.SendAsync(emails.ResaleInvitation(
+                address, ticket.HolderName, eventName, new Uri(claimUrlBase, token).ToString(), culture), ct);
         await TimelineAsync(ticket.OrderId, TicketCheckoutOrderEventKind.ResaleInvited,
-            $"Holder invited one buyer for ticket {ticket.Barcode}; the ticket stays in the queue meanwhile",
-            userId, ct);
+            $"Holder sent the link for ticket {ticket.Barcode} to {links.Count} more person(s), {offer.Invites.Count} in all; " +
+            "the ticket stays in the queue meanwhile", userId, ct);
         return CheckoutMutationResult.Ok;
     }
 
     public async Task<CheckoutMutationResult> CancelInviteAsync(Guid ticketId, Guid userId, CancellationToken ct = default)
     {
         var (ticket, offer) = await OwnOfferAsync(ticketId, userId, ct);
-        if (ticket is null || offer?.DirectedTokenHash is null)
+        if (ticket is null || offer is null || offer.Invites.Count == 0)
             return new("Tickets_Resale_NotFound");
         if (offer.State == TicketResaleOfferState.Reserved)
             return new("Tickets_Resale_InCheckout");
-        offer.DirectedTokenHash = null;
-        offer.DirectedEmail = null;
+        offer.Invites = [];
         await repository.UpdateOfferAsync(offer, ct);
         await TimelineAsync(ticket.OrderId, TicketCheckoutOrderEventKind.ResaleInviteCancelled,
-            $"Invitation for ticket {ticket.Barcode} cancelled; it keeps its place in the queue", userId, ct);
+            $"Invitations for ticket {ticket.Barcode} cancelled; it keeps its place in the queue", userId, ct);
         return CheckoutMutationResult.Ok;
     }
 
@@ -224,12 +234,14 @@ internal sealed partial class TicketCheckoutService
         return (ticket, offer);
     }
 
-    /// <summary>The invited offer when the link is live, bound to the signed-in buyer's email and the queue still open.</summary>
-    private static TicketResaleOffer? DirectedOfferFor(TicketResaleOffer offer, BuyContext context) =>
-        context.SalesEvent.ResaleSelling
-        && offer.State == TicketResaleOfferState.Open && offer.HasLiveInvite
-        && string.Equals(offer.DirectedEmail, context.Buyer?.Email, StringComparison.OrdinalIgnoreCase)
-        && offer.SalesEventId == context.SalesEvent.Id
+    /// <summary>The link was sent to the signed-in buyer's email, for this sales event.</summary>
+    private static bool InviteIsFor(TicketResaleOffer offer, string tokenHash, BuyContext context) =>
+        offer.SalesEventId == context.SalesEvent.Id && offer.InviteFor(tokenHash) is { } invite
+        && string.Equals(invite.Email, context.Buyer?.Email, StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>The linked offer while it can still sell to this buyer: the link is theirs and the queue is open.</summary>
+    private static TicketResaleOffer? DirectedOfferFor(TicketResaleOffer offer, string tokenHash, BuyContext context) =>
+        context.SalesEvent.ResaleSelling && offer.State == TicketResaleOfferState.Open && InviteIsFor(offer, tokenHash, context)
             ? offer
             : null;
 
@@ -316,19 +328,26 @@ internal sealed partial class TicketCheckoutService
             await HandOffToDeliveryAsync(order.Id, ct);
     }
 
-    private async Task HandOffToDeliveryAsync(Guid orderId, CancellationToken ct)
+    private Task HandOffToDeliveryAsync(Guid orderId, CancellationToken ct) =>
+        TellDeliveryAsync(d => d.TicketsIssuedAsync(orderId, ct), orderId);
+
+    /// <summary>A mail that cannot be queued is logged and never undoes the change it reports. False when one failed.</summary>
+    private async Task<bool> TellDeliveryAsync(Func<ITicketDelivery, Task> tell, Guid subjectId)
     {
+        var queued = true;
         foreach (var delivery in deliveries)
         {
             try
             {
-                await delivery.TicketsIssuedAsync(orderId, ct);
+                await tell(delivery);
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
-                logger.LogError(ex, "Ticket delivery for order {OrderId} failed", orderId);
+                logger.LogError(ex, "Ticket delivery for {SubjectId} failed", subjectId);
+                queued = false;
             }
         }
+        return queued;
     }
 
     /// <summary>
@@ -383,12 +402,10 @@ internal sealed partial class TicketCheckoutService
             return;
         if (offer.State == TicketResaleOfferState.Sold)
         {
-            // A repeat after a crash finishes whatever the first run left: the old ticket, its children, the refund.
+            // A repeat after a crash finishes whatever the first run left: the old ticket and its children. The refund
+            // is the evening batch's.
             if (offer.SoldToOrderId == buyerOrder.Id)
-            {
                 await RetireResoldTicketAsync(offer, offer.DirectedUsedAt is not null, ct);
-                await SettleResaleRefundAsync(offer, ct);
-            }
             return;
         }
         // A late payment finds its offer released, maybe taken by another checkout or withdrawn: its ticket is then fresh stock.
@@ -397,24 +414,22 @@ internal sealed partial class TicketCheckoutService
             return;
 
         var now = clock.GetCurrentInstant();
-        // The queue also sells an invited ticket, so only the invited buyer's own purchase counts as using the invitation.
+        // The queue also sells an invited ticket, so only an invited buyer's own purchase counts as using the invitation.
         var directed = offer.HasLiveInvite
-            && string.Equals(offer.DirectedEmail, buyerOrder.BuyerEmail, StringComparison.OrdinalIgnoreCase);
+            && offer.Invites.Any(i => string.Equals(i.Email, buyerOrder.BuyerEmail, StringComparison.OrdinalIgnoreCase));
         offer.State = TicketResaleOfferState.Sold;
         offer.SoldAt = now;
         offer.SoldToOrderId = buyerOrder.Id;
         offer.ReservedByOrderId = null;
         if (directed)
             offer.DirectedUsedAt = now;
-        offer.DirectedEmail = null;
         await repository.UpdateOfferAsync(offer, ct);
 
         await RetireResoldTicketAsync(offer, directed, ct);
         if (directed)
             await TimelineAsync(buyerOrder.Id, TicketCheckoutOrderEventKind.ResaleInviteUsed,
                 "Bought through a resale invitation", buyerOrder.BuyerUserId, ct);
-
-        await SettleResaleRefundAsync(offer, ct);
+        await TellDeliveryAsync(d => d.ResaleSoldAsync(offer.TicketId, offer.RefundOwedMinor, ct), offer.TicketId);
     }
 
     /// <summary>Marks a sold offer's ticket <c>Resold</c> and voids its children; each step is skipped once done.</summary>
@@ -429,7 +444,7 @@ internal sealed partial class TicketCheckoutService
             await repository.UpdateTicketAsync(old, ct);
             await TimelineAsync(old.OrderId, TicketCheckoutOrderEventKind.ResaleSold,
                 $"Ticket {old.Barcode} resold" + (directed ? " to the invited buyer" : string.Empty) +
-                $"; refunding {FormatMinor(offer.RefundOwedMinor)}", null, ct);
+                $"; {FormatMinor(offer.RefundOwedMinor)} goes back in the evening refund batch once the buyer's payment holds", null, ct);
         }
         foreach (var child in (await repository.GetTicketsForSalesEventAsync(old.SalesEventId, ct))
                      .Where(t => t.ParentTicketId == old.Id && t.State == TicketCheckoutTicketState.Valid))
@@ -447,41 +462,138 @@ internal sealed partial class TicketCheckoutService
     /// <summary>
     /// Refunds the holder what they paid, under the offer's own id so a repeat finds the same refund and retries a
     /// backend call that threw. A refund that cannot even start is written as a failed refund on the holder's order,
-    /// so the ticketing team sees what is owed.
+    /// so the ticketing team sees what is owed. True when the refund started.
     /// </summary>
-    private async Task SettleResaleRefundAsync(TicketResaleOffer offer, CancellationToken ct)
+    private async Task<bool> SettleResaleRefundAsync(TicketResaleOffer offer, CancellationToken ct)
     {
-        if (offer.RefundOwedMinor <= 0)
-            return;
-        if (await repository.GetTicketAsync(offer.TicketId, ct) is not { } old)
-            return;
+        if (offer.RefundOwedMinor <= 0 || await repository.GetTicketAsync(offer.TicketId, ct) is not { } old)
+            return false;
 
         var (result, refundId) = await RefundCoreAsync(old.OrderId, offer.RefundOwedMinor, "Ticket resold", null, ct, offer.Id);
         if (refundId is null)
         {
             logger.LogError("Resale refund for ticket {TicketId} could not start: {Refusal}", old.Id, result.Refusal);
-            await repository.AddRefundAsync(new TicketCheckoutRefund
-            {
-                Id = offer.Id,
-                OrderId = old.OrderId,
-                AmountMinor = offer.RefundOwedMinor,
-                Reason = "Ticket resold",
-                State = RefundState.Failed,
-                FailureReason = Truncate(result.Refusal ?? "Refused"),
-                CreatedAt = clock.GetCurrentInstant(),
-            }, ct);
-            await auditLog.LogAsync(TicketsAuditActions.TicketCheckoutNeedsAttention, AuditEntityType, old.OrderId,
-                $"Resale refund of {FormatMinor(offer.RefundOwedMinor)} could not start ({Truncate(result.Refusal ?? "refused")}); " +
-                "the ticketing team must refund it by hand", JobName);
-            await TimelineAsync(old.OrderId, TicketCheckoutOrderEventKind.RefundSettled,
-                $"Resale refund of {FormatMinor(offer.RefundOwedMinor)} could not start ({Truncate(result.Refusal ?? "refused")}); " +
-                "the ticketing team must refund it by hand", null, ct);
+            var why = Truncate(result.Refusal ?? "refused");
+            await RecordResaleRefundNotSentAsync(offer, old, why,
+                $"Resale refund of {FormatMinor(offer.RefundOwedMinor)} could not start ({why}); the ticketing team must refund it by hand", ct);
+            return false;
         }
         if (offer.RefundId is null)
         {
             offer.RefundId = offer.Id;
             await repository.UpdateOfferAsync(offer, ct);
         }
+        return true;
+    }
+
+    /// <summary>
+    /// A failed refund under the offer's id: the batch never sends it later, and it stays among the failed refunds the
+    /// reconciliation lists until the team settles it.
+    /// </summary>
+    private async Task RecordResaleRefundNotSentAsync(
+        TicketResaleOffer offer, TicketCheckoutTicket old, string failureReason, string detail, CancellationToken ct)
+    {
+        await repository.AddRefundAsync(new TicketCheckoutRefund
+        {
+            Id = offer.Id,
+            OrderId = old.OrderId,
+            AmountMinor = offer.RefundOwedMinor,
+            Reason = "Ticket resold",
+            State = RefundState.Failed,
+            FailureReason = Truncate(failureReason),
+            CreatedAt = clock.GetCurrentInstant(),
+        }, ct);
+        await auditLog.LogAsync(TicketsAuditActions.TicketCheckoutNeedsAttention, AuditEntityType, old.OrderId, detail, JobName);
+        await TimelineAsync(old.OrderId, TicketCheckoutOrderEventKind.RefundSettled, detail, null, ct);
+        offer.RefundId = offer.Id;
+        await repository.UpdateOfferAsync(offer, ct);
+    }
+
+    /// <summary>
+    /// The evening batch: refunds each holder whose returned ticket sold at least <see cref="ResaleRefundHold"/> ago to
+    /// a buyer whose order is still paid with nothing refunded, being refunded or charged back. A sale that did not hold is left for
+    /// the ticketing team as a failed refund. One audit row per sales event carries the batch's count and total.
+    /// </summary>
+    public async Task<ResaleRefundBatch> RunResaleRefundBatchAsync(CancellationToken ct = default)
+    {
+        var cutoff = clock.GetCurrentInstant() - ResaleRefundHold;
+        var batch = new ResaleRefundBatch(0, 0, 0, 0);
+        foreach (var salesEvent in await repository.GetSalesEventsAsync(ct))
+        {
+            var (started, startedMinor, heldBack, waiting) = (0, 0L, 0, 0);
+            foreach (var offer in (await repository.GetOffersForSalesEventAsync(salesEvent.Id, ct))
+                         .Where(o => o is { State: TicketResaleOfferState.Sold, RefundId: null, RefundOwedMinor: > 0 })
+                         .OrderBy(o => o.SoldAt))
+            {
+                if (offer.SoldAt > cutoff)
+                {
+                    waiting++;
+                    continue;
+                }
+                var buyerOrder = offer.SoldToOrderId is { } buyerOrderId ? await repository.GetOrderAsync(buyerOrderId, ct) : null;
+                try
+                {
+                    // A missed webhook must not pay out: both orders are read from their backend first, so a refund or
+                    // chargeback only the backend knows of still holds the refund back or lowers what can be refunded.
+                    if (buyerOrder is not null)
+                        await RefreshAsync(buyerOrder, ct);
+                    if (await repository.GetTicketAsync(offer.TicketId, ct) is { } old
+                        && await repository.GetOrderAsync(old.OrderId, ct) is { } holderOrder)
+                        await RefreshAsync(holderOrder, ct);
+                }
+                catch (Exception ex) when (ex is not OperationCanceledException)
+                {
+                    logger.LogWarning(ex, "Resale refund for offer {OfferId} waits: its orders could not be read from the backend", offer.Id);
+                    waiting++;
+                    continue;
+                }
+                if (buyerOrder is not { State: TicketCheckoutOrderState.Paid, RefundedMinor: 0, DisputedMinor: 0 }
+                    || (await repository.GetRefundsAsync(buyerOrder.Id, ct)).Any(r => r.State != RefundState.Failed))
+                {
+                    if (await HoldBackResaleRefundAsync(offer, buyerOrder, ct))
+                        heldBack++;
+                    continue;
+                }
+                try
+                {
+                    if (await SettleResaleRefundAsync(offer, ct))
+                    {
+                        started++;
+                        startedMinor += offer.RefundOwedMinor;
+                    }
+                }
+                catch (Exception ex) when (ex is not OperationCanceledException)
+                {
+                    logger.LogWarning(ex, "Resale refund for offer {OfferId} failed; the next batch retries", offer.Id);
+                }
+            }
+            if (started + heldBack > 0)
+                await auditLog.LogAsync(TicketsAuditActions.TicketResaleRefundBatch, SalesEventAuditEntityType, salesEvent.Id,
+                    $"Evening resale refund batch: {started} refund(s) started, {FormatMinor(startedMinor)} in total; " +
+                    $"{heldBack} held back because the buyer's order was refunded or charged back; " +
+                    $"{waiting} left for a later batch", JobName);
+            batch = new(batch.Started + started, batch.StartedMinor + startedMinor, batch.HeldBack + heldBack, batch.Waiting + waiting);
+        }
+        return batch;
+    }
+
+    /// <summary>Held back for good: the ticketing team decides, and a later batch never pays it on its own.</summary>
+    private async Task<bool> HoldBackResaleRefundAsync(TicketResaleOffer offer, TicketCheckoutOrder? buyerOrder, CancellationToken ct)
+    {
+        if (await repository.GetTicketAsync(offer.TicketId, ct) is not { } old)
+            return false;
+        if ((await repository.GetRefundsAsync(old.OrderId, ct)).Any(r => r.Id == offer.Id))
+        {
+            // Asked for before a crash kept the offer from recording it: that refund is already on its way.
+            offer.RefundId = offer.Id;
+            await repository.UpdateOfferAsync(offer, ct);
+            return false;
+        }
+        var why = $"{RefundHeldBack}: the buyer's order {buyerOrder?.Reference ?? "unknown"} is " +
+            (buyerOrder is null ? "gone" : $"{buyerOrder.State} with {FormatMinor(buyerOrder.RefundedMinor)} refunded and {FormatMinor(buyerOrder.DisputedMinor)} charged back");
+        await RecordResaleRefundNotSentAsync(offer, old, why,
+            $"{why}; the ticketing team decides on the {FormatMinor(offer.RefundOwedMinor)} owed for ticket {old.Barcode}", ct);
+        return true;
     }
 
     /// <summary>Finishes what a crash left behind: paid orders without their tickets, resale refund or delivery, and refunds that never reached the backend.</summary>
@@ -490,10 +602,14 @@ internal sealed partial class TicketCheckoutService
         var repaired = 0;
         foreach (var salesEvent in await repository.GetSalesEventsAsync(ct))
         {
-            var issued = (await repository.GetTicketsForSalesEventAsync(salesEvent.Id, ct)).Select(t => t.OrderId).ToHashSet();
+            var eventTickets = await repository.GetTicketsForSalesEventAsync(salesEvent.Id, ct);
+            var issued = eventTickets.Select(t => t.OrderId).ToHashSet();
             var orders = await repository.GetOrdersForSalesEventAsync(salesEvent.Id, ct);
+            // A sold offer whose old ticket or a child riding on it is still live: the resale stopped halfway.
             var unfinished = (await repository.GetOffersForSalesEventAsync(salesEvent.Id, ct))
-                .Where(o => o is { State: TicketResaleOfferState.Sold, RefundId: null, RefundOwedMinor: > 0 })
+                .Where(o => o.State == TicketResaleOfferState.Sold && eventTickets.Any(t =>
+                    (t.Id == o.TicketId && t.State != TicketCheckoutTicketState.Resold)
+                    || (t.ParentTicketId == o.TicketId && t.State == TicketCheckoutTicketState.Valid)))
                 .Select(o => o.SoldToOrderId)
                 .ToHashSet();
             foreach (var order in orders.Where(o => o.State == TicketCheckoutOrderState.Paid
@@ -543,15 +659,21 @@ internal sealed partial class TicketCheckoutService
     }
 
     /// <summary>
-    /// Repairs offers held by a checkout that will never pay or already paid. Returns how many changed.
+    /// Repairs offers held by a checkout that will never pay or already paid, and tells each holder whose ticket is
+    /// still offered once sales have closed. Returns how many changed.
     /// </summary>
     private async Task<int> SweepOffersAsync(CancellationToken ct)
     {
         var changed = 0;
+        var now = clock.GetCurrentInstant();
         foreach (var salesEvent in await repository.GetSalesEventsAsync(ct))
         {
+            var closed = salesEvent.Mode == TicketSalesMode.Closed || (salesEvent.SalesCloseAt is { } close && now >= close);
             foreach (var offer in await repository.GetOffersForSalesEventAsync(salesEvent.Id, ct))
             {
+                if (closed && offer is { State: TicketResaleOfferState.Open, UnsoldNotifiedAt: null }
+                    && await NotifyUnsoldAsync(offer, now, ct))
+                    changed++;
                 if (offer is { State: TicketResaleOfferState.Reserved, ReservedByOrderId: { } orderId }
                          && await repository.GetOrderAsync(orderId, ct) is { } holder
                          && !holder.IsOpen)
@@ -565,5 +687,21 @@ internal sealed partial class TicketCheckoutService
             }
         }
         return changed;
+    }
+
+    /// <summary>The offer stays in the queue (sales may reopen); the ticket admits its holder once sales are closed.</summary>
+    private async Task<bool> NotifyUnsoldAsync(TicketResaleOffer offer, Instant now, CancellationToken ct)
+    {
+        // Marked only once the mail is queued, so a failed hand-off is tried again by the next sweep; the delivery id
+        // keeps a repeat from mailing twice.
+        if (!await TellDeliveryAsync(d => d.ResaleUnsoldAsync(offer.TicketId, ct), offer.TicketId))
+            return false;
+        offer.UnsoldNotifiedAt = now;
+        await repository.UpdateOfferAsync(offer, ct);
+        if (await repository.GetTicketAsync(offer.TicketId, ct) is { } ticket)
+            await TimelineAsync(ticket.OrderId, TicketCheckoutOrderEventKind.ResaleUnsold,
+                $"Sales closed with ticket {ticket.Barcode} unsold in the resale queue: the holder is told there is no refund and the ticket still admits them",
+                null, ct);
+        return true;
     }
 }

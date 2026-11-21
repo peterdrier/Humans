@@ -131,7 +131,7 @@ public sealed class TicketsEmailsTests
 
         var sampled = new TicketsEmailPreviews(emails, TestTicketCodeImages.Create())
             .Samples(new EmailPreviewPersona("en", "Sally Smith", "sally@example.com"))
-            .Select(s => s.Message.TemplateName);
+            .Select(s => s.Message.TemplateName).Distinct(StringComparer.Ordinal);
 
         sampled.Should().BeEquivalentTo(templates,
             "every Tickets template needs a row in /Email/EmailPreview");
@@ -170,6 +170,7 @@ public sealed class TicketsEmailsTests
         if (type == typeof(OrderReceiptMail)) return SampleReceipt();
         if (type == typeof(bool)) return flag;
         if (type == typeof(int)) return 3;
+        if (type == typeof(long)) return 22500L;
         if (type == typeof(IReadOnlyList<string>)) return new[] { "sample" };
         if (type == typeof(string)) return string.Equals(parameter.Name, "culture", StringComparison.Ordinal) ? "en" : "sample";
         throw new NotSupportedException(

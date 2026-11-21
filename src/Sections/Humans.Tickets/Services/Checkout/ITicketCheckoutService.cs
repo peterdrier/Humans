@@ -85,8 +85,9 @@ internal interface ITicketCheckoutService : ITicketCheckoutEvents, IApplicationS
     /// Directed resale: emails one person a single-use link to buy this offered ticket ahead of the queue. The buyer
     /// still pays the association and gets a new ticket in their own name.
     /// </summary>
-    Task<CheckoutMutationResult> InviteBuyerAsync(
-        Guid ticketId, Guid userId, string inviteeEmail, Uri claimUrlBase, string culture, CancellationToken ct = default);
+    /// <summary>Emails the ticket's link to each address; the first to buy gets it, later buyers the next in the queue.</summary>
+    Task<CheckoutMutationResult> InviteBuyersAsync(
+        Guid ticketId, Guid userId, IReadOnlyList<string> inviteeEmails, Uri claimUrlBase, string culture, CancellationToken ct = default);
 
     Task<CheckoutMutationResult> CancelInviteAsync(Guid ticketId, Guid userId, CancellationToken ct = default);
 
@@ -129,6 +130,9 @@ internal interface ITicketCheckoutService : ITicketCheckoutEvents, IApplicationS
 
     /// <summary>Refreshes every open order and sweeps the resale queue; returns how many changed.</summary>
     Task<int> ReconcileOpenOrdersAsync(CancellationToken ct = default);
+
+    /// <summary>The evening batch refunding holders whose returned tickets sold and whose buyers' payments held.</summary>
+    Task<ResaleRefundBatch> RunResaleRefundBatchAsync(CancellationToken ct = default);
 
     /// <summary>
     /// Financial reconciliation of one backend for [<paramref name="from"/>, <paramref name="to"/>): Humans' orders
@@ -230,6 +234,9 @@ internal sealed record BuyPage(
 
     /// <summary>The buyer's own unpaid checkout still holding a ticket, which they can finish or cancel to start again.</summary>
     public TicketCheckoutOrder? OpenOrder { get; init; }
+
+    /// <summary>Reached through a resale link whose ticket someone else bought first: this page sells the next one.</summary>
+    public bool InviteTaken { get; init; }
 }
 
 internal sealed record ChildEntry(string? Name, string? Type);
@@ -305,6 +312,12 @@ internal sealed record CheckoutOrderDetail(
             - Math.Max(Order.RefundedMinor, Refunds.Where(r => r.State == RefundState.Succeeded).Sum(r => r.AmountMinor))
             - Refunds.Where(r => r.State is RefundState.Pending or RefundState.ManualRequired).Sum(r => r.AmountMinor));
 }
+
+/// <summary>
+/// One evening batch: refunds started and their total; sales held back for the ticketing team because the buyer's order
+/// was refunded or charged back; sales too recent for this batch.
+/// </summary>
+internal sealed record ResaleRefundBatch(int Started, long StartedMinor, int HeldBack, int Waiting);
 
 /// <summary>
 /// One of the person's tickets. <paramref name="QueuePosition"/> is 1-based among offers waiting to sell, null when not

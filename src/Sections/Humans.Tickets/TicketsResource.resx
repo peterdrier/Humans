@@ -297,16 +297,16 @@
     <value>Invited: {0}</value>
   </data>
   <data name="Tickets_Resale_CancelInvite" xml:space="preserve">
-    <value>Cancel invitation</value>
+    <value>Cancel invitations</value>
   </data>
   <data name="Tickets_Resale_InviteEmail" xml:space="preserve">
-    <value>Their email</value>
+    <value>Their email (separate several with commas)</value>
   </data>
   <data name="Tickets_Resale_Invite" xml:space="preserve">
     <value>Invite a buyer</value>
   </data>
   <data name="Tickets_Resale_InviteHelp" xml:space="preserve">
-    <value>Know someone who wants your ticket? Invite them: they get a link to buy it ahead of the queue, at the current price and in their own name. You are refunded what you paid. No money changes hands between you. Until they buy it, your ticket stays in the queue and may sell to someone else first.</value>
+    <value>Know someone who wants your ticket? Invite them, or several people: each gets a link to buy it ahead of the queue, at the current price and in their own name. The first to buy gets it, and anyone later is offered the next returned ticket. You are refunded what you paid. No money changes hands between you. Until someone buys it, your ticket stays in the queue and may sell to someone else first.</value>
   </data>
   <data name="Tickets_Resale_OfferHelp" xml:space="preserve">
     <value>Can't come? Return your ticket to the resale queue. When someone buys it you are refunded what you paid for the ticket (not donations or fees).</value>
@@ -321,7 +321,7 @@
     <value>A ticket for {0} is waiting for you</value>
   </data>
   <data name="Tickets_Resale_Email_Invite_Body" xml:space="preserve">
-    <value>&lt;p&gt;Hi,&lt;/p&gt;&lt;p&gt;{0} can't make it to &lt;strong&gt;{1}&lt;/strong&gt; and has invited you to buy their returned ticket ahead of the resale queue.&lt;/p&gt;&lt;p&gt;You pay the current ticket price to the association and get a new ticket in your own name: the name must match your ID at the gate. Sign in or create your Humans account with this email address, then use this link:&lt;/p&gt;&lt;p&gt;&lt;a href="{2}"&gt;{2}&lt;/a&gt;&lt;/p&gt;&lt;p&gt;The link works as long as the ticket is still for sale, so don't wait too long.&lt;/p&gt;</value>
+    <value>&lt;p&gt;Hi,&lt;/p&gt;&lt;p&gt;{0} can't make it to &lt;strong&gt;{1}&lt;/strong&gt; and has invited you to buy their returned ticket ahead of the resale queue.&lt;/p&gt;&lt;p&gt;You pay the current ticket price to the association and get a new ticket in your own name: the name must match your ID at the gate. Sign in or create your Humans account with this email address, then use this link:&lt;/p&gt;&lt;p&gt;&lt;a href="{2}"&gt;{2}&lt;/a&gt;&lt;/p&gt;&lt;p&gt;The link works as long as the ticket is still for sale. If someone else buys it first, the link offers you the next returned ticket instead.&lt;/p&gt;</value>
   </data>
   <data name="Tickets_Public_PriceToday" xml:space="preserve">
     <value>{0} today</value>
@@ -343,9 +343,6 @@
   </data>
   <data name="Tickets_Public_PriceNote" xml:space="preserve">
     <value>This is the public price. Once signed in you see your own price, which may be lower if you hold a ticket grant.</value>
-  </data>
-  <data name="Tickets_Resale_InviteLive" xml:space="preserve">
-    <value>An invitation for this ticket is still open. Cancel it before inviting someone else.</value>
   </data>
   <data name="Tickets_Resale_InviteLimit" xml:space="preserve">
     <value>This ticket has had the most invitations allowed. It stays in the queue for anyone to buy.</value>
@@ -556,5 +553,50 @@
   </data>
   <data name="Tickets_Companion_Holds" xml:space="preserve">
     <value>Your companion already has a ticket for this event, so they do not need a companion ticket.</value>
+  </data>
+  <data name="Tickets_Email_PaymentFailed_Subject" xml:space="preserve">
+    <value>Your payment for {0} did not go through</value>
+  </data>
+  <data name="Tickets_Email_PaymentFailed_Intro" xml:space="preserve">
+    <value>Hi {0}, the payment for your order {1} for {2} was declined, so no tickets were issued.</value>
+  </data>
+  <data name="Tickets_Email_PaymentLapsed_Subject" xml:space="preserve">
+    <value>Your order for {0} was not completed</value>
+  </data>
+  <data name="Tickets_Email_PaymentLapsed_Intro" xml:space="preserve">
+    <value>Hi {0}, your order {1} for {2} was not paid in time, so it lapsed and its tickets went back on sale.</value>
+  </data>
+  <data name="Tickets_Email_PaymentEnded_Late" xml:space="preserve">
+    <value>If the payment still goes through later, we issue your tickets and email them to you.</value>
+  </data>
+  <data name="Tickets_Email_PaymentEnded_Retry" xml:space="preserve">
+    <value>Try again</value>
+  </data>
+  <data name="Tickets_Email_ResaleSold_Subject" xml:space="preserve">
+    <value>Your returned ticket for {0} sold</value>
+  </data>
+  <data name="Tickets_Email_ResaleSold_Intro" xml:space="preserve">
+    <value>Hi {0}, someone else has bought your returned ticket for {1}, so it no longer admits you.</value>
+  </data>
+  <data name="Tickets_Email_ResaleSold_Refund" xml:space="preserve">
+    <value>We refund you {0} in our evening refund batch, once the new buyer's payment has settled. Your bank then usually takes a few working days.</value>
+  </data>
+  <data name="Tickets_Email_ResaleUnsold_Subject" xml:space="preserve">
+    <value>Your returned ticket for {0} did not sell</value>
+  </data>
+  <data name="Tickets_Email_ResaleUnsold_Intro" xml:space="preserve">
+    <value>Hi {0}, sales for {1} have closed and nobody bought your returned ticket.</value>
+  </data>
+  <data name="Tickets_Email_ResaleUnsold_NoRefund" xml:space="preserve">
+    <value>There is no refund. Your ticket is still valid, so you are welcome to come.</value>
+  </data>
+  <data name="Tickets_Email_Resale_Open" xml:space="preserve">
+    <value>See your tickets</value>
+  </data>
+  <data name="Tickets_Resale_InviteTaken" xml:space="preserve">
+    <value>The ticket you were invited to buy has gone to someone else. You can buy the next returned ticket instead.</value>
+  </data>
+  <data name="Tickets_Resale_InviteAlready" xml:space="preserve">
+    <value>Everyone you entered has already been invited for this ticket.</value>
   </data>
 </root>

@@ -138,8 +138,7 @@ public sealed class TicketSupportReportsTests
         var newer = Offer(second, day: 5);
         var older = Offer(first, day: 2);
         var directed = Offer(invited, day: 1);
-        directed.DirectedTokenHash = "hash";
-        directed.DirectedEmail = "friend@example.com";
+        directed.Invites = [new TicketResaleInvite { Email = "friend@example.com", TokenHash = "hash", SentAt = directed.OfferedAt }];
         var done = Offer(sold, day: 1, TicketResaleOfferState.Sold);
         var refund = Refund(order.Id, 22500, RefundState.Failed);
         done.RefundId = refund.Id;

@@ -232,7 +232,11 @@ internal sealed class TicketCheckoutRepository(IDbContextFactory<TicketsDbContex
     public async Task UpdateOfferAsync(TicketResaleOffer offer, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
-        ctx.TicketResaleOffers.Update(offer);
+        var tracked = await ctx.TicketResaleOffers.FirstAsync(o => o.Id == offer.Id, ct);
+        // Owned JSON invites carry shadow ordinal keys, so a detached graph cannot be attached with Update().
+        ctx.Entry(tracked).CurrentValues.SetValues(offer);
+        tracked.Invites = offer.Invites
+            .Select(i => new TicketResaleInvite { Email = i.Email, TokenHash = i.TokenHash, SentAt = i.SentAt }).ToList();
         await ctx.SaveChangesAsync(ct);
     }
 
@@ -245,7 +249,7 @@ internal sealed class TicketCheckoutRepository(IDbContextFactory<TicketsDbContex
     public async Task<TicketResaleOffer?> GetOfferByTokenHashAsync(string tokenHash, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.TicketResaleOffers.AsNoTracking().FirstOrDefaultAsync(o => o.DirectedTokenHash == tokenHash, ct);
+        return (await ctx.TicketResaleOffers.AsNoTracking().ToListAsync(ct)).FirstOrDefault(o => o.InviteFor(tokenHash) is not null);
     }
 
     public async Task<IReadOnlyList<TicketResaleOffer>> GetOffersForSalesEventAsync(Guid salesEventId, CancellationToken ct = default)
@@ -343,11 +347,15 @@ internal sealed class TicketCheckoutRepository(IDbContextFactory<TicketsDbContex
             ticket.HolderEmail = ticket.HolderEmail is null ? null : TicketPiiTombstone.EmailFor(userId);
             changed++;
         }
-        foreach (var offer in (await ctx.TicketResaleOffers.Where(o => o.DirectedEmail != null).ToListAsync(ct))
-                     .Where(o => o.HolderUserId == userId || addresses.Contains(o.DirectedEmail!)))
+        foreach (var offer in (await ctx.TicketResaleOffers.ToListAsync(ct))
+                     .Where(o => (o.Invites.Count > 0 || o.DirectedEmail is not null)
+                                 && (o.HolderUserId == userId || o.Invites.Any(i => addresses.Contains(i.Email))
+                                     || (o.DirectedEmail is { } directed && addresses.Contains(directed)))))
         {
-            offer.DirectedEmail = null;
-            offer.DirectedTokenHash = null;
+            offer.Invites = offer.HolderUserId == userId ? [] : offer.Invites.Where(i => !addresses.Contains(i.Email)).ToList();
+            if (offer.HolderUserId == userId || (offer.DirectedEmail is { } directed && addresses.Contains(directed)))
+                (offer.DirectedEmail, offer.DirectedTokenHash) = (null, null);
+            ctx.TicketResaleOffers.Update(offer);
             changed++;
         }
         foreach (var request in await ctx.TicketCompanionRequests

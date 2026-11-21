@@ -24,6 +24,32 @@ internal sealed class TicketDeliveryHandOff(IBackgroundJobClient jobs) : ITicket
         jobs.Enqueue<TicketDeliveryService>(d => d.DeliverAsync(orderId, CancellationToken.None));
         return Task.CompletedTask;
     }
+
+    public Task PaymentEndedAsync(Guid orderId, CancellationToken ct = default)
+    {
+        jobs.Enqueue<TicketDeliveryService>(d => d.SendPaymentEndedAsync(orderId, CancellationToken.None));
+        return Task.CompletedTask;
+    }
+
+    public Task ResaleSoldAsync(Guid ticketId, long refundMinor, CancellationToken ct = default)
+    {
+        jobs.Enqueue<TicketDeliveryService>(d => d.SendResaleSoldAsync(ticketId, refundMinor, CancellationToken.None));
+        return Task.CompletedTask;
+    }
+
+    public Task ResaleUnsoldAsync(Guid ticketId, CancellationToken ct = default)
+    {
+        jobs.Enqueue<TicketDeliveryService>(d => d.SendResaleUnsoldAsync(ticketId, CancellationToken.None));
+        return Task.CompletedTask;
+    }
+
+    /// <summary>Each rename is its own mail; the id minted here keeps a Hangfire retry of it from mailing twice.</summary>
+    public Task TicketRenamedAsync(Guid ticketId, CancellationToken ct = default)
+    {
+        var deliveryId = Guid.NewGuid();
+        jobs.Enqueue<TicketDeliveryService>(d => d.SendRenamedTicketAsync(ticketId, deliveryId, CancellationToken.None));
+        return Task.CompletedTask;
+    }
 }
 
 /// <summary>
@@ -102,6 +128,78 @@ internal sealed class TicketDeliveryService(
         await auditLog.LogAsync(TicketsAuditActions.TicketJoinInvitationSent, TicketCheckoutService.AuditEntityType, orderId,
             "Handed the volunteer invitation for a ticket holder to Email (it honours their opt-out)",
             JobName, ticket.Id, "TicketCheckoutTicket");
+    }
+
+    /// <summary>The buyer of a checkout that ended unpaid; skipped if it was paid after all.</summary>
+    public async Task SendPaymentEndedAsync(Guid orderId, CancellationToken ct = default)
+    {
+        var detail = await checkout.GetOrderDetailAsync(orderId, ct);
+        if (detail?.Order is not { State: TicketCheckoutOrderState.Failed or TicketCheckoutOrderState.Expired } order
+            || await EventNameAsync(order.SalesEventId, ct) is not { } eventName)
+            return;
+        var buyer = await users.GetUserInfoAsync(order.BuyerUserId, ct);
+        var failed = order.State == TicketCheckoutOrderState.Failed;
+        await email.SendAsync(emails.PaymentEnded(
+            order.BuyerUserId, buyer?.Email ?? order.BuyerEmail, order.BuyerName, eventName, order.Reference, failed,
+            new Uri($"{BaseUrl}/Tickets/Buy"), DeliveryIdFor("ticket_payment_ended", order.Id), CultureOf(buyer, order)), ct);
+        await auditLog.LogAsync(TicketsAuditActions.TicketHolderNotified, TicketCheckoutService.AuditEntityType, orderId,
+            failed ? "Told the buyer the payment failed" : "Told the buyer the checkout lapsed unpaid", JobName);
+    }
+
+    /// <summary>The holder of a resold ticket, with the refund the evening batch sends.</summary>
+    public async Task SendResaleSoldAsync(Guid ticketId, long refundMinor, CancellationToken ct = default)
+    {
+        if (await HolderMailAsync(ticketId, TicketCheckoutTicketState.Resold, ct) is not { } to)
+            return;
+        await email.SendAsync(emails.ResaleSold(
+            to.UserId, to.Email, to.Ticket.HolderName, to.EventName, refundMinor, new Uri($"{BaseUrl}/Tickets/Buy/Mine"),
+            DeliveryIdFor("ticket_resale_sold", ticketId), to.Culture), ct);
+        await auditLog.LogAsync(TicketsAuditActions.TicketHolderNotified, TicketCheckoutService.AuditEntityType, to.Ticket.OrderId,
+            $"Told the holder ticket {to.Ticket.Barcode} was resold and its refund follows in the evening batch", JobName,
+            to.UserId, AuditSubjectTypes.User);
+    }
+
+    /// <summary>The holder whose returned ticket was still in the queue at sales close.</summary>
+    public async Task SendResaleUnsoldAsync(Guid ticketId, CancellationToken ct = default)
+    {
+        if (await HolderMailAsync(ticketId, TicketCheckoutTicketState.Offered, ct) is not { } to)
+            return;
+        await email.SendAsync(emails.ResaleUnsold(
+            to.UserId, to.Email, to.Ticket.HolderName, to.EventName, new Uri($"{BaseUrl}/Tickets/Buy/Mine"),
+            DeliveryIdFor("ticket_resale_unsold", ticketId), to.Culture), ct);
+        await auditLog.LogAsync(TicketsAuditActions.TicketHolderNotified, TicketCheckoutService.AuditEntityType, to.Ticket.OrderId,
+            $"Told the holder ticket {to.Ticket.Barcode} did not sell before sales closed: no refund, the ticket stays valid", JobName,
+            to.UserId, AuditSubjectTypes.User);
+    }
+
+    /// <summary>A renamed ticket goes to its holder again under the new name, with any children riding on it.</summary>
+    public async Task SendRenamedTicketAsync(Guid ticketId, Guid deliveryId, CancellationToken ct = default)
+    {
+        if (await HolderMailAsync(ticketId, TicketCheckoutTicketState.Valid, ct) is not { } to)
+            return;
+        var riders = ((await checkout.GetOrderDetailAsync(to.Ticket.OrderId, ct))?.Tickets ?? [])
+            .Where(t => t.ParentTicketId == ticketId && t.State == TicketCheckoutTicketState.Valid && string.IsNullOrWhiteSpace(t.HolderEmail));
+        await email.SendAsync(emails.TicketIssued(new IssuedTicketMail(
+            to.UserId, to.Email, to.Ticket.HolderName, to.EventName, [Card(to.Ticket), .. riders.Select(Card)],
+            new Uri($"{BaseUrl}/Tickets/Buy/Mine"), null, deliveryId), to.Culture), ct);
+        await auditLog.LogAsync(TicketsAuditActions.TicketHolderNotified, TicketCheckoutService.AuditEntityType, to.Ticket.OrderId,
+            $"Sent renamed ticket {to.Ticket.Barcode} to its holder", JobName, to.UserId, AuditSubjectTypes.User);
+    }
+
+    private sealed record HolderMail(TicketCheckoutTicket Ticket, Guid UserId, string Email, string EventName, string Culture);
+
+    /// <summary>Null, and nothing sent, once the ticket has moved on from <paramref name="state"/> or has no holder.</summary>
+    private async Task<HolderMail?> HolderMailAsync(Guid ticketId, TicketCheckoutTicketState state, CancellationToken ct)
+    {
+        if (await checkout.GetTicketAsync(ticketId, ct) is not { HolderUserId: { } holderId } ticket || ticket.State != state
+            || await EventNameAsync(ticket.SalesEventId, ct) is not { } eventName)
+            return null;
+        var holder = await users.GetUserInfoAsync(holderId, ct);
+        if ((holder?.Email ?? ticket.HolderEmail) is not { } address)
+            return null;
+        var order = (await checkout.GetOrderDetailAsync(ticket.OrderId, ct))?.Order;
+        return new HolderMail(ticket, holderId, address, eventName,
+            order is null ? SupportedOr(holder?.PreferredLanguage) : CultureOf(holder, order));
     }
 
     /// <summary>

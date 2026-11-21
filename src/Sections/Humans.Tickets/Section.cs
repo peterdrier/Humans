@@ -176,6 +176,7 @@ public sealed class Section :
         services.AddScoped<ITicketDelivery, TicketDeliveryHandOff>();
         services.AddScoped<TicketCheckoutReconcileJob>();
         services.AddScoped<TicketReconJob>();
+        services.AddScoped<TicketResaleRefundJob>();
     }
 
     string IIssueQueueOwner.QueueKey => "Tickets";
@@ -270,6 +271,9 @@ public sealed class Section :
 
         // The daily financial check of every backend against Humans' orders; reads only.
         yield return new RecurringJobDescriptor("tickets-checkout-recon", typeof(TicketReconJob), "30 4 * * *");
+
+        // Evening in Spain (cron is UTC): refunds resold tickets whose buyer's order has held.
+        yield return new RecurringJobDescriptor("tickets-resale-refund-batch", typeof(TicketResaleRefundJob), "0 19 * * *");
     }
 
     IEnumerable<SettingsTab> ISectionSettings.Tabs() =>

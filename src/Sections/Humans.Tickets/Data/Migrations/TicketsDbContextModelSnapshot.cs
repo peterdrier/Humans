@@ -400,6 +400,9 @@ namespace Humans.Tickets.Data.Migrations
                     b.Property<Guid>("TicketId")
                         .HasColumnType("uuid");
 
+                    b.Property<Instant?>("UnsoldNotifiedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<Instant?>("WithdrawnAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -903,6 +906,38 @@ namespace Humans.Tickets.Data.Migrations
                         });
 
                     b.Navigation("Lines");
+                });
+
+            modelBuilder.Entity("Humans.Tickets.Domain.Checkout.TicketResaleOffer", b =>
+                {
+                    b.OwnsMany("Humans.Tickets.Domain.Checkout.TicketResaleInvite", "Invites", b1 =>
+                        {
+                            b1.Property<Guid>("TicketResaleOfferId");
+
+                            b1.Property<int>("__synthesizedOrdinal")
+                                .ValueGeneratedOnAdd();
+
+                            b1.Property<string>("Email")
+                                .IsRequired();
+
+                            b1.Property<Instant>("SentAt");
+
+                            b1.Property<string>("TokenHash")
+                                .IsRequired();
+
+                            b1.HasKey("TicketResaleOfferId", "__synthesizedOrdinal");
+
+                            b1.ToTable("ticket_resale_offers");
+
+                            b1
+                                .ToJson("directed_invites")
+                                .HasColumnType("jsonb");
+
+                            b1.WithOwner()
+                                .HasForeignKey("TicketResaleOfferId");
+                        });
+
+                    b.Navigation("Invites");
                 });
 
             modelBuilder.Entity("Humans.Tickets.Domain.Checkout.TicketSalesEvent", b =>

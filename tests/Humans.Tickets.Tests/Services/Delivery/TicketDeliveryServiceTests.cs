@@ -259,4 +259,57 @@ public sealed class TicketDeliveryServiceTests
 
         _sent.Should().BeEmpty();
     }
+
+    [HumansFact]
+    public async Task PaymentEnded_TellsTheBuyerOnlyWhenTheOrderFailedOrLapsed()
+    {
+        await Create().SendPaymentEndedAsync(_order.Id);
+        _sent.Should().BeEmpty("a paid order gets its tickets, not a failure notice");
+
+        _order.State = TicketCheckoutOrderState.Failed;
+        await Create().SendPaymentEndedAsync(_order.Id);
+
+        var mail = _sent.Should().ContainSingle().Subject;
+        mail.TemplateName.Should().Be("ticket_payment_ended");
+        mail.RecipientEmail.Should().Be("ana@example.com");
+        mail.DeliveryId.Should().Be(TicketDeliveryService.DeliveryIdFor("ticket_payment_ended", _order.Id));
+        await _audit.Received(1).LogAsync(TicketsAuditActions.TicketHolderNotified, Arg.Any<string>(), _order.Id,
+            Arg.Any<string>(), Arg.Any<string>());
+    }
+
+    [HumansFact]
+    public async Task ResaleSoldAndUnsold_GoToTheHolder_OnlyWhileTheTicketIsInThatState()
+    {
+        var ticket = Ticket(PartnerId, "Ben Partner", "ben@example.com", TicketCheckoutTicketState.Offered);
+        _checkout.GetTicketAsync(ticket.Id, Arg.Any<CancellationToken>()).Returns(ticket);
+
+        await Create().SendResaleSoldAsync(ticket.Id, 22500);
+        await Create().SendResaleUnsoldAsync(ticket.Id);
+        ticket.State = TicketCheckoutTicketState.Resold;
+        await Create().SendResaleSoldAsync(ticket.Id, 22500);
+        await Create().SendResaleUnsoldAsync(ticket.Id);
+
+        _sent.Select(m => m.TemplateName).Should().Equal("ticket_resale_unsold", "ticket_resale_sold");
+        _sent.Should().AllSatisfy(m => m.RecipientEmail.Should().Be("ben@example.com"));
+        _sent[1].Culture.Should().Be("de");
+        _sent[1].HtmlBody.Should().Contain("225,00 €");
+    }
+
+    [HumansFact]
+    public async Task RenamedTicket_IsSentToTheNewHolder_WithTheChildrenRidingOnIt()
+    {
+        var adult = Ticket(PartnerId, "Ben Partner", "ben@example.com");
+        var child = Ticket(PartnerId, "Kid Partner", null, kind: TicketHolderKind.Child, parent: adult.Id);
+        Tickets(adult, child);
+        _checkout.GetTicketAsync(adult.Id, Arg.Any<CancellationToken>()).Returns(adult);
+        var deliveryId = Guid.NewGuid();
+
+        await Create().SendRenamedTicketAsync(adult.Id, deliveryId);
+
+        var mail = _sent.Should().ContainSingle().Subject;
+        mail.TemplateName.Should().Be("ticket_issued");
+        mail.RecipientEmail.Should().Be("ben@example.com");
+        mail.DeliveryId.Should().Be(deliveryId);
+        mail.HtmlBody.Should().Contain(adult.Barcode).And.Contain(child.Barcode);
+    }
 }
