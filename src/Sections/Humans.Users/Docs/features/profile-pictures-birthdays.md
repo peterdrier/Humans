@@ -107,7 +107,7 @@ Picture saves use `IProfileEditorService.SaveProfileAsync`: `UserService` writes
 
 | Route | Method | Description |
 |-------|--------|-------------|
-| `GET /Profile/Picture?id={id}` | GET | Serve profile picture (anonymous, cached 1hr) |
+| `GET /Profile/Picture?id={userId}` | GET | Serve profile picture (anonymous, cached 1hr) |
 | `GET /Users/Birthdays` | GET | Birthday calendar (current month) |
 | `GET /Users/Birthdays?month=N` | GET | Birthday calendar for specific month |
 
@@ -146,7 +146,7 @@ Picture saves use `IProfileEditorService.SaveProfileAsync`: `UserService` writes
 
 Only the custom uploaded picture is rendered in the UI. Google OAuth avatar URLs are never displayed directly — humans without a custom picture get the initial-letter placeholder.
 
-The team photo gallery (US-14.2) renders member pictures through the shared `<vc:human>` component (`HumanViewComponent`), not a per-page view model: it resolves `UserInfo.Profile.HasCustomPicture`, and when true builds the picture URL via `Url.Action("Picture", "ProfileView", new { id = profile.Id, v = profile.UpdatedAt })` (`GET /Profile/Picture?id={id}&v={updatedAtTicks}` — the `v` query param cache-busts on picture change). The own-profile edit page renders its preview through `<vc:human>` by `UserId` as well. Either way, a null/false result falls back to the initial-letter placeholder — never a Google avatar.
+The team photo gallery (US-14.2) renders member pictures through the shared `<vc:human>` component (`HumanViewComponent`), not a per-page view model: it resolves `UserInfo.Profile.HasCustomPicture`, and when true builds the picture URL via `Url.Action("Picture", "ProfileView", new { id = userId, v = profile.UpdatedAt })` (`GET /Profile/Picture?id={id}&v={updatedAtTicks}` — the `v` query param cache-busts on picture change). The own-profile edit page renders its preview through `<vc:human>` by `UserId` as well. Either way, a null/false result falls back to the initial-letter placeholder — never a Google avatar.
 
 ## Privacy Model
 

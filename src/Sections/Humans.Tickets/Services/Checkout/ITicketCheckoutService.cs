@@ -22,6 +22,9 @@ internal interface ITicketCheckoutService : ITicketCheckoutEvents, IApplicationS
 
     Task<CheckoutMutationResult> SaveSalesEventAsync(SalesEventSave save, Guid actorUserId, CancellationToken ct = default);
 
+    /// <summary>The ticketing team opens or pauses resale by hand; returned tickets wait in the queue while it is paused.</summary>
+    Task<CheckoutMutationResult> SetResaleOpenAsync(Guid salesEventId, bool open, Guid actorUserId, CancellationToken ct = default);
+
     /// <summary>One page per event selling through Humans (not Closed); several events may sell at once.</summary>
     Task<IReadOnlyList<BuyPage>> GetBuyPagesAsync(Guid userId, CancellationToken ct = default);
 
@@ -114,11 +117,28 @@ internal interface ITicketCheckoutService : ITicketCheckoutEvents, IApplicationS
     /// </summary>
     Task<TicketRecon?> ReconcileBackendAsync(string backendKey, Instant from, Instant to, CancellationToken ct = default);
 
+    /// <summary>Every order opened on one backend, newest first, with its stuck orders and unsettled refunds; null for an unknown key.</summary>
+    Task<BackendLedger?> GetBackendLedgerAsync(string backendKey, CancellationToken ct = default);
+
     /// <summary>The backends some sales setup sells through, for the reconciliation page and its daily run.</summary>
     Task<IReadOnlyList<string>> GetBackendsInUseAsync(CancellationToken ct = default);
 }
 
 internal sealed record CheckoutBackendInfo(string Key, bool IsConfigured, CheckoutBackendSetup Setup);
+
+/// <summary>
+/// <paramref name="Paid"/>: paid orders as reconciliation counts them, free orders left out. <paramref name="Stuck"/>:
+/// orders still open well past their expiry, which neither a webhook nor the five-minute reconcile has settled.
+/// <paramref name="UnsettledRefunds"/>: pending or waiting on a person. <paramref name="FailedRefunds"/>: failed, with
+/// no later attempt on the order that went through.
+/// </summary>
+internal sealed record BackendLedger(
+    CheckoutBackendInfo Backend,
+    IReadOnlyList<TicketCheckoutOrder> Orders,
+    IReadOnlyList<TicketCheckoutOrder> Paid,
+    IReadOnlyList<TicketCheckoutOrder> Stuck,
+    IReadOnlyList<TicketCheckoutRefund> UnsettledRefunds,
+    IReadOnlyList<TicketCheckoutRefund> FailedRefunds);
 
 /// <summary>Admin pages are English-only, so the refusal is shown as is.</summary>
 internal sealed record CheckoutMutationResult(string? Refusal = null)
@@ -143,8 +163,6 @@ internal sealed record SalesEventSave(
 {
     public long? ChildPriceMinor { get; init; }
     public int? ChildMaxAge { get; init; }
-    public int? ResaleOpensAtSold { get; init; }
-    public int DirectedResaleDays { get; init; } = 3;
     public TicketSalesSwitches Switches { get; init; } = new();
     public string? TermsUrl { get; init; }
 }
@@ -198,8 +216,8 @@ internal sealed record StartCheckout(
     Uri ReturnUrlBase,
     string Culture)
 {
-    /// <summary>Legal names of children on the buyer's own ticket.</summary>
-    public IReadOnlyList<string> ChildNames { get; init; } = [];
+    /// <summary>Legal names of children on the buyer's own ticket; blank entries (unfilled form boxes) are ignored.</summary>
+    public IReadOnlyList<string?> ChildNames { get; init; } = [];
 
     public bool AcceptTerms { get; init; }
 

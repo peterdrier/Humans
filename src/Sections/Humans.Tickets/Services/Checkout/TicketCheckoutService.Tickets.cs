@@ -55,7 +55,7 @@ internal sealed partial class TicketCheckoutService
                 : (await settings.GetEventSettingsByIdAsync(salesEvent.EventSettingsId, ct))?.EventName ?? string.Empty;
             var offers = await repository.GetOffersForSalesEventAsync(group.Key, ct);
             var queue = offers.Where(o => o.State is TicketResaleOfferState.Open or TicketResaleOfferState.Reserved).ToList();
-            var positions = TicketSupportReports.QueuePositions(offers, now);
+            var positions = TicketSupportReports.QueuePositions(offers);
             var eventTickets = salesEvent is null ? [] : await repository.GetTicketsForSalesEventAsync(group.Key, ct);
             foreach (var ticket in group.OrderBy(t => t.IssuedAt))
             {
@@ -64,7 +64,7 @@ internal sealed partial class TicketCheckoutService
                 held.Add(new HeldTicket(ticket, eventName, offer, offer is null ? null : positions[offer.Id],
                     CanOffer: salesEvent?.EffectiveSwitches.Resale is not (null or ResaleScheme.Off) && offer is null && ticket.Kind == TicketHolderKind.Adult && salesEvent is { Mode: not TicketSalesMode.Closed },
                     HasDependents: hasDependents,
-                    DirectedActive: offer?.IsDirectedTo(now) == true)
+                    DirectedActive: offer?.HasLiveInvite == true)
                 {
                     CanInvite = salesEvent?.EffectiveSwitches.Resale == ResaleScheme.QueueAndDirected,
                 });
@@ -153,7 +153,7 @@ internal sealed partial class TicketCheckoutService
         if (await IsAdmittedAsync(ticket, ct))
             return new("Tickets_Resale_NotOfferable");
         var now = clock.GetCurrentInstant();
-        if (offer.IsDirectedTo(now))
+        if (offer.HasLiveInvite)
             return new("Tickets_Resale_InviteLive");
         // Counted over all of the ticket's offers, so withdrawing and offering again does not start a fresh allowance.
         if ((await repository.GetOffersForSalesEventAsync(ticket.SalesEventId, ct))
@@ -167,19 +167,17 @@ internal sealed partial class TicketCheckoutService
 
         var token = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32))
             .TrimEnd('=').Replace('+', '-').Replace('/', '_');
-        var days = Math.Max(1, salesEvent.DirectedResaleDays);
         offer.DirectedEmail = inviteeEmail;
         offer.DirectedTokenHash = HashToken(token);
-        offer.DirectedExpiresAt = now + Duration.FromDays(days);
         offer.DirectedUsedAt = null;
         offer.DirectedInviteCount++;
         await repository.UpdateOfferAsync(offer, ct);
 
         var eventName = (await settings.GetEventSettingsByIdAsync(salesEvent.EventSettingsId, ct))?.EventName ?? string.Empty;
         await email.SendAsync(emails.ResaleInvitation(
-            inviteeEmail, ticket.HolderName, eventName, new Uri(claimUrlBase, token).ToString(), days, culture), ct);
+            inviteeEmail, ticket.HolderName, eventName, new Uri(claimUrlBase, token).ToString(), culture), ct);
         await TimelineAsync(ticket.OrderId, TicketCheckoutOrderEventKind.ResaleInvited,
-            $"Holder invited one buyer for ticket {ticket.Barcode}; the link lapses {offer.DirectedExpiresAt.Value.ToIso8601()}",
+            $"Holder invited one buyer for ticket {ticket.Barcode}; the ticket stays in the queue meanwhile",
             userId, ct);
         return CheckoutMutationResult.Ok;
     }
@@ -192,7 +190,6 @@ internal sealed partial class TicketCheckoutService
         if (offer.State == TicketResaleOfferState.Reserved)
             return new("Tickets_Resale_InCheckout");
         offer.DirectedTokenHash = null;
-        offer.DirectedExpiresAt = null;
         offer.DirectedEmail = null;
         await repository.UpdateOfferAsync(offer, ct);
         await TimelineAsync(ticket.OrderId, TicketCheckoutOrderEventKind.ResaleInviteCancelled,
@@ -225,7 +222,8 @@ internal sealed partial class TicketCheckoutService
 
     /// <summary>The invited offer when the link is live, bound to the signed-in buyer's email and the queue still open.</summary>
     private static TicketResaleOffer? DirectedOfferFor(TicketResaleOffer offer, BuyContext context) =>
-        offer.State == TicketResaleOfferState.Open && offer.IsDirectedTo(context.Now)
+        context.SalesEvent.ResaleSelling
+        && offer.State == TicketResaleOfferState.Open && offer.HasLiveInvite
         && string.Equals(offer.DirectedEmail, context.Buyer?.Email, StringComparison.OrdinalIgnoreCase)
         && offer.SalesEventId == context.SalesEvent.Id
             ? offer
@@ -415,7 +413,9 @@ internal sealed partial class TicketCheckoutService
             return;
 
         var now = clock.GetCurrentInstant();
-        var directed = offer.DirectedTokenHash is not null;
+        // The queue also sells an invited ticket, so only the invited buyer's own purchase counts as using the invitation.
+        var directed = offer.HasLiveInvite
+            && string.Equals(offer.DirectedEmail, buyerOrder.BuyerEmail, StringComparison.OrdinalIgnoreCase);
         offer.State = TicketResaleOfferState.Sold;
         offer.SoldAt = now;
         offer.SoldToOrderId = buyerOrder.Id;
@@ -559,29 +559,16 @@ internal sealed partial class TicketCheckoutService
     }
 
     /// <summary>
-    /// Lapses expired invitations (the offer keeps its place) and repairs offers held by a checkout that will never
-    /// pay or already paid. Returns how many changed.
+    /// Repairs offers held by a checkout that will never pay or already paid. Returns how many changed.
     /// </summary>
     private async Task<int> SweepOffersAsync(CancellationToken ct)
     {
-        var now = clock.GetCurrentInstant();
         var changed = 0;
         foreach (var salesEvent in await repository.GetSalesEventsAsync(ct))
         {
             foreach (var offer in await repository.GetOffersForSalesEventAsync(salesEvent.Id, ct))
             {
-                if (offer.State == TicketResaleOfferState.Open && offer.DirectedTokenHash is not null
-                    && offer.DirectedUsedAt is null && offer.DirectedExpiresAt <= now)
-                {
-                    offer.DirectedTokenHash = null;
-                    offer.DirectedEmail = null;
-                    await repository.UpdateOfferAsync(offer, ct);
-                    if (await repository.GetTicketAsync(offer.TicketId, ct) is { } ticket)
-                        await TimelineAsync(ticket.OrderId, TicketCheckoutOrderEventKind.ResaleInviteLapsed,
-                            $"Invitation for ticket {ticket.Barcode} lapsed unused; it stays in the queue", null, ct);
-                    changed++;
-                }
-                else if (offer is { State: TicketResaleOfferState.Reserved, ReservedByOrderId: { } orderId }
+                if (offer is { State: TicketResaleOfferState.Reserved, ReservedByOrderId: { } orderId }
                          && await repository.GetOrderAsync(orderId, ct) is { } holder
                          && !holder.IsOpen)
                 {

@@ -1,21 +1,21 @@
+using Humans.Base.Enums;
 using Humans.Camps.Models;
-using Humans.Base.Extensions;
-using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
 
-namespace Humans.Camps.Contracts;
+namespace Humans.Camps.ViewComponents;
 
-/// <summary>Private: shown only on the human's own profile page, never publicly.</summary>
-public class MyCampsViewComponent(ICampService campService, ILogger<MyCampsViewComponent> logger) : ViewComponent
+/// <summary>The human's camp memberships, on their own profile page only (<c>UserPartSlots.Profile</c>, Self view mode).</summary>
+/// <remarks>Public: Razor's discovery only sees public view components; an internal one ships as inert markup.</remarks>
+public sealed class MyCampsViewComponent(ICampService campService, ILogger<MyCampsViewComponent> logger) : ViewComponent
 {
-    public async Task<IViewComponentResult> InvokeAsync()
+    public async Task<IViewComponentResult> InvokeAsync(Guid userId, ProfileCardViewMode viewMode)
     {
+        if (viewMode != ProfileCardViewMode.Self)
+            return Content(string.Empty);
+
         var ct = HttpContext.RequestAborted;
         try
         {
-            if (UserClaimsPrincipal.GetUserId() is not { } userId)
-                return Content(string.Empty);
-
             var settings = await campService.GetSettingsAsync(ct);
             // Open events plus the active one, latest gate opening first.
             var events = settings.Events

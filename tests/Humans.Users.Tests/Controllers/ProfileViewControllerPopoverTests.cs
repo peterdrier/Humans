@@ -97,11 +97,11 @@ public class ProfileViewControllerPopoverTests
     [InlineData(null, "max-age=3600, private")]
     public async Task Picture_VersionedUrl_IsCachedForAYear(long? version, string expected)
     {
-        var profileId = Guid.NewGuid();
-        _profilePictureService.GetProfilePictureAsync(profileId, Arg.Any<CancellationToken>())
+        var userId = Guid.NewGuid();
+        _profilePictureService.GetProfilePictureAsync(userId, Arg.Any<CancellationToken>())
             .Returns(((byte[] Data, string ContentType)?)(new byte[] { 1, 2, 3 }, "image/jpeg"));
 
-        await _controller.Picture(profileId, version, TestContext.Current.CancellationToken);
+        await _controller.Picture(userId, version, TestContext.Current.CancellationToken);
 
         _controller.Response.Headers.CacheControl.ToString().Should().Be(expected);
     }

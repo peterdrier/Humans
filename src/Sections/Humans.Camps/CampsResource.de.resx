@@ -343,4 +343,5 @@
   <data name="Camps_Meter_JoinRequest" xml:space="preserve"><value>1 Person möchte deinem Camp beitreten</value></data>
   <data name="Camps_Meter_JoinRequests" xml:space="preserve"><value>{0} Personen möchten deinem Camp beitreten</value></data>
   <data name="Camps_Meter_AudienceCampLeads" xml:space="preserve"><value>Barrio-Leitung</value></data>
+  <data name="Camps_Search_Category" xml:space="preserve"><value>Camps</value></data>
 </root>

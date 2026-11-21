@@ -6,6 +6,6 @@ namespace Humans.Users.Services;
 internal interface IProfilePictureService : IApplicationService
 {
     Task<(byte[] Data, string ContentType)?> GetProfilePictureAsync(
-        Guid profileId,
+        Guid userId,
         CancellationToken ct = default);
 }

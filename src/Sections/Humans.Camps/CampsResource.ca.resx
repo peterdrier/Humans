@@ -343,4 +343,5 @@
   <data name="Camps_Meter_JoinRequest" xml:space="preserve"><value>1 persona vol unir-se al teu barri</value></data>
   <data name="Camps_Meter_JoinRequests" xml:space="preserve"><value>{0} persones volen unir-se al teu barri</value></data>
   <data name="Camps_Meter_AudienceCampLeads" xml:space="preserve"><value>responsables de barri</value></data>
+  <data name="Camps_Search_Category" xml:space="preserve"><value>Barris</value></data>
 </root>

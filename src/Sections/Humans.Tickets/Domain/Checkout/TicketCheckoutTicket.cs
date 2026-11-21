@@ -71,8 +71,9 @@ internal enum TicketCheckoutTicketState
 
 /// <summary>
 /// A holder's ticket waiting in the resale queue, oldest first. When it sells, the buyer gets a new ticket, the old one
-/// is marked resold and the holder is refunded <see cref="RefundOwedMinor"/>. A directed offer (an invited buyer)
-/// sells only to that email until <see cref="DirectedExpiresAt"/>, then rejoins the queue at its original place.
+/// is marked resold and the holder is refunded <see cref="RefundOwedMinor"/>. A directed offer (an invited buyer) also
+/// sells to that email through the link, and stays in the queue meanwhile: whoever buys first gets it. The link has
+/// no expiry; it works while the offer is open.
 /// </summary>
 internal sealed class TicketResaleOffer
 {
@@ -108,14 +109,12 @@ internal sealed class TicketResaleOffer
     /// <summary>SHA-256 of the emailed link's token; the token itself is never stored.</summary>
     public string? DirectedTokenHash { get; set; }
 
-    public Instant? DirectedExpiresAt { get; set; }
-
     public Instant? DirectedUsedAt { get; set; }
 
     /// <summary>Invitations sent for this offer, capped so a holder cannot mail addresses without end.</summary>
     public int DirectedInviteCount { get; set; }
 
-    public bool IsDirectedTo(Instant now) => DirectedTokenHash is not null && DirectedUsedAt is null && DirectedExpiresAt > now;
+    public bool HasLiveInvite => DirectedTokenHash is not null && DirectedUsedAt is null;
 }
 
 internal enum TicketResaleOfferState

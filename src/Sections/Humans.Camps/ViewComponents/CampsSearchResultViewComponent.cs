@@ -9,11 +9,11 @@ namespace Humans.Camps.ViewComponents;
 public sealed class CampsSearchResultViewComponent(ICampService camps) : ViewComponent
 {
     /// <summary>Renders the row, or nothing when the camp no longer resolves.</summary>
-    /// <param name="campId">The matched camp.</param>
-    public async Task<IViewComponentResult> InvokeAsync(Guid campId)
+    /// <param name="key">The matched camp.</param>
+    public async Task<IViewComponentResult> InvokeAsync(Guid key)
     {
         // Both reads are served from the cached CampInfo snapshot — one row costs no query.
-        var camp = await camps.GetCampByIdAsync(campId, HttpContext.RequestAborted);
+        var camp = await camps.GetCampByIdAsync(key, HttpContext.RequestAborted);
         if (camp is null)
             return Content(string.Empty);
 

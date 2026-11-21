@@ -175,4 +175,5 @@
   <data name="Events_RecurrenceDaysInvalid" xml:space="preserve"><value>Choose each recurrence day once from this event’s calendar.</value></data>
   <data name="Events_CategoryUnavailable" xml:space="preserve"><value>Choose an active category. The selected category is no longer available.</value></data>
   <data name="Events_VenueUnavailable" xml:space="preserve"><value>Choose an active venue. The selected venue is no longer available.</value></data>
+  <data name="Events_Search_Category" xml:space="preserve"><value>Events</value></data>
 </root>

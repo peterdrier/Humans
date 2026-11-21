@@ -793,6 +793,7 @@
   <data name="Users_Status_Board" xml:space="preserve"><value>Conseil</value></data>
   <data name="Users_Meter_PendingAccountDeletions" xml:space="preserve"><value>Suppressions de comptes en attente</value></data>
   <data name="Users_Meter_AudienceAdmin" xml:space="preserve"><value>administrateurs</value></data>
+  <data name="Users_Search_Category" xml:space="preserve"><value>Humans</value></data>
   <data name="Users_ConfirmEmail_Prompt" xml:space="preserve"><value>Ajouter {0} à votre compte ?</value></data>
   <data name="Users_ConfirmEmail_Button" xml:space="preserve"><value>Confirmer cette adresse</value></data>
   <data name="Users_ConfirmEmail_Invalid" xml:space="preserve"><value>Ce lien ne fonctionne plus. Un lien fonctionne une seule fois, pendant une heure. Pour en recevoir un nouveau, retirez l'adresse dans vos paramètres e-mail puis ajoutez-la de nouveau.</value></data>

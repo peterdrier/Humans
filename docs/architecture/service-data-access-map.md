@@ -43,6 +43,7 @@ The goal is to identify cross-section table overlap, duplicated caching, and cac
 > | `AgentDbContext` | `AgentConversations`, `AgentMessages`, `AgentSettings` (own project, `src/Sections/Humans.Agent/`) |
 > | `SettingsDbContext` | `Setting`, `EventSettings` — tables `settings_system_values` and `settings_events` (own project, `src/Sections/Humans.Settings/`) |
 > | `ContainersDbContext` | `Containers`, `ContainerPlacements`, `ContainerImages` (own project, `src/Sections/Humans.Containers/`) |
+> | `RolesDbContext` | `role_definitions`, `role_assignments` (own project, `src/Sections/Humans.Roles/`) |
 > | `ExpensesDbContext` | `ExpenseReports`, `ExpenseLines`, `ExpenseAttachments`, `HoldedExpenseOutboxEvents` (own project, `src/Sections/Humans.Expenses/`) |
 > | `FinanceDbContext` | `HoldedExpenseDocs`, `HoldedCategoryMap`, `HoldedCreditorContacts`, `HoldedDocSyncStates`, `HoldedManagedAccounts`, `SepaPayoutFiles`, `SepaPayoutTransfers`, `finance_payment_details` (own project, `src/Sections/Humans.Finance/`). The ledger mirror (`HoldedLedgerLines`, its sync state, the chart-of-accounts cache, and the API call log) lives in the separate `HoldedDbContext` below. |
 > | `HoldedDbContext` | `HoldedLedgerLines`, `HoldedSyncStates`, `HoldedAccounts`, `HoldedApiCalls`, `HoldedPurchaseDocs` (own project, `src/Sections/Humans.Holded/`). The daybook-journal ledger mirror, purchase-document mirror, chart-of-accounts cache, and Holded API call-log/metering — split out of Finance so the two sections that both touch Holded data stay structurally isolated from each other. |
@@ -384,6 +385,7 @@ separately below the key table.
 | `TrackedCache<Guid, TicketOrderInfo>` | Tickets | `Tickets.Orders` | Per-Entity | CachingTicketQueryService warmup + lazy load | own write pass-throughs (clear-all on sync, transfer, contact import, erasure, merge) |
 | `TrackedCache<Guid, CachedUserTicketHoldings>` | Tickets | `Tickets.UserHoldings` | Per-User (5-min freshness in value) | CachingTicketQueryService lazy load | own write pass-throughs (both users on merge; clear-all otherwise) |
 | `TrackedCache<Guid, CampInfo>` + settings slot | Camps | `Camp.CampInfo` | Per-Entity / Static | CachingCampService warmup + lazy load | own writes, role writes, merge, GDPR erasure (`RefreshAll`) |
+| `TrackedCache<Guid, RoleInfo>` | Roles | `Roles.Role` | Per-Entity | CachingRoleService warmup | full `Clear()` after every write, merge and GDPR erasure |
 | `TrackedCache<Guid, CalendarEventInfo>` | Calendar | `Calendar.Event` | Per-Entity | CachingCalendarService warmup + lazy load | per-event `ReplaceAsync` after delegated write |
 | `TrackedCache<Guid, ApprovedEventView>` + category/venue/settings snapshots | Events | `Event.ApprovedEventView` | Per-Entity / Static | CachingEventService warmup + lazy load | inline per write |
 | `TrackedCache<Guid, UserConsentInfo>` | Consent | `Consent.UserConsentInfo` | Per-User | CachingConsentService lazy load | synchronous per-user evict on submit; merge reloads via `UserInfo.AllUserIds` |

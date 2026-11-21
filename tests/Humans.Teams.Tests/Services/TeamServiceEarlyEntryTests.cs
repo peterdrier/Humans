@@ -1,3 +1,4 @@
+using Humans.Roles.Contracts;
 using Humans.Users.Contracts;
 using Humans.Settings.Contracts;
 using AwesomeAssertions;
@@ -55,6 +56,7 @@ public sealed class TeamServiceEarlyEntryTests
                 .With<ITeamResourceService>()
                 .With(_users)
                 .With(_systemTeamSync)
+                .With<IRoleWrite>()
                 .With(_roles)
                 .With(_settings)
                 .Build(),

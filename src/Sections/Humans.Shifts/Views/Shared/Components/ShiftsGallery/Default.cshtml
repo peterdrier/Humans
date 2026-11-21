@@ -244,7 +244,7 @@
         @if (Model.Rota is not null)
         {
             <div class="list-group">
-                <vc:shifts-search-result rota-id="@Model.Rota.Id" />
+                <vc:shifts-search-result key="@Model.Rota.Id" />
             </div>
         }
         else

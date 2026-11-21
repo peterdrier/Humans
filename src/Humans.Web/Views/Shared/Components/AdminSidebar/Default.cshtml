@@ -15,7 +15,7 @@
         @foreach (var group in Model.Groups)
         {
             var first = group.First;
-            <a class="@(group.IsActive ? "active" : null)" data-group="@group.Label" href="@(first.RawHref ?? Url.Action(first.Action, first.Controller))">
+            <a class="@(group.IsActive ? "active" : null)" data-group="@group.Label" href="@(first.RawHref ?? Url.Action(first.Action, first.Controller, first.RouteValues))">
                 <i class="@first.IconCssClass" aria-hidden="true"></i>
                 <span>@group.Label</span>
                 @if (group.PillSum.HasValue)

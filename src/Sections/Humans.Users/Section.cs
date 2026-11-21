@@ -1,5 +1,4 @@
 using Humans.Base.Extensions;
-using Humans.Teams.Contracts;
 using System.Globalization;
 using System.Security.Claims;
 using Humans.Application.Services.Users;
@@ -13,13 +12,10 @@ using Humans.Base.Interfaces;
 using Humans.Base.Interfaces.Caching;
 using Humans.Base.Models;
 using Humans.Cantina.Contracts;
-using Humans.Consent.Contracts;
 using Humans.Email.Contracts;
 using Humans.Gdpr.Contracts;
 using Humans.Issues.Contracts;
-using Humans.Settings.Contracts;
 using Humans.Shifts.Contracts;
-using Humans.Tickets.Contracts;
 using Humans.Users.Authorization;
 using Humans.Users.Contracts;
 using Humans.Users.Data;
@@ -56,6 +52,7 @@ public sealed class Section :
     ISectionMemberDashboard,
     ISectionPolicies,
     ISectionThingsToDo,
+    ISearchContributor,
     IUserPart
 {
     IReadOnlyList<RoleDefinition> ISectionRoles.Roles { get; } =
@@ -210,8 +207,7 @@ public sealed class Section :
     IEnumerable<AdminTile> ISectionAdminTiles.Tiles() =>
     [
         new AdminTile("users.total", "Total users", "fa-solid fa-users", TotalAsync, Weight: 10),
-        new AdminTile("users.profiles", "Active (has profile)", "fa-solid fa-id-card", ProfilesAsync, Weight: 20),
-        new AdminTile("users.tickets", "Ticket holders", "fa-solid fa-ticket", TicketHoldersAsync, Weight: 30)
+        new AdminTile("users.profiles", "Active (has profile)", "fa-solid fa-id-card", ProfilesAsync, Weight: 20)
     ];
 
     private static async ValueTask<AdminTileValue?> TotalAsync(IServiceProvider sp, CancellationToken ct)
@@ -224,19 +220,6 @@ public sealed class Section :
     {
         var count = (await SnapshotAsync(sp, ct)).Count(u => u.IsActive);
         return new AdminTileValue(count.ToString(CultureInfo.CurrentCulture), Summary: $"{count} with profile");
-    }
-
-    private static async ValueTask<AdminTileValue?> TicketHoldersAsync(IServiceProvider sp, CancellationToken ct)
-    {
-        var activeEvent = sp.GetRequiredService<ISettingsService>().GetActiveEventSettings();
-        var count = 0;
-        if (activeEvent is { Year: > 0 })
-        {
-            var living = (await SnapshotAsync(sp, ct)).Select(u => u.Id).ToHashSet();
-            count = (await sp.GetRequiredService<ITicketService>().GetAllParticipationsAsync(ct))
-                .Count(p => p.Year == activeEvent.Year && p.HasTicket && living.Contains(p.UserId));
-        }
-        return new AdminTileValue(count.ToString(CultureInfo.CurrentCulture), Summary: $"{count} with ticket");
     }
 
     private static async Task<IReadOnlyCollection<UserInfo>> SnapshotAsync(IServiceProvider sp, CancellationToken ct) =>
@@ -349,16 +332,8 @@ public sealed class Section :
         var localizer = services.GetRequiredService<IStringLocalizer<SharedResource>>();
         var logger = services.GetRequiredService<ILogger<Section>>();
         var info = await services.GetRequiredService<IUserService>().GetUserInfoAsync(userId, ct);
-        var isVolunteerMember = (await services.GetRequiredService<ITeamService>().GetTeamAsync(SystemTeamIds.Volunteers, ct))
-            is { IsActive: true } volunteers && volunteers.Members.Any(m => m.UserId == userId);
 
         var entries = new List<ThingsToDoEntry> { await ProfileEntryAsync(services, localizer, info, userId, ct) };
-
-        if (!isVolunteerMember)
-        {
-            var review = await services.GetRequiredService<IConsentService>().GetConsentReviewAsync(userId, ct);
-            entries.Add(ConsentCheckEntry(localizer, info?.Profile is not null && review.Status == ConsentCheckStatus.Cleared));
-        }
 
         var medical = await MedicalEntryAsync(services, localizer, logger, userId, ct);
         if (medical is not null)
@@ -392,18 +367,6 @@ public sealed class Section :
             IsDone = complete,
             ActionText = localizer["Todo_Profile_Action"].Value,
             PercentComplete = complete ? null : percent,
-        };
-    }
-
-    private static ThingsToDoEntry ConsentCheckEntry(IStringLocalizer<SharedResource> localizer, bool cleared)
-    {
-        return new ThingsToDoEntry("consent-check", localizer["Todo_ConsentCheck_Title"].Value,
-            "fa-solid fa-clipboard-check", Weight: 30)
-        {
-            Description = cleared
-                ? localizer["Todo_ConsentCheck_Done"].Value
-                : localizer["Todo_ConsentCheck_Pending"].Value,
-            IsDone = cleared,
         };
     }
 
@@ -451,4 +414,17 @@ public sealed class Section :
         new(UserPartSlots.ConsentReviewApplicant, typeof(ProfileCardViewComponent)),
         new(UserPartSlots.TicketTransferParty, typeof(HumanSummaryViewComponent)),
     ];
+
+    IEnumerable<SearchCategory> ISearchContributor.Categories() =>
+    [
+        new("Human",
+            sp => sp.GetRequiredService<IStringLocalizer<UsersResource>>()["Users_Search_Category"].Value,
+            "fa-solid fa-user", typeof(UserSearchResultViewComponent), SearchHumansAsync, Weight: 0),
+    ];
+
+    // Public surface only: admin fields never reach /Search, whatever the viewer's role.
+    private static async Task<IReadOnlyList<SearchHit>> SearchHumansAsync(
+        IServiceProvider sp, string query, CancellationToken ct) =>
+        [.. (await sp.GetRequiredService<IUserService>().SearchUsersAsync(query, PersonSearchFields.PublicAll, int.MaxValue, ct))
+            .Select(h => new SearchHit(h.UserId, h.BurnerName, h.Score, h.MatchField, h.MatchSnippet))];
 }

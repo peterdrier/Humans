@@ -1,3 +1,5 @@
+using Humans.Permissions.Contracts;
+using Humans.Roles.Contracts;
 using System.Globalization;
 using Humans.Base.Models.Tables;
 using Humans.Base.Authorization;
@@ -21,6 +23,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Configuration;
 using Humans.Notifications.Contracts;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Localization;
 using static Humans.Base.Models.AccessLevel;
 using static Humans.Base.Models.AccessMatrixFeature;
 using Humans.AuditLog.Contracts;
@@ -39,6 +42,7 @@ public sealed class Section :
     ISectionJobs,
     ISectionNav,
     ISectionPolicies,
+    ISearchContributor,
     IUserPart
 {
     IEnumerable<ChromeComponent> ISectionChrome.Components() =>
@@ -90,6 +94,8 @@ public sealed class Section :
         services.AddSingleton<IUserMerge>(sp => sp.GetRequiredService<CachingTeamService>());
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<CachingTeamService>());
         services.AddSingleton<IEntityNameContributor>(sp => sp.GetRequiredService<CachingTeamService>());
+        services.AddSingleton<IOwnerKind>(sp => sp.GetRequiredService<CachingTeamService>());
+        services.AddSingleton<IRoleOwner>(sp => sp.GetRequiredService<CachingTeamService>());
 
         services.AddSingleton<ICacheStats>(sp => sp.GetRequiredService<CachingTeamService>());
 
@@ -205,4 +211,16 @@ public sealed class Section :
     [
         new(UserPartSlots.Profile, typeof(TeamMessageButtonsViewComponent), Weight: 200),
     ];
+
+    IEnumerable<SearchCategory> ISearchContributor.Categories() =>
+    [
+        new("Team",
+            sp => sp.GetRequiredService<IStringLocalizer<TeamsResource>>()["Teams_Search_Category"].Value,
+            "fa-solid fa-users", typeof(TeamsSearchResultViewComponent), SearchTeamsAsync, Weight: 10),
+    ];
+
+    private static async Task<IReadOnlyList<SearchHit>> SearchTeamsAsync(
+        IServiceProvider sp, string query, CancellationToken ct) =>
+        [.. (await sp.GetRequiredService<ITeamService>().SearchAsync(query, int.MaxValue, ct))
+            .Select(t => new SearchHit(t.TeamId, t.Name, t.Score))];
 }

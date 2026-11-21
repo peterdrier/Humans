@@ -61,7 +61,7 @@
         @if (Model.TeamId is { } teamId)
         {
             <div class="list-group">
-                <vc:teams-search-result team-id="@teamId" />
+                <vc:teams-search-result key="@teamId" />
             </div>
         }
         else

@@ -92,14 +92,14 @@ internal sealed class TicketsEmails(
 
     /// <summary>The invited person may have no account yet, so it goes to the address the holder typed.</summary>
     public EmailMessage ResaleInvitation(
-        string toEmail, string holderName, string eventName, string claimUrl, int days, string? culture = null)
+        string toEmail, string holderName, string eventName, string claimUrl, string? culture = null)
     {
         using (new CultureScope(culture, logger))
         {
             return new EmailMessage(
                 toEmail, null, null,
                 Lf("Tickets_Resale_Email_Invite_Subject", eventName),
-                Lf("Tickets_Resale_Email_Invite_Body", Encode(holderName), Encode(eventName), Encode(claimUrl), days),
+                Lf("Tickets_Resale_Email_Invite_Body", Encode(holderName), Encode(eventName), Encode(claimUrl)),
                 "ticket_resale_invitation", MessageCategory.Ticketing);
         }
     }

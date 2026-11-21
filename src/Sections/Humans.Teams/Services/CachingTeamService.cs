@@ -9,6 +9,8 @@ using Humans.Gdpr.Contracts;
 using Microsoft.Extensions.DependencyInjection;
 using NodaTime;
 using Humans.Users.Contracts;
+using Humans.Permissions.Contracts;
+using Humans.Roles.Contracts;
 
 namespace Humans.Teams.Services;
 
@@ -20,7 +22,7 @@ namespace Humans.Teams.Services;
 internal sealed class CachingTeamService(
     IServiceScopeFactory scopeFactory,
     ILogger<CachingTeamService> logger) : TrackedCache<Guid, TeamReadSnapshot>("Team.TeamInfo", warmOnStartup: true, logger),
-    ITeamManagementService, ITeamSeeding, IUserMerge, IUserDataContributor, IEntityNameContributor
+    ITeamManagementService, ITeamSeeding, IUserMerge, IUserDataContributor, IEntityNameContributor, IOwnerKind, IRoleOwner
 {
     public const string InnerServiceKey = "team-inner";
 
@@ -108,6 +110,31 @@ internal sealed class CachingTeamService(
                 result[id] = new EntityName("Team", team.Name, team.Slug);
         }
         return result;
+    }
+
+    string IOwnerKind.Kind => TeamOwner.Kind;
+
+    string IRoleOwner.Kind => TeamOwner.Kind;
+
+    public async Task<IReadOnlyList<OwnerNode>> GetOwnersAsync(CancellationToken ct = default) =>
+        (await GetTeamSnapshotsAsync(ct)).Values
+            .Select(s => new OwnerNode(s.Team.Id, s.Team.ParentTeamId, s.Team.IsActive, s.Team.IsSystemTeam))
+            .ToList();
+
+    /// <summary>System teams take no roles: their membership is computed, so a role could outlive it.</summary>
+    public async Task<string?> EnsureMemberAsync(Guid ownerId, Guid userId, Guid actorUserId, CancellationToken ct = default)
+    {
+        if (!(await GetTeamSnapshotsAsync(ct)).TryGetValue(ownerId, out var snapshot))
+            return "That team doesn't exist.";
+        if (snapshot.Team.IsSystemTeam)
+            return "System teams don't have roles.";
+        if (!snapshot.Team.IsActive)
+            return "That team is inactive.";
+        if (snapshot.Members.Any(m => m.UserId == userId))
+            return null;
+
+        var added = await AddMemberToTeamAsync(ownerId, userId, actorUserId, ct);
+        return added.Succeeded ? null : added.Refusal ?? "They couldn't be added to the team.";
     }
 
     public async Task<IReadOnlyList<TeamSearchHit>> SearchAsync(

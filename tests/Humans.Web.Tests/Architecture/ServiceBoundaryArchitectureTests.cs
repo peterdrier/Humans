@@ -99,9 +99,10 @@ public class ServiceBoundaryArchitectureTests
 
         foreach (var serviceType in ApplicationInterfaceTypes()
                      // Both role markers: the axis is exclusive, so a service reclassified as an orchestrator
-                     // would otherwise drop out.
+                     // would otherwise drop out. The unmarked Users.Contracts leaf interfaces are scanned by name.
                      .Where(t => typeof(IApplicationService).IsAssignableFrom(t)
-                                 || typeof(IOrchestrator).IsAssignableFrom(t))
+                                 || typeof(IOrchestrator).IsAssignableFrom(t)
+                                 || MarkersDroppedForBaseCycle.Contains(t.FullName ?? string.Empty))
                      .Where(t => t != typeof(IApplicationService) && t != typeof(IOrchestrator))
                      .OrderBy(t => t.FullName, StringComparer.Ordinal))
         {
