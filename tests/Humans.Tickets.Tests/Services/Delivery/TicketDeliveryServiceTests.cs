@@ -49,7 +49,7 @@ public sealed class TicketDeliveryServiceTests
                 new TicketCheckoutOrderLine { Kind = CheckoutLineKind.Ticket, AmountMinor = 22500, VatRate = 0.10m, AttendeeName = "Ana Buyer" },
                 new TicketCheckoutOrderLine { Kind = CheckoutLineKind.Ticket, AmountMinor = 22500, VatRate = 0.10m, AttendeeName = "Ben Partner" },
             ],
-        Culture = "es",
+            Culture = "es",
         };
         Tickets();
         _checkout.GetSalesEventAsync(_salesEvent.Id, Arg.Any<CancellationToken>()).Returns(_salesEvent);
@@ -68,18 +68,18 @@ public sealed class TicketDeliveryServiceTests
 
     private TicketCheckoutTicket Ticket(Guid? holderId, string name, string? email, TicketCheckoutTicketState state = TicketCheckoutTicketState.Valid,
         TicketHolderKind kind = TicketHolderKind.Adult, Guid? parent = null) => new()
-    {
-        Id = Guid.NewGuid(),
-        ParentTicketId = parent,
-        OrderId = _order.Id,
-        SalesEventId = _salesEvent.Id,
-        HolderUserId = holderId,
-        HolderName = name,
-        HolderEmail = email,
-        Kind = kind,
-        State = state,
-        Barcode = "H" + Guid.NewGuid().ToString("N")[..16].ToUpperInvariant(),
-    };
+        {
+            Id = Guid.NewGuid(),
+            ParentTicketId = parent,
+            OrderId = _order.Id,
+            SalesEventId = _salesEvent.Id,
+            HolderUserId = holderId,
+            HolderName = name,
+            HolderEmail = email,
+            Kind = kind,
+            State = state,
+            Barcode = "H" + Guid.NewGuid().ToString("N")[..16].ToUpperInvariant(),
+        };
 
     private void Tickets(params TicketCheckoutTicket[] tickets) =>
         _checkout.GetOrderDetailAsync(_order.Id, Arg.Any<CancellationToken>()).Returns(_ => new CheckoutOrderDetail(_order, [], [], tickets));

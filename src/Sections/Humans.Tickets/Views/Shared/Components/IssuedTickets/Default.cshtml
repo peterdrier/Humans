@@ -13,7 +13,7 @@
                     <span class="badge @(t.State == "Valid" ? "bg-success" : "bg-secondary")">@Localizer[$"Tickets_Ticket_State_{t.State}"]</span>
                 </div>
                 <div class="text-muted">
-                    @if (t.ChildName is not null)
+                    @if (t.ChildName is not null && Model.ViewMode == ProfileCardViewMode.Self)
                     {
                         <span class="text-break">@t.ChildName ·</span>
                     }

@@ -79,8 +79,12 @@ public sealed class IssuedTicketsViewComponentTests
         var adult = new TicketCheckoutTicket { Id = Guid.NewGuid(), OrderId = Guid.NewGuid(), HolderUserId = userId, Barcode = "HADULT" };
         var child = new TicketCheckoutTicket
         {
-            Id = Guid.NewGuid(), OrderId = adult.OrderId, ParentTicketId = adult.Id, HolderName = "Kid",
-            Kind = TicketHolderKind.Child, Barcode = "HCHILD",
+            Id = Guid.NewGuid(),
+            OrderId = adult.OrderId,
+            ParentTicketId = adult.Id,
+            HolderName = "Kid",
+            Kind = TicketHolderKind.Child,
+            Barcode = "HCHILD",
         };
         var stranger = new TicketCheckoutTicket { Id = Guid.NewGuid(), OrderId = adult.OrderId, HolderUserId = Guid.NewGuid(), Barcode = "HOTHER" };
         _checkout.GetTicketsForHolderAsync(userId, Arg.Any<CancellationToken>()).Returns([adult]);
