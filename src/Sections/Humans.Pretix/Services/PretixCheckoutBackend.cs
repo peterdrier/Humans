@@ -637,8 +637,14 @@ internal sealed class PretixCheckoutBackend(
 
     private static long ToMinor(decimal amount) => (long)decimal.Round(amount * 100m, MidpointRounding.AwayFromZero);
 
-    private static Instant? ParseInstant(string? value) =>
-        value is null ? null : Instant.FromDateTimeOffset(DateTimeOffset.Parse(value, CultureInfo.InvariantCulture));
+    private static Instant? ParseInstant(string? value)
+    {
+        if (value is null) return null;
+        var parsed = OffsetDateTimePattern.ExtendedIso.Parse(value);
+        return parsed.Success
+            ? parsed.Value.ToInstant()
+            : throw new HttpRequestException($"pretix returned an unreadable date '{value}'.");
+    }
 
     private sealed record RawResponse(HttpStatusCode Status, string Body);
 

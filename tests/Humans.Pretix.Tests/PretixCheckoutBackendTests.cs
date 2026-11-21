@@ -174,9 +174,20 @@ public class PretixCheckoutBackendTests
         status.FeeMinor.Should().BeNull();
         status.RefundFailed.Should().BeTrue();
         status.PaymentMethod.Should().Be("stripe_ideal");
-        status.PaidAt.Should().Be(Instant.FromDateTimeOffset(
-            DateTimeOffset.Parse("2026-11-21T00:09:33.022364Z", System.Globalization.CultureInfo.InvariantCulture)));
+        status.PaidAt.Should().Be(Instant.FromUtc(2026, 11, 21, 0, 9, 33).PlusTicks(223_640));
         status.RefundedMinor.Should().Be(22500);
+    }
+
+    [HumansFact]
+    public async Task Status_UnreadablePaymentDate_ThrowsSoTicketsRetries()
+    {
+        var pretix = new FakePretix().On("GET", OrderPath, HttpStatusCode.OK, Order(
+            Code, status: "p", total: 1000m,
+            payments: [new { local_id = 1, state = "confirmed", amount = "1000.00", provider = "stripe_ideal", payment_date = "21/11/2026" }]));
+
+        var act = () => Create(pretix).GetStatusAsync($"nowhere2027/{Code}", TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<HttpRequestException>();
     }
 
     [HumansTheory]

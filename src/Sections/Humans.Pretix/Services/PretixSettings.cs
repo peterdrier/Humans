@@ -16,7 +16,7 @@ internal sealed class PretixSettings
     /// <summary>A team API token; from <c>PRETIX_API_TOKEN</c>.</summary>
     public string ApiToken { get; set; } = string.Empty;
 
-    /// <summary>The last path segment of the webhook URL configured in pretix; from <c>PRETIX_WEBHOOK_SECRET</c>.</summary>
+    /// <summary>The <c>secret</c> query value of the webhook URL configured in pretix; from <c>PRETIX_WEBHOOK_SECRET</c>.</summary>
     public string WebhookSecret { get; set; } = string.Empty;
 
     public bool IsConfigured =>
