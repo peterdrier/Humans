@@ -46,7 +46,6 @@ public sealed class ShiftSignupServiceEarlyEntryTests : ShiftsTestHarness
         _shiftMgmt = new ShiftManagementService(
             shiftRepo,
             AuditLog,
-            AdminAuthorization,
             serviceProvider,
             NewCalendarResolver(),
             Clock,
@@ -69,7 +68,6 @@ public sealed class ShiftSignupServiceEarlyEntryTests : ShiftsTestHarness
             NewCalendarResolver(),
             AuditLog,
             Substitute.For<INotificationEmitter>(),
-            AdminAuthorization,
             serviceProvider,
             Clock,
             NullLogger<ShiftSignupService>.Instance,

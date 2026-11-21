@@ -158,18 +158,6 @@ internal sealed partial class ShiftRepository
         return cancelled;
     }
 
-    public Task<int> DeleteAllForUsersAsync(
-        IReadOnlyCollection<Guid> userIds,
-        CancellationToken ct = default)
-    {
-        if (userIds.Count == 0)
-            return Task.FromResult(0);
-
-        return _dbContext.ShiftSignups
-            .Where(s => userIds.Contains(s.UserId))
-            .ExecuteDeleteAsync(ct);
-    }
-
     public async Task<(int Count, IReadOnlyList<Guid> EventIds)> ReassignToUserAsync(
         Guid sourceUserId, Guid targetUserId, Instant updatedAt,
         CancellationToken ct = default)

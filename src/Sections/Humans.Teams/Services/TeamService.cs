@@ -1170,30 +1170,6 @@ internal sealed class TeamService(
         return retired;
     }
 
-    public async Task<bool> PermanentlyDeleteTeamAsync(
-        Guid teamId,
-        CancellationToken cancellationToken = default)
-    {
-        await adminAuthorization.RequireCurrentUserIsAdminAsync(cancellationToken);
-
-        var team = await repo.GetByIdAsync(teamId, cancellationToken)
-            ?? throw new InvalidOperationException($"Team {teamId} not found");
-
-        if (team.IsSystemTeam)
-            throw new InvalidOperationException("Cannot permanently delete system team");
-
-        var hasActiveChildren = await repo.HasActiveChildrenAsync(teamId, cancellationToken);
-        if (hasActiveChildren)
-            throw new InvalidOperationException("Cannot permanently delete a team that has active sub-teams. Remove or reassign sub-teams first.");
-
-        // Restrict FK: pre-check for a clear message instead of a raw violation.
-        var resources = await TeamResourceService.GetTeamResourcesAsync(teamId, cancellationToken);
-        if (resources.Count > 0)
-            throw new InvalidOperationException("Cannot permanently delete a team that has Google resources linked. Unlink resources first.");
-
-        return await repo.PermanentlyDeleteTeamAsync(teamId, cancellationToken);
-    }
-
     public async Task<TeamMembershipMutationResult> LeaveTeamAsync(
         Guid teamId,
         Guid userId,

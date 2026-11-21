@@ -19,8 +19,6 @@ public interface IShiftSeeding
     /// <summary>Validates rota ownership, the period's DayOffset range and the volunteer counts.</summary>
     Task<ShiftMutationResult> CreateShiftAsync(CreateShiftInput input);
 
-    /// <summary>Rotas, shifts and signups go too. Requires the current user to hold the full Admin role.</summary>
-    Task<int> DeleteEventAsync(Guid eventSettingsId, CancellationToken cancellationToken = default);
 }
 
 /// <summary>The rota fields a seeded fixture sets; everything else takes its schema default.</summary>

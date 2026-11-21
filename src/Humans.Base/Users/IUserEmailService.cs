@@ -111,11 +111,6 @@ public interface IUserEmailService
         IReadOnlyCollection<Guid> userIds,
         CancellationToken cancellationToken = default);
 
-    Task<IReadOnlyList<Guid>> GetUserIdsByEmailPrefixAndSuffixAsync(
-        string prefix,
-        string suffix,
-        CancellationToken cancellationToken = default);
-
     /// <summary>Empty when the user has no emails.</summary>
     Task<IReadOnlyList<UserEmailRowSnapshot>> GetEntitiesByUserIdAsync(
         Guid userId,

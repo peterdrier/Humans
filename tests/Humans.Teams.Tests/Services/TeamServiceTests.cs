@@ -2546,44 +2546,6 @@ public sealed class TeamServiceTests : TeamsTestHarness
     }
 
     [HumansFact]
-    public async Task PermanentlyDeleteTeamAsync_TeamNotFound_Throws()
-    {
-        var act = () => _service.PermanentlyDeleteTeamAsync(Guid.NewGuid(), TestContext.Current.CancellationToken);
-
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*not found*");
-    }
-
-    [HumansFact]
-    public async Task PermanentlyDeleteTeamAsync_SystemTeam_Throws()
-    {
-        var team = SeedTeam("Volunteers", type: SystemTeamType.Volunteers);
-        await SaveAllAsync(TestContext.Current.CancellationToken);
-
-        var act = () => _service.PermanentlyDeleteTeamAsync(team.Id, TestContext.Current.CancellationToken);
-
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*system team*");
-    }
-
-    [HumansFact]
-    public async Task PermanentlyDeleteTeamAsync_HasActiveChildren_Throws()
-    {
-        var parent = SeedTeam("Parent");
-        var child = SeedTeam("Child");
-        child.ParentTeamId = parent.Id;
-        await SaveAllAsync(TestContext.Current.CancellationToken);
-
-        var act = () => _service.PermanentlyDeleteTeamAsync(parent.Id, TestContext.Current.CancellationToken);
-
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*sub-teams*");
-    }
-
-    // Happy-path PermanentlyDeleteTeamAsync needs a real transactional store; the in-memory
-    // EF provider used in this harness does not support transactions. Cover it in Integration tests.
-
-    [HumansFact]
     public async Task GetTeamBySlugAsync_ExistingSlug_ReturnsTeamWithActiveMembers()
     {
         var user = SeedUser();

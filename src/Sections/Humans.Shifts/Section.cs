@@ -23,6 +23,8 @@ using Humans.Shifts.Data;
 using Humans.Shifts.Helpers;
 using Humans.Shifts.Models;
 using Humans.Shifts.Services;
+using Humans.Shifts.Services.Demo;
+using Humans.Base.Demo;
 using Humans.Shifts.ViewComponents;
 using Humans.Teams.Contracts;
 using Humans.Users.Contracts;
@@ -34,8 +36,6 @@ using Microsoft.Extensions.Localization;
 using NodaTime;
 using static Humans.Base.Models.AccessLevel;
 using static Humans.Base.Models.AccessMatrixFeature;
-
-[assembly: Humans.Base.Demo.NoDemoStory("No demo story written yet.")]
 
 namespace Humans.Shifts;
 
@@ -101,6 +101,8 @@ public sealed class Section :
         services.AddSingleton<IShiftSignupService>(sp => sp.GetRequiredService<CachingShiftService>());
         services.AddSingleton<IShiftSignups>(sp => sp.GetRequiredService<CachingShiftService>());
         services.AddSingleton<IShiftSignupSeeding>(sp => sp.GetRequiredService<CachingShiftService>());
+
+        services.AddDemoStory<ShiftsDemoStory>(configuration);
         services.AddSingleton<IShiftRowView>(sp => sp.GetRequiredService<CachingShiftService>());
         services.AddSingleton<IShiftView>(sp => sp.GetRequiredService<CachingShiftService>());
         services.AddSingleton<IUserMerge>(sp => sp.GetRequiredService<CachingShiftService>());

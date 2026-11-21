@@ -643,18 +643,6 @@ internal sealed class CachingUserService(
             return result;
         });
 
-    public Task<int> DeleteUsersAsync(
-        IReadOnlyCollection<Guid> userIds, CancellationToken ct = default) =>
-        MutateAsync(async () =>
-        {
-            var deleted = await WithInnerAsync(inner => inner.DeleteUsersAsync(userIds, ct));
-            foreach (var userId in userIds)
-            {
-                DeleteKey(userId);
-            }
-            return deleted;
-        });
-
     public Task ReassignAsync(
         Guid mergedFromUserId, Guid mergedToUserId, Guid actorUserId, Instant now,
         CancellationToken ct) =>

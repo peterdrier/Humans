@@ -50,7 +50,6 @@ public sealed class ShiftManagementServiceCoveragePiesTests : ShiftsTestHarness
         _service = new ShiftManagementService(
             repo,
             AuditLog,
-            AdminAuthorization,
             serviceProvider,
             NewCalendarResolver(),
             Clock,

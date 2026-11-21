@@ -31,6 +31,4 @@ internal interface ISettingsRepository : IRepository
     /// </summary>
     Task<IReadOnlyList<EventSettings>> SetActiveEventSettingsAsync(Guid id, Instant now, CancellationToken ct = default);
 
-    /// <summary>Returns 0 or 1.</summary>
-    Task<int> DeleteEventSettingsAsync(Guid id, CancellationToken ct = default);
 }

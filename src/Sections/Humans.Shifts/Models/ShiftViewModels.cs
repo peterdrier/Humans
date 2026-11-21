@@ -497,7 +497,6 @@ internal sealed class ShiftDashboardViewModel
     public IReadOnlyList<ShiftDurationBreakdownRow> ShiftDurationBreakdown { get; set; } = [];
     public CoverageHeatmap CoverageHeatmap { get; set; } = new([], []);
     public TrendWindow TrendWindow { get; set; } = TrendWindow.Last30Days;
-    public bool IsDevelopment { get; set; }
     public BuildDayCountdown Countdown { get; set; } = new(0, LocalDate.MinIsoValue, 0, 0);
 }
 

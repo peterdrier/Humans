@@ -74,8 +74,7 @@ public sealed class ServiceTests
         (_cache.GetActiveEventSettings())!.Id.Should().Be(first.Id, "a read must not reach the repository");
         await _repository.Received(1).GetAllEventSettingsAsync(Arg.Any<CancellationToken>());
 
-        _repository.DeleteEventSettingsAsync(first.Id, Arg.Any<CancellationToken>()).Returns(1);
-        await _cache.DeleteEventAsync(first.Id, ct);
+        await _cache.SaveTimeZoneAsync("Atlantic/Canary", Actor, ct);
 
         (_cache.GetActiveEventSettings())!.Id.Should().Be(second.Id, "a write must reload the snapshot");
     }
@@ -122,7 +121,6 @@ public sealed class ServiceTests
     [Xunit.InlineData("activate", 1)]
     [Xunit.InlineData("seed", 1)]
     [Xunit.InlineData("seed", 2)]
-    [Xunit.InlineData("delete", 1)]
     public async Task EventWrite_LostSaveAcknowledgement_NotifiesAffectedEvents(string operation, int failedSave)
     {
         var ct = TestContext.Current.CancellationToken;
@@ -152,8 +150,7 @@ public sealed class ServiceTests
             ,
             "activate" => async () => { await service.ActivateEventSettingsAsync(next.Id, Actor, ct); }
             ,
-            "seed" => () => service.CreateActiveEventAsync(draft, ct),
-            _ => async () => { await service.DeleteEventAsync(next.Id, ct); }
+            _ => () => service.CreateActiveEventAsync(draft, ct),
         };
 
         (await write.Should().ThrowAsync<IOException>()).Which.Should().BeSameAs(failure);
@@ -183,9 +180,6 @@ public sealed class ServiceTests
                 (await verify.EventSettings.FindAsync([next.Id], ct))!.Status.Should().Be(
                     string.Equals(operation, "seed", StringComparison.Ordinal) && failedSave == 1
                         ? EventSettingsStatus.Inactive : EventSettingsStatus.Active);
-                break;
-            case "delete":
-                (await verify.EventSettings.FindAsync([next.Id], ct)).Should().BeNull();
                 break;
         }
         _auditLog.ReceivedCalls().Should().BeEmpty();
@@ -582,25 +576,6 @@ public sealed class ServiceTests
 
         await BuildSut().CreateActiveEventAsync(
             MakeDto(id, EventSettingsStatus.Active), TestContext.Current.CancellationToken);
-
-        _listenerOne.Received(1).EventSettingsChanged(id);
-        _listenerTwo.Received(1).EventSettingsChanged(id);
-    }
-
-    [HumansFact]
-    public async Task DeleteEventAsync_TellsEveryChangeListener_OnlyWhenARowWentAway()
-    {
-        var id = Guid.NewGuid();
-        _repository.DeleteEventSettingsAsync(id, Arg.Any<CancellationToken>()).Returns(0);
-        var sut = BuildSut();
-
-        await sut.DeleteEventAsync(id, TestContext.Current.CancellationToken);
-
-        _listenerOne.DidNotReceive().EventSettingsChanged(Arg.Any<Guid>());
-
-        _repository.DeleteEventSettingsAsync(id, Arg.Any<CancellationToken>()).Returns(1);
-
-        await sut.DeleteEventAsync(id, TestContext.Current.CancellationToken);
 
         _listenerOne.Received(1).EventSettingsChanged(id);
         _listenerTwo.Received(1).EventSettingsChanged(id);

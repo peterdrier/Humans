@@ -87,7 +87,6 @@ public class CachingUserServiceTests
     [InlineData("ApplyUserEmailReconcilePlan")]
     [InlineData("ApplyExpiredDeletionAnonymization")]
     [InlineData("AnonymizeForMerge")]
-    [InlineData("DeleteUsers")]
     [InlineData("Reassign")]
     public async Task Mutation_UnknownCompletion_DropsAllPotentiallyChangedUsers(string operation)
     {
@@ -122,7 +121,6 @@ public class CachingUserServiceTests
             "ApplyUserEmailReconcilePlan" => service.ApplyUserEmailReconcilePlanAsync(userId, null!, ct),
             "ApplyExpiredDeletionAnonymization" => service.ApplyExpiredDeletionAnonymizationAsync(userId, ct),
             "AnonymizeForMerge" => service.AnonymizeForMergeAsync(userId, otherId, default, ct),
-            "DeleteUsers" => service.DeleteUsersAsync(affectedIds, ct),
             "Reassign" => service.ReassignAsync(userId, otherId, otherId, default, ct),
             _ => throw new ArgumentOutOfRangeException(nameof(operation))
         };
@@ -810,35 +808,6 @@ public class CachingUserServiceTests
         await _inner.Received(1).GetUserInfoAsync(missId, Arg.Any<CancellationToken>());
         await _inner.DidNotReceive().GetUserInfoAsync(hitId, Arg.Any<CancellationToken>());
         await _inner.DidNotReceive().GetAllUserInfosAsync(Arg.Any<CancellationToken>());
-    }
-
-    [HumansFact]
-    public async Task DeleteUsersAsync_EvictsAffectedEntries()
-    {
-        var u1 = Guid.NewGuid();
-        var u2 = Guid.NewGuid();
-        _inner.GetUserInfoAsync(u1, Arg.Any<CancellationToken>())
-            .Returns(new ValueTask<UserInfo?>(SampleUserInfo(u1)));
-        _inner.GetUserInfoAsync(u2, Arg.Any<CancellationToken>())
-            .Returns(new ValueTask<UserInfo?>(SampleUserInfo(u2)));
-        _inner.DeleteUsersAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(2);
-
-        var sut = CreateSut();
-        await sut.GetUserInfoAsync(u1, Xunit.TestContext.Current.CancellationToken);
-        await sut.GetUserInfoAsync(u2, Xunit.TestContext.Current.CancellationToken);
-
-        var deleted = await sut.DeleteUsersAsync([u1, u2], Xunit.TestContext.Current.CancellationToken);
-
-        deleted.Should().Be(2);
-
-        // Both reads should now refetch (entries were evicted).
-        _inner.GetUserInfoAsync(u1, Arg.Any<CancellationToken>())
-            .Returns(new ValueTask<UserInfo?>((UserInfo?)null));
-        _inner.GetUserInfoAsync(u2, Arg.Any<CancellationToken>())
-            .Returns(new ValueTask<UserInfo?>((UserInfo?)null));
-        (await sut.GetUserInfoAsync(u1, Xunit.TestContext.Current.CancellationToken)).Should().BeNull();
-        (await sut.GetUserInfoAsync(u2, Xunit.TestContext.Current.CancellationToken)).Should().BeNull();
     }
 
     private static UserInfo BuildSearchableUserInfo(

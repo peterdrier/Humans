@@ -71,7 +71,6 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
         _service = new ShiftManagementService(
             repo,
             AuditLog,
-            AdminAuthorization,
             serviceProvider,
             NewCalendarResolver(),
             Clock,
@@ -87,29 +86,6 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
             team.IsPublicPage, team.IsHidden, team.IsPromotedToDirectory, team.CreatedAt,
             Members: [],
             ParentTeamId: team.ParentTeamId);
-
-    [HumansFact]
-    public async Task DeleteEventAsync_RequiresAdmin()
-    {
-        var eventId = Guid.NewGuid();
-        var repo = Substitute.For<IShiftManagementRepository>();
-        repo.DeleteEventCascadeAsync(eventId, Arg.Any<CancellationToken>())
-            .Returns(1);
-        var service = new ShiftManagementService(
-            repo,
-            AuditLog,
-            AdminAuthorization,
-            new ServiceLocatorBuilder().Build(),
-            NewCalendarResolver(),
-            Clock,
-            Microsoft.Extensions.Logging.Abstractions.NullLogger<ShiftManagementService>.Instance);
-
-        var deleted = await service.DeleteEventAsync(eventId, Xunit.TestContext.Current.CancellationToken);
-
-        deleted.Should().Be(1);
-        await AdminAuthorization.Received(1)
-            .RequireCurrentUserIsAdminAsync(Arg.Any<CancellationToken>());
-    }
 
     [HumansFact]
     public async Task CreateBuildStrikeShifts_CreatesOneAllDayShiftPerDay()
@@ -424,7 +400,7 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
         var locator = Substitute.For<IServiceProvider>();
         var service = new ShiftManagementService(
-            new ShiftRepository(ShiftsDbFactory, ShiftsDb, Clock), AuditLog, AdminAuthorization,
+            new ShiftRepository(ShiftsDbFactory, ShiftsDb, Clock), AuditLog,
             locator, new EventCalendarResolver(Substitute.For<Humans.Settings.Contracts.ISettingsService>(), Substitute.For<Humans.Shifts.Data.IShiftManagementRepository>()), Clock,
             Microsoft.Extensions.Logging.Abstractions.NullLogger<ShiftManagementService>.Instance);
         locator.GetService(typeof(IShiftRotaRows)).Returns(service);
@@ -826,7 +802,7 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
         var repo = Substitute.For<IShiftManagementRepository>();
         repo.SearchVolunteerVisibleRotasAsync("Kitchen", settings.Id, Arg.Any<CancellationToken>())
             .Returns(candidates);
-        var service = new ShiftManagementService(repo, AuditLog, AdminAuthorization,
+        var service = new ShiftManagementService(repo, AuditLog,
             new ServiceLocatorBuilder().Build(), NewCalendarResolver(),
             Clock, Microsoft.Extensions.Logging.Abstractions.NullLogger<ShiftManagementService>.Instance);
 

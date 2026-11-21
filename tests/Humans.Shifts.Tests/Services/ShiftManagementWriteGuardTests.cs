@@ -58,7 +58,6 @@ public sealed class ShiftManagementWriteGuardTests : ShiftsTestHarness
         _service = new ShiftManagementService(
             new ShiftRepository(ShiftsDbFactory, ShiftsDb, Clock),
             AuditLog,
-            AdminAuthorization,
             serviceProvider,
             NewCalendarResolver(),
             Clock,
@@ -230,7 +229,7 @@ public sealed class ShiftManagementWriteGuardTests : ShiftsTestHarness
 
         var service = new ShiftManagementService(
             new ShiftRepository(ShiftsDbFactory, ShiftsDb, Clock),
-            AuditLog, AdminAuthorization,
+            AuditLog,
             new ServiceLocatorBuilder().With(_teamService).Build(),
             new EventCalendarResolver(settingsService, Substitute.For<Humans.Shifts.Data.IShiftManagementRepository>()), Clock,
             Microsoft.Extensions.Logging.Abstractions.NullLogger<ShiftManagementService>.Instance);
@@ -276,7 +275,7 @@ public sealed class ShiftManagementWriteGuardTests : ShiftsTestHarness
             .Options;
         var service = new ShiftManagementService(
             new ShiftRepository(new TestDbContextFactory<ShiftsDbContext>(options), ShiftsDb, Clock),
-            AuditLog, AdminAuthorization, new ServiceLocatorBuilder().With(_teamService).Build(),
+            AuditLog, new ServiceLocatorBuilder().With(_teamService).Build(),
             NewCalendarResolver(), Clock,
             Microsoft.Extensions.Logging.Abstractions.NullLogger<ShiftManagementService>.Instance);
 

@@ -133,7 +133,7 @@ One event-scoped early-entry grant: a human may enter on a date for a named proj
 | EarlyEntryAdmin | Early entry on any team with `EarlyEntryEnabled`, and nothing else in Teams |
 | TeamsAdmin | Every coordinator capability on every team; create teams, edit team settings, toggle the management role |
 | Board | Read the summary, team settings, every team's Members page and the Board roster; change nothing |
-| Admin | Every TeamsAdmin capability; deactivate and permanently delete teams; set the sensitive flag |
+| Admin | Every TeamsAdmin capability; deactivate teams; set the sensitive flag |
 
 ## Invariants
 
@@ -162,6 +162,7 @@ One event-scoped early-entry grant: a human may enter on a date for a named proj
 - Expected refusals (missing record, no permission, validation) return a result before anything is written or audited, and log at Warning without a stack. Unexpected failures propagate.
 - Mutations of the cached team graph invalidate the whole cache, even when the inner call throws after writing. Pending join-request reads bypass the cache.
 - Resource keys use the `Teams_` prefix; shared vocabulary stays in `SharedResource`.
+- `TeamsDemoStory` (outside Production only) makes the demo departments and subteams listed in `TeamsDemo`, named "… (demo)", staffs each from the demo cast and gives it two coordinators. Retire deactivates them, subteams first; teams are never hard-deleted.
 
 ## Negative Access Rules
 

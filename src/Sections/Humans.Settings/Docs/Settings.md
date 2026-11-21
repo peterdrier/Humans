@@ -34,8 +34,7 @@ with `DateFormattingExtensions.Iso8601InstantPattern`, using the shared seconds-
   Never hardcode a zone id.
 - **EventSettingsStatus** is `Active` (at most one row), `Inactive`, `Deleted`.
   Other sections store the id, so a cycle ends by going `Inactive`; nothing sets
-  `Deleted` today. The only row removal is `IEventSettingsSeeding.DeleteEventAsync`,
-  for fixture teardown.
+  `Deleted` today, and no path removes a row.
 - **Settings mints event ids.** A new cycle is created at `/Settings#event` by
   saving the form with no id. Shifts' own `shift_event_settings` row carries only its
   section-local knobs and is created on demand the first time a rota or knob edit
@@ -169,11 +168,9 @@ named by `SectionMigrationsHistory.TableFor`.
 - **Every write that may have changed a cycle notifies every
   `IEventSettingsChangeListener`, before the audit, even when persistence throws
   after committing**: a save notifies its id, make-active the target and the
-  former active row, a timezone change every event, seeding each row it changed,
-  and a seeded delete unless the row was confirmed missing. Refusals notify nobody.
-- `Humans.Development`'s dashboard seeder calls `IEventSettingsSeeding.CreateActiveEventAsync`
-  before seeding Shifts fixtures against the same id, and `DeleteEventAsync` on
-  reset. Seeding writes no audit entry — it has no real actor.
+  former active row, a timezone change every event, and seeding each row it changed. Refusals notify nobody.
+- The integration test host calls `IEventSettingsSeeding.CreateActiveEventAsync` before
+  seeding Shifts fixtures against the same id. Seeding writes no audit entry — it has no real actor.
 
 ## Cross-Section Dependencies
 

@@ -1,8 +1,10 @@
 using AwesomeAssertions;
+using Humans.Base.Demo;
 using Humans.Development.Data;
 using Humans.Development.Domain;
 using Humans.Development.Services.Demo;
 using Humans.Integration.Tests.Infrastructure;
+using Humans.Teams.Contracts;
 using Humans.Users.Contracts;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -19,17 +21,20 @@ public class DemoWorldTests(HumansTestDatabase database) : IntegrationTestBase(d
         var first = await RunAsync(reset: false, adminId, ct);
         first.Should().NotContain(line => line.Contains("failed", StringComparison.OrdinalIgnoreCase));
         var crowd = await MadeCrowdAsync(generation: 1, ct);
-        crowd.Should().HaveCount(DemoCastStory.CrowdSize);
+        crowd.Should().HaveCount(DemoCast.Size);
         (await UserInfosAsync(crowd, ct)).Should().AllSatisfy(u => u.IsTombstone.Should().BeFalse());
 
+        var made = (await LedgerAsync(ct)).Count;
         await RunAsync(reset: false, adminId, ct);
-        (await LedgerAsync(ct)).Should().HaveCount(DemoCastStory.CrowdSize, "a second build adds nothing");
+        (await LedgerAsync(ct)).Should().HaveCount(made, "a second build adds nothing");
 
         var reset = await RunAsync(reset: true, adminId, ct);
         reset.Should().Contain("Generation 1 retired.");
         (await UserInfosAsync(crowd, ct)).Should().AllSatisfy(u => u.IsTombstone.Should().BeTrue());
-        (await MadeCrowdAsync(generation: 2, ct)).Should().HaveCount(DemoCastStory.CrowdSize)
+        (await MadeCrowdAsync(generation: 2, ct)).Should().HaveCount(DemoCast.Size)
             .And.NotIntersectWith(crowd);
+        (await LedgerAsync(ct)).Where(e => e.Generation == 1 && e.Key.StartsWith(TeamsDemo.TeamKeyPrefix, StringComparison.Ordinal))
+            .Should().NotBeEmpty().And.AllSatisfy(e => e.State.Should().Be(DemoLedgerState.Retired));
     }
 
     private async Task<IReadOnlyList<string>> RunAsync(bool reset, Guid actorId, CancellationToken ct)
@@ -43,7 +48,8 @@ public class DemoWorldTests(HumansTestDatabase database) : IntegrationTestBase(d
 
     private async Task<List<Guid>> MadeCrowdAsync(int generation, CancellationToken ct) =>
         [.. (await LedgerAsync(ct))
-            .Where(e => e.Generation == generation && e.State == DemoLedgerState.Made)
+            .Where(e => e.Generation == generation && e.State == DemoLedgerState.Made
+                && e.Key.StartsWith(DemoCast.HumanKeyPrefix, StringComparison.Ordinal))
             .Select(e => e.EntityId)];
 
     private async Task<List<UserInfo>> UserInfosAsync(IEnumerable<Guid> ids, CancellationToken ct)

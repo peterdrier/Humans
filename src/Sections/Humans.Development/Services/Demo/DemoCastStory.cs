@@ -18,13 +18,6 @@ internal sealed class DemoCastStory(
     DevPersonaSeeder personaSeeder,
     IClock clock) : IDemoStory
 {
-    public static readonly DemoStoryKey StoryKey = new("cast");
-
-    /// <summary>Ledger keys of the crowd; other stories read them with <see cref="IDemoWorld.MadeAsync"/>.</summary>
-    public const string HumanKeyPrefix = "cast:human:";
-
-    internal const int CrowdSize = 200;
-
     private const string FakeReason = "Demo cast member";
 
     private static readonly (string City, string CountryCode, string[] FirstNames)[] Places =
@@ -55,17 +48,17 @@ internal sealed class DemoCastStory(
         "Fox", "Moth", "Otter", "Comet", "Wren", "Lynx", "Gecko", "Heron", "Panda", "Raven",
     ];
 
-    public DemoStoryKey Key => StoryKey;
+    public DemoStoryKey Key => DemoCast.StoryKey;
 
     public IReadOnlyList<DemoStoryKey> After => [];
 
     public async Task TellAsync(IDemoWorld world, CancellationToken ct)
     {
-        for (var n = 1; n <= CrowdSize; n++)
+        for (var n = 1; n <= DemoCast.Size; n++)
         {
             var number = n;
             await world.EnsureAsync(
-                $"{HumanKeyPrefix}{number:D3}",
+                DemoCast.HumanKey(number),
                 async (id, _) => await userService.GetUserInfoAsync(id) is { IsTombstone: false },
                 (planned, token) => CreateAsync(planned, number, world, token),
                 ct);
@@ -74,7 +67,7 @@ internal sealed class DemoCastStory(
 
     public async Task RetireAsync(IDemoWorld world, CancellationToken ct)
     {
-        foreach (var (key, userId) in await world.MadeAsync(HumanKeyPrefix, ct))
+        foreach (var (key, userId) in await world.MadeAsync(DemoCast.HumanKeyPrefix, ct))
         {
             var purge = await accountDeletion.PurgeAsync(userId, world.ActorUserId, ct);
             if (purge.Success)
@@ -132,7 +125,7 @@ internal sealed class DemoCastStory(
         if (n % 10 != 0)
             await userWrite.MarkFakeAsync(userId, world.ActorUserId, FakeReason, ct);
 
-        if (n % 15 != 0)
+        if (DemoCast.IsActiveVolunteer(n))
             await personaSeeder.EnsureActiveAsync(userId);
 
         return userId;

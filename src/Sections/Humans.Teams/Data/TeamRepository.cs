@@ -818,49 +818,6 @@ internal sealed class TeamRepository(IDbContextFactory<TeamsDbContext> factory) 
         return memberships.Select(m => (m.Id, m.TeamId)).ToList();
     }
 
-    public async Task<bool> PermanentlyDeleteTeamAsync(Guid teamId, CancellationToken ct = default)
-    {
-        await using var db = await factory.CreateDbContextAsync(ct);
-
-        var team = await db.Teams
-            .FirstOrDefaultAsync(t => t.Id == teamId, ct);
-
-        if (team is null)
-            return false;
-
-        await using var tx = await db.Database.BeginTransactionAsync(ct);
-
-        var memberIds = await db.TeamMembers
-            .Where(tm => tm.TeamId == teamId)
-            .Select(tm => tm.Id)
-            .ToListAsync(ct);
-
-        if (memberIds.Count > 0)
-        {
-            await db.Set<TeamRoleAssignment>()
-                .Where(a => memberIds.Contains(a.TeamMemberId))
-                .ExecuteDeleteAsync(ct);
-        }
-
-        await db.TeamMembers
-            .Where(tm => tm.TeamId == teamId)
-            .ExecuteDeleteAsync(ct);
-
-        await db.TeamJoinRequests
-            .Where(r => r.TeamId == teamId)
-            .ExecuteDeleteAsync(ct);
-
-        await db.Set<TeamRoleDefinition>()
-            .Where(d => d.TeamId == teamId)
-            .ExecuteDeleteAsync(ct);
-
-        db.Teams.Remove(team);
-        await db.SaveChangesAsync(ct);
-        await tx.CommitAsync(ct);
-
-        return true;
-    }
-
     public async Task<IReadOnlyList<TeamEarlyEntryGrant>> GetEarlyEntryGrantsForEnabledTeamsAsync(CancellationToken ct = default)
     {
         await using var db = await factory.CreateDbContextAsync(ct);

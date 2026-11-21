@@ -450,12 +450,6 @@ internal sealed class UserEmailService(
             .ToList();
     }
 
-    public Task<IReadOnlyList<Guid>> GetUserIdsByEmailPrefixAndSuffixAsync(
-        string prefix,
-        string suffix,
-        CancellationToken cancellationToken = default) =>
-        repository.GetUserIdsByUserEmailPrefixAndSuffixAsync(prefix, suffix, cancellationToken);
-
     public async Task<IReadOnlyList<UserEmailRowSnapshot>> GetEntitiesByUserIdAsync(
         Guid userId, CancellationToken cancellationToken = default)
     {

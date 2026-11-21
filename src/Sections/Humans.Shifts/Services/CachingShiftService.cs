@@ -130,9 +130,6 @@ internal sealed class CachingShiftService(
     public Task<ShiftDeletionResult> DeleteRotaAsync(Guid rotaId, Guid actorUserId) =>
         WriteAsync(() => MgmtAsync(m => m.DeleteRotaAsync(rotaId, actorUserId)), () => [rotaId]);
 
-    public Task<int> DeleteEventAsync(Guid eventSettingsId, CancellationToken cancellationToken = default) =>
-        WriteAsync(() => MgmtAsync(m => m.DeleteEventAsync(eventSettingsId, cancellationToken)), AllRotas);
-
     public Task<ShiftGenerationResult> CreateBuildStrikeShiftsAsync(ConfigureBuildStrikeStaffingInput input) =>
         WriteAsync(() => MgmtAsync(m => m.CreateBuildStrikeShiftsAsync(input)), () => [input.RotaId]);
 
@@ -211,9 +208,6 @@ internal sealed class CachingShiftService(
     public Task<IReadOnlyList<(Guid SignupId, Guid ShiftId)>> CancelActiveSignupsForUserAsync(
         Guid userId, string reason, CancellationToken ct = default) =>
         WriteAsync(() => SignupsAsync(s => s.CancelActiveSignupsForUserAsync(userId, reason, ct)), AllRotas);
-
-    public Task<int> DeleteAllForUsersAsync(IReadOnlyCollection<Guid> userIds, CancellationToken ct = default) =>
-        WriteAsync(() => SignupsAsync(s => s.DeleteAllForUsersAsync(userIds, ct)), AllRotas);
 
     public Task EraseForUserAsync(Guid userId, CancellationToken ct) =>
         WriteAsync(() => WithInnerAsync<ShiftSignupService>(s => s.EraseForUserAsync(userId, ct)), AllRotas);

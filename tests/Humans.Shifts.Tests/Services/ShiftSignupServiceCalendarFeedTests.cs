@@ -41,7 +41,6 @@ public sealed class ShiftSignupServiceCalendarFeedTests : ShiftsTestHarness
         var shiftMgmt = new ShiftManagementService(
             repo,
             AuditLog,
-            AdminAuthorization,
             serviceProvider,
             NewCalendarResolver(),
             Clock,
@@ -54,7 +53,6 @@ public sealed class ShiftSignupServiceCalendarFeedTests : ShiftsTestHarness
             NewCalendarResolver(),
             AuditLog,
             Substitute.For<INotificationEmitter>(),
-            AdminAuthorization,
             serviceProvider,
             Clock,
             NullLogger<ShiftSignupService>.Instance,

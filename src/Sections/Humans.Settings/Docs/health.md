@@ -33,7 +33,7 @@ page, the tab strip and the ordering; it supplies exactly one tab of its own.
 | "Which zone are events read in?" | the section's own read path, Workgroups' meeting form | `ISettingsService.GetTimeZoneIdAsync` |
 | "What is the current cycle?" / "This cycle, by id?" / "Every cycle" | most of the app; derive the set from the call sites | `ISettingsService.GetActiveEventSettings` / `GetEventSettingsByIdAsync` / `GetAllEventSettingsAsync` |
 | "Save this cycle / make this one current / change the zone, on this person's say-so" | only the section's own POST endpoints | `ISettingsWriteService.SaveEventSettingsAsync` / `ActivateEventSettingsAsync` / `SaveTimeZoneAsync` |
-| "Mint / drop a cycle for a fixture" | the dev dashboard seeder | `IEventSettingsSeeding.CreateActiveEventAsync` / `DeleteEventAsync` |
+| "Mint a cycle for a fixture" | the integration test host | `IEventSettingsSeeding.CreateActiveEventAsync` |
 | "The cycle moved — drop what you derived from it" | announced to every listener, named by none | `IEventSettingsChangeListener.EventSettingsChanged` |
 | "Resolve a day offset against the calendar" | domain helpers holding either the entity or the DTO | `IEventSettingsInfo`'s members + `EventSettingsInfo.GetEarlyEntryCapacityForDay` |
 | "What tabs does /Settings show this viewer?" / "Here is mine" | the page itself; any section that has settings | `SettingsTabComposition.ComposeAsync` / `ISectionSettings.Tabs` |
@@ -152,8 +152,6 @@ The shapes imply exactly today's layout:
   settings hang off the event.
 - **`IEventSettingsInfo`'s two clock rules are `sealed` default members** so no implementer
   can override the rule, which also lets the DTO forward to them by name.
-- **The seeding seam really deletes rows.** Every other path treats a cycle as permanent;
-  `DeleteEventAsync` exists for fixture teardown only.
 
 ## History
 
