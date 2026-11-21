@@ -32,7 +32,6 @@ public enum UserProfilePictureMutation
 
 /// <summary>Storage keys are null when the profile has no picture.</summary>
 public sealed record UserProfileSaveResult(
-    Guid ProfileId,
     string? PreviousProfilePictureKey,
     string? CurrentProfilePictureKey);
 

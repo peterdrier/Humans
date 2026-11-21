@@ -105,12 +105,11 @@ internal sealed class DevPersonaSeeder(
         var save = await profileEditorService.SaveProfileAsync(id, saveRequest);
         if (!save.Succeeded)
             throw new InvalidOperationException("Dev persona profile validation failed.");
-        var profileId = save.ProfileId!.Value;
 
         await userWrite.MarkFakeAsync(id, id, PersonaFakeReason);
 
         await contactFieldService.SaveContactFieldsAsync(
-            profileId,
+            id,
             [
                 new ContactFieldEditDto(
                     Id: null,

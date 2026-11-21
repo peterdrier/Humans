@@ -14,8 +14,6 @@ internal partial interface IUserRepository
     /// <summary>Every profile with <c>VolunteerHistory</c> and <c>Languages</c>, read-only.</summary>
     Task<IReadOnlyList<Profile>> GetAllProfilesAsync(CancellationToken ct = default);
 
-    Task<Guid?> GetOwnerUserIdAsync(Guid profileId, CancellationToken ct = default);
-
 
     /// <summary>
     /// The content type (the GDPR gate checked before serving the file) and versioned storage key

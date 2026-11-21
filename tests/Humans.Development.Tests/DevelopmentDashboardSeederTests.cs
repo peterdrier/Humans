@@ -57,7 +57,7 @@ public class DevelopmentDashboardSeederTests
             .Returns(call =>
             {
                 profiles.Add(call.Arg<Guid>(), call.Arg<ProfileSaveRequest>());
-                return new ProfileEditResult(true, Guid.NewGuid());
+                return new ProfileEditResult(true);
             });
 
         var selfSignupUsers = new List<Guid>();
@@ -146,7 +146,7 @@ public class DevelopmentDashboardSeederTests
 
         var profileEditor = Substitute.For<IProfileEditorService>();
         profileEditor.SaveProfileAsync(Arg.Any<Guid>(), Arg.Any<ProfileSaveRequest>(), Arg.Any<CancellationToken>())
-            .Returns(_ => new ProfileEditResult(true, Guid.NewGuid()));
+            .Returns(_ => new ProfileEditResult(true));
 
         var signups = Substitute.For<IShiftSignupSeeding>();
         signups.SignUpAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<Guid?>(), Arg.Any<ShiftSignupRequestFlags>())
