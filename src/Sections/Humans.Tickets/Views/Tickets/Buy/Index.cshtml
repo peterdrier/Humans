@@ -94,7 +94,7 @@ else
                 </div>
             }
 
-            @if (sale.SalesEvent.SupporterTotalsMinor.Any(t => t > own.AmountMinor))
+            @if (sale.OffersDonations && sale.SalesEvent.SupporterTotalsMinor.Any(t => t > own.AmountMinor))
             {
                 <h3 class="h6">@Localizer["Tickets_Buy_Supporter"]</h3>
                 <p class="small text-muted">@Localizer["Tickets_Buy_SupporterIntro"]</p>
@@ -117,7 +117,7 @@ else
             }
         }
 
-        @if (directedToken is null)
+        @if (directedToken is null && sale.OffersPartner)
         {
         <h3 class="h6">@Localizer["Tickets_Buy_Partner"]</h3>
         <p class="small text-muted">@string.Format(Localizer["Tickets_Buy_PartnerHelp"].Value, Eur(sale.PublicPrice!.AmountMinor))</p>
@@ -133,6 +133,8 @@ else
         </div>
         }
 
+        @if (sale.OffersDonations)
+        {
         <h3 class="h6">@Localizer["Tickets_Buy_Donation"]</h3>
         <div class="row g-2 mb-1">
             <div class="col-md-4">
@@ -150,6 +152,7 @@ else
             </div>
         </div>
         <p class="small text-muted">@Localizer["Tickets_Buy_DonationNote"]</p>
+        }
 
         @if (sale.TermsUrl is { } termsUrl)
         {

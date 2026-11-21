@@ -44,6 +44,11 @@ internal sealed class TicketSalesEvent
     /// <summary>How long an invitation to buy one specific returned ticket stays valid.</summary>
     public int DirectedResaleDays { get; set; } = 3;
 
+    /// <summary>Which schemes this event sells; null (a setup saved before the switches) means the defaults.</summary>
+    public TicketSalesSwitches? Switches { get; set; }
+
+    public TicketSalesSwitches EffectiveSwitches => Switches ?? new();
+
     /// <summary>The page with the ticket rules every buyer accepts; null for none. A new address is a new version.</summary>
     public string? TermsUrl { get; set; }
 
@@ -64,6 +69,37 @@ internal enum TicketSalesMode
     Open = 1,
     /// <summary>Fresh sales stopped; only returned tickets sell.</summary>
     ResaleOnly = 2,
+}
+
+/// <summary>
+/// The schemes an organisation may or may not run. The defaults are the Nobodies scheme; another organisation turns
+/// off what it does not sell. Enforced in the checkout service, not only hidden on the buy page.
+/// </summary>
+internal sealed class TicketSalesSwitches
+{
+    public ResaleScheme Resale { get; set; } = ResaleScheme.QueueAndDirected;
+
+    /// <summary>A buyer may add one more adult ticket for someone else, at the public price.</summary>
+    public bool PartnerTickets { get; set; } = true;
+
+    /// <summary>Donation lines at checkout: the VIP buttons and the free donation.</summary>
+    public bool Donations { get; set; } = true;
+
+    /// <summary>Checkout asks a buyer with no Marketing choice on record to join the mailing list.</summary>
+    public bool MailingListOptIn { get; set; } = true;
+}
+
+/// <summary>How a holder who cannot come gets their money back.</summary>
+internal enum ResaleScheme
+{
+    /// <summary>Holders cannot hand a ticket back; the ticketing team refunds by hand when it agrees to.</summary>
+    Off = 0,
+
+    /// <summary>A returned ticket waits in the public queue and sells, oldest first, before fresh stock.</summary>
+    Queue = 1,
+
+    /// <summary>The queue, plus a holder may send one person a link to buy their ticket.</summary>
+    QueueAndDirected = 2,
 }
 
 /// <summary>A wave is on sale through <see cref="EndsOn"/>, inclusive, in the event's time zone.</summary>

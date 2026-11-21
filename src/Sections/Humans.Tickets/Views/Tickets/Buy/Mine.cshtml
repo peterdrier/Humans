@@ -47,7 +47,7 @@
                         <button type="submit" class="btn btn-outline-secondary btn-sm">@Localizer["Tickets_Resale_CancelInvite"]</button>
                     </form>
                 }
-                else
+                else if (held.CanInvite)
                 {
                     <form asp-action="Invite" asp-route-ticketId="@t.Id" method="post" class="d-flex gap-2">
                         @Html.AntiForgeryToken()
@@ -57,7 +57,10 @@
                     </form>
                 }
             </div>
-            <p class="small text-muted mt-2 mb-0">@Localizer["Tickets_Resale_InviteHelp"]</p>
+            @if (held.CanInvite)
+            {
+                <p class="small text-muted mt-2 mb-0">@Localizer["Tickets_Resale_InviteHelp"]</p>
+            }
         }
         else if (held.CanOffer)
         {

@@ -858,6 +858,31 @@ namespace Humans.Tickets.Data.Migrations
                                 .HasForeignKey("TicketSalesEventId");
                         });
 
+                    b.OwnsOne("Humans.Tickets.Domain.Checkout.TicketSalesSwitches", "Switches", b1 =>
+                        {
+                            b1.Property<Guid>("TicketSalesEventId");
+
+                            b1.Property<bool>("Donations");
+
+                            b1.Property<bool>("MailingListOptIn");
+
+                            b1.Property<bool>("PartnerTickets");
+
+                            b1.Property<string>("Resale")
+                                .IsRequired();
+
+                            b1.HasKey("TicketSalesEventId");
+
+                            b1.ToTable("ticket_sales_events");
+
+                            b1
+                                .ToJson("switches")
+                                .HasColumnType("jsonb");
+
+                            b1.WithOwner()
+                                .HasForeignKey("TicketSalesEventId");
+                        });
+
                     b.OwnsMany("Humans.Tickets.Domain.Checkout.TicketSalesWave", "Waves", b1 =>
                         {
                             b1.Property<Guid>("TicketSalesEventId");
@@ -886,6 +911,8 @@ namespace Humans.Tickets.Data.Migrations
                         });
 
                     b.Navigation("PriceRules");
+
+                    b.Navigation("Switches");
 
                     b.Navigation("Waves");
                 });
