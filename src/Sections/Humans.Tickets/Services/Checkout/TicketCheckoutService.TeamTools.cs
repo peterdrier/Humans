@@ -175,9 +175,11 @@ internal sealed partial class TicketCheckoutService
             refundNote, null, ct);
         var eventName = (await settings.GetEventSettingsByIdAsync(salesEvent.EventSettingsId, ct))?.EventName ?? string.Empty;
         if (!string.IsNullOrWhiteSpace(order.BuyerEmail))
-            await email.SendAsync(emails.EventCancelled(order.BuyerUserId, order.BuyerEmail, order.BuyerName, eventName, refundMinor,
-                refundFailed, order.Lines.Any(l => l.Kind == CheckoutLineKind.Donation), order.Culture)
-                with { DeliveryId = CancellationState.CancelNoticeId(salesEvent.Id, order.Id) }, ct);
+        {
+            var notice = emails.EventCancelled(order.BuyerUserId, order.BuyerEmail, order.BuyerName, eventName, refundMinor,
+                refundFailed, order.Lines.Any(l => l.Kind == CheckoutLineKind.Donation), order.Culture);
+            await email.SendAsync(notice with { DeliveryId = CancellationState.CancelNoticeId(salesEvent.Id, order.Id) }, ct);
+        }
         order.CancellationEmailedAt = clock.GetCurrentInstant();
         await repository.UpdateOrderAsync(order, ct);
         return true;
