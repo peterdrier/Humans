@@ -2,6 +2,7 @@
 @model IReadOnlyList<Humans.Tickets.Services.Checkout.HeldTicket>
 @{
     ViewData["Title"] = Localizer["Tickets_Mine_Title"].Value;
+    var earlyEntryDate = ViewData["EarlyEntryDate"] as NodaTime.LocalDate?;
     string Eur(long minor) => (minor / 100m).ToString("0.00", System.Globalization.CultureInfo.CurrentCulture) + " €";
 }
 
@@ -33,6 +34,12 @@ else
             </div>
             <span>@Localizer[$"Tickets_Ticket_State_{t.State}"]</span>
         </div>
+        @if (earlyEntryDate is { } ee && t.State is TicketCheckoutTicketState.Valid or TicketCheckoutTicketState.Offered)
+        {
+            <div class="small mt-2">
+                <i class="fa-solid fa-door-open me-1" aria-hidden="true"></i>@Localizer["Tickets_TicketStub_EarlyEntry", ee.ToWeekdayDayMonth()]
+            </div>
+        }
         @if (t.State is TicketCheckoutTicketState.Valid or TicketCheckoutTicketState.Offered)
         {
             <img src="@Humans.Tickets.Services.Delivery.TicketCodeImages.PngDataUri(t.Barcode)" alt="@t.Barcode"

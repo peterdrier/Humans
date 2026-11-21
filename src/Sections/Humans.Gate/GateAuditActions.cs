@@ -8,4 +8,6 @@ internal sealed class GateAuditActions : AuditActionContributor
     public static readonly AuditActionDefinition GateStaffPinSet = new("GateStaffPinSet");
 
     public static readonly AuditActionDefinition GateStaffPinReset = new("GateStaffPinReset");
+
+    public static readonly AuditActionDefinition GateAdmitUndone = new("GateAdmitUndone");
 }

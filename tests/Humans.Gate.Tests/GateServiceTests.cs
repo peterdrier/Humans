@@ -6,6 +6,7 @@ using Humans.Gdpr.Contracts;
 using Humans.Settings.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Tickets.Contracts;
+using Humans.Users.Contracts;
 using Humans.Base.Constants;
 using Humans.Gate.Data;
 using Humans.Gate.Domain;
@@ -90,6 +91,7 @@ public class GateServiceTests
     private readonly IPasswordHasher<GateStaffPin> _pinHasher = new PasswordHasher<GateStaffPin>();
     private readonly IAuditLogService _auditLog = Substitute.For<IAuditLogService>();
     private readonly ITicketWrite _users = Substitute.For<ITicketWrite>();
+    private readonly IUserService _people = Substitute.For<IUserService>();
     private readonly IBackgroundJobClient _jobs = Substitute.For<IBackgroundJobClient>();
     private readonly GateVendorMirrorLedger _ledger = new(new MemoryCache(new MemoryCacheOptions()));
     private readonly IConfiguration _config = new ConfigurationBuilder().AddInMemoryCollection().Build();
@@ -106,7 +108,7 @@ public class GateServiceTests
         _earlyEntry.GetForUserAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns((EarlyEntryRosterRow?)null);
         _svc = new GateService(new GateRepository(GateDbFactory), _tickets, _earlyEntry, _burn, _shifts, _roles, _users,
-            _issued, _pinHasher, _auditLog, _jobs, _ledger, new GatePinThrottle(new MemoryCache(new MemoryCacheOptions()), Clock), _config, NullLogger<GateService>.Instance, Clock);
+            _issued, _pinHasher, _auditLog, _jobs, _ledger, new GatePinThrottle(new MemoryCache(new MemoryCacheOptions()), Clock), _config, NullLogger<GateService>.Instance, Clock, _people);
 
         // Baseline: a past cutoff, so general entry is open; without one every scan fails safe to
         // AMBER. Seeded sync (the ctor can't await) into the store the repository's factory shares.
@@ -1299,4 +1301,164 @@ public class GateServiceTests
         admitted.Should().BeEquivalentTo([IssuedBarcode.ToLowerInvariant()]);
         (await reads.GetAdmittedAsync([], Xunit.TestContext.Current.CancellationToken)).Should().BeEmpty();
     }
+
+    // Undo a mistaken check-in (G6).
+
+    private CancellationToken Ct => Xunit.TestContext.Current.CancellationToken;
+
+    [HumansFact]
+    public async Task UndoAtGate_WrongPin_RefusesAndKeepsTheAdmit()
+    {
+        StubIssued(holder: GuestId);
+        await RecordIssuedAsync();
+
+        var result = await _svc.UndoAdmitAtGateAsync(IssuedBarcode, "0000", AgentId);
+
+        result.Outcome.Should().Be(GateUndoOutcome.PinRefused);
+        result.PinFailure.Should().Be(GateOverrideFailure.InvalidPin);
+        (await GateDb.GateScanEvents.AsNoTracking().SingleAsync(Ct)).AdmitDedupeKey.Should().NotBeNull();
+        await _users.DidNotReceive().UndoCheckInAsync(Arg.Any<Guid>(), Arg.Any<int>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task UndoAtGate_FreesTheBarcode_RevertsArrival_AndAudits()
+    {
+        StubIssued(holder: GuestId);
+        await RecordIssuedAsync();
+
+        var result = await _svc.UndoAdmitAtGateAsync(IssuedBarcode.ToLowerInvariant(), SupervisorPin, AgentId);
+
+        result.Outcome.Should().Be(GateUndoOutcome.Undone);
+        var row = await GateDb.GateScanEvents.AsNoTracking().SingleAsync(Ct);
+        row.AdmitDedupeKey.Should().BeNull();
+        row.UndoneByUserId.Should().Be(AgentId);
+        row.UndoneAt.Should().Be(Clock.GetCurrentInstant());
+        row.UndoReason.Should().Be(GateService.UndoneAtGateReason);
+        await _users.Received(1).UndoCheckInAsync(GuestId, 2027, Arg.Any<CancellationToken>());
+        await _auditLog.Received(1).LogAsync(GateAuditActions.GateAdmitUndone, nameof(GateScanEvent), row.Id,
+            Arg.Any<string>(), AgentId, relatedEntityId: GuestId, relatedEntityType: Arg.Any<string?>());
+        (await new GateAdmissionReads(new GateRepository(GateDbFactory)).GetAdmittedAsync([IssuedBarcode], Ct))
+            .Should().BeEmpty();
+
+        (await _svc.EvaluateAsync(IssuedBarcode)).Outcome.Should().Be(GatePreCheckOutcome.NeedsIdCheck);
+        (await RecordIssuedAsync()).Verdict.Should().Be(GateVerdict.Admitted);
+        (await _svc.UndoAdmitAtGateAsync("H-UNKNOWN", SupervisorPin, AgentId)).Outcome.Should().Be(GateUndoOutcome.NotAdmitted);
+    }
+
+    [HumansFact]
+    public async Task Undo_SecondTime_IsNotAdmitted_AndReportUndoNeedsAReason()
+    {
+        StubIssued(holder: GuestId);
+        await RecordIssuedAsync();
+        var scanId = (await GateDb.GateScanEvents.AsNoTracking().SingleAsync(Ct)).Id;
+
+        (await _svc.UndoAdmitAsync(scanId, "  ", AgentId)).Outcome.Should().Be(GateUndoOutcome.ReasonRequired);
+        (await _svc.UndoAdmitAsync(scanId, new string('x', GateScanEvent.NoteMaxLength + 1), AgentId))
+            .Outcome.Should().Be(GateUndoOutcome.ReasonRequired);
+        (await _svc.UndoAdmitAsync(scanId, "Scanned the wrong wristband", AgentId)).Outcome.Should().Be(GateUndoOutcome.Undone);
+        (await _svc.UndoAdmitAsync(scanId, "Again", AgentId)).Outcome.Should().Be(GateUndoOutcome.NotAdmitted);
+
+        (await GateDb.GateScanEvents.AsNoTracking().SingleAsync(Ct)).UndoReason.Should().Be("Scanned the wrong wristband");
+        await _users.Received(1).UndoCheckInAsync(GuestId, 2027, Arg.Any<CancellationToken>());
+        (await _svc.GetLeaderboardAsync(Instant.MinValue)).TotalAdmitted.Should().Be(0);
+    }
+
+    [HumansFact]
+    public async Task Undo_KeepsArrival_WhenAnotherAdmitOfTheGuestStands()
+    {
+        StubIssued(holder: GuestId);
+        await RecordIssuedAsync();
+        GateDb.GateScanEvents.Add(new GateScanEvent
+        {
+            Id = Guid.NewGuid(), Barcode = "OTHER", AdmitDedupeKey = "OTHER", Verdict = GateVerdict.Admitted,
+            GuestUserId = GuestId, ScannedByUserId = AgentId, OccurredAt = Clock.GetCurrentInstant(),
+        });
+        await GateDb.SaveChangesAsync(Ct);
+
+        (await _svc.UndoAdmitAtGateAsync(IssuedBarcode, SupervisorPin, AgentId)).Outcome.Should().Be(GateUndoOutcome.Undone);
+
+        await _users.DidNotReceive().UndoCheckInAsync(Arg.Any<Guid>(), Arg.Any<int>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public void UndoCard_MapsEachOutcome()
+    {
+        GateScanCardViewModel.FromUndo(new GateUndoResult(GateUndoOutcome.Undone), Barcode).Headline.Should().Be("Undone");
+        GateScanCardViewModel.FromUndo(new GateUndoResult(GateUndoOutcome.NotAdmitted), Barcode).AllowUndo.Should().BeFalse();
+        GateScanCardViewModel.FromUndo(
+            new GateUndoResult(GateUndoOutcome.PinRefused, GateOverrideFailure.InvalidPin), Barcode).AllowUndo.Should().BeTrue();
+    }
+
+    // Find a ticket by name (G3).
+
+    private IssuedTicketInfo IssuedFor(string name, Guid? holder = null, Guid? entryUser = null, bool valid = true, string? barcode = null) =>
+        new(Guid.NewGuid(), _activeEvent.Id, barcode ?? "H" + Guid.NewGuid().ToString("N")[..12].ToUpperInvariant(), name,
+            holder, entryUser ?? holder, "Wave 1", valid, InResaleQueue: false);
+
+    private void StubPeople(string query, params Guid[] ids) =>
+        _people.SearchUsersAsync(query, PersonSearchFields.Name | PersonSearchFields.LegalName, Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns(ids.Select(id => new HumanSearchResult(id, "x", null, null, null, null, 1)).ToList());
+
+    [HumansFact]
+    public async Task Find_MatchesTicketName_AccentAndCaseBlind_AndSkipsVoid()
+    {
+        StubTicket();
+        _burn.GetActiveEventSettings().Returns(_activeEvent);
+        _issued.GetIssuedTicketsForEventAsync(_activeEvent.Id, Arg.Any<CancellationToken>())
+            .Returns([IssuedFor("José Núñez"), IssuedFor("Jose Void", valid: false)]);
+        StubPeople("jose");
+
+        var matches = await _svc.FindTicketsByNameAsync(" jose ");
+
+        matches.Select(m => m.Name).Should().BeEquivalentTo(["José Núñez"]);
+        (await _svc.FindTicketsByNameAsync("donovan")).Should().ContainSingle(m => m.Barcode == Barcode);
+        (await _svc.FindTicketsByNameAsync("j")).Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task Find_MatchesThePersonBehindTheTicket_ByBurnerOrLegalName()
+    {
+        var entryUser = Guid.NewGuid();
+        StubTicket(matchedUserId: GuestId);
+        _burn.GetActiveEventSettings().Returns(_activeEvent);
+        _issued.GetIssuedTicketsForEventAsync(_activeEvent.Id, Arg.Any<CancellationToken>())
+            .Returns([IssuedFor("Ana Ruiz", holder: GuestId), IssuedFor("Kid Ruiz", entryUser: entryUser), IssuedFor("Someone Else")]);
+        StubPeople("Sparkle", GuestId, entryUser);
+
+        var matches = await _svc.FindTicketsByNameAsync("Sparkle");
+
+        matches.Select(m => m.Name).Should().BeEquivalentTo(["Jane Donovan", "Ana Ruiz", "Kid Ruiz"]);
+    }
+
+    // Arrivals report (G8).
+
+    [HumansFact]
+    public async Task Report_CountsLiveArrivalsAndRefusals_PerDay_AndLeavesUnknownCodesOut()
+    {
+        var ticket = StubIssued(holder: GuestId);
+        _issued.GetIssuedTicketsForEventAsync(_activeEvent.Id, Arg.Any<CancellationToken>())
+            .Returns([ticket, IssuedFor("Spare"), IssuedFor("Gone", valid: false)]);
+
+        await RecordIssuedAsync();
+        await RecordIssuedAsync();
+        await _svc.RecordDecisionAsync(new GateDecisionInput("UNKNOWN-1", true, false, "L1", null, null), AgentId);
+
+        var report = await _svc.GetArrivalsReportAsync();
+
+        report!.TicketsHeld.Should().Be(2);
+        report.Arrived.Should().Be(1);
+        var day = report.Days.Should().ContainSingle().Subject;
+        (day.Admitted, day.Refused, day.Undone).Should().Be((1, 1, 0));
+        report.Arrivals.Should().ContainSingle(a => a.Name == "Ana Ruiz" && a.TicketLabel == "Wave 1");
+
+        await _svc.UndoAdmitAtGateAsync(IssuedBarcode, SupervisorPin, AgentId);
+        var after = await _svc.GetArrivalsReportAsync();
+        after!.Arrived.Should().Be(0);
+        after.Days.Single().Undone.Should().Be(1);
+        after.Arrivals.Single().UndoneByUserId.Should().Be(AgentId);
+    }
+
+    [HumansFact]
+    public async Task Report_WithoutAnActiveEvent_IsNull() =>
+        (await _svc.GetArrivalsReportAsync()).Should().BeNull();
 }

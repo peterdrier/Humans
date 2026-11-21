@@ -174,6 +174,24 @@ public sealed class EventParticipationServiceTests : IDisposable
     }
 
     [HumansFact]
+    public async Task UndoCheckIn_RevertsOnlyAnAttendedRow_ToTicketed()
+    {
+        var user = SeedUser((2026, ParticipationStatus.Attended, ParticipationSource.TicketSync),
+            (2025, ParticipationStatus.NotAttending, ParticipationSource.UserDeclared));
+
+        (await _sut.UndoCheckInAsync(user.Id, 2026, Ct)).Should().BeTrue();
+        (await _sut.UndoCheckInAsync(user.Id, 2026, Ct)).Should().BeFalse();
+        (await _sut.UndoCheckInAsync(user.Id, 2025, Ct)).Should().BeFalse();
+        (await _sut.UndoCheckInAsync(user.Id, 2024, Ct)).Should().BeFalse();
+
+        var rows = await RowsAsync(user.Id);
+        rows.Single(r => r.Year == 2026).Should().BeEquivalentTo(
+            new { Status = ParticipationStatus.Ticketed, Source = ParticipationSource.TicketSync, CheckedInAt = (Instant?)null },
+            o => o.ExcludingMissingMembers());
+        rows.Single(r => r.Year == 2025).Status.Should().Be(ParticipationStatus.NotAttending);
+    }
+
+    [HumansFact]
     public async Task Declare_ThenUndo_LeavesNothing()
     {
         var user = SeedUser();

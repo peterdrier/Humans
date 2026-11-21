@@ -18,6 +18,22 @@ internal interface IGateService : IApplicationService
     /// <summary>Unordered; the controller sorts for display.</summary>
     Task<GateLeaderboard> GetLeaderboardAsync(Instant since, CancellationToken ct = default);
 
+    /// <summary>
+    /// The current event's tickets, Ticket Tailor and Humans-issued, whose ticket name contains <paramref name="query"/>
+    /// or whose holder's burner or legal name matches it; never email. Void and resold tickets are left out. Empty under
+    /// two characters, at most 20 rows, unordered.
+    /// </summary>
+    Task<IReadOnlyList<GateNameMatch>> FindTicketsByNameAsync(string? query, CancellationToken ct = default);
+
+    /// <summary>The kiosk's undo of the barcode's admit, authorized by the shared supervisor PIN like an override.</summary>
+    Task<GateUndoResult> UndoAdmitAtGateAsync(string barcode, string? supervisorPin, Guid actorUserId, CancellationToken ct = default);
+
+    /// <summary>The report's undo of one admit, with the admin's stated reason. Authorized at the controller.</summary>
+    Task<GateUndoResult> UndoAdmitAsync(Guid scanId, string? reason, Guid actorUserId, CancellationToken ct = default);
+
+    /// <summary>Arrivals at the active event, per event-local day; null with no active event. Rows are unordered.</summary>
+    Task<GateArrivalsReport?> GetArrivalsReportAsync(CancellationToken ct = default);
+
     Task<GateSettingsDto> GetSettingsAsync(CancellationToken ct = default);
 
     /// <summary>Authorized at the controller.</summary>
@@ -134,6 +150,52 @@ internal enum GateOverrideFailure
     InvalidPin,
     LockedOut,
 }
+
+/// <summary><paramref name="Name"/> is the name on the ticket, which the agent checks against the photo ID.</summary>
+internal sealed record GateNameMatch(string Barcode, string Name, string? TicketLabel);
+
+internal enum GateUndoOutcome
+{
+    Undone,
+
+    /// <summary>No standing admit: never admitted, or already undone.</summary>
+    NotAdmitted,
+
+    PinRefused,
+
+    ReasonRequired,
+}
+
+internal sealed record GateUndoResult(
+    GateUndoOutcome Outcome, GateOverrideFailure? PinFailure = null, int? RetryAfterSeconds = null);
+
+/// <summary><paramref name="TicketsHeld"/> counts the event's valid tickets, arrived or not.</summary>
+internal sealed record GateArrivalsReport(
+    string EventName,
+    DateTimeZone Zone,
+    LocalDate Today,
+    int TicketsHeld,
+    IReadOnlyList<GateArrivalDay> Days,
+    IReadOnlyList<GateArrival> Arrivals)
+{
+    public int Arrived => Days.Sum(d => d.Admitted);
+}
+
+/// <summary>Admit counts leave out undone admits, which <paramref name="Undone"/> counts.</summary>
+internal sealed record GateArrivalDay(LocalDate Day, int Admitted, int Early, int Overrides, int Refused, int Undone);
+
+/// <summary>One admit, standing or undone. <paramref name="Day"/> is event-local.</summary>
+internal sealed record GateArrival(
+    Guid ScanId,
+    Instant AdmittedAt,
+    LocalDate Day,
+    string Name,
+    string? TicketLabel,
+    GateVerdict Verdict,
+    Guid? GuestUserId,
+    Instant? UndoneAt,
+    Guid? UndoneByUserId,
+    string? UndoReason);
 
 internal sealed record GateLeaderboardRow(Guid ScannedByUserId, int Admitted, int Rejected, int Total);
 
