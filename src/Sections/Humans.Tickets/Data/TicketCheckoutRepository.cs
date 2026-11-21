@@ -1,5 +1,7 @@
 using Humans.Tickets.Domain.Checkout;
 using Microsoft.EntityFrameworkCore;
+using NodaTime;
+using Npgsql;
 
 namespace Humans.Tickets.Data;
 
@@ -143,11 +145,30 @@ internal sealed class TicketCheckoutRepository(IDbContextFactory<TicketsDbContex
             .ToListAsync(ct);
     }
 
-    public async Task AddTicketsAsync(IReadOnlyList<TicketCheckoutTicket> tickets, CancellationToken ct = default)
+    public async Task<bool> AddTicketsAsync(IReadOnlyList<TicketCheckoutTicket> tickets, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
         ctx.TicketCheckoutTickets.AddRange(tickets);
-        await ctx.SaveChangesAsync(ct);
+        try
+        {
+            await ctx.SaveChangesAsync(ct);
+            return true;
+        }
+        catch (DbUpdateException ex) when (ex.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation })
+        {
+            return false;
+        }
+    }
+
+    public async Task<bool> TryClaimPaidAsync(Guid orderId, Instant paidAt, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        var claimed = await ctx.TicketCheckoutOrders
+            .Where(o => o.Id == orderId && o.State != TicketCheckoutOrderState.Paid)
+            .ExecuteUpdateAsync(set => set
+                .SetProperty(o => o.State, TicketCheckoutOrderState.Paid)
+                .SetProperty(o => o.PaidAt, paidAt), ct);
+        return claimed == 1;
     }
 
     public async Task UpdateTicketAsync(TicketCheckoutTicket ticket, CancellationToken ct = default)
@@ -227,7 +248,7 @@ internal sealed class TicketCheckoutRepository(IDbContextFactory<TicketsDbContex
             .ToListAsync(ct);
     }
 
-    public async Task<int> ErasePiiForUserAsync(Guid userId, CancellationToken ct = default)
+    public async Task<int> ErasePiiForUserAsync(Guid userId, IReadOnlyCollection<string> emails, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
         var orders = await ctx.TicketCheckoutOrders.ToListAsync(ct);
@@ -241,10 +262,11 @@ internal sealed class TicketCheckoutRepository(IDbContextFactory<TicketsDbContex
                 order.BuyerEmail = TicketPiiTombstone.EmailFor(userId);
                 touched = true;
             }
-            foreach (var line in order.Lines.Where(l => l.AttendeeUserId == userId))
+            var own = order.Lines.Select((l, i) => (l, i)).Where(x => x.l.AttendeeUserId == userId).Select(x => x.i).ToHashSet();
+            foreach (var line in order.Lines.Where((l, i) => own.Contains(i) || l.ParentLineIndex is { } parent && own.Contains(parent)))
             {
                 line.AttendeeName = TicketPiiTombstone.Name;
-                line.AttendeeEmail = TicketPiiTombstone.EmailFor(userId);
+                line.AttendeeEmail = line.AttendeeEmail is null ? null : TicketPiiTombstone.EmailFor(userId);
                 touched = true;
             }
             if (!touched) continue;
@@ -252,13 +274,20 @@ internal sealed class TicketCheckoutRepository(IDbContextFactory<TicketsDbContex
             ctx.TicketCheckoutOrders.Update(order);
             changed++;
         }
-        foreach (var ticket in await ctx.TicketCheckoutTickets.Where(t => t.HolderUserId == userId).ToListAsync(ct))
+        var held = await ctx.TicketCheckoutTickets.Where(t => t.HolderUserId == userId).ToListAsync(ct);
+        var heldIds = held.Select(t => t.Id).ToList();
+        var children = await ctx.TicketCheckoutTickets
+            .Where(t => t.ParentTicketId != null && heldIds.Contains(t.ParentTicketId.Value) && t.HolderUserId == null)
+            .ToListAsync(ct);
+        foreach (var ticket in held.Concat(children))
         {
             ticket.HolderName = TicketPiiTombstone.Name;
-            ticket.HolderEmail = TicketPiiTombstone.EmailFor(userId);
+            ticket.HolderEmail = ticket.HolderEmail is null ? null : TicketPiiTombstone.EmailFor(userId);
             changed++;
         }
-        foreach (var offer in await ctx.TicketResaleOffers.Where(o => o.HolderUserId == userId && o.DirectedEmail != null).ToListAsync(ct))
+        var invited = new HashSet<string>(emails, StringComparer.OrdinalIgnoreCase);
+        foreach (var offer in (await ctx.TicketResaleOffers.Where(o => o.DirectedEmail != null).ToListAsync(ct))
+                     .Where(o => o.HolderUserId == userId || invited.Contains(o.DirectedEmail!)))
         {
             offer.DirectedEmail = null;
             offer.DirectedTokenHash = null;

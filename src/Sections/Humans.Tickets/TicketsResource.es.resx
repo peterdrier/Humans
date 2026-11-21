@@ -231,9 +231,6 @@
   <data name="Tickets_Buy_PartnerIsYou" xml:space="preserve">
     <value>Ese correo es tuyo; marca la casilla de tu propia entrada.</value>
   </data>
-  <data name="Tickets_Buy_PartnerHolds" xml:space="preserve">
-    <value>Esa persona ya tiene una entrada para este evento.</value>
-  </data>
   <data name="Tickets_Buy_Invalid" xml:space="preserve">
     <value>Esa opción no está disponible. Inténtalo de nuevo.</value>
   </data>
@@ -416,5 +413,14 @@
   </data>
   <data name="Tickets_Public_PriceNote" xml:space="preserve">
     <value>Este es el precio público. Al iniciar sesión verás tu propio precio, que puede ser menor si tienes una ayuda para entradas.</value>
+  </data>
+  <data name="Tickets_Resale_InviteLive" xml:space="preserve">
+    <value>Ya hay una invitación abierta para esta entrada. Cancélala antes de invitar a otra persona.</value>
+  </data>
+  <data name="Tickets_Resale_InviteLimit" xml:space="preserve">
+    <value>Esta entrada ya ha tenido el máximo de invitaciones permitidas. Sigue en la cola para quien quiera comprarla.</value>
+  </data>
+  <data name="Tickets_Buy_Reference" xml:space="preserve">
+    <value>Referencia del pedido</value>
   </data>
 </root>
