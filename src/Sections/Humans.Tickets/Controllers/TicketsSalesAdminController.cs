@@ -224,7 +224,7 @@ internal sealed class SalesEditForm
     public bool PartnerTickets { get; set; } = true;
     public bool Donations { get; set; } = true;
     public bool MailingListOptIn { get; set; } = true;
-    public string? TermsUrl { get; set; }
+    public string? TermsFolder { get; set; }
 
     internal sealed class WaveRow
     {
@@ -273,7 +273,7 @@ internal sealed class SalesEditForm
         PartnerTickets = e.EffectiveSwitches.PartnerTickets,
         Donations = e.EffectiveSwitches.Donations,
         MailingListOptIn = e.EffectiveSwitches.MailingListOptIn,
-        TermsUrl = e.TermsUrl,
+        TermsFolder = e.TermsFolder,
     };
 
     public (SalesEventSave? Save, string? Error) ToSave(Guid? id, DateTimeZone zone)
@@ -339,7 +339,7 @@ internal sealed class SalesEditForm
                 Donations = Donations,
                 MailingListOptIn = MailingListOptIn,
             },
-            TermsUrl = string.IsNullOrWhiteSpace(TermsUrl) ? null : TermsUrl.Trim(),
+            TermsFolder = string.IsNullOrWhiteSpace(TermsFolder) ? null : TermsFolder.Trim().Trim('/'),
         }, null);
     }
 

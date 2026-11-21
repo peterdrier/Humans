@@ -182,9 +182,26 @@ else
             @if (!nothingToBuy)
             {
                 <hr class="my-4" />
-                @if (sale.TermsUrl is { } termsUrl)
+                @if (sale.Terms is { } terms)
                 {
-                    <p class="mb-2"><a href="@termsUrl" target="_blank" rel="noopener">@Localizer["Tickets_Buy_Terms"]</a></p>
+                    var termsTabs = new TabbedMarkdownDocumentsViewModel
+                    {
+                        Documents = terms.Texts.OrderByDisplayLanguage(canonicalFirst: true).ToList(),
+                        DefaultLanguage = terms.Texts.GetDefaultDocumentLanguage(),
+                        TabsId = $"terms-tabs-{p}",
+                        ContentId = $"terms-content-{p}",
+                        ContentCssClass = "tab-content pt-3",
+                        ContentStyle = "",
+                        UseLegalLanguageLabels = false,
+                    };
+                    <details class="ticket-rules mb-2">
+                        <summary>@Localizer["Tickets_Buy_Terms"]</summary>
+                        <div class="mt-2">
+                            <partial name="_TabbedMarkdownDocuments" model="termsTabs" />
+                        </div>
+                    </details>
+                    <input type="hidden" name="termsFolder" value="@terms.Folder" />
+                    <input type="hidden" name="termsVersion" value="@terms.Version" />
                     <div class="form-check mb-3">
                         <input class="form-check-input" type="checkbox" id="acceptTerms-@p" name="acceptTerms" value="true" required />
                         <label class="form-check-label" for="acceptTerms-@p">@Localizer["Tickets_Buy_TermsAccept"]</label>

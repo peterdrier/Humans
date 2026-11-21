@@ -58,7 +58,7 @@ Bulk cache warmups publish through the shared mutation guard. A refresh, deletio
 
 ### TicketCheckoutOrder
 
-**Table:** `ticket_checkout_orders` — `Lines` is jsonb. Unique (`BackendKey`, `BackendOrderId`). `BuyerUserId` and each line's `AttendeeUserId` are bare user ids (no FK).
+**Table:** `ticket_checkout_orders` — `Lines` is jsonb. Unique (`BackendKey`, `BackendOrderId`). `TermsFolder` and `TermsVersion` (a legal repo commit) record the ticket rules the buyer accepted. `BuyerUserId` and each line's `AttendeeUserId` are bare user ids (no FK).
 
 ### TicketCheckoutRefund
 

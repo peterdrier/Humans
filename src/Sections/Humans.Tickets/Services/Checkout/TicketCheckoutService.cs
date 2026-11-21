@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Security.Cryptography;
+using System.Text.RegularExpressions;
 using Humans.AuditLog.Contracts;
 using Humans.Base.Extensions;
 using Humans.Email.Contracts;
@@ -30,6 +31,7 @@ internal sealed partial class TicketCheckoutService(
     TicketsEmails emails,
     IEnumerable<ITicketDelivery> deliveries,
     IGateAdmissions gateAdmissions,
+    ITicketRulesSource rulesSource,
     IStringLocalizer<TicketsResource> localizer,
     IAuditLogService auditLog,
     IClock clock,
@@ -47,6 +49,9 @@ internal sealed partial class TicketCheckoutService(
     internal static readonly Duration CheckoutLifetime = Duration.FromHours(1);
 
     private readonly IReadOnlyList<ITicketCheckoutBackend> _backends = backends.ToList();
+
+    [GeneratedRegex(@"^[A-Za-z0-9][A-Za-z0-9_ ./-]*$", RegexOptions.None, 1000)]
+    private static partial Regex TermsFolderPattern();
 
     public IReadOnlyList<CheckoutBackendInfo> Backends =>
         _backends.Select(b => new CheckoutBackendInfo(b.Key, b.IsConfigured, b.Setup)).OrderBy(b => b.Key, StringComparer.Ordinal).ToList();
@@ -89,13 +94,16 @@ internal sealed partial class TicketCheckoutService(
             return new("Resale only needs resale switched on.");
         if (save.Mode == TicketSalesMode.InvitedOnly && save.PriceRules.All(r => r.Kind != TicketPriceRuleKind.EarlyAccess))
             return new("Invited only needs an early access price rule naming the grant program that is invited.");
-        if (save.TermsUrl is { } terms && (terms.Length > 500 || !Uri.TryCreate(terms, UriKind.Absolute, out var termsUri)
-            || !string.Equals(termsUri.Scheme, Uri.UriSchemeHttps, StringComparison.Ordinal)))
-            return new("The ticket rules page must be an https address of at most 500 characters.");
+        if (save.TermsFolder is { } folder && (folder.Length > 200 || !TermsFolderPattern().IsMatch(folder) || folder.Contains("..", StringComparison.Ordinal)))
+            return new("The ticket rules folder is a path in the legal repo, such as TicketRules/2027, of at most 200 characters.");
 
         var existing = save.Id is { } id ? await repository.GetSalesEventAsync(id, ct) : null;
         if (save.Id is not null && existing is null)
             return new("That sales event no longer exists.");
+        if (save.TermsFolder is { } newFolder && !string.Equals(newFolder, existing?.TermsFolder, StringComparison.Ordinal)
+            && await rulesSource.GetAsync(newFolder, refresh: true, ct) is null)
+            return new($"The legal repo has no Spanish and English ticket rules in {newFolder}, or GitHub could not be read. " +
+                "The folder needs one name.md (Spanish) and name-en.md (English), and no other markdown without a language suffix.");
         var clash = await repository.GetSalesEventForEventAsync(save.EventSettingsId, ct);
         if (clash is not null && clash.Id != existing?.Id)
             return new("That event already has a sales setup.");
@@ -119,7 +127,7 @@ internal sealed partial class TicketCheckoutService(
             ChildMaxAge = save.ChildMaxAge,
             ResaleOpenedAt = save.Switches.Resale == ResaleScheme.Off ? null : existing?.ResaleOpenedAt,
             Switches = save.Switches,
-            TermsUrl = save.TermsUrl,
+            TermsFolder = save.TermsFolder,
             UpdatedAt = now,
         };
         await repository.SaveSalesEventAsync(salesEvent, ct);
@@ -134,7 +142,7 @@ internal sealed partial class TicketCheckoutService(
             $"rules {string.Join(", ", salesEvent.PriceRules.Select(r => $"{r.Kind} {FormatMinor(r.AmountMinor)} for {r.GrantProgramId}"))}; " +
             $"supporter totals {string.Join(", ", salesEvent.SupporterTotalsMinor.Select(FormatMinor))}; " +
             $"child {(salesEvent.ChildPriceMinor is { } child ? FormatMinor(child) : "none")}; " +
-            $"ticket rules {salesEvent.TermsUrl ?? "none"}; resale {save.Switches.Resale}" +
+            $"ticket rules {salesEvent.TermsFolder ?? "none"}; resale {save.Switches.Resale}" +
             (existing?.ResaleOpenedAt is not null && salesEvent.ResaleOpenedAt is null ? " (resale paused)" : string.Empty) + ", " +
             $"partner tickets {OnOff(save.Switches.PartnerTickets)}, donations {OnOff(save.Switches.Donations)}, " +
             $"mailing list opt-in {OnOff(save.Switches.MailingListOptIn)}", actorUserId);
@@ -174,7 +182,7 @@ internal sealed partial class TicketCheckoutService(
                 continue;
             if (salesEvent.Mode == TicketSalesMode.InvitedOnly && !context.Invited)
                 continue;
-            pages.Add((context.Event.GateOpeningDate, ToBuyPage(context, null, directed: false)));
+            pages.Add((context.Event.GateOpeningDate, ToBuyPage(context, await RulesForAsync(salesEvent, ct), null, directed: false)));
         }
         return pages.OrderBy(p => p.GatesOpen).Select(p => p.Page).ToList();
     }
@@ -203,21 +211,26 @@ internal sealed partial class TicketCheckoutService(
         if (offer is null || await LoadBuyContextAsync(offer.SalesEventId, userId, ct) is not { } context
             || context.SalesEvent.EffectiveSwitches.Resale != ResaleScheme.QueueAndDirected)
             return null;
-        return ToBuyPage(context, DirectedOfferFor(offer, context) is null ? "Tickets_Resale_InviteInvalid" : null, directed: true);
+        return ToBuyPage(context, await RulesForAsync(context.SalesEvent, ct),
+            DirectedOfferFor(offer, context) is null ? "Tickets_Resale_InviteInvalid" : null, directed: true);
     }
+
+    private async Task<TicketRules?> RulesForAsync(TicketSalesEvent salesEvent, CancellationToken ct) =>
+        salesEvent.TermsFolder is { } folder ? await rulesSource.GetAsync(folder, ct: ct) : null;
 
     /// <summary>
     /// A returned ticket sells at the resale price, so a page that can only sell one (directed, resale only, or fresh
     /// stock sold out) shows that price.
     /// </summary>
-    private static BuyPage ToBuyPage(BuyContext context, string? directedRefusal, bool directed) => new(
+    private static BuyPage ToBuyPage(BuyContext context, TicketRules? rules, string? directedRefusal, bool directed) => new(
         context.SalesEvent, context.Event.EventName,
         directed || context.SalesEvent.Mode == TicketSalesMode.ResaleOnly || context.FreshSoldOut ? context.ResalePrice : context.OwnPrice,
         context.PublicPrice,
-        directedRefusal ?? context.Unavailable, context.AlreadyHoldsTicket, context.Buyer?.FullName ?? string.Empty,
+        directedRefusal ?? context.Unavailable ?? (context.SalesEvent.TermsFolder is not null && rules is null ? "Tickets_Buy_TermsUnavailable" : null),
+        context.AlreadyHoldsTicket, context.Buyer?.FullName ?? string.Empty,
         context.UserOrders.Where(o => o.SalesEventId == context.SalesEvent.Id).OrderByDescending(o => o.CreatedAt).ToList())
     {
-        TermsUrl = context.SalesEvent.TermsUrl,
+        Terms = rules,
         AskMarketing = context.AskMarketing,
         OffersPartner = context.SalesEvent.EffectiveSwitches.PartnerTickets && context.SalesEvent.Mode != TicketSalesMode.InvitedOnly,
         OffersDonations = context.SalesEvent.EffectiveSwitches.Donations,
@@ -263,8 +276,20 @@ internal sealed partial class TicketCheckoutService(
         if (command.SupporterTotalMinor is { } requested
             && (!command.ForSelf || !salesEvent.SupporterTotalsMinor.Contains(requested)))
             return StartCheckoutResult.Refused("Tickets_Buy_Invalid");
-        if (salesEvent.TermsUrl is not null && !command.AcceptTerms)
-            return StartCheckoutResult.Refused("Tickets_Buy_TermsRequired");
+        TicketRules? terms = null;
+        if (salesEvent.TermsFolder is { } termsFolder)
+        {
+            if (!command.AcceptTerms)
+                return StartCheckoutResult.Refused("Tickets_Buy_TermsRequired");
+            terms = await rulesSource.GetAsync(termsFolder, ct: ct);
+            if (terms is null)
+                return StartCheckoutResult.Refused("Tickets_Buy_TermsUnavailable");
+            // The buyer accepts the text they were shown; rules changed since then are shown again first. The folder
+            // counts too: two folders changed in one commit share a version.
+            if (!string.Equals(terms.Folder, command.TermsFolder, StringComparison.Ordinal)
+                || !string.Equals(terms.Version, command.TermsVersion, StringComparison.Ordinal))
+                return StartCheckoutResult.Refused("Tickets_Buy_TermsChanged");
+        }
 
         TicketResaleOffer? directed = null;
         if (command.DirectedToken is { } token)
@@ -339,6 +364,8 @@ internal sealed partial class TicketCheckoutService(
             BackendKey = salesEvent.BackendKey,
             State = TicketCheckoutOrderState.Created,
             Culture = command.Culture,
+            TermsFolder = terms?.Folder,
+            TermsVersion = terms?.Version,
             TotalMinor = lines.Sum(l => l.AmountMinor),
             CreatedAt = now,
             ExpiresAt = now + CheckoutLifetime,
@@ -350,8 +377,9 @@ internal sealed partial class TicketCheckoutService(
         await TimelineAsync(order.Id, TicketCheckoutOrderEventKind.Created,
             $"{ticketCount} ticket(s), {FormatMinor(order.TotalMinor)} {order.Currency} on {order.BackendKey}" +
             (lines.Any(l => l.ResaleOfferId is not null) ? ", from the resale queue" : string.Empty), buyer.Id, ct);
-        if (salesEvent.TermsUrl is { } termsUrl)
-            await TimelineAsync(order.Id, TicketCheckoutOrderEventKind.TermsAccepted, "Accepted the ticket rules at " + termsUrl,
+        if (terms is not null)
+            await TimelineAsync(order.Id, TicketCheckoutOrderEventKind.TermsAccepted,
+                $"Accepted the ticket rules in {terms.Folder} at {terms.Version}: {rulesSource.Permalink(terms.Folder, terms.Version)}",
                 buyer.Id, ct);
         foreach (var offer in new[] { resaleForSelf, resaleForPartner }.OfType<TicketResaleOffer>())
             await ReserveOfferAsync(offer, order.Id, ct);
@@ -874,6 +902,7 @@ internal sealed partial class TicketCheckoutService(
                 CreatedAt = o.CreatedAt.ToIso8601(),
                 PaidAt = o.PaidAt.ToIso8601(),
                 Refunded = o.BuyerUserId == userId ? FormatMinor(o.RefundedMinor) : null,
+                TicketRulesAccepted = o.BuyerUserId == userId && o.TermsVersion is not null ? $"{o.TermsFolder} at {o.TermsVersion}" : null,
                 Lines = o.Lines
                     .Where((l, i) => o.BuyerUserId == userId || l.AttendeeUserId == userId
                         || (l.ParentLineIndex is { } parent && o.Lines[parent].AttendeeUserId == userId))
