@@ -4,8 +4,10 @@ using Humans.Email.Contracts;
 using Humans.Grants.Contracts;
 using Humans.Testing;
 using Humans.Tickets.Contracts;
+using Humans.Tickets.Controllers;
 using Humans.Tickets.Domain.Checkout;
 using Humans.Users.Contracts;
+using NodaTime;
 using NSubstitute;
 using Xunit;
 
@@ -184,6 +186,9 @@ public sealed partial class TicketCheckoutServiceTests
         progress.ToDo.Should().Be(0);
         progress.StillRefundableMinor.Should().Be(22500);
         progress.RefundsSince.Should().ContainSingle(r => r.State == RefundState.Failed && r.AmountMinor == 22500);
+        _repo.Events.Should().ContainSingle(e => e.Kind == TicketCheckoutOrderEventKind.EventCancelled && e.Detail.Contains("by hand"));
+        await _audit.Received(1).LogAsync(TicketsAuditActions.TicketCheckoutNeedsAttention, Arg.Any<string>(), Arg.Any<Guid>(),
+            Arg.Is<string>(d => d.Contains("card closed")), Arg.Any<string>());
     }
 
     [HumansFact]
@@ -260,5 +265,20 @@ public sealed partial class TicketCheckoutServiceTests
 
         await _service.RefundAsync(order.Id, 25000, "Partly back", _adminId, Ct);
         (await _service.GetOrderDetailAsync(order.Id, Ct))!.VoidRefundMinor(adult).Should().Be(2500);
+    }
+
+    [HumansTheory]
+    [InlineData("Pending", -1, false)]
+    [InlineData("Pending", 1, true)]
+    [InlineData("Processing", 1, false)]
+    [InlineData("Expired", -1, true)]
+    public void A_reserved_offer_is_stuck_once_its_checkout_no_longer_holds_it(string state, int hoursPastHold, bool stuck)
+    {
+        var holding = new TicketCheckoutOrder { Id = Guid.NewGuid(), State = Enum.Parse<TicketCheckoutOrderState>(state), ExpiresAt = Now - Duration.FromHours(hoursPastHold) };
+        var offer = new TicketResaleOffer { Id = Guid.NewGuid(), State = TicketResaleOfferState.Reserved, ReservedByOrderId = holding.Id };
+        var model = new ResaleViewModel(_salesEvent.Id, "Event", _salesEvent, [],
+            new Dictionary<Guid, TicketCheckoutOrder> { [holding.Id] = holding }, Now);
+
+        model.IsStuck(offer).Should().Be(stuck);
     }
 }

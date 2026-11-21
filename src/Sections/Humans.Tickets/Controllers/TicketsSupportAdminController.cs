@@ -284,10 +284,13 @@ internal sealed record ResaleViewModel(
     Guid SalesEventId, string EventName, TicketSalesEvent SalesEvent, IReadOnlyList<ResaleQueueRow> Rows,
     IReadOnlyDictionary<Guid, TicketCheckoutOrder> Orders, Instant Now)
 {
-    /// <summary>A reserved offer whose checkout is over or past its hold, which the reconcile job has not yet put right.</summary>
+    /// <summary>
+    /// A reserved offer whose checkout is over or no longer holds its tickets (a payment on its way still does), which the
+    /// reconcile job has not yet put right.
+    /// </summary>
     public bool IsStuck(TicketResaleOffer offer) =>
         offer is { State: TicketResaleOfferState.Reserved, ReservedByOrderId: { } holdingId }
-        && (Orders.GetValueOrDefault(holdingId) is not { IsOpen: true } holding || holding.ExpiresAt < Now);
+        && (Orders.GetValueOrDefault(holdingId) is not { IsOpen: true } holding || !holding.HoldsTickets(Now));
 
     public TicketSalesMode Mode => SalesEvent.Mode;
     public bool ResaleSelling => SalesEvent.ResaleSelling;

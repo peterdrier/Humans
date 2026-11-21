@@ -145,21 +145,22 @@ internal sealed partial class TicketCheckoutService
             var cancelRefundId = CancellationState.CancelRefundId(salesEvent.Id, order.Id);
             var (result, refundId) = await RefundCoreAsync(order.Id, refundMinor, Truncate(why), null, ct, cancelRefundId);
             refundNote = $", {FormatMinor(refundMinor)} {order.Currency} refund asked for";
-            if (refundId is null)
+            if (!result.Succeeded)
             {
+                logger.LogError("Cancellation refund of checkout order {OrderId} failed: {Refusal}", order.Id, result.Refusal);
                 // Written as failed so the order leaves the to-do list and the team sees what is owed.
-                logger.LogError("Cancellation refund of checkout order {OrderId} could not start: {Refusal}", order.Id, result.Refusal);
-                await repository.AddRefundAsync(new TicketCheckoutRefund
-                {
-                    Id = cancelRefundId,
-                    OrderId = order.Id,
-                    AmountMinor = refundMinor,
-                    Reason = Truncate(why),
-                    State = RefundState.Failed,
-                    FailureReason = Truncate(result.Refusal ?? "Refused"),
-                    CreatedAt = now,
-                }, ct);
-                refundNote = $"; the {FormatMinor(refundMinor)} {order.Currency} refund could not start " +
+                if (refundId is null)
+                    await repository.AddRefundAsync(new TicketCheckoutRefund
+                    {
+                        Id = cancelRefundId,
+                        OrderId = order.Id,
+                        AmountMinor = refundMinor,
+                        Reason = Truncate(why),
+                        State = RefundState.Failed,
+                        FailureReason = Truncate(result.Refusal ?? "Refused"),
+                        CreatedAt = now,
+                    }, ct);
+                refundNote = $"; the {FormatMinor(refundMinor)} {order.Currency} refund failed " +
                     $"({Truncate(result.Refusal ?? "refused")}): the ticketing team must refund it by hand";
                 await auditLog.LogAsync(TicketsAuditActions.TicketCheckoutNeedsAttention, AuditEntityType, order.Id,
                     $"Cancellation refund{refundNote[1..]}", JobName);
