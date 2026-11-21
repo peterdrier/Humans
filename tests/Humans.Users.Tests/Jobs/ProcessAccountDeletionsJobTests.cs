@@ -29,6 +29,7 @@ public class ProcessAccountDeletionsJobTests : IDisposable
     private readonly IUserManagement _userService;
     private readonly AccountDeletionService _accountDeletionService;
     private readonly IGdprService _gdprService = Substitute.For<IGdprService>();
+    private readonly ITicketService _tickets = Substitute.For<ITicketService>();
     private readonly IEmailService _emailService;
     private readonly UsersEmails _emailMessages = TestUsersEmails.Create();
     private readonly IAuditLogService _auditLogService;
@@ -49,7 +50,7 @@ public class ProcessAccountDeletionsJobTests : IDisposable
 
         _accountDeletionService = new AccountDeletionService(
             _userService, Substitute.For<IUserEmailService>(), Substitute.For<ITeamWrite>(),
-            Substitute.For<IRoleAssignmentWrite>(), _gdprService, Substitute.For<ITicketService>(),
+            Substitute.For<IRoleAssignmentWrite>(), _gdprService, _tickets,
             Substitute.For<IUserInfoSliceRefresher>(), _auditLogService, _emailService,
             _emailMessages, _clock, Substitute.For<IHostEnvironment>(), NullLogger<AccountDeletionService>.Instance);
 
@@ -323,6 +324,45 @@ public class ProcessAccountDeletionsJobTests : IDisposable
         await _emailService.Received(1).SendAsync(
             Arg.Is<EmailMessage>(m => m.RecipientEmail == "u2@example.com" && m.RecipientName == "User Two"),
             Arg.Any<CancellationToken>());
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(10, true)]
+    [Xunit.InlineData(-1, false)]
+    public async Task ExecuteAsync_TicketTakenAfterTheRequest_HoldsTheDueDeletion(int holdDays, bool held)
+    {
+        var userId = Guid.NewGuid();
+        var requestedAt = Now.Minus(Duration.FromDays(31));
+        var scheduledFor = Now.Minus(Duration.FromDays(1));
+        var hold = Now.Plus(Duration.FromDays(holdDays));
+        _userService.GetAccountsDueForAnonymizationAsync(Now, Arg.Any<CancellationToken>()).Returns([userId]);
+        _userService.GetRawUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(UserInfoFixtures.FromUser(new User
+        {
+            Id = userId,
+            Email = "holder@example.com",
+            UserName = "holder@example.com",
+            BurnerName = "Holder",
+            PreferredLanguage = "en",
+            DeletionRequestedAt = requestedAt,
+            DeletionScheduledFor = scheduledFor,
+        }));
+        _tickets.GetUserTicketHoldingsAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new UserTicketHoldings(0, [], PostEventHoldDate: hold));
+        _userService.SetDeletionPendingAsync(userId, requestedAt, scheduledFor, hold, Arg.Any<CancellationToken>())
+            .Returns(true);
+
+        await _job.ExecuteAsync(Xunit.TestContext.Current.CancellationToken);
+
+        await _gdprService.Received(held ? 0 : 1).EraseForUserAsync(userId, Arg.Any<CancellationToken>());
+        await _userService.Received(held ? 1 : 0).SetDeletionPendingAsync(
+            userId, requestedAt, scheduledFor, hold, Arg.Any<CancellationToken>());
+        await _auditLogService.Received(held ? 1 : 0).LogAsync(
+            UsersAuditActions.DeletionHeldForTicket, nameof(User), userId,
+            Arg.Is<string>(d => d.Contains(hold.ToIso8601(), StringComparison.Ordinal)), nameof(ProcessAccountDeletionsJob),
+            Arg.Any<Guid?>(), Arg.Any<string?>());
+        await _auditLogService.Received(held ? 0 : 1).LogAsync(
+            UsersAuditActions.AccountAnonymized, nameof(User), userId,
+            Arg.Any<string>(), nameof(ProcessAccountDeletionsJob), Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 
     private void GivenUser(Guid userId, string? email = "test@example.com", string name = "Test User", string language = "en")

@@ -9,6 +9,7 @@ using Humans.Gdpr.Contracts;
 using Humans.Onboarding.Contracts;
 using Humans.Users.Contracts;
 using Humans.Users.Data;
+using Humans.Users.Jobs;
 using Humans.Teams.Contracts;
 using Humans.Tickets.Contracts;
 using Humans.Base.Interfaces;
@@ -53,12 +54,7 @@ internal sealed class AccountDeletionService(
         var deletionDate = now.Plus(Duration.FromDays(30));
 
         // Held until after the event so the ticket stays usable.
-        Instant? eligibleAfter = null;
-        var ticketHoldings = await ticketQueryService.GetUserTicketHoldingsAsync(userId, ct);
-        if (ticketHoldings.HasCurrentEventTicket)
-        {
-            eligibleAfter = ticketHoldings.PostEventHoldDate;
-        }
+        var eligibleAfter = (await ticketQueryService.GetUserTicketHoldingsAsync(userId, ct)).PostEventHoldDate;
 
         var effectiveDeletionDate = eligibleAfter is { } holdDate && holdDate > deletionDate
             ? holdDate : deletionDate;
@@ -190,6 +186,30 @@ internal sealed class AccountDeletionService(
         }
 
         return new OnboardingResult(true);
+    }
+
+    /// <summary>
+    /// A ticket taken after the request (bought for them, or a resale) holds a due deletion too: pushes the hold out and
+    /// returns it, or returns null when nothing holds the account.
+    /// </summary>
+    internal async Task<Instant?> ExtendTicketHoldAsync(Guid userId, CancellationToken ct)
+    {
+        var user = await userService.GetRawUserInfoAsync(userId, ct);
+        if (user is not { DeletionRequestedAt: { } requestedAt, DeletionScheduledFor: { } scheduledFor })
+            return null;
+
+        var hold = (await ticketQueryService.GetUserTicketHoldingsAsync(userId, ct)).PostEventHoldDate;
+        if (hold is not { } holdDate || holdDate <= clock.GetCurrentInstant())
+            return null;
+
+        if (!await userService.SetDeletionPendingAsync(userId, requestedAt, scheduledFor, holdDate, ct))
+            return null;
+
+        await auditLogService.LogAsync(
+            UsersAuditActions.DeletionHeldForTicket, AuditSubjectTypes.User, userId,
+            $"Deletion held for a ticket until {holdDate.ToIso8601()}",
+            nameof(ProcessAccountDeletionsJob));
+        return holdDate;
     }
 
     public async Task<AnonymizedAccountSummary?> AnonymizeExpiredAccountAsync(

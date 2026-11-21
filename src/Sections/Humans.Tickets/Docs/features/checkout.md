@@ -42,7 +42,8 @@ Rules every backend follows:
   answer waits for the reconcile job's resend. So a refund made in the backend's dashboard never settles one of Tickets'
   own. Only `ManualRequired` refunds settle from the part of `RefundedMinor` that Tickets' succeeded refunds do not explain. Failed refunds stop counting against what can still be refunded. The reconcile job re-reads paid orders with
   unsettled refunds and resends any refund whose backend call threw.
-- **Erasure.** A member's deletion calls `ErasePersonalDataAsync` for each of their orders before Tickets tombstones its
+- **Erasure.** A deletion waits while the member holds a valid or offered ticket, until 30 days after that event's strike
+  (Users re-checks when the deletion falls due), so erasure normally runs after the event. It then calls `ErasePersonalDataAsync` for each of their orders before Tickets tombstones its
   own copy; a backend failure throws, so the deletion retries with the emails still known. Box Office is a no-op: Stripe
   keeps payment records as processor. An order on a backend no longer registered is logged and audited and skipped, so
   it never blocks a deletion: a backend's data is exported or erased before its adapter is removed. Tickets then voids
