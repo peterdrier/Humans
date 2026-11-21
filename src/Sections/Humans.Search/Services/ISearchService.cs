@@ -10,11 +10,11 @@ namespace Humans.Search.Services;
 internal interface ISearchService : IOrchestrator
 {
     /// <summary>
-    /// A <paramref name="query"/> under 2 characters after trim returns empty results without calling any section.
-    /// <paramref name="onlyType"/> queries only that section.
+    /// A <paramref name="query"/> under 2 characters after trim returns every category empty without searching any.
+    /// <paramref name="filter"/>, matched case-insensitively against the category keys, searches only that category.
     /// </summary>
     Task<GlobalSearchResults> SearchAsync(
         string query,
-        SearchResultType? onlyType = null,
+        string? filter = null,
         CancellationToken ct = default);
 }

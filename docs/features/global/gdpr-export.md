@@ -29,6 +29,7 @@
   src/Sections/Humans.Backdoor/Services/BackdoorApiKeyService.cs
   src/Sections/Humans.Rideshare/Services/**
   src/Sections/Humans.Workgroups/Services/**
+  src/Sections/Humans.Roles/Services/**
   src/Sections/Humans.Preapprovals/Services/PreapprovalService.Gdpr.cs
   src/Sections/Humans.Grants/Services/GrantService.Gdpr.cs
   src/Sections/Humans.Calendar/Services/CalendarFeedTokenService.cs
@@ -94,8 +95,8 @@ change.
 The contributor named in that column is the type **registered** as
 `IUserDataContributor`, and whether that is a cached section's decorator or its inner
 service is the registering section's own call: `CachingEventService`,
-`CachingRideshareService`, `CachingWorkgroupService`, `CachingTeamService`, `CachingCampService`
-and `CachingTicketQueryService` bind the decorator, while Consent and Auth have decorators and
+`CachingRideshareService`, `CachingWorkgroupService`, `CachingTeamService`, `CachingCampService`,
+`CachingRoleService` and `CachingTicketQueryService` bind the decorator, while Consent and Auth have decorators and
 bind the inner service. Whichever is registered
 is the type that carries `ErasureDeclaration`.
 
@@ -220,6 +221,7 @@ archived account and the survivor.
 | `WorkgroupLogEntries` | `CachingWorkgroupService` | Array of `{ Workgroup, Kind, OccurredOn, Title, Body, CreatedAt }` — the group's written record of how it worked. Retained, authorship dropped. |
 | `CalendarFeedToken` | `CalendarFeedTokenService` | `{ HasFeed }` — whether the human has ever minted a personal iCal feed. The token itself is never exported: it is a live credential and an export file gets forwarded; the human reads their URL off `/Calendar`, the one place it is shown. Erased in full: the row is deleted. |
 | `WorkgroupMeetings` | `CachingWorkgroupService` | Array of `{ Workgroup, Title, StartUtc, EndUtc, Location, IsPublic, Minutes, CreatedAt }`. Retained, creator attribution dropped. |
+| `Roles` | `CachingRoleService` | Array of `{ Owner, Role, AssignedAt }`: the roles the human holds, with owner names. Erased in full: they are unassigned everywhere. |
 | `WorkgroupDocuments` | `CachingWorkgroupService` | Array of `{ Workgroup, Title, Kind, Status, Authored, Edited, DispositionRecorded, CreatedAt, UpdatedAt }` — the three booleans say which attribution this row carries for this person. Retained, attributions dropped. |
 | `WorkgroupComments` | `CachingWorkgroupService` | Array of `{ Workgroup, Document, Category, Body, Authored, Responded, HiddenByThisPerson, Disposition, Response, Hidden, HiddenReason, CreatedAt }`. Retained, author attribution dropped: the record of what was heard and decided against. |
 | `AssemblyVotes` | `AssemblyVoteService` | Array of `{ Vote, Status, ClosesAt, Entitlement ("Official"/"Indicative"), Tier, IsBoardMember, Ballot: { Choice, Ranking[], Revision, CastAt, UpdatedAt, History: [{ Revision, Choice, Ranking[], RecordedAt }] }? }` — every assembly vote the human was on the roster for, with their current ballot and each revision of it; `Ballot` is null when they did not vote. Retained after erasure, unlinked: the vote is the association's record of a decision. |

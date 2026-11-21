@@ -35,7 +35,7 @@
             <span class="wg-card-name">&lt;vc:my-camps&gt;</span>
             <span class="wg-card-kind kind-vc">ViewComponent</span>
         </div>
-        <span class="wg-card-path">src/Sections/Humans.Camps/Contracts/MyCampsViewComponent.cs</span>
+        <span class="wg-card-path">src/Sections/Humans.Camps/ViewComponents/MyCampsViewComponent.cs</span>
     </div>
     <div class="wg-card-note">Camp memberships for the current human, grouped by year. Renders nothing if the human belongs to no camps.</div>
     @ParamsBlock()
@@ -61,7 +61,7 @@
         @if (Model.CampId is { } campId)
         {
             <div class="list-group">
-                <vc:camps-search-result camp-id="@campId" />
+                <vc:camps-search-result key="@campId" />
             </div>
         }
         else

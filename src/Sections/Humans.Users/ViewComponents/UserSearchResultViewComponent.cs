@@ -12,16 +12,16 @@ namespace Humans.Users.ViewComponents;
 public sealed class UserSearchResultViewComponent : ViewComponent
 {
     /// <summary>Renders the row from the ids and match context the caller already holds.</summary>
-    /// <param name="userId">The matched human.</param>
+    /// <param name="key">The matched human.</param>
     /// <param name="matchField">Which bucket matched ("Name", "Bio", …).</param>
     /// <param name="matchSnippet">Highlighted long-form excerpt, when there is one.</param>
     /// <param name="matchedEmail">The address that matched, on admin-bit searches only.</param>
     public IViewComponentResult Invoke(
-        Guid userId,
+        Guid key,
         string? matchField = null,
         string? matchSnippet = null,
         string? matchedEmail = null) =>
-        View(new UserSearchResultViewModel(userId, matchField, matchSnippet, matchedEmail));
+        View(new UserSearchResultViewModel(key, matchField, matchSnippet, matchedEmail));
 }
 
 internal sealed record UserSearchResultViewModel(

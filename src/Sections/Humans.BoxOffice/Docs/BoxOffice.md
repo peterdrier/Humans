@@ -33,6 +33,9 @@ same for all three backends.
 **Out of scope.** Stripe products, prices, coupons and invoices; erasing data inside
 Stripe, which keeps it as the payment processor.
 
+
+**Admin.** The section's only page is its admin sidebar row, "Box Office" (`TicketsBackendAdminNav`, `TicketsPolicies.Read`), which opens Tickets' status page for key `boxoffice` at `/Tickets/Admin/Backends/boxoffice`: settings, connection test, orders, stuck orders, unsettled refunds and a link to reconciliation. The data is Tickets'; this section contributes only the row.
+
 ## Concepts
 
 - The backend order id is the Checkout Session id. Each order line becomes one Stripe line at exactly its amount

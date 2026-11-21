@@ -343,4 +343,5 @@
   <data name="Camps_Meter_JoinRequest" xml:space="preserve"><value>1 Human wil zich bij je kamp aansluiten</value></data>
   <data name="Camps_Meter_JoinRequests" xml:space="preserve"><value>{0} Humans willen zich bij je kamp aansluiten</value></data>
   <data name="Camps_Meter_AudienceCampLeads" xml:space="preserve"><value>Barrioleiders</value></data>
+  <data name="Camps_Search_Category" xml:space="preserve"><value>Kampen</value></data>
 </root>

@@ -373,7 +373,7 @@
     <value>Koper uitnodigen</value>
   </data>
   <data name="Tickets_Resale_InviteHelp" xml:space="preserve">
-    <value>Ken je iemand die je ticket wil? Nodig diegene uit: die krijgt een link om het vóór de wachtrij te kopen, tegen de huidige prijs en op eigen naam. Jij krijgt terug wat je betaalde. Er gaat geen geld tussen jullie.</value>
+    <value>Ken je iemand die je ticket wil? Nodig diegene uit: die krijgt een link om het vóór de wachtrij te kopen, tegen de huidige prijs en op eigen naam. Jij krijgt terug wat je betaalde. Er gaat geen geld tussen jullie. Tot diegene koopt, blijft je ticket in de wachtrij en kan het eerst aan iemand anders verkocht worden.</value>
   </data>
   <data name="Tickets_Resale_OfferHelp" xml:space="preserve">
     <value>Kun je niet komen? Geef je ticket terug aan de doorverkoopwachtrij. Als iemand het koopt, krijg je terug wat je voor het ticket betaalde (geen donaties of kosten).</value>
@@ -388,7 +388,7 @@
     <value>Er wacht een ticket voor {0} op je</value>
   </data>
   <data name="Tickets_Resale_Email_Invite_Body" xml:space="preserve">
-    <value>&lt;p&gt;Hoi,&lt;/p&gt;&lt;p&gt;{0} kan niet naar &lt;strong&gt;{1}&lt;/strong&gt; komen en heeft je uitgenodigd om het teruggegeven ticket vóór de doorverkoopwachtrij te kopen.&lt;/p&gt;&lt;p&gt;Je betaalt de huidige ticketprijs aan de vereniging en krijgt een nieuw ticket op je eigen naam: de naam moet bij de ingang overeenkomen met je identiteitsbewijs. Log in of maak je Humans-account aan met dit e-mailadres en gebruik dan deze link:&lt;/p&gt;&lt;p&gt;&lt;a href="{2}"&gt;{2}&lt;/a&gt;&lt;/p&gt;&lt;p&gt;De link werkt {3} dagen.&lt;/p&gt;</value>
+    <value>&lt;p&gt;Hoi,&lt;/p&gt;&lt;p&gt;{0} kan niet naar &lt;strong&gt;{1}&lt;/strong&gt; komen en heeft je uitgenodigd om het teruggegeven ticket vóór de doorverkoopwachtrij te kopen.&lt;/p&gt;&lt;p&gt;Je betaalt de huidige ticketprijs aan de vereniging en krijgt een nieuw ticket op je eigen naam: de naam moet bij de ingang overeenkomen met je identiteitsbewijs. Log in of maak je Humans-account aan met dit e-mailadres en gebruik dan deze link:&lt;/p&gt;&lt;p&gt;&lt;a href="{2}"&gt;{2}&lt;/a&gt;&lt;/p&gt;&lt;p&gt;De link werkt zolang het ticket nog te koop is, dus wacht niet te lang.&lt;/p&gt;</value>
   </data>
   <data name="Tickets_Public_PriceToday" xml:space="preserve">
     <value>{0} vandaag</value>

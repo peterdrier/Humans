@@ -373,7 +373,7 @@
     <value>Invita qualcuno</value>
   </data>
   <data name="Tickets_Resale_InviteHelp" xml:space="preserve">
-    <value>Conosci qualcuno che vuole il tuo biglietto? Invitalo: riceverà un link per acquistarlo prima della coda, al prezzo attuale e a suo nome. Ti viene rimborsato ciò che hai pagato. Nessun denaro passa tra voi.</value>
+    <value>Conosci qualcuno che vuole il tuo biglietto? Invitalo: riceverà un link per acquistarlo prima della coda, al prezzo attuale e a suo nome. Ti viene rimborsato ciò che hai pagato. Nessun denaro passa tra voi. Finché non lo acquista, il tuo biglietto resta in coda e può essere venduto prima a qualcun altro.</value>
   </data>
   <data name="Tickets_Resale_OfferHelp" xml:space="preserve">
     <value>Non puoi venire? Restituisci il biglietto alla coda di rivendita. Quando qualcuno lo compra ti viene rimborsato quanto pagato per il biglietto (non donazioni né commissioni).</value>
@@ -388,7 +388,7 @@
     <value>Un biglietto per {0} ti aspetta</value>
   </data>
   <data name="Tickets_Resale_Email_Invite_Body" xml:space="preserve">
-    <value>&lt;p&gt;Ciao,&lt;/p&gt;&lt;p&gt;{0} non può venire a &lt;strong&gt;{1}&lt;/strong&gt; e ti invita ad acquistare il suo biglietto restituito prima della coda di rivendita.&lt;/p&gt;&lt;p&gt;Paghi il prezzo attuale del biglietto all'associazione e ricevi un nuovo biglietto a tuo nome: il nome deve corrispondere al tuo documento all'ingresso. Accedi o crea il tuo account Humans con questa email, poi usa questo link:&lt;/p&gt;&lt;p&gt;&lt;a href="{2}"&gt;{2}&lt;/a&gt;&lt;/p&gt;&lt;p&gt;Il link è valido per {3} giorni.&lt;/p&gt;</value>
+    <value>&lt;p&gt;Ciao,&lt;/p&gt;&lt;p&gt;{0} non può venire a &lt;strong&gt;{1}&lt;/strong&gt; e ti invita ad acquistare il suo biglietto restituito prima della coda di rivendita.&lt;/p&gt;&lt;p&gt;Paghi il prezzo attuale del biglietto all'associazione e ricevi un nuovo biglietto a tuo nome: il nome deve corrispondere al tuo documento all'ingresso. Accedi o crea il tuo account Humans con questa email, poi usa questo link:&lt;/p&gt;&lt;p&gt;&lt;a href="{2}"&gt;{2}&lt;/a&gt;&lt;/p&gt;&lt;p&gt;Il link funziona finché il biglietto è ancora in vendita, quindi non aspettare troppo.&lt;/p&gt;</value>
   </data>
   <data name="Tickets_Public_PriceToday" xml:space="preserve">
     <value>{0} oggi</value>

@@ -11,11 +11,9 @@ internal sealed class ProfileService(IUserService userService,
     /// type leaves no file key, so nothing is served from disk once cleared.
     /// </summary>
     public async Task<(byte[] Data, string ContentType)?> GetProfilePictureAsync(
-        Guid profileId, CancellationToken ct = default)
+        Guid userId, CancellationToken ct = default)
     {
-        var profile = (await userService.GetAllRawUserInfosAsync(ct))
-            .Select(info => info.Profile)
-            .FirstOrDefault(p => p?.Id == profileId);
+        var profile = (await userService.GetRawUserInfoAsync(userId, ct))?.Profile;
         if (profile is not { ProfilePictureFileKey: { } key, ProfilePictureContentType: { } contentType })
         {
             return null;

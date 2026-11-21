@@ -34,6 +34,9 @@
     <ProjectReference Include="..\Humans.Tickets.Contracts\Humans.Tickets.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Settings\Humans.Settings.csproj" />
     <ProjectReference Include="..\Humans.Teams.Contracts\Humans.Teams.Contracts.csproj" />
+    <!-- Roles: Teams is the Team owner of roles; it calls IRoleWrite before ending a membership. -->
+    <ProjectReference Include="..\Humans.Roles\Humans.Roles.csproj" />
+    <ProjectReference Include="..\Humans.Permissions\Humans.Permissions.csproj" />
     <ProjectReference Include="..\Humans.AuditLog\Humans.AuditLog.csproj" />
     <!-- TeamAdmin/Members.cshtml renders <vc:audit-log>. AuditLog references only Teams.Contracts, so no cycle. -->
     <ProjectReference Include="..\Humans.EarlyEntry\Humans.EarlyEntry.csproj" />

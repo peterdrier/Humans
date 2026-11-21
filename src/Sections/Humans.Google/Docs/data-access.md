@@ -49,8 +49,9 @@ Repository: `IWorkspaceIdentityRepository` (Singleton, `IDbContextFactory`).
 | WorkspaceIdentities (`google_workspace_identities`) | R/W |
 
 Implements the internal `IWorkspaceIdentityManagement` (extends the public
-`IGoogleService` reads and `IGoogleWrite.ClearIfAddressAsync`),
-`IUserDataContributor` and `IUserMerge`. Reads the member's verified addresses
+`IGoogleService` reads), Users' `IUserEmailRemovalListener` (clears a
+designation on an address that left the account), `IUserDataContributor` and
+`IUserMerge`. Reads the member's verified addresses
 via `IUserService` (merge-aware). The legacy Workspace identity migration and fallback are retired after production reported
 `google.workspace-identities` done on 2026-11-05. Identity reads use Google's own rows.
 Audits `Set` via `IAuditLogService`. No cache (the `UserInfo` read is cached by

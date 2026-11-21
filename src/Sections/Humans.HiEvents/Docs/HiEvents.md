@@ -23,6 +23,9 @@ Hi.Events is an open-source event ticketing platform. This section lets Humans u
 
 **Out of scope.** Hi.Events Cloud (it lacks the fork's endpoint), Hi.Events' own catalogue, promo codes, seating, box office, check-in and buyer mail; any per-event setting in Humans beyond the event id.
 
+
+**Admin.** The section's only page is its admin sidebar row, "Hi.Events" (`TicketsBackendAdminNav`, `TicketsPolicies.Read`), which opens Tickets' status page for key `hievents` at `/Tickets/Admin/Backends/hievents`: settings, connection test, orders, stuck orders, unsettled refunds and a link to reconciliation. The data is Tickets'; this section contributes only the row.
+
 ## Concepts
 
 - The **port** is `Humans.Tickets.Contracts.ITicketCheckoutBackend`. Tickets owns it; this section implements it and

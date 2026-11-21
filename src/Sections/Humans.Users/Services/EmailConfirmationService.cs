@@ -64,12 +64,16 @@ internal sealed class EmailConfirmationService(
 {
     internal static readonly TimeSpan LinkLifetime = TimeSpan.FromHours(1);
 
-    private readonly ITimeLimitedDataProtector _protector =
-        dataProtection.CreateProtector("Users.EmailConfirmation").ToTimeLimitedDataProtector();
+    private readonly ITimeLimitedDataProtector _protector = Protector(dataProtection);
 
     /// <summary>Bound to the asking account and the one pending row, valid for <see cref="LinkLifetime"/>.</summary>
-    public string CreateToken(Guid askingUserId, Guid emailId) =>
-        _protector.Protect($"{askingUserId:N}:{emailId:N}", LinkLifetime);
+    /// <remarks>Static so <see cref="UserEmailService"/> can mint links without resolving this service, which reaches
+    /// the merge fan-out and so <see cref="UserEmailService"/> itself.</remarks>
+    public static string CreateToken(IDataProtectionProvider dataProtection, Guid askingUserId, Guid emailId) =>
+        Protector(dataProtection).Protect($"{askingUserId:N}:{emailId:N}", LinkLifetime);
+
+    private static ITimeLimitedDataProtector Protector(IDataProtectionProvider dataProtection) =>
+        dataProtection.CreateProtector("Users.EmailConfirmation").ToTimeLimitedDataProtector();
 
     public async Task<EmailConfirmation> ReadAsync(
         string? token, Guid signedInUserId, CancellationToken ct = default)

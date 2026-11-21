@@ -11,7 +11,7 @@ namespace Humans.HiEvents;
 /// Registers the Hi.Events checkout backend whatever the environment: it does nothing until <c>HiEvents:ApiUrl</c> and
 /// <c>HIEVENTS_API_KEY</c> are set, and Tickets refuses to open checkouts on it while <c>IsConfigured</c> is false.
 /// </summary>
-public sealed class Section : ISection, ISectionConfiguration
+public sealed class Section : ISection, ISectionConfiguration, ISectionAdminNav
 {
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
@@ -32,4 +32,7 @@ public sealed class Section : ISection, ISectionConfiguration
         registry.RegisterEnvironmentVariable("HIEVENTS_API_KEY", "Hi.Events", isSensitive: true);
         registry.RegisterEnvironmentVariable("HIEVENTS_WEBHOOK_SECRET", "Hi.Events", isSensitive: true);
     }
+
+    IEnumerable<AdminNavGroup> ISectionAdminNav.Groups() =>
+        [TicketsBackendAdminNav.Group("Hi.Events", HiEventsCheckoutBackend.BackendKey, "fa-solid fa-calendar-check")];
 }

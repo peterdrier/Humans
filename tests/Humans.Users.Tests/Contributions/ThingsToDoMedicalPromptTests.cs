@@ -6,10 +6,6 @@ using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.Base;
 using Humans.Cantina.Contracts;
-using Humans.Base.Constants;
-using Humans.Base.Enums;
-using Humans.Teams.Contracts;
-using NodaTime;
 using Humans.Shifts.Contracts;
 using Humans.Users.Contracts;
 using Microsoft.Extensions.DependencyInjection;
@@ -26,8 +22,6 @@ public class ThingsToDoMedicalPromptTests
     private readonly IUserRepository _repo = Substitute.For<IUserRepository>();
     private readonly ICantinaService _cantina = Substitute.For<ICantinaService>();
     private readonly IShiftView _shiftView = Substitute.For<IShiftView>();
-    private readonly ITeamService _teamService = Substitute.For<ITeamService>();
-    private readonly List<Guid> _volunteerIds = [];
     private readonly IStringLocalizer<SharedResource> _localizer = Substitute.For<IStringLocalizer<SharedResource>>();
     private readonly IServiceProvider _services;
     private readonly ISectionThingsToDo _sut = new Section();
@@ -37,16 +31,11 @@ public class ThingsToDoMedicalPromptTests
         // Each [key] returns a LocalizedString whose Value == key.
         _localizer[Arg.Any<string>()].Returns(ci => new LocalizedString(ci.Arg<string>(), ci.Arg<string>()));
 
-        // A volunteer member, so the consent-check entry is skipped.
-        _teamService.GetTeamAsync(SystemTeamIds.Volunteers, Arg.Any<CancellationToken>())
-            .Returns(_ => VolunteersTeam([.. _volunteerIds]));
-
         _services = new ServiceCollection()
             .AddSingleton(_userService)
             .AddSingleton(new MedicalConditionsService(_repo, _userService, Substitute.For<IAuditLogService>()))
             .AddSingleton(_cantina)
             .AddSingleton(_shiftView)
-            .AddSingleton(_teamService)
             .AddSingleton(_localizer)
             .AddSingleton<ILogger<Section>>(NullLogger<Section>.Instance)
             .BuildServiceProvider();
@@ -97,6 +86,16 @@ public class ThingsToDoMedicalPromptTests
     }
 
     [HumansFact]
+    public async Task NoConsentReviewEntry_TheReviewGatesNothingForTheMember()
+    {
+        var userId = StubUser(dietary: null, medical: null);
+
+        var entries = await _sut.EntriesAsync(_services, Principal(userId));
+
+        entries.Should().NotContain(e => e.Key == "consent-check");
+    }
+
+    [HumansFact]
     public async Task UsersNoLongerContributesTheDietaryNudge()
     {
         var userId = StubUser(dietary: null, medical: null);
@@ -126,17 +125,9 @@ public class ThingsToDoMedicalPromptTests
         await load.Should().ThrowAsync<OperationCanceledException>();
     }
 
-    private static TeamInfo VolunteersTeam(params Guid[] memberIds) => new(
-        SystemTeamIds.Volunteers, "Volunteers", null, "volunteers",
-        IsActive: true, IsSystemTeam: true, SystemTeamType.Volunteers, RequiresApproval: false,
-        IsPublicPage: false, IsHidden: false, IsPromotedToDirectory: false, Instant.MinValue,
-        memberIds.Select(id => new TeamMemberInfo(
-            Guid.NewGuid(), id, "Member", null, null, TeamMemberRole.Member, Instant.MinValue)).ToList());
-
     private Guid StubUser(string? dietary, string? medical, bool declined = false)
     {
         var userId = Guid.NewGuid();
-        _volunteerIds.Add(userId);
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(UserInfoWith(userId));
         _repo.GetByUserIdReadOnlyAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new Profile { UserId = userId, MedicalConditions = medical });

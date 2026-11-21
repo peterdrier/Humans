@@ -1,0 +1,42 @@
+<Project Sdk="Microsoft.NET.Sdk.Razor">
+
+  <PropertyGroup>
+    <!-- MVC views/controllers, not Blazor components. -->
+    <AddRazorSupportForMvc>true</AddRazorSupportForMvc>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Humans.Roles.Tests" />
+    <!-- The one assembly allowed to see many sections. -->
+    <InternalsVisibleTo Include="Humans.Integration.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Microsoft.NET.Sdk.Web adds these to ImplicitUsings; Microsoft.NET.Sdk.Razor does not. -->
+    <Using Include="Microsoft.AspNetCore.Http" />
+    <Using Include="Microsoft.AspNetCore.Routing" />
+    <Using Include="Microsoft.Extensions.Logging" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\Humans.Base\Humans.Base.csproj" />
+    <!-- Auth: the system roles a person holds (Admin, RolesAdmin manage every owner's roles). -->
+    <ProjectReference Include="..\Humans.Auth\Humans.Auth.csproj" />
+    <!-- Permissions: owner kinds, the permission catalog, and Roles is a permission source. -->
+    <ProjectReference Include="..\Humans.Permissions\Humans.Permissions.csproj" />
+    <!-- RolePeriod and SlotPriority; they move here when Teams' old roles retire. -->
+    <ProjectReference Include="..\Humans.Teams.Contracts\Humans.Teams.Contracts.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore" />
+    <PackageReference Include="NodaTime" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL.NodaTime" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="**\*.md" />
+  </ItemGroup>
+
+</Project>

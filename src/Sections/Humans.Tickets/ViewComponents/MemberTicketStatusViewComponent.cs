@@ -10,7 +10,7 @@ namespace Humans.Tickets.ViewComponents;
 
 /// <summary>
 /// A failed holdings read says the status is unavailable, never "no ticket" with buy/declare actions. Renders
-/// nothing off season.
+/// nothing off season unless a sale is open in Humans.
 /// </summary>
 public sealed class MemberTicketStatusViewComponent(
     ITicketService ticketService,
@@ -27,16 +27,27 @@ public sealed class MemberTicketStatusViewComponent(
 
         var ct = HttpContext.RequestAborted;
         var activeEvent = settingsService.GetActiveEventSettings();
-        if (activeEvent?.IsOffSeason == true)
+        // Resolved per call: the checkout service is internal, and a public view component cannot name it in its
+        // constructor.
+        var checkout = HttpContext.RequestServices.GetRequiredService<Services.Checkout.ITicketCheckoutService>();
+        var salesEvents = await checkout.GetSalesEventsAsync(ct);
+        var sellsInHumans = salesEvents.Any(e => e.Mode != Domain.Checkout.TicketSalesMode.Closed);
+        // An open sale wins over off season: this card is the members' way to the buy page.
+        if (activeEvent?.IsOffSeason == true && !sellsInHumans)
         {
             return Content(string.Empty);
         }
 
+        var humansTickets = await HumansTicketCountAsync(checkout, userId, activeEvent, salesEvents, ct);
         var configured = ticketSettings.Value.IsConfigured;
         var ticketCount = configured ? await TicketCountAsync(userId, ct) : 0;
         if (ticketCount is null)
         {
-            return View(new MemberTicketStatusViewModel(userId, configured, 0, null, null, HoldingsUnavailable: true));
+            return View(new MemberTicketStatusViewModel(userId, configured, 0, null, null, HoldingsUnavailable: true)
+            {
+                SellsInHumans = sellsInHumans,
+                HumansTicketCount = humansTickets,
+            });
         }
         var eventYear = activeEvent is not null && activeEvent.Year > 0 ? activeEvent.Year : (int?)null;
 
@@ -47,18 +58,25 @@ public sealed class MemberTicketStatusViewComponent(
             eventYear,
             eventYear is null ? null : await ParticipationStatusAsync(userId, eventYear.Value, ct))
         {
-            SellsInHumans = await SellsInHumansAsync(ct),
+            SellsInHumans = sellsInHumans,
+            HumansTicketCount = humansTickets,
         });
     }
 
     /// <summary>
-    /// Resolved per call: the checkout service is internal, and a public view component cannot name it in its
-    /// constructor.
+    /// Tickets the person holds (Valid, or Offered for resale until it sells) from Humans' own checkout: for the active
+    /// event, and for any sale still open, matching the events the buy page offers.
     /// </summary>
-    private async Task<bool> SellsInHumansAsync(CancellationToken ct)
+    private static async Task<int> HumansTicketCountAsync(
+        Services.Checkout.ITicketCheckoutService checkout, Guid userId, EventSettingsInfo? activeEvent,
+        IReadOnlyList<Domain.Checkout.TicketSalesEvent> salesEvents, CancellationToken ct)
     {
-        var checkout = HttpContext.RequestServices.GetRequiredService<Services.Checkout.ITicketCheckoutService>();
-        return (await checkout.GetSalesEventsAsync(ct)).Any(e => e.Mode != Domain.Checkout.TicketSalesMode.Closed);
+        var forEvent = salesEvents
+            .Where(e => activeEvent is null || e.EventSettingsId == activeEvent.Id || e.Mode != Domain.Checkout.TicketSalesMode.Closed)
+            .Select(e => e.Id).ToHashSet();
+        return (await checkout.GetTicketsForHolderAsync(userId, ct))
+            .Count(t => t.State is Domain.Checkout.TicketCheckoutTicketState.Valid or Domain.Checkout.TicketCheckoutTicketState.Offered
+                && forEvent.Contains(t.SalesEventId));
     }
 
     /// <summary>Null when the holdings read failed.</summary>
@@ -109,5 +127,8 @@ internal sealed record MemberTicketStatusViewModel(
 {
     public const string TicketPurchaseUrl = "https://tickets.nobodies.team";
 
-    public bool HasTicket => UserTicketCount > 0;
+    /// <summary>Held tickets (Valid or Offered) from Humans' own checkout, for the active event and any open sale; <see cref="UserTicketCount"/> counts the vendor sync's.</summary>
+    public int HumansTicketCount { get; init; }
+
+    public bool HasTicket => UserTicketCount + HumansTicketCount > 0;
 }

@@ -182,6 +182,7 @@ One event-scoped early-entry grant: a human may enter on a date for a named proj
 - When a department's management-role assignment changes, or a team moves into or out of being an active department, the affected humans' Coordinators system-team membership is recalculated. Sub-team manager changes do not touch the Coordinators system team.
 - The system-team sync runs hourly (Hangfire `teams-system-sync`) and on demand from the sections whose facts it reads. It recomputes Volunteers (approved, unsuspended, consents signed, not rejected by the Consent Coordinator), Coordinators and Barrio Leads (active camp leads), reconciles `TeamMember.Role` against management assignments, audits every committed change before Google provisioning, and ends with a Google Group reconciliation pass when Workspace credentials are configured. It sends no "added to team" email for hidden teams.
 - When an account merge is accepted, Teams ends the source's non-system memberships, adds the survivor where needed, moves role assignments, join requests and early-entry grants to the survivor (a source Pending request colliding with a survivor Pending request for the same team is dropped), and reconciles both humans' Coordinators membership.
+- Before a person leaves or is removed from a team, when account deletion revokes all their memberships, and for each member when a team is deactivated, Teams calls Roles' `IRoleWrite.RemoveAsync` so they hold no role there. A merge doesn't: Roles moves its own slots.
 - On erasure, Teams ends live memberships, hard-deletes the human's join requests and early-entry grants, and keeps ended membership rows. The GDPR export carries the `TeamMemberships`, `TeamJoinRequests` (own requests, notes and status history) and `TeamEarlyEntry` slices, following the merge chain.
 
 ## Cross-Section Dependencies
@@ -203,10 +204,12 @@ One event-scoped early-entry grant: a human may enter on a date for a named proj
 - **Settings:** `ISettingsService` for the active event on the team page, the early-entry event picker, event validation and the active-event roster filter. Grants store an event ID without a cross-section EF relationship.
 - **Issues:** Teams implements `IIssueQueueOwner` for its `Teams` issue queue.
 - **Base (`Humans.Base.Gdpr`):** `IUserDataContributor` (export and erasure).
+- **Roles:** Teams registers the `Team` owner kind (`IRoleOwner`, which adds a member before an assign and refuses system and inactive teams) and calls `IRoleWrite.RemoveAsync` when a membership ends.
+- **Permissions:** Teams registers the team tree (`IOwnerKind`).
 
 **Inbound** — sections that reference Teams:
 
-- **Search:** renders team hits with `<vc:teams-search-result>`.
+- **Search (contributor):** Teams' `Section` is an `ISearchContributor` — the `Team` category (`Teams_Search_Category`, weight 10) maps `ITeamService.SearchAsync(query, int.MaxValue)` to `SearchHit`s, each rendered by `<vc:teams-search-result key>`.
 - **Budget, Expenses:** coordinator scoping (`GetEffectiveBudgetCoordinatorTeamIdsAsync`, `IsUserCoordinatorOfTeamAsync`); Budget's dev seeder uses `ITeamSeeding`.
 - **Onboarding, Governance, Auth, Camps, Google, Development:** call `ISystemTeamSync` after the facts they own change.
 - **Users:** account deletion calls `RevokeAllMembershipsAsync`; account merge reaches `IUserMerge.ReassignAsync`; profiles read team memberships.

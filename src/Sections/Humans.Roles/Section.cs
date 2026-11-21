@@ -1,0 +1,46 @@
+using Humans.AuditLog.Contracts;
+using Humans.Base.Hosting;
+using Humans.Base.Interfaces;
+using Humans.Base.Interfaces.Caching;
+using Humans.Gdpr.Contracts;
+using Humans.Permissions.Contracts;
+using Humans.Roles.Contracts;
+using Humans.Roles.Data;
+using Humans.Roles.Services;
+using Humans.Users.Contracts;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+
+namespace Humans.Roles;
+
+public sealed class Section : ISection, ISectionRoles
+{
+    IReadOnlyList<RoleDefinition> ISectionRoles.Roles { get; } =
+    [
+        new(RolesSystemRoles.RolesAdmin, "Roles Admin",
+            "Sets up each team's coordinator role and who holds it, and can manage any team's roles. Holds no permissions itself.",
+            "fa-solid fa-user-tag"),
+    ];
+
+    public void Register(IServiceCollection services, IConfiguration configuration)
+    {
+        services.AddSingleton<IAuditActionContributor, RolesAuditActions>();
+        services.AddSectionDbContext<RolesDbContext>(sentinelTable: "role_definitions");
+
+        services.AddSingleton<IRoleRepository, RoleRepository>();
+
+        services.AddKeyedScoped<IRoleManagementService, RoleService>(CachingRoleService.InnerServiceKey);
+        services.AddSingleton<CachingRoleService>();
+        services.AddSingleton<IRoleManagementService>(sp => sp.GetRequiredService<CachingRoleService>());
+        services.AddSingleton<IRoleService>(sp => sp.GetRequiredService<CachingRoleService>());
+        services.AddSingleton<IRoleWrite>(sp => sp.GetRequiredService<CachingRoleService>());
+        services.AddSingleton<IPermissionSource>(sp => sp.GetRequiredService<CachingRoleService>());
+
+        // Erasure and the merge change cached rows, so the fan-outs bind to the decorator.
+        services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<CachingRoleService>());
+        services.AddScoped<IUserMerge>(sp => sp.GetRequiredService<CachingRoleService>());
+
+        services.AddSingleton<ICacheStats>(sp => sp.GetRequiredService<CachingRoleService>());
+        services.AddHostedService(sp => sp.GetRequiredService<CachingRoleService>());
+    }
+}

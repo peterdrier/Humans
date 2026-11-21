@@ -121,7 +121,7 @@ public sealed record UserInfo(
     /// </summary>
     public string? ProfilePictureUrl =>
         Profile is { HasCustomPicture: true }
-            ? $"/Profile/Picture?id={Profile.Id}&v={Profile.UpdatedAt.ToUnixTimeTicks()}"
+            ? $"/Profile/Picture?id={Id}&v={Profile.UpdatedAt.ToUnixTimeTicks()}"
             : FallbackPictureUrl;
 
     /// <summary>Mirrors <see cref="User.Email"/>.</summary>
