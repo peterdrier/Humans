@@ -345,7 +345,7 @@
     <value>Fusionner des comptes ?</value>
   </data>
   <data name="Users_Emails_MergeWarningBody" xml:space="preserve">
-    <value>La fusion de comptes sert à combiner deux comptes appartenant à la même personne (par exemple, un ancien et un nouvel e-mail, tous deux les vôtres). Ce n'est pas un moyen de partager ou de transférer des billets, des réservations ou d'autres éléments entre deux personnes différentes. Pour transférer un billet à un autre humain, utilisez la fonctionnalité de transfert de billets sur /Tickets/Transfers.</value>
+    <value>La fusion de comptes sert à combiner deux comptes appartenant à la même personne (par exemple, un ancien et un nouvel e-mail, tous deux les vôtres). Ce n'est pas un moyen de partager ou de transférer des billets, des réservations ou d'autres éléments entre deux personnes différentes. Pour céder un billet à un autre humain, mettez-le en revente sur /Tickets/Buy/Mine et invitez la personne par e-mail.</value>
   </data>
   <data name="Users_Emails_VerificationWillBeSent" xml:space="preserve">
     <value>Un e-mail de vérification sera envoyé à cette adresse.</value>

@@ -21,8 +21,7 @@ and a member's erasure scrubs their name and email from the sales records withou
 |---|---|---|
 | Mirror the vendor | `TicketSyncService.SyncOrdersAndAttendeesAsync`, `ResetSyncStateForFullResyncAsync`, `TicketSyncJob`, `POST /Tickets/Sync`, `POST /Tickets/FullResync`, `TicketSyncState` | One pipeline: fetch orders + issued tickets + check-ins → verified-email lookup → upsert orders → Stripe fee enrichment → upsert attendees (matched while built) → apply check-ins → VAT → code redemption → participation reconcile. Incremental by `LastSyncAt` cursor |
 | "Does this human hold a ticket" | `ITicketService` (`GetTicketOrdersAsync`, `GetUserTicketHoldingsAsync`) | One projection per question; callers derive aggregates from `TicketOrderInfo` |
-| Member holds & transfers | `/Tickets/Transfers` (Index, Confirm, Submit, Cancel), `<vc:my-ticket-stubs>`, `<vc:ticket-holdings>`, `<vc:ticket-stub>`, `<vc:member-ticket-status>`, `<vc:guest-ticket-orders>` | One wizard + one stub renderer reused by homepage, profile and wizard |
-| Admin transfer processing | `/Tickets/Admin/Transfers` (Index?tab, Detail/{id}, Decide), `ITicketTransferQueue` | One state machine: Pending → Approved / Rejected / Cancelled; vendor void-to-hold + reissue is the automated path, mark-successful the manual one |
+| Member holdings | `<vc:my-ticket-stubs>`, `<vc:ticket-holdings>`, `<vc:ticket-stub>`, `<vc:member-ticket-status>`, `<vc:guest-ticket-orders>` | One stub renderer reused by homepage and profile |
 | Reporting | `/Tickets` (dashboard), `/Tickets/Orders`, `/Tickets/Attendees`, `/Tickets/Codes`, `/Tickets/SalesAggregates`, `/Tickets/WhoHasntBought` | Paged lists (search/sort/filter), aggregates, one "who hasn't" cross-join over Users, Teams and the active year |
 | Exports | `/Tickets/Export/Attendees`, `/Tickets/Export/Orders`, `/Tickets/Export/AccountantReport`, `/Tickets/Export/Donations` | Four CSVs; only the donor list is audited (TICKETS-9 covers the other two) |
 | Onsite & gate tooling | `/Tickets/Admin/Onsite`, `/Tickets/Admin/Gate` (set/rotate gate-terminal password) | One roster join, one credential rotation |
@@ -40,19 +39,15 @@ The layout these shapes imply:
 - One vendor port (`ITicketVendorService` in `Contracts/`), one adapter section
   (`Humans.TicketTailor`), and the Tickets leaf never names the port's vocabulary.
 - One sync service owning the pipeline end to end; one repository over `ticket_orders`,
-  `ticket_attendees` and `ticket_sync_state`; one transfer repository owning
-  `ticket_transfer_requests` end to end.
+  `ticket_attendees` and `ticket_sync_state`; one transfer repository over the
+  retired `ticket_transfer_requests` (approved-row read, merge, erasure; nothing writes requests).
 - One query service behind `ITicketManagement` (admin) and `ITicketService` (cross-section),
   wrapped once by a singleton caching decorator that also owns invalidation; a second singleton
   decorator on the vendor port caches only the event summary.
-- One transfer service holding the state machine; the vendor writeback goes through it and
-  nowhere else.
-- Controllers per audience: admin dashboard + exports, member transfer wizard, admin transfer
-  queue, contacts import, gate credential, onsite roster. Each translates and formats only; the
+- Controllers per audience: admin dashboard + exports, contacts import, gate credential, onsite roster. Each translates and formats only; the
   view models carry paging/filter state and render the service DTOs, never parallel copies of
   them.
-- Member-facing views localized through `TicketsResource` (stub, holdings, transfer wizard,
-  status-card link) or the shared `Dashboard_*`/`Guest_*` keys; admin views unlocalized.
+- Member-facing views localized through `TicketsResource` (stub, holdings, status card) or the shared `Dashboard_*`/`Guest_*` keys; admin views unlocalized.
 - The dashboard computes only what it renders.
 
 ## Invariants
@@ -61,18 +56,7 @@ The layout these shapes imply:
   `MatchedUserId` (`Services/TicketAttendeeOwnership.cs:17`), the ticket count reads attendee
   rows with a verified-email fallback (`Services/TicketQueryService.cs:38`), and
   `HasEventTicketAsync` reads attendee rows only (`Data/TicketRepository.cs:413`).
-- A gate scan leaves `Status = Valid` and stamps `CheckedInAt`; a ticket is sendable only while
-  both hold, checked in the row flag (`Services/TicketTransferService.cs:60`), the confirm step
-  (`Services/TicketTransferService.cs:73`) and request creation.
-- Only the Sender may cancel, only while Pending and not mid-processing
-  (`Services/TicketTransferService.cs:171`); only `TicketsPolicies.Manage` reaches the decision
-  endpoint (`Controllers/TicketTransferAdminController.cs:13`); a `VoidSucceededIssueFailed`
-  request accepts only retry or mark-successful (`Services/TicketTransferService.cs:347`).
-- Every transfer transition audits: requested (`Services/TicketTransferService.cs:153`),
-  cancelled (`Services/TicketTransferService.cs:185`), auto-failed
-  (`Services/TicketTransferService.cs:230`), approved (`Services/TicketTransferService.cs:370`),
-  rejected (`Services/TicketTransferService.cs:499`); a rejection needs a reason
-  (`Services/TicketTransferService.cs:480`).
+- A gate scan leaves `Status = Valid` and stamps `CheckedInAt`.
 - Sync is cursor-driven: success moves `LastSyncAt` (`Services/TicketSyncService.cs:144`), a
   transient vendor error restores `Idle` without moving it (`Services/TicketSyncService.cs:203`),
   any other failure records `Error` with the message and rethrows
@@ -101,19 +85,10 @@ The layout these shapes imply:
 
 ## Deliberately not done
 
-- No vendor-agnostic transfer abstraction beyond the port: the void-to-hold + reissue sequence
-  is TicketTailor's, and the port exposes exactly those calls.
 - No read-through cache on the dashboard stats; on-demand staleness during sync is accepted.
 - No pagination-free admin lists: orders, attendees and who-hasn't-bought are the one place the
   dataset is large enough that paging buys something.
-- No concurrency tokens on the transfer request (`no-concurrency-tokens`). Decisions use a shared
-  in-process gate and re-read status after acquiring it, so overlapping submissions cannot both
-  enter the vendor flow.
-- No per-environment toggle for the automated transfer path; it is always offered.
-- No separate Attendee aggregate root: `TicketTransferRequest` references the attendee with no
-  inverse collection on purpose.
-- No local ticket issuance of any kind; Humans never creates a ticket except as a transfer
-  reissue from a held seat.
+- No local ticket issuance through the vendor port; the retired transfer reissues were the only case.
 - No volunteer-coverage figure on the dashboard: the coverage card was replaced by the user
   set-membership view, and the "Who hasn't bought?" list is the operational answer.
 
@@ -130,20 +105,12 @@ The layout these shapes imply:
   next sync.
 - **The caching decorators are Singletons wrapping Scoped or keyed inners**, because
   `TrackedCache` slices must outlive a request while the repository and adapter calls must not.
-- **Every transfer transition invalidates the holdings cache and audits before any email**, and
-  the automated path records the vendor diagnostic on the request before deciding whether to
-  email, so a crash mid-flow leaves the admin a readable state rather than a silent Pending.
-- **The query service reads the transfer repository** to stamp the pending-transfer flag on a
-  member's holdings; the transfer wizard reads that same projection and adds only the send rule,
-  so "what do I hold" is computed once.
 - **The gate-terminal account is a real user with no roles** and a rotating password, created
   lazily the first time a ticket admin sets its password from `/Tickets/Admin/Gate`.
 - **`TicketRepository` and `TicketTransferRepository` are Singletons** over a context factory
   while the services are Scoped.
 - **Contact import re-queries at apply time** rather than trusting the plan, because a sync can
   land between preview and apply.
-- **Order-drift table** on the transfer queue exists because the manual path leaves the local
-  rows stale until the next sync; it is the team's reconciliation aid, not a bug list.
 - **The Scanner gate card builds `TicketStubInfo` itself** to show the scanned attendee's Early
   Entry, not the operator's; every holder-facing surface goes through `TicketStubInfo.From`.
 

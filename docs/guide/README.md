@@ -69,7 +69,6 @@ a quick, jargon-free hand.
 
 - [Your `@nobodies.team` email](EmailAccount.md)
 - [Two-step verification (2FA)](TwoStepVerification.md)
-- [Transferring your ticket](TicketTransfers.md)
 - [The in-app AI helper](AiHelper.md)
 - [Signing in & getting unstuck](SigningIn.md)
 - [Your data & privacy](YourData.md)

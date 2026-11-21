@@ -162,7 +162,7 @@
   <data name="Users_Emails_AddNew" xml:space="preserve"><value>Add Email Address</value></data>
   <data name="Users_Emails_NewEmailLabel" xml:space="preserve"><value>New email address</value></data>
   <data name="Users_Emails_MergeWarningTitle" xml:space="preserve"><value>Merging accounts?</value></data>
-  <data name="Users_Emails_MergeWarningBody" xml:space="preserve"><value>Account merge is for combining two accounts that belong to the same person (for example, an old email and a new email that are both yours). It is not a way to share or transfer tickets, bookings, or other items between two different people. To transfer a ticket to another human, use the ticket transfer feature at /Tickets/Transfers.</value></data>
+  <data name="Users_Emails_MergeWarningBody" xml:space="preserve"><value>Account merge is for combining two accounts that belong to the same person (for example, an old email and a new email that are both yours). It is not a way to share or transfer tickets, bookings, or other items between two different people. To pass a ticket on to another human, offer it for resale at /Tickets/Buy/Mine and invite them by email.</value></data>
   <data name="Users_Emails_VerificationWillBeSent" xml:space="preserve"><value>A verification email will be sent to this address.</value></data>
   <data name="Users_Emails_SendVerification" xml:space="preserve"><value>Send Verification Email</value></data>
   <data name="Users_Emails_ResendCooldown" xml:space="preserve"><value>You can request a new verification email in {0} minute(s).</value><comment>{0} = minutes remaining</comment></data>

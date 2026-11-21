@@ -36,9 +36,9 @@ public class TicketDashboardViewTests
     {
         var stubs = new List<TicketStubInfo>
         {
-            new("Aaron void", null, TicketAttendeeStatus.Void, false, null, null),
-            new("Zoe active", null, TicketAttendeeStatus.Valid, false, null, null),
-            new("alpha active", null, TicketAttendeeStatus.Valid, false, null, null)
+            new("Aaron void", null, TicketAttendeeStatus.Void, null),
+            new("Zoe active", null, TicketAttendeeStatus.Valid, null),
+            new("alpha active", null, TicketAttendeeStatus.Valid, null)
         };
         object model = holdingsCard ? new TicketHoldingsViewModel(Guid.NewGuid(), ProfileCardViewMode.Self, 1, stubs) : stubs;
         var component = holdingsCard ? "TicketHoldings" : "MyTicketStubs";

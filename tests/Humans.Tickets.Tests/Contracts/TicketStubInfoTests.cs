@@ -6,20 +6,18 @@ namespace Humans.Tickets.Tests.Contracts;
 
 /// <summary>
 /// Covers <c>TicketStubInfo.From</c> — the single mapper that stamps the holder's Early
-/// Entry date onto a stub, used by the homepage strip and the transfer wizard so the EE
+/// Entry date onto a stub, used by the homepage strip and the profile ticket card so the EE
 /// pill can't be present on one surface and dropped on another.
 /// </summary>
 public class TicketStubInfoTests
 {
-    private static UserTicketHoldingRow Row(bool pending = false, Guid? pendingId = null) => new(
+    private static UserTicketHoldingRow Row() => new(
         AttendeeId: Guid.NewGuid(),
         AttendeeName: "Ada Lovelace",
         AttendeeEmail: "ada@example.com",
         VendorTicketId: "TKT-001",
         TicketTypeName: "GA",
-        Status: TicketAttendeeStatus.Valid,
-        HasPendingOutgoingTransfer: pending,
-        PendingTransferRequestId: pendingId);
+        Status: TicketAttendeeStatus.Valid);
 
     [HumansFact]
     public void From_StampsHolderEarlyEntry_AndMapsCoreFields()
@@ -41,16 +39,5 @@ public class TicketStubInfoTests
         var stub = TicketStubInfo.From(Row(), holderEarlyEntry: null);
 
         stub.EarlyEntryDate.Should().BeNull();
-    }
-
-    [HumansFact]
-    public void From_CarriesPendingTransferState()
-    {
-        var pendingId = Guid.NewGuid();
-
-        var stub = TicketStubInfo.From(Row(pending: true, pendingId: pendingId), holderEarlyEntry: null);
-
-        stub.HasPendingTransfer.Should().BeTrue();
-        stub.PendingTransferRequestId.Should().Be(pendingId);
     }
 }
