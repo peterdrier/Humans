@@ -24,7 +24,7 @@ Standing responsibilities on an owner (a team today, camps next): Cantina coordi
 | `GET /Roles` | Open-roles board: every open slot on a role the viewer can see, most needed first. Filters: owner, period, priority. In the main nav. | Signed-in members |
 | `GET /Roles/{kind}/{key}` | An owner's roles, plus the add form | Whoever manages that owner's roles |
 | `GET /Roles/{kind}/{key}/{slug}` | One role: description, slots and holders, who to talk to; for managers, assign, unassign, edit and delete | Anyone who can see the role |
-| `GET /Roles/Admin` | Every active owner: its coordinators, role count, open slots, hidden flag. The admin sidebar's Roles group. English only (admin page). | Admin, RolesAdmin, Board (`RolesPolicies.Read`) |
+| `GET /Roles/Admin` | Every active owner: its coordinators, role count, open slots, hidden flag. Each links to the manage page where the viewer manages it, else the owner's own page. The admin sidebar's Roles group. English only (admin page). | Admin, RolesAdmin, Board (`RolesPolicies.Read`) |
 
 - A team's roles card renders on the team page through Teams' `ITeamRolesPart` slot. It renders nothing when the viewer sees no roles and can't manage them.
 - `{key}` is the owner's own link key (a team's slug). `{slug}` matches the slug or the custom slug, and only within that owner.
