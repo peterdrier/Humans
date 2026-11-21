@@ -1,3 +1,4 @@
+using Humans.Users.Domain;
 using Humans.Onboarding.Contracts;
 using Humans.Users.Contracts;
 using NodaTime;

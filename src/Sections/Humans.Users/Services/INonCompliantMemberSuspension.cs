@@ -1,7 +1,7 @@
 
-namespace Humans.Users.Contracts;
+namespace Humans.Users.Services;
 
-public interface INonCompliantMemberSuspension
+internal interface INonCompliantMemberSuspension
 {
     /// <summary>
     /// Suspends members missing required consents past the grace period, with each suspension's side effects.

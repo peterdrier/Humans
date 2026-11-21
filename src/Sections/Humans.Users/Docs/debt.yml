@@ -1,5 +1,9 @@
 # Section debt ledger for Humans.Users. Shape + routing: memory/process/debt-ledger-additions.md.
 # /debt-sweep pools every src/Sections/*/Docs/debt.yml into the same inbox as the central ledger.
 version: 1
-next_id: 30
-inbox: []
+next_id: 31
+inbox:
+  - added: 2026-11-21
+    id: USERS-30
+    what: "IAccountDeletionService.AnonymizeExpiredAccountAsync and AnonymizedAccountSummary remain public even though the only production caller is Users' ProcessAccountDeletionsJob. Keep RequestDeletionAsync, CancelDeletionAsync and PurgeAsync public for Gdpr, but put the expired-account entry point and summary behind an internal owner boundary. The current interface is mocked by Users' deletion-job tests and Email's DeletionConfirmationLeavesNoOutboxRowTests, so preserve their failure/cancellation/confirmation coverage when changing that seam. Found during the job-contract audit; separated from mechanical type moves because it changes the GDPR orchestrator dependency seam."
+    review: panel
