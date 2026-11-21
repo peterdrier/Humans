@@ -393,9 +393,6 @@ internal sealed partial class PretixCheckoutBackend(
         var charged = status.State == CheckoutState.Paid
             ? order.Payments.Where(p => p.State is "confirmed" or "refunded").Sum(p => p.Amount)
             : order.Total - refundFees;
-        // A refund made outside pretix (Stripe dashboard, chargeback) waits as "external" until someone processes it;
-        // the money is gone, so reconciliation counts it though GetStatusAsync does not.
-        var external = order.Refunds.Where(r => string.Equals(r.State, "external", StringComparison.Ordinal)).Sum(r => ToMinor(r.Amount));
         return new BackendOrderSummary(
             FormatBackendOrderId(eventSlug, order.Code),
             order.ApiMeta?.TryGetValue(HumansOrderIdMeta, out var meta) == true
@@ -406,7 +403,7 @@ internal sealed partial class PretixCheckoutBackend(
             status.State,
             ToMinor(charged),
             order.Positions.Count(p => !p.Canceled && ticketItems.Contains(p.Item)),
-            status.RefundedMinor + external,
+            status.RefundedMinor,
             status.DisputedMinor);
     }
 
@@ -461,7 +458,11 @@ internal sealed partial class PretixCheckoutBackend(
         // A full refund drops the total to zero and pretix confirms a 0.00 "free" payment; that is not how they paid.
         var lastPayment = order.Payments.LastOrDefault(p => string.Equals(p.State, "confirmed", StringComparison.Ordinal) && p.Amount > 0)
             ?? order.Payments.LastOrDefault(p => string.Equals(p.State, "refunded", StringComparison.Ordinal));
-        var refunded = order.Refunds.Where(r => string.Equals(r.State, "done", StringComparison.Ordinal)).Sum(r => ToMinor(r.Amount));
+        // A refund made outside pretix (Stripe dashboard, chargeback) waits as "external" until a person processes it,
+        // but the money has already gone, so it counts from the moment pretix records it.
+        var gone = order.Refunds.Where(r => r.State is "done" or "external").ToList();
+        var disputed = gone.Where(IsChargeback).Sum(r => ToMinor(r.Amount));
+        var refunded = gone.Where(r => !IsChargeback(r)).Sum(r => ToMinor(r.Amount));
 
         return new CheckoutStatus(
             state,
@@ -472,8 +473,22 @@ internal sealed partial class PretixCheckoutBackend(
             state == CheckoutState.Paid ? ParseInstant(lastPayment?.PaymentDate) : null,
             refunded,
             // Only the newest refund counts: a retry after a failure must not read as failed while its money moves.
-            order.Refunds.MaxBy(r => r.LocalId)?.State is "failed" or "canceled");
+            // An external one cancelled in pretix is a won chargeback or a mistaken record, not a failed refund.
+            order.Refunds.Where(r => !string.Equals(r.Source, "external", StringComparison.Ordinal))
+                .MaxBy(r => r.LocalId)?.State is "failed" or "canceled",
+            disputed);
     }
+
+    /// <summary>
+    /// pretix's Stripe plugin records a chargeback as an external refund carrying the Stripe dispute's id, and never
+    /// updates it: a won dispute or a mere inquiry stays until a person cancels that refund in pretix, which clears it.
+    /// </summary>
+    private static bool IsChargeback(PretixRefund refund) =>
+        string.Equals(refund.Source, "external", StringComparison.Ordinal)
+        && refund.Details is { ValueKind: JsonValueKind.Object } details
+        && details.TryGetProperty("id", out var id) && id.ValueKind == JsonValueKind.String
+        && id.GetString() is { } stripeId
+        && (stripeId.StartsWith("dp_", StringComparison.Ordinal) || stripeId.StartsWith("du_", StringComparison.Ordinal));
 
     /// <summary>
     /// pretix keeps a payment confirmed after expiry or cancellation but cannot mark the order paid, and a refund made
@@ -757,5 +772,6 @@ internal sealed partial class PretixCheckoutBackend(
     internal sealed record PretixPayment(int LocalId, string State, decimal Amount, string Provider, string? PaymentDate);
 
     internal sealed record PretixRefund(
-        int LocalId, string State, decimal Amount, int? Payment, string? Comment, string? Provider);
+        int LocalId, string State, decimal Amount, int? Payment, string? Comment, string? Provider,
+        string? Source = null, JsonElement? Details = null);
 }

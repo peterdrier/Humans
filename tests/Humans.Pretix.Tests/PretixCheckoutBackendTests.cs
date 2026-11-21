@@ -253,6 +253,35 @@ public class PretixCheckoutBackendTests
     }
 
     [HumansFact]
+    public async Task Status_RefundMadeInTheStripeDashboard_CountsAsRefundedBeforeAnyoneProcessesIt()
+    {
+        var pretix = new FakePretix().On("GET", OrderPath, HttpStatusCode.OK, PaidOrder(
+            new { local_id = 1, state = "external", source = "external", amount = "40.00", payment = 1, comment = (string?)null, provider = "stripe", details = new { id = "re_3Q" } }));
+
+        var status = await Create(pretix).GetStatusAsync($"nowhere2027/{Code}", TestContext.Current.CancellationToken);
+
+        status.State.Should().Be(CheckoutState.Paid);
+        status.RefundedMinor.Should().Be(4000);
+        status.DisputedMinor.Should().Be(0);
+    }
+
+    [HumansFact]
+    public async Task Status_Chargeback_IsDisputedNotRefundedUntilCancelledInPretix()
+    {
+        var pretix = new FakePretix().On("GET", OrderPath, HttpStatusCode.OK, PaidOrder(
+            new { local_id = 1, state = "done", source = "admin", amount = "100.00", payment = 1, comment = "humans-refund:x", provider = "stripe", details = new { id = "re_1" } },
+            new { local_id = 2, state = "external", source = "external", amount = "300.00", payment = 1, comment = (string?)null, provider = "stripe", details = new { id = "du_1" } },
+            new { local_id = 3, state = "done", source = "external", amount = "200.00", payment = 1, comment = (string?)null, provider = "stripe", details = new { id = "dp_2" } },
+            new { local_id = 4, state = "canceled", source = "external", amount = "400.00", payment = 1, comment = (string?)null, provider = "stripe", details = new { id = "du_3" } }));
+
+        var status = await Create(pretix).GetStatusAsync($"nowhere2027/{Code}", TestContext.Current.CancellationToken);
+
+        status.DisputedMinor.Should().Be(50000, "an open and a processed chargeback hold money; a cancelled one was won");
+        status.RefundedMinor.Should().Be(10000);
+        status.RefundFailed.Should().BeFalse("cancelling a won chargeback is not a failed refund");
+    }
+
+    [HumansFact]
     public async Task Status_CancelledOrderHoldingMoney_IsPaid()
     {
         var pretix = new FakePretix().On("GET", OrderPath, HttpStatusCode.OK, Order(
@@ -657,7 +686,7 @@ public class PretixCheckoutBackendTests
     }
 
     [HumansFact]
-    public async Task ListOrders_ChargesWhatWasReceivedAndCountsExternalRefunds()
+    public async Task ListOrders_ChargesWhatWasReceivedAndCountsExternalRefundsAndChargebacks()
     {
         var pretix = new FakePretix()
             .On("GET", $"{Api}items/", HttpStatusCode.OK, new { results = new object[] { new { id = 7, internal_name = "humans-ticket" } } })
@@ -679,7 +708,11 @@ public class PretixCheckoutBackendTests
                             new { local_id = 1, state = "confirmed", amount = "300.00", provider = "stripe", payment_date = "2027-01-05T09:31:00+00:00" },
                             new { local_id = 2, state = "confirmed", amount = "300.00", provider = "stripe", payment_date = "2027-01-05T09:32:00+00:00" },
                         },
-                        refunds = new object[] { new { local_id = 1, state = "external", amount = "40.00", payment = 1, comment = (string?)null, provider = "stripe" } },
+                        refunds = new object[]
+                        {
+                            new { local_id = 1, state = "external", source = "external", amount = "40.00", payment = 1, comment = (string?)null, provider = "stripe", details = new { id = "re_1" } },
+                            new { local_id = 2, state = "external", source = "external", amount = "60.00", payment = 2, comment = (string?)null, provider = "stripe", details = new { id = "du_1" } },
+                        },
                         api_meta = new { humans_order_id = OrderId.ToString() },
                     },
                 },
@@ -690,6 +723,7 @@ public class PretixCheckoutBackendTests
 
         order.TotalMinor.Should().Be(60000, "paid twice");
         order.RefundedMinor.Should().Be(4000, "a refund made outside pretix has left");
+        order.DisputedMinor.Should().Be(6000, "a chargeback is not a refund");
     }
 
     [HumansFact]

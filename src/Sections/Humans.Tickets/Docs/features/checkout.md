@@ -79,7 +79,8 @@ fails. A backend stays in use while it holds orders, whatever the sales setups p
 Per backend: Box Office lists every Checkout Session on the ticket Stripe account (it has no events) and reads the ticket
 count from the session's `humans_ticket_count` metadata, since free lines never reach Stripe; a session without it
 counts as Humans' number. pretix lists each event's orders and counts positions on the `humans-ticket` item; a paid
-order is charged what pretix received, and refunds made outside pretix (`external`) count as refunded. Hi.Events lists
+order is charged what pretix received, and refunds made outside pretix (`external`) count as refunded, or as a
+chargeback when they carry a Stripe dispute, exactly as the order's status reads them. Hi.Events lists
 each event's orders and counts attendees; it reports no chargebacks, and its order list leaves out unpaid orders, so an
 open checkout reads missing (no money moved) and a lost create shows only once paid. Every event a backend's orders were
 sold under is read (`EventRefOf`), beside the events the setups sell through now.
