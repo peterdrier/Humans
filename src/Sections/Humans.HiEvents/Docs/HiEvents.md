@@ -60,4 +60,7 @@ None — the section owns no tables.
 - Cancel: a no-op on a cancelled order, `TicketCheckoutException` on a paid one, otherwise Hi.Events' cancel without
   refund.
 - Webhook: 503 without a secret, 401 on a bad signature, 200 and no call for anything but `order.*`.
-- The buyer lands on Hi.Events' own order page after paying; `CheckoutRequest.ReturnUrl` is not yet honoured.
+- After paying, Hi.Events' payment return page sends the buyer to `CheckoutRequest.ReturnUrl`.
+- Hi.Events sends the buyer and attendees no email for these orders (`send_buyer_emails: false`, refunds with
+  `notify_buyer: false`); Humans owns the ticket, receipt and refund emails. Organizer and team notices in Hi.Events
+  still go out.

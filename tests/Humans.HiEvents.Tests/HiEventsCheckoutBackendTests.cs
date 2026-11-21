@@ -43,6 +43,8 @@ public class HiEventsCheckoutBackendTests
         json["first_name"]!.GetValue<string>().Should().Be("Ana Buyer");
         json["locale"]!.GetValue<string>().Should().Be("es");
         json["expires_at"]!.GetValue<string>().Should().Be("2027-01-02T10:30:00Z");
+        json["send_buyer_emails"]!.GetValue<bool>().Should().BeFalse();
+        json["return_url"]!.GetValue<string>().Should().Be("https://humans.example/Tickets/Return");
         json["items"]![0]!["product_id"]!.GetValue<int>().Should().Be(100);
         json["items"]![0]!["price"]!.GetValue<decimal>().Should().Be(225m);
         json["items"]![0]!["attendee"]!["first_name"]!.GetValue<string>().Should().Be("Ana García López");
@@ -152,6 +154,7 @@ public class HiEventsCheckoutBackendTests
         json["amount"]!.GetValue<decimal>().Should().Be(225m);
         json["idempotency_key"]!.GetValue<string>().Should().Be("aaaaaaaabbbbccccddddeeeeeeeeeeee");
         json["cancel_order"]!.GetValue<bool>().Should().BeFalse();
+        json["notify_buyer"]!.GetValue<bool>().Should().BeFalse();
     }
 
     [HumansFact]

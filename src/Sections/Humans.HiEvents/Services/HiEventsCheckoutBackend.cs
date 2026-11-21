@@ -86,6 +86,9 @@ internal sealed class HiEventsCheckoutBackend : ITicketCheckoutBackend
             Email: request.BuyerEmail,
             Locale: ToLocale(request.Culture),
             ExpiresAt: InstantPattern.ExtendedIso.Format(request.ExpiresAt),
+            ReturnUrl: request.ReturnUrl.AbsoluteUri,
+            // Humans sends the buyer's ticket, receipt and refund emails itself.
+            SendBuyerEmails: false,
             Items: request.Lines.Select(line => ToItem(line, eventId, products)).ToList());
 
         using var response = await _http.PostAsJsonAsync($"events/{eventId}/orders/checkout", body, JsonOptions, ct);
@@ -137,7 +140,7 @@ internal sealed class HiEventsCheckoutBackend : ITicketCheckoutBackend
 
         var body = new RefundBody(
             Amount: request.AmountMinor / 100m,
-            NotifyBuyer: true,
+            NotifyBuyer: false,
             CancelOrder: false,
             IdempotencyKey: request.RefundId.ToString("N"));
 
@@ -262,6 +265,8 @@ internal sealed class HiEventsCheckoutBackend : ITicketCheckoutBackend
         string Email,
         string Locale,
         string ExpiresAt,
+        string ReturnUrl,
+        bool SendBuyerEmails,
         IReadOnlyList<CheckoutOrderItem> Items);
 
     private sealed record CheckoutOrderItem(int ProductId, decimal Price, CheckoutAttendee? Attendee);
