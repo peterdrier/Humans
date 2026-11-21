@@ -735,3 +735,12 @@ src/Sections/Humans.Auth/Data/Migrations/20261113002711_RenameRoleAssignmentsToA
 src/Sections/Humans.Tickets/Data/Migrations/20261121151707_TicketResaleOpensByHand.cs:DropColumn(name=DirectedExpiresAt,table=ticket_resale_offers)#1
 src/Sections/Humans.Tickets/Data/Migrations/20261121151707_TicketResaleOpensByHand.cs:DropColumn(name=DirectedResaleDays,table=ticket_sales_events)#1
 src/Sections/Humans.Tickets/Data/Migrations/20261121151707_TicketResaleOpensByHand.cs:DropColumn(name=ResaleOpensAtSold,table=ticket_sales_events)#1
+
+# governance_applications.ReviewStartedAt (timestamp, nullable) — when a tier application entered
+# the old UnderReview state.
+# Evidence: pickaxe over full history (git log -S 'ReviewStartedAt ='): the only writer was the
+# UnderReview transition, removed in 32468ea09 (2026-02-20); rows reviewed 2026-02-04..02-20 may hold
+# a value. The last readers (application detail pages) were removed in peterdrier/Humans#2443.
+# Approval: Peter, 2026-11-19, project thread decision card ("Yes, drop it"), after being told
+# what the column may still hold.
+src/Sections/Humans.Governance/Data/Migrations/20261121133716_DropApplicationReviewStartedAt.cs:DropColumn(name=ReviewStartedAt,table=governance_applications)#1

@@ -111,11 +111,11 @@
   <data name="Tickets_Buy_YourPrice" xml:space="preserve">
     <value>Ton prix</value>
   </data>
-  <data name="Tickets_Buy_WavePrice" xml:space="preserve">
-    <value>Vague actuelle : {0}, {1}</value>
-  </data>
   <data name="Tickets_Buy_Total" xml:space="preserve">
     <value>Total</value>
+  </data>
+  <data name="Tickets_Buy_ForSelfHeading" xml:space="preserve">
+    <value>Votre billet</value>
   </data>
   <data name="Tickets_Buy_ForSelf" xml:space="preserve">
     <value>Un billet pour moi ({0})</value>
@@ -302,9 +302,6 @@
   </data>
   <data name="Tickets_Buy_SupporterIntro" xml:space="preserve">
     <value>Améliore ton expérience et aide-nous à faire le meilleur événement possible. Ton billet reste à ton prix ; le reste est un don à l'association, sans TVA et non remboursable.</value>
-  </data>
-  <data name="Tickets_Buy_SupporterBreakdown" xml:space="preserve">
-    <value>{0} de billet + {1} de don</value>
   </data>
   <data name="Tickets_Buy_Terms" xml:space="preserve">
     <value>Règles des billets</value>
