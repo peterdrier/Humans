@@ -336,12 +336,12 @@ internal sealed partial class TicketCheckoutService
     private async Task FlagDoubleHoldersAsync(TicketCheckoutOrder order, CancellationToken ct)
     {
         var now = clock.GetCurrentInstant();
-        foreach (var holderId in order.Lines
-                     .Where(l => l is { Kind: CheckoutLineKind.Ticket, AttendeeUserId: not null } && l.HolderKind != TicketHolderKind.Child)
-                     .Select(l => l.AttendeeUserId!.Value).Distinct())
-            if (await HoldsTicketAsync(order.SalesEventId, holderId, now, ct))
+        foreach (var (line, index) in order.Lines.Select((l, i) => (l, i + 1))
+                     .Where(x => x.l is { Kind: CheckoutLineKind.Ticket, AttendeeUserId: not null } && x.l.HolderKind != TicketHolderKind.Child)
+                     .DistinctBy(x => x.l.AttendeeUserId))
+            if (await HoldsTicketAsync(order.SalesEventId, line.AttendeeUserId!.Value, now, ct))
                 await NeedsAttentionAsync(order.Id,
-                    $"Ticket holder {holderId} already held a ticket for this event; the ticketing team should refund one", ct);
+                    $"The holder of line {index} already held a ticket for this event; the ticketing team should refund one", ct);
     }
 
     /// <summary>

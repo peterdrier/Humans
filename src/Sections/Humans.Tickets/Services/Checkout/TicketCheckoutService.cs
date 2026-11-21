@@ -1119,7 +1119,7 @@ internal sealed partial class TicketCheckoutService(
     private async Task<bool> HoldsTicketAsync(Guid salesEventId, Guid userId, Instant now, CancellationToken ct)
     {
         if ((await repository.GetTicketsForHolderAsync(userId, ct)).Any(t =>
-                t.SalesEventId == salesEventId && t.Kind == TicketHolderKind.Adult
+                t.SalesEventId == salesEventId && t.Kind != TicketHolderKind.Child
                 && t.State is TicketCheckoutTicketState.Valid or TicketCheckoutTicketState.Offered))
             return true;
         return (await repository.GetOrdersForUserAsync(userId, ct)).Any(o =>

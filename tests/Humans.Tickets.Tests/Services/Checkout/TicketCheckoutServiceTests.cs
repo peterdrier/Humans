@@ -1354,6 +1354,8 @@ public sealed class TicketCheckoutServiceTests
             Arg.Any<string>(), _adminId, _buyerId, AuditSubjectTypes.User);
         (await _service.RequestCompanionAsync(adult.Id, _buyerId, "helper@example.com", "A second one", Ct))
             .Refusal.Should().Be("Tickets_Companion_NotAllowed");
+        (await _service.StartCheckoutAsync(Buy(forSelf: false, others: ["helper@example.com"]), _otherBuyerId, Ct))
+            .Refusal.Should().Be("Tickets_Buy_OtherHolds");
     }
 
     [HumansFact]
