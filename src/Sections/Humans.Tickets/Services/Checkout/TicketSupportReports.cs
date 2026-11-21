@@ -108,8 +108,8 @@ internal static class TicketSupportReports
             .ToList();
 
         var byPurpose = donations
-            .GroupBy(l => l.DonationPurpose ?? TicketDonationPurpose.General)
-            .OrderBy(g => g.Key)
+            .GroupBy(l => l.DonationPurpose, StringComparer.Ordinal)
+            .OrderBy(g => g.Key, StringComparer.Ordinal)
             .Select(g => new DonationRow(g.Key, g.Count(), g.Sum(l => l.AmountMinor)))
             .ToList();
 
@@ -138,10 +138,11 @@ internal static class TicketSupportReports
             byPrice, byDay, byPurpose, refundsByState, resaleByState);
     }
 
-    /// <summary>The class an adult ticket was priced at, else its wave; children and companions by kind.</summary>
+    /// <summary>The class an adult ticket was priced at, else its wave; a child by its child type; companions by kind.</summary>
     public static string PriceLabel(TicketCheckoutTicket ticket) => ticket.Kind switch
     {
         TicketHolderKind.Adult => ticket.ClassLabel ?? (ticket.WaveName.Length > 0 ? ticket.WaveName : "Unpriced"),
+        TicketHolderKind.Child when ticket.WaveName.Length > 0 => $"Child: {ticket.WaveName}",
         _ => ticket.Kind.ToString(),
     };
 
@@ -188,7 +189,8 @@ internal sealed record SalesRow(string Label, int Count, long AmountMinor);
 /// <summary>The day the order was paid, in the event's time zone.</summary>
 internal sealed record DayRow(LocalDate Day, int Tickets, long TicketsMinor, long DonationsMinor);
 
-internal sealed record DonationRow(TicketDonationPurpose Purpose, int Count, long AmountMinor);
+/// <summary><paramref name="Purpose"/> is null for general donations.</summary>
+internal sealed record DonationRow(string? Purpose, int Count, long AmountMinor);
 
 internal sealed record RefundStateRow(RefundState State, int Count, long AmountMinor);
 

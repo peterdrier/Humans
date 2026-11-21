@@ -267,19 +267,78 @@
                         </div>
                     </template>
 
-                    <div class="row g-2 mt-3">
-                        <div class="col-6">
-                            <label class="form-label" for="ChildPrice">Child ticket price</label>
-                            <div class="input-group"><span class="input-group-text">€</span><input class="form-control" id="ChildPrice" name="ChildPrice" type="number" min="0" step="0.01" value="@f.ChildPrice" /></div>
-                            <div class="form-text">Empty: no child tickets.</div>
-                        </div>
-                        <div class="col-6">
-                            <label class="form-label" for="ChildMaxAge">Child means under</label>
-                            <div class="input-group"><input class="form-control" id="ChildMaxAge" name="ChildMaxAge" type="number" min="1" value="@f.ChildMaxAge" /><span class="input-group-text">years</span></div>
-                            <div class="form-text">On the event's first day.</div>
-                        </div>
+                    <div class="d-flex justify-content-between align-items-center mb-1 mt-4">
+                        <span class="form-label mb-0">Donation purposes</span>
+                        <button type="button" class="btn btn-outline-primary btn-sm" data-add-row="purposes">Add purpose</button>
                     </div>
+                    <div class="form-text mt-0 mb-2">What a free donation can go to, as the buyer sees it. They may also leave it general. None: one general donation, no choice.</div>
+                    <div data-rows="purposes">
+                        @foreach (var purpose in f.DonationPurposes)
+                        {
+                            var key = Guid.NewGuid().ToString("N");
+                            <div class="d-flex gap-2 align-items-center mb-2">
+                                <input type="hidden" name="DonationPurposes.Index" value="@key" />
+                                <input class="form-control form-control-sm" maxlength="64" name="DonationPurposes[@key].Name" value="@purpose.Name" placeholder="Art and creativity" aria-label="Donation purpose" />
+                                <button type="button" class="btn btn-outline-danger btn-sm" data-remove-row aria-label="Remove purpose">&times;</button>
+                            </div>
+                        }
+                    </div>
+                    <template data-template="purposes">
+                        <div class="d-flex gap-2 align-items-center mb-2">
+                            <input type="hidden" name="DonationPurposes.Index" value="__KEY__" />
+                            <input class="form-control form-control-sm" maxlength="64" name="DonationPurposes[__KEY__].Name" placeholder="Art and creativity" aria-label="Donation purpose" />
+                            <button type="button" class="btn btn-outline-danger btn-sm" data-remove-row aria-label="Remove purpose">&times;</button>
+                        </div>
+                    </template>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card mb-3">
+        <div class="card-header fw-semibold d-flex justify-content-between align-items-center">
+            <span>Child and companion tickets</span>
+            <button type="button" class="btn btn-outline-primary btn-sm" data-add-row="children">Add child ticket</button>
+        </div>
+        <div class="card-body">
+            <p class="form-text mt-0">
+                Child tickets hang off the buyer's own ticket. The buyer picks one per child; the age is on the event's first day.
+                None: children are not sold.
+            </p>
+            <div data-rows="children">
+                @foreach (var child in f.ChildTypes)
+                {
+                    var key = Guid.NewGuid().ToString("N");
+                    <div class="d-flex flex-wrap gap-2 align-items-center mb-2">
+                        <input type="hidden" name="ChildTypes.Index" value="@key" />
+                        <input class="form-control form-control-sm" style="max-width:14rem" maxlength="64" name="ChildTypes[@key].Name" value="@child.Name" placeholder="Child" aria-label="Child ticket name" />
+                        <div class="input-group input-group-sm" style="max-width:10rem"><span class="input-group-text">under</span><input class="form-control" type="number" min="1" name="ChildTypes[@key].UnderAge" value="@child.UnderAge" aria-label="Under age" /><span class="input-group-text">years</span></div>
+                        <div class="input-group input-group-sm" style="max-width:9rem"><span class="input-group-text">€</span><input class="form-control" type="number" min="0" step="0.01" name="ChildTypes[@key].Price" value="@child.Price" aria-label="Price" /></div>
+                        <button type="button" class="btn btn-outline-danger btn-sm" data-remove-row aria-label="Remove child ticket">&times;</button>
+                    </div>
+                }
+            </div>
+            <template data-template="children">
+                <div class="d-flex flex-wrap gap-2 align-items-center mb-2">
+                    <input type="hidden" name="ChildTypes.Index" value="__KEY__" />
+                    <input class="form-control form-control-sm" style="max-width:14rem" maxlength="64" name="ChildTypes[__KEY__].Name" placeholder="Child" aria-label="Child ticket name" />
+                    <div class="input-group input-group-sm" style="max-width:10rem"><span class="input-group-text">under</span><input class="form-control" type="number" min="1" name="ChildTypes[__KEY__].UnderAge" aria-label="Under age" /><span class="input-group-text">years</span></div>
+                    <div class="input-group input-group-sm" style="max-width:9rem"><span class="input-group-text">€</span><input class="form-control" type="number" min="0" step="0.01" name="ChildTypes[__KEY__].Price" aria-label="Price" /></div>
+                    <button type="button" class="btn btn-outline-danger btn-sm" data-remove-row aria-label="Remove child ticket">&times;</button>
+                </div>
+            </template>
+            <div class="form-check form-switch mt-3 mb-0">
+                @if (f.CompanionTickets)
+                {
+                    <input class="form-check-input" type="checkbox" role="switch" id="CompanionTickets" name="CompanionTickets" value="true" checked />
+                }
+                else
+                {
+                    <input class="form-check-input" type="checkbox" role="switch" id="CompanionTickets" name="CompanionTickets" value="true" />
+                }
+                <input type="hidden" name="CompanionTickets" value="false" />
+                <label class="form-check-label" for="CompanionTickets">Companion tickets</label>
+                <div class="form-text mt-0">A holder may ask for a free ticket for a companion already in Humans; the ticketing team approves each one.</div>
             </div>
         </div>
     </div>

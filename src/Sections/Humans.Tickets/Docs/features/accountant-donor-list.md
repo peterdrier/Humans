@@ -58,7 +58,7 @@ and the total in EUR.
 only rendered for admins. Anonymous callers are denied by the same policy.
 
 **From 2027, Humans checkout orders too:** each donation line on a `Paid` checkout order is one row, type
-`Donation: <purpose>` (`General`, `Creativity`, `LowIncomePool`; the supporter-total part is `General`), dated by
+`Donation: <purpose>` (one of the sales setup's donation purposes, or `General`; the supporter-total part is `General`), dated by
 `PaidAt` in Europe/Madrid, with the receipt's 8-character order reference as the order id. The whole list is sorted by
 date. See [ticket-delivery.md](ticket-delivery.md).
 

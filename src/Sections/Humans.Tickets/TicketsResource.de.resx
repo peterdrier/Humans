@@ -95,12 +95,6 @@
   <data name="Tickets_Buy_Purpose_General" xml:space="preserve">
     <value>Wo es am meisten gebraucht wird</value>
   </data>
-  <data name="Tickets_Buy_Purpose_Creativity" xml:space="preserve">
-    <value>Kunst und Kreativität</value>
-  </data>
-  <data name="Tickets_Buy_Purpose_LowIncomePool" xml:space="preserve">
-    <value>Mehr Tickets für geringes Einkommen</value>
-  </data>
   <data name="Tickets_Buy_DonationNote" xml:space="preserve">
     <value>Spenden werden nicht erstattet.</value>
   </data>
@@ -234,10 +228,16 @@
     <value>Kinder, die mit dir kommen</value>
   </data>
   <data name="Tickets_Buy_ChildrenHelp" xml:space="preserve">
-    <value>{0} pro Kind, für Kinder unter {1} Jahren am ersten Tag. Ihr amtlicher Name wie im Ausweis. Ihre Tickets gehören zu deinem.</value>
+    <value>Ihr amtlicher Name wie im Ausweis. Ihre Tickets gehören zu deinem.</value>
   </data>
   <data name="Tickets_Buy_ChildName" xml:space="preserve">
     <value>Kind {0}: amtlicher Name</value>
+  </data>
+  <data name="Tickets_Buy_ChildType" xml:space="preserve">
+    <value>{0}: unter {1} Jahren am ersten Tag, {2}</value>
+  </data>
+  <data name="Tickets_Buy_ChildTypeLabel" xml:space="preserve">
+    <value>Kind {0}: Ticket</value>
   </data>
   <data name="Tickets_Buy_SupporterIntro" xml:space="preserve">
     <value>Mach dein Erlebnis größer und hilf uns, das beste Event zu machen. Dein Ticket bleibt bei deinem Preis; der Rest ist eine Spende an den Verein, ohne MwSt., und wird nicht erstattet.</value>

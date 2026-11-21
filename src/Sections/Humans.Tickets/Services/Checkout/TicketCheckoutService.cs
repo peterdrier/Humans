@@ -44,6 +44,9 @@ internal sealed partial class TicketCheckoutService(
     private const int MaxChildren = 6;
     private const int MaxOthers = 10;
     private const int MaxNameLength = 513;
+
+    /// <summary>Child type names and donation purposes, as the buyer sees them.</summary>
+    private const int MaxTypeNameLength = 64;
     private const int MaxEmailLength = 320;
 
     internal const string AuditEntityType = "TicketCheckoutOrder";
@@ -93,8 +96,13 @@ internal sealed partial class TicketCheckoutService(
             return new("Price rule amounts cannot be negative.");
         if (save.SupporterTotalsMinor.Any(t => t <= 0))
             return new("Supporter totals must be positive.");
-        if (save.ChildPriceMinor < 0 || save.ChildMaxAge is <= 0)
-            return new("Child price and child age cannot be negative.");
+        if (save.ChildTypes.Any(c => string.IsNullOrWhiteSpace(c.Name) || c.Name.Length > MaxTypeNameLength || c.UnderAge <= 0 || c.PriceMinor < 0)
+            || save.ChildTypes.GroupBy(c => c.Name.Trim(), StringComparer.OrdinalIgnoreCase).Any(g => g.Count() > 1)
+            || save.ChildTypes.GroupBy(c => c.UnderAge).Any(g => g.Count() > 1))
+            return new($"Child tickets need distinct names of at most {MaxTypeNameLength} characters, distinct ages above zero and non-negative prices.");
+        if (save.DonationPurposes.Any(p => string.IsNullOrWhiteSpace(p) || p.Length > MaxTypeNameLength)
+            || save.DonationPurposes.GroupBy(p => p.Trim(), StringComparer.OrdinalIgnoreCase).Any(g => g.Count() > 1))
+            return new($"Donation purposes need distinct names of at most {MaxTypeNameLength} characters.");
         if (save.Mode == TicketSalesMode.ResaleOnly && save.Switches.Resale == ResaleScheme.Off)
             return new("Resale only needs resale switched on.");
         if (save.Mode == TicketSalesMode.InvitedOnly && save.PriceRules.All(r => r.Kind != TicketPriceRuleKind.EarlyAccess))
@@ -128,8 +136,10 @@ internal sealed partial class TicketCheckoutService(
             Waves = save.Waves.OrderBy(w => w.EndsOn).ToList(),
             SupporterTotalsMinor = save.SupporterTotalsMinor.Distinct().Order().ToList(),
             PriceRules = save.PriceRules.ToList(),
-            ChildPriceMinor = save.ChildPriceMinor,
-            ChildMaxAge = save.ChildMaxAge,
+            ChildTypes = save.ChildTypes
+                .Select(c => new TicketChildType { Name = c.Name.Trim(), UnderAge = c.UnderAge, PriceMinor = c.PriceMinor })
+                .OrderBy(c => c.UnderAge).ToList(),
+            DonationPurposes = save.DonationPurposes.Select(p => p.Trim()).ToList(),
             ResaleOpenedAt = save.Switches.Resale == ResaleScheme.Off ? null : existing?.ResaleOpenedAt,
             Switches = save.Switches,
             TermsFolder = save.TermsFolder,
@@ -146,11 +156,12 @@ internal sealed partial class TicketCheckoutService(
             $"waves {string.Join(", ", salesEvent.Waves.Select(w => $"{w.Name} {FormatMinor(w.PriceMinor)} to {w.EndsOn.ToInvariantDate()}"))}; " +
             $"rules {string.Join(", ", salesEvent.PriceRules.Select(r => $"{r.Kind} {FormatMinor(r.AmountMinor)} for {r.GrantProgramId}"))}; " +
             $"supporter totals {string.Join(", ", salesEvent.SupporterTotalsMinor.Select(FormatMinor))}; " +
-            $"child {(salesEvent.ChildPriceMinor is { } child ? FormatMinor(child) : "none")}; " +
+            $"child tickets {(salesEvent.ChildTypes.Count == 0 ? "none" : string.Join(", ", salesEvent.ChildTypes.Select(c => $"{c.Name} under {c.UnderAge} {FormatMinor(c.PriceMinor)}")))}; " +
+            $"donation purposes {(salesEvent.DonationPurposes is not [_, ..] ? "general only" : string.Join(", ", salesEvent.DonationPurposes))}; " +
             $"ticket rules {salesEvent.TermsFolder ?? "none"}; resale {save.Switches.Resale}" +
             (existing?.ResaleOpenedAt is not null && salesEvent.ResaleOpenedAt is null ? " (resale paused)" : string.Empty) + ", " +
             $"tickets for others {OnOff(save.Switches.PartnerTickets)}, donations {OnOff(save.Switches.Donations)}, " +
-            $"mailing list opt-in {OnOff(save.Switches.MailingListOptIn)}", actorUserId);
+            $"mailing list opt-in {OnOff(save.Switches.MailingListOptIn)}, companion tickets {OnOff(save.Switches.CompanionTicketsOn)}", actorUserId);
         return CheckoutMutationResult.Ok;
     }
 
@@ -270,10 +281,18 @@ internal sealed partial class TicketCheckoutService(
             return StartCheckoutResult.Refused("Tickets_Buy_AlreadyHolds");
         if (command.DonationMinor < 0)
             return StartCheckoutResult.Refused("Tickets_Buy_Invalid");
-        var children = command.ChildNames.Where(n => !string.IsNullOrWhiteSpace(n)).Select(n => n!.Trim()).ToList();
-        if (children.Count > MaxChildren || children.Any(n => n.Length > MaxNameLength)
-            || (children.Count > 0 && (!command.ForSelf || salesEvent.ChildPriceMinor is null)))
+        var children = command.Children.Where(c => !string.IsNullOrWhiteSpace(c.Name))
+            .Select(c => (Name: c.Name!.Trim(), Type: ChildTypeFor(salesEvent, c.Type))).ToList();
+        if (children.Count > MaxChildren || children.Any(c => c.Name.Length > MaxNameLength || c.Type is null)
+            || (children.Count > 0 && !command.ForSelf))
             return StartCheckoutResult.Refused("Tickets_Buy_Invalid");
+        string? donationPurpose = null;
+        if (command.DonationMinor > 0 && !string.IsNullOrWhiteSpace(command.DonationPurpose))
+        {
+            donationPurpose = salesEvent.DonationPurposes?.FirstOrDefault(p => string.Equals(p, command.DonationPurpose.Trim(), StringComparison.Ordinal));
+            if (donationPurpose is null)
+                return StartCheckoutResult.Refused("Tickets_Buy_Invalid");
+        }
         if (command.SupporterTotalMinor is { } requested
             && (!command.ForSelf || !salesEvent.SupporterTotalsMinor.Contains(requested)))
             return StartCheckoutResult.Refused("Tickets_Buy_Invalid");
@@ -341,7 +360,7 @@ internal sealed partial class TicketCheckoutService(
             lines.Add(TicketLine(salesEvent, selfPrice, buyer.FullName, buyer.Email!, buyer.Id, resaleForSelf?.Id));
         foreach (var child in children)
         {
-            var line = ChildLine(salesEvent, child);
+            var line = ChildLine(salesEvent, child.Type!, child.Name);
             line.ParentLineIndex = 0;
             lines.Add(line);
         }
@@ -351,9 +370,9 @@ internal sealed partial class TicketCheckoutService(
                 resaleForOthers[i]?.Id));
 
         if (command.SupporterTotalMinor is { } supporterTotal)
-            lines.Add(DonationLine(supporterTotal - selfPrice.AmountMinor, TicketDonationPurpose.General));
+            lines.Add(DonationLine(supporterTotal - selfPrice.AmountMinor, null));
         if (command.DonationMinor > 0)
-            lines.Add(DonationLine(command.DonationMinor, command.DonationPurpose));
+            lines.Add(DonationLine(command.DonationMinor, donationPurpose));
         if (lines.Count == 0)
             return StartCheckoutResult.Refused("Tickets_Buy_Empty");
 
@@ -1111,9 +1130,9 @@ internal sealed partial class TicketCheckoutService(
     /// <summary>The line's name on the payment page, in the buyer's language (the request culture at checkout).</summary>
     private string PaymentPageLabel(TicketCheckoutOrderLine line) => line.Kind == CheckoutLineKind.Donation
         ? string.Format(CultureInfo.CurrentCulture, localizer["Tickets_Buy_Line_Donation"].Value,
-            localizer[$"Tickets_Buy_Purpose_{line.DonationPurpose ?? TicketDonationPurpose.General}"].Value)
+            line.DonationPurpose ?? localizer["Tickets_Buy_Purpose_General"].Value)
         : line.HolderKind == TicketHolderKind.Child
-            ? localizer["Tickets_Buy_Line_Child"].Value
+            ? $"{localizer["Tickets_Buy_Line_Child"].Value} ({line.WaveName})"
             : $"{localizer["Tickets_Buy_Line_Ticket"].Value} ({line.ClassLabel ?? line.WaveName})";
 
     private static bool IsDiscounted(BuyContext context) =>
@@ -1176,26 +1195,27 @@ internal sealed partial class TicketCheckoutService(
             ResaleOfferId = resaleOfferId,
         };
 
-    private static TicketCheckoutOrderLine ChildLine(TicketSalesEvent salesEvent, string name) => new()
+    /// <summary>The named child type, or the event's only one when no name is given; null when there is no such type.</summary>
+    private static TicketChildType? ChildTypeFor(TicketSalesEvent salesEvent, string? name) =>
+        string.IsNullOrWhiteSpace(name)
+            ? salesEvent.ChildTypes.Count == 1 ? salesEvent.ChildTypes[0] : null
+            : salesEvent.ChildTypes.FirstOrDefault(c => string.Equals(c.Name, name.Trim(), StringComparison.Ordinal));
+
+    private static TicketCheckoutOrderLine ChildLine(TicketSalesEvent salesEvent, TicketChildType type, string name) => new()
     {
         Kind = CheckoutLineKind.Ticket,
         HolderKind = TicketHolderKind.Child,
-        Description = "Child ticket",
-        AmountMinor = salesEvent.ChildPriceMinor!.Value,
+        Description = $"Child ticket: {type.Name}",
+        AmountMinor = type.PriceMinor,
         VatRate = salesEvent.TicketVatRate,
         AttendeeName = name,
-        WaveName = "Child",
+        WaveName = type.Name,
     };
 
-    private static TicketCheckoutOrderLine DonationLine(long amountMinor, TicketDonationPurpose purpose) => new()
+    private static TicketCheckoutOrderLine DonationLine(long amountMinor, string? purpose) => new()
     {
         Kind = CheckoutLineKind.Donation,
-        Description = purpose switch
-        {
-            TicketDonationPurpose.Creativity => "Donation: creativity",
-            TicketDonationPurpose.LowIncomePool => "Donation: low income tickets",
-            _ => "Donation",
-        },
+        Description = purpose is null ? "Donation" : $"Donation: {purpose}",
         AmountMinor = amountMinor,
         VatRate = 0m,
         DonationPurpose = purpose,

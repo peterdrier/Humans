@@ -86,12 +86,6 @@
   <data name="Tickets_Buy_Purpose_General" xml:space="preserve">
     <value>Where it is most needed</value>
   </data>
-  <data name="Tickets_Buy_Purpose_Creativity" xml:space="preserve">
-    <value>Art and creativity</value>
-  </data>
-  <data name="Tickets_Buy_Purpose_LowIncomePool" xml:space="preserve">
-    <value>More low income tickets</value>
-  </data>
   <data name="Tickets_Buy_DonationNote" xml:space="preserve">
     <value>Donations are not refunded.</value>
   </data>
@@ -225,10 +219,16 @@
     <value>Children coming with you</value>
   </data>
   <data name="Tickets_Buy_ChildrenHelp" xml:space="preserve">
-    <value>{0} each, for children under {1} on the first day. Their legal names, as on their ID. Their tickets go with yours.</value>
+    <value>Their legal names, as on their ID. Their tickets go with yours.</value>
   </data>
   <data name="Tickets_Buy_ChildName" xml:space="preserve">
     <value>Child {0}: legal name</value>
+  </data>
+  <data name="Tickets_Buy_ChildType" xml:space="preserve">
+    <value>{0}: under {1} on the first day, {2}</value>
+  </data>
+  <data name="Tickets_Buy_ChildTypeLabel" xml:space="preserve">
+    <value>Child {0}: ticket</value>
   </data>
   <data name="Tickets_Buy_SupporterIntro" xml:space="preserve">
     <value>Upgrade your experience and help us make the best event we can. Your ticket stays at your price; the rest is a donation to the association, with no VAT, and it is not refunded.</value>

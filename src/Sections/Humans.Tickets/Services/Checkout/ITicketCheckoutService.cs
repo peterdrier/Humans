@@ -188,8 +188,8 @@ internal sealed record SalesEventSave(
     IReadOnlyList<long> SupporterTotalsMinor,
     IReadOnlyList<TicketPriceRule> PriceRules)
 {
-    public long? ChildPriceMinor { get; init; }
-    public int? ChildMaxAge { get; init; }
+    public IReadOnlyList<TicketChildType> ChildTypes { get; init; } = [];
+    public IReadOnlyList<string> DonationPurposes { get; init; } = [];
     public TicketSalesSwitches Switches { get; init; } = new();
 
     /// <summary>The ticket rules folder in the legal repo, no leading or trailing slash.</summary>
@@ -232,6 +232,8 @@ internal sealed record BuyPage(
     public TicketCheckoutOrder? OpenOrder { get; init; }
 }
 
+internal sealed record ChildEntry(string? Name, string? Type);
+
 /// <summary>
 /// <paramref name="SupporterTotalMinor"/> is one of the event's VIP totals: the part above the buyer's own ticket is a
 /// donation. <paramref name="DonationMinor"/> is a free donation on top, for <paramref name="DonationPurpose"/>. Each
@@ -242,12 +244,15 @@ internal sealed record StartCheckout(
     bool ForSelf,
     long? SupporterTotalMinor,
     long DonationMinor,
-    TicketDonationPurpose DonationPurpose,
+    string? DonationPurpose,
     Uri ReturnUrlBase,
     string Culture)
 {
-    /// <summary>Legal names of children on the buyer's own ticket; blank entries (unfilled form boxes) are ignored.</summary>
-    public IReadOnlyList<string?> ChildNames { get; init; } = [];
+    /// <summary>
+    /// Children on the buyer's own ticket: legal name and child type name. Entries with a blank name (unfilled form
+    /// boxes) are ignored; a blank type means the event's only child type.
+    /// </summary>
+    public IReadOnlyList<ChildEntry> Children { get; init; } = [];
 
     /// <summary>
     /// Addresses of other people already in Humans who each get an adult ticket in their own legal name; blank

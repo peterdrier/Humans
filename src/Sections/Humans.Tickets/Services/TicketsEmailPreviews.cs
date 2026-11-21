@@ -43,7 +43,7 @@ internal sealed class TicketsEmailPreviews(TicketsEmails emails, TicketCodeImage
                     [
                         new TicketCheckoutOrderLine { Kind = CheckoutLineKind.Ticket, AmountMinor = 22500, VatRate = 0.10m, AttendeeName = name },
                         new TicketCheckoutOrderLine { Kind = CheckoutLineKind.Ticket, AmountMinor = 22500, VatRate = 0.10m, AttendeeName = SampleReceiver },
-                        new TicketCheckoutOrderLine { Kind = CheckoutLineKind.Donation, AmountMinor = 17500, DonationPurpose = TicketDonationPurpose.General },
+                        new TicketCheckoutOrderLine { Kind = CheckoutLineKind.Donation, AmountMinor = 17500 },
                     ],
                     62500, 0, new Uri(SampleBase, "Tickets/Buy/Order/00000000-0000-0000-0000-000000000001"), null), culture)),
             new EmailPreviewSample("ticket-join-invitation", "Ticket Holder Volunteer Invitation",

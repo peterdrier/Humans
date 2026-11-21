@@ -113,7 +113,7 @@ sold under is read (`EventRefOf`), beside the events the setups sell through now
 ## Flow
 
 1. A TicketsAdmin sets up the event at `/Tickets/Admin/Sales`: backend, mode, capacity, waves, supporter totals (VIP
-   buttons), grant price rules (`ClassPrice`, `Credit`, `WavePin`, `EarlyAccess`), child price and age, the ticket rules folder
+   buttons), grant price rules (`ClassPrice`, `Credit`, `WavePin`, `EarlyAccess`), child ticket types, donation purposes, the ticket rules folder
    (a path in the legal GitHub repo, see "Ticket rules" below) and the ticketing switches (below). The form edits waves,
    price rules and supporter levels as rows, the VAT as a percentage and sales close in the organisation's time zone.
    **Early sales** (and test purchases): mode `InvitedOnly` sells only to members holding an active grant in a program
@@ -123,7 +123,7 @@ sold under is read (`EventRefOf`), beside the events the setups sell through now
    resale wait for general sale. Switching to `Open` ends the early amount.
 2. A member opens `/Tickets/Buy` (linked from the dashboard ticket card while any event sells through Humans), which
    lists every event that is not Closed (an `InvitedOnly` one only to the invited), each priced in its own time zone and checked for holdings on its own. They see
-   their price, may add children (child price, issued on their own ticket), other people already in Humans (see "Buying
+   their price, may add children (each at the child ticket type they pick, issued on their own ticket), other people already in Humans (see "Buying
    for other people" below), a VIP upgrade (shown as the ticket plus a donation) and a donation.
    They read the ticket rules on the page and tick them on every checkout (the version goes on the order; no Consent signing) and may opt in to the mailing list
    (asked only while they have no Marketing choice on record), then continue to the backend's payment page.
@@ -144,6 +144,21 @@ sold under is read (`EventRefOf`), beside the events the setups sell through now
 
 Each order carries a short `Reference` (the first 8 hex digits of its id) shown to the buyer and the team.
 
+## Ticket types per event
+
+What an event sells is its own configuration (A29), so another organisation sets up its scheme without code changes:
+waves, supporter totals, grant price rules (class prices, credits, wave pins, early access), and:
+
+- **Child ticket types.** Any number, each a name, an age (under it on the event's first day) and a price; none means
+  children are not sold. The buyer picks one per child (with one type, it is picked for them). The child's ticket and
+  order line carry the type's name in `WaveName`. Humans stores no birth date, so the type is the buyer's word.
+- **Donation purposes.** What a free donation can go to, as the buyer sees it; none means one general donation with
+  no choice. A line stores the purpose's name as it read at checkout (null is general, as is the VIP remainder), so
+  renaming a purpose later leaves old orders as they were. Reports group by that name.
+- **Companion tickets** are a switch (below). A companion ticket is always free.
+
+These names are the organiser's own words and are not translated, like wave names and price rule labels.
+
 ## Ticketing switches
 
 Each sales setup carries switches so an organisation that runs Humans differently can turn a scheme off; the
@@ -157,6 +172,7 @@ part of the audited sales setup save.
 | `PartnerTickets` | on (default) / off | No "tickets for other people" on the buy page; other people on an order are refused. |
 | `Donations` | on (default) / off | No VIP buttons and no free donation; donation lines are refused. |
 | `MailingListOptIn` | on (default) / off | Checkout never asks about the mailing list. |
+| `CompanionTickets` | on (default; null reads as on) / off | Holders cannot ask for a companion ticket. Requests already waiting stay in the team's queue to approve or decline. |
 
 ## Signed-out buyers
 

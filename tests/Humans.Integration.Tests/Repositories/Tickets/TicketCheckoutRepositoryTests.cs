@@ -3,6 +3,7 @@ using Humans.Integration.Tests.Infrastructure;
 using Humans.Tickets.Contracts;
 using Humans.Tickets.Data;
 using Humans.Tickets.Domain.Checkout;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using NodaTime;
 using Xunit;
@@ -45,6 +46,21 @@ public class TicketCheckoutRepositoryTests(HumansTestDatabase database) : Integr
         await repo.SaveSalesEventAsync(loadedEvent, ct);
         var switches = (await repo.GetSalesEventAsync(salesEvent.Id, ct))!.Switches;
         switches.Should().BeEquivalentTo(new TicketSalesSwitches { Resale = ResaleScheme.Queue, Donations = false });
+        switches!.CompanionTicketsOn.Should().BeTrue("a switch saved before companion tickets had one means on");
+
+        // A setup saved before child types existed has no child_types JSON at all.
+        var contexts = scope.ServiceProvider.GetRequiredService<IDbContextFactory<TicketsDbContext>>();
+        await using (var db = await contexts.CreateDbContextAsync(ct))
+            await db.Database.ExecuteSqlAsync($"UPDATE ticket_sales_events SET child_types = NULL WHERE \"Id\" = {salesEvent.Id}", ct);
+        loadedEvent = (await repo.GetSalesEventAsync(salesEvent.Id, ct))!;
+        loadedEvent.ChildTypes.Should().BeEmpty();
+        loadedEvent.DonationPurposes.Should().BeNull();
+        loadedEvent.ChildTypes = [new TicketChildType { Name = "Under 13", UnderAge = 13, PriceMinor = 5000 }];
+        loadedEvent.DonationPurposes = ["Art"];
+        await repo.SaveSalesEventAsync(loadedEvent, ct);
+        var typed = (await repo.GetSalesEventAsync(salesEvent.Id, ct))!;
+        typed.ChildTypes.Should().BeEquivalentTo([new TicketChildType { Name = "Under 13", UnderAge = 13, PriceMinor = 5000 }]);
+        typed.DonationPurposes.Should().Equal("Art");
 
         var order = new TicketCheckoutOrder
         {

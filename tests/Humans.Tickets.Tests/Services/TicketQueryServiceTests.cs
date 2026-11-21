@@ -1391,7 +1391,7 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
     public async Task GetDonationExportDataAsync_IncludesDonationLinesOfPaidCheckoutOrders()
     {
         var salesEvent = new TicketSalesEvent { Id = Guid.NewGuid() };
-        TicketCheckoutOrder Order(TicketCheckoutOrderState state, Instant paidAt, params (long Minor, TicketDonationPurpose Purpose)[] gifts) => new()
+        TicketCheckoutOrder Order(TicketCheckoutOrderState state, Instant paidAt, params (long Minor, string? Purpose)[] gifts) => new()
         {
             Id = Guid.NewGuid(),
             SalesEventId = salesEvent.Id,
@@ -1407,8 +1407,8 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
             ],
         };
         var paid = Order(TicketCheckoutOrderState.Paid, Instant.FromUtc(2027, 1, 2, 9, 0),
-            (17500, TicketDonationPurpose.General), (2000, TicketDonationPurpose.LowIncomePool));
-        var unpaid = Order(TicketCheckoutOrderState.Pending, Instant.FromUtc(2027, 1, 2, 9, 0), (5000, TicketDonationPurpose.General));
+            (17500, null), (2000, "Low income pool"));
+        var unpaid = Order(TicketCheckoutOrderState.Pending, Instant.FromUtc(2027, 1, 2, 9, 0), (5000, null));
         _checkout.GetSalesEventsAsync(Arg.Any<CancellationToken>()).Returns([salesEvent]);
         _checkout.GetOrdersForSalesEventAsync(salesEvent.Id, Arg.Any<CancellationToken>()).Returns([paid, unpaid]);
 
@@ -1416,7 +1416,7 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
 
         rows.Select(r => (r.Date, r.VendorOrderId, r.Type, r.Amount)).Should().Equal(
             ("2027-01-02", paid.Reference, "Donation: General", 175m),
-            ("2027-01-02", paid.Reference, "Donation: LowIncomePool", 20m));
+            ("2027-01-02", paid.Reference, "Donation: Low income pool", 20m));
         rows[0].BuyerName.Should().Be("Ana Buyer");
     }
 
