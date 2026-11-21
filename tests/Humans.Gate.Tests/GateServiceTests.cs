@@ -1372,4 +1372,22 @@ public class GateServiceTests
         admitted.Should().BeEquivalentTo([IssuedBarcode.ToLowerInvariant()]);
         (await reads.GetAdmittedAsync([], Xunit.TestContext.Current.CancellationToken)).Should().BeEmpty();
     }
+
+    [HumansFact]
+    public async Task OutstandingItems_AlsoGateASupervisorOverride()
+    {
+        await _svc.SaveSettingsAsync(new GateSettingsDto(Clock.GetCurrentInstant().Plus(Duration.FromDays(2)), 16));
+        StubIssued(holder: GuestId);
+        _requirements.GetOutstandingAsync(GuestId, _activeEvent.Id, Arg.Any<CancellationToken>())
+            .Returns(new[] { new GateEntryRequirement("a", "Sign on paper") });
+        GateDecisionInput Override(params string[] keys) =>
+            new(IssuedBarcode, IdConfirmed: false, ChildWithAdult: false, "L1", null, null, OverrideEarly: true, SupervisorPin: SupervisorPin)
+            {
+                ConfirmedRequirementKeys = keys,
+            };
+
+        (await _svc.RecordDecisionAsync(Override(), AgentId)).UnconfirmedRequirements.Should().NotBeNull();
+        (await _svc.RecordDecisionAsync(Override("a"), AgentId)).Verdict.Should().Be(GateVerdict.AdmittedEarlyOverride);
+    }
 }
+

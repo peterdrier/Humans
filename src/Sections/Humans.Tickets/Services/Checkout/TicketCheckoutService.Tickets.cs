@@ -11,7 +11,7 @@ namespace Humans.Tickets.Services.Checkout;
 /// <summary>Issued tickets and the resale queue: return, withdraw, directed resale, and the refund when one sells.</summary>
 internal sealed partial class TicketCheckoutService
 {
-    private const int MaxInvitesPerOffer = 3;
+    private const int MaxInvitesPerTicket = 3;
 
     public async Task<IReadOnlyList<TicketCheckoutTicket>> GetTicketsForOrderAsync(Guid orderId, CancellationToken ct = default) =>
         (await repository.GetTicketsForOrderAsync(orderId, ct)).OrderBy(t => t.Kind).ThenBy(t => t.IssuedAt).ToList();
@@ -146,7 +146,9 @@ internal sealed partial class TicketCheckoutService
         var now = clock.GetCurrentInstant();
         if (offer.IsDirectedTo(now))
             return new("Tickets_Resale_InviteLive");
-        if (offer.DirectedInviteCount >= MaxInvitesPerOffer)
+        // Counted over all of the ticket's offers, so withdrawing and offering again does not start a fresh allowance.
+        if ((await repository.GetOffersForSalesEventAsync(ticket.SalesEventId, ct))
+                .Where(o => o.TicketId == ticket.Id).Sum(o => o.DirectedInviteCount) >= MaxInvitesPerTicket)
             return new("Tickets_Resale_InviteLimit");
         inviteeEmail = inviteeEmail.Trim();
         if (!LooksLikeEmail(inviteeEmail) || string.Equals(inviteeEmail, ticket.HolderEmail, StringComparison.OrdinalIgnoreCase))
@@ -352,17 +354,24 @@ internal sealed partial class TicketCheckoutService
                 line.AttendeeUserId = holderId;
                 changed = true;
                 if (await HoldsTicketAsync(order.SalesEventId, holderId, clock.GetCurrentInstant(), ct))
-                    await TimelineAsync(order.Id, TicketCheckoutOrderEventKind.TicketsIssued,
-                        "The partner already held a ticket for this event; the ticketing team should refund one", null, ct);
+                    await NeedsAttentionAsync(order.Id,
+                        "The partner already held a ticket for this event; the ticketing team should refund one", ct);
             }
             else
             {
-                await TimelineAsync(order.Id, TicketCheckoutOrderEventKind.TicketsIssued,
-                    $"Partner ticket issued without an account because {problem}; the ticketing team must attach it", null, ct);
+                await NeedsAttentionAsync(order.Id,
+                    $"Partner ticket issued without an account because {problem}; the ticketing team must attach it", ct);
             }
         }
         if (changed)
             await repository.UpdateOrderAsync(order, ct);
+    }
+
+    /// <summary>On the order's timeline and in the audit log, where the ticketing team reviews what automation left them.</summary>
+    private async Task NeedsAttentionAsync(Guid orderId, string detail, CancellationToken ct)
+    {
+        await TimelineAsync(orderId, TicketCheckoutOrderEventKind.TicketsIssued, detail, null, ct);
+        await auditLog.LogAsync(TicketsAuditActions.TicketCheckoutNeedsAttention, AuditEntityType, orderId, detail, JobName);
     }
 
     private async Task CompleteResaleAsync(Guid offerId, TicketCheckoutOrder buyerOrder, CancellationToken ct)
@@ -441,6 +450,9 @@ internal sealed partial class TicketCheckoutService
                 FailureReason = Truncate(result.Refusal ?? "Refused"),
                 CreatedAt = clock.GetCurrentInstant(),
             }, ct);
+            await auditLog.LogAsync(TicketsAuditActions.TicketCheckoutNeedsAttention, AuditEntityType, old.OrderId,
+                $"Resale refund of {FormatMinor(offer.RefundOwedMinor)} could not start ({Truncate(result.Refusal ?? "refused")}); " +
+                "the ticketing team must refund it by hand", JobName);
             await TimelineAsync(old.OrderId, TicketCheckoutOrderEventKind.RefundSettled,
                 $"Resale refund of {FormatMinor(offer.RefundOwedMinor)} could not start ({Truncate(result.Refusal ?? "refused")}); " +
                 "the ticketing team must refund it by hand", null, ct);
@@ -452,7 +464,7 @@ internal sealed partial class TicketCheckoutService
         }
     }
 
-    /// <summary>Finishes what a crash left behind: paid orders without their tickets, and resales whose refund never reached the backend.</summary>
+    /// <summary>Finishes what a crash left behind: paid orders without their tickets or resale refund, and refunds that never reached the backend.</summary>
     private async Task<int> RepairPaidAsync(CancellationToken ct)
     {
         var repaired = 0;
@@ -460,13 +472,8 @@ internal sealed partial class TicketCheckoutService
         {
             var issued = (await repository.GetTicketsForSalesEventAsync(salesEvent.Id, ct)).Select(t => t.OrderId).ToHashSet();
             var orders = await repository.GetOrdersForSalesEventAsync(salesEvent.Id, ct);
-            var unsent = (await repository.GetRefundsForSalesEventAsync(salesEvent.Id, ct))
-                .Where(r => r is { State: RefundState.Pending, BackendRefundId: null })
-                .Select(r => r.Id)
-                .ToHashSet();
             var unfinished = (await repository.GetOffersForSalesEventAsync(salesEvent.Id, ct))
-                .Where(o => o is { State: TicketResaleOfferState.Sold, RefundOwedMinor: > 0 }
-                    && (o.RefundId is null || unsent.Contains(o.Id)))
+                .Where(o => o is { State: TicketResaleOfferState.Sold, RefundId: null, RefundOwedMinor: > 0 })
                 .Select(o => o.SoldToOrderId)
                 .ToHashSet();
             foreach (var order in orders.Where(o => o.State == TicketCheckoutOrderState.Paid
@@ -480,6 +487,23 @@ internal sealed partial class TicketCheckoutService
                 catch (Exception ex) when (ex is not OperationCanceledException)
                 {
                     logger.LogWarning(ex, "Finishing paid checkout order {OrderId} failed; next run retries", order.Id);
+                }
+            }
+
+            // A refund whose backend call threw may or may not exist there; repeating it under its id settles which.
+            foreach (var unsent in (await repository.GetRefundsForSalesEventAsync(salesEvent.Id, ct))
+                         .Where(r => r is { State: RefundState.Pending, BackendRefundId: null }))
+            {
+                try
+                {
+                    await RefundCoreAsync(unsent.OrderId, unsent.AmountMinor, unsent.Reason, null, ct, unsent.Id);
+                    if ((await repository.GetRefundsAsync(unsent.OrderId, ct)).FirstOrDefault(r => r.Id == unsent.Id)
+                        is not { State: RefundState.Pending, BackendRefundId: null })
+                        repaired++;
+                }
+                catch (Exception ex) when (ex is not OperationCanceledException)
+                {
+                    logger.LogWarning(ex, "Resending refund {RefundId} failed; next run retries", unsent.Id);
                 }
             }
         }

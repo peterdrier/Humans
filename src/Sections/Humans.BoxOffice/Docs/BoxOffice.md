@@ -20,7 +20,7 @@ and reads it back. Spec: `src/Sections/Humans.Tickets/Docs/features/checkout.md`
 - Status is read from the session with its PaymentIntent, latest charge and balance transaction: `complete` + `paid` is
   Paid, `expired` is Expired, a completed session whose async payment was cancelled is Failed, everything else Pending.
   Fee is the balance transaction's total fee; refunded total is the sum of the PaymentIntent's `succeeded` refunds (Stripe's `amount_refunded` also counts pending ones), so dashboard refunds are
-  seen too. `RefundFailed` is set when one of Humans' refunds on it failed or was cancelled.
+  seen too. `RefundFailed` is set when one of Humans' refunds on it failed or was cancelled; Tickets then repeats each pending refund by id, and a repeat answers that refund's own state.
 - A refund request first looks for a refund carrying its Humans refund id and answers with that one's state, so a
   repeat after a lost answer is never refused by the cap.
 

@@ -102,7 +102,7 @@ internal sealed record GateScanResult(
     /// <summary>An Invalid checkout ticket that is only waiting in the resale queue: the holder can withdraw it.</summary>
     public bool InResaleQueue { get; init; }
 
-    /// <summary>What the agent must resolve and confirm before admitting, in source order. Empty for a STOP.</summary>
+    /// <summary>What the agent must resolve and confirm before admitting, in source order. Empty when the ticket is invalid or already used.</summary>
     public IReadOnlyList<GateEntryRequirement> Requirements { get; init; } = [];
 }
 

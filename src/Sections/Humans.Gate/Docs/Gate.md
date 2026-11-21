@@ -50,7 +50,8 @@ after the retention window.
   ticket is never offered or sold. Its scan row carries `CheckoutTicketId` instead of
   `TicketAttendeeId`, it is never mirrored to a vendor and never appears in the vendor backfill: the
   gate row is its only check-in record. A child or companion ticket without an account takes the
-  Early Entry of the adult it belongs to (`IssuedTicketInfo.EntryUserId`); with no guest account, no
+  Early Entry of the adult it belongs to (`IssuedTicketInfo.EntryUserId`) and STOPs while that adult's
+  ticket is on resale (it would be voided with it); with no guest account, no
   attendance row is written.
 - **Outstanding items** — before an admit the gate asks every registered
   `IGateEntryRequirementSource` (Gate's own contract, `Contracts/`) "what must this person do before
@@ -249,11 +250,11 @@ nobodies-collective/Humans#933.)
 ## Cross-Section Dependencies
 
 - **Audit actions:** declared on `GateAuditActions` (`src/Sections/Humans.Gate/GateAuditActions.cs`), one `AuditActionDefinition` each, written through `IAuditLogService`: `GateStaffPinSet`, `GateStaffPinReset`.
-- **Tickets** — `ITicketGateLookup.FindIssuedTicketAsync` (checkout-issued tickets, live); Tickets
-  in turn reads Gate's `IGateAdmissions` before offering or selling a returned ticket.
 - **Outstanding-item sources** — every `IGateEntryRequirementSource` registered in DI; Gate only
   shows, gates and records their items.
-- **Tickets** — `ITicketService.GetTicketOrdersAsync` (Ticket Tailor barcode lookup) and
+- **Tickets** — `ITicketGateLookup.FindIssuedTicketAsync` (checkout-issued tickets, live); Tickets
+  in turn reads Gate's `IGateAdmissions` before offering or selling a returned ticket. Also
+  `ITicketService.GetTicketOrdersAsync` (Ticket Tailor barcode lookup) and
   `ITicketVendorMirror.CreateCheckInAsync` (vendor mirror, via the Gate job).
   **Cache freshness:** the barcode lookup reads the cached Tickets projection, so a ticket bought,
   transferred, or refunded at the door won't scan correctly until the next Tickets sync. The window

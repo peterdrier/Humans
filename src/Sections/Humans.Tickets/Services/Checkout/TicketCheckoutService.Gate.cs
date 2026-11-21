@@ -15,14 +15,15 @@ internal sealed partial class TicketCheckoutService : ITicketGateLookup
         if (await repository.GetSalesEventAsync(ticket.SalesEventId, ct) is not { } salesEvent)
             return null;
 
-        var entryUserId = ticket.HolderUserId;
-        if (entryUserId is null && ticket.ParentTicketId is { } parentId)
-            entryUserId = (await repository.GetTicketAsync(parentId, ct))?.HolderUserId;
+        var parent = ticket.ParentTicketId is { } parentId ? await repository.GetTicketAsync(parentId, ct) : null;
+        var entryUserId = ticket.HolderUserId ?? parent?.HolderUserId;
 
         var label = ticket.ClassLabel ?? ticket.WaveName;
         var now = clock.GetCurrentInstant();
         var canStillSell = salesEvent.Mode != TicketSalesMode.Closed && !(salesEvent.SalesCloseAt is { } close && now >= close);
-        var inResaleQueue = ticket.State == TicketCheckoutTicketState.Offered && canStillSell;
+        // A child goes wherever its adult goes: while the adult's offer can sell, the child would be voided with it.
+        var inResaleQueue = canStillSell
+            && (ticket.State == TicketCheckoutTicketState.Offered || parent?.State == TicketCheckoutTicketState.Offered);
         return new IssuedTicketInfo(
             ticket.Id,
             salesEvent.EventSettingsId,
@@ -31,8 +32,8 @@ internal sealed partial class TicketCheckoutService : ITicketGateLookup
             ticket.HolderUserId,
             entryUserId,
             ticket.Kind == TicketHolderKind.Adult ? label : $"{ticket.Kind} · {label}",
-            IsValid: ticket.State == TicketCheckoutTicketState.Valid
-                || (ticket.State == TicketCheckoutTicketState.Offered && !canStillSell),
+            IsValid: !inResaleQueue
+                && ticket.State is TicketCheckoutTicketState.Valid or TicketCheckoutTicketState.Offered,
             InResaleQueue: inResaleQueue);
     }
 }
