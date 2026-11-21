@@ -31,10 +31,10 @@ public sealed class BoxOfficeCheckoutBackendTests
             .Returns(responses[0], responses.Skip(1).ToArray());
     }
 
-    private static string Session(string status, string paymentStatus, string charge = "null") => $$$"""
+    private static string Session(string status, string paymentStatus, string charge = "null", string intent = "succeeded") => $$$"""
         {"id":"cs_test_1","object":"checkout.session","status":"{{{status}}}","payment_status":"{{{paymentStatus}}}",
          "url":"https://checkout.stripe.com/c/pay/cs_test_1","client_reference_id":"order-1",
-         "payment_intent":{"id":"pi_1","object":"payment_intent","status":"succeeded","latest_charge":{{{charge}}}}}
+         "payment_intent":{"id":"pi_1","object":"payment_intent","status":"{{{intent}}}","latest_charge":{{{charge}}}}}
         """;
 
     private static string RefundList(params string[] refunds) =>
@@ -144,14 +144,53 @@ public sealed class BoxOfficeCheckoutBackendTests
     }
 
     [HumansTheory]
-    [Xunit.InlineData("open", "unpaid", CheckoutState.Pending)]
-    [Xunit.InlineData("expired", "unpaid", CheckoutState.Expired)]
-    [Xunit.InlineData("complete", "unpaid", CheckoutState.Pending)]
-    public async Task Status_maps_open_expired_and_async_in_flight(string status, string paymentStatus, CheckoutState expected)
+    [Xunit.InlineData("open", "unpaid", "requires_payment_method", CheckoutState.Pending)]
+    [Xunit.InlineData("expired", "unpaid", "canceled", CheckoutState.Expired)]
+    [Xunit.InlineData("complete", "unpaid", "processing", CheckoutState.Processing)]
+    [Xunit.InlineData("complete", "unpaid", "requires_action", CheckoutState.Processing)]
+    [Xunit.InlineData("complete", "unpaid", "requires_payment_method", CheckoutState.Failed)]
+    [Xunit.InlineData("complete", "unpaid", "canceled", CheckoutState.Failed)]
+    public async Task Status_maps_open_expired_settling_and_failed_debits(
+        string status, string paymentStatus, string intent, CheckoutState expected)
     {
-        Respond(Session(status, paymentStatus), RefundList());
+        Respond(Session(status, paymentStatus, intent: intent), RefundList());
 
         (await Backend().GetStatusAsync("cs_test_1", TestContext.Current.CancellationToken)).State.Should().Be(expected);
+    }
+
+    [HumansFact]
+    public async Task A_disputed_charge_reports_what_open_and_lost_disputes_hold_but_not_inquiries_or_won_ones()
+    {
+        var disputed = PaidCharge.Replace("\"paid\":true", "\"paid\":true,\"disputed\":true", StringComparison.Ordinal);
+        Respond(Session("complete", "paid", disputed), RefundList(),
+            """
+            {"object":"list","url":"/v1/disputes","has_more":false,"data":[
+             {"id":"dp_1","object":"dispute","amount":25000,"status":"lost","charge":"ch_1"},
+             {"id":"dp_2","object":"dispute","amount":1000,"status":"won","charge":"ch_1"},
+             {"id":"dp_3","object":"dispute","amount":2000,"status":"warning_needs_response","charge":"ch_1"}]}
+            """);
+
+        var status = await Backend().GetStatusAsync("cs_test_1", TestContext.Current.CancellationToken);
+
+        status.DisputedMinor.Should().Be(25000);
+        status.State.Should().Be(CheckoutState.Paid);
+    }
+
+    [HumansFact]
+    public async Task Cancelling_a_session_whose_bank_debit_failed_succeeds_but_a_settling_one_is_refused()
+    {
+        _http.MakeRequestAsync(Arg.Any<StripeRequest>(), Arg.Any<CancellationToken>()).Returns(
+            new StripeResponse(HttpStatusCode.BadRequest, null,
+                """{"error":{"type":"invalid_request_error","message":"Only open sessions can be expired."}}"""),
+            new StripeResponse(HttpStatusCode.OK, null, Session("complete", "unpaid", intent: "requires_payment_method")),
+            new StripeResponse(HttpStatusCode.BadRequest, null,
+                """{"error":{"type":"invalid_request_error","message":"Only open sessions can be expired."}}"""),
+            new StripeResponse(HttpStatusCode.OK, null, Session("complete", "unpaid", intent: "processing")));
+
+        await Backend().CancelAsync("cs_test_1", TestContext.Current.CancellationToken);
+        var settling = () => Backend().CancelAsync("cs_test_1", TestContext.Current.CancellationToken);
+
+        await settling.Should().ThrowAsync<TicketCheckoutException>();
     }
 
     [HumansFact]

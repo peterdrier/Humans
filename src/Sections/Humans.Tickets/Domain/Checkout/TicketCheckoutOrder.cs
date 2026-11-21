@@ -52,6 +52,9 @@ internal sealed class TicketCheckoutOrder
     /// <summary>As the backend reports it, however the refund was issued.</summary>
     public long RefundedMinor { get; set; }
 
+    /// <summary>As the backend reports it: taken back by the buyer's bank in a chargeback not (yet) won.</summary>
+    public long DisputedMinor { get; set; }
+
     public Instant CreatedAt { get; init; }
 
     public Instant ExpiresAt { get; init; }
@@ -62,10 +65,14 @@ internal sealed class TicketCheckoutOrder
 
     public long TicketTotalMinor => Lines.Where(l => l.Kind == CheckoutLineKind.Ticket).Sum(l => l.AmountMinor);
 
-    /// <summary>Holds capacity: paid, or still payable.</summary>
+    /// <summary>Holds capacity: paid, a payment on its way, or still payable.</summary>
     public bool HoldsTickets(Instant now) =>
-        State == TicketCheckoutOrderState.Paid
+        State is TicketCheckoutOrderState.Paid or TicketCheckoutOrderState.Processing
         || (State is TicketCheckoutOrderState.Created or TicketCheckoutOrderState.Pending && ExpiresAt > now);
+
+    /// <summary>Not yet settled either way.</summary>
+    public bool IsOpen => State is TicketCheckoutOrderState.Created or TicketCheckoutOrderState.Pending
+        or TicketCheckoutOrderState.Processing;
 }
 
 internal enum TicketCheckoutOrderState
@@ -77,6 +84,9 @@ internal enum TicketCheckoutOrderState
     Failed = 3,
     Expired = 4,
     Cancelled = 5,
+
+    /// <summary>Paid with a method that settles later; holds its tickets past <c>ExpiresAt</c> and cannot be cancelled.</summary>
+    Processing = 6,
 }
 
 internal sealed class TicketCheckoutOrderLine

@@ -667,7 +667,7 @@ public sealed class TicketCheckoutServiceTests
     }
 
     [HumansFact]
-    public async Task Pending_refunds_settle_from_the_refunded_total_and_a_reported_failure_frees_the_amount()
+    public async Task Pending_refunds_take_the_state_the_backend_answers_for_their_id_and_a_failure_frees_the_amount()
     {
         var order = await BuyAndPayAsync(Buy(), _buyerId);
         _backend.RefundAsync(Arg.Any<RefundRequest>(), Arg.Any<CancellationToken>())
@@ -678,12 +678,90 @@ public sealed class TicketCheckoutServiceTests
 
         _backend.GetStatusAsync("cs_1", Arg.Any<CancellationToken>())
             .Returns(new CheckoutStatus(CheckoutState.Paid, 0, "card", Now, RefundedMinor: 10000, RefundFailed: true));
+        _backend.RefundAsync(Arg.Is<RefundRequest>(r => r.AmountMinor == 10000), Arg.Any<CancellationToken>())
+            .Returns(new RefundResult(RefundState.Succeeded, "re_p", null));
         _backend.RefundAsync(Arg.Is<RefundRequest>(r => r.AmountMinor == 5000), Arg.Any<CancellationToken>())
             .Returns(new RefundResult(RefundState.Failed, "re_p", "bank refused"));
         await _service.ReconcileOpenOrdersAsync(Ct);
 
         _repo.Refunds.Select(r => r.Refund.State).Should().Equal(RefundState.Succeeded, RefundState.Failed);
         (await _service.GetOrderDetailAsync(order.Id, Ct))!.RefundableMinor.Should().Be(12500);
+    }
+
+    [HumansFact]
+    public async Task A_refund_made_in_the_backends_dashboard_does_not_settle_a_pending_refund_of_ours()
+    {
+        var order = await BuyAndPayAsync(Buy(), _buyerId);
+        _backend.RefundAsync(Arg.Any<RefundRequest>(), Arg.Any<CancellationToken>())
+            .Returns(new RefundResult(RefundState.Pending, "re_ours", null));
+        await _service.RefundAsync(order.Id, 5000, "ours", Guid.NewGuid(), Ct);
+
+        _backend.GetStatusAsync("cs_1", Arg.Any<CancellationToken>())
+            .Returns(new CheckoutStatus(CheckoutState.Paid, 0, "card", Now, RefundedMinor: 5000));
+        await _service.ReconcileOpenOrdersAsync(Ct);
+
+        _repo.Refunds.Single().Refund.State.Should().Be(RefundState.Pending);
+    }
+
+    [HumansFact]
+    public async Task A_payment_on_its_way_holds_the_ticket_past_expiry_and_cannot_be_cancelled_until_it_settles()
+    {
+        var started = await _service.StartCheckoutAsync(Buy(), _buyerId, Ct);
+        _backend.GetStatusAsync("cs_1", Arg.Any<CancellationToken>())
+            .Returns(new CheckoutStatus(CheckoutState.Processing, null, null, null));
+        _clock.Advance(Duration.FromDays(2));
+
+        await _service.ReconcileOpenOrdersAsync(Ct);
+
+        var order = _repo.Orders.Single();
+        order.State.Should().Be(TicketCheckoutOrderState.Processing);
+        await _backend.DidNotReceive().CancelAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
+        var page = (await _service.GetBuyPagesAsync(_buyerId, Ct)).Single();
+        page.AlreadyHoldsTicket.Should().BeTrue();
+        page.OpenOrder.Should().BeNull();
+        (await _service.CancelAsync(started.OrderId!.Value, _buyerId, Ct)).Refusal.Should().Be("Tickets_Buy_PaymentProcessing");
+        _audit.ReceivedCalls().Should().NotContain(c => Equals(c.GetArguments()[0], TicketsAuditActions.TicketCheckoutClosed));
+
+        _backend.GetStatusAsync("cs_1", Arg.Any<CancellationToken>())
+            .Returns(new CheckoutStatus(CheckoutState.Paid, 30, "sepa_debit", Now + Duration.FromDays(2)));
+        await _service.ReconcileOpenOrdersAsync(Ct);
+        order.State.Should().Be(TicketCheckoutOrderState.Paid);
+        _repo.Tickets.Should().ContainSingle();
+    }
+
+    [HumansFact]
+    public async Task A_failed_bank_debit_after_processing_releases_the_hold()
+    {
+        await _service.StartCheckoutAsync(Buy(), _buyerId, Ct);
+        _backend.GetStatusAsync("cs_1", Arg.Any<CancellationToken>())
+            .Returns(new CheckoutStatus(CheckoutState.Processing, null, null, null));
+        await _service.ReconcileOpenOrdersAsync(Ct);
+        _backend.GetStatusAsync("cs_1", Arg.Any<CancellationToken>())
+            .Returns(new CheckoutStatus(CheckoutState.Failed, null, null, null));
+
+        await _service.ReconcileOpenOrdersAsync(Ct);
+
+        _repo.Orders.Single().State.Should().Be(TicketCheckoutOrderState.Failed);
+        (await _service.GetBuyPagesAsync(_buyerId, Ct)).Single().AlreadyHoldsTicket.Should().BeFalse();
+    }
+
+    [HumansFact]
+    public async Task A_chargeback_goes_to_the_team_once_and_again_when_it_closes()
+    {
+        var order = await BuyAndPayAsync(Buy(), _buyerId);
+        _backend.GetStatusAsync("cs_1", Arg.Any<CancellationToken>())
+            .Returns(new CheckoutStatus(CheckoutState.Paid, 0, "card", Now, DisputedMinor: 25000));
+
+        await _service.ReconcileOpenOrdersAsync(Ct);
+        await _service.RefreshOrderAsync(order.Id, Ct);
+        order.DisputedMinor.Should().Be(25000);
+        _backend.GetStatusAsync("cs_1", Arg.Any<CancellationToken>())
+            .Returns(new CheckoutStatus(CheckoutState.Paid, 0, "card", Now));
+        await _service.RefreshOrderAsync(order.Id, Ct);
+
+        await _audit.Received(2).LogAsync(TicketsAuditActions.TicketCheckoutNeedsAttention, Arg.Any<string>(), order.Id,
+            Arg.Any<string>(), Arg.Any<string>());
+        _repo.Tickets.Should().OnlyContain(t => t.State == TicketCheckoutTicketState.Valid);
     }
 
     [HumansFact]
@@ -1092,7 +1170,7 @@ public sealed class TicketCheckoutServiceTests
                 Orders.Where(o => o.BuyerUserId == userId || o.Lines.Any(l => l.AttendeeUserId == userId)).ToList());
         public Task<IReadOnlyList<TicketCheckoutOrder>> GetOpenOrdersAsync(CancellationToken ct = default) =>
             Task.FromResult<IReadOnlyList<TicketCheckoutOrder>>(Orders
-                .Where(o => o.State is TicketCheckoutOrderState.Created or TicketCheckoutOrderState.Pending).ToList());
+                .Where(o => o.IsOpen).ToList());
         public Task AddOrderAsync(TicketCheckoutOrder order, CancellationToken ct = default)
         {
             Orders.Add(order);

@@ -142,6 +142,10 @@ public sealed record CheckoutSession(string BackendOrderId, Uri PaymentUrl, Uri?
 /// first, and repeats each pending refund <paramref name="RefundedMinor"/> does not cover, under its own id, to learn
 /// whether it failed. <paramref name="RefundFailed"/> (a refund the backend accepted has since failed) is informational.
 /// </para>
+/// <para>
+/// <paramref name="DisputedMinor"/> is what the buyer's bank has taken back in a chargeback that the event has not won;
+/// it is not a refund, and Tickets hands it to the ticketing team.
+/// </para>
 /// </summary>
 public sealed record CheckoutStatus(
     CheckoutState State,
@@ -149,7 +153,8 @@ public sealed record CheckoutStatus(
     string? PaymentMethod,
     Instant? PaidAt,
     long RefundedMinor = 0,
-    bool RefundFailed = false);
+    bool RefundFailed = false,
+    long DisputedMinor = 0);
 
 public enum CheckoutState
 {
@@ -158,6 +163,12 @@ public enum CheckoutState
     Failed,
     Expired,
     Cancelled,
+
+    /// <summary>
+    /// The buyer finished the payment page with a method that settles later (a bank debit or transfer, sometimes the
+    /// next day): it can no longer be cancelled and ends Paid or Failed.
+    /// </summary>
+    Processing,
 }
 
 public sealed record RefundRequest(Guid RefundId, string BackendOrderId, long AmountMinor, string Reason);

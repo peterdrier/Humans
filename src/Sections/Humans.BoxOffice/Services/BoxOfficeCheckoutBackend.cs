@@ -10,8 +10,8 @@ namespace Humans.BoxOffice.Services;
 internal sealed class BoxOfficeSettings
 {
     /// <summary>
-    /// STRIPE_BOXOFFICE_KEY: a restricted key with Checkout Sessions write, PaymentIntents and Charges read, Balance
-    /// transactions read and Refunds write. Refunds are the one money-out call, capped by Tickets at what the
+    /// STRIPE_BOXOFFICE_KEY: a restricted key with Checkout Sessions write, PaymentIntents, Charges, Disputes and
+    /// Balance transactions read, and Refunds write. Refunds are the one money-out call, capped by Tickets at what the
     /// order's tickets cost and by this adapter at what the charge still holds.
     /// </summary>
     public string SecretKey { get; set; } = string.Empty;
@@ -127,7 +127,9 @@ internal sealed class BoxOfficeCheckoutBackend(
             ("complete", "paid" or "no_payment_required") => CheckoutState.Paid,
             ("expired", _) => CheckoutState.Expired,
             // An async method (a bank debit) failed after the buyer completed the page.
-            ("complete", _) when intent?.Status is "canceled" or "requires_payment_method" => CheckoutState.Failed,
+            ("complete", _) when IsFailed(intent) => CheckoutState.Failed,
+            // A debit settling, or a bank transfer the buyer still has to send: the session can no longer be expired.
+            ("complete", _) => CheckoutState.Processing,
             _ => CheckoutState.Pending,
         };
 
@@ -143,8 +145,28 @@ internal sealed class BoxOfficeCheckoutBackend(
             charge?.PaymentMethodDetails?.Type,
             paidAt,
             refunds.Where(r => StateOf(r) == RefundState.Succeeded).Sum(r => r.Amount),
-            refunds.Any(r => StateOf(r) == RefundState.Failed && r.Metadata?.ContainsKey(RefundMetadataKey) == true));
+            refunds.Any(r => StateOf(r) == RefundState.Failed && r.Metadata?.ContainsKey(RefundMetadataKey) == true),
+            charge is { Disputed: true, Id: { } chargeId } ? await DisputedAsync(chargeId, ct) : 0);
     }
+
+    private async Task<long> DisputedAsync(string chargeId, CancellationToken ct)
+    {
+        try
+        {
+            return (await new DisputeService(Client()).ListAsync(new DisputeListOptions { Charge = chargeId, Limit = 100 },
+                cancellationToken: ct)).Data.Where(TakesMoney).Sum(d => d.Amount);
+        }
+        catch (StripeException ex)
+        {
+            throw new TicketCheckoutException($"Stripe could not list the disputes of {chargeId}: {ex.Message}", ex);
+        }
+    }
+
+    private static bool IsFailed(PaymentIntent? intent) => intent?.Status is "canceled" or "requires_payment_method";
+
+    /// <summary>An inquiry (<c>warning_*</c>) takes nothing; any other dispute holds the money until it is won.</summary>
+    private static bool TakesMoney(Dispute dispute) =>
+        dispute.Status is not ("won" or "warning_needs_response" or "warning_under_review" or "warning_closed");
 
     private async Task<IReadOnlyList<Refund>> ListRefundsAsync(string paymentIntentId, CancellationToken ct)
     {
@@ -220,16 +242,15 @@ internal sealed class BoxOfficeCheckoutBackend(
 
     public async Task CancelAsync(string backendOrderId, CancellationToken ct = default)
     {
-        var sessions = new SessionService(Client());
         try
         {
-            await sessions.ExpireAsync(backendOrderId, cancellationToken: ct);
+            await new SessionService(Client()).ExpireAsync(backendOrderId, cancellationToken: ct);
         }
         catch (StripeException)
         {
-            // Stripe refuses to expire a session that is no longer open; only a paid one is a problem.
-            var session = await sessions.GetAsync(backendOrderId, cancellationToken: ct);
-            if (string.Equals(session.Status, "complete", StringComparison.Ordinal))
+            // Stripe refuses to expire a session that is no longer open; only one that is or may still be paid is a problem.
+            var session = await GetSessionAsync(backendOrderId, ct);
+            if (string.Equals(session.Status, "complete", StringComparison.Ordinal) && !IsFailed(session.PaymentIntent))
                 throw new TicketCheckoutException($"Checkout {backendOrderId} is already complete.");
         }
     }
@@ -253,7 +274,7 @@ internal sealed class BoxOfficeCheckoutBackend(
         ],
         "/BoxOffice/StripeWebhook",
         [
-            "Webhook events: checkout.session.completed, checkout.session.async_payment_succeeded, checkout.session.async_payment_failed, checkout.session.expired, charge.refunded, refund.updated, refund.failed.",
+            "Webhook events: checkout.session.completed, checkout.session.async_payment_succeeded, checkout.session.async_payment_failed, checkout.session.expired, charge.refunded, refund.updated, refund.failed, charge.dispute.created, charge.dispute.closed, charge.dispute.funds_withdrawn, charge.dispute.funds_reinstated.",
             "Payment methods (card, iDEAL, Klarna) are switched on in the Stripe dashboard; Humans never lists them.",
             "Needs no event id in the sales setup.",
         ]);
@@ -317,6 +338,8 @@ internal sealed class BoxOfficeCheckoutBackend(
                 return await SessionsForAsync(chargeIntent, ct);
             case Refund { PaymentIntentId: { } refundIntent }:
                 return await SessionsForAsync(refundIntent, ct);
+            case Dispute { PaymentIntentId: { } disputeIntent }:
+                return await SessionsForAsync(disputeIntent, ct);
             default:
                 return [];
         }
