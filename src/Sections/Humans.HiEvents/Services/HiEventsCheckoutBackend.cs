@@ -75,6 +75,9 @@ internal sealed class HiEventsCheckoutBackend : ITicketCheckoutBackend
         if (!int.TryParse(request.BackendEventRef, NumberStyles.None, CultureInfo.InvariantCulture, out var eventId))
             throw new TicketCheckoutException($"Hi.Events needs a numeric event id, got '{request.BackendEventRef}'.");
 
+        if (!_settings.Events.TryGetValue(request.BackendEventRef!, out var products) || products.TicketProductId <= 0)
+            throw new TicketCheckoutException($"HiEvents:Events:{eventId}:TicketProductId is not set.");
+
         var body = new CheckoutOrderBody(
             ExternalReference: request.OrderId.ToString("N"),
             FirstName: request.BuyerName,
@@ -82,7 +85,7 @@ internal sealed class HiEventsCheckoutBackend : ITicketCheckoutBackend
             Email: request.BuyerEmail,
             Locale: ToLocale(request.Culture),
             ExpiresAt: InstantPattern.ExtendedIso.Format(request.ExpiresAt),
-            Items: request.Lines.Select(ToItem).ToList());
+            Items: request.Lines.Select(line => ToItem(line, eventId, products)).ToList());
 
         using var response = await _http.PostAsJsonAsync($"events/{eventId}/orders/checkout", body, JsonOptions, ct);
 
@@ -194,13 +197,14 @@ internal sealed class HiEventsCheckoutBackend : ITicketCheckoutBackend
         _ => throw new HttpRequestException($"Hi.Events order {order.Id} has unknown status '{order.Status}'."),
     };
 
-    private CheckoutOrderItem ToItem(CheckoutLine line)
+    private static CheckoutOrderItem ToItem(CheckoutLine line, int eventId, HiEventsEventProducts products)
     {
         var productId = line.Kind switch
         {
-            CheckoutLineKind.Ticket => _settings.TicketProductId,
-            CheckoutLineKind.Donation when _settings.DonationProductId > 0 => _settings.DonationProductId,
-            _ => throw new TicketCheckoutException("HiEvents:DonationProductId is not set, so donation lines cannot be sold."),
+            CheckoutLineKind.Ticket => products.TicketProductId,
+            CheckoutLineKind.Donation when products.DonationProductId > 0 => products.DonationProductId,
+            _ => throw new TicketCheckoutException(
+                $"HiEvents:Events:{eventId}:DonationProductId is not set, so donation lines cannot be sold."),
         };
 
         return new CheckoutOrderItem(

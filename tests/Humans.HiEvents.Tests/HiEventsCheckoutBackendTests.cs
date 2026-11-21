@@ -85,6 +85,30 @@ public class HiEventsCheckoutBackendTests
     }
 
     [HumansFact]
+    public async Task CreateCheckout_UsesTheProductsOfTheRequestedEvent()
+    {
+        _handler.Enqueue(HttpStatusCode.Created, Order(id: 43, total: 225m, paymentLink: "https://tickets.example/pay/43"));
+
+        var session = await Backend().CreateCheckoutAsync(Request(
+            new CheckoutLine(CheckoutLineKind.Ticket, "General", 22500, 0.10m, "Ana")) with { BackendEventRef = "8" }, Ct);
+
+        session.BackendOrderId.Should().Be("8:43");
+        var (request, body) = _handler.Requests.Single();
+        request.RequestUri!.AbsolutePath.Should().Be("/api/events/8/orders/checkout");
+        JsonNode.Parse(body!)!["items"]![0]!["product_id"]!.GetValue<int>().Should().Be(300);
+    }
+
+    [HumansFact]
+    public async Task CreateCheckout_ForAnUnmappedEvent_ThrowsBeforeAnyCall()
+    {
+        var act = () => Backend().CreateCheckoutAsync(Request(
+            new CheckoutLine(CheckoutLineKind.Ticket, "General", 22500, 0.10m, "Ana")) with { BackendEventRef = "9" }, Ct);
+
+        await act.Should().ThrowAsync<TicketCheckoutException>();
+        _handler.Requests.Should().BeEmpty();
+    }
+
+    [HumansFact]
     public async Task CreateCheckout_DonationWithoutADonationProduct_Throws()
     {
         var act = () => Backend(donationProductId: 0).CreateCheckoutAsync(Request(
@@ -188,7 +212,7 @@ public class HiEventsCheckoutBackendTests
     }
 
     [HumansFact]
-    public void IsConfigured_NeedsUrlKeyAndTicketProduct()
+    public void IsConfigured_NeedsUrlAndKey()
     {
         Backend().IsConfigured.Should().BeTrue();
         Backend(apiKey: "").IsConfigured.Should().BeFalse();
@@ -200,8 +224,11 @@ public class HiEventsCheckoutBackendTests
         {
             ApiUrl = "https://tickets.example/api",
             ApiKey = apiKey,
-            TicketProductId = 100,
-            DonationProductId = donationProductId,
+            Events = new(StringComparer.Ordinal)
+            {
+                ["7"] = new HiEventsEventProducts { TicketProductId = 100, DonationProductId = donationProductId },
+                ["8"] = new HiEventsEventProducts { TicketProductId = 300 },
+            },
         }),
         new FakeClock(Now),
         NullLogger<HiEventsCheckoutBackend>.Instance);

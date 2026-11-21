@@ -21,8 +21,9 @@ price, the named ticket and the QR code.
   order at the prices given, with buyer and attendee names filled in, and returns `payment_link_url`. It also accepts
   `idempotency_key` on `POST .../orders/{order_id}/refund`. Stock Hi.Events has neither.
 - A **backend order id** is `{eventId}:{orderId}`: every Hi.Events order route is scoped to its event.
-- **Settings**, all owned here: `HiEvents:ApiUrl` (ends in `/api`), `HiEvents:TicketProductId`,
-  `HiEvents:DonationProductId`, and the environment variables `HIEVENTS_API_KEY` (a Hi.Events API key whose owner can
+- **Settings**, all owned here: `HiEvents:ApiUrl` (ends in `/api`); per Hi.Events event id,
+  `HiEvents:Events:{id}:TicketProductId` and `HiEvents:Events:{id}:DonationProductId`, so several events sell at once;
+  and the environment variables `HIEVENTS_API_KEY` (a Hi.Events API key whose owner can
   edit the event, see financials and issue refunds) and `HIEVENTS_WEBHOOK_SECRET`.
 
 ## Data Model
@@ -39,10 +40,10 @@ None — the section owns no tables.
 
 ## Invariants
 
-- `IsConfigured` is true only with an API URL, an API key and a ticket product id.
-- Checkout: `BackendEventRef` must be the numeric Hi.Events event id, else `TicketCheckoutException`. The Humans order id
+- `IsConfigured` is true only with an API URL and an API key.
+- Checkout: `BackendEventRef` must be the numeric Hi.Events event id, else `TicketCheckoutException`; so is an event with no `TicketProductId` in `HiEvents:Events`. The Humans order id
   (`N` format) is the `external_reference`, so a retried create returns the same Hi.Events order. Ticket lines go to
-  `TicketProductId` with the line's attendee name; donation lines go to `DonationProductId`, and a donation with none
+  the event's `TicketProductId` with the line's attendee name; donation lines go to its `DonationProductId`, and a donation with none
   set throws `TicketCheckoutException`. A 409 or 422 from Hi.Events, a currency other than the request's, or a total
   other than the sum of the lines throws `TicketCheckoutException`. The products must carry no taxes or fees in
   Hi.Events.
