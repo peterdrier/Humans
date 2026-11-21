@@ -7,6 +7,12 @@ public interface ITicketGateLookup : IApplicationService
 {
     /// <summary>Exact match on the code the QR carries, any event and any state; null for a blank or unknown code.</summary>
     Task<IssuedTicketInfo?> FindIssuedTicketAsync(string? barcode, CancellationToken ct = default);
+
+    /// <summary>
+    /// Every ticket issued for the event, in any state, unordered: the gate's name search and arrivals report. Empty
+    /// when the event has no sales event.
+    /// </summary>
+    Task<IReadOnlyList<IssuedTicketInfo>> GetIssuedTicketsForEventAsync(Guid eventSettingsId, CancellationToken ct = default);
 }
 
 /// <summary>

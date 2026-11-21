@@ -31,7 +31,9 @@ public sealed class MemberTicketStatusViewComponent(
         // constructor.
         var checkout = HttpContext.RequestServices.GetRequiredService<Services.Checkout.ITicketCheckoutService>();
         var salesEvents = await checkout.GetSalesEventsAsync(ct);
-        var sellsInHumans = salesEvents.Any(e => e.Mode != Domain.Checkout.TicketSalesMode.Closed);
+        var sellsInHumans = salesEvents.Any(e => e.Mode is Domain.Checkout.TicketSalesMode.Open or Domain.Checkout.TicketSalesMode.ResaleOnly)
+            || (salesEvents.Any(e => e.Mode == Domain.Checkout.TicketSalesMode.InvitedOnly)
+                && (await checkout.GetBuyPagesAsync(userId, ct)).Any(p => p.SalesEvent.Mode == Domain.Checkout.TicketSalesMode.InvitedOnly));
         // An open sale wins over off season: this card is the members' way to the buy page.
         if (activeEvent?.IsOffSeason == true && !sellsInHumans)
         {

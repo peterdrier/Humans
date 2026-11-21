@@ -319,7 +319,8 @@ internal sealed class SalesEditForm
             var label = row.Label?.Trim();
             if (string.IsNullOrEmpty(label)) return (null, "Every price rule needs the label the buyer sees.");
             long amount = 0;
-            if (row.Kind != TicketPriceRuleKind.WavePin && !TryMinor(row.Amount, out amount))
+            var optional = row.Kind == TicketPriceRuleKind.WavePin || (row.Kind == TicketPriceRuleKind.EarlyAccess && Blank(row.Amount));
+            if (!optional && !TryMinor(row.Amount, out amount))
                 return (null, $"Price rule '{label}' needs an amount.");
             rules.Add(new TicketPriceRule { GrantProgramId = programId, Kind = row.Kind, AmountMinor = amount, Label = label });
         }

@@ -46,6 +46,26 @@ internal sealed class TicketRepository(IDbContextFactory<TicketsDbContext> facto
         await ctx.SaveChangesAsync(ct);
     }
 
+    public async Task<bool> IsScheduledSyncEnabledAsync(CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        return await ctx.TicketSettings.AsNoTracking()
+            .Where(s => s.Id == 1)
+            .Select(s => s.IsScheduledSyncEnabled)
+            .FirstOrDefaultAsync(ct);
+    }
+
+    public async Task SetScheduledSyncEnabledAsync(bool enabled, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        var row = await ctx.TicketSettings.FindAsync([1], ct);
+        if (row is null)
+            ctx.TicketSettings.Add(new TicketSettings { Id = 1, IsScheduledSyncEnabled = enabled });
+        else
+            row.IsScheduledSyncEnabled = enabled;
+        await ctx.SaveChangesAsync(ct);
+    }
+
     public async Task<IReadOnlyDictionary<string, TicketOrder>> GetOrdersByVendorIdsAsync(
         IReadOnlyCollection<string> vendorOrderIds,
         CancellationToken ct = default)

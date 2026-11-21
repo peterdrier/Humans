@@ -37,6 +37,10 @@
                 title="Type a code manually" aria-label="Type a code manually" aria-pressed="false">
             <i class="fa-solid fa-keyboard" aria-hidden="true"></i>
         </button>
+        <button type="button" id="gate-find-open" class="gate-manual-toggle gate-find-open"
+                title="No QR code? Find the ticket by name" aria-label="Find a ticket by name">
+            <i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i> Name
+        </button>
     </form>
 
     <div id="gate-result">
@@ -59,6 +63,23 @@
         </div>
     </div>
 
+    @* No QR code: find the ticket by the guest's burner or legal name, then carry on as if it was scanned. *@
+    <div id="gate-find" class="gate-override d-none" aria-hidden="true">
+        <div class="gate-override-head">
+            <span class="gate-override-title">Find a ticket by name</span>
+            <button type="button" class="gate-override-cancel" data-find-cancel>Cancel</button>
+        </div>
+        <div class="gate-override-step">
+            <form id="gate-find-form" autocomplete="off" class="gate-find-form">
+                <input id="gate-find-input" type="search" inputmode="text" autocomplete="off" autocapitalize="off"
+                       spellcheck="false" maxlength="100" placeholder="Burner name or legal name"
+                       aria-label="Burner name or legal name" />
+                <button type="submit" class="gate-btn gate-find-go">Search</button>
+            </form>
+            <div id="gate-find-results" aria-live="polite"></div>
+        </div>
+    </div>
+
     <details class="gate-help">
         <summary class="gate-help-toggle" title="What the colours mean" aria-label="Help">?</summary>
         <div class="gate-help-panel">
@@ -68,6 +89,8 @@
                 <li><span class="gate-help-dot gate-stop"></span> <strong>RED — do not admit.</strong> If disputed, get the gate lead.</li>
                 <li><span class="gate-help-dot gate-amber"></span> <strong>AMBER — get a supervisor</strong> / gate lead.</li>
                 <li><span class="gate-help-dot gate-idconfirm"></span> <strong>"Does the ID say…?"</strong> Check the photo ID, then tap Yes or No.</li>
+                <li><strong>No QR code?</strong> Tap <strong>Name</strong> and search their burner or legal name.</li>
+                <li><strong>Admitted by mistake?</strong> Tap <strong>Undo</strong> on the green card and get a supervisor.</li>
             </ul>
             <p class="gate-help-tip">Scan the next ticket any time. Stuck or unsure? Get the gate lead.</p>
             <p class="gate-help-tip">Tap <strong>?</strong> again to close.</p>
@@ -87,8 +110,11 @@
             input: document.getElementById('gate-scan-input'),
             result: document.getElementById('gate-result'),
             override: document.getElementById('gate-override'),
+            find: document.getElementById('gate-find'),
             evaluateUrl: '@Url.Action("Evaluate", "Gate")',
             decisionUrl: '@Url.Action("Decision", "Gate")',
+            undoUrl: '@Url.Action("Undo", "Gate")',
+            findUrl: '@Url.Action("Find", "Gate")',
             logoutUrl: '@Url.Action("Logout", "Account")',
             token: document.querySelector('input[name="__RequestVerificationToken"]').value
         });
