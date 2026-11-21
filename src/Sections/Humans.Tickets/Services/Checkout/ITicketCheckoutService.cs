@@ -18,8 +18,8 @@ internal interface ITicketCheckoutService : ITicketCheckoutEvents, IApplicationS
 
     Task<CheckoutMutationResult> SaveSalesEventAsync(SalesEventSave save, Guid actorUserId, CancellationToken ct = default);
 
-    /// <summary>Null when the active event sells no tickets through Humans.</summary>
-    Task<BuyPage?> GetBuyPageAsync(Guid userId, CancellationToken ct = default);
+    /// <summary>One page per event selling through Humans (not Closed); several events may sell at once.</summary>
+    Task<IReadOnlyList<BuyPage>> GetBuyPagesAsync(Guid userId, CancellationToken ct = default);
 
     Task<StartCheckoutResult> StartCheckoutAsync(StartCheckout command, Guid userId, CancellationToken ct = default);
 
@@ -89,6 +89,7 @@ internal sealed record BuyPage(
 /// partner always pays the public price.
 /// </summary>
 internal sealed record StartCheckout(
+    Guid SalesEventId,
     bool ForSelf,
     string? PartnerName,
     string? PartnerEmail,
@@ -104,7 +105,11 @@ internal sealed record StartCheckoutResult(Guid? OrderId, Uri? PaymentUrl, strin
     public static StartCheckoutResult Refused(string key) => new(null, null, key);
 }
 
-internal sealed record CheckoutOrderDetail(TicketCheckoutOrder Order, IReadOnlyList<TicketCheckoutRefund> Refunds)
+/// <summary><paramref name="Timeline"/> is oldest first.</summary>
+internal sealed record CheckoutOrderDetail(
+    TicketCheckoutOrder Order,
+    IReadOnlyList<TicketCheckoutRefund> Refunds,
+    IReadOnlyList<TicketCheckoutOrderEvent> Timeline)
 {
     /// <summary>What may still be refunded: ticket lines only, net of every refund that did not fail.</summary>
     public long RefundableMinor =>

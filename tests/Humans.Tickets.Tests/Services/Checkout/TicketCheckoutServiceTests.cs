@@ -77,9 +77,10 @@ public sealed class TicketCheckoutServiceTests
             new FakeClock(Now), NullLogger<TicketCheckoutService>.Instance);
     }
 
-    private static StartCheckout Buy(
-        bool forSelf = true, string? partnerName = null, string? partnerEmail = null, long? supporter = null, long donation = 0) =>
-        new(forSelf, partnerName, partnerEmail, supporter, donation, TicketDonationPurpose.General,
+    private StartCheckout Buy(
+        bool forSelf = true, string? partnerName = null, string? partnerEmail = null, long? supporter = null, long donation = 0,
+        Guid? salesEventId = null) =>
+        new(salesEventId ?? _salesEvent.Id, forSelf, partnerName, partnerEmail, supporter, donation, TicketDonationPurpose.General,
             new Uri("https://humans.example/Tickets/Buy/Order/"), "es-ES");
 
     [HumansFact]
@@ -218,6 +219,69 @@ public sealed class TicketCheckoutServiceTests
     }
 
     [HumansFact]
+    public async Task Two_events_sell_at_once_each_with_its_own_holding_check_and_no_active_event_needed()
+    {
+        _settings.GetActiveEventSettings().Returns((EventSettingsInfo?)null);
+        var other = new EventSettingsInfo(Guid.NewGuid(), "Elsewhere 2027", 2027, "Europe/Madrid", new LocalDate(2027, 9, 1),
+            -7, 5, 8, new Dictionary<int, int>(), null, null);
+        _settings.GetEventSettingsByIdAsync(other.Id, Arg.Any<CancellationToken>()).Returns(other);
+        var otherSales = new TicketSalesEvent
+        {
+            Id = Guid.NewGuid(),
+            EventSettingsId = other.Id,
+            BackendKey = "test",
+            Mode = TicketSalesMode.Open,
+            Capacity = 10,
+            Waves = [new TicketSalesWave { Name = "Only", EndsOn = new LocalDate(2027, 8, 1), PriceMinor = 9000 }],
+        };
+        _repo.SalesEvents.Add(otherSales);
+
+        (await _service.StartCheckoutAsync(Buy(), _buyerId, TestContext.Current.CancellationToken)).Refusal.Should().BeNull();
+        var pages = await _service.GetBuyPagesAsync(_buyerId, TestContext.Current.CancellationToken);
+
+        pages.Select(p => p.EventName).Should().Equal("Nowhere 2027", "Elsewhere 2027");
+        pages[0].AlreadyHoldsTicket.Should().BeTrue();
+        pages[1].AlreadyHoldsTicket.Should().BeFalse();
+        (await _service.StartCheckoutAsync(Buy(salesEventId: otherSales.Id), _buyerId, TestContext.Current.CancellationToken))
+            .Refusal.Should().BeNull();
+        _repo.Orders.Last().TotalMinor.Should().Be(9000);
+        await _backend.Received(1).CreateCheckoutAsync(
+            Arg.Is<CheckoutRequest>(r => r.EventId == other.Id), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task Timeline_records_each_step_with_who_did_it()
+    {
+        _backend.CreateCheckoutAsync(Arg.Any<CheckoutRequest>(), Arg.Any<CancellationToken>())
+            .Returns(new CheckoutSession("cs_1", new Uri("https://pay.example/cs_1"), new Uri("https://admin.example/cs_1")));
+        await _service.StartCheckoutAsync(Buy(), _buyerId, TestContext.Current.CancellationToken);
+        _backend.GetStatusAsync("cs_1", Arg.Any<CancellationToken>())
+            .Returns(new CheckoutStatus(CheckoutState.Paid, 455, "card", Now));
+        await _service.CheckoutChangedAsync("test", "cs_1", TestContext.Current.CancellationToken);
+        var order = _repo.Orders.Single();
+        _backend.RefundAsync(Arg.Any<RefundRequest>(), Arg.Any<CancellationToken>())
+            .Returns(new RefundResult(RefundState.Succeeded, "re_1", null));
+        _backend.GetStatusAsync("cs_1", Arg.Any<CancellationToken>())
+            .Returns(new CheckoutStatus(CheckoutState.Paid, 455, "card", Now, RefundedMinor: 5000));
+        var admin = Guid.NewGuid();
+        await _service.RefundAsync(order.Id, 5000, "can't come", admin, TestContext.Current.CancellationToken);
+
+        var detail = (await _service.GetOrderDetailAsync(order.Id, TestContext.Current.CancellationToken))!;
+        order.AdminUrl.Should().Be("https://admin.example/cs_1");
+        detail.Timeline.Select(e => e.Kind).Should().Equal(
+            TicketCheckoutOrderEventKind.Created,
+            TicketCheckoutOrderEventKind.CheckoutOpened,
+            TicketCheckoutOrderEventKind.StateChanged,
+            TicketCheckoutOrderEventKind.RefundRequested,
+            TicketCheckoutOrderEventKind.RefundSettled,
+            TicketCheckoutOrderEventKind.RefundedTotalChanged);
+        detail.Timeline[0].ActorUserId.Should().Be(_buyerId);
+        detail.Timeline[2].ActorUserId.Should().BeNull();
+        detail.Timeline[3].ActorUserId.Should().Be(admin);
+        detail.Timeline.Should().NotContain(e => e.Detail.Contains("García", StringComparison.Ordinal));
+    }
+
+    [HumansFact]
     public async Task Refund_of_an_unpaid_order_is_refused_without_calling_the_backend()
     {
         await _service.StartCheckoutAsync(Buy(), _buyerId, TestContext.Current.CancellationToken);
@@ -271,6 +335,17 @@ public sealed class TicketCheckoutServiceTests
             return Task.CompletedTask;
         }
         public Task UpdateRefundAsync(TicketCheckoutRefund refund, CancellationToken ct = default) => Task.CompletedTask;
+
+        public List<TicketCheckoutOrderEvent> Events { get; } = [];
+
+        public Task AddOrderEventAsync(TicketCheckoutOrderEvent orderEvent, CancellationToken ct = default)
+        {
+            Events.Add(orderEvent);
+            return Task.CompletedTask;
+        }
+
+        public Task<IReadOnlyList<TicketCheckoutOrderEvent>> GetOrderEventsAsync(Guid orderId, CancellationToken ct = default) =>
+            Task.FromResult<IReadOnlyList<TicketCheckoutOrderEvent>>(Events.Where(e => e.OrderId == orderId).ToList());
         public Task<int> ErasePiiForUserAsync(Guid userId, CancellationToken ct = default) => Task.FromResult(0);
         public Task ReassignAsync(Guid fromUserId, Guid toUserId, CancellationToken ct = default) => Task.CompletedTask;
     }
