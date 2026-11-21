@@ -20,6 +20,7 @@ namespace Humans.Governance.Controllers;
 [AllowBeforeActiveMembership]
 internal sealed class GovernanceApplicationsController(
     ApplicationDecisionService applicationDecisionService,
+    IGovernanceService membershipTiers,
     IUserService userService,
     IStringLocalizer<GovernanceResource> localizer,
     ILogger<GovernanceApplicationsController> logger,
@@ -37,7 +38,7 @@ internal sealed class GovernanceApplicationsController(
         var pendingApplication = await applicationDecisionService.GetSubmittedApplicationForUserAsync(
             user.Id, HttpContext.RequestAborted);
 
-        var isApprovedColaborador = await applicationDecisionService.HasActiveApprovedTierAsync(
+        var isApprovedColaborador = await membershipTiers.HasActiveApprovedTierAsync(
             user.Id, MembershipTier.Colaborador, clock.GetCurrentInstant().InUtc().Date, HttpContext.RequestAborted);
 
         var viewModel = new ApplicationIndexViewModel
@@ -78,7 +79,7 @@ internal sealed class GovernanceApplicationsController(
         }
 
         // Radio default only: Submit accepts either tier.
-        var isApprovedColaborador = await applicationDecisionService.HasActiveApprovedTierAsync(
+        var isApprovedColaborador = await membershipTiers.HasActiveApprovedTierAsync(
             user.Id, MembershipTier.Colaborador, clock.GetCurrentInstant().InUtc().Date, HttpContext.RequestAborted);
 
         return View("~/Views/Governance/Applications/Create.cshtml", new ApplicationCreateViewModel

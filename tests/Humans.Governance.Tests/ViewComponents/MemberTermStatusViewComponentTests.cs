@@ -31,8 +31,9 @@ public sealed class MemberTermStatusViewComponentTests
         var clock = new FakeClock(Instant.FromUtc(2026, 3, 1, 12, 0));
         var now = clock.GetCurrentInstant();
         var expiry = new LocalDate(2026, 3, 1).PlusDays(daysToExpiry);
-        var governance = Substitute.For<IGovernanceManagement>();
-        governance.GetMembershipTierAsync(userId, Arg.Any<CancellationToken>()).Returns(MembershipTier.Colaborador);
+        var governance = Substitute.For<IGovernanceManagement, IGovernanceService>();
+        var tierReads = (IGovernanceService)governance;
+        tierReads.GetMembershipTierAsync(userId, Arg.Any<CancellationToken>()).Returns(MembershipTier.Colaborador);
         var application = new UserApplicationSnapshot(Guid.NewGuid(), userId, ApplicationStatus.Approved,
             MembershipTier.Colaborador, now, now, expiry, "Motivation", null, null, null);
         governance.GetUserApplicationsAsync(userId, Arg.Any<CancellationToken>()).Returns(
@@ -51,7 +52,7 @@ public sealed class MemberTermStatusViewComponentTests
         {
             User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, userId.ToString())], "test"))
         };
-        var component = new MemberTermStatusViewComponent(teams, governance, clock)
+        var component = new MemberTermStatusViewComponent(teams, governance, tierReads, clock)
         {
             ViewComponentContext = new ViewComponentContext { ViewContext = new ViewContext { HttpContext = http } }
         };
@@ -71,15 +72,16 @@ public sealed class MemberTermStatusViewComponentTests
     {
         using var aborted = new CancellationTokenSource();
         await aborted.CancelAsync();
-        var governance = Substitute.For<IGovernanceManagement>();
-        governance.GetMembershipTierAsync(Arg.Any<Guid>(), aborted.Token)
+        var governance = Substitute.For<IGovernanceManagement, IGovernanceService>();
+        var tierReads = (IGovernanceService)governance;
+        tierReads.GetMembershipTierAsync(Arg.Any<Guid>(), aborted.Token)
             .Returns(_ => Task.FromException<MembershipTier>(new OperationCanceledException(aborted.Token)));
         var httpContext = new DefaultHttpContext { RequestAborted = aborted.Token };
         httpContext.User = new ClaimsPrincipal(new ClaimsIdentity(
             [new Claim(ClaimTypes.NameIdentifier, Guid.NewGuid().ToString())], "test"));
 
         var component = new MemberTermStatusViewComponent(
-            Substitute.For<ITeamService>(), governance, SystemClock.Instance)
+            Substitute.For<ITeamService>(), governance, tierReads, SystemClock.Instance)
         {
             ViewComponentContext = new ViewComponentContext
             {
