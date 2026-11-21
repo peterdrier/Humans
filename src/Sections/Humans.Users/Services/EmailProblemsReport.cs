@@ -1,7 +1,7 @@
 using NodaTime;
 
-namespace Humans.Users.Contracts;
+namespace Humans.Users.Services;
 
-public sealed record EmailProblemsReport(
+internal sealed record EmailProblemsReport(
     Instant ScannedAt,
     IReadOnlyList<EmailProblem> Problems);

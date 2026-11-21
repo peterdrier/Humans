@@ -1,6 +1,6 @@
-namespace Humans.Users.Contracts;
+namespace Humans.Users.Services;
 
-public enum EmailProblemKind
+internal enum EmailProblemKind
 {
     MultipleIsPrimary = 1,
     ZeroIsPrimary = 3,

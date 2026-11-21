@@ -1,22 +1,22 @@
 using Humans.Base.Interfaces;
 
-namespace Humans.Users.Contracts;
+namespace Humans.Users.Services;
 
 /// <summary>Detection only: resolution is <see cref="IAccountMergeService.MergeAsync"/>.</summary>
-public interface IDuplicateAccountService : IApplicationService
+internal interface IDuplicateAccountService : IApplicationService
 {
     /// <summary>Overlaps across <c>User.Email</c> and every <c>UserEmail</c> row, case-insensitive, gmail/googlemail equivalent.</summary>
     Task<IReadOnlyList<DuplicateAccountGroup>> DetectDuplicatesAsync(CancellationToken ct = default);
 }
 
-public sealed class DuplicateAccountGroup
+internal sealed class DuplicateAccountGroup
 {
     public string SharedEmail { get; init; } = string.Empty;
 
     public List<DuplicateAccountInfo> Accounts { get; init; } = [];
 }
 
-public sealed class DuplicateAccountInfo
+internal sealed class DuplicateAccountInfo
 {
     public Guid UserId { get; init; }
     public string? Email { get; init; }

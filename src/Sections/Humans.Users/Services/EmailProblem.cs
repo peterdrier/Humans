@@ -1,6 +1,6 @@
-namespace Humans.Users.Contracts;
+namespace Humans.Users.Services;
 
-public sealed record EmailProblem(
+internal sealed record EmailProblem(
     EmailProblemKind Kind,
     Guid? UserId,
     Guid? OtherUserId,

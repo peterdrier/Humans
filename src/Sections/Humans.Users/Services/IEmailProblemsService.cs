@@ -1,9 +1,9 @@
 using Humans.Base.Interfaces;
 
-namespace Humans.Users.Contracts;
+namespace Humans.Users.Services;
 
 /// <summary>Reads only through the section's services, never a repository or <c>DbContext</c>.</summary>
-public interface IEmailProblemsService : IApplicationService
+internal interface IEmailProblemsService : IApplicationService
 {
     Task<EmailProblemsReport> ScanAsync(CancellationToken ct = default);
 

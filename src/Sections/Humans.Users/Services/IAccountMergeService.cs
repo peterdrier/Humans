@@ -1,7 +1,8 @@
+using Humans.Users.Contracts;
 using NodaTime;
 using Humans.Base.Interfaces;
 
-namespace Humans.Users.Contracts;
+namespace Humans.Users.Services;
 
 internal interface IAccountMergeService : IApplicationService
 {
@@ -52,7 +53,7 @@ internal interface IAccountMergeService : IApplicationService
     Task CreateAsync(AccountMergeRequest request, CancellationToken ct = default);
 }
 
-public sealed record AccountMergeRequestSnapshot(
+internal sealed record AccountMergeRequestSnapshot(
     Guid Id,
     string Email,
     AccountMergeUserSnapshot TargetUser,
@@ -63,7 +64,7 @@ public sealed record AccountMergeRequestSnapshot(
     string? ResolvedByDisplayName,
     string? AdminNotes);
 
-public sealed record AccountMergeUserSnapshot(
+internal sealed record AccountMergeUserSnapshot(
     Guid Id,
     string? Email,
     string? PreferredLanguage,
