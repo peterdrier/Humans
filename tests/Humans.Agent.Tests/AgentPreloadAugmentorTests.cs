@@ -45,10 +45,10 @@ public class AgentPreloadAugmentorTests
     private const string HumanRow = "| **Human** | A member of Nobodies Collective. |";
 
     [HumansFact]
-    public void Faq_points_to_self_service_ticket_transfer()
+    public void Faq_points_to_directed_resale_for_passing_a_ticket_on()
     {
         var faq = Faq();
-        faq.Should().Contain("/Tickets/Transfers");
+        faq.Should().Contain("/Tickets/Buy/Mine");
         faq.Should().Contain("tickets@nobodies.team");
     }
 

@@ -62,8 +62,8 @@ Tickets priced above 315 EUR (the VIP threshold, `TicketConstants.VipThresholdEu
 |--------|:-----------:|:-----:|:-----:|
 | View dashboard/orders/attendees/codes | Yes | Yes | Yes |
 | Trigger sync, CSV exports, generate codes | Yes | Yes | No |
-| View transfer queue, contact-import preview, gate-account page | Yes | Yes | Yes |
-| Decide transfers, apply contact import, set gate password | Yes | Yes | No |
+| View contact-import preview, gate-account page | Yes | Yes | Yes |
+| Apply contact import, set gate password | Yes | Yes | No |
 
 ## Routes
 
@@ -80,7 +80,6 @@ Tickets priced above 315 EUR (the VIP threshold, `TicketConstants.VipThresholdEu
 | `/Tickets/Export/AccountantReport` | Monthly accountant recap CSV (`TicketsPolicies.Manage`) |
 | `/Tickets/Export/Donations` | Donor list CSV, audited (`AdminOnly`) |
 | `/Tickets/Participation/Backfill` | CSV participation backfill (`AdminOnly`) — [event-participation.md](event-participation.md) |
-| `/Tickets/Transfers`, `/Tickets/Admin/Transfers` | Member transfer wizard and admin queue — [ticket-transfer.md](ticket-transfer.md) |
 | `/Tickets/Admin/Contacts`, `/Tickets/Admin/Onsite`, `/Tickets/Admin/Gate` | Contact import, onsite roster, gate-terminal credential — see `Docs/Tickets.md` Routing |
 | `/Welcome` | Public post-purchase landing — TicketTailor redirect target, sign-in CTA → `/Shifts` |
 

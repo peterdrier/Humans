@@ -345,7 +345,7 @@
     <value>Konten zusammenführen?</value>
   </data>
   <data name="Users_Emails_MergeWarningBody" xml:space="preserve">
-    <value>Das Zusammenführen von Konten dient dazu, zwei Konten zu kombinieren, die derselben Person gehören (zum Beispiel eine alte und eine neue E-Mail-Adresse, die beide dir gehören). Es ist kein Weg, Tickets, Buchungen oder andere Elemente zwischen zwei verschiedenen Personen zu teilen oder zu übertragen. Um ein Ticket an einen anderen Menschen zu übertragen, nutze die Ticket-Übertragungsfunktion unter /Tickets/Transfers.</value>
+    <value>Das Zusammenführen von Konten dient dazu, zwei Konten zu kombinieren, die derselben Person gehören (zum Beispiel eine alte und eine neue E-Mail-Adresse, die beide dir gehören). Es ist kein Weg, Tickets, Buchungen oder andere Elemente zwischen zwei verschiedenen Personen zu teilen oder zu übertragen. Um ein Ticket an einen anderen Menschen weiterzugeben, biete es unter /Tickets/Buy/Mine zum Weiterverkauf an und lade die Person per E-Mail ein.</value>
   </data>
   <data name="Users_Emails_VerificationWillBeSent" xml:space="preserve">
     <value>Eine Bestätigungs-E-Mail wird an diese Adresse gesendet.</value>

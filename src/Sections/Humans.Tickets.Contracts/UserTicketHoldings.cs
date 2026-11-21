@@ -33,6 +33,4 @@ public record UserTicketHoldingRow(
     string VendorTicketId,
     string TicketTypeName,
     TicketAttendeeStatus Status,
-    bool HasPendingOutgoingTransfer = false,
-    Guid? PendingTransferRequestId = null,
     Instant? CheckedInAt = null);

@@ -31,54 +31,14 @@
   <resheader name="version"><value>1.3</value></resheader>
   <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
   <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
-  <data name="Tickets_TicketTransfer_Pending" xml:space="preserve"><value>Pending review</value></data>
-  <data name="Tickets_TicketTransfer_AlreadyPending" xml:space="preserve"><value>Transfer already pending</value></data>
-  <data name="Tickets_TicketTransfer_CancelRequest" xml:space="preserve"><value>Cancel request</value></data>
-  <data name="Tickets_TicketTransfer_CheckedIn" xml:space="preserve"><value>Already checked in — can’t be transferred</value></data>
-  <data name="Tickets_TicketTransfer_ConfirmDetails" xml:space="preserve"><value>This will request transferring ticket {0} ({1}) to {2}.</value></data>
-  <data name="Tickets_TicketTransfer_ConfirmNote" xml:space="preserve"><value>Our ticketing team will process this and let you know shortly.</value></data>
-  <data name="Tickets_TicketTransfer_Continue" xml:space="preserve"><value>Continue</value></data>
-  <data name="Tickets_TicketTransfer_NoneTransferable" xml:space="preserve"><value>None of your tickets can be transferred right now.</value></data>
-  <data name="Tickets_TicketTransfer_NoRequests" xml:space="preserve"><value>You haven’t requested any transfers.</value></data>
-  <data name="Tickets_TicketTransfer_NoTickets" xml:space="preserve"><value>You don’t have any tickets to transfer.</value></data>
-  <data name="Tickets_TicketTransfer_NotTransferable" xml:space="preserve"><value>Not transferable</value></data>
-  <data name="Tickets_TicketTransfer_ReasonLabel" xml:space="preserve"><value>Reason for the transfer (optional, visible to the ticket team)</value></data>
-  <data name="Tickets_TicketTransfer_RecipientPlaceholder" xml:space="preserve"><value>Search by name, or paste their exact email…</value></data>
-  <data name="Tickets_TicketTransfer_Requested" xml:space="preserve"><value>Requested</value></data>
-  <data name="Tickets_TicketTransfer_RequestTransfer" xml:space="preserve"><value>Request transfer</value></data>
-  <data name="Tickets_TicketTransfer_StatusApproved" xml:space="preserve"><value>Completed</value></data>
-  <data name="Tickets_TicketTransfer_StatusCancelled" xml:space="preserve"><value>Cancelled</value></data>
-  <data name="Tickets_TicketTransfer_StatusRejected" xml:space="preserve"><value>Cancelled by team</value></data>
-  <data name="Tickets_TicketTransfer_Step1" xml:space="preserve"><value>1. Choose the ticket to transfer</value></data>
-  <data name="Tickets_TicketTransfer_Step2" xml:space="preserve"><value>2. Who are you sending it to?</value></data>
-  <data name="Tickets_TicketTransfer_Step3" xml:space="preserve"><value>3. Confirm</value></data>
-  <data name="Tickets_TicketTransfer_Title" xml:space="preserve"><value>Transfer a ticket</value></data>
-  <data name="Tickets_TicketTransfer_YourRequests" xml:space="preserve"><value>Your transfer requests</value></data>
-  <data name="Tickets_TicketTransfer_InvalidSelection" xml:space="preserve"><value>Couldn't set up that transfer — choose one of your tickets and a valid recipient other than yourself.</value></data>
-  <data name="Tickets_TicketTransfer_RequestSubmitted" xml:space="preserve"><value>Transfer requested. Our ticketing team will process it and let you know shortly.</value></data>
-  <data name="Tickets_TicketTransfer_Cancelled" xml:space="preserve"><value>Transfer cancelled.</value></data>
-  <data name="Tickets_TicketTransfer_NotFound" xml:space="preserve"><value>Transfer not found.</value></data>
-  <data name="Tickets_TicketTransfer_OnlyPendingCanBeCancelled" xml:space="preserve"><value>Only pending transfers can be cancelled.</value></data>
-  <data name="Tickets_TicketTransfer_OnlySenderCanCancel" xml:space="preserve"><value>Only the sender can cancel this transfer.</value></data>
-  <data name="Tickets_TicketTransfer_CancelFailed" xml:space="preserve"><value>Couldn't cancel the transfer. Refresh the page or contact the ticketing team.</value></data>
-  <data name="Tickets_TicketTransfer_NotCurrentHolder" xml:space="preserve"><value>You can only transfer tickets you currently hold.</value></data>
   <data name="Tickets_TicketStub_EventLabel" xml:space="preserve"><value>{0} · Admit One</value></data>
   <data name="Tickets_TicketStub_CheckedIn" xml:space="preserve"><value>Checked in</value></data>
   <data name="Tickets_TicketStub_Void" xml:space="preserve"><value>Void</value></data>
   <data name="Tickets_TicketStub_EarlyEntry" xml:space="preserve"><value>Early entry {0}</value><comment>{0} = entry date</comment></data>
-  <data name="Tickets_TicketStub_TransferPending" xml:space="preserve"><value>Transfer pending</value></data>
   <data name="Tickets_TicketHoldings_Title" xml:space="preserve"><value>Tickets</value></data>
   <data name="Tickets_TicketHoldings_OrderSingular" xml:space="preserve"><value>order</value></data>
   <data name="Tickets_TicketHoldings_OrderPlural" xml:space="preserve"><value>orders</value></data>
   <data name="Tickets_TicketHoldings_Empty" xml:space="preserve"><value>No tickets.</value></data>
-  <data name="Tickets_MemberTicketStatus_Transfers" xml:space="preserve"><value>Transfers…</value></data>
-  <data name="Tickets_TicketTransfer_Email_Requested_Subject" xml:space="preserve"><value>Ticket transfer requested</value></data>
-  <data name="Tickets_TicketTransfer_Email_Requested_Body" xml:space="preserve"><value>&lt;p&gt;Hi {0},&lt;/p&gt;&lt;p&gt;We've received your request to transfer ticket &lt;strong&gt;{1}&lt;/strong&gt; to &lt;strong&gt;{2}&lt;/strong&gt;.&lt;/p&gt;&lt;p&gt;Our ticketing team will process this and let you know shortly. No further action is needed from you.&lt;/p&gt;</value></data>
-  <data name="Tickets_TicketTransfer_Email_Completed_Subject" xml:space="preserve"><value>Ticket transfer complete</value></data>
-  <data name="Tickets_TicketTransfer_Email_Completed_Body" xml:space="preserve"><value>&lt;p&gt;Hi {0},&lt;/p&gt;&lt;p&gt;The transfer of ticket &lt;strong&gt;{1}&lt;/strong&gt; to &lt;strong&gt;{2}&lt;/strong&gt; is complete.&lt;/p&gt;</value></data>
-  <data name="Tickets_TicketTransfer_Email_Cancelled_Subject" xml:space="preserve"><value>Ticket transfer cancelled</value></data>
-  <data name="Tickets_TicketTransfer_Email_Cancelled_Body" xml:space="preserve"><value>&lt;p&gt;Hi {0},&lt;/p&gt;&lt;p&gt;The requested transfer of ticket &lt;strong&gt;{1}&lt;/strong&gt; to &lt;strong&gt;{2}&lt;/strong&gt; was not completed.&lt;/p&gt;{3}&lt;p&gt;If you have questions, reply to this email and our ticketing team will help.&lt;/p&gt;</value></data>
-  <data name="Tickets_TicketTransfer_Email_Cancelled_Reason" xml:space="preserve"><value>&lt;p&gt;&lt;strong&gt;Reason:&lt;/strong&gt; {0}&lt;/p&gt;</value></data>
   <data name="Tickets_Onsite_Since" xml:space="preserve"><value>Onsite since {0}</value></data>
   <data name="Tickets_Onsite_Title" xml:space="preserve"><value>Checked in at the gate</value></data>
   <data name="Tickets_NotAttending_Declared" xml:space="preserve"><value>You've been marked as not attending this year.</value></data>
@@ -88,7 +48,6 @@
   <data name="Tickets_NotAttending_Undone" xml:space="preserve"><value>Your declaration has been removed.</value></data>
   <data name="Tickets_NotAttending_UndoFailed" xml:space="preserve"><value>Could not undo — your status may have been updated by ticket sync.</value></data>
   <data name="Tickets_MemberTicketStatus_Unavailable" xml:space="preserve"><value>Your ticket status is unavailable right now. Please try again later.</value></data>
-  <data name="Tickets_TicketTransfer_ReasonTooLong" xml:space="preserve"><value>Reasons cannot exceed 1,000 characters.</value></data>
   <data name="Tickets_Meter_SyncError" xml:space="preserve"><value>Ticket sync error</value></data>
   <data name="Tickets_Meter_AudienceAdmin" xml:space="preserve"><value>Admins</value></data>
   <data name="Tickets_Buy_Title" xml:space="preserve">
