@@ -15,9 +15,11 @@ internal sealed record TicketPrice(
     /// <summary>
     /// Null when the event has no waves. <paramref name="pinnedOn"/> is the earliest issue date of the person's
     /// <see cref="TicketPriceRuleKind.WavePin"/> grants; the wave on sale then applies when it is cheaper.
+    /// <paramref name="early"/> counts <see cref="TicketPriceRuleKind.EarlyAccess"/> amounts as credits.
     /// </summary>
     public static TicketPrice? For(
-        TicketSalesEvent salesEvent, LocalDate pricingDate, IReadOnlyCollection<Guid> activeProgramIds, LocalDate? pinnedOn = null)
+        TicketSalesEvent salesEvent, LocalDate pricingDate, IReadOnlyCollection<Guid> activeProgramIds, LocalDate? pinnedOn = null,
+        bool early = false)
     {
         var wave = WaveOn(salesEvent, pricingDate);
         if (wave is null)
@@ -30,7 +32,8 @@ internal sealed record TicketPrice(
             .Where(r => r.Kind == TicketPriceRuleKind.ClassPrice)
             .OrderBy(r => r.AmountMinor)
             .FirstOrDefault();
-        var credits = rules.Where(r => r.Kind == TicketPriceRuleKind.Credit).ToList();
+        var credits = rules.Where(r => r.Kind == TicketPriceRuleKind.Credit
+            || (early && r.Kind == TicketPriceRuleKind.EarlyAccess && r.AmountMinor > 0)).ToList();
 
         var amount = (classPrice?.AmountMinor ?? wave.PriceMinor) - credits.Sum(c => c.AmountMinor);
         return new TicketPrice(wave, classPrice, credits, Math.Max(0, amount));
