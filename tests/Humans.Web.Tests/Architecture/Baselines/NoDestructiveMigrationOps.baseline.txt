@@ -744,3 +744,14 @@ src/Sections/Humans.Tickets/Data/Migrations/20261121151707_TicketResaleOpensByHa
 # Approval: Peter, 2026-11-19, project thread decision card ("Yes, drop it"), after being told
 # what the column may still hold.
 src/Sections/Humans.Governance/Data/Migrations/20261121133716_DropApplicationReviewStartedAt.cs:DropColumn(name=ReviewStartedAt,table=governance_applications)#1
+
+# Tickets: ticket_sales_events.TermsUrl (an external "ticket rules page" address, nullable). The
+# ticket rules now come from a folder in the legal repo (TermsFolder) and the order records the
+# accepted version (peterdrier/Humans#2540).
+# Evidence: pickaxe git log -S 'TermsUrl' over origin/main shows only the 2027 checkout work
+# (added 2026-11-21 by commit 7cd67f12c, touched by #2519 and #2528). After #2540 nothing reads or
+# writes it. There is no ticketing data in production yet.
+# Approval: Peter, 2026-11-21, in the project thread: "if they're in the ticketing bit and we
+# haven't used any of it yet, then you can drop whatever you want. Because none of it's live and
+# anywhere near production. So go ahead."
+src/Sections/Humans.Tickets/Data/Migrations/20261121181201_DropTicketSalesEventTermsUrl.cs:DropColumn(name=TermsUrl,table=ticket_sales_events)#1

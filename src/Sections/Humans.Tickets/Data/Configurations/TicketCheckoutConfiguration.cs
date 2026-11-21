@@ -13,9 +13,6 @@ internal sealed class TicketSalesEventConfiguration : IEntityTypeConfiguration<T
         builder.HasIndex(x => x.EventSettingsId).IsUnique();
         builder.Property(x => x.BackendKey).IsRequired().HasMaxLength(32);
         builder.Property(x => x.BackendEventRef).HasMaxLength(128);
-#pragma warning disable CS0618 // the column stays until its drop is approved
-        builder.Property(x => x.TermsUrl).HasMaxLength(500);
-#pragma warning restore CS0618
         builder.Property(x => x.TermsFolder).HasMaxLength(200);
         builder.Property(x => x.Mode).IsRequired().HasConversion<string>().HasMaxLength(16);
         builder.Property(x => x.TicketVatRate).HasPrecision(5, 4);

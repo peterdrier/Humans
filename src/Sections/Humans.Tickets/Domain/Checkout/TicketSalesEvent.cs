@@ -53,10 +53,6 @@ internal sealed class TicketSalesEvent
     public bool ResaleSelling =>
         EffectiveSwitches.Resale != ResaleScheme.Off && Mode != TicketSalesMode.Closed && (ResaleOpenedAt is not null || Mode == TicketSalesMode.ResaleOnly);
 
-    /// <summary>Unread; the ticket rules moved into the legal repo (<see cref="TermsFolder"/>).</summary>
-    [Obsolete("Unread since the ticket rules moved into the legal repo (TermsFolder). Kept only until its column drop is approved.")]
-    public string? TermsUrl { get; set; }
-
     /// <summary>
     /// The folder in the legal repo holding the ticket rules every buyer accepts, one markdown file per language; null
     /// for none. Every commit changing the folder is a new version.

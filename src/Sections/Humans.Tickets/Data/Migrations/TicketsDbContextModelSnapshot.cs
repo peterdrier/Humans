@@ -410,10 +410,6 @@ namespace Humans.Tickets.Data.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
 
-                    b.Property<string>("TermsUrl")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)");
-
                     b.Property<decimal>("TicketVatRate")
                         .HasPrecision(5, 4)
                         .HasColumnType("numeric(5,4)");

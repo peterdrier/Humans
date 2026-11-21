@@ -99,7 +99,7 @@ internal sealed partial class TicketCheckoutService(
         if (save.Id is not null && existing is null)
             return new("That sales event no longer exists.");
         if (save.TermsFolder is { } newFolder && !string.Equals(newFolder, existing?.TermsFolder, StringComparison.Ordinal)
-            && await rulesSource.GetAsync(newFolder, ct) is null)
+            && await rulesSource.GetAsync(newFolder, refresh: true, ct) is null)
             return new($"The legal repo has no Spanish and English ticket rules in {newFolder}, or GitHub could not be read. " +
                 "The folder needs one name.md (Spanish) and name-en.md (English), and no other markdown without a language suffix.");
         var clash = await repository.GetSalesEventForEventAsync(save.EventSettingsId, ct);
@@ -125,9 +125,6 @@ internal sealed partial class TicketCheckoutService(
             ChildMaxAge = save.ChildMaxAge,
             ResaleOpenedAt = save.Switches.Resale == ResaleScheme.Off ? null : existing?.ResaleOpenedAt,
             Switches = save.Switches,
-#pragma warning disable CS0618 // kept as it was until its column drop is approved
-            TermsUrl = existing?.TermsUrl,
-#pragma warning restore CS0618
             TermsFolder = save.TermsFolder,
             UpdatedAt = now,
         };
@@ -214,7 +211,7 @@ internal sealed partial class TicketCheckoutService(
     }
 
     private async Task<TicketRules?> RulesForAsync(TicketSalesEvent salesEvent, CancellationToken ct) =>
-        salesEvent.TermsFolder is { } folder ? await rulesSource.GetAsync(folder, ct) : null;
+        salesEvent.TermsFolder is { } folder ? await rulesSource.GetAsync(folder, ct: ct) : null;
 
     /// <summary>
     /// A returned ticket sells at the resale price, so a page that can only sell one (directed, resale only, or fresh
@@ -279,7 +276,7 @@ internal sealed partial class TicketCheckoutService(
         {
             if (!command.AcceptTerms)
                 return StartCheckoutResult.Refused("Tickets_Buy_TermsRequired");
-            terms = await rulesSource.GetAsync(termsFolder, ct);
+            terms = await rulesSource.GetAsync(termsFolder, ct: ct);
             if (terms is null)
                 return StartCheckoutResult.Refused("Tickets_Buy_TermsUnavailable");
             // The buyer accepts the text they were shown; rules changed since then are shown again first.

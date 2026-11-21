@@ -14,10 +14,12 @@ namespace Humans.Tickets.Services.Checkout;
 internal interface ITicketRulesSource
 {
     /// <summary>
-    /// The rules as of the last commit changing the folder; null when it has no Spanish or no English text, holds more
-    /// than one set of rules (several suffix-less files), or GitHub cannot be read. Cached for a few minutes, so the version a buyer is shown is the one their checkout records.
+    /// The rules as of the last commit changing the folder, cached for a few minutes so the version a buyer is shown is
+    /// the one their checkout records. When GitHub cannot be read, the folder's last good rules (kept without expiry);
+    /// null when the folder has never been read, has no Spanish or no English text, or holds more than one set of rules
+    /// (several suffix-less files). <paramref name="refresh"/> skips the cache, for checking a folder an admin just set.
     /// </summary>
-    Task<TicketRules?> GetAsync(string folder, CancellationToken ct = default);
+    Task<TicketRules?> GetAsync(string folder, bool refresh = false, CancellationToken ct = default);
 
     /// <summary>That exact version of the folder on GitHub.</summary>
     Uri Permalink(string folder, string version);
@@ -26,11 +28,15 @@ internal interface ITicketRulesSource
 /// <summary><paramref name="Version"/> is the commit; <paramref name="Texts"/> maps a language code to its markdown.</summary>
 internal sealed record TicketRules(string Folder, string Version, IReadOnlyDictionary<string, string> Texts);
 
-internal sealed partial class GitHubTicketRulesSource : ITicketRulesSource
+internal partial class GitHubTicketRulesSource : ITicketRulesSource
 {
     private const string CacheKeyPrefix = "tickets:rules:";
+    private const string LastGoodKeyPrefix = "tickets:rules:last-good:";
     private static readonly TimeSpan Fresh = TimeSpan.FromMinutes(10);
     private static readonly TimeSpan AfterFailure = TimeSpan.FromMinutes(1);
+
+    // Short, so a hung GitHub fails the buy page over to the last good rules instead of stalling it.
+    private static readonly TimeSpan RequestTimeout = TimeSpan.FromSeconds(5);
 
     [GeneratedRegex(@"^(?<name>[^/]+?)(?:-(?<lang>[A-Za-z]{2}))?\.md$", RegexOptions.ExplicitCapture, 1000)]
     private static partial Regex LanguageFile();
@@ -47,6 +53,7 @@ internal sealed partial class GitHubTicketRulesSource : ITicketRulesSource
         _cache = cache;
         _logger = logger;
         _client = new GitHubClient(new ProductHeaderValue("NobodiesHumansTickets"));
+        _client.SetRequestTimeout(RequestTimeout);
         if (!string.IsNullOrEmpty(_settings.AccessToken))
             _client.Credentials = new Credentials(_settings.AccessToken);
     }
@@ -54,34 +61,58 @@ internal sealed partial class GitHubTicketRulesSource : ITicketRulesSource
     public Uri Permalink(string folder, string version) =>
         new($"https://github.com/{_settings.Owner}/{_settings.Repository}/tree/{version}/{folder}");
 
-    public async Task<TicketRules?> GetAsync(string folder, CancellationToken ct = default)
+    public async Task<TicketRules?> GetAsync(string folder, bool refresh = false, CancellationToken ct = default)
     {
         var key = CacheKeyPrefix + folder;
-        if (_cache.TryGetValue(key, out TicketRules? cached))
+        if (!refresh && _cache.TryGetValue(key, out TicketRules? cached))
             return cached;
 
-        TicketRules? rules = null;
+        var lastGoodKey = LastGoodKeyPrefix + folder;
+        TicketRules? rules;
         try
         {
             rules = await LoadAsync(folder, ct);
-            if (rules is null)
-                _logger.LogWarning("The ticket rules folder {Folder} has no Spanish or no English text, or more than one Spanish file", folder);
         }
         catch (ApiException ex) when (!ct.IsCancellationRequested)
         {
             // Status code only: the message can carry GitHub's HTML error body.
-            _logger.LogWarning("GitHub refused the ticket rules in {Folder}: {StatusCode}", folder, ex.StatusCode);
+            _logger.LogWarning("GitHub refused the ticket rules in {Folder}: {StatusCode}; using the last good version", folder, ex.StatusCode);
+            return KeepLastGood(key, lastGoodKey);
         }
         catch (HttpRequestException ex) when (!ct.IsCancellationRequested)
         {
-            _logger.LogWarning("GitHub could not be reached for the ticket rules in {Folder}: {Error}", folder, ex.Message);
+            _logger.LogWarning("GitHub could not be reached for the ticket rules in {Folder}: {Error}; using the last good version", folder, ex.Message);
+            return KeepLastGood(key, lastGoodKey);
+        }
+        catch (OperationCanceledException) when (!ct.IsCancellationRequested)
+        {
+            _logger.LogWarning("GitHub timed out reading the ticket rules in {Folder}; using the last good version", folder);
+            return KeepLastGood(key, lastGoodKey);
+        }
+
+        if (rules is null)
+        {
+            _logger.LogWarning("The ticket rules folder {Folder} has no Spanish or no English text, or more than one Spanish file", folder);
+            _cache.Remove(lastGoodKey);
+        }
+        else
+        {
+            _cache.Set(lastGoodKey, rules);
         }
 
         _cache.Set(key, rules, rules is null ? AfterFailure : Fresh);
         return rules;
     }
 
-    private async Task<TicketRules?> LoadAsync(string folder, CancellationToken ct)
+    private TicketRules? KeepLastGood(string key, string lastGoodKey)
+    {
+        var rules = _cache.Get<TicketRules>(lastGoodKey);
+        _cache.Set(key, rules, AfterFailure);
+        return rules;
+    }
+
+    /// <summary>Reads the folder from GitHub; null when it holds no valid set of rules. Overridden in tests.</summary>
+    internal virtual async Task<TicketRules?> LoadAsync(string folder, CancellationToken ct)
     {
         var commits = await _client.Repository.Commit.GetAll(_settings.Owner, _settings.Repository,
             new CommitRequest { Sha = _settings.Branch, Path = folder },

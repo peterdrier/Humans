@@ -188,12 +188,15 @@ suffix (a README beside the rules), since that one would read as Spanish. Displa
 and nothing goes to Consent.
 
 - The version is the last commit changing the folder; the text is read at that commit, so the text shown and the version
-  recorded always match. Reads are cached for 10 minutes (1 minute after a failure).
+  recorded always match. Reads are cached for 10 minutes; GitHub requests time out after 5 seconds.
+- When GitHub cannot be read, the folder's last good rules stay in use (kept in memory without expiry, retried every
+  minute), so an outage does not stop sales. A folder that reads but holds no valid rules drops them. The setup's save
+  check reads GitHub afresh, so a fixed folder is accepted at once.
 - The buy page shows the rules in language tabs and sends the version it showed. Checkout refuses a version that is no
-  longer current (`Tickets_Buy_TermsChanged`), so the buyer reads the new text first. While the rules cannot be read,
-  the event is unavailable to buy (`Tickets_Buy_TermsUnavailable`).
+  longer current (`Tickets_Buy_TermsChanged`), so the buyer reads the new text first. While there are no rules to show
+  (never read since the app started, or invalid), the event is unavailable to buy (`Tickets_Buy_TermsUnavailable`).
 - The order keeps `TermsFolder` and `TermsVersion`; its `TermsAccepted` timeline entry links that exact version on GitHub.
-- `TermsUrl` on the sales event (the earlier external page address) is no longer read; its column waits for an approved drop.
+- The earlier `TermsUrl` column (an external page address) was dropped: 2027 ticketing had no live data (Peter, 2026-11-21).
 
 ## Assumptions to confirm
 
