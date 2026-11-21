@@ -350,6 +350,66 @@ internal sealed partial class PretixCheckoutBackend(
         return findings;
     }
 
+    public string? EventRefOf(string backendOrderId) => ParseBackendOrderId(backendOrderId).EventSlug;
+
+    public async Task<IReadOnlyList<BackendOrderSummary>> ListOrdersAsync(
+        string? backendEventRef, Instant from, Instant to, CancellationToken ct = default)
+    {
+        EnsureConfigured();
+        if (string.IsNullOrWhiteSpace(backendEventRef))
+            throw new TicketCheckoutException("pretix needs the event's slug to list its orders.");
+
+        // Inactive carriers too: an order keeps its item after the item is switched off.
+        var ticketItems = new HashSet<int>();
+        for (string? next = $"{EventPath(backendEventRef)}items/"; next is not null;)
+        {
+            var page = await SendAsync<PretixPage<PretixItem>>(HttpMethod.Get, next, body: null, ct);
+            ticketItems.UnionWith(page.Results
+                .Where(i => string.Equals(i.InternalName, TicketItemName, StringComparison.Ordinal)).Select(i => i.Id));
+            next = page.Next;
+        }
+
+        var orders = new List<BackendOrderSummary>();
+        for (string? next = $"{EventPath(backendEventRef)}orders/?created_since={Uri.EscapeDataString(InstantPattern.ExtendedIso.Format(from))}"
+                 + $"&created_before={Uri.EscapeDataString(InstantPattern.ExtendedIso.Format(to))}&ordering=datetime";
+             next is not null;)
+        {
+            var page = await SendAsync<PretixPage<PretixOrder>>(HttpMethod.Get, next, body: null, ct);
+            orders.AddRange(page.Results.Select(order => Summarize(backendEventRef, order, ticketItems)));
+            next = page.Next;
+        }
+
+        return orders;
+    }
+
+    private BackendOrderSummary Summarize(string eventSlug, PretixOrder order, IReadOnlySet<int> ticketItems)
+    {
+        var status = MapStatus(order, logger);
+        // The adapter's refund fees lower the total by what was refunded; the refund itself is counted on its own.
+        var refundFees = order.Fees
+            .Where(f => !f.Canceled && f.InternalType?.StartsWith(RefundCommentPrefix, StringComparison.Ordinal) == true)
+            .Sum(f => f.Value);
+        // A paid order is charged what pretix received, so one paid twice or short shows as a total difference.
+        var charged = status.State == CheckoutState.Paid
+            ? order.Payments.Where(p => p.State is "confirmed" or "refunded").Sum(p => p.Amount)
+            : order.Total - refundFees;
+        // A refund made outside pretix (Stripe dashboard, chargeback) waits as "external" until someone processes it;
+        // the money is gone, so reconciliation counts it though GetStatusAsync does not.
+        var external = order.Refunds.Where(r => string.Equals(r.State, "external", StringComparison.Ordinal)).Sum(r => ToMinor(r.Amount));
+        return new BackendOrderSummary(
+            FormatBackendOrderId(eventSlug, order.Code),
+            order.ApiMeta?.TryGetValue(HumansOrderIdMeta, out var meta) == true
+                && meta.ValueKind == JsonValueKind.String && Guid.TryParse(meta.GetString(), out var orderId)
+                ? orderId
+                : null,
+            ParseInstant(order.Datetime) ?? throw new HttpRequestException($"pretix order {order.Code} has no datetime."),
+            status.State,
+            ToMinor(charged),
+            order.Positions.Count(p => !p.Canceled && ticketItems.Contains(p.Item)),
+            status.RefundedMinor + external,
+            status.DisputedMinor);
+    }
+
     internal static string OrderCode(Guid orderId)
     {
         // Hashed, not the Guid's own bytes: a version 7 Guid starts with a timestamp, which would make the codes of
@@ -671,7 +731,7 @@ internal sealed partial class PretixCheckoutBackend(
 
     private sealed record PretixEventCheck(string Currency, bool Live, bool Testmode);
 
-    internal sealed record PretixPage<T>(IReadOnlyList<T> Results);
+    internal sealed record PretixPage<T>(IReadOnlyList<T> Results, string? Next = null);
 
     internal sealed record PretixItem(int Id, string? InternalName);
 
@@ -681,6 +741,7 @@ internal sealed partial class PretixCheckoutBackend(
         string? Email,
         string Url,
         decimal Total,
+        string? Datetime,
         IReadOnlyList<PretixPosition> Positions,
         IReadOnlyList<PretixFee> Fees,
         IReadOnlyList<PretixPayment> Payments,
@@ -688,7 +749,8 @@ internal sealed partial class PretixCheckoutBackend(
         IReadOnlyDictionary<string, JsonElement>? ApiMeta);
 
     internal sealed record PretixPosition(
-        int Id, int Positionid, decimal Price, decimal TaxRate, bool Canceled, string? AttendeeName, string? AttendeeEmail);
+        int Id, int Positionid, decimal Price, decimal TaxRate, bool Canceled, string? AttendeeName, string? AttendeeEmail,
+        int Item = 0);
 
     internal sealed record PretixFee(int Id, string FeeType, decimal Value, bool Canceled, string? InternalType);
 

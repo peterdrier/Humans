@@ -127,6 +127,54 @@ public sealed class TicketCheckoutServiceTests
     }
 
     [HumansFact]
+    public async Task Recon_reads_the_backend_a_margin_wider_and_reports_an_unreadable_one_without_comparing()
+    {
+        _salesEvent.BackendEventRef = " slug ";
+        var from = Instant.FromUtc(2027, 1, 1, 0, 0);
+        var to = Instant.FromUtc(2027, 1, 2, 0, 0);
+        _backend.ListOrdersAsync("slug", from - TicketReconBuilder.Margin, to + TicketReconBuilder.Margin, Arg.Any<CancellationToken>())
+            .Returns([new BackendOrderSummary("x", null, from, CheckoutState.Paid, 100, 1, 0, 0)]);
+
+        var recon = await _service.ReconcileBackendAsync("test", from, to, TestContext.Current.CancellationToken);
+
+        recon!.Problems.Single().Issues.Should().Equal(TicketReconIssue.ExtraAtBackend);
+        (await _service.GetBackendsInUseAsync(TestContext.Current.CancellationToken)).Should().Equal("test");
+        (await _service.ReconcileBackendAsync("nope", from, to, TestContext.Current.CancellationToken)).Should().BeNull();
+
+        _backend.ListOrdersAsync(Arg.Any<string?>(), Arg.Any<Instant>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>())
+            .Returns<IReadOnlyList<BackendOrderSummary>>(_ => throw new HttpRequestException("down"));
+        var failed = await _service.ReconcileBackendAsync("test", from, to, TestContext.Current.CancellationToken);
+        failed!.Error.Should().Contain("down");
+        failed.Rows.Should().BeEmpty();
+        failed.Balanced.Should().BeFalse();
+    }
+
+    [HumansFact]
+    public async Task Recon_keeps_reading_a_backend_and_event_its_orders_were_sold_under_after_the_setup_moved()
+    {
+        var from = Instant.FromUtc(2027, 1, 1, 0, 0);
+        var to = Instant.FromUtc(2027, 1, 2, 0, 0);
+        _repo.Orders.Add(new TicketCheckoutOrder
+        {
+            Id = Guid.NewGuid(),
+            SalesEventId = _salesEvent.Id,
+            BackendKey = "test",
+            BackendOrderId = "old/1",
+            State = TicketCheckoutOrderState.Paid,
+            CreatedAt = from,
+        });
+        _salesEvent.BackendKey = "elsewhere";
+        _backend.EventRefOf("old/1").Returns("old");
+        _backend.ListOrdersAsync(Arg.Any<string?>(), Arg.Any<Instant>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>()).Returns([]);
+
+        (await _service.GetBackendsInUseAsync(TestContext.Current.CancellationToken)).Should().Equal("test");
+        var recon = await _service.ReconcileBackendAsync("test", from, to, TestContext.Current.CancellationToken);
+
+        recon!.Problems.Single().Issues.Should().Equal(TicketReconIssue.MissingAtBackend);
+        await _backend.Received(1).ListOrdersAsync("old", Arg.Any<Instant>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
     public void Price_is_the_wave_on_the_pricing_date_then_the_last_wave()
     {
         TicketPrice.For(_salesEvent, new LocalDate(2027, 1, 31), []).Should().NotBeNull()

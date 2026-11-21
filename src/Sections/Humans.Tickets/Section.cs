@@ -144,6 +144,7 @@ public sealed class Section :
         services.AddScoped<IUserMerge>(sp => sp.GetRequiredService<TicketCheckoutService>());
         services.AddScoped<ITicketGateLookup>(sp => sp.GetRequiredService<TicketCheckoutService>());
         services.AddScoped<TicketCheckoutReconcileJob>();
+        services.AddScoped<TicketReconJob>();
     }
 
     string IIssueQueueOwner.QueueKey => "Tickets";
@@ -218,6 +219,9 @@ public sealed class Section :
         // Catches webhooks that never arrived; the webhook is only a nudge.
         yield return new RecurringJobDescriptor(
             "tickets-checkout-reconcile", typeof(TicketCheckoutReconcileJob), "*/5 * * * *");
+
+        // The daily financial check of every backend against Humans' orders; reads only.
+        yield return new RecurringJobDescriptor("tickets-checkout-recon", typeof(TicketReconJob), "30 4 * * *");
     }
 
     IEnumerable<ChromeComponent> ISectionMemberDashboard.Components() =>

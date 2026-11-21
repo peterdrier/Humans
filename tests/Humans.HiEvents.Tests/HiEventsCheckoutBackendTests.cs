@@ -447,6 +447,66 @@ public class HiEventsCheckoutBackendTests
         setup.WebhookPath.Should().Be("/HiEvents/Webhook");
     }
 
+    [HumansFact]
+    public async Task ListOrders_PagesThroughThePeriodAndReadsHumansIdsAndTickets()
+    {
+        var full = Enumerable.Range(1, 100).Select(i => ListedOrder(i, OrderId.ToString("N"), attendees: 1)).ToArray();
+        _handler.Enqueue(HttpStatusCode.OK, new { data = full, meta = new { last_page = 2, total = 101 } });
+        _handler.Enqueue(HttpStatusCode.OK, new
+        {
+            data = new[] { ListedOrder(100, OrderId.ToString("N"), attendees: 1), ListedOrder(101, null, attendees: 2, refunded: 50m) },
+            meta = new { last_page = 2, total = 101 },
+        });
+
+        var orders = await Backend().ListOrdersAsync("7", Instant.FromUtc(2027, 1, 1, 0, 0), Instant.FromUtc(2027, 2, 1, 0, 0), Ct);
+
+        orders.Should().HaveCount(101);
+        orders[0].Should().Be(new BackendOrderSummary("7:1", OrderId, Instant.FromUtc(2027, 1, 5, 9, 30), CheckoutState.Paid, 22500, 1, 0, 0));
+        orders[^1].HumansOrderId.Should().BeNull();
+        orders[^1].TicketCount.Should().Be(2);
+        orders[^1].RefundedMinor.Should().Be(5000);
+        var first = Uri.UnescapeDataString(_handler.Requests[0].Request.RequestUri!.Query);
+        first.Should().Contain("per_page=100").And.Contain("page=1&")
+            .And.Contain("filter_fields[created_at][gte]=2027-01-01 00:00:00")
+            .And.Contain("filter_fields[created_at][lt]=2027-02-01 00:00:00");
+        Uri.UnescapeDataString(_handler.Requests[1].Request.RequestUri!.Query).Should().Contain("page=2&");
+    }
+
+    [HumansFact]
+    public async Task ListOrders_WhenAnOrderSlipsBetweenPages_Throws()
+    {
+        _handler.Enqueue(HttpStatusCode.OK, new { data = new[] { ListedOrder(1, null, attendees: 1) }, meta = new { last_page = 2, total = 3 } });
+        _handler.Enqueue(HttpStatusCode.OK, new { data = new[] { ListedOrder(1, null, attendees: 1) }, meta = new { last_page = 2, total = 3 } });
+
+        var act = () => Backend().ListOrdersAsync("7", Instant.FromUtc(2027, 1, 1, 0, 0), Instant.FromUtc(2027, 2, 1, 0, 0), Ct);
+
+        await act.Should().ThrowAsync<HttpRequestException>();
+    }
+
+    [HumansFact]
+    public async Task ListOrders_WhenAPageFails_Throws()
+    {
+        _handler.Enqueue(HttpStatusCode.InternalServerError, new { message = "down" });
+
+        var act = () => Backend().ListOrdersAsync("7", Instant.FromUtc(2027, 1, 1, 0, 0), Instant.FromUtc(2027, 2, 1, 0, 0), Ct);
+
+        await act.Should().ThrowAsync<HttpRequestException>();
+    }
+
+    private static Dictionary<string, object?> ListedOrder(int id, string? externalReference, int attendees, decimal refunded = 0m) =>
+        new(StringComparer.Ordinal)
+        {
+            ["id"] = id,
+            ["status"] = "COMPLETED",
+            ["payment_status"] = "PAYMENT_RECEIVED",
+            ["currency"] = "EUR",
+            ["total_gross"] = 225m,
+            ["total_refunded"] = refunded,
+            ["external_reference"] = externalReference,
+            ["created_at"] = "2027-01-05T09:30:00.000000Z",
+            ["attendees"] = Enumerable.Range(1, attendees).Select(a => new { id = (id * 10) + a }).ToArray(),
+        };
+
     private HiEventsCheckoutBackend Backend(string apiKey = "key", string apiUrl = "https://tickets.example/api", string appUrl = "") => new(
         new HttpClient(_handler),
         Options.Create(new HiEventsSettings

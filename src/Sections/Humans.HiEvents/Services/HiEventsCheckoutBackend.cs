@@ -318,6 +318,54 @@ internal sealed class HiEventsCheckoutBackend : ITicketCheckoutBackend
         return findings;
     }
 
+    public string? EventRefOf(string backendOrderId) =>
+        ParseBackendOrderId(backendOrderId).EventId.ToString(CultureInfo.InvariantCulture);
+
+    public async Task<IReadOnlyList<BackendOrderSummary>> ListOrdersAsync(
+        string? backendEventRef, Instant from, Instant to, CancellationToken ct = default)
+    {
+        if (!IsConfigured)
+            throw new TicketCheckoutException("Hi.Events is not configured.");
+        if (!int.TryParse(backendEventRef, NumberStyles.None, CultureInfo.InvariantCulture, out var eventId))
+            throw new TicketCheckoutException($"Hi.Events needs a numeric event id, got '{backendEventRef}'.");
+
+        var range = string.Create(CultureInfo.InvariantCulture,
+            $"filter_fields[created_at][gte]={Uri.EscapeDataString(from.ToInvariantTimestamp())}&filter_fields[created_at][lt]={Uri.EscapeDataString(to.ToInvariantTimestamp())}");
+        var orders = new Dictionary<int, BackendOrderSummary>();
+        for (var page = 1; ; page++)
+        {
+            using var response = await _http.GetAsync(string.Create(CultureInfo.InvariantCulture,
+                $"events/{eventId}/orders?per_page={ListPageSize}&page={page}&sort_by=created_at&sort_direction=asc&{range}"), ct);
+            var read = await ReadAsync<OrderPage>(response, ct);
+            var meta = read.Meta ?? throw new HttpRequestException("Hi.Events answered an order page without its paging.");
+            foreach (var order in read.Data ?? [])
+                orders[order.Id] = new BackendOrderSummary(
+                ToBackendOrderId(eventId, order.Id),
+                Guid.TryParseExact(order.ExternalReference, "N", out var humansOrderId) ? humansOrderId : null,
+                ParseCreatedAt(order.CreatedAt)
+                    ?? throw new HttpRequestException($"Hi.Events order {order.Id} has an unreadable created_at '{order.CreatedAt}'."),
+                ToState(order),
+                ToMinor(order.TotalGross),
+                order.Attendees?.Count,
+                ToMinor(order.TotalRefunded ?? 0m),
+                0);
+            if (page < meta.LastPage)
+                continue;
+            // Orders sharing a created_at second may change places between pages; one skipped shows here.
+            if (orders.Count != meta.Total)
+                throw new HttpRequestException($"Hi.Events listed {orders.Count} distinct orders of the {meta.Total} it counts; read again.");
+            return orders.Values.ToList();
+        }
+    }
+
+    private const int ListPageSize = 100;
+
+    /// <summary>Laravel serialises timestamp columns as ISO 8601 in UTC; a raw column reads as plain UTC text.</summary>
+    private static Instant? ParseCreatedAt(string? value) =>
+        value is not null && InstantPattern.ExtendedIso.Parse(value) is { Success: true } iso
+            ? iso.Value
+            : DateFormattingExtensions.ParseInvariantTimestamp(value);
+
     private static async Task<bool> IsUserAsync(HttpResponseMessage response, CancellationToken ct)
     {
         try
@@ -474,6 +522,12 @@ internal sealed class HiEventsCheckoutBackend : ITicketCheckoutBackend
 
     private sealed record ProductPage(List<HiEventsProduct>? Data);
 
+    private sealed record OrderPage(List<HiEventsOrder>? Data, PageMeta? Meta);
+
+    private sealed record PageMeta(int LastPage, int Total);
+
+    private sealed record HiEventsAttendee(int Id);
+
     private sealed record HiEventsProduct(int Id, string? ProductType, bool? IsHidden);
 
     private sealed record RefundEnvelope(RefundMeta? Meta);
@@ -492,5 +546,8 @@ internal sealed class HiEventsCheckoutBackend : ITicketCheckoutBackend
         decimal? TotalRefunded,
         string? PaymentProvider,
         string? PaymentLinkUrl,
-        string? ReservedUntil); // UTC, "yyyy-MM-dd HH:mm:ss" with no offset
+        string? ReservedUntil, // UTC, "yyyy-MM-dd HH:mm:ss" with no offset
+        string? ExternalReference = null,
+        string? CreatedAt = null,
+        List<HiEventsAttendee>? Attendees = null);
 }

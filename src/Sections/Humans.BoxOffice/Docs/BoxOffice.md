@@ -76,6 +76,7 @@ None. The section owns no tables. The Checkout Session is the record of the paym
   of the refunded PaymentIntent. An invalid signature answers 400, so a wrong secret shows as failed deliveries in Stripe. `refund.*` and `charge.dispute.*` events are mapped like `charge.refunded`.
 - Cancelling expires the session; Stripe refusing that is an error only when the session is complete and not failed.
 - `Setup` shows both variables only as set or missing, and test or live mode from the key prefix. `CheckAsync` lists one Checkout Session and reports a missing webhook secret; it cannot test the refund permission without refunding.
+- `ListOrdersAsync` lists every Checkout Session created in the period, whatever made it, since the account sells tickets only. Each session carries `humans_ticket_count` (ticket lines, free ones included) for reconciliation; one without it has no count. Refunds are read only for a charge that shows some. `EventRefOf` is always null.
 
 ## Settings
 

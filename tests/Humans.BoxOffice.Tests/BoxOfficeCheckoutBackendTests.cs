@@ -113,7 +113,33 @@ public sealed class BoxOfficeCheckoutBackendTests
         body.Should().Contain("line_items[0][price_data][unit_amount]=22500")
             .And.Contain("line_items[1][price_data][unit_amount]=77500")
             .And.Contain("locale=auto")
-            .And.Contain($"metadata[humans_ticket_order_id]={orderId}");
+            .And.Contain($"metadata[humans_ticket_order_id]={orderId}")
+            .And.Contain("metadata[humans_ticket_count]=1");
+    }
+
+    [HumansFact]
+    public async Task List_reads_every_session_of_the_period_and_refunds_only_where_the_charge_shows_some()
+    {
+        var orderId = Guid.NewGuid();
+        Respond(
+            """
+            {"object":"list","url":"/v1/checkout/sessions","has_more":false,"data":[
+             {"id":"cs_1","object":"checkout.session","status":"complete","payment_status":"paid","amount_total":30000,"created":1799582400,
+              "metadata":{"humans_ticket_order_id":"ORDER_ID","humans_ticket_count":"2"},"payment_intent":{"id":"pi_1","object":"payment_intent","status":"succeeded",
+              "latest_charge":{"id":"ch_1","object":"charge","paid":true,"amount":30000,"amount_refunded":0,"created":1799582400}}},
+             {"id":"cs_2","object":"checkout.session","status":"complete","payment_status":"paid","amount_total":25000,"created":1799586000,
+              "metadata":{},"payment_intent":{"id":"pi_2","object":"payment_intent","status":"succeeded",
+              "latest_charge":{"id":"ch_2","object":"charge","paid":true,"amount":25000,"amount_refunded":5000,"created":1799586000}}}]}
+            """.Replace("ORDER_ID", orderId.ToString(), StringComparison.Ordinal),
+            RefundList(Refund("re_1", "succeeded", 5000)));
+
+        var orders = await Backend().ListOrdersAsync(null, Now - Duration.FromDays(30), Now, TestContext.Current.CancellationToken);
+
+        orders.Should().Equal(
+            new BackendOrderSummary("cs_1", orderId, Instant.FromUnixTimeSeconds(1799582400), CheckoutState.Paid, 30000, 2, 0, 0),
+            new BackendOrderSummary("cs_2", null, Instant.FromUnixTimeSeconds(1799586000), CheckoutState.Paid, 25000, null, 5000, 0));
+        _requests.Should().HaveCount(2);
+        _requests[0].Method.Should().Be(HttpMethod.Get);
     }
 
     [HumansFact]
