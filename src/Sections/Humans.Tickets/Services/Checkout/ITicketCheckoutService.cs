@@ -145,6 +145,7 @@ internal sealed record SalesEventSave(
     public int? ChildMaxAge { get; init; }
     public int? ResaleOpensAtSold { get; init; }
     public int DirectedResaleDays { get; init; } = 3;
+    public TicketSalesSwitches Switches { get; init; } = new();
     public string? TermsUrl { get; init; }
 }
 
@@ -170,6 +171,12 @@ internal sealed record BuyPage(
 
     /// <summary>True when the person has never said yes or no to the mailing list.</summary>
     public bool AskMarketing { get; init; }
+
+    /// <summary>The event sells partner tickets (<see cref="TicketSalesSwitches.PartnerTickets"/>).</summary>
+    public bool OffersPartner { get; init; }
+
+    /// <summary>The event takes donations at checkout (<see cref="TicketSalesSwitches.Donations"/>).</summary>
+    public bool OffersDonations { get; init; }
 
     /// <summary>The buyer's own unpaid checkout still holding a ticket, which they can finish or cancel to start again.</summary>
     public TicketCheckoutOrder? OpenOrder { get; init; }
@@ -238,4 +245,8 @@ internal sealed record HeldTicket(
     int? QueuePosition,
     bool CanOffer,
     bool HasDependents,
-    bool DirectedActive);
+    bool DirectedActive)
+{
+    /// <summary>The event runs directed resale (<see cref="ResaleScheme.QueueAndDirected"/>).</summary>
+    public bool CanInvite { get; init; }
+}

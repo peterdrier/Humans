@@ -88,7 +88,8 @@ sold under is read (`EventRefOf`), beside the events the setups sell through now
 
 1. A TicketsAdmin sets up the event at `/Tickets/Admin/Sales`: backend, mode, capacity, waves, supporter totals (VIP
    buttons), grant price rules (`ClassPrice`, `Credit`, `WavePin`), child price and age, the ticket rules page
-   (an https address; a changed version gets a new address), when resale opens (tickets sold) and how many days a resale invitation lasts.
+   (an https address; a changed version gets a new address), when resale opens (tickets sold), how many days a resale invitation lasts
+   and the ticketing switches (below).
 2. A member opens `/Tickets/Buy` (linked from the dashboard ticket card while any event sells through Humans), which
    lists every event that is not Closed, each priced in its own time zone and checked for holdings on its own. They see
    their price, may add children (child price, issued on their own ticket), a partner (name and email; public price;
@@ -112,6 +113,20 @@ sold under is read (`EventRefOf`), beside the events the setups sell through now
    accepted. A refund never voids a ticket; voiding is the admin's separate step.
 
 Each order carries a short `Reference` (the first 8 hex digits of its id) shown to the buyer and the team.
+
+## Ticketing switches
+
+Each sales setup carries switches so an organisation that runs Humans differently can turn a scheme off; the
+defaults are the Nobodies scheme, and a setup saved before the switches existed reads as the defaults. The checkout
+service enforces each one, so a switched-off scheme is refused there, not only hidden on the page. Saving them is
+part of the audited sales setup save.
+
+| Switch | Values | Off means |
+|---|---|---|
+| `Resale` | `Off`, `Queue`, `QueueAndDirected` (default) | `Off`: holders cannot return a ticket, the queue never sells, `ResaleOnly` mode is refused, and saving the switch withdraws every open offer (the ticket is the holder's again, on the order timeline; one in a checkout is withdrawn if that checkout fails). `Queue`: no directed invitations; saving the switch ends live ones (on the order timeline) and those offers sell from their place in the queue. |
+| `PartnerTickets` | on (default) / off | No partner ticket on the buy page; a partner line is refused. |
+| `Donations` | on (default) / off | No VIP buttons and no free donation; donation lines are refused. |
+| `MailingListOptIn` | on (default) / off | Checkout never asks about the mailing list. |
 
 ## Signed-out buyers
 

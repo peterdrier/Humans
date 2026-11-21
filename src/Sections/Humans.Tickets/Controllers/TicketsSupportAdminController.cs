@@ -66,7 +66,7 @@ internal sealed class TicketsSupportAdminController(
             clock.GetCurrentInstant());
         var sold = tickets.Count(t => t.State is TicketCheckoutTicketState.Valid or TicketCheckoutTicketState.Offered);
         return View("~/Views/Tickets/Admin/Sales/Resale.cshtml", new ResaleViewModel(
-            id, await EventNameAsync(salesEvent, ct), salesEvent.Mode, sold, salesEvent.ResaleOpensAtSold, rows));
+            id, await EventNameAsync(salesEvent, ct), salesEvent, sold, rows));
     }
 
     [HttpGet("{id:guid}/Report")]
@@ -148,11 +148,14 @@ internal sealed record LookupViewModel(string Query, IReadOnlyList<OrderSearchHi
 
 internal sealed record RefundsViewModel(Guid SalesEventId, string EventName, RefundState? State, IReadOnlyList<RefundListRow> Rows);
 
-/// <summary>Resale opens once <paramref name="Sold"/> live tickets reach <paramref name="OpensAtSold"/> (always, when null).</summary>
+/// <summary><paramref name="Sold"/>: live tickets, which open resale at the event's threshold.</summary>
 internal sealed record ResaleViewModel(
-    Guid SalesEventId, string EventName, TicketSalesMode Mode, int Sold, int? OpensAtSold, IReadOnlyList<ResaleQueueRow> Rows)
+    Guid SalesEventId, string EventName, TicketSalesEvent SalesEvent, int Sold, IReadOnlyList<ResaleQueueRow> Rows)
 {
-    public bool ResaleOpen => Mode != TicketSalesMode.Closed && Sold >= (OpensAtSold ?? 0);
+    public TicketSalesMode Mode => SalesEvent.Mode;
+    public int? OpensAtSold => SalesEvent.ResaleOpensAtSold;
+    public bool ResaleOpen => SalesEvent.ResaleOpenAt(Sold);
+    public bool SwitchedOff => SalesEvent.EffectiveSwitches.Resale == ResaleScheme.Off;
 }
 
 internal sealed record ReportViewModel(Guid SalesEventId, string EventName, int Capacity, SalesReport Report);

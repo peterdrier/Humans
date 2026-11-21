@@ -209,6 +209,10 @@ internal sealed class SalesEditForm
     public int? ChildMaxAge { get; set; }
     public int? ResaleOpensAtSold { get; set; }
     public int DirectedResaleDays { get; set; } = 3;
+    public ResaleScheme Resale { get; set; } = ResaleScheme.QueueAndDirected;
+    public bool PartnerTickets { get; set; } = true;
+    public bool Donations { get; set; } = true;
+    public bool MailingListOptIn { get; set; } = true;
     public string? TermsUrl { get; set; }
 
     private static readonly LocalDatePattern DatePattern = LocalDatePattern.Iso;
@@ -230,6 +234,10 @@ internal sealed class SalesEditForm
         ChildMaxAge = e.ChildMaxAge,
         ResaleOpensAtSold = e.ResaleOpensAtSold,
         DirectedResaleDays = e.DirectedResaleDays,
+        Resale = e.EffectiveSwitches.Resale,
+        PartnerTickets = e.EffectiveSwitches.PartnerTickets,
+        Donations = e.EffectiveSwitches.Donations,
+        MailingListOptIn = e.EffectiveSwitches.MailingListOptIn,
         TermsUrl = e.TermsUrl,
     };
 
@@ -283,6 +291,13 @@ internal sealed class SalesEditForm
             ChildMaxAge = ChildMaxAge,
             ResaleOpensAtSold = ResaleOpensAtSold,
             DirectedResaleDays = DirectedResaleDays,
+            Switches = new TicketSalesSwitches
+            {
+                Resale = Resale,
+                PartnerTickets = PartnerTickets,
+                Donations = Donations,
+                MailingListOptIn = MailingListOptIn,
+            },
             TermsUrl = string.IsNullOrWhiteSpace(TermsUrl) ? null : TermsUrl.Trim(),
         }, null);
     }
