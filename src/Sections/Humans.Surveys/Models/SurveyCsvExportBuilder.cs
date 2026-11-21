@@ -1,7 +1,7 @@
 using Humans.Surveys.Contracts;
 using System.Globalization;
 using Humans.Base.Csv;
-using NodaTime.Text;
+using Humans.Base.Extensions;
 
 namespace Humans.Surveys.Models;
 
@@ -12,8 +12,6 @@ namespace Humans.Surveys.Models;
 /// </summary>
 internal static class SurveyCsvExportBuilder
 {
-    private static readonly InstantPattern SubmittedPattern = InstantPattern.General;
-
     public static byte[] Build(SurveyResponseExport export)
     {
         ArgumentNullException.ThrowIfNull(export);
@@ -34,7 +32,7 @@ internal static class SurveyCsvExportBuilder
                     row.ResponseId,
                     row.Anonymity,
                     row.InputMethod,
-                    row.SubmittedAt is { } at ? SubmittedPattern.Format(at) : string.Empty,
+                    row.SubmittedAt.ToIso8601() ?? string.Empty,
                     row.UserId,            // blank for non-Identified rows (null → empty cell)
                     row.UserName,
                 };

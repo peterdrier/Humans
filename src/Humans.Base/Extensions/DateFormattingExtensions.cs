@@ -102,6 +102,15 @@ public static class DateFormattingExtensions
     public static string ToInvariantTimestamp(this Instant value) => value.ToDateTimeUtc().ToInvariantTimestamp();
     public static string? ToInvariantTimestamp(this Instant? value) => value?.ToInvariantTimestamp();
 
+    /// <summary>The inverse of <see cref="ToInvariantTimestamp(Instant)"/>: a UTC "yyyy-MM-dd HH:mm:ss"; null when malformed.</summary>
+    public static Instant? ParseInvariantTimestamp(string? value) =>
+        value is not null && InvariantTimestamp.Parse(value) is { Success: true } parsed
+            ? parsed.Value.InUtc().ToInstant()
+            : null;
+
+    private static readonly LocalDateTimePattern InvariantTimestamp =
+        LocalDateTimePattern.CreateWithInvariantCulture("uuuu'-'MM'-'dd HH':'mm':'ss");
+
     /// <summary>Invariant year-month label, "yyyy-MM".</summary>
     public static string ToInvariantYearMonth(this YearMonth value) =>
         value.ToString("yyyy-MM", CultureInfo.InvariantCulture);
@@ -126,7 +135,7 @@ public static class DateFormattingExtensions
 
     /// <summary>ISO-8601 UTC instant to seconds, "uuuu-MM-ddTHH:mm:ssZ" (machine/data attributes).</summary>
     public static string ToIso8601(this Instant value) =>
-        InstantPattern.General.Format(value);
+        Iso8601InstantPattern.Format(value);
 
     public static string? ToIso8601(this Instant? value) =>
         value?.ToIso8601();
@@ -146,6 +155,9 @@ public static class DateFormattingExtensions
         value.ToString("yyyy-MM-dd-HHmm", CultureInfo.InvariantCulture);
 
     // NodaTime patterns: the one sanctioned home for parse/format pattern literals (HUM0030).
+
+    /// <summary>ISO-8601 UTC instant to seconds, shared by machine output and input parsing.</summary>
+    public static readonly InstantPattern Iso8601InstantPattern = InstantPattern.General;
 
     /// <summary>iCal basic date-time (RFC 5545 DATE-TIME, e.g. "20260131T142500").</summary>
     public static readonly LocalDateTimePattern IcalBasicDateTimePattern =

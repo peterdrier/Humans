@@ -17,7 +17,7 @@ internal sealed class LegalDocumentSyncRunner(
     ConsentEmails emailMessages,
     ITeamService teamService,
     IUserService userService,
-    IConsentService consents,
+    IConsentManagement consents,
     ILegalDocumentRepository documents,
     ILogger<LegalDocumentSyncRunner> logger) : ILegalDocumentSyncRunner
 {

@@ -679,6 +679,38 @@ src/Sections/Humans.Users/Data/Migrations/20261120002309_DropProfileNameColumns.
 src/Sections/Humans.Users/Data/Migrations/20261120002309_DropProfileNameColumns.cs:DropColumn(name=FirstName,table=user_profiles)#1
 src/Sections/Humans.Users/Data/Migrations/20261120002309_DropProfileNameColumns.cs:DropColumn(name=LastName,table=user_profiles)#1
 
+# user_contact_fields.ProfileId, user_profile_languages.ProfileId and
+# user_volunteer_history_entries.ProfileId (uuid) — the old link from each profile child row to its
+# user_profiles row, with its foreign keys FK_user_contact_fields_user_profiles_ProfileId,
+# FK_user_profile_languages_user_profiles_ProfileId and
+# FK_user_volunteer_history_entries_user_profiles_ProfileId, and its indexes
+# IX_user_contact_fields_ProfileId, IX_user_contact_fields_ProfileId_Visibility,
+# IX_user_profile_languages_ProfileId and IX_user_volunteer_history_entries_ProfileId. Each row is
+# owned through UserId (FK to users, cascade) instead.
+# Evidence: pickaxe over full history (git log -G on assignments to and comparisons with ProfileId on
+# the three entities): every writer (profile save, contact field save, language save, account merge)
+# has also written UserId since 9b6fc4442 (peterdrier/Humans#2400), and the data migration filled the
+# older rows. The retirement PR peterdrier/Humans#2490 (5735d77a8, merged 2026-11-21) moved every read,
+# the merge and the erase to UserId and deleted the data migration; this PR removes the last writes
+# and the property. Nothing reads the columns.
+# Approval: standing approval in memory/architecture/destructive-drops-need-approval.md ("a data
+# migration reporting done"): production GET https://humans.nobodies.team/api/data-migrations
+# reported {"key":"users.profile-children-user-id","pending":0,"done":true}, read 2026-11-19 and
+# again 2026-11-21.
+# Peter merges this PR himself. Rollback caveat: Down() re-adds ProfileId as NOT NULL with an
+# all-zero default and then the foreign keys to user_profiles, which fails on any table that has
+# rows; the dropped values come back only through docs/database-restore-runbook.md.
+src/Sections/Humans.Users/Data/Migrations/20261121114531_DropProfileChildTablesProfileId.cs:DropColumn(name=ProfileId,table=user_contact_fields)#1
+src/Sections/Humans.Users/Data/Migrations/20261121114531_DropProfileChildTablesProfileId.cs:DropColumn(name=ProfileId,table=user_profile_languages)#1
+src/Sections/Humans.Users/Data/Migrations/20261121114531_DropProfileChildTablesProfileId.cs:DropColumn(name=ProfileId,table=user_volunteer_history_entries)#1
+src/Sections/Humans.Users/Data/Migrations/20261121114531_DropProfileChildTablesProfileId.cs:DropForeignKey(name=FK_user_contact_fields_user_profiles_ProfileId,table=user_contact_fields)#1
+src/Sections/Humans.Users/Data/Migrations/20261121114531_DropProfileChildTablesProfileId.cs:DropForeignKey(name=FK_user_profile_languages_user_profiles_ProfileId,table=user_profile_languages)#1
+src/Sections/Humans.Users/Data/Migrations/20261121114531_DropProfileChildTablesProfileId.cs:DropForeignKey(name=FK_user_volunteer_history_entries_user_profiles_ProfileId,table=user_volunteer_history_entries)#1
+src/Sections/Humans.Users/Data/Migrations/20261121114531_DropProfileChildTablesProfileId.cs:DropIndex(name=IX_user_contact_fields_ProfileId,table=user_contact_fields)#1
+src/Sections/Humans.Users/Data/Migrations/20261121114531_DropProfileChildTablesProfileId.cs:DropIndex(name=IX_user_contact_fields_ProfileId_Visibility,table=user_contact_fields)#1
+src/Sections/Humans.Users/Data/Migrations/20261121114531_DropProfileChildTablesProfileId.cs:DropIndex(name=IX_user_profile_languages_ProfileId,table=user_profile_languages)#1
+src/Sections/Humans.Users/Data/Migrations/20261121114531_DropProfileChildTablesProfileId.cs:DropIndex(name=IX_user_volunteer_history_entries_ProfileId,table=user_volunteer_history_entries)#1
+
 # governance_applications.ReviewStartedAt (timestamp, nullable) — when a tier application entered
 # the old UnderReview state.
 # Evidence: pickaxe over full history (git log -S 'ReviewStartedAt ='): the only writer was the

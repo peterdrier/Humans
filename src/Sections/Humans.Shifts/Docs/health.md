@@ -26,7 +26,7 @@ audited and the affected coordinators are notified.
 | **Describe the work** — rota/shift CRUD, bulk generation, tag labels, move rota between departments | `ShiftAdminController` (`/Teams/{slug}/Shifts/*`), `IShiftManagement` create/update/delete/generate/tag/move, `IShiftSeeding` | Development seeder only (`IShiftSeeding`) |
 | **Take a slot** — self sign-up (single, range, per-day toggle) and bail; policy gates: browsing open, EE freeze, name/dietary completeness, capacity, overlap | `ShiftsController` `ToggleDay`/`Bail`/`BailRange`, `IShiftSignups.SignUp*`/`Bail`, `ShiftSignupService` | Onboarding wizard, Agent |
 | **Review a slot** — approve/refuse/no-show/remove/voluntell, single and block | `ShiftAdminController` signups/voluntell routes, `ShiftDashboardController.Voluntell`, `IShiftSignupService` review methods, `IShiftSignups.Voluntell/Refuse` | Agent (voluntell) |
-| **Look at the schedule** — browse, mine, urgent, staffing snapshot, summary-by-camp, per-user/per-rota projections, search hit | `GET /Shifts`, `/Shifts/Mine`, `/Shifts/Summary*`, `IShiftService`, `IShiftView`/`IShiftRowView`, `<vc:shifts-search-result>`, `<vc:dashboard-shifts>`, `<vc:shifts-gallery>`, `<vc:shift-signups>`, `<vc:onboarding-shifts-list>` | Search, Teams, Tickets, Store, Cantina, Gate, MailerLite, Camps, Events, Users, Scanner, Surveys |
+| **Look at the schedule** — browse, mine, urgent, staffing snapshot, summary-by-camp, per-user/per-rota projections, search hit | `GET /Shifts`, `/Shifts/Mine`, `/Shifts/Summary*`, `IShiftService`, `IShiftView`/`IShiftRowView`, `<vc:shifts-search-result>`, `<vc:dashboard-shifts>`, `<vc:shifts-gallery>`, `<vc:shift-signups>`, Onboarding's `IOnboardingShiftsStep` slot | Search, Teams, Tickets, Store, Cantina, Gate, MailerLite, Camps, Events, Users, Scanner, Surveys |
 | **The event calendar** — active event settings, build sub-periods, EE close, browsing toggle | `GET/POST /Shifts/Settings`, `IBurnSettingsService`/`BurnSettingsInfo`, `BuildSubPeriodClassifier` | Every section that needs "which year / which day offset is today" (Events, Camps, Tickets, Notifications, Settings, …) |
 | **Who I am as a volunteer** — shift profile, tag preferences, general availability | `ShiftProfileController` (`/Shifts/ShiftInfo`), `POST /Shifts/Preferences/Tags`, `POST /Shifts/Mine/Availability`, `IShiftVolunteerProfiles`, `IVolunteerTrackingManagement.SetAvailabilityAsync` | Users (profile page), Onboarding |
 | **Coordinator analytics** — overview, activity, trends, heatmap, daily staffing, duration breakdown, coverage pies, post-event stats, workload | `ShiftDashboardController`, `ShiftWorkloadAdminController`, `IShiftManagement` analytics methods, `IWorkloadService` | none |
@@ -43,7 +43,7 @@ The shapes imply:
   (availability, build status).
 - Three owning services, each one shape family: **management** (describe the work + the event
   calendar + analytics), **signups** (take + review a slot), **tracking** (build-week tracking).
-  Cross-section reads through `.Contracts` leaf interfaces only; the full interfaces stay
+  Cross-section reads through the public `Contracts/` interfaces only; the full interfaces stay
   `internal`.
 - Analytics is the largest shape with no external caller. Its natural home is a fourth
   internal service (`WorkloadService` is already that shape for one report) so
@@ -97,7 +97,7 @@ The shapes imply:
   from them per request; there is no second cache to keep in step.
 - **No analytics-service split this run** — it is the right direction but a structural move
   across 2 k lines with no behaviour change to pin it; it needs Peter's go and its own PR.
-- **No `IShiftSignupService` read/write split** — the leaf `IShiftSignups` already is the
+- **No `IShiftSignupService` read/write split** — the public `IShiftSignups` already is the
   cross-section face; the full interface is internal.
 - **No test asserting absences** (`no-tests-for-absences`).
 
@@ -105,7 +105,7 @@ The shapes imply:
 
 - `IShiftView` and `IShiftRowView` resolve to the **singleton** `CachingShiftService`, which
   opens a scope per call to reach the keyed-scoped `ShiftViewService`.
-- `GetRotaAsync` on the read leaf applies **no visibility filter**: the id comes from a
+- `GetRotaAsync` on `IShiftService` applies **no visibility filter**: the id comes from a
   filtered search and the destination page enforces access.
 - `ExportXlsx` writes **no** audit entry on purpose (burner names only).
 - Sub-team managers manage only their sub-team; department coordinators manage the whole

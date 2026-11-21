@@ -5,7 +5,7 @@
     <ProjectReference Include="..\..\src\Sections\Humans.Teams.Contracts\Humans.Teams.Contracts.csproj" />
     <ProjectReference Include="..\..\src\Sections\Humans.Google\Humans.Google.csproj" />
     <ProjectReference Include="..\..\src\Humans.Base\Humans.Base.csproj" />
-    <ProjectReference Include="..\..\src\Sections\Humans.Shifts.Contracts\Humans.Shifts.Contracts.csproj" />
+    <ProjectReference Include="..\..\src\Sections\Humans.Shifts\Humans.Shifts.csproj" />
   </ItemGroup>
 
   <ItemGroup>

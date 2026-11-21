@@ -64,7 +64,7 @@ Nobodies Collective manages Google Shared Drive folders and Groups through the s
 ### Ownership
 
 - `GoogleAuditActions.AnomalousPermissionDetected` audit action definition (`Alert: true`, quick filter "Anomalous Permissions"; stored as a string, no migration needed) — `src/Sections/Humans.Google/Contracts/`
-- `IDriveActivityMonitorService` interface with `CheckForAnomalousActivityAsync` method, and its implementation `DriveActivityMonitorService` using Google Drive Activity API v2 — `src/Sections/Humans.Monitor/Contracts/` and `Services/`
+- `IDriveActivityMonitorService` interface with `CheckForAnomalousActivityAsync` method, and its implementation `DriveActivityMonitorService` using Google Drive Activity API v2 — `src/Sections/Humans.Monitor/Services/`
 - `DriveActivityMonitorJob` - Hangfire background job wrapper — `src/Sections/Humans.Monitor/Jobs/`
 - `AuditLogController.Index` action (`/AuditLog`) - paginated audit log with filtering — `src/Sections/Humans.AuditLog/Controllers/`
 - `MonitorController.CheckDriveActivity` action (`POST /Monitor/CheckDriveActivity`) - manual trigger — `src/Sections/Humans.Monitor/Controllers/`

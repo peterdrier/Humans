@@ -1,0 +1,60 @@
+@model Humans.Tickets.Controllers.SalesAdminIndexViewModel
+@{
+    ViewData["Title"] = "Ticket sales";
+    string Eur(long minor) => (minor / 100m).ToString("0.00", System.Globalization.CultureInfo.InvariantCulture) + " €";
+}
+
+@section Crumbs {
+    <a asp-controller="Ticket" asp-action="Index">Tickets</a>
+    <span>Sales</span>
+}
+
+<page-header title="Ticket sales" />
+
+<p class="text-muted">
+    Each event sells through one checkout backend. Humans sets every price; the backend only takes the money.
+    Members buy at <a asp-controller="TicketBuy" asp-action="Index">/Tickets/Buy</a> for the active event.
+</p>
+
+<form method="get" asp-controller="TicketsSupportAdmin" asp-action="Lookup" class="row g-2 mb-3">
+    <div class="col-md-8"><input class="form-control" name="q" placeholder="Find an order: name, email, order reference or ticket code" /></div>
+    <div class="col-md-2"><button class="btn btn-outline-primary" type="submit">Find</button></div>
+</form>
+
+<h2 class="h5">Backends <a class="small" asp-action="Backends">settings and connection test</a> · <a class="small" asp-action="Recon">reconciliation</a></h2>
+<ul>
+    @foreach (var b in Model.Backends)
+    {
+        <li>@b.Setup.DisplayName (<code>@b.Key</code>, @b.Setup.Hosting): @(b.IsConfigured ? "configured" : "not configured (credentials unset)")</li>
+    }
+    @if (Model.Backends.Count == 0)
+    {
+        <li>No backend section is registered.</li>
+    }
+</ul>
+
+<h2 class="h5">Events</h2>
+<table class="table">
+    <thead><tr><th>Event</th><th>Backend</th><th>Mode</th><th>Capacity</th><th>Waves</th><th></th></tr></thead>
+    <tbody>
+        @foreach (var e in Model.SalesEvents)
+        {
+            <tr>
+                <td>@Model.EventName(e.EventSettingsId)</td>
+                <td><code>@e.BackendKey</code></td>
+                <td>@e.Mode</td>
+                <td>@e.Capacity</td>
+                <td>@string.Join(", ", e.Waves.Select(w => $"{w.Name} {Eur(w.PriceMinor)}"))</td>
+                <td class="text-end">
+                    <a asp-action="Orders" asp-route-id="@e.Id">Orders</a> ·
+                    <a asp-controller="TicketsSupportAdmin" asp-action="Report" asp-route-id="@e.Id">Report</a> ·
+                    <a asp-controller="TicketsSupportAdmin" asp-action="Refunds" asp-route-id="@e.Id">Refunds</a> ·
+                    <a asp-controller="TicketsSupportAdmin" asp-action="Resale" asp-route-id="@e.Id">Resale queue</a> ·
+                    <a asp-action="Edit" asp-route-id="@e.Id">Edit</a>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+<a class="btn btn-primary" asp-action="Edit" authorize-policy="@TicketsPolicies.Manage">Set up an event</a>

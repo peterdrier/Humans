@@ -176,10 +176,6 @@ internal interface ITeamRepository : IRepository
     Task<bool> OtherRoleHasIsManagementAsync(
         Guid teamId, Guid excludingRoleDefinitionId, CancellationToken ct = default);
 
-    /// <summary>Teams without a public management role are absent.</summary>
-    Task<IReadOnlyDictionary<Guid, string>> GetPublicManagementRoleNamesByTeamIdsAsync(
-        IReadOnlyCollection<Guid> teamIds, CancellationToken ct = default);
-
     Task AddRoleDefinitionAsync(TeamRoleDefinition definition, CancellationToken ct = default);
 
     Task RemoveRoleDefinitionAsync(TeamRoleDefinition definition, CancellationToken ct = default);

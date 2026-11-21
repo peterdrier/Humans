@@ -317,11 +317,6 @@ internal sealed class TeamService(
         return member;
     }
 
-    public Task<IReadOnlyDictionary<Guid, string>> GetManagementRoleNamesByTeamIdsAsync(
-        IEnumerable<Guid> teamIds,
-        CancellationToken cancellationToken = default) =>
-        repo.GetPublicManagementRoleNamesByTeamIdsAsync(teamIds.ToList(), cancellationToken);
-
     // CachingTeamService owns the cache.
     public void InvalidateActiveTeamsCache() { }
 

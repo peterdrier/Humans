@@ -26,13 +26,6 @@ internal sealed partial class PreapprovalService(
     IClock clock,
     ILogger<PreapprovalService> logger) : IPreapprovalManagement
 {
-    public Task<IReadOnlyList<GrantOption>> GetGrantsAsync(CancellationToken ct) =>
-        GetGrantOptionsAsync(ct);
-
-    private static PreapprovalRefusal? MoneyRefusal(decimal amount) => PreapprovalInput.MoneyRefusal(amount);
-
-    private static string? Trimmed(string? text) => PreapprovalInput.Trimmed(text);
-
     public async Task<PreapprovalWriteResult> ClaimAsync(Guid grantId, Guid expenseReportId, Guid actorUserId, CancellationToken ct, Action<Func<CancellationToken, Task>> afterCommit)
     {
         var grant = await repository.GetGrantAsync(grantId, ct);
@@ -167,7 +160,7 @@ internal sealed partial class PreapprovalService(
     public async Task<IReadOnlyList<GrantInfo>> GetGrantsForUserAsync(Guid userId, CancellationToken ct = default) =>
         (await repository.GetGrantsForUsersAsync(await AllIdsAsync(userId, ct), ct)).Select(ToInfo).ToList();
 
-    internal async Task<IReadOnlyList<GrantOption>> GetGrantOptionsAsync(CancellationToken ct)
+    public async Task<IReadOnlyList<GrantOption>> GetGrantsAsync(CancellationToken ct)
     {
         var today = Today;
         return (await repository.GetProgramsAsync(ct))

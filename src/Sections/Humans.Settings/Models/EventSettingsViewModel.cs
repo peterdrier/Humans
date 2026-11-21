@@ -2,6 +2,7 @@ using System.ComponentModel.DataAnnotations;
 using System.Globalization;
 using System.Text.Json;
 using Humans.Settings.Contracts;
+using Humans.Base.Extensions;
 using NodaTime;
 using NodaTime.Text;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
@@ -69,9 +70,7 @@ internal static class EventSettingsFormMapper
         BarriosEarlyEntryAllocationJson = src.BarriosEarlyEntryAllocation is not null
             ? JsonSerializer.Serialize(src.BarriosEarlyEntryAllocation)
             : null,
-        EarlyEntryClose = src.EarlyEntryClose.HasValue
-            ? InstantPattern.General.Format(src.EarlyEntryClose.Value)
-            : null,
+        EarlyEntryClose = src.EarlyEntryClose.ToIso8601(),
         IsActive = src.Status == EventSettingsStatus.Active,
         EarlyEntryStartOffset = src.EarlyEntryStartOffset,
         IsOffSeason = src.IsOffSeason,
@@ -111,7 +110,7 @@ internal static class EventSettingsFormMapper
         Instant? earlyEntryClose = null;
         if (!string.IsNullOrEmpty(model.EarlyEntryClose))
         {
-            var parsedInstant = InstantPattern.General.Parse(model.EarlyEntryClose);
+            var parsedInstant = DateFormattingExtensions.Iso8601InstantPattern.Parse(model.EarlyEntryClose);
             if (parsedInstant.Success)
                 earlyEntryClose = parsedInstant.Value;
             else

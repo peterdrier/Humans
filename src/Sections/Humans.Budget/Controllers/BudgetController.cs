@@ -1,4 +1,5 @@
 using Humans.Finance.Contracts;
+using Humans.Teams.Contracts;
 using Humans.Budget.Services;
 using Humans.Base.Authorization;
 using Humans.Base.Controllers;
@@ -16,6 +17,7 @@ namespace Humans.Budget.Controllers;
 [Authorize]
 [Route("Budget")]
 internal sealed class BudgetController(
+    ITeamService teams,
     IBudgetManagement budgetService,
     IAuthorizationService authService,
     IUserService userService,
@@ -32,7 +34,7 @@ internal sealed class BudgetController(
             if (errorResult is not null) return errorResult;
 
             var isFinanceAdmin = (await authService.AuthorizeAsync(User, FinancePolicies.Manage)).Succeeded;
-            var coordinatorTeamIds = await budgetService.GetEffectiveCoordinatorTeamIdsAsync(user.Id, ct);
+            var coordinatorTeamIds = (await teams.GetEffectiveBudgetCoordinatorTeamIdsAsync(user.Id, ct)).ToHashSet();
             if (!isFinanceAdmin && coordinatorTeamIds.Count == 0)
                 return RedirectToAction(nameof(Summary));
 
@@ -78,7 +80,7 @@ internal sealed class BudgetController(
             var visibleGroups = activeYear.Groups.OrderBy(group => group.SortOrder).ToList();
             var summary = budgetService.ComputeBudgetSummaryWithBuffers(visibleGroups);
 
-            var coordinatorTeamIds = await budgetService.GetEffectiveCoordinatorTeamIdsAsync(user.Id, ct);
+            var coordinatorTeamIds = (await teams.GetEffectiveBudgetCoordinatorTeamIdsAsync(user.Id, ct)).ToHashSet();
 
             var model = new BudgetSummaryViewModel
             {

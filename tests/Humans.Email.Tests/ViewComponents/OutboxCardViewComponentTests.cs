@@ -20,7 +20,7 @@ namespace Humans.Email.Tests.ViewComponents;
 /// </summary>
 public sealed class OutboxCardViewComponentTests
 {
-    private readonly IEmailOutboxService _outbox = Substitute.For<IEmailOutboxService>();
+    private readonly IEmailOutboxManagement _outbox = Substitute.For<IEmailOutboxManagement>();
     private readonly Guid _userId = Guid.NewGuid();
 
     [HumansFact]

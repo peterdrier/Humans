@@ -316,7 +316,7 @@ These actions rely on `if` checks + early return/forbid instead of `[Authorize(P
 | `SurveysPolicies.Manage` | SurveysAdmin, Admin | Approve, reject, open, close, send, ranked availability |
 | `StorePolicies.Read` | StoreAdmin, FinanceAdmin, Board, Admin | |
 | `StorePolicies.Manage` | StoreAdmin, FinanceAdmin, Admin | Catalog changes and payment repairs; also `StoreRoles.CanAdministerStore` |
-| `ReviewQueueAccess` | ConsentCoordinator, ShiftsAdmin, Board, Admin | Untouched until the review queue is retired |
+| `ReviewQueueAccess` | ConsentCoordinator, Board, Admin | Untouched until the review queue is retired |
 | `ConsentCoordinatorBoardOrAdmin` | ConsentCoordinator, Board, Admin | Same |
 | `ShiftsPolicies.Read` | ShiftsAdmin, ShiftsNoInfo, Board, Admin | Volunteer tracking, workload, post-event stats |
 | `ShiftsPolicies.Manage` | ShiftsAdmin, ShiftsNoInfo, Admin | Voluntell from the dashboard, the volunteer-tracking export |

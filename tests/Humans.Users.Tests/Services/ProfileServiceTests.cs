@@ -58,7 +58,7 @@ public sealed class ProfileServiceTests : ServiceTestHarness
             NullLogger<UserService>.Instance, AuditLog);
 
         _service = new ProfileService(
-            _userRepository,
+            _storageUserService,
             _pictureStorage);
         _editor = new ProfileEditorService(
             _userService, _contactFields,
@@ -716,11 +716,12 @@ public sealed class ProfileServiceTests : ServiceTestHarness
     public async Task SaveProfileLanguages_OwnerLookupFailure_DoesNotCommitWithoutCacheRefresh()
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
-        var profileId = await SeedUserWithProfileAsync(Guid.NewGuid());
+        var userId = Guid.NewGuid();
+        var profileId = await SeedUserWithProfileAsync(userId);
         Db.ProfileLanguages.Add(new ProfileLanguage
         {
             Id = Guid.NewGuid(),
-            ProfileId = profileId,
+            UserId = userId,
             LanguageCode = "es",
             Proficiency = LanguageProficiency.Native,
         });
@@ -797,7 +798,7 @@ public sealed class ProfileServiceTests : ServiceTestHarness
         Db.VolunteerHistoryEntries.Add(new VolunteerHistoryEntry
         {
             Id = Guid.NewGuid(),
-            ProfileId = profileId,
+            UserId = userId,
             Date = new LocalDate(2025, 7, 1),
             EventName = "Existing history",
             CreatedAt = Clock.GetCurrentInstant(),
@@ -828,7 +829,7 @@ public sealed class ProfileServiceTests : ServiceTestHarness
             Db.VolunteerHistoryEntries.Add(new VolunteerHistoryEntry
             {
                 Id = Guid.NewGuid(),
-                ProfileId = profileId,
+                UserId = userId,
                 Date = new LocalDate(2025, 7, 1),
                 EventName = "Original history",
                 CreatedAt = Clock.GetCurrentInstant(),
@@ -852,7 +853,7 @@ public sealed class ProfileServiceTests : ServiceTestHarness
         await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("CV save failed");
         (await Db.Profiles.AsNoTracking().SingleAsync(p => p.Id == profileId, ct))
             .NoPriorBurnExperience.Should().Be(!hadHistory);
-        var savedHistory = await Db.VolunteerHistoryEntries.AsNoTracking().Where(h => h.ProfileId == profileId).ToListAsync(ct);
+        var savedHistory = await Db.VolunteerHistoryEntries.AsNoTracking().Where(h => h.UserId == userId).ToListAsync(ct);
         if (hadHistory)
             savedHistory.Should().ContainSingle().Which.EventName.Should().Be("Original history");
         else
@@ -917,7 +918,7 @@ public sealed class ProfileServiceTests : ServiceTestHarness
 
         (await Db.Profiles.AsNoTracking().SingleAsync(p => p.Id == profileId, ct))
             .NoPriorBurnExperience.Should().BeFalse();
-        (await Db.VolunteerHistoryEntries.AsNoTracking().Where(h => h.ProfileId == profileId).ToListAsync(ct))
+        (await Db.VolunteerHistoryEntries.AsNoTracking().Where(h => h.UserId == userId).ToListAsync(ct))
             .Should().ContainSingle().Which.EventName.Should().Be("Nowhere");
     }
 

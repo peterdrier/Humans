@@ -34,6 +34,10 @@ internal sealed class ConsentReviewService(
     public async Task<IReadOnlyDictionary<Guid, ConsentReviewInfo>> GetReviewsAsync(CancellationToken ct = default) =>
         (await repo.GetAllAsync(ct)).ToDictionary(r => r.UserId, ToInfo);
 
+    /// <summary>
+    /// Cleared or Flagged only; sets <see cref="ConsentReviewInfo.IsApproved"/> = cleared. <c>NotFound</c> without a
+    /// profile; <c>AlreadyRejected</c> when clearing a rejected member.
+    /// </summary>
     public async Task<OnboardingResult> RecordConsentCheckAsync(
         Guid userId, ConsentCheckStatus status, Guid? reviewerId, string? notes, CancellationToken ct = default)
     {

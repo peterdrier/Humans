@@ -6,8 +6,8 @@ using NodaTime;
 
 namespace Humans.Email.ViewComponents;
 
-public sealed class CommunicationPreferencesPanelViewComponent(
-    ICommunicationPreferenceService commPrefService,
+internal sealed class CommunicationPreferencesPanelViewComponent(
+    ICommunicationPreferenceManagement commPrefService,
     IEnumerable<ICommunicationPreferenceLock> locks,
     IClock clock) : ViewComponent
 {

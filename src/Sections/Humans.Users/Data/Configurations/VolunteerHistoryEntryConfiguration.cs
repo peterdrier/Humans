@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using Humans.Users.Contracts;
 
 namespace Humans.Users.Data.Configurations;
 
@@ -27,12 +28,11 @@ internal sealed class VolunteerHistoryEntryConfiguration : IEntityTypeConfigurat
         builder.Property(v => v.UpdatedAt)
             .IsRequired();
 
-        builder.HasOne(v => v.Profile)
-            .WithMany(p => p.VolunteerHistory)
-            .HasForeignKey(v => v.ProfileId)
+        builder.HasOne<User>()
+            .WithMany()
+            .HasForeignKey(v => v.UserId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        builder.HasIndex(v => v.ProfileId);
         builder.HasIndex(v => v.UserId);
     }
 }

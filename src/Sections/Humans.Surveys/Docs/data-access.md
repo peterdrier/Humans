@@ -17,10 +17,9 @@ authored surveys.
 pattern). The section's services are **Scoped** with no caching decorator (per the spec:
 response data is write-heavy and append-only; no hot read path merits a
 `TrackedCache` at our small scale). There is no public `ISurveyService` contract (the internal one remains): it shipped
-empty and was deleted. The public contracts that leave `Contracts/` are the
-single-member `ISurveyReminderSender`, which the section's own
-`Jobs/SendSurveyReminderJob` calls, and `ISurveyAnalysisRead`, which Backdoor's
-machine API reads. Everything else — authoring, sending, the wizard, submission —
+empty and was deleted. The public service contract is `ISurveyAnalysisRead`, consumed by Backdoor's
+machine API and Workgroups' linked-survey reads. The section's own
+`Jobs/SendSurveyReminderJob` uses internal `ISurveyInvitations`. Everything else — authoring, sending, the wizard, submission —
 has no caller outside Surveys.
 
 ### SurveyService (Scoped — `ISurveyService`, `IUserDataContributor`, `IUserMerge`)
@@ -75,14 +74,14 @@ No repository or table access. Owns the six audience predicates and Asociado eli
 `ITeamService`, `IUserService`, `IGovernanceService`, `ITicketService` and `IShiftView`.
 The same scoped instance serves survey access/approval checks and invitation delivery.
 
-### SurveyInvitationDelivery (Scoped — `ISurveyInvitations`, `ISurveyReminderSender`)
+### SurveyInvitationDelivery (Scoped — `ISurveyInvitations`)
 
 Reuses the former reminder sender for audience preview, initial invitations, delivery-status reads
 and daily reminders. Reads `surveys` and `survey_invitations` through `ISurveyRepository` and
 creates invitation rows before delivery and stamps successful sends/reminders after Email outbox acceptance. Uses `SurveyAudience`, `IUserService`
 (canonical name, culture and email together), `SurveysEmails`, `ISurveyInviteTokenProvider`,
-`IEmailService`, `IAuditLogService` and `IClock`. The existing reminder contract resolves to the
-same scoped instance; the admin controller calls `ISurveyInvitations` directly.
+`IEmailService`, `IAuditLogService` and `IClock`. The reminder job and admin controller use the same scoped
+`ISurveyInvitations` registration.
 Stable delivery IDs, audit actors, cancellation boundaries and retry behavior are preserved.
 
 ### SurveyPreviewEmailService (Scoped, `Humans.Surveys.Services`)

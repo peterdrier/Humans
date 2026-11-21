@@ -119,7 +119,7 @@ All routes are `AdminOnly`.
 ## Cross-Section Dependencies
 
 The section references the contracts leaves `Humans.Users.Contracts`, `Humans.Email.Contracts`,
-`Humans.Tickets.Contracts` and `Humans.Shifts.Contracts`, plus `Humans.Base` (which carries the
+`Humans.Tickets.Contracts` and the `Humans.Shifts` section (its public `Contracts/` types), plus `Humans.Base` (which carries the
 audit append path and the GDPR contributor seam). The
 communication-preference interfaces live in `Humans.Email.Contracts` (Users decomposition commit 14).
 

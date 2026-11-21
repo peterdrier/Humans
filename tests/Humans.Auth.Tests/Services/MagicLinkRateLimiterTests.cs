@@ -94,14 +94,14 @@ public sealed class MagicLinkRateLimiterTests : IDisposable
         var first = Guid.NewGuid();
         var second = Guid.NewGuid();
         var cooldown = TimeSpan.FromSeconds(60);
-        (await _limiter.TryReserveUserSendAsync(first, cooldown)).Should().BeTrue();
-        (await _limiter.TryReserveUserSendAsync(first, cooldown)).Should().BeFalse();
-        (await _limiter.TryReserveUserSendAsync(second, cooldown)).Should().BeTrue();
+        (await _limiter.ReserveUserSendAsync(first, cooldown)).Should().Be(0);
+        (await _limiter.ReserveUserSendAsync(first, cooldown)).Should().BePositive();
+        (await _limiter.ReserveUserSendAsync(second, cooldown)).Should().Be(0);
 
         _limiter.ReleaseUserSendReservation(first);
 
-        (await _limiter.TryReserveUserSendAsync(first, cooldown)).Should().BeTrue();
-        (await _limiter.TryReserveUserSendAsync(second, cooldown)).Should().BeFalse();
+        (await _limiter.ReserveUserSendAsync(first, cooldown)).Should().Be(0);
+        (await _limiter.ReserveUserSendAsync(second, cooldown)).Should().BePositive();
     }
 
     [HumansTheory]
@@ -111,22 +111,37 @@ public sealed class MagicLinkRateLimiterTests : IDisposable
     public async Task SignupSendReservations_ShareInboxCooldownAndRelease(string first, string alias)
     {
         var cooldown = TimeSpan.FromSeconds(60);
-        (await _limiter.TryReserveSignupSendAsync(first, cooldown)).Should().BeTrue();
-        (await _limiter.TryReserveSignupSendAsync(alias, cooldown)).Should().BeFalse();
-        (await _limiter.TryReserveSignupSendAsync("another@gmail.com", cooldown)).Should().BeTrue();
+        (await _limiter.ReserveSignupSendAsync(first, cooldown)).Should().Be(0);
+        (await _limiter.ReserveSignupSendAsync(alias, cooldown)).Should().BePositive();
+        (await _limiter.ReserveSignupSendAsync("another@gmail.com", cooldown)).Should().Be(0);
 
         _limiter.ReleaseSignupReservation(alias);
 
-        (await _limiter.TryReserveSignupSendAsync(first, cooldown)).Should().BeTrue();
-        (await _limiter.TryReserveSignupSendAsync("another@gmail.com", cooldown)).Should().BeFalse();
+        (await _limiter.ReserveSignupSendAsync(first, cooldown)).Should().Be(0);
+        (await _limiter.ReserveSignupSendAsync("another@gmail.com", cooldown)).Should().BePositive();
     }
 
     [HumansFact]
     public async Task SignupSendReservations_NonGmailPlusAddressesRemainDistinct()
     {
         var cooldown = TimeSpan.FromSeconds(60);
-        (await _limiter.TryReserveSignupSendAsync("member@example.org", cooldown)).Should().BeTrue();
-        (await _limiter.TryReserveSignupSendAsync("member+signup@example.org", cooldown)).Should().BeTrue();
+        (await _limiter.ReserveSignupSendAsync("member@example.org", cooldown)).Should().Be(0);
+        (await _limiter.ReserveSignupSendAsync("member+signup@example.org", cooldown)).Should().Be(0);
+    }
+
+    [HumansFact]
+    public async Task RefusedSends_AreCountedUntilTheCooldownIsReleased()
+    {
+        var cooldown = TimeSpan.FromSeconds(60);
+        await _limiter.ReserveSignupSendAsync("member@example.org", cooldown);
+
+        (await _limiter.ReserveSignupSendAsync("member@example.org", cooldown)).Should().Be(1);
+        (await _limiter.ReserveSignupSendAsync("member@example.org", cooldown)).Should().Be(2);
+
+        _limiter.ReleaseSignupReservation("member@example.org");
+
+        (await _limiter.ReserveSignupSendAsync("member@example.org", cooldown)).Should().Be(0);
+        (await _limiter.ReserveSignupSendAsync("member@example.org", cooldown)).Should().Be(1);
     }
 
     public void Dispose() => _cache.Dispose();

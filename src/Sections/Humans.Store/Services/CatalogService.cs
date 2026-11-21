@@ -210,7 +210,7 @@ internal sealed class CatalogService(
     /// the mirror only, never Holded.</summary>
     public async Task<ProductAccountChoices> GetAccountChoicesAsync(CancellationToken ct = default)
     {
-        var chart = (await holded.GetChartAsync(ct)).Where(a => !a.Archived).OrderBy(a => a.Number).ToList();
+        var chart = (await holded.GetChartAsync(ct)).Where(a => !a.Archived).ToList();
         IReadOnlyList<AccountChoice> Block(int from, int to) =>
             chart.Where(a => a.Number >= from && a.Number <= to).Select(a => new AccountChoice(a.Number, a.Name)).ToList();
         return new ProductAccountChoices(

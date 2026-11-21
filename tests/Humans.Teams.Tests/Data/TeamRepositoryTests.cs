@@ -369,13 +369,14 @@ public sealed class TeamRepositoryTests : IDisposable
     }
 
     [HumansTheory]
-    [InlineData(TeamJoinRequestStatus.Pending, true)]
-    [InlineData(TeamJoinRequestStatus.Approved, false)]
-    [InlineData(TeamJoinRequestStatus.Rejected, false)]
-    [InlineData(TeamJoinRequestStatus.Withdrawn, false)]
+    [InlineData((int)TeamJoinRequestStatus.Pending, true)]
+    [InlineData((int)TeamJoinRequestStatus.Approved, false)]
+    [InlineData((int)TeamJoinRequestStatus.Rejected, false)]
+    [InlineData((int)TeamJoinRequestStatus.Withdrawn, false)]
     public async Task ReassignActiveJoinRequestsAsync_CollapsesOnlyPendingSourceRequests(
-        TeamJoinRequestStatus sourceStatus, bool shouldCollapse)
+        int sourceStatusValue, bool shouldCollapse)
     {
+        var sourceStatus = (TeamJoinRequestStatus)sourceStatusValue;
         var ct = TestContext.Current.CancellationToken;
         var team = await SeedTeamAsync("Merge requests");
         var source = Guid.NewGuid();

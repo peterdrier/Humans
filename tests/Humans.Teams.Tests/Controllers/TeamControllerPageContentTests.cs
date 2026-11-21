@@ -1,3 +1,4 @@
+using Humans.Teams.Domain;
 using Humans.Consent.Contracts;
 using Xunit;
 using System.Globalization;

@@ -1,0 +1,188 @@
+@using Humans.Tickets.Contracts
+@using Humans.Tickets.Domain.Checkout
+@using Humans.Tickets.Services.Checkout
+@model Humans.Tickets.Controllers.ReconViewModel
+@{
+    ViewData["Title"] = "Reconciliation";
+    string Eur(long minor) => (minor / 100m).ToString("0.00", System.Globalization.CultureInfo.InvariantCulture) + " €";
+    string Diff(long humans, long backend) => humans == backend ? "" : (backend - humans > 0 ? "+" : "") + (backend - humans);
+    string EurDiff(long humans, long backend) => humans == backend ? "" : (backend - humans > 0 ? "+" : "−") + Eur(Math.Abs(backend - humans));
+    string? Money(long? minor) => minor is { } m ? Eur(m) : null;
+    string Issue(TicketReconIssue issue) => issue switch
+    {
+        TicketReconIssue.MissingAtBackend => "missing at backend",
+        TicketReconIssue.ExtraAtBackend => "extra at backend",
+        TicketReconIssue.Duplicate => "duplicate",
+        TicketReconIssue.NotRecorded => "backend order not recorded in Humans",
+        TicketReconIssue.PaidMismatch => "paid on one side only",
+        TicketReconIssue.TotalMismatch => "total differs",
+        TicketReconIssue.RefundMismatch => "refunded differs",
+        TicketReconIssue.DisputeMismatch => "chargeback differs",
+        TicketReconIssue.TicketCountMismatch => "ticket count differs",
+        TicketReconIssue.TicketsNotIssued => "tickets not issued",
+        _ => issue.ToString(),
+    };
+    var range = $"{Model.From:yyyy-MM-dd} to {Model.To:yyyy-MM-dd}";
+}
+
+@section Crumbs {
+    <a asp-controller="Ticket" asp-action="Index">Tickets</a>
+    <a asp-action="Index">Sales</a>
+    <span>Reconciliation</span>
+}
+
+<page-header title="Reconciliation" />
+
+<p class="text-muted">
+    Humans' orders against each backend's own order list, by the day the order was created (@Model.Zone.Id).
+    Totals count paid orders; every order is matched whatever its state, so a missing, extra or doubled one shows.
+    A difference where no money moved on either side is listed but leaves the backend balanced.
+    A daily run checks the whole sale and logs an error when a backend is out of balance.
+</p>
+
+<form method="get" class="row g-2 align-items-end mb-4">
+    <div class="col-auto">
+        <label class="form-label" for="backend">Backend</label>
+        <select class="form-select" id="backend" name="backend">
+            <option value="">All in use</option>
+            @foreach (var key in Model.BackendsInUse)
+            {
+                @if (key == Model.Backend)
+                {
+                    <option value="@key" selected>@key</option>
+                }
+                else
+                {
+                    <option value="@key">@key</option>
+                }
+            }
+        </select>
+    </div>
+    <div class="col-auto">
+        <label class="form-label" for="from">From</label>
+        <input class="form-control" type="date" id="from" name="from" value="@Model.From.ToString("yyyy-MM-dd", null)" />
+    </div>
+    <div class="col-auto">
+        <label class="form-label" for="to">To (included)</label>
+        <input class="form-control" type="date" id="to" name="to" value="@Model.To.ToString("yyyy-MM-dd", null)" />
+    </div>
+    <div class="col-auto form-check mb-2">
+        @if (Model.All)
+        {
+            <input class="form-check-input" type="checkbox" id="all" name="all" value="true" checked />
+        }
+        else
+        {
+            <input class="form-check-input" type="checkbox" id="all" name="all" value="true" />
+        }
+        <label class="form-check-label" for="all">List every order, not only differences</label>
+    </div>
+    <div class="col-auto"><button class="btn btn-primary" type="submit">Reconcile</button></div>
+</form>
+
+@if (Model.Recons.Count == 0)
+{
+    <p>No sales setup sells through a backend yet.</p>
+}
+
+@foreach (var r in Model.Recons)
+{
+    var rows = Model.All ? r.Rows : r.Problems.ToList();
+    <section class="card mb-4" id="recon-@r.BackendKey">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h2 class="h5 mb-0"><code>@r.BackendKey</code> · @range</h2>
+            @if (r.Error is not null)
+            {
+                <span class="badge bg-secondary">Not checked</span>
+            }
+            else
+            {
+                <span class="badge @(r.Balanced ? "bg-success" : "bg-danger")">@(r.Balanced ? "Balanced" : "Out of balance")</span>
+            }
+        </div>
+        <div class="card-body">
+            @if (r.Error is not null)
+            {
+                <p class="text-danger mb-0">@r.Error</p>
+            }
+            else
+            {
+                <table class="table table-sm w-auto">
+                    <thead><tr><th></th><th class="text-end">Humans</th><th class="text-end">Backend</th><th class="text-end">Difference</th></tr></thead>
+                    <tbody>
+                        <tr><th>Paid orders</th><td class="text-end">@r.Humans.Orders</td><td class="text-end">@r.Backend.Orders</td><td class="text-end text-danger">@Diff(r.Humans.Orders, r.Backend.Orders)</td></tr>
+                        <tr><th>Tickets sold</th><td class="text-end">@r.Humans.Tickets</td><td class="text-end">@r.Backend.Tickets</td><td class="text-end text-danger">@Diff(r.Humans.Tickets, r.Backend.Tickets)</td></tr>
+                        <tr><th>Charged</th><td class="text-end">@Eur(r.Humans.GrossMinor)</td><td class="text-end">@Eur(r.Backend.GrossMinor)</td><td class="text-end text-danger">@EurDiff(r.Humans.GrossMinor, r.Backend.GrossMinor)</td></tr>
+                        <tr><th>Refunded</th><td class="text-end">@Eur(r.Humans.RefundedMinor)</td><td class="text-end">@Eur(r.Backend.RefundedMinor)</td><td class="text-end text-danger">@EurDiff(r.Humans.RefundedMinor, r.Backend.RefundedMinor)</td></tr>
+                        <tr><th>Chargebacks</th><td class="text-end">@Eur(r.Humans.DisputedMinor)</td><td class="text-end">@Eur(r.Backend.DisputedMinor)</td><td class="text-end text-danger">@EurDiff(r.Humans.DisputedMinor, r.Backend.DisputedMinor)</td></tr>
+                        <tr><th>Net</th><td class="text-end"><strong>@Eur(r.Humans.NetMinor)</strong></td><td class="text-end"><strong>@Eur(r.Backend.NetMinor)</strong></td><td class="text-end text-danger">@EurDiff(r.Humans.NetMinor, r.Backend.NetMinor)</td></tr>
+                        <tr><th>Tickets issued</th><td class="text-end">@r.TicketsIssued</td><td></td><td class="text-end text-danger">@Diff(r.Humans.Tickets, r.TicketsIssued)</td></tr>
+                    </tbody>
+                </table>
+
+                <h3 class="h6">@(Model.All ? $"Orders ({rows.Count})" : $"Differences ({rows.Count})")</h3>
+                @if (rows.Count == 0)
+                {
+                    <p class="text-muted mb-0">@(Model.All ? "No orders in this period." : "Every order matches.")</p>
+                }
+                else
+                {
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Created</th><th>Humans order</th><th>Backend order</th><th>State</th>
+                                <th class="text-end">Total</th><th class="text-end">Refunded</th><th class="text-end">Tickets</th><th>Issues</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var row in rows)
+                            {
+                                var o = row.Order;
+                                var b = row.Backend;
+                                <tr class="@(row.Issues.Count == 0 ? null : row.MoneyMoved ? "table-warning" : "table-light")">
+                                    <td>@row.CreatedAt.ToDateTime(Model.Zone)</td>
+                                    <td>
+                                        @if (o is not null)
+                                        {
+                                            <a asp-action="Order" asp-route-id="@o.Id"><code>@o.Reference</code></a>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">none</span>
+                                        }
+                                    </td>
+                                    <td>
+                                        @if (b is not null)
+                                        {
+                                            @if (o?.AdminUrl is { } adminUrl && b.BackendOrderId == o.BackendOrderId)
+                                            {
+                                                <a href="@adminUrl" target="_blank" rel="noopener"><code>@b.BackendOrderId</code></a>
+                                            }
+                                            else
+                                            {
+                                                <code>@b.BackendOrderId</code>
+                                            }
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">none</span>
+                                        }
+                                    </td>
+                                    <td>@(o?.State.ToString() ?? "–") / @(b?.State.ToString() ?? "–")</td>
+                                    <td class="text-end">@(Money(o?.TotalMinor) ?? "–") / @(Money(b?.TotalMinor) ?? "–")</td>
+                                    <td class="text-end">@(Money(o?.RefundedMinor) ?? "–") / @(Money(b?.RefundedMinor) ?? "–")</td>
+                                    <td class="text-end">
+                                        @(o?.Lines.Count(l => l.Kind == CheckoutLineKind.Ticket).ToString() ?? "–") /
+                                        @(b?.TicketCount?.ToString() ?? "–")@(row.TicketsIssued is { } issued ? $" · {issued} issued" : "")
+                                    </td>
+                                    <td>@string.Join(", ", row.Issues.Select(Issue))@(row.Issues.Count > 0 && !row.MoneyMoved ? " (no money moved)" : "")</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                    <p class="small text-muted mb-0">Each pair reads Humans / backend.</p>
+                }
+            }
+        </div>
+    </section>
+}

@@ -242,6 +242,56 @@ public class HoldedClientTests
         await act.Should().ThrowAsync<HoldedPermanentException>();
     }
 
+    [HumansTheory]
+    [Xunit.InlineData(HoldedSalesDocumentKind.Invoice, "/api/v2/invoices/doc-123/approve")]
+    [Xunit.InlineData(HoldedSalesDocumentKind.SalesReceipt, "/api/v2/sales-receipts/doc-123/approve")]
+    public async Task ApproveSalesDocumentAsync_SendsEmptyContentWithZeroContentLength(
+        HoldedSalesDocumentKind kind, string path)
+    {
+        HttpMethod? method = null;
+        string? seenPath = null;
+        long? contentLength = null;
+        var client = Make(new StubHandler(req =>
+        {
+            method = req.Method;
+            seenPath = req.RequestUri!.AbsolutePath;
+            contentLength = req.Content?.Headers.ContentLength;
+            return Respond(HttpStatusCode.OK, "{}");
+        }));
+
+        await client.ApproveSalesDocumentAsync(kind, "doc-123", Xunit.TestContext.Current.CancellationToken);
+
+        method.Should().Be(HttpMethod.Post);
+        seenPath.Should().Be(path);
+        contentLength.Should().Be(0);
+    }
+
+    [HumansFact]
+    public async Task ApproveSalesDocumentAsync_AlreadyApproved_ReturnsNormally()
+    {
+        var handler = new StubHandler(_ => Respond(HttpStatusCode.BadRequest,
+            """{"type":"https:\/\/api.holded.com\/problems\/bad-request","title":"Bad request","status":400,"detail":"Document already approved"}"""));
+        var client = Make(handler);
+
+        var act = async () => await client.ApproveSalesDocumentAsync(
+            HoldedSalesDocumentKind.Invoice, "doc-123", Xunit.TestContext.Current.CancellationToken);
+
+        await act.Should().NotThrowAsync();
+    }
+
+    [HumansFact]
+    public async Task ApproveSalesDocumentAsync_OtherBadRequest_StillThrows()
+    {
+        var handler = new StubHandler(_ => Respond(HttpStatusCode.BadRequest,
+            """{"status":400,"detail":"Document has no lines"}"""));
+        var client = Make(handler);
+
+        var act = async () => await client.ApproveSalesDocumentAsync(
+            HoldedSalesDocumentKind.Invoice, "doc-123", Xunit.TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<HoldedPermanentException>();
+    }
+
     [HumansFact]
     public async Task DeletePurchaseDocumentAsync_sends_DELETE_to_the_purchase_url()
     {

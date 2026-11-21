@@ -113,7 +113,7 @@ Each call is self-persisting via `IAuditLogRepository.AddAsync`, which opens a f
 
 ### Google Sync Audit — moved out
 
-Permission-change detail (user email, role, sync source, success flag, error message) is no longer audit's business. Google owns `google_sync_log_entries` and renders it through `<vc:google-sync-log>` (nobodies-collective/Humans#1083). See [Google.md](../../../Humans.Google/Docs/Google.md).
+Permission-change detail (user email, role, sync source, success flag, error message) is no longer audit's business. Google owns `google_sync_log_entries` and renders it through its internal `GoogleSyncLogViewComponent` (nobodies-collective/Humans#1083). See [Google.md](../../../Humans.Google/Docs/Google.md).
 
 ## User Interface
 
@@ -131,7 +131,7 @@ POST action on `MonitorController` (see [`AuditLog.md`](../AuditLog.md#routing))
 
 ### Google sync pages (`/Google/Resource/{id}`, `/Google/Human/{id}`)
 
-These Google pages render `<vc:google-sync-log>` over its `google_sync_log_entries`. Documented in [Google.md](../../../Humans.Google/Docs/Google.md).
+These Google pages render the internal `GoogleSyncLogViewComponent` over its `google_sync_log_entries`. Documented in [Google.md](../../../Humans.Google/Docs/Google.md).
 
 ### Per-User Audit View (MemberDetail page)
 

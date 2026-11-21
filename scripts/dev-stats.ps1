@@ -2,9 +2,21 @@
 # Run from the repo root before a demo; commit the result. Never runs at app runtime.
 $ErrorActionPreference = 'Stop'
 
-$repoRoot = git rev-parse --show-toplevel
+# Native failures do not terminate PowerShell pipelines. Check each Git result before
+# measuring or parsing it; grep exit 1 is a valid empty match set.
+function Invoke-StatsGit {
+    param([string[]] $GitArguments, [switch] $AllowNoMatches)
+    $result = & git @GitArguments
+    $gitExitCode = $LASTEXITCODE
+    if ($gitExitCode -ne 0 -and -not ($AllowNoMatches -and $gitExitCode -eq 1)) {
+        throw "git failed (exit ${gitExitCode}): $($GitArguments -join ' '); snapshot not written"
+    }
+    $result
+}
 
-$totalCommits = [int](git rev-list --count HEAD)
+$repoRoot = Invoke-StatsGit -GitArguments @('rev-parse', '--show-toplevel')
+
+$totalCommits = [int](Invoke-StatsGit -GitArguments @('rev-list', '--count', 'HEAD'))
 
 # Merged PRs on the fork (dev flow) + closed issues on upstream (the tracker).
 # gh caps list output; use the search API count instead for real totals.
@@ -17,21 +29,21 @@ $closedIssues = [int](gh api "search/issues?q=repo:nobodies-collective/Humans+is
 if ($LASTEXITCODE -ne 0) { throw "gh api failed (closed issues); snapshot not written" }
 
 # Test count: attribute occurrences across test sources (HumansFact/HumansTheory included).
-$testCount = (git grep -E '^\s*\[(Fact|Theory|HumansFact|HumansTheory)' -- 'tests/*.cs' | Measure-Object -Line).Lines
+$testCount = (Invoke-StatsGit -GitArguments @('grep', '-E', '^\s*\[(Fact|Theory|HumansFact|HumansTheory)', '--', 'tests/*.cs') -AllowNoMatches | Measure-Object -Line).Lines
 
 # Analyzer rules: distinct HUMxxxx diagnostic ids in the analyzer project.
-$analyzerRuleCount = (git grep -ohE 'HUM[0-9]{4}' -- 'src/Humans.Analyzers/*.cs' | Sort-Object -Unique | Measure-Object).Count
+$analyzerRuleCount = (Invoke-StatsGit -GitArguments @('grep', '-ohE', 'HUM[0-9]{4}', '--', 'src/Humans.Analyzers/*.cs') -AllowNoMatches | Sort-Object -Unique | Measure-Object).Count
 
 # Section count: a project is a section when its Section.cs implements ISection (SectionAttribute
 # was retired in peterdrier/Humans#1330). The class line can wrap, so match the file, not the line.
-$sectionCount = (git grep -lE '\bISection\b' -- 'src/Sections/*/Section.cs' | Measure-Object -Line).Lines
+$sectionCount = (Invoke-StatsGit -GitArguments @('grep', '-lE', '\bISection\b', '--', 'src/Sections/*/Section.cs') -AllowNoMatches | Measure-Object -Line).Lines
 
 # Per-author commit + line counts over the whole history. %aN applies .mailmap, so one person
 # committing under two names or emails is counted once. Claude-authored commits are AI work,
 # already reported by the co-author percentage, so they are not a contributor row.
 $authors = @{}
 $current = $null
-git log --numstat --format='AUTHOR:%aN' | ForEach-Object {
+Invoke-StatsGit -GitArguments @('log', '--numstat', '--format=AUTHOR:%aN') | ForEach-Object {
     if ($_ -like 'AUTHOR:*') {
         $current = $_.Substring(7)
         if (-not $authors.ContainsKey($current)) {
@@ -53,7 +65,7 @@ $contributors = $authors.GetEnumerator() | Where-Object { $_.Key -notmatch '\[bo
 # so counting lines double/triple-counts a single commit.
 $claudeCommits = 0
 $sawClaude = $false
-git log --format='@@COMMIT@@%n%(trailers:key=Co-Authored-By,valueonly)' | ForEach-Object {
+Invoke-StatsGit -GitArguments @('log', '--format=@@COMMIT@@%n%(trailers:key=Co-Authored-By,valueonly)') | ForEach-Object {
     if ($_ -eq '@@COMMIT@@') {
         if ($sawClaude) { $claudeCommits++ }
         $sawClaude = $false
@@ -66,7 +78,7 @@ if ($sawClaude) { $claudeCommits++ }
 $claudePercent = [math]::Round(100.0 * $claudeCommits / $totalCommits)
 
 $out = [ordered]@{
-    generatedDate = (git log -1 --format=%cs)
+    generatedDate = (Invoke-StatsGit -GitArguments @('log', '-1', '--format=%cs'))
     totalCommits = $totalCommits
     mergedPrs = $mergedPrs
     closedIssues = $closedIssues

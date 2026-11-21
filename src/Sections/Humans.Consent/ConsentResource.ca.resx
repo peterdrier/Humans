@@ -377,5 +377,4 @@
   <data name="Consent_Meter_OnboardingProfilesPending" xml:space="preserve"><value>Perfils d’incorporació pendents</value></data>
   <data name="Consent_Meter_AudienceConsentCoordinator" xml:space="preserve"><value>coordinadors de consentiment</value></data>
   <data name="Consent_Meter_AudienceBoard" xml:space="preserve"><value>la Junta</value></data>
-  <data name="Consent_Meter_AudienceShiftsAdmin" xml:space="preserve"><value>administradors de torns</value></data>
 </root>

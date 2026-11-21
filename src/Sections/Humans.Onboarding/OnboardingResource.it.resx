@@ -66,7 +66,6 @@
   <data name="Onboarding_LegalNameExplainerPost" xml:space="preserve"><value>esportiamo queste informazioni, e le divulgheremmo solo se richiesto dalla legge o da un audit formale.</value></data>
   <data name="Onboarding_LegalNameExplainerPre" xml:space="preserve"><value>Conservato internamente, visibile solo agli Admin e usato solo dove lo richiede la legge spagnola — per esempio, il nostro registro di audit attestante che hai accettato l'Accordo di volontariato in una data e ora specifiche. Esplicitamente</value></data>
   <data name="Onboarding_LegalNameLabel" xml:space="preserve"><value>Nome legale</value></data>
-  <data name="Onboarding_NameRequiredBeforeShifts" xml:space="preserve"><value>Aggiungi prima il tuo nome — ci serve prima che tu possa iscriverti ai turni.</value></data>
   <data name="Onboarding_NamesSubtitle" xml:space="preserve"><value>Due brevi passaggi prima di scegliere un turno.</value></data>
   <data name="Onboarding_NamesTitle" xml:space="preserve"><value>Benvenuto — iniziamo dal tuo nome</value></data>
   <data name="Onboarding_PriorityCritical" xml:space="preserve"><value>Critico</value></data>

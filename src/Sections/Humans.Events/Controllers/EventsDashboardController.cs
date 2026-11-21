@@ -1,3 +1,4 @@
+using Humans.Events.Domain;
 using Humans.Base.Extensions;
 using Humans.Camps.Contracts;
 using Humans.Events.Services;

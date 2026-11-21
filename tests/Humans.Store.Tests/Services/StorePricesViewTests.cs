@@ -163,6 +163,35 @@ public class StorePricesViewTests
         html.Contains("Stripe and the ledger are reconciled.", StringComparison.Ordinal).Should().Be(expectedSuccess);
     }
 
+    [HumansTheory]
+    [Xunit.InlineData(null)]
+    [Xunit.InlineData(75900001)]
+    [Xunit.InlineData(75999999)]
+    public async Task AccountPicker_OrdersChoicesByNumber_AndPreservesSelection(int? selected)
+    {
+        var model = new AccountPickerModel("Income", "Income", "Income account", selected,
+        [
+            new AccountChoice(75900008, "Gas cylinders"),
+            new AccountChoice(70500000, "Services"),
+            new AccountChoice(75900001, "Ice"),
+        ]);
+
+        var html = await RenderAsync("_AccountPicker", model,
+            viewPath: "/Views/StoreAdmin/_AccountPicker.cshtml");
+        var options = System.Text.RegularExpressions.Regex.Matches(html, "<option value=\"(?<value>[^\"]*)\"(?<attributes>[^>]*)>",
+            System.Text.RegularExpressions.RegexOptions.ExplicitCapture, TimeSpan.FromSeconds(1));
+        var values = options.Select(option => option.Groups["value"].Value).ToList();
+        var expected = new List<string> { "" };
+        if (selected == 75999999) expected.Add("75999999");
+        expected.AddRange(["70500000", "75900001", "75900008"]);
+
+        values.Should().Equal(expected);
+        options.Where(option => option.Groups["attributes"].Value.Contains("selected", StringComparison.Ordinal))
+            .Select(option => option.Groups["value"].Value)
+            .Should().Equal(selected is null ? [] : [selected.Value.ToString(CultureInfo.InvariantCulture)]);
+        html.Contains("no longer in the chart", StringComparison.Ordinal).Should().Be(selected == 75999999);
+    }
+
     private static IAuditViewerService? _lastAudit;
 
     private static async Task<string> RenderAsync(string page, object model, IReadOnlyList<AuditEvent>? history = null, string? viewPath = null)

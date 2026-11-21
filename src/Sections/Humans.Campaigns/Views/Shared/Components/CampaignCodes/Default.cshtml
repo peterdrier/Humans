@@ -1,4 +1,4 @@
-@model IReadOnlyList<Humans.Campaigns.Contracts.CampaignGrantSummary>
+@model IReadOnlyList<Humans.Campaigns.Services.Dtos.CampaignGrantSummary>
 @{
     var campaignCodesTable = TableModel.For(Model.OrderByDescending(g => g.AssignedAt).ToList())
         .Column("Campaign", g => g.CampaignTitle)
