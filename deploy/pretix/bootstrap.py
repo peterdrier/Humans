@@ -4,7 +4,7 @@
 #       -e EVENT_NAME="Nowhere 2027" -e EVENT_DATE=2027-06-08 -e TICKET_VAT=21 \
 #       <pretix container> bash -c 'cd /pretix/src && python3 manage.py shell' < bootstrap.py
 #
-# Prints the API token and item ids that go into Humans' Pretix settings. Stripe keys, payment-method fees and the
+# Prints the API token and webhook secret that go into Humans' Pretix settings. Stripe keys, payment-method fees and the
 # admin user's password are set by a person in pretix's control panel afterwards.
 import os
 import secrets
@@ -45,10 +45,11 @@ with scopes_disabled():
     vat, _ = TaxRule.objects.get_or_create(
         event=event, name=f"IVA {os.environ.get('TICKET_VAT', '21')}%",
         defaults={"rate": Decimal(os.environ.get("TICKET_VAT", "21")), "price_includes_tax": True})
-    ticket, _ = Item.objects.get_or_create(event=event, name="Ticket", defaults={
-        "default_price": Decimal("0"), "admission": True, "free_price": True, "tax_rule": vat})
-    donation, _ = Item.objects.get_or_create(event=event, name="Donation", defaults={
-        "default_price": Decimal("0"), "admission": False, "free_price": True})
+    # Humans finds these two by internal name, per event.
+    ticket, _ = Item.objects.get_or_create(event=event, internal_name="humans-ticket", defaults={
+        "name": "Ticket", "default_price": Decimal("0"), "admission": True, "free_price": True, "tax_rule": vat})
+    donation, _ = Item.objects.get_or_create(event=event, internal_name="humans-donation", defaults={
+        "name": "Donation", "default_price": Decimal("0"), "admission": False, "free_price": True})
 
     team, _ = Team.objects.get_or_create(organizer=org, name="Humans API", defaults={"all_events": True})
     for flag in ("all_event_permissions", "can_view_orders", "can_change_orders"):
@@ -69,8 +70,6 @@ with scopes_disabled():
 
     print(f"Pretix__BaseUrl        = <this pretix's URL>")
     print(f"Pretix__Organizer      = {org.slug}")
-    print(f"Pretix__TicketItemId   = {ticket.pk}")
-    print(f"Pretix__DonationItemId = {donation.pk}")
     print(f"PRETIX_API_TOKEN       = {token.token}")
     print(f"PRETIX_WEBHOOK_SECRET  = {webhook_secret}")
     print(f"Tickets sales event: backend 'pretix', event id in the backend '{event.slug}', ticket VAT {vat.rate / 100}")

@@ -34,6 +34,14 @@ internal sealed class PretixCheckoutBackend(
 {
     public const string BackendKey = "pretix";
 
+    /// <summary>
+    /// Internal names of the carrier items every pretix event needs: one admission item taxed like a ticket, one
+    /// non-admission item without tax, both "free price". pretix items belong to one event, so they are looked up per
+    /// event rather than configured.
+    /// </summary>
+    internal const string TicketItemName = "humans-ticket";
+    internal const string DonationItemName = "humans-donation";
+
     private const string HumansOrderIdMeta = "humans_order_id";
     private const string RefundCommentPrefix = "humans-refund:";
 
@@ -66,8 +74,10 @@ internal sealed class PretixCheckoutBackend(
             throw new TicketCheckoutException(
                 $"pretix event {eventSlug} sells in {ev.Currency}, not {request.Currency}.");
 
+        var items = await SendAsync<PretixPage<PretixItem>>(
+            HttpMethod.Get, $"{EventPath(eventSlug)}items/?active=true", body: null, ct);
         var code = OrderCode(request.OrderId);
-        var body = BuildOrderBody(request, code);
+        var body = BuildOrderBody(request, code, CarrierItem(items, TicketItemName), CarrierItem(items, DonationItemName));
         var created = true;
 
         var response = await PostOrderAsync(eventSlug, body, ct);
@@ -241,7 +251,12 @@ internal sealed class PretixCheckoutBackend(
             refunded);
     }
 
-    private JsonObject BuildOrderBody(CheckoutRequest request, string code)
+    private static int CarrierItem(PretixPage<PretixItem> items, string internalName) =>
+        items.Results.SingleOrDefault(i => string.Equals(i.InternalName, internalName, StringComparison.Ordinal))?.Id
+        ?? throw new TicketCheckoutException(
+            $"The pretix event has no active item with internal name '{internalName}' (see deploy/pretix/bootstrap.py).");
+
+    private static JsonObject BuildOrderBody(CheckoutRequest request, string code, int ticketItem, int donationItem)
     {
         var positions = new JsonArray();
         for (var i = 0; i < request.Lines.Count; i++)
@@ -250,7 +265,7 @@ internal sealed class PretixCheckoutBackend(
             var position = new JsonObject
             {
                 ["positionid"] = i + 1,
-                ["item"] = line.Kind == CheckoutLineKind.Ticket ? Settings.TicketItemId : Settings.DonationItemId,
+                ["item"] = line.Kind == CheckoutLineKind.Ticket ? ticketItem : donationItem,
                 ["price"] = FormatMoney(line.AmountMinor),
             };
             if (line.Kind == CheckoutLineKind.Ticket)
@@ -422,6 +437,10 @@ internal sealed class PretixCheckoutBackend(
     private sealed record RawResponse(HttpStatusCode Status, string Body);
 
     internal sealed record PretixEvent(string Currency);
+
+    internal sealed record PretixPage<T>(IReadOnlyList<T> Results);
+
+    internal sealed record PretixItem(int Id, string? InternalName);
 
     internal sealed record PretixOrder(
         string Code,

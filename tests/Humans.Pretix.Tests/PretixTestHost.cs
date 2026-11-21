@@ -15,8 +15,6 @@ internal static class PretixTestHost
     {
         BaseUrl = "https://pretix.test/",
         Organizer = "nobodies",
-        TicketItemId = 1,
-        DonationItemId = 2,
         ApiToken = "tok",
         WebhookSecret = "s3cret",
     };

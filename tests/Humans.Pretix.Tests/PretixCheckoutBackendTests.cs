@@ -25,8 +25,18 @@ public class PretixCheckoutBackendTests
         Instant.FromUtc(2026, 11, 21, 1, 0),
         new Uri("https://humans.test/Tickets/Checkout/Return?order=1"));
 
-    private static FakePretix WithEvent(string currency = "EUR") =>
-        new FakePretix().On("GET", Api, HttpStatusCode.OK, new { currency });
+    private static FakePretix WithEvent(string currency = "EUR", string donationItemName = "humans-donation") =>
+        new FakePretix()
+            .On("GET", Api, HttpStatusCode.OK, new { currency })
+            .On("GET", $"{Api}items/", HttpStatusCode.OK, new
+            {
+                results = new object[]
+                {
+                    new { id = 7, internal_name = "humans-ticket" },
+                    new { id = 8, internal_name = donationItemName },
+                    new { id = 9, internal_name = (string?)null },
+                },
+            });
 
     [HumansFact]
     public async Task Create_PostsHumansPricesAndReturnsPayLinkBackToHumans()
@@ -49,10 +59,10 @@ public class PretixCheckoutBackendTests
         body["expires"]!.GetValue<string>().Should().Be("2026-11-21T01:00:00Z");
         body["api_meta"]!["humans_order_id"]!.GetValue<string>().Should().Be(OrderId.ToString());
         var positions = body["positions"]!.AsArray();
-        positions[0]!["item"]!.GetValue<int>().Should().Be(1);
+        positions[0]!["item"]!.GetValue<int>().Should().Be(7);
         positions[0]!["price"]!.GetValue<string>().Should().Be("225.00");
         positions[0]!["attendee_name"]!.GetValue<string>().Should().Be("Ana Attendee");
-        positions[1]!["item"]!.GetValue<int>().Should().Be(2);
+        positions[1]!["item"]!.GetValue<int>().Should().Be(8);
         positions[1]!["price"]!.GetValue<string>().Should().Be("775.00");
         positions[1]!.AsObject().ContainsKey("attendee_name").Should().BeFalse();
     }
@@ -108,6 +118,17 @@ public class PretixCheckoutBackendTests
         var bodies = pretix.BodiesFor("POST", $"{Api}orders/").ToList();
         bodies.Should().HaveCount(2);
         JsonNode.Parse(bodies[1]!)!.AsObject().ContainsKey("locale").Should().BeFalse();
+    }
+
+    [HumansFact]
+    public async Task Create_EventWithoutCarrierItems_ThrowsBeforeCreating()
+    {
+        var pretix = WithEvent(donationItemName: "something-else");
+
+        var act = () => Create(pretix).CreateCheckoutAsync(Request(), TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<TicketCheckoutException>().WithMessage("*humans-donation*");
+        pretix.BodiesFor("POST", $"{Api}orders/").Should().BeEmpty();
     }
 
     [HumansFact]

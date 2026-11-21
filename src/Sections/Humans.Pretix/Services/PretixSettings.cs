@@ -1,9 +1,8 @@
 namespace Humans.Pretix.Services;
 
 /// <summary>
-/// One pretix organizer. The event slug comes per order from Tickets (<c>CheckoutRequest.BackendEventRef</c>), so one
-/// set of settings serves every event on the instance. The catalogue items are plain carriers for Humans' prices: one
-/// admission item taxed like a ticket, one non-admission item with no tax for donations, both "free price".
+/// One pretix organizer. The event slug comes per order from Tickets (<c>CheckoutRequest.BackendEventRef</c>), and
+/// each event's carrier items are found by their internal names, so one set of settings serves every event.
 /// </summary>
 internal sealed class PretixSettings
 {
@@ -14,10 +13,6 @@ internal sealed class PretixSettings
 
     public string Organizer { get; set; } = string.Empty;
 
-    public int TicketItemId { get; set; }
-
-    public int DonationItemId { get; set; }
-
     /// <summary>A team API token; from <c>PRETIX_API_TOKEN</c>.</summary>
     public string ApiToken { get; set; } = string.Empty;
 
@@ -27,7 +22,5 @@ internal sealed class PretixSettings
     public bool IsConfigured =>
         Uri.TryCreate(BaseUrl, UriKind.Absolute, out _)
         && !string.IsNullOrWhiteSpace(Organizer)
-        && !string.IsNullOrWhiteSpace(ApiToken)
-        && TicketItemId > 0
-        && DonationItemId > 0;
+        && !string.IsNullOrWhiteSpace(ApiToken);
 }

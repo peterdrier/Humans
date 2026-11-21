@@ -31,8 +31,6 @@ public sealed class Section : ISection, ISectionConfiguration
     {
         configuration.GetOptionalSetting(registry, "Pretix:BaseUrl", "Pretix");
         configuration.GetOptionalSetting(registry, "Pretix:Organizer", "Pretix");
-        configuration.GetOptionalSetting(registry, "Pretix:TicketItemId", "Pretix");
-        configuration.GetOptionalSetting(registry, "Pretix:DonationItemId", "Pretix");
         registry.RegisterEnvironmentVariable("PRETIX_API_TOKEN", "Pretix", isSensitive: true);
         registry.RegisterEnvironmentVariable("PRETIX_WEBHOOK_SECRET", "Pretix", isSensitive: true);
     }
