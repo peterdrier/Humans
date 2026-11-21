@@ -52,13 +52,7 @@ internal sealed class RolesController(
         if (await FindOwnerAsync(kind, key, ct) is not { } owner) return NotFound();
         if (!await roles.CanManageAsync(owner.Owner, user.Id, ct)) return Forbid();
 
-        var rows = (await roles.GetRolesAsync(ct))
-            .Where(r => r.Owner == owner.Owner)
-            .OrderBy(r => r.SortOrder).ThenBy(r => r.Name, StringComparer.OrdinalIgnoreCase)
-            .Select(r => new RoleRow(r, RoleUrl(owner, r)))
-            .ToList();
-
-        return View(new OwnerPageViewModel(owner, rows, await roles.GetPermissionChoicesAsync(owner.Owner, ct), IsRolesAdmin()));
+        return View(nameof(Owner), await OwnerPageAsync(owner, new RoleForm(), ct));
     }
 
     [HttpGet("{kind}/{key}/{slug}")]
@@ -71,16 +65,7 @@ internal sealed class RolesController(
         var role = (await roles.GetVisibleRolesAsync(user.Id, ct)).FirstOrDefault(r => r.Owner == owner.Owner && Matches(r, slug));
         if (role is null) return NotFound();
 
-        var canManage = await roles.CanManageAsync(owner.Owner, user.Id, ct);
-        var isRolesAdmin = IsRolesAdmin();
-        return View(new RolePageViewModel(
-            owner,
-            role,
-            canManage,
-            CanChangeHolders: role.IsCoordinator ? isRolesAdmin : canManage,
-            await roles.GetContactsAsync(owner.Owner, ct),
-            canManage ? await roles.GetPermissionChoicesAsync(owner.Owner, ct) : [],
-            isRolesAdmin));
+        return View(nameof(Role), await RolePageAsync(owner, role, user.Id, RoleForm.From(role), ct));
     }
 
     [HttpPost("{kind}/{key}/Add")]
@@ -95,7 +80,8 @@ internal sealed class RolesController(
         if (!result.Succeeded)
         {
             SetError(result.Refusal!);
-            return RedirectToAction(nameof(Owner), new { kind, key });
+            if (!await roles.CanManageAsync(owner.Owner, user.Id, ct)) return RedirectToAction(nameof(Index));
+            return View(nameof(Owner), await OwnerPageAsync(owner, form, ct));
         }
 
         SetSuccess(localizer["Roles_Added", result.Role!.Name].Value);
@@ -104,8 +90,24 @@ internal sealed class RolesController(
 
     [HttpPost("{kind}/{key}/{slug}/Edit")]
     [ValidateAntiForgeryToken]
-    public Task<IActionResult> Edit(string kind, string key, string slug, RoleForm form, CancellationToken ct) =>
-        ChangeAsync(kind, key, slug, ct, (role, actor) => roles.UpdateAsync(role.Id, form.ToInput(), actor, ct), "Roles_Saved");
+    public async Task<IActionResult> Edit(string kind, string key, string slug, RoleForm form, CancellationToken ct)
+    {
+        var (error, user) = await RequireCurrentUserAsync(ct);
+        if (error is not null) return error;
+        if (await FindOwnerAsync(kind, key, ct) is not { } owner) return NotFound();
+        if (await FindRoleAsync(owner, slug, ct) is not { } role) return NotFound();
+
+        var result = await roles.UpdateAsync(role.Id, form.ToInput(), user.Id, ct);
+        if (!result.Succeeded)
+        {
+            SetError(result.Refusal!);
+            if (!await roles.CanManageAsync(owner.Owner, user.Id, ct)) return Redirect(RoleUrl(owner, role));
+            return View(nameof(Role), await RolePageAsync(owner, role, user.Id, form, ct));
+        }
+
+        SetSuccess(localizer["Roles_Saved", result.Role!.Name].Value);
+        return Redirect(RoleUrl(owner, result.Role));
+    }
 
     [HttpPost("{kind}/{key}/{slug}/Assign")]
     [ValidateAntiForgeryToken]
@@ -155,6 +157,31 @@ internal sealed class RolesController(
 
         SetSuccess(localizer[successKey, result.Role!.Name].Value);
         return Redirect(RoleUrl(owner, result.Role));
+    }
+
+    private async Task<OwnerPageViewModel> OwnerPageAsync(OwnerView owner, RoleForm addForm, CancellationToken ct)
+    {
+        var rows = (await roles.GetRolesAsync(ct))
+            .Where(r => r.Owner == owner.Owner)
+            .OrderBy(r => r.SortOrder).ThenBy(r => r.Name, StringComparer.OrdinalIgnoreCase)
+            .Select(r => new RoleRow(r, RoleUrl(owner, r)))
+            .ToList();
+        return new OwnerPageViewModel(owner, rows, await roles.GetPermissionChoicesAsync(owner.Owner, ct), IsRolesAdmin(), addForm);
+    }
+
+    private async Task<RolePageViewModel> RolePageAsync(OwnerView owner, RoleInfo role, Guid userId, RoleForm editForm, CancellationToken ct)
+    {
+        var canManage = await roles.CanManageAsync(owner.Owner, userId, ct);
+        var isRolesAdmin = IsRolesAdmin();
+        return new RolePageViewModel(
+            owner,
+            role,
+            canManage,
+            CanChangeHolders: role.IsCoordinator ? isRolesAdmin : canManage,
+            await roles.GetContactsAsync(owner.Owner, ct),
+            canManage ? await roles.GetPermissionChoicesAsync(owner.Owner, ct) : [],
+            isRolesAdmin,
+            editForm);
     }
 
     private async Task<OwnerView?> FindOwnerAsync(string kind, string key, CancellationToken ct) =>

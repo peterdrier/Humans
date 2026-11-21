@@ -27,7 +27,8 @@ internal sealed record OwnerPageViewModel(
     OwnerView Owner,
     IReadOnlyList<RoleRow> Roles,
     IReadOnlyList<Permission> Permissions,
-    bool CanSetCoordinator);
+    bool CanSetCoordinator,
+    RoleForm AddForm);
 
 internal sealed record RolePageViewModel(
     OwnerView Owner,
@@ -36,7 +37,8 @@ internal sealed record RolePageViewModel(
     bool CanChangeHolders,
     IReadOnlyList<Guid> Contacts,
     IReadOnlyList<Permission> Permissions,
-    bool CanSetCoordinator);
+    bool CanSetCoordinator,
+    RoleForm EditForm);
 
 internal sealed record RolesCardViewModel(IReadOnlyList<RoleRow> Roles, bool CanManage, string ManageUrl);
 
@@ -54,6 +56,21 @@ internal sealed class RoleForm
     public bool IsPublic { get; set; } = true;
     public bool IsCoordinator { get; set; }
     public List<string> PermissionKeys { get; set; } = [];
+
+    public static RoleForm From(RoleInfo role) => new()
+    {
+        Name = role.Name,
+        CustomSlug = role.CustomSlug,
+        Description = role.Description,
+        SlotCount = role.SlotCount,
+        Priorities = [.. role.Priorities],
+        SortOrder = role.SortOrder,
+        Period = role.Period,
+        EstimatedHours = role.EstimatedHours,
+        IsPublic = role.IsPublic,
+        IsCoordinator = role.IsCoordinator,
+        PermissionKeys = [.. role.PermissionKeys],
+    };
 
     /// <summary>New slots start at no priority; extra priorities beyond the slot count are dropped.</summary>
     public RoleInput ToInput() => new(
@@ -82,9 +99,11 @@ internal static class RolePriorityOrder
     };
 }
 
-/// <summary>The add form when <paramref name="Role"/> is null, else the edit form.</summary>
+/// <summary>The add or edit form, filled from <paramref name="Form"/> so a refused post keeps what was typed.</summary>
 internal sealed record RoleFormViewModel(
-    RoleInfo? Role,
+    RoleForm Form,
+    string Id,
+    bool IsNew,
     string Action,
     IReadOnlyList<Permission> Permissions,
     bool CanSetCoordinator);

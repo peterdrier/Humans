@@ -1,10 +1,10 @@
 @model RoleFormViewModel
 
 @{
-    var role = Model.Role;
-    var id = role?.Id.ToString("N") ?? "new";
-    var priorities = role?.Priorities ?? [SlotPriority.None];
-    var isCoordinator = role?.IsCoordinator ?? false;
+    var form = Model.Form;
+    var id = Model.Id;
+    IReadOnlyList<SlotPriority> priorities = form.Priorities.Count > 0 ? form.Priorities : [SlotPriority.None];
+    var isCoordinator = form.IsCoordinator;
 }
 
 <form action="@Model.Action" method="post">
@@ -12,32 +12,32 @@
     <div class="row g-3">
         <div class="col-md-6">
             <label class="form-label" for="name-@id">@Localizer["Roles_Form_Name"]</label>
-            <input type="text" class="form-control" id="name-@id" name="Name" value="@role?.Name" maxlength="100" required />
+            <input type="text" class="form-control" id="name-@id" name="Name" value="@form.Name" maxlength="100" required />
         </div>
         <div class="col-md-6">
             <label class="form-label" for="slug-@id">@Localizer["Roles_Form_CustomSlug"]</label>
-            <input type="text" class="form-control" id="slug-@id" name="CustomSlug" value="@role?.CustomSlug" />
+            <input type="text" class="form-control" id="slug-@id" name="CustomSlug" value="@form.CustomSlug" />
         </div>
         <div class="col-6 col-md-3">
             <label class="form-label" for="slots-@id">@Localizer["Roles_Form_Slots"]</label>
-            <input type="number" class="form-control" id="slots-@id" name="SlotCount" value="@(role?.SlotCount ?? 1)" min="1" required />
+            <input type="number" class="form-control" id="slots-@id" name="SlotCount" value="@form.SlotCount" min="1" required />
         </div>
         <div class="col-6 col-md-3">
             <label class="form-label" for="period-@id">@Localizer["Roles_Col_Period"]</label>
             <select class="form-select" id="period-@id" name="Period">
                 @foreach (var period in Enum.GetValues<RolePeriod>())
                 {
-                    <option value="@period" selected="@(role?.Period == period)">@SharedLocalizer[$"Enum_RolePeriod_{period}"]</option>
+                    <option value="@period" selected="@(form.Period == period)">@SharedLocalizer[$"Enum_RolePeriod_{period}"]</option>
                 }
             </select>
         </div>
         <div class="col-6 col-md-3">
             <label class="form-label" for="hours-@id">@Localizer["Roles_Form_Hours"]</label>
-            <input type="number" class="form-control" id="hours-@id" name="EstimatedHours" value="@role?.EstimatedHours" min="0" />
+            <input type="number" class="form-control" id="hours-@id" name="EstimatedHours" value="@form.EstimatedHours" min="0" />
         </div>
         <div class="col-6 col-md-3">
             <label class="form-label" for="sort-@id">@Localizer["Roles_Form_Sort"]</label>
-            <input type="number" class="form-control" id="sort-@id" name="SortOrder" value="@(role?.SortOrder ?? 0)" required />
+            <input type="number" class="form-control" id="sort-@id" name="SortOrder" value="@form.SortOrder" required />
         </div>
         <div class="col-12">
             <span class="form-label d-block">@Localizer["Roles_Form_Priorities"]</span>
@@ -56,11 +56,11 @@
         </div>
         <div class="col-12">
             <label class="form-label" for="description-@id">@Localizer["Roles_Form_Description"]</label>
-            <markdown-editor name="Description" id="description-@id" value="@role?.Description" rows="3" maxlength="2000" />
+            <markdown-editor name="Description" id="description-@id" value="@form.Description" rows="3" maxlength="2000" />
         </div>
         <div class="col-12">
             <div class="form-check">
-                <input type="checkbox" class="form-check-input" id="public-@id" name="IsPublic" value="true" checked="@(role?.IsPublic ?? true)" />
+                <input type="checkbox" class="form-check-input" id="public-@id" name="IsPublic" value="true" checked="@form.IsPublic" />
                 <input type="hidden" name="IsPublic" value="false" />
                 <label class="form-check-label" for="public-@id">@Localizer["Roles_Form_Public"]</label>
             </div>
@@ -86,7 +86,7 @@
                 {
                     <div class="form-check">
                         <input type="checkbox" class="form-check-input" id="perm-@id-@permission.Key" name="PermissionKeys" value="@permission.Key"
-                               checked="@(role?.PermissionKeys.Contains(permission.Key) == true)" />
+                               checked="@form.PermissionKeys.Contains(permission.Key)" />
                         <label class="form-check-label" for="perm-@id-@permission.Key">@permission.Title</label>
                         <div class="form-text">@permission.Blurb</div>
                     </div>
@@ -94,7 +94,7 @@
             </fieldset>
         }
         <div class="col-12">
-            <button type="submit" class="btn btn-primary">@(role is null ? Localizer["Roles_Form_Add"] : Localizer["Roles_Form_Save"])</button>
+            <button type="submit" class="btn btn-primary">@(Model.IsNew ? Localizer["Roles_Form_Add"] : Localizer["Roles_Form_Save"])</button>
         </div>
     </div>
 </form>
