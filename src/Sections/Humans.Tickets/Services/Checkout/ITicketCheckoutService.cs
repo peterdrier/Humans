@@ -22,6 +22,9 @@ internal interface ITicketCheckoutService : ITicketCheckoutEvents, IApplicationS
 
     Task<CheckoutMutationResult> SaveSalesEventAsync(SalesEventSave save, Guid actorUserId, CancellationToken ct = default);
 
+    /// <summary>The ticketing team opens or pauses resale by hand; returned tickets wait in the queue while it is paused.</summary>
+    Task<CheckoutMutationResult> SetResaleOpenAsync(Guid salesEventId, bool open, Guid actorUserId, CancellationToken ct = default);
+
     /// <summary>One page per event selling through Humans (not Closed); several events may sell at once.</summary>
     Task<IReadOnlyList<BuyPage>> GetBuyPagesAsync(Guid userId, CancellationToken ct = default);
 
@@ -143,8 +146,6 @@ internal sealed record SalesEventSave(
 {
     public long? ChildPriceMinor { get; init; }
     public int? ChildMaxAge { get; init; }
-    public int? ResaleOpensAtSold { get; init; }
-    public int DirectedResaleDays { get; init; } = 3;
     public TicketSalesSwitches Switches { get; init; } = new();
     public string? TermsUrl { get; init; }
 }

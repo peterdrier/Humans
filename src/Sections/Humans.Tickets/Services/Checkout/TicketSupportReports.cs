@@ -48,23 +48,15 @@ internal static class TicketSupportReports
     }
 
     /// <summary>
-    /// Each waiting offer's place: how many offers sell to the public before it, plus one. A live invitation sells only
-    /// to its invitee, so it takes no place from anyone; its own place is where it stands if the link lapses.
+    /// Each waiting offer's place, oldest first. An invited offer keeps its place: the invitation is only a second way
+    /// to sell it.
     /// </summary>
-    public static IReadOnlyDictionary<Guid, int> QueuePositions(IEnumerable<TicketResaleOffer> offers, Instant now)
-    {
-        var positions = new Dictionary<Guid, int>();
-        var ahead = 0;
-        foreach (var offer in offers
-                     .Where(o => o.State is TicketResaleOfferState.Open or TicketResaleOfferState.Reserved)
-                     .OrderBy(o => o.OfferedAt))
-        {
-            positions[offer.Id] = ahead + 1;
-            if (!offer.IsDirectedTo(now))
-                ahead++;
-        }
-        return positions;
-    }
+    public static IReadOnlyDictionary<Guid, int> QueuePositions(IEnumerable<TicketResaleOffer> offers) =>
+        offers
+            .Where(o => o.State is TicketResaleOfferState.Open or TicketResaleOfferState.Reserved)
+            .OrderBy(o => o.OfferedAt)
+            .Select((o, i) => (o.Id, Position: i + 1))
+            .ToDictionary(p => p.Id, p => p.Position);
 
     /// <summary>Waiting offers in selling order, then sold and withdrawn offers, newest first.</summary>
     public static IReadOnlyList<ResaleQueueRow> ResaleQueue(
@@ -75,11 +67,11 @@ internal static class TicketSupportReports
     {
         var byId = tickets.ToDictionary(t => t.Id);
         var refundsById = refunds.ToDictionary(r => r.Id);
-        var positions = QueuePositions(offers, now);
+        var positions = QueuePositions(offers);
         var waiting = offers
             .Where(o => positions.ContainsKey(o.Id))
             .OrderBy(o => o.OfferedAt)
-            .Select(o => new ResaleQueueRow(o, byId.GetValueOrDefault(o.TicketId), positions[o.Id], o.IsDirectedTo(now), null));
+            .Select(o => new ResaleQueueRow(o, byId.GetValueOrDefault(o.TicketId), positions[o.Id], o.HasLiveInvite, null));
         var closed = offers
             .Where(o => o.State is TicketResaleOfferState.Sold or TicketResaleOfferState.Withdrawn)
             .OrderByDescending(o => o.SoldAt ?? o.WithdrawnAt ?? o.OfferedAt)

@@ -156,7 +156,6 @@ public class TicketCheckoutRepositoryTests(HumansTestDatabase database) : Integr
             RefundOwedMinor = 22500,
             DirectedEmail = "bo@example.com",
             DirectedTokenHash = "ABC",
-            DirectedExpiresAt = Now + Duration.FromDays(3),
         };
         await repo.AddOfferAsync(offer, ct);
         adult.State = TicketCheckoutTicketState.Offered;

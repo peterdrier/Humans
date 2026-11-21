@@ -64,9 +64,24 @@ internal sealed class TicketsSupportAdminController(
         var rows = TicketSupportReports.ResaleQueue(
             await checkout.GetOffersForSalesEventAsync(id, ct), tickets, await checkout.GetRefundsForSalesEventAsync(id, ct),
             clock.GetCurrentInstant());
-        var sold = tickets.Count(t => t.State is TicketCheckoutTicketState.Valid or TicketCheckoutTicketState.Offered);
         return View("~/Views/Tickets/Admin/Sales/Resale.cshtml", new ResaleViewModel(
-            id, await EventNameAsync(salesEvent, ct), salesEvent, sold, rows));
+            id, await EventNameAsync(salesEvent, ct), salesEvent, rows));
+    }
+
+    [HttpPost("{id:guid}/Resale/Open")]
+    [Authorize(Policy = TicketsPolicies.Manage)]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> SetResaleOpen(Guid id, bool open, CancellationToken ct)
+    {
+        var (errorResult, user) = await RequireCurrentUserAsync(ct);
+        if (errorResult is not null) return errorResult;
+
+        var result = await checkout.SetResaleOpenAsync(id, open, user.Id, ct);
+        if (result.Succeeded)
+            SetSuccess(open ? "Resale is open." : "Resale is paused.");
+        else
+            SetError(result.Refusal!);
+        return RedirectToAction(nameof(Resale), new { id });
     }
 
     [HttpGet("{id:guid}/Report")]
@@ -148,13 +163,11 @@ internal sealed record LookupViewModel(string Query, IReadOnlyList<OrderSearchHi
 
 internal sealed record RefundsViewModel(Guid SalesEventId, string EventName, RefundState? State, IReadOnlyList<RefundListRow> Rows);
 
-/// <summary><paramref name="Sold"/>: live tickets, which open resale at the event's threshold.</summary>
 internal sealed record ResaleViewModel(
-    Guid SalesEventId, string EventName, TicketSalesEvent SalesEvent, int Sold, IReadOnlyList<ResaleQueueRow> Rows)
+    Guid SalesEventId, string EventName, TicketSalesEvent SalesEvent, IReadOnlyList<ResaleQueueRow> Rows)
 {
     public TicketSalesMode Mode => SalesEvent.Mode;
-    public int? OpensAtSold => SalesEvent.ResaleOpensAtSold;
-    public bool ResaleOpen => SalesEvent.ResaleOpenAt(Sold);
+    public bool ResaleSelling => SalesEvent.ResaleSelling;
     public bool SwitchedOff => SalesEvent.EffectiveSwitches.Resale == ResaleScheme.Off;
 }
 

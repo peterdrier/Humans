@@ -12,11 +12,6 @@
     RefundState[] states = [RefundState.Pending, RefundState.Succeeded, RefundState.Failed, RefundState.ManualRequired];
 }
 
-@section Crumbs {
-    <a asp-controller="TicketsSalesAdmin" asp-action="Index">Sales</a>
-    <span>Refunds</span>
-}
-
 <page-header title="Refunds: @Model.EventName" />
 
 <ul class="nav nav-pills mb-3">

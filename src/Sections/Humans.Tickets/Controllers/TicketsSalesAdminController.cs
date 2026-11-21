@@ -1,5 +1,6 @@
 using System.Globalization;
 using Humans.Base.Controllers;
+using Humans.Base.Extensions;
 using Humans.Base.Interfaces;
 using Humans.Grants.Contracts;
 using Humans.Settings.Contracts;
@@ -59,7 +60,8 @@ internal sealed class TicketsSalesAdminController(
         var salesEvent = id is { } existing ? await checkout.GetSalesEventAsync(existing, ct) : null;
         if (id is not null && salesEvent is null)
             return NotFound();
-        return View("~/Views/Tickets/Admin/Sales/Edit.cshtml", await EditModelAsync(SalesEditForm.From(salesEvent), null, ct));
+        return View("~/Views/Tickets/Admin/Sales/Edit.cshtml",
+            await EditModelAsync(SalesEditForm.From(salesEvent, orgTimeZone.Zone), null, ct));
     }
 
     [HttpPost("Edit/{id:guid?}")]
@@ -70,7 +72,7 @@ internal sealed class TicketsSalesAdminController(
         var (errorResult, user) = await RequireCurrentUserAsync(ct);
         if (errorResult is not null) return errorResult;
 
-        var (save, parseError) = form.ToSave(id);
+        var (save, parseError) = form.ToSave(id, orgTimeZone.Zone);
         var result = save is null ? new CheckoutMutationResult(parseError) : await checkout.SaveSalesEventAsync(save, user.Id, ct);
         if (!result.Succeeded)
             return View("~/Views/Tickets/Admin/Sales/Edit.cshtml", await EditModelAsync(form, result.Refusal, ct));
@@ -170,7 +172,8 @@ internal sealed class TicketsSalesAdminController(
         new(checkout.Backends, await checkout.GetSalesEventsAsync(ct), await settings.GetAllEventSettingsAsync(ct), check);
 
     private async Task<SalesEditViewModel> EditModelAsync(SalesEditForm form, string? error, CancellationToken ct) =>
-        new(form, error, await settings.GetAllEventSettingsAsync(ct), await grants.GetProgramSummariesAsync(ct), checkout.Backends);
+        new(form, error, await settings.GetAllEventSettingsAsync(ct), await grants.GetProgramSummariesAsync(ct), checkout.Backends,
+            orgTimeZone.Zone);
 }
 
 internal sealed record SalesAdminIndexViewModel(
@@ -206,11 +209,12 @@ internal sealed record SalesEditViewModel(
     string? Error,
     IReadOnlyList<EventSettingsInfo> Events,
     IReadOnlyList<GrantProgramSummary> Programs,
-    IReadOnlyList<CheckoutBackendInfo> Backends);
+    IReadOnlyList<CheckoutBackendInfo> Backends,
+    DateTimeZone Zone);
 
 /// <summary>
-/// The lists are one entry per line, <c>;</c>-separated, amounts in euros: waves <c>name;end date;price</c>, rules
-/// <c>grant program id;ClassPrice|Credit;amount;label</c>. Supporter totals are comma-separated euros.
+/// Amounts are euros and the VAT a percentage, posted as text and read with the invariant culture (number inputs send
+/// a dot whatever the admin's language). A row left wholly blank is dropped, so an empty spare row is harmless.
 /// </summary>
 internal sealed class SalesEditForm
 {
@@ -218,41 +222,66 @@ internal sealed class SalesEditForm
     public string BackendKey { get; set; } = string.Empty;
     public string? BackendEventRef { get; set; }
     public TicketSalesMode Mode { get; set; }
+
+    /// <summary>Local date and time in the organisation's time zone, as a datetime-local input posts it.</summary>
     public string? SalesCloseAt { get; set; }
+
     public int Capacity { get; set; } = 3000;
-    public decimal TicketVatRate { get; set; } = 0.10m;
-    public string? Waves { get; set; }
-    public string? SupporterTotals { get; set; }
-    public string? PriceRules { get; set; }
+    public string? TicketVatPercent { get; set; } = "10";
+    public List<WaveRow> Waves { get; set; } = [];
+    public List<SupporterRow> SupporterLevels { get; set; } = [];
+    public List<PriceRuleRow> PriceRules { get; set; } = [];
     public string? ChildPrice { get; set; }
     public int? ChildMaxAge { get; set; }
-    public int? ResaleOpensAtSold { get; set; }
-    public int DirectedResaleDays { get; set; } = 3;
     public ResaleScheme Resale { get; set; } = ResaleScheme.QueueAndDirected;
     public bool PartnerTickets { get; set; } = true;
     public bool Donations { get; set; } = true;
     public bool MailingListOptIn { get; set; } = true;
     public string? TermsUrl { get; set; }
 
-    private static readonly LocalDatePattern DatePattern = LocalDatePattern.Iso;
-    private static readonly InstantPattern InstantPattern = InstantPattern.General;
+    internal sealed class WaveRow
+    {
+        public string? Name { get; set; }
+        public string? EndsOn { get; set; }
+        public string? Price { get; set; }
+    }
 
-    public static SalesEditForm From(TicketSalesEvent? e) => e is null ? new() : new()
+    internal sealed class SupporterRow
+    {
+        public string? Total { get; set; }
+    }
+
+    internal sealed class PriceRuleRow
+    {
+        public Guid? GrantProgramId { get; set; }
+        public TicketPriceRuleKind Kind { get; set; }
+        public string? Amount { get; set; }
+        public string? Label { get; set; }
+    }
+
+    private static readonly LocalDatePattern DatePattern = LocalDatePattern.Iso;
+    private static readonly LocalDateTimePattern CloseAtPattern = DateFormattingExtensions.PlacementDateTimePattern;
+
+    public static SalesEditForm From(TicketSalesEvent? e, DateTimeZone zone) => e is null ? new() : new()
     {
         EventSettingsId = e.EventSettingsId,
         BackendKey = e.BackendKey,
         BackendEventRef = e.BackendEventRef,
         Mode = e.Mode,
-        SalesCloseAt = e.SalesCloseAt is { } close ? InstantPattern.Format(close) : null,
+        SalesCloseAt = e.SalesCloseAt is { } close ? CloseAtPattern.Format(close.InZone(zone).LocalDateTime) : null,
         Capacity = e.Capacity,
-        TicketVatRate = e.TicketVatRate,
-        Waves = string.Join('\n', e.Waves.Select(w => $"{w.Name};{DatePattern.Format(w.EndsOn)};{Eur(w.PriceMinor)}")),
-        SupporterTotals = string.Join(", ", e.SupporterTotalsMinor.Select(Eur)),
-        PriceRules = string.Join('\n', e.PriceRules.Select(r => $"{r.GrantProgramId};{r.Kind};{Eur(r.AmountMinor)};{r.Label}")),
+        TicketVatPercent = (e.TicketVatRate * 100m).ToString("0.##", CultureInfo.InvariantCulture),
+        Waves = e.Waves.Select(w => new WaveRow { Name = w.Name, EndsOn = DatePattern.Format(w.EndsOn), Price = Eur(w.PriceMinor) }).ToList(),
+        SupporterLevels = e.SupporterTotalsMinor.Select(t => new SupporterRow { Total = Eur(t) }).ToList(),
+        PriceRules = e.PriceRules.Select(r => new PriceRuleRow
+        {
+            GrantProgramId = r.GrantProgramId,
+            Kind = r.Kind,
+            Amount = r.Kind == TicketPriceRuleKind.WavePin ? null : Eur(r.AmountMinor),
+            Label = r.Label,
+        }).ToList(),
         ChildPrice = e.ChildPriceMinor is { } child ? Eur(child) : null,
         ChildMaxAge = e.ChildMaxAge,
-        ResaleOpensAtSold = e.ResaleOpensAtSold,
-        DirectedResaleDays = e.DirectedResaleDays,
         Resale = e.EffectiveSwitches.Resale,
         PartnerTickets = e.EffectiveSwitches.PartnerTickets,
         Donations = e.EffectiveSwitches.Donations,
@@ -260,56 +289,61 @@ internal sealed class SalesEditForm
         TermsUrl = e.TermsUrl,
     };
 
-    public (SalesEventSave? Save, string? Error) ToSave(Guid? id)
+    public (SalesEventSave? Save, string? Error) ToSave(Guid? id, DateTimeZone zone)
     {
         Instant? close = null;
         if (!string.IsNullOrWhiteSpace(SalesCloseAt))
         {
-            var parsed = InstantPattern.Parse(SalesCloseAt.Trim());
-            if (!parsed.Success) return (null, "Sales close is an instant like 2027-05-25T22:00:00Z.");
-            close = parsed.Value;
+            var parsed = CloseAtPattern.Parse(SalesCloseAt.Trim());
+            if (!parsed.Success) return (null, "Sales close needs a date and a time.");
+            close = parsed.Value.InZoneLeniently(zone).ToInstant();
         }
 
+        if (!decimal.TryParse(TicketVatPercent, NumberStyles.Number, CultureInfo.InvariantCulture, out var vatPercent))
+            return (null, "Ticket VAT is a percentage, e.g. 10.");
+
         var waves = new List<TicketSalesWave>();
-        foreach (var line in Lines(Waves))
+        foreach (var row in Waves.Where(r => !Blank(r.Name, r.EndsOn, r.Price)))
         {
-            var parts = line.Split(';', StringSplitOptions.TrimEntries);
-            if (parts.Length != 3 || !DatePattern.Parse(parts[1]).TryGetValue(default, out var endsOn) || !TryMinor(parts[2], out var price))
-                return (null, $"Wave line '{line}' is not name;yyyy-MM-dd;price.");
-            waves.Add(new TicketSalesWave { Name = parts[0], EndsOn = endsOn, PriceMinor = price });
+            var name = row.Name?.Trim();
+            if (string.IsNullOrEmpty(name)) return (null, "Every wave needs a name.");
+            if (!DatePattern.Parse(row.EndsOn?.Trim() ?? string.Empty).TryGetValue(default, out var endsOn))
+                return (null, $"Wave '{name}' needs a last day.");
+            if (!TryMinor(row.Price, out var price)) return (null, $"Wave '{name}' needs a price.");
+            waves.Add(new TicketSalesWave { Name = name, EndsOn = endsOn, PriceMinor = price });
         }
 
         var totals = new List<long>();
-        foreach (var part in (SupporterTotals ?? string.Empty).Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries))
+        foreach (var row in SupporterLevels.Where(r => !Blank(r.Total)))
         {
-            if (!TryMinor(part, out var total)) return (null, $"Supporter total '{part}' is not an amount.");
+            if (!TryMinor(row.Total, out var total)) return (null, $"Supporter total '{row.Total}' is not an amount.");
             totals.Add(total);
         }
 
         var rules = new List<TicketPriceRule>();
-        foreach (var line in Lines(PriceRules))
+        foreach (var row in PriceRules.Where(r => r.GrantProgramId is not null || !Blank(r.Amount, r.Label)))
         {
-            var parts = line.Split(';', 4, StringSplitOptions.TrimEntries);
-            if (parts.Length != 4 || !Guid.TryParse(parts[0], out var programId)
-                || !Enum.TryParse<TicketPriceRuleKind>(parts[1], ignoreCase: true, out var kind) || !TryMinor(parts[2], out var amount))
-                return (null, $"Price rule line '{line}' is not programId;ClassPrice|Credit|WavePin;amount;label.");
-            rules.Add(new TicketPriceRule { GrantProgramId = programId, Kind = kind, AmountMinor = amount, Label = parts[3] });
+            if (row.GrantProgramId is not { } programId) return (null, "Every price rule needs a grant program.");
+            var label = row.Label?.Trim();
+            if (string.IsNullOrEmpty(label)) return (null, "Every price rule needs the label the buyer sees.");
+            long amount = 0;
+            if (row.Kind != TicketPriceRuleKind.WavePin && !TryMinor(row.Amount, out amount))
+                return (null, $"Price rule '{label}' needs an amount.");
+            rules.Add(new TicketPriceRule { GrantProgramId = programId, Kind = row.Kind, AmountMinor = amount, Label = label });
         }
 
         long? childPrice = null;
-        if (!string.IsNullOrWhiteSpace(ChildPrice))
+        if (!Blank(ChildPrice))
         {
-            if (!TryMinor(ChildPrice.Trim(), out var child)) return (null, "Child ticket price is not an amount.");
+            if (!TryMinor(ChildPrice, out var child)) return (null, "Child ticket price is not an amount.");
             childPrice = child;
         }
 
         return (new SalesEventSave(id, EventSettingsId, BackendKey.Trim(), BackendEventRef, Mode, close, Capacity,
-            TicketVatRate, waves, totals, rules)
+            vatPercent / 100m, waves, totals, rules)
         {
             ChildPriceMinor = childPrice,
             ChildMaxAge = ChildMaxAge,
-            ResaleOpensAtSold = ResaleOpensAtSold,
-            DirectedResaleDays = DirectedResaleDays,
             Switches = new TicketSalesSwitches
             {
                 Resale = Resale,
@@ -321,16 +355,15 @@ internal sealed class SalesEditForm
         }, null);
     }
 
-    private static IEnumerable<string> Lines(string? text) =>
-        (text ?? string.Empty).Split('\n', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+    private static bool Blank(params string?[] values) => values.All(string.IsNullOrWhiteSpace);
 
-    private static bool TryMinor(string text, out long minor)
+    private static bool TryMinor(string? text, out long minor)
     {
         minor = 0;
-        if (!decimal.TryParse(text, NumberStyles.Number, CultureInfo.InvariantCulture, out var eur)) return false;
+        if (!decimal.TryParse(text?.Trim(), NumberStyles.Number, CultureInfo.InvariantCulture, out var eur)) return false;
         minor = (long)Math.Round(eur * 100m, MidpointRounding.AwayFromZero);
         return true;
     }
 
-    private static string Eur(long minor) => (minor / 100m).ToString("0.00", CultureInfo.InvariantCulture);
+    private static string Eur(long minor) => (minor / 100m).ToString("0.##", CultureInfo.InvariantCulture);
 }

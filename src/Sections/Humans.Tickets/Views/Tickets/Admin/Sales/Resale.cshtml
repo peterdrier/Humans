@@ -7,16 +7,11 @@
     var closed = Model.Rows.Except(waiting).ToList();
 }
 
-@section Crumbs {
-    <a asp-controller="TicketsSalesAdmin" asp-action="Index">Sales</a>
-    <span>Resale queue</span>
-}
-
 <page-header title="Resale queue: @Model.EventName" />
 
 <p>
     @waiting.Count waiting · @Eur(waiting.Sum(r => r.Offer.RefundOwedMinor)) owed if they all sell · sales mode @Model.Mode.
-    @if (Model.ResaleOpen)
+    @if (Model.ResaleSelling)
     {
         <span>Resale is open.</span>
     }
@@ -30,10 +25,27 @@
     }
     else
     {
-        <span class="text-warning">Resale opens at @Model.OpensAtSold tickets sold; @Model.Sold so far, so the queue is not moving yet.</span>
+        <span class="text-warning">Resale is paused, so the queue is not moving yet.</span>
     }
 </p>
-<p class="text-muted">An invited buyer's offer sells only to them until the link lapses or is used, so it holds nobody back; its place is where it stands if the link lapses.</p>
+@if (!Model.SwitchedOff && Model.Mode != TicketSalesMode.ResaleOnly)
+{
+    <form method="post" asp-action="SetResaleOpen" asp-route-id="@Model.SalesEventId" class="mb-3" authorize-policy="@TicketsPolicies.Manage">
+        @Html.AntiForgeryToken()
+        <input type="hidden" name="open" value="@(Model.SalesEvent.ResaleOpenedAt is null ? "true" : "false")" />
+        @if (Model.SalesEvent.ResaleOpenedAt is { } openedAt)
+        {
+            <button type="submit" class="btn btn-outline-secondary btn-sm">Pause resale</button>
+            <span class="form-text ms-2">Opened @openedAt.ToDateTime(). Pausing stops returned tickets selling; they keep their place.</span>
+        }
+        else
+        {
+            <button type="submit" class="btn btn-primary btn-sm">Open resale</button>
+            <span class="form-text ms-2">Returned tickets then sell, oldest first, before fresh stock.</span>
+        }
+    </form>
+}
+<p class="text-muted">An invited ticket keeps its place: the invited buyer can buy it through their link, and the queue can sell it too. Whoever buys first gets it.</p>
 
 @if (waiting.Count == 0)
 {
@@ -62,11 +74,11 @@ else
                     <td>
                         @if (row.DirectedLive)
                         {
-                            <span>@o.DirectedEmail, until @o.DirectedExpiresAt!.Value.ToDateTime()</span>
+                            <span>@o.DirectedEmail</span>
                         }
                         else if (o.DirectedEmail is not null && o.DirectedUsedAt is null)
                         {
-                            <span class="text-muted">@o.DirectedEmail (lapsed or cancelled)</span>
+                            <span class="text-muted">@o.DirectedEmail (cancelled)</span>
                         }
                     </td>
                 </tr>

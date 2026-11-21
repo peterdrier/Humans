@@ -35,7 +35,7 @@ internal sealed class TicketsEmailPreviews(TicketsEmails emails, TicketCodeImage
             new EmailPreviewSample("ticket-transfer-decision-rejected", "Ticket Transfer Cancelled",
                 emails.TicketTransferDecision(Guid.Empty, email, name, successful: false, SampleTicket, SampleReceiver, SampleReason, culture)),
             new EmailPreviewSample("ticket-resale-invitation", "Ticket Resale Invitation",
-                emails.ResaleInvitation(email, SampleReceiver, "Elsewhere 2027", "https://humans.example/Tickets/Buy/Resale/sample-token", 3, culture)),
+                emails.ResaleInvitation(email, SampleReceiver, "Elsewhere 2027", "https://humans.example/Tickets/Buy/Resale/sample-token", culture)),
 
             new EmailPreviewSample("ticket-issued", "Ticket (bought by someone else, with a child)",
                 emails.TicketIssued(new IssuedTicketMail(Guid.Empty, email, name, SampleEvent,
