@@ -271,7 +271,9 @@ internal sealed partial class TicketCheckoutService
     private async Task CompleteResaleAsync(Guid offerId, TicketCheckoutOrder buyerOrder, CancellationToken ct)
     {
         var offer = await repository.GetOfferAsync(offerId, ct);
-        if (offer is null || offer.State == TicketResaleOfferState.Sold)
+        // A late payment finds its offer released, maybe taken by another checkout or withdrawn: its ticket is then fresh stock.
+        if (offer is null || offer.State is TicketResaleOfferState.Sold or TicketResaleOfferState.Withdrawn
+            || (offer.State == TicketResaleOfferState.Reserved && offer.ReservedByOrderId != buyerOrder.Id))
             return;
         var now = clock.GetCurrentInstant();
         var directed = offer.DirectedTokenHash is not null;
