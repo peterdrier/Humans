@@ -29,6 +29,7 @@ internal sealed class GateService(
     IShiftService shifts,
     IRoleAssignmentService roles,
     ITicketWrite ticketWrite,
+    ITicketGateLookup issuedTickets,
     IPasswordHasher<GateStaffPin> pinHasher,
     IAuditLogService auditLog,
     IBackgroundJobClient backgroundJobs,
@@ -57,56 +58,97 @@ internal sealed class GateService(
         if (code.Length == 0)
             return NotFound(code);
 
-        var orders = await tickets.GetTicketOrdersAsync(ct);
-        var attendee = orders
-            .Where(o => o.IsCurrentEvent)
-            .SelectMany(o => o.Attendees)
-            .FirstOrDefault(a => a.Barcode is not null
-                && string.Equals(GateBarcode.Normalize(a.Barcode), code, StringComparison.Ordinal));
-
-        if (attendee is null)
+        var burn = settingsService.GetActiveEventSettings();
+        if (await FindTicketAsync(code, burn, ct) is not { } ticket)
             return NotFound(code);
 
         var settings = await repository.GetSettingsAsync(ct);
         var priorAdmit = await repository.GetAdmitForBarcodeAsync(code, ct);
-        var burn = settingsService.GetActiveEventSettings();
         var now = clock.GetCurrentInstant();
         var zone = EventZone(burn?.TimeZoneId);
         var today = now.InZone(zone).Date;
 
-        EarlyEntryRosterRow? ee = attendee.MatchedUserId is { } uid
+        EarlyEntryRosterRow? ee = ticket.EntryUserId is { } uid
             ? await earlyEntry.GetForUserAsync(uid, ct)
             : null;
 
         var outcome = GateAdmissionRules.Evaluate(new GateScanContext(
             Found: true,
-            IsVoid: attendee.Status == TicketAttendeeStatus.Void,
+            IsVoid: ticket.IsVoid,
             AlreadyAdmittedLocally: priorAdmit is not null,
-            CheckedInAtVendor: attendee.CheckedInAt is not null
-                || attendee.Status == TicketAttendeeStatus.CheckedIn,
+            CheckedInAtVendor: ticket.CheckedInAtVendor,
             Now: now,
             GeneralEntryOpensAt: settings.IsCutoffConfigured ? settings.GeneralEntryOpensAt : null,
-            MatchedToHuman: attendee.MatchedUserId is not null,
+            MatchedToHuman: ticket.EntryUserId is not null,
             EarliestEntryDate: ee?.EarliestEntryDate,
             Today: today));
 
         return new GateScanResult(
             outcome,
             code,
-            attendee.AttendeeName,
-            attendee.TicketTypeName,
+            ticket.Name,
+            ticket.TypeName,
             IsEarly: outcome == GatePreCheckOutcome.NeedsIdCheckEarly,
             EarlyEntrySource: ee is { Sources.Count: > 0 } ? string.Join(", ", ee.Sources) : null,
-            TicketAttendeeId: attendee.Id,
-            GuestUserId: attendee.MatchedUserId,
+            TicketAttendeeId: ticket.TicketAttendeeId,
+            GuestUserId: ticket.GuestUserId,
             PreviousAdmitAt: priorAdmit?.OccurredAt,
             PreviousAdmitByUserId: priorAdmit?.ScannedByUserId,
-            VendorTicketId: attendee.VendorTicketId,
+            VendorTicketId: ticket.VendorTicketId,
             // Date only, never the EE source (privacy).
             EarliestEntryDate: ee?.EarliestEntryDate,
             Today: today,
-            GeneralEntryDate: settings.IsCutoffConfigured ? settings.GeneralEntryOpensAt.InZone(zone).Date : null);
+            GeneralEntryDate: settings.IsCutoffConfigured ? settings.GeneralEntryOpensAt.InZone(zone).Date : null)
+        {
+            CheckoutTicketId = ticket.CheckoutTicketId,
+            InResaleQueue = ticket.InResaleQueue,
+        };
     }
+
+    /// <summary>
+    /// A Ticket Tailor ticket of the current event, else a ticket Humans' checkout issued for the active event. Either
+    /// way Gate's own scan row is the check-in record; only Ticket Tailor tickets carry a vendor check-in to respect.
+    /// </summary>
+    private async Task<ScannedTicket?> FindTicketAsync(string code, EventSettingsInfo? burn, CancellationToken ct)
+    {
+        var orders = await tickets.GetTicketOrdersAsync(ct);
+        var attendee = orders
+            .Where(o => o.IsCurrentEvent)
+            .SelectMany(o => o.Attendees)
+            .FirstOrDefault(a => a.Barcode is not null
+                && string.Equals(GateBarcode.Normalize(a.Barcode), code, StringComparison.Ordinal));
+        if (attendee is not null)
+            return new ScannedTicket(
+                attendee.AttendeeName, attendee.TicketTypeName,
+                IsVoid: attendee.Status == TicketAttendeeStatus.Void,
+                CheckedInAtVendor: attendee.CheckedInAt is not null || attendee.Status == TicketAttendeeStatus.CheckedIn,
+                GuestUserId: attendee.MatchedUserId, EntryUserId: attendee.MatchedUserId,
+                TicketAttendeeId: attendee.Id, CheckoutTicketId: null, VendorTicketId: attendee.VendorTicketId,
+                InResaleQueue: false);
+
+        if (burn is null || await issuedTickets.FindIssuedTicketAsync(code, ct) is not { } issued
+            || issued.EventSettingsId != burn.Id)
+            return null;
+
+        return new ScannedTicket(
+            issued.HolderName, issued.TicketLabel,
+            IsVoid: !issued.IsValid, CheckedInAtVendor: false,
+            GuestUserId: issued.HolderUserId, EntryUserId: issued.EntryUserId,
+            TicketAttendeeId: null, CheckoutTicketId: issued.Id, VendorTicketId: null,
+            InResaleQueue: issued.InResaleQueue);
+    }
+
+    private sealed record ScannedTicket(
+        string? Name,
+        string? TypeName,
+        bool IsVoid,
+        bool CheckedInAtVendor,
+        Guid? GuestUserId,
+        Guid? EntryUserId,
+        Guid? TicketAttendeeId,
+        Guid? CheckoutTicketId,
+        string? VendorTicketId,
+        bool InResaleQueue);
 
     public async Task<GateDecisionResult> RecordDecisionAsync(
         GateDecisionInput input, Guid scannedByUserId, CancellationToken ct = default)
@@ -268,7 +310,8 @@ internal sealed class GateService(
     public async Task<GateVendorBackfillSnapshot> GetVendorCheckInBackfillAsync(CancellationToken ct = default)
     {
         var scans = await repository.GetScansSinceAsync(clock.GetCurrentInstant().Minus(VendorBackfillWindow), ct);
-        var admits = scans.Where(s => IsAdmit(s.Verdict)).ToList();
+        // Checkout-issued tickets live only in Humans: there is no vendor to mirror them to.
+        var admits = scans.Where(s => IsAdmit(s.Verdict) && s.CheckoutTicketId is null).ToList();
 
         var orders = await tickets.GetTicketOrdersAsync(ct);
         var attendees = orders
@@ -495,6 +538,7 @@ internal sealed class GateService(
             ScannedByUserId = scannedByUserId,
             Barcode = eval.Barcode,
             TicketAttendeeId = eval.TicketAttendeeId,
+            CheckoutTicketId = eval.CheckoutTicketId,
             GuestUserId = eval.GuestUserId,
             Verdict = verdict,
             LaneId = input.LaneId,
