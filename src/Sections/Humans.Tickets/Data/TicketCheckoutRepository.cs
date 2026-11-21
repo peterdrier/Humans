@@ -87,7 +87,8 @@ internal sealed class TicketCheckoutRepository(IDbContextFactory<TicketsDbContex
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.TicketCheckoutOrders.AsNoTracking()
-            .Where(o => o.State == TicketCheckoutOrderState.Created || o.State == TicketCheckoutOrderState.Pending)
+            .Where(o => o.State == TicketCheckoutOrderState.Created || o.State == TicketCheckoutOrderState.Pending
+                || o.State == TicketCheckoutOrderState.Processing)
             .ToListAsync(ct);
     }
 

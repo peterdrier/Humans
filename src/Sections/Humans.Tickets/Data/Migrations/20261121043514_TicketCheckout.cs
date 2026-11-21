@@ -50,6 +50,7 @@ namespace Humans.Tickets.Data.Migrations
                     PaymentMethod = table.Column<string>(type: "character varying(64)", maxLength: 64, nullable: true),
                     PaidAt = table.Column<Instant>(type: "timestamp with time zone", nullable: true),
                     RefundedMinor = table.Column<long>(type: "bigint", nullable: false),
+                    DisputedMinor = table.Column<long>(type: "bigint", nullable: false),
                     CreatedAt = table.Column<Instant>(type: "timestamp with time zone", nullable: false),
                     ExpiresAt = table.Column<Instant>(type: "timestamp with time zone", nullable: false),
                     UpdatedAt = table.Column<Instant>(type: "timestamp with time zone", nullable: false),

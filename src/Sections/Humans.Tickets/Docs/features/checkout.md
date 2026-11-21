@@ -26,9 +26,16 @@ Rules every backend follows:
 - **Stuck checkout.** While a buyer's own unpaid checkout still holds their ticket, the buy page links to it and offers
   "cancel and start again", so a dropped connection never locks them out until `ExpiresAt`. Starting a checkout runs to
   the end even if the buyer's request is aborted, so a half-made order always has its backend session.
+- **Payment on its way.** A backend reports `Processing` once the buyer finished paying with a method that settles
+  later (a SEPA debit, a bank transfer, sometimes the next day). The order then holds its tickets past `ExpiresAt`, is
+  never cancelled by Tickets or the buyer (the buy page offers no "start again" for it), and ends Paid or Failed.
+- **Chargebacks.** `DisputedMinor` is what the buyer's bank has taken back and the event has not won. Each change goes on
+  the timeline and to the audit log as needing attention; tickets stay valid until the ticketing team decides.
 - **Refund outcome.** `RefundedMinor` moves only once money went back. On every status read Tickets settles its
-  `Pending` and `ManualRequired` refunds from it, oldest first. Each uncovered pending refund is repeated under its own id
-  and only those the backend answers `Failed` are marked so (`RefundFailed` may follow only the newest refund); those stop counting against what can still be refunded. The reconcile job re-reads paid orders with
+  `Pending` and `ManualRequired` refunds, oldest first. A pending refund the backend knows by id is repeated under that
+  id and takes the state the backend answers (`RefundFailed` may follow only the newest refund), so a refund made in the
+  backend's dashboard never settles one of Tickets' own. The rest settle from the part of `RefundedMinor` that Tickets'
+  succeeded refunds do not explain. Failed refunds stop counting against what can still be refunded. The reconcile job re-reads paid orders with
   unsettled refunds and resends any refund whose backend call threw.
 - **Erasure.** A member's deletion calls `ErasePersonalDataAsync` for each of their orders before Tickets tombstones its
   own copy; a backend failure throws, so the deletion retries with the emails still known. Box Office is a no-op: Stripe
