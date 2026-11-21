@@ -141,8 +141,6 @@ graph LR
     Development --> Auth
     Development --> Budget
     Development --> Consent
-    Development --> Settings
-    Development --> Shifts
     Development -.-> Camps
     Development -.-> CityPlanning
     Development -.-> Teams
