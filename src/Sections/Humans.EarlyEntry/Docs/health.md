@@ -14,7 +14,6 @@
   src/Sections/Humans.Gate/Services/GateService.cs
   src/Sections/Humans.Scanner/Controllers/ScannerController.cs
   src/Sections/Humans.Tickets.Contracts/TicketStubInfo.cs
-  src/Sections/Humans.Tickets/Controllers/TicketTransferController.cs
   src/Sections/Humans.Tickets/ViewComponents/MyTicketStubsViewComponent.cs
   src/Sections/Humans.Tickets/ViewComponents/TicketHoldingsViewComponent.cs
   tests/Humans.Integration.Tests/Controllers/EarlyEntryPageRenderTests.cs
@@ -83,10 +82,7 @@ The layout matches this.
   section shows on the next request and never has to signal this one (pinned:
   `EarlyEntryArchitectureTests.SectionRegistersTheOrchestratorPerRequest`,
   `EarlyEntryServiceTests.GetForUserAsync_GathersOncePerScope_AndFreshInTheNext`).
-- The transfer wizard asks for the signed-in user's own early entry
-  (`src/Sections/Humans.Tickets/Controllers/TicketTransferController.cs:28`, reaching
-  `src/Sections/Humans.Tickets/Controllers/TicketTransferController.cs:79`); the gate card asks
-  for the scanned attendee's (`src/Sections/Humans.Gate/Services/GateService.cs:73`). The stub
+- The gate card asks for the scanned attendee's (`src/Sections/Humans.Gate/Services/GateService.cs:73`). The stub
   and holdings view components answer for the user they are invoked with, so who sees that
   answer is the invoking page's gate, not this section's.
 - The roster needs `ShiftsPolicies.Manage` (Admin, NoInfoAdmin, VolunteerCoordinator)

@@ -48,6 +48,7 @@ public class SectionRolesTests
         "ShiftsNoInfo", "NoInfoAdmin",
         "GrantsAdmin",
         "SurveysAdmin",
+        "RolesAdmin",
     ];
 
     [HumansFact]

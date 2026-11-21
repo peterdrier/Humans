@@ -88,8 +88,8 @@ sold under is read (`EventRefOf`), beside the events the setups sell through now
 
 1. A TicketsAdmin sets up the event at `/Tickets/Admin/Sales`: backend, mode, capacity, waves, supporter totals (VIP
    buttons), grant price rules (`ClassPrice`, `Credit`, `WavePin`), child price and age, the ticket rules page
-   (an https address; a changed version gets a new address), when resale opens (tickets sold), how many days a resale invitation lasts
-   and the ticketing switches (below).
+   (an https address; a changed version gets a new address) and the ticketing switches (below). The form edits waves,
+   price rules and supporter levels as rows, the VAT as a percentage and sales close in the organisation's time zone.
 2. A member opens `/Tickets/Buy` (linked from the dashboard ticket card while any event sells through Humans), which
    lists every event that is not Closed, each priced in its own time zone and checked for holdings on its own. They see
    their price, may add children (child price, issued on their own ticket), a partner (name and email; public price;
@@ -140,7 +140,8 @@ one, and returns them to the buy page, which then prefills them and shows their 
   open before the account is active, so a partner reaches their ticket from the email (name entry still comes first). A holder offers an adult ticket back while the event is not
   Closed; it joins `ticket_resale_offers` (oldest first) and the gate refuses it while it can still sell (the holder withdraws it to get in; once sales close it is valid again). They see their
   queue position and can withdraw, except while a buyer's checkout holds it.
-- Resale opens once the event has sold `ResaleOpensAtSold` tickets (always, when unset). A buyer's ticket lines take
+- Resale opens by hand: the ticketing team presses Open resale on the resale queue page (`ResaleOpenedAt`, audited
+  `TicketResaleOpenSet`) and can pause it again; `ResaleOnly` mode sells resale whatever the button. A buyer's ticket lines take
   the queue head before fresh stock; in `ResaleOnly` mode only queue tickets sell. A returned ticket sells only at the
   resale price: the current public wave less the buyer's credits (the association keeps any difference). A buyer with
   a class price or a pinned wave is served from fresh stock while the event is `Open`, and pays the resale price for a
@@ -154,15 +155,15 @@ one, and returns them to the buy page, which then prefills them and shows their 
 - A checkout that fails, expires or is cancelled releases its offers to their original place.
 - **Directed resale:** a holder whose offer is open emails one person a single-use link
   (`/Tickets/Buy/Resale/{token}`, only the SHA-256 of the token is stored). Only a signed-in buyer with that email can
-  use it, for themselves, and only while resale is open. The offer skips the public queue until the link lapses after
-  `DirectedResaleDays` (then it is back at its place) or the holder cancels it. Invitation, use, lapse and cancel are on
+  use it, for themselves, and only while resale is open. The link has no expiry: it works while the offer is open, and
+  the offer stays in the public queue meanwhile, so whoever buys first gets it. Invitation, use and cancel are on
   the holder's order timeline. One invitation is live at a time, and a ticket gets at most three over all its offers; the invited email is
   cleared once the invitation ends.
 
 ## The ticketing team
 
 `/Tickets/Admin/Sales/Lookup` finds orders across events. Per event, the sales index links the refund list, the resale
-queue (directed offers marked with the invited email and expiry) and the sales report. Each issued ticket has an admin
+queue (directed offers marked with the invited email) and the sales report. Each issued ticket has an admin
 page, reached from its order, with the three exceptions: rename (full price adults only), void (no refund; refund from
 the order), and a free companion ticket.
 

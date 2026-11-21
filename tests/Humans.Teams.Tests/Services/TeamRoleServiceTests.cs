@@ -1,3 +1,4 @@
+using Humans.Roles.Contracts;
 using Humans.Base.Interfaces;
 using AwesomeAssertions;
 using Humans.Base.Interfaces.Caching;
@@ -32,6 +33,7 @@ public sealed class TeamRoleServiceTests : TeamsTestHarness
 {
     private readonly TeamService _service;
     private readonly ISystemTeamSync _systemTeamSync = Substitute.For<ISystemTeamSync>();
+    private readonly IRoleWrite _roleWrite = Substitute.For<IRoleWrite>();
 
     public TeamRoleServiceTests() : base(Instant.FromUtc(2026, 3, 11, 12, 0))
     {
@@ -63,6 +65,7 @@ public sealed class TeamRoleServiceTests : TeamsTestHarness
             .With<IRoleAssignmentService>(roleAssignmentService)
             .With<IEmailService>()
             .With(_systemTeamSync)
+            .With(_roleWrite)
             .With<IGoogleSyncOutboxService>(googleOutboxService)
             .With<IGoogleService>()
             .With(teamResourceService)
@@ -739,6 +742,23 @@ public sealed class TeamRoleServiceTests : TeamsTestHarness
 
         var memberInDb = await TeamsDb.TeamMembers.AsNoTracking().FirstOrDefaultAsync(m => m.Id == member.Id, Xunit.TestContext.Current.CancellationToken);
         memberInDb!.LeftAt.Should().NotBeNull();
+        await _roleWrite.Received(1).RemoveAsync(TeamOwner.Of(team.Id), user.Id, user.Id, Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task RevokeAllMembershipsAsync_RemovesTheirRolesOnEveryTeam()
+    {
+        var user = SeedUser("User");
+        var first = SeedTeam("First");
+        var second = SeedTeam("Second");
+        SeedMember(first, user);
+        SeedMember(second, user);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
+
+        await _service.RevokeAllMembershipsAsync(user.Id, Xunit.TestContext.Current.CancellationToken);
+
+        await _roleWrite.Received(1).RemoveAsync(TeamOwner.Of(first.Id), user.Id, user.Id, Arg.Any<CancellationToken>());
+        await _roleWrite.Received(1).RemoveAsync(TeamOwner.Of(second.Id), user.Id, user.Id, Arg.Any<CancellationToken>());
     }
 
     private TeamMember SeedMember(Team team, User user, TeamMemberRole role = TeamMemberRole.Member)

@@ -884,27 +884,6 @@ internal sealed class TicketRepository(IDbContextFactory<TicketsDbContext> facto
         return state;
     }
 
-    public async Task<IReadOnlyList<OrderDriftRow>> GetOrderDriftAsync(CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        // Filter on the entity, not the projected record: EF can't translate a Where over a projected DTO.
-        return await ctx.TicketOrders
-            .AsNoTracking()
-            .Where(o => o.PaymentStatus == TicketPaymentStatus.Paid)
-            .Where(o => o.Attendees.Count(a => a.Status == TicketAttendeeStatus.Valid
-                                               || a.Status == TicketAttendeeStatus.CheckedIn)
-                        < o.Attendees.Count())
-            .Select(o => new OrderDriftRow(
-                o.Id,
-                o.VendorOrderId,
-                o.BuyerName,
-                o.Attendees.Count(),
-                o.Attendees.Count(a => a.Status == TicketAttendeeStatus.Valid
-                                       || a.Status == TicketAttendeeStatus.CheckedIn),
-                o.VendorDashboardUrl))
-            .ToListAsync(ct);
-    }
-
     public async Task<int> EraseUserPiiAsync(Guid userId, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);

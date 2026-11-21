@@ -3,7 +3,6 @@
 @{
     var isVoid = Model.Status == TicketAttendeeStatus.Void;
     var isCheckedIn = Model.Status == TicketAttendeeStatus.CheckedIn;
-    var pending = Model.HasPendingTransfer;
     // Emit the shared stub CSS once per request (the component renders many times).
     var emitCss = !Context.Items.ContainsKey("ticket-stub-css");
     if (emitCss) { Context.Items["ticket-stub-css"] = true; }
@@ -23,20 +22,15 @@
         .ticket-stub-side { width:74px; background:var(--h-vellum); display:flex; flex-direction:column; align-items:center;
             justify-content:center; gap:5px; border-left:2px dashed var(--h-border); position:relative; flex-shrink:0; }
 .ticket-stub-ico { font-size:18px; }
-        .ticket-stub.pending .ticket-stub-main { filter:saturate(.6); }
         .ticket-stub.voided { opacity:.6; }
         .ticket-stub.voided .ticket-stub-name { text-decoration:line-through; }
-        .ticket-stub-stamp { position:absolute; top:50%; left:38%; transform:translate(-50%,-50%) rotate(-14deg);
-            border:3px solid var(--h-rust); color:var(--h-rust); font-weight:900; font-size:14px; letter-spacing:.08em;
-            padding:3px 10px; border-radius:6px; text-transform:uppercase; opacity:.82; background:rgba(255,255,255,.35);
-            pointer-events:none; white-space:nowrap; }
         .ticket-stub-badge { display:inline-block; margin-top:8px; font-size:9.5px; font-weight:800; text-transform:uppercase;
             letter-spacing:.05em; padding:2px 8px; border-radius:20px; white-space:nowrap; }
         .ticket-stub-badge.checkedin { background:var(--h-sage-dark); color:var(--h-text-on-dark); }
         .ticket-stub-badge.void { background:var(--h-sepia); color:var(--h-text-on-dark); }
     </style>
 }
-<div class="ticket-stub@(pending ? " pending" : "")@(isVoid ? " voided" : "")">
+<div class="ticket-stub@(isVoid ? " voided" : "")">
     <div class="ticket-stub-main">
         <div class="ticket-stub-event">@eventLabel</div>
         <div class="ticket-stub-name">@Model.AttendeeName</div>
@@ -62,8 +56,4 @@
     <div class="ticket-stub-side">
         <span class="ticket-stub-ico">🎟️</span>
     </div>
-    @if (pending)
-    {
-        <div class="ticket-stub-stamp">@Localizer["Tickets_TicketStub_TransferPending"]</div>
-    }
 </div>

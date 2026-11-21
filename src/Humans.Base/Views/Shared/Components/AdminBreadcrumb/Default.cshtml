@@ -20,7 +20,7 @@ else
     {
         <span>@Model.Group</span><span class="sep">/</span>
     }
-    <a href="@(item.RawHref ?? Url.Action(item.Action, item.Controller))">@item.Label</a>
+    <a href="@(item.RawHref ?? Url.Action(item.Action, item.Controller, item.RouteValues))">@item.Label</a>
     <span class="sep">/</span>
     @if (Model.Trail is not null)
     {

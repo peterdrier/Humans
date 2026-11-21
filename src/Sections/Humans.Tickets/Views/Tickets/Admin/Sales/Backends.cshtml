@@ -1,7 +1,6 @@
 @model Humans.Tickets.Controllers.BackendsViewModel
 @{
     ViewData["Title"] = "Checkout backends";
-    var site = $"{Context.Request.Scheme}://{Context.Request.Host}";
 }
 
 @section Crumbs {
@@ -19,100 +18,8 @@
 
 @foreach (var b in Model.Backends)
 {
-    var s = b.Setup;
-    var events = Model.SalesEvents.Where(e => e.BackendKey == b.Key).ToList();
-    var check = Model.Check?.Key == b.Key ? Model.Check : null;
-
-    <section class="card mb-4" id="backend-@b.Key">
-        <div class="card-header d-flex justify-content-between align-items-center">
-            <h2 class="h5 mb-0">@s.DisplayName <code class="small">@b.Key</code></h2>
-            <span class="badge @(b.IsConfigured ? "bg-success" : "bg-secondary")">@(b.IsConfigured ? "Configured" : "Not configured")</span>
-        </div>
-        <div class="card-body">
-            <dl class="row mb-3">
-                <dt class="col-sm-3">Hosting</dt>
-                <dd class="col-sm-9">@s.Hosting</dd>
-                @if (s.AdminUrl is not null)
-                {
-                    <dt class="col-sm-3">Vendor admin</dt>
-                    <dd class="col-sm-9"><a href="@s.AdminUrl" target="_blank" rel="noopener">@s.AdminUrl</a></dd>
-                }
-                @if (s.WebhookPath is not null)
-                {
-                    <dt class="col-sm-3">Webhook URL</dt>
-                    <dd class="col-sm-9"><code>@site@s.WebhookPath</code></dd>
-                }
-                <dt class="col-sm-3">Events</dt>
-                <dd class="col-sm-9">
-                    @if (events.Count == 0)
-                    {
-                        <span class="text-muted">None sell through it.</span>
-                    }
-                    @foreach (var e in events)
-                    {
-                        <div>@Model.EventName(e.EventSettingsId) (@e.Mode)@(e.BackendEventRef is null ? "" : $", backend event {e.BackendEventRef}")</div>
-                    }
-                </dd>
-            </dl>
-
-            <table class="table table-sm">
-                <thead><tr><th>Setting</th><th>Purpose</th><th>Value</th></tr></thead>
-                <tbody>
-                    @foreach (var setting in s.Settings)
-                    {
-                        <tr>
-                            <td><code>@setting.Name</code></td>
-                            <td>@setting.Purpose</td>
-                            <td>
-                                @if (!setting.IsSet)
-                                {
-                                    <span class="badge bg-warning text-dark">Missing</span>
-                                }
-                                else if (setting.IsSecret)
-                                {
-                                    <span class="badge bg-success">Set</span>
-                                }
-                                else
-                                {
-                                    <code>@setting.Value</code>
-                                }
-                            </td>
-                        </tr>
-                    }
-                </tbody>
-            </table>
-
-            @if (s.Notes.Count > 0)
-            {
-                <ul class="small">
-                    @foreach (var note in s.Notes)
-                    {
-                        <li>@note</li>
-                    }
-                </ul>
-            }
-
-            <div authorize-policy="@TicketsPolicies.Manage">
-                <form method="post" asp-action="CheckBackend" asp-route-key="@b.Key" asp-fragment="backend-@b.Key" class="d-flex flex-wrap gap-2 align-items-end">
-                    <div>
-                        <label class="form-label small" for="ref-@b.Key">Event id in the backend (optional)</label>
-                        <input class="form-control form-control-sm" id="ref-@b.Key" name="backendEventRef" value="@(check?.BackendEventRef ?? events.FirstOrDefault()?.BackendEventRef)" />
-                    </div>
-                    <button type="submit" class="btn btn-sm btn-outline-primary">Test connection</button>
-                </form>
-            </div>
-
-            @if (check is not null)
-            {
-                <ul class="list-unstyled mt-3 mb-0">
-                    @foreach (var f in check.Findings)
-                    {
-                        <li class="@(f.Ok ? "text-success" : "text-danger")">@(f.Ok ? "✓" : "✗") @f.Text</li>
-                    }
-                </ul>
-            }
-        </div>
-    </section>
+    <partial name="~/Views/Tickets/Admin/Backends/_BackendCard.cshtml" model="(Model, b)" />
+    <p class="mb-4"><a asp-controller="TicketsBackendAdmin" asp-action="Index" asp-route-key="@b.Key">@b.Setup.DisplayName status, orders and connection test</a></p>
 }
 
 @if (Model.Backends.Count == 0)

@@ -721,3 +721,26 @@ src/Sections/Humans.Users/Data/Migrations/20261121114531_DropProfileChildTablesP
 # Keys (name on table):
 #   PK_role_assignments on role_assignments
 src/Sections/Humans.Auth/Data/Migrations/20261113002711_RenameRoleAssignmentsToAuthPrefix.cs:DropPrimaryKey(name=PK_role_assignments,table=role_assignments)#1
+
+# Tickets: resale threshold and directed-link expiry (peterdrier/Humans#2528). Removed:
+# ticket_sales_events.ResaleOpensAtSold (tickets-sold count that opened resale automatically),
+# ticket_sales_events.DirectedResaleDays and ticket_resale_offers.DirectedExpiresAt (how long a
+# directed resale link lasted). Resale now opens by hand (ResaleOpenedAt) and links never expire.
+# Evidence: all three were added 2026-11-21 by the checkout PR (#2498, commit 4e8012cb4; pickaxe
+# git log -S over origin/main shows only that PR, #2519 and its review round touching them). After
+# #2528 nothing reads or writes them. There is no ticketing data in production yet.
+# Approval: Peter, 2026-11-21, asked about these three drops in the PR's review thread: "if they're
+# in the ticketing bit and we haven't used any of it yet, then you can drop whatever you want.
+# Because none of it's live and anywhere near production. So go ahead." Kept in #2528.
+src/Sections/Humans.Tickets/Data/Migrations/20261121151707_TicketResaleOpensByHand.cs:DropColumn(name=DirectedExpiresAt,table=ticket_resale_offers)#1
+src/Sections/Humans.Tickets/Data/Migrations/20261121151707_TicketResaleOpensByHand.cs:DropColumn(name=DirectedResaleDays,table=ticket_sales_events)#1
+src/Sections/Humans.Tickets/Data/Migrations/20261121151707_TicketResaleOpensByHand.cs:DropColumn(name=ResaleOpensAtSold,table=ticket_sales_events)#1
+
+# governance_applications.ReviewStartedAt (timestamp, nullable) — when a tier application entered
+# the old UnderReview state.
+# Evidence: pickaxe over full history (git log -S 'ReviewStartedAt ='): the only writer was the
+# UnderReview transition, removed in 32468ea09 (2026-02-20); rows reviewed 2026-02-04..02-20 may hold
+# a value. The last readers (application detail pages) were removed in peterdrier/Humans#2443.
+# Approval: Peter, 2026-11-19, project thread decision card ("Yes, drop it"), after being told
+# what the column may still hold.
+src/Sections/Humans.Governance/Data/Migrations/20261121133716_DropApplicationReviewStartedAt.cs:DropColumn(name=ReviewStartedAt,table=governance_applications)#1

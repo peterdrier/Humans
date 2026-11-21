@@ -12,11 +12,11 @@ using Humans.Tickets.Services.Dtos;
 namespace Humans.Tickets.Services.Stores;
 
 /// <summary>
-/// The cached rows' writers (sync, transfer, contact import, GDPR erasure, merge fold) all go through this decorator:
+/// The cached rows' writers (sync, contact import, GDPR erasure, merge fold) all go through this decorator:
 /// each write delegates to its keyed inner and evicts in a <c>finally</c>. Nothing else evicts the slices.
 /// </summary>
 internal sealed class CachingTicketQueryService
-    : ITicketManagement, ITicketSyncService, ITicketTransferService, IAttendeeContactImportService,
+    : ITicketManagement, ITicketSyncService, IAttendeeContactImportService,
         IUserDataContributor, IUserMerge, IHostedService
 {
     public const string InnerServiceKey = "ticket-query-inner";
@@ -121,9 +121,6 @@ internal sealed class CachingTicketQueryService
     public Task<List<DonationExportRow>> GetDonationExportDataAsync(Guid actorUserId, CancellationToken ct = default) =>
         WithInnerAsync(inner => inner.GetDonationExportDataAsync(actorUserId, ct));
 
-    public Task<IReadOnlyList<OrderDriftRow>> GetOrderDriftAsync(CancellationToken ct = default) =>
-        WithInnerAsync(inner => inner.GetOrderDriftAsync(ct));
-
     // Static table: the erasure-coverage architecture test reads it from an
     // uninitialized instance.
     public IReadOnlyDictionary<string, string?> ErasureDeclaration => TicketQueryService.Erasure;
@@ -164,52 +161,6 @@ internal sealed class CachingTicketQueryService
                 _userHoldings.Invalidate(mergedToUserId);
             });
 
-    // Pendency is stamped into holdings ("transfer pending") and decisions change the
-    // order projection's TransferredToName/TransferredAt, so every transfer mutation evicts.
-    public Task<TicketTransferMutationResult> CreateRequestAsync(
-        TicketTransferRequestDto dto, Guid senderUserId, CancellationToken ct = default) =>
-        MutateTransferAsync(inner => inner.CreateRequestAsync(dto, senderUserId, ct));
-
-    public Task<TicketTransferMutationResult> CancelAsync(Guid transferRequestId, Guid senderUserId, CancellationToken ct = default) =>
-        MutateTransferAsync(inner => inner.CancelAsync(transferRequestId, senderUserId, ct));
-
-    public Task<TicketTransferMutationResult> ApproveAsync(
-        Guid transferRequestId, Guid adminUserId, string? adminNotes, CancellationToken ct = default) =>
-        MutateTransferAsync(inner => inner.ApproveAsync(transferRequestId, adminUserId, adminNotes, ct));
-
-    public Task<TicketTransferMutationResult> ProcessTransferAsync(
-        Guid transferRequestId, Guid adminUserId, string? adminNotes, CancellationToken ct = default) =>
-        MutateTransferAsync(inner => inner.ProcessTransferAsync(transferRequestId, adminUserId, adminNotes, ct));
-
-    public Task<TicketTransferMutationResult> RetryReissueAsync(
-        Guid transferRequestId, Guid adminUserId, string? adminNotes, CancellationToken ct = default) =>
-        MutateTransferAsync(inner => inner.RetryReissueAsync(transferRequestId, adminUserId, adminNotes, ct));
-
-    public Task<TicketTransferMutationResult> RejectAsync(
-        Guid transferRequestId, Guid adminUserId, string reason, CancellationToken ct = default) =>
-        MutateTransferAsync(inner => inner.RejectAsync(transferRequestId, adminUserId, reason, ct));
-
-    public Task<IReadOnlyList<MyAttendeeRowDto>> GetMyAttendeesAsync(Guid userId, CancellationToken ct = default) =>
-        WithInnerAsync<ITicketTransferService, IReadOnlyList<MyAttendeeRowDto>>(inner => inner.GetMyAttendeesAsync(userId, ct));
-
-    public Task<TicketTransferConfirmDto?> GetConfirmationAsync(
-        Guid attendeeId, Guid receiverUserId, Guid senderUserId, CancellationToken ct = default) =>
-        WithInnerAsync<ITicketTransferService, TicketTransferConfirmDto?>(
-            inner => inner.GetConfirmationAsync(attendeeId, receiverUserId, senderUserId, ct));
-
-    public Task<IReadOnlyList<TicketTransferRowDto>> GetByStatusAsync(
-        TicketTransferStatus status, CancellationToken ct = default) =>
-        WithInnerAsync<ITicketTransferService, IReadOnlyList<TicketTransferRowDto>>(inner => inner.GetByStatusAsync(status, ct));
-
-    public Task<IReadOnlyList<TicketTransferRowDto>> GetBySenderAsync(Guid userId, CancellationToken ct = default) =>
-        WithInnerAsync<ITicketTransferService, IReadOnlyList<TicketTransferRowDto>>(inner => inner.GetBySenderAsync(userId, ct));
-
-    public Task<TicketTransferDetailDto?> GetDetailAsync(Guid transferRequestId, CancellationToken ct = default) =>
-        WithInnerAsync<ITicketTransferService, TicketTransferDetailDto?>(inner => inner.GetDetailAsync(transferRequestId, ct));
-
-    public Task<int> CountPendingAsync(CancellationToken ct = default) =>
-        WithInnerAsync<ITicketTransferService, int>(inner => inner.CountPendingAsync(ct));
-
     public Task<AttendeeImportPlan> BuildPlanAsync(CancellationToken ct = default) =>
         WithInnerAsync<IAttendeeContactImportService, AttendeeImportPlan>(inner => inner.BuildPlanAsync(ct));
 
@@ -232,10 +183,6 @@ internal sealed class CachingTicketQueryService
         _orders.Clear();
         _userHoldings.Clear();
     }
-
-    private Task<TicketTransferMutationResult> MutateTransferAsync(
-        Func<ITicketTransferService, Task<TicketTransferMutationResult>> work) =>
-        MutateAsync<ITicketTransferService, TicketTransferMutationResult>(work, ClearAll);
 
     private Task MutateAsync<TInner>(Func<TInner, Task> work, Action evict) where TInner : notnull =>
         MutateAsync<TInner, bool>(async inner =>

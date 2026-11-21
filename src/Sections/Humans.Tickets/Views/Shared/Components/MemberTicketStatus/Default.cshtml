@@ -5,7 +5,7 @@
     <div class="col-lg-8">
         <div class="card border-0 shadow-sm">
             <div class="card-body">
-                @if (!Model.TicketsConfigured)
+                @if (!Model.TicketsConfigured && !Model.SellsInHumans && !Model.HasTicket)
                 {
                     <div class="d-flex align-items-center">
                         <div class="dashboard-action-icon dashboard-action-icon-sm dashboard-action-icon-warning me-3">
@@ -35,16 +35,27 @@
                         </div>
                         <div>
                             <h5 class="mb-0">@SharedLocalizer["Dashboard_TicketConfirmed"]</h5>
-                            @if (Model.UserTicketCount > 1)
+                            @if (Model.UserTicketCount + Model.HumansTicketCount > 1)
                             {
-                                <small class="text-muted">@string.Format(SharedLocalizer["Dashboard_TicketCount"].Value, Model.UserTicketCount)</small>
+                                <small class="text-muted">@string.Format(SharedLocalizer["Dashboard_TicketCount"].Value, Model.UserTicketCount + Model.HumansTicketCount)</small>
                             }
                         </div>
                     </div>
-                    <vc:my-ticket-stubs user-id="@Model.UserId" />
-                    <div class="mt-3">
-                        <a class="btn btn-sm btn-outline-secondary"
-                           asp-controller="TicketTransfer" asp-action="Index">@Localizer["Tickets_MemberTicketStatus_Transfers"]</a>
+                    @if (Model.UserTicketCount > 0)
+                    {
+                        <vc:my-ticket-stubs user-id="@Model.UserId" />
+                    }
+                    <div class="mt-3 d-flex flex-wrap gap-2">
+                        @if (Model.HumansTicketCount > 0)
+                        {
+                            <a class="btn btn-sm btn-primary" asp-controller="TicketBuy" asp-action="Mine">
+                                <i class="fa-solid fa-qrcode me-1"></i>@Localizer["Tickets_Mine_Show"]
+                            </a>
+                        }
+                        @if (Model.SellsInHumans)
+                        {
+                            <a class="btn btn-sm btn-outline-secondary" asp-controller="TicketBuy" asp-action="Index">@Localizer["Tickets_Buy_Title"]</a>
+                        }
                     </div>
                 }
                 else if (Model.ParticipationStatus == ParticipationStatus.NotAttending)
@@ -83,10 +94,16 @@
                                 <i class="fa-solid fa-ticket me-1"></i> @Localizer["Tickets_Buy_Title"]
                             </a>
                         }
-                        <a href="@MemberTicketStatusViewModel.TicketPurchaseUrl" target="_blank" rel="noopener" class="btn btn-primary">
-                            <i class="fa-solid fa-external-link-alt me-1"></i> @SharedLocalizer["Dashboard_BuyTicket"]
-                        </a>
-                        <a asp-controller="ProfileEmails" asp-action="Emails" class="btn btn-outline-secondary btn-sm">@SharedLocalizer["Dashboard_DifferentEmail"]</a>
+                        else
+                        {
+                            <a href="@MemberTicketStatusViewModel.TicketPurchaseUrl" target="_blank" rel="noopener" class="btn btn-primary">
+                                <i class="fa-solid fa-external-link-alt me-1"></i> @SharedLocalizer["Dashboard_BuyTicket"]
+                            </a>
+                        }
+                        @if (Model.TicketsConfigured)
+                        {
+                            <a asp-controller="ProfileEmails" asp-action="Emails" class="btn btn-outline-secondary btn-sm">@SharedLocalizer["Dashboard_DifferentEmail"]</a>
+                        }
                     </div>
                     @if (Model.EventYear.HasValue)
                     {

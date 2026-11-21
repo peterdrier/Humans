@@ -27,7 +27,7 @@ internal sealed class TicketSalesEvent
     /// <summary>Paid tickets plus tickets held by unexpired checkouts never exceed this.</summary>
     public int Capacity { get; set; }
 
-    /// <summary>A fraction: 0.10 for 10%. Donations carry none.</summary>
+    /// <summary>A fraction: 0.10 for 10% (the setup form shows a percentage). Donations carry none.</summary>
     public decimal TicketVatRate { get; set; }
 
     /// <summary>Ordered by <see cref="TicketSalesWave.EndsOn"/>; the last wave's price holds until sales close.</summary>
@@ -38,20 +38,20 @@ internal sealed class TicketSalesEvent
 
     public List<TicketPriceRule> PriceRules { get; set; } = [];
 
-    /// <summary>Returned tickets sell (ahead of fresh stock) once this many tickets are sold; null opens resale at once.</summary>
-    public int? ResaleOpensAtSold { get; set; }
-
-    /// <summary>How long an invitation to buy one specific returned ticket stays valid.</summary>
-    public int DirectedResaleDays { get; set; } = 3;
+    /// <summary>
+    /// When the ticketing team opened resale by hand (on the resale queue page); null while paused, and returned tickets
+    /// wait. Not part of the sales setup form, so saving the setup keeps it.
+    /// </summary>
+    public Instant? ResaleOpenedAt { get; set; }
 
     /// <summary>Which schemes this event sells; null (a setup saved before the switches) means the defaults.</summary>
     public TicketSalesSwitches? Switches { get; set; }
 
     public TicketSalesSwitches EffectiveSwitches => Switches ?? new();
 
-    /// <summary>Whether returned tickets sell, given how many live tickets the event has sold.</summary>
-    public bool ResaleOpenAt(int sold) =>
-        EffectiveSwitches.Resale != ResaleScheme.Off && Mode != TicketSalesMode.Closed && sold >= (ResaleOpensAtSold ?? 0);
+    /// <summary>Whether returned tickets sell now. Resale only mode sells nothing else, so it opens resale too.</summary>
+    public bool ResaleSelling =>
+        EffectiveSwitches.Resale != ResaleScheme.Off && Mode != TicketSalesMode.Closed && (ResaleOpenedAt is not null || Mode == TicketSalesMode.ResaleOnly);
 
     /// <summary>The page with the ticket rules every buyer accepts; null for none. A new address is a new version.</summary>
     public string? TermsUrl { get; set; }

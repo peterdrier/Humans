@@ -64,6 +64,41 @@ internal sealed partial class TicketCheckoutService
         return TicketReconBuilder.Build(backendKey, from, to, orders, backendOrders, tickets);
     }
 
+    /// <summary>Three reconcile runs past expiry: by then the reconcile should have settled the order either way.</summary>
+    private static readonly Duration StuckGrace = Duration.FromMinutes(15);
+
+    public async Task<BackendLedger?> GetBackendLedgerAsync(string backendKey, CancellationToken ct = default)
+    {
+        var info = Backends.FirstOrDefault(b => string.Equals(b.Key, backendKey, StringComparison.Ordinal));
+        if (info is null)
+            return null;
+
+        var now = clock.GetCurrentInstant();
+        var orders = (await AllOrdersAsync(await repository.GetSalesEventsAsync(ct), ct))
+            .Where(o => string.Equals(o.BackendKey, backendKey, StringComparison.Ordinal))
+            .OrderByDescending(o => o.CreatedAt).ToList();
+        var refunds = new List<TicketCheckoutRefund>();
+        foreach (var salesEventId in orders.Select(o => o.SalesEventId).Distinct())
+            refunds.AddRange(await repository.GetRefundsForSalesEventAsync(salesEventId, ct));
+        var orderIds = orders.Select(o => o.Id).ToHashSet();
+
+        var stuck = orders
+            .Where(o => o.State is TicketCheckoutOrderState.Created or TicketCheckoutOrderState.Pending && o.ExpiresAt + StuckGrace < now)
+            .ToList();
+        // Reconciliation's paid side: a free order never reached the backend, so it is neither side's.
+        var paid = orders
+            .Where(o => o.State == TicketCheckoutOrderState.Paid && !(o.TotalMinor == 0 && o.BackendOrderId is null))
+            .ToList();
+        var mine = refunds.Where(r => orderIds.Contains(r.OrderId)).ToList();
+        var unsettled = mine.Where(r => r.State is RefundState.Pending or RefundState.ManualRequired).OrderBy(r => r.CreatedAt).ToList();
+        // A failed refund is terminal and a retry is a new row, so it matters only until a later attempt on the order goes through.
+        var failed = mine
+            .Where(r => r.State == RefundState.Failed
+                && !mine.Any(later => later.OrderId == r.OrderId && later.CreatedAt > r.CreatedAt && later.State != RefundState.Failed))
+            .OrderBy(r => r.CreatedAt).ToList();
+        return new BackendLedger(info, orders, paid, stuck, unsettled, failed);
+    }
+
     private async Task<List<TicketCheckoutOrder>> AllOrdersAsync(IReadOnlyList<TicketSalesEvent> salesEvents, CancellationToken ct)
     {
         var orders = new List<TicketCheckoutOrder>();

@@ -23,24 +23,21 @@ public class MyTicketStubsViewComponentTests
         },
     };
 
-    private static UserTicketHoldingRow Row(bool pending = false, Guid? transferId = null) => new(
+    private static UserTicketHoldingRow Row() => new(
         AttendeeId: Guid.NewGuid(),
         AttendeeName: "Ada Lovelace",
         AttendeeEmail: "ada@example.com",
         VendorTicketId: "TKT-001",
         TicketTypeName: "GA",
-        Status: TicketAttendeeStatus.Valid,
-        HasPendingOutgoingTransfer: pending,
-        PendingTransferRequestId: transferId);
+        Status: TicketAttendeeStatus.Valid);
 
     [HumansFact]
-    public async Task Renders_StubsWithEarlyEntryAndPendencyStamped()
+    public async Task Renders_StubsWithEarlyEntryStamped()
     {
         var userId = Guid.NewGuid();
         var ee = new LocalDate(2026, 8, 24);
-        var transferId = Guid.NewGuid();
         _tickets.GetUserTicketHoldingsAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(new UserTicketHoldings(1, [Row(pending: true, transferId: transferId)]));
+            .Returns(new UserTicketHoldings(1, [Row()]));
         _earlyEntry.GetForUserAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new EarlyEntryRosterRow(userId, ee, ["Camp: Flaming Lotus"], false));
 
@@ -50,8 +47,6 @@ public class MyTicketStubsViewComponentTests
         var stubs = view.ViewData!.Model.Should().BeAssignableTo<IReadOnlyList<TicketStubInfo>>().Subject;
         var stub = stubs.Should().ContainSingle().Subject;
         stub.EarlyEntryDate.Should().Be(ee);
-        stub.HasPendingTransfer.Should().BeTrue();
-        stub.PendingTransferRequestId.Should().Be(transferId);
     }
 
     [HumansFact]

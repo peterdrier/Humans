@@ -345,7 +345,7 @@
     <value>Fusionar comptes?</value>
   </data>
   <data name="Users_Emails_MergeWarningBody" xml:space="preserve">
-    <value>La fusió de comptes serveix per combinar dos comptes que pertanyen a la mateixa persona (per exemple, un correu antic i un de nou, tots dos teus). No és una manera de compartir o transferir entrades, reserves o altres elements entre dues persones diferents. Per transferir una entrada a un altre humà, utilitza la funció de transferència d'entrades a /Tickets/Transfers.</value>
+    <value>La fusió de comptes serveix per combinar dos comptes que pertanyen a la mateixa persona (per exemple, un correu antic i un de nou, tots dos teus). No és una manera de compartir o transferir entrades, reserves o altres elements entre dues persones diferents. Per passar una entrada a un altre humà, posa-la en revenda a /Tickets/Buy/Mine i convida'l per correu.</value>
   </data>
   <data name="Users_Emails_VerificationWillBeSent" xml:space="preserve">
     <value>S’enviarà un correu de verificació a aquesta adreça.</value>

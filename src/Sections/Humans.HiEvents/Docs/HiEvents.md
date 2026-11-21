@@ -23,6 +23,9 @@ Hi.Events is an open-source event ticketing platform. This section lets Humans u
 
 **Out of scope.** Hi.Events Cloud (it lacks the fork's endpoint), Hi.Events' own catalogue, promo codes, seating, box office, check-in and buyer mail; any per-event setting in Humans beyond the event id.
 
+
+**Admin.** The section's only page is its admin sidebar row, "Hi.Events" (`TicketsBackendAdminNav`, `TicketsPolicies.Read`), which opens Tickets' status page for key `hievents` at `/Tickets/Admin/Backends/hievents`: settings, connection test, orders, stuck orders, unsettled refunds and a link to reconciliation. The data is Tickets'; this section contributes only the row.
+
 ## Concepts
 
 - The **port** is `Humans.Tickets.Contracts.ITicketCheckoutBackend`. Tickets owns it; this section implements it and
@@ -64,7 +67,7 @@ None — the section owns no tables.
   Hi.Events.
 - Checkout returns `AdminUrl`, the order in Hi.Events' event order list, so the ticketing team can jump to it.
 - Status: `COMPLETED` with `PAYMENT_RECEIVED` is Paid; other `COMPLETED` is Failed; `CANCELLED` is Cancelled;
-  `ABANDONED`, or `RESERVED` past `reserved_until`, is Expired; other `RESERVED` is Pending (a failed card attempt can
+  Processing as below; otherwise `ABANDONED`, or `RESERVED` past `reserved_until`, is Expired; other `RESERVED` is Pending (a failed card attempt can
   be retried on the same link). `RefundedMinor` is `total_refunded`. Fee and paid time are not exposed by Hi.Events and
   stay null.
 - Refund: the Humans refund id is the idempotency key. Hi.Events answers with the Stripe refund made under it
@@ -75,11 +78,16 @@ None — the section owns no tables.
   when Stripe fails a refund it had accepted.
 - Late payment: a payment that lands after Humans cancelled the checkout, or after it expired, is kept by the fork (it
   never auto-refunds orders created here) and reads as `Paid`.
-- `Processing` is never reported: Hi.Events has no state for a Stripe payment that settles later (SEPA debit, bank
-  transfer), and leaves such an order reserved until it expires. Keep delayed methods off in the Stripe account used by
-  Hi.Events; if one slips through, the settled payment still arrives as a late payment and reads as `Paid`.
-- `DisputedMinor` is always 0: Hi.Events does not track chargebacks.
-- Cancel: a no-op on a cancelled order, `TicketCheckoutException` on a paid one, otherwise Hi.Events' cancel without
+- `Processing`: a `RESERVED` or `ABANDONED` order with `payment_processing_at` set, whatever `reserved_until` says. The
+  fork sets it when Stripe reports a payment that settles later (`payment_intent.processing`, a SEPA debit), or when the
+  pay page's return check finds one, and sends the buyer on to `ReturnUrl`; it clears it when the payment fails (the
+  order reads Pending or Expired again) or succeeds (Paid). Tickets never cancels a Processing order at its hold.
+- `DisputedMinor` is the fork's `total_disputed`: what Stripe chargebacks on the order's payments hold back (a dispute
+  counts until won; an inquiry, `warning_*`, takes nothing), in `GetStatusAsync` and `ListOrdersAsync` alike. The fork
+  reads each dispute back from Stripe on every `charge.dispute.*` event and sends `order.updated`, which nudges Tickets.
+- The fork's Stripe webhook must carry `payment_intent.processing` and the `charge.dispute.*` events, or neither state
+  reaches Humans.
+- Cancel: a no-op on a cancelled order, `TicketCheckoutException` on a paid or Processing one, otherwise Hi.Events' cancel without
   refund.
 - Webhook: 503 without a secret, 401 on a bad signature, 200 and no call for anything but `order.*`.
 - After paying, Hi.Events' payment return page sends the buyer to `CheckoutRequest.ReturnUrl`.
