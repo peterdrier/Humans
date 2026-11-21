@@ -83,7 +83,6 @@ internal sealed class GateService(
             EarliestEntryDate: ee?.EarliestEntryDate,
             Today: today));
 
-
         return new GateScanResult(
             outcome,
             code,

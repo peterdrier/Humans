@@ -567,6 +567,19 @@ public sealed class TicketCheckoutServiceTests
     }
 
     [HumansFact]
+    public async Task An_offer_whose_child_was_used_at_the_gate_takes_no_invitation()
+    {
+        _salesEvent.ChildPriceMinor = 5000;
+        var order = await BuyAndPayAsync(Buy() with { ChildNames = ["Kid García"] }, _buyerId);
+        var adult = _repo.Tickets.Single(t => t.OrderId == order.Id && t.Kind == TicketHolderKind.Adult);
+        (await _service.OfferForResaleAsync(adult.Id, _buyerId, Ct)).Refusal.Should().BeNull();
+        _admitted.Add(_repo.Tickets.Single(t => t.OrderId == order.Id && t.Kind == TicketHolderKind.Child).Barcode);
+
+        (await _service.InviteBuyerAsync(adult.Id, _buyerId, "bo@example.com", new Uri("https://h.example/r/"), "en", Ct))
+            .Refusal.Should().Be("Tickets_Resale_NotOfferable");
+    }
+
+    [HumansFact]
     public async Task Only_the_holder_can_offer_withdraw_or_invite()
     {
         var order = await BuyAndPayAsync(Buy(), _buyerId);
