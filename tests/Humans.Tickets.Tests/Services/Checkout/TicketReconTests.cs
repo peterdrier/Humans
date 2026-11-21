@@ -138,6 +138,27 @@ public sealed class TicketReconTests
     }
 
     [HumansFact]
+    public void Free_order_no_backend_took_stays_out_of_the_totals()
+    {
+        Order();
+        Order(total: 0, atBackend: false).BackendOrderId = null;
+
+        var recon = Build();
+
+        recon.Balanced.Should().BeTrue();
+        recon.Humans.Orders.Should().Be(1);
+        recon.TicketsIssued.Should().Be(1);
+    }
+
+    [HumansFact]
+    public void Free_order_without_its_tickets_is_flagged()
+    {
+        Order(total: 0, atBackend: false, issue: false).BackendOrderId = null;
+
+        Build().Problems.Single().Issues.Should().Equal(TicketReconIssue.TicketsNotIssued);
+    }
+
+    [HumansFact]
     public void Differences_in_money_and_tickets_are_named_per_order()
     {
         Order();

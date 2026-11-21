@@ -57,7 +57,8 @@ period, Humans' orders on it are matched with the backend's own list (`ListOrder
 backend stores (Stripe session metadata, pretix `api_meta`, Hi.Events `external_reference`). Each side's totals count
 paid orders only: orders, tickets, charged, refunded, chargebacks and net. Humans also counts the tickets it issued for
 those orders. The period is by the day the order was created; a pair belongs to its Humans order's day and the backend
-is read an hour wider on both sides, so an order made at midnight is not split.
+is read an hour wider on both sides, so an order made at midnight is not split. A free order (nothing to charge) never
+reaches a backend, so it stays out of both sides' totals and only its tickets are checked.
 
 Per order it names what differs: missing at the backend, extra at the backend (no Humans order, or one on another
 backend), a duplicate backend order for one Humans order, a backend order Humans never recorded (a create whose answer

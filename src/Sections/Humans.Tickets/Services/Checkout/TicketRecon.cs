@@ -63,7 +63,8 @@ internal sealed record TicketRecon(
 /// </para>
 /// <para>
 /// Totals count paid orders only: a pending, expired or cancelled order took no money on either side. Each order is
-/// still matched, so one that is missing, extra or doubled shows whatever its state.
+/// still matched, so one that is missing, extra or doubled shows whatever its state. An order no backend ever took (a
+/// free one, paid with nothing to charge) stays out of both sides' totals; only its tickets are checked.
 /// </para>
 /// </summary>
 internal static class TicketReconBuilder
@@ -96,16 +97,23 @@ internal static class TicketReconBuilder
             .ToDictionary(g => g.Key, g => g.ToList());
 
         var rows = new List<TicketReconRow>();
+        var taken = inPeriod.Select(o => o.Id).ToHashSet();
         foreach (var order in inPeriod)
         {
             var mine = byHumansId.GetValueOrDefault(order.Id) ?? [];
             // The one Humans recorded leads; with none recorded, the backend's oldest.
             var primary = mine.FirstOrDefault(b => string.Equals(b.BackendOrderId, order.BackendOrderId, StringComparison.Ordinal))
                 ?? mine.OrderBy(b => b.CreatedAt).FirstOrDefault();
-            if (primary is null && order.BackendOrderId is null)
-                continue; // The backend never took it: nothing to match.
-
             int? ticketsIssued = order.State == TicketCheckoutOrderState.Paid ? issued.GetValueOrDefault(order.Id) : null;
+            if (primary is null && order.BackendOrderId is null)
+            {
+                // The backend never took it (unopened, or free and paid with nothing to charge): only its tickets to check.
+                taken.Remove(order.Id);
+                if (ticketsIssued is { } free && free != TicketLines(order))
+                    rows.Add(new TicketReconRow(order, null, ticketsIssued, [TicketReconIssue.TicketsNotIssued]));
+                continue;
+            }
+
             rows.Add(new TicketReconRow(order, primary, ticketsIssued, Compare(order, primary, ticketsIssued)));
             rows.AddRange(mine.Where(b => b != primary).Select(b => new TicketReconRow(order, b, null, [TicketReconIssue.Duplicate])));
         }
@@ -119,7 +127,7 @@ internal static class TicketReconBuilder
         }
 
         var counted = rows.Where(r => r.Backend is not null).Select(r => r.Backend!).DistinctBy(b => b.BackendOrderId, StringComparer.Ordinal);
-        var paidHere = inPeriod.Where(o => o.State == TicketCheckoutOrderState.Paid).ToList();
+        var paidHere = inPeriod.Where(o => o.State == TicketCheckoutOrderState.Paid && taken.Contains(o.Id)).ToList();
         return new TicketRecon(
             backendKey,
             from,
