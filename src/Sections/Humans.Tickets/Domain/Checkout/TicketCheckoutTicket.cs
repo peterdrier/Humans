@@ -109,9 +109,6 @@ internal sealed class TicketResaleOffer
     /// <summary>SHA-256 of the emailed link's token; the token itself is never stored.</summary>
     public string? DirectedTokenHash { get; set; }
 
-    /// <summary>Invitations no longer expire; nothing reads or writes it. The column drop needs its own PR.</summary>
-    [Obsolete("Directed resale links have no expiry. Kept only until the column is dropped.")]
-    public Instant? DirectedExpiresAt { get; set; }
 
     public Instant? DirectedUsedAt { get; set; }
 

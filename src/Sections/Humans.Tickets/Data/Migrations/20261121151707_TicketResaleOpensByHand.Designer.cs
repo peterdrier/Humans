@@ -14,8 +14,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Humans.Tickets.Data.Migrations
 {
     [DbContext(typeof(TicketsDbContext))]
-    [Migration("20261121143631_TicketResaleOpenedByHand")]
-    partial class TicketResaleOpenedByHand
+    [Migration("20261121151707_TicketResaleOpensByHand")]
+    partial class TicketResaleOpensByHand
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -300,9 +300,6 @@ namespace Humans.Tickets.Data.Migrations
                         .HasMaxLength(320)
                         .HasColumnType("character varying(320)");
 
-                    b.Property<Instant?>("DirectedExpiresAt")
-                        .HasColumnType("timestamp with time zone");
-
                     b.Property<int>("DirectedInviteCount")
                         .HasColumnType("integer");
 
@@ -386,9 +383,6 @@ namespace Humans.Tickets.Data.Migrations
                     b.Property<Instant>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<int>("DirectedResaleDays")
-                        .HasColumnType("integer");
-
                     b.Property<Guid>("EventSettingsId")
                         .HasColumnType("uuid");
 
@@ -399,9 +393,6 @@ namespace Humans.Tickets.Data.Migrations
 
                     b.Property<Instant?>("ResaleOpenedAt")
                         .HasColumnType("timestamp with time zone");
-
-                    b.Property<int?>("ResaleOpensAtSold")
-                        .HasColumnType("integer");
 
                     b.Property<Instant?>("SalesCloseAt")
                         .HasColumnType("timestamp with time zone");

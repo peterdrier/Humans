@@ -1,12 +1,5 @@
 # Section debt ledger for Humans.Tickets. Shape + routing: memory/process/debt-ledger-additions.md.
 # /debt-sweep pools every src/Sections/*/Docs/debt.yml into the same inbox as the central ledger.
 version: 1
-next_id: 14
-inbox:
-  - added: 2026-11-21
-    id: TICKETS-13
-    what: "Dead columns ticket_sales_events.ResaleOpensAtSold and DirectedResaleDays, ticket_resale_offers.DirectedExpiresAt: resale opens by hand and directed links never expire (Peter, 2026-11-21), so nothing reads or writes them; the properties are [Obsolete]. Drop them in their own PR with Peter's per-case approval (destructive-drops-need-approval)."
-    review: light
-    status: needs-detail
-    blocked_on: "Peter's written approval for the three column drops."
-
+next_id: 13
+inbox: []

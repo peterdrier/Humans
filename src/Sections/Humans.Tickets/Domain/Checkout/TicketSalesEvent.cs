@@ -44,14 +44,6 @@ internal sealed class TicketSalesEvent
     /// </summary>
     public Instant? ResaleOpenedAt { get; set; }
 
-    /// <summary>Replaced by <see cref="ResaleOpenedAt"/>; nothing reads or writes it. The column drop needs its own PR.</summary>
-    [Obsolete("Resale opens by hand now (ResaleOpenedAt). Kept only until the column is dropped.")]
-    public int? ResaleOpensAtSold { get; set; }
-
-    /// <summary>Directed resale links have no expiry now; nothing reads or writes it. The column drop needs its own PR.</summary>
-    [Obsolete("Directed resale links have no expiry. Kept only until the column is dropped.")]
-    public int DirectedResaleDays { get; set; } = 3;
-
     /// <summary>Which schemes this event sells; null (a setup saved before the switches) means the defaults.</summary>
     public TicketSalesSwitches? Switches { get; set; }
 
