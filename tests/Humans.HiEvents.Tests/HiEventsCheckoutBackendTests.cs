@@ -416,13 +416,15 @@ public class HiEventsCheckoutBackendTests
     }
 
     [HumansFact]
-    public void Setup_WithAnAppUrlWithoutScheme_HasNoAdminLinkAndDoesNotThrow()
+    public async Task Setup_WithAnAppUrlWithoutScheme_HasNoAdminLinkAndFailsTheCheck()
     {
+        _handler.Enqueue(HttpStatusCode.OK, new { data = new { id = 1 } });
         var backend = new HiEventsCheckoutBackend(new HttpClient(_handler),
             Options.Create(new HiEventsSettings { ApiUrl = "https://tickets.example/api", ApiKey = "key", AppUrl = "tickets.example" }),
             new FakeClock(Now), NullLogger<HiEventsCheckoutBackend>.Instance);
 
         backend.Setup.AdminUrl.Should().BeNull();
+        (await backend.CheckAsync(null, Ct)).Should().Contain(f => !f.Ok && f.Text.Contains("HiEvents:AppUrl"));
     }
 
     [HumansFact]

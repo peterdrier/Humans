@@ -255,6 +255,9 @@ internal sealed class HiEventsCheckoutBackend : ITicketCheckoutBackend
         };
         if (IsCloud)
             findings.Add(new(false, "Hi.Events Cloud cannot sell Humans orders: it has no checkout endpoint taking Humans' prices."));
+        if (!string.IsNullOrWhiteSpace(_settings.AppUrl)
+            && !(Uri.TryCreate(_settings.AppUrl, UriKind.Absolute, out var app) && app.Scheme is "https" or "http"))
+            findings.Add(new(false, "HiEvents:AppUrl is not an absolute http(s) address, so checkout cannot build the order's admin link."));
         try
         {
             using (var me = await _http.GetAsync("users/me", ct))
