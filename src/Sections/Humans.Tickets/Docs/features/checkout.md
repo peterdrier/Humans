@@ -23,15 +23,18 @@ Rules every backend follows:
   audit log ("after the order was Expired") and logs a warning; a released resale offer another checkout took stays
   with that checkout, so the late ticket is fresh stock and may put the event one over capacity for the team to settle.
 - **Refund outcome.** `RefundedMinor` moves only once money went back. On every status read Tickets settles its
-  `Pending` and `ManualRequired` refunds from it, oldest first; when the backend sets `RefundFailed`, the ones it does
-  not cover become `Failed` and stop counting against what can still be refunded. The reconcile job re-reads paid orders
-  with unsettled refunds.
+  `Pending` and `ManualRequired` refunds from it, oldest first. `RefundFailed` says only that some refund on the payment
+  failed, so Tickets repeats each uncovered pending refund under its own id and marks only the ones the backend answers
+  `Failed`; those stop counting against what can still be refunded. The reconcile job re-reads paid orders with
+  unsettled refunds and resends any refund whose backend call threw.
 - **Erasure.** A member's deletion calls `ErasePersonalDataAsync` for each of their orders before Tickets tombstones its
   own copy; a backend failure throws, so the deletion retries with the emails still known. Box Office is a no-op: Stripe
   keeps payment records as processor. An order on a backend no longer registered is logged and audited and skipped, so
   it never blocks a deletion: a backend's data is exported or erased before its adapter is removed. Tickets then voids
   the member's live tickets and their children's, withdraws their offers, tombstones their names and emails (children's
-  names included) and clears any resale invitation sent to one of their addresses.
+  names included) clears any resale invitation sent to one of their addresses, and tombstones partner lines and tickets without an
+  account that carry one of those addresses. A partner on an order that ended unpaid is forgotten 30 days after its
+  hold lapsed, once a late payment can no longer arrive.
 
 ## Flow
 
@@ -49,7 +52,7 @@ Rules every backend follows:
    so of several callers seeing the same payment only one fulfils it. Tickets then resolves each partner's account (a
    verified address attaches to that account; one unverified row is replaced by a new account as the attendee import
    does; an address on several accounts leaves the ticket unattached and says so on the timeline; a partner who already
-   holds a ticket is flagged for the team), issues one `ticket_checkout_tickets` row per ticket line (unique per order
+   holds a ticket is flagged for the team, on the timeline and as a `TicketCheckoutNeedsAttention` audit entry), issues one `ticket_checkout_tickets` row per ticket line (unique per order
    and line: barcode, holder, price paid, wave or class, children pointing at their adult) and tells every
    `ITicketDelivery` (the ticket email with QR lives there). A delivery failure never undoes the sale; delivery steps go
    on the timeline through `RecordDeliveryAsync`. The reconcile job finishes any paid order a crash left without
@@ -89,7 +92,7 @@ consent needs a real profile, so the account always comes before the order.
   (`/Tickets/Buy/Resale/{token}`, only the SHA-256 of the token is stored). Only a signed-in buyer with that email can
   use it, for themselves, and only while resale is open. The offer skips the public queue until the link lapses after
   `DirectedResaleDays` (then it is back at its place) or the holder cancels it. Invitation, use, lapse and cancel are on
-  the holder's order timeline. One invitation is live at a time, and an offer gets at most three; the invited email is
+  the holder's order timeline. One invitation is live at a time, and a ticket gets at most three over all its offers; the invited email is
   cleared once the invitation ends.
 
 Every step lands in the order's append-only timeline (`ticket_checkout_order_events`) with who did it, shown on the

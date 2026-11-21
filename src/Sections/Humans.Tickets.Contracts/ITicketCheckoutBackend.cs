@@ -39,6 +39,8 @@ public interface ITicketCheckoutBackend : IApplicationService
     Task<CheckoutStatus> GetStatusAsync(string backendOrderId, CancellationToken ct = default);
 
     /// <summary>
+    /// A repeat of a refund id answers that refund's current state without refunding again. Throws when the backend
+    /// gave no answer, so Tickets keeps the refund pending and repeats it.
     /// Never throws for a refund the backend declines: that is <see cref="RefundState.Failed"/>. A backend that may not
     /// move money itself (Humans never moves money out of Stripe, <c>memory/architecture/stripe-money-out.md</c>)
     /// answers <see cref="RefundState.ManualRequired"/> with the page where a person issues it; the refund then shows up
@@ -108,7 +110,7 @@ public sealed record CheckoutSession(string BackendOrderId, Uri PaymentUrl, Uri?
 /// refund made in the backend's own dashboard is still seen; it moves only once money has actually gone back. Tickets
 /// settles its <see cref="RefundState.Pending"/> and <see cref="RefundState.ManualRequired"/> refunds from it, oldest
 /// first. <paramref name="RefundFailed"/> is true when a refund the backend accepted has since failed; Tickets then
-/// marks the pending refunds <paramref name="RefundedMinor"/> does not cover as failed.
+/// repeats each pending refund <paramref name="RefundedMinor"/> does not cover, under its own id, to learn which failed.
 /// </para>
 /// </summary>
 public sealed record CheckoutStatus(
