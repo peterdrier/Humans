@@ -53,7 +53,9 @@ internal sealed class ContactFieldService(
         Guid profileId,
         CancellationToken cancellationToken = default)
     {
-        var fields = await userRepository.GetByProfileIdReadOnlyAsync(profileId, cancellationToken);
+        if (await userRepository.GetOwnerUserIdAsync(profileId, cancellationToken) is not { } ownerUserId)
+            return [];
+        var fields = await userRepository.GetContactFieldsByUserIdReadOnlyAsync(ownerUserId, cancellationToken);
 
         return fields.Select(cf => new ContactFieldEditDto(
             cf.Id,
@@ -79,8 +81,13 @@ internal sealed class ContactFieldService(
 
         var now = clock.GetCurrentInstant();
 
+        // Also the cache key: resolved before committing, so a failed lookup can't skip the refresh.
+        var ownerUserId = await userRepository.GetOwnerUserIdAsync(profileId, cancellationToken);
+
         // Detached: mutations go back explicitly through BatchSaveAsync.
-        var existingFields = await userRepository.GetByProfileIdForMutationAsync(profileId, cancellationToken);
+        IReadOnlyList<ContactField> existingFields = ownerUserId is { } owner
+            ? await userRepository.GetContactFieldsByUserIdForMutationAsync(owner, cancellationToken)
+            : [];
 
         var existingById = existingFields.ToDictionary(cf => cf.Id);
         var incomingIds = fields.Where(f => f.Id.HasValue).Select(f => f.Id!.Value).ToHashSet();
@@ -92,9 +99,6 @@ internal sealed class ContactFieldService(
 
         var toAdd = new List<ContactField>();
         var toUpdate = new List<ContactField>();
-
-        // Also the cache key: resolved before committing, so a failed lookup can't skip the refresh.
-        var ownerUserId = await userRepository.GetOwnerUserIdAsync(profileId, cancellationToken);
 
         foreach (var dto in fields)
         {

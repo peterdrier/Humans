@@ -26,10 +26,4 @@ internal sealed class ProfileService(IUserRepository userRepository,
         var fsBytes = await fileStorage.TryReadAsync(key, ct);
         return fsBytes is not null ? (fsBytes, contentType) : null;
     }
-
-    public Task<IReadOnlyList<ProfileChildRowsWithoutUser>> GetProfileChildRowsWithoutUserAsync(CancellationToken ct = default) =>
-        userRepository.GetProfileChildRowsWithoutUserAsync(ct);
-
-    public Task<int> FillProfileChildUserIdsAsync(CancellationToken ct = default) =>
-        userRepository.FillProfileChildUserIdsAsync(ct);
 }
