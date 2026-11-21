@@ -1,5 +1,6 @@
 using Humans.Tickets.Contracts;
 using Humans.Tickets.Domain.Checkout;
+using Microsoft.Extensions.Hosting;
 using NodaTime;
 
 namespace Humans.Tickets.Services.Checkout;
@@ -14,6 +15,9 @@ internal sealed partial class TicketCheckoutService
             .Concat((await AllOrdersAsync(salesEvents, ct)).Select(o => o.BackendKey))
             .Distinct(StringComparer.Ordinal).Where(key => BackendFor(key) is not null).Order(StringComparer.Ordinal).ToList();
     }
+
+    /// <summary>QA, previews and dev share the backends' test accounts, so each sees the others' orders.</summary>
+    private bool SharedAccount => !environment.IsProduction();
 
     public async Task<TicketRecon?> ReconcileBackendAsync(
         string backendKey, Instant from, Instant to, CancellationToken ct = default)
@@ -61,7 +65,7 @@ internal sealed partial class TicketCheckoutService
                      .Select(o => o.SalesEventId).Distinct())
             tickets.AddRange(await repository.GetTicketsForSalesEventAsync(salesEventId, ct));
 
-        return TicketReconBuilder.Build(backendKey, from, to, orders, backendOrders, tickets);
+        return TicketReconBuilder.Build(backendKey, from, to, orders, backendOrders, tickets, SharedAccount);
     }
 
     public async Task<TicketPaymentRecon?> ReconcilePaymentsAsync(
@@ -91,7 +95,7 @@ internal sealed partial class TicketCheckoutService
 
         if (ledger is null)
             return null;
-        return TicketPaymentReconBuilder.Build(backendKey, from, to, ledger, orders, returnedLater);
+        return TicketPaymentReconBuilder.Build(backendKey, from, to, ledger, orders, returnedLater, SharedAccount);
     }
 
     /// <summary>Three reconcile runs past expiry: by then the reconcile should have settled the order either way.</summary>

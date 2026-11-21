@@ -451,20 +451,17 @@ internal sealed class BoxOfficeCheckoutBackend(
         if (!_settings.IsConfigured)
             return [new(false, $"{Section.KeyVariable} is unset.")];
 
-        var findings = new List<CheckoutBackendFinding>();
-        try
+        var client = Client();
+        var findings = new List<CheckoutBackendFinding>
         {
-            await new SessionService(Client()).ListAsync(new SessionListOptions { Limit = 1 }, cancellationToken: ct);
-            findings.Add(new(true, $"The key reads Checkout Sessions ({ModeLabel})."));
-        }
-        catch (StripeException ex)
-        {
-            findings.Add(new(false, $"Stripe refused the key ({(int)ex.HttpStatusCode} {ex.StripeError?.Code ?? ex.StripeError?.Type ?? "error"})."));
-        }
-        catch (Exception ex) when (ex is HttpRequestException or OperationCanceledException)
-        {
-            findings.Add(new(false, $"Stripe could not be reached: {ex.Message}"));
-        }
+            await ProbeAsync($"Checkout Sessions ({ModeLabel})",
+                () => new SessionService(client).ListAsync(new SessionListOptions { Limit = 1 }, cancellationToken: ct)),
+            // The reconciliation reads these; without them a missing scope shows only as the nightly alert.
+            await ProbeAsync("Balance transactions",
+                () => new BalanceTransactionService(client).ListAsync(new BalanceTransactionListOptions { Limit = 1 }, cancellationToken: ct)),
+            await ProbeAsync("Payouts",
+                () => new PayoutService(client).ListAsync(new PayoutListOptions { Limit = 1 }, cancellationToken: ct)),
+        };
 
         findings.Add(_settings.IsWebhookConfigured
             ? new(true, "Webhook signing secret is set.")
@@ -472,6 +469,23 @@ internal sealed class BoxOfficeCheckoutBackend(
         if (!string.IsNullOrWhiteSpace(backendEventRef))
             findings.Add(new(false, "Box Office takes no event id; clear it in the sales setup."));
         return findings;
+    }
+
+    private static async Task<CheckoutBackendFinding> ProbeAsync(string what, Func<Task> read)
+    {
+        try
+        {
+            await read();
+            return new(true, $"The key reads {what}.");
+        }
+        catch (StripeException ex)
+        {
+            return new(false, $"Stripe refused the key reading {what} ({(int)ex.HttpStatusCode} {ex.StripeError?.Code ?? ex.StripeError?.Type ?? "error"}).");
+        }
+        catch (Exception ex) when (ex is HttpRequestException or OperationCanceledException)
+        {
+            return new(false, $"Stripe could not be reached: {ex.Message}");
+        }
     }
 
     /// <summary>

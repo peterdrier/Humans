@@ -11,6 +11,7 @@ using Humans.Tickets.Contracts;
 using Humans.Tickets.Data;
 using Humans.Tickets.Domain.Checkout;
 using Humans.Users.Contracts;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Localization;
 using NodaTime;
 
@@ -32,6 +33,7 @@ internal sealed partial class TicketCheckoutService(
     IGateAdmissions gateAdmissions,
     IStringLocalizer<TicketsResource> localizer,
     IAuditLogService auditLog,
+    IHostEnvironment environment,
     IClock clock,
     ILogger<TicketCheckoutService> logger) : ITicketCheckoutService, IUserDataContributor, IUserMerge
 {

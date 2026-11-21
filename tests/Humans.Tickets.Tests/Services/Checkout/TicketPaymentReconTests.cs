@@ -38,8 +38,35 @@ public sealed class TicketPaymentReconTests
     private void Entry(PaymentLedgerEntryKind kind, long amount, long fee = 0, Guid? orderId = null) =>
         _entries.Add(new PaymentLedgerEntry($"txn_{_entries.Count}", Mid, kind, amount, fee, orderId, null));
 
-    private TicketPaymentRecon Build() =>
-        TicketPaymentReconBuilder.Build(Key, From, To, new PaymentLedger(_entries, _payouts), _orders);
+    private TicketPaymentRecon Build(bool sharedAccount = false) =>
+        TicketPaymentReconBuilder.Build(Key, From, To, new PaymentLedger(_entries, _payouts), _orders, sharedAccount: sharedAccount);
+
+    [HumansFact]
+    public void Outside_production_a_movement_naming_an_order_this_database_never_held_is_set_apart_but_counted()
+    {
+        var elsewhere = Order(backendKey: "pretix");
+        Entry(PaymentLedgerEntryKind.Charge, 30000, 450, Guid.NewGuid());
+        Entry(PaymentLedgerEntryKind.Charge, 30000, 450);
+        Entry(PaymentLedgerEntryKind.Refund, -5000, 0, elsewhere.Id);
+
+        var shared = Build(sharedAccount: true);
+        shared.OtherInstance.Select(e => e.Id).Should().Equal("txn_0");
+        shared.Problems.Should().HaveCount(2).And.OnlyContain(r => r.Issues.SequenceEqual(new[] { TicketPaymentIssue.NoOrder }));
+        shared.Totals.ChargedMinor.Should().Be(60000);
+
+        var production = Build();
+        production.OtherInstance.Should().BeEmpty();
+        production.Problems.Should().HaveCount(3);
+    }
+
+    [HumansFact]
+    public void Another_instances_payments_alone_balance_outside_production()
+    {
+        Entry(PaymentLedgerEntryKind.Charge, 30000, 450, Guid.NewGuid());
+
+        Build(sharedAccount: true).Balanced.Should().BeTrue();
+        Build().Balanced.Should().BeFalse();
+    }
 
     [HumansFact]
     public void Payments_matching_their_orders_with_the_recorded_fee_balance()

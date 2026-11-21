@@ -11,6 +11,7 @@ using Humans.Tickets.Services;
 using Humans.Tickets.Domain.Checkout;
 using Humans.Tickets.Services.Checkout;
 using Humans.Users.Contracts;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -42,6 +43,7 @@ public sealed class TicketCheckoutServiceTests
     private readonly Humans.Gate.Contracts.IGateAdmissions _gate = Substitute.For<Humans.Gate.Contracts.IGateAdmissions>();
     private readonly HashSet<string> _admitted = new(StringComparer.Ordinal);
     private readonly FakeClock _clock = new(Now);
+    private readonly IHostEnvironment _environment = Substitute.For<IHostEnvironment>();
     private readonly Guid _otherBuyerId = Guid.NewGuid();
     private int _sessions;
     private readonly Guid _buyerId = Guid.NewGuid();
@@ -79,6 +81,7 @@ public sealed class TicketCheckoutServiceTests
         };
         _repo.SalesEvents.Add(_salesEvent);
 
+        _environment.EnvironmentName.Returns(Environments.Production);
         _backend.Key.Returns("test");
         _backend.IsConfigured.Returns(true);
         _backend.CreateCheckoutAsync(Arg.Any<CheckoutRequest>(), Arg.Any<CancellationToken>())
@@ -107,7 +110,7 @@ public sealed class TicketCheckoutServiceTests
         _gate.GetAdmittedAsync(Arg.Any<IReadOnlyCollection<string>>(), Arg.Any<CancellationToken>())
             .Returns(ci => (IReadOnlySet<string>)ci.Arg<IReadOnlyCollection<string>>().Where(_admitted.Contains).ToHashSet(StringComparer.Ordinal));
         _service = new TicketCheckoutService(_repo, [_backend], _grants, _settings, _users, _provisioning, _userEmails,
-            _preferenceReads, _preferences, _email, emails, [_delivery], _gate, localizer, _audit,
+            _preferenceReads, _preferences, _email, emails, [_delivery], _gate, localizer, _audit, _environment,
             _clock, NullLogger<TicketCheckoutService>.Instance);
     }
 

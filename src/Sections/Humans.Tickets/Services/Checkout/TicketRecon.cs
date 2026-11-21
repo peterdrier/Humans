@@ -90,6 +90,10 @@ internal sealed record TicketReconRow(
         || Backend is { } b && (b.State == CheckoutState.Paid || b.RefundedMinor > 0 || b.DisputedMinor > 0);
 }
 
+/// <summary>
+/// <see cref="OtherInstance"/> holds backend orders that name a Humans order this database never held, outside
+/// production only: another Humans instance on the same test account made them. They are neither counted nor a difference.
+/// </summary>
 internal sealed record TicketRecon(
     string BackendKey,
     Instant From,
@@ -98,6 +102,7 @@ internal sealed record TicketRecon(
     TicketReconTotals Backend,
     int TicketsIssued,
     IReadOnlyList<TicketReconRow> Rows,
+    IReadOnlyList<BackendOrderSummary> OtherInstance,
     string? Error)
 {
     public IEnumerable<TicketReconRow> Problems => Rows.Where(r => r.Issues.Count > 0);
@@ -129,13 +134,18 @@ internal static class TicketReconBuilder
     /// <param name="orders">Every Humans order on any backend, so an order of another period is told from an extra one.</param>
     /// <param name="backendOrders">The backend's list for the widened period.</param>
     /// <param name="tickets">Tickets issued from the period's orders.</param>
+    /// <param name="sharedAccount">
+    /// Outside production, where QA, previews and dev share one test account: a backend order naming a Humans order this
+    /// database never held is another instance's, not an extra one.
+    /// </param>
     public static TicketRecon Build(
         string backendKey,
         Instant from,
         Instant to,
         IReadOnlyCollection<TicketCheckoutOrder> orders,
         IReadOnlyCollection<BackendOrderSummary> backendOrders,
-        IReadOnlyCollection<TicketCheckoutTicket> tickets)
+        IReadOnlyCollection<TicketCheckoutTicket> tickets,
+        bool sharedAccount = false)
     {
         var known = orders.ToDictionary(o => o.Id);
         var inPeriod = orders
@@ -173,11 +183,18 @@ internal static class TicketReconBuilder
             rows.AddRange(mine.Where(b => b != primary).Select(b => new TicketReconRow(order, b, null, [other])));
         }
 
+        var otherInstance = new List<BackendOrderSummary>();
         foreach (var b in backend.Where(b => b.CreatedAt >= from && b.CreatedAt < to))
         {
             var owner = b.HumansOrderId is { } id ? known.GetValueOrDefault(id) : null;
             if (owner is not null && string.Equals(owner.BackendKey, backendKey, StringComparison.Ordinal))
                 continue; // Paired above, or belongs to its order's own period.
+            if (sharedAccount && owner is null && b.HumansOrderId is not null)
+            {
+                otherInstance.Add(b);
+                continue;
+            }
+
             rows.Add(new TicketReconRow(owner, b, null, [TicketReconIssue.ExtraAtBackend]));
         }
 
@@ -196,13 +213,14 @@ internal static class TicketReconBuilder
             Totals(counted.Where(b => b.State == CheckoutState.Paid).ToList(), rows),
             paidHere.Sum(o => issued.GetValueOrDefault(o.Id)),
             rows.OrderBy(r => r.CreatedAt).ToList(),
+            otherInstance.OrderBy(b => b.CreatedAt).ToList(),
             null);
     }
 
     public static TicketRecon Unreadable(string backendKey, Instant from, Instant to, string error)
     {
         var none = new TicketReconTotals(0, 0, 0, 0, 0);
-        return new TicketRecon(backendKey, from, to, none, none, 0, [], error);
+        return new TicketRecon(backendKey, from, to, none, none, 0, [], [], error);
     }
 
     /// <summary>A backend that cannot count tickets is given Humans' count for the order, so it never reads as a gap.</summary>

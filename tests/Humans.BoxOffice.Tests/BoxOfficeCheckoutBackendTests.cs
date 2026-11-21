@@ -71,13 +71,34 @@ public sealed class BoxOfficeCheckoutBackendTests
     [HumansFact]
     public async Task Check_reads_sessions_and_flags_a_missing_webhook_secret()
     {
-        Respond("""{"object":"list","url":"/v1/checkout/sessions","has_more":false,"data":[]}""");
+        Respond(
+            """{"object":"list","url":"/v1/checkout/sessions","has_more":false,"data":[]}""",
+            """{"object":"list","url":"/v1/balance_transactions","has_more":false,"data":[]}""",
+            """{"object":"list","url":"/v1/payouts","has_more":false,"data":[]}""");
 
         var findings = await Backend().CheckAsync(null, TestContext.Current.CancellationToken);
 
         findings.Should().Contain(f => f.Ok && f.Text.Contains("test mode"));
+        findings.Should().Contain(f => f.Ok && f.Text.Contains("Balance transactions"));
+        findings.Should().Contain(f => f.Ok && f.Text.Contains("Payouts"));
         findings.Should().ContainSingle(f => !f.Ok).Which.Text.Should().Contain("STRIPE_BOXOFFICE_WEBHOOK_SECRET");
-        _requests.Single().Method.Should().Be(HttpMethod.Get);
+        _requests.Should().HaveCount(3).And.OnlyContain(r => r.Method == HttpMethod.Get);
+    }
+
+    [HumansFact]
+    public async Task Check_names_a_read_scope_the_key_lacks()
+    {
+        using var headers = new HttpResponseMessage();
+        _http.MakeRequestAsync(Arg.Any<StripeRequest>(), Arg.Any<CancellationToken>()).Returns(
+            new StripeResponse(HttpStatusCode.OK, headers.Headers, """{"object":"list","url":"/v1/checkout/sessions","has_more":false,"data":[]}"""),
+            new StripeResponse(HttpStatusCode.OK, headers.Headers, """{"object":"list","url":"/v1/balance_transactions","has_more":false,"data":[]}"""),
+            new StripeResponse(HttpStatusCode.Forbidden, headers.Headers,
+                """{"error":{"type":"invalid_request_error","message":"The provided key does not have the required permissions."}}"""));
+
+        var findings = await Backend().CheckAsync(null, TestContext.Current.CancellationToken);
+
+        findings.Should().Contain(f => !f.Ok && f.Text.Contains("reading Payouts") && f.Text.Contains("403"));
+        findings.Should().Contain(f => f.Ok && f.Text.Contains("Balance transactions"));
     }
 
     [HumansFact]

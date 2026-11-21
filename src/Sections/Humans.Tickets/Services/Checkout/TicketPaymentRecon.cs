@@ -49,7 +49,9 @@ internal sealed record TicketPaymentTotals(
 
 /// <summary>
 /// <paramref name="PaymentFeesMinor"/> is the provider's fees on payments tied to a Humans order;
-/// <paramref name="HumansPaymentFeesMinor"/> the fees Humans recorded on those same orders.
+/// <paramref name="HumansPaymentFeesMinor"/> the fees Humans recorded on those same orders. <paramref name="OtherInstance"/>
+/// holds movements naming a Humans order this database never held, outside production only: another Humans instance
+/// on the same test account made them. They count in the account's totals and are never a difference.
 /// </summary>
 internal sealed record TicketPaymentRecon(
     string BackendKey,
@@ -60,6 +62,7 @@ internal sealed record TicketPaymentRecon(
     long HumansPaymentFeesMinor,
     IReadOnlyList<TicketPaymentRow> Rows,
     IReadOnlyList<TicketPayoutRow> Payouts,
+    IReadOnlyList<PaymentLedgerEntry> OtherInstance,
     string? Error)
 {
     public IEnumerable<TicketPaymentRow> Problems => Rows.Where(r => r.Issues.Count > 0);
@@ -90,7 +93,9 @@ internal static class TicketPaymentReconBuilder
 {
     /// <summary>
     /// Checks the period's ledger against the orders. <paramref name="returnedLater"/> holds orders whose failed delayed
-    /// debit came back after the period, so a period that holds only the payment balances.
+    /// debit came back after the period, so a period that holds only the payment balances. With
+    /// <paramref name="sharedAccount"/> (outside production) a movement naming a Humans order this database never held is
+    /// another instance's, set apart rather than a difference.
     /// </summary>
     public static TicketPaymentRecon Build(
         string backendKey,
@@ -98,14 +103,23 @@ internal static class TicketPaymentReconBuilder
         Instant to,
         PaymentLedger ledger,
         IReadOnlyCollection<TicketCheckoutOrder> orders,
-        IReadOnlyCollection<Guid>? returnedLater = null)
+        IReadOnlyCollection<Guid>? returnedLater = null,
+        bool sharedAccount = false)
     {
         var mine = Mine(orders, backendKey);
+        var known = orders.Select(o => o.Id).ToHashSet();
         var returned = Returned(ledger);
         returned.UnionWith(returnedLater ?? []);
         var rows = new List<TicketPaymentRow>();
+        var otherInstance = new List<PaymentLedgerEntry>();
         foreach (var entry in ledger.Entries.OrderBy(e => e.CreatedAt))
         {
+            if (sharedAccount && entry.HumansOrderId is { } named && !known.Contains(named))
+            {
+                otherInstance.Add(entry);
+                continue;
+            }
+
             var order = entry.HumansOrderId is { } id ? mine.GetValueOrDefault(id) : null;
             rows.Add(new TicketPaymentRow(entry, order, Check(entry, order, order is not null && returned.Contains(order.Id))));
         }
@@ -127,11 +141,12 @@ internal static class TicketPaymentReconBuilder
             payments.Sum(r => r.Order!.FeeMinor ?? 0),
             rows,
             ledger.Payouts.OrderBy(p => p.CreatedAt).Select(p => new TicketPayoutRow(p, Check(p))).ToList(),
+            otherInstance,
             null);
     }
 
     public static TicketPaymentRecon Unreadable(string backendKey, Instant from, Instant to, string error) =>
-        new(backendKey, from, to, new TicketPaymentTotals(0, 0, 0, 0, 0, 0), 0, 0, [], [], error);
+        new(backendKey, from, to, new TicketPaymentTotals(0, 0, 0, 0, 0, 0), 0, 0, [], [], [], error);
 
     /// <summary>
     /// Whether a payment in the ledger is on a failed order whose return is not in it, so the return must be looked for

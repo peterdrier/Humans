@@ -173,6 +173,27 @@
                     </table>
                     <p class="small text-muted mb-0">Each pair reads Humans / backend.</p>
                 }
+
+                @if (r.OtherInstance.Count > 0)
+                {
+                    <details class="mt-3">
+                        <summary class="small text-muted">@r.OtherInstance.Count order(s) from another Humans instance on this test account, not counted</summary>
+                        <table class="table table-sm w-auto mt-2 mb-0">
+                            <thead><tr><th>Created</th><th>Backend order</th><th>State</th><th class="text-end">Total</th></tr></thead>
+                            <tbody>
+                                @foreach (var b in r.OtherInstance)
+                                {
+                                    <tr>
+                                        <td>@b.CreatedAt.ToDateTime(Model.Zone)</td>
+                                        <td><code>@b.BackendOrderId</code></td>
+                                        <td>@b.State</td>
+                                        <td class="text-end">@Eur(b.TotalMinor)</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </details>
+                }
             }
 
             @if (r.Error is not null && !Model.Payments.ContainsKey(r.BackendKey))
@@ -274,6 +295,28 @@
                             }
                         </tbody>
                     </table>
+                }
+
+                @if (p.OtherInstance.Count > 0)
+                {
+                    <details class="mb-3">
+                        <summary class="small text-muted">@p.OtherInstance.Count movement(s) from another Humans instance on this test account, counted in the totals but never a difference</summary>
+                        <table class="table table-sm w-auto mt-2 mb-0">
+                            <thead><tr><th>When</th><th>Kind</th><th>Movement</th><th class="text-end">Amount</th><th class="text-end">Fee</th></tr></thead>
+                            <tbody>
+                                @foreach (var e in p.OtherInstance)
+                                {
+                                    <tr>
+                                        <td>@e.CreatedAt.ToDateTime(Model.Zone)</td>
+                                        <td>@Kind(e.Kind)</td>
+                                        <td><code>@e.Id</code></td>
+                                        <td class="text-end">@Eur(e.AmountMinor)</td>
+                                        <td class="text-end">@Eur(e.FeeMinor)</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </details>
                 }
 
                 <h4 class="h6">Payouts (@p.Payouts.Count)</h4>

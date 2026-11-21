@@ -79,6 +79,13 @@ fails. When any check is out of balance or could not run, it queues one email to
 (`tickets@`) listing each finding, with a link to the page for that range; the mail repeats every night until the
 reconciliation balances. A backend stays in use while it holds orders, whatever the sales setups point at now.
 
+Outside production, QA, previews and dev share the backends' test accounts, so each sees the others' orders and
+payments. There, a backend order or a payment movement that names a Humans order this database never held (on any
+backend) is another instance's: it is shown apart, collapsed, and is never a difference, never in the totals of the
+order check, never unbalances and is never mailed. A payment movement still counts in the account's totals, since it
+moved through the account. In production nothing is set apart, and an entry naming no Humans order at all is a
+difference everywhere.
+
 ### Fees and payouts
 
 Where Humans can read the backend's payment account (Box Office: the ticket Stripe account), the page and the daily run
@@ -213,5 +220,4 @@ Partners do not sign the ticket rules: the buyer accepts for the whole order (de
 - A renamed ticket is not emailed to its new holder (`ITicketDelivery` is per order, sent once); they see it in their profile.
 - Fees and payouts of pretix's and Hi.Events' own payment accounts; matching a payout to the bank statement.
 - Reconciliation follow-ups: signing off a difference (an unresolved one is mailed every night); a vendor admin link on extra rows; currency on backend rows (all are summed as EUR cents); comparing
-  refunds with Humans' own refund records rather than the backend's copy; telling a Stripe test account shared by QA and
-  previews apart (each sees the others' sessions as extra).
+  refunds with Humans' own refund records rather than the backend's copy.
