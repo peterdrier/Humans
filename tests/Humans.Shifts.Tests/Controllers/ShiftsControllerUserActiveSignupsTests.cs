@@ -1,7 +1,6 @@
 using Humans.Shifts.Domain;
 using AwesomeAssertions;
 using System.Security.Claims;
-using Humans.Onboarding;
 using Humans.Shifts.Services.Dtos;
 using Humans.AuditLog.Contracts;
 using Humans.Shifts.Services;
@@ -279,7 +278,7 @@ public class ShiftsControllerUserActiveSignupsTests
 
         var ctrl = new ShiftsController(
             _shiftMgmt, _burnSettings, _signupService, _volunteerTracking, _shiftView, _teamService,
-            _userService, _localizer, Substitute.For<IStringLocalizer<OnboardingResource>>(), _clock,
+            _userService, _localizer, _clock,
             new ShiftBrowsePageBuilder(_shiftMgmt, _burnSettings, _teamService),
             NullLogger<ShiftsController>.Instance);
 

@@ -377,5 +377,4 @@
   <data name="Consent_Meter_OnboardingProfilesPending" xml:space="preserve"><value>Ausstehende Anmeldeprofile</value></data>
   <data name="Consent_Meter_AudienceConsentCoordinator" xml:space="preserve"><value>Einwilligungskoordination</value></data>
   <data name="Consent_Meter_AudienceBoard" xml:space="preserve"><value>den Vorstand</value></data>
-  <data name="Consent_Meter_AudienceShiftsAdmin" xml:space="preserve"><value>Schicht-Admins</value></data>
 </root>

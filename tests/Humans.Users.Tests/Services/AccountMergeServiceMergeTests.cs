@@ -152,6 +152,7 @@ public class AccountMergeServiceMergeTests
         {
             Id = Guid.NewGuid(),
             ProfileId = sourceProfile.Id,
+            UserId = sourceProfile.UserId,
             FieldType = ContactFieldType.Phone,
             Value = "contact-number",
             Visibility = ContactFieldVisibility.BoardOnly

@@ -66,7 +66,6 @@
   <data name="Onboarding_LegalNameExplainerPost" xml:space="preserve"><value>cette information, et nous ne la divulguerions que si la loi ou un audit formel l'exigeait.</value></data>
   <data name="Onboarding_LegalNameExplainerPre" xml:space="preserve"><value>Conservé en interne, visible uniquement par les Admins, et utilisé seulement là où la loi espagnole l'exige — par exemple, notre enregistrement d'audit attestant que vous avez accepté l'Accord de bénévolat à une date et une heure précises. Nous n'exportons explicitement</value></data>
   <data name="Onboarding_LegalNameLabel" xml:space="preserve"><value>Nom légal</value></data>
-  <data name="Onboarding_NameRequiredBeforeShifts" xml:space="preserve"><value>Ajoutez d'abord votre nom — nous en avons besoin avant que vous puissiez vous inscrire aux quarts.</value></data>
   <data name="Onboarding_NamesSubtitle" xml:space="preserve"><value>Deux courtes étapes avant de choisir un quart.</value></data>
   <data name="Onboarding_NamesTitle" xml:space="preserve"><value>Bienvenue — commençons par votre nom</value></data>
   <data name="Onboarding_PriorityCritical" xml:space="preserve"><value>Critique</value></data>

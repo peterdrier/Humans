@@ -6,10 +6,15 @@
     Consent's signing step), so a folder inside Humans.Onboarding would close a project cycle
     (memory/architecture/section-project-cycle-fix.md).
 
-    ZERO ProjectReference, AND THAT IS LOAD-BEARING. Humans.Users.Contracts references this
-    project for OnboardingResult, so a reference added here that leads back to Users.Contracts
-    or anything that references it closes a cycle in a project nobody was looking at. If a type
-    here ever needs something from another project, move the type out instead.
+    Base is its only ProjectReference, AND THAT IS LOAD-BEARING. Humans.Users.Contracts references
+    this project for OnboardingResult, so a reference added here that leads back to Users.Contracts
+    or anything that references it closes a cycle in a project nobody was looking at. Base references
+    nothing, so it is safe; it carries the slot types IOnboardingShiftsStep needs. If a type here ever
+    needs something from another project, move the type out instead.
   -->
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\Humans.Base\Humans.Base.csproj" />
+  </ItemGroup>
 
 </Project>
