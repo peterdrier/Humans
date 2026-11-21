@@ -9,11 +9,10 @@
 
 ## Tickets
 
-Project: `src/Sections/Humans.Tickets` is split across **two projects
-plus a contracts leaf**: `src/Sections/Humans.Tickets` (orders, attendees,
+Project: `src/Sections/Humans.Tickets` spans these projects: `src/Sections/Humans.Tickets` (orders, attendees,
 transfers, sync orchestration, the admin surface — everything `internal
 sealed`), `src/Sections/Humans.Tickets.Contracts` (the leaf:
-`ITicketService`, `ITicketSync`, `ITicketDiscountCodes`,
+`ITicketService`, `ITicketDiscountCodes`,
 `ITicketVendorMirror`, `ITicketWrite`), and
 `src/Sections/Humans.TicketTailor` (the vendor adapter — the sole
 implementation of the vendor port; owns no tables, publishes nothing, and
@@ -26,8 +25,8 @@ references `Humans.Tickets` directly to name the port).
 `EventParticipations` (`ticket_event_participations`, Users decomposition commit 13).
 
 The section's public surface is small: `ITicketService` (no `SurfaceBudget` pinned; adds
-`GetParticipationsAsync` / `GetAllParticipationsAsync`), `ITicketSync` (2), `ITicketDiscountCodes` (1),
-`ITicketVendorMirror` (1), `ITicketWrite` (1: `RecordParticipationAsync`, Gate's admit). `TicketDashboardDtos` (24 public types), the
+`GetParticipationsAsync` / `GetAllParticipationsAsync`), `ITicketDiscountCodes`,
+`ITicketVendorMirror`, `ITicketWrite` (`RecordParticipationAsync`, Gate's admit). `TicketDashboardDtos`, the
 transfer wizard (including the `ITicketTransferQueue` badge count), and the
 admin decision DTOs are `internal`. Campaigns' grant waves call `ITicketDiscountCodes.GenerateAsync`
 (in the application's own `TicketDiscountCodeRequest`/`TicketDiscountKind`
@@ -40,13 +39,15 @@ its own `TicketVendorHealthCheck` included. `TicketStubViewComponent` lives in t
 section's own `Contracts/` folder — its model names Tickets DTOs, so it
 can't live in `Humans.UI`.
 
+Sync orchestration and its result (`ITicketSyncService`, `TicketSyncResult`) are internal.
+
 The read path is split: `TicketQueryService` is the **inner** read service,
 registered keyed under `CachingTicketQueryService.InnerServiceKey`
 (`"ticket-query-inner"`), and is wrapped by the Singleton
 `CachingTicketQueryService` decorator (`Services/Stores/`).
 The decorator is the registered
 `ITicketManagement`, the budgeted cross-section `ITicketService`, and every
-interface whose writes touch cached rows: `ITicketSync` / `ITicketSyncService`,
+interface whose writes touch cached rows: `ITicketSyncService`,
 `ITicketTransferService` / `ITicketTransferQueue`, `IAttendeeContactImportService`,
 and the section's `IUserDataContributor` and `IUserMerge`. Each write delegates to
 its keyed inner (all keyed under the same `InnerServiceKey`) and evicts in a

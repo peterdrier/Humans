@@ -327,13 +327,13 @@ The internal `DrivePermissionPlanning` owns the pure expected-versus-actual Driv
 
 ### Public contract
 
-| Public interface | Methods | Notes |
-|---|---:|---|
-| `IGoogleSyncService` | 2 | Read contract: `GetFailedSyncEventCountAsync` (no cross-section caller since the meter moved in-section, GOOGLE-6), `IsFolderReachableAsync` (Workgroups root-folder check). |
-| `IGoogleSyncWrite` | 4 | `AddUserToTeamResourcesAsync` (Teams system-team sync), `EnsureTeamGroupAsync` (Teams), `CreateSubfolderAsync` / `RequestSyncAsync` (Workgroups). Each provisions or reconciles a Google resource on another section's behalf. |
-| `ITeamResourceService` | 7 | Read contract: team-resource snapshots and summaries (Teams, Users, Monitor), `CanManageTeamResourcesAsync`, `GetServiceAccountEmailAsync`. |
-| `IGoogleService` | 2 | Read contract: `GetWorkspaceIdentityAsync` / `GetWorkspaceIdentitiesAsync` — a member's effective Workspace identity (`WorkspaceIdentity(UserId, Email, Status)`), keyed by the requested id (merge-aware). Teams, Camps, Users' admin list. |
-| `IGoogleWrite` | 1 | `ClearIfAddressAsync` — Users reports an address leaving an account. |
+| Public interface | Notes |
+|---|---|
+| `IGoogleSyncService` | Read contract: `IsFolderReachableAsync` (Workgroups root-folder check). The failed-event count stays on internal `IGoogleSyncManagement` for `GoogleNotificationMeters`. |
+| `IGoogleSyncWrite` | `AddUserToTeamResourcesAsync` (Teams system-team sync), `EnsureTeamGroupAsync` (Teams), `CreateSubfolderAsync` / `RequestSyncAsync` (Workgroups). Each provisions or reconciles a Google resource on another section's behalf. |
+| `ITeamResourceService` | Read contract: team-resource snapshots and summaries (Teams, Users, Monitor), `CanManageTeamResourcesAsync`, `GetServiceAccountEmailAsync`. |
+| `IGoogleService` | Read contract: `GetWorkspaceIdentityAsync` / `GetWorkspaceIdentitiesAsync` — a member's effective Workspace identity (`WorkspaceIdentity(UserId, Email, Status)`), keyed by the requested id (merge-aware). Teams, Camps, Users' admin list. |
+| `IGoogleWrite` | `ClearIfAddressAsync` — Users reports an address leaving an account. |
 
 `GoogleWorkspaceSyncService` (or `StubGoogleSyncService`) implements the internal `IGoogleSyncManagement`; `TeamResourceService` implements the internal `ITeamResourceManagement`; `WorkspaceIdentityService` implements the internal `IWorkspaceIdentityManagement` (reads + `ClearIfAddressAsync` + `SetAsync`, `SetStatusFromSyncAsync` and the copy). DI registers each face to the same instance. Everything else (sync-by-type, drift checks, outbox requeue, metrics counts) is internal.
 

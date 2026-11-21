@@ -230,7 +230,7 @@ public sealed class TicketSyncServiceTests : TicketsTestHarness
             ? (Exception)new IOException("Sync unavailable")
             : new OperationCanceledException(kind == SyncFailureKind.Shutdown
                 ? shutdown.Token : new CancellationToken(true));
-        var sync = Substitute.For<ITicketSync>();
+        var sync = Substitute.For<ITicketSyncService>();
         sync.SyncOrdersAndAttendeesAsync(shutdown.Token).Returns(async Task<TicketSyncResult> (_) =>
         {
             if (kind == SyncFailureKind.Shutdown) await shutdown.CancelAsync();

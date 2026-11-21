@@ -208,7 +208,6 @@ DriveFile    = 3  // Individual file within a Shared Drive (Google Sheets, Docs,
 ### IGoogleSyncService / IGoogleSyncWrite / IGoogleSyncManagement
 Public reads (`IGoogleSyncService`):
 ```csharp
-Task<int> GetFailedSyncEventCountAsync(CancellationToken ct = default);
 Task<bool> IsFolderReachableAsync(string folderId, CancellationToken ct = default);
 ```
 Public writes (`IGoogleSyncWrite`, only what other sections call):
@@ -218,7 +217,7 @@ Task<GroupLinkResult> EnsureTeamGroupAsync(Guid teamId, bool confirmReactivation
 Task<string> CreateSubfolderAsync(string parentFolderId, string name, ...);
 Task RequestSyncAsync(string folderId, ...);
 ```
-Internal (`IGoogleSyncManagement : IGoogleSyncService, IGoogleSyncWrite`, used by the section's own controllers, jobs and services): `SyncSingleResourceAsync`, `SyncResourcesByTypeAsync`, `CheckGroupSettingsAsync`, `RemediateGroupSettingsAsync`, `GetAllDomainGroupsAsync`, `UpdateDriveFolderPathsAsync`, `SetInheritedPermissionsDisabledAsync`, `EnforceInheritedAccessRestrictionsAsync`, `RequeueOutboxEventAsync`, `RequeueAllFailedOutboxEventsAsync`, `EnqueueUserSyncAsync`, `GetPendingSyncEventCountAsync`, `GetRecentOutboxEventsAsync`.
+Internal (`IGoogleSyncManagement : IGoogleSyncService, IGoogleSyncWrite`, used by the section's own controllers, jobs and services): `SyncSingleResourceAsync`, `SyncResourcesByTypeAsync`, `CheckGroupSettingsAsync`, `RemediateGroupSettingsAsync`, `GetAllDomainGroupsAsync`, `UpdateDriveFolderPathsAsync`, `SetInheritedPermissionsDisabledAsync`, `EnforceInheritedAccessRestrictionsAsync`, `RequeueOutboxEventAsync`, `RequeueAllFailedOutboxEventsAsync`, `EnqueueUserSyncAsync`, `GetFailedSyncEventCountAsync`, `GetPendingSyncEventCountAsync`, `GetRecentOutboxEventsAsync`.
 
 ### IGoogleGroupSync
 ```csharp
@@ -608,7 +607,7 @@ On Google API error (resource sync):
 
 ### Failed-Sync Admin Meter
 
-Failed Google sync health surfaces to Admins as a notification meter (`GoogleNotificationMeters`, an `INotificationMeterContributor`), backed by `IGoogleSyncService.GetFailedSyncEventCountAsync` — the count of outbox events that are `FailedPermanently` or unprocessed with a non-null `LastError`. The meter links to `/Google/SyncOutbox`.
+Failed Google sync health surfaces to Admins as a notification meter (`GoogleNotificationMeters`, an `INotificationMeterContributor`), backed by `IGoogleSyncManagement.GetFailedSyncEventCountAsync` — the count of outbox events that are `FailedPermanently` or unprocessed with a non-null `LastError`. The meter links to `/Google/SyncOutbox`.
 
 ## Security Considerations
 

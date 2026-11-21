@@ -53,6 +53,9 @@ internal interface IGoogleSyncManagement : IGoogleSyncService, IGoogleSyncWrite,
     /// </summary>
     Task<int> EnqueueUserSyncAsync(Guid userId, Guid actorUserId, CancellationToken cancellationToken = default);
 
+    /// <summary>Unprocessed events with a <c>LastError</c>.</summary>
+    Task<int> GetFailedSyncEventCountAsync(CancellationToken cancellationToken = default);
+
     Task<int> GetPendingSyncEventCountAsync(CancellationToken cancellationToken = default);
 
     Task<IReadOnlyList<GoogleSyncOutboxEventSnapshot>> GetRecentOutboxEventsAsync(
