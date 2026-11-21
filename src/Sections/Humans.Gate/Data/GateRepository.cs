@@ -15,6 +15,17 @@ internal sealed class GateRepository(IDbContextFactory<GateDbContext> factory) :
             .FirstOrDefaultAsync(e => e.AdmitDedupeKey == admitDedupeKey, ct);
     }
 
+    public async Task<IReadOnlyList<string>> GetAdmittedKeysAsync(
+        IReadOnlyCollection<string> admitDedupeKeys, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        return await ctx.Set<GateScanEvent>()
+            .AsNoTracking()
+            .Where(e => e.AdmitDedupeKey != null && admitDedupeKeys.Contains(e.AdmitDedupeKey))
+            .Select(e => e.AdmitDedupeKey!)
+            .ToListAsync(ct);
+    }
+
     public async Task<GateRecordOutcome> RecordScanAsync(GateScanEvent scan, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);

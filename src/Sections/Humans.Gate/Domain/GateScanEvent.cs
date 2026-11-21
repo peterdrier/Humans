@@ -20,8 +20,11 @@ internal sealed class GateScanEvent
     /// <summary>Normalized.</summary>
     public string Barcode { get; init; } = string.Empty;
 
-    /// <summary>Null when the barcode matched no current-event ticket.</summary>
+    /// <summary>The Ticket Tailor attendee scanned; null when the barcode matched none for the current event.</summary>
     public Guid? TicketAttendeeId { get; init; }
+
+    /// <summary>The ticket Humans' own checkout issued; null for a Ticket Tailor or unknown barcode.</summary>
+    public Guid? CheckoutTicketId { get; init; }
 
     /// <summary>Null when the ticket is unmatched. Settable only so account merge can re-point it.</summary>
     public Guid? GuestUserId { get; set; }

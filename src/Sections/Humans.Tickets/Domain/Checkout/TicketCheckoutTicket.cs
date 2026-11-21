@@ -62,7 +62,7 @@ internal enum TicketHolderKind
 internal enum TicketCheckoutTicketState
 {
     Valid = 0,
-    /// <summary>Returned to the resale queue; still valid at the gate until it sells.</summary>
+    /// <summary>Returned to the resale queue; the gate refuses it while it can still sell (the holder withdraws it to enter).</summary>
     Offered = 1,
     /// <summary>Sold on to someone else, who holds a new ticket.</summary>
     Resold = 2,

@@ -240,6 +240,7 @@ public class EndpointAuthorizationTests
             "SurveyController",
             "StoreStripeWebhookController",
             "BoxOfficeStripeWebhookController",
+            "HiEventsWebhookController",
             "PretixWebhookController",
             "HiEventsWebhookController",
             "CampApiController",
