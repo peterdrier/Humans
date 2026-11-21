@@ -31,13 +31,13 @@ internal sealed class DriveActivityMonitorService(
 
         var serviceAccountEmail = await driveActivityClient.GetServiceAccountEmailAsync(cancellationToken);
         var serviceAccountClientId = await driveActivityClient.GetServiceAccountClientIdAsync(cancellationToken);
-        var resolver = new PersonNameResolver(driveActivityClient, userService, logger);
+        var resolution = new PersonNameResolution();
 
-        // Seed the resolver with the service account's client_id so that a
+        // Seed the resolution with the service account's client_id so that a
         // "people/{client_id}" actor reads back as the SA email.
         if (serviceAccountClientId is not null)
         {
-            resolver.Seed($"people/{serviceAccountClientId}", serviceAccountEmail);
+            resolution.Resolved[$"people/{serviceAccountClientId}"] = serviceAccountEmail;
         }
 
         // Time-window dedup: only events since the last successful run.
@@ -60,7 +60,7 @@ internal sealed class DriveActivityMonitorService(
             {
                 await ScanResourceAsync(
                     resource, filterTime, serviceAccountEmail, serviceAccountClientId,
-                    resolver, anomalies, cancellationToken);
+                    resolution, anomalies, cancellationToken);
 
                 // Reached only if the async enumerable completed without
                 // throwing — the connector is responsive for this resource.
@@ -154,7 +154,7 @@ internal sealed class DriveActivityMonitorService(
         string filterTime,
         string serviceAccountEmail,
         string? serviceAccountClientId,
-        PersonNameResolver resolver,
+        PersonNameResolution resolution,
         List<(Guid ResourceId, string Description)> anomalies,
         CancellationToken cancellationToken)
     {
@@ -171,9 +171,9 @@ internal sealed class DriveActivityMonitorService(
                 continue;
             }
 
-            var actorEmail = await GetActorEmailAsync(activity, resolver, cancellationToken);
+            var actorEmail = await GetActorEmailAsync(activity, resolution, cancellationToken);
             var description = await BuildAnomalyDescriptionAsync(
-                activity, resource.Name, actorEmail, resolver, cancellationToken);
+                activity, resource.Name, actorEmail, resolution, cancellationToken);
 
             logger.LogWarning(
                 "Anomalous permission change detected on {ResourceName} ({GoogleId}) by {Actor}: {Description}",
@@ -256,16 +256,16 @@ internal sealed class DriveActivityMonitorService(
         return false;
     }
 
-    private static async Task<string?> GetActorEmailAsync(
+    private async Task<string?> GetActorEmailAsync(
         DriveActivityEvent activity,
-        PersonNameResolver resolver,
+        PersonNameResolution resolution,
         CancellationToken cancellationToken)
     {
         foreach (var actor in activity.Actors)
         {
             if (actor.KnownUserPersonName is not null)
             {
-                return await resolver.ResolveAsync(actor.KnownUserPersonName, cancellationToken);
+                return await ResolvePersonNameAsync(actor.KnownUserPersonName, resolution, cancellationToken);
             }
 
             if (actor.IsAdministrator)
@@ -282,11 +282,11 @@ internal sealed class DriveActivityMonitorService(
         return null;
     }
 
-    private static async Task<string> BuildAnomalyDescriptionAsync(
+    private async Task<string> BuildAnomalyDescriptionAsync(
         DriveActivityEvent activity,
         string resourceName,
         string? actorEmail,
-        PersonNameResolver resolver,
+        PersonNameResolution resolution,
         CancellationToken cancellationToken)
     {
         var permChange = activity.PermissionChange;
@@ -297,7 +297,7 @@ internal sealed class DriveActivityMonitorService(
             foreach (var perm in permChange.AddedPermissions)
             {
                 parts.Add($"added {perm.Role ?? "unknown role"} for " +
-                          await GetPermissionTargetAsync(perm, resolver, cancellationToken));
+                          await GetPermissionTargetAsync(perm, resolution, cancellationToken));
             }
         }
 
@@ -306,7 +306,7 @@ internal sealed class DriveActivityMonitorService(
             foreach (var perm in permChange.RemovedPermissions)
             {
                 parts.Add($"removed {perm.Role ?? "unknown role"} for " +
-                          await GetPermissionTargetAsync(perm, resolver, cancellationToken));
+                          await GetPermissionTargetAsync(perm, resolution, cancellationToken));
             }
         }
 
@@ -317,14 +317,14 @@ internal sealed class DriveActivityMonitorService(
         return $"Anomalous permission change on '{resourceName}' by {actorEmail ?? "unknown actor"}: {changes}";
     }
 
-    private static async Task<string> GetPermissionTargetAsync(
+    private async Task<string> GetPermissionTargetAsync(
         DriveActivityPermission permission,
-        PersonNameResolver resolver,
+        PersonNameResolution resolution,
         CancellationToken cancellationToken)
     {
         if (permission.UserPersonName is not null)
         {
-            return await resolver.ResolveAsync(permission.UserPersonName, cancellationToken);
+            return await ResolvePersonNameAsync(permission.UserPersonName, resolution, cancellationToken);
         }
 
         if (permission.GroupEmail is not null)
@@ -345,128 +345,122 @@ internal sealed class DriveActivityMonitorService(
         return "unknown";
     }
 
-    /// <summary>
-    /// Resolves <c>people/{id}</c>: cache, Admin Directory, Users read-model, raw id. One instance per scan, so a
-    /// failed lookup is logged once and not retried for the rest of the run.
-    /// </summary>
-    private sealed class PersonNameResolver(
-        IGoogleDriveActivityClient driveActivityClient,
-        IUserService userService,
-        ILogger logger)
+    private static readonly IReadOnlyDictionary<string, UserInfo> NoGoogleUserInfo =
+        new Dictionary<string, UserInfo>(StringComparer.Ordinal);
+
+    /// <summary>Lookup caches and failure state belong to one scan, including concurrent scans.</summary>
+    private sealed class PersonNameResolution
     {
-        private static readonly IReadOnlyDictionary<string, UserInfo> NoGoogleUserInfo =
-            new Dictionary<string, UserInfo>(StringComparer.Ordinal);
+        public Dictionary<string, string> Resolved { get; } = new(StringComparer.Ordinal);
+        public IReadOnlyDictionary<string, UserInfo>? GoogleUserInfoByProviderKey { get; set; }
+        public bool GoogleUserInfoLookupUnavailable { get; set; }
+    }
 
-        private readonly Dictionary<string, string> _resolved = new(StringComparer.Ordinal);
-        private IReadOnlyDictionary<string, UserInfo>? _googleUserInfoByProviderKey;
-        private bool _googleUserInfoLookupUnavailable;
-
-        public void Seed(string personName, string email) => _resolved[personName] = email;
-
-        public async Task<string> ResolveAsync(string personName, CancellationToken cancellationToken)
+    /// <summary>Directory first, then Users' Google provider keys, else the raw id.</summary>
+    private async Task<string> ResolvePersonNameAsync(
+        string personName, PersonNameResolution resolution, CancellationToken cancellationToken)
+    {
+        if (!personName.StartsWith("people/", StringComparison.Ordinal))
         {
-            if (!personName.StartsWith("people/", StringComparison.Ordinal))
-            {
-                return personName;
-            }
-
-            if (_resolved.TryGetValue(personName, out var cached))
-            {
-                return cached;
-            }
-
-            var resolved = await driveActivityClient.TryResolvePersonEmailAsync(personName, cancellationToken);
-
-            if (resolved is null)
-            {
-                // The bare id is the UserInfo ExternalLogin ProviderKey.
-                var googleUserId = personName["people/".Length..];
-                var byProviderKey = await GetGoogleUserInfoByProviderKeyAsync(cancellationToken);
-                if (byProviderKey.TryGetValue(googleUserId, out var userInfo))
-                {
-                    resolved = userInfo.Email;
-                }
-            }
-
-            if (resolved is not null)
-            {
-                _resolved[personName] = resolved;
-                logger.LogDebug("Resolved {PersonName} to {Email}", personName, resolved);
-                return resolved;
-            }
-
-            _resolved[personName] = personName;
-            logger.LogDebug("Could not resolve {PersonName} to an email address", personName);
             return personName;
         }
 
-        private async Task<IReadOnlyDictionary<string, UserInfo>> GetGoogleUserInfoByProviderKeyAsync(
-            CancellationToken cancellationToken)
+        if (resolution.Resolved.TryGetValue(personName, out var cached))
         {
-            if (_googleUserInfoByProviderKey is not null)
-            {
-                return _googleUserInfoByProviderKey;
-            }
+            return cached;
+        }
 
-            if (_googleUserInfoLookupUnavailable)
-            {
-                return NoGoogleUserInfo;
-            }
+        var resolved = await driveActivityClient.TryResolvePersonEmailAsync(personName, cancellationToken);
 
-            try
+        if (resolved is null)
+        {
+            // The bare id is the UserInfo ExternalLogin ProviderKey.
+            var googleUserId = personName["people/".Length..];
+            var byProviderKey = await GetGoogleUserInfoByProviderKeyAsync(resolution, cancellationToken);
+            if (byProviderKey.TryGetValue(googleUserId, out var userInfo))
             {
-                _googleUserInfoByProviderKey = await LoadAsync(cancellationToken);
-                return _googleUserInfoByProviderKey;
+                resolved = userInfo.Email;
             }
-            catch (OperationCanceledException)
+        }
+
+        if (resolved is not null)
+        {
+            resolution.Resolved[personName] = resolved;
+            logger.LogDebug("Resolved {PersonName} to {Email}", personName, resolved);
+            return resolved;
+        }
+
+        resolution.Resolved[personName] = personName;
+        logger.LogDebug("Could not resolve {PersonName} to an email address", personName);
+        return personName;
+    }
+
+    private async Task<IReadOnlyDictionary<string, UserInfo>> GetGoogleUserInfoByProviderKeyAsync(
+        PersonNameResolution resolution, CancellationToken cancellationToken)
+    {
+        if (resolution.GoogleUserInfoByProviderKey is not null)
+        {
+            return resolution.GoogleUserInfoByProviderKey;
+        }
+
+        if (resolution.GoogleUserInfoLookupUnavailable)
+        {
+            return NoGoogleUserInfo;
+        }
+
+        try
+        {
+            resolution.GoogleUserInfoByProviderKey = await LoadGoogleUserInfoByProviderKeyAsync(cancellationToken);
+            return resolution.GoogleUserInfoByProviderKey;
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            resolution.GoogleUserInfoLookupUnavailable = true;
+            logger.LogWarning(
+                ex,
+                "Could not load UserInfo Google login fallback for Drive Activity people ids; unresolved ids will be left raw for this run");
+            return NoGoogleUserInfo;
+        }
+    }
+
+    /// <summary>
+    /// A provider key claimed by two humans resolves to neither: the raw id is the honest
+    /// answer, and naming the wrong human in an anomaly entry is the failure to avoid.
+    /// </summary>
+    private async Task<IReadOnlyDictionary<string, UserInfo>> LoadGoogleUserInfoByProviderKeyAsync(CancellationToken cancellationToken)
+    {
+        var userInfos = await userService.GetAllUserInfosAsync(cancellationToken);
+        var result = new Dictionary<string, UserInfo>(StringComparer.Ordinal);
+        var ambiguous = new HashSet<string>(StringComparer.Ordinal);
+
+        foreach (var userInfo in userInfos)
+        {
+            foreach (var login in userInfo.ExternalLogins)
             {
-                throw;
-            }
-            catch (Exception ex)
-            {
-                _googleUserInfoLookupUnavailable = true;
+                if (!string.Equals(login.Provider, "Google", StringComparison.Ordinal))
+                    continue;
+
+                if (userInfo.Email is null)
+                    continue;
+
+                if (ambiguous.Contains(login.ProviderKey))
+                    continue;
+
+                if (result.TryAdd(login.ProviderKey, userInfo))
+                    continue;
+
+                result.Remove(login.ProviderKey);
+                ambiguous.Add(login.ProviderKey);
                 logger.LogWarning(
-                    ex,
-                    "Could not load UserInfo Google login fallback for Drive Activity people ids; unresolved ids will be left raw for this run");
-                return NoGoogleUserInfo;
+                    "Skipping ambiguous Google provider key {ProviderKey} while resolving Drive Activity people id",
+                    login.ProviderKey);
             }
         }
 
-        /// <summary>
-        /// A provider key claimed by two humans resolves to neither: the raw id is the honest
-        /// answer, and naming the wrong human in an anomaly entry is the failure to avoid.
-        /// </summary>
-        private async Task<IReadOnlyDictionary<string, UserInfo>> LoadAsync(CancellationToken cancellationToken)
-        {
-            var userInfos = await userService.GetAllUserInfosAsync(cancellationToken);
-            var result = new Dictionary<string, UserInfo>(StringComparer.Ordinal);
-            var ambiguous = new HashSet<string>(StringComparer.Ordinal);
-
-            foreach (var userInfo in userInfos)
-            {
-                foreach (var login in userInfo.ExternalLogins)
-                {
-                    if (!string.Equals(login.Provider, "Google", StringComparison.Ordinal))
-                        continue;
-
-                    if (userInfo.Email is null)
-                        continue;
-
-                    if (ambiguous.Contains(login.ProviderKey))
-                        continue;
-
-                    if (result.TryAdd(login.ProviderKey, userInfo))
-                        continue;
-
-                    result.Remove(login.ProviderKey);
-                    ambiguous.Add(login.ProviderKey);
-                    logger.LogWarning(
-                        "Skipping ambiguous Google provider key {ProviderKey} while resolving Drive Activity people id",
-                        login.ProviderKey);
-                }
-            }
-
-            return result;
-        }
+        return result;
     }
 }

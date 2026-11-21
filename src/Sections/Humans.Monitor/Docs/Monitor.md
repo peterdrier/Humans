@@ -35,6 +35,9 @@ pages and data.
   scanning. Once started, the scan runs independently of the browser request.
 
 - Monitor owns no tables, repository, migrations, resource set, or views.
+- People-id resolution stays in `DriveActivityMonitorService`. Each scan owns only its lookup
+  dictionaries and failure flag, so repeated or concurrent scans do not share resolution state.
+  Directory-first fallback, raw ambiguous ids and cancellation behavior are unchanged.
 - `DriveActivityMonitorService` calls other sections only through
   `IGoogleDriveActivityClient`, `ITeamResourceService`, `ISettingsService`,
   `IUserService`, and `IAuditLogService`.

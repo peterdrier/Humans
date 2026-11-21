@@ -34,8 +34,8 @@ this project.
 
 - `Services/IDriveActivityMonitorService.cs` — the one-method scan contract.
 - `Services/DriveActivityMonitorService.cs` — the scan: walk the resource set, decide whether
-  the marker advances, turn an activity event into a sentence. People-id resolution is its
-  own nested class, `PersonNameResolver`, because its caches are per-run state.
+  the marker advances, turn an activity event into a sentence. People-id resolution remains in the
+  service; a dependency-free `PersonNameResolution` object holds only per-run cache and failure state.
 - `Jobs/DriveActivityMonitorJob.cs` and `Section.cs` — the hourly trigger, its metric
   and its schedule.
 - `Controllers/MonitorController.cs` — the manual trigger: dispatch, banner, redirect to the
