@@ -20,6 +20,7 @@ graph LR
     AuditLog
     Auth
     Backdoor
+    BoxOffice
     Budget
     Calendar
     Campaigns
@@ -87,6 +88,7 @@ graph LR
     Backdoor --> Surveys
     Backdoor -.-> Finance
     Backdoor -.-> Notifications
+    BoxOffice -.-> Tickets
     Budget --> Issues
     Budget -.-> Camps
     Budget -.-> Finance
@@ -275,8 +277,8 @@ graph LR
     Tickets --> Auth
     Tickets --> Budget
     Tickets --> Campaigns
-    Tickets --> Consent
     Tickets --> EarlyEntry
+    Tickets --> Grants
     Tickets --> Issues
     Tickets --> Settings
     Tickets --> Stripe

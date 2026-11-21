@@ -279,3 +279,9 @@ leaf rather than the raw vendor port. `GateVendorCheckInJob` (`Humans.Gate`)
 is the other consumer, via `ITicketVendorMirror`. No DB access, no cache.
 
 ---
+### TicketCheckoutRepository (Singleton)
+
+`ITicketCheckoutRepository` over `IDbContextFactory<TicketsDbContext>`: `ticket_sales_events`,
+`ticket_checkout_orders`, `ticket_checkout_refunds`, `ticket_checkout_order_events` (append-only), `ticket_checkout_tickets`, `ticket_resale_offers`. Updates load the
+tracked row and copy values in, because the jsonb owned lists cannot be attached detached. `TryClaimPaidAsync` is a conditional `ExecuteUpdate`, and `AddTicketsAsync` returns false on the (`OrderId`, `LineIndex`) unique violation, so concurrent fulfilment issues once. Only `TicketCheckoutService` calls it. Holder lookups load the
+whole orders table and filter the jsonb lines in memory.

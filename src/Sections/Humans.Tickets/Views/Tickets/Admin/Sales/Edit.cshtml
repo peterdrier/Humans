@@ -1,0 +1,118 @@
+@using Humans.Tickets.Domain.Checkout
+@model Humans.Tickets.Controllers.SalesEditViewModel
+@{
+    ViewData["Title"] = "Sales setup";
+    var f = Model.Form;
+}
+
+@section Crumbs {
+    <a asp-action="Index">Sales</a>
+    <span>Setup</span>
+}
+
+<page-header title="Sales setup" />
+
+@if (Model.Error is not null)
+{
+    <div class="alert alert-danger">@Model.Error</div>
+}
+
+<form method="post">
+    @Html.AntiForgeryToken()
+    <div class="row g-3">
+        <div class="col-md-6">
+            <label class="form-label" for="EventSettingsId">Event</label>
+            <select class="form-select" id="EventSettingsId" name="EventSettingsId">
+                @foreach (var e in Model.Events)
+                {
+                    <option value="@e.Id" selected="@(e.Id == f.EventSettingsId)">@e.EventName (@e.Year)</option>
+                }
+            </select>
+        </div>
+        <div class="col-md-3">
+            <label class="form-label" for="BackendKey">Backend</label>
+            <select class="form-select" id="BackendKey" name="BackendKey">
+                @foreach (var b in Model.Backends)
+                {
+                    <option value="@b.Key" selected="@(b.Key == f.BackendKey)">@b.Key@(b.IsConfigured ? "" : " (not configured)")</option>
+                }
+            </select>
+        </div>
+        <div class="col-md-3">
+            <label class="form-label" for="BackendEventRef">Event id in the backend</label>
+            <input class="form-control" id="BackendEventRef" name="BackendEventRef" value="@f.BackendEventRef" />
+            <div class="form-text">The pretix event slug or Hi.Events event id; blank for Box Office.</div>
+        </div>
+        <div class="col-md-3">
+            <label class="form-label" for="Mode">Mode</label>
+            <select class="form-select" id="Mode" name="Mode">
+                @foreach (var m in Enum.GetValues<TicketSalesMode>())
+                {
+                    <option value="@m" selected="@(m == f.Mode)">@m</option>
+                }
+            </select>
+        </div>
+        <div class="col-md-3">
+            <label class="form-label" for="SalesCloseAt">Sales close (UTC)</label>
+            <input class="form-control" id="SalesCloseAt" name="SalesCloseAt" value="@f.SalesCloseAt" placeholder="2027-05-25T22:00:00Z" />
+        </div>
+        <div class="col-md-3">
+            <label class="form-label" for="Capacity">Capacity</label>
+            <input class="form-control" id="Capacity" name="Capacity" type="number" min="0" value="@f.Capacity" />
+        </div>
+        <div class="col-md-3">
+            <label class="form-label" for="TicketVatRate">Ticket VAT (fraction)</label>
+            <input class="form-control" id="TicketVatRate" name="TicketVatRate" value="@f.TicketVatRate.ToString(System.Globalization.CultureInfo.InvariantCulture)" />
+        </div>
+        <div class="col-md-6">
+            <label class="form-label" for="Waves">Waves</label>
+            <textarea class="form-control font-monospace" id="Waves" name="Waves" rows="5" placeholder="Wave 1;2027-01-31;225.00">@f.Waves</textarea>
+            <div class="form-text">One per line: name;last day (yyyy-MM-dd);price. The last wave's price holds until sales close.</div>
+        </div>
+        <div class="col-md-6">
+            <label class="form-label" for="PriceRules">Price rules from grants</label>
+            <textarea class="form-control font-monospace" id="PriceRules" name="PriceRules" rows="5" placeholder="program id;ClassPrice;125.00;Low income">@f.PriceRules</textarea>
+            <div class="form-text">One per line: grant program id;ClassPrice, Credit or WavePin;amount;label shown to the buyer. The cheapest class price wins; credits stack; WavePin prices at the wave on sale the day the grant was issued (the low income pin; amount unused).</div>
+        </div>
+        <div class="col-md-6">
+            <label class="form-label" for="SupporterTotals">Supporter totals</label>
+            <input class="form-control" id="SupporterTotals" name="SupporterTotals" value="@f.SupporterTotals" placeholder="400, 500, 1000" />
+            <div class="form-text">The ticket at the buyer's price, the rest a donation without VAT.</div>
+        </div>
+        <div class="col-md-3">
+            <label class="form-label" for="ChildPrice">Child ticket price (€)</label>
+            <input class="form-control" id="ChildPrice" name="ChildPrice" value="@f.ChildPrice" placeholder="empty: no child tickets" />
+        </div>
+        <div class="col-md-3">
+            <label class="form-label" for="ChildMaxAge">Child is under age</label>
+            <input class="form-control" id="ChildMaxAge" name="ChildMaxAge" type="number" min="1" value="@f.ChildMaxAge" />
+        </div>
+        <div class="col-md-3">
+            <label class="form-label" for="ResaleOpensAtSold">Resale opens at tickets sold</label>
+            <input class="form-control" id="ResaleOpensAtSold" name="ResaleOpensAtSold" type="number" min="0" value="@f.ResaleOpensAtSold" placeholder="empty: at once" />
+            <div class="form-text">Returned tickets sell before fresh stock once this many are sold.</div>
+        </div>
+        <div class="col-md-3">
+            <label class="form-label" for="DirectedResaleDays">Resale invitation lasts (days)</label>
+            <input class="form-control" id="DirectedResaleDays" name="DirectedResaleDays" type="number" min="1" max="30" value="@f.DirectedResaleDays" />
+        </div>
+        <div class="col-md-6">
+            <label class="form-label" for="TermsUrl">Ticket rules page</label>
+            <input class="form-control" id="TermsUrl" name="TermsUrl" type="url" maxlength="500" value="@f.TermsUrl" />
+            <div class="form-text">Every buyer ticks that they accept this page; the address is recorded on the order. Give a changed version a new address. Empty: no checkbox.</div>
+        </div>
+    </div>
+
+    <button type="submit" class="btn btn-primary mt-3" authorize-policy="@TicketsPolicies.Manage">Save</button>
+    <a class="btn btn-outline-secondary mt-3" asp-action="Index">Back</a>
+</form>
+
+<h2 class="h6 mt-4">Grant programs</h2>
+<table class="table table-sm">
+    <tbody>
+        @foreach (var p in Model.Programs)
+        {
+            <tr><td>@p.Name</td><td>@p.EventName</td><td><code>@p.ProgramId</code></td></tr>
+        }
+    </tbody>
+</table>
