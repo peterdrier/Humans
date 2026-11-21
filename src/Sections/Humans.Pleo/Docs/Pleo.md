@@ -78,8 +78,10 @@ All under `FinancePolicies.Read`; English-only finance-admin pages like `/Holded
 - A category link with a missing or blank Pleo id is refused before anything is saved or audited.
 - Entry notes and stored sync errors are cut to their column length, and HTTP-error previews to 300 characters,
   never mid-character (`PleoTextBounds`). `Raw` keeps the entry as Pleo returned it.
-- Whoever linked a category id owns its row. A sweep leaves a row a person linked as it is. An id nobody linked is
-  linked to the unlinked row of the same name (taking Pleo's account), or added as a new row. A row a sweep linked
+- Whoever last set a category row owns it. A sweep never changes a row a person linked, unlinked or added
+  (`SetByUserId` set); an id whose name matches a person's unlinked row stays unlinked, so a hand unlink sticks and a
+  hand-added row is linked only by hand. An id nobody linked is linked to the seeded unlinked row of the same name
+  (taking Pleo's account), or added as a new row. A row a sweep linked
   follows Pleo's name and account. A Pleo category with no account, or an account missing from the chart, is skipped.
   A sweep never deletes or unlinks a category row.
 - A sweep fetches entries, chart, categories, cardholders and balance before writing anything, then
