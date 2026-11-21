@@ -26,6 +26,10 @@ internal sealed class ProfileLanguageConfiguration : IEntityTypeConfiguration<Pr
             .HasForeignKey(pl => pl.UserId)
             .OnDelete(DeleteBehavior.Cascade);
 
+        // Declared so the model matches the default EF's nullable-to-required migration leaves in the
+        // database (required-columns-need-approval). Every write sets a real user id.
+        builder.Property(pl => pl.UserId).HasDefaultValue(Guid.Empty);
+
         builder.HasIndex(pl => pl.UserId);
     }
 }

@@ -9,7 +9,7 @@ internal sealed class ContactField
     public Guid Id { get; init; }
 
     /// <summary>The owning user.</summary>
-    public Guid? UserId { get; set; }
+    public Guid UserId { get; set; }
 
     public ContactFieldType FieldType { get; set; }
 

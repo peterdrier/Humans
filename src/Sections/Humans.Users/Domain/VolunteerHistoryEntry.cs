@@ -8,7 +8,7 @@ internal sealed class VolunteerHistoryEntry
     public Guid Id { get; init; }
 
     /// <summary>The owning user.</summary>
-    public Guid? UserId { get; set; }
+    public Guid UserId { get; set; }
 
     /// <summary>Full date, or the first of the month; displayed as "Mar'25".</summary>
     public LocalDate Date { get; set; }

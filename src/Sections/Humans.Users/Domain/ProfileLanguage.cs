@@ -8,7 +8,7 @@ internal sealed class ProfileLanguage
     public Guid Id { get; init; }
 
     /// <summary>The owning user.</summary>
-    public Guid? UserId { get; set; }
+    public Guid UserId { get; set; }
 
     /// <summary>ISO 639-1 two-letter code.</summary>
     public string LanguageCode { get; set; } = string.Empty;
