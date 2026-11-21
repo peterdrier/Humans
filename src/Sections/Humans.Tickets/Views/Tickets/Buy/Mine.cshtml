@@ -63,17 +63,17 @@
                         </form>
                         @if (held.DirectedActive)
                         {
-                            <span class="small">@string.Format(Localizer["Tickets_Resale_InvitedTo"].Value, offer.DirectedEmail)</span>
+                            <span class="small">@string.Format(Localizer["Tickets_Resale_InvitedTo"].Value, string.Join(", ", offer.Invites.Select(i => i.Email)))</span>
                             <form asp-action="CancelInvite" asp-route-ticketId="@t.Id" method="post">
                                 @Html.AntiForgeryToken()
                                 <button type="submit" class="btn btn-outline-secondary btn-sm">@Localizer["Tickets_Resale_CancelInvite"]</button>
                             </form>
                         }
-                        else if (held.CanInvite)
+                        @if (held.CanInvite)
                         {
                             <form asp-action="Invite" asp-route-ticketId="@t.Id" method="post" class="d-flex gap-2">
                                 @Html.AntiForgeryToken()
-                                <input class="form-control form-control-sm" name="inviteeEmail" type="email" maxlength="320" required
+                                <input class="form-control form-control-sm" name="inviteeEmail" type="email" multiple maxlength="2000" required
                                        aria-label="@Localizer["Tickets_Resale_InviteEmail"]" placeholder="@Localizer["Tickets_Resale_InviteEmail"]" />
                                 <button type="submit" class="btn btn-outline-primary btn-sm">@Localizer["Tickets_Resale_Invite"]</button>
                             </form>

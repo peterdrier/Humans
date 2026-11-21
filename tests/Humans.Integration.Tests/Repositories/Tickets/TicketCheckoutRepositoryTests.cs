@@ -131,8 +131,13 @@ public class TicketCheckoutRepositoryTests(HumansTestDatabase database) : Integr
             TicketId = Guid.NewGuid(),
             HolderUserId = Guid.NewGuid(),
             OfferedAt = Now,
-            DirectedEmail = "Ana@Example.com",
-            DirectedTokenHash = "DEF",
+            Invites =
+            [
+                new TicketResaleInvite { Email = "Ana@Example.com", TokenHash = "DEF", SentAt = Now },
+                new TicketResaleInvite { Email = "cy@example.com", TokenHash = "GHI", SentAt = Now },
+            ],
+            DirectedEmail = "ana@example.com",
+            DirectedTokenHash = "OLD",
         };
         await repo.AddOfferAsync(invitedElsewhere, ct);
         var unattached = new TicketCheckoutTicket
@@ -154,8 +159,7 @@ public class TicketCheckoutRepositoryTests(HumansTestDatabase database) : Integr
             HolderUserId = holder,
             OfferedAt = Now,
             RefundOwedMinor = 22500,
-            DirectedEmail = "bo@example.com",
-            DirectedTokenHash = "ABC",
+            Invites = [new TicketResaleInvite { Email = "bo@example.com", TokenHash = "ABC", SentAt = Now }],
         };
         await repo.AddOfferAsync(offer, ct);
         adult.State = TicketCheckoutTicketState.Offered;
@@ -164,19 +168,21 @@ public class TicketCheckoutRepositoryTests(HumansTestDatabase database) : Integr
         (await repo.GetTicketByBarcodeAsync(adult.Barcode, ct))!.State.Should().Be(TicketCheckoutTicketState.Offered);
         (await repo.GetTicketsForOrderAsync(adult.OrderId, ct)).Should().HaveCount(2);
         (await repo.GetOfferByTokenHashAsync("ABC", ct))!.Id.Should().Be(offer.Id);
+        (await repo.GetOfferByTokenHashAsync("GHI", ct))!.Id.Should().Be(invitedElsewhere.Id);
 
         await repo.ErasePiiForUserAsync(holder, ["ana@example.com"], ct);
 
         (await repo.GetTicketAsync(child.Id, ct))!.HolderName.Should().NotBe("Kid García");
-        (await repo.GetOfferAsync(invitedElsewhere.Id, ct))!.DirectedEmail.Should().BeNull();
+        var storedElsewhere = (await repo.GetOfferAsync(invitedElsewhere.Id, ct))!;
+        storedElsewhere.Invites.Select(i => i.Email).Should().Equal("cy@example.com");
+        storedElsewhere.DirectedEmail.Should().BeNull("a row written before the invitation list still loses the address");
         (await repo.GetTicketAsync(unattached.Id, ct))!.HolderName.Should().NotBe("Ana García");
         var stored = (await repo.GetTicketAsync(adult.Id, ct))!;
         stored.HolderName.Should().NotBe("Ana García");
         stored.HolderEmail.Should().NotBe("ana@example.com");
         stored.Barcode.Should().Be(adult.Barcode);
         var storedOffer = (await repo.GetOfferAsync(offer.Id, ct))!;
-        storedOffer.DirectedEmail.Should().BeNull();
-        storedOffer.DirectedTokenHash.Should().BeNull();
+        storedOffer.Invites.Should().BeEmpty();
         storedOffer.RefundOwedMinor.Should().Be(22500);
     }
 

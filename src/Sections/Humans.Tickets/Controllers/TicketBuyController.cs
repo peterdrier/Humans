@@ -161,8 +161,9 @@ internal sealed class TicketBuyController(
     {
         var claimBase = new Uri(Url.Action(nameof(Resale), "TicketBuy", new { token = "x" }, Request.Scheme, Request.Host.Value)!
             .TrimEnd('x'));
-        return OnTicketAsync(userId => checkout.InviteBuyerAsync(
-            ticketId, userId, inviteeEmail ?? string.Empty, claimBase, CultureInfo.CurrentUICulture.Name, ct),
+        var addresses = (inviteeEmail ?? string.Empty).Split([',', ';', ' ', '\n', '\r', '\t'], StringSplitOptions.RemoveEmptyEntries);
+        return OnTicketAsync(userId => checkout.InviteBuyersAsync(
+            ticketId, userId, addresses, claimBase, CultureInfo.CurrentUICulture.Name, ct),
             "Tickets_Resale_Invited", ct);
     }
 

@@ -1,5 +1,11 @@
 # Section debt ledger for Humans.Tickets. Shape + routing: memory/process/debt-ledger-additions.md.
 # /debt-sweep pools every src/Sections/*/Docs/debt.yml into the same inbox as the central ledger.
 version: 1
-next_id: 13
-inbox: []
+next_id: 14
+inbox:
+  - added: 2026-11-21
+    id: TICKETS-13
+    what: "ticket_resale_offers.DirectedEmail, DirectedTokenHash and IX_ticket_resale_offers_DirectedTokenHash are retired (replaced by the directed_invites jsonb list) and only cleared by erasure; drop them in a PR of their own once Peter approves (memory/architecture/destructive-drops-need-approval.md). No production ticketing data exists."
+    review: light
+    status: needs-detail
+    blocked_on: "Peter's written approval for this specific drop."

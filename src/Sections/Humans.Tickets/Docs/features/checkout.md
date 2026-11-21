@@ -163,18 +163,28 @@ addresses were typed. Directed resale links buy only the buyer's own ticket.
   a class price or a pinned wave is served from fresh stock while the event is `Open`, and pays the resale price for a
   queue ticket in `ResaleOnly` mode or through an invitation.
 - When the buyer's order is paid, the offer is sold, the old ticket becomes `Resold`, the old adult's children are
-  voided, the buyer gets a new ticket, and the holder is refunded what they paid (adult plus children) through the
-  original order's backend, under the offer's id so a repeat finds the same refund and a call that threw is retried.
-  A refund that cannot even start is recorded as a `Failed` refund on the holder's order for the team to pay by hand;
-  the timeline of both orders records it.
+  voided, the buyer gets a new ticket, and the holder is told it sold (`ticket_resale_sold`).
+- **Evening refund batch** (`TicketResaleRefundJob`, daily 19:00 UTC, H11): the holder is refunded what they paid
+  (adult plus children) through the original order's backend, once the buyer's order has held for 12 hours, under the
+  offer's id so a repeat finds the same refund and a call that threw is retried. A sale whose buyer order is no longer
+  paid, or has a refund (ours or the backend's) or a chargeback, is held back and flagged once for the team
+  (`TicketCheckoutNeedsAttention`, "Resale refund held back"). A refund that cannot even start is recorded as a
+  `Failed` refund on the holder's order for the team to pay by hand; the timeline of both orders records it. Each run
+  leaves one `TicketResaleRefundBatch` audit row per event with the count and total started, held back and waiting;
+  the batch refunds are reconciled with the backend like every other refund. The resale queue page shows a sold offer
+  without its refund as waiting for the batch.
+- **Did not sell** (H12): once sales close (mode `Closed` or `SalesCloseAt` passed), the reconcile job tells each
+  holder whose offer is still open, once (`UnsoldNotifiedAt`, `ResaleUnsold` on the timeline, `ticket_resale_unsold`):
+  no refund, and the ticket admits them. The offer stays open in case sales reopen.
 - While fresh stock is sold out, a class-price buyer in `Open` mode takes a queue ticket at the resale price.
 - A checkout that fails, expires or is cancelled releases its offers to their original place.
-- **Directed resale:** a holder whose offer is open emails one person a single-use link
-  (`/Tickets/Buy/Resale/{token}`, only the SHA-256 of the token is stored). Only a signed-in buyer with that email can
-  use it, for themselves, and only while resale is open. The link has no expiry: it works while the offer is open, and
-  the offer stays in the public queue meanwhile, so whoever buys first gets it. Invitation, use and cancel are on
-  the holder's order timeline. One invitation is live at a time, and a ticket gets at most three over all its offers; the invited email is
-  cleared once the invitation ends.
+- **Directed resale** (H10): a holder whose offer is open emails one or more people each their own link
+  (`/Tickets/Buy/Resale/{token}`, one token per address, only its SHA-256 is stored in the offer's `directed_invites`).
+  Only a signed-in buyer with that address can use a link, for themselves, and only while resale is open. The links
+  have no expiry and the offer stays in the public queue meanwhile, so whoever buys first gets it; a later invitee's
+  link then sells the next ticket in the queue ("someone else bought it first"). A ticket gets at most ten invitations
+  over all its offers, each address once. Invitation, use and cancel are on the holder's order timeline; cancel
+  clears every invitation, and the switch to `Queue`, a void or erasure clears them too.
 
 ## Companion tickets
 
@@ -189,7 +199,7 @@ order timeline and the answer is audited.
 ## The ticketing team
 
 `/Tickets/Admin/Sales/Lookup` finds orders across events. Per event, the sales index links the refund list, the resale
-queue (directed offers marked with the invited email), the companion requests and the sales report. Each issued ticket has an admin
+queue (directed offers marked with the invited emails, sold ones waiting for the evening refund batch), the companion requests and the sales report. Each issued ticket has an admin
 page, reached from its order, with the three exceptions: rename (full price adults only), void (no refund; refund from
 the order), and a free companion ticket.
 

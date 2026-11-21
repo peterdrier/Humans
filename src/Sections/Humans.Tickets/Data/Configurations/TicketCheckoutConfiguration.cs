@@ -127,6 +127,7 @@ internal sealed class TicketResaleOfferConfiguration : IEntityTypeConfiguration<
         builder.Property(x => x.State).IsRequired().HasConversion<string>().HasMaxLength(16);
         builder.Property(x => x.DirectedEmail).HasMaxLength(320);
         builder.Property(x => x.DirectedTokenHash).HasMaxLength(64);
+        builder.OwnsMany(x => x.Invites, i => i.ToJson("directed_invites"));
     }
 }
 

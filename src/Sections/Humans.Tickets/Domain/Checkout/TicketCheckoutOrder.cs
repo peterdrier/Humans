@@ -210,4 +210,6 @@ internal enum TicketCheckoutOrderEventKind
     TicketMailSkipped = 22,
     CompanionRequested = 23,
     CompanionRequestDecided = 24,
+    /// <summary>Sales closed with the ticket still offered; its holder was told.</summary>
+    ResaleUnsold = 40,
 }

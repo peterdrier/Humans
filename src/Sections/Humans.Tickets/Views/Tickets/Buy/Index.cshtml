@@ -43,7 +43,7 @@
 <p class="text-muted">@Localizer["Tickets_Buy_Intro"]</p>
 @if (directedToken is not null)
 {
-    <div class="alert alert-info">@Localizer["Tickets_Resale_DirectedIntro"]</div>
+    <div class="alert alert-info">@Localizer[Model[0].InviteTaken ? "Tickets_Resale_InviteTaken" : "Tickets_Resale_DirectedIntro"]</div>
 }
 
 @foreach (var sale in Model)

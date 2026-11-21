@@ -71,9 +71,10 @@ internal enum TicketCheckoutTicketState
 
 /// <summary>
 /// A holder's ticket waiting in the resale queue, oldest first. When it sells, the buyer gets a new ticket, the old one
-/// is marked resold and the holder is refunded <see cref="RefundOwedMinor"/>. A directed offer (an invited buyer) also
-/// sells to that email through the link, and stays in the queue meanwhile: whoever buys first gets it. The link has
-/// no expiry; it works while the offer is open.
+/// is marked resold and the evening refund batch refunds the holder <see cref="RefundOwedMinor"/> once the buyer's
+/// payment has held. A directed offer also sells through the link the holder emailed to one or more people, and stays
+/// in the queue meanwhile: whoever buys first gets it, and anyone following a link later buys the next ticket in the
+/// queue. The links have no expiry.
 /// </summary>
 internal sealed class TicketResaleOffer
 {
@@ -101,12 +102,22 @@ internal sealed class TicketResaleOffer
 
     public Instant? WithdrawnAt { get; set; }
 
-    /// <summary>The holder's refund once requested.</summary>
+    /// <summary>The holder's refund once the evening batch requested it.</summary>
     public Guid? RefundId { get; set; }
 
+    /// <summary>
+    /// The people the holder emailed a link to. Kept after the offer sells, so a later link still finds its way to the
+    /// next ticket in the queue.
+    /// </summary>
+    public List<TicketResaleInvite> Invites { get; set; } = [];
+
+    /// <summary>
+    /// Retired single-invitation columns, replaced by <see cref="Invites"/>. Nothing reads them; erasure still clears
+    /// them on rows written before. Dropping them waits for Peter's approval in a PR of its own.
+    /// </summary>
     public string? DirectedEmail { get; set; }
 
-    /// <summary>SHA-256 of the emailed link's token; the token itself is never stored.</summary>
+    /// <inheritdoc cref="DirectedEmail"/>
     public string? DirectedTokenHash { get; set; }
 
     public Instant? DirectedUsedAt { get; set; }
@@ -114,7 +125,24 @@ internal sealed class TicketResaleOffer
     /// <summary>Invitations sent for this offer, capped so a holder cannot mail addresses without end.</summary>
     public int DirectedInviteCount { get; set; }
 
-    public bool HasLiveInvite => DirectedTokenHash is not null && DirectedUsedAt is null;
+    /// <summary>When the holder was told at sales close that it did not sell; once only.</summary>
+    public Instant? UnsoldNotifiedAt { get; set; }
+
+    public bool HasLiveInvite => Invites.Count > 0 && State is TicketResaleOfferState.Open or TicketResaleOfferState.Reserved;
+
+    public TicketResaleInvite? InviteFor(string tokenHash) =>
+        Invites.FirstOrDefault(i => string.Equals(i.TokenHash, tokenHash, StringComparison.Ordinal));
+}
+
+/// <summary>One emailed link: bound to the address it went to. The token itself is never stored.</summary>
+internal sealed class TicketResaleInvite
+{
+    public string Email { get; set; } = string.Empty;
+
+    /// <summary>SHA-256 of the link's token, hex.</summary>
+    public string TokenHash { get; set; } = string.Empty;
+
+    public Instant SentAt { get; set; }
 }
 
 internal enum TicketResaleOfferState

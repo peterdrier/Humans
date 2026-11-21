@@ -208,14 +208,23 @@ internal sealed partial class TicketCheckoutService(
         return sales.OrderBy(s => s.GatesOpen).Select(s => s.Sale).ToList();
     }
 
+    /// <summary>
+    /// The linked ticket while it can sell; once someone else bought it (or its holder took it back) the same link buys
+    /// the next ticket in the queue, and the page says so.
+    /// </summary>
     public async Task<BuyPage?> GetDirectedBuyPageAsync(string token, Guid userId, CancellationToken ct = default)
     {
-        var offer = await repository.GetOfferByTokenHashAsync(HashToken(token), ct);
+        var tokenHash = HashToken(token);
+        var offer = await repository.GetOfferByTokenHashAsync(tokenHash, ct);
         if (offer is null || await LoadBuyContextAsync(offer.SalesEventId, userId, ct) is not { } context
             || context.SalesEvent.EffectiveSwitches.Resale != ResaleScheme.QueueAndDirected)
             return null;
-        return ToBuyPage(context, await RulesForAsync(context.SalesEvent, ct),
-            DirectedOfferFor(offer, context) is null ? "Tickets_Resale_InviteInvalid" : null, directed: true);
+        var rules = await RulesForAsync(context.SalesEvent, ct);
+        if (!InviteIsFor(offer, tokenHash, context) || !context.SalesEvent.ResaleSelling)
+            return ToBuyPage(context, rules, "Tickets_Resale_InviteInvalid", directed: true);
+        return DirectedOfferFor(offer, tokenHash, context) is not null
+            ? ToBuyPage(context, rules, null, directed: true)
+            : ToBuyPage(context, rules, null, directed: false) with { InviteTaken = true };
     }
 
     private async Task<TicketRules?> RulesForAsync(TicketSalesEvent salesEvent, CancellationToken ct) =>
@@ -303,14 +312,17 @@ internal sealed partial class TicketCheckoutService(
         TicketResaleOffer? directed = null;
         if (command.DirectedToken is { } token)
         {
+            var tokenHash = HashToken(token);
             var invited = switches.Resale == ResaleScheme.QueueAndDirected
-                ? await repository.GetOfferByTokenHashAsync(HashToken(token), ct)
+                ? await repository.GetOfferByTokenHashAsync(tokenHash, ct)
                 : null;
-            directed = invited is null ? null : DirectedOfferFor(invited, context);
+            if (invited is null || !InviteIsFor(invited, tokenHash, context) || !salesEvent.ResaleSelling
+                || !command.ForSelf || others.Count > 0)
+                return StartCheckoutResult.Refused("Tickets_Resale_InviteInvalid");
+            // Gone to someone else first: the link buys the next ticket in the queue, like any other buyer.
+            directed = DirectedOfferFor(invited, tokenHash, context);
             if (directed is not null && await IsAdmittedAsync(directed.TicketId, ct))
                 directed = null;
-            if (directed is null || !command.ForSelf || others.Count > 0)
-                return StartCheckoutResult.Refused("Tickets_Resale_InviteInvalid");
         }
 
         var stock = await LoadStockAsync(salesEvent, now, ct);
@@ -626,6 +638,8 @@ internal sealed partial class TicketCheckoutService(
             await CompletePaidAsync(order, ct);
         else if (before.State != order.State && !order.IsOpen)
             await ReleaseOffersAsync(order, ct);
+        if (wasOpen && order.State is TicketCheckoutOrderState.Failed or TicketCheckoutOrderState.Expired)
+            await TellDeliveryAsync(d => d.PaymentEndedAsync(order.Id, ct), order.Id);
 
         if (before.State != order.State && !order.IsOpen)
         {
@@ -910,7 +924,8 @@ internal sealed partial class TicketCheckoutService(
                 RefundOwed = FormatMinor(o.RefundOwedMinor),
                 SoldAt = o.SoldAt.ToIso8601(),
                 WithdrawnAt = o.WithdrawnAt.ToIso8601(),
-                o.DirectedEmail,
+                InvitedEmails = o.Invites.Select(i => i.Email).ToList(),
+                UnsoldNotifiedAt = o.UnsoldNotifiedAt.ToIso8601(),
             }).ToList()),
             new UserDataSlice(CompanionRequestsSlice, companionRequests.Select(r => new
             {
@@ -939,7 +954,7 @@ internal sealed partial class TicketCheckoutService(
                 "tombstone, and live tickets are voided; barcode, price paid and state stay as the accounting record of " +
                 "the sale and so the code can never scan again.",
             [OffersSlice] =
-                "Partly retained: the invited buyer's email and the invitation are cleared; dates, state and the refund " +
+                "Partly retained: the invited buyers' emails and their links are cleared; dates, state and the refund " +
                 "owed stay as the accounting record of the resale.",
             [CompanionRequestsSlice] =
                 "Partly retained: the holder's note is replaced by the tombstone and the team's answer cleared; state and dates stay as the record of " +
@@ -1255,12 +1270,11 @@ internal sealed partial class TicketCheckoutService(
         foreach (var offer in (await repository.GetOffersForSalesEventAsync(salesEventId, ct))
                      .Where(o => o.State == TicketResaleOfferState.Open && o.HasLiveInvite))
         {
-            offer.DirectedTokenHash = null;
-            offer.DirectedEmail = null;
+            offer.Invites = [];
             await repository.UpdateOfferAsync(offer, ct);
             if (await repository.GetTicketAsync(offer.TicketId, ct) is { } ticket)
                 await TimelineAsync(ticket.OrderId, TicketCheckoutOrderEventKind.ResaleInviteCancelled,
-                    $"Invitation for ticket {ticket.Barcode} ended: directed resale switched off; it keeps its place in the queue",
+                    $"Invitations for ticket {ticket.Barcode} ended: directed resale switched off; it keeps its place in the queue",
                     actorUserId, ct);
         }
     }
@@ -1281,8 +1295,7 @@ internal sealed partial class TicketCheckoutService(
         offer.State = TicketResaleOfferState.Withdrawn;
         offer.WithdrawnAt = clock.GetCurrentInstant();
         offer.ReservedByOrderId = null;
-        offer.DirectedTokenHash = null;
-        offer.DirectedEmail = null;
+        offer.Invites = [];
         await repository.UpdateOfferAsync(offer, ct);
         if (await repository.GetTicketAsync(offer.TicketId, ct) is not { } ticket)
             return;

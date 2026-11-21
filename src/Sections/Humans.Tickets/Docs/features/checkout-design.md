@@ -66,8 +66,10 @@ offers their ticket back; they are refunded only when someone else buys it, and 
   keeps the difference. Donations are not refunded; a request is handled by hand.
 - Resale can stay closed until a sales threshold, and sales have a mode: open, resale only, closed.
 - The holder can withdraw before it sells. Unsold when sales close means no refund, and they may still attend.
-- **Directed resale.** The holder names one person by email, who buys that specific ticket ahead of the queue through
-  a single-use link. Otherwise it is ordinary resale; no money moves between the two people.
+- **Directed resale.** The holder names one or more people by email; each gets a link to buy that specific ticket
+  ahead of the queue, the first to buy gets it, and a later link offers the next returned ticket. Otherwise it is
+  ordinary resale; no money moves between the two people. The holder is refunded in an evening batch once the new
+  buyer's order has held, not at the moment of sale.
 
 ## The whole journey
 
