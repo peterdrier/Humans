@@ -76,7 +76,11 @@ public sealed class GovernanceBodyGoogleSourceTests
 
     private static GovernanceBodyFile File(GovernanceBody body, string googleId, DrivePermissionLevel level) => new()
     {
-        Id = Guid.NewGuid(), Body = body, GoogleId = googleId, Name = googleId,
-        ResourceType = GoogleResourceType.DriveFolder, PermissionLevel = level,
+        Id = Guid.NewGuid(),
+        Body = body,
+        GoogleId = googleId,
+        Name = googleId,
+        ResourceType = GoogleResourceType.DriveFolder,
+        PermissionLevel = level,
     };
 }

@@ -98,7 +98,7 @@ system team by the `governance.body-links-from-teams` data migration, which neve
 body's roster (approved tier in term for Asociados and Colaboradores, active Board role for the Board) as raw
 user ids; Google hydrates and filters the accounts. A file at permission level None is still claimed, with no
 one on it, so old grants are removed. The source never throws: on a failed read the bodies go unclaimed for that
-pass and Google leaves them alone. Teams no longer claims or syncs the three old teams.
+pass and Google leaves them alone. Teams no longer claims or syncs the three old teams. No consent gate sits in front of a body's group or files: no legal document is scoped to these bodies (checked in prod, 2026-11-19), and body documents with their own gate are later work.
 
 | Property | Type | Purpose |
 |---|---|---|
