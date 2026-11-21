@@ -225,6 +225,8 @@ public sealed class TicketCheckoutServiceTests
 
         _repo.Tickets.Should().HaveCount(2).And.Contain(t => t.HolderUserId == null && t.HolderName == "Bo Smith");
         _repo.Events.Should().Contain(e => e.Detail.Contains("verified on more than one account", StringComparison.Ordinal));
+        await _audit.Received(1).LogAsync(TicketsAuditActions.TicketCheckoutNeedsAttention, Arg.Any<string>(), Arg.Any<Guid>(),
+            Arg.Is<string>(d => d.Contains("verified on more than one account")), Arg.Any<string>(), Arg.Any<Guid?>(), Arg.Any<string?>());
         await _provisioning.DidNotReceiveWithAnyArgs().FindOrCreateUserByEmailAsync(default!, default, default, default);
     }
 
@@ -856,6 +858,8 @@ public sealed class TicketCheckoutServiceTests
 
         _backend.GetStatusAsync("cs_1", Arg.Any<CancellationToken>())
             .Returns(new CheckoutStatus(CheckoutState.Paid, 0, "card", Now, RefundedMinor: 10000, RefundFailed: true));
+        _backend.RefundAsync(Arg.Is<RefundRequest>(r => r.AmountMinor == 5000), Arg.Any<CancellationToken>())
+            .Returns(new RefundResult(RefundState.Failed, "re_p", "bank refused"));
         await _service.ReconcileOpenOrdersAsync(Ct);
 
         _repo.Refunds.Select(r => r.Refund.State).Should().Equal(RefundState.Succeeded, RefundState.Failed);
@@ -937,6 +941,25 @@ public sealed class TicketCheckoutServiceTests
     }
 
     [HumansFact]
+    public async Task Reconcile_hands_tickets_to_delivery_again_when_no_email_was_recorded()
+    {
+        var order = await BuyAndPayAsync(Buy(), _buyerId);
+        _delivery.ClearReceivedCalls();
+
+        await _service.ReconcileOpenOrdersAsync(Ct);
+        await _delivery.DidNotReceiveWithAnyArgs().TicketsIssuedAsync(default, default);
+
+        _clock.Advance(Duration.FromMinutes(31));
+        await _service.ReconcileOpenOrdersAsync(Ct);
+        await _delivery.Received(1).TicketsIssuedAsync(order.Id, Arg.Any<CancellationToken>());
+
+        await _service.RecordDeliveryAsync(order.Id, TicketCheckoutOrderEventKind.TicketsEmailed, "sent", null, Ct);
+        _delivery.ClearReceivedCalls();
+        await _service.ReconcileOpenOrdersAsync(Ct);
+        await _delivery.DidNotReceiveWithAnyArgs().TicketsIssuedAsync(default, default);
+    }
+
+    [HumansFact]
     public async Task A_resale_refund_that_cannot_start_is_recorded_as_failed_under_the_offer_id()
     {
         var old = await OfferedTicketAsync();
@@ -987,10 +1010,65 @@ public sealed class TicketCheckoutServiceTests
 
         _repo.Refunds.Single().Refund.State.Should().Be(RefundState.Pending);
         (await _service.GetOrderDetailAsync(order.Id, Ct))!.RefundableMinor.Should().Be(12500);
+        var rows = _repo.Events.Count;
+        await _service.ReconcileOpenOrdersAsync(Ct);
+        _repo.Events.Should().HaveCount(rows, "a resend that changes nothing adds no rows");
+
+        _backend.RefundAsync(Arg.Any<RefundRequest>(), Arg.Any<CancellationToken>())
+            .Returns(new RefundResult(RefundState.Succeeded, "re_5", null));
+        await _service.ReconcileOpenOrdersAsync(Ct);
+
+        _repo.Refunds.Single().Refund.State.Should().Be(RefundState.Succeeded);
+        await _backend.Received(3).RefundAsync(
+            Arg.Is<RefundRequest>(r => r.RefundId == _repo.Refunds[0].RefundId), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
-    public async Task One_invitation_at_a_time_and_at_most_three_per_offer()
+    public async Task An_earlier_failed_refund_does_not_fail_a_later_one_still_in_flight()
+    {
+        var order = await BuyAndPayAsync(Buy(), _buyerId);
+        _backend.GetStatusAsync("cs_1", Arg.Any<CancellationToken>())
+            .Returns(new CheckoutStatus(CheckoutState.Paid, 0, "card", Now, RefundedMinor: 0, RefundFailed: true));
+        _backend.RefundAsync(Arg.Any<RefundRequest>(), Arg.Any<CancellationToken>())
+            .Returns(new RefundResult(RefundState.Failed, "re_a", "bank refused"));
+        await _service.RefundAsync(order.Id, 10000, "first", Guid.NewGuid(), Ct);
+        _backend.RefundAsync(Arg.Any<RefundRequest>(), Arg.Any<CancellationToken>())
+            .Returns(new RefundResult(RefundState.Pending, "re_b", null));
+
+        await _service.RefundAsync(order.Id, 5000, "second", Guid.NewGuid(), Ct);
+        await _service.ReconcileOpenOrdersAsync(Ct);
+
+        _repo.Refunds.Select(r => r.Refund.State).Should().Equal(RefundState.Failed, RefundState.Pending);
+
+        var second = _repo.Refunds[1].RefundId;
+        _backend.RefundAsync(Arg.Is<RefundRequest>(r => r.RefundId == second), Arg.Any<CancellationToken>())
+            .Returns(new RefundResult(RefundState.Failed, "re_b", "bank refused"));
+        await _service.ReconcileOpenOrdersAsync(Ct);
+
+        _repo.Refunds[1].Refund.State.Should().Be(RefundState.Failed);
+    }
+
+    [HumansFact]
+    public async Task An_unpaid_partner_is_forgotten_once_a_late_payment_can_no_longer_arrive()
+    {
+        var result = await _service.StartCheckoutAsync(Buy(partnerName: "Bo Smith", partnerEmail: "bo@example.com"), _buyerId, Ct);
+        _backend.GetStatusAsync("cs_1", Arg.Any<CancellationToken>())
+            .Returns(new CheckoutStatus(CheckoutState.Pending, null, null, null));
+        await _service.CancelAsync(result.OrderId!.Value, _buyerId, Ct);
+        var partner = _repo.Orders.Single().Lines[1];
+
+        await _service.ReconcileOpenOrdersAsync(Ct);
+        partner.AttendeeEmail.Should().Be("bo@example.com");
+
+        _clock.Advance(Duration.FromDays(31));
+        await _service.ReconcileOpenOrdersAsync(Ct);
+
+        partner.AttendeeEmail.Should().BeNull();
+        partner.AttendeeName.Should().NotBe("Bo Smith");
+    }
+
+    [HumansFact]
+    public async Task One_invitation_at_a_time_and_at_most_three_per_ticket()
     {
         var old = await OfferedTicketAsync();
         var link = new Uri("https://h.example/r/");
@@ -1006,6 +1084,10 @@ public sealed class TicketCheckoutServiceTests
 
         (await _service.InviteBuyerAsync(old.Id, _buyerId, "d@example.com", link, "en", Ct)).Refusal.Should().Be("Tickets_Resale_InviteLimit");
         _repo.Offers.Single().DirectedEmail.Should().BeNull();
+
+        (await _service.WithdrawOfferAsync(old.Id, _buyerId, Ct)).Refusal.Should().BeNull();
+        (await _service.OfferForResaleAsync(old.Id, _buyerId, Ct)).Refusal.Should().BeNull();
+        (await _service.InviteBuyerAsync(old.Id, _buyerId, "e@example.com", link, "en", Ct)).Refusal.Should().Be("Tickets_Resale_InviteLimit");
     }
 
     [HumansFact]

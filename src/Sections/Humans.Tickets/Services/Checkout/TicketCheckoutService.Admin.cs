@@ -217,7 +217,7 @@ internal sealed partial class TicketCheckoutService
         await auditLog.LogAsync(TicketsAuditActions.TicketCompanionIssued, AuditEntityType, order.Id,
             $"Companion ticket {companion.Barcode} issued for ticket {parent.Barcode}: {why}",
             actorUserId, parentHolderId, AuditSubjectTypes.User);
-        await DeliverAsync(order.Id, ct);
+        await HandOffToDeliveryAsync(order.Id, ct);
         return CheckoutMutationResult.Ok;
     }
 

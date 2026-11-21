@@ -415,7 +415,35 @@ internal sealed partial class TicketCheckoutService(
         }
         changed += await RepairPaidAsync(ct);
         changed += await SweepOffersAsync(ct);
+        changed += await ForgetUnpaidPartnersAsync(ct);
         return changed;
+    }
+
+    /// <summary>
+    /// A partner on an order that never got paid may never have heard of Humans: their name and email go once a late
+    /// payment can no longer arrive.
+    /// </summary>
+    private async Task<int> ForgetUnpaidPartnersAsync(CancellationToken ct)
+    {
+        var cutoff = clock.GetCurrentInstant() - UnpaidPartnerRetention;
+        var forgotten = 0;
+        foreach (var salesEvent in await repository.GetSalesEventsAsync(ct))
+            foreach (var order in (await repository.GetOrdersForSalesEventAsync(salesEvent.Id, ct)).Where(o =>
+                         o.State is TicketCheckoutOrderState.Expired or TicketCheckoutOrderState.Failed or TicketCheckoutOrderState.Cancelled
+                         && o.ExpiresAt <= cutoff
+                         && o.Lines.Any(l => l is { AttendeeUserId: null, AttendeeEmail: not null })))
+            {
+                foreach (var line in order.Lines.Where(l => l is { AttendeeUserId: null, AttendeeEmail: not null }))
+                {
+                    line.AttendeeName = TicketPiiTombstone.Name;
+                    line.AttendeeEmail = null;
+                }
+                await repository.UpdateOrderAsync(order, ct);
+                await TimelineAsync(order.Id, TicketCheckoutOrderEventKind.StateChanged,
+                    "Partner details removed: the order was never paid", null, ct);
+                forgotten++;
+            }
+        return forgotten;
     }
 
     private async Task<IReadOnlyList<Guid>> UnsettledRefundOrdersAsync(CancellationToken ct)
@@ -552,8 +580,9 @@ internal sealed partial class TicketCheckoutService(
     }
 
     /// <summary>
-    /// Settles pending and manual refunds from the backend's refunded total, oldest first; when the backend reports a
-    /// failed refund, the ones that total does not cover failed. True when any changed.
+    /// Settles pending refunds from the refunded total, oldest first. <see cref="CheckoutStatus.RefundFailed"/> says only
+    /// that some refund on the payment failed, so each uncovered refund the backend knows is asked for its own state by
+    /// repeating it under its id.
     /// </summary>
     private async Task<bool> SettleRefundsAsync(TicketCheckoutOrder order, CheckoutStatus status, CancellationToken ct)
     {
@@ -567,10 +596,12 @@ internal sealed partial class TicketCheckoutService(
                 covered -= refund.AmountMinor;
                 refund.State = RefundState.Succeeded;
             }
-            else if (status.RefundFailed)
+            else if (status.RefundFailed && refund is { State: RefundState.Pending, BackendRefundId: not null }
+                && order.BackendOrderId is not null && BackendFor(order.BackendKey) is { } backend
+                && await OwnRefundStateAsync(backend, order, refund, ct) is { State: RefundState.Failed } failed)
             {
                 refund.State = RefundState.Failed;
-                refund.FailureReason = $"{order.BackendKey} reports the refund failed";
+                refund.FailureReason = Truncate(failed.FailureReason ?? $"{order.BackendKey} reports the refund failed");
             }
             else
             {
@@ -582,6 +613,20 @@ internal sealed partial class TicketCheckoutService(
             changed = true;
         }
         return changed;
+    }
+
+    private async Task<RefundResult?> OwnRefundStateAsync(
+        ITicketCheckoutBackend backend, TicketCheckoutOrder order, TicketCheckoutRefund refund, CancellationToken ct)
+    {
+        try
+        {
+            return await backend.RefundAsync(new RefundRequest(refund.Id, order.BackendOrderId!, refund.AmountMinor, refund.Reason), ct);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            logger.LogWarning(ex, "State of refund {RefundId} could not be read from {Backend}", refund.Id, order.BackendKey);
+            return null;
+        }
     }
 
     public async Task<CheckoutMutationResult> RefundAsync(
@@ -601,7 +646,7 @@ internal sealed partial class TicketCheckoutService(
             if (existing is { State: RefundState.Pending, BackendRefundId: null }
                 && await repository.GetOrderAsync(orderId, ct) is { BackendOrderId: not null } paidOrder
                 && BackendFor(paidOrder.BackendKey) is { } retryBackend)
-                await CallBackendRefundAsync(retryBackend, paidOrder, existing, actorUserId, ct);
+                await CallBackendRefundAsync(retryBackend, paidOrder, existing, actorUserId, ct, resend: true);
             return (CheckoutMutationResult.Ok, existing.Id);
         }
 
@@ -644,8 +689,10 @@ internal sealed partial class TicketCheckoutService(
             : CheckoutMutationResult.Ok, refund.Id);
     }
 
+    /// <summary>A <paramref name="resend"/> that changes nothing is only logged, so a backend that stays down adds no rows.</summary>
     private async Task<RefundResult> CallBackendRefundAsync(
-        ITicketCheckoutBackend backend, TicketCheckoutOrder order, TicketCheckoutRefund refund, Guid? actorUserId, CancellationToken ct)
+        ITicketCheckoutBackend backend, TicketCheckoutOrder order, TicketCheckoutRefund refund, Guid? actorUserId,
+        CancellationToken ct, bool resend = false)
     {
         var amountMinor = refund.AmountMinor;
         RefundResult result;
@@ -659,6 +706,12 @@ internal sealed partial class TicketCheckoutService(
             // A timeout leaves the outcome unknown and the money may have gone: the status read settles it.
             logger.LogError(ex, "Refund {RefundId} of order {OrderId} threw in {Backend}", refund.Id, order.Id, order.BackendKey);
             result = new RefundResult(RefundState.Pending, null, ex.Message);
+        }
+
+        if (resend && result.State == refund.State && string.Equals(result.BackendRefundId, refund.BackendRefundId, StringComparison.Ordinal))
+        {
+            logger.LogInformation("Resent refund {RefundId} of order {OrderId} is still {State}", refund.Id, order.Id, result.State);
+            return result;
         }
 
         refund.State = result.State;
@@ -705,6 +758,8 @@ internal sealed partial class TicketCheckoutService(
         return CheckoutMutationResult.Ok;
     }
 
+
+    private static readonly Duration UnpaidPartnerRetention = Duration.FromDays(30);
 
     internal const string OrdersSlice = "TicketCheckoutOrders";
     internal const string TicketsSlice = "TicketCheckoutTickets";
@@ -813,7 +868,7 @@ internal sealed partial class TicketCheckoutService(
                 // A retired backend's data must be erased or exported before its adapter is removed; this only
                 // keeps one leftover order from blocking every later deletion.
                 logger.LogWarning("Order {OrderId} is on retired backend {Backend}; its copy there was not erased", order.Id, order.BackendKey);
-                await auditLog.LogAsync(TicketsAuditActions.TicketCheckoutClosed, AuditEntityType, order.Id,
+                await auditLog.LogAsync(TicketsAuditActions.TicketCheckoutNeedsAttention, AuditEntityType, order.Id,
                     $"GDPR erasure could not reach retired backend {order.BackendKey}", JobName);
                 continue;
             }
