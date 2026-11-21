@@ -718,4 +718,4 @@ src/Sections/Humans.Users/Data/Migrations/20261121114531_DropProfileChildTablesP
 # a value. The last readers (application detail pages) were removed in peterdrier/Humans#2443.
 # Approval: Peter, 2026-11-19, project thread decision card ("Yes, drop it"), after being told
 # what the column may still hold.
-src/Sections/Humans.Governance/Data/Migrations/20261120224806_DropApplicationReviewStartedAt.cs:DropColumn(name=ReviewStartedAt,table=governance_applications)#1
+src/Sections/Humans.Governance/Data/Migrations/20261121133716_DropApplicationReviewStartedAt.cs:DropColumn(name=ReviewStartedAt,table=governance_applications)#1
