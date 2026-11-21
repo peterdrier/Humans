@@ -1,3 +1,4 @@
+using Humans.Users.Domain;
 using Humans.Users.Services;
 using Humans.Email.Contracts;
 using Humans.Governance.Contracts;

@@ -1,7 +1,7 @@
-namespace Humans.Users.Contracts;
+namespace Humans.Users.Domain;
 
 /// <summary>Stored by name: never rename.</summary>
-public enum AccountMergeRequestStatus
+internal enum AccountMergeRequestStatus
 {
     Pending = 0,
 
