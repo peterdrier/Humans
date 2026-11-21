@@ -2,6 +2,7 @@ using System.Globalization;
 using Humans.Auth.Contracts;
 using Humans.Base.Attributes;
 using Humans.Base.Controllers;
+using Humans.EarlyEntry.Contracts;
 using Humans.Tickets.Domain.Checkout;
 using Humans.Tickets.Services.Checkout;
 using Humans.Users.Contracts;
@@ -17,6 +18,7 @@ namespace Humans.Tickets.Controllers;
 internal sealed class TicketBuyController(
     ITicketCheckoutService checkout,
     IMagicLinkService magicLinks,
+    IEarlyEntryService earlyEntry,
     IUserService userService,
     IStringLocalizer<TicketsResource> localizer,
     ILogger<TicketBuyController> logger) : HumansControllerBase(userService)
@@ -135,6 +137,8 @@ internal sealed class TicketBuyController(
         var (errorResult, user) = await RequireCurrentUserAsync(ct);
         if (errorResult is not null) return errorResult;
 
+        // Children ride on the adult's entry, so the viewer's own Early Entry applies to every ticket listed.
+        ViewData["EarlyEntryDate"] = (await earlyEntry.GetForUserAsync(user.Id, ct))?.EarliestEntryDate;
         return View("~/Views/Tickets/Buy/Mine.cshtml", await checkout.GetHeldTicketsAsync(user.Id, ct));
     }
 

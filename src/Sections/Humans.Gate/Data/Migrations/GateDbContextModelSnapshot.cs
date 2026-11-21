@@ -67,6 +67,16 @@ namespace Humans.Gate.Data.Migrations
                     b.Property<Guid?>("TicketAttendeeId")
                         .HasColumnType("uuid");
 
+                    b.Property<string>("UndoReason")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<Instant?>("UndoneAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("UndoneByUserId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("Verdict")
                         .IsRequired()
                         .HasMaxLength(40)

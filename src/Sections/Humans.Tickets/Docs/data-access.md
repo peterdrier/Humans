@@ -26,7 +26,7 @@ references `Humans.Tickets` directly to name the port).
 
 The section's public surface is small: `ITicketService` (no `SurfaceBudget` pinned; adds
 `GetParticipationsAsync` / `GetAllParticipationsAsync`), `ITicketDiscountCodes`,
-`ITicketVendorMirror`, `ITicketWrite` (`RecordParticipationAsync`, Gate's admit). `TicketDashboardDtos` is `internal`. Campaigns' grant waves call `ITicketDiscountCodes.GenerateAsync`
+`ITicketVendorMirror`, `ITicketWrite` (`RecordParticipationAsync`, Gate's admit; `UndoCheckInAsync`, Gate's undo). `TicketDashboardDtos` is `internal`. Campaigns' grant waves call `ITicketDiscountCodes.GenerateAsync`
 (in the application's own `TicketDiscountCodeRequest`/`TicketDiscountKind`
 vocabulary — `TicketVendorGateway` in `Humans.Tickets` maps that to the
 port's `DiscountCodeSpec`/`DiscountType` at the edge), and
@@ -199,7 +199,7 @@ Repository: `IEventParticipationRepository` (Singleton, `IDbContextFactory<Ticke
 
 | Table | R/W |
 |-------|-----|
-| EventParticipations (`ticket_event_participations`) | R/W (W: member declaration, ticket sync, Gate admit via `ITicketWrite`, admin backfill, merge fold; a `null` `Status` is a historical cleared row) |
+| EventParticipations (`ticket_event_participations`) | R/W (W: member declaration, ticket sync, Gate admit and its undo via `ITicketWrite`, admin backfill, merge fold; a `null` `Status` is a historical cleared row) |
 
 Implements the internal `IEventParticipationManagement` (and so `ITicketWrite`),
 `IUserDataContributor` (slice `EventParticipations`, retained on erasure) and
