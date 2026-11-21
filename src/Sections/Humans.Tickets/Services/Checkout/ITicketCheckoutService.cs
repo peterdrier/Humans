@@ -216,8 +216,8 @@ internal sealed record StartCheckout(
     Uri ReturnUrlBase,
     string Culture)
 {
-    /// <summary>Legal names of children on the buyer's own ticket.</summary>
-    public IReadOnlyList<string> ChildNames { get; init; } = [];
+    /// <summary>Legal names of children on the buyer's own ticket; blank entries (unfilled form boxes) are ignored.</summary>
+    public IReadOnlyList<string?> ChildNames { get; init; } = [];
 
     public bool AcceptTerms { get; init; }
 
