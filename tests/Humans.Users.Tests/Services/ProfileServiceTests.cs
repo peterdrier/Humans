@@ -302,7 +302,7 @@ public sealed class ProfileServiceTests : ServiceTestHarness
         (await Db.Users.AsNoTracking().SingleAsync(u => u.Id == userId, Xunit.TestContext.Current.CancellationToken))
             .DisplayName.Should().Be("Test User");
         _fileStorage.Files[PicKey(profileId, "image/png")].Should().Equal(1, 2, 3);
-        var picture = await _service.GetProfilePictureAsync(profileId, Xunit.TestContext.Current.CancellationToken);
+        var picture = await _service.GetProfilePictureAsync(userId, Xunit.TestContext.Current.CancellationToken);
         picture.Should().NotBeNull();
         picture.Value.ContentType.Should().Be("image/png");
         picture.Value.Data.Should().Equal(1, 2, 3);
@@ -320,7 +320,7 @@ public sealed class ProfileServiceTests : ServiceTestHarness
 
         var profile = await Db.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId, Xunit.TestContext.Current.CancellationToken);
         profile.ProfilePictureContentType.Should().BeNull();
-        (await _service.GetProfilePictureAsync(profile.Id, Xunit.TestContext.Current.CancellationToken)).Should().BeNull();
+        (await _service.GetProfilePictureAsync(userId, Xunit.TestContext.Current.CancellationToken)).Should().BeNull();
     }
 
     [HumansFact]
@@ -349,7 +349,7 @@ public sealed class ProfileServiceTests : ServiceTestHarness
 
         await _editor.SaveProfileAsync(userId, MakeRequest(pictureData: PictureBytes(), pictureContentType: "image/jpeg"), ct: Xunit.TestContext.Current.CancellationToken);
 
-        var picture = await _service.GetProfilePictureAsync(profileId, Xunit.TestContext.Current.CancellationToken);
+        var picture = await _service.GetProfilePictureAsync(userId, Xunit.TestContext.Current.CancellationToken);
         picture.Should().NotBeNull();
         picture.Value.ContentType.Should().Be("image/jpeg");
         picture.Value.Data.Should().Equal(ProfilePictureProcessor.ResizeProfilePicture(PictureBytes())!.Value.Data);
@@ -378,7 +378,7 @@ public sealed class ProfileServiceTests : ServiceTestHarness
         await save.Should().ThrowAsync<InvalidOperationException>().WithMessage("Profile save acknowledgement lost");
         var saved = await Db.Profiles.AsNoTracking().SingleAsync(p => p.Id == profileId, ct);
         saved.ProfilePictureStorageKey.Should().NotBeNull();
-        var picture = await _service.GetProfilePictureAsync(profileId, ct);
+        var picture = await _service.GetProfilePictureAsync(userId, ct);
         picture.Should().NotBeNull();
         picture.Value.Data.Should().Equal(4, 5, 6);
         _fileStorage.Files.Keys.Should().ContainSingle().Which.Should().Be(saved.ProfilePictureStorageKey);
@@ -528,7 +528,7 @@ public sealed class ProfileServiceTests : ServiceTestHarness
             .And.NotBe(PicKey(profileId, "image/png"));
         _fileStorage.Files.Should().NotContainKey(PicKey(profileId, "image/png"));
         _fileStorage.Files.Keys.Should().ContainSingle().Which.Should().Be(profile.ProfilePictureStorageKey);
-        var picture = await _service.GetProfilePictureAsync(profileId, Xunit.TestContext.Current.CancellationToken);
+        var picture = await _service.GetProfilePictureAsync(userId, Xunit.TestContext.Current.CancellationToken);
         picture!.Value.Data.Should().Equal(ProfilePictureProcessor.ResizeProfilePicture(PictureBytes())!.Value.Data);
 
         var firstVersionedKey = profile.ProfilePictureStorageKey!;
@@ -547,7 +547,7 @@ public sealed class ProfileServiceTests : ServiceTestHarness
         (await Db.Profiles.AsNoTracking().FirstAsync(p => p.Id == profileId, Xunit.TestContext.Current.CancellationToken))
             .ProfilePictureStorageKey.Should().BeNull();
 
-        var picture = await _service.GetProfilePictureAsync(profileId, Xunit.TestContext.Current.CancellationToken);
+        var picture = await _service.GetProfilePictureAsync(userId, Xunit.TestContext.Current.CancellationToken);
 
         picture.Should().NotBeNull();
         picture.Value.Data.Should().Equal(1, 2, 3);
@@ -627,7 +627,7 @@ public sealed class ProfileServiceTests : ServiceTestHarness
         await SeedUserWithProfileAsync(userId, withPicture: true);
         var profile = await Db.Profiles.FirstAsync(p => p.UserId == userId, Xunit.TestContext.Current.CancellationToken);
 
-        var result = await _service.GetProfilePictureAsync(profile.Id, Xunit.TestContext.Current.CancellationToken);
+        var result = await _service.GetProfilePictureAsync(userId, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().NotBeNull();
         result.Value.Data.Should().BeEquivalentTo(new byte[] { 1, 2, 3 });
@@ -641,7 +641,7 @@ public sealed class ProfileServiceTests : ServiceTestHarness
         await SeedUserWithProfileAsync(userId, withPicture: false);
         var profile = await Db.Profiles.FirstAsync(p => p.UserId == userId, Xunit.TestContext.Current.CancellationToken);
 
-        var result = await _service.GetProfilePictureAsync(profile.Id, Xunit.TestContext.Current.CancellationToken);
+        var result = await _service.GetProfilePictureAsync(userId, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().BeNull();
     }
@@ -666,7 +666,7 @@ public sealed class ProfileServiceTests : ServiceTestHarness
         var fsPayload = new byte[] { 9, 9, 9, 9 };
         await _fileStorage.SaveAsync(PicKey(profile.Id, "image/png"), fsPayload, Xunit.TestContext.Current.CancellationToken);
 
-        var result = await _service.GetProfilePictureAsync(profile.Id, Xunit.TestContext.Current.CancellationToken);
+        var result = await _service.GetProfilePictureAsync(userId, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().NotBeNull();
         result.Value.Data.Should().BeEquivalentTo(fsPayload);
@@ -683,7 +683,7 @@ public sealed class ProfileServiceTests : ServiceTestHarness
 
         await _fileStorage.DeleteAsync(PicKey(profile.Id, "image/png"), Xunit.TestContext.Current.CancellationToken);
 
-        var result = await _service.GetProfilePictureAsync(profile.Id, Xunit.TestContext.Current.CancellationToken);
+        var result = await _service.GetProfilePictureAsync(userId, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().BeNull();
     }
@@ -706,7 +706,7 @@ public sealed class ProfileServiceTests : ServiceTestHarness
         // Confirm the stale file is still on disk to make the gate meaningful.
         _fileStorage.Files.ContainsKey(PicKey(profile.Id, "image/png")).Should().BeTrue();
 
-        var result = await _service.GetProfilePictureAsync(profile.Id, Xunit.TestContext.Current.CancellationToken);
+        var result = await _service.GetProfilePictureAsync(userId, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().BeNull("DB content-type is null after anonymization, so the stale on-disk file must not be served");
     }

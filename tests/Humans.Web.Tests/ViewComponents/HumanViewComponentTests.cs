@@ -112,7 +112,7 @@ public class HumanViewComponentTests
         var result = await sut.InvokeAsync(userId, HumanLayout.Avatar) as ViewViewComponentResult;
         var model = (HumanViewModel)result!.ViewData!.Model!;
 
-        model.ProfilePictureUrl.Should().StartWith($"/Profile/Picture?id={profileId}");
+        model.ProfilePictureUrl.Should().StartWith($"/Profile/Picture?id={userId}");
         model.Href.Should().Be($"/Profile/{userId}");
         model.ShowPopover.Should().BeTrue();
 
