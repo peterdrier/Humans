@@ -2,7 +2,6 @@ using System.Globalization;
 using System.Security.Cryptography;
 using Humans.AuditLog.Contracts;
 using Humans.Base.Extensions;
-using Humans.Consent.Contracts;
 using Humans.Email.Contracts;
 using Humans.Gate.Contracts;
 using Humans.Gdpr.Contracts;
@@ -25,8 +24,6 @@ internal sealed partial class TicketCheckoutService(
     IUserService users,
     IAccountProvisioningService provisioning,
     IUserEmailService userEmails,
-    IConsentService consents,
-    IConsentSubmission consentSubmission,
     ICommunicationPreferenceService preferenceReads,
     ICommunicationPreferenceWrite preferences,
     IEmailService email,
@@ -82,6 +79,9 @@ internal sealed partial class TicketCheckoutService(
             return new("Supporter totals must be positive.");
         if (save.ChildPriceMinor < 0 || save.ChildMaxAge is <= 0 || save.ResaleOpensAtSold < 0 || save.DirectedResaleDays is < 1 or > 30)
             return new("Child price, child age, resale threshold and invitation days must be sensible numbers.");
+        if (save.TermsUrl is { } terms && (terms.Length > 500 || !Uri.TryCreate(terms, UriKind.Absolute, out var termsUri)
+            || !string.Equals(termsUri.Scheme, Uri.UriSchemeHttps, StringComparison.Ordinal)))
+            return new("The ticket rules page must be an https address of at most 500 characters.");
 
         var existing = save.Id is { } id ? await repository.GetSalesEventAsync(id, ct) : null;
         if (save.Id is not null && existing is null)
@@ -109,7 +109,7 @@ internal sealed partial class TicketCheckoutService(
             ChildMaxAge = save.ChildMaxAge,
             ResaleOpensAtSold = save.ResaleOpensAtSold,
             DirectedResaleDays = save.DirectedResaleDays,
-            TermsTeamId = save.TermsTeamId,
+            TermsUrl = save.TermsUrl,
             UpdatedAt = now,
         };
         await repository.SaveSalesEventAsync(salesEvent, ct);
@@ -162,16 +162,23 @@ internal sealed partial class TicketCheckoutService(
         return ToBuyPage(context, DirectedOfferFor(offer, context) is null ? "Tickets_Resale_InviteInvalid" : null, directed: true);
     }
 
-    /// <summary>A returned ticket sells at the resale price, so a page that can only sell one shows that price.</summary>
+    /// <summary>
+    /// A returned ticket sells at the resale price, so a page that can only sell one (directed, resale only, or fresh
+    /// stock sold out) shows that price.
+    /// </summary>
     private static BuyPage ToBuyPage(BuyContext context, string? directedRefusal, bool directed) => new(
         context.SalesEvent, context.Event.EventName,
-        directed || context.SalesEvent.Mode == TicketSalesMode.ResaleOnly ? context.ResalePrice : context.OwnPrice,
+        directed || context.SalesEvent.Mode == TicketSalesMode.ResaleOnly || context.FreshSoldOut ? context.ResalePrice : context.OwnPrice,
         context.PublicPrice,
         directedRefusal ?? context.Unavailable, context.AlreadyHoldsTicket, context.Buyer?.FullName ?? string.Empty,
         context.UserOrders.Where(o => o.SalesEventId == context.SalesEvent.Id).OrderByDescending(o => o.CreatedAt).ToList())
     {
-        TermsToAccept = context.TermsToAccept,
+        TermsUrl = context.SalesEvent.TermsUrl,
         AskMarketing = context.AskMarketing,
+        OpenOrder = context.UserOrders
+            .Where(o => o.SalesEventId == context.SalesEvent.Id && o.BuyerUserId == context.Buyer?.Id
+                && o.State != TicketCheckoutOrderState.Paid && o.HoldsTickets(context.Now))
+            .MaxBy(o => o.CreatedAt),
     };
 
     public async Task<StartCheckoutResult> StartCheckoutAsync(
@@ -205,8 +212,7 @@ internal sealed partial class TicketCheckoutService(
         if (command.SupporterTotalMinor is { } requested
             && (!command.ForSelf || !salesEvent.SupporterTotalsMinor.Contains(requested)))
             return StartCheckoutResult.Refused("Tickets_Buy_Invalid");
-        var unsignedTerms = context.TermsToAccept.Where(t => !t.Signed).ToList();
-        if (unsignedTerms.Count > 0 && !command.AcceptTerms)
+        if (salesEvent.TermsUrl is not null && !command.AcceptTerms)
             return StartCheckoutResult.Refused("Tickets_Buy_TermsRequired");
 
         TicketResaleOffer? directed = null;
@@ -267,13 +273,6 @@ internal sealed partial class TicketCheckoutService(
         if (lines.Count == 0)
             return StartCheckoutResult.Refused("Tickets_Buy_Empty");
 
-        foreach (var term in unsignedTerms)
-        {
-            var consent = await consentSubmission.SubmitConsentAsync(
-                buyer.Id, term.DocumentVersionId, explicitConsent: true, command.IpAddress, command.UserAgent, ct);
-            if (!consent.Success && !string.Equals(consent.ErrorKey, "AlreadyConsented", StringComparison.Ordinal))
-                return StartCheckoutResult.Refused("Tickets_Buy_TermsFailed");
-        }
         if (command.MarketingOptIn && context.AskMarketing)
             await preferences.UpdatePreferenceAsync(buyer.Id, MessageCategory.Marketing, optedOut: false, JobName, ct);
 
@@ -298,9 +297,9 @@ internal sealed partial class TicketCheckoutService(
         await TimelineAsync(order.Id, TicketCheckoutOrderEventKind.Created,
             $"{ticketCount} ticket(s), {FormatMinor(order.TotalMinor)} {order.Currency} on {order.BackendKey}" +
             (lines.Any(l => l.ResaleOfferId is not null) ? ", from the resale queue" : string.Empty), buyer.Id, ct);
-        if (unsignedTerms.Count > 0)
-            await TimelineAsync(order.Id, TicketCheckoutOrderEventKind.TermsAccepted,
-                "Accepted " + string.Join(", ", unsignedTerms.Select(t => t.Title)), buyer.Id, ct);
+        if (salesEvent.TermsUrl is { } termsUrl)
+            await TimelineAsync(order.Id, TicketCheckoutOrderEventKind.TermsAccepted, "Accepted the ticket rules at " + termsUrl,
+                buyer.Id, ct);
         foreach (var offer in new[] { resaleForSelf, resaleForPartner }.OfType<TicketResaleOffer>())
             await ReserveOfferAsync(offer, order.Id, ct);
 
@@ -506,9 +505,11 @@ internal sealed partial class TicketCheckoutService(
             if (await TryCancelAtBackendAsync(backend, order, ct))
                 newState = TicketCheckoutOrderState.Expired;
         }
-        else if (wasOpen && newState is TicketCheckoutOrderState.Expired or TicketCheckoutOrderState.Failed)
+        else if (wasOpen && newState is TicketCheckoutOrderState.Expired or TicketCheckoutOrderState.Failed
+                 && !await TryCancelAtBackendAsync(backend, order, ct))
         {
-            await TryCancelAtBackendAsync(backend, order, ct);
+            // Some backends still take payment on an order they call expired: it stays open until the cancel lands.
+            newState = order.State;
         }
 
         var becamePaid = newState == TicketCheckoutOrderState.Paid && order.State != TicketCheckoutOrderState.Paid;
@@ -584,9 +585,8 @@ internal sealed partial class TicketCheckoutService(
     }
 
     /// <summary>
-    /// Settles pending refunds from the refunded total, oldest first. <see cref="CheckoutStatus.RefundFailed"/> says only
-    /// that some refund on the payment failed, so each uncovered refund the backend knows is asked for its own state by
-    /// repeating it under its id.
+    /// Settles pending refunds from the refunded total, oldest first. A backend's failure flag may follow only its newest
+    /// refund, so each uncovered refund the backend knows is asked for its own state by repeating it under its id.
     /// </summary>
     private async Task<bool> SettleRefundsAsync(TicketCheckoutOrder order, CheckoutStatus status, CancellationToken ct)
     {
@@ -600,7 +600,7 @@ internal sealed partial class TicketCheckoutService(
                 covered -= refund.AmountMinor;
                 refund.State = RefundState.Succeeded;
             }
-            else if (status.RefundFailed && refund is { State: RefundState.Pending, BackendRefundId: not null }
+            else if (refund is { State: RefundState.Pending, BackendRefundId: not null }
                 && order.BackendOrderId is not null && BackendFor(order.BackendKey) is { } backend
                 && await OwnRefundStateAsync(backend, order, refund, ct) is { State: RefundState.Failed } failed)
             {
@@ -947,9 +947,9 @@ internal sealed partial class TicketCheckoutService(
         string? Unavailable,
         bool AlreadyHoldsTicket,
         IReadOnlyList<TicketCheckoutOrder> UserOrders,
-        IReadOnlyList<RequiredConsentRow> TermsToAccept,
         bool AskMarketing,
-        Instant Now);
+        Instant Now,
+        bool FreshSoldOut);
 
     private async Task<BuyContext?> LoadBuyContextAsync(Guid salesEventId, Guid userId, CancellationToken ct)
     {
@@ -977,9 +977,6 @@ internal sealed partial class TicketCheckoutService(
         var resalePrice = TicketPrice.For(salesEvent, today, creditPrograms);
         var userOrders = await repository.GetOrdersForUserAsync(userId, ct);
         var holds = await HoldsTicketAsync(salesEvent.Id, userId, now, ct);
-        var terms = salesEvent.TermsTeamId is { } termsTeam
-            ? await consents.GetRequiredConsentRowsForUserAsync(userId, termsTeam, ct)
-            : [];
         var askMarketing = await preferenceReads.GetPreferenceOrNullAsync(userId, MessageCategory.Marketing, ct) is null;
 
         string? unavailable = null;
@@ -992,8 +989,9 @@ internal sealed partial class TicketCheckoutService(
         else if (buyer is null || !buyer.HasRequiredNameFields || string.IsNullOrWhiteSpace(buyer.Email))
             unavailable = "Tickets_Buy_NeedLegalName";
 
-        return new BuyContext(salesEvent, evt, buyer, ownPrice, publicPrice, resalePrice, unavailable, holds, userOrders, terms,
-            askMarketing, now);
+        var freshSoldOut = (await LoadStockAsync(salesEvent, now, ct)).Held + 1 > salesEvent.Capacity;
+        return new BuyContext(salesEvent, evt, buyer, ownPrice, publicPrice, resalePrice, unavailable, holds, userOrders,
+            askMarketing, now, freshSoldOut);
     }
 
     /// <summary>The line's name on the payment page, in the buyer's language (the request culture at checkout).</summary>

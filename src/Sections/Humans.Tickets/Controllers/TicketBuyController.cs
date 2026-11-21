@@ -117,9 +117,7 @@ internal sealed class TicketBuyController(
             AcceptTerms = acceptTerms,
             MarketingOptIn = marketingOptIn,
             DirectedToken = string.IsNullOrWhiteSpace(directedToken) ? null : directedToken,
-            IpAddress = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
-            UserAgent = Request.Headers.UserAgent.ToString(),
-        }, user.Id, ct);
+        }, user.Id, CancellationToken.None); // a buyer who leaves mid-request must not strand a half-made checkout
 
         if (result.Refusal is { } refusal)
             return Back(refusal);
@@ -198,7 +196,7 @@ internal sealed class TicketBuyController(
 
     [HttpPost("Order/{id:guid}/Cancel")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Cancel(Guid id, CancellationToken ct)
+    public async Task<IActionResult> Cancel(Guid id, bool startAgain, CancellationToken ct)
     {
         var (errorResult, user) = await RequireCurrentUserAsync(ct);
         if (errorResult is not null) return errorResult;
@@ -210,7 +208,7 @@ internal sealed class TicketBuyController(
                 return NotFound();
             SetError(localizer[refusal].Value);
         }
-        return RedirectToAction(nameof(Order), new { id });
+        return startAgain && result.Refusal is null ? RedirectToAction(nameof(Index)) : RedirectToAction(nameof(Order), new { id });
     }
 
     /// <summary>The payer sees the whole order; a holder sees only their own ticket line.</summary>

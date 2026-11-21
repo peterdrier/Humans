@@ -278,7 +278,6 @@ graph LR
     Tickets --> Auth
     Tickets --> Budget
     Tickets --> Campaigns
-    Tickets --> Consent
     Tickets --> EarlyEntry
     Tickets --> Gate
     Tickets --> Grants

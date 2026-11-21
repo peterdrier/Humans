@@ -1,7 +1,6 @@
 using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
 using Humans.Base.Configuration;
-using Humans.Consent.Contracts;
 using Humans.Email.Contracts;
 using Humans.Grants.Contracts;
 using Humans.Settings.Contracts;
@@ -36,8 +35,6 @@ public sealed class TicketCheckoutServiceTests
     private readonly IAccountProvisioningService _provisioning = Substitute.For<IAccountProvisioningService>();
     private readonly IUserEmailService _userEmails = Substitute.For<IUserEmailService>();
     private readonly IAuditLogService _audit = Substitute.For<IAuditLogService>();
-    private readonly IConsentService _consents = Substitute.For<IConsentService>();
-    private readonly IConsentSubmission _consentSubmission = Substitute.For<IConsentSubmission>();
     private readonly ICommunicationPreferenceService _preferenceReads = Substitute.For<ICommunicationPreferenceService>();
     private readonly ICommunicationPreferenceWrite _preferences = Substitute.For<ICommunicationPreferenceWrite>();
     private readonly IEmailService _email = Substitute.For<IEmailService>();
@@ -109,7 +106,7 @@ public sealed class TicketCheckoutServiceTests
         _gate.GetAdmittedAsync(Arg.Any<IReadOnlyCollection<string>>(), Arg.Any<CancellationToken>())
             .Returns(ci => (IReadOnlySet<string>)ci.Arg<IReadOnlyCollection<string>>().Where(_admitted.Contains).ToHashSet(StringComparer.Ordinal));
         _service = new TicketCheckoutService(_repo, [_backend], _grants, _settings, _users, _provisioning, _userEmails,
-            _consents, _consentSubmission, _preferenceReads, _preferences, _email, emails, [_delivery], _gate, localizer, _audit,
+            _preferenceReads, _preferences, _email, emails, [_delivery], _gate, localizer, _audit,
             _clock, NullLogger<TicketCheckoutService>.Instance);
     }
 
@@ -333,6 +330,24 @@ public sealed class TicketCheckoutServiceTests
     }
 
     [HumansFact]
+    public async Task A_stuck_unpaid_checkout_shows_on_the_buy_page_and_cancelling_it_frees_the_buyer_to_start_again()
+    {
+        var started = await _service.StartCheckoutAsync(Buy(), _buyerId, Ct);
+        _backend.GetStatusAsync("cs_1", Arg.Any<CancellationToken>())
+            .Returns(new CheckoutStatus(CheckoutState.Pending, null, null, null));
+
+        var page = (await _service.GetBuyPagesAsync(_buyerId, Ct)).Single();
+        page.AlreadyHoldsTicket.Should().BeTrue();
+        page.OpenOrder!.Id.Should().Be(started.OrderId!.Value);
+
+        (await _service.CancelAsync(started.OrderId.Value, _buyerId, Ct)).Refusal.Should().BeNull();
+        page = (await _service.GetBuyPagesAsync(_buyerId, Ct)).Single();
+        page.OpenOrder.Should().BeNull();
+        page.AlreadyHoldsTicket.Should().BeFalse();
+        (await _service.StartCheckoutAsync(Buy(), _buyerId, Ct)).Refusal.Should().BeNull();
+    }
+
+    [HumansFact]
     public async Task Two_events_sell_at_once_each_with_its_own_holding_check_and_no_active_event_needed()
     {
         _settings.GetActiveEventSettings().Returns((EventSettingsInfo?)null);
@@ -446,40 +461,17 @@ public sealed class TicketCheckoutServiceTests
     }
 
     [HumansFact]
-    public async Task Ticket_rules_must_be_accepted_and_are_signed_through_consent()
+    public async Task Ticket_rules_must_be_accepted_on_every_checkout_and_the_page_is_on_the_timeline()
     {
-        var teamId = Guid.NewGuid();
-        var versionId = Guid.NewGuid();
-        _salesEvent.TermsTeamId = teamId;
-        _consents.GetRequiredConsentRowsForUserAsync(_buyerId, teamId, Arg.Any<CancellationToken>())
-            .Returns([new RequiredConsentRow(versionId, "Ticket rules", Signed: false)]);
-        _consentSubmission.SubmitConsentAsync(_buyerId, versionId, true, Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
-            .Returns(new ConsentSubmitResult(true, "Ticket rules"));
+        _salesEvent.TermsUrl = "https://nobodies.team/rules-2027";
 
+        (await _service.GetBuyPagesAsync(_buyerId, Ct)).Single().TermsUrl.Should().Be("https://nobodies.team/rules-2027");
         (await _service.StartCheckoutAsync(Buy(), _buyerId, Ct)).Refusal.Should().Be("Tickets_Buy_TermsRequired");
         _repo.Orders.Should().BeEmpty();
 
-        var result = await _service.StartCheckoutAsync(Buy() with { AcceptTerms = true, IpAddress = "203.0.113.9" }, _buyerId, Ct);
-
-        result.Refusal.Should().BeNull();
-        await _consentSubmission.Received(1).SubmitConsentAsync(
-            _buyerId, versionId, true, "203.0.113.9", Arg.Any<string>(), Arg.Any<CancellationToken>());
-        _repo.Events.Should().Contain(e => e.Kind == TicketCheckoutOrderEventKind.TermsAccepted && e.Detail.Contains("Ticket rules"));
-    }
-
-    [HumansFact]
-    public async Task A_failed_consent_refuses_the_checkout()
-    {
-        var teamId = Guid.NewGuid();
-        _salesEvent.TermsTeamId = teamId;
-        _consents.GetRequiredConsentRowsForUserAsync(_buyerId, teamId, Arg.Any<CancellationToken>())
-            .Returns([new RequiredConsentRow(Guid.NewGuid(), "Ticket rules", Signed: false)]);
-        _consentSubmission.SubmitConsentAsync(default, default, default, default!, default!, default)
-            .ReturnsForAnyArgs(new ConsentSubmitResult(false, ErrorKey: "ContentUnavailable"));
-
-        (await _service.StartCheckoutAsync(Buy() with { AcceptTerms = true }, _buyerId, Ct))
-            .Refusal.Should().Be("Tickets_Buy_TermsFailed");
-        _repo.Orders.Should().BeEmpty();
+        (await _service.StartCheckoutAsync(Buy() with { AcceptTerms = true }, _buyerId, Ct)).Refusal.Should().BeNull();
+        _repo.Events.Should().Contain(e => e.Kind == TicketCheckoutOrderEventKind.TermsAccepted
+            && e.Detail.Contains("https://nobodies.team/rules-2027"));
     }
 
     [HumansFact]
@@ -811,6 +803,25 @@ public sealed class TicketCheckoutServiceTests
     }
 
     [HumansFact]
+    public async Task Reconcile_hands_tickets_to_delivery_again_when_no_email_was_recorded()
+    {
+        var order = await BuyAndPayAsync(Buy(), _buyerId);
+        _delivery.ClearReceivedCalls();
+
+        await _service.ReconcileOpenOrdersAsync(Ct);
+        await _delivery.DidNotReceiveWithAnyArgs().TicketsIssuedAsync(default, default);
+
+        _clock.Advance(Duration.FromMinutes(31));
+        await _service.ReconcileOpenOrdersAsync(Ct);
+        await _delivery.Received(1).TicketsIssuedAsync(order.Id, Arg.Any<CancellationToken>());
+
+        await _service.RecordDeliveryAsync(order.Id, TicketCheckoutOrderEventKind.TicketsEmailed, "sent", null, Ct);
+        _delivery.ClearReceivedCalls();
+        await _service.ReconcileOpenOrdersAsync(Ct);
+        await _delivery.DidNotReceiveWithAnyArgs().TicketsIssuedAsync(default, default);
+    }
+
+    [HumansFact]
     public async Task A_resale_refund_that_cannot_start_is_recorded_as_failed_under_the_offer_id()
     {
         var old = await OfferedTicketAsync();
@@ -983,6 +994,70 @@ public sealed class TicketCheckoutServiceTests
         var line = _repo.Orders.Single(o => o.Id == result.OrderId).Lines.Single();
         line.ResaleOfferId.Should().Be(_repo.Offers.Single().Id);
         line.AmountMinor.Should().Be(22500);
+    }
+
+    [HumansFact]
+    public async Task At_sell_out_the_buy_page_shows_the_resale_price_the_checkout_charges()
+    {
+        await OfferedTicketAsync();
+        _salesEvent.Mode = TicketSalesMode.Open;
+        _salesEvent.Capacity = 1;
+        _grants.GetActiveGrantsAsync(_otherBuyerId, Arg.Any<CancellationToken>())
+            .Returns([new ActiveGrantInfo(Guid.NewGuid(), LowIncomeProgram, "Low income", _event.Id, Now)]);
+
+        (await _service.GetBuyPagesAsync(_otherBuyerId, Ct)).Single().OwnPrice!.AmountMinor.Should().Be(22500);
+    }
+
+    [HumansFact]
+    public async Task An_expired_order_stays_open_until_the_backend_cancel_lands()
+    {
+        await _service.StartCheckoutAsync(Buy(), _buyerId, Ct);
+        var order = _repo.Orders.Single();
+        _backend.GetStatusAsync("cs_1", Arg.Any<CancellationToken>())
+            .Returns(new CheckoutStatus(CheckoutState.Expired, null, null, null));
+        _backend.CancelAsync("cs_1", Arg.Any<CancellationToken>()).Returns<Task>(_ => throw new TicketCheckoutException("down"));
+
+        await _service.ReconcileOpenOrdersAsync(Ct);
+        order.State.Should().Be(TicketCheckoutOrderState.Pending);
+
+        _backend.CancelAsync("cs_1", Arg.Any<CancellationToken>()).Returns(Task.CompletedTask);
+        await _service.ReconcileOpenOrdersAsync(Ct);
+        order.State.Should().Be(TicketCheckoutOrderState.Expired);
+    }
+
+    [HumansFact]
+    public async Task A_resale_repeated_after_a_crash_finishes_retiring_the_old_ticket_and_its_children()
+    {
+        _salesEvent.ChildPriceMinor = 5000;
+        var old = await OfferedTicketAsync(Buy() with { ChildNames = ["Kid García"] });
+        await BuyAndPayAsync(Buy(), _otherBuyerId);
+        var child = _repo.Tickets.Single(t => t.Kind == TicketHolderKind.Child);
+        old.State = TicketCheckoutTicketState.Offered;
+        child.State = TicketCheckoutTicketState.Valid;
+        _repo.Offers.Single().RefundId = null;
+
+        await _service.ReconcileOpenOrdersAsync(Ct);
+
+        old.State.Should().Be(TicketCheckoutTicketState.Resold);
+        child.State.Should().Be(TicketCheckoutTicketState.Void);
+        _repo.Refunds.Should().ContainSingle();
+    }
+
+    [HumansFact]
+    public async Task An_older_pending_refund_that_failed_is_found_even_without_the_failure_flag()
+    {
+        var order = await BuyAndPayAsync(Buy(), _buyerId);
+        _backend.RefundAsync(Arg.Any<RefundRequest>(), Arg.Any<CancellationToken>())
+            .Returns(new RefundResult(RefundState.Pending, "re_x", null));
+        await _service.RefundAsync(order.Id, 10000, "first", Guid.NewGuid(), Ct);
+        await _service.RefundAsync(order.Id, 5000, "second", Guid.NewGuid(), Ct);
+        var first = _repo.Refunds[0].RefundId;
+        _backend.RefundAsync(Arg.Is<RefundRequest>(r => r.RefundId == first), Arg.Any<CancellationToken>())
+            .Returns(new RefundResult(RefundState.Failed, "re_x", "bank refused"));
+
+        await _service.ReconcileOpenOrdersAsync(Ct);
+
+        _repo.Refunds.Select(r => r.Refund.State).Should().Equal(RefundState.Failed, RefundState.Pending);
     }
 
     [HumansFact]
