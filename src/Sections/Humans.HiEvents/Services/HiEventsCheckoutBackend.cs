@@ -158,10 +158,17 @@ internal sealed class HiEventsCheckoutBackend : ITicketCheckoutBackend
             return new RefundResult(RefundState.Failed, null, reason);
         }
 
-        await ReadOrderAsync(response, ct);
+        // A repeat of the key answers the refund already made under it, so this is that refund's state either way.
+        var refund = (await ReadAsync<RefundEnvelope>(response, ct)).Meta?.Refund
+            ?? throw new HttpRequestException($"Hi.Events accepted refund {request.RefundId} without naming it.");
 
-        // Hi.Events refunds through Stripe asynchronously; the amount shows in RefundedMinor once Stripe confirms.
-        return new RefundResult(RefundState.Pending, null, null);
+        return refund.Status switch
+        {
+            "succeeded" => new RefundResult(RefundState.Succeeded, refund.Id, null),
+            "pending" or "requires_action" => new RefundResult(RefundState.Pending, refund.Id, null),
+            "failed" or "canceled" => new RefundResult(RefundState.Failed, refund.Id, $"Stripe refund {refund.Status}."),
+            _ => throw new HttpRequestException($"Hi.Events reported refund {refund.Id} as '{refund.Status}'."),
+        };
     }
 
     public async Task CancelAsync(string backendOrderId, CancellationToken ct = default)
@@ -238,7 +245,11 @@ internal sealed class HiEventsCheckoutBackend : ITicketCheckoutBackend
         return await ReadOrderAsync(response, ct);
     }
 
-    private static async Task<HiEventsOrder> ReadOrderAsync(HttpResponseMessage response, CancellationToken ct)
+    private static async Task<HiEventsOrder> ReadOrderAsync(HttpResponseMessage response, CancellationToken ct) =>
+        (await ReadAsync<Envelope>(response, ct)).Data
+            ?? throw new HttpRequestException("Hi.Events returned an order response without data.");
+
+    private static async Task<T> ReadAsync<T>(HttpResponseMessage response, CancellationToken ct) where T : class
     {
         if (!response.IsSuccessStatusCode)
         {
@@ -247,8 +258,8 @@ internal sealed class HiEventsCheckoutBackend : ITicketCheckoutBackend
                 $"Hi.Events returned {(int)response.StatusCode}: {text}", null, response.StatusCode);
         }
 
-        var envelope = await response.Content.ReadFromJsonAsync<Envelope>(JsonOptions, ct);
-        return envelope?.Data ?? throw new HttpRequestException("Hi.Events returned an order response without data.");
+        return await response.Content.ReadFromJsonAsync<T>(JsonOptions, ct)
+            ?? throw new HttpRequestException("Hi.Events returned an empty response.");
     }
 
     private static string ToLocale(string culture)
@@ -314,6 +325,12 @@ internal sealed class HiEventsCheckoutBackend : ITicketCheckoutBackend
     private sealed record RefundBody(decimal Amount, bool NotifyBuyer, bool CancelOrder, string IdempotencyKey);
 
     private sealed record Envelope(HiEventsOrder? Data);
+
+    private sealed record RefundEnvelope(RefundMeta? Meta);
+
+    private sealed record RefundMeta(StripeRefund? Refund);
+
+    private sealed record StripeRefund(string Id, string Status);
 
     private sealed record HiEventsOrder(
         int Id,

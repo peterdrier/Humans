@@ -53,10 +53,11 @@ None — the section owns no tables.
   `ABANDONED`, or `RESERVED` past `reserved_until`, is Expired; other `RESERVED` is Pending (a failed card attempt can
   be retried on the same link). `RefundedMinor` is `total_refunded`. Fee and paid time are not exposed by Hi.Events and
   stay null.
-- Refund: always `Pending` on acceptance, because Hi.Events refunds through Stripe asynchronously; the amount shows in
-  `RefundedMinor` once Stripe confirms. The Humans refund id is the idempotency key, so a retry after a completed
-  refund, or while that same refund is still pending in Stripe, refunds nothing and is accepted. Every 422 is a refund
-  that did not happen and answers `Failed` with Hi.Events' message. `RefundFailed` is Hi.Events' `REFUND_FAILED`, set
+- Refund: the Humans refund id is the idempotency key. Hi.Events answers with the Stripe refund made under it
+  (`BackendRefundId`) and its state: `succeeded` is `Succeeded`, `pending` or `requires_action` is `Pending`, `failed`
+  or `canceled` is `Failed`. A repeat of the id never refunds again, whatever that refund's state, so Tickets repeats it
+  to read a refund's own state. Every 422 is a refund that did not happen and answers `Failed` with Hi.Events' message.
+  No answer, or an accepted refund Hi.Events does not name, throws. `RefundFailed` is Hi.Events' `REFUND_FAILED`, set
   when Stripe fails a refund it had accepted.
 - Late payment: a payment that lands after Humans cancelled the checkout, or after it expired, is kept by the fork (it
   never auto-refunds orders created here) and reads as `Paid`.

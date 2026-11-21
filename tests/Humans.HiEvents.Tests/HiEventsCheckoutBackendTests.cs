@@ -9,6 +9,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NodaTime;
 using NodaTime.Testing;
+using Xunit;
 
 namespace Humans.HiEvents.Tests;
 
@@ -143,12 +144,13 @@ public class HiEventsCheckoutBackendTests
     [HumansFact]
     public async Task Refund_SendsTheRefundIdAsIdempotencyKeyAndIsPending()
     {
-        _handler.Enqueue(HttpStatusCode.OK, Order(id: 42, total: 225m, status: "COMPLETED", paymentStatus: "PAYMENT_RECEIVED"));
+        _handler.Enqueue(HttpStatusCode.OK, RefundAnswer("re_1", "pending"));
         var refundId = Guid.Parse("aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee");
 
         var result = await Backend().RefundAsync(new RefundRequest(refundId, "7:42", 22500, "resold"), Ct);
 
         result.State.Should().Be(RefundState.Pending);
+        result.BackendRefundId.Should().Be("re_1");
         var (request, body) = _handler.Requests.Single();
         request.RequestUri!.AbsolutePath.Should().Be("/api/events/7/orders/42/refund");
         var json = JsonNode.Parse(body!)!;
@@ -156,6 +158,42 @@ public class HiEventsCheckoutBackendTests
         json["idempotency_key"]!.GetValue<string>().Should().Be("aaaaaaaabbbbccccddddeeeeeeeeeeee");
         json["cancel_order"]!.GetValue<bool>().Should().BeFalse();
         json["notify_buyer"]!.GetValue<bool>().Should().BeFalse();
+    }
+
+    [HumansTheory]
+    [InlineData("succeeded", RefundState.Succeeded)]
+    [InlineData("requires_action", RefundState.Pending)]
+    [InlineData("failed", RefundState.Failed)]
+    [InlineData("canceled", RefundState.Failed)]
+    public async Task Refund_AnswersTheStateOfTheRefundUnderItsKey(string stripeStatus, RefundState expected)
+    {
+        _handler.Enqueue(HttpStatusCode.OK, RefundAnswer("re_9", stripeStatus));
+
+        var result = await Backend().RefundAsync(new RefundRequest(Guid.NewGuid(), "7:42", 22500, "resold"), Ct);
+
+        result.State.Should().Be(expected);
+        result.BackendRefundId.Should().Be("re_9");
+        _handler.Requests.Should().ContainSingle();
+    }
+
+    [HumansFact]
+    public async Task Refund_AcceptedWithoutNamingTheRefund_Throws()
+    {
+        _handler.Enqueue(HttpStatusCode.OK, Order(id: 42, total: 225m, status: "COMPLETED", paymentStatus: "PAYMENT_RECEIVED"));
+
+        var act = () => Backend().RefundAsync(new RefundRequest(Guid.NewGuid(), "7:42", 22500, "resold"), Ct);
+
+        await act.Should().ThrowAsync<HttpRequestException>();
+    }
+
+    [HumansFact]
+    public async Task Refund_NoAnswer_Throws()
+    {
+        _handler.Enqueue(HttpStatusCode.BadGateway, new { message = "upstream down" });
+
+        var act = () => Backend().RefundAsync(new RefundRequest(Guid.NewGuid(), "7:42", 22500, "resold"), Ct);
+
+        await act.Should().ThrowAsync<HttpRequestException>();
     }
 
     [HumansFact]
@@ -296,6 +334,12 @@ public class HiEventsCheckoutBackendTests
     private static CheckoutRequest RequestFor(string? backendEventRef, params CheckoutLine[] lines) => new(
         OrderId, Guid.NewGuid(), backendEventRef, "Ana Buyer", "ana@example.org", "EUR", "es-ES", lines,
         Now.Plus(Duration.FromMinutes(30)), new Uri("https://humans.example/Tickets/Return"));
+
+    private static object RefundAnswer(string refundId, string status) => new
+    {
+        data = new { id = 42, status = "COMPLETED", currency = "EUR", total_gross = 225m },
+        meta = new { refund = new { id = refundId, status } },
+    };
 
     private static object Order(
         int id,
