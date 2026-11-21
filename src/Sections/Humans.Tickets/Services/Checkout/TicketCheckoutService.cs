@@ -155,7 +155,7 @@ internal sealed partial class TicketCheckoutService(
             $"rules {string.Join(", ", salesEvent.PriceRules.Select(r => $"{r.Kind} {FormatMinor(r.AmountMinor)} for {r.GrantProgramId}"))}; " +
             $"supporter totals {string.Join(", ", salesEvent.SupporterTotalsMinor.Select(FormatMinor))}; " +
             $"child tickets {(salesEvent.ChildTypes.Count == 0 ? "none" : string.Join(", ", salesEvent.ChildTypes.Select(c => $"{c.Name} under {c.UnderAge} {FormatMinor(c.PriceMinor)}")))}; " +
-            $"donation purposes {(salesEvent.DonationPurposes.Count == 0 ? "general only" : string.Join(", ", salesEvent.DonationPurposes))}; " +
+            $"donation purposes {(salesEvent.DonationPurposes is not [_, ..] ? "general only" : string.Join(", ", salesEvent.DonationPurposes))}; " +
             $"ticket rules {salesEvent.TermsFolder ?? "none"}; resale {save.Switches.Resale}" +
             (existing?.ResaleOpenedAt is not null && salesEvent.ResaleOpenedAt is null ? " (resale paused)" : string.Empty) + ", " +
             $"tickets for others {OnOff(save.Switches.PartnerTickets)}, donations {OnOff(save.Switches.Donations)}, " +
@@ -287,7 +287,7 @@ internal sealed partial class TicketCheckoutService(
         string? donationPurpose = null;
         if (command.DonationMinor > 0 && !string.IsNullOrWhiteSpace(command.DonationPurpose))
         {
-            donationPurpose = salesEvent.DonationPurposes.FirstOrDefault(p => string.Equals(p, command.DonationPurpose.Trim(), StringComparison.Ordinal));
+            donationPurpose = salesEvent.DonationPurposes?.FirstOrDefault(p => string.Equals(p, command.DonationPurpose.Trim(), StringComparison.Ordinal));
             if (donationPurpose is null)
                 return StartCheckoutResult.Refused("Tickets_Buy_Invalid");
         }

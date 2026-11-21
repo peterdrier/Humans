@@ -23,8 +23,7 @@ namespace Humans.Tickets.Data.Migrations
                 name: "DonationPurposes",
                 table: "ticket_sales_events",
                 type: "text[]",
-                nullable: false,
-                defaultValueSql: "'{}'::text[]");
+                nullable: true);
 
             migrationBuilder.AddColumn<string>(
                 name: "child_types",

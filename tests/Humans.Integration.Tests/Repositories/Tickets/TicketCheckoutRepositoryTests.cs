@@ -54,7 +54,7 @@ public class TicketCheckoutRepositoryTests(HumansTestDatabase database) : Integr
             await db.Database.ExecuteSqlAsync($"UPDATE ticket_sales_events SET child_types = NULL WHERE \"Id\" = {salesEvent.Id}", ct);
         loadedEvent = (await repo.GetSalesEventAsync(salesEvent.Id, ct))!;
         loadedEvent.ChildTypes.Should().BeEmpty();
-        loadedEvent.DonationPurposes.Should().BeEmpty();
+        loadedEvent.DonationPurposes.Should().BeNull();
         loadedEvent.ChildTypes = [new TicketChildType { Name = "Under 13", UnderAge = 13, PriceMinor = 5000 }];
         loadedEvent.DonationPurposes = ["Art"];
         await repo.SaveSalesEventAsync(loadedEvent, ct);

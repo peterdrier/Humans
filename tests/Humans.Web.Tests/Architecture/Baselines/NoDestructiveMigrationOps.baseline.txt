@@ -755,3 +755,15 @@ src/Sections/Humans.Governance/Data/Migrations/20261121133716_DropApplicationRev
 # haven't used any of it yet, then you can drop whatever you want. Because none of it's live and
 # anywhere near production. So go ahead."
 src/Sections/Humans.Tickets/Data/Migrations/20261121183331_TicketRulesFromLegalRepo.cs:DropColumn(name=TermsUrl,table=ticket_sales_events)#1
+
+# Tickets: ticket_sales_events.ChildPriceMinor and ChildMaxAge (the one child ticket price and age,
+# both nullable). Replaced by the per-event child ticket types list (child_types jsonb, A29).
+# Evidence: pickaxe git log -S 'ChildPriceMinor' and -S 'ChildMaxAge' over origin/main show only the
+# 2027 checkout work of 2026-11-21 (#2507, #2519, #2528, #2534, #2540, #2547 and the Box Office and
+# pretix build branches). After this PR nothing reads or writes them. There is no ticketing data in
+# production yet.
+# Approval: Peter, 2026-11-21, in the project thread: "if they're in the ticketing bit and we
+# haven't used any of it yet, then you can drop whatever you want. Because none of it's live and
+# anywhere near production. So go ahead."
+src/Sections/Humans.Tickets/Data/Migrations/20261121201314_TicketTypesConfigurable.cs:DropColumn(name=ChildMaxAge,table=ticket_sales_events)#1
+src/Sections/Humans.Tickets/Data/Migrations/20261121201314_TicketTypesConfigurable.cs:DropColumn(name=ChildPriceMinor,table=ticket_sales_events)#1

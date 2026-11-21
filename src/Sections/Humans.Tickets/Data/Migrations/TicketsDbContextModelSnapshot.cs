@@ -436,10 +436,7 @@ namespace Humans.Tickets.Data.Migrations
                         .HasColumnType("timestamp with time zone");
 
                     b.PrimitiveCollection<List<string>>("DonationPurposes")
-                        .IsRequired()
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("text[]")
-                        .HasDefaultValueSql("'{}'::text[]");
+                        .HasColumnType("text[]");
 
                     b.Property<Guid>("EventSettingsId")
                         .HasColumnType("uuid");

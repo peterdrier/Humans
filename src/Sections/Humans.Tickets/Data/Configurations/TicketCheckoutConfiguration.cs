@@ -26,7 +26,6 @@ internal sealed class TicketSalesEventConfiguration : IEntityTypeConfiguration<T
             r.ToJson("price_rules");
             r.Property(p => p.Kind).HasConversion<string>();
         });
-        builder.Property(x => x.DonationPurposes).HasDefaultValueSql("'{}'::text[]");
         builder.OwnsMany(x => x.ChildTypes, c =>
         {
             c.ToJson("child_types");

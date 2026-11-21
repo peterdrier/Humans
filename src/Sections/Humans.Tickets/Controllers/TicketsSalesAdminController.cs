@@ -284,7 +284,7 @@ internal sealed class SalesEditForm
             Label = r.Label,
         }).ToList(),
         ChildTypes = e.ChildTypes.Select(c => new ChildTypeRow { Name = c.Name, UnderAge = c.UnderAge, Price = Eur(c.PriceMinor) }).ToList(),
-        DonationPurposes = e.DonationPurposes.Select(p => new DonationPurposeRow { Name = p }).ToList(),
+        DonationPurposes = (e.DonationPurposes ?? []).Select(p => new DonationPurposeRow { Name = p }).ToList(),
         Resale = e.EffectiveSwitches.Resale,
         PartnerTickets = e.EffectiveSwitches.PartnerTickets,
         Donations = e.EffectiveSwitches.Donations,

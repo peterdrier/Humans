@@ -66,10 +66,10 @@ internal sealed class TicketSalesEvent
     public List<TicketChildType> ChildTypes { get; set; } = [];
 
     /// <summary>
-    /// What a free donation may be given for, as the buyer sees it. Empty: one general donation, no choice. A donation
-    /// with no purpose (the VIP remainder too) is general.
+    /// What a free donation may be given for, as the buyer sees it. Null or empty (a setup saved before purposes
+    /// existed): one general donation, no choice. A donation with no purpose (the VIP remainder too) is general.
     /// </summary>
-    public List<string> DonationPurposes { get; set; } = [];
+    public List<string>? DonationPurposes { get; set; }
 
     public Instant CreatedAt { get; init; }
 

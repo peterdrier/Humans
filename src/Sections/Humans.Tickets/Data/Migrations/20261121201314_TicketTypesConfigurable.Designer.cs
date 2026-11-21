@@ -14,7 +14,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Humans.Tickets.Data.Migrations
 {
     [DbContext(typeof(TicketsDbContext))]
-    [Migration("20261121200316_TicketTypesConfigurable")]
+    [Migration("20261121201314_TicketTypesConfigurable")]
     partial class TicketTypesConfigurable
     {
         /// <inheritdoc />
@@ -439,10 +439,7 @@ namespace Humans.Tickets.Data.Migrations
                         .HasColumnType("timestamp with time zone");
 
                     b.PrimitiveCollection<List<string>>("DonationPurposes")
-                        .IsRequired()
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("text[]")
-                        .HasDefaultValueSql("'{}'::text[]");
+                        .HasColumnType("text[]");
 
                     b.Property<Guid>("EventSettingsId")
                         .HasColumnType("uuid");

@@ -188,12 +188,12 @@ else
                             <span class="input-group-text">€</span>
                         </div>
                     </div>
-                    @if (sale.SalesEvent.DonationPurposes.Count > 0)
+                    @if (sale.SalesEvent.DonationPurposes is [_, ..] purposes)
                     {
                         <div class="col-12 col-md-8">
                             <select class="form-select" name="donationPurpose" aria-label="@Localizer["Tickets_Buy_DonationPurpose"]">
                                 <option value="">@Localizer["Tickets_Buy_Purpose_General"]</option>
-                                @foreach (var purpose in sale.SalesEvent.DonationPurposes)
+                                @foreach (var purpose in purposes)
                                 {
                                     <option value="@purpose">@purpose</option>
                                 }

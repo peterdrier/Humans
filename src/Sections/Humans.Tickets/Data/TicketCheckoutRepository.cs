@@ -39,7 +39,7 @@ internal sealed class TicketCheckoutRepository(IDbContextFactory<TicketsDbContex
             ctx.Entry(tracked).CurrentValues.SetValues(salesEvent);
             tracked.Waves = salesEvent.Waves.Select(w => new TicketSalesWave { Name = w.Name, EndsOn = w.EndsOn, PriceMinor = w.PriceMinor }).ToList();
             tracked.SupporterTotalsMinor = salesEvent.SupporterTotalsMinor.ToList();
-            tracked.DonationPurposes = salesEvent.DonationPurposes.ToList();
+            tracked.DonationPurposes = salesEvent.DonationPurposes?.ToList();
             tracked.ChildTypes = salesEvent.ChildTypes
                 .Select(c => new TicketChildType { Name = c.Name, UnderAge = c.UnderAge, PriceMinor = c.PriceMinor }).ToList();
             tracked.PriceRules = salesEvent.PriceRules.Select(r => new TicketPriceRule
