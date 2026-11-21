@@ -79,10 +79,11 @@ Repository: `IGovernanceBodyRepository` (`GovernanceBodyRepository`).
 | GovernanceBodyLinks | R/W |
 | GovernanceBodyFiles | R/W |
 
-Each body's (Asociados, Colaboradores, Board) Google group prefix and Google files. Cross-section reads for
-the one-time `governance.body-links-from-teams` data migration only: `ITeamService.GetTeamAsync` (the old system
-team's `GoogleGroupPrefix`) and `ITeamResourceService.GetResourcesByTeamIdsAsync` (its active non-Group
-resources). No personal data.
+Each body's (Asociados, Colaboradores, Board) Google group prefix and Google files, and their edits from the
+Manage card (audited, then `GovernanceBodySync`). Cross-section reads: for the one-time
+`governance.body-links-from-teams` data migration, `ITeamService.GetTeamAsync` (the old system team's
+`GoogleGroupPrefix`) and `ITeamResourceService.GetResourcesByTeamIdsAsync` (its active non-Group resources);
+for adding a file, `ITeamResourceService.LookUpDriveLinkAsync`. Writes `IAuditLogService`. No personal data.
 
 ### GovernanceBodyRosters (Scoped, internal)
 
@@ -100,7 +101,7 @@ filters through `IUserService`) and `GovernanceBodyGoogleSource`.
 
 Reads `IGovernanceBodyRepository` (R) and asks `IGoogleGroupSync.RequestSyncAsync` /
 `IGoogleSyncWrite.RequestSyncAsync` to sync one body's group and files. Called by `ApplicationDecisionService`
-on approval and by `GovernanceBoardSeats` after a seat is added or ended.
+on approval, by `GovernanceBoardSeats` after a seat is added or ended, and by `GovernanceBodyLinksService` after an edit.
 
 ### GovernanceBoardSeats (Scoped, internal)
 
