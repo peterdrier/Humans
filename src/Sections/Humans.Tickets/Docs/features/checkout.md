@@ -23,6 +23,9 @@ Stripe hosted Checkout), `Humans.Pretix`, `Humans.HiEvents`.
    reconcile job catch the rest. On `Paid` each ticket line gets a barcode.
 4. A TicketsAdmin refunds from the order page: only paid orders, never above the ticket lines net of earlier refunds.
 
+The ticketing team finds orders at `/Tickets/Admin/Sales/Lookup` and works each event's refund list and sales report
+from the sales index.
+
 Every step lands in the order's append-only timeline (`ticket_checkout_order_events`) with who did it, shown on the
 admin order page beside a link to the order in the backend's own admin (`CheckoutSession.AdminUrl`).
 
@@ -33,4 +36,4 @@ admin order page beside a link to the order in the backend's own admin (`Checkou
 - Low income wave pin (the price rule takes a pricing date, so a pin plugs in there).
 - Checkout tickets in holdings, the gate list and the scanner: they live in their own table until a backend is chosen.
 - Dependents (child, companion) and payment-method-dependent prices.
-- Order, sales and check-in reports across events (the keying and the timeline are in place for them).
+- Check-in report: the gate's per-event check-in is not built and Gate has no read Tickets may call.

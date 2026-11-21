@@ -116,7 +116,7 @@ Lifecycle: `Attended` is permanent (only a missing `CheckedInAt` may be filled);
 | TicketsAdmin, Board, Admin | View the ticket dashboard, orders, attendees, codes, gate list, sales aggregates, and the "Who Hasn't Bought" report (controller-wide policy `TicketsPolicies.Read`) |
 | TicketsAdmin, Admin | Trigger an incremental ticket sync. Export attendee/order CSV (each download audits the actor, export kind and row count). Generate discount codes for campaigns (Campaign section, policy `TicketsPolicies.Manage`). Approve or reject pending transfer requests from `/Tickets/Admin/Transfers` (policy `TicketsPolicies.Manage`). Import attendee contacts (preview + selectively apply) from `/Tickets/Admin/Contacts` (policy `TicketsPolicies.Manage`). Set/rotate the gate-terminal password from `/Tickets/Admin/Gate` (policy `TicketsPolicies.Manage`; see `src/Sections/Humans.Scanner/Docs/features/gate-terminal-login.md`) |
 | Any authenticated member | Buy a ticket for themselves and/or one named partner for any event that is not Closed (several can sell at once; nothing assumes the active event), see orders they paid for or hold a line in, cancel their own unpaid order. Never sees another payer's order |
-| TicketsAdmin, Board, Admin (Read) | See sales setups, checkout orders and refunds. Board can never save a setup or refund |
+| TicketsAdmin, Board, Admin (Read) | See sales setups, checkout orders and refunds, find orders, the refund list and the sales report. Board can never save a setup or refund |
 | TicketsAdmin, Admin (Manage) | Save a sales setup; refund a paid checkout order up to its ticket lines (donations never) |
 | Admin | Trigger a full re-sync (clears the `LastSyncAt` cursor). Open and submit the participation backfill page (`/Tickets/Participation/Backfill`). Download the donor list CSV (`/Tickets/Export/Donations`, audited) |
 
@@ -229,6 +229,9 @@ Lifecycle: `Attended` is permanent (only a missing `CheckedInAt` may be filled);
 | `/Tickets/Admin/Sales/{id}/Orders` | GET | `TicketsPolicies.Read` | Orders and totals for one sales setup |
 | `/Tickets/Admin/Sales/Order/{id}` | GET | `TicketsPolicies.Read` | One order with lines and refunds, refreshed from the backend |
 | `/Tickets/Admin/Sales/Order/{id}/Refund` | POST | `TicketsPolicies.Manage` | Refund an exact amount through the order's backend, capped at the ticket lines net of earlier refunds (audited `TicketCheckoutRefunded`) |
+| `/Tickets/Admin/Sales/Lookup?q=` | GET | `TicketsPolicies.Read` | Find checkout orders across every event by buyer or holder name or email (substring, 3+ characters), order id, backend reference or ticket code (exact); newest 100 |
+| `/Tickets/Admin/Sales/{id}/Refunds?state=` | GET | `TicketsPolicies.Read` | Every refund asked for on the event, newest first, filterable Pending / Done / Failed / Manual |
+| `/Tickets/Admin/Sales/{id}/Report` | GET | `TicketsPolicies.Read` | Paid tickets by wave or class and by day paid (event time zone), donations by purpose, refunds by state |
 | `/Welcome` | GET | `[AllowAnonymous]` | Post-purchase landing page (`WelcomeController`, Onboarding section) |
 
 `/Welcome` is an intentional post-purchase landing route owned by Tickets logic while physically handled by `WelcomeController` in `Humans.Onboarding`; it is documented here to avoid it being treated as a routing boundary drift in future alignments.
