@@ -97,9 +97,9 @@
             <input class="form-control" id="DirectedResaleDays" name="DirectedResaleDays" type="number" min="1" max="30" value="@f.DirectedResaleDays" />
         </div>
         <div class="col-md-6">
-            <label class="form-label" for="TermsTeamId">Ticket rules team id</label>
-            <input class="form-control font-monospace" id="TermsTeamId" name="TermsTeamId" value="@f.TermsTeamId" />
-            <div class="form-text">Every buyer accepts this team's required legal documents (set them up in <a href="/Legal/Admin/Documents">Legal documents</a>). Empty: no checkbox.</div>
+            <label class="form-label" for="TermsUrl">Ticket rules page</label>
+            <input class="form-control" id="TermsUrl" name="TermsUrl" type="url" maxlength="500" value="@f.TermsUrl" />
+            <div class="form-text">Every buyer ticks that they accept this page; the address is recorded on the order. Give a changed version a new address. Empty: no checkbox.</div>
         </div>
     </div>
 

@@ -318,9 +318,6 @@
   <data name="Tickets_Buy_TermsRequired" xml:space="preserve">
     <value>Acepta las normas de las entradas para continuar.</value>
   </data>
-  <data name="Tickets_Buy_TermsFailed" xml:space="preserve">
-    <value>No se ha podido registrar tu aceptación de las normas. Comprueba que tu perfil esté completo y vuelve a intentarlo.</value>
-  </data>
   <data name="Tickets_Resale_InviteInvalid" xml:space="preserve">
     <value>Este enlace de invitación ya no es válido, o se envió a otro correo distinto del de tu sesión.</value>
   </data>
@@ -422,5 +419,11 @@
   </data>
   <data name="Tickets_Buy_Reference" xml:space="preserve">
     <value>Referencia del pedido</value>
+  </data>
+  <data name="Tickets_Buy_OpenOrder" xml:space="preserve">
+    <value>Tienes un pago en curso para este evento. Termina de pagar o cancélalo para empezar de nuevo.</value>
+  </data>
+  <data name="Tickets_Buy_CancelAndRestart" xml:space="preserve">
+    <value>Cancelar y empezar de nuevo</value>
   </data>
 </root>

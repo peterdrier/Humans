@@ -51,8 +51,6 @@
     <ProjectReference Include="..\Humans.Email.Contracts\Humans.Email.Contracts.csproj" />
     <!-- INotificationMeterContributor: the ticket-sync error meter. Acyclic: Notifications.Contracts references only Base and Email.Contracts. -->
     <ProjectReference Include="..\Humans.Notifications.Contracts\Humans.Notifications.Contracts.csproj" />
-    <!-- IConsentWrite: the gate-terminal seeder clears the account's consent check. -->
-    <ProjectReference Include="..\Humans.Consent\Humans.Consent.csproj" />
     <ProjectReference Include="..\Humans.EarlyEntry\Humans.EarlyEntry.csproj" />
     <!--
       Stripe fee enrichment on TicketOrder, through Humans.Stripe.Contracts. Direct

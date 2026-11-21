@@ -14,7 +14,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Humans.Tickets.Data.Migrations
 {
     [DbContext(typeof(TicketsDbContext))]
-    [Migration("20261121022045_TicketCheckout")]
+    [Migration("20261121042026_TicketCheckout")]
     partial class TicketCheckout
     {
         /// <inheritdoc />
@@ -404,8 +404,9 @@ namespace Humans.Tickets.Data.Migrations
                         .IsRequired()
                         .HasColumnType("bigint[]");
 
-                    b.Property<Guid?>("TermsTeamId")
-                        .HasColumnType("uuid");
+                    b.Property<string>("TermsUrl")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
 
                     b.Property<decimal>("TicketVatRate")
                         .HasPrecision(5, 4)

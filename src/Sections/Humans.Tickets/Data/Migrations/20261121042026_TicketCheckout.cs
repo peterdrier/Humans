@@ -151,7 +151,7 @@ namespace Humans.Tickets.Data.Migrations
                     SupporterTotalsMinor = table.Column<List<long>>(type: "bigint[]", nullable: false),
                     ResaleOpensAtSold = table.Column<int>(type: "integer", nullable: true),
                     DirectedResaleDays = table.Column<int>(type: "integer", nullable: false),
-                    TermsTeamId = table.Column<Guid>(type: "uuid", nullable: true),
+                    TermsUrl = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
                     ChildPriceMinor = table.Column<long>(type: "bigint", nullable: true),
                     ChildMaxAge = table.Column<int>(type: "integer", nullable: true),
                     CreatedAt = table.Column<Instant>(type: "timestamp with time zone", nullable: false),
