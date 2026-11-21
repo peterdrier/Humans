@@ -27,7 +27,7 @@
                         {
                             <status-badge value="@row.Role.Period" />
                         }
-                        @if (row.TopOpenPriority is { } priority)
+                        @if (row.TopOpenPriority is { } priority && priority != SlotPriority.None)
                         {
                             <status-badge value="@priority" />
                         }

@@ -41,7 +41,10 @@
                     var holder = role.Holders.FirstOrDefault(h => h.Slot == slot);
                     <li class="list-group-item d-flex flex-wrap align-items-center gap-2">
                         <span class="text-muted">@(slot + 1)</span>
-                        <status-badge value="@role.Priorities[slot]" />
+                        @if (role.Priorities[slot] != SlotPriority.None)
+                        {
+                            <status-badge value="@role.Priorities[slot]" />
+                        }
                         @if (holder is not null)
                         {
                             <vc:human user-id="@holder.UserId" />

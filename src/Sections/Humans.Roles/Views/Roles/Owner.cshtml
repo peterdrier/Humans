@@ -3,7 +3,7 @@
 
 @{
     ViewData["Title"] = Localizer["Roles_Owner_Title", Model.Owner.Name].Value;
-    Func<RoleRow, IHtmlContent> priorityCell = @<text>@if (item.TopOpenPriority is { } priority) { <status-badge value="@priority" /> }</text>;
+    Func<RoleRow, IHtmlContent> priorityCell = @<text>@if (item.TopOpenPriority is { } priority && priority != SlotPriority.None) { <status-badge value="@priority" /> }</text>;
     Func<RoleRow, IHtmlContent> periodCell = @<status-badge value="@item.Role.Period" />;
     var table = TableModel.For(Model.Roles)
         .Link(Localizer["Roles_Col_Role"].Value, r => r.Role.Name, r => r.Url)
