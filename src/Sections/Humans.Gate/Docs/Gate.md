@@ -67,8 +67,10 @@ no-show build shifts.
   `UndoneAt`/`UndoneByUserId`/`UndoReason`, so the barcode can be scanned again and Tickets'
   `IGateAdmissions` no longer counts it. It writes the `GateAdmitUndone` audit entry and, unless
   another live admit of the same guest stands within 30 days, reverts the guest's Attended row to
-  Ticketed (`ITicketWrite.UndoCheckInAsync`). A check-in already mirrored to Ticket Tailor stays
-  there: the vendor has no undo, and Gate's row decides.
+  Ticketed (`ITicketWrite.UndoCheckInAsync`). A Ticket Tailor admit cannot be undone while the vendor
+  mirror is on or the vendor shows the ticket checked in: Ticket Tailor has no undo, so the ticket
+  sync would mark the guest Attended again and the rescan would STOP as a duplicate. Humans-issued
+  tickets (the 2027 backends) have no vendor copy and always undo.
 - **Arrivals report** (`/Gate/Report`, G8) — per event day (event time zone): admitted, early,
   overrides, refused and undone, against tickets held (Ticket Tailor non-void plus checkout tickets
   valid or on resale), and each check-in of the chosen day. A scan counts only when its ticket

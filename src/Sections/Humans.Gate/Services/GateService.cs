@@ -338,7 +338,7 @@ internal sealed class GateService(
         if (code.Length == 0 || await repository.GetAdmitForBarcodeAsync(code, ct) is not { } admit)
             return new GateUndoResult(GateUndoOutcome.NotAdmitted);
 
-        return await UndoAsync(admit.Id, UndoneAtGateReason, actorUserId, ct);
+        return await UndoAsync(admit, UndoneAtGateReason, actorUserId, ct);
     }
 
     public async Task<GateUndoResult> UndoAdmitAsync(Guid scanId, string? reason, Guid actorUserId, CancellationToken ct = default)
@@ -346,7 +346,11 @@ internal sealed class GateService(
         var why = reason?.Trim() ?? string.Empty;
         if (why.Length == 0 || !FitsStorage(why, GateScanEvent.NoteMaxLength))
             return new GateUndoResult(GateUndoOutcome.ReasonRequired);
-        return await UndoAsync(scanId, why, actorUserId, ct);
+
+        var admit = (await repository.GetScansSinceAsync(Instant.MinValue, ct)).FirstOrDefault(s => s.Id == scanId && s.IsLiveAdmit);
+        if (admit is null)
+            return new GateUndoResult(GateUndoOutcome.NotAdmitted);
+        return await UndoAsync(admit, why, actorUserId, ct);
     }
 
     internal const string UndoneAtGateReason = "Undone at the gate with the supervisor PIN";
@@ -354,9 +358,12 @@ internal sealed class GateService(
     /// <summary>Wider than the arrival window of one event, narrower than the gap to the last one.</summary>
     private static readonly Duration SameEventWindow = Duration.FromDays(30);
 
-    private async Task<GateUndoResult> UndoAsync(Guid scanId, string reason, Guid actorUserId, CancellationToken ct)
+    private async Task<GateUndoResult> UndoAsync(GateScanEvent admit, string reason, Guid actorUserId, CancellationToken ct)
     {
-        var undone = await repository.UndoAdmitAsync(scanId, clock.GetCurrentInstant(), actorUserId, reason, ct);
+        if (await IsAtVendorAsync(admit, ct))
+            return new GateUndoResult(GateUndoOutcome.VendorCheckedIn);
+
+        var undone = await repository.UndoAdmitAsync(admit.Id, clock.GetCurrentInstant(), actorUserId, reason, ct);
         if (undone is null)
             return new GateUndoResult(GateUndoOutcome.NotAdmitted);
 
@@ -367,8 +374,24 @@ internal sealed class GateService(
         if (undone.GuestUserId is { } guest)
             await ClearAttendedAsync(guest, undone.OccurredAt, ct);
 
-        // A vendor check-in already mirrored stays at the vendor: Ticket Tailor has no undo, and Gate's row decides.
         return new GateUndoResult(GateUndoOutcome.Undone);
+    }
+
+    /// <summary>
+    /// With the mirror on, the admit's check-in job may post after the undo. Either way the ticket sync would read the
+    /// vendor's check-in back and mark the guest Attended again, and the gate would STOP the rescan as a duplicate.
+    /// </summary>
+    private async Task<bool> IsAtVendorAsync(GateScanEvent admit, CancellationToken ct)
+    {
+        if (admit.TicketAttendeeId is not { } attendeeId)
+            return false;
+        if (configuration.GetValue<bool>(VendorMirrorEnabledKey))
+            return true;
+
+        var attendee = (await tickets.GetTicketOrdersAsync(ct))
+            .SelectMany(o => o.Attendees)
+            .FirstOrDefault(a => a.Id == attendeeId);
+        return attendee is not null && (attendee.CheckedInAt is not null || attendee.Status == TicketAttendeeStatus.CheckedIn);
     }
 
     /// <summary>Only when no other admit of theirs stands, or a second ticket of theirs would read as not arrived.</summary>

@@ -1385,6 +1385,29 @@ public class GateServiceTests
         await _users.DidNotReceive().UndoCheckInAsync(Arg.Any<Guid>(), Arg.Any<int>(), Arg.Any<CancellationToken>());
     }
 
+    [HumansTheory]
+    [Xunit.InlineData(false, false, (int)GateUndoOutcome.Undone)]
+    [Xunit.InlineData(true, false, (int)GateUndoOutcome.VendorCheckedIn)]
+    [Xunit.InlineData(false, true, (int)GateUndoOutcome.VendorCheckedIn)]
+    public async Task Undo_TicketTailorAdmit_RefusesOnceTheVendorHasTheCheckIn(bool mirrorOn, bool vendorCheckedIn, int outcome)
+    {
+        var expected = (GateUndoOutcome)outcome;
+        var attendeeId = Guid.NewGuid();
+        StubTicket(matchedUserId: GuestId, attendeeId: attendeeId);
+        StubActiveEvent();
+        (await RecordAsync(idConfirmed: true)).Verdict.Should().Be(GateVerdict.Admitted);
+        _config["Gate:VendorMirrorEnabled"] = mirrorOn ? "true" : "false";
+        if (vendorCheckedIn)
+            StubTicket(matchedUserId: GuestId, attendeeId: attendeeId, checkedInAt: Clock.GetCurrentInstant());
+
+        var result = await _svc.UndoAdmitAtGateAsync(Barcode, SupervisorPin, AgentId);
+
+        result.Outcome.Should().Be(expected);
+        (await GateDb.GateScanEvents.AsNoTracking().SingleAsync(Ct)).IsLiveAdmit.Should().Be(expected != GateUndoOutcome.Undone);
+        await _users.Received(expected == GateUndoOutcome.Undone ? 1 : 0)
+            .UndoCheckInAsync(GuestId, Arg.Any<int>(), Arg.Any<CancellationToken>());
+    }
+
     [HumansFact]
     public void UndoCard_MapsEachOutcome()
     {
@@ -1392,6 +1415,7 @@ public class GateServiceTests
         GateScanCardViewModel.FromUndo(new GateUndoResult(GateUndoOutcome.NotAdmitted), Barcode).AllowUndo.Should().BeFalse();
         GateScanCardViewModel.FromUndo(
             new GateUndoResult(GateUndoOutcome.PinRefused, GateOverrideFailure.InvalidPin), Barcode).AllowUndo.Should().BeTrue();
+        GateScanCardViewModel.FromUndo(new GateUndoResult(GateUndoOutcome.VendorCheckedIn), Barcode).Reason.Should().Contain("Ticket Tailor");
     }
 
     // Find a ticket by name (G3).

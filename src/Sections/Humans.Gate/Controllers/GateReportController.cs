@@ -60,6 +60,9 @@ internal sealed class GateReportController(
             case GateUndoOutcome.ReasonRequired:
                 SetError("Say why the check-in is undone (up to 1000 characters).");
                 break;
+            case GateUndoOutcome.VendorCheckedIn:
+                SetError("Ticket Tailor has this check-in too and has no undo, so the next ticket sync would bring it back. Undo it in Ticket Tailor first.");
+                break;
             default:
                 SetError("That check-in was already undone.");
                 break;

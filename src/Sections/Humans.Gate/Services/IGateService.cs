@@ -164,6 +164,9 @@ internal enum GateUndoOutcome
     PinRefused,
 
     ReasonRequired,
+
+    /// <summary>A Ticket Tailor check-in already went (or may still go) to the vendor, which has no undo; the ticket sync would bring it back.</summary>
+    VendorCheckedIn,
 }
 
 internal sealed record GateUndoResult(

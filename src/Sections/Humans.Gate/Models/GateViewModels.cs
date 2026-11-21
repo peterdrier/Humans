@@ -95,6 +95,9 @@ internal sealed record GateScanCardViewModel(
                 GateOverrideFailure.LockedOut => $"Too many PIN attempts — wait {r.RetryAfterSeconds}s",
                 _ => "PIN not accepted — try again",
             }, false, barcode, false, AllowUndo: true),
+        GateUndoOutcome.VendorCheckedIn =>
+            new(GateCardKind.Amber, "Supervisor", null,
+                "Can't undo here — Ticket Tailor has this check-in too · get the gate lead", false, barcode, false),
         _ => new(GateCardKind.Amber, "Supervisor", null, "Nothing to undo — this ticket is not checked in", false, barcode, false),
     };
 
