@@ -555,7 +555,7 @@ internal sealed partial class TicketCheckoutService
                 }
                 else if (offer is { State: TicketResaleOfferState.Reserved, ReservedByOrderId: { } orderId }
                          && await repository.GetOrderAsync(orderId, ct) is { } holder
-                         && holder.State is not (TicketCheckoutOrderState.Created or TicketCheckoutOrderState.Pending))
+                         && !holder.IsOpen)
                 {
                     if (holder.State == TicketCheckoutOrderState.Paid)
                         await CompletePaidAsync(holder, ct);

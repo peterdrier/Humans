@@ -44,8 +44,8 @@ internal sealed class TicketSalesEvent
     /// <summary>How long an invitation to buy one specific returned ticket stays valid.</summary>
     public int DirectedResaleDays { get; set; } = 3;
 
-    /// <summary>The team whose required legal documents are the ticket rules every buyer accepts; null for none.</summary>
-    public Guid? TermsTeamId { get; set; }
+    /// <summary>The page with the ticket rules every buyer accepts; null for none. A new address is a new version.</summary>
+    public string? TermsUrl { get; set; }
 
     /// <summary>Price of a child ticket attached to an adult's; null when children are not sold.</summary>
     public long? ChildPriceMinor { get; set; }

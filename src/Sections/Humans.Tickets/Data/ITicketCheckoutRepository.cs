@@ -25,7 +25,7 @@ internal interface ITicketCheckoutRepository : IRepository
     /// <summary>Orders the person paid for or holds a ticket line in.</summary>
     Task<IReadOnlyList<TicketCheckoutOrder>> GetOrdersForUserAsync(Guid userId, CancellationToken ct = default);
 
-    /// <summary>Created or Pending orders on any event, for the reconcile poll.</summary>
+    /// <summary>Created, Pending or Processing orders on any event, for the reconcile poll.</summary>
     Task<IReadOnlyList<TicketCheckoutOrder>> GetOpenOrdersAsync(CancellationToken ct = default);
 
     Task AddOrderAsync(TicketCheckoutOrder order, CancellationToken ct = default);
