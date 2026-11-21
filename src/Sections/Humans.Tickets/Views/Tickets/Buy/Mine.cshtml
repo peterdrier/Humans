@@ -16,6 +16,10 @@
 {
     <empty-state>@Localizer["Tickets_Mine_None"]</empty-state>
 }
+else
+{
+    <p class="text-muted">@Localizer["Tickets_Mine_AtTheGate"]</p>
+}
 
 @foreach (var held in Model)
 {
@@ -29,6 +33,11 @@
             </div>
             <span>@Localizer[$"Tickets_Ticket_State_{t.State}"]</span>
         </div>
+        @if (t.State is TicketCheckoutTicketState.Valid or TicketCheckoutTicketState.Offered)
+        {
+            <img src="@Humans.Tickets.Services.Delivery.TicketCodeImages.PngDataUri(t.Barcode)" alt="@t.Barcode"
+                 class="img-fluid d-block mx-auto my-3" style="max-width: 260px; image-rendering: pixelated;" />
+        }
 
         @if (held.Offer is { } offer)
         {

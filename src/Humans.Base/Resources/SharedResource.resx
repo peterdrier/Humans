@@ -703,7 +703,7 @@
   <data name="Privacy_ContactBody" xml:space="preserve"><value>For questions or concerns about this policy, contact our Data Protection Officer at {0}.</value><comment>{0} = DPO email</comment></data>
   <data name="Privacy_ComplaintBody" xml:space="preserve"><value>If you are not satisfied with our response, you have the right to lodge a complaint with the Spanish Data Protection Agency (AEPD) at {0}.</value><comment>{0} = AEPD URL</comment></data>
   <data name="Common_NotAvailable" xml:space="preserve"><value>N/A</value></data>
-  <data name="EmailGrid_LinkFailed" xml:space="preserve"><value>We couldn't link this Google account. Please try again.</value></data>
+  <data name="EmailGrid_LinkFailed" xml:space="preserve"><value>We couldn't link this Google account. If it, or its address, already belongs to another account of yours, add that address under "Add email" instead and follow the link we send to merge the two.</value></data>
 
   <!-- Issues section -->
 

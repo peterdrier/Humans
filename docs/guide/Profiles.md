@@ -69,7 +69,7 @@ On the edit page, choose an image (JPEG, PNG, WebP, or HEIC/HEIF/AVIF from a pho
 
 ### Manage your email addresses
 
-Go to `/Profile/Me/Emails`. Your OAuth login email is always there and cannot be deleted. Add other addresses — each is verified via a link. Exactly one verified email is your notification target (where system emails go). Each verified email has its own visibility setting, using the same levels as contact fields. If you have been provisioned a `@nobodies.team` address, it is auto-selected as your Google services email.
+Go to `/Profile/Me/Emails`. Your OAuth login email is always there and cannot be deleted. Add other addresses — each is verified via a link sent to that address; the link works for one hour, and only while you are signed in to the account that added it. If the address belongs to another account of yours, confirming the link merges the two accounts: you see both profiles side by side and, when both were filled in, pick which one to keep. Exactly one verified email is your notification target (where system emails go). Each verified email has its own visibility setting, using the same levels as contact fields. If you have been provisioned a `@nobodies.team` address, it is auto-selected as your Google services email.
 
 ### Set communication preferences
 

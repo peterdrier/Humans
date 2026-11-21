@@ -84,7 +84,7 @@ RoleAssignment
 └── CreatedByUserId: Guid     (bare user id — no FK, no nav property)
 ```
 
-`role_assignments` lives in `AuthDbContext`, `users` in Users' context, so
+`auth_role_assignments` lives in `AuthDbContext`, `users` in Users' context, so
 neither id carries a database FK and neither has a navigation property to
 `.Include()`. Display names are stitched in memory via
 `IUserService.GetUserInfosAsync`.

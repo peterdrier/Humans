@@ -465,10 +465,11 @@ internal sealed class Service(
     }
 
     /// <summary>
-    /// Pleo's own category → account mapping, laid over <c>pleo_categories</c>. Whoever linked an id owns the row: one a
-    /// person linked is left as it is; an id nobody linked is linked to the unlinked row of the same name, or added; a
-    /// row this sweep linked follows Pleo's name and account. A category with no account in the chart is left unmapped.
-    /// Returns only the rows that change; nothing is ever deleted or unlinked.
+    /// Pleo's own category → account mapping, laid over <c>pleo_categories</c>. Whoever last set a row owns it: a row a
+    /// person linked, unlinked or added (<c>SetByUserId</c> set) is never changed, and an id whose name matches a
+    /// person's unlinked row stays unlinked. An id nobody linked is linked to the seeded unlinked row of the same name, or
+    /// added; a row this sweep linked follows Pleo's name and account. A category with no account in the chart is left
+    /// unmapped. Returns only the rows that change; nothing is ever deleted or unlinked.
     /// </summary>
     internal static List<PleoCategoryChange> PlanCategories(
         IReadOnlyList<PleoCategory> existing, IReadOnlyList<PleoCategoryWire> fetched,
@@ -499,6 +500,7 @@ internal sealed class Service(
             }
             else if (unlinked.Find(c => string.Equals(c.Name, name, StringComparison.OrdinalIgnoreCase)) is { } match)
             {
+                if (match.SetByUserId is not null) continue;
                 unlinked.Remove(match);
                 row = match;
                 var was = string.Equals(row.HoldedCode, code, StringComparison.Ordinal) ? "" : $", was Holded {row.HoldedCode}";

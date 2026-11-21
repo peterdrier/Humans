@@ -711,6 +711,17 @@ src/Sections/Humans.Users/Data/Migrations/20261121114531_DropProfileChildTablesP
 src/Sections/Humans.Users/Data/Migrations/20261121114531_DropProfileChildTablesProfileId.cs:DropIndex(name=IX_user_profile_languages_ProfileId,table=user_profile_languages)#1
 src/Sections/Humans.Users/Data/Migrations/20261121114531_DropProfileChildTablesProfileId.cs:DropIndex(name=IX_user_volunteer_history_entries_ProfileId,table=user_volunteer_history_entries)#1
 
+# Auth: role_assignments renamed to auth_role_assignments (peterdrier/Humans#2403, the Auth part of
+# the #2391 table renames). EF re-creates the primary key under the renamed table's name:
+# DropPrimaryKey then AddPrimaryKey on the same column. No column, table or row is removed;
+# RenameTable keeps the data.
+# Evidence: the same migration re-adds the dropped key (Up/Down pairing in #2403); preview deploy
+# 2403.n.burn.camp applied it to a QA clone and started clean.
+# Approval: Peter, 2026-11-20, in the project thread: "approve the key re-creation in #2403".
+# Keys (name on table):
+#   PK_role_assignments on role_assignments
+src/Sections/Humans.Auth/Data/Migrations/20261113002711_RenameRoleAssignmentsToAuthPrefix.cs:DropPrimaryKey(name=PK_role_assignments,table=role_assignments)#1
+
 # holded_sync_states primary key widened from (Kind) to (Kind, Scope) (2026-11-21). Removed: the
 # PK_holded_sync_states constraint only, re-added on the wider key in the same Up(); no column or
 # row goes. Scope is the treasury account for the BankMovements kind, so each bank feed (Finance's

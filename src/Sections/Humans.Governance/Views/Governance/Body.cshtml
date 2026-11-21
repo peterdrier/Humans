@@ -1,3 +1,5 @@
+@using Humans.Base.Constants
+@using Humans.Google.Contracts
 @model GovernanceBodyViewModel
 @{
     var title = Model.Body switch
@@ -44,7 +46,7 @@
         </div>
     </div>
 
-    @if (Model.Links is not null || Model.CanManageBoard)
+    @if (Model.Links is not null || Model.CanManageBoard || Model.Manage is not null)
     {
         <div class="col-lg-4">
             @if (Model.Links is { } links)
@@ -52,6 +54,66 @@
                 <div class="card mb-4">
                     <div class="card-header fw-semibold">@Localizer["Governance_GroupAndFiles"]</div>
                     <partial name="_BodyLinks" model="links" />
+                </div>
+            }
+            @if (Model.Manage is { } manage)
+            {
+                <div class="card mb-4">
+                    <div class="card-header fw-semibold">@Localizer["Governance_Manage_Title"]</div>
+                    <div class="card-body">
+                        <form asp-action="SetGroup" asp-route-body="@Model.Body" method="post">
+                            <label for="group-prefix" class="form-label">@Localizer["Governance_Manage_GroupName"]</label>
+                            <div class="input-group input-group-sm">
+                                <input id="group-prefix" name="prefix" value="@manage.GroupPrefix" class="form-control" />
+                                <span class="input-group-text">@@@DomainConstants.GoogleGroupDomain</span>
+                                <button type="submit" class="btn btn-outline-primary">@Localizer["Governance_Save"]</button>
+                            </div>
+                        </form>
+                    </div>
+                    <ul class="list-group list-group-flush">
+                        @if (manage.Files.Count == 0)
+                        {
+                            <li class="list-group-item text-muted small">@Localizer["Governance_Manage_NoFiles"]</li>
+                        }
+                        @foreach (var file in manage.Files)
+                        {
+                            <li class="list-group-item d-flex align-items-center gap-2">
+                                <span class="flex-grow-1 text-break">
+                                    @if (!string.IsNullOrEmpty(file.Url))
+                                    {
+                                        <a href="@file.Url" target="_blank" rel="noopener noreferrer">@file.Name</a>
+                                    }
+                                    else
+                                    {
+                                        @file.Name
+                                    }
+                                    <span class="badge bg-secondary ms-1">@file.Level</span>
+                                </span>
+                                <form asp-action="RemoveFile" asp-route-body="@Model.Body" asp-route-fileId="@file.Id" method="post" class="m-0">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger">@Localizer["Governance_Manage_Remove"]</button>
+                                </form>
+                            </li>
+                        }
+                    </ul>
+                    <div class="card-body">
+                        <form asp-action="AddFile" asp-route-body="@Model.Body" method="post" class="d-flex flex-wrap gap-2">
+                            <input name="url" type="url" required class="form-control form-control-sm" placeholder="@Localizer["Governance_Manage_DriveLink"]" aria-label="@Localizer["Governance_Manage_DriveLink"]" />
+                            <select name="level" class="form-select form-select-sm w-auto" aria-label="@Localizer["Governance_Manage_Access"]">
+                                @foreach (var level in Enum.GetValues<DrivePermissionLevel>().Where(l => l != DrivePermissionLevel.None))
+                                {
+                                    if (level == DrivePermissionLevel.Contributor)
+                                    {
+                                        <option value="@level" selected>@level</option>
+                                    }
+                                    else
+                                    {
+                                        <option value="@level">@level</option>
+                                    }
+                                }
+                            </select>
+                            <button type="submit" class="btn btn-sm btn-primary">@Localizer["Governance_Manage_AddFile"]</button>
+                        </form>
+                    </div>
                 </div>
             }
             @if (Model.CanManageBoard)

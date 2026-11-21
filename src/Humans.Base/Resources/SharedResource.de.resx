@@ -1258,7 +1258,7 @@
     <value>k. A.</value>
   </data>
   <data name="EmailGrid_LinkFailed" xml:space="preserve">
-    <value>Dieses Google-Konto konnte nicht verknüpft werden. Bitte versuche es erneut.</value>
+    <value>Dieses Google-Konto konnte nicht verknüpft werden. Wenn es, oder seine Adresse, schon zu einem anderen Konto von dir gehört, füge die Adresse stattdessen unter "E-Mail hinzufügen" hinzu und folge dem Link, den wir dir schicken, um beide zusammenzuführen.</value>
   </data>
   <data name="Profile_BuildStrip_Title" xml:space="preserve">
     <value>Verfügbarkeit und Nachverfolgung des Aufbaus</value>

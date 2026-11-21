@@ -4,7 +4,7 @@
 |---|---|---|---|
 | `ProfileController` (own profile), `ProfileEmailsController` (email grids), `ProfileViewController` (others' profiles, picture, popovers) — all `[Route("Profile")]` | Class | `[Authorize]` (authenticated) | — |
 | `ProfileController` / `ProfileEmailsController` own-profile actions (`Index`, `Me`, `Me/Edit`, `Me/Medical`, `Me/Emails/*`, `Me/LinkedAccounts/Unlink`) | Action | `[Authorize]` (authenticated) | `[AllowBeforeActiveMembership]` — own-profile maintenance stays reachable before Active; `ProfileViewController` has none |
-| `ProfileEmailsController.VerifyEmail` (`Me/Emails/Verify`) | Action | `AllowAnonymous` | Override |
+| `UserEmailConfirmationController` (`/Users/Emails/Confirm`, `/Users/Emails/Merge`) | Class | Authenticated | `[Authorize]`; each action also requires the signed-in account to be the one the emailed token names |
 | `ProfileViewController.Picture` | Action | `AllowAnonymous` | Override |
 | `ProfileViewController.RevealMedical` (POST `{id:guid}/Medical/Reveal`) | Action | `Admin, Board, ShiftsNoInfo` | `UsersPolicies.MedicalDataViewer` — returns the medical-conditions text as JSON and writes a `MedicalConditionsRevealed` audit entry per reveal, which is what admits Board |
 | `ProfileViewController.PublicPopover` | Action | `AllowAnonymous` | Override (`[HttpGet("{id:guid}/PublicPopover")]`; 404s unless target is a coordinator on a public-page team) |
@@ -19,7 +19,7 @@
 | `ProfileApiController.GetByUserId` | Action | `[Authorize]` inherited (`[HttpGet("by-userid/{userId:guid}")]`) | — |
 | `UsersAdminController.PurgeHuman` | Action | `Admin` | `PolicyNames.AdminOnly` (override on the class-level `UsersPolicies.Read` controller) |
 | `UsersAdminController.Audience` | Action | `Admin` | `PolicyNames.AdminOnly` (override on the class-level `UsersPolicies.Read` controller) |
-| `UsersAdminAccountMergesController` | Class | `Admin` | `PolicyNames.AdminOnly` (account-merge surface at `/Users/Admin/AccountMerges`; `Index`, `Merge`, `MergeRequest`, `Dismiss`, `Close` all inherit) |
+| `UsersAdminAccountMergesController` | Class | `Admin` | `PolicyNames.AdminOnly` (account-merge surface at `/Users/Admin/AccountMerges`; `Index` and `Merge` inherit) |
 | `ProfileAdminController` | Class | `Admin` | `PolicyNames.AdminOnly` |
 
 ## Resource-Based Authorization Handler

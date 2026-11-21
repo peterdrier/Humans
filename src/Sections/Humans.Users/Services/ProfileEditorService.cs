@@ -65,30 +65,28 @@ internal sealed class ProfileEditorService(
             return Refuse(new(false, ErrorKey: pictureError, ErrorField: nameof(request.ProfilePictureData)));
         request = picture.Request!;
 
-        Guid profileId;
         using (await LockFor(userId).AcquireAsync(logger, ct))
         {
-            var storageResult = await userService.SaveProfileAsync(
+            await userService.SaveProfileAsync(
                 userId,
                 ToUserProfileSaveCommand(request),
                 request.ProfilePictureData,
                 ct,
                 request.VolunteerHistory);
 
-            profileId = storageResult.ProfileId;
             if (contactFields is not null)
             {
-                var contacts = await contactFieldService.SaveContactFieldsAsync(profileId, contactFields, ct,
+                var contacts = await contactFieldService.SaveContactFieldsAsync(userId, contactFields, ct,
                     removedLegacyContactFieldIds);
                 if (!contacts.Succeeded) return contacts;
             }
             if (languages is not null)
-                await userService.SaveProfileLanguagesAsync(profileId, languages, ct);
+                await userService.SaveProfileLanguagesAsync(userId, languages, ct);
         }
 
         logger.LogInformation("User {UserId} updated their profile", userId);
 
-        return new(true, profileId);
+        return new(true);
 
         ProfileEditResult Refuse(ProfileEditResult refusal)
         {

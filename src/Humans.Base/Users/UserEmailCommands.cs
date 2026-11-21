@@ -49,7 +49,6 @@ public sealed record UserEmailRemoveCommand(
 /// email invariants.
 /// </summary>
 internal sealed record UserEmailReconcilePlanCommand(
-    UserEmail? DisplacedRowToDelete,
     UserEmail? RowToDelete,
     UserEmail? RowToUpdate,
     UserEmail? RowToInsert);

@@ -50,6 +50,8 @@
         .Column("Status", r => r.Status, o => o.Css("text-nowrap"))
         .Column("Subject", r => r.Note)
         .Column("Approved", r => r.ApprovedAt?.InZone(orgZone).Date.ToInvariantDate(), o => o.Css("text-nowrap"))
+        .Column("Booked to", r => r.HoldedSupplierAccountNum?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "not booked",
+            o => o.Css("text-nowrap"))
         .Column("Holded documents", r => r.HoldedDocIds.Count, o => o.Number().End())
         .Template("Payable", payableCell, o => o.End(), sortBy: r => r.Payable)
         .Css("align-middle")
@@ -221,10 +223,10 @@
 </div>
 
 <div class="card mt-4">
-    <div class="card-header">Expense reports booked to this account (submitted and later; approved reports are the ones pushed to Holded)</div>
+    <div class="card-header">Expense reports on this account: booked to it, or its member's (submitted and later; approved reports are the ones pushed to Holded)</div>
     @if (Model.ExpenseReports.Count == 0)
     {
-        <div class="card-body py-4"><empty-state class="mb-0">No expense reports are booked to this account.</empty-state></div>
+        <div class="card-body py-4"><empty-state class="mb-0">No expense reports are on this account.</empty-state></div>
     }
     else
     {

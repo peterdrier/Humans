@@ -246,24 +246,16 @@ internal sealed partial class UserRepository
     }
 
     public async Task ApplyUserEmailReconcilePlanAsync(
-        UserEmail? displacedRowToDelete,
         UserEmail? rowToDelete,
         UserEmail? rowToUpdate,
         UserEmail? rowToInsert,
         CancellationToken ct = default)
     {
-        if (displacedRowToDelete is null && rowToDelete is null
-            && rowToUpdate is null && rowToInsert is null)
+        if (rowToDelete is null && rowToUpdate is null && rowToInsert is null)
             return;
 
         await using var ctx = await _factory.CreateDbContextAsync(ct);
         await using var tx = await ctx.Database.BeginTransactionAsync(ct);
-
-        if (displacedRowToDelete is not null)
-        {
-            ctx.Attach(displacedRowToDelete);
-            ctx.UserEmails.Remove(displacedRowToDelete);
-        }
 
         if (rowToDelete is not null)
         {

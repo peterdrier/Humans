@@ -117,8 +117,6 @@ public class AccountProvisioningServiceTests
             throw new NotSupportedException();
         public Task<IReadOnlyList<Profile>> GetAllProfilesAsync(CancellationToken ct = default) =>
             throw new NotSupportedException();
-        public Task<Guid?> GetOwnerUserIdAsync(Guid profileId, CancellationToken ct = default) =>
-            throw new NotSupportedException();
         public Task<(string ContentType, string? StorageKey)?> GetProfilePictureLocationAsync(
             Guid profileId, CancellationToken ct = default) =>
             throw new NotSupportedException();
@@ -140,7 +138,8 @@ public class AccountProvisioningServiceTests
             IReadOnlyCollection<Guid> userIds, CancellationToken ct = default) =>
             throw new NotSupportedException();
         public Task ReassignSubAggregatesToUserAsync(
-            Guid sourceUserId, Guid targetUserId, Instant updatedAt, CancellationToken ct = default) =>
+            Guid sourceUserId, Guid targetUserId, Instant updatedAt, Profile? keptProfile, UserNames? keptNames,
+            CancellationToken ct = default) =>
             throw new NotSupportedException();
         public Task<bool> SetSuspensionAsync(
             Guid userId, bool suspended, bool adminSuspension, CancellationToken ct = default) =>
@@ -186,7 +185,6 @@ public class AccountProvisioningServiceTests
             string prefix, string suffix, CancellationToken ct = default) =>
             throw new NotSupportedException();
         public Task ApplyUserEmailReconcilePlanAsync(
-            UserEmail? displacedRowToDelete,
             UserEmail? rowToDelete,
             UserEmail? rowToUpdate,
             UserEmail? rowToInsert,

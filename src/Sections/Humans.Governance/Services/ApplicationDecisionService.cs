@@ -32,7 +32,7 @@ internal sealed class ApplicationDecisionService(
     IEmailService emailService,
     GovernanceEmails emailMessages,
     INotificationEmitter notificationService,
-    ISystemTeamSync syncJob,
+    GovernanceBodySync bodySync,
     IHumansMetrics metrics,
     IMemoryCache cache,
     IClock clock,
@@ -71,11 +71,9 @@ internal sealed class ApplicationDecisionService(
         await FinalizeDecisionAsync(application, reviewerUserId, cancellationToken);
 
         if (application.MembershipTier == MembershipTier.Colaborador)
-            await syncJob.SyncMembershipForUserAsync(
-                application.UserId, SystemTeamType.Colaboradors, cancellationToken);
+            await bodySync.RequestAsync(GovernanceBody.Colaboradores, cancellationToken);
         else if (application.MembershipTier == MembershipTier.Asociado)
-            await syncJob.SyncMembershipForUserAsync(
-                application.UserId, SystemTeamType.Asociados, cancellationToken);
+            await bodySync.RequestAsync(GovernanceBody.Asociados, cancellationToken);
 
         await SendApprovalAsync(application, cancellationToken);
 

@@ -13,6 +13,8 @@ using NSubstitute;
 using Humans.Tickets.Domain;
 using Humans.Tickets.Contracts;
 
+using Humans.Tickets.Services.Checkout;
+
 namespace Humans.Tickets.Tests.Services;
 
 public sealed class TicketQueryService_HoldingsTests
@@ -44,7 +46,8 @@ public sealed class TicketQueryService_HoldingsTests
             Substitute.For<ISettingsService>(),
             Substitute.For<IAuditLogService>(),
             SystemClock.Instance,
-            Substitute.For<IEventParticipationRepository>());
+            Substitute.For<IEventParticipationRepository>(),
+            Substitute.For<ITicketCheckoutService>());
 
         // Default: no orders, no visible attendees
         _ticketRepo.GetOrdersMatchedToUserAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())

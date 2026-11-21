@@ -79,7 +79,7 @@ internal interface IUserManagement : IUserService, IUserWrite, IUserMerge
         CancellationToken ct = default);
 
     Task<UserProfileLanguagesSaveResult> SaveProfileLanguagesAsync(
-        Guid profileId,
+        Guid userId,
         IReadOnlyList<ProfileLanguageInfo> languages,
         CancellationToken ct = default);
 

@@ -824,4 +824,18 @@
   <data name="Governance_Save" xml:space="preserve"><value>Desa</value></data>
   <data name="Governance_BoardPositionSaved" xml:space="preserve"><value>Càrrec de la Junta desat.</value></data>
   <data name="Governance_BoardPositionNotOnBoard" xml:space="preserve"><value>Només un membre actual de la Junta pot ocupar un càrrec.</value></data>
+  <data name="Governance_Manage_Title" xml:space="preserve"><value>Gestionar grup i fitxers</value></data>
+  <data name="Governance_Manage_GroupName" xml:space="preserve"><value>Grup de Google</value></data>
+  <data name="Governance_Manage_NoFiles" xml:space="preserve"><value>Encara no hi ha carpetes ni fitxers de Drive.</value></data>
+  <data name="Governance_Manage_Remove" xml:space="preserve"><value>Treu</value></data>
+  <data name="Governance_Manage_DriveLink" xml:space="preserve"><value>Enllaç de Drive</value></data>
+  <data name="Governance_Manage_Access" xml:space="preserve"><value>Accés</value></data>
+  <data name="Governance_Manage_AddFile" xml:space="preserve"><value>Afegeix</value></data>
+  <data name="Governance_Manage_GroupSaved" xml:space="preserve"><value>Grup de Google desat.</value></data>
+  <data name="Governance_Manage_FileAdded" xml:space="preserve"><value>Carpeta o fitxer de Drive afegit.</value></data>
+  <data name="Governance_Manage_FileRemoved" xml:space="preserve"><value>Carpeta o fitxer de Drive tret. La compartició es queda com està.</value></data>
+  <data name="Governance_Manage_InvalidGroupName" xml:space="preserve"><value>Fes servir només minúscules, números i guions per al nom del grup.</value></data>
+  <data name="Governance_Manage_GroupNameTaken" xml:space="preserve"><value>Un altre òrgan ja fa servir aquest grup.</value></data>
+  <data name="Governance_Manage_FileAlreadyLinked" xml:space="preserve"><value>Aquesta carpeta o fitxer de Drive ja és a la llista.</value></data>
+  <data name="Governance_Manage_FileNotFound" xml:space="preserve"><value>Aquesta carpeta o fitxer de Drive ja no és a la llista.</value></data>
 </root>
