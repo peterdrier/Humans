@@ -1,3 +1,4 @@
+using Humans.Google.Contracts;
 using Humans.Governance.Contracts;
 using Humans.Governance.Domain;
 using Humans.Governance.Services.Dtos;
@@ -60,4 +61,11 @@ internal sealed class GovernanceBodyViewModel
 
     /// <summary>Board page only: the viewer may add and end Board seats.</summary>
     public bool CanManageBoard { get; init; }
+
+    /// <summary>The body's group and files for editing; null unless the viewer is Board or Admin.</summary>
+    public GovernanceBodyManageModel? Manage { get; init; }
 }
+
+internal sealed record GovernanceBodyManageModel(string? GroupPrefix, IReadOnlyList<GovernanceBodyManageFile> Files);
+
+internal sealed record GovernanceBodyManageFile(Guid Id, string Name, string? Url, DrivePermissionLevel Level);

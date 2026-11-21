@@ -26,7 +26,7 @@ public sealed class UserRepositoryUserEmailTests : IDisposable
             .AddInterceptors(new FailedReconcileSave(failure)).Options;
         var repo = new UserRepository(new TestDbContextFactory(options));
         var row = new UserEmail { Id = Guid.NewGuid(), UserId = Guid.NewGuid(), Email = "name@example.test", IsVerified = true };
-        Func<Task> reconcile = () => repo.ApplyUserEmailReconcilePlanAsync(null, null, null, row,
+        Func<Task> reconcile = () => repo.ApplyUserEmailReconcilePlanAsync(null, null, row,
             Xunit.TestContext.Current.CancellationToken);
 
         if (race)

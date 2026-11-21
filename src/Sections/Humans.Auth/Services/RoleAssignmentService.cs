@@ -9,9 +9,9 @@ using Humans.Auth.Domain;
 using Humans.AuditLog.Contracts;
 using Humans.Gdpr.Contracts;
 using Humans.Notifications.Contracts;
+using Humans.Teams.Contracts;
 using Humans.Users.Contracts;
 
-using Humans.Teams.Contracts;
 
 namespace Humans.Auth.Services;
 
@@ -20,7 +20,6 @@ internal sealed class RoleAssignmentService(
     IUserService userService,
     IAuditLogService auditLogService,
     INotificationEmitter notificationService,
-    ISystemTeamSync systemTeamSyncJob,
     CachingRoleAssignmentService rowCache,
     RoleCatalog catalog,
     IClock clock,
@@ -28,7 +27,7 @@ internal sealed class RoleAssignmentService(
 {
     internal const string RoleAssignments = "RoleAssignments";
 
-    // role_assignments.Notes is varchar(2000).
+    // auth_role_assignments.Notes is varchar(2000).
     internal const int MaxNotesLength = 2000;
 
     private static readonly ResourceManager NoticeResources = new(typeof(AuthResource));
@@ -129,7 +128,6 @@ internal sealed class RoleAssignmentService(
         };
 
         await repository.AddAsync(roleAssignment, ct);
-        // Evict before anything below reads roles back (the Board team sync).
         rowCache.Clear();
 
         await auditLogService.LogAsync(
@@ -138,11 +136,6 @@ internal sealed class RoleAssignmentService(
             assignerId);
 
         await NotifyRoleChangedAsync(userId, roleName, assigned: true);
-
-        if (string.Equals(roleName, RoleNames.Board, StringComparison.Ordinal))
-        {
-            await systemTeamSyncJob.SyncBoardTeamAsync();
-        }
 
         return new RoleAssignmentResult(true);
     }
@@ -178,7 +171,6 @@ internal sealed class RoleAssignmentService(
         roleAssignment.Notes = endedNotes;
 
         await repository.UpdateAsync(roleAssignment, ct);
-        // Evict before anything below reads roles back (the Board team sync).
         rowCache.Clear();
 
         await auditLogService.LogAsync(
@@ -187,11 +179,6 @@ internal sealed class RoleAssignmentService(
             enderId);
 
         await NotifyRoleChangedAsync(roleAssignment.UserId, roleAssignment.RoleName, assigned: false);
-
-        if (string.Equals(catalog.Canonical(roleAssignment.RoleName), RoleNames.Board, StringComparison.Ordinal))
-        {
-            await systemTeamSyncJob.SyncBoardTeamAsync();
-        }
 
         return new RoleAssignmentResult(true);
     }

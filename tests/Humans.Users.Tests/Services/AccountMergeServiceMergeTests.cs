@@ -197,7 +197,8 @@ public class AccountMergeServiceMergeTests
         var service = new AccountMergeService(_mergeRepo, new UserRepository(new TestDbContextFactory(options), _clock),
             _audit, cache, NullLogger<AccountMergeService>.Instance, _clock, [contacts, later], cache);
 
-        var merge = () => service.MergeAsync(target.Id, source.Id, Guid.NewGuid(), ct: ct);
+        var actor = Guid.NewGuid();
+        var merge = () => service.MergeAsync(target.Id, source.Id, actor, ct: ct);
         (await merge.Should().ThrowAsync<IOException>()).Which.Should().BeSameAs(failure);
 
         await using var verify = new UsersDbContext(options);
@@ -206,7 +207,10 @@ public class AccountMergeServiceMergeTests
         (await cache.GetRawUserInfoAsync(target.Id, ct))!.Profile!.ContactFields.Should().ContainSingle(f => f.Id == field.Id);
         await _userService.DidNotReceive().AnonymizeForMergeAsync(
             source.Id, target.Id, Arg.Any<NodaTime.Instant>(), Arg.Any<CancellationToken>());
-        _audit.ReceivedCalls().Should().BeEmpty();
+        // Only the failure is audited, so the half-done merge shows on the admin page.
+        _audit.ReceivedCalls().Should().ContainSingle();
+        await _audit.Received(1).LogAsync(UsersAuditActions.AccountMergeFailed,
+            nameof(User), source.Id, Arg.Any<string>(), actor, target.Id, nameof(User));
     }
 
     private sealed class LostContactMergeAcknowledgement(IOException failure) : SaveChangesInterceptor
@@ -321,50 +325,6 @@ public class AccountMergeServiceMergeTests
         {
             transaction?.Dispose();
         }
-    }
-
-    [HumansTheory]
-    [InlineData("alex_smith@example.com", null, "alexXsmith@example.com", false)]
-    [InlineData("alex_smith@example.com", null, "ALEX_SMITH@example.com", true)]
-    [InlineData("alex%smith@example.com", null, "alexXsmith@example.com", false)]
-    [InlineData("alex%smith@example.com", null, "ALEX%SMITH@example.com", true)]
-    [InlineData("alex_smith@gmail.com", "alex_smith@googlemail.com", "alexXsmith@googlemail.com", false)]
-    [InlineData("alex_smith@gmail.com", "alex_smith@googlemail.com", "ALEX_SMITH@GOOGLEMAIL.COM", true)]
-    public async Task HasPendingForUserAndEmailAsync_MatchesLiteralAddressesWithinPendingTargetRequests(
-        string email, string? alternate, string pendingEmail, bool expected)
-    {
-        var sourceId = Guid.NewGuid();
-        var targetId = Guid.NewGuid();
-        var otherTargetId = Guid.NewGuid();
-        var options = new DbContextOptionsBuilder<UsersDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString()).Options;
-        await using var db = new UsersDbContext(options);
-        db.Users.AddRange(new[] { sourceId, targetId, otherTargetId }.Select(id => new User { Id = id }));
-        foreach (var (target, address, status) in new[]
-                 {
-                     (targetId, pendingEmail, AccountMergeRequestStatus.Pending),
-                     (otherTargetId, email, AccountMergeRequestStatus.Pending),
-                     (targetId, email, AccountMergeRequestStatus.Accepted),
-                     (targetId, alternate ?? email, AccountMergeRequestStatus.Rejected)
-                 })
-        {
-            db.AccountMergeRequests.Add(new AccountMergeRequest
-            {
-                Id = Guid.NewGuid(),
-                SourceUserId = sourceId,
-                TargetUserId = target,
-                Email = address,
-                Status = status,
-                CreatedAt = _clock.GetCurrentInstant()
-            });
-        }
-        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
-        var repository = new AccountMergeRepository(new TestDbContextFactory(options));
-
-        var result = await repository.HasPendingForUserAndEmailAsync(
-            targetId, email, alternate, TestContext.Current.CancellationToken);
-
-        result.Should().Be(expected);
     }
 
     [HumansTheory]
@@ -571,32 +531,6 @@ public class AccountMergeServiceMergeTests
         await AssertNothingMutatedAsync(merger);
     }
 
-    [HumansTheory]
-    [InlineData(true)]
-    [InlineData(false)]
-    public async Task AcceptAsync_DeletedSide_RefusesAndLeavesRequestPending(bool survivorDeleted)
-    {
-        var survivor = Guid.NewGuid(); var archived = Guid.NewGuid();
-        var merger = SetupDeletedPair(survivor, archived, survivorDeleted);
-        var req = new AccountMergeRequest
-        {
-            Id = Guid.NewGuid(),
-            SourceUserId = archived,
-            TargetUserId = survivor,
-            PendingEmailId = Guid.NewGuid(),
-            Email = "dupe@example.com",
-            Status = AccountMergeRequestStatus.Pending,
-        };
-        _mergeRepo.GetByIdPlainAsync(req.Id, Arg.Any<CancellationToken>()).Returns(req);
-
-        var result = await BuildSut().AcceptAsync(
-            req.Id, Guid.NewGuid(), survivor, ct: TestContext.Current.CancellationToken);
-
-        result.Refusal.Should().Contain("is deleted");
-        req.Status.Should().Be(AccountMergeRequestStatus.Pending);
-        await AssertNothingMutatedAsync(merger);
-    }
-
     private IUserMerge SetupDeletedPair(Guid survivorId, Guid archivedId, bool survivorDeleted)
     {
         _userService.GetRawUserInfoAsync(survivorId, Arg.Any<CancellationToken>())
@@ -626,7 +560,7 @@ public class AccountMergeServiceMergeTests
     }
 
     [HumansFact]
-    public async Task MergeAsync_FanOutThrows_LeavesArchivedAccountUntombstoned()
+    public async Task MergeAsync_FanOutThrows_LeavesArchivedAccountUntombstonedAndAuditsTheFailure()
     {
         var src = Guid.NewGuid(); var tgt = Guid.NewGuid(); var admin = Guid.NewGuid();
         SetupUsers(src, tgt);
@@ -640,84 +574,8 @@ public class AccountMergeServiceMergeTests
         await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("boom");
         await _userService.DidNotReceive().AnonymizeForMergeAsync(
             src, tgt, Arg.Any<NodaTime.Instant>(), Arg.Any<CancellationToken>());
-    }
-
-    [HumansFact]
-    public async Task ReconcileMergedRequestAsync_SetsAccepted_WhenPairAlreadyMerged()
-    {
-        var src = Guid.NewGuid(); var tgt = Guid.NewGuid(); var admin = Guid.NewGuid();
-        var req = new AccountMergeRequest
-        {
-            Id = Guid.NewGuid(),
-            SourceUserId = src,
-            TargetUserId = tgt,
-            Email = "dupe@example.com",
-            Status = AccountMergeRequestStatus.Pending,
-        };
-        _mergeRepo.GetByIdPlainAsync(req.Id, Arg.Any<CancellationToken>()).Returns(req);
-        _mergeRepo.GetPendingAsync(Arg.Any<CancellationToken>())
-            .Returns(new List<AccountMergeRequest> { req });
-        // Source already tombstoned, target survives.
-        _userService.GetRawUserInfoAsync(src, Arg.Any<CancellationToken>())
-            .Returns(UserInfoFixtures.FromUser(new User { Id = src, MergedToUserId = tgt, MergedAt = _clock.GetCurrentInstant() }));
-        _userService.GetRawUserInfoAsync(tgt, Arg.Any<CancellationToken>())
-            .Returns(UserInfoFixtures.FromUser(new User { Id = tgt }));
-
-        await BuildSut().ReconcileMergedRequestAsync(req.Id, admin, TestContext.Current.CancellationToken);
-
-        req.Status.Should().Be(AccountMergeRequestStatus.Accepted);
-        req.ResolvedByUserId.Should().Be(admin);
-        await _mergeRepo.Received(1).UpdateAsync(
-            Arg.Is<AccountMergeRequest>(r => r.Id == req.Id && r.Status == AccountMergeRequestStatus.Accepted),
-            Arg.Any<CancellationToken>());
-    }
-
-    [HumansFact]
-    public async Task ReconcileMergedRequestAsync_ReturnsRefusal_WhenNeitherAccountMerged()
-    {
-        var src = Guid.NewGuid(); var tgt = Guid.NewGuid();
-        var req = new AccountMergeRequest
-        {
-            Id = Guid.NewGuid(),
-            SourceUserId = src,
-            TargetUserId = tgt,
-            Email = "dupe@example.com",
-            Status = AccountMergeRequestStatus.Pending,
-        };
-        _mergeRepo.GetByIdPlainAsync(req.Id, Arg.Any<CancellationToken>()).Returns(req);
-        _userService.GetRawUserInfoAsync(src, Arg.Any<CancellationToken>())
-            .Returns(UserInfoFixtures.FromUser(new User { Id = src }));
-        _userService.GetRawUserInfoAsync(tgt, Arg.Any<CancellationToken>())
-            .Returns(UserInfoFixtures.FromUser(new User { Id = tgt }));
-
-        var act = () => BuildSut().ReconcileMergedRequestAsync(req.Id, Guid.NewGuid(), TestContext.Current.CancellationToken);
-
-        (await act()).Refusal.Should().Contain("not merged into each other");
-    }
-
-    [HumansFact]
-    public async Task ReconcileMergedRequestAsync_ReturnsRefusal_WhenOneAccountMergedIntoThirdParty()
-    {
-        // Source merged into an UNRELATED third account, target still active.
-        // The A<->B request must NOT be closeable — that conflict is still unresolved.
-        var src = Guid.NewGuid(); var tgt = Guid.NewGuid(); var third = Guid.NewGuid();
-        var req = new AccountMergeRequest
-        {
-            Id = Guid.NewGuid(),
-            SourceUserId = src,
-            TargetUserId = tgt,
-            Email = "dupe@example.com",
-            Status = AccountMergeRequestStatus.Pending,
-        };
-        _mergeRepo.GetByIdPlainAsync(req.Id, Arg.Any<CancellationToken>()).Returns(req);
-        _userService.GetRawUserInfoAsync(src, Arg.Any<CancellationToken>())
-            .Returns(UserInfoFixtures.FromUser(new User { Id = src, MergedToUserId = third, MergedAt = _clock.GetCurrentInstant() }));
-        _userService.GetRawUserInfoAsync(tgt, Arg.Any<CancellationToken>())
-            .Returns(UserInfoFixtures.FromUser(new User { Id = tgt }));
-
-        var act = () => BuildSut().ReconcileMergedRequestAsync(req.Id, Guid.NewGuid(), TestContext.Current.CancellationToken);
-
-        (await act()).Refusal.Should().Contain("not merged into each other");
-        await _mergeRepo.DidNotReceive().UpdateAsync(Arg.Any<AccountMergeRequest>(), Arg.Any<CancellationToken>());
+        // The half-done merge shows on the admin page's "Recently merged" list.
+        await _audit.Received(1).LogAsync(UsersAuditActions.AccountMergeFailed,
+            nameof(User), src, Arg.Any<string>(), admin, tgt, nameof(User));
     }
 }

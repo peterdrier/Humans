@@ -63,12 +63,11 @@ internal partial interface IUserRepository
         CancellationToken ct = default);
 
     /// <summary>
-    /// Applies an OAuth-reconcile plan in one transaction, so a displaced user's verified row is
-    /// never deleted while the signing user's change is left undone. Sole caller:
+    /// Applies an OAuth-reconcile plan in one transaction, so a tag-move never deletes the old row
+    /// while the new one is left unwritten. Sole caller:
     /// <c>UserEmailService.ReconcileOAuthIdentityAsync</c>.
     /// </summary>
     Task ApplyUserEmailReconcilePlanAsync(
-        UserEmail? displacedRowToDelete,
         UserEmail? rowToDelete,
         UserEmail? rowToUpdate,
         UserEmail? rowToInsert,

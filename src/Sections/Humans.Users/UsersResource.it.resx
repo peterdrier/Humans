@@ -430,9 +430,6 @@
   <data name="Users_EmailGrid_Actions" xml:space="preserve">
     <value>Azioni</value>
   </data>
-  <data name="Users_EmailGrid_StatusMergePending" xml:space="preserve">
-    <value>Unione in sospeso</value>
-  </data>
   <data name="Users_EmailGrid_StatusVerified" xml:space="preserve">
     <value>Verificata</value>
   </data>
@@ -496,9 +493,6 @@
   <data name="Users_EmailGrid_AdminVerifySuccess" xml:space="preserve">
     <value>Email manually verified.</value>
   </data>
-  <data name="Users_EmailGrid_AdminVerifyMergeRequested" xml:space="preserve">
-    <value>This address is already verified on another account. A merge request was created instead of verifying.</value>
-  </data>
   <data name="Users_EmailGrid_OrphanProviderTag" xml:space="preserve"><value>Contrassegnata con {0} ma senza riga AspNetUserLogins corrispondente — si auto-corregge al prossimo accesso OAuth.</value></data>
   <data name="Users_EmailGrid_WorkspaceLocked" xml:space="preserve"><value>Bloccata dalla riga email Workspace</value></data>
 
@@ -521,9 +515,6 @@
   </data>
   <data name="Users_VerifyEmail_GoToSettings" xml:space="preserve">
     <value>Vai alle impostazioni email</value>
-  </data>
-  <data name="Users_VerifyEmail_GoHome" xml:space="preserve">
-    <value>Vai alla Home</value>
   </data>
 
   <!-- ======================== -->
@@ -672,18 +663,24 @@
     <value>Verifichi il Suo indirizzo email</value>
   </data>
   <data name="Users_Email_EmailVerification_Body" xml:space="preserve">
-    <value>&lt;h2&gt;Verifica dell'indirizzo e-mail&lt;/h2&gt;
-&lt;p&gt;Ciao {0},&lt;/p&gt;
-&lt;p&gt;Hai richiesto di aggiungere &lt;strong&gt;{1}&lt;/strong&gt; al tuo account.&lt;/p&gt;
-&lt;p&gt;Clicca sul link seguente per verificare questo indirizzo:&lt;/p&gt;
-&lt;p&gt;&lt;a href="{2}" style="display:inline-block; padding:12px 24px; background-color:#0d6efd; color:#ffffff; text-decoration:none; border-radius:6px; font-weight:bold; font-size:16px;"&gt;Verifica indirizzo e-mail&lt;/a&gt;&lt;/p&gt;
-&lt;p&gt;Questo link scade tra 24 ore.&lt;/p&gt;
-&lt;p&gt;Se non hai richiesto questa modifica, puoi ignorare questa e-mail.&lt;/p&gt;
-&lt;p&gt;Il team di Humans&lt;/p&gt;</value>
+    <value>&lt;h2&gt;Conferma questo indirizzo email&lt;/h2&gt;
+&lt;p&gt;Qualcuno che ha effettuato l'accesso a Humans come &lt;strong&gt;{0}&lt;/strong&gt; ha chiesto di aggiungere &lt;strong&gt;{1}&lt;/strong&gt; a quell'account.&lt;/p&gt;
+&lt;p&gt;Se sei stato tu, apri il link mentre sei connesso come {0} e premi il pulsante nella pagina:&lt;/p&gt;
+&lt;p&gt;&lt;a href="{2}" style="display:inline-block; padding:12px 24px; background-color:#0d6efd; color:#ffffff; text-decoration:none; border-radius:6px; font-weight:bold; font-size:16px;"&gt;Conferma indirizzo email&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;Il link funziona una sola volta, per un'ora.&lt;/p&gt;
+&lt;p&gt;Se non sei stato tu, ignora questa email e non cambia nulla.&lt;/p&gt;
+&lt;p&gt;Il team Humans&lt;/p&gt;</value>
     <comment>{0} = user name, {1} = email address, {2} = verification URL</comment>
   </data>
   <data name="Users_Email_EmailVerification_Merge_Body" xml:space="preserve">
-    <value>&lt;h2&gt;Verifica unione account&lt;/h2&gt;&lt;p&gt;Ciao {0},&lt;/p&gt;&lt;p&gt;Hai richiesto di aggiungere &lt;strong&gt;{1}&lt;/strong&gt; al tuo account. Questo indirizzo e-mail è attualmente collegato a un altro account.&lt;/p&gt;&lt;p&gt;Se verifichi questa e-mail, verrà inviata una richiesta di unione per la revisione dell'amministratore. Una volta approvata, i dati dell'altro account verranno uniti al tuo e l'account duplicato verrà archiviato.&lt;/p&gt;&lt;p&gt;Fai clic sul link qui sotto per verificare e richiedere l'unione:&lt;/p&gt;&lt;p&gt;&lt;a href="{2}" style="display:inline-block; padding:12px 24px; background-color:#0d6efd; color:#ffffff; text-decoration:none; border-radius:6px; font-weight:bold; font-size:16px;"&gt;Verifica e richiedi unione&lt;/a&gt;&lt;/p&gt;&lt;p&gt;Questo link scade tra 24 ore.&lt;/p&gt;&lt;p&gt;Se non hai richiesto questo, puoi ignorare questa e-mail. Non verranno apportate modifiche.&lt;/p&gt;&lt;p&gt;Il team di Humans&lt;/p&gt;</value>
+    <value>&lt;h2&gt;Conferma questo indirizzo e unisci due account&lt;/h2&gt;
+&lt;p&gt;Qualcuno che ha effettuato l'accesso a Humans come &lt;strong&gt;{0}&lt;/strong&gt; ha chiesto di aggiungere &lt;strong&gt;{1}&lt;/strong&gt; a quell'account.&lt;/p&gt;
+&lt;p&gt;Questo indirizzo ha già un proprio account Humans. Se entrambi gli account sono tuoi, confermando vengono uniti in uno solo. La pagina mostra entrambi gli account prima di fare qualsiasi cosa.&lt;/p&gt;
+&lt;p&gt;Apri il link mentre sei connesso come {0}:&lt;/p&gt;
+&lt;p&gt;&lt;a href="{2}" style="display:inline-block; padding:12px 24px; background-color:#0d6efd; color:#ffffff; text-decoration:none; border-radius:6px; font-weight:bold; font-size:16px;"&gt;Controlla e unisci&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;Il link funziona una sola volta, per un'ora. Non inoltrare questa email: chi apre il link come {0} può unire gli account.&lt;/p&gt;
+&lt;p&gt;Se non sei stato tu, ignora questa email e non cambia nulla. Nessuno può prendere questo indirizzo senza questo link.&lt;/p&gt;
+&lt;p&gt;Il team Humans&lt;/p&gt;</value>
   </data>
   <data name="Users_Email_DeletionRequested_Subject" xml:space="preserve">
     <value>Eliminazione dell'account richiesta</value>
@@ -709,8 +706,6 @@
 &lt;p&gt;Cordiali saluti,&lt;br/&gt;Il team di Humans&lt;/p&gt;</value>
     <comment>{0} = user name</comment>
   </data>
-  <data name="Users_Profile_EmailLinkedToAnotherAccount" xml:space="preserve"><value>Questa email è collegata a un altro account. La verifica richiederà un'unione di account. Controlla la posta in arrivo per il link di verifica.</value></data>
-  <data name="Users_Profile_EmailVerifiedMergeRequested" xml:space="preserve"><value>Email verificata. È stata inviata una richiesta di unione per la revisione amministrativa. L'email {0} verrà aggiunta al tuo account una volta approvata.</value><comment>{0} = email address</comment></data>
   <data name="Users_ProfilePopover_ImportedNoProfile" xml:space="preserve"><value>Importato · nessun profilo ancora</value></data>
   <data name="Users_ProfilePopover_ImportedNoProfileHelp" xml:space="preserve"><value>Questa persona esiste nel sistema ma non ha ancora completato un profilo (per esempio, è stata importata da una mailing list o dal ticketing).</value></data>
   <data name="Users_Notification_AdminSuspendedWithReason" xml:space="preserve"><value>Il tuo accesso è stato sospeso: {0}</value></data>
@@ -721,9 +716,6 @@
   </data>
   <data name="Users_Profile_EmailVerifiedOnAnotherAccount" xml:space="preserve">
     <value>Questo indirizzo email è già verificato su un altro account.</value>
-  </data>
-  <data name="Users_Profile_EmailMergePending" xml:space="preserve">
-    <value>È già in attesa una richiesta di unione per questo indirizzo email.</value>
   </data>
   <data name="Users_EmailDelete_LastVerifiedBlocked" xml:space="preserve">
     <value>Non puoi rimuovere il tuo ultimo indirizzo email verificato. Aggiungi prima un altro indirizzo verificato per continuare a ricevere le notifiche del sistema.</value>
@@ -802,4 +794,36 @@
   <data name="Users_Meter_PendingAccountDeletions" xml:space="preserve"><value>Eliminazioni di account in sospeso</value></data>
   <data name="Users_Meter_AudienceAdmin" xml:space="preserve"><value>amministratori</value></data>
   <data name="Users_Search_Category" xml:space="preserve"><value>Humans</value></data>
+  <data name="Users_ConfirmEmail_Prompt" xml:space="preserve"><value>Aggiungere {0} al tuo account?</value></data>
+  <data name="Users_ConfirmEmail_Button" xml:space="preserve"><value>Conferma questo indirizzo</value></data>
+  <data name="Users_ConfirmEmail_Invalid" xml:space="preserve"><value>Questo link non funziona più. Un link funziona una sola volta, per un'ora. Per riceverne uno nuovo, rimuovi l'indirizzo nelle impostazioni email e aggiungilo di nuovo.</value></data>
+  <data name="Users_ConfirmEmail_WrongAccount" xml:space="preserve"><value>Questo link è stato creato da un account diverso da quello con cui hai effettuato l'accesso.</value></data>
+  <data name="Users_ConfirmEmail_LinkMadeBy" xml:space="preserve"><value>Link creato da:</value></data>
+  <data name="Users_ConfirmEmail_SignedInAs" xml:space="preserve"><value>Hai effettuato l'accesso come:</value></data>
+  <data name="Users_ConfirmEmail_WrongAccountHelp" xml:space="preserve"><value>Esci, accedi con l'account che ha creato il link e aprilo di nuovo.</value></data>
+  <data name="Users_MergeAccounts_Title" xml:space="preserve"><value>Unisci i tuoi due account</value></data>
+  <data name="Users_MergeAccounts_Intro" xml:space="preserve"><value>{0} appartiene già a un altro account. Confermandolo, i due account vengono uniti in uno solo. Non si può annullare.</value></data>
+  <data name="Users_MergeAccounts_KeepsEverything" xml:space="preserve"><value>Si conserva tutto di entrambi gli account: team, turni, biglietti, ruoli, camp, consensi e ogni indirizzo con cui accedi.</value></data>
+  <data name="Users_MergeAccounts_SignedInCard" xml:space="preserve"><value>L'account con cui hai effettuato l'accesso</value></data>
+  <data name="Users_MergeAccounts_OtherCard" xml:space="preserve"><value>Il tuo altro account</value></data>
+  <data name="Users_MergeAccounts_OtherEmpty" xml:space="preserve"><value>Il tuo altro account non è mai stato compilato, quindi il tuo profilo resta com'è.</value></data>
+  <data name="Users_MergeAccounts_Choose" xml:space="preserve"><value>Entrambi gli account hanno un profilo. Scegli quale tenere. Ciò che gli manca viene completato dall'altro.</value></data>
+  <data name="Users_MergeAccounts_KeepThis" xml:space="preserve"><value>Tieni questo profilo</value></data>
+  <data name="Users_MergeAccounts_Button" xml:space="preserve"><value>Unisci questi account</value></data>
+  <data name="Users_MergeAccounts_NotNow" xml:space="preserve"><value>Non ora</value></data>
+  <data name="Users_MergeAccounts_Blocked" xml:space="preserve"><value>Questi due account non possono essere uniti qui. Scrivi a {0} e lo risolviamo.</value></data>
+  <data name="Users_MergeAccounts_Done" xml:space="preserve"><value>I tuoi due account ora sono uno solo.</value></data>
+  <data name="Users_MergeAccounts_SignsInWith" xml:space="preserve"><value>Accede con</value></data>
+  <data name="Users_MergeAccounts_Roles" xml:space="preserve"><value>Ruoli</value></data>
+  <data name="Users_MergeAccounts_Shifts" xml:space="preserve"><value>Turni</value></data>
+  <data name="Users_MergeAccounts_ShiftsValue" xml:space="preserve"><value>{0} in arrivo, {1} svolti</value></data>
+  <data name="Users_MergeAccounts_Tickets" xml:space="preserve"><value>Biglietti</value></data>
+  <data name="Users_MergeAccounts_Created" xml:space="preserve"><value>Creato</value></data>
+  <data name="Users_MergeAccounts_LastSignIn" xml:space="preserve"><value>Ultimo accesso</value></data>
+  <data name="Users_Email_AccountsMerged_Subject" xml:space="preserve"><value>I tuoi due account sono stati uniti</value></data>
+  <data name="Users_Email_AccountsMerged_Body" xml:space="preserve"><value>&lt;h2&gt;Account uniti&lt;/h2&gt;
+&lt;p&gt;Ciao {0},&lt;/p&gt;
+&lt;p&gt;Due account Humans che erano entrambi tuoi sono stati uniti in uno solo. Tutto ciò che era nei due si trova nell'account rimasto, e ogni indirizzo con cui accedevi funziona ancora.&lt;/p&gt;
+&lt;p&gt;Se non sei stato tu, scrivi subito a {1}.&lt;/p&gt;
+&lt;p&gt;Il team Humans&lt;/p&gt;</value></data>
 </root>

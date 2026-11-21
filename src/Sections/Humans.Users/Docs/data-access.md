@@ -80,7 +80,7 @@ Repository: `IUserRepository`. Notification-address projections use existing `IU
 | Users | R/W (the only direct EF write to `Users.Email`). The `Users.GoogleEmail` shadow column has no reader or writer left (nobodies-collective/Humans#1102); the mapping survives only until the drop PR. `Users.GoogleEmailStatus` is frozen and unwritten: the Google Workspace identity is Google's `google_workspace_identities` (Users decomposition commit 15). |
 
 Cross-section calls via `IUserService`, plus ASP.NET `UserManager<User>` and
-`IAuditLogService` (manual-verify and primary-cleared entries), `IAccountMergeRepository` (pending-merge checks and the verification-conflict merge request), the `IUserEmailLock` fan-out (addresses another section needs kept; Tickets), the `IUserEmailRemovalListener` fan-out (after each committed delete, unlink or OAuth tag-move/rename/displacement; Google), and `UsersEmails` + `IEmailService` for verification mail. No service location. Implements `IUserMerge`. No
+`IAuditLogService` (manual-verify and primary-cleared entries), the `IUserEmailLock` fan-out (addresses another section needs kept; Tickets), the `IUserEmailRemovalListener` fan-out (after each committed delete, unlink or OAuth tag-move/rename; Google), `IDataProtectionProvider` for the emailed link's token (`EmailConfirmationService.CreateToken`), and `UsersEmails` + `IEmailService` for verification mail. No service location. Implements `IUserMerge`. No
 `IMemoryCache` directly.
 **Cross-section design-rule note:** `Users` reads/writes overlap the User
 section — `IUserRepository` is the consolidated owner and this is the

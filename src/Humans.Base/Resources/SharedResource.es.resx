@@ -1249,7 +1249,7 @@
     <value>N/D</value>
   </data>
   <data name="EmailGrid_LinkFailed" xml:space="preserve">
-    <value>No hemos podido vincular esta cuenta de Google. Inténtalo de nuevo.</value>
+    <value>No hemos podido vincular esta cuenta de Google. Si la cuenta, o su dirección, ya pertenece a otra cuenta tuya, añade esa dirección en "Añadir correo" y sigue el enlace que te enviamos para unir las dos.</value>
   </data>
   <data name="Profile_BuildStrip_Title" xml:space="preserve">
     <value>Disponibilidad y seguimiento de montaje</value>

@@ -824,4 +824,18 @@
   <data name="Governance_Save" xml:space="preserve"><value>Salva</value></data>
   <data name="Governance_BoardPositionSaved" xml:space="preserve"><value>Carica del Consiglio salvata.</value></data>
   <data name="Governance_BoardPositionNotOnBoard" xml:space="preserve"><value>Solo un membro attuale del Consiglio può ricoprire una carica.</value></data>
+  <data name="Governance_Manage_Title" xml:space="preserve"><value>Gestisci gruppo e file</value></data>
+  <data name="Governance_Manage_GroupName" xml:space="preserve"><value>Gruppo Google</value></data>
+  <data name="Governance_Manage_NoFiles" xml:space="preserve"><value>Ancora nessuna cartella o file di Drive.</value></data>
+  <data name="Governance_Manage_Remove" xml:space="preserve"><value>Rimuovi</value></data>
+  <data name="Governance_Manage_DriveLink" xml:space="preserve"><value>Link di Drive</value></data>
+  <data name="Governance_Manage_Access" xml:space="preserve"><value>Accesso</value></data>
+  <data name="Governance_Manage_AddFile" xml:space="preserve"><value>Aggiungi</value></data>
+  <data name="Governance_Manage_GroupSaved" xml:space="preserve"><value>Gruppo Google salvato.</value></data>
+  <data name="Governance_Manage_FileAdded" xml:space="preserve"><value>Cartella o file di Drive aggiunto.</value></data>
+  <data name="Governance_Manage_FileRemoved" xml:space="preserve"><value>Cartella o file di Drive rimosso. La condivisione resta com'è.</value></data>
+  <data name="Governance_Manage_InvalidGroupName" xml:space="preserve"><value>Usa solo lettere minuscole, numeri e trattini per il nome del gruppo.</value></data>
+  <data name="Governance_Manage_GroupNameTaken" xml:space="preserve"><value>Un altro organo usa già questo gruppo.</value></data>
+  <data name="Governance_Manage_FileAlreadyLinked" xml:space="preserve"><value>Questa cartella o file di Drive è già nell'elenco.</value></data>
+  <data name="Governance_Manage_FileNotFound" xml:space="preserve"><value>Quella cartella o file di Drive non è più nell'elenco.</value></data>
 </root>

@@ -430,9 +430,6 @@
   <data name="Users_EmailGrid_Actions" xml:space="preserve">
     <value>Aktionen</value>
   </data>
-  <data name="Users_EmailGrid_StatusMergePending" xml:space="preserve">
-    <value>Zusammenführung ausstehend</value>
-  </data>
   <data name="Users_EmailGrid_StatusVerified" xml:space="preserve">
     <value>Verifiziert</value>
   </data>
@@ -496,9 +493,6 @@
   <data name="Users_EmailGrid_AdminVerifySuccess" xml:space="preserve">
     <value>E-Mail manuell verifiziert.</value>
   </data>
-  <data name="Users_EmailGrid_AdminVerifyMergeRequested" xml:space="preserve">
-    <value>Diese Adresse ist bereits in einem anderen Konto verifiziert. Es wurde ein Antrag auf Zusammenführung erstellt, anstatt sie zu verifizieren.</value>
-  </data>
   <data name="Users_EmailGrid_OrphanProviderTag" xml:space="preserve"><value>Mit {0} getaggt, aber keine passende AspNetUserLogins-Zeile — korrigiert sich beim nächsten OAuth-Login von selbst.</value></data>
   <data name="Users_EmailGrid_WorkspaceLocked" xml:space="preserve"><value>Gesperrt durch die Workspace-E-Mail-Zeile</value></data>
 
@@ -521,9 +515,6 @@
   </data>
   <data name="Users_VerifyEmail_GoToSettings" xml:space="preserve">
     <value>Zu den E-Mail-Einstellungen</value>
-  </data>
-  <data name="Users_VerifyEmail_GoHome" xml:space="preserve">
-    <value>Zur Startseite</value>
   </data>
 
   <!-- ======================== -->
@@ -672,18 +663,24 @@
     <value>Bestätigen Sie Ihre E-Mail-Adresse</value>
   </data>
   <data name="Users_Email_EmailVerification_Body" xml:space="preserve">
-    <value>&lt;h2&gt;E-Mail-Verifizierung&lt;/h2&gt;
-&lt;p&gt;Hallo {0},&lt;/p&gt;
-&lt;p&gt;Du hast angefordert, &lt;strong&gt;{1}&lt;/strong&gt; zu deinem Konto hinzuzufügen.&lt;/p&gt;
-&lt;p&gt;Klicke auf den folgenden Link, um diese E-Mail-Adresse zu verifizieren:&lt;/p&gt;
-&lt;p&gt;&lt;a href="{2}" style="display:inline-block; padding:12px 24px; background-color:#0d6efd; color:#ffffff; text-decoration:none; border-radius:6px; font-weight:bold; font-size:16px;"&gt;E-Mail-Adresse verifizieren&lt;/a&gt;&lt;/p&gt;
-&lt;p&gt;Dieser Link läuft in 24 Stunden ab.&lt;/p&gt;
-&lt;p&gt;Wenn du diese Änderung nicht angefordert hast, kannst du diese E-Mail ignorieren.&lt;/p&gt;
+    <value>&lt;h2&gt;Bestätige diese E-Mail-Adresse&lt;/h2&gt;
+&lt;p&gt;Jemand, der bei Humans als &lt;strong&gt;{0}&lt;/strong&gt; angemeldet ist, möchte &lt;strong&gt;{1}&lt;/strong&gt; zu diesem Konto hinzufügen.&lt;/p&gt;
+&lt;p&gt;Wenn du das warst, öffne den Link, während du als {0} angemeldet bist, und drücke den Knopf auf der Seite:&lt;/p&gt;
+&lt;p&gt;&lt;a href="{2}" style="display:inline-block; padding:12px 24px; background-color:#0d6efd; color:#ffffff; text-decoration:none; border-radius:6px; font-weight:bold; font-size:16px;"&gt;E-Mail-Adresse bestätigen&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;Der Link funktioniert einmal, eine Stunde lang.&lt;/p&gt;
+&lt;p&gt;Wenn du das nicht warst, ignoriere diese E-Mail. Es ändert sich nichts.&lt;/p&gt;
 &lt;p&gt;Das Humans-Team&lt;/p&gt;</value>
     <comment>{0} = user name, {1} = email address, {2} = verification URL</comment>
   </data>
   <data name="Users_Email_EmailVerification_Merge_Body" xml:space="preserve">
-    <value>&lt;h2&gt;Kontoverknüpfung bestätigen&lt;/h2&gt;&lt;p&gt;Hallo {0},&lt;/p&gt;&lt;p&gt;Du hast angefordert, &lt;strong&gt;{1}&lt;/strong&gt; zu deinem Konto hinzuzufügen. Diese E-Mail-Adresse ist derzeit mit einem anderen Konto verknüpft.&lt;/p&gt;&lt;p&gt;Wenn du diese E-Mail bestätigst, wird eine Zusammenführungsanfrage zur Überprüfung durch einen Administrator eingereicht. Nach Genehmigung werden die Daten des anderen Kontos in dein Konto übernommen und das doppelte Konto wird archiviert.&lt;/p&gt;&lt;p&gt;Bitte klicke auf den folgenden Link, um die Zusammenführung zu bestätigen und anzufordern:&lt;/p&gt;&lt;p&gt;&lt;a href="{2}" style="display:inline-block; padding:12px 24px; background-color:#0d6efd; color:#ffffff; text-decoration:none; border-radius:6px; font-weight:bold; font-size:16px;"&gt;Bestätigen und Zusammenführung anfordern&lt;/a&gt;&lt;/p&gt;&lt;p&gt;Dieser Link läuft in 24 Stunden ab.&lt;/p&gt;&lt;p&gt;Falls du dies nicht angefordert hast, kannst du diese E-Mail ignorieren. Es werden keine Änderungen vorgenommen.&lt;/p&gt;&lt;p&gt;Das Humans Team&lt;/p&gt;</value>
+    <value>&lt;h2&gt;Bestätige diese Adresse und führe zwei Konten zusammen&lt;/h2&gt;
+&lt;p&gt;Jemand, der bei Humans als &lt;strong&gt;{0}&lt;/strong&gt; angemeldet ist, möchte &lt;strong&gt;{1}&lt;/strong&gt; zu diesem Konto hinzufügen.&lt;/p&gt;
+&lt;p&gt;Diese Adresse hat bereits ein eigenes Humans-Konto. Wenn beide Konten dir gehören, werden sie beim Bestätigen zu einem zusammengeführt. Die Seite zeigt beide Konten, bevor etwas passiert.&lt;/p&gt;
+&lt;p&gt;Öffne den Link, während du als {0} angemeldet bist:&lt;/p&gt;
+&lt;p&gt;&lt;a href="{2}" style="display:inline-block; padding:12px 24px; background-color:#0d6efd; color:#ffffff; text-decoration:none; border-radius:6px; font-weight:bold; font-size:16px;"&gt;Ansehen und zusammenführen&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;Der Link funktioniert einmal, eine Stunde lang. Leite diese E-Mail nicht weiter: Wer den Link als {0} öffnet, kann die Konten zusammenführen.&lt;/p&gt;
+&lt;p&gt;Wenn du das nicht warst, ignoriere diese E-Mail. Es ändert sich nichts. Ohne diesen Link kann niemand diese Adresse übernehmen.&lt;/p&gt;
+&lt;p&gt;Das Humans-Team&lt;/p&gt;</value>
   </data>
   <data name="Users_Email_DeletionRequested_Subject" xml:space="preserve">
     <value>Kontolöschung beantragt</value>
@@ -709,8 +706,6 @@
 &lt;p&gt;Alles Gute,&lt;br/&gt;Das Humans-Team&lt;/p&gt;</value>
     <comment>{0} = user name</comment>
   </data>
-  <data name="Users_Profile_EmailLinkedToAnotherAccount" xml:space="preserve"><value>Diese E-Mail ist mit einem anderen Konto verknüpft. Die Verifizierung fordert eine Kontozusammenführung an. Prüfe deinen Posteingang auf den Bestätigungslink.</value></data>
-  <data name="Users_Profile_EmailVerifiedMergeRequested" xml:space="preserve"><value>E-Mail verifiziert. Eine Zusammenführungsanfrage wurde zur Prüfung durch die Administration eingereicht. Die E-Mail-Adresse {0} wird nach der Genehmigung deinem Konto hinzugefügt.</value><comment>{0} = email address</comment></data>
   <data name="Users_ProfilePopover_ImportedNoProfile" xml:space="preserve"><value>Importiert · noch kein Profil</value></data>
   <data name="Users_ProfilePopover_ImportedNoProfileHelp" xml:space="preserve"><value>Diese Person existiert im System, hat aber noch kein Profil ausgefüllt (zum Beispiel wurde sie aus einer Mailingliste oder dem Ticketing importiert).</value></data>
   <data name="Users_Notification_AdminSuspendedWithReason" xml:space="preserve"><value>Dein Zugang wurde gesperrt: {0}</value></data>
@@ -721,9 +716,6 @@
   </data>
   <data name="Users_Profile_EmailVerifiedOnAnotherAccount" xml:space="preserve">
     <value>Diese E-Mail-Adresse ist bereits in einem anderen Konto bestätigt.</value>
-  </data>
-  <data name="Users_Profile_EmailMergePending" xml:space="preserve">
-    <value>Für diese E-Mail-Adresse ist bereits eine Anfrage zur Zusammenführung offen.</value>
   </data>
   <data name="Users_EmailDelete_LastVerifiedBlocked" xml:space="preserve">
     <value>Du kannst deine letzte verifizierte E-Mail-Adresse nicht entfernen. Füge zuerst eine weitere verifizierte Adresse hinzu, damit du weiterhin Systembenachrichtigungen erhältst.</value>
@@ -802,4 +794,36 @@
   <data name="Users_Meter_PendingAccountDeletions" xml:space="preserve"><value>Ausstehende Kontolöschungen</value></data>
   <data name="Users_Meter_AudienceAdmin" xml:space="preserve"><value>Admins</value></data>
   <data name="Users_Search_Category" xml:space="preserve"><value>Humans</value></data>
+  <data name="Users_ConfirmEmail_Prompt" xml:space="preserve"><value>{0} zu deinem Konto hinzufügen?</value></data>
+  <data name="Users_ConfirmEmail_Button" xml:space="preserve"><value>Diese Adresse bestätigen</value></data>
+  <data name="Users_ConfirmEmail_Invalid" xml:space="preserve"><value>Dieser Link funktioniert nicht mehr. Ein Link funktioniert einmal, eine Stunde lang. Für einen neuen Link entferne die Adresse in deinen E-Mail-Einstellungen und füge sie erneut hinzu.</value></data>
+  <data name="Users_ConfirmEmail_WrongAccount" xml:space="preserve"><value>Dieser Link wurde von einem anderen Konto erstellt als dem, mit dem du angemeldet bist.</value></data>
+  <data name="Users_ConfirmEmail_LinkMadeBy" xml:space="preserve"><value>Link erstellt von:</value></data>
+  <data name="Users_ConfirmEmail_SignedInAs" xml:space="preserve"><value>Du bist angemeldet als:</value></data>
+  <data name="Users_ConfirmEmail_WrongAccountHelp" xml:space="preserve"><value>Melde dich ab, melde dich mit dem Konto an, das den Link erstellt hat, und öffne den Link erneut.</value></data>
+  <data name="Users_MergeAccounts_Title" xml:space="preserve"><value>Führe deine zwei Konten zusammen</value></data>
+  <data name="Users_MergeAccounts_Intro" xml:space="preserve"><value>{0} gehört bereits zu einem anderen Konto. Beim Bestätigen werden beide Konten zu einem zusammengeführt. Das lässt sich nicht rückgängig machen.</value></data>
+  <data name="Users_MergeAccounts_KeepsEverything" xml:space="preserve"><value>Alles aus beiden Konten bleibt erhalten: Teams, Schichten, Tickets, Rollen, Camp, Einwilligungen und jede Adresse, mit der du dich anmeldest.</value></data>
+  <data name="Users_MergeAccounts_SignedInCard" xml:space="preserve"><value>Das Konto, mit dem du angemeldet bist</value></data>
+  <data name="Users_MergeAccounts_OtherCard" xml:space="preserve"><value>Dein anderes Konto</value></data>
+  <data name="Users_MergeAccounts_OtherEmpty" xml:space="preserve"><value>Dein anderes Konto wurde nie ausgefüllt, dein Profil bleibt also, wie es ist.</value></data>
+  <data name="Users_MergeAccounts_Choose" xml:space="preserve"><value>Beide Konten haben ein Profil. Wähle, welches bleibt. Was ihm fehlt, wird aus dem anderen ergänzt.</value></data>
+  <data name="Users_MergeAccounts_KeepThis" xml:space="preserve"><value>Dieses Profil behalten</value></data>
+  <data name="Users_MergeAccounts_Button" xml:space="preserve"><value>Diese Konten zusammenführen</value></data>
+  <data name="Users_MergeAccounts_NotNow" xml:space="preserve"><value>Jetzt nicht</value></data>
+  <data name="Users_MergeAccounts_Blocked" xml:space="preserve"><value>Diese zwei Konten können hier nicht zusammengeführt werden. Schreibe an {0}, dann klären wir das.</value></data>
+  <data name="Users_MergeAccounts_Done" xml:space="preserve"><value>Deine zwei Konten sind jetzt eins.</value></data>
+  <data name="Users_MergeAccounts_SignsInWith" xml:space="preserve"><value>Meldet sich an mit</value></data>
+  <data name="Users_MergeAccounts_Roles" xml:space="preserve"><value>Rollen</value></data>
+  <data name="Users_MergeAccounts_Shifts" xml:space="preserve"><value>Schichten</value></data>
+  <data name="Users_MergeAccounts_ShiftsValue" xml:space="preserve"><value>{0} bevorstehend, {1} geleistet</value></data>
+  <data name="Users_MergeAccounts_Tickets" xml:space="preserve"><value>Tickets</value></data>
+  <data name="Users_MergeAccounts_Created" xml:space="preserve"><value>Erstellt</value></data>
+  <data name="Users_MergeAccounts_LastSignIn" xml:space="preserve"><value>Letzter Login</value></data>
+  <data name="Users_Email_AccountsMerged_Subject" xml:space="preserve"><value>Deine zwei Konten wurden zusammengeführt</value></data>
+  <data name="Users_Email_AccountsMerged_Body" xml:space="preserve"><value>&lt;h2&gt;Konten zusammengeführt&lt;/h2&gt;
+&lt;p&gt;Hallo {0},&lt;/p&gt;
+&lt;p&gt;Zwei Humans-Konten, die beide dir gehörten, wurden zu einem zusammengeführt. Alles aus beiden liegt jetzt im verbleibenden Konto, und jede Adresse, mit der du dich angemeldet hast, funktioniert weiter.&lt;/p&gt;
+&lt;p&gt;Wenn du das nicht warst, schreibe sofort an {1}.&lt;/p&gt;
+&lt;p&gt;Das Humans-Team&lt;/p&gt;</value></data>
 </root>

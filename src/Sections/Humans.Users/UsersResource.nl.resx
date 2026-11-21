@@ -430,9 +430,6 @@
   <data name="Users_EmailGrid_Actions" xml:space="preserve">
     <value>Acties</value>
   </data>
-  <data name="Users_EmailGrid_StatusMergePending" xml:space="preserve">
-    <value>Samenvoeging in afwachting</value>
-  </data>
   <data name="Users_EmailGrid_StatusVerified" xml:space="preserve">
     <value>Geverifieerd</value>
   </data>
@@ -496,9 +493,6 @@
   <data name="Users_EmailGrid_AdminVerifySuccess" xml:space="preserve">
     <value>E-mailadres handmatig geverifieerd.</value>
   </data>
-  <data name="Users_EmailGrid_AdminVerifyMergeRequested" xml:space="preserve">
-    <value>Dit adres is al geverifieerd op een ander account. In plaats van verificatie is er een samenvoegverzoek aangemaakt.</value>
-  </data>
   <data name="Users_EmailGrid_OrphanProviderTag" xml:space="preserve"><value>Gemarkeerd met {0} maar zonder bijbehorende AspNetUserLogins-rij — wordt automatisch hersteld bij de volgende keer inloggen via OAuth.</value></data>
   <data name="Users_EmailGrid_WorkspaceLocked" xml:space="preserve"><value>Vergrendeld door de Workspace-e-mailrij</value></data>
 
@@ -521,9 +515,6 @@
   </data>
   <data name="Users_VerifyEmail_GoToSettings" xml:space="preserve">
     <value>Naar e-mailinstellingen</value>
-  </data>
-  <data name="Users_VerifyEmail_GoHome" xml:space="preserve">
-    <value>Naar de startpagina</value>
   </data>
 
   <!-- ======================== -->
@@ -672,25 +663,23 @@
     <value>Verifieer je e-mailadres</value>
   </data>
   <data name="Users_Email_EmailVerification_Body" xml:space="preserve">
-    <value>&lt;h2&gt;E-mailverificatie&lt;/h2&gt;
-&lt;p&gt;Beste {0},&lt;/p&gt;
-&lt;p&gt;Je hebt gevraagd om &lt;strong&gt;{1}&lt;/strong&gt; aan je account toe te voegen.&lt;/p&gt;
-&lt;p&gt;Klik op de onderstaande link om dit e-mailadres te verifiëren:&lt;/p&gt;
-&lt;p&gt;&lt;a href="{2}" style="display:inline-block; padding:12px 24px; background-color:#0d6efd; color:#ffffff; text-decoration:none; border-radius:6px; font-weight:bold; font-size:16px;"&gt;E-mailadres verifiëren&lt;/a&gt;&lt;/p&gt;
-&lt;p&gt;Deze link verloopt over 24 uur.&lt;/p&gt;
-&lt;p&gt;Als je deze wijziging niet hebt aangevraagd, kun je deze e-mail gerust negeren.&lt;/p&gt;
+    <value>&lt;h2&gt;Bevestig dit e-mailadres&lt;/h2&gt;
+&lt;p&gt;Iemand die bij Humans is ingelogd als &lt;strong&gt;{0}&lt;/strong&gt; wil &lt;strong&gt;{1}&lt;/strong&gt; aan dat account toevoegen.&lt;/p&gt;
+&lt;p&gt;Was jij dat, open dan de link terwijl je bent ingelogd als {0} en druk op de knop op de pagina:&lt;/p&gt;
+&lt;p&gt;&lt;a href="{2}" style="display:inline-block; padding:12px 24px; background-color:#0d6efd; color:#ffffff; text-decoration:none; border-radius:6px; font-weight:bold; font-size:16px;"&gt;E-mailadres bevestigen&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;De link werkt één keer, een uur lang.&lt;/p&gt;
+&lt;p&gt;Was jij dit niet, negeer dan deze e-mail. Er verandert niets.&lt;/p&gt;
 &lt;p&gt;Het Humans-team&lt;/p&gt;</value>
     <comment>{0} = user name, {1} = email address, {2} = verification URL</comment>
   </data>
   <data name="Users_Email_EmailVerification_Merge_Body" xml:space="preserve">
-    <value>&lt;h2&gt;Verificatie voor accountsamenvoeging&lt;/h2&gt;
-&lt;p&gt;Beste {0},&lt;/p&gt;
-&lt;p&gt;Je hebt gevraagd om &lt;strong&gt;{1}&lt;/strong&gt; aan je account toe te voegen. Dit e-mailadres is momenteel gekoppeld aan een ander account.&lt;/p&gt;
-&lt;p&gt;Als je dit e-mailadres verifieert, wordt een samenvoegverzoek ingediend ter beoordeling door een beheerder. Na goedkeuring worden de gegevens van het andere account samengevoegd met die van jouw account en wordt het dubbele account gearchiveerd.&lt;/p&gt;
-&lt;p&gt;Klik op de onderstaande link om te verifiëren en de samenvoeging aan te vragen:&lt;/p&gt;
-&lt;p&gt;&lt;a href="{2}" style="display:inline-block; padding:12px 24px; background-color:#0d6efd; color:#ffffff; text-decoration:none; border-radius:6px; font-weight:bold; font-size:16px;"&gt;Verifiëren en samenvoeging aanvragen&lt;/a&gt;&lt;/p&gt;
-&lt;p&gt;Deze link verloopt over 24 uur.&lt;/p&gt;
-&lt;p&gt;Als je dit niet hebt aangevraagd, kun je deze e-mail gerust negeren. Er wordt niets gewijzigd.&lt;/p&gt;
+    <value>&lt;h2&gt;Bevestig dit adres en voeg twee accounts samen&lt;/h2&gt;
+&lt;p&gt;Iemand die bij Humans is ingelogd als &lt;strong&gt;{0}&lt;/strong&gt; wil &lt;strong&gt;{1}&lt;/strong&gt; aan dat account toevoegen.&lt;/p&gt;
+&lt;p&gt;Dit adres heeft al een eigen Humans-account. Als beide accounts van jou zijn, worden ze bij het bevestigen samengevoegd tot één. De pagina toont beide accounts voordat er iets gebeurt.&lt;/p&gt;
+&lt;p&gt;Open de link terwijl je bent ingelogd als {0}:&lt;/p&gt;
+&lt;p&gt;&lt;a href="{2}" style="display:inline-block; padding:12px 24px; background-color:#0d6efd; color:#ffffff; text-decoration:none; border-radius:6px; font-weight:bold; font-size:16px;"&gt;Bekijken en samenvoegen&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;De link werkt één keer, een uur lang. Stuur deze e-mail niet door: wie de link opent als {0} kan de accounts samenvoegen.&lt;/p&gt;
+&lt;p&gt;Was jij dit niet, negeer dan deze e-mail. Er verandert niets. Niemand kan dit adres overnemen zonder deze link.&lt;/p&gt;
 &lt;p&gt;Het Humans-team&lt;/p&gt;</value>
   </data>
   <data name="Users_Email_DeletionRequested_Subject" xml:space="preserve">
@@ -717,8 +706,6 @@
 &lt;p&gt;Hartelijke groet,&lt;br/&gt;Het Humans-team&lt;/p&gt;</value>
     <comment>{0} = user name</comment>
   </data>
-  <data name="Users_Profile_EmailLinkedToAnotherAccount" xml:space="preserve"><value>Dit e-mailadres is gekoppeld aan een ander account. Door het te verifiëren vraag je een accountsamenvoeging aan. Kijk in je inbox voor de verificatielink.</value></data>
-  <data name="Users_Profile_EmailVerifiedMergeRequested" xml:space="preserve"><value>E-mailadres geverifieerd. Er is een samenvoegverzoek ingediend ter beoordeling door een beheerder. Het e-mailadres {0} wordt na goedkeuring aan je account toegevoegd.</value><comment>{0} = email address</comment></data>
   <data name="Users_ProfilePopover_ImportedNoProfile" xml:space="preserve"><value>Geïmporteerd · nog geen profiel</value></data>
   <data name="Users_ProfilePopover_ImportedNoProfileHelp" xml:space="preserve"><value>Deze Human staat in het systeem, maar heeft nog geen profiel ingevuld (bijvoorbeeld na import uit een mailinglijst of de ticketverkoop).</value></data>
   <data name="Users_Notification_AdminSuspendedWithReason" xml:space="preserve"><value>Je toegang is geschorst: {0}</value></data>
@@ -729,9 +716,6 @@
   </data>
   <data name="Users_Profile_EmailVerifiedOnAnotherAccount" xml:space="preserve">
     <value>Dit e-mailadres is al geverifieerd bij een ander account.</value>
-  </data>
-  <data name="Users_Profile_EmailMergePending" xml:space="preserve">
-    <value>Er is al een samenvoegverzoek in afwachting voor dit e-mailadres.</value>
   </data>
   <data name="Users_EmailDelete_LastVerifiedBlocked" xml:space="preserve">
     <value>Je kunt je laatste geverifieerde e-mailadres niet verwijderen. Voeg eerst een ander geverifieerd e-mailadres toe, zodat je systeemmeldingen blijft ontvangen.</value>
@@ -810,4 +794,36 @@
   <data name="Users_Meter_PendingAccountDeletions" xml:space="preserve"><value>Accountverwijderingen in afwachting</value></data>
   <data name="Users_Meter_AudienceAdmin" xml:space="preserve"><value>Beheerders</value></data>
   <data name="Users_Search_Category" xml:space="preserve"><value>Humans</value></data>
+  <data name="Users_ConfirmEmail_Prompt" xml:space="preserve"><value>{0} aan je account toevoegen?</value></data>
+  <data name="Users_ConfirmEmail_Button" xml:space="preserve"><value>Dit adres bevestigen</value></data>
+  <data name="Users_ConfirmEmail_Invalid" xml:space="preserve"><value>Deze link werkt niet meer. Een link werkt één keer, een uur lang. Voor een nieuwe link verwijder je het adres in je e-mailinstellingen en voeg je het opnieuw toe.</value></data>
+  <data name="Users_ConfirmEmail_WrongAccount" xml:space="preserve"><value>Deze link is gemaakt door een ander account dan waarmee je bent ingelogd.</value></data>
+  <data name="Users_ConfirmEmail_LinkMadeBy" xml:space="preserve"><value>Link gemaakt door:</value></data>
+  <data name="Users_ConfirmEmail_SignedInAs" xml:space="preserve"><value>Je bent ingelogd als:</value></data>
+  <data name="Users_ConfirmEmail_WrongAccountHelp" xml:space="preserve"><value>Log uit, log in met het account dat de link heeft gemaakt en open de link opnieuw.</value></data>
+  <data name="Users_MergeAccounts_Title" xml:space="preserve"><value>Voeg je twee accounts samen</value></data>
+  <data name="Users_MergeAccounts_Intro" xml:space="preserve"><value>{0} hoort al bij een ander account. Als je het bevestigt, worden de twee accounts samengevoegd tot één. Dit kan niet ongedaan worden gemaakt.</value></data>
+  <data name="Users_MergeAccounts_KeepsEverything" xml:space="preserve"><value>Alles uit beide accounts blijft bewaard: teams, shifts, tickets, rollen, kamp, toestemmingen en elk adres waarmee je inlogt.</value></data>
+  <data name="Users_MergeAccounts_SignedInCard" xml:space="preserve"><value>Het account waarmee je bent ingelogd</value></data>
+  <data name="Users_MergeAccounts_OtherCard" xml:space="preserve"><value>Je andere account</value></data>
+  <data name="Users_MergeAccounts_OtherEmpty" xml:space="preserve"><value>Je andere account is nooit ingevuld, dus je profiel blijft zoals het is.</value></data>
+  <data name="Users_MergeAccounts_Choose" xml:space="preserve"><value>Beide accounts hebben een profiel. Kies welk je houdt. Wat eraan ontbreekt, wordt aangevuld uit het andere.</value></data>
+  <data name="Users_MergeAccounts_KeepThis" xml:space="preserve"><value>Dit profiel houden</value></data>
+  <data name="Users_MergeAccounts_Button" xml:space="preserve"><value>Deze accounts samenvoegen</value></data>
+  <data name="Users_MergeAccounts_NotNow" xml:space="preserve"><value>Niet nu</value></data>
+  <data name="Users_MergeAccounts_Blocked" xml:space="preserve"><value>Deze twee accounts kunnen hier niet worden samengevoegd. Schrijf naar {0}, dan lossen we het op.</value></data>
+  <data name="Users_MergeAccounts_Done" xml:space="preserve"><value>Je twee accounts zijn nu één.</value></data>
+  <data name="Users_MergeAccounts_SignsInWith" xml:space="preserve"><value>Logt in met</value></data>
+  <data name="Users_MergeAccounts_Roles" xml:space="preserve"><value>Rollen</value></data>
+  <data name="Users_MergeAccounts_Shifts" xml:space="preserve"><value>Shifts</value></data>
+  <data name="Users_MergeAccounts_ShiftsValue" xml:space="preserve"><value>{0} gepland, {1} gedaan</value></data>
+  <data name="Users_MergeAccounts_Tickets" xml:space="preserve"><value>Tickets</value></data>
+  <data name="Users_MergeAccounts_Created" xml:space="preserve"><value>Aangemaakt</value></data>
+  <data name="Users_MergeAccounts_LastSignIn" xml:space="preserve"><value>Laatst ingelogd</value></data>
+  <data name="Users_Email_AccountsMerged_Subject" xml:space="preserve"><value>Je twee accounts zijn samengevoegd</value></data>
+  <data name="Users_Email_AccountsMerged_Body" xml:space="preserve"><value>&lt;h2&gt;Accounts samengevoegd&lt;/h2&gt;
+&lt;p&gt;Hallo {0},&lt;/p&gt;
+&lt;p&gt;Twee Humans-accounts die allebei van jou waren, zijn samengevoegd tot één. Alles uit beide staat op het account dat overblijft, en elk adres waarmee je inlogde werkt nog steeds.&lt;/p&gt;
+&lt;p&gt;Was jij dit niet, schrijf dan meteen naar {1}.&lt;/p&gt;
+&lt;p&gt;Het Humans-team&lt;/p&gt;</value></data>
 </root>

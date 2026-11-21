@@ -1235,7 +1235,7 @@ public class CachingUserServiceTests
                 Arg.Any<UserProfileSaveCommand>(),
                 Arg.Any<byte[]?>(),
                 Arg.Any<CancellationToken>())
-            .Returns(new UserProfileSaveResult(profileId, null, "uploads/profile-pictures/new.png"));
+            .Returns(new UserProfileSaveResult(null, "uploads/profile-pictures/new.png"));
 
         StubRefreshEntry(userId, new Profile
         {
@@ -1270,7 +1270,6 @@ public class CachingUserServiceTests
                 PictureMutation: UserProfilePictureMutation.Set,
                 ProfilePictureContentType: "image/png"), pictureData, Xunit.TestContext.Current.CancellationToken);
 
-        result.ProfileId.Should().Be(profileId);
         await _inner.Received(1).SaveProfileAsync(
             userId, Arg.Any<UserProfileSaveCommand>(), pictureData, Arg.Any<CancellationToken>());
         var refreshed = await sut.GetUserInfoAsync(userId, Xunit.TestContext.Current.CancellationToken);
@@ -1312,7 +1311,7 @@ public class CachingUserServiceTests
         await PrimeAsync(sut, SampleUserInfo(userId));
 
         _inner.SaveProfileLanguagesAsync(
-                profileId,
+                userId,
                 Arg.Any<IReadOnlyList<ProfileLanguageInfo>>(),
                 Arg.Any<CancellationToken>())
             .Returns(new UserProfileLanguagesSaveResult(true, userId));
@@ -1334,7 +1333,7 @@ public class CachingUserServiceTests
         StubRefreshEntry(userId, profile);
 
         var result = await sut.SaveProfileLanguagesAsync(
-            profileId,
+            userId,
             [
                 new ProfileLanguageInfo(Guid.NewGuid(), "es", LanguageProficiency.Native),
             ], Xunit.TestContext.Current.CancellationToken);
@@ -1377,7 +1376,7 @@ public class CachingUserServiceTests
             UserProfilePictureMutation.None, null);
         var entries = new[] { new CVEntry(Guid.Empty, new LocalDate(2025, 3, 1), "Nowhere 2025", "Sound crew") };
         _inner.SaveProfileAsync(userId, command, null, Arg.Any<CancellationToken>(), entries)
-            .Returns(new UserProfileSaveResult(profileId, null, null));
+            .Returns(new UserProfileSaveResult(null, null));
 
         await sut.SaveProfileAsync(userId, command, ct: Xunit.TestContext.Current.CancellationToken, volunteerHistory: entries);
 
@@ -1412,7 +1411,7 @@ public class CachingUserServiceTests
 
         await sut.ApplyUserEmailReconcilePlanAsync(
             signingUserId,
-            new UserEmailReconcilePlanCommand(null, null, null, null), Xunit.TestContext.Current.CancellationToken);
+            new UserEmailReconcilePlanCommand(null, null, null), Xunit.TestContext.Current.CancellationToken);
 
         var signing = await sut.GetUserInfoAsync(signingUserId, Xunit.TestContext.Current.CancellationToken);
         var displaced = await sut.GetUserInfoAsync(displacedUserId, Xunit.TestContext.Current.CancellationToken);

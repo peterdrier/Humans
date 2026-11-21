@@ -21,6 +21,7 @@ internal sealed class GovernanceBoardSeats(
     IUserService users,
     IGovernanceBodyRepository repository,
     IAuditLogService audit,
+    GovernanceBodySync bodySync,
     IClock clock) : IApplicationService, IUserDataContributor, IUserMerge
 {
     public const string InactiveAccount = nameof(InactiveAccount);
@@ -28,10 +29,16 @@ internal sealed class GovernanceBoardSeats(
     internal const string BoardPositionSlice = "BoardPosition";
 
     /// <summary>Only an active account can take a seat; anything else fails with <see cref="InactiveAccount"/>.</summary>
-    public async Task<RoleAssignmentResult> AddAsync(Guid userId, Guid actorUserId, CancellationToken ct = default) =>
-        await users.GetUserInfoAsync(userId, ct) is { IsActive: true } member
-            ? await roleWrite.AssignRoleAsync(member.Id, RoleNames.Board, actorUserId, notes: null, ct)
-            : new RoleAssignmentResult(false, InactiveAccount);
+    public async Task<RoleAssignmentResult> AddAsync(Guid userId, Guid actorUserId, CancellationToken ct = default)
+    {
+        if (await users.GetUserInfoAsync(userId, ct) is not { IsActive: true } member)
+            return new RoleAssignmentResult(false, InactiveAccount);
+
+        var result = await roleWrite.AssignRoleAsync(member.Id, RoleNames.Board, actorUserId, notes: null, ct);
+        if (result.Success)
+            await bodySync.RequestAsync(GovernanceBody.Board, ct);
+        return result;
+    }
 
     /// <summary>Ends the active Board seat and drops the office the person held.</summary>
     public async Task<RoleAssignmentResult> EndAsync(Guid userId, Guid actorUserId, CancellationToken ct = default)
@@ -50,6 +57,8 @@ internal sealed class GovernanceBoardSeats(
             await LogPositionAsync(userId, $"Board office {held.Position} dropped as the Board seat ended", actorUserId);
         }
 
+        if (result.Success)
+            await bodySync.RequestAsync(GovernanceBody.Board, ct);
         return result;
     }
 

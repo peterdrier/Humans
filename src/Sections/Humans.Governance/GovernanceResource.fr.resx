@@ -824,4 +824,18 @@
   <data name="Governance_Save" xml:space="preserve"><value>Enregistrer</value></data>
   <data name="Governance_BoardPositionSaved" xml:space="preserve"><value>Fonction au Conseil enregistrée.</value></data>
   <data name="Governance_BoardPositionNotOnBoard" xml:space="preserve"><value>Seul un membre actuel du Conseil peut occuper une fonction.</value></data>
+  <data name="Governance_Manage_Title" xml:space="preserve"><value>Gérer le groupe et les fichiers</value></data>
+  <data name="Governance_Manage_GroupName" xml:space="preserve"><value>Groupe Google</value></data>
+  <data name="Governance_Manage_NoFiles" xml:space="preserve"><value>Aucun dossier ni fichier Drive pour l'instant.</value></data>
+  <data name="Governance_Manage_Remove" xml:space="preserve"><value>Retirer</value></data>
+  <data name="Governance_Manage_DriveLink" xml:space="preserve"><value>Lien Drive</value></data>
+  <data name="Governance_Manage_Access" xml:space="preserve"><value>Accès</value></data>
+  <data name="Governance_Manage_AddFile" xml:space="preserve"><value>Ajouter</value></data>
+  <data name="Governance_Manage_GroupSaved" xml:space="preserve"><value>Groupe Google enregistré.</value></data>
+  <data name="Governance_Manage_FileAdded" xml:space="preserve"><value>Dossier ou fichier Drive ajouté.</value></data>
+  <data name="Governance_Manage_FileRemoved" xml:space="preserve"><value>Dossier ou fichier Drive retiré. Son partage reste tel quel.</value></data>
+  <data name="Governance_Manage_InvalidGroupName" xml:space="preserve"><value>Utilise uniquement des minuscules, des chiffres et des tirets pour le nom du groupe.</value></data>
+  <data name="Governance_Manage_GroupNameTaken" xml:space="preserve"><value>Un autre organe utilise déjà ce groupe.</value></data>
+  <data name="Governance_Manage_FileAlreadyLinked" xml:space="preserve"><value>Ce dossier ou fichier Drive est déjà dans la liste.</value></data>
+  <data name="Governance_Manage_FileNotFound" xml:space="preserve"><value>Ce dossier ou fichier Drive n'est plus dans la liste.</value></data>
 </root>

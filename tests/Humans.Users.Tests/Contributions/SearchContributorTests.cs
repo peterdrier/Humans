@@ -32,7 +32,7 @@ public sealed class SearchContributorTests
     public async Task Category_PassesTheMatchContextThrough_WithTheBurnerNameAsSortKey()
     {
         var human = new HumanSearchResult(
-            Guid.NewGuid(), Guid.NewGuid(), "Sparkle", null, "Bio", "…builds <em>kitchens</em>…", null, 40);
+            Guid.NewGuid(), "Sparkle", null, "Bio", "…builds <em>kitchens</em>…", null, 40);
         _users.SearchUsersAsync(Arg.Any<string>(), Arg.Any<PersonSearchFields>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<HumanSearchResult>>([human]));
         var services = Services();

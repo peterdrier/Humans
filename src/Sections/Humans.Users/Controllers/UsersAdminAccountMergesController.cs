@@ -1,4 +1,5 @@
 using Humans.Users.Models;
+using Humans.AuditLog.Contracts;
 using Humans.Base.Controllers;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -8,54 +9,48 @@ using Humans.Users.Services;
 
 namespace Humans.Users.Controllers;
 
+/// <summary>
+/// The admin's merge tools. People merge their own accounts through the emailed confirmation link; this page
+/// is for the pairs that never go through it (detected duplicates, a pair picked by hand) and for looking
+/// back at what was merged.
+/// </summary>
 [Authorize(Policy = PolicyNames.AdminOnly)]
 [Route("Users/Admin/AccountMerges")]
 internal sealed class UsersAdminAccountMergesController(
     IUserManagement userService,
     IAccountMergeService mergeService,
     IDuplicateAccountService duplicateService,
+    IAuditViewerService auditViewer,
     ILogger<UsersAdminAccountMergesController> logger) : HumansControllerBase(userService)
 {
+    private const int RecentMergeCount = 50;
+
     private readonly IUserManagement _userService = userService;
 
+    /// <summary><paramref name="a"/> and <paramref name="b"/> put a pair picked by hand at the top.</summary>
     [HttpGet("")]
-    public async Task<IActionResult> Index(CancellationToken ct)
+    public async Task<IActionResult> Index(Guid? a, Guid? b, CancellationToken ct)
     {
-        var requests = await mergeService.GetPendingRequestsAsync(ct);
         var groups = await duplicateService.DetectDuplicatesAsync(ct);
 
-        var requestedPairs = requests
-            .Select(r => PairKey(r.TargetUser.Id, r.SourceUser.Id))
-            .ToHashSet(StringComparer.Ordinal);
-
-        var involvedIds = requests
-            .SelectMany(r => new[] { r.TargetUser.Id, r.SourceUser.Id })
-            .Concat(groups.SelectMany(g => g.Accounts.Select(a => a.UserId)))
-            .ToHashSet();
-
         // Raw: the already-merged test reads a tombstone's own MergedToUserId, which the resolving read hides.
-        var infos = (await _userService.GetAllRawUserInfosAsync(ct))
-            .Where(u => involvedIds.Contains(u.Id))
-            .ToDictionary(u => u.Id);
+        var infos = (await _userService.GetAllRawUserInfosAsync(ct)).ToDictionary(u => u.Id);
 
         // Only when this pair merged into each other, not into an unrelated account.
-        bool MergedIntoEachOther(Guid a, Guid b) =>
-            (infos.TryGetValue(a, out var ia) && ia.MergedToUserId == b) ||
-            (infos.TryGetValue(b, out var ib) && ib.MergedToUserId == a);
+        bool MergedIntoEachOther(Guid x, Guid y) =>
+            (infos.TryGetValue(x, out var ix) && ix.MergedToUserId == y) ||
+            (infos.TryGetValue(y, out var iy) && iy.MergedToUserId == x);
 
         var rows = new List<AccountMergeRowViewModel>();
 
-        foreach (var r in requests.OrderBy(r => r.CreatedAt))
+        if (a is { } pickedA && b is { } pickedB && pickedA != pickedB
+            && infos.TryGetValue(pickedA, out var infoA) && infos.TryGetValue(pickedB, out var infoB))
         {
             rows.Add(new AccountMergeRowViewModel
             {
-                RequestId = r.Id,
-                SharedEmail = r.Email,
-                AccountA = Card(r.TargetUser),
-                AccountB = Card(r.SourceUser),
-                FromUserRequest = true,
-                RequestedAt = r.CreatedAt.ToDateTimeUtc(),
-                AlreadyMerged = MergedIntoEachOther(r.TargetUser.Id, r.SourceUser.Id)
+                AccountA = Card(infoA),
+                AccountB = Card(infoB),
+                AlreadyMerged = MergedIntoEachOther(pickedA, pickedB)
             });
         }
 
@@ -64,21 +59,37 @@ internal sealed class UsersAdminAccountMergesController(
             if (g.Accounts.Count < 2) continue;
             var a0 = g.Accounts[0];
             var a1 = g.Accounts[1];
-            if (requestedPairs.Contains(PairKey(a0.UserId, a1.UserId))) continue;
 
             rows.Add(new AccountMergeRowViewModel
             {
-                RequestId = null,
                 SharedEmail = g.SharedEmail,
                 AccountA = Card(a0),
                 AccountB = Card(a1),
-                FromUserRequest = false,
-                RequestedAt = null,
                 AlreadyMerged = MergedIntoEachOther(a0.UserId, a1.UserId)
             });
         }
 
-        return View(new AccountMergeQueueViewModel { Rows = rows });
+        var merges = await auditViewer.GetFilteredAsync(
+            AuditSubjectTypes.User, entityId: null, userId: null,
+            actions: [UsersAuditActions.AccountMergeAccepted.Name, UsersAuditActions.AccountMergeFailed.Name],
+            limit: RecentMergeCount, ct: ct);
+
+        return View(new AccountMergeQueueViewModel
+        {
+            Rows = rows,
+            Recent = merges
+                .Where(e => e.RelatedEntityId.HasValue)
+                .OrderByDescending(e => e.OccurredAt)
+                .Select(e => new RecentMergeRow(
+                    e.OccurredAt,
+                    KeptUserId: e.RelatedEntityId!.Value,
+                    MergedAwayUserId: e.EntityId,
+                    // The account holder is one of the two accounts.
+                    By: e.ActorUserId == e.EntityId || e.ActorUserId == e.RelatedEntityId ? null : e.ActorUserId,
+                    Failed: string.Equals(e.Action.Name, UsersAuditActions.AccountMergeFailed.Name, StringComparison.Ordinal),
+                    e.Description))
+                .ToList()
+        });
     }
 
     [HttpPost("Merge")]
@@ -100,76 +111,15 @@ internal sealed class UsersAdminAccountMergesController(
         return RedirectToAction(nameof(Index));
     }
 
-    [HttpPost("{requestId:guid}/Merge")]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> MergeRequest(Guid requestId, Guid survivorUserId, string? notes, CancellationToken ct)
-    {
-        var (error, admin) = await RequireCurrentUserAsync(ct);
-        if (error is not null) return error;
-
-        var result = await mergeService.AcceptAsync(requestId, admin.Id, survivorUserId, notes, ct);
-        if (result.Refusal is { } refusal)
-        {
-            logger.LogWarning("Merge refused for merge request {RequestId} by {AdminId}: {Reason}", requestId, admin.Id, refusal);
-            SetError($"Merge failed: {refusal}");
-        }
-        else
-            SetSuccess("Account merge completed. The archived account has been tombstoned.");
-
-        return RedirectToAction(nameof(Index));
-    }
-
-    [HttpPost("{requestId:guid}/Dismiss")]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Dismiss(Guid requestId, string? notes, CancellationToken ct)
-    {
-        var (error, admin) = await RequireCurrentUserAsync(ct);
-        if (error is not null) return error;
-
-        var result = await mergeService.RejectAsync(requestId, admin.Id, notes, ct);
-        if (result.Refusal is { } refusal)
-        {
-            logger.LogWarning("Dismiss refused for merge request {RequestId} by {AdminId}: {Reason}", requestId, admin.Id, refusal);
-            SetError($"Dismiss failed: {refusal}");
-        }
-        else
-            SetSuccess("Merge request dismissed. No changes were made.");
-
-        return RedirectToAction(nameof(Index));
-    }
-
-    [HttpPost("{requestId:guid}/Close")]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Close(Guid requestId, CancellationToken ct)
-    {
-        var (error, admin) = await RequireCurrentUserAsync(ct);
-        if (error is not null) return error;
-
-        var result = await mergeService.ReconcileMergedRequestAsync(requestId, admin.Id, ct);
-        if (result.Refusal is { } refusal)
-        {
-            logger.LogWarning("Close refused for merge request {RequestId} by {AdminId}: {Reason}", requestId, admin.Id, refusal);
-            SetError($"Close failed: {refusal}");
-        }
-        else
-            SetSuccess("Orphan merge request closed; the accounts were already merged.");
-
-        return RedirectToAction(nameof(Index));
-    }
-
-    private static string PairKey(Guid a, Guid b)
-    {
-        var sa = a.ToString();
-        var sb = b.ToString();
-        return string.CompareOrdinal(sa, sb) <= 0 ? $"{sa}:{sb}" : $"{sb}:{sa}";
-    }
-
-    private static ProfileSummaryViewModel Card(AccountMergeUserSnapshot user) => new()
+    private static ProfileSummaryViewModel Card(UserInfo user) => new()
     {
         UserId = user.Id,
         Email = user.Email,
         PreferredLanguage = user.PreferredLanguage,
-        LastLogin = user.LastLoginAt?.ToDateTimeUtc()
+        MembershipStatus = user.IsSuspended ? "Suspended" : user.State == UserState.Active ? "Active" : "Pending",
+        LastLogin = user.LastLoginAt?.ToDateTimeUtc(),
+        MemberSince = user.CreatedAt.ToDateTimeUtc(),
+        HasProfile = user.Profile is not null
     };
 
     private static ProfileSummaryViewModel Card(DuplicateAccountInfo account) => new()

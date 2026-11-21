@@ -435,4 +435,112 @@
   <data name="Tickets_Buy_PaymentProcessing" xml:space="preserve">
     <value>Deze betaling is al onderweg en kan niet meer worden geannuleerd.</value>
   </data>
+  <data name="Tickets_Delivery_Ticket_Subject" xml:space="preserve">
+    <value>Je ticket voor {0}</value>
+  </data>
+  <data name="Tickets_Delivery_Ticket_Heading" xml:space="preserve">
+    <value>Je ticket voor {0}</value>
+  </data>
+  <data name="Tickets_Delivery_Ticket_Intro" xml:space="preserve">
+    <value>Hoi {0}, hier is je ticket. Bewaar deze e-mail, of open je ticket op elk moment in Humans.</value>
+  </data>
+  <data name="Tickets_Delivery_Ticket_BoughtBy" xml:space="preserve">
+    <value>{0} heeft dit ticket voor je gekocht. Het is alleen van jou en staat op jouw naam.</value>
+  </data>
+  <data name="Tickets_Delivery_Kind_Adult" xml:space="preserve">
+    <value>Volwassenenticket</value>
+  </data>
+  <data name="Tickets_Delivery_Kind_Child" xml:space="preserve">
+    <value>Kinderticket</value>
+  </data>
+  <data name="Tickets_Delivery_Kind_Companion" xml:space="preserve">
+    <value>Begeleidersticket</value>
+  </data>
+  <data name="Tickets_Delivery_Ticket_AtTheGate" xml:space="preserve">
+    <value>Laat deze code bij de ingang zien op je telefoon of op papier, samen met een identiteitsbewijs met foto.</value>
+  </data>
+  <data name="Tickets_Delivery_Ticket_Open" xml:space="preserve">
+    <value>Mijn tickets openen in Humans</value>
+  </data>
+  <data name="Tickets_Delivery_Rules_Heading" xml:space="preserve">
+    <value>Ticketregels</value>
+  </data>
+  <data name="Tickets_Delivery_Rules_Named" xml:space="preserve">
+    <value>Dit ticket is persoonlijk en staat op één wettelijke naam. De naam moet bij de ingang overeenkomen met je identiteitsbewijs, anders wordt de toegang geweigerd.</value>
+  </data>
+  <data name="Tickets_Delivery_Rules_NoTransfer" xml:space="preserve">
+    <value>Tickets kunnen niet worden overgedragen, weggegeven of aan iemand anders verkocht. Een ticket dat van een ander of via een doorverkoopsite is gekocht, is niet geldig.</value>
+  </data>
+  <data name="Tickets_Delivery_Rules_Return" xml:space="preserve">
+    <value>Kun je niet komen, bied je ticket dan terug aan via Humans. Zodra iemand anders het koopt, wordt de ticketprijs terugbetaald aan wie het betaalde; donaties worden niet terugbetaald.</value>
+  </data>
+  <data name="Tickets_Delivery_Rules_Private" xml:space="preserve">
+    <value>Het evenement is een besloten evenement van de vereniging Nobodies Collective. Door dit ticket te gebruiken accepteer je de ticketvoorwaarden.</value>
+  </data>
+  <data name="Tickets_Delivery_Receipt_Subject" xml:space="preserve">
+    <value>Betaalbewijs voor je bestelling {0}</value>
+  </data>
+  <data name="Tickets_Delivery_Receipt_Heading" xml:space="preserve">
+    <value>Betaalbewijs: {0}</value>
+  </data>
+  <data name="Tickets_Delivery_Receipt_Intro" xml:space="preserve">
+    <value>Hoi {0}, bedankt voor je bestelling. Dit is je betaalbewijs.</value>
+  </data>
+  <data name="Tickets_Delivery_Receipt_Reference" xml:space="preserve">
+    <value>Bestelreferentie: {0}</value>
+  </data>
+  <data name="Tickets_Delivery_Receipt_PaidOn" xml:space="preserve">
+    <value>Betaald op: {0}</value>
+  </data>
+  <data name="Tickets_Delivery_Receipt_Method" xml:space="preserve">
+    <value>Betaalmethode: {0}</value>
+  </data>
+  <data name="Tickets_Delivery_Receipt_TicketLine" xml:space="preserve">
+    <value>Ticket voor {0} (incl. {1}% btw)</value>
+  </data>
+  <data name="Tickets_Delivery_Receipt_DonationLine" xml:space="preserve">
+    <value>Donatie: {0} (geen btw)</value>
+  </data>
+  <data name="Tickets_Delivery_Receipt_Refunded" xml:space="preserve">
+    <value>Terugbetaald</value>
+  </data>
+  <data name="Tickets_Delivery_Receipt_DonationNote" xml:space="preserve">
+    <value>Een donatie is een gift aan de vereniging. Er zit geen btw op, ze wordt apart van je ticket geregistreerd en wordt niet terugbetaald.</value>
+  </data>
+  <data name="Tickets_Delivery_Receipt_NotInvoice" xml:space="preserve">
+    <value>Dit is een betaalbewijs, geen factuur.</value>
+  </data>
+  <data name="Tickets_Delivery_Receipt_Open" xml:space="preserve">
+    <value>Je bestelling bekijken in Humans</value>
+  </data>
+  <data name="Tickets_Delivery_Join_Subject" xml:space="preserve">
+    <value>Help {0} mogelijk te maken</value>
+  </data>
+  <data name="Tickets_Delivery_Join_Heading" xml:space="preserve">
+    <value>Help {0} mogelijk te maken</value>
+  </data>
+  <data name="Tickets_Delivery_Join_Intro" xml:space="preserve">
+    <value>Hoi {0}, je hebt je ticket voor {1}. Nu het mooiste: dit evenement wordt gemaakt door de mensen die komen.</value>
+  </data>
+  <data name="Tickets_Delivery_Join_Why" xml:space="preserve">
+    <value>Alles, van de ingang tot de keukens, draait op vrijwilligers, en een paar uur van je tijd maakt echt verschil.</value>
+  </data>
+  <data name="Tickets_Delivery_Join_StepProfile" xml:space="preserve">
+    <value>&lt;a href="{0}"&gt;Maak je Humans-profiel compleet&lt;/a&gt; om mee te doen als vrijwilliger, als je dat nog niet gedaan hebt.</value>
+  </data>
+  <data name="Tickets_Delivery_Join_StepShifts" xml:space="preserve">
+    <value>&lt;a href="{0}"&gt;Kies een dienst&lt;/a&gt; die bij je past.</value>
+  </data>
+  <data name="Tickets_Delivery_Join_Closing" xml:space="preserve">
+    <value>Tot daar.</value>
+  </data>
+  <data name="Tickets_Mine_AtTheGate" xml:space="preserve">
+    <value>Laat deze code bij de ingang zien samen met een identiteitsbewijs met foto. De naam moet overeenkomen met je identiteitsbewijs.</value>
+  </data>
+  <data name="Tickets_Mine_Show" xml:space="preserve">
+    <value>Ticket tonen</value>
+  </data>
+  <data name="Tickets_Delivery_Ticket_Riders" xml:space="preserve">
+    <value>Hier staan ook de tickets van de kinderen die met je meekomen. Elk heeft een eigen code: laat ze bij de ingang samen met de jouwe zien.</value>
+  </data>
 </root>

@@ -7,7 +7,6 @@ using Humans.Users.Models;
 using Humans.Users.Controllers;
 using System.Security.Claims;
 using AwesomeAssertions;
-using Humans.Tickets.Contracts;
 using Humans.AuditLog.Contracts;
 using Humans.Email.Contracts;
 using Humans.Users.Contracts;
@@ -169,7 +168,7 @@ public class ProfileEmailsControllerGridTests
         });
         const string address = "new@example.test";
         _userEmailService.AddEmailAsync(_userId, address, CancellationToken.None, _userId)
-            .Returns(new AddEmailResult(Guid.Empty, string.Empty, false, "Users_EmailUpdate_AccountUnavailable"));
+            .Returns(new AddEmailResult(Guid.Empty, string.Empty, "Users_EmailUpdate_AccountUnavailable"));
         await request.CancelAsync();
         var model = new EmailsViewModel { NewEmail = serviceRefused ? address : string.Empty };
         var add = () => _controller.AddEmail(model);
@@ -182,13 +181,12 @@ public class ProfileEmailsControllerGridTests
             await _userEmailService.DidNotReceiveWithAnyArgs().AddEmailAsync(default, default!, default, default);
     }
 
-    public enum AdminVerificationOutcome { NoPending, Refused, Verified, MergeRequested }
+    public enum AdminVerificationOutcome { NoPending, Refused, Verified }
 
     [HumansTheory]
     [InlineData(AdminVerificationOutcome.NoPending)]
     [InlineData(AdminVerificationOutcome.Refused)]
     [InlineData(AdminVerificationOutcome.Verified)]
-    [InlineData(AdminVerificationOutcome.MergeRequested)]
     public async Task AdminVerifyEmail_FormatsExplicitOutcome(AdminVerificationOutcome outcome)
     {
         var ct = TestContext.Current.CancellationToken;
@@ -196,7 +194,6 @@ public class ProfileEmailsControllerGridTests
         var target = Guid.NewGuid();
         _userEmailService.AdminMarkVerifiedAsync(target, row, _userId, ct).Returns(
             new VerifyEmailResult(outcome == AdminVerificationOutcome.NoPending ? string.Empty : "email@example.test",
-                outcome == AdminVerificationOutcome.MergeRequested,
                 outcome == AdminVerificationOutcome.Refused ? "Users_EmailUpdate_AccountUnavailable" : null)
             { NoPendingVerification = outcome == AdminVerificationOutcome.NoPending });
 
@@ -218,8 +215,7 @@ public class ProfileEmailsControllerGridTests
         }
         else
         {
-            _controller.TempData["SuccessMessage"].Should().Be(outcome == AdminVerificationOutcome.MergeRequested
-                ? "Users_EmailGrid_AdminVerifyMergeRequested" : "Users_EmailGrid_AdminVerifySuccess");
+            _controller.TempData["SuccessMessage"].Should().Be("Users_EmailGrid_AdminVerifySuccess");
             _logger.ReceivedCalls().Should().BeEmpty();
         }
     }
@@ -315,46 +311,6 @@ public class ProfileEmailsControllerGridTests
         arguments[0].Should().Be(LogLevel.Warning);
         arguments[3].Should().BeNull();
         arguments[2]!.ToString().Should().Contain(expectedError).And.Contain(emailId.ToString());
-    }
-
-    [HumansFact]
-    public async Task VerifyEmail_LocalizesTypedInvalidLink()
-    {
-        using var cultureScope = new CultureScope("en");
-        var localizer = new StringLocalizer<UsersResource>(new ResourceManagerStringLocalizerFactory(
-            Options.Create(new LocalizationOptions()), NullLoggerFactory.Instance));
-        var controller = new ProfileEmailsController(
-            _userService, _userManager, _userEmailService,
-            _logger, localizer, _sharedLocalizer, Array.Empty<IUserEmailLock>(),
-            _authorizationService, _signInManager, Options.Create(new GoogleWorkspaceOptions()));
-        var row = Guid.NewGuid();
-        _userEmailService.VerifyEmailAsync(_userId, row, "token")
-            .Returns(new VerifyEmailResult(string.Empty, false, "Users_Profile_InvalidVerificationLink"));
-
-        var result = await controller.VerifyEmail(_userId, row, "token");
-
-        result.Should().BeOfType<ViewResult>().Which.ViewName.Should().Be("VerifyEmailResult");
-        controller.ViewData["Success"].Should().Be(false);
-        controller.ViewData["Message"].Should().Be(localizer["Users_Profile_InvalidVerificationLink"].Value);
-        controller.ViewData["Message"].Should().NotBe("Users_Profile_InvalidVerificationLink");
-    }
-
-    [HumansTheory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public async Task VerifyEmail_PropagatesDependenciesInsteadOfInvalidLinkFeedback(bool validationException)
-    {
-        var row = Guid.NewGuid();
-        Exception failure = validationException
-            ? new ValidationException("Private dependency validation diagnostic")
-            : new InvalidOperationException("Private dependency operation diagnostic");
-        _userEmailService.VerifyEmailAsync(_userId, row, "token").Returns(Task.FromException<VerifyEmailResult>(failure));
-
-        var thrown = await Assert.ThrowsAnyAsync<Exception>(() => _controller.VerifyEmail(_userId, row, "token"));
-
-        thrown.Should().BeSameAs(failure);
-        _controller.ViewData.ContainsKey("Message").Should().BeFalse();
-        _logger.ReceivedCalls().Should().BeEmpty();
     }
 
     [HumansTheory]
@@ -506,16 +462,14 @@ public class ProfileEmailsControllerGridTests
     [HumansTheory]
     [InlineData("Validation_EmailAddress", false)]
     [InlineData("Users_Profile_EmailAlreadyAdded", false)]
-    [InlineData("Users_Profile_EmailMergePending", false)]
     [InlineData("Validation_EmailAddress", true)]
     [InlineData("Users_Profile_EmailAlreadyAdded", true)]
-    [InlineData("Users_Profile_EmailMergePending", true)]
     public async Task AddEmail_ExpectedRefusal_DoesNotSendOrAudit(string errorKey, bool admin)
     {
         const string email = "new@example.com";
         _userManager.FindByIdAsync(_userId.ToString()).Returns(new User { Id = _userId });
         _userEmailService.AddEmailAsync(_userId, email, Arg.Any<CancellationToken>(), _userId)
-            .Returns(new AddEmailResult(Guid.Empty, string.Empty, false, errorKey));
+            .Returns(new AddEmailResult(Guid.Empty, string.Empty, errorKey));
         _sharedLocalizer["Validation_EmailAddress"].Returns(new LocalizedString("Validation_EmailAddress", "Invalid email"));
         var expectedMessage = string.Equals(errorKey, "Validation_EmailAddress", StringComparison.Ordinal)
             ? "Invalid email" : errorKey;
@@ -543,7 +497,7 @@ public class ProfileEmailsControllerGridTests
         _userManager.FindByIdAsync(targetUserId.ToString())
             .Returns(new User { Id = targetUserId, DisplayName = "Target User", PreferredLanguage = "en" });
         _userEmailService.AddEmailAsync(targetUserId, newEmail, Arg.Any<CancellationToken>(), _userId)
-            .Returns(new AddEmailResult(Guid.NewGuid(), "token", IsConflict: false));
+            .Returns(new AddEmailResult(Guid.NewGuid(), "token"));
 
         var result = await _controller.AdminAddEmail(targetUserId, newEmail, TestContext.Current.CancellationToken);
 
@@ -563,7 +517,7 @@ public class ProfileEmailsControllerGridTests
         const string errorKey = "Users_EmailUpdate_AccountUnavailable";
         _userManager.FindByIdAsync(targetId.ToString()).Returns(new User { Id = targetId });
         _userEmailService.AddEmailAsync(targetId, email, Arg.Any<CancellationToken>(), _userId)
-            .Returns(new AddEmailResult(Guid.Empty, string.Empty, false, errorKey));
+            .Returns(new AddEmailResult(Guid.Empty, string.Empty, errorKey));
         _userEmailService.AddVerifiedEmailAsync(targetId, email, Arg.Any<CancellationToken>(), _userId)
             .Returns(new UserEmailAddResult(Guid.Empty, false, false, errorKey));
 

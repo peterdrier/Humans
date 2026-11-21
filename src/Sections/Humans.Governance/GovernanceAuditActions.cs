@@ -16,6 +16,8 @@ internal sealed class GovernanceAuditActions : AuditActionContributor
 
     public static readonly AuditActionDefinition GovernanceBodyLinksCopied = new("GovernanceBodyLinksCopied");
 
+    public static readonly AuditActionDefinition GovernanceBodyLinksChanged = new("GovernanceBodyLinksChanged");
+
     public static readonly AuditActionDefinition BoardPositionSet = new("BoardPositionSet");
 
     public static readonly AuditActionDefinition AssemblyVoteOpened = new("AssemblyVoteOpened");

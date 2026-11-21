@@ -31,6 +31,17 @@ internal sealed class UsersEmails(
                 Encode(userName), Encode(toEmail), verificationUrl),
             EmailVerificationTemplate, Urgent: true));
 
+    /// <summary>
+    /// Sent to every confirmed address of both accounts after a self-service merge, so whoever reads any of
+    /// those mailboxes learns of it. Always-send and urgent.
+    /// </summary>
+    public EmailMessage AccountsMerged(Guid userId, string toEmail, string userName, string? culture = null)
+        => Localized(culture, () => new EmailMessage(
+            toEmail, userName, userId,
+            L("Users_Email_AccountsMerged_Subject"),
+            Lf("Users_Email_AccountsMerged_Body", Encode(userName), Encode(_settings.AdminAddress)),
+            "accounts_merged", Urgent: true));
+
     public EmailMessage AccountDeletionRequested(Guid userId, string userEmail, string userName, Instant deletionDate, string? culture = null)
         => Localized(culture, () => new EmailMessage(
             userEmail, userName, userId,

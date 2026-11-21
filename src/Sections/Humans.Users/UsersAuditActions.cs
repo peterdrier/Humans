@@ -17,6 +17,9 @@ internal sealed class UsersAuditActions : AuditActionContributor
 
     public static readonly AuditActionDefinition AccountMergeRejected = new("AccountMergeRejected");
 
+    // A merge that faulted part-way. Entity is the archived account, related entity the survivor.
+    public static readonly AuditActionDefinition AccountMergeFailed = new("AccountMergeFailed");
+
     public static readonly AuditActionDefinition ContactCreated = new("ContactCreated");
 
     public static readonly AuditActionDefinition GoogleEmailRenamed = new("GoogleEmailRenamed");

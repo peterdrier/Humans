@@ -17,5 +17,5 @@ public interface IProfileEditorService
         IReadOnlyCollection<Guid>? removedLegacyContactFieldIds = null);
 }
 
-public sealed record ProfileEditResult(bool Succeeded, Guid? ProfileId = null, string? ErrorKey = null,
+public sealed record ProfileEditResult(bool Succeeded, string? ErrorKey = null,
     string? ErrorField = null, string? ErrorArgumentKey = null);

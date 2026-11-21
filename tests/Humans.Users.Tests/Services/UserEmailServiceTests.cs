@@ -5,10 +5,9 @@ using Humans.Email.Contracts;
 using Microsoft.Extensions.Options;
 using Humans.Users.Data;
 using Humans.AuditLog.Contracts;
-using Humans.Google.Contracts;
-using Humans.Tickets.Contracts;
 using Humans.Users.Contracts;
 using Humans.Base.Helpers;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
@@ -105,7 +104,6 @@ public class UserEmailServiceTests
     }
 
     private readonly IUserRepository _repository = Substitute.For<IUserRepository>();
-    private readonly IAccountMergeRepository _mergeRepository = Substitute.For<IAccountMergeRepository>();
     private readonly IUserManagement _userService = Substitute.For<IUserManagement>();
     private readonly IUserEmailLock _emailLock = Substitute.For<IUserEmailLock>();
     private readonly UserManager<User> _userManager;
@@ -136,9 +134,9 @@ public class UserEmailServiceTests
         _userManager,
         _clock,
         _auditLogService,
-        _mergeRepository,
         [_emailLock],
         [_googleIdentity],
+        new EphemeralDataProtectionProvider(),
         TestUsersEmails.Create(),
         Options.Create(new EmailSettings { BaseUrl = TestUsersEmails.BaseUrl }),
         _emailService,
@@ -706,8 +704,6 @@ public class UserEmailServiceTests
         };
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
             .Returns(BuildStubUserInfo(userId, [onlyVerifiedGoogle, unverifiedLinked]));
-        _mergeRepository.GetPendingEmailIdsAsync(Arg.Any<IReadOnlyList<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(new HashSet<Guid>() as IReadOnlySet<Guid>);
         var rows = await _service.GetUserEmailsAsync(userId, Xunit.TestContext.Current.CancellationToken);
 
         var google = rows.Single(r => r.Id == onlyVerifiedGoogle.Id);
@@ -1164,9 +1160,7 @@ public class UserEmailServiceTests
         var userId = Guid.NewGuid();
         var actorId = Guid.NewGuid();
         var rowId = Guid.NewGuid();
-        const string token = "token+with/slash= and space";
         _userManager.FindByIdAsync(userId.ToString()).Returns(new User { Id = userId, PreferredLanguage = language });
-        _userManager.GenerateUserTokenAsync(Arg.Any<User>(), Arg.Any<string>(), Arg.Any<string>()).Returns(token);
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
             .Returns(BuildStubUserInfo(userId, []) with { BurnerName = "Target" });
         _userService.AddUserEmailAsync(userId, Arg.Any<UserEmailAddCommand>(), Arg.Any<CancellationToken>())
@@ -1175,7 +1169,7 @@ public class UserEmailServiceTests
         _emailService.SendAsync(Arg.Do<EmailMessage>(message => sent = message), Arg.Any<CancellationToken>())
             .Returns(Task.CompletedTask);
 
-        await _service.AddEmailAsync(userId, " added@example.com ", Xunit.TestContext.Current.CancellationToken, actorId);
+        var result = await _service.AddEmailAsync(userId, " added@example.com ", Xunit.TestContext.Current.CancellationToken, actorId);
 
         sent.Should().NotBeNull();
         sent!.RecipientEmail.Should().Be("added@example.com");
@@ -1186,11 +1180,11 @@ public class UserEmailServiceTests
             System.Text.RegularExpressions.RegexOptions.CultureInvariant | System.Text.RegularExpressions.RegexOptions.ExplicitCapture,
             TimeSpan.FromSeconds(1)).Groups["url"].Value;
         var uri = new Uri(System.Net.WebUtility.HtmlDecode(link));
-        uri.GetLeftPart(UriPartial.Path).Should().Be($"{TestUsersEmails.BaseUrl}/Profile/Me/Emails/Verify");
+        uri.GetLeftPart(UriPartial.Path).Should().Be($"{TestUsersEmails.BaseUrl}/Users/Emails/Confirm");
         var query = Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(uri.Query);
-        query["userId"].ToString().Should().Be(userId.ToString());
-        query["emailId"].ToString().Should().Be(rowId.ToString());
-        System.Web.HttpUtility.UrlDecode(query["token"].ToString()).Should().Be(token);
+        // The link carries the signed token and nothing else: no account or row id to tamper with.
+        query.Keys.Should().Equal("token");
+        query["token"].ToString().Should().Be(result.Token).And.NotBeEmpty();
         await _auditLogService.Received(1).LogAsync(UsersAuditActions.UserEmailAdded,
             nameof(User), userId, Arg.Any<string>(), actorId, rowId, nameof(UserEmail));
     }
@@ -1211,7 +1205,6 @@ public class UserEmailServiceTests
                 await request.CancelAsync();
                 return new UserEmailAddResult(rowId, true, false);
             });
-        _userManager.GenerateUserTokenAsync(Arg.Any<User>(), Arg.Any<string>(), Arg.Any<string>()).Returns("token");
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(call =>
         {
             call.Arg<CancellationToken>().Should().Be(CancellationToken.None);
@@ -1304,7 +1297,7 @@ public class UserEmailServiceTests
     }
 
     [HumansFact]
-    public async Task AddEmailAsync_OwnerRefusal_DoesNotGenerateVerificationToken()
+    public async Task AddEmailAsync_OwnerRefusal_MakesNoLinkAndSendsNoMail()
     {
         var userId = Guid.NewGuid();
         _userManager.FindByIdAsync(userId.ToString()).Returns(new User { Id = userId });
@@ -1315,7 +1308,6 @@ public class UserEmailServiceTests
 
         result.ErrorKey.Should().Be("Users_EmailUpdate_AccountUnavailable");
         result.Token.Should().BeEmpty();
-        await _userManager.DidNotReceive().GenerateUserTokenAsync(Arg.Any<User>(), Arg.Any<string>(), Arg.Any<string>());
         await _repository.DidNotReceive().AddUserEmailAsync(Arg.Any<UserEmail>(), Arg.Any<CancellationToken>());
         _auditLogService.ReceivedCalls().Should().BeEmpty();
         _emailService.ReceivedCalls().Should().BeEmpty();
@@ -1387,9 +1379,6 @@ public class UserEmailServiceTests
         var userId = Guid.NewGuid();
         var user = new User { Id = userId };
         _userManager.FindByIdAsync(userId.ToString()).Returns(user);
-        _userManager.GenerateUserTokenAsync(
-                Arg.Any<User>(), Arg.Any<string>(), Arg.Any<string>())
-            .Returns("tok-123");
         _repository.GetUserEmailsByAddressAsync(Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns([]);
         // UserInfo has NO UserEmail rows (the primary was deleted) but the legacy column lingers.
@@ -1402,26 +1391,18 @@ public class UserEmailServiceTests
         await _repository.Received(1).AddUserEmailAsync(Arg.Any<UserEmail>(), Arg.Any<CancellationToken>());
     }
 
-    [HumansTheory]
-    [Xunit.InlineData(false)]
-    [Xunit.InlineData(true)]
-    public async Task AddEmailAsync_InvalidOrPendingAddress_ReturnsRefusalWithoutCreatingEmail(bool pendingMerge)
+    [HumansFact]
+    public async Task AddEmailAsync_InvalidAddress_ReturnsRefusalWithoutCreatingEmail()
     {
         var userId = Guid.NewGuid();
-        var email = pendingMerge ? "new@example.com" : "not an email";
-        _mergeRepository.HasPendingForUserAndEmailAsync(
-            userId, Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
-            .Returns(pendingMerge);
 
-        var result = await _service.AddEmailAsync(userId, email, Xunit.TestContext.Current.CancellationToken);
+        var result = await _service.AddEmailAsync(userId, "not an email", Xunit.TestContext.Current.CancellationToken);
 
         result.EmailId.Should().Be(Guid.Empty);
         result.Token.Should().BeEmpty();
-        result.ErrorKey.Should().Be(pendingMerge ? "Users_Profile_EmailMergePending" : "Validation_EmailAddress");
+        result.ErrorKey.Should().Be("Validation_EmailAddress");
         await _userService.DidNotReceive().AddUserEmailAsync(
             Arg.Any<Guid>(), Arg.Any<UserEmailAddCommand>(), Arg.Any<CancellationToken>());
-        await _userManager.DidNotReceive().GenerateUserTokenAsync(
-            Arg.Any<User>(), Arg.Any<string>(), Arg.Any<string>());
         _auditLogService.ReceivedCalls().Should().BeEmpty();
         _emailService.ReceivedCalls().Should().BeEmpty();
     }
@@ -1644,211 +1625,26 @@ public class UserEmailServiceTests
                 Arg.Any<Guid>(), Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 
-    // VerifyEmailAsync must load the pending row by the Id passed in (it matches the token's
-    // purpose suffix), or a user with two pending plain rows gets "expired or invalid" from a valid link.
-
     [HumansFact]
-    public async Task VerifyEmailAsync_LoadsRowByEmailIdNotFirstPending()
-    {
-        var userId = Guid.NewGuid();
-        var rowAId = Guid.NewGuid();
-        var rowBId = Guid.NewGuid();
-        // Row A and row B are BOTH unverified plain rows for the same user.
-        // The verification link was issued for row B, so VerifyEmailAsync must
-        // pick row B by Id — not row A via FirstOrDefault.
-        var rowB = new UserEmail
-        {
-            Id = rowBId,
-            UserId = userId,
-            Email = "b@example.com",
-            IsVerified = false,
-            Provider = null,
-            VerificationSentAt = _clock.GetCurrentInstant(),
-        };
-
-        var user = new User { Id = userId, DisplayName = "U" };
-        _userManager.FindByIdAsync(userId.ToString()).Returns(user);
-        _repository.GetUserEmailByIdAndUserIdAsync(rowBId, userId, Arg.Any<CancellationToken>())
-            .Returns(rowB);
-        _repository.GetUserEmailByIdAndUserIdAsync(rowAId, userId, Arg.Any<CancellationToken>())
-            .Returns((UserEmail?)null);
-        _repository.GetUserEmailsByAddressAsync(Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
-            .Returns([]);
-        _userManager.VerifyUserTokenAsync(
-                user, TokenOptions.DefaultEmailProvider,
-                $"UserEmailVerification:{rowBId}", "the-token-for-B")
-            .Returns(true);
-
-        var result = await _service.VerifyEmailAsync(userId, rowBId, "the-token-for-B", Xunit.TestContext.Current.CancellationToken);
-
-        result.MergeRequestCreated.Should().BeFalse();
-        result.Email.Should().Be("b@example.com");
-        rowB.IsVerified.Should().BeTrue();
-        // Row A was never loaded — VerifyEmailAsync must look up by the
-        // emailId argument, not enumerate the user's other pending rows.
-        await _repository.DidNotReceive().GetUserEmailByIdAndUserIdAsync(
-            rowAId, userId, Arg.Any<CancellationToken>());
-    }
-
-    [HumansFact]
-    public async Task VerifyEmailAsync_TokenForOtherRow_FailsWithoutVerifyingAnyRow()
-    {
-        // Token was issued for row A (purpose "...:rowAId"). The user clicks
-        // the link for row B (caller passes rowBId). The token is invalid for
-        // row B's purpose, so VerifyUserTokenAsync returns false and
-        // the invalid-link result is returned — neither row gets verified.
-        var userId = Guid.NewGuid();
-        var rowBId = Guid.NewGuid();
-        var rowB = new UserEmail
-        {
-            Id = rowBId,
-            UserId = userId,
-            Email = "b@example.com",
-            IsVerified = false,
-            Provider = null,
-        };
-
-        var user = new User { Id = userId, DisplayName = "U" };
-        _userManager.FindByIdAsync(userId.ToString()).Returns(user);
-        _repository.GetUserEmailByIdAndUserIdAsync(rowBId, userId, Arg.Any<CancellationToken>())
-            .Returns(rowB);
-        // Token from row A's link is NOT valid against row B's purpose suffix.
-        _userManager.VerifyUserTokenAsync(
-                user, TokenOptions.DefaultEmailProvider,
-                $"UserEmailVerification:{rowBId}", "token-issued-for-A")
-            .Returns(false);
-
-        var result = await _service.VerifyEmailAsync(
-            userId, rowBId, "token-issued-for-A", Xunit.TestContext.Current.CancellationToken);
-
-        result.ErrorKey.Should().Be("Users_Profile_InvalidVerificationLink");
-        await _userService.DidNotReceiveWithAnyArgs().UpdateUserEmailAsync(default, default, default!);
-        rowB.IsVerified.Should().BeFalse();
-    }
-
-    [HumansFact]
-    public async Task VerifyEmailAsync_RowAlreadyVerified_RefusesWithoutDoubleVerifying()
+    public async Task AdminMarkVerifiedAsync_InnerUpdateRefusal_DoesNotReportSuccessOrAudit()
     {
         var userId = Guid.NewGuid();
         var rowId = Guid.NewGuid();
-        var verified = new UserEmail
-        {
-            Id = rowId,
-            UserId = userId,
-            Email = "v@example.com",
-            IsVerified = true,
-            Provider = null,
-        };
-
-        var user = new User { Id = userId, DisplayName = "U" };
-        _userManager.FindByIdAsync(userId.ToString()).Returns(user);
-        _repository.GetUserEmailByIdAndUserIdAsync(rowId, userId, Arg.Any<CancellationToken>())
-            .Returns(verified);
-
-        var result = await _service.VerifyEmailAsync(userId, rowId, "any-token", Xunit.TestContext.Current.CancellationToken);
-
-        result.ErrorKey.Should().Be("Users_Profile_InvalidVerificationLink");
-        await _userService.DidNotReceiveWithAnyArgs().UpdateUserEmailAsync(default, default, default!);
-    }
-
-    [HumansFact]
-    public async Task VerifyEmailAsync_OAuthRow_Refuses()
-    {
-        // Provider != null rows are tagged with an OAuth identity and verified
-        // via the OAuth callback — never via a plain verification link.
-        var userId = Guid.NewGuid();
-        var rowId = Guid.NewGuid();
-        var oauth = new UserEmail
-        {
-            Id = rowId,
-            UserId = userId,
-            Email = "oauth@example.com",
-            IsVerified = false,
-            Provider = "Google",
-            ProviderKey = "sub-x",
-        };
-
-        var user = new User { Id = userId, DisplayName = "U" };
-        _userManager.FindByIdAsync(userId.ToString()).Returns(user);
-        _repository.GetUserEmailByIdAndUserIdAsync(rowId, userId, Arg.Any<CancellationToken>())
-            .Returns(oauth);
-
-        var result = await _service.VerifyEmailAsync(userId, rowId, "any-token", Xunit.TestContext.Current.CancellationToken);
-
-        result.ErrorKey.Should().Be("Users_Profile_InvalidVerificationLink");
-        await _userService.DidNotReceiveWithAnyArgs().UpdateUserEmailAsync(default, default, default!);
-    }
-
-    [HumansTheory]
-    [Xunit.InlineData(false)]
-    [Xunit.InlineData(true)]
-    public async Task Verification_InnerUpdateRefusal_DoesNotReportSuccessOrAudit(bool admin)
-    {
-        var userId = Guid.NewGuid();
-        var rowId = Guid.NewGuid();
-        var user = new User { Id = userId, BurnerName = "Member" };
         var row = new UserEmail { Id = rowId, UserId = userId, Email = "pending@example.com" };
-        _userManager.FindByIdAsync(userId.ToString()).Returns(user);
         _repository.GetUserEmailByIdAndUserIdAsync(rowId, userId, Arg.Any<CancellationToken>()).Returns(row);
-        _userManager.VerifyUserTokenAsync(user, TokenOptions.DefaultEmailProvider,
-            $"UserEmailVerification:{rowId}", "token").Returns(true);
         _repository.GetUserEmailsByAddressAsync(Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(Array.Empty<UserEmail>());
         _userService.UpdateUserEmailAsync(userId, rowId, Arg.Any<UserEmailUpdateCommand>(), Arg.Any<CancellationToken>())
             .Returns(new UpdateEmailResult(false, "Users_Profile_InvalidVerificationLink"));
-        var ct = Xunit.TestContext.Current.CancellationToken;
 
-        var result = admin
-            ? await _service.AdminMarkVerifiedAsync(userId, rowId, Guid.NewGuid(), ct)
-            : await _service.VerifyEmailAsync(userId, rowId, "token", ct);
+        var result = await _service.AdminMarkVerifiedAsync(
+            userId, rowId, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
 
         result.ErrorKey.Should().Be("Users_Profile_InvalidVerificationLink");
         result.Email.Should().BeEmpty();
         row.IsVerified.Should().BeFalse();
         _auditLogService.ReceivedCalls().Should().BeEmpty();
     }
-
-    [HumansTheory]
-    [Xunit.InlineData("user")]
-    [Xunit.InlineData("row")]
-    [Xunit.InlineData("token")]
-    [Xunit.InlineData("conflict")]
-    [Xunit.InlineData("update")]
-    public async Task VerifyEmailAsync_PreservesDependencyFaults(string stage)
-    {
-        var userId = Guid.NewGuid();
-        var rowId = Guid.NewGuid();
-        var user = new User { Id = userId, DisplayName = "U" };
-        var row = new UserEmail { Id = rowId, UserId = userId, Email = "pending@example.com" };
-        var failure = new InvalidOperationException("Private verification dependency diagnostic");
-        _userManager.FindByIdAsync(userId.ToString()).Returns(user);
-        _repository.GetUserEmailByIdAndUserIdAsync(rowId, userId, Arg.Any<CancellationToken>()).Returns(row);
-        _userManager.VerifyUserTokenAsync(user, TokenOptions.DefaultEmailProvider,
-            $"UserEmailVerification:{rowId}", "token").Returns(true);
-        _repository.GetUserEmailsByAddressAsync(Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>()).Returns(Array.Empty<UserEmail>());
-        if (string.Equals(stage, "user", StringComparison.Ordinal))
-            _userManager.FindByIdAsync(userId.ToString()).Returns(Task.FromException<User?>(failure));
-        if (string.Equals(stage, "row", StringComparison.Ordinal))
-            _repository.GetUserEmailByIdAndUserIdAsync(rowId, userId, Arg.Any<CancellationToken>())
-                .Returns(Task.FromException<UserEmail?>(failure));
-        if (string.Equals(stage, "token", StringComparison.Ordinal))
-            _userManager.VerifyUserTokenAsync(user, TokenOptions.DefaultEmailProvider,
-                $"UserEmailVerification:{rowId}", "token").Returns(Task.FromException<bool>(failure));
-        if (string.Equals(stage, "conflict", StringComparison.Ordinal))
-            _repository.GetUserEmailsByAddressAsync(Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
-                .Returns(Task.FromException<IReadOnlyList<UserEmail>>(failure));
-        if (string.Equals(stage, "update", StringComparison.Ordinal))
-            _userService.UpdateUserEmailAsync(userId, rowId, Arg.Any<UserEmailUpdateCommand>(), Arg.Any<CancellationToken>())
-                .Returns(Task.FromException<UpdateEmailResult>(failure));
-
-        var thrown = await Xunit.Assert.ThrowsAsync<InvalidOperationException>(() =>
-            _service.VerifyEmailAsync(userId, rowId, "token", Xunit.TestContext.Current.CancellationToken));
-
-        thrown.Should().BeSameAs(failure);
-        row.IsVerified.Should().BeFalse();
-    }
-
-    // AdminMarkVerifiedAsync skips the token flow but reuses VerifyEmailAsync's duplicate-email merge-request branch.
 
     [HumansFact]
     public async Task AdminMarkVerifiedAsync_PendingPlainRow_VerifiesAndAudits()
@@ -1873,7 +1669,6 @@ public class UserEmailServiceTests
 
         var result = await _service.AdminMarkVerifiedAsync(userId, rowId, actorId, Xunit.TestContext.Current.CancellationToken);
 
-        result.MergeRequestCreated.Should().BeFalse();
         result.Email.Should().Be("pending@example.com");
         pending.IsVerified.Should().BeTrue();
         await _repository.Received(1).UpdateUserEmailAsync(pending, Arg.Any<CancellationToken>());
@@ -1887,55 +1682,24 @@ public class UserEmailServiceTests
             Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 
-    [HumansTheory]
-    [Xunit.InlineData(false)]
-    [Xunit.InlineData(true)]
-    public async Task AdminMarkVerifiedAsync_DuplicateEmail_CreatesMergeRequestWithoutVerifying(bool alreadyPending)
+    [HumansFact]
+    public async Task AdminMarkVerifiedAsync_AddressConfirmedOnAnotherAccount_RefusesWithoutVerifying()
     {
-        // Mirrors VerifyEmailAsync's duplicate-handling: if the address is
-        // already verified on another account, the admin path must NOT
-        // silently complete verification — it creates a merge request so
-        // the existing duplicate-account flow handles the collision.
+        // Two accounts with one confirmed address are one person: they are merged, never verified twice.
         var userId = Guid.NewGuid();
-        var otherUserId = Guid.NewGuid();
-        var actorId = Guid.NewGuid();
         var rowId = Guid.NewGuid();
-        var pending = new UserEmail
-        {
-            Id = rowId,
-            UserId = userId,
-            Email = "shared@example.com",
-            IsVerified = false,
-            Provider = null,
-        };
-        var conflicting = new UserEmail
-        {
-            Id = Guid.NewGuid(),
-            UserId = otherUserId,
-            Email = "shared@example.com",
-            IsVerified = true,
-        };
-
-        _repository.GetUserEmailByIdAndUserIdAsync(rowId, userId, Arg.Any<CancellationToken>())
-            .Returns(pending);
+        var pending = new UserEmail { Id = rowId, UserId = userId, Email = "shared@example.com" };
+        _repository.GetUserEmailByIdAndUserIdAsync(rowId, userId, Arg.Any<CancellationToken>()).Returns(pending);
         _repository.GetUserEmailsByAddressAsync(Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
-            .Returns([conflicting]);
-        _mergeRepository.HasPendingForEmailIdAsync(rowId, Arg.Any<CancellationToken>())
-            .Returns(alreadyPending);
+            .Returns([new UserEmail { Id = Guid.NewGuid(), UserId = Guid.NewGuid(), Email = "shared@example.com", IsVerified = true }]);
 
-        var result = await _service.AdminMarkVerifiedAsync(userId, rowId, actorId, Xunit.TestContext.Current.CancellationToken);
+        var result = await _service.AdminMarkVerifiedAsync(
+            userId, rowId, Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
 
-        result.MergeRequestCreated.Should().BeTrue();
+        result.ErrorKey.Should().Be("Users_Profile_EmailVerifiedOnAnotherAccount");
         pending.IsVerified.Should().BeFalse();
-        await _mergeRepository.Received(alreadyPending ? 0 : 1).AddAsync(
-            Arg.Is<AccountMergeRequest>(m =>
-                m.TargetUserId == userId
-                && m.SourceUserId == otherUserId
-                && m.PendingEmailId == rowId
-                && m.Status == AccountMergeRequestStatus.Pending),
-            Arg.Any<CancellationToken>());
-        await _repository.DidNotReceive().UpdateUserEmailAsync(
-            Arg.Any<UserEmail>(), Arg.Any<CancellationToken>());
+        await _repository.DidNotReceive().UpdateUserEmailAsync(Arg.Any<UserEmail>(), Arg.Any<CancellationToken>());
+        _auditLogService.ReceivedCalls().Should().BeEmpty();
     }
 
     [HumansFact]
@@ -1951,7 +1715,6 @@ public class UserEmailServiceTests
         result.NoPendingVerification.Should().BeTrue();
         result.Email.Should().BeEmpty();
         result.ErrorKey.Should().BeNull();
-        result.MergeRequestCreated.Should().BeFalse();
         await _repository.DidNotReceive().UpdateUserEmailAsync(Arg.Any<UserEmail>(), Arg.Any<CancellationToken>());
     }
 
@@ -1975,7 +1738,6 @@ public class UserEmailServiceTests
         result.NoPendingVerification.Should().BeTrue();
         result.Email.Should().BeEmpty();
         result.ErrorKey.Should().BeNull();
-        result.MergeRequestCreated.Should().BeFalse();
         await _repository.DidNotReceive().UpdateUserEmailAsync(Arg.Any<UserEmail>(), Arg.Any<CancellationToken>());
     }
 
@@ -2002,7 +1764,6 @@ public class UserEmailServiceTests
         result.NoPendingVerification.Should().BeTrue();
         result.Email.Should().BeEmpty();
         result.ErrorKey.Should().BeNull();
-        result.MergeRequestCreated.Should().BeFalse();
         await _repository.DidNotReceive().UpdateUserEmailAsync(Arg.Any<UserEmail>(), Arg.Any<CancellationToken>());
     }
 

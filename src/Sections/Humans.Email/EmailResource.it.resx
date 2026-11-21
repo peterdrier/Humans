@@ -63,6 +63,7 @@
   <data name="Email_Outbox_DescriptionAdmin" xml:space="preserve"><value>Email che il sistema ha inviato a questo human.</value></data>
   <data name="Email_Outbox_DescriptionSelf" xml:space="preserve"><value>Email che il sistema ti ha inviato (negli ultimi 150 giorni).</value></data>
   <data name="Email_Outbox_Empty" xml:space="preserve"><value>Nessuna email registrata.</value></data>
+  <data name="Email_Outbox_BodyHidden" xml:space="preserve"><value>Inviata a {0}. Il testo compare qui quando quell'indirizzo è confermato su questo account.</value></data>
   <data name="Email_Outbox_Subject" xml:space="preserve"><value>Oggetto</value></data>
   <data name="Email_Outbox_MyTitle" xml:space="preserve"><value>Le mie email</value></data>
   <data name="Email_SendMessage_Title" xml:space="preserve">

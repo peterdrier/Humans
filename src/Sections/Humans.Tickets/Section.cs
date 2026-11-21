@@ -20,6 +20,7 @@ using Humans.Tickets.Jobs;
 using Humans.Tickets.Models;
 using Humans.Tickets.Services;
 using Humans.Tickets.Services.Checkout;
+using Humans.Tickets.Services.Delivery;
 using Humans.Tickets.Services.Stores;
 using Humans.Tickets.ViewComponents;
 using Humans.Users.Contracts;
@@ -147,6 +148,9 @@ public sealed class Section :
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<TicketCheckoutService>());
         services.AddScoped<IUserMerge>(sp => sp.GetRequiredService<TicketCheckoutService>());
         services.AddScoped<ITicketGateLookup>(sp => sp.GetRequiredService<TicketCheckoutService>());
+        services.AddSingleton<TicketCodeImages>();
+        services.AddScoped<TicketDeliveryService>();
+        services.AddScoped<ITicketDelivery, TicketDeliveryHandOff>();
         services.AddScoped<TicketCheckoutReconcileJob>();
         services.AddScoped<TicketReconJob>();
     }
@@ -290,6 +294,8 @@ public sealed class Section :
         new(UserPartSlots.Profile, typeof(OnsiteChipViewComponent), Weight: 10),
         new(UserPartSlots.ProfileSidebar, typeof(TicketHoldingsViewComponent)),
         new(UserPartSlots.AdminDetailSidebar, typeof(TicketHoldingsViewComponent)),
+        new(UserPartSlots.ProfileSidebar, typeof(IssuedTicketsViewComponent)),
+        new(UserPartSlots.AdminDetailSidebar, typeof(IssuedTicketsViewComponent)),
     ];
 }
 

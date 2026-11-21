@@ -53,7 +53,7 @@ public class DevPersonaSeederTests
         _userEmails.AddVerifiedEmailAsync(Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(new UserEmailAddResult(Guid.NewGuid(), true, false));
         _profileEditor.SaveProfileAsync(Arg.Any<Guid>(), Arg.Any<ProfileSaveRequest>(), Arg.Any<CancellationToken>())
-            .Returns(new ProfileEditResult(true, Guid.NewGuid()));
+            .Returns(new ProfileEditResult(true));
     }
 
     private DevPersonaSeeder BuildSut() => new(

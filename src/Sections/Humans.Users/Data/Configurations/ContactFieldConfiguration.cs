@@ -43,6 +43,10 @@ internal sealed class ContactFieldConfiguration : IEntityTypeConfiguration<Conta
             .HasForeignKey(cf => cf.UserId)
             .OnDelete(DeleteBehavior.Cascade);
 
+        // Declared so the model matches the default EF's nullable-to-required migration leaves in the
+        // database (required-columns-need-approval). Every write sets a real user id.
+        builder.Property(cf => cf.UserId).HasDefaultValue(Guid.Empty);
+
         builder.HasIndex(cf => cf.UserId);
 
         builder.Ignore(cf => cf.DisplayLabel);

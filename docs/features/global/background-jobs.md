@@ -202,12 +202,7 @@ See [Profiles — Account Deletion](../../../src/Sections/Humans.Users/Docs/feat
    - Add: New coordinators
    - Remove: Users who are no longer coordinator anywhere
 
-3. SyncBoardTeamAsync()
-   - Eligible: Users with active "Board" RoleAssignment + Board-team consents
-   - Add: New board members
-   - Remove: Users whose assignment expired
-
-4. For each membership change:
+3. For each membership change:
    - Update Google resource permissions
    - Log change for audit
 ```

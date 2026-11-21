@@ -35,6 +35,7 @@ public sealed class Section :
     ISectionAccessMatrix,
     ISectionAdminTiles,
     ISectionChrome,
+    ISectionDataMigrations,
     ISectionHelp,
     ISectionJobs,
     ISectionNav,
@@ -109,6 +110,30 @@ public sealed class Section :
 
         services.AddSingleton<TeamsMetricsService>();
         services.AddHostedService(sp => sp.GetRequiredService<TeamsMetricsService>());
+    }
+
+    internal const string RetireGovernanceBodiesKey = "teams.retire-governance-bodies";
+
+    IEnumerable<DataMigration> ISectionDataMigrations.Migrations() =>
+    [
+        new(RetireGovernanceBodiesKey, "Teams",
+            "Deactivate the Asociados, Colaboradores and Board teams, ending their memberships, now that Governance runs those bodies",
+            "The three governance system teams, when their rows are deleted",
+            RetireGovernanceBodiesStatusAsync,
+            (sp, actorUserId, ct) => sp.GetRequiredService<ITeamManagementService>().RetireGovernanceBodyTeamsAsync(actorUserId, ct)),
+    ];
+
+    private static async Task<DataMigrationStatus> RetireGovernanceBodiesStatusAsync(IServiceProvider sp, CancellationToken ct)
+    {
+        var teams = sp.GetRequiredService<ITeamService>();
+        var rows = new List<IReadOnlyList<string>>();
+        foreach (var teamId in TeamService.GovernanceBodyTeamIds)
+        {
+            if (await teams.GetTeamAsync(teamId, ct) is { IsActive: true } team)
+                rows.Add([team.Name, team.Members.Count.ToString(CultureInfo.InvariantCulture)]);
+        }
+
+        return new(["Team", "Active members"], rows);
     }
 
     string IIssueQueueOwner.QueueKey => "Teams";

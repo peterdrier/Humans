@@ -6,38 +6,27 @@ namespace Humans.Users.Services;
 
 internal interface IAccountMergeService : IApplicationService
 {
+    /// <summary>Requests left over from before merges were self-service. Nothing creates new ones.</summary>
     Task<IReadOnlyList<AccountMergeRequestSnapshot>> GetPendingRequestsAsync(CancellationToken ct = default);
-
-    Task<AccountMergeRequestSnapshot?> GetByIdAsync(Guid id, CancellationToken ct = default);
-
-    /// <summary>
-    /// The admin picks the survivor (the request's source or target), so a wrong-direction request can be flipped
-    /// here. Returns a refusal if the request is missing or not pending, or
-    /// <paramref name="survivorUserId"/> isn't one of its accounts.
-    /// </summary>
-    Task<AccountMergeResult> AcceptAsync(Guid requestId, Guid adminUserId, Guid survivorUserId,
-        string? notes = null, CancellationToken ct = default);
 
     /// <summary>
     /// The one merge primitive: runs the <c>IUserMerge</c> fan-out, settles the optional pending email (non-fatal),
     /// then tombstones the archived account last, which is the commit point. No wrapping transaction, so it is
-    /// safely retryable. Returns a refusal if the ids are equal, either user is missing,
-    /// or either is already tombstoned (merged or deleted).
+    /// safely retryable: a fault part-way is audited as <c>AccountMergeFailed</c> and merging the same pair
+    /// again finishes it. Returns a refusal if the ids are equal, either user is missing, or either is already
+    /// tombstoned (merged or deleted). <paramref name="actorUserId"/> is the admin, or the account holder
+    /// merging their own two accounts.
     /// </summary>
     Task<AccountMergeResult> MergeAsync(
-        Guid survivorUserId, Guid archivedUserId, Guid adminUserId,
+        Guid survivorUserId, Guid archivedUserId, Guid actorUserId,
         string? notes = null, Guid? pendingEmailIdToVerify = null,
         CancellationToken ct = default);
 
-    /// <summary>Removes the pending email; the accounts are untouched.</summary>
-    Task<AccountMergeResult> RejectAsync(Guid requestId, Guid adminUserId, string? notes = null, CancellationToken ct = default);
-
     /// <summary>
-    /// Closes an orphan request whose accounts are already merged: marks it Accepted with no data or email change.
-    /// Returns a refusal if the request is missing, not pending, or neither account is
-    /// merged.
+    /// Dismisses a leftover request from before merges were self-service: removes its pending email; the
+    /// accounts are untouched.
     /// </summary>
-    Task<AccountMergeResult> ReconcileMergedRequestAsync(Guid requestId, Guid adminUserId, CancellationToken ct = default);
+    Task<AccountMergeResult> RejectAsync(Guid requestId, Guid adminUserId, string? notes = null, CancellationToken ct = default);
 }
 
 internal sealed record AccountMergeRequestSnapshot(

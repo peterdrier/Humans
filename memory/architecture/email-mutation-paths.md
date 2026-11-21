@@ -18,17 +18,17 @@ HARD RULE. One service entry point rewrites an email address, and `User.Email` i
 `IUserEmailService.ReconcileOAuthIdentityAsync(userId, provider, providerKey, claimEmail, claimEmailVerified, ct)`:
 
 1. Tagged row already at the claim email → `NoChange`.
-2. Another user verified-holds the claim email: unverified claim → block, audit
-   `OAuthRenameCollisionBlocked`, return `CrossUserBlocked`, no mutation. Verified claim → Google wins:
-   delete the other user's row, write paired `OAuthRenameCollision` + `UserEmailDisplacedByOAuthRename`
-   audits, continue, return `CrossUserDisplaced`.
+2. Another user verified-holds the claim email → block, whether or not the claim is verified: audit
+   `OAuthRenameCollisionBlocked`, return `CrossUserBlocked`, no mutation. A sign-in never moves an address
+   between accounts; one person with two accounts merges them through the emailed confirmation link
+   (`EmailConfirmationService`).
 3. Tagged row elsewhere + a sibling row holds the claim → move the tag onto the sibling, union
    `IsPrimary`, force `IsVerified`, delete the old row → `TagMoved`.
 4. Tagged row elsewhere + no sibling → rewrite `Email` in place → `EmailRewritten`.
 5. No tagged row + sibling holds the claim → attach the tag → `TagMoved`.
 6. No tagged row, no sibling, no collision → insert a verified tagged row → `NewRowCreated`.
 
-Then it runs `EnsurePrimaryInvariantAsync` for every affected user, invalidates `FullProfile`, commits,
+Then it runs `EnsurePrimaryInvariantAsync` for the user, invalidates `FullProfile`, commits,
 and fans out `IUserEmailRemovalListener` (Google) for any address that left. The service writes every
 audit row; the controller writes none.
 
