@@ -580,6 +580,19 @@ public sealed class TicketCheckoutServiceTests
     }
 
     [HumansFact]
+    public async Task Rename_refuses_an_unverified_address_of_someone_who_already_holds_a_ticket()
+    {
+        var ticket = await PaidAdultAsync();
+        await BuyAndPayAsync(Buy(), _otherBuyerId);
+        _provisioning.FindOrCreateUserByEmailAsync("old@example.com", "Cy", ContactSource.Manual, Arg.Any<CancellationToken>())
+            .Returns(new AccountProvisioningResult(_otherBuyerId, Created: false));
+
+        (await _service.RenameTicketAsync(ticket.Id, "Cy", "old@example.com", "Asked nicely", _adminId, Ct))
+            .Refusal.Should().Be("That person already holds a ticket for this event.");
+        ticket.HolderUserId.Should().Be(_buyerId);
+    }
+
+    [HumansFact]
     public async Task Rename_needs_a_reason_within_the_limit()
     {
         var ticket = await PaidAdultAsync();

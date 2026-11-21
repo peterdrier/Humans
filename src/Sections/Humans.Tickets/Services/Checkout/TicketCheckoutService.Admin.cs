@@ -40,8 +40,17 @@ internal sealed partial class TicketCheckoutService
                 return new("That person already holds a ticket for this event.");
         }
         // Only once the rename is allowed, so a refused move leaves no account behind.
-        var holderUserId = existing?.Id
-            ?? (await provisioning.FindOrCreateUserByEmailAsync(holderEmail, holderName, ContactSource.Manual, ct)).UserId;
+        var holderUserId = existing?.Id ?? Guid.Empty;
+        if (existing is null)
+        {
+            var provisioned = await provisioning.FindOrCreateUserByEmailAsync(holderEmail, holderName, ContactSource.Manual, ct);
+            holderUserId = provisioned.UserId;
+            // The verified-only lookup above misses an unverified address on an existing account.
+            if (!provisioned.Created && holderUserId != fromUserId
+                && await HoldsTicketAsync(ticket.SalesEventId, holderUserId, clock.GetCurrentInstant(), ct))
+                return new("That person already holds a ticket for this event.");
+            samePerson = holderUserId == fromUserId;
+        }
 
         ticket.HolderUserId = holderUserId;
         ticket.HolderName = holderName;
