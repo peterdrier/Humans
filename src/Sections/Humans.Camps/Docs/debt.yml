@@ -2,8 +2,4 @@
 # /debt-sweep pools every src/Sections/*/Docs/debt.yml into the same inbox as the central ledger.
 version: 1
 next_id: 11
-inbox:
-  - added: 2026-11-21
-    id: CAMPS-10
-    what: "CampSpecialRole is public in Humans.Camps.Contracts but is consumed only by Camps' internal role definitions, repository, management and views. Move it into the owning domain after auditing the full EF model, seed data and provider conversion for equivalence; preserve None=0, Lead=1 and Workshop=2. Discovered during the section-only type audit; separated from view-model visibility changes because this enum is persisted. Found by the debt sweep."
-    review: panel
+inbox: []

@@ -1,10 +1,10 @@
-namespace Humans.Camps.Contracts;
+namespace Humans.Camps.Domain;
 
 /// <summary>
 /// Non-<see cref="None"/> definitions are system-managed: <c>CampRoleService</c> rejects every edit except
 /// <c>SlotCount</c> and <c>Description</c>.
 /// </summary>
-public enum CampSpecialRole
+internal enum CampSpecialRole
 {
     None = 0,
 

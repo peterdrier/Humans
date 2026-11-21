@@ -137,11 +137,13 @@ Aggregate-local navs: `CampRoleAssignment.CampSeason`, `CampRoleAssignment.Defin
 
 ### Camp enums
 
+`CampSpecialRole` belongs to the internal domain; the public contracts do not expose it. Its stored strings and role-seeding behavior remain unchanged.
+
 | Enum | Values |
 |------|--------|
 | CampSeasonStatus | Pending, Active, Full, Rejected, Withdrawn |
 | CampMemberStatus | Pending, Active, Removed |
-| CampSpecialRole | None, Lead, Workshop |
+| CampSpecialRole (internal domain) | None = 0, Lead = 1, Workshop = 2 |
 | CampVibe | Adult, ChillOut, ElectronicMusic, Games, Queer, Sober, Lecture, LiveMusic, Wellness, Workshop |
 | CampNameSource | Manual, NameChange |
 | YesNoMaybe | Yes, No, Maybe |
