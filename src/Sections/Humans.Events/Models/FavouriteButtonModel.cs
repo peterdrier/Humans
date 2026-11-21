@@ -1,10 +1,10 @@
-namespace Humans.Events.Contracts;
+namespace Humans.Events.Models;
 
 /// <summary>
 /// The JS contract between <c>_FavouriteButton.cshtml</c> and <c>wwwroot/js/site.js</c>: the toggle goes through the
 /// JSON API without a reload, so filters and scroll position survive.
 /// </summary>
-public sealed class FavouriteButtonModel
+internal sealed class FavouriteButtonModel
 {
     public required Guid EventId { get; init; }
 
