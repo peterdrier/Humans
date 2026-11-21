@@ -24,7 +24,7 @@ payment in (3-D Secure, a debit settling for days, a failed debit, a chargeback,
 reaches Tickets, and a repeated call never charges or refunds twice. What Stripe charged, refunded, kept as fees
 and paid out to the bank reconciles against Humans' orders per period, with a drill-down where the two differ.
 
-**Deliberate choices.** Stripe hosted Checkout, not an embedded form. Its own restricted key and webhook on the ticket
+**Deliberate choices.** Its own restricted key and webhook on the ticket
 Stripe account, apart from the Store's Stripe integration. API refunds are allowed here as the one money-out exception.
 Nothing is stored in this section.
 
