@@ -1370,8 +1370,13 @@ public class GateServiceTests
         await RecordIssuedAsync();
         GateDb.GateScanEvents.Add(new GateScanEvent
         {
-            Id = Guid.NewGuid(), Barcode = "OTHER", AdmitDedupeKey = "OTHER", Verdict = GateVerdict.Admitted,
-            GuestUserId = GuestId, ScannedByUserId = AgentId, OccurredAt = Clock.GetCurrentInstant(),
+            Id = Guid.NewGuid(),
+            Barcode = "OTHER",
+            AdmitDedupeKey = "OTHER",
+            Verdict = GateVerdict.Admitted,
+            GuestUserId = GuestId,
+            ScannedByUserId = AgentId,
+            OccurredAt = Clock.GetCurrentInstant(),
         });
         await GateDb.SaveChangesAsync(Ct);
 
