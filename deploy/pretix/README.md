@@ -41,6 +41,11 @@ pretix only takes the payment.
   only in Humans' environment.
 - `pretix-cron` runs pretix's periodic tasks every 5 minutes (order expiry, webhook retries).
 - Chargebacks show in pretix as an external refund waiting to be processed. Leave it unprocessed until the
-  dispute is final: cancel it if the event won (that clears the flag in Humans), process it if lost. A processed
-  one can no longer be cancelled, so a dispute won after that stays flagged in Humans.
+  dispute is final: cancel it if the event won (that clears the flag in Humans); if lost, process it choosing to
+  cancel the order (mark refunded). Processing without cancel reopens the order and its pretix page asks the buyer
+  to pay the full amount again. A processed one can no longer be cancelled, so a dispute won after that stays
+  flagged in Humans.
+- Humans counts a Stripe dashboard refund while it is still unprocessed, so leave it unprocessed in pretix:
+  processing a partial one reopens the order owing the refunded amount. Refund through Humans instead of the
+  Stripe dashboard where possible.
 - Upgrades: bump the image tag in both services; migrations run on start.
