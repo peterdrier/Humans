@@ -78,14 +78,15 @@ None. The section owns no tables. The Checkout Session is the record of the paym
   sessions to `ITicketCheckoutEvents`: `checkout.session.*` events by their session, `charge.refunded` by the sessions
   of the refunded PaymentIntent. An invalid signature answers 400, so a wrong secret shows as failed deliveries in Stripe. `refund.*` and `charge.dispute.*` events are mapped like `charge.refunded`.
 - Cancelling expires the session; Stripe refusing that is an error only when the session is complete and not failed.
-- `Setup` shows both variables only as set or missing, and test or live mode from the key prefix. `CheckAsync` lists one Checkout Session and reports a missing webhook secret; it cannot test the refund permission without refunding.
+- `Setup` shows both variables only as set or missing, and test or live mode from the key prefix. `CheckAsync` lists one Checkout Session, balance transaction and payout (each its own finding, so a key missing a read the reconciliation needs shows before deploy) and reports a missing webhook secret; it cannot test the refund permission without refunding.
 - `ListOrdersAsync` lists every Checkout Session created in the period, whatever made it, since the account sells tickets only. Each session carries `humans_ticket_count` (ticket lines, free ones included) for reconciliation; one without it has no count. Refunds are read only for a charge that shows some. `EventRefOf` is always null.
+- `GetPaymentLedgerAsync` lists the account's balance transactions created in the period (kind from Stripe's `reporting_category`) and its payouts. A movement's order is the `humans_ticket_order_id` on its charge, refund or dispute, else on its PaymentIntent: those created from a day before the period are listed once, older ones read one by one. An automatic payout's contents are its balance transactions (`payout=`); a manual payout's are not listed.
 
 ## Settings
 
 | Variable | Purpose |
 |---|---|
-| `STRIPE_BOXOFFICE_KEY` | Restricted key on the ticket Stripe account: Checkout Sessions write, PaymentIntents, Charges, Disputes and Balance transactions read, Refunds write. Unset means `IsConfigured` is false and Tickets opens no checkout on this backend |
+| `STRIPE_BOXOFFICE_KEY` | Restricted key on the ticket Stripe account: Checkout Sessions write, PaymentIntents, Charges, Disputes, Balance transactions and Payouts read, Refunds write. Unset means `IsConfigured` is false and Tickets opens no checkout on this backend |
 | `STRIPE_BOXOFFICE_WEBHOOK_SECRET` | Signing secret of the endpoint `https://<host>/BoxOffice/StripeWebhook` subscribed to `checkout.session.completed`, `checkout.session.async_payment_succeeded`, `checkout.session.async_payment_failed`, `checkout.session.expired`, `charge.refunded`, `refund.updated`, `refund.failed`, `charge.dispute.created`, `charge.dispute.closed`, `charge.dispute.funds_withdrawn`, `charge.dispute.funds_reinstated`. Without it, Tickets still learns outcomes from the return page and its 5-minute poll |
 
 Tickets' `/Tickets/Admin/Sales` shows whether the backend is configured.

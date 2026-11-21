@@ -12,9 +12,30 @@ namespace Humans.Tickets.Services;
 
 /// <summary>Member-facing copy renders in the recipient's culture.</summary>
 internal sealed class TicketsEmails(
+    IOptions<EmailSettings> settings,
     IStringLocalizer<TicketsResource> localizer,
     ILogger<TicketsEmails> logger)
 {
+    private readonly EmailSettings _settings = settings.Value;
+
+    /// <summary>Always English, to the ticketing team's mailbox: what the daily reconciliation found wrong.</summary>
+    public EmailMessage ReconciliationAlert(IReadOnlyList<string> findings, string reconUrl)
+    {
+        var fullUrl = $"{_settings.BaseUrl.TrimEnd('/')}{(reconUrl.StartsWith('/') ? "" : "/")}{reconUrl}";
+        var items = string.Concat(findings.Select(f => $"<li>{Encode(f)}</li>"));
+        return new EmailMessage(
+            TicketConstants.TicketsTeamEmail, "Ticket team", UserId: null,
+            "Ticket reconciliation needs a look",
+            $"""
+                <p>Last night's ticket reconciliation found money that does not add up:</p>
+                <ul>{items}</ul>
+                <p>Research each difference on the reconciliation page:
+                <a href="{Encode(fullUrl)}">Open reconciliation</a></p>
+                <p>This mail repeats every night until the reconciliation balances.</p>
+                """,
+            "ticket_reconciliation_alert", MessageCategory.System);
+    }
+
     /// <summary>The invited person may have no account yet, so it goes to the address the holder typed.</summary>
     public EmailMessage ResaleInvitation(
         string toEmail, string holderName, string eventName, string claimUrl, string? culture = null)
