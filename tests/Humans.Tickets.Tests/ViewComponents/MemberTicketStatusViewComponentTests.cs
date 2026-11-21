@@ -32,9 +32,11 @@ public sealed class MemberTicketStatusViewComponentTests
         IsOffSeason: isOffSeason);
 
     private MemberTicketStatusViewComponent BuildSut(
-        TicketVendorSettings? vendor = null, TicketSalesEvent? sale = null, TicketCheckoutTicket? held = null)
+        TicketVendorSettings? vendor = null, TicketSalesEvent? sale = null, TicketCheckoutTicket? held = null,
+        IReadOnlyList<BuyPage>? buyPages = null)
     {
         var checkout = Substitute.For<ITicketCheckoutService>();
+        checkout.GetBuyPagesAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(buyPages ?? []);
         checkout.GetSalesEventsAsync(Arg.Any<CancellationToken>()).Returns(sale is null ? [] : [sale]);
         checkout.GetTicketsForHolderAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(held is null ? [] : [held]);
         var httpContext = new DefaultHttpContext
@@ -110,6 +112,25 @@ public sealed class MemberTicketStatusViewComponentTests
 
         var model = (MemberTicketStatusViewModel)((ViewViewComponentResult)result).ViewData!.Model!;
         model.SellsInHumans.Should().BeTrue();
+    }
+
+    [HumansTheory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task InvokeAsync_OffSeasonWithInvitedOnlySale_OffersTheBuyPageOnlyToTheInvited(bool invited)
+    {
+        _settings.GetActiveEventSettings().Returns(Event(isOffSeason: true));
+        var sale = Sale(TicketSalesMode.InvitedOnly);
+        IReadOnlyList<BuyPage> pages = invited
+            ? [new BuyPage(sale, "Test Event", null, null, null, AlreadyHoldsTicket: false, "Ana", [])]
+            : [];
+
+        var result = await BuildSut(sale: sale, buyPages: pages).InvokeAsync();
+
+        if (invited)
+            ((MemberTicketStatusViewModel)((ViewViewComponentResult)result).ViewData!.Model!).SellsInHumans.Should().BeTrue();
+        else
+            result.Should().BeOfType<ContentViewComponentResult>().Which.Content.Should().BeEmpty();
     }
 
     [HumansFact]

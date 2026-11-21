@@ -92,7 +92,8 @@ sold under is read (`EventRefOf`), beside the events the setups sell through now
    price rules and supporter levels as rows, the VAT as a percentage and sales close in the organisation's time zone.
    **Early sales** (and test purchases): mode `InvitedOnly` sells only to members holding an active grant in a program
    with an `EarlyAccess` rule (e.g. asociados and colaboradores in a wave zero, or a few testers), with the rule's
-   amount off while the mode lasts (none when left empty). Everyone else sees nothing on sale; partner tickets and
+   amount off while the mode lasts (none when left empty; someone in several early access programs gets the largest
+   amount, not the sum). The dashboard ticket card links the invited to the buy page. Everyone else sees nothing on sale; partner tickets and
    resale wait for general sale. Switching to `Open` ends the early amount.
 2. A member opens `/Tickets/Buy` (linked from the dashboard ticket card while any event sells through Humans), which
    lists every event that is not Closed (an `InvitedOnly` one only to the invited), each priced in its own time zone and checked for holdings on its own. They see

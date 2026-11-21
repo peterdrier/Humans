@@ -968,7 +968,7 @@ public sealed class TicketCheckoutServiceTests
     }
 
     [HumansFact]
-    public async Task Invited_only_sells_fresh_tickets_to_early_access_holders_with_the_early_amount_off_and_to_nobody_else()
+    public async Task Invited_only_sells_fresh_tickets_to_early_access_holders_with_the_largest_early_amount_off_and_to_nobody_else()
     {
         var invitedProgram = Guid.NewGuid();
         _salesEvent.PriceRules.Add(new TicketPriceRule
@@ -978,9 +978,20 @@ public sealed class TicketCheckoutServiceTests
             AmountMinor = 2500,
             Label = "Wave zero",
         });
+        var secondProgram = Guid.NewGuid();
+        _salesEvent.PriceRules.Add(new TicketPriceRule
+        {
+            GrantProgramId = secondProgram,
+            Kind = TicketPriceRuleKind.EarlyAccess,
+            AmountMinor = 1000,
+            Label = "Colaboradores",
+        });
         _salesEvent.Mode = TicketSalesMode.InvitedOnly;
         _grants.GetActiveGrantsAsync(_buyerId, Arg.Any<CancellationToken>())
-            .Returns([new ActiveGrantInfo(Guid.NewGuid(), invitedProgram, "Asociados", _event.Id, Now)]);
+            .Returns([
+                new ActiveGrantInfo(Guid.NewGuid(), invitedProgram, "Asociados", _event.Id, Now),
+                new ActiveGrantInfo(Guid.NewGuid(), secondProgram, "Colaboradores", _event.Id, Now),
+            ]);
 
         (await _service.GetBuyPagesAsync(_otherBuyerId, Ct)).Should().BeEmpty();
         (await _service.GetPublicSalesAsync(Ct)).Should().BeEmpty();
