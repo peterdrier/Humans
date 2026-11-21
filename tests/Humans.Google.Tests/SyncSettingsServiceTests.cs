@@ -6,6 +6,9 @@ using Microsoft.EntityFrameworkCore;
 using NodaTime;
 using NodaTime.Testing;
 using Humans.Google.Data;
+using Humans.Google.Services;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging.Abstractions;
 using SyncSettingsService = Humans.Google.Services.SyncSettingsService;
 
 namespace Humans.Google.Tests;
@@ -118,6 +121,55 @@ public class SyncSettingsServiceTests : IDisposable
         var result = await _service.GetModeAsync(SyncServiceType.Discord, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().Be(SyncMode.None);
+    }
+
+    [HumansFact]
+    public async Task CachingDecorator_ServesModesFromMemory_UntilAModeChangeClearsIt()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        _seedContext.SyncServiceSettings.Add(new SyncServiceSettings
+        {
+            Id = Guid.NewGuid(),
+            ServiceType = SyncServiceType.GoogleGroups,
+            SyncMode = SyncMode.None,
+            UpdatedAt = _clock.GetCurrentInstant()
+        });
+        await _seedContext.SaveChangesAsync(ct);
+        var inner = new CountingSyncSettings(_service);
+        var services = new ServiceCollection();
+        services.AddKeyedScoped<ISyncSettingsService>(CachingSyncSettingsService.InnerServiceKey, (_, _) => inner);
+        var cache = new CachingSyncSettingsService(
+            services.BuildServiceProvider().GetRequiredService<IServiceScopeFactory>(),
+            NullLogger<CachingSyncSettingsService>.Instance);
+
+        (await cache.GetModeAsync(SyncServiceType.GoogleGroups, ct)).Should().Be(SyncMode.None);
+        (await cache.GetModeAsync(SyncServiceType.GoogleDrive, ct)).Should().Be(SyncMode.None);
+        inner.Reads.Should().Be(1);
+
+        await cache.UpdateModeAsync(SyncServiceType.GoogleGroups, SyncMode.AddAndRemove, Guid.NewGuid(), ct);
+
+        (await cache.GetModeAsync(SyncServiceType.GoogleGroups, ct)).Should().Be(SyncMode.AddAndRemove);
+    }
+
+    private sealed class CountingSyncSettings(ISyncSettingsService real) : ISyncSettingsService
+    {
+        public int Reads { get; private set; }
+
+        public Task<IReadOnlyList<SyncServiceSettingsInfo>> GetAllAsync(CancellationToken ct = default)
+        {
+            Reads++;
+            return real.GetAllAsync(ct);
+        }
+
+        public Task<SyncMode> GetModeAsync(SyncServiceType serviceType, CancellationToken ct = default)
+        {
+            Reads++;
+            return real.GetModeAsync(serviceType, ct);
+        }
+
+        public Task UpdateModeAsync(
+            SyncServiceType serviceType, SyncMode mode, Guid actorUserId, CancellationToken ct = default) =>
+            real.UpdateModeAsync(serviceType, mode, actorUserId, ct);
     }
 
     private void SeedSettings(int count)

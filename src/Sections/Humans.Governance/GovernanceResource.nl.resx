@@ -815,4 +815,13 @@
   <data name="Governance_Meter_AudienceBoard" xml:space="preserve"><value>het bestuur</value></data>
   <data name="Governance_Status_Board" xml:space="preserve"><value>Bestuur</value></data>
   <data name="Governance_MemberSince" xml:space="preserve"><value>Lid sinds</value></data>
+  <data name="Governance_Position" xml:space="preserve"><value>Functie</value></data>
+  <data name="Governance_Position_President" xml:space="preserve"><value>Voorzitter</value></data>
+  <data name="Governance_Position_VicePresident" xml:space="preserve"><value>Vicevoorzitter</value></data>
+  <data name="Governance_Position_Secretary" xml:space="preserve"><value>Secretaris</value></data>
+  <data name="Governance_Position_Treasurer" xml:space="preserve"><value>Penningmeester</value></data>
+  <data name="Governance_Position_None" xml:space="preserve"><value>Geen functie</value></data>
+  <data name="Governance_Save" xml:space="preserve"><value>Opslaan</value></data>
+  <data name="Governance_BoardPositionSaved" xml:space="preserve"><value>Bestuursfunctie opgeslagen.</value></data>
+  <data name="Governance_BoardPositionNotOnBoard" xml:space="preserve"><value>Alleen een huidig bestuurslid kan een bestuursfunctie bekleden.</value></data>
 </root>

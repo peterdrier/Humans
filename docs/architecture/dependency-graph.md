@@ -124,7 +124,6 @@ graph LR
     Consent -.-> Governance
     Consent -.-> Notifications
     Consent -.-> Onboarding
-    Consent -.-> Shifts
     Consent -.-> Teams
     Consent -.-> Users
     Containers --> Settings
@@ -239,12 +238,12 @@ graph LR
     Shifts --> Consent
     Shifts --> EarlyEntry
     Shifts --> Issues
-    Shifts --> Onboarding
     Shifts --> Settings
     Shifts --> Teams
     Shifts -.-> Camps
     Shifts -.-> Email
     Shifts -.-> Notifications
+    Shifts -.-> Onboarding
     Shifts -.-> Tickets
     Store --> AuditLog
     Store --> Budget

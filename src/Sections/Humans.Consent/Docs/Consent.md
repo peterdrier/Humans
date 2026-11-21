@@ -169,7 +169,7 @@ Document archival uses the shared `data-confirm` handler: each click prompts onc
 |-------|--------------|
 | Anyone (including anonymous) | View `/Legal` Statutes page |
 | Any authenticated human | View own consent dashboard at `/Consent`. Sign or re-sign document versions. Accessible during onboarding (before becoming an active member) |
-| ConsentCoordinator, ShiftsAdmin, Board, Admin | Read access to the review queue at `/Consent/ReviewQueue` (`PolicyNames.ReviewQueueAccess`) |
+| ConsentCoordinator, Board, Admin | Read access to the review queue at `/Consent/ReviewQueue` (`PolicyNames.ReviewQueueAccess`) |
 | ConsentCoordinator, Board, Admin | Clear, Flag, or Reject consent checks (`PolicyNames.ConsentCoordinatorBoardOrAdmin`) |
 | Board, Admin | Manage legal documents and document versions at `/Legal/Admin/Documents` (`PolicyNames.BoardOrAdmin`): create, edit, archive, trigger manual sync, edit version summaries |
 
@@ -239,7 +239,7 @@ Document archival uses the shared `data-confirm` handler: each click prompts onc
 
 - Regular humans **cannot** manage legal documents or document versions.
 - ConsentCoordinator **cannot** manage legal documents or versions — they can only review and clear/flag consent checks.
-- ShiftsAdmin **cannot** clear, flag, or reject in the review queue: `PolicyNames.ReviewQueueAccess` lets them read it, and every POST requires `PolicyNames.ConsentCoordinatorBoardOrAdmin`.
+- ShiftsAdmin **cannot** open the review queue: `PolicyNames.ReviewQueueAccess` admits only Consent's own reviewers plus Board and Admin.
 ### ConsentReminder
 
 **Table:** `consent_reminders` — when the re-consent reminder email last went to a member: one row per user id, written by `ConsentReminderService` (the only writer, through `IConsentReminderRepository`) for `SendReConsentReminderJob`.
@@ -284,10 +284,10 @@ GitHub document discovery, metadata/raw content, commit-summary and prefix-conte
 - **Email:** Consent owns its templates — `ConsentEmails` (internal) builds each `EmailMessage` from Consent's own `Consent_Email_*` keys in `ConsentResource`, rendered in the recipient's culture via `CultureScope`; `ConsentEmailPreviews` (`IEmailPreviewContributor`, registered in `Section.Register`) lists them at `/Email/EmailPreview`. Email supplies transport only — `IEmailService.SendAsync` (`memory/architecture/email-templates-live-in-sender.md`, peterdrier/Humans#1651).
 - **AuditLog:** `IAuditLogService` records legal-document administration and version publication through its existing write contract.
 - **Notifications:** `Humans.Notifications.Contracts.INotificationEmitter` (in-app fan-out from `LegalDocumentSyncService`). Consent resolves no notifications itself: once all required consents are complete, `ConsentService` calls `IHumanLifecycleService.RestoreConsentSuspensionAsync`, and Users resolves its own `AccessSuspended` notifications there. Its sources are declared in `ConsentNotificationSources` (`src/Sections/Humans.Consent/ConsentNotificationSources.cs`), one `NotificationSourceDefinition` each: `ReConsentRequired` (actionable, to the active members of the document's team: required doc updated); `LegalDocumentPublished` (actionable, to the active members of the document's team: new required doc published); `ConsentReviewNeeded` (actionable, to consentCoordinator role: retired, purged nightly).
-- **Notification meters:** `ConsentNotificationMeters` (`INotificationMeterContributor`) pushes the review-queue count, read live like the queue's nav pill: "Consent reviews pending" to Admin and Consent Coordinator, "Onboarding profiles pending" to Board and Shifts Admin (`ShiftsRoles.ShiftsAdmin`, the one use of `Humans.Shifts.Contracts`).
+- **Notification meters:** `ConsentNotificationMeters` (`INotificationMeterContributor`) pushes the review-queue count, read live like the queue's nav pill: "Consent reviews pending" to Admin and Consent Coordinator, "Onboarding profiles pending" to Board.
 - **Human Lifecycle:** `IHumanLifecycleService.RestoreConsentSuspensionAsync` — `ConsentService` lifts a consent suspension once all required consents are complete; that call also resolves the `AccessSuspended` notification, inside Users. `ConsentService` does not depend on `ISystemTeamSync` — a consent submit provisions no system-team membership; the scheduled `SystemTeamSyncJob` reconciles Volunteers/Coordinators on name + consents.
 - **Teams / Auth:** `ConsentService` answers the required-consent questions (has a user signed everything a team requires, signed / required counts, who is past the grace period). It reads team memberships through `ITeamService` to resolve which teams' documents apply to a user (their teams, plus Volunteers, plus Coordinators when they coordinate a user-created team), and `IRoleAssignmentService.GetUserIdsWithActiveAssignmentsAsync` for the population the consent deadline applies to.
-- **Shifts:** Consent registers `PolicyNames.ReviewQueueAccess` in its own `ISectionPolicies`, and references Shifts' Contracts leaf only for `ShiftsRoles.ShiftsAdmin`, which that policy admits read-only.
+- **Shifts:** none. Consent references no Shifts project; Shifts reads `IConsentService` for its incomplete-onboarding filter.
 - **Governance:** the review queue reads `IGovernanceService` (membership tiers only; the review judges the name, never tier applications).
 - **Onboarding:** the review queue's Reject calls `IOnboardingIntake.RejectSignupAsync`, which records the rejection here and carries out the state change, team de-provisioning and notice.
 - **Gdpr:** the My Data page posts to Gdpr's `MemberDataController` (export, request deletion) and `UserController` (cancel deletion); Consent references Gdpr's project only for those routes and its existing contributor types. Pending-deletion dates come from `UserInfo`.
