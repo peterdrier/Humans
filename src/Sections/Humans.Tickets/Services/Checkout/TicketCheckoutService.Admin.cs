@@ -1,3 +1,4 @@
+using Humans.AuditLog.Contracts;
 using Humans.Users.Contracts;
 using Humans.Tickets.Contracts;
 using Humans.Tickets.Domain.Checkout;
@@ -17,35 +18,56 @@ internal sealed partial class TicketCheckoutService
         if (ReasonRefusal(reason) is { } refusal)
             return refusal;
         if (holderName.Length == 0 || !LooksLikeEmail(holderEmail))
-            return new("A rename needs the new holder's legal name and email.");
+            return new("A rename needs the holder's legal name and email.");
         var ticket = await repository.GetTicketAsync(ticketId, ct);
         if (ticket is null)
             return new("That ticket does not exist.");
         if (ticket.State != TicketCheckoutTicketState.Valid || ticket.Kind != TicketHolderKind.Adult)
             return new("Only a valid adult ticket can be renamed.");
-        if (ticket.ClassLabel is not null || ticket.CreditsMinor > 0)
-            return new("Only a full price ticket can be renamed; this one was bought at a class price or with credits.");
-        if ((await repository.GetTicketsForSalesEventAsync(ticket.SalesEventId, ct))
-            .Any(t => t.ParentTicketId == ticket.Id && t.State == TicketCheckoutTicketState.Valid))
-            return new("Void or move this ticket's child and companion tickets first.");
 
         var holder = await provisioning.FindOrCreateUserByEmailAsync(holderEmail, holderName, ContactSource.Manual, ct);
-        if (holder.UserId == ticket.HolderUserId)
-            return new("That person already holds this ticket.");
-        if (await HoldsTicketAsync(ticket.SalesEventId, holder.UserId, clock.GetCurrentInstant(), ct))
-            return new("That person already holds a ticket for this event.");
-
         var fromUserId = ticket.HolderUserId;
+        var samePerson = holder.UserId == fromUserId;
+        // Correcting the same person's legal name is always allowed; moving the ticket to someone else is the exception.
+        if (!samePerson)
+        {
+            if (ticket.ClassLabel is not null || ticket.CreditsMinor > 0)
+                return new("Only a full price ticket can move to another person; this one was bought at a class price or with credits.");
+            if ((await repository.GetTicketsForSalesEventAsync(ticket.SalesEventId, ct))
+                .Any(t => t.ParentTicketId == ticket.Id && t.State == TicketCheckoutTicketState.Valid))
+                return new("Void this ticket's child and companion tickets before moving it to another person.");
+            if (await HoldsTicketAsync(ticket.SalesEventId, holder.UserId, clock.GetCurrentInstant(), ct))
+                return new("That person already holds a ticket for this event.");
+        }
+
         ticket.HolderUserId = holder.UserId;
         ticket.HolderName = holderName;
         ticket.HolderEmail = holderEmail;
         await repository.UpdateTicketAsync(ticket, ct);
-        // Names stay out of the timeline (erasure leaves it); the audit entry links both people by id.
+        // The order line follows the ticket, so the new holder can open the order and the old one no longer can.
+        var order = await repository.GetOrderAsync(ticket.OrderId, ct);
+        var line = order?.Lines.FirstOrDefault(l =>
+            l.Kind == CheckoutLineKind.Ticket && l.HolderKind is null or TicketHolderKind.Adult && l.AttendeeUserId == fromUserId);
+        if (order is not null && line is not null)
+        {
+            line.AttendeeUserId = holder.UserId;
+            line.AttendeeName = holderName;
+            line.AttendeeEmail = holderEmail;
+            await repository.UpdateOrderAsync(order, ct);
+        }
+
+        var why = reason.Trim();
+        var what = samePerson ? "name corrected" : "moved to another person";
+        // Names stay out of the timeline (erasure leaves it); the audit rows link the people by id.
         await TimelineAsync(ticket.OrderId, TicketCheckoutOrderEventKind.Renamed,
-            $"Ticket {ticket.Barcode} renamed by the ticketing team: {Truncate(reason.Trim())}", actorUserId, ct);
+            $"Ticket {ticket.Barcode} {what} by the ticketing team: {why}", actorUserId, ct);
+        var description = $"Ticket {ticket.Barcode} {what}" +
+            (samePerson ? string.Empty : $" (from user {fromUserId?.ToString() ?? "none"} to user {holder.UserId})") + $": {why}";
         await auditLog.LogAsync(TicketsAuditActions.TicketCheckoutTicketRenamed, AuditEntityType, ticket.OrderId,
-            $"Ticket {ticket.Barcode} moved from user {fromUserId?.ToString() ?? "none"} to user {holder.UserId}: {Truncate(reason.Trim())}",
-            actorUserId);
+            description, actorUserId, holder.UserId, AuditSubjectTypes.User);
+        if (!samePerson && fromUserId is { } previous)
+            await auditLog.LogAsync(TicketsAuditActions.TicketCheckoutTicketRenamed, AuditEntityType, ticket.OrderId,
+                description, actorUserId, previous, AuditSubjectTypes.User);
         return CheckoutMutationResult.Ok;
     }
 
@@ -59,6 +81,8 @@ internal sealed partial class TicketCheckoutService
             return new("That ticket does not exist.");
         if (ticket.State is not (TicketCheckoutTicketState.Valid or TicketCheckoutTicketState.Offered))
             return new($"The ticket is already {ticket.State}.");
+        if (ticket.ParentTicketId is { } parentId && (await repository.GetTicketAsync(parentId, ct))?.State == TicketCheckoutTicketState.Offered)
+            return new("The adult's ticket is in the resale queue and its refund includes this one: withdraw it from the queue first.");
 
         var offer = (await repository.GetOffersForSalesEventAsync(ticket.SalesEventId, ct))
             .FirstOrDefault(o => o.TicketId == ticket.Id && o.State is TicketResaleOfferState.Open or TicketResaleOfferState.Reserved);
@@ -77,7 +101,7 @@ internal sealed partial class TicketCheckoutService
         var dependents = (await repository.GetTicketsForSalesEventAsync(ticket.SalesEventId, ct))
             .Where(t => t.ParentTicketId == ticket.Id && t.State == TicketCheckoutTicketState.Valid)
             .ToList();
-        var why = Truncate(reason.Trim());
+        var why = reason.Trim();
         foreach (var voided in dependents.Prepend(ticket))
         {
             voided.State = TicketCheckoutTicketState.Void;
@@ -90,7 +114,8 @@ internal sealed partial class TicketCheckoutService
         }
         await auditLog.LogAsync(TicketsAuditActions.TicketCheckoutTicketVoided, AuditEntityType, ticket.OrderId,
             $"Ticket {ticket.Barcode} voided" + (dependents.Count > 0 ? $" with {dependents.Count} dependent ticket(s)" : string.Empty) +
-            $": {why}", actorUserId);
+            (offer is not null ? ", withdrawing its resale offer" : string.Empty) + $": {why}",
+            actorUserId, ticket.HolderUserId, ticket.HolderUserId is null ? null : AuditSubjectTypes.User);
         return CheckoutMutationResult.Ok;
     }
 
@@ -106,14 +131,14 @@ internal sealed partial class TicketCheckoutService
         var parent = await repository.GetTicketAsync(parentTicketId, ct);
         if (parent is null)
             return new("That ticket does not exist.");
-        if (parent.State != TicketCheckoutTicketState.Valid || parent.Kind != TicketHolderKind.Adult)
-            return new("A companion attaches to a valid adult ticket.");
+        if (parent.State != TicketCheckoutTicketState.Valid || parent.Kind != TicketHolderKind.Adult || parent.HolderUserId is not { } parentHolderId)
+            return new("A companion attaches to a valid adult ticket with a holder.");
         var salesEvent = await repository.GetSalesEventAsync(parent.SalesEventId, ct);
         if (salesEvent is null)
             return new("That ticket's sales event no longer exists.");
         var now = clock.GetCurrentInstant();
-        if ((await repository.GetTicketsForSalesEventAsync(parent.SalesEventId, ct))
-            .Any(t => t.ParentTicketId == parent.Id && t.Kind == TicketHolderKind.Companion && t.State == TicketCheckoutTicketState.Valid))
+        var eventTickets = await repository.GetTicketsForSalesEventAsync(parent.SalesEventId, ct);
+        if (eventTickets.Any(t => t.ParentTicketId == parent.Id && t.Kind == TicketHolderKind.Companion && t.State == TicketCheckoutTicketState.Valid))
             return new("This ticket already has a companion.");
         if ((await LoadStockAsync(salesEvent, now, ct)).Held >= salesEvent.Capacity)
             return new("The event is at capacity.");
@@ -121,12 +146,15 @@ internal sealed partial class TicketCheckoutService
         Guid? holderUserId = holderEmail is null
             ? null
             : (await provisioning.FindOrCreateUserByEmailAsync(holderEmail, holderName, ContactSource.Manual, ct)).UserId;
+        if (holderUserId is { } companionId && (companionId == parentHolderId || eventTickets.Any(t =>
+                t.HolderUserId == companionId && t.State is TicketCheckoutTicketState.Valid or TicketCheckoutTicketState.Offered)))
+            return new("That person already holds a ticket for this event.");
         var parentOrder = await repository.GetOrderAsync(parent.OrderId, ct);
         var order = new TicketCheckoutOrder
         {
             Id = Guid.NewGuid(),
             SalesEventId = salesEvent.Id,
-            BuyerUserId = parent.HolderUserId ?? actorUserId,
+            BuyerUserId = parentHolderId,
             BuyerName = parent.HolderName,
             BuyerEmail = parent.HolderEmail ?? parentOrder?.BuyerEmail ?? string.Empty,
             BackendKey = salesEvent.BackendKey,
@@ -169,17 +197,20 @@ internal sealed partial class TicketCheckoutService
         };
         await repository.AddTicketsAsync([companion], ct);
 
-        var why = Truncate(reason.Trim());
+        var why = reason.Trim();
         await TimelineAsync(order.Id, TicketCheckoutOrderEventKind.CompanionIssued,
             $"Free companion ticket {companion.Barcode} for ticket {parent.Barcode}: {why}", actorUserId, ct);
         await TimelineAsync(parent.OrderId, TicketCheckoutOrderEventKind.CompanionIssued,
             $"Free companion ticket {companion.Barcode} attached to ticket {parent.Barcode}", actorUserId, ct);
         await auditLog.LogAsync(TicketsAuditActions.TicketCompanionIssued, AuditEntityType, order.Id,
-            $"Companion ticket {companion.Barcode} issued for ticket {parent.Barcode}: {why}", actorUserId);
+            $"Companion ticket {companion.Barcode} issued for ticket {parent.Barcode}: {why}",
+            actorUserId, parentHolderId, AuditSubjectTypes.User);
         await DeliverAsync(order.Id, ct);
         return CheckoutMutationResult.Ok;
     }
 
     private static CheckoutMutationResult? ReasonRefusal(string reason) =>
-        string.IsNullOrWhiteSpace(reason) ? new("Give a reason; it goes on the order's timeline and the audit log.") : null;
+        string.IsNullOrWhiteSpace(reason) ? new("Give a reason; it goes on the order's timeline and the audit log.")
+        : reason.Trim().Length > MaxReasonLength ? new($"Keep the reason under {MaxReasonLength} characters.")
+        : null;
 }

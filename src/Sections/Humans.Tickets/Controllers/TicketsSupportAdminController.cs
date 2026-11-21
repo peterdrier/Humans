@@ -60,11 +60,13 @@ internal sealed class TicketsSupportAdminController(
         var salesEvent = await checkout.GetSalesEventAsync(id, ct);
         if (salesEvent is null)
             return NotFound();
+        var tickets = await checkout.GetTicketsForSalesEventAsync(id, ct);
         var rows = TicketSupportReports.ResaleQueue(
-            await checkout.GetOffersForSalesEventAsync(id, ct), await checkout.GetTicketsForSalesEventAsync(id, ct),
+            await checkout.GetOffersForSalesEventAsync(id, ct), tickets, await checkout.GetRefundsForSalesEventAsync(id, ct),
             clock.GetCurrentInstant());
-        return View("~/Views/Tickets/Admin/Sales/Resale.cshtml",
-            new ResaleViewModel(id, await EventNameAsync(salesEvent, ct), salesEvent.Mode, rows));
+        var sold = tickets.Count(t => t.State is TicketCheckoutTicketState.Valid or TicketCheckoutTicketState.Offered);
+        return View("~/Views/Tickets/Admin/Sales/Resale.cshtml", new ResaleViewModel(
+            id, await EventNameAsync(salesEvent, ct), salesEvent.Mode, sold, salesEvent.ResaleOpensAtSold, rows));
     }
 
     [HttpGet("{id:guid}/Report")]
@@ -146,7 +148,12 @@ internal sealed record LookupViewModel(string Query, IReadOnlyList<OrderSearchHi
 
 internal sealed record RefundsViewModel(Guid SalesEventId, string EventName, RefundState? State, IReadOnlyList<RefundListRow> Rows);
 
-internal sealed record ResaleViewModel(Guid SalesEventId, string EventName, TicketSalesMode Mode, IReadOnlyList<ResaleQueueRow> Rows);
+/// <summary>Resale opens once <paramref name="Sold"/> live tickets reach <paramref name="OpensAtSold"/> (always, when null).</summary>
+internal sealed record ResaleViewModel(
+    Guid SalesEventId, string EventName, TicketSalesMode Mode, int Sold, int? OpensAtSold, IReadOnlyList<ResaleQueueRow> Rows)
+{
+    public bool ResaleOpen => Mode != TicketSalesMode.Closed && Sold >= (OpensAtSold ?? 0);
+}
 
 internal sealed record ReportViewModel(Guid SalesEventId, string EventName, int Capacity, SalesReport Report);
 

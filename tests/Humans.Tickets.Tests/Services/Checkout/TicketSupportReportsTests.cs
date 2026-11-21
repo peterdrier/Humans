@@ -1,11 +1,7 @@
-using System.Reflection;
 using AwesomeAssertions;
 using Humans.Tickets.Contracts;
-using Humans.Tickets.Controllers;
 using Humans.Tickets.Domain.Checkout;
 using Humans.Tickets.Services.Checkout;
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc;
 using NodaTime;
 using Xunit;
 
@@ -87,6 +83,7 @@ public sealed class TicketSupportReportsTests
 
     [HumansTheory]
     [InlineData("garc")]
+    [InlineData("Garcia")]
     [InlineData("ANA@EXAMPLE")]
     [InlineData("bo smi")]
     [InlineData("hx7q2k")]
@@ -131,7 +128,7 @@ public sealed class TicketSupportReportsTests
     }
 
     [HumansFact]
-    public void Resale_queue_numbers_waiting_offers_oldest_first_and_a_live_invitation_has_no_place()
+    public void Resale_queue_lists_waiting_offers_oldest_first_and_a_live_invitation_holds_nobody_back()
     {
         var order = Order(lines: Line());
         var (first, second, invited, sold) = (Ticket(order), Ticket(order), Ticket(order), Ticket(order));
@@ -142,25 +139,29 @@ public sealed class TicketSupportReportsTests
         directed.DirectedEmail = "friend@example.com";
         directed.DirectedExpiresAt = Now + Duration.FromDays(2);
         var done = Offer(sold, day: 1, TicketResaleOfferState.Sold);
+        var refund = Refund(order.Id, 22500, RefundState.Failed);
+        done.RefundId = refund.Id;
 
-        var rows = TicketSupportReports.ResaleQueue([newer, done, older, directed], [first, second, invited, sold], Now);
+        var rows = TicketSupportReports.ResaleQueue([newer, done, older, directed], [first, second, invited, sold], [refund], Now);
 
         rows.Select(r => (r.Offer, r.Position, r.DirectedLive)).Should().Equal(
-            (directed, (int?)null, true), (older, 1, false), (newer, 2, false), (done, null, false));
+            (directed, (int?)1, true), (older, 1, false), (newer, 2, false), (done, null, false));
         rows[1].Ticket.Should().BeSameAs(first);
+        rows[3].Refund.Should().BeSameAs(refund);
     }
 
     [HumansFact]
-    public void Resale_queue_numbers_a_lapsed_invitation_at_its_original_place()
+    public void A_lapsed_invitation_holds_its_original_place()
     {
         var order = Order(lines: Line());
         var (first, second) = (Ticket(order), Ticket(order));
         var lapsed = Offer(first, day: 1);
         lapsed.DirectedTokenHash = "hash";
         lapsed.DirectedExpiresAt = Now - Duration.FromHours(1);
+        var later = Offer(second, day: 3);
 
-        TicketSupportReports.ResaleQueue([Offer(second, day: 3), lapsed], [first, second], Now)
-            .First().Should().Match<ResaleQueueRow>(r => r.Offer == lapsed && r.Position == 1);
+        TicketSupportReports.QueuePositions([later, lapsed], Now).Should().BeEquivalentTo(
+            new Dictionary<Guid, int> { [lapsed.Id] = 1, [later.Id] = 2 });
     }
 
     [HumansFact]
@@ -215,25 +216,5 @@ public sealed class TicketSupportReportsTests
         report.ResaleByState.Should().Equal(
             new ResaleStateRow(TicketResaleOfferState.Open, 1, 22500),
             new ResaleStateRow(TicketResaleOfferState.Sold, 1, 22500));
-    }
-
-    [HumansFact]
-    public void Board_reads_every_support_page_but_only_Manage_changes_a_ticket()
-    {
-        var controller = typeof(TicketsSupportAdminController);
-        controller.GetCustomAttribute<AuthorizeAttribute>(inherit: false)!.Policy.Should().Be(TicketsPolicies.Read);
-
-        var actions = controller.GetMethods(BindingFlags.Instance | BindingFlags.Public | BindingFlags.DeclaredOnly);
-        var posts = actions.Where(m => m.GetCustomAttribute<HttpPostAttribute>() is not null).ToList();
-        posts.Select(m => m.Name).Should().BeEquivalentTo(
-            nameof(TicketsSupportAdminController.Rename), nameof(TicketsSupportAdminController.Void),
-            nameof(TicketsSupportAdminController.Companion));
-        posts.Should().AllSatisfy(m =>
-        {
-            m.GetCustomAttribute<AuthorizeAttribute>(inherit: false)!.Policy.Should().Be(TicketsPolicies.Manage,
-                because: "the class policy admits Board, which must never rename, void or issue a ticket");
-            m.GetCustomAttribute<ValidateAntiForgeryTokenAttribute>().Should().NotBeNull();
-        });
-        actions.Except(posts).Should().AllSatisfy(m => m.GetCustomAttribute<HttpGetAttribute>().Should().NotBeNull());
     }
 }

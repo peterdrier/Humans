@@ -2,7 +2,7 @@
 @model Humans.Tickets.Controllers.ResaleViewModel
 @{
     ViewData["Title"] = "Resale queue";
-    string Eur(long minor) => (minor / 100m).ToString("0.00", System.Globalization.CultureInfo.InvariantCulture) + " €";
+    string Eur(long minor) => (minor / 100m).ToEuro();
     var waiting = Model.Rows.Where(r => r.Offer.State is TicketResaleOfferState.Open or TicketResaleOfferState.Reserved).ToList();
     var closed = Model.Rows.Except(waiting).ToList();
 }
@@ -16,8 +16,20 @@
 
 <p>
     @waiting.Count waiting · @Eur(waiting.Sum(r => r.Offer.RefundOwedMinor)) owed if they all sell · sales mode @Model.Mode.
-    An invited buyer's offer skips the queue until the link lapses or is used.
+    @if (Model.ResaleOpen)
+    {
+        <span>Resale is open.</span>
+    }
+    else if (Model.Mode == TicketSalesMode.Closed)
+    {
+        <span class="text-warning">Sales are closed, so nothing in the queue sells.</span>
+    }
+    else
+    {
+        <span class="text-warning">Resale opens at @Model.OpensAtSold tickets sold; @Model.Sold so far, so the queue is not moving yet.</span>
+    }
 </p>
+<p class="text-muted">An invited buyer's offer sells only to them until the link lapses or is used, so it holds nobody back; its place is where it stands if the link lapses.</p>
 
 @if (waiting.Count == 0)
 {
@@ -32,8 +44,8 @@ else
             {
                 var o = row.Offer;
                 <tr>
-                    <td>@(row.Position?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "")</td>
-                    <td>@row.Ticket?.HolderName <a asp-controller="UsersAdmin" asp-action="AdminDetail" asp-route-id="@o.HolderUserId">profile</a></td>
+                    <td>@row.Position</td>
+                    <td>@row.Ticket?.HolderName · <vc:human user-id="@o.HolderUserId" link="Admin" /></td>
                     <td>
                         @if (row.Ticket is { } t)
                         {
@@ -95,13 +107,14 @@ else
                         @if (o.State == TicketResaleOfferState.Sold)
                         {
                             @Eur(o.RefundOwedMinor)
-                            @if (o.RefundId is null)
+                            @if (row.Refund is not { } refund)
                             {
                                 <span class="text-danger">not requested</span>
                             }
-                            else if (row.Ticket is { } sold)
+                            else
                             {
-                                <a asp-controller="TicketsSalesAdmin" asp-action="Order" asp-route-id="@sold.OrderId">see refunds</a>
+                                <span class="@(refund.State is Humans.Tickets.Contracts.RefundState.Failed or Humans.Tickets.Contracts.RefundState.ManualRequired ? "text-danger" : "")">@refund.State</span>
+                                <a asp-controller="TicketsSupportAdmin" asp-action="Refunds" asp-route-id="@Model.SalesEventId" asp-route-state="@refund.State">list</a>
                             }
                         }
                     </td>

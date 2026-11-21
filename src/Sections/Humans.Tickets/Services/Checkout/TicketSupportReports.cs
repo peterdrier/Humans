@@ -1,3 +1,4 @@
+using System.Globalization;
 using Humans.Tickets.Contracts;
 using Humans.Tickets.Domain.Checkout;
 using NodaTime;
@@ -47,27 +48,44 @@ internal static class TicketSupportReports
     }
 
     /// <summary>
-    /// The waiting offers first, in the order they sell (a live invitation skips the public queue, so it has no
-    /// position), then sold and withdrawn offers, newest first.
+    /// Each waiting offer's place: how many offers sell to the public before it, plus one. A live invitation sells only
+    /// to its invitee, so it takes no place from anyone; its own place is where it stands if the link lapses.
     /// </summary>
-    public static IReadOnlyList<ResaleQueueRow> ResaleQueue(
-        IReadOnlyList<TicketResaleOffer> offers, IReadOnlyList<TicketCheckoutTicket> tickets, Instant now)
+    public static IReadOnlyDictionary<Guid, int> QueuePositions(IEnumerable<TicketResaleOffer> offers, Instant now)
     {
-        var byId = tickets.ToDictionary(t => t.Id);
-        var rows = new List<ResaleQueueRow>();
-        var position = 0;
+        var positions = new Dictionary<Guid, int>();
+        var ahead = 0;
         foreach (var offer in offers
                      .Where(o => o.State is TicketResaleOfferState.Open or TicketResaleOfferState.Reserved)
                      .OrderBy(o => o.OfferedAt))
         {
-            var directed = offer.IsDirectedTo(now);
-            rows.Add(new ResaleQueueRow(offer, byId.GetValueOrDefault(offer.TicketId), directed ? null : ++position, directed));
+            positions[offer.Id] = ahead + 1;
+            if (!offer.IsDirectedTo(now))
+                ahead++;
         }
-        rows.AddRange(offers
+        return positions;
+    }
+
+    /// <summary>Waiting offers in selling order, then sold and withdrawn offers, newest first.</summary>
+    public static IReadOnlyList<ResaleQueueRow> ResaleQueue(
+        IReadOnlyList<TicketResaleOffer> offers,
+        IReadOnlyList<TicketCheckoutTicket> tickets,
+        IReadOnlyList<TicketCheckoutRefund> refunds,
+        Instant now)
+    {
+        var byId = tickets.ToDictionary(t => t.Id);
+        var refundsById = refunds.ToDictionary(r => r.Id);
+        var positions = QueuePositions(offers, now);
+        var waiting = offers
+            .Where(o => positions.ContainsKey(o.Id))
+            .OrderBy(o => o.OfferedAt)
+            .Select(o => new ResaleQueueRow(o, byId.GetValueOrDefault(o.TicketId), positions[o.Id], o.IsDirectedTo(now), null));
+        var closed = offers
             .Where(o => o.State is TicketResaleOfferState.Sold or TicketResaleOfferState.Withdrawn)
             .OrderByDescending(o => o.SoldAt ?? o.WithdrawnAt ?? o.OfferedAt)
-            .Select(o => new ResaleQueueRow(o, byId.GetValueOrDefault(o.TicketId), null, false)));
-        return rows;
+            .Select(o => new ResaleQueueRow(o, byId.GetValueOrDefault(o.TicketId), null, false,
+                o.RefundId is { } refundId ? refundsById.GetValueOrDefault(refundId) : null));
+        return waiting.Concat(closed).ToList();
     }
 
     public static SalesReport Sales(
@@ -138,14 +156,20 @@ internal static class TicketSupportReports
     private static bool Same(string? value, string query) =>
         value is not null && string.Equals(value.Trim(), query, StringComparison.OrdinalIgnoreCase);
 
+    /// <summary>Accent-insensitive, so "Garcia" finds "García".</summary>
     private static bool Contains(string? value, string query) =>
-        value is not null && value.Contains(query, StringComparison.OrdinalIgnoreCase);
+        value is not null
+        && CultureInfo.InvariantCulture.CompareInfo.IndexOf(value, query, CompareOptions.IgnoreCase | CompareOptions.IgnoreNonSpace) >= 0;
 }
 
 internal sealed record RefundListRow(TicketCheckoutRefund Refund, TicketCheckoutOrder Order);
 
-/// <summary><paramref name="Position"/> is the place in the public queue; null for a live invitation or a closed offer.</summary>
-internal sealed record ResaleQueueRow(TicketResaleOffer Offer, TicketCheckoutTicket? Ticket, int? Position, bool DirectedLive);
+/// <summary>
+/// <paramref name="Position"/> is the place in the queue (see <see cref="TicketSupportReports.QueuePositions"/>), null
+/// once closed. <paramref name="Refund"/> is the holder's refund on a sold offer, once requested.
+/// </summary>
+internal sealed record ResaleQueueRow(
+    TicketResaleOffer Offer, TicketCheckoutTicket? Ticket, int? Position, bool DirectedLive, TicketCheckoutRefund? Refund);
 
 /// <summary>
 /// Totals over paid orders. <paramref name="TicketsIssued"/> counts every ticket ever issued (a resale issues a new

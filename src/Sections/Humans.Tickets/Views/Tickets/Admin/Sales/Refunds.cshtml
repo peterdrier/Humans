@@ -2,7 +2,7 @@
 @model Humans.Tickets.Controllers.RefundsViewModel
 @{
     ViewData["Title"] = "Refunds";
-    string Eur(long minor) => (minor / 100m).ToString("0.00", System.Globalization.CultureInfo.InvariantCulture) + " €";
+    string Eur(long minor) => (minor / 100m).ToEuro();
     string Label(RefundState s) => s switch
     {
         RefundState.Succeeded => "Done",

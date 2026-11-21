@@ -37,14 +37,14 @@ internal sealed partial class TicketCheckoutService
             var eventName = salesEvent is null ? string.Empty
                 : (await settings.GetEventSettingsByIdAsync(salesEvent.EventSettingsId, ct))?.EventName ?? string.Empty;
             var offers = await repository.GetOffersForSalesEventAsync(group.Key, ct);
-            var queue = offers.Where(o => o.State is TicketResaleOfferState.Open or TicketResaleOfferState.Reserved)
-                .OrderBy(o => o.OfferedAt).ToList();
+            var queue = offers.Where(o => o.State is TicketResaleOfferState.Open or TicketResaleOfferState.Reserved).ToList();
+            var positions = TicketSupportReports.QueuePositions(offers, now);
             var eventTickets = salesEvent is null ? [] : await repository.GetTicketsForSalesEventAsync(group.Key, ct);
             foreach (var ticket in group.OrderBy(t => t.IssuedAt))
             {
                 var offer = queue.FirstOrDefault(o => o.TicketId == ticket.Id);
                 var hasDependents = eventTickets.Any(t => t.ParentTicketId == ticket.Id && t.State == TicketCheckoutTicketState.Valid);
-                held.Add(new HeldTicket(ticket, eventName, offer, offer is null ? null : queue.IndexOf(offer) + 1,
+                held.Add(new HeldTicket(ticket, eventName, offer, offer is null ? null : positions[offer.Id],
                     CanOffer: offer is null && ticket.Kind == TicketHolderKind.Adult && salesEvent is { Mode: not TicketSalesMode.Closed },
                     HasDependents: hasDependents,
                     DirectedActive: offer?.IsDirectedTo(now) == true));
@@ -65,7 +65,8 @@ internal sealed partial class TicketCheckoutService
             return new("Tickets_Resale_Closed");
 
         // Children go wherever their adult goes: returned with the adult and refunded with it when it sells.
-        var dependents = (await repository.GetTicketsForOrderAsync(ticket.OrderId, ct))
+        // Event-wide: an admin-issued companion lives on its own order.
+        var dependents = (await repository.GetTicketsForSalesEventAsync(ticket.SalesEventId, ct))
             .Where(t => t.ParentTicketId == ticket.Id && t.State == TicketCheckoutTicketState.Valid)
             .ToList();
         var now = clock.GetCurrentInstant();
@@ -290,13 +291,16 @@ internal sealed partial class TicketCheckoutService
             return;
         old.State = TicketCheckoutTicketState.Resold;
         await repository.UpdateTicketAsync(old, ct);
-        foreach (var child in (await repository.GetTicketsForOrderAsync(old.OrderId, ct))
+        foreach (var child in (await repository.GetTicketsForSalesEventAsync(old.SalesEventId, ct))
                      .Where(t => t.ParentTicketId == old.Id && t.State == TicketCheckoutTicketState.Valid))
         {
             child.State = TicketCheckoutTicketState.Void;
             child.VoidedAt = now;
             child.VoidReason = "Returned with the adult's ticket";
             await repository.UpdateTicketAsync(child, ct);
+            if (child.OrderId != old.OrderId)
+                await TimelineAsync(child.OrderId, TicketCheckoutOrderEventKind.Voided,
+                    $"Ticket {child.Barcode} voided: its adult's ticket {old.Barcode} was resold", null, ct);
         }
         await TimelineAsync(old.OrderId, TicketCheckoutOrderEventKind.ResaleSold,
             $"Ticket {old.Barcode} resold" + (directed ? " to the invited buyer" : string.Empty) +

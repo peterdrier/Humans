@@ -1,7 +1,7 @@
 @model Humans.Tickets.Controllers.ReportViewModel
 @{
     ViewData["Title"] = "Sales report";
-    string Eur(long minor) => (minor / 100m).ToString("0.00", System.Globalization.CultureInfo.InvariantCulture) + " €";
+    string Eur(long minor) => (minor / 100m).ToEuro();
     var r = Model.Report;
 }
 
@@ -39,7 +39,7 @@
         {
             running += row.Tickets;
             <tr>
-                <td>@row.Day.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture)</td>
+                <td>@row.Day.ToInvariantDate()</td>
                 <td class="text-end">@row.Tickets</td>
                 <td class="text-end">@Eur(row.TicketsMinor)</td>
                 <td class="text-end">@Eur(row.DonationsMinor)</td>

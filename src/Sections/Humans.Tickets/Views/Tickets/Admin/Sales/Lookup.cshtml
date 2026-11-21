@@ -2,7 +2,7 @@
 @model Humans.Tickets.Controllers.LookupViewModel
 @{
     ViewData["Title"] = "Find an order";
-    string Eur(long minor) => (minor / 100m).ToString("0.00", System.Globalization.CultureInfo.InvariantCulture) + " €";
+    string Eur(long minor) => (minor / 100m).ToEuro();
 }
 
 @section Crumbs {
