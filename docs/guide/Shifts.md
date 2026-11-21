@@ -9,7 +9,7 @@
   src/Sections/Humans.Shifts/Controllers/ShiftAdminController.cs
   src/Sections/Humans.Shifts/Controllers/ShiftDashboardController.cs
   src/Sections/Humans.Shifts/Contracts/ShiftSignupsViewComponent.cs
-  src/Sections/Humans.Shifts.Contracts/ShiftsRoles.cs
+  src/Sections/Humans.Shifts/Contracts/ShiftsRoles.cs
   src/Sections/Humans.Shifts/Services/**
   src/Sections/Humans.Shifts/Domain/Rota.cs
   src/Sections/Humans.Shifts/Domain/Shift.cs

@@ -2,6 +2,7 @@ using Humans.Base.Attributes;
 using Humans.Base.Enums;
 using Humans.Base.Interfaces;
 using Humans.Google.Contracts;
+using NodaTime;
 
 namespace Humans.Google.Services;
 
@@ -13,14 +14,6 @@ internal interface IGoogleSyncManagement : IGoogleSyncService, IGoogleSyncWrite,
         Guid resourceId,
         SyncAction action,
         CancellationToken cancellationToken = default);
-
-    /// <summary>Drive only; Group membership is <see cref="IGoogleGroupSync"/>'s.</summary>
-    [ExternalWrite]
-    Task<SyncPreviewResult> SyncResourcesByTypeAsync(
-        GoogleResourceType resourceType,
-        SyncAction action,
-        CancellationToken cancellationToken = default,
-        GoogleSyncSource syncSource = GoogleSyncSource.ManualSync);
 
     /// <summary>Detect-only. A skipped result when sync is disabled.</summary>
     Task<GroupSettingsDriftResult> CheckGroupSettingsAsync(CancellationToken cancellationToken = default);
@@ -53,8 +46,29 @@ internal interface IGoogleSyncManagement : IGoogleSyncService, IGoogleSyncWrite,
     /// </summary>
     Task<int> EnqueueUserSyncAsync(Guid userId, Guid actorUserId, CancellationToken cancellationToken = default);
 
+    /// <summary>Unprocessed events with a <c>LastError</c>.</summary>
+    Task<int> GetFailedSyncEventCountAsync(CancellationToken cancellationToken = default);
+
     Task<int> GetPendingSyncEventCountAsync(CancellationToken cancellationToken = default);
 
     Task<IReadOnlyList<GoogleSyncOutboxEventSnapshot>> GetRecentOutboxEventsAsync(
         int take, CancellationToken cancellationToken = default);
+}
+
+internal sealed record GoogleSyncOutboxEventSnapshot(
+    Guid Id,
+    string EventType,
+    Guid TeamId,
+    Guid UserId,
+    Instant OccurredAt,
+    Instant? ProcessedAt,
+    int RetryCount,
+    string? LastError,
+    bool FailedPermanently);
+
+internal sealed record GroupSettingsRemediationResult(bool Succeeded, string? ErrorMessage)
+{
+    public static GroupSettingsRemediationResult Success() => new(true, null);
+
+    public static GroupSettingsRemediationResult Failure(string message) => new(false, message);
 }

@@ -138,7 +138,7 @@ public sealed class MergeFixtureBuilder
             db.ContactFields.Add(new ContactField
             {
                 Id = Guid.NewGuid(),
-                ProfileId = profile.Id,
+                UserId = profile.UserId,
                 FieldType = type,
                 Value = value,
                 Visibility = ContactFieldVisibility.AllActiveProfiles,
@@ -163,7 +163,7 @@ public sealed class MergeFixtureBuilder
             db.VolunteerHistoryEntries.Add(new VolunteerHistoryEntry
             {
                 Id = Guid.NewGuid(),
-                ProfileId = profile.Id,
+                UserId = profile.UserId,
                 Date = new LocalDate(year, 1, 1),
                 EventName = eventName,
                 CreatedAt = _now,
@@ -187,7 +187,7 @@ public sealed class MergeFixtureBuilder
             db.ProfileLanguages.Add(new ProfileLanguage
             {
                 Id = Guid.NewGuid(),
-                ProfileId = profile.Id,
+                UserId = profile.UserId,
                 LanguageCode = code,
                 Proficiency = proficiency,
             });
@@ -389,11 +389,11 @@ public sealed class MergeFixtureBuilder
         return this;
     }
 
-    public MergeFixtureBuilder WithSourceTeamJoinRequest(
+    internal MergeFixtureBuilder WithSourceTeamJoinRequest(
         Guid teamId, TeamJoinRequestStatus status = TeamJoinRequestStatus.Pending)
         => AddTeamJoinRequest(SourceUserId, teamId, status);
 
-    public MergeFixtureBuilder WithTargetTeamJoinRequest(
+    internal MergeFixtureBuilder WithTargetTeamJoinRequest(
         Guid teamId, TeamJoinRequestStatus status = TeamJoinRequestStatus.Pending)
         => AddTeamJoinRequest(TargetUserId, teamId, status);
 

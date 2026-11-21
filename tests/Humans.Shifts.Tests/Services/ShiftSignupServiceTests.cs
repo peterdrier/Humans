@@ -53,16 +53,11 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         team.Members.Add(new(Guid.NewGuid(), live, "Live", null, null, TeamMemberRole.Coordinator, Instant.MinValue));
         team.Members.Add(new(Guid.NewGuid(), other, "Other", null, null, TeamMemberRole.Coordinator, Instant.MinValue));
         _teamService.GetTeamAsync(team.Id, Arg.Any<CancellationToken>()).Returns(team);
-        using var provider = new Microsoft.Extensions.DependencyInjection.ServiceCollection()
-            .AddSingleton(_teamService).BuildServiceProvider();
-        var notices = new ShiftSignupNotices(Notifier,
-            new EventCalendarResolver(Substitute.For<Humans.Settings.Contracts.ISettingsService>(), _repo), _users, provider,
-            NullLogger<ShiftSignupService>.Instance);
 
         if (notice == CanonicalNotice.Assignment)
-            await notices.SendAssignmentNoticeAsync(source, Guid.NewGuid(), "Shifts_Notification_AssignedDay", "Rota", 1);
+            await _service.SendAssignmentNoticeAsync(source, Guid.NewGuid(), "Shifts_Notification_AssignedDay", "Rota", 1);
         else
-            await notices.CheckAndNotifyCoverageGapAsync(new ShiftSignup { Id = Guid.NewGuid() },
+            await _service.CheckAndNotifyCoverageGapAsync(new ShiftSignup { Id = Guid.NewGuid() },
                 new Shift { Id = Guid.NewGuid(), MinVolunteers = 1, Rota = new Rota { Id = Guid.NewGuid(), TeamId = team.Id, Name = "Rota" } });
 
         var recipients = Notifier.ReceivedCalls().SelectMany(call => (IReadOnlyList<Guid>)call.GetArguments()[4]!).ToList();

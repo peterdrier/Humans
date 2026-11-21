@@ -40,10 +40,14 @@ public class CatalogAccountsTests
     {
         var choices = await _catalog.GetAccountChoicesAsync(TestContext.Current.CancellationToken);
 
-        choices.Income.Select(c => c.Number).Should().Equal(70500000, 75900008);
+        choices.Income.Should().BeEquivalentTo(new[]
+        {
+            new AccountChoice(70500000, "Prestaciones de servicios"),
+            new AccountChoice(75900008, "Gas cylinders"),
+        });
         choices.Cost.Select(c => c.Number).Should().Equal(62900001);
         choices.TeamUsage.Select(c => c.Number).Should().Equal(62990001);
-        choices.Income[1].Label.Should().Be("75900008 · Gas cylinders");
+        choices.Income.Single(c => c.Number == 75900008).Label.Should().Be("75900008 · Gas cylinders");
     }
 
     [HumansFact]

@@ -1,5 +1,4 @@
 using Humans.Base.Enums;
-using Humans.Google.Contracts;
 using NodaTime;
 
 namespace Humans.Google.Domain;
@@ -34,4 +33,10 @@ internal sealed class GoogleSyncLogEntry
     public string JobName { get; init; } = string.Empty;
 
     public Instant OccurredAt { get; init; }
+}
+
+internal enum GoogleSyncLogAction
+{
+    AccessGranted,
+    AccessRevoked
 }

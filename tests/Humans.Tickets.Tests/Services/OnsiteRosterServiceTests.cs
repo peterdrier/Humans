@@ -12,7 +12,7 @@ namespace Humans.Tickets.Tests.Services;
 
 public class OnsiteRosterServiceTests
 {
-    private readonly IEventParticipationManagement _users = Substitute.For<IEventParticipationManagement>();
+    private readonly ITicketService _users = Substitute.For<ITicketService>();
     private readonly ICampService _camps = Substitute.For<ICampService>();
     private readonly ITeamService _teams = Substitute.For<ITeamService>();
     private readonly IRoleAssignmentService _roles = Substitute.For<IRoleAssignmentService>();

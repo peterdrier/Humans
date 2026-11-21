@@ -8,7 +8,7 @@ namespace Humans.Consent.Services;
 internal sealed class ConsentReviewQueueService(
     IUserService userService,
     IConsentService consentService,
-    IConsentWrite consentWrite,
+    ConsentReviewService consentWrite,
     IGovernanceService governanceService,
     ILogger<ConsentReviewQueueService> logger) : IConsentReviewQueueService
 {

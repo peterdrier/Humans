@@ -34,7 +34,7 @@ internal sealed partial class PreapprovalService
         if (beneficiary is null) return new(Refusal: new PreapprovalRefusal(PreapprovalErrorKeys.PersonUnavailable));
         var beneficiaryId = beneficiary.Id;
         var now = clock.GetCurrentInstant();
-        var grant = NewGrant(program, beneficiaryId, sized.Value, Trimmed(label), GrantStatus.Open, now);
+        var grant = NewGrant(program, beneficiaryId, sized.Value, PreapprovalInput.Trimmed(label), GrantStatus.Open, now);
         await PersistIssuedGrantsAsync(program, [grant], actorUserId,
             issued => $"Issued {Euros(issued.MaxAmount)} under \"{program.Name}\"{LabelSuffix(issued)} to {beneficiaryId}; claim by {program.ClaimBy.ToInvariantDate()}.", ct);
         return new(grant.Id);
@@ -61,7 +61,7 @@ internal sealed partial class PreapprovalService
         if (ids.Count == 0) return new(Refusal: new PreapprovalRefusal(PreapprovalErrorKeys.NoBeneficiaries));
 
         var each = program.PerPersonAmount!.Value;
-        if (MoneyRefusal(each) is { } amountRefusal) return new(Refusal: amountRefusal);
+        if (PreapprovalInput.MoneyRefusal(each) is { } amountRefusal) return new(Refusal: amountRefusal);
         if (CeilingCheck(program, each * ids.Count) is { } over) return new(Refusal: over);
 
         var now = clock.GetCurrentInstant();
@@ -115,7 +115,7 @@ internal sealed partial class PreapprovalService
             if (requestedAmount is not { } requested) return new(Refusal: new PreapprovalRefusal(PreapprovalErrorKeys.AmountRequired));
             amount = requested;
         }
-        if (MoneyRefusal(amount) is { } amountRefusal) return new(Refusal: amountRefusal);
+        if (PreapprovalInput.MoneyRefusal(amount) is { } amountRefusal) return new(Refusal: amountRefusal);
 
         var applicant = await ResolveAvailablePersonAsync(applicantUserId, ct);
         if (applicant is null) return new(Refusal: new PreapprovalRefusal(PreapprovalErrorKeys.PersonUnavailable));
@@ -126,7 +126,7 @@ internal sealed partial class PreapprovalService
         {
             // A second submit edits the pending application; the managers' prompt is re-sent so
             // the newest text is the one they see.
-            pending.ApplicationNote = Trimmed(note);
+            pending.ApplicationNote = PreapprovalInput.Trimmed(note);
             pending.RequestedAmount = requestedAmount;
             pending.MaxAmount = amount;
             pending.UpdatedAt = now;
@@ -141,7 +141,7 @@ internal sealed partial class PreapprovalService
         }
 
         var grant = NewGrant(program, ids[0], amount, null, GrantStatus.Applied, now);
-        grant.ApplicationNote = Trimmed(note);
+        grant.ApplicationNote = PreapprovalInput.Trimmed(note);
         grant.RequestedAmount = requestedAmount;
         await repository.AddGrantsAsync([grant], ct);
         // The grant committed; finish its audit and notices after the browser disconnects.
@@ -202,7 +202,7 @@ internal sealed partial class PreapprovalService
         // The grant committed; finish its audit and notices after the browser disconnects.
         ct = CancellationToken.None;
 
-        var reason = Trimmed(note);
+        var reason = PreapprovalInput.Trimmed(note);
         await AuditGrantAsync(PreapprovalsAuditActions.PreapprovalGrantDeclined, grant,
             $"Application to \"{grant.Program.Name}\" declined{(reason is null ? "" : $": {reason}")}.", actorUserId);
         await notices.ResolveRequestAsync(grant.Id, actorUserId, ct);
@@ -229,7 +229,7 @@ internal sealed partial class PreapprovalService
         // The grant committed; finish its audit and notices after the browser disconnects.
         ct = CancellationToken.None;
 
-        var why = Trimmed(reason);
+        var why = PreapprovalInput.Trimmed(reason);
         await AuditGrantAsync(PreapprovalsAuditActions.PreapprovalGrantRevoked, grant,
             $"Revoked {Euros(grant.MaxAmount)} under \"{grant.Program.Name}\"{LabelSuffix(grant)}" +
             $"{(holdingReportId is { } r ? $" while held by expense report {r}" : "")}{(why is null ? "" : $": {why}")}.",
@@ -248,7 +248,7 @@ internal sealed partial class PreapprovalService
         if (grant is null || grant.ProgramId != programId) return new(new PreapprovalRefusal(PreapprovalErrorKeys.NotFound));
         if (grant.Status is not (GrantStatus.Open or GrantStatus.Claimed))
             return new(new PreapprovalRefusal(PreapprovalErrorKeys.WrongStatus));
-        if (MoneyRefusal(amount) is { } amountRefusal) return new(amountRefusal);
+        if (PreapprovalInput.MoneyRefusal(amount) is { } amountRefusal) return new(amountRefusal);
         if (amount == grant.MaxAmount) return PreapprovalMutationResult.Ok;
 
         var program = await repository.GetProgramAsync(grant.ProgramId, ct)
@@ -288,7 +288,7 @@ internal sealed partial class PreapprovalService
         }
         else if (amount is { } supplied) value = supplied;
         else return (0, new(PreapprovalErrorKeys.AmountRequired));
-        return MoneyRefusal(value) is { } refusal ? (0, refusal) : (value, null);
+        return PreapprovalInput.MoneyRefusal(value) is { } refusal ? (0, refusal) : (value, null);
     }
 
     /// <summary>Granted + delta ≤ ceiling, else a refusal naming the headroom.</summary>

@@ -33,7 +33,7 @@
 
   <ItemGroup>
     <!-- ShiftUserSummary / UrgentShiftInfo fixtures. -->
-    <ProjectReference Include="..\..\src\Sections\Humans.Shifts.Contracts\Humans.Shifts.Contracts.csproj" />
+    <ProjectReference Include="..\..\src\Sections\Humans.Shifts\Humans.Shifts.csproj" />
     <!-- EventSettingsInfo (BurnFixtures) fixture. -->
     <ProjectReference Include="..\..\src\Sections\Humans.Settings\Humans.Settings.csproj" />
     <!-- ProfileInfo / UserInfo fixtures (nobodies-collective/Humans#1051). -->

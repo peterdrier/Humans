@@ -15,11 +15,19 @@ internal sealed class MembershipTierService(
     IApplicationRepository applications,
     IUserService users,
     IAuditLogService audit,
-    IClock clock) : IUserDataContributor, IUserMerge
+    IClock clock) : IGovernanceService, IUserDataContributor, IUserMerge
 {
     internal const string MembershipTierSlice = "MembershipTier";
 
-    public async Task<MembershipTier> GetTierAsync(Guid userId, CancellationToken ct = default)
+    public Task<IReadOnlyList<Guid>> GetActiveApprovedTierUserIdsAsync(
+        MembershipTier tier, LocalDate today, CancellationToken ct = default) =>
+        applications.GetActiveApprovedTierUserIdsAsync(tier, today, ct);
+
+    public Task<bool> HasActiveApprovedTierAsync(
+        Guid userId, MembershipTier tier, LocalDate today, CancellationToken ct = default) =>
+        applications.HasActiveApprovedTierAsync(userId, tier, today, ct);
+
+    public async Task<MembershipTier> GetMembershipTierAsync(Guid userId, CancellationToken ct = default)
     {
         var info = await users.GetUserInfoAsync(userId, ct);
         var row = await repo.GetAsync(info?.Id ?? userId, ct);
@@ -27,7 +35,7 @@ internal sealed class MembershipTierService(
     }
 
     /// <summary>Every member whose tier is not Volunteer, keyed by user id.</summary>
-    public async Task<IReadOnlyDictionary<Guid, MembershipTier>> GetTiersAsync(CancellationToken ct = default)
+    public async Task<IReadOnlyDictionary<Guid, MembershipTier>> GetMembershipTiersAsync(CancellationToken ct = default)
     {
         return (await repo.GetAllAsync(ct))
             .Where(r => r.Tier != MembershipTier.Volunteer)
@@ -42,7 +50,7 @@ internal sealed class MembershipTierService(
         var now = clock.GetCurrentInstant();
 
         var result = new List<(Guid UserId, MembershipTier NewTier)>();
-        foreach (var (userId, current) in await GetTiersAsync(ct))
+        foreach (var (userId, current) in await GetMembershipTiersAsync(ct))
         {
             if (current != tier || inTerm.Contains(userId))
                 continue;

@@ -1,10 +1,10 @@
-using Humans.Google.Contracts;
+using Humans.Google.Services;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Humans.Google.ViewComponents;
 
 /// <summary>The host views live in this section so Razor finds the component in the same application part.</summary>
-public sealed class GoogleSyncLogViewComponent(
+internal sealed class GoogleSyncLogViewComponent(
     IGoogleSyncLogViewer syncLog,
     ILogger<GoogleSyncLogViewComponent> logger) : ViewComponent
 {

@@ -76,6 +76,7 @@ Admin pages live at `/Grants/Admin` (`GrantsAdminController`), in the Admin side
 | Board | Reads every program and its grants; changes nothing |
 | UsersAdmin, Board, Admin | See a person's grants on the admin human-detail card (a program name links to its admin page only when the viewer may open it) |
 | A source section (LowIncome) | Issues and revokes under the open program whose source key it passes, through `IGrantWrite` |
+| A delivering section (Tickets) | Reads a person's active grants and the program list through `IGrantService` (`GetActiveGrantsAsync`, `GetProgramSummariesAsync`) to price a ticket; never writes |
 
 ## Invariants
 

@@ -264,7 +264,6 @@ public class ProfileControllerEditTests
         var legacy = new ContactField
         {
             Id = Guid.NewGuid(),
-            ProfileId = _profileId,
             FieldType = default,
             Value = "legacy@example.org",
             Visibility = ContactFieldVisibility.BoardOnly

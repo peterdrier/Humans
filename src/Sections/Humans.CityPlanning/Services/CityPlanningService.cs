@@ -2,6 +2,7 @@ using Humans.CityPlanning.Contracts;
 using Humans.AuditLog.Contracts;
 using Humans.Base.Extensions;
 using Humans.Camps.Contracts;
+using Humans.Containers.Contracts;
 
 using Humans.CityPlanning.Data;
 using Humans.Teams.Contracts;
@@ -23,7 +24,8 @@ internal sealed class CityPlanningService(
     ITeamService teamService,
     IUserService userService,
     IAuditLogService auditLog,
-    ISettingsService settingsService) : ICityPlanningService, ICampDeletionListener
+    ISettingsService settingsService,
+    IContainerService containerService) : ICityPlanningService, ICampDeletionListener
 {
     private const long MaxGeoJsonUploadBytes = 10 * 1024 * 1024;
 
@@ -447,6 +449,13 @@ internal sealed class CityPlanningService(
         return team is { IsActive: true } && team.Members.Any(m => m.UserId == userId);
     }
 
+    public async Task<IReadOnlyList<CampInfo>> GetLeadCampsAsync(
+        Guid userId, int year, CancellationToken cancellationToken = default)
+    {
+        var camps = await campService.GetCampsForYearAsync(year, cancellationToken);
+        return camps.Where(camp => camp.GetLeadSeasonIdForYear(userId, year).HasValue).ToList();
+    }
+
     public async Task<bool> CanUserEditAsync(
         Guid userId, Guid campSeasonId, CancellationToken cancellationToken = default)
     {
@@ -487,6 +496,51 @@ internal sealed class CityPlanningService(
 
     public async Task<string?> GetLegacyRegistrationInfoAsync(int year, CancellationToken cancellationToken = default) =>
         (await repo.GetSettingsAsync(year, cancellationToken))?.RegistrationInfo;
+
+    /// <summary>Null when a non-admin viewer leads no camp in the requested year. Exports are never phase-gated.</summary>
+    public async Task<string?> ExportContainersAsGeoJsonAsync(
+        int year, Guid userId, bool isMapAdmin, CancellationToken cancellationToken = default)
+    {
+        var userCampIds = (await GetLeadCampsAsync(userId, year, cancellationToken))
+            .Select(camp => camp.Id).ToHashSet();
+
+        if (!isMapAdmin && userCampIds.Count == 0)
+        {
+            return null;
+        }
+
+        var allContainers = await containerService.GetAllAsync(cancellationToken);
+        var placements = await containerService.GetPlacementsByYearAsync(year, cancellationToken);
+        var containersById = allContainers.ToDictionary(c => c.Id, c => c);
+
+        var placed = placements
+            .Where(p => p.LocationGeoJson is not null)
+            .Where(p => containersById.ContainsKey(p.ContainerId))
+            .Select(p => (Placement: p, Container: containersById[p.ContainerId]))
+            .Where(t => isMapAdmin || userCampIds.Contains(t.Container.CampId))
+            .ToList();
+
+        var features = placed.Select(t =>
+        {
+            var f = JsonSerializer.Deserialize<System.Text.Json.Nodes.JsonObject>(t.Placement.LocationGeoJson!);
+            var props = f?["properties"]?.AsObject();
+            if (props != null)
+            {
+                props["containerId"] = t.Container.Id.ToString();
+                props["containerName"] = t.Container.Name;
+                props["type"] = "Container";
+            }
+            return f;
+        });
+
+        var collection = new System.Text.Json.Nodes.JsonObject
+        {
+            ["type"] = "FeatureCollection",
+            ["features"] = new System.Text.Json.Nodes.JsonArray(features.Select(f => (System.Text.Json.Nodes.JsonNode?)f).ToArray()),
+        };
+
+        return collection.ToJsonString();
+    }
 
     public async Task<string> ExportAsGeoJsonAsync(int year, CancellationToken cancellationToken = default)
     {

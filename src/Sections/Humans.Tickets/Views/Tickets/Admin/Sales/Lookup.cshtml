@@ -1,0 +1,55 @@
+@using Humans.Tickets.Domain.Checkout
+@model Humans.Tickets.Controllers.LookupViewModel
+@{
+    ViewData["Title"] = "Find an order";
+    string Eur(long minor) => (minor / 100m).ToEuro();
+}
+
+@section Crumbs {
+    <a asp-controller="TicketsSalesAdmin" asp-action="Index">Sales</a>
+    <span>Find an order</span>
+}
+
+<page-header title="Find an order" />
+
+<form method="get" asp-action="Lookup" class="row g-2 mb-3">
+    <div class="col-md-8">
+        <input class="form-control" name="q" value="@Model.Query" autofocus
+               placeholder="Buyer or holder name, email, order reference or ticket code" />
+    </div>
+    <div class="col-md-2"><button class="btn btn-primary" type="submit">Search</button></div>
+</form>
+
+@if (Model.Query.Length > 0 && Model.Query.Length < Humans.Tickets.Services.Checkout.TicketSupportReports.MinimumQueryLength)
+{
+    <p class="text-muted">Type at least @Humans.Tickets.Services.Checkout.TicketSupportReports.MinimumQueryLength characters.</p>
+}
+else if (Model.Query.Length > 0 && Model.Hits.Count == 0)
+{
+    <p class="text-muted">No order matches.</p>
+}
+else if (Model.Hits.Count > 0)
+{
+    <table class="table table-sm">
+        <thead><tr><th>Created</th><th>Reference</th><th>Event</th><th>Buyer</th><th>Holders</th><th class="text-end">Total</th><th>State</th></tr></thead>
+        <tbody>
+            @foreach (var h in Model.Hits)
+            {
+                var o = h.Order;
+                <tr>
+                    <td><a asp-controller="TicketsSalesAdmin" asp-action="Order" asp-route-id="@o.Id">@o.CreatedAt.ToDateTime()</a></td>
+                    <td><code>@o.Reference</code></td>
+                    <td>@h.EventName</td>
+                    <td>@o.BuyerName <span class="text-muted">@o.BuyerEmail</span></td>
+                    <td>@string.Join(", ", h.Tickets.Count > 0 ? h.Tickets.Select(t => $"{t.HolderName} ({t.Barcode}, {t.State})") : o.Lines.Where(l => l.Kind == Humans.Tickets.Contracts.CheckoutLineKind.Ticket).Select(l => l.AttendeeName))</td>
+                    <td class="text-end">@Eur(o.TotalMinor)</td>
+                    <td>@o.State</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+    @if (Model.Hits.Count == Humans.Tickets.Services.Checkout.TicketSupportReports.MaxHits)
+    {
+        <p class="text-muted">Showing the newest @Model.Hits.Count. Narrow the search to see older orders.</p>
+    }
+}

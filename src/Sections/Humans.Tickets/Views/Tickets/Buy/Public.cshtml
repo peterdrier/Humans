@@ -1,0 +1,38 @@
+@model IReadOnlyList<Humans.Tickets.Services.Checkout.PublicSale>
+@{
+    ViewData["Title"] = Localizer["Tickets_Buy_Title"].Value;
+    string Eur(long minor) => (minor / 100m).ToString("0.00", System.Globalization.CultureInfo.CurrentCulture) + " €";
+}
+
+<page-header title="@(Localizer["Tickets_Buy_Title"].Value)" />
+
+@if (Model.Count == 0)
+{
+    <empty-state>@Localizer["Tickets_Buy_NotOnSale"]</empty-state>
+    return;
+}
+
+<ul class="list-group mb-4">
+    @foreach (var sale in Model)
+    {
+        <li class="list-group-item d-flex justify-content-between">
+            <span class="fw-semibold">@sale.EventName</span>
+            <span>
+                @string.Format(Localizer["Tickets_Public_PriceToday"].Value, Eur(sale.PriceMinor))
+                @if (sale.ResaleOnly)
+                {
+                    <span class="small text-muted">@Localizer["Tickets_Public_ResaleOnly"]</span>
+                }
+            </span>
+        </li>
+    }
+</ul>
+
+<p>@Localizer["Tickets_Public_Intro"]</p>
+<form asp-action="SendLink" method="post" class="d-flex flex-wrap gap-2 mb-3" style="max-width: 32rem">
+    @Html.AntiForgeryToken()
+    <input class="form-control" name="email" type="email" maxlength="320" required autocomplete="email"
+           aria-label="@Localizer["Tickets_Public_Email"]" placeholder="@Localizer["Tickets_Public_Email"]" />
+    <button type="submit" class="btn btn-primary">@Localizer["Tickets_Public_Send"]</button>
+</form>
+<p class="small text-muted">@Localizer["Tickets_Public_PriceNote"]</p>

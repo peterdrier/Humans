@@ -4,7 +4,7 @@ using AwesomeAssertions;
 using Humans.Base.Constants;
 using Humans.Base.Enums;
 using Humans.Google.Authorization;
-using Humans.Google.Contracts;
+using Humans.Google.Services;
 using Humans.Teams.Contracts;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -21,7 +21,7 @@ namespace Humans.Google.Tests.Authorization;
 public sealed class TeamResourceAuthorizationHandlerTests
 {
     private readonly Guid _userId = Guid.NewGuid();
-    private readonly ITeamResourceService _resources = Substitute.For<ITeamResourceService>();
+    private readonly ITeamResourceManagement _resources = Substitute.For<ITeamResourceManagement>();
     private readonly IUserService _users = Substitute.For<IUserService>();
 
     public TeamResourceAuthorizationHandlerTests() =>

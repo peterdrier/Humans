@@ -93,7 +93,6 @@ public class PersonSearchMatcherTests
             .Select((c, i) => new ContactField
             {
                 Id = Guid.NewGuid(),
-                ProfileId = profileId,
                 FieldType = ContactFieldType.Other,
                 Value = c.Value,
                 CustomLabel = contactLabel,
@@ -121,7 +120,6 @@ public class PersonSearchMatcherTests
             .Select(v => new VolunteerHistoryEntry
             {
                 Id = Guid.NewGuid(),
-                ProfileId = profileId,
                 Date = new LocalDate(2025, 7, 1),
                 EventName = v.EventName,
                 Description = v.Description,

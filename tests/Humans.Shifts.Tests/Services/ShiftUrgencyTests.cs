@@ -32,7 +32,7 @@ public class ShiftUrgencyTests
 
     private static double Score(Shift shift, int confirmedCount, EventSettingsInfo eventSettings, FakeClock clock) =>
         ShiftUrgencyRanking.CalculateScore(
-            ShiftBrowseReader.ToShiftInfo(shift), shift.Rota?.Priority ?? ShiftPriority.Normal, confirmedCount, eventSettings, clock);
+            ShiftManagementService.ToShiftInfo(shift), shift.Rota?.Priority ?? ShiftPriority.Normal, confirmedCount, eventSettings, clock);
 
     [HumansFact]
     public void CalculateScore_NormalPriority_5Remaining_4h_ReturnsExpected()

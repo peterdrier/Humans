@@ -52,7 +52,7 @@ Section-internal collaborators: `IAgentSettingsService`, `IAgentRateLimitStore`,
 `IAgentAbuseDetector`, `IAgentRetentionRunStore`, `IAgentUserSnapshotProvider`,
 `IAgentPreloadCorpusBuilder`, `IAgentPromptAssembler`, `IAgentToolDispatcher`,
 `IAnthropicClient`. Cross-section calls via `IUserService` (GDPR export display name).
-Implements `IUserDataContributor`, `IAgentConversationRetention`, `IAgentTranscriptRead`
+Implements internal `IAgentService` (including retention and `IUserDataContributor`) and public `IAgentTranscriptRead`
 (Backdoor's machine-API transcript surface). Uses `AnthropicOptions` and `IClock`. No
 `IMemoryCache`.
 

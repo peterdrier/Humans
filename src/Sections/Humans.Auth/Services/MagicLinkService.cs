@@ -13,6 +13,7 @@ internal sealed class MagicLinkService(
     AuthEmails emailMessages,
     IMagicLinkUrlBuilder urlBuilder,
     IMagicLinkRateLimiter rateLimiter,
+    IClock clock,
     ILogger<MagicLinkService> logger) : IMagicLinkService
 {
     private static readonly Duration RateLimitCooldown = Duration.FromSeconds(60);
@@ -41,16 +42,25 @@ internal sealed class MagicLinkService(
             return false;
         }
 
-        var payload = urlBuilder.UnprotectLoginToken(token);
-        if (payload is null)
+        var decoded = urlBuilder.UnprotectLoginToken(token);
+        if (decoded is null)
         {
-            logger.LogWarning("Magic link login: invalid or expired token for user {UserId}", userId);
+            logger.LogWarning(
+                "Magic link login: unreadable token for user {UserId} (malformed, tampered, or signed with a retired key)",
+                userId);
             return false;
         }
 
-        if (!string.Equals(payload, userId.ToString(), StringComparison.Ordinal))
+        if (!string.Equals(decoded.Payload, userId.ToString(), StringComparison.Ordinal))
         {
             logger.LogWarning("Magic link login: token userId mismatch for {UserId}", userId);
+            return false;
+        }
+
+        if (MinutesSinceExpiry(decoded) is { } minutesAgo)
+        {
+            logger.LogWarning("Magic link login: token for user {UserId} expired {MinutesAgo} minutes ago",
+                userId, minutesAgo);
             return false;
         }
 
@@ -65,14 +75,29 @@ internal sealed class MagicLinkService(
 
     public string? VerifySignupToken(string token, string? expectedEmail = null)
     {
-        var payload = urlBuilder.UnprotectSignupToken(token);
-        if (payload is null)
+        var decoded = urlBuilder.UnprotectSignupToken(token);
+        if (decoded is null)
         {
-            logger.LogWarning("Magic link signup: invalid or expired token for email {Email}",
+            logger.LogWarning(
+                "Magic link signup: unreadable token for email {Email} (malformed, tampered, or signed with a retired key)",
                 expectedEmail ?? "unknown");
+            return null;
         }
 
-        return payload;
+        if (MinutesSinceExpiry(decoded) is { } minutesAgo)
+        {
+            logger.LogWarning("Magic link signup: token for email {Email} expired {MinutesAgo} minutes ago",
+                decoded.Payload, minutesAgo);
+            return null;
+        }
+
+        return decoded.Payload;
+    }
+
+    private long? MinutesSinceExpiry(MagicLinkToken decoded)
+    {
+        var sinceExpiry = clock.GetCurrentInstant() - decoded.ExpiresAt;
+        return sinceExpiry < Duration.Zero ? null : (long)sinceExpiry.TotalMinutes;
     }
 
     public async Task<string?> VerifyAndConsumeSignupTokenAsync(
@@ -96,9 +121,12 @@ internal sealed class MagicLinkService(
 
     private async Task SendLoginLinkAsync(Guid userId, string sendToEmail, string? returnUrl, CancellationToken ct)
     {
-        if (!await rateLimiter.TryReserveUserSendAsync(userId, RateLimitCooldown.ToTimeSpan()))
+        var refused = await rateLimiter.ReserveUserSendAsync(userId, RateLimitCooldown.ToTimeSpan());
+        if (refused > 0)
         {
-            logger.LogWarning("Magic link rate-limited for user {UserId}", userId);
+            logger.LogWarning(
+                "Magic link login rate-limited for {Email} (user {UserId}), {Count} times within {CooldownSeconds} seconds of the last link sent",
+                sendToEmail, userId, refused, (int)RateLimitCooldown.TotalSeconds);
             return; // Same "check your email" message either way: no enumeration.
         }
 
@@ -123,9 +151,10 @@ internal sealed class MagicLinkService(
 
     private async Task SendSignupLinkAsync(string email, string? returnUrl, CancellationToken ct)
     {
-        if (!await rateLimiter.TryReserveSignupSendAsync(email, SignupCooldown))
+        var refused = await rateLimiter.ReserveSignupSendAsync(email, SignupCooldown);
+        if (refused > 0)
         {
-            logger.LogWarning("Magic link signup rate-limited for {Email}", email);
+            await LogSignupRateLimitedAsync(email, refused, ct);
             return;
         }
 
@@ -141,6 +170,29 @@ internal sealed class MagicLinkService(
         {
             rateLimiter.ReleaseSignupReservation(email);
             throw;
+        }
+    }
+
+    /// <summary>
+    /// A verified address takes the login path, so a signup can only match an account through an unverified one. That
+    /// match is worth knowing: someone may be trying to get into an account that already exists.
+    /// </summary>
+    private async Task LogSignupRateLimitedAsync(string email, int refused, CancellationToken ct)
+    {
+        var owner = (await userEmailService.FindByAddressAsync(email, aliased: true, verifiedOnly: false, ct))
+            .FirstOrDefault();
+        var cooldownSeconds = (int)SignupCooldown.TotalSeconds;
+        if (owner is null)
+        {
+            logger.LogWarning(
+                "Magic link signup rate-limited for {Email} (no account has this address), {Count} times within {CooldownSeconds} seconds of the last link sent",
+                email, refused, cooldownSeconds);
+        }
+        else
+        {
+            logger.LogWarning(
+                "Magic link signup rate-limited for {Email} (unverified address of user {UserId}), {Count} times within {CooldownSeconds} seconds of the last link sent",
+                email, owner.UserId, refused, cooldownSeconds);
         }
     }
 }

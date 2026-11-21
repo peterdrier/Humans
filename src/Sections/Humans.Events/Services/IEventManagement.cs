@@ -10,6 +10,11 @@ namespace Humans.Events.Services;
 
 internal interface IEventManagement : IApplicationService, IEventService
 {
+    /// <summary>Carries <c>TimeZoneId</c> for rendering start times in the burn's local zone.</summary>
+    Task<EventGuideSettingsView?> GetGuideSettingsAsync(CancellationToken ct = default);
+
+    Task<HashSet<Guid>> GetFavouriteEventIdsAsync(Guid userId, CancellationToken ct = default);
+
     IReadOnlyList<EventSettingsInfo> GetEventSettingsOptions();
     Task<EventSettingsInfo?> GetEventSettingsByIdAsync(Guid id, CancellationToken ct = default);
     /// <summary>False when the selected event edition no longer exists; dependency failures propagate.</summary>
@@ -41,7 +46,6 @@ internal interface IEventManagement : IApplicationService, IEventService
 
     Task<EventSubmissionsSummary> GetUserSubmissionsSummaryAsync(Guid userId, CancellationToken ct = default);
     Task<EventInfo?> GetUserEventAsync(Guid eventId, Guid userId, CancellationToken ct = default);
-    Task<IReadOnlyList<EventInfo>> GetCampSubmissionsAsync(Guid campId, CancellationToken ct = default);
     Task<EventInfo?> GetCampEventAsync(Guid eventId, Guid campId, CancellationToken ct = default);
     Task<EventSubmissionsSummary> GetCampSubmissionsSummaryAsync(Guid campId, CancellationToken ct = default);
     /// <summary>Refuses a closed submission window or unavailable category/individual venue without writing or emailing.

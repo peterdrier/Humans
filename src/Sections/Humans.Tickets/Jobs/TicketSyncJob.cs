@@ -1,13 +1,14 @@
 using Hangfire;
 using Humans.Base.Interfaces;
 using Humans.Tickets.Contracts;
+using Humans.Tickets.Services;
 using Microsoft.Extensions.Options;
 
 namespace Humans.Tickets.Jobs;
 
 [DisableConcurrentExecution(timeoutInSeconds: 300)]
 internal sealed class TicketSyncJob(
-    ITicketSync syncService,
+    ITicketSyncService syncService,
     IOptions<TicketVendorSettings> settings,
     ILogger<TicketSyncJob> logger) : IRecurringJob
 {

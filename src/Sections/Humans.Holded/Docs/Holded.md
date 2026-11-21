@@ -63,7 +63,7 @@ to this section too and has its own doc ([`Holded-connector.md`](Holded-connecto
 | `holded_ledger_lines` | full daybook mirror, all accounts, unique `(EntryNumber, Line)` |
 | `holded_accounts` | chart-of-accounts cache with Holded's debit/credit/balance totals |
 | `holded_api_calls` | per-call metering (endpoint, status, rate-limit headers) |
-| `holded_purchase_docs` | purchase-document mirror keyed on Holded's doc id: number, contact, description, Madrid date, amounts, approved (`draft == false`; absent reads as not approved), payments pending (null until re-synced), notes, doc + line tags, first line's booked account |
+| `holded_purchase_docs` | purchase-document mirror keyed on Holded's doc id: number, contact, description, Madrid date, amounts, approved (`draft == false`; absent reads as not approved), payments pending (null until re-synced, or when a draft omits it), notes, doc + line tags, first line's booked account |
 | `holded_bank_movements` | bank-feed mirror keyed on `(TreasuryAccountId, Id)`: date, `BookedAt` (`booking_date` to the second: a Stripe gateway line's only match key, with the amount), signed amount, description, status. Window replace: a sync is the truth for its date window plus any id it returned |
 | `holded_contacts` | contact mirror keyed on Holded's contact id: name, supplier account number, trade name, email, phone, mobile, IBAN, tax code, address. Full pull with replace semantics |
 | `holded_sync_states` | keyed on `(Kind, Scope)`: one row per sync kind (`Ledger`, `Accounts`, `FullSync`, `PurchaseDocs`, `Contacts`, `Usage`, `Scope` empty), and one `BankMovements` row per treasury account (`Scope` = its id). `Usage` is the month's call count as last read (`LastCount`) and when (`LastSyncAt`); lazy-created |
@@ -165,6 +165,7 @@ tax keys: an empty list books the line with no tax, omitted applies the contact'
 `FindSalesDocumentsByTagAsync` (both kinds, read live: the issuance guard), `IssueSalesDocumentAsync`
 (create, approve, read back; each line's `AccountNum` resolved through the chart mirror, an unknown
 number refused; `DiscountPercent` sets a whole-document discount) and `ApproveSalesDocumentAsync`.
+Approving a purchase or sales document Holded already approved succeeds (logged), so a retry never fails on it.
 For the Store's one-shot booking: on `IHoldedService`, `GetSalesDocumentAsync` (live, no mirror holds sales documents:
 totals, `payments_pending`, `payments_detail`, contact and the contact's 430 account) and `GetSalesDocumentPdfAsync`; on
 `IHoldedWrite`, `SendSalesDocumentAsync` (Holded emails it;

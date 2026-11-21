@@ -75,6 +75,12 @@ internal interface ISurveyService : IApplicationService
 internal interface ISurveyInvitations : IApplicationService
 {
     /// <summary>
+    /// The one-time 7-day reminder to every invitee who has not completed. Returns how many were sent. An invitee
+    /// already reminded is skipped. Per-invitation failures are reported together after the sweep and partial-result audit.
+    /// </summary>
+    Task<int> SendDueRemindersAsync(CancellationToken ct = default);
+
+    /// <summary>
     /// Resolves the survey's audience and returns the number of net-new recipients who would receive
     /// an invitation on the next send; 0 if there is no configured audience or everyone is invited.
     /// </summary>
