@@ -17,6 +17,8 @@ internal sealed class TicketsDbContext(DbContextOptions<TicketsDbContext> option
     public DbSet<TicketCheckoutOrder> TicketCheckoutOrders => Set<TicketCheckoutOrder>();
     public DbSet<TicketCheckoutRefund> TicketCheckoutRefunds => Set<TicketCheckoutRefund>();
     public DbSet<TicketCheckoutOrderEvent> TicketCheckoutOrderEvents => Set<TicketCheckoutOrderEvent>();
+    public DbSet<TicketCheckoutTicket> TicketCheckoutTickets => Set<TicketCheckoutTicket>();
+    public DbSet<TicketResaleOffer> TicketResaleOffers => Set<TicketResaleOffer>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
@@ -31,5 +33,7 @@ internal sealed class TicketsDbContext(DbContextOptions<TicketsDbContext> option
         builder.ApplyConfiguration(new TicketCheckoutOrderConfiguration());
         builder.ApplyConfiguration(new TicketCheckoutRefundConfiguration());
         builder.ApplyConfiguration(new TicketCheckoutOrderEventConfiguration());
+        builder.ApplyConfiguration(new TicketCheckoutTicketConfiguration());
+        builder.ApplyConfiguration(new TicketResaleOfferConfiguration());
     }
 }

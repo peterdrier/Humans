@@ -38,6 +38,21 @@ internal sealed class TicketSalesEvent
 
     public List<TicketPriceRule> PriceRules { get; set; } = [];
 
+    /// <summary>Returned tickets sell (ahead of fresh stock) once this many tickets are sold; null opens resale at once.</summary>
+    public int? ResaleOpensAtSold { get; set; }
+
+    /// <summary>How long an invitation to buy one specific returned ticket stays valid.</summary>
+    public int DirectedResaleDays { get; set; } = 3;
+
+    /// <summary>The team whose required legal documents are the ticket rules every buyer accepts; null for none.</summary>
+    public Guid? TermsTeamId { get; set; }
+
+    /// <summary>Price of a child ticket attached to an adult's; null when children are not sold.</summary>
+    public long? ChildPriceMinor { get; set; }
+
+    /// <summary>Shown to the buyer: a child ticket is for someone under this age on the event's first day.</summary>
+    public int? ChildMaxAge { get; set; }
+
     public Instant CreatedAt { get; init; }
 
     public Instant UpdatedAt { get; set; }
@@ -81,4 +96,9 @@ internal enum TicketPriceRuleKind
     ClassPrice = 0,
     /// <summary>Taken off whatever the ticket costs; credits stack.</summary>
     Credit = 1,
+    /// <summary>
+    /// The holder pays the wave that was on sale the day the grant was issued, if cheaper than today's (the low income
+    /// pin: an applicant keeps their wave whether or not they get a low income place). The amount is unused.
+    /// </summary>
+    WavePin = 2,
 }
