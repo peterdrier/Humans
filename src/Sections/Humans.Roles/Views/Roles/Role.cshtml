@@ -1,0 +1,116 @@
+@model RolePageViewModel
+
+@{
+    var role = Model.Role;
+    var owner = Model.Owner;
+    ViewData["Title"] = role.Name;
+    var slug = role.CustomSlug ?? role.Slug;
+    var route = new { kind = owner.Owner.Kind, key = owner.Key, slug };
+    var open = role.SlotCount - role.Holders.Count;
+}
+
+@section Crumbs {
+    <a href="@owner.Url">@owner.Name</a>
+    <span>@role.Name</span>
+}
+
+<page-header title="@role.Name">
+    <page-header-subtitle><a href="@owner.Url">@owner.Name</a></page-header-subtitle>
+    <page-header-badge><status-badge value="@role.Period" /></page-header-badge>
+    @if (Model.CanManage)
+    {
+        <a href="@Url.Action("Owner", new { kind = owner.Owner.Kind, key = owner.Key })" class="btn btn-outline-secondary">@Localizer["Roles_Role_AllRoles"]</a>
+    }
+</page-header>
+
+<div class="row g-4">
+    <div class="col-lg-8">
+        @if (!string.IsNullOrWhiteSpace(role.Description))
+        {
+            <div class="mb-4">@Html.SanitizedMarkdown(role.Description)</div>
+        }
+
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h2 class="h5 mb-0">@Localizer["Roles_Role_Slots"]</h2>
+                <span class="text-muted small">@Localizer["Roles_Role_OpenCount", open, role.SlotCount]</span>
+            </div>
+            <ul class="list-group list-group-flush">
+                @for (var slot = 0; slot < role.SlotCount; slot++)
+                {
+                    var holder = role.Holders.FirstOrDefault(h => h.Slot == slot);
+                    <li class="list-group-item d-flex flex-wrap align-items-center gap-2">
+                        <span class="text-muted">@(slot + 1)</span>
+                        @if (role.Priorities[slot] != SlotPriority.None)
+                        {
+                            <status-badge value="@role.Priorities[slot]" />
+                        }
+                        @if (holder is not null)
+                        {
+                            <vc:human user-id="@holder.UserId" />
+                            @if (Model.CanChangeHolders)
+                            {
+                                <form action="@Url.Action("Unassign", route)" method="post" class="ms-auto">
+                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="userId" value="@holder.UserId" />
+                                    <button type="submit" class="btn btn-sm btn-outline-danger">@Localizer["Roles_Role_Unassign"]</button>
+                                </form>
+                            }
+                        }
+                        else
+                        {
+                            <span class="text-muted fst-italic">@Localizer["Roles_Role_Open"]</span>
+                        }
+                    </li>
+                }
+            </ul>
+            @if (Model.CanChangeHolders && open > 0)
+            {
+                <div class="card-body">
+                    <form action="@Url.Action("Assign", route)" method="post" class="d-flex flex-wrap gap-2">
+                    @Html.AntiForgeryToken()
+                        <div class="flex-grow-1">
+                            <vc:human-search field-name="userId" scope="Name" exclude-user-ids="role.Holders.Select(h => h.UserId).ToList()" placeholder="@Localizer["Roles_Role_FindPerson"].Value" />
+                        </div>
+                        <button type="submit" class="btn btn-sm btn-primary">@Localizer["Roles_Role_Assign"]</button>
+                    </form>
+                </div>
+            }
+        </div>
+
+        @if (Model.CanManage)
+        {
+            <div class="card mb-4">
+                <div class="card-header"><h2 class="h5 mb-0">@Localizer["Roles_Role_Edit"]</h2></div>
+                <div class="card-body">
+                    <partial name="_RoleForm" model='new RoleFormViewModel(Model.EditForm, role.Id.ToString("N"), false, Url.Action("Edit", route)!, Model.Permissions, Model.CanSetCoordinator)' />
+                </div>
+                <div class="card-footer">
+                    <form action="@Url.Action("Delete", route)" method="post">
+                    @Html.AntiForgeryToken()
+                        <button type="submit" class="btn btn-sm btn-outline-danger">@Localizer["Roles_Role_Delete"]</button>
+                    </form>
+                </div>
+            </div>
+        }
+    </div>
+
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-header"><h2 class="h5 mb-0">@Localizer["Roles_Role_Contacts"]</h2></div>
+            @if (Model.Contacts.Count == 0)
+            {
+                <div class="card-body"><empty-state>@Localizer["Roles_Role_NoContacts"]</empty-state></div>
+            }
+            else
+            {
+                <ul class="list-group list-group-flush">
+                    @foreach (var contact in Model.Contacts)
+                    {
+                        <li class="list-group-item"><vc:human user-id="@contact" /></li>
+                    }
+                </ul>
+            }
+        </div>
+    </div>
+</div>

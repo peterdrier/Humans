@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" msdata:Ordinal="0" />
+              <xsd:attribute name="type" type="xsd:string" />
+              <xsd:attribute name="mimetype" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>1.3</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+
+  <data name="Roles_Added" xml:space="preserve"><value>S'ha afegit {0}.</value></data>
+  <data name="Roles_Assigned" xml:space="preserve"><value>S'ha afegit la persona a {0}.</value></data>
+  <data name="Roles_Board_Critical" xml:space="preserve"><value>Crítiques</value></data>
+  <data name="Roles_Board_Empty" xml:space="preserve"><value>Ara mateix tots els rols estan coberts.</value></data>
+  <data name="Roles_Board_OpenSlots" xml:space="preserve"><value>Places obertes</value></data>
+  <data name="Roles_Board_Subtitle" xml:space="preserve"><value>Tots els rols que encara busquen gent, els més necessaris primer.</value></data>
+  <data name="Roles_Board_Title" xml:space="preserve"><value>Rols oberts</value></data>
+  <data name="Roles_Card_Board" xml:space="preserve"><value>Tots els rols oberts</value></data>
+  <data name="Roles_Card_Manage" xml:space="preserve"><value>Gestiona els rols</value></data>
+  <data name="Roles_Card_Title" xml:space="preserve"><value>Rols</value></data>
+  <data name="Roles_Col_Filled" xml:space="preserve"><value>Cobertes</value></data>
+  <data name="Roles_Col_OpenPriority" xml:space="preserve"><value>Més necessària</value></data>
+  <data name="Roles_Col_Owner" xml:space="preserve"><value>Equip</value></data>
+  <data name="Roles_Col_Period" xml:space="preserve"><value>Període</value></data>
+  <data name="Roles_Col_Priority" xml:space="preserve"><value>Prioritat</value></data>
+  <data name="Roles_Col_Public" xml:space="preserve"><value>Públic</value></data>
+  <data name="Roles_Col_Role" xml:space="preserve"><value>Rol</value></data>
+  <data name="Roles_Deleted" xml:space="preserve"><value>S'ha eliminat {0}.</value></data>
+  <data name="Roles_Form_Add" xml:space="preserve"><value>Afegeix el rol</value></data>
+  <data name="Roles_Form_Coordinator" xml:space="preserve"><value>Rol de coordinació</value></data>
+  <data name="Roles_Form_CoordinatorHelp" xml:space="preserve"><value>Qui el té pot fer-ho tot en aquest equip i en els de sota.</value></data>
+  <data name="Roles_Form_CustomSlug" xml:space="preserve"><value>Enllaç propi (opcional)</value></data>
+  <data name="Roles_Form_Description" xml:space="preserve"><value>Descripció</value></data>
+  <data name="Roles_Form_Hours" xml:space="preserve"><value>Hores l'any</value></data>
+  <data name="Roles_Form_Name" xml:space="preserve"><value>Nom</value></data>
+  <data name="Roles_Form_Permissions" xml:space="preserve"><value>Què poden fer qui el té</value></data>
+  <data name="Roles_Form_Priorities" xml:space="preserve"><value>Prioritat de cada plaça</value></data>
+  <data name="Roles_Form_PrioritiesHelp" xml:space="preserve"><value>Les places noves comencen sense prioritat. Desa i després assigna-la.</value></data>
+  <data name="Roles_Form_Public" xml:space="preserve"><value>Visible per als membres</value></data>
+  <data name="Roles_Form_Save" xml:space="preserve"><value>Desa</value></data>
+  <data name="Roles_Form_SlotN" xml:space="preserve"><value>Plaça {0}</value></data>
+  <data name="Roles_Form_Slots" xml:space="preserve"><value>Places</value></data>
+  <data name="Roles_Form_Sort" xml:space="preserve"><value>Ordre</value></data>
+  <data name="Roles_Owner_AddTitle" xml:space="preserve"><value>Afegeix un rol</value></data>
+  <data name="Roles_Owner_Empty" xml:space="preserve"><value>Encara no hi ha rols.</value></data>
+  <data name="Roles_Owner_Subtitle" xml:space="preserve"><value>Configura els rols que la gent pot assumir aquí.</value></data>
+  <data name="Roles_Owner_Title" xml:space="preserve"><value>Rols de {0}</value></data>
+  <data name="Roles_Refusal_AlreadyHolds" xml:space="preserve"><value>Aquesta persona ja té aquest rol.</value></data>
+  <data name="Roles_Refusal_Conflict" xml:space="preserve"><value>Algú acaba de canviar aquest rol. Torna-ho a provar.</value></data>
+  <data name="Roles_Refusal_CoordinatorHasHolders" xml:space="preserve"><value>Buida el rol abans de canviar si és el rol de coordinació.</value></data>
+  <data name="Roles_Refusal_CoordinatorKeys" xml:space="preserve"><value>El rol de coordinació ja té tots els permisos.</value></data>
+  <data name="Roles_Refusal_Full" xml:space="preserve"><value>Totes les places estan cobertes.</value></data>
+  <data name="Roles_Refusal_LinkNoLetters" xml:space="preserve"><value>Un enllaç propi necessita almenys una lletra o un número.</value></data>
+  <data name="Roles_Refusal_LinkTaken" xml:space="preserve"><value>Un altre rol d'aquí ja fa servir aquest enllaç.</value></data>
+  <data name="Roles_Refusal_NameNoLetters" xml:space="preserve"><value>El nom d'un rol necessita almenys una lletra o un número.</value></data>
+  <data name="Roles_Refusal_NameTaken" xml:space="preserve"><value>Un altre rol d'aquí ja té aquest nom.</value></data>
+  <data name="Roles_Refusal_NameTooLong" xml:space="preserve"><value>El nom d'un rol no pot tenir més de 100 caràcters.</value></data>
+  <data name="Roles_Refusal_NegativeHours" xml:space="preserve"><value>Les hores no poden ser negatives.</value></data>
+  <data name="Roles_Refusal_NoName" xml:space="preserve"><value>Posa-li un nom al rol.</value></data>
+  <data name="Roles_Refusal_NoOwner" xml:space="preserve"><value>Aquest propietari no existeix.</value></data>
+  <data name="Roles_Refusal_NoRole" xml:space="preserve"><value>Aquest rol no existeix.</value></data>
+  <data name="Roles_Refusal_NoSlots" xml:space="preserve"><value>Un rol necessita almenys una plaça.</value></data>
+  <data name="Roles_Refusal_NotAllowed" xml:space="preserve"><value>No pots gestionar rols aquí.</value></data>
+  <data name="Roles_Refusal_NotHolder" xml:space="preserve"><value>Aquesta persona no té aquest rol.</value></data>
+  <data name="Roles_Refusal_Period" xml:space="preserve"><value>Tria un període.</value></data>
+  <data name="Roles_Refusal_PermissionNotHere" xml:space="preserve"><value>'{0}' no s'aplica aquí.</value></data>
+  <data name="Roles_Refusal_PermissionTopLevel" xml:space="preserve"><value>'{0}' només val al nivell superior.</value></data>
+  <data name="Roles_Refusal_Priorities" xml:space="preserve"><value>Posa una prioritat a cada plaça.</value></data>
+  <data name="Roles_Refusal_SecondCoordinator" xml:space="preserve"><value>Ja hi ha un rol de coordinació aquí.</value></data>
+  <data name="Roles_Refusal_SlotsInUse" xml:space="preserve"><value>Primer treu la gent de les places que s'eliminen.</value></data>
+  <data name="Roles_Refusal_UnknownPermission" xml:space="preserve"><value>Cap secció declara el permís '{0}'.</value></data>
+  <data name="Roles_Role_AllRoles" xml:space="preserve"><value>Tots els rols d'aquí</value></data>
+  <data name="Roles_Role_Assign" xml:space="preserve"><value>Afegeix</value></data>
+  <data name="Roles_Role_Contacts" xml:space="preserve"><value>Amb qui parlar</value></data>
+  <data name="Roles_Role_Delete" xml:space="preserve"><value>Elimina el rol</value></data>
+  <data name="Roles_Role_Edit" xml:space="preserve"><value>Edita el rol</value></data>
+  <data name="Roles_Role_FindPerson" xml:space="preserve"><value>Cerca una persona</value></data>
+  <data name="Roles_Role_NoContacts" xml:space="preserve"><value>Encara no hi ha coordinació.</value></data>
+  <data name="Roles_Role_Open" xml:space="preserve"><value>Oberta</value></data>
+  <data name="Roles_Role_OpenCount" xml:space="preserve"><value>{0} de {1} obertes</value></data>
+  <data name="Roles_Role_Slots" xml:space="preserve"><value>Places</value></data>
+  <data name="Roles_Role_Unassign" xml:space="preserve"><value>Treu</value></data>
+  <data name="Roles_Saved" xml:space="preserve"><value>S'ha desat {0}.</value></data>
+  <data name="Roles_Unassigned" xml:space="preserve"><value>S'ha tret la persona de {0}.</value></data>
+</root>

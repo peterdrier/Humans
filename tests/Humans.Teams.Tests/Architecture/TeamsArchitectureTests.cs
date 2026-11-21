@@ -1,3 +1,5 @@
+using Humans.Teams;
+using Microsoft.Extensions.Localization;
 using AwesomeAssertions;
 using Humans.Teams.Contracts;
 using Humans.Teams.Data;
@@ -29,6 +31,7 @@ public class TeamsArchitectureTests
         services.AddSingleton(Substitute.For<ITeamRepository>());
         services.AddSingleton(Substitute.For<IServiceScopeFactory>());
         services.AddSingleton(Substitute.For<ILogger<CachingTeamService>>());
+        services.AddSingleton(Substitute.For<IStringLocalizer<TeamsResource>>());
 
         services.AddSingleton<CachingTeamService>();
         services.AddSingleton<ITeamManagement>(sp => sp.GetRequiredService<CachingTeamService>());
