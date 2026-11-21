@@ -746,6 +746,52 @@ public sealed class TicketCheckoutServiceTests
     }
 
     [HumansFact]
+    public async Task A_refund_whose_call_got_no_answer_is_never_settled_by_a_dashboard_refund()
+    {
+        var order = await BuyAndPayAsync(Buy(), _buyerId);
+        _backend.GetStatusAsync("cs_1", Arg.Any<CancellationToken>())
+            .Returns(new CheckoutStatus(CheckoutState.Paid, 0, "card", Now, RefundedMinor: 5000));
+        _backend.RefundAsync(Arg.Any<RefundRequest>(), Arg.Any<CancellationToken>())
+            .Returns<RefundResult>(_ => throw new TicketCheckoutException("timeout"));
+
+        await _service.RefundAsync(order.Id, 5000, "ours", Guid.NewGuid(), Ct);
+        await _service.RefreshOrderAsync(order.Id, Ct);
+
+        _repo.Refunds.Single().Refund.State.Should().Be(RefundState.Pending);
+    }
+
+    [HumansFact]
+    public async Task A_chargeback_lowers_what_can_be_refunded_and_keeps_the_ticket_out_of_resale()
+    {
+        var order = await BuyAndPayAsync(Buy(), _buyerId);
+        _backend.GetStatusAsync("cs_1", Arg.Any<CancellationToken>())
+            .Returns(new CheckoutStatus(CheckoutState.Paid, 0, "card", Now, DisputedMinor: 25000));
+        await _service.RefreshOrderAsync(order.Id, Ct);
+        var ticket = _repo.Tickets.Single(t => t.OrderId == order.Id);
+
+        (await _service.GetOrderDetailAsync(order.Id, Ct))!.RefundableMinor.Should().Be(0);
+        (await _service.RefundAsync(order.Id, 100, "returned", Guid.NewGuid(), Ct)).Refusal.Should().Contain("chargeback");
+        (await _service.OfferForResaleAsync(ticket.Id, _buyerId, Ct)).Refusal.Should().Be("Tickets_Resale_NotOfferable");
+        _repo.Offers.Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task A_payment_still_on_its_way_after_two_weeks_goes_to_the_team_once()
+    {
+        var started = await _service.StartCheckoutAsync(Buy(), _buyerId, Ct);
+        _backend.GetStatusAsync("cs_1", Arg.Any<CancellationToken>())
+            .Returns(new CheckoutStatus(CheckoutState.Processing, null, null, null));
+        await _service.ReconcileOpenOrdersAsync(Ct);
+        _clock.Advance(Duration.FromDays(15));
+
+        await _service.ReconcileOpenOrdersAsync(Ct);
+        await _service.ReconcileOpenOrdersAsync(Ct);
+
+        await _audit.Received(1).LogAsync(TicketsAuditActions.TicketCheckoutNeedsAttention, Arg.Any<string>(),
+            started.OrderId!.Value, Arg.Is<string>(d => d.StartsWith("Payment on its way", StringComparison.Ordinal)), Arg.Any<string>());
+    }
+
+    [HumansFact]
     public async Task A_payment_on_its_way_holds_the_ticket_past_expiry_and_cannot_be_cancelled_until_it_settles()
     {
         var started = await _service.StartCheckoutAsync(Buy(), _buyerId, Ct);

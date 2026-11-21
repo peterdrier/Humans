@@ -83,6 +83,9 @@ internal sealed partial class TicketCheckoutService
         var salesEvent = await repository.GetSalesEventAsync(ticket.SalesEventId, ct);
         if (salesEvent is null || salesEvent.Mode == TicketSalesMode.Closed)
             return new("Tickets_Resale_Closed");
+        // The bank already took this order's money back: a resale would owe a refund of money Humans no longer holds.
+        if (await repository.GetOrderAsync(ticket.OrderId, ct) is { DisputedMinor: > 0 })
+            return new("Tickets_Resale_NotOfferable");
 
         // Children go wherever their adult goes: returned with the adult and refunded with it when it sells.
         var dependents = (await repository.GetTicketsForOrderAsync(ticket.OrderId, ct))
@@ -517,7 +520,7 @@ internal sealed partial class TicketCheckoutService
             // Tickets issued but never handed to delivery (the process stopped in between). Delivery dedupes a repeat;
             // the wait lets a first hand-off still in its queue finish, and the window keeps old orders out.
             var now = clock.GetCurrentInstant();
-            foreach (var order in orders.Where(o => o is { State: TicketCheckoutOrderState.Paid, PaidAt: { } paidAt }
+            foreach (var order in orders.Where(o => deliveries.Any() && o is { State: TicketCheckoutOrderState.Paid, PaidAt: { } paidAt }
                          && issued.Contains(o.Id) && paidAt <= now - DeliveryGrace && paidAt > now - DeliveryRepairWindow))
             {
                 if ((await repository.GetOrderEventsAsync(order.Id, ct)).Any(e =>

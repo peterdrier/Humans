@@ -187,10 +187,11 @@ internal sealed record CheckoutOrderDetail(
 {
     /// <summary>
     /// What may still be refunded: ticket lines only, net of what has gone back (the backend's total, dashboard refunds
-    /// included, or Humans' own settled refunds if the backend has not caught up) and of refunds not settled yet.
+    /// included, or Humans' own settled refunds if the backend has not caught up), of refunds not settled yet, and of
+    /// what a chargeback took.
     /// </summary>
     public long RefundableMinor =>
-        Math.Max(0, Order.TicketTotalMinor
+        Math.Max(0, Order.TicketTotalMinor - Order.DisputedMinor
             - Math.Max(Order.RefundedMinor, Refunds.Where(r => r.State == RefundState.Succeeded).Sum(r => r.AmountMinor))
             - Refunds.Where(r => r.State is RefundState.Pending or RefundState.ManualRequired).Sum(r => r.AmountMinor));
 }

@@ -28,14 +28,16 @@ Rules every backend follows:
   the end even if the buyer's request is aborted, so a half-made order always has its backend session.
 - **Payment on its way.** A backend reports `Processing` once the buyer finished paying with a method that settles
   later (a SEPA debit, a bank transfer, sometimes the next day). The order then holds its tickets past `ExpiresAt`, is
-  never cancelled by Tickets or the buyer (the buy page offers no "start again" for it), and ends Paid or Failed.
+  never cancelled by Tickets or the buyer (the buy page offers no "start again" for it), and ends Paid or Failed. One
+  still on its way 14 days after it was created goes to the audit log as needing attention, once.
 - **Chargebacks.** `DisputedMinor` is what the buyer's bank has taken back and the event has not won. Each change goes on
-  the timeline and to the audit log as needing attention; tickets stay valid until the ticketing team decides.
+  the timeline and to the audit log as needing attention; tickets stay valid until the ticketing team decides. It comes
+  off what can still be refunded, and the order's tickets cannot be offered for resale while it stands.
 - **Refund outcome.** `RefundedMinor` moves only once money went back. On every status read Tickets settles its
   `Pending` and `ManualRequired` refunds, oldest first. A pending refund the backend knows by id is repeated under that
-  id and takes the state the backend answers (`RefundFailed` may follow only the newest refund), so a refund made in the
-  backend's dashboard never settles one of Tickets' own. The rest settle from the part of `RefundedMinor` that Tickets'
-  succeeded refunds do not explain. Failed refunds stop counting against what can still be refunded. The reconcile job re-reads paid orders with
+  id and takes the state the backend answers (`RefundFailed` may follow only the newest refund); one whose call got no
+  answer waits for the reconcile job's resend. So a refund made in the backend's dashboard never settles one of Tickets'
+  own. Only `ManualRequired` refunds settle from the part of `RefundedMinor` that Tickets' succeeded refunds do not explain. Failed refunds stop counting against what can still be refunded. The reconcile job re-reads paid orders with
   unsettled refunds and resends any refund whose backend call threw.
 - **Erasure.** A member's deletion calls `ErasePersonalDataAsync` for each of their orders before Tickets tombstones its
   own copy; a backend failure throws, so the deletion retries with the emails still known. Box Office is a no-op: Stripe
