@@ -14,7 +14,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Humans.Tickets.Data.Migrations
 {
     [DbContext(typeof(TicketsDbContext))]
-    [Migration("20261121201314_TicketTypesConfigurable")]
+    [Migration("20261121203607_TicketTypesConfigurable")]
     partial class TicketTypesConfigurable
     {
         /// <inheritdoc />
@@ -434,6 +434,12 @@ namespace Humans.Tickets.Data.Migrations
 
                     b.Property<int>("Capacity")
                         .HasColumnType("integer");
+
+                    b.Property<int?>("ChildMaxAge")
+                        .HasColumnType("integer");
+
+                    b.Property<long?>("ChildPriceMinor")
+                        .HasColumnType("bigint");
 
                     b.Property<Instant>("CreatedAt")
                         .HasColumnType("timestamp with time zone");

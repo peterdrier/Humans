@@ -432,6 +432,12 @@ namespace Humans.Tickets.Data.Migrations
                     b.Property<int>("Capacity")
                         .HasColumnType("integer");
 
+                    b.Property<int?>("ChildMaxAge")
+                        .HasColumnType("integer");
+
+                    b.Property<long?>("ChildPriceMinor")
+                        .HasColumnType("bigint");
+
                     b.Property<Instant>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 

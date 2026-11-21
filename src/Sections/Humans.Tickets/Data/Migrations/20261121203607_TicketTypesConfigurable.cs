@@ -11,14 +11,6 @@ namespace Humans.Tickets.Data.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropColumn(
-                name: "ChildMaxAge",
-                table: "ticket_sales_events");
-
-            migrationBuilder.DropColumn(
-                name: "ChildPriceMinor",
-                table: "ticket_sales_events");
-
             migrationBuilder.AddColumn<List<string>>(
                 name: "DonationPurposes",
                 table: "ticket_sales_events",
@@ -42,18 +34,6 @@ namespace Humans.Tickets.Data.Migrations
             migrationBuilder.DropColumn(
                 name: "child_types",
                 table: "ticket_sales_events");
-
-            migrationBuilder.AddColumn<int>(
-                name: "ChildMaxAge",
-                table: "ticket_sales_events",
-                type: "integer",
-                nullable: true);
-
-            migrationBuilder.AddColumn<long>(
-                name: "ChildPriceMinor",
-                table: "ticket_sales_events",
-                type: "bigint",
-                nullable: true);
         }
     }
 }
