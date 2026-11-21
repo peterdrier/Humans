@@ -111,11 +111,11 @@
   <data name="Tickets_Buy_YourPrice" xml:space="preserve">
     <value>Jouw prijs</value>
   </data>
-  <data name="Tickets_Buy_WavePrice" xml:space="preserve">
-    <value>Huidige ronde: {0}, {1}</value>
-  </data>
   <data name="Tickets_Buy_Total" xml:space="preserve">
     <value>Totaal</value>
+  </data>
+  <data name="Tickets_Buy_ForSelfHeading" xml:space="preserve">
+    <value>Jouw ticket</value>
   </data>
   <data name="Tickets_Buy_ForSelf" xml:space="preserve">
     <value>Een ticket voor mij ({0})</value>
@@ -302,9 +302,6 @@
   </data>
   <data name="Tickets_Buy_SupporterIntro" xml:space="preserve">
     <value>Maak je ervaring groter en help ons het beste evenement te maken. Je ticket blijft op jouw prijs; de rest is een donatie aan de vereniging, zonder btw, en wordt niet terugbetaald.</value>
-  </data>
-  <data name="Tickets_Buy_SupporterBreakdown" xml:space="preserve">
-    <value>{0} ticket + {1} donatie</value>
   </data>
   <data name="Tickets_Buy_Terms" xml:space="preserve">
     <value>Ticketregels</value>
