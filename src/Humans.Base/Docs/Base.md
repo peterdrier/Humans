@@ -61,6 +61,7 @@ The base builds with `Microsoft.NET.Sdk.Razor` + `AddRazorSupportForMvc` to host
 - The email composer preview is ordered per modal: only the latest preview can replace its frame, subject or error, and separate modal instances stay independent.
 
 - `CultureScope` leaves both ambient cultures unchanged for blank or unknown culture codes. When supplied a logger, an unknown culture emits a Warning with the rejected code and fallback, without an exception stack; valid scopes restore both prior cultures on disposal.
+- `SlugHelper.GenerateSlug` lowercases invariantly, replaces each run outside ASCII letters and digits with one hyphen, and trims edge hyphens. It does not transliterate diacritics; empty results and reserved names remain caller-owned decisions.
 
 ## Tests
 
