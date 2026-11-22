@@ -1,5 +1,6 @@
 using Humans.Base.Demo;
 using Humans.Users.Contracts;
+using Microsoft.Extensions.Options;
 using NodaTime;
 
 namespace Humans.Development.Services.Demo;
@@ -16,6 +17,7 @@ internal sealed class DemoCastStory(
     IUserWrite userWrite,
     IAccountDeletionService accountDeletion,
     DevPersonaSeeder personaSeeder,
+    IOptions<DemoCastOptions> options,
     IClock clock) : IDemoStory
 {
     private const string FakeReason = "Demo cast member";
@@ -54,7 +56,7 @@ internal sealed class DemoCastStory(
 
     public async Task TellAsync(IDemoWorld world, CancellationToken ct)
     {
-        for (var n = 1; n <= DemoCast.Size; n++)
+        for (var n = 1; n <= options.Value.Size; n++)
         {
             var number = n;
             await world.EnsureAsync(

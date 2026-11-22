@@ -7,13 +7,20 @@ using Humans.Integration.Tests.Infrastructure;
 using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Users.Contracts;
+using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Humans.Integration.Tests.Development;
 
 public class DemoWorldTests(HumansTestDatabase database) : IntegrationTestBase(database)
 {
-    [HumansFact(Timeout = 600000)]
+    // Small enough that reset's purges, about a second and a half each, fit CI's five-minute quiet limit.
+    private const int CastSize = 30;
+
+    private WebApplicationFactory<Program> _demoHost = null!;
+
+    [HumansFact(Timeout = 300000)]
     public async Task Build_twice_adds_nothing_the_second_time_and_reset_retires_through_purge()
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
@@ -22,10 +29,15 @@ public class DemoWorldTests(HumansTestDatabase database) : IntegrationTestBase(d
         using (var scope = Factory.Services.CreateScope())
             await scope.ServiceProvider.GetRequiredService<IShiftSeeding>().SetShiftBrowsingOpenAsync(eventId, isOpen: true);
 
+        // Started after the seeding, so its caches load the open event.
+        await using var demoHost = Factory.WithWebHostBuilder(builder => builder.ConfigureTestServices(services =>
+            services.Configure<DemoCastOptions>(o => o.Size = CastSize)));
+        _demoHost = demoHost;
+
         var first = await RunAsync(reset: false, adminId, ct);
         first.Should().NotContain(line => line.Contains("failed", StringComparison.OrdinalIgnoreCase));
         var crowd = await MadeCrowdAsync(generation: 1, ct);
-        crowd.Should().HaveCount(DemoCast.Size);
+        crowd.Should().HaveCount(CastSize);
         (await UserInfosAsync(crowd, ct)).Should().AllSatisfy(u => u.IsTombstone.Should().BeFalse());
         (await LedgerAsync(ct)).Where(e => e.Key.StartsWith(RotaKeyPrefix, StringComparison.Ordinal))
             .Should().NotBeEmpty().And.AllSatisfy(e => e.State.Should().Be(DemoLedgerState.Made));
@@ -37,7 +49,7 @@ public class DemoWorldTests(HumansTestDatabase database) : IntegrationTestBase(d
         var reset = await RunAsync(reset: true, adminId, ct);
         reset.Should().Contain("Generation 1 retired.");
         (await UserInfosAsync(crowd, ct)).Should().AllSatisfy(u => u.IsTombstone.Should().BeTrue());
-        (await MadeCrowdAsync(generation: 2, ct)).Should().HaveCount(DemoCast.Size)
+        (await MadeCrowdAsync(generation: 2, ct)).Should().HaveCount(CastSize)
             .And.NotIntersectWith(crowd);
         (await LedgerAsync(ct)).Where(e => e.Generation == 1 && e.Key.StartsWith(TeamsDemo.TeamKeyPrefix, StringComparison.Ordinal))
             .Should().NotBeEmpty().And.AllSatisfy(e => e.State.Should().Be(DemoLedgerState.Retired));
@@ -49,12 +61,12 @@ public class DemoWorldTests(HumansTestDatabase database) : IntegrationTestBase(d
 
     private async Task<IReadOnlyList<string>> RunAsync(bool reset, Guid actorId, CancellationToken ct)
     {
-        using var scope = Factory.Services.CreateScope();
+        using var scope = _demoHost.Services.CreateScope();
         return await scope.ServiceProvider.GetRequiredService<DemoWorldRunner>().RunAsync(reset, actorId, ct);
     }
 
     private async Task<IReadOnlyList<DemoLedgerEntry>> LedgerAsync(CancellationToken ct) =>
-        await Factory.Services.GetRequiredService<IDemoLedgerRepository>().GetAllAsync(ct);
+        await _demoHost.Services.GetRequiredService<IDemoLedgerRepository>().GetAllAsync(ct);
 
     private async Task<List<Guid>> MadeCrowdAsync(int generation, CancellationToken ct) =>
         [.. (await LedgerAsync(ct))
@@ -64,7 +76,7 @@ public class DemoWorldTests(HumansTestDatabase database) : IntegrationTestBase(d
 
     private async Task<List<UserInfo>> UserInfosAsync(IEnumerable<Guid> ids, CancellationToken ct)
     {
-        using var scope = Factory.Services.CreateScope();
+        using var scope = _demoHost.Services.CreateScope();
         var users = scope.ServiceProvider.GetRequiredService<IUserService>();
         var infos = new List<UserInfo>();
         foreach (var id in ids)

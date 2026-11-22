@@ -163,29 +163,35 @@ internal sealed class ShiftsDemoStory(
         if (pool.Count == 0)
             return rotaId;
 
-        var bailOrRefuse = 0;
+        var filled = new HashSet<Guid>();
         foreach (var shift in rota.Shifts.Where(s => s.Signups.Count == 0))
         {
+            filled.Add(shift.Shift.Id);
             var picked = pool.OrderBy(_ => rng.Next()).Take(shift.Shift.MaxVolunteers + 2).ToList();
             var confirmed = (int)Math.Round(shift.Shift.MaxVolunteers * rate);
             for (var i = 0; i < picked.Count; i++)
             {
                 if (i < confirmed)
-                {
                     await signups.VoluntellAsync(picked[i], shift.Shift.Id, actorUserId);
-                    continue;
-                }
-
-                var signup = await signups.SignUpAsync(picked[i], shift.Shift.Id);
-                if (signup.SignupId is not { } signupId || bailOrRefuse >= 2)
-                    continue;
-
-                // A couple per rota end bailed or refused, so the dashboard's filters have something to show.
-                if (bailOrRefuse++ % 2 == 0)
-                    await signups.BailAsync(signupId, picked[i], "Demo: plans changed");
                 else
-                    await signups.RefuseAsync(signupId, actorUserId, "Demo: shift already covered");
+                    await signups.SignUpAsync(picked[i], shift.Shift.Id);
             }
+        }
+
+        // A couple per rota end bailed or refused, so the dashboard's filters have something to show. Read back
+        // rather than trusted: a coordinator's own signup confirms straight away and can't be refused.
+        rota = await FindAsync(rotaId, ct) ?? rota;
+        var pending = rota.Shifts.Where(s => filled.Contains(s.Shift.Id))
+            .SelectMany(s => s.Signups)
+            .Where(s => s.Status == SignupStatus.Pending)
+            .Take(2)
+            .ToList();
+        for (var i = 0; i < pending.Count; i++)
+        {
+            if (i == 0)
+                await signups.BailAsync(pending[i].Id, pending[i].UserId, "Demo: plans changed");
+            else
+                await signups.RefuseAsync(pending[i].Id, actorUserId, "Demo: shift already covered");
         }
 
         return rotaId;
