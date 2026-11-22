@@ -13,6 +13,45 @@ public class MailerLiteClientRetryTests
         """{"data":[{"id":"42","name":"Humans - Test","created_at":"2026-01-01 00:00:00","active_count":0,"unsubscribed_count":0,"unconfirmed_count":0,"bounced_count":0,"junk_count":0}],"meta":{"current_page":1,"last_page":1}}""";
 
     [HumansTheory]
+    [Xunit.InlineData(false, false)]
+    [Xunit.InlineData(false, true)]
+    [Xunit.InlineData(true, false)]
+    [Xunit.InlineData(true, true)]
+    public async Task RefreshAsync_RejectsRepeatedIdentitiesAndDiscardsSnapshot(bool subscribers, bool acrossPages)
+    {
+        const string emptySubscribers = """{"data":[],"meta":{"next_cursor":null}}""";
+        const string subscriberPage = """{"data":[{"id":"sub-1","email":"alice@example.org","status":"active"}],"meta":{"next_cursor":null}}""";
+        var handler = new ScriptedHandler();
+        handler.EnqueueJson(HttpStatusCode.OK, emptySubscribers);
+        handler.EnqueueJson(HttpStatusCode.OK, HumansGroupPage);
+        var client = NewClient(handler);
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        _ = await client.GetAccountSummaryAsync(ct);
+        var item = System.Text.Json.Nodes.JsonNode.Parse(subscribers ? subscriberPage : HumansGroupPage)!["data"]![0]!.ToJsonString();
+        var data = acrossPages ? $"[{item}]" : $"[{item},{item}]";
+        var firstMeta = subscribers
+            ? (acrossPages ? """{"next_cursor":"next"}""" : """{"next_cursor":null}""")
+            : (acrossPages ? """{"current_page":1,"last_page":2}""" : """{"current_page":1,"last_page":1}""");
+        if (!subscribers) handler.EnqueueJson(HttpStatusCode.OK, emptySubscribers);
+        handler.EnqueueJson(HttpStatusCode.OK, $$"""{"data":{{data}},"meta":{{firstMeta}}}""");
+        if (acrossPages)
+        {
+            var lastMeta = subscribers ? """{"next_cursor":null}""" : """{"current_page":2,"last_page":2}""";
+            handler.EnqueueJson(HttpStatusCode.OK, $$"""{"data":[{{item}}],"meta":{{lastMeta}}}""");
+        }
+        if (subscribers) handler.EnqueueJson(HttpStatusCode.OK, HumansGroupPage);
+
+        var refresh = () => client.RefreshAsync(ct);
+
+        (await refresh.Should().ThrowAsync<HttpRequestException>()).WithMessage("*repeated*id*");
+        client.LastFetchedAt.Should().BeNull();
+        handler.Clear();
+        handler.EnqueueJson(HttpStatusCode.OK, emptySubscribers);
+        handler.EnqueueJson(HttpStatusCode.OK, HumansGroupPage);
+        (await client.ListGroupsAsync(ct)).Should().ContainSingle().Which.Id.Should().Be("42");
+    }
+
+    [HumansTheory]
     [Xunit.InlineData(false)]
     [Xunit.InlineData(true)]
     public async Task RefreshAsync_BoundsPaginationAndRecoversWithoutTheOldSnapshot(bool subscribers)

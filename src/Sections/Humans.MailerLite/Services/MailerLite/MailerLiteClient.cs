@@ -249,6 +249,7 @@ internal sealed class MailerLiteClient(IHttpClientFactory httpFactory, IClock cl
     {
         string? cursor = null;
         var seenCursors = new HashSet<string>(StringComparer.Ordinal);
+        var seenIds = new HashSet<string>(StringComparer.Ordinal);
         for (var page = 1; page <= PageSafetyCap; page++)
         {
             // include=groups required — omitting it returns empty GroupIds.
@@ -263,6 +264,8 @@ internal sealed class MailerLiteClient(IHttpClientFactory httpFactory, IClock cl
             {
                 if (s is null)
                     throw new HttpRequestException("MailerLite returned a null subscriber page item.");
+                if (!seenIds.Add(s.Id))
+                    throw new HttpRequestException("MailerLite repeated a subscriber id.");
                 yield return s;
             }
             if (string.IsNullOrEmpty(body.Meta.NextCursor)) yield break;
@@ -276,6 +279,7 @@ internal sealed class MailerLiteClient(IHttpClientFactory httpFactory, IClock cl
     private async Task<IReadOnlyList<MailerLiteGroup>> FetchGroupsAsync(CancellationToken ct)
     {
         var results = new List<MailerLiteGroup>();
+        var seenIds = new HashSet<string>(StringComparer.Ordinal);
         for (var page = 1; page <= PageSafetyCap; page++)
         {
             using var resp = await SendAsync(HttpMethod.Get, $"/api/groups?page={page}&limit=100", content: null, ct);
@@ -287,6 +291,9 @@ internal sealed class MailerLiteClient(IHttpClientFactory httpFactory, IClock cl
             if (body.Data.Any(group => group is null ||
                 string.IsNullOrWhiteSpace(group.Id) || string.IsNullOrWhiteSpace(group.Name)))
                 throw new HttpRequestException("MailerLite returned an incomplete group page item.");
+            foreach (var group in body.Data)
+                if (!seenIds.Add(group.Id))
+                    throw new HttpRequestException("MailerLite repeated a group id.");
             results.AddRange(body.Data);
             if (body.Meta.CurrentPage >= body.Meta.LastPage) return results;
         }
