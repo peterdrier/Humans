@@ -47,7 +47,7 @@
         {
             <details authorize-policy="@TicketsPolicies.Manage">
                 <summary class="small">Take out</summary>
-                <form method="post" asp-action="WithdrawOffer" asp-route-id="@Model.SalesEventId" asp-route-offerId="@item.Offer.Id" class="mt-1">
+                <form method="post" asp-action="WithdrawOffer" asp-route-id="@Model.TicketingSettingsId" asp-route-offerId="@item.Offer.Id" class="mt-1">
                     @Html.AntiForgeryToken()
                     <input class="form-control form-control-sm mb-1" name="reason" maxlength="500" required placeholder="Reason" aria-label="Reason" />
                     <button type="submit" class="btn btn-outline-secondary btn-sm">Take out of the queue</button>
@@ -88,7 +88,7 @@
             <span class="me-1">@((item.Offer.RefundOwedMinor / 100m).ToEuro())</span>
             @if (item.Refund is { } refund)
             {
-                <a asp-action="Refunds" asp-route-id="@Model.SalesEventId" asp-route-state="@refund.State"><status-badge value="@refund.State" /></a>
+                <a asp-action="Refunds" asp-route-id="@Model.TicketingSettingsId" asp-route-state="@refund.State"><status-badge value="@refund.State" /></a>
             }
             else
             {
@@ -109,7 +109,7 @@
 <page-header title="Resale queue" subtitle="@Model.EventName" badge="@resaleState" badge-class="@resaleBadge">
     @if (canToggle)
     {
-        <form method="post" asp-action="SetResaleOpen" asp-route-id="@Model.SalesEventId" authorize-policy="@TicketsPolicies.Manage">
+        <form method="post" asp-action="SetResaleOpen" asp-route-id="@Model.TicketingSettingsId" authorize-policy="@TicketsPolicies.Manage">
             @Html.AntiForgeryToken()
             <input type="hidden" name="open" value="@(Model.SalesEvent.ResaleOpenedAt is null ? "true" : "false")" />
             @if (Model.SalesEvent.ResaleOpenedAt is null)

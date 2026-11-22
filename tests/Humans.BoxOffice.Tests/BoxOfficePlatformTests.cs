@@ -19,7 +19,7 @@ using Xunit;
 
 namespace Humans.BoxOffice.Tests;
 
-public sealed class BoxOfficeCheckoutBackendTests
+public sealed class BoxOfficePlatformTests
 {
     private static readonly Instant Now = Instant.FromUtc(2027, 1, 10, 12, 0);
     private readonly IHttpClient _http = Substitute.For<IHttpClient>();
@@ -27,11 +27,11 @@ public sealed class BoxOfficeCheckoutBackendTests
 
     private const string WebhookSecret = "whsec_test_boxoffice";
 
-    private BoxOfficeCheckoutBackend Backend(string webhookSecret = "") =>
+    private BoxOfficePlatform Platform(string webhookSecret = "") =>
         new(Options.Create(new BoxOfficeSettings { SecretKey = "sk_test_boxoffice", WebhookSecret = webhookSecret }),
-            new FakeClock(Now), NullLogger<BoxOfficeCheckoutBackend>.Instance, _http);
+            new FakeClock(Now), NullLogger<BoxOfficePlatform>.Instance, _http);
 
-    private static CheckoutRequest Order(Instant expiresAt, params CheckoutLine[] lines) => new(
+    private static PlatformOrderRequest Order(Instant expiresAt, params PlatformOrderLine[] lines) => new(
         Guid.NewGuid(), Guid.NewGuid(), null, "Ana García", "ana@example.com", "EUR", "es-ES", lines, expiresAt,
         new Uri("https://humans.example/Tickets/Buy/Order/x"));
 
@@ -76,16 +76,16 @@ public sealed class BoxOfficeCheckoutBackendTests
         """;
 
     [HumansFact]
-    public void Unconfigured_backend_says_so()
+    public void Unconfigured_platform_says_so()
     {
-        new BoxOfficeCheckoutBackend(Options.Create(new BoxOfficeSettings()), new FakeClock(Now),
-            NullLogger<BoxOfficeCheckoutBackend>.Instance).IsConfigured.Should().BeFalse();
+        new BoxOfficePlatform(Options.Create(new BoxOfficeSettings()), new FakeClock(Now),
+            NullLogger<BoxOfficePlatform>.Instance).IsConfigured.Should().BeFalse();
     }
 
     [HumansFact]
     public void Setup_says_test_mode_and_never_shows_the_key()
     {
-        var setup = Backend().Setup;
+        var setup = Platform().Setup;
 
         setup.Hosting.Should().Contain("test mode");
         setup.Settings.Should().OnlyContain(s => s.IsSecret && s.Value == null);
@@ -100,7 +100,7 @@ public sealed class BoxOfficeCheckoutBackendTests
             """{"object":"list","url":"/v1/balance_transactions","has_more":false,"data":[]}""",
             """{"object":"list","url":"/v1/payouts","has_more":false,"data":[]}""");
 
-        var findings = await Backend().CheckAsync(null, TestContext.Current.CancellationToken);
+        var findings = await Platform().CheckAsync(null, TestContext.Current.CancellationToken);
 
         findings.Should().Contain(f => f.Ok && f.Text.Contains("test mode"));
         findings.Should().Contain(f => f.Ok && f.Text.Contains("Balance transactions"));
@@ -119,7 +119,7 @@ public sealed class BoxOfficeCheckoutBackendTests
             new StripeResponse(HttpStatusCode.Forbidden, headers.Headers,
                 """{"error":{"type":"invalid_request_error","message":"The provided key does not have the required permissions."}}"""));
 
-        var findings = await Backend().CheckAsync(null, TestContext.Current.CancellationToken);
+        var findings = await Platform().CheckAsync(null, TestContext.Current.CancellationToken);
 
         findings.Should().Contain(f => !f.Ok && f.Text.Contains("reading Payouts") && f.Text.Contains("403"));
         findings.Should().Contain(f => f.Ok && f.Text.Contains("Balance transactions"));
@@ -131,7 +131,7 @@ public sealed class BoxOfficeCheckoutBackendTests
         _http.MakeRequestAsync(Arg.Any<StripeRequest>(), Arg.Any<CancellationToken>())
             .Returns<StripeResponse>(_ => throw new HttpRequestException("no route"));
 
-        var findings = await Backend().CheckAsync(null, TestContext.Current.CancellationToken);
+        var findings = await Platform().CheckAsync(null, TestContext.Current.CancellationToken);
 
         findings.Should().Contain(f => !f.Ok && f.Text.Contains("could not be reached"));
     }
@@ -142,15 +142,15 @@ public sealed class BoxOfficeCheckoutBackendTests
         Respond(Session("open", "unpaid"));
         var orderId = Guid.NewGuid();
 
-        var session = await Backend().CreateCheckoutAsync(new CheckoutRequest(
+        var session = await Platform().CreateOrderAsync(new PlatformOrderRequest(
             orderId, Guid.NewGuid(), null, "Ana García", "ana@example.com", "EUR", "ca-ES",
             [
-                new CheckoutLine(CheckoutLineKind.Ticket, "Ticket: Wave 1", 22500, 0.10m, "Ana García"),
-                new CheckoutLine(CheckoutLineKind.Donation, "Donation", 77500, 0m, null),
+                new PlatformOrderLine(OrderLineKind.Ticket, "Ticket: Wave 1", 22500, 0.10m, "Ana García"),
+                new PlatformOrderLine(OrderLineKind.Donation, "Donation", 77500, 0m, null),
             ],
             Now + Duration.FromHours(1), new Uri("https://humans.example/Tickets/Buy/Order/x")), TestContext.Current.CancellationToken);
 
-        session.BackendOrderId.Should().Be("cs_test_1");
+        session.PlatformOrderId.Should().Be("cs_test_1");
         session.PaymentUrl.Should().Be(new Uri("https://checkout.stripe.com/c/pay/cs_test_1"));
         var request = _requests.Single();
         request.StripeHeaders["Idempotency-Key"].Should().Be($"humans_ticket_checkout_{orderId}");
@@ -178,11 +178,11 @@ public sealed class BoxOfficeCheckoutBackendTests
             """.Replace("ORDER_ID", orderId.ToString(), StringComparison.Ordinal),
             RefundList(Refund("re_1", "succeeded", 5000)));
 
-        var orders = await Backend().ListOrdersAsync(null, Now - Duration.FromDays(30), Now, TestContext.Current.CancellationToken);
+        var orders = await Platform().ListOrdersAsync(null, Now - Duration.FromDays(30), Now, TestContext.Current.CancellationToken);
 
         orders.Should().Equal(
-            new BackendOrderSummary("cs_1", orderId, Instant.FromUnixTimeSeconds(1799582400), CheckoutState.Paid, 30000, 2, 0, 0),
-            new BackendOrderSummary("cs_2", null, Instant.FromUnixTimeSeconds(1799586000), CheckoutState.Paid, 25000, null, 5000, 0));
+            new PlatformOrderSummary("cs_1", orderId, Instant.FromUnixTimeSeconds(1799582400), PlatformOrderState.Paid, 30000, 2, 0, 0),
+            new PlatformOrderSummary("cs_2", null, Instant.FromUnixTimeSeconds(1799586000), PlatformOrderState.Paid, 25000, null, 5000, 0));
         _requests.Should().HaveCount(2);
         _requests[0].Method.Should().Be(HttpMethod.Get);
     }
@@ -190,11 +190,11 @@ public sealed class BoxOfficeCheckoutBackendTests
     [HumansFact]
     public async Task Non_euro_checkout_is_refused_before_calling_Stripe()
     {
-        var act = () => Backend().CreateCheckoutAsync(new CheckoutRequest(
-            Guid.NewGuid(), Guid.NewGuid(), null, "A", "a@example.com", "USD", "en", [new CheckoutLine(CheckoutLineKind.Ticket, "T", 100, 0m, "A")],
+        var act = () => Platform().CreateOrderAsync(new PlatformOrderRequest(
+            Guid.NewGuid(), Guid.NewGuid(), null, "A", "a@example.com", "USD", "en", [new PlatformOrderLine(OrderLineKind.Ticket, "T", 100, 0m, "A")],
             Now, new Uri("https://humans.example/")), TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<TicketCheckoutException>();
+        await act.Should().ThrowAsync<TicketingPlatformException>();
         _requests.Should().BeEmpty();
     }
 
@@ -204,9 +204,9 @@ public sealed class BoxOfficeCheckoutBackendTests
         Respond(Session("complete", "paid", PaidCharge),
             RefundList(Refund("re_1", "succeeded", 5000), Refund("re_2", "pending", 3000), Refund("re_3", "failed", 2000, Guid.NewGuid())));
 
-        var status = await Backend().GetStatusAsync("cs_test_1", TestContext.Current.CancellationToken);
+        var status = await Platform().GetStatusAsync("cs_test_1", TestContext.Current.CancellationToken);
 
-        status.State.Should().Be(CheckoutState.Paid);
+        status.State.Should().Be(PlatformOrderState.Paid);
         status.FeeMinor.Should().Be(29);
         status.PaymentMethod.Should().Be("ideal");
         status.RefundedMinor.Should().Be(5000);
@@ -215,18 +215,18 @@ public sealed class BoxOfficeCheckoutBackendTests
     }
 
     [HumansTheory]
-    [Xunit.InlineData("open", "unpaid", "requires_payment_method", CheckoutState.Pending)]
-    [Xunit.InlineData("expired", "unpaid", "canceled", CheckoutState.Expired)]
-    [Xunit.InlineData("complete", "unpaid", "processing", CheckoutState.Processing)]
-    [Xunit.InlineData("complete", "unpaid", "requires_action", CheckoutState.Processing)]
-    [Xunit.InlineData("complete", "unpaid", "requires_payment_method", CheckoutState.Failed)]
-    [Xunit.InlineData("complete", "unpaid", "canceled", CheckoutState.Failed)]
+    [Xunit.InlineData("open", "unpaid", "requires_payment_method", PlatformOrderState.Pending)]
+    [Xunit.InlineData("expired", "unpaid", "canceled", PlatformOrderState.Expired)]
+    [Xunit.InlineData("complete", "unpaid", "processing", PlatformOrderState.Processing)]
+    [Xunit.InlineData("complete", "unpaid", "requires_action", PlatformOrderState.Processing)]
+    [Xunit.InlineData("complete", "unpaid", "requires_payment_method", PlatformOrderState.Failed)]
+    [Xunit.InlineData("complete", "unpaid", "canceled", PlatformOrderState.Failed)]
     public async Task Status_maps_open_expired_settling_and_failed_debits(
-        string status, string paymentStatus, string intent, CheckoutState expected)
+        string status, string paymentStatus, string intent, PlatformOrderState expected)
     {
         Respond(Session(status, paymentStatus, intent: intent), RefundList());
 
-        (await Backend().GetStatusAsync("cs_test_1", TestContext.Current.CancellationToken)).State.Should().Be(expected);
+        (await Platform().GetStatusAsync("cs_test_1", TestContext.Current.CancellationToken)).State.Should().Be(expected);
     }
 
     [HumansFact]
@@ -241,10 +241,10 @@ public sealed class BoxOfficeCheckoutBackendTests
              {"id":"dp_3","object":"dispute","amount":2000,"status":"warning_needs_response","charge":"ch_1"}]}
             """);
 
-        var status = await Backend().GetStatusAsync("cs_test_1", TestContext.Current.CancellationToken);
+        var status = await Platform().GetStatusAsync("cs_test_1", TestContext.Current.CancellationToken);
 
-        status.DisputedMinor.Should().Be(25000);
-        status.State.Should().Be(CheckoutState.Paid);
+        status.ChargedBackMinor.Should().Be(25000);
+        status.State.Should().Be(PlatformOrderState.Paid);
     }
 
     [HumansFact]
@@ -258,10 +258,10 @@ public sealed class BoxOfficeCheckoutBackendTests
                 """{"error":{"type":"invalid_request_error","message":"Only open sessions can be expired."}}"""),
             new StripeResponse(HttpStatusCode.OK, null, Session("complete", "unpaid", intent: "processing")));
 
-        await Backend().CancelAsync("cs_test_1", TestContext.Current.CancellationToken);
-        var settling = () => Backend().CancelAsync("cs_test_1", TestContext.Current.CancellationToken);
+        await Platform().CancelAsync("cs_test_1", TestContext.Current.CancellationToken);
+        var settling = () => Platform().CancelAsync("cs_test_1", TestContext.Current.CancellationToken);
 
-        await settling.Should().ThrowAsync<TicketCheckoutException>();
+        await settling.Should().ThrowAsync<TicketingPlatformException>();
     }
 
     [HumansFact]
@@ -269,7 +269,7 @@ public sealed class BoxOfficeCheckoutBackendTests
     {
         Respond(Session("complete", "paid", PaidCharge), RefundList());
 
-        var result = await Backend().RefundAsync(
+        var result = await Platform().RefundAsync(
             new RefundRequest(Guid.NewGuid(), "cs_test_1", 20001, "too much"), TestContext.Current.CancellationToken);
 
         result.State.Should().Be(RefundState.Failed);
@@ -283,11 +283,11 @@ public sealed class BoxOfficeCheckoutBackendTests
             """{"id":"re_1","object":"refund","status":"succeeded","amount":12000,"currency":"eur"}""");
         var refundId = Guid.NewGuid();
 
-        var result = await Backend().RefundAsync(
+        var result = await Platform().RefundAsync(
             new RefundRequest(refundId, "cs_test_1", 12000, "returned"), TestContext.Current.CancellationToken);
 
         result.State.Should().Be(RefundState.Succeeded);
-        result.BackendRefundId.Should().Be("re_1");
+        result.PlatformRefundId.Should().Be("re_1");
         var refund = _requests[2];
         refund.StripeHeaders["Idempotency-Key"].Should().Be($"humans_ticket_refund_{refundId}");
         var body = Uri.UnescapeDataString(await refund.Content!.ReadAsStringAsync(TestContext.Current.CancellationToken));
@@ -300,22 +300,22 @@ public sealed class BoxOfficeCheckoutBackendTests
         var refundId = Guid.NewGuid();
         Respond(Session("complete", "paid", PaidCharge), RefundList(Refund("re_7", "pending", 30000, refundId)));
 
-        var result = await Backend().RefundAsync(
+        var result = await Platform().RefundAsync(
             new RefundRequest(refundId, "cs_test_1", 30000, "returned"), TestContext.Current.CancellationToken);
 
         result.State.Should().Be(RefundState.Pending);
-        result.BackendRefundId.Should().Be("re_7");
+        result.PlatformRefundId.Should().Be("re_7");
         _requests.Should().HaveCount(2).And.OnlyContain(r => r.Method == HttpMethod.Get);
     }
 
     [HumansFact]
     public async Task A_webhook_with_a_bad_signature_is_rejected()
     {
-        var backend = new BoxOfficeCheckoutBackend(
+        var platform = new BoxOfficePlatform(
             Options.Create(new BoxOfficeSettings { SecretKey = "sk_test_boxoffice", WebhookSecret = "whsec_test" }), new FakeClock(Now),
-            NullLogger<BoxOfficeCheckoutBackend>.Instance, _http);
+            NullLogger<BoxOfficePlatform>.Instance, _http);
 
-        (await backend.ParseWebhookAsync("{}", "t=1,v1=bad", TestContext.Current.CancellationToken)).Should().BeNull();
+        (await platform.ParseWebhookAsync("{}", "t=1,v1=bad", TestContext.Current.CancellationToken)).Should().BeNull();
         _requests.Should().BeEmpty();
     }
 
@@ -355,7 +355,7 @@ public sealed class BoxOfficeCheckoutBackendTests
              {"id":"txn_p","object":"balance_transaction","type":"payout","net":-24350}]}
             """);
 
-        var ledger = await Backend().GetPaymentLedgerAsync(Now - Duration.FromDays(1), Now, TestContext.Current.CancellationToken);
+        var ledger = await Platform().GetPaymentLedgerAsync(Now - Duration.FromDays(1), Now, TestContext.Current.CancellationToken);
 
         ledger!.Entries.Select(e => (e.Id, e.Kind, e.AmountMinor, e.FeeMinor, e.HumansOrderId)).Should().Equal(
             ("txn_c", PaymentLedgerEntryKind.Charge, 30000L, 450L, (Guid?)paidHere),
@@ -371,14 +371,14 @@ public sealed class BoxOfficeCheckoutBackendTests
     [HumansFact]
     public async Task Checkout_refuses_a_negative_line_or_a_non_positive_total_before_calling_Stripe()
     {
-        var negative = () => Backend().CreateCheckoutAsync(Order(Now + Duration.FromHours(1),
-            new CheckoutLine(CheckoutLineKind.Ticket, "T", 500, 0m, "A"),
-            new CheckoutLine(CheckoutLineKind.Donation, "D", -100, 0m, null)), TestContext.Current.CancellationToken);
-        var nothing = () => Backend().CreateCheckoutAsync(Order(Now + Duration.FromHours(1),
-            new CheckoutLine(CheckoutLineKind.Ticket, "T", 0, 0m, "A")), TestContext.Current.CancellationToken);
+        var negative = () => Platform().CreateOrderAsync(Order(Now + Duration.FromHours(1),
+            new PlatformOrderLine(OrderLineKind.Ticket, "T", 500, 0m, "A"),
+            new PlatformOrderLine(OrderLineKind.Donation, "D", -100, 0m, null)), TestContext.Current.CancellationToken);
+        var nothing = () => Platform().CreateOrderAsync(Order(Now + Duration.FromHours(1),
+            new PlatformOrderLine(OrderLineKind.Ticket, "T", 0, 0m, "A")), TestContext.Current.CancellationToken);
 
-        await negative.Should().ThrowAsync<TicketCheckoutException>();
-        await nothing.Should().ThrowAsync<TicketCheckoutException>();
+        await negative.Should().ThrowAsync<TicketingPlatformException>();
+        await nothing.Should().ThrowAsync<TicketingPlatformException>();
         _requests.Should().BeEmpty();
     }
 
@@ -389,9 +389,9 @@ public sealed class BoxOfficeCheckoutBackendTests
     {
         Respond(Session("open", "unpaid"));
 
-        await Backend().CreateCheckoutAsync(Order(Now + Duration.FromMinutes(askedMinutes),
-            new CheckoutLine(CheckoutLineKind.Ticket, "Companion", 0, 0m, "Bo"),
-            new CheckoutLine(CheckoutLineKind.Ticket, "Ticket", 22500, 0.10m, "Ana García")), TestContext.Current.CancellationToken);
+        await Platform().CreateOrderAsync(Order(Now + Duration.FromMinutes(askedMinutes),
+            new PlatformOrderLine(OrderLineKind.Ticket, "Companion", 0, 0m, "Bo"),
+            new PlatformOrderLine(OrderLineKind.Ticket, "Ticket", 22500, 0.10m, "Ana García")), TestContext.Current.CancellationToken);
 
         var body = Uri.UnescapeDataString(await _requests.Single().Content!.ReadAsStringAsync(TestContext.Current.CancellationToken));
         body.Should().Contain($"expires_at={(Now + Duration.FromMinutes(sentMinutes)).ToUnixTimeSeconds()}")
@@ -405,7 +405,7 @@ public sealed class BoxOfficeCheckoutBackendTests
     {
         Respond(Session("complete", "paid", PaidCharge), RefundList(Refund("re_1", "failed", 2000)));
 
-        var status = await Backend().GetStatusAsync("cs_test_1", TestContext.Current.CancellationToken);
+        var status = await Platform().GetStatusAsync("cs_test_1", TestContext.Current.CancellationToken);
 
         status.RefundFailed.Should().BeFalse();
         status.RefundedMinor.Should().Be(0);
@@ -416,7 +416,7 @@ public sealed class BoxOfficeCheckoutBackendTests
     {
         Respond(Session("complete", "unpaid", PaidCharge.Replace("\"paid\":true", "\"paid\":false", StringComparison.Ordinal)));
 
-        var result = await Backend().RefundAsync(
+        var result = await Platform().RefundAsync(
             new RefundRequest(Guid.NewGuid(), "cs_test_1", 1000, "returned"), TestContext.Current.CancellationToken);
 
         result.State.Should().Be(RefundState.Failed);
@@ -433,7 +433,7 @@ public sealed class BoxOfficeCheckoutBackendTests
             new StripeResponse(HttpStatusCode.BadRequest, headers.Headers,
                 """{"error":{"type":"invalid_request_error","message":"Charge ch_1 has been disputed."}}"""));
 
-        var result = await Backend().RefundAsync(
+        var result = await Platform().RefundAsync(
             new RefundRequest(Guid.NewGuid(), "cs_test_1", 1000, "returned"), TestContext.Current.CancellationToken);
 
         result.State.Should().Be(RefundState.Failed);
@@ -449,10 +449,10 @@ public sealed class BoxOfficeCheckoutBackendTests
             _ => new StripeResponse(HttpStatusCode.OK, headers.Headers, RefundList()),
             _ => throw new StripeException("no answer"));
 
-        var act = () => Backend().RefundAsync(
+        var act = () => Platform().RefundAsync(
             new RefundRequest(Guid.NewGuid(), "cs_test_1", 1000, "returned"), TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<TicketCheckoutException>();
+        await act.Should().ThrowAsync<TicketingPlatformException>();
     }
 
     [HumansFact]
@@ -463,9 +463,9 @@ public sealed class BoxOfficeCheckoutBackendTests
                 """{"error":{"type":"invalid_request_error","message":"Only open sessions can be expired."}}"""),
             new StripeResponse(HttpStatusCode.OK, null, Session("complete", "paid", PaidCharge)));
 
-        var act = () => Backend().CancelAsync("cs_test_1", TestContext.Current.CancellationToken);
+        var act = () => Platform().CancelAsync("cs_test_1", TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<TicketCheckoutException>();
+        await act.Should().ThrowAsync<TicketingPlatformException>();
     }
 
     [HumansFact]
@@ -473,7 +473,7 @@ public sealed class BoxOfficeCheckoutBackendTests
     {
         var body = Event("checkout.session.completed", """{"id":"cs_9","object":"checkout.session"}""");
 
-        (await Backend(WebhookSecret).ParseWebhookAsync(body, Sign(body), TestContext.Current.CancellationToken))
+        (await Platform(WebhookSecret).ParseWebhookAsync(body, Sign(body), TestContext.Current.CancellationToken))
             .Should().Equal("cs_9");
         _requests.Should().BeEmpty();
     }
@@ -487,7 +487,7 @@ public sealed class BoxOfficeCheckoutBackendTests
         Respond("""{"object":"list","url":"/v1/checkout/sessions","has_more":false,"data":[{"id":"cs_1","object":"checkout.session"}]}""");
         var body = Event(type, dataObject);
 
-        (await Backend(WebhookSecret).ParseWebhookAsync(body, Sign(body), TestContext.Current.CancellationToken))
+        (await Platform(WebhookSecret).ParseWebhookAsync(body, Sign(body), TestContext.Current.CancellationToken))
             .Should().Equal("cs_1");
         _requests.Single().Uri.Query.Should().Contain("payment_intent=pi_1");
     }
@@ -497,17 +497,17 @@ public sealed class BoxOfficeCheckoutBackendTests
     {
         var body = Event("customer.created", """{"id":"cus_1","object":"customer"}""");
 
-        (await Backend(WebhookSecret).ParseWebhookAsync(body, Sign(body), TestContext.Current.CancellationToken))
+        (await Platform(WebhookSecret).ParseWebhookAsync(body, Sign(body), TestContext.Current.CancellationToken))
             .Should().BeEmpty();
     }
 
     private static BoxOfficeStripeWebhookController Webhook(
-        BoxOfficeCheckoutBackend backend, ITicketCheckoutEvents events, string body, string signature)
+        BoxOfficePlatform platform, ITicketingPlatformEvents events, string body, string signature)
     {
         var http = new DefaultHttpContext();
         http.Request.Body = new MemoryStream(Encoding.UTF8.GetBytes(body));
         http.Request.Headers["Stripe-Signature"] = signature;
-        return new BoxOfficeStripeWebhookController(backend, events, NullLogger<BoxOfficeStripeWebhookController>.Instance)
+        return new BoxOfficeStripeWebhookController(platform, events, NullLogger<BoxOfficeStripeWebhookController>.Instance)
         {
             ControllerContext = new ControllerContext { HttpContext = http },
         };
@@ -516,18 +516,18 @@ public sealed class BoxOfficeCheckoutBackendTests
     [HumansFact]
     public async Task Webhook_answers_503_while_unset_400_on_a_bad_signature_and_nudges_Tickets_once_verified()
     {
-        var events = Substitute.For<ITicketCheckoutEvents>();
+        var events = Substitute.For<ITicketingPlatformEvents>();
         var body = Event("checkout.session.expired", """{"id":"cs_9","object":"checkout.session"}""");
         var ct = TestContext.Current.CancellationToken;
 
-        var unset = await Webhook(Backend(), events, body, Sign(body)).Receive(ct);
-        var forged = await Webhook(Backend(WebhookSecret), events, body, "t=1,v1=bad").Receive(ct);
-        await events.DidNotReceiveWithAnyArgs().CheckoutChangedAsync(default!, default!, default);
-        var verified = await Webhook(Backend(WebhookSecret), events, body, Sign(body)).Receive(ct);
+        var unset = await Webhook(Platform(), events, body, Sign(body)).Receive(ct);
+        var forged = await Webhook(Platform(WebhookSecret), events, body, "t=1,v1=bad").Receive(ct);
+        await events.DidNotReceiveWithAnyArgs().PlatformOrderChangedAsync(default!, default!, default);
+        var verified = await Webhook(Platform(WebhookSecret), events, body, Sign(body)).Receive(ct);
 
         unset.Should().BeOfType<StatusCodeResult>().Which.StatusCode.Should().Be(StatusCodes.Status503ServiceUnavailable);
         forged.Should().BeOfType<BadRequestResult>();
         verified.Should().BeOfType<OkResult>();
-        await events.Received(1).CheckoutChangedAsync("boxoffice", "cs_9", Arg.Any<CancellationToken>());
+        await events.Received(1).PlatformOrderChangedAsync("boxoffice", "cs_9", Arg.Any<CancellationToken>());
     }
 }

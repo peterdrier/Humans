@@ -38,8 +38,8 @@ public sealed class TicketsEmailsTests
     private static OrderReceiptMail SampleReceipt(long refundedMinor = 0) => new(
         Guid.NewGuid(), "payer@x.com", "Payer", "Nowhere 2027", "3F9A0C1B", new NodaTime.LocalDate(2027, 1, 2), "card",
         [
-            new TicketCheckoutOrderLine { Kind = CheckoutLineKind.Ticket, AmountMinor = 22500, VatRate = 0.10m, AttendeeName = "Ana <A>" },
-            new TicketCheckoutOrderLine { Kind = CheckoutLineKind.Donation, AmountMinor = 17500, DonationPurpose = "More low income tickets" },
+            new TicketCheckoutOrderLine { Kind = OrderLineKind.Ticket, AmountMinor = 22500, VatRate = 0.10m, HolderName = "Ana <A>" },
+            new TicketCheckoutOrderLine { Kind = OrderLineKind.Donation, AmountMinor = 17500, DonationPurpose = "More low income tickets" },
         ],
         40000, refundedMinor, new Uri("https://humans.example/Tickets/Buy/Order/1"), Guid.NewGuid());
 

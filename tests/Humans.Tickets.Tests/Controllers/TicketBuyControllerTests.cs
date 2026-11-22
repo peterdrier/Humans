@@ -43,7 +43,7 @@ public class TicketBuyControllerTests
         _checkout.GetOrderDetailAsync(order.Id, Arg.Any<CancellationToken>()).Returns(new CheckoutOrderDetail(order, [], [], []));
 
     [HumansFact]
-    public async Task Someone_elses_order_is_not_found_and_never_refreshed_from_the_backend()
+    public async Task Someone_elses_order_is_not_found_and_never_refreshed_from_the_platform()
     {
         var order = new TicketCheckoutOrder { Id = Guid.NewGuid(), BuyerUserId = Guid.NewGuid() };
         Stored(order);
@@ -55,7 +55,7 @@ public class TicketBuyControllerTests
     }
 
     [HumansFact]
-    public async Task The_buyer_sees_their_order_refreshed_from_the_backend()
+    public async Task The_buyer_sees_their_order_refreshed_from_the_platform()
     {
         var order = new TicketCheckoutOrder { Id = Guid.NewGuid(), BuyerUserId = ViewerId };
         Stored(order);

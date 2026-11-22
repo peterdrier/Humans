@@ -13,7 +13,7 @@
         new("Donations", (r.DonationsMinor / 100m).ToEuro()),
         new("Fees", (r.FeesMinor / 100m).ToEuro()),
         new("Refunded", (r.RefundedMinor / 100m).ToEuro(), Severity: r.RefundedMinor > 0 ? TileSeverity.Warning : TileSeverity.Normal),
-        new("Charged back", (r.DisputedMinor / 100m).ToEuro(), Severity: r.DisputedMinor > 0 ? TileSeverity.Critical : TileSeverity.Normal),
+        new("Charged back", (r.ChargedBackMinor / 100m).ToEuro(), Severity: r.ChargedBackMinor > 0 ? TileSeverity.Critical : TileSeverity.Normal),
     ];
 
     var byPrice = TableModel.For(r.ByPrice)
@@ -45,7 +45,7 @@
         .Column("State", x => x.State, o => o.EnumBadge())
         .Column("Refunds", x => x.Count, o => o.Number().End())
         .Column("Amount (€)", x => x.AmountMinor / 100m, o => o.Currency().End())
-        .RowHref(x => Url.Action("Refunds", new { id = Model.SalesEventId, state = x.State }))
+        .RowHref(x => Url.Action("Refunds", new { id = Model.TicketingSettingsId, state = x.State }))
         .Empty("No refunds asked.")
         .Build();
 
@@ -58,9 +58,9 @@
 }
 
 <page-header title="Sales report" subtitle="@Model.EventName">
-    <a class="btn btn-outline-secondary btn-sm" asp-action="Refunds" asp-route-id="@Model.SalesEventId">Refunds</a>
-    <a class="btn btn-outline-secondary btn-sm" asp-action="Resale" asp-route-id="@Model.SalesEventId">Resale queue</a>
-    <a class="btn btn-outline-secondary btn-sm" asp-action="Companions" asp-route-id="@Model.SalesEventId">Companion requests</a>
+    <a class="btn btn-outline-secondary btn-sm" asp-action="Refunds" asp-route-id="@Model.TicketingSettingsId">Refunds</a>
+    <a class="btn btn-outline-secondary btn-sm" asp-action="Resale" asp-route-id="@Model.TicketingSettingsId">Resale queue</a>
+    <a class="btn btn-outline-secondary btn-sm" asp-action="Companions" asp-route-id="@Model.TicketingSettingsId">Companion requests</a>
 </page-header>
 
 <div class="stats" style="--stats-cols: 3">

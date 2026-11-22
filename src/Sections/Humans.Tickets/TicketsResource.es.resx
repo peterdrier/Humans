@@ -77,13 +77,13 @@
   <data name="Tickets_Buy_ForSelf" xml:space="preserve">
     <value>Una entrada para mí ({0})</value>
   </data>
-  <data name="Tickets_Buy_Supporter" xml:space="preserve">
+  <data name="Tickets_Buy_Vip" xml:space="preserve">
     <value>Entrada de apoyo</value>
   </data>
-  <data name="Tickets_Buy_SupporterNone" xml:space="preserve">
+  <data name="Tickets_Buy_VipNone" xml:space="preserve">
     <value>No, solo mi entrada</value>
   </data>
-  <data name="Tickets_Buy_SupporterOption" xml:space="preserve">
+  <data name="Tickets_Buy_VipOption" xml:space="preserve">
     <value>{0} en total: tu entrada más una donación de {1}</value>
   </data>
   <data name="Tickets_Buy_Donation" xml:space="preserve">
@@ -170,7 +170,7 @@
   <data name="Tickets_Buy_Empty" xml:space="preserve">
     <value>Elige al menos una entrada o una donación.</value>
   </data>
-  <data name="Tickets_Buy_BackendFailed" xml:space="preserve">
+  <data name="Tickets_Buy_PlatformFailed" xml:space="preserve">
     <value>No se pudo abrir la página de pago. Inténtalo de nuevo en un momento.</value>
   </data>
   <data name="Tickets_Buy_OrderNotFound" xml:space="preserve">
@@ -239,7 +239,7 @@
   <data name="Tickets_Buy_ChildTypeLabel" xml:space="preserve">
     <value>Menor {0}: entrada</value>
   </data>
-  <data name="Tickets_Buy_SupporterIntro" xml:space="preserve">
+  <data name="Tickets_Buy_VipIntro" xml:space="preserve">
     <value>Mejora tu experiencia y ayúdanos a hacer el mejor evento posible. Tu entrada mantiene tu precio; el resto es una donación a la asociación, sin IVA y no reembolsable.</value>
   </data>
   <data name="Tickets_Buy_Terms" xml:space="preserve">

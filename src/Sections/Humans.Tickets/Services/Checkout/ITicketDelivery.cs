@@ -11,7 +11,7 @@ internal interface ITicketDelivery
 {
     Task TicketsIssuedAsync(Guid orderId, CancellationToken ct = default);
 
-    /// <summary>A checkout that reached its backend ended Failed or Expired.</summary>
+    /// <summary>A checkout that reached its platform ended Failed or Expired.</summary>
     Task PaymentEndedAsync(Guid orderId, CancellationToken ct = default);
 
     /// <summary>A returned ticket sold; <paramref name="refundMinor"/> goes back to its holder in the evening batch.</summary>

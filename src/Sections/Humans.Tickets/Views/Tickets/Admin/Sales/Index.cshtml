@@ -4,7 +4,7 @@
 @{
     ViewData["Title"] = "Ticket sales";
 
-    Func<TicketSalesEvent, IHtmlContent> modeCell = @<text>
+    Func<TicketingSettings, IHtmlContent> modeCell = @<text>
         @if (item.CancelledAt is not null)
         {
             <a class="badge bg-danger text-decoration-none" asp-controller="TicketsSupportAdmin" asp-action="Cancel" asp-route-id="@item.Id">Cancelled</a>
@@ -14,13 +14,13 @@
             <status-badge value="@item.Mode" />
         }
     </text>;
-    Func<TicketSalesEvent, IHtmlContent> waveCell = @<text>
+    Func<TicketingSettings, IHtmlContent> waveCell = @<text>
         @if (TicketPrice.WaveOn(item, Model.Today) is { } wave)
         {
             <span class="text-nowrap">@wave.Name, @((wave.PriceMinor / 100m).ToEuro())</span>
         }
     </text>;
-    Func<TicketSalesEvent, IHtmlContent> actionsCell = @<text>
+    Func<TicketingSettings, IHtmlContent> actionsCell = @<text>
         <div class="btn-group btn-group-sm">
             <a class="btn btn-outline-secondary" asp-action="Orders" asp-route-id="@item.Id">Orders</a>
             <button type="button" class="btn btn-outline-secondary dropdown-toggle dropdown-toggle-split"
@@ -45,7 +45,7 @@
     </text>;
     var eventsTable = TableModel.For(Model.SalesEvents)
         .Link("Event", e => Model.EventName(e.EventSettingsId), e => Url.Action("Orders", new { id = e.Id }))
-        .Column("Backend", e => Model.Backends.FirstOrDefault(b => b.Key == e.BackendKey)?.Setup.DisplayName ?? e.BackendKey)
+        .Column("Platform", e => Model.Platforms.FirstOrDefault(b => b.Key == e.PlatformKey)?.Setup.DisplayName ?? e.PlatformKey)
         .Template("Mode", modeCell, sortBy: e => e.Mode.ToString())
         .Column("Capacity", e => e.Capacity, o => o.Number().End())
         .Template("On sale now", waveCell, o => o.NoSort())
@@ -53,7 +53,7 @@
         .Empty("No event sells tickets yet. Set one up to open sales.")
         .Build();
 
-    Func<CheckoutBackendInfo, IHtmlContent> configuredCell = @<text>
+    Func<PlatformInfo, IHtmlContent> configuredCell = @<text>
         @if (item.IsConfigured)
         {
             <span class="badge bg-success">Configured</span>
@@ -63,18 +63,18 @@
             <span class="badge bg-secondary">Not configured</span>
         }
     </text>;
-    Func<CheckoutBackendInfo, IHtmlContent> backendLinksCell = @<text>
+    Func<PlatformInfo, IHtmlContent> platformLinksCell = @<text>
         <div class="btn-group btn-group-sm">
-            <a class="btn btn-outline-secondary" asp-controller="TicketsBackendAdmin" asp-action="Index" asp-route-key="@item.Key">Status</a>
-            <a class="btn btn-outline-secondary" asp-action="Recon" asp-route-backend="@item.Key">Reconciliation</a>
+            <a class="btn btn-outline-secondary" asp-controller="TicketsPlatformAdmin" asp-action="Index" asp-route-key="@item.Key">Status</a>
+            <a class="btn btn-outline-secondary" asp-action="Recon" asp-route-platform="@item.Key">Reconciliation</a>
         </div>
     </text>;
-    var backendsTable = TableModel.For(Model.Backends)
-        .Column("Backend", b => b.Setup.DisplayName)
+    var platformsTable = TableModel.For(Model.Platforms)
+        .Column("Platform", b => b.Setup.DisplayName)
         .Column("Hosting", b => b.Setup.Hosting)
         .Template("Connection", configuredCell, sortBy: b => b.IsConfigured)
-        .Template("", backendLinksCell, o => o.NoSort().End())
-        .Empty("No checkout backend is registered.")
+        .Template("", platformLinksCell, o => o.NoSort().End())
+        .Empty("No ticketing platform is registered.")
         .Build();
 }
 
@@ -99,13 +99,13 @@
 
 <div class="card mb-4">
     <div class="card-header d-flex justify-content-between align-items-baseline">
-        <span>Checkout backends</span>
-        <a class="small" asp-action="Backends">Settings and connection test</a>
+        <span>Ticketing platforms</span>
+        <a class="small" asp-action="Platforms">Settings and connection test</a>
     </div>
-    <partial name="_Table" model="backendsTable" />
+    <partial name="_Table" model="platformsTable" />
 </div>
 
 <p class="small text-muted">
-    Each event sells through one checkout backend. Humans sets every price; the backend only takes the money.
+    Each event sells through one ticketing platform. Humans sets every price; the platform only takes the money.
     Members buy at <a asp-controller="TicketBuy" asp-action="Index">/Tickets/Buy</a> for the active event.
 </p>

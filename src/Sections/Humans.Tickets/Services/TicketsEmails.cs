@@ -104,8 +104,8 @@ internal sealed class TicketsEmails(
         {
             var rows = string.Concat(receipt.Lines.Select(line =>
             {
-                var label = line.Kind == CheckoutLineKind.Ticket
-                    ? Lf("Tickets_Delivery_Receipt_TicketLine", Encode(line.AttendeeName ?? string.Empty), (line.VatRate * 100m).ToString("0.##", CultureInfo.CurrentCulture))
+                var label = line.Kind == OrderLineKind.Ticket
+                    ? Lf("Tickets_Delivery_Receipt_TicketLine", Encode(line.HolderName ?? string.Empty), (line.VatRate * 100m).ToString("0.##", CultureInfo.CurrentCulture))
                     : Lf("Tickets_Delivery_Receipt_DonationLine", Encode(line.DonationPurpose ?? localizer["Tickets_Buy_Purpose_General"].Value));
                 return $"<tr><td>{label}</td><td style=\"text-align: right;\">{Money(line.AmountMinor)}</td></tr>";
             }));
@@ -115,7 +115,7 @@ internal sealed class TicketsEmails(
             var method = string.IsNullOrWhiteSpace(receipt.PaymentMethod)
                 ? string.Empty
                 : $"<br>{Lf("Tickets_Delivery_Receipt_Method", Encode(receipt.PaymentMethod))}";
-            var donationNote = receipt.Lines.Any(l => l.Kind == CheckoutLineKind.Donation)
+            var donationNote = receipt.Lines.Any(l => l.Kind == OrderLineKind.Donation)
                 ? $"<p>{localizer["Tickets_Delivery_Receipt_DonationNote"].Value}</p>"
                 : string.Empty;
             var body = $"""

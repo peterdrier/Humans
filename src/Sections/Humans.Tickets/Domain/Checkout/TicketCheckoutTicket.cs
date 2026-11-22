@@ -10,7 +10,7 @@ internal sealed class TicketCheckoutTicket
 {
     public Guid Id { get; init; }
 
-    public Guid SalesEventId { get; init; }
+    public Guid TicketingSettingsId { get; init; }
 
     public Guid OrderId { get; init; }
 
@@ -41,7 +41,7 @@ internal sealed class TicketCheckoutTicket
 
     public string? ClassLabel { get; init; }
 
-    public long CreditsMinor { get; init; }
+    public long DiscountsMinor { get; init; }
 
     public TicketCheckoutTicketState State { get; set; }
 
@@ -80,7 +80,7 @@ internal sealed class TicketResaleOffer
 {
     public Guid Id { get; init; }
 
-    public Guid SalesEventId { get; init; }
+    public Guid TicketingSettingsId { get; init; }
 
     public Guid TicketId { get; init; }
 

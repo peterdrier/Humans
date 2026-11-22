@@ -35,7 +35,7 @@ internal sealed class TicketsAuditActions : AuditActionContributor
 
     public static readonly AuditActionDefinition TicketCheckoutPaid = new("TicketCheckoutPaid");
 
-    /// <summary>Failed, expired or cancelled, as the backend reported it.</summary>
+    /// <summary>Failed, expired or cancelled, as the platform reported it.</summary>
     public static readonly AuditActionDefinition TicketCheckoutClosed = new("TicketCheckoutClosed");
 
     public static readonly AuditActionDefinition TicketCheckoutRefunded = new("TicketCheckoutRefunded");

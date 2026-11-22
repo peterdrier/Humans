@@ -30,9 +30,9 @@ public sealed class MemberTicketStatusViewComponent(
         // Resolved per call: the checkout service is internal, and a public view component cannot name it in its
         // constructor.
         var checkout = HttpContext.RequestServices.GetRequiredService<Services.Checkout.ITicketCheckoutService>();
-        var salesEvents = await checkout.GetSalesEventsAsync(ct);
-        var sellsInHumans = salesEvents.Any(e => e.Mode is Domain.Checkout.TicketSalesMode.Open or Domain.Checkout.TicketSalesMode.ResaleOnly)
-            || (salesEvents.Any(e => e.Mode == Domain.Checkout.TicketSalesMode.InvitedOnly)
+        var allSettings = await checkout.ListTicketingSettingsAsync(ct);
+        var sellsInHumans = allSettings.Any(e => e.Mode is Domain.Checkout.TicketSalesMode.Open or Domain.Checkout.TicketSalesMode.ResaleOnly)
+            || (allSettings.Any(e => e.Mode == Domain.Checkout.TicketSalesMode.InvitedOnly)
                 && (await checkout.GetBuyPagesAsync(userId, ct)).Any(p => p.SalesEvent.Mode == Domain.Checkout.TicketSalesMode.InvitedOnly));
         // An open sale wins over off season: this card is the members' way to the buy page.
         if (activeEvent?.IsOffSeason == true && !sellsInHumans)
@@ -40,7 +40,7 @@ public sealed class MemberTicketStatusViewComponent(
             return Content(string.Empty);
         }
 
-        var humansTickets = await HumansTicketCountAsync(checkout, userId, activeEvent, salesEvents, ct);
+        var humansTickets = await HumansTicketCountAsync(checkout, userId, activeEvent, allSettings, ct);
         var configured = ticketSettings.Value.IsConfigured;
         var ticketCount = configured ? await TicketCountAsync(userId, ct) : 0;
         if (ticketCount is null)
@@ -71,14 +71,14 @@ public sealed class MemberTicketStatusViewComponent(
     /// </summary>
     private static async Task<int> HumansTicketCountAsync(
         Services.Checkout.ITicketCheckoutService checkout, Guid userId, EventSettingsInfo? activeEvent,
-        IReadOnlyList<Domain.Checkout.TicketSalesEvent> salesEvents, CancellationToken ct)
+        IReadOnlyList<Domain.Checkout.TicketingSettings> allSettings, CancellationToken ct)
     {
-        var forEvent = salesEvents
+        var forEvent = allSettings
             .Where(e => activeEvent is null || e.EventSettingsId == activeEvent.Id || e.Mode != Domain.Checkout.TicketSalesMode.Closed)
             .Select(e => e.Id).ToHashSet();
         return (await checkout.GetTicketsForHolderAsync(userId, ct))
             .Count(t => t.State is Domain.Checkout.TicketCheckoutTicketState.Valid or Domain.Checkout.TicketCheckoutTicketState.Offered
-                && forEvent.Contains(t.SalesEventId));
+                && forEvent.Contains(t.TicketingSettingsId));
     }
 
     /// <summary>Null when the holdings read failed.</summary>

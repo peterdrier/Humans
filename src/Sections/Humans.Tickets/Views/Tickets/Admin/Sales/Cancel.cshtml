@@ -8,7 +8,7 @@
     ViewData["Title"] = cancelled ? "Event cancelled" : "Cancel the event";
     ViewData[AdminNavComposition.ParentKey] = "TicketsSalesAdmin/Index";
     var culture = System.Globalization.CultureInfo.CurrentCulture;
-    var accounted = p.DisputedMinor + p.RefundedMinor + p.InFlightMinor + p.StillRefundableMinor;
+    var accounted = p.ChargedBackMinor + p.RefundedMinor + p.InFlightMinor + p.StillRefundableMinor;
     var difference = p.TicketMoneyMinor - accounted;
     StatTileViewModel[] tiles = cancelled
         ?
@@ -29,13 +29,13 @@
 }
 
 @section Crumbs {
-    <a asp-controller="TicketsSalesAdmin" asp-action="Orders" asp-route-id="@Model.SalesEventId">Orders</a>
+    <a asp-controller="TicketsSalesAdmin" asp-action="Orders" asp-route-id="@Model.TicketingSettingsId">Orders</a>
     <span>@ViewData["Title"]</span>
 }
 
 <page-header title="@(ViewData["Title"])" subtitle="@Model.EventName" badge="@(cancelled ? "Cancelled" : null)" badge-class="bg-danger">
-    <a class="btn btn-outline-secondary btn-sm" asp-action="Refunds" asp-route-id="@Model.SalesEventId">Refunds</a>
-    <a class="btn btn-outline-secondary btn-sm" asp-controller="TicketsSalesAdmin" asp-action="Recon" asp-route-backend="@Model.BackendKey">Reconciliation</a>
+    <a class="btn btn-outline-secondary btn-sm" asp-action="Refunds" asp-route-id="@Model.TicketingSettingsId">Refunds</a>
+    <a class="btn btn-outline-secondary btn-sm" asp-controller="TicketsSalesAdmin" asp-action="Recon" asp-route-platform="@Model.PlatformKey">Reconciliation</a>
 </page-header>
 
 <div class="stats" style="--stats-cols: 3">
@@ -68,7 +68,7 @@
                     @foreach (var row in p.RefundsSince)
                     {
                         <li class="list-group-item d-flex justify-content-between">
-                            <a asp-action="Refunds" asp-route-id="@Model.SalesEventId" asp-route-state="@row.State"><status-badge value="@row.State" /></a>
+                            <a asp-action="Refunds" asp-route-id="@Model.TicketingSettingsId" asp-route-state="@row.State"><status-badge value="@row.State" /></a>
                             <span>@row.Count.ToString(culture), @((row.AmountMinor / 100m).ToEuro())</span>
                         </li>
                     }
@@ -85,7 +85,7 @@
                 <table class="table table-sm mb-0">
                     <tbody>
                         <tr><td>Ticket money taken, paid orders</td><td class="text-end">@((p.TicketMoneyMinor / 100m).ToEuro())</td></tr>
-                        <tr><td>Taken back by banks (chargebacks)</td><td class="text-end">@((p.DisputedMinor / 100m).ToEuro())</td></tr>
+                        <tr><td>Taken back by banks (chargebacks)</td><td class="text-end">@((p.ChargedBackMinor / 100m).ToEuro())</td></tr>
                         <tr><td>Refunded</td><td class="text-end">@((p.RefundedMinor / 100m).ToEuro())</td></tr>
                         <tr><td>Refunds on their way</td><td class="text-end">@((p.InFlightMinor / 100m).ToEuro())</td></tr>
                         <tr><td>Still to refund</td><td class="text-end">@((p.StillRefundableMinor / 100m).ToEuro())</td></tr>
@@ -116,7 +116,7 @@ else
                 <li>Each buyer gets an email saying the event is cancelled and what comes back to them.</li>
                 <li>The work runs in the background, a batch every five minutes; this page shows how far it got and where the money is.</li>
             </ul>
-            <form method="post" asp-action="Cancel" asp-route-id="@Model.SalesEventId" authorize-policy="@PolicyNames.AdminOnly"
+            <form method="post" asp-action="Cancel" asp-route-id="@Model.TicketingSettingsId" authorize-policy="@PolicyNames.AdminOnly"
                   data-confirm="Cancel @Model.EventName, void every ticket and refund every buyer? This cannot be undone.">
                 @Html.AntiForgeryToken()
                 <div class="mb-2"><label class="form-label" for="cancel-reason">Reason (goes to the audit log and every order's timeline)</label><input class="form-control" id="cancel-reason" name="reason" maxlength="500" required /></div>

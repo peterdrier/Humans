@@ -11,7 +11,7 @@
 }
 
 @section Crumbs {
-    <a asp-controller="TicketsSalesAdmin" asp-action="Orders" asp-route-id="@t.SalesEventId">Orders</a>
+    <a asp-controller="TicketsSalesAdmin" asp-action="Orders" asp-route-id="@t.TicketingSettingsId">Orders</a>
     <a asp-controller="TicketsSalesAdmin" asp-action="Order" asp-route-id="@Model.Order.Id">@Model.Order.Reference</a>
     <span>@t.Barcode</span>
 }
@@ -49,9 +49,9 @@
                     <dt class="col-sm-4">Priced at</dt>
                     <dd class="col-sm-8">
                         @Humans.Tickets.Services.Checkout.TicketSupportReports.PriceLabel(t)
-                        @if (t.CreditsMinor > 0)
+                        @if (t.DiscountsMinor > 0)
                         {
-                            <span class="small d-block">after @((t.CreditsMinor / 100m).ToEuro()) credits</span>
+                            <span class="small d-block">after @((t.DiscountsMinor / 100m).ToEuro()) discounts</span>
                         }
                     </dd>
                     <dt class="col-sm-4">Issued</dt>
@@ -84,7 +84,7 @@
                             {
                                 <span class="small d-block">Invited @string.Join(", ", offer.Invites.Select(i => i.Email))</span>
                             }
-                            <a class="small d-block" asp-action="Resale" asp-route-id="@t.SalesEventId">Resale queue</a>
+                            <a class="small d-block" asp-action="Resale" asp-route-id="@t.TicketingSettingsId">Resale queue</a>
                         </dd>
                     }
                 </dl>
@@ -202,7 +202,7 @@
                     {
                         <details class="mb-3">
                             <summary class="fw-semibold">Move to another person, whatever the price</summary>
-                            <p class="small text-muted mt-2">As Rename, but a ticket bought at a class price or with credits may move too.</p>
+                            <p class="small text-muted mt-2">As Rename, but a ticket bought at a class price or with discounts may move too.</p>
                             <form asp-action="OverrideRename" asp-route-orderId="@Model.Order.Id" asp-route-ticketId="@t.Id" method="post">
                                 @Html.AntiForgeryToken()
                                 <div class="mb-2"><label class="form-label" for="orename-name">Legal name</label><input class="form-control" id="orename-name" name="holderName" maxlength="200" required /></div>

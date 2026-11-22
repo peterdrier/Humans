@@ -23,7 +23,7 @@ internal sealed class TicketsEmailPreviews(TicketsEmails emails, TicketCodeImage
             new EmailPreviewSample("ticket-reconciliation-alert", "Ticket Reconciliation — Team Alert",
                 emails.ReconciliationAlert(
                     [
-                        "boxoffice orders: out of balance; Humans 412 paid orders, 9,870.00 € net; backend 413, 9,995.00 € net; 1 order(s) differ: extra at backend 1",
+                        "boxoffice orders: out of balance; Humans 412 paid orders, 9,870.00 € net; platform 413, 9,995.00 € net; 1 order(s) differ: extra at platform 1",
                         "boxoffice payments and payouts: 2 movement(s) differ: fee differs from Humans' 2",
                     ],
                     "/Tickets/Admin/Sales/Recon?from=2026-12-01&to=2027-01-09")),
@@ -41,9 +41,9 @@ internal sealed class TicketsEmailPreviews(TicketsEmails emails, TicketCodeImage
                 emails.OrderReceipt(new OrderReceiptMail(Guid.Empty, email, name, SampleEvent, "3F9A0C1B",
                     new NodaTime.LocalDate(2027, 1, 2), "card",
                     [
-                        new TicketCheckoutOrderLine { Kind = CheckoutLineKind.Ticket, AmountMinor = 22500, VatRate = 0.10m, AttendeeName = name },
-                        new TicketCheckoutOrderLine { Kind = CheckoutLineKind.Ticket, AmountMinor = 22500, VatRate = 0.10m, AttendeeName = SampleReceiver },
-                        new TicketCheckoutOrderLine { Kind = CheckoutLineKind.Donation, AmountMinor = 17500 },
+                        new TicketCheckoutOrderLine { Kind = OrderLineKind.Ticket, AmountMinor = 22500, VatRate = 0.10m, HolderName = name },
+                        new TicketCheckoutOrderLine { Kind = OrderLineKind.Ticket, AmountMinor = 22500, VatRate = 0.10m, HolderName = SampleReceiver },
+                        new TicketCheckoutOrderLine { Kind = OrderLineKind.Donation, AmountMinor = 17500 },
                     ],
                     62500, 0, new Uri(SampleBase, "Tickets/Buy/Order/00000000-0000-0000-0000-000000000001"), null), culture)),
             new EmailPreviewSample("ticket-payment-failed", "Ticket Payment Failed",

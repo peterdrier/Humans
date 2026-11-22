@@ -1,9 +1,9 @@
 @using Humans.Tickets.Domain.Checkout
-@model (TicketSalesEvent SalesEvent, string EventName, IReadOnlyList<TicketCheckoutOrder> Orders)
+@model (TicketingSettings SalesEvent, string EventName, IReadOnlyList<TicketCheckoutOrder> Orders)
 @{
     ViewData["Title"] = "Ticket orders";
     var paid = Model.Orders.Where(o => o.State == TicketCheckoutOrderState.Paid).ToList();
-    var ticketsPaid = paid.Sum(o => o.Lines.Count(l => l.Kind == CheckoutLineKind.Ticket));
+    var ticketsPaid = paid.Sum(o => o.Lines.Count(l => l.Kind == OrderLineKind.Ticket));
     var refunded = paid.Sum(o => o.RefundedMinor);
     var culture = System.Globalization.CultureInfo.CurrentCulture;
     StatTileViewModel[] tiles =
@@ -22,7 +22,7 @@
         .Column("Created", o => o.CreatedAt.ToDateTime(), o => o.Css("text-nowrap"))
         .Column("Buyer", o => o.BuyerName, o => o.TextFilter())
         .Human("Member", o => o.BuyerUserId, HumanLink.Admin)
-        .Column("Tickets", o => o.Lines.Count(l => l.Kind == CheckoutLineKind.Ticket), o => o.End())
+        .Column("Tickets", o => o.Lines.Count(l => l.Kind == OrderLineKind.Ticket), o => o.End())
         .Template("Total", totalCell, o => o.End().Css("text-nowrap"), sortBy: o => o.TotalMinor)
         .Template("State", stateCell, o => o.SelectFilter(), sortBy: o => o.State.ToString())
         .RowHref(o => Url.Action("Order", new { id = o.Id }))

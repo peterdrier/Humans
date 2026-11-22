@@ -20,10 +20,10 @@
                     <dt>@cls.Label</dt>
                     <dd>@((cls.AmountMinor / 100m).ToEuro())</dd>
                 }
-                @foreach (var credit in own.Credits)
+                @foreach (var discount in own.Discounts)
                 {
-                    <dt>@credit.Label</dt>
-                    <dd>−@((credit.AmountMinor / 100m).ToEuro())</dd>
+                    <dt>@discount.Label</dt>
+                    <dd>−@((discount.AmountMinor / 100m).ToEuro())</dd>
                 }
             </dl>
         </div>
@@ -73,7 +73,7 @@ else
     <div class="col-lg-8 order-lg-1">
         <form asp-action="Start" method="post" class="card card-body">
             @Html.AntiForgeryToken()
-            <input type="hidden" name="salesEventId" value="@sale.SalesEvent.Id" />
+            <input type="hidden" name="settingsId" value="@sale.SalesEvent.Id" />
             @if (directedToken is not null)
             {
                 <input type="hidden" name="directedToken" value="@directedToken" />
@@ -139,21 +139,21 @@ else
                     </div>
                 }
 
-                @if (sale.OffersDonations && sale.SalesEvent.SupporterTotalsMinor.Any(t => t > own.AmountMinor))
+                @if (sale.OffersDonations && sale.SalesEvent.VipTotalsMinor.Any(t => t > own.AmountMinor))
                 {
                     <hr class="my-4" />
                     <fieldset>
-                        <legend class="h4">@Localizer["Tickets_Buy_Supporter"]</legend>
-                        <p class="small text-muted">@Localizer["Tickets_Buy_SupporterIntro"]</p>
+                        <legend class="h4">@Localizer["Tickets_Buy_Vip"]</legend>
+                        <p class="small text-muted">@Localizer["Tickets_Buy_VipIntro"]</p>
                         <div class="form-check mb-2">
-                            <input class="form-check-input" type="radio" name="supporterTotalMinor" id="supporter-none-@p" value="" checked />
-                            <label class="form-check-label" for="supporter-none-@p">@Localizer["Tickets_Buy_SupporterNone"]</label>
+                            <input class="form-check-input" type="radio" name="vipTotalMinor" id="supporter-none-@p" value="" checked />
+                            <label class="form-check-label" for="supporter-none-@p">@Localizer["Tickets_Buy_VipNone"]</label>
                         </div>
-                        @foreach (var total in sale.SalesEvent.SupporterTotalsMinor.Where(t => t > own.AmountMinor))
+                        @foreach (var total in sale.SalesEvent.VipTotalsMinor.Where(t => t > own.AmountMinor))
                         {
                             <div class="form-check mb-2">
-                                <input class="form-check-input" type="radio" name="supporterTotalMinor" id="supporter-@total-@p" value="@total" />
-                                <label class="form-check-label" for="supporter-@total-@p">@string.Format(Localizer["Tickets_Buy_SupporterOption"].Value, (total / 100m).ToEuro(), ((total - own.AmountMinor) / 100m).ToEuro())</label>
+                                <input class="form-check-input" type="radio" name="vipTotalMinor" id="supporter-@total-@p" value="@total" />
+                                <label class="form-check-label" for="supporter-@total-@p">@string.Format(Localizer["Tickets_Buy_VipOption"].Value, (total / 100m).ToEuro(), ((total - own.AmountMinor) / 100m).ToEuro())</label>
                             </div>
                         }
                     </fieldset>

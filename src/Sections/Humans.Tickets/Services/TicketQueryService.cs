@@ -161,14 +161,14 @@ internal sealed class TicketQueryService(
 
         // Orders taken through Humans' own checkout: each donation line is one row, never refunded.
         var checkoutOrders = new List<TicketCheckoutOrder>();
-        foreach (var salesEvent in await checkout.GetSalesEventsAsync(ct))
-            checkoutOrders.AddRange((await checkout.GetOrdersForSalesEventAsync(salesEvent.Id, ct))
+        foreach (var ticketing in await checkout.ListTicketingSettingsAsync(ct))
+            checkoutOrders.AddRange((await checkout.GetOrdersForSettingsAsync(ticketing.Id, ct))
                 .Where(o => o.State == TicketCheckoutOrderState.Paid));
         foreach (var o in checkoutOrders.OrderBy(o => o.PaidAt))
         {
             var paidAt = o.PaidAt ?? o.UpdatedAt;
             var date = paidAt.InZone(OrgZone).Date.ToInvariantDate();
-            foreach (var line in o.Lines.Where(l => l.Kind == CheckoutLineKind.Donation))
+            foreach (var line in o.Lines.Where(l => l.Kind == OrderLineKind.Donation))
                 rows.Add(new DonationExportRow(paidAt, date, o.Reference, o.BuyerName, o.BuyerEmail,
                     $"Donation: {line.DonationPurpose ?? "General"}", line.AmountMinor / 100m));
         }
@@ -855,14 +855,14 @@ internal sealed class TicketQueryService(
         if (hasCurrentEventTicket && settingsService.GetActiveEventSettings() is { } activeEvent)
             events.Add(activeEvent);
 
-        var heldSalesEventIds = (await checkout.GetTicketsForHolderAsync(userId, ct))
+        var heldSettingsIds = (await checkout.GetTicketsForHolderAsync(userId, ct))
             .Where(t => t.State is TicketCheckoutTicketState.Valid or TicketCheckoutTicketState.Offered)
-            .Select(t => t.SalesEventId)
+            .Select(t => t.TicketingSettingsId)
             .Distinct();
-        foreach (var salesEventId in heldSalesEventIds)
+        foreach (var settingsId in heldSettingsIds)
         {
-            if (await checkout.GetSalesEventAsync(salesEventId, ct) is { } salesEvent
-                && await settingsService.GetEventSettingsByIdAsync(salesEvent.EventSettingsId, ct) is { } ev)
+            if (await checkout.GetTicketingSettingsAsync(settingsId, ct) is { } ticketing
+                && await settingsService.GetEventSettingsByIdAsync(ticketing.EventSettingsId, ct) is { } ev)
                 events.Add(ev);
         }
 

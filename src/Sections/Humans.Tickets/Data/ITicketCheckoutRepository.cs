@@ -7,20 +7,20 @@ namespace Humans.Tickets.Data;
 /// <summary>The checkout lane's tables: sales events, checkout orders and their refunds.</summary>
 internal interface ITicketCheckoutRepository : IRepository
 {
-    Task<IReadOnlyList<TicketSalesEvent>> GetSalesEventsAsync(CancellationToken ct = default);
+    Task<IReadOnlyList<TicketingSettings>> ListTicketingSettingsAsync(CancellationToken ct = default);
 
-    Task<TicketSalesEvent?> GetSalesEventAsync(Guid id, CancellationToken ct = default);
+    Task<TicketingSettings?> GetTicketingSettingsAsync(Guid id, CancellationToken ct = default);
 
-    Task<TicketSalesEvent?> GetSalesEventForEventAsync(Guid eventSettingsId, CancellationToken ct = default);
+    Task<TicketingSettings?> GetTicketingSettingsForEventAsync(Guid eventSettingsId, CancellationToken ct = default);
 
     /// <summary>Inserts or replaces the whole row, owned lists included.</summary>
-    Task SaveSalesEventAsync(TicketSalesEvent salesEvent, CancellationToken ct = default);
+    Task SaveTicketingSettingsAsync(TicketingSettings ticketing, CancellationToken ct = default);
 
     Task<TicketCheckoutOrder?> GetOrderAsync(Guid id, CancellationToken ct = default);
 
-    Task<TicketCheckoutOrder?> GetOrderByBackendIdAsync(string backendKey, string backendOrderId, CancellationToken ct = default);
+    Task<TicketCheckoutOrder?> GetOrderByPlatformIdAsync(string platformKey, string platformOrderId, CancellationToken ct = default);
 
-    Task<IReadOnlyList<TicketCheckoutOrder>> GetOrdersForSalesEventAsync(Guid salesEventId, CancellationToken ct = default);
+    Task<IReadOnlyList<TicketCheckoutOrder>> GetOrdersForSettingsAsync(Guid settingsId, CancellationToken ct = default);
 
     /// <summary>Orders the person paid for or holds a ticket line in.</summary>
     Task<IReadOnlyList<TicketCheckoutOrder>> GetOrdersForUserAsync(Guid userId, CancellationToken ct = default);
@@ -62,7 +62,7 @@ internal interface ITicketCheckoutRepository : IRepository
 
     Task<IReadOnlyList<TicketCheckoutTicket>> GetTicketsForHolderAsync(Guid userId, CancellationToken ct = default);
 
-    Task<IReadOnlyList<TicketCheckoutTicket>> GetTicketsForSalesEventAsync(Guid salesEventId, CancellationToken ct = default);
+    Task<IReadOnlyList<TicketCheckoutTicket>> GetTicketsForSettingsAsync(Guid settingsId, CancellationToken ct = default);
 
     Task AddOfferAsync(TicketResaleOffer offer, CancellationToken ct = default);
 
@@ -72,7 +72,7 @@ internal interface ITicketCheckoutRepository : IRepository
 
     Task<TicketResaleOffer?> GetOfferByTokenHashAsync(string tokenHash, CancellationToken ct = default);
 
-    Task<IReadOnlyList<TicketResaleOffer>> GetOffersForSalesEventAsync(Guid salesEventId, CancellationToken ct = default);
+    Task<IReadOnlyList<TicketResaleOffer>> GetOffersForSettingsAsync(Guid settingsId, CancellationToken ct = default);
 
     Task AddCompanionRequestAsync(TicketCompanionRequest request, CancellationToken ct = default);
 
@@ -80,13 +80,13 @@ internal interface ITicketCheckoutRepository : IRepository
 
     Task<TicketCompanionRequest?> GetCompanionRequestAsync(Guid id, CancellationToken ct = default);
 
-    Task<IReadOnlyList<TicketCompanionRequest>> GetCompanionRequestsForSalesEventAsync(Guid salesEventId, CancellationToken ct = default);
+    Task<IReadOnlyList<TicketCompanionRequest>> GetCompanionRequestsForSettingsAsync(Guid settingsId, CancellationToken ct = default);
 
     /// <summary>Requests where the person is the holder or the companion.</summary>
     Task<IReadOnlyList<TicketCompanionRequest>> GetCompanionRequestsForUserAsync(Guid userId, CancellationToken ct = default);
 
     /// <summary>Every refund on the sales event's orders.</summary>
-    Task<IReadOnlyList<TicketCheckoutRefund>> GetRefundsForSalesEventAsync(Guid salesEventId, CancellationToken ct = default);
+    Task<IReadOnlyList<TicketCheckoutRefund>> GetRefundsForSettingsAsync(Guid settingsId, CancellationToken ct = default);
 
     /// <summary>
     /// Tombstones the person's names and emails, their children's names on their orders and tickets, lines and

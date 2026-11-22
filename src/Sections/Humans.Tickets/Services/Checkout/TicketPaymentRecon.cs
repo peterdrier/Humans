@@ -6,7 +6,7 @@ namespace Humans.Tickets.Services.Checkout;
 
 internal enum TicketPaymentIssue
 {
-    /// <summary>A payment, refund or chargeback that names no Humans order on this backend.</summary>
+    /// <summary>A payment, refund or chargeback that names no Humans order on this platform.</summary>
     NoOrder,
     /// <summary>A payment for an order Humans holds as neither paid nor settling.</summary>
     NotPaidInHumans,
@@ -39,12 +39,12 @@ internal sealed record TicketPayoutRow(PaymentPayout Payout, IReadOnlyList<Ticke
 internal sealed record TicketPaymentTotals(
     long ChargedMinor,
     long RefundedMinor,
-    long DisputedMinor,
+    long ChargedBackMinor,
     long FeesMinor,
     long OtherMinor,
     long PaidOutMinor)
 {
-    public long NetMinor => ChargedMinor - RefundedMinor - DisputedMinor - FeesMinor + OtherMinor;
+    public long NetMinor => ChargedMinor - RefundedMinor - ChargedBackMinor - FeesMinor + OtherMinor;
 }
 
 /// <summary>
@@ -54,7 +54,7 @@ internal sealed record TicketPaymentTotals(
 /// on the same test account made them. They count in the account's totals and are never a difference.
 /// </summary>
 internal sealed record TicketPaymentRecon(
-    string BackendKey,
+    string PlatformKey,
     Instant From,
     Instant To,
     TicketPaymentTotals Totals,
@@ -71,7 +71,7 @@ internal sealed record TicketPaymentRecon(
 
     /// <summary>Fees charged on their own or on a chargeback rather than on a payment, listed for the team to check.</summary>
     public IEnumerable<TicketPaymentRow> OtherFees => Rows.Where(r =>
-        r.Entry.Kind is PaymentLedgerEntryKind.Fee or PaymentLedgerEntryKind.Dispute or PaymentLedgerEntryKind.Other
+        r.Entry.Kind is PaymentLedgerEntryKind.Fee or PaymentLedgerEntryKind.Chargeback or PaymentLedgerEntryKind.Other
         && (r.Entry.FeeMinor != 0 || r.Entry.Kind == PaymentLedgerEntryKind.Fee));
 
     public bool Balanced => Error is null && !Problems.Any() && !PayoutProblems.Any();
@@ -84,7 +84,7 @@ internal sealed record TicketPaymentRecon(
 /// day the money moved, so a refund months after the sale counts in the period it was made.
 /// </para>
 /// <para>
-/// A payment must name an order on this backend that Humans holds as paid (or settling), for the order's total, with
+/// A payment must name an order on this platform that Humans holds as paid (or settling), for the order's total, with
 /// the fee Humans recorded (a failed delayed debit, whose payment came back, may be Failed). A refund or chargeback must name an order. A payout must send what it contains; a failed
 /// one is shown, not counted, since it stays failed forever. A fee on its own (Stripe's own billing, a chargeback fee) names no order and is listed, not a problem.
 /// </para>
@@ -98,7 +98,7 @@ internal static class TicketPaymentReconBuilder
     /// another instance's, set apart rather than a difference.
     /// </summary>
     public static TicketPaymentRecon Build(
-        string backendKey,
+        string platformKey,
         Instant from,
         Instant to,
         PaymentLedger ledger,
@@ -106,7 +106,7 @@ internal static class TicketPaymentReconBuilder
         IReadOnlyCollection<Guid>? returnedLater = null,
         bool sharedAccount = false)
     {
-        var mine = Mine(orders, backendKey);
+        var mine = Mine(orders, platformKey);
         var known = orders.Select(o => o.Id).ToHashSet();
         var returned = Returned(ledger);
         returned.UnionWith(returnedLater ?? []);
@@ -127,13 +127,13 @@ internal static class TicketPaymentReconBuilder
         var payments = rows.Where(r => IsPayment(r.Entry) && r.Order is not null).ToList();
         var entries = ledger.Entries;
         return new TicketPaymentRecon(
-            backendKey,
+            platformKey,
             from,
             to,
             new TicketPaymentTotals(
                 Sum(entries, PaymentLedgerEntryKind.Charge),
                 -Sum(entries, PaymentLedgerEntryKind.Refund),
-                -Sum(entries, PaymentLedgerEntryKind.Dispute),
+                -Sum(entries, PaymentLedgerEntryKind.Chargeback),
                 entries.Sum(e => e.FeeMinor) - Sum(entries, PaymentLedgerEntryKind.Fee),
                 Sum(entries, PaymentLedgerEntryKind.Other),
                 -Sum(entries, PaymentLedgerEntryKind.Payout)),
@@ -145,16 +145,16 @@ internal static class TicketPaymentReconBuilder
             null);
     }
 
-    public static TicketPaymentRecon Unreadable(string backendKey, Instant from, Instant to, string error) =>
-        new(backendKey, from, to, new TicketPaymentTotals(0, 0, 0, 0, 0, 0), 0, 0, [], [], [], error);
+    public static TicketPaymentRecon Unreadable(string platformKey, Instant from, Instant to, string error) =>
+        new(platformKey, from, to, new TicketPaymentTotals(0, 0, 0, 0, 0, 0), 0, 0, [], [], [], error);
 
     /// <summary>
     /// Whether a payment in the ledger is on a failed order whose return is not in it, so the return must be looked for
     /// after the period.
     /// </summary>
-    public static bool AwaitsReturn(PaymentLedger ledger, IReadOnlyCollection<TicketCheckoutOrder> orders, string backendKey)
+    public static bool AwaitsReturn(PaymentLedger ledger, IReadOnlyCollection<TicketCheckoutOrder> orders, string platformKey)
     {
-        var mine = Mine(orders, backendKey);
+        var mine = Mine(orders, platformKey);
         var returned = Returned(ledger);
         return ledger.Entries.Any(e => IsPayment(e) && e.HumansOrderId is { } id && !returned.Contains(id)
             && mine.TryGetValue(id, out var order) && order.State == TicketCheckoutOrderState.Failed);
@@ -165,8 +165,8 @@ internal static class TicketPaymentReconBuilder
         .Where(e => e is { Kind: PaymentLedgerEntryKind.Charge, AmountMinor: < 0, HumansOrderId: not null })
         .Select(e => e.HumansOrderId!.Value).ToHashSet();
 
-    private static Dictionary<Guid, TicketCheckoutOrder> Mine(IReadOnlyCollection<TicketCheckoutOrder> orders, string backendKey) =>
-        orders.Where(o => string.Equals(o.BackendKey, backendKey, StringComparison.Ordinal)).ToDictionary(o => o.Id);
+    private static Dictionary<Guid, TicketCheckoutOrder> Mine(IReadOnlyCollection<TicketCheckoutOrder> orders, string platformKey) =>
+        orders.Where(o => string.Equals(o.PlatformKey, platformKey, StringComparison.Ordinal)).ToDictionary(o => o.Id);
 
     /// <summary>Money in from a buyer; a failed debit's reversal is a charge too, but negative.</summary>
     private static bool IsPayment(PaymentLedgerEntry entry) => entry is { Kind: PaymentLedgerEntryKind.Charge, AmountMinor: > 0 };
@@ -176,7 +176,7 @@ internal static class TicketPaymentReconBuilder
 
     private static IReadOnlyList<TicketPaymentIssue> Check(PaymentLedgerEntry entry, TicketCheckoutOrder? order, bool returned)
     {
-        if (entry.Kind is not (PaymentLedgerEntryKind.Charge or PaymentLedgerEntryKind.Refund or PaymentLedgerEntryKind.Dispute))
+        if (entry.Kind is not (PaymentLedgerEntryKind.Charge or PaymentLedgerEntryKind.Refund or PaymentLedgerEntryKind.Chargeback))
             return [];
         if (order is null)
             return [TicketPaymentIssue.NoOrder];

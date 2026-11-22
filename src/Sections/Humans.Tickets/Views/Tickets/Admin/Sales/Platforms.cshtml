@@ -1,0 +1,22 @@
+@model Humans.Tickets.Controllers.PlatformsViewModel
+@{
+    ViewData["Title"] = "Ticketing platforms";
+}
+
+<page-header title="Ticketing platforms" subtitle="Connection settings and a connection test for each platform" />
+
+<p class="small text-muted mb-4">
+    Each event picks its platform in its <a asp-action="Index">sales setup</a>. Connection settings are server
+    configuration: change them in the deployment and restart. Secrets show only as set or missing.
+</p>
+
+@foreach (var b in Model.Platforms)
+{
+    <partial name="~/Views/Tickets/Admin/Platforms/_PlatformCard.cshtml" model="(Model, b)" />
+    <p class="small mb-4"><a asp-controller="TicketsPlatformAdmin" asp-action="Index" asp-route-key="@b.Key">@b.Setup.DisplayName status and orders</a></p>
+}
+
+@if (Model.Platforms.Count == 0)
+{
+    <empty-state>No platform section is registered.</empty-state>
+}

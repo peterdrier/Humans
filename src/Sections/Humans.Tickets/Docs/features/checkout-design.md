@@ -12,7 +12,7 @@ Box Office on Stripe.
 ## Principle
 
 Every ticketing rule is a rule about a person, and Humans is the only system that knows people. So Humans owns the
-catalogue, the price, the named ticket, the QR code and the resale queue. A backend only takes a payment at a price
+catalogue, the price, the named ticket, the QR code and the resale queue. A platform only takes a payment at a price
 Humans dictates, reports the outcome, refunds an exact amount, and offers the payment methods.
 
 - **One purchase path, account first.** Buying from a Humans profile is the main route. A signed-out visitor sees the
@@ -20,8 +20,8 @@ Humans dictates, reports the outcome, refunds an exact amount, and offers the pa
   (Peter, 2026-11-21).
 - **No discount codes.** Humans knows what the buyer is entitled to and asks for a checkout at that price.
 - **No vendor catalogue.** Waves and ticket classes are configured once, in Humans.
-- **Tickets is the router.** It owns the port, the per-event backend choice and the shared order and ticket records,
-  and holds nothing specific to a backend. Each backend is its own section (`Humans.BoxOffice`, `Humans.Pretix`,
+- **Tickets is the router.** It owns the port, the per-event platform choice and the shared order and ticket records,
+  and holds nothing specific to a platform. Each platform is its own section (`Humans.BoxOffice`, `Humans.Pretix`,
   `Humans.HiEvents`). The port may be extended as the work needs without asking Peter (standing approval, 2026-11-21:
   "be smart about it, don't be wasteful").
 
@@ -77,7 +77,7 @@ Selling a ticket is the small part (Peter, 2026-11-21, on the first Box Office b
 page with plain copy, the ticket rules checkbox recorded on the order, the mailing list opt-in, the ticket email with
 QR code, the receipt, the follow-up inviting the buyer to take shifts, self-service returns, and the ticketing team's
 tools: order lookup, order timeline, resale queue, refund list, reports. These are built once in Tickets over the
-shared records so they work the same on every backend, and the backend's own emails are switched off.
+shared records so they work the same on every platform, and the platform's own emails are switched off.
 
 Several events can sell at once with overlapping windows. Everything is keyed by event and nothing new may assume a
 single current event.
@@ -86,7 +86,7 @@ single current event.
 
 The guided check-in stays: the ticket is valid and not already admitted, the date is allowed (general entry is open,
 or the holder's early entry covers today), and the name matches the photo ID. Humans' gate record is the only check-in
-record; no backend is told about check-ins.
+record; no platform is told about check-ins.
 
 **Out of scope: signing anything at the gate.** Paper signatures, a volunteer agreement prompt and any use of the
 Consent module were removed from this work by Peter on 2026-11-21. Do not design or build for them unless he raises it.

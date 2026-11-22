@@ -3,21 +3,21 @@ using NodaTime;
 namespace Humans.Tickets.Domain.Checkout;
 
 /// <summary>
-/// How Humans sells tickets for one event (a Settings event): which checkout backend takes the money, whether sales
-/// are open, and the price rule. Several can run at once, one per event, so each backend can be tried side by side.
+/// How Humans sells tickets for one event (a Settings event): which ticketing platform takes the money, whether sales
+/// are open, and the price rule. Several can run at once, one per event, so each platform can be tried side by side.
 /// </summary>
-internal sealed class TicketSalesEvent
+internal sealed class TicketingSettings
 {
     public Guid Id { get; init; }
 
     /// <summary>The Settings event; unique.</summary>
     public Guid EventSettingsId { get; set; }
 
-    /// <summary>Resolved against <c>ITicketCheckoutBackend.Key</c>.</summary>
-    public string BackendKey { get; set; } = string.Empty;
+    /// <summary>Resolved against <c>ITicketingPlatform.Key</c>.</summary>
+    public string PlatformKey { get; set; } = string.Empty;
 
-    /// <summary>The event's id inside the backend, passed through on every checkout.</summary>
-    public string? BackendEventRef { get; set; }
+    /// <summary>The event's id inside the platform, passed through on every checkout.</summary>
+    public string? PlatformEventRef { get; set; }
 
     public TicketSalesMode Mode { get; set; }
 
@@ -34,7 +34,7 @@ internal sealed class TicketSalesEvent
     public List<TicketSalesWave> Waves { get; set; } = [];
 
     /// <summary>Totals of the VIP buttons: the ticket at the current wave price, the remainder a donation.</summary>
-    public List<long> SupporterTotalsMinor { get; set; } = [];
+    public List<long> VipTotalsMinor { get; set; } = [];
 
     public List<TicketPriceRule> PriceRules { get; set; } = [];
 
@@ -168,7 +168,7 @@ internal sealed class TicketPriceRule
 
     public TicketPriceRuleKind Kind { get; set; }
 
-    /// <summary>The class price for <see cref="TicketPriceRuleKind.ClassPrice"/>, the amount off for a credit.</summary>
+    /// <summary>The class price for <see cref="TicketPriceRuleKind.ClassPrice"/>, the amount off for a discount.</summary>
     public long AmountMinor { get; set; }
 
     /// <summary>Shown to the buyer on the price breakdown.</summary>
@@ -179,8 +179,8 @@ internal enum TicketPriceRuleKind
 {
     /// <summary>Replaces the wave price; with several, the cheapest wins.</summary>
     ClassPrice = 0,
-    /// <summary>Taken off whatever the ticket costs; credits stack.</summary>
-    Credit = 1,
+    /// <summary>Taken off whatever the ticket costs; discounts stack.</summary>
+    Discount = 1,
     /// <summary>
     /// The holder pays the wave that was on sale the day the grant was issued, if cheaper than today's (the low income
     /// pin: an applicant keeps their wave whether or not they get a low income place). The amount is unused.

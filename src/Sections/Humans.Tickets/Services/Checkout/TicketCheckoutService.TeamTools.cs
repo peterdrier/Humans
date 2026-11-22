@@ -46,36 +46,36 @@ internal sealed partial class TicketCheckoutService
         return CheckoutMutationResult.Ok;
     }
 
-    public async Task<CheckoutMutationResult> CancelSalesEventAsync(
-        Guid salesEventId, string reason, Guid actorUserId, CancellationToken ct = default)
+    public async Task<CheckoutMutationResult> CancelEventAsync(
+        Guid settingsId, string reason, Guid actorUserId, CancellationToken ct = default)
     {
         if (ReasonRefusal(reason) is { } refusal)
             return refusal;
-        var salesEvent = await repository.GetSalesEventAsync(salesEventId, ct);
-        if (salesEvent is null)
+        var ticketing = await repository.GetTicketingSettingsAsync(settingsId, ct);
+        if (ticketing is null)
             return new("That sales event no longer exists.");
-        if (salesEvent.CancelledAt is not null)
+        if (ticketing.CancelledAt is not null)
             return new("The event is already cancelled.");
 
         var now = clock.GetCurrentInstant();
-        var before = salesEvent.Mode;
-        salesEvent.Mode = TicketSalesMode.Closed;
-        salesEvent.ResaleOpenedAt = null;
-        salesEvent.CancelledAt = now;
-        salesEvent.CancelledByUserId = actorUserId;
-        salesEvent.CancelReason = reason.Trim();
-        salesEvent.UpdatedAt = now;
-        await repository.SaveSalesEventAsync(salesEvent, ct);
-        await auditLog.LogAsync(TicketsAuditActions.TicketSalesEventCancelled, SalesEventAuditEntityType, salesEvent.Id,
+        var before = ticketing.Mode;
+        ticketing.Mode = TicketSalesMode.Closed;
+        ticketing.ResaleOpenedAt = null;
+        ticketing.CancelledAt = now;
+        ticketing.CancelledByUserId = actorUserId;
+        ticketing.CancelReason = reason.Trim();
+        ticketing.UpdatedAt = now;
+        await repository.SaveTicketingSettingsAsync(ticketing, ct);
+        await auditLog.LogAsync(TicketsAuditActions.TicketSalesEventCancelled, TicketingSettingsAuditEntityType, ticketing.Id,
             $"Event cancelled (sales were {before}): every ticket is voided and every paid order refunded what its tickets cost. " +
-            $"Reason: {salesEvent.CancelReason}", actorUserId);
+            $"Reason: {ticketing.CancelReason}", actorUserId);
         return CheckoutMutationResult.Ok;
     }
 
-    public async Task<CancellationProgress?> GetCancellationProgressAsync(Guid salesEventId, CancellationToken ct = default)
+    public async Task<CancellationProgress?> GetCancellationProgressAsync(Guid settingsId, CancellationToken ct = default)
     {
-        var salesEvent = await repository.GetSalesEventAsync(salesEventId, ct);
-        return salesEvent is null ? null : (await LoadCancellationAsync(salesEvent, ct)).Progress;
+        var ticketing = await repository.GetTicketingSettingsAsync(settingsId, ct);
+        return ticketing is null ? null : (await LoadCancellationAsync(ticketing, ct)).Progress;
     }
 
     /// <summary>
@@ -86,22 +86,22 @@ internal sealed partial class TicketCheckoutService
     {
         var watch = Stopwatch.StartNew();
         var changed = 0;
-        foreach (var salesEvent in (await repository.GetSalesEventsAsync(ct)).Where(e => e.CancelledAt is not null))
+        foreach (var ticketing in (await repository.ListTicketingSettingsAsync(ct)).Where(e => e.CancelledAt is not null))
         {
-            var state = await LoadCancellationAsync(salesEvent, ct);
+            var state = await LoadCancellationAsync(ticketing, ct);
             foreach (var order in state.ToDo)
             {
                 if (watch.Elapsed > CancelSweepBudget)
                     return changed;
                 try
                 {
-                    if (await CancelOrderAsync(salesEvent, order, state, ct))
+                    if (await CancelOrderAsync(ticketing, order, state, ct))
                         changed++;
                 }
                 catch (Exception ex) when (ex is not OperationCanceledException)
                 {
-                    logger.LogWarning(ex, "Cancelling checkout order {OrderId} of cancelled event {SalesEventId} failed; next run retries",
-                        order.Id, salesEvent.Id);
+                    logger.LogWarning(ex, "Cancelling checkout order {OrderId} of cancelled event {TicketingSettingsId} failed; next run retries",
+                        order.Id, ticketing.Id);
                 }
             }
         }
@@ -110,7 +110,7 @@ internal sealed partial class TicketCheckoutService
 
     /// <summary>False while a buyer's checkout holds one of the order's returned tickets: it waits for that to settle.</summary>
     private async Task<bool> CancelOrderAsync(
-        TicketSalesEvent salesEvent, TicketCheckoutOrder order, CancellationState state, CancellationToken ct)
+        TicketingSettings ticketing, TicketCheckoutOrder order, CancellationState state, CancellationToken ct)
     {
         var live = state.Tickets[order.Id].Where(IsLive).ToList();
         var offers = state.Offers.Where(o => live.Any(t => t.Id == o.TicketId)
@@ -118,7 +118,7 @@ internal sealed partial class TicketCheckoutService
         if (offers.Any(o => o.State == TicketResaleOfferState.Reserved))
             return false;
 
-        var why = $"Event cancelled: {salesEvent.CancelReason}";
+        var why = $"Event cancelled: {ticketing.CancelReason}";
         var now = clock.GetCurrentInstant();
         foreach (var offer in offers)
         {
@@ -144,7 +144,7 @@ internal sealed partial class TicketCheckoutService
         var refundNote = refundMinor > 0 ? $", {FormatMinor(refundMinor)} {order.Currency} refund asked for" : ", nothing to refund";
         if (refundMinor > 0 && !state.HasCancelRefund(order))
         {
-            var cancelRefundId = CancellationState.CancelRefundId(salesEvent.Id, order.Id);
+            var cancelRefundId = CancellationState.CancelRefundId(ticketing.Id, order.Id);
             var (result, refundId) = await RefundCoreAsync(order.Id, refundMinor, Truncate(why), null, ct, cancelRefundId);
             if (!result.Succeeded)
             {
@@ -172,12 +172,12 @@ internal sealed partial class TicketCheckoutService
         await TimelineAsync(order.Id, TicketCheckoutOrderEventKind.EventCancelled,
             $"{why}. {live.Count} ticket(s) voided" + (offers.Count > 0 ? $", {offers.Count} taken out of the resale queue" : string.Empty) +
             refundNote, null, ct);
-        var eventName = (await settings.GetEventSettingsByIdAsync(salesEvent.EventSettingsId, ct))?.EventName ?? string.Empty;
+        var eventName = (await settings.GetEventSettingsByIdAsync(ticketing.EventSettingsId, ct))?.EventName ?? string.Empty;
         if (!string.IsNullOrWhiteSpace(order.BuyerEmail))
         {
             var notice = emails.EventCancelled(order.BuyerUserId, order.BuyerEmail, order.BuyerName, eventName, refundMinor,
-                refundFailed, order.Lines.Any(l => l.Kind == CheckoutLineKind.Donation), order.Culture);
-            await email.SendAsync(notice with { DeliveryId = CancellationState.CancelNoticeId(salesEvent.Id, order.Id) }, ct);
+                refundFailed, order.Lines.Any(l => l.Kind == OrderLineKind.Donation), order.Culture);
+            await email.SendAsync(notice with { DeliveryId = CancellationState.CancelNoticeId(ticketing.Id, order.Id) }, ct);
         }
         order.CancellationEmailedAt = clock.GetCurrentInstant();
         await repository.UpdateOrderAsync(order, ct);
@@ -187,12 +187,12 @@ internal sealed partial class TicketCheckoutService
     private static bool IsLive(TicketCheckoutTicket t) =>
         t.State is TicketCheckoutTicketState.Valid or TicketCheckoutTicketState.Offered;
 
-    private async Task<CancellationState> LoadCancellationAsync(TicketSalesEvent salesEvent, CancellationToken ct) =>
-        new(salesEvent,
-            await repository.GetOrdersForSalesEventAsync(salesEvent.Id, ct),
-            (await repository.GetTicketsForSalesEventAsync(salesEvent.Id, ct)).ToLookup(t => t.OrderId),
-            (await repository.GetRefundsForSalesEventAsync(salesEvent.Id, ct)).ToLookup(r => r.OrderId),
-            await repository.GetOffersForSalesEventAsync(salesEvent.Id, ct),
+    private async Task<CancellationState> LoadCancellationAsync(TicketingSettings ticketing, CancellationToken ct) =>
+        new(ticketing,
+            await repository.GetOrdersForSettingsAsync(ticketing.Id, ct),
+            (await repository.GetTicketsForSettingsAsync(ticketing.Id, ct)).ToLookup(t => t.OrderId),
+            (await repository.GetRefundsForSettingsAsync(ticketing.Id, ct)).ToLookup(r => r.OrderId),
+            await repository.GetOffersForSettingsAsync(ticketing.Id, ct),
             clock.GetCurrentInstant());
 
     /// <summary>
@@ -200,7 +200,7 @@ internal sealed partial class TicketCheckoutService
     /// what a cancellation would do.
     /// </summary>
     private sealed class CancellationState(
-        TicketSalesEvent salesEvent,
+        TicketingSettings ticketing,
         IReadOnlyList<TicketCheckoutOrder> orders,
         ILookup<Guid, TicketCheckoutTicket> tickets,
         ILookup<Guid, TicketCheckoutRefund> refunds,
@@ -211,7 +211,7 @@ internal sealed partial class TicketCheckoutService
 
         public IReadOnlyList<TicketResaleOffer> Offers => offers;
 
-        private Instant Since => salesEvent.CancelledAt ?? now;
+        private Instant Since => ticketing.CancelledAt ?? now;
 
         private List<TicketCheckoutOrder> Paid => orders.Where(o => o.State == TicketCheckoutOrderState.Paid).ToList();
 
@@ -222,20 +222,20 @@ internal sealed partial class TicketCheckoutService
         /// The cancellation's own refund of an order has a fixed id, so a refund the team makes meanwhile never stands in for
         /// it, and a repeat finds the one already asked for (a declined one is not tried again).
         /// </summary>
-        public static Guid CancelRefundId(Guid salesEventId, Guid orderId)
+        public static Guid CancelRefundId(Guid settingsId, Guid orderId)
         {
             Span<byte> both = stackalloc byte[32];
-            salesEventId.TryWriteBytes(both[..16]);
+            settingsId.TryWriteBytes(both[..16]);
             orderId.TryWriteBytes(both[16..]);
             return new Guid(SHA256.HashData(both)[..16]);
         }
 
         /// <summary>The cancellation email's delivery id: a repeat after a stop before the order was marked emailed reuses it.</summary>
-        public static Guid CancelNoticeId(Guid salesEventId, Guid orderId) =>
-            new(SHA256.HashData(CancelRefundId(salesEventId, orderId).ToByteArray())[..16]);
+        public static Guid CancelNoticeId(Guid settingsId, Guid orderId) =>
+            new(SHA256.HashData(CancelRefundId(settingsId, orderId).ToByteArray())[..16]);
 
         public TicketCheckoutRefund? CancelRefund(TicketCheckoutOrder order) =>
-            refunds[order.Id].FirstOrDefault(r => r.Id == CancelRefundId(salesEvent.Id, order.Id));
+            refunds[order.Id].FirstOrDefault(r => r.Id == CancelRefundId(ticketing.Id, order.Id));
 
         public bool HasCancelRefund(TicketCheckoutOrder order) => CancelRefund(order) is not null;
 
@@ -255,12 +255,12 @@ internal sealed partial class TicketCheckoutService
                 var paid = Paid;
                 var since = paid.SelectMany(o => refunds[o.Id]).Where(r => r.CreatedAt >= Since).ToList();
                 return new CancellationProgress(
-                    salesEvent.CancelledAt, salesEvent.CancelledByUserId, salesEvent.CancelReason,
+                    ticketing.CancelledAt, ticketing.CancelledByUserId, ticketing.CancelReason,
                     PaidOrders: paid.Count,
                     ToDo: ToDo.Count,
                     LiveTickets: paid.Sum(o => tickets[o.Id].Count(IsLive)),
                     TicketMoneyMinor: paid.Sum(o => o.TicketTotalMinor),
-                    DisputedMinor: paid.Sum(o => o.DisputedMinor),
+                    ChargedBackMinor: paid.Sum(o => o.ChargedBackMinor),
                     RefundedMinor: paid.Sum(o => Math.Max(o.RefundedMinor,
                         refunds[o.Id].Where(r => r.State == RefundState.Succeeded).Sum(r => r.AmountMinor))),
                     InFlightMinor: paid.Sum(o => refunds[o.Id].Where(r => r.State is RefundState.Pending or RefundState.ManualRequired).Sum(r => r.AmountMinor)),
@@ -286,7 +286,7 @@ internal sealed record CancellationProgress(
     int ToDo,
     int LiveTickets,
     long TicketMoneyMinor,
-    long DisputedMinor,
+    long ChargedBackMinor,
     long RefundedMinor,
     long InFlightMinor,
     long StillRefundableMinor,

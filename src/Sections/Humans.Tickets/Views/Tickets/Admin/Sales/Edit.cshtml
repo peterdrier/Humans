@@ -4,7 +4,7 @@
     ViewData["Title"] = "Sales setup";
     var f = Model.Form;
     List<SalesEditForm.WaveRow> waves = f.Waves.Count > 0 ? f.Waves : [new()];
-    var supporterLevels = f.SupporterLevels;
+    var vipLevels = f.VipLevels;
     var priceRules = f.PriceRules;
     string ModeLabel(TicketSalesMode m) => m switch
     {
@@ -22,13 +22,13 @@
     (TicketPriceRuleKind Kind, string Label)[] ruleKinds =
     [
         (TicketPriceRuleKind.ClassPrice, "Fixed ticket price"),
-        (TicketPriceRuleKind.Credit, "Amount off"),
+        (TicketPriceRuleKind.Discount, "Amount off"),
         (TicketPriceRuleKind.WavePin, "Price of the wave on sale when the grant was given"),
         (TicketPriceRuleKind.EarlyAccess, "Early access: buys while sales are invited only"),
     ];
 }
 
-<page-header title="Sales setup" subtitle="Backend, prices and checkout options for one event" />
+<page-header title="Sales setup" subtitle="Platform, prices and checkout options for one event" />
 
 @if (Model.Error is not null)
 {
@@ -39,7 +39,7 @@
     @Html.AntiForgeryToken()
 
     <div class="card mb-3">
-        <div class="card-header fw-semibold">Event and payment backend</div>
+        <div class="card-header fw-semibold">Event and payment platform</div>
         <div class="card-body">
             <div class="row g-3">
                 <div class="col-md-6">
@@ -52,18 +52,18 @@
                     </select>
                 </div>
                 <div class="col-md-3">
-                    <label class="form-label" for="BackendKey">Backend</label>
-                    <select class="form-select" id="BackendKey" name="BackendKey">
-                        @foreach (var b in Model.Backends)
+                    <label class="form-label" for="PlatformKey">Platform</label>
+                    <select class="form-select" id="PlatformKey" name="PlatformKey">
+                        @foreach (var b in Model.Platforms)
                         {
-                            <option value="@b.Key" selected="@(b.Key == f.BackendKey)">@b.Setup.DisplayName@(b.IsConfigured ? "" : " (not configured)")</option>
+                            <option value="@b.Key" selected="@(b.Key == f.PlatformKey)">@b.Setup.DisplayName@(b.IsConfigured ? "" : " (not configured)")</option>
                         }
                     </select>
                 </div>
                 <div class="col-md-3">
-                    <label class="form-label" for="BackendEventRef">Event id in the backend</label>
-                    <input class="form-control" id="BackendEventRef" name="BackendEventRef" value="@f.BackendEventRef" />
-                    <div class="form-text">The pretix event slug or Hi.Events event id. Leave empty for Box Office. <a asp-action="Backends">Check the backends</a></div>
+                    <label class="form-label" for="PlatformEventRef">Event id in the platform</label>
+                    <input class="form-control" id="PlatformEventRef" name="PlatformEventRef" value="@f.PlatformEventRef" />
+                    <div class="form-text">The pretix event slug or Hi.Events event id. Leave empty for Box Office. <a asp-action="Platforms">Check the platforms</a></div>
                 </div>
             </div>
         </div>
@@ -247,12 +247,12 @@
                     </div>
                     <div class="form-text mt-0 mb-2">Fixed totals offered as buttons. The ticket part is the buyer's own price; the rest is a donation without VAT.</div>
                     <div data-rows="supporters">
-                        @foreach (var level in supporterLevels)
+                        @foreach (var level in vipLevels)
                         {
                             var key = Guid.NewGuid().ToString("N");
                             <div class="d-flex gap-2 align-items-center mb-2">
-                                <input type="hidden" name="SupporterLevels.Index" value="@key" />
-                                <div class="input-group input-group-sm" style="max-width:10rem"><span class="input-group-text">€</span><input class="form-control" type="number" min="0.01" step="0.01" name="SupporterLevels[@key].Total" value="@level.Total" data-supporter-total aria-label="Supporter total" /></div>
+                                <input type="hidden" name="VipLevels.Index" value="@key" />
+                                <div class="input-group input-group-sm" style="max-width:10rem"><span class="input-group-text">€</span><input class="form-control" type="number" min="0.01" step="0.01" name="VipLevels[@key].Total" value="@level.Total" data-supporter-total aria-label="Supporter total" /></div>
                                 <span class="form-text m-0 flex-grow-1" data-supporter-split></span>
                                 <button type="button" class="btn btn-outline-danger btn-sm" data-remove-row aria-label="Remove level">&times;</button>
                             </div>
@@ -260,8 +260,8 @@
                     </div>
                     <template data-template="supporters">
                         <div class="d-flex gap-2 align-items-center mb-2">
-                            <input type="hidden" name="SupporterLevels.Index" value="__KEY__" />
-                            <div class="input-group input-group-sm" style="max-width:10rem"><span class="input-group-text">€</span><input class="form-control" type="number" min="0.01" step="0.01" name="SupporterLevels[__KEY__].Total" data-supporter-total aria-label="Supporter total" /></div>
+                            <input type="hidden" name="VipLevels.Index" value="__KEY__" />
+                            <div class="input-group input-group-sm" style="max-width:10rem"><span class="input-group-text">€</span><input class="form-control" type="number" min="0.01" step="0.01" name="VipLevels[__KEY__].Total" data-supporter-total aria-label="Supporter total" /></div>
                             <span class="form-text m-0 flex-grow-1" data-supporter-split></span>
                             <button type="button" class="btn btn-outline-danger btn-sm" data-remove-row aria-label="Remove level">&times;</button>
                         </div>

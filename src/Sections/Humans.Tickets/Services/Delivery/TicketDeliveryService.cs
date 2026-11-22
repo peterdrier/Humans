@@ -113,7 +113,7 @@ internal sealed class TicketDeliveryService(
         if (detail is null || ticket is null || ticket.State != TicketCheckoutTicketState.Valid
             || ticket.HolderUserId is not { } holderId)
             return;
-        var eventName = await EventNameAsync(ticket.SalesEventId, ct);
+        var eventName = await EventNameAsync(ticket.TicketingSettingsId, ct);
         if (eventName is null)
             return;
 
@@ -135,7 +135,7 @@ internal sealed class TicketDeliveryService(
     {
         var detail = await checkout.GetOrderDetailAsync(orderId, ct);
         if (detail?.Order is not { State: TicketCheckoutOrderState.Failed or TicketCheckoutOrderState.Expired } order
-            || await EventNameAsync(order.SalesEventId, ct) is not { } eventName)
+            || await EventNameAsync(order.TicketingSettingsId, ct) is not { } eventName)
             return;
         var buyer = await users.GetUserInfoAsync(order.BuyerUserId, ct);
         var failed = order.State == TicketCheckoutOrderState.Failed;
@@ -192,7 +192,7 @@ internal sealed class TicketDeliveryService(
     private async Task<HolderMail?> HolderMailAsync(Guid ticketId, TicketCheckoutTicketState state, CancellationToken ct)
     {
         if (await checkout.GetTicketAsync(ticketId, ct) is not { HolderUserId: { } holderId } ticket || ticket.State != state
-            || await EventNameAsync(ticket.SalesEventId, ct) is not { } eventName)
+            || await EventNameAsync(ticket.TicketingSettingsId, ct) is not { } eventName)
             return null;
         var holder = await users.GetUserInfoAsync(holderId, ct);
         if ((holder?.Email ?? ticket.HolderEmail) is not { } address)
@@ -212,9 +212,9 @@ internal sealed class TicketDeliveryService(
         if (detail is null || detail.Order.State != TicketCheckoutOrderState.Paid)
             return null;
         var order = detail.Order;
-        var salesEvent = await checkout.GetSalesEventAsync(order.SalesEventId, ct);
-        var eventSettings = salesEvent is null ? null : await settings.GetEventSettingsByIdAsync(salesEvent.EventSettingsId, ct);
-        if (salesEvent is null || eventSettings is null)
+        var ticketing = await checkout.GetTicketingSettingsAsync(order.TicketingSettingsId, ct);
+        var eventSettings = ticketing is null ? null : await settings.GetEventSettingsByIdAsync(ticketing.EventSettingsId, ct);
+        if (ticketing is null || eventSettings is null)
         {
             logger.LogError("Order {OrderId} is paid but its event is gone; no ticket mail sent", orderId);
             return null;
@@ -291,10 +291,10 @@ internal sealed class TicketDeliveryService(
 
     private string BaseUrl => emailSettings.Value.BaseUrl.TrimEnd('/');
 
-    private async Task<string?> EventNameAsync(Guid salesEventId, CancellationToken ct)
+    private async Task<string?> EventNameAsync(Guid settingsId, CancellationToken ct)
     {
-        var salesEvent = await checkout.GetSalesEventAsync(salesEventId, ct);
-        return salesEvent is null ? null : (await settings.GetEventSettingsByIdAsync(salesEvent.EventSettingsId, ct))?.EventName;
+        var ticketing = await checkout.GetTicketingSettingsAsync(settingsId, ct);
+        return ticketing is null ? null : (await settings.GetEventSettingsByIdAsync(ticketing.EventSettingsId, ct))?.EventName;
     }
 
     /// <summary>

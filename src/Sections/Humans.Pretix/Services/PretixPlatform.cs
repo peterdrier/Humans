@@ -20,22 +20,22 @@ namespace Humans.Pretix.Services;
 /// <summary>
 /// <para>
 /// Fills Tickets' checkout port with stock pretix (2026.9): an order created through the REST API at Humans' prices,
-/// paid by the buyer on pretix's own order page, which sends them back to <see cref="CheckoutRequest.ReturnUrl"/>
+/// paid by the buyer on pretix's own order page, which sends them back to <see cref="PlatformOrderRequest.ReturnUrl"/>
 /// through pretix's bundled <c>returnurl</c> plugin.
 /// </para>
 /// <para>
-/// The backend order id is <c>{event slug}/{order code}</c>, because pretix addresses an order by both and the port
-/// passes only the id. The code is derived from <see cref="CheckoutRequest.OrderId"/>, so a retried create finds the
+/// The platform order id is <c>{event slug}/{order code}</c>, because pretix addresses an order by both and the port
+/// passes only the id. The code is derived from <see cref="PlatformOrderRequest.OrderId"/>, so a retried create finds the
 /// order it already made instead of making a second one.
 /// </para>
 /// </summary>
-internal sealed partial class PretixCheckoutBackend(
+internal sealed partial class PretixPlatform(
     HttpClient http,
     IOptions<PretixSettings> options,
-    ILogger<PretixCheckoutBackend> logger,
-    IStripeService stripe) : ITicketCheckoutBackend
+    ILogger<PretixPlatform> logger,
+    IStripeService stripe) : ITicketingPlatform
 {
-    public const string BackendKey = "pretix";
+    public const string PlatformKey = "pretix";
     /// <summary>The <c>Stripe:MirrorAccounts</c> entry for the account pretix's Stripe settings charge into.</summary>
     internal const string StripeAccountName = "Pretix";
 
@@ -62,21 +62,21 @@ internal sealed partial class PretixCheckoutBackend(
 
     private PretixSettings Settings => options.Value;
 
-    public string Key => BackendKey;
+    public string Key => PlatformKey;
 
     public bool IsConfigured => Settings.IsConfigured;
 
-    public async Task<CheckoutSession> CreateCheckoutAsync(CheckoutRequest request, CancellationToken ct = default)
+    public async Task<PlatformOrderSession> CreateOrderAsync(PlatformOrderRequest request, CancellationToken ct = default)
     {
         EnsureConfigured();
-        var eventSlug = request.BackendEventRef;
+        var eventSlug = request.PlatformEventRef;
         if (string.IsNullOrWhiteSpace(eventSlug))
-            throw new TicketCheckoutException("pretix needs the event's slug as BackendEventRef.");
+            throw new TicketingPlatformException("pretix needs the event's slug as PlatformEventRef.");
         Validate(request);
 
         var ev = await SendAsync<PretixEvent>(HttpMethod.Get, EventPath(eventSlug), body: null, ct);
         if (!string.Equals(ev.Currency, request.Currency, StringComparison.OrdinalIgnoreCase))
-            throw new TicketCheckoutException(
+            throw new TicketingPlatformException(
                 $"pretix event {eventSlug} sells in {ev.Currency}, not {request.Currency}.");
 
         var items = await SendAsync<PretixPage<PretixItem>>(
@@ -100,7 +100,7 @@ internal sealed partial class PretixCheckoutBackend(
             if (order.ApiMeta?.TryGetValue(HumansOrderIdMeta, out var owner) != true
                 || !string.Equals(owner.ToString(), request.OrderId.ToString(), StringComparison.Ordinal))
             {
-                throw new TicketCheckoutException(
+                throw new TicketingPlatformException(
                     $"pretix order code {code} already belongs to another order.");
             }
 
@@ -108,7 +108,7 @@ internal sealed partial class PretixCheckoutBackend(
         }
         else if (response.Status == HttpStatusCode.BadRequest)
         {
-            throw new TicketCheckoutException($"pretix refused the order: {response.Body}");
+            throw new TicketingPlatformException($"pretix refused the order: {response.Body}");
         }
         else
         {
@@ -121,24 +121,24 @@ internal sealed partial class PretixCheckoutBackend(
         {
             if (created)
                 await CancelOrderAsync(eventSlug, code, ct);
-            throw new TicketCheckoutException($"pretix would not charge exactly the requested lines: {mismatch}");
+            throw new TicketingPlatformException($"pretix would not charge exactly the requested lines: {mismatch}");
         }
 
         logger.LogInformation(
             "pretix order {Code} {Outcome} for Humans order {OrderId}",
             code, created ? "created" : "found", request.OrderId);
 
-        return new CheckoutSession(
-            FormatBackendOrderId(eventSlug, code), PaymentUrl(order, request.ReturnUrl), AdminOrderUrl(eventSlug, code));
+        return new PlatformOrderSession(
+            FormatPlatformOrderId(eventSlug, code), PaymentUrl(order, request.ReturnUrl), AdminOrderUrl(eventSlug, code));
     }
 
-    public async Task<CheckoutStatus> GetStatusAsync(string backendOrderId, CancellationToken ct = default)
+    public async Task<PlatformOrderStatus> GetStatusAsync(string platformOrderId, CancellationToken ct = default)
     {
         EnsureConfigured();
-        var (eventSlug, code) = ParseBackendOrderId(backendOrderId);
+        var (eventSlug, code) = ParsePlatformOrderId(platformOrderId);
         var order = await SendAsync<PretixOrder>(HttpMethod.Get, OrderPath(eventSlug, code), body: null, ct);
         var status = MapStatus(order, logger);
-        return status.State == CheckoutState.Paid && await FeeAsync(order, ct) is { } fee ? status with { FeeMinor = fee } : status;
+        return status.State == PlatformOrderState.Paid && await FeeAsync(order, ct) is { } fee ? status with { FeeMinor = fee } : status;
     }
 
     /// <summary>
@@ -156,7 +156,7 @@ internal sealed partial class PretixCheckoutBackend(
     public async Task<RefundResult> RefundAsync(RefundRequest request, CancellationToken ct = default)
     {
         EnsureConfigured();
-        var (eventSlug, code) = ParseBackendOrderId(request.BackendOrderId);
+        var (eventSlug, code) = ParsePlatformOrderId(request.PlatformOrderId);
         if (request.AmountMinor <= 0)
             return new RefundResult(RefundState.Failed, null, "A refund must be a positive amount.");
 
@@ -234,22 +234,22 @@ internal sealed partial class PretixCheckoutBackend(
         return MapRefund(refund, AdminOrderUrl(eventSlug, code));
     }
 
-    public async Task CancelAsync(string backendOrderId, CancellationToken ct = default)
+    public async Task CancelAsync(string platformOrderId, CancellationToken ct = default)
     {
         EnsureConfigured();
-        var (eventSlug, code) = ParseBackendOrderId(backendOrderId);
+        var (eventSlug, code) = ParsePlatformOrderId(platformOrderId);
         var order = await SendAsync<PretixOrder>(HttpMethod.Get, OrderPath(eventSlug, code), body: null, ct);
-        if (MapStatus(order, logger).State is CheckoutState.Paid or CheckoutState.Processing)
-            throw new TicketCheckoutException($"pretix order {code} is paid or its payment is settling.");
+        if (MapStatus(order, logger).State is PlatformOrderState.Paid or PlatformOrderState.Processing)
+            throw new TicketingPlatformException($"pretix order {code} is paid or its payment is settling.");
         // Expired is cancelled too: pretix still accepts a late payment on an expired order.
         if (!string.Equals(order.Status, "c", StringComparison.Ordinal))
             await CancelOrderAsync(eventSlug, code, ct);
     }
 
-    public async Task ErasePersonalDataAsync(string backendOrderId, string email, CancellationToken ct = default)
+    public async Task ErasePersonalDataAsync(string platformOrderId, string email, CancellationToken ct = default)
     {
         EnsureConfigured();
-        var (eventSlug, code) = ParseBackendOrderId(backendOrderId);
+        var (eventSlug, code) = ParsePlatformOrderId(platformOrderId);
         var order = await SendAsync<PretixOrder>(HttpMethod.Get, OrderPath(eventSlug, code), body: null, ct);
         var isBuyer = string.Equals(order.Email, email, StringComparison.OrdinalIgnoreCase);
 
@@ -269,7 +269,7 @@ internal sealed partial class PretixCheckoutBackend(
         }
     }
 
-    public CheckoutBackendSetup Setup => new(
+    public PlatformSetup Setup => new(
         "pretix",
         Hosting(),
         Uri.TryCreate(Settings.BaseUrl, UriKind.Absolute, out var root) && !string.IsNullOrWhiteSpace(Settings.Organizer)
@@ -305,18 +305,18 @@ internal sealed partial class PretixCheckoutBackend(
 
     private static string? NullIfBlank(string value) => string.IsNullOrWhiteSpace(value) ? null : value;
 
-    public async Task<IReadOnlyList<CheckoutBackendFinding>> CheckAsync(string? backendEventRef, CancellationToken ct = default)
+    public async Task<IReadOnlyList<PlatformFinding>> CheckAsync(string? platformEventRef, CancellationToken ct = default)
     {
         if (!IsConfigured)
             return [new(false, "Pretix:BaseUrl, Pretix:Organizer and PRETIX_API_TOKEN must all be set.")];
 
-        var findings = new List<CheckoutBackendFinding>
+        var findings = new List<PlatformFinding>
         {
             string.IsNullOrWhiteSpace(Settings.WebhookSecret)
                 ? new(false, "PRETIX_WEBHOOK_SECRET is unset: the webhook answers 503 and outcomes arrive only from Tickets' poll.")
                 : new(true, "Webhook secret is set."),
         };
-        findings.AddRange((await stripe.CheckAccountAsync(StripeAccountName, ct)).Select(c => new CheckoutBackendFinding(c.Ok, c.Text)));
+        findings.AddRange((await stripe.CheckAccountAsync(StripeAccountName, ct)).Select(c => new PlatformFinding(c.Ok, c.Text)));
         try
         {
             var events = await SendRawAsync(HttpMethod.Get,
@@ -324,18 +324,18 @@ internal sealed partial class PretixCheckoutBackend(
             findings.Add((int)events.Status is >= 200 and <= 299
                 ? new(true, $"The token reads organizer {Settings.Organizer}.")
                 : new(false, $"pretix answered {(int)events.Status} for organizer {Settings.Organizer}: check the token and slug."));
-            if (string.IsNullOrWhiteSpace(backendEventRef) || !findings[^1].Ok)
+            if (string.IsNullOrWhiteSpace(platformEventRef) || !findings[^1].Ok)
                 return findings;
-            if (!EventSlug().IsMatch(backendEventRef))
+            if (!EventSlug().IsMatch(platformEventRef))
             {
-                findings.Add(new(false, $"'{backendEventRef}' is not a pretix event slug."));
+                findings.Add(new(false, $"'{platformEventRef}' is not a pretix event slug."));
                 return findings;
             }
 
-            var ev = await SendRawAsync(HttpMethod.Get, EventPath(backendEventRef), body: null, ct);
+            var ev = await SendRawAsync(HttpMethod.Get, EventPath(platformEventRef), body: null, ct);
             if ((int)ev.Status is < 200 or > 299)
             {
-                findings.Add(new(false, $"pretix answered {(int)ev.Status} for event {backendEventRef}."));
+                findings.Add(new(false, $"pretix answered {(int)ev.Status} for event {platformEventRef}."));
                 return findings;
             }
 
@@ -350,7 +350,7 @@ internal sealed partial class PretixCheckoutBackend(
                 findings.Add(new(false, "The event is in pretix test mode; whether payments are real depends on the Stripe keys set in pretix."));
 
             var items = await SendAsync<PretixPage<PretixItem>>(
-                HttpMethod.Get, $"{EventPath(backendEventRef)}items/?active=true", body: null, ct);
+                HttpMethod.Get, $"{EventPath(platformEventRef)}items/?active=true", body: null, ct);
             foreach (var name in new[] { TicketItemName, DonationItemName })
             {
                 var count = items.Results.Count(i => string.Equals(i.InternalName, name, StringComparison.Ordinal));
@@ -367,7 +367,7 @@ internal sealed partial class PretixCheckoutBackend(
         return findings;
     }
 
-    public string? EventRefOf(string backendOrderId) => ParseBackendOrderId(backendOrderId).EventSlug;
+    public string? EventRefOf(string platformOrderId) => ParsePlatformOrderId(platformOrderId).EventSlug;
 
     /// <summary>
     /// The Stripe account pretix charges into; null while its mirror account is not configured. pretix puts the order
@@ -386,7 +386,7 @@ internal sealed partial class PretixCheckoutBackend(
         }
         catch (InvalidOperationException ex)
         {
-            throw new TicketCheckoutException(ex.Message, ex);
+            throw new TicketingPlatformException(ex.Message, ex);
         }
         if (account is null)
             return null;
@@ -429,7 +429,7 @@ internal sealed partial class PretixCheckoutBackend(
     {
         "charge" or "charge_failure" or "partial_capture_reversal" => PaymentLedgerEntryKind.Charge,
         "refund" or "refund_failure" => PaymentLedgerEntryKind.Refund,
-        "dispute" or "dispute_reversal" => PaymentLedgerEntryKind.Dispute,
+        "dispute" or "dispute_reversal" => PaymentLedgerEntryKind.Chargeback,
         "fee" => PaymentLedgerEntryKind.Fee,
         "payout" or "payout_reversal" => PaymentLedgerEntryKind.Payout,
         _ => PaymentLedgerEntryKind.Other,
@@ -456,16 +456,16 @@ internal sealed partial class PretixCheckoutBackend(
             ? orderId
             : null;
 
-    public async Task<IReadOnlyList<BackendOrderSummary>> ListOrdersAsync(
-        string? backendEventRef, Instant from, Instant to, CancellationToken ct = default)
+    public async Task<IReadOnlyList<PlatformOrderSummary>> ListOrdersAsync(
+        string? platformEventRef, Instant from, Instant to, CancellationToken ct = default)
     {
         EnsureConfigured();
-        if (string.IsNullOrWhiteSpace(backendEventRef))
-            throw new TicketCheckoutException("pretix needs the event's slug to list its orders.");
+        if (string.IsNullOrWhiteSpace(platformEventRef))
+            throw new TicketingPlatformException("pretix needs the event's slug to list its orders.");
 
         // Inactive carriers too: an order keeps its item after the item is switched off.
         var ticketItems = new HashSet<int>();
-        for (string? next = $"{EventPath(backendEventRef)}items/"; next is not null;)
+        for (string? next = $"{EventPath(platformEventRef)}items/"; next is not null;)
         {
             var page = await SendAsync<PretixPage<PretixItem>>(HttpMethod.Get, next, body: null, ct);
             ticketItems.UnionWith(page.Results
@@ -473,20 +473,20 @@ internal sealed partial class PretixCheckoutBackend(
             next = page.Next;
         }
 
-        var orders = new List<BackendOrderSummary>();
-        for (string? next = $"{EventPath(backendEventRef)}orders/?created_since={Uri.EscapeDataString(InstantPattern.ExtendedIso.Format(from))}"
+        var orders = new List<PlatformOrderSummary>();
+        for (string? next = $"{EventPath(platformEventRef)}orders/?created_since={Uri.EscapeDataString(InstantPattern.ExtendedIso.Format(from))}"
                  + $"&created_before={Uri.EscapeDataString(InstantPattern.ExtendedIso.Format(to))}&ordering=datetime";
              next is not null;)
         {
             var page = await SendAsync<PretixPage<PretixOrder>>(HttpMethod.Get, next, body: null, ct);
-            orders.AddRange(page.Results.Select(order => Summarize(backendEventRef, order, ticketItems)));
+            orders.AddRange(page.Results.Select(order => Summarize(platformEventRef, order, ticketItems)));
             next = page.Next;
         }
 
         return orders;
     }
 
-    private BackendOrderSummary Summarize(string eventSlug, PretixOrder order, IReadOnlySet<int> ticketItems)
+    private PlatformOrderSummary Summarize(string eventSlug, PretixOrder order, IReadOnlySet<int> ticketItems)
     {
         var status = MapStatus(order, logger);
         // The adapter's refund fees lower the total by what was refunded; the refund itself is counted on its own.
@@ -497,20 +497,20 @@ internal sealed partial class PretixCheckoutBackend(
         // Tickets never takes a paid order back, but pretix cancels or reopens one once a person processes a refund or
         // chargeback, and keeps a late-paid one expired. For the list, an order that took its money stays paid,
         // whatever went back afterwards; GetStatusAsync keeps the net rule because it decides whether tickets issue.
-        var state = status.State != CheckoutState.Paid && received > 0 && received >= order.Total - refundFees
-            ? CheckoutState.Paid
+        var state = status.State != PlatformOrderState.Paid && received > 0 && received >= order.Total - refundFees
+            ? PlatformOrderState.Paid
             : status.State;
         // A paid order is charged what pretix received, so one paid twice or short shows as a total difference.
-        var charged = state == CheckoutState.Paid ? received : order.Total - refundFees;
-        return new BackendOrderSummary(
-            FormatBackendOrderId(eventSlug, order.Code),
+        var charged = state == PlatformOrderState.Paid ? received : order.Total - refundFees;
+        return new PlatformOrderSummary(
+            FormatPlatformOrderId(eventSlug, order.Code),
             HumansOrderId(order),
             ParseInstant(order.Datetime) ?? throw new HttpRequestException($"pretix order {order.Code} has no datetime."),
             state,
             ToMinor(charged),
             order.Positions.Count(p => !p.Canceled && ticketItems.Contains(p.Item)),
             status.RefundedMinor,
-            status.DisputedMinor);
+            status.ChargedBackMinor);
     }
 
     internal static string OrderCode(Guid orderId)
@@ -529,32 +529,32 @@ internal sealed partial class PretixCheckoutBackend(
         return code.ToString();
     }
 
-    internal static string FormatBackendOrderId(string eventSlug, string code) => $"{eventSlug}/{code}";
+    internal static string FormatPlatformOrderId(string eventSlug, string code) => $"{eventSlug}/{code}";
 
-    internal static (string EventSlug, string Code) ParseBackendOrderId(string backendOrderId)
+    internal static (string EventSlug, string Code) ParsePlatformOrderId(string platformOrderId)
     {
-        var parts = backendOrderId.Split('/');
+        var parts = platformOrderId.Split('/');
         if (parts.Length != 2 || parts.Any(string.IsNullOrWhiteSpace))
-            throw new ArgumentException($"Not a pretix order id: '{backendOrderId}'.", nameof(backendOrderId));
+            throw new ArgumentException($"Not a pretix order id: '{platformOrderId}'.", nameof(platformOrderId));
         return (parts[0], parts[1]);
     }
 
-    internal static CheckoutStatus MapStatus(PretixOrder order, ILogger logger)
+    internal static PlatformOrderStatus MapStatus(PretixOrder order, ILogger logger)
     {
         var state = order.Status switch
         {
-            "n" => CheckoutState.Pending,
-            "p" => CheckoutState.Paid,
-            "e" => CheckoutState.Expired,
-            "c" => CheckoutState.Cancelled,
+            "n" => PlatformOrderState.Pending,
+            "p" => PlatformOrderState.Paid,
+            "e" => PlatformOrderState.Expired,
+            "c" => PlatformOrderState.Cancelled,
             _ => throw new HttpRequestException($"pretix order {order.Code} has unknown status '{order.Status}'."),
         };
 
         if (IsCovered(order, state))
-            state = CheckoutState.Paid;
+            state = PlatformOrderState.Paid;
         // A "pending" payment has left the buyer (a SEPA debit settling); a bank transfer not yet sent stays "created".
-        else if (state == CheckoutState.Pending && order.Payments.Any(p => string.Equals(p.State, "pending", StringComparison.Ordinal)))
-            state = CheckoutState.Processing;
+        else if (state == PlatformOrderState.Pending && order.Payments.Any(p => string.Equals(p.State, "pending", StringComparison.Ordinal)))
+            state = PlatformOrderState.Processing;
 
         // The buyer pays exactly the lines, so bootstrap.py sets every method's fee to zero. A surcharge here is
         // misconfiguration; it is logged rather than thrown, because a throw would hide a real payment from Humans.
@@ -569,13 +569,13 @@ internal sealed partial class PretixCheckoutBackend(
         var disputed = gone.Where(IsChargeback).Sum(r => ToMinor(r.Amount));
         var refunded = gone.Where(r => !IsChargeback(r)).Sum(r => ToMinor(r.Amount));
 
-        return new CheckoutStatus(
+        return new PlatformOrderStatus(
             state,
             // pretix does not know what Stripe kept.
             null,
             lastPayment?.Provider,
             // The order's own payment_date is a date only; the confirmed payment carries the time.
-            state == CheckoutState.Paid ? ParseInstant(lastPayment?.PaymentDate) : null,
+            state == PlatformOrderState.Paid ? ParseInstant(lastPayment?.PaymentDate) : null,
             refunded,
             // Only the newest refund counts: a retry after a failure must not read as failed while its money moves.
             // An external one cancelled in pretix is a won chargeback or a mistaken record, not a failed refund.
@@ -616,19 +616,19 @@ internal sealed partial class PretixCheckoutBackend(
     /// pretix keeps a payment confirmed after expiry or cancellation but cannot mark the order paid, and a refund made
     /// outside this adapter can reopen a paid order. The money decides, so a late payment is reported, never stranded.
     /// </summary>
-    private static bool IsCovered(PretixOrder order, CheckoutState state) => state switch
+    private static bool IsCovered(PretixOrder order, PlatformOrderState state) => state switch
     {
-        CheckoutState.Pending or CheckoutState.Expired => Received(order) > 0 && NetPaid(order) >= order.Total,
-        CheckoutState.Cancelled => NetPaid(order) > 0,
+        PlatformOrderState.Pending or PlatformOrderState.Expired => Received(order) > 0 && NetPaid(order) >= order.Total,
+        PlatformOrderState.Cancelled => NetPaid(order) > 0,
         _ => false,
     };
 
     private static int CarrierItem(PretixPage<PretixItem> items, string internalName) =>
         items.Results.SingleOrDefault(i => string.Equals(i.InternalName, internalName, StringComparison.Ordinal))?.Id
-        ?? throw new TicketCheckoutException(
+        ?? throw new TicketingPlatformException(
             $"The pretix event has no active item with internal name '{internalName}' (see deploy/pretix/bootstrap.py).");
 
-    private static JsonObject BuildOrderBody(CheckoutRequest request, string code, int ticketItem, int donationItem)
+    private static JsonObject BuildOrderBody(PlatformOrderRequest request, string code, int ticketItem, int donationItem)
     {
         var positions = new JsonArray();
         for (var i = 0; i < request.Lines.Count; i++)
@@ -637,7 +637,7 @@ internal sealed partial class PretixCheckoutBackend(
             var position = new JsonObject
             {
                 ["positionid"] = i + 1,
-                ["item"] = line.Kind == CheckoutLineKind.Ticket ? ticketItem : donationItem,
+                ["item"] = line.Kind == OrderLineKind.Ticket ? ticketItem : donationItem,
                 ["price"] = FormatMoney(line.AmountMinor),
             };
             positions.Add(position);
@@ -660,12 +660,12 @@ internal sealed partial class PretixCheckoutBackend(
         };
     }
 
-    private static void Validate(CheckoutRequest request)
+    private static void Validate(PlatformOrderRequest request)
     {
         if (request.Lines.Count == 0)
-            throw new TicketCheckoutException("A checkout needs at least one line.");
+            throw new TicketingPlatformException("A checkout needs at least one line.");
         if (request.Lines.Any(l => l.AmountMinor < 0))
-            throw new TicketCheckoutException("pretix cannot charge a negative line.");
+            throw new TicketingPlatformException("pretix cannot charge a negative line.");
     }
 
     /// <summary>
@@ -673,7 +673,7 @@ internal sealed partial class PretixCheckoutBackend(
     /// top would raise the total. So the order is checked against the request line by line, and a fresh order's total
     /// too (a retried one may already carry the buyer's payment fee).
     /// </summary>
-    private static string? PriceMismatch(CheckoutRequest request, PretixOrder order, bool fresh)
+    private static string? PriceMismatch(PlatformOrderRequest request, PretixOrder order, bool fresh)
     {
         var positions = order.Positions.Where(p => !p.Canceled).OrderBy(p => p.Positionid).ToList();
         if (positions.Count != request.Lines.Count)
@@ -828,7 +828,7 @@ internal sealed partial class PretixCheckoutBackend(
     private void EnsureConfigured()
     {
         if (!IsConfigured)
-            throw new TicketCheckoutException("pretix is not configured.");
+            throw new TicketingPlatformException("pretix is not configured.");
     }
 
     private static string FormatMoney(long minor) =>

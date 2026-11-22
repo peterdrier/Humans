@@ -11,12 +11,12 @@ using NodaTime.Text;
 namespace Humans.Tickets.Controllers;
 
 /// <summary>
-/// One checkout backend's status page, the target of that backend's admin sidebar row: its settings, the events
+/// One ticketing platform's status page, the target of that platform's admin sidebar row: its settings, the events
 /// selling through it, and the orders and refunds it holds. English only.
 /// </summary>
 [Authorize(Policy = TicketsPolicies.Read)]
-[Route("Tickets/Admin/Backends/{key}")]
-internal sealed class TicketsBackendAdminController(
+[Route("Tickets/Admin/Platforms/{key}")]
+internal sealed class TicketsPlatformAdminController(
     ITicketCheckoutService checkout,
     ISettingsService settings,
     IOrgTimeZone orgTimeZone,
@@ -30,28 +30,28 @@ internal sealed class TicketsBackendAdminController(
     [HttpPost("Check")]
     [Authorize(Policy = TicketsPolicies.Manage)]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Check(string key, string? backendEventRef, CancellationToken ct)
+    public async Task<IActionResult> Check(string key, string? platformEventRef, CancellationToken ct)
     {
-        var findings = await checkout.CheckBackendAsync(key, backendEventRef, ct);
+        var findings = await checkout.CheckPlatformAsync(key, platformEventRef, ct);
         if (findings is null)
             return NotFound();
-        return await StatusAsync(key, new BackendCheckResult(key, backendEventRef, findings), ct);
+        return await StatusAsync(key, new PlatformCheckResult(key, platformEventRef, findings), ct);
     }
 
-    private async Task<IActionResult> StatusAsync(string key, BackendCheckResult? check, CancellationToken ct)
+    private async Task<IActionResult> StatusAsync(string key, PlatformCheckResult? check, CancellationToken ct)
     {
-        if (await checkout.GetBackendLedgerAsync(key, ct) is not { } ledger)
+        if (await checkout.GetPlatformLedgerAsync(key, ct) is not { } ledger)
             return NotFound();
 
-        return View("~/Views/Tickets/Admin/Backends/Index.cshtml", new BackendStatusViewModel(
-            new BackendsViewModel([ledger.Backend], await checkout.GetSalesEventsAsync(ct), await settings.GetAllEventSettingsAsync(ct), check),
+        return View("~/Views/Tickets/Admin/Platforms/Index.cshtml", new PlatformStatusViewModel(
+            new PlatformsViewModel([ledger.Platform], await checkout.ListTicketingSettingsAsync(ct), await settings.GetAllEventSettingsAsync(ct), check),
             ledger,
             ledger.Orders.Count == 0 ? null : LocalDatePattern.Iso.Format(ledger.Orders[^1].CreatedAt.InZone(orgTimeZone.Zone).Date)));
     }
 }
 
 /// <summary><c>ReconFrom</c> is the oldest order's day in the organisation's zone, so the reconciliation link covers every order.</summary>
-internal sealed record BackendStatusViewModel(BackendsViewModel Backend, BackendLedger Ledger, string? ReconFrom)
+internal sealed record PlatformStatusViewModel(PlatformsViewModel Platform, PlatformLedger Ledger, string? ReconFrom)
 {
-    public CheckoutBackendInfo Info => Backend.Backends[0];
+    public PlatformInfo Info => Platform.Platforms[0];
 }

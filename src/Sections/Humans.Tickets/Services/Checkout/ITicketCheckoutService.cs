@@ -6,24 +6,24 @@ using NodaTime;
 namespace Humans.Tickets.Services.Checkout;
 
 /// <summary>
-/// The checkout lane: Humans prices the order, the event's backend takes the money. Authorization is the controllers'
+/// The checkout lane: Humans prices the order, the event's platform takes the money. Authorization is the controllers'
 /// job; every method trusts its actor.
 /// </summary>
-internal interface ITicketCheckoutService : ITicketCheckoutEvents, IApplicationService
+internal interface ITicketCheckoutService : ITicketingPlatformEvents, IApplicationService
 {
-    IReadOnlyList<CheckoutBackendInfo> Backends { get; }
+    IReadOnlyList<PlatformInfo> Platforms { get; }
 
-    /// <summary>Runs the backend's read-only check, for an event when its id in the backend is given; null for an unknown key.</summary>
-    Task<IReadOnlyList<CheckoutBackendFinding>?> CheckBackendAsync(string key, string? backendEventRef, CancellationToken ct = default);
+    /// <summary>Runs the platform's read-only check, for an event when its id in the platform is given; null for an unknown key.</summary>
+    Task<IReadOnlyList<PlatformFinding>?> CheckPlatformAsync(string key, string? platformEventRef, CancellationToken ct = default);
 
-    Task<IReadOnlyList<TicketSalesEvent>> GetSalesEventsAsync(CancellationToken ct = default);
+    Task<IReadOnlyList<TicketingSettings>> ListTicketingSettingsAsync(CancellationToken ct = default);
 
-    Task<TicketSalesEvent?> GetSalesEventAsync(Guid id, CancellationToken ct = default);
+    Task<TicketingSettings?> GetTicketingSettingsAsync(Guid id, CancellationToken ct = default);
 
-    Task<CheckoutMutationResult> SaveSalesEventAsync(SalesEventSave save, Guid actorUserId, CancellationToken ct = default);
+    Task<CheckoutMutationResult> SaveTicketingSettingsAsync(TicketingSettingsSave save, Guid actorUserId, CancellationToken ct = default);
 
     /// <summary>The ticketing team opens or pauses resale by hand; returned tickets wait in the queue while it is paused.</summary>
-    Task<CheckoutMutationResult> SetResaleOpenAsync(Guid salesEventId, bool open, Guid actorUserId, CancellationToken ct = default);
+    Task<CheckoutMutationResult> SetResaleOpenAsync(Guid settingsId, bool open, Guid actorUserId, CancellationToken ct = default);
 
     /// <summary>One page per event selling through Humans (not Closed); several events may sell at once.</summary>
     Task<IReadOnlyList<BuyPage>> GetBuyPagesAsync(Guid userId, CancellationToken ct = default);
@@ -38,15 +38,15 @@ internal interface ITicketCheckoutService : ITicketCheckoutEvents, IApplicationS
 
     Task<IReadOnlyList<TicketCheckoutOrder>> GetOrdersForUserAsync(Guid userId, CancellationToken ct = default);
 
-    Task<IReadOnlyList<TicketCheckoutOrder>> GetOrdersForSalesEventAsync(Guid salesEventId, CancellationToken ct = default);
+    Task<IReadOnlyList<TicketCheckoutOrder>> GetOrdersForSettingsAsync(Guid settingsId, CancellationToken ct = default);
 
     Task<CheckoutOrderDetail?> GetOrderDetailAsync(Guid orderId, CancellationToken ct = default);
 
-    /// <summary>Asks the order's backend for its state and applies it. Null when the order does not exist.</summary>
+    /// <summary>Asks the order's platform for its state and applies it. Null when the order does not exist.</summary>
     Task<TicketCheckoutOrder?> RefreshOrderAsync(Guid orderId, CancellationToken ct = default);
 
     /// <summary>
-    /// Refunds an exact amount of a paid order's ticket lines through its backend. Never more than the ticket lines
+    /// Refunds an exact amount of a paid order's ticket lines through its platform. Never more than the ticket lines
     /// cost, counting every earlier refund that did not fail: donations are not refunded.
     /// </summary>
     Task<CheckoutMutationResult> RefundAsync(
@@ -65,12 +65,12 @@ internal interface ITicketCheckoutService : ITicketCheckoutEvents, IApplicationS
     /// <summary>Every ticket the person holds or held, any event and state, newest first.</summary>
     Task<IReadOnlyList<TicketCheckoutTicket>> GetTicketsForHolderAsync(Guid userId, CancellationToken ct = default);
 
-    Task<IReadOnlyList<TicketCheckoutTicket>> GetTicketsForSalesEventAsync(Guid salesEventId, CancellationToken ct = default);
+    Task<IReadOnlyList<TicketCheckoutTicket>> GetTicketsForSettingsAsync(Guid settingsId, CancellationToken ct = default);
 
     /// <summary>The resale queue and its history, oldest offer first.</summary>
-    Task<IReadOnlyList<TicketResaleOffer>> GetOffersForSalesEventAsync(Guid salesEventId, CancellationToken ct = default);
+    Task<IReadOnlyList<TicketResaleOffer>> GetOffersForSettingsAsync(Guid settingsId, CancellationToken ct = default);
 
-    Task<IReadOnlyList<TicketCheckoutRefund>> GetRefundsForSalesEventAsync(Guid salesEventId, CancellationToken ct = default);
+    Task<IReadOnlyList<TicketCheckoutRefund>> GetRefundsForSettingsAsync(Guid settingsId, CancellationToken ct = default);
 
     /// <summary>The person's valid or offered tickets with their resale state, and the valid child tickets that go with them, for "my tickets".</summary>
     Task<IReadOnlyList<HeldTicket>> GetHeldTicketsAsync(Guid userId, CancellationToken ct = default);
@@ -94,7 +94,7 @@ internal interface ITicketCheckoutService : ITicketCheckoutEvents, IApplicationS
     /// <summary>
     /// The ticketing team's exception: a valid full-price adult ticket with no dependents moves to another named
     /// person, whose account is found or created. With <paramref name="overrideRules"/> (Admin only) a class
-    /// price or credit ticket may move too.
+    /// price or discount ticket may move too.
     /// </summary>
     Task<CheckoutMutationResult> RenameTicketAsync(
         Guid ticketId, string holderName, string holderEmail, string reason, bool overrideRules, Guid actorUserId, CancellationToken ct = default);
@@ -102,7 +102,7 @@ internal interface ITicketCheckoutService : ITicketCheckoutEvents, IApplicationS
     /// <summary>
     /// Voids a valid or offered ticket and its dependents, withdrawing any open offer, and refunds
     /// <paramref name="refundMinor"/> of its order first; zero voids with no refund, said so on the timeline and audit.
-    /// A refund the backend declines leaves the ticket valid.
+    /// A refund the platform declines leaves the ticket valid.
     /// </summary>
     Task<CheckoutMutationResult> VoidTicketAsync(
         Guid ticketId, string reason, long refundMinor, Guid actorUserId, CancellationToken ct = default);
@@ -117,10 +117,10 @@ internal interface ITicketCheckoutService : ITicketCheckoutEvents, IApplicationS
     /// Super admin only, never undone: closes sales for good; the reconcile job then voids every ticket, refunds every
     /// paid order what its tickets cost (donations stay) and emails each buyer.
     /// </summary>
-    Task<CheckoutMutationResult> CancelSalesEventAsync(Guid salesEventId, string reason, Guid actorUserId, CancellationToken ct = default);
+    Task<CheckoutMutationResult> CancelEventAsync(Guid settingsId, string reason, Guid actorUserId, CancellationToken ct = default);
 
     /// <summary>A cancellation's progress and money, or what cancelling now would do; null for an unknown sales event.</summary>
-    Task<CancellationProgress?> GetCancellationProgressAsync(Guid salesEventId, CancellationToken ct = default);
+    Task<CancellationProgress?> GetCancellationProgressAsync(Guid settingsId, CancellationToken ct = default);
 
     /// <summary>
     /// Issues a free companion ticket attached to a valid adult ticket, on a zero-total order of its own, within
@@ -142,7 +142,7 @@ internal interface ITicketCheckoutService : ITicketCheckoutEvents, IApplicationS
     Task<CheckoutMutationResult> WithdrawCompanionRequestAsync(Guid ticketId, Guid holderUserId, CancellationToken ct = default);
 
     /// <summary>Every companion request on the sales event, newest first, with names for the team's queue.</summary>
-    Task<IReadOnlyList<CompanionRequestRow>> GetCompanionRequestsAsync(Guid salesEventId, CancellationToken ct = default);
+    Task<IReadOnlyList<CompanionRequestRow>> GetCompanionRequestsAsync(Guid settingsId, CancellationToken ct = default);
 
     /// <summary>
     /// The team's light check: approving issues the companion ticket (as <see cref="IssueCompanionAsync"/>, to the
@@ -158,27 +158,27 @@ internal interface ITicketCheckoutService : ITicketCheckoutEvents, IApplicationS
     Task<ResaleRefundBatch> RunResaleRefundBatchAsync(CancellationToken ct = default);
 
     /// <summary>
-    /// Financial reconciliation of one backend for [<paramref name="from"/>, <paramref name="to"/>): Humans' orders
-    /// against the backend's own list. Reads only. Null for an unknown backend; a backend that cannot be read gives a
+    /// Financial reconciliation of one platform for [<paramref name="from"/>, <paramref name="to"/>): Humans' orders
+    /// against the platform's own list. Reads only. Null for an unknown platform; a platform that cannot be read gives a
     /// result carrying the error, never a partial comparison.
     /// </summary>
-    Task<TicketRecon?> ReconcileBackendAsync(string backendKey, Instant from, Instant to, CancellationToken ct = default);
+    Task<TicketRecon?> ReconcilePlatformAsync(string platformKey, Instant from, Instant to, CancellationToken ct = default);
 
     /// <summary>
-    /// Fee and payout reconciliation of one backend for [<paramref name="from"/>, <paramref name="to"/>): the payment
-    /// account's own movements against Humans' orders. Reads only. Null for an unknown or unconfigured backend and for one
+    /// Fee and payout reconciliation of one platform for [<paramref name="from"/>, <paramref name="to"/>): the payment
+    /// account's own movements against Humans' orders. Reads only. Null for an unknown or unconfigured platform and for one
     /// whose payment account Humans cannot read; an account that cannot be read gives a result carrying the error.
     /// </summary>
-    Task<TicketPaymentRecon?> ReconcilePaymentsAsync(string backendKey, Instant from, Instant to, CancellationToken ct = default);
+    Task<TicketPaymentRecon?> ReconcilePaymentsAsync(string platformKey, Instant from, Instant to, CancellationToken ct = default);
 
-    /// <summary>Every order opened on one backend, newest first, with its stuck orders and unsettled refunds; null for an unknown key.</summary>
-    Task<BackendLedger?> GetBackendLedgerAsync(string backendKey, CancellationToken ct = default);
+    /// <summary>Every order opened on one platform, newest first, with its stuck orders and unsettled refunds; null for an unknown key.</summary>
+    Task<PlatformLedger?> GetPlatformLedgerAsync(string platformKey, CancellationToken ct = default);
 
-    /// <summary>The backends some sales setup sells through, for the reconciliation page and its daily run.</summary>
-    Task<IReadOnlyList<string>> GetBackendsInUseAsync(CancellationToken ct = default);
+    /// <summary>The platforms some sales setup sells through, for the reconciliation page and its daily run.</summary>
+    Task<IReadOnlyList<string>> GetPlatformsInUseAsync(CancellationToken ct = default);
 }
 
-internal sealed record CheckoutBackendInfo(string Key, bool IsConfigured, CheckoutBackendSetup Setup);
+internal sealed record PlatformInfo(string Key, bool IsConfigured, PlatformSetup Setup);
 
 /// <summary>
 /// <paramref name="Paid"/>: paid orders as reconciliation counts them, free orders left out. <paramref name="Stuck"/>:
@@ -186,8 +186,8 @@ internal sealed record CheckoutBackendInfo(string Key, bool IsConfigured, Checko
 /// <paramref name="UnsettledRefunds"/>: pending or waiting on a person. <paramref name="FailedRefunds"/>: failed, with
 /// no later attempt on the order that went through.
 /// </summary>
-internal sealed record BackendLedger(
-    CheckoutBackendInfo Backend,
+internal sealed record PlatformLedger(
+    PlatformInfo Platform,
     IReadOnlyList<TicketCheckoutOrder> Orders,
     IReadOnlyList<TicketCheckoutOrder> Paid,
     IReadOnlyList<TicketCheckoutOrder> Stuck,
@@ -202,17 +202,17 @@ internal sealed record CheckoutMutationResult(string? Refusal = null)
     public bool Succeeded => Refusal is null;
 }
 
-internal sealed record SalesEventSave(
+internal sealed record TicketingSettingsSave(
     Guid? Id,
     Guid EventSettingsId,
-    string BackendKey,
-    string? BackendEventRef,
+    string PlatformKey,
+    string? PlatformEventRef,
     TicketSalesMode Mode,
     NodaTime.Instant? SalesCloseAt,
     int Capacity,
     decimal TicketVatRate,
     IReadOnlyList<TicketSalesWave> Waves,
-    IReadOnlyList<long> SupporterTotalsMinor,
+    IReadOnlyList<long> VipTotalsMinor,
     IReadOnlyList<TicketPriceRule> PriceRules)
 {
     public IReadOnlyList<TicketChildType> ChildTypes { get; init; } = [];
@@ -231,7 +231,7 @@ internal sealed record PublicSale(string EventName, long PriceMinor, bool Resale
 /// when they can buy. <paramref name="PublicPrice"/> is what each other person on the order pays.
 /// </summary>
 internal sealed record BuyPage(
-    TicketSalesEvent SalesEvent,
+    TicketingSettings SalesEvent,
     string EventName,
     TicketPrice? OwnPrice,
     TicketPrice? PublicPrice,
@@ -265,14 +265,14 @@ internal sealed record BuyPage(
 internal sealed record ChildEntry(string? Name, string? Type);
 
 /// <summary>
-/// <paramref name="SupporterTotalMinor"/> is one of the event's VIP totals: the part above the buyer's own ticket is a
+/// <paramref name="VipTotalMinor"/> is one of the event's VIP totals: the part above the buyer's own ticket is a
 /// donation. <paramref name="DonationMinor"/> is a free donation on top, for <paramref name="DonationPurpose"/>. Each
 /// other person always pays the public price.
 /// </summary>
 internal sealed record StartCheckout(
-    Guid SalesEventId,
+    Guid TicketingSettingsId,
     bool ForSelf,
-    long? SupporterTotalMinor,
+    long? VipTotalMinor,
     long DonationMinor,
     string? DonationPurpose,
     Uri ReturnUrlBase,
@@ -326,12 +326,12 @@ internal sealed record CheckoutOrderDetail(
     IReadOnlyList<TicketCheckoutTicket> Tickets)
 {
     /// <summary>
-    /// What may still be refunded: ticket lines only, net of what has gone back (the backend's total, dashboard refunds
-    /// included, or Humans' own settled refunds if the backend has not caught up), of refunds not settled yet, and of
+    /// What may still be refunded: ticket lines only, net of what has gone back (the platform's total, dashboard refunds
+    /// included, or Humans' own settled refunds if the platform has not caught up), of refunds not settled yet, and of
     /// what a chargeback took.
     /// </summary>
     public long RefundableMinor =>
-        Math.Max(0, Order.TicketTotalMinor - Order.DisputedMinor
+        Math.Max(0, Order.TicketTotalMinor - Order.ChargedBackMinor
             - Math.Max(Order.RefundedMinor, Refunds.Where(r => r.State == RefundState.Succeeded).Sum(r => r.AmountMinor))
             - Refunds.Where(r => r.State is RefundState.Pending or RefundState.ManualRequired).Sum(r => r.AmountMinor));
 

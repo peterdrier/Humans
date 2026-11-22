@@ -15,7 +15,7 @@ using Xunit;
 
 namespace Humans.HiEvents.Tests;
 
-public class HiEventsCheckoutBackendTests
+public class HiEventsPlatformTests
 {
     private static readonly CancellationToken Ct = Xunit.TestContext.Current.CancellationToken;
     private static readonly Instant Now = Instant.FromUtc(2027, 1, 2, 10, 0);
@@ -32,16 +32,16 @@ public class HiEventsCheckoutBackendTests
     }
 
     [HumansFact]
-    public async Task CreateCheckout_PostsFixedPricesAndNamesAndReturnsThePaymentLink()
+    public async Task CreateOrder_PostsFixedPricesAndNamesAndReturnsThePaymentLink()
     {
         _handler.Enqueue(HttpStatusCode.OK, Products());
         _handler.Enqueue(HttpStatusCode.Created, Order(id: 42, total: 1000m, paymentLink: "https://tickets.example/pay/42"));
 
-        var session = await Backend().CreateCheckoutAsync(Request(
-            new CheckoutLine(CheckoutLineKind.Ticket, "General", 22500, 0.10m, "Ana García López"),
-            new CheckoutLine(CheckoutLineKind.Donation, "Donation", 77500, 0m, null)), Ct);
+        var session = await Platform().CreateOrderAsync(Request(
+            new PlatformOrderLine(OrderLineKind.Ticket, "General", 22500, 0.10m, "Ana García López"),
+            new PlatformOrderLine(OrderLineKind.Donation, "Donation", 77500, 0m, null)), Ct);
 
-        session.BackendOrderId.Should().Be("7:42");
+        session.PlatformOrderId.Should().Be("7:42");
         session.PaymentUrl.Should().Be(new Uri("https://tickets.example/pay/42"));
         session.AdminUrl.Should().Be(new Uri("https://tickets.example/manage/event/7/orders#order-42"));
 
@@ -68,63 +68,63 @@ public class HiEventsCheckoutBackendTests
     }
 
     [HumansFact]
-    public async Task CreateCheckout_WhenTheTotalDiffers_Throws()
+    public async Task CreateOrder_WhenTheTotalDiffers_Throws()
     {
         _handler.Enqueue(HttpStatusCode.OK, Products());
         _handler.Enqueue(HttpStatusCode.Created, Order(id: 42, total: 247.50m, paymentLink: "https://tickets.example/pay/42"));
 
-        var act = () => Backend().CreateCheckoutAsync(Request(
-            new CheckoutLine(CheckoutLineKind.Ticket, "General", 22500, 0.10m, "Ana")), Ct);
+        var act = () => Platform().CreateOrderAsync(Request(
+            new PlatformOrderLine(OrderLineKind.Ticket, "General", 22500, 0.10m, "Ana")), Ct);
 
-        await act.Should().ThrowAsync<TicketCheckoutException>();
+        await act.Should().ThrowAsync<TicketingPlatformException>();
     }
 
     [HumansFact]
-    public async Task CreateCheckout_WhenTheEventSellsInAnotherCurrency_Throws()
+    public async Task CreateOrder_WhenTheEventSellsInAnotherCurrency_Throws()
     {
         _handler.Enqueue(HttpStatusCode.OK, Products());
         _handler.Enqueue(HttpStatusCode.Created, Order(id: 42, total: 225m, paymentLink: "https://tickets.example/pay/42", currency: "USD"));
 
-        var act = () => Backend().CreateCheckoutAsync(Request(
-            new CheckoutLine(CheckoutLineKind.Ticket, "General", 22500, 0.10m, "Ana")), Ct);
+        var act = () => Platform().CreateOrderAsync(Request(
+            new PlatformOrderLine(OrderLineKind.Ticket, "General", 22500, 0.10m, "Ana")), Ct);
 
-        await act.Should().ThrowAsync<TicketCheckoutException>();
+        await act.Should().ThrowAsync<TicketingPlatformException>();
     }
 
     [HumansTheory]
     [Xunit.InlineData(HttpStatusCode.UnprocessableEntity)]
     [Xunit.InlineData(HttpStatusCode.Conflict)]
-    public async Task CreateCheckout_WhenHiEventsRefuses_Throws(HttpStatusCode status)
+    public async Task CreateOrder_WhenHiEventsRefuses_Throws(HttpStatusCode status)
     {
         _handler.Enqueue(HttpStatusCode.OK, Products());
         _handler.Enqueue(status, new { message = "no" });
 
-        var act = () => Backend().CreateCheckoutAsync(Request(
-            new CheckoutLine(CheckoutLineKind.Ticket, "General", 22500, 0.10m, "Ana")), Ct);
+        var act = () => Platform().CreateOrderAsync(Request(
+            new PlatformOrderLine(OrderLineKind.Ticket, "General", 22500, 0.10m, "Ana")), Ct);
 
-        await act.Should().ThrowAsync<TicketCheckoutException>();
+        await act.Should().ThrowAsync<TicketingPlatformException>();
     }
 
     [HumansFact]
-    public async Task CreateCheckout_WithoutANumericEvent_ThrowsBeforeAnyCall()
+    public async Task CreateOrder_WithoutANumericEvent_ThrowsBeforeAnyCall()
     {
-        var act = () => Backend().CreateCheckoutAsync(RequestFor(null,
-            new CheckoutLine(CheckoutLineKind.Ticket, "General", 22500, 0.10m, "Ana")), Ct);
+        var act = () => Platform().CreateOrderAsync(RequestFor(null,
+            new PlatformOrderLine(OrderLineKind.Ticket, "General", 22500, 0.10m, "Ana")), Ct);
 
-        await act.Should().ThrowAsync<TicketCheckoutException>();
+        await act.Should().ThrowAsync<TicketingPlatformException>();
         _handler.Requests.Should().BeEmpty();
     }
 
     [HumansFact]
-    public async Task CreateCheckout_UsesTheProductsOfTheRequestedEvent()
+    public async Task CreateOrder_UsesTheProductsOfTheRequestedEvent()
     {
         _handler.Enqueue(HttpStatusCode.OK, Products(("TICKET", 300), ("GENERAL", 400)));
         _handler.Enqueue(HttpStatusCode.Created, Order(id: 43, total: 225m, paymentLink: "https://tickets.example/pay/43"));
 
-        var session = await Backend().CreateCheckoutAsync(RequestFor("8",
-            new CheckoutLine(CheckoutLineKind.Ticket, "General", 22500, 0.10m, "Ana")), Ct);
+        var session = await Platform().CreateOrderAsync(RequestFor("8",
+            new PlatformOrderLine(OrderLineKind.Ticket, "General", 22500, 0.10m, "Ana")), Ct);
 
-        session.BackendOrderId.Should().Be("8:43");
+        session.PlatformOrderId.Should().Be("8:43");
         _handler.Requests[0].Request.RequestUri!.AbsolutePath.Should().Be("/api/events/8/products");
         var (request, body) = _handler.Requests[1];
         request.RequestUri!.AbsolutePath.Should().Be("/api/events/8/orders/checkout");
@@ -134,55 +134,55 @@ public class HiEventsCheckoutBackendTests
     [HumansTheory]
     [Xunit.InlineData(0)]
     [Xunit.InlineData(2)]
-    public async Task CreateCheckout_WithoutExactlyOneCarrierProduct_ThrowsBeforeCreatingAnOrder(int ticketProducts)
+    public async Task CreateOrder_WithoutExactlyOneCarrierProduct_ThrowsBeforeCreatingAnOrder(int ticketProducts)
     {
         _handler.Enqueue(HttpStatusCode.OK, Products(Enumerable.Range(1, ticketProducts).Select(i => ("TICKET", i)).Append(("GENERAL", 200)).ToArray()));
 
-        var act = () => Backend().CreateCheckoutAsync(Request(
-            new CheckoutLine(CheckoutLineKind.Ticket, "General", 22500, 0.10m, "Ana")), Ct);
+        var act = () => Platform().CreateOrderAsync(Request(
+            new PlatformOrderLine(OrderLineKind.Ticket, "General", 22500, 0.10m, "Ana")), Ct);
 
-        (await act.Should().ThrowAsync<TicketCheckoutException>()).WithMessage("*exactly one TICKET product*");
+        (await act.Should().ThrowAsync<TicketingPlatformException>()).WithMessage("*exactly one TICKET product*");
         _handler.Requests.Should().ContainSingle();
     }
 
     [HumansFact]
-    public async Task CreateCheckout_WithAVisibleCarrierProduct_ThrowsBeforeCreatingAnOrder()
+    public async Task CreateOrder_WithAVisibleCarrierProduct_ThrowsBeforeCreatingAnOrder()
     {
         _handler.Enqueue(HttpStatusCode.OK, Products(("TICKET", 100), ("GENERAL", VisibleProductId)));
 
-        var act = () => Backend().CreateCheckoutAsync(Request(
-            new CheckoutLine(CheckoutLineKind.Ticket, "General", 22500, 0.10m, "Ana")), Ct);
+        var act = () => Platform().CreateOrderAsync(Request(
+            new PlatformOrderLine(OrderLineKind.Ticket, "General", 22500, 0.10m, "Ana")), Ct);
 
-        (await act.Should().ThrowAsync<TicketCheckoutException>()).WithMessage("*must be hidden*");
+        (await act.Should().ThrowAsync<TicketingPlatformException>()).WithMessage("*must be hidden*");
         _handler.Requests.Should().ContainSingle();
     }
 
     [HumansFact]
-    public async Task CreateCheckout_DonationWithoutADonationProduct_Throws()
+    public async Task CreateOrder_DonationWithoutADonationProduct_Throws()
     {
         _handler.Enqueue(HttpStatusCode.OK, Products(("TICKET", 100)));
 
-        var act = () => Backend().CreateCheckoutAsync(Request(
-            new CheckoutLine(CheckoutLineKind.Donation, "Donation", 5000, 0m, null)), Ct);
+        var act = () => Platform().CreateOrderAsync(Request(
+            new PlatformOrderLine(OrderLineKind.Donation, "Donation", 5000, 0m, null)), Ct);
 
-        await act.Should().ThrowAsync<TicketCheckoutException>();
+        await act.Should().ThrowAsync<TicketingPlatformException>();
         _handler.Requests.Should().ContainSingle();
     }
 
     [HumansTheory]
-    [Xunit.InlineData("COMPLETED", "PAYMENT_RECEIVED", null, CheckoutState.Paid)]
-    [Xunit.InlineData("CANCELLED", "AWAITING_PAYMENT", null, CheckoutState.Cancelled)]
-    [Xunit.InlineData("ABANDONED", "AWAITING_PAYMENT", null, CheckoutState.Expired)]
-    [Xunit.InlineData("RESERVED", "AWAITING_PAYMENT", "2027-01-02 10:30:00", CheckoutState.Pending)]
-    [Xunit.InlineData("RESERVED", "PAYMENT_FAILED", "2027-01-02 10:30:00", CheckoutState.Pending)]
-    [Xunit.InlineData("RESERVED", "AWAITING_PAYMENT", "2027-01-02 09:59:59", CheckoutState.Expired)]
-    [Xunit.InlineData("AWAITING_OFFLINE_PAYMENT", "AWAITING_OFFLINE_PAYMENT", null, CheckoutState.Pending)]
-    public async Task GetStatus_MapsHiEventsStatuses(string status, string paymentStatus, string? reservedUntil, CheckoutState expected)
+    [Xunit.InlineData("COMPLETED", "PAYMENT_RECEIVED", null, PlatformOrderState.Paid)]
+    [Xunit.InlineData("CANCELLED", "AWAITING_PAYMENT", null, PlatformOrderState.Cancelled)]
+    [Xunit.InlineData("ABANDONED", "AWAITING_PAYMENT", null, PlatformOrderState.Expired)]
+    [Xunit.InlineData("RESERVED", "AWAITING_PAYMENT", "2027-01-02 10:30:00", PlatformOrderState.Pending)]
+    [Xunit.InlineData("RESERVED", "PAYMENT_FAILED", "2027-01-02 10:30:00", PlatformOrderState.Pending)]
+    [Xunit.InlineData("RESERVED", "AWAITING_PAYMENT", "2027-01-02 09:59:59", PlatformOrderState.Expired)]
+    [Xunit.InlineData("AWAITING_OFFLINE_PAYMENT", "AWAITING_OFFLINE_PAYMENT", null, PlatformOrderState.Pending)]
+    public async Task GetStatus_MapsHiEventsStatuses(string status, string paymentStatus, string? reservedUntil, PlatformOrderState expected)
     {
         _handler.Enqueue(HttpStatusCode.OK, Order(id: 42, total: 225m, status: status, paymentStatus: paymentStatus,
             reservedUntil: reservedUntil, refunded: 25.5m));
 
-        var result = await Backend().GetStatusAsync("7:42", Ct);
+        var result = await Platform().GetStatusAsync("7:42", Ct);
 
         result.State.Should().Be(expected);
         result.RefundedMinor.Should().Be(2550);
@@ -195,10 +195,10 @@ public class HiEventsCheckoutBackendTests
         _handler.Enqueue(HttpStatusCode.OK, RefundAnswer("re_1", "pending"));
         var refundId = Guid.Parse("aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee");
 
-        var result = await Backend().RefundAsync(new RefundRequest(refundId, "7:42", 22500, "resold"), Ct);
+        var result = await Platform().RefundAsync(new RefundRequest(refundId, "7:42", 22500, "resold"), Ct);
 
         result.State.Should().Be(RefundState.Pending);
-        result.BackendRefundId.Should().Be("re_1");
+        result.PlatformRefundId.Should().Be("re_1");
         var (request, body) = _handler.Requests.Single();
         request.RequestUri!.AbsolutePath.Should().Be("/api/events/7/orders/42/refund");
         var json = JsonNode.Parse(body!)!;
@@ -217,10 +217,10 @@ public class HiEventsCheckoutBackendTests
     {
         _handler.Enqueue(HttpStatusCode.OK, RefundAnswer("re_9", stripeStatus));
 
-        var result = await Backend().RefundAsync(new RefundRequest(Guid.NewGuid(), "7:42", 22500, "resold"), Ct);
+        var result = await Platform().RefundAsync(new RefundRequest(Guid.NewGuid(), "7:42", 22500, "resold"), Ct);
 
         result.State.Should().Be(expected);
-        result.BackendRefundId.Should().Be("re_9");
+        result.PlatformRefundId.Should().Be("re_9");
         _handler.Requests.Should().ContainSingle();
     }
 
@@ -229,7 +229,7 @@ public class HiEventsCheckoutBackendTests
     {
         _handler.Enqueue(HttpStatusCode.OK, RefundAnswer("re_9", "processing"));
 
-        var act = () => Backend().RefundAsync(new RefundRequest(Guid.NewGuid(), "7:42", 22500, "resold"), Ct);
+        var act = () => Platform().RefundAsync(new RefundRequest(Guid.NewGuid(), "7:42", 22500, "resold"), Ct);
 
         await act.Should().ThrowAsync<HttpRequestException>();
     }
@@ -239,7 +239,7 @@ public class HiEventsCheckoutBackendTests
     {
         _handler.Enqueue(HttpStatusCode.OK, Order(id: 42, total: 225m, status: "COMPLETED", paymentStatus: "PAYMENT_RECEIVED"));
 
-        var act = () => Backend().RefundAsync(new RefundRequest(Guid.NewGuid(), "7:42", 22500, "resold"), Ct);
+        var act = () => Platform().RefundAsync(new RefundRequest(Guid.NewGuid(), "7:42", 22500, "resold"), Ct);
 
         await act.Should().ThrowAsync<HttpRequestException>();
     }
@@ -249,7 +249,7 @@ public class HiEventsCheckoutBackendTests
     {
         _handler.Enqueue(HttpStatusCode.BadGateway, new { message = "upstream down" });
 
-        var act = () => Backend().RefundAsync(new RefundRequest(Guid.NewGuid(), "7:42", 22500, "resold"), Ct);
+        var act = () => Platform().RefundAsync(new RefundRequest(Guid.NewGuid(), "7:42", 22500, "resold"), Ct);
 
         await act.Should().ThrowAsync<HttpRequestException>();
     }
@@ -259,7 +259,7 @@ public class HiEventsCheckoutBackendTests
     {
         _handler.Enqueue(HttpStatusCode.UnprocessableEntity, new { message = "There is already a refund pending" });
 
-        var result = await Backend().RefundAsync(new RefundRequest(Guid.NewGuid(), "7:42", 22500, "resold"), Ct);
+        var result = await Platform().RefundAsync(new RefundRequest(Guid.NewGuid(), "7:42", 22500, "resold"), Ct);
 
         result.State.Should().Be(RefundState.Failed);
         result.FailureReason.Should().Contain("already a refund pending");
@@ -271,9 +271,9 @@ public class HiEventsCheckoutBackendTests
     {
         _handler.Enqueue(HttpStatusCode.OK, Order(id: 42, total: 225m, status: "COMPLETED", paymentStatus: "PAYMENT_RECEIVED"));
 
-        var act = () => Backend().CancelAsync("7:42", Ct);
+        var act = () => Platform().CancelAsync("7:42", Ct);
 
-        await act.Should().ThrowAsync<TicketCheckoutException>();
+        await act.Should().ThrowAsync<TicketingPlatformException>();
         _handler.Requests.Should().ContainSingle();
     }
 
@@ -282,7 +282,7 @@ public class HiEventsCheckoutBackendTests
     {
         _handler.Enqueue(HttpStatusCode.OK, Order(id: 42, total: 225m, status: "CANCELLED"));
 
-        await Backend().CancelAsync("7:42", Ct);
+        await Platform().CancelAsync("7:42", Ct);
 
         _handler.Requests.Should().ContainSingle();
     }
@@ -293,7 +293,7 @@ public class HiEventsCheckoutBackendTests
         _handler.Enqueue(HttpStatusCode.OK, Order(id: 42, total: 225m, status: "ABANDONED"));
         _handler.Enqueue(HttpStatusCode.OK, Order(id: 42, total: 225m, status: "CANCELLED"));
 
-        await Backend().CancelAsync("7:42", Ct);
+        await Platform().CancelAsync("7:42", Ct);
 
         _handler.Requests[1].Request.RequestUri!.AbsolutePath.Should().Be("/api/events/7/orders/42/cancel");
     }
@@ -304,7 +304,7 @@ public class HiEventsCheckoutBackendTests
         _handler.Enqueue(HttpStatusCode.OK, Order(id: 42, total: 225m, reservedUntil: "2027-01-02 10:30:00"));
         _handler.Enqueue(HttpStatusCode.Conflict, new { message = "Order already cancelled" });
 
-        await Backend().CancelAsync("7:42", Ct);
+        await Platform().CancelAsync("7:42", Ct);
 
         _handler.Requests.Should().HaveCount(2);
     }
@@ -315,7 +315,7 @@ public class HiEventsCheckoutBackendTests
         _handler.Enqueue(HttpStatusCode.OK, Order(id: 42, total: 225m, reservedUntil: "2027-01-02 10:30:00"));
         _handler.Enqueue(HttpStatusCode.OK, Order(id: 42, total: 225m, status: "CANCELLED"));
 
-        await Backend().CancelAsync("7:42", Ct);
+        await Platform().CancelAsync("7:42", Ct);
 
         var (request, body) = _handler.Requests[1];
         request.RequestUri!.AbsolutePath.Should().Be("/api/events/7/orders/42/cancel");
@@ -331,20 +331,20 @@ public class HiEventsCheckoutBackendTests
         _handler.Enqueue(HttpStatusCode.OK, Order(id: 42, total: 225m, status: status, reservedUntil: reservedUntil,
             processingAt: "2027-01-02T09:40:00.000000Z"));
 
-        var result = await Backend().GetStatusAsync("7:42", Ct);
+        var result = await Platform().GetStatusAsync("7:42", Ct);
 
-        result.State.Should().Be(CheckoutState.Processing);
+        result.State.Should().Be(PlatformOrderState.Processing);
     }
 
     [HumansTheory]
-    [Xunit.InlineData("COMPLETED", "PAYMENT_RECEIVED", CheckoutState.Paid)]
-    [Xunit.InlineData("CANCELLED", "AWAITING_PAYMENT", CheckoutState.Cancelled)]
-    public async Task GetStatus_ASettledOrClosedOrder_IsNotProcessing(string status, string paymentStatus, CheckoutState expected)
+    [Xunit.InlineData("COMPLETED", "PAYMENT_RECEIVED", PlatformOrderState.Paid)]
+    [Xunit.InlineData("CANCELLED", "AWAITING_PAYMENT", PlatformOrderState.Cancelled)]
+    public async Task GetStatus_ASettledOrClosedOrder_IsNotProcessing(string status, string paymentStatus, PlatformOrderState expected)
     {
         _handler.Enqueue(HttpStatusCode.OK, Order(id: 42, total: 225m, status: status, paymentStatus: paymentStatus,
             processingAt: "2027-01-02T09:40:00.000000Z"));
 
-        var result = await Backend().GetStatusAsync("7:42", Ct);
+        var result = await Platform().GetStatusAsync("7:42", Ct);
 
         result.State.Should().Be(expected);
     }
@@ -355,9 +355,9 @@ public class HiEventsCheckoutBackendTests
         _handler.Enqueue(HttpStatusCode.OK, Order(id: 42, total: 225m, reservedUntil: "2027-01-02 09:00:00",
             processingAt: "2027-01-02T08:50:00.000000Z"));
 
-        var act = () => Backend().CancelAsync("7:42", Ct);
+        var act = () => Platform().CancelAsync("7:42", Ct);
 
-        await act.Should().ThrowAsync<TicketCheckoutException>();
+        await act.Should().ThrowAsync<TicketingPlatformException>();
         _handler.Requests.Should().ContainSingle();
     }
 
@@ -367,10 +367,10 @@ public class HiEventsCheckoutBackendTests
         _handler.Enqueue(HttpStatusCode.OK, Order(id: 42, total: 225m, status: "COMPLETED", paymentStatus: "PAYMENT_RECEIVED",
             disputed: 225m));
 
-        var result = await Backend().GetStatusAsync("7:42", Ct);
+        var result = await Platform().GetStatusAsync("7:42", Ct);
 
-        result.State.Should().Be(CheckoutState.Paid);
-        result.DisputedMinor.Should().Be(22500);
+        result.State.Should().Be(PlatformOrderState.Paid);
+        result.ChargedBackMinor.Should().Be(22500);
         result.RefundedMinor.Should().Be(0);
     }
 
@@ -380,7 +380,7 @@ public class HiEventsCheckoutBackendTests
         _handler.Enqueue(HttpStatusCode.OK, Order(id: 42, total: 225m, status: "COMPLETED", paymentStatus: "PAYMENT_RECEIVED",
             refundStatus: "REFUND_FAILED"));
 
-        var result = await Backend().GetStatusAsync("7:42", Ct);
+        var result = await Platform().GetStatusAsync("7:42", Ct);
 
         result.RefundFailed.Should().BeTrue();
     }
@@ -390,7 +390,7 @@ public class HiEventsCheckoutBackendTests
     {
         _handler.Enqueue(HttpStatusCode.OK, Order(id: 42, total: 225m, status: "COMPLETED", paymentStatus: "PAYMENT_RECEIVED"));
 
-        await Backend().ErasePersonalDataAsync("7:42", "ana@example.org", Ct);
+        await Platform().ErasePersonalDataAsync("7:42", "ana@example.org", Ct);
 
         var (request, _) = _handler.Requests.Single();
         request.Method.Should().Be(HttpMethod.Post);
@@ -402,7 +402,7 @@ public class HiEventsCheckoutBackendTests
     {
         _handler.Enqueue(HttpStatusCode.NotFound, new { message = "Order 42 not found for event 7" });
 
-        var act = () => Backend().ErasePersonalDataAsync("7:42", "ana@example.org", Ct);
+        var act = () => Platform().ErasePersonalDataAsync("7:42", "ana@example.org", Ct);
 
         await act.Should().ThrowAsync<HttpRequestException>();
     }
@@ -412,7 +412,7 @@ public class HiEventsCheckoutBackendTests
     {
         _handler.Enqueue(HttpStatusCode.OK, Order(id: 42, total: 225m, status: "ON_HOLD"));
 
-        var act = () => Backend().GetStatusAsync("7:42", Ct);
+        var act = () => Platform().GetStatusAsync("7:42", Ct);
 
         await act.Should().ThrowAsync<HttpRequestException>();
     }
@@ -422,7 +422,7 @@ public class HiEventsCheckoutBackendTests
     {
         _handler.Enqueue(HttpStatusCode.OK, Order(id: 42, total: 225m, reservedUntil: "soon"));
 
-        var act = () => Backend().GetStatusAsync("7:42", Ct);
+        var act = () => Platform().GetStatusAsync("7:42", Ct);
 
         await act.Should().ThrowAsync<HttpRequestException>();
     }
@@ -430,13 +430,13 @@ public class HiEventsCheckoutBackendTests
     [HumansFact]
     public void IsConfigured_NeedsAnAbsoluteUrlAndKey_AndABadUrlDoesNotThrow()
     {
-        Backend().IsConfigured.Should().BeTrue();
-        Backend(apiKey: "").IsConfigured.Should().BeFalse();
-        Backend(apiUrl: "").IsConfigured.Should().BeFalse();
-        Backend(apiUrl: "tickets example/api").IsConfigured.Should().BeFalse();
-        Backend(apiUrl: "ftp://tickets.example/api").IsConfigured.Should().BeFalse();
-        Backend(appUrl: "tickets.example").IsConfigured.Should().BeFalse();
-        Backend(appUrl: "https://admin.tickets.example/").IsConfigured.Should().BeTrue();
+        Platform().IsConfigured.Should().BeTrue();
+        Platform(apiKey: "").IsConfigured.Should().BeFalse();
+        Platform(apiUrl: "").IsConfigured.Should().BeFalse();
+        Platform(apiUrl: "tickets example/api").IsConfigured.Should().BeFalse();
+        Platform(apiUrl: "ftp://tickets.example/api").IsConfigured.Should().BeFalse();
+        Platform(appUrl: "tickets.example").IsConfigured.Should().BeFalse();
+        Platform(appUrl: "https://admin.tickets.example/").IsConfigured.Should().BeTrue();
     }
 
     [HumansTheory]
@@ -445,13 +445,13 @@ public class HiEventsCheckoutBackendTests
         "María de los Ángeles Fernández de Córdoba y", "Martínez")]
     public void SplitBuyerName_KeepsEachPartWithinFiftyCharacters(string name, string first, string? last)
     {
-        HiEventsCheckoutBackend.SplitBuyerName(name).Should().Be((first, last));
+        HiEventsPlatform.SplitBuyerName(name).Should().Be((first, last));
     }
 
     [HumansFact]
     public void SplitBuyerName_CutsANameLongerThanBothParts()
     {
-        var (first, last) = HiEventsCheckoutBackend.SplitBuyerName(new string('a', 60) + " " + new string('b', 60));
+        var (first, last) = HiEventsPlatform.SplitBuyerName(new string('a', 60) + " " + new string('b', 60));
 
         first.Should().HaveLength(50);
         last.Should().HaveLength(50);
@@ -465,7 +465,7 @@ public class HiEventsCheckoutBackendTests
         _handler.Enqueue(HttpStatusCode.OK, Products());
         _handler.Enqueue(HttpStatusCode.UnprocessableEntity, new { message = "items required" });
 
-        var findings = await Backend().CheckAsync("7", Ct);
+        var findings = await Platform().CheckAsync("7", Ct);
 
         findings.Where(f => !f.Ok).Select(f => f.Text).Should().ContainSingle()
             .Which.Should().Contain("HIEVENTS_WEBHOOK_SECRET");
@@ -483,7 +483,7 @@ public class HiEventsCheckoutBackendTests
         _handler.Enqueue(HttpStatusCode.OK, Products(("TICKET", VisibleProductId), ("GENERAL", 200)));
         _handler.Enqueue(HttpStatusCode.UnprocessableEntity, new { message = "items required" });
 
-        var findings = await Backend().CheckAsync("7", Ct);
+        var findings = await Platform().CheckAsync("7", Ct);
 
         findings.Should().Contain(f => !f.Ok && f.Text.Contains($"Products {VisibleProductId} are visible", StringComparison.Ordinal));
     }
@@ -496,7 +496,7 @@ public class HiEventsCheckoutBackendTests
         _handler.Enqueue(HttpStatusCode.OK, Products(("TICKET", 100), ("TICKET", 101)));
         _handler.Enqueue(HttpStatusCode.NotFound, new { message = "not found" });
 
-        var findings = await Backend().CheckAsync("7", Ct);
+        var findings = await Platform().CheckAsync("7", Ct);
 
         findings.Where(f => !f.Ok).Select(f => f.Text).Should().Contain(t => t.Contains("not the Humans fork"))
             .And.Contain(t => t.Contains("DRAFT"))
@@ -509,7 +509,7 @@ public class HiEventsCheckoutBackendTests
     {
         _handler.EnqueueRaw(HttpStatusCode.OK, "<!doctype html><html></html>", "text/html");
 
-        var findings = await Backend().CheckAsync(null, Ct);
+        var findings = await Platform().CheckAsync(null, Ct);
 
         findings.Should().Contain(f => !f.Ok && f.Text.Contains("/api"));
     }
@@ -519,7 +519,7 @@ public class HiEventsCheckoutBackendTests
     {
         _handler.Enqueue(HttpStatusCode.OK, new { data = new { id = 1 } });
 
-        var findings = await Backend(apiUrl: "https://api.hi.events/api").CheckAsync(null, Ct);
+        var findings = await Platform(apiUrl: "https://api.hi.events/api").CheckAsync(null, Ct);
 
         findings.Should().Contain(f => !f.Ok && f.Text.Contains("Cloud"));
     }
@@ -527,17 +527,17 @@ public class HiEventsCheckoutBackendTests
     [HumansFact]
     public async Task Setup_WithAnAppUrlWithoutScheme_HasNoAdminLinkAndFailsTheCheck()
     {
-        var backend = Backend(appUrl: "tickets.example");
+        var platform = Platform(appUrl: "tickets.example");
 
-        backend.Setup.AdminUrl.Should().BeNull();
-        (await backend.CheckAsync(null, Ct)).Should().Contain(f => !f.Ok && f.Text.Contains("HiEvents:AppUrl"));
+        platform.Setup.AdminUrl.Should().BeNull();
+        (await platform.CheckAsync(null, Ct)).Should().Contain(f => !f.Ok && f.Text.Contains("HiEvents:AppUrl"));
         _handler.Requests.Should().BeEmpty();
     }
 
     [HumansFact]
     public async Task Check_Unconfigured_CallsNothing()
     {
-        var findings = await Backend(apiKey: "").CheckAsync("7", Ct);
+        var findings = await Platform(apiKey: "").CheckAsync("7", Ct);
 
         findings.Should().ContainSingle().Which.Ok.Should().BeFalse();
         _handler.Requests.Should().BeEmpty();
@@ -546,7 +546,7 @@ public class HiEventsCheckoutBackendTests
     [HumansFact]
     public void Setup_NamesCloudUnsupportedAndNeverShowsSecrets()
     {
-        var setup = Backend(apiUrl: "https://api.hi.events/api").Setup;
+        var setup = Platform(apiUrl: "https://api.hi.events/api").Setup;
 
         setup.Hosting.Should().Contain("not supported");
         setup.Settings.Where(x => x.IsSecret).Should().OnlyContain(x => x.Value == null);
@@ -565,14 +565,14 @@ public class HiEventsCheckoutBackendTests
             meta = new { last_page = 2, total = 101 },
         });
 
-        var orders = await Backend().ListOrdersAsync("7", Instant.FromUtc(2027, 1, 1, 0, 0), Instant.FromUtc(2027, 2, 1, 0, 0), Ct);
+        var orders = await Platform().ListOrdersAsync("7", Instant.FromUtc(2027, 1, 1, 0, 0), Instant.FromUtc(2027, 2, 1, 0, 0), Ct);
 
         orders.Should().HaveCount(101);
-        orders[0].Should().Be(new BackendOrderSummary("7:1", OrderId, Instant.FromUtc(2027, 1, 5, 9, 30), CheckoutState.Paid, 22500, 1, 0, 0));
+        orders[0].Should().Be(new PlatformOrderSummary("7:1", OrderId, Instant.FromUtc(2027, 1, 5, 9, 30), PlatformOrderState.Paid, 22500, 1, 0, 0));
         orders[^1].HumansOrderId.Should().BeNull();
         orders[^1].TicketCount.Should().Be(2);
         orders[^1].RefundedMinor.Should().Be(5000);
-        orders[^1].DisputedMinor.Should().Be(17500);
+        orders[^1].ChargedBackMinor.Should().Be(17500);
         var first = Uri.UnescapeDataString(_handler.Requests[0].Request.RequestUri!.Query);
         first.Should().Contain("per_page=100").And.Contain("page=1&")
             .And.Contain("filter_fields[created_at][gte]=2027-01-01 00:00:00")
@@ -586,7 +586,7 @@ public class HiEventsCheckoutBackendTests
         _handler.Enqueue(HttpStatusCode.OK, new { data = new[] { ListedOrder(1, null, attendees: 1) }, meta = new { last_page = 2, total = 3 } });
         _handler.Enqueue(HttpStatusCode.OK, new { data = new[] { ListedOrder(1, null, attendees: 1) }, meta = new { last_page = 2, total = 3 } });
 
-        var act = () => Backend().ListOrdersAsync("7", Instant.FromUtc(2027, 1, 1, 0, 0), Instant.FromUtc(2027, 2, 1, 0, 0), Ct);
+        var act = () => Platform().ListOrdersAsync("7", Instant.FromUtc(2027, 1, 1, 0, 0), Instant.FromUtc(2027, 2, 1, 0, 0), Ct);
 
         await act.Should().ThrowAsync<HttpRequestException>();
     }
@@ -596,7 +596,7 @@ public class HiEventsCheckoutBackendTests
     {
         _handler.Enqueue(HttpStatusCode.OK, new { data = new[] { ListedOrder(1, null, attendees: 1) } });
 
-        var act = () => Backend().ListOrdersAsync("7", Instant.FromUtc(2027, 1, 1, 0, 0), Instant.FromUtc(2027, 2, 1, 0, 0), Ct);
+        var act = () => Platform().ListOrdersAsync("7", Instant.FromUtc(2027, 1, 1, 0, 0), Instant.FromUtc(2027, 2, 1, 0, 0), Ct);
 
         await act.Should().ThrowAsync<HttpRequestException>();
     }
@@ -606,7 +606,7 @@ public class HiEventsCheckoutBackendTests
     {
         _handler.Enqueue(HttpStatusCode.InternalServerError, new { message = "down" });
 
-        var act = () => Backend().ListOrdersAsync("7", Instant.FromUtc(2027, 1, 1, 0, 0), Instant.FromUtc(2027, 2, 1, 0, 0), Ct);
+        var act = () => Platform().ListOrdersAsync("7", Instant.FromUtc(2027, 1, 1, 0, 0), Instant.FromUtc(2027, 2, 1, 0, 0), Ct);
 
         await act.Should().ThrowAsync<HttpRequestException>();
     }
@@ -626,7 +626,7 @@ public class HiEventsCheckoutBackendTests
             ["attendees"] = Enumerable.Range(1, attendees).Select(a => new { id = (id * 10) + a }).ToArray(),
         };
 
-    private HiEventsCheckoutBackend Backend(string apiKey = "key", string apiUrl = "https://tickets.example/api", string appUrl = "") => new(
+    private HiEventsPlatform Platform(string apiKey = "key", string apiUrl = "https://tickets.example/api", string appUrl = "") => new(
         new HttpClient(_handler),
         Options.Create(new HiEventsSettings
         {
@@ -635,7 +635,7 @@ public class HiEventsCheckoutBackendTests
             ApiKey = apiKey,
         }),
         new FakeClock(Now),
-        NullLogger<HiEventsCheckoutBackend>.Instance,
+        NullLogger<HiEventsPlatform>.Instance,
         _stripe);
 
     [HumansTheory]
@@ -643,22 +643,22 @@ public class HiEventsCheckoutBackendTests
     [InlineData("ca", "es")]
     [InlineData("en-GB", "en")]
     [InlineData("eu-ES", "en")]
-    public async Task CreateCheckout_SendsThePayPageLocale(string culture, string locale)
+    public async Task CreateOrder_SendsThePayPageLocale(string culture, string locale)
     {
         _handler.Enqueue(HttpStatusCode.OK, Products());
         _handler.Enqueue(HttpStatusCode.Created, Order(id: 42, total: 225m, paymentLink: "https://tickets.example/pay/42"));
 
-        await Backend().CreateCheckoutAsync(
-            Request(new CheckoutLine(CheckoutLineKind.Ticket, "General", 22500, 0.10m, "Ana García López")) with { Culture = culture },
+        await Platform().CreateOrderAsync(
+            Request(new PlatformOrderLine(OrderLineKind.Ticket, "General", 22500, 0.10m, "Ana García López")) with { Culture = culture },
             Ct);
 
         JsonNode.Parse(_handler.Requests[1].Body!)!["locale"]!.GetValue<string>().Should().Be(locale);
     }
 
-    private static CheckoutRequest Request(params CheckoutLine[] lines) => RequestFor("7", lines);
+    private static PlatformOrderRequest Request(params PlatformOrderLine[] lines) => RequestFor("7", lines);
 
-    private static CheckoutRequest RequestFor(string? backendEventRef, params CheckoutLine[] lines) => new(
-        OrderId, Guid.NewGuid(), backendEventRef, "Ana Buyer", "ana@example.org", "EUR", "es-ES", lines,
+    private static PlatformOrderRequest RequestFor(string? platformEventRef, params PlatformOrderLine[] lines) => new(
+        OrderId, Guid.NewGuid(), platformEventRef, "Ana Buyer", "ana@example.org", "EUR", "es-ES", lines,
         Now.Plus(Duration.FromMinutes(30)), new Uri("https://humans.example/Tickets/Return"));
 
     private const int VisibleProductId = 999;

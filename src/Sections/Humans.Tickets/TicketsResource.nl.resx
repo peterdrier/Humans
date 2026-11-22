@@ -77,13 +77,13 @@
   <data name="Tickets_Buy_ForSelf" xml:space="preserve">
     <value>Een ticket voor mij ({0})</value>
   </data>
-  <data name="Tickets_Buy_Supporter" xml:space="preserve">
+  <data name="Tickets_Buy_Vip" xml:space="preserve">
     <value>Supportersticket</value>
   </data>
-  <data name="Tickets_Buy_SupporterNone" xml:space="preserve">
+  <data name="Tickets_Buy_VipNone" xml:space="preserve">
     <value>Nee, alleen mijn ticket</value>
   </data>
-  <data name="Tickets_Buy_SupporterOption" xml:space="preserve">
+  <data name="Tickets_Buy_VipOption" xml:space="preserve">
     <value>{0} in totaal: je ticket plus een donatie van {1}</value>
   </data>
   <data name="Tickets_Buy_Donation" xml:space="preserve">
@@ -170,7 +170,7 @@
   <data name="Tickets_Buy_Empty" xml:space="preserve">
     <value>Kies minstens één ticket of een donatie.</value>
   </data>
-  <data name="Tickets_Buy_BackendFailed" xml:space="preserve">
+  <data name="Tickets_Buy_PlatformFailed" xml:space="preserve">
     <value>De betaalpagina kon niet worden geopend. Probeer het zo meteen opnieuw.</value>
   </data>
   <data name="Tickets_Buy_OrderNotFound" xml:space="preserve">
@@ -239,7 +239,7 @@
   <data name="Tickets_Buy_ChildTypeLabel" xml:space="preserve">
     <value>Kind {0}: ticket</value>
   </data>
-  <data name="Tickets_Buy_SupporterIntro" xml:space="preserve">
+  <data name="Tickets_Buy_VipIntro" xml:space="preserve">
     <value>Maak je ervaring groter en help ons het beste evenement te maken. Je ticket blijft op jouw prijs; de rest is een donatie aan de vereniging, zonder btw, en wordt niet terugbetaald.</value>
   </data>
   <data name="Tickets_Buy_Terms" xml:space="preserve">

@@ -5,10 +5,10 @@
     var o = Model.Order;
     var invariant = System.Globalization.CultureInfo.InvariantCulture;
     var canResend = o.State == TicketCheckoutOrderState.Paid;
-    var netMinor = o.TotalMinor - o.RefundedMinor - o.DisputedMinor;
+    var netMinor = o.TotalMinor - o.RefundedMinor - o.ChargedBackMinor;
     var canRefund = o.State == TicketCheckoutOrderState.Paid && Model.RefundableMinor > 0;
 
-    Func<TicketCheckoutOrderLine, IHtmlContent> holderCell = @<text>@item.AttendeeName @if (item.AttendeeUserId is { } aid) { <span class="small">(<vc:human user-id="@aid" link="Admin" />)</span> } <span class="small d-block">@item.AttendeeEmail</span></text>;
+    Func<TicketCheckoutOrderLine, IHtmlContent> holderCell = @<text>@item.HolderName @if (item.HolderUserId is { } aid) { <span class="small">(<vc:human user-id="@aid" link="Admin" />)</span> } <span class="small d-block">@item.HolderEmail</span></text>;
     var lines = TableModel.For(o.Lines)
         .Column("Line", l => l.Description)
         .Template("Holder", holderCell, c => c.NoSort())
@@ -45,7 +45,7 @@
         .Column("Amount (€)", r => r.AmountMinor / 100m, c => c.Currency().End())
         .Template("State", refundStateCell, sortBy: r => r.State.ToString())
         .Column("Reason", r => r.Reason)
-        .Column("Backend id", r => r.BackendRefundId, c => c.Code())
+        .Column("Platform id", r => r.PlatformRefundId, c => c.Code())
         .Empty("No refunds asked.")
         .Build();
 
@@ -69,7 +69,7 @@
 }
 
 @section Crumbs {
-    <a asp-action="Orders" asp-route-id="@o.SalesEventId">Orders</a>
+    <a asp-action="Orders" asp-route-id="@o.TicketingSettingsId">Orders</a>
     <span>@o.Reference</span>
 }
 
@@ -78,7 +78,7 @@
     @if (o.AdminUrl is not null)
     {
         <a class="btn btn-outline-secondary btn-sm" href="@o.AdminUrl" target="_blank" rel="noopener">
-            Open in @o.BackendKey <i class="fa-solid fa-arrow-up-right-from-square ms-1" aria-hidden="true"></i>
+            Open in @o.PlatformKey <i class="fa-solid fa-arrow-up-right-from-square ms-1" aria-hidden="true"></i>
         </a>
     }
 </page-header>
@@ -117,8 +117,8 @@
                     <dd class="col-7">@o.CreatedAt.ToDateTime()</dd>
                     <dt class="col-5">Paid</dt>
                     <dd class="col-7">@(o.PaidAt?.ToDateTime() ?? "—") <span class="small d-block">@o.PaymentMethod</span></dd>
-                    <dt class="col-5">Backend</dt>
-                    <dd class="col-7"><code>@o.BackendKey</code> <code class="small d-block text-break">@o.BackendOrderId</code></dd>
+                    <dt class="col-5">Platform</dt>
+                    <dd class="col-7"><code>@o.PlatformKey</code> <code class="small d-block text-break">@o.PlatformOrderId</code></dd>
                 </dl>
                 <hr />
                 <dl class="row mb-0">
@@ -126,14 +126,14 @@
                     <dd class="col-5 text-end">@((o.TotalMinor / 100m).ToEuro())</dd>
                     <dt class="col-7 fw-normal">Refunded</dt>
                     <dd class="col-5 text-end">@((-o.RefundedMinor / 100m).ToSignedEuro())</dd>
-                    @if (o.DisputedMinor > 0)
+                    @if (o.ChargedBackMinor > 0)
                     {
                         <dt class="col-7 fw-normal text-danger">Charged back</dt>
-                        <dd class="col-5 text-end text-danger">@((-o.DisputedMinor / 100m).ToSignedEuro())</dd>
+                        <dd class="col-5 text-end text-danger">@((-o.ChargedBackMinor / 100m).ToSignedEuro())</dd>
                     }
                     <dt class="col-7 border-top pt-2">Net</dt>
                     <dd class="col-5 text-end border-top pt-2 fw-semibold">@((netMinor / 100m).ToEuro())</dd>
-                    <dt class="col-7 fw-normal small">Backend fee</dt>
+                    <dt class="col-7 fw-normal small">Platform fee</dt>
                     <dd class="col-5 text-end small">@(o.FeeMinor is { } fee ? (fee / 100m).ToEuro() : "—")</dd>
                 </dl>
             </div>
@@ -155,7 +155,7 @@
                     @if (canRefund)
                     {
                         <form asp-action="Refund" asp-route-id="@o.Id" method="post"
-                              data-confirm="Refund this order through @o.BackendKey? The money goes back to the buyer.">
+                              data-confirm="Refund this order through @o.PlatformKey? The money goes back to the buyer.">
                             @Html.AntiForgeryToken()
                             <h3 class="h6">Refund</h3>
                             <div class="mb-2">
@@ -169,7 +169,7 @@
                                 <label class="form-label" for="reason">Reason</label>
                                 <input class="form-control" id="reason" name="reason" maxlength="500" required />
                             </div>
-                            <button type="submit" class="btn btn-outline-danger btn-sm">Refund through @o.BackendKey</button>
+                            <button type="submit" class="btn btn-outline-danger btn-sm">Refund through @o.PlatformKey</button>
                         </form>
                     }
                 </div>
