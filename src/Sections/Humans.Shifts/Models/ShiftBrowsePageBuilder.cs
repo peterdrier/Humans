@@ -208,13 +208,12 @@ internal sealed class ShiftBrowsePageBuilder(
             .GroupBy(u => u.Rota.TeamId)
             .Select(deptGroup =>
             {
-                var firstRota = deptGroup.OrderBy(x => x.Shift.Id).First().Rota;
-                var team = teamsById.TryGetValue(firstRota.TeamId, out var t) ? t : null;
+                var team = teamsById.TryGetValue(deptGroup.Key, out var t) ? t : null;
                 var deptName = team?.Name ?? string.Empty;
                 var deptSlug = team?.Slug ?? string.Empty;
                 return new DepartmentShiftGroup
                 {
-                    TeamId = firstRota.TeamId,
+                    TeamId = deptGroup.Key,
                     TeamName = deptName,
                     TeamDescription = team?.Description,
                     TeamSlug = deptSlug,

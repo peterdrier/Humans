@@ -31,7 +31,7 @@ internal static class ShiftBrowseMapper
         string? departmentName = null,
         string? departmentSlug = null)
     {
-        var rota = rotaGroup.OrderBy(x => x.Shift.Id).First().Rota;
+        var rota = rotaGroup.MinBy(x => x.Shift.Id)!.Rota;
         var shifts = rotaGroup
             .Select(MapToDisplayItem)
             .OrderBy(s => s.AbsoluteStart)
