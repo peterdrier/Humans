@@ -141,6 +141,30 @@ public class TrackedCacheReplacementTests
         (await sut.GetAsync(1, ct)).Should().Be("fresh");
     }
 
+    [HumansTheory]
+    [InlineData("stale")]
+    [InlineData(null)]
+    public async Task CancelledMiss_DoesNotPublishReturnedData_AndRetriesSource(string? value)
+    {
+        using var cancellation = new CancellationTokenSource();
+        var sut = new ReplacementCache(warmOnStartup: false)
+        {
+            SourceValue = value,
+            CancelDuringLoad = cancellation
+        };
+        sut.Set(2, "unaffected");
+
+        var failure = await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
+            sut.GetAsync(1, cancellation.Token).AsTask());
+
+        failure.CancellationToken.Should().Be(cancellation.Token);
+        sut.ContainsKey(1).Should().BeFalse();
+        sut.AsReadOnlyDictionary[2].Should().Be("unaffected");
+        sut.CancelDuringLoad = null;
+        sut.SourceValue = "fresh";
+        (await sut.GetAsync(1, TestContext.Current.CancellationToken)).Should().Be("fresh");
+    }
+
     [HumansFact]
     public void BulkPublication_KeepsItsOwnRows_ButStopsAfterAnInterveningMutation()
     {
@@ -164,6 +188,7 @@ public class TrackedCacheReplacementTests
         public string? SourceValue { get; set; }
         public Exception? LoadFailure { get; set; }
         public Task<string?>? PendingLoad { get; set; }
+        public CancellationTokenSource? CancelDuringLoad { get; set; }
 
         public Task WarmAsync(CancellationToken ct) => EnsureWarmedAsync(ct);
 
@@ -179,6 +204,7 @@ public class TrackedCacheReplacementTests
         {
             ct.ThrowIfCancellationRequested();
             if (LoadFailure is not null) throw LoadFailure;
+            CancelDuringLoad?.Cancel();
             return PendingLoad is { } pending
                 ? new ValueTask<string?>(pending)
                 : ValueTask.FromResult(SourceValue);

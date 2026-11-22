@@ -179,7 +179,6 @@ internal sealed class CachingConsentService(
         // Read the id list first, so the entry is never tagged with a list newer than its set.
         var userIds = await GetUserIdsAsync(userId, ct);
         var versions = await WithInnerAsync(inner => inner.GetConsentedVersionIdsAsync(userId, ct));
-        ct.ThrowIfCancellationRequested();
 
         var frozen = new HashSet<Guid>(versions);
         return new UserConsentInfo(userId, frozen, userIds);

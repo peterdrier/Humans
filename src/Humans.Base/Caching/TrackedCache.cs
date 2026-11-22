@@ -368,7 +368,8 @@ public class TrackedCache<TKey, TValue> : IHostedService, ICacheStats where TKey
     /// Standard "miss → load → set" cached read. Increments hit/miss via
     /// <see cref="TryGet"/>. Subclasses override <see cref="LoadRowAsync"/> to
     /// plug in their per-key loader; the default returns null (load-all-only
-    /// caches do not support per-key fetch).
+    /// caches do not support per-key fetch). A miss cancelled during loading
+    /// throws before publishing the returned row.
     /// </summary>
     public async ValueTask<TValue?> GetAsync(TKey key, CancellationToken ct = default)
     {
@@ -379,6 +380,7 @@ public class TrackedCache<TKey, TValue> : IHostedService, ICacheStats where TKey
             publish = CreateLoadPublisher();
         }
         var loaded = await LoadRowAsync(key, ct).ConfigureAwait(false);
+        ct.ThrowIfCancellationRequested();
         if (loaded is not null) publish(key, loaded);
         return loaded;
     }
