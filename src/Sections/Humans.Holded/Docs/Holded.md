@@ -129,6 +129,8 @@ group (the number's leading digit): groups 1–5 (equity, assets, banks, debtors
 different section and stays in the *user's* POV (+ means the user is owed money); it is
 untouched by this convention.
 
+Account statements render in date, entry-number and line-number order; entry details render in line-number order. The service returns both line lists unordered and carries their line numbers. Entry links use the first nonempty Holded ID by line number.
+
 ### Counterparty
 
 Each ledger row's counterparty is resolved from the entry's *other* legs posted to the opposite

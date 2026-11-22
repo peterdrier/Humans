@@ -70,7 +70,7 @@ internal sealed record HoldedAccountRow(
 
 /// <summary>
 /// In the association's point of view (+ its money went up); Finance flips to the member's for its own pages.
-/// <paramref name="Lines"/> are date first, then entry/line: daybook order.
+/// Lines are unordered; the account view applies daybook order.
 /// </summary>
 internal sealed record HoldedAccountStatement(
     HoldedAccountRow Account, IReadOnlyList<HoldedStatementLine> Lines);
@@ -87,7 +87,7 @@ internal sealed record HoldedStatementLine(
 
 /// <summary>Amount is in the association's point of view. No balancing total.</summary>
 internal sealed record HoldedEntryLine(
-    int AccountNum, string? AccountName, string? Type, string? Description, decimal Amount, bool? Checked = null);
+    int Line, int AccountNum, string? AccountName, string? Type, string? Description, decimal Amount, bool? Checked = null);
 
 /// <summary><paramref name="EntryId"/> is Holded's id for the entry, null until a sync has read it.</summary>
 internal sealed record HoldedEntry(int EntryNumber, string? EntryId, IReadOnlyList<HoldedEntryLine> Lines);

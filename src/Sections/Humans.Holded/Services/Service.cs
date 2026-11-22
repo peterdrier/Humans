@@ -268,30 +268,25 @@ internal sealed class Service(
                 number, account?.Name ?? "", holdedBalanceRaw, localBalanceRaw, lines.Count,
                 account is { } a && (a.Debit != 0m || a.Credit != 0m), account?.Archived ?? false),
             lines
-                .OrderBy(l => l.Date)
-                .ThenBy(l => l.EntryNumber)
-                .ThenBy(l => l.Line)
                 .Select(l => ToStatementLine(l, number, byEntry, accountsByNumber))
                 .ToList());
     }
 
     public async Task<HoldedEntry?> GetEntryViewAsync(int entryNumber, CancellationToken ct = default)
     {
-        var lines = (await repo.GetLedgerLinesByEntryNumbersAsync([entryNumber], ct))
-            .OrderBy(l => l.Line)
-            .ToList();
+        var lines = await repo.GetLedgerLinesByEntryNumbersAsync([entryNumber], ct);
         if (lines.Count == 0)
             return null;
 
         var accountsByNumber = (await repo.GetAccountsAsync(ct)).ToDictionary(a => a.Number);
         return new HoldedEntry(
             entryNumber,
-            lines.Select(l => l.EntryId).FirstOrDefault(id => !string.IsNullOrEmpty(id)),
+            lines.Where(l => !string.IsNullOrEmpty(l.EntryId)).MinBy(l => l.Line)?.EntryId,
             lines.Select(l =>
             {
                 accountsByNumber.TryGetValue(l.AccountNum, out var account);
                 return new HoldedEntryLine(
-                    l.AccountNum, account?.Name, l.Type, l.Description,
+                    l.Line, l.AccountNum, account?.Name, l.Type, l.Description,
                     ToAssociationPov(l.AccountNum, l.Debit - l.Credit), l.Checked);
             }).ToList());
     }
