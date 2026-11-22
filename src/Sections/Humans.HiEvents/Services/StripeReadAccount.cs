@@ -128,11 +128,11 @@ internal sealed class StripeReadAccount(string key, string keyVariable, IHttpCli
             return found;
 
         await foreach (var intent in service.ListAutoPagingAsync(new PaymentIntentListOptions
-                       {
-                           Created = new DateRangeOptions { GreaterThanOrEqual = (since - Duration.FromMinutes(1)).ToDateTimeUtc() },
-                           Limit = 100,
-                           Expand = ["data.latest_charge.balance_transaction"],
-                       }, cancellationToken: ct))
+        {
+            Created = new DateRangeOptions { GreaterThanOrEqual = (since - Duration.FromMinutes(1)).ToDateTimeUtc() },
+            Limit = 100,
+            Expand = ["data.latest_charge.balance_transaction"],
+        }, cancellationToken: ct))
         {
             if (string.Equals(intent.Status, "succeeded", StringComparison.Ordinal) && matches(intent))
                 return intent;
