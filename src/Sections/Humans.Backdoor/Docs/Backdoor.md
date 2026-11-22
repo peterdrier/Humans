@@ -41,7 +41,7 @@ The machine surface. Every key-authed API an agent talks to lives here, under `/
 | CreatedAt | Instant | |
 | CreatedByUserId | Guid? | Who made it (the owner, or an Admin allocating it); nulled on their erasure |
 | LastUsedAt | Instant? | Stamped on every successful resolve |
-| ExpiresAt | Instant? | Null never lapses (Admin and Board holders); otherwise 30 days after issue or rotation |
+| ExpiresAt | Instant? | Null for Admin and Board holders; otherwise 30 days after issue or rotation. A null key lapses at `CreatedAt` + 30 days once its owner is no longer Admin or Board |
 | RevokedAt | Instant? | Null means active |
 | RevokedByUserId | Guid? | |
 

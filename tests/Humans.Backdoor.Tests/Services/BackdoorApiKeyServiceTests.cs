@@ -67,6 +67,20 @@ public class BackdoorApiKeyServiceTests
     }
 
     [HumansFact]
+    public async Task A_never_expiring_key_lapses_once_its_owner_is_no_longer_Admin_or_Board()
+    {
+        MakeEligible(_owner, admin: false, board: false);
+        var key = ExistingKey();
+        key.CreatedAt = Now - BackdoorApiKeyService.ShortKeyLifetime;
+        _repository.GetAllAsync(Arg.Any<CancellationToken>()).Returns([key]);
+
+        var row = (await _sut.ListAsync(Xunit.TestContext.Current.CancellationToken)).Single();
+
+        row.ExpiresAt.Should().Be(Now);
+        row.IsExpired.Should().BeTrue();
+    }
+
+    [HumansFact]
     public async Task Issue_stores_only_a_hash_and_a_prefix()
     {
         MakeEligible(_owner);

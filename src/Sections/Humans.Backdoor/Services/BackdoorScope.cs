@@ -7,7 +7,7 @@ namespace Humans.Backdoor.Services;
 /// </summary>
 internal enum BackdoorScope
 {
-    /// <summary>A full Admin or a Board member. Everything built before keys opened up assumes this holder.</summary>
+    /// <summary>A full Admin or a Board member.</summary>
     Staff,
 }
 

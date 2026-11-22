@@ -115,17 +115,22 @@ internal sealed class BackdoorApiKeyService(
     public async Task<IReadOnlyList<BackdoorKeyRow>> ListAsync(CancellationToken ct = default)
     {
         var keys = await repository.GetAllAsync(ct);
-        var eligibleOwners = new HashSet<Guid>();
+        var owners = new Dictionary<Guid, (bool Eligible, bool Staff)>();
         foreach (var ownerId in keys.Select(k => k.UserId).Distinct())
         {
-            if (await GetEligibleOwnerAsync(ownerId, ct) is not null)
-                eligibleOwners.Add(ownerId);
+            var owner = await GetEligibleOwnerAsync(ownerId, ct);
+            owners[ownerId] = (owner is not null, owner is not null && await IsStaffAsync(owner, ct));
         }
 
         var now = clock.GetCurrentInstant();
-        return [.. keys.Select(k => new BackdoorKeyRow(
-            k.Id, k.UserId, k.Label, k.DisplayPrefix, k.CreatedAt, k.LastUsedAt, k.RevokedAt, k.ExpiresAt,
-            eligibleOwners.Contains(k.UserId), IsExpired(k, now)))];
+        return [.. keys.Select(k =>
+        {
+            var (eligible, staff) = owners[k.UserId];
+            var expiresAt = EffectiveExpiry(k, staff);
+            return new BackdoorKeyRow(
+                k.Id, k.UserId, k.Label, k.DisplayPrefix, k.CreatedAt, k.LastUsedAt, k.RevokedAt, expiresAt,
+                eligible, expiresAt <= now);
+        })];
     }
 
     public async Task<bool> IsEligibleAsync(Guid userId, CancellationToken ct = default) =>
@@ -142,19 +147,20 @@ internal sealed class BackdoorApiKeyService(
         var key = await repository.FindActiveByHashAsync(Hash(presentedKey), ct);
         if (key is null) return null;
 
-        var now = clock.GetCurrentInstant();
-        if (IsExpired(key, now))
-        {
-            logger.LogWarning("Backdoor key {KeyId} refused: expired at {ExpiresAt}", key.Id, key.ExpiresAt);
-            return null;
-        }
-
         var owner = await GetEligibleOwnerAsync(key.UserId, ct);
         if (owner is null)
         {
             logger.LogWarning(
                 "Backdoor key {KeyId} refused: no Backdoor scope admits owner {OwnerUserId} any more",
                 key.Id, key.UserId);
+            return null;
+        }
+
+        var now = clock.GetCurrentInstant();
+        var expiresAt = EffectiveExpiry(key, await IsStaffAsync(owner, ct));
+        if (expiresAt <= now)
+        {
+            logger.LogWarning("Backdoor key {KeyId} refused: expired at {ExpiresAt}", key.Id, expiresAt);
             return null;
         }
 
@@ -195,22 +201,30 @@ internal sealed class BackdoorApiKeyService(
         || (await roles.GetActiveForUserAsync(actorUserId, ct)).Any(a => string.Equals(a.RoleName, RoleNames.Admin, StringComparison.Ordinal));
 
     private async Task<Instant?> ExpiryForAsync(BackdoorKeyOwner owner, CancellationToken ct) =>
-        await AdmitsAsync(owner, BackdoorScope.Staff, ct) ? null : clock.GetCurrentInstant() + ShortKeyLifetime;
+        await IsStaffAsync(owner, ct) ? null : clock.GetCurrentInstant() + ShortKeyLifetime;
 
-    private static bool IsExpired(BackdoorApiKey key, Instant now) => key.ExpiresAt is { } at && at <= now;
+    private Task<bool> IsStaffAsync(BackdoorKeyOwner owner, CancellationToken ct) =>
+        AdmitsAsync(owner, BackdoorScope.Staff, ct);
+
+    /// <summary>
+    /// A never-expiring key was made while its owner was Admin or Board. Once they no longer are, it lapses as if it had
+    /// been made short-lived, so leaving the Board does not leave a permanent key behind.
+    /// </summary>
+    private static Instant? EffectiveExpiry(BackdoorApiKey key, bool ownerIsStaff) =>
+        key.ExpiresAt ?? (ownerIsStaff ? null : key.CreatedAt + ShortKeyLifetime);
 
     private BackdoorApiKey NewKey(
         Guid ownerUserId, string label, Guid actorUserId, string plaintext, Instant? expiresAt) => new()
-    {
-        Id = Guid.NewGuid(),
-        UserId = ownerUserId,
-        KeyHash = Hash(plaintext),
-        DisplayPrefix = plaintext[..DisplayPrefixLength],
-        Label = label,
-        CreatedAt = clock.GetCurrentInstant(),
-        CreatedByUserId = actorUserId,
-        ExpiresAt = expiresAt,
-    };
+        {
+            Id = Guid.NewGuid(),
+            UserId = ownerUserId,
+            KeyHash = Hash(plaintext),
+            DisplayPrefix = plaintext[..DisplayPrefixLength],
+            Label = label,
+            CreatedAt = clock.GetCurrentInstant(),
+            CreatedByUserId = actorUserId,
+            ExpiresAt = expiresAt,
+        };
 
     private Task AuditAsync(AuditActionDefinition action, BackdoorApiKey key, Guid actorUserId, string verb) =>
         audit.LogAsync(
