@@ -83,6 +83,7 @@ The member history page uses localized labels, including the link to each transc
 - Enabled Anthropic DNS health probes propagate requested timeout/abort cancellation instead of reporting a DNS failure; disabled probes still skip DNS.
 
 - FAQ overview routing summaries keep their 200-character prefix and word-boundary trimming without splitting UTF-16 surrogate pairs; complete source bodies are unchanged.
+- Pricing directly selects the longest matching model-prefix key, ignoring case. An unknown model has no listed price; spend estimates retain their existing default rates.
 
 Admin conversation-list paging clamps negative page numbers to zero and calculates offsets without integer overflow. A page beyond the available history stays empty rather than wrapping into earlier conversations; the Older link also stays within the integer page range.
 
