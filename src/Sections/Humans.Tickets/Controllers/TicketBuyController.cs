@@ -35,7 +35,8 @@ internal sealed class TicketBuyController(
         var (errorResult, user) = await RequireCurrentUserAsync(ct);
         if (errorResult is not null) return errorResult;
 
-        var pages = await checkout.GetBuyPagesAsync(user.Id, ct);
+        var pages = (await checkout.GetBuyPagesAsync(user.Id, ct))
+            .OrderBy(page => page.GateOpeningDate).Select(ForDisplay).ToList();
         return View("~/Views/Tickets/Buy/Index.cshtml", pages);
     }
 
@@ -49,7 +50,8 @@ internal sealed class TicketBuyController(
     {
         if (User.Identity?.IsAuthenticated == true)
             return RedirectToAction(nameof(Index));
-        return View("~/Views/Tickets/Buy/Public.cshtml", await checkout.GetPublicSalesAsync(ct));
+        var sales = (await checkout.GetPublicSalesAsync(ct)).OrderBy(sale => sale.GateOpeningDate).ToList();
+        return View("~/Views/Tickets/Buy/Public.cshtml", sales);
     }
 
     [HttpPost("Public")]
@@ -84,8 +86,11 @@ internal sealed class TicketBuyController(
         if (page is null)
             return NotFound();
         ViewData["DirectedToken"] = token;
-        return View("~/Views/Tickets/Buy/Index.cshtml", new[] { page });
+        return View("~/Views/Tickets/Buy/Index.cshtml", new[] { ForDisplay(page) });
     }
+
+    private static BuyPage ForDisplay(BuyPage page) =>
+        page with { Orders = page.Orders.OrderByDescending(order => order.CreatedAt).ToList() };
 
     [HttpPost("")]
     [ValidateAntiForgeryToken]

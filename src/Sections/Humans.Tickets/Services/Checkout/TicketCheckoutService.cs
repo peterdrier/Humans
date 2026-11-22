@@ -193,7 +193,7 @@ internal sealed partial class TicketCheckoutService(
 
     public async Task<IReadOnlyList<BuyPage>> GetBuyPagesAsync(Guid userId, CancellationToken ct = default)
     {
-        var pages = new List<(LocalDate GatesOpen, BuyPage Page)>();
+        var pages = new List<BuyPage>();
         foreach (var salesEvent in await repository.GetSalesEventsAsync(ct))
         {
             if (salesEvent.Mode == TicketSalesMode.Closed)
@@ -202,15 +202,15 @@ internal sealed partial class TicketCheckoutService(
                 continue;
             if (salesEvent.Mode == TicketSalesMode.InvitedOnly && !context.Invited)
                 continue;
-            pages.Add((context.Event.GateOpeningDate, ToBuyPage(context, await RulesForAsync(salesEvent, ct), null, directed: false)));
+            pages.Add(ToBuyPage(context, await RulesForAsync(salesEvent, ct), null, directed: false));
         }
-        return pages.OrderBy(p => p.GatesOpen).Select(p => p.Page).ToList();
+        return pages;
     }
 
     public async Task<IReadOnlyList<PublicSale>> GetPublicSalesAsync(CancellationToken ct = default)
     {
         var now = clock.GetCurrentInstant();
-        var sales = new List<(LocalDate GatesOpen, PublicSale Sale)>();
+        var sales = new List<PublicSale>();
         foreach (var salesEvent in await repository.GetSalesEventsAsync(ct))
         {
             if (salesEvent.Mode is TicketSalesMode.Closed or TicketSalesMode.InvitedOnly
@@ -219,10 +219,12 @@ internal sealed partial class TicketCheckoutService(
                 || await settings.GetEventSettingsByIdAsync(salesEvent.EventSettingsId, ct) is not { } evt
                 || TicketPrice.Public(salesEvent, now.InZone(evt.TimeZone).Date) is not { } price)
                 continue;
-            sales.Add((evt.GateOpeningDate,
-                new PublicSale(evt.EventName, price.AmountMinor, salesEvent.Mode == TicketSalesMode.ResaleOnly)));
+            sales.Add(new PublicSale(evt.EventName, price.AmountMinor, salesEvent.Mode == TicketSalesMode.ResaleOnly)
+            {
+                GateOpeningDate = evt.GateOpeningDate,
+            });
         }
-        return sales.OrderBy(s => s.GatesOpen).Select(s => s.Sale).ToList();
+        return sales;
     }
 
     /// <summary>
@@ -259,8 +261,9 @@ internal sealed partial class TicketCheckoutService(
         context.PublicPrice,
         directedRefusal ?? context.Unavailable ?? (context.SalesEvent.TermsFolder is not null && rules is null ? "Tickets_Buy_TermsUnavailable" : null),
         context.AlreadyHoldsTicket, context.Buyer?.FullName ?? string.Empty,
-        context.UserOrders.Where(o => o.SalesEventId == context.SalesEvent.Id).OrderByDescending(o => o.CreatedAt).ToList())
+        context.UserOrders.Where(o => o.SalesEventId == context.SalesEvent.Id).ToList())
     {
+        GateOpeningDate = context.Event.GateOpeningDate,
         Terms = rules,
         AskMarketing = context.AskMarketing,
         OffersOthers = context.SalesEvent.EffectiveSwitches.PartnerTickets && context.SalesEvent.Mode != TicketSalesMode.InvitedOnly,

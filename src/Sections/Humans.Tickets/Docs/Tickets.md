@@ -48,6 +48,10 @@ and backend lists by key. Backend status pages order orders and stuck orders new
 the reconciliation start date is the minimum order timestamp in the organisation's zone, independent of row order.
 Cancellation processing still uses oldest-paid-first work order.
 
+Buy-page read models carry the event's gate-opening date. `TicketBuyController` orders public and signed-in sales
+by that date and each normal or directed buy page's order history newest-first; service reads do not choose those
+presentation orders.
+
 ## Concepts
 
 - **Ticket Orders** and **Ticket Attendees** are records synced from an external ticket vendor (Ticket Tailor in production, an in-process stub in dev). They are not manually created in the system.

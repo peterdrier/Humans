@@ -508,6 +508,7 @@ public sealed partial class TicketCheckoutServiceTests
             .Returns(new CheckoutStatus(CheckoutState.Pending, null, null, null));
 
         var page = (await _service.GetBuyPagesAsync(_buyerId, Ct)).Single();
+        page.GateOpeningDate.Should().Be(_event.GateOpeningDate);
         page.AlreadyHoldsTicket.Should().BeTrue();
         page.OpenOrder!.Id.Should().Be(started.OrderId!.Value);
 
@@ -2312,7 +2313,7 @@ public sealed partial class TicketCheckoutServiceTests
 
         var sales = await _service.GetPublicSalesAsync(Ct);
 
-        sales.Should().ContainSingle().Which.Should().Be(new PublicSale("Nowhere 2027", 22500, ResaleOnly: false));
+        sales.Should().ContainSingle().Which.Should().Be(new PublicSale("Nowhere 2027", 22500, ResaleOnly: false) { GateOpeningDate = _event.GateOpeningDate });
     }
 
     private TicketCheckoutTicket AddTicket(
