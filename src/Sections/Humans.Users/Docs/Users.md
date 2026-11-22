@@ -98,6 +98,8 @@ and records neither a job success nor a job failure metric.
 
 `User.Email` is overridden on the entity to compute from `UserEmails` (first verified, primary-preferred) — application code reads `user.Email` and gets the canonical address without touching the underlying Identity column (or `UserInfo.PrimaryEmail` for canonical reads on a singly-loaded User without `UserEmails` hydrated). `User.NormalizedEmail` is `[Obsolete]` (diagnostic id `HUM_USER_NORMALIZEDEMAIL`); applications must use `user.Email` or `IUserEmailService` for canonical lookups. `User.EmailConfirmed` is also overridden (true when any `UserEmail` is verified). Identity's email-lookup APIs (`UserManager.FindByEmailAsync` / `FindByNameAsync`) are forbidden by analyzer `HUM0003` — application code routes through `IUserEmailService.FindByAddressAsync` instead. Identity itself does not call these internally, so no custom `UserStore` is needed.
 
+Email export and verified-address lookup select a primary row directly, retaining the first matching row on equal flags. Primary-invariant repair prefers a verified Workspace address, then the minimum-ID current primary, then the newest verified address with ID as its tie-breaker.
+
 Every newly created User has a corresponding Profile row materialized inline at the User-creation call site (see [Stub Profile invariant](#part-2--profiles)); until the names are filled the user is `UserState.Bare`. The completed `users.stub-profiles` registration is retired: production `GET https://humans.nobodies.team/api/data-migrations` reported `{"key":"users.stub-profiles","pending":0,"done":true}` on 2026-10-22.
 
 Users no longer loads, caches, exports or folds these rows. Tickets reads and merges only its own participation records.
