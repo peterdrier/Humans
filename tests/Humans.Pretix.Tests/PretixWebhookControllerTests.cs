@@ -21,7 +21,7 @@ public class PretixWebhookControllerTests
     }
 
     private static PretixWebhookController.PretixNotification Paid(string organizer = "nobodies") =>
-        new(organizer, "nowhere2027", "ABC23", "pretix.event.order.paid");
+        new(organizer, "nowhere2027", "ABC23");
 
     [HumansFact]
     public async Task MatchingSecret_NudgesTicketsWithTheBackendOrderId()
@@ -63,7 +63,7 @@ public class PretixWebhookControllerTests
     public async Task OrderlessNotification_IsAcknowledgedAndIgnored()
     {
         var result = await Controller().Receive(
-            "s3cret", new("nobodies", "nowhere2027", null, "pretix.event.item.changed"), TestContext.Current.CancellationToken);
+            "s3cret", new("nobodies", "nowhere2027", null), TestContext.Current.CancellationToken);
 
         result.Should().BeOfType<OkResult>();
         await _events.DidNotReceiveWithAnyArgs().CheckoutChangedAsync(default!, default!, default);
