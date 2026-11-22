@@ -98,6 +98,7 @@ public sealed class Section :
         services.AddSingleton<IEntityNameContributor>(sp => sp.GetRequiredService<CachingTeamService>());
         services.AddSingleton<IOwnerKind>(sp => sp.GetRequiredService<CachingTeamService>());
         services.AddSingleton<IRoleOwner>(sp => sp.GetRequiredService<CachingTeamService>());
+        services.AddSingleton<IPermissionSource>(sp => sp.GetRequiredService<CachingTeamService>());
 
         services.AddSingleton<ICacheStats>(sp => sp.GetRequiredService<CachingTeamService>());
 

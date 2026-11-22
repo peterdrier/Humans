@@ -23,9 +23,9 @@ Tickets answers who may come to the event, what they paid, and how the money rec
 
 **What good looks like.** A member buys at their own price in a few clicks and gets a ticket with a QR code. Every ticket names a person, and the gate admits exactly the tickets Humans issued and still holds valid. The ticketing team can find any order, see its whole history, refund it and run the resale queue without opening the vendor's dashboard. Every cent our side recorded matches what the backend says it charged, refunded, lost to chargebacks, kept as fees and paid out, per period, and a difference can be drilled into.
 
-**Deliberate choices.** Prices are computed in Humans and sent as exact amounts; a backend never discounts or surcharges. Tickets are named and never renamed by a holder; where resale is on, a ticket goes back through Humans' resale queue, which voids it and issues a new one. A signed-out buyer signs in before paying; there is no guest checkout. Backend connection settings are server configuration, never stored in Humans; the per-event backend choice is the sales setup. Every order step lands on an append-only timeline. Schemes another organisation running Humans may not use are per-event switches in the sales setup (`TicketSalesSwitches`, #2519): resale (`Off` / `Queue` / `QueueAndDirected`), tickets for others, donations, the mailing-list opt-in and companion tickets, enforced at checkout, not only hidden. Which child ticket types and donation purposes exist is per-event configuration too (A29, checkout.md "Ticket types per event"). Beside them sit mode (`Closed` / `InvitedOnly` / `Open` / `ResaleOnly`); resale itself opens by hand on the resale queue page (`ResaleOpenedAt`), never on a threshold, and a directed resale link has no expiry.
+**Deliberate choices.** Prices are computed in Humans and sent as exact amounts; a backend never discounts or surcharges. Tickets are named and never renamed by a holder; where resale is on, a ticket goes back through Humans' resale queue, which voids it and issues a new one. The ticket team may correct a holder's legal name or, as the exception, move a full price ticket to another person; moving a class priced ticket is an Admin override. A signed-out buyer signs in before paying; there is no guest checkout. Backend connection settings are server configuration, never stored in Humans; the per-event backend choice is the sales setup. Every order step lands on an append-only timeline. Schemes another organisation running Humans may not use are per-event switches in the sales setup (`TicketSalesSwitches`, #2519): resale (`Off` / `Queue` / `QueueAndDirected`), tickets for others, donations, the mailing-list opt-in and companion tickets, enforced at checkout, not only hidden. Which child ticket types and donation purposes exist is per-event configuration too (A29, checkout.md "Ticket types per event"). Beside them sit mode (`Closed` / `InvitedOnly` / `Open` / `ResaleOnly`); resale itself opens by hand on the resale queue page (`ResaleOpenedAt`), never on a threshold, and a directed resale link has no expiry.
 
-**Out of scope.** Signing anything at checkout or at the gate, and any use of Consent for ticketing (Peter, 2026-11-21). Manual IBAN payment. Discount codes. Purchases that bypass Humans' price rule. The check-in record itself, which is Gate's scan row.
+**Out of scope.** Signing anything at checkout or at the gate, and any use of Consent for ticketing (Peter, 2026-11-21). Manual IBAN payment. Discount codes in Humans' own checkout (the vendor mirror still mints them for Campaigns). Purchases that bypass Humans' price rule. The check-in record itself, which is Gate's scan row.
 
 Dashboard statistics, break-even budget and vendor-capacity reads honor request cancellation through the page builder and service decorator. Requested cancellation propagates; an unrelated vendor-capacity failure retains the zero-capacity fallback. The local stale-sync recovery save uses the same request token.
 
@@ -347,12 +347,11 @@ Donation export rows carry their purchase instant internally; the CSV controller
 - `OnsiteRosterService` — the "Who's Onsite" join of checked-in attendees with user, team, camp and role labels; onsite users are this year's participations with `OnsiteSince` set. The service deduplicates and filters names ignoring case without display ordering. The onsite controller orders rows newest-check-in first and all row-name lists and filter options with ordinal comparison ignoring case.
 - `EventParticipationService` — participation writes (`ITicketWrite`, the member declaration, ticket-sync reconciliation and admin backfill), the export slice and the merge fold (internal `IEventParticipationManagement`). Export reads use `ITicketService`; the retained-on-erasure policy stays here.
 - `UserParticipationBackfillService` — parses the `/Tickets/Participation/Backfill` CSV and hands valid rows to `EventParticipationService`.
+- `TicketCheckoutService` (`Services/Checkout/`) — Humans' own ticket sales: sales events, checkout through the `ITicketCheckoutBackend` backends, issued tickets, resale, companions, team tools, the reconcile sweep and reconciliation; also serves `ITicketGateLookup`, `ITicketCheckoutEvents` and the checkout GDPR slice.
+- `TicketDeliveryHandOff` / `TicketDeliveryService` (`Services/Delivery/`) — `ITicketDelivery`: queues and sends the ticket emails with their code image, receipts, resale and payment notices and the volunteer invitation.
 - `GateTerminalAccountSeeder` — provisions the roleless gate-terminal user lazily on first password set and rotates its password. Until a password exists, every attempt completes account and profile setup on the existing user; a refused setup step returns failure before setting a password or auditing success. Every password set marks the account fake in Users, which keeps it out of the Consent Coordinator review queue. Established-account rotations do not repeat setup, and a rejected password leaves the existing credential intact. Backs `/Tickets/Admin/Gate`. Its status-page user lookup honors request cancellation before querying password state; provisioning and password rotation retain independent write boundaries.
 
-**Owned tables:** `ticket_orders`, `ticket_attendees`, `ticket_sync_states`, `ticket_settings`, `ticket_transfer_requests`, `ticket_event_participations`
-
-
-Automated processing and reissue retry also refuse a missing or whitespace-only stored receiver email before any vendor call or local state change. Invalid legacy requests retain their pending/partial state and any held seat; operators receive manual-completion guidance. Manual “Mark successful” remains available for work completed in TicketTailor.
+**Owned tables:** `ticket_orders`, `ticket_attendees`, `ticket_sync_states`, `ticket_settings`, `ticket_transfer_requests`, `ticket_event_participations`, `ticket_sales_events`, `ticket_checkout_orders`, `ticket_checkout_refunds`, `ticket_checkout_order_events`, `ticket_checkout_tickets`, `ticket_resale_offers`, `ticket_companion_requests`
 
 
 
@@ -364,8 +363,8 @@ this section. The **adapter** (`Humans.TicketTailor`) is one implementation of i
 `ProjectReference` on `Humans.Tickets` to name the port. The port is deliberately **not** on the
 `Humans.Tickets.Contracts` leaf: no Base consumer names it, and the leaf must keep the vendor's
 vocabulary away from other sections (they use `ITicketDiscountCodes` / `ITicketVendorMirror`).
-When the 2027 vendor lands, the adapter project is deleted and `Humans.<NewVendor>` is added;
-nothing in `Humans.Tickets`, in Base or in any consumer changes.
+Retiring the vendor deletes the adapter project; nothing in `Humans.Tickets`, in Base or in any consumer changes.
+Selling in Humans uses the second port, `ITicketCheckoutBackend`, implemented by the BoxOffice, Pretix and HiEvents sections.
 
 - `TicketTailorService` — production HTTP client; bound when the host environment is Production.
 - `StubTicketVendorService` — deterministic in-memory fixture; bound everywhere else. The stub fills in placeholder `EventId`/`ApiKey` so `TicketVendorSettings.IsConfigured` returns true even without env vars.
@@ -389,12 +388,12 @@ because ticket admins are who rotate that credential. Whether it eventually land
 **Stripe connector:** `IStripeService` (`Humans.Stripe`) wraps the Stripe SDK and is consumed by `TicketSyncService` for fee enrichment.
 
 **Public surface:** the `Humans.Tickets.Contracts` leaf publishes `ITicketService`,
-`ITicketDiscountCodes`, `ITicketVendorMirror` and `ITicketWrite`, with `EventParticipationInfo` and the participation enums, and `TicketsBackendAdminNav`, which a checkout backend section calls for its admin sidebar row so the route to Tickets' backend status page stays Tickets' own. The `TicketDashboardDtos` surface is internal.
+`ITicketDiscountCodes`, `ITicketVendorMirror`, `ITicketWrite`, `ITicketCheckoutBackend` (the port each checkout backend section implements), `ITicketCheckoutEvents` (backends report a changed checkout) and `ITicketGateLookup` (Gate's read of Humans-issued tickets), with `EventParticipationInfo` and the participation enums, and `TicketsBackendAdminNav`, which a checkout backend section calls for its admin sidebar row so the route to Tickets' backend status page stays Tickets' own. The `TicketDashboardDtos` surface is internal.
 Tickets ships both a `.Contracts` leaf *and* a `Contracts/` folder: the
 leaf carries what cross-section consumers need, the folder carries public surface that is ASP.NET plumbing
 (`TicketStubViewComponent`) or the vendor port. The split is a judgement about what cross-section consumers should
 have to see, **not** a compiler constraint: every leaf referencing `Humans.Base` resolves `Microsoft.AspNetCore.App` transitively. All section services route every database
-read/write through `ITicketRepository` / `ITicketTransferRepository` / `IEventParticipationRepository`; no service imports `Microsoft.EntityFrameworkCore` or references `TicketsDbContext`.
+read/write through `ITicketRepository` / `ITicketTransferRepository` / `IEventParticipationRepository` / `ITicketCheckoutRepository`; no service imports `Microsoft.EntityFrameworkCore` or references `TicketsDbContext`.
 
 Issued-ticket sync never invents a valid attendee status when the vendor omits it: the complete read fails before attendee writes.
 

@@ -171,6 +171,28 @@ public sealed class CachingTeamServiceTests : TeamsTestHarness
     }
 
     [HumansFact]
+    public async Task GetHoldingsAsync_TodaysCoordinatorsHoldTheirTeam()
+    {
+        var coordinator = Guid.NewGuid();
+        var manager = Guid.NewGuid();
+        var member = Guid.NewGuid();
+        var teamId = Guid.NewGuid();
+        _innerTeamService.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo>
+        {
+            [teamId] = MakeTeam(teamId, "Kitchen", parentTeamId: null, isActive: true,
+                members: [MakeMember(coordinator, TeamMemberRole.Coordinator), MakeMember(member, TeamMemberRole.Member)],
+                managementRoleHolderUserIds: new HashSet<Guid> { manager }),
+        });
+        var ct = TestContext.Current.CancellationToken;
+
+        foreach (var userId in new[] { coordinator, manager })
+            (await _service.GetHoldingsAsync(userId, ct)).Should().ContainSingle()
+                .Which.Should().Match<Humans.Permissions.Contracts.Holding>(h =>
+                    h.Owner == new Humans.Base.Authorization.Owner(TeamOwner.Kind, teamId) && h.IsCoordinator);
+        (await _service.GetHoldingsAsync(member, ct)).Should().BeEmpty();
+    }
+
+    [HumansFact]
     public async Task GetEffectiveBudgetCoordinatorTeamIdsAsync_ExcludesChildTeamCoordinatorship_OnlyDepartmentsQualify()
     {
         var userId = Guid.NewGuid();

@@ -69,6 +69,18 @@ public class HiEventsCheckoutBackendTests
         await act.Should().ThrowAsync<TicketCheckoutException>();
     }
 
+    [HumansFact]
+    public async Task CreateCheckout_WhenTheEventSellsInAnotherCurrency_Throws()
+    {
+        _handler.Enqueue(HttpStatusCode.OK, Products());
+        _handler.Enqueue(HttpStatusCode.Created, Order(id: 42, total: 225m, paymentLink: "https://tickets.example/pay/42", currency: "USD"));
+
+        var act = () => Backend().CreateCheckoutAsync(Request(
+            new CheckoutLine(CheckoutLineKind.Ticket, "General", 22500, 0.10m, "Ana")), Ct);
+
+        await act.Should().ThrowAsync<TicketCheckoutException>();
+    }
+
     [HumansTheory]
     [Xunit.InlineData(HttpStatusCode.UnprocessableEntity)]
     [Xunit.InlineData(HttpStatusCode.Conflict)]
@@ -200,6 +212,16 @@ public class HiEventsCheckoutBackendTests
         result.State.Should().Be(expected);
         result.BackendRefundId.Should().Be("re_9");
         _handler.Requests.Should().ContainSingle();
+    }
+
+    [HumansFact]
+    public async Task Refund_InAStateStripeDoesNotDocument_Throws()
+    {
+        _handler.Enqueue(HttpStatusCode.OK, RefundAnswer("re_9", "processing"));
+
+        var act = () => Backend().RefundAsync(new RefundRequest(Guid.NewGuid(), "7:42", 22500, "resold"), Ct);
+
+        await act.Should().ThrowAsync<HttpRequestException>();
     }
 
     [HumansFact]
@@ -376,6 +398,16 @@ public class HiEventsCheckoutBackendTests
     }
 
     [HumansFact]
+    public async Task GetStatus_AnUnknownOrderStatus_Throws()
+    {
+        _handler.Enqueue(HttpStatusCode.OK, Order(id: 42, total: 225m, status: "ON_HOLD"));
+
+        var act = () => Backend().GetStatusAsync("7:42", Ct);
+
+        await act.Should().ThrowAsync<HttpRequestException>();
+    }
+
+    [HumansFact]
     public async Task GetStatus_ReservedWithAnUnreadableExpiry_Throws()
     {
         _handler.Enqueue(HttpStatusCode.OK, Order(id: 42, total: 225m, reservedUntil: "soon"));
@@ -431,6 +463,19 @@ public class HiEventsCheckoutBackendTests
             "GET /api/users/me", "GET /api/events/7", "GET /api/events/7/products",
             "POST /api/events/7/orders/checkout");
         _handler.Requests[^1].Body.Should().Be("{}");
+    }
+
+    [HumansFact]
+    public async Task Check_AVisibleCarrier_IsNamedAsSellingPublicly()
+    {
+        _handler.Enqueue(HttpStatusCode.OK, new { data = new { id = 1 } });
+        _handler.Enqueue(HttpStatusCode.OK, new { data = new { id = 7, status = "LIVE" } });
+        _handler.Enqueue(HttpStatusCode.OK, Products(("TICKET", VisibleProductId), ("GENERAL", 200)));
+        _handler.Enqueue(HttpStatusCode.UnprocessableEntity, new { message = "items required" });
+
+        var findings = await Backend().CheckAsync("7", Ct);
+
+        findings.Should().Contain(f => !f.Ok && f.Text.Contains($"Products {VisibleProductId} are visible", StringComparison.Ordinal));
     }
 
     [HumansFact]
@@ -537,6 +582,16 @@ public class HiEventsCheckoutBackendTests
     }
 
     [HumansFact]
+    public async Task ListOrders_APageWithoutItsPaging_Throws()
+    {
+        _handler.Enqueue(HttpStatusCode.OK, new { data = new[] { ListedOrder(1, null, attendees: 1) } });
+
+        var act = () => Backend().ListOrdersAsync("7", Instant.FromUtc(2027, 1, 1, 0, 0), Instant.FromUtc(2027, 2, 1, 0, 0), Ct);
+
+        await act.Should().ThrowAsync<HttpRequestException>();
+    }
+
+    [HumansFact]
     public async Task ListOrders_WhenAPageFails_Throws()
     {
         _handler.Enqueue(HttpStatusCode.InternalServerError, new { message = "down" });
@@ -572,6 +627,23 @@ public class HiEventsCheckoutBackendTests
         new FakeClock(Now),
         NullLogger<HiEventsCheckoutBackend>.Instance);
 
+    [HumansTheory]
+    [InlineData("ca-ES", "es")]
+    [InlineData("ca", "es")]
+    [InlineData("en-GB", "en")]
+    [InlineData("eu-ES", "en")]
+    public async Task CreateCheckout_SendsThePayPageLocale(string culture, string locale)
+    {
+        _handler.Enqueue(HttpStatusCode.OK, Products());
+        _handler.Enqueue(HttpStatusCode.Created, Order(id: 42, total: 225m, paymentLink: "https://tickets.example/pay/42"));
+
+        await Backend().CreateCheckoutAsync(
+            Request(new CheckoutLine(CheckoutLineKind.Ticket, "General", 22500, 0.10m, "Ana García López")) with { Culture = culture },
+            Ct);
+
+        JsonNode.Parse(_handler.Requests[1].Body!)!["locale"]!.GetValue<string>().Should().Be(locale);
+    }
+
     private static CheckoutRequest Request(params CheckoutLine[] lines) => RequestFor("7", lines);
 
     private static CheckoutRequest RequestFor(string? backendEventRef, params CheckoutLine[] lines) => new(
@@ -603,7 +675,8 @@ public class HiEventsCheckoutBackendTests
         decimal refunded = 0m,
         string? refundStatus = null,
         decimal disputed = 0m,
-        string? processingAt = null) => new
+        string? processingAt = null,
+        string currency = "EUR") => new
         {
             data = new Dictionary<string, object?>(StringComparer.Ordinal)
             {
@@ -612,7 +685,7 @@ public class HiEventsCheckoutBackendTests
                 ["status"] = status,
                 ["payment_status"] = paymentStatus,
                 ["refund_status"] = refundStatus,
-                ["currency"] = "EUR",
+                ["currency"] = currency,
                 ["total_gross"] = total,
                 ["total_refunded"] = refunded,
                 ["payment_provider"] = "STRIPE",
