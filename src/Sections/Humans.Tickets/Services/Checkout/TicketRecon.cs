@@ -165,7 +165,7 @@ internal static class TicketReconBuilder
             // The one Humans recorded leads; with none recorded, the backend's oldest. A recorded one the backend no
             // longer lists is missing, and whatever it does list for the order was never recorded.
             var primary = order.BackendOrderId is null
-                ? mine.OrderBy(b => b.CreatedAt).FirstOrDefault()
+                ? mine.MinBy(b => b.CreatedAt)
                 : mine.FirstOrDefault(b => string.Equals(b.BackendOrderId, order.BackendOrderId, StringComparison.Ordinal));
             int? ticketsIssued = order.State == TicketCheckoutOrderState.Paid ? issued.GetValueOrDefault(order.Id) : null;
             if (primary is null && order.BackendOrderId is null

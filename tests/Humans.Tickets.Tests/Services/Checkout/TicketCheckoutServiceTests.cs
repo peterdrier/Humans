@@ -284,6 +284,8 @@ public sealed partial class TicketCheckoutServiceTests
     [HumansFact]
     public void Class_price_replaces_the_wave_and_credits_stack_on_it_never_below_zero()
     {
+        _salesEvent.PriceRules.Add(new TicketPriceRule { GrantProgramId = CreditProgram, Kind = TicketPriceRuleKind.ClassPrice, AmountMinor = 15000, Label = "Higher price" });
+        _salesEvent.PriceRules.Add(new TicketPriceRule { GrantProgramId = CreditProgram, Kind = TicketPriceRuleKind.ClassPrice, AmountMinor = 12500, Label = "Tied price" });
         var price = TicketPrice.For(_salesEvent, new LocalDate(2027, 2, 10), [LowIncomeProgram, CreditProgram])!;
         price.ClassPrice!.Label.Should().Be("Low income");
         price.AmountMinor.Should().Be(7500);

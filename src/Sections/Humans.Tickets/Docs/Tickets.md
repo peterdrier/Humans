@@ -179,6 +179,8 @@ Lifecycle: `Attended` is permanent (only a missing `CheckedInAt` may be filled);
 
 ## Invariants
 
+- Single-row selection uses the newest approved transfer decision per attendee, the oldest backend order when none is recorded, and the cheapest eligible class price. Direct extrema selectors retain the first source row on equal keys.
+
 - Section-owned resource keys use the `Tickets_` prefix in all supported cultures.
 - The gate credential page links to the Gate admissions terminal and explains that the shared account can record admissions. The kiosk is restricted to Gate and its sign-in/sign-out pages; it cannot browse Scanner or ticket administration.
 
