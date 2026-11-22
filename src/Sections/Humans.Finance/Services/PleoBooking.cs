@@ -272,7 +272,7 @@ internal sealed partial class PleoBooking(
         var rows = spend.ToDictionary(r => r.Entry.Id, StringComparer.Ordinal);
         var changes = new List<PleoChangeRow>();
 
-        foreach (var id in purchases.Keys.Union(holdedById.Keys, StringComparer.Ordinal).Order(StringComparer.Ordinal))
+        foreach (var id in purchases.Keys.Union(holdedById.Keys, StringComparer.Ordinal))
         {
             var read = holdedById.TryGetValue(id, out var lines);
             var held = lines ?? new Dictionary<int, decimal>();

@@ -368,7 +368,7 @@ else if (Model.NotConfigured is { } why)
         <table class="table table-sm mb-0">
             <thead><tr><th class="ps-3">Pleo</th><th>Merchant</th><th>Holded now</th><th>What changed</th><th class="pe-3">Correction</th></tr></thead>
             <tbody>
-                @foreach (var c in Model.View.Changes)
+                @foreach (var c in Model.View.Changes.OrderBy(c => c.PleoId, StringComparer.Ordinal))
                 {
                     <tr class="@(c.Corrections.Count == 0 ? "table-warning" : "")">
                         <td class="ps-3"><a href="/Pleo/Entries/@c.PleoId">@(c.Entry is { } e ? Day(e.SettledAt) : c.PleoId)</a></td>
