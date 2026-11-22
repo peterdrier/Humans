@@ -8,13 +8,14 @@ namespace Humans.Search.Services.Dtos;
 /// </summary>
 internal sealed record SearchBucket(
     string Key,
+    int Weight,
     string Label,
     string IconCssClass,
     Type ResultComponent,
     IReadOnlyList<SearchHit> Hits);
 
 /// <summary>
-/// Every enabled category in weight order. <see cref="Filter"/> is the matched category key, null when the request
+/// Every enabled category, unordered, carrying its display weight. <see cref="Filter"/> is the matched category key, null when the request
 /// named none or one that is not enabled.
 /// </summary>
 internal sealed record GlobalSearchResults(
