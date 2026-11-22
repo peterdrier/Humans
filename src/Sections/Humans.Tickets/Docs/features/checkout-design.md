@@ -115,3 +115,42 @@ leave out the payment fee. For the accountant: donation certificates and their r
 
 Side quests named and left out: paying manually by IBAN, and a phone scanner app (pretixSCAN is Apache 2.0 and could
 be forked later).
+
+## Grill with Peter, 2026-11-22
+
+The ticketing words agreed in this session are in [`CONTEXT.md`](../../../../../CONTEXT.md), under Ticketing. The
+decisions, including answers to the questions left open above:
+
+- **Refunds** outside resale are very rare, kept for a death or serious illness just before the event. Humans offers
+  no refund request; resale is the answer for everyone else.
+- **Child tickets** are a second ticket on an adult's ticket, in the child's name: never resold alone, refunded with
+  the adult. Moving a child to another adult means void and reissue. Child ticket types keep a price, normally 0; a
+  reattach action is added only if a paid child ever needs moving. A child gets no account of their own.
+- **Companion tickets** belong to the ticket they help and are voided with it.
+- **Only adult tickets** can go into resale.
+- **Wave pins** last the whole sales season of the event.
+- **"Credit" is "discount".** A credit implies something given in trade, which is a tax problem. Buyers already see
+  the rule's own label; the code's `Credit` name is to be renamed later.
+- **VIP ticket** stays the name ("Very Unimportant Person"): a ticket plus a large donation, no privileges.
+- **No ticket without the money.** A payment on its way holds tickets and never issues them, for any method. Bank
+  debit (SEPA) is not offered for now, so the paid date of a debit (Box Office review question) waits until it is.
+- **Chargebacks** are handled by hand: nothing is done to tickets automatically at this scale. The team must not miss
+  one: an email to the team when it opens, a daily reminder while open, and a written team procedure (draft in
+  `checkout.md`).
+- **Stripe stays.** Mollie is worth its roughly one day of work only if it saves about EUR 1,000 a year or more. For
+  scale: 2026 took about EUR 600,000 at about 2% in card fees (European cards 1.9%, American business cards about
+  3.5%, Klarna almost 4%, iDEAL a flat 0.29 per order). Flat-rate methods (iDEAL, Wero) are the likely lever.
+- **Fees are shown, not charged.** One price for every payment method; the association has eaten the fees so far, and
+  "any money we eat is higher ticket prices next year". Before paying, the buy page shows what each method costs the
+  association for this order and asks buyers to pick the cheapest that works for them; Klarna stays fine for those
+  who need it. Humans cannot know the card type before Stripe, so cards show as a range. After paying, the order page
+  shows the fee Stripe really took, with a thank-you for a cheap method. Whether a surcharge is legal stays a lawyer
+  question.
+- **Discount programs check people themselves.** Student (perhaps outsourced), local (perhaps a short-lived ID photo,
+  checked then deleted) and low income each run their own check and hand ticketing only a grant. The gate checks the
+  name against the ID and nothing else.
+- **Campaigns' discount codes** retire with TicketTailor, with a cleanup and data purge, probably in January 2027.
+- **Ticketing settings** belong to one event and are keyed by its id. One event sells at a time today; other groups
+  using Humans run overlapping events, so nothing may assume a single event.
+- **Box Office as a shop.** Peter expected Box Office to hold a shopping cart (people add things and buy), with the
+  ticketing layer telling each platform what is for sale. Not now; possible later work.
