@@ -210,7 +210,7 @@
                 <div class="card-body">
                     <form action="@Url.Action("AddDependency", route)" method="post" class="d-flex flex-wrap gap-2">
                         @Html.AntiForgeryToken()
-                        <select class="form-select flex-grow-1 w-auto" name="dependsOn" aria-label="@Localizer["Tasks_Task_DependencyPick"]">
+                        <select class="form-select flex-grow-1 w-auto mw-100" name="dependsOn" aria-label="@Localizer["Tasks_Task_DependencyPick"]">
                             @foreach (var choice in Model.DependencyChoices)
                             {
                                 <option value="@choice.Id">@choice.Label</option>
