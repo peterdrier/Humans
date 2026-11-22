@@ -1,6 +1,5 @@
 using Humans.Camps.Contracts;
 using Humans.Tickets.Contracts;
-using Humans.Shifts.Helpers;
 using Humans.Auth.Contracts;
 using Humans.Shifts.Services.Dtos;
 using Humans.Base.Extensions;

@@ -5,7 +5,6 @@ using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Shifts.Domain;
 using NodaTime;
-using Humans.Shifts.Helpers;
 using Humans.Shifts.Services.Dtos;
 using Humans.Users.Contracts;
 

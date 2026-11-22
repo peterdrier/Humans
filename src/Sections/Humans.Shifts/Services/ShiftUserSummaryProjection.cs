@@ -2,7 +2,6 @@ using Humans.Shifts.Services.Dtos;
 using Humans.Shifts.Domain;
 using Humans.Shifts.Contracts;
 using Humans.Settings.Contracts;
-using Humans.Shifts.Helpers;
 
 namespace Humans.Shifts.Services;
 
