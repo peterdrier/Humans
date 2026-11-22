@@ -113,6 +113,31 @@ public class TrackedCacheReplacementTests
     }
 
     [HumansTheory]
+    [InlineData(true, "stale")]
+    [InlineData(true, null)]
+    [InlineData(false, "stale")]
+    [InlineData(false, null)]
+    public async Task CancelledReplacementAfterLoad_EvictsInsteadOfPublishing_AndRetries(bool warmOnStartup, string? value)
+    {
+        using var cancellation = new CancellationTokenSource();
+        var sut = new ReplacementCache(warmOnStartup) { SourceValue = "old" };
+        await sut.WarmAsync(TestContext.Current.CancellationToken);
+        sut.Set(1, "old");
+        sut.SourceValue = value;
+        sut.CancelDuringLoad = cancellation;
+
+        var failure = await Assert.ThrowsAnyAsync<OperationCanceledException>(() => sut.ReplaceAsync(1, cancellation.Token));
+
+        failure.CancellationToken.Should().Be(cancellation.Token);
+        sut.ContainsKey(1).Should().BeFalse();
+        if (warmOnStartup) sut.IsWarmedUp.Should().BeFalse();
+        sut.CancelDuringLoad = null;
+        sut.SourceValue = "fresh";
+        if (warmOnStartup) await sut.WarmAsync(TestContext.Current.CancellationToken);
+        (await sut.GetAsync(1, TestContext.Current.CancellationToken)).Should().Be("fresh");
+    }
+
+    [HumansTheory]
     [InlineData("invalidate")]
     [InlineData("delete")]
     [InlineData("clear")]

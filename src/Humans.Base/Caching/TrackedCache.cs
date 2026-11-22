@@ -185,6 +185,7 @@ public class TrackedCache<TKey, TValue> : IHostedService, ICacheStats where TKey
         try
         {
             loaded = await LoadRowAsync(key, ct).ConfigureAwait(false);
+            ct.ThrowIfCancellationRequested();
         }
         catch
         {
