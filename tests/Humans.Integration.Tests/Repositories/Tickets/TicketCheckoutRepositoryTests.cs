@@ -133,7 +133,11 @@ public class TicketCheckoutRepositoryTests(HumansTestDatabase database) : Integr
         await repo.AddOrderAsync(order, ct);
         await repo.AddOrderEventAsync(new TicketCheckoutOrderEvent
         {
-            Id = Guid.NewGuid(), OrderId = order.Id, At = Now, Kind = TicketCheckoutOrderEventKind.PlatformRefused, Detail = "no",
+            Id = Guid.NewGuid(),
+            OrderId = order.Id,
+            At = Now,
+            Kind = TicketCheckoutOrderEventKind.PlatformRefused,
+            Detail = "no",
         }, ct);
 
         var contexts = scope.ServiceProvider.GetRequiredService<IDbContextFactory<TicketsDbContext>>();
