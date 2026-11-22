@@ -147,7 +147,14 @@ internal sealed class TicketBuyController(
 
         // Children ride on the adult's entry, so the viewer's own Early Entry applies to every ticket listed.
         ViewData["EarlyEntryDate"] = (await earlyEntry.GetForUserAsync(user.Id, ct))?.EarliestEntryDate;
-        return View("~/Views/Tickets/Buy/Mine.cshtml", await checkout.GetHeldTicketsAsync(user.Id, ct));
+        var held = await checkout.GetHeldTicketsAsync(user.Id, ct);
+        var tickets = held.GroupBy(row => row.Ticket.SalesEventId)
+            .SelectMany(evt => evt.GroupBy(row => row.Ticket.HolderUserId == user.Id
+                    ? row.Ticket.Id : row.Ticket.ParentTicketId ?? row.Ticket.Id)
+                .OrderBy(family => family.First(row => row.Ticket.Id == family.Key).Ticket.IssuedAt)
+                .SelectMany(family => family.OrderBy(row => row.Ticket.Id != family.Key)))
+            .ToList();
+        return View("~/Views/Tickets/Buy/Mine.cshtml", tickets);
     }
 
     [HttpPost("Mine/{ticketId:guid}/Offer")]
@@ -214,7 +221,8 @@ internal sealed class TicketBuyController(
         if (order is null || !CanSee(order, user.Id))
             return NotFound();
 
-        var tickets = await checkout.GetTicketsForOrderAsync(order.Id, ct);
+        var tickets = (await checkout.GetTicketsForOrderAsync(order.Id, ct))
+            .OrderBy(ticket => ticket.Kind).ThenBy(ticket => ticket.IssuedAt).ToList();
         return View("~/Views/Tickets/Buy/Order.cshtml", new TicketBuyOrderViewModel(order, tickets, user.Id));
     }
 

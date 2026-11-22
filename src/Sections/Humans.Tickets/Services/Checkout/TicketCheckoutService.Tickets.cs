@@ -21,8 +21,8 @@ internal sealed partial class TicketCheckoutService
     private static readonly Duration DeliveryGrace = Duration.FromMinutes(30);
     private static readonly Duration DeliveryRepairWindow = Duration.FromDays(7);
 
-    public async Task<IReadOnlyList<TicketCheckoutTicket>> GetTicketsForOrderAsync(Guid orderId, CancellationToken ct = default) =>
-        (await repository.GetTicketsForOrderAsync(orderId, ct)).OrderBy(t => t.Kind).ThenBy(t => t.IssuedAt).ToList();
+    public Task<IReadOnlyList<TicketCheckoutTicket>> GetTicketsForOrderAsync(Guid orderId, CancellationToken ct = default) =>
+        repository.GetTicketsForOrderAsync(orderId, ct);
 
     public Task<TicketCheckoutTicket?> GetTicketAsync(Guid id, CancellationToken ct = default) =>
         repository.GetTicketAsync(id, ct);
@@ -64,7 +64,7 @@ internal sealed partial class TicketCheckoutService
             var positions = TicketSupportReports.QueuePositions(offers);
             var eventTickets = salesEvent is null ? [] : await repository.GetTicketsForSalesEventAsync(group.Key, ct);
             var companionRequests = await repository.GetCompanionRequestsForSalesEventAsync(group.Key, ct);
-            foreach (var ticket in group.OrderBy(t => t.IssuedAt))
+            foreach (var ticket in group)
             {
                 var offer = queue.FirstOrDefault(o => o.TicketId == ticket.Id);
                 var hasDependents = eventTickets.Any(t => t.ParentTicketId == ticket.Id && t.State == TicketCheckoutTicketState.Valid);

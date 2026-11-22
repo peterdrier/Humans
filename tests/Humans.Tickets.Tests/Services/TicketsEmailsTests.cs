@@ -32,7 +32,7 @@ public sealed class TicketsEmailsTests
 
     private static IssuedTicketMail SampleTicket(string holderName = "Ana", string? buyerName = null, params TicketCard[] riders) => new(
         Guid.NewGuid(), "ana@x.com", holderName, "Nowhere 2027",
-        [new TicketCard(holderName, "Adult", "H7K2M9QX4T8VB3NRP", new Uri("https://humans.example/Tickets/Code/tok")), .. riders],
+        [new TicketCard(holderName, TicketHolderKind.Adult, "H7K2M9QX4T8VB3NRP", new Uri("https://humans.example/Tickets/Code/tok")), .. riders],
         new Uri("https://humans.example/Tickets/Buy/Mine"), buyerName, Guid.NewGuid());
 
     private static OrderReceiptMail SampleReceipt(long refundedMinor = 0) => new(
@@ -68,7 +68,7 @@ public sealed class TicketsEmailsTests
     [HumansFact]
     public void TicketIssued_CarriesAChildTicketRidingOnTheAdults()
     {
-        var msg = Create().TicketIssued(SampleTicket(riders: new TicketCard("Kid", "Child", "HKID0000000000000", new Uri("https://humans.example/Tickets/Code/kid"))), "en");
+        var msg = Create().TicketIssued(SampleTicket(riders: new TicketCard("Kid", TicketHolderKind.Child, "HKID0000000000000", new Uri("https://humans.example/Tickets/Code/kid"))), "en");
 
         msg.HtmlBody.Should().Contain("HKID0000000000000").And.Contain("Child ticket").And.Contain("children coming with you")
             .And.Contain("H7K2M9QX4T8VB3NRP");

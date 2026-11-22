@@ -41,7 +41,7 @@ retains queue-position calculation and paid-day chronology for running totals.
 
 Raw checkout order, holder-ticket, event-ticket, offer and refund reads return repository rows without presentation
 ordering. The admin order list sorts newest first; lookup tickets and dependent-ticket panels sort by issue time.
-Order-detail and delivery-card ordering retain their existing behavior.
+Order-detail and delivery-card presentation ordering belongs to their rendering callers.
 
 Operator controllers order companion requests pending-first/newest-first, cancellation refund groups by state,
 and backend lists by key. Backend status pages order orders and stuck orders newest-first and refunds oldest-first;
@@ -51,6 +51,12 @@ Cancellation processing still uses oldest-paid-first work order.
 Buy-page read models carry the event's gate-opening date. `TicketBuyController` orders public and signed-in sales
 by that date and each normal or directed buy page's order history newest-first; service reads do not choose those
 presentation orders.
+
+Ticket families on “My tickets” are ordered in the controller by the holder ticket's issue time within each event,
+with dependents beside that holder. Order pages and profile child lists choose their own kind/issue-time ordering;
+admin refund rows are oldest-first. Email rendering keeps the recipient card first and orders dependent cards by
+kind and issue time. Checkout reads supply rows without these presentation sorts; audit streams and FIFO
+allocation, settlement and cancellation processing retain their domain ordering.
 
 ## Concepts
 

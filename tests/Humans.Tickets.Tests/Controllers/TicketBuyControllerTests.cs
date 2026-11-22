@@ -47,6 +47,43 @@ public class TicketBuyControllerTests
         { GateOpeningDate = gates };
 
     [HumansFact]
+    public async Task Mine_OrdersFamiliesWithinTheEventAndKeepsDependentsBesideTheirHolder()
+    {
+        var eventId = Guid.NewGuid();
+        TicketCheckoutTicket Ticket(Instant issued, Guid? holder, Guid? parent = null) => new()
+        { Id = Guid.NewGuid(), SalesEventId = eventId, HolderUserId = holder, ParentTicketId = parent, IssuedAt = issued };
+        HeldTicket Held(TicketCheckoutTicket ticket) => new(ticket, "Event", null, null, false, false, false);
+        var later = Held(Ticket(Now + Duration.FromDays(1), _userId));
+        var laterChild = Held(Ticket(Now, null, later.Ticket.Id));
+        var earlier = Held(Ticket(Now, _userId));
+        var earlierCompanion = Held(Ticket(Now + Duration.FromDays(2), Guid.NewGuid(), earlier.Ticket.Id));
+        var ownCompanion = Held(Ticket(Now - Duration.FromDays(1), _userId, Guid.NewGuid()));
+        var otherEvent = Held(new TicketCheckoutTicket
+        { Id = Guid.NewGuid(), SalesEventId = Guid.NewGuid(), HolderUserId = _userId, IssuedAt = Now - Duration.FromDays(2) });
+        _checkout.GetHeldTicketsAsync(_userId, Arg.Any<CancellationToken>())
+            .Returns([later, laterChild, earlier, earlierCompanion, ownCompanion, otherEvent]);
+
+        var result = (ViewResult)await Controller().Mine(TestContext.Current.CancellationToken);
+
+        ((IReadOnlyList<HeldTicket>)result.Model!).Should().Equal(ownCompanion, earlier, earlierCompanion, later, laterChild, otherEvent);
+    }
+
+    [HumansFact]
+    public async Task Order_PresentsTicketsByKindThenIssueTime()
+    {
+        var order = new TicketCheckoutOrder { Id = Guid.NewGuid(), BuyerUserId = _userId };
+        var older = new TicketCheckoutTicket { Id = Guid.NewGuid(), Kind = TicketHolderKind.Adult, IssuedAt = Now };
+        var newer = new TicketCheckoutTicket { Id = Guid.NewGuid(), Kind = TicketHolderKind.Adult, IssuedAt = Now + Duration.FromDays(1) };
+        var child = new TicketCheckoutTicket { Id = Guid.NewGuid(), Kind = TicketHolderKind.Child, IssuedAt = Now - Duration.FromDays(1) };
+        _checkout.RefreshOrderAsync(order.Id, Arg.Any<CancellationToken>()).Returns(order);
+        _checkout.GetTicketsForOrderAsync(order.Id, Arg.Any<CancellationToken>()).Returns([child, newer, older]);
+
+        var result = (ViewResult)await Controller().Order(order.Id, TestContext.Current.CancellationToken);
+
+        ((TicketBuyOrderViewModel)result.Model!).VisibleTickets.Should().Equal(older, newer, child);
+    }
+
+    [HumansFact]
     public async Task Index_PresentsEventsByGateDateAndOrderHistoryNewestFirst()
     {
         var older = new TicketCheckoutOrder { Id = Guid.NewGuid(), CreatedAt = Now };

@@ -88,7 +88,13 @@ internal sealed class TicketsSalesAdminController(
         if (await checkout.RefreshOrderAsync(id, ct) is null)
             return NotFound();
         var detail = await checkout.GetOrderDetailAsync(id, ct);
-        return View("~/Views/Tickets/Admin/Sales/Order.cshtml", detail!);
+        if (detail is null)
+            return NotFound();
+        return View("~/Views/Tickets/Admin/Sales/Order.cshtml", detail with
+        {
+            Tickets = detail.Tickets.OrderBy(ticket => ticket.Kind).ThenBy(ticket => ticket.IssuedAt).ToList(),
+            Refunds = detail.Refunds.OrderBy(refund => refund.CreatedAt).ToList(),
+        });
     }
 
     [HttpPost("Order/{id:guid}/Refund")]

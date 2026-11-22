@@ -27,6 +27,27 @@ public class TicketsSupportAdminControllerTests
     }
 
     [HumansFact]
+    public async Task AdminOrder_PresentsTicketsByKindAndRefundsOldestFirst()
+    {
+        var order = new TicketCheckoutOrder { Id = Guid.NewGuid() };
+        var adult = new TicketCheckoutTicket { Id = Guid.NewGuid(), Kind = TicketHolderKind.Adult, IssuedAt = Now };
+        var child = new TicketCheckoutTicket { Id = Guid.NewGuid(), Kind = TicketHolderKind.Child, IssuedAt = Now - Duration.FromDays(1) };
+        var older = new TicketCheckoutRefund { Id = Guid.NewGuid(), CreatedAt = Now };
+        var newer = new TicketCheckoutRefund { Id = Guid.NewGuid(), CreatedAt = Now + Duration.FromDays(1) };
+        _checkout.RefreshOrderAsync(order.Id, Arg.Any<CancellationToken>()).Returns(order);
+        _checkout.GetOrderDetailAsync(order.Id, Arg.Any<CancellationToken>())
+            .Returns(new CheckoutOrderDetail(order, [newer, older], [], [child, adult]));
+        var controller = new TicketsSalesAdminController(_checkout, null!, Substitute.For<ISettingsService>(),
+            Substitute.For<IGrantService>(), Substitute.For<IOrgTimeZone>(), SystemClock.Instance, Substitute.For<IUserService>());
+
+        var result = (ViewResult)await controller.Order(order.Id, TestContext.Current.CancellationToken);
+        var detail = (CheckoutOrderDetail)result.Model!;
+
+        detail.Tickets.Should().Equal(adult, child);
+        detail.Refunds.Should().Equal(older, newer);
+    }
+
+    [HumansFact]
     public async Task CompanionRequests_PresentsPendingFirstThenNewestWithinEachGroup()
     {
         CompanionRequestRow Row(TicketCompanionRequestState state, Instant requested) =>

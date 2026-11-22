@@ -33,8 +33,8 @@ internal sealed class TicketsEmailPreviews(TicketsEmails emails, TicketCodeImage
             new EmailPreviewSample("ticket-issued", "Ticket (bought by someone else, with a child)",
                 emails.TicketIssued(new IssuedTicketMail(Guid.Empty, email, name, SampleEvent,
                     [
-                        new TicketCard(name, "Adult", SampleBarcode, codeImages.ImageUrl(SampleBarcode)),
-                        new TicketCard("Kit Firestone", "Child", SampleChildBarcode, codeImages.ImageUrl(SampleChildBarcode)),
+                        new TicketCard(name, TicketHolderKind.Adult, SampleBarcode, codeImages.ImageUrl(SampleBarcode)),
+                        new TicketCard("Kit Firestone", TicketHolderKind.Child, SampleChildBarcode, codeImages.ImageUrl(SampleChildBarcode)),
                     ],
                     new Uri(SampleBase, "Tickets/Buy/Mine"), SampleReceiver, null), culture)),
             new EmailPreviewSample("ticket-order-receipt", "Ticket Order Receipt",
