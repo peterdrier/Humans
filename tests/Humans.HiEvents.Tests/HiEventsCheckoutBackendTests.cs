@@ -466,6 +466,19 @@ public class HiEventsCheckoutBackendTests
     }
 
     [HumansFact]
+    public async Task Check_AVisibleCarrier_IsNamedAsSellingPublicly()
+    {
+        _handler.Enqueue(HttpStatusCode.OK, new { data = new { id = 1 } });
+        _handler.Enqueue(HttpStatusCode.OK, new { data = new { id = 7, status = "LIVE" } });
+        _handler.Enqueue(HttpStatusCode.OK, Products(("TICKET", VisibleProductId), ("GENERAL", 200)));
+        _handler.Enqueue(HttpStatusCode.UnprocessableEntity, new { message = "items required" });
+
+        var findings = await Backend().CheckAsync("7", Ct);
+
+        findings.Should().Contain(f => !f.Ok && f.Text.Contains($"Products {VisibleProductId} are visible", StringComparison.Ordinal));
+    }
+
+    [HumansFact]
     public async Task Check_StockHiEvents_SaysItIsNotTheFork()
     {
         _handler.Enqueue(HttpStatusCode.OK, new { data = new { id = 1 } });
