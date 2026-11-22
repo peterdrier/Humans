@@ -27,15 +27,14 @@ public class MailerLiteClientRetryTests
     [Xunit.InlineData("missing-subscriber-cursor")]
     [Xunit.InlineData("mistyped-subscriber-cursor")]
     [Xunit.InlineData("mistyped-group-page")]
-    public async Task RefreshAsync_RejectsInvalidPaginationAndPreservesSnapshot(string shape)
+    public async Task RefreshAsync_RejectsInvalidPaginationAndDiscardsSnapshot(string shape)
     {
         const string subscriberPage = """{"data":[{"id":"sub-1","email":"alice@example.org","status":"active"}],"meta":{"next_cursor":null}}""";
         var handler = new ScriptedHandler();
         handler.EnqueueJson(HttpStatusCode.OK, subscriberPage);
         handler.EnqueueJson(HttpStatusCode.OK, HumansGroupPage);
         var client = NewClient(handler);
-        var original = await client.GetAccountSummaryAsync(Xunit.TestContext.Current.CancellationToken);
-        var fetchedAt = client.LastFetchedAt;
+        _ = await client.GetAccountSummaryAsync(Xunit.TestContext.Current.CancellationToken);
 
         if (string.Equals(shape, "null-subscribers", StringComparison.Ordinal))
             handler.EnqueueJson(HttpStatusCode.OK, "null");
@@ -73,13 +72,7 @@ public class MailerLiteClientRetryTests
         var act = async () => await client.RefreshAsync(Xunit.TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<HttpRequestException>();
-        (await client.GetAccountSummaryAsync(Xunit.TestContext.Current.CancellationToken)).Should().BeSameAs(original);
-        client.LastFetchedAt.Should().Be(fetchedAt);
-        var emails = new List<string>();
-        await foreach (var subscriber in client.ListSubscribersAsync(Xunit.TestContext.Current.CancellationToken))
-            emails.Add(subscriber.Email);
-        emails.Should().ContainSingle().Which.Should().Be("alice@example.org");
-        (await client.ListGroupsAsync(Xunit.TestContext.Current.CancellationToken)).Should().ContainSingle(g => g.Id == "42");
+        await AssertUnavailableThenRecoverAsync(client, handler);
     }
 
     [HumansTheory]
@@ -98,15 +91,14 @@ public class MailerLiteClientRetryTests
     [Xunit.InlineData("subscribed_at", "42", "subscriber.subscribed_at must be a timestamp string or null")]
     [Xunit.InlineData("unsubscribed_at", "true", "subscriber.unsubscribed_at must be a timestamp string or null")]
     [Xunit.InlineData("opted_in_at", "{}", "subscriber.opted_in_at must be a timestamp string or null")]
-    public async Task RefreshAsync_RejectsInvalidSubscriberAndPreservesSnapshot(string field, string? jsonValue, string error)
+    public async Task RefreshAsync_RejectsInvalidSubscriberAndDiscardsSnapshot(string field, string? jsonValue, string error)
     {
         var handler = new ScriptedHandler();
         handler.EnqueueJson(HttpStatusCode.OK,
             """{"data":[{"id":"sub-1","email":"alice@example.org","status":"active","groups":["42"]}],"meta":{"next_cursor":null}}""");
         handler.EnqueueJson(HttpStatusCode.OK, HumansGroupPage);
         var client = NewClient(handler);
-        var original = await client.GetAccountSummaryAsync(Xunit.TestContext.Current.CancellationToken);
-        var fetchedAt = client.LastFetchedAt;
+        _ = await client.GetAccountSummaryAsync(Xunit.TestContext.Current.CancellationToken);
         var payload = System.Text.Json.Nodes.JsonNode.Parse(
             """{"id":"sub-2","email":"bob@example.org","status":"active"}""")!.AsObject();
         if (jsonValue is null) payload.Remove(field);
@@ -120,15 +112,7 @@ public class MailerLiteClientRetryTests
         var failure = (await act.Should().ThrowAsync<HttpRequestException>()).Which;
         failure.InnerException.Should().BeOfType<System.Text.Json.JsonException>().Which.Message
             .Should().Be(error);
-        (await client.GetAccountSummaryAsync(Xunit.TestContext.Current.CancellationToken)).Should().BeSameAs(original);
-        client.LastFetchedAt.Should().Be(fetchedAt);
-        var emails = new List<string>();
-        await foreach (var subscriber in client.ListSubscribersAsync(Xunit.TestContext.Current.CancellationToken))
-        {
-            emails.Add(subscriber.Email);
-            subscriber.GroupIds.Should().Equal("42");
-        }
-        emails.Should().ContainSingle().Which.Should().Be("alice@example.org");
+        await AssertUnavailableThenRecoverAsync(client, handler);
     }
 
     [HumansFact]
@@ -229,6 +213,35 @@ public class MailerLiteClientRetryTests
             "a 429 with no Retry-After must fall back to ML's 60s rate-limit window");
     }
 
+    private static async Task AssertUnavailableThenRecoverAsync(MailerLiteClient client, ScriptedHandler handler)
+    {
+        handler.Clear();
+        client.LastFetchedAt.Should().BeNull();
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var summaryRead = async () => await client.GetAccountSummaryAsync(ct);
+        await summaryRead.Should().ThrowAsync<HttpRequestException>();
+        var groupRead = async () => await client.ListGroupsAsync(ct);
+        await groupRead.Should().ThrowAsync<HttpRequestException>();
+        var subscriberRead = async () =>
+        {
+            await foreach (var _ in client.ListSubscribersAsync(ct)) { }
+        };
+        await subscriberRead.Should().ThrowAsync<HttpRequestException>();
+
+        handler.EnqueueJson(HttpStatusCode.OK,
+            """{"data":[{"id":"sub-new","email":"new@example.org","status":"unsubscribed","groups":["84"]}],"meta":{"next_cursor":null}}""");
+        handler.EnqueueJson(HttpStatusCode.OK, HumansGroupPage.Replace("42", "84", StringComparison.Ordinal));
+        var summary = await client.GetAccountSummaryAsync(ct);
+        summary.ActiveCount.Should().Be(0);
+        summary.UnsubscribedCount.Should().Be(1);
+        (await client.ListGroupsAsync(ct)).Should().ContainSingle(g => g.Id == "84");
+        var emails = new List<string>();
+        await foreach (var subscriber in client.ListSubscribersAsync(ct))
+            emails.Add(subscriber.Email);
+        emails.Should().Equal("new@example.org");
+        client.LastFetchedAt.Should().NotBeNull();
+    }
+
     private static MailerLiteClient NewClient(HttpMessageHandler handler, ILogger<MailerLiteClient>? logger = null) =>
         new(new StubHttpClientFactory(handler),
             NodaTime.SystemClock.Instance,
@@ -264,6 +277,8 @@ public class MailerLiteClientRetryTests
     {
         private readonly Queue<HttpResponseMessage> _responses = new();
         public int Calls { get; private set; }
+
+        public void Clear() => _responses.Clear();
 
         public void EnqueueJson(HttpStatusCode status, string body)
             => _responses.Enqueue(new HttpResponseMessage(status)

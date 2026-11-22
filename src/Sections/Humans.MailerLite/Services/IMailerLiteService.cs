@@ -7,7 +7,7 @@ namespace Humans.MailerLite.Services;
 
 /// <summary>
 /// Cached in memory, populated on first read and refreshed only by <see cref="RefreshAsync"/>, so page loads don't
-/// burn the MailerLite rate limit.
+/// burn the MailerLite rate limit. A failed population discards cached account data; the next read retries.
 /// </summary>
 internal interface IMailerLiteService : IApplicationService
 {

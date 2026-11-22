@@ -198,18 +198,31 @@ internal sealed class MailerLiteClient(IHttpClientFactory httpFactory, IClock cl
         await PopulateLockedAsync(ct);
     }
 
-    // Throw leaves the prior cache intact; callers retry.
     private async Task PopulateLockedAsync(CancellationToken ct)
     {
-        var subscribers = new List<MailerLiteSubscriber>();
-        await foreach (var s in FetchSubscribersAsync(ct))
-            subscribers.Add(s);
-        var groups = await FetchGroupsAsync(ct);
+        try
+        {
+            var subscribers = new List<MailerLiteSubscriber>();
+            await foreach (var s in FetchSubscribersAsync(ct))
+                subscribers.Add(s);
+            var groups = await FetchGroupsAsync(ct);
+            var summary = SummarizeSubscribers(subscribers);
+            ct.ThrowIfCancellationRequested();
 
-        _subscribers = subscribers;
-        _summary = SummarizeSubscribers(subscribers);
-        _groups = groups;
-        _lastFetchedAt = clock.GetCurrentInstant();
+            _subscribers = subscribers;
+            _summary = summary;
+            _groups = groups;
+            _lastFetchedAt = clock.GetCurrentInstant();
+        }
+        catch
+        {
+            // A failed authoritative read must not leave old data available to import or audience decisions.
+            _subscribers = null;
+            _summary = null;
+            _groups = null;
+            _lastFetchedAt = null;
+            throw;
+        }
     }
 
     private MailerLiteAccountSummary SummarizeSubscribers(IReadOnlyList<MailerLiteSubscriber> subscribers)
