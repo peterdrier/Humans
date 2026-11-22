@@ -644,8 +644,35 @@ public class PretixCheckoutBackendTests
         PretixCheckoutBackend.OrderCode(first).Should().HaveLength(16)
             .And.MatchRegex("^[ABCDEFGHJKLMNPQRSTUVWXYZ23456789]+$");
     }
-    [HumansFact]
-    public async Task ListOrders_FollowsPagesCountsTicketItemsAndAddsBackRefundFees()
+    [HumansTheory]
+    [InlineData("items", "https://attacker.invalid/outside/")]
+    [InlineData("items", "//attacker.invalid/outside/")]
+    [InlineData("items", "http://pretix.test/outside/")]
+    [InlineData("items", "https://pretix.test:444/outside/")]
+    [InlineData("orders", "https://attacker.invalid/outside/")]
+    [InlineData("orders", "//attacker.invalid/outside/")]
+    [InlineData("orders", "http://pretix.test/outside/")]
+    [InlineData("orders", "https://pretix.test:444/outside/")]
+    public async Task ListOrders_RejectsPaginationOutsideTheConfiguredOrigin(string collection, string nextUrl)
+    {
+        var pretix = new FakePretix()
+            .On("GET", Api + "items/", HttpStatusCode.OK,
+                new { results = Array.Empty<object>(), next = string.Equals(collection, "items", StringComparison.Ordinal) ? nextUrl : null })
+            .On("GET", Api + "orders/", HttpStatusCode.OK,
+                new { results = Array.Empty<object>(), next = string.Equals(collection, "orders", StringComparison.Ordinal) ? nextUrl : null })
+            .On("GET", "/outside/", HttpStatusCode.OK, new { results = Array.Empty<object>() });
+
+        var act = () => Create(pretix).ListOrdersAsync("nowhere2027",
+            Instant.FromUtc(2027, 1, 1, 0, 0), Instant.FromUtc(2027, 2, 1, 0, 0), TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<HttpRequestException>();
+        pretix.Requests.Should().HaveCount(string.Equals(collection, "items", StringComparison.Ordinal) ? 1 : 2);
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ListOrders_FollowsPagesCountsTicketItemsAndAddsBackRefundFees(bool absoluteNext)
     {
         object Listed(string code, string datetime, object apiMeta, object[] fees, object[] refunds, decimal total) => new
         {
@@ -672,7 +699,7 @@ public class PretixCheckoutBackendTests
             })
             .On("GET", $"{Api}orders/", HttpStatusCode.OK, new
             {
-                next = $"https://pretix.test{Api}orders/?page=2",
+                next = (absoluteNext ? "https://pretix.test" : "") + $"{Api}orders/?page=2",
                 results = new[] { Listed(Code, "2027-01-05T09:30:00.123456+00:00", new { humans_order_id = OrderId.ToString() }, [], [], 300m) },
             })
             .On("GET", $"{Api}orders/", HttpStatusCode.OK, new

@@ -698,7 +698,15 @@ internal sealed partial class PretixCheckoutBackend(
 
     private async Task<RawResponse> SendRawAsync(HttpMethod method, string path, JsonObject? body, CancellationToken ct)
     {
-        using var message = new HttpRequestMessage(method, new Uri(new Uri(Settings.BaseUrl), path));
+        var origin = new Uri(Settings.BaseUrl);
+        var target = new Uri(origin, path);
+        // Pagination links come from the vendor; never send the organizer token to another origin.
+        if (!string.Equals(target.Scheme, origin.Scheme, StringComparison.OrdinalIgnoreCase)
+            || !string.Equals(target.IdnHost, origin.IdnHost, StringComparison.OrdinalIgnoreCase)
+            || target.Port != origin.Port)
+            throw new HttpRequestException("pretix returned an API URL outside the configured origin.");
+
+        using var message = new HttpRequestMessage(method, target);
         message.Headers.Authorization = new AuthenticationHeaderValue("Token", Settings.ApiToken);
         message.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
         if (body is not null)
