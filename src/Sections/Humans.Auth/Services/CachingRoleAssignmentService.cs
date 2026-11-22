@@ -127,7 +127,6 @@ internal sealed class CachingRoleAssignmentService
         var now = _clock.GetCurrentInstant();
         return AsReadOnlyDictionary.Values
             .Where(row => row.UserId == userId && row.IsActiveAt(now))
-            .OrderBy(row => row.RoleName, StringComparer.Ordinal)
             .Select(row => new RoleAssignmentSnapshot(row.RoleName, row.ValidTo))
             .ToList();
     }
