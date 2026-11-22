@@ -109,6 +109,7 @@ none
   amounts Humans priced.
 - **No erasure inside Stripe.** Stripe keeps payment records as processor.
 - **No listing of payment methods.** Card, iDEAL and Klarna are dashboard switches.
+- **No settlement date for a delayed debit.** `PaidAt` is when the buyer completed the page; the order reads Processing until the money settles (Peter, 2026-11-22).
 
 ## Load-bearing weirdness
 

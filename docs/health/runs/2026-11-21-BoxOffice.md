@@ -69,7 +69,7 @@ Target diff: no previous target; this is the first.
 
 ## Needs Peter
 
-- [ ] 13 — delayed-debit `PaidAt`: when the buyer completed the page (today) or when the money settled?
+- [x] 13 — delayed-debit `PaidAt`: when the buyer completed the page (today) or when the money settled? Peter, 2026-11-22: when the buyer completed the page; kept as is.
 
 ## File coverage
 
