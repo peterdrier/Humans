@@ -3,7 +3,7 @@
 - Invocation: --section=BoxOffice, interactive from a Claude project thread (Peter asked for a doctor run per new ticketing section)
 - Anchor commit: `f642ca0f2` (origin/main at branch point); branch `section-doctor/2026-11-21T234918Z`.
 - Budget: 2.5h.
-- PR: pending
+- PR: peterdrier/Humans#2558
 
 ## Assessment summary
 

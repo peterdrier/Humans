@@ -132,4 +132,4 @@ none
 
 | Run | Date | Headline | PR |
 |---|---|---|---|
-| 1 | 2026-11-21 | First doctor pass: the refund, cancel and checkout guards and the whole webhook path pinned by tests; BoxOffice.md and the comments brought back to the code | pending |
+| 1 | 2026-11-21 | First doctor pass: the refund, cancel and checkout guards and the whole webhook path pinned by tests; BoxOffice.md and the comments brought back to the code | peterdrier/Humans#2558 |
