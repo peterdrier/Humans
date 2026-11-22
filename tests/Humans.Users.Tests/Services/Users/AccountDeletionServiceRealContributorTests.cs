@@ -38,7 +38,6 @@ public sealed class AccountDeletionServiceRealContributorTests : ServiceTestHarn
     {
         _userService = new UserService(
             new UserRepository(DbFactory, Clock),
-            AdminAuthorization,
             Substitute.For<IFileStorage>(),
             Clock,
             NullLogger<UserService>.Instance, AuditLog);

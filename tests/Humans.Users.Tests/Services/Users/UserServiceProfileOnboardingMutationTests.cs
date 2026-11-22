@@ -30,7 +30,6 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
         var userRepository = new UserRepository(DbFactory, Clock);
         _service = new UserService(
             userRepository,
-            AdminAuthorization,
             _fileStorage,
             Clock,
             NullLogger<UserService>.Instance, AuditLog);
@@ -50,7 +49,7 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
             : new IOException("Last-login write unavailable");
         repository.SetLastLoginAsync(userId, Arg.Any<Instant>(), request.Token)
             .Returns(Task.FromException<bool>(failure));
-        var service = new UserService(repository, AdminAuthorization, _fileStorage, Clock,
+        var service = new UserService(repository, _fileStorage, Clock,
             NullLogger<UserService>.Instance, AuditLog);
 
         var record = () => service.RecordLoginAsync(userId, request.Token);
@@ -76,8 +75,7 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
             .Returns(string.Equals(kind, "duplicate", StringComparison.Ordinal)
                 ? [new UserEmail { Id = Guid.NewGuid(), UserId = userId, Email = "held@example.com" }]
                 : []);
-        var service = new UserService(repository,
-            AdminAuthorization, _fileStorage, Clock, NullLogger<UserService>.Instance, AuditLog);
+        var service = new UserService(repository, _fileStorage, Clock, NullLogger<UserService>.Instance, AuditLog);
 
         var email = kind switch
         {
@@ -106,8 +104,7 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
         repository.GetByIdAsync(userId, Arg.Any<CancellationToken>()).Returns(new User { Id = userId });
         repository.GetUserEmailsByAddressAsync(Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns([new UserEmail { Id = Guid.NewGuid(), UserId = Guid.NewGuid(), Email = "held@example.com", IsVerified = true }]);
-        var service = new UserService(repository,
-            AdminAuthorization, _fileStorage, Clock, NullLogger<UserService>.Instance, AuditLog);
+        var service = new UserService(repository, _fileStorage, Clock, NullLogger<UserService>.Instance, AuditLog);
 
         var result = await service.AddUserEmailAsync(userId,
             new UserEmailAddCommand("held@example.com", IsVerified: verified),
@@ -993,7 +990,7 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
                 ? Task.FromException<(string, string?)?>(new IOException("Verification unavailable"))
                 : inner.GetProfilePictureLocationAsync(sourceId, call.Arg<CancellationToken>());
         });
-        var service = new UserService(repo, AdminAuthorization, _fileStorage, Clock, NullLogger<UserService>.Instance, AuditLog);
+        var service = new UserService(repo, _fileStorage, Clock, NullLogger<UserService>.Instance, AuditLog);
 
         var merge = () => service.ReassignAsync(sourceUserId, targetUserId, Guid.NewGuid(), Clock.GetCurrentInstant(), ct);
         (await merge.Should().ThrowAsync<IOException>()).Which.Should().BeSameAs(failure);
@@ -1062,7 +1059,6 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
     private UserService BuildWithUserRepository(IUserRepository userRepository) =>
         new(
             userRepository,
-            AdminAuthorization,
             Substitute.For<IFileStorage>(),
             Clock,
             NullLogger<UserService>.Instance, AuditLog);

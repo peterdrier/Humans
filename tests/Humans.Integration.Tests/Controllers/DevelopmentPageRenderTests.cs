@@ -81,7 +81,7 @@ public class DevelopmentPageRenderTests(HumansTestDatabase database) : Integrati
         var ct = Xunit.TestContext.Current.CancellationToken;
         await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Volunteer);
 
-        foreach (var url in new[] { "/dev/seed/budget", "/dev/seed/camp-roles", "/dev/seed/dashboard/reset" })
+        foreach (var url in new[] { "/dev/seed/budget", "/dev/seed/camp-roles", "/dev/seed/demo" })
         {
             var response = await Client.PostAsync(url, new StringContent(string.Empty), ct);
             response.StatusCode.Should().Be(HttpStatusCode.Found, $"POST {url} must be gated");

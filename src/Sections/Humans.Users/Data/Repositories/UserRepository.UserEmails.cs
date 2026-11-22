@@ -97,18 +97,6 @@ internal sealed partial class UserRepository
         await ctx.SaveChangesAsync(ct);
     }
 
-    public async Task RemoveAllUserEmailsForUsersAndSaveAsync(
-        IReadOnlyCollection<Guid> userIds, CancellationToken ct = default)
-    {
-        if (userIds.Count == 0)
-            return;
-
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        await ctx.UserEmails
-            .Where(e => userIds.Contains(e.UserId))
-            .ExecuteDeleteAsync(ct);
-    }
-
     public async Task ReassignUserEmailsToUserAsync(
         Guid sourceUserId, Guid targetUserId, Instant updatedAt,
         CancellationToken ct = default)
@@ -195,20 +183,6 @@ internal sealed partial class UserRepository
                 aliases.Add(row);
         }
         return [.. exact, .. aliases];
-    }
-
-    public async Task<IReadOnlyList<Guid>> GetUserIdsByUserEmailPrefixAndSuffixAsync(
-        string prefix,
-        string suffix,
-        CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        return await ctx.UserEmails
-            .AsNoTracking()
-            .Where(ue => ue.Email.StartsWith(prefix) && ue.Email.EndsWith(suffix))
-            .Select(ue => ue.UserId)
-            .Distinct()
-            .ToListAsync(ct);
     }
 
     public async Task AddUserEmailAsync(UserEmail email, CancellationToken ct = default)

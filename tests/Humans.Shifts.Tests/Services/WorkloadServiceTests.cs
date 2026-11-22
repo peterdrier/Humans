@@ -23,7 +23,7 @@ public sealed class WorkloadServiceTests : ShiftsTestHarness
     {
         var repo = new ShiftRepository(ShiftsDbFactory, ShiftsDb, Clock);
 
-        var rows = new ShiftManagementService(repo, AuditLog, AdminAuthorization, new ServiceLocatorBuilder().Build(),
+        var rows = new ShiftManagementService(repo, AuditLog, new ServiceLocatorBuilder().Build(),
             NewCalendarResolver(), Clock, Microsoft.Extensions.Logging.Abstractions.NullLogger<ShiftManagementService>.Instance);
 
         _teamService.GetTeamsAsync(Arg.Any<CancellationToken>())

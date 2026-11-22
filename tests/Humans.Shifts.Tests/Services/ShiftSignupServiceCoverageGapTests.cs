@@ -49,7 +49,6 @@ public sealed class ShiftSignupServiceCoverageGapTests : ShiftsTestHarness
         var shiftMgmt = new ShiftManagementService(
             shiftRepo,
             AuditLog,
-            AdminAuthorization,
             serviceProvider,
             NewCalendarResolver(),
             Clock,
@@ -63,7 +62,6 @@ public sealed class ShiftSignupServiceCoverageGapTests : ShiftsTestHarness
             NewCalendarResolver(),
             AuditLog,
             _notificationService,
-            AdminAuthorization,
             serviceProvider,
             Clock,
             NullLogger<ShiftSignupService>.Instance,

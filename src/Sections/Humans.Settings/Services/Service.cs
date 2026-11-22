@@ -250,22 +250,6 @@ internal sealed class Service(
         return null;
     }
 
-    /// <inheritdoc />
-    public async Task<int> DeleteEventAsync(Guid id, CancellationToken cancellationToken = default)
-    {
-        int? deleted = null;
-        try
-        {
-            deleted = await repository.DeleteEventSettingsAsync(id, cancellationToken);
-            return deleted.Value;
-        }
-        finally
-        {
-            if (deleted is null or > 0)
-                await NotifyChangeListenersAsync([id]);
-        }
-    }
-
     /// <summary>
     /// Seeding writes notify too: a seeded event nobody is told about leaves caches holding the previous cycle's
     /// dates.
