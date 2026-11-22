@@ -6,7 +6,7 @@ Project: `src/Sections/Humans.HiEvents` — services under `Services/`. **No DbC
 section is the Hi.Events adapter behind Tickets' `ITicketCheckoutBackend` port; Tickets owns every order and ticket.
 Invariants: `Docs/HiEvents.md`.
 
-### HiEventsCheckoutBackend (typed HttpClient, Scoped)
+### HiEventsCheckoutBackend (typed HttpClient, transient; resolved as a scoped `ITicketCheckoutBackend`)
 
 No repository. Implements `ITicketCheckoutBackend` against the Nobodies fork of the Hi.Events API.
 

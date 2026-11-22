@@ -78,7 +78,7 @@ internal sealed class HiEventsCheckoutBackend : ITicketCheckoutBackend
             throw new TicketCheckoutException($"Hi.Events needs a numeric event id, got '{request.BackendEventRef}'.");
 
         var products = await GetProductsAsync(eventId, ct);
-        if (products.FirstOrDefault(p => p.ProductType is "TICKET" or "GENERAL" && p.IsHidden != true) is { } visible)
+        if (products.FirstOrDefault(IsVisibleCarrier) is { } visible)
         {
             throw new TicketCheckoutException(
                 $"Hi.Events product {visible.Id} on event {eventId} must be hidden, or it sells on the event's public page.");
@@ -128,9 +128,7 @@ internal sealed class HiEventsCheckoutBackend : ITicketCheckoutBackend
     public async Task<CheckoutStatus> GetStatusAsync(string backendOrderId, CancellationToken ct = default)
     {
         var (eventId, orderId) = ParseBackendOrderId(backendOrderId);
-
-        using var response = await _http.GetAsync($"events/{eventId}/orders/{orderId}", ct);
-        var order = await ReadOrderAsync(response, ct);
+        var order = await GetOrderAsync(eventId, orderId, ct);
 
         return new CheckoutStatus(
             State: ToState(order),
@@ -293,13 +291,13 @@ internal sealed class HiEventsCheckoutBackend : ITicketCheckoutBackend
             var products = await GetProductsAsync(eventId, ct);
             foreach (var type in new[] { "TICKET", "GENERAL" })
             {
-                var carriers = products.Where(p => string.Equals(p.ProductType, type, StringComparison.Ordinal)).ToList();
+                var carriers = CarriersOf(products, type);
                 findings.Add(carriers.Count == 1
                     ? new(true, $"One {type} carrier product found.")
                     : new(false, $"The event has {carriers.Count} {type} products; it needs exactly one."));
             }
 
-            var visible = products.Where(p => p.ProductType is "TICKET" or "GENERAL" && p.IsHidden != true).Select(p => p.Id).ToList();
+            var visible = products.Where(IsVisibleCarrier).Select(p => p.Id).ToList();
             if (visible.Count > 0)
                 findings.Add(new(false, $"Products {string.Join(", ", visible)} are visible and would sell on the event's public page; hide them."));
 
@@ -422,7 +420,7 @@ internal sealed class HiEventsCheckoutBackend : ITicketCheckoutBackend
     private static CheckoutOrderItem ToItem(CheckoutLine line, int eventId, IReadOnlyList<HiEventsProduct> products)
     {
         var productType = line.Kind == CheckoutLineKind.Ticket ? "TICKET" : "GENERAL";
-        var carriers = products.Where(p => string.Equals(p.ProductType, productType, StringComparison.Ordinal)).ToList();
+        var carriers = CarriersOf(products, productType);
         if (carriers.Count != 1)
         {
             throw new TicketCheckoutException(
@@ -434,6 +432,12 @@ internal sealed class HiEventsCheckoutBackend : ITicketCheckoutBackend
             Price: line.AmountMinor / 100m,
             Attendee: line.AttendeeName is null ? null : new CheckoutAttendee(line.AttendeeName));
     }
+
+    private static List<HiEventsProduct> CarriersOf(IReadOnlyList<HiEventsProduct> products, string productType) =>
+        products.Where(p => string.Equals(p.ProductType, productType, StringComparison.Ordinal)).ToList();
+
+    private static bool IsVisibleCarrier(HiEventsProduct product) =>
+        product.ProductType is "TICKET" or "GENERAL" && product.IsHidden != true;
 
     private async Task<HiEventsOrder> GetOrderAsync(int eventId, int orderId, CancellationToken ct)
     {
@@ -461,6 +465,11 @@ internal sealed class HiEventsCheckoutBackend : ITicketCheckoutBackend
     private static string ToLocale(string culture)
     {
         var language = culture.Split('-', 2)[0].ToLowerInvariant();
+        if (string.Equals(language, "ca", StringComparison.Ordinal))
+        {
+            return "es";
+        }
+
         return SupportedLocales.Contains(language) ? language : "en";
     }
 
