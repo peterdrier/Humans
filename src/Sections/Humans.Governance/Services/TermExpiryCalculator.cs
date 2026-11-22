@@ -17,8 +17,7 @@ internal static class TermExpiryCalculator
             .Where(a => a.Status == ApplicationStatus.Approved
                 && a.MembershipTier == currentTier
                 && a.TermExpiresAt is not null)
-            .OrderByDescending(a => a.TermExpiresAt)
-            .FirstOrDefault();
+            .MaxBy(a => a.TermExpiresAt);
         if (latestApprovedApp?.TermExpiresAt is null)
             return (null, false, false, hasPendingApplication);
 

@@ -178,7 +178,6 @@ internal static class AssemblyVoteCounting
 
         notes.Add(new AssemblyVoteNote(
             AssemblyVoteNoteKind.TieBrokenByAuthoredOrder, roundNumber, tied.Count));
-        return tied.OrderBy(k => authoredOrder.GetValueOrDefault(k, int.MaxValue), Comparer<int>.Default)
-            .First();
+        return tied.MinBy(k => authoredOrder.GetValueOrDefault(k, int.MaxValue))!;
     }
 }
