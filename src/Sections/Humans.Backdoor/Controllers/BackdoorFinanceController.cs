@@ -303,7 +303,7 @@ internal sealed class BackdoorFinanceController(
                         description = o.Description,
                         amount = o.Amount,
                     }),
-                    openTransfers = m.OpenTransfers.Select(Transfer),
+                    openTransfers = m.OpenTransfers.OrderBy(t => t.GeneratedAt).Select(Transfer),
                 }),
         });
 

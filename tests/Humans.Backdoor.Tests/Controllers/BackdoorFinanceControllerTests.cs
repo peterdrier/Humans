@@ -801,7 +801,8 @@ public class BackdoorFinanceControllerTests
         var warning = new ExpenseReconMember(member, "Ana", 41000001, -100m, -200m, 0m, -100m, 0, 1, [],
             [new ExpenseReconMovement(new LocalDate(2026, 10, 12), 12, "payment", "Compra  Hand", 200m)],
             ExpenseReconMemberStatus.Off,
-            [new ExpenseReconOpenTransfer(Guid.NewGuid(), "batch.xml", Instant.FromUtc(2026, 10, 18, 9, 0), 200m)]);
+            [new ExpenseReconOpenTransfer(Guid.NewGuid(), "later.xml", Instant.FromUtc(2026, 10, 19, 9, 0), 50m),
+                new ExpenseReconOpenTransfer(Guid.NewGuid(), "batch.xml", Instant.FromUtc(2026, 10, 18, 9, 0), 200m)]);
         _finance.GetExpenseReconAsync(2026, Arg.Any<CancellationToken>()).Returns(new ExpenseReconReport(
             2026, Instant.FromUtc(2026, 10, 29, 2, 45), null, [2026],
             [line with { ExpenseReportId = Guid.NewGuid(), LineId = Guid.NewGuid(), Status = ExpenseReconLineStatus.Booked,
@@ -828,6 +829,9 @@ public class BackdoorFinanceControllerTests
             .Should().Equal(9, 3);
         body.RootElement.GetProperty("members").EnumerateArray().Select(m => m.GetProperty("memberName").GetString())
             .Should().Equal("Ana", "Zed", "Aardvark");
+        foreach (var projectedMember in body.RootElement.GetProperty("members").EnumerateArray())
+            projectedMember.GetProperty("openTransfers").EnumerateArray().Select(t => t.GetProperty("fileName").GetString())
+                .Should().Equal("batch.xml", "later.xml");
     }
 
     private const string SpacedIban = "es79 2100 0813 6101 2345 6789";

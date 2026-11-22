@@ -239,7 +239,7 @@ internal static partial class ExpenseRecon
                     OtherMovements: other,
                     Status: status,
                     OpenTransfers: transfersByAccount[account].Where(t => !t.IsBooked)
-                        .OrderBy(t => t.GeneratedAt).Select(ToTransfer).ToList());
+                        .Select(ToTransfer).ToList());
             })
             .ToList();
     }

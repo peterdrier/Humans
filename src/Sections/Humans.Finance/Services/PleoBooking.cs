@@ -221,7 +221,7 @@ internal sealed partial class PleoBooking(
 
         return new PleoLedgerView(
             topUps, spend, duplicates,
-            unattributed.OrderBy(l => l.Date).ThenBy(l => l.EntryNumber).ToList(),
+            unattributed,
             RefundOrigins(spendEntries),
             waiting,
             Changes(s, spend, purchases, open, names),
@@ -352,7 +352,6 @@ internal sealed partial class PleoBooking(
         var readyByAccount = view.Spend.Where(r => r.State == PleoSpendState.Ready)
             .GroupBy(r => r.Account!.Value)
             .Select(g => new PleoAccountTotalVm(g.Key, names.GetValueOrDefault(g.Key, ""), g.Count(), g.Sum(r => r.Amount)))
-            .OrderBy(a => a.AccountNum)
             .ToList();
 
         return new PleoReconcileVm(

@@ -59,7 +59,7 @@
         }
     </text>;
     Func<ExpenseReconMember, IHtmlContent> openTransfersCell = @<text>
-        @foreach (var t in item.OpenTransfers)
+        @foreach (var t in item.OpenTransfers.OrderBy(transfer => transfer.GeneratedAt))
         {
             <div class="small"><a asp-action="Sepa">@t.FileName</a> · @t.Amount.ToEuro()</div>
         }

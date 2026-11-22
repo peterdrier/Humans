@@ -99,7 +99,7 @@
         <table class="table table-sm mb-0">
             <thead><tr><th class="ps-3">Date</th><th>Entry</th><th>Description</th><th class="text-end pe-3">Debit − credit</th></tr></thead>
             <tbody>
-                @foreach (var l in Model.View.Unattributed)
+                @foreach (var l in Model.View.Unattributed.OrderBy(line => line.Date).ThenBy(line => line.EntryNumber))
                 {
                     <tr>
                         <td class="ps-3">@Day(l.Date)</td>
@@ -279,7 +279,7 @@ else if (Model.NotConfigured is { } why)
             <div class="card-header">Ready, by Holded account (@Model.ReadyByAccount.Count account@(Model.ReadyByAccount.Count == 1 ? "" : "s"))</div>
             <table class="table table-sm mb-0">
                 <tbody>
-                    @foreach (var a in Model.ReadyByAccount)
+                    @foreach (var a in Model.ReadyByAccount.OrderBy(account => account.AccountNum))
                     {
                         <tr>
                             <td class="ps-3"><a href="/Holded/Accounts/@a.AccountNum">@a.AccountNum</a> <span class="text-muted">@a.Name</span></td>
