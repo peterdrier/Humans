@@ -1107,9 +1107,11 @@ public sealed class CampServiceTests : CampsTestHarness
         await _service.CloseSeasonAsync(e2026.Id, Guid.NewGuid(), ct);
 
         (await _service.GetSettingsAsync(ct)).OpenSeasons.Should().Equal(2027);
-        (await _service.GetRegistrationByEventAsync(ct)).Should().Equal(
-            new CampEventRegistration(e2027.Id, e2027.EventName, 2027, true),
-            new CampEventRegistration(e2026.Id, e2026.EventName, 2026, false));
+        (await _service.GetRegistrationByEventAsync(ct)).Should().BeEquivalentTo(new[]
+        {
+            new CampEventRegistration(e2027.Id, e2027.EventName, 2027, true) { GateOpeningDate = e2027.GateOpeningDate },
+            new CampEventRegistration(e2026.Id, e2026.EventName, 2026, false) { GateOpeningDate = e2026.GateOpeningDate }
+        });
     }
 
     [HumansFact]

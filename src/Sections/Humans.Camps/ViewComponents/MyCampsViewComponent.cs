@@ -20,6 +20,7 @@ public sealed class MyCampsViewComponent(ICampService campService, ILogger<MyCam
             // Open events plus the active one, latest gate opening first.
             var events = settings.Events
                 .Where(e => e.RegistrationOpen || e.EventSettingsId == settings.ActiveEventSettingsId)
+                .OrderByDescending(e => e.GateOpeningDate)
                 .ToList();
 
             var groups = new List<MyCampsEventGroup>();

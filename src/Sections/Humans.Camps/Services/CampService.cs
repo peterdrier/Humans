@@ -1471,12 +1471,12 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
         var rows = (await _repo.GetEventSettingsAsync(cancellationToken)).ToDictionary(r => r.EventSettingsId);
         return [.. (await _settingsService.GetAllEventSettingsAsync(cancellationToken))
             .Where(e => e.Status != EventSettingsStatus.Deleted)
-            .OrderByDescending(e => e.GateOpeningDate)
             .Select(e =>
             {
                 var row = rows.GetValueOrDefault(e.Id);
                 return new CampEventRegistration(e.Id, e.EventName, e.Year, row?.RegistrationOpen == true)
                 {
+                    GateOpeningDate = e.GateOpeningDate,
                     RegistrationInfo = row?.RegistrationInfo,
                 };
             })];
