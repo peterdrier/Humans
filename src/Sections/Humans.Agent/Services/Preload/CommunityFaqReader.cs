@@ -63,6 +63,7 @@ internal sealed class CommunityFaqReader(
             entries.Add(ParseIndexEntry(stem, body));
         }
 
+        cancellationToken.ThrowIfCancellationRequested();
         IReadOnlyList<IndexEntry> result = entries;
         lock (_cacheGate)
         {
@@ -124,6 +125,8 @@ internal sealed class CommunityFaqReader(
             entries.Add(ParseIndexEntry(stem, body));
         }
 
+        cancellationToken.ThrowIfCancellationRequested();
+
         // Stage every document before changing any cached body or index.
         lock (_cacheGate)
         {
@@ -149,6 +152,7 @@ internal sealed class CommunityFaqReader(
         try
         {
             var body = await source.GetMarkdownAsync(FolderPath, stem, cancellationToken);
+            cancellationToken.ThrowIfCancellationRequested();
             lock (_cacheGate)
             {
                 if (generation == _cacheGeneration)

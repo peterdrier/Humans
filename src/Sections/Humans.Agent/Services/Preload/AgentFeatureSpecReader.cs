@@ -46,6 +46,7 @@ internal sealed partial class AgentFeatureSpecReader(
         try
         {
             var (paths, isComplete) = await source.ListMarkdownPathsAsync(cancellationToken);
+            cancellationToken.ThrowIfCancellationRequested();
             var index = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
             foreach (var path in paths.Where(IsSpecPath))
             {
@@ -115,6 +116,7 @@ internal sealed partial class AgentFeatureSpecReader(
         try
         {
             var body = await source.GetMarkdownAsync(folderPath, canonicalStem, cancellationToken);
+            cancellationToken.ThrowIfCancellationRequested();
             cache.Set(cacheKey, body, HoldForever);
             return body;
         }

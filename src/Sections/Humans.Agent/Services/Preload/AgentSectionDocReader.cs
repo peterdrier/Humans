@@ -36,6 +36,7 @@ internal sealed class AgentSectionDocReader(
         {
             var body = await source.GetMarkdownAsync(
                 SectionProjectFolder(canonicalKey), canonicalKey, cancellationToken);
+            cancellationToken.ThrowIfCancellationRequested();
             cache.Set(cacheKey, body, HoldForever);
             return body;
         }

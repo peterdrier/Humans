@@ -36,6 +36,7 @@ internal sealed class AgentPreloadCorpusBuilder(
         }
 
         var (result, isComplete) = await BuildCorpusAsync(config, cancellationToken);
+        cancellationToken.ThrowIfCancellationRequested();
         lock (_cacheGate)
         {
             if (isComplete && generation == _cacheGeneration)
@@ -56,6 +57,7 @@ internal sealed class AgentPreloadCorpusBuilder(
             if (!isComplete) return false;
             corpora.Add(config, fresh);
         }
+        cancellationToken.ThrowIfCancellationRequested();
         lock (_cacheGate)
         {
             _cacheGeneration++;
