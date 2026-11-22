@@ -557,9 +557,7 @@ internal sealed class Service(
             var allOrders = new List<OrderDto>();
             foreach (var order in campOrdersBySeason[season.Id])
                 allOrders.Add(await MapOrderAsync(order, productNames, currentPrices, ct, season.Name));
-            var primary = allOrders
-                .OrderByDescending(o => o.BalanceEur)
-                .FirstOrDefault();
+            var primary = allOrders.MaxBy(o => o.BalanceEur);
             IReadOnlyList<OrderDto> orders = primary is null ? [] : [primary];
             counterparties.Add(new CounterpartyOrders(
                 OrderCounterpartyType.Camp,
