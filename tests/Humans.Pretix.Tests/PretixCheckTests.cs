@@ -35,7 +35,12 @@ public class PretixCheckTests
             .On("GET", Api, HttpStatusCode.OK, new { currency = "EUR", live = true, testmode = false })
             .On("GET", Api + "items/", HttpStatusCode.OK, new
             {
-                results = new[] { new { id = 1, internal_name = "humans-ticket" }, new { id = 2, internal_name = "humans-donation" } },
+                results = new[] { new { id = 1, internal_name = "humans-ticket" } },
+                next = $"https://pretix.test{Api}items/?page=2",
+            })
+            .On("GET", Api + "items/", HttpStatusCode.OK, new
+            {
+                results = new[] { new { id = 2, internal_name = "humans-donation" } },
             });
 
         var findings = await Create(pretix).CheckAsync("nowhere2027", Ct);

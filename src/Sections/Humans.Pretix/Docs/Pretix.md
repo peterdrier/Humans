@@ -66,6 +66,8 @@ None. The section owns no tables. pretix's order is the record of the payment; T
 - Backend setup checks propagate caller cancellation instead of reporting a vendor failure; independent transport timeouts remain diagnostic findings.
 - `ListOrdersAsync` pages through an event's orders created in the period (`created_since`/`created_before`), counts positions on any `humans-ticket` item (inactive ones too) as tickets, and reports the total with the adapter's refund fees added back, so it is what the order charged. An order whose confirmed and refunded payments cover that total reads Paid, whatever pretix's status (pretix cancels or reopens an order once a refund is processed, and keeps a late-paid one expired, while Tickets keeps it Paid), and reports what those payments received instead; refunded and disputed are the same as `GetStatusAsync` reports, so reconciliation and the order agree. `EventRefOf` reads the slug from the order id. `GetPaymentLedgerAsync` answers null: pretix takes payments through its own Stripe account, so its fees and payouts are not reconciled in Humans.
 
+- Checkout creation, setup checks and reconciliation read all carrier-item pages. Both item and order pagination reject repeated resolved page URLs and stop at 500 pages instead of looping indefinitely; an incomplete traversal throws rather than returning partial results.
+
 - API requests, including item and order pagination links, must stay on the configured `BaseUrl` origin (scheme, host and port). A different origin is refused before attaching the organizer token or sending a request; relative and same-origin absolute links remain supported.
 
 ## Negative Access Rules

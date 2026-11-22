@@ -75,8 +75,7 @@ internal sealed partial class PretixCheckoutBackend(
             throw new TicketCheckoutException(
                 $"pretix event {eventSlug} sells in {ev.Currency}, not {request.Currency}.");
 
-        var items = await SendAsync<PretixPage<PretixItem>>(
-            HttpMethod.Get, $"{EventPath(eventSlug)}items/?active=true", body: null, ct);
+        var items = await ReadAllPagesAsync<PretixItem>($"{EventPath(eventSlug)}items/?active=true", ct);
         var code = OrderCode(request.OrderId);
         var body = BuildOrderBody(request, code, CarrierItem(items, TicketItemName), CarrierItem(items, DonationItemName));
         var created = true;
@@ -332,11 +331,10 @@ internal sealed partial class PretixCheckoutBackend(
             if (details.Testmode)
                 findings.Add(new(false, "The event is in pretix test mode; whether payments are real depends on the Stripe keys set in pretix."));
 
-            var items = await SendAsync<PretixPage<PretixItem>>(
-                HttpMethod.Get, $"{EventPath(backendEventRef)}items/?active=true", body: null, ct);
+            var items = await ReadAllPagesAsync<PretixItem>($"{EventPath(backendEventRef)}items/?active=true", ct);
             foreach (var name in new[] { TicketItemName, DonationItemName })
             {
-                var count = items.Results.Count(i => string.Equals(i.InternalName, name, StringComparison.Ordinal));
+                var count = items.Count(i => string.Equals(i.InternalName, name, StringComparison.Ordinal));
                 findings.Add(count == 1
                     ? new(true, $"Carrier item {name} found.")
                     : new(false, $"The event has {count} active items with internal name {name}; it needs exactly one."));
@@ -368,26 +366,35 @@ internal sealed partial class PretixCheckoutBackend(
             throw new TicketCheckoutException("pretix needs the event's slug to list its orders.");
 
         // Inactive carriers too: an order keeps its item after the item is switched off.
-        var ticketItems = new HashSet<int>();
-        for (string? next = $"{EventPath(backendEventRef)}items/"; next is not null;)
+        var items = await ReadAllPagesAsync<PretixItem>($"{EventPath(backendEventRef)}items/", ct);
+        var ticketItems = items
+            .Where(i => string.Equals(i.InternalName, TicketItemName, StringComparison.Ordinal))
+            .Select(i => i.Id).ToHashSet();
+        var orders = await ReadAllPagesAsync<PretixOrder>(
+            $"{EventPath(backendEventRef)}orders/?created_since={Uri.EscapeDataString(InstantPattern.ExtendedIso.Format(from))}"
+            + $"&created_before={Uri.EscapeDataString(InstantPattern.ExtendedIso.Format(to))}&ordering=datetime", ct);
+        return orders.Select(order => Summarize(backendEventRef, order, ticketItems)).ToList();
+    }
+
+    private const int PageSafetyCap = 500;
+
+    private async Task<IReadOnlyList<T>> ReadAllPagesAsync<T>(string firstPath, CancellationToken ct)
+    {
+        var items = new List<T>();
+        var visited = new HashSet<Uri>();
+        var origin = new Uri(Settings.BaseUrl);
+        for (string? next = firstPath; next is not null;)
         {
-            var page = await SendAsync<PretixPage<PretixItem>>(HttpMethod.Get, next, body: null, ct);
-            ticketItems.UnionWith(page.Results
-                .Where(i => string.Equals(i.InternalName, TicketItemName, StringComparison.Ordinal)).Select(i => i.Id));
+            if (visited.Count == PageSafetyCap)
+                throw new HttpRequestException($"pretix pagination hit the {PageSafetyCap}-page safety cap.");
+            if (!visited.Add(new Uri(origin, next)))
+                throw new HttpRequestException("pretix pagination repeated a page.");
+
+            var page = await SendAsync<PretixPage<T>>(HttpMethod.Get, next, body: null, ct);
+            items.AddRange(page.Results);
             next = page.Next;
         }
-
-        var orders = new List<BackendOrderSummary>();
-        for (string? next = $"{EventPath(backendEventRef)}orders/?created_since={Uri.EscapeDataString(InstantPattern.ExtendedIso.Format(from))}"
-                 + $"&created_before={Uri.EscapeDataString(InstantPattern.ExtendedIso.Format(to))}&ordering=datetime";
-             next is not null;)
-        {
-            var page = await SendAsync<PretixPage<PretixOrder>>(HttpMethod.Get, next, body: null, ct);
-            orders.AddRange(page.Results.Select(order => Summarize(backendEventRef, order, ticketItems)));
-            next = page.Next;
-        }
-
-        return orders;
+        return items;
     }
 
     private BackendOrderSummary Summarize(string eventSlug, PretixOrder order, IReadOnlySet<int> ticketItems)
@@ -529,8 +536,8 @@ internal sealed partial class PretixCheckoutBackend(
         };
     }
 
-    private static int CarrierItem(PretixPage<PretixItem> items, string internalName) =>
-        items.Results.SingleOrDefault(i => string.Equals(i.InternalName, internalName, StringComparison.Ordinal))?.Id
+    private static int CarrierItem(IReadOnlyList<PretixItem> items, string internalName) =>
+        items.SingleOrDefault(i => string.Equals(i.InternalName, internalName, StringComparison.Ordinal))?.Id
         ?? throw new TicketCheckoutException(
             $"The pretix event has no active item with internal name '{internalName}' (see deploy/pretix/bootstrap.py).");
 
