@@ -381,7 +381,7 @@ internal sealed class Service(
         if (opposing.Count == 0)
             return null;
 
-        var largest = opposing.OrderByDescending(s => Math.Max(s.Debit, s.Credit)).First();
+        var largest = opposing.MaxBy(s => Math.Max(s.Debit, s.Credit))!;
         accountsByNumber.TryGetValue(largest.AccountNum, out var account);
         return new HoldedCounterparty(largest.AccountNum, account?.Name, opposing.Count);
     }

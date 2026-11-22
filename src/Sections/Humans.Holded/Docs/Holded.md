@@ -138,7 +138,7 @@ raw side (a debit line's counterparties are the entry's credit lines) — Holded
 return a contra account, so this is derived by grouping the mirror's lines on `EntryNumber`.
 Exactly one opposing line shows that account, linked; more than one (e.g. a purchase invoice:
 expense + VAT + creditor) shows the largest by absolute amount plus "+N more", linked to the
-entry page instead.
+entry page instead. The maximum is selected directly, retaining the first source leg on equal amounts.
 
 **Not this section:** budget attribution. Finance's account map (`/Finance/HoldedAccounts`) and
 unmatched queue (`/Finance/HoldedUnmatched`) read the purchase mirror through `IHoldedService` and
