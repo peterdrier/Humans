@@ -92,7 +92,8 @@ A task has:
 - **Title** and a Markdown **description**, shown with the shared Markdown renderer.
 - **Team**: stored as owner kind plus id (`Owner` in Base). `Team` is the only kind in the first version. Required. Only an active team that is not a system team can have tasks. When a team is switched off, its tasks stay as they are.
 - **Event**: optional. It is the event record in Settings, the one shift rotas point at, stored by id. A task without one is not tied to an event. The add form starts on the active event.
-- **Start** and **due**: each optional. Each is either a fixed date, or a number of days from the event's gate opening day. Day 0 is gate opening and days before it are negative, as in shifts. A relative date needs an event, so the event cannot be removed while a date is relative. Changing the event keeps the day numbers.
+- **Start** and **due**: each optional. Each is either fixed or relative. A fixed date is stored as the date. A relative date is stored as a number of days from the event's gate opening day: day 0 is gate opening and days before it are negative, as in shifts. A relative date needs an event, so the event cannot be removed while a date is relative. Changing the event keeps the day numbers.
+- Nobody counts days. The form asks "fixed or relative" and then offers a normal calendar either way. Someone picks 3 March, and for a relative date Tasks works out the day number. Every page shows real dates, worked out from the event.
 - **Status**: to do, in progress, blocked, done, cancelled. Blocked carries a required note saying what holds it up. The note is cleared when the task leaves Blocked.
 - **Priority**: `SlotPriority`, which lives in `Humans.Teams.Contracts` today. Tasks does its own "most needed first" ordering.
 - **Slots**: how many people it needs. 1 by default.
@@ -173,9 +174,11 @@ A hidden task is shown only to its team's managers, the people confirmed on it, 
 
 ### Bulk load
 
-One Backdoor endpoint takes a whole set of tasks, so an agent can load it with its person's key. Backdoor keys go to Admin and Board today. Whether `TasksAdmin` can get one is Peter's decision and not part of this design.
+One Backdoor endpoint takes a whole set of tasks, so an agent can load it with its person's key.
 
-- The payload is a list of tasks. Each has a key that only means something inside the payload, and dependencies name those keys, so no ids are needed up front. A task names its team by slug or id, its event by id, and each date as a fixed date or a day number. It carries no people and no status.
+Backdoor keys go only to Admin and Board today. Peter's direction is to open that up: someone who can manage tasks somewhere (`Tasks.Manage` on a team, or `TasksAdmin`) can go to `/Backdoor` and make a key. The key always acts as that person, with that person's rights. They see and reach only what they could use, so nothing admin-only, such as logs, is offered to them. Keys for people who are not Admin or Board are likely to be short-lived. Backdoor stays unadvertised. This opening-up comes from Peter's side, before the bulk-load PR. It is not Cupcake's to build.
+
+- The payload is a list of tasks. Each has a key that only means something inside the payload, and dependencies name those keys, so no ids are needed up front. A task names its team by slug or id, its event by id, and each date as a fixed date or a relative one. A relative date can be given as a day number or as a date, which Tasks turns into the day number. It carries no people and no status.
 - All or nothing. The whole payload is checked first and the answer lists every problem. A dry-run flag checks without creating.
 - Loading the same payload twice makes the tasks twice.
 - The caller needs `Tasks.Manage` on every team in the payload. The Backdoor controller checks that before it calls Tasks.
