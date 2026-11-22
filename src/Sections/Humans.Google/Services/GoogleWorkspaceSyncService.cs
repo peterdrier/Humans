@@ -866,8 +866,7 @@ internal sealed class GoogleWorkspaceSyncService(
         var activeResources = await resourceRepository.GetActiveByTeamIdAsync(teamId, cancellationToken);
         var existingGroup = activeResources
             .Where(r => r.ResourceType == GoogleResourceType.Group)
-            .OrderBy(r => r.ProvisionedAt)
-            .FirstOrDefault();
+            .MinBy(r => r.ProvisionedAt);
 
         if (team.GoogleGroupPrefix is null)
         {
