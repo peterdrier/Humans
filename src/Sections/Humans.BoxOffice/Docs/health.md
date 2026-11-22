@@ -49,7 +49,7 @@ Docs/                                    BoxOffice.md (invariants), data-access.
 - One adapter class per port, the same shape as the pretix and Hi.Events adapters. Its shapes
   share one Stripe client and one session read, so a split would add types and seams without
   removing a concept.
-- `BoxOfficeSettings` stays beside the adapter: internal, two fields.
+- `BoxOfficeSettings` stays beside the adapter: internal, bound in `Section.cs` and read only by the adapter.
 
 ## 4. Invariants
 
@@ -132,4 +132,4 @@ none
 
 | Run | Date | Headline | PR |
 |---|---|---|---|
-| 1 | 2026-11-21 | pending | pending |
+| 1 | 2026-11-21 | First doctor pass: the refund, cancel and checkout guards and the whole webhook path pinned by tests; BoxOffice.md and the comments brought back to the code | pending |
