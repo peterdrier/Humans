@@ -82,7 +82,7 @@
         {
             <fieldset class="col-12">
                 <legend class="form-label fs-6">@Localizer["Roles_Form_Permissions"]</legend>
-                @foreach (var permission in Model.Permissions)
+                @foreach (var permission in Model.Permissions.OrderBy(p => p.Title, StringComparer.OrdinalIgnoreCase))
                 {
                     <div class="form-check">
                         <input type="checkbox" class="form-check-input" id="perm-@id-@permission.Key" name="PermissionKeys" value="@permission.Key"

@@ -108,7 +108,6 @@ internal sealed class RoleService(
         return sectionPermissions
             .SelectMany(s => s.Permissions)
             .Where(p => p.OwnerKinds.Contains(owner.Kind, StringComparer.Ordinal) && (topLevel || !p.TopLevelOnly))
-            .OrderBy(p => p.Title, StringComparer.OrdinalIgnoreCase)
             .ToList();
     }
 
