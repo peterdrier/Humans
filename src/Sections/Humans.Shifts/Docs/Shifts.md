@@ -13,6 +13,9 @@
 
 Event shifts, rotas, signups, range blocks, event settings, general availability, per-event volunteer profiles.
 
+The admin dashboard's staffing card shows overall coverage totals and a placeholder linking to Shifts;
+it does not calculate or render a department breakdown.
+
 ## Concepts
 
 - A **Rota** is a named container for shifts, belonging to a department or sub-team and an event. Each rota has a period (Build, Event, Strike, or All) that determines whether its shifts are all-day or time-slotted and the allowed day-offset range for new shifts.
