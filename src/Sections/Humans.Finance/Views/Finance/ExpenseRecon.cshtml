@@ -126,7 +126,7 @@
 <div class="d-flex align-items-center gap-2 mb-3 flex-wrap">
     <span class="text-muted">Year:</span>
     <a asp-action="ExpenseRecon" class="btn btn-sm @(Model.Year is null ? "btn-secondary" : "btn-outline-secondary")">All</a>
-    @foreach (var y in Model.Years)
+    @foreach (var y in Model.Years.OrderDescending())
     {
         <a asp-action="ExpenseRecon" asp-route-year="@y"
            class="btn btn-sm @(Model.Year == y ? "btn-secondary" : "btn-outline-secondary")">@y</a>

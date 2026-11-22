@@ -236,7 +236,7 @@ internal sealed class BackdoorFinanceController(
             year = r.Year,
             mirrorSyncedAt = r.MirrorSyncedAt?.ToIso8601(),
             unavailableReason = r.UnavailableReason,
-            years = r.Years,
+            years = r.Years.OrderDescending().ToList(),
             totals = new
             {
                 reports = r.Totals.Reports,

@@ -107,7 +107,7 @@ internal static partial class ExpenseRecon
             MembersOff: members.Count(m => m.IsWarning));
 
         var years = allLines.Select(l => l.DocumentDate.Year).Concat(allOrphans.Select(o => o.Date.Year))
-            .Distinct().OrderDescending().ToList();
+            .Distinct().ToList();
 
         return new ExpenseReconReport(year, mirrorSyncedAt, null, years, lines, orphans, members, totals);
 
