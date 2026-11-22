@@ -11,8 +11,11 @@ namespace Humans.Shifts.Contracts;
 /// </summary>
 public interface IShiftService : IApplicationService
 {
-    /// <summary>Departments and sub-teams the user coordinates or manages.</summary>
-    Task<IReadOnlyList<Guid>> GetCoordinatorTeamIdsAsync(Guid userId, CancellationToken ct = default);
+    /// <summary>
+    /// Holds <see cref="ShiftsPermissions.Manage"/> or <see cref="ShiftsPermissions.Approve"/> on at least one team:
+    /// the gate for the shift pages that aren't about one team.
+    /// </summary>
+    Task<bool> CanManageOrApproveAnyShiftsAsync(Guid userId, CancellationToken ct = default);
 
     /// <summary>
     /// At most <paramref name="max"/> highest-scoring volunteer-visible rotas in the active event, matched by name.

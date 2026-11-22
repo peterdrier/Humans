@@ -31,7 +31,7 @@ public sealed class ProfileShiftsViewComponentTests
     public ProfileShiftsViewComponentTests()
     {
         _users.GetUserInfoAsync(_viewerId, Arg.Any<CancellationToken>()).Returns(MakeUserInfo(_viewerId));
-        _shifts.GetCoordinatorTeamIdsAsync(_viewerId, Arg.Any<CancellationToken>()).Returns([]);
+        _shifts.CanManageOrApproveAnyShiftsAsync(_viewerId, Arg.Any<CancellationToken>()).Returns(false);
         _signups.GetNoShowHistoryAsync(_targetId, Arg.Any<CancellationToken>()).Returns([]);
         _teams.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo>());
     }
@@ -45,7 +45,7 @@ public sealed class ProfileShiftsViewComponentTests
         ProfileCardViewMode viewMode, bool coordinator, bool shown)
     {
         if (coordinator)
-            _shifts.GetCoordinatorTeamIdsAsync(_viewerId, Arg.Any<CancellationToken>()).Returns([Guid.NewGuid()]);
+            _shifts.CanManageOrApproveAnyShiftsAsync(_viewerId, Arg.Any<CancellationToken>()).Returns(true);
         // The Public + not-coordinator row is the privileged approver.
         var sut = Build(privileged: viewMode == ProfileCardViewMode.Public);
 

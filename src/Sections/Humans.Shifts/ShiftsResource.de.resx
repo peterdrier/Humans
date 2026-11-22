@@ -1315,4 +1315,8 @@
   </data>
   <data name="Shifts_Search_Category" xml:space="preserve"><value>Schichten</value></data>
   <data name="Shifts_NameRequiredBeforeShifts" xml:space="preserve"><value>Füge zuerst deinen Namen hinzu — wir brauchen ihn, bevor du dich für Schichten anmelden kannst.</value></data>
+  <data name="Shifts_Permission_Manage_Title" xml:space="preserve"><value>Schichten verwalten</value></data>
+  <data name="Shifts_Permission_Manage_Blurb" xml:space="preserve"><value>Dienstpläne und Schichten des Teams anlegen und bearbeiten und seinen Freiwilligen schreiben.</value></data>
+  <data name="Shifts_Permission_Approve_Title" xml:space="preserve"><value>Anmeldungen freigeben</value></data>
+  <data name="Shifts_Permission_Approve_Blurb" xml:space="preserve"><value>Anmeldungen für die Schichten des Teams freigeben, ablehnen und Freiwillige einteilen.</value></data>
 </root>

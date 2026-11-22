@@ -29,7 +29,8 @@ internal sealed class RoleService(
     IRoleAssignmentService systemRoles,
     IAuditLogService audit,
     IClock clock,
-    IStringLocalizer<RolesResource> localizer) : IRoleManagementService
+    IStringLocalizer<RolesResource> localizer,
+    IStringLocalizerFactory localizers) : IRoleManagementService
 {
     internal const string ExportSection = "Roles";
     internal const string AuditEntityType = "Role";
@@ -108,7 +109,8 @@ internal sealed class RoleService(
         return sectionPermissions
             .SelectMany(s => s.Permissions)
             .Where(p => p.OwnerKinds.Contains(owner.Kind, StringComparer.Ordinal) && (topLevel || !p.TopLevelOnly))
-            .OrderBy(p => p.Title, StringComparer.OrdinalIgnoreCase)
+            .Select(p => p with { Title = Title(p), Blurb = localizers.Create(p.Resource)[p.Blurb].Value })
+            .OrderBy(p => p.Title, StringComparer.CurrentCultureIgnoreCase)
             .ToList();
     }
 
@@ -383,9 +385,9 @@ internal sealed class RoleService(
             if (!catalog.TryGetValue(key, out var permission))
                 return T("Roles_Refusal_UnknownPermission", key);
             if (!permission.OwnerKinds.Contains(ownerKind, StringComparer.Ordinal))
-                return T("Roles_Refusal_PermissionNotHere", permission.Title);
+                return T("Roles_Refusal_PermissionNotHere", Title(permission));
             if (permission.TopLevelOnly && owner.ParentId is not null)
-                return T("Roles_Refusal_PermissionTopLevel", permission.Title);
+                return T("Roles_Refusal_PermissionTopLevel", Title(permission));
         }
 
         return null;
@@ -445,6 +447,8 @@ internal sealed class RoleService(
     private static RoleResult Refuse(string refusal) => new(Refusal: refusal);
 
     private string T(string key, params object[] args) => localizer[key, args].Value;
+
+    private string Title(Permission permission) => localizers.Create(permission.Resource)[permission.Title].Value;
 
     internal static RoleInfo ToInfo(Role role) => new(
         role.Id,

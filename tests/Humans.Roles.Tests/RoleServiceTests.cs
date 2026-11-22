@@ -38,10 +38,10 @@ public sealed class RoleServiceTests
     ];
 
     private static readonly Permission ShiftsManage = new(
-        "Shifts.Manage", "Manage shifts", "", [Team], TopLevelOnly: false, AdminRoles: []);
+        "Shifts.Manage", "Manage shifts", "", [Team], TopLevelOnly: false, AdminRoles: [], typeof(RolesResource));
 
     private static readonly Permission BudgetEdit = new(
-        "Budget.Edit", "Edit the budget", "", [Team], TopLevelOnly: true, AdminRoles: []);
+        "Budget.Edit", "Edit the budget", "", [Team], TopLevelOnly: true, AdminRoles: [], typeof(RolesResource));
 
     private readonly Guid _actor = Guid.NewGuid();
     private readonly FakeRepository _repository = new();
@@ -61,7 +61,8 @@ public sealed class RoleServiceTests
             _systemRoles,
             Substitute.For<IAuditLogService>(),
             new FakeClock(Instant.FromUtc(2026, 11, 21, 12, 0)),
-            new KeyLocalizer());
+            new KeyLocalizer(),
+            new KeyLocalizerFactory());
     }
 
     public static TheoryData<string, string, bool> ManageCases => new()
@@ -309,6 +310,13 @@ public sealed class RoleServiceTests
         public LocalizedString this[string name, params object[] arguments] => new(name, name);
 
         public IEnumerable<LocalizedString> GetAllStrings(bool includeParentCultures) => [];
+    }
+
+    private sealed class KeyLocalizerFactory : IStringLocalizerFactory
+    {
+        public IStringLocalizer Create(Type resourceSource) => new KeyLocalizer();
+
+        public IStringLocalizer Create(string baseName, string location) => new KeyLocalizer();
     }
 
     private sealed class Declares(params Permission[] permissions) : ISectionPermissions

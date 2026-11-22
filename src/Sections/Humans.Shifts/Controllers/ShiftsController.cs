@@ -47,8 +47,7 @@ internal sealed class ShiftsController(
         var es = await burnSettings.GetActiveAsync(HttpContext.RequestAborted);
         if (es is null) return View("NoActiveEvent");
 
-        var isPrivileged = ShiftsRoles.IsPrivilegedSignupApprover(User) ||
-                           (await shiftMgmt.GetCoordinatorTeamIdsAsync(user.Id, HttpContext.RequestAborted)).Count > 0;
+        var isPrivileged = await shiftMgmt.CanManageOrApproveAnyShiftsAsync(user.Id, HttpContext.RequestAborted);
 
         var userView = await shiftView.GetUserAsync(user.Id, HttpContext.RequestAborted);
         var userSignups = userView.Signups;

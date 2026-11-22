@@ -13,13 +13,13 @@ public sealed class PermissionServiceTests
     private const string Team = "Team";
 
     private static readonly Permission ShiftsManage = new(
-        "Shifts.Manage", "Manage shifts", "", [Team], TopLevelOnly: false, AdminRoles: ["ShiftsAdmin"]);
+        "Shifts.Manage", "Manage shifts", "", [Team], TopLevelOnly: false, AdminRoles: ["ShiftsAdmin"], typeof(PermissionServiceTests));
 
     private static readonly Permission TeamsManage = new(
-        "Teams.Manage", "Manage the team", "", [Team], TopLevelOnly: false, AdminRoles: ["TeamsAdmin"]);
+        "Teams.Manage", "Manage the team", "", [Team], TopLevelOnly: false, AdminRoles: ["TeamsAdmin"], typeof(PermissionServiceTests));
 
     private static readonly Permission BudgetEdit = new(
-        "Budget.Edit", "Edit the budget", "", [Team], TopLevelOnly: true, AdminRoles: ["FinanceAdmin"]);
+        "Budget.Edit", "Edit the budget", "", [Team], TopLevelOnly: true, AdminRoles: ["FinanceAdmin"], typeof(PermissionServiceTests));
 
     // Production (department) > Cantina, Power (projects). Art is another department.
     private static readonly Guid Production = Guid.NewGuid();

@@ -1,3 +1,5 @@
+using Humans.Permissions.Contracts;
+using Humans.Base.Authorization;
 using Humans.Shifts.Services.Dtos;
 using Microsoft.Extensions.DependencyInjection;
 using System.Globalization;
@@ -64,6 +66,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         recipients.Should().BeEquivalentTo(notice == CanonicalNotice.CoverageGap ? new[] { live, other } : [live]);
     }
 
+    private readonly IPermissionService _permissions = Substitute.For<IPermissionService>();
     private readonly ShiftManagementService _shiftMgmt;
     private readonly ShiftRepository _repo;
     private readonly ShiftSignupService _service;
@@ -85,6 +88,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
             .With(_teamService)
             .With(_teamService)
             .With(_roleAssignmentService)
+            .With(_permissions)
             .With<ITicketService>()
             .With(_users)
             .With<ICampService>()
@@ -645,7 +649,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         Saved(result).ReviewedAt.Should().BeNull();
         if (range) Saved(result).SignupBlockId.Should().NotBeNull();
         else Saved(result).SignupBlockId.Should().BeNull();
-        await _teamService.Received(1).GetUserCoordinatedTeamIdsAsync(userId, Arg.Any<CancellationToken>());
+        await _permissions.Received(1).HasAsync(userId, ShiftsPermissions.Approve, Arg.Any<Owner>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -773,9 +777,9 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
             shift = SeedAllDayShift(rota, 1);
         }
         var userId = Guid.NewGuid();
-        // Coordinating another department grants no access to this hidden rota.
-        _teamService.GetUserCoordinatedTeamIdsAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(new List<Guid> { Guid.NewGuid() });
+        // Approving on another department grants no access to this hidden rota.
+        _permissions.HasAsync(userId, ShiftsPermissions.Approve, new Owner(TeamOwner.Kind, Guid.NewGuid()), Arg.Any<CancellationToken>())
+            .Returns(true);
         await SaveAllAsync(TestContext.Current.CancellationToken);
 
         var result = path switch
@@ -808,8 +812,8 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         }
         var userId = Guid.NewGuid();
         if (departmentCoordinator)
-            _teamService.GetUserCoordinatedTeamIdsAsync(userId, Arg.Any<CancellationToken>())
-                .Returns(new List<Guid> { rota.TeamId });
+            _permissions.HasAsync(userId, ShiftsPermissions.Approve, new Owner(TeamOwner.Kind, rota.TeamId), Arg.Any<CancellationToken>())
+                .Returns(true);
         var flags = departmentCoordinator ? ShiftSignupRequestFlags.None : ShiftSignupRequestFlags.Privileged;
         await SaveAllAsync(TestContext.Current.CancellationToken);
 
@@ -819,8 +823,8 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
 
         result.Success.Should().BeTrue();
         (await ShiftsDb.ShiftSignups.CountAsync(TestContext.Current.CancellationToken)).Should().Be(1);
-        await _teamService.Received(departmentCoordinator ? 1 : 0)
-            .GetUserCoordinatedTeamIdsAsync(userId, Arg.Any<CancellationToken>());
+        await _permissions.Received(departmentCoordinator ? 1 : 0)
+            .HasAsync(userId, ShiftsPermissions.Approve, Arg.Any<Owner>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -946,6 +950,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         var signup = SeedSignup(Guid.NewGuid(), shift.Id, SignupStatus.Pending);
         var reviewerId = Guid.NewGuid();
         _roleAssignmentService.HasActiveRoleAsync(reviewerId, RoleNames.Admin).Returns(true);
+        _permissions.HasAsync(reviewerId, ShiftsPermissions.Approve, Arg.Any<Owner>(), Arg.Any<CancellationToken>()).Returns(true);
         await SaveAllAsync(TestContext.Current.CancellationToken);
 
         var result = await _service.ApproveAsync(signup.Id, reviewerId);
@@ -968,8 +973,8 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         var userId = Guid.NewGuid();
         var signup = SeedSignup(userId, shift.Id, SignupStatus.Confirmed);
         await SaveAllAsync(TestContext.Current.CancellationToken);
-        _teamService.GetUserCoordinatedTeamIdsAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(Task.FromException<IReadOnlyList<Guid>>(new IOException("Permission lookup unavailable")));
+        _permissions.HasAsync(userId, Arg.Any<string>(), Arg.Any<Owner>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<bool>(new IOException("Permission lookup unavailable")));
 
         var result = await _service.BailAsync(signup.Id, userId, "Can't make it");
 
@@ -2052,8 +2057,8 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
             signup.SignupBlockId = blockId;
         }
         await SaveAllAsync(TestContext.Current.CancellationToken);
-        _teamService.GetUserCoordinatedTeamIdsAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(Task.FromException<IReadOnlyList<Guid>>(new IOException("Permission lookup unavailable")));
+        _permissions.HasAsync(userId, Arg.Any<string>(), Arg.Any<Owner>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<bool>(new IOException("Permission lookup unavailable")));
 
         await _service.BailRangeAsync(blockId, userId);
 
