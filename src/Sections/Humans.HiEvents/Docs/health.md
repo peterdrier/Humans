@@ -43,7 +43,7 @@ has; the wire records stay private inside the adapter so the Hi.Events payload s
 - No order is created in Hi.Events unless the event id is numeric
   (`src/Sections/Humans.HiEvents/Services/HiEventsCheckoutBackend.cs:77`), no carrier is visible
   (`src/Sections/Humans.HiEvents/Services/HiEventsCheckoutBackend.cs:81`), and each line finds exactly
-  one carrier of its kind (`src/Sections/Humans.HiEvents/Services/HiEventsCheckoutBackend.cs:426`).
+  one carrier of its kind (`src/Sections/Humans.HiEvents/Services/HiEventsCheckoutBackend.cs:424`).
 - A retried create cannot make a second order: the Humans order id is the `external_reference`
   (`src/Sections/Humans.HiEvents/Services/HiEventsCheckoutBackend.cs:89`).
 - An order Hi.Events would charge differently is refused: wrong currency
@@ -51,32 +51,32 @@ has; the wire records stay private inside the adapter so the Hi.Events payload s
   sum of the lines (`src/Sections/Humans.HiEvents/Services/HiEventsCheckoutBackend.cs:116`).
 - Hi.Events mails nobody: checkout sends `SendBuyerEmails: false`
   (`src/Sections/Humans.HiEvents/Services/HiEventsCheckoutBackend.cs:97`) and refunds
-  `NotifyBuyer: false` (`src/Sections/Humans.HiEvents/Services/HiEventsCheckoutBackend.cs:151`).
+  `NotifyBuyer: false` (`src/Sections/Humans.HiEvents/Services/HiEventsCheckoutBackend.cs:149`).
 - A retried refund cannot refund twice: the Humans refund id is the idempotency key
-  (`src/Sections/Humans.HiEvents/Services/HiEventsCheckoutBackend.cs:153`); a 422 is a refund that did
-  not happen (`src/Sections/Humans.HiEvents/Services/HiEventsCheckoutBackend.cs:158`); an unnamed or
+  (`src/Sections/Humans.HiEvents/Services/HiEventsCheckoutBackend.cs:151`); a 422 is a refund that did
+  not happen (`src/Sections/Humans.HiEvents/Services/HiEventsCheckoutBackend.cs:156`); an unnamed or
   unknown refund answer throws so Tickets keeps it pending
-  (`src/Sections/Humans.HiEvents/Services/HiEventsCheckoutBackend.cs:168`,
-  `src/Sections/Humans.HiEvents/Services/HiEventsCheckoutBackend.cs:175`).
+  (`src/Sections/Humans.HiEvents/Services/HiEventsCheckoutBackend.cs:166`,
+  `src/Sections/Humans.HiEvents/Services/HiEventsCheckoutBackend.cs:173`).
 - A paid order or one with a payment on its way is never cancelled
-  (`src/Sections/Humans.HiEvents/Services/HiEventsCheckoutBackend.cs:186`,
-  `src/Sections/Humans.HiEvents/Services/HiEventsCheckoutBackend.cs:188`), and cancelling never
-  refunds (`src/Sections/Humans.HiEvents/Services/HiEventsCheckoutBackend.cs:195`).
+  (`src/Sections/Humans.HiEvents/Services/HiEventsCheckoutBackend.cs:184`,
+  `src/Sections/Humans.HiEvents/Services/HiEventsCheckoutBackend.cs:186`), and cancelling never
+  refunds (`src/Sections/Humans.HiEvents/Services/HiEventsCheckoutBackend.cs:193`).
 - A payment on its way (`payment_processing_at` set) is `Processing` whatever the hold says
-  (`src/Sections/Humans.HiEvents/Services/HiEventsCheckoutBackend.cs:395`); an unknown order status or
+  (`src/Sections/Humans.HiEvents/Services/HiEventsCheckoutBackend.cs:393`); an unknown order status or
   an unreadable `reserved_until` throws rather than guessing
-  (`src/Sections/Humans.HiEvents/Services/HiEventsCheckoutBackend.cs:399`,
-  `src/Sections/Humans.HiEvents/Services/HiEventsCheckoutBackend.cs:402`).
+  (`src/Sections/Humans.HiEvents/Services/HiEventsCheckoutBackend.cs:397`,
+  `src/Sections/Humans.HiEvents/Services/HiEventsCheckoutBackend.cs:400`).
 - A partial order list is never taken for the whole: a page without paging throws
-  (`src/Sections/Humans.HiEvents/Services/HiEventsCheckoutBackend.cs:348`), and a distinct count other
-  than Hi.Events' total throws (`src/Sections/Humans.HiEvents/Services/HiEventsCheckoutBackend.cs:363`).
+  (`src/Sections/Humans.HiEvents/Services/HiEventsCheckoutBackend.cs:346`), and a distinct count other
+  than Hi.Events' total throws (`src/Sections/Humans.HiEvents/Services/HiEventsCheckoutBackend.cs:361`).
 - The webhook changes nothing and trusts nothing unsigned: 503 without a secret
   (`src/Sections/Humans.HiEvents/Controllers/HiEventsWebhookController.cs:29`), 401 on a bad signature
   (`src/Sections/Humans.HiEvents/Controllers/HiEventsWebhookController.cs:41`), a constant-time compare
   (`src/Sections/Humans.HiEvents/Services/HiEventsWebhookSignature.cs:12`), and only `order.*` events
   reach Tickets (`src/Sections/Humans.HiEvents/Services/HiEventsWebhookSignature.cs:26`).
 - Secrets never show: `Setup` gives the key and secret no value
-  (`src/Sections/Humans.HiEvents/Services/HiEventsCheckoutBackend.cs:225`).
+  (`src/Sections/Humans.HiEvents/Services/HiEventsCheckoutBackend.cs:223`).
 
 ## Seams
 
@@ -114,3 +114,4 @@ has; the wire records stay private inside the adapter so the Hi.Events payload s
 
 | Run | Date | Headline | PR |
 |---|---|---|---|
+| section-doctor | 2026-11-22 | First doctoring: webhook and money-guard tests, offline-payment and lifetime doc fixes, one carrier rule | pending |
