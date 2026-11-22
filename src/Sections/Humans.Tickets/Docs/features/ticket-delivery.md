@@ -20,7 +20,7 @@ so every named person gets their own ticket by email, and can open it in Humans 
 | `ticket_join_invitation` | each holder of an adult or companion ticket with an account | VolunteerUpdates (opt-out honoured, never locked) | two days later, only if the ticket is still `Valid` |
 | `ticket_payment_ended` | the buyer | System | when a checkout that reached its backend ends `Failed` (declined) or `Expired` (lapsed unpaid), with a link to try again (B16, B17) |
 | `ticket_resale_sold` | the holder of a resold ticket | System | at the sale; says the refund follows in the evening batch (H11) |
-| `ticket_resale_unsold` | the holder whose offer is still open at sales close | System | once; no refund, the ticket still admits them (H12) |
+| `ticket_resale_unsold` | the holder whose offer is still open at sales close, unless the event was cancelled | System | once; no refund, the ticket still admits them (H12) |
 | `ticket_issued` again | the holder of a renamed ticket | System | after a team rename, with fresh ids (H14) |
 
 - **Ticket email:** one card per ticket (the holder's, then any child riding on it): event, holder name, ticket kind, the QR code of the ticket's `Barcode` (the code the gate scans),

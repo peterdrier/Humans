@@ -669,7 +669,9 @@ internal sealed partial class TicketCheckoutService
         var now = clock.GetCurrentInstant();
         foreach (var salesEvent in await repository.GetSalesEventsAsync(ct))
         {
-            var closed = salesEvent.Mode == TicketSalesMode.Closed || (salesEvent.SalesCloseAt is { } close && now >= close);
+            // A cancelled event is closed too, but its holders are refunded by the cancel sweep, not told there is no refund.
+            var closed = salesEvent.CancelledAt is null
+                && (salesEvent.Mode == TicketSalesMode.Closed || (salesEvent.SalesCloseAt is { } close && now >= close));
             foreach (var offer in await repository.GetOffersForSalesEventAsync(salesEvent.Id, ct))
             {
                 if (closed && offer is { State: TicketResaleOfferState.Open, UnsoldNotifiedAt: null }
