@@ -34,7 +34,7 @@ internal static class AdminNavItems
         var groups = AdminNavComposition.Compose(navContributors);
         var location = AdminNavComposition.Locate(groups,
             (string?)component.RouteData.Values["controller"], (string?)component.RouteData.Values["action"],
-            component.ViewData[AdminNavComposition.ParentKey] as string);
+            component.ViewData[AdminNavComposition.ParentKey] as string, component.RouteData.Values);
 
         var rows = new List<AdminSidebarGroupViewModel>(groups.Count);
         foreach (var group in groups)

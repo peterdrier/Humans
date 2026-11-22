@@ -31,6 +31,16 @@ internal sealed record CampaignEditSnapshot(
     string? ReplyToAddress,
     CampaignStatus Status);
 
+internal sealed record CampaignGrantSummary(
+    Guid Id,
+    Guid CampaignId,
+    string CampaignTitle,
+    Guid CampaignCodeId,
+    string Code,
+    Guid UserId,
+    Instant AssignedAt,
+    Instant? RedeemedAt);
+
 internal sealed record CampaignAdminSummary(
     Guid Id,
     string Title,
@@ -83,4 +93,5 @@ internal sealed record CampaignSendWaveResult(
     string? ErrorKey = null,
     int SentCount = 0,
     int CodesNeeded = 0,
-    int CodesAvailable = 0);
+    int CodesAvailable = 0,
+    int EnqueueFailedCount = 0);

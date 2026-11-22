@@ -11,15 +11,16 @@ public interface IContactFieldService
 
     /// <summary>Every field, for the owner's editor.</summary>
     Task<IReadOnlyList<ContactFieldEditDto>> GetAllContactFieldsAsync(
-        Guid profileId,
+        Guid userId,
         CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Validates phone prefixes before any write, returning a structured refusal on invalid input.
     /// Upserts and deletes the current fields. Historical email fields stay unless listed in
     /// <paramref name="removedLegacyContactFieldIds"/>.
     /// </summary>
-    Task SaveContactFieldsAsync(
-        Guid profileId,
+    Task<ProfileEditResult> SaveContactFieldsAsync(
+        Guid userId,
         IReadOnlyList<ContactFieldEditDto> fields,
         CancellationToken cancellationToken = default,
         IReadOnlyCollection<Guid>? removedLegacyContactFieldIds = null);

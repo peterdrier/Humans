@@ -26,13 +26,13 @@ audited and the affected coordinators are notified.
 | **Describe the work** — rota/shift CRUD, bulk generation, tag labels, move rota between departments | `ShiftAdminController` (`/Teams/{slug}/Shifts/*`), `IShiftManagement` create/update/delete/generate/tag/move, `IShiftSeeding` | Development seeder only (`IShiftSeeding`) |
 | **Take a slot** — self sign-up (single, range, per-day toggle) and bail; policy gates: browsing open, EE freeze, name/dietary completeness, capacity, overlap | `ShiftsController` `ToggleDay`/`Bail`/`BailRange`, `IShiftSignups.SignUp*`/`Bail`, `ShiftSignupService` | Onboarding wizard, Agent |
 | **Review a slot** — approve/refuse/no-show/remove/voluntell, single and block | `ShiftAdminController` signups/voluntell routes, `ShiftDashboardController.Voluntell`, `IShiftSignupService` review methods, `IShiftSignups.Voluntell/Refuse` | Agent (voluntell) |
-| **Look at the schedule** — browse, mine, urgent, staffing snapshot, summary-by-camp, per-user/per-rota projections, search hit | `GET /Shifts`, `/Shifts/Mine`, `/Shifts/Summary*`, `IShiftService`, `IShiftView`/`IShiftRowView`, `<vc:shifts-search-result>`, `<vc:dashboard-shifts>`, `<vc:shifts-gallery>`, `<vc:shift-signups>`, `<vc:onboarding-shifts-list>` | Search, Teams, Tickets, Store, Cantina, Gate, MailerLite, Camps, Events, Users, Scanner, Surveys |
+| **Look at the schedule** — browse, mine, urgent, staffing snapshot, summary-by-camp, per-user/per-rota projections, search hit | `GET /Shifts`, `/Shifts/Mine`, `/Shifts/Summary*`, `IShiftService`, `IShiftView`/`IShiftRowView`, `<vc:shifts-search-result>`, `<vc:dashboard-shifts>`, `<vc:shifts-gallery>`, `<vc:shift-signups>`, Onboarding's `IOnboardingShiftsStep` slot | Search, Teams, Tickets, Store, Cantina, Gate, MailerLite, Camps, Events, Users, Scanner, Surveys |
 | **The event calendar** — active event settings, build sub-periods, EE close, browsing toggle | `GET/POST /Shifts/Settings`, `IBurnSettingsService`/`BurnSettingsInfo`, `BuildSubPeriodClassifier` | Every section that needs "which year / which day offset is today" (Events, Camps, Tickets, Notifications, Settings, …) |
 | **Who I am as a volunteer** — shift profile, tag preferences, general availability | `ShiftProfileController` (`/Shifts/ShiftInfo`), `POST /Shifts/Preferences/Tags`, `POST /Shifts/Mine/Availability`, `IShiftVolunteerProfiles`, `IVolunteerTrackingManagement.SetAvailabilityAsync` | Users (profile page), Onboarding |
 | **Coordinator analytics** — overview, activity, trends, heatmap, daily staffing, duration breakdown, coverage pies, post-event stats, workload | `ShiftDashboardController`, `ShiftWorkloadAdminController`, `IShiftManagement` analytics methods, `IWorkloadService` | none |
 | **Build-week tracking** — availability grid, day-off, camp-set-up marker, xlsx export, profile build strip, EE derivation | `VolunteerTrackingController`, `IVolunteerTrackingManagement`, `IVolunteerTrackingExportService`, `IVolunteerTrackingService`, `IEarlyEntryProvider` | Users (build strip), EarlyEntry (provider) |
 | **Tell people** — rota / team-rota coordinator email | `ShiftAdminController` `Email` routes, `IRotaCoordinatorMessageService` | none |
-| **Housekeeping** — GDPR export/delete, account merge re-FK, iCal feed, cache eviction, orphan scan | `IUserDataContributor`, `IUserMerge`, `ICalendarFeedContributor`, `GET /Shifts/OrphanSignups` | Gdpr, Users (merge, deletion), Calendar |
+| **Housekeeping** — GDPR export/delete, account merge re-FK, iCal feed, cache eviction | `IUserDataContributor`, `IUserMerge`, `ICalendarFeedContributor` | Gdpr, Users (merge, deletion), Calendar |
 
 ## 3. Structure
 
@@ -43,7 +43,7 @@ The shapes imply:
   (availability, build status).
 - Three owning services, each one shape family: **management** (describe the work + the event
   calendar + analytics), **signups** (take + review a slot), **tracking** (build-week tracking).
-  Cross-section reads through `.Contracts` leaf interfaces only; the full interfaces stay
+  Cross-section reads through the public `Contracts/` interfaces only; the full interfaces stay
   `internal`.
 - Analytics is the largest shape with no external caller. Its natural home is a fourth
   internal service (`WorkloadService` is already that shape for one report) so
@@ -62,8 +62,7 @@ The shapes imply:
 
 - Signup state machine on the entity: Pending → Confirmed/Refused/Bailed/Cancelled; Confirmed →
   Bailed/NoShow/Cancelled. Any other transition throws.
-- `MaxVolunteers` is a hard ceiling on every confirming path (sign-up, approve, voluntell,
-  approve-range). `MinVolunteers ≤ MaxVolunteers` on every create/update/generate path.
+- `MaxVolunteers` is a hard ceiling on every confirming path; approving a full shift refuses it. `MinVolunteers ≤ MaxVolunteers` on every create/update/generate path.
 - A block (`SignupBlockId`) is bailed / approved / refused as one.
 - Rotas are created only against an event Settings knows about, and only on non-system
   teams; a rota moves only to a top-level non-system department.
@@ -74,44 +73,39 @@ The shapes imply:
   Confirmed signup of the same user; all-day means 08:00–18:00 local.
 - Every signup state change writes one audit entry and one coordinator notification; a
   bail/remove that drops a shift below `MinVolunteers` raises a coverage-gap notification.
-- Medical data is gated at every render, never stripped in a service; only Admin/NoInfoAdmin
-  see it.
+- Shifts holds no health data; medical conditions are Users', food answers Cantina's.
 - Deleting a rota or shift with a Confirmed signup is refused; pending signups are Cancelled.
-- Every mutation evicts the per-user / per-rota view cache and, for signups, the dashboard
-  aggregates.
+- Every mutation reloads the touched rotas in the rota cache; dashboards and user views read
+  those rows, so nothing else needs evicting.
 
 ## 5. Seams
 
 - **Event settings cutover** (nobodies-collective/Humans#1104): the app-wide event values are
   moving to the Settings section; `IBurnSettingsService`/`BurnSettingsInfo` is the surface
   every consumer holds until then. Do not widen it, do not split it early.
-- **Per-user reads still on `IShiftSignupService`** (`GetByUserAsync`, `GetTeamProbeAsync`):
+- **Per-user reads still on `IShiftSignupService`** (`GetByUserAsync`):
   the constraint is that `IShiftView` stays the only cached per-user projection, so do not add
   a second cache in front of these; move callers onto `IShiftView` when they are touched.
 - **Unused VEP dietary/medical columns** await a post-prod-soak drop
-  (`no-drops-until-prod-verified`).
+  (`destructive-drops-need-approval`).
 
 ## 6. Deliberately not done
 
 - **No `Team.HexColor` column** — export colours derive from the team id (`TeamPalette`).
 - **No per-shift `IsCancelled`** — cancellation is a signup state plus cascade delete.
-- **No caching decorator over `ShiftManagementService`** — it holds two small caches (auth
-  60 s, dashboard 5 min) directly; a decorator would have to know the invalidation keys anyway.
-  The one decorator in the section is `CachingShiftViewService` over `IShiftView`/`IShiftRowView`.
-- **No dashboard cache key fan-out for sub-period** — sub-period filtered calls bypass the
-  cache by design.
+- **One cache** — `CachingShiftService`'s rota rows. Dashboards and user views are computed
+  from them per request; there is no second cache to keep in step.
 - **No analytics-service split this run** — it is the right direction but a structural move
   across 2 k lines with no behaviour change to pin it; it needs Peter's go and its own PR.
-- **No `IShiftSignupService` read/write split** — the leaf `IShiftSignups` already is the
+- **No `IShiftSignupService` read/write split** — the public `IShiftSignups` already is the
   cross-section face; the full interface is internal.
 - **No test asserting absences** (`no-tests-for-absences`).
 
 ## Load-bearing weirdness
 
-- `IShiftView` is a **singleton** over a keyed-scoped inner and implements `IHostedService`
-  with no-op start/stop for symmetry with the sibling caches — the registration looks
-  redundant and is not.
-- `GetRotaAsync` on the read leaf applies **no visibility filter**: the id comes from a
+- `IShiftView` and `IShiftRowView` resolve to the **singleton** `CachingShiftService`, which
+  opens a scope per call to reach the keyed-scoped `ShiftViewService`.
+- `GetRotaAsync` on `IShiftService` applies **no visibility filter**: the id comes from a
   filtered search and the destination page enforces access.
 - `ExportXlsx` writes **no** audit entry on purpose (burner names only).
 - Sub-team managers manage only their sub-team; department coordinators manage the whole
@@ -121,8 +115,6 @@ The shapes imply:
   but never rendered (documented write-path asymmetry).
 - Voluntell is allowed on past shifts (retroactive correction); the volunteer notification is
   suppressed for past shifts, the audit entry never is.
-- `ShiftsResource` leaves `ShiftsSummary_` keys and `Medical_Badge` in `SharedResource`
-  because the partials that bind them live in Teams/UI and a rebind would be a reference cycle.
 
 ## History
 

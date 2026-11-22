@@ -208,6 +208,7 @@
   <data name="Workgroups_Leave" xml:space="preserve"><value>Verlaten</value></data>
   <data name="Workgroups_DiscordChannel" xml:space="preserve"><value>Discord-kanaal</value></data>
   <data name="Workgroups_DriveFolder" xml:space="preserve"><value>Drive-map</value></data>
+  <data name="Workgroups_EmailGroup" xml:space="preserve"><value>E-mailgroep</value></data>
   <data name="Workgroups_Budget" xml:space="preserve"><value>Budget</value></data>
   <data name="Workgroups_BudgetAccount" xml:space="preserve"><value>Holded-rekening</value></data>
   <data name="Enum_WorkgroupLogKind_BudgetSet" xml:space="preserve"><value>Budget vastgesteld</value></data>
@@ -338,7 +339,6 @@
   <data name="Workgroups_Field_IsSensitiveHelp" xml:space="preserve"><value>Alleen leden en het bestuur zien de ledenlijst, documenten en geschiedenis. De naam en het doel blijven in het register staan.</value></data>
   <data name="Workgroups_Error_MembershipPending" xml:space="preserve"><value>Je verzoek om lid te worden wacht al op een coördinator.</value></data>
   <data name="Workgroups_Error_NoPendingRequest" xml:space="preserve"><value>Er is geen openstaand verzoek van die persoon.</value></data>
-  <data name="Workgroups_Error_NotACoordinator" xml:space="preserve"><value>Alleen een coördinator kan beslissen wie er lid wordt.</value></data>
   <data name="Workgroups_Error_MembersOnly" xml:space="preserve"><value>Deze groep is vertrouwelijk; alleen de leden kunnen dat doen.</value></data>
   <data name="Workgroups_Notice_MembershipRequested" xml:space="preserve"><value>Iemand heeft gevraagd om lid te worden</value></data>
   <data name="Workgroups_Notice_MembershipApproved" xml:space="preserve"><value>Je verzoek om lid te worden is goedgekeurd</value></data>
@@ -348,6 +348,7 @@
   <data name="Workgroups_Todo_MembershipRequests_Description" xml:space="preserve"><value>{0} heeft {1} verzoek(en) om lid te worden.</value></data>
   <data name="Workgroups_Todo_MembershipRequests_Action" xml:space="preserve"><value>Verzoeken beoordelen</value></data>
   <data name="Workgroups_Error_DiscordUrlInvalid" xml:space="preserve"><value>Voer een absolute HTTP- of HTTPS-URL in voor de Discord-link.</value></data>
+  <data name="Workgroups_Error_LocationUrlInvalid" xml:space="preserve"><value>Voer een absolute HTTP- of HTTPS-URL in voor de vergaderlink.</value></data>
   <data name="Enum_MembershipTier_Volunteer" xml:space="preserve"><value>Vrijwilliger</value></data>
   <data name="Enum_MembershipTier_Colaborador" xml:space="preserve"><value>Colaborador</value></data>
   <data name="Enum_MembershipTier_Asociado" xml:space="preserve"><value>Asociado</value></data>

@@ -34,7 +34,6 @@ public class OnboardingWidgetControllerShiftsTests
     private readonly IShiftSignups _signups = Substitute.For<IShiftSignups>();
     private readonly IShiftService _shiftMgmt = Substitute.For<IShiftService>();
     private readonly ISettingsService _burnSettings = Substitute.For<ISettingsService>();
-    private readonly IShiftView _shiftView = Substitute.For<IShiftView>();
     private readonly IOnboardingService _onboardingService = Substitute.For<IOnboardingService>();
     private readonly IUserService _userService = Substitute.For<IUserService>();
 
@@ -53,7 +52,7 @@ public class OnboardingWidgetControllerShiftsTests
         _http.Session = new TestSession();
         _http.User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, userId.ToString())],
             "test"));
-        var ctrl = new OnboardingWidgetController(_userService, _state, _profileEditor, _signups, _shiftMgmt, _burnSettings, _shiftView, _onboardingService, _localizer, Microsoft.Extensions.Logging.Abstractions.NullLogger<OnboardingWidgetController>.Instance);
+        var ctrl = new OnboardingWidgetController(_userService, _state, _profileEditor, _signups, _shiftMgmt, _burnSettings, _onboardingService, _localizer, Microsoft.Extensions.Logging.Abstractions.NullLogger<OnboardingWidgetController>.Instance);
         ctrl.ControllerContext = new ControllerContext
         {
             HttpContext = _http,
@@ -69,31 +68,24 @@ public class OnboardingWidgetControllerShiftsTests
     [HumansTheory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task Shifts_Get_ShowsResolvedAccountsExistingSignup(bool mergedAlias)
+    public async Task Shifts_Get_UsesTheResolvedAccount(bool mergedAlias)
     {
         var userId = Guid.NewGuid();
         var inputId = mergedAlias ? Guid.NewGuid() : userId;
-        var shiftId = Guid.NewGuid();
         _userService.GetUserInfoAsync(inputId, Arg.Any<CancellationToken>())
-            .Returns(UserInfo.Create(new User { Id = userId, State = UserState.Active }, [], [],
-                UserFixtures.Profile(burnerName: "Burner", firstName: "First", lastName: "Last")));
-        _burnSettings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>())
+            .Returns(UserInfo.Create(new User { Id = userId, State = UserState.Active, BurnerName = "Burner", FirstName = "First", LastName = "Last" }, [], [],
+                UserFixtures.Profile()));
+        _burnSettings.GetActiveEventSettings()
             .Returns(BurnFixtures.Burn());
         _shiftMgmt.GetBrowseShiftsAsync(Arg.Any<ShiftBrowseQuery>(), Arg.Any<CancellationToken>())
             .Returns(Array.Empty<UrgentShiftInfo>());
-        _shiftView.GetUserAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns(c => new ValueTask<ShiftUserSummary>(ShiftUserSummary.Empty(c.Arg<Guid>())));
-        _shiftView.GetUserAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(new ValueTask<ShiftUserSummary>(ShiftFixtures.UserSummary(userId,
-                [ShiftFixtures.Signup(shiftId: shiftId, status: SignupStatus.Pending)])));
 
         var result = await BuildSut(inputId).Shifts(ct: TestContext.Current.CancellationToken);
 
         var model = Assert.IsType<Humans.Onboarding.Models.ShiftsStepViewModel>(Assert.IsType<ViewResult>(result).Model);
         await _shiftMgmt.Received(1).GetBrowseShiftsAsync(
             Arg.Is<ShiftBrowseQuery>(q => q.ViewerUserId == userId), Arg.Any<CancellationToken>());
-        Assert.Contains(shiftId, model.UserSignupShiftIds);
-        Assert.Equal(SignupStatus.Pending, model.UserSignupStatuses[shiftId]);
+        Assert.Equal(userId, model.ViewerUserId);
     }
 
     [HumansTheory]
@@ -103,15 +95,13 @@ public class OnboardingWidgetControllerShiftsTests
     public async Task Shifts_Get_UsesTheOwnerDerivedEarlyEntryLock(bool locked, bool otherLocked)
     {
         var userId = Guid.NewGuid();
-        _burnSettings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>())
+        _burnSettings.GetActiveEventSettings()
             .Returns(BurnFixtures.Burn() with { EarlyEntryClose = NodaTime.Instant.FromUtc(2020, 1, 1, 0, 0) });
         var row = UrgentShiftFixtures.Urgent(shift: UrgentShiftFixtures.Shift(dayOffset: -1))
             with
         { EarlyEntrySignupsClosed = locked };
         _shiftMgmt.GetBrowseShiftsAsync(Arg.Any<ShiftBrowseQuery>(), Arg.Any<CancellationToken>())
             .Returns(new[] { row, row with { EarlyEntrySignupsClosed = otherLocked } });
-        _shiftView.GetUserAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(new ValueTask<ShiftUserSummary>(ShiftUserSummary.Empty(userId)));
 
         var result = await BuildSut(userId).Shifts(ct: TestContext.Current.CancellationToken);
 
@@ -124,10 +114,8 @@ public class OnboardingWidgetControllerShiftsTests
     {
         var userId = Guid.NewGuid();
         using var request = new CancellationTokenSource();
-        _burnSettings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>())
+        _burnSettings.GetActiveEventSettings()
             .Returns(BurnFixtures.Burn());
-        _shiftView.GetUserAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(new ValueTask<ShiftUserSummary>(ShiftUserSummary.Empty(userId)));
         _shiftMgmt.GetBrowseShiftsAsync(Arg.Any<ShiftBrowseQuery>(), Arg.Any<CancellationToken>())
             .Returns(async call =>
             {

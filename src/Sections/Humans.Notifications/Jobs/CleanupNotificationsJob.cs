@@ -1,12 +1,12 @@
 using Hangfire;
 using Humans.Base.Interfaces;
-using Humans.Notifications.Contracts;
+using Humans.Notifications.Services;
 
 namespace Humans.Notifications.Jobs;
 
 [DisableConcurrentExecution(timeoutInSeconds: 300)]
-public class CleanupNotificationsJob(
-    INotificationRetention notifications,
+internal sealed class CleanupNotificationsJob(
+    INotificationInboxService notifications,
     IHumansMetrics metrics,
     ILogger<CleanupNotificationsJob> logger) : IRecurringJob
 {
@@ -22,6 +22,11 @@ public class CleanupNotificationsJob(
                 resolvedDeleted, staleDeleted, retiredDeleted);
 
             metrics.RecordJobRun("cleanup_notifications", "success");
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            logger.LogWarning("Notification retention cancelled during shutdown");
+            throw;
         }
         catch (Exception ex)
         {

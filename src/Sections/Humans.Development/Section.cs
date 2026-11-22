@@ -1,6 +1,11 @@
 using Humans.Base.Authorization;
 using Humans.Base.Interfaces;
+using Humans.Base.Demo;
+using Humans.Base.Hosting;
+using Humans.Development.Data;
+using Humans.Development.Jobs;
 using Humans.Development.Services;
+using Humans.Development.Services.Demo;
 
 namespace Humans.Development;
 
@@ -22,15 +27,22 @@ public sealed class Section : ISection, ISectionAdminNav
         }
 
         services.AddScoped<DevelopmentCampRoleSeeder>();
-        services.AddScoped<DevelopmentDashboardSeeder>();
         services.AddScoped<DevPersonaSeeder>();
+
+        // Outside Production only, like everything above: the demo ledger's table never exists there.
+        services.AddSectionDbContext<DevelopmentDbContext>(sentinelTable: "demo_ledger");
+        services.AddSingleton<IDemoLedgerRepository, DemoLedgerRepository>();
+        services.AddSingleton<DemoRunStatus>();
+        services.AddScoped<DemoWorldRunner>();
+        services.AddScoped<DemoWorldJob>();
+        services.AddDemoStory<DemoCastStory>(configuration);
     }
 
     IEnumerable<AdminNavGroup> ISectionAdminNav.Groups() =>
     [
         new("Development", [
             new("Seed data", "DevSeed", "Index", null, null, "fa-solid fa-seedling", PolicyNames.AdminOnly,
-                 EnvironmentGate: env => env.IsDevelopment())
+                 EnvironmentGate: env => !env.IsProduction())
         ])
     ];
 }

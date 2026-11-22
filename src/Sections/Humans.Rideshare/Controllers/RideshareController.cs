@@ -26,7 +26,7 @@ internal sealed class RideshareController(
         var (error, user) = await ResolveCurrentUserOrChallengeAsync(ct);
         if (error is not null) return error;
 
-        var snapshot = await rideshare.GetSnapshotAsync(await rideshare.GetActiveEventIdAsync(ct), ct);
+        var snapshot = await rideshare.GetSnapshotAsync(rideshare.GetActiveEventId(), ct);
         var dir = direction ?? RideshareDirection.Inbound;
         var day = RideshareDates.Parse(date) ?? BoardViewModel.DefaultDate(snapshot.Settings, dir, RideshareDates.Today(clock));
 
@@ -39,7 +39,7 @@ internal sealed class RideshareController(
         var (error, user) = await ResolveCurrentUserOrChallengeAsync(ct);
         if (error is not null) return error;
 
-        var snapshot = await rideshare.GetSnapshotAsync(await rideshare.GetActiveEventIdAsync(ct), ct);
+        var snapshot = await rideshare.GetSnapshotAsync(rideshare.GetActiveEventId(), ct);
         if (id is null)
             return View(OfferFormViewModel.ForNew(user, direction ?? RideshareDirection.Inbound, snapshot.Settings, RideshareDates.Today(clock)));
 
@@ -67,7 +67,7 @@ internal sealed class RideshareController(
         return await SaveFormAsync(model, async () =>
         {
             if (model.Id is { } id) return await rideshare.UpdateOfferAsync(id, user.Id, save, ct);
-            else return await rideshare.CreateOfferAsync(user.Id, await rideshare.GetActiveEventIdAsync(ct), save, ct);
+            else return await rideshare.CreateOfferAsync(user.Id, rideshare.GetActiveEventId(), save, ct);
         }, "Rideshare_OfferSaved");
     }
 
@@ -87,7 +87,7 @@ internal sealed class RideshareController(
         var (error, user) = await ResolveCurrentUserOrChallengeAsync(ct);
         if (error is not null) return error;
 
-        var snapshot = await rideshare.GetSnapshotAsync(await rideshare.GetActiveEventIdAsync(ct), ct);
+        var snapshot = await rideshare.GetSnapshotAsync(rideshare.GetActiveEventId(), ct);
         if (id is null)
             return View(RequestFormViewModel.ForNew(user, direction ?? RideshareDirection.Inbound, snapshot.Settings, RideshareDates.Today(clock)));
 
@@ -115,7 +115,7 @@ internal sealed class RideshareController(
         return await SaveFormAsync(model, async () =>
         {
             if (model.Id is { } id) return await rideshare.UpdateRequestAsync(id, user.Id, save, ct);
-            else return await rideshare.CreateRequestAsync(user.Id, await rideshare.GetActiveEventIdAsync(ct), save, ct);
+            else return await rideshare.CreateRequestAsync(user.Id, rideshare.GetActiveEventId(), save, ct);
         }, "Rideshare_RequestSaved");
     }
 
@@ -134,7 +134,7 @@ internal sealed class RideshareController(
         var (error, user) = await ResolveCurrentUserOrChallengeAsync(ct);
         if (error is not null) return error;
 
-        var snapshot = await rideshare.GetSnapshotAsync(await rideshare.GetActiveEventIdAsync(ct), ct);
+        var snapshot = await rideshare.GetSnapshotAsync(rideshare.GetActiveEventId(), ct);
         return View(MineViewModel.Build(snapshot, user.Id));
     }
 
@@ -191,31 +191,19 @@ internal sealed class RideshareController(
         return await RunThenMineAsync(() => rideshare.WithdrawInterestAsync(id, user.Id, ct), "Rideshare_InterestWithdrawn");
     }
 
-    /// <summary>Redirect-style actions: 404 / 403 pass through, a rule becomes a localized error toast on Mine.</summary>
+    /// <summary>Redirect-style actions: access failures become 404 / 403, a rule becomes a localized error toast on Mine.</summary>
     private async Task<IActionResult> RunThenMineAsync(Func<Task<RideshareMutationResult>> action, string successKey)
     {
-        try
+        var result = await action();
+        if (AccessFailureResult(result.AccessFailure) is { } error) return error;
+        if (result.Refusal is { } refusal)
         {
-            var result = await action();
-            if (result.Refusal is { } refusal)
-            {
-                logger.LogWarning("Rideshare {Action}: rule {Rule}", ControllerContext.ActionDescriptor.ActionName, refusal.Key);
-                SetError(localizer[refusal.Key, refusal.Args]);
-            }
-            else
-            {
-                SetSuccess(localizer[successKey]);
-            }
+            logger.LogWarning("Rideshare {Action}: rule {Rule}", ControllerContext.ActionDescriptor.ActionName, refusal.Key);
+            SetError(localizer[refusal.Key, refusal.Args]);
         }
-        catch (KeyNotFoundException ex)
+        else
         {
-            logger.LogWarning("Rideshare {Action}: not found ({Reason})", ControllerContext.ActionDescriptor.ActionName, ex.Message);
-            return NotFound();
-        }
-        catch (UnauthorizedAccessException ex)
-        {
-            logger.LogWarning("Rideshare {Action}: forbidden ({Reason})", ControllerContext.ActionDescriptor.ActionName, ex.Message);
-            return Forbid();
+            SetSuccess(localizer[successKey]);
         }
 
         return RedirectToAction(nameof(Mine));
@@ -224,28 +212,28 @@ internal sealed class RideshareController(
     /// <summary>Form POSTs: a rule re-renders the form with its localized message as a model error.</summary>
     private async Task<IActionResult> SaveFormAsync(object model, Func<Task<RideshareMutationResult>> action, string successKey)
     {
-        try
+        var result = await action();
+        if (AccessFailureResult(result.AccessFailure) is { } error) return error;
+        if (result.Refusal is { } refusal)
         {
-            var result = await action();
-            if (result.Refusal is { } refusal)
-            {
-                logger.LogWarning("Rideshare {Action}: rule {Rule}", ControllerContext.ActionDescriptor.ActionName, refusal.Key);
-                ModelState.AddModelError(string.Empty, localizer[refusal.Key, refusal.Args]);
-                return View(model);
-            }
-        }
-        catch (KeyNotFoundException ex)
-        {
-            logger.LogWarning("Rideshare {Action}: not found ({Reason})", ControllerContext.ActionDescriptor.ActionName, ex.Message);
-            return NotFound();
-        }
-        catch (UnauthorizedAccessException ex)
-        {
-            logger.LogWarning("Rideshare {Action}: forbidden ({Reason})", ControllerContext.ActionDescriptor.ActionName, ex.Message);
-            return Forbid();
+            logger.LogWarning("Rideshare {Action}: rule {Rule}", ControllerContext.ActionDescriptor.ActionName, refusal.Key);
+            ModelState.AddModelError(string.Empty, localizer[refusal.Key, refusal.Args]);
+            return View(model);
         }
 
         SetSuccess(localizer[successKey]);
         return RedirectToAction(nameof(Mine));
+    }
+
+    private IActionResult? AccessFailureResult(RideshareAccessFailure? failure)
+    {
+        if (failure is null) return null;
+        logger.LogWarning("Rideshare {Action}: access failure {Failure}", ControllerContext.ActionDescriptor.ActionName, failure);
+        return failure switch
+        {
+            RideshareAccessFailure.NotFound => NotFound(),
+            RideshareAccessFailure.Forbidden => Forbid(),
+            _ => throw new InvalidOperationException($"Unexpected rideshare access failure {failure}.")
+        };
     }
 }

@@ -50,7 +50,7 @@
         @if (!string.IsNullOrEmpty(Model.SignificantContribution))
         {
             <div class="card mb-4">
-                <div class="card-header">@SharedLocalizer["Application_SignificantContribution"]</div>
+                <div class="card-header">@Localizer["Governance_Application_SignificantContribution"]</div>
                 <div class="card-body">
                     <p class="mb-0 pre-wrap">@Model.SignificantContribution</p>
                 </div>
@@ -60,7 +60,7 @@
         @if (!string.IsNullOrEmpty(Model.RoleUnderstanding))
         {
             <div class="card mb-4">
-                <div class="card-header">@SharedLocalizer["Application_RoleUnderstanding"]</div>
+                <div class="card-header">@Localizer["Governance_Application_RoleUnderstanding"]</div>
                 <div class="card-body">
                     <p class="mb-0 pre-wrap">@Model.RoleUnderstanding</p>
                 </div>
@@ -69,16 +69,14 @@
 
         @if (Model.Votes.Count > 0)
         {
-            Func<BoardVoteDetailItemViewModel, IHtmlContent> boardMemberCell =
-                @<text><vc:human user-id="@item.BoardMemberUserId" /></text>;
             Func<BoardVoteDetailItemViewModel, IHtmlContent> votedAtCell =
                 @<text><small>@item.VotedAt.ToDate()</small></text>;
             Func<BoardVoteDetailItemViewModel, IHtmlContent> noteCell =
                 @<text><small class="text-muted">@item.Note</small></text>;
             var votesTable = TableModel.For(Model.Votes)
-                .Template(Localizer["Governance_BoardVoting_BoardMember"].Value, boardMemberCell)
+                .Human(Localizer["Governance_BoardVoting_BoardMember"].Value, r => r.BoardMemberUserId)
                 .Column(Localizer["Governance_BoardVoting_Vote"].Value, r => r.Vote, c => c.EnumBadge())
-                .Template(Localizer["Governance_BoardVoting_Date"].Value, votedAtCell)
+                .Template(Localizer["Governance_BoardVoting_Date"].Value, votedAtCell, c => c.Css("text-nowrap"))
                 .Template(Localizer["Governance_BoardVoting_Note"].Value, noteCell)
                 .Build();
             <div class="card mb-4">

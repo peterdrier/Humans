@@ -1,7 +1,5 @@
 using Humans.Base.Configuration;
-using Humans.Base.Constants;
 using Humans.Base.Interfaces;
-using Humans.Guide.Health;
 using Humans.Guide.Services;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -14,9 +12,7 @@ namespace Humans.Guide;
 public sealed class Section :
     ISection,
     ISectionAnnotations,
-    ISectionConfiguration,
-    ISectionHealthChecks,
-    ISectionNav
+    ISectionConfiguration
 {
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
@@ -41,17 +37,4 @@ public sealed class Section :
         configuration.GetOptionalSetting(registry, "Guide:AccessToken", "Guide", isSensitive: true);
     }
 
-    void ISectionHealthChecks.AddHealthChecks(IHealthChecksBuilder builder, IConfiguration configuration)
-    {
-        builder.AddCheck<GitHubHealthCheck>("github", tags: [HealthCheckTags.External]);
-    }
-
-    IEnumerable<MemberNavItem> ISectionNav.Items() =>
-    [
-        new(
-            "Guide",
-            Controller: "Guide",
-            Action: "Index",
-            Weight: 1010)
-    ];
 }

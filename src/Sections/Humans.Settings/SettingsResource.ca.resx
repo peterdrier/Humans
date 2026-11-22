@@ -76,4 +76,7 @@
   <data name="Settings_NoTabs" xml:space="preserve">
     <value>Encara no hi ha cap configuració disponible.</value>
   </data>
+  <data name="Settings_NoStrike" xml:space="preserve">
+    <value>Sense dies de desmuntatge</value>
+  </data>
 </root>

@@ -4,26 +4,16 @@ using Microsoft.AspNetCore.Mvc;
 namespace Humans.Teams.ViewComponents;
 
 /// <summary>
-/// The widget gallery's Teams samples: synthetic staffing numbers for the summary card, and the search-result row keyed
-/// off the first real team (it renders nothing for an unresolved key); null when the environment holds none.
+/// The widget gallery's Teams samples: the search-result row keyed off the first real team (it renders nothing for an
+/// unresolved key); null when the environment holds none.
 /// </summary>
 internal sealed class TeamsGalleryViewComponent(ITeamService teamService) : ViewComponent
 {
     public async Task<IViewComponentResult> InvokeAsync()
     {
         var teams = await teamService.GetTeamsAsync(HttpContext.RequestAborted);
-        var summary = new ShiftsSummaryCardViewModel
-        {
-            TotalSlots = 24,
-            ConfirmedCount = 17,
-            PendingCount = 3,
-            UniqueVolunteerCount = 12,
-            ShiftsUrl = Url.Action("Index", "Shifts") ?? "#",
-            CanManageShifts = true,
-            IncludesSubTeamCount = 2,
-        };
-        return View(new TeamsGalleryViewModel(teams.Values.FirstOrDefault()?.Id, summary));
+        return View(new TeamsGalleryViewModel(teams.Values.FirstOrDefault()?.Id));
     }
 }
 
-internal sealed record TeamsGalleryViewModel(Guid? TeamId, ShiftsSummaryCardViewModel ShiftsSummary);
+internal sealed record TeamsGalleryViewModel(Guid? TeamId);

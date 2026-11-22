@@ -40,8 +40,7 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
         // Display sort (SortOrder) is applied by the controllers and views, not here.
         return await ctx.BudgetYears
             .AsNoTracking()
-            // arch:db-sort-ok budget tree persisted SortOrder
-            .Include(y => y.Groups.OrderBy(g => g.SortOrder))
+            .Include(y => y.Groups)
                 .ThenInclude(g => g.Categories)
                     .ThenInclude(c => c.LineItems)
             .Include(y => y.Groups)
@@ -628,16 +627,17 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
         return true;
     }
 
-    public async Task<BudgetLineItem?> GetLineItemByIdAsync(Guid id, CancellationToken ct = default)
+    public async Task<Guid?> GetLineItemCategoryIdAsync(Guid id, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
 
         return await ctx.BudgetLineItems
-            .AsNoTracking()
-            .FirstOrDefaultAsync(li => li.Id == id, ct);
+            .Where(li => li.Id == id)
+            .Select(li => (Guid?)li.BudgetCategoryId)
+            .FirstOrDefaultAsync(ct);
     }
 
-    public async Task<BudgetLineItem> CreateLineItemAsync(
+    public async Task CreateLineItemAsync(
         BudgetLineItemDraft draft,
         Guid actorUserId,
         Instant now,
@@ -678,7 +678,6 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
             actorUserId, now);
 
         await ctx.SaveChangesAsync(ct);
-        return lineItem;
     }
 
     public async Task<bool> UpdateLineItemAsync(

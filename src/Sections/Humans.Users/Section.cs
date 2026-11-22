@@ -1,3 +1,4 @@
+using Humans.Base.Extensions;
 using System.Globalization;
 using System.Security.Claims;
 using Humans.Application.Services.Users;
@@ -11,19 +12,16 @@ using Humans.Base.Interfaces;
 using Humans.Base.Interfaces.Caching;
 using Humans.Base.Models;
 using Humans.Cantina.Contracts;
-using Humans.Consent.Contracts;
 using Humans.Email.Contracts;
 using Humans.Gdpr.Contracts;
-using Humans.Governance.Contracts;
 using Humans.Issues.Contracts;
-using Humans.Settings.Contracts;
 using Humans.Shifts.Contracts;
-using Humans.Tickets.Contracts;
 using Humans.Users.Authorization;
 using Humans.Users.Contracts;
 using Humans.Users.Data;
 using Humans.Users.Data.Repositories;
 using Humans.Users.Jobs;
+using Humans.Users.Models;
 using Humans.Users.Services;
 using Humans.Users.ViewComponents;
 using Microsoft.AspNetCore.Authorization;
@@ -36,6 +34,8 @@ using Microsoft.Extensions.Localization;
 using static Humans.Base.Models.AccessLevel;
 using static Humans.Base.Models.AccessMatrixFeature;
 using Humans.AuditLog.Contracts;
+
+[assembly: Humans.Base.Demo.NoDemoStory("The demo cast is created through Users by Development's cast story.")]
 
 namespace Humans.Users;
 
@@ -51,8 +51,10 @@ public sealed class Section :
     ISectionDataMigrations,
     ISectionHelp,
     ISectionJobs,
+    ISectionMemberDashboard,
     ISectionPolicies,
     ISectionThingsToDo,
+    ISearchContributor,
     IUserPart
 {
     IReadOnlyList<RoleDefinition> ISectionRoles.Roles { get; } =
@@ -63,7 +65,13 @@ public sealed class Section :
             FormerNames: ["HumanAdmin"]),
     ];
 
-    internal static IdentityBuilder AddIdentity(IServiceCollection services) =>
+    public void Register(IServiceCollection services, IConfiguration configuration)
+    {
+        services.AddSingleton<IAuditActionContributor, UsersAuditActions>();
+        services.AddSingleton<INotificationSourceContributor, UsersNotificationSources>();
+        services.AddScoped<INotificationMeterContributor, UsersNotificationMeters>();
+        services.AddSectionDbContext<UsersDbContext>(sentinelTable: "users");
+
         services.AddIdentity<User, IdentityRole<Guid>>(options =>
             {
                 // UserEmail table owns email uniqueness; User.Email is null on new users.
@@ -73,12 +81,6 @@ public sealed class Section :
             .AddEntityFrameworkStores<UsersDbContext>()
             .AddDefaultTokenProviders()
             .AddClaimsPrincipalFactory<HumansUserClaimsPrincipalFactory>();
-
-    public void Register(IServiceCollection services, IConfiguration configuration)
-    {
-        services.AddSingleton<IAuditActionContributor, UsersAuditActions>();
-        services.AddSingleton<INotificationSourceContributor, UsersNotificationSources>();
-        services.AddSectionDbContext<UsersDbContext>(sentinelTable: "users");
 
         // On every section's context pipeline: catches User/UserEmail
         // writes wherever they are saved, including Identity machinery.
@@ -133,9 +135,10 @@ public sealed class Section :
 
         services.AddSingleton<IAuthorizationHandler, UserEmailAuthorizationHandler>();
 
-        services.AddSingleton<IAuthorizationHandler, HumanAdminOnlyHandler>();
-
         services.AddScoped<ProfileService>();
+        services.AddScoped<MedicalConditionsService>();
+        services.AddScoped<EmailConfirmationService>();
+        services.AddScoped<MergeAccountCardBuilder>();
         services.AddScoped<IProfilePictureService>(sp => sp.GetRequiredService<ProfileService>());
 
         services.AddScoped<IHumanLifecycleService, HumanLifecycleService>();
@@ -143,7 +146,8 @@ public sealed class Section :
 
         // ExternalLoginService keeps its Humans.Application.Services.Users namespace: HUM0005
         // names it by full name as the sole caller of ReconcileOAuthIdentityAsync.
-        services.AddScoped<IAccountDeletionService, AccountDeletionService>();
+        services.AddScoped<AccountDeletionService>();
+        services.AddScoped<IAccountDeletionService>(sp => sp.GetRequiredService<AccountDeletionService>());
         services.AddScoped<IExternalLoginService, ExternalLoginService>();
         services.AddScoped<IUserSignInService, UserSignInService>();
 
@@ -178,6 +182,17 @@ public sealed class Section :
                 Of("View contact fields", ("Volunteer", Limited), ("Coordinator", Limited), ("Board", Allowed), ("UsersAdmin", Allowed), ("Admin", Allowed)),
                 Of("Admin view of profile", ("Volunteer", Denied), ("Coordinator", Denied), ("Board", Allowed), ("UsersAdmin", Allowed), ("Admin", Allowed)),
             ]
+        },
+        new()
+        {
+            Key = "UsersAdmin",
+            SectionName = "All Humans",
+            Order = 90,
+            Roles = ["Board", "UsersAdmin", "Admin"],
+            Features =
+            [
+                Of("All humans list", ("Board", Allowed), ("UsersAdmin", Allowed), ("Admin", Allowed)),
+            ]
         }
     ];
 
@@ -194,8 +209,7 @@ public sealed class Section :
     IEnumerable<AdminTile> ISectionAdminTiles.Tiles() =>
     [
         new AdminTile("users.total", "Total users", "fa-solid fa-users", TotalAsync, Weight: 10),
-        new AdminTile("users.profiles", "Active (has profile)", "fa-solid fa-id-card", ProfilesAsync, Weight: 20),
-        new AdminTile("users.tickets", "Ticket holders", "fa-solid fa-ticket", TicketHoldersAsync, Weight: 30)
+        new AdminTile("users.profiles", "Active (has profile)", "fa-solid fa-id-card", ProfilesAsync, Weight: 20)
     ];
 
     private static async ValueTask<AdminTileValue?> TotalAsync(IServiceProvider sp, CancellationToken ct)
@@ -210,19 +224,6 @@ public sealed class Section :
         return new AdminTileValue(count.ToString(CultureInfo.CurrentCulture), Summary: $"{count} with profile");
     }
 
-    private static async ValueTask<AdminTileValue?> TicketHoldersAsync(IServiceProvider sp, CancellationToken ct)
-    {
-        var activeEvent = await sp.GetRequiredService<ISettingsService>().GetActiveEventSettingsAsync(ct);
-        var count = 0;
-        if (activeEvent is { Year: > 0 })
-        {
-            var living = (await SnapshotAsync(sp, ct)).Select(u => u.Id).ToHashSet();
-            count = (await sp.GetRequiredService<ITicketService>().GetAllParticipationsAsync(ct))
-                .Count(p => p.Year == activeEvent.Year && p.HasTicket && living.Contains(p.UserId));
-        }
-        return new AdminTileValue(count.ToString(CultureInfo.CurrentCulture), Summary: $"{count} with ticket");
-    }
-
     private static async Task<IReadOnlyCollection<UserInfo>> SnapshotAsync(IServiceProvider sp, CancellationToken ct) =>
         await sp.GetRequiredService<IUserService>().GetAllUserInfosAsync(ct);
 
@@ -231,6 +232,9 @@ public sealed class Section :
             new(ChromeSlots.AdminDashboard, typeof(PreferredLanguageCardViewComponent), Weight: 40),
             new(ChromeSlots.WidgetGallery, typeof(UsersGalleryViewComponent)),
         ];
+
+    IEnumerable<ChromeComponent> ISectionMemberDashboard.Components() =>
+        [new(ChromeSlots.MemberDashboard, typeof(HumansDirectoryCardsViewComponent), Weight: 90)];
 
     void ISectionConfiguration.DeclareSettings(IConfiguration configuration, ConfigurationRegistry registry)
     {
@@ -241,13 +245,41 @@ public sealed class Section :
 
     internal const string LegacyIdentityEmailsKey = "users.legacy-identity-emails";
 
+    internal const string LeftoverMergeRequestsKey = "users.leftover-merge-requests";
+
     IEnumerable<DataMigration> ISectionDataMigrations.Migrations() =>
     [
         new(LegacyIdentityEmailsKey, SectionName,
             "Create a verified UserEmail row from the legacy User.Email Identity column",
             "The legacy-column fallback in User.Email / UserInfo.Email",
             LegacyEmailsStatusAsync, ApplyLegacyEmailsAsync),
+        new(LeftoverMergeRequestsKey, SectionName,
+            "Dismiss merge requests left from before merges were self-service: removes each pending email, the accounts are untouched",
+            "The leftover-request listing and dismiss code in AccountMergeService",
+            LeftoverMergeRequestsStatusAsync, ApplyLeftoverMergeRequestsAsync),
     ];
+
+    private static async Task<DataMigrationStatus> LeftoverMergeRequestsStatusAsync(IServiceProvider sp, CancellationToken ct) =>
+        new(["Address", "Asked by", "Already on", "Asked"],
+            [.. (await sp.GetRequiredService<IAccountMergeService>().GetPendingRequestsAsync(ct))
+                .Select(r => (IReadOnlyList<string>)
+                [
+                    r.Email, r.TargetUser.Id.ToString(), r.SourceUser.Id.ToString(),
+                    r.CreatedAt.ToInvariantTimestamp(),
+                ])]);
+
+    private static async Task<int> ApplyLeftoverMergeRequestsAsync(IServiceProvider sp, Guid actorUserId, CancellationToken ct)
+    {
+        var merges = sp.GetRequiredService<IAccountMergeService>();
+        var dismissed = 0;
+        foreach (var request in await merges.GetPendingRequestsAsync(ct))
+        {
+            var result = await merges.RejectAsync(
+                request.Id, actorUserId, "Dismissed: merges are self-service now.", ct);
+            if (result.Refusal is null) dismissed++;
+        }
+        return dismissed;
+    }
 
     private static async Task<DataMigrationStatus> LegacyEmailsStatusAsync(IServiceProvider sp, CancellationToken ct) =>
         new(["User", "Legacy User.Email"],
@@ -267,6 +299,7 @@ public sealed class Section :
     private static readonly IReadOnlyList<SectionHelpEntry> Entries =
     [
         SectionHelpEntry.FromEmbeddedMarkdown(typeof(Section).Assembly, "Profile", 20),
+        SectionHelpEntry.FromEmbeddedMarkdown(typeof(Section).Assembly, "UsersAdmin", 81),
     ];
 
     IEnumerable<RecurringJobDescriptor> ISectionJobs.Jobs(IServiceProvider services)
@@ -286,33 +319,25 @@ public sealed class Section :
         options.AddPolicy(UsersPolicies.Manage, policy =>
             policy.RequireRole(UsersRoles.UsersAdmin, RoleNames.Admin));
 
-        options.AddPolicy(UsersPolicies.UsersAdminOnly, policy =>
-            policy.AddRequirements(new HumanAdminOnlyRequirement()));
+        options.AddPolicy(UsersPolicies.MedicalDataViewer, policy =>
+            policy.RequireRole(RoleNames.Admin, RoleNames.Board, ShiftsRoles.ShiftsNoInfo));
     }
 
     async ValueTask<IEnumerable<ThingsToDoEntry>> ISectionThingsToDo.EntriesAsync(
         IServiceProvider services, ClaimsPrincipal user, CancellationToken ct)
     {
-        if (!Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
+        if (user.GetUserId() is not { } userId)
         {
             return [];
         }
 
         var localizer = services.GetRequiredService<IStringLocalizer<SharedResource>>();
         var logger = services.GetRequiredService<ILogger<Section>>();
-        var profile = (await services.GetRequiredService<IUserService>().GetUserInfoAsync(userId, ct))?.Profile;
-        var isVolunteerMember = (await services.GetRequiredService<IMembershipCalculator>()
-            .GetMembershipSnapshotAsync(userId, ct)).IsVolunteerMember;
+        var info = await services.GetRequiredService<IUserService>().GetUserInfoAsync(userId, ct);
 
-        var entries = new List<ThingsToDoEntry> { await ProfileEntryAsync(services, localizer, profile, userId, ct) };
+        var entries = new List<ThingsToDoEntry> { await ProfileEntryAsync(services, localizer, info, userId, ct) };
 
-        if (!isVolunteerMember)
-        {
-            var review = await services.GetRequiredService<IConsentService>().GetConsentReviewAsync(userId, ct);
-            entries.Add(ConsentCheckEntry(localizer, profile is not null && review.Status == ConsentCheckStatus.Cleared));
-        }
-
-        var medical = await MedicalEntryAsync(services, localizer, logger, profile, userId, ct);
+        var medical = await MedicalEntryAsync(services, localizer, logger, userId, ct);
         if (medical is not null)
         {
             entries.Add(medical);
@@ -324,11 +349,11 @@ public sealed class Section :
     private static async ValueTask<ThingsToDoEntry> ProfileEntryAsync(
         IServiceProvider services,
         IStringLocalizer<SharedResource> localizer,
-        ProfileInfo? profile,
+        UserInfo? info,
         Guid userId, CancellationToken ct)
     {
         var shiftUser = await services.GetRequiredService<IShiftView>().GetUserAsync(userId, ct);
-        var percent = ProfileCompletion.ComputePercent(profile, shiftUser.TagPreferences.Count > 0);
+        var percent = ProfileCompletion.ComputePercent(info, shiftUser.TagPreferences.Count > 0);
 
         // Hidden or derived required fields can cap real completion around 90–95%, so 80% is
         // "complete enough" and the nudge stops shouting at people who can't push it higher.
@@ -347,18 +372,6 @@ public sealed class Section :
         };
     }
 
-    private static ThingsToDoEntry ConsentCheckEntry(IStringLocalizer<SharedResource> localizer, bool cleared)
-    {
-        return new ThingsToDoEntry("consent-check", localizer["Todo_ConsentCheck_Title"].Value,
-            "fa-solid fa-clipboard-check", Weight: 30)
-        {
-            Description = cleared
-                ? localizer["Todo_ConsentCheck_Done"].Value
-                : localizer["Todo_ConsentCheck_Pending"].Value,
-            IsDone = cleared,
-        };
-    }
-
     /// <summary>
     /// Shown while the dietary nudge is open and no medical conditions are on file. MedicalConditions
     /// has no "answered" marker, so tying it to the dietary answer keeps it from nagging forever.
@@ -367,18 +380,18 @@ public sealed class Section :
         IServiceProvider services,
         IStringLocalizer<SharedResource> localizer,
         ILogger logger,
-        ProfileInfo? profile,
         Guid userId, CancellationToken ct)
     {
-        if (!string.IsNullOrEmpty(profile?.MedicalConditions))
-        {
-            return null;
-        }
-
         try
         {
             var dietary = await services.GetRequiredService<ICantinaService>().GetDietaryProfileAsync(userId, ct);
             if (dietary is { HasPreference: true } or { DeclinedToAnswer: true })
+            {
+                return null;
+            }
+
+            var medical = await services.GetRequiredService<MedicalConditionsService>().GetOwnAsync(userId, ct);
+            if (!string.IsNullOrEmpty(medical))
             {
                 return null;
             }
@@ -401,6 +414,18 @@ public sealed class Section :
     [
         new(UserPartSlots.BoardVoteApplicant, typeof(ProfileCardViewComponent)),
         new(UserPartSlots.ConsentReviewApplicant, typeof(ProfileCardViewComponent)),
-        new(UserPartSlots.TicketTransferParty, typeof(HumanSummaryViewComponent)),
     ];
+
+    IEnumerable<SearchCategory> ISearchContributor.Categories() =>
+    [
+        new("Human",
+            sp => sp.GetRequiredService<IStringLocalizer<UsersResource>>()["Users_Search_Category"].Value,
+            "fa-solid fa-user", typeof(UserSearchResultViewComponent), SearchHumansAsync, Weight: 0),
+    ];
+
+    // Public surface only: admin fields never reach /Search, whatever the viewer's role.
+    private static async Task<IReadOnlyList<SearchHit>> SearchHumansAsync(
+        IServiceProvider sp, string query, CancellationToken ct) =>
+        [.. (await sp.GetRequiredService<IUserService>().SearchUsersAsync(query, PersonSearchFields.PublicAll, int.MaxValue, ct))
+            .Select(h => new SearchHit(h.UserId, h.BurnerName, h.Score, h.MatchField, h.MatchSnippet))];
 }

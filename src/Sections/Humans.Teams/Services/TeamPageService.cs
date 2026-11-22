@@ -1,7 +1,5 @@
 using Humans.Auth.Contracts;
-using Humans.GoogleIntegration.Contracts;
-using Humans.Settings.Contracts;
-using Humans.Shifts.Contracts;
+using Humans.Google.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Base.Enums;
 
@@ -10,8 +8,6 @@ namespace Humans.Teams.Services;
 internal sealed class TeamPageService(
     ITeamManagementService teamService,
     ITeamResourceService teamResourceService,
-    IShiftService shiftManagementService,
-    ISettingsService settingsService,
     IRoleAssignmentService roleAssignmentService) : ITeamPageService
 {
     public async Task<TeamDirectoryResult> GetTeamDirectoryAsync(
@@ -19,7 +15,98 @@ internal sealed class TeamPageService(
         CancellationToken cancellationToken = default)
     {
         var teamsById = await teamService.GetTeamsAsync(cancellationToken);
-        return await TeamDirectoryBuilder.BuildAsync(teamsById, roleAssignmentService, userId, cancellationToken);
+        if (!userId.HasValue)
+        {
+            var publicDepartments = teamsById.Values
+                .Where(t => !t.IsSystemTeam && !t.IsHidden
+                    && t.IsActive
+                    && ((t.ParentTeamId is null && t.IsPublicPage)
+                        || (t.ParentTeamId is not null && t.IsPromotedToDirectory)))
+                .Select(t => CreateDirectorySummary(t, teamsById, userId, canSeeHiddenTeams: false))
+                .ToList();
+
+            return new TeamDirectoryResult(
+                IsAuthenticated: false,
+                CanCreateTeam: false,
+                MyTeams: [],
+                Departments: publicDepartments,
+                SystemTeams: [],
+                HiddenTeams: []);
+        }
+
+        var isBoardMember = await roleAssignmentService.IsUserBoardMemberAsync(userId.Value, cancellationToken);
+        var isAdmin = await roleAssignmentService.IsUserAdminAsync(userId.Value, cancellationToken);
+        var isTeamsAdmin = await roleAssignmentService.IsUserTeamsAdminAsync(userId.Value, cancellationToken);
+        var canCreateTeam = isAdmin || isTeamsAdmin;
+        var canSeeHiddenTeams = canCreateTeam || isBoardMember;
+
+        var visibleTeams = canSeeHiddenTeams
+            ? teamsById.Values
+            : teamsById.Values.Where(t => !t.IsHidden);
+
+        var directoryTeams = visibleTeams
+            .Where(t => t.IsActive)
+            .Where(t => t.ParentTeamId is null || t.IsPromotedToDirectory);
+
+        var summaries = directoryTeams
+            .Select(t => CreateDirectorySummary(t, teamsById, userId, canSeeHiddenTeams))
+            .ToList();
+
+        var myTeams = summaries
+            .Where(t => t.IsCurrentUserMember)
+            .ToList();
+
+        var departments = summaries
+            .Where(t => !t.IsCurrentUserMember && !t.IsSystemTeam && !t.IsHidden)
+            .ToList();
+
+        var systemTeams = summaries
+            .Where(t => !t.IsCurrentUserMember && t.IsSystemTeam && !t.IsHidden)
+            .ToList();
+
+        var hiddenTeams = summaries
+            .Where(t => !t.IsCurrentUserMember && t.IsHidden)
+            .ToList();
+
+        return new TeamDirectoryResult(
+            IsAuthenticated: true,
+            CanCreateTeam: canCreateTeam,
+            MyTeams: myTeams,
+            Departments: departments,
+            SystemTeams: systemTeams,
+            HiddenTeams: hiddenTeams);
+    }
+
+    private static TeamDirectorySummary CreateDirectorySummary(
+        TeamInfo team,
+        IReadOnlyDictionary<Guid, TeamInfo> teamById,
+        Guid? userId,
+        bool canSeeHiddenTeams)
+    {
+        TeamInfo? parent = team.ParentTeamId.HasValue
+            && teamById.TryGetValue(team.ParentTeamId.Value, out var resolvedParent)
+            && (!resolvedParent.IsHidden || canSeeHiddenTeams)
+            ? resolvedParent
+            : null;
+        var isCurrentUserMember = userId.HasValue && team.Members.Any(m => m.UserId == userId.Value);
+        var isCurrentUserCoordinator = userId.HasValue && team.Members.Any(m =>
+            m.UserId == userId.Value &&
+            m.Role == TeamMemberRole.Coordinator);
+
+        return new TeamDirectorySummary(
+            team.Id,
+            team.Name,
+            team.Description,
+            team.Slug,
+            team.Members.Count,
+            team.IsSystemTeam,
+            team.IsHidden,
+            team.RequiresApproval,
+            team.IsPublicPage,
+            isCurrentUserMember,
+            isCurrentUserCoordinator,
+            parent?.Name,
+            parent?.Slug);
     }
 
     public async Task<IReadOnlyList<TeamRosterSlotSummary>> GetRosterAsync(
@@ -77,7 +164,6 @@ internal sealed class TeamPageService(
     public async Task<TeamPageDetailResult?> GetTeamPageDetailAsync(
         string slug,
         Guid? userId,
-        bool canManageShiftsByRole,
         CancellationToken cancellationToken = default)
     {
         var detail = await GetTeamDetailAsync(slug, userId, cancellationToken);
@@ -86,21 +172,11 @@ internal sealed class TeamPageService(
             return null;
         }
 
-        var visibleMembers = detail.IsAuthenticated
+        var members = detail.IsAuthenticated
             ? detail.Members
             : detail.Team.ShowCoordinatorsOnPublicPage
                 ? detail.Members.Where(m => m.Role == TeamMemberRole.Coordinator).ToList()
                 : [];
-
-        var members = visibleMembers
-            .Select(member => new TeamPageMemberSummary(
-                member.UserId,
-                member.DisplayName,
-                detail.IsAuthenticated ? member.Email : null,
-                member.ProfilePictureUrl,
-                member.Role,
-                detail.IsAuthenticated ? member.JoinedAt : null))
-            .ToList();
 
         var resources = detail.IsAuthenticated
             ? (await teamResourceService.GetTeamResourcesAsync(detail.Team.Id, cancellationToken))
@@ -111,14 +187,6 @@ internal sealed class TeamPageService(
                     resource.ProvisionedAt))
                 .ToList()
             : [];
-
-        var shiftsSummary = await GetShiftsSummaryAsync(
-            detail.Team,
-            detail.ChildTeams,
-            userId,
-            detail.IsAuthenticated,
-            canManageShiftsByRole,
-            cancellationToken);
 
         var (subteamLeads, subteamMembers) = detail.IsAuthenticated && detail.ChildTeams.Count > 0
             ? await BuildSubteamRollupAsync(detail.ChildTeams, members, cancellationToken)
@@ -139,7 +207,6 @@ internal sealed class TeamPageService(
             detail.CanCurrentUserEditTeam,
             detail.CurrentUserPendingRequestId,
             detail.PendingRequestCount,
-            shiftsSummary,
             subteamLeads,
             subteamMembers);
     }
@@ -169,8 +236,7 @@ internal sealed class TeamPageService(
             if (membership is null)
                 continue;
 
-            // A direct Coordinator, a board member, or a coordinator of any ancestor team: the same parent walk as
-            // CanUserApproveRequestsForTeamAsync.
+            // A direct Coordinator, a board member, or the parent's coordinator: same rule as CanUserApproveRequestsForTeamAsync.
             var canManage =
                 (isBoardMember || TeamCoordinatorAccess.IsCoordinatorOfActiveTeam(teamsById, team.Id, userId))
                 && !team.IsSystemTeam;
@@ -236,7 +302,7 @@ internal sealed class TeamPageService(
 
             var coordinators = team.Members
                 .Where(m => m.Role == TeamMemberRole.Coordinator)
-                .Select(MapTeamDetailMemberSummary)
+                .Select(MapTeamPageMemberSummary)
                 .ToList();
 
             return new TeamDetailResult(
@@ -244,7 +310,6 @@ internal sealed class TeamPageService(
                 Members: coordinators,
                 ChildTeams: EnumerateChildren(team, teamsById)
                     .Where(c => c.IsActive && c.IsPublicPage && !c.IsHidden)
-                    .OrderBy(c => c.Name, StringComparer.Ordinal)
                     .Select(MapTeamLink)
                     .ToList(),
                 RoleDefinitions: [],
@@ -281,11 +346,10 @@ internal sealed class TeamPageService(
         return new TeamDetailResult(
             Team: MapTeamSummary(team, parent?.IsHidden == true && !canSeeHiddenTeams ? null : parent),
             Members: team.Members
-                .Select(MapTeamDetailMemberSummary)
+                .Select(MapTeamPageMemberSummary)
                 .ToList(),
             ChildTeams: EnumerateChildren(team, teamsById)
                 .Where(c => c.IsActive && (!c.IsHidden || canSeeHiddenTeams))
-                .OrderBy(c => c.Name, StringComparer.Ordinal)
                 .Select(MapTeamLink)
                 .ToList(),
             RoleDefinitions: team.RoleDefinitions ?? [],
@@ -336,14 +400,11 @@ internal sealed class TeamPageService(
     private static TeamPageTeamLink MapTeamLink(TeamInfo team) =>
         new(team.Id, team.Name, team.Slug);
 
-    private static TeamDetailMemberSummary MapTeamDetailMemberSummary(TeamMemberInfo member) =>
+    private static TeamPageMemberSummary MapTeamPageMemberSummary(TeamMemberInfo member) =>
         new(
             UserId: member.UserId,
             DisplayName: member.DisplayName,
-            Email: member.Email,
-            ProfilePictureUrl: member.ProfilePictureUrl,
-            Role: member.Role,
-            JoinedAt: member.JoinedAt);
+            Role: member.Role);
 
     /// <summary>Other child-team members are deduplicated across child teams.</summary>
     private async Task<(IReadOnlyList<TeamPageChildTeamMemberSummary> Leads, IReadOnlyList<TeamPageChildTeamMemberSummary> Members)>
@@ -355,24 +416,24 @@ internal sealed class TeamPageService(
         var directMemberUserIds = new HashSet<Guid>(directMembers.Select(m => m.UserId));
         var addedUserIds = new HashSet<Guid>();
 
-        var childTeamIds = childTeams.Select(c => c.Id).ToList();
-        var managementRolesByTeam = await teamService.GetManagementRoleNamesByTeamIdsAsync(childTeamIds, cancellationToken);
         var teamsById = await teamService.GetTeamsAsync(cancellationToken);
-
-        var childMembersByTeam = childTeamIds
-            .Where(teamsById.ContainsKey)
-            .ToDictionary(id => id, id => teamsById[id].Members);
 
         var leads = new List<TeamPageChildTeamMemberSummary>();
         var rollupMembers = new List<TeamPageChildTeamMemberSummary>();
 
-        foreach (var child in childTeams)
+        // First child wins a repeated human's affiliation and role metadata; preserve that selection order.
+        foreach (var child in childTeams.OrderBy(child => child.Name, StringComparer.Ordinal))
         {
-            if (!childMembersByTeam.TryGetValue(child.Id, out var childMembers))
+            if (!teamsById.TryGetValue(child.Id, out var team))
                 continue;
-            var managementRoleName = managementRolesByTeam.GetValueOrDefault(child.Id);
+            var managementRoleName = team.RoleDefinitions?
+                .Where(d => d.IsManagement && d.IsPublic)
+                // First authored public management-role selector, not display ordering.
+                .OrderBy(d => d.SortOrder)
+                .ThenBy(d => d.Name, StringComparer.CurrentCulture)
+                .FirstOrDefault()?.Name;
 
-            foreach (var cm in childMembers)
+            foreach (var cm in team.Members)
             {
                 var isCoordinator = cm.Role == TeamMemberRole.Coordinator;
 
@@ -388,51 +449,5 @@ internal sealed class TeamPageService(
         }
 
         return (leads, rollupMembers);
-    }
-
-    private async Task<TeamPageShiftsSummary?> GetShiftsSummaryAsync(
-        TeamPageTeamSummary team,
-        IReadOnlyList<TeamPageTeamLink> childTeams,
-        Guid? userId,
-        bool isAuthenticated,
-        bool canManageShiftsByRole,
-        CancellationToken cancellationToken)
-    {
-        if (!isAuthenticated ||
-            !userId.HasValue ||
-            team.SystemTeamType != SystemTeamType.None)
-        {
-            return null;
-        }
-
-        var canManageShifts = canManageShiftsByRole ||
-            await shiftManagementService.IsDeptCoordinatorAsync(userId.Value, team.Id, cancellationToken);
-
-        var activeEvent = await settingsService.GetActiveEventSettingsAsync(cancellationToken);
-        if (activeEvent is null)
-        {
-            return new TeamPageShiftsSummary(0, 0, 0, 0, canManageShifts);
-        }
-
-        var activeChildTeamIds = childTeams.Select(c => c.Id).ToList();
-        var teamIds = new List<Guid>(activeChildTeamIds.Count + 1) { team.Id };
-        teamIds.AddRange(activeChildTeamIds);
-
-        var summaryData = await shiftManagementService.GetShiftsSummaryAsync(activeEvent.Id, teamIds, cancellationToken);
-        if (summaryData is null)
-        {
-            return new TeamPageShiftsSummary(0, 0, 0, 0, canManageShifts);
-        }
-
-        var childTeamCountWithShifts = activeChildTeamIds
-            .Count(summaryData.TeamIdsWithShifts.Contains);
-
-        return new TeamPageShiftsSummary(
-            summaryData.TotalSlots,
-            summaryData.ConfirmedCount,
-            summaryData.PendingCount,
-            summaryData.UniqueVolunteerCount,
-            canManageShifts,
-            childTeamCountWithShifts);
     }
 }

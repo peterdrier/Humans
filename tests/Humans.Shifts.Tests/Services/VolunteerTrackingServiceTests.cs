@@ -1,4 +1,6 @@
 using Humans.Shifts.Data;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Humans.AuditLog.Contracts;
 using Humans.Shifts.Domain;
 using AwesomeAssertions;
@@ -22,6 +24,128 @@ public class VolunteerTrackingServiceTests
     private static readonly Instant TestNow = Instant.FromUtc(2026, 6, 15, 10, 0);
     private static readonly LocalDate DefaultGateOpening = new(2026, 6, 16);
 
+    public enum TrackingWrite
+    {
+        Availability, ClearAvailability, AddAvailableDay, RemoveAvailableDay,
+        CampSetup, ClearCampSetup, DayOff, ClearDayOff, Reassign, MissingDayOff
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(TrackingWrite.Availability)]
+    [Xunit.InlineData(TrackingWrite.ClearAvailability)]
+    [Xunit.InlineData(TrackingWrite.AddAvailableDay)]
+    [Xunit.InlineData(TrackingWrite.RemoveAvailableDay)]
+    [Xunit.InlineData(TrackingWrite.CampSetup)]
+    [Xunit.InlineData(TrackingWrite.ClearCampSetup)]
+    [Xunit.InlineData(TrackingWrite.DayOff)]
+    [Xunit.InlineData(TrackingWrite.ClearDayOff)]
+    [Xunit.InlineData(TrackingWrite.Reassign)]
+    [Xunit.InlineData(TrackingWrite.MissingDayOff)]
+    public async Task TrackingWrite_UnknownCompletion_EvictsAffectedViews(TrackingWrite operation)
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var es = MakeEvent();
+        var userId = Guid.NewGuid();
+        var targetId = Guid.NewGuid();
+        var options = new DbContextOptionsBuilder<ShiftsDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString()).Options;
+        await using (var seed = new ShiftsDbContext(options))
+        {
+            seed.GeneralAvailability.Add(new GeneralAvailability
+            {
+                Id = Guid.NewGuid(),
+                UserId = userId,
+                EventSettingsId = es.Id,
+                AvailableDayOffsets = [-5],
+                CreatedAt = TestNow,
+                UpdatedAt = TestNow
+            });
+            seed.VolunteerBuildStatuses.Add(new VolunteerBuildStatus
+            {
+                Id = Guid.NewGuid(),
+                UserId = userId,
+                EventSettingsId = es.Id,
+                BarrioSetupStartDate = es.GateOpeningDate.PlusDays(-2),
+                DayOffs = [new DayOffEntry(-4, null, targetId, TestNow), new DayOffEntry(-2, null, targetId, TestNow)]
+            });
+            await seed.SaveChangesAsync(ct);
+        }
+        var failure = new IOException("Persistence acknowledgement failed");
+        var writeOptions = new DbContextOptionsBuilder<ShiftsDbContext>(options)
+            .AddInterceptors(new FailTrackingAcknowledgement(failure)).Options;
+        await using var db = new ShiftsDbContext(writeOptions);
+        var settings = Substitute.For<ISettingsService>();
+        var calendar = es.ToInfo();
+        settings.GetActiveEventSettings().Returns(calendar);
+        settings.GetEventSettingsByIdAsync(es.Id, Arg.Any<CancellationToken>()).Returns(calendar);
+        var shifts = Substitute.For<IShiftManagementRepository>();
+        shifts.GetEligibleBuildSignupsAsync(es.Id, es.BuildStartOffset, Arg.Any<CancellationToken>()).Returns([]);
+        var audit = Substitute.For<IAuditLogService>();
+        var service = new VolunteerTrackingService(
+            new VolunteerTrackingRepository(db), shifts, new EventCalendarResolver(settings, shifts),
+            Substitute.For<IUserService>(), Substitute.For<ITicketService>(), new FakeClock(TestNow), audit);
+        Func<Task> mutate = operation switch
+        {
+            TrackingWrite.Availability => () => service.SetAvailabilityAsync(userId, es.Id, [-3]),
+            TrackingWrite.ClearAvailability => () => service.SetAvailabilityAsync(userId, es.Id, []),
+            TrackingWrite.AddAvailableDay => () => service.SetDayAvailabilityAsync(userId, es.Id, -3, true, targetId, ct),
+            TrackingWrite.RemoveAvailableDay => () => service.SetDayAvailabilityAsync(userId, es.Id, -5, false, targetId, ct),
+            TrackingWrite.CampSetup => () => service.SetCampSetupAsync(userId, es.GateOpeningDate.PlusDays(-3), "Setup", targetId, ct),
+            TrackingWrite.ClearCampSetup => () => service.ClearCampSetupAsync(userId, targetId, ct),
+            TrackingWrite.DayOff => () => service.SetDayOffAsync(userId, -3, "Rest", targetId, ct),
+            TrackingWrite.ClearDayOff => () => service.ClearDayOffAsync(userId, -4, targetId, ct),
+            TrackingWrite.Reassign => () => service.ReassignAsync(userId, targetId, targetId, TestNow, ct),
+            TrackingWrite.MissingDayOff => async () =>
+                (await service.ClearDayOffAsync(userId, -1, targetId, ct)).Removed.Should().BeFalse(),
+            _ => throw new ArgumentOutOfRangeException(nameof(operation))
+        };
+
+        if (operation == TrackingWrite.MissingDayOff) await mutate();
+        else (await mutate.Should().ThrowAsync<IOException>()).Which.Should().BeSameAs(failure);
+
+        audit.ReceivedCalls().Should().BeEmpty();
+        await using var persisted = new ShiftsDbContext(options);
+        var availability = await persisted.GeneralAvailability.SingleAsync(ct);
+        var build = await persisted.VolunteerBuildStatuses.SingleAsync(ct);
+        switch (operation)
+        {
+            case TrackingWrite.Availability:
+                availability.AvailableDayOffsets.Should().Equal(-3);
+                break;
+            case TrackingWrite.ClearAvailability or TrackingWrite.RemoveAvailableDay:
+                availability.AvailableDayOffsets.Should().BeEmpty();
+                break;
+            case TrackingWrite.AddAvailableDay:
+                availability.AvailableDayOffsets.Should().Equal(-5, -3);
+                break;
+            case TrackingWrite.CampSetup:
+                build.BarrioSetupStartDate.Should().Be(es.GateOpeningDate.PlusDays(-3));
+                build.DayOffs.Select(d => d.DayOffset).Should().Equal(-4);
+                break;
+            case TrackingWrite.ClearCampSetup:
+                build.BarrioSetupStartDate.Should().BeNull();
+                break;
+            case TrackingWrite.DayOff:
+                build.DayOffs.Select(d => d.DayOffset).Should().Equal(-4, -3, -2);
+                break;
+            case TrackingWrite.ClearDayOff:
+                build.DayOffs.Select(d => d.DayOffset).Should().Equal(-2);
+                break;
+            case TrackingWrite.Reassign:
+                availability.UserId.Should().Be(targetId);
+                break;
+            case TrackingWrite.MissingDayOff:
+                build.DayOffs.Select(d => d.DayOffset).Should().Equal(-4, -2);
+                break;
+        }
+    }
+
+    private sealed class FailTrackingAcknowledgement(IOException failure) : SaveChangesInterceptor
+    {
+        public override ValueTask<int> SavedChangesAsync(
+            SaveChangesCompletedEventData eventData, int result, CancellationToken cancellationToken = default) => throw failure;
+    }
+
     [HumansFact]
     public async Task AvailabilityPoolRead_PreservesCallerCancellation()
     {
@@ -34,7 +158,7 @@ public class VolunteerTrackingServiceTests
         var service = new VolunteerTrackingService(
             repo, Substitute.For<IShiftManagementRepository>(),
             new EventCalendarResolver(Substitute.For<ISettingsService>(), Substitute.For<Humans.Shifts.Data.IShiftManagementRepository>()),
-            Substitute.For<IUserService>(), Substitute.For<ITicketService>(), new ShiftViewProbe().Cache,
+            Substitute.For<IUserService>(), Substitute.For<ITicketService>(),
             new FakeClock(TestNow), Substitute.For<IAuditLogService>());
 
         Func<Task> read = () => service.GetAvailableForDayAsync(eventId, -1, cancellation.Token);
@@ -852,7 +976,7 @@ public class VolunteerTrackingServiceTests
 
         var settingsService = Substitute.For<ISettingsService>();
         var calendar = activeEvent?.ToInfo();
-        settingsService.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(calendar);
+        settingsService.GetActiveEventSettings().Returns(calendar);
         settingsService.GetEventSettingsByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(ci => calendar is not null && calendar.Id == ci.Arg<Guid>() ? calendar : null);
         var calendarResolver = new EventCalendarResolver(settingsService, Substitute.For<Humans.Shifts.Data.IShiftManagementRepository>());
@@ -890,7 +1014,7 @@ public class VolunteerTrackingServiceTests
             availabilities ?? []);
 
         return new VolunteerTrackingService(
-            trackingRepo, shiftMgmt, calendarResolver, userService, tickets, new ShiftViewProbe().Cache, clock,
+            trackingRepo, shiftMgmt, calendarResolver, userService, tickets, clock,
             audit ?? Substitute.For<IAuditLogService>());
     }
 

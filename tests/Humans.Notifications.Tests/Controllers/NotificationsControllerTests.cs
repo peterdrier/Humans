@@ -1,22 +1,14 @@
-using Humans.Consent.Contracts;
+using Humans.Notifications.Contracts;
 using Humans.Base.Constants;
 using Humans.Notifications.Models;
 using Humans.Notifications.Data;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Localization;
 using System.Security.Claims;
 using AwesomeAssertions;
-using Humans.Camps.Contracts;
-using Humans.Governance.Contracts;
-using Humans.GoogleIntegration.Contracts;
 using Humans.Notifications.Controllers;
 using Humans.Notifications.Services;
-using Humans.Teams.Contracts;
-using Humans.Tickets.Contracts;
 using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 
@@ -75,19 +67,14 @@ public sealed class NotificationsControllerTests
         inbox.DismissAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(new NotificationMutationOutcome(true, false, false));
         inbox.MarkReadAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(new NotificationMutationOutcome(true, false, false));
         inbox.ClickThroughAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns((string?)null);
-        var consent = Substitute.For<IConsentService>();
-        consent.GetConsentReviewsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, ConsentReviewInfo>());
-        var teams = Substitute.For<ITeamService>();
-        teams.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo>());
-        var camps = Substitute.For<ICampService>();
-        camps.GetSettingsAsync(Arg.Any<CancellationToken>()).Returns(new CampSettingsInfo(2026, []));
-        var applications = Substitute.For<IGovernanceService>();
-        applications.GetUnvotedApplicationCountAsync(actorId, Arg.Any<CancellationToken>()).Returns(4);
-        using var cache = new MemoryCache(new MemoryCacheOptions());
-        using var localization = new ServiceCollection().AddLogging().AddLocalization().BuildServiceProvider();
-        var meters = new NotificationMeterProvider(users, consent, Substitute.For<IGoogleSyncService>(), teams,
-            Substitute.For<ITicketSync>(), applications, camps, cache, NullLogger<NotificationMeterProvider>.Instance,
-            localization.GetRequiredService<IStringLocalizer<NotificationsResource>>());
+        var contributor = Substitute.For<INotificationMeterContributor>();
+        contributor.GetMetersAsync(Arg.Any<ClaimsPrincipal>(), actorId, Arg.Any<CancellationToken>()).Returns(
+        [
+            new NotificationMeter { Title = "Low", Count = 1, ActionUrl = "/", Audience = "the Board", Priority = 3 },
+            new NotificationMeter { Title = "Pending", Count = 4, ActionUrl = "/", Audience = "the Board", Priority = 9 },
+            new NotificationMeter { Title = "Middle", Count = 2, ActionUrl = "/", Audience = "the Board", Priority = 7 },
+        ]);
+        var meters = new NotificationMeterProvider([contributor], NullLogger<NotificationMeterProvider>.Instance);
         var http = new DefaultHttpContext
         {
             RequestAborted = request.Token,
@@ -130,7 +117,7 @@ public sealed class NotificationsControllerTests
                 {
                     var model = result is ViewResult view ? view.Model : ((PartialViewResult)result).Model;
                     var rows = model is NotificationInboxViewModel list ? list.Meters : ((NotificationPopupViewModel)model!).Meters;
-                    rows.Should().ContainSingle().Which.Count.Should().Be(4);
+                    rows.Select(m => (m.Title, m.Count)).Should().Equal(("Pending", 4), ("Middle", 2), ("Low", 1));
                 }
             }
         }
@@ -145,14 +132,7 @@ public sealed class NotificationsControllerTests
         var inbox = Substitute.For<INotificationInboxService>();
         inbox.GetInboxAsync(Arg.Any<Guid>(), Arg.Any<string?>(), Arg.Any<string>(), Arg.Any<string>(), aborted.Token)
             .Returns(Task.FromException<NotificationInboxResult>(new OperationCanceledException(aborted.Token)));
-        using var cache = new MemoryCache(new MemoryCacheOptions());
-        using var localization = new ServiceCollection().AddLogging().AddLocalization().BuildServiceProvider();
-        var meterProvider = new NotificationMeterProvider(
-            Substitute.For<IUserService>(), Substitute.For<IConsentService>(), Substitute.For<IGoogleSyncService>(),
-            Substitute.For<ITeamService>(), Substitute.For<ITicketSync>(),
-            Substitute.For<IGovernanceService>(), Substitute.For<ICampService>(), cache,
-            NullLogger<NotificationMeterProvider>.Instance,
-            localization.GetRequiredService<IStringLocalizer<NotificationsResource>>());
+        var meterProvider = new NotificationMeterProvider([], NullLogger<NotificationMeterProvider>.Instance);
         var users = Substitute.For<IUserService>();
         users.GetUserInfoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(call => UserInfo.Create(new User { Id = call.Arg<Guid>() }, [], [], null));
@@ -176,14 +156,7 @@ public sealed class NotificationsControllerTests
     {
         var userId = Guid.NewGuid();
         var inbox = Substitute.For<INotificationInboxService>();
-        using var cache = new MemoryCache(new MemoryCacheOptions());
-        using var localization = new ServiceCollection().AddLogging().AddLocalization().BuildServiceProvider();
-        var meterProvider = new NotificationMeterProvider(
-            Substitute.For<IUserService>(), Substitute.For<IConsentService>(), Substitute.For<IGoogleSyncService>(),
-            Substitute.For<ITeamService>(), Substitute.For<ITicketSync>(),
-            Substitute.For<IGovernanceService>(), Substitute.For<ICampService>(), cache,
-            NullLogger<NotificationMeterProvider>.Instance,
-            localization.GetRequiredService<IStringLocalizer<NotificationsResource>>());
+        var meterProvider = new NotificationMeterProvider([], NullLogger<NotificationMeterProvider>.Instance);
         var context = new DefaultHttpContext();
         if (authenticated)
             context.User = new ClaimsPrincipal(new ClaimsIdentity(

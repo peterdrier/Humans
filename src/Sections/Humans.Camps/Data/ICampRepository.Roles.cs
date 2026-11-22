@@ -1,5 +1,3 @@
-using NodaTime;
-
 namespace Humans.Camps.Data;
 
 internal partial interface ICampRepository
@@ -67,11 +65,9 @@ internal partial interface ICampRepository
     /// <c>IX_camp_members_active_unique</c>); then its assignments fold onto the target's member, dropped on collision,
     /// and the source member is deleted. Both save stages share one transaction. Removed source members never
     /// collide and always re-point. Idempotent.
-    /// <paramref name="updatedAt"/> is unused: these tables carry no <c>UpdatedAt</c>.
     /// </summary>
     Task ReassignMembershipsToUserAsync(
         Guid sourceUserId,
         Guid targetUserId,
-        Instant updatedAt,
         CancellationToken ct = default);
 }

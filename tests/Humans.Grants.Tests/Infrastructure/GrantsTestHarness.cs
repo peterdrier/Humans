@@ -17,8 +17,7 @@ namespace Humans.Grants.Tests.Infrastructure;
 /// <summary>
 /// Base class for the section's tests: a per-test in-memory <see cref="GrantsDbContext"/> and
 /// factory, a deterministic clock, substitutes for every cross-section seam the service talks
-/// to, and seeders for programs and grants. Member names follow the other section harnesses
-/// (memory/code/service-test-harness.md): <c>Db</c>, <c>DbFactory</c>, <c>Clock</c>, <c>SeedUser</c>.
+/// to, and seeders for programs and grants.
 /// </summary>
 public abstract class GrantsTestHarness : IDisposable
 {
@@ -69,7 +68,7 @@ public abstract class GrantsTestHarness : IDisposable
 
     /// <summary>The service over the real repository and the substitutes above.</summary>
     private protected GrantService NewService() => new(
-        new GrantRepository(DbFactory), Users, Notifications, Email, EmailFactory, AuditLog, Settings, Clock, Logger);
+        FixedOrgTimeZone.Madrid, new GrantRepository(DbFactory), Users, Notifications, Email, EmailFactory, AuditLog, Settings, Clock, Logger);
 
     /// <summary>A fresh context over the same store — what a test reads back through.</summary>
     private protected GrantsDbContext OpenContext() => DbFactory.CreateDbContext();
@@ -85,7 +84,7 @@ public abstract class GrantsTestHarness : IDisposable
             userId, burnerName, false, language, null, Instant.FromUtc(2026, 1, 1, 0, 0),
             null, null, null, null, null, null,
             null, null, null, [], [],
-            UserFixtures.Profile(burnerName: burnerName))
+            UserFixtures.Profile())
         { IdentityEmailColumn = $"{userId}@example.org", MergedUserIds = mergedIds ?? [] };
         return userId;
     }

@@ -3,7 +3,7 @@
 -->
 <!-- freshness:flag-on-change
   The sign rules (totalBillValue first, family only as fallback), the reconciliation strip, and that the sweep never
-  touches pleo_categories.
+  deletes, unlinks or changes a hand-linked pleo_categories row.
 -->
 
 # Pleo — Section Invariants
@@ -23,10 +23,10 @@ books the spend from what `IPleoService` serves (step two, `/Finance/Pleo`).
   EUR totals and counted.
 - **Spend**: completed card purchases, Pleo invoices and out-of-pocket, net of refunds. `PENDING` rows are listed but
   never counted; Pleo's own current balance excludes them too.
-- **Category**: Pleo's spending category. An entry's `accountId` is a category id, and the API that maps categories to
-  accounts (`bookkeeping-categories:search`) is closed to the key, so `pleo_categories` holds that mapping: name →
-  Holded code seeded from Pleo's settings page, id linked by hand. An entry whose category is unlinked or absent is
-  **unmapped** and never booked onto a guessed account.
+- **Category**: Pleo's spending category. An entry's `accountId` is a category id; Pleo's own mapping
+  (`/v1/bookkeeping-categories:search`: id, name, chart account) says which account a category books to.
+  `pleo_categories` holds the mapping in use: each sweep links the ids nobody linked, and a link made by hand stands
+  over Pleo's. An entry whose category is unlinked or absent is **unmapped** and never booked onto a guessed account.
 - **Chart**: Pleo's chart of accounts (`/v1-beta/accounts:search`) is Holded's; `code` is the Holded account number.
 
 ## Data Model (`PleoDbContext`, history `__EFMigrationsHistory_Pleo`)
@@ -36,12 +36,12 @@ books the spend from what `IPleoService` serves (step two, `/Finance/Pleo`).
 | `pleo_entries` | one row per entry, keyed by Pleo id; typed fields, signed `AmountEur`, and `Raw` (jsonb, the entry as returned) |
 | `pleo_employees` | cardholders: Pleo id, first/last name, code, deleted flag. No email or phone |
 | `pleo_accounts` | the chart: Pleo id, code, name, external (Holded) id, archived |
-| `pleo_balance` | one row: wallet current, available and pending debits in minors |
+| `pleo_balances` | one row: wallet current, available and pending debits in minors |
 | `pleo_sync_states` | one row: status, last run, entries mirrored, empty rows skipped, last error |
-| `pleo_categories` | category name → Holded code, linked Pleo category id (unique when set), who set it and when |
+| `pleo_categories` | category name → Holded code, linked Pleo category id (unique when set), who set it (null: a sweep) and when |
 
-The first five are a cache, rebuilt by every sweep. `pleo_categories` is not: no sweep touches it. Its 13 seed rows
-(`HasData`) are Pleo's "Holded Accounts" categories as of 3 Nov 2026, all unlinked. Its name is not unique-indexed
+The first five are a cache, rebuilt by every sweep. `pleo_categories` is not: a sweep only adds to it (see
+Invariants). Its 13 seed rows (`HasData`) are Pleo's "Holded Accounts" categories as of 3 Nov 2026, all unlinked. Its name is not unique-indexed
 (`unique-constraints-ids-only`); the service refuses a duplicate name. Sentinel table: `pleo_entries`.
 
 ## Routing
@@ -54,7 +54,7 @@ All under `FinancePolicies.Read`; English-only finance-admin pages like `/Holded
   Holded booking, with totals: unmapped and missing receipt, each linking to its filtered list. Spend by Holded account with
   an Unmapped bucket, spend by cardholder, and "N new categories to map" when an id is waiting.
 - `/Pleo/Entries` — every entry, newest first by performed date, filterable by Holded account, cardholder, family,
-  no receipt, unmapped (no Holded code); both blocking filters leave loads out.
+  no receipt, unmapped (no Holded code); both blocking filters show only completed spend, the entries the blocking counts on `/Pleo` count.
 - `/Pleo/Entries/{id}` — every mirrored field (typed, plus the raw JSON) and its receipts, listed live from Pleo and
   shown inline through `/Pleo/Entries/{id}/Receipts/{receiptId}`. A failed lookup is said on the page. No link into
   Pleo's app: no stable URL pattern is verified.
@@ -73,16 +73,45 @@ All under `FinancePolicies.Read`; English-only finance-admin pages like `/Holded
 
 ## Invariants
 
-- A sweep fetches entries, chart, cardholders and balance (three to five calls) before writing anything, then
-  replaces the four cache tables in one save: rows the sweep did not return are deleted. A failed call leaves the
-  mirror as it was and records the error on the sync row.
-- The pager fails closed: a body without `data`, `hasNextPage` without a cursor, a repeated cursor or the 100-page
-  cap throws, so a short fetch can never delete rows.
-- Entries without an id or family are skipped and counted on the sync row.
+- List and detail original-currency amounts use ISO 4217 minor-unit scales in their shared row projection, including zero-decimal ISK/JPY, three-decimal KWD and four-decimal CLF. Views preserve that precision. Pleo's [accounting-entry money schema](https://developers.pleo.io/reference/accounting-entries/v1/search-accounting-entries) defines currency-specific minor units; scales follow [SIX's ISO 4217 list](https://www.six-group.com/dam/download/financial-information/data-center/iso-currrency/lists/list-one.xml). EUR reconciliation still uses Pleo's bill value and existing sign rules.
+
+- A category link with a missing or blank Pleo id is refused before anything is saved or audited.
+- Entry notes and stored sync errors are cut to their column length, and HTTP-error previews to 300 characters,
+  never mid-character (`PleoTextBounds`). `Raw` keeps the entry as Pleo returned it.
+- Whoever last set a category row owns it. A sweep never changes a row a person linked, unlinked or added
+  (`SetByUserId` set); an id whose name matches a person's unlinked row stays unlinked, so a hand unlink sticks and a
+  hand-added row is linked only by hand. An id nobody linked is linked to the seeded unlinked row of the same name
+  (taking Pleo's account), or added as a new row. A row a sweep linked
+  follows Pleo's name and account. A Pleo category with no account, or an account missing from the chart, is skipped.
+  A sweep never deletes or unlinks a category row.
+- A sweep fetches entries, chart, categories, cardholders and balance before writing anything, then
+  replaces the four cache tables and saves the changed category rows in one save: rows the sweep did not return are deleted. A failed required vendor read leaves the
+  mirror as it was and records the error on the sync row. The category fetch is the exception: if it fails, the sweep
+  goes on without it, leaves `pleo_categories` as it is, and keeps the category error on the sync row (shown on the
+  sync card) while the status stays `Idle`. If that diagnostic save also fails, the secondary failure
+  is logged without replacing the original sync or caller-cancellation exception; the sync gate is still released.
+- Cancellation during startup or preparation restores `Idle` with the previous mirror summary and diagnostic;
+  the initial `Running` save is covered by the same cleanup. Reads and atomic mirror replacement retain caller
+  cancellation, with a checkpoint before replacement. After replacement commits, category audit and the final
+  success-state save finish independently of shutdown. Cancellation from that completion phase is a genuine
+  failure, preserving the original exception as its cause. The nightly job propagates shutdown with a Warning
+  and no completion message; unrelated failures retain their existing retry policy.
+- A JSON response whose root is not an object fails as `PleoPermanentException`: a receipt read reports it on the
+  entry page, a sweep fails before replacing anything.
+- The shared entries/accounts/employees/receipts pager requires an explicit boolean `pagination.hasNextPage`
+  on every page; only `false` completes the dataset. Missing, null or mistyped metadata fails instead of
+  returning a prefix. A body without `data`, `hasNextPage` without a cursor, a repeated cursor or the 100-page
+  cap also throws, so a short fetch can never delete rows.
+- The primary balance requires a nonblank currency and explicit current, available and pending-debit minor-unit values. Explicit zero and foreign currencies remain valid mirror data; an incomplete balance fails before mirror replacement.
+- Account, category, cardholder and receipt items require a nonblank string id. Malformed identities fail their read as `PleoPermanentException` before returning typed rows. Required mirror reads retain the previous snapshot; categories retain their optional-failure policy.
+- Entries with a missing, empty or whitespace-only id or family are skipped and counted on the sync row. A completed sweep with skipped rows logs Warning without an exception; a clean sweep logs Information. A provided `transactionValue` or `totalBillValue` must contain both a nonblank currency and a minor-unit value; incomplete money objects fail the sweep before mirror replacement and record a sync error. Optional money objects may be absent, and explicit zero amounts remain valid. List/detail views omit the original-currency figure when no currency was supplied.
+- Expected API failures in optional category and receipt reads, and permanent nightly failures, log Warning with the reason and no exception stack. Unexpected optional-category failures log Error with the original exception. Receipt/category fallbacks and nightly retry policy are unchanged; requested cancellation still propagates.
 - One sweep at a time: an in-process gate shared by the nightly job and Sync now; a second caller is skipped and
   told so. No key (`PLEO_API_KEY`, `PLEO_COMPANY_ID`): the job logs and skips, Sync now is disabled.
+- Employee sweeps request `includeDeleted=true` on every page, retaining former cardholders and their deleted
+  flag so historical entries and spend summaries keep their names after someone leaves Pleo. Contact fields
+  remain outside the mirror.
 - The connector is read-only: GETs and the `:search` POSTs. The key holds write scopes; nothing here uses them.
-<!-- wheat: docs/superpowers/specs/2026-08-10-pleo-connector-design.md §Pleo API facts -->
 - The mirror polls: Pleo's webhooks cover only export jobs and vendors, nothing per entry. Cardholders come from
   `/v2/employees`; the `/v1/employees` and `/v1/users` paths are denied to a standalone key.
 - Receipts are fetched live and never stored. The file comes from Pleo's signed CDN URL (an `https` `*.pleo.io` host
@@ -95,7 +124,8 @@ All under `FinancePolicies.Read`; English-only finance-admin pages like `/Holded
 
 Every link, unlink and add on `/Pleo/Categories` writes an audit entry naming the category, the Pleo id or Holded code,
 and the actor (`PleoCategoryLinked`, `PleoCategoryUnlinked`, `PleoCategoryAdded`): the mapping decides where spend is
-booked. Sweeps write none; their result is the sync row.
+booked. A sweep writes one entry per category row it links, adds or remaps (`PleoCategoryRemapped`), with the job as
+actor; otherwise its result is the sync row.
 
 ## Negative Access Rules
 
@@ -104,12 +134,13 @@ booked. Sweeps write none; their result is the sync row.
 
 ## Triggers
 
-- `pleo-sync`, nightly at 03:15 (Hangfire, `PleoSyncJob`): the full sweep.
+- `pleo-sync`, nightly at 03:15 UTC (Hangfire, `PleoSyncJob`): the full sweep. A 4xx from Pleo ends the run with one warning and no retry;
+  transient failures (5xx, 429, network) keep Hangfire's retries.
 
 ## Cross-Section Dependencies
 
 - Finance.Contracts: `FinancePolicies` only.
-- Users.Contracts: `IUserService`, through `HumansControllerBase`.
+- Base: `IUserService` through `HumansControllerBase`, `IAuditLogService`.
 - No Holded call and no Holded reference: the Holded codes shown come from Pleo's own chart.
 
 ## GDPR
@@ -120,9 +151,16 @@ step) brings the export and deletion paths with it. `SetByUserId` on a category 
 
 ## Architecture
 
+`Service` implements both interfaces and owns the category writes, the sweep (fetch, category plan, atomic
+replace, audit, the sync gate and sync row) and every read (one load of the mirror, projected per page; live receipt
+reads).
+
 ### Public contract
 
 `IPleoService` (`Contracts/`): `GetSettledEntriesAsync(from, to)` — entries settled in a Madrid-date window, each with
-its Holded code or null and whether it has a receipt. Finance books only entries with both. `GetWalletBalanceAsync` —
-the wallet's current EUR balance at the last sweep (`PleoWalletBalance`), null before one or in another currency; the
-`/Finance` and `/Finance/Pleo` balance check. Served from the mirror. Everything else is internal.
+its Holded code or null, whether it has a receipt, its note, cardholder name and receipt ids (read from `Raw`, the entry
+as the sweep stored it). Finance books only entries with a code. `GetWalletBalanceAsync` — the wallet's current EUR
+balance at the last sweep (`PleoWalletBalance`), null before one or in another currency; the `/Finance` and
+`/Finance/Pleo` balance check. Both served from the mirror. `GetReceiptFileAsync(entryId, receiptId)` — one receipt of
+a mirrored entry, fetched live from Pleo (the only live read on the contract), null when it can't be fetched; Finance
+attaches it to the entry's Holded purchase. Everything else is internal.

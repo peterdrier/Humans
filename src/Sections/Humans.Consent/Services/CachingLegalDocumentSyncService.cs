@@ -81,17 +81,9 @@ internal sealed class CachingLegalDocumentSyncService(
         return await WithInnerAsync(inner => inner.GetVersionByIdAsync(versionId, cancellationToken));
     }
 
-    public Task<IReadOnlyList<LegalDocumentSnapshot>> GetActiveDocumentsAsync(
-        CancellationToken cancellationToken = default) =>
-        WithInnerAsync(inner => inner.GetActiveDocumentsAsync(cancellationToken));
-
     public Task<IReadOnlyList<LegalDocument>> SyncAllDocumentsAsync(
         CancellationToken cancellationToken = default, ICollection<Exception>? failures = null) =>
         WithInnerAsync(inner => inner.SyncAllDocumentsAsync(cancellationToken, failures));
-
-    public Task<string?> SyncDocumentAsync(
-        Guid documentId, CancellationToken cancellationToken = default) =>
-        WithInnerAsync(inner => inner.SyncDocumentAsync(documentId, cancellationToken));
 
     /// <summary>Wholesale: the cache is one bag, so there is no per-document evict.</summary>
     public void InvalidateAll()
@@ -108,7 +100,7 @@ internal sealed class CachingLegalDocumentSyncService(
         return AsReadOnlyDictionary;
     }
 
-    protected override async Task WarmAllAsync(CancellationToken ct)
+    protected override async Task WarmAllAsync(Action<Guid, ActiveRequiredLegalDocumentSnapshot> publish, CancellationToken ct)
     {
         await using var scope = scopeFactory.CreateAsyncScope();
         var inner = scope.ServiceProvider.GetRequiredKeyedService<ILegalDocumentSyncManagement>(InnerServiceKey);
@@ -118,7 +110,7 @@ internal sealed class CachingLegalDocumentSyncService(
 
         foreach (var info in docs)
         {
-            Set(info.Id, info);
+            publish(info.Id, info);
             foreach (var v in info.Versions)
                 versionIndex[v.Id] = info.Id;
         }

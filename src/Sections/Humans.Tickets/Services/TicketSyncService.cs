@@ -1,4 +1,5 @@
 using System.Transactions;
+using Humans.AuditLog.Contracts;
 using Humans.Campaigns.Contracts;
 using Humans.Settings.Contracts;
 using Humans.Tickets.Contracts;
@@ -22,8 +23,10 @@ internal sealed class TicketSyncService(
     ILogger<TicketSyncService> logger,
     IUserService userService,
     IEventParticipationManagement participations,
+    ITicketService participationReads,
     ICampaignWrite campaignService,
-    ISettingsService settingsService) : ITicketSyncService
+    ISettingsService settingsService,
+    IAuditLogService auditLog) : ITicketSyncService
 {
     private readonly TicketVendorSettings _settings = settings.Value;
 
@@ -41,18 +44,19 @@ internal sealed class TicketSyncService(
             ?? throw new InvalidOperationException("TicketSyncState seed row missing");
 
         var now = clock.GetCurrentInstant();
+        var previousCursor = syncState.LastSyncAt;
+        var previousError = syncState.LastError;
 
         syncState.SyncStatus = TicketSyncStatus.Running;
         syncState.StatusChangedAt = now;
         syncState.VendorEventId = eventId;
-        await ticketRepository.PersistSyncStateAsync(syncState, ct);
-
         try
         {
-            // A sync finishes or defers to the next run; it is never abandoned mid-pagination because the caller left.
-            var orders = await vendorService.GetOrdersAsync(syncState.LastSyncAt, eventId, CancellationToken.None);
-            var tickets = await vendorService.GetIssuedTicketsAsync(syncState.LastSyncAt, eventId, CancellationToken.None);
-            var checkIns = await vendorService.GetCheckInsAsync(syncState.LastSyncAt, eventId, CancellationToken.None);
+            await ticketRepository.PersistSyncStateAsync(syncState, ct);
+
+            var orders = await vendorService.GetOrdersAsync(syncState.LastSyncAt, eventId, ct);
+            var tickets = await vendorService.GetIssuedTicketsAsync(syncState.LastSyncAt, eventId, ct);
+            var checkIns = await vendorService.GetCheckInsAsync(syncState.LastSyncAt, eventId, ct);
 
             var emailLookup = await BuildEmailLookupAsync(ct);
 
@@ -145,6 +149,23 @@ internal sealed class TicketSyncService(
 
             return result;
         }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            logger.LogWarning("Ticket sync cancelled for event {EventId}; keeping the retry cursor", eventId);
+            try
+            {
+                // A state save may commit before cancellation is reported. Keep the old vendor cursor so the
+                // next run reloads every interrupted update.
+                syncState.LastSyncAt = previousCursor;
+                syncState.LastError = previousError;
+                await DeferSyncAsync(syncState);
+            }
+            catch (Exception saveEx)
+            {
+                logger.LogError(saveEx, "Failed to defer cancelled ticket sync for event {EventId}", eventId);
+            }
+            throw;
+        }
         catch (HttpRequestException ex) when (ex.StatusCode is null || (int)ex.StatusCode >= 500)
         {
             logger.LogWarning(
@@ -155,8 +176,7 @@ internal sealed class TicketSyncService(
         }
         catch (TaskCanceledException ex) when (ex.InnerException is TimeoutException)
         {
-            // Transient: an inner TimeoutException is HttpClient's own timeout signal. A genuine cancellation carries
-            // none and falls through to the Error handler below.
+            // The caller token is still active: an inner TimeoutException is HttpClient's own timeout signal.
             logger.LogWarning(
                 "Ticket sync: TicketTailor request timed out for event {EventId}, will retry next run",
                 eventId);
@@ -167,19 +187,26 @@ internal sealed class TicketSyncService(
         {
             logger.LogError(ex, "Ticket sync failed for event {EventId}", eventId);
 
-            syncState.SyncStatus = TicketSyncStatus.Error;
-            syncState.StatusChangedAt = clock.GetCurrentInstant();
-            syncState.LastError = ex.Message;
-            // The column is varchar(2000); logging and the rethrow retain the full diagnostic.
-            const int maxErrorLength = 2000;
-            if (syncState.LastError.Length > maxErrorLength)
+            try
             {
-                var length = maxErrorLength;
-                if (char.IsHighSurrogate(syncState.LastError[length - 1]) && char.IsLowSurrogate(syncState.LastError[length]))
-                    length--;
-                syncState.LastError = syncState.LastError[..length];
+                syncState.SyncStatus = TicketSyncStatus.Error;
+                syncState.StatusChangedAt = clock.GetCurrentInstant();
+                syncState.LastError = ex.Message;
+                // The column is varchar(2000); logging and the rethrow retain the full diagnostic.
+                const int maxErrorLength = 2000;
+                if (syncState.LastError.Length > maxErrorLength)
+                {
+                    var length = maxErrorLength;
+                    if (char.IsHighSurrogate(syncState.LastError[length - 1]) && char.IsLowSurrogate(syncState.LastError[length]))
+                        length--;
+                    syncState.LastError = syncState.LastError[..length];
+                }
+                await ticketRepository.PersistSyncStateAsync(syncState, CancellationToken.None);
             }
-            await ticketRepository.PersistSyncStateAsync(syncState, CancellationToken.None);
+            catch (Exception saveEx)
+            {
+                logger.LogError(saveEx, "Failed to persist ticket sync error state for event {EventId}", eventId);
+            }
 
             throw;
         }
@@ -200,6 +227,19 @@ internal sealed class TicketSyncService(
         await ticketRepository.ResetSyncStateLastSyncAsync();
     }
 
+    public Task<bool> IsScheduledSyncEnabledAsync(CancellationToken ct = default) =>
+        ticketRepository.IsScheduledSyncEnabledAsync(ct);
+
+    public async Task SetScheduledSyncEnabledAsync(bool enabled, Guid actorUserId, CancellationToken ct = default)
+    {
+        await ticketRepository.SetScheduledSyncEnabledAsync(enabled, ct);
+        await auditLog.LogAsync(
+            enabled ? TicketsAuditActions.TicketScheduledSyncEnabled : TicketsAuditActions.TicketScheduledSyncDisabled,
+            "TicketSettings", Guid.Empty,
+            enabled ? "Turned the scheduled ticket vendor sync on." : "Turned the scheduled ticket vendor sync off.",
+            actorUserId);
+    }
+
     public async Task ReassignAsync(Guid sourceUserId, Guid targetUserId, Guid actorUserId, Instant updatedAt,
         CancellationToken ct)
     {
@@ -207,7 +247,7 @@ internal sealed class TicketSyncService(
         using var scope = new TransactionScope(TransactionScopeOption.Required,
             new TransactionOptions { IsolationLevel = IsolationLevel.ReadCommitted },
             TransactionScopeAsyncFlowOption.Enabled);
-        await ticketRepository.ReassignToUserAsync(sourceUserId, targetUserId, updatedAt, ct);
+        await ticketRepository.ReassignToUserAsync(sourceUserId, targetUserId, ct);
         await transferRepository.ReassignUserAsync(sourceUserId, targetUserId, ct);
         scope.Complete();
     }
@@ -351,6 +391,10 @@ internal sealed class TicketSyncService(
                 order.WithheldTax = details.WithheldTax;
                 updated.Add(order);
             }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                throw;
+            }
             catch (Exception ex)
             {
                 logger.LogWarning(
@@ -405,7 +449,7 @@ internal sealed class TicketSyncService(
     /// </summary>
     private async Task SyncEventParticipationsAsync(CancellationToken ct)
     {
-        var activeEvent = await settingsService.GetActiveEventSettingsAsync();
+        var activeEvent = settingsService.GetActiveEventSettings();
         if (activeEvent is null || activeEvent.Year == 0)
             return;
 
@@ -431,7 +475,7 @@ internal sealed class TicketSyncService(
                 });
 
         // Read once and diffed, to skip the upsert for the many holders whose status hasn't changed.
-        var current = (await participations.GetAllParticipationsAsync(ct))
+        var current = (await participationReads.GetAllParticipationsAsync(ct))
             .Where(ep => ep.Year == year)
             .ToDictionary(ep => ep.UserId);
 

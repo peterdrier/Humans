@@ -10,8 +10,8 @@ public static class UsersPolicies
     public const string Manage = "UsersManage";
 
     /// <summary>
-    /// Users Admin who is neither Admin nor Board: drives the standalone "Humans" nav link for a viewer the admin shell
-    /// would otherwise not lead to the human list.
+    /// Admin, Board or Shifts NoInfo: may open one member's medical conditions through the audited reveal
+    /// (<c>POST /Profile/{id}/Medical/Reveal</c>). Every reveal is audited, which is what lets Board in.
     /// </summary>
-    public const string UsersAdminOnly = "UsersAdminOnly";
+    public const string MedicalDataViewer = "UsersMedicalDataViewer";
 }

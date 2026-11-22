@@ -9,10 +9,12 @@ using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
 using NSubstitute.ExceptionExtensions;
+using Xunit;
 
 namespace Humans.Holded.Tests;
 
 /// <summary>The purchase-document mirror: what a sync stores, how notes are fetched, and what a failed run leaves.</summary>
+[Collection("HoldedMirrorSyncGates")]
 public sealed class HoldedPurchaseDocSyncTests
 {
     private static readonly Instant FixedNow = Instant.FromUtc(2026, 10, 30, 12, 0);
@@ -29,9 +31,9 @@ public sealed class HoldedPurchaseDocSyncTests
         var callLog = Substitute.For<IHoldedCallLog>();
         callLog.DrainAll().Returns([]);
         _service = new Service(new Repository(new TestDbContextFactory<HoldedDbContext>(options)), _client, callLog,
-            new FakeClock(FixedNow), Options.Create(new HoldedSectionOptions()), NullLogger<Service>.Instance);
+            new FakeClock(FixedNow), Options.Create(new HoldedSectionOptions()), NullLogger<Service>.Instance, FixedOrgTimeZone.Madrid);
         _client.GetPurchaseDocumentAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
-            .Returns(ci => Full(ci.Arg<string>(), $"notes {ci.Arg<string>()}"));
+            .Returns(ci => Full($"notes {ci.Arg<string>()}"));
     }
 
     private static CancellationToken Ct => Xunit.TestContext.Current.CancellationToken;
@@ -45,18 +47,12 @@ public sealed class HoldedPurchaseDocSyncTests
         Subtotal = 100m,
         Tax = 21m,
         Total = 121m,
+        PaymentsPending = 121m,
         IsDraft = draft,
     };
 
-    private static HoldedPurchaseDocumentDto Full(string id, string? notes) => new()
+    private static HoldedPurchaseDocumentDto Full(string? notes) => new()
     {
-        Id = id,
-        DocNumber = id,
-        Subtotal = 0m,
-        Tax = 0m,
-        Total = 0m,
-        PaymentsTotal = 0m,
-        PaymentsPending = 0m,
         Notes = notes,
     };
 
@@ -85,6 +81,7 @@ public sealed class HoldedPurchaseDocSyncTests
         a.Description.Should().Be("ER: Train");
         a.Tags.Should().Equal("comms", "ops");
         a.BookedAccountId.Should().Be("acc-1");
+        a.PaymentsPending.Should().Be(121m);
         a.Date.Should().Be(new LocalDate(2026, 4, 1));
         a.HoldedUrl.Should().Be("https://app.holded.com/expenses/list#open:purchase-a");
         var b = mirror.Docs.Single(d => string.Equals(d.Id, "b", StringComparison.Ordinal));
@@ -151,5 +148,43 @@ public sealed class HoldedPurchaseDocSyncTests
         mirror.LastError.Should().Contain("holded down");
         mirror.LastSyncAt.Should().Be(FixedNow);
         mirror.Docs.Should().ContainSingle();
+    }
+
+    [HumansFact]
+    public async Task ContactSync_ReadFailureKeepsThePreviousMirrorAndRecordsAnError()
+    {
+        _client.ListContactsAsync(Arg.Any<CancellationToken>()).Returns(
+            [new HoldedContactDto { Id = "retained", Name = "Ana", SupplierAccountNum = 40000004 }]);
+        await _service.SyncContactsAsync(Ct);
+        var failure = new HoldedPermanentException("Holded contacts contain an unreadable contact.");
+        _client.ListContactsAsync(Arg.Any<CancellationToken>()).ThrowsAsync(failure);
+
+        var action = () => _service.SyncContactsAsync(Ct);
+        (await action.Should().ThrowAsync<HoldedPermanentException>()).Which.Should().BeSameAs(failure);
+
+        var mirror = await _service.GetContactsAsync(Ct);
+        var state = (await _service.GetSummaryAsync(Ct)).SyncStates.Single(s =>
+            string.Equals(s.Kind, "Contacts", StringComparison.Ordinal));
+        state.Status.Should().Be("Error");
+        state.LastError.Should().Contain("unreadable contact");
+        mirror.LastSyncAt.Should().Be(FixedNow);
+        mirror.Contacts.Should().ContainSingle().Which.Should().BeEquivalentTo(
+            new { Id = "retained", Name = "Ana", SupplierAccountNum = 40000004 });
+    }
+
+    [HumansFact]
+    public async Task ContactSync_ReplacesTheMirror_WhichIsNullUntilTheFirstSync()
+    {
+        (await _service.GetContactsAsync(Ct)).LastSyncAt.Should().BeNull();
+        _client.ListContactsAsync(Arg.Any<CancellationToken>()).Returns(
+            [new HoldedContactDto { Id = "c1", Name = "Ana", SupplierAccountNum = 40000004, Iban = "ES79" }],
+            [new HoldedContactDto { Id = "c2", Name = "Ben" }]);
+
+        (await _service.SyncContactsAsync(Ct)).Should().BeTrue();
+        (await _service.GetContactsAsync(Ct)).Contacts.Should().ContainSingle()
+            .Which.Should().BeEquivalentTo(new { Id = "c1", Name = "Ana", SupplierAccountNum = 40000004, Iban = "ES79" });
+
+        (await _service.SyncContactsAsync(Ct)).Should().BeTrue();
+        (await _service.GetContactsAsync(Ct)).Contacts.Should().ContainSingle().Which.Id.Should().Be("c2");
     }
 }

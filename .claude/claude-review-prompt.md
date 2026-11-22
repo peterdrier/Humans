@@ -82,7 +82,7 @@ checkout):
 
 Do NOT read docs/sections/, src/Sections/*/Docs/ or docs/features/ as part of
 this review. Section invariants and feature specs are reviewed separately by
-/section-align on demand; including them here burns budget and produces
+/section-doctor; including them here burns budget and produces
 cross-document nits this workflow should not gate on.
 
 Cover correctness, security, and the project's design/coding rules. Do not
@@ -98,7 +98,7 @@ the PR introduces it; cite the atom or doc named.
   config in section A that reads or writes a table section B owns, or a
   nav property / `HasOne` / FK across sections. Cross-section data is an
   in-memory join through the owning section's public `I<Section>Service`. (`no-cross-section-ef-joins`,
-  design-rules §6b)
+  design-rules.md, *No cross-domain joins*)
 - **EF entities crossing a boundary.** A public contract interface
   returning an entity, `IQueryable`, or an EF type. (`service-read-no-ef`)
 - **Logic in controllers.** Business rules, repository calls or cache calls
@@ -121,7 +121,7 @@ the PR introduces it; cite the atom or doc named.
   stated elsewhere, or is wrong (`comments-earn-their-place`).
 - **Copying debt.** New code modelled on something carrying
   `[Grandfathered]`, `[Obsolete]` or a baseline entry — debt is never
-  precedent. A new `[DontFix]` from anyone but Peter (`dontfix-attribute`).
+  precedent. A new `[DontFix]` from anyone but Peter (`no-analyzer-suppressions`).
 
 ## Locked decisions
 
@@ -136,12 +136,12 @@ Product constraints, not code shape. A PR that works against one is a
   or row versioning (`no-concurrency-tokens`).
 - **Small scale.** One server, dataset in RAM: no distributed locks or
   coordination, no pagination or query cleverness added for its own sake.
-- **`consent_records` and `audit_log` are append-only.** No UPDATE or
+- **`consent_records` and `audit_log_entries` are append-only.** No UPDATE or
   DELETE path (`consent-record-immutable`).
 - **Google service account authenticates as itself** — no domain-wide
   delegation or impersonation (`google-service-account-bare-auth`).
 - **Vendor connector sections stay separate** — Holded, MailerLite and
-  GoogleIntegration are never merged into their consumers
+  Google are never merged into their consumers
   (`vendor-connectors-own-sections`).
 
 ## Budget

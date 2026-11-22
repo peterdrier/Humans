@@ -9,16 +9,16 @@
 ## Purpose
 
 Holded (the company) is a SaaS vendor that holds the association's accounting books and records.
-This section is our interface and conduit to that vendor. It does two jobs and keeps them apart:
-it keeps a cached copy of the book so no page ever waits on Holded, and it is the one connector
+This section is our interface and conduit to that vendor. It keeps its jobs apart:
+it keeps cached copies of the book, purchase documents, contacts and bank feed so no page ever
+waits on Holded, and it is the one connector
 other sections use to book, pay and invoice. Holded's API has quotas, so keeping that cache
 current and metering every call against the allowance is part of the job.
 
 Good looks like: every balance a member or admin sees comes from the cache, the cache is never
 silently short, and every call is counted. The section's own pages show the cached copies and the
 API-call accounting, nothing more. Out of scope: summaries and decisions about money (Finance owns
-them; Expenses and Store decide in their own lanes), keying anything by member, and mirroring the
-bank feed.
+them; Expenses and Store decide in their own lanes), and keying anything by member.
 
 The **ledger mirror**: a local, re-derivable copy of Holded's daybook and chart of accounts,
 plus the sync that maintains it and the `/Holded` admin screen. The **purchase-document mirror**
@@ -34,18 +34,27 @@ to this section too and has its own doc ([`Holded-connector.md`](Holded-connecto
 - **Replace semantics**: a sweep is the truth for its window — cached lines the sweep no longer
   returns are deleted (an empty fetch still deletes). Never append-only: a line Holded deleted
   or reclassified would linger forever.
-- **The connector fails closed.** Every read and write rule of `IHoldedClient` (required
-  identities (including expense-account, contact and sales-document IDs) and amounts (including the pending balance on approved purchases), complete pagination, typed write responses, the `unconfirmed:`
-  references, the 429 policy with fractional HTTP-date waits) lives in [`Holded-connector.md`](Holded-connector.md). The mirror
-  depends on one consequence: no short or fabricated page ever reaches replace semantics.
+- **The connector fails closed.** Its read and write rules live in
+  [`Holded-connector.md`](Holded-connector.md). The mirror depends on one consequence: no short or
+  fabricated page ever reaches replace semantics, so a failed pull leaves the last good mirror and
+  an `Error` sync state, and a find-or-create write stops rather than reading an unreadable
+  contact as absent.
 - **Reconciliation**: after every sweep, each non-archived account's chart balance is compared
   to the local ledger sum; drifted accounts get one targeted full-history re-pull (capped at 10
   per run, logged when capped). Residual mismatches are **reportable state** on the sync row,
   never a failure — Holded's own chart totals can exclude unconfirmed entries.
-
-- Saved ledger error text stays within 2000 UTF-16 code units without splitting a Unicode surrogate pair. The original exception still propagates in full, and the sync gate is released.
-
-- **Interrupted manual syncs** remain recorded as `Error` and propagate caller cancellation. Caller-aborted document/ledger syncs and their controller log stack-free warnings; dependency failures remain errors with exceptions.
+- **A failed sync** of any kind marks its state `Error` with the message (cut to the column's
+  2000 characters) and saves that even when the request was cancelled; the original exception
+  still propagates and the gate is released. A sync its caller cancelled logs a warning without a
+  stack; any other failure logs an error.
+- Ledger, purchase-document and contact startup saves are inside their failure guards. Vendor reads and atomic
+  mirror replacements retain cancellation, with checkpoints before replacements and reconciliation phases.
+  After a completed mirror phase, its outcome save and consumed call-log records finish independently of
+  cancellation. This includes chart upserts, bank feeds and targeted ledger pulls. Cancellation from detached
+  outcome or call-log persistence is a genuine failure with the original exception as its cause.
+- Ledger reconciliation remains cancellable after its initial window commits: completed window updates stay
+  cached, the interrupted run records `Error`, and its last-success timestamp does not advance. It does not
+  claim that the entire mirror stayed unchanged or that reconciliation completed.
 
 ## Data Model (`HoldedDbContext`, history `__EFMigrationsHistory_Holded`)
 
@@ -54,8 +63,10 @@ to this section too and has its own doc ([`Holded-connector.md`](Holded-connecto
 | `holded_ledger_lines` | full daybook mirror, all accounts, unique `(EntryNumber, Line)` |
 | `holded_accounts` | chart-of-accounts cache with Holded's debit/credit/balance totals |
 | `holded_api_calls` | per-call metering (endpoint, status, rate-limit headers) |
-| `holded_purchase_docs` | purchase-document mirror keyed on Holded's doc id: number, contact, description, Madrid date, amounts, approved (`draft == false`; absent reads as not approved), notes, doc + line tags, first line's booked account |
-| `holded_sync_states` | one row per sync kind (`Ledger`, `Accounts`, `FullSync`, `PurchaseDocs`), lazy-created |
+| `holded_purchase_docs` | purchase-document mirror keyed on Holded's doc id: number, contact, description, Madrid date, amounts, approved (`draft == false`; absent reads as not approved), payments pending (null until re-synced, or when a draft omits it), notes, doc + line tags, first line's booked account |
+| `holded_bank_movements` | bank-feed mirror keyed on `(TreasuryAccountId, Id)`: date, `BookedAt` (`booking_date` to the second: a Stripe gateway line's only match key, with the amount), signed amount, description, status. Window replace: a sync is the truth for its date window plus any id it returned |
+| `holded_contacts` | contact mirror keyed on Holded's contact id: name, supplier account number, trade name, email, phone, mobile, IBAN, tax code, address. Full pull with replace semantics |
+| `holded_sync_states` | keyed on `(Kind, Scope)`: one row per sync kind (`Ledger`, `Accounts`, `FullSync`, `PurchaseDocs`, `Contacts`, `Usage`, `Scope` empty), and one `BankMovements` row per treasury account (`Scope` = its id). `Usage` is the month's call count as last read (`LastCount`) and when (`LastSyncAt`); lazy-created |
 
 Sentinel table is `holded_accounts` — created by this baseline alone, so its existence proves
 the baseline ran. (`holded_ledger_lines` could not carry that proof: the historical chain and
@@ -68,12 +79,14 @@ Every page under `/Holded` reads the mirror. Summary, Accounts, Purchases and AP
 group's items, so the admin shell renders them as the tab strip; an account's or entry's page sits
 under Accounts. Each page does one thing.
 
-- `/Holded` — summary: configured or not (`IsConfigured`), live API usage as one line (GET
-  /usage, skipped when not configured; budget = `Holded:MonthlyCallBudget`, default 2000), per
-  sync kind the last run, status, count and error, mirror counts (lines, entries, non-archived
+- `/Holded` — summary: configured or not (`IsConfigured`), the stored API usage reading as one
+  line with when it was read and a refresh button (one GET /usage, `FinancePolicies.Manage`;
+  loading the page never calls Holded; budget = `Holded:MonthlyCallBudget`, default 2000;
+  the optional budget key and its configured value are listed on `/Debug/Configuration`), per
+  sync kind (bank feeds as `BankMovements · <treasury id>`, one row each; the unscoped pre-per-treasury row is hidden) the last run, status, count and error, mirror counts (lines, entries, non-archived
   accounts), the number of accounts where mirror ≠ Holded (linked to `/Holded/Accounts?mismatched=true`),
   and the Sync now / Full resync buttons with the full resync's cost estimate (one call per 200
-  lines plus the chart; 42 today).
+  lines plus the chart).
 - `/Holded/Accounts` — the chart grouped by PGC group (English group name from the leading digit,
   not Holded's Spanish `group` string), and within each group by PGC subgroup (first two digits,
   English name from `PgcAccountNames`; 40 suppliers, 41 creditors, 44 debtors, 47 public
@@ -131,39 +144,51 @@ match each doc against Finance's own category map; nothing of Finance's is shown
 
 ## Write face (`IHoldedWrite`)
 
-Ensure-style writes for other sections, each `[ExternalWrite]`: the caller passes Humans keys
-(account numbers, names, the text it wrote), the call finds the Holded ids it needs inside itself,
-is safe to repeat, and returns an outcome, never a Holded id.
+Writes for other sections, each `[ExternalWrite]`. Callers own their Holded document and contact ids;
+account-number resolution stays inside this section.
 
-- `EnsureCreditorContactAsync` — contact by exact legal name among contacts with an account in
-  40000000–41999999, whatever their type (hand-made contacts are `supplier`), else POST; returns
-  `supplier_record.num`. Never PUTs a contact. No `custom_id` lookup until a live write confirms
-  v2's create stores it.
-- `EnsurePurchaseDocumentAsync` — contact by account number (live contacts list); document by
-  contact + description + total + notes (list, then GET for notes); else created with the line's
-  `account` = the chart mirror's Holded id for the expense account number (the same id
-  `expenses-accounts` uses). Notes are the document's Humans key and must name one expense line, or
-  identical lines collapse into one document. Attaches on create, or when the caller says its earlier
-  attachment did not go up: Holded's v2 purchase GET has no attachment field, so the caller remembers.
-  Approves a draft.
 - `EnsureExpenseAccountAsync` — chart mirror by number, else Holded's live `expenses-accounts` list,
-  else POST; the chart mirror is refreshed whenever it lacked the number.
-- `DeletePurchaseDocumentAsync` — finds the document live (contact, description, total, date);
-  refuses when its notes differ or it carries a payment; deletes, then runs the trailing ledger sync
-  (an older document's lines leave the mirror at the nightly balance check's re-pull).
+  else POST; the chart mirror is refreshed whenever it lacked the number. Returns the account's Holded
+  id (what a caller that books to it stores) and whether it was created. The live expense-account list
+  reads only id and number; creation uses the caller's name, never a name from that list.
 - `PostJournalEntryAsync` — the client's ledger-entry post behind the face; not idempotent, the
   outcome says whether Holded confirmed it.
+- `PayPurchaseDocumentAsync` / `ReconcileBankMovementAsync` — the client's treasury payment and
+  bank-line reconcile behind the face, for SEPA booking. The payment returns Holded's payment id
+  (or an `unconfirmed:` marker), the one Holded id this face hands out: the reconcile must name it.
 
-Not here yet: paying a creditor from a treasury, the bank feed and reconcile, sales documents (they
-move with the Finance and Store phases). Callers still on `IHoldedClient` are debt `CENTRAL-105`.
-Audit entries stay with the calling section, which knows why it wrote.
+Id-keyed writes for callers that already store Holded's ids, one step each:
+`CreateContactAsync` / `DeleteContactAsync` (each refreshes the contact mirror; a failed refresh is
+logged, the write stands), `CreatePurchaseDocumentAsync` (optionally with a document `number`, and per line explicit
+tax keys: an empty list books the line with no tax, omitted applies the contact's default), `UploadPurchaseAttachmentAsync`,
+`EnsurePurchaseDocumentApprovedAsync`, `DeletePurchaseDocumentByIdAsync`, and for sales documents
+`FindSalesDocumentsByTagAsync` (both kinds, read live: the issuance guard), `IssueSalesDocumentAsync`
+(create, approve, read back; each line's `AccountNum` resolved through the chart mirror, an unknown
+number refused; `DiscountPercent` sets a whole-document discount) and `ApproveSalesDocumentAsync`.
+Approving a purchase or sales document Holded already approved succeeds (logged), so a retry never fails on it.
+For the Store's one-shot booking: on `IHoldedService`, `GetSalesDocumentAsync` (live, no mirror holds sales documents:
+totals, `payments_pending`, `payments_detail`, contact and the contact's 430 account) and `GetSalesDocumentPdfAsync`; on
+`IHoldedWrite`, `SendSalesDocumentAsync` (Holded emails it;
+no addresses means the contact's), `PaySalesDocumentAsync` (same before/after `payments_detail` diff as
+`PayPurchaseDocumentAsync`, shared in `HoldedDocumentPayment`) and `CreateTreasuryPaymentAsync`
+(`POST /payments`, `collection` or `payment`, on a contact and `bank_account_id`).
+
+A 403 whose body reads "Insufficient permissions: X required" throws `HoldedPermanentException` with the message
+"Humans' Holded key lacks X; add it in Holded > Settings > API"; `HoldedKeyPermissionExceptionHandler` shows that
+message on the page the request came from instead of the error page.
+
+`IHoldedClient` is internal, so no other section can call it: reads come from the mirrors, a caller that needs fresh data
+runs the mirror's sync first (`SyncContactsAsync`, `SyncPurchaseDocumentsAsync`,
+`SyncPurchaseDocumentNotesAsync` for named documents, `SyncChartAsync`),
+and each mirror reports its last sync. Audit entries stay with the calling section, which knows why
+it wrote.
 
 ## Actors & Roles
 
 | Actor | Capabilities |
 |-------|--------------|
 | Finance admin / Admin | Everything above (`FinancePolicies.Manage`). |
-| Board | Read the summary, accounts, statements, entries and calls; trigger no sync (`FinancePolicies.Read`). |
+| Board | Read the summary, accounts, statements, entries, purchases and calls; trigger no sync (`FinancePolicies.Read`). |
 | Other sections | Read via `IHoldedService`; write via `IHoldedWrite`; trigger sync (nightly job). |
 | Any human | None directly. |
 
@@ -173,9 +198,7 @@ Audit entries stay with the calling section, which knows why it wrote.
 
 - The summary controller orders sync-state rows by kind using ordinal comparison, and the calls controller orders Madrid month buckets oldest first (the pivot's columns). Services supply the state and aggregated counts without display ordering.
 
-- `GetChartAsync` returns mirror account metadata, including archived accounts, without display ordering. Workgroups' account pickers order by number in their views.
-
-- Vendor-error IBAN redaction recognizes valid human-formatted values even when whitespace or hyphens split the country code and check digits.
+- `GetChartAsync` returns mirror account metadata, including archived accounts, without display ordering. Workgroups' account pickers order by number in their views. `SyncChartAsync` refreshes it in one list call (the ledger sweep does too).
 
 - Operator timestamps and ledger dates use the shared display formatters in Europe/Madrid time; monthly usage labels use the shared month/year formatter. Date ordering and month names follow the UI culture, and missing sync stamps still read "never".
 
@@ -183,40 +206,44 @@ Audit entries stay with the calling section, which knows why it wrote.
   never anchor on the newest cached line); full sweep (inception → today) on cold cache or the
   Full sync button. Reconciliation catches anything older, so correctness does not depend on
   window width — the window is a quota choice.
+- Purchase detail responses expose only approval time, notes and payment details internally; totals, balances and tags are read from the list endpoint for the mirror, not parsed again from unused detail fields.
 - Purchase-document sync is a full pull with replace semantics (Holded's purchase list has no
   reliable incremental key). Notes need one GET per doc: only docs the mirror has no notes for,
   newest first, at most 50 a run; a transient failure ends that run's fetching and never fails the
-  sync. A failed list records `Error` on the `PurchaseDocs` state and keeps the last good mirror.
-- Sweeps are serialized by a non-blocking in-process gate; a second caller is skipped and told
-  so, never queued (single-server deployment).
+  sync. Unreadable notes log their document ID at Warning with a reason for transient failures, or Error with exception details for permanent/malformed responses; the run also warns with the failure count. A failed list records `Error` on the `PurchaseDocs` state and keeps the last good mirror.
+- Each sync kind is serialized by its own non-blocking in-process gate (the bank feed's is per
+  treasury account); a second caller is skipped and told so, never queued (single-server deployment).
 - `SyncAccountLedgerAsync(accountNum)` re-pulls one account's whole history (inception to today) and replaces
   only that account's mirrored lines, under the same gate (false when a sweep holds it). Sync states are
-  untouched. Finance calls it on 57200003 before and after a Pleo booking run, so its "already in Holded"
-  judgement is Holded's own current ledger.
-- Reads (`IHoldedService`: lines, balances, entry, purchase lines, open document amounts, sums by account,
-  chart, purchase documents, last ledger sync) never call Holded, and nothing loads the whole ledger table: balances and sums are grouped
+  untouched. Finance's Pleo and SEPA bookings and Expenses' report publishing call it before posting onto
+  an account, so their "already in Holded" judgement is Holded's own current ledger.
+- Reads (`IHoldedService`: lines, balances, chart, purchase documents, contacts, bank movements, last ledger sync) never call Holded, and nothing loads the whole ledger table: balances are grouped
   in the database, statements load only their own entries. Amounts are Holded's raw sign.
 - `GetLedgerSyncedAtAsync` is the later `LastSyncAt` of the `Ledger` and `FullSync` states, stamped only
   on success, so a failed sweep leaves the last good one. Finance's expense recon uses it to tell a push
   the ledger has not swept yet (Pending) from one that is absent (Missing).
-- `GetOpenDocumentAmountsAsync` is Σ (credit − debit) over `purchase`, `purchaserefund` and `payment`
-  lines per account: what documents leave open, not the balance (hand-booked entries and collections
-  are left out).
 - A ledger line keeps Holded's `id` as `EntryId` (the journal entry's id, shared by every line of
   the entry, so never a key: the natural key stays `(EntryNumber, Line)`) and `checked` as
   `Checked` (Holded's manual tick, not bank reconciliation; null until the line is re-synced).
   `doc_description` and `tags` are not stored.
 - API-call metering drains honour cancellation before consuming the buffer, then persist consumed records independently of request cancellation. Overview reads remain cancellable afterward.
-- The treasury bank feed (`IHoldedClient.ListBankMovementsAsync` /
-  `ReconcileBankMovementAsync`) is **not** mirrored here — Finance's SEPA booking flow
-  (nobodies-collective/Humans#1185) reads it live over a bounded window; its rules are in
-  [`Holded-connector.md`](Holded-connector.md). A follow-up reconciliation panel is where a
-  bank-movements mirror table would land; see `2026-08-10-holded-v2-migration-design.md`.
+- The treasury bank feed is mirrored per window: `SyncBankMovementsAsync(treasury, from, to)` reads
+  Holded's feed for that window and replaces it in `holded_bank_movements`; `GetBankMovementsAsync`
+  reads the mirror with that treasury's own `BankMovements` state `LastSyncAt` (null until a sync of
+  that treasury succeeds, an empty feed included — another treasury's sync never stamps it). A
+  sync already running answers false, a failed one throws and keeps the last good stamp. Finance's
+  SEPA booking syncs before every read it moves money on; `/Finance/Sepa` reads the mirror alone.
+  The feed's parsing rules are in [`Holded-connector.md`](Holded-connector.md).
 - Nothing here is keyed by member, so this section holds no consent gate and no erasure path.
   It is not free of personal data: a creditor account's name is the member's and the lines on it
   are their reimbursement history, identifiable through Finance's member→creditor binding.
   Finance's GDPR contributor exports those lines (its `CreditorLedger` slice, read through
   `IHoldedService.GetLedgerLinesAsync`) and declares their fiscal-retention basis.
+  The contact mirror holds the same personal data Holded's contact list does (a member's name,
+  IBAN, email, phone, address). It is keyed by Holded's contact id, not by member, follows Holded
+  on every sync, and Finance's creditor statement and payout already read it through the binding.
+  Finance's contributor exports each bound contact's row (its `HoldedCreditorContacts` slice, IBAN
+  masked) and declares fiscal retention for it: the row mirrors Holded's counterparty record.
 
 ## Negative Access Rules
 
@@ -226,27 +253,35 @@ Audit entries stay with the calling section, which knows why it wrote.
 
 ## Triggers
 
-- `HoldedSyncJob` (nightly at 03:00, this section's `Jobs/`; scheduled by this section's `ISectionJobs`, job id `holded-sync`): `SyncPurchaseDocumentsAsync`, then `SyncLedgerAsync(full: false)`, under the `holded-api` Hangfire job lock so a long run never overlaps the next. A failed document pull still lets the ledger sweep run, then fails the job.
-- `HoldedMirrorCatchUp` (hosted service): at boot, with an API key and a purchase-document mirror that has never synced (a fresh deployment), enqueues one `HoldedSyncJob` instead of leaving Finance's actuals empty until 03:00.
-- `/Holded` buttons: `SyncNow` (purchase docs, then incremental ledger + reconcile; each runs whatever the other did, and a failure names which), `FullSync` (ledger).
+- `HoldedSyncJob` (nightly at 03:00, this section's `Jobs/`; scheduled by this section's `ISectionJobs`, job id `holded-sync`): `SyncPurchaseDocumentsAsync`, `SyncContactsAsync`, then `SyncLedgerAsync(full: false)`, under the `holded-api` Hangfire job lock so a long run never overlaps the next. Ordinary phase failures still allow later phases to run. A single failure propagates unchanged; multiple phase failures are reported together. Shutdown checkpoints precede each phase. Requested cancellation stops later attempts and propagates with a stack-free Warning when no earlier phase failed; otherwise the aggregate retains every earlier failure and the cancellation.
+- `HoldedMirrorCatchUp` (hosted service): at boot, with an API key and a purchase-document or contact mirror that has never synced (a fresh deployment), enqueues one `HoldedSyncJob` instead of leaving Finance's actuals empty until 03:00. Catch-up read or enqueue failures log a warning and let the app boot; scheduled and manual sync remain available. Requested startup cancellation propagates.
+- Usage responses require a nonblank period and an explicit integer usage count; zero is valid. Incomplete responses fail refresh and preserve the last good reading.
+- `/Holded` buttons: `SyncNow` (the admin service's `SyncNowAsync`: purchase docs, contacts, then incremental ledger + reconcile; each runs whatever the others did, and a failure names which), `FullSync` (ledger), `RefreshUsage` (one GET /usage into the `Usage` state row; a failure keeps the last reading and marks it).
 - Finance's `POST /Finance/HoldedSync/Run` ("Sync Now" on its unmatched queue) calls `SyncPurchaseDocumentsAsync`.
 
 ## Cross-Section Dependencies
 
-- Outbound: `IHoldedClient` (this section's own connector). Finance's `FinancePolicies` constants only.
-- Inbound: Finance (creditor statuses/statements, the purchase mirror for actuals and recon, and its manual purchase sync, via `IHoldedService`; the 57200003 re-pull and journal entries for Pleo booking via `IHoldedService.SyncAccountLedgerAsync` and `IHoldedWrite.PostJournalEntryAsync`), the nightly job.
+- Outbound: Finance's `FinancePolicies` constants only (`Humans.Finance.Contracts`).
+- Inbound:
+  - Finance: every mirror and its sync through `IHoldedService` (creditors, actuals, recon, SEPA,
+    Pleo), and through `IHoldedWrite` creditor contacts, expense accounts, contact and duplicate
+    deletes, payments, bank-line reconciles and journal entries.
+  - Expenses: the contact mirror, the account re-pull, creditor contacts and the purchase-document
+    create, attach and approve writes.
+  - Store: the chart mirror, contact creation and the sales-document writes.
+  - Workgroups: the chart mirror for the expense-account picker.
+  - Backdoor: the purchase-document mirror for the finance read API.
 
 ## Architecture
 
-Internal `HoldedAccountReader` owns account-list, statement and journal-entry projections, including shared balance rows, display signs and counterparties. The summary reuses its account rows. `Service` retains synchronization, reconciliation, metering and existing contract entry points; mirror reads, ordering and raw-sign reconciliation are unchanged.
-
 **Owning section:** `Holded` (`src/Sections/Humans.Holded`)
-**Public contract:** `Humans.Holded.Contracts` (the `Contracts/` folder): `IHoldedService` (+ `HoldedLedgerLineInfo`, `HoldedChartAccountInfo`, `HoldedPurchaseDocInfo`, `HoldedPurchaseDocMirror`) for the mirrors, `IHoldedWrite` (+ its outcome records) for writes, and the connector surface — `IHoldedClient` and its DTOs (see [`Holded-connector.md`](Holded-connector.md))
-Connector DTOs expose consumed fields only; usage reads contain the API period and call count, and contact creation carries no unsupported custom user id.
+**Public contract:** `Humans.Holded.Contracts` (the `Contracts/` folder): `IHoldedService` (+ `HoldedLedgerLineInfo`, `HoldedChartAccountInfo`, `HoldedPurchaseDocInfo`, `HoldedPurchaseDocMirror`, `HoldedContactMirror`, `HoldedBankMovementMirror`) for the mirrors, `IHoldedWrite` (+ its outcome records) for writes, and the DTOs both carry. Purchase-list and line DTOs stay inside the connector; Finance consumes `HoldedPurchaseDocInfo` directly. The connector itself, `IHoldedClient`, its options and connector-only response DTOs are internal in `Services/` (see [`Holded-connector.md`](Holded-connector.md))
 
-**Connector implementation:** `HoldedClient` delegates to internal purchases, sales, contacts, accounting and treasury clients. One shared `HoldedTransport` owns auth, retry, paging, metering and timing; endpoint payloads and parsers stay with their operation group. The existing public client contract and typed-client registration are unchanged.
-**Owned tables:** the five above
-**Target shape:** [`health.md`](health.md); the single-mirror design is
-the 2026-10-30 Holded section-flow record (phase 1 built the reads and
-pages; the callers still on `IHoldedClient` are ledger debt `CENTRAL-105`). Historical design record:
+**Inside:** `Service` serves the reads and the admin screen, runs every sync (gates, replacement,
+reconciliation, failure state, call-log drain) and builds balances, account rows, statements and entries. `HoldedWrite` is the write face. The connector is
+described in [`Holded-connector.md`](Holded-connector.md).
+**Owned tables:** those above
+**Target shape:** [`health.md`](health.md). Historical design record:
 [`2026-08-10-holded-v2-migration-design.md`](2026-08-10-holded-v2-migration-design.md).
+
+Expected API failures during bank-feed/usage reads, contact refresh and payment verification, plus unreadable accepted ledger responses, log Warning with a reason and no exception stack. Requested bank-feed cancellation warns without a stack and propagates; unrelated cancellation and unexpected bank-feed/startup catch-up faults log Error with their original exception. Existing unconfirmed-write outcomes, optional startup behavior and sync-error persistence remain unchanged.

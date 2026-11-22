@@ -53,6 +53,55 @@ public sealed class EventServiceTests
     }
 
     [HumansTheory]
+    [InlineData(true, false, "2", null, 0, 2, true, 2)]
+    [InlineData(false, true, null, "2", 2, 0, true, 2)]
+    [InlineData(true, true, "1", "2", 0, 0, true, null)]
+    [InlineData(true, true, "1,2", "1,2", 0, 0, true, 1)]
+    [InlineData(true, true, "1", "2", 0, 0, false, 0)]
+    [InlineData(false, false, null, null, 0, 0, true, 0)]
+    public async Task ModerationReads_CompareActualOccurrencesOncePerOtherEvent(
+        bool queuedRecurring, bool otherRecurring, string? queuedDays, string? otherDays,
+        int queuedStartDay, int otherStartDay, bool hasSettings, int? expectedDay)
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var settings = BurnFixtures.Burn(year: 2026);
+        var gate = settings.GateOpeningDate;
+        var zone = DateTimeZoneProviders.Tzdb[settings.TimeZoneId];
+        var pending = new Event
+        {
+            Id = Guid.NewGuid(),
+            CampId = Guid.NewGuid(),
+            EventSettingsId = hasSettings ? settings.Id : null,
+            Status = EventStatus.Pending,
+            DurationMinutes = 60,
+            StartAt = gate.PlusDays(queuedStartDay).At(new LocalTime(10, 0)).InZoneLeniently(zone).ToInstant(),
+            IsRecurring = queuedRecurring,
+            RecurrenceDays = queuedDays
+        };
+        _repo.Events.Add(pending);
+        var other = new CampEventOverlap(Guid.NewGuid(), pending.CampId, "Other",
+            gate.PlusDays(otherStartDay).At(new LocalTime(10, 30)).InZoneLeniently(zone).ToInstant(),
+            60, EventStatus.Approved, otherRecurring, otherDays);
+        _repo.ActiveCampEvents = [other, other with { Id = pending.Id }, other with { Id = Guid.NewGuid(), CampId = Guid.NewGuid() }];
+        if (hasSettings)
+        {
+            _repo.Settings = new EventGuideSettings { EventSettingsId = settings.Id };
+            _burnSettings.GetEventSettingsByIdAsync(settings.Id, ct).Returns(settings);
+        }
+
+        var row = (await _service.GetEventsByStatusAsync(EventStatus.Pending, ct)).Should().ContainSingle().Subject;
+        if (expectedDay is { } day)
+        {
+            var candidate = row.DuplicateCandidates.Should().ContainSingle().Subject;
+            candidate.Id.Should().Be(other.Id);
+            candidate.StartAt.Should().Be(hasSettings
+                ? gate.PlusDays(day).At(new LocalTime(10, 30)).InZoneLeniently(zone).ToInstant()
+                : other.StartAt);
+        }
+        else row.DuplicateCandidates.Should().BeEmpty();
+    }
+
+    [HumansTheory]
     [InlineData(false, "missing")]
     [InlineData(true, "missing")]
     [InlineData(false, "inactive")]
@@ -177,7 +226,7 @@ public sealed class EventServiceTests
         _repo.Settings = new EventGuideSettings { Id = Guid.NewGuid(), EventSettingsId = burn.Id, MaxPrintSlots = 20 };
         _burnSettings.GetEventSettingsByIdAsync(burn.Id, ct).Returns(burn);
         _camps.GetCampsForEventAsync(burn.Id, ct).Returns(Array.Empty<CampInfo>());
-        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), ct)
+        _userService.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), ct)
             .Returns(new Dictionary<Guid, UserInfo>
             {
                 [submitterId] = UserInfo.Create(new User { Id = submitterId, BurnerName = "Flame" }, [], [], null)
@@ -401,12 +450,15 @@ public sealed class EventServiceTests
         var guide = Substitute.For<IEventManagement>();
         var edition = Guid.NewGuid();
         guide.GetEventSettingsByIdAsync(edition).Returns(BurnFixtures.Burn(year: 2026));
-        guide.GetEventSettingsOptionsAsync().Returns(Array.Empty<EventSettingsInfo>());
+        guide.GetEventSettingsOptions().Returns(Array.Empty<EventSettingsInfo>());
         var failure = new InvalidOperationException("Private settings persistence diagnostic");
         guide.SaveGuideSettingsAsync(null, edition, default, default, default, 0)
             .ReturnsForAnyArgs(dependencyFailure ? Task.FromException<bool>(failure) : Task.FromResult(false));
         var controller = new EventsAdminController(guide, NullLogger<EventsAdminController>.Instance,
-            Substitute.For<IUserService>());
+            Substitute.For<IUserService>())
+        {
+            ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() }
+        };
         var model = new GuideSettingsViewModel { EventSettingsId = edition };
 
         if (dependencyFailure)
@@ -476,7 +528,7 @@ public sealed class EventServiceTests
 
         var added = await _service.AddFavouriteAsync(userId, eventId, dayOffset: 4, TestContext.Current.CancellationToken);
 
-        added.Should().BeTrue();
+        added.Should().Be(AddFavouriteOutcome.Added);
         _repo.Favourites.Should().ContainSingle(f =>
             f.UserId == userId
             && f.GuideEventId == eventId
@@ -495,7 +547,7 @@ public sealed class EventServiceTests
 
         var added = await _service.AddFavouriteAsync(userId, eventId, dayOffset: 4, TestContext.Current.CancellationToken);
 
-        added.Should().BeFalse();
+        added.Should().Be(AddFavouriteOutcome.AlreadyExists);
         _repo.Favourites.Should().ContainSingle();
         _repo.SaveChangesCount.Should().Be(1);
     }
@@ -509,9 +561,9 @@ public sealed class EventServiceTests
         var ev = new Event { Id = Guid.NewGuid(), Status = EventStatus.Approved, IsRecurring = true, RecurrenceDays = "0, 2,4" };
         _repo.Events.Add(ev);
 
-        var act = () => _service.AddFavouriteAsync(Guid.NewGuid(), ev.Id, day, TestContext.Current.CancellationToken);
+        var outcome = await _service.AddFavouriteAsync(Guid.NewGuid(), ev.Id, day, TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<ArgumentOutOfRangeException>().Where(e => e.ParamName == "dayOffset");
+        outcome.Should().Be(AddFavouriteOutcome.InvalidDay);
         _repo.Favourites.Should().BeEmpty();
         _repo.SaveChangesCount.Should().Be(0);
     }
@@ -524,30 +576,31 @@ public sealed class EventServiceTests
 
         var added = await _service.AddFavouriteAsync(Guid.NewGuid(), ev.Id, 999, TestContext.Current.CancellationToken);
 
-        added.Should().BeTrue();
+        added.Should().Be(AddFavouriteOutcome.Added);
         _repo.Favourites.Should().ContainSingle().Which.DayOffset.Should().Be(999);
     }
 
     [HumansFact]
     public async Task AddFavouriteAsync_RejectsMissingEvents()
     {
-        var act = () => _service.AddFavouriteAsync(Guid.NewGuid(), Guid.NewGuid(), null, TestContext.Current.CancellationToken);
+        var outcome = await _service.AddFavouriteAsync(Guid.NewGuid(), Guid.NewGuid(), null, TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<KeyNotFoundException>();
+        outcome.Should().Be(AddFavouriteOutcome.EventUnavailable);
         _repo.Favourites.Should().BeEmpty();
         _repo.SaveChangesCount.Should().Be(0);
     }
 
     [HumansTheory]
-    [InlineData(EventStatus.Pending)]
-    [InlineData(EventStatus.Rejected)]
-    public async Task AddFavouriteAsync_RejectsUnpublishedEvents(EventStatus status)
+    [InlineData((int)EventStatus.Pending)]
+    [InlineData((int)EventStatus.Rejected)]
+    public async Task AddFavouriteAsync_RejectsUnpublishedEvents(int statusValue)
     {
+        var status = (EventStatus)statusValue;
         var ev = new Event { Id = Guid.NewGuid(), Status = status };
         _repo.Events.Add(ev);
-        var act = () => _service.AddFavouriteAsync(Guid.NewGuid(), ev.Id, null, TestContext.Current.CancellationToken);
+        var outcome = await _service.AddFavouriteAsync(Guid.NewGuid(), ev.Id, null, TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<KeyNotFoundException>();
+        outcome.Should().Be(AddFavouriteOutcome.EventUnavailable);
         _repo.Favourites.Should().BeEmpty();
         _repo.SaveChangesCount.Should().Be(0);
     }
@@ -1028,13 +1081,14 @@ public sealed class EventServiceTests
     }
 
     [HumansTheory]
-    [InlineData(EventStatus.Pending, false, true)]
-    [InlineData(EventStatus.Draft, false, true)]
-    [InlineData(EventStatus.Draft, true, false)]
-    [InlineData(EventStatus.Rejected, false, false)]
-    [InlineData(EventStatus.Withdrawn, false, false)]
-    public async Task ModeratorWithdrawAsync_FollowsTheSubmitterWithdrawRule(EventStatus status, bool isCampEvent, bool expected)
+    [InlineData((int)EventStatus.Pending, false, true)]
+    [InlineData((int)EventStatus.Draft, false, true)]
+    [InlineData((int)EventStatus.Draft, true, false)]
+    [InlineData((int)EventStatus.Rejected, false, false)]
+    [InlineData((int)EventStatus.Withdrawn, false, false)]
+    public async Task ModeratorWithdrawAsync_FollowsTheSubmitterWithdrawRule(int statusValue, bool isCampEvent, bool expected)
     {
+        var status = (EventStatus)statusValue;
         var guideEvent = new Event { Id = Guid.NewGuid(), Status = status, CampId = isCampEvent ? Guid.NewGuid() : null };
         _repo.Events.Add(guideEvent);
 
@@ -1257,6 +1311,49 @@ public sealed class EventServiceTests
         _repo.Settings ??= new EventGuideSettings { Id = Guid.NewGuid() };
         _repo.Settings.EventSettingsId = burn.Id;
         _burnSettings.GetEventSettingsByIdAsync(burn.Id, Arg.Any<CancellationToken>()).Returns(burn);
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ExistingEventSaves_ValidateRecurrenceAgainstTheRecordsEvent(bool moderator)
+    {
+        var current = BurnFixtures.Burn(eventEndOffset: 2);
+        var original = BurnFixtures.Burn(year: 2025, eventEndOffset: 6);
+        _repo.Settings = new EventGuideSettings { Id = Guid.NewGuid(), EventSettingsId = current.Id };
+        _burnSettings.GetEventSettingsByIdAsync(current.Id, Arg.Any<CancellationToken>()).Returns(current);
+        _burnSettings.GetEventSettingsByIdAsync(original.Id, Arg.Any<CancellationToken>()).Returns(original);
+        var category = new EventCategory { Id = Guid.NewGuid(), IsActive = true };
+        var venue = new EventVenue { Id = Guid.NewGuid(), IsActive = true };
+        _repo.Categories.Add(category);
+        _repo.Venues.Add(venue);
+        var entry = new Event
+        {
+            Id = Guid.NewGuid(),
+            EventSettingsId = original.Id,
+            CategoryId = category.Id,
+            GuideSharedVenueId = venue.Id,
+            SubmitterUserId = Guid.NewGuid(),
+            Status = EventStatus.Pending,
+            Title = "Original",
+            Description = "Description",
+            DurationMinutes = 60,
+            StartAt = Instant.FromUtc(2025, 8, 1, 14, 30),
+            IsRecurring = true,
+            RecurrenceDays = "0,6"
+        };
+        _repo.Events.Add(entry);
+        var edit = EditOf(entry) with { Title = "Edited" };
+
+        if (moderator)
+            await _service.AdminUpdateAsync(entry.Id, edit, Guid.NewGuid(), "Historic correction", TestContext.Current.CancellationToken);
+        else
+            (await _service.UpdateAndResubmitAsync(entry.Id, edit, TestContext.Current.CancellationToken)).ErrorKey.Should().BeNull();
+
+        entry.Title.Should().Be("Edited");
+        entry.EventSettingsId.Should().Be(original.Id);
+        (await _service.GetEventForModerationAsync(entry.Id, TestContext.Current.CancellationToken))!
+            .EventSettingsId.Should().Be(original.Id);
     }
 
     private static EventEdit EditOf(Event e) => new(
@@ -1493,6 +1590,83 @@ public sealed class EventServiceTests
         _repo.SaveChangesCount.Should().Be(0);
     }
 
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task BulkImportAsync_UnmatchedNewWeekdaySelection_RefusesTheWholeBatch(bool update)
+    {
+        OpenSubmissionWindow();
+        var campId = Guid.NewGuid();
+        var category = new EventCategory { Id = Guid.NewGuid(), Name = "Workshop", Slug = "workshop", IsActive = true };
+        _repo.Categories.Add(category);
+        var existing = ExistingEvent(campId, category.Id, EventStatus.Approved);
+        existing.IsRecurring = true;
+        existing.RecurrenceDays = "0";
+        if (update) _repo.Events.Add(existing);
+
+        var result = await _service.BulkImportAsync(campId, Guid.NewGuid(),
+            [Row(title: "Valid sibling"), Row(id: update ? existing.Id : null, title: "Changed",
+                isRecurring: true, recurrenceDays: "Sat", rowNumber: 3)],
+            new LocalDate(2026, 7, 8), 2, DateTimeZone.Utc, TestContext.Current.CancellationToken);
+
+        result.HasErrors.Should().BeTrue();
+        var error = result.Errors.Should().ContainSingle().Subject;
+        error.RowNumber.Should().Be(3);
+        error.Errors.Should().Contain(_localizer["Events_RecurrenceDaysInvalid"].Value);
+        result.CreatedCount.Should().Be(0);
+        result.UpdatedCount.Should().Be(0);
+        _repo.SaveChangesCount.Should().Be(0);
+        _repo.Events.Should().HaveCount(update ? 1 : 0);
+        if (update)
+        {
+            existing.Title.Should().Be("My Event");
+            existing.Status.Should().Be(EventStatus.Approved);
+            existing.RecurrenceDays.Should().Be("0");
+        }
+    }
+
+    [HumansTheory]
+    [InlineData(null)]
+    [InlineData(" ")]
+    public async Task BulkImportAsync_BlankRecurrenceSelection_KeepsAuthoredStartFallback(string? days)
+    {
+        OpenSubmissionWindow();
+        var campId = Guid.NewGuid();
+        _repo.Categories.Add(new EventCategory { Id = Guid.NewGuid(), Name = "Workshop", IsActive = true });
+
+        var result = await _service.BulkImportAsync(campId, Guid.NewGuid(),
+            [Row(isRecurring: true, recurrenceDays: days)], new LocalDate(2026, 7, 8), 2,
+            DateTimeZone.Utc, TestContext.Current.CancellationToken);
+
+        result.HasErrors.Should().BeFalse();
+        var entry = _repo.Events.Should().ContainSingle().Subject;
+        entry.IsRecurring.Should().BeTrue();
+        entry.RecurrenceDays.Should().BeNull();
+        entry.StartAt.Should().Be(Instant.FromUtc(2026, 7, 8, 9, 30));
+    }
+
+    [HumansFact]
+    public async Task BulkImportAsync_UnchangedWeekdaysOutsideCurrentWindow_PreserveAuthoredOffsets()
+    {
+        OpenSubmissionWindow();
+        var campId = Guid.NewGuid();
+        var category = new EventCategory { Id = Guid.NewGuid(), Name = "Workshop", IsActive = true };
+        _repo.Categories.Add(category);
+        var existing = ExistingEvent(campId, category.Id, EventStatus.Approved);
+        existing.IsRecurring = true;
+        existing.RecurrenceDays = "3";
+        _repo.Events.Add(existing);
+
+        var result = await _service.BulkImportAsync(campId, Guid.NewGuid(),
+            [Row(id: existing.Id, title: "Renamed", isRecurring: true, recurrenceDays: "Sat")],
+            new LocalDate(2026, 7, 8), 2, DateTimeZone.Utc, TestContext.Current.CancellationToken);
+
+        result.HasErrors.Should().BeFalse();
+        result.UpdatedCount.Should().Be(1);
+        existing.Title.Should().Be("Renamed");
+        existing.RecurrenceDays.Should().Be("3");
+    }
+
     [HumansFact]
     public async Task BulkImportAsync_DuplicateExistingId_ReturnsErrorsAndWritesNothing()
     {
@@ -1540,7 +1714,8 @@ public sealed class EventServiceTests
             seed.Events.AddRange(existing);
             await seed.SaveChangesAsync(ct);
         }
-        var importer = new EventBulkImporter(new EventRepository(factory), _clock, _localizer);
+        var importer = new EventService(new EventRepository(factory), _burnSettings, _userService, _camps, _audit, _emailService,
+            _emailMessages, _clock, NullLogger<EventService>.Instance, _localizer);
         var import = () => importer.ImportAsync(campId, submitter, eventId,
             [Row(id: existing[0].Id, title: "First revised event"),
              Row(id: existing[1].Id, title: "Second revised event", rowNumber: 3),
@@ -1771,6 +1946,37 @@ public sealed class EventServiceTests
     }
 
     [HumansFact]
+    public async Task GetUserSubmissionsSummaryAsync_CountsOnlyTheUsersIndividualEventsInTheConfiguredEdition()
+    {
+        var userId = Guid.NewGuid();
+        var editionId = Guid.NewGuid();
+        _repo.Settings = new EventGuideSettings { EventSettingsId = editionId };
+        var statuses = Enum.GetValues<EventStatus>();
+        foreach (var status in statuses)
+            _repo.Events.Add(new Event
+            {
+                Id = Guid.NewGuid(),
+                SubmitterUserId = userId,
+                EventSettingsId = editionId,
+                Status = status
+            });
+        _repo.Events.AddRange([
+            new Event { Id = Guid.NewGuid(), SubmitterUserId = userId, EventSettingsId = Guid.NewGuid(), Status = EventStatus.Approved },
+            new Event { Id = Guid.NewGuid(), SubmitterUserId = userId, EventSettingsId = editionId, CampId = Guid.NewGuid(), Status = EventStatus.Approved },
+            new Event { Id = Guid.NewGuid(), SubmitterUserId = Guid.NewGuid(), EventSettingsId = editionId, Status = EventStatus.Pending },
+            new Event { Id = Guid.NewGuid(), SubmitterUserId = userId, Status = EventStatus.Pending }
+        ]);
+
+        var summary = await _service.GetUserSubmissionsSummaryAsync(userId, TestContext.Current.CancellationToken);
+
+        summary.SubmittedCount.Should().Be(statuses.Length);
+        summary.ApprovedCount.Should().Be(1);
+        summary.PendingCount.Should().Be(1);
+        summary.Events.Select(e => e.Status).Should().BeEquivalentTo(statuses);
+        summary.Events.Should().OnlyContain(e => e.SubmitterUserId == userId && e.CampId == null && e.EventSettingsId == editionId);
+    }
+
+    [HumansFact]
     public async Task GetCampSubmissionsSummaryAsync_BucketsByStatusAndIncludesOnlyCampEvents()
     {
         var campId = Guid.NewGuid();
@@ -1934,6 +2140,7 @@ public sealed class EventServiceTests
         public List<EventVenue> Venues { get; } = [];
         public List<EventVenue> RemovedVenues { get; } = [];
         public List<Event> Events { get; } = [];
+        public IReadOnlyList<CampEventOverlap> ActiveCampEvents { get; set; } = [];
         public List<EventFavourite> Favourites { get; } = [];
         public List<EventModerationAction> EventModerationActions { get; } = [];
         public EventPreference? Preference { get; set; }
@@ -2108,7 +2315,7 @@ public sealed class EventServiceTests
             => Task.FromResult(Events.FirstOrDefault(e => e.Id == eventId));
 
         public Task<IReadOnlyList<CampEventOverlap>> GetActiveCampEventsAsync(Guid? eventSettingsId, CancellationToken ct = default)
-            => Task.FromResult<IReadOnlyList<CampEventOverlap>>([]);
+            => Task.FromResult(ActiveCampEvents);
 
         public Task SaveEventAndModerationActionAsync(Event guideEvent, EventModerationAction action, CancellationToken ct = default)
         {

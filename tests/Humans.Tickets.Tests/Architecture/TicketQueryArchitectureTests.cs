@@ -43,10 +43,7 @@ public class TicketQueryArchitectureTests
         using var scope = provider.CreateScope();
         var decorator = scope.ServiceProvider.GetRequiredService<CachingTicketQueryService>();
 
-        scope.ServiceProvider.GetRequiredService<ITicketSync>().Should().BeSameAs(decorator);
         scope.ServiceProvider.GetRequiredService<ITicketSyncService>().Should().BeSameAs(decorator);
-        scope.ServiceProvider.GetRequiredService<ITicketTransferService>().Should().BeSameAs(decorator);
-        scope.ServiceProvider.GetRequiredService<ITicketTransferQueue>().Should().BeSameAs(decorator);
         scope.ServiceProvider.GetRequiredService<IAttendeeContactImportService>().Should().BeSameAs(decorator);
 
         // The GDPR and merge fan-outs hold other sections' contributors too; invoke only

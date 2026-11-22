@@ -208,7 +208,7 @@ Outbound invoices to members/barrios:
   - Can add/edit/delete line items within own department only
   - Per-category unallocated remainder and progress bar
   - `IsRestricted` groups hidden from coordinator view
-  - Authorization uses resource-based auth via `BudgetAuthorizationHandler` + `BudgetOperationRequirement.Edit`, which delegates to `GetEffectiveCoordinatorTeamIdsAsync`, which uses Teams’ `GetEffectiveBudgetCoordinatorTeamIdsAsync` policy (includes active child teams)
+  - Authorization uses resource-based auth via `BudgetAuthorizationHandler` + `BudgetOperationRequirement.Edit`, which calls Teams’ `ITeamService.GetEffectiveBudgetCoordinatorTeamIdsAsync` policy directly (includes active child teams)
   - All changes audit-logged via existing BudgetAuditLog
 - **Public summary** at `/Budget/Summary` (#234):
   - All authenticated members see budget allocation pie chart (Chart.js doughnut)
@@ -253,9 +253,9 @@ Outbound invoices to members/barrios:
   - Upsert logic: existing auto-generated items updated on re-sync, not duplicated
   - (VAT is not stored as its own line item — settlement math lives in the cash-flow
     computation; no donation handling or quarter-boundary splitting exists in the sync)
-- **Projections** via `IBudgetManagement.GetTicketingProjectionEntriesAsync`:
-  - Virtual (non-persisted) weekly entries for future weeks from current week to event date (inclusive, including a one-day final week when the event is on Monday). Preview and persisted projections share bounded date arithmetic through the maximum supported event date; neither advances beyond the final day.
-  - Each week projects `DailySalesRate` × days (plus the initial burst in the first week); the nightly sync refreshes average ticket price and fee percentages from actuals, never the daily rate.
+- **Projections** via `IBudgetManagement.GetProjectedRemainingTicketsAsync`:
+  - The overview reads only the remaining ticket count, summed from virtual (non-persisted) weeks from current week to event date (inclusive, including a one-day final week when the event is on Monday). Preview and persisted projections share bounded date arithmetic through the maximum supported event date; neither advances beyond the final day.
+  - Each week projects `DailySalesRate` × days within the sales period (plus the initial burst in the first week), excluding days before Start Date even though labels retain ISO-week bounds. An inverted sales period produces no forecast rows; the nightly sync refreshes average ticket price and fee percentages from actuals, never the daily rate.
   - Fees computed on revenue; VAT on revenue at the projection's VAT rate (inclusive
     formula), while the projected Stripe/TicketTailor fee line items carry the assumed 21% fee VAT rate
 - **Budget totals** exclude `IsCashflowOnly` line items from income/expense/profit/charts

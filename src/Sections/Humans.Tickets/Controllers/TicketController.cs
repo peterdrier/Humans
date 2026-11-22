@@ -5,6 +5,7 @@ using Hangfire;
 using Humans.Base.Csv;
 using Humans.Tickets.Jobs;
 using Humans.Tickets.Services;
+using Humans.Tickets.Services.Dtos;
 using Humans.Base.Authorization;
 using Humans.Base.Controllers;
 using Humans.Base.Extensions;
@@ -28,7 +29,7 @@ internal sealed class TicketController(
     [HttpGet("")]
     public async Task<IActionResult> Index()
     {
-        return View(await dashboardPageBuilder.BuildAsync(FinanceRoles.IsFinanceAdmin(User)));
+        return View(await dashboardPageBuilder.BuildAsync(FinanceRoles.IsFinanceAdmin(User), HttpContext.RequestAborted));
     }
 
     [HttpGet("Orders")]
@@ -173,7 +174,7 @@ internal sealed class TicketController(
     [Authorize(Policy = TicketsPolicies.Manage)]
     public IActionResult Sync()
     {
-        BackgroundJob.Enqueue<TicketSyncJob>(job => job.ExecuteAsync(CancellationToken.None));
+        BackgroundJob.Enqueue<TicketSyncJob>(job => job.RunNowAsync(CancellationToken.None));
         SetSuccess("Ticket sync triggered. Data will update shortly.");
         return RedirectToAction(nameof(Index));
     }
@@ -185,18 +186,31 @@ internal sealed class TicketController(
     {
         await ticketSyncService.ResetSyncStateForFullResyncAsync();
 
-        BackgroundJob.Enqueue<TicketSyncJob>(job => job.ExecuteAsync(CancellationToken.None));
+        BackgroundJob.Enqueue<TicketSyncJob>(job => job.RunNowAsync(CancellationToken.None));
         SetSuccess("Full re-sync triggered. All orders will be re-fetched.");
         return RedirectToAction(nameof(Index));
     }
 
+    [HttpPost("ScheduledSync")]
+    [ValidateAntiForgeryToken]
+    [Authorize(Policy = TicketsPolicies.Manage)]
+    public async Task<IActionResult> ScheduledSync(bool enabled)
+    {
+        var (userError, user) = await ResolveCurrentUserOrUnauthorizedAsync(HttpContext.RequestAborted);
+        if (userError is not null) return userError;
+
+        await ticketSyncService.SetScheduledSyncEnabledAsync(enabled, user.Id, HttpContext.RequestAborted);
+        SetSuccess(enabled ? "Scheduled ticket sync turned on." : "Scheduled ticket sync turned off.");
+        return Redirect("/Settings#tickets");
+    }
+
     [HttpGet("Participation/Backfill")]
     [Authorize(Policy = PolicyNames.AdminOnly)]
-    public async Task<IActionResult> ParticipationBackfill()
+    public IActionResult ParticipationBackfill()
     {
         var model = new ParticipationBackfillViewModel
         {
-            Year = await participationBackfillService.GetDefaultYearAsync(HttpContext.RequestAborted),
+            Year = participationBackfillService.GetDefaultYear(),
         };
         return View(model);
     }
@@ -322,12 +336,11 @@ internal sealed class TicketController(
                     m.VipDonations, m.TicketIncomeInclVat, m.VatAmount, m.TicketIncomeExVat, m.StripeFees,
                     m.ApplicationFees, m.FeeTax, m.WithheldTax, m.RefundedGross);
             }
-            WriteAccountantRow(csv, "Total", months.Sum(m => m.OrderCount), months.Sum(m => m.TicketsSold),
-                months.Sum(m => m.GrossRevenue), months.Sum(m => m.Donations), months.Sum(m => m.VipDonations),
-                months.Sum(m => m.TicketIncomeInclVat), months.Sum(m => m.VatAmount),
-                months.Sum(m => m.TicketIncomeExVat), months.Sum(m => m.StripeFees),
-                months.Sum(m => m.ApplicationFees), months.Sum(m => m.FeeTax), months.Sum(m => m.WithheldTax),
-                months.Sum(m => m.RefundedGross));
+            var total = MonthlySalesAggregate.Total(months);
+            WriteAccountantRow(csv, "Total", total.OrderCount, total.TicketsSold, total.GrossRevenue,
+                total.Donations, total.VipDonations, total.TicketIncomeInclVat, total.VatAmount,
+                total.TicketIncomeExVat, total.StripeFees, total.ApplicationFees, total.FeeTax,
+                total.WithheldTax, total.RefundedGross);
         });
         return File(bytes, "text/csv", "ticket-income-by-month.csv");
     }
@@ -345,7 +358,7 @@ internal sealed class TicketController(
         var bytes = HumansCsv.WriteBytes(csv =>
         {
             csv.WriteRow("Date", "Order ID", "Name", "Email", "Type", "Amount");
-            foreach (var r in rows)
+            foreach (var r in rows.OrderBy(row => row.PurchasedAt))
             {
                 csv.WriteRow(r.Date, r.VendorOrderId, r.BuyerName, r.BuyerEmail, r.Type, r.Amount);
             }

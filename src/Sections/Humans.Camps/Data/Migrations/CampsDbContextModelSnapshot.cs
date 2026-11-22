@@ -18,7 +18,7 @@ namespace Humans.Camps.Data.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.13")
+                .HasAnnotation("ProductVersion", "10.0.15")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -81,6 +81,9 @@ namespace Humans.Camps.Data.Migrations
                 {
                     b.Property<Guid>("EventSettingsId")
                         .HasColumnType("uuid");
+
+                    b.Property<string>("RegistrationInfo")
+                        .HasColumnType("text");
 
                     b.Property<bool>("RegistrationOpen")
                         .HasColumnType("boolean");
@@ -429,9 +432,11 @@ namespace Humans.Camps.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
-                    b.Property<string>("OpenSeasons")
-                        .IsRequired()
-                        .HasColumnType("jsonb");
+                    b.Property<LocalDate?>("EeStartDate")
+                        .HasColumnType("date");
+
+                    b.Property<int>("PublicYear")
+                        .HasColumnType("integer");
 
                     b.HasKey("Id");
 
@@ -441,7 +446,7 @@ namespace Humans.Camps.Data.Migrations
                         new
                         {
                             Id = new Guid("00000000-0000-0000-0010-000000000001"),
-                            OpenSeasons = "[2026]"
+                            PublicYear = 2026
                         });
                 });
 

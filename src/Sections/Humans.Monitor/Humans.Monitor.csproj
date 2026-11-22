@@ -23,11 +23,11 @@
       repository and no AddSectionDbContext call.
 
       Monitor is the consumer end of every edge it has: no section references it, and the
-      Shell's reference is the discovery one every section gets. Humans.GoogleIntegration is
+      Shell's reference is the discovery one every section gets. Humans.Google is
       referenced whole because its contracts are a Contracts/ folder, not a separate project.
     -->
     <ProjectReference Include="..\..\Humans.Base\Humans.Base.csproj" />
-    <ProjectReference Include="..\Humans.GoogleIntegration\Humans.GoogleIntegration.csproj" />
+    <ProjectReference Include="..\Humans.Google\Humans.Google.csproj" />
     <ProjectReference Include="..\Humans.Settings\Humans.Settings.csproj" />
   </ItemGroup>
 

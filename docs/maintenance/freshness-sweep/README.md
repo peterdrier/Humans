@@ -1,0 +1,353 @@
+# Freshness Sweep
+
+See `docs/superpowers/specs/2026-04-25-freshness-sweep-design.md` for full design.
+
+## Invocation
+
+| Flag | Behavior |
+|---|---|
+| *(none)* | diff mode, batch |
+| `--full` | skip anchor resolution; every entry is dirty |
+| `--interactive` | stop at each question; default accumulates in report |
+| `--since <ref>` | override anchor (debugging) |
+| `--scope <glob>` | only mechanical entries whose `id` matches; editorial unaffected |
+
+## Unattended runs
+
+The maintenance dispatcher starts the sweep as an unattended run. Never merge, never force-push. `origin` (peterdrier/Humans) gets the push, the PR and any issues; `upstream` (nobodies-collective/Humans) is read-only, used only for the diff anchor.
+
+1. If `git remote get-url upstream` fails, run `git remote add upstream https://github.com/nobodies-collective/Humans.git`.
+2. If peterdrier/Humans has 10 or more open PRs, don't sweep: say so in one line and stop. A skipped week is harmless; the next sweep diffs from the last anchor.
+3. Run every phase through opening the PR. If nothing needs sweeping, say so in one line and stop. Wherever a phase says to ask Peter and wait (Phase 5.5 steps 3a and 5, Phase 7.5), don't wait: list each item as a numbered one-line decision under `## Needs Peter` in the PR body and leave the affected content unchanged.
+4. Once the PR exists, run the `pd:spend` skill for this session and post its report as a PR comment whose first line is `**Freshness sweep cost** (pd:spend)`.
+5. Tend the PR yourself under `.claude/steward.md`. Stop 3 hours after PR creation or after 3 review rounds, whichever comes first, then unsubscribe. Report only the PR link, the Needs Peter list, and anything that blocks.
+
+## Phase 0: Capture repo root
+
+`REPO_ROOT=$(git rev-parse --show-toplevel)` — save for Phase 8 teardown.
+
+## Phase 1: Resolve baseline
+
+1. `git fetch upstream main`. Missing remote → error: `git remote add upstream https://github.com/nobodies-collective/Humans.git`.
+2. `--since <ref>`: `previous-anchor = git rev-parse <ref>`. Skip 3-5.
+3. `--full`: previous-anchor = `none`; new anchor = `upstream/main` HEAD → Phase 2.
+4. `git log upstream/main --grep='\(upstream@' --extended-regexp --format=%H -n 1` → `git log -1 <hash> --format=%B` → extract `(upstream@<sha>)` token. Grep on the anchor token (not "freshness sweep") to avoid false positives from revert commits.
+5. No prior sweep: warn, previous-anchor = `none`, behave as `--full`.
+
+## Phase 2: Create the workspace
+
+Per [`always-use-worktree`](../../../memory/process/always-use-worktree.md) — a worktree locally, the repo root in a cloud run. `$WORKTREE` is the sweep's workspace either way; the rest of the skill doesn't care which it is.
+
+**Fetch `origin/main` first, and branch off its fresh HEAD** — not a stale local ref. The worktree base is the code the mechanical regens read; if you cut from a *stale local* `main` that already lags `origin/main`, the regens read stale source and the merge-base the PR diffs against is wrong. This bit sweep #819: the branch was cut at `35ce66de8` while `origin/main` was already at `cdd850bde`, and the surface report flagged a removed `ITicketingBudgetRepository` as "new". The fix is to capture the **current** `origin/main` as the base, at the start. This is a *start-of-run freshness capture*, nothing more — once captured the base is **frozen** (see *Scope is frozen here* below); fetching fresh now is the point, re-fetching or reconciling later is not.
+
+```bash
+git fetch origin main
+TS=$(date -u +%Y-%m-%dT%H%M%SZ)
+if [ "$CLAUDE_CODE_REMOTE" = "true" ]; then  # ephemeral single-session container — no worktree
+  git checkout -b freshness-sweep/$TS origin/main
+  WORKTREE=$REPO_ROOT
+else
+  git worktree add $REPO_ROOT/.claude/worktrees/freshness-sweep-$TS -b freshness-sweep/$TS origin/main
+  WORKTREE=$REPO_ROOT/.claude/worktrees/freshness-sweep-$TS  # EnterWorktree here; all commands run inside
+fi
+```
+
+**Scope is frozen here.** The diff anchor (`upstream/main` HEAD) and the worktree base (`origin/main` HEAD) are captured once, now, at the start of the run, and are **immutable for the rest of the sweep**. Do NOT re-fetch, re-resolve, or reconcile against `origin/main` / `upstream/main` if they move while the sweep runs — a parallel session merging a PR mid-run is expected and irrelevant. The PR diffs against `merge-base` (the frozen base), so a later fast-forward of `origin/main` cannot affect this sweep's diff; chasing it only wastes time and is a distraction. Anything that lands after the frozen anchors is the *next* sweep's input, full stop. (If `git merge-base --is-ancestor upstream/main origin/main` is false at start — they've crossed, usually right after a prod promotion — note it once in the report and proceed; still never reconcile mid-run.)
+
+Path/branch collision: error; instruct `git worktree list` / `git worktree remove`.
+
+## Phase 3: Discover entries
+
+1. Read `docs/architecture/freshness-catalog.yml`. Validate: `version=1`; `mechanical`, `editorial_trees`, `ignore` are lists; every mechanical entry has `id`, `target`, `triggers[]`, and either `update: script`+`script` or `update: prompt`+`prompt`/`prompt-file`; `id` and `target` unique within `mechanical`. Warn (don't fail) on trigger glob matching no files.
+2. Walk `editorial_trees`: paths ending in `/` → glob `**/*.md`; single paths included directly. Filter by `ignore` globs.
+3. Parse inline markers per editorial `.md`:
+   - `<!-- freshness:triggers ...globs... -->` (one per doc, before `# H1`)
+   - `<!-- freshness:auto id="..." prompt="..." -->` … `<!-- /freshness:auto -->` (closing tag required; `id` unique per doc; `prompt`/`prompt-file` mutually exclusive)
+   - `<!-- freshness:flag-on-change` … reason … `-->` (multi-line comment)
+4. Unified entry list: all mechanical + editorial docs with any marker. Docs in `editorial_trees` with no markers are "unmarked editorial" candidates.
+
+Abort on validation failure → Phase 8.
+
+## Phase 3.5: Verify and repair trigger globs
+
+Runs BEFORE Phase 4 computes the dirty list, so a glob repaired this run also
+fires as dirty in this same run — nobodies-collective/Humans#1021. A dead
+`freshness:triggers` entry (a glob or literal path that no longer resolves to
+any file) is **silent by construction**: it makes its doc look *clean*
+instead of *unchecked*, so the doc drops out of the dirty list before Phase 4
+ever runs and nobody notices. Two sweeps (2026-08-08, 2026-08-10) found large
+batches of these ad hoc, with a throwaway verifier, *after* the dirty list had
+already been computed from the broken globs — this phase exists so the sweep
+catches and repairs its own dead triggers as a matter of course, not as
+someone remembering to go look.
+
+1. From inside the worktree, run:
+   ```bash
+   bash docs/scripts/freshness-checks/verify-triggers.sh
+   ```
+   This walks every `.md` under the catalog's `editorial_trees` (honoring
+   `ignore:`), expands every `freshness:triggers` entry as a real glob
+   (`**`/`*`-aware — never a literal `test -e` per line, which under-reports:
+   the 2026-08-08 sweep's throwaway verifier compared globs literally and
+   missed the last 5 of 64 dead paths, caught only in PR review) as well as
+   every literal path, and for each dead one:
+   - **Repairs it in place** when the new location is unambiguous — a single
+     `find` hit by basename, which is also how a section-project move
+     resolves (a section's uniquely-named file or directory has exactly one
+     hit under its new `src/Sections/Humans.<Section>/**` home, no
+     section-specific logic needed). Emits `REPAIRED <doc> | <old> -> <new>`.
+   - **Leaves it and flags it** when no single unambiguous target exists
+     (zero or multiple `find` hits — never guessed). Emits
+     `UNRESOLVED <doc> | <old>` and `FORCE-DIRTY <doc>`.
+2. The script already edited the doc files for every `REPAIRED` line — those
+   are real content changes and ride in the sweep's own PR like any other
+   regen (memory/process/freshness-sweep-owns-its-verifier.md). Nothing
+   further to do for them.
+3. Carry the `UNRESOLVED` list and the `FORCE-DIRTY` doc list forward:
+   - Into **Phase 4**: union the `FORCE-DIRTY` docs into the dirty list,
+     regardless of whether anything in the diff window matches them — an
+     unresolved dead trigger means the doc needs a human-legible review this
+     run, not silent skipping.
+   - Into **Phase 6**: the report's new "Dead trigger globs" section (see
+     below).
+4. Mechanical catalog entries are unaffected by this phase — Phase 3's
+   existing "warn on trigger glob matching no files" already covers them;
+   this phase is the editorial-doc counterpart the issue exists to add.
+
+## Phase 4: Match dirty entries
+
+1. `--full`/fallback: every candidate dirty.
+2. `git diff --name-only <previous-anchor>..upstream/main` → glob-match against each entry's triggers.
+3. `--scope <glob>`: filter to mechanical entries whose `id` matches.
+4. Union in the Phase 3.5 `FORCE-DIRTY` set (editorial docs with an unresolved dead trigger) — always dirty this run regardless of diff match.
+5. Empty dirty list → "No entries dirty — nothing to refresh." → Phase 8.
+
+## Phase 5: Dispatch updates (≤3 concurrent subagents)
+
+| Entry type | Slot | Action |
+|---|---|---|
+| Mechanical `update: script` | none | Run via `Bash`; warn if files touched outside `target` |
+| Mechanical `update: prompt` | 1 | Dispatch subagent |
+| Editorial `freshness:auto` | 1 | Dispatch subagent; regenerate each block per inline prompt; leave content outside markers untouched |
+| Editorial `freshness:flag-on-change` | 1 | **Dispatch a drift-fix subagent** (see below) — MANDATORY every sweep, not optional. Read the doc against the *specific* changed files its triggers matched; fix every concrete factual contradiction in place; escalate only genuine judgment calls. A passive "flagged for review" list is a process failure. |
+| Unmarked editorial | none | No triggers → reviewing against all of `src/**` is noise. Add to flag list ("Unmarked editorial; add `freshness:triggers`: \<files\>") so a future sweep can scope it; do not full-review. |
+
+**Editorial drift-fix is the core of the sweep — DO IT, don't punt it.** `docs/sections/`, `src/Sections/*/Docs/`, `docs/features/global/`, and `docs/guide/` are Claude-authored; the sweep *owns* keeping them true. Emitting a "flagged for human review" list of triggered docs instead of fixing them is the single most common way this skill has failed in practice. The default is **fix**, not flag.
+
+Procedure — for **each** triggered `freshness:flag-on-change` doc, dispatch a tightly-scoped subagent (≤3 concurrent; cluster docs that share the same changed files into one subagent) with:
+- the doc's absolute path in the worktree;
+- the **exact list of changed files its triggers matched** (not merely "it triggered" — compute this from the Phase 4 match so the subagent reviews the right diff, not all of `src/`);
+- instruction to `cd <worktree>` first (its own Bash call), then per changed file view `git diff <prev-anchor> HEAD -- <file>` AND read the current source, then **fix in place** every place the doc's prose is factually contradicted (renamed/removed/added symbol, route, field, enum, behavior, auth rule, default), preserving voice/structure/freshness-markers, surgical edits only;
+- escalate to the report's "Open questions" **only** genuine judgment calls or pre-existing drift outside the sweep's changed-file scope (be explicit which); `<90%` sure it's real drift → don't edit, ask.
+
+Guide docs are end-user facing: fix only user-visible behavior drift, not internal-implementation wording. Reserve a flag (no fix) strictly for subjective "does this still read right" prose that no code fact contradicts.
+
+Subagent prompt: worktree path, target file, trigger paths fired, entry's prompt content. Must NOT commit. Return JSON:
+
+```json
+{
+  "id": "<entry id>",
+  "updated": true,
+  "files_changed": ["<paths>"],
+  "summary": "<one-line; required when updated>",
+  "flags": [{ "file": "<path>", "reason": "<why>", "suggested_follow_up": "<optional>" }],
+  "questions": ["<text>"]
+}
+```
+
+After each batch accumulate results. `--interactive`: stop on non-empty `questions`, ask Peter, continue.
+
+## Phase 5.5: Prune — wheat extraction, then deletion
+
+Goal: every sweep shrinks the historical-doc pile by ~5% (soft target, ~7% soft reviewability budget — see Orchestration for how the budget interacts with fully-mined husks) **without losing durable signal**. Whole-file deletion is the LAST step, never the first. The earliest sweep that tried to delete first lost ADR rationale, vendor-selection trade-offs, and decorator-integrity gotchas — those have to be extracted into living docs before the husk is removed.
+
+### Per-source workflow (every candidate doc goes through this)
+
+1. **Read** the historical doc in full + read every candidate target section/architecture doc in full.
+2. **Identify wheat** — durable signal: design decisions with rationale, rejected alternatives that explain why current behavior is the way it is, gotchas, negative-space rules, vendor/library selection rationale, external-system quirks.
+3. **Identify chaff** — data model tables (code is the spec), implementation task lists, code samples already in src/, status/date markers, restatements of obvious behavior, glossary etymology, "we will/might do X" speculation.
+3a. **Verify candidate wheat against the code — the code is the reference.** Before migrating a stated invariant/trigger/rule, confirm it against current source (grep/read the named service, entity, config). Three outcomes, no fourth:
+   - **Still true** → migrate it (step 6), phrased to match the code, not the stale spec's wording.
+   - **No longer true** (the intention is dead — code changed since) → it's chaff; drop it.
+   - **Genuinely can't tell whether it's still a live intention worth keeping** → **ASK Peter inline now** (plain prose, one question; never the `AskUserQuestion` tool per project rule). Do **not** queue it in a "Proposed for review" list for a future pass. Queuing an uncertain item for later is the anti-pattern this step exists to kill — the whole point of the sweep is to resolve, not to generate a human to-do backlog.
+4. **De-duplicate against target.** If the wheat is already in the target doc, drop it.
+5. **Genre-check against EXISTING destinations only.** Allowed:
+   - `docs/sections/*.md` — section invariants only, no rationale narrative (per `SECTION-TEMPLATE.md`)
+   - `docs/architecture/design-rules.md` — only a rule that stays true for every section (its header states the test). A fact about one section goes to that section's `Docs/<Section>.md`; Base and Shell facts go to `src/Humans.Base/Docs/Base.md` and `src/Humans.Web/Docs/Shell.md`
+   - `docs/architecture/conventions.md` — pattern definitions (when to use X, naming, etc.)
+   - **Never** create new design docs, ADR files, or `memory/` atoms during a sweep. `memory/` is for **atomic task-fires rules**, not for narrative-history-of-decisions, and design docs carry weight that needs Peter's review. If verified-true wheat genuinely fits none of the three allowed destinations, **ASK Peter inline** where it should live (don't invent a destination, and don't silently drop durable signal). Asking is fine; queuing for "next pass" is not.
+6. **Migrate** the wheat with a `<!-- wheat: <source path> §<section> -->` provenance comment. Preserve original prose voice.
+7. **Scan for inbound refs** to the historical doc across all `.md` files. For each ref:
+   - If from a living doc (sections, features, guide, architecture): retarget to the destination of the migrated wheat.
+   - If from an archive doc (`docs/superpowers/**`, other historical docs): rewrite as `(historical) — current invariants live in <destination>`. The archive remains historical; the link points forward.
+8. **Delete the husk** only after steps 6 + 7 are complete.
+
+### Allowlist of sources
+
+| Source tree | Action |
+|---|---|
+| `docs/plans/**` older than 30 days (files and dated subfolders) | Wheat-extract → migrate → retarget refs → delete |
+| `docs/superpowers/plans/**` older than 30 days | Same |
+| `docs/superpowers/specs/**` older than 60 days | Same |
+| `docs/architecture/tech-debt-*.md` where all items are `[DONE]` | Same (wheat may be `[DONE]` summaries worth keeping in maintenance-log) |
+| Orphan refs in living docs to already-deleted files | Edit out or retarget |
+
+**Age is measured by the `YYYY-MM-DD` prefix in the filename — NOT the last-commit date or mtime.** A husk's topic date is when its work happened; that's its true age. Last-commit date is the wrong signal: a doc sweep, a link retarget, or any minor edit touches a husk without making it less legacy, and gating on last-commit would let those incidental edits silently reset the clock and keep a husk alive forever. The section docs (`docs/sections/*.md`) are the canonical, living record — the repo; these plans/specs are **contextual legacy** that must age out on schedule regardless of how recently something brushed against them. So `docs/plans/2026-05-14-foo.md` is "older than 30 days" once the calendar is past 2026-06-13, full stop — even if its last commit was yesterday's freshness sweep. A dated subfolder (`docs/plans/2026-08-03-g0-first-audit/`) ages as one unit by its own prefix and is pruned whole. (Files lacking a date prefix: fall back to mtime, and flag them in the report as candidates to rename with a date prefix.)
+
+### Never touched by prune
+
+- Anything outside `docs/`
+- `docs/architecture/freshness-catalog.yml`
+- `docs/sections/`, `src/Sections/*/Docs/`, `docs/features/global/`, `docs/guide/` as deletion targets (these are migration *destinations*, never sources)
+- `docs/architecture/{design-rules,code-review-rules,coding-rules,conventions}.md` as deletion targets (same — these are destinations)
+- `docs/freshness/last-report.md`
+- the `freshness:auto` block in `code-analysis.md` (Phase 5 owns it)
+
+### Sizing
+
+```bash
+shopt -s globstar  # REQUIRED — without this, ** doesn't recurse and total_lines is wildly undercounted
+total_doc_lines=$(find docs -name '*.md' -print0 | xargs -0 wc -l | tail -1 | awk '{print $1}')
+target_lines=$((total_doc_lines * 5 / 100))
+hard_cap=$((total_doc_lines * 7 / 100))
+```
+
+Use `find` (above) rather than relying on shell globbing — it's safe whether globstar is set or not.
+
+### Orchestration
+
+Dispatch up to 3 subagents in parallel (one per logical source group: e.g., shifts-related, auth-related, infra-related). Each agent:
+
+- Takes 1–N source docs sharing a likely destination
+- Reads sources + candidate targets
+- Returns a JSON manifest (below) — does NOT write files
+
+Orchestrator reviews each manifest, applies migrations as `Edit` calls, retargets inbound refs, then deletes husks. The 7% figure is a **soft reviewability budget** (keep one PR's deletions skimmable), not a correctness limit. Apply it like this:
+
+- Stop *starting new* husk deletions once `applied_lines + this_doc_lines > hard_cap`.
+- **Exception — never strand a mined husk.** If you extracted wheat from a husk *this sweep*, delete that husk *this sweep* even if it nudges you past 7%. Leaving an emptied husk for "next time" is the deferral anti-pattern; a few hundred over-cap lines of already-extracted dead weight is fine — note the overage and why in the report.
+- A husk you chose not to analyze this sweep (pure budget) may be listed as a future-sweep candidate. That is a budget decision, not a punt — distinct from queuing an *uncertain* item, which is never allowed (resolve it via step 3a instead).
+
+### Subagent return format
+
+```json
+{
+  "batch": "<logical group name>",
+  "migrations": [
+    {
+      "source_doc": "<path being mined>",
+      "target_doc": "<destination living doc>",
+      "insertion_anchor": "<exact existing line in target>",
+      "text_to_insert": "<markdown block including <!-- wheat: ... --> comment>",
+      "lines_inserted": <int>,
+      "wheat_summary": "<one-line: what survived and why it's durable>"
+    }
+  ],
+  "drop_entirely": [
+    { "source_doc": "<path>", "reason": "<all chaff: data-model now in code, task lists, etc.>" }
+  ],
+  "inbound_refs": [
+    { "source_doc": "<path>", "ref_from": "<path>", "ref_line": <int>, "proposed_action": "retarget to <dest>" | "rewrite as historical" | "remove" }
+  ],
+  "questions": []
+}
+```
+
+### Result-section in the sweep report
+
+The sweep report's "Pruned" section lists:
+- For each migration: `<source> → <target>` + the one-line wheat summary
+- For each husk deleted: file + line count + "all chaff" reason
+- For each retargeted ref: source ref → new target
+
+A prune-analysis subagent's manifest may surface **medium-confidence wheat** (the agent isn't sure it's still durable). The orchestrator does **not** pass that uncertainty through to a "Proposed for review" backlog — it resolves it per step 3a: verify against code, then migrate (if true), drop (if dead), or ask Peter inline (if genuinely a judgment call). The report's "Proposed for review" section should normally read **"None — all candidates resolved this sweep"**; it carries content only when Peter was asked a question this sweep and the answer is pending.
+
+## Phase 6: Aggregate and write report
+
+Overwrite `docs/freshness/last-report.md`: timestamp header; anchor/mode/counts summary; "Updated automatically" bullets (`id — summary`); **"Dead trigger globs"** section from Phase 3.5 — a `Repaired` sub-list (`doc — old → new`, one per `REPAIRED` line) and an `Unresolved` sub-list (`doc — old`, one per `UNRESOLVED` line, each noting it was force-included in this run's dirty list); "Pruned" section (file, lines removed, evidence) from Phase 5.5, including a **"Wheat migrated"** sub-list (`source §section → destination`, with the code symbol that verified it); "Flagged for human review" (file, triggers, reason — subjective prose only, never concrete broken facts, which are fixed inline); "Proposed for review" ("None — all candidates resolved this sweep" unless a question to Peter is pending); "Questions" (anything you asked Peter inline this sweep); "Skipped (errors)". Previous-anchor = `none` on first run or `--full`. No files changed → "Nothing to update." → Phase 8. Otherwise stage all changes + report.
+
+Unresolved dead triggers are a record, not a delivery — like every other item needing Peter's judgment they also go through Phase 7.5 inline, phrased as a one-line decision each (e.g. "1. `Auth.md`'s `Authorization/Requirements/**` trigger is dead — Requirement classes now live per-section under each `Authorization/`; retarget to `src/Sections/*/Authorization/**Requirement.cs`, or drop the trigger?").
+
+**The report is the durable RECORD, not the delivery channel.** Every item that needs Peter's judgment — flagged drift that is a genuine judgment call, open questions, uncertain prune wheat — is delivered to him **inline** in Phase 7.5, not parked in the report for him to find later. Assume he never opens the report. Writing a review item only into the report and ending the run is a process failure.
+
+## Phase 7: Commit, push, open PR
+
+**Do not reconcile a moved base.** The base was frozen in Phase 2 and stays frozen. Do NOT re-fetch or merge `origin/main`, even if it fast-forwarded while the sweep ran — the PR diffs against `merge-base` (the frozen base), so a moved `origin/main` is invisible to this sweep's diff and to the merge-base-scored surface report. Commit and PR directly against the frozen base. Anything that landed after it is the next sweep's input; investigating it now is a distraction, not diligence.
+
+Commit title MUST be `docs: freshness sweep — N entries (upstream@<new-anchor-sha>)`. The `(upstream@<sha>)` token is parsed by the next sweep to locate the prior anchor.
+
+```bash
+git commit -m "$(cat <<'EOF'
+docs: freshness sweep — N entries (upstream@<sha>)
+
+Updated:
+- <entry-id>
+
+Flagged for review (see docs/freshness/last-report.md):
+- <file>
+
+Mode: diff
+Previous anchor: <sha-or-none>
+
+Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>
+EOF
+)"
+```
+
+**Closing `EOF` must be at column 0.**
+
+```bash
+git push -u origin freshness-sweep/$TS
+gh pr create --repo peterdrier/Humans --base main \
+  --title "docs: freshness sweep — N entries (upstream@<sha>)" \
+  --body "$(cat <<'EOF'
+## Summary
+<bullets from report>
+
+## Report
+See `docs/freshness/last-report.md` (committed in this PR).
+
+## Test plan
+- [ ] Skim diff, read report, verify flagged items, merge if happy
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+EOF
+)"
+```
+
+Print the PR URL.
+
+## Phase 7.5: Resolve review items inline (no homework)
+
+After the PR is open and **before** teardown, present **every item that needs Peter's judgment INLINE in the chat** — as a terse, numbered, actionable list, one line each: every "Flagged for human review" judgment call, every open "Question", every uncertain prune-wheat item. This is the delivery of the review; the report is only the record. Peter reviews **here, now, inline** — he does not read the report, so a sweep that ends with unresolved items sitting in the report has failed.
+
+- Phrase each as a decision he can answer in a word or two (e.g. "1. Refresh the stale decorator list in Shell.md, or leave it frozen?"). Inline prose, never the `AskUserQuestion` tool (project rule). Don't pad with paragraph-long options.
+- Wait for his answers. Apply the resulting edits to the PR branch in the worktree, then **`git add` the touched files and make a new `git commit`** (the Phase 7 commit already happened — uncommitted working-tree edits will not push), update the report's Flagged / Questions / Proposed sections to record each resolution, and `git push` to update the PR. A bare `git push` without that follow-up commit sends nothing.
+- Only purely-informational notes that need **no** decision may remain solely in the report.
+- **Do not run Phase 8 (teardown) or declare the sweep done until every surfaced item is resolved or Peter explicitly defers it.** "I'll note it in the report for you to review" is the exact failure this phase exists to prevent.
+
+If there are genuinely zero judgment calls (everything was a concrete fix already applied, nothing subjective), say so in one line and proceed — don't manufacture questions.
+
+## Phase 8: Tear down worktree
+
+Only after Phase 7.5 is resolved. `cd $REPO_ROOT && git worktree remove $WORKTREE` (add `--force` if Phase 7 errored). Never `rm -rf`. Branch stays on origin until PR closes. Nothing to tear down in a cloud run — there is no worktree, and the container is reclaimed anyway.
+
+## Failure modes
+
+| Failure | Behavior |
+|---|---|
+| No `upstream` remote | Error in Phase 1 |
+| Catalog YAML parse error | Error in Phase 3 → Phase 8 |
+| Marker validation error | That doc → "Skipped (errors)"; others continue |
+| Subagent fails | That entry skipped; recorded in "Skipped (errors)" |
+| Duplicate target in catalog | Schema validation rejects at parse time |
+| Mechanical trigger glob matches nothing | Warning only (Phase 3) |
+| Editorial trigger glob/literal matches nothing | Repaired or force-dirtied by Phase 3.5, never silently skipped |
+| Push / PR creation fails | Worktree retained; fix manually |
+
+## Constraints
+
+- Only touches files in the catalog, editorial trees, or the prune allowlist (Phase 5.5).
+- Main checkout dirty state is irrelevant — all work is in the worktree.
+- **Must** bump the `Freshness sweep (diff)` (or `(full)`) row in `docs/architecture/maintenance-log.md` — Last Run = today, Next Due = today + cadence, plus a one-line Notes entry — in the sweep's own commit, per [`maintenance-log-update`](../../../memory/process/maintenance-log-update.md). Everything *else* in that file stays hand-maintained; touch only the sweep's row.
+- Prune phase (5.5) never touches living architectural docs (`design-rules.md`, `code-review-rules.md`, section invariants, feature specs). It only deletes shipped/historical plans and specs with cited evidence.

@@ -18,8 +18,10 @@ internal sealed class MailerLiteSubscriberConverter : JsonConverter<MailerLiteSu
         using var doc = JsonDocument.ParseValue(ref reader);
         var root = doc.RootElement;
 
-        string id = root.GetProperty("id").GetString() ?? throw new JsonException("subscriber.id missing");
-        string email = root.GetProperty("email").GetString() ?? throw new JsonException("subscriber.email missing");
+        var id = ReadString(root, "id");
+        if (string.IsNullOrWhiteSpace(id)) throw new JsonException("subscriber.id missing");
+        var email = ReadString(root, "email");
+        if (string.IsNullOrWhiteSpace(email)) throw new JsonException("subscriber.email missing");
         var status = ReadString(root, "status");
         if (string.IsNullOrWhiteSpace(status))
             throw new JsonException("subscriber.status missing");
@@ -38,22 +40,22 @@ internal sealed class MailerLiteSubscriberConverter : JsonConverter<MailerLiteSu
         }
 
         var groupIds = new List<string>();
-        if (root.TryGetProperty("groups", out var groupsEl) && groupsEl.ValueKind == JsonValueKind.Array)
+        if (root.TryGetProperty("groups", out var groupsEl))
         {
-            foreach (var g in groupsEl.EnumerateArray())
+            if (groupsEl.ValueKind != JsonValueKind.Array)
+                throw new JsonException("subscriber.groups must be an array");
+            foreach (var group in groupsEl.EnumerateArray())
             {
                 // ML returns either an array of objects with id+name or an array of id strings.
-                if (g.ValueKind == JsonValueKind.String)
+                var groupId = group.ValueKind switch
                 {
-                    var s = g.GetString();
-                    if (!string.IsNullOrEmpty(s)) groupIds.Add(s);
-                }
-                else if (g.ValueKind == JsonValueKind.Object
-                    && g.TryGetProperty("id", out var idEl)
-                    && idEl.ValueKind == JsonValueKind.String)
-                {
-                    groupIds.Add(idEl.GetString()!);
-                }
+                    JsonValueKind.String => group.GetString(),
+                    JsonValueKind.Object => ReadString(group, "id"),
+                    _ => null,
+                };
+                if (string.IsNullOrWhiteSpace(groupId))
+                    throw new JsonException("subscriber.groups contains an invalid id");
+                groupIds.Add(groupId);
             }
         }
 
@@ -73,7 +75,9 @@ internal sealed class MailerLiteSubscriberConverter : JsonConverter<MailerLiteSu
 
     private static Instant? ParseDate(JsonElement obj, string name)
     {
-        if (!obj.TryGetProperty(name, out var el) || el.ValueKind != JsonValueKind.String) return null;
+        if (!obj.TryGetProperty(name, out var el) || el.ValueKind == JsonValueKind.Null) return null;
+        if (el.ValueKind != JsonValueKind.String)
+            throw new JsonException($"subscriber.{name} must be a timestamp string or null");
         var raw = el.GetString();
         if (string.IsNullOrEmpty(raw)) return null;
         var dt = DateTime.ParseExact(raw, DateFormattingExtensions.MailerLiteTimestampPattern,

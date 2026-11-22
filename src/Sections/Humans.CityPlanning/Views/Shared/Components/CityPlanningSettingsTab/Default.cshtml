@@ -6,7 +6,7 @@
 
 @if (settings is null)
 {
-    <div class="alert alert-info">No active event. City planning takes its year from the active event — set one in the Event tab first.</div>
+    <div class="alert alert-info">No active event. City planning takes its year from the active event — set one in the Events tab first.</div>
 }
 
 <div class="row g-4">
@@ -132,27 +132,5 @@
         </div>
     </div>
 
-    }
-
-    @* Keyed to the highest open season, so it shows without an active event when a season is open. *@
-    @if (Model.RegistrationInfoEditable)
-    {
-    <div class="col-md-6">
-        <div class="card">
-            <div class="card-header fw-semibold">
-                <i class="fa-solid fa-file-lines me-1"></i> Registration info
-            </div>
-            <div class="card-body">
-                <p class="text-muted small mb-3">Markdown shown at the top of the barrio registration page. Leave empty to hide.</p>
-                <form method="post" action="/CityPlanning/BarrioMap/Admin/UpdateRegistrationInfo">
-                    @Html.AntiForgeryToken()
-                    <textarea name="registrationInfo" class="form-control form-control-sm mb-3" rows="4">@Model.RegistrationInfo</textarea>
-                    <button type="submit" class="btn btn-primary btn-sm">
-                        <i class="fa-solid fa-save me-1"></i> Save
-                    </button>
-                </form>
-            </div>
-        </div>
-    </div>
     }
 </div>

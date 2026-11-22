@@ -32,16 +32,17 @@ Admin expiry correction saves the application date and its granting tier’s exp
 | **Colaborador** | Active contributor with project/event responsibilities. | Yes | Yes | 2-year cycle (Dec 31, odd years) |
 | **Asociado** | Voting member with governance rights (assemblies, elections). | Yes | Yes | 2-year cycle (Dec 31, odd years) |
 
-### System Teams (Separate, Not Nested)
+### Bodies (Separate, Not Nested)
 
-Each tier has its own system team. Asociados are **not** in the Colaboradors team — they are separate memberships:
+Each tier is its own Governance body with its own Google group and files. Asociados are **not** in the
+Colaboradores body; they are separate memberships:
 
-| Team | Members |
+| Group | Members |
 |------|---------|
-| Volunteers | All active humans (every tier) |
-| Colaboradors | Only humans with approved Colaborador applications |
-| Asociados | Only humans with approved Asociado applications |
-| Board | Board members (managed via RoleAssignment, external process) |
+| Volunteers team | All active humans (every tier) |
+| Colaboradores body | Only humans with an approved Colaborador application in term |
+| Asociados body | Only humans with an approved Asociado application in term |
+| Board body | Holders of the Board role, added and ended on /Governance/Board |
 
 ### No Volunteer Badge
 
@@ -151,7 +152,7 @@ Renewal is a new Application entity (same tier). Goes through normal Board votin
 
 ### Lapse
 
-If term expires without renewal, the human is removed from the Colaboradors/Asociados system team and their tier is downgraded — to another tier they still hold an active approval for, otherwise to Volunteer.
+If term expires without renewal, the human drops off the Colaboradores/Asociados body (and its group and files) and their tier is downgraded — to another tier they still hold an active approval for, otherwise to Volunteer.
 
 ## Application Flow
 
@@ -164,19 +165,19 @@ Volunteer/Colaborador → /Governance/Applications/Create → Fill form → Subm
     ▼
 Application created → Board Voting → Approve/Reject
     │
-    ├── Approved → membership tier row granted, added to tier system team
+    ├── Approved → membership tier row granted, tier body's group and files synced
     └── Rejected → stays at current tier
 ```
 
 ## Business Rules
 
 1. **Everyone starts as Volunteer** — tier selection is optional
-2. **Volunteer doesn't require an Application** — a legal name plus the required consents is sufficient. The Consent Coordinator's clear/flag review is an independent audit annotation and does not gate admission (`MembershipCalculator` never reads `ConsentCheckStatus`)
+2. **Volunteer doesn't require an Application** — a legal name plus the required consents is sufficient. The Consent Coordinator's clear/flag review is an independent audit annotation and does not gate admission (admission never reads `ConsentCheckStatus`)
 3. **No inline application** — initial profile setup only links to the application route
 4. **Applications use the dedicated route** — profile edit is just profile data
-5. **Asociados are not in Colaboradors team** — separate system teams
+5. **Asociados are not in the Colaboradores body** — separate bodies
 6. **One pending Application per user** — cannot have multiple active tier applications
-7. **Downgrades happen only at term expiry** — no admin or self-service downgrade; `MembershipTierExpiryJob` removes the tier when the term ends
+7. **Downgrades happen only at term expiry** — no admin or self-service downgrade; `MembershipTierExpiryJob` removes the tier when the term ends. Approving a lower tier for a member with an in-term higher tier records the approval but leaves the higher tier in place; the expiry job falls back to it
 8. **Terms are synchronized** — all expire Dec 31 of odd years
 9. **Renewal is a new Application** — same Board voting process
 10. **No Volunteer badge** — only Colaborador/Asociado badges on dashboard
@@ -187,4 +188,4 @@ Application created → Board Voting → Approve/Reject
 - [Tier Applications](asociado-applications.md) — Application entity and state machine
 - [Board Voting](board-voting.md) — How the Board decides on tier applications
 - [Coordinator Roles](../../../Humans.Shifts/Docs/features/coordinator-roles.md) — Consent Coordinator review (audit annotation, Volunteer only)
-- [Teams](../../../Humans.Teams/Docs/features/Teams-feature.md) — Volunteers, Colaboradors, Asociados system teams
+- [Teams](../../../Humans.Teams/Docs/features/Teams-feature.md) — the Volunteers system team

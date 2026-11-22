@@ -28,7 +28,6 @@ using Microsoft.Extensions.Options;
 using NodaTime;
 using NSubstitute;
 using Xunit;
-using Humans.Users.Authorization;
 using Humans.Users.Contracts;
 
 namespace Humans.Web.Tests.Authorization;
@@ -57,12 +56,11 @@ public class AuthorizationPolicyTests : IDisposable
         services.AddScoped(_ => Substitute.For<ITeamService>());
         // One shared substitute, so per-test setups reach IsAnyTeamManagerOrCoordinatorHandler.
         _shiftManagement = Substitute.For<IShiftService>();
-        _shiftManagement.GetCoordinatorTeamIdsAsync(Arg.Any<Guid>()).Returns([]);
+        _shiftManagement.CanManageOrApproveAnyShiftsAsync(Arg.Any<Guid>()).Returns(false);
         services.AddSingleton(_shiftManagement);
         services.AddSingleton<IClock>(SystemClock.Instance);
         // Section-contributed policies: their handlers come from each Section.Register, so register them here.
         services.AddScoped<IAuthorizationHandler, IsAnyTeamManagerOrCoordinatorHandler>();
-        services.AddSingleton<IAuthorizationHandler, HumanAdminOnlyHandler>();
         // AnyAdminRole derives from the sections' ISectionRoles through Auth's RoleCatalog.
         foreach (var roles in SectionDiscoveryExtensions.DiscoverImplementations<ISectionRoles>())
             services.AddSingleton(roles);
@@ -171,7 +169,7 @@ public class AuthorizationPolicyTests : IDisposable
         { FinancePolicies.Manage, TeamsRoles.TeamsAdmin, false },
 
         { PolicyNames.ReviewQueueAccess, ConsentRoles.ConsentCoordinator, true },
-        { PolicyNames.ReviewQueueAccess, ShiftsRoles.ShiftsAdmin, true },
+        { PolicyNames.ReviewQueueAccess, ShiftsRoles.ShiftsAdmin, false },
         { PolicyNames.ReviewQueueAccess, RoleNames.Board, true },
         { PolicyNames.ReviewQueueAccess, RoleNames.Admin, true },
         { PolicyNames.ReviewQueueAccess, TeamsRoles.TeamsAdmin, false },
@@ -205,10 +203,10 @@ public class AuthorizationPolicyTests : IDisposable
         { ShiftsPolicies.ManageVolunteers, ShiftsRoles.ShiftsNoInfo, false },
         { ShiftsPolicies.ManageVolunteers, RoleNames.Board, false },
 
-        { ShiftsPolicies.MedicalDataViewer, RoleNames.Admin, true },
-        { ShiftsPolicies.MedicalDataViewer, ShiftsRoles.ShiftsNoInfo, true },
-        { ShiftsPolicies.MedicalDataViewer, RoleNames.Board, true },
-        { ShiftsPolicies.MedicalDataViewer, ShiftsRoles.ShiftsAdmin, false },
+        { UsersPolicies.MedicalDataViewer, RoleNames.Admin, true },
+        { UsersPolicies.MedicalDataViewer, ShiftsRoles.ShiftsNoInfo, true },
+        { UsersPolicies.MedicalDataViewer, RoleNames.Board, true },
+        { UsersPolicies.MedicalDataViewer, ShiftsRoles.ShiftsAdmin, false },
 
         // AppAccess = Active state only. Roles alone do not bypass onboarding/status routing.
         { PolicyNames.AppAccess, RoleNames.Admin, false },
@@ -226,15 +224,6 @@ public class AuthorizationPolicyTests : IDisposable
         PolicyNames.ScannerAccess,
         PolicyNames.GateAdmit
     ];
-
-    public static TheoryData<string[], bool> UsersAdminOnlyCases => new()
-    {
-        { [UsersRoles.UsersAdmin], true },
-        { [UsersRoles.UsersAdmin, RoleNames.Admin], false },
-        { [UsersRoles.UsersAdmin, RoleNames.Board], false },
-        { [RoleNames.Admin], false },
-        { [], false },
-    };
 
     [HumansTheory]
     [MemberData(nameof(RolePolicyCases))]
@@ -448,7 +437,7 @@ public class AuthorizationPolicyTests : IDisposable
 
     [HumansTheory]
     [InlineData(ConsentRoles.ConsentCoordinator, true)]
-    [InlineData(ShiftsRoles.ShiftsAdmin, true)]
+    [InlineData(ShiftsRoles.ShiftsAdmin, false)]
     [InlineData(RoleNames.Board, true)]
     [InlineData(RoleNames.Admin, true)]
     [InlineData(TeamsRoles.TeamsAdmin, false)]
@@ -499,7 +488,7 @@ public class AuthorizationPolicyTests : IDisposable
     public async Task ShiftsDepartmentRead_AllowsUserWithCoordinatedTeams()
     {
         var userId = Guid.NewGuid();
-        _shiftManagement.GetCoordinatorTeamIdsAsync(userId).Returns([Guid.NewGuid()]);
+        _shiftManagement.CanManageOrApproveAnyShiftsAsync(userId).Returns(true);
 
         var user = CreateUserWithIdAndRoles(userId, "SomeNonAdminRole");
         var result = await _authorizationService.AuthorizeAsync(user, ShiftsPolicies.DepartmentRead);
@@ -511,7 +500,7 @@ public class AuthorizationPolicyTests : IDisposable
     public async Task ShiftsDepartmentRead_DeniesUserWithNoRoleAndNoCoordinatedTeams()
     {
         var userId = Guid.NewGuid();
-        _shiftManagement.GetCoordinatorTeamIdsAsync(userId).Returns([]);
+        _shiftManagement.CanManageOrApproveAnyShiftsAsync(userId).Returns(false);
 
         var user = CreateUserWithIdAndRoles(userId, "SomeNonAdminRole");
         var result = await _authorizationService.AuthorizeAsync(user, ShiftsPolicies.DepartmentRead);
@@ -527,7 +516,7 @@ public class AuthorizationPolicyTests : IDisposable
         var result = await AuthorizeAsync(ShiftsPolicies.DepartmentRead, RoleNames.Admin);
 
         result.Succeeded.Should().BeTrue();
-        await _shiftManagement.DidNotReceive().GetCoordinatorTeamIdsAsync(Arg.Any<Guid>());
+        await _shiftManagement.DidNotReceive().CanManageOrApproveAnyShiftsAsync(Arg.Any<Guid>());
     }
 
     [HumansTheory]
@@ -602,18 +591,6 @@ public class AuthorizationPolicyTests : IDisposable
         result.Succeeded.Should().BeFalse();
     }
 
-    [HumansTheory]
-    [MemberData(nameof(UsersAdminOnlyCases))]
-    public async Task UsersAdminOnly_matches_expected_role_combinations(string[] roles, bool expected)
-    {
-        var user = roles.Length == 0
-            ? CreateAuthenticatedUser()
-            : CreateUserWithRoles(roles);
-        var result = await _authorizationService.AuthorizeAsync(user, UsersPolicies.UsersAdminOnly);
-
-        result.Succeeded.Should().Be(expected);
-    }
-
     [HumansFact]
     public async Task UnknownPolicy_ThrowsInvalidOperationException()
     {
@@ -648,17 +625,6 @@ public class AuthorizationPolicyTests : IDisposable
         {
             claims.Add(new Claim(ClaimTypes.Role, role));
         }
-        var identity = new ClaimsIdentity(claims, "TestAuth");
-        return new ClaimsPrincipal(identity);
-    }
-
-    private static ClaimsPrincipal CreateAuthenticatedUser()
-    {
-        var claims = new List<Claim>
-        {
-            new(ClaimTypes.NameIdentifier, Guid.NewGuid().ToString()),
-            new(ClaimTypes.Name, "testuser@example.com")
-        };
         var identity = new ClaimsIdentity(claims, "TestAuth");
         return new ClaimsPrincipal(identity);
     }

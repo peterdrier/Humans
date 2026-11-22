@@ -14,4 +14,4 @@ Invoke a view component by `Type`, never by name: `<vc:…>` (or `InvokeAsync<T>
 - A component used as `<vc:…>` must be `public` (HUM0034 allows view components); an internal constructor dependency (CS0051) means slot contribution or `InvokeAsync<T>` in-section, never `<vc:>` and never by name.
 - HUM0036 (Error) fails the build on `InvokeAsync("Name", …)`, `Controller.ViewComponent("Name")` and `ViewComponentResult.ViewComponentName`, in C# and hand-written `.cshtml` alike. No grandfathering.
 
-**Related:** [[view-components-vs-partials]], design-rules §8b.
+**Related:** [[view-components-vs-partials]], design-rules.md, *Section contributions to the Shell*.

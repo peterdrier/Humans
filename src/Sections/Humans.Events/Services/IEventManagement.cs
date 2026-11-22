@@ -10,7 +10,12 @@ namespace Humans.Events.Services;
 
 internal interface IEventManagement : IApplicationService, IEventService
 {
-    Task<IReadOnlyList<EventSettingsInfo>> GetEventSettingsOptionsAsync(CancellationToken ct = default);
+    /// <summary>Carries <c>TimeZoneId</c> for rendering start times in the burn's local zone.</summary>
+    Task<EventGuideSettingsView?> GetGuideSettingsAsync(CancellationToken ct = default);
+
+    Task<HashSet<Guid>> GetFavouriteEventIdsAsync(Guid userId, CancellationToken ct = default);
+
+    IReadOnlyList<EventSettingsInfo> GetEventSettingsOptions();
     Task<EventSettingsInfo?> GetEventSettingsByIdAsync(Guid id, CancellationToken ct = default);
     /// <summary>False when the selected event edition no longer exists; dependency failures propagate.</summary>
     Task<bool> SaveGuideSettingsAsync(
@@ -39,11 +44,10 @@ internal interface IEventManagement : IApplicationService, IEventService
     Task<(bool deleted, int linkedCount)> DeleteVenueAsync(Guid id, CancellationToken ct = default);
     Task MoveVenueAsync(Guid id, int direction, CancellationToken ct = default);
 
-    Task<IReadOnlyList<EventInfo>> GetUserSubmissionsAsync(Guid userId, CancellationToken ct = default);
+    Task<EventSubmissionsSummary> GetUserSubmissionsSummaryAsync(Guid userId, CancellationToken ct = default);
     Task<EventInfo?> GetUserEventAsync(Guid eventId, Guid userId, CancellationToken ct = default);
-    Task<IReadOnlyList<EventInfo>> GetCampSubmissionsAsync(Guid campId, CancellationToken ct = default);
     Task<EventInfo?> GetCampEventAsync(Guid eventId, Guid campId, CancellationToken ct = default);
-    Task<CampSubmissionsSummary> GetCampSubmissionsSummaryAsync(Guid campId, CancellationToken ct = default);
+    Task<EventSubmissionsSummary> GetCampSubmissionsSummaryAsync(Guid campId, CancellationToken ct = default);
     /// <summary>Refuses a closed submission window or unavailable category/individual venue without writing or emailing.
     /// A null <paramref name="lifecycleActionUrl"/> skips the submitter's confirmation email.</summary>
     Task<EventSaveResult> SubmitEventAsync(Event guideEvent, string? lifecycleActionUrl = null, CancellationToken ct = default);
@@ -81,7 +85,7 @@ internal interface IEventManagement : IApplicationService, IEventService
 
     Task<IReadOnlyList<EventFavouriteInfo>> GetFavouritesWithEventsAsync(Guid userId, CancellationToken ct = default);
     // Null dayOffset means the whole event.
-    Task<bool> AddFavouriteAsync(Guid userId, Guid eventId, int? dayOffset, CancellationToken ct = default);
+    Task<AddFavouriteOutcome> AddFavouriteAsync(Guid userId, Guid eventId, int? dayOffset, CancellationToken ct = default);
     Task<bool> RemoveFavouriteAsync(Guid userId, Guid eventId, int? dayOffset, CancellationToken ct = default);
 
     Task<List<string>> GetExcludedCategorySlugsAsync(Guid userId, CancellationToken ct = default);
@@ -90,7 +94,6 @@ internal interface IEventManagement : IApplicationService, IEventService
     Task<Dictionary<EventStatus, int>> GetEventStatusCountsAsync(CancellationToken ct = default);
     Task<IReadOnlyList<EventInfo>> GetEventsByStatusAsync(EventStatus status, CancellationToken ct = default);
     Task<EventInfo?> GetEventForModerationAsync(Guid eventId, CancellationToken ct = default);
-    Task<IReadOnlyList<CampEventOverlap>> GetCampEventsForOverlapAsync(CancellationToken ct = default);
     // Also emails the submitter the outcome; a null submitterEditUrl opts out. Refuses when a reason is missing or
     // the event is not pending.
     Task<ModerationOutcome> ApplyModerationAsync(Guid eventId, Guid actorUserId, EventModerationActionType actionType, string? reason, string? submitterEditUrl = null, CancellationToken ct = default);

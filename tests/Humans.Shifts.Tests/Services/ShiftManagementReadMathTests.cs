@@ -49,13 +49,12 @@ public sealed class ShiftManagementReadMathTests : ShiftsTestHarness
         _service = new ShiftManagementService(
             new ShiftRepository(ShiftsDbFactory, ShiftsDb, Clock),
             AuditLog,
-            AdminAuthorization,
             serviceProvider,
-            Cache,
-            new ShiftViewProbe().Cache,
             NewCalendarResolver(),
             Clock,
             Microsoft.Extensions.Logging.Abstractions.NullLogger<ShiftManagementService>.Instance);
+        // The uncached row source: browse reads see the seeded database directly.
+        serviceProvider.GetService(typeof(IShiftRotaRows)).Returns(_service);
     }
 
     [HumansFact]

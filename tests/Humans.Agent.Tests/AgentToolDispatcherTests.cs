@@ -145,7 +145,7 @@ public class AgentToolDispatcherTests
         var shiftView = MakeViewFor(viewer, signups);
 
         var burnSettings = Substitute.For<ISettingsService>();
-        burnSettings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(ev);
+        burnSettings.GetActiveEventSettings().Returns(ev);
 
         var dispatcher = MakeDispatcher(shiftView: shiftView, burnSettings: burnSettings);
 
@@ -176,7 +176,7 @@ public class AgentToolDispatcherTests
         var shiftView = MakeViewFor(viewer, [signup]);
 
         var burnSettings = Substitute.For<ISettingsService>();
-        burnSettings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(ev);
+        burnSettings.GetActiveEventSettings().Returns(ev);
 
         var dispatcher = MakeDispatcher(shiftView: shiftView, burnSettings: burnSettings);
 
@@ -201,7 +201,7 @@ public class AgentToolDispatcherTests
         var shiftView = MakeViewFor(viewer, []);
 
         var burnSettings = Substitute.For<ISettingsService>();
-        burnSettings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(ev);
+        burnSettings.GetActiveEventSettings().Returns(ev);
 
         var dispatcher = MakeDispatcher(shiftView: shiftView, burnSettings: burnSettings);
 
@@ -229,7 +229,7 @@ public class AgentToolDispatcherTests
         var shiftView = MakeViewFor(viewer, []);
 
         var burnSettings = Substitute.For<ISettingsService>();
-        burnSettings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(ev);
+        burnSettings.GetActiveEventSettings().Returns(ev);
 
         var dispatcher = MakeDispatcher(shiftView: shiftView, burnSettings: burnSettings);
 
@@ -519,8 +519,7 @@ public class AgentToolDispatcherTests
     {
         var settings = Substitute.For<ISettingsService>();
         var failure = new System.Text.Json.JsonException("Stored event settings could not be decoded");
-        settings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>())
-            .Returns(Task.FromException<EventSettingsInfo?>(failure));
+        settings.GetActiveEventSettings().Returns(_ => throw failure);
         var logger = Substitute.For<ILogger<AgentToolDispatcher>>();
         var dispatcher = MakeDispatcher(burnSettings: settings, logger: logger);
         var arguments = System.Text.Json.JsonSerializer.Serialize(new { shiftId = Guid.NewGuid() });
@@ -630,8 +629,7 @@ public class AgentToolDispatcherTests
             LastLimit = count;
             return Task.FromResult(Events);
         }
-        public Task<IReadOnlyList<Humans.AuditLog.Contracts.AuditEvent>> GetFilteredAsync(string? entityType, Guid? entityId, Guid? userId, IReadOnlyList<string>? actions, int limit, CancellationToken ct = default) => Task.FromResult(Events);
-        public Task<IReadOnlySet<Guid>> GetEntityIdsForEntityTypeActionsAsync(string entityType, IReadOnlyList<Humans.AuditLog.Contracts.AuditActionDefinition> actions, CancellationToken ct = default) => Task.FromResult<IReadOnlySet<Guid>>(new HashSet<Guid>());
+        public Task<IReadOnlyList<Humans.AuditLog.Contracts.AuditEvent>> GetFilteredAsync(string? entityType, Guid? entityId, Guid? userId, IReadOnlyList<string>? actions, int limit, bool includeRelated = false, CancellationToken ct = default) => Task.FromResult(Events);
     }
 
 }

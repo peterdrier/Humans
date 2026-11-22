@@ -33,21 +33,6 @@ internal sealed partial class ShiftRepository
         return await query.ToListAsync(ct);
     }
 
-    public Task<ShiftSignup?> GetTeamProbeAsync(
-        Guid id, ShiftSignupTeamProbeScope scope, CancellationToken ct = default)
-    {
-        var query = _dbContext.ShiftSignups
-            .AsNoTracking()
-            .Include(d => d.Shift).ThenInclude(s => s.Rota);
-
-        return scope switch
-        {
-            ShiftSignupTeamProbeScope.Signup => query.FirstOrDefaultAsync(d => d.Id == id, ct),
-            ShiftSignupTeamProbeScope.SignupBlock => query.FirstOrDefaultAsync(d => d.SignupBlockId == id, ct),
-            _ => Task.FromResult<ShiftSignup?>(null)
-        };
-    }
-
     public Task<ShiftSignup?> GetByIdForMutationAsync(Guid signupId, CancellationToken ct = default) =>
         _dbContext.ShiftSignups
             .Include(d => d.Shift).ThenInclude(s => s.Rota).ThenInclude(r => r.EventSettings)
@@ -173,18 +158,6 @@ internal sealed partial class ShiftRepository
         return cancelled;
     }
 
-    public Task<int> DeleteAllForUsersAsync(
-        IReadOnlyCollection<Guid> userIds,
-        CancellationToken ct = default)
-    {
-        if (userIds.Count == 0)
-            return Task.FromResult(0);
-
-        return _dbContext.ShiftSignups
-            .Where(s => userIds.Contains(s.UserId))
-            .ExecuteDeleteAsync(ct);
-    }
-
     public async Task<(int Count, IReadOnlyList<Guid> EventIds)> ReassignToUserAsync(
         Guid sourceUserId, Guid targetUserId, Instant updatedAt,
         CancellationToken ct = default)
@@ -226,17 +199,6 @@ internal sealed partial class ShiftRepository
         return (affected.Count, eventIds);
     }
 
-    public async Task<IReadOnlyList<ShiftSignup>> GetAllForOrphanScanAsync(CancellationToken ct = default)
-    {
-        return await _dbContext.ShiftSignups
-            .AsNoTracking()
-            .Include(s => s.Shift)
-                .ThenInclude(sh => sh.Rota)
-                    .ThenInclude(r => r.EventSettings)
-            .OrderBy(s => s.CreatedAt) // arch:db-sort-ok orphan-scan deterministic order (maintenance job, no UI)
-            .ToListAsync(ct);
-    }
-
     public async Task<IReadOnlyList<EligibleBuildSignup>> GetEligibleBuildSignupsAsync(
         Guid eventSettingsId, int buildStartOffset, CancellationToken ct = default)
     {
@@ -264,7 +226,7 @@ internal sealed partial class ShiftRepository
         // rows load and overlap is checked in memory; a shift can span days, so a DayOffset buffer would miss work.
         var settings = calendar;
 
-        var zone = DateTimeZoneProviders.Tzdb[settings.TimeZoneId];
+        var zone = settings.TimeZone;
         var rangeStartUtc = startDate.AtStartOfDayInZone(zone).ToInstant();
         var rangeEndUtcExclusive = endDate.PlusDays(1).AtStartOfDayInZone(zone).ToInstant();
 

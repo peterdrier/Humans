@@ -1,5 +1,4 @@
 @model Humans.Users.Models.ProfileViewModel
-@inject IStringLocalizer<ShiftsResource> ShiftsLocalizer
 @{
     ViewData["Title"] = Localizer["Users_ProfileEdit_Title"].Value;
     var languageOptionsHtml = string.Join("", LanguageCatalog.Languages.Select(lang =>
@@ -37,8 +36,7 @@
                         <div class="d-flex align-items-center gap-3 mb-2">
                             <vc:human user-id="@Model.UserId"
                                       layout="Avatar"
-                                      size="80"
-                                      link="None" />
+                                      size="80" />
                         </div>
                         <input type="file" asp-for="ProfilePictureUpload" class="form-control" accept="image/jpeg,image/png,image/webp,image/heic,image/heif,image/avif,.heic,.heif,.avif" />
                         <span asp-validation-for="ProfilePictureUpload" class="text-danger"></span>
@@ -387,36 +385,12 @@
 
                     <hr />
                     <div class="mb-3">
-                        <h6>@ShiftsLocalizer["Shifts_EditPreferences"]</h6>
-                        <p class="text-muted small mb-2">@ShiftsLocalizer["Shifts_PreferencesHelp"] <i class="fa-solid fa-star text-warning"></i></p>
+                        <h6>@Localizer["Users_ProfileEdit_ShiftPreferences"]</h6>
+                        <p class="text-muted small mb-2">@Localizer["Users_ProfileEdit_ShiftPreferencesHelp"] <i class="fa-solid fa-star text-warning"></i></p>
                         <a asp-controller="ShiftProfile" asp-action="ShiftInfo" class="btn btn-outline-primary btn-sm">@Localizer["Users_Profile_ShiftInfo"]</a>
                     </div>
                 </div>
             </div>
-
-            @* Tier applications are Governance's; Volunteer admission never waits on them. *@
-            @if (Model.IsInitialSetup)
-            {
-                <div class="card mb-4">
-                    <div class="card-body">
-                        <h3>@SharedLocalizer["Profile_MembershipTier"]</h3>
-                        <ul class="list-unstyled mb-3">
-                            <li class="mb-2"><strong>@Localizer["Users_ProfileEdit_TierVolunteer"]</strong> — <span class="text-muted">@Localizer["Users_ProfileEdit_TierVolunteerDesc"]</span></li>
-                            <li class="mb-2"><strong>Colaborador</strong> — <span class="text-muted">@SharedLocalizer["ProfileEdit_TierColaboradorDesc"]</span></li>
-                            <li class="mb-2"><strong>Asociado</strong> <span class="text-muted">(@SharedLocalizer["ProfileEdit_TierAsociadoSubtitle"])</span> — <span class="text-muted">@SharedLocalizer["ProfileEdit_TierAsociadoDesc"]</span></li>
-                        </ul>
-                        <p class="text-muted small"><em>@Localizer["Users_ProfileEdit_TierChangeNote"]</em></p>
-                        @if (Model.IsTierLocked)
-                        {
-                            <div class="form-text text-warning">@Localizer["Users_ProfileEdit_TierLocked"]</div>
-                        }
-                        else
-                        {
-                            <a asp-controller="GovernanceApplications" asp-action="Create" target="_blank" rel="noopener" class="btn btn-outline-primary btn-sm">@Localizer["Users_ProfileEdit_TierApplyLink"]</a>
-                        }
-                    </div>
-                </div>
-            }
 
             @if (!Model.ShowPrivateFirst)
             {
@@ -891,7 +865,6 @@
         })();
     </script>
     <script nonce="@Context.Items["CspNonce"]">
-        // Client-side CV validation: block submit if no CV rows and checkbox unchecked
         (function() {
             const form = document.querySelector('form[action*="Edit"]');
             const checkbox = document.getElementById('noPriorBurnCheckbox');
@@ -914,7 +887,6 @@
         })();
     </script>
     <script nonce="@Context.Items["CspNonce"]">
-        // Toggle volunteer history section visibility based on "No Prior Burn Experience" checkbox
         (function() {
             const checkbox = document.getElementById('noPriorBurnCheckbox');
             const historyContainer = document.getElementById('volunteerHistoryContainer');

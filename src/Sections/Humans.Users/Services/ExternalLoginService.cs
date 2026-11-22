@@ -5,7 +5,7 @@ using NodaTime;
 
 namespace Humans.Application.Services.Users;
 
-// UserManager allowed per design-rules §2a: AspNetUserLogins is the authoritative
+// UserManager allowed per design-rules.md, *Service ownership*: AspNetUserLogins is the authoritative
 // (Provider, ProviderKey) → UserId store. HUM0005 pins ReconcileOAuthIdentityAsync to this class
 // as its sole caller, so keep this service to the OAuth callback alone.
 internal sealed class ExternalLoginService(
@@ -19,13 +19,14 @@ internal sealed class ExternalLoginService(
         ExternalLoginAttempt attempt,
         CancellationToken ct = default)
     {
-        if (attempt.ProviderSignInSucceeded)
-            return await CompleteKnownLoginAsync(attempt, ct);
-
-        // Link-while-signed-in must precede lockout/email-match/create — otherwise a fresh OAuth email spawns a duplicate.
+        // Link-while-signed-in must precede known-login/lockout/email-match/create — otherwise
+        // an authenticated link either switches sessions or spawns a duplicate.
         var currentUserLink = await TryLinkToCurrentUserAsync(attempt, ct);
         if (currentUserLink is not null)
             return currentUserLink;
+
+        if (attempt.ProviderSignInSucceeded)
+            return await CompleteKnownLoginAsync(attempt, ct);
 
         if (attempt.ProviderSignInLockedOut)
         {
@@ -53,6 +54,7 @@ internal sealed class ExternalLoginService(
         if (existingUser is not null)
         {
             await userService.RecordLoginAsync(existingUser.Id, ct);
+            await TryEnsureStubProfileAsync(existingUser.Id, actorUserId: existingUser.Id, ct);
             await TryReconcileAsync(existingUser.Id, attempt, ct);
         }
 
@@ -71,7 +73,13 @@ internal sealed class ExternalLoginService(
 
         var currentUser = await userManager.FindByIdAsync(currentUserId.ToString());
         if (currentUser is null)
-            return null;
+        {
+            logger.LogWarning(
+                "Refused to link {Provider} login: authenticated user {UserId} not found",
+                attempt.Login.LoginProvider,
+                currentUserId);
+            return new ExternalLoginCompletionResult(ExternalLoginOutcome.LinkToCurrentUserFailed);
+        }
 
         if (UserStateEvaluator.IsTombstone(currentUser))
         {
@@ -79,13 +87,49 @@ internal sealed class ExternalLoginService(
             return new ExternalLoginCompletionResult(ExternalLoginOutcome.LockedOut);
         }
 
+        var existingOwner = await userManager.FindByLoginAsync(
+            attempt.Login.LoginProvider,
+            attempt.Login.ProviderKey);
+        if (existingOwner is not null)
+        {
+            if (existingOwner.Id != currentUser.Id)
+            {
+                logger.LogWarning(
+                    "Refused to link {Provider} login to authenticated user {UserId}: already linked to user {ExistingOwnerId}",
+                    attempt.Login.LoginProvider,
+                    currentUser.Id,
+                    existingOwner.Id);
+                return new ExternalLoginCompletionResult(ExternalLoginOutcome.LinkToCurrentUserFailed);
+            }
+
+            await FinishCurrentUserLinkAsync(currentUser.Id, attempt, ct);
+
+            logger.LogInformation(
+                "{Provider} login already linked to currently-authenticated user {UserId}; reconciled",
+                attempt.Login.LoginProvider,
+                currentUser.Id);
+
+            // Their session already exists — no cookie to re-issue.
+            return new ExternalLoginCompletionResult(ExternalLoginOutcome.SignedIn);
+        }
+
+        // The provider's address is confirmed on another account: one person, two accounts. A login never
+        // moves an address between accounts; they merge by adding the address and confirming the mailed link.
+        if (!string.IsNullOrEmpty(attempt.Email)
+            && (await userEmailService.FindByAddressAsync(attempt.Email, aliased: true, verifiedOnly: true, ct))
+                .Any(e => e.UserId != currentUser.Id))
+        {
+            logger.LogWarning(
+                "Refused to link {Provider} login to authenticated user {UserId}: its address is confirmed on another account",
+                attempt.Login.LoginProvider,
+                currentUser.Id);
+            return new ExternalLoginCompletionResult(ExternalLoginOutcome.LinkToCurrentUserFailed);
+        }
+
         var addLinkResult = await userManager.AddLoginAsync(currentUser, attempt.Login);
         if (addLinkResult.Succeeded)
         {
-            await userService.RecordLoginAsync(currentUser.Id, ct);
-
-            if (!string.IsNullOrEmpty(attempt.Email))
-                await TryReconcileAsync(currentUser.Id, attempt, ct);
+            await FinishCurrentUserLinkAsync(currentUser.Id, attempt, ct);
 
             logger.LogInformation(
                 "Linked {Provider} login to currently-authenticated user {UserId}",
@@ -103,6 +147,13 @@ internal sealed class ExternalLoginService(
             string.Join(", ", addLinkResult.Errors.Select(e => e.Description)));
 
         return new ExternalLoginCompletionResult(ExternalLoginOutcome.LinkToCurrentUserFailed);
+    }
+
+    private async Task FinishCurrentUserLinkAsync(Guid userId, ExternalLoginAttempt attempt, CancellationToken ct)
+    {
+        await userService.RecordLoginAsync(userId, ct);
+        await TryEnsureStubProfileAsync(userId, actorUserId: userId, ct);
+        await TryReconcileAsync(userId, attempt, ct);
     }
 
     private async Task<ExternalLoginCompletionResult?> TryRelinkLockedOutAsync(
@@ -157,6 +208,7 @@ internal sealed class ExternalLoginService(
             }
 
             await userService.RecordLoginAsync(activeTarget.Id, ct);
+            await TryEnsureStubProfileAsync(activeTarget.Id, actorUserId: activeTarget.Id, ct);
             await TryReconcileAsync(activeTarget.Id, attempt, ct);
 
             logger.LogInformation(
@@ -165,6 +217,10 @@ internal sealed class ExternalLoginService(
                 lockedSource.Id,
                 activeTarget.Id);
             return new ExternalLoginCompletionResult(ExternalLoginOutcome.SignedIn, activeTarget.Id);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
         }
         catch (Exception ex)
         {
@@ -201,6 +257,7 @@ internal sealed class ExternalLoginService(
             if (linkResult.Succeeded)
             {
                 await userService.RecordLoginAsync(existingByEmail.Id, ct);
+                await TryEnsureStubProfileAsync(existingByEmail.Id, actorUserId: existingByEmail.Id, ct);
                 await TryReconcileAsync(existingByEmail.Id, attempt, ct);
 
                 logger.LogInformation(
@@ -215,6 +272,10 @@ internal sealed class ExternalLoginService(
                 attempt.Login.LoginProvider,
                 existingByEmail.Id,
                 string.Join(", ", linkResult.Errors.Select(e => e.Description)));
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
         }
         catch (Exception ex)
         {
@@ -255,7 +316,7 @@ internal sealed class ExternalLoginService(
         if (reconcileFailure is not null)
             return reconcileFailure;
 
-        await userService.EnsureStubProfileAsync(user.Id, ct: ct);
+        await TryEnsureStubProfileAsync(user.Id, actorUserId: null, ct);
 
         logger.LogInformation("User created an account using {Provider}", attempt.Login.LoginProvider);
         return new ExternalLoginCompletionResult(ExternalLoginOutcome.SignedIn, user.Id);
@@ -316,6 +377,25 @@ internal sealed class ExternalLoginService(
         var userEmail = (await userEmailService.FindByAddressAsync(email, aliased: true, verifiedOnly: true, ct))
             .FirstOrDefault();
         return userEmail is null ? null : await userManager.FindByIdAsync(userEmail.UserId.ToString());
+    }
+
+    // A null actor marks account creation, which is not a repair and records no StubProfileBackfilled.
+    private async Task TryEnsureStubProfileAsync(Guid userId, Guid? actorUserId, CancellationToken ct)
+    {
+        try
+        {
+            await userService.EnsureStubProfileAsync(userId, ct: ct, actorUserId: actorUserId);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex,
+                "Could not ensure profile for user {UserId}; sign-in continues and a later OAuth login will retry",
+                userId);
+        }
     }
 
     // Reconcile wrapper for OAuth-success paths - sign-in never blocks on failure (swallow + log).

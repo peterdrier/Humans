@@ -26,7 +26,6 @@ public sealed class OnboardingServiceTests
     private readonly IEmailService _emailService = Substitute.For<IEmailService>();
     private readonly INotificationEmitter _notificationService = Substitute.For<INotificationEmitter>();
     private readonly ISystemTeamSync _syncJob = Substitute.For<ISystemTeamSync>();
-    private readonly IMembershipCalculator _membershipCalculator = Substitute.For<IMembershipCalculator>();
     private readonly IConsentService _consentService = Substitute.For<IConsentService>();
     private readonly IHumanLifecycleService _humanLifecycle = Substitute.For<IHumanLifecycleService>();
     private readonly IAuditLogService _auditLogService = Substitute.For<IAuditLogService>();
@@ -60,7 +59,6 @@ public sealed class OnboardingServiceTests
             _emailMessages,
             _notificationService,
             _syncJob,
-            _membershipCalculator,
             _consentService,
             _humanLifecycle,
             _auditLogService,
@@ -134,7 +132,7 @@ public sealed class OnboardingServiceTests
             userId,
             "Signup rejected: duplicate account",
             originalReviewer);
-        await _syncJob.Received(3).SyncMembershipForUserAsync(
+        await _syncJob.Received(1).SyncMembershipForUserAsync(
             userId, Arg.Any<SystemTeamType>(), Arg.Any<CancellationToken>());
     }
 
@@ -170,7 +168,7 @@ public sealed class OnboardingServiceTests
             await _emailService.DidNotReceive().SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>());
         }
         _auditLogService.ReceivedCalls().Should().ContainSingle();
-        _syncJob.ReceivedCalls().Should().HaveCount(3);
+        _syncJob.ReceivedCalls().Should().HaveCount(1);
     }
 
     [HumansTheory]
@@ -182,7 +180,7 @@ public sealed class OnboardingServiceTests
         _consentWrite.RecordRejectionAsync(userId, Arg.Any<Guid>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(new OnboardingResult(true));
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(UserInfoStubs.MakeUserInfo(userId, UserFixtures.Profile(burnerName: "Member"))
+            .Returns(UserInfoStubs.MakeUserInfo(userId, UserFixtures.Profile(), burnerName: "Member")
                 with
             { PreferredLanguage = "es" });
 
@@ -207,7 +205,7 @@ public sealed class OnboardingServiceTests
         _consentWrite.RecordRejectionAsync(userId, Arg.Any<Guid>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(new OnboardingResult(true));
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(UserInfoStubs.MakeUserInfo(userId, UserFixtures.Profile(burnerName: "Member"))
+            .Returns(UserInfoStubs.MakeUserInfo(userId, UserFixtures.Profile(), burnerName: "Member")
                 with
             { PreferredLanguage = "es" });
 
@@ -222,7 +220,7 @@ public sealed class OnboardingServiceTests
         await _auditLogService.Received(1).LogAsync(
             OnboardingAuditActions.SignupRejected, AuditEntityTypes.Profile, userId,
             "Signup rejected: " + reason, reviewerId);
-        _syncJob.ReceivedCalls().Should().HaveCount(3);
+        _syncJob.ReceivedCalls().Should().HaveCount(1);
     }
 
     [HumansFact]
@@ -258,7 +256,7 @@ public sealed class OnboardingServiceTests
             .Returns(new OnboardingResult(true));
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(
-                UserInfoStubs.MakeUserInfo(userId, UserFixtures.Profile(burnerName: "Rejected One"))));
+                UserInfoStubs.MakeUserInfo(userId, UserFixtures.Profile(), burnerName: "Rejected One")));
 
         var result = await BuildSut()
             .RejectSignupAsync(userId, reviewerId, reason, Xunit.TestContext.Current.CancellationToken);
@@ -273,16 +271,11 @@ public sealed class OnboardingServiceTests
             $"Signup rejected: {reason}",
             reviewerId);
 
-        // All three approval-gated system teams, and nothing else. Asserting each team
-        // individually plus the total is what makes a dropped sync fail rather than pass.
+        // The Volunteers team only; Governance's bodies drop the account on Google's next sweep.
+        await _syncJob.Received(1).SyncMembershipForUserAsync(
+            Arg.Any<Guid>(), Arg.Any<SystemTeamType>(), Arg.Any<CancellationToken>());
         await _syncJob.Received(1).SyncMembershipForUserAsync(
             userId, SystemTeamType.Volunteers, Arg.Any<CancellationToken>());
-        await _syncJob.Received(1).SyncMembershipForUserAsync(
-            userId, SystemTeamType.Colaboradors, Arg.Any<CancellationToken>());
-        await _syncJob.Received(1).SyncMembershipForUserAsync(
-            userId, SystemTeamType.Asociados, Arg.Any<CancellationToken>());
-        await _syncJob.Received(3).SyncMembershipForUserAsync(
-            Arg.Any<Guid>(), Arg.Any<SystemTeamType>(), Arg.Any<CancellationToken>());
 
         await _emailService.Received(1).SendAsync(
             Arg.Is<EmailMessage>(m => m.TemplateName == "signup_rejected"
@@ -312,14 +305,11 @@ public sealed class OnboardingServiceTests
         var userId = Guid.NewGuid();
         var requestedId = archivedId ? Guid.NewGuid() : userId;
         var profile = UserFixtures.Profile(
-            burnerName: "Burner",
-            firstName: "First",
-            lastName: "Last",
             createdAt: Instant.FromUnixTimeSeconds(1));
 
         _userService.GetUserInfoAsync(requestedId, Arg.Any<CancellationToken>())
-            .Returns(new ValueTask<UserInfo?>(UserInfoStubs.MakeUserInfo(userId, profile)));
-        _membershipCalculator.HasAllRequiredConsentsForTeamAsync(
+            .Returns(new ValueTask<UserInfo?>(UserInfoStubs.MakeUserInfo(userId, profile, burnerName: "Burner", firstName: "First", lastName: "Last")));
+        _consentService.HasAllRequiredConsentsForTeamAsync(
                 userId,
                 SystemTeamIds.Volunteers,
                 Arg.Any<CancellationToken>())
@@ -340,7 +330,7 @@ public sealed class OnboardingServiceTests
         bool approved, bool deletionPending, bool expectCancel)
     {
         var userId = Guid.NewGuid();
-        var info = UserInfoStubs.MakeUserInfo(userId, UserFixtures.Profile(burnerName: "Burner"))
+        var info = UserInfoStubs.MakeUserInfo(userId, UserFixtures.Profile(), burnerName: "Burner")
             with
         { DeletionRequestedAt = deletionPending ? Instant.FromUnixTimeSeconds(1) : null };
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
@@ -360,9 +350,8 @@ public sealed class OnboardingServiceTests
     {
         var userId = Guid.NewGuid();
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(new ValueTask<UserInfo?>(UserInfoStubs.MakeUserInfo(userId, UserFixtures.Profile(
-                burnerName: "Burner", firstName: "First", lastName: "Last", createdAt: Instant.FromUnixTimeSeconds(1)))));
-        _membershipCalculator.HasAllRequiredConsentsForTeamAsync(userId, SystemTeamIds.Volunteers, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<UserInfo?>(UserInfoStubs.MakeUserInfo(userId, UserFixtures.Profile(createdAt: Instant.FromUnixTimeSeconds(1)), burnerName: "Burner", firstName: "First", lastName: "Last")));
+        _consentService.HasAllRequiredConsentsForTeamAsync(userId, SystemTeamIds.Volunteers, Arg.Any<CancellationToken>())
             .Returns(true);
         _consentWrite.SetConsentCheckPendingAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new OnboardingResult(true));

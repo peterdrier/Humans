@@ -1,4 +1,4 @@
-using Humans.Shifts.Contracts;
+using Humans.Shifts.Services;
 using AwesomeAssertions;
 using NodaTime;
 

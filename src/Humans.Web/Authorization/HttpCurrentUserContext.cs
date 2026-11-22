@@ -1,5 +1,5 @@
+using Humans.Base.Extensions;
 using Humans.Auth.Contracts;
-using System.Security.Claims;
 
 namespace Humans.Web.Authorization;
 
@@ -13,8 +13,7 @@ internal sealed class HttpCurrentUserContext(IHttpContextAccessor httpContextAcc
             if (user?.Identity?.IsAuthenticated != true)
                 return null;
 
-            var rawUserId = user.FindFirstValue(ClaimTypes.NameIdentifier);
-            return Guid.TryParse(rawUserId, out var userId) ? userId : null;
+            return user.GetUserId();
         }
     }
 }

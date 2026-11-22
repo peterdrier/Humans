@@ -27,16 +27,38 @@
 <div class="wg-card">
     <div class="wg-card-header">
         <div>
-            <span class="wg-card-name">&lt;vc:user-calendar&gt;</span>
+            <span class="wg-card-name">UserCalendarViewComponent</span>
             <span class="wg-card-kind kind-vc">ViewComponent</span>
         </div>
-        <span class="wg-card-path">src/Sections/Humans.Calendar/Contracts/UserCalendarViewComponent.cs</span>
+        <span class="wg-card-path">src/Sections/Humans.Calendar/ViewComponents/UserCalendarViewComponent.cs</span>
     </div>
     <div class="wg-card-note">Admin view of a human's personal iCal feed — the exact items /api/ical serializes (shift signups, favourited events, and meetings of the active workgroups they belong to). Never shows the secret feed URL.</div>
     @ParamsBlock(
         ("userId", "<code>Guid</code> — required")
     )
     <div class="wg-card-example">
-        <vc:user-calendar user-id="@Model" />
+        @await Component.InvokeAsync(typeof(Humans.Calendar.ViewComponents.UserCalendarViewComponent), new { userId = Model })
+    </div>
+</div>
+
+<div class="wg-card">
+    <div class="wg-card-header">
+        <div>
+            <span class="wg-card-name">_CalendarLocation</span>
+            <span class="wg-card-kind kind-pa">Partial</span>
+        </div>
+        <span class="wg-card-path">src/Sections/Humans.Calendar/Views/Shared/_CalendarLocation.cshtml</span>
+    </div>
+    <div class="wg-card-note">A calendar item's location text, linked to its meeting URL; the URL's host stands in when there is no text. Used by the calendar agenda and event pages and the workgroup page.</div>
+    @ParamsBlock(
+        ("Location", "<code>string?</code> — location text"),
+        ("Url", "<code>string?</code> — absolute http(s) meeting link, validated by its owner")
+    )
+    <div class="wg-card-example">
+        @{ (string? Location, string? Url)[] samples = [("Room 1", "https://meet.example.org/abc"), (null, "https://meet.example.org/abc"), ("Room 1", null)]; }
+        @foreach (var sample in samples)
+        {
+            <div><partial name="_CalendarLocation" model="sample" /></div>
+        }
     </div>
 </div>

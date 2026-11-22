@@ -1,3 +1,4 @@
+using Humans.Governance.Domain;
 using Humans.Governance.Contracts;
 using Humans.Base.Models;
 
@@ -8,6 +9,7 @@ internal sealed class AdminApplicationListViewModel : PagedListViewModel
     public List<AdminApplicationViewModel> Applications { get; set; } = [];
     public string? StatusFilter { get; set; }
     public string? TierFilter { get; set; }
+    public Guid? UserIdFilter { get; set; }
 }
 
 internal sealed class AdminApplicationViewModel

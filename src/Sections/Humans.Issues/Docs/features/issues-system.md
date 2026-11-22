@@ -28,7 +28,7 @@ Issues is the only in-app reporting path.
 - `Section` defaults to auto-detected from `PageUrl` via `IssueSectionInference.FromPath` when the widget is used; the `/Issues/New` form lets the reporter pick or leave blank for auto-detection
 - Page URL, user agent, and the reporter's roles captured automatically into `AdditionalContext`
 - Screenshot upload limited to JPEG/PNG/WebP, max 10 MB
-- Issues are retained for 6 months after entering a terminal state (Resolved / WontFix / Duplicate); a daily Hangfire job (`CleanupIssuesJob`) then deletes the row, comments, and screenshot file. The job is a scheduler shim — the policy lives behind `IIssuesRetention.PurgeExpiredAsync` inside the section
+- Issues are retained for 6 months after entering a terminal state (Resolved / WontFix / Duplicate); a daily Hangfire job (`CleanupIssuesJob`) then deletes the row, comments, and screenshot file. The job is a scheduler shim — the policy lives behind internal `IIssuesService.PurgeExpiredAsync` inside the section
 - Success/error feedback via TempData toast
 - Submission lands at `Status = Triage` with `Section` from the form (or auto-inferred, or null → Admin queue)
 
@@ -69,12 +69,12 @@ Issues is the only in-app reporting path.
 **As** a reporter or handler, **I want** to know when something happens on an issue I'm involved in, **so that** I don't have to refresh `/Issues` to keep the conversation moving.
 
 **Acceptance Criteria:**
-- When a new issue is submitted, an in-app `IssuesNotificationSources.IssueSubmitted` notification fans out to role-holders of `issue.Section`, or to Admins when no role owns the queue, keyed by `sourceKey: issue.Id.ToString()`; when the issue transitions to a terminal status, `IssueNotices.ResolveSubmittedNotificationsAsync` resolves those notifications by that sourceKey
+- When a new issue is submitted, an in-app `IssuesNotificationSources.IssueSubmitted` notification fans out to role-holders of `issue.Section`, or to Admins when no role owns the queue, keyed by `sourceKey: issue.Id.ToString()`; when the issue transitions to a terminal status, `IssuesService.ResolveSubmittedNotificationsAsync` resolves those notifications by that sourceKey
 - When a comment is posted, an in-app notification goes to the **other party** — the queue's handlers (same Admin fallback) + assignee when the reporter comments, the reporter + assignee when a handler comments. Email is only sent when a **handler** comments (to the reporter); reporter→handler comments are in-app only because handlers already see new comments in their queue.
 - When status changes, the reporter and current assignee are notified
 - When an issue is assigned, the new assignee is notified
 - Emails are queued via the email outbox (`OutboxEmailService`) and localized in the recipient's preferred language (en/es/de/fr/it/ca/nl)
-- Once a submission, comment, status or assignment change is saved, its notifications, email and submitted-alert resolution finish even if the browser disconnects. Reads and persistence before that save retain request cancellation. Actionable badge counts query current rows on each read, including after routing changes, retention or erasure.
+- Once a submission, comment, status or assignment change is saved, its notifications, email and submitted-alert resolution finish even if the browser disconnects. Reads and persistence before that save retain request cancellation. Cancellation exceptions from detached email follow-ups are logged without failing the saved reply or skipping inbox notices and resolution; a failed notification language group is logged while later groups continue. Actionable badge counts query current rows on each read, including after routing changes, retention or erasure.
 - Effective notification email comes from the resolved reporter’s `UserInfo.Email`, alongside the same snapshot’s name and culture, so verified-email and forwarding rules apply
 
 ### US-28.5: Conversation Thread

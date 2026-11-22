@@ -1,6 +1,7 @@
 using Humans.Base.Authorization;
 using Humans.Base.Interfaces;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Routing;
 
 namespace Humans.Base.ViewComponents;
 
@@ -63,13 +64,20 @@ public static class AdminNavComposition
     /// Resolves the current route to its nav item: an exact controller+action match, else the
     /// <paramref name="parent"/> the page names, else the first item on the same controller.
     /// </summary>
+    /// <remarks>
+    /// Given <paramref name="routeValues"/>, an item whose own route values agree wins, in the exact
+    /// match and the same-controller fallback alike, so items that share one controller (one page
+    /// per backend key) each own their page and its subpages.
+    /// </remarks>
     public static AdminNavLocation? Locate(
-        IReadOnlyList<AdminNavGroup> groups, string? controller, string? action, string? parent)
+        IReadOnlyList<AdminNavGroup> groups, string? controller, string? action, string? parent,
+        RouteValueDictionary? routeValues = null)
     {
         if (string.IsNullOrEmpty(controller))
             return null;
 
-        var exact = Find(groups, controller, action);
+        var exact = (routeValues is null ? null : Find(groups, controller, action, routeValues))
+            ?? Find(groups, controller, action);
         if (exact is not null)
             return exact with { IsExact = true };
 
@@ -83,21 +91,28 @@ public static class AdminNavComposition
                 return named;
         }
 
-        return Find(groups, controller, action: null);
+        return (routeValues is null ? null : Find(groups, controller, action: null, routeValues))
+            ?? Find(groups, controller, action: null);
     }
 
-    private static AdminNavLocation? Find(IReadOnlyList<AdminNavGroup> groups, string controller, string? action)
+    private static AdminNavLocation? Find(
+        IReadOnlyList<AdminNavGroup> groups, string controller, string? action, RouteValueDictionary? routeValues = null)
     {
         foreach (var group in groups)
         {
             foreach (var item in group.Items)
             {
                 if (string.Equals(item.Controller, controller, StringComparison.OrdinalIgnoreCase)
-                    && (action is null || string.Equals(item.Action, action, StringComparison.OrdinalIgnoreCase)))
+                    && (action is null || string.Equals(item.Action, action, StringComparison.OrdinalIgnoreCase))
+                    && (routeValues is null || RouteValuesMatch(item.RouteValues, routeValues)))
                     return new AdminNavLocation(group, item, IsExact: false);
             }
         }
 
         return null;
     }
+
+    private static bool RouteValuesMatch(object? itemValues, RouteValueDictionary current) =>
+        itemValues is not null && new RouteValueDictionary(itemValues).All(kv =>
+            string.Equals(kv.Value?.ToString(), current[kv.Key]?.ToString(), StringComparison.OrdinalIgnoreCase));
 }

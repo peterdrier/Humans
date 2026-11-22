@@ -17,7 +17,7 @@ account. It stores nothing, caches nothing, and talks to nobody but Tickets and 
 |---|---|---|---|
 | Changed-since list | `GetOrdersAsync`, `GetIssuedTicketsAsync`, `GetCheckInsAsync` | `GET /orders`, `/issued_tickets`, `/check_ins` — cursor-paged | One page walk for all three: `starting_after=<last id>` until `links.next` is null, each page timed alone, a malformed walk thrown rather than truncated; maps cents to euros; orders: discount code, discount and donation amounts from line items; tickets: attendee email from the "Email" custom question; check-ins: net quantity per ticket, earliest positive scan |
 | Snapshot read | `GetEventSummaryAsync` | `GET /events/{id}` | Capacity from `ticket_groups.max_quantity` (fallback `ticket_types.quantity_total`) |
-| Discount codes | `GenerateDiscountCodesAsync` | `POST /voucher_codes` | `NOBO-` prefixed codes; percentage vs monetary (cents) |
+| Discount codes | `GenerateDiscountCodesAsync` | form-encoded `POST /discounts` | `NOBO-` prefixed codes; percentage (`price_percent`) vs fixed amount (`price`, cents); optional `expires` (Unix seconds) |
 | Ticket writes | `VoidIssuedTicketAsync`, `IssueTicketAsync`, `CreateCheckInAsync` | form-encoded `POST /issued_tickets/{id}/void`, `/issued_tickets`, `/check_ins` | Void and issue classify failures into `TicketVendorWriteException.Kind`; check-in throws the raw `HttpRequestException` |
 
 ## Structure

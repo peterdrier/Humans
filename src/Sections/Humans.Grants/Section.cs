@@ -17,6 +17,8 @@ using Humans.Notifications.Contracts;
 using Microsoft.Extensions.DependencyInjection;
 using Humans.AuditLog.Contracts;
 
+[assembly: Humans.Base.Demo.NoDemoStory("No demo story written yet.")]
+
 namespace Humans.Grants;
 
 public sealed class Section : ISection, ISectionRoles, ISectionAdminNav, ISectionPolicies, IUserPart
@@ -47,6 +49,7 @@ public sealed class Section : ISection, ISectionRoles, ISectionAdminNav, ISectio
         services.AddScoped<GrantService>();
         services.AddScoped<IGrantManagement>(sp => sp.GetRequiredService<GrantService>());
         services.AddScoped<IGrantWrite>(sp => sp.GetRequiredService<GrantService>());
+        services.AddScoped<IGrantService>(sp => sp.GetRequiredService<GrantService>());
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<GrantService>());
         services.AddScoped<IUserMerge>(sp => sp.GetRequiredService<GrantService>());
 

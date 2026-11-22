@@ -63,7 +63,9 @@ internal sealed class TicketTailorService : ITicketVendorService
                 if (!string.Equals(order.Currency?.Code, "eur", StringComparison.OrdinalIgnoreCase))
                     throw new HttpRequestException($"TicketTailor order {order.Id} does not declare EUR currency.");
 
-                var purchasedAt = Instant.FromUnixTimeSeconds(order.CreatedAt);
+                var createdAt = order.CreatedAt
+                    ?? throw new HttpRequestException($"TicketTailor order {order.Id} is missing required created_at.");
+                var purchasedAt = ReadTimestamp(createdAt, $"order {order.Id} created_at");
                 var buyer = order.BuyerDetails;
 
                 var discountCode = ExtractDiscountCode(order.LineItems);
@@ -147,23 +149,32 @@ internal sealed class TicketTailorService : ITicketVendorService
             {
                 using var response = await _httpClient.GetAsync(url, ct);
                 response.EnsureSuccessStatusCode();
-                body = await response.Content.ReadFromJsonAsync<TtPaginatedResponse<T>>(JsonOptions, ct);
+                try
+                {
+                    body = await response.Content.ReadFromJsonAsync<TtPaginatedResponse<T>>(JsonOptions, ct);
+                }
+                catch (JsonException ex)
+                {
+                    throw new HttpRequestException("TicketTailor pagination response could not be read.", ex);
+                }
             }
 
             if (body?.Data is null)
                 throw new HttpRequestException("TicketTailor pagination response is missing data.");
+            if (body.Links is null)
+                throw new HttpRequestException("TicketTailor pagination response is missing links.");
             if (body.Data.Any(item => item is null || string.IsNullOrWhiteSpace(getId(item))))
                 throw new HttpRequestException("TicketTailor pagination response contains an item without an identity.");
             if (body.Data.Count == 0)
             {
-                if (body.Links?.Next is not null)
+                if (body.Links.Next is not null)
                     throw new HttpRequestException("TicketTailor pagination returned an empty nonterminal page.");
                 yield break;
             }
 
             yield return body.Data;
-            cursor = body.Links?.Next is not null ? getId(body.Data[^1]) : null;
-            if (body.Links?.Next is not null
+            cursor = body.Links.Next is not null ? getId(body.Data[^1]) : null;
+            if (body.Links.Next is not null
                 && (string.IsNullOrWhiteSpace(cursor) || !seenCursors.Add(cursor)))
                 throw new HttpRequestException("TicketTailor pagination returned a missing or repeated cursor.");
         } while (cursor is not null);
@@ -221,22 +232,35 @@ internal sealed class TicketTailorService : ITicketVendorService
         var codes = new List<string>();
         for (var i = 0; i < spec.Count; i++)
         {
-            var payload = new
+            var code = $"NOBO-{Guid.NewGuid().ToString("N")[..8].ToUpperInvariant()}";
+            var percentage = spec.DiscountType == DiscountType.Percentage;
+            var value = percentage ? spec.DiscountValue : spec.DiscountValue * 100m;
+            var fields = new Dictionary<string, string>(StringComparer.Ordinal)
             {
-                code = $"NOBO-{Guid.NewGuid().ToString("N")[..8].ToUpperInvariant()}",
-                type = spec.DiscountType == DiscountType.Percentage ? "percentage" : "monetary",
-                value = spec.DiscountType == DiscountType.Percentage
-                    ? spec.DiscountValue
-                    : spec.DiscountValue * 100, // TT uses cents for monetary
+                ["code"] = code,
+                ["name"] = code,
+                ["type"] = percentage ? "percentage" : "fixed_amount",
+                [percentage ? "price_percent" : "price"] = value.ToString("0.############################", CultureInfo.InvariantCulture),
             };
+            if (spec.ExpiresAt is { } expires)
+                fields["expires"] = expires.ToUnixTimeSeconds().ToString(CultureInfo.InvariantCulture);
 
-            using var response = await _httpClient.PostAsJsonAsync(
-                $"{BaseUrl}/voucher_codes", payload, JsonOptions, ct);
+            using var form = new FormUrlEncodedContent(fields);
+            using var response = await _httpClient.PostAsync($"{BaseUrl}/discounts", form, ct);
             response.EnsureSuccessStatusCode();
 
-            var result = await response.Content.ReadFromJsonAsync<TtVoucherCode>(JsonOptions, ct);
-            if (result?.Code is not null)
-                codes.Add(result.Code);
+            TtDiscountCode? result;
+            try
+            {
+                result = await response.Content.ReadFromJsonAsync<TtDiscountCode>(JsonOptions, ct);
+            }
+            catch (JsonException ex)
+            {
+                throw new HttpRequestException("TicketTailor discount response could not be read.", ex);
+            }
+            if (string.IsNullOrWhiteSpace(result?.Code))
+                throw new HttpRequestException("TicketTailor discount response is missing required code.");
+            codes.Add(result.Code);
         }
 
         _logger.LogInformation("Generated {Count} discount codes via TicketTailor", codes.Count);
@@ -299,7 +323,16 @@ internal sealed class TicketTailorService : ITicketVendorService
             if (!response.IsSuccessStatusCode)
                 throw await BuildVendorWriteExceptionAsync(response, "void", vendorTicketId, ct);
 
-            var body = await response.Content.ReadFromJsonAsync<TtVoidResponse>(JsonOptions, ct);
+            TtVoidResponse? body;
+            try
+            {
+                body = await response.Content.ReadFromJsonAsync<TtVoidResponse>(JsonOptions, ct);
+            }
+            catch (JsonException ex)
+            {
+                throw new TicketVendorWriteException(
+                    "TicketTailor void response could not be read.", TicketVendorFailureKind.Transient, ex);
+            }
             return new VoidIssuedTicketResult(
                 VendorTicketId: body?.Id ?? vendorTicketId,
                 HoldId: body?.HoldId);
@@ -352,8 +385,18 @@ internal sealed class TicketTailorService : ITicketVendorService
             if (!response.IsSuccessStatusCode)
                 throw await BuildVendorWriteExceptionAsync(response, "issue", request.FullName, ct);
 
-            var body = await response.Content.ReadFromJsonAsync<TtIssuedTicket>(JsonOptions, ct)
-                ?? throw new TicketVendorWriteException(
+            TtIssuedTicket? body;
+            try
+            {
+                body = await response.Content.ReadFromJsonAsync<TtIssuedTicket>(JsonOptions, ct);
+            }
+            catch (JsonException ex)
+            {
+                throw new TicketVendorWriteException(
+                    "TicketTailor issue response could not be read.", TicketVendorFailureKind.Transient, ex);
+            }
+            if (body is null)
+                throw new TicketVendorWriteException(
                     "TicketTailor issue returned 2xx with empty body",
                     TicketVendorFailureKind.Transient);
 
@@ -393,10 +436,22 @@ internal sealed class TicketTailorService : ITicketVendorService
                 .Min();
 
             if (earliest > 0)
-                result.Add(new VendorCheckInDto(group.Key, Instant.FromUnixTimeSeconds(earliest)));
+                result.Add(new VendorCheckInDto(group.Key, ReadTimestamp(earliest, $"check-in for ticket {group.Key}")));
         }
 
         return result;
+    }
+
+    private static Instant ReadTimestamp(long seconds, string context)
+    {
+        try
+        {
+            return Instant.FromUnixTimeSeconds(seconds);
+        }
+        catch (ArgumentOutOfRangeException ex)
+        {
+            throw new HttpRequestException($"TicketTailor {context} has an out-of-range timestamp.", ex);
+        }
     }
 
     /// <summary>The code is in a gift_card line item's description, in parentheses: "NCA Contributor Discount (DISC25-OPGYT8-004)".</summary>
@@ -486,7 +541,7 @@ internal sealed class TicketTailorService : ITicketVendorService
         TtLinks? Links);
 
     internal sealed record TtLinks(
-        string? Next);
+        [property: JsonRequired] string? Next);
 
     internal sealed record TtOrder(
         string Id,
@@ -494,7 +549,7 @@ internal sealed class TicketTailorService : ITicketVendorService
         int? Total,
         TtCurrency? Currency,
         string? Status,
-        long CreatedAt,
+        long? CreatedAt,
         List<TtLineItem>? LineItems,
         string? TxnId);
 
@@ -549,7 +604,7 @@ internal sealed class TicketTailorService : ITicketVendorService
     internal sealed record TtTicketGroup(
         int? MaxQuantity);
 
-    internal sealed record TtVoucherCode(
+    internal sealed record TtDiscountCode(
         string? Code);
 
     internal sealed record TtVoidResponse(

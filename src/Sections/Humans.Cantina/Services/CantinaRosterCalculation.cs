@@ -146,8 +146,7 @@ internal static class CantinaRosterCalculation
     }
 
     /// <summary>
-    /// The name Users already resolved; <c>ProfileInfo.BurnerName</c> would show "(unknown)" for a human whose name lives
-    /// only on the user row. The fallback covers a user id the cohort read did not return.
+    /// The name Users already resolved. The fallback covers a user id the cohort read did not return.
     /// </summary>
     public static string ResolveBurnerName(UserInfo? info) =>
         info is not null && !string.IsNullOrWhiteSpace(info.BurnerName)

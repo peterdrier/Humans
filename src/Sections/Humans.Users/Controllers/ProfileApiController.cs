@@ -16,8 +16,8 @@ internal sealed class ProfileApiController(
     IContactFieldService contactFieldService,
     IUserEmailService userEmailService) : ApiControllerBase(userService)
 {
-    // Uncapped: a cap returned an arbitrary N in cache order (the person searched for could be missing), then
-    // alphabetized them. Rank the full match set by relevance instead.
+    // Uncapped: a cap drops arbitrary matches in cache order, possibly the person searched for. Rank the
+    // full match set by relevance.
     private const int Unlimited = int.MaxValue;
 
     private readonly IUserService _userService = userService;

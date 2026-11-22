@@ -84,6 +84,7 @@ Nobodies Collective organizes camping areas ("barrios") at Nowhere and related e
 **Acceptance Criteria:**
 - Leads can edit their own camp; CampsAdmin/Admin can edit any
 - Can update contact info, season data, and camp-level fields
+- Validation errors and save refusals reload edit-form metadata only for the authorized camp and an owned season; posted camp/event identifiers cannot select another camp's images.
 - Can toggle "Hide historical names" to suppress the "Also known as" section on the public detail page
 - Manual historical names must contain 1–256 characters after trimming, both during registration and when added later. Invalid entries are refused before saving.
 - Audited browser edits, season changes, images, reactivation and deletion carry the signed-in actor through Camps’ service and decorator. Automated dev-persona season opt-in retains job attribution.
@@ -91,6 +92,7 @@ Nobodies Collective organizes camping areas ("barrios") at Nowhere and related e
 - Name change blocked after name lock date
 - Can upload, delete, and reorder images
 - Can manage co-leads by assigning/unassigning the Camp Lead role on the Members page's Roles panel — the same mechanism as any other per-camp role (see US-20.12); there is no separate "primary lead" concept
+- Detail-to-edit and edit/members navigation retains the displayed event. Saving an edit, changing a season status, or completing a membership, Early Entry or role-removal action returns to the affected event's page; return URLs use the owned record's event identity.
 
 ### US-20.5: Opt-In to New Season
 **As a** camp lead
@@ -182,7 +184,7 @@ Nobodies Collective organizes camping areas ("barrios") at Nowhere and related e
 - Membership decisions, season closures and role assignments finish their notifications after saving even if the browser disconnects. Notification preparation and delivery failures are logged without failing the committed mutation.
 - Per-camp role assignments live on the Camp Members page (`/Camps/{slug}/Edit/Members`), one block per active role definition, ordered by `SortOrder`. The role heading carries a `{filled}/{SlotCount} filled` count, a `required` badge when applicable, and (for managers) an info-icon button that collapses/expands the role description so it no longer crowds the panel. Filled slots render as a wrap of avatar pills (one `<vc:human>` avatar+name per assignee, each with an inline unassign button for managers). When the role has empty slots, a `+` button reveals a single collapsed `<vc:human-search>` typeahead form (search-as-you-type, burner-name match via `scope="Name"`); the per-empty-slot repeated picker is gone.
 - The picker excludes humans already filling the same role from its suggestions (`exclude-user-ids`), so leads can't accidentally re-assign the same human.
-- Add-member and role-picker posts retain the displayed season year, including on redirect. They require that year's Active/Full season; callers without a year use the active event year. A legacy assignment by member ID uses that member's season within the camp. Other open years are never substituted.
+- Add-member and role-picker posts retain the displayed season's event id, including on redirect. They require that event's Active/Full season; callers without an event id use the active event. A legacy assignment by member ID uses that member's season within the camp. Other open events are never substituted.
 - Assigning a role: the picker posts to `/Camps/{slug}/Roles/AssignByUser` which adds the picked human as a CampMember (Active) if they're not already one and assigns the role in one step (`ICampManagement.AddMemberAndAssignRoleInActiveSeasonAsync`). Audited as `CampMemberAddedByLead` for the membership add. The legacy `/Roles/Assign` endpoint (taking a `campMemberId`) remains available for callers that already have a member id.
 - Service still rejects with `MemberNotActive` / `MemberSeasonMismatch` if a stale member id is submitted to the legacy endpoint, and with `AlreadyHoldsRole` if the same human is re-submitted before the page refreshes.
 - Soft-cap: the service rejects an assignment that would exceed `SlotCount`. If a CampsAdmin reduces `SlotCount` below current usage, the card renders an "over capacity" indicator and a lead must unassign one to drop back into capacity.
@@ -206,6 +208,7 @@ Nobodies Collective organizes camping areas ("barrios") at Nowhere and related e
 - Copy on the request card explicitly states that this does NOT join you to the camp — do that through the camp's own process first.
 - A pending request can be withdrawn by the requester; an active membership can be left by the member. Missing-membership and invalid-status failures are localized in all supported cultures.
 - Membership state (Pending / Active) is never rendered on anonymous views.
+- Grant buttons use the service-supplied remaining capacity, counting consumed grants retained on removed members. The badge counts grants on active members only. A full allocation disables new grants while keeping existing grants available for revocation; every mutation rechecks its eligibility.
 - Leads and CampsAdmin see pending requests on the camp Members page (`/Camps/{slug}/Edit/Members`) with Approve / Reject buttons, and active members with a Remove button. The active-members header carries an `EE: {granted}/{slots}` badge (issue nobodies-collective/Humans#858) showing Early Entry slots granted vs. the camp's `EeSlotCount` allocation for the season. Each active member row also shows a shift-signup count badge (sourced from `IShiftView.GetUsersAsync`) — the number of active (pending or confirmed) shift signups for the current event — colour-coded by count.
 - Approve / Reject mutations are scoped to the authorizing camp — a lead of camp A cannot mutate camp B's memberships by submitting a crafted member id.
 - Concurrent duplicate "request" submissions resolve idempotently — the second one returns the winning row instead of a 500.
@@ -268,8 +271,7 @@ CampSeason
 ### CampSettings (singleton)
 ```
 CampSettings
-├── Id: Guid
-└── OpenSeasons: List<int> [unused legacy JSON column; registration uses CampEventSettings]
+└── Id: Guid
 ```
 
 ### CampEventSettings
@@ -350,7 +352,7 @@ CampRoleAssignment
 ├── CampRoleDefinitionId: Guid (FK → CampRoleDefinition, ON DELETE RESTRICT)
 ├── CampMemberId: Guid (FK → CampMember, ON DELETE CASCADE)
 ├── AssignedAt: Instant
-└── AssignedByUserId: Guid (scalar; no nav per design-rules §6)
+└── AssignedByUserId: Guid (scalar; no nav per design-rules.md, *No cross-domain joins*)
 ```
 
 - Unique index on `(CampSeasonId, CampRoleDefinitionId, CampMemberId)` — same human cannot hold the same role twice in the same season.

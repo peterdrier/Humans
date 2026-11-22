@@ -1,3 +1,5 @@
+using Humans.Base.Extensions;
+using Humans.Base.Interfaces;
 using Humans.Base.Controllers;
 using Humans.Preapprovals.Authorization;
 using Humans.Preapprovals.Models;
@@ -14,6 +16,7 @@ namespace Humans.Preapprovals.Controllers;
 [Authorize(Policy = PreapprovalsPolicies.Access)]
 [Route("Preapprovals")]
 internal sealed class PreapprovalsController(
+    IOrgTimeZone orgTimeZone,
     IPreapprovalManagement preapprovals,
     IUserService users,
     IStringLocalizer<PreapprovalsResource> localizer,
@@ -21,8 +24,7 @@ internal sealed class PreapprovalsController(
     IClock clock,
     ILogger<PreapprovalsController> logger) : HumansControllerBase(users)
 {
-    private static readonly DateTimeZone MadridZone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
-    private LocalDate Today => clock.GetCurrentInstant().InZone(MadridZone).Date;
+    private LocalDate Today => clock.TodayIn(orgTimeZone.Zone);
 
     [HttpGet("")]
     public async Task<IActionResult> Index(CancellationToken ct)

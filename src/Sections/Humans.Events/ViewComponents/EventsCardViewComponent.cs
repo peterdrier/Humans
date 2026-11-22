@@ -1,3 +1,5 @@
+using Humans.Events.Services;
+using Humans.Base.Extensions;
 using Humans.Users.Contracts;
 using System.Security.Claims;
 using Humans.Events.Contracts;
@@ -14,9 +16,8 @@ namespace Humans.Events.ViewComponents;
 /// ids only, so no Event types cross into the host's views. Renders nothing when the feature is off or nothing is in
 /// scope, so the card hides itself.
 /// </summary>
-// Public: Razor's tag-helper discovery only sees public view components; an internal one renders as inert markup.
-public sealed class EventsCardViewComponent(
-    IEventService events,
+internal sealed class EventsCardViewComponent(
+    IEventManagement events,
     IConfiguration configuration,
     IUserService users,
     ILogger<EventsCardViewComponent> logger) : ViewComponent
@@ -36,7 +37,7 @@ public sealed class EventsCardViewComponent(
                 return Content(string.Empty);
             }
 
-            if (!Guid.TryParse(UserClaimsPrincipal.FindFirstValue(ClaimTypes.NameIdentifier), out var viewerId))
+            if (UserClaimsPrincipal.GetUserId() is not { } viewerId)
                 return Content(string.Empty);
 
             var viewer = await users.GetUserInfoAsync(viewerId, ct);

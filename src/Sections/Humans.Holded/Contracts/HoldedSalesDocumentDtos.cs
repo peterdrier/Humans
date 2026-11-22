@@ -13,8 +13,8 @@ public enum HoldedSalesDocumentKind
 }
 
 /// <summary>
-/// <see cref="AccountId"/> is the chart-of-accounts <b>id</b> (24-hex), not the 8-digit number: resolve it through
-/// <see cref="IHoldedClient.ListAccountingAccountsAsync"/>.
+/// <see cref="AccountId"/> is the chart-of-accounts <b>id</b> (24-hex), not the 8-digit number: callers set
+/// <see cref="AccountNum"/> and the Holded section resolves the id.
 /// </summary>
 public sealed record HoldedSalesDocumentLineInput
 {
@@ -27,6 +27,9 @@ public sealed record HoldedSalesDocumentLineInput
     public IReadOnlyList<string> Taxes { get; init; } = [];
     /// <summary>Null falls back to Holded's default income account.</summary>
     public string? AccountId { get; init; }
+    /// <summary>The ledger account number; <see cref="IHoldedWrite.IssueSalesDocumentAsync"/> resolves it to
+    /// <see cref="AccountId"/>.</summary>
+    public int? AccountNum { get; init; }
 }
 
 public sealed record HoldedSalesDocumentInput
@@ -42,6 +45,8 @@ public sealed record HoldedSalesDocumentInput
     /// way to find a document by whatever created it.</summary>
     public IReadOnlyList<string> Tags { get; init; } = [];
     public required IReadOnlyList<HoldedSalesDocumentLineInput> Lines { get; init; }
+    /// <summary>A discount percentage on the whole document, so its VAT falls pro rata over the lines. Null for none.</summary>
+    public decimal? DiscountPercent { get; init; }
 }
 
 public sealed record HoldedSalesDocumentDto
@@ -52,9 +57,18 @@ public sealed record HoldedSalesDocumentDto
     public required decimal Subtotal { get; init; }
     public required decimal Tax { get; init; }
     public required decimal Total { get; init; }
-    /// <summary>A draft books no revenue and has no number until <see cref="IHoldedClient.ApproveSalesDocumentAsync"/>.
+    /// <summary>A draft books no revenue and has no number until <see cref="IHoldedWrite.ApproveSalesDocumentAsync"/>.
     /// Null when Holded doesn't report the field.</summary>
     public bool? IsDraft { get; init; }
+    /// <summary>The contact the document is issued to; null on a receipt without one.</summary>
+    public string? ContactId { get; init; }
+    /// <summary>The contact's 430xxxxx account. Filled only by <see cref="IHoldedService.GetSalesDocumentAsync"/>, which
+    /// reads the contact live; null without a contact.</summary>
+    public int? ContactAccountNum { get; init; }
+    /// <summary><c>payments_pending</c>: what is still unpaid. Null when Holded doesn't report the field.</summary>
+    public decimal? PaymentsPending { get; init; }
+    /// <summary>The payments on the document (<c>payments_detail</c>), in Holded's order.</summary>
+    public IReadOnlyList<HoldedPaymentDetailDto> Payments { get; init; } = [];
     /// <summary>The document's lines as Holded holds them, in its order. Empty when Holded reports none, or when one
     /// of them has no readable units, price or tax (logged).</summary>
     public required IReadOnlyList<HoldedSalesDocumentLineDto> Lines { get; init; }

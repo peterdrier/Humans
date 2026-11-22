@@ -44,7 +44,6 @@ public sealed class ShiftSummaryServiceTests : ShiftsTestHarness
     private readonly Guid _tiny = Guid.NewGuid();
 
     private readonly Dictionary<Guid, string> _names = new();
-    private readonly Dictionary<Guid, CampUserInfo> _campByUser = new();
 
     public ShiftSummaryServiceTests() : base(TestNow)
     {
@@ -94,28 +93,23 @@ public sealed class ShiftSummaryServiceTests : ShiftsTestHarness
                 return Task.FromResult(team is null ? null : ToTeamInfo(team));
             });
 
-        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+        _userService.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(ci =>
             {
-                var ids = ci.Arg<IReadOnlyCollection<Guid>>();
+                var ids = ci.Arg<IEnumerable<Guid>>();
                 IReadOnlyDictionary<Guid, UserInfo> dict = ids
                     .Where(_names.ContainsKey)
-                    .ToDictionary(id => id, id => UserInfoStubHelpers.MakeUserInfo(id, displayName: _names[id]));
+                    .ToDictionary(id => id, id => UserFixtures.MakeUserInfo(id, displayName: _names[id]));
                 return new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(dict);
             });
 
-        _campService.GetSettingsAsync(Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult(new CampSettingsInfo(PublicYear, [])));
-        _campService.GetCampsForYearAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
+        _campService.GetCampsForEventAsync(_event.Id, Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<CampInfo>>(
             [
-                MakeCamp(_fuego, "fuego", "Barrio Fuego"),
+                MakeCamp(_fuego, "fuego", "Barrio Fuego", _userA, _userB),
                 MakeCamp(_mwah, "mwah", "Camp Mwah"),
                 MakeCamp(_tiny, "tiny", "Tiny Camp"),
             ]));
-        _campService.GetCampUserInfoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns(ci => Task.FromResult(
-                _campByUser.GetValueOrDefault(ci.Arg<Guid>(), CampUserInfo.None)));
 
         var serviceProvider = new ServiceLocatorBuilder()
             .With(_teamService)
@@ -128,37 +122,31 @@ public sealed class ShiftSummaryServiceTests : ShiftsTestHarness
         _service = new ShiftManagementService(
             repo,
             AuditLog,
-            AdminAuthorization,
             serviceProvider,
-            Cache,
-            new ShiftViewProbe().Cache,
             NewCalendarResolver(),
             Clock,
             Microsoft.Extensions.Logging.Abstractions.NullLogger<ShiftManagementService>.Instance);
+        serviceProvider.GetService(typeof(IShiftRotaRows)).Returns(_service);
     }
 
     [HumansFact]
     public async Task BuildSummaryAsync_RotaScope_PreservesCancellationInScopeReads()
     {
         using var cancellation = new CancellationTokenSource();
-        var repo = Substitute.For<IShiftManagementRepository>();
-        repo.GetRotaAsync(_rPower, RotaReadShape.Shifts, Arg.Any<CancellationToken>())
-            .Returns(new Rota { Id = _rPower, TeamId = _powerId, EventSettingsId = _event.Id, Name = "Power" });
-        repo.GetConfirmedUserShiftTotalsAsync(
-                _event.Id, Arg.Any<IReadOnlyCollection<Guid>?>(), _rPower, Arg.Any<CancellationToken>())
-            .Returns([]);
+        var seeded = await ((IShiftRotaRows)_service).GetRotaRowsAsync(ct: Xunit.TestContext.Current.CancellationToken);
+        var rows = Substitute.For<IShiftRotaRows>();
+        rows.GetRotaRowsAsync(Arg.Any<IReadOnlyCollection<Guid>?>(), Arg.Any<CancellationToken>()).Returns(seeded);
         var services = new ServiceLocatorBuilder()
-            .With(_teamService).With(_userService).With(_campService).Build();
+            .With(_teamService).With(_userService).With(_campService).With(rows).Build();
         var service = new ShiftManagementService(
-            repo, AuditLog, AdminAuthorization, services, Cache,
-            new ShiftViewProbe().Cache, NewCalendarResolver(), Clock,
+            Substitute.For<IShiftManagementRepository>(), AuditLog, services, NewCalendarResolver(), Clock,
             Microsoft.Extensions.Logging.Abstractions.NullLogger<ShiftManagementService>.Instance);
 
         var summary = await service.BuildSummaryAsync(_burn, "power", _rPower, cancellation.Token);
 
         summary.Should().NotBeNull();
         await _teamService.Received(1).GetTeamsAsync(cancellation.Token);
-        await repo.Received(1).GetRotaAsync(_rPower, RotaReadShape.Shifts, cancellation.Token);
+        await rows.Received(1).GetRotaRowsAsync(null, cancellation.Token);
     }
 
     [HumansFact]
@@ -186,6 +174,66 @@ public sealed class ShiftSummaryServiceTests : ShiftsTestHarness
         byUser[_userC].CampId.Should().BeNull();
         byUser[_userC].CampName.Should().BeNull();
         byUser[_userC].Hours.Should().Be(2.0);
+    }
+
+    [HumansFact]
+    public async Task BuildSummaryAsync_AllDayShiftCountsWindowHours_OtherEventIgnored()
+    {
+        var allDay = SeedShift(_rWater, Duration.FromHours(24));
+        ShiftsDb.Shifts.Local.Single(s => s.Id == allDay).IsAllDay = true;
+        var otherEvent = new EventSettings { Id = Guid.NewGuid() };
+        Calendars[otherEvent.Id] = new TestEventCalendar
+        {
+            Id = otherEvent.Id,
+            EventName = "Other",
+            GateOpeningDate = new LocalDate(2025, 7, 1),
+            TimeZoneId = "UTC"
+        };
+        ShiftsDb.EventSettings.Add(otherEvent);
+        var otherRota = Guid.NewGuid();
+        SeedRota(otherRota, _waterId);
+        ShiftsDb.Rotas.Local.Single(r => r.Id == otherRota).EventSettingsId = otherEvent.Id;
+        var otherShift = SeedShift(otherRota, Duration.FromHours(5));
+        ShiftsDb.ShiftSignups.AddRange(
+            MakeSignup(_userB, allDay, SignupStatus.Confirmed),
+            MakeSignup(_userA, otherShift, SignupStatus.Confirmed));
+        await ShiftsDb.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+
+        var summary = await _service.BuildSummaryAsync(_burn, ct: Xunit.TestContext.Current.CancellationToken);
+
+        var byUser = summary!.Humans.ToDictionary(h => h.UserId);
+        byUser[_userB].Hours.Should().Be(8.0 + Shift.AllDayWindowHours);
+        byUser[_userB].Count.Should().Be(2);
+        byUser[_userA].Hours.Should().Be(4.0);
+    }
+
+    [HumansFact]
+    public async Task BuildSummaryAsync_UsesOneEventRosterForHumansAndCampRows()
+    {
+        var otherEventId = Guid.NewGuid();
+        var current = MakeSeason(_fuego, "fuego", "Current event camp") with
+        {
+            EventSettingsId = _event.Id,
+            Members = new[] { _userA, _userB }.Select(id => new CampSeasonMemberInfo(
+                Guid.NewGuid(), id, CampMemberStatus.Active, TestNow, TestNow, false)).ToList()
+        };
+        var prior = MakeSeason(_fuego, "fuego", "Other event camp") with { EventSettingsId = otherEventId };
+        var camp = MakeCamp(_fuego, "fuego", "Unused") with { Seasons = [prior, current] };
+        var otherOnly = MakeCamp(_tiny, "tiny", "Other event only") with
+        {
+            Seasons = [MakeSeason(_tiny, "tiny", "Other event only") with { EventSettingsId = otherEventId }]
+        };
+        _campService.GetCampsForYearAsync(PublicYear, Arg.Any<CancellationToken>()).Returns([camp, otherOnly]);
+        _campService.GetCampsForEventAsync(_event.Id, Arg.Any<CancellationToken>())
+            .Returns([camp with { Seasons = [current] }]);
+
+        var summary = await _service.BuildSummaryAsync(_burn, ct: Xunit.TestContext.Current.CancellationToken);
+
+        summary!.Humans.Where(h => h.CampId == _fuego).Select(h => h.CampName)
+            .Should().Equal("Current event camp", "Current event camp");
+        summary.Camps.Single(c => c.CampId == _fuego).CampName.Should().Be("Current event camp");
+        summary.Camps.Should().NotContain(c => c.CampId == _tiny);
+        await _campService.Received(1).GetCampsForEventAsync(_event.Id, Xunit.TestContext.Current.CancellationToken);
     }
 
     [HumansFact]
@@ -311,9 +359,6 @@ public sealed class ShiftSummaryServiceTests : ShiftsTestHarness
         _names[_userB] = "Beto";
         _names[_userC] = "Cara";
 
-        _campByUser[_userA] = new CampUserInfo(MakeSeason(_fuego, "fuego", "Barrio Fuego"), []);
-        _campByUser[_userB] = new CampUserInfo(MakeSeason(_fuego, "fuego", "Barrio Fuego"), []);
-        _campByUser[_userC] = CampUserInfo.None; // campless
     }
 
     private void SeedRota(Guid rotaId, Guid teamId) => ShiftsDb.Rotas.Add(new Rota
@@ -359,12 +404,18 @@ public sealed class ShiftSummaryServiceTests : ShiftsTestHarness
             Members: [],
             ParentTeamId: team.ParentTeamId);
 
-    private static CampSeasonInfo MakeSeason(Guid campId, string slug, string name) =>
+    private CampSeasonInfo MakeSeason(Guid campId, string slug, string name) =>
         new(Guid.NewGuid(), campId, slug, PublicYear, null,
             name, string.Empty, string.Empty, [], CampSeasonStatus.Active,
             YesNoMaybe.No, YesNoMaybe.No, AdultPlayspacePolicy.No,
-            0, null, null, null, 0, null, null);
+            0, null, null, null, 0, null, null)
+        { EventSettingsId = _event.Id };
 
-    private static CampInfo MakeCamp(Guid campId, string slug, string name) =>
-        new(campId, slug, "e@example.com", "+34 600 000 000", false, 0, [MakeSeason(campId, slug, name)]);
+    private CampInfo MakeCamp(Guid campId, string slug, string name, params Guid[] memberIds) =>
+        new(campId, slug, "e@example.com", "+34 600 000 000", false, 0,
+            [MakeSeason(campId, slug, name) with
+            {
+                Members = memberIds.Select(id => new CampSeasonMemberInfo(
+                    Guid.NewGuid(), id, CampMemberStatus.Active, TestNow, TestNow, false)).ToList()
+            }]);
 }

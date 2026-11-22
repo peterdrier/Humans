@@ -17,18 +17,18 @@
 |----------|----------|
 | Bootstrap rows every environment needs | EF Core `HasData` in entity configurations |
 | One-time corrective insert/update during schema evolution | Migration SQL |
-| Rich demo data for local dev or preview environments | Dev-only runtime seeder |
+| Rich demo data for local dev, preview or QA | The section's demo story (below) |
 | Test-only records | Test fixtures, not app seed data |
 
 ## Existing Patterns
 
-**`HasData`** — stable bootstrap rows with deterministic IDs, part of migrations. `src/Humans.Infrastructure` was deleted outright (G5 lane 5b-6, nobodies-collective/Humans#866), so every configuration with `HasData` now lives in its owning section project's `Data/Configurations/`: shift tags (`ShiftTagConfiguration`, `Humans.Shifts`), sync settings (`SyncServiceSettingsConfiguration`, `Humans.GoogleIntegration`), camp settings (`CampSettingsConfiguration`, `Humans.Camps`), system teams (`TeamConfiguration`, `Humans.Teams`), ticket sync state (`TicketSyncStateConfiguration`, `Humans.Tickets`), settings (`SettingConfiguration`, the `IsEmailSendingPaused` row, `Humans.Settings`), agent settings (`AgentSettingsConfiguration`, `Humans.Agent`), event-guide categories (`EventCategoryConfiguration`, `Humans.Events`), Pleo category-to-Holded-account mappings (`PleoCategoryConfiguration`, `Humans.Pleo`).
+**`HasData`** — stable bootstrap rows with deterministic IDs, part of migrations. `src/Humans.Infrastructure` was deleted outright (G5 lane 5b-6, nobodies-collective/Humans#866), so every configuration with `HasData` now lives in its owning section project's `Data/Configurations/`: shift tags (`ShiftTagConfiguration`, `Humans.Shifts`), sync settings (`SyncServiceSettingsConfiguration`, `Humans.Google`), camp settings (`CampSettingsConfiguration`, `Humans.Camps`), system teams (`TeamConfiguration`, `Humans.Teams`), ticket sync state (`TicketSyncStateConfiguration`, `Humans.Tickets`), settings (`SettingConfiguration`, the `IsEmailSendingPaused` row, `Humans.Settings`), agent settings (`AgentSettingsConfiguration`, `Humans.Agent`), event-guide categories (`EventCategoryConfiguration`, `Humans.Events`), Pleo category-to-Holded-account mappings (`PleoCategoryConfiguration`, `Humans.Pleo`).
 
-`HumansDbContext` was deleted outright (nobodies-collective/Humans#858; Peel 15, nobodies-collective/Humans#1273 folded Users and Profiles into the new `UsersDbContext`) — there is no shared root context left. A `HasData` row seeded from a section project lands in that section's own migration chain; every table belongs to exactly one section context, and every section context now lives in its own project's `Data/` (e.g. `Humans.Users`, `Humans.Camps`, `Humans.Shifts`, `Humans.GoogleIntegration`) except `SystemDbContext`, the platform context for framework-owned tables (`DataProtectionKeys`), which lives in `src/Humans.Web/Data/`.
+`HumansDbContext` was deleted outright (nobodies-collective/Humans#858; Peel 15, nobodies-collective/Humans#1273 folded Users and Profiles into the new `UsersDbContext`) — there is no shared root context left. A `HasData` row seeded from a section project lands in that section's own migration chain; every table belongs to exactly one section context, and every section context now lives in its own project's `Data/` (e.g. `Humans.Users`, `Humans.Camps`, `Humans.Shifts`, `Humans.Google`) except `SystemDbContext`, the platform context for framework-owned tables (`DataProtectionKeys`), which lives in `src/Humans.Web/Data/`.
 
 **Lazy singleton instead of `HasData`** — some single-row settings tables are deliberately *not* seeded and are created on first save instead (`GateSettingsConfiguration`, `HoldedSyncStateConfiguration` both carry a comment saying so). Prefer this when the row's shape is likely to change: it avoids a `HasData` value baked into an old migration drifting from the entity.
 
-**Migration SQL** — one-off backfills tied to schema changes, written directly into a migration's `Up()`. These don't survive as standalone examples: a section move or DbContext peel squashes its migration chain into one baseline (see `memory/architecture/migration-regen-after-rebase.md`), absorbing any prior one-off backfill along with everything else.
+**Never migration SQL.** Data is not written from a migration's `Up()`: migrations are EF-generated and schema-only (`memory/architecture/no-hand-edited-migrations.md`), and a bulk data fix goes through `/Debug/DataMigrations` (`memory/process/no-data-backfills.md`).
 
 **Well-known system accounts** — non-human accounts with a deterministic ID reserved in `Humans.Base.Constants.SystemUserIds` (GUID block `0004`). The shared gate-terminal account (`SystemUserIds.GateTerminal`) is provisioned lazily — `GateTerminalAccountSeeder` creates the User + Stub→Active Profile through the canonical application-service path the first time a ticket admin sets its password from `/Tickets/Admin/Gate` — not via `HasData` or migration SQL. Idempotent; holds no roles and no email.
 
@@ -38,14 +38,14 @@
 |---|---|---|---|
 | `/dev/seed/budget` | `FinancePolicies.Manage` | `IBudgetDemoSeeder` | Demo budget year with teams, categories, and line items |
 | `/dev/seed/camp-roles` | `CampsPolicies.Manage` | `DevelopmentCampRoleSeeder` | The five system camp-role definitions |
-| `/dev/seed/dashboard` | `ShiftsPolicies.Manage` | `DevelopmentDashboardSeeder` | Teams, humans, shifts, and signups behind the shift dashboard |
-| `/dev/seed/dashboard/reset` | `AdminOnly` | `DevelopmentDashboardSeeder` | Deletes the dashboard demo rows, then reseeds |
 
 `DevPersonaSeeder` (Development) is the other runtime seeder: `GET /dev/login/{persona}` (behind the same `DevAuth:Enabled` + non-production gate) calls it to ensure the persona's User, Profile, emails, roles, and dev fixtures (system-team memberships, test department, barrio camp/lead, city-planning team) through the owning sections' services before signing in.
 
-The two dashboard endpoints are stricter than the rest: they additionally require `ASPNETCORE_ENVIRONMENT=Development`, so they never run on QA or preview. Their buttons are on `Views/ShiftDashboard/Index.cshtml`; the budget and camp-role buttons are on the `GET /dev/seed` page.
+The budget and camp-role buttons are on the `GET /dev/seed` page.
 
-The `GET /dev/seed` page is reached from the admin nav's **Development** group (Development's `Section.cs`): one **Seed data** item, `AdminOnly`, carrying `EnvironmentGate: env => env.IsDevelopment()` — so the link renders only in local development.
+The `GET /dev/seed` page is reached from the admin nav's **Development** group (Development's `Section.cs`): one **Seed data** item, `AdminOnly`, carrying `EnvironmentGate: env => !env.IsProduction()`.
+
+**The demo world** — the page's "Build or top up demo world" and "Reset demo world" buttons (`POST /dev/seed/demo`, `AdminOnly`) run every section's `IDemoStory` in the background, on top of whatever the database already holds. The demo departments are Teams' story and their rotas, shifts and signups are Shifts' story. Development's demo ledger records each row made, so a re-run only adds or repairs, and reset retires through existing actions before building a fresh generation. Each section with a DbContext has a story or `[assembly: NoDemoStory("reason")]` (`memory/architecture/every-data-section-has-a-demo-story.md`); the invariants are in `src/Sections/Humans.Development/Docs/Development.md`.
 
 ## Guardrails for Dev Seeders
 

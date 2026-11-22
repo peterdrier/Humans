@@ -15,12 +15,6 @@ using Humans.Users.Contracts;
 
 namespace Humans.Development.Tests;
 
-/// <summary>
-/// Covers the <c>Shifts.md</c> invariant:
-/// "DevelopmentDashboardSeeder and its POST /dev/seed/dashboard endpoint are
-/// gated to IWebHostEnvironment.IsDevelopment() AND the DevAuth:Enabled setting.
-/// QA, preview, and production environments cannot invoke it regardless of role."
-/// </summary>
 public class DevSeedControllerTests
 {
     private readonly IUserService _userService = Substitute.For<IUserService>();
@@ -28,36 +22,6 @@ public class DevSeedControllerTests
     private readonly IConfiguration _configuration = Substitute.For<IConfiguration>();
     private readonly ConfigurationRegistry _configRegistry = new();
     private readonly IServiceProvider _serviceProvider = Substitute.For<IServiceProvider>();
-
-    [HumansFact]
-    public async Task SeedDashboard_NotDevelopmentEnvironment_ReturnsNotFound()
-    {
-        // Even if DevAuth:Enabled were true, the stricter IsDevelopment() gate must refuse the seed.
-        _environment.EnvironmentName.Returns("Production");
-        SetDevAuthEnabled(true);
-        var ctrl = BuildSut();
-
-        var result = await ctrl.SeedDashboard(Xunit.TestContext.Current.CancellationToken);
-
-        result.Should().BeOfType<NotFoundResult>();
-        // Seeder must not be resolved when gating fails — verifies the early-out
-        // happened before any DI lookup of the seeder dependency.
-        _serviceProvider.DidNotReceive().GetService(Arg.Any<Type>());
-    }
-
-    [HumansFact]
-    public async Task SeedDashboard_DevelopmentButDevAuthDisabled_ReturnsNotFound()
-    {
-        // The seed endpoint requires BOTH gates — config alone gates QA/preview.
-        _environment.EnvironmentName.Returns("Development");
-        SetDevAuthEnabled(false);
-        var ctrl = BuildSut();
-
-        var result = await ctrl.SeedDashboard(Xunit.TestContext.Current.CancellationToken);
-
-        result.Should().BeOfType<NotFoundResult>();
-        _serviceProvider.DidNotReceive().GetService(Arg.Any<Type>());
-    }
 
     [HumansTheory]
     [Xunit.InlineData("Production", true)]
@@ -73,10 +37,11 @@ public class DevSeedControllerTests
     [HumansFact]
     public void Index_DevSeedGateOpen_RendersSeedPage()
     {
-        // Staging with DevAuth on is QA / a preview: the page answers there by URL, though the
-        // admin nav shows its link only on Development.
+        // Staging with DevAuth on is QA / a preview.
         _environment.EnvironmentName.Returns("Staging");
         SetDevAuthEnabled(true);
+        _serviceProvider.GetService(typeof(Humans.Development.Services.Demo.DemoRunStatus))
+            .Returns(new Humans.Development.Services.Demo.DemoRunStatus());
         var ctrl = BuildSut();
         ctrl.TempData = Substitute.For<ITempDataDictionary>();
 
@@ -86,16 +51,12 @@ public class DevSeedControllerTests
     public enum DevSeedAction
     {
         SeedBudget,
-        SeedCampRoles,
-        SeedDashboard,
-        ResetDashboard
+        SeedCampRoles
     }
 
     [HumansTheory]
     [Xunit.InlineData(DevSeedAction.SeedBudget)]
     [Xunit.InlineData(DevSeedAction.SeedCampRoles)]
-    [Xunit.InlineData(DevSeedAction.SeedDashboard)]
-    [Xunit.InlineData(DevSeedAction.ResetDashboard)]
     public async Task Seed_preflight_cancellation_stops_before_resolving_a_seeder(DevSeedAction action)
     {
         _environment.EnvironmentName.Returns("Development");
@@ -114,9 +75,7 @@ public class DevSeedControllerTests
         Func<Task<IActionResult>> invoke = action switch
         {
             DevSeedAction.SeedBudget => () => controller.SeedBudget(request.Token),
-            DevSeedAction.SeedCampRoles => () => controller.SeedCampRoles(request.Token),
-            DevSeedAction.SeedDashboard => () => controller.SeedDashboard(request.Token),
-            _ => () => controller.ResetDashboard(request.Token),
+            _ => () => controller.SeedCampRoles(request.Token),
         };
 
         await invoke.Should().ThrowAsync<OperationCanceledException>();
@@ -141,6 +100,7 @@ public class DevSeedControllerTests
             _configuration,
             _configRegistry,
             _serviceProvider,
+            Substitute.For<Hangfire.IBackgroundJobClient>(),
             _userService,
             NullLogger<DevSeedController>.Instance);
 

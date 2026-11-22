@@ -98,4 +98,8 @@
   <data name="Cantina_Roster_RevealHealth" xml:space="preserve"><value>Show allergies and intolerances</value></data>
   <data name="Cantina_Roster_HealthHidden" xml:space="preserve"><value>Allergy and intolerance details are hidden. Showing them is recorded in the audit log.</value></data>
   <data name="Cantina_Roster_RevealHealthNote" xml:space="preserve"><value>Showing them is recorded in the audit log.</value></data>
+  <data name="Cantina_DietaryMissingBanner_Title" xml:space="preserve"><value>Share your food preferences?</value></data>
+  <data name="Cantina_DietaryMissingBanner_Body" xml:space="preserve"><value>You're signed up for a long shift. If you tell us your food preferences, the cantina can plan your meals. It's optional.</value></data>
+  <data name="Cantina_DietaryMissingBanner_Cta" xml:space="preserve"><value>Tell us now</value></data>
+  <data name="Cantina_DietaryMissingBanner_Decline" xml:space="preserve"><value>I don't want to answer</value></data>
 </root>

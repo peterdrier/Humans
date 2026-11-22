@@ -12,11 +12,14 @@ using Humans.Finance.Jobs;
 using Humans.Finance.Services;
 using Humans.Finance.ViewComponents;
 using Humans.Gdpr.Contracts;
+using Humans.Settings.Contracts;
 using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Humans.AuditLog.Contracts;
+
+[assembly: Humans.Base.Demo.NoDemoStory("No demo story written yet.")]
 
 namespace Humans.Finance;
 
@@ -27,6 +30,7 @@ public sealed class Section :
     ISectionConfiguration,
     ISectionJobs,
     ISectionPolicies,
+    ISectionSettings,
     IUserPart
 {
     IReadOnlyList<RoleDefinition> ISectionRoles.Roles { get; } =
@@ -53,7 +57,7 @@ public sealed class Section :
                     opts.CreditorIban = flat;
             });
 
-        services.AddScoped<IHoldedRepository, Repository>();
+        services.AddScoped<IFinanceRepository, Repository>();
         // Sweep failure counts must outlive scoped requests and jobs.
         services.AddSingleton(sp => new TrackedCache<string, Dictionary<string, int>>(
             "Finance.SepaStuckBankLines", warmOnStartup: false,
@@ -67,6 +71,7 @@ public sealed class Section :
         services.AddScoped<Jobs.SepaBankBookingJob>();
         services.AddScoped<Jobs.ExpenseReconJob>();
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<Service>());
+        services.AddScoped<IUserMerge>(sp => sp.GetRequiredService<Service>());
 
         services.AddScoped<IPaymentDetailsRepository, PaymentDetailsRepository>();
         services.AddScoped<PaymentDetailsService>();
@@ -78,12 +83,12 @@ public sealed class Section :
         services.AddScoped<IEmailPreviewContributor, FinanceEmailPreviews>();
 
         services.AddScoped<CashFlowService>();
-        services.AddScoped<CreditorMatchService>();
         services.AddScoped<FinanceOverviewService>();
         services.AddScoped<PleoBooking>();
         // Both outlive a request: the run keeps going after the page is left, and its holds must span runs.
         services.AddSingleton<PleoBookingState>();
         services.AddSingleton<PleoBookingRunner>();
+        services.AddSingleton<SepaBookingRunner>();
     }
 
     IEnumerable<AdminNavGroup> ISectionAdminNav.Groups() =>
@@ -146,4 +151,9 @@ public sealed class Section :
 
     IEnumerable<UserPart> IUserPart.Parts() =>
         [new(UserPartSlots.AdminDetailSidebar, typeof(PaymentDetailsViewComponent), Weight: 100)];
+
+    IEnumerable<SettingsTab> ISectionSettings.Tabs() =>
+    [
+        new SettingsTab("finance", "Settings_TabFinance", typeof(FinanceSettingsTabViewComponent), FinancePolicies.Manage)
+    ];
 }

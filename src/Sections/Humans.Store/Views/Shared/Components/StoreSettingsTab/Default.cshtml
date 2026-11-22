@@ -1,0 +1,18 @@
+@model StoreSettingsViewModel
+
+@* Explicit asp-controller/asp-action: inside /Settings, ambient route data would resolve against the wrong controller. *@
+<form class="mw-540" method="post" asp-controller="StoreAdmin" asp-action="SaveSettings">
+    <div class="mb-3">
+        <label class="form-label" asp-for="StripeGatewayTreasuryId">Stripe gateway treasury (Holded id)</label>
+        <input class="form-control font-monospace" maxlength="64" asp-for="StripeGatewayTreasuryId" style="max-width: 22rem;" />
+        <div class="form-text">The Holded treasury account whose feed carries the Store's Stripe charges and refunds (ledger 441xxxxx). Unset, invoices are issued but their payments are not booked.</div>
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label" asp-for="SimplifiedInvoiceThresholdEur">Simplified invoice limit (EUR)</label>
+        <input class="form-control" type="number" min="0" step="0.01" asp-for="SimplifiedInvoiceThresholdEur" style="max-width: 10rem;" />
+        <div class="form-text">An order without counterparty details gets a simplified invoice only up to this total; above it, a full invoice is required.</div>
+    </div>
+
+    <button type="submit" class="btn btn-primary">Save settings</button>
+</form>

@@ -15,6 +15,17 @@ internal sealed class GateRepository(IDbContextFactory<GateDbContext> factory) :
             .FirstOrDefaultAsync(e => e.AdmitDedupeKey == admitDedupeKey, ct);
     }
 
+    public async Task<IReadOnlyList<string>> GetAdmittedKeysAsync(
+        IReadOnlyCollection<string> admitDedupeKeys, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        return await ctx.Set<GateScanEvent>()
+            .AsNoTracking()
+            .Where(e => e.AdmitDedupeKey != null && admitDedupeKeys.Contains(e.AdmitDedupeKey))
+            .Select(e => e.AdmitDedupeKey!)
+            .ToListAsync(ct);
+    }
+
     public async Task<GateRecordOutcome> RecordScanAsync(GateScanEvent scan, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
@@ -39,6 +50,22 @@ internal sealed class GateRepository(IDbContextFactory<GateDbContext> factory) :
         }
     }
 
+    public async Task<GateScanEvent?> UndoAdmitAsync(
+        Guid scanId, Instant undoneAt, Guid undoneByUserId, string reason, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        var row = await ctx.Set<GateScanEvent>().FirstOrDefaultAsync(e => e.Id == scanId, ct);
+        if (row is not { IsLiveAdmit: true })
+            return null;
+
+        row.AdmitDedupeKey = null;
+        row.UndoneAt = undoneAt;
+        row.UndoneByUserId = undoneByUserId;
+        row.UndoReason = reason;
+        await ctx.SaveChangesAsync(ct);
+        return row;
+    }
+
     public async Task<IReadOnlyList<GateScanEvent>> GetScansSinceAsync(Instant since, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
@@ -53,7 +80,7 @@ internal sealed class GateRepository(IDbContextFactory<GateDbContext> factory) :
         await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.Set<GateScanEvent>()
             .AsNoTracking()
-            .Where(e => e.GuestUserId == userId || e.ScannedByUserId == userId)
+            .Where(e => e.GuestUserId == userId || e.ScannedByUserId == userId || e.UndoneByUserId == userId)
             .ToListAsync(ct);
     }
 
@@ -84,7 +111,7 @@ internal sealed class GateRepository(IDbContextFactory<GateDbContext> factory) :
         // Load-modify-save, not ExecuteUpdate, so it runs under the in-memory test provider. Idempotent on re-run.
         var rows = await ctx.Set<GateScanEvent>()
             .Where(e => e.GuestUserId == fromUserId || e.ScannedByUserId == fromUserId
-                     || e.OverrideByUserId == fromUserId)
+                     || e.OverrideByUserId == fromUserId || e.UndoneByUserId == fromUserId)
             .ToListAsync(ct);
 
         foreach (var row in rows)
@@ -95,6 +122,8 @@ internal sealed class GateRepository(IDbContextFactory<GateDbContext> factory) :
                 row.ScannedByUserId = toUserId;
             if (row.OverrideByUserId == fromUserId)
                 row.OverrideByUserId = toUserId;
+            if (row.UndoneByUserId == fromUserId)
+                row.UndoneByUserId = toUserId;
         }
 
         // Carry the merged-away PIN over only when the survivor has none.

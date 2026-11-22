@@ -1,6 +1,12 @@
 using System.Transactions;
+using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
+using Humans.Auth.Contracts;
+using Humans.Base.Interfaces;
+using Humans.Teams.Contracts;
+using Microsoft.Extensions.Localization;
 using Humans.Users.Data;
 using AwesomeAssertions;
 using Humans.Users.Tests.Infrastructure;
@@ -38,18 +44,214 @@ public class AccountMergeServiceMergeTests
             NullLogger<AccountMergeService>.Instance, _clock,
             _userMerges, _userService);
 
+    [HumansFact]
+    public async Task RejectAsync_Rollback_RestoresThePendingEmailInTheCache()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var target = Guid.NewGuid();
+        var email = new UserEmail
+        {
+            Id = Guid.NewGuid(),
+            UserId = target,
+            Email = "pending@example.org",
+            IsVerified = false
+        };
+        IReadOnlyList<UserEmail> stored = [email];
+        UserInfo Snapshot() => UserInfo.Create(new User { Id = target }, stored, [], null);
+        _userService.GetAllUserInfosAsync(Arg.Any<CancellationToken>())
+            .Returns(_ => (IReadOnlyCollection<UserInfo>)[Snapshot()]);
+        _userService.GetUserInfoAsync(target, Arg.Any<CancellationToken>())
+            .Returns(_ => ValueTask.FromResult<UserInfo?>(Snapshot()));
+        var services = new ServiceCollection();
+        services.AddKeyedScoped<IUserManagement>(CachingUserService.InnerServiceKey, (_, _) => _userService);
+        var cache = new CachingUserService(services.BuildServiceProvider().GetRequiredService<IServiceScopeFactory>(),
+            NullLogger<CachingUserService>.Instance);
+        (await cache.GetRawUserInfoAsync(target, ct))!.UserEmails.Should().ContainSingle();
+        var request = new AccountMergeRequest
+        {
+            Id = Guid.NewGuid(),
+            TargetUserId = target,
+            SourceUserId = Guid.NewGuid(),
+            PendingEmailId = email.Id,
+            Email = email.Email,
+            Status = AccountMergeRequestStatus.Pending
+        };
+        _mergeRepo.GetByIdPlainAsync(request.Id, Arg.Any<CancellationToken>()).Returns(request);
+        _userEmailRepo.RemoveUserEmailByIdAsync(email.Id, Arg.Any<CancellationToken>()).Returns(async _ =>
+        {
+            Transaction.Current!.TransactionCompleted += (_, args) =>
+            {
+                if (args.Transaction!.TransactionInformation.Status == TransactionStatus.Aborted)
+                    stored = [email];
+            };
+            stored = [];
+            // Models Identity's save interceptor reading its transaction's provisional rows.
+            await cache.RefreshUserEmailsAsync(target, CancellationToken.None);
+            (await cache.GetRawUserInfoAsync(target, ct))!.UserEmails.Should().BeEmpty();
+            return true;
+        });
+        var failure = new IOException("Metadata unavailable");
+        _mergeRepo.UpdateAsync(request, Arg.Any<CancellationToken>()).Returns(Task.FromException(failure));
+        var service = new AccountMergeService(_mergeRepo, _userEmailRepo, _audit, cache,
+            NullLogger<AccountMergeService>.Instance, _clock, _userMerges, _userService);
+
+        var reject = () => service.RejectAsync(request.Id, Guid.NewGuid(), ct: ct);
+        (await reject.Should().ThrowAsync<IOException>()).Which.Should().BeSameAs(failure);
+
+        stored.Should().ContainSingle();
+        (await cache.GetRawUserInfoAsync(target, ct))!.UserEmails.Should().ContainSingle(e => e.Id == email.Id);
+        _audit.ReceivedCalls().Should().BeEmpty();
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task RejectAsync_AuditFailure_RefreshesWithoutMaskingTheError(bool refreshFails)
+    {
+        var request = new AccountMergeRequest
+        {
+            Id = Guid.NewGuid(),
+            TargetUserId = Guid.NewGuid(),
+            SourceUserId = Guid.NewGuid(),
+            PendingEmailId = Guid.NewGuid(),
+            Email = "pending@example.org",
+            Status = AccountMergeRequestStatus.Pending
+        };
+        _mergeRepo.GetByIdPlainAsync(request.Id, Arg.Any<CancellationToken>()).Returns(request);
+        var actor = Guid.NewGuid();
+        var failure = new IOException("Audit unavailable");
+        using var cancellation = new CancellationTokenSource();
+        _audit.LogAsync(UsersAuditActions.AccountMergeRejected, nameof(AccountMergeRequest), request.Id,
+            Arg.Any<string>(), actor).Returns(async _ =>
+        {
+            await cancellation.CancelAsync();
+            throw failure;
+        });
+        if (refreshFails)
+            _userInfoRefresher.RefreshAsync(request.TargetUserId, Arg.Any<CancellationToken>(), Arg.Any<string>(), Arg.Any<string>())
+                .Returns(Task.FromException(new IOException("Refresh unavailable")));
+
+        var reject = () => BuildSut().RejectAsync(request.Id, actor, ct: cancellation.Token);
+        (await reject.Should().ThrowAsync<IOException>()).Which.Should().BeSameAs(failure);
+
+        await _userInfoRefresher.Received(1).RefreshAsync(
+            request.TargetUserId, CancellationToken.None, Arg.Any<string>(), Arg.Any<string>());
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task MergeAsync_CommittedContactMoveThenFailure_RefreshesBothAccounts(bool lostAcknowledgement)
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var source = new User { Id = Guid.NewGuid(), BurnerName = "Source" };
+        var target = new User { Id = Guid.NewGuid(), BurnerName = "Target" };
+        var sourceProfile = new Profile { Id = Guid.NewGuid(), UserId = source.Id };
+        var targetProfile = new Profile { Id = Guid.NewGuid(), UserId = target.Id };
+        var field = new ContactField
+        {
+            Id = Guid.NewGuid(),
+            UserId = sourceProfile.UserId,
+            FieldType = ContactFieldType.Phone,
+            Value = "contact-number",
+            Visibility = ContactFieldVisibility.BoardOnly
+        };
+        var options = new DbContextOptionsBuilder<UsersDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString()).Options;
+        await using (var seed = new UsersDbContext(options))
+        {
+            seed.Users.AddRange(source, target);
+            seed.Profiles.AddRange(sourceProfile, targetProfile);
+            seed.ContactFields.Add(field);
+            await seed.SaveChangesAsync(ct);
+        }
+        async Task<IReadOnlyCollection<UserInfo>> ReadUsersAsync(CancellationToken token)
+        {
+            await using var read = new UsersDbContext(options);
+            var fields = await read.ContactFields.AsNoTracking().ToListAsync(token);
+            return new[] { (source, sourceProfile), (target, targetProfile) }
+                .Select(pair => UserInfoFactory.Create(pair.Item1, [], [], pair.Item2,
+                    fields.Where(f => f.UserId == pair.Item1.Id).ToList(), [], [])).ToList();
+        }
+        _userService.GetAllUserInfosAsync(Arg.Any<CancellationToken>())
+            .Returns(call => ReadUsersAsync(call.Arg<CancellationToken>()));
+        _userService.GetUserInfoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(call => new ValueTask<UserInfo?>(ReadUserAsync(call.Arg<Guid>(), call.Arg<CancellationToken>())));
+        async Task<UserInfo?> ReadUserAsync(Guid id, CancellationToken token) =>
+            (await ReadUsersAsync(token)).Single(u => u.Id == id);
+        var services = new ServiceCollection();
+        services.AddKeyedScoped<IUserManagement>(CachingUserService.InnerServiceKey, (_, _) => _userService);
+        var cache = new CachingUserService(services.BuildServiceProvider().GetRequiredService<IServiceScopeFactory>(),
+            NullLogger<CachingUserService>.Instance);
+        (await cache.GetRawUserInfoAsync(source.Id, ct))!.Profile!.ContactFields.Should().ContainSingle();
+        (await cache.GetRawUserInfoAsync(target.Id, ct))!.Profile!.ContactFields.Should().BeEmpty();
+        var failure = new IOException("Merge step failed");
+        var writeOptions = new DbContextOptionsBuilder<UsersDbContext>(options);
+        if (lostAcknowledgement) writeOptions.AddInterceptors(new LostContactMergeAcknowledgement(failure));
+        var contacts = new ContactFieldService(new UserRepository(new TestDbContextFactory(writeOptions.Options), _clock),
+            cache, Substitute.For<ITeamService>(), Substitute.For<IRoleAssignmentService>(), cache,
+            _clock, NullLogger<ContactFieldService>.Instance, Substitute.For<IStringLocalizer<UsersResource>>());
+        var later = Substitute.For<IUserMerge>();
+        later.ReassignAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<NodaTime.Instant>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException(failure));
+        var service = new AccountMergeService(_mergeRepo, new UserRepository(new TestDbContextFactory(options), _clock),
+            _audit, cache, NullLogger<AccountMergeService>.Instance, _clock, [contacts, later], cache);
+
+        var actor = Guid.NewGuid();
+        var merge = () => service.MergeAsync(target.Id, source.Id, actor, ct: ct);
+        (await merge.Should().ThrowAsync<IOException>()).Which.Should().BeSameAs(failure);
+
+        await using var verify = new UsersDbContext(options);
+        (await verify.ContactFields.SingleAsync(ct)).UserId.Should().Be(target.Id);
+        (await cache.GetRawUserInfoAsync(source.Id, ct))!.Profile!.ContactFields.Should().BeEmpty();
+        (await cache.GetRawUserInfoAsync(target.Id, ct))!.Profile!.ContactFields.Should().ContainSingle(f => f.Id == field.Id);
+        await _userService.DidNotReceive().AnonymizeForMergeAsync(
+            source.Id, target.Id, Arg.Any<NodaTime.Instant>(), Arg.Any<CancellationToken>());
+        // Only the failure is audited, so the half-done merge shows on the admin page.
+        _audit.ReceivedCalls().Should().ContainSingle();
+        await _audit.Received(1).LogAsync(UsersAuditActions.AccountMergeFailed,
+            nameof(User), source.Id, Arg.Any<string>(), actor, target.Id, nameof(User));
+    }
+
+    private sealed class LostContactMergeAcknowledgement(IOException failure) : SaveChangesInterceptor
+    {
+        public override ValueTask<int> SavedChangesAsync(
+            SaveChangesCompletedEventData eventData, int result, CancellationToken cancellationToken = default) => throw failure;
+    }
+
+    [HumansFact]
+    public async Task MergeAsync_RefreshFailure_StillRefreshesTheOtherAccountAndPreservesTheMergeError()
+    {
+        var source = Guid.NewGuid();
+        var target = Guid.NewGuid();
+        SetupUsers(source, target);
+        var failure = new IOException("Contributor failed");
+        var merger = Substitute.For<IUserMerge>();
+        merger.ReassignAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<NodaTime.Instant>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException(failure));
+        _userMerges.Add(merger);
+        _userInfoRefresher.RefreshAsync(source, Arg.Any<CancellationToken>(), Arg.Any<string>(), Arg.Any<string>())
+            .Returns(Task.FromException(new IOException("Refresh failed")));
+
+        var merge = () => BuildSut().MergeAsync(target, source, Guid.NewGuid(), ct: TestContext.Current.CancellationToken);
+        (await merge.Should().ThrowAsync<IOException>()).Which.Should().BeSameAs(failure);
+
+        await _userInfoRefresher.Received(1).RefreshAsync(source, CancellationToken.None, Arg.Any<string>(), Arg.Any<string>());
+        await _userInfoRefresher.Received(1).RefreshAsync(target, CancellationToken.None, Arg.Any<string>(), Arg.Any<string>());
+    }
+
     private void SetupUsers(Guid sourceId, Guid targetId, bool sourceTombstoned = false)
     {
         // A real tombstone sets both MergedToUserId and MergedAt; IsMerged keys off MergedAt.
         _userService.GetRawUserInfoAsync(sourceId, Arg.Any<CancellationToken>())
-            .Returns(new User
+            .Returns(UserInfoFixtures.FromUser(new User
             {
                 Id = sourceId,
                 MergedToUserId = sourceTombstoned ? targetId : null,
                 MergedAt = sourceTombstoned ? _clock.GetCurrentInstant() : null,
-            }.ToUserInfo());
+            }));
         _userService.GetRawUserInfoAsync(targetId, Arg.Any<CancellationToken>())
-            .Returns(new User { Id = targetId }.ToUserInfo());
+            .Returns(UserInfoFixtures.FromUser(new User { Id = targetId }));
     }
 
     [HumansTheory]
@@ -81,6 +283,15 @@ public class AccountMergeServiceMergeTests
             updateTransactionId = Transaction.Current?.TransactionInformation.LocalIdentifier;
             return metadataFails ? Task.FromException(failure) : Task.CompletedTask;
         });
+        var refreshAfterDisposal = false;
+        _userInfoRefresher.RefreshAsync(request.TargetUserId, Arg.Any<CancellationToken>(), Arg.Any<string>(), Arg.Any<string>())
+            .Returns(call =>
+            {
+                call.Arg<CancellationToken>().Should().Be(CancellationToken.None);
+                refreshAfterDisposal = Transaction.Current is null
+                    && transaction?.TransactionInformation.Status == (metadataFails ? TransactionStatus.Aborted : TransactionStatus.Committed);
+                return Task.CompletedTask;
+            });
         var auditAfterCommit = false;
         _audit.LogAsync(UsersAuditActions.AccountMergeRejected, nameof(AccountMergeRequest), request.Id,
             Arg.Any<string>(), actor).Returns(_ =>
@@ -105,6 +316,7 @@ public class AccountMergeServiceMergeTests
                 request.ResolvedByUserId.Should().Be(actor);
                 request.AdminNotes.Should().Be("Declined");
             }
+            refreshAfterDisposal.Should().BeTrue();
             transaction.Should().NotBeNull();
             updateTransactionId.Should().Be(transaction!.TransactionInformation.LocalIdentifier);
             transaction.TransactionInformation.Status.Should().Be(metadataFails ? TransactionStatus.Aborted : TransactionStatus.Committed);
@@ -113,50 +325,6 @@ public class AccountMergeServiceMergeTests
         {
             transaction?.Dispose();
         }
-    }
-
-    [HumansTheory]
-    [InlineData("alex_smith@example.com", null, "alexXsmith@example.com", false)]
-    [InlineData("alex_smith@example.com", null, "ALEX_SMITH@example.com", true)]
-    [InlineData("alex%smith@example.com", null, "alexXsmith@example.com", false)]
-    [InlineData("alex%smith@example.com", null, "ALEX%SMITH@example.com", true)]
-    [InlineData("alex_smith@gmail.com", "alex_smith@googlemail.com", "alexXsmith@googlemail.com", false)]
-    [InlineData("alex_smith@gmail.com", "alex_smith@googlemail.com", "ALEX_SMITH@GOOGLEMAIL.COM", true)]
-    public async Task HasPendingForUserAndEmailAsync_MatchesLiteralAddressesWithinPendingTargetRequests(
-        string email, string? alternate, string pendingEmail, bool expected)
-    {
-        var sourceId = Guid.NewGuid();
-        var targetId = Guid.NewGuid();
-        var otherTargetId = Guid.NewGuid();
-        var options = new DbContextOptionsBuilder<UsersDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString()).Options;
-        await using var db = new UsersDbContext(options);
-        db.Users.AddRange(new[] { sourceId, targetId, otherTargetId }.Select(id => new User { Id = id }));
-        foreach (var (target, address, status) in new[]
-                 {
-                     (targetId, pendingEmail, AccountMergeRequestStatus.Pending),
-                     (otherTargetId, email, AccountMergeRequestStatus.Pending),
-                     (targetId, email, AccountMergeRequestStatus.Accepted),
-                     (targetId, alternate ?? email, AccountMergeRequestStatus.Rejected)
-                 })
-        {
-            db.AccountMergeRequests.Add(new AccountMergeRequest
-            {
-                Id = Guid.NewGuid(),
-                SourceUserId = sourceId,
-                TargetUserId = target,
-                Email = address,
-                Status = status,
-                CreatedAt = _clock.GetCurrentInstant()
-            });
-        }
-        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
-        var repository = new AccountMergeRepository(new TestDbContextFactory(options));
-
-        var result = await BuildSut(repository).HasPendingForUserAndEmailAsync(
-            targetId, email, alternate, TestContext.Current.CancellationToken);
-
-        result.Should().Be(expected);
     }
 
     [HumansTheory]
@@ -195,7 +363,7 @@ public class AccountMergeServiceMergeTests
         await db.SaveChangesAsync(TestContext.Current.CancellationToken);
         var requestedId = requestArchivedId ? oldestId : survivorId;
         _userService.GetUserInfoAsync(requestedId, Arg.Any<CancellationToken>())
-            .Returns(new User { Id = survivorId }.ToUserInfo() with { MergedUserIds = [oldestId, archivedId] });
+            .Returns(UserInfoFixtures.FromUser(new User { Id = survivorId }) with { MergedUserIds = [oldestId, archivedId] });
         var repository = new AccountMergeRepository(new TestDbContextFactory(options));
 
         var slices = await BuildSut(repository).ContributeForUserAsync(
@@ -345,8 +513,54 @@ public class AccountMergeServiceMergeTests
         (await act()).Refusal.Should().Contain("tombstoned");
     }
 
+    // A GDPR-erased side must never fold: as survivor it would absorb the live human's logins onto
+    // a walled tombstone; as archived its Deleted state would be overwritten with Merged.
+    [HumansTheory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task MergeAsync_DeletedSide_RefusesWithoutTouchingEitherAccount(bool survivorDeleted)
+    {
+        var survivor = Guid.NewGuid(); var archived = Guid.NewGuid();
+        var merger = SetupDeletedPair(survivor, archived, survivorDeleted);
+
+        var result = await BuildSut().MergeAsync(
+            survivor, archived, Guid.NewGuid(), pendingEmailIdToVerify: Guid.NewGuid(),
+            ct: TestContext.Current.CancellationToken);
+
+        result.Refusal.Should().Contain("is deleted");
+        await AssertNothingMutatedAsync(merger);
+    }
+
+    private IUserMerge SetupDeletedPair(Guid survivorId, Guid archivedId, bool survivorDeleted)
+    {
+        _userService.GetRawUserInfoAsync(survivorId, Arg.Any<CancellationToken>())
+            .Returns(UserInfoFixtures.FromUser(new User
+            {
+                Id = survivorId,
+                State = survivorDeleted ? UserState.Deleted : UserState.Active,
+            }));
+        _userService.GetRawUserInfoAsync(archivedId, Arg.Any<CancellationToken>())
+            .Returns(UserInfoFixtures.FromUser(new User
+            {
+                Id = archivedId,
+                State = survivorDeleted ? UserState.Active : UserState.Deleted,
+            }));
+        var merger = Substitute.For<IUserMerge>();
+        _userMerges.Add(merger);
+        return merger;
+    }
+
+    private async Task AssertNothingMutatedAsync(IUserMerge merger)
+    {
+        merger.ReceivedCalls().Should().BeEmpty();
+        _userEmailRepo.ReceivedCalls().Should().BeEmpty();
+        _audit.ReceivedCalls().Should().BeEmpty();
+        await _userService.DidNotReceiveWithAnyArgs().AnonymizeForMergeAsync(default, default, default, default);
+        await _mergeRepo.DidNotReceiveWithAnyArgs().UpdateAsync(default!, default);
+    }
+
     [HumansFact]
-    public async Task MergeAsync_FanOutThrows_LeavesArchivedAccountUntombstoned()
+    public async Task MergeAsync_FanOutThrows_LeavesArchivedAccountUntombstonedAndAuditsTheFailure()
     {
         var src = Guid.NewGuid(); var tgt = Guid.NewGuid(); var admin = Guid.NewGuid();
         SetupUsers(src, tgt);
@@ -360,84 +574,8 @@ public class AccountMergeServiceMergeTests
         await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("boom");
         await _userService.DidNotReceive().AnonymizeForMergeAsync(
             src, tgt, Arg.Any<NodaTime.Instant>(), Arg.Any<CancellationToken>());
-    }
-
-    [HumansFact]
-    public async Task ReconcileMergedRequestAsync_SetsAccepted_WhenPairAlreadyMerged()
-    {
-        var src = Guid.NewGuid(); var tgt = Guid.NewGuid(); var admin = Guid.NewGuid();
-        var req = new AccountMergeRequest
-        {
-            Id = Guid.NewGuid(),
-            SourceUserId = src,
-            TargetUserId = tgt,
-            Email = "dupe@example.com",
-            Status = AccountMergeRequestStatus.Pending,
-        };
-        _mergeRepo.GetByIdPlainAsync(req.Id, Arg.Any<CancellationToken>()).Returns(req);
-        _mergeRepo.GetPendingAsync(Arg.Any<CancellationToken>())
-            .Returns(new List<AccountMergeRequest> { req });
-        // Source already tombstoned, target survives.
-        _userService.GetRawUserInfoAsync(src, Arg.Any<CancellationToken>())
-            .Returns(new User { Id = src, MergedToUserId = tgt, MergedAt = _clock.GetCurrentInstant() }.ToUserInfo());
-        _userService.GetRawUserInfoAsync(tgt, Arg.Any<CancellationToken>())
-            .Returns(new User { Id = tgt }.ToUserInfo());
-
-        await BuildSut().ReconcileMergedRequestAsync(req.Id, admin, TestContext.Current.CancellationToken);
-
-        req.Status.Should().Be(AccountMergeRequestStatus.Accepted);
-        req.ResolvedByUserId.Should().Be(admin);
-        await _mergeRepo.Received(1).UpdateAsync(
-            Arg.Is<AccountMergeRequest>(r => r.Id == req.Id && r.Status == AccountMergeRequestStatus.Accepted),
-            Arg.Any<CancellationToken>());
-    }
-
-    [HumansFact]
-    public async Task ReconcileMergedRequestAsync_ReturnsRefusal_WhenNeitherAccountMerged()
-    {
-        var src = Guid.NewGuid(); var tgt = Guid.NewGuid();
-        var req = new AccountMergeRequest
-        {
-            Id = Guid.NewGuid(),
-            SourceUserId = src,
-            TargetUserId = tgt,
-            Email = "dupe@example.com",
-            Status = AccountMergeRequestStatus.Pending,
-        };
-        _mergeRepo.GetByIdPlainAsync(req.Id, Arg.Any<CancellationToken>()).Returns(req);
-        _userService.GetRawUserInfoAsync(src, Arg.Any<CancellationToken>())
-            .Returns(new User { Id = src }.ToUserInfo());
-        _userService.GetRawUserInfoAsync(tgt, Arg.Any<CancellationToken>())
-            .Returns(new User { Id = tgt }.ToUserInfo());
-
-        var act = () => BuildSut().ReconcileMergedRequestAsync(req.Id, Guid.NewGuid(), TestContext.Current.CancellationToken);
-
-        (await act()).Refusal.Should().Contain("not merged into each other");
-    }
-
-    [HumansFact]
-    public async Task ReconcileMergedRequestAsync_ReturnsRefusal_WhenOneAccountMergedIntoThirdParty()
-    {
-        // Source merged into an UNRELATED third account, target still active.
-        // The A<->B request must NOT be closeable — that conflict is still unresolved.
-        var src = Guid.NewGuid(); var tgt = Guid.NewGuid(); var third = Guid.NewGuid();
-        var req = new AccountMergeRequest
-        {
-            Id = Guid.NewGuid(),
-            SourceUserId = src,
-            TargetUserId = tgt,
-            Email = "dupe@example.com",
-            Status = AccountMergeRequestStatus.Pending,
-        };
-        _mergeRepo.GetByIdPlainAsync(req.Id, Arg.Any<CancellationToken>()).Returns(req);
-        _userService.GetRawUserInfoAsync(src, Arg.Any<CancellationToken>())
-            .Returns(new User { Id = src, MergedToUserId = third, MergedAt = _clock.GetCurrentInstant() }.ToUserInfo());
-        _userService.GetRawUserInfoAsync(tgt, Arg.Any<CancellationToken>())
-            .Returns(new User { Id = tgt }.ToUserInfo());
-
-        var act = () => BuildSut().ReconcileMergedRequestAsync(req.Id, Guid.NewGuid(), TestContext.Current.CancellationToken);
-
-        (await act()).Refusal.Should().Contain("not merged into each other");
-        await _mergeRepo.DidNotReceive().UpdateAsync(Arg.Any<AccountMergeRequest>(), Arg.Any<CancellationToken>());
+        // The half-done merge shows on the admin page's "Recently merged" list.
+        await _audit.Received(1).LogAsync(UsersAuditActions.AccountMergeFailed,
+            nameof(User), src, Arg.Any<string>(), admin, tgt, nameof(User));
     }
 }

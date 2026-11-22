@@ -1,3 +1,4 @@
+using Humans.Calendar.Services.Dtos;
 using Humans.Base.Extensions;
 using Ical.Net;
 using Ical.Net.DataTypes;
@@ -96,6 +97,8 @@ internal static class CalendarRecurrenceRules
                 }
                 // DATE form — treat UNTIL as end-of-day in the rule's timezone.
                 var date = DateFormattingExtensions.IcalBasicDatePattern.Parse(val).Value;
+                // This is a conservative prefilter bound; the next midnight may not be representable.
+                if (date == LocalDate.MaxIsoValue) return Instant.MaxValue;
                 return date.PlusDays(1).AtMidnight().InZoneLeniently(zone).ToInstant();
             }
             else if (string.Equals(key, "COUNT", StringComparison.OrdinalIgnoreCase))
@@ -140,7 +143,7 @@ internal static class CalendarRecurrenceRules
         var pattern = ParseRecurrenceRule(rule);
         var days = NodaTime.Period.Between(start.Value, end.Value, PeriodUnits.Days).Days;
         if (pattern.Until is not null)
-            return LocalDate.FromDateTime(pattern.Until.Value).PlusDays(days);
+            return EndDateBound(LocalDate.FromDateTime(pattern.Until.Value), days);
         if (pattern.Count is not > 0) return null;
         var ical = new IcalEvent
         {
@@ -148,8 +151,12 @@ internal static class CalendarRecurrenceRules
             RecurrenceRule = pattern,
         };
         var last = ical.GetOccurrences(ical.DtStart, new EvaluationOptions()).Take(pattern.Count.Value).LastOrDefault();
-        return last is null ? null : LocalDate.FromDateTime(last.Period.StartTime.Value).PlusDays(days);
+        return last is null ? null : EndDateBound(LocalDate.FromDateTime(last.Period.StartTime.Value), days);
     }
+
+    // A prefilter bound may saturate: expansion still checks each occurrence's exact window overlap.
+    private static LocalDate EndDateBound(LocalDate lastStart, int days) =>
+        lastStart > LocalDate.MaxIsoValue.PlusDays(-days) ? LocalDate.MaxIsoValue : lastStart.PlusDays(days);
 
     internal static bool IsDateOnlyRecurrence(string? rule)
     {
@@ -181,4 +188,47 @@ internal static class CalendarRecurrenceRules
             return "UNTIL=" + DateFormattingExtensions.IcalBasicDatePattern.Format(date);
         }));
 
+    internal static string? GetOverrideRefusal(
+        CalendarEventInfo info, Instant? originalUtc, LocalDate? originalDate, OverrideOccurrenceDto? dto)
+    {
+        if (dto is null) return null; // Cancellation preserves the existing override.
+        if (info.IsAllDay)
+        {
+            if (dto.OverrideStartUtc is not null || dto.OverrideEndUtc is not null)
+                return "An all-day occurrence cannot have a time.";
+            var start = dto.OverrideStartDate ?? originalDate!.Value;
+            LocalDate end;
+            try
+            {
+                var days = NodaTime.Period.Between(info.StartDate!.Value, info.EndDateExclusive!.Value, PeriodUnits.Days).Days;
+                // Expansion reconstructs the original range before applying a moved override.
+                _ = originalDate!.Value.PlusDays(days);
+                end = dto.OverrideEndDateExclusive ?? start.PlusDays(days);
+            }
+            catch (OverflowException)
+            {
+                return "An all-day occurrence requires a representable date range.";
+            }
+            if (end <= start) return "An all-day occurrence requires a non-empty date range.";
+        }
+        else
+        {
+            if (dto.OverrideStartDate is not null || dto.OverrideEndDateExclusive is not null)
+                return "A timed occurrence cannot have all-day dates.";
+            var start = dto.OverrideStartUtc ?? originalUtc!.Value;
+            Instant end;
+            try
+            {
+                var duration = (info.EndUtc ?? info.StartUtc!.Value) - info.StartUtc!.Value;
+                _ = originalUtc!.Value.Plus(duration);
+                end = dto.OverrideEndUtc ?? start.Plus(duration);
+            }
+            catch (OverflowException)
+            {
+                return "A timed occurrence requires a representable time range.";
+            }
+            if (end < start) return "An occurrence cannot end before it starts.";
+        }
+        return null;
+    }
 }

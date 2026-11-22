@@ -18,7 +18,7 @@ public sealed class EmailTests
         var message = TestGrantsEmails.CreateReal().Notice(new GrantNoticeRequest(
             Guid.NewGuid(),
             "a@example.org", "Ana", GrantNoticeKind.Issued, "Build crew 2027", "a <cheap> ticket",
-            new LocalDate(2027, 5, 1), GrantService.ProfileUrl, Culture: culture));
+            new LocalDate(2027, 5, 1), Culture: culture));
 
         message.Subject.Should().Be(subject);
         message.HtmlBody.Should().Contain("a &lt;cheap&gt; ticket")
@@ -33,7 +33,7 @@ public sealed class EmailTests
         var message = TestGrantsEmails.CreateReal().Notice(new GrantNoticeRequest(
             Guid.NewGuid(),
             "a@example.org", null, GrantNoticeKind.Revoked, "Build crew 2027", "a ticket", null,
-            GrantService.ProfileUrl, "You left the crew.", "en"));
+            "You left the crew.", "en"));
 
         message.Subject.Should().Be("Grant revoked: Build crew 2027");
         message.HtmlBody.Should().Contain("You left the crew.").And.StartWith("<p>Hi,</p>");

@@ -1,7 +1,7 @@
 using System.Reflection;
 using AwesomeAssertions;
-using Humans.Grants.Contracts;
 using Humans.Grants.Authorization;
+using Humans.Grants.Contracts;
 using Humans.Grants.Controllers;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;

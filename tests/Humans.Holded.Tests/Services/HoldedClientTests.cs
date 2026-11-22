@@ -18,7 +18,7 @@ public class HoldedClientTests
             Options.Create(new HoldedClientOptions { ApiKey = "test-key" }),
             NullLogger<HoldedClient>.Instance,
             new HoldedCallLog(),
-            new FakeClock(Instant.FromUtc(2026, 8, 10, 12, 0)));
+            new FakeClock(Instant.FromUtc(2026, 8, 10, 12, 0)), FixedOrgTimeZone.Madrid);
 
     [HumansTheory]
     [Xunit.InlineData("expense-account", "{malformed")]
@@ -128,15 +128,16 @@ public class HoldedClientTests
     }
 
     [HumansFact]
-    public async Task GetPurchaseDocumentAsync_ParsesResponse()
+    public async Task GetPurchaseDocumentAsync_reads_used_fields_without_parsing_unused_metadata()
     {
         var json = """
         {
-          "id":"doc-123","document_number":"F260009",
-          "subtotal":"19.52","tax":"0.00","total":"19.52",
-          "payments_total":"19.52","payments_pending":"0.00",
+          "id":42,"document_number":{},
+          "subtotal":"unreadable","tax":{},"total":[],
+          "payments_total":"unreadable","payments_pending":{},
           "approved_at":"2026-05-10T09:00:00",
-          "tags":["camp-build-camp"],
+          "tags":42,
+          "notes":"Published notes",
           "payments_detail":[
             {"id":"6ad492bfadfbf95ccf087fde","amount":"17.00","date":"2026-10-16","bank_id":"69d65af9b42dd1dd620d9330"},
             {"id":"6ad492bfadfbf95ccf087fdf","amount":"2.52","date":"2026-10-17","bank_id":null}
@@ -154,11 +155,8 @@ public class HoldedClientTests
         var client = Make(handler);
         var doc = await client.GetPurchaseDocumentAsync("doc-123", Xunit.TestContext.Current.CancellationToken);
 
-        doc.Id.Should().Be("doc-123");
-        doc.DocNumber.Should().Be("F260009");
-        doc.PaymentsPending.Should().Be(0);
         doc.ApprovedAt.Should().NotBeNull();
-        doc.Tags.Should().ContainSingle("camp-build-camp");
+        doc.Notes.Should().Be("Published notes");
         // The live payments_detail shape (2026-10-18): a 2-dp amount string, a plain date, bank_id.
         doc.Payments.Should().HaveCount(2);
         doc.Payments[0].Should().Be(new HoldedPaymentDetailDto(
@@ -199,7 +197,7 @@ public class HoldedClientTests
     {
         // Callers handle only IHoldedClient's two typed exceptions; a raw parse throw from a bad
         // stored value would escape the client and leak an Infrastructure detail upward.
-        var handler = new StubHandler(_ => Respond(HttpStatusCode.OK, """{"id":42,"document_number":"F001"}"""));
+        var handler = new StubHandler(_ => Respond(HttpStatusCode.OK, """{"notes":42}"""));
         var client = Make(handler);
 
         var act = async () => await client.GetPurchaseDocumentAsync("doc-123", Xunit.TestContext.Current.CancellationToken);
@@ -244,6 +242,56 @@ public class HoldedClientTests
         await act.Should().ThrowAsync<HoldedPermanentException>();
     }
 
+    [HumansTheory]
+    [Xunit.InlineData(HoldedSalesDocumentKind.Invoice, "/api/v2/invoices/doc-123/approve")]
+    [Xunit.InlineData(HoldedSalesDocumentKind.SalesReceipt, "/api/v2/sales-receipts/doc-123/approve")]
+    public async Task ApproveSalesDocumentAsync_SendsEmptyContentWithZeroContentLength(
+        HoldedSalesDocumentKind kind, string path)
+    {
+        HttpMethod? method = null;
+        string? seenPath = null;
+        long? contentLength = null;
+        var client = Make(new StubHandler(req =>
+        {
+            method = req.Method;
+            seenPath = req.RequestUri!.AbsolutePath;
+            contentLength = req.Content?.Headers.ContentLength;
+            return Respond(HttpStatusCode.OK, "{}");
+        }));
+
+        await client.ApproveSalesDocumentAsync(kind, "doc-123", Xunit.TestContext.Current.CancellationToken);
+
+        method.Should().Be(HttpMethod.Post);
+        seenPath.Should().Be(path);
+        contentLength.Should().Be(0);
+    }
+
+    [HumansFact]
+    public async Task ApproveSalesDocumentAsync_AlreadyApproved_ReturnsNormally()
+    {
+        var handler = new StubHandler(_ => Respond(HttpStatusCode.BadRequest,
+            """{"type":"https:\/\/api.holded.com\/problems\/bad-request","title":"Bad request","status":400,"detail":"Document already approved"}"""));
+        var client = Make(handler);
+
+        var act = async () => await client.ApproveSalesDocumentAsync(
+            HoldedSalesDocumentKind.Invoice, "doc-123", Xunit.TestContext.Current.CancellationToken);
+
+        await act.Should().NotThrowAsync();
+    }
+
+    [HumansFact]
+    public async Task ApproveSalesDocumentAsync_OtherBadRequest_StillThrows()
+    {
+        var handler = new StubHandler(_ => Respond(HttpStatusCode.BadRequest,
+            """{"status":400,"detail":"Document has no lines"}"""));
+        var client = Make(handler);
+
+        var act = async () => await client.ApproveSalesDocumentAsync(
+            HoldedSalesDocumentKind.Invoice, "doc-123", Xunit.TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<HoldedPermanentException>();
+    }
+
     [HumansFact]
     public async Task DeletePurchaseDocumentAsync_sends_DELETE_to_the_purchase_url()
     {
@@ -267,13 +315,17 @@ public class HoldedClientTests
         await act.Should().ThrowAsync<HoldedPermanentException>();
     }
 
-    [HumansFact]
-    public async Task PermanentFailure_MasksAnIbanEchoedBackInTheResponseBody()
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task PermanentFailure_MasksAnIbanEchoedBackInTheResponseBody(bool escaped)
     {
         // The message becomes the outbox LastError, the audit description and the finance-admin
         // card. A 4xx on a contact create can echo the IBAN we just sent
         // (memory/code/iban-mask-in-logs.md). ResponseBody keeps the untouched body.
-        var body = """{"status":0,"info":"invalid iban ES9121000418450200051332"}""";
+        var body = escaped
+            ? System.Text.Json.JsonSerializer.Serialize(new { status = 0, info = "invalid iban E S 9 1 2100\u00a00418\n4502 0005 1332" })
+            : """{"status":0,"info":"invalid iban ES9121000418450200051332"}""";
         var handler = new StubHandler(_ => Respond(HttpStatusCode.BadRequest, body));
         var client = Make(handler);
 
@@ -282,7 +334,20 @@ public class HoldedClientTests
         var ex = await act.Should().ThrowAsync<HoldedPermanentException>();
         ex.Which.Message.Should().NotContain("ES9121000418450200051332");
         ex.Which.Message.Should().Contain("ES91****332");
+        ex.Which.Message.Should().NotContain("2100");
         ex.Which.ResponseBody.Should().Be(body);
+    }
+
+    [HumansFact]
+    public async Task PermanentFailure_KeepsNonAsciiDiagnosticTextReadable()
+    {
+        var body = System.Text.Json.JsonSerializer.Serialize(new { status = 0, info = "Proveedor inválido" });
+        var client = Make(new StubHandler(_ => Respond(HttpStatusCode.BadRequest, body)));
+
+        var act = async () => await client.GetPurchaseDocumentAsync("doc-1", Xunit.TestContext.Current.CancellationToken);
+
+        var ex = await act.Should().ThrowAsync<HoldedPermanentException>();
+        ex.Which.Message.Should().Contain("Proveedor inválido");
     }
 
     [HumansFact]
@@ -301,7 +366,7 @@ public class HoldedClientTests
     /// <paramref name="afterDetail"/> is what the second read's <c>payments_detail</c> holds.</summary>
     private static StubHandler PaymentHandler(
         string beforeDetail, string afterDetail, Action<HttpRequestMessage>? onPost = null,
-        Func<int, HttpResponseMessage?>? overrideGet = null)
+        Func<int, HttpResponseMessage?>? overrideGet = null, HttpStatusCode postStatus = HttpStatusCode.Created)
     {
         var gets = 0;
         return new StubHandler(req =>
@@ -310,7 +375,7 @@ public class HoldedClientTests
             {
                 req.RequestUri!.PathAndQuery.Should().Be("/api/v2/purchases/doc-123/payments");
                 onPost?.Invoke(req);
-                return Respond(HttpStatusCode.Created, """{"status":"paid"}""");
+                return Respond(postStatus, """{"status":"paid"}""");
             }
             req.RequestUri!.PathAndQuery.Should().Be("/api/v2/purchases/doc-123");
             gets++;
@@ -384,6 +449,24 @@ public class HoldedClientTests
             Xunit.TestContext.Current.CancellationToken);
 
         id.Should().Be("unconfirmed:doc-123");
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(true)]
+    [Xunit.InlineData(false)]
+    public async Task PayPurchaseDocumentAsync_PostAnswers503_TheDocumentSaysWhetherItPosted(bool savedAnyway)
+    {
+        // Production, 2026-11-05: a 503 is not proof nothing was saved. The document decides.
+        var handler = PaymentHandler(
+            OldPayment, OldPayment + (savedAnyway ? "," + NewPayment : ""),
+            postStatus: HttpStatusCode.ServiceUnavailable);
+
+        var act = async () => await Make(handler).PayPurchaseDocumentAsync(
+            "doc-123", 18m, "treasury-1", new LocalDate(2026, 8, 25), null,
+            Xunit.TestContext.Current.CancellationToken);
+
+        if (savedAnyway) (await act()).Should().Be("pay-9");
+        else await act.Should().ThrowAsync<HoldedTransientException>();
     }
 
     [HumansFact]

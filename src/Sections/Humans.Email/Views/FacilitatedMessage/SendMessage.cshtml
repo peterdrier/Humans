@@ -5,7 +5,6 @@
     var recipient = await Component.InvokeAsync(typeof(Humans.Base.ViewComponents.HumanViewComponent), new
     {
         userId = Model.RecipientId,
-        link = Humans.Base.ViewComponents.HumanLink.None,
     });
     using var recipientWriter = new System.IO.StringWriter();
     recipient.WriteTo(recipientWriter, System.Text.Encodings.Web.HtmlEncoder.Default);
@@ -17,7 +16,9 @@
     <span>@Localizer["Email_SendMessage_Breadcrumb"]</span>
 }
 
-<h1>@HtmlLocalizer["Email_SendMessage_Heading", recipientHtml]</h1>
+<page-header>
+    <page-header-title>@HtmlLocalizer["Email_SendMessage_Heading", recipientHtml]</page-header-title>
+</page-header>
 
 
 <div class="card">

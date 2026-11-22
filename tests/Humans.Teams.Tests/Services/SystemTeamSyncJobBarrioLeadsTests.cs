@@ -1,7 +1,7 @@
 using Humans.Consent.Contracts;
 using Humans.Base.Constants;
 using Humans.Base.Extensions;
-using Humans.GoogleIntegration.Contracts;
+using Humans.Google.Contracts;
 using Humans.Camps.Contracts;
 using Humans.Teams.Domain;
 using AwesomeAssertions;
@@ -40,13 +40,12 @@ public class SystemTeamSyncJobBarrioLeadsTests
     private readonly TeamsEmails _emailMessages = TestTeamsEmails.Create();
     private readonly IHumansMetrics _metrics = Substitute.For<IHumansMetrics>();
 
-    private SystemTeamSyncJob CreateJob(IMembershipCalculator? membershipCalculator = null, ITeamResourceService? resources = null)
+    private SystemTeamSyncJob CreateJob(IConsentService? consentService = null, ITeamResourceService? resources = null)
     {
         _googleClient.IsConfigured.Returns(true);
         var services = new ServiceCollection();
-        services.AddSingleton(membershipCalculator ?? Substitute.For<IMembershipCalculator>());
         services.AddSingleton(resources ?? Substitute.For<ITeamResourceService>());
-        var consent = Substitute.For<IConsentService>();
+        var consent = consentService ?? Substitute.For<IConsentService>();
         consent.GetConsentReviewAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(call => ConsentReviewInfo.None(call.Arg<Guid>()));
         consent.GetConsentReviewsAsync(Arg.Any<CancellationToken>())
@@ -80,12 +79,9 @@ public class SystemTeamSyncJobBarrioLeadsTests
     public async Task SyncVolunteersTeam_emails_added_members_in_supported_language(string? language, string expectedLanguage)
     {
         using var culture = new CultureScope("fr");
-        var member = new User { Id = Guid.NewGuid(), BurnerName = "Member", PreferredLanguage = language! };
+        var member = new User { Id = Guid.NewGuid(), BurnerName = "Member", FirstName = "First", LastName = "Last", PreferredLanguage = language! };
         var profile = new ProfileInfo(
             Id: Guid.NewGuid(),
-            BurnerName: "Member",
-            FirstName: "First",
-            LastName: "Last",
             City: null,
             CountryCode: null,
             Latitude: null,
@@ -98,9 +94,9 @@ public class SystemTeamSyncJobBarrioLeadsTests
             EmergencyContactName: null,
             EmergencyContactPhone: null,
             EmergencyContactRelationship: null,
-            MedicalConditions: null,
             HasCustomPicture: false,
             ProfilePictureContentType: null,
+            ProfilePictureFileKey: null,
             CreatedAt: _clock.GetCurrentInstant(),
             UpdatedAt: _clock.GetCurrentInstant(),
             AdminNotes: null,
@@ -116,9 +112,9 @@ public class SystemTeamSyncJobBarrioLeadsTests
             true, true, SystemTeamType.Volunteers, false, false, false, false, default, []);
         _teamService.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo> { [team.Id] = team });
         _userService.GetAllUserInfosAsync(Arg.Any<CancellationToken>()).Returns(new[] { user });
-        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+        _userService.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(new Dictionary<Guid, UserInfo> { [user.Id] = user }));
-        var calculator = Substitute.For<IMembershipCalculator>();
+        var calculator = Substitute.For<IConsentService>();
         calculator.GetUsersWithAllRequiredConsentsForTeamAsync(
             Arg.Is<IEnumerable<Guid>>(ids => ids.Contains(user.Id)), team.Id, Arg.Any<CancellationToken>())
             .Returns(new HashSet<Guid> { user.Id });
@@ -170,8 +166,6 @@ public class SystemTeamSyncJobBarrioLeadsTests
     [HumansFact]
     public async Task SyncMembershipForUserAsync_BarrioLeads_UserAlreadyActiveMember_IsNoOp()
     {
-        // User is already an active member of Barrio Leads and is still a
-        // lead of at least one camp — the guard in the job should short-circuit.
         var userId = Guid.NewGuid();
         StubBarrioLeadsTeam(
             [
@@ -204,15 +198,13 @@ public class SystemTeamSyncJobBarrioLeadsTests
     [HumansFact]
     public async Task SyncMembershipForUserAsync_BarrioLeads_UserBecomesLead_AddsMembership()
     {
-        // User is a new lead but not yet a team member — the job should
-        // enqueue the add via the bulk-delta service call.
         var userId = Guid.NewGuid();
         var team = StubBarrioLeadsTeam();
         _campRepository.IsLeadAnywhereAsync(userId, Arg.Any<CancellationToken>())
             .Returns(true);
 
         _userService.GetUserInfosAsync(
-            Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(new Dictionary<Guid, UserInfo>()));
 
         var job = CreateJob();
@@ -241,7 +233,7 @@ public class SystemTeamSyncJobBarrioLeadsTests
             [new TeamMember { Id = Guid.NewGuid(), UserId = removedId, JoinedAt = _clock.GetCurrentInstant() }]);
         _campRepository.GetActiveLeadUserIdsAsync(Arg.Any<CancellationToken>()).Returns(addedIds);
         _userService.GetUserInfosAsync(
-                Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+                Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(new Dictionary<Guid, UserInfo>()));
         _googleSyncService.AddUserToTeamResourcesAsync(
                 team.Id, Arg.Any<Guid>(), Arg.Any<CancellationToken>(), GoogleSyncSource.SystemTeamSync)
@@ -277,7 +269,7 @@ public class SystemTeamSyncJobBarrioLeadsTests
         var systemCoordinator = demote with { TeamMemberId = Guid.NewGuid(), UserId = Guid.NewGuid(), SystemTeamType = SystemTeamType.Board };
         _teamService.GetActiveMembershipsForRoleReconciliationAsync(Arg.Any<CancellationToken>())
             .Returns(new[] { promote, demote, skipped, unchanged, systemCoordinator });
-        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+        _userService.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(new Dictionary<Guid, UserInfo>()));
         var saved = false;
         _teamService.ApplyMemberRoleChangesAsync(

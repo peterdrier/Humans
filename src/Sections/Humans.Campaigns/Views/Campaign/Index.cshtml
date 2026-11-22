@@ -18,10 +18,8 @@
         }
         else
         {
-            Func<CampaignListSummary, IHtmlContent> titleCell =
-                @<text><a asp-action="Detail" asp-route-id="@item.Id">@item.Title</a></text>;
             var table = TableModel.For(Model.OrderByDescending(c => c.CreatedAt).ToList())
-                .Template("Title", titleCell)
+                .Link("Title", r => r.Title, r => Url.Action("Detail", new { id = r.Id }))
                 .Column("Status", r => r.Status, c => c.EnumBadge())
                 .Column("Codes", r => $"{r.AssignedCodes} / {r.TotalCodes}")
                 .Column("Created", r => r.CreatedAt, c => c.Date())

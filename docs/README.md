@@ -8,7 +8,7 @@ Business requirements, user stories, data model, and workflows for each feature 
 |----------|-------------|
 | [Event Guide Management](../src/Sections/Humans.Events/Docs/features/Events-feature.md) | Submission, moderation, and publication of camp and individual events for the digital and print event guide |
 | [In-App Guide Browser](../src/Sections/Humans.Events/Docs/features/27-guide-browser.md) | Read-only `/Events/Browse` view letting logged-in humans discover, filter, favourite, and schedule approved events without leaving Humans |
-| [Google Group Membership Sync](../src/Sections/Humans.GoogleIntegration/Docs/features/43-google-group-membership-sync.md) | Expected-state reconciliation of Google Group memberships from `IGoogleGroupMembershipSource` plugins, with daily and scoped retry passes |
+| [Google Group Membership Sync](../src/Sections/Humans.Google/Docs/features/43-google-group-membership-sync.md) | Expected-state reconciliation of Google Group memberships from `IGoogleGroupMembershipSource` plugins, with daily and scoped retry passes |
 | [Volunteer Tracking](../src/Sections/Humans.Shifts/Docs/features/47-volunteer-tracking.md) | `/Shifts/Dashboard/VolunteerTracking` heatmap surfacing build-period gaps and declared-but-unbooked volunteers for the VC |
 | [Active User Metrics](features/global/active-user-metrics.md) | Distinct authenticated users tracked by trailing window (5m / 1h / 24h), surfaced as Prometheus gauges plus three tiles on `/Admin` |
 | [Agent Section](../src/Sections/Humans.Agent/Docs/features/Agent-feature.md) | Conversational helper grounded on docs and user state, with `route_to_issue` handoff and admin spot-check view |
@@ -38,12 +38,11 @@ Business requirements, user stories, data model, and workflows for each feature 
 | [Pre-approvals](features/global/preapprovals.md) | Programs of pre-authorized reimbursements: event-scoped pools with per-person grants that become capped, pre-booked expense reports with a claim deadline |
 | [Workgroup Budgets](features/global/workgroup-budget.md) | A budget amount and dedicated Holded expense account per budgeted workgroup, with Finance owning account creation and the managed-account registry |
 | [F-13: Drive Activity Monitoring](../src/Sections/Humans.Monitor/Docs/features/drive-activity-monitoring.md) | Detection and logging of Google Shared Drive permission changes made outside the system |
-| [Google Integration](../src/Sections/Humans.GoogleIntegration/Docs/features/google-integration.md) | Integration with Google Workspace Shared Drives and Google Groups for managing team shared resources |
-| [Google Removal Notifications](../src/Sections/Humans.GoogleIntegration/Docs/features/google-removal-notifications.md) | Email notifications to addresses removed from Google Groups or Drive permissions, distinguishing loss-of-access from secondary-email cleanup |
-| [Workspace Account Provisioning](../src/Sections/Humans.GoogleIntegration/Docs/features/workspace-account-provisioning.md) | Admin-driven creation of @nobodies.team Google Workspace accounts linked to a human's profile |
+| [Google](../src/Sections/Humans.Google/Docs/features/google-integration.md) | Integration with Google Workspace Shared Drives and Google Groups for managing team shared resources |
+| [Google Removal Notifications](../src/Sections/Humans.Google/Docs/features/google-removal-notifications.md) | Email notifications to addresses removed from Google Groups or Drive permissions, distinguishing loss-of-access from secondary-email cleanup |
+| [Workspace Account Provisioning](../src/Sections/Humans.Google/Docs/features/workspace-account-provisioning.md) | Admin-driven creation of @nobodies.team Google Workspace accounts linked to a human's profile |
 | [Tier Applications](../src/Sections/Humans.Governance/Docs/features/asociado-applications.md) | Application entity for Colaborador and Asociado tier-based membership applications with Board voting workflow |
 | [Board Voting](../src/Sections/Humans.Governance/Docs/features/board-voting.md) | Structured Board vote on Colaborador/Asociado tier applications with individual votes, meeting date, and collective decision |
-| [Membership Status Partition](../src/Sections/Humans.Governance/Docs/features/membership-status.md) | Six-bucket mutually exclusive status model computed by `PartitionUsersAsync` and used by the Admin dashboard — the Admin /Humans list and Volunteers team sync each compute their own status buckets independently now |
 | [Membership Tiers](../src/Sections/Humans.Governance/Docs/features/membership-tiers.md) | Four-tier membership model (Volunteer / Colaborador / Asociado / Board) with three tiers managed in-system |
 | [Assembly Votes](../src/Sections/Humans.Governance/Docs/features/assembly-votes.md) | Binding recorded votes of the Asociados on Assembly motions — frozen roster at open, embargoed tally, append-only ballot history, IRV counting |
 | [Grants](../src/Sections/Humans.Grants/Docs/features/grants.md) | Program-based entitlements (cheaper ticket, early entry, staying late) issued by hand or by a source section such as Low Income, with revoke, resend and holder notices |
@@ -90,7 +89,6 @@ Business requirements, user stories, data model, and workflows for each feature 
 | [Test System Reliability](testing/test-system-reliability.md) | Multi-phase rebuild of the test setup so CI catches what local sees, integration tests survive concurrent runs, and "pre-existing failures on main" stops being said |
 | [Accountant Donor List](../src/Sections/Humans.Tickets/Docs/features/accountant-donor-list.md) | Yearly audited export of ticketing donors (VIP amount above the threshold plus standalone donations) so the accountant can declare donations apart from taxable ticket income |
 | [Event Participation Tracking](../src/Sections/Humans.Tickets/Docs/features/event-participation.md) | Yearly event participation status per human, including self-service opt-out and ticket-driven auto-tracking |
-| [Ticket Transfer](../src/Sections/Humans.Tickets/Docs/features/ticket-transfer.md) | Sender-initiated transfer of a ticket to another verified member, processed by the ticket team either via automated void+reissue through the TicketTailor API or manually in the vendor dashboard |
 | [Ticket Vendor Integration](../src/Sections/Humans.Tickets/Docs/features/ticket-vendor-integration.md) | Dedicated Tickets section with TicketTailor sync, sales dashboard, revenue metrics, and attendee tracking |
 | [User Search Overhaul](../src/Sections/Humans.Users/Docs/features/user-search-overhaul.md) | Rework of human-name matching so search hits resolved burner names and legal names with accent folding and token splitting, while excluding board/private profiles |
 
@@ -102,7 +100,7 @@ Terse, authoritative invariant docs for each major section: concepts, data model
 |----------|-------------|
 | [Admin Shell](sections/admin-shell.md) | Frame-only section providing the shared admin sidebar, breadcrumb, and dashboard skeleton — owns no tables |
 | [Agent](../src/Sections/Humans.Agent/Docs/Agent.md) | Conversational helper backed by Anthropic Claude, available to authenticated consented users when `AgentSettings.Enabled = true` |
-| [Audit Log](../src/Sections/Humans.AuditLog/Docs/AuditLog.md) | Append-only system audit trail capturing actor, action, entity, and timestamp; enforced append-only per design-rules §12 |
+| [Audit Log](../src/Sections/Humans.AuditLog/Docs/AuditLog.md) | Append-only system audit trail capturing actor, action, entity, and timestamp; enforced append-only per design-rules.md, *Append-only entities* |
 | [Auth](../src/Sections/Humans.Auth/Docs/Auth.md) | Temporal role assignments, magic-link login/signup, and claims transformation |
 | [Backdoor](../src/Sections/Humans.Backdoor/Docs/Backdoor.md) | The machine surface — every key-authed API an agent talks to, under `/api/backdoor/*`, gated by one personal key per human |
 | [Budget](../src/Sections/Humans.Budget/Docs/Budget.md) | Fiscal-year budgets (Draft/Active/Closed) with groups, categories, line items, and an append-only audit log |
@@ -121,7 +119,7 @@ Terse, authoritative invariant docs for each major section: concepts, data model
 | [Finance](../src/Sections/Humans.Finance/Docs/Finance.md) | Treasurer's reality side of money — actuals, reconciliation, and treasurer-facing operational data sharing keys with Budget |
 | [Gate](../src/Sections/Humans.Gate/Docs/Gate.md) | Gate ticket scanning that decides entry at the event door and writes the durable admission record — distinct from the read-only Scanner section, which must never check anyone in |
 | [Gdpr](../src/Sections/Humans.Gdpr/Docs/Gdpr.md) | GDPR Article 15 export orchestrator — fans out to every section that holds personal data and merges the slices into the JSON the human downloads; owns no tables and no pages |
-| [Google Integration](../src/Sections/Humans.GoogleIntegration/Docs/GoogleIntegration.md) | Shared-Drive-only sync for Drive folders, Groups, and Workspace accounts with reconciliation and Drive-activity monitoring |
+| [Google](../src/Sections/Humans.Google/Docs/Google.md) | Shared-Drive-only sync for Drive folders, Groups, and Workspace accounts with reconciliation and Drive-activity monitoring |
 | [Governance](../src/Sections/Humans.Governance/Docs/Governance.md) | Colaborador and Asociado tier applications, Board voting workflow, and term lifecycle (not volunteer onboarding) |
 | [Grants](../src/Sections/Humans.Grants/Docs/Grants.md) | Entitlements to a person (cheaper ticket, early entry, staying late): issuer rules, one live grant per person, expiry, source write contract, and notices |
 | [Guide](../src/Sections/Humans.Guide/Docs/Guide.md) | The in-app `/Guide` renderer for `docs/guide/` markdown with role-scoped block filtering |
@@ -134,11 +132,13 @@ Terse, authoritative invariant docs for each major section: concepts, data model
 | [Monitor](../src/Sections/Humans.Monitor/Docs/Monitor.md) | Operator-facing monitoring of the Google Workspace estate: detect unrequested permission changes, and show the Google-sync audit trail for one resource or one human |
 | [Notifications](../src/Sections/Humans.Notifications/Docs/Notifications.md) | In-app notification fan-out (stored events plus per-user inbox) and live meter counts (computed) |
 | [Onboarding](../src/Sections/Humans.Onboarding/Docs/Onboarding.md) | Pure orchestrator over Profiles, Consent, Teams, and Governance — owns no tables |
+| [Permissions](../src/Sections/Humans.Permissions/Docs/Permissions.md) | May this person do this on this owner: permissions declared by sections, granted by roles (later tasks) and system roles; stores nothing |
+| [Roles](../src/Sections/Humans.Roles/Docs/Roles.md) | Standing responsibilities on an owner (a team today, camps next): slots, holders, and the permission keys they carry |
 | [Pleo](../src/Sections/Humans.Pleo/Docs/Pleo.md) | Read-only mirror of the Pleo card wallet (entries, chart, cardholders, balance), the category → Holded account mapping, and the `/Pleo` admin pages with the wallet reconciliation |
 | [Rideshare](../src/Sections/Humans.Rideshare/Docs/Rideshare.md) | Members-only map board for organizing rides to and from the burn — offers, requests, and a lightweight interest lifecycle, no booking or payment |
 | [Scanner](../src/Sections/Humans.Scanner/Docs/Scanner.md) | In-browser camera tools for barcode decode (`/Scanner/Barcode`) and read-only ticket lookup (`/Scanner/Tickets`); no owned tables |
 | [Search](../src/Sections/Humans.Search/Docs/Search.md) | Orchestrator behind the global `/Search` page — fans out to five sections' read surfaces, scores each independently, owns no tables |
-| [Settings](../src/Sections/Humans.Settings/Docs/Settings.md) | App-wide `system_settings` key/value store every section may read and write, plus `settings_event`, the app-wide event calendar and active-cycle record |
+| [Settings](../src/Sections/Humans.Settings/Docs/Settings.md) | App-wide `settings_system_values` key/value store every section may read and write, plus `settings_events`, the app-wide event calendar and active-cycle record |
 | [Shifts](../src/Sections/Humans.Shifts/Docs/Shifts.md) | Event shifts, rotas, signups, range blocks, event settings, general availability, and per-event volunteer profiles |
 | [Store](../src/Sections/Humans.Store/Docs/Store.md) | Per-camp catalog ordering, multi-method payments, and consolidated Holded factura issuance for Camp Lead purchases |
 | [Stripe](../src/Sections/Humans.Stripe/Docs/Stripe.md) | The payments connector — Checkout Session creation, webhook signature verification, fee lookups, boot-time key probes — plus the read-only Stripe mirror (ledger, payouts, balance, reserves) and the `/Stripe` pages |
@@ -166,7 +166,7 @@ The end-user guide for the Humans app, organized by role within each section.
 | [Email](guide/Email.md) | Personal `@nobodies.team` mailboxes and team group emails: how they work and how to send "as" your team |
 | [Events](guide/Events.md) | Browse the festival programme and submit your own events; moderators approve submissions into the public guide |
 | [Expenses](guide/Expenses.md) | Submit expense reports and track reimbursement; FinanceAdmin reviews |
-| [Google Integration](guide/GoogleIntegration.md) | Wires teams up to Google Workspace: Group, Shared Drive, Workspace accounts, and Drive activity monitoring |
+| [Google](guide/Google.md) | Wires teams up to Google Workspace: Group, Shared Drive, Workspace accounts, and Drive activity monitoring |
 | [Governance](guide/Governance.md) | Tier applications, Board votes, and coordinator/admin role assignments — not Volunteer onboarding |
 | [Issues](guide/Issues.md) | File a bug, feature request, or question and talk it through in one thread with whoever handles that part of the app |
 | [Consent](guide/LegalAndConsent.md) | Documents you sign, GDPR Article 15 export, and Article 17 deletion |
@@ -185,7 +185,6 @@ Plain-language pages for the things people ask most.
 |----------|-------------|
 | [Your `@nobodies.team` email](guide/EmailAccount.md) | Your org mailbox: what it is, signing in, and using your team's shared address |
 | [Two-step verification (2FA)](guide/TwoStepVerification.md) | The required extra sign-in step on your `@nobodies.team` account, in plain language |
-| [Transferring your ticket](guide/TicketTransfers.md) | Hand a ticket you hold to someone else through the app |
 | [The in-app AI helper](guide/AiHelper.md) | What the chat helper does, what it can see, and that it's optional |
 | [Signing in & getting unstuck](guide/SigningIn.md) | The two ways into the app and what to do when you can't get in |
 | [Your data & privacy](guide/YourData.md) | Who can see your details, exporting your data, and deleting your account |
@@ -231,7 +230,7 @@ Humans.Base            Bottom of the graph: role markers, architecture attribute
 | [Base](../src/Humans.Base/Docs/Base.md) | What `Humans.Base` holds: markers, attributes, `TrackedCache`, the persistence seam, the Users/Audit/Gdpr cores, the shared view layer |
 | [Shell](../src/Humans.Web/Docs/Shell.md) | What `Humans.Web` holds and the seam catalog: how section contributions are composed into nav, admin, jobs, policies and settings |
 | [Conventions](architecture/conventions.md) | Domain invariants, transactions, integration, time/config, rendering (Razor vs fetch), testing, exception rule, smell checklist |
-| [Dependency Graph](architecture/dependency-graph.md) | Service-to-service dependency graph, current vs target edges, circular dependency analysis |
+| [Dependency Graph](architecture/dependency-graph.md) | Section-to-section project-reference graph, generated from the `.csproj` files |
 | [Project Rules Catalog](../memory/INDEX.md) | Atomic rules (one per file under `memory/<bucket>/`). `architecture/coding-rules.md` is now a stub redirecting here. |
 | [Code Review Rules](architecture/code-review-rules.md) | Hard-reject rules for code review |
 | [Service / Data Access Map](architecture/service-data-access-map.md) | Per-service table access inventory |

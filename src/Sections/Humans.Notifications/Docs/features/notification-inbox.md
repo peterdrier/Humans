@@ -69,7 +69,7 @@ Dispatch checks `CommunicationPreference.InboxEnabled` and suppresses informatio
 Three-state badge: no badge / success dot (informational only) / danger count (actionable). `NotificationBellViewComponent` calls `NotificationInboxService.GetUnreadBadgeCountsAsync` with the request-abort token. Each read queries current unread, unresolved recipient counts, so a read begun before a mutation cannot cache stale counts afterward. Shared-resolution, merge and retention changes are visible on the next read.
 
 ### Popup
-340px dropdown from bell, right-aligned. It lists only unread, unresolved items, so opening an item or "Mark all as read" takes it off the bell; the inbox page still holds it until it is resolved, dismissed or purged. Sections: "Needs your attention" (actionable), "Work queues" (meters, each saying which role it is shown for), then "Recent" (informational). Footer: "Mark all as read" + "See all notifications". Empty state: "You're all caught up."
+340px dropdown from bell, right-aligned. It lists only unread, unresolved items, so opening an item or "Mark all as read" takes it off the bell; the inbox page still holds it until it is resolved, dismissed or purged. A failing meter contributor is logged and skipped without hiding healthy meters or built-in work queues. Cached built-in counts likewise preserve independent sources when one fails; caller cancellation still stops the read. Sections: "Needs your attention" (actionable), "Work queues" (meters, each saying which role it is shown for), then "Recent" (informational). Footer: "Mark all as read" + "See all notifications". Empty state: "You're all caught up."
 
 ### Full Inbox Page
 Route: `/Notifications`. Search + filter pills (All, Needs action, Shifts, Approvals, Resolved). Card with dark green header, Unread/All tab toggle. Sections: "Needs attention", "Informational", "Resolved". Bulk Resolve and Dismiss remove matching selected rows only after a successful response, reject redirects, and retain selections with a localized error on failure. Both actions are disabled while a bulk request is pending.
@@ -79,7 +79,7 @@ Shared between popup and inbox. 3px left border accent by priority/class. Title 
 
 ## Cleanup
 
-`CleanupNotificationsJob` runs daily. It deletes resolved notifications older than 7 days, unresolved informational notifications older than 30 days, and unresolved rows of retired sources (the ones their sections declare `Retired`: `ApplicationSubmitted`, `ConsentReviewNeeded` and `VolunteerApproved` today) that have no remaining resolution path. Other actionable unresolved notifications are never auto-deleted. Badge counts are read from the rows on every request, so each committed deletion shows at once, even if a later cleanup step fails.
+`CleanupNotificationsJob` runs daily. It deletes resolved notifications older than 7 days, unresolved informational notifications older than 30 days, and unresolved rows of retired sources (the ones declared `Retired`: `ApplicationSubmitted`, `ConsentReviewNeeded` and `VolunteerApproved` by their sections, and the deleted Feedback section's `FeedbackResponse` in `RetiredNotificationSources`) that have no remaining resolution path. Other actionable unresolved notifications are never auto-deleted. Badge counts are read from the rows on every request, so each committed deletion shows at once, even if a later cleanup step fails.
 
 ## Authorization
 

@@ -23,7 +23,9 @@ Elsewhere publishes a digital event guide (currently a standalone PWA) listing a
 
 Two types of events exist: **camp events** (submitted by a team Lead, anchored to a GuideCamp) and **individual events** (submitted by any registered human, anchored to a communal GuideSharedVenue such as "The Middle of Elsewhere").
 
-Both kinds of submission are managed from a single page — **My Event Submissions** (`/Events/MySubmissions`). It shows the human's own individual events in one block, plus one block per barrio they lead for managing that barrio's events. There is no separate per-barrio events page.
+Both kinds of submission are managed from a single page — **My Event Submissions** (`/Events/MySubmissions`). It shows the human's own individual events in one block, plus one block per barrio they lead or manage workshops for in the guide's configured event. Camp selection and labels use that event's season, even when multiple events share a year; an unconfigured guide shows no barrio blocks. There is no separate per-barrio events page.
+
+Existing submissions keep their original event calendar and timezone when edited by a submitter or moderator, including recurrence choices, camp labels and feedback links. Switching the guide to another event does not reinterpret older records. New submissions and bulk imports still use the configured guide event; legacy unassigned records retain that fallback.
 
 ## User Stories
 
@@ -191,6 +193,8 @@ Id,Barrio,Status,Title,Description,Category,Date,StartTime,DurationMinutes,Locat
 | `IsRecurring` | `true` or `false`. |
 | `RecurrenceDays` | Only used when `IsRecurring` is true. Space-separated day names: `Mon Tue Wed Thu Fri Sat Sun`. Converted to day offsets from gate-opening date for new or changed recurrence selections. An existing event retains its authored offsets when the weekday selection is unchanged, including during edits to other fields. |
 | `PriorityRank` | Optional. Integer 1–100 when present; blank = unranked (sorted last in the print guide) and round-trips as blank. |
+
+A new or changed nonempty weekday selection that matches no day in the event calendar refuses the whole import. It cannot silently become the authored-start fallback; only a blank selection requests that fallback. Unchanged weekday selections keep their authored offsets.
 
 **Encoding:** comma-separated, UTF-8, RFC 4180 quoting — fields containing commas are wrapped in `"double quotes"`. `RecurrenceDays` uses spaces as the day separator (`Mon Tue Fri`) so it never needs quoting.
 

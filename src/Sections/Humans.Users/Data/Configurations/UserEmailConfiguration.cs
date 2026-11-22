@@ -1,7 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Humans.Users.Contracts;
-using Humans.GoogleIntegration.Contracts;
 
 namespace Humans.Users.Data.Configurations;
 
@@ -36,24 +35,11 @@ internal sealed class UserEmailConfiguration : IEntityTypeConfiguration<UserEmai
             .IsRequired();
 
         // One row per (Provider, ProviderKey) is enforced in UserEmailService, not by an index.
-        // IsGoogle / GoogleEmailStatus are frozen (GoogleIntegration owns the Workspace identity)
-        // and stay mapped until their drop PR.
         builder.Property(e => e.Provider)
             .HasMaxLength(64);
 
         builder.Property(e => e.ProviderKey)
             .HasMaxLength(256);
-
-        builder.Property<bool>("IsGoogle")
-            .IsRequired();
-
-        // Retained on disk until the separate column-drop migration; no runtime readers remain.
-        builder.Property<GoogleEmailStatus>("GoogleEmailStatus")
-            .HasConversion<string>()
-            .HasMaxLength(50)
-            .HasDefaultValue(GoogleEmailStatus.Unknown)
-            .HasSentinel(GoogleEmailStatus.Unknown)
-            .IsRequired();
 
         builder.HasOne<User>()
             .WithMany(u => u.UserEmails)

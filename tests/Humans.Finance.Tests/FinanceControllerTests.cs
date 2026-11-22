@@ -46,30 +46,41 @@ public class FinanceControllerTests
 
     private readonly IFinanceService _finance = Substitute.For<IFinanceService>();
     private readonly IFinanceAdminService _connector = Substitute.For<IFinanceAdminService>();
+    private SepaBookingRunner? _sepaRunner;
+
+    /// <summary>Resolves <see cref="_connector"/> in its run scope, as the app resolves the real service.</summary>
+    private SepaBookingRunner SepaRunner => _sepaRunner ??= new(
+        new ServiceCollection().AddSingleton(_connector).BuildServiceProvider()
+            .GetRequiredService<IServiceScopeFactory>(),
+        SystemClock.Instance, NullLogger<SepaBookingRunner>.Instance);
     private readonly IUserService _users = Substitute.For<IUserService>();
     private readonly IBudgetService _budget = Substitute.For<IBudgetService>();
     private readonly IExpenseReportService _expenses = Substitute.For<IExpenseReportService>();
-    private readonly IHoldedService _holdedLedger = Substitute.For<IHoldedService>();
+    private readonly IHoldedService _holdedLedger = TestContacts.Holded();
 
     public FinanceControllerTests()
     {
         _users.GetUserInfoAsync(Ana, Arg.Any<CancellationToken>())
             .Returns(UserInfo.Create(new User { Id = Ana }, [], [], profile: null));
-        _expenses.GetReviewQueueAsync(Arg.Any<Guid>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
+        _expenses.GetReviewQueueAsync(Arg.Any<CancellationToken>())
             .Returns(Array.Empty<ExpenseReportDto>());
         _finance.GetExpenseReconAsync(Arg.Any<int?>(), Arg.Any<CancellationToken>())
             .Returns(ExpenseRecon.Unavailable(null, "never synced"));
         _finance.GetSepaTransfersAsync(Arg.Any<CancellationToken>())
             .Returns((Array.Empty<SepaPayoutTransferRow>(), (string?)null));
+        _connector.GetSepaPayoutsAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns((Array.Empty<SepaPayoutTransferRow>(), null, [], null, null));
     }
 
     private FinanceController MakeController() =>
-        new(_users, _finance, _connector, _holdedLedger, _expenses,
+        new(FixedOrgTimeZone.Madrid, _users, _finance, _connector, _holdedLedger, _expenses,
             new CashFlowService(_budget, Substitute.For<ITicketService>()),
-            new CreditorMatchService(_holdedLedger, _expenses),
-            new FinanceOverviewService(_holdedLedger, _finance, _expenses, _budget,
-                new CashFlowService(_budget, Substitute.For<ITicketService>()), Substitute.For<Humans.Pleo.Contracts.IPleoService>(), SystemClock.Instance),
-            TestPleo.Booking(), TestPleo.Runner(),
+            new FinanceOverviewService(FixedOrgTimeZone.Madrid, _holdedLedger, _finance, _connector, _expenses, _budget,
+                new CashFlowService(_budget, Substitute.For<ITicketService>()), Substitute.For<Humans.Pleo.Contracts.IPleoService>(), Substitute.For<Humans.Stripe.Contracts.IStripeMirrorService>(),
+                Microsoft.Extensions.Options.Options.Create(new SepaOptions()),
+                Substitute.For<Humans.Finance.Data.IFinanceRepository>(), Substitute.For<Humans.AuditLog.Contracts.IAuditLogService>(),
+                SystemClock.Instance),
+            TestPleo.Booking(), TestPleo.Runner(), SepaRunner,
             NullLogger<FinanceController>.Instance)
         {
             ControllerContext = new()
@@ -244,6 +255,26 @@ public class FinanceControllerTests
             Assert.Empty(payments.ReceivedCalls());
         }
         await _users.Received(1).GetUserInfoAsync(Ana, request.Token);
+    }
+
+    [HumansFact]
+    public async Task BookSepaTransfer_RunsOffTheRequest_RefusesASecondStart_AndKeepsTheOutcome()
+    {
+        var release = new TaskCompletionSource<SepaBookingResult>();
+        _connector.BookSepaTransferAsync(Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<int>())
+            .Returns(release.Task);
+        var controller = MakeControllerWithHttpContext(Ana);
+
+        // The request returns while Holded is still answering.
+        (await controller.BookSepaTransfer(Guid.NewGuid(), "bank")).Should().BeOfType<RedirectToActionResult>();
+        SepaRunner.Run!.IsRunning.Should().BeTrue();
+
+        await controller.BookSepaFileMatches(Guid.NewGuid());
+        controller.TempData.Values.Should().Contain("A booking is already running; nothing more was started.");
+        await _connector.DidNotReceiveWithAnyArgs().BookSepaFileMatchesAsync(default, default, default);
+
+        release.SetResult(new SepaBookingResult(false, "Holded refused the payment"));
+        SepaRunner.Run!.Result!.Message.Should().Be("Holded refused the payment");
     }
 
     [HumansFact]
@@ -471,7 +502,7 @@ public class FinanceControllerTests
         new(num, name, balance, balance is { } b ? Math.Max(0m, -b) : 0m, [], OpenDocumentCount: openDocs);
 
     private void NameThem(params (Guid Id, string Burner)[] people) =>
-        _users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+        _users.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(people.ToDictionary(p => p.Id, p => MakeUserInfo(p.Id, p.Burner))
                 as IReadOnlyDictionary<Guid, UserInfo>);
 
@@ -489,7 +520,7 @@ public class FinanceControllerTests
     public async Task Creditors_PropagatesBrowserCancellationDuringMemberNameLookup()
     {
         Accounts([Row(40000001, "Ana", 0m, Bound(Ana, 40000001))]);
-        _users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+        _users.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(call =>
             {
                 call.Arg<CancellationToken>().ThrowIfCancellationRequested();
@@ -645,7 +676,7 @@ public class FinanceControllerTests
     [HumansFact]
     public async Task Creditors_UnnamedMember_FallsBackToTheirId()
     {
-        _users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+        _users.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, UserInfo>() as IReadOnlyDictionary<Guid, UserInfo>);
         Accounts([Row(40000002, "x", -1m, Bound(Ana, 40000002))]);
 
@@ -823,6 +854,46 @@ public class FinanceControllerTests
     }
 
     [HumansFact]
+    public async Task CreditorStatement_ListsTheMembersUnbookedReportsTheMatchCardCounts()
+    {
+        _finance.GetCreditorLedgerAsync(40000002, Arg.Any<CancellationToken>())
+            .Returns(new CreditorLedger(40000002, 0m, 0m, []));
+        ExpenseReportDto Report(int? bookedTo, int days) => new()
+        {
+            Id = Guid.NewGuid(),
+            SubmitterUserId = Ana,
+            HoldedAccountNumber = 0,
+            BudgetCategoryId = null,
+            BudgetYearId = null,
+            Status = ExpenseReportStatus.Approved,
+            PayeeName = "Ana",
+            PayeeIban = "",
+            Total = 10m,
+            HoldedSupplierAccountNum = bookedTo,
+            CreatedAt = Instant.FromUtc(2026, 3, days, 0, 0),
+            UpdatedAt = Instant.FromUtc(2026, 3, days, 0, 0),
+            Lines = [],
+        };
+        var booked = Report(40000002, 1);
+        var unbooked = Report(null, 2);
+        var elsewhere = Report(40000009, 3);
+        _expenses.GetReviewQueueAsync(Arg.Any<CancellationToken>()).Returns([booked, unbooked, elsewhere]);
+        var member = new ExpenseReconMember(Ana, "Ana", 40000002, 0m, 0m, 0m, 0m, MissingLines: 1,
+            UnclaimedPurchaseCount: 0, [], [], ExpenseReconMemberStatus.Off, []);
+        var missing = new ExpenseReconLine(unbooked.Id, null, Ana, "Ana", "d", 10m, new LocalDate(2026, 3, 2), "",
+            ExpenseReconLineStatus.Missing, null, null, null, null, [], 0m);
+        _finance.GetExpenseReconAsync(null, Arg.Any<CancellationToken>()).Returns(new ExpenseReconReport(null,
+            Instant.FromUtc(2026, 3, 4, 0, 0), null, [], [missing], [], [member], new ExpenseReconTotals(0, 0, 0, 0, 0, 0m, 0, 0)));
+
+        var model = (await MakeControllerWithHttpContext(Ana).CreditorStatement(40000002))
+            .Should().BeOfType<ViewResult>().Subject.Model.Should().BeOfType<CreditorStatementVm>().Subject;
+
+        model.Match!.MissingLines.Should().Be(1);
+        model.ExpenseReports.Should().Equal(unbooked, booked);
+        await _expenses.Received(1).GetReviewQueueAsync(Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
     public async Task CreditorStatement_MemberOwingTheOrganisation_ShowsNegativeBalance()
     {
         _finance.GetCreditorLedgerAsync(40000002, Arg.Any<CancellationToken>())
@@ -899,7 +970,7 @@ public class FinanceControllerTests
     {
         _finance.GetCreditorLedgerAsync(40000002, Arg.Any<CancellationToken>())
             .Returns(new CreditorLedger(40000002, 0m, 0m, []));
-        _expenses.GetReviewQueueAsync(Ana, true, Arg.Any<CancellationToken>()).Returns(
+        _expenses.GetReviewQueueAsync(Arg.Any<CancellationToken>()).Returns(
         [
             Report(40000002, Instant.FromUtc(2026, 3, 1, 0, 0)),
             Report(40000009, Instant.FromUtc(2026, 3, 5, 0, 0)),
@@ -945,7 +1016,7 @@ public class FinanceControllerTests
                 Transfer(older, "old.xml", Stamp(1), admin, Ana, 40000002),
                 Transfer(newer, "new.xml", Stamp(2), admin, Ana, 40000002),
             },
-            null, [], null));
+            null, [], null, null));
         NameThem((Ana, "Ada"), (Bo, "Zoe"), (admin, "Treasurer"));
 
         var page = SepaPageOf(await MakeController().Sepa(TestContext.Current.CancellationToken));
@@ -962,8 +1033,8 @@ public class FinanceControllerTests
         using var cancellation = new CancellationTokenSource();
         _connector.GetSepaPayoutsAsync(Arg.Any<int>(), Arg.Any<CancellationToken>()).Returns((
             new List<SepaPayoutTransferRow> { Transfer(Guid.NewGuid(), "f.xml", Stamp(1), Ana, Ana, 40000002) },
-            null, [], null));
-        _users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            null, [], null, null));
+        _users.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(call =>
             {
                 call.Arg<CancellationToken>().ThrowIfCancellationRequested();
@@ -981,7 +1052,7 @@ public class FinanceControllerTests
     {
         _connector.GetSepaPayoutsAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns((new List<SepaPayoutTransferRow>(), "Sepa:TreasuryAccountId is not configured.",
-                [], null));
+                [], null, null));
 
         var page = SepaPageOf(await MakeController().Sepa(TestContext.Current.CancellationToken));
 
@@ -999,7 +1070,7 @@ public class FinanceControllerTests
         };
         _connector.GetSepaPayoutsAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns((new List<SepaPayoutTransferRow>(), null,
-                unmatched, null));
+                unmatched, null, null));
 
         var page = SepaPageOf(await MakeController().Sepa(TestContext.Current.CancellationToken));
 
@@ -1011,7 +1082,7 @@ public class FinanceControllerTests
     {
         _connector.GetSepaPayoutsAsync(Arg.Any<int>(), Arg.Any<CancellationToken>()).Returns((
             new List<SepaPayoutTransferRow> { Transfer(Guid.NewGuid(), "f.xml", Stamp(1), Ana, Ana, 40000002) },
-            null, [], "Holded's bank feed did not answer."));
+            null, [], "Holded's bank feed did not answer.", null));
         NameThem((Ana, "Ada"));
 
         var page = SepaPageOf(await MakeController().Sepa(TestContext.Current.CancellationToken));
@@ -1090,7 +1161,7 @@ public class FinanceControllerTests
             WithdrawnByUserId = Bo,
         };
         _connector.GetSepaPayoutsAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
-            .Returns((new List<SepaPayoutTransferRow> { row }, null, [], null));
+            .Returns((new List<SepaPayoutTransferRow> { row }, null, [], null, null));
         NameThem((Ana, "Ada"), (Bo, "Zoe"), (admin, "Treasurer"));
 
         var page = SepaPageOf(await MakeController().Sepa(TestContext.Current.CancellationToken));
@@ -1171,7 +1242,7 @@ public class FinanceControllerTests
     public async Task Sepa_PassesThePostedToleranceToTheServiceAndThePage()
     {
         _connector.GetSepaPayoutsAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
-            .Returns((new List<SepaPayoutTransferRow>(), null, new List<SepaBankMovementVm>(), null));
+            .Returns((new List<SepaPayoutTransferRow>(), null, new List<SepaBankMovementVm>(), null, null));
 
         var page = SepaPageOf(await MakeController().Sepa(TestContext.Current.CancellationToken, days: 7));
 
@@ -1232,7 +1303,7 @@ public class FinanceControllerTests
         };
         var model = new SepaPayoutsPageVm([
             new(fileId, "f.xml", Stamp(1), generatedBy,
-                [new(booked, "Confirmation name"), new(withdrawn, "Confirmation name")], null)], null, [], null, 3);
+                [new(booked, "Confirmation name"), new(withdrawn, "Confirmation name")], null)], null, [], null, null, 3);
 
         var html = await RenderAsync("Sepa", model);
 
@@ -1241,6 +1312,22 @@ public class FinanceControllerTests
         html.Should().Contain("Ana Ruiz");
         html.Contains("automatic sweep", StringComparison.Ordinal).Should().Be(automatic);
         html.Contains(HtmlEncoder.Default.Encode("Booker <b>&"), StringComparison.Ordinal).Should().Be(!automatic);
+    }
+
+    [HumansFact]
+    public async Task Sepa_MarksAHalfBookedTransferApartFromAnUnbookedOne()
+    {
+        var generatedBy = Guid.NewGuid();
+        var fileId = Guid.NewGuid();
+        var unbooked = Transfer(fileId, "f.xml", Stamp(1), generatedBy, Ana, 40000002);
+        SepaPayoutsPageVm PageOf(SepaPayoutTransferRow row) => new(
+            [new(fileId, "f.xml", Stamp(1), generatedBy, [new(row, "Ana")], null)], null, [], null, null, 3);
+
+        var plain = await RenderAsync("Sepa", PageOf(unbooked));
+        var partial = await RenderAsync("Sepa", PageOf(unbooked with { HoldedPaymentRefs = "pay-1,pay-2" }));
+
+        plain.Should().Contain(">Generated<").And.NotContain("Partially booked");
+        partial.Should().Contain("Partially booked").And.Contain("pay-1,pay-2").And.NotContain(">Generated<");
     }
 
     [HumansFact]
@@ -1311,6 +1398,7 @@ public class FinanceControllerTests
         var urls = Substitute.For<IUrlHelperFactory>();
         urls.GetUrlHelper(Arg.Any<ActionContext>()).Returns(url);
         builder.Services.AddSingleton(urls);
+        builder.Services.AddSingleton<Humans.Base.Interfaces.IOrgTimeZone>(FixedOrgTimeZone.Madrid);
         await using var app = builder.Build();
         using var scope = app.Services.CreateScope();
         var services = scope.ServiceProvider;

@@ -3,8 +3,17 @@ using Humans.Budget.Contracts;
 using Humans.Finance.Contracts;
 using Humans.Finance.Models;
 using Humans.Finance.Services;
+using Humans.Finance.Domain;
+using Humans.Finance.ViewComponents;
+using Humans.Pleo.Contracts;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc.Rendering;
+using Microsoft.AspNetCore.Mvc.ViewComponents;
+using Microsoft.Extensions.Logging.Abstractions;
 using Humans.Holded.Contracts;
+using Humans.Stripe.Contracts;
 using NodaTime;
+using NSubstitute;
 using Xunit;
 
 namespace Humans.Finance.Tests;
@@ -37,13 +46,151 @@ public class FinanceOverviewServiceTests
         var vat = FinanceOverviewService.VatDue(
             [Line(1, 47700000, 0m, 100m), Line(2, 47700000, 10m, 0m), Line(4, 47700000, 90m, 0m)],
             [Line(3, 47200000, 30m, 0m), Line(4, 47200000, 0m, 30m)],
-            new HashSet<int> { 4 }, from, to);
+            new HashSet<int> { 4 }, from, to, FixedOrgTimeZone.Madrid.Zone);
         vat.Should().Be(60m);
 
         var irpf = FinanceOverviewService.IrpfDue(
             [Line(5, 47510000, 0m, 50m), Line(6, 47510000, 5m, 0m), Line(7, 47510000, 40m, 0m)],
-            new HashSet<int> { 7 }, from, to);
+            new HashSet<int> { 7 }, from, to, FixedOrgTimeZone.Madrid.Zone);
         irpf.Should().Be(45m);
+    }
+
+    [HumansFact]
+    public void StripeSources_FillsLinkedAccounts_AndSaysWhyTheRestAreUnknown()
+    {
+        var at = Instant.FromUtc(2026, 11, 1, 0, 0);
+        var links = new Dictionary<int, string> { [44100003] = "acct_store", [44100004] = "acct_unswept" };
+
+        var sources = FinanceOverviewService.StripeSources([44100003, 44100004, 44100005], links,
+            [new StripeAccountBalance("acct_store", 2000m, 500m, at)]);
+
+        sources[44100003].Should().Be(new FinanceAccountSourceVm(2500m, "/Stripe", ReadAt: at, Pending: 500m));
+        sources[44100004].Balance.Should().BeNull();
+        sources[44100004].Unknown.Should().Contain("acct_unswept");
+        sources[44100005].Balance.Should().BeNull();
+        sources[44100005].Unknown.Should().NotBeNull();
+        sources[44100005].ReconcileUrl.Should().Be("/Settings#finance");
+    }
+
+    [HumansFact]
+    public void TheGeneric441Account_IsNotAStripeGateway()
+    {
+        FinanceOverviewService.IsStripeGateway(44100000).Should().BeFalse();
+        FinanceOverviewService.IsStripeGateway(44100001).Should().BeTrue();
+        FinanceOverviewService.IsStripeGateway(57200001).Should().BeFalse();
+    }
+
+    private readonly IHoldedService _holded = Substitute.For<IHoldedService>();
+    private readonly Humans.Finance.Data.IFinanceRepository _repo = Substitute.For<Humans.Finance.Data.IFinanceRepository>();
+    private readonly IStripeMirrorService _stripe = Substitute.For<IStripeMirrorService>();
+    private readonly Humans.AuditLog.Contracts.IAuditLogService _audit = Substitute.For<Humans.AuditLog.Contracts.IAuditLogService>();
+
+    private FinanceOverviewService LinkService()
+    {
+        _holded.GetChartAsync(Arg.Any<CancellationToken>()).Returns([
+            new HoldedChartAccountInfo(44100001, "Open", null, null, false, 0m),
+            new HoldedChartAccountInfo(44100002, "Archived, holds money", null, null, true, 0m),
+            new HoldedChartAccountInfo(44100003, "Archived, linked", null, null, true, 0m),
+            new HoldedChartAccountInfo(44100004, "Archived, empty", null, null, true, 0m),
+        ]);
+        _holded.GetAccountBalancesAsync(Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<int, decimal> { [44100002] = 12m });
+        _repo.GetStripeLedgerLinksAsync(Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<int, string> { [44100003] = "acct_old" });
+        _stripe.GetEurBalancesAsync(Arg.Any<CancellationToken>())
+            .Returns([new StripeAccountBalance("acct_store", 1m, 0m, Instant.FromUtc(2026, 11, 1, 0, 0))]);
+        return new FinanceOverviewService(FixedOrgTimeZone.Madrid, _holded, Substitute.For<IFinanceService>(),
+            Substitute.For<IFinanceAdminService>(), Substitute.For<Humans.Expenses.Contracts.IExpenseReportService>(),
+            Substitute.For<IBudgetService>(), null!, Substitute.For<Humans.Pleo.Contracts.IPleoService>(),
+            _stripe, Microsoft.Extensions.Options.Options.Create(new SepaOptions()),
+            _repo, _audit, NodaTime.SystemClock.Instance);
+    }
+
+    [HumansFact]
+    public async Task StripeLinkSettings_ListEvery441AccountFinanceShows_AndEveryLinkedOne()
+    {
+        var (ledger, _, _) = await LinkService().GetStripeLinkSettingsAsync(TestContext.Current.CancellationToken);
+
+        ledger.Select(a => a.Number).Should().Equal(44100001, 44100002, 44100003);
+    }
+
+    [HumansFact]
+    public async Task SaveStripeLinks_StoresTheChoices_UnlinksBlanks_Audits_AndRefusesUnknownValues()
+    {
+        var service = LinkService();
+        var actor = Guid.NewGuid();
+        var ct = TestContext.Current.CancellationToken;
+
+        (await service.SaveStripeLinksAsync(new Dictionary<int, string?> { [44100004] = "acct_store" }, actor, ct))
+            .Should().NotBeNull();
+        (await service.SaveStripeLinksAsync(new Dictionary<int, string?> { [44100001] = "acct_typo" }, actor, ct))
+            .Should().NotBeNull();
+        await _repo.DidNotReceive().ReplaceStripeLedgerLinksAsync(
+            Arg.Any<IReadOnlyDictionary<int, string>>(), Arg.Any<CancellationToken>());
+
+        (await service.SaveStripeLinksAsync(new Dictionary<int, string?>
+        { [44100001] = "acct_store", [44100002] = "", [44100003] = "acct_old" }, actor, ct)).Should().BeNull();
+
+        await _repo.Received(1).ReplaceStripeLedgerLinksAsync(
+            Arg.Is<IReadOnlyDictionary<int, string>>(d =>
+                d.Count == 2 && d[44100001] == "acct_store" && d[44100003] == "acct_old"),
+            Arg.Any<CancellationToken>());
+        await _audit.Received(1).LogAsync(FinanceAuditActions.FinanceStripeLedgerLinksUpdated, Arg.Any<string>(),
+            Arg.Any<Guid>(), Arg.Is<string>(d => d.Contains("44100001 → acct_store")), actor,
+            Arg.Any<Guid?>(), Arg.Any<string?>());
+    }
+
+    [HumansFact]
+    public void CashAccounts_SortsEachGroupWithBanksBeforeStripe()
+    {
+        var cards = new FinanceLedgerCardsVm(
+            [new(57200003, "Bank", 1m), new(57000001, "Cash", 2m)],
+            [new(44100002, "Stripe B", 3m), new(44100001, "Stripe A", 4m)], [], 0m, []);
+
+        cards.CashAccounts.Select(a => a.AccountNum).Should().Equal(57000001, 57200003, 44100001, 44100002);
+        cards.CashTotal.Should().Be(10m);
+    }
+
+    [HumansFact]
+    public async Task StripeLinkSettingsComponent_SortsBeforeAssigningFormIndices()
+    {
+        var overview = LinkService();
+        _holded.GetChartAsync(Arg.Any<CancellationToken>()).Returns([
+            new HoldedChartAccountInfo(44100003, "Archived, linked", null, null, true, 0m),
+            new HoldedChartAccountInfo(44100002, "Archived, holding money", null, null, true, 0m),
+            new HoldedChartAccountInfo(44100001, "Active", null, null, false, 0m),
+        ]);
+        var syncedAt = Instant.FromUtc(2026, 11, 1, 0, 0);
+        _stripe.GetEurBalancesAsync(Arg.Any<CancellationToken>()).Returns([
+            new StripeAccountBalance("acct_z", 1m, 0m, syncedAt),
+            new StripeAccountBalance("acct_A", 1m, 0m, syncedAt),
+            new StripeAccountBalance("acct_a", 1m, 0m, syncedAt),
+            new StripeAccountBalance("acct_z", 1m, 0m, syncedAt),
+        ]);
+        _repo.GetSettingsAsync(Arg.Any<CancellationToken>()).Returns(new FinanceSettings());
+        var pleo = new PleoBooking(FixedOrgTimeZone.Madrid, Substitute.For<IPleoService>(), _holded,
+            Substitute.For<IHoldedWrite>(), _repo, _audit, new PleoBookingState(), SystemClock.Instance,
+            NullLogger<PleoBooking>.Instance);
+        var component = new FinanceSettingsTabViewComponent(overview, pleo)
+        {
+            ViewComponentContext = new ViewComponentContext
+            {
+                ViewContext = new ViewContext
+                {
+                    HttpContext = new DefaultHttpContext { RequestAborted = TestContext.Current.CancellationToken }
+                }
+            }
+        };
+
+        var result = await component.InvokeAsync();
+
+        var viewData = result.Should().BeOfType<ViewViewComponentResult>().Which.ViewData;
+        viewData.Should().NotBeNull();
+        var model = viewData!.Model.Should().BeOfType<FinanceSettingsViewModel>().Subject;
+        model.Rows.Select(r => r.LedgerAccountNum).Should().Equal(44100001, 44100002, 44100003);
+        model.Rows.Select(r => r.Index).Should().Equal(0, 1, 2);
+        model.Rows.Last().StripeAccountId.Should().Be("acct_old");
+        model.StripeAccounts.Should().Equal("acct_A", "acct_a", "acct_z");
     }
 
     [HumansFact]
@@ -66,13 +213,34 @@ public class FinanceOverviewServiceTests
             [47500001] = -40m,
         };
 
-        var cards = FinanceOverviewService.BuildLedgerCards(chart, balances, []);
+        var feed = new FinanceBankFeedVm(3, Instant.FromUtc(2026, 1, 1, 0, 0));
+        var cards = FinanceOverviewService.BuildLedgerCards(chart, balances, [],
+            new Dictionary<int, FinanceAccountSourceVm> { [57200003] = new(2m, "/Finance/Pleo") }, 57200001, feed);
+
+        cards.Banks.Select(a => a.BankFeed).Should().Equal(feed, null);
 
         cards.Banks.Select(a => a.AccountNum).Should().Equal(57200001, 57200003);
         cards.Stripe.Select(a => a.AccountNum).Should().Equal(44100001);
         cards.CashTotal.Should().Be(125m);
         cards.Receivables.Select(r => r.Amount).Should().Equal(3m, 7m, 0m);
         cards.TaxesOwed.Should().Be(40m);
+        cards.CashAccounts.Where(a => a.Source is not null).Should().ContainSingle()
+            .Which.Should().Match<FinanceAccountLineVm>(a => a.AccountNum == 57200003 && a.Difference == -3m);
+    }
+
+    [HumansFact]
+    public void BuildSepaInProgress_KeepsUnbookedUnwithdrawn_OldestFirst()
+    {
+        static SepaPayoutTransferRow Transfer(decimal amount, long sentAt, Instant? booked = null, Instant? withdrawn = null) =>
+            new(Guid.NewGuid(), Guid.NewGuid(), "f.xml", Instant.FromUnixTimeSeconds(sentAt), Guid.NewGuid(),
+                Guid.NewGuid(), 41000001, null, "N", "ES**", amount, booked, null, null, null, null, null, null,
+                WithdrawnAt: withdrawn);
+        var now = Instant.FromUnixTimeSeconds(9);
+
+        var open = FinanceOverviewService.BuildSepaInProgress(
+            [Transfer(1m, 2), Transfer(2m, 1), Transfer(3m, 0, booked: now), Transfer(4m, 0, withdrawn: now)]);
+
+        open.Select(t => t.Amount).Should().Equal(2m, 1m);
     }
 
     [HumansFact]
@@ -95,12 +263,61 @@ public class FinanceOverviewServiceTests
         (owed with { Unavailable = "contacts unreadable" }).Total.Should().BeNull("an unknown creditor total is not zero");
 
         var recon = new ExpenseReconReport(null, null, null, [], [], [], [], new ExpenseReconTotals(0, 0, 0, 2, 0, 0m, 1, 0));
+        var sent = new SepaPayoutTransferRow(
+            Guid.NewGuid(), Guid.NewGuid(), "f.xml", Instant.FromUtc(2026, 3, 1, 9, 0), Guid.NewGuid(), Guid.NewGuid(),
+            40000002, null, "Ana", "ES**1234", 30m, null, null, null, null, null, null, null);
+        var pending = new ExpenseReconLine(Guid.NewGuid(), null, Guid.NewGuid(), "M", "p", 5m, new LocalDate(2026, 1, 1),
+            "Queued", ExpenseReconLineStatus.Pending, null, null, null, null, [], 0m);
         var work = FinanceOverviewService.BuildWork([], [.. rows,
-            Row(40000007, 60m, [Bind()], reason: "no IBAN")], recon);
+            Row(40000007, 60m, [Bind()], reason: "no IBAN")], recon with { Lines = [pending] },
+            [sent, sent with { CandidateBankMovementId = "m1" },
+                sent with { BatchLine = new SepaBatchLineVm("m2", new LocalDate(2026, 3, 2), -60m, null, false, null) },
+                sent with { BookedAt = sent.GeneratedAt },
+                sent with { WithdrawnAt = sent.GeneratedAt }]);
         work.ReadyToPay.Should().Be(1);
         work.ReadyToPayAmount.Should().Be(50m);
-        work.AwaitingBooking.Should().Be(1);
+        work.PushingToHolded.Should().Be(1);
+        work.AwaitingBankLine.Should().Be(1);
+        work.TransfersToBook.Should().Be(2);
         work.Problems.Should().Be(4);
+
+        // The recon already names 40000004's doubled purchase: the account is not counted again.
+        var line = new ExpenseReconLine(Guid.NewGuid(), null, Guid.NewGuid(), "M", "d", 10m, new LocalDate(2026, 1, 1), "",
+            ExpenseReconLineStatus.Duplicated, null, 40000004, 1, null, [2], 10m);
+        FinanceOverviewService.BuildWork([], rows, recon with { Lines = [line] }, []).Problems.Should().Be(3);
+
+        // An unreadable bank feed leaves the split unknown while a transfer is open, never zero.
+        FinanceOverviewService.BuildWork([], rows, recon, [sent], "feed unreadable").TransfersToBook.Should().BeNull();
+        FinanceOverviewService.BuildWork([], rows, recon, [], "feed unreadable").TransfersToBook.Should().Be(0);
+    }
+
+    [HumansFact]
+    public void CreditorMatch_IsTheAccountsSliceOfTheExpenseRecon()
+    {
+        var user = Guid.NewGuid();
+        var transfer = new ExpenseReconOpenTransfer(Guid.NewGuid(), "f.xml", Instant.FromUtc(2026, 1, 1, 0, 0), 5m);
+        var member = new ExpenseReconMember(user, "M", 40000001, -20m, -50m, 30m, -10m, MissingLines: 1,
+            UnclaimedPurchaseCount: 1, [transfer], [new(new LocalDate(2026, 1, 2), 9, "entry", null, 10m)],
+            ExpenseReconMemberStatus.Off, []);
+        var duplicated = new ExpenseReconLine(Guid.NewGuid(), null, user, "M", "d", 10m, new LocalDate(2026, 1, 1), "",
+            ExpenseReconLineStatus.Duplicated, null, 40000001, 1, null, [2], 10m);
+        var orphan = new ExpenseReconOrphan(40000009, 3, new LocalDate(2026, 1, 3), "ER: x", 7m,
+            ExpenseReconOrphanKind.UnboundContact);
+        var recon = new ExpenseReconReport(null, Instant.FromUtc(2026, 1, 4, 0, 0), null, [], [duplicated], [orphan],
+            [member], new ExpenseReconTotals(0, 0, 0, 0, 0, 0m, 0, 0));
+
+        // The member's side: positive is owed to the member.
+        CreditorMatchVm.For(recon, 40000001).Should().BeEquivalentTo(
+            new CreditorMatchVm(50m, -30m, 10m, -10m, 1, 1, 1, 1));
+        CreditorMatchVm.For(recon, 40000001)!.Warnings.Should().HaveCount(4);
+        // A second member on the same account: the ledger split is the account's, their Missing line still counts.
+        var shared = member with { UserId = Guid.NewGuid(), MissingLines = 2 };
+        CreditorMatchVm.For(recon with { Members = [member, shared] }, 40000001).Should().BeEquivalentTo(
+            new CreditorMatchVm(50m, -30m, 10m, -10m, 3, 1, 1, 1));
+        // No member, but an expense purchase nobody claims.
+        CreditorMatchVm.For(recon, 40000009).Should().BeEquivalentTo(new CreditorMatchVm(0m, 0m, 7m, 0m, 0, 1, 0, 0));
+        CreditorMatchVm.For(recon, 40000002).Should().BeNull("the recon has nothing on the account");
+        CreditorMatchVm.For(recon with { UnavailableReason = "never synced" }, 40000001).Should().BeNull();
     }
 
     [HumansFact]
@@ -119,6 +336,27 @@ public class FinanceOverviewServiceTests
         budget.Planned.Should().Be(300m);
         budget.Spent.Should().Be(130m);
         budget.OverBudget.Should().ContainSingle().Which.Should().Be(new FinanceOverBudgetVm(sound.Id, "Sound", 30m));
+    }
+
+    [HumansFact]
+    public void BuildBudget_UsesGroupSortOrderToBreakEqualOverBudgetTies()
+    {
+        var yearId = Guid.NewGuid();
+        var groups = Enumerable.Range(0, 4).Select(sortOrder =>
+        {
+            var id = Guid.NewGuid();
+            return new BudgetGroupDetail(id, yearId, $"Group {sortOrder}", sortOrder, false, false, false, null,
+                [Category(id, $"Category {sortOrder}", -100m)]);
+        }).ToList();
+        var year = new BudgetYearDetail(yearId, "2026", "2026", BudgetYearStatus.Active, false,
+            groups.AsEnumerable().Reverse().ToList());
+        var actuals = groups.Select(group => new CategoryActualRow(
+            group.Categories[0].Id, group.SortOrder == 3 ? 150m : 125m, [])).ToList();
+
+        var budget = FinanceOverviewService.BuildBudget(year, actuals);
+
+        budget.OverBudget.Select(row => row.CategoryId).Should().Equal(
+            groups[3].Categories[0].Id, groups[0].Categories[0].Id, groups[1].Categories[0].Id);
     }
 
     private static CreditorAccountRow Row(int num, decimal owed, IReadOnlyList<CreditorContactBinding> bindings,

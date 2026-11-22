@@ -4,8 +4,6 @@ using Humans.Auth.Contracts;
 using Humans.AuditLog.Contracts;
 using Humans.EarlyEntry.Contracts;
 using Humans.Notifications.Contracts;
-using Humans.Shifts.Contracts;
-using Humans.Shifts.Data;
 using Humans.Teams.Data;
 using Humans.Teams.Domain;
 using Humans.Base.Enums;
@@ -15,7 +13,7 @@ using Microsoft.Extensions.Caching.Memory;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
-using Humans.GoogleIntegration.Data;
+using Humans.Google.Data;
 using Humans.Users.Contracts;
 using Humans.Users.Data;
 
@@ -33,8 +31,7 @@ public abstract class TeamsTestHarness : IDisposable
     private protected TestDbContextFactory DbFactory { get; }
 
     // Section contexts are separate in-memory stores: a test seeding across two saves each.
-    // Every pair is built on first touch: eager construction gave each test its own EF
-    // service provider, which pushed a 5s-budget test past its CI timeout.
+    // Each pair is built on first touch: building one costs an EF service provider.
 
     private readonly List<Func<DbContext?>> _sectionContextProbes = [];
 
@@ -43,12 +40,8 @@ public abstract class TeamsTestHarness : IDisposable
     private protected TestDbContextFactory<AuthDbContext> AuthDbFactory => _authDb.Value.Factory;
 
     private readonly Lazy<SectionDb<GoogleIntegrationDbContext>> _googleIntegrationDb;
-    private protected GoogleIntegrationDbContext GoogleIntegrationDb => _googleIntegrationDb.Value.Context;
-    private protected TestDbContextFactory<GoogleIntegrationDbContext> GoogleIntegrationDbFactory => _googleIntegrationDb.Value.Factory;
-
-    private readonly Lazy<SectionDb<ShiftsDbContext>> _shiftsDb;
-    private protected ShiftsDbContext ShiftsDb => _shiftsDb.Value.Context;
-    private protected TestDbContextFactory<ShiftsDbContext> ShiftsDbFactory => _shiftsDb.Value.Factory;
+    private protected GoogleIntegrationDbContext GoogleDb => _googleIntegrationDb.Value.Context;
+    private protected TestDbContextFactory<GoogleIntegrationDbContext> GoogleDbFactory => _googleIntegrationDb.Value.Factory;
 
     private readonly Lazy<SectionDb<TeamsDbContext>> _teamsDb;
     private protected TeamsDbContext TeamsDb => _teamsDb.Value.Context;
@@ -74,7 +67,6 @@ public abstract class TeamsTestHarness : IDisposable
 
         _authDb = RegisterSection<AuthDbContext>(o => new(o));
         _googleIntegrationDb = RegisterSection<GoogleIntegrationDbContext>(o => new(o));
-        _shiftsDb = RegisterSection<ShiftsDbContext>(o => new(o));
         _teamsDb = RegisterSection<TeamsDbContext>(o => new(o));
 
         Clock = new FakeClock(now ?? Instant.FromUtc(2026, 3, 1, 12, 0));
@@ -239,7 +231,7 @@ public abstract class TeamsTestHarness : IDisposable
             CreatedAt = Clock.GetCurrentInstant(),
             CreatedByUserId = Guid.NewGuid()
         };
-        // Unlike the Db seeders above, this one saves: role_assignments sits in its own
+        // Unlike the Db seeders above, this one saves: auth_role_assignments sits in its own
         // context, so a caller's Db.SaveChangesAsync() would never reach it.
         AuthDb.RoleAssignments.Add(ra);
         AuthDb.SaveChanges();

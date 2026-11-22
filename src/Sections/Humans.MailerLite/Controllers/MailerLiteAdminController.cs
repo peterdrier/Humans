@@ -45,6 +45,11 @@ internal sealed class MailerLiteAdminController(
             logger.LogWarning("MailerLite API call failed: {StatusCode} {Message}", ex.StatusCode, ex.Message);
             mlError = FormatMailerLiteError(ex);
         }
+        catch (TaskCanceledException) when (!ct.IsCancellationRequested)
+        {
+            logger.LogWarning("MailerLite dashboard API read timed out");
+            mlError = "MailerLite request timed out. Try again shortly.";
+        }
 
         var mlContacts = (await _users.GetAllUserInfosAsync(ct).ConfigureAwait(false))
             .Count(u => u.ContactSource == ContactSource.MailerLite);
@@ -60,7 +65,7 @@ internal sealed class MailerLiteAdminController(
         }
         catch (HttpRequestException ex)
         {
-            logger.LogWarning(ex, "Audience stats failed");
+            logger.LogWarning("Audience stats failed: {StatusCode} {Reason}", ex.StatusCode, ex.Message);
             audienceRows = [];
         }
         catch (TaskCanceledException) when (!ct.IsCancellationRequested)
@@ -191,14 +196,10 @@ internal sealed class MailerLiteAdminController(
             // Not the request token; see SyncAudience.
             var results = await audienceSync.SyncAllAsync(actor?.Id, CancellationToken.None);
 
-            var created = results.Sum(r => r.Created);
-            var assigned = results.Sum(r => r.Assigned);
-            var unassigned = results.Sum(r => r.Unassigned);
-            var errors = results.Sum(r => r.Errors);
             var failed = _audiences.Count - results.Count;
 
             var banner = $"Push All: {results.Count}/{_audiences.Count} audiences synced — " +
-                $"{created} created, {assigned} newly assigned, {unassigned} unassigned, {errors} errors.";
+                AudienceSyncResult.FormatSummary(results);
             if (failed > 0) banner += $" {failed} audience(s) failed — see logs.";
             TempData["Banner"] = banner;
         }

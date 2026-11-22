@@ -1,215 +1,33 @@
-using Humans.Shifts.Contracts;
-using Humans.Consent.Contracts;
-using Microsoft.Extensions.Localization;
-using Humans.GoogleIntegration.Contracts;
-using Humans.Base.Caching;
+using Humans.Base.Extensions;
 using System.Security.Claims;
-using Humans.Notifications.Services.Dtos;
-using Humans.Camps.Contracts;
-using Humans.Governance.Contracts;
-using Humans.Teams.Contracts;
-
 using Humans.Base.Interfaces;
-using Humans.Base.Constants;
-using Humans.Tickets.Contracts;
-using Microsoft.Extensions.Caching.Memory;
-using Humans.Users.Contracts;
+using Humans.Notifications.Contracts;
 
 namespace Humans.Notifications.Services;
 
 /// <summary>
-/// The counts cache is this provider's alone and expires rather than being evicted. Counts the owner already
-/// caches or holds in RAM bypass it, so the owner's own eviction keeps them fresh.
+/// Collects every section's meters for the viewer. Each count and its caching stay with the owning section.
 /// </summary>
 internal sealed class NotificationMeterProvider(
-    IUserService userService,
-    IConsentService consentService,
-    IGoogleSyncService googleSyncService,
-    ITeamService teamService,
-    ITicketSync ticketSyncService,
-    IGovernanceService governanceService,
-    ICampService campService,
-    IMemoryCache cache,
-    ILogger<NotificationMeterProvider> logger,
-    IStringLocalizer<NotificationsResource> localizer) : IOrchestrator
+    IEnumerable<INotificationMeterContributor> contributors,
+    ILogger<NotificationMeterProvider> logger) : IOrchestrator
 {
-    private static readonly TimeSpan CacheDuration = TimeSpan.FromMinutes(2);
-
-    internal const string CountsCacheKey = "NotificationMeters";
-
     public async Task<IReadOnlyList<NotificationMeter>> GetMetersForUserAsync(
         ClaimsPrincipal user, CancellationToken cancellationToken = default, Guid? resolvedUserId = null)
     {
-        var counts = await GetCachedCountsAsync(cancellationToken);
-        var meters = new List<NotificationMeter>();
         var viewerId = resolvedUserId;
-        if (viewerId is null && Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out var claimedUserId))
+        if (viewerId is null && user.GetUserId() is { } claimedUserId)
             viewerId = claimedUserId;
+        if (viewerId is not { } id)
+            return [];
 
-        var isAdmin = user.IsInRole(RoleNames.Admin);
-        var isBoard = user.IsInRole(RoleNames.Board);
-        var isShiftsAdmin = user.IsInRole(ShiftsRoles.ShiftsAdmin);
-        var isConsentCoordinator = user.IsInRole(ConsentRoles.ConsentCoordinator);
-
-        if ((isAdmin || isConsentCoordinator) && counts.ConsentReviewsPending > 0)
+        var meters = new List<NotificationMeter>();
+        foreach (var contributor in contributors)
         {
-            meters.Add(new NotificationMeter
-            {
-                Title = localizer["Notifications_Meter_ConsentReviewsPending"],
-                Count = counts.ConsentReviewsPending,
-                ActionUrl = "/Consent/ReviewQueue",
-                Audience = localizer[$"Notifications_Audience_{ConsentRoles.ConsentCoordinator}"],
-                Priority = 10,
-            });
-        }
-
-        if (isBoard && viewerId is { } boardMemberUserId)
-        {
-            // Governance caches this per user under its own key.
-            var pendingVoteCount = await governanceService.GetUnvotedApplicationCountAsync(boardMemberUserId, cancellationToken);
-            if (pendingVoteCount > 0)
-            {
-                meters.Add(new NotificationMeter
-                {
-                    Title = localizer["Notifications_Meter_ApplicationsPendingVote"],
-                    Count = pendingVoteCount,
-                    ActionUrl = "/Governance/BoardVoting",
-                    Audience = localizer[$"Notifications_Audience_{RoleNames.Board}"],
-                    Priority = 9,
-                });
-            }
-        }
-
-        if (isAdmin && counts.PendingDeletions > 0)
-        {
-            meters.Add(new NotificationMeter
-            {
-                Title = localizer["Notifications_Meter_PendingAccountDeletions"],
-                Count = counts.PendingDeletions,
-                ActionUrl = "/Users/Admin?filter=deleting&sort=name&dir=asc",
-                Audience = localizer[$"Notifications_Audience_{RoleNames.Admin}"],
-                Priority = 8,
-            });
-        }
-
-        if (isAdmin && counts.FailedSyncEvents > 0)
-        {
-            meters.Add(new NotificationMeter
-            {
-                Title = localizer["Notifications_Meter_FailedGoogleSyncEvents"],
-                Count = counts.FailedSyncEvents,
-                ActionUrl = "/Google/SyncOutbox",
-                Audience = localizer[$"Notifications_Audience_{RoleNames.Admin}"],
-                Priority = 7,
-            });
-        }
-
-        // Board and Shifts Admin see the same review queue the Consent Coordinator
-        // sees, under a label that matches how they think of it.
-        if ((isBoard || isShiftsAdmin) && counts.ConsentReviewsPending > 0)
-        {
-            meters.Add(new NotificationMeter
-            {
-                Title = localizer["Notifications_Meter_OnboardingProfilesPending"],
-                Count = counts.ConsentReviewsPending,
-                ActionUrl = "/Consent/ReviewQueue",
-                Audience = localizer[$"Notifications_Audience_{(isBoard ? RoleNames.Board : ShiftsRoles.ShiftsAdmin)}"],
-                Priority = 6,
-            });
-        }
-
-        // Admin only: coordinators see their own team's requests on the team page.
-        var teamJoinRequestsPending = isAdmin ? await GetTeamJoinRequestsPendingAsync(cancellationToken) : 0;
-        if (teamJoinRequestsPending > 0)
-        {
-            meters.Add(new NotificationMeter
-            {
-                Title = localizer["Notifications_Meter_TeamJoinRequestsPending"],
-                Count = teamJoinRequestsPending,
-                ActionUrl = "/Teams/Summary",
-                Audience = localizer[$"Notifications_Audience_{RoleNames.Admin}"],
-                Priority = 5,
-            });
-        }
-
-        if (isAdmin && counts.TicketSyncError)
-        {
-            meters.Add(new NotificationMeter
-            {
-                Title = localizer["Notifications_Meter_TicketSyncError"],
-                Count = 1,
-                ActionUrl = "/Tickets",
-                Audience = localizer[$"Notifications_Audience_{RoleNames.Admin}"],
-                Priority = 4,
-            });
-        }
-
-        // One counter per lead rather than a stored notification per request.
-        var campLeadRequestsPending = viewerId is { } leadUserId ? await GetPerCampLeadPendingCountAsync(leadUserId, cancellationToken) : 0;
-        if (campLeadRequestsPending > 0)
-        {
-            meters.Add(new NotificationMeter
-            {
-                Title = campLeadRequestsPending == 1
-                    ? localizer["Notifications_Meter_CampJoinRequest"]
-                    : localizer["Notifications_Meter_CampJoinRequests", campLeadRequestsPending],
-                Count = campLeadRequestsPending,
-                ActionUrl = "/Barrios",
-                Audience = localizer["Notifications_Audience_CampLeads"],
-                Priority = 3,
-            });
-        }
-
-        return meters;
-    }
-
-    // Not cached here: Camps already holds these reads in RAM (CachingCampService) and
-    // drops that projection on its own writes, so a second cache would only add staleness.
-    private async Task<int> GetPerCampLeadPendingCountAsync(Guid userId, CancellationToken cancellationToken)
-    {
-        try
-        {
-            var settings = await campService.GetSettingsAsync(cancellationToken);
-            var years = settings.OpenSeasons
-                .Append(settings.PublicYear)
-                .Distinct()
-                .OrderBy(year => year);
-
-            var pendingCount = 0;
-            foreach (var year in years)
-            {
-                var camps = await campService.GetCampsForYearAsync(year, cancellationToken);
-                pendingCount += camps
-                    .SelectMany(camp => camp.Seasons)
-                    .Where(season =>
-                        season.Year == year &&
-                        season.Status is CampSeasonStatus.Active or CampSeasonStatus.Full &&
-                        season.IsLead(userId))
-                    .Sum(season => season.PendingMembers.Count);
-            }
-
-            return pendingCount;
-        }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-        {
-            throw;
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Failed to compute camp lead pending-request count for {UserId}", userId);
-            return 0;
-        }
-    }
-
-    private async Task<MeterCounts> GetCachedCountsAsync(CancellationToken cancellationToken)
-    {
-        var counts = await cache.GetOrCreateAsync(CountsCacheKey, async entry =>
-        {
-            entry.AbsoluteExpirationRelativeToNow = CacheDuration;
-
             try
             {
-                return await ComputeCountsAsync(cancellationToken);
+                var contributed = await contributor.GetMetersAsync(user, id, cancellationToken);
+                meters.AddRange(contributed.ToList());
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
@@ -217,62 +35,11 @@ internal sealed class NotificationMeterProvider(
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, "Failed to compute notification meter counts");
-                return new MeterCounts();
+                logger.LogError(ex, "Notification meter contributor {Contributor} failed for user {UserId}; its meters are skipped",
+                    contributor.GetType().Name, id);
             }
-        });
-
-        return counts!;
-    }
-
-    // Read live: Teams' CachingTeamService holds every team in RAM and drops it on its own
-    // join-request writes, so a second cache here would only add staleness.
-    private async Task<int> GetTeamJoinRequestsPendingAsync(CancellationToken cancellationToken)
-    {
-        try
-        {
-            return (await teamService.GetTeamsAsync(cancellationToken)).Values
-                .Sum(t => t.PendingRequestCount);
         }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-        {
-            throw;
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Failed to compute team join request meter count");
-            return 0;
-        }
-    }
 
-    private async Task<MeterCounts> ComputeCountsAsync(CancellationToken cancellationToken)
-    {
-        var allUserInfos = await userService.GetAllUserInfosAsync(cancellationToken).ConfigureAwait(false);
-        var reviews = await consentService.GetConsentReviewsAsync(cancellationToken);
-        var consentReviewsPending = allUserInfos.Count(u =>
-            u.NeedsConsentReview(reviews.GetValueOrDefault(u.Id) ?? ConsentReviewInfo.None(u.Id)));
-
-        var pendingDeletions = allUserInfos
-            .Count(u => u.DeletionRequestedAt != null);
-
-        var failedSyncEvents = await googleSyncService.GetFailedSyncEventCountAsync(cancellationToken);
-
-        var ticketSyncError = await ticketSyncService.IsInErrorStateAsync(cancellationToken);
-
-        return new MeterCounts
-        {
-            ConsentReviewsPending = consentReviewsPending,
-            PendingDeletions = pendingDeletions,
-            FailedSyncEvents = failedSyncEvents,
-            TicketSyncError = ticketSyncError,
-        };
-    }
-
-    private sealed class MeterCounts
-    {
-        public int ConsentReviewsPending { get; init; }
-        public int PendingDeletions { get; init; }
-        public int FailedSyncEvents { get; init; }
-        public bool TicketSyncError { get; init; }
+        return meters;
     }
 }

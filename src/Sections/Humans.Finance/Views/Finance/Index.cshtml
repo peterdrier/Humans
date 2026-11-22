@@ -4,6 +4,55 @@
     var ledger = Model.Ledger;
     var owed = Model.Owed;
     var work = Model.Work;
+    var invariant = System.Globalization.CultureInfo.InvariantCulture;
+
+    Func<FinanceAccountLineVm, IHtmlContent> holdedCell =
+        @<text><span class="@(item.Amount < 0m ? "text-danger fw-bold" : item.Amount == 0m ? "text-muted" : "")">@item.Amount.ToEuro()</span></text>;
+    Func<FinanceAccountLineVm, IHtmlContent> sourceCell = @<text>
+        @if (item.Source is { } source)
+        {
+            var sourceTitle = source.Unknown
+                ?? (source.Pending is { } pending ? $"Includes {pending.ToEuro()} pending. " : "")
+                   + $"Mirror read {source.ReadAt?.ToDateTime() ?? "never"}.";
+            <span class="@(source.Balance is null ? "text-danger" : "")" title="@sourceTitle">@(source.Balance?.ToEuro() ?? "unknown")</span>
+        }
+    </text>;
+    Func<FinanceAccountLineVm, IHtmlContent> differenceCell = @<text>
+        @if (item.Source is { } source)
+        {
+            <a href="@source.ReconcileUrl" class="@(item.Difference == 0m ? "text-success" : "text-danger fw-bold")">@(item.Difference?.ToEuro() ?? "unknown")</a>
+        }
+    </text>;
+    Func<FinanceAccountLineVm, IHtmlContent> unreconciledCell = @<text>
+        @if (item.BankFeed is { } feed)
+        {
+            <span class="@(feed.Unreconciled is null ? "text-danger" : feed.Unreconciled > 0 ? "text-warning fw-bold" : "text-success")"
+                  title="Bank lines of the last @Humans.Finance.Services.Service.FeedWindowDays days not reconciled in Holded. Bank feed read @(feed.SyncedAt?.ToDateTime() ?? "never").">@(feed.Unreconciled?.ToString(invariant) ?? "unknown")</span>
+        }
+    </text>;
+    var cashTable = ledger is null ? null : TableModel.For(ledger.CashAccounts)
+        .Link("Account", a => a.Name, a => $"/Holded/Accounts/{a.AccountNum.ToString(invariant)}")
+        .Column("Number", a => a.AccountNum.ToString(invariant))
+        .Template("In Holded", holdedCell, o => o.End().Css("text-nowrap"), sortBy: a => a.Amount)
+        .Template("At the source", sourceCell, o => o.End().Css("text-nowrap"), sortBy: a => a.Source?.Balance)
+        .Template("Difference", differenceCell, o => o.End().Css("text-nowrap"), sortBy: a => a.Difference)
+        .Template("Unreconciled", unreconciledCell, o => o.End().Css("text-nowrap"), sortBy: a => a.BankFeed?.Unreconciled)
+        .Footer(new TableFooterCell("Total"), new TableFooterCell(""),
+            new TableFooterCell(ledger.CashTotal.ToEuro(), "text-end fw-bold"),
+            new TableFooterCell(""), new TableFooterCell(""), new TableFooterCell(""))
+        .Css("table-sm mb-0")
+        .Build();
+
+    Func<FinanceSepaTransferVm, IHtmlContent> sepaAmountCell = @<text>@item.Amount.ToEuro()</text>;
+    var sepaTable = TableModel.For(Model.SepaInProgress)
+        .Human("Member", t => t.UserId)
+        .Column("Sent", t => t.GeneratedAt, o => o.Date().Css("text-nowrap"))
+        .Link("File", t => t.FileName, _ => Url.Action("Sepa"))
+        .Template("Amount", sepaAmountCell, o => o.End().Css("text-nowrap"), sortBy: t => t.Amount)
+        .Footer(new TableFooterCell("Total"), new TableFooterCell(""), new TableFooterCell(""),
+            new TableFooterCell(Model.SepaInProgressTotal.ToEuro(), "text-end fw-bold"))
+        .Css("table-sm mb-0")
+        .Build();
 }
 
 <page-header title="Finance">
@@ -31,89 +80,95 @@
             }
             else
             {
-                <table class="table table-sm mb-0">
-                    <tbody>
-                        <tr class="table-light"><td colspan="2" class="small text-uppercase text-muted fw-semibold ps-3">Banks</td></tr>
-                        @foreach (var a in ledger.Banks)
-                        {
-                            <tr>
-                                <td class="ps-3"><a href="/Holded/Accounts/@a.AccountNum">@a.Name</a> <span class="small text-muted">@a.AccountNum</span></td>
-                                <td class="text-end pe-3 @(a.Amount == 0m ? "text-muted" : "")">@a.Amount.ToEuro()</td>
-                            </tr>
-                        }
-                        <tr class="table-light"><td colspan="2" class="small text-uppercase text-muted fw-semibold ps-3">Stripe (on 441 for now)</td></tr>
-                        @foreach (var a in ledger.Stripe)
-                        {
-                            <tr>
-                                <td class="ps-3"><a href="/Holded/Accounts/@a.AccountNum">@a.Name</a> <span class="small text-muted">@a.AccountNum</span></td>
-                                <td class="text-end pe-3 @(a.Amount == 0m ? "text-muted" : "")">@a.Amount.ToEuro()</td>
-                            </tr>
-                        }
-                        <tr class="fw-bold"><td class="ps-3">Total</td><td class="text-end pe-3">@ledger.CashTotal.ToEuro()</td></tr>
-                    </tbody>
-                </table>
+                <partial name="_Table" model="cashTable" />
             }
         </div>
     </div>
 
-    <div class="col-lg-6">
-        <div class="card h-100">
+    <div class="col-lg-6 d-flex flex-column gap-3">
+        <div class="card">
             <div class="card-header d-flex justify-content-between align-items-baseline">
-                <span>What we owe</span>
-                @if (owed.Total is { } owedTotal)
+                <span>Position</span>
+                @if (Model.NetPosition is { } net)
                 {
-                    <span class="fs-5 fw-bold text-danger">@owedTotal.ToEuro()</span>
+                    <span class="fs-5 fw-bold @(net < 0m ? "text-danger" : "text-success")">@net.ToEuro()</span>
                 }
             </div>
-            @if (owed.Unavailable is { } owedUnavailable)
+            <table class="table table-sm mb-0">
+                <tbody>
+                    <tr class="fw-bold">
+                        <td class="ps-3">Cash on hand</td>
+                        <td class="text-end pe-3">@(ledger?.CashTotal.ToEuro() ?? "—")</td>
+                    </tr>
+                    <tr class="fw-bold">
+                        <td class="ps-3">Plus owed to us</td>
+                        <td class="text-end pe-3">@(ledger?.ReceivablesTotal.ToEuro() ?? "—")</td>
+                    </tr>
+                    @foreach (var r in ledger?.Receivables ?? [])
+                    {
+                        <tr><td class="ps-4">@r.Name</td><td class="text-end pe-3 @(r.Amount == 0m ? "text-muted" : "")">@r.Amount.ToEuro()</td></tr>
+                    }
+                    <tr class="fw-bold">
+                        <td class="ps-3">Less what we owe</td>
+                        <td class="text-end pe-3">@(owed.Total is { } owedTotal ? (-owedTotal).ToEuro() : "—")</td>
+                    </tr>
+                    @if (owed.Unavailable is { } owedUnavailable)
+                    {
+                        <tr><td colspan="2" class="ps-4 text-danger small"><i class="fa-solid fa-circle-exclamation me-1"></i>@owedUnavailable</td></tr>
+                    }
+                    else
+                    {
+                        <tr>
+                            <td class="ps-4">
+                                <a asp-action="Creditors">Members awaiting reimbursement</a>
+                                <div class="small text-muted">@owed.MemberAccounts account@(owed.MemberAccounts == 1 ? "" : "s")@(owed.InSepaFiles > 0m ? " · " + owed.InSepaFiles.ToEuro() + " already in SEPA files, not booked yet" : "")</div>
+                            </td>
+                            <td class="text-end pe-3">@owed.Members.ToEuro()</td>
+                        </tr>
+                        <tr>
+                            <td class="ps-4">
+                                <a asp-action="Creditors">Suppliers</a>
+                                <div class="small text-muted">@owed.SupplierAccounts account@(owed.SupplierAccounts == 1 ? "" : "s") with a balance owed</div>
+                            </td>
+                            <td class="text-end pe-3">@owed.Suppliers.ToEuro()</td>
+                        </tr>
+                        <tr>
+                            <td class="ps-4">
+                                Taxes owed to Hacienda
+                                <div class="small text-muted">VAT payable and IRPF withheld (475)</div>
+                            </td>
+                            <td class="text-end pe-3">@(owed.Taxes?.ToEuro() ?? "—")</td>
+                        </tr>
+                    }
+                    <tr class="fw-bold">
+                        <td class="ps-3">Net position</td>
+                        <td class="text-end pe-3 @(Model.NetPosition < 0m ? "text-danger" : Model.NetPosition > 0m ? "text-success" : "")">@(Model.NetPosition?.ToEuro() ?? "—")</td>
+                    </tr>
+                </tbody>
+            </table>
+            @if (ledger is null)
             {
-                <div class="card-body text-danger small">
-                    <i class="fa-solid fa-circle-exclamation me-1"></i>@owedUnavailable
-                </div>
+                <div class="card-footer small text-muted">The Holded ledger mirror has never synced.</div>
+            }
+        </div>
+
+        <div class="card flex-grow-1">
+            <div class="card-header d-flex justify-content-between align-items-baseline">
+                <span>SEPA transfers in progress</span>
+                <span class="fs-5 fw-bold">@Model.SepaInProgressTotal.ToEuro()</span>
+            </div>
+            @if (Model.SepaInProgress.Count == 0)
+            {
+                <div class="card-body text-muted">Nothing sent to the bank is waiting to be booked.</div>
             }
             else
             {
-            <table class="table table-sm mb-0">
-                <tbody>
-                    <tr>
-                        <td class="ps-3">
-                            <a asp-action="Creditors">Members awaiting reimbursement</a>
-                            <div class="small text-muted">@owed.MemberAccounts account@(owed.MemberAccounts == 1 ? "" : "s")@(owed.InSepaFiles > 0m ? " · " + owed.InSepaFiles.ToEuro() + " already in SEPA files, not booked yet" : "")</div>
-                        </td>
-                        <td class="text-end pe-3">@owed.Members.ToEuro()</td>
-                    </tr>
-                    <tr>
-                        <td class="ps-3">
-                            <a asp-action="Creditors">Suppliers</a>
-                            <div class="small text-muted">@owed.SupplierAccounts account@(owed.SupplierAccounts == 1 ? "" : "s") with a balance owed</div>
-                        </td>
-                        <td class="text-end pe-3">@owed.Suppliers.ToEuro()</td>
-                    </tr>
-                    <tr>
-                        <td class="ps-3">
-                            Taxes owed to Hacienda
-                            <div class="small text-muted">VAT payable and IRPF withheld (475)</div>
-                        </td>
-                        <td class="text-end pe-3">@(owed.Taxes?.ToEuro() ?? "—")</td>
-                    </tr>
-                    <tr class="fw-bold"><td class="ps-3">Total</td><td class="text-end pe-3">@(owed.Total?.ToEuro() ?? "—")</td></tr>
-                </tbody>
-            </table>
+                <partial name="_Table" model="sepaTable" />
+                <div class="card-footer small">Sent to the bank, not booked in Holded yet. <a asp-action="Sepa">SEPA payouts</a></div>
             }
         </div>
     </div>
 </div>
-
-@{ var pleo = Model.Pleo; var pleoOff = pleo.Difference is not { } pd || pd != 0m; }
-<a asp-action="Pleo" class="card mb-4 text-decoration-none text-reset @(pleoOff ? "border-danger" : "")">
-    <div class="card-body d-flex flex-wrap gap-4 align-items-baseline">
-        <span class="text-muted small text-uppercase">Pleo wallet vs Holded 57200003</span>
-        <span>Pleo <strong>@(pleo.Wallet?.ToEuro() ?? "—")</strong></span>
-        <span>Holded <strong>@(pleo.Holded?.ToEuro() ?? "—")</strong></span>
-        <span class="@(pleoOff ? "text-danger fw-bold" : "text-success")">Difference @(pleo.Difference?.ToEuro() ?? "unknown")</span>
-        <span class="ms-auto small">Reconcile →</span>
-    </div>
-</a>
 
 <h2 class="h4 mb-3">Work to do</h2>
 <div class="row g-3 mb-4">
@@ -136,6 +191,15 @@
         </a>
     </div>
     <div class="col-md-4 col-lg">
+        <a asp-action="ExpenseRecon" class="card h-100 text-decoration-none text-reset">
+            <div class="card-body">
+                <div class="text-muted small text-uppercase">Pushing to Holded</div>
+                <div class="fs-3 fw-bold">@(work.PushingToHolded?.ToString() ?? "—")</div>
+                <div class="text-muted small">@(work.PushingToHolded is null ? "Expense recon unavailable" : "Approved expense lines not in the ledger yet")</div>
+            </div>
+        </a>
+    </div>
+    <div class="col-md-4 col-lg">
         <a asp-action="Creditors" class="card h-100 text-decoration-none text-reset">
             <div class="card-body">
                 <div class="text-muted small text-uppercase">Ready to pay</div>
@@ -147,9 +211,18 @@
     <div class="col-md-4 col-lg">
         <a asp-action="Sepa" class="card h-100 text-decoration-none text-reset">
             <div class="card-body">
+                <div class="text-muted small text-uppercase">Waiting for bank line</div>
+                <div class="fs-3 fw-bold">@(work.AwaitingBankLine?.ToString() ?? "—")</div>
+                <div class="text-muted small">@(work.AwaitingBankLine is null ? "Bank feed unavailable" : "Transfers sent, no Sabadell line in Holded yet")</div>
+            </div>
+        </a>
+    </div>
+    <div class="col-md-4 col-lg">
+        <a asp-action="Sepa" class="card h-100 text-decoration-none text-reset">
+            <div class="card-body">
                 <div class="text-muted small text-uppercase">Transfers to book</div>
-                <div class="fs-3 fw-bold">@(work.CreditorsUnavailable is null ? work.AwaitingBooking.ToString() : "—")</div>
-                <div class="text-muted small">Accounts with a SEPA transfer not booked yet</div>
+                <div class="fs-3 fw-bold @(work.TransfersToBook > 0 ? "text-warning" : "")">@(work.TransfersToBook?.ToString() ?? "—")</div>
+                <div class="text-muted small">@(work.TransfersToBook is null ? "Bank feed unavailable" : "Sabadell line found, not booked yet")</div>
             </div>
         </a>
     </div>
@@ -161,7 +234,7 @@
                 <div class="text-muted small">
                     @if (work.ReconProblems is { } rp)
                     {
-                        <text>@rp recon problem@(rp == 1 ? "" : "s") · @work.DuplicateAccounts duplicate-doc account@(work.DuplicateAccounts == 1 ? "" : "s")</text>
+                        <text>@rp recon problem@(rp == 1 ? "" : "s") · @work.DuplicateAccounts other duplicate-doc account@(work.DuplicateAccounts == 1 ? "" : "s")</text>
                     }
                     else
                     {
@@ -174,53 +247,7 @@
 </div>
 
 <div class="row g-3">
-    <div class="col-lg-4 col-md-6">
-        <div class="card h-100">
-            <div class="card-header">Owed to us</div>
-            @if (ledger is null)
-            {
-                <div class="card-body text-muted">The Holded ledger mirror has never synced.</div>
-            }
-            else
-            {
-                <table class="table table-sm mb-0">
-                    <tbody>
-                        @foreach (var r in ledger.Receivables)
-                        {
-                            <tr><td class="ps-3">@r.Name</td><td class="text-end pe-3 @(r.Amount == 0m ? "text-muted" : "")">@r.Amount.ToEuro()</td></tr>
-                        }
-                        <tr class="fw-bold"><td class="ps-3">Total</td><td class="text-end pe-3">@ledger.ReceivablesTotal.ToEuro()</td></tr>
-                    </tbody>
-                </table>
-            }
-        </div>
-    </div>
-
-    <div class="col-lg-4 col-md-6">
-        <div class="card h-100">
-            <div class="card-header">Net position</div>
-            @if (ledger is null || owed.Total is null)
-            {
-                <div class="card-body text-muted">Needs the Holded ledger mirror.</div>
-            }
-            else
-            {
-                <table class="table table-sm mb-0">
-                    <tbody>
-                        <tr><td class="ps-3">Cash on hand</td><td class="text-end pe-3">@ledger.CashTotal.ToEuro()</td></tr>
-                        <tr><td class="ps-3">Plus owed to us</td><td class="text-end pe-3">@ledger.ReceivablesTotal.ToEuro()</td></tr>
-                        <tr><td class="ps-3">Less what we owe</td><td class="text-end pe-3">@((-owed.Total.Value).ToEuro())</td></tr>
-                        <tr class="fw-bold">
-                            <td class="ps-3">Free to spend</td>
-                            <td class="text-end pe-3 @(Model.NetPosition < 0m ? "text-danger" : "text-success")">@Model.NetPosition.ToEuro()</td>
-                        </tr>
-                    </tbody>
-                </table>
-            }
-        </div>
-    </div>
-
-    <div class="col-lg-4 col-md-6">
+    <div class="col-md-6">
         <div class="card h-100">
             <div class="card-header">Budget vs actual@(Model.Budget is { } by ? " · " + by.YearName : "")</div>
             @if (Model.Budget is not { } b)
@@ -255,7 +282,7 @@
         </div>
     </div>
 
-    <div class="col-lg-4 col-md-6">
+    <div class="col-md-6">
         <div class="card h-100">
             <div class="card-header">Runway</div>
             @if (Model.Runway is not { } rw)
@@ -276,7 +303,7 @@
         </div>
     </div>
 
-    <div class="col-lg-4 col-md-6">
+    <div class="col-md-6">
         <div class="card h-100">
             <div class="card-header">Tax calendar</div>
             @if (ledger is null)
@@ -303,7 +330,7 @@
         </div>
     </div>
 
-    <div class="col-lg-4 col-md-6">
+    <div class="col-md-6">
         <div class="card h-100">
             <div class="card-header">Income this year</div>
             @if (Model.Income is not { } inc)

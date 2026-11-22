@@ -10,9 +10,9 @@ injects `IDbContextFactory<EventGuideDbContext>`
 directly. Owns `Events`,
 `EventGuideSettings`, `EventCategories`, `EventVenues`,
 `EventModerationActions`, `EventPreferences`, `EventFavourites`. The
-edition settings row is Settings' `settings_event` table (on
+edition settings row is Settings' `settings_events` table (on
 `SettingsDbContext`, read only through `ISettingsService`; Shifts' similarly-named
-`event_settings` is a different table Events never reads) and
+`shift_event_settings` is a different table Events never reads) and
 event participation is **Tickets-owned** (lives on `TicketsDbContext` —
 see [Tickets](../../Humans.Tickets/Docs/data-access.md)); `EventGuideDbContext`
 deliberately excludes both
@@ -50,20 +50,7 @@ Cross-section calls via `ISettingsService` (active event settings),
 `IUserService`, `ICampService` (barrio names for the guide export),
 `IAuditLogService` (guide-export audit) and `IEmailService`, plus `IClock`, with the
 section's own `EventsEmails` builder supplying the message. The inner service has no
-`IMemoryCache`. CSV bulk import runs through `EventBulkImporter`.
-
-### EventBulkImporter (internal — `IApplicationService`, constructed per import by `EventService`)
-
-Not DI-registered; shares `EventService`'s `IEventRepository`. Validates the whole CSV
-before applying changed rows to a barrio's events.
-
-| Table | R/W |
-|-------|-----|
-| Events | R/W (the barrio's existing submissions; add / save changed rows) |
-| EventCategories | R (active categories) |
-
-No cross-section calls — `IClock` and `IStringLocalizer<EventsResource>` only. No
-`IMemoryCache`.
+`IMemoryCache`. CSV bulk import runs through `EventService`.
 
 ### CachingEventService (Singleton, `Humans.Events.Services`)
 

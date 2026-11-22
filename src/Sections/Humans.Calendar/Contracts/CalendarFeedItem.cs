@@ -10,6 +10,8 @@ namespace Humans.Calendar.Contracts;
 /// base URL); null when there is no landing page. A repeating item sets <paramref name="RecurrenceRule"/> (an RFC 5545
 /// RRULE, valid per <see cref="CalendarRecurrence.IsValidRule"/>) and the IANA <paramref name="RecurrenceTimezone"/> it
 /// repeats in; <paramref name="Start"/>..<paramref name="End"/> is then the first occurrence and Calendar expands the rest.
+/// <paramref name="LocationUrl"/> is an absolute http(s) link to where the item happens (e.g. a video call), validated by
+/// the contributor.
 /// </remarks>
 public sealed record CalendarFeedItem(
     string Uid,
@@ -21,4 +23,5 @@ public sealed record CalendarFeedItem(
     string? Location,
     string? Url,
     string? RecurrenceRule = null,
-    string? RecurrenceTimezone = null);
+    string? RecurrenceTimezone = null,
+    string? LocationUrl = null);

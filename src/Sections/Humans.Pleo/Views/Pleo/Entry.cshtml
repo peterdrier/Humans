@@ -1,8 +1,9 @@
 @model PleoEntryView
+@inject Humans.Base.Interfaces.IOrgTimeZone OrgTimeZone
 @{
     var e = Model.Row;
     ViewData["Title"] = $"Pleo entry {e.Merchant}";
-    var madrid = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
+    var orgZone = OrgTimeZone.Zone;
 }
 
 <page-header title="@(e.Merchant ?? e.Family)" />
@@ -14,16 +15,16 @@
             <dt class="col-5">Amount</dt>
             <dd class="col-7">
                 @(e.AmountEur is { } eur ? eur.ToSignedEuro() : "no EUR figure")
-                @if (e.Currency != "EUR")
+                @if (!string.IsNullOrWhiteSpace(e.Currency) && e.Currency != "EUR")
                 {
-                    <span class="text-muted">(@((e.Minors / 100m).ToString("N2", CultureInfo.InvariantCulture)) @e.Currency)</span>
+                    <span class="text-muted">(@(e.OriginalAmount.ToString($"N{e.CurrencyDecimals}", CultureInfo.InvariantCulture)) @e.Currency)</span>
                 }
             </dd>
             <dt class="col-5">Cardholder</dt><dd class="col-7">@e.Cardholder</dd>
             <dt class="col-5">Family</dt><dd class="col-7">@e.Family @e.SubFamily</dd>
             <dt class="col-5">Status</dt><dd class="col-7">@e.Status</dd>
-            <dt class="col-5">Performed</dt><dd class="col-7">@(e.PerformedAt is { } p ? p.ToDateTime(madrid) : "—")</dd>
-            <dt class="col-5">Settled</dt><dd class="col-7">@(e.SettledAt is { } s ? s.ToDateTime(madrid) : "—")</dd>
+            <dt class="col-5">Performed</dt><dd class="col-7">@(e.PerformedAt is { } p ? p.ToDateTime(orgZone) : "—")</dd>
+            <dt class="col-5">Settled</dt><dd class="col-7">@(e.SettledAt is { } s ? s.ToDateTime(orgZone) : "—")</dd>
             <dt class="col-5">Category</dt>
             <dd class="col-7">
                 @(Model.CategoryName ?? (Model.CategoryId is null ? "none" : "not linked"))

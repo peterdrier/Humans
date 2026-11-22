@@ -1,5 +1,6 @@
-using Humans.Settings.Contracts;
-using Humans.Shifts.Contracts;
+using Humans.Teams;
+using Microsoft.Extensions.Localization;
+using Humans.Base.Extensions;
 using Humans.Base.Constants;
 using AwesomeAssertions;
 using Humans.Auth.Contracts;
@@ -25,8 +26,6 @@ public sealed class CachingTeamServiceGetTeamDetailTests : IDisposable
     private readonly IRoleAssignmentService _roleAssignmentService;
     private readonly CachingTeamService _service;
     private readonly TeamPageService _pages;
-    private readonly ISettingsService _settings = Substitute.For<ISettingsService>();
-    private readonly IShiftService _shifts = Substitute.For<IShiftService>();
 
     public CachingTeamServiceGetTeamDetailTests()
     {
@@ -48,7 +47,7 @@ public sealed class CachingTeamServiceGetTeamDetailTests : IDisposable
         var userService = Substitute.For<IUserService>();
 
         userService
-            .GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, UserInfo>());
 
         var services = new ServiceCollection();
@@ -62,43 +61,11 @@ public sealed class CachingTeamServiceGetTeamDetailTests : IDisposable
 
         _service = new CachingTeamService(
             _serviceProvider.GetRequiredService<IServiceScopeFactory>(),
-            NullLogger<CachingTeamService>.Instance);
+            NullLogger<CachingTeamService>.Instance, Substitute.For<IStringLocalizer<TeamsResource>>());
         _pages = new TeamPageService(
             _service,
-            Substitute.For<Humans.GoogleIntegration.Contracts.ITeamResourceService>(),
-            _shifts,
-            _settings,
+            Substitute.For<Humans.Google.Contracts.ITeamResourceService>(),
             _roleAssignmentService);
-    }
-
-    [HumansTheory]
-    [Xunit.InlineData("coordinator")]
-    [Xunit.InlineData("settings")]
-    [Xunit.InlineData("summary")]
-    public async Task TeamPage_EnrichmentReads_PropagateAbandonedRequest(string boundary)
-    {
-        var parent = MakeTeam("Parent");
-        var child = MakeTeam("Child");
-        child.ParentTeamId = parent.Id;
-        SeedTeams(parent, child);
-        await _service.GetTeamsAsync(Xunit.TestContext.Current.CancellationToken);
-        using var request = new CancellationTokenSource();
-        await request.CancelAsync();
-        void Check(string read, CancellationToken token)
-        {
-            if (string.Equals(boundary, read, StringComparison.Ordinal)) token.ThrowIfCancellationRequested();
-        }
-        _shifts.IsDeptCoordinatorAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns(call => { Check("coordinator", call.Arg<CancellationToken>()); return false; });
-        var activeEvent = BurnFixtures.Burn(year: 2026, timeZoneId: "Europe/Madrid");
-        _settings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>())
-            .Returns(call => { Check("settings", call.Arg<CancellationToken>()); return activeEvent; });
-        _shifts.GetShiftsSummaryAsync(Arg.Any<Guid>(), Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(call => { Check("summary", call.Arg<CancellationToken>()); return new ShiftsSummaryData(0, 0, 0, 0, new HashSet<Guid>()); });
-
-        var read = () => _pages.GetTeamPageDetailAsync(parent.Slug, Guid.NewGuid(), false, request.Token);
-
-        await read.Should().ThrowAsync<OperationCanceledException>();
     }
 
     [HumansTheory]
@@ -276,6 +243,87 @@ public sealed class CachingTeamServiceGetTeamDetailTests : IDisposable
 
         result.Should().NotBeNull();
         result.ChildTeams.Select(c => c.Id).Should().BeEquivalentTo([publicChild.Id]);
+    }
+
+    [HumansFact]
+    public async Task TeamPage_MemberInMultipleSubteams_KeepsFirstNameOrderedAffiliation()
+    {
+        var parent = MakeTeam("Department");
+        var zeta = MakeTeam("Zeta");
+        var alpha = MakeTeam("Alpha");
+        zeta.ParentTeamId = parent.Id;
+        alpha.ParentTeamId = parent.Id;
+        var memberId = Guid.NewGuid();
+        foreach (var child in new[] { zeta, alpha })
+            child.Members.Add(new TeamMember
+            {
+                Id = Guid.NewGuid(),
+                TeamId = child.Id,
+                UserId = memberId,
+                Role = child == zeta ? TeamMemberRole.Coordinator : TeamMemberRole.Member,
+                JoinedAt = child.CreatedAt
+            });
+        SeedTeams(parent, zeta, alpha);
+
+        var page = await _pages.GetTeamPageDetailAsync("department", Guid.NewGuid(),
+            Xunit.TestContext.Current.CancellationToken);
+
+        var member = page!.SubteamMembers.Should().ContainSingle().Subject;
+        member.UserId.Should().Be(memberId);
+        member.ChildTeamName.Should().Be("Alpha");
+        member.IsCoordinator.Should().BeFalse();
+        page.SubteamLeads.Should().ContainSingle().Which.ChildTeamName.Should().Be("Zeta");
+    }
+
+    [HumansFact]
+    public async Task TeamPage_SubteamRoleTitles_UsePublicManagementDefinitionsFromTheMemberSnapshot()
+    {
+        using var culture = new CultureScope("de");
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var parent = MakeTeam("Department");
+        var child = MakeTeam("Child");
+        var privateRoleChild = MakeTeam("Private role");
+        child.ParentTeamId = privateRoleChild.ParentTeamId = parent.Id;
+        var coordinator = Guid.NewGuid();
+        var member = Guid.NewGuid();
+        foreach (var (team, userId, role) in new[]
+        {
+            (child, coordinator, TeamMemberRole.Coordinator),
+            (child, member, TeamMemberRole.Member),
+            (privateRoleChild, Guid.NewGuid(), TeamMemberRole.Coordinator),
+        })
+            team.Members.Add(new TeamMember
+            {
+                Id = Guid.NewGuid(),
+                TeamId = team.Id,
+                UserId = userId,
+                Role = role,
+                JoinedAt = team.CreatedAt,
+            });
+        SeedTeams(parent, child, privateRoleChild);
+        var teams = (await _innerTeamService.GetTeamsAsync(ct)).ToDictionary(pair => pair.Key, pair => pair.Value);
+        TeamRoleDefinitionSnapshot Definition(string name, int sortOrder, bool management = true, bool visible = true) =>
+            new(Guid.NewGuid(), child.Id, child.Name, child.Slug, name, null, 1, null, [], sortOrder,
+                management, RolePeriod.YearRound, visible, []);
+        teams[child.Id] = teams[child.Id] with
+        {
+            RoleDefinitions = [Definition("Private", -2, visible: false), Definition("Ordinary", -1, management: false),
+                Definition("Earlier in input", 2), Definition("Zulu", 1), Definition("Ärea", 1)],
+        };
+        teams[privateRoleChild.Id] = teams[privateRoleChild.Id] with
+        {
+            RoleDefinitions = [Definition("Private", 0, visible: false) with
+                { TeamId = privateRoleChild.Id, TeamName = privateRoleChild.Name, TeamSlug = privateRoleChild.Slug }],
+        };
+        _innerTeamService.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(teams);
+
+        var page = await _pages.GetTeamPageDetailAsync(parent.Slug, Guid.NewGuid(), ct);
+
+        page.Should().NotBeNull();
+        page.SubteamLeads.Single(lead => string.Equals(lead.ChildTeamSlug, child.Slug, StringComparison.Ordinal)).RoleTitle.Should().Be("Ärea");
+        page.SubteamLeads.Single(lead => string.Equals(lead.ChildTeamSlug, privateRoleChild.Slug, StringComparison.Ordinal)).RoleTitle.Should().BeNull();
+        page.SubteamMembers.Single(person => person.UserId == coordinator).RoleTitle.Should().Be("Ärea");
+        page.SubteamMembers.Single(person => person.UserId == member).RoleTitle.Should().BeNull();
     }
 
     private void SeedTeams(params Team[] teams)

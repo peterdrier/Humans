@@ -73,7 +73,8 @@
                 </text>;
             Func<AdminRoleAssignmentViewModel, IHtmlContent> actionCell =
                 @<text>
-                    @if (item.IsActive)
+                    @* Board seats end on /Governance/Board. *@
+                    @if (item.IsActive && !Humans.Auth.Authorization.RoleAssignmentRules.IsAddedInGovernance(item.RoleName))
                     {
                         <form asp-controller="RoleAssignments" asp-action="EndRole" asp-route-id="@item.UserId" asp-route-roleId="@item.Id" method="post" class="d-inline" authorize-policy="@Humans.Users.Contracts.UsersPolicies.Manage"
                               data-confirm="@Localizer["Auth_Roles_EndConfirm"].Value">
@@ -85,7 +86,7 @@
             var rolesTable = TableModel.For(Model.RoleAssignments)
                 .Template(Localizer["Auth_Roles_User"].Value, userCell)
                 .Template(SharedLocalizer["MyTeams_Role"].Value, roleCell)
-                .Column(Localizer["Auth_Roles_ValidFrom"].Value, ra => ra.ValidFrom.ToDate())
+                .Column(Localizer["Auth_Roles_ValidFrom"].Value, ra => ra.ValidFrom.ToDate(), c => c.Css("text-nowrap"))
                 .Template(Localizer["Auth_Roles_ValidTo"].Value, validToCell)
                 .Template(SharedLocalizer["Common_Status"].Value, statusCell, c => c.NoSort())
                 .Template("", actionCell, c => c.NoSort().End())

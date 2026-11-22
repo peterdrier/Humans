@@ -1,5 +1,7 @@
 using AwesomeAssertions;
 using Humans.Calendar.Contracts;
+using Humans.Calendar.Services;
+using Humans.Calendar.ViewComponents;
 using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.Rendering;
@@ -26,7 +28,9 @@ public sealed class UserCalendarViewComponentTests
             new("late", "Events", "Late", null, late, late.Plus(Duration.FromHours(1)), null, null),
             new("early", "Shifts", "Early", null, early, early.Plus(Duration.FromHours(1)), null, null),
         });
-        var component = new UserCalendarViewComponent(feed, Substitute.For<IUserService>(),
+        var tokens = Substitute.For<ICalendarFeedTokenService>();
+        tokens.GetAsync(userId, Arg.Any<CancellationToken>()).Returns((Guid?)Guid.NewGuid());
+        var component = new UserCalendarViewComponent(feed, Substitute.For<IUserService>(), tokens,
             NullLogger<UserCalendarViewComponent>.Instance)
         {
             ViewComponentContext = new ViewComponentContext
@@ -44,6 +48,7 @@ public sealed class UserCalendarViewComponentTests
             .Should().BeOfType<UserCalendarViewModel>().Subject;
 
         model.Items.Select(i => i.Uid).Should().Equal("early", "late");
+        model.HasFeedToken.Should().BeTrue();
     }
 
     [HumansFact]
@@ -56,7 +61,7 @@ public sealed class UserCalendarViewComponentTests
             .Returns(_ => ValueTask.FromException<UserInfo?>(new OperationCanceledException(aborted.Token)));
 
         var component = new UserCalendarViewComponent(
-            Substitute.For<IICalFeedService>(), users,
+            Substitute.For<IICalFeedService>(), users, Substitute.For<ICalendarFeedTokenService>(),
             NullLogger<UserCalendarViewComponent>.Instance)
         {
             ViewComponentContext = new ViewComponentContext

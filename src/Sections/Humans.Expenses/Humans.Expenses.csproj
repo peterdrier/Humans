@@ -42,8 +42,8 @@
     -->
     <ProjectReference Include="..\Humans.Finance.Contracts\Humans.Finance.Contracts.csproj" />
     <!--
-      The Holded API client (IHoldedClient + its DTOs and typed exceptions) the outbox drain
-      writes purchase documents through, from Humans.Holded's Contracts/ folder.
+      Holded's IHoldedWrite (and the IHoldedService contact mirror) the outbox drain writes
+      purchase documents through, from Humans.Holded's Contracts/ folder.
     -->
     <ProjectReference Include="..\Humans.Holded\Humans.Holded.csproj" />
     <!--

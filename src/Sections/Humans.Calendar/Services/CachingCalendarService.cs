@@ -107,13 +107,12 @@ internal sealed class CachingCalendarService(
         }
     }
 
-    protected override async Task WarmAllAsync(CancellationToken ct)
+    protected override async Task WarmAllAsync(Action<Guid, CalendarEventInfo> publish, CancellationToken ct)
     {
         var events = await WithInnerAsync(inner => inner.GetAllEventInfosAsync(ct));
         foreach (var ev in events)
         {
-            if (ContainsKey(ev.Id)) continue;
-            Set(ev.Id, ev);
+            publish(ev.Id, ev);
         }
     }
 

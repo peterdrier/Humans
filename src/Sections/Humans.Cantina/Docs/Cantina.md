@@ -3,7 +3,7 @@
   tests/Humans.Cantina.Tests/**
 -->
 <!-- freshness:flag-on-change
-  Cantina access gate, weekly-roster aggregation, on-site definition, the dietary-profile store, and the MedicalConditions exclusion — review when Cantina services/controllers/views change, or when Shifts changes the shape of `volunteer_event_profiles` / `shift_signups`.
+  Cantina access gate, weekly-roster aggregation, on-site definition, the dietary-profile store, and the MedicalConditions exclusion — review when Cantina services/controllers/views change, or when Shifts changes the shape of `shift_volunteer_event_profiles` / `shift_signups`.
 -->
 
 # Cantina — Section Invariants
@@ -39,7 +39,7 @@ Context: `CantinaDbContext` (history table `__EFMigrationsHistory_Cantina`).
 ### Read sources
 
 - `shift_signups` — owned by **Shifts** ([`Shifts.md`](../../Humans.Shifts/Docs/Shifts.md)). Filtered to `Status = Confirmed` joined to `shifts` by `DayOffset`. Read **through `IShiftService`** (`GetOnSiteUserIdsForDayAsync`), never the Shifts repository directly.
-- `profiles` / `users` — owned by **Users/Identity**. Burner names and the merge chain are read via **`IUserService`** (cached `UserInfo`). **`MedicalConditions` is never read by the cantina** — no Cantina DTO has such a field.
+- `user_profiles` / `users` — owned by **Users/Identity**. Burner names and the merge chain are read via **`IUserService`** (cached `UserInfo`). **`MedicalConditions` is never read by the cantina** — no Cantina DTO has such a field.
 
 ## Routing
 
@@ -90,7 +90,7 @@ Numeric offsets must also fit the requested day or full seven-day window within 
 - Weekly aggregates (dietary preference roll-up, allergy / intolerance counters, total head count) are computed over **unique humans** for the week, not summed day-by-day. A human on site Mon + Wed counts once. Empty weeks use the same aggregation path, retaining every dietary/allergy/intolerance bucket with a zero count.
 - The roster stays read-only: no membership, schedule or dietary writes, and no notifications. Weekly and daily CSV downloads append `CantinaRosterExported` through AuditLog with the authenticated actor, event/date scope and emitted person-row count, including empty/repeated downloads. No dietary values are logged; HTML reads do not add export audits.
 - Allergy and intolerance details (health data) are hidden on the roster pages until an audited reveal: the reveal POST records `CantinaHealthDetailsRevealed` through the same roster service path (one row on the event naming the actor, the week or day and the person-row count; never one row per member shown, because the roster is the kitchen's working list across a few hundred people, not a lookup of one person's health data), hands a token for that one week or day through TempData, and the following render shows the details once. Preference roll-ups and allergy / intolerance **counts** always show. Pinned by `CantinaRosterServiceTests.HealthReveal_IsAudited_AndUnlocksOnlyThePageItWasPostedFor` and `HealthReveal_WritesOneRow_HoweverManyMembersItShows`.
-- The roster is rendered live on every request — no cached aggregates. CSV exports the same in-memory aggregate produced for the HTML view.
+- The roster is rendered live on every request — no cached aggregates. CSV exports the same in-memory aggregate produced for the HTML view. Daily HTML and CSV column totals share the matrix’s per-preference, allergy and intolerance counts; health totals stay behind the existing audited disclosure gates.
 - Every `RosterPersonDto` in the cohort has a confirmed shift no later than the day after the week, so its arrival day always exists and `ArrivesOn` is non-nullable.
 - A dietary save is the member's own: the form takes the user from the principal, refuses "Other" without its text, filters chips against `DietaryOptions`, and keeps no medical field. A save clears `DeclinedToAnswer`; a decline clears every food field. After normalization, saves refuse preferences over 200 Unicode characters and retained Other texts over 500, matching the existing columns. Refusals preserve all stored answers and the opt-out; unknown preferences within the bound and discarded text remain supported. Member self-saves and declines are not audited.
 - Merge (`IUserMerge`): the survivor's answers win. When the survivor has no row, the source's row moves. Saved empty answers and declines are preserved. The source's row is removed; retries preserve the result. Reads under an archived id resolve to the survivor.
@@ -118,17 +118,18 @@ Numeric offsets must also fit the requested day or full seven-day window within 
 - **AuditLog:** `IAuditLogService` records the weekly/daily CSV disclosures and the allergy / intolerance reveals.
 
 - **Shifts:** `IShiftService.GetOnSiteUserIdsForDayAsync` (on-site cohort). Service-layer reads only; the cantina never touches the Shifts repository.
-- **Settings:** `ISettingsService.GetActiveEventSettingsAsync` (active event/burn).
+- **Shifts pages:** Cantina fills Shifts' `IShiftsPageBanner` slot with `DietaryMissingBannerViewComponent`, shown on `/Shifts` and `/Shifts/Mine`.
+- **Settings:** `ISettingsService.GetActiveEventSettings` (active event/burn).
 - **Users/Identity:** `IUserService.GetUserInfosAsync` / `GetUserInfoAsync` — cached `UserInfo` for burner names and the merge chain. No entity reads.
 - **Gdpr / Users:** implements `IUserDataContributor` (Base) and `IUserMerge` (Users contract) in `DietaryProfileService`.
-- **Inbound:** Shifts (banner, volunteer search, admin badges) and Users (medical prompt) read `ICantinaService`.
+- **Inbound:** Shifts (banner) and Users (medical prompt) read `ICantinaService`.
 
 ## Architecture
 
 **Project:** `src/Sections/Humans.Cantina` (nobodies-collective/Humans#866)
 **Owning services:** `CantinaRosterService`, `DietaryProfileService`
 **Owned tables:** `cantina_dietary_profiles` (nobodies-collective/Humans#1113).
-**Status:** (A) Migrated — new section in feature [#36](features/daily-roster.md); built on the §15 pattern.
+**Status:** (A) Migrated — new section in feature [#36](features/daily-roster.md); built on the caching pattern (`design-rules.md`, *Section caching pattern*).
 **Health target:** [`health.md`](health.md) — the shape this section is converging on, its seams and its deliberately-not-done list.
 
 - Everything but `Section`, `CantinaResource` and `Contracts/` is `internal` (HUM0034). `Contracts/ICantinaService` (+ `DietaryProfileInfo`) is the public read surface; a folder, not a `.Contracts` project, because no consumer closes a cycle (of Shifts and Users, Cantina references only their `.Contracts` leaves). There is no `ICantinaWrite`: only the section's own form writes. `IDietaryProfileManagement` (internal) adds the save and the decline. `ICantinaRosterService` stays in `Services/`, `internal`.
@@ -141,4 +142,4 @@ Numeric offsets must also fit the requested day or full seven-day window within 
 - **Decorator decision — no caching decorators.** Roster aggregation is live per request; dietary reads are one keyed row (or one batched query) on a handful of pages — a `TrackedCache` decorator buys nothing at this scale.
 - **Cross-domain navs** — none declared; `DietaryProfile` keys on `UserId` only. All cross-section linkage is via service interfaces, by id.
 - **Cross-section calls** — `IShiftService` (on-site cohort), `ISettingsService` (active event/burn), `IUserService` (burner names and merge chain), `ICantinaService` (dietary).
-- **Tests** — `tests/Humans.Cantina.Tests/Services/CantinaRosterServiceTests.cs` and `CantinaDailyRosterServiceTests.cs` pin the aggregation rules; `Models/CantinaRosterAssemblerTests.cs` and `Models/CantinaCsvWritersTests.cs` pin the display sort and the export layout; `CantinaArchitectureTests.cs` pins the section shape, including that no roster DTO grows a `Medical*` property; `DietaryProfileTests.cs` pins reads, save rules, merge, export/erase and the nudge; `Controllers/CantinaProfileControllerTests.cs` pins sign-in and antiforgery, prefill, the save and decline redirects, and validation (including Other without text). The opt-in `tests/Humans.Integration.Tests/Controllers/CantinaPageRenderTests.cs` (not run in CI) renders the roster, day and dietary pages, both CSV exports and the volunteer deny path, in English and Spanish.
+- **Tests** — `tests/Humans.Cantina.Tests/Services/CantinaRosterServiceTests.cs` and `CantinaDailyRosterServiceTests.cs` pin the aggregation rules; `Models/CantinaRosterAssemblerTests.cs` and `Models/CantinaCsvWritersTests.cs` pin the display sort and the export layout; `CantinaArchitectureTests.cs` pins the section shape, including that no roster DTO grows a `Medical*` property; `DietaryProfileTests.cs` pins reads, save rules, merge, export/erase and the nudge; `Controllers/CantinaProfileControllerTests.cs` pins sign-in and antiforgery, prefill, the save and decline redirects, and validation (including Other without text). `tests/Humans.Integration.Tests/Controllers/CantinaPageRenderTests.cs` (a PR check) renders the roster, day and dietary pages, both CSV exports and the volunteer deny path, in English and Spanish.

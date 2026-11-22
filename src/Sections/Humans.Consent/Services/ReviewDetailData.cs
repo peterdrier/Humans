@@ -7,8 +7,7 @@ namespace Humans.Consent.Services;
 internal sealed record ReviewDetailData(
     ReviewProfileDetail? Profile,
     int ConsentCount,
-    int RequiredConsentCount,
-    string? PendingApplicationMotivation);
+    int RequiredConsentCount);
 
 internal sealed record ReviewProfileDetail(
     string FirstName,

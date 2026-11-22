@@ -1,3 +1,4 @@
+using Humans.Base.Extensions;
 using System.Globalization;
 using System.Security.Claims;
 using Humans.Base;
@@ -22,11 +23,15 @@ using Humans.Shifts.Data;
 using Humans.Shifts.Helpers;
 using Humans.Shifts.Models;
 using Humans.Shifts.Services;
+using Humans.Shifts.Services.Demo;
+using Humans.Base.Demo;
 using Humans.Shifts.ViewComponents;
+using Humans.Teams.Contracts;
 using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Configuration;
 using Humans.Notifications.Contracts;
+using Humans.Permissions.Contracts;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
 using NodaTime;
@@ -47,9 +52,13 @@ public sealed class Section :
     ISectionMemberDashboard,
     ISectionNav,
     IOnboardingShiftsStep,
+    ISectionPermissions,
     ISectionPolicies,
     ISectionSettings,
-    ISectionThingsToDo
+    ISectionThingsToDo,
+    ITeamShiftsParts,
+    ISearchContributor,
+    IUserPart
 {
     IReadOnlyList<RoleDefinition> ISectionRoles.Roles { get; } =
     [
@@ -71,32 +80,47 @@ public sealed class Section :
 
         services.AddScoped<ShiftRepository>();
         services.AddScoped<IShiftManagementRepository>(sp => sp.GetRequiredService<ShiftRepository>());
-        services.AddScoped<ShiftManagementService>();
-        services.AddScoped<IShiftManagement>(sp => sp.GetRequiredService<ShiftManagementService>());
+        // Inner services are keyed-only: every write goes through CachingShiftService, which refreshes the rotas it touched.
+        const string inner = CachingShiftService.InnerServiceKey;
+        services.AddKeyedScoped<ShiftManagementService>(inner);
+        services.AddKeyedScoped<IShiftManagement>(inner, (sp, k) => sp.GetRequiredKeyedService<ShiftManagementService>(k));
+        services.AddKeyedScoped<IShiftRotaRows>(inner, (sp, k) => sp.GetRequiredKeyedService<ShiftManagementService>(k));
+        services.AddKeyedScoped<IUserMerge>(inner, (sp, k) => sp.GetRequiredKeyedService<ShiftManagementService>(k));
 
-        services.AddScoped<IShiftService>(sp => sp.GetRequiredService<ShiftManagementService>());
-        services.AddScoped<IShiftVolunteerProfiles>(sp => sp.GetRequiredService<ShiftManagementService>());
-        services.AddScoped<IShiftSeeding>(sp => sp.GetRequiredService<ShiftManagementService>());
+        services.AddKeyedScoped<ShiftSignupService>(inner);
+        services.AddKeyedScoped<IShiftSignupService>(inner, (sp, k) => sp.GetRequiredKeyedService<ShiftSignupService>(k));
+        services.AddKeyedScoped<IUserMerge>(inner, (sp, k) => sp.GetRequiredKeyedService<ShiftSignupService>(k));
+        services.AddKeyedScoped<IShiftRowView, ShiftViewService>(inner);
+        // Read-only, so it needs no cache refresh.
+        services.AddScoped<ICalendarFeedContributor>(sp => sp.GetRequiredKeyedService<ShiftSignupService>(inner));
 
-        services.AddScoped<IUserMerge>(sp => sp.GetRequiredService<ShiftManagementService>());
+        services.AddSingleton<CachingShiftService>();
+        services.AddSingleton<IShiftRotaRows>(sp => sp.GetRequiredService<CachingShiftService>());
+        services.AddSingleton<IShiftManagement>(sp => sp.GetRequiredService<CachingShiftService>());
+        services.AddSingleton<IShiftService>(sp => sp.GetRequiredService<CachingShiftService>());
+        services.AddSingleton<IShiftVolunteerProfiles>(sp => sp.GetRequiredService<CachingShiftService>());
+        services.AddSingleton<IShiftSeeding>(sp => sp.GetRequiredService<CachingShiftService>());
+        services.AddSingleton<IShiftSignupService>(sp => sp.GetRequiredService<CachingShiftService>());
+        services.AddSingleton<IShiftSignups>(sp => sp.GetRequiredService<CachingShiftService>());
+        services.AddSingleton<IShiftSignupSeeding>(sp => sp.GetRequiredService<CachingShiftService>());
+
+        services.AddDemoStory<ShiftsDemoStory>(configuration);
+        services.AddSingleton<IShiftRowView>(sp => sp.GetRequiredService<CachingShiftService>());
+        services.AddSingleton<IShiftView>(sp => sp.GetRequiredService<CachingShiftService>());
+        services.AddSingleton<IUserMerge>(sp => sp.GetRequiredService<CachingShiftService>());
+        services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<CachingShiftService>());
+        services.AddSingleton<ICacheStats>(sp => sp.GetRequiredService<CachingShiftService>());
+        services.AddHostedService(sp => sp.GetRequiredService<CachingShiftService>());
 
         services.AddScoped<IBurnSettingsService, BurnSettingsService>();
 
         services.AddScoped<EventCalendarResolver>();
 
-        services.AddScoped<ShiftSignupService>();
-        services.AddScoped<IShiftSignupService>(sp => sp.GetRequiredService<ShiftSignupService>());
-        services.AddScoped<IShiftSignups>(sp => sp.GetRequiredService<ShiftSignupService>());
-        services.AddScoped<IShiftSignupSeeding>(sp => sp.GetRequiredService<ShiftSignupService>());
-        services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<ShiftSignupService>());
-        services.AddScoped<ICalendarFeedContributor>(sp => sp.GetRequiredService<ShiftSignupService>());
-        services.AddScoped<IUserMerge>(sp => sp.GetRequiredService<ShiftSignupService>());
-
         services.AddScoped<IVolunteerTrackingRepository, VolunteerTrackingRepository>();
         services.AddScoped<VolunteerTrackingService>();
         services.AddScoped<IVolunteerTrackingManagement>(sp => sp.GetRequiredService<VolunteerTrackingService>());
         services.AddScoped<IVolunteerTrackingService>(sp => sp.GetRequiredService<VolunteerTrackingService>());
-        services.AddScoped<IUserMerge>(sp => sp.GetRequiredService<VolunteerTrackingService>());
+        services.AddKeyedScoped<IUserMerge>(inner, (sp, _) => sp.GetRequiredService<VolunteerTrackingService>());
         services.AddScoped<VolunteerTrackingExportService>();
         services.AddScoped<IVolunteerTrackingExportService>(sp =>
             sp.GetRequiredService<VolunteerTrackingExportService>());
@@ -104,25 +128,11 @@ public sealed class Section :
             sp.GetRequiredService<VolunteerTrackingExportService>());
         services.AddScoped<VolunteerTrackingXlsxBuilder>();
 
-        // Singleton decorator over a keyed-Scoped inner.
-        services.AddKeyedScoped<IShiftRowView, ShiftViewService>(CachingShiftViewService.InnerServiceKey);
-        services.AddSingleton<CachingShiftViewService>();
-        services.AddSingleton<IShiftRowView>(sp => sp.GetRequiredService<CachingShiftViewService>());
-        services.AddSingleton<IShiftView>(sp => sp.GetRequiredService<CachingShiftViewService>());
-        // Settings fans out over this after an event-settings save; the same instance answers.
-        services.AddSingleton<IEventSettingsChangeListener>(sp => sp.GetRequiredService<CachingShiftViewService>());
-
-        services.AddSingleton<ICacheStats>(sp => sp.GetRequiredService<CachingShiftViewService>().UserCacheStats);
-        services.AddSingleton<ICacheStats>(sp => sp.GetRequiredService<CachingShiftViewService>().RotaCacheStats);
-
-        // StartAsync is a no-op; hosted for symmetry with the sibling caches.
-        services.AddHostedService(sp => sp.GetRequiredService<CachingShiftViewService>());
         services.AddScoped<ShiftBrowsePageBuilder>();
         services.AddScoped<ShiftAdminPageBuilder>();
         services.AddScoped<ShiftDashboardPageBuilder>();
         services.AddScoped<ShiftVolunteerSearchBuilder>();
 
-        // No cache of its own; invalidation rides on CachingShiftViewService.
         services.AddScoped<IWorkloadService, WorkloadService>();
 
         services.AddScoped<IRotaCoordinatorMessageService, RotaCoordinatorMessageService>();
@@ -195,7 +205,6 @@ public sealed class Section :
             new("Volunteer tracking","VolunteerTracking",   "Index",          null, null, "fa-solid fa-user-clock",       ShiftsPolicies.Read),
             new("Workload",          "ShiftWorkloadAdmin",  "Index",          null, null, "fa-solid fa-scale-unbalanced", ShiftsPolicies.Read),
             new("Post-event stats",  "ShiftDashboard",      "PostEventStats", null, null, "fa-solid fa-chart-bar",        ShiftsPolicies.Read),
-            new("Orphan signups",    "Shifts",              "OrphanSignups",  null, null, "fa-solid fa-user-secret",      PolicyNames.AdminOnly)
         ])
     ];
 
@@ -221,6 +230,12 @@ public sealed class Section :
                 Summary: $"{percent}% shift coverage");
     }
 
+    IEnumerable<UserPart> IUserPart.Parts() =>
+    [
+        new(UserPartSlots.Profile, typeof(ProfileShiftsViewComponent)),
+        new(UserPartSlots.AdminDetail, typeof(ShiftSignupsViewComponent)),
+    ];
+
     IEnumerable<ChromeComponent> ISectionChrome.Components() =>
         [
             new(ChromeSlots.AdminDashboard, typeof(StaffingByDepartmentViewComponent), Weight: 10),
@@ -243,6 +258,19 @@ public sealed class Section :
 
     Type IOnboardingShiftsStep.ShiftsList => typeof(OnboardingShiftsListViewComponent);
 
+    Type ITeamShiftsParts.Box => typeof(TeamShiftsBoxViewComponent);
+
+    Type ITeamShiftsParts.AdminRowCell => typeof(TeamAdminRowShiftsViewComponent);
+
+    IReadOnlyList<Permission> ISectionPermissions.Permissions { get; } =
+    [
+        new(ShiftsPermissions.Manage, "Shifts_Permission_Manage_Title", "Shifts_Permission_Manage_Blurb",
+            [TeamOwner.Kind], TopLevelOnly: false, AdminRoles: [ShiftsRoles.ShiftsAdmin], typeof(ShiftsResource)),
+        new(ShiftsPermissions.Approve, "Shifts_Permission_Approve_Title", "Shifts_Permission_Approve_Blurb",
+            [TeamOwner.Kind], TopLevelOnly: false, AdminRoles: [ShiftsRoles.ShiftsAdmin, ShiftsRoles.ShiftsNoInfo],
+            typeof(ShiftsResource)),
+    ];
+
     void ISectionPolicies.AddPolicies(AuthorizationOptions options)
     {
         // DepartmentRead below additionally admits any team coordinator.
@@ -261,10 +289,6 @@ public sealed class Section :
 
         options.AddPolicy(ShiftsPolicies.PrivilegedSignupApprover, policy =>
             policy.RequireRole(RoleNames.Admin, ShiftsRoles.ShiftsNoInfo));
-
-        // Every reveal is audited (ShiftsController.RevealMedical), which is what lets Board in.
-        options.AddPolicy(ShiftsPolicies.MedicalDataViewer, policy =>
-            policy.RequireRole(RoleNames.Admin, RoleNames.Board, ShiftsRoles.ShiftsNoInfo));
     }
 
     IEnumerable<SettingsTab> ISectionSettings.Tabs() =>
@@ -275,7 +299,7 @@ public sealed class Section :
     async ValueTask<IEnumerable<ThingsToDoEntry>> ISectionThingsToDo.EntriesAsync(
         IServiceProvider services, ClaimsPrincipal user, CancellationToken ct)
     {
-        if (!Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out var userId)
+        if (user.GetUserId() is not { } userId
             || !await HasSignupsAsync(services, userId, ct))
         {
             return [];
@@ -331,4 +355,17 @@ public sealed class Section :
             return false;
         }
     }
+
+    IEnumerable<SearchCategory> ISearchContributor.Categories() =>
+    [
+        new("Shift",
+            sp => sp.GetRequiredService<IStringLocalizer<ShiftsResource>>()["Shifts_Search_Category"].Value,
+            "fa-solid fa-clock", typeof(ShiftsSearchResultViewComponent), SearchRotasAsync, Weight: 30),
+    ];
+
+    // Hits are rotas (named shift groupings), not individual shifts.
+    private static async Task<IReadOnlyList<SearchHit>> SearchRotasAsync(
+        IServiceProvider sp, string query, CancellationToken ct) =>
+        [.. (await sp.GetRequiredService<IShiftService>().SearchAsync(query, int.MaxValue, ct))
+            .Select(r => new SearchHit(r.RotaId, r.Name, r.Score))];
 }

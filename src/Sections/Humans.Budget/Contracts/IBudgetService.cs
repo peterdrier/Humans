@@ -18,9 +18,6 @@ public interface IBudgetService : IApplicationService
     /// <summary>With its group, year and line items.</summary>
     Task<BudgetCategorySnapshot?> GetCategoryByIdAsync(Guid id, CancellationToken ct = default);
 
-    /// <summary>Includes teams inherited through the team hierarchy.</summary>
-    Task<HashSet<Guid>> GetEffectiveCoordinatorTeamIdsAsync(Guid userId, CancellationToken ct = default);
-
     /// <summary>Pure computation over <paramref name="groups"/>; no I/O.</summary>
     BudgetSummaryResult ComputeBudgetSummary(IReadOnlyList<BudgetGroupDetail> groups);
 }
@@ -43,7 +40,12 @@ public sealed record BudgetGroupDetail(
     bool IsDepartmentGroup,
     bool IsTicketingGroup,
     TicketingProjectionSnapshot? TicketingProjection,
-    IReadOnlyList<BudgetCategoryDetail> Categories);
+    IReadOnlyList<BudgetCategoryDetail> Categories)
+{
+    internal decimal AllocatedAmount => Categories.Sum(category => category.AllocatedAmount);
+    internal decimal LineItemTotal => Categories.Sum(category => category.LineItemTotal);
+    internal decimal UnallocatedAmount => AllocatedAmount - LineItemTotal;
+}
 
 public sealed record BudgetCategoryDetail(
     Guid Id,
@@ -53,7 +55,11 @@ public sealed record BudgetCategoryDetail(
     ExpenditureType ExpenditureType,
     Guid? TeamId,
     int SortOrder,
-    IReadOnlyList<BudgetLineItemDetail> LineItems);
+    IReadOnlyList<BudgetLineItemDetail> LineItems)
+{
+    internal decimal LineItemTotal => LineItems.Where(item => !item.IsCashflowOnly).Sum(item => item.Amount);
+    internal decimal UnallocatedAmount => AllocatedAmount - LineItemTotal;
+}
 
 public sealed record BudgetLineItemDetail(
     Guid Id,
@@ -92,7 +98,11 @@ public sealed record BudgetCategorySnapshot(
     Guid? TeamId,
     int SortOrder,
     BudgetCategoryGroupSnapshot? BudgetGroup,
-    IReadOnlyList<BudgetCategoryLineItemSnapshot> LineItems);
+    IReadOnlyList<BudgetCategoryLineItemSnapshot> LineItems)
+{
+    internal decimal LineItemTotal => LineItems.Where(item => !item.IsCashflowOnly).Sum(item => item.Amount);
+    internal decimal UnallocatedAmount => AllocatedAmount - LineItemTotal;
+}
 
 public sealed record BudgetCategoryGroupSnapshot(
     Guid Id,
@@ -135,6 +145,8 @@ public sealed class BudgetSummaryResult
 
 public sealed class BudgetSliceResult
 {
+    /// <summary>Null for synthesized VAT, reserves, taxes and group buffers.</summary>
+    public Guid? BudgetCategoryId { get; init; }
     public required string Name { get; init; }
     public decimal Amount { get; init; }
     public decimal Percentage { get; init; }

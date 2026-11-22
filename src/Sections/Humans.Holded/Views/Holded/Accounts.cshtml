@@ -87,13 +87,11 @@
                     <span class="me-auto">@sg.Number@(sg.Name is null ? "" : $" · {sg.Name}")</span>
                     @{ Totals(sg.Accounts.Count, sg.HoldedBalance, sg.MirrorBalance, sg.LineCount, sg.Mismatches); }
                 </summary>
-                    Func<HoldedAccountRow, IHtmlContent> accountCell0 = @<text><a asp-action="Account" asp-route-number="@item.Number"><code>@item.Number</code></a></text>;
-                    Func<HoldedAccountRow, IHtmlContent> accountCell1 = @<text>@item.Name @if (item.Archived) { <span class="badge bg-secondary ms-1">archived</span> }</text>;
-                    Func<HoldedAccountRow, IHtmlContent> accountCell2 = @<text>@item.EnglishName</text>;
-                    Func<HoldedAccountRow, IHtmlContent> accountCell3 = @<text>@item.HoldedBalance.ToSignedEuro()</text>;
-                    Func<HoldedAccountRow, IHtmlContent> accountCell4 = @<text>@(item.LocalBalance is null ? "—" : item.LocalBalance.Value.ToSignedEuro())</text>;
-                    Func<HoldedAccountRow, IHtmlContent> accountCell5 = @<text>@N(item.LocalLineCount)</text>;
-                    Func<HoldedAccountRow, IHtmlContent> accountCell6 = @<text>
+                    Func<HoldedAccountRow, IHtmlContent> nameHoldedCell = @<text>@item.Name @if (item.Archived) { <span class="badge bg-secondary ms-1">archived</span> }</text>;
+                    Func<HoldedAccountRow, IHtmlContent> holdedBalanceCell = @<text>@item.HoldedBalance.ToSignedEuro()</text>;
+                    Func<HoldedAccountRow, IHtmlContent> mirrorBalanceCell = @<text>@(item.LocalBalance is null ? "—" : item.LocalBalance.Value.ToSignedEuro())</text>;
+                    Func<HoldedAccountRow, IHtmlContent> linesCell = @<text>@N(item.LocalLineCount)</text>;
+                    Func<HoldedAccountRow, IHtmlContent> okCell = @<text>
                         @if (item.Reconciled)
                         {
                             <i class="fa-solid fa-check text-success"></i>
@@ -105,13 +103,13 @@
 
                     </text>;
                     var accountsTable = TableModel.For(sg.Accounts)
-                        .Template("Number", accountCell0, o => o.Css("text-nowrap"), sortBy: a => a.Number)
-                        .Template("Name (Holded)", accountCell1, sortBy: a => a.Name)
-                        .Template("English name", accountCell2, o => o.Css("text-muted"))
-                        .Template("Holded balance", accountCell3, o => o.End(), sortBy: a => a.HoldedBalance)
-                        .Template("Mirror balance", accountCell4, o => o.End(), sortBy: a => a.LocalBalance)
-                        .Template("Lines", accountCell5, o => o.End(), sortBy: a => a.LocalLineCount)
-                        .Template("OK", accountCell6, o => o.Css("text-center").HeaderCss("text-center"), sortBy: a => a.Reconciled ? 1 : 0)
+                        .Link("Number", a => a.Number, a => Url.Action("Account", new { number = a.Number }), o => o.Css("text-nowrap").Code())
+                        .Template("Name (Holded)", nameHoldedCell, sortBy: a => a.Name)
+                        .Column("English name", a => a.EnglishName, o => o.Css("text-muted"))
+                        .Template("Holded balance", holdedBalanceCell, o => o.End(), sortBy: a => a.HoldedBalance)
+                        .Template("Mirror balance", mirrorBalanceCell, o => o.End(), sortBy: a => a.LocalBalance)
+                        .Template("Lines", linesCell, o => o.End(), sortBy: a => a.LocalLineCount)
+                        .Template("OK", okCell, o => o.Css("text-center").HeaderCss("text-center"), sortBy: a => a.Reconciled ? 1 : 0)
                         .RowCss(a => a.Archived ? "text-muted" : null)
                         .Css("align-middle")
                         .Build();

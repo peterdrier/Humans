@@ -2,47 +2,61 @@ using System.Globalization;
 using Humans.Base.Interfaces;
 using Humans.Budget.Contracts;
 using Humans.Expenses.Contracts;
+using Humans.AuditLog.Contracts;
 using Humans.Finance.Contracts;
+using Humans.Finance.Data;
 using Humans.Finance.Models;
 using Humans.Holded.Contracts;
 using Humans.Pleo.Contracts;
+using Humans.Stripe.Contracts;
+using Microsoft.Extensions.Options;
 using NodaTime;
 
 namespace Humans.Finance.Services;
 
 /// <summary>/Finance's figures, composed from the pages that own each one: balances from the Holded ledger mirror,
-/// creditors and recon from this section, the review queue from Expenses, plan and actuals from Budget and Cash flow,
-/// the Pleo wallet from Pleo. Owns no tables.</summary>
+/// creditors, SEPA transfers and recon from this section, the review queue from Expenses, plan and actuals from Budget and Cash flow,
+/// the Pleo wallet from Pleo. Its one table is the Stripe ledger links the Finance tab on /Settings edits.</summary>
 internal sealed class FinanceOverviewService(
+    IOrgTimeZone orgTimeZone,
     IHoldedService holded,
     IFinanceService finance,
+    IFinanceAdminService financeAdmin,
     IExpenseReportService expenseReports,
     IBudgetService budget,
     CashFlowService cashFlow,
     IPleoService pleo,
+    IStripeMirrorService stripe,
+    IOptions<SepaOptions> sepa,
+    IFinanceRepository repo,
+    IAuditLogService audit,
     IClock clock) : IApplicationService
 {
-    private static readonly DateTimeZone Madrid = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
+    private DateTimeZone OrgZone => orgTimeZone.Zone;
 
-    public async Task<FinanceOverviewVm> GetAsync(Guid viewerUserId, CancellationToken ct = default)
+    public async Task<FinanceOverviewVm> GetAsync(CancellationToken ct = default)
     {
-        var today = clock.GetCurrentInstant().InZone(Madrid).Date;
+        var today = clock.GetCurrentInstant().InZone(OrgZone).Date;
 
         var syncedAt = await holded.GetLedgerSyncedAtAsync(ct);
         FinanceLedgerCardsVm? ledger = null;
-        decimal? pleoInHolded = null;
         if (syncedAt is not null)
         {
             var balances = await holded.GetAccountBalancesAsync(ct);
-            pleoInHolded = balances.GetValueOrDefault(PleoBooking.PleoTreasury);
             var chart = await holded.GetChartAsync(ct);
             var filings = await TaxFilingsAsync(chart, today, ct);
-            ledger = BuildLedgerCards(chart, balances, filings);
+            var sources = StripeSources(chart.Where(a => IsStripeGateway(a.Number)).Select(a => a.Number),
+                await repo.GetStripeLedgerLinksAsync(ct), await stripe.GetEurBalancesAsync(ct));
+            sources[PleoBooking.PleoTreasury] = PleoSource(await pleo.GetWalletBalanceAsync(ct));
+            ledger = BuildLedgerCards(chart, balances, filings, sources,
+                sepa.Value.TreasuryLedgerAccount, await BankFeedAsync(today, ct));
         }
 
         var (creditors, _, creditorsUnavailable) = await finance.ListCreditorAccountsAsync(ct);
         var recon = await finance.GetExpenseReconAsync(null, ct);
-        var queue = await expenseReports.GetReviewQueueAsync(viewerUserId, isFinanceAdmin: true, ct);
+        var queue = await expenseReports.GetReviewQueueAsync(ct);
+        // Paired over the bank-feed mirror as it stands: no Holded call.
+        var (transfers, sepaUnavailable, _, bankFeedError, _) = await financeAdmin.GetSepaPayoutsAsync(ct: ct);
 
         var year = await budget.GetActiveYearAsync(ct);
         FinanceBudgetVm? budgetVm = null;
@@ -58,19 +72,34 @@ internal sealed class FinanceOverviewService(
             income = BuildIncome(year, budget.ComputeBudgetSummary(year.Groups), ticketSales);
         }
 
+        var work = BuildWork(queue, creditors, recon, transfers, sepaUnavailable ?? bankFeedError);
         return new FinanceOverviewVm(
             syncedAt,
             ledger,
             BuildOwed(creditors, ledger?.TaxesOwed) with { Unavailable = creditorsUnavailable },
-            BuildWork(queue, creditors, recon) with { CreditorsUnavailable = creditorsUnavailable },
+            work with { CreditorsUnavailable = creditorsUnavailable },
             budgetVm,
             runway,
             income,
-            new FinancePleoVm((await pleo.GetWalletBalanceAsync(ct))?.CurrentEur, pleoInHolded));
+            BuildSepaInProgress(transfers));
+    }
+
+    /// <summary>Null when no treasury account is configured: there is then no feed to mirror.</summary>
+    private async Task<FinanceBankFeedVm?> BankFeedAsync(LocalDate today, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(sepa.Value.TreasuryAccountId)) return null;
+        var mirror = await holded.GetBankMovementsAsync(
+            sepa.Value.TreasuryAccountId, today.PlusDays(-Service.FeedWindowDays), today, ct);
+        return mirror.LastSyncAt is null
+            ? new FinanceBankFeedVm(null, null)
+            : new FinanceBankFeedVm(mirror.Movements.Count(m => !Service.IsReconciled(m)), mirror.LastSyncAt);
     }
 
     private static bool Under(int accountNum, string prefix) =>
         accountNum.ToString(CultureInfo.InvariantCulture).StartsWith(prefix, StringComparison.Ordinal);
+
+    /// <summary>A 441 subaccount. 44100000 itself is the chart's generic debtors account, not a Stripe gateway.</summary>
+    internal static bool IsStripeGateway(int accountNum) => Under(accountNum, "441") && accountNum % 100000 != 0;
 
     private static readonly (string Prefix, string Name)[] ReceivableGroups =
     [
@@ -79,19 +108,92 @@ internal sealed class FinanceOverviewService(
         ("470", "Hacienda and public bodies (470)"),
     ];
 
+    internal static FinanceAccountSourceVm PleoSource(PleoWalletBalance? wallet) => wallet is null
+        ? new FinanceAccountSourceVm(null, "/Finance/Pleo", "Pleo has not been swept yet.")
+        : new FinanceAccountSourceVm(wallet.CurrentEur, "/Finance/Pleo", ReadAt: wallet.SyncedAt);
+
+    /// <summary>Every Stripe ledger account gets a source, unknown when no Stripe account is linked to it or the
+    /// mirror holds no EUR balance for the linked one. <paramref name="links"/> maps a ledger account to its Stripe
+    /// account id.</summary>
+    internal static Dictionary<int, FinanceAccountSourceVm> StripeSources(
+        IEnumerable<int> stripeLedgerAccounts,
+        IReadOnlyDictionary<int, string> links,
+        IReadOnlyList<StripeAccountBalance> balances)
+    {
+        var byAccount = balances.ToDictionary(b => b.AccountId, StringComparer.Ordinal);
+        return stripeLedgerAccounts.Distinct().ToDictionary(num => num, num =>
+        {
+            if (!links.TryGetValue(num, out var accountId))
+                return new FinanceAccountSourceVm(null, "/Settings#finance",
+                    "No Stripe account is linked to this ledger account. Link it on the Settings page, Finance tab.");
+            if (!byAccount.TryGetValue(accountId, out var balance))
+                return new FinanceAccountSourceVm(null, "/Stripe",
+                    $"The Stripe mirror holds no EUR balance for {accountId}.");
+            return new FinanceAccountSourceVm(balance.TotalEur, "/Stripe", ReadAt: balance.SyncedAt,
+                Pending: balance.PendingEur);
+        });
+    }
+
+    /// <summary>The 441 ledger accounts /Finance shows (unarchived, or archived while holding money) plus any already
+    /// linked, so a save never drops a link the form didn't render; the Stripe accounts the mirror holds a balance
+    /// for; and the stored links. Reads mirrors only.</summary>
+    public async Task<(IReadOnlyList<HoldedChartAccountInfo> LedgerAccounts, IReadOnlyList<string> StripeAccounts,
+        IReadOnlyDictionary<int, string> Links)> GetStripeLinkSettingsAsync(CancellationToken ct = default)
+    {
+        var links = await repo.GetStripeLedgerLinksAsync(ct);
+        var balances = await holded.GetAccountBalancesAsync(ct);
+        var ledger = (await holded.GetChartAsync(ct))
+            .Where(a => (IsStripeGateway(a.Number) || links.ContainsKey(a.Number))
+                && (!a.Archived || balances.GetValueOrDefault(a.Number) != 0m || links.ContainsKey(a.Number)))
+            .ToList();
+        var stripeAccounts = (await stripe.GetEurBalancesAsync(ct))
+            .Select(b => b.AccountId).Distinct(StringComparer.Ordinal).ToList();
+        return (ledger, stripeAccounts, links);
+    }
+
+    /// <summary>Blank entries unlink. The stored links become exactly the non-blank ones. Null on success, else why
+    /// nothing was saved: a ledger account the form doesn't list, or a Stripe account the mirror doesn't hold (one
+    /// already linked stays saveable).</summary>
+    public async Task<string?> SaveStripeLinksAsync(
+        IReadOnlyDictionary<int, string?> links, Guid actorUserId, CancellationToken ct = default)
+    {
+        var (ledger, stripeAccounts, current) = await GetStripeLinkSettingsAsync(ct);
+        var kept = links.Where(l => !string.IsNullOrWhiteSpace(l.Value))
+            .ToDictionary(l => l.Key, l => l.Value!.Trim());
+        if (links.Keys.FirstOrDefault(n => ledger.All(a => a.Number != n)) is var badNum and not 0)
+            return $"Ledger account {badNum} is not a Stripe ledger account on /Finance.";
+        if (kept.FirstOrDefault(l => !stripeAccounts.Contains(l.Value, StringComparer.Ordinal)
+                && !string.Equals(current.GetValueOrDefault(l.Key), l.Value, StringComparison.Ordinal)) is { Key: not 0 } badLink)
+            return $"The Stripe mirror holds no account {badLink.Value}.";
+
+        await repo.ReplaceStripeLedgerLinksAsync(kept, ct);
+        await audit.LogAsync(FinanceAuditActions.FinanceStripeLedgerLinksUpdated, "FinanceStripeLedgerLinks", Guid.Empty,
+            kept.Count == 0 ? "Stripe ledger links cleared"
+                : "Stripe ledger links: " + string.Join(", ", kept.OrderBy(l => l.Key)
+                    .Select(l => string.Create(CultureInfo.InvariantCulture, $"{l.Key} → {l.Value}"))),
+            actorUserId);
+        return null;
+    }
+
     /// <summary>Banks are 570/572, Stripe 441 until it moves. An archived account shows only while it holds money.
-    /// Receivables are summed per group: 430 has one sub-account per customer.</summary>
+    /// Receivables are summed per group: 430 has one sub-account per customer. <paramref name="sources"/> holds the
+    /// provider's own balance for the accounts that have one (Pleo, Stripe); the SEPA treasury's ledger account
+    /// carries the bank feed's unreconciled count.</summary>
     internal static FinanceLedgerCardsVm BuildLedgerCards(
         IReadOnlyList<HoldedChartAccountInfo> chart,
         IReadOnlyDictionary<int, decimal> balances,
-        IReadOnlyList<FinanceTaxFilingVm> filings)
+        IReadOnlyList<FinanceTaxFilingVm> filings,
+        IReadOnlyDictionary<int, FinanceAccountSourceVm>? sources = null,
+        int? bankFeedAccount = null,
+        FinanceBankFeedVm? bankFeed = null)
     {
         decimal Balance(int num) => balances.GetValueOrDefault(num);
 
         List<FinanceAccountLineVm> Accounts(Func<int, bool> match) => chart
             .Where(a => match(a.Number) && (!a.Archived || Balance(a.Number) != 0m))
-            .OrderBy(a => a.Number)
-            .Select(a => new FinanceAccountLineVm(a.Number, a.Name, Balance(a.Number)))
+            .Select(a => new FinanceAccountLineVm(a.Number, a.Name, Balance(a.Number),
+                sources?.GetValueOrDefault(a.Number),
+                a.Number == bankFeedAccount ? bankFeed : null))
             .ToList();
 
         var receivables = ReceivableGroups
@@ -135,30 +237,30 @@ internal sealed class FinanceOverviewService(
 
         return
         [
-            TaxFiling("303", "VAT return", today, (from, to) => VatDue(vatOut, vatIn, settlements, from, to)),
-            TaxFiling("111", "IRPF withholding", today, (from, to) => IrpfDue(irpf, bankEntries, from, to)),
+            TaxFiling("303", "VAT return", today, (from, to) => VatDue(vatOut, vatIn, settlements, from, to, OrgZone)),
+            TaxFiling("111", "IRPF withholding", today, (from, to) => IrpfDue(irpf, bankEntries, from, to, OrgZone)),
         ];
     }
 
     /// <summary>Output VAT less input VAT, credit notes netted in. The quarter-end settlement into 4750/4700 is left
     /// out by entry: it zeroes 477 and 472 and would cancel the quarter.</summary>
     internal static decimal VatDue(IEnumerable<HoldedLedgerLineInfo> vatOut, IEnumerable<HoldedLedgerLineInfo> vatIn,
-        IReadOnlySet<int> settlementEntries, LocalDate from, LocalDate to)
+        IReadOnlySet<int> settlementEntries, LocalDate from, LocalDate to, DateTimeZone zone)
     {
-        bool Counts(HoldedLedgerLineInfo l) => InRange(l, from, to) && !settlementEntries.Contains(l.EntryNumber);
+        bool Counts(HoldedLedgerLineInfo l) => InRange(l, from, to, zone) && !settlementEntries.Contains(l.EntryNumber);
         return vatOut.Where(Counts).Sum(l => l.Credit - l.Debit) - vatIn.Where(Counts).Sum(l => l.Debit - l.Credit);
     }
 
     /// <summary>Withholdings less corrections. A debit in an entry that moves a bank account is the payment of an
     /// earlier return, not a correction; a bank-paid payroll entry's withholding credit still counts.</summary>
     internal static decimal IrpfDue(IEnumerable<HoldedLedgerLineInfo> irpf, IReadOnlySet<int> bankEntries,
-        LocalDate from, LocalDate to) =>
-        irpf.Where(l => InRange(l, from, to))
+        LocalDate from, LocalDate to, DateTimeZone zone) =>
+        irpf.Where(l => InRange(l, from, to, zone))
             .Sum(l => l.Credit - (bankEntries.Contains(l.EntryNumber) ? 0m : l.Debit));
 
-    private static bool InRange(HoldedLedgerLineInfo line, LocalDate from, LocalDate to)
+    private static bool InRange(HoldedLedgerLineInfo line, LocalDate from, LocalDate to, DateTimeZone zone)
     {
-        var date = line.Date.InZone(Madrid).Date;
+        var date = line.Date.InZone(zone).Date;
         return date >= from && date <= to;
     }
 
@@ -199,18 +301,41 @@ internal sealed class FinanceOverviewService(
             taxesOwed);
     }
 
-    /// <summary>Ready to pay uses the same service-derived eligibility as the Creditors page and payout planning.</summary>
+    /// <summary>Sent to the bank, not booked and not withdrawn, oldest first.</summary>
+    internal static IReadOnlyList<FinanceSepaTransferVm> BuildSepaInProgress(
+        IReadOnlyList<SepaPayoutTransferRow> transfers) => transfers
+        .Where(t => !t.IsBooked && !t.IsWithdrawn)
+        .OrderBy(t => t.GeneratedAt)
+        .Select(t => new FinanceSepaTransferVm(t.UserId, t.FileName, t.GeneratedAt, t.Amount))
+        .ToList();
+
+    /// <summary>Ready to pay uses the same service-derived eligibility as the Creditors page and payout planning. An
+    /// open transfer either has a Sabadell line paired to it (its own, or one debiting its whole file), so it can be
+    /// booked, or is still waiting for one; <paramref name="pairingUnavailable"/> is why that could not be told.</summary>
     internal static FinanceWorkVm BuildWork(
         IReadOnlyList<ExpenseReportDto> queue,
         IReadOnlyList<CreditorAccountRow> creditors,
-        ExpenseReconReport recon)
+        ExpenseReconReport recon,
+        IReadOnlyList<SepaPayoutTransferRow> transfers,
+        string? pairingUnavailable = null)
     {
+        var open = transfers.Where(t => !t.IsBooked && !t.IsWithdrawn).ToList();
+        // Unpaired rows say nothing about the bank: with any transfer open, the split is unknown, not zero.
+        var paired = pairingUnavailable is null || open.Count == 0;
+        var withBankLine = open.Count(t => t.CandidateBankMovementId is { Length: > 0 } || t.BatchLine is not null);
         var submitted = queue.Where(r => r.Status == ExpenseReportStatus.Submitted).ToList();
         var endorsed = queue.Where(r => r.Status == ExpenseReportStatus.CoordinatorEndorsed).ToList();
         var ready = creditors
             .Where(r => r.NotPayableReason is null)
             .ToList();
-        var duplicates = creditors.Count(r => r.HasDuplicateDocuments == true);
+        // The recon and the duplicate-document check see the same doubled purchase from two mirrors: an account the
+        // recon already names is not a second problem.
+        var reconDuplicateAccounts = recon.Lines
+            .Where(l => l.Status == ExpenseReconLineStatus.Duplicated && l.LedgerAccountNum is not null)
+            .Select(l => l.LedgerAccountNum!.Value)
+            .ToHashSet();
+        var duplicates = creditors.Count(r =>
+            r.HasDuplicateDocuments == true && !reconDuplicateAccounts.Contains(r.SupplierAccountNum));
         int? reconProblems = recon.IsAvailable ? recon.Totals.Problems : null;
 
         return new FinanceWorkVm(
@@ -220,7 +345,9 @@ internal sealed class FinanceOverviewService(
             endorsed.Min(r => r.CoordinatorEndorsedAt),
             ready.Count,
             ready.Sum(r => r.OwedToMember),
-            creditors.Count(r => r.PendingPayoutFileName is not null),
+            recon.IsAvailable ? recon.Lines.Count(l => l.Status == ExpenseReconLineStatus.Pending) : null,
+            paired ? open.Count - withBankLine : null,
+            paired ? withBankLine : null,
             reconProblems is { } p ? p + duplicates : null,
             duplicates,
             reconProblems);
@@ -231,7 +358,9 @@ internal sealed class FinanceOverviewService(
     internal static FinanceBudgetVm BuildBudget(BudgetYearDetail year, IReadOnlyList<CategoryActualRow> actuals)
     {
         var actualByCategory = actuals.ToDictionary(a => a.BudgetCategoryId, a => Math.Abs(a.Actual));
-        var categories = year.Groups.SelectMany(g => g.Categories).Where(c => c.AllocatedAmount < 0m).ToList();
+        // Group priority breaks equal-overage ties in the top-three selector.
+        var categories = year.Groups.OrderBy(group => group.SortOrder)
+            .SelectMany(g => g.Categories).Where(c => c.AllocatedAmount < 0m).ToList();
 
         var over = categories
             .Select(c => new FinanceOverBudgetVm(

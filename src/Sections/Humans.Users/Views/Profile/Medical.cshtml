@@ -9,7 +9,7 @@
 }
 
 @* GDPR Art. 9 data: this page only ever shows the signed-in member their own medical conditions.
-   Anyone else sees them only through MedicalDataViewer-gated surfaces. *@
+   Anyone else sees them only through the audited reveal (ProfileViewController.RevealMedical). *@
 <div class="row">
     <div class="col-12" style="max-width: 720px; margin: 0 auto;">
         <page-header title="@(Localizer["Users_Profile_DietaryMedical_MedicalConditions_Title"].Value)" />
@@ -37,7 +37,7 @@
             </div>
         </form>
 
-        @* Every reveal through the Shifts badge writes MedicalConditionsRevealed against this member; the member
+        @* Every reveal writes MedicalConditionsRevealed against this member; the member
            sees the same rows the Board and admins see in the audit log. The AuditLog section ships no resource
            set, so the column headers are passed in. *@
         <div class="mt-5">

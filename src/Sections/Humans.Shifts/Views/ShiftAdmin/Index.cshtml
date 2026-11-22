@@ -71,18 +71,12 @@
                 }
                 else
                 {
-                    Func<List<ShiftAdminPendingSignup>, IHtmlContent> pendingHumanCell = @<text>
-                        <vc:human user-id="@item[0].UserId" />
-                    </text>;
                     Func<List<ShiftAdminPendingSignup>, IHtmlContent> pendingProfileCell = @<text>
                         @{
                             var pendingProfile = Model.VolunteerProfiles.GetValueOrDefault(item[0].UserId);
                         }
                         @await Html.PartialAsync("_VolunteerProfileBadges", pendingProfile)
 
-                    </text>;
-                    Func<List<ShiftAdminPendingSignup>, IHtmlContent> pendingShiftCell = @<text>
-                        @item[0].RotaName
                     </text>;
                     Func<List<ShiftAdminPendingSignup>, IHtmlContent> pendingDateCell = @<text>
                         @if ((item.Count > 1))
@@ -153,10 +147,10 @@
 
                     </text>;
                     var pendingTable = TableModel.For(pendingGroups.Select(g => g.OrderBy(s => s.Shift.DayOffset).ToList()).ToList())
-                        .Template("Human", pendingHumanCell)
+                        .Human("Human", g => g[0].UserId)
                         .Template("Profile", pendingProfileCell, o => o.NoSort())
-                        .Template("Shift", pendingShiftCell)
-                        .Template("Date", pendingDateCell, sortBy: g => g[0].Shift.DayOffset)
+                        .Column("Shift", g => g[0].RotaName)
+                        .Template("Date", pendingDateCell, c => c.Css("text-nowrap"), sortBy: g => g[0].Shift.DayOffset)
                         .Template("Submitted", pendingSubmittedCell, sortBy: g => g[0].CreatedAt)
                         .Template("", pendingActionsCell, o => o.NoSort())
                         .Build();
@@ -394,7 +388,7 @@
                                             @{
                                                 var shiftLabel = shift.IsAllDay
                                                     ? "All day"
-                                                    : $"{shift.StartTime.ToTime()}–{shift.StartTime.PlusMinutes((int)shift.GetDuration().TotalMinutes).ToTime()}";
+                                                    : $"{shift.StartTime.ToTime()}–{shift.StartTime.PlusMinutes((int)shift.Duration.TotalMinutes).ToTime()}";
                                             }
                                             @shiftLabel
                                             @if (shift.AdminOnly) { <span class="badge bg-dark">Admin Only</span> }
@@ -444,8 +438,7 @@
                                                     <div class="d-flex flex-wrap gap-1">
                                                         @foreach (var ss in activeSignups)
                                                         {
-                                                            var ssUser = Model.Users.GetValueOrDefault(ss.UserId);
-                                                            <span title="@(ssUser?.BurnerName)@(ss.Status == SignupStatus.Pending ? $" ({Localizer["Shifts_Pending"]})" : "")"
+                                                            <span title="@(ss.Status == SignupStatus.Pending ? Localizer["Shifts_Pending"].Value : null)"
                                                                   style="@(ss.Status == SignupStatus.Pending ? "border: 1px dashed var(--h-muted-text); border-radius: 50%;" : "")"><vc:human user-id="@ss.UserId" layout="Avatar" size="26" css-class="@(ss.Status == SignupStatus.Pending ? "opacity-50" : "")" /></span>
                                                         }
                                                     </div>
@@ -1049,7 +1042,6 @@
         ["NoResultsText"] = "No results.",
         ["ErrorText"] = "Search failed.",
         ["OverlapLabel"] = "Overlap",
-        ["DietaryPreferenceStyle"] = "badge",
         ["ShowPoolBadge"] = true
     })
 
@@ -1285,25 +1277,6 @@
 
     var tagSearchUrl = '@Url.Action("SearchTags", "ShiftAdmin", new { slug = Model.Department.Slug })';
     var tagCreateUrl = '@Url.Action("CreateTag", "ShiftAdmin", new { slug = Model.Department.Slug })';
-
-    // Medical badge: the text is not in the page; each click is one audited reveal.
-    document.addEventListener('click', function(e) {
-        var btn = e.target.closest('.medical-reveal');
-        if (!btn || btn.disabled) return;
-        btn.disabled = true;
-        Humans.postJson(btn.getAttribute('data-reveal-url'))
-        .then(function(r) { return r.ok ? r.json() : Promise.reject(r.status); })
-        .then(function(data) {
-            var text = document.createElement('span');
-            text.className = 'badge bg-danger text-wrap text-start';
-            text.textContent = data.text;
-            btn.replaceWith(text);
-        })
-        .catch(function() {
-            btn.disabled = false;
-            btn.title = btn.getAttribute('data-failed-text');
-        });
-    });
 
     document.querySelectorAll('[data-new-tag-btn]').forEach(function(btn) {
         btn.addEventListener('click', function() {

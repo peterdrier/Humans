@@ -1,3 +1,4 @@
+using Humans.AuditLog.Contracts;
 using AwesomeAssertions;
 using Humans.Base.Enums;
 using Humans.Camps.Contracts;
@@ -30,13 +31,15 @@ public class AccountingReadTests
     private readonly IStoreRepository _repo = Substitute.For<IStoreRepository>();
     private readonly ICampService _camps = Substitute.For<ICampService>();
     private readonly ITeamService _teams = Substitute.For<ITeamService>();
-    private readonly StoreOrderReader _reader;
+    private readonly IAuditViewerService _auditViewer = Substitute.For<IAuditViewerService>();
+    private readonly IAuditLogService _audit = Substitute.For<IAuditLogService>();
+    private readonly Service _reader;
 
     public AccountingReadTests()
     {
-        _reader = new StoreOrderReader(
-            _repo, _camps, _teams,
-            new FakeClock(Instant.FromUtc(2026, 9, 1, 12, 0)), Substitute.For<ISettingsService>());
+        _reader = new Service(
+            _repo, _audit, _auditViewer, _camps, _teams, new FakeClock(Instant.FromUtc(2026, 9, 1, 12, 0)), Substitute.For<ISettingsService>(), Substitute.For<Humans.Stripe.Contracts.IStripeService>(),
+            new CatalogService(_repo, _audit, new FakeClock(Instant.FromUtc(2026, 9, 1, 12, 0)), Substitute.For<Humans.Holded.Contracts.IHoldedService>(), Microsoft.Extensions.Logging.Abstractions.NullLogger<CatalogService>.Instance), Microsoft.Extensions.Logging.Abstractions.NullLogger<Service>.Instance);
 
         _camps.GetCampsForYearAsync(2026, Arg.Any<CancellationToken>()).Returns([MakeCampInfo(SeasonId, "Camp Alpha")]);
         _teams.GetTeamsAsync(Arg.Any<CancellationToken>())
@@ -52,6 +55,7 @@ public class AccountingReadTests
             UnitPriceEur = 4m,
             VatRatePercent = 10m,
             HoldedRevenueAccountNum = 75900002,
+            HoldedTransferAccountNum = 62990002,
             OrderableUntil = new LocalDate(2026, 12, 31),
             IsActive = true,
         };
@@ -137,6 +141,8 @@ public class AccountingReadTests
         team.CounterpartyName.Should().BeNull();
         team.ProductName.Should().Be("Ice");
         team.HoldedRevenueAccountNum.Should().Be(75900002);
+        team.TeamId.Should().Be(DeptId);
+        team.HoldedTransferAccountNum.Should().Be(62990002);
     }
 
     [HumansFact]
@@ -150,6 +156,7 @@ public class AccountingReadTests
         // Open orders reprice to the live catalog: ice is 4 now, not the 3 snapshotted.
         var ice = lines.Single(l => l.OrderId == CampOrderId && l.ProductId == IceId);
         ice.UnitPrice.Should().Be(4m);
+        ice.SnapshotUnitPrice.Should().Be(3m);
         ice.VatRatePercent.Should().Be(10m);
         ice.LineNet.Should().Be(12m);
         ice.LineVat.Should().Be(1.20m);
@@ -247,6 +254,40 @@ public class AccountingReadTests
         var ct = Xunit.TestContext.Current.CancellationToken;
         (await _reader.GetOrderLinesAsync(2025, ct)).Should().BeEmpty();
         (await _reader.GetPaymentsAsync(2025, ct)).Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task Order_history_is_each_orders_audit_trail_plus_price_changes_to_its_products()
+    {
+        AuditEvent At(int day, AuditActionDefinition action, Guid entityId) =>
+            new(Guid.NewGuid(), Instant.FromUtc(2026, 6, day, 0, 0), action, null, null, "x", entityId,
+                null, null, null, null, null, null, null, action.Name);
+        var removed = At(3, StoreAuditActions.StoreLineRemoved, Guid.NewGuid());
+        var added = At(1, StoreAuditActions.StoreLineAdded, Guid.NewGuid());
+        var iceRepriced = At(2, StoreAuditActions.StoreProductPriceChanged, IceId);
+        var palletRepriced = At(4, StoreAuditActions.StoreProductPriceChanged, PalletId);
+        _auditViewer.GetFilteredAsync(null, CampOrderId, null,
+                Arg.Is<IReadOnlyList<string>?>(a => a!.Contains(StoreAuditActions.StorePaymentDeleted.Name)),
+                Arg.Any<int>(), true, Arg.Any<CancellationToken>())
+            .Returns([removed, added]);
+        _auditViewer.GetFilteredAsync("StoreProduct", IceId, null, Arg.Any<IReadOnlyList<string>?>(), Arg.Any<int>(),
+                false, Arg.Any<CancellationToken>())
+            .Returns([iceRepriced]);
+        _auditViewer.GetFilteredAsync("StoreProduct", PalletId, null, Arg.Any<IReadOnlyList<string>?>(), Arg.Any<int>(),
+                false, Arg.Any<CancellationToken>())
+            .Returns([palletRepriced]);
+
+        var actor = Guid.NewGuid();
+        var history = await _reader.GetOrderHistoryAsync(2026, actor, Xunit.TestContext.Current.CancellationToken);
+
+        history.Where(h => h.OrderId == CampOrderId).Select(h => h.Description).Should().Equal(
+            "StoreLineAdded", "StoreProductPriceChanged", "StoreLineRemoved", "StoreProductPriceChanged");
+        history.Where(h => h.OrderId == TeamOrderId).Should().ContainSingle()
+            .Which.OccurredAt.Should().Be(iceRepriced.OccurredAt);
+        history.Should().AllSatisfy(h => h.Year.Should().Be(2026));
+        await _audit.Received(1).LogAsync(
+            StoreAuditActions.StoreOrderHistoryExported, Arg.Any<string>(), Guid.Empty,
+            Arg.Is<string>(d => d.Contains("5 entries")), actor, Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 
     private static CampInfo MakeCampInfo(Guid seasonId, string name)

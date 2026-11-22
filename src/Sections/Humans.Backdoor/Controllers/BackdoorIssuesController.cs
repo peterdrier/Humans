@@ -91,6 +91,10 @@ internal sealed class BackdoorIssuesController(
         if (!ModelState.IsValid)
             return BadRequest(ModelState);
 
+        if (model.ReporterUserId == Guid.Empty
+            || await UserService.GetUserInfoAsync(model.ReporterUserId, HttpContext.RequestAborted) is null)
+            return BadRequest(new { error = "Reporter not found" });
+
         try
         {
             var issueId = await issues.CreateIssueAsync(
@@ -300,6 +304,7 @@ internal sealed class BackdoorIssuesController(
 internal sealed class ApiCreateIssueModel
 {
     [Required]
+    [JsonRequired]
     public Guid ReporterUserId { get; set; }
 
     [Required]

@@ -116,12 +116,12 @@ internal sealed class Repository(IDbContextFactory<ContainersDbContext> factory)
             .FirstOrDefaultAsync(p => p.ContainerId == containerId && p.Year == year, ct);
     }
 
-    public async Task<IReadOnlyList<ContainerPlacement>> GetPlacementsByYearAsync(int year, CancellationToken ct = default)
+    public async Task<IReadOnlyList<ContainerPlacement>> GetPlacementsAsync(int? year, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.ContainerPlacements
             .AsNoTracking()
-            .Where(p => p.Year == year)
+            .Where(p => year == null || p.Year == year)
             .ToListAsync(ct);
     }
 

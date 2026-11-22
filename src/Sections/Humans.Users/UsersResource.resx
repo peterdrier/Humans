@@ -38,8 +38,6 @@
   <data name="Users_Profile_ActionRequired" xml:space="preserve"><value>Action Required:</value></data>
   <data name="Users_Profile_PendingConsents" xml:space="preserve"><value>You have {0} pending consent(s) to review.</value><comment>{0} = pending count</comment></data>
   <data name="Users_Profile_ReviewNow" xml:space="preserve"><value>Review now</value></data>
-  <data name="Users_Profile_TierApplicationStatus" xml:space="preserve"><value>Your {0} application:</value><comment>{0} = tier name (Colaborador/Asociado)</comment></data>
-  <data name="Users_Profile_TierApplicationDetails" xml:space="preserve"><value>View details</value></data>
   <data name="Users_Profile_Information" xml:space="preserve"><value>Profile Information</value></data>
   <data name="Users_Profile_LegalName" xml:space="preserve"><value>Legal Name</value></data>
   <data name="Users_Profile_OnlyVisibleToYouAndBoard" xml:space="preserve"><value>only visible to you and board</value></data>
@@ -84,11 +82,8 @@
   <data name="Users_Profile_DietaryMedical_MedicalConditions_Hint" xml:space="preserve"><value>Visible to you, the Shifts NoInfo admins and the Board; every time one of them opens it, that is recorded and listed below. Anything coordinators should know — diabetes, epilepsy, severe injuries, etc.</value></data>
   <data name="Users_Profile_DietaryMedical_MedicalConditions_Title" xml:space="preserve"><value>Medical conditions</value></data>
   <data name="Users_Profile_DietaryMedical_MedicalConditions_VisibilityNote" xml:space="preserve"><value>Optional. Visible to you, the Shifts NoInfo admins and the Board, and every look is recorded.</value></data>
-  <data name="Users_Profile_MarkedAt" xml:space="preserve"><value>Marked At</value></data>
-  <data name="Users_Profile_MarkedBy" xml:space="preserve"><value>Marked By</value></data>
   <data name="Users_Profile_MyEmails" xml:space="preserve"><value>My Emails</value></data>
   <data name="Users_Profile_NoSentMessages" xml:space="preserve"><value>No in-platform messages on record.</value></data>
-  <data name="Users_Profile_NoShowHistory" xml:space="preserve"><value>No-Show History ({0})</value></data>
   <data name="Users_Profile_SentMessages" xml:space="preserve"><value>Sent messages</value></data>
   <data name="Users_Profile_ShiftInfo" xml:space="preserve"><value>Shift Info</value></data>
 
@@ -96,16 +91,12 @@
   <!-- Profile Edit form        -->
   <!-- ======================== -->
   <data name="Users_ProfileEdit_Title" xml:space="preserve"><value>Edit Profile</value></data>
-  <data name="Users_ProfileEdit_TierVolunteerDesc" xml:space="preserve"><value>You want to come to the event, contribute your energy, work a shift or join a team. No formal commitment to the association's governance. Most people fall here and that's completely valid.</value></data>
-  <data name="Users_ProfileEdit_TierChangeNote" xml:space="preserve"><value>Note: You can always apply to change this later on.</value></data>
-  <data name="Users_ProfileEdit_TierLocked" xml:space="preserve"><value>Your tier is locked because you have an active or pending application.</value></data>
   <data name="Users_ProfileEdit_BurnerNamePlaceholder" xml:space="preserve"><value>The name you go by</value></data>
   <data name="Users_ProfileEdit_BurnerNameHelp" xml:space="preserve"><value>This is your public display name, visible to everyone.</value></data>
   <data name="Users_ProfileEdit_BurnerNameMatchesLegalName" xml:space="preserve"><value>Your burner name appears to match your legal name. Consider using a different name to protect your privacy — this name is visible to all humans.</value></data>
   <data name="Users_ProfileEdit_BurnerNameCollisionOne" xml:space="preserve"><value>There is 1 other human with the name '{1}' — please make sure we can tell which one is you!</value></data>
   <data name="Users_ProfileEdit_BurnerNameCollisionMany" xml:space="preserve"><value>There are {0} other humans with the name '{1}' — please make sure we can tell which one is you!</value></data>
   <data name="Users_ProfileEdit_LegalNameHelp" xml:space="preserve"><value>Required for official documents and signing.</value></data>
-  <data name="Users_ProfileEdit_Select" xml:space="preserve"><value>Select</value></data>
   <data name="Users_ProfileEdit_City" xml:space="preserve"><value>City</value></data>
   <data name="Users_ProfileEdit_CityHelp" xml:space="preserve"><value>Search for your city to set your location.</value></data>
   <data name="Users_ProfileEdit_CurrentLocation" xml:space="preserve"><value>Current location:</value></data>
@@ -171,7 +162,7 @@
   <data name="Users_Emails_AddNew" xml:space="preserve"><value>Add Email Address</value></data>
   <data name="Users_Emails_NewEmailLabel" xml:space="preserve"><value>New email address</value></data>
   <data name="Users_Emails_MergeWarningTitle" xml:space="preserve"><value>Merging accounts?</value></data>
-  <data name="Users_Emails_MergeWarningBody" xml:space="preserve"><value>Account merge is for combining two accounts that belong to the same person (for example, an old email and a new email that are both yours). It is not a way to share or transfer tickets, bookings, or other items between two different people. To transfer a ticket to another human, use the ticket transfer feature at /Tickets/Transfers.</value></data>
+  <data name="Users_Emails_MergeWarningBody" xml:space="preserve"><value>Account merge is for combining two accounts that belong to the same person (for example, an old email and a new email that are both yours). It is not a way to share or transfer tickets, bookings, or other items between two different people. To pass a ticket on to another human, offer it for resale at /Tickets/Buy/Mine and invite them by email.</value></data>
   <data name="Users_Emails_VerificationWillBeSent" xml:space="preserve"><value>A verification email will be sent to this address.</value></data>
   <data name="Users_Emails_SendVerification" xml:space="preserve"><value>Send Verification Email</value></data>
   <data name="Users_Emails_ResendCooldown" xml:space="preserve"><value>You can request a new verification email in {0} minute(s).</value><comment>{0} = minutes remaining</comment></data>
@@ -191,7 +182,6 @@
   <!-- ======================== -->
   <!-- Email grid               -->
   <!-- ======================== -->
-  <data name="Users_EmailGrid_AdminContextBanner" xml:space="preserve"><value>Managing emails for another user</value></data>
   <data name="Users_EmailGrid_AdminContextBannerNamed" xml:space="preserve"><value>Managing emails for {0}</value><comment>{0} = target user display name</comment></data>
   <data name="Users_EmailGrid_Email" xml:space="preserve"><value>Email</value></data>
   <data name="Users_EmailGrid_Status" xml:space="preserve"><value>Status</value></data>
@@ -203,7 +193,6 @@
   <data name="Users_EmailGrid_VerificationPendingBody" xml:space="preserve"><value>Check your inbox for the verification email and click the link to confirm your address.</value></data>
   <data name="Users_EmailGrid_Visibility" xml:space="preserve"><value>Visibility</value></data>
   <data name="Users_EmailGrid_Actions" xml:space="preserve"><value>Actions</value></data>
-  <data name="Users_EmailGrid_StatusMergePending" xml:space="preserve"><value>Merge pending</value></data>
   <data name="Users_EmailGrid_StatusVerified" xml:space="preserve"><value>Verified</value></data>
   <data name="Users_EmailGrid_StatusPending" xml:space="preserve"><value>Pending</value></data>
   <data name="Users_EmailGrid_LinkGoogleAccount" xml:space="preserve"><value>Link Google account</value></data>
@@ -225,7 +214,6 @@
   <data name="Users_EmailGrid_AdminVerify" xml:space="preserve"><value>Verify</value></data>
   <data name="Users_EmailGrid_ConfirmAdminVerify" xml:space="preserve"><value>Manually mark this email verified without the user clicking the link?</value></data>
   <data name="Users_EmailGrid_AdminVerifySuccess" xml:space="preserve"><value>Email manually verified.</value></data>
-  <data name="Users_EmailGrid_AdminVerifyMergeRequested" xml:space="preserve"><value>This address is already verified on another account. A merge request was created instead of verifying.</value></data>
   <data name="Users_EmailGrid_OrphanProviderTag" xml:space="preserve"><value>Tagged with {0} but no matching AspNetUserLogins row — self-heals on next OAuth sign-in.</value></data>
   <data name="Users_EmailGrid_WorkspaceLocked" xml:space="preserve"><value>Locked by the Workspace email row</value></data>
 
@@ -243,7 +231,6 @@
   <!-- ======================== -->
   <data name="Users_VerifyEmail_Title" xml:space="preserve"><value>Email Verification</value></data>
   <data name="Users_VerifyEmail_GoToSettings" xml:space="preserve"><value>Go to Email Settings</value></data>
-  <data name="Users_VerifyEmail_GoHome" xml:space="preserve"><value>Go to Home Page</value></data>
 
   <!-- ======================== -->
   <!-- Linked accounts          -->
@@ -295,10 +282,9 @@
   <data name="Users_AdminHuman_UserId" xml:space="preserve"><value>User ID</value></data>
   <data name="Users_AdminHuman_AdminNotes" xml:space="preserve"><value>Board Notes</value></data>
   <data name="Users_AdminHuman_AdminNotesGdprHint" xml:space="preserve"><value>This member can request to see these notes under GDPR.</value></data>
-  <data name="Users_AdminHuman_RecentApplications" xml:space="preserve"><value>Recent Applications</value></data>
+  <data name="Users_AdminHuman_Applications" xml:space="preserve"><value>Applications</value></data>
   <data name="Users_AdminHuman_AuditHistory" xml:space="preserve"><value>Audit History</value></data>
   <data name="Users_AdminHuman_Statistics" xml:space="preserve"><value>Statistics</value></data>
-  <data name="Users_AdminHuman_ApplicationCount" xml:space="preserve"><value>Applications</value></data>
   <data name="Users_AdminHuman_ConsentCount" xml:space="preserve"><value>Agreements</value></data>
   <data name="Users_AdminHuman_UnsuspendMember" xml:space="preserve"><value>Unsuspend Human</value></data>
   <data name="Users_AdminHuman_SuspendConfirm" xml:space="preserve"><value>Are you sure you want to suspend this human?</value></data>
@@ -337,22 +323,20 @@
 &lt;p&gt;If you believe this is an error or have questions, please contact us at &lt;a href="mailto:{3}"&gt;{3}&lt;/a&gt;.&lt;/p&gt;
 &lt;p&gt;The Humans Team&lt;/p&gt;</value><comment>{0} = user name, {1} = reason, {2} = base URL, {3} = admin email</comment></data>
   <data name="Users_Email_VerifyEmail_Subject" xml:space="preserve"><value>Verify Your Email Address</value></data>
-  <data name="Users_Email_EmailVerification_Body" xml:space="preserve"><value>&lt;h2&gt;Email Verification&lt;/h2&gt;
-&lt;p&gt;Dear {0},&lt;/p&gt;
-&lt;p&gt;You requested to add &lt;strong&gt;{1}&lt;/strong&gt; to your account.&lt;/p&gt;
-&lt;p&gt;Please click the link below to verify this email address:&lt;/p&gt;
-&lt;p&gt;&lt;a href="{2}" style="display:inline-block; padding:12px 24px; background-color:#0d6efd; color:#ffffff; text-decoration:none; border-radius:6px; font-weight:bold; font-size:16px;"&gt;Verify Email Address&lt;/a&gt;&lt;/p&gt;
-&lt;p&gt;This link will expire in 24 hours.&lt;/p&gt;
-&lt;p&gt;If you did not request this change, you can safely ignore this email.&lt;/p&gt;
+  <data name="Users_Email_EmailVerification_Body" xml:space="preserve"><value>&lt;h2&gt;Confirm this email address&lt;/h2&gt;
+&lt;p&gt;Someone signed in to Humans as &lt;strong&gt;{0}&lt;/strong&gt; asked to add &lt;strong&gt;{1}&lt;/strong&gt; to that account.&lt;/p&gt;
+&lt;p&gt;If that was you, open the link while signed in as {0} and press the button on the page:&lt;/p&gt;
+&lt;p&gt;&lt;a href="{2}" style="display:inline-block; padding:12px 24px; background-color:#0d6efd; color:#ffffff; text-decoration:none; border-radius:6px; font-weight:bold; font-size:16px;"&gt;Confirm email address&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;The link works once, for one hour.&lt;/p&gt;
+&lt;p&gt;If this was not you, ignore this email and nothing changes.&lt;/p&gt;
 &lt;p&gt;The Humans Team&lt;/p&gt;</value><comment>{0} = user name, {1} = email address, {2} = verification URL</comment></data>
-  <data name="Users_Email_EmailVerification_Merge_Body" xml:space="preserve"><value>&lt;h2&gt;Account Merge Verification&lt;/h2&gt;
-&lt;p&gt;Dear {0},&lt;/p&gt;
-&lt;p&gt;You requested to add &lt;strong&gt;{1}&lt;/strong&gt; to your account. This email address is currently linked to another account.&lt;/p&gt;
-&lt;p&gt;If you verify this email, a merge request will be submitted for admin review. Once approved, data from the other account will be merged into yours and the duplicate account will be archived.&lt;/p&gt;
-&lt;p&gt;Please click the link below to verify and request the merge:&lt;/p&gt;
-&lt;p&gt;&lt;a href="{2}" style="display:inline-block; padding:12px 24px; background-color:#0d6efd; color:#ffffff; text-decoration:none; border-radius:6px; font-weight:bold; font-size:16px;"&gt;Verify and Request Merge&lt;/a&gt;&lt;/p&gt;
-&lt;p&gt;This link will expire in 24 hours.&lt;/p&gt;
-&lt;p&gt;If you did not request this, you can safely ignore this email. No changes will be made.&lt;/p&gt;
+  <data name="Users_Email_EmailVerification_Merge_Body" xml:space="preserve"><value>&lt;h2&gt;Confirm this address and merge two accounts&lt;/h2&gt;
+&lt;p&gt;Someone signed in to Humans as &lt;strong&gt;{0}&lt;/strong&gt; asked to add &lt;strong&gt;{1}&lt;/strong&gt; to that account.&lt;/p&gt;
+&lt;p&gt;This address already has a Humans account of its own. If both accounts are yours, confirming merges them into one. The page shows both accounts before anything happens.&lt;/p&gt;
+&lt;p&gt;Open the link while signed in as {0}:&lt;/p&gt;
+&lt;p&gt;&lt;a href="{2}" style="display:inline-block; padding:12px 24px; background-color:#0d6efd; color:#ffffff; text-decoration:none; border-radius:6px; font-weight:bold; font-size:16px;"&gt;Review and merge&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;The link works once, for one hour. Do not forward this email: whoever opens the link as {0} can merge the accounts.&lt;/p&gt;
+&lt;p&gt;If this was not you, ignore this email and nothing changes. Nobody can take this address without this link.&lt;/p&gt;
 &lt;p&gt;The Humans Team&lt;/p&gt;</value><comment>{0} = user name, {1} = email address, {2} = verification URL</comment></data>
   <data name="Users_Email_DeletionRequested_Subject" xml:space="preserve"><value>Account Deletion Requested</value></data>
   <data name="Users_Email_AccountDeletionRequested_Body" xml:space="preserve"><value>&lt;h2&gt;Account Deletion Request Received&lt;/h2&gt;
@@ -368,8 +352,6 @@
 &lt;p&gt;As requested, your Humans account has been permanently deleted. All your personal data has been removed from our systems.&lt;/p&gt;
 &lt;p&gt;Thank you for being part of our community. If you ever wish to rejoin, you're welcome to create a new account.&lt;/p&gt;
 &lt;p&gt;Best wishes,&lt;br/&gt;The Humans Team&lt;/p&gt;</value><comment>{0} = user name</comment></data>
-  <data name="Users_Profile_EmailLinkedToAnotherAccount" xml:space="preserve"><value>This email is linked to another account. Verifying it will request an account merge. Check your inbox for the verification link.</value></data>
-  <data name="Users_Profile_EmailVerifiedMergeRequested" xml:space="preserve"><value>Email verified. A merge request has been submitted for admin review. The email {0} will be added to your account once approved.</value><comment>{0} = email address</comment></data>
   <data name="Users_ProfilePopover_ImportedNoProfile" xml:space="preserve"><value>Imported · no profile yet</value></data>
   <data name="Users_ProfilePopover_ImportedNoProfileHelp" xml:space="preserve"><value>This human exists in the system but has not completed a profile (for example, they were imported from a mailing list or ticketing).</value></data>
   <data name="Users_Notification_AdminSuspendedWithReason" xml:space="preserve"><value>Your access has been suspended: {0}</value></data>
@@ -380,9 +362,6 @@
   </data>
   <data name="Users_Profile_EmailVerifiedOnAnotherAccount" xml:space="preserve">
     <value>This email address is already verified on another account.</value>
-  </data>
-  <data name="Users_Profile_EmailMergePending" xml:space="preserve">
-    <value>A merge request is already pending for this email address.</value>
   </data>
   <data name="Users_EmailDelete_LastVerifiedBlocked" xml:space="preserve">
     <value>Cannot remove your last verified email. Add another verified email first so you can still receive system notifications.</value>
@@ -396,8 +375,6 @@
   <data name="Users_Profile_DietaryLink" xml:space="preserve"><value>Dietary info</value></data>
   <data name="Users_Medical_Saved" xml:space="preserve"><value>Your medical info has been saved.</value></data>
   <data name="Users_Medical_SaveFailed" xml:space="preserve"><value>Failed to save medical info.</value></data>
-  <data name="Users_ProfileEdit_TierApplyLink" xml:space="preserve"><value>Apply for Colaborador or Asociado</value></data>
-  <data name="Users_ProfileEdit_TierVolunteer" xml:space="preserve"><value>Volunteer</value></data>
   <data name="Users_EmailUpdate_AccountUnavailable" xml:space="preserve">
     <value>This account is no longer available for email changes.</value>
   </data>
@@ -408,4 +385,69 @@
   <data name="Users_Medical_RevealsTitle" xml:space="preserve"><value>Who has looked at this</value></data>
   <data name="Users_Medical_RevealsEmpty" xml:space="preserve"><value>Nobody has looked at your medical details.</value></data>
   <data name="Users_Medical_RevealedBy" xml:space="preserve"><value>Looked at by</value></data>
+  <data name="Users_Birthdays_Title" xml:space="preserve"><value>Birthday Calendar</value></data>
+  <data name="Users_Birthdays_Count" xml:space="preserve"><value>{0} birthdays in {1}</value></data>
+  <data name="Users_Birthdays_Count_One" xml:space="preserve"><value>{0} birthday in {1}</value></data>
+  <data name="Users_Birthdays_None" xml:space="preserve"><value>No birthdays in {0}.</value></data>
+  <data name="Users_Birthdays_Privacy" xml:space="preserve"><value>Only humans who have set their birthday are shown.</value></data>
+  <data name="Users_Map_Title" xml:space="preserve"><value>Humans Map</value></data>
+  <data name="Users_Map_Count" xml:space="preserve"><value>{0} humans with location</value></data>
+  <data name="Users_Map_None" xml:space="preserve"><value>No humans have set their location yet.</value></data>
+  <data name="Users_Map_Privacy" xml:space="preserve"><value>Only humans who have set their location are shown. Location is approximate and based on city.</value></data>
+  <data name="Users_Birthdays_CardDescription" xml:space="preserve"><value>See who is celebrating this month.</value></data>
+  <data name="Users_Map_CardDescription" xml:space="preserve"><value>See where humans are around the world.</value></data>
+  <data name="Users_Profile_Participation" xml:space="preserve">
+    <value>Participation</value>
+  </data>
+  <data name="Users_Profile_Settings" xml:space="preserve">
+    <value>Settings</value>
+  </data>
+  <data name="Users_Profile_ShowAllCv" xml:space="preserve">
+    <value>Show all ({0})</value>
+  </data>
+  <data name="Users_Profile_NewLayoutNote" xml:space="preserve">
+    <value>Preview of a new layout. The current page:</value>
+  </data>
+  <data name="Users_Medical_NoneOnFile" xml:space="preserve"><value>No medical conditions on file.</value></data>
+  <data name="Users_Medical_RevealFailed" xml:space="preserve"><value>Could not load the medical details.</value></data>
+  <data name="Users_Medical_RevealTitle" xml:space="preserve"><value>Show medical details (every look is recorded in the audit log)</value></data>
+  <data name="Users_Profile_InvalidLocation" xml:space="preserve"><value>Select a valid location.</value></data>
+  <data name="Users_ProfileEdit_ShiftPreferences" xml:space="preserve"><value>Edit preferences</value></data>
+  <data name="Users_ProfileEdit_ShiftPreferencesHelp" xml:space="preserve"><value>Select tags that match the kind of work you enjoy. Matching shifts will be highlighted with a star.</value></data>
+  <data name="Users_Status_Board" xml:space="preserve"><value>Board</value></data>
+  <data name="Users_Meter_PendingAccountDeletions" xml:space="preserve"><value>Pending account deletions</value></data>
+  <data name="Users_Meter_AudienceAdmin" xml:space="preserve"><value>Admins</value></data>
+  <data name="Users_Search_Category" xml:space="preserve"><value>Humans</value></data>
+  <data name="Users_ConfirmEmail_Prompt" xml:space="preserve"><value>Add {0} to your account?</value></data>
+  <data name="Users_ConfirmEmail_Button" xml:space="preserve"><value>Confirm this address</value></data>
+  <data name="Users_ConfirmEmail_Invalid" xml:space="preserve"><value>This link no longer works. A link works once, for one hour. To get a new one, remove the address on your email settings page and add it again.</value></data>
+  <data name="Users_ConfirmEmail_WrongAccount" xml:space="preserve"><value>This link was made by a different account than the one you are signed in with.</value></data>
+  <data name="Users_ConfirmEmail_LinkMadeBy" xml:space="preserve"><value>Link made by:</value></data>
+  <data name="Users_ConfirmEmail_SignedInAs" xml:space="preserve"><value>You are signed in as:</value></data>
+  <data name="Users_ConfirmEmail_WrongAccountHelp" xml:space="preserve"><value>Sign out, sign in as the account that made the link, then open the link again.</value></data>
+  <data name="Users_MergeAccounts_Title" xml:space="preserve"><value>Merge your two accounts</value></data>
+  <data name="Users_MergeAccounts_Intro" xml:space="preserve"><value>{0} already belongs to another account. Confirming it merges the two accounts into one. This cannot be undone.</value></data>
+  <data name="Users_MergeAccounts_KeepsEverything" xml:space="preserve"><value>Everything from both accounts is kept: teams, shifts, tickets, roles, camp, consents and every address you sign in with.</value></data>
+  <data name="Users_MergeAccounts_SignedInCard" xml:space="preserve"><value>The account you are signed in with</value></data>
+  <data name="Users_MergeAccounts_OtherCard" xml:space="preserve"><value>Your other account</value></data>
+  <data name="Users_MergeAccounts_OtherEmpty" xml:space="preserve"><value>Your other account was never filled in, so your profile stays as it is.</value></data>
+  <data name="Users_MergeAccounts_Choose" xml:space="preserve"><value>Both accounts have a profile. Pick the one to keep. Anything it is missing is filled in from the other.</value></data>
+  <data name="Users_MergeAccounts_KeepThis" xml:space="preserve"><value>Keep this profile</value></data>
+  <data name="Users_MergeAccounts_Button" xml:space="preserve"><value>Merge these accounts</value></data>
+  <data name="Users_MergeAccounts_NotNow" xml:space="preserve"><value>Not now</value></data>
+  <data name="Users_MergeAccounts_Blocked" xml:space="preserve"><value>These two accounts cannot be merged here. Write to {0} and we will sort it out.</value></data>
+  <data name="Users_MergeAccounts_Done" xml:space="preserve"><value>Your two accounts are now one.</value></data>
+  <data name="Users_MergeAccounts_SignsInWith" xml:space="preserve"><value>Signs in with</value></data>
+  <data name="Users_MergeAccounts_Roles" xml:space="preserve"><value>Roles</value></data>
+  <data name="Users_MergeAccounts_Shifts" xml:space="preserve"><value>Shifts</value></data>
+  <data name="Users_MergeAccounts_ShiftsValue" xml:space="preserve"><value>{0} coming up, {1} worked</value></data>
+  <data name="Users_MergeAccounts_Tickets" xml:space="preserve"><value>Tickets</value></data>
+  <data name="Users_MergeAccounts_Created" xml:space="preserve"><value>Created</value></data>
+  <data name="Users_MergeAccounts_LastSignIn" xml:space="preserve"><value>Last sign-in</value></data>
+  <data name="Users_Email_AccountsMerged_Subject" xml:space="preserve"><value>Your two accounts were merged</value></data>
+  <data name="Users_Email_AccountsMerged_Body" xml:space="preserve"><value>&lt;h2&gt;Accounts merged&lt;/h2&gt;
+&lt;p&gt;Dear {0},&lt;/p&gt;
+&lt;p&gt;Two Humans accounts that both belonged to you were merged into one. Everything from both is on the account that remains, and every address you used to sign in still works.&lt;/p&gt;
+&lt;p&gt;If you did not do this, write to {1} straight away.&lt;/p&gt;
+&lt;p&gt;The Humans Team&lt;/p&gt;</value></data>
 </root>

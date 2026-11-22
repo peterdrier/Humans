@@ -8,12 +8,11 @@ internal sealed class CityPlanningSettingsConfiguration : IEntityTypeConfigurati
 {
     public void Configure(EntityTypeBuilder<CityPlanningSettings> builder)
     {
-        builder.ToTable("city_planning_settings");
+        builder.ToTable("city_settings");
 
         builder.HasIndex(s => s.Year).IsUnique();
 
-        // The override reuses the old manual IsPlacementOpen column (now nullable), so every
-        // existing row's true/false survives as a forced open/closed with no data migration.
+        // Column keeps its old name: stored true/false read as forced open/closed.
         builder.Property(s => s.PlacementOverride).HasColumnName("IsPlacementOpen");
 
         builder.Property(s => s.RegistrationInfo).HasColumnType("text");

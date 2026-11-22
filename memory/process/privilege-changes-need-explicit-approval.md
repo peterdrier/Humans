@@ -1,28 +1,31 @@
 ---
-name: privilege/permission/role changes need explicit per-change approval
+name: privilege-changes-need-explicit-approval
 description: HARD RULE. Any change granting users new/elevated capability (Drive roles, auth scopes, role/admin grants, allowlist expansions) needs Peter's explicit approval first.
 ---
 
-Any change that grants users new or elevated capabilities requires Peter's explicit per-change approval. Stop and ask before implementing — do not autonomously execute, regardless of how the issue is sized, what tier the sprint plan assigned, or how mechanical the diff looks.
+Any change that grants users new or elevated capability needs Peter's explicit approval for that change
+*before* it is implemented, however the issue is sized and however mechanical the diff looks. A
+privilege change is judged by what it grants, not by its size.
 
-Examples that fire this rule:
-- Bumping a default permission tier (e.g. Drive `Contributor` → `ContentManager`, `writer` → `fileOrganizer`)
-- Granting a new role / role group access to a route, controller, or feature
-- Adding origins to a CORS allowlist beyond clearly-internal dev origins
-- Lowering an `[Authorize]` requirement (e.g. `Admin` → `Coordinator`, `Authenticated` → `AllowAnonymous`)
-- Adding a new admin flag, override switch, or "trust this user" boolean
-- Changing the default access level granted on a newly-created resource
-- Expanding what a role can see/edit/delete on existing resources
-- Adding bypass paths to authorization or rate-limiting
+Fires on:
+- Raising a default permission tier (a Drive role, the access level on a newly created resource).
+- Granting a role access to a route, controller or feature; widening what a role can see, edit or
+  delete.
+- Lowering an `[Authorize]` requirement.
+- Adding origins to a CORS allowlist beyond clearly internal dev origins.
+- A new admin flag, override switch or "trust this user" boolean.
+- Any bypass path around authorization or rate limiting.
 
-The fact that the diff is "small" or "mechanical" or "follows the issue spec exactly" does NOT make it safe — privilege changes are evaluated by *what they grant*, not by LOC.
+**How to apply:**
+- Stop and ask: "This grants `<who>` the ability to `<what>` on `<which resources>`. Confirm before I
+  proceed?" Only an explicit yes counts; a question back or silence does not.
+- Route it to Peter before planning, batching or dispatching a worker, not after the PR is open. This
+  holds inside triage, sprint planning and execution, and any dispatch chain.
+- A worker that discovers mid-implementation that the "small fix" changes a privilege stops, doesn't
+  push, and reports back. "The spec said so" is not authorization.
 
-**Why:** PR #398 (2026-05-03) shipped a global default bump from Drive `Contributor` to `ContentManager` for every team member, autonomously, because one user (`fb:0545bf5e`) asked to be able to delete files. The triage system created a clean "bug" issue, the sprint sized it as XS/lightweight, the orchestrator dispatched it to a worker, and the worker shipped a PR that gave every user in the system move/delete on shared Drive content. Peter caught it at PR review — but every layer of the autonomous pipeline failed to escalate. Privilege escalations are categorically different from bugs; they need a human deciding "should this group of people have this power?" before any code is written.
+**Why:** one user asked to be able to delete Drive files; the autonomous pipeline turned that into a
+"bug", sized it small, and shipped move/delete rights on shared Drive content to every team member.
+Every layer failed to escalate.
 
-**How to apply:** When you (or a subagent you dispatch) are about to touch a default permission, role grant, allowlist, `[Authorize]` attribute, or any switch that controls what a user can do — STOP. Ask Peter explicitly: "This grants `<who>` the ability to `<what>` on `<which resources>`. Confirm before I proceed?" Wait for an explicit "yes, proceed" — a question, a "what do you think?", or silence is not approval.
-
-This applies inside `/triage`, `/sprint`, `/execute-sprint`, batch-worker prompts, and any agent dispatch chain. If the issue body looks like a privilege/permission change, route it to Peter for approval BEFORE planning, BEFORE batching, BEFORE dispatching a worker — not after the PR is open.
-
-If you're a worker and you discover mid-implementation that the change crosses into privilege territory (e.g. the "small fix" turns out to bump a default role), STOP, do not push, report back to the orchestrator, and let the orchestrator escalate. Never assume "the spec said do it, so it's authorized" — the spec might have been laundered through an unsafe pipeline.
-
-**Related:** [`triage-protocol`](triage-protocol.md) — adjacent rule: any user-originated feedback that proposes a behavioral/spec change (not just a mechanical fix) needs Peter's review before it enters the autonomous pipeline.
+**Related:** [`triage-protocol`](triage-protocol.md)

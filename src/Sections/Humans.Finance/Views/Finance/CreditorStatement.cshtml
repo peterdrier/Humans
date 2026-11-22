@@ -1,4 +1,5 @@
 @model Humans.Finance.Models.CreditorStatementVm
+@inject Humans.Base.Interfaces.IOrgTimeZone OrgTimeZone
 @{
     ViewData["Title"] = $"Creditor {Model.Ledger.SupplierAccountNum}";
     ViewData[Humans.Base.ViewComponents.AdminNavComposition.ParentKey] = "Creditors";
@@ -7,8 +8,8 @@
 
     var c = ledger.Contact;
 
-    // Ledger instants are Madrid midnight; the UTC calendar date is the previous day.
-    var madrid = NodaTime.DateTimeZoneProviders.Tzdb["Europe/Madrid"];
+    // Ledger instants are org-zone midnight; the UTC calendar date is the previous day.
+    var orgZone = OrgTimeZone.Zone;
 
     var m = Model.Match;
     string Amt(decimal v) => v.ToString("#,##0.00", System.Globalization.CultureInfo.InvariantCulture);
@@ -19,12 +20,12 @@
         @if (item.WithdrawnAt is { } withdrawnAt)
         {
             <span class="badge text-bg-dark">Withdrawn</span>
-            <span class="text-muted small">@withdrawnAt.InZone(madrid).Date.ToInvariantDate()</span>
+            <span class="text-muted small">@withdrawnAt.InZone(orgZone).Date.ToInvariantDate()</span>
         }
         else if (item.BookedAt is { } bookedAt)
         {
             <span class="badge text-bg-success">Booked</span>
-            <span class="text-muted small">@bookedAt.InZone(madrid).Date.ToInvariantDate()</span>
+            <span class="text-muted small">@bookedAt.InZone(orgZone).Date.ToInvariantDate()</span>
         }
         else
         {
@@ -33,11 +34,11 @@
     </text>;
     Func<SepaPayoutTransferRow, IHtmlContent> sepaAmountCell = @<text>@item.Amount.ToEuro()</text>;
     var sepaTable = TableModel.For(Model.SepaTransfers)
-        .Column("Generated", t => t.GeneratedAt.InZone(madrid).Date.ToInvariantDate(), o => o.Css("text-nowrap"))
+        .Column("Generated", t => t.GeneratedAt.InZone(orgZone).Date.ToInvariantDate(), o => o.Css("text-nowrap"))
         .Template("File", sepaFileCell, sortBy: t => t.FileName)
         .Column("IBAN", t => t.IbanMasked, o => o.Css("font-monospace small"))
         .Template("Status", sepaStatusCell, o => o.Css("text-nowrap"))
-        .Template("Amount", sepaAmountCell, o => o.End(), sortBy: t => t.Amount)
+        .Template("Amount", sepaAmountCell, o => o.Css("text-nowrap").End(), sortBy: t => t.Amount)
         .Css("align-middle")
         .Build();
 
@@ -48,7 +49,9 @@
         .Template("Report", reportCell, o => o.Css("text-nowrap"))
         .Column("Status", r => r.Status, o => o.Css("text-nowrap"))
         .Column("Subject", r => r.Note)
-        .Column("Approved", r => r.ApprovedAt?.InZone(madrid).Date.ToInvariantDate(), o => o.Css("text-nowrap"))
+        .Column("Approved", r => r.ApprovedAt?.InZone(orgZone).Date.ToInvariantDate(), o => o.Css("text-nowrap"))
+        .Column("Booked to", r => r.HoldedSupplierAccountNum?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "not booked",
+            o => o.Css("text-nowrap"))
         .Column("Holded documents", r => r.HoldedDocIds.Count, o => o.Number().End())
         .Template("Payable", payableCell, o => o.End(), sortBy: r => r.Payable)
         .Css("align-middle")
@@ -86,40 +89,45 @@
         </div></div>
     </div>
     <div class="col-md-4">
-        <div class="card h-100 @(m.HasWarnings ? "border-danger" : "")"><div class="card-body">
+        <div class="card h-100 @(m is { HasWarnings: true } ? "border-danger" : "")"><div class="card-body">
             <h6 class="card-subtitle mb-2 text-muted"><i class="fa-solid fa-scale-balanced me-1"></i>Expenses vs ledger</h6>
-            <table class="table table-sm mb-2 small">
-                <thead><tr><th></th><th class="text-end">Count</th><th class="text-end">Amount</th></tr></thead>
-                <tbody>
-                    <tr title="Holded documents our expense reports created. Capped lines that were not booked do not count.">
-                        <td>Expense docs</td>
-                        <td class="text-end @(m.CountsMatch ? "" : "text-danger fw-bold")">@m.ExpenseDocCount</td>
-                        <td class="text-end @(m.AmountsMatch ? "" : "text-danger fw-bold")">@Amt(m.ExpenseAmount)</td>
-                    </tr>
-                    <tr title="Purchase entries on this account in the ledger mirror.">
-                        <td>Ledger purchases</td>
-                        <td class="text-end @(m.CountsMatch ? "" : "text-danger fw-bold")">@m.PurchaseCount</td>
-                        <td class="text-end @(m.AmountsMatch ? "" : "text-danger fw-bold")">@Amt(m.PurchaseAmount)</td>
-                    </tr>
-                    <tr title="Payment lines on this account, net of money the member paid back.">
-                        <td>Payments</td>
-                        <td class="text-end">@m.PaymentCount</td>
-                        <td class="text-end">@Amt(m.PaymentAmount)</td>
-                    </tr>
-                </tbody>
-            </table>
-            @if (m.HasWarnings)
+            @if (m is null)
             {
-                <div class="text-danger small fw-semibold">
-                    @foreach (var w in m.Warnings)
-                    {
-                        <div><i class="fa-solid fa-triangle-exclamation me-1"></i>@w</div>
-                    }
-                </div>
+                <div class="text-muted small">@(Model.MatchUnavailable ?? "No expense report lines or expense purchases on this account.")</div>
             }
             else
             {
-                <div class="text-success small"><i class="fa-solid fa-check me-1"></i>Expenses and ledger match</div>
+                <table class="table table-sm mb-2 small">
+                    <tbody>
+                        <tr title="Ledger purchases matched to an approved expense line.">
+                            <td>Expense purchases</td><td class="text-end">@Amt(m.ExpensePurchases)</td>
+                        </tr>
+                        <tr title="Payments matched to a booked SEPA transfer.">
+                            <td>Paid by SEPA</td><td class="text-end">@Amt(m.SepaPaid)</td>
+                        </tr>
+                        <tr title="Expense purchases in the ledger that no report line claims: duplicates and strays.">
+                            <td>Unclaimed purchases</td>
+                            <td class="text-end @(m.UnclaimedPurchaseCount > 0 ? "text-danger fw-bold" : "")">@Amt(m.UnclaimedPurchases)</td>
+                        </tr>
+                        <tr title="Everything else on the account: other purchases, journal entries, other payments.">
+                            <td>Other movements</td><td class="text-end">@Amt(m.Other)</td>
+                        </tr>
+                    </tbody>
+                </table>
+                @if (m.HasWarnings)
+                {
+                    <div class="text-danger small fw-semibold">
+                        @foreach (var w in m.Warnings)
+                        {
+                            <div><i class="fa-solid fa-triangle-exclamation me-1"></i>@w</div>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <div class="text-success small"><i class="fa-solid fa-check me-1"></i>Expenses and ledger match</div>
+                }
+                <a asp-action="ExpenseRecon" class="small">Expense recon</a>
             }
         </div></div>
     </div>
@@ -189,7 +197,7 @@
             {
                 var l = row.Line;
                 <tr>
-                    <td class="text-nowrap">@l.Date.InZone(madrid).ToDateTimeUnspecified().ToInvariantDate()</td>
+                    <td class="text-nowrap">@l.Date.InZone(orgZone).ToDateTimeUnspecified().ToInvariantDate()</td>
                     <td>@row.Description</td>
                     <td class="text-muted small">@l.Type</td>
                     <td class="text-end">@(row.Credit > 0 ? row.Credit.ToEuro() : "")</td>
@@ -215,10 +223,10 @@
 </div>
 
 <div class="card mt-4">
-    <div class="card-header">Expense reports booked to this account (submitted and later; approved reports are the ones pushed to Holded)</div>
+    <div class="card-header">Expense reports on this account: booked to it, or its member's (submitted and later; approved reports are the ones pushed to Holded)</div>
     @if (Model.ExpenseReports.Count == 0)
     {
-        <div class="card-body py-4"><empty-state class="mb-0">No expense reports are booked to this account.</empty-state></div>
+        <div class="card-body py-4"><empty-state class="mb-0">No expense reports are on this account.</empty-state></div>
     }
     else
     {

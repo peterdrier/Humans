@@ -14,7 +14,6 @@
   src/Sections/Humans.Gate/Services/GateService.cs
   src/Sections/Humans.Scanner/Controllers/ScannerController.cs
   src/Sections/Humans.Tickets.Contracts/TicketStubInfo.cs
-  src/Sections/Humans.Tickets/Controllers/TicketTransferController.cs
   src/Sections/Humans.Tickets/ViewComponents/MyTicketStubsViewComponent.cs
   src/Sections/Humans.Tickets/ViewComponents/TicketHoldingsViewComponent.cs
   tests/Humans.Integration.Tests/Controllers/EarlyEntryPageRenderTests.cs
@@ -83,10 +82,7 @@ The layout matches this.
   section shows on the next request and never has to signal this one (pinned:
   `EarlyEntryArchitectureTests.SectionRegistersTheOrchestratorPerRequest`,
   `EarlyEntryServiceTests.GetForUserAsync_GathersOncePerScope_AndFreshInTheNext`).
-- The transfer wizard asks for the signed-in user's own early entry
-  (`src/Sections/Humans.Tickets/Controllers/TicketTransferController.cs:28`, reaching
-  `src/Sections/Humans.Tickets/Controllers/TicketTransferController.cs:79`); the gate card asks
-  for the scanned attendee's (`src/Sections/Humans.Gate/Services/GateService.cs:73`). The stub
+- The gate card asks for the scanned attendee's (`src/Sections/Humans.Gate/Services/GateService.cs:73`). The stub
   and holdings view components answer for the user they are invoked with, so who sees that
   answer is the invoking page's gate, not this section's.
 - The roster needs `ShiftsPolicies.Manage` (Admin, NoInfoAdmin, VolunteerCoordinator)
@@ -102,12 +98,12 @@ None.
 ## 6. Deliberately not done
 
 - **No `Humans.EarlyEntry.Contracts` leaf project.** A section publishes from its `Contracts/`
-  folder and takes a leaf only where the folder would close a project cycle (design-rules §1);
+  folder and takes a leaf only where the folder would close a project cycle (design-rules.md, *Layers and projects*);
   nothing here does, so consumers reference the section and `internal` keeps them off the rest.
 - **No per-user provider method.** `GetForUserAsync` gathers every contributor's full list to
   answer for one person. The dataset is a few hundred grants; one full pass is cheap.
 - **No parallel fan-out.** Sequential is the house shape for contributor orchestrators
-  (Gdpr, Calendar) and a simplicity choice, not a thread-safety requirement (design-rules §8b);
+  (Gdpr, Calendar) and a simplicity choice, not a thread-safety requirement (design-rules.md, *Crosscuts, orchestrators and fan-out*);
   nothing here is slow enough to justify a second shape.
 - **No batch legal-name read on the roster.** One `IUserService` lookup per row through
   `HumansControllerBase`, served from the Users cache; tens of rows, not thousands.
@@ -122,7 +118,7 @@ None.
   coordinators look for it, not an ownership claim. Moving it is a nav change, not a cleanup.
 - **Camps forwards its caching decorator as the provider; Shifts and Teams forward scoped
   services.** Which instance to forward follows where the read is served from
-  (design-rules §8b): Camps projects from its cached snapshot, the other two read the
+  (design-rules.md, *Crosscuts, orchestrators and fan-out*): Camps projects from its cached snapshot, the other two read the
   repository per call. Registering a decorator that does not serve the read adds a hop and
   no cache.
 - **Shifts derives one grant per person from their earliest confirmed build shift**, entry date

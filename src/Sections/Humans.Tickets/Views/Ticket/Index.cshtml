@@ -213,7 +213,7 @@
                             .Column("Date", o => o.PurchasedAt, c => c.Date())
                             .Column("Purchaser", o => o.BuyerName)
                             .Column("Tickets", o => o.TicketCount, c => c.Number())
-                            .Template("Amount", recentAmountCell)
+                            .Template("Amount", recentAmountCell, c => c.Css("text-nowrap"))
                             .Column("Status", o => o.PaymentStatus, c => c.EnumBadge())
                             .Template("Matched", recentMatchedCell, c => c.NoSort())
                             .Empty("No orders synced yet")

@@ -4,6 +4,7 @@ namespace Humans.Budget.Authorization;
 
 internal sealed class BudgetOperationRequirement : IAuthorizationRequirement
 {
+    public static readonly BudgetOperationRequirement View = new(nameof(View));
     public static readonly BudgetOperationRequirement Edit = new(nameof(Edit));
 
     public string OperationName { get; }

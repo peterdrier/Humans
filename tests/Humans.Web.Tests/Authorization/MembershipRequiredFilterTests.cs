@@ -1,7 +1,6 @@
 using System.Reflection;
 using System.Security.Claims;
 using Humans.Web.Extensions;
-using Humans.Backdoor.Contracts;
 using Humans.Base.Attributes;
 using Humans.Base.Constants;
 using Humans.Web.Authorization;
@@ -50,7 +49,7 @@ public class MembershipRequiredFilterTests
     private static readonly Type MyDataControllerType = SectionControllerType("Humans.Consent", "MyDataController");
     private static readonly Type CantinaProfileControllerType = SectionControllerType("Humans.Cantina", "CantinaProfileController");
     private static readonly Type TicketParticipationControllerType = SectionControllerType("Humans.Tickets", "TicketParticipationController");
-    private static readonly Type WorkspaceIdentityControllerType = SectionControllerType("Humans.GoogleIntegration", "WorkspaceIdentityController");
+    private static readonly Type WorkspaceIdentityControllerType = SectionControllerType("Humans.Google", "WorkspaceIdentityController");
 
     private static Type GdprControllerType(string name) => SectionControllerType("Humans.Gdpr", name);
 
@@ -173,6 +172,9 @@ public class MembershipRequiredFilterTests
             (typeof(ProfileEmailsController), nameof(ProfileEmailsController.Link)),
             (typeof(ProfileEmailsController), nameof(ProfileEmailsController.Unlink)),
             (typeof(ProfileEmailsController), nameof(ProfileEmailsController.UnlinkLinkedAccount)),
+            (typeof(UserEmailConfirmationController), nameof(UserEmailConfirmationController.Confirm)),
+            (typeof(UserEmailConfirmationController), nameof(UserEmailConfirmationController.ConfirmAddress)),
+            (typeof(UserEmailConfirmationController), nameof(UserEmailConfirmationController.Merge)),
         })
         {
             foreach (var method in type.GetMethods().Where(m => string.Equals(m.Name, action, StringComparison.Ordinal)))
@@ -196,7 +198,7 @@ public class MembershipRequiredFilterTests
         // through the onboarding form.
         foreach (var type in new[]
         {
-            typeof(ProfileController), typeof(ProfileEmailsController),
+            typeof(ProfileController), typeof(ProfileEmailsController), typeof(UserEmailConfirmationController),
             OnboardingWidgetControllerType, UserControllerType, MemberOutboxControllerType,
             MemberDataControllerType, MyDataControllerType, CantinaProfileControllerType,
             CommunicationPreferencesControllerType,
@@ -228,7 +230,6 @@ public class MembershipRequiredFilterTests
             ("Account", nameof(AccountController.Logout)),
             ("Language", nameof(LanguageController.SetLanguage)),
             ("ProfileView", nameof(ProfileViewController.PublicPopover)),
-            ("ProfileEmails", nameof(ProfileEmailsController.VerifyEmail)),
         })
         {
             var (result, nextCalled) = await RunAsync(
@@ -298,7 +299,6 @@ public class MembershipRequiredFilterTests
     }
 
     [HumansTheory]
-    [InlineData("ProfileEmails", nameof(ProfileEmailsController.VerifyEmail))]
     [InlineData("ProfileView", nameof(ProfileViewController.Picture))]
     [InlineData("ProfileView", nameof(ProfileViewController.PublicPopover))]
     public async Task Public_profile_actions_remain_reachable_for_suspended_users(string controller, string action)
@@ -376,11 +376,16 @@ public class MembershipRequiredFilterTests
         if (nameGateHasNames is { } hasNames)
         {
             var users = Substitute.For<IUserService>();
-            var profile = UserFixtures.Profile(
-                burnerName: hasNames ? "Member" : "", firstName: "Deleted", lastName: "User");
             var info = UserInfo.Create(
-                new User { Id = Guid.NewGuid(), State = state!.Value },
-                [], [], profile);
+                new User
+                {
+                    Id = Guid.NewGuid(),
+                    State = state!.Value,
+                    BurnerName = hasNames ? "Member" : "",
+                    FirstName = "Deleted",
+                    LastName = "User",
+                },
+                [], [], UserFixtures.Profile());
             users.GetUserInfoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(info);
             var nameFilter = new NameRequiredFilter(users);
             await nameFilter.OnActionExecutionAsync(ctx, async () =>
@@ -398,14 +403,14 @@ public class MembershipRequiredFilterTests
     }
 
     /// <summary>
-    /// A Backdoor API key skips claims transformation, so it carries no state claim; the gate must not redirect a
-    /// JSON client to onboarding.
+    /// A Backdoor API key skips claims transformation, so it carries no state claim. Its controllers are
+    /// <c>[AllowAnonymous]</c>, which is what keeps the gate from redirecting a JSON client to onboarding.
     /// </summary>
     [HumansFact]
-    public async Task Backdoor_key_principal_reaches_a_non_exempt_controller_without_a_state_claim()
+    public async Task Backdoor_key_principal_reaches_a_backdoor_controller_without_a_state_claim()
     {
         var (result, nextCalled) = await RunAsync(
-            "Home", "Index", state: null, authenticationType: BackdoorAuthentication.SchemeName);
+            "BackdoorNotifications", "Get", state: null, authenticationType: "BackdoorApiKey");
 
         Assert.True(nextCalled, "Machine requests must not be routed to onboarding");
         Assert.Null(result);

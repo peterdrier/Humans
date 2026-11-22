@@ -11,11 +11,16 @@ internal sealed class UsersAuditActions : AuditActionContributor
 
     public static readonly AuditActionDefinition AccountAnonymized = new("AccountAnonymized");
 
+    public static readonly AuditActionDefinition DeletionHeldForTicket = new("DeletionHeldForTicket");
+
     public static readonly AuditActionDefinition MembershipsRevokedOnDeletionRequest = new("MembershipsRevokedOnDeletionRequest");
 
     public static readonly AuditActionDefinition AccountMergeAccepted = new("AccountMergeAccepted");
 
     public static readonly AuditActionDefinition AccountMergeRejected = new("AccountMergeRejected");
+
+    // A merge that faulted part-way. Entity is the archived account, related entity the survivor.
+    public static readonly AuditActionDefinition AccountMergeFailed = new("AccountMergeFailed");
 
     public static readonly AuditActionDefinition ContactCreated = new("ContactCreated");
 
@@ -55,4 +60,7 @@ internal sealed class UsersAuditActions : AuditActionContributor
     public static readonly AuditActionDefinition StubProfileBackfilled = new("StubProfileBackfilled");
 
     public static readonly AuditActionDefinition AccountMarkedFake = new("AccountMarkedFake");
+
+    // Entity "User" + the subject's id is what the member's own medical page lists.
+    public static readonly AuditActionDefinition MedicalConditionsRevealed = new("MedicalConditionsRevealed");
 }

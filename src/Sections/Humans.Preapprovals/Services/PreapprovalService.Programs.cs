@@ -1,9 +1,11 @@
-using Humans.AuditLog.Contracts;
 using Humans.Base.Extensions;
+using Humans.Base.Interfaces;
+using Humans.Finance.Contracts;
 using Humans.Notifications.Contracts;
 using Humans.Preapprovals.Contracts;
+using Humans.Preapprovals.Data;
 using Humans.Preapprovals.Domain;
-
+using NodaTime;
 namespace Humans.Preapprovals.Services;
 
 internal sealed partial class PreapprovalService
@@ -27,7 +29,7 @@ internal sealed partial class PreapprovalService
         {
             Id = Guid.NewGuid(),
             Name = save.Name.Trim(),
-            Description = Trimmed(save.Description),
+            Description = PreapprovalInput.Trimmed(save.Description),
             Kind = save.Kind,
             PerPersonAmount = save.Kind == ProgramKind.FixedPerPerson ? save.PerPersonAmount : null,
             TotalCeiling = save.TotalCeiling,
@@ -47,8 +49,8 @@ internal sealed partial class PreapprovalService
 
         await AuditProgramAsync(PreapprovalsAuditActions.PreapprovalProgramCreated, program,
             $"Program \"{program.Name}\" created: {program.Kind}, " +
-            $"{(program.PerPersonAmount is { } per ? $"{Euros(per)} per person, " : "")}" +
-            $"ceiling {(program.TotalCeiling is { } c ? Euros(c) : "none")}, account {program.HoldedAccountNumber}, " +
+            $"{(program.PerPersonAmount is { } per ? $"{PreapprovalService.Euros(per)} per person, " : "")}" +
+            $"ceiling {(program.TotalCeiling is { } c ? PreapprovalService.Euros(c) : "none")}, account {program.HoldedAccountNumber}, " +
             $"claim by {program.ClaimBy.ToInvariantDate()}, {program.Status}.",
             actorUserId);
         foreach (var manager in program.Managers)
@@ -71,7 +73,7 @@ internal sealed partial class PreapprovalService
 
         var info = ToInfo(program);
         if (save.TotalCeiling is { } ceiling && ceiling < info.Granted)
-            return new(new PreapprovalRefusal(PreapprovalErrorKeys.CeilingBelowCommitted, Euros(info.Granted)));
+            return new(new PreapprovalRefusal(PreapprovalErrorKeys.CeilingBelowCommitted, PreapprovalService.Euros(info.Granted)));
 
         var wanted = await ResolveManagerIdsAsync(save.ManagerUserIds, ct);
         if (wanted is null) return new(new PreapprovalRefusal(PreapprovalErrorKeys.PersonUnavailable));
@@ -82,7 +84,7 @@ internal sealed partial class PreapprovalService
         var wasOpen = program.Status == ProgramStatus.Open;
 
         Change(changes, "name", program.Name, save.Name.Trim(), v => program.Name = v);
-        Change(changes, "description", program.Description, Trimmed(save.Description), v => program.Description = v);
+        Change(changes, "description", program.Description, PreapprovalInput.Trimmed(save.Description), v => program.Description = v);
         var perPerson = save.Kind == ProgramKind.FixedPerPerson ? save.PerPersonAmount : null;
         Change(changes, "per-person amount", program.PerPersonAmount, perPerson, v => program.PerPersonAmount = v, Money);
         Change(changes, "ceiling", program.TotalCeiling, save.TotalCeiling, v => program.TotalCeiling = v, Money);
@@ -155,13 +157,13 @@ internal sealed partial class PreapprovalService
         if (save.Kind == ProgramKind.FixedPerPerson)
         {
             if (save.PerPersonAmount is not { } per) return new(PreapprovalErrorKeys.PerPersonAmountRequired);
-            if (MoneyRefusal(per) is { } amountRefusal) return amountRefusal;
+            if (PreapprovalInput.MoneyRefusal(per) is { } amountRefusal) return amountRefusal;
         }
         else if (save.PerPersonAmount is not null)
         {
             return new(PreapprovalErrorKeys.PerPersonAmountNotAllowed);
         }
-        if (save.TotalCeiling is { } ceiling && MoneyRefusal(ceiling) is { } ceilingRefusal) return ceilingRefusal;
+        if (save.TotalCeiling is { } ceiling && PreapprovalInput.MoneyRefusal(ceiling) is { } ceilingRefusal) return ceilingRefusal;
         // The kind decides how every grant is sized; once one exists it cannot change under them.
         if (existing is { Grants.Count: > 0 } && existing.Kind != save.Kind)
             return new(PreapprovalErrorKeys.KindLocked);
@@ -186,8 +188,5 @@ internal sealed partial class PreapprovalService
         apply(after);
     }
 
-    private static string Money(decimal? value) => value is { } v ? Euros(v) : "none";
-
-    private static string? Trimmed(string? text) =>
-        string.IsNullOrWhiteSpace(text) ? null : text.Trim();
+    private static string Money(decimal? value) => value is { } v ? PreapprovalService.Euros(v) : "none";
 }

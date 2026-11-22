@@ -72,6 +72,28 @@ internal sealed class GateController(
         return PartialView("_VerdictCard", GateScanCardViewModel.FromDecision(decision, barcode, childWithAdult));
     }
 
+    [HttpGet("Find")]
+    public async Task<IActionResult> Find(string? q, CancellationToken ct)
+    {
+        var matches = (await gate.FindTicketsByNameAsync(q, ct))
+            .OrderBy(m => m.Name, StringComparer.CurrentCultureIgnoreCase)
+            .ToList();
+        return PartialView("_FindResults", new GateFindResultsViewModel(q?.Trim() ?? string.Empty, matches));
+    }
+
+    [HttpPost("Undo")]
+    [Authorize(Policy = PolicyNames.GateAdmit)]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Undo(string barcode, string? supervisorPin, CancellationToken ct)
+    {
+        var scanner = await GetCurrentUserInfoAsync(ct);
+        if (scanner is null)
+            return Unauthorized();
+
+        var result = await gate.UndoAdmitAtGateAsync(barcode, supervisorPin, scanner.Id, ct);
+        return PartialView("_VerdictCard", GateScanCardViewModel.FromUndo(result, barcode));
+    }
+
     [HttpGet("Claim")]
     public async Task<IActionResult> Claim(CancellationToken ct)
     {
@@ -137,7 +159,7 @@ internal sealed class GateController(
             .OrderByRelevance()
             .ToList();
         if (matches.Count == 0) return Json(new List<HumanLookupSearchResult>());
-        var infos = await UserService.GetUserInfosAsync(matches.Select(m => m.UserId).Distinct().ToArray(), ct);
+        var infos = await UserService.GetUserInfosAsync(matches.Select(m => m.UserId), ct);
         var rows = matches.Select(m => new HumanLookupSearchResult(
             m.UserId, m.BurnerName, Detail: MaskEmail(PublicEmail(infos.GetValueOrDefault(m.UserId))),
             ProfilePictureUrl: m.ProfilePictureUrl)).ToList();

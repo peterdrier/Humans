@@ -8,21 +8,9 @@ internal sealed class ProfileConfiguration : IEntityTypeConfiguration<Profile>
 {
     public void Configure(EntityTypeBuilder<Profile> builder)
     {
-        builder.ToTable("profiles");
+        builder.ToTable("user_profiles");
 
         builder.HasKey(p => p.Id);
-
-        builder.Property(p => p.BurnerName)
-            .HasMaxLength(256)
-            .IsRequired();
-
-        builder.Property(p => p.FirstName)
-            .HasMaxLength(256)
-            .IsRequired();
-
-        builder.Property(p => p.LastName)
-            .HasMaxLength(256)
-            .IsRequired();
 
         builder.Property(p => p.City)
             .HasMaxLength(256);
@@ -79,7 +67,9 @@ internal sealed class ProfileConfiguration : IEntityTypeConfiguration<Profile>
             .HasForeignKey<Profile>(p => p.UserId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        builder.Ignore(p => p.FullName);
         builder.Ignore(p => p.HasCustomProfilePicture);
+        // Loaded by user id in the repository, not through an EF relationship.
+        builder.Ignore(p => p.VolunteerHistory);
+        builder.Ignore(p => p.Languages);
     }
 }

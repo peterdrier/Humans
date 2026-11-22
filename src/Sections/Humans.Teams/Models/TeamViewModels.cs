@@ -1,3 +1,4 @@
+using Humans.Teams.Domain;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 using System.ComponentModel.DataAnnotations;
 using Humans.Teams.Contracts;
@@ -82,12 +83,13 @@ internal sealed class TeamDetailViewModel
     public bool CanCurrentUserEditTeam { get; set; }
 
     /// <summary>
-    /// Early entry is enabled and the viewer can manage it: a coordinator, EETeamAdmin, or TeamsAdmin/Board/Admin.
+    /// Early entry is enabled and the viewer passes ManageEarlyEntry: a coordinator, EarlyEntryAdmin, TeamsAdmin or Admin.
     /// </summary>
     public bool CanManageEarlyEntry { get; set; }
     public Guid? CurrentUserPendingRequestId { get; set; }
     public int PendingRequestCount { get; set; }
-    public ShiftsSummaryCardViewModel? ShiftsSummary { get; set; }
+    /// <summary>Null when signed out or without a profile.</summary>
+    public Guid? ViewerUserId { get; init; }
 
     /// <summary>Departments only.</summary>
     public List<ChildTeamMemberViewModel> SubteamLeads { get; set; } = [];
@@ -173,6 +175,8 @@ internal sealed class CreateTeamViewModel : TeamFormViewModelBase;
 internal sealed class EditTeamViewModel : TeamFormViewModelBase
 {
     public Guid Id { get; set; }
+    public bool ConfirmGroupReactivation { get; set; }
+    public Guid? InactiveGroupResourceId { get; set; }
 
     public string? GoogleGroupEmail { get; set; }
     public string Slug { get; set; } = string.Empty;
@@ -261,36 +265,6 @@ internal sealed class ResourceAccessViewModel
     public string? PermissionLevel { get; set; }
     public string? Url { get; set; }
     public string IconClass { get; set; } = string.Empty;
-}
-
-internal sealed class BirthdayCalendarViewModel
-{
-    public List<BirthdayEntryViewModel> Birthdays { get; set; } = [];
-    public int CurrentMonth { get; set; }
-    public string CurrentMonthName { get; set; } = string.Empty;
-}
-
-internal sealed class BirthdayEntryViewModel
-{
-    public Guid UserId { get; set; }
-    public int DayOfMonth { get; set; }
-    public List<string> TeamNames { get; set; } = [];
-}
-
-internal sealed class MapViewModel
-{
-    public List<MapMarkerViewModel> Markers { get; set; } = [];
-}
-
-internal sealed class MapMarkerViewModel
-{
-    public Guid UserId { get; set; }
-    public string DisplayName { get; set; } = string.Empty;
-    public string? ProfilePictureUrl { get; set; }
-    public double Latitude { get; set; }
-    public double Longitude { get; set; }
-    public string? City { get; set; }
-    public string? CountryCode { get; set; }
 }
 
 internal sealed class ApproveRejectRequestModel
@@ -484,7 +458,6 @@ internal sealed class AdminTeamViewModel
     public int RoleSlotCount { get; set; }
     public DateTime CreatedAt { get; set; }
     public bool IsChildTeam { get; set; }
-    public int PendingShiftSignupCount { get; set; }
     public bool IsHidden { get; set; }
 }
 

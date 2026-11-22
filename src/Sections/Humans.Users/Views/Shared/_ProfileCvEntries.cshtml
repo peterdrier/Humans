@@ -1,0 +1,17 @@
+@model IReadOnlyList<Humans.Users.Models.VolunteerHistoryEntryViewModel>
+
+<div class="profile-cv">
+    @foreach (var entry in Model)
+    {
+        <span class="text-muted small text-nowrap">@entry.FormattedDate</span>
+        <span class="fw-medium">@entry.EventName</span>
+        <span class="text-muted text-truncate small">
+            @if (!string.IsNullOrEmpty(entry.Description))
+            {
+                var previewLength = entry.Description.Length > 80
+                    && char.IsHighSurrogate(entry.Description[79]) && char.IsLowSurrogate(entry.Description[80]) ? 79 : 80;
+                @(entry.Description.Length > 80 ? entry.Description[..previewLength] + "..." : entry.Description)
+            }
+        </span>
+    }
+</div>

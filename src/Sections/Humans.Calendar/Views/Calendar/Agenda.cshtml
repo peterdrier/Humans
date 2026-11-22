@@ -84,9 +84,9 @@
                             <a asp-action="Event" asp-route-id="@o.EventId">@o.Title</a>
                             <small class="text-muted">— @o.OwningTeamName</small>
                         }
-                        @if (!string.IsNullOrWhiteSpace(o.Location))
+                        @if (!string.IsNullOrWhiteSpace(o.Location) || !string.IsNullOrWhiteSpace(o.LocationUrl))
                         {
-                            <div class="small text-muted ms-5">@o.Location</div>
+                            <div class="small text-muted ms-5"><partial name="_CalendarLocation" model="(o.Location, o.LocationUrl)" /></div>
                         }
                         @if (!string.IsNullOrWhiteSpace(o.Description))
                         {

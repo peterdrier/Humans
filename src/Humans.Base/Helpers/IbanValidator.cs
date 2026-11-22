@@ -53,8 +53,9 @@ public static class IbanValidator
         ["VA"] = (22, "EUR", false),
     };
 
+    /// <summary>Removes presentation whitespace and uppercases the account identifier.</summary>
     public static string Normalize(string? iban) =>
-        (iban ?? "").Replace(" ", "").Replace(" ", "").ToUpperInvariant();
+        string.Concat((iban ?? "").Where(c => !char.IsWhiteSpace(c))).ToUpperInvariant();
 
     /// <summary>
     /// The domestic ISO 4217 currency of the IBAN's country, read from its first two letters, so a masked IBAN works

@@ -238,7 +238,7 @@ public class DevLoginControllerTests
         Substitute.For<ICampSeeding>(),
         Substitute.For<ICampRoleSeeding>(),
         Substitute.For<IConsentSubmission>(),
-        Substitute.For<IMembershipCalculator>(),
+        Substitute.For<IConsentService>(),
         Substitute.For<IHumanLifecycleService>(),
         new FakeClock(Instant.FromUtc(2026, 8, 16, 12, 0)),
         Options.Create(new CityPlanningOptions()),

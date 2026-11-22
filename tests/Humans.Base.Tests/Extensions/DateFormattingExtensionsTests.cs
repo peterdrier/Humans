@@ -62,6 +62,8 @@ public sealed class DateFormattingExtensionsTests
         date.ToFileTimestamp().Should().Be("2026-06-05-1234");
         DateFormattingExtensions.IcalBasicDateTimePattern.Format(localDateTime).Should().Be("20260605T123456");
         instant.ToIso8601().Should().Be("2026-06-05T10:34:56Z");
+        DateFormattingExtensions.ParseInvariantTimestamp(instant.ToInvariantTimestamp()).Should().Be(instant);
+        DateFormattingExtensions.ParseInvariantTimestamp("2026-06-05T10:34:56Z").Should().BeNull();
         CultureInfo.CurrentCulture.Name.Should().Be("en");
         CultureInfo.CurrentUICulture.Name.Should().Be(culture);
         60m.ToString("0.00", CultureInfo.CurrentCulture).Should().Be("60.00");

@@ -1,7 +1,6 @@
 using Humans.Containers;
 using Microsoft.Extensions.Localization;
 using Humans.Base.Authorization;
-using System.Text.Json;
 using Humans.Camps.Contracts;
 using Humans.CityPlanning.Contracts;
 using Humans.CityPlanning.Services;
@@ -30,12 +29,6 @@ internal sealed class CityPlanningApiController(
 {
     private async Task<bool> IsMapAdminAsync() =>
         (await authorizationService.AuthorizeAsync(User, PolicyNames.CityPlanningMapAdmin)).Succeeded;
-
-    private async Task<Guid?> FindUserLeadCampIdAsync(Guid userId, int year, CancellationToken ct)
-    {
-        var camps = await campService.GetCampsForYearAsync(year, ct);
-        return camps.FirstOrDefault(camp => camp.GetLeadSeasonIdForYear(userId, year).HasValue)?.Id;
-    }
 
     /// <summary>Settings, all camp polygons, and unmapped seasons.</summary>
     [HttpGet("state")]
@@ -85,7 +78,7 @@ internal sealed class CityPlanningApiController(
         var (userError, user) = await ResolveCurrentUserOrUnauthorizedAsync(cancellationToken);
         if (userError is not null) return userError;
         var userId = user.Id;
-        if (!CampsRoles.IsCampsAdmin(User) &&
+        if (!await IsMapAdminAsync() &&
             !await cityPlanningService.CanUserEditAsync(userId, campSeasonId, cancellationToken))
         {
             return Forbid();
@@ -93,7 +86,7 @@ internal sealed class CityPlanningApiController(
 
         var saved = await cityPlanningService.SaveCampPolygonAsync(
             campSeasonId, request.GeoJson, request.AreaSqm, userId,
-            note: request.Note ?? "Saved",
+            note: request.Note,
             cancellationToken: cancellationToken);
         if (saved.Refusal is { } refusal)
         {
@@ -210,47 +203,11 @@ internal sealed class CityPlanningApiController(
     {
         var (userError, user) = await ResolveCurrentUserOrUnauthorizedAsync(cancellationToken);
         if (userError is not null) return userError;
-        var userId = user.Id;
-        var isMapAdmin = await IsMapAdminAsync();
-        var userCampId = await FindUserLeadCampIdAsync(userId, year, cancellationToken);
+        var geoJson = await cityPlanningService.ExportContainersAsGeoJsonAsync(
+            year, user.Id, await IsMapAdminAsync(), cancellationToken);
+        if (geoJson is null) return Forbid();
 
-        if (!isMapAdmin && !userCampId.HasValue)
-        {
-            return Forbid();
-        }
-
-        var allContainers = await containerService.GetAllAsync(cancellationToken);
-        var placements = await containerService.GetPlacementsByYearAsync(year, cancellationToken);
-        var containersById = allContainers.ToDictionary(c => c.Id, c => c);
-
-        var placed = placements
-            .Where(p => p.LocationGeoJson is not null)
-            .Where(p => containersById.ContainsKey(p.ContainerId))
-            .Select(p => (Placement: p, Container: containersById[p.ContainerId]))
-            .Where(t => isMapAdmin || t.Container.CampId == userCampId)
-            .ToList();
-
-        var features = placed.Select(t =>
-        {
-            var f = JsonSerializer.Deserialize<System.Text.Json.Nodes.JsonObject>(t.Placement.LocationGeoJson!);
-            var props = f?["properties"]?.AsObject();
-            if (props != null)
-            {
-                props["containerId"] = t.Container.Id.ToString();
-                props["containerName"] = t.Container.Name;
-                props["type"] = "Container";
-            }
-            return f;
-        });
-
-        var collection = new System.Text.Json.Nodes.JsonObject
-        {
-            ["type"] = "FeatureCollection",
-            ["features"] = new System.Text.Json.Nodes.JsonArray(features.Select(f => (System.Text.Json.Nodes.JsonNode?)f).ToArray()),
-        };
-
-        var fileName = $"containers-{year}.geojson";
-        return File(System.Text.Encoding.UTF8.GetBytes(collection.ToJsonString()), "application/geo+json", fileName);
+        return File(System.Text.Encoding.UTF8.GetBytes(geoJson), "application/geo+json", $"containers-{year}.geojson");
     }
 
     private async Task<IActionResult?> RequireContainerPlacementAsync(Guid id, int year, CancellationToken ct)

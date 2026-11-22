@@ -9,6 +9,6 @@ Don't add extension methods (`public static X Foo(this OwnedType ...)`) for clas
 
 **How to apply:**
 
-When proposing a new predicate, helper, or computed value for a class in `Humans.Domain`, `Humans.Application`, etc., put it on the class. Only reach for `static class FooExtensions` when `Foo` is `string`, `IEnumerable<T>`, `HttpContext`, or a NuGet-package type.
+When proposing a new predicate, helper, or computed value for a class this repo owns, put it on the class. Only reach for `static class FooExtensions` when `Foo` is `string`, `IEnumerable<T>`, `HttpContext`, or a NuGet-package type.
 
 **Example:** instead of `public static bool IsPublicForYear(this Camp camp, int year)`, write `public bool IsPublic => Seasons.Any(...)` directly on `Camp` (assuming the seasons collection is already year-scoped by the loader).

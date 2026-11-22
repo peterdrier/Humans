@@ -9,11 +9,11 @@
     <ProjectReference Include="..\..\src\Sections\Humans.Consent\Humans.Consent.csproj" />
     <ProjectReference Include="..\..\src\Sections\Humans.Email.Contracts\Humans.Email.Contracts.csproj" />
     <ProjectReference Include="..\..\src\Sections\Humans.Gdpr\Humans.Gdpr.csproj" />
-    <ProjectReference Include="..\..\src\Sections\Humans.GoogleIntegration\Humans.GoogleIntegration.csproj" />
+    <ProjectReference Include="..\..\src\Sections\Humans.Google\Humans.Google.csproj" />
     <ProjectReference Include="..\..\src\Sections\Humans.Governance.Contracts\Humans.Governance.Contracts.csproj" />
     <ProjectReference Include="..\..\src\Sections\Humans.Notifications.Contracts\Humans.Notifications.Contracts.csproj" />
     <ProjectReference Include="..\..\src\Sections\Humans.Onboarding.Contracts\Humans.Onboarding.Contracts.csproj" />
-    <ProjectReference Include="..\..\src\Sections\Humans.Shifts.Contracts\Humans.Shifts.Contracts.csproj" />
+    <ProjectReference Include="..\..\src\Sections\Humans.Shifts\Humans.Shifts.csproj" />
     <ProjectReference Include="..\..\src\Sections\Humans.Teams.Contracts\Humans.Teams.Contracts.csproj" />
     <ProjectReference Include="..\..\src\Sections\Humans.Tickets.Contracts\Humans.Tickets.Contracts.csproj" />
     <ProjectReference Include="..\..\src\Sections\Humans.Users.Contracts\Humans.Users.Contracts.csproj" />
@@ -35,9 +35,8 @@
 
   <ItemGroup>
     <!--
-      The six Profile-side entities are internal to Humans.Users
-      (nobodies-collective/Humans#1051); this project holds InternalsVisibleTo and
-      names them in a dozen files. Global, as in the section's own csproj.
+      The Profile-side entities are internal to Humans.Users and named across this
+      project: a global using, as in the section's own csproj.
     -->
     <Using Include="Humans.Users.Domain" />
   </ItemGroup>

@@ -46,9 +46,6 @@ internal static class UserInfoFactory
 
         return new ProfileInfo(
             Id: profile.Id,
-            BurnerName: profile.BurnerName,
-            FirstName: profile.FirstName,
-            LastName: profile.LastName,
             City: profile.City,
             CountryCode: profile.CountryCode,
             Latitude: profile.Latitude,
@@ -61,9 +58,10 @@ internal static class UserInfoFactory
             EmergencyContactName: profile.EmergencyContactName,
             EmergencyContactPhone: profile.EmergencyContactPhone,
             EmergencyContactRelationship: profile.EmergencyContactRelationship,
-            MedicalConditions: profile.MedicalConditions,
             HasCustomPicture: profile.ProfilePictureContentType is not null,
             ProfilePictureContentType: profile.ProfilePictureContentType,
+            ProfilePictureFileKey: ProfilePictureKeys.Resolve(
+                profile.Id, profile.ProfilePictureContentType, profile.ProfilePictureStorageKey),
             CreatedAt: profile.CreatedAt,
             UpdatedAt: profile.UpdatedAt,
             AdminNotes: profile.AdminNotes,

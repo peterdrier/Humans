@@ -53,7 +53,7 @@ owning_map() {
 export SKIP_NAMES="GuideFilter GuideRolePrivilegeMap"
 # Stub* are the development-environment fallbacks registered when Google/vendor
 # credentials are absent; the map documents the production implementation.
-# Caching decorators ARE documented here (unlike the dependency graph), so they
+# Caching decorators ARE documented here, so they
 # are not skipped.
 export SKIP_PREFIXES="Stub"
 

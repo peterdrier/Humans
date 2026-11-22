@@ -74,7 +74,7 @@ public class ExpenseReconTests
         ExpenseRecon.Build(year, SyncedAt, lines, accounts ?? Accounts,
             ledger.GroupBy(l => l.AccountNum)
                 .ToDictionary(g => g.Key, g => (IReadOnlyList<HoldedLedgerLineInfo>)g.ToList()),
-            transfers, id => id == Alice ? "Alice" : "Bob");
+            transfers, id => id == Alice ? "Alice" : "Bob", FixedOrgTimeZone.Madrid.Zone);
 
     [HumansFact]
     public void LineMatchesItsLedgerPurchase_WhateverTheStoredDocIdPointsAt()
@@ -248,15 +248,14 @@ public class ExpenseReconTests
 
     // --- the service: mirror reads plus the cached contact list ---
 
-    private readonly IHoldedRepository _repo = Substitute.For<IHoldedRepository>();
-    private readonly IHoldedClient _client = Substitute.For<IHoldedClient>();
-    private readonly IHoldedService _holded = Substitute.For<IHoldedService>();
+    private readonly IFinanceRepository _repo = Substitute.For<IFinanceRepository>();
+    private readonly IHoldedService _holded = TestContacts.Holded();
     private readonly IExpenseHoldedBookingService _expenses = Substitute.For<IExpenseHoldedBookingService>();
     private readonly IUserService _users = Substitute.For<IUserService>();
 
     private Service MakeService() => new(
-        _repo, _client, Substitute.For<IBudgetService>(), _holded, Substitute.For<IHoldedWrite>(), _expenses, new FakeClock(SyncedAt),
-        new MemoryCache(new MemoryCacheOptions()), Substitute.For<IAuditLogService>(), _users,
+        FixedOrgTimeZone.Madrid, _repo, Substitute.For<IBudgetService>(), _holded, Substitute.For<IHoldedWrite>(), _expenses, new FakeClock(SyncedAt),
+        Substitute.For<IAuditLogService>(), _users,
         Substitute.For<IEmailService>(), TestFinanceEmails.Create(),
         Options.Create(new SepaOptions()),
         new TrackedCache<string, Dictionary<string, int>>("Finance.SepaStuckBankLines", warmOnStartup: false, NullLogger<Service>.Instance),
@@ -271,14 +270,14 @@ public class ExpenseReconTests
         _expenses.GetHoldedReconLinesAsync(Arg.Any<CancellationToken>()).Returns([Line()]);
         _repo.GetCreditorContactsAsync(Arg.Any<CancellationToken>()).Returns(
             [new HoldedCreditorContact { UserId = Alice, HoldedContactId = "c-alice", SupplierAccountNum = stored }]);
-        _client.ListContactsAsync(Arg.Any<CancellationToken>()).Returns(
-            [new HoldedContactDto { Id = "c-alice", SupplierAccountNum = contacts }]);
+        _holded.GetContactsAsync(Arg.Any<CancellationToken>()).Returns(TestContacts.Synced(
+            [new HoldedContactDto { Id = "c-alice", SupplierAccountNum = contacts }]));
         _repo.GetSepaPayoutTransferRowsAsync(Arg.Any<CancellationToken>()).Returns(new List<SepaPayoutTransferRow>());
         _holded.GetAccountBalancesAsync(Arg.Any<CancellationToken>())
             .Returns(new Dictionary<int, decimal> { [contacts] = -100m, [stored] = 0m });
         _holded.GetLedgerLinesAsync(contacts, Arg.Any<CancellationToken>()).Returns([Purchase(account: contacts)]);
         _holded.GetLedgerLinesAsync(stored, Arg.Any<CancellationToken>()).Returns([]);
-        _users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+        _users.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(new Dictionary<Guid, UserInfo>()));
 
         var report = await MakeService().GetExpenseReconAsync(null, TestContext.Current.CancellationToken);
@@ -293,7 +292,7 @@ public class ExpenseReconTests
         _holded.GetLedgerSyncedAtAsync(Arg.Any<CancellationToken>()).Returns(SyncedAt);
         _holded.GetAccountBalancesAsync(Arg.Any<CancellationToken>())
             .Returns(new Dictionary<int, decimal> { [AliceAccount] = -100m });
-        _client.ListContactsAsync(Arg.Any<CancellationToken>()).ThrowsAsync(new HoldedTransientException("timeout"));
+        _holded.GetContactsAsync(Arg.Any<CancellationToken>()).Returns(new HoldedContactMirror(null, []));
 
         var report = await MakeService().GetExpenseReconAsync(null, TestContext.Current.CancellationToken);
 
@@ -310,8 +309,8 @@ public class ExpenseReconTests
             new HoldedCreditorContact { UserId = Alice, HoldedContactId = "c-alice", SupplierAccountNum = AliceAccount },
             new HoldedCreditorContact { UserId = Guid.NewGuid(), HoldedContactId = "c-unparsed", SupplierAccountNum = 41000099 },
         ]);
-        _client.ListContactsAsync(Arg.Any<CancellationToken>()).Returns(
-            [new HoldedContactDto { Id = "c-alice", SupplierAccountNum = AliceAccount }]);
+        _holded.GetContactsAsync(Arg.Any<CancellationToken>()).Returns(TestContacts.Synced(
+            [new HoldedContactDto { Id = "c-alice", SupplierAccountNum = AliceAccount }]));
 
         var report = await MakeService().GetExpenseReconAsync(null, TestContext.Current.CancellationToken);
 
@@ -336,18 +335,21 @@ public class ExpenseReconTests
     [InlineData(0, 0, LogLevel.Information)]
     [InlineData(2, 0, LogLevel.Warning)]
     [InlineData(0, 3, LogLevel.Warning)]
-    public async Task Job_LogsOneSummaryLine(int orphans, int membersOff, LogLevel level)
+    [InlineData(0, 0, LogLevel.Warning, 26)] // a clean report off yesterday's mirror is not a clean night
+    public async Task Job_LogsOneSummaryLine(int orphans, int membersOff, LogLevel level, int mirrorAgeHours = 1)
     {
         var finance = Substitute.For<IFinanceService>();
         finance.GetExpenseReconAsync(null, Arg.Any<CancellationToken>()).Returns(new ExpenseReconReport(
             null, SyncedAt, null, [], [], [], [], new ExpenseReconTotals(1, 1, 1, 0, 0, 0m, orphans, membersOff)));
         var logger = new CapturingLogger<ExpenseReconJob>();
 
-        await new ExpenseReconJob(finance, logger).ExecuteAsync(TestContext.Current.CancellationToken);
+        await new ExpenseReconJob(finance, new FakeClock(SyncedAt + Duration.FromHours(mirrorAgeHours)), logger)
+            .ExecuteAsync(TestContext.Current.CancellationToken);
 
         var entry = logger.Entries.Should().ContainSingle().Subject;
         entry.Level.Should().Be(level);
-        if (orphans == 0 && membersOff == 0) entry.Message.Should().StartWith("Expense recon: 0 problems");
+        if (level == LogLevel.Information) entry.Message.Should().StartWith("Expense recon: 0 problems");
+        if (mirrorAgeHours > 2) entry.Message.Should().Contain("has not finished");
     }
 
     [HumansFact]

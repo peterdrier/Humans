@@ -49,24 +49,23 @@ internal sealed class CachingWorkgroupService(
         MutateAsync(inner => inner.JoinAsync(workgroupId, userId, ct));
 
     public Task<WorkgroupMutationResult> ApproveMemberAsync(
-        Guid workgroupId, Guid actorUserId, Guid userId, bool asAdmin = false, CancellationToken ct = default) =>
-        MutateAsync(inner => inner.ApproveMemberAsync(workgroupId, actorUserId, userId, asAdmin, ct));
+        Guid workgroupId, Guid actorUserId, Guid userId, CancellationToken ct = default) =>
+        MutateAsync(inner => inner.ApproveMemberAsync(workgroupId, actorUserId, userId, ct));
 
     public Task<WorkgroupMutationResult> DeclineMemberAsync(
-        Guid workgroupId, Guid actorUserId, Guid userId, bool asAdmin = false, CancellationToken ct = default) =>
-        MutateAsync(inner => inner.DeclineMemberAsync(workgroupId, actorUserId, userId, asAdmin, ct));
+        Guid workgroupId, Guid actorUserId, Guid userId, CancellationToken ct = default) =>
+        MutateAsync(inner => inner.DeclineMemberAsync(workgroupId, actorUserId, userId, ct));
 
     public Task<WorkgroupMutationResult> AddMemberAsync(
-        Guid workgroupId, Guid actorUserId, Guid userId, bool asAdmin = false, CancellationToken ct = default) =>
-        MutateAsync(inner => inner.AddMemberAsync(workgroupId, actorUserId, userId, asAdmin, ct));
+        Guid workgroupId, Guid actorUserId, Guid userId, CancellationToken ct = default) =>
+        MutateAsync(inner => inner.AddMemberAsync(workgroupId, actorUserId, userId, ct));
 
     public Task<WorkgroupMutationResult> LeaveAsync(
         Guid workgroupId,
         Guid userId,
         Guid? replacementCoordinatorUserId,
-        bool asAdmin = false,
         CancellationToken ct = default) =>
-        MutateAsync(inner => inner.LeaveAsync(workgroupId, userId, replacementCoordinatorUserId, asAdmin, ct));
+        MutateAsync(inner => inner.LeaveAsync(workgroupId, userId, replacementCoordinatorUserId, ct));
 
     public Task<WorkgroupMutationResult> RequestStatusAsync(
         Guid workgroupId, Guid actorUserId, string? question, CancellationToken ct = default) =>
@@ -80,9 +79,15 @@ internal sealed class CachingWorkgroupService(
         Guid workgroupId,
         Guid actorUserId,
         IReadOnlyList<Guid> coordinatorUserIds,
-        bool asAdmin = false,
         CancellationToken ct = default) =>
-        MutateAsync(inner => inner.SetCoordinatorsAsync(workgroupId, actorUserId, coordinatorUserIds, asAdmin, ct));
+        MutateAsync(inner => inner.SetCoordinatorsAsync(workgroupId, actorUserId, coordinatorUserIds, ct));
+
+    public Task<WorkgroupMutationResult> AppointCoordinatorsAsync(
+        Guid workgroupId,
+        Guid actorUserId,
+        IReadOnlyList<Guid> coordinatorUserIds,
+        CancellationToken ct = default) =>
+        MutateAsync(inner => inner.AppointCoordinatorsAsync(workgroupId, actorUserId, coordinatorUserIds, ct));
 
     public Task<WorkgroupMutationResult<Guid>> CreateMeetingAsync(
         Guid workgroupId, Guid actorUserId, WorkgroupMeetingSave save, CancellationToken ct = default) =>
@@ -192,6 +197,10 @@ internal sealed class CachingWorkgroupService(
     public Task<WorkgroupMutationResult<ExpenseAccountRef?>> SetBudgetAsync(
         Guid workgroupId, Guid actorUserId, WorkgroupBudgetSave save, CancellationToken ct = default) =>
         MutateAsync(inner => inner.SetBudgetAsync(workgroupId, actorUserId, save, ct));
+
+    public Task<WorkgroupMutationResult> SetGoogleGroupAsync(
+        Guid workgroupId, Guid actorUserId, string? prefix, CancellationToken ct = default) =>
+        MutateAsync(inner => inner.SetGoogleGroupAsync(workgroupId, actorUserId, prefix, ct));
 
     public Task<IReadOnlyList<HoldedChartAccountInfo>> ListExpenseAccountsAsync(CancellationToken ct = default) =>
         WithInnerAsync(inner => inner.ListExpenseAccountsAsync(ct));

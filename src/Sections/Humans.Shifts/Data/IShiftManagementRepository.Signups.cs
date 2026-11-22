@@ -19,9 +19,6 @@ internal partial interface IShiftManagementRepository
         Guid? eventSettingsId = null,
         CancellationToken ct = default);
 
-    Task<ShiftSignup?> GetTeamProbeAsync(
-        Guid id, ShiftSignupTeamProbeScope scope, CancellationToken ct = default);
-
     /// <summary>Includes the shift's sibling signups, for capacity checks.</summary>
     Task<ShiftSignup?> GetByIdForMutationAsync(Guid signupId, CancellationToken ct = default);
 
@@ -61,10 +58,6 @@ internal partial interface IShiftManagementRepository
     Task<IReadOnlyList<(Guid SignupId, Guid ShiftId)>> CancelActiveSignupsForUserAsync(
         Guid userId, string reason, CancellationToken ct = default);
 
-    Task<int> DeleteAllForUsersAsync(
-        IReadOnlyCollection<Guid> userIds,
-        CancellationToken ct = default);
-
     /// <summary>
     /// Account-merge fold of volunteer, enrolled-by and reviewed-by references in one save. A source-owned row for a
     /// shift the target already holds is dropped. Returns the touched row count and event ids for audit/cache refresh.
@@ -74,8 +67,6 @@ internal partial interface IShiftManagementRepository
         Guid targetUserId,
         Instant updatedAt,
         CancellationToken ct = default);
-
-    Task<IReadOnlyList<ShiftSignup>> GetAllForOrphanScanAsync(CancellationToken ct = default);
 
     /// <summary>
     /// Confirmed or Pending signups from <paramref name="buildStartOffset"/> up to day 0 on Build or All rotas.

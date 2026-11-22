@@ -62,8 +62,8 @@ Tickets priced above 315 EUR (the VIP threshold, `TicketConstants.VipThresholdEu
 |--------|:-----------:|:-----:|:-----:|
 | View dashboard/orders/attendees/codes | Yes | Yes | Yes |
 | Trigger sync, CSV exports, generate codes | Yes | Yes | No |
-| View transfer queue, contact-import preview, gate-account page | Yes | Yes | Yes |
-| Decide transfers, apply contact import, set gate password | Yes | Yes | No |
+| View contact-import preview, gate-account page | Yes | Yes | Yes |
+| Apply contact import, set gate password | Yes | Yes | No |
 
 ## Routes
 
@@ -80,7 +80,6 @@ Tickets priced above 315 EUR (the VIP threshold, `TicketConstants.VipThresholdEu
 | `/Tickets/Export/AccountantReport` | Monthly accountant recap CSV (`TicketsPolicies.Manage`) |
 | `/Tickets/Export/Donations` | Donor list CSV, audited (`AdminOnly`) |
 | `/Tickets/Participation/Backfill` | CSV participation backfill (`AdminOnly`) — [event-participation.md](event-participation.md) |
-| `/Tickets/Transfers`, `/Tickets/Admin/Transfers` | Member transfer wizard and admin queue — [ticket-transfer.md](ticket-transfer.md) |
 | `/Tickets/Admin/Contacts`, `/Tickets/Admin/Onsite`, `/Tickets/Admin/Gate` | Contact import, onsite roster, gate-terminal credential — see `Docs/Tickets.md` Routing |
 | `/Welcome` | Public post-purchase landing — TicketTailor redirect target, sign-in CTA → `/Shifts` |
 
@@ -90,7 +89,7 @@ Public, anonymous-accessible page used as the redirect target after a buyer comp
 
 - **Route**: `/Welcome` (`WelcomeController`, `[AllowAnonymous]`)
 - **Active-user shortcut**: authenticated users whose `UserState == Active` are redirected straight to `/Shifts` — they don't need the explainer. Authenticated non-Active visitors are redirected into `/OnboardingWidget` rather than seeing the explainer.
-- **CTA**: links to `/Account/Login?returnUrl=/OnboardingWidget` so post-login lands in the guided onboarding flow that surfaces priority shifts as Step 2. A secondary, deliberately unlocalized link ("New here? See what Humans does") points external visitors at the public `/Tour` page (#1272).
+- **CTA**: links to `/Account/Login?returnUrl=/OnboardingWidget` so post-login lands in the guided onboarding flow that surfaces priority shifts as Step 2. A secondary link (`Onboarding_WelcomeTour`, localized, telling the visitor the page is in English) points external visitors at the public `/Tour` page (#1272).
 - **Localization**: `Onboarding_Welcome*` strings in `OnboardingResource.{en,es,ca,de,fr,it,nl}.resx`
 
 The TicketTailor "after checkout" redirect URL points at this route.
@@ -119,4 +118,3 @@ The TicketTailor "after checkout" redirect URL points at this route.
 ## Related Features
 
 - [22. Campaigns](../../../Humans.Campaigns/Docs/features/Campaigns-feature.md) — discount code distribution and redemption tracking
-- [23. Membership Status](../../../Humans.Governance/Docs/features/membership-status.md) — "Who Hasn't Bought?" uses active volunteer status

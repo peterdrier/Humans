@@ -77,7 +77,7 @@ else
     </text>;
     var pager = new PagerViewModel(Model.TotalPages, Model.PageNumber, "Index") { NavCssClass = "mt-3" };
     var table = TableModel.For(Model.Events)
-        .Template("When", whenCell)
+        .Template("When", whenCell, c => c.Css("text-nowrap"))
         .Template("Actor", actorCell)
         .Template("Action", actionCell)
         .Template("Subject", subjectCell)

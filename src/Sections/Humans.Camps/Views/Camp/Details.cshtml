@@ -1,12 +1,6 @@
-@using Humans.CityPlanning
 @model Humans.Camps.Models.CampDetailViewModel
-@* The placement strip's copy is City Planning's resource set, not SharedResource — a
-   Shell view cannot see a section's keys through the ambient Localizer, so the marker
-   is injected directly. *@
-@inject IStringLocalizer<CityPlanningResource> CityPlanningLocalizer
 @{
     ViewData["Title"] = Model.Name;
-    var isCityPlanningMember = ViewBag.IsCityPlanningTeamMember as bool? ?? false;
     var membershipYear = Model.Membership.OpenSeasonYear?.ToString(System.Globalization.CultureInfo.CurrentCulture) ?? string.Empty;
 }
 
@@ -180,41 +174,11 @@
                 </div>
             }
 
-            @if (Model.IsCurrentUserLead || Model.IsCurrentUserCampAdmin || isCityPlanningMember)
+            @if (Model.IsCurrentUserLead || Model.IsCurrentUserCampAdmin)
             {
-                var placementState = ViewBag.PlacementState as Humans.CityPlanning.Contracts.BarrioPlacementState?
-                    ?? Humans.CityPlanning.Contracts.BarrioPlacementState.Closed;
-                (NodaTime.LocalDate? OpensOn, NodaTime.LocalDate? ClosesOn, NodaTime.LocalDate? ChangeableUntilOn) placementSchedule =
-                    ViewBag.PlacementSchedule ?? ((NodaTime.LocalDate?)null, (NodaTime.LocalDate?)null, (NodaTime.LocalDate?)null);
                 <div class="card mb-4">
-                    <div class="card-header d-flex justify-content-between align-items-center">
+                    <div class="card-header">
                         <span><i class="fa-solid fa-map-location-dot me-1"></i> @Localizer["Camps_PlacementHeading"]</span>
-                        <div class="d-flex align-items-center gap-2">
-                            <span class="text-muted small">@CityPlanningLocalizer["CityPlanning_PlacementPhase"]:</span>
-                            @if (placementState != Humans.CityPlanning.Contracts.BarrioPlacementState.Closed)
-                            {
-                                @if (placementState == Humans.CityPlanning.Contracts.BarrioPlacementState.Open)
-                                {
-                                    <span class="badge bg-success">@CityPlanningLocalizer["CityPlanning_StatusOpen"]</span>
-                                }
-                                else
-                                {
-                                    <span class="badge bg-info text-dark">@CityPlanningLocalizer["CityPlanning_StatusChangeable"]</span>
-                                }
-                                <a asp-controller="CityPlanning" asp-action="BarrioMap" class="btn btn-sm btn-outline-primary">
-                                    <i class="fa-solid fa-map me-1"></i> @CityPlanningLocalizer["CityPlanning_GoToPlacementMap"]
-                                </a>
-                            }
-                            else
-                            {
-                                <span class="badge bg-secondary">@CityPlanningLocalizer["CityPlanning_StatusClosed"]</span>
-                            }
-                            <button type="button" class="btn btn-link btn-sm p-0"
-                                    data-bs-toggle="modal" data-bs-target="#placement-help-modal"
-                                    title="@CityPlanningLocalizer["CityPlanning_PlacementPhaseInfo"]">
-                                <i class="fa-solid fa-circle-info text-muted"></i>
-                            </button>
-                        </div>
                     </div>
                     <div class="card-body">
                         <div class="row">
@@ -250,9 +214,6 @@
                         </div>
                     </div>
                 </div>
-                @* By name, not by path: the partial moved into the City Planning RCL's Views/Shared,
-                   and a name lookup searches every application part. *@
-                @await Html.PartialAsync("_PlacementHelpModal", placementSchedule)
             }
         }
     </div>
@@ -398,7 +359,7 @@
                     <i class="fa-solid fa-gear me-1"></i> @SharedLocalizer["TeamDetail_Actions"]
                 </div>
                 <div class="card-body d-grid gap-2">
-                    <a asp-action="Edit" asp-route-slug="@Model.Slug" class="btn btn-outline-primary">
+                    <a asp-action="Edit" asp-route-slug="@Model.Slug" asp-route-eventSettingsId="@Model.CurrentSeason?.EventSettingsId" class="btn btn-outline-primary">
                         <i class="fa-solid fa-pen-to-square me-1"></i>
                         @if (Model.IsCurrentUserLead)
                         {

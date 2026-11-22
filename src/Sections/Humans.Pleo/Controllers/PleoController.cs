@@ -36,6 +36,9 @@ internal sealed class PleoController(
             switch (await pleo.SyncAsync(ct))
             {
                 case PleoSyncOutcome.Synced: SetSuccess("Pleo mirror refreshed."); break;
+                case PleoSyncOutcome.SyncedWithoutCategories:
+                    SetError("Pleo mirror refreshed, but categories could not be fetched; the error is on the sync card.");
+                    break;
                 case PleoSyncOutcome.Busy: SetInfo("A sweep was already running, so this one was skipped."); break;
                 default: SetError("Pleo is not configured."); break;
             }
@@ -104,8 +107,8 @@ internal sealed class PleoController(
     [HttpPost("Categories/Link")]
     [Authorize(Policy = FinancePolicies.Manage)]
     [ValidateAntiForgeryToken]
-    public Task<IActionResult> Link(string pleoCategoryId, Guid categoryId, CancellationToken ct) =>
-        CategoryActionAsync((userId, c) => pleo.LinkCategoryAsync(pleoCategoryId, categoryId, userId, c),
+    public Task<IActionResult> Link(string? pleoCategoryId, Guid categoryId, CancellationToken ct) =>
+        CategoryActionAsync((userId, c) => pleo.LinkCategoryAsync(pleoCategoryId ?? "", categoryId, userId, c),
             "Category linked.", ct);
 
     [HttpPost("Categories/Unlink")]

@@ -12,9 +12,11 @@ directly. Owns `RoleAssignments`.
 The inner `IRoleAssignmentManagement` is wrapped by
 `Humans.Auth.Services.CachingRoleAssignmentService`
 (Singleton decorator inheriting `TrackedCache<Guid, RoleAssignmentRow>`).
-The full `role_assignments` row set is held in memory so
-cross-section reads (`GetActiveCountsByRoleAsync`, `GetActiveForUserAsync`)
-derive at any clock instant without a query. Invalidation is service-level:
+The full `auth_role_assignments` row set is held in memory so
+every active-role read (`GetActiveCountsByRoleAsync`, `GetActiveForUserAsync`,
+`HasActiveRoleAsync` and its `IsUser*` shorthands, `HasAnyActiveAssignmentAsync`,
+`GetActiveUserIdsInRoleAsync`, `GetUserIdsWithActiveAssignmentsAsync`) derives at any
+clock instant without a query. Cached rows carry canonical role names. Invalidation is service-level:
 the inner service clears the decorator's cache (`CachingRoleAssignmentService.Clear()`,
 the concrete owner, no invalidator interface) right after each of its repository writes,
 merge fold and erasure included (single writer, so no EF interceptor needed).
@@ -35,7 +37,7 @@ Repository: `IRoleAssignmentRepository`.
 
 | Cache | Invalidate |
 |-------|------------|
-| `Auth.RoleAssignmentRow` TrackedCache (`CachingRoleAssignmentService`, injected concretely) | yes (wholesale `Clear()` right after each repository write, before the Board team sync reads roles back) |
+| `Auth.RoleAssignmentRow` TrackedCache (`CachingRoleAssignmentService`, injected concretely) | yes (wholesale `Clear()` right after each repository write) |
 
 Cross-section calls via `IUserService`, `ISystemTeamSync`,
 `IAuditLogService`, `INotificationEmitter`. Implements `IUserDataContributor` for GDPR exports

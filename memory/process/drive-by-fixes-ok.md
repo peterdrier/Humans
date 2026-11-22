@@ -15,6 +15,6 @@ When a fix subagent (or you) discovers an incidental small fix alongside in-scop
 - DO NOT silently revert a subagent's drive-by either — surface it both ways.
 - DO NOT smuggle in larger work as "drive-by." Drive-by = small + obvious + low-risk + one-or-two lines. Renames across files, new abstractions, behavior changes, layer moves — those are their own PR even if the human is reviewing.
 
-**Examples of OK drive-bys (after explicit approval):** stale §8 ownership table row, dead `_dbContext` field, missing `nameof()` on a magic string, typo in a comment.
+**Examples of OK drive-bys (after explicit approval):** stale ownership row in a section doc footer, dead `_dbContext` field, missing `nameof()` on a magic string, typo in a comment.
 
 **Examples of NOT OK as drive-by, even with approval:** rename a method used in 30 files, introduce a new helper class, change auth semantics, move a file across layers — those need their own PR.

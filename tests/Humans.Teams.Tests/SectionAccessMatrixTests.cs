@@ -28,10 +28,10 @@ public class SectionAccessMatrixTests
             .Should().Equal(
                 "View teams & join: Volunteer=Allowed, Coordinator=Allowed, Board=Allowed, TeamsAdmin=Allowed",
                 "View team details: Volunteer=Allowed, Coordinator=Allowed, Board=Allowed, TeamsAdmin=Allowed",
-                "Manage members: Volunteer=Denied, Coordinator=Allowed, Board=Allowed, TeamsAdmin=Allowed",
-                "Manage roles: Volunteer=Denied, Coordinator=Allowed, Board=Allowed, TeamsAdmin=Allowed",
-                "Create teams: Volunteer=Denied, Coordinator=Denied, Board=Allowed, TeamsAdmin=Allowed",
-                "Delete teams: Volunteer=Denied, Coordinator=Denied, Board=Allowed, TeamsAdmin=Denied",
+                "Manage members: Volunteer=Denied, Coordinator=Allowed, Board=Denied, TeamsAdmin=Allowed",
+                "Manage roles: Volunteer=Denied, Coordinator=Allowed, Board=Denied, TeamsAdmin=Allowed",
+                "Create teams: Volunteer=Denied, Coordinator=Denied, Board=Denied, TeamsAdmin=Allowed",
+                "Delete teams: Volunteer=Denied, Coordinator=Denied, Board=Denied, TeamsAdmin=Denied",
                 "Google resource sync: Volunteer=Denied, Coordinator=Denied, Board=Denied, TeamsAdmin=Limited");
     }
 }

@@ -44,9 +44,7 @@ internal sealed class GovernanceBoardVotingController(
                     ApplicationId = a.ApplicationId,
                     UserId = a.UserId,
                     MembershipTier = a.MembershipTier,
-                    ApplicationMotivation = a.ApplicationMotivation,
-                    SubmittedAt = a.SubmittedAt.ToDateTimeUtc(),
-                    Status = a.Status
+                    SubmittedAt = a.SubmittedAt.ToDateTimeUtc()
                 };
                 foreach (var vote in a.Votes)
                 {
@@ -84,7 +82,6 @@ internal sealed class GovernanceBoardVotingController(
             FirstName = application.FirstName,
             LastName = application.LastName,
             MembershipTier = application.MembershipTier,
-            Status = application.Status,
             ApplicationMotivation = application.Motivation,
             AdditionalInfo = application.AdditionalInfo,
             SignificantContribution = application.SignificantContribution,
@@ -184,10 +181,10 @@ internal sealed class GovernanceBoardVotingController(
             var result = model.Approved
                 ? await applicationDecisionService.ApproveAsync(
                     model.ApplicationId, currentUser.Id,
-                    model.DecisionNote, meetingDate)
+                    model.DecisionNote, meetingDate.Value)
                 : await applicationDecisionService.RejectAsync(
                     model.ApplicationId, currentUser.Id,
-                    model.DecisionNote ?? string.Empty, meetingDate);
+                    model.DecisionNote ?? string.Empty, meetingDate.Value);
 
             if (!result.Success)
             {

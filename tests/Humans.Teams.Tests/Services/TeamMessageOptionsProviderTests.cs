@@ -1,6 +1,10 @@
 using AwesomeAssertions;
 using Humans.Base.Enums;
-using Humans.GoogleIntegration.Contracts;
+using Humans.AuditLog.Contracts;
+using Humans.Email.Contracts;
+using Humans.Users.Contracts;
+using Microsoft.Extensions.Logging.Abstractions;
+using Humans.Google.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Teams.Services;
 using Microsoft.Extensions.Configuration;
@@ -23,11 +27,14 @@ public class TeamMessageOptionsProviderTests
 
     public TeamMessageOptionsProviderTests()
     {
-        _provider = new TeamMessageOptionsProvider(_teamService, _teamResourceService);
+        _provider = new TeamMessageOptionsProvider(_teamService, _teamResourceService,
+            Substitute.For<IUserService>(), Substitute.For<ICommunicationPreferenceService>(),
+            Substitute.For<IEmailService>(), Substitute.For<IEmailMessageFactory>(), Substitute.For<IAuditLogService>(),
+            NullLogger<TeamMessageOptionsProvider>.Instance);
     }
 
     // The profile page's TeamMessageButtonsViewComponent injects the provider, so a missing
-    // registration 500s every profile render — which only an integration test caught.
+    // registration 500s every profile render.
     [HumansFact]
     public void Section_RegistersTheProvider()
     {

@@ -7,7 +7,24 @@ internal sealed class PleoSyncJob(IPleoAdminService pleo, ILogger<PleoSyncJob> l
 {
     public async Task ExecuteAsync(CancellationToken cancellationToken = default)
     {
-        switch (await pleo.SyncAsync(cancellationToken))
+        PleoSyncOutcome outcome;
+        try
+        {
+            outcome = await pleo.SyncAsync(cancellationToken);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            logger.LogWarning("Nightly Pleo sweep interrupted by shutdown");
+            throw;
+        }
+        catch (PleoPermanentException ex)
+        {
+            // A 4xx is the key's limit, so Hangfire's retries would only repeat it; the sync row already holds the error.
+            logger.LogWarning("Nightly Pleo sweep failed permanently; not retrying: {Reason}", ex.Message);
+            return;
+        }
+
+        switch (outcome)
         {
             // PR previews and local dev carry no key: skip rather than fail nightly.
             case PleoSyncOutcome.NotConfigured:

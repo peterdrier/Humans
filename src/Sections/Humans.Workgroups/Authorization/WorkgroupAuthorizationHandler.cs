@@ -1,4 +1,4 @@
-using System.Security.Claims;
+using Humans.Base.Extensions;
 using Humans.Base.Constants;
 using Humans.Workgroups.Services;
 using Microsoft.AspNetCore.Authorization;
@@ -17,7 +17,8 @@ internal sealed class WorkgroupAuthorizationHandler(IUserService users, IHttpCon
     {
         var isAdmin = context.User.IsInRole(RoleNames.Admin) || context.User.IsInRole(RoleNames.Board);
 
-        if (requirement == WorkgroupOperationRequirement.Administer)
+        if (requirement == WorkgroupOperationRequirement.Administer
+            || (requirement == WorkgroupOperationRequirement.ManageMembership && isAdmin))
         {
             if (isAdmin)
                 context.Succeed(requirement);
@@ -40,10 +41,12 @@ internal sealed class WorkgroupAuthorizationHandler(IUserService users, IHttpCon
             return;
         }
 
-        if (!Guid.TryParse(context.User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId)) return;
+        if (context.User.GetUserId() is not { } userId) return;
         var user = await users.GetUserInfoAsync(userId,
             httpContextAccessor.HttpContext?.RequestAborted ?? CancellationToken.None);
-        if (user is not null && resource.IsMember(user.Id))
+        if (user is not null && (requirement == WorkgroupOperationRequirement.ManageMembership
+                ? resource.IsCoordinator(user.Id)
+                : resource.IsMember(user.Id)))
             context.Succeed(requirement);
     }
 }

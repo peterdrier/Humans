@@ -1,0 +1,264 @@
+@model Humans.Users.Models.MapViewModel
+@{
+    ViewData["Title"] = Localizer["Users_Map_Title"].Value;
+}
+
+<page-header title="@(Localizer["Users_Map_Title"].Value)" />
+
+@section Styles {
+    <style>
+        #map { width: 100%; height: max(450px, calc(100vh - 300px)); }
+        .map-bubble {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            background: var(--h-map-cluster);
+            color: var(--h-text-on-dark);
+            border: 2px solid var(--h-warm-white);
+            box-shadow: 0 0 0 4px color-mix(in srgb, var(--h-map-cluster) 30%, transparent), 0 1px 3px rgb(0 0 0 / 30%);
+            font-weight: 600;
+            line-height: 1;
+            cursor: pointer;
+            transition: transform 0.15s ease;
+        }
+        .map-bubble:hover { transform: scale(1.1); }
+        .map-bubble--large {
+            background: var(--h-map-cluster-large);
+            box-shadow: 0 0 0 5px color-mix(in srgb, var(--h-map-cluster-large) 30%, transparent), 0 1px 3px rgb(0 0 0 / 30%);
+        }
+        .map-bubble--person {
+            width: 20px;
+            height: 20px;
+            background: var(--h-map-person);
+            box-shadow: 0 0 0 4px color-mix(in srgb, var(--h-map-person) 30%, transparent), 0 1px 3px rgb(0 0 0 / 40%);
+        }
+        /* Google's header row pads the title down to the close button's top edge; centre it on the button instead. */
+        #map .gm-style-iw-chr {
+            align-items: center;
+            border-bottom: 1px solid var(--h-border-light);
+            margin-bottom: 8px;
+        }
+        #map .gm-style-iw-ch { padding-top: 0; }
+        .map-popup-header {
+            font-family: var(--h-font-display);
+            font-weight: 600;
+            font-size: 1.25rem;
+            line-height: 1.2;
+            color: var(--h-text);
+        }
+        .map-popup {
+            max-height: 320px;
+            font-family: var(--h-font-body);
+            overflow-y: auto;
+            scrollbar-width: thin;
+            scrollbar-color: var(--h-border) transparent;
+            padding-right: 4px;
+        }
+        .map-popup--grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            column-gap: 12px;
+        }
+        .map-person {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 4px;
+            border-radius: 6px;
+            color: var(--h-text);
+            font-weight: 500;
+            text-decoration: none;
+            white-space: nowrap;
+            overflow: hidden;
+        }
+        .map-person span { overflow: hidden; text-overflow: ellipsis; }
+        .map-person:hover { background: var(--h-bg-hover); color: var(--h-text); }
+        .map-person img, .map-person div { flex-shrink: 0; }
+    </style>
+}
+
+@if (Model.Markers.Count > 0)
+{
+    <div class="card">
+        <div class="card-header">
+            @string.Format(Localizer["Users_Map_Count"].Value, Model.Markers.Count)
+        </div>
+        <div class="card-body p-0">
+            <div id="map"></div>
+        </div>
+    </div>
+}
+else
+{
+    <div class="card">
+        <div class="card-body text-center text-muted py-5">
+            @Localizer["Users_Map_None"]
+        </div>
+    </div>
+}
+
+<div class="mt-3">
+    <p class="text-muted small">@Localizer["Users_Map_Privacy"]</p>
+</div>
+
+@section Scripts {
+    @if (Model.Markers.Count > 0 && !string.IsNullOrEmpty(ViewData["GoogleMapsApiKey"]?.ToString()))
+    {
+        <script>
+            (g=>{var h,a,k,p="The Google Maps JavaScript API",c="google",l="importLibrary",q="__ib__",m=document,b=window;b=b[c]||(b[c]={});var d=b.maps||(b.maps={}),r=new Set,e=new URLSearchParams,u=()=>h||(h=new Promise(async(f,n)=>{await (a=m.createElement("script"));e.set("libraries",[...r]+"");for(k in g)e.set(k.replace(/[A-Z]/g,t=>"_"+t[0].toLowerCase()),g[k]);e.set("callback",c+".maps."+q);a.src=`https://maps.${c}apis.com/maps/api/js?`+e;d[q]=f;a.onerror=()=>h=n(Error(p+" could not load."));a.nonce=m.querySelector("script[nonce]")?.nonce||"";m.head.append(a)}));d[l]?console.warn(p+" only loads once. Ignoring:",g):d[l]=(f,...n)=>r.add(f)&&u().then(()=>d[l](f,...n))})({
+                key: "@ViewData["GoogleMapsApiKey"]",
+                v: "weekly"
+            });
+        </script>
+        <script src="https://unpkg.com/&#64;googlemaps/markerclusterer/dist/index.min.js"></script>
+        <script>
+            const markers = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Markers, new System.Text.Json.JsonSerializerOptions { PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase }));
+
+            const groupTitle = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Localizer["Users_Map_Count"].Value));
+
+            const _cs = getComputedStyle(document.documentElement);
+            const cssVar = (name) => _cs.getPropertyValue(name).trim();
+            const clrMutedText = cssVar('--h-muted-text');
+            const clrTextOnDark = cssVar('--h-text-on-dark');
+
+            // Diameter grows with log(count) so a 300-person cluster stays readable without swallowing its neighbours.
+            function bubble(count) {
+                const el = document.createElement('div');
+                if (count === 1) {
+                    el.className = 'map-bubble map-bubble--person';
+                    return el;
+                }
+                const size = Math.round(28 + 12 * Math.log10(count));
+                el.className = 'map-bubble' + (count >= 50 ? ' map-bubble--large' : '');
+                el.style.width = el.style.height = size + 'px';
+                el.style.fontSize = Math.round(size * 0.4) + 'px';
+                el.textContent = count;
+                return el;
+            }
+
+            function avatarHtml(m, size) {
+                const s = size || 40;
+                if (m.profilePictureUrl) {
+                    return '<img src="' + Humans.escapeHtml(m.profilePictureUrl) + '" alt="" style="width:' + s + 'px;height:' + s + 'px;border-radius:50%;object-fit:cover;">';
+                }
+                const graphemes = new Intl.Segmenter(undefined, { granularity: 'grapheme' });
+                const initials = (m.displayName || '?').split(' ').filter(Boolean).slice(0, 2)
+                    .map(word => graphemes.segment(word)[Symbol.iterator]().next().value.segment).join('').toUpperCase();
+                return '<div style="width:' + s + 'px;height:' + s + 'px;border-radius:50%;background:' + clrMutedText + ';color:' + clrTextOnDark + ';display:flex;align-items:center;justify-content:center;font-size:' + Math.round(s * 0.4) + 'px;font-weight:600;">' + Humans.escapeHtml(initials) + '</div>';
+            }
+
+            function personHtml(m) {
+                return '<a class="map-person" href="/Profile/' + m.userId + '">' +
+                    avatarHtml(m, 40) +
+                    '<span>' + Humans.escapeHtml(m.displayName) + '</span></a>';
+            }
+
+            // Everyone in a popup shares one location, so it goes in the header once instead of on every row.
+            function popupHeader(people) {
+                const first = people[0];
+                const el = document.createElement('div');
+                el.className = 'map-popup-header';
+                el.textContent = [first.city, first.countryCode].filter(Boolean).join(', ');
+                return el;
+            }
+
+            function groupByLocation(data) {
+                const groups = {};
+                for (const m of data) {
+                    const key = m.latitude.toFixed(6) + ',' + m.longitude.toFixed(6);
+                    if (!groups[key]) groups[key] = [];
+                    groups[key].push(m);
+                }
+                return Object.values(groups);
+            }
+
+            async function initMap() {
+                const { Map, InfoWindow } = await google.maps.importLibrary("maps");
+                const { AdvancedMarkerElement } = await google.maps.importLibrary("marker");
+
+                const map = new Map(document.getElementById("map"), {
+                    zoom: 3,
+                    center: { lat: 40, lng: -3 },
+                    mapId: "volunteer-map",
+                    mapTypeControl: false,
+                    streetViewControl: false
+                });
+
+                const infoWindow = new InfoWindow();
+                const mapMarkers = [];
+                const groups = groupByLocation(markers);
+
+                for (const group of groups) {
+                    const first = group[0];
+
+                    const marker = new AdvancedMarkerElement({
+                        position: { lat: first.latitude, lng: first.longitude },
+                        map: map,
+                        title: group.length > 1 ? groupTitle.replace('{0}', group.length) : first.displayName,
+                        gmpClickable: true,
+                        content: bubble(group.length)
+                    });
+
+                    marker._people = group;
+
+                    marker.addEventListener("gmp-click", function () {
+                        const people = [...marker._people].sort((a, b) => a.displayName.localeCompare(b.displayName));
+                        let html = '<div class="map-popup' + (people.length > 8 ? ' map-popup--grid' : '') + '">';
+                        for (const p of people) {
+                            html += personHtml(p);
+                        }
+                        html += '</div>';
+                        infoWindow.setHeaderContent(popupHeader(people));
+                        infoWindow.setContent(html);
+                        infoWindow.open({ anchor: marker, map: map, shouldFocus: false });
+                    });
+
+                    mapMarkers.push(marker);
+                }
+
+                if (typeof markerClusterer !== 'undefined') {
+                    var renderer = {
+                        render: function(ref) {
+                            var totalPeople = 0;
+                            for (var gm of ref.markers) {
+                                totalPeople += (gm._people ? gm._people.length : 1);
+                            }
+                            return new AdvancedMarkerElement({
+                                position: ref.position,
+                                content: bubble(totalPeople),
+                                zIndex: totalPeople
+                            });
+                        }
+                    };
+                    new markerClusterer.MarkerClusterer({
+                        markers: mapMarkers,
+                        map: map,
+                        renderer: renderer,
+                        algorithm: new markerClusterer.SuperClusterAlgorithm({ radius: 80 })
+                    });
+                }
+
+                if (markers.length > 1) {
+                    const bounds = new google.maps.LatLngBounds();
+                    for (const m of markers) {
+                        bounds.extend({ lat: m.latitude, lng: m.longitude });
+                    }
+                    map.fitBounds(bounds, 50);
+                    // Outliers can zoom far out: fall back to a Europe-centred view.
+                    google.maps.event.addListenerOnce(map, 'idle', function() {
+                        if (map.getZoom() < 4) {
+                            map.setCenter({ lat: 43, lng: 5 });
+                            map.setZoom(4);
+                        }
+                    });
+                } else if (markers.length === 1) {
+                    map.setCenter({ lat: markers[0].latitude, lng: markers[0].longitude });
+                    map.setZoom(10);
+                }
+            }
+
+            initMap();
+        </script>
+    }
+}

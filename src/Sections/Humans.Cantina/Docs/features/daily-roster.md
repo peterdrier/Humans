@@ -31,15 +31,15 @@ Access is role-based only. There is no team-membership-based path.
 
 ## GDPR (special-category data)
 
-`MedicalConditions` (GDPR Art. 9 health data) is **excluded entirely** from this page and from the CSV, regardless of viewer role. The cantina plans around food, not medical history; medical conditions remain visible only via the per-volunteer `_VolunteerProfileBadges` partial's audited reveal (`POST /Shifts/Medical/{userId}/Reveal`, Shifts-owned; existing path, unchanged).
+`MedicalConditions` (GDPR Art. 9 health data) is **excluded entirely** from this page and from the CSV, regardless of viewer role. The cantina plans around food, not medical history; medical conditions remain visible only through Users' audited reveal (`POST /Profile/{id}/Medical/Reveal`).
 
 This tightens the Art. 9 boundary: cantina coordinators don't need health data and don't get it. The exclusion happens at the DTO boundary (not at query time) so the field can never reach the view layer.
 
-`DietaryPreference`, `Allergies`, `Intolerances`, `AllergyOtherText`, `IntoleranceOtherText` are not special-category data — they're personal data already disclosed to coordinators via the existing badges path, and the roster aggregates them. The roster introduces no retention policy of its own; the answers live in Cantina's `cantina_dietary_profiles` (see [Dietary Nudge](dietary-nudge.md)).
+`DietaryPreference`, `Allergies`, `Intolerances`, `AllergyOtherText`, `IntoleranceOtherText` are not special-category data — they're personal data the roster aggregates for cantina coordinators. The roster introduces no retention policy of its own; the answers live in Cantina's `cantina_dietary_profiles` (see [Dietary Nudge](dietary-nudge.md)).
 
 The free-text allergy and intolerance entries (health data) stay hidden on the weekly and daily pages until the viewer presses the audited reveal (`CantinaHealthDetailsRevealed`, one row naming the actor and the week or day, never one per member shown); preference roll-ups and allergy / intolerance counts always show.
 
-> **Retention, as actually implemented:** right-to-erasure deletes the member's `cantina_dietary_profiles` row (`DietaryProfileService.EraseForUserAsync`, a Gdpr erasure contributor), and Users' erasure still nulls the legacy food columns on `profiles` plus `MedicalConditions` (nobodies-collective/Humans#1446). A merge keeps the survivor's answers; the source's move only when the survivor has none. An erased member drops off this page on the next read.
+> **Retention, as actually implemented:** right-to-erasure deletes the member's `cantina_dietary_profiles` row (`DietaryProfileService.EraseForUserAsync`, a Gdpr erasure contributor), and Users' erasure still nulls the legacy food columns on `user_profiles` plus `MedicalConditions` (nobodies-collective/Humans#1446). A merge keeps the survivor's answers; the source's move only when the survivor has none. An erased member drops off this page on the next read.
 
 ## Week Boundary
 
@@ -78,7 +78,7 @@ If there is no active event, the service returns an empty DTO with `WeekStartDat
   - **Unanswered cohort:** prominent count of unique humans with no `DietaryPreference`.
 - Below the aggregates, a **per-day mini-summary table** with 7 rows (Mon–Sun): each row shows the day's calendar date, `TotalOnSite` (count of distinct humans on-site that day, including arrival-day humans), and `UnansweredOnDay` (count of that day's on-site humans with no `DietaryPreference`). Each of the three cells links into that day's drill-down (US-36.5).
 - The weekly page shows **no per-person rows** — names live on the drill-down and in the CSV. The page carries no `MedicalConditions` under any role, in any view.
-- If there is no active event (no `EventSettingsInfo` resolvable via `ISettingsService.GetActiveEventSettingsAsync`), the page renders an empty-state message ("no active event") instead of throwing.
+- If there is no active event (no `EventSettingsInfo` resolvable via `ISettingsService.GetActiveEventSettings`), the page renders an empty-state message ("no active event") instead of throwing.
 
 ### US-36.2: Coordinator navigates to another week
 **As a** cantina coordinator planning ahead (or looking back)
@@ -238,7 +238,7 @@ This feature lives in the `Cantina/` section and reads **only through section se
 - **Shifts (read, on-site cohort):** `IShiftService.GetOnSiteUserIdsForDayAsync`, called in a 7-day loop and unioned into the unique-humans cohort.
 - **Cantina (read, dietary):** `ICantinaService.GetDietaryProfilesAsync` — batched; the DTO has no medical field, so `CantinaRosterService` never sees `MedicalConditions`.
 - **Users/Identity (read, burner names):** `IUserService.GetUserInfosAsync` — batched, cached `UserInfo`. No entity reads, no new surface.
-- **Event settings:** `ISettingsService.GetActiveEventSettingsAsync` for `GateOpeningDate` / `TimeZoneId` (week-boundary computation and per-day calendar labels).
+- **Event settings:** `ISettingsService.GetActiveEventSettings` for `GateOpeningDate` / `TimeZoneId` (week-boundary computation and per-day calendar labels).
 - **Authorization:** the `CantinaPolicies.Read` policy (Admin, Board or the grantable `CantinaAdmin` role; CSV downloads: `CantinaPolicies.Manage`, Admin or `CantinaAdmin`). No team-name heuristic, no bespoke access service.
 - **No roster-specific entity or migration** (the dietary table belongs to the [Dietary Nudge](dietary-nudge.md)).
 
@@ -255,7 +255,7 @@ New / updated components:
 ## Negative access rules
 
 - A user **cannot** see the roster page unless they hold `Admin`, `Board` or `CantinaAdmin`, and **cannot** download the CSV unless they hold `Admin` or `CantinaAdmin`. No other path grants access.
-- The roster page and CSV **never** include `MedicalConditions` — `CantinaRosterService` never reads it and the cantina DTOs have no such field. To see medical conditions, viewers use the per-profile badges' audited medical reveal.
+- The roster page and CSV **never** include `MedicalConditions` — `CantinaRosterService` never reads it and the cantina DTOs have no such field. To see medical conditions, viewers use the audited reveal on the member's profile page (`/Profile/{id}`).
 - The access-denied redirect **must not** leak any roster data, including the week's headcount or label.
 - `Refused` / `Bailed` / `NoShow` / `Cancelled` signups **must not** contribute to any count or row, even if the volunteer also has a qualifying signup on a different day.
 - The roster reads only the currently active event's signups — no cross-event aggregation.

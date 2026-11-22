@@ -47,13 +47,14 @@ public sealed class ConsentReviewServiceTests : IDisposable
     private static CancellationToken Ct => TestContext.Current.CancellationToken;
 
     private UserInfo SeedUser(
-        ProfileInfo? profile = null, UserState state = UserState.Active, Guid? id = null, Instant? mergedAt = null)
+        ProfileInfo? profile = null, UserState state = UserState.Active, Guid? id = null, Instant? mergedAt = null,
+        string burnerName = "Ana", string firstName = "Ana", string lastName = "García")
     {
         var userId = id ?? Guid.NewGuid();
         var info = UserInfo.Create(
-            new User { Id = userId, BurnerName = "Ana", CreatedAt = Now, State = state, MergedAt = mergedAt },
+            new User { Id = userId, BurnerName = burnerName, FirstName = firstName, LastName = lastName, CreatedAt = Now, State = state, MergedAt = mergedAt },
             [], [],
-            profile ?? UserFixtures.Profile(burnerName: "Ana", firstName: "Ana", lastName: "García"));
+            profile ?? UserFixtures.Profile());
         _users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(info);
         _users.GetRawUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(info);
         return info;
@@ -135,7 +136,7 @@ public sealed class ConsentReviewServiceTests : IDisposable
         review.IsRejected.Should().BeTrue();
         review.RejectionReason.Should().Be("dup");
         (await _sut.GetReviewsAsync(Ct))[user.Id].IsRejected.Should().BeTrue();
-        user.IsConsentCheckFlagged(review).Should().BeFalse();
+        review.IsConsentCheckFlagged(user).Should().BeFalse();
         (await _sut.RecordConsentCheckAsync(user.Id, ConsentCheckStatus.Cleared, Guid.NewGuid(), null, Ct))
             .ErrorKey.Should().Be("AlreadyRejected");
         (await _sut.RecordRejectionAsync(user.Id, Guid.NewGuid(), "again", Ct))
@@ -355,18 +356,18 @@ public sealed class ConsentReviewServiceTests : IDisposable
         var none = ConsentReviewInfo.None(active.Id);
         var flagged = none with { Status = ConsentCheckStatus.Flagged };
 
-        active.NeedsConsentReview(none).Should().BeTrue();
-        active.NeedsConsentReview(none with { IsApproved = true }).Should().BeFalse();
-        tombstone.NeedsConsentReview(none).Should().BeFalse();
-        (active with { State = UserState.Rejected }).NeedsConsentReview(none).Should().BeFalse();
+        none.NeedsConsentReview(active).Should().BeTrue();
+        (none with { IsApproved = true }).NeedsConsentReview(active).Should().BeFalse();
+        none.NeedsConsentReview(tombstone).Should().BeFalse();
+        none.NeedsConsentReview(active with { State = UserState.Rejected }).Should().BeFalse();
         // Fake accounts (gate terminal, dev personas) never count, so the queue, pill and meters agree.
-        (active with { IsFake = true }).NeedsConsentReview(none).Should().BeFalse();
+        none.NeedsConsentReview(active with { IsFake = true }).Should().BeFalse();
 
-        active.IsConsentCheckFlagged(flagged).Should().BeTrue();
-        active.IsConsentCheckFlagged(flagged with { IsApproved = true }).Should().BeTrue();
-        active.IsConsentCheckFlagged(flagged with { RejectedAt = Earlier }).Should().BeFalse();
-        tombstone.IsConsentCheckFlagged(flagged).Should().BeFalse();
-        (active with { IsFake = true }).IsConsentCheckFlagged(flagged).Should().BeFalse();
+        flagged.IsConsentCheckFlagged(active).Should().BeTrue();
+        (flagged with { IsApproved = true }).IsConsentCheckFlagged(active).Should().BeTrue();
+        (flagged with { RejectedAt = Earlier }).IsConsentCheckFlagged(active).Should().BeFalse();
+        flagged.IsConsentCheckFlagged(tombstone).Should().BeFalse();
+        flagged.IsConsentCheckFlagged(active with { IsFake = true }).Should().BeFalse();
     }
 
     [HumansFact]
@@ -402,7 +403,7 @@ public sealed class ConsentReviewServiceTests : IDisposable
     [HumansFact]
     public async Task ReviewCard_RendersForAdminOnly_WithTheRejectionAndReviewer()
     {
-        var reviewer = SeedUser(UserFixtures.Profile(burnerName: "Rita", firstName: "R", lastName: "C"));
+        var reviewer = SeedUser(UserFixtures.Profile(), burnerName: "Rita", firstName: "R", lastName: "C");
         var user = SeedUser(state: UserState.Rejected);
         var consent = Substitute.For<IConsentService>();
         consent.GetConsentReviewAsync(user.Id, Arg.Any<CancellationToken>()).Returns(ConsentReviewInfo.None(user.Id) with
@@ -423,7 +424,7 @@ public sealed class ConsentReviewServiceTests : IDisposable
                 Status = ConsentCheckStatus.Flagged,
                 RejectionReason = "dup",
                 RejectedAt = Earlier.ToDateTimeUtc(),
-                RejectedByName = reviewer.BurnerName,
+                RejectedByUserId = reviewer.Id,
             });
     }
 

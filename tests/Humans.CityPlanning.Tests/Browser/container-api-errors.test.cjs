@@ -10,7 +10,7 @@ function api(saveFailed, clearFailed, response) {
     const context = { document: {
         getElementById: () => ({ dataset: { year: '2026', i18nSaveFailed: saveFailed, i18nClearFailed: clearFailed } }),
         querySelector: () => ({ value: 'csrf' }),
-    }, ESRI_TILES: [], MAP_BOUNDS: [], fetch: async (url, options) => { requests.push({ url, options }); return response; } };
+    }, ESRI_TILES: [], MAP_BOUNDS: [], fetch: async (url, options) => { requests.push({ url, options }); return typeof response === 'function' ? response() : response; } };
     installHumans(context); vm.createContext(context);
     const root = resolve(__dirname, '../../../src/Sections/Humans.CityPlanning/wwwroot/js/city-planning/container-map');
     for (const file of ['config.js', 'api.js']) {
@@ -52,3 +52,20 @@ test('successful placement and notes responses and empty clear response remain s
     assert.equal((await client.save()).id, 'A'); assert.equal((await client.notes()).id, 'A');
     assert.equal(await client.clear(), undefined);
 });
+
+for (const operation of ['save', 'notes', 'clear']) {
+    test(`${operation} transport failures use the translated failure message`, async () => {
+        const client = api('Guardar falló', 'Borrar falló', async () => { throw new TypeError('Failed to fetch'); });
+        const expected = operation === 'clear' ? 'Borrar falló' : 'Guardar falló';
+        await assert.rejects(client[operation](), error => error.message === expected);
+    });
+}
+
+for (const operation of ['save', 'notes']) {
+    test(`${operation} malformed successful responses use the translated failure message`, async () => {
+        const client = api('Guardar falló', 'Borrar falló', {
+            ok: true, json: async () => { throw new SyntaxError('Unexpected token < in JSON'); },
+        });
+        await assert.rejects(client[operation](), error => error.message === 'Guardar falló');
+    });
+}

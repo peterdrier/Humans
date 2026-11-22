@@ -59,7 +59,7 @@ public class TicketHoldingsViewComponentTests
     }
 
     [HumansFact]
-    public async Task RendersNothing_ForSelfViewer_WithNoHoldings()
+    public async Task RendersOnlyTheOnsiteChip_ForSelfViewer_WithNoHoldings()
     {
         var userId = Guid.NewGuid();
         _tickets.GetUserTicketHoldingsAsync(userId, Arg.Any<CancellationToken>())
@@ -67,8 +67,8 @@ public class TicketHoldingsViewComponentTests
 
         var result = await BuildSut().InvokeAsync(userId, ProfileCardViewMode.Self);
 
-        result.Should().BeOfType<ContentViewComponentResult>()
-            .Which.Content.Should().BeEmpty();
+        result.Should().BeOfType<ViewViewComponentResult>().Which.ViewData!.Model
+            .Should().BeOfType<TicketHoldingsViewModel>().Which.ChipOnly.Should().BeTrue();
     }
 
     [HumansFact]

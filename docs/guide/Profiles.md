@@ -37,7 +37,8 @@ Each contact field has its own visibility setting, so you can share your Signal 
 - **My Data** (`/Consent/MyData`) — data export and account deletion
 - **Outbox** (`/Email/Outbox`) — the emails the system has sent to you
 - **View another human** (`/Profile/{id}`) — another human's profile, filtered by visibility
-- **Search** (`/Profile/Search`) — find other humans by name
+- **Search** (`/Search`) — find other humans by name
+- **Birthdays** (`/Users/Birthdays`) and **Humans map** (`/Users/Map`) — birthday calendar by month and a map of where humans are; both linked from cards on your dashboard
 
 ## As a Volunteer
 
@@ -68,7 +69,7 @@ On the edit page, choose an image (JPEG, PNG, WebP, or HEIC/HEIF/AVIF from a pho
 
 ### Manage your email addresses
 
-Go to `/Profile/Me/Emails`. Your OAuth login email is always there and cannot be deleted. Add other addresses — each is verified via a link. Exactly one verified email is your notification target (where system emails go). Each verified email has its own visibility setting, using the same levels as contact fields. If you have been provisioned a `@nobodies.team` address, it is auto-selected as your Google services email.
+Go to `/Profile/Me/Emails`. Your OAuth login email is always there and cannot be deleted. Add other addresses — each is verified via a link sent to that address; the link works for one hour, and only while you are signed in to the account that added it. If the address belongs to another account of yours, confirming the link merges the two accounts: you see both profiles side by side and, when both were filled in, pick which one to keep. Exactly one verified email is your notification target (where system emails go). Each verified email has its own visibility setting, using the same levels as contact fields. If you have been provisioned a `@nobodies.team` address, it is auto-selected as your Google services email.
 
 ### Set communication preferences
 
@@ -88,13 +89,13 @@ On another human's profile, use Send Message (`/Email/SendMessage/{id}`). The sy
 
 ### Search for humans
 
-Go to `/Profile/Search` and type a name. Results respect your access level and exclude suspended humans.
+Go to `/Search` and type a name. Results respect your access level and exclude suspended humans.
 
 ### Export your data or delete your account
 
 Both live on `/Consent/MyData`. **Download My Data** gives you a JSON file with every section of personal data the system holds about you. **Account deletion** revokes your team memberships and roles immediately, then gives you a 30-day grace period (you can still log in and cancel) before your personal data is anonymised automatically. The plain-language walkthrough — including who can see your details and how to control which emails you get — is in [Your data & privacy](YourData.md).
 
-## As a Board member / Users Admin / Admin
+## As a Board member / Admin (Users Admin)
 
 ### View any profile in full
 

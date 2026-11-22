@@ -4,7 +4,6 @@ using System.Text;
 using Humans.Base.Extensions;
 using Humans.Camps.Contracts;
 using Humans.Consent.Contracts;
-using Humans.Governance.Contracts;
 using Humans.Users.Contracts;
 using Humans.Teams.Contracts;
 using Humans.CityPlanning.Contracts;
@@ -31,7 +30,7 @@ internal sealed class DevPersonaSeeder(
     ICampSeeding campSeeding,
     ICampRoleSeeding campRoleSeeding,
     IConsentSubmission consentService,
-    IMembershipCalculator membershipCalculator,
+    IConsentService consentReads,
     IHumanLifecycleService humanLifecycleService,
     IClock clock,
     IOptions<CityPlanningOptions> cityPlanningOptions,
@@ -106,12 +105,11 @@ internal sealed class DevPersonaSeeder(
         var save = await profileEditorService.SaveProfileAsync(id, saveRequest);
         if (!save.Succeeded)
             throw new InvalidOperationException("Dev persona profile validation failed.");
-        var profileId = save.ProfileId!.Value;
 
         await userWrite.MarkFakeAsync(id, id, PersonaFakeReason);
 
         await contactFieldService.SaveContactFieldsAsync(
-            profileId,
+            id,
             [
                 new ContactFieldEditDto(
                     Id: null,
@@ -134,12 +132,6 @@ internal sealed class DevPersonaSeeder(
         if (IsBarrioLeadSlug(slug))
         {
             await systemTeamSync.SyncMembershipForUserAsync(id, SystemTeamType.BarrioLeads);
-        }
-
-        // Board membership has no per-user sync arm in SystemTeamSyncJob, so apply directly.
-        if (roleName is not null && string.Equals(roleName, RoleNames.Board, StringComparison.Ordinal))
-        {
-            await teamWrite.ApplySystemTeamMembershipDeltaAsync(SystemTeamIds.Board, [id], [], now);
         }
 
         foreach (var role in roles)
@@ -177,8 +169,7 @@ internal sealed class DevPersonaSeeder(
         var wasSuspended = info.State == UserState.Suspended;
         var submittedAny = false;
 
-        var snapshot = await membershipCalculator.GetMembershipSnapshotAsync(userId);
-        foreach (var versionId in snapshot.MissingConsentVersionIds)
+        foreach (var versionId in (await consentReads.GetConsentProgressAsync(userId)).MissingVersionIds)
         {
             var result = await consentService.SubmitConsentAsync(
                 userId, versionId, explicitConsent: true,
@@ -266,7 +257,7 @@ internal sealed class DevPersonaSeeder(
     public async Task ResetLegalNamesAsync(Guid userId)
     {
         var info = await userService.GetUserInfoAsync(userId);
-        var burnerName = info?.Profile?.BurnerName;
+        var burnerName = info?.Profile is null ? null : info.BurnerName;
         if (string.IsNullOrWhiteSpace(burnerName))
         {
             logger.LogWarning(
@@ -289,7 +280,7 @@ internal sealed class DevPersonaSeeder(
     }
 
     /// <summary>Shared by seeding and the No-Name reset so the two cannot drift.</summary>
-    private static ProfileSaveRequest BuildPersonaProfileRequest(
+    internal static ProfileSaveRequest BuildPersonaProfileRequest(
         string burnerName, string firstName, string lastName, string bio) =>
         new(
             BurnerName: burnerName,

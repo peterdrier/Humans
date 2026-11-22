@@ -1,4 +1,4 @@
-using Humans.Cantina.Contracts;
+using Humans.Consent.Contracts;
 using Humans.Shifts.Domain;
 using AwesomeAssertions;
 using Humans.Governance.Contracts;
@@ -26,9 +26,8 @@ public sealed class ShiftAdminPageBuilderTests
     private static readonly Instant TestNow = Instant.FromUtc(2026, 6, 15, 12, 0);
 
     private readonly IShiftManagement _shiftManagement = Substitute.For<IShiftManagement>();
-    private readonly IMembershipCalculator _membership = Substitute.For<IMembershipCalculator>();
+    private readonly IConsentService _membership = Substitute.For<IConsentService>();
     private readonly IUserService _userService = Substitute.For<IUserService>();
-    private readonly ICantinaService _cantina = Substitute.For<ICantinaService>();
     private readonly ITeamService _teamService = Substitute.For<ITeamService>();
 
     private static readonly TeamInfo Department = new(
@@ -66,10 +65,8 @@ public sealed class ShiftAdminPageBuilderTests
         _shiftManagement.GetShiftProfileAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns((ShiftVolunteerProfileInfo?)null);
 
-        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+        _userService.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, UserInfo>());
-        _cantina.GetDietaryProfilesAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(new Dictionary<Guid, DietaryProfileInfo>());
 
         _teamService.GetTeamsAsync(Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, TeamInfo>());
@@ -85,16 +82,15 @@ public sealed class ShiftAdminPageBuilderTests
         _membership.GetUsersWithAllRequiredConsentsForTeamAsync(
                 Arg.Any<IEnumerable<Guid>>(), SystemTeamIds.Volunteers, Arg.Any<CancellationToken>())
             .Returns(new HashSet<Guid>());
-        var builder = new ShiftAdminPageBuilder(_shiftManagement, _membership, _userService, _cantina, _teamService);
+        var builder = new ShiftAdminPageBuilder(_shiftManagement, _membership, _userService, _teamService);
 
         await builder.BuildAsync(new ShiftAdminPageRequest(
-            Department, Event, true, true, false, true, TestNow), cancellation.Token);
+            Department, Event, true, true, true, TestNow), cancellation.Token);
 
         await _shiftManagement.Received(1).GetRotasByDepartmentAsync(Department.Id, Event.Id, cancellation.Token);
         await _membership.Received(1).GetUsersWithAllRequiredConsentsForTeamAsync(
             Arg.Any<IEnumerable<Guid>>(), SystemTeamIds.Volunteers, cancellation.Token);
-        await _userService.Received(1).GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), cancellation.Token);
-        await _cantina.Received(1).GetDietaryProfilesAsync(Arg.Any<IReadOnlyCollection<Guid>>(), cancellation.Token);
+        await _userService.Received(1).GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), cancellation.Token);
         await _shiftManagement.Received(1).GetShiftProfileAsync(userId, cancellation.Token);
         await _teamService.Received(1).GetTeamsAsync(cancellation.Token);
         await _shiftManagement.Received(1).GetTagsAsync(ct: cancellation.Token);
@@ -194,53 +190,18 @@ public sealed class ShiftAdminPageBuilderTests
             Arg.Any<CancellationToken>());
     }
 
-    [HumansTheory]
-    [Xunit.InlineData(true)]
-    [Xunit.InlineData(false)]
-    public async Task MedicalBadge_IsAFlagForViewersOnly_TheTextStaysOnTheServer(bool canViewMedical)
-    {
-        var userId = Guid.NewGuid();
-        StubRotas(MakeRota(MakeShift(MakePending(userId))));
-        _membership.GetUsersWithAllRequiredConsentsForTeamAsync(
-                Arg.Any<IEnumerable<Guid>>(), SystemTeamIds.Volunteers, Arg.Any<CancellationToken>())
-            .Returns(new HashSet<Guid>());
-        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(new Dictionary<Guid, UserInfo>
-            {
-                [userId] = UserInfoStubHelpers.MakeUserInfo(userId, profile: new Profile
-                {
-                    Id = Guid.NewGuid(),
-                    UserId = userId,
-                    BurnerName = "Ann",
-                    MedicalConditions = "Epilepsy",
-                    CreatedAt = TestNow,
-                    UpdatedAt = TestNow,
-                }),
-            });
-        var builder = new ShiftAdminPageBuilder(_shiftManagement, _membership, _userService, _cantina, _teamService);
-
-        var vm = await builder.BuildAsync(new ShiftAdminPageRequest(
-            Department, Event, CanManage: true, CanApprove: true, canViewMedical, IncompleteOnboarding: false, TestNow));
-
-        var badges = vm.VolunteerProfiles[userId];
-        badges.UserId.Should().Be(userId);
-        badges.CanRevealMedical.Should().Be(canViewMedical);
-        badges.HasMedicalConditions.Should().Be(canViewMedical);
-    }
-
     private void StubRotas(params ShiftAdminRota[] rotas) =>
         _shiftManagement.GetRotasByDepartmentAsync(Department.Id, Event.Id)
             .Returns(rotas.ToList());
 
     private Task<ShiftAdminViewModel> BuildAsync()
     {
-        var builder = new ShiftAdminPageBuilder(_shiftManagement, _membership, _userService, _cantina, _teamService);
+        var builder = new ShiftAdminPageBuilder(_shiftManagement, _membership, _userService, _teamService);
         return builder.BuildAsync(new ShiftAdminPageRequest(
             Department,
             Event,
             CanManage: true,
             CanApprove: true,
-            CanViewMedical: false,
             IncompleteOnboarding: true,
             Now: TestNow));
     }

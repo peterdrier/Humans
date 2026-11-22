@@ -1,9 +1,45 @@
+@model Humans.Development.Services.Demo.DemoRunStatus
 @{
     ViewData["Title"] = "Seed data";
 }
 
-<page-header title="Seed data" subtitle="Demo fixtures for dev and preview hosts. Each seed is idempotent." />
+<page-header title="Seed data" subtitle="Demo data for dev, preview and QA hosts. Never in production." />
 
+<h2 class="h5">Demo world</h2>
+@if (!Model.IsRunning)
+{
+    <div class="d-flex flex-wrap gap-2 mb-2">
+        <form method="post" action="/dev/seed/demo" class="m-0">
+            @Html.AntiForgeryToken()
+            <button type="submit" class="btn btn-primary">
+                <i class="fa-solid fa-seedling me-1"></i>Build or top up demo world
+            </button>
+        </form>
+        <form method="post" action="/dev/seed/demo" class="m-0">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="reset" value="true" />
+            <button type="submit" class="btn btn-outline-danger">
+                <i class="fa-solid fa-rotate me-1"></i>Reset demo world
+            </button>
+        </form>
+    </div>
+}
+@if (Model.IsRunning || Model.Lines.Count > 0)
+{
+    <div class="card mb-4">
+        <div class="card-body small">
+            <div class="fw-semibold mb-1">@(Model.IsRunning ? "Running. Reload for progress." : "Last run")</div>
+            <ul class="mb-0">
+                @foreach (var line in Model.Lines)
+                {
+                    <li>@line</li>
+                }
+            </ul>
+        </div>
+    </div>
+}
+
+<h2 class="h5">Single seeds</h2>
 <div class="d-flex flex-wrap gap-2">
     <form method="post" action="/dev/seed/budget" class="m-0">
         @Html.AntiForgeryToken()
@@ -18,3 +54,7 @@
         </button>
     </form>
 </div>
+
+<p class="text-muted small mt-4 mb-0">
+    Reset ends the demo's own rows through normal actions and builds a fresh copy. It never touches rows real people made.
+</p>

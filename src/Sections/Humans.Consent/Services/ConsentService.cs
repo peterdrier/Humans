@@ -1,15 +1,18 @@
 using System.Security.Cryptography;
 using System.Text;
+using Humans.Base.Constants;
 using Humans.Base.Extensions;
 using Humans.Base.Interfaces;
 using Humans.Consent.Contracts;
 using Humans.Gdpr.Contracts;
-using Humans.Governance.Contracts;
+using Humans.Auth.Contracts;
+using Humans.Teams.Contracts;
 using Microsoft.Extensions.DependencyInjection;
 using NodaTime;
 using Humans.Consent.Data;
 using Humans.Consent.Domain;
 using Humans.Users.Contracts;
+using Humans.Base.Enums;
 
 namespace Humans.Consent.Services;
 
@@ -19,6 +22,8 @@ internal sealed class ConsentService(
     ILegalDocumentSyncManagement legalDocumentSyncService,
     IHumanLifecycleService humanLifecycleService,
     IUserService userService,
+    ITeamService teamService,
+    IRoleAssignmentService roleAssignments,
     IServiceProvider serviceProvider,
     IHumansMetrics metrics,
     IClock clock,
@@ -26,9 +31,139 @@ internal sealed class ConsentService(
 {
     internal const string Consents = "Consents";
 
+    public async Task<ConsentSubmitResult> SubmitConsentAsync(
+        Guid userId, Guid documentVersionId, bool explicitConsent,
+        string ipAddress, string userAgent, CancellationToken ct = default)
+    {
+        // Refuse before any write: a false append-only record would block a later valid signature.
+        if (!explicitConsent)
+            return new ConsentSubmitResult(false, ErrorKey: "ExplicitConsentRequired");
+
+        // Defense in depth: never write a record for a profile without a verified legal name.
+        var info = await userService.GetUserInfoAsync(userId, ct);
+        if (info is null || !info.HasRequiredNameFields)
+            return new ConsentSubmitResult(false, ErrorKey: "StubProfile");
+        userId = info.Id;
+
+        var version = await legalDocumentSyncService.GetVersionByIdAsync(documentVersionId, ct);
+
+        if (version is null)
+            return new ConsentSubmitResult(false, ErrorKey: "NotFound");
+
+        // Hash only an available canonical document, never a translation or an empty fallback.
+        var canonicalContent = version.Content.GetValueOrDefault("es");
+        if (string.IsNullOrWhiteSpace(canonicalContent))
+        {
+            logger.LogWarning("Consent refused: canonical Spanish content is unavailable for version {DocumentVersionId}",
+                documentVersionId);
+            return new ConsentSubmitResult(false, ErrorKey: "ContentUnavailable");
+        }
+
+        var alreadyConsented = await repo.ExistsForUserIdsAndVersionAsync(info.AllUserIds, documentVersionId, ct);
+
+        if (alreadyConsented)
+            return new ConsentSubmitResult(false, ErrorKey: "AlreadyConsented");
+
+        var contentHash = ComputeContentHash(canonicalContent);
+
+        var userAgentLength = Math.Min(500, userAgent.Length);
+        if (userAgentLength < userAgent.Length && char.IsHighSurrogate(userAgent[userAgentLength - 1])
+            && char.IsLowSurrogate(userAgent[userAgentLength]))
+            userAgentLength--;
+
+        var consentRecord = new ConsentRecord
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            DocumentVersionId = documentVersionId,
+            ConsentedAt = clock.GetCurrentInstant(),
+            IpAddress = ipAddress,
+            UserAgent = userAgent[..userAgentLength],
+            ContentHash = contentHash,
+            ExplicitConsent = explicitConsent
+        };
+
+        try
+        {
+            await repo.AddAsync(consentRecord, ct);
+        }
+        finally
+        {
+            // A failed acknowledgement can follow a committed signature. Evict every alias before any
+            // membership check reads it back, even when the decorator never reaches its inline refresh.
+            foreach (var id in info.AllUserIds)
+                consentCache.Invalidate(id);
+        }
+        metrics.RecordConsentGiven();
+
+        logger.LogInformation(
+            "User {UserId} consented to document {DocumentName} version {Version}",
+            userId, version.LegalDocumentName, version.VersionNumber);
+
+        // Consent is committed: finish suspension cleanup even if the request ends.
+        try
+        {
+            if (await HasAllRequiredConsentsForTeamAsync(
+                    userId, SystemTeamIds.Volunteers, CancellationToken.None))
+            {
+                await humanLifecycleService.RestoreConsentSuspensionAsync(userId, CancellationToken.None);
+            }
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to complete post-consent suspension cleanup for user {UserId}", userId);
+        }
+
+        return new ConsentSubmitResult(true, DocumentName: version.LegalDocumentName);
+    }
+
+    public Task<ConsentReviewInfo> GetConsentReviewAsync(Guid userId, CancellationToken ct = default) =>
+        serviceProvider.GetRequiredService<ConsentReviewService>().GetReviewAsync(userId, ct);
+
+    public Task<IReadOnlyDictionary<Guid, ConsentReviewInfo>> GetConsentReviewsAsync(CancellationToken ct = default) =>
+        serviceProvider.GetRequiredService<ConsentReviewService>().GetReviewsAsync(ct);
+
+    private static string ComputeContentHash(string content)
+    {
+        var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(content));
+        return Convert.ToHexString(bytes).ToLowerInvariant();
+    }
+
+    public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
+    {
+        var chainIds = await GetChainFollowIdsAsync(userId, ct);
+        var consents = await repo.GetAllForUserIdsAsync(chainIds, ct);
+
+        var shaped = consents.Select(c => new
+        {
+            DocumentName = c.DocumentVersion.LegalDocument.Name,
+            DocumentVersion = c.DocumentVersion.VersionNumber,
+            c.ExplicitConsent,
+            ConsentedAt = c.ConsentedAt.ToIso8601(),
+            c.IpAddress,
+            c.UserAgent
+        }).ToList();
+
+        return [new UserDataSlice(Consents, shaped)];
+    }
+
+    private static readonly IReadOnlyDictionary<string, string?> Erasure =
+        new Dictionary<string, string?>(StringComparer.Ordinal)
+        {
+            [Consents] =
+                "Retained: the consent ledger (including the IP address and user agent captured " +
+                "at the moment of consent) is the evidence that processing had a lawful basis " +
+                "— GDPR Art. 7(1) accountability and Art. 17(3)(e) legal claims. The ledger is " +
+                "append-only and its UserId points at the tombstone the Users section leaves behind."
+        };
+
+    public IReadOnlyDictionary<string, string?> ErasureDeclaration => Erasure;
+
+    public Task EraseForUserAsync(Guid userId, CancellationToken ct) => Task.CompletedTask;
+
     // The resolved record's ids, never [userId ∪ …]: asked with an archived id, that would leave the
     // survivor's own consents out.
-    private async Task<IReadOnlyCollection<Guid>> GetChainFollowIdsAsync(
+    internal async Task<IReadOnlyCollection<Guid>> GetChainFollowIdsAsync(
         Guid userId, CancellationToken ct) =>
         (await userService.GetUserInfoAsync(userId, ct))?.AllUserIds ?? [userId];
 
@@ -36,8 +171,7 @@ internal sealed class ConsentService(
     {
         var now = clock.GetCurrentInstant();
 
-        var membershipCalculator = serviceProvider.GetRequiredService<IMembershipCalculator>();
-        var userTeamIds = await membershipCalculator.GetRequiredTeamIdsForUserAsync(userId, ct);
+        var userTeamIds = await GetRequiredTeamIdsAsync(userId, ct);
 
         var documents = await legalDocumentSyncService.GetActiveRequiredDocumentsForTeamsAsync(userTeamIds, ct);
 
@@ -111,94 +245,8 @@ internal sealed class ConsentService(
             ChangesSummary: version.ChangesSummary,
             HasAlreadyConsented: consentRecord is not null,
             ConsentedAt: consentRecord?.ConsentedAt,
-            UserFullName: info?.Profile?.FullName);
+            UserFullName: info?.Profile is null ? null : info.FullName);
     }
-
-    public async Task<ConsentSubmitResult> SubmitConsentAsync(
-        Guid userId, Guid documentVersionId, bool explicitConsent,
-        string ipAddress, string userAgent, CancellationToken ct = default)
-    {
-        // Refuse before any write: a false append-only record would block a later valid signature.
-        if (!explicitConsent)
-            return new ConsentSubmitResult(false, ErrorKey: "ExplicitConsentRequired");
-
-        // Defense in depth: never write a record for a profile without a verified legal name.
-        var info = await userService.GetUserInfoAsync(userId, ct);
-        if (info is null || !info.HasRequiredNameFields)
-            return new ConsentSubmitResult(false, ErrorKey: "StubProfile");
-        userId = info.Id;
-
-        var version = await legalDocumentSyncService.GetVersionByIdAsync(documentVersionId, ct);
-
-        if (version is null)
-            return new ConsentSubmitResult(false, ErrorKey: "NotFound");
-
-        // Hash only an available canonical document, never a translation or an empty fallback.
-        var canonicalContent = version.Content.GetValueOrDefault("es");
-        if (string.IsNullOrWhiteSpace(canonicalContent))
-        {
-            logger.LogWarning("Consent refused: canonical Spanish content is unavailable for version {DocumentVersionId}",
-                documentVersionId);
-            return new ConsentSubmitResult(false, ErrorKey: "ContentUnavailable");
-        }
-
-        var alreadyConsented = await repo.ExistsForUserIdsAndVersionAsync(info.AllUserIds, documentVersionId, ct);
-
-        if (alreadyConsented)
-            return new ConsentSubmitResult(false, ErrorKey: "AlreadyConsented");
-
-        var contentHash = ComputeContentHash(canonicalContent);
-
-        var userAgentLength = Math.Min(500, userAgent.Length);
-        if (userAgentLength < userAgent.Length && char.IsHighSurrogate(userAgent[userAgentLength - 1])
-            && char.IsLowSurrogate(userAgent[userAgentLength]))
-            userAgentLength--;
-
-        var consentRecord = new ConsentRecord
-        {
-            Id = Guid.NewGuid(),
-            UserId = userId,
-            DocumentVersionId = documentVersionId,
-            ConsentedAt = clock.GetCurrentInstant(),
-            IpAddress = ipAddress,
-            UserAgent = userAgent[..userAgentLength],
-            ContentHash = contentHash,
-            ExplicitConsent = explicitConsent
-        };
-
-        await repo.AddAsync(consentRecord, ct);
-        // Evict before the membership check below reads it back; the decorator's ReplaceAsync runs only after
-        // this returns.
-        foreach (var id in info.AllUserIds)
-            consentCache.Invalidate(id);
-        metrics.RecordConsentGiven();
-
-        logger.LogInformation(
-            "User {UserId} consented to document {DocumentName} version {Version}",
-            userId, version.LegalDocumentName, version.VersionNumber);
-
-        // Consent is committed: finish suspension cleanup even if the request ends.
-        try
-        {
-            var membershipCalc = serviceProvider.GetRequiredService<IMembershipCalculator>();
-            if (await membershipCalc.HasAllRequiredConsentsAsync(userId, CancellationToken.None))
-            {
-                await humanLifecycleService.RestoreConsentSuspensionAsync(userId, CancellationToken.None);
-            }
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Failed to complete post-consent suspension cleanup for user {UserId}", userId);
-        }
-
-        return new ConsentSubmitResult(true, DocumentName: version.LegalDocumentName);
-    }
-
-    public Task<ConsentReviewInfo> GetConsentReviewAsync(Guid userId, CancellationToken ct = default) =>
-        serviceProvider.GetRequiredService<ConsentReviewService>().GetReviewAsync(userId, ct);
-
-    public Task<IReadOnlyDictionary<Guid, ConsentReviewInfo>> GetConsentReviewsAsync(CancellationToken ct = default) =>
-        serviceProvider.GetRequiredService<ConsentReviewService>().GetReviewsAsync(ct);
 
     public async Task<int> GetConsentRecordCountAsync(Guid userId, CancellationToken ct = default)
     {
@@ -285,8 +333,7 @@ internal sealed class ConsentService(
 
     public async Task<IReadOnlyList<string>> GetPendingDocumentNamesAsync(Guid userId, CancellationToken ct = default)
     {
-        var membershipCalculator = serviceProvider.GetRequiredService<IMembershipCalculator>();
-        var missingVersionIds = await membershipCalculator.GetMissingConsentVersionsAsync(userId, ct);
+        var missingVersionIds = await GetMissingVolunteerVersionIdsAsync(userId, ct);
 
         if (missingVersionIds.Count == 0)
             return [];
@@ -302,41 +349,107 @@ internal sealed class ConsentService(
         return names.ToList();
     }
 
-    private static string ComputeContentHash(string content)
+    public async Task<bool> HasAllRequiredConsentsForTeamAsync(Guid userId, Guid teamId, CancellationToken ct = default)
     {
-        var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(content));
-        return Convert.ToHexString(bytes).ToLowerInvariant();
+        var requiredVersions = await legalDocumentSyncService.GetRequiredDocumentVersionsForTeamAsync(teamId, ct);
+        if (requiredVersions.Count == 0)
+            return true;
+
+        var consentedVersionIds = await consentCache.GetConsentedVersionIdsAsync(userId, ct);
+        return requiredVersions.All(v => consentedVersionIds.Contains(v.Id));
     }
 
-    public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
+    public async Task<IReadOnlySet<Guid>> GetUsersWithAllRequiredConsentsForTeamAsync(
+        IEnumerable<Guid> userIds, Guid teamId, CancellationToken ct = default)
     {
-        var chainIds = await GetChainFollowIdsAsync(userId, ct);
-        var consents = await repo.GetAllForUserIdsAsync(chainIds, ct);
+        var userIdList = userIds.ToList();
+        if (userIdList.Count == 0)
+            return new HashSet<Guid>();
 
-        var shaped = consents.Select(c => new
-        {
-            DocumentName = c.DocumentVersion.LegalDocument.Name,
-            DocumentVersion = c.DocumentVersion.VersionNumber,
-            c.ExplicitConsent,
-            ConsentedAt = c.ConsentedAt.ToIso8601(),
-            c.IpAddress,
-            c.UserAgent
-        }).ToList();
+        var requiredVersions = await legalDocumentSyncService.GetRequiredDocumentVersionsForTeamAsync(teamId, ct);
+        if (requiredVersions.Count == 0)
+            return userIdList.ToHashSet();
 
-        return [new UserDataSlice(Consents, shaped)];
+        var consentsByUser = await consentCache.GetConsentMapForUsersAsync(userIdList, ct);
+        var requiredIds = requiredVersions.Select(v => v.Id).ToHashSet();
+
+        return userIdList
+            .Where(id => consentsByUser.TryGetValue(id, out var consented) && requiredIds.All(consented.Contains))
+            .ToHashSet();
     }
 
-    private static readonly IReadOnlyDictionary<string, string?> Erasure =
-        new Dictionary<string, string?>(StringComparer.Ordinal)
+    /// <summary>The Volunteers documents the user hasn't signed.</summary>
+    internal async Task<IReadOnlyList<Guid>> GetMissingVolunteerVersionIdsAsync(Guid userId, CancellationToken ct)
+    {
+        var requiredVersions = await legalDocumentSyncService.GetRequiredDocumentVersionsForTeamAsync(SystemTeamIds.Volunteers, ct);
+        var consentedVersionIds = await consentCache.GetConsentedVersionIdsAsync(userId, ct);
+
+        return requiredVersions.Select(v => v.Id).Where(id => !consentedVersionIds.Contains(id)).ToList();
+    }
+
+    public async Task<ConsentProgress> GetConsentProgressAsync(Guid userId, CancellationToken ct = default)
+    {
+        var requiredVersionIds = new HashSet<Guid>();
+        foreach (var teamId in await GetRequiredTeamIdsAsync(userId, ct))
         {
-            [Consents] =
-                "Retained: the consent ledger (including the IP address and user agent captured " +
-                "at the moment of consent) is the evidence that processing had a lawful basis " +
-                "— GDPR Art. 7(1) accountability and Art. 17(3)(e) legal claims. The ledger is " +
-                "append-only and its UserId points at the tombstone the Users section leaves behind."
-        };
+            var versions = await legalDocumentSyncService.GetRequiredDocumentVersionsForTeamAsync(teamId, ct);
+            requiredVersionIds.UnionWith(versions.Select(v => v.Id));
+        }
 
-    public IReadOnlyDictionary<string, string?> ErasureDeclaration => Erasure;
+        var consentedVersionIds = await consentCache.GetConsentedVersionIdsAsync(userId, ct);
+        return new ConsentProgress(
+            requiredVersionIds.Count,
+            requiredVersionIds.Where(id => !consentedVersionIds.Contains(id)).ToList());
+    }
 
-    public Task EraseForUserAsync(Guid userId, CancellationToken ct) => Task.CompletedTask;
+    public async Task<IReadOnlyList<Guid>> GetUsersPastConsentDeadlineAsync(Duration? expiringWithin = null, CancellationToken ct = default)
+    {
+        var horizon = expiringWithin ?? Duration.Zero;
+        if (horizon < Duration.Zero) throw new ArgumentOutOfRangeException(nameof(expiringWithin));
+        var deadline = clock.GetCurrentInstant() + horizon;
+
+        var userIds = await roleAssignments.GetUserIdsWithActiveAssignmentsAsync(ct);
+        if (userIds.Count == 0)
+            return [];
+
+        var requiredVersions = await legalDocumentSyncService.GetRequiredDocumentVersionsForTeamAsync(SystemTeamIds.Volunteers, ct);
+        var dueVersionIds = requiredVersions
+            .Where(v => v.EffectiveFrom + Duration.FromDays(v.LegalDocumentGracePeriodDays) <= deadline)
+            .Select(v => v.Id)
+            .ToHashSet();
+        if (dueVersionIds.Count == 0)
+            return [];
+
+        var consentsByUser = await consentCache.GetConsentMapForUsersAsync(userIds, ct);
+        return userIds
+            .Where(id => !consentsByUser.TryGetValue(id, out var consented) || dueVersionIds.Any(v => !consented.Contains(v)))
+            .ToList();
+    }
+
+    /// <summary>
+    /// The user's teams, plus Volunteers (its documents apply to everyone) and Coordinators when they coordinate
+    /// a user-created team.
+    /// </summary>
+    internal async Task<IReadOnlyList<Guid>> GetRequiredTeamIdsAsync(Guid userId, CancellationToken ct)
+    {
+        // Memberships were re-pointed to the survivor on merge.
+        userId = (await userService.GetUserInfoAsync(userId, ct))?.Id ?? userId;
+
+        var teams = (await teamService.GetTeamsAsync(ct)).Values
+            .Where(t => t.Members.Any(m => m.UserId == userId))
+            .ToList();
+        var teamIds = teams.Select(t => t.Id).ToList();
+
+        if (!teamIds.Contains(SystemTeamIds.Volunteers))
+            teamIds.Add(SystemTeamIds.Volunteers);
+
+        if (!teamIds.Contains(SystemTeamIds.Coordinators) &&
+            teams.Any(t => t.SystemTeamType == SystemTeamType.None &&
+                t.Members.Any(m => m.UserId == userId && m.Role == TeamMemberRole.Coordinator)))
+        {
+            teamIds.Add(SystemTeamIds.Coordinators);
+        }
+
+        return teamIds;
+    }
 }

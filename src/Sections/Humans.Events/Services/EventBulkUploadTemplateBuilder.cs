@@ -1,3 +1,4 @@
+using Humans.Events.Domain;
 using System.Globalization;
 using CsvHelper;
 using Humans.Base.Csv;
@@ -85,7 +86,7 @@ internal static class EventBulkUploadTemplateBuilder
                 Title = "Example Event",
                 Description = "Describe your event here.",
                 Category = categories.FirstOrDefault()?.Name ?? "Workshop",
-                Date = (gateDate ?? clock.GetCurrentInstant().InZone(timeZone ?? DateTimeZone.Utc).Date).ToInvariantDate(),
+                Date = (gateDate ?? clock.TodayIn(timeZone)).ToInvariantDate(),
                 StartTime = "12:00",
                 DurationMinutes = "60",
                 IsRecurring = "false",

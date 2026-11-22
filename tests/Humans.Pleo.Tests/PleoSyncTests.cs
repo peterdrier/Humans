@@ -1,9 +1,19 @@
 using System.Text.Json;
+using System.Security.Claims;
+using Humans.Base.Constants;
+using Humans.Pleo.Contracts;
+using Humans.Pleo.Controllers;
+using Humans.Users.Contracts;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
 using Humans.Pleo.Data;
+using Humans.Pleo.Models;
 using Humans.Pleo.Services;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NodaTime.Testing;
@@ -21,6 +31,7 @@ public sealed class PleoSyncTests
     private readonly IAuditLogService _audit = Substitute.For<IAuditLogService>();
     private readonly Service _service;
     private List<JsonElement> _entries = [];
+    private readonly CapturingLogger<Service> _logger = new();
 
     public PleoSyncTests()
     {
@@ -34,17 +45,18 @@ public sealed class PleoSyncTests
         _client.SearchEntriesAsync(Arg.Any<CancellationToken>()).Returns(_ => _entries);
         _client.SearchAccountsAsync(Arg.Any<CancellationToken>()).Returns(
             [new PleoAccountWire("acc-1", "62900114", "Departments / La Cantina", "h1", false)]);
+        _client.SearchCategoriesAsync(Arg.Any<CancellationToken>()).Returns([]);
         _client.ListEmployeesAsync(Arg.Any<CancellationToken>()).Returns(
             [new PleoEmployeeWire("emp-1", "Zak", "Bulpitt ", "NCA003", false)]);
         _client.GetBalanceAsync(Arg.Any<CancellationToken>()).Returns(new PleoBalanceWire("EUR", 1_000_000, 990_000, 0));
 
-        _service = new Service(_repo, _client, new FakeClock(Instant.FromUtc(2026, 11, 3, 12, 0)), _audit,
-            NullLogger<Service>.Instance);
+        _service = new Service(FixedOrgTimeZone.Madrid, _repo, _client, new FakeClock(Instant.FromUtc(2026, 11, 3, 12, 0)), _audit,
+            _logger);
     }
 
     private static JsonElement Entry(
         string id, string family = "CARD_PURCHASE", string? subFamily = "IN_STORE", long minors = 1000,
-        long? bill = null, string? category = LaCantinaCategory, string status = "COMPLETED")
+        long? bill = null, string? category = LaCantinaCategory, string status = "COMPLETED", string currency = "EUR")
     {
         var json = JsonSerializer.Serialize(new
         {
@@ -56,7 +68,7 @@ public sealed class PleoSyncTests
             accountId = category,
             settledAt = "2026-07-01T10:00:00Z",
             performedAt = "2026-07-01T10:00:00Z",
-            transactionValue = new { currency = "EUR", minors },
+            transactionValue = new { currency, minors },
             totalBillValue = bill is null ? null : new { currency = "EUR", minors = bill },
             merchant = new { name = "Makro" },
             receiptIds = string.Equals(family, "PLEO_INVOICE", StringComparison.Ordinal) ? Array.Empty<string>() : ["r1"],
@@ -64,9 +76,124 @@ public sealed class PleoSyncTests
         return JsonDocument.Parse(json).RootElement.Clone();
     }
 
+    [HumansTheory]
+    [Xunit.InlineData("JPY", 1500L, "1500", 0)]
+    [Xunit.InlineData("ISK", 1500L, "1500", 0)]
+    [Xunit.InlineData("KWD", 12345L, "12.345", 3)]
+    [Xunit.InlineData("CLF", 12345L, "1.2345", 4)]
+    [Xunit.InlineData("GBP", 6580L, "65.80", 2)]
+    [Xunit.InlineData("EUR", 0L, "0", 2)]
+    [Xunit.InlineData("KWD", -12345L, "-12.345", 3)]
+    public async Task Entry_list_and_detail_preserve_original_currency_units(
+        string currency, long minors, decimal expected, int decimals)
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        _entries = [Entry("currency-entry", minors: minors, currency: currency)];
+        _client.ListReceiptsAsync("currency-entry", ct).Returns(Array.Empty<PleoReceiptWire>());
+        await SyncAsync();
+
+        var page = await _service.GetEntriesPageAsync(new PleoEntriesFilter(null, null, null, false, false), ct);
+        var row = page.Rows.Should().ContainSingle().Subject;
+        row.OriginalAmount.Should().Be(expected);
+        row.CurrencyDecimals.Should().Be(decimals);
+        row.Currency.Should().Be(currency);
+        var detail = await _service.GetEntryViewAsync("currency-entry", ct);
+        detail.Should().NotBeNull();
+        detail!.Row.Should().Be(row);
+    }
+
     private static JsonElement Parse(string json) => JsonDocument.Parse(json).RootElement.Clone();
 
     private Task<PleoSyncOutcome> SyncAsync() => _service.SyncAsync(Xunit.TestContext.Current.CancellationToken);
+
+    public enum SyncBoundary { InitialSave, Read, BeforeReplace, AfterReplace, DetachedSave, InitialSaveFailure, UnrelatedCancellation }
+
+    [HumansTheory]
+    [Xunit.InlineData(SyncBoundary.InitialSave)]
+    [Xunit.InlineData(SyncBoundary.Read)]
+    [Xunit.InlineData(SyncBoundary.BeforeReplace)]
+    [Xunit.InlineData(SyncBoundary.AfterReplace)]
+    [Xunit.InlineData(SyncBoundary.DetachedSave)]
+    [Xunit.InlineData(SyncBoundary.InitialSaveFailure)]
+    [Xunit.InlineData(SyncBoundary.UnrelatedCancellation)]
+    public async Task Sweep_cancellation_respects_the_mirror_commit_boundary(SyncBoundary boundary)
+    {
+        using var shutdown = new CancellationTokenSource();
+        var previousSync = Instant.FromUtc(2026, 10, 1, 12, 0);
+        var now = Instant.FromUtc(2026, 11, 3, 12, 0);
+        var state = new Domain.PleoSyncState { LastSyncAt = previousSync, LastCount = 12, SkippedCount = 3, LastError = "Previous category warning" };
+        var repository = Substitute.For<IPleoRepository>();
+        repository.GetSyncStateAsync(shutdown.Token).Returns(state);
+        var canceled = new OperationCanceledException("Dependency canceled");
+        var saveFailure = new IOException("Cannot start sync");
+        repository.SaveSyncStateAsync(state, Arg.Any<CancellationToken>()).Returns(async call =>
+        {
+            if (state.SyncStatus == Domain.PleoSyncStatus.Running)
+            {
+                if (boundary == SyncBoundary.InitialSaveFailure) throw saveFailure;
+                if (boundary != SyncBoundary.InitialSave) return;
+                await shutdown.CancelAsync();
+                throw canceled;
+            }
+            if (state.SyncStatus == Domain.PleoSyncStatus.Idle && state.LastSyncAt == now)
+            {
+                call.Arg<CancellationToken>().Should().Be(CancellationToken.None);
+                if (boundary == SyncBoundary.DetachedSave) throw canceled;
+            }
+        });
+        _client.SearchEntriesAsync(shutdown.Token).Returns(async Task<IReadOnlyList<JsonElement>> (_) =>
+        {
+            if (boundary == SyncBoundary.UnrelatedCancellation) throw canceled;
+            if (boundary == SyncBoundary.Read)
+            {
+                await shutdown.CancelAsync();
+                throw canceled;
+            }
+            return [];
+        });
+        repository.GetCategoriesAsync(shutdown.Token).Returns(async Task<IReadOnlyList<Domain.PleoCategory>> (_) =>
+        {
+            if (boundary == SyncBoundary.BeforeReplace) await shutdown.CancelAsync();
+            return [];
+        });
+        repository.ReplaceMirrorAsync(Arg.Any<PleoMirrorSnapshot>(), now, shutdown.Token).Returns(async _ =>
+        {
+            if (boundary is SyncBoundary.AfterReplace or SyncBoundary.DetachedSave) await shutdown.CancelAsync();
+        });
+        var sync = new Service(FixedOrgTimeZone.Madrid, repository, _client, new FakeClock(now), _audit, NullLogger<Service>.Instance);
+        var error = await Xunit.Record.ExceptionAsync(() => sync.SyncAsync(shutdown.Token));
+
+        if (boundary == SyncBoundary.AfterReplace)
+        {
+            error.Should().BeNull();
+            state.SyncStatus.Should().Be(Domain.PleoSyncStatus.Idle);
+            state.LastSyncAt.Should().Be(now);
+        }
+        else if (boundary == SyncBoundary.DetachedSave)
+        {
+            error.Should().BeOfType<InvalidOperationException>().Which.InnerException.Should().BeSameAs(canceled);
+            state.SyncStatus.Should().Be(Domain.PleoSyncStatus.Error);
+        }
+        else if (boundary is SyncBoundary.InitialSaveFailure or SyncBoundary.UnrelatedCancellation)
+        {
+            error.Should().BeSameAs(boundary == SyncBoundary.InitialSaveFailure ? saveFailure : canceled);
+            state.SyncStatus.Should().Be(Domain.PleoSyncStatus.Error);
+        }
+        else
+        {
+            if (boundary == SyncBoundary.BeforeReplace)
+                error.Should().BeOfType<OperationCanceledException>().Which.CancellationToken.Should().Be(shutdown.Token);
+            else
+                error.Should().BeSameAs(canceled);
+            state.SyncStatus.Should().Be(Domain.PleoSyncStatus.Idle);
+            state.LastError.Should().Be("Previous category warning");
+            state.LastSyncAt.Should().Be(previousSync);
+            state.LastCount.Should().Be(12);
+            state.SkippedCount.Should().Be(3);
+            await repository.DidNotReceiveWithAnyArgs().ReplaceMirrorAsync(default!, default);
+            await repository.Received(1).SaveSyncStateAsync(state, CancellationToken.None);
+        }
+    }
 
     [HumansFact]
     public async Task Sweep_deletes_rows_Pleo_no_longer_returns()
@@ -83,6 +210,131 @@ public sealed class PleoSyncTests
         mirrored.Single(e => string.Equals(e.Id, "a", StringComparison.Ordinal)).AmountEur.Should().Be(-25.00m);
     }
 
+    [HumansTheory]
+    [Xunit.InlineData("transactionValue", "minors")]
+    [Xunit.InlineData("transactionValue", "currency")]
+    [Xunit.InlineData("totalBillValue", "minors")]
+    [Xunit.InlineData("totalBillValue", "currency")]
+    public async Task Incomplete_money_fails_the_sweep_without_replacing_the_mirror(string moneyField, string missingField)
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        _entries = [Entry("existing")];
+        await SyncAsync();
+        var wire = System.Text.Json.Nodes.JsonNode.Parse(Entry("incomplete", bill: 1250).GetRawText())!;
+        wire[moneyField]!.AsObject().Remove(missingField);
+        _entries = [Entry("new"), Parse(wire.ToJsonString())];
+
+        var action = () => SyncAsync();
+        await action.Should().ThrowAsync<PleoPermanentException>().WithMessage($"*{moneyField}*");
+
+        var retained = (await _repo.GetEntriesAsync(ct)).Should().ContainSingle().Which;
+        retained.Id.Should().Be("existing");
+        retained.AmountEur.Should().Be(-10m);
+        var state = (await _repo.GetSyncStateAsync(ct))!;
+        state.SyncStatus.Should().Be(Domain.PleoSyncStatus.Error);
+        state.LastError.Should().Contain(moneyField);
+    }
+
+    [HumansFact]
+    public async Task Complete_zero_and_bill_only_amounts_keep_their_existing_meaning()
+    {
+        _entries =
+        [
+            Entry("zero", minors: 0),
+            Parse("""{"id":"bill-only","family":"CARD_PURCHASE","subFamily":"ONLINE","totalBillValue":{"currency":"EUR","minors":1250}}"""),
+        ];
+
+        (await SyncAsync()).Should().Be(PleoSyncOutcome.Synced);
+
+        var entries = await _repo.GetEntriesAsync(Xunit.TestContext.Current.CancellationToken);
+        entries.Single(e => string.Equals(e.Id, "zero", StringComparison.Ordinal)).AmountEur.Should().Be(0m);
+        entries.Single(e => string.Equals(e.Id, "bill-only", StringComparison.Ordinal)).AmountEur.Should().Be(12.5m);
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task Bounded_entry_notes_preserve_unicode_and_the_original_raw_payload(bool pairFits)
+    {
+        var prefix = new string('n', pairFits ? 1998 : 1999);
+        var note = prefix + "😀tail";
+        var wire = System.Text.Json.Nodes.JsonNode.Parse(Entry("unicode").GetRawText())!;
+        wire["note"] = note;
+        _entries = [Parse(wire.ToJsonString())];
+
+        await SyncAsync();
+
+        var entry = (await _repo.GetEntriesAsync(Xunit.TestContext.Current.CancellationToken)).Single();
+        entry.Note.Should().Be(prefix + (pairFits ? "😀" : ""));
+        var encode = () => new System.Text.UTF8Encoding(false, true).GetBytes(entry.Note!);
+        encode.Should().NotThrow();
+        Parse(entry.Raw).GetProperty("note").GetString().Should().Be(note);
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task Bounded_sync_errors_preserve_unicode_and_the_original_failure(bool pairFits)
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        _entries = [Entry("existing")];
+        await SyncAsync();
+        var prefix = new string('e', pairFits ? 1998 : 1999);
+        var failure = new IOException(prefix + "😀tail");
+        _client.SearchEntriesAsync(Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<IReadOnlyList<JsonElement>>(failure));
+
+        var action = () => SyncAsync();
+        (await action.Should().ThrowAsync<IOException>()).Which.Should().BeSameAs(failure);
+
+        var state = (await _repo.GetSyncStateAsync(ct))!;
+        state.SyncStatus.Should().Be(Domain.PleoSyncStatus.Error);
+        state.LastError.Should().Be(prefix + (pairFits ? "😀" : ""));
+        var encode = () => new System.Text.UTF8Encoding(false, true).GetBytes(state.LastError!);
+        encode.Should().NotThrow();
+        (await _repo.GetEntriesAsync(ct)).Should().ContainSingle().Which.Id.Should().Be("existing");
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task Outcome_save_failure_preserves_the_sync_failure_and_releases_the_gate(bool requestAborted)
+    {
+        using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(Xunit.TestContext.Current.CancellationToken);
+        Exception failure = requestAborted
+            ? new OperationCanceledException(cancellation.Token)
+            : new PleoTransientException("Pleo unavailable");
+        var saveFailure = new IOException("Cannot save sync diagnostic");
+        var repository = Substitute.For<IPleoRepository>();
+        repository.GetSyncStateAsync(Arg.Any<CancellationToken>()).Returns(new Domain.PleoSyncState());
+        var failCleanup = true;
+        repository.SaveSyncStateAsync(Arg.Any<Domain.PleoSyncState>(), Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            if (failCleanup && call.Arg<Domain.PleoSyncState>().SyncStatus != Domain.PleoSyncStatus.Running)
+            {
+                call.Arg<CancellationToken>().Should().Be(CancellationToken.None);
+                failCleanup = false;
+                throw saveFailure;
+            }
+            return Task.CompletedTask;
+        });
+        _client.SearchEntriesAsync(Arg.Any<CancellationToken>()).Returns(async Task<IReadOnlyList<JsonElement>> (_) =>
+        {
+            if (requestAborted) await cancellation.CancelAsync();
+            throw failure;
+        });
+        var logger = new CapturingLogger<Service>();
+        var service = new Service(FixedOrgTimeZone.Madrid, repository, _client, new FakeClock(Instant.FromUtc(2026, 11, 3, 12, 0)), _audit, logger);
+
+        var observed = await Xunit.Record.ExceptionAsync(() => service.SyncAsync(cancellation.Token));
+
+        observed.Should().BeSameAs(failure);
+        logger.Entries.Should().Contain(entry => entry.Level == LogLevel.Error && ReferenceEquals(entry.Exception, saveFailure));
+        await repository.DidNotReceiveWithAnyArgs().ReplaceMirrorAsync(default!, default);
+        _client.SearchEntriesAsync(Arg.Any<CancellationToken>()).Returns(_ => _entries);
+        (await service.SyncAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(PleoSyncOutcome.Synced);
+    }
+
     [HumansFact]
     public async Task Wallet_balance_is_the_last_sweeps_current_balance()
     {
@@ -95,8 +347,10 @@ public sealed class PleoSyncTests
             .Be(new Humans.Pleo.Contracts.PleoWalletBalance(10_000m, Instant.FromUtc(2026, 11, 3, 12, 0)));
     }
 
-    [HumansFact]
-    public async Task Empty_rows_are_skipped_and_counted()
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task Empty_rows_are_skipped_counted_and_visible_in_logs(bool hasEmptyRows)
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         _entries =
@@ -104,15 +358,24 @@ public sealed class PleoSyncTests
             Entry("a"),
             Parse("""{"id":null,"family":null,"transactionValue":null}"""),
             Parse("""{"id":"x","family":null}"""),
+            Parse("""{"id":" \t ","family":"CARD"}"""),
+            Parse("""{"id":"empty-family","family":""}"""),
+            Parse("""{"id":"blank-family","family":" \t "}"""),
             Parse("null"),
         ];
+
+        if (!hasEmptyRows) _entries = [Entry("a")];
 
         await SyncAsync();
 
         (await _repo.GetEntriesAsync(ct)).Select(e => e.Id).Should().Equal("a");
         var state = await _repo.GetSyncStateAsync(ct);
         state!.LastCount.Should().Be(1);
-        state.SkippedCount.Should().Be(3);
+        state.SkippedCount.Should().Be(hasEmptyRows ? 6 : 0);
+        var completion = _logger.Entries.Should().ContainSingle(entry =>
+            entry.Message.StartsWith("Pleo sweep mirrored", StringComparison.Ordinal)).Subject;
+        completion.Level.Should().Be(hasEmptyRows ? LogLevel.Warning : LogLevel.Information);
+        completion.Exception.Should().BeNull();
     }
 
     [HumansFact]
@@ -138,6 +401,86 @@ public sealed class PleoSyncTests
     }
 
     [HumansFact]
+    public async Task Sweep_links_and_adds_categories_from_Pleos_mapping_but_leaves_a_hand_link()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var powerRow = Guid.Parse("ec1e51be-d96b-453f-8318-c79371282045");
+        _client.SearchAccountsAsync(Arg.Any<CancellationToken>()).Returns(
+        [
+            new PleoAccountWire("acc-1", "62900114", "Departments / La Cantina", "h1", false),
+            new PleoAccountWire("acc-2", "62900199", "Departments / Other", "h2", false),
+        ]);
+        (await _service.LinkCategoryAsync("hand-id", powerRow, Guid.NewGuid(), ct)).Should().BeNull();
+        _client.SearchCategoriesAsync(Arg.Any<CancellationToken>()).Returns(
+        [
+            new PleoCategoryWire(LaCantinaCategory, "Dept - La Cantina", "acc-1", false),
+            new PleoCategoryWire("new-id", "Dept - Brand New", "acc-2", false),
+            new PleoCategoryWire("hand-id", "Dept - Power", "acc-2", false),
+            new PleoCategoryWire("no-account", "Dept - LNT", null, false),
+        ]);
+        _entries = [Entry("a")];
+
+        await SyncAsync();
+        await SyncAsync(); // a second sweep changes nothing
+
+        var categories = await _repo.GetCategoriesAsync(ct);
+        categories.Should().HaveCount(14);
+        categories.Single(c => c.Id == LaCantinaRow).PleoCategoryId.Should().Be(LaCantinaCategory);
+        categories.Single(c => string.Equals(c.PleoCategoryId, "new-id", StringComparison.Ordinal))
+            .Should().BeEquivalentTo(new { Name = "Dept - Brand New", HoldedCode = "62900199", SetByUserId = (Guid?)null });
+        categories.Single(c => c.Id == powerRow).HoldedCode.Should().Be("62900117");
+        categories.Single(c => string.Equals(c.Name, "Dept - LNT", StringComparison.Ordinal)).PleoCategoryId.Should().BeNull();
+        await _audit.Received(1).LogAsync(PleoAuditActions.PleoCategoryLinked, "PleoCategory", LaCantinaRow,
+            Arg.Any<string>(), "PleoSyncJob");
+        await _audit.Received(1).LogAsync(PleoAuditActions.PleoCategoryAdded, "PleoCategory", Arg.Any<Guid>(),
+            Arg.Any<string>(), "PleoSyncJob");
+    }
+
+    [HumansFact]
+    public async Task A_sweep_linked_category_follows_a_changed_account_in_Pleo()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        _client.SearchAccountsAsync(Arg.Any<CancellationToken>()).Returns(
+        [
+            new PleoAccountWire("acc-1", "62900114", "Departments / La Cantina", "h1", false),
+            new PleoAccountWire("acc-2", "62900199", "Departments / Other", "h2", false),
+        ]);
+        _client.SearchCategoriesAsync(Arg.Any<CancellationToken>()).Returns(
+            [new PleoCategoryWire(LaCantinaCategory, "Dept - La Cantina", "acc-1", false)]);
+        await SyncAsync();
+
+        _client.SearchCategoriesAsync(Arg.Any<CancellationToken>()).Returns(
+            [new PleoCategoryWire(LaCantinaCategory, "Dept - La Cantina", "acc-2", false)]);
+        await SyncAsync();
+
+        (await _repo.GetCategoriesAsync(ct)).Single(c => c.Id == LaCantinaRow).HoldedCode.Should().Be("62900199");
+        await _audit.Received(1).LogAsync(PleoAuditActions.PleoCategoryRemapped, "PleoCategory", LaCantinaRow,
+            Arg.Any<string>(), "PleoSyncJob");
+    }
+
+    [HumansFact]
+    public async Task A_hand_unlink_survives_a_sweep_that_reads_Pleos_mapping()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        _client.SearchAccountsAsync(Arg.Any<CancellationToken>()).Returns(
+            [new PleoAccountWire("acc-1", "62900114", "Departments / La Cantina", "h1", false)]);
+        _client.SearchCategoriesAsync(Arg.Any<CancellationToken>()).Returns(
+            [new PleoCategoryWire(LaCantinaCategory, "Dept - La Cantina", "acc-1", false)]);
+        await SyncAsync();
+        var actor = Guid.NewGuid();
+        (await _service.UnlinkCategoryAsync(LaCantinaRow, actor, ct)).Should().BeNull();
+
+        await SyncAsync();
+
+        var categories = await _repo.GetCategoriesAsync(ct);
+        categories.Should().HaveCount(13);
+        categories.Single(c => c.Id == LaCantinaRow).Should().BeEquivalentTo(
+            new { PleoCategoryId = (string?)null, SetByUserId = (Guid?)actor });
+        await _audit.Received(1).LogAsync(PleoAuditActions.PleoCategoryLinked, "PleoCategory", LaCantinaRow,
+            Arg.Any<string>(), "PleoSyncJob");
+    }
+
+    [HumansFact]
     public async Task A_failed_fetch_leaves_the_mirror_and_records_the_error()
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
@@ -153,6 +496,65 @@ public sealed class PleoSyncTests
         var state = await _repo.GetSyncStateAsync(ct);
         state!.SyncStatus.Should().Be(Domain.PleoSyncStatus.Error);
         state.LastError.Should().Contain("403");
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task A_failed_category_fetch_still_mirrors_entries_and_reports_the_error(bool unexpected)
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var before = await _repo.GetCategoriesAsync(ct);
+        Exception failure = unexpected
+            ? new InvalidOperationException("Unexpected category failure")
+            : new PleoPermanentException("Pleo bookkeeping-categories:search: 403 Forbidden", 403);
+        _client.SearchCategoriesAsync(Arg.Any<CancellationToken>()).Returns<IReadOnlyList<PleoCategoryWire>>(
+            _ => throw failure);
+        _entries = [Entry("a")];
+
+        (await SyncAsync()).Should().Be(PleoSyncOutcome.SyncedWithoutCategories);
+
+        (await _repo.GetEntriesAsync(ct)).Should().ContainSingle();
+        (await _repo.GetCategoriesAsync(ct)).Should().BeEquivalentTo(before);
+        var state = await _repo.GetSyncStateAsync(ct);
+        state!.SyncStatus.Should().Be(Domain.PleoSyncStatus.Idle);
+        state.LastError.Should().Contain(failure.Message);
+        var entry = _logger.Entries.Should().ContainSingle(log =>
+            log.Message.StartsWith("Pleo category fetch failed", StringComparison.Ordinal)).Subject;
+        entry.Level.Should().Be(unexpected ? LogLevel.Error : LogLevel.Warning);
+        entry.Exception.Should().BeSameAs(unexpected ? failure : null);
+        if (!unexpected) entry.Message.Should().Contain(failure.Message);
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(false, false)]
+    [Xunit.InlineData(false, true)]
+    [Xunit.InlineData(true, false)]
+    [Xunit.InlineData(true, true)]
+    public async Task Receipt_failures_keep_the_fallback_and_warn_without_stacks(bool download, bool transient)
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        _entries = [Entry("a")];
+        await SyncAsync();
+        _logger.Entries.Clear();
+        PleoApiException failure = transient
+            ? new PleoTransientException("Pleo receipt unavailable")
+            : new PleoPermanentException("Pleo receipt forbidden", 403);
+        _client.ListReceiptsAsync("a", ct).Returns<IReadOnlyList<PleoReceiptWire>>(_ => throw failure);
+        _client.GetReceiptFileAsync("a", "r1", ct).Returns<PleoReceiptFile>(_ => throw failure);
+
+        if (download)
+            (await _service.GetReceiptFileAsync("a", "r1", ct)).Should().BeNull();
+        else
+        {
+            var detail = await _service.GetEntryViewAsync("a", ct);
+            detail!.Receipts.Should().BeEmpty();
+            detail.ReceiptError.Should().Contain(failure.Message);
+        }
+        var entry = _logger.Entries.Should().ContainSingle().Subject;
+        entry.Level.Should().Be(LogLevel.Warning);
+        entry.Exception.Should().BeNull();
+        entry.Message.Should().Contain("a").And.Contain(failure.Message);
     }
 
     [HumansFact]
@@ -185,6 +587,10 @@ public sealed class PleoSyncTests
         summary.Unmapped.Spend.Should().Be(1_072.00m);
         // Every test card entry carries a receipt; the Pleo invoice here does not.
         summary.MissingReceipt.Count.Should().Be(1);
+        (await _service.GetEntriesPageAsync(new PleoEntriesFilter(null, null, null, false, Unmapped: true), ct))
+            .Rows.Count.Should().Be(summary.Unmapped.Count);
+        (await _service.GetEntriesPageAsync(new PleoEntriesFilter(null, null, null, NoReceipt: true, false), ct))
+            .Rows.Count.Should().Be(summary.MissingReceipt.Count);
         summary.ByAccount.Should().BeEmpty();
         summary.UnlinkedCategoryCount.Should().Be(1);
 
@@ -196,6 +602,31 @@ public sealed class PleoSyncTests
     }
 
     [HumansFact]
+    public async Task Linking_missing_category_id_returns_refusal_without_changing_the_mapping()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var http = new DefaultHttpContext
+        {
+            User = new ClaimsPrincipal(new ClaimsIdentity(
+                [new Claim(ClaimTypes.NameIdentifier, Guid.NewGuid().ToString())], "test"))
+        };
+        var controller = new PleoController(
+            Substitute.For<IUserService>(), _service, NullLogger<PleoController>.Instance)
+        {
+            ControllerContext = new ControllerContext { HttpContext = http },
+            TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>())
+        };
+
+        var result = await controller.Link(null!, LaCantinaRow, ct);
+
+        result.Should().BeOfType<RedirectToActionResult>().Which.ActionName.Should().Be(nameof(PleoController.Categories));
+        controller.TempData[TempDataKeys.ErrorMessage].Should().Be("That is not a Pleo category id.");
+        controller.TempData.ContainsKey(TempDataKeys.SuccessMessage).Should().BeFalse();
+        (await _repo.GetCategoriesAsync(ct)).Single(c => c.Id == LaCantinaRow).PleoCategoryId.Should().BeNull();
+        _audit.ReceivedCalls().Should().BeEmpty();
+    }
+
+    [HumansFact]
     public async Task Linking_refuses_an_id_already_linked_elsewhere()
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
@@ -204,6 +635,43 @@ public sealed class PleoSyncTests
 
         (await _service.LinkCategoryAsync(LaCantinaCategory, power, Guid.NewGuid(), ct))
             .Should().Contain("already linked");
+    }
+
+    [HumansFact]
+    public async Task Unlink_and_add_are_audited_and_add_refuses_a_duplicate_name()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        await SyncAsync();
+        var actor = Guid.NewGuid();
+        await _service.LinkCategoryAsync(LaCantinaCategory, LaCantinaRow, actor, ct);
+
+        (await _service.UnlinkCategoryAsync(LaCantinaRow, actor, ct)).Should().BeNull();
+        (await _service.AddCategoryAsync("Dept - Kitchen", "62900114", actor, ct)).Should().BeNull();
+        (await _service.AddCategoryAsync("dept - kitchen", "62900114", actor, ct)).Should().Contain("already a category");
+
+        await _audit.Received(1).LogAsync(PleoAuditActions.PleoCategoryUnlinked, "PleoCategory", LaCantinaRow,
+            Arg.Any<string>(), actor);
+        await _audit.Received(1).LogAsync(PleoAuditActions.PleoCategoryAdded, "PleoCategory", Arg.Any<Guid>(),
+            Arg.Any<string>(), actor);
+    }
+
+    [HumansFact]
+    public async Task A_second_sweep_while_one_runs_is_skipped()
+    {
+        using var started = new SemaphoreSlim(0);
+        using var release = new SemaphoreSlim(0);
+        _client.SearchEntriesAsync(Arg.Any<CancellationToken>()).Returns(async _ =>
+        {
+            started.Release();
+            await release.WaitAsync();
+            return (IReadOnlyList<JsonElement>)[];
+        });
+
+        var first = SyncAsync();
+        await started.WaitAsync(Xunit.TestContext.Current.CancellationToken);
+        (await SyncAsync()).Should().Be(PleoSyncOutcome.Busy);
+        release.Release();
+        (await first).Should().Be(PleoSyncOutcome.Synced);
     }
 
     [HumansFact]

@@ -24,14 +24,14 @@ Orchestrates Humans ↔ MailerLite synchronisation. Inbound import + outbound au
 
 MailerLite (the vendor) stays the system of record for subscriber state; Humans reads it via the API, and classifier writes route through other sections' services (`UserEmailService`, `AccountProvisioningService`, `CommunicationPreferenceService`).
 
-The section owns one table, `mailerlite_sync_states` (`MailerLiteDbContext`, nobodies-collective/Humans#1082): **current** sync state, one row per key, overwritten on every run — never history.
+The section owns `mailerlite_sync_states` (`MailerLiteDbContext`, nobodies-collective/Humans#1082): **current** sync state, one row per key, overwritten on every run — never history.
 
 | Column | Meaning |
 |--------|---------|
 | `Id` | Row identity; the `entityId` the run's audit entry points at, stable across runs. |
 | `Key` | The `IMailerLiteAudience.Key`, or `import-reconciliation` for the import run. |
 | `LastSyncAt`, `Summary` | When it last ran and the prose the dashboard renders. |
-| `GroupId`, `GroupName`, and the seven counts | The audience push's outcome. Left at their defaults on the reconciliation row, which carries its numbers in `Summary`. |
+| `GroupId`, `GroupName`, and the count fields | The audience push's outcome. Left at their defaults on the reconciliation row, which carries its numbers in `Summary`. |
 
 ## Routing
 
@@ -40,8 +40,9 @@ The section owns one table, `mailerlite_sync_states` (`MailerLiteDbContext`, nob
 - `/MailerLite/Admin/Import/Commit` — apply (POST)
 - `/MailerLite/Admin/Audiences/{key}/Sync` — on-demand audience push (POST)
 - `/MailerLite/Admin/SyncAll` — "Push All": push every audience in one action (POST)
+- Single-audience and Push All summaries share the result’s counter formatting; batch summaries sum completed results and separately report audiences that failed.
 - `/MailerLite/Admin/Refresh` — manual MailerLite cache refresh (POST)
-- `/MailerLite/Admin/Audiences/{key}/Debug` — per-audience debug (GET) — five paged/sortable sections (expected, currently-in-ML, to-add, to-remove, non-primary diagnostic); Apply button posts to the existing `/Sync` action
+- `/MailerLite/Admin/Audiences/{key}/Debug` — per-audience debug (GET) — paged/sortable sections (expected, currently-in-ML, to-add, to-remove, non-primary diagnostic); Apply button posts to the existing `/Sync` action
 
 All routes are `AdminOnly`.
 
@@ -54,7 +55,11 @@ All routes are `AdminOnly`.
 
 ## Invariants
 
-- Expected audience-preview HTTP failures and timeouts remain visible at Warning without exception stacks. Unexpected subscriber assignment/removal exceptions log at Error with exception details; the sync still counts the failed operation and continues.
+- Subscriber subscription, unsubscription and opt-in timestamps reject supplied non-string values before cache replacement. Missing, null and empty-string timestamps remain absent; malformed date strings still fail the read. A failed refresh preserves the previous snapshot and fetch timestamp.
+
+- Account status totals compare subscriber statuses case-insensitively, matching import classification. Unknown statuses remain in the subscriber snapshot, are excluded from named counters, and log Warning with their value. Refresh and deletion use the same summary calculation.
+
+- Expected audience-preview HTTP failures and timeouts remain visible at Warning without exception stacks. Dashboard summary/group/drift timeouts render the existing unavailable-state error while preserving local counts; requested cancellation propagates. Dashboard audience-statistics HTTP warnings retain status and reason without an exception stack. Unexpected subscriber assignment/removal exceptions log at Error with exception details; the sync still counts the failed operation and continues.
 
 - Import commits reject binding errors with HTTP 400 and a Warning before rebuilding or applying a plan, so a malformed numeric limit cannot become an unlimited import. A valid blank limit still applies the whole plan; positive limits retain their existing per-outcome throttle.
 
@@ -64,12 +69,12 @@ All routes are `AdminOnly`.
 
 - Audience debug tables normalize the requested page and allowed page size once before slicing. Rows and pager state use the same available page, including the last page for oversized requests and page one for empty tables.
 
-- `IMailerLiteService` exposes reads + five narrow outbound writes: `CreateGroupAsync`, `AssignSubscriberToGroupAsync`, `UnassignSubscriberFromGroupAsync`, `BulkImportSubscribersToGroupAsync`, and `DeleteSubscriberAsync` (GDPR Article 17 erasure, nobodies-collective/Humans#853). The set of allowed write methods is pinned by `MailerLiteArchitectureTests.IMailerLiteService_OnlyAllowsAudienceWrites`.
-- The four audience-management writes target an ML group whose `Name` starts with `"Humans - "`; `MailerLiteClient` runtime-rejects those against non-`"Humans - "` groups with `InvalidOperationException` (pinned by `MailerLiteClientWriteGuardTests`). `DeleteSubscriberAsync` takes no group — erasure targets a subscriber, not a group, so the group guard does not apply.
+- `IMailerLiteService` exposes reads + narrow outbound writes: `CreateGroupAsync`, `AssignSubscriberToGroupAsync`, `UnassignSubscriberFromGroupAsync`, `BulkImportSubscribersToGroupAsync`, and `DeleteSubscriberAsync` (GDPR Article 17 erasure, nobodies-collective/Humans#853). The set of allowed write methods is pinned by `MailerLiteArchitectureTests.IMailerLiteService_OnlyAllowsAudienceWrites`.
+- Audience-management writes target an ML group whose `Name` starts with `"Humans - "`; `MailerLiteClient` runtime-rejects those against non-`"Humans - "` groups with `InvalidOperationException` (pinned by `MailerLiteClientWriteGuardTests`). `DeleteSubscriberAsync` takes no group — erasure targets a subscriber, not a group, so the group guard does not apply.
 - All `IMailerLiteAudience` implementations target group names starting with `"Humans - "`. Pinned by `MailerLiteArchitectureTests.AllAudiences_UseHumansPrefix`. Audience keys and group names are unique across registrations (pinned by `AllAudiences_HaveUniqueGroupNamesAndKeys`).
-- Every audience excludes humans who have **explicitly opted out** of Marketing (a Marketing `CommunicationPreferenceSnapshot` with `OptedOut` true, read once per sync through Email's `ICommunicationPreferenceService.GetPreferencesForCategoryAsync`) — applied centrally in `MailerLiteAudienceBase.ComputeMemberUserIdsAsync` after the subclass computes its raw set, because MailerLite rejects opted-out addresses regardless of audience. Humans with no Marketing preference (null) or who opted in (false) are kept. For the two Marketing audiences this is subsumed by their stricter opted-in filter. Pinned by `MailerLiteAudienceBaseTests`.
+- Every audience excludes humans who have **explicitly opted out** of Marketing (a Marketing `CommunicationPreferenceSnapshot` with `OptedOut` true, read once per sync through Email's `ICommunicationPreferenceService.GetPreferencesForCategoryAsync`) — applied centrally in `MailerLiteAudienceBase.ComputeMemberUserIdsAsync` after the subclass computes its raw set, because MailerLite rejects opted-out addresses regardless of audience. Humans with no Marketing preference (null) or who opted in (false) are kept. For Marketing audiences this is subsumed by their stricter opted-in filter. Pinned by `MailerLiteAudienceBaseTests`.
 - `MailerLiteImportService` and `MailerLiteAudienceSyncService` reach `mailerlite_sync_states` only through `IMailerLiteRepository`; nothing outside `Data/` holds a `MailerLiteDbContext`.
-- Neither service reads `audit_log`. Sync state is read from the section's own table; audit descriptions are prose, never serialized JSON.
+- Neither service reads `audit_log_entries`. Sync state is read from the section's own table; audit descriptions are prose, never serialized JSON.
 - No `IMailerLiteAudience` may claim the reserved `import-reconciliation` key (pinned by `MailerLiteArchitectureTests.AllAudiences_HaveUniqueGroupNamesAndKeys`).
 - `mailerlite_sync_states` holds exactly one row per key. The repository's check-and-insert runs under a striped `TrackedLock` keyed on the sync key (the daily job and an admin's "Sync Audience" click can land together); there is no DB unique index. `ComputeAllStatsAsync` groups by key and takes the most recent rather than assuming uniqueness, so a duplicate shows the newest row instead of 500ing the dashboard (pinned by `ComputeAllStatsAsync_DuplicateKeyRows_ShowsTheNewest`).
 - Import matching prefers a single verified owner. Multiple verified owners or multiple unverified matching email rows (including aliases on one owner) are skipped without deleting emails, provisioning a contact, or changing marketing preferences. Only a single unverified match is eligible for replacement. Apply delegates deletion and provisioning to Users' atomic replacement operation; failed provisioning leaves the original address intact and counts an error.
@@ -78,18 +83,22 @@ All routes are `AdminOnly`.
 - `ApplyAsync` is idempotent: a second run against unchanged ML+Humans state writes zero per-row entries and exactly one `MailerLiteReconciliationCompleted` summary entry.
 - The drift report counts distinct verified humans opted out in Humans who have at least one active Website subscriber address; multiple active addresses for one human count once.
 - One human, one Marketing decision: when several of a human's verified addresses sit in the `Website` group, the import resolves them to one governing subscriber before classifying or applying — any opt-out status (`unsubscribed`, `bounced`, `junk`) beats `active`, bounce/junk beat `unsubscribed`, then the most recent ML action, then email. An active address never overrides an opt-out, and the result does not depend on enumeration order. The preview lists each address under its human's resolved outcome; apply writes once per human, resolving across the human's addresses in the whole plan (throttled ones included). Pinned by `MailerLiteImportServiceSameHumanTests`.
-- The scheduled audience sync attempts every audience, then fails the job if any registered audience has no result or any result contains subscriber-operation errors. Hangfire can retry the incomplete run; the admin Push All action keeps its partial-result banner and counts.
+- New-contact and unverified-replacement decisions also apply once per equivalent address (trim/case and `gmail.com`/`googlemail.com`, matching Users). Their governing subscriber uses the same whole-plan opt-out precedence, including throttled aliases; unconfirmed decisions remain excluded. This prevents a duplicate replacement or an active alias overriding an opt-out. Preview rows/counts and per-outcome throttle accounting remain per subscriber. Import apply isolates each decision failure, including dependency cancellation while its caller token is live: it counts the error, attempts later decisions and persists the sync summary and completion audit. Requested caller cancellation still propagates.
+- The scheduled audience sync attempts every audience unless requested cancellation stops the run, then fails the job if any registered audience has no result or any result contains subscriber-operation errors. Hangfire can retry the incomplete run; the admin Push All action keeps its partial-result banner and counts.
+- Audience membership, address and MailerLite snapshot reads retain caller cancellation. After preflight, one audience's remote writes, sync-state summary and completion audit finish independently of shutdown; cancellation stops the next audience. Requested preflight cancellation propagates. Cancellation from detached group creation or summary persistence remains a genuine failure when shutdown is also active; with a live token, dependency timeouts retain the existing admin feedback. Interrupted all-audience sweeps retain earlier audience exceptions and subscriber-operation error counts instead of reporting shutdown alone. Completed audience summaries and audits remain intact. Preview and statistics reads stay cancellable.
+- GDPR erasure keeps the exact raw-account lookup cancellable and checks cancellation before each address. A started subscriber delete finishes independently of shutdown; cancellation stops the next address. Address selection, Gmail aliases, tombstone isolation and idempotent 404 handling are unchanged.
 - Audience sync queues one import per address under the existing trim/case normalization and one group assignment per subscriber ID, even when several candidate IDs resolve to the same destination. Successful-operation and failure counts reflect those unique writes; candidate, suppression and already-assigned accounting retain their per-candidate meaning.
 - `SyncAsync` is idempotent: a second run against unchanged audience+ML state writes zero ML mutations and exactly one `MailerLiteAudienceSyncCompleted` summary entry whose counts are all zero.
 - Bounced/junk subscribers always set `OptedOut = true` regardless of any Humans-side timestamp. Delivery facts override preferences.
 - For non-bounce subscribers, Humans state wins only when the prior write's `UpdateSource ∈ {Profile, Guest, MagicLink, OneClick}` AND `UpdatedAt > mlActionAt`.
 - `CommunicationPreference.SubscribedAt` is stamped on first known opt-in and never overwritten while non-null.
 - Audience sync excludes ML subscribers with `status ∈ {unsubscribed, bounced, junk}` from group assignment — delivery/consent state overrides audience membership.
+- Audience candidates without a notification-target email are omitted before the diff. Their count and audience key are logged at Warning so the production log viewer shows the omission; no address or member identity is logged.
 - `MailerLiteClient` retries a `429` response up to twice more (3 attempts total), honouring the response's `Retry-After` header (clamped to 0–90s; defaults to 60s when the header is absent or unparsable) before giving up (nobodies-collective/Humans#1103).
 - Successful subscriber erasure (including a remote 404) removes the address from the cached subscriber list and recomputes account status totals from the remaining snapshot. A failed remote deletion retains both.
 - Group reads require nonblank IDs and names. Group creation also requires the returned name to match the requested name exactly before appending to the cached snapshot; incomplete or mismatched response data fails without poisoning the existing group list or selecting another audience for writes.
-- Subscriber status must be a nonblank string. An incomplete status fails decoding rather than becoming eligible for audience assignment or an import opt-out decision.
-- Cache refresh replaces the subscriber/group snapshot only after both page walks succeed. Missing page data or metadata, null subscriber/group items, repeated subscriber cursors, and inconsistent group page numbers throw and retain the last successful snapshot. Group reads follow pagination metadata even across empty intermediate pages.
+- Subscriber IDs, emails and statuses must be nonblank strings. Omitted group lists remain valid; a supplied group list must be an array of nonblank string IDs or objects with nonblank string IDs. Malformed identity or membership metadata fails decoding rather than publishing an incomplete snapshot.
+- Cache refresh replaces the subscriber/group snapshot only after both page walks succeed. Missing page data or metadata, null subscriber/group items, repeated subscriber cursors, and inconsistent group page numbers throw and retain the last successful snapshot. Group reads follow pagination metadata even across empty intermediate pages. Subscriber metadata must explicitly include `next_cursor`, including a terminal null; an omitted cursor cannot complete a refresh. Subscriber/group page decoding reports `HttpRequestException` with the original parse failure retained, so admin API-error handling applies without replacing the last successful snapshot.
 
 ## Negative Access Rules
 
@@ -110,7 +119,7 @@ All routes are `AdminOnly`.
 ## Cross-Section Dependencies
 
 The section references the contracts leaves `Humans.Users.Contracts`, `Humans.Email.Contracts`,
-`Humans.Tickets.Contracts` and `Humans.Shifts.Contracts`, plus `Humans.Base` (which carries the
+`Humans.Tickets.Contracts` and the `Humans.Shifts` section (its public `Contracts/` types), plus `Humans.Base` (which carries the
 audit append path and the GDPR contributor seam). The
 communication-preference interfaces live in `Humans.Email.Contracts` (Users decomposition commit 14).
 
@@ -150,4 +159,4 @@ communication-preference interfaces live in `Humans.Email.Contracts` (Users deco
 - **No resource set** — the admin pages are English operator copy with no `Localizer[…]` call; admin-only pages are exempt from localization ([`localization-admin-exempt`](../../../../memory/code/localization-admin-exempt.md)).
 - **Decorator decision** — no caching decorator. Rationale: admin-only, sequential, runs by hand; one DB count per dashboard load is fine at our scale. `MailerLiteClient` is a Singleton holding its own subscriber/group snapshot, refreshed only on demand.
 - **Cross-section calls** — `IUserEmailService`, `IAccountProvisioningService`, `ICommunicationPreferenceService` + `ICommunicationPreferenceWrite` (Email), `IUserService`, `ITicketService`, `IShiftView`, `IAuditLogService`.
-- **Architecture test** — `tests/Humans.MailerLite.Tests/Architecture/MailerLiteArchitectureTests.cs` pins: namespace, allowed-write surface on `IMailerLiteService`, audience group-name prefix + uniqueness, and (`EveryController_IsAdminOnly`) the admin-only policy — the pin CI runs. `MailerLiteClientWriteGuardTests` pins the runtime "Humans - " prefix guard; `MailerLitePageRenderTests` (in `Humans.Integration.Tests`, which CI does not run) checks that the section's own `_ViewImports` binds and that `/MailerLite/Admin/*` stays admin-only.
+- **Architecture test** — `tests/Humans.MailerLite.Tests/Architecture/MailerLiteArchitectureTests.cs` pins: namespace, allowed-write surface on `IMailerLiteService`, audience group-name prefix + uniqueness, and (`EveryController_IsAdminOnly`) the admin-only policy — the pin CI runs. `MailerLiteClientWriteGuardTests` pins the runtime "Humans - " prefix guard; `MailerLitePageRenderTests` (in `Humans.Integration.Tests`, a PR check) checks that the section's own `_ViewImports` binds and that `/MailerLite/Admin/*` stays admin-only.

@@ -22,6 +22,8 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Humans.AuditLog.Contracts;
 
+[assembly: Humans.Base.Demo.NoDemoStory("No demo story written yet.")]
+
 namespace Humans.Agent;
 
 /// <summary>
@@ -53,7 +55,6 @@ public sealed class Section :
         services.AddScoped<IAgentRepository, AgentRepository>();
         services.AddScoped<AgentSettingsService>();
         services.AddScoped<IAgentSettingsService>(sp => sp.GetRequiredService<AgentSettingsService>());
-        services.AddScoped<IAgentAvailability>(sp => sp.GetRequiredService<AgentSettingsService>());
         services.AddScoped<IAgentUserSnapshotProvider, AgentUserSnapshotProvider>();
         services.AddScoped<IAgentAdminStatusService, AgentAdminStatusService>();
 
@@ -76,7 +77,6 @@ public sealed class Section :
         services.AddScoped<IAgentToolDispatcher, AgentToolDispatcher>();
         services.AddScoped<AgentService>();
         services.AddScoped<IAgentService>(sp => sp.GetRequiredService<AgentService>());
-        services.AddScoped<IAgentConversationRetention>(sp => sp.GetRequiredService<AgentService>());
         services.AddScoped<IAgentTranscriptRead>(sp => sp.GetRequiredService<AgentService>());
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<AgentService>());
 

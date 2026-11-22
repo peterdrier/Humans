@@ -33,8 +33,9 @@
     <ProjectReference Include="..\Humans.Settings\Humans.Settings.csproj" />
     <ProjectReference Include="..\Humans.Users.Contracts\Humans.Users.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Governance.Contracts\Humans.Governance.Contracts.csproj" />
+    <!-- IGrantService: the active grants a ticket price rule maps to. Acyclic: Grants names no Tickets type. -->
+    <ProjectReference Include="..\Humans.Grants\Humans.Grants.csproj" />
     <ProjectReference Include="..\Humans.AuditLog\Humans.AuditLog.csproj" />
-    <!-- TicketTransferAdmin/Detail.cshtml renders <vc:audit-log>, the AuditLog section's component. -->
     <!--
       Outbound section references, all acyclic — none of these names a Tickets type.
         Budget    — TicketQueryService reads IBudgetService for the dashboard's break-even figure;
@@ -42,14 +43,15 @@
         Campaigns — TicketSyncService marks grants redeemed; TicketQueryService builds
                     the code-tracking dashboard; CampaignService now asks *this* section
                     for codes through Humans.Tickets.Contracts.ITicketDiscountCodes.
-        Email     — the transfer wizard's three notification templates (primitives only).
+        Email     — ticket delivery, receipt and resale emails (primitives only).
     -->
     <ProjectReference Include="..\Humans.Budget\Humans.Budget.csproj" />
     <ProjectReference Include="..\Humans.Campaigns\Humans.Campaigns.csproj" />
     <ProjectReference Include="..\Humans.Email.Contracts\Humans.Email.Contracts.csproj" />
-    <!-- IConsentWrite: the gate-terminal seeder clears the account's consent check. -->
-    <ProjectReference Include="..\Humans.Consent\Humans.Consent.csproj" />
+    <!-- INotificationMeterContributor: the ticket-sync error meter. Acyclic: Notifications.Contracts references only Base and Email.Contracts. -->
+    <ProjectReference Include="..\Humans.Notifications.Contracts\Humans.Notifications.Contracts.csproj" />
     <ProjectReference Include="..\Humans.EarlyEntry\Humans.EarlyEntry.csproj" />
+    <ProjectReference Include="..\Humans.Gate\Humans.Gate.csproj" />
     <!--
       Stripe fee enrichment on TicketOrder, through Humans.Stripe.Contracts. Direct
       section reference, acyclic — Humans.Stripe references no section.
@@ -63,6 +65,7 @@
     <PackageReference Include="NodaTime" />
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL.NodaTime" />
+    <PackageReference Include="QRCoder" />
   </ItemGroup>
 
   <ItemGroup>

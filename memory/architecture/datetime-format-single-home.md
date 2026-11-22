@@ -1,17 +1,21 @@
 ---
-name: Date/time format strings live in one home (HUM0030)
-description: HARD RULE. Custom date/time format strings live only in `DateFormattingExtensions` — call a named formatter, never inline a literal. Enforced by HUM0030.
+name: Date/time formatting lives in DateFormattingExtensions
+description: HARD RULE. Rendering, exporting or parsing a date/time: call a named method on `DateFormattingExtensions`; an inline format string is a build error.
 ---
 
-Custom (multi-character) date/time format strings may live **only** in the single sanctioned home, `Humans.Base.Extensions.DateFormattingExtensions`. Anywhere else in a production assembly a hand-rolled format string is a build **error** (HUM0030).
+Custom date/time format strings live only in `Humans.Base.Extensions.DateFormattingExtensions`. Anywhere else in production code a hand-rolled format string is a build error (the date-format analyzer, HUM0030).
 
-**Why:** Format strings scattered across layers produce inconsistent display output and ad-hoc one-offs (the same concept rendered four different ways). One home keeps user-facing rendering consistent and localised (display methods use `CurrentUICulture`, so month/weekday names follow the request UI language while `CurrentCulture` remains fixed for form parsing) and machine/interchange formats stable (`InvariantCulture`). The home owns **both directions** — display formatters (`ToDisplay*`, culture-ordered), machine formatters (`ToInvariant*`, `ToIso8601`, `ToSepaDateTime`, `ToFileTimestamp`), and parse/format **pattern fields** (`TimeOfDayPattern`, `PlacementDateTimePattern`, iCal patterns, `OpsNoticeDatePattern`).
+**Which method:**
 
-**How to apply:**
+- **Display** (day/month order and names follow `CurrentUICulture`): `ToTime`, `ToMonthDayTime`, `ToWeekdayDayMonth`, `ToDate`, `ToDateTime`; niche shapes `ToMonthYear`, `ToMonthName`, `ToMonthAbbrev`, `ToTimeWithSeconds`. There is deliberately no bare month-day: a date worth showing gets a year or a weekday. For an `Instant` in a request or view, the ambient overloads in `DateTimeDisplayExtensions` resolve the user's zone from session; pass an explicit `DateTimeZone` for an event's zone.
+- **Machine** (exports, APIs, filenames, audit, JSON; `InvariantCulture`): `ToInvariantDate`, `ToInvariantTimestamp`, `ToInvariantTime`, `ToIso8601`, `ToSepaDateTime`, `ToFileTimestamp`, `ToInvariantLongDate`.
+- **Parse/format patterns** are named `static readonly *Pattern` fields on the same class (`TimeOfDayPattern`, `PlacementDateTimePattern`, the iCal patterns, `OpsNoticeDatePattern`).
+- **No method fits?** Add one to `DateFormattingExtensions`; never inline the literal.
 
-- Need a date rendered? Call a named method on the home (`value.ToDate()`, `.ToWeekdayDayMonth()` for culture display, `.ToInvariantDate()`/`.ToIso8601()` for machine, …). For an `Instant` in a request/view, the ambient overloads in `Humans.Base.Extensions.DateTimeDisplayExtensions` resolve the user's timezone from session.
-- No method fits? **Add one to `DateFormattingExtensions`** (display → `CurrentUICulture`; CSV/API/filename/JSON → `InvariantCulture`) — never inline the literal at the call site. NodaTime parse/format patterns become named `static readonly *Pattern` fields on the home.
-- The analyzer flags `.ToString("<custom>")`, interpolation `{x:<custom>}`, and `NodaTime.Text.*Pattern.Create…("…")` on `DateTime`/`DateTimeOffset`/`DateOnly`/`TimeOnly`/NodaTime value types. Single-char standard specifiers (`"d"`, `"g"`, `"o"`) are allowed; numeric formats (`"N2"`, `"0.##"`) are not in scope (not a date receiver).
-- **v1 gaps (not analyzer-enforced):** `DateTime.ParseExact` / composite `string.Format` format strings, and `.cshtml` Razor (Roslyn analyzers don't see Razor). Fix these by hand when you touch them; don't assume the analyzer caught them.
+**Emails and ops notices** render outside a web request, so they use the invariant methods today. Localising them means formatting inside the sending section's `CultureScope`.
 
-**Related:** [`analyzer-exceptions-via-attributes`](analyzer-exceptions-via-attributes.md), [`display-sort-in-controllers`](display-sort-in-controllers.md), [`universal-enforcement-over-per-section`](universal-enforcement-over-per-section.md).
+**Not caught by the analyzer, fix by hand when you touch them:** `DateTime.ParseExact`, composite `string.Format`, and anything in `.cshtml`. Single-character standard specifiers (`"d"`, `"g"`, `"o"`) are allowed.
+
+**Why:** scattered format strings rendered the same concept four different ways and ignored the reader's language.
+
+**Related:** [`nodatime-for-dates`](../code/nodatime-for-dates.md)

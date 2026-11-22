@@ -30,8 +30,8 @@ public static class MergeFixtureExtensions
     }
 
     /// <summary>
-    /// A pending unverified email on the target and a Pending request pointing at it, the shape <c>AcceptAsync</c>
-    /// consumes.
+    /// A pending unverified email on the target and a leftover Pending request pointing at it: the pair a
+    /// self-service merge works on.
     /// </summary>
     public static async Task<Guid> SeedMergeRequestAsync(
         this HumansWebApplicationFactory fx,
@@ -100,8 +100,11 @@ public static class MergeFixtureExtensions
             Id = userId,
             DisplayName = $"{displayNameTag} {userId:N}".Substring(0, Math.Min(40, displayNameTag.Length + 33)),
             // Identity's CreateAsync needs a unique Email/UserName; real addresses attach as UserEmail rows.
-            Email = $"merge-{userId:N}@test.local",
-            UserName = $"merge-{userId:N}@test.local",
+            Email = $"merge-{userId:N}@example.test",
+            UserName = $"merge-{userId:N}@example.test",
+            BurnerName = displayNameTag,
+            FirstName = displayNameTag,
+            LastName = "Test",
             CreatedAt = now,
         };
 
@@ -117,9 +120,6 @@ public static class MergeFixtureExtensions
         {
             Id = Guid.NewGuid(),
             UserId = userId,
-            BurnerName = displayNameTag,
-            FirstName = displayNameTag,
-            LastName = "Test",
             CreatedAt = now,
             UpdatedAt = now,
         };

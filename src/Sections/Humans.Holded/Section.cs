@@ -5,11 +5,14 @@ using Humans.Base.Configuration;
 using Humans.Base.Hosting;
 using Humans.Base.Interfaces;
 using Humans.Holded.Contracts;
+using Humans.Holded.Services;
 using Humans.Holded.Data;
 using Humans.Holded.Jobs;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
+
+[assembly: Humans.Base.Demo.NoDemoStory("Vendor mirror: its data arrives through the Holded sync, never from demo stories.")]
 
 namespace Humans.Holded;
 
@@ -41,7 +44,7 @@ public sealed class Section : ISection, ISectionAdminNav, ISectionConfiguration,
 
         services.AddSingleton<Services.IHoldedCallLog, Services.HoldedCallLog>();
 
-        services.AddHttpClient<IHoldedClient, Services.HoldedClient>((sp, client) =>
+        services.AddHttpClient<Services.IHoldedClient, Services.HoldedClient>((sp, client) =>
         {
             var opts = sp.GetRequiredService<IOptions<HoldedClientOptions>>().Value;
             client.BaseAddress = new Uri(opts.BaseUrl);
@@ -54,6 +57,7 @@ public sealed class Section : ISection, ISectionAdminNav, ISectionConfiguration,
         services.AddScoped<Services.IHoldedAdminService>(sp => sp.GetRequiredService<Services.Service>());
 
         services.AddScoped<IHoldedWrite, Services.HoldedWrite>();
+        services.AddExceptionHandler<Infrastructure.HoldedKeyPermissionExceptionHandler>();
 
         services.AddScoped<Services.IHoldedNightlySync, Services.HoldedNightlySync>();
 
@@ -74,6 +78,7 @@ public sealed class Section : ISection, ISectionAdminNav, ISectionConfiguration,
     void ISectionConfiguration.DeclareSettings(IConfiguration configuration, ConfigurationRegistry registry)
     {
         configuration.GetOptionalSetting(registry, "Holded:BaseUrl", "Holded");
+        configuration.GetOptionalSetting(registry, "Holded:MonthlyCallBudget", "Holded");
         registry.RegisterEnvironmentVariable("HOLDED_API_KEY_V2", "Holded", isSensitive: true,
             importance: ConfigurationImportance.Recommended);
     }

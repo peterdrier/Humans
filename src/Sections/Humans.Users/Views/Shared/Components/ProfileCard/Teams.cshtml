@@ -1,0 +1,23 @@
+@using Humans.Teams.Contracts
+@model Humans.Users.Models.ProfileCardViewModel
+
+@if (Model.Teams.Count > 0)
+{
+    <div class="card mb-3">
+        <div class="card-header">
+            <h5 class="mb-0"><i class="fa-solid fa-people-group me-1"></i> @SharedLocalizer["Nav_Teams"]</h5>
+        </div>
+        <ul class="list-group list-group-flush">
+            @foreach (var team in Model.Teams)
+            {
+                <li class="list-group-item py-1 d-flex justify-content-between align-items-center">
+                    <a asp-controller="Team" asp-action="Details" asp-route-slug="@team.TeamSlug">@team.TeamName</a>
+                    @if (team.IsCoordinator)
+                    {
+                        @await Html.PartialAsync("_RoleBadge", TeamMemberRole.Coordinator)
+                    }
+                </li>
+            }
+        </ul>
+    </div>
+}

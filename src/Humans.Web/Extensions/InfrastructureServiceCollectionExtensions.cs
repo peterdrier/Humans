@@ -41,8 +41,6 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddConfigurationMetadata(configuration, configRegistry);
         services.AddTelemetryInfrastructure(configuration);
         services.AddEmailInfrastructure(configuration);
-        services.AddGoogleWorkspaceInfrastructure(configuration);
-        services.AddTicketVendorPort(configuration);
 
         // Single key-addressed file storage rooted at wwwroot. Camps,
         // profile pictures, and any future file-bearing section share this

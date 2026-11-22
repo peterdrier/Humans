@@ -1,0 +1,80 @@
+@using System.Globalization
+@model TransferPlan
+@{
+    ViewData["Title"] = "Team transfers";
+}
+
+@functions {
+    private static string StateLabel(TransferState state) => state switch
+    {
+        TransferState.Ready => "Ready",
+        TransferState.NoTransferAccount => "Product has no transfer account",
+        _ => "Team has no department account",
+    };
+}
+
+<page-header title="@($"Team transfers — {Model.Year}")">
+    <div class="btn-group">
+        <a asp-action="Transfers" asp-route-year="@(Model.Year - 1)" class="btn btn-outline-secondary">@(Model.Year - 1)</a>
+        <a asp-action="Transfers" asp-route-year="@(Model.Year + 1)" class="btn btn-outline-secondary">@(Model.Year + 1)</a>
+        <a asp-action="Catalog" class="btn btn-outline-secondary">Catalog</a>
+        <a asp-controller="Store" asp-action="Index" class="btn btn-outline-secondary">Back to Store</a>
+    </div>
+</page-header>
+
+@if (Model.DepartmentAccountsUnavailable is { } reason)
+{
+    <div class="alert alert-warning"><i class="fa-solid fa-triangle-exclamation me-1"></i>@reason</div>
+}
+
+<div class="card mb-4">
+    <div class="card-body d-flex flex-wrap align-items-center gap-3">
+        <div>
+            <span class="badge bg-success">@Model.Ready.Count ready · @Model.ReadyAmount.ToEuro()</span>
+            @if (Model.BlockedCount > 0)
+            {
+                <span class="badge bg-warning text-dark">@Model.BlockedCount blocked · @Model.BlockedAmount.ToEuro()</span>
+            }
+        </div>
+        <div class="small text-muted">Months closed through @(Model.LastClosedMonth?.ToString("yyyy-MM", CultureInfo.InvariantCulture) ?? "—")</div>
+        @if (Model.Ready.Count > 0)
+        {
+            <form authorize-policy="@StorePolicies.Manage" asp-action="BookTransfers" method="post" class="ms-auto">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="year" value="@Model.Year" />
+                <button type="submit" class="btn btn-primary"
+                        data-confirm="Post @Model.Ready.Count journal entr@(Model.Ready.Count == 1 ? "y" : "ies") (@Model.ReadyAmount.ToEuro()) to Holded?">
+                    <i class="fa-solid fa-book me-1"></i>Book @Model.Ready.Count in Holded
+                </button>
+            </form>
+        }
+    </div>
+</div>
+
+@if (Model.Rows.Count == 0)
+{
+    <div class="card"><div class="card-body text-center py-4 text-muted">Nothing to book for @Model.Year.</div></div>
+}
+else
+{
+    var table = TableModel.For(Model.Rows)
+        .Column("Month", r => r.Date.ToDate(), c => c.Css("text-nowrap"))
+        .Column("Team", r => r.TeamName)
+        .Column("Product", r => r.ProductName)
+        .Column("Debit", r => r.IsReady ? r.Sides.Debit.ToString(CultureInfo.InvariantCulture) : "—", c => c.Code())
+        .Column("Credit", r => r.IsReady ? r.Sides.Credit.ToString(CultureInfo.InvariantCulture) : "—", c => c.Code())
+        .Column("Amount", r => r.Amount, c => c.Currency().End())
+        .Column("State", r => StateLabel(r.State))
+        .RowCss(r => r.IsReady ? null : "table-warning")
+        .Build();
+    <div class="card">
+        <partial name="_Table" model="table" />
+    </div>
+}
+
+<p class="small text-muted mt-3">
+    One journal entry per team, product and closed month: Dr the team's department account, Cr the product's
+    transfer account, at the store price excluding VAT and deposits. A month books the change since the last entry,
+    so removed lines and price changes are corrected by a negative entry. Booked entries are read back from Holded,
+    so this list empties once they are posted.
+</p>

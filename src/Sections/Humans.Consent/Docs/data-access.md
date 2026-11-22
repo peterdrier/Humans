@@ -14,7 +14,7 @@ owned by the same section's [Consent](#consent) repository below). The inner `IL
 warmed on startup, with a version-id → document-id index). It caches the
 global active-document set behind the every-page consent-banner read and
 the per-version lookup, invalidated wholesale after any persisted
-`legal_documents` / `document_versions` write.
+`consent_legal_documents` / `consent_document_versions` write.
 
 `LegalDocumentSyncService` is the sole writer for `LegalDocuments` /
 `DocumentVersions` — it implements both `ILegalDocumentSyncManagement` (the
@@ -48,9 +48,9 @@ Repository: `ILegalDocumentRepository`.
 | LegalDocuments | R/W |
 | DocumentVersions | R/W |
 
-Sole writer for both the GitHub-sync surface (`SyncDocumentAsync` /
-`SyncAllDocumentsAsync` — version add, sync-touch) and the admin surface
-(`CreateLegalDocumentAsync` / `UpdateLegalDocumentAsync` /
+Sole writer for the scheduled GitHub-sync surface (`SyncAllDocumentsAsync` —
+version add, sync-touch) and the actor-attributed admin surface
+(`SyncLegalDocumentAsync` / `CreateLegalDocumentWithInitialSyncAsync` / `UpdateLegalDocumentAsync` /
 `ArchiveLegalDocumentAsync` / `UpdateVersionSummaryAsync`). Calls
 `CachingLegalDocumentSyncService.InvalidateAll()` directly after each
 successful write. Cross-section calls via `INotificationEmitter`,
@@ -74,7 +74,7 @@ Repository: `ILegalDocumentRepository`.
 The body of `SyncLegalDocumentsJob`. Runs
 `ILegalDocumentSyncManagement.SyncAllDocumentsAsync`, then, for each pending
 re-consent batch, narrows the affected teams' active members down to those without a
-consent record for the new version (through the section's own `IConsentService.GetConsentMapForUsersAsync`,
+consent record for the new version (through the section's own `IConsentManagement.GetConsentMapForUsersAsync`,
 not a `ConsentRecords` read) and mails them the re-consent notice.
 Cross-section calls via `IEmailService` plus the section's own `ConsentEmails`
 builder (`ReConsentsRequired`), `ITeamService` (team membership) and
@@ -120,9 +120,8 @@ Repository: `IConsentRepository`.
 | ConsentRecords | R/W |
 
 Cross-section calls via `ILegalDocumentSyncManagement`,
-`IHumanLifecycleService`, `IUserService`,
-`IHumansMetrics`, plus `IServiceProvider` to lazy-resolve `IMembershipCalculator`
-(cycle-breaking). Implements
+`IHumanLifecycleService`, `IUserService`, `IHumansMetrics`, and, for the required-consent
+checks in `ConsentService`, `ITeamService` and `IRoleAssignmentService`. Implements
 `IUserDataContributor`. The inner service has no `IMemoryCache`; caching
 lives in the decorator.
 
@@ -149,7 +148,8 @@ Repository: `IConsentReviewRepository` (Singleton, `IDbContextFactory<LegalDbCon
 The Consent Coordinator review (Users decomposition commit 12). Serves
 `IConsentService.GetConsentReviewAsync` / `GetConsentReviewsAsync` (forwarded
 by `ConsentService`, passed through `CachingConsentService` uncached), the
-`IConsentWrite` annotations and the `ConsentReview` export/erasure slice.
+`IConsentWrite` pending/rejection writes, internal clear/flag annotations and the
+`ConsentReview` export/erasure slice.
 Reads and writes use only `consent_reviews`; there is no legacy fallback or copy.
 `IUserService` resolves a merged-away id for reads and checks the raw profile exists
 for writes. No cache.
@@ -157,8 +157,8 @@ for writes. No cache.
 ### ConsentReviewQueueService (Scoped, internal; implements `IConsentReviewQueueService`)
 
 No repository. The Consent Coordinator review queue: reads reviews through `IConsentService`, people
-through `IUserService`, tiers and pending applications through `IGovernanceService`, signed/required counts
-through `IMembershipCalculator`, and clears or flags through the section's own `IConsentWrite`. No cache.
+through `IUserService`, tiers through `IGovernanceService`, signed/required counts
+through `IConsentService.GetConsentProgressAsync`, and clears or flags through the section's internal `ConsentReviewService`. No cache.
 
 ### ConsentReminderService (Scoped, internal; implements `IUserDataContributor`)
 

@@ -1,4 +1,5 @@
 using AwesomeAssertions;
+using Humans.Base.Interfaces;
 using Humans.Search.Controllers;
 using Humans.Search.Models;
 using Humans.Search.Services;
@@ -31,94 +32,54 @@ public sealed class SearchControllerTests
     [InlineData("")]
     [InlineData(" ")]
     [InlineData("a")]
-    public async Task Index_QueryShorterThanTwoChars_RendersTheShell_WithoutSearching(string? query)
+    public async Task Index_QueryShorterThanTwoChars_KeepsTheRawQuery_AndListsTheCategoriesForTheHint(string? query)
     {
+        StubResults(new GlobalSearchResults((query ?? string.Empty).Trim(), null, [Bucket("Human")]));
+
         var vm = await IndexAsync(query, filter: null);
 
         vm.Query.Should().Be(query);
-        vm.HumanResults.Should().BeEmpty();
-        vm.TeamResults.Should().BeEmpty();
-        vm.CampResults.Should().BeEmpty();
-        vm.ShiftResults.Should().BeEmpty();
-        vm.EventResults.Should().BeEmpty();
-        await _search.DidNotReceive().SearchAsync(
-            Arg.Any<string>(), Arg.Any<SearchResultType?>(), Arg.Any<CancellationToken>());
+        vm.Buckets.Should().ContainSingle().Which.Label.Should().Be("Human label");
+        vm.HasResults.Should().BeFalse();
     }
 
     [HumansFact]
-    public async Task Index_TrimsTheQuery_AndForwardsTheFilterToTheService()
+    public async Task Index_TrimsTheQuery_ForwardsTheFilter_AndShowsTheServicesMatchedKey()
     {
-        StubResults(new GlobalSearchResults("Kitchen", [], [], [], [], []));
+        StubResults(new GlobalSearchResults("Kitchen", "Team", [Bucket("Team")]));
 
-        var vm = await IndexAsync("  Kitchen  ", SearchResultType.Team);
+        var vm = await IndexAsync("  Kitchen  ", "team");
 
-        await _search.Received(1).SearchAsync("Kitchen", SearchResultType.Team, Arg.Any<CancellationToken>());
-        vm.Filter.Should().Be(SearchResultType.Team);
+        await _search.Received(1).SearchAsync("Kitchen", "team", Arg.Any<CancellationToken>());
+        vm.Filter.Should().Be("Team");
         vm.Query.Should().Be("Kitchen");
+        vm.SearchFailed.Should().BeFalse();
     }
 
     [HumansFact]
-    public async Task Index_SortsEveryNonHumanBucket_ByScoreDescendingThenSortKeyAscending()
+    public async Task Index_SortsEveryBucket_ByScoreDescendingThenSortKeyAscending_KeepingCategoryOrder()
     {
-        var teams = new[]
-        {
-            Hit(SearchResultType.Team, "beta", 60),
-            Hit(SearchResultType.Team, "Alpha", 60),
-            Hit(SearchResultType.Team, "Zulu", 100),
-        };
-        StubResults(new GlobalSearchResults(
-            "q", [], teams, Retype(teams, SearchResultType.Camp),
-            Retype(teams, SearchResultType.Shift), Retype(teams, SearchResultType.Event)));
+        SearchHit[] hits = [Hit("beta", 60), Hit("Alpha", 60), Hit("Zulu", 100)];
+        StubResults(new GlobalSearchResults("q", null, [Bucket("Human", hits), Bucket("Team", hits)]));
 
         var vm = await IndexAsync("query", filter: null);
 
+        vm.Buckets.Select(b => b.Key).Should().Equal("Human", "Team");
         // SortKey tiebreak is case-insensitive: "Alpha" must beat "beta" despite the lowercase b.
-        vm.TeamResults.Select(r => r.SortKey).Should().Equal("Zulu", "Alpha", "beta");
-        vm.CampResults.Select(r => r.SortKey).Should().Equal("Zulu", "Alpha", "beta");
-        vm.ShiftResults.Select(r => r.SortKey).Should().Equal("Zulu", "Alpha", "beta");
-        vm.EventResults.Select(r => r.SortKey).Should().Equal("Zulu", "Alpha", "beta");
+        vm.Buckets.Should().AllSatisfy(b =>
+            b.Hits.Select(h => h.SortKey).Should().Equal("Zulu", "Alpha", "beta"));
+        vm.TotalCount.Should().Be(6);
     }
 
     [HumansFact]
-    public async Task Index_SortsHumans_ByRelevanceThenBurnerName()
+    public async Task Index_PassesTheMatchContext_ThroughToTheView_Untouched()
     {
-        StubResults(new GlobalSearchResults(
-            "ian",
-            [
-                Human("Adrian", 60),
-                Human("Brian", 60),
-                Human("Ian", 100),
-            ],
-            [], [], [], []));
-
-        var vm = await IndexAsync("ian", filter: null);
-
-        vm.HumanResults.Select(r => r.BurnerName).Should().Equal("Ian", "Adrian", "Brian");
-    }
-
-    [HumansFact]
-    public async Task Index_PassesTheHumanMatchContext_ThroughToTheView_Untouched()
-    {
-        var hit = new HumanSearchResult(
-            UserId: Guid.NewGuid(),
-            ProfileId: Guid.NewGuid(),
-            BurnerName: "Sparkle",
-            ProfilePictureUrl: "/uploads/profiles/sparkle.jpg",
-            MatchField: "Bio",
-            MatchSnippet: "…builds <em>kitchens</em>…",
-            MatchedEmail: null,
-            Score: 60);
-        StubResults(new GlobalSearchResults("kitchen", [hit], [], [], [], []));
+        var hit = new SearchHit(Guid.NewGuid(), "Sparkle", 60, "Bio", "…builds <em>kitchens</em>…");
+        StubResults(new GlobalSearchResults("kitchen", null, [Bucket("Human", hit)]));
 
         var vm = await IndexAsync("kitchen", filter: null);
 
-        var row = vm.HumanResults.Should().ContainSingle().Subject;
-        row.UserId.Should().Be(hit.UserId);
-        row.BurnerName.Should().Be(hit.BurnerName);
-        row.ProfilePictureUrl.Should().Be(hit.ProfilePictureUrl);
-        row.MatchField.Should().Be(hit.MatchField);
-        row.MatchSnippet.Should().Be(hit.MatchSnippet);
-        row.MatchedEmail.Should().BeNull();
+        vm.Buckets.Single().Hits.Should().ContainSingle().Which.Should().Be(hit);
     }
 
     [HumansTheory]
@@ -129,14 +90,15 @@ public sealed class SearchControllerTests
         Exception failure = dependencyCancelled
             ? new OperationCanceledException("section timed out")
             : new InvalidOperationException("section down");
-        _search.SearchAsync(Arg.Any<string>(), Arg.Any<SearchResultType?>(), Arg.Any<CancellationToken>())
+        _search.SearchAsync(Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Throws(failure);
 
-        var vm = await IndexAsync("kitchen", SearchResultType.Camp);
+        var vm = await IndexAsync("kitchen", "Camp");
 
         vm.Query.Should().Be("kitchen");
-        vm.Filter.Should().Be(SearchResultType.Camp);
-        vm.TeamResults.Should().BeEmpty();
+        vm.Filter.Should().Be("Camp");
+        vm.SearchFailed.Should().BeTrue();
+        vm.Buckets.Should().BeEmpty();
         var log = _logger.ReceivedCalls().Single(call => string.Equals(call.GetMethodInfo().Name, "Log", StringComparison.Ordinal)).GetArguments();
         log[0].Should().Be(LogLevel.Error);
         log[3].Should().BeSameAs(failure);
@@ -145,7 +107,7 @@ public sealed class SearchControllerTests
     [HumansFact]
     public async Task Index_RequestCancelled_PropagatesInsteadOfReturningA200Shell()
     {
-        _search.SearchAsync(Arg.Any<string>(), Arg.Any<SearchResultType?>(), Arg.Any<CancellationToken>())
+        _search.SearchAsync(Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Throws(new OperationCanceledException());
 
         using var cancellation = new CancellationTokenSource();
@@ -159,7 +121,7 @@ public sealed class SearchControllerTests
         log[3].Should().BeNull();
     }
 
-    private async Task<GlobalSearchViewModel> IndexAsync(string? query, SearchResultType? filter)
+    private async Task<GlobalSearchViewModel> IndexAsync(string? query, string? filter)
     {
         var result = await BuildController().Index(query, filter, TestContext.Current.CancellationToken);
 
@@ -168,7 +130,7 @@ public sealed class SearchControllerTests
     }
 
     private void StubResults(GlobalSearchResults results) =>
-        _search.SearchAsync(Arg.Any<string>(), Arg.Any<SearchResultType?>(), Arg.Any<CancellationToken>())
+        _search.SearchAsync(Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult(results));
 
     private SearchController BuildController()
@@ -184,13 +146,8 @@ public sealed class SearchControllerTests
         return controller;
     }
 
-    private static GlobalSearchResult Hit(SearchResultType type, string sortKey, int score) =>
-        new(type, Guid.NewGuid(), sortKey, score);
+    private static SearchBucket Bucket(string key, params SearchHit[] hits) =>
+        new(key, $"{key} label", "icon", typeof(object), hits);
 
-    private static IReadOnlyList<GlobalSearchResult> Retype(
-        IReadOnlyList<GlobalSearchResult> hits, SearchResultType type) =>
-        hits.Select(h => h with { Type = type }).ToList();
-
-    private static HumanSearchResult Human(string burnerName, int score) =>
-        new(Guid.NewGuid(), Guid.NewGuid(), burnerName, null, "Name", null, null, score);
+    private static SearchHit Hit(string sortKey, int score) => new(Guid.NewGuid(), sortKey, score);
 }

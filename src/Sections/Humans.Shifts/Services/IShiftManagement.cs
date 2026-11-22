@@ -17,6 +17,21 @@ namespace Humans.Shifts.Services;
 internal interface IShiftManagement
     : IShiftService, IShiftVolunteerProfiles, IShiftSeeding, IApplicationService
 {
+    /// <summary>Null when the teams have no rotas. Pending counts a signup range once.</summary>
+    Task<ShiftsSummaryData?> GetShiftsSummaryAsync(
+        Guid eventSettingsId, IReadOnlyCollection<Guid> teamIds, CancellationToken ct = default);
+
+    /// <summary>
+    /// Excludes admin-only shifts and hidden rotas unless asked; the role-protected dashboard opts in.
+    /// </summary>
+    Task<IReadOnlyList<UrgentShiftInfo>> GetUrgentShiftsAsync(
+        Guid eventSettingsId, int? limit = null,
+        Guid? departmentId = null,
+        LocalDate? startDate = null, LocalDate? endDate = null,
+        ShiftPeriod? period = null,
+        BuildSubPeriod? subPeriod = null,
+        bool includeRestricted = false, CancellationToken ct = default);
+
     Task<ShiftStaffingSnapshot> GetStaffingSnapshotAsync(
         Guid eventSettingsId, Guid? departmentId = null, ShiftPeriod? period = null,
         BuildSubPeriod? subPeriod = null, CancellationToken ct = default);
@@ -38,13 +53,12 @@ internal interface IShiftManagement
 
     /// <summary>Inserts the row on demand. Audited as the actor's, since the sub-periods reclassify every build shift.</summary>
     Task SaveKnobsAsync(
-        Guid eventSettingsId, bool isShiftBrowsingOpen, int? globalVolunteerCap, int reminderLeadTimeHours,
-        BuildSubPeriodStarts subPeriods, Guid actorUserId);
+        Guid eventSettingsId, bool isShiftBrowsingOpen, BuildSubPeriodStarts subPeriods, Guid actorUserId);
 
     /// <summary>Validates that the team is a department and the event is active.</summary>
     Task CreateRotaAsync(Rota rota, IReadOnlyList<Guid>? tagIds = null);
 
-    /// <summary>Dept coordinators, Admin, NoInfoAdmin and VolunteerCoordinator.</summary>
+    /// <summary>Holds <see cref="ShiftsPermissions.Approve"/> on the team.</summary>
     Task<bool> CanApproveSignupsAsync(Guid userId, Guid departmentTeamId, CancellationToken ct = default);
 
     /// <summary>Tags change only when <see cref="UpdateRotaInput.TagIds"/> is non-null. False when the rota doesn't exist.</summary>
@@ -106,9 +120,6 @@ internal interface IShiftManagement
     Task<IReadOnlyList<DashboardTrendPoint>> GetDashboardTrendsAsync(
         Guid eventSettingsId, TrendWindow window, ShiftPeriod? period = null,
         BuildSubPeriod? subPeriod = null, CancellationToken ct = default);
-
-    /// <summary>Call after signup mutations.</summary>
-    void InvalidateDashboardCaches(Guid eventSettingsId);
 
     /// <summary>
     /// Confirmed volunteers by parent department. Build and Strike only: empty for Event or a null
@@ -219,3 +230,10 @@ internal sealed record RotaMoveResult(bool Succeeded, string Message, string? Re
 }
 
 internal sealed record ShiftDeletionResult(string? ErrorKey = null, int ConfirmedSignups = 0);
+
+internal sealed record ShiftsSummaryData(
+    int TotalSlots,
+    int ConfirmedCount,
+    int PendingCount,
+    int UniqueVolunteerCount,
+    IReadOnlySet<Guid> TeamIdsWithShifts);

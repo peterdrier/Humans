@@ -5,18 +5,14 @@ using Humans.Budget.Services;
 
 namespace Humans.Budget.Jobs;
 
-/// <summary>
-/// Public with an internal constructor: Shell names the type for Hangfire, so DI registers it through a factory in
-/// <c>Section.Register</c>.
-/// </summary>
 [DisableConcurrentExecution(timeoutInSeconds: 300)]
-public sealed class TicketingBudgetSyncJob : IRecurringJob
+internal sealed class TicketingBudgetSyncJob : IRecurringJob
 {
     private readonly ITicketingBudgetService _ticketingBudgetService;
     private readonly IBudgetService _budgetService;
     private readonly ILogger<TicketingBudgetSyncJob> _logger;
 
-    internal TicketingBudgetSyncJob(
+    public TicketingBudgetSyncJob(
         ITicketingBudgetService ticketingBudgetService,
         IBudgetService budgetService,
         ILogger<TicketingBudgetSyncJob> logger)
@@ -28,7 +24,7 @@ public sealed class TicketingBudgetSyncJob : IRecurringJob
 
     public async Task ExecuteAsync(CancellationToken cancellationToken = default)
     {
-        var activeYear = await _budgetService.GetActiveYearAsync();
+        var activeYear = await _budgetService.GetActiveYearAsync(cancellationToken);
         if (activeYear is null)
         {
             _logger.LogDebug("No active budget year, skipping ticketing budget sync");
@@ -39,8 +35,13 @@ public sealed class TicketingBudgetSyncJob : IRecurringJob
 
         try
         {
-            var count = await _ticketingBudgetService.SyncActualsAsync(activeYear.Id, actorUserId: null);
+            var count = await _ticketingBudgetService.SyncActualsAsync(activeYear.Id, actorUserId: null, cancellationToken);
             _logger.LogInformation("Ticketing budget sync completed: {Count} line items synced", count);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            _logger.LogWarning("Ticketing budget sync cancelled for year {YearId}", activeYear.Id);
+            throw;
         }
         catch (Exception ex)
         {

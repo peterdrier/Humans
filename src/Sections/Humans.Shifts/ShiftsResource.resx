@@ -377,10 +377,6 @@
   <data name="Shifts_Dashboard_ShiftsDescription" xml:space="preserve"><value>See what needs doing and sign up.</value></data>
   <data name="Shifts_Dashboard_TeamsDescription" xml:space="preserve"><value>Find your people. Or become someone else's people.</value></data>
   <data name="Shifts_Dashboard_CampsDescription" xml:space="preserve"><value>The neighbourhoods that make Elsewhere feel like home.</value></data>
-  <data name="Shifts_DietaryMissingBanner_Title" xml:space="preserve"><value>Share your food preferences?</value></data>
-  <data name="Shifts_DietaryMissingBanner_Body" xml:space="preserve"><value>You're signed up for a long shift. If you tell us your food preferences, the cantina can plan your meals. It's optional.</value></data>
-  <data name="Shifts_DietaryMissingBanner_Cta" xml:space="preserve"><value>Tell us now</value></data>
-  <data name="Shifts_DietaryMissingBanner_Decline" xml:space="preserve"><value>I don't want to answer</value></data>
   <data name="Shifts_ViewAllMyShifts" xml:space="preserve"><value>View All My Shifts</value></data>
   <data name="Shifts_SortOrder" xml:space="preserve"><value>Sort order</value></data>
   <data name="Shifts_BailRangeSuccess" xml:space="preserve"><value>Successfully bailed from shift range.</value></data>
@@ -424,8 +420,6 @@
   <data name="Shifts_Signup_AtCapacity" xml:space="preserve"><value>This shift is at capacity.</value></data>
   <data name="Shifts_Signup_RotaNotFound" xml:space="preserve"><value>Rota not found.</value></data>
   <data name="Shifts_Signup_RangeEmpty" xml:space="preserve"><value>No shifts found in the specified date range.</value></data>
-  <data name="Shifts_Signup_RangeAlreadySignedUp" xml:space="preserve"><value>Already signed up for all shifts in this range.</value></data>
-  <data name="Shifts_Signup_RangeConflicts" xml:space="preserve"><value>All shifts in range have time conflicts with existing signups.</value></data>
   <data name="Shifts_Signup_RangeAtCapacity" xml:space="preserve"><value>All shifts in this range are at capacity.</value></data>
   <data name="Shifts_Signup_RangeRestricted" xml:space="preserve"><value>One or more shifts in this range are restricted to coordinators and admins.</value></data>
   <data name="Shifts_Signup_RangeDuplicate" xml:space="preserve"><value>Already signed up for one or more shifts in this range.</value></data>
@@ -484,8 +478,6 @@
   <data name="Shifts_Dashboard_OffSeasonBody" xml:space="preserve"><value>Thanks for this year. Shifts open again when the Board publishes the next event.</value></data>
   <data name="Shifts_StatusReasonTooLong" xml:space="preserve"><value>Reasons cannot exceed 1,000 characters.</value></data>
   <data name="Shifts_Bail_NotActive" xml:space="preserve"><value>This signup is no longer active. You cannot bail from it.</value></data>
-  <data name="Shifts_Medical_RevealTitle" xml:space="preserve"><value>Show medical details (every look is recorded in the audit log)</value></data>
-  <data name="Shifts_Medical_RevealFailed" xml:space="preserve"><value>Could not load the medical details.</value></data>
   <data name="Shifts_Notification_CoverageGapTitle" xml:space="preserve"><value>Coverage gap: {0} day {1}</value></data>
   <data name="Shifts_Notification_CoverageGapBody" xml:space="preserve"><value>Only {0}/{1} humans confirmed.</value></data>
   <data name="Shifts_Notification_FindCover" xml:space="preserve"><value>Find cover →</value></data>
@@ -503,4 +495,20 @@
   <data name="Shifts_Notification_ChangeRefusedRange" xml:space="preserve"><value>Range refused ({1} shifts) for '{0}'.</value></data>
   <data name="Shifts_Notification_ChangeBailedRange" xml:space="preserve"><value>Range bail from '{0}' ({1} shifts).</value></data>
   <data name="Shifts_TagPreferencesInvalid" xml:space="preserve"><value>Some selected tags are no longer available. Review your selection and try again.</value></data>
+  <data name="Shifts_Profile_NoShowHistory" xml:space="preserve"><value>No-Show History ({0})</value></data>
+  <data name="Shifts_Profile_MarkedBy" xml:space="preserve"><value>Marked By</value></data>
+  <data name="Shifts_Profile_MarkedAt" xml:space="preserve"><value>Marked At</value></data>
+  <data name="ShiftsSummary_Title" xml:space="preserve"><value>Shifts</value></data>
+  <data name="ShiftsSummary_SlotsFilled" xml:space="preserve"><value>{0} / {1} slots filled</value><comment>{0} = filled, {1} = total</comment></data>
+  <data name="ShiftsSummary_HumansSignedUp" xml:space="preserve"><value>{0} humans signed up</value><comment>{0} = count</comment></data>
+  <data name="ShiftsSummary_PendingCount" xml:space="preserve"><value>{0} pending</value><comment>{0} = count</comment></data>
+  <data name="ShiftsSummary_NoShifts" xml:space="preserve"><value>No shifts configured yet.</value></data>
+  <data name="ShiftsSummary_IncludesSubTeams" xml:space="preserve"><value>Includes shifts from {0} sub-team(s)</value><comment>{0} = count</comment></data>
+  <data name="ShiftsSummary_ManageShifts" xml:space="preserve"><value>Manage Shifts</value></data>
+  <data name="Shifts_Search_Category" xml:space="preserve"><value>Shifts</value></data>
+  <data name="Shifts_NameRequiredBeforeShifts" xml:space="preserve"><value>Add your name first — we need it before you can sign up for shifts.</value></data>
+  <data name="Shifts_Permission_Manage_Title" xml:space="preserve"><value>Manage shifts</value></data>
+  <data name="Shifts_Permission_Manage_Blurb" xml:space="preserve"><value>Create and edit the team's rotas and shifts, and email its volunteers.</value></data>
+  <data name="Shifts_Permission_Approve_Title" xml:space="preserve"><value>Approve signups</value></data>
+  <data name="Shifts_Permission_Approve_Blurb" xml:space="preserve"><value>Approve, refuse and voluntell signups on the team's shifts.</value></data>
 </root>

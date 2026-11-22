@@ -8,7 +8,7 @@ internal sealed class LegalDocumentConfiguration : IEntityTypeConfiguration<Lega
 {
     public void Configure(EntityTypeBuilder<LegalDocument> builder)
     {
-        builder.ToTable("legal_documents");
+        builder.ToTable("consent_legal_documents");
 
         builder.HasKey(ld => ld.Id);
 

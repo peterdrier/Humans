@@ -17,6 +17,9 @@ using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
 using Humans.Base.Extensions;
 using Humans.Email.Contracts;
+using Humans.Google.Contracts;
+using Humans.Base.Enums;
+using Humans.Teams.Contracts;
 using Humans.Teams.Controllers;
 using Humans.Teams.Models;
 using Humans.Teams.Services;
@@ -42,12 +45,14 @@ namespace Humans.Teams.Tests.Controllers;
 public sealed class TeamMessageControllerTests
 {
     private readonly IUserService _users = Substitute.For<IUserService>();
-    private readonly ITeamMessageOptionsProvider _teamOptions = Substitute.For<ITeamMessageOptionsProvider>();
+    private readonly ITeamService _teams = Substitute.For<ITeamService>();
+    private readonly ITeamResourceService _resources = Substitute.For<ITeamResourceService>();
+    private readonly TeamMessageOptionsProvider _teamOptions;
     private readonly ICommunicationPreferenceService _commPrefs = Substitute.For<ICommunicationPreferenceService>();
     private readonly IEmailService _emailService = Substitute.For<IEmailService>();
     private readonly IEmailMessageFactory _emailMessages = Substitute.For<IEmailMessageFactory>();
     private readonly IAuditLogService _audit = Substitute.For<IAuditLogService>();
-    private readonly ILogger<TeamMessageController> _logger = Substitute.For<ILogger<TeamMessageController>>();
+    private readonly ILogger<TeamMessageOptionsProvider> _logger = Substitute.For<ILogger<TeamMessageOptionsProvider>>();
     private readonly Guid _viewerId = Guid.NewGuid();
     private readonly Guid _targetId = Guid.NewGuid();
     private readonly Guid _teamId = Guid.NewGuid();
@@ -60,8 +65,9 @@ public sealed class TeamMessageControllerTests
         var shared = Substitute.For<IStringLocalizer<Humans.Base.SharedResource>>();
         shared[Arg.Any<string>()].Returns(ci => new LocalizedString(ci.Arg<string>(), ci.Arg<string>()));
 
-        _controller = new TeamMessageController(
-            _users, _teamOptions, _commPrefs, _emailService, _emailMessages, _audit, localizer, shared, _logger);
+        _teamOptions = new TeamMessageOptionsProvider(_teams, _resources, _users, _commPrefs,
+            _emailService, _emailMessages, _audit, _logger);
+        _controller = new TeamMessageController(_users, _teamOptions, localizer, shared);
 
         var http = new DefaultHttpContext
         {
@@ -75,11 +81,20 @@ public sealed class TeamMessageControllerTests
         var target = Info(_targetId, "Target", "target@example.com");
         _users.GetUserInfoAsync(_viewerId, Arg.Any<CancellationToken>()).Returns(viewer);
         _users.GetUserInfoAsync(_targetId, Arg.Any<CancellationToken>()).Returns(target);
-        _users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(new Dictionary<Guid, UserInfo> { [_viewerId] = viewer, [_targetId] = target });
         _commPrefs.AcceptsFacilitatedMessagesAsync(_targetId, Arg.Any<CancellationToken>()).Returns(true);
-        _teamOptions.GetOptionsAsync(_viewerId, Arg.Any<CancellationToken>())
-            .Returns([new TeamMessageOption(_teamId, "Infrastructure", "infra@nobodies.team")]);
+        _teams.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo>
+        {
+            [_teamId] = new(_teamId, "Infrastructure", null, "infra", true, false, SystemTeamType.None,
+                false, false, false, false, Instant.MinValue,
+                [new TeamMemberInfo(Guid.NewGuid(), _viewerId, "Coordinator", null, null, TeamMemberRole.Coordinator, Instant.MinValue)],
+                GoogleGroupPrefix: "infra")
+        });
+        _resources.GetResourcesByTeamIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, IReadOnlyList<GoogleResourceSnapshot>>
+            {
+                [_teamId] = [new(Guid.NewGuid(), _teamId, "123", "Infrastructure", GoogleResourceType.Group,
+                    "https://groups.google.com/a/nobodies.team/g/infra", Instant.MinValue, Instant.MinValue, IsActive: true)]
+            });
         _emailMessages.FacilitatedMessage(
                 Arg.Any<Guid?>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
                 Arg.Any<bool>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>())
@@ -143,17 +158,20 @@ public sealed class TeamMessageControllerTests
         var template = new ResourceManager(typeof(TeamsResource))
             .GetString("Teams_SendMessage_FromTeam", CultureInfo.CurrentUICulture);
         Assert.NotNull(template);
-        var expected = string.Format(CultureInfo.CurrentCulture, template,
-            $"<span>{HtmlEncoder.Default.Encode(currentName)}</span>", HtmlEncoder.Default.Encode(teamName));
-        foreach (var (path, model) in new (string, object?)[]
+        var encodedName = HtmlEncoder.Default.Encode(currentName);
+        string Expected(string human) =>
+            string.Format(CultureInfo.CurrentCulture, template, human, HtmlEncoder.Default.Encode(teamName));
+        // The message button is itself a link, so the name inside it renders without one.
+        foreach (var (path, model, expected) in new (string, object?, string)[]
         {
-            ("/Views/TeamMessage/SendMessage.cshtml", result.Model),
-            ("/Views/Shared/Components/TeamMessageButtons/Default.cshtml", buttons),
+            ("/Views/TeamMessage/SendMessage.cshtml", result.Model,
+                Expected($"<a href=\"/\" class=\"text-decoration-none\" data-human-popover=\"true\" data-user-id=\"{_targetId}\">{encodedName}</a>")),
+            ("/Views/Shared/Components/TeamMessageButtons/Default.cshtml", buttons, Expected($"<span>{encodedName}</span>")),
         })
         {
             var view = services.GetRequiredService<IRazorViewEngine>().GetView(null, path, isMainPage: false);
             Assert.True(view.Success);
-            var http = new DefaultHttpContext { RequestServices = services };
+            var http = new DefaultHttpContext { RequestServices = services, User = new System.Security.Claims.ClaimsPrincipal(new System.Security.Claims.ClaimsIdentity([new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.Name, "viewer")], "test")) };
             var action = new ActionContext(http, new RouteData(), new Microsoft.AspNetCore.Mvc.Abstractions.ActionDescriptor());
             var data = new ViewDataDictionary(services.GetRequiredService<IModelMetadataProvider>(), new ModelStateDictionary()) { Model = model };
             using var writer = new StringWriter();
@@ -199,7 +217,7 @@ public sealed class TeamMessageControllerTests
 
         result.Should().BeOfType<RedirectToActionResult>().Which.ActionName.Should().Be("ViewProfile");
         _controller.TempData.Should().ContainKey(Humans.Base.Constants.TempDataKeys.ErrorMessage);
-        await _teamOptions.DidNotReceiveWithAnyArgs().GetOptionsAsync(default);
+        await _teams.DidNotReceiveWithAnyArgs().GetTeamsAsync(default);
     }
 
     [HumansFact]
@@ -256,12 +274,8 @@ public sealed class TeamMessageControllerTests
     public async Task Post_TeamOfferedToViewer_UsesGroupReplyToAndAudits(string language, string expectedCulture)
     {
         using var actorCulture = new CultureScope("fr");
-        _users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(new Dictionary<Guid, UserInfo>
-            {
-                [_viewerId] = Info(_viewerId, "Coordinator", "coordinator@example.com"),
-                [_targetId] = Info(_targetId, "Target", "target@example.com", language),
-            });
+        _users.GetUserInfoAsync(_targetId, Arg.Any<CancellationToken>())
+            .Returns(Info(_targetId, "Target", "target@example.com", language));
 
         var result = await _controller.SendMessage(
             _teamId, _targetId, new TeamSendMessageViewModel { Message = "Hello" }, Ct);
@@ -271,7 +285,7 @@ public sealed class TeamMessageControllerTests
             _targetId, "target@example.com", "Target", "Coordinator", "Hello", true, "coordinator@example.com",
             expectedCulture, "infra@nobodies.team");
         await _emailService.Received(1).SendAsync(
-            Arg.Is<EmailMessage>(m => m.ReplyTo == "infra@nobodies.team" && m.UserId == _targetId), Arg.Any<CancellationToken>());
+            Arg.Is<EmailMessage>(m => m.ReplyTo == "infra@nobodies.team" && m.UserId == _targetId), CancellationToken.None);
         await _audit.Received(1).LogAsync(
             EmailAuditActions.FacilitatedMessageSent, "User", _targetId,
             Arg.Is<string>(d => d.Contains("from team Infrastructure", StringComparison.Ordinal)

@@ -29,16 +29,66 @@ namespace Humans.Shifts.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<string>("BarriosEarlyEntryAllocation")
+                        .HasColumnType("jsonb");
+
+                    b.Property<int>("BuildStartOffset")
+                        .HasColumnType("integer");
+
                     b.Property<Instant>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("EarlyEntryCapacity")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.Property<Instant?>("EarlyEntryClose")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("EventEndOffset")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("EventName")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<int>("FinishingWeekendStartOffset")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(-4);
+
+                    b.Property<int>("FirstCrewStartOffset")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(-25);
+
+                    b.Property<LocalDate>("GateOpeningDate")
+                        .HasColumnType("date");
 
                     b.Property<int?>("GlobalVolunteerCap")
                         .HasColumnType("integer");
 
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
                     b.Property<bool>("IsShiftBrowsingOpen")
                         .HasColumnType("boolean");
 
+                    b.Property<int>("PreEventWeekStartOffset")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(-9);
+
                     b.Property<int>("ReminderLeadTimeHours")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("SetupWeekStartOffset")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(-16);
+
+                    b.Property<int>("StrikeEndOffset")
                         .HasColumnType("integer");
 
                     b.Property<int?>("SubPeriodFinishingWeekendStart")
@@ -53,12 +103,22 @@ namespace Humans.Shifts.Data.Migrations
                     b.Property<int?>("SubPeriodSetupWeekStart")
                         .HasColumnType("integer");
 
+                    b.Property<string>("TimeZoneId")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
                     b.Property<Instant>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<int>("Year")
+                        .HasColumnType("integer");
+
                     b.HasKey("Id");
 
-                    b.ToTable("event_settings", (string)null);
+                    b.HasIndex("IsActive");
+
+                    b.ToTable("shift_event_settings", (string)null);
                 });
 
             modelBuilder.Entity("Humans.Shifts.Domain.GeneralAvailability", b =>
@@ -90,7 +150,7 @@ namespace Humans.Shifts.Data.Migrations
                     b.HasIndex("UserId", "EventSettingsId")
                         .IsUnique();
 
-                    b.ToTable("general_availability", (string)null);
+                    b.ToTable("shift_general_availabilities", (string)null);
                 });
 
             modelBuilder.Entity("Humans.Shifts.Domain.Rota", b =>
@@ -148,7 +208,7 @@ namespace Humans.Shifts.Data.Migrations
 
                     b.HasIndex("EventSettingsId", "TeamId");
 
-                    b.ToTable("rotas", (string)null);
+                    b.ToTable("shift_rotas", (string)null);
                 });
 
             modelBuilder.Entity("Humans.Shifts.Domain.Shift", b =>
@@ -353,7 +413,7 @@ namespace Humans.Shifts.Data.Migrations
                     b.HasIndex("UserId", "EventSettingsId")
                         .IsUnique();
 
-                    b.ToTable("volunteer_build_statuses", (string)null);
+                    b.ToTable("shift_volunteer_build_statuses", (string)null);
                 });
 
             modelBuilder.Entity("Humans.Shifts.Domain.VolunteerEventProfile", b =>
@@ -412,7 +472,7 @@ namespace Humans.Shifts.Data.Migrations
                     b.HasIndex("UserId")
                         .IsUnique();
 
-                    b.ToTable("volunteer_event_profiles", (string)null);
+                    b.ToTable("shift_volunteer_event_profiles", (string)null);
                 });
 
             modelBuilder.Entity("Humans.Shifts.Domain.VolunteerTagPreference", b =>
@@ -437,7 +497,7 @@ namespace Humans.Shifts.Data.Migrations
                         .IsUnique()
                         .HasDatabaseName("IX_volunteer_tag_preferences_user_tag_unique");
 
-                    b.ToTable("volunteer_tag_preferences", (string)null);
+                    b.ToTable("shift_volunteer_tag_preferences", (string)null);
                 });
 
             modelBuilder.Entity("RotaShiftTag", b =>
@@ -452,7 +512,7 @@ namespace Humans.Shifts.Data.Migrations
 
                     b.HasIndex("ShiftTagId");
 
-                    b.ToTable("rota_shift_tags", (string)null);
+                    b.ToTable("shift_rota_tags", (string)null);
                 });
 
             modelBuilder.Entity("Humans.Shifts.Domain.GeneralAvailability", b =>

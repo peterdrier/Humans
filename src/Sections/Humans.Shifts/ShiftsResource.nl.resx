@@ -1154,10 +1154,6 @@
   <data name="Shifts_Dashboard_CampsDescription" xml:space="preserve">
     <value>De buurten die Elsewhere als thuis laten voelen.</value>
   </data>
-  <data name="Shifts_DietaryMissingBanner_Title" xml:space="preserve"><value>Je eetvoorkeuren delen?</value></data>
-  <data name="Shifts_DietaryMissingBanner_Body" xml:space="preserve"><value>Je bent aangemeld voor een lange dienst. Als je je eetvoorkeuren doorgeeft, kan de cantina je maaltijden plannen. Het is optioneel.</value></data>
-  <data name="Shifts_DietaryMissingBanner_Cta" xml:space="preserve"><value>Laat het ons nu weten</value></data>
-  <data name="Shifts_DietaryMissingBanner_Decline" xml:space="preserve"><value>Ik wil liever niet antwoorden</value></data>
   <data name="Shifts_ViewAllMyShifts" xml:space="preserve"><value>Al mijn diensten bekijken</value></data>
   <data name="Shifts_SortOrder" xml:space="preserve"><value>Sorteervolgorde</value></data>
   <data name="Shifts_BailRangeSuccess" xml:space="preserve"><value>Je bent afgemeld voor de reeks diensten.</value></data>
@@ -1211,8 +1207,6 @@
   <data name="Shifts_Signup_AtCapacity" xml:space="preserve"><value>Deze dienst zit vol.</value></data>
   <data name="Shifts_Signup_RotaNotFound" xml:space="preserve"><value>Rooster niet gevonden.</value></data>
   <data name="Shifts_Signup_RangeEmpty" xml:space="preserve"><value>Geen diensten gevonden in de opgegeven periode.</value></data>
-  <data name="Shifts_Signup_RangeAlreadySignedUp" xml:space="preserve"><value>Al aangemeld voor alle diensten in deze periode.</value></data>
-  <data name="Shifts_Signup_RangeConflicts" xml:space="preserve"><value>Alle diensten in deze periode hebben tijdconflicten met bestaande aanmeldingen.</value></data>
   <data name="Shifts_Signup_RangeAtCapacity" xml:space="preserve"><value>Alle diensten in deze periode zitten vol.</value></data>
   <data name="Shifts_Signup_RangeRestricted" xml:space="preserve"><value>Een of meer diensten in deze reeks zijn alleen voor coördinatoren en beheerders.</value></data>
   <data name="Shifts_Signup_RangeDuplicate" xml:space="preserve"><value>Al aangemeld voor een of meer diensten in deze periode.</value></data>
@@ -1275,8 +1269,6 @@
   </data>
   <data name="Shifts_StatusReasonTooLong" xml:space="preserve"><value>Redenen mogen niet langer zijn dan 1.000 tekens.</value></data>
   <data name="Shifts_Bail_NotActive" xml:space="preserve"><value>Deze aanmelding is niet meer actief. Je kunt je er niet meer voor afmelden.</value></data>
-  <data name="Shifts_Medical_RevealTitle" xml:space="preserve"><value>Medische gegevens tonen (elke inzage wordt vastgelegd in het auditlog)</value></data>
-  <data name="Shifts_Medical_RevealFailed" xml:space="preserve"><value>Kan de medische gegevens niet laden.</value></data>
   <data name="Shifts_Notification_CoverageGapTitle" xml:space="preserve"><value>Onderbezetting: {0} dag {1}</value></data>
   <data name="Shifts_Notification_CoverageGapBody" xml:space="preserve"><value>Slechts {0}/{1} humans bevestigd.</value></data>
   <data name="Shifts_Notification_FindCover" xml:space="preserve"><value>Vervanging zoeken →</value></data>
@@ -1294,4 +1286,38 @@
   <data name="Shifts_Notification_ChangeRefusedRange" xml:space="preserve"><value>Reeks geweigerd ({1} diensten) voor '{0}'.</value></data>
   <data name="Shifts_Notification_ChangeBailedRange" xml:space="preserve"><value>Afgemeld voor een reeks diensten van '{0}' ({1} diensten).</value></data>
   <data name="Shifts_TagPreferencesInvalid" xml:space="preserve"><value>Sommige geselecteerde tags zijn niet meer beschikbaar. Controleer je selectie en probeer het opnieuw.</value></data>
+  <data name="Shifts_Profile_NoShowHistory" xml:space="preserve"><value>No-show-geschiedenis ({0})</value></data>
+  <data name="Shifts_Profile_MarkedBy" xml:space="preserve"><value>Gemarkeerd door</value></data>
+  <data name="Shifts_Profile_MarkedAt" xml:space="preserve"><value>Gemarkeerd op</value></data>
+  <data name="ShiftsSummary_Title" xml:space="preserve">
+    <value>Diensten</value>
+  </data>
+  <data name="ShiftsSummary_SlotsFilled" xml:space="preserve">
+    <value>{0} / {1} plekken bezet</value>
+    <comment>{0} = filled, {1} = total</comment>
+  </data>
+  <data name="ShiftsSummary_HumansSignedUp" xml:space="preserve">
+    <value>{0} humans aangemeld</value>
+    <comment>{0} = count</comment>
+  </data>
+  <data name="ShiftsSummary_PendingCount" xml:space="preserve">
+    <value>{0} in afwachting</value>
+    <comment>{0} = count</comment>
+  </data>
+  <data name="ShiftsSummary_NoShifts" xml:space="preserve">
+    <value>Nog geen diensten ingesteld.</value>
+  </data>
+  <data name="ShiftsSummary_IncludesSubTeams" xml:space="preserve">
+    <value>Inclusief diensten van {0} subteam(s)</value>
+    <comment>{0} = count</comment>
+  </data>
+  <data name="ShiftsSummary_ManageShifts" xml:space="preserve">
+    <value>Diensten beheren</value>
+  </data>
+  <data name="Shifts_Search_Category" xml:space="preserve"><value>Diensten</value></data>
+  <data name="Shifts_NameRequiredBeforeShifts" xml:space="preserve"><value>Voeg eerst je naam toe — die hebben we nodig voordat je je kunt aanmelden voor diensten.</value></data>
+  <data name="Shifts_Permission_Manage_Title" xml:space="preserve"><value>Diensten beheren</value></data>
+  <data name="Shifts_Permission_Manage_Blurb" xml:space="preserve"><value>Roosters en diensten van het team aanmaken en bewerken, en de vrijwilligers mailen.</value></data>
+  <data name="Shifts_Permission_Approve_Title" xml:space="preserve"><value>Aanmeldingen goedkeuren</value></data>
+  <data name="Shifts_Permission_Approve_Blurb" xml:space="preserve"><value>Aanmeldingen voor de diensten van het team goedkeuren, weigeren en vrijwilligers indelen.</value></data>
 </root>

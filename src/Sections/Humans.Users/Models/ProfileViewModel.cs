@@ -1,4 +1,3 @@
-using Humans.Governance.Contracts;
 using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 using NodaTime;
@@ -43,16 +42,14 @@ internal sealed class ProfileViewModel
     [StringLength(2, ErrorMessage = "Validation_MaxLength")]
     public string? CountryCode { get; set; }
 
+    [Range(-90d, 90d, ErrorMessage = "Validation_Range")]
     public double? Latitude { get; set; }
 
+    [Range(-180d, 180d, ErrorMessage = "Validation_Range")]
     public double? Longitude { get; set; }
 
     [StringLength(512, ErrorMessage = "Validation_MaxLength")]
     public string? PlaceId { get; set; }
-
-    public string? LocationDisplay => !string.IsNullOrEmpty(City) && !string.IsNullOrEmpty(CountryCode)
-        ? $"{City}, {CountryCode}"
-        : City ?? CountryCode;
 
     [StringLength(1000, ErrorMessage = "Validation_MaxLength")]
     [DataType(DataType.MultilineText)]
@@ -116,15 +113,8 @@ internal sealed class ProfileViewModel
 
     public bool RemoveProfilePicture { get; set; }
 
-    public MembershipStatus MembershipStatus { get; set; }
     public bool HasPendingConsents { get; set; }
     public int PendingConsentCount { get; set; }
-
-    public ApplicationStatus? TierApplicationStatus { get; set; }
-
-    public MembershipTier? TierApplicationTier { get; set; }
-
-    public string? TierApplicationBadgeClass { get; set; }
 
     /// <summary>No profile yet or not approved; shows the membership-tier card.</summary>
     public bool IsInitialSetup { get; set; }
@@ -134,12 +124,6 @@ internal sealed class ProfileViewModel
 
     /// <summary>When true, Burner CV entries are not required.</summary>
     public bool NoPriorBurnExperience { get; set; }
-
-    /// <summary>
-    /// The member already has a pending or approved tier application, so the initial-setup
-    /// tier card shows a note instead of the link to <c>/Governance/Applications/Create</c>.
-    /// </summary>
-    public bool IsTierLocked { get; set; }
 
     public string? FormattedBirthday
     {
@@ -173,11 +157,6 @@ internal sealed class ProfileViewModel
     public List<VolunteerHistoryEntryEditViewModel> EditableVolunteerHistory { get; set; } = [];
 
     public IReadOnlyList<TeamMembershipViewModel> Teams { get; set; } = [];
-
-    public List<NoShowHistoryItem>? NoShowHistory { get; set; }
-
-    /// <summary>Same gate as NoShowHistory; only meaningful when IsOwnProfile is false.</summary>
-    public bool CanViewShiftSignups { get; set; }
 
     public List<ProfileLanguageEditViewModel> EditableLanguages { get; set; } = [];
 
@@ -366,12 +345,3 @@ internal sealed class ProfileLanguageDisplayViewModel
     };
 }
 
-/// <summary>One no-show row, from <c>IShiftSignups.GetNoShowHistoryAsync</c>.</summary>
-internal sealed class NoShowHistoryItem
-{
-    public string ShiftLabel { get; set; } = string.Empty;
-    public string DepartmentName { get; set; } = string.Empty;
-    public string ShiftDateLabel { get; set; } = string.Empty;
-    public Guid? MarkedByUserId { get; set; }
-    public string? MarkedAtLabel { get; set; }
-}

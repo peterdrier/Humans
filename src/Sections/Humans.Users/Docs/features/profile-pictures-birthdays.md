@@ -1,6 +1,7 @@
 <!-- freshness:triggers
   src/Sections/Humans.Users/Services/ProfileService.cs
-  src/Sections/Humans.Teams/**
+  src/Sections/Humans.Users/Controllers/UsersController.cs
+  src/Sections/Humans.Users/Views/Users/Birthdays.cshtml
   src/Sections/Humans.Users/Controllers/ProfileController.cs
   src/Sections/Humans.Users/Controllers/ProfileViewController.cs
   src/Sections/Humans.Users/Views/Profile/Edit.cshtml
@@ -8,7 +9,7 @@
   src/Sections/Humans.Users/Data/Configurations/**
 -->
 <!-- freshness:flag-on-change
-  Profile picture upload/serve route, birthday calendar view, and DOB privacy rules — review when Profile entity, the ProfileViewController picture endpoint, or the team birthdays view change.
+  Profile picture upload/serve route, birthday calendar view, and DOB privacy rules — review when Profile entity, the ProfileViewController picture endpoint, or the `/Users/Birthdays` view change.
 -->
 
 # Profile Pictures & Birthday Calendar
@@ -46,7 +47,7 @@ Humans need a way to personalize their profiles. Custom profile pictures make te
 ### US-14.3: Set Date of Birth
 **As a** member
 **I want to** set my date of birth on my profile
-**So that** my birthday appears in the team birthday calendar
+**So that** my birthday appears in the birthday calendar
 
 **Acceptance Criteria:**
 - Date of birth field on profile edit page
@@ -65,7 +66,7 @@ Humans need a way to personalize their profiles. Custom profile pictures make te
 - Monthly view with navigation between months
 - Shows profile picture, display name, day of month, and team memberships
 - Only shows humans who have set their birthday
-- Accessible from Teams index page
+- Reached from a card on the member dashboard
 - Privacy note explaining visibility rules
 - System teams excluded from team name display
 
@@ -106,9 +107,9 @@ Picture saves use `IProfileEditorService.SaveProfileAsync`: `UserService` writes
 
 | Route | Method | Description |
 |-------|--------|-------------|
-| `GET /Profile/Picture?id={id}` | GET | Serve profile picture (anonymous, cached 1hr) |
-| `GET /Teams/Birthdays` | GET | Birthday calendar (current month) |
-| `GET /Teams/Birthdays?month=N` | GET | Birthday calendar for specific month |
+| `GET /Profile/Picture?id={userId}` | GET | Serve profile picture (anonymous, cached 1hr) |
+| `GET /Users/Birthdays` | GET | Birthday calendar (current month) |
+| `GET /Users/Birthdays?month=N` | GET | Birthday calendar for specific month |
 
 ## Picture Upload Flow
 
@@ -145,14 +146,13 @@ Picture saves use `IProfileEditorService.SaveProfileAsync`: `UserService` writes
 
 Only the custom uploaded picture is rendered in the UI. Google OAuth avatar URLs are never displayed directly — humans without a custom picture get the initial-letter placeholder.
 
-The team photo gallery (US-14.2) renders member pictures through the shared `<vc:human>` component (`HumanViewComponent`), not a per-page view model: it resolves `UserInfo.Profile.HasCustomPicture`, and when true builds the picture URL via `Url.Action("Picture", "ProfileView", new { id = profile.Id, v = profile.UpdatedAt })` (`GET /Profile/Picture?id={id}&v={updatedAtTicks}` — the `v` query param cache-busts on picture change). The own-profile edit page renders its preview through `<vc:human>` by `UserId` as well. Either way, a null/false result falls back to the initial-letter placeholder — never a Google avatar.
+The team photo gallery (US-14.2) renders member pictures through the shared `<vc:human>` component (`HumanViewComponent`), not a per-page view model: it resolves `UserInfo.Profile.HasCustomPicture`, and when true builds the picture URL via `Url.Action("Picture", "ProfileView", new { id = userId, v = profile.UpdatedAt })` (`GET /Profile/Picture?id={id}&v={updatedAtTicks}` — the `v` query param cache-busts on picture change). The own-profile edit page renders its preview through `<vc:human>` by `UserId` as well. Either way, a null/false result falls back to the initial-letter placeholder — never a Google avatar.
 
 ## Privacy Model
 
 | Data | Member | Other Members | Board |
 |------|--------|---------------|-------|
 | Profile picture | Yes | Yes (in teams) | Yes |
-| Date of birth (full) | Yes | No | Yes |
 | Birthday (month+day) | Yes | Yes (calendar) | Yes |
 
 ## Localization
@@ -162,7 +162,7 @@ All UI strings are localized in every supported language: EN, ES, CA, DE, FR, IT
 - `Users_Profile_PictureTooLarge`, `Users_Profile_PictureInvalidFormat`
 - `Users_ProfileEdit_PictureHelp`, `Users_ProfileEdit_RemovePicture`
 - `Teams_TeamDetail_TeamCoordinators`
-- `Teams_Birthdays_Title`, `Teams_Birthdays_Count`, `Teams_Birthdays_None`, `Teams_Birthdays_Privacy`
+- `Users_Birthdays_Title`, `Users_Birthdays_Count`, `Users_Birthdays_None`, `Users_Birthdays_Privacy`, `Users_Birthdays_CardDescription`
 
 ## Related Features
 

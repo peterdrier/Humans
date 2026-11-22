@@ -45,9 +45,6 @@ internal partial interface IUserRepository
 
     Task RemoveAllUserEmailsForUserAndSaveAsync(Guid userId, CancellationToken ct = default);
 
-    Task RemoveAllUserEmailsForUsersAndSaveAsync(
-        IReadOnlyCollection<Guid> userIds, CancellationToken ct = default);
-
     Task<bool> MarkUserEmailVerifiedAsync(
         Guid emailId, Instant now, CancellationToken ct = default);
 
@@ -57,18 +54,12 @@ internal partial interface IUserRepository
     Task<IReadOnlyList<UserEmail>> GetUserEmailsByEmailsAsync(
         IReadOnlyCollection<string> emails, CancellationToken ct = default);
 
-    Task<IReadOnlyList<Guid>> GetUserIdsByUserEmailPrefixAndSuffixAsync(
-        string prefix,
-        string suffix,
-        CancellationToken ct = default);
-
     /// <summary>
-    /// Applies an OAuth-reconcile plan in one transaction, so a displaced user's verified row is
-    /// never deleted while the signing user's change is left undone. Sole caller:
+    /// Applies an OAuth-reconcile plan in one transaction, so a tag-move never deletes the old row
+    /// while the new one is left unwritten. Sole caller:
     /// <c>UserEmailService.ReconcileOAuthIdentityAsync</c>.
     /// </summary>
     Task ApplyUserEmailReconcilePlanAsync(
-        UserEmail? displacedRowToDelete,
         UserEmail? rowToDelete,
         UserEmail? rowToUpdate,
         UserEmail? rowToInsert,

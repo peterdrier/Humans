@@ -29,7 +29,11 @@ public sealed record CampSettingsInfo(
 }
 
 /// <summary>A Settings event and whether camp registration is open for it.</summary>
-public sealed record CampEventRegistration(Guid EventSettingsId, string EventName, int Year, bool RegistrationOpen);
+public sealed record CampEventRegistration(Guid EventSettingsId, string EventName, int Year, bool RegistrationOpen)
+{
+    /// <summary>Markdown shown at the top of the Register page while this event takes registrations.</summary>
+    public string? RegistrationInfo { get; init; }
+}
 
 /// <summary>
 /// One per camp in the cached projection; year-keyed reads filter it rather than caching separately.
@@ -59,16 +63,6 @@ public sealed record CampInfo(
 
     /// <summary>The latest season by year, whatever its status.</summary>
     public CampSeasonInfo? Active => Seasons.OrderByDescending(s => s.Year).FirstOrDefault();
-
-    public CampSeasonInfo? GetSeasonForYear(int year, bool fallbackToLatestSeason = false)
-    {
-        var season = Seasons
-            .Where(s => s.Year == year)
-            .OrderByDescending(s => s.Year)
-            .FirstOrDefault();
-
-        return season ?? (fallbackToLatestSeason ? Active : null);
-    }
 
     public CampSeasonInfo? GetSeasonForEvent(Guid eventSettingsId, bool fallbackToLatestSeason = false) =>
         Seasons.FirstOrDefault(s => s.EventSettingsId == eventSettingsId)

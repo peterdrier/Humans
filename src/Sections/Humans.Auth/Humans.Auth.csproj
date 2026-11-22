@@ -19,7 +19,7 @@
     <InternalsVisibleTo Include="Humans.Auth.Tests" />
     <!-- The one assembly allowed to see many sections. -->
     <InternalsVisibleTo Include="Humans.Integration.Tests" />
-    <!-- Temporary: TeamsTestHarness seeds role_assignments rows for Teams' own role tests; comes out when that fixture is rewritten. -->
+    <!-- Temporary: TeamsTestHarness seeds auth_role_assignments rows for Teams' own role tests; comes out when that fixture is rewritten. -->
     <InternalsVisibleTo Include="Humans.Teams.Tests" />
   </ItemGroup>
 
@@ -32,8 +32,7 @@
                         MagicLinkService uses its raw identity projection and IUserEmailService.
       Email.Contracts — IEmailService, which MagicLinkService injects to send the
                         login/signup mail built by the section's own AuthEmails.
-      Teams.Contracts — ISystemTeamSync, which RoleAssignmentService injects to reconcile
-                        the Board system team.
+      Teams.Contracts — TeamsRoles, for the Teams Admin role check.
       No Onboarding.Contracts reference.
     -->
     <ProjectReference Include="..\Humans.Email.Contracts\Humans.Email.Contracts.csproj" />
@@ -52,6 +51,17 @@
   <ItemGroup>
     <!-- The section owns its documentation; keep it visible in Solution Explorer. -->
     <None Include="**\*.md" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!--
+      Section-help markdown (ISectionHelp). Embedded, not fetched: the help modal renders
+      synchronously on the section's landing page. The logical name is fixed here so
+      SectionHelpEntry.FromEmbeddedMarkdown can address it without probing.
+    -->
+    <None Remove="Docs\help\*.md" />
+    <EmbeddedResource Include="Docs\help\*.md"
+                      LogicalName="$(AssemblyName).Docs.help.%(Filename)%(Extension)" />
   </ItemGroup>
 
 </Project>

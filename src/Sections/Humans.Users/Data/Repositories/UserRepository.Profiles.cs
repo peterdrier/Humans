@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
 using Humans.Users.Contracts;
+using Humans.Users.Services;
 
 namespace Humans.Users.Data.Repositories;
 
@@ -16,31 +17,48 @@ internal sealed partial class UserRepository
     public async Task<Profile?> GetByUserIdReadOnlyAsync(Guid userId, CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
-        return await ctx.Profiles
+        var profile = await ctx.Profiles
             .AsNoTracking()
-            .Include(p => p.VolunteerHistory)
-            .Include(p => p.Languages)
             .FirstOrDefaultAsync(p => p.UserId == userId, ct);
+        if (profile is null)
+            return null;
+
+        AttachChildren(
+            [profile],
+            await ctx.VolunteerHistoryEntries.AsNoTracking().Where(v => v.UserId == userId).ToListAsync(ct),
+            await ctx.ProfileLanguages.AsNoTracking().Where(l => l.UserId == userId).ToListAsync(ct));
+        return profile;
     }
 
     public async Task<IReadOnlyList<Profile>> GetAllProfilesAsync(CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
-        return await ctx.Profiles
-            .AsNoTracking()
-            .Include(p => p.VolunteerHistory)
-            .Include(p => p.Languages)
-            .ToListAsync(ct);
+        var profiles = await ctx.Profiles.AsNoTracking().ToListAsync(ct);
+        AttachChildren(
+            profiles,
+            await ctx.VolunteerHistoryEntries.AsNoTracking().ToListAsync(ct),
+            await ctx.ProfileLanguages.AsNoTracking().ToListAsync(ct));
+        return profiles;
     }
 
-    public async Task<Guid?> GetOwnerUserIdAsync(Guid profileId, CancellationToken ct = default)
+    /// <summary>Volunteer history and languages hang off the user id, so they are joined here, not by EF.</summary>
+    private static void AttachChildren(
+        IReadOnlyList<Profile> profiles,
+        IReadOnlyList<VolunteerHistoryEntry> history,
+        IReadOnlyList<ProfileLanguage> languages)
     {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        return await ctx.Profiles
-            .AsNoTracking()
-            .Where(p => p.Id == profileId)
-            .Select(p => (Guid?)p.UserId)
-            .FirstOrDefaultAsync(ct);
+        var byUser = profiles.ToDictionary(p => p.UserId);
+        foreach (var entry in history)
+        {
+            if (byUser.TryGetValue(entry.UserId, out var profile))
+                profile.VolunteerHistory.Add(entry);
+        }
+
+        foreach (var language in languages)
+        {
+            if (byUser.TryGetValue(language.UserId, out var profile))
+                profile.Languages.Add(language);
+        }
     }
 
     public async Task<(string ContentType, string? StorageKey)?> GetProfilePictureLocationAsync(
@@ -58,39 +76,37 @@ internal sealed partial class UserRepository
     }
 
     public async Task<IReadOnlyList<ProfileLanguage>> GetLanguagesAsync(
-        Guid profileId, CancellationToken ct = default)
+        Guid userId, CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
         return await ctx.ProfileLanguages
             .AsNoTracking()
-            .Where(pl => pl.ProfileId == profileId)
+            .Where(pl => pl.UserId == userId)
             .ToListAsync(ct);
     }
 
-    public async Task ReplaceLanguagesAsync(Guid profileId, IReadOnlyList<ProfileLanguage> languages, CancellationToken ct = default)
+    public async Task ReplaceLanguagesAsync(Guid userId, IReadOnlyList<ProfileLanguage> languages, CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
         var existing = await ctx.ProfileLanguages
-            .Where(pl => pl.ProfileId == profileId)
+            .Where(pl => pl.UserId == userId)
             .ToListAsync(ct);
         ctx.ProfileLanguages.RemoveRange(existing);
-
-        if (languages.Count > 0)
-            ctx.ProfileLanguages.AddRange(languages);
-
+        ctx.ProfileLanguages.AddRange(languages);
         await ctx.SaveChangesAsync(ct);
     }
 
-    public async Task AddAsync(Profile profile, CancellationToken ct = default)
+    public async Task AddAsync(Profile profile, CancellationToken ct = default, UserNames? names = null)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
         ctx.Profiles.Add(profile);
-        await UpdateUserStateFromProfileAsync(ctx, profile, ct);
+        await UpdateUserFromProfileAsync(ctx, profile, names, ct);
         await ctx.SaveChangesAsync(ct);
     }
 
     public async Task UpdateAsync(
-        Profile profile, CancellationToken ct = default, IReadOnlyList<CVEntry>? volunteerHistory = null)
+        Profile profile, CancellationToken ct = default, IReadOnlyList<CVEntry>? volunteerHistory = null,
+        UserNames? names = null)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
         // Not ctx.Profiles.Update(profile): that cascades to the navigation collections and
@@ -98,41 +114,37 @@ internal sealed partial class UserRepository
         ctx.Attach(profile);
         ctx.Entry(profile).State = EntityState.Modified;
         if (volunteerHistory is not null)
-            await ReconcileCVEntriesAsync(ctx, profile.Id, volunteerHistory, ct);
-        await UpdateUserStateFromProfileAsync(ctx, profile, ct);
+            await ReconcileCVEntriesAsync(ctx, profile, volunteerHistory, ct);
+        await UpdateUserFromProfileAsync(ctx, profile, names, ct);
         await ctx.SaveChangesAsync(ct);
     }
 
-    private static async Task UpdateUserStateFromProfileAsync(
-        UsersDbContext ctx, Profile profile, CancellationToken ct)
+    private static async Task UpdateUserFromProfileAsync(
+        UsersDbContext ctx, Profile profile, UserNames? names, CancellationToken ct)
     {
         var user = await ctx.Users.FindAsync([profile.UserId], ct);
         if (user is null)
             return;
 
-        // The names belong to the human; every Profile write funnels through here, so this is the one seam.
-        CopyNamesToUser(user, profile);
+        if (names is not null)
+            SetNames(user, names);
         user.State = UserStateEvaluator.Classify(user, profile);
     }
 
-    /// <summary>Mirrors the Profile's names onto the User row inside the same save.</summary>
-    private static void CopyNamesToUser(User user, Profile profile)
+    private static void SetNames(User user, UserNames names)
     {
-        user.BurnerName = profile.BurnerName;
-        user.FirstName = profile.FirstName;
-        user.LastName = profile.LastName;
+        user.BurnerName = names.BurnerName;
+        user.FirstName = names.FirstName;
+        user.LastName = names.LastName;
     }
 
-    /// <summary>
-    /// Name mirror for the ctx-direct anonymize/merge paths, which do not route through
-    /// <see cref="UpdateAsync"/>.
-    /// </summary>
-    private static async Task MirrorProfileNamesToUserAsync(
-        UsersDbContext ctx, Profile profile, CancellationToken ct)
+    /// <summary>Replaces a tombstoned human's names on the users row.</summary>
+    private static async Task SetTombstoneNamesAsync(
+        UsersDbContext ctx, Profile profile, UserNames names, CancellationToken ct)
     {
         var user = await ctx.Users.FindAsync([profile.UserId], ct);
         if (user is not null)
-            CopyNamesToUser(user, profile);
+            SetNames(user, names);
     }
 
     public async Task<int> EraseProfileExtrasForUserAsync(Guid userId, CancellationToken ct = default)
@@ -146,7 +158,7 @@ internal sealed partial class UserRepository
             profile.MedicalConditions = null;
 
             var languages = await ctx.ProfileLanguages
-                .Where(pl => pl.ProfileId == profile.Id)
+                .Where(pl => pl.UserId == userId)
                 .ToListAsync(ct);
             ctx.ProfileLanguages.RemoveRange(languages);
         }
@@ -200,8 +212,8 @@ internal sealed partial class UserRepository
         return suspended;
     }
 
-    public async Task<(Guid ProfileId, string? ContentType, string? StorageKey)?> ReassignSubAggregatesToUserAsync(
-        Guid sourceUserId, Guid targetUserId, Instant updatedAt,
+    public async Task ReassignSubAggregatesToUserAsync(
+        Guid sourceUserId, Guid targetUserId, Instant updatedAt, Profile? keptProfile, UserNames? keptNames,
         CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
@@ -209,29 +221,25 @@ internal sealed partial class UserRepository
         var sourceProfile = await ctx.Profiles
             .FirstOrDefaultAsync(p => p.UserId == sourceUserId, ct);
         if (sourceProfile is null)
-            return null;
+            return;
 
         var targetProfile = await ctx.Profiles
             .FirstOrDefaultAsync(p => p.UserId == targetUserId, ct);
         if (targetProfile is null)
-            return null;
-
-        var previousPicture = (ProfileId: sourceProfile.Id,
-            ContentType: sourceProfile.ProfilePictureContentType,
-            StorageKey: sourceProfile.ProfilePictureStorageKey);
+            return;
 
         var sourceVolunteerHistory = await ctx.VolunteerHistoryEntries
-            .Where(v => v.ProfileId == sourceProfile.Id)
+            .Where(v => v.UserId == sourceUserId)
             .ToListAsync(ct);
         var targetVolunteerHistory = await ctx.VolunteerHistoryEntries
-            .Where(v => v.ProfileId == targetProfile.Id)
+            .Where(v => v.UserId == targetUserId)
             .ToListAsync(ct);
 
         var sourceLanguages = await ctx.ProfileLanguages
-            .Where(l => l.ProfileId == sourceProfile.Id)
+            .Where(l => l.UserId == sourceUserId)
             .ToListAsync(ct);
         var targetLanguages = await ctx.ProfileLanguages
-            .Where(l => l.ProfileId == targetProfile.Id)
+            .Where(l => l.UserId == targetUserId)
             .ToListAsync(ct);
 
         // EventName comparison is case-sensitive, matching CV reconciliation.
@@ -246,7 +254,7 @@ internal sealed partial class UserRepository
             }
             else
             {
-                ctx.Entry(src).Property(nameof(VolunteerHistoryEntry.ProfileId)).CurrentValue = targetProfile.Id;
+                src.UserId = targetUserId;
                 src.UpdatedAt = updatedAt;
                 targetVolunteerKeys.Add(key);
             }
@@ -266,19 +274,23 @@ internal sealed partial class UserRepository
             }
             else
             {
-                ctx.Entry(src).Property(nameof(ProfileLanguage.ProfileId)).CurrentValue = targetProfile.Id;
+                src.UserId = targetUserId;
                 targetLanguageByCode[src.LanguageCode] = src;
             }
         }
 
+        if (keptProfile is not null)
+        {
+            ctx.Entry(targetProfile).CurrentValues.SetValues(keptProfile);
+            if (keptNames is not null)
+                await UpdateUserFromProfileAsync(ctx, targetProfile, keptNames, ct);
+        }
+
         // The row stays as the tombstone counterpart to User.MergedToUserId; only identifying
         // scalars are cleared.
-        sourceProfile.FirstName = "Merged";
-        sourceProfile.LastName = "User";
-        sourceProfile.BurnerName = "Merged User";
-        // Clear the User-side names in the same save, or the resolver (User.BurnerName) would keep
+        // Same save as the rest of the tombstone, or the resolver (User.BurnerName) would keep
         // rendering the merged human's real name.
-        await MirrorProfileNamesToUserAsync(ctx, sourceProfile, ct);
+        await SetTombstoneNamesAsync(ctx, sourceProfile, new UserNames("Merged User", "Merged", "User"), ct);
         sourceProfile.Bio = null;
         sourceProfile.City = null;
         sourceProfile.CountryCode = null;
@@ -298,7 +310,6 @@ internal sealed partial class UserRepository
         sourceProfile.UpdatedAt = updatedAt;
 
         await ctx.SaveChangesAsync(ct);
-        return previousPicture;
     }
 
     public async Task<bool> AnonymizeForDeletionByUserIdAsync(
@@ -311,10 +322,7 @@ internal sealed partial class UserRepository
         if (profile is null)
             return false;
 
-        profile.FirstName = "Deleted";
-        profile.LastName = "User";
-        profile.BurnerName = string.Empty;
-        await MirrorProfileNamesToUserAsync(ctx, profile, ct);
+        await SetTombstoneNamesAsync(ctx, profile, new UserNames(string.Empty, "Deleted", "User"), ct);
         profile.Bio = null;
         profile.City = null;
         profile.CountryCode = null;
@@ -333,12 +341,12 @@ internal sealed partial class UserRepository
         profile.BoardNotes = null;
 
         var contactFields = await ctx.ContactFields
-            .Where(cf => cf.ProfileId == profile.Id)
+            .Where(cf => cf.UserId == userId)
             .ToListAsync(ct);
         ctx.ContactFields.RemoveRange(contactFields);
 
         var volunteerHistory = await ctx.VolunteerHistoryEntries
-            .Where(vh => vh.ProfileId == profile.Id)
+            .Where(vh => vh.UserId == userId)
             .ToListAsync(ct);
         ctx.VolunteerHistoryEntries.RemoveRange(volunteerHistory);
 
@@ -348,13 +356,13 @@ internal sealed partial class UserRepository
 
     private async Task ReconcileCVEntriesAsync(
         UsersDbContext ctx,
-        Guid profileId,
+        Profile profile,
         IReadOnlyList<CVEntry> entries,
         CancellationToken ct)
     {
         // Tracked, so the change tracker sees in-place mutations.
         var existing = await ctx.VolunteerHistoryEntries
-            .Where(v => v.ProfileId == profileId)
+            .Where(v => v.UserId == profile.UserId)
             .ToListAsync(ct);
 
         var existingLookup = existing.ToDictionary(v => v.Id);
@@ -392,7 +400,7 @@ internal sealed partial class UserRepository
                 ctx.VolunteerHistoryEntries.Add(new VolunteerHistoryEntry
                 {
                     Id = Guid.NewGuid(),
-                    ProfileId = profileId,
+                    UserId = profile.UserId,
                     Date = entry.Date,
                     EventName = entry.EventName,
                     Description = entry.Description,

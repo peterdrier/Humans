@@ -6,6 +6,7 @@ using Ical.Net.DataTypes;
 using Ical.Net.Serialization;
 using Humans.Users.Contracts;
 using Microsoft.Extensions.Options;
+using NodaTime;
 
 namespace Humans.Calendar.Services;
 
@@ -48,9 +49,7 @@ internal sealed class ICalFeedService(
         return items;
     }
 
-    public async Task<bool> HasFeedAsync(Guid userId, CancellationToken ct = default) =>
-        await tokens.GetAsync(userId, ct) is not null;
-
+    /// <summary>Null when the user is missing or merged or the token is wrong: one 404 for all, so no oracle.</summary>
     public async Task<string?> GetFeedIcsAsync(Guid userId, Guid token, CancellationToken ct = default)
     {
         // The read resolves merges forward; comparing ids keeps a merged user's feed a 404, so an old URL
@@ -79,8 +78,11 @@ internal sealed class ICalFeedService(
             {
                 Uid = item.Uid,
                 Summary = item.Summary,
-                Description = item.Description,
-                Location = item.Location,
+                // Google and Outlook ignore URL and don't link LOCATION, but every client links a URL in DESCRIPTION.
+                Description = item.LocationUrl is null
+                    ? item.Description
+                    : string.IsNullOrWhiteSpace(item.Description) ? item.LocationUrl : $"{item.LocationUrl}\n\n{item.Description}",
+                Location = string.IsNullOrWhiteSpace(item.Location) ? item.LocationUrl : item.Location,
                 // ToDateTimeUtc keeps Kind=Utc so DTSTART gets its Z suffix (Ical.Net version-sensitive; a test guards it).
                 DtStart = new CalDateTime(item.Start.ToDateTimeUtc()),
                 DtEnd = new CalDateTime(item.End.ToDateTimeUtc()),
@@ -92,9 +94,16 @@ internal sealed class ICalFeedService(
             {
                 ev.DtStart = new CalDateTime(item.Start.InZone(zone).LocalDateTime.ToDateTimeUnspecified(), zone.Id, hasTime: true);
                 ev.DtEnd = new CalDateTime(item.End.InZone(zone).LocalDateTime.ToDateTimeUnspecified(), zone.Id, hasTime: true);
-                ev.RecurrenceRule = new RecurrencePattern(rule);
+                var pattern = CalendarRecurrenceRules.ParseRecurrenceRule(rule);
+                // TZID DTSTART requires UTC UNTIL; retain the rule's local cutoff, including legacy DATE midnight.
+                if (pattern.Until is { IsUtc: false } until)
+                    pattern.Until = new CalDateTime(LocalDateTime.FromDateTime(until.Value)
+                        .InZoneLeniently(zone).ToInstant().ToDateTimeUtc());
+                ev.RecurrenceRule = pattern;
                 if (zonesAdded.Add(zone.Id)) calendar.AddTimeZone(zone.Id);
             }
+            // Google Calendar draws its Join button from this property; other clients ignore it.
+            if (item.LocationUrl is not null) ev.AddProperty("X-GOOGLE-CONFERENCE", item.LocationUrl);
             calendar.Events.Add(ev);
         }
 

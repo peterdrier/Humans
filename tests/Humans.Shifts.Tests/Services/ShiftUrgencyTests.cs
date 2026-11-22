@@ -30,6 +30,10 @@ public class ShiftUrgencyTests
         BarriosEarlyEntryAllocation: null,
         EarlyEntryClose: null);
 
+    private static double Score(Shift shift, int confirmedCount, EventSettingsInfo eventSettings, FakeClock clock) =>
+        ShiftUrgencyRanking.CalculateScore(
+            ShiftManagementService.ToShiftInfo(shift), shift.Rota?.Priority ?? ShiftPriority.Normal, confirmedCount, eventSettings, clock);
+
     [HumansFact]
     public void CalculateScore_NormalPriority_5Remaining_4h_ReturnsExpected()
     {
@@ -38,7 +42,7 @@ public class ShiftUrgencyTests
         var shift = MakeShift(ShiftPriority.Normal, minVol: 2, maxVol: 7, durationHours: 4);
         var confirmedCount = 2;
 
-        var score = ShiftUrgencyRanking.CalculateScore(shift, confirmedCount, DistantEvent, Clock);
+        var score = Score(shift, confirmedCount, DistantEvent, Clock);
 
         score.Should().BeApproximately(20 * 1.08, 0.5);
     }
@@ -51,7 +55,7 @@ public class ShiftUrgencyTests
         var shift = MakeShift(ShiftPriority.Essential, minVol: 5, maxVol: 6, durationHours: 8);
         var confirmedCount = 4;
 
-        var score = ShiftUrgencyRanking.CalculateScore(shift, confirmedCount, DistantEvent, Clock);
+        var score = Score(shift, confirmedCount, DistantEvent, Clock);
 
         score.Should().BeApproximately(192 * 1.08, 5);
     }
@@ -66,8 +70,8 @@ public class ShiftUrgencyTests
         allDay.StartTime = LocalTime.Midnight;
         var timedWorkWindow = MakeShift(ShiftPriority.Normal, minVol: 2, maxVol: 7, durationHours: 10);
 
-        var score = ShiftUrgencyRanking.CalculateScore(allDay, 2, DistantEvent, Clock);
-        var expected = ShiftUrgencyRanking.CalculateScore(timedWorkWindow, 2, DistantEvent, Clock);
+        var score = Score(allDay, 2, DistantEvent, Clock);
+        var expected = Score(timedWorkWindow, 2, DistantEvent, Clock);
 
         score.Should().Be(expected);
     }
@@ -78,7 +82,7 @@ public class ShiftUrgencyTests
         var shift = MakeShift(ShiftPriority.Important, minVol: 2, maxVol: 5, durationHours: 4);
         var confirmedCount = 5;
 
-        var score = ShiftUrgencyRanking.CalculateScore(shift, confirmedCount, DistantEvent, Clock);
+        var score = Score(shift, confirmedCount, DistantEvent, Clock);
 
         score.Should().Be(0);
     }
@@ -94,9 +98,9 @@ public class ShiftUrgencyTests
         var distantShift = MakeShift(ShiftPriority.Normal, minVol: 2, maxVol: 12, durationHours: 8);
 
         // Tomorrow: 5 remaining, ~1 day out → base=40, proximity ≈ 6x → ~240
-        var tomorrowScore = ShiftUrgencyRanking.CalculateScore(tomorrowShift, 2, tomorrowEvent, Clock);
+        var tomorrowScore = Score(tomorrowShift, 2, tomorrowEvent, Clock);
         // 30 days: 10 remaining, ~30 days out → base=80, proximity ≈ 1.3x → ~104
-        var distantScore = ShiftUrgencyRanking.CalculateScore(distantShift, 2, distantEvent, Clock);
+        var distantScore = Score(distantShift, 2, distantEvent, Clock);
 
         tomorrowScore.Should().BeGreaterThan(distantScore);
     }
@@ -213,15 +217,12 @@ public class ShiftUrgencyTests
         };
     }
 
-    private static BurnSettingsInfo UrgencyBurn() => new(
-        Guid.NewGuid(), "Test Event", 2026, "UTC", new LocalDate(2026, 7, 1),
-        BuildStartOffset: 0, EventEndOffset: 3, StrikeEndOffset: 5,
-        FirstCrewStartOffset: -25, SetupWeekStartOffset: -16, PreEventWeekStartOffset: -9,
-        FinishingWeekendStartOffset: -4, EarlyEntryCapacity: new Dictionary<int, int>(),
-        BarriosEarlyEntryAllocation: null, EarlyEntryClose: null, IsShiftBrowsingOpen: false);
+    private static EventSettingsInfo UrgencyBurn() => new(
+        Guid.NewGuid(), "Test", 2026, "UTC", new LocalDate(2026, 7, 1), BuildStartOffset: -14,
+        EventEndOffset: 3, StrikeEndOffset: 5, new Dictionary<int, int>(), null, null);
 
     private static UrgentShiftInfo MakeUrgentShift(
-        int dayOffset, double score, int remaining, IBurnSettingsInfo? es = null) =>
+        int dayOffset, double score, int remaining, EventSettingsInfo? es = null) =>
         UrgentShiftFixtures.Urgent(
             shift: UrgentShiftFixtures.Shift(dayOffset: dayOffset, maxVolunteers: remaining + 1),
             burn: es,

@@ -53,33 +53,33 @@ reference it has.
 ## 4. Invariants
 
 - `/Tour` renders for an anonymous visitor: `TourController` carries `[AllowAnonymous]` at
-  class scope and nothing narrows it.
-- The page is static: the action takes no parameters, the controller injects nothing, the
-  view reads no model. Every number in the copy is marketing text, not a query.
-- The top-nav link is offered only while signed out; a signed-in member reaches the page
-  from the dashboard tile, never from the nav.
-- Every Tour page carries the fixed header bar with a link back to `/`.
-- The copy is English only and stays that way; the section carries no resx and binds no
-  localizer.
-- The event is named **Elsewhere**, never "Nowhere".
+  class scope and nothing narrows it (`TourController.cs:6`).
+- The page is static: the action takes no parameters, the controller injects nothing, and
+  the view gets no model (`TourController.cs:11-13`). Every number in the copy is marketing
+  text, not a query.
+- The top-nav link is offered only while signed out (`Section.cs:30`); a signed-in member
+  reaches the page from the dashboard card, never from the nav.
+- Every Tour page carries the fixed header bar with a link back to `/`: every view under
+  `Views/Tour/` takes `_TourLayout` (`_ViewStart.cshtml:2`), whose header links `/`
+  (`_TourLayout.cshtml:25-33`).
 - The page degrades to fully visible content when JavaScript is off or blocked: the
-  hidden state for scroll animations is applied only under the `tour-js` class the
-  layout's inline script sets.
+  hidden state for scroll animations applies only under the `tour-js` class
+  (`tour.css:467-468`) that the layout's inline script sets (`_TourLayout.cshtml:22`).
 
 ## 5. Seams
 
 - **Welcome link.** Onboarding's `/Welcome` links `/Tour` by raw URL, invisible to the
-  activation scan. Onboarding's call.
+  activation scan. No seam is wanted while Tour is always on.
 - **Per-burn configuration.** The page describes it as the roadmap. Nothing in this section
   builds it or should.
 
 ## 6. Deliberately not done
 
-- **No localization.** The audience is external and English-speaking; the spec says so and
-  an i18n sweep must not wire it through a localizer.
+- **No localization.** The audience is external and English-speaking; the section carries no
+  resx and binds no localizer, and an i18n sweep must not wire one in.
 - **No service or view model.** A static page has no rule to enforce once.
 - **No live statistics.** A public page must not query member data; the hero's numbers are
-  copy.
+  copy, updated by hand as they change, and never dropped to avoid the upkeep.
 - **Not on the Shell layout.** The member chrome (navbar, container, login partial) is
   what the page steps out of on purpose; the fixed header is its whole chrome.
 - **No Contracts leaf.** Nothing outside the section names a Tour type.
@@ -92,8 +92,11 @@ reference it has.
   stops animating while staying visible.
 - **The section ships its own layout**, and `Views/Tour/_ViewStart.cshtml` names it. The
   page never resolves Shell's `_Layout`.
-- **Hardcoded English is a decision, not an omission.** The Welcome link and the dashboard
-  tile that lead here are deliberately unlocalized too.
+- **Hardcoded English is a decision, not an omission.** The dashboard card that leads here
+  is unlocalized too. The Welcome link is Onboarding's and is localized, with each culture
+  saying the page is in English.
+- **The event is named Elsewhere, never "Nowhere"**: the organization has no rights to that
+  name. Nothing checks it; whoever edits the copy keeps it.
 - **`TourController` is `internal sealed`** and still routes: the section's `ISection`
   entry point is what makes the assembly a section, and section controllers are discovered
   as internals.
@@ -108,3 +111,4 @@ reference it has.
 | Run | Date | Headline | PR |
 |---|---|---|---|
 | 1 | 2026-09-06 | First doctoring: CI-run tests for a section that had none; docs and comments cut to the current state | peterdrier/Humans#1611 |
+| 2 | 2026-11-08 | Invariants cite where they are enforced; a false localization claim corrected; the dashboard card's component pinned | peterdrier/Humans#2345 |

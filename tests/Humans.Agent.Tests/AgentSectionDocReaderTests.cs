@@ -82,7 +82,10 @@ public class AgentSectionDocReaderTests
     [InlineData("ContainerMap", "Containers")]
     [InlineData("ConsentReview", "Consent")]
     [InlineData("Board", "Governance")]
-    [InlineData("Admin", "Governance")]
+    [InlineData("UsersAdmin", "Users")]
+    [InlineData("RoleAssignments", "Auth")]
+    [InlineData("LegalDocuments", "Consent")]
+    [InlineData("GoogleSync", "Google")]
     [InlineData("LegalAndConsent", "Consent")]
     public async Task ReadAsync_resolves_the_aliases_the_agent_reads_out_of_its_own_prompt(string key, string expectedStem)
     {
@@ -107,7 +110,10 @@ public class AgentSectionDocReaderTests
     [InlineData("ContainerMap")]
     [InlineData("ConsentReview")]
     [InlineData("Board")]
-    [InlineData("Admin")]
+    [InlineData("UsersAdmin")]
+    [InlineData("RoleAssignments")]
+    [InlineData("LegalDocuments")]
+    [InlineData("GoogleSync")]
     [InlineData("LegalAndConsent")]
     public void Every_alias_target_is_a_whitelisted_section(string alias)
     {
@@ -136,15 +142,25 @@ public class AgentSectionDocReaderTests
         content.Should().BeNull();
     }
 
-    [HumansFact]
-    public async Task ReadAsync_returns_null_on_transient_github_failure()
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ReadAsync_classifies_github_failures_and_preserves_the_null_fallback(bool unexpected)
     {
-        var source = new FakeSource { FailWith = new InvalidOperationException("network down") };
-        var reader = MakeReader(source);
+        Exception failure = unexpected ? new InvalidOperationException("Unexpected fetch failure")
+            : new ApiException("GitHub unavailable", System.Net.HttpStatusCode.ServiceUnavailable);
+        var source = new FakeSource { FailWith = failure };
+        var logger = new Humans.Testing.CapturingLogger<AgentSectionDocReader>();
+        var reader = new AgentSectionDocReader(source, new MemoryCache(new MemoryCacheOptions()), logger);
 
         var content = await reader.ReadAsync("Shifts", TestContext.Current.CancellationToken);
 
         content.Should().BeNull();
+        var entry = logger.Entries.Should().ContainSingle().Subject;
+        entry.Level.Should().Be(unexpected ? Microsoft.Extensions.Logging.LogLevel.Error : Microsoft.Extensions.Logging.LogLevel.Warning);
+        if (unexpected) entry.Exception.Should().BeSameAs(failure);
+        else entry.Exception.Should().BeNull();
+        entry.Message.Should().Contain(failure.Message);
     }
 
     [HumansFact]

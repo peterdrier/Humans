@@ -77,7 +77,7 @@ Members need to share contact information (Signal, Telegram, WhatsApp, Discord, 
 ```
 ContactField
 ├── Id: Guid
-├── ProfileId: Guid (FK → Profile)
+├── UserId: Guid? (FK → User)
 ├── FieldType: ContactFieldType [enum]
 ├── CustomLabel: string? (100) [for "Other" type]
 ├── Value: string (500)
@@ -197,9 +197,9 @@ Eve (active member, no shared teams) views Bob's profile:
 IContactFieldService
 ├── GetVisibleContactFieldsAsync(userId, viewerUserId)
 │   → Returns fields filtered by viewer's access level
-├── GetAllContactFieldsAsync(profileId)
+├── GetAllContactFieldsAsync(userId)
 │   → Returns all fields for editing (owner only)
-├── SaveContactFieldsAsync(profileId, fields, cancellationToken, removedLegacyContactFieldIds)
+├── SaveContactFieldsAsync(userId, fields, cancellationToken, removedLegacyContactFieldIds)
 │   → Upsert/delete current fields; remove historical email rows only by explicit, profile-scoped IDs
 └── GetViewerAccessLevelAsync(ownerUserId, viewerUserId)
     → Determines what visibility level viewer has
@@ -208,9 +208,9 @@ IContactFieldService
 ## Database Schema
 
 ```sql
-CREATE TABLE contact_fields (
+CREATE TABLE user_contact_fields (
     "Id" uuid PRIMARY KEY,
-    "ProfileId" uuid NOT NULL REFERENCES profiles("Id") ON DELETE CASCADE,
+    "UserId" uuid REFERENCES users("Id") ON DELETE CASCADE,
     "FieldType" varchar(50) NOT NULL,
     "CustomLabel" varchar(100),
     "Value" varchar(500) NOT NULL,
@@ -220,8 +220,7 @@ CREATE TABLE contact_fields (
     "UpdatedAt" timestamp with time zone NOT NULL
 );
 
-CREATE INDEX IX_contact_fields_ProfileId ON contact_fields("ProfileId");
-CREATE INDEX IX_contact_fields_ProfileId_Visibility ON contact_fields("ProfileId", "Visibility");
+CREATE INDEX IX_user_contact_fields_UserId ON user_contact_fields("UserId");
 ```
 
 ## UserEmail — Unified Email Management
@@ -255,7 +254,7 @@ Note: `IsOAuth` was dropped (nobodies-collective/Humans#507). Provider-linked (O
 - Lists all emails, sorted alphabetically by address; OAuth-linked rows are removed via Unlink, not Delete
 - Each row: email address, verified badge, notification target control, visibility dropdown, delete button
 - "Add email" form sends verification, shows pending state
-- Verification uses `UserManager.GenerateUserTokenAsync` / `VerifyUserTokenAsync`
+- Verification is a one-hour signed link (`EmailConfirmationService`); it works only in a browser signed in as the account that added the address, on a button press
 - 5-minute cooldown between verification requests
 
 ### Service Interface
@@ -266,11 +265,9 @@ IUserEmailService
 ├── GetVisibleEmailsAsync(userId, accessLevel)
 │   → Emails visible on profile based on viewer access
 ├── AddEmailAsync(userId, email)
-│   → Adds new email and returns verification token, or ErrorKey before any mutation
-│     for invalid format, an existing account address, or a pending merge
-├── VerifyEmailAsync(userId, emailId, token)
-│   → Verifies email, returns verified address (emailId disambiguates when
-│     the user has multiple pending rows)
+│   → Adds new email and returns the signed link token, or ErrorKey before any mutation
+│     for invalid format or an existing account address. The emailed link is
+│     consumed by EmailConfirmationService (confirm, or merge two accounts)
 ├── SetPrimaryAsync(userId, emailId)
 │   → Sets which verified email receives notifications
 ├── SetVisibilityAsync(userId, emailId, visibility)

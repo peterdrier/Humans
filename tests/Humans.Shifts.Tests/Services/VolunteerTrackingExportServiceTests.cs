@@ -61,7 +61,7 @@ public sealed class VolunteerTrackingExportServiceTests
         var users = Substitute.For<IUserService>();
         var infos = playaNames?.ToDictionary(pair => pair.Key, pair => MakeUserInfo(pair.Key, pair.Value))
             ?? new Dictionary<Guid, UserInfo>();
-        users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>()).Returns(infos);
+        users.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>()).Returns(infos);
 
         return (repo, shiftMgmt, burnSettings, users);
     }
@@ -164,8 +164,8 @@ public sealed class VolunteerTrackingExportServiceTests
         row.Cells[5].Kind.Should().Be(CellKind.Empty); // no shift Day6
         row.Cells[6].Kind.Should().Be(CellKind.Empty); // no shift Day7
 
-        // Totals: 1 on Day3-5, 0 elsewhere (presence = has shift that day per spec).
-        model.TotalsPerDay.Should().Equal(0, 0, 1, 1, 1, 0, 0);
+        // On-site totals include arrival day and each worked day, but not empty days.
+        model.TotalsPerDay.Should().Equal(0, 1, 1, 1, 1, 0, 0);
     }
 
     [HumansFact]
@@ -208,7 +208,7 @@ public sealed class VolunteerTrackingExportServiceTests
         shiftMgmt.GetDepartmentsWithRotasAsync(EventId, Arg.Any<CancellationToken>()).Returns([(TeamA, "TeamA")]);
         burnSettings.GetByIdAsync(EventId, Arg.Any<CancellationToken>()).Returns(TestBurnSettings());
         var users = Substitute.For<IUserService>();
-        users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+        users.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, UserInfo> { [Bob] = MakeUserInfo(Bob, "Bob") });
 
         var sut = new VolunteerTrackingExportService(repo, shiftMgmt, burnSettings, users, _audit);

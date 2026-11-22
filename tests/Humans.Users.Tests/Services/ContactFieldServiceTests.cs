@@ -7,6 +7,8 @@ using Humans.Auth.Contracts;
 using Humans.Users.Services;
 using AwesomeAssertions;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
+using Microsoft.Extensions.DependencyInjection;
 using NodaTime;
 using NSubstitute;
 using Humans.Users.Tests.Infrastructure;
@@ -42,6 +44,108 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
             Clock, NullLogger<ContactFieldService>.Instance,
             new StringLocalizer<UsersResource>(new ResourceManagerStringLocalizerFactory(
                 Options.Create(new LocalizationOptions()), NullLoggerFactory.Instance)));
+    }
+
+    [HumansTheory]
+    [InlineData(ContactFieldType.Phone)]
+    [InlineData(ContactFieldType.WhatsApp)]
+    public async Task SaveContactFields_InvalidPhone_RefusesWithoutReplacingExistingFields(ContactFieldType type)
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var profile = await CreateProfileAsync(Guid.NewGuid());
+        var existing = new ContactField
+        {
+            Id = Guid.NewGuid(),
+            UserId = profile.UserId,
+            FieldType = ContactFieldType.Phone,
+            Value = "+34 612345678",
+            Visibility = ContactFieldVisibility.BoardOnly,
+            CreatedAt = Clock.GetCurrentInstant(),
+            UpdatedAt = Clock.GetCurrentInstant()
+        };
+        Db.ContactFields.Add(existing);
+        await Db.SaveChangesAsync(ct);
+
+        var result = await _service.SaveContactFieldsAsync(profile.UserId,
+            [new(existing.Id, type, null, "612345678", ContactFieldVisibility.AllActiveProfiles, 0)], ct);
+
+        result.Succeeded.Should().BeFalse();
+        result.ErrorKey.Should().Be("Validation_PhoneE164");
+        (await Db.ContactFields.AsNoTracking().SingleAsync(ct)).Value.Should().Be("+34 612345678");
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task SaveContactFields_PostCommitFailure_RefreshesCachedVisibility(bool lostAcknowledgement)
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var userId = Guid.NewGuid();
+        var profile = await CreateProfileAsync(userId);
+        var field = new ContactField
+        {
+            Id = Guid.NewGuid(),
+            UserId = profile.UserId,
+            FieldType = ContactFieldType.Phone,
+            Value = "+34 611111111",
+            Visibility = ContactFieldVisibility.AllActiveProfiles,
+            CreatedAt = Clock.GetCurrentInstant(),
+            UpdatedAt = Clock.GetCurrentInstant()
+        };
+        Db.ContactFields.Add(field);
+        await Db.SaveChangesAsync(ct);
+
+        async Task<UserInfo?> ReadInfoAsync(CancellationToken token)
+        {
+            token.ThrowIfCancellationRequested();
+            await using var read = await DbFactory.CreateDbContextAsync(token);
+            return UserInfoFactory.Create(new User { Id = userId, PreferredLanguage = "en" }, [], [], profile,
+                await read.ContactFields.AsNoTracking().ToListAsync(token), [], []);
+        }
+        _userService.GetAllUserInfosAsync(Arg.Any<CancellationToken>())
+            .Returns(async call => (IReadOnlyCollection<UserInfo>)[(await ReadInfoAsync(call.Arg<CancellationToken>()))!]);
+        _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(call => new ValueTask<UserInfo?>(ReadInfoAsync(call.Arg<CancellationToken>())));
+        var services = new ServiceCollection();
+        services.AddKeyedScoped<IUserManagement>(CachingUserService.InnerServiceKey, (_, _) => _userService);
+        var cache = new CachingUserService(
+            services.BuildServiceProvider().GetRequiredService<IServiceScopeFactory>(),
+            NullLogger<CachingUserService>.Instance);
+        (await cache.GetUserInfoAsync(userId, ct))!.Profile!.ContactFields.Single().Visibility
+            .Should().Be(ContactFieldVisibility.AllActiveProfiles);
+
+        using var cancellation = new CancellationTokenSource();
+        var failure = new IOException("Persistence acknowledgement failed");
+        var options = new DbContextOptionsBuilder<UsersDbContext>(DbOptions)
+            .AddInterceptors(new ContactSaveCompletion(cancellation, lostAcknowledgement ? failure : null)).Options;
+        var service = new ContactFieldService(new UserRepository(new TestDbContextFactory(options), Clock),
+            cache, _teamService, _roleAssignmentService, cache, Clock, NullLogger<ContactFieldService>.Instance,
+            new StringLocalizer<UsersResource>(new ResourceManagerStringLocalizerFactory(
+                Options.Create(new LocalizationOptions()), NullLoggerFactory.Instance)));
+        var save = () => service.SaveContactFieldsAsync(profile.UserId,
+            [new(field.Id, field.FieldType, null, "+34 622222222", ContactFieldVisibility.BoardOnly, 0)], cancellation.Token);
+
+        if (lostAcknowledgement)
+            (await save.Should().ThrowAsync<IOException>()).Which.Should().BeSameAs(failure);
+        else
+            await save();
+
+        cancellation.IsCancellationRequested.Should().BeTrue();
+        (await Db.ContactFields.AsNoTracking().SingleAsync(ct)).Visibility.Should().Be(ContactFieldVisibility.BoardOnly);
+        var cached = (await cache.GetUserInfoAsync(userId, ct))!.Profile!.ContactFields.Single();
+        cached.Value.Should().Be("+34 622222222");
+        cached.Visibility.Should().Be(ContactFieldVisibility.BoardOnly);
+    }
+
+    private sealed class ContactSaveCompletion(CancellationTokenSource cancellation, IOException? failure) : SaveChangesInterceptor
+    {
+        public override async ValueTask<int> SavedChangesAsync(
+            SaveChangesCompletedEventData eventData, int result, CancellationToken cancellationToken = default)
+        {
+            await cancellation.CancelAsync();
+            if (failure is not null) throw failure;
+            return result;
+        }
     }
 
     // Sets up GetTeamsAsync to return a dict containing one TeamInfo per member spec.
@@ -280,7 +384,7 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
             Db.ContactFields.Add(new ContactField
             {
                 Id = Guid.NewGuid(),
-                ProfileId = profile.Id,
+                UserId = profile.UserId,
                 FieldType = type,
                 Value = "Contact value",
                 Visibility = ContactFieldVisibility.AllActiveProfiles,
@@ -291,7 +395,7 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
         Db.ContactFields.Add(new ContactField
         {
             Id = Guid.NewGuid(),
-            ProfileId = profile.Id,
+            UserId = profile.UserId,
             FieldType = ContactFieldType.Other,
             CustomLabel = "My custom label",
             Value = "Custom value",
@@ -323,7 +427,7 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
 
         result.Should().HaveCount(4);
         result.ToDictionary(f => f.Id, f => f.DisplayOrder).Should().BeEquivalentTo(
-            Db.ContactFields.Where(f => f.ProfileId == profile.Id).ToDictionary(f => f.Id, f => f.DisplayOrder));
+            Db.ContactFields.Where(f => f.UserId == profile.UserId).ToDictionary(f => f.Id, f => f.DisplayOrder));
     }
 
     #endregion
@@ -340,10 +444,10 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
             new(null, ContactFieldType.Signal, null, "+1234567890", ContactFieldVisibility.MyTeams, 1)
         };
 
-        await _service.SaveContactFieldsAsync(profile.Id, fields, TestContext.Current.CancellationToken);
+        await _service.SaveContactFieldsAsync(profile.UserId, fields, TestContext.Current.CancellationToken);
 
         var savedFields = await Db.ContactFields
-            .Where(cf => cf.ProfileId == profile.Id)
+            .Where(cf => cf.UserId == profile.UserId)
             .ToListAsync(TestContext.Current.CancellationToken);
         savedFields.Should().HaveCount(2);
     }
@@ -357,7 +461,7 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
         var userId = Guid.NewGuid();
         var profile = await CreateProfileAsync(userId);
 
-        await _service.SaveContactFieldsAsync(profile.Id,
+        await _service.SaveContactFieldsAsync(profile.UserId,
             [new(null, ContactFieldType.Signal, null, "+1234567890", ContactFieldVisibility.MyTeams, 0)], ct);
 
         await _userInfoRefresher.Received(1).RefreshAsync(
@@ -371,7 +475,7 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
         var existingField = new ContactField
         {
             Id = Guid.NewGuid(),
-            ProfileId = profile.Id,
+            UserId = profile.UserId,
             FieldType = ContactFieldType.Phone,
             Value = "+34 612345678",
             Visibility = ContactFieldVisibility.AllActiveProfiles,
@@ -387,7 +491,7 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
             new(existingField.Id, ContactFieldType.Phone, null, "+34 698765432", ContactFieldVisibility.BoardOnly, 0)
         };
 
-        await _service.SaveContactFieldsAsync(profile.Id, fields, TestContext.Current.CancellationToken);
+        await _service.SaveContactFieldsAsync(profile.UserId, fields, TestContext.Current.CancellationToken);
 
         var savedField = await Db.ContactFields.AsNoTracking()
             .FirstOrDefaultAsync(cf => cf.Id == existingField.Id, TestContext.Current.CancellationToken);
@@ -402,7 +506,7 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
         var existingField = new ContactField
         {
             Id = Guid.NewGuid(),
-            ProfileId = profile.Id,
+            UserId = profile.UserId,
             FieldType = ContactFieldType.Phone,
             Value = "+34 612345678",
             Visibility = ContactFieldVisibility.AllActiveProfiles,
@@ -414,10 +518,10 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
         await Db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         // Save empty list (delete all)
-        await _service.SaveContactFieldsAsync(profile.Id, new List<ContactFieldEditDto>(), TestContext.Current.CancellationToken);
+        await _service.SaveContactFieldsAsync(profile.UserId, new List<ContactFieldEditDto>(), TestContext.Current.CancellationToken);
 
         var remainingFields = await Db.ContactFields
-            .Where(cf => cf.ProfileId == profile.Id)
+            .Where(cf => cf.UserId == profile.UserId)
             .ToListAsync(TestContext.Current.CancellationToken);
         remainingFields.Should().BeEmpty();
     }
@@ -430,7 +534,7 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
         var legacy = new ContactField
         {
             Id = Guid.NewGuid(),
-            ProfileId = profile.Id,
+            UserId = profile.UserId,
             FieldType = default,
             Value = "legacy@example.org",
             Visibility = ContactFieldVisibility.BoardOnly,
@@ -440,7 +544,7 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
         Db.ContactFields.Add(legacy);
         await Db.SaveChangesAsync(ct);
 
-        await _service.SaveContactFieldsAsync(profile.Id, [], ct);
+        await _service.SaveContactFieldsAsync(profile.UserId, [], ct);
 
         var saved = await Db.ContactFields.AsNoTracking().SingleAsync(ct);
         saved.Id.Should().Be(legacy.Id);
@@ -460,7 +564,7 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
             new ContactField
             {
                 Id = legacyId,
-                ProfileId = profile.Id,
+                UserId = profile.UserId,
                 FieldType = default,
                 Value = "legacy@example.org",
                 Visibility = ContactFieldVisibility.BoardOnly,
@@ -470,7 +574,7 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
             new ContactField
             {
                 Id = signalId,
-                ProfileId = profile.Id,
+                UserId = profile.UserId,
                 FieldType = ContactFieldType.Signal,
                 Value = "signal-handle",
                 Visibility = ContactFieldVisibility.MyTeams,
@@ -481,7 +585,7 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
         StubUserInfo(userId, profile);
         var info = await _userService.GetUserInfoAsync(userId);
 
-        var model = Humans.Users.Models.ProfileEditViewModelBuilder.Build(info!, [], false);
+        var model = Humans.Users.Models.ProfileEditViewModelBuilder.Build(info!, false);
 
         model.EditableContactFields.Should().ContainSingle().Which.Id.Should().Be(signalId);
         model.ContactFields.Should().ContainSingle().Which.Id.Should().Be(legacyId);
@@ -503,7 +607,7 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
         var legacy = new ContactField
         {
             Id = Guid.NewGuid(),
-            ProfileId = profile.Id,
+            UserId = profile.UserId,
             FieldType = default,
             Value = "legacy@example.org",
             Visibility = ContactFieldVisibility.BoardOnly,
@@ -513,7 +617,7 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
         var phone = new ContactField
         {
             Id = Guid.NewGuid(),
-            ProfileId = profile.Id,
+            UserId = profile.UserId,
             FieldType = ContactFieldType.Phone,
             Value = "old-number",
             Visibility = ContactFieldVisibility.MyTeams,
@@ -523,7 +627,7 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
         var foreign = new ContactField
         {
             Id = Guid.NewGuid(),
-            ProfileId = otherProfile.Id,
+            UserId = otherProfile.UserId,
             FieldType = default,
             Value = "other@example.org",
             Visibility = ContactFieldVisibility.BoardOnly,
@@ -534,17 +638,17 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
         await Db.SaveChangesAsync(ct);
         var fields = new List<ContactFieldEditDto>
         {
-            new(phone.Id, ContactFieldType.Phone, null, "updated-number", ContactFieldVisibility.MyTeams, 0)
+            new(phone.Id, ContactFieldType.Phone, null, "+34 698765432", ContactFieldVisibility.MyTeams, 0)
         };
         if (staleEditor)
-            fields.Add(new(legacy.Id, ContactFieldType.Phone, null, "changed", ContactFieldVisibility.AllActiveProfiles, 1));
+            fields.Add(new(legacy.Id, ContactFieldType.Phone, null, "+34 612345678", ContactFieldVisibility.AllActiveProfiles, 1));
 
-        await _service.SaveContactFieldsAsync(profile.Id, fields, ct,
+        await _service.SaveContactFieldsAsync(profile.UserId, fields, ct,
             [removeOwn ? legacy.Id : foreign.Id, phone.Id]);
 
         var rows = await Db.ContactFields.AsNoTracking().ToListAsync(ct);
         rows.Single(cf => cf.Id == foreign.Id).Value.Should().Be("other@example.org");
-        rows.Single(cf => cf.Id == phone.Id).Value.Should().Be("updated-number");
+        rows.Single(cf => cf.Id == phone.Id).Value.Should().Be("+34 698765432");
         if (removeOwn) rows.Should().NotContain(cf => cf.Id == legacy.Id);
         else
         {
@@ -553,49 +657,6 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
             saved.Value.Should().Be("legacy@example.org");
             saved.Visibility.Should().Be(ContactFieldVisibility.BoardOnly);
         }
-    }
-
-    [HumansFact]
-    public async Task SaveContactFields_OwnerLookupFailure_DoesNotCommitWithoutCacheRefresh()
-    {
-        var ct = TestContext.Current.CancellationToken;
-        var profile = await CreateProfileAsync(Guid.NewGuid());
-        var field = new ContactField
-        {
-            Id = Guid.NewGuid(),
-            ProfileId = profile.Id,
-            FieldType = ContactFieldType.Phone,
-            Value = "+34 612345678",
-            Visibility = ContactFieldVisibility.AllActiveProfiles,
-            CreatedAt = Clock.GetCurrentInstant(),
-            UpdatedAt = Clock.GetCurrentInstant(),
-        };
-        Db.ContactFields.Add(field);
-        await Db.SaveChangesAsync(ct);
-        var inner = new UserRepository(DbFactory, Clock);
-        var repository = Substitute.For<IUserRepository>();
-        repository.GetByProfileIdForMutationAsync(profile.Id, Arg.Any<CancellationToken>())
-            .Returns(c => inner.GetByProfileIdForMutationAsync(profile.Id, c.Arg<CancellationToken>()));
-        repository.BatchSaveAsync(Arg.Any<IReadOnlyList<ContactField>>(),
-                Arg.Any<IReadOnlyList<ContactField>>(), Arg.Any<IReadOnlyList<ContactField>>(),
-                Arg.Any<CancellationToken>())
-            .Returns(c => inner.BatchSaveAsync(c.ArgAt<IReadOnlyList<ContactField>>(0),
-                c.ArgAt<IReadOnlyList<ContactField>>(1), c.ArgAt<IReadOnlyList<ContactField>>(2),
-                c.Arg<CancellationToken>()));
-        repository.GetOwnerUserIdAsync(profile.Id, Arg.Any<CancellationToken>())
-            .Returns(Task.FromException<Guid?>(new InvalidOperationException("Owner lookup failed")));
-        var service = new ContactFieldService(
-            repository, _userService, _teamService, _roleAssignmentService,
-            Substitute.For<IUserInfoSliceRefresher>(), Clock, NullLogger<ContactFieldService>.Instance,
-            new StringLocalizer<UsersResource>(new ResourceManagerStringLocalizerFactory(
-                Options.Create(new LocalizationOptions()), NullLoggerFactory.Instance)));
-
-        var act = () => service.SaveContactFieldsAsync(profile.Id,
-            [new(field.Id, field.FieldType, null, field.Value, ContactFieldVisibility.BoardOnly, 0)], ct);
-
-        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("Owner lookup failed");
-        (await Db.ContactFields.AsNoTracking().SingleAsync(ct)).Visibility
-            .Should().Be(ContactFieldVisibility.AllActiveProfiles);
     }
 
     [HumansFact]
@@ -608,10 +669,10 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
             new(null, ContactFieldType.Telegram, null, "@my_telegram_handle", ContactFieldVisibility.AllActiveProfiles, 0)
         };
 
-        await _service.SaveContactFieldsAsync(profile.Id, fields, TestContext.Current.CancellationToken);
+        await _service.SaveContactFieldsAsync(profile.UserId, fields, TestContext.Current.CancellationToken);
 
         var savedFields = await Db.ContactFields
-            .Where(cf => cf.ProfileId == profile.Id)
+            .Where(cf => cf.UserId == profile.UserId)
             .ToListAsync(TestContext.Current.CancellationToken);
         savedFields.Should().HaveCount(1);
     }
@@ -624,7 +685,7 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
     private void StubUserInfo(Guid userId, Profile profile)
     {
         var fields = Db.ContactFields
-            .Where(cf => cf.ProfileId == profile.Id)
+            .Where(cf => cf.UserId == profile.UserId)
             .OrderBy(cf => cf.DisplayOrder)
             .ToList();
         var info = UserInfoFactory.Create(
@@ -650,8 +711,6 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
         {
             Id = Guid.NewGuid(),
             UserId = userId,
-            FirstName = "Test",
-            LastName = "User",
             CreatedAt = Clock.GetCurrentInstant(),
             UpdatedAt = Clock.GetCurrentInstant()
         };
@@ -671,7 +730,7 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
             new()
             {
                 Id = Guid.NewGuid(),
-                ProfileId = profile.Id,
+                UserId = profile.UserId,
                 FieldType = ContactFieldType.Phone,
                 Value = "+34 612345678",
                 Visibility = ContactFieldVisibility.AllActiveProfiles,
@@ -682,7 +741,7 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
             new()
             {
                 Id = Guid.NewGuid(),
-                ProfileId = profile.Id,
+                UserId = profile.UserId,
                 FieldType = ContactFieldType.Signal,
                 Value = "+1234567890",
                 Visibility = ContactFieldVisibility.MyTeams,
@@ -693,7 +752,7 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
             new()
             {
                 Id = Guid.NewGuid(),
-                ProfileId = profile.Id,
+                UserId = profile.UserId,
                 FieldType = ContactFieldType.Telegram,
                 Value = "@coordcontact",
                 Visibility = ContactFieldVisibility.CoordinatorsAndBoard,
@@ -704,7 +763,7 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
             new()
             {
                 Id = Guid.NewGuid(),
-                ProfileId = profile.Id,
+                UserId = profile.UserId,
                 FieldType = ContactFieldType.Phone,
                 Value = "+9876543210",
                 Visibility = ContactFieldVisibility.BoardOnly,

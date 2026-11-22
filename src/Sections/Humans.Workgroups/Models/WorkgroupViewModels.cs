@@ -112,7 +112,7 @@ internal sealed class WorkgroupPageViewModel
     /// <summary>False unless the group is Active.</summary>
     public required bool CanDoMemberWork { get; init; }
 
-    public bool CanManageMembers => CanAdminister || (IsCoordinator && CanDoMemberWork);
+    public required bool CanManageMembers { get; init; }
 
     public bool CanSeeContent => !Workgroup.IsSensitive || IsMember || CanAdminister;
 
@@ -271,11 +271,13 @@ internal sealed class LogEntryFormViewModel
     public required string Slug { get; init; }
 
     /// <summary>Update, Disclosure, Note or MeetingNotes.</summary>
+    [BindRequired]
     public WorkgroupLogKind Kind { get; set; } = WorkgroupLogKind.Update;
 
     /// <summary>The meeting whose occurrence on <see cref="OccurredOn"/> these notes are about.</summary>
     public Guid? MeetingId { get; set; }
 
+    [BindRequired]
     public LocalDate OccurredOn { get; set; }
 
     [StringLength(200, ErrorMessage = "Validation_MaxLength")]
@@ -317,6 +319,7 @@ internal sealed class DocumentFormViewModel
     [StringLength(200, ErrorMessage = "Validation_MaxLength")]
     public string Title { get; set; } = string.Empty;
 
+    [BindRequired]
     public WorkgroupDocumentKind Kind { get; set; }
 
     /// <summary>Markdown, sanitized on render.</summary>

@@ -17,7 +17,6 @@ namespace Humans.CityPlanning.Controllers;
 [Route("CityPlanning")]
 internal sealed class CityPlanningController(
     CityPlanningService cityPlanningService,
-    ICampService campService,
     IContainerService containerService,
     IStringLocalizer<ContainersResource> containersLocalizer,
     IUserService userService,
@@ -44,13 +43,13 @@ internal sealed class CityPlanningController(
         var settings = await cityPlanningService.GetSettingsAsync(cancellationToken);
         if (settings is null) return NotFound(); // no active event
         var isMapAdmin = await IsMapAdminAsync();
-        var userSeasonId = await FindUserLeadSeasonIdAsync(user.Id, settings.Year, cancellationToken);
+        var leadCamps = await cityPlanningService.GetLeadCampsAsync(user.Id, settings.Year, cancellationToken);
 
         return View(new CityPlanningIndexViewModel
         {
             Year = settings.Year,
             IsMapAdmin = isMapAdmin,
-            IsBarrioLead = userSeasonId.HasValue,
+            IsBarrioLead = leadCamps.Count > 0,
             PlacementState = settings.PlacementState,
             IsContainerPlacementOpen = settings.IsContainerPlacementOpen,
         });
@@ -65,7 +64,8 @@ internal sealed class CityPlanningController(
         var settings = await cityPlanningService.GetSettingsAsync(cancellationToken);
         if (settings is null) return NotFound(); // no active event
         var isMapAdmin = await IsMapAdminAsync();
-        var userSeasonId = await FindUserLeadSeasonIdAsync(user.Id, settings.Year, cancellationToken);
+        var leadCamps = await cityPlanningService.GetLeadCampsAsync(user.Id, settings.Year, cancellationToken);
+        var userSeasonId = leadCamps.FirstOrDefault()?.GetLeadSeasonIdForYear(user.Id, settings.Year);
         var seasonsWithout = await cityPlanningService.GetCampSeasonsWithoutCampPolygonAsync(settings.Year, cancellationToken);
 
         return View(new CityPlanningBarrioMapViewModel
@@ -213,18 +213,6 @@ internal sealed class CityPlanningController(
         return Redirect("/Settings#city-planning");
     }
 
-    [HttpPost("BarrioMap/Admin/UpdateRegistrationInfo")]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> UpdateRegistrationInfo(string? registrationInfo, CancellationToken cancellationToken)
-    {
-        var (error, user) = await RequireMapAdminAsync(cancellationToken);
-        if (error is not null) return error;
-
-        await cityPlanningService.UpdateRegistrationInfoAsync(registrationInfo, user!.Id, cancellationToken);
-        SetSuccess("Registration info updated.");
-        return Redirect("/Settings#city-planning");
-    }
-
     private static string PlacementScheduleErrorMessage(string? errorKey) => errorKey switch
     {
         "OutOfRange" => $"Schedule days must be within {CityPlanningService.MaxPlacementOffsetDays} days of gate opening.",
@@ -302,7 +290,7 @@ internal sealed class CityPlanningController(
         if (await cityPlanningService.GetSettingsAsync(cancellationToken) is null) return NotFound(); // no active event
 
         var isMapAdmin = await IsMapAdminAsync();
-        var userCamp = await FindUserLeadCampAsync(user.Id, year, cancellationToken);
+        var userCamp = (await cityPlanningService.GetLeadCampsAsync(user.Id, year, cancellationToken)).FirstOrDefault();
 
         // A lead may open the map for their camp under the same Place rule the placement writes enforce.
         if (!isMapAdmin &&
@@ -322,20 +310,6 @@ internal sealed class CityPlanningController(
             CampSlug = campSlug,
             CampName = campName,
         });
-    }
-
-    private async Task<CampInfo?> FindUserLeadCampAsync(Guid userId, int year, CancellationToken ct)
-    {
-        var camps = await campService.GetCampsForYearAsync(year, ct);
-        return camps.FirstOrDefault(camp => camp.GetLeadSeasonIdForYear(userId, year).HasValue);
-    }
-
-    private async Task<Guid?> FindUserLeadSeasonIdAsync(Guid userId, int year, CancellationToken ct)
-    {
-        var camps = await campService.GetCampsForYearAsync(year, ct);
-        return camps
-            .Select(camp => camp.GetLeadSeasonIdForYear(userId, year))
-            .FirstOrDefault(seasonId => seasonId.HasValue);
     }
 
     private static (string Slug, string Name) LeadCampDisplay(bool isMapAdmin, CampInfo? userCamp, int year)

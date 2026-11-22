@@ -1,6 +1,9 @@
+using AwesomeAssertions;
+using Humans.Base.Enums;
 using System.Globalization;
 using Humans.Base.ViewComponents;
 using Humans.Base.Extensions;
+using Humans.Tickets.Domain.Checkout;
 using Humans.Tickets.Models;
 using Humans.Tickets.Services.Dtos;
 using Humans.Tickets.Contracts;
@@ -33,11 +36,11 @@ public class TicketDashboardViewTests
     {
         var stubs = new List<TicketStubInfo>
         {
-            new("Aaron void", null, TicketAttendeeStatus.Void, false, null, null),
-            new("Zoe active", null, TicketAttendeeStatus.Valid, false, null, null),
-            new("alpha active", null, TicketAttendeeStatus.Valid, false, null, null)
+            new("Aaron void", null, TicketAttendeeStatus.Void, null),
+            new("Zoe active", null, TicketAttendeeStatus.Valid, null),
+            new("alpha active", null, TicketAttendeeStatus.Valid, null)
         };
-        object model = holdingsCard ? new TicketHoldingsViewModel(1, stubs) : stubs;
+        object model = holdingsCard ? new TicketHoldingsViewModel(Guid.NewGuid(), ProfileCardViewMode.Self, 1, stubs) : stubs;
         var component = holdingsCard ? "TicketHoldings" : "MyTicketStubs";
 
         var html = await RenderAsync(component, model, viewPath:
@@ -215,10 +218,82 @@ public class TicketDashboardViewTests
             ByTicketType = [new TicketTypeSalesAggregate { Price = 1234.5m, TicketsSold = 1234, FaceValue = 1234.5m }],
             ByDiscountCampaign = [new DiscountCampaignAggregate
             {
-                CodesGranted = 1234, CodesUsed = 1234, AverageDiscount = 1234.5m, TotalDiscount = 1234.5m,
+                CodesGranted = 1234, CodesUsed = 1, TotalDiscount = 1234.5m,
             }],
         }, language);
         Assert.True(aggregates.Split(System.Text.Encodings.Web.HtmlEncoder.Default.Encode(amount)).Length >= 36);
+    }
+
+    /// <summary>Selling through Humans needs no ticket vendor sync: the card offers the buy page, not the vendor's shop.</summary>
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task MemberTicketCard_SellingInHumans_OffersTheBuyPage_WhateverTheVendorSync(bool vendorConfigured)
+    {
+        var html = await RenderAsync("MemberTicketStatus",
+            new MemberTicketStatusViewModel(Guid.NewGuid(), vendorConfigured, 0, 2027, null) { SellsInHumans = true },
+            viewPath: "/Views/Shared/Components/MemberTicketStatus/Default.cshtml");
+
+        Assert.Contains("Buy tickets", html);
+        Assert.DoesNotContain("Get your ticket", html);
+        Assert.DoesNotContain("t info isn", html);
+    }
+
+    [HumansFact]
+    public async Task MemberTicketCard_NothingSellingAndNoVendor_SaysNotConfigured()
+    {
+        var html = await RenderAsync("MemberTicketStatus",
+            new MemberTicketStatusViewModel(Guid.NewGuid(), false, 0, 2027, null),
+            viewPath: "/Views/Shared/Components/MemberTicketStatus/Default.cshtml");
+
+        Assert.Contains("t info isn", html);
+        Assert.DoesNotContain("Buy tickets", html);
+    }
+
+    [HumansFact]
+    public async Task BackendStatusPage_ListsStuckOrdersAndUnsettledRefunds()
+    {
+        var at = Instant.FromUtc(2027, 3, 1, 12, 0);
+        var stuck = new TicketCheckoutOrder
+        {
+            Id = Guid.NewGuid(),
+            BackendKey = "pretix",
+            State = TicketCheckoutOrderState.Pending,
+            BackendOrderId = "E:1",
+            CreatedAt = at,
+            ExpiresAt = at,
+            TotalMinor = 22500,
+        };
+        var refund = new TicketCheckoutRefund
+        {
+            Id = Guid.NewGuid(),
+            OrderId = stuck.Id,
+            AmountMinor = 1000,
+            State = RefundState.ManualRequired,
+            FailureReason = "issue by hand",
+        };
+        var failed = new TicketCheckoutRefund
+        {
+            Id = Guid.NewGuid(),
+            OrderId = stuck.Id,
+            AmountMinor = 500,
+            State = RefundState.Failed,
+            FailureReason = "card expired",
+        };
+        var info = new Humans.Tickets.Services.Checkout.CheckoutBackendInfo("pretix", true,
+            new CheckoutBackendSetup("pretix", "Self-hosted", null, [], "/Pretix/Webhook", []));
+        var model = new Humans.Tickets.Controllers.BackendStatusViewModel(
+            new Humans.Tickets.Controllers.BackendsViewModel([info], [], [], null),
+            new Humans.Tickets.Services.Checkout.BackendLedger(info, [stuck], [], [stuck], [refund], [failed]),
+            "2027-03-01");
+
+        var html = await RenderAsync("Backend", model, viewPath: "/Views/Tickets/Admin/Backends/Index.cshtml");
+
+        Assert.Contains("Stuck orders", html);
+        Assert.Contains(stuck.Reference, html);
+        Assert.Contains("issue by hand", html);
+        Assert.Contains("Failed refunds", html);
+        Assert.Contains("card expired", html);
     }
 
     private static async Task<string> RenderAsync(string page, object model, string cultureName = "en", string? viewPath = null)
@@ -236,6 +311,7 @@ public class TicketDashboardViewTests
             .AddApplicationPart(typeof(TicketsResource).Assembly)
             .AddApplicationPart(typeof(HumanViewComponent).Assembly);
         builder.Services.AddSingleton(Substitute.For<IUserService>());
+        builder.Services.AddSingleton(Substitute.For<ITicketService>());
         builder.Services.AddSingleton(Substitute.For<Humans.Settings.Contracts.ISettingsService>());
         var authorization = Substitute.For<IAuthorizationService>();
         authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), Arg.Any<string>())

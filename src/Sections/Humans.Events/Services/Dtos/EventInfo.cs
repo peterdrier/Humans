@@ -74,6 +74,10 @@ internal sealed record EventInfo(
     Instant LastUpdatedAt,
     IReadOnlyList<EventModerationHistoryInfo> ModerationHistory)
 {
+    public Guid? EventSettingsId { get; init; }
+
+    public IReadOnlyList<CampEventOverlap> DuplicateCandidates { get; init; } = [];
+
     // Project defensively: Category may be null and EventVenue / moderation history unloaded.
     internal static EventInfo FromEvent(Event e) => new(
         Id: e.Id,
@@ -99,7 +103,8 @@ internal sealed record EventInfo(
         LastUpdatedAt: e.LastUpdatedAt,
         ModerationHistory: e.EventModerationActions
             .Select(a => new EventModerationHistoryInfo(a.ActorUserId, a.Action, a.Reason, a.CreatedAt))
-            .ToList());
+            .ToList())
+    { EventSettingsId = e.EventSettingsId };
 
     public bool CanEdit => Event.IsEditableBySubmitter(Status, CampId is not null);
 
@@ -137,6 +142,14 @@ internal sealed record EventEdit(
     string? RecurrenceDays,
     int? PriorityRank);
 
+internal enum AddFavouriteOutcome
+{
+    Added,
+    AlreadyExists,
+    EventUnavailable,
+    InvalidDay
+}
+
 /// <summary>
 /// A null <see cref="DayOffset"/> means every occurrence. Several day bookmarks retained on a now non-recurring event
 /// project as one whole-event target.
@@ -150,8 +163,15 @@ internal sealed record EventFavouriteInfo(
     EventInfo Event);
 
 /// <summary>Unordered: consumers choose the display order.</summary>
-internal sealed record CampSubmissionsSummary(
+internal sealed record EventSubmissionsSummary(
     int SubmittedCount,
     int ApprovedCount,
     int PendingCount,
-    IReadOnlyList<EventInfo> Events);
+    IReadOnlyList<EventInfo> Events)
+{
+    public static EventSubmissionsSummary From(IReadOnlyList<EventInfo> events) => new(
+        events.Count,
+        events.Count(e => e.Status == EventStatus.Approved),
+        events.Count(e => e.Status == EventStatus.Pending),
+        events);
+}

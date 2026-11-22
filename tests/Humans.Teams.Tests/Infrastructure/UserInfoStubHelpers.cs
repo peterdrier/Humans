@@ -13,30 +13,23 @@ namespace Humans.Teams.Tests.Infrastructure;
 /// </summary>
 internal static class UserInfoStubHelpers
 {
-    public static UserInfo ToUserInfo(
-        this User user,
-        IReadOnlyList<UserEmail>? userEmails = null,
-        Profile? profile = null)
-        => UserInfoFactory.Create(
-            user,
-            userEmails ?? user.UserEmails?.ToList() ?? [],
-            [],
-            profile: profile,
-            [],
-            [],
-            []);
+    /// <summary>
+    /// <see cref="UserInfoFixtures.FromUser"/> for a Users <c>Profile</c> entity, which the shared fixture
+    /// can't see.
+    /// </summary>
+    public static UserInfo FromEntities(User user, Profile? profile) =>
+        UserInfoFactory.Create(user, user.UserEmails?.ToList() ?? [], [], profile, [], [], []);
 
     /// <summary>
-    /// Stubs GetUserInfosAsync to read from the provided DbContext options (new context per call,
-    /// includes UserEmails + Profile slice).
+    /// Opens a new context per call.
     /// </summary>
     public static IUserService StubGetUserInfosFromDb(this IUserService userService, DbContextOptions<UsersDbContext> options)
     {
         userService
-            .GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(callInfo =>
             {
-                var ids = callInfo.Arg<IReadOnlyCollection<Guid>>();
+                var ids = callInfo.Arg<IEnumerable<Guid>>().ToList();
                 if (ids.Count == 0)
                     return new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
                         new Dictionary<Guid, UserInfo>());
@@ -50,15 +43,14 @@ internal static class UserInfoStubHelpers
                     .ToDictionary(p => p.UserId);
                 IReadOnlyDictionary<Guid, UserInfo> dict = users.ToDictionary(
                     u => u.Id,
-                    u => u.ToUserInfo(u.UserEmails.ToList(), profiles.GetValueOrDefault(u.Id)));
+                    u => FromEntities(u, profiles.GetValueOrDefault(u.Id)));
                 return new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(dict);
             });
         return userService;
     }
 
     /// <summary>
-    /// Stubs GetAllUserInfosAsync to read from the provided DbContext options
-    /// (new context per call, includes UserEmails + Profile slice).
+    /// Opens a new context per call.
     /// </summary>
     public static IUserService StubGetAllUserInfosFromDb(this IUserService userService, DbContextOptions<UsersDbContext> options)
     {
@@ -75,7 +67,7 @@ internal static class UserInfoStubHelpers
                     .Where(p => userIds.Contains(p.UserId))
                     .ToDictionary(p => p.UserId);
                 IReadOnlyCollection<UserInfo> result = users
-                    .Select(u => u.ToUserInfo(u.UserEmails.ToList(), profiles.GetValueOrDefault(u.Id)))
+                    .Select(u => FromEntities(u, profiles.GetValueOrDefault(u.Id)))
                     .ToList();
                 return Task.FromResult(result);
             });
@@ -83,16 +75,15 @@ internal static class UserInfoStubHelpers
     }
 
     /// <summary>
-    /// Stubs GetUserInfosAsync to read from a long-lived DbContext (uses AsNoTracking but reuses
-    /// the same instance — fine for in-memory tests that share one ctx).
+    /// Reuses one shared context.
     /// </summary>
     public static IUserService StubGetUserInfosFromContext(this IUserService userService, UsersDbContext dbContext)
     {
         userService
-            .GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(callInfo =>
             {
-                var ids = callInfo.Arg<IReadOnlyCollection<Guid>>();
+                var ids = callInfo.Arg<IEnumerable<Guid>>().ToList();
                 if (ids.Count == 0)
                     return new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
                         new Dictionary<Guid, UserInfo>());
@@ -105,7 +96,7 @@ internal static class UserInfoStubHelpers
                     .ToDictionary(p => p.UserId);
                 IReadOnlyDictionary<Guid, UserInfo> dict = users.ToDictionary(
                     u => u.Id,
-                    u => u.ToUserInfo(u.UserEmails.ToList(), profiles.GetValueOrDefault(u.Id)));
+                    u => FromEntities(u, profiles.GetValueOrDefault(u.Id)));
                 return new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(dict);
             });
         return userService;
@@ -130,7 +121,7 @@ internal static class UserInfoStubHelpers
                     return null;
                 var profile = await dbContext.Profiles.AsNoTracking()
                     .FirstOrDefaultAsync(p => p.UserId == id, ct);
-                return user.ToUserInfo(user.UserEmails.ToList(), profile);
+                return FromEntities(user, profile);
             });
         return userService;
     }

@@ -10,6 +10,8 @@ using Humans.Stripe.Services;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
+[assembly: Humans.Base.Demo.NoDemoStory("Vendor mirror: its data arrives through the Stripe sync, never from demo stories.")]
+
 namespace Humans.Stripe;
 
 /// <summary>
@@ -40,6 +42,7 @@ public sealed class Section : ISection, ISectionAdminNav, ISectionConfiguration,
         services.AddScoped<IStripeMirrorRepository, Repository>();
         services.AddScoped<StripeMirrorService>();
         services.AddScoped<IStripeMirrorAdminService>(sp => sp.GetRequiredService<StripeMirrorService>());
+        services.AddScoped<IStripeMirrorService>(sp => sp.GetRequiredService<StripeMirrorService>());
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<StripeMirrorService>());
         services.AddScoped<StripeMirrorSyncJob>();
     }

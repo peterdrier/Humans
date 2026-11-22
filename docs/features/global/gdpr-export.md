@@ -23,12 +23,13 @@
   src/Sections/Humans.Expenses/Services/ExpenseReportService.cs
   src/Sections/Humans.Finance/Services/Service.cs
   src/Sections/Humans.Gate/Services/GateService.cs
-  src/Sections/Humans.GoogleIntegration/Services/GoogleSyncLogService.cs
+  src/Sections/Humans.Google/Services/GoogleSyncLogService.cs
   src/Sections/Humans.MailerLite/Services/MailerLiteGdprContributor.cs
   src/Sections/Humans.Email/Services/EmailOutboxService.cs
   src/Sections/Humans.Backdoor/Services/BackdoorApiKeyService.cs
   src/Sections/Humans.Rideshare/Services/**
   src/Sections/Humans.Workgroups/Services/**
+  src/Sections/Humans.Roles/Services/**
   src/Sections/Humans.Preapprovals/Services/PreapprovalService.Gdpr.cs
   src/Sections/Humans.Grants/Services/GrantService.Gdpr.cs
   src/Sections/Humans.Calendar/Services/CalendarFeedTokenService.cs
@@ -94,8 +95,8 @@ change.
 The contributor named in that column is the type **registered** as
 `IUserDataContributor`, and whether that is a cached section's decorator or its inner
 service is the registering section's own call: `CachingEventService`,
-`CachingRideshareService`, `CachingWorkgroupService`, `CachingTeamService`, `CachingCampService`
-and `CachingTicketQueryService` bind the decorator, while Consent and Auth have decorators and
+`CachingRideshareService`, `CachingWorkgroupService`, `CachingTeamService`, `CachingCampService`,
+`CachingRoleService` and `CachingTicketQueryService` bind the decorator, while Consent and Auth have decorators and
 bind the inner service. Whichever is registered
 is the type that carries `ErasureDeclaration`.
 
@@ -113,7 +114,7 @@ section owns its own `DbContext` type, so no two contributors touch the same
 instance; how a given repository obtains its context varies — some take one by
 injection, some open one per call through `IDbContextFactory<T>` — and neither
 recreates the sharing. The hazard went with the shared context, and
-`design-rules.md` §8a records the reason as obsolete.
+`design-rules.md`, *Crosscuts, orchestrators and fan-out* records the reason as obsolete.
 
 Sequential is now a simplicity choice, and it stays: one contributor at a time
 keeps failure attribution and log order plain, and at our small scale an export
@@ -163,7 +164,7 @@ archived account and the survivor.
 | `VolunteerHistory` | `UserService` | Array of `{ Date, EventName, Description, CreatedAt }`. |
 | `Languages` | `UserService` | Array of `{ LanguageCode, Proficiency }`. |
 | `CommunicationPreferences` | `CommunicationPreferenceService` (Email) | Array of `{ Category, OptedOut, InboxEnabled, SubscribedAt, UpdatedAt, UpdateSource }` — the effective preferences. Deleted on erasure. |
-| `WorkspaceIdentity` | `WorkspaceIdentityService` (GoogleIntegration) | Single object `{ Email, Status }` — the member's effective Google Workspace identity; null when the member has no verified address. Erasure deletes the `google_workspace_identities` row. |
+| `WorkspaceIdentity` | `WorkspaceIdentityService` (Google) | Single object `{ Email, Status }` — the member's effective Google Workspace identity; null when the member has no verified address. Erasure deletes the `google_workspace_identities` row. |
 | `EventParticipations` | `EventParticipationService` (Tickets) | Array of `{ Year, Status, Source, DeclaredAt, CheckedInAt }` covering every event-year the user has a participation record for (Ticketed / Attended / NoShow / NotAttending); requests under an archived ID resolve to the survivor. Retained on erasure. |
 | `Applications` | `ApplicationDecisionService` | Array of tier application records with `StateHistory` inline. |
 | `MembershipTier` | `MembershipTierService` | Single object `{ Tier, GrantedAt, ExpiresAt, GrantedByApplicationId }`; null for a Volunteer. Retained on erasure (register of members). |
@@ -172,7 +173,7 @@ archived account and the survivor.
 | `ConsentReview` | `ConsentReviewService` | Array of `{ UserId, Status, CheckedAt, Notes, IsApproved, RejectionReason, RejectedAt }` — the Consent Coordinator's review rows for every id in the merge chain (survivor first); null when none. Erasure keeps status, dates, approval and reviewer ids and erases the notes and the rejection reason. |
 | `TeamMemberships` | `CachingTeamService` | Array of `{ TeamName, Role, JoinedAt, LeftAt, TeamRoles[] }`. |
 | `TeamJoinRequests` | `CachingTeamService` | Array of `{ TeamName, Status, Message, ReviewNotes, RequestedAt, ResolvedAt, StateHistory[] }` (`StateHistory` entries are `{ Status, ChangedAt, Notes }`). |
-| `TeamEarlyEntry` | `CachingTeamService` | Array of `{ TeamName, ProjectName, EntryDate, GrantedAt }` — the user's team early-entry grants. |
+| `TeamEarlyEntry` | `CachingTeamService` | Array of `{ EventSettingsId, TeamName, ProjectName, EntryDate, GrantedAt }` — the user's team early-entry grants. |
 | `RoleAssignments` | `RoleAssignmentService` | Array of `{ RoleName, ValidFrom, ValidTo }`. |
 | `ShiftSignups` | `ShiftSignupService` | Array of `{ EventName, Department, RotaName, DayOffset, IsAllDay, Status, Enrolled, StatusReason, CreatedAt, UpdatedAt, ReviewedAt }`. |
 | `VolunteerEventProfiles` | `ShiftSignupService` | Array of `{ Skills, Quirks, Languages, CreatedAt, UpdatedAt }` per-event profile records (dietary data is exported in `DietaryProfile`, medical in `Profile`). |
@@ -220,6 +221,7 @@ archived account and the survivor.
 | `WorkgroupLogEntries` | `CachingWorkgroupService` | Array of `{ Workgroup, Kind, OccurredOn, Title, Body, CreatedAt }` — the group's written record of how it worked. Retained, authorship dropped. |
 | `CalendarFeedToken` | `CalendarFeedTokenService` | `{ HasFeed }` — whether the human has ever minted a personal iCal feed. The token itself is never exported: it is a live credential and an export file gets forwarded; the human reads their URL off `/Calendar`, the one place it is shown. Erased in full: the row is deleted. |
 | `WorkgroupMeetings` | `CachingWorkgroupService` | Array of `{ Workgroup, Title, StartUtc, EndUtc, Location, IsPublic, Minutes, CreatedAt }`. Retained, creator attribution dropped. |
+| `Roles` | `CachingRoleService` | Array of `{ Owner, Role, AssignedAt }`: the roles the human holds, with owner names. Erased in full: they are unassigned everywhere. |
 | `WorkgroupDocuments` | `CachingWorkgroupService` | Array of `{ Workgroup, Title, Kind, Status, Authored, Edited, DispositionRecorded, CreatedAt, UpdatedAt }` — the three booleans say which attribution this row carries for this person. Retained, attributions dropped. |
 | `WorkgroupComments` | `CachingWorkgroupService` | Array of `{ Workgroup, Document, Category, Body, Authored, Responded, HiddenByThisPerson, Disposition, Response, Hidden, HiddenReason, CreatedAt }`. Retained, author attribution dropped: the record of what was heard and decided against. |
 | `AssemblyVotes` | `AssemblyVoteService` | Array of `{ Vote, Status, ClosesAt, Entitlement ("Official"/"Indicative"), Tier, IsBoardMember, Ballot: { Choice, Ranking[], Revision, CastAt, UpdatedAt, History: [{ Revision, Choice, Ranking[], RecordedAt }] }? }` — every assembly vote the human was on the roster for, with their current ballot and each revision of it; `Ballot` is null when they did not vote. Retained after erasure, unlinked: the vote is the association's record of a decision. |
@@ -316,8 +318,8 @@ that check can't: it discovers contributors by reflection over the same section
 assemblies the runtime composes itself from, and requires no category be
 claimed twice across the whole roster and no retention be left unexplained.
 
-Append-only entities per `design-rules.md` §12 (`consent_records`, `audit_log`,
-`budget_audit_logs`, `camp_polygon_histories`, `application_state_history`,
+Append-only entities per `design-rules.md`, *Append-only entities* (`consent_records`, `audit_log_entries`,
+`budget_audit_logs`, `city_camp_polygon_history`, `governance_application_state_history`,
 `team_join_request_state_history`) are not deleted — foreign keys are nulled or
 the row is re-pointed at the anonymized user rather than a separate tombstone
 user. The lawful basis for each retained category lives in the owning

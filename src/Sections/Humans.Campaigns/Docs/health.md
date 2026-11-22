@@ -109,7 +109,7 @@ none
   queued nothing never reports success.
 - `LatestEmailStatus` and `LatestEmailAt` stay mapped on `campaign_grants` although nothing
   writes them: dropping the columns needs its own approved migration
-  (`memory/architecture/no-drops-until-prod-verified.md`). The GDPR export still hands over the
+  (`memory/architecture/destructive-drops-need-approval.md`). The GDPR export still hands over the
   status old grants hold.
 
 ## History

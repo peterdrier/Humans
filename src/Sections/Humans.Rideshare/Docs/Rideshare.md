@@ -9,7 +9,7 @@
   src/Sections/Humans.Notifications.Contracts/INotificationEmitter.cs
   src/Humans.Base/Users/IUserService.cs
   src/Humans.Base/Users/UserInfo.cs
-  src/Sections/Humans.Users.Contracts/IUserMerge.cs
+  src/Humans.Base/Users/IUserMerge.cs
   src/Humans.Base/Gdpr/IUserDataContributor.cs
 -->
 <!-- freshness:flag-on-change
@@ -235,6 +235,7 @@ a map board lets people spot each other by eye. No booking, no payment, no autom
 
 ## Invariants
 
+- The trip snapshot carries the accepted-seat count computed from accepted interests; remaining capacity, season seats-filled totals, and day-roster display and sorting reuse it.
 - The cached snapshot leaves display ordering to the board, Mine, map and day-roster builders. Creation time breaks display ties; day-roster riders remain chronological.
 
 - **The list works independently of the map.** Interest forms remain usable from the server-rendered cards when the map library, WebGL, map load or board data request fails.
@@ -246,8 +247,9 @@ a map board lets people spot each other by eye. No booking, no payment, no autom
 - **Interest always anchors to a trip.** `RideshareInterest.TripId` is required on both the rider→offer and driver→request-pin paths; `RequestId` is an optional origin pointer only, never the anchor.
 - **Seats remaining is derived, never stored.** `SeatsRemaining = SeatsOffered − Σ(Seats of Accepted interests on the trip)`; a trip is full when this is `≤ 0`.
 - **A request's Matched state is derived, never stored.** True when an `Accepted` interest exists with `FromUserId == request.UserId` with no `RequestId`, or `RequestId == request.Id`, on an `Active` trip with the request's direction that travels on its desired date; a ride accepted for the other leg or another day does not match it, and cancelling the trip un-matches the request. A driver's accepted answer to another rider's request does not match the driver's own request.
-- **Routing preparation stays section-internal.** `RideshareRouting` resolves member points, reuses or geocodes waypoints, and builds travel-order routes through `IRouteProvider`. `RideshareService` retains authorization, validation, lifecycle transitions and persistence.
+- **Routing preparation stays section-internal.** `RideshareService` resolves member points, reuses or geocodes waypoints, and builds travel-order routes through `IRouteProvider`. `RideshareService` retains offer/request authorization, validation, lifecycle transitions and persistence; interest transitions use `RideshareService`.
 - **Route geometry is computed once at save and frozen.** Recomputed only on create, on an update that changes the member point, waypoints, or direction, or on an update of a trip saved without a route (a retry after a provider outage) — never at view time, and never invalidated by a later settings edit. The straight-line fallback the board draws when the stored route is absent or invalid is not a route: it is rendered at view time through the current destination, so it follows a later destination edit.
+- **Form coordinate bounds use floating-point limits.** Offer, request and destination settings forms reject fractional overshoots beyond latitude −90…90 and longitude −180…180 instead of rounding them into range. Exact boundaries and explicit zero remain valid.
 - **Form pins match valid coordinates.** Map clicks wrap longitude into −180…180 before filling fields and placing the marker. Invalid or incomplete initial/manual coordinates remain unpinned; clearing or invalidating either field removes the pin without discarding the entered values. Valid edits restore it. Changing the place label clears the previous coordinates even when the map library or WebGL fails, so saving geocodes the new place.
 - **Routing geometry is validated.** Provider geocodes must be Points and directions must be LineStrings with at least two positions. Coordinates must be numeric and finite, with latitude within −90…90 and longitude within −180…180. Route altitude and geometry metadata are retained. Invalid responses warn and return null. Invalid stored routes warn without exception stacks and use the travel-order fallback without rewriting data; when only the origin is available, the fallback is a Point.
 - **A null route never blocks a save.** When the routing provider is unavailable, `RouteGeoJson` is stored as null and a warning is logged; the save still succeeds.
@@ -267,6 +269,8 @@ a map board lets people spot each other by eye. No booking, no payment, no autom
 - **Withdraw is available to the author or the posting owner**, from `Pending` or `Accepted`.
 - **Offer travel spans must fit within the supported date range.** Creation validates both the posted departure and the seeded inverse departure; edits validate the new departure and duration before persistence. Invalid spans return the localized invalid-date refusal.
 - **Creating an inbound (or outbound) offer auto-seeds the inverse leg.** `LinkedTripId` is a soft, display-only link — the two legs are not otherwise coupled and are edited/cancelled independently.
+
+- **Mutation access failures are explicit results.** Missing trips, requests and interests return 404; ownership denials return 403. Both form and redirect actions log these expected failures without exception stacks. Dependency exceptions propagate rather than being converted to access failures. Existing ownership checks run before edits, persistence and notifications.
 
 ## Negative Access Rules
 
@@ -311,7 +315,7 @@ a map board lets people spot each other by eye. No booking, no payment, no autom
   then drops interests the fold made self-interest (rider on their own trip, driver answering
   their own request) and duplicate pending interests on one trip/request (earliest wins).
   Idempotent; the decorator clears the snapshot cache afterwards.
-- **Settings**: `ISettingsService.GetActiveEventSettingsAsync()` — the active event everything anchors to;
+- **Settings**: `ISettingsService.GetActiveEventSettings()` — the active event everything anchors to;
   `GetAllEventSettingsAsync()` — resolves stored event ids and their names.
   The decorator implements `IEventSettingsChangeListener` and clears every snapshot when event metadata changes.
 - **Notifications**: `INotificationEmitter.SendAsync` — interest created/accepted/declined notifications. Its sources are declared in `RideshareNotificationSources` (`src/Sections/Humans.Rideshare/RideshareNotificationSources.cs`), one `NotificationSourceDefinition` each: `RideshareInterestReceived` (actionable, to the trip/request owner: someone expresses interest in a ride); `RideshareInterestAccepted` (informational, to the interested user: owner accepts the interest); `RideshareInterestDeclined` (informational, to the interested user: owner declines the interest).
@@ -327,7 +331,7 @@ a map board lets people spot each other by eye. No booking, no payment, no autom
 ## Architecture
 
 **Owning services:** `RideshareService` (inner), `CachingRideshareService` (Singleton decorator).
-The inner service delegates all three post-save interest notices to the internal `RideshareNotices`,
+The inner service delegates all three post-save interest notices to `RideshareService`,
 which owns recipient-culture copy and best-effort delivery without a separate DI registration.
 **Owned tables:** `rideshare_trips`, `rideshare_requests`, `rideshare_interests`, `rideshare_settings`
 **Status:** (A) Migrated — new section, built in this shape from day one.
@@ -358,5 +362,9 @@ which owns recipient-culture copy and best-effort delivery without a separate DI
 
 `IRouteProvider` (geocode + directions) is a section-internal abstraction over OpenRouteService
 (`OpenRouteServiceClient`, `HttpClient`-based). Provider failures — including malformed geometry,
-an unconfigured API key or a non-success response — log a warning and return null, keeping
-unavailable routing from blocking a save (see Invariants). Caller cancellation propagates.
+an unconfigured API key or a non-success response — log Warning without exception stacks and return null,
+keeping unavailable routing from blocking a save (see Invariants). Expected transport, timeout and response-shape
+failures retain their reason; unexpected faults log Error with the original exception and retain the null fallback.
+Caller cancellation propagates without a provider-failure log.
+
+`RideshareService` owns express, accept, decline and withdraw operations, including posting-owner checks, request compatibility and accepted-seat calculations. It receives the same static mutation lock used by offer/request edits and cancellations, so the shared boundary still covers every read/check/write through persistence; notifications remain after release. Posting updates and snapshot projection reuse its capacity calculations. Actor checks, refusal order, timestamps, cancellation and notice recipients are unchanged.

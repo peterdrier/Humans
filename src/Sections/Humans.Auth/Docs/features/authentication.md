@@ -84,7 +84,7 @@ RoleAssignment
 └── CreatedByUserId: Guid     (bare user id — no FK, no nav property)
 ```
 
-`role_assignments` lives in `AuthDbContext`, `users` in Users' context, so
+`auth_role_assignments` lives in `AuthDbContext`, `users` in Users' context, so
 neither id carries a database FK and neither has a navigation property to
 `.Include()`. Display names are stitched in memory via
 `IUserService.GetUserInfosAsync`.
@@ -137,7 +137,7 @@ All roles are stored as temporal `RoleAssignment` records. Role claims are added
 | Role | Description |
 |------|-------------|
 | **ConsentCoordinator** | Safety checks on new humans (clear/flag consent checks) |
-| **ShiftsAdmin** | Read-only onboarding queue access; assists new humans |
+| **ShiftsAdmin** | Assists new humans |
 
 ### Section Admin Roles (scoped to one functional area)
 
@@ -154,7 +154,7 @@ All roles are stored as temporal `RoleAssignment` records. Role claims are added
 | **RideshareAdmin** | Rideshare settings, season statistics, and the day roster; confers nothing outside Rideshare |
 | **GrantsAdmin** | Grant programs: create, edit, name managers, issue, revoke and resend; confers nothing outside Grants |
 | **SurveysAdmin** | Surveys: approve or reject, edit any survey, open, close, send invitations, download results; confers nothing outside Surveys |
-| **EarlyEntryAdmin** | Cross-team Early-Entry administrator — grant/edit/revoke early-entry on any team with `EarlyEntryEnabled`; confers nothing else |
+| **EarlyEntryAdmin** | Cross-team Early-Entry administrator — grant/edit/revoke early-entry on any team with `EarlyEntryEnabled`, and reads the Early entry roster; confers nothing else |
 | **ShiftsNoInfo** | Approve/voluntell shift signups; access volunteer medical data |
 
 ### UserState Access Claim

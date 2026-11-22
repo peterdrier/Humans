@@ -26,16 +26,16 @@ as failed and the person who pressed the button sees an error.
 |---|---|---|
 | *Did anyone outside the service account change permissions on our folders?* | `DriveActivityMonitorJob` (hourly), `POST /Monitor/CheckDriveActivity` | audit-log anomaly rows, plus a count for the caller |
 
-One shape, two triggers. The contract surface is one method
+One shape, two triggers. The internal scan interface has one method
 (`IDriveActivityMonitorService.CheckForAnomalousActivityAsync`), consumed only from inside
 this project.
 
 ## Structure
 
-- `Contracts/IDriveActivityMonitorService.cs` — the one-method scan contract.
+- `Services/IDriveActivityMonitorService.cs` — the one-method scan contract.
 - `Services/DriveActivityMonitorService.cs` — the scan: walk the resource set, decide whether
-  the marker advances, turn an activity event into a sentence. People-id resolution is its
-  own nested class, `PersonNameResolver`, because its caches are per-run state.
+  the marker advances, turn an activity event into a sentence. People-id resolution remains in the
+  service; a dependency-free `PersonNameResolution` object holds only per-run cache and failure state.
 - `Jobs/DriveActivityMonitorJob.cs` and `Section.cs` — the hourly trigger, its metric
   and its schedule.
 - `Controllers/MonitorController.cs` — the manual trigger: dispatch, banner, redirect to the
@@ -88,16 +88,14 @@ None.
 - **The stub-mode marker guard.** Not advancing the marker when the connector is
   unconfigured looks like a missing else-branch; it keeps historical changes visible once
   real credentials land in the same database.
-- **`Humans.Monitor.csproj` references `Humans.GoogleIntegration` whole.** GoogleIntegration's
+- **`Humans.Monitor.csproj` references `Humans.Google` whole.** Google's
   contracts live in a `Contracts/` folder of that project, not a leaf, so the compiler cannot
   stop `IGoogleDriveActivityClient` moving out of it;
-  `DriveActivityMonitorArchitectureTests.IGoogleDriveActivityClient_LivesOnGoogleIntegrationsLeaf`
+  `DriveActivityMonitorArchitectureTests.IGoogleDriveActivityClient_LivesOnGoogleLeaf`
   is what holds it there.
-- **Monitor references GoogleIntegration and AuditLog, and no section references Monitor.**
+- **Monitor references Google and AuditLog, and no section references Monitor.**
   The scan is its own section because it is a distinct read model with its own job, not part
   of the audit log it writes to.
-- **`DriveActivityMonitorJob` is `public`.** HUM0034 allows a section's public types under
-  `Jobs/`; `Section.cs` and `Section.cs` name the type.
 - **The scan reads Users through `IUserService.GetAllUserInfosAsync`**, the whole user
   set, lazily, once per run, and only when the Directory connector could not resolve a
   people-id.

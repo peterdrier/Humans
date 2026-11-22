@@ -1,4 +1,4 @@
-using Humans.GoogleIntegration.Contracts;
+using Humans.Google.Contracts;
 using Humans.Camps.Controllers;
 using Microsoft.AspNetCore.Mvc;
 using Humans.Notifications.Contracts;
@@ -16,7 +16,7 @@ namespace Humans.Camps.Tests.Services;
 public sealed class CampRoleServiceTests : CampsTestHarness
 {
     private readonly CampRoleService _service;
-    private readonly IGoogleIntegrationService _googleIdentities;
+    private readonly IGoogleService _googleIdentities;
     private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly ICampRoleCampAccess _campAccess;
     private readonly Guid _actorUserId = Guid.NewGuid();
@@ -25,7 +25,7 @@ public sealed class CampRoleServiceTests : CampsTestHarness
     public CampRoleServiceTests()
         : base(Instant.FromUtc(2026, 4, 26, 12, 0))
     {
-        _googleIdentities = Substitute.For<IGoogleIntegrationService>();
+        _googleIdentities = Substitute.For<IGoogleService>();
         _campAccess = Substitute.For<ICampRoleCampAccess>();
         _campAccess.GetSettingsAsync(Arg.Any<CancellationToken>())
             .Returns(new CampSettingsInfo(2026, [2026]) { Events = [Event2026] });
@@ -362,6 +362,31 @@ public sealed class CampRoleServiceTests : CampsTestHarness
     }
 
     [HumansFact]
+    public async Task Assign_notice_routes_merged_member_to_live_recipient()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var (_, season) = await SeedCampWithSeasonAsync();
+        var member = await SeedActiveMemberAsync(season.Id);
+        var def = await SeedDefinitionAsync();
+        var liveUserId = Guid.NewGuid();
+        _campAccess.GetCampMemberStatusAsync(member.Id, Arg.Any<CancellationToken>())
+            .Returns(new CampMemberLookup(season.Id, member.UserId, CampMemberStatus.Active));
+        _userService.GetUserInfoAsync(member.UserId, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<UserInfo?>(UserInfo.Create(
+                new User { Id = liveUserId, PreferredLanguage = "es" }, [], [], null)));
+
+        var outcome = await _service.AssignAsync(season.Id, def.Id, member.Id, _actorUserId, ct);
+
+        outcome.Should().Be(AssignCampRoleOutcome.Assigned);
+        var notice = Notifier.ReceivedCalls().Should().ContainSingle().Subject.GetArguments();
+        notice[0].Should().Be(CampsNotificationSources.CampRoleAssigned);
+        notice[3].Should().Be($"Se te ha asignado el rol {def.Name}.");
+        ((IReadOnlyList<Guid>)notice[4]!).Should().ContainSingle().Which.Should().Be(liveUserId);
+        notice[10].Should().Be(CancellationToken.None);
+        (await CampsDb.CampRoleAssignments.AsNoTracking().SingleAsync(ct)).CampMemberId.Should().Be(member.Id);
+    }
+
+    [HumansFact]
     public async Task Assign_returns_MemberNotActive_when_member_is_pending()
     {
         var (_, season) = await SeedCampWithSeasonAsync();
@@ -506,6 +531,7 @@ public sealed class CampRoleServiceTests : CampsTestHarness
         row1.OverCapacity.Should().BeFalse();
         row1.FilledSlots[0].CampMemberId.Should().Be(member1.Id);
         row1.FilledSlots[0].UserId.Should().Be(member1.UserId);
+        row1.FilledSlots[0].AssignedAt.Should().Be(Clock.GetCurrentInstant());
 
         var row2 = panel.Rows.First(r => r.Definition.Id == def2.Id);
         row2.FilledSlots.Should().BeEmpty();

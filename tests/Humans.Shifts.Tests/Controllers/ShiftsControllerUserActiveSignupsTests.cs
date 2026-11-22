@@ -1,7 +1,6 @@
 using Humans.Shifts.Domain;
 using AwesomeAssertions;
 using System.Security.Claims;
-using Humans.Onboarding;
 using Humans.Shifts.Services.Dtos;
 using Humans.AuditLog.Contracts;
 using Humans.Shifts.Services;
@@ -63,7 +62,7 @@ public class ShiftsControllerUserActiveSignupsTests
         _burnSettings.GetByIdAsync(ActiveBurnId, Arg.Any<CancellationToken>()).Returns(ActiveBurn);
         _burnSettings.GetByIdAsync(PastBurnId, Arg.Any<CancellationToken>()).Returns(PastBurn);
 
-        _shiftMgmt.GetCoordinatorTeamIdsAsync(_userId, Arg.Any<CancellationToken>()).Returns([]);
+        _shiftMgmt.CanManageOrApproveAnyShiftsAsync(_userId, Arg.Any<CancellationToken>()).Returns(false);
         _shiftMgmt.GetBrowseShiftsAsync(Arg.Any<ShiftBrowseQuery>(), Arg.Any<CancellationToken>()).Returns([]);
         _shiftMgmt.GetTagsAsync().Returns([]);
         _shiftMgmt.GetDepartmentCoveragePiesAsync(
@@ -90,7 +89,11 @@ public class ShiftsControllerUserActiveSignupsTests
         _signupService.GetByUserAsync(_userId, ct: Arg.Any<CancellationToken>()).Returns([]);
 
         if (string.Equals(boundary, "coordinators", StringComparison.Ordinal))
-            _shiftMgmt.GetCoordinatorTeamIdsAsync(_userId, Arg.Any<CancellationToken>()).ReturnsForAnyArgs(ReadAsync<Guid>);
+            _shiftMgmt.CanManageOrApproveAnyShiftsAsync(_userId, Arg.Any<CancellationToken>()).ReturnsForAnyArgs(call =>
+            {
+                call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+                return Task.FromResult(false);
+            });
         else if (string.Equals(boundary, "signups", StringComparison.Ordinal))
             _signupService.GetByUserAsync(_userId, ct: Arg.Any<CancellationToken>()).ReturnsForAnyArgs(ReadAsync<ShiftSignupSummary>);
         else if (string.Equals(boundary, "browse", StringComparison.Ordinal))
@@ -135,7 +138,7 @@ public class ShiftsControllerUserActiveSignupsTests
         {
             _shiftView.GetUserAsync(_userId, Arg.Any<CancellationToken>()).Returns(
                 new ShiftUserView(_userId, null, null, null, [],
-                    [new ShiftSignup
+                    [ShiftUserSignup.From(new ShiftSignup
                     {
                         Id = Guid.NewGuid(),
                         Status = SignupStatus.Confirmed,
@@ -147,7 +150,7 @@ public class ShiftsControllerUserActiveSignupsTests
                             Duration = Duration.FromHours(4),
                             Rota = new Rota { Id = Guid.NewGuid(), EventSettingsId = ActiveBurnId, Name = "Gate" },
                         },
-                    }]));
+                    })]));
             if (string.Equals(boundary, "approval", StringComparison.Ordinal))
             {
                 var closedBurn = ActiveBurn with { EarlyEntryClose = _clock.GetCurrentInstant() - Duration.FromSeconds(1) };
@@ -279,7 +282,7 @@ public class ShiftsControllerUserActiveSignupsTests
 
         var ctrl = new ShiftsController(
             _shiftMgmt, _burnSettings, _signupService, _volunteerTracking, _shiftView, _teamService,
-            _auditLog, Substitute.For<IAuditViewerService>(), _userService, _localizer, Substitute.For<IStringLocalizer<OnboardingResource>>(), _clock,
+            _userService, _localizer, _clock,
             new ShiftBrowsePageBuilder(_shiftMgmt, _burnSettings, _teamService),
             NullLogger<ShiftsController>.Instance);
 
@@ -340,7 +343,9 @@ public class ShiftsControllerUserActiveSignupsTests
             user: new User
             {
                 Id = userId,
-                DisplayName = "Burner",
+                BurnerName = "Burner",
+                FirstName = "First",
+                LastName = "Last",
                 PreferredLanguage = "en",
                 CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
                 State = UserState.Active,
@@ -350,9 +355,6 @@ public class ShiftsControllerUserActiveSignupsTests
             profile: new Profile
             {
                 UserId = userId,
-                BurnerName = "Burner",
-                FirstName = "First",
-                LastName = "Last",
                 CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
                 UpdatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
             },

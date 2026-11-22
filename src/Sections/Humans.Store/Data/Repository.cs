@@ -188,7 +188,8 @@ internal sealed class Repository(IDbContextFactory<StoreDbContext> factory) : IS
             .Join(ctx.Products.AsNoTracking(),
                 lo => lo.Line.ProductId, p => p.Id,
                 (lo, p) => new LineContext(
-                    lo.Line.Id, lo.Order.Id, lo.Order.CampSeasonId, lo.Order.State, p.OrderableUntil))
+                    lo.Line.Id, lo.Order.Id, lo.Order.CampSeasonId, lo.Order.State, p.OrderableUntil,
+                    p.Name, lo.Line.Qty, lo.Line.UnitPriceSnapshot))
             .FirstOrDefaultAsync(ct);
         return row;
     }
@@ -271,6 +272,17 @@ internal sealed class Repository(IDbContextFactory<StoreDbContext> factory) : IS
             .ToListAsync(ct);
     }
 
+    public async Task SaveInvoiceBookingAsync(Invoice invoice, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        ctx.Invoices.Attach(invoice);
+        var entry = ctx.Entry(invoice);
+        entry.Property(i => i.BookingState).IsModified = true;
+        entry.Property(i => i.BookingNote).IsModified = true;
+        entry.Property(i => i.SentAt).IsModified = true;
+        await ctx.SaveChangesAsync(ct);
+    }
+
     public async Task SaveIssuedInvoiceAsync(Invoice invoice, Order order, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
@@ -292,6 +304,24 @@ internal sealed class Repository(IDbContextFactory<StoreDbContext> factory) : IS
             lineEntry.Property(l => l.DepositAmountSnapshot).IsModified = true;
         }
 
+        await ctx.SaveChangesAsync(ct);
+    }
+
+    public async Task<StoreSettings> GetSettingsAsync(CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        return await ctx.Settings.AsNoTracking().FirstOrDefaultAsync(s => s.Id == StoreSettings.SingletonId, ct)
+            ?? new StoreSettings();
+    }
+
+    public async Task SaveSettingsAsync(StoreSettings settings, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        var row = await ctx.Settings.FirstOrDefaultAsync(s => s.Id == StoreSettings.SingletonId, ct);
+        if (row is null)
+            ctx.Settings.Add(row = new StoreSettings());
+        row.StripeGatewayTreasuryId = settings.StripeGatewayTreasuryId;
+        row.SimplifiedInvoiceThresholdEur = settings.SimplifiedInvoiceThresholdEur;
         await ctx.SaveChangesAsync(ct);
     }
 }

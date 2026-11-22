@@ -642,7 +642,7 @@ internal sealed class BudgetAdminController(
 
     private async Task<FinanceOverviewViewModel> BuildFinanceOverviewAsync(BudgetYearDetail year, IReadOnlyList<BudgetYearSummarySnapshot> allYears, CancellationToken ct)
     {
-        var summary = budgetService.ComputeBudgetSummaryWithBuffers(year.Groups);
+        var summary = budgetService.ComputeBudgetSummaryWithBuffers(year.Groups.OrderBy(group => group.SortOrder).ToList());
 
         var ticketingGroup = year.Groups.FirstOrDefault(g => g.IsTicketingGroup);
         if (ticketingGroup is not null)
@@ -650,17 +650,16 @@ internal sealed class BudgetAdminController(
             var actualSold = budgetService.GetActualTicketsSold(ticketingGroup);
             ViewBag.ActualTicketsSold = actualSold;
 
-            var projections = await budgetService.GetTicketingProjectionEntriesAsync(ticketingGroup.Id, ct);
-            if (projections.Count > 0)
+            var projectedRemaining = await budgetService.GetProjectedRemainingTicketsAsync(ticketingGroup.Id, ct);
+            ViewBag.ProjectedRemaining = projectedRemaining;
+            ViewBag.TotalTickets = actualSold + projectedRemaining;
+            if (ticketingGroup.TicketingProjection?.EventDate is not null)
             {
-                var projectedRemaining = projections.Sum(p => p.ProjectedTickets);
                 var today = clock.GetCurrentInstant().InUtc().Date;
                 var proj = ticketingGroup.TicketingProjection!;
                 var daysToEvent = Period.Between(today, proj.EventDate!.Value, PeriodUnits.Days).Days;
 
                 ViewBag.RemainingDays = Math.Max(0, daysToEvent);
-                ViewBag.ProjectedRemaining = projectedRemaining;
-                ViewBag.TotalTickets = actualSold + projectedRemaining;
             }
         }
 
@@ -679,8 +678,10 @@ internal sealed class BudgetAdminController(
             TotalIncome = summary.TotalIncome,
             TotalExpenses = summary.TotalExpenses,
             NetBalance = summary.NetBalance,
-            IncomeSlices = summary.IncomeSlices,
-            ExpenseSlices = summary.ExpenseSlices,
+            IncomeSlices = summary.IncomeSlices.OrderBy(slice => slice.BudgetCategoryId is null)
+                .ThenByDescending(slice => slice.BudgetCategoryId is null ? 0m : slice.Amount).ToList(),
+            ExpenseSlices = summary.ExpenseSlices.OrderBy(slice => slice.BudgetCategoryId is null)
+                .ThenByDescending(slice => slice.BudgetCategoryId is null ? 0m : slice.Amount).ToList(),
             HoldedActualsByCategory = holdedActuals
         };
     }

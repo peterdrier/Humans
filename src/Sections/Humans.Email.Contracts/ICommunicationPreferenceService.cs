@@ -13,10 +13,6 @@ public interface ICommunicationPreferenceService : IApplicationService
     Task<CommunicationPreferenceSnapshot?> GetPreferenceOrNullAsync(
         Guid userId, MessageCategory category, CancellationToken cancellationToken = default);
 
-    /// <summary>Recorded rows only; missing categories are left out.</summary>
-    Task<IReadOnlyList<CommunicationPreferenceSnapshot>> GetPreferencesReadOnlyAsync(
-        Guid userId, CancellationToken cancellationToken = default);
-
     /// <summary>
     /// Keyed by user id. A user with no entry has nothing recorded (for Marketing: neither opted in nor out).
     /// </summary>

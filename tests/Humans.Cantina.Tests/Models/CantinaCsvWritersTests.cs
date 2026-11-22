@@ -193,6 +193,8 @@ public sealed class CantinaCsvWritersTests
         var headers = lines[4].Split(',');
         var totals = lines[^1].Split(',');
 
+        totals[Array.IndexOf(headers, "Vegan")].Should().Be("1");
+        totals[Array.IndexOf(headers, "Omnivore")].Should().Be("1");
         totals[Array.IndexOf(headers, "Peanut")].Should().Be("2");
         totals[Array.IndexOf(headers, "Other allergy")].Should().Be("1");
         totals[Array.IndexOf(headers, "Other allergy text")].Should().Be("\u2014");

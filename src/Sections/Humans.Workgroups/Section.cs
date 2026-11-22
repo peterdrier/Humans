@@ -1,3 +1,4 @@
+using Humans.Base.Extensions;
 using System.Globalization;
 using System.Security.Claims;
 using Humans.Base.Authorization;
@@ -9,7 +10,7 @@ using Humans.Base.Models.Tables;
 using Humans.Calendar.Contracts;
 using Humans.Email.Contracts;
 using Humans.Gdpr.Contracts;
-using Humans.GoogleIntegration.Contracts;
+using Humans.Google.Contracts;
 using Humans.Users.Contracts;
 using Humans.Workgroups.Authorization;
 using Humans.Workgroups.Data;
@@ -24,6 +25,8 @@ using Humans.Notifications.Contracts;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
 using NodaTime;
+
+[assembly: Humans.Base.Demo.NoDemoStory("No demo story written yet.")]
 
 namespace Humans.Workgroups;
 
@@ -64,6 +67,7 @@ public sealed class Section :
 
         services.AddScoped<ICalendarFeedContributor, WorkgroupCalendarContributor>();
         services.AddScoped<IGoogleDriveAccessSource, WorkgroupDriveAccessSource>();
+        services.AddScoped<IGoogleGroupMembershipSource, WorkgroupGoogleGroupSource>();
 
         services.AddScoped<IAuthorizationHandler, WorkgroupAuthorizationHandler>();
 
@@ -137,7 +141,7 @@ public sealed class Section :
     async ValueTask<IEnumerable<ThingsToDoEntry>> ISectionThingsToDo.EntriesAsync(
         IServiceProvider services, ClaimsPrincipal user, CancellationToken ct)
     {
-        if (!Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
+        if (user.GetUserId() is not { } userId)
             return [];
 
         var viewer = await services.GetRequiredService<IUserService>().GetUserInfoAsync(userId, ct);

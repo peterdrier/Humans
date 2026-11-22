@@ -2,6 +2,7 @@ using AwesomeAssertions;
 using Humans.Shifts.Contracts;
 using Humans.Shifts.Models;
 using NodaTime;
+using Humans.Shifts.Services;
 
 namespace Humans.Shifts.Tests.Models;
 

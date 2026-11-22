@@ -21,12 +21,18 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Humans.AuditLog.Contracts;
+using Humans.Base.Models;
+using static Humans.Base.Models.AccessLevel;
+using static Humans.Base.Models.AccessMatrixFeature;
+
+[assembly: Humans.Base.Demo.NoDemoStory("Crosscut: filled by the actions other sections' stories take.")]
 
 namespace Humans.Email;
 
 /// <summary><c>EmailSettings</c> is bound in Shell, not here: many sections read it.</summary>
 public sealed class Section :
     ISection,
+    ISectionAccessMatrix,
     ISectionAdminNav,
     ISectionAdminTiles,
     ISectionChrome,
@@ -36,6 +42,21 @@ public sealed class Section :
     ISectionSettings,
     IUserPart
 {
+    IReadOnlyList<AccessMatrixData> ISectionAccessMatrix.AccessMatrices =>
+    [
+        new()
+        {
+            Key = "EmailOutbox",
+            SectionName = "Email Outbox",
+            Order = 94,
+            Roles = ["Admin"],
+            Features =
+            [
+                Of("Email outbox", ("Admin", Allowed)),
+            ]
+        }
+    ];
+
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
         services.AddSingleton<IAuditActionContributor, EmailAuditActions>();
@@ -76,8 +97,6 @@ public sealed class Section :
 
         services.AddScoped<EmailOutboxService>();
         services.AddScoped<IEmailOutboxManagement>(sp => sp.GetRequiredService<EmailOutboxService>());
-        services.AddScoped<IEmailOutboxService>(sp => sp.GetRequiredService<EmailOutboxService>());
-        services.AddScoped<IEmailOutboxRetention>(sp => sp.GetRequiredService<EmailOutboxService>());
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<EmailOutboxService>());
         services.AddScoped<IUserMerge>(sp => sp.GetRequiredService<EmailOutboxService>());
 

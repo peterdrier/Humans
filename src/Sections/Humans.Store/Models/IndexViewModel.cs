@@ -1,4 +1,5 @@
 using Humans.Store.Domain;
+using Humans.Store.Services;
 using Humans.Store.Services.Dtos;
 
 namespace Humans.Store.Models;
@@ -29,7 +30,7 @@ internal sealed class OrderViewModel
 
     public bool CanRecordPayment { get; init; }
 
-    public bool CanRefund { get; init; }
+    public bool CanRecordFinancePayment { get; init; }
 
     public bool CanDeletePayment { get; init; }
 
@@ -44,19 +45,36 @@ internal sealed class OrderViewModel
 
     public IReadOnlyCollection<Guid> RemovableLineIds { get; init; } = [];
 
+    /// <summary>Stripe dashboard page per paid Stripe payment id; filled only for refund-capable viewers.</summary>
+    public IReadOnlyDictionary<Guid, string> StripeRefundUrls { get; set; } = new Dictionary<Guid, string>();
+
+    /// <summary>What issuing would invoice and why it may not yet; set only for viewers who can issue.</summary>
+    public StoreInvoicePlan? InvoicePlan { get; set; }
+
+    /// <summary>The issued invoice with its booking state; null before issuance.</summary>
+    public Invoice? Invoice { get; set; }
+
+    /// <summary>The order's products that carry a deposit, for a deposit return to name.</summary>
+    public IReadOnlyList<(Guid ProductId, string Name)> DepositProducts => Order.Lines
+        .Where(l => l.EffectiveDeposit is > 0m)
+        .Select(l => (l.ProductId, l.ProductName))
+        .Distinct()
+        .ToList();
+
+
     public static OrderViewModel FromPageData(
         OrderPageData pageData,
         bool canDelete,
         bool canIssueInvoice,
         bool canRecordPayment,
-        bool canRefund,
+        bool canRecordFinancePayment,
         bool canDeletePayment,
         IReadOnlyList<ProductDto> catalog,
         IReadOnlyCollection<Guid> removableLineIds) => new()
         {
             CanIssueInvoice = canIssueInvoice,
             CanRecordPayment = canRecordPayment,
-            CanRefund = canRefund,
+            CanRecordFinancePayment = canRecordFinancePayment,
             CanDeletePayment = canDeletePayment,
             Order = pageData.Order,
             Catalog = catalog,

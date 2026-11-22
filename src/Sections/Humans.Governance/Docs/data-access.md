@@ -9,17 +9,19 @@ and `AssemblyVoteRepository` inject
 `IDbContextFactory<GovernanceDbContext>` directly. Owns
 `Applications`, `MembershipTiers` (`governance_membership_tiers`), `ApplicationStateHistories`, `BoardVotes`,
 `AssemblyVotes`, `AssemblyVoteOptions`, `AssemblyVoteRosterEntries`,
-`AssemblyBallots`, `AssemblyBallotHistories`, `AssemblyVotePeeks`.
+`AssemblyBallots`, `AssemblyBallotHistories`, `AssemblyVotePeeks`, `GovernanceBodyLinks` (`governance_body_links`),
+`GovernanceBodyFiles` (`governance_body_files`), `GovernanceBoardPositions` (`governance_board_positions`).
 
-All three repositories are registered **Singleton** in `Section.cs`; they hold no state
+All four repositories (`GovernanceBodyRepository` included) are registered **Singleton** in `Section.cs`; they hold no state
 and take an `IDbContextFactory`. The services below are Scoped.
 
-`IGovernanceManagement` (internal) extends the public `IGovernanceService` (reads) with the
-membership-tier expiry and the section's own members. Readers outside this section inject
+`IGovernanceManagement` (internal) carries application reads, admin counts and renewal reminders
+on `ApplicationDecisionService`. The existing `MembershipTierService` implements the public
+`IGovernanceService` directly. Readers outside this section inject
 `IGovernanceService` — tier reads from Users (popover, human summary, admin detail, duplicate
 accounts), Onboarding, Workgroups, Tickets, Surveys, Agent and Teams. Nothing outside the section
 writes Governance data: the section's own `MembershipTierExpiryJob` calls
-`IGovernanceManagement.ExpireMembershipTiersAsync`; `MembershipTierService` records each `TierDowngraded` audit after its tier mutation commits.
+the existing `MembershipTierService.ExpireAsync` directly; `MembershipTierService` records each `TierDowngraded` audit after its tier mutation commits.
 
 Cross-section reads inside the section go through the read surfaces
 (`IUserService`, `ITeamService`, `IConsentService`).
@@ -40,7 +42,7 @@ Repository: `IApplicationRepository`.
 
 Cross-section calls via `IUserService`,
 `IRoleAssignmentService`, `IEmailService`, `IUserEmailService`, `INotificationEmitter`,
-`ISystemTeamSync`, `IAuditLogService`, `IHumansMetrics`,
+`IAuditLogService`, `IHumansMetrics`, the section's `GovernanceBodySync`,
 and the section's own `GovernanceEmails` builder. Implements `IGovernanceManagement` (which
 extends `IGovernanceService`), `IUserDataContributor`, `IUserMerge`.
 `EraseForUserAsync` calls `IApplicationRepository.ScrubFreeTextForUserAsync`,
@@ -67,6 +69,45 @@ Cross-section reads: `IUserService` resolves the merge chain for single-user rea
 Implements `IUserDataContributor` (slice `MembershipTier`; erasure retains the row — register
 of members, Ley Orgánica 1/2002 Art. 14, GDPR Art. 17(3)(b)) and `IUserMerge` (survivor's tier
 wins).
+
+### GovernanceBodyLinksService (Scoped, internal)
+
+Repository: `IGovernanceBodyRepository` (`GovernanceBodyRepository`).
+
+| Table | R/W |
+|-------|-----|
+| GovernanceBodyLinks | R/W |
+| GovernanceBodyFiles | R/W |
+
+Each body's (Asociados, Colaboradores, Board) Google group prefix and Google files, and their edits from the
+Manage card (audited, then `GovernanceBodySync`). Cross-section reads: for the one-time
+`governance.body-links-from-teams` data migration, `ITeamService.GetTeamAsync` (the old system team's
+`GoogleGroupPrefix`) and `ITeamResourceService.GetResourcesByTeamIdsAsync` (its active non-Group resources);
+for adding a file, `ITeamResourceService.LookUpDriveLinkAsync`. Writes `IAuditLogService`. No personal data.
+
+### GovernanceBodyRosters (Scoped, internal)
+
+Each body's members before account filtering: `IApplicationRepository.GetActiveApprovedTierUserIdsAsync`
+(Asociados, Colaboradores) and `IRoleAssignmentService.GetActiveUserIdsInRoleAsync(Board)`. Reads no
+Governance service, so Google's sync can reach it without a cycle. Used by `GovernanceIndexService` (which
+filters through `IUserService`) and `GovernanceBodyGoogleSource`.
+
+### GovernanceBodyGoogleSource (Scoped, internal)
+
+`IGoogleGroupMembershipSource` and `IGoogleDriveAccessSource` for the bodies: reads `IGovernanceBodyRepository`
+(R) and `GovernanceBodyRosters`. User ids only, no `IUserService`.
+
+### GovernanceBodySync (Scoped, internal)
+
+Reads `IGovernanceBodyRepository` (R) and asks `IGoogleGroupSync.RequestSyncAsync` /
+`IGoogleSyncWrite.RequestSyncAsync` to sync one body's group and files. Called by `ApplicationDecisionService`
+on approval, by `GovernanceBoardSeats` after a seat is added or ended, and by `GovernanceBodyLinksService` after an edit.
+
+### GovernanceBoardSeats (Scoped, internal)
+
+Adds and ends Board seats through `IRoleAssignmentWrite.AssignRoleAsync` / `EndRoleAsync`, finding the
+seat with `IRoleAssignmentService.GetByUserIdAsync`; Auth stores and audits them. Owns the Board offices in
+`governance_board_positions` through `IGovernanceBodyRepository` (R/W), and is that table's GDPR contributor and merge step.
 
 ### AssemblyVoteService (Scoped)
 
@@ -126,23 +167,10 @@ output.
 
 No repository, no cache, not part of the `IApplicationService` inventory
 (a `System.Diagnostics.Metrics` gauge publisher, not a section service).
-Polls `IMembershipCalculator`, `IGovernanceManagement`,
+Polls `IConsentService`, `IGovernanceManagement`,
 `IUserService` on a timer to publish `humans.asociados`,
 `humans.applications_pending`, `humans.pending_consents`,
 `humans.consent_deadline_approaching`.
-
-### MembershipCalculator (Scoped)
-
-No repository. Pure read computation over `IMembershipQuery`,
-`IUserService`, `ILegalDocumentSyncService`, `IConsentService`
-(resolved lazily via `IServiceProvider` to break a DI cycle), and
-`IClock`. Implements `IMembershipCalculator`. No DB access, no cache.
-
-### MembershipQuery (Scoped)
-
-No repository. Read-only fan-out over `ITeamService`,
-`IRoleAssignmentService`. Exists to break the DI cycle through
-`ISystemTeamSync`. No DB access, no cache.
 
 ### GovernanceIndexService (Scoped)
 
@@ -161,23 +189,11 @@ access, no cache.
 ### GovernanceEmailPreviews (Scoped)
 
 No repository. Read-only gallery contributor (`IEmailPreviewContributor`,
-`Section.cs:88`) — builds one sample per template via `GovernanceEmails`
+`Section.cs:113`) — builds one sample per template via `GovernanceEmails`
 for `/Email/EmailPreview`. No DB access, no cache.
 
 ---
 
+### AssemblyVote static helpers
 
-
-### ApplicationReader (internal, owned by ApplicationDecisionService)
-
-Repository: `IApplicationRepository`. Reads application member/admin/Board views,
-pending snapshots and summary counts; enriches through the existing Users and Auth
-role-assignment contracts. Owns shared vote/history projection. No writes, cache
-or separate DI registration; badge caching remains in the decision service.
-
-### AssemblyVoteDrafts (internal, owned by AssemblyVoteService)
-
-Repository: `IAssemblyVoteRepository`. Owns draft authoring and its existing
-state/revision guards; uses the existing translation contract, clock and logger.
-Shares bounded-text and safe-URL policy with the service. No legal-vote transitions,
-cache or separate DI registration.
+- `AssemblyVotePresentation`: static; builds the acta text. No data access.

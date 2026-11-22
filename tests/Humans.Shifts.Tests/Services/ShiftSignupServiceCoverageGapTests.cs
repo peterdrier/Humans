@@ -1,3 +1,4 @@
+using Humans.Permissions.Contracts;
 using Humans.Base.Extensions;
 using Humans.Shifts.Domain;
 using Humans.Auth.Contracts;
@@ -41,16 +42,14 @@ public sealed class ShiftSignupServiceCoverageGapTests : ShiftsTestHarness
             .With(_teamService)
             .With(_teamService)
             .With(roleAssignmentService)
+            .With<IPermissionService>()
             .Build();
 
         var shiftRepo = new ShiftRepository(ShiftsDbFactory, ShiftsDb, Clock);
         var shiftMgmt = new ShiftManagementService(
             shiftRepo,
             AuditLog,
-            AdminAuthorization,
             serviceProvider,
-            new MemoryCache(new MemoryCacheOptions()),
-            new ShiftViewProbe().Cache,
             NewCalendarResolver(),
             Clock,
             NullLogger<ShiftManagementService>.Instance);
@@ -63,8 +62,6 @@ public sealed class ShiftSignupServiceCoverageGapTests : ShiftsTestHarness
             NewCalendarResolver(),
             AuditLog,
             _notificationService,
-            AdminAuthorization,
-            new ShiftViewProbe().Cache,
             serviceProvider,
             Clock,
             NullLogger<ShiftSignupService>.Instance,
@@ -81,7 +78,7 @@ public sealed class ShiftSignupServiceCoverageGapTests : ShiftsTestHarness
         rota.Name = "Rota";
         var coordinatorId = Guid.NewGuid();
         _users.GetUserInfoAsync(coordinatorId, Arg.Any<CancellationToken>())
-            .Returns(UserInfoStubHelpers.MakeUserInfo(coordinatorId) with { PreferredLanguage = language });
+            .Returns(UserFixtures.MakeUserInfo(coordinatorId) with { PreferredLanguage = language });
         _teamService.GetTeamAsync(rota.TeamId, Arg.Any<CancellationToken>())
             .Returns(BuildTeamInfoWithCoordinator(rota.TeamId, coordinatorId));
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
@@ -124,7 +121,7 @@ public sealed class ShiftSignupServiceCoverageGapTests : ShiftsTestHarness
         {
             team.Members.AddRange(BuildTeamInfoWithCoordinator(rota.TeamId, id).Members);
             _users.GetUserInfoAsync(id, Arg.Any<CancellationToken>())
-                .Returns(UserInfoStubHelpers.MakeUserInfo(id) with { PreferredLanguage = "es" });
+                .Returns(UserFixtures.MakeUserInfo(id) with { PreferredLanguage = "es" });
         }
         _users.GetUserInfoAsync(unavailable, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(Task.FromException<UserInfo?>(new IOException("Language lookup failed"))));

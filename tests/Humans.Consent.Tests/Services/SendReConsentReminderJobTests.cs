@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using Humans.Consent.Services;
 using Microsoft.Extensions.Localization;
 using Humans.Base.Extensions;
@@ -24,6 +25,80 @@ namespace Humans.Consent.Tests.Services;
 public sealed class SendReConsentReminderJobTests
 {
     [HumansTheory]
+    [InlineData(ReminderBoundary.Read)]
+    [InlineData(ReminderBoundary.Email)]
+    [InlineData(ReminderBoundary.Stamp)]
+    [InlineData(ReminderBoundary.PriorFailure)]
+    [InlineData(ReminderBoundary.UnitCancellation)]
+    public async Task ConsentShutdown_ReminderFinishesStartedUnitAndPreservesFailures(ReminderBoundary boundary)
+    {
+        using var shutdown = new CancellationTokenSource();
+        var now = Instant.FromUtc(2026, 10, 2, 4, 0);
+        var first = MakeUser("first@example.com");
+        var next = MakeUser("next@example.com");
+        var membership = Substitute.For<IConsentService>();
+        membership.GetUsersPastConsentDeadlineAsync(Arg.Any<Duration?>(), Arg.Any<CancellationToken>()).Returns(new[] { first.Id, next.Id });
+        var legal = Substitute.For<ILegalDocumentSyncManagement>();
+        legal.GetRequiredVersionsAsync(Arg.Any<CancellationToken>()).Returns([]);
+        var users = Substitute.For<IUserService>();
+        users.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, UserInfo> { [first.Id] = first, [next.Id] = next });
+        var repo = Substitute.For<IConsentReminderRepository>();
+        repo.GetByUserIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>()).Returns([]);
+        if (boundary == ReminderBoundary.Read)
+            repo.GetByUserIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), shutdown.Token)
+                .Returns(async Task<IReadOnlyList<ConsentReminder>> (_) =>
+                { await shutdown.CancelAsync(); throw new OperationCanceledException(shutdown.Token); });
+        Exception failure = boundary is ReminderBoundary.UnitCancellation ? new OperationCanceledException("Enqueue dependency stopped")
+            : new IOException("Enqueue failed");
+        var email = Substitute.For<IEmailService>();
+        email.SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>()).Returns(async call =>
+        {
+            if (boundary is ReminderBoundary.Email or ReminderBoundary.PriorFailure or ReminderBoundary.UnitCancellation) await shutdown.CancelAsync();
+            if (boundary is ReminderBoundary.PriorFailure or ReminderBoundary.UnitCancellation) throw failure;
+            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+        });
+        repo.UpsertAsync(Arg.Any<Guid>(), now, Arg.Any<CancellationToken>()).Returns(async call =>
+        {
+            if (boundary is ReminderBoundary.Stamp) await shutdown.CancelAsync();
+            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+        });
+        var metrics = Substitute.For<IHumansMetrics>();
+        var logger = new CapturingLogger<SendReConsentReminderJob>();
+        var job = new SendReConsentReminderJob(membership, legal, users, new ConsentReminderService(repo, users), email,
+            TestConsentEmails.Create(), Options.Create(new EmailSettings { ConsentReminderCooldownDays = 7 }),
+            metrics, logger, new FakeClock(now));
+
+        var error = await Record.ExceptionAsync(() => job.ExecuteAsync(shutdown.Token));
+
+        metrics.DidNotReceive().RecordJobRun("send_reconsent_reminder", "success");
+        await email.DidNotReceive().SendAsync(Arg.Is<EmailMessage>(m => m.UserId == next.Id), Arg.Any<CancellationToken>());
+        if (boundary is ReminderBoundary.UnitCancellation)
+        {
+            error.Should().BeSameAs(failure);
+            metrics.Received(1).RecordJobRun("send_reconsent_reminder", "failure");
+            logger.Entries.Should().Contain(entry => entry.Level == LogLevel.Error && entry.Exception == failure);
+        }
+        else if (boundary is ReminderBoundary.PriorFailure)
+        {
+            error.Should().BeOfType<AggregateException>().Which.InnerExceptions.Should().ContainSingle().Which.Should().BeSameAs(failure);
+            metrics.Received(1).RecordJobRun("send_reconsent_reminder", "failure");
+        }
+        else
+        {
+            error.Should().BeAssignableTo<OperationCanceledException>();
+            metrics.DidNotReceive().RecordJobRun("send_reconsent_reminder", "failure");
+            logger.Entries.Should().NotContain(entry => entry.Level == LogLevel.Error);
+            if (boundary is ReminderBoundary.Read) await email.DidNotReceiveWithAnyArgs().SendAsync(default!);
+            else
+            {
+                await email.Received(1).SendAsync(Arg.Is<EmailMessage>(m => m.UserId == first.Id && m.DeliveryId != null), CancellationToken.None);
+                await repo.Received(1).UpsertAsync(first.Id, now, CancellationToken.None);
+            }
+        }
+    }
+
+    [HumansTheory]
     [InlineData("send", "en", "en")]
     [InlineData("stamp", "en", "en")]
     [InlineData("success", "en", "en")]
@@ -39,13 +114,13 @@ public sealed class SendReConsentReminderJobTests
         var first = MakeUser("first@example.com") with { PreferredLanguage = language };
         var next = MakeUser("next@example.com");
         var cooling = MakeUser("cooling@example.com");
-        var membership = Substitute.For<IMembershipCalculator>();
-        membership.GetUsersRequiringStatusUpdateAsync(Arg.Any<CancellationToken>(), Arg.Any<Duration?>())
+        var membership = Substitute.For<IConsentService>();
+        membership.GetUsersPastConsentDeadlineAsync(Arg.Any<Duration?>(), Arg.Any<CancellationToken>())
             .Returns(new[] { first.Id, next.Id, cooling.Id });
         var legal = Substitute.For<ILegalDocumentSyncManagement>();
         legal.GetRequiredVersionsAsync(Arg.Any<CancellationToken>()).Returns([]);
         var users = Substitute.For<IUserService>();
-        users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+        users.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, UserInfo>
             {
                 [first.Id] = first,
@@ -83,8 +158,8 @@ public sealed class SendReConsentReminderJobTests
                 && m.Subject == expectedSubject), Arg.Any<CancellationToken>());
         await email.Received(1).SendAsync(
             Arg.Is<EmailMessage>(m => m.RecipientEmail == next.Email), Arg.Any<CancellationToken>());
-        await membership.Received(1).GetUsersRequiringStatusUpdateAsync(
-            TestContext.Current.CancellationToken, Duration.FromDays(3));
+        await membership.Received(1).GetUsersPastConsentDeadlineAsync(
+            Duration.FromDays(3), TestContext.Current.CancellationToken);
         await reminderRepo.Received(1).UpsertAsync(next.Id, now, Arg.Any<CancellationToken>());
         await email.DidNotReceive().SendAsync(
             Arg.Is<EmailMessage>(m => m.RecipientEmail == cooling.Email), Arg.Any<CancellationToken>());
@@ -112,13 +187,13 @@ public sealed class SendReConsentReminderJobTests
         var now = Instant.FromUtc(2026, 10, 2, 4, 0);
         var clock = new FakeClock(now);
         var member = MakeUser("member@example.com");
-        var membership = Substitute.For<IMembershipCalculator>();
-        membership.GetUsersRequiringStatusUpdateAsync(Arg.Any<CancellationToken>(), Arg.Any<Duration?>())
+        var membership = Substitute.For<IConsentService>();
+        membership.GetUsersPastConsentDeadlineAsync(Arg.Any<Duration?>(), Arg.Any<CancellationToken>())
             .Returns(new[] { member.Id });
         var legal = Substitute.For<ILegalDocumentSyncManagement>();
         legal.GetRequiredVersionsAsync(Arg.Any<CancellationToken>()).Returns([]);
         var users = Substitute.For<IUserService>();
-        users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+        users.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, UserInfo> { [member.Id] = member });
         var stamps = new List<ConsentReminder>();
         if (previouslyReminded)
@@ -164,18 +239,18 @@ public sealed class SendReConsentReminderJobTests
     }
 
     [HumansFact]
-    public async Task Cancellation_StopsFanoutInsteadOfAggregating()
+    public async Task UnrelatedCancellation_StopsFanoutInsteadOfAggregating()
     {
         var now = Instant.FromUtc(2026, 10, 2, 4, 0);
         var first = MakeUser("first@example.com");
         var next = MakeUser("next@example.com");
-        var membership = Substitute.For<IMembershipCalculator>();
-        membership.GetUsersRequiringStatusUpdateAsync(Arg.Any<CancellationToken>(), Arg.Any<Duration?>())
+        var membership = Substitute.For<IConsentService>();
+        membership.GetUsersPastConsentDeadlineAsync(Arg.Any<Duration?>(), Arg.Any<CancellationToken>())
             .Returns(new[] { first.Id, next.Id });
         var legal = Substitute.For<ILegalDocumentSyncManagement>();
         legal.GetRequiredVersionsAsync(Arg.Any<CancellationToken>()).Returns([]);
         var users = Substitute.For<IUserService>();
-        users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+        users.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, UserInfo> { [first.Id] = first, [next.Id] = next });
         var reminderRepo = Substitute.For<IConsentReminderRepository>();
         reminderRepo.GetByUserIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
@@ -201,3 +276,5 @@ public sealed class SendReConsentReminderJobTests
             [new UserEmail { Id = Guid.NewGuid(), UserId = user.Id, Email = email, IsVerified = true, IsPrimary = true }], [], null);
     }
 }
+
+public enum ReminderBoundary { Read, Email, Stamp, PriorFailure, UnitCancellation }

@@ -76,15 +76,6 @@
   <data name="Notifications_Section_WorkQueues" xml:space="preserve">
     <value>Werkwachtrijen</value>
   </data>
-  <data name="Notifications_Meter_ConsentReviewsPending" xml:space="preserve"><value>Toestemmingscontroles in afwachting</value></data>
-  <data name="Notifications_Meter_ApplicationsPendingVote" xml:space="preserve"><value>Aanvragen die op je stem wachten</value></data>
-  <data name="Notifications_Meter_PendingAccountDeletions" xml:space="preserve"><value>Accountverwijderingen in afwachting</value></data>
-  <data name="Notifications_Meter_FailedGoogleSyncEvents" xml:space="preserve"><value>Mislukte Google-synchronisaties</value></data>
-  <data name="Notifications_Meter_OnboardingProfilesPending" xml:space="preserve"><value>Onboardingprofielen in afwachting</value></data>
-  <data name="Notifications_Meter_TeamJoinRequestsPending" xml:space="preserve"><value>Verzoeken om teamlid te worden in afwachting</value></data>
-  <data name="Notifications_Meter_TicketSyncError" xml:space="preserve"><value>Fout bij ticketsynchronisatie</value></data>
-  <data name="Notifications_Meter_CampJoinRequest" xml:space="preserve"><value>1 Human wil zich bij je kamp aansluiten</value></data>
-  <data name="Notifications_Meter_CampJoinRequests" xml:space="preserve"><value>{0} Humans willen zich bij je kamp aansluiten</value></data>
   <data name="Notifications_MarkAllRead" xml:space="preserve">
     <value>Alles als gelezen markeren</value>
   </data>
@@ -152,9 +143,6 @@
   <data name="Notifications_Popup_LoadError" xml:space="preserve"><value>Kon meldingen niet laden. Probeer het opnieuw.</value></data>
   <data name="Notifications_SentTo" xml:space="preserve">
     <value>Voor {0}</value>
-  </data>
-  <data name="Notifications_Audience_CampLeads" xml:space="preserve">
-    <value>Barrioleiders</value>
   </data>
   <data name="Notifications_Audience_Admin" xml:space="preserve">
     <value>Beheerders</value>

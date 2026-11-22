@@ -22,6 +22,9 @@ public class GuideHtmlPostprocessorTests
     [InlineData("Profiles.md", "href=\"/Guide/Profiles\"")]
     [InlineData("Glossary.md#coordinator", "href=\"/Guide/Glossary#coordinator\"")]
     [InlineData("profiles.md", "href=\"/Guide/Profiles\"")]
+    [InlineData("./Profiles.md", "href=\"/Guide/Profiles\"")]
+    [InlineData("././profiles.md#details", "href=\"/Guide/Profiles#details\"")]
+    [InlineData("Profiles.md?print=1#details", "href=\"/Guide/Profiles?print=1#details\"")]
     public void Rewrite_KnownSiblingMdLink_MapsToGuideRoute(string href, string expectedHrefSnippet)
     {
         var html = $"""<a href="{href}">text</a>""";
@@ -35,6 +38,12 @@ public class GuideHtmlPostprocessorTests
     [InlineData("NonExistent.md", "https://github.com/nobodies-collective/Humans/blob/main/docs/guide/NonExistent.md")]
     [InlineData("https://example.com/foo", "https://example.com/foo")]
     [InlineData("../sections/Teams.md", "https://github.com/nobodies-collective/Humans/blob/main/docs/sections/Teams.md")]
+    [InlineData("NonExistent.md?print=1#details", "https://github.com/nobodies-collective/Humans/blob/main/docs/guide/NonExistent.md?print=1#details")]
+    [InlineData("./../sections/Teams.md?print=1#details", "https://github.com/nobodies-collective/Humans/blob/main/docs/sections/Teams.md?print=1#details")]
+    [InlineData("//example.com/help", "//example.com/help")]
+    [InlineData(@"/\example.com/help", @"/\example.com/help")]
+    [InlineData(@"\/example.com/help", @"\/example.com/help")]
+    [InlineData(@"\\example.com/help", @"\\example.com/help")]
     public void Rewrite_ExternalHref_GetsNewTabAttrs(string href, string expectedHrefSubstring)
     {
         var html = $"""<a href="{href}">x</a>""";
@@ -122,14 +131,19 @@ public class GuideHtmlPostprocessorTests
         result.Should().Contain("""src="https://raw.githubusercontent.com/nobodies-collective/Humans/main/docs/guide/img/screenshot.png" """.Trim());
     }
 
-    [HumansFact]
-    public void Rewrite_ImageAbsoluteUrl_LeftAsIs()
+    [HumansTheory]
+    [InlineData("https://cdn.example.com/x.png")]
+    [InlineData("//cdn.example.com/x.png")]
+    [InlineData(@"/\cdn.example.com/x.png")]
+    [InlineData(@"\/cdn.example.com/x.png")]
+    [InlineData(@"\\cdn.example.com/x.png")]
+    public void Rewrite_ImageAbsoluteUrl_LeftAsIs(string url)
     {
-        const string html = """<img src="https://cdn.example.com/x.png" alt="x" />""";
+        var html = $"""<img src="{url}" alt="x" />""";
 
         var result = Processor.Rewrite(html, Settings);
 
-        result.Should().Contain("""src="https://cdn.example.com/x.png" """.Trim());
+        result.Should().Contain($"src=\"{url}\"");
     }
 
     [HumansTheory]
@@ -167,15 +181,43 @@ public class GuideHtmlPostprocessorTests
         result.Should().Contain("<code>/api/backdoor/*</code>");
     }
 
-    [HumansFact]
-    public void Rewrite_InlineCodeNonPath_LeftAsIs()
+    [HumansTheory]
+    [InlineData("Guide:Owner")]
+    [InlineData("//example.com/help")]
+    [InlineData(@"/\example.com/help")]
+    [InlineData(@"/Camps\sample")]
+    public void Rewrite_InlineCodeNonPath_LeftAsIs(string text)
     {
-        // Not a path (doesn't start with "/") — it's a config key or a literal value.
-        const string html = "<p>Set <code>Guide:Owner</code> to your fork.</p>";
+        var html = $"""<p>Value: <code>{text}</code>.</p>""";
 
         var result = Processor.Rewrite(html, Settings);
 
         result.Should().NotContain("<a href=");
-        result.Should().Contain("<code>Guide:Owner</code>");
+        result.Should().Contain($"<code>{text}</code>");
+    }
+
+    [HumansFact]
+    public void Rewrite_StyledAppPath_PreservesCodeAttributes()
+    {
+        const string html = """<code class="route" title="Profile route">/Profile/Me</code>""";
+
+        using var document = new HtmlParser().ParseDocument(Processor.Rewrite(html, Settings));
+
+        var anchor = document.QuerySelector("a")!;
+        anchor.Should().NotBeNull();
+        anchor.GetAttribute("href").Should().Be("/Profile/Me");
+        var code = anchor.QuerySelector("code")!;
+        code.GetAttribute("class").Should().Be("route");
+        code.GetAttribute("title").Should().Be("Profile route");
+        code.TextContent.Should().Be("/Profile/Me");
+    }
+
+    [HumansTheory]
+    [InlineData("<code>/Users/Admin/&lt;id&gt;</code>")]
+    [InlineData("<code>/Profile&nbsp;Me</code>")]
+    [InlineData("<code>/Profile/Me\n</code>")]
+    public void Rewrite_DecodedNonPathCode_IsNotLinked(string html)
+    {
+        Processor.Rewrite(html, Settings).Should().NotContain("<a href=");
     }
 }

@@ -13,17 +13,6 @@ internal sealed class Profile
     public Guid UserId { get; init; }
 
     [PersonalData]
-    public string BurnerName { get; set; } = string.Empty;
-
-    /// <summary>Visible to the member and the Board only.</summary>
-    [PersonalData]
-    public string FirstName { get; set; } = string.Empty;
-
-    /// <summary>Visible to the member and the Board only.</summary>
-    [PersonalData]
-    public string LastName { get; set; } = string.Empty;
-
-    [PersonalData]
     public string? City { get; set; }
 
     /// <summary>ISO 3166-1 alpha-2.</summary>
@@ -59,8 +48,8 @@ internal sealed class Profile
     public string? EmergencyContactRelationship { get; set; }
 
     /// <summary>
-    /// GDPR Art. 9 health data, present on the cached UserInfo: every render or serialize surface
-    /// MUST gate it behind the MedicalDataViewer policy.
+    /// GDPR Art. 9 health data. Not on the cached UserInfo; <c>MedicalConditionsService</c> is its only reader,
+    /// and anyone but the owner gets it through the audited reveal.
     /// </summary>
     [PersonalData]
     public string? MedicalConditions { get; set; }
@@ -89,16 +78,7 @@ internal sealed class Profile
     [PersonalData]
     public string? BoardNotes { get; set; }
 
-    public string FullName => $"{FirstName} {LastName}".Trim();
-
-    /// <summary>BurnerName > FirstName > "there".</summary>
-    public string EmailGreetingName =>
-        !string.IsNullOrWhiteSpace(BurnerName) ? BurnerName :
-        !string.IsNullOrWhiteSpace(FirstName) ? FirstName : "there";
-
     public bool HasCustomProfilePicture => ProfilePictureContentType is not null;
-
-    public ICollection<ContactField> ContactFields { get; } = new List<ContactField>();
 
     /// <summary>When true, Burner CV entries are not required.</summary>
     public bool NoPriorBurnExperience { get; set; }

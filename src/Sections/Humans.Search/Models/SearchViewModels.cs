@@ -1,5 +1,4 @@
 using Humans.Search.Services.Dtos;
-using Humans.Users.Contracts;
 
 namespace Humans.Search.Models;
 
@@ -7,29 +6,14 @@ internal sealed class GlobalSearchViewModel
 {
     public string? Query { get; init; }
 
-    public SearchResultType? Filter { get; init; }
+    public string? Filter { get; init; }
 
-    public IReadOnlyList<HumanSearchResult> HumanResults { get; init; } =
-        [];
+    public bool SearchFailed { get; init; }
 
-    public IReadOnlyList<GlobalSearchResult> TeamResults { get; init; } =
-        [];
+    /// <summary>Every enabled category in weight order, each bucket's hits in display order.</summary>
+    public IReadOnlyList<SearchBucket> Buckets { get; init; } = [];
 
-    public IReadOnlyList<GlobalSearchResult> CampResults { get; init; } =
-        [];
-
-    public IReadOnlyList<GlobalSearchResult> ShiftResults { get; init; } =
-        [];
-
-    public IReadOnlyList<GlobalSearchResult> EventResults { get; init; } =
-        [];
-
-    public int HumanCount => HumanResults.Count;
-    public int TeamCount => TeamResults.Count;
-    public int CampCount => CampResults.Count;
-    public int ShiftCount => ShiftResults.Count;
-    public int EventCount => EventResults.Count;
-    public int TotalCount => HumanCount + TeamCount + CampCount + ShiftCount + EventCount;
+    public int TotalCount => Buckets.Sum(b => b.Hits.Count);
 
     public bool HasQuery => !string.IsNullOrWhiteSpace(Query);
     public bool QueryIsTooShort => HasQuery && (Query?.Trim().Length ?? 0) < 2;

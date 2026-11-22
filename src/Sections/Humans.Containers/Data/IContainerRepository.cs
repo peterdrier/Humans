@@ -19,7 +19,7 @@ internal interface IContainerRepository : IRepository
         IReadOnlyCollection<Guid> containerIds, CancellationToken ct = default);
 
     Task<ContainerPlacement?> GetPlacementAsync(Guid containerId, int year, CancellationToken ct = default);
-    Task<IReadOnlyList<ContainerPlacement>> GetPlacementsByYearAsync(int year, CancellationToken ct = default);
+    Task<IReadOnlyList<ContainerPlacement>> GetPlacementsAsync(int? year, CancellationToken ct = default);
     Task UpsertPlacementAsync(ContainerPlacement placement, CancellationToken ct = default);
 
     /// <summary>

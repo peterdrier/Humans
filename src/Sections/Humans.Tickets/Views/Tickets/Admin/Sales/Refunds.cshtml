@@ -1,0 +1,67 @@
+@using Humans.Tickets.Contracts
+@using Humans.Tickets.Services.Checkout
+@model Humans.Tickets.Controllers.RefundsViewModel
+@{
+    ViewData["Title"] = "Refunds";
+    ViewData[AdminNavComposition.ParentKey] = "TicketsSalesAdmin/Index";
+    RefundState[] states = [RefundState.Pending, RefundState.Succeeded, RefundState.Failed, RefundState.ManualRequired];
+    var culture = System.Globalization.CultureInfo.CurrentCulture;
+    var total = Model.Rows.Sum(x => x.Refund.AmountMinor);
+    StatTileViewModel[] tiles =
+    [
+        new("Refunds", Model.Rows.Count.ToString(culture), Subline: Model.State is { } picked ? SharedLocalizer.EnumDisplay(picked) : "every state"),
+        new("Amount", (total / 100m).ToEuro()),
+        new("Need a person", Model.Rows.Count(x => x.Refund.State is RefundState.Failed or RefundState.ManualRequired).ToString(culture),
+            Subline: "failed or manual",
+            Severity: Model.Rows.Any(x => x.Refund.State is RefundState.Failed or RefundState.ManualRequired) ? TileSeverity.Critical : TileSeverity.Normal),
+    ];
+
+    Func<RefundListRow, IHtmlContent> askedCell = @<text><a asp-controller="TicketsSalesAdmin" asp-action="Order" asp-route-id="@item.Refund.OrderId">@item.Refund.CreatedAt.ToDateTime()</a></text>;
+    Func<RefundListRow, IHtmlContent> stateCell = @<text>
+        <status-badge value="@item.Refund.State" />
+        @if (item.Refund.FailureReason is { } why)
+        {
+            <span class="small d-block">@why</span>
+        }
+    </text>;
+    var table = TableModel.For(Model.Rows)
+        .Template("Asked", askedCell, o => o.Css("text-nowrap"), sortBy: x => x.Refund.CreatedAt.ToUnixTimeTicks())
+        .Column("Buyer", x => x.Order.BuyerName, o => o.TextFilter())
+        .Human("Member", x => x.Order.BuyerUserId, HumanLink.Admin)
+        .Column("Amount (€)", x => x.Refund.AmountMinor / 100m, o => o.Currency().End())
+        .Template("State", stateCell, sortBy: x => x.Refund.State.ToString())
+        .Column("Reason", x => x.Refund.Reason)
+        .RowHref(x => Url.Action("Order", "TicketsSalesAdmin", new { id = x.Refund.OrderId }))
+        .Footer(new TableFooterCell($"{Model.Rows.Count.ToString(culture)} refunds"), new TableFooterCell(""),
+            new TableFooterCell((total / 100m).ToString("N2", System.Globalization.CultureInfo.CurrentUICulture), "text-end"), new TableFooterCell(""), new TableFooterCell(""))
+        .Empty(Model.State is null ? "No refunds asked for this event." : "No refunds in this state.")
+        .Build();
+}
+
+<page-header title="Refunds" subtitle="@Model.EventName">
+    <a class="btn btn-outline-secondary btn-sm" asp-action="Report" asp-route-id="@Model.SalesEventId">Sales report</a>
+</page-header>
+
+<div class="stats" style="--stats-cols: 3">
+    @foreach (var tile in tiles)
+    {
+        <partial name="_StatTile" model="tile" />
+    }
+</div>
+
+<ul class="nav nav-pills mb-3">
+    <li class="nav-item"><a class="nav-link @(Model.State is null ? "active" : "")" asp-action="Refunds" asp-route-id="@Model.SalesEventId">All</a></li>
+    @foreach (var s in states)
+    {
+        <li class="nav-item"><a class="nav-link @(Model.State == s ? "active" : "")" asp-action="Refunds" asp-route-id="@Model.SalesEventId" asp-route-state="@s">@SharedLocalizer.EnumDisplay(s)</a></li>
+    }
+</ul>
+
+@if (Model.State == RefundState.ManualRequired)
+{
+    <p class="small text-muted">These need a person to issue them in the backend's dashboard; the order page links there.</p>
+}
+
+<div class="card mb-4">
+    <partial name="_Table" model="table" />
+</div>

@@ -1,0 +1,12 @@
+{"routes":[
+{"template":"/","controller":"Home","action":"Index","section":"Home","hasParams":false,"params":[],"anonymous":true,"authorize":[]},
+{"template":"/Teams","controller":"Teams","action":"Index","section":"Teams","hasParams":false,"params":[],"anonymous":false,"authorize":[]},
+{"template":"/Teams/{slug}","controller":"Teams","action":"Details","section":"Teams","hasParams":true,"params":["slug"],"anonymous":false,"authorize":[]},
+{"template":"/Budget","controller":"Budget","action":"Index","section":"Budget","hasParams":false,"params":[],"anonymous":false,"authorize":[]},
+{"template":"/Finance","controller":"Finance","action":"Index","section":"Finance","hasParams":false,"params":[],"anonymous":false,"authorize":[]},
+{"template":"/Finance/Creditors","controller":"Finance","action":"Creditors","section":"Finance","hasParams":false,"params":[],"anonymous":false,"authorize":[]},
+{"template":"/Governance","controller":"Governance","action":"Index","section":"Governance","hasParams":false,"params":[],"anonymous":false,"authorize":[]},
+{"template":"/Admin","controller":"Admin","action":"Index","section":"Admin","hasParams":false,"params":[],"anonymous":false,"authorize":[]},
+{"template":"/Camps/{slug}","controller":"Camps","action":"Details","section":"Camps","hasParams":true,"params":["slug"],"anonymous":false,"authorize":[]},
+{"template":"/Profile/Logout","controller":"Profile","action":"Logout","section":"Profile","hasParams":false,"params":[],"anonymous":false,"authorize":[]}
+]}

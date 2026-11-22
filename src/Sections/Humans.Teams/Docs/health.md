@@ -17,18 +17,20 @@ roster.
 
 Every membership change made one at a time is audit-logged, mirrored to the team's Google
 resources, and reflected in the Coordinators system team when a management role is involved.
-Deactivating a team closes its memberships in bulk and does none of the three (§4).
+Deactivating a team closes its memberships in bulk, audits each closure and reconciles its department
+coordinators’ system-team membership. Google resources stay active until reconciliation revokes access.
 
 ## 2. The shapes
 
 | Question shape | Asked by | Answered by |
 |---|---|---|
 | "Which teams exist / what is team X?" (whole graph, by id, by slug, with parents, name fan-out, search) | almost every section, Shell tiles, global search, the auth handler | `ITeamService.GetTeamsAsync` / `GetTeamAsync` / `GetTeamBySlugAsync` / `GetTeamsWithParentsAsync` / `SearchAsync`; `IEntityNameContributor` |
-| "What may this human do on this team?" (coordinator of, coordinated ids, budget-scoped ids) | Shifts, Expenses, GoogleIntegration, `TeamAuthorizationHandler` | `ITeamService.IsUserCoordinatorOfTeamAsync` / `GetUserCoordinatedTeamIdsAsync` / `GetEffectiveBudgetCoordinatorTeamIdsAsync`; `TeamCoordinatorAccess` |
-| "Which teams is this human in?" | Users, GoogleIntegration, the profile card | `ITeamService.GetUserTeamMembershipsAsync` |
-| "Show me the directory / a team page / my teams / the roster" | the section's own controllers | `ITeamManagementService.GetAdminTeamListAsync`; `ITeamPageService.GetTeamDirectoryAsync` / `GetTeamPageDetailAsync` / `GetMyTeamMembershipsAsync` / `GetRosterAsync` |
+| "What may this human do on this team?" (coordinator of, coordinated ids, budget-scoped ids) | Shifts, Expenses, Google, `TeamAuthorizationHandler` | `ITeamService.IsUserCoordinatorOfTeamAsync` / `GetUserCoordinatedTeamIdsAsync` / `GetEffectiveBudgetCoordinatorTeamIdsAsync`; `TeamCoordinatorAccess` |
+| "Which teams is this human in?" | Users, Google, the profile card | `ITeamService.GetUserTeamMembershipsAsync` |
+| "Show me the directory / the tree / a team page / my teams / the roster / the summary" | the section's own controllers | `ITeamPageService.GetTeamDirectoryAsync` / `GetTeamPageDetailAsync` / `GetMyTeamMembershipsAsync` / `GetRosterAsync`; `ITeamManagementService.GetAdminTeamListAsync` |
+| "Send this member a message as my team" | coordinators, from another member's profile | `ITeamMessageOptionsProvider`; `TeamMessageController`; Email's facilitated-message factory |
 | "Let me in / let me out" (join, request, withdraw, leave; approve, reject) | members and coordinators via the controllers | `JoinTeamAsync` / `LeaveTeamAsync` / `WithdrawJoinRequestAsync` / `ApproveJoinRequestAsync` / `RejectJoinRequestAsync` + the two pending-request reads |
-| "Shape the team" (create, edit, deactivate, page content, Google group prefix) | TeamsAdmin/Admin via the controllers (Board reads); GoogleIntegration for the prefix | `CreateTeamWithGoogleGroupAsync` / `UpdateTeamWithGoogleGroupAsync` / `DeleteTeamAsync` / `UpdateTeamPageContentAsync`; `ITeamService.SetGoogleGroupPrefixAsync` |
+| "Shape the team" (create, edit, deactivate, page content, Google group prefix) | TeamsAdmin/Admin via the controllers (Board reads); Google for the prefix | `CreateTeamWithGoogleGroupAsync` / `UpdateTeamWithGoogleGroupAsync` / `DeleteTeamAsync` / `UpdateTeamPageContentAsync`; `ITeamWrite.SetGoogleGroupPrefixAsync` |
 | "Staff the team" (members, role definitions, role assignments) | coordinators via the controllers | `AddMemberToTeamAsync` / `RemoveMemberAsync`; the role-definition members; `AssignToRoleAsync` / `UnassignFromRoleAsync` |
 | "Who gets in early, for what?" | the per-team EE page; the EE roster | the EE-grant members; `IEarlyEntryProvider.GetEarlyEntriesAsync` |
 | "Recompute the system teams" | Hangfire, the Google sync admin page, other sections' provisioning flows | `ISystemTeamSync` (job) over `ITeamWrite.ApplySystemTeamMembershipDeltaAsync` and the management interface's role-reconciliation members |
@@ -37,7 +39,7 @@ Deactivating a team closes its memberships in bulk and does none of the three (�
 
 Vocabulary the leaf carries: `TeamInfo` (+ `TeamMemberInfo`, `TeamRoleDefinitionSnapshot`,
 `TeamRoleAssignmentSnapshot`), `UserTeamMembershipInfo`, `TeamSearchHit`, `SyncReport`,
-`TeamMemberRole`, `RolePeriod`, `SlotPriority`, `TeamJoinRequestStatus`, `CallToAction` /
+`TeamMemberRole`, `RolePeriod`, `SlotPriority`, `CallToAction` /
 `CallToActionStyle`, `TeamCoordinatorAccess`.
 
 ## 3. Structure
@@ -49,54 +51,47 @@ The shapes imply:
   calls, the system-sync contract, the seeding contract,
   and the flat records those signatures name. A member with no caller outside the
   assembly does not belong on the leaf.
-- **One inner service** owning every business rule, behind the internal management
-  interface, talking only to `ITeamRepository` for its own tables and to other
-  sections through their interfaces (audit, notifications, Google outbox, shifts auth
-  eviction, user read model).
+- **One inner service facade** behind the internal management interface. It holds no rules of
+  its own: each shape's workflow lives in one internal owner it constructs (lifecycle, joining,
+  membership administration, role definitions, page content, early entry, data export, Google
+  group memberships), sharing one snapshot reader for team, permission and canonical-user reads
+  and one membership outbox for the atomic membership-plus-Google-event write. Every owner talks
+  only to `ITeamRepository` for its own tables and to other sections through their interfaces.
 - **One singleton caching decorator** over the same interface holding the canonical
   Teams-owned graph, resolving member display data live through the inner service, and clearing wholesale on every
   write so the next read re-warms the whole graph — no per-mutation diffing. Pending-request
   reads bypass it on purpose.
+- **One page composer** (`ITeamPageService`) that builds the directory, team detail, My Teams and
+  roster pages from the cached graph and role checks; it owns no tables and calls no repository.
 - **One repository** with thick, named methods; no LINQ leaks.
-- **Controllers**: member-facing (`/Teams/*`) and per-team management
-  (`/Teams/{slug}/*`), both thin, sharing one resolve-slug-then-authorise base. The
-  resource-based handler plus its requirement live beside them.
+- **Controllers**: member-facing (`/Teams/*`), per-team management
+  (`/Teams/{slug}/*`) and send-as-team, all thin; the per-team ones share one
+  resolve-slug-then-authorise base. The resource-based handler plus its requirement live beside them.
 - **One system-team reconciler** (the hourly job) that reads other sections' facts and
   applies deltas through the service, never the repository.
-- **Pure helpers** for the directory grouping, the page summary, the EE projection —
-  static, tested in isolation, no I/O.
-- **The metrics gauge loop**, the section's seams (`Section*.cs`), views, one resx set.
+- **Pure helpers** for the directory grouping, the page summary, the EE projection, slug
+  resolution — static, tested in isolation, no I/O.
+- **The metrics gauge loop**, the section's seams (`Section.cs`), views, one resx set.
 
 ## 4. Invariants
 
-- At most one management role per team; only TeamsAdmin/Admin may set or clear the flag.
-- Sub-team members count as department members for roster, legal requirements and Google
-  access; a department coordinator has authority over its sub-teams; a sub-team manager
-  has none over the department, its siblings, or Google resources.
-- System-team membership is written only by the reconciler and its bulk-apply members;
-  manual add/remove/join/leave on a system team is refused; role assignment on a system
-  team never adds a non-member.
-- A human joins an approval-required team only through an approved request; open teams add at
-  once. A coordinator may also add someone directly, which approves any pending request they
-  hold. One pending request per human per team; state history is append-only.
-- Removing a member removes all their role assignments on that team; a management-role
-  change reconciles the Coordinators system team for that human.
-- Hidden teams are invisible to non-admins everywhere they would otherwise appear
-  (directory, detail, join, birthdays, My Teams, search, profile cards of others).
-- Only departments can have a public page; anonymous visitors see public departments plus the
-  sub-teams promoted to the directory, coordinators-only member lists, no emails.
-- `IsSensitive` is written only by a global Admin, enforced in `TeamService.UpdateTeamAsync`
-  (on a change to the flag, so a caller passing its current value is not a write).
-- An early-entry grant may be created only while its team has `EarlyEntryEnabled`; disabling
-  keeps the grants already issued but hides them from the roster; every grant mutation is
-  audited.
-- Every membership add/remove made one at a time is audit-logged and mirrored to Google (add
-  inline, remove via the nightly reconciliation); the outbox append commits with the team write.
-  Deactivating a team is the exception: `DeleteTeamAsync` closes its live memberships in bulk
-  and logs only, leaving the Board no audit record — ledgered in `Docs/debt.yml`.
-- Slugs are unique across `Slug` and `CustomSlug`; both resolve.
-- Erasure ends live memberships and hard-deletes join requests and EE grants; membership
-  rows themselves are retained by legal basis.
+- At most one management role per team (`TeamService.cs`);
+  only TeamsAdmin/Admin may set or clear the flag (`TeamAdminController.cs:462`, and the edit
+  path keeps the stored flag for anyone else, `TeamService.cs`).
+- A coordinator of a department has authority over its sub-teams; a sub-team manager has none
+  over the department or its siblings (`TeamCoordinatorAccess.cs:11`).
+- Manual add, remove, join and leave on a system team are refused (`TeamService.cs`); role assignment on a system team never
+  adds a non-member (`TeamService.cs`).
+- One pending request per human per team (`TeamService.cs`); only a pending request can be
+  reviewed (`TeamService.cs`).
+- Removing a member removes all their role assignments on that team (`TeamRepository.cs:592`).
+- Hidden teams are left out of every non-admin listing the directory builds (`TeamPageService.GetTeamDirectoryAsync`).
+- Only departments can have a public page (`TeamService.cs`).
+- `IsSensitive` is written only by a global Admin, on a change to the flag (`TeamService.cs`).
+- An early-entry grant may be created only while its team has `EarlyEntryEnabled` (`TeamService.cs`).
+- Slugs resolve on `Slug` or `CustomSlug`, case-insensitively (`TeamSlugResolver.cs:11`).
+- Erasure ends live memberships and hard-deletes join requests and EE grants (`TeamService.cs:481`);
+  membership rows themselves are retained by legal basis.
 
 ## 5. Seams
 
@@ -106,7 +101,7 @@ The shapes imply:
   reflect this properly") — coordinator scoping for shifts is Shifts' call, shaped by
   `GetUserCoordinatedTeamIdsAsync`.
 - **`google_resources`** is a Team Resources sub-aggregate owned and written by
-  GoogleIntegration; the Resources admin page here is a thin front over that section.
+  Google; its admin page is Google's (`/Google/Teams/{slug}/Resources`), which Teams only links to.
 
 ## 6. Deliberately not done
 
@@ -144,13 +139,12 @@ The shapes imply:
 - **The reconciler applies Inactive-before-Active-style deltas per team through the
   service** and fans out Google/audit calls itself; the service's bulk-apply members are
   its private protocol, not a general write API.
-- **`ApplySystemTeamMembershipDeltaAsync` is also driven by `DevPersonaSeeder`** to put
-  personas on the Board system team — the one non-job caller of the bulk-apply protocol.
 - **Two admin surfaces for sync live under `/Google/*`**, not here: the job is Teams' own,
-  the buttons are GoogleIntegration's.
+  the buttons are Google's.
 
 ## History
 
 | Run | Date | Headline | PR |
 |---|---|---|---|
 | 1 | 2026-09-05 | First pass — leaf trimmed to its cross-section half, docs and comments re-derived from code, dead keys and duplicate tests cut, audit/approval/directory invariants pinned | peterdrier/Humans#1594 |
+| 2 | 2026-11-10 | Invariant doc rewritten as rules only, help access matrix and glossary corrected, leaf trimmed to types other sections name | peterdrier/Humans#2369 |

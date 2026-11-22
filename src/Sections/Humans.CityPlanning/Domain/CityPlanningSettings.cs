@@ -10,8 +10,7 @@ internal sealed class CityPlanningSettings
     public int Year { get; init; }
 
     /// <summary>
-    /// Null follows the schedule; true forces placement open, false closed. Mapped to the old <c>IsPlacementOpen</c>
-    /// column, so existing rows' values carry over as forced open/closed.
+    /// Null follows the schedule; true forces placement open, false closed.
     /// </summary>
     public bool? PlacementOverride { get; set; }
 

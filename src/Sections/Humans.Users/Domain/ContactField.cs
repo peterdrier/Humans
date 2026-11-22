@@ -8,9 +8,8 @@ internal sealed class ContactField
 {
     public Guid Id { get; init; }
 
-    public Guid ProfileId { get; init; }
-
-    public Profile Profile { get; set; } = null!;
+    /// <summary>The owning user.</summary>
+    public Guid UserId { get; set; }
 
     public ContactFieldType FieldType { get; set; }
 

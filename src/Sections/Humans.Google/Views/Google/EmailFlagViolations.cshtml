@@ -1,0 +1,69 @@
+@using Microsoft.AspNetCore.Html
+@model IReadOnlyList<UserEmailFlagViolation>
+@{
+    ViewData["Title"] = "Email flag violations";
+}
+
+<div class="container-fluid px-4">
+    <page-header title="Email flag violations">
+        <a asp-action="Index" class="btn btn-outline-secondary btn-sm">
+            <i class="fa-solid fa-arrow-left me-1"></i>Back to Google
+        </a>
+    </page-header>
+
+
+    <p class="text-muted">Users whose verified email rows violate the exactly-one IsPrimary invariant. Open each user's email grid to remediate. (The Google identity is one row per user in google_workspace_identities, so it cannot be duplicated.)</p>
+
+    @if (Model.Count == 0)
+    {
+        <div class="alert alert-success">
+            <i class="fa-solid fa-check-circle me-1"></i>No invariant violations found. All users with verified emails have exactly one primary verified email.
+        </div>
+    }
+    else
+    {
+        Func<UserEmailFlagViolation, IHtmlContent> primaryCell = @<text>
+            @if (item.HasPrimaryProblem)
+            {
+                <span class="badge bg-warning text-dark">@item.VerifiedPrimaryCount</span>
+            }
+            else
+            {
+                <span class="text-muted">@item.VerifiedPrimaryCount</span>
+            }
+        </text>;
+        Func<UserEmailFlagViolation, IHtmlContent> issueCell = @<text>
+            @if (item.HasPrimaryProblem)
+            {
+                <div>
+                    <i class="fa-solid fa-star me-1 text-warning"></i>
+                    @if (item.VerifiedPrimaryCount == 0)
+                    {
+                        <text>No primary among verified rows</text>
+                    }
+                    else
+                    {
+                        <text>Multiple primary verified rows</text>
+                    }
+                </div>
+            }
+        </text>;
+        Func<UserEmailFlagViolation, IHtmlContent> actionCell = @<text>
+            <a asp-controller="ProfileEmails" asp-action="AdminEmails" asp-route-id="@item.UserId" class="btn btn-outline-primary btn-sm">
+                <i class="fa-solid fa-envelope me-1"></i>Open admin emails
+            </a>
+        </text>;
+        var table = TableModel.For(Model)
+            .Human("User", r => r.UserId, HumanLink.Admin)
+            .Column("Verified rows", r => r.VerifiedCount)
+            .Template("Primary verified rows", primaryCell)
+            .Template("Issue", issueCell)
+            .Template("Action", actionCell, c => c.NoSort().End())
+            .Build();
+        <div class="card mb-4">
+            <div class="card-body p-0">
+                <partial name="_Table" model="table" />
+            </div>
+        </div>
+    }
+</div>

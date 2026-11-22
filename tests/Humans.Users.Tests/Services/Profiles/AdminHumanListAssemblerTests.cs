@@ -29,9 +29,6 @@ public class AdminHumanListAssemblerTests
         {
             Id = Guid.NewGuid(),
             UserId = user.Id,
-            BurnerName = displayName,
-            FirstName = "First",
-            LastName = "Last",
         };
 
         return UserInfoFactory.Create(user, [], [], profile, [], [], []);

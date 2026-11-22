@@ -50,10 +50,10 @@ internal sealed class ContactFieldService(
     }
 
     public async Task<IReadOnlyList<ContactFieldEditDto>> GetAllContactFieldsAsync(
-        Guid profileId,
+        Guid userId,
         CancellationToken cancellationToken = default)
     {
-        var fields = await userRepository.GetByProfileIdReadOnlyAsync(profileId, cancellationToken);
+        var fields = await userRepository.GetContactFieldsByUserIdReadOnlyAsync(userId, cancellationToken);
 
         return fields.Select(cf => new ContactFieldEditDto(
             cf.Id,
@@ -65,16 +65,22 @@ internal sealed class ContactFieldService(
         )).ToList();
     }
 
-    public async Task SaveContactFieldsAsync(
-        Guid profileId,
+    public async Task<ProfileEditResult> SaveContactFieldsAsync(
+        Guid userId,
         IReadOnlyList<ContactFieldEditDto> fields,
         CancellationToken cancellationToken = default,
         IReadOnlyCollection<Guid>? removedLegacyContactFieldIds = null)
     {
+        if (ValidateContactFields(fields) is { } refusal)
+        {
+            logger.LogWarning("Contact field save refused for {UserId}: {ErrorKey}", userId, refusal.ErrorKey);
+            return refusal;
+        }
+
         var now = clock.GetCurrentInstant();
 
         // Detached: mutations go back explicitly through BatchSaveAsync.
-        var existingFields = await userRepository.GetByProfileIdForMutationAsync(profileId, cancellationToken);
+        var existingFields = await userRepository.GetContactFieldsByUserIdForMutationAsync(userId, cancellationToken);
 
         var existingById = existingFields.ToDictionary(cf => cf.Id);
         var incomingIds = fields.Where(f => f.Id.HasValue).Select(f => f.Id!.Value).ToHashSet();
@@ -101,7 +107,7 @@ internal sealed class ContactFieldService(
                 field = new ContactField
                 {
                     Id = Guid.NewGuid(),
-                    ProfileId = profileId,
+                    UserId = userId,
                     CreatedAt = now
                 };
                 toAdd.Add(field);
@@ -115,23 +121,42 @@ internal sealed class ContactFieldService(
             field.UpdatedAt = now;
         }
 
-        // Resolve the cache key before committing; a failed lookup must not skip refresh.
-        var ownerUserId = await userRepository.GetOwnerUserIdAsync(profileId, cancellationToken);
-        await userRepository.BatchSaveAsync(toAdd, toUpdate, toDelete, cancellationToken);
-
-        if (ownerUserId is not null)
+        try
+        {
+            await userRepository.BatchSaveAsync(toAdd, toUpdate, toDelete, cancellationToken);
+        }
+        finally
         {
             try
             {
-                await userInfoRefresher.RefreshAsync(ownerUserId.Value, cancellationToken);
+                // The write may have committed even if its acknowledgement failed. Finish the refresh
+                // independently of the request so old contact values and visibility cannot remain cached.
+                await userInfoRefresher.RefreshAsync(userId, CancellationToken.None);
             }
-            catch (Exception ex) when (ex is not OperationCanceledException)
+            catch (Exception ex)
             {
                 logger.LogError(ex,
-                    "Contact fields saved but UserInfo refresh failed for {UserId}",
-                    ownerUserId.Value);
+                    "UserInfo refresh failed after contact field write for {UserId}",
+                    userId);
             }
         }
+        return new(true);
+    }
+
+    internal static bool IsValidPhone(string? phone) =>
+        string.IsNullOrWhiteSpace(phone) || phone.TrimStart().StartsWith("+", StringComparison.Ordinal);
+
+    internal static ProfileEditResult? ValidateContactFields(IReadOnlyList<ContactFieldEditDto>? fields)
+    {
+        if (fields is null) return null;
+        for (var i = 0; i < fields.Count; i++)
+        {
+            var field = fields[i];
+            if (field.FieldType is ContactFieldType.Phone or ContactFieldType.WhatsApp && !IsValidPhone(field.Value))
+                return new(false, ErrorKey: "Validation_PhoneE164", ErrorField: $"ContactFields[{i}].Value",
+                    ErrorArgumentKey: "Users_Profile_" + field.FieldType);
+        }
+        return null;
     }
 
     public async Task<ContactFieldVisibility> GetViewerAccessLevelAsync(

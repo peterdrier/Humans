@@ -50,8 +50,8 @@ write returns; the inner service never signals it.
 Cross-section calls via `IUserService`, `ITicketService` (has the member entered the event),
 `IAuditLogService`, `ISystemTeamSync`, `IFileStorage`, `INotificationEmitter`,
 `ISettingsService` (active event settings), plus
-`Lazy<ICampRoleService>` and `Lazy<ICityPlanningWrite>` (camp deletion removes
-the camp's polygon/history rows) to break DI cycles. Implements `ICampLeadDirectory`, `IEarlyEntryProvider` (via `ICampManagement`),
+`Lazy<ICampRoleService>` and `Lazy<IEnumerable<ICampDeletionListener>>` (camp deletion
+lets other sections drop rows keyed on its seasons) to break DI cycles. Implements `ICampLeadDirectory`, `IEarlyEntryProvider` (via `ICampManagement`),
 `IUserMerge`, and the GDPR export/erasure bodies (all-year/all-status memberships and role assignments, with deletion for both slices) on `ICampManagement`; the registered `IUserDataContributor` is the decorator, which calls them. All caching lives in the decorator
 — the inner service never touches `IMemoryCache`.
 
@@ -82,35 +82,12 @@ Repository: `ICampRepository`.
 
 Cross-section calls via `ICampRoleCampAccess` (implemented by
 `CachingCampService` — camp-member status without the full camp surface),
-`IUserService`, `IGoogleIntegrationService` (Workspace
-identities for the role drill-down), `IAuditLogService`,
+`IUserService`, `IGoogleService` (Workspace
+identities for the role drill-down through `CampRoleService`), `IAuditLogService`,
 `INotificationEmitter`. The decorator evicts the cached `CampInfo` after its
 role writes. Implements
 `IGoogleGroupMembershipSource` (camp-role Google group membership). No
 direct `IMemoryCache`.
-
-### CampImageGallery (constructed by CampService, not DI-registered)
-
-Repository: `ICampRepository` (shared with its owner).
-
-| Table | R/W |
-|-------|-----|
-| CampImages | R/W (count, add, delete, reorder) |
-
-Camp image upload/delete/reorder. Cross-section calls via `IFileStorage`
-and `IAuditLogService`. No cache.
-
-### CampMembershipNotices (constructed by CampService, not DI-registered)
-
-Repository: `ICampRepository` (shared with its owner).
-
-| Table | R/W |
-|-------|-----|
-| Camps | R (camp + seasons for the notice text) |
-| CampMembers | R (pending requesters of a closed season) |
-
-Notifies pending requesters when a season closes. Cross-section calls via
-`IUserService` (preferred culture) and `INotificationEmitter`. No cache.
 
 ### CampContactService (Scoped)
 
@@ -126,12 +103,3 @@ contact email, and lead user ids as parameters to `SendFacilitatedMessageAsync`.
 
 ---
 
-
-
-### CampReadProjection (internal, owned by CampService)
-
-Repository: `ICampRepository`. Owns direct camp/season/member reads, edit-model
-selection, DTO mapping and active-role enrichment. Uses the existing Settings
-contract and clock for edit-data fallback and date projection. Event registration
-selection and cross-section coordination stay in `CampService`; no separate DI
-registration or cache.

@@ -29,7 +29,7 @@ public sealed class UserParticipationBackfillServiceTests
     }
 
     [HumansFact]
-    public async Task Preview_ShowsParsedRows_WithoutWriting()
+    public async Task Preview_ShowsParsedRows_WithoutWriting_AndCanBeConfirmed()
     {
         var userId = Guid.NewGuid();
         var result = await CreateService().BackfillFromCsvAsync(2026,
@@ -38,21 +38,15 @@ public sealed class UserParticipationBackfillServiceTests
 
         result.Succeeded.Should().BeTrue();
         result.Count.Should().Be(1);
-        result.PreviewCsv.Should().Be($"UserId,Status\n{userId},Ticketed");
+        result.PreviewCsv.Should().Be($"UserId,Status\r\n{userId},Ticketed\r\n");
         await _users.DidNotReceiveWithAnyArgs().BackfillParticipationsAsync(0, null!, default, Arg.Any<CancellationToken>());
-    }
 
-    [HumansFact]
-    public async Task DefaultYear_RequestAborted_CancelsActiveEventRead()
-    {
-        using var aborted = new CancellationTokenSource();
-        await aborted.CancelAsync();
-        _shifts.GetActiveEventSettingsAsync(aborted.Token)
-            .Returns(Task.FromException<EventSettingsInfo?>(new OperationCanceledException(aborted.Token)));
+        var confirmed = await CreateService().BackfillFromCsvAsync(2026, result.PreviewCsv,
+            _actorId, Xunit.TestContext.Current.CancellationToken, apply: true);
 
-        var act = () => CreateService().GetDefaultYearAsync(aborted.Token);
-
-        await act.Should().ThrowAsync<OperationCanceledException>();
+        confirmed.Succeeded.Should().BeTrue();
+        confirmed.Count.Should().Be(1);
+        _captured.Should().Equal((userId, ParticipationStatus.Ticketed));
     }
 
     [HumansFact]

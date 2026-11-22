@@ -1,4 +1,5 @@
 using Humans.Users.Contracts;
+using Humans.Teams.Contracts;
 using Humans.Finance.Contracts;
 using System.Security.Claims;
 using AwesomeAssertions;
@@ -15,7 +16,7 @@ namespace Humans.Budget.Tests.Authorization;
 public sealed class BudgetAuthorizationHandlerTests
 {
     private readonly IUserService _users = Substitute.For<IUserService>();
-    private readonly IBudgetService _budgetService = Substitute.For<IBudgetService>();
+    private readonly ITeamService _teams = Substitute.For<ITeamService>();
     private readonly BudgetAuthorizationHandler _handler;
 
     private static readonly Guid CoordinatorTeamId = Guid.NewGuid();
@@ -26,17 +27,20 @@ public sealed class BudgetAuthorizationHandlerTests
     {
         _users.GetUserInfoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(call => UserInfo.Create(new User { Id = call.Arg<Guid>() }, [], [], null));
-        _handler = new BudgetAuthorizationHandler(_budgetService, _users, new Microsoft.AspNetCore.Http.HttpContextAccessor());
-        _budgetService.GetEffectiveCoordinatorTeamIdsAsync(UserId)
+        _handler = new BudgetAuthorizationHandler(_teams, _users, new Microsoft.AspNetCore.Http.HttpContextAccessor());
+        _teams.GetEffectiveBudgetCoordinatorTeamIdsAsync(UserId)
             .Returns([CoordinatorTeamId]);
     }
 
     [HumansTheory]
-    [InlineData(true, true)]
-    [InlineData(true, false)]
-    [InlineData(false, false)]
+    [InlineData(true, true, false)]
+    [InlineData(true, false, false)]
+    [InlineData(false, false, false)]
+    [InlineData(true, true, true)]
+    [InlineData(true, false, true)]
+    [InlineData(false, false, true)]
     public async Task MembershipAccess_UsesResolvedAccountAndDeniesMissingAccounts(
-        bool accountExists, bool survivorAuthorized)
+        bool accountExists, bool survivorAuthorized, bool viewing)
     {
         var cookieId = survivorAuthorized ? Guid.NewGuid() : UserId;
         var survivorId = survivorAuthorized ? UserId : Guid.NewGuid();
@@ -44,17 +48,20 @@ public sealed class BudgetAuthorizationHandlerTests
             ? UserInfo.Create(new User { Id = survivorId }, [], [], null)
             : null);
         if (!survivorAuthorized)
-            _budgetService.GetEffectiveCoordinatorTeamIdsAsync(survivorId, Arg.Any<CancellationToken>()).Returns([]);
+            _teams.GetEffectiveBudgetCoordinatorTeamIdsAsync(survivorId, Arg.Any<CancellationToken>()).Returns([]);
 
-        var allowed = await EvaluateAsync(CreateUserWithId(cookieId), CreateCategory("coordinator"));
+        var allowed = await EvaluateAsync(CreateUserWithId(cookieId), CreateCategory("coordinator"),
+            viewing ? BudgetOperationRequirement.View : BudgetOperationRequirement.Edit);
 
         allowed.Should().Be(accountExists && survivorAuthorized);
     }
 
     [HumansTheory]
-    [InlineData(true)]
-    [InlineData(false)]
-    public async Task AuthorizationRead_PropagatesAbandonedRequests(bool atUser)
+    [InlineData(true, false)]
+    [InlineData(false, false)]
+    [InlineData(true, true)]
+    [InlineData(false, true)]
+    public async Task AuthorizationRead_PropagatesAbandonedRequests(bool atUser, bool viewing)
     {
         using var request = new CancellationTokenSource();
         var http = new HttpContextAccessor { HttpContext = new DefaultHttpContext { RequestAborted = request.Token } };
@@ -70,15 +77,16 @@ public sealed class BudgetAuthorizationHandlerTests
             ct.ThrowIfCancellationRequested();
             return UserInfo.Create(new User { Id = UserId }, [], [], null);
         });
-        _budgetService.GetEffectiveCoordinatorTeamIdsAsync(UserId, Arg.Any<CancellationToken>()).Returns(call =>
+        _teams.GetEffectiveBudgetCoordinatorTeamIdsAsync(UserId, Arg.Any<CancellationToken>()).Returns(call =>
         {
             observed = call.Arg<CancellationToken>();
             if (!atUser) request.Cancel();
             observed.ThrowIfCancellationRequested();
             return new HashSet<Guid> { CoordinatorTeamId };
         });
-        var handler = new BudgetAuthorizationHandler(_budgetService, _users, http);
-        var context = new AuthorizationHandlerContext([BudgetOperationRequirement.Edit], CreateUser("coordinator"), CreateCategory("coordinator"));
+        var handler = new BudgetAuthorizationHandler(_teams, _users, http);
+        var requirement = viewing ? BudgetOperationRequirement.View : BudgetOperationRequirement.Edit;
+        var context = new AuthorizationHandlerContext([requirement], CreateUser("coordinator"), CreateCategory("coordinator"));
         Func<Task> authorize = () => handler.HandleAsync(context);
         await authorize.Should().ThrowAsync<OperationCanceledException>();
         observed.Should().Be(request.Token);
@@ -119,7 +127,7 @@ public sealed class BudgetAuthorizationHandlerTests
     {
         if (string.Equals(userKind, "regular", StringComparison.Ordinal))
         {
-            _budgetService.GetEffectiveCoordinatorTeamIdsAsync(Arg.Any<Guid>())
+            _teams.GetEffectiveBudgetCoordinatorTeamIdsAsync(Arg.Any<Guid>())
                 .Returns([]);
         }
 
@@ -131,9 +139,33 @@ public sealed class BudgetAuthorizationHandlerTests
         result.Should().Be(expected);
     }
 
-    private async Task<bool> EvaluateAsync(ClaimsPrincipal user, BudgetCategorySnapshot resource)
+    [HumansTheory]
+    [InlineData("finance-admin", "none", true, true, true, true)]
+    [InlineData("admin", "none", true, true, true, true)]
+    [InlineData("coordinator", "coordinator", false, false, false, true)]
+    [InlineData("coordinator", "other", false, false, false, true)]
+    [InlineData("coordinator", "none", false, false, false, true)]
+    [InlineData("coordinator", "other", false, true, false, true)]
+    [InlineData("coordinator", "coordinator", true, false, false, false)]
+    [InlineData("coordinator", "coordinator", false, false, true, false)]
+    [InlineData("regular", "coordinator", false, false, false, false)]
+    [InlineData("anonymous", "coordinator", false, false, false, false)]
+    [InlineData("invalid-id", "coordinator", false, false, false, false)]
+    public async Task View_PreservesCoordinatorReadScope_WithoutGrantingEditAccess(
+        string userKind, string teamKind, bool restricted, bool deleted, bool ticketing, bool expected)
     {
-        var requirement = BudgetOperationRequirement.Edit;
+        if (string.Equals(userKind, "regular", StringComparison.Ordinal))
+            _teams.GetEffectiveBudgetCoordinatorTeamIdsAsync(Arg.Any<Guid>()).Returns([]);
+
+        var allowed = await EvaluateAsync(CreateUser(userKind),
+            CreateCategory(teamKind, restricted, deleted, ticketing), BudgetOperationRequirement.View);
+
+        allowed.Should().Be(expected);
+    }
+
+    private async Task<bool> EvaluateAsync(ClaimsPrincipal user, BudgetCategorySnapshot resource, BudgetOperationRequirement? requirement = null)
+    {
+        requirement ??= BudgetOperationRequirement.Edit;
         var context = new AuthorizationHandlerContext([requirement], user, resource);
 
         await _handler.HandleAsync(context);

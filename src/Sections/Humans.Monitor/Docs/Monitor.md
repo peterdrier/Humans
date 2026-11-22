@@ -10,15 +10,15 @@
 
 # Monitor — Section Invariants
 
-Monitor is the detective control over permission changes that GoogleIntegration's service
-account did not make. It owns the scan and its triggers; GoogleIntegration owns its sync-log
+Monitor is the detective control over permission changes that Google's service
+account did not make. It owns the scan and its triggers; Google owns its sync-log
 pages and data.
 
 ## Concepts
 
 - **Anomalous permission change** — a grant or revocation on a managed Drive folder made by
   someone other than the service account. Each is written through `IAuditLogService` as
-  `GoogleIntegrationAuditActions.AnomalousPermissionDetected`.
+  `GoogleAuditActions.AnomalousPermissionDetected`.
 - **Time-window dedup** — a successful configured scan advances
   `DriveActivityMonitor:LastRunAt` through `ISettingsService`; an incomplete or stubbed scan
   does not.
@@ -35,12 +35,27 @@ pages and data.
   scanning. Once started, the scan runs independently of the browser request.
 
 - Monitor owns no tables, repository, migrations, resource set, or views.
+- People-id resolution stays in `DriveActivityMonitorService`. Each scan owns only its lookup
+  dictionaries and failure flag, so repeated or concurrent scans do not share resolution state.
+  Directory-first fallback, raw ambiguous ids and cancellation behavior are unchanged.
 - `DriveActivityMonitorService` calls other sections only through
   `IGoogleDriveActivityClient`, `ITeamResourceService`, `ISettingsService`,
   `IUserService`, and `IAuditLogService`.
 - A service-account change, matched by email or `people/{client_id}`, is never anomalous.
+- The last-run marker uses the shared `ToIso8601` formatter and
+  `DateFormattingExtensions.Iso8601InstantPattern` parser for seconds-precision UTC values.
 - The last-run marker advances only when every resource was queried and the connector is
-  configured. Anomalies are still audited on an incomplete run.
+  configured. Ordinary resource failures still audit anomalies from the incomplete run.
+- Job cancellation propagates from a resource read and is checked between resources and
+  before finalization. Cancellation before finalization starts no further resource reads
+  and leaves the marker unchanged, so the next run re-reads the interrupted window.
+  Once checkpoint finalization starts, it finishes the marker save and anomaly audit
+  independently of shutdown. A cancellation from the detached checkpoint dependency remains
+  a failure, with the original exception preserved. A dependency cancellation during resource
+  reads while the job token remains live is handled as an ordinary resource failure.
+- A requested job shutdown logs a warning without an exception and propagates cancellation;
+  it records neither a success nor a failure metric. Unexpected failures still log their
+  exception and record a failure.
 - When every resource query fails, the service throws so Hangfire records a failed run.
 - The manual controller action catches that exception, logs it, shows an error banner, and
   redirects to the filtered Audit Log page.
@@ -51,6 +66,8 @@ pages and data.
 
 ## Triggers
 
+- `DriveActivityMonitorJob` stays internal to the section; registration and scheduling use its runtime type through `ISectionJobs`.
+
 - `DriveActivityMonitorJob` runs hourly.
 - `POST /Monitor/CheckDriveActivity` runs the same scan from the Audit Log toolbar.
 
@@ -58,13 +75,13 @@ pages and data.
 
 | Section | Through |
 |---|---|
-| GoogleIntegration | `IGoogleDriveActivityClient`, `ITeamResourceService` |
+| Google | `IGoogleDriveActivityClient`, `ITeamResourceService` |
 | AuditLog | `IAuditLogService` (append path, declared in `src/Humans.Base/AuditLog/IAuditLogService.cs`) |
 | Settings | `ISettingsService` |
 | Users | `IUserService` |
 
 Google sync history is shown at `/Google/Resource/{id}` and `/Google/Human/{id}` by
-GoogleIntegration. Monitor's project references `Humans.GoogleIntegration` whole, because that
+Google. Monitor's project references `Humans.Google` whole, because that
 section's contracts are a `Contracts/` folder of its project; the call-site rule still limits
 Monitor to the interfaces listed above.
 
@@ -74,8 +91,8 @@ Monitor to the interfaces listed above.
 **Owned tables:** None — orchestrator over `IGoogleDriveActivityClient`, `ITeamResourceService`, `ISettingsService`, `IUserService`, `IAuditLogService`.
 **Status:** (A) Migrated — table-less, no repository or cache.
 
-### Cross-section read interface
+### Internal scan interface
 
 | Read interface | Methods | Notes |
 |---|---:|---|
-| `IDriveActivityMonitorService` | — | not cross-section-consumed |
+| `IDriveActivityMonitorService` | `CheckForAnomalousActivityAsync` | Internal to Monitor’s controller and job; no cross-section consumer |

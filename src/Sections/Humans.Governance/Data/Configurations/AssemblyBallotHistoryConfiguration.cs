@@ -8,7 +8,7 @@ internal sealed class AssemblyBallotHistoryConfiguration : IEntityTypeConfigurat
 {
     public void Configure(EntityTypeBuilder<AssemblyBallotHistory> builder)
     {
-        builder.ToTable("assembly_ballot_history");
+        builder.ToTable("governance_assembly_ballot_history");
 
         builder.HasKey(h => h.Id);
 

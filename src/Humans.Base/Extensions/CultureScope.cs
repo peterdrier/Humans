@@ -30,9 +30,9 @@ public sealed class CultureScope : IDisposable
             CultureInfo.CurrentUICulture = target;
             CultureInfo.CurrentCulture = target;
         }
-        catch (CultureNotFoundException ex)
+        catch (CultureNotFoundException)
         {
-            logger?.LogWarning(ex, "Invalid culture '{Culture}', using current culture fallback", culture);
+            logger?.LogWarning("Invalid culture '{Culture}', using current culture fallback", culture);
             _originalCulture = null;
             _originalUICulture = null;
         }

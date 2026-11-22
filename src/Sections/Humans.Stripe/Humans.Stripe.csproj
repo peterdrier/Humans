@@ -17,7 +17,6 @@
       and no SDK type crosses it.
     -->
     <ProjectReference Include="..\..\Humans.Base\Humans.Base.csproj" />
-    <ProjectReference Include="..\Humans.Users.Contracts\Humans.Users.Contracts.csproj" />
     <!-- FinancePolicies only: /Stripe/Admin is gated by Finance's Read and Manage policies. Contracts leaf only. -->
     <ProjectReference Include="..\Humans.Finance.Contracts\Humans.Finance.Contracts.csproj" />
   </ItemGroup>

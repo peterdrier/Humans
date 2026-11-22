@@ -9,10 +9,13 @@ using Humans.Store.Authorization;
 using Humans.Store.Contracts;
 using Humans.Store.Data;
 using Humans.Store.Services;
+using Humans.Store.ViewComponents;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Humans.AuditLog.Contracts;
+
+[assembly: Humans.Base.Demo.NoDemoStory("No demo story written yet.")]
 
 namespace Humans.Store;
 
@@ -21,7 +24,8 @@ public sealed class Section :
     ISectionRoles,
     ISectionAdminNav,
     ISectionAdminTiles,
-    ISectionPolicies
+    ISectionPolicies,
+    ISectionSettings
 {
     IReadOnlyList<RoleDefinition> ISectionRoles.Roles { get; } =
     [
@@ -33,13 +37,15 @@ public sealed class Section :
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
         services.AddSingleton<IAuditActionContributor, StoreAuditActions>();
-        services.Configure<StoreSectionOptions>(configuration.GetSection(StoreSectionOptions.Section));
 
         services.AddSectionDbContext<StoreDbContext>(sentinelTable: "store_orders");
 
         services.AddSingleton<IStoreRepository, Repository>();
         services.AddScoped<Service>();
-        services.AddScoped<IStoreAccountingRead, StoreOrderReader>();
+        services.AddScoped<CatalogService>();
+        services.AddScoped<InvoiceService>();
+        services.AddScoped<IStoreAccountingRead>(sp => sp.GetRequiredService<Service>());
+        services.AddScoped<StoreTransferBooking>();
 
         services.AddScoped<IAuthorizationHandler, OrderAuthorizationHandler>();
     }
@@ -50,6 +56,7 @@ public sealed class Section :
             new("Catalog",     "StoreAdmin", "Catalog",    null, null, "fa-solid fa-tags",           StorePolicies.Read),
             new("Summary",     "StoreAdmin", "Summary",    null, null, "fa-solid fa-chart-column",   StorePolicies.Read),
             new("Payments",    "StoreAdmin", "Payments",   null, null, "fa-solid fa-credit-card",    StorePolicies.Read),
+            new("Team transfers", "StoreAdmin", "Transfers", null, null, "fa-solid fa-right-left",   StorePolicies.Read),
             new("Order years", "StoreAdmin", "OrderYears", null, null, "fa-solid fa-calendar-check", StorePolicies.Read),
             new("Payment methods", "StoreAdmin", "PaymentMethods", null, null, "fa-solid fa-wrench", StorePolicies.Read)
         ])
@@ -63,7 +70,7 @@ public sealed class Section :
 
     private static async ValueTask<AdminTileValue?> OrdersAsync(IServiceProvider sp, CancellationToken ct)
     {
-        var activeEvent = await sp.GetRequiredService<ISettingsService>().GetActiveEventSettingsAsync(ct);
+        var activeEvent = sp.GetRequiredService<ISettingsService>().GetActiveEventSettings();
         if (activeEvent is not { Year: > 0 })
             return new AdminTileValue("", Detail: "no active event", Secondary: "—");
 
@@ -81,4 +88,9 @@ public sealed class Section :
         options.AddPolicy(StorePolicies.Manage, policy =>
             policy.RequireRole(StoreRoles.StoreAdmin, FinanceRoles.FinanceAdmin, RoleNames.Admin));
     }
+
+    IEnumerable<SettingsTab> ISectionSettings.Tabs() =>
+    [
+        new SettingsTab("store", "Settings_TabStore", typeof(StoreSettingsTabViewComponent), StorePolicies.Manage)
+    ];
 }

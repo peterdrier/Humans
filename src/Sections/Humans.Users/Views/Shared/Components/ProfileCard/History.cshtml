@@ -1,0 +1,40 @@
+@model Humans.Users.Models.ProfileCardViewModel
+@{
+    const int RecentCount = 5;
+}
+
+@if (Model.VolunteerHistory.Count > 0 || !string.IsNullOrEmpty(Model.ContributionInterests) || Model.IsOwnProfile)
+{
+    <div class="card mb-3">
+        <div class="card-header">
+            <h5 class="mb-0">@Localizer["Users_Profile_BurnerCV"]</h5>
+        </div>
+        <div class="card-body">
+            @if (Model.VolunteerHistory.Count > 0)
+            {
+                <partial name="_ProfileCvEntries" model="Model.VolunteerHistory.Take(RecentCount).ToList()" />
+                @if (Model.VolunteerHistory.Count > RecentCount)
+                {
+                    <details class="mt-2">
+                        <summary class="small">@Localizer["Users_Profile_ShowAllCv", Model.VolunteerHistory.Count]</summary>
+                        <div class="mt-2">
+                            <partial name="_ProfileCvEntries" model="Model.VolunteerHistory.Skip(RecentCount).ToList()" />
+                        </div>
+                    </details>
+                }
+            }
+            else if (Model.IsOwnProfile)
+            {
+                <p class="text-muted mb-0">
+                    @Localizer["Users_Profile_NoCVEntries"] <a asp-controller="Profile" asp-action="Edit">@Localizer["Users_Profile_AddFirstEntry"]</a>
+                </p>
+            }
+            @if (!string.IsNullOrEmpty(Model.ContributionInterests))
+            {
+                <hr />
+                <h6 class="text-muted mb-2">@Localizer["Users_Profile_ContributionInterests"]</h6>
+                <p class="mb-0 pre-line">@Model.ContributionInterests</p>
+            }
+        </div>
+    </div>
+}

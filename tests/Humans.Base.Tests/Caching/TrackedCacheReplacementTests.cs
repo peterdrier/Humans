@@ -7,6 +7,64 @@ namespace Humans.Base.Tests.Caching;
 
 public class TrackedCacheReplacementTests
 {
+    public enum ConcurrentMutation { Replace, Reload, Delete, OtherKey }
+
+    [HumansTheory]
+    [InlineData(ConcurrentMutation.Replace, true)]
+    [InlineData(ConcurrentMutation.Replace, false)]
+    [InlineData(ConcurrentMutation.Reload, true)]
+    [InlineData(ConcurrentMutation.Reload, false)]
+    [InlineData(ConcurrentMutation.Delete, true)]
+    [InlineData(ConcurrentMutation.Delete, false)]
+    [InlineData(ConcurrentMutation.OtherKey, true)]
+    [InlineData(ConcurrentMutation.OtherKey, false)]
+    public async Task DelayedReplacement_DoesNotPublishAcrossANewerMutation(ConcurrentMutation mutation, bool warmOnStartup)
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var sut = new ReplacementCache(warmOnStartup) { SourceValue = "before" };
+        await sut.WarmAsync(ct);
+        var pending = new TaskCompletionSource<string?>(TaskCreationOptions.RunContinuationsAsynchronously);
+        sut.PendingLoad = pending.Task;
+        var replacement = sut.ReplaceAsync(1, ct);
+        sut.PendingLoad = null;
+        sut.SourceValue = mutation == ConcurrentMutation.Delete ? null : "current";
+        switch (mutation)
+        {
+            case ConcurrentMutation.Replace: sut.Replace(1, "current"); break;
+            case ConcurrentMutation.Reload: await sut.ReplaceAsync(1, ct); break;
+            case ConcurrentMutation.Delete: sut.DeleteKey(1); break;
+            case ConcurrentMutation.OtherKey: sut.Set(2, "other"); break;
+        }
+        pending.SetResult("before");
+        (await replacement).Should().Be("before");
+
+        if (warmOnStartup)
+        {
+            await sut.WarmAsync(ct);
+            if (mutation == ConcurrentMutation.Delete) sut.ContainsKey(1).Should().BeFalse();
+            else sut.AsReadOnlyDictionary[1].Should().Be("current");
+        }
+        (await sut.GetAsync(1, ct)).Should().Be(sut.SourceValue);
+        if (mutation == ConcurrentMutation.OtherKey) sut.AsReadOnlyDictionary[2].Should().Be("other");
+    }
+
+    [HumansFact]
+    public async Task DelayedNullReplacement_DoesNotHideANewerRowFromWarmedReads()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var sut = new ReplacementCache(warmOnStartup: true) { SourceValue = "current" };
+        await sut.WarmAsync(ct);
+        var pending = new TaskCompletionSource<string?>(TaskCreationOptions.RunContinuationsAsynchronously);
+        sut.PendingLoad = pending.Task;
+        var replacement = sut.ReplaceAsync(1, ct);
+        sut.Replace(1, "current");
+        pending.SetResult(null);
+        await replacement;
+
+        await sut.WarmAsync(ct);
+        sut.Values.Should().ContainSingle().Which.Should().Be("current");
+    }
+
     [HumansTheory]
     [InlineData(true, true)]
     [InlineData(true, false)]
@@ -111,9 +169,9 @@ public class TrackedCacheReplacementTests
 
         public Action<int, string> BeginLoad() => CreateLoadPublisher();
 
-        protected override Task WarmAllAsync(CancellationToken ct)
+        protected override Task WarmAllAsync(Action<int, string> publish, CancellationToken ct)
         {
-            if (SourceValue is not null) Set(1, SourceValue);
+            if (SourceValue is not null) publish(1, SourceValue);
             return Task.CompletedTask;
         }
 

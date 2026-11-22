@@ -12,11 +12,9 @@ internal interface IHoldedMirrorRepository : IRepository
     Task ReplaceLedgerWindowAsync(Instant from, Instant to, int? accountNum,
         IReadOnlyList<HoldedLedgerLine> rows, Instant now, CancellationToken ct = default);
 
-    /// <summary>One account's lines, optionally narrowed to a date window (inclusive <paramref name="from"/>,
-    /// exclusive <paramref name="toExclusive"/>) and one <c>type</c>.</summary>
+    /// <summary>One account's lines.</summary>
     Task<IReadOnlyList<HoldedLedgerLine>> GetLedgerLinesByAccountNumAsync(
-        int accountNum, Instant? from = null, Instant? toExclusive = null, string? type = null,
-        CancellationToken ct = default);
+        int accountNum, CancellationToken ct = default);
 
     /// <summary>Every line of the given entries, on any account.</summary>
     Task<IReadOnlyList<HoldedLedgerLine>> GetLedgerLinesByEntryNumbersAsync(
@@ -24,16 +22,6 @@ internal interface IHoldedMirrorRepository : IRepository
 
     /// <summary>Σdebit, Σcredit and line count per account over the whole mirror, grouped in the database.</summary>
     Task<IReadOnlyList<HoldedAccountTotals>> GetAccountTotalsAsync(CancellationToken ct = default);
-
-    /// <summary>Σdebit and Σcredit per (account, type) for accounts in [<paramref name="fromAccount"/>,
-    /// <paramref name="toAccount"/>].</summary>
-    Task<IReadOnlyList<HoldedAccountTypeTotals>> GetAccountTypeTotalsAsync(
-        int fromAccount, int toAccount, CancellationToken ct = default);
-
-    /// <summary>Σdebit − Σcredit per account over [<paramref name="from"/>, <paramref name="toExclusive"/>).
-    /// Accounts with no line in the window are absent.</summary>
-    Task<IReadOnlyDictionary<int, decimal>> GetSumsByAccountAsync(
-        IReadOnlyCollection<int> accounts, Instant from, Instant toExclusive, CancellationToken ct = default);
 
     Task<(int Lines, int Entries)> GetMirrorCountsAsync(CancellationToken ct = default);
 
@@ -52,7 +40,25 @@ internal interface IHoldedMirrorRepository : IRepository
 
     Task<IReadOnlyList<HoldedPurchaseDoc>> GetPurchaseDocsAsync(CancellationToken ct = default);
 
-    Task<HoldedSyncState> GetOrCreateSyncStateAsync(HoldedSyncKind kind, CancellationToken ct = default);
+    /// <summary>Overwrites the stored notes of the mirrored documents named; an id not mirrored is skipped.</summary>
+    Task SetPurchaseDocNotesAsync(IReadOnlyDictionary<string, string> notesById, CancellationToken ct = default);
+
+    /// <summary>The fetch is the whole list: contacts absent from <paramref name="contacts"/> are deleted.</summary>
+    Task ReplaceContactsAsync(IReadOnlyList<HoldedContact> contacts, Instant now, CancellationToken ct = default);
+
+    Task<IReadOnlyList<HoldedContact>> GetContactsAsync(CancellationToken ct = default);
+
+    /// <summary>Replaces every row of <paramref name="treasuryAccountId"/> dated inside [<paramref name="from"/>,
+    /// <paramref name="to"/>] with <paramref name="movements"/>.</summary>
+    Task ReplaceBankMovementsAsync(
+        string treasuryAccountId, LocalDate from, LocalDate to, IReadOnlyList<HoldedBankMovement> movements,
+        Instant now, CancellationToken ct = default);
+
+    Task<IReadOnlyList<HoldedBankMovement>> GetBankMovementsAsync(
+        string treasuryAccountId, LocalDate from, LocalDate to, CancellationToken ct = default);
+
+    Task<HoldedSyncState> GetOrCreateSyncStateAsync(
+        HoldedSyncKind kind, string scope = "", CancellationToken ct = default);
     Task SaveSyncStateAsync(HoldedSyncState state, CancellationToken ct = default);
     Task<IReadOnlyList<HoldedSyncState>> GetSyncStatesAsync(CancellationToken ct = default);
 }
@@ -61,5 +67,3 @@ internal sealed record HoldedAccountTotals(int AccountNum, decimal Debit, decima
 {
     public decimal Balance => Debit - Credit;
 }
-
-internal sealed record HoldedAccountTypeTotals(int AccountNum, string? Type, decimal Debit, decimal Credit);

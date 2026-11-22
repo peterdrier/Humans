@@ -1,3 +1,4 @@
+using Humans.Permissions.Contracts;
 using System.Globalization;
 using System.Resources;
 using Humans.Shifts.Domain;
@@ -41,11 +42,13 @@ public sealed class ShiftSignupServiceAutoConfirmIgnoresConsentTests : ShiftsTes
     public ShiftSignupServiceAutoConfirmIgnoresConsentTests()
         : base(TestNow)
     {
-        _userInfo = UserInfoStubHelpers.MakeUserInfo(_userId) with
+        _userInfo = UserFixtures.MakeUserInfo(_userId) with
         {
             State = UserState.Active,
-            Profile = UserFixtures.Profile(
-                burnerName: "New Human", firstName: "New", lastName: "Human"),
+            BurnerName = "New Human",
+            FirstName = "New",
+            LastName = "Human",
+            Profile = UserFixtures.Profile(),
         };
         _users.GetUserInfoAsync(_userId, Arg.Any<CancellationToken>()).Returns(_userInfo);
         var teamService = Substitute.For<ITeamService>();
@@ -55,6 +58,7 @@ public sealed class ShiftSignupServiceAutoConfirmIgnoresConsentTests : ShiftsTes
             .With(teamService)
             .With(roleAssignmentService)
             .With(_users)
+            .With<IPermissionService>()
             .Build();
 
         var shiftRepo = new ShiftRepository(ShiftsDbFactory, ShiftsDb, Clock);
@@ -62,10 +66,7 @@ public sealed class ShiftSignupServiceAutoConfirmIgnoresConsentTests : ShiftsTes
         _shiftMgmt = new ShiftManagementService(
             shiftRepo,
             AuditLog,
-            AdminAuthorization,
             serviceProvider,
-            new MemoryCache(new MemoryCacheOptions()),
-            new ShiftViewProbe().Cache,
             NewCalendarResolver(),
             Clock,
             NullLogger<ShiftManagementService>.Instance);
@@ -84,8 +85,6 @@ public sealed class ShiftSignupServiceAutoConfirmIgnoresConsentTests : ShiftsTes
             NewCalendarResolver(),
             AuditLog,
             Substitute.For<INotificationEmitter>(),
-            AdminAuthorization,
-            new ShiftViewProbe().Cache,
             serviceProvider,
             Clock,
             NullLogger<ShiftSignupService>.Instance,

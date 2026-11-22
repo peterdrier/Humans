@@ -19,7 +19,7 @@ Application reads through these properties are a vestigial coupling to ASP.NET I
 silently fall back to `base.Email` when `UserEmails` is not loaded, which is the wrong answer.
 The canonical read paths are:
 
-- `UserInfo.Email` / `UserInfo.PrimaryEmail` (the materialised UserEmails projection on the §15
+- `UserInfo.Email` / `UserInfo.PrimaryEmail` (the materialised UserEmails projection on the
   cached snapshot).
 - `IUserService.GetUserInfoAsync(userId, ct)` for the resolved human’s email snapshot.
 - `IUserService.GetRawUserInfoAsync(userId, ct)` for an exact account’s snapshot, including its owned email rows; per-id erasure must not resolve forward to a survivor.
@@ -27,8 +27,7 @@ The canonical read paths are:
 
 ## Enforcement
 
-- **HUM0019** (`IdentityColumnReadAnalyzer`) reports reads of the four properties from
-  `Humans.Application` / `Humans.Web` as warnings. Listed in
+- **HUM0019** (`IdentityColumnReadAnalyzer`) reports reads of the four properties as warnings. Listed in
   `WarningsNotAsErrors` until the remaining legacy reads are migrated.
 - **HUM0002** (`IdentityColumnWriteAnalyzer`) blocks writes (errors).
 - **HUM0003** (`IdentityFindByEmailAnalyzer`) blocks `UserManager.FindByEmailAsync` /
@@ -36,9 +35,9 @@ The canonical read paths are:
 
 ## Exempt
 
-- `Humans.Domain` — `User.cs` declares the overrides.
-- `Humans.Infrastructure` (excluding `Data/` configurations) — Identity machinery (claims
-  factory, cookie sign-in, repository internal includes) legitimately reads the columns.
+- `User.cs` in `Humans.Base`, which declares the overrides.
+- Identity machinery (claims factory, cookie sign-in, repository-internal includes), which
+  legitimately reads the columns.
 - Background jobs that project via `IUserService.GetUserInfosAsync` and read `UserInfo.Email`
   are not violations (UserInfo.Email is its own DTO property).
 

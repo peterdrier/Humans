@@ -1,3 +1,5 @@
+using Humans.Teams;
+using Microsoft.Extensions.Localization;
 using AwesomeAssertions;
 using Humans.Teams.Contracts;
 using Humans.Teams.Data;
@@ -25,12 +27,11 @@ public class TeamsArchitectureTests
     [HumansFact]
     public void ITeamManagement_ITeamService_And_ITeamWrite_ResolveToSameSingleton()
     {
-        // Mirrors the Teams-section DI shape: the same CachingTeamService
-        // singleton is exposed under every interface key.
         var services = new ServiceCollection();
         services.AddSingleton(Substitute.For<ITeamRepository>());
         services.AddSingleton(Substitute.For<IServiceScopeFactory>());
         services.AddSingleton(Substitute.For<ILogger<CachingTeamService>>());
+        services.AddSingleton(Substitute.For<IStringLocalizer<TeamsResource>>());
 
         services.AddSingleton<CachingTeamService>();
         services.AddSingleton<ITeamManagement>(sp => sp.GetRequiredService<CachingTeamService>());

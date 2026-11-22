@@ -1,3 +1,4 @@
+using Humans.Containers.Contracts;
 using Xunit;
 using AwesomeAssertions;
 using Humans.CityPlanning.Contracts;
@@ -39,7 +40,7 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
         var repo = new CityPlanningRepository(CityPlanningDbFactory);
         _sut = new CityPlanningService(
             repo, Clock, Options.Create(_options),
-            _campService, _teamService, _userService, _auditLog, _settingsService);
+            _campService, _teamService, _userService, _auditLog, _settingsService, Substitute.For<IContainerService>());
     }
 
     /// <summary>Camps' public year and the active event's year — city planning's current year — both <paramref name="publicYear"/>.</summary>
@@ -51,7 +52,7 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
     }
 
     private void SetActiveEventYear(int? year) =>
-        _settingsService.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>())
+        _settingsService.GetActiveEventSettings()
             .Returns(year is { } y ? BurnFixtures.Burn(year: y) : null);
 
     private async Task<CityPlanningSettings> SeedMapSettingsAsync(int year = 2026, bool placementOpen = false)
@@ -89,6 +90,7 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
         var userId = NewUserId();
         const string geoJson = """{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[0,0],[1,0],[1,1],[0,0]]]}}""";
 
+        SetupExistingCampSeason(campSeasonId, 2026);
         await _sut.SaveCampPolygonAsync(campSeasonId, geoJson, areaSqm, userId, cancellationToken: TestContext.Current.CancellationToken);
 
         var polygon = await CityPlanningDb.CampPolygons.AsNoTracking().SingleAsync(p => p.CampSeasonId == campSeasonId, TestContext.Current.CancellationToken);
@@ -98,27 +100,6 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
         polygon.AreaSqm.Should().Be(areaSqm);
         history.Note.Should().Be("Saved");
         history.ModifiedAt.Should().Be(Clock.GetCurrentInstant());
-    }
-
-    [HumansFact]
-    public async Task SaveCampPolygonAsync_SecondSave_UpdatesPolygonAndAppendsHistory()
-    {
-        var campSeasonId = Guid.NewGuid();
-        var userId = NewUserId();
-        const string geoJson1 = """{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[0,0],[1,0],[1,1],[0,0]]]}}""";
-        const string geoJson2 = """{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[0,0],[2,0],[2,2],[0,0]]]}}""";
-
-        await _sut.SaveCampPolygonAsync(campSeasonId, geoJson1, 100.0, userId, cancellationToken: TestContext.Current.CancellationToken);
-        await _sut.SaveCampPolygonAsync(campSeasonId, geoJson2, 200.0, userId, cancellationToken: TestContext.Current.CancellationToken);
-
-        var polygonCount = await CityPlanningDb.CampPolygons.AsNoTracking().CountAsync(p => p.CampSeasonId == campSeasonId, TestContext.Current.CancellationToken);
-        var historyCount = await CityPlanningDb.CampPolygonHistories.AsNoTracking().CountAsync(h => h.CampSeasonId == campSeasonId, TestContext.Current.CancellationToken);
-        var polygon = await CityPlanningDb.CampPolygons.AsNoTracking().SingleAsync(p => p.CampSeasonId == campSeasonId, TestContext.Current.CancellationToken);
-
-        polygonCount.Should().Be(1);
-        historyCount.Should().Be(2);
-        polygon.GeoJson.Should().Be(geoJson2);
-        polygon.AreaSqm.Should().Be(200.0);
     }
 
     [HumansTheory]
@@ -176,7 +157,9 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
     [InlineData("""{"type":"Feature","geometry":{"type":"MultiPolygon","coordinates":[[[[0,0],[1,0],[1,1],[0,0]]]]}}""")]
     public async Task SaveCampPolygonAsync_ValidAreaGeometry_RoundTrips(string geoJson)
     {
-        var saved = await _sut.SaveCampPolygonAsync(Guid.NewGuid(), geoJson, 100, NewUserId(), cancellationToken: TestContext.Current.CancellationToken);
+        var campSeasonId = Guid.NewGuid();
+        SetupExistingCampSeason(campSeasonId, 2026);
+        var saved = await _sut.SaveCampPolygonAsync(campSeasonId, geoJson, 100, NewUserId(), cancellationToken: TestContext.Current.CancellationToken);
         saved.GeoJson.Should().Be(geoJson);
         (await CityPlanningDb.CampPolygons.SingleAsync(TestContext.Current.CancellationToken)).GeoJson.Should().Be(geoJson);
         (await CityPlanningDb.CampPolygonHistories.SingleAsync(TestContext.Current.CancellationToken)).GeoJson.Should().Be(geoJson);
@@ -301,15 +284,6 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
     }
 
     [HumansFact]
-    public async Task UpdateOfficialZonesFromUploadAsync_NoFile_ReturnsMissingFile()
-    {
-        var result = await _sut.UpdateOfficialZonesFromUploadAsync(null, NewUserId(), TestContext.Current.CancellationToken);
-
-        result.Success.Should().BeFalse();
-        result.ErrorKey.Should().Be("MissingFile");
-    }
-
-    [HumansFact]
     public async Task UpdateOfficialZonesFromUploadAsync_OverTenMegabytes_ReturnsFileTooLarge()
     {
         var result = await _sut.UpdateOfficialZonesFromUploadAsync(
@@ -339,6 +313,7 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
         var userId = NewUserId();
         const string originalGeoJson = """{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[0,0],[1,0],[1,1],[0,0]]]}}""";
 
+        SetupExistingCampSeason(campSeasonId, 2026);
         await _sut.SaveCampPolygonAsync(campSeasonId, originalGeoJson, 100.0, userId, cancellationToken: TestContext.Current.CancellationToken);
         var originalHistory = await CityPlanningDb.CampPolygonHistories.AsNoTracking()
             .SingleAsync(h => h.CampSeasonId == campSeasonId, TestContext.Current.CancellationToken);
@@ -427,27 +402,6 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
     }
 
     [HumansFact]
-    public async Task UpdateRegistrationInfoAsync_AuditsAgainstTheOpenSeasonRow()
-    {
-        _campService.GetSettingsAsync(Arg.Any<CancellationToken>())
-            .Returns(new CampSettingsInfo(2026, [2027]));
-        var userId = NewUserId();
-
-        await _sut.UpdateRegistrationInfoAsync("Bring water.", userId, TestContext.Current.CancellationToken);
-
-        var row = await CityPlanningDb.CityPlanningSettings.AsNoTracking()
-            .SingleAsync(s => s.Year == 2027, TestContext.Current.CancellationToken);
-        await _auditLog.Received(1).LogAsync(
-            CityPlanningAuditActions.CityPlanningRegistrationInfoUpdated,
-            nameof(CityPlanningSettings),
-            row.Id,
-            Arg.Any<string>(),
-            userId,
-            Arg.Any<Guid?>(),
-            Arg.Any<string?>());
-    }
-
-    [HumansFact]
     public async Task ContainerPlacementToggles_WriteTheirOwnAuditActions()
     {
         await SeedMapSettingsAsync();
@@ -502,8 +456,7 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
             Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 
-    // IAuditLogService takes no cancellation token, so the settings row's id is resolved before
-    // the write: re-read after it, an abort mid-write committed the change unaudited.
+    // IAuditLogService takes no cancellation token, so the settings row's id is resolved before the write.
     [HumansFact]
     public async Task OpenPlacementAsync_RequestCancelledDuringTheSave_StillWritesAuditEntry()
     {
@@ -526,7 +479,7 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
 
         var sut = new CityPlanningService(
             repo, Clock, Options.Create(_options),
-            _campService, _teamService, _userService, _auditLog, _settingsService);
+            _campService, _teamService, _userService, _auditLog, _settingsService, Substitute.For<IContainerService>());
 
         await sut.OpenPlacementAsync(userId, cts.Token);
 
@@ -573,7 +526,7 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
 
         var sut = new CityPlanningService(
             repo, Clock, Options.Create(_options),
-            _campService, _teamService, _userService, _auditLog, _settingsService);
+            _campService, _teamService, _userService, _auditLog, _settingsService, Substitute.For<IContainerService>());
 
         await sut.OpenPlacementAsync(userId, cts.Token);
 
@@ -776,16 +729,6 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
     }
 
     [HumansFact]
-    public async Task GetRegistrationInfoAsync_NoRow_WritesNothing()
-    {
-        SetupCampSettings(publicYear: 2026);
-
-        (await _sut.GetRegistrationInfoAsync(TestContext.Current.CancellationToken)).Should().BeNull();
-
-        (await CityPlanningDb.CityPlanningSettings.AsNoTracking().CountAsync(TestContext.Current.CancellationToken)).Should().Be(0);
-    }
-
-    [HumansFact]
     public async Task GetSettingsAsync_YearFollowsTheActiveEvent_NotCampsPublicYear()
     {
         _campService.GetSettingsAsync(Arg.Any<CancellationToken>())
@@ -901,6 +844,8 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
         var camp2026Id = Guid.NewGuid();
         var userId = NewUserId();
 
+        SetupExistingCampSeason(season2026Id, 2026);
+        SetupExistingCampSeason(season2027Id, 2027);
         await _sut.SaveCampPolygonAsync(season2026Id, """{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[0,0],[1,0],[1,1],[0,0]]]}}""", 100, userId, cancellationToken: TestContext.Current.CancellationToken);
         await _sut.SaveCampPolygonAsync(season2027Id, """{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[0,0],[1,0],[1,1],[0,0]]]}}""", 200, userId, cancellationToken: TestContext.Current.CancellationToken);
 
@@ -926,6 +871,7 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
         var seasonWithoutId = Guid.NewGuid();
         var userId = NewUserId();
 
+        SetupExistingCampSeason(seasonWithId, 2026);
         await _sut.SaveCampPolygonAsync(seasonWithId, """{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[0,0],[1,0],[1,1],[0,0]]]}}""", 100, userId, cancellationToken: TestContext.Current.CancellationToken);
 
         _campService.GetCampsForYearAsync(2026, Arg.Any<CancellationToken>())
@@ -950,6 +896,7 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
         var campSeasonId = Guid.NewGuid();
         var userId = NewUserId();
 
+        SetupExistingCampSeason(campSeasonId, 2026);
         await _sut.SaveCampPolygonAsync(campSeasonId, geoJson, 100.0, userId, cancellationToken: TestContext.Current.CancellationToken);
 
         _campService.GetCampsForYearAsync(2026, Arg.Any<CancellationToken>())
@@ -977,7 +924,7 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
         // UserInfo.BurnerName reads User.BurnerName, so it is seeded there.
         var testUser = new User { Id = userId, UserName = "test@test.com", Email = "test@test.com", DisplayName = "Test User", BurnerName = "Test User" };
         _userService.GetUserInfosAsync(
-            Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(userId)),
+            Arg.Is<IEnumerable<Guid>>(ids => ids.Contains(userId)),
             Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
                 // UserInfo.Create inline rather than linking Base's UserInfoStubHelpers: this
@@ -988,6 +935,7 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
                 }));
 
         Clock.Advance(Duration.FromSeconds(1));
+        SetupExistingCampSeason(campSeasonId, 2026);
         await _sut.SaveCampPolygonAsync(campSeasonId, """{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[0,0],[1,0],[1,1],[0,0]]]}}""", 100.0, userId, cancellationToken: TestContext.Current.CancellationToken);
         Clock.Advance(Duration.FromSeconds(1));
         await _sut.SaveCampPolygonAsync(campSeasonId, """{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[0,0],[1,0],[1,1],[0,0]]]}}""", 200.0, userId, cancellationToken: TestContext.Current.CancellationToken);
@@ -1008,10 +956,11 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
 
         // User service returns empty dictionary — user was deleted.
         _userService.GetUserInfosAsync(
-            Arg.Any<IReadOnlyCollection<Guid>>(),
+            Arg.Any<IEnumerable<Guid>>(),
             Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(new Dictionary<Guid, UserInfo>()));
 
+        SetupExistingCampSeason(campSeasonId, 2026);
         await _sut.SaveCampPolygonAsync(campSeasonId, """{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[0,0],[1,0],[1,1],[0,0]]]}}""", 100.0, userId, cancellationToken: TestContext.Current.CancellationToken);
 
         var history = await _sut.GetCampPolygonHistoryAsync(campSeasonId, TestContext.Current.CancellationToken);
@@ -1027,6 +976,7 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
         var campId = Guid.NewGuid();
         var userId = NewUserId();
         const string geoJson = """{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[0,0],[1,0],[1,1],[0,0]]]}}""";
+        SetupExistingCampSeason(campSeasonId, 2026);
         await _sut.SaveCampPolygonAsync(campSeasonId, geoJson, 100.0, userId, cancellationToken: TestContext.Current.CancellationToken);
 
         _campService.GetCampsForYearAsync(2026, Arg.Any<CancellationToken>())
@@ -1047,6 +997,7 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
         var campId = Guid.NewGuid();
         var userId = NewUserId();
         const string geoJson = """{"type":"Feature","geometry":{"type":"Polygon","coordinates":[[[0,0],[1,0],[1,1],[0,0]]]}}""";
+        SetupExistingCampSeason(campSeasonId, 2026);
         await _sut.SaveCampPolygonAsync(campSeasonId, geoJson, 100.0, userId, cancellationToken: TestContext.Current.CancellationToken);
 
         _campService.GetCampsForYearAsync(2026, Arg.Any<CancellationToken>())
@@ -1089,64 +1040,9 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
         updated.UpdatedAt.Should().Be(Clock.GetCurrentInstant());
     }
 
-    [HumansFact]
-    public async Task UpdateRegistrationInfoAsync_WritesToHighestOpenSeason_NotTheActiveEventYear()
-    {
-        _campService.GetSettingsAsync(Arg.Any<CancellationToken>())
-            .Returns(new CampSettingsInfo(2026, [2026, 2028, 2027]));
-
-        await _sut.UpdateRegistrationInfoAsync("Read this before you register.", NewUserId(), TestContext.Current.CancellationToken);
-
-        var settings = await CityPlanningDb.CityPlanningSettings.AsNoTracking()
-            .SingleAsync(TestContext.Current.CancellationToken);
-        settings.Year.Should().Be(2028);
-        settings.RegistrationInfo.Should().Be("Read this before you register.");
-    }
-
-    [HumansFact]
-    public async Task UpdateRegistrationInfoAsync_FallsBackToTheActiveEventYear_WhenNoOpenSeasons()
-    {
-        SetupCampSettings();
-
-        await _sut.UpdateRegistrationInfoAsync("Blurb", NewUserId(), TestContext.Current.CancellationToken);
-
-        var settings = await CityPlanningDb.CityPlanningSettings.AsNoTracking()
-            .SingleAsync(TestContext.Current.CancellationToken);
-        settings.Year.Should().Be(2026);
-    }
-
-    [HumansFact]
-    public async Task UpdateRegistrationInfoAsync_TrimsInput_AndStoresNullForBlank()
-    {
-        SetupCampSettings();
-
-        await _sut.UpdateRegistrationInfoAsync("  padded  ", NewUserId(), TestContext.Current.CancellationToken);
-        (await _sut.GetRegistrationInfoAsync(TestContext.Current.CancellationToken)).Should().Be("padded");
-
-        await _sut.UpdateRegistrationInfoAsync("   ", NewUserId(), TestContext.Current.CancellationToken);
-        (await _sut.GetRegistrationInfoAsync(TestContext.Current.CancellationToken)).Should().BeNull();
-    }
-
-    [HumansFact]
-    public async Task GetRegistrationInfoAsync_ReadsTheSameYearTheWriteUsed()
-    {
-        _campService.GetSettingsAsync(Arg.Any<CancellationToken>())
-            .Returns(new CampSettingsInfo(2026, [2027]));
-
-        await _sut.UpdateRegistrationInfoAsync("Open-season blurb", NewUserId(), TestContext.Current.CancellationToken);
-
-        // A row keyed to the active event's year must not shadow the open-season one.
-        CityPlanningDb.CityPlanningSettings.Add(new CityPlanningSettings
-        {
-            Year = 2026,
-            RegistrationInfo = "Stale public-year blurb",
-            UpdatedAt = Clock.GetCurrentInstant()
-        });
-        await CityPlanningDb.SaveChangesAsync(TestContext.Current.CancellationToken);
-
-        (await _sut.GetRegistrationInfoAsync(TestContext.Current.CancellationToken))
-            .Should().Be("Open-season blurb");
-    }
+    private void SetupExistingCampSeason(Guid seasonId, int year) =>
+        _campService.GetCampSeasonByIdAsync(seasonId, Arg.Any<CancellationToken>())
+            .Returns(MakeCampSeasonInfo(seasonId, Guid.NewGuid(), year, "Camp"));
 
     private static CampSeasonInfo MakeCampSeasonInfo(Guid id, Guid campId, int year, string name, SoundZone? soundZone = null) =>
         new(id, campId, string.Empty, year, null, name, string.Empty, string.Empty,

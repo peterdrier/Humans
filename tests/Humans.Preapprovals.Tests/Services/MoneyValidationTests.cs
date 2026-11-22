@@ -75,8 +75,8 @@ public sealed class MoneyValidationTests : PreapprovalsTestHarness
         {
             "issue" => (await service.IssueAsync(program.Id, beneficiary, amount, null, actor, Ct)).Refusal,
             "apply" or "edit-application" => (await service.ApplyAsync(program.Id, beneficiary, null, amount, Ct)).Refusal,
-            "approve" => (await service.ApproveAsync(grant!.Id, amount, actor, Ct)).Refusal,
-            "change" => (await service.ChangeAmountAsync(grant!.Id, amount, actor, Ct)).Refusal,
+            "approve" => (await service.ApproveAsync(program.Id, grant!.Id, amount, actor, Ct)).Refusal,
+            "change" => (await service.ChangeAmountAsync(program.Id, grant!.Id, amount, actor, Ct)).Refusal,
             _ => throw new ArgumentOutOfRangeException(nameof(operation)),
         };
 

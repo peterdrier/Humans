@@ -43,7 +43,7 @@ public class HumansWebApplicationFactory(string connectionString)
 
     public IStripeService StripeServiceStub { get; } = Substitute.For<IStripeService>();
 
-    /// <summary>Program.cs skips Hangfire in Testing; assert enqueues against ReceivedCalls().</summary>
+    /// <summary>Replaces Hangfire's client so enqueues are asserted against ReceivedCalls(), not job storage.</summary>
     public IBackgroundJobClient BackgroundJobClientStub { get; } = Substitute.For<IBackgroundJobClient>();
 
     /// <summary>Hand-written rather than substituted because the interface yields an IAsyncEnumerable.</summary>
@@ -57,6 +57,10 @@ public class HumansWebApplicationFactory(string connectionString)
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Testing");
+
+        // Real job storage in this host's own database, but no workers: a cron tick mid-test would mutate rows the
+        // test asserts on. UseSetting, because Program reads it before the app configuration below is applied.
+        builder.UseSetting("Hangfire:ServerEnabled", "false");
 
         // WebApplicationBuilder composes static web assets only in Development; without this every /_content/<Rcl>/ URL
         // 404s here and asp-append-version silently drops the ?v= hash.
@@ -93,7 +97,7 @@ public class HumansWebApplicationFactory(string connectionString)
             services.RemoveAll<Humans.Base.Logging.InMemoryLogSink>();
             services.AddSingleton(LogSink);
 
-            // No-op email: Hangfire's job-storage globals are disabled in Testing.
+            // No-op email: nothing here may send real mail.
             var emailDescriptor = services.SingleOrDefault(
                 d => d.ServiceType == typeof(IEmailService));
             if (emailDescriptor != null)
@@ -122,7 +126,6 @@ public class HumansWebApplicationFactory(string connectionString)
             if (mailerDescriptor != null) services.Remove(mailerDescriptor);
             services.AddSingleton<IMailerLiteService>(MailerLiteServiceStub);
 
-            // Hangfire's registration is skipped in Testing, so consumers like HangfireImmediateOutboxProcessor need this.
             services.AddSingleton(BackgroundJobClientStub);
 
             RegisteredServices = services.ToList();
@@ -196,6 +199,61 @@ public class HumansWebApplicationFactory(string connectionString)
             scope.ServiceProvider.GetRequiredService<LegalDbContext>(), user.Id);
 
         return user.Id;
+    }
+
+    /// <summary>
+    /// A fresh database has no event, and barrio personas, camp seasons and most Shifts pages need an active one.
+    /// Created through Settings' own verb: the sections' Singleton views are warmed at startup, so a direct write is
+    /// invisible to cached reads.
+    /// </summary>
+    /// <returns>The event's id; the same one on every call.</returns>
+    public async Task<Guid> SeedActiveEventAsync()
+    {
+        if (_activeEventId is { } existing)
+            return existing;
+
+        using var scope = Services.CreateScope();
+        var eventId = Guid.NewGuid();
+        await scope.ServiceProvider.GetRequiredService<Humans.Settings.Contracts.IEventSettingsSeeding>()
+            .CreateActiveEventAsync(
+                new Humans.Settings.Contracts.EventSettingsInfo(
+                    Id: eventId,
+                    EventName: "Integration Test Burn",
+                    Year: ActiveEventYear,
+                    TimeZoneId: "Europe/Madrid",
+                    GateOpeningDate: new LocalDate(ActiveEventYear, 7, 1),
+                    BuildStartOffset: -14,
+                    EventEndOffset: 6,
+                    StrikeEndOffset: 9,
+                    EarlyEntryCapacity: new Dictionary<int, int>(),
+                    BarriosEarlyEntryAllocation: null,
+                    EarlyEntryClose: null),
+                TestContext.Current.CancellationToken);
+        _activeEventId = eventId;
+        return eventId;
+    }
+
+    public const int ActiveEventYear = 2026;
+
+    private Guid? _activeEventId;
+
+    /// <summary>
+    /// Event submission is refused outside the guide's submission window; this opens one on the active event.
+    /// </summary>
+    public async Task OpenEventSubmissionWindowAsync()
+    {
+        var eventId = await SeedActiveEventAsync();
+        var now = SystemClock.Instance.GetCurrentInstant()
+            .InZone(DateTimeZoneProviders.Tzdb["Europe/Madrid"]).LocalDateTime;
+
+        using var scope = Services.CreateScope();
+        var saved = await scope.ServiceProvider.GetRequiredService<Humans.Events.Services.IEventManagement>()
+            .SaveGuideSettingsAsync(
+                existingId: null, eventId,
+                submissionOpenAt: now.PlusDays(-1), submissionCloseAt: now.PlusDays(30), guidePublishAt: now.PlusDays(60),
+                maxPrintSlots: 10, TestContext.Current.CancellationToken);
+        if (!saved)
+            throw new InvalidOperationException("The guide settings were not saved for the seeded event.");
     }
 
     /// <summary>

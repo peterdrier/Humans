@@ -24,8 +24,6 @@ internal sealed class EmailsViewModel
     /// <summary>The user being acted on: the target in admin contexts, not the actor.</summary>
     public Guid TargetUserId { get; set; }
 
-    public string? TargetDisplayName { get; set; }
-
     public bool IsAdminContext { get; set; }
 
     /// <summary>
@@ -107,7 +105,6 @@ internal sealed class EmailRowViewModel
     public bool IsPrimary { get; set; }
     public ContactFieldVisibility? Visibility { get; set; }
     public bool IsPendingVerification { get; set; }
-    public bool IsMergePending { get; set; }
 
     /// <summary>
     /// Linked to the user's event ticket: the grid hides Delete and the service re-validates.

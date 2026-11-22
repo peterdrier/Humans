@@ -26,6 +26,8 @@ public class StoreControllerTests(HumansTestDatabase database) : IntegrationTest
     [HumansFact(Timeout = 30000)]
     public async Task LoggedIn_camp_lead_can_GET_Store()
     {
+        // The lead persona's camp and season are only seeded into an active event.
+        await Factory.SeedActiveEventAsync();
         await Factory.SignInAsFullyOnboardedAsync(Client, new DevPersona("barrio-1-lead"));
         var year = await SeedActiveProductAsync("Test product");
 
@@ -59,6 +61,8 @@ public class StoreControllerTests(HumansTestDatabase database) : IntegrationTest
             AllowAutoRedirect = false
         }))
         {
+            // The lead persona's camp and season are only seeded into an active event.
+            await Factory.SeedActiveEventAsync();
             await Factory.SignInAsFullyOnboardedAsync(leadClient, new DevPersona("barrio-1-lead"));
         }
 
@@ -87,6 +91,8 @@ public class StoreControllerTests(HumansTestDatabase database) : IntegrationTest
     public async Task Order_page_renders_price_changes_through_the_audit_view_component()
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
+        // The lead persona's camp and season are only seeded into an active event.
+        await Factory.SeedActiveEventAsync();
         var leadId = await Factory.SignInAsFullyOnboardedAsync(Client, new DevPersona("barrio-1-lead"));
         await SeedActiveProductAsync("Price-probe product");
         var seasonId = await GetBarrioOneCampSeasonIdAsync();

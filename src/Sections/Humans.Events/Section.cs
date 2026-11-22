@@ -21,7 +21,10 @@ using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Localization;
 using Humans.AuditLog.Contracts;
+
+[assembly: Humans.Base.Demo.NoDemoStory("No demo story written yet.")]
 
 namespace Humans.Events;
 
@@ -34,7 +37,8 @@ public sealed class Section :
     ISectionChrome,
     ISectionNav,
     ISectionPolicies,
-    ISectionSettings
+    ISectionSettings,
+    ISearchContributor
 {
     IEnumerable<ChromeComponent> ISectionChrome.Components() =>
         [new(ChromeSlots.WidgetGallery, typeof(EventsGalleryViewComponent))];
@@ -153,4 +157,16 @@ public sealed class Section :
         new SettingsTab("event-guide", "Settings_TabEventGuide", typeof(EventGuideSettingsTabViewComponent), EventsPolicies.Manage)
     ];
 
+    IEnumerable<SearchCategory> ISearchContributor.Categories() =>
+    [
+        new("Event",
+            sp => sp.GetRequiredService<IStringLocalizer<EventsResource>>()["Events_Search_Category"].Value,
+            "fa-solid fa-calendar-day", typeof(EventsSearchResultViewComponent), SearchEventsAsync, Weight: 40,
+            IsEnabled: sp => sp.GetRequiredService<IConfiguration>().GetValue<bool>("Features:Events")),
+    ];
+
+    private static async Task<IReadOnlyList<SearchHit>> SearchEventsAsync(
+        IServiceProvider sp, string query, CancellationToken ct) =>
+        [.. (await sp.GetRequiredService<IEventService>().SearchAsync(query, int.MaxValue, ct))
+            .Select(e => new SearchHit(e.EventId, e.Title, e.Score))];
 }

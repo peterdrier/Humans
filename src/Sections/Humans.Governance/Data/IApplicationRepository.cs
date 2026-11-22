@@ -10,9 +10,7 @@ internal interface IApplicationRepository : IRepository
 {
     Task<MemberApplication?> GetByIdAsync(Guid applicationId, CancellationToken ct = default);
 
-    /// <summary>
-    /// Ordered by <c>SubmittedAt</c> descending, with <c>StateHistory</c>.
-    /// </summary>
+    /// <summary>With <c>StateHistory</c>; unordered, the caller orders for display.</summary>
     Task<IReadOnlyList<MemberApplication>> GetByUserIdAsync(Guid userId, CancellationToken ct = default);
 
     /// <summary>
@@ -23,11 +21,13 @@ internal interface IApplicationRepository : IRepository
     Task<int> CountByStatusAsync(ApplicationStatus status, CancellationToken ct = default);
 
     /// <summary>
-    /// Null <paramref name="status"/> means <see cref="ApplicationStatus.Submitted"/>.
+    /// Null <paramref name="status"/> means <see cref="ApplicationStatus.Submitted"/>, or any status
+    /// when <paramref name="userId"/> narrows the list to one person.
     /// </summary>
     Task<(IReadOnlyList<MemberApplication> Items, int TotalCount)> GetFilteredAsync(
         ApplicationStatus? status,
         MembershipTier? tier,
+        Guid? userId,
         int page,
         int pageSize,
         CancellationToken ct = default);
@@ -50,9 +50,6 @@ internal interface IApplicationRepository : IRepository
 
     /// <summary>Distinct voters on this application, for badge invalidation after finalize.</summary>
     Task<IReadOnlyList<Guid>> GetVoterIdsForApplicationAsync(Guid applicationId, CancellationToken ct = default);
-
-    Task<IReadOnlySet<Guid>> GetUserIdsWithSubmittedAsync(
-        IReadOnlyCollection<Guid> userIds, CancellationToken ct = default);
 
     Task<MemberApplication?> GetSubmittedForUserAsync(
         Guid userId, CancellationToken ct = default);
@@ -78,10 +75,8 @@ internal interface IApplicationRepository : IRepository
     Task<int> GetUnvotedCountForBoardMemberAsync(
         Guid boardMemberUserId, CancellationToken ct = default);
 
-    /// <summary>
-    /// All counts exclude <see cref="ApplicationStatus.Withdrawn"/>.
-    /// </summary>
-    Task<ApplicationAdminStats> GetAdminStatsAsync(CancellationToken ct = default);
+    /// <summary>Unordered applications excluding <see cref="ApplicationStatus.Withdrawn"/>.</summary>
+    Task<IReadOnlyList<MemberApplication>> GetNonWithdrawnAsync(CancellationToken ct = default);
 
     /// <summary>
     /// Returns the latest Approved application per user and tier when its <c>TermExpiresAt</c> falls

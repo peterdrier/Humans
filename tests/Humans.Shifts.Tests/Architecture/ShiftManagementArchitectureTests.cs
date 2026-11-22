@@ -31,7 +31,7 @@ public class ShiftManagementArchitectureTests
         var fromPublic = scope.ServiceProvider.GetRequiredService<IShiftService>();
 
         ReferenceEquals(fromManagement, fromPublic).Should().BeTrue(
-            because: "both interfaces must forward to the one ShiftManagementService per scope");
+            because: "both interfaces must forward to the one CachingShiftService");
     }
 
     /// <summary>Resolved from the production <c>Section.Register</c>, not a test-built mirror of it.</summary>

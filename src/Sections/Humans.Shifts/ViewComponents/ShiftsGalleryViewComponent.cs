@@ -1,3 +1,4 @@
+using Humans.Base.Extensions;
 using System.Security.Claims;
 using Humans.Shifts.Contracts;
 using Humans.Shifts.Domain;
@@ -20,9 +21,7 @@ internal sealed class ShiftsGalleryViewComponent(
 
     public async Task<IViewComponentResult> InvokeAsync()
     {
-        var currentUserId = Guid.TryParse(UserClaimsPrincipal.FindFirstValue(ClaimTypes.NameIdentifier), out var id)
-            ? id
-            : Guid.Empty;
+        var currentUserId = UserClaimsPrincipal.GetUserId() ?? Guid.Empty;
 
         try
         {
@@ -53,6 +52,7 @@ internal sealed class ShiftsGalleryViewComponent(
                     .Where(u => u.Shift.RotaId == rota.Id)
                     .OrderBy(u => u.Shift.DayOffset)
                     .ThenBy(u => u.Shift.StartTime)
+                    .ThenByDescending(u => u.UrgencyScore)
                     .Take(SampleShiftCount)
                     .Select(ShiftBrowseMapper.MapToDisplayItem)
                     .ToList();

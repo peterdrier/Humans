@@ -55,6 +55,10 @@ public sealed class CityPlanningApiControllerTests : CityPlanningTestBase
     {
         _users.GetUserInfoAsync(_userId, Arg.Any<CancellationToken>())
             .Returns(UserInfo.Create(new User { Id = _userId }, [], [], profile: null));
+        _campService.GetCampSeasonByIdAsync(_campSeasonId, Arg.Any<CancellationToken>())
+            .Returns(new CampSeasonInfo(_campSeasonId, Guid.NewGuid(), "camp", 2026, null, "Camp", "", "",
+                [], CampSeasonStatus.Pending, YesNoMaybe.No, YesNoMaybe.No, AdultPlayspacePolicy.No,
+                0, null, null, null, 0, null, null));
         _campService.GetSettingsAsync(Arg.Any<CancellationToken>())
             .Returns(new CampSettingsInfo(2026, []));
         _teamService.GetTeamsAsync(Arg.Any<CancellationToken>())
@@ -63,7 +67,7 @@ public sealed class CityPlanningApiControllerTests : CityPlanningTestBase
         _service = new CityPlanningService(
             new CityPlanningRepository(CityPlanningDbFactory), Clock,
             Options.Create(new CityPlanningOptions { CityPlanningTeamSlug = "city-planning" }),
-            _campService, _teamService, Substitute.For<IUserService>(), Substitute.For<IAuditLogService>(), _settings);
+            _campService, _teamService, Substitute.For<IUserService>(), Substitute.For<IAuditLogService>(), _settings, _containers);
         _authorization = MapAdminAuthorization(_service);
     }
 
@@ -209,6 +213,48 @@ public sealed class CityPlanningApiControllerTests : CityPlanningTestBase
         var result = await CreateController().ExportContainersGeoJson(2026, TestContext.Current.CancellationToken);
 
         result.Should().BeOfType<FileContentResult>();
+    }
+
+    [HumansTheory]
+    [InlineData(false, true)]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    public async Task ContainerExport_IncludesAllAndOnlyTheCallersCamps(bool isAdmin, bool isLead)
+    {
+        var camps = Enumerable.Range(0, 4).Select(index =>
+        {
+            var campId = Guid.NewGuid();
+            var season = new CampSeasonInfo(Guid.NewGuid(), campId, $"camp-{index}", index == 3 ? 2025 : 2026,
+                null, "Camp", "", "", [], CampSeasonStatus.Pending, YesNoMaybe.No, YesNoMaybe.No,
+                AdultPlayspacePolicy.No, 0, null, null, null, 0, null, null)
+            { LeadUserIds = isLead && index != 2 ? [_userId] : [] };
+            return new CampInfo(campId, $"camp-{index}", "", "", false, 0, [season]);
+        }).ToArray();
+        _campService.GetCampsForYearAsync(2026, Arg.Any<CancellationToken>()).Returns(camps);
+        var containers = camps.Select(camp => new ContainerDto(Guid.NewGuid(), camp.Id, camp.Slug,
+            null, [], Instant.MinValue, Instant.MinValue)).ToArray();
+        _containers.GetAllAsync(Arg.Any<CancellationToken>()).Returns(containers);
+        _containers.GetPlacementsByYearAsync(2026, Arg.Any<CancellationToken>()).Returns(
+            containers.Select(container => new ContainerPlacementDto(container.Id, 2026,
+                "{\"type\":\"Feature\",\"geometry\":null,\"properties\":{}}", null, null, null,
+                Instant.MinValue, Instant.MinValue)).ToArray());
+
+        var result = await CreateController(isAdmin ? [CampsRoles.CampsAdmin] : [])
+            .ExportContainersGeoJson(2026, TestContext.Current.CancellationToken);
+
+        if (!isAdmin && !isLead)
+        {
+            result.Should().BeOfType<ForbidResult>();
+            await _containers.DidNotReceiveWithAnyArgs().GetAllAsync(default);
+            await _containers.DidNotReceiveWithAnyArgs().GetPlacementsByYearAsync(default, default);
+            return;
+        }
+
+        var file = result.Should().BeOfType<FileContentResult>().Which;
+        using var json = System.Text.Json.JsonDocument.Parse(file.FileContents);
+        var exportedIds = json.RootElement.GetProperty("features").EnumerateArray()
+            .Select(feature => feature.GetProperty("properties").GetProperty("containerId").GetGuid());
+        exportedIds.Should().BeEquivalentTo((isAdmin ? containers : containers.Take(2)).Select(container => container.Id));
     }
 
     [HumansFact]
@@ -389,7 +435,9 @@ public sealed class CityPlanningApiControllerTests : CityPlanningTestBase
                 IsPromotedToDirectory: false, CreatedAt: Instant.MinValue,
                 Members: [new(Guid.NewGuid(), _userId, string.Empty, null, null, TeamMemberRole.Member, Instant.MinValue)]),
         });
-        await _service.SaveCampPolygonAsync(Guid.NewGuid(), Square, 10, Guid.NewGuid(), cancellationToken: ct);
+        var otherSeason = (await _campService.GetCampSeasonByIdAsync(_campSeasonId, ct))! with { Id = Guid.NewGuid() };
+        _campService.GetCampSeasonByIdAsync(otherSeason.Id, Arg.Any<CancellationToken>()).Returns(otherSeason);
+        await _service.SaveCampPolygonAsync(otherSeason.Id, Square, 10, Guid.NewGuid(), cancellationToken: ct);
         var otherSeasonHistoryId = (await CityPlanningDb.CampPolygonHistories.SingleAsync(ct)).Id;
 
         var result = await CreateController().RestoreCampPolygon(_campSeasonId, otherSeasonHistoryId, ct);
@@ -412,7 +460,7 @@ public sealed class CityPlanningApiControllerTests : CityPlanningTestBase
     [HumansFact]
     public async Task GetState_NoActiveEvent_IsNotFound()
     {
-        _settings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns((EventSettingsInfo?)null);
+        _settings.GetActiveEventSettings().Returns((EventSettingsInfo?)null);
 
         var result = await CreateController().GetState(TestContext.Current.CancellationToken);
 
@@ -425,6 +473,19 @@ public sealed class CityPlanningApiControllerTests : CityPlanningTestBase
         var result = await CreateController().ExportGeoJson(null, TestContext.Current.CancellationToken);
 
         result.Should().BeOfType<ForbidResult>();
+    }
+
+    [HumansFact]
+    public async Task SaveCampPolygon_UserWhoMayNotEdit_IsForbiddenAndWritesNothing()
+    {
+        var ct = TestContext.Current.CancellationToken;
+
+        var result = await CreateController().SaveCampPolygon(
+            _campSeasonId, new SaveCampPolygonRequest(Square, 10), ct);
+
+        result.Should().BeOfType<ForbidResult>();
+        (await CityPlanningDb.CampPolygonHistories.CountAsync(ct)).Should().Be(0);
+        _allClients.ReceivedCalls().Should().BeEmpty();
     }
 
     [HumansFact]
@@ -515,7 +576,7 @@ public sealed class CityPlanningApiControllerTests : CityPlanningTestBase
     [HumansTheory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task PolygonWrite_BroadcastPreparationFailure_ReturnsSavedResult(bool restore)
+    public async Task PolygonWrite_MissingCampSeason_RefusesWithoutWritingOrBroadcasting(bool restore)
     {
         var ct = TestContext.Current.CancellationToken;
         Guid historyId = default;
@@ -525,7 +586,34 @@ public sealed class CityPlanningApiControllerTests : CityPlanningTestBase
             historyId = (await CityPlanningDb.CampPolygonHistories.SingleAsync(ct)).Id;
         }
         _campService.GetCampSeasonByIdAsync(_campSeasonId, Arg.Any<CancellationToken>())
-            .ThrowsAsync(new IOException("Camp directory unavailable"));
+            .Returns((CampSeasonInfo?)null);
+        var controller = CreateController(CampsRoles.CampsAdmin);
+
+        var result = restore
+            ? await controller.RestoreCampPolygon(_campSeasonId, historyId, ct)
+            : await controller.SaveCampPolygon(_campSeasonId, new SaveCampPolygonRequest(Square, 10), ct);
+
+        result.Should().BeOfType<BadRequestResult>();
+        (await CityPlanningDb.CampPolygons.CountAsync(ct)).Should().Be(restore ? 1 : 0);
+        (await CityPlanningDb.CampPolygonHistories.CountAsync(ct)).Should().Be(restore ? 1 : 0);
+        await _allClients.DidNotReceiveWithAnyArgs().SendCoreAsync(default!, default!, default);
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task PolygonWrite_BroadcastPreparationFailure_ReturnsSavedResult(bool restore)
+    {
+        var ct = TestContext.Current.CancellationToken;
+        Guid historyId = default;
+        if (restore)
+        {
+            await _service.SaveCampPolygonAsync(_campSeasonId, Square, 10, _userId, cancellationToken: ct);
+            historyId = (await CityPlanningDb.CampPolygonHistories.SingleAsync(ct)).Id;
+        }
+        var season = await _campService.GetCampSeasonByIdAsync(_campSeasonId, ct);
+        _campService.GetCampSeasonByIdAsync(_campSeasonId, Arg.Any<CancellationToken>())
+            .Returns(_ => season, _ => throw new IOException("Camp directory unavailable"));
         var controller = CreateController(CampsRoles.CampsAdmin);
 
         var result = restore
@@ -552,7 +640,7 @@ public sealed class CityPlanningApiControllerTests : CityPlanningTestBase
         repo.GetHistoryEntryAsync(default, default, default).ThrowsAsyncForAnyArgs(failure);
         _service = new CityPlanningService(repo, Clock,
             Options.Create(new CityPlanningOptions { CityPlanningTeamSlug = "city-planning" }),
-            _campService, _teamService, Substitute.For<IUserService>(), Substitute.For<IAuditLogService>(), _settings);
+            _campService, _teamService, Substitute.For<IUserService>(), Substitute.For<IAuditLogService>(), _settings, _containers);
         var controller = CreateController(CampsRoles.CampsAdmin);
         Func<Task> act = async () =>
         {

@@ -1,3 +1,4 @@
+using Humans.Base.ViewComponents;
 using Microsoft.AspNetCore.Html;
 
 namespace Humans.Base.Models.Tables;
@@ -28,7 +29,7 @@ public interface ITableModel
     bool SortDesc { get; }
 
     PagerViewModel? Pager { get; }
-    IReadOnlyList<TableFooterCell> FooterCells { get; }
+    IReadOnlyList<IReadOnlyList<TableFooterCell>> FooterRows { get; }
 
     /// <summary>Server mode: extra hidden form fields (e.g. pageSize) the filter form must preserve.</summary>
     IReadOnlyDictionary<string, string?> HiddenFields { get; }
@@ -42,6 +43,9 @@ public interface ITableModel
     /// <summary>Encoded <c>data-*</c> attributes for the row's <c>tr</c>, for page scripts that filter rows.</summary>
     IHtmlContent RowData(object row);
 }
+
+/// <summary>Arguments for the Human view component in a <see cref="CellFormat.Human"/> cell.</summary>
+public sealed record HumanCell(Guid UserId, HumanLayout Layout, HumanLink Link);
 
 public sealed record TableFooterCell(string Text, string? CssClass = null);
 
@@ -75,4 +79,7 @@ public interface ITableColumn
 
     /// <summary>data-sort-value emitted on the td so dates/money sort correctly client-side; null = omit.</summary>
     string? SortValue(object row);
+
+    /// <summary>A <see cref="CellFormat.Human"/> cell's member, rendered by the Human view component; null otherwise.</summary>
+    HumanCell? Human(object row);
 }

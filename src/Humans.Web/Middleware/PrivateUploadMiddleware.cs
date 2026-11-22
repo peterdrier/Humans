@@ -1,3 +1,4 @@
+using Humans.Base.Extensions;
 using System.Security.Claims;
 using Humans.Base.Authorization;
 using Humans.Issues.Contracts;
@@ -29,7 +30,7 @@ internal sealed class PrivateUploadMiddleware(RequestDelegate next)
             if (authentication.Succeeded && authentication.Principal is { } principal)
             {
                 context.User = principal;
-                if (Guid.TryParse(principal.FindFirstValue(ClaimTypes.NameIdentifier), out var userId)
+                if (principal.GetUserId() is { } userId
                     && Guid.TryParse(remaining.Value?.Split('/', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault(), out var issueId))
                 {
                     var viewer = new IssueViewer(userId, principal.FindAll(ClaimTypes.Role).Select(c => c.Value).ToList());

@@ -3,6 +3,7 @@ using System.Text;
 using AwesomeAssertions;
 using Humans.Pleo.Services;
 using Microsoft.Extensions.Options;
+using Microsoft.AspNetCore.WebUtilities;
 
 namespace Humans.Pleo.Tests;
 
@@ -47,6 +48,29 @@ public sealed class PleoClientTests
     }
 
     [HumansFact]
+    public async Task Employee_history_includes_deleted_cardholders_across_pages()
+    {
+        const string active = """{"id":"active","firstName":"Ana","lastName":"Active","isDeleted":false}""";
+        const string deleted = """{"id":"deleted","firstName":"Dee","lastName":"Departed","isDeleted":true}""";
+        var client = Make(req =>
+        {
+            var query = QueryHelpers.ParseQuery(req.RequestUri!.Query);
+            if (!string.Equals(query["includeDeleted"], "true", StringComparison.Ordinal))
+                return Json(Page(active, false, null));
+            return query.ContainsKey("after")
+                ? Json(Page(deleted, false, null))
+                : Json(Page(active, true, "next"));
+        });
+
+        var employees = await client.ListEmployeesAsync(Xunit.TestContext.Current.CancellationToken);
+
+        employees.Select(e => e.Id).Should().Equal("active", "deleted");
+        var former = employees.Single(e => e.IsDeleted);
+        former.FirstName.Should().Be("Dee");
+        former.LastName.Should().Be("Departed");
+    }
+
+    [HumansFact]
     public async Task Pager_fails_closed_on_a_repeated_cursor()
     {
         var client = Make(_ => Json(Page("""{"id":"a"}""", true, "same")));
@@ -66,6 +90,121 @@ public sealed class PleoClientTests
         await act.Should().ThrowAsync<PleoTransientException>().WithMessage("*without a data array*");
     }
 
+    [HumansTheory]
+    [Xunit.InlineData("entries", null)]
+    [Xunit.InlineData("accounts", "{}")]
+    [Xunit.InlineData("employees", "null")]
+    [Xunit.InlineData("receipts", """{"hasNextPage":null}""")]
+    [Xunit.InlineData("entries", """{"hasNextPage":"false"}""")]
+    public async Task Pager_rejects_unknown_completion_instead_of_returning_a_partial_dataset(string consumer, string? pagination)
+    {
+        var calls = 0;
+        var client = Make(_ => ++calls == 1
+            ? Json(Page("""{"id":"a"}""", true, "next"))
+            : Json(pagination is null ? """{"data":[]}""" : $$"""{"data":[],"pagination":{{pagination}}}"""));
+
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        Func<Task> action = () => consumer switch
+        {
+            "accounts" => client.SearchAccountsAsync(ct),
+            "employees" => client.ListEmployeesAsync(ct),
+            "receipts" => client.ListReceiptsAsync("entry", ct),
+            _ => client.SearchEntriesAsync(ct),
+        };
+
+        await action.Should().ThrowAsync<PleoTransientException>().WithMessage("*hasNextPage*");
+        calls.Should().Be(2);
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData("entries", "null")]
+    [Xunit.InlineData("accounts", "[]")]
+    [Xunit.InlineData("employees", "42")]
+    [Xunit.InlineData("balance", "true")]
+    [Xunit.InlineData("receipts", "\"unavailable\"")]
+    public async Task Non_object_responses_use_the_typed_provider_error_path(string consumer, string body)
+    {
+        var client = Make(_ => Json(body));
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        Func<Task> action = () => consumer switch
+        {
+            "accounts" => client.SearchAccountsAsync(ct),
+            "employees" => client.ListEmployeesAsync(ct),
+            "balance" => client.GetBalanceAsync(ct),
+            "receipts" => client.ListReceiptsAsync("entry", ct),
+            _ => client.SearchEntriesAsync(ct),
+        };
+
+        await action.Should().ThrowAsync<PleoPermanentException>().WithMessage("*expected a JSON object*");
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(PleoTypedRead.Accounts, "{}")]
+    [Xunit.InlineData(PleoTypedRead.Accounts, "{\"id\":null}")]
+    [Xunit.InlineData(PleoTypedRead.Categories, "{}")]
+    [Xunit.InlineData(PleoTypedRead.Categories, "{\"id\":\"\"}")]
+    [Xunit.InlineData(PleoTypedRead.Employees, "{}")]
+    [Xunit.InlineData(PleoTypedRead.Employees, "{\"id\":\" \"}")]
+    [Xunit.InlineData(PleoTypedRead.Receipts, "{}")]
+    [Xunit.InlineData(PleoTypedRead.Receipts, "{\"id\":\"\"}")]
+    public async Task Typed_reads_reject_items_without_usable_identities(PleoTypedRead consumer, string item)
+    {
+        var client = Make(_ => Json(Page(item, false, null)));
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        Func<Task> action = () => consumer switch
+        {
+            PleoTypedRead.Accounts => client.SearchAccountsAsync(ct),
+            PleoTypedRead.Categories => client.SearchCategoriesAsync(ct),
+            PleoTypedRead.Employees => client.ListEmployeesAsync(ct),
+            _ => client.ListReceiptsAsync("entry", ct),
+        };
+
+        await action.Should().ThrowAsync<PleoPermanentException>();
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(null)]
+    [Xunit.InlineData("")]
+    [Xunit.InlineData(" ")]
+    public async Task Balance_rejects_a_missing_currency_instead_of_replacing_the_reading(string? currency)
+    {
+        var body = System.Text.Json.JsonSerializer.Serialize(new
+        {
+            data = new
+            {
+                accounts = new[] { new
+                {
+                    isPrimary = true,
+                    balance = new
+                    {
+                        current = new { currency, value = 0 },
+                        available = new { value = 0 },
+                        pendingDebits = new { value = 0 },
+                    },
+                } },
+            },
+        });
+        var client = Make(_ => Json(body));
+
+        var act = () => client.GetBalanceAsync(Xunit.TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<PleoPermanentException>();
+    }
+
+    [HumansFact]
+    public async Task Balance_preserves_explicit_zero_and_a_foreign_currency()
+    {
+        var client = Make(_ => Json("""
+            {"data":{"accounts":[{"isPrimary":true,"balance":{
+              "current":{"currency":"USD","value":0},"available":{"value":0},"pendingDebits":{"value":0}
+            }}]}}
+            """));
+
+        var balance = await client.GetBalanceAsync(Xunit.TestContext.Current.CancellationToken);
+
+        balance.Should().Be(new PleoBalanceWire("USD", 0, 0, 0));
+    }
+
     [HumansFact]
     public async Task Sends_basic_auth_with_the_key_and_an_empty_password()
     {
@@ -82,6 +221,26 @@ public sealed class PleoClientTests
         captured.Headers.Authorization!.Scheme.Should().Be("Basic");
         Encoding.UTF8.GetString(Convert.FromBase64String(captured.Headers.Authorization.Parameter!))
             .Should().Be("test-key:");
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(298, "😀")]
+    [Xunit.InlineData(299, "")]
+    public async Task Permanent_error_body_preview_preserves_unicode(int prefixLength, string suffix)
+    {
+        var prefix = new string('e', prefixLength);
+        var client = Make(_ => new HttpResponseMessage(HttpStatusCode.Forbidden)
+        {
+            Content = new StringContent(prefix + "😀tail", Encoding.UTF8),
+        });
+
+        var act = () => client.GetBalanceAsync(Xunit.TestContext.Current.CancellationToken);
+        var failure = (await act.Should().ThrowAsync<PleoPermanentException>()).Which;
+
+        failure.StatusCode.Should().Be(403);
+        var encode = () => new UTF8Encoding(false, true).GetBytes(failure.Message);
+        encode.Should().NotThrow();
+        failure.Message.Should().EndWith(prefix + suffix);
     }
 
     [HumansFact]
@@ -135,3 +294,5 @@ public sealed class PleoClientTests
             Task.FromResult(respond(request));
     }
 }
+
+public enum PleoTypedRead { Accounts, Categories, Employees, Receipts }

@@ -1,18 +1,7 @@
-using Humans.Consent.Contracts;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Localization;
 using System.Security.Claims;
 using AwesomeAssertions;
-using Humans.Base.Constants;
-using Humans.Camps.Contracts;
-using Humans.GoogleIntegration.Contracts;
-using Humans.Governance.Contracts;
 using Humans.Notifications.Contracts;
 using Humans.Notifications.Services;
-using Humans.Teams.Contracts;
-using Humans.Tickets.Contracts;
-using Humans.Users.Contracts;
-using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 
@@ -20,46 +9,20 @@ namespace Humans.Notifications.Tests.Services;
 
 /// <summary>
 /// The composition <see cref="NotificationInboxRead"/> does for the machine API: the unread
-/// tab of the inbox service, newest first, plus the role-gated meters, highest priority first.
-/// The inbox service is a substitute; the meter provider is real over substituted sections.
+/// tab of the inbox service, newest first, plus the viewer's meters, highest priority first.
+/// The inbox service and the meter contributor are substitutes; the meter provider is real.
 /// </summary>
-public sealed class NotificationInboxReadTests : IDisposable
+public sealed class NotificationInboxReadTests
 {
     private readonly INotificationInboxService _inbox = Substitute.For<INotificationInboxService>();
-    private readonly IUserService _users = Substitute.For<IUserService>();
-    private readonly IGoogleSyncService _google = Substitute.For<IGoogleSyncService>();
-    private readonly ITeamService _teams = Substitute.For<ITeamService>();
-    private readonly ITicketSync _tickets = Substitute.For<ITicketSync>();
-    private readonly IGovernanceService _applications = Substitute.For<IGovernanceService>();
-    private readonly ICampService _camps = Substitute.For<ICampService>();
-    private readonly IMemoryCache _cache = new MemoryCache(new MemoryCacheOptions());
-    private readonly ServiceProvider _localization = new ServiceCollection().AddLogging().AddLocalization().BuildServiceProvider();
+    private readonly INotificationMeterContributor _contributor = Substitute.For<INotificationMeterContributor>();
     private readonly NotificationInboxRead _sut;
 
     public NotificationInboxReadTests()
     {
-        _users.GetAllUserInfosAsync(Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<IReadOnlyCollection<UserInfo>>([]));
-        _google.GetFailedSyncEventCountAsync(Arg.Any<CancellationToken>()).Returns(0);
-        _teams.GetTeamsAsync(Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<IReadOnlyDictionary<Guid, TeamInfo>>(new Dictionary<Guid, TeamInfo>()));
-        _tickets.IsInErrorStateAsync(Arg.Any<CancellationToken>()).Returns(false);
-        _camps.GetSettingsAsync(Arg.Any<CancellationToken>()).Returns(new CampSettingsInfo(2026, []));
-        _camps.GetCampsForYearAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<IReadOnlyList<CampInfo>>([]));
-
+        _contributor.GetMetersAsync(default!, default, default).ReturnsForAnyArgs([]);
         _sut = new NotificationInboxRead(
-            _inbox,
-            new NotificationMeterProvider(
-                _users, Substitute.For<IConsentService>(), _google, _teams, _tickets, _applications, _camps, _cache,
-                NullLogger<NotificationMeterProvider>.Instance,
-                _localization.GetRequiredService<IStringLocalizer<NotificationsResource>>()));
-    }
-
-    public void Dispose()
-    {
-        _cache.Dispose();
-        _localization.Dispose();
+            _inbox, new NotificationMeterProvider([_contributor], NullLogger<NotificationMeterProvider>.Instance));
     }
 
     [HumansFact]
@@ -110,16 +73,19 @@ public sealed class NotificationInboxReadTests : IDisposable
     }
 
     [HumansFact]
-    public async Task Meters_are_the_principals_role_gated_ones_with_priority_metadata()
+    public async Task Meters_are_the_viewers_contributed_ones_with_priority_metadata()
     {
         var userId = Guid.NewGuid();
+        var principal = Principal(userId);
         _inbox.GetInboxAsync(userId, null, "all", "unread", Arg.Any<CancellationToken>())
             .Returns(new NotificationInboxResult());
-        _google.GetFailedSyncEventCountAsync(Arg.Any<CancellationToken>()).Returns(2);
-        _tickets.IsInErrorStateAsync(Arg.Any<CancellationToken>()).Returns(true);
+        _contributor.GetMetersAsync(principal, userId, Arg.Any<CancellationToken>()).Returns(
+        [
+            new NotificationMeter { Title = "Ticket sync error", Count = 1, ActionUrl = "/Tickets", Audience = "Admins", Priority = 4 },
+            new NotificationMeter { Title = "Failed Google sync events", Count = 2, ActionUrl = "/Google/SyncOutbox", Audience = "Admins", Priority = 7 },
+        ]);
 
-        var snapshot = await _sut.GetUnreadInboxAsync(
-            Principal(userId, RoleNames.Admin), Xunit.TestContext.Current.CancellationToken);
+        var snapshot = await _sut.GetUnreadInboxAsync(principal, Xunit.TestContext.Current.CancellationToken);
 
         snapshot.Meters.Should().BeEquivalentTo(new[]
         {
@@ -137,10 +103,6 @@ public sealed class NotificationInboxReadTests : IDisposable
         await _inbox.DidNotReceiveWithAnyArgs().GetInboxAsync(default, default, default!, default!);
     }
 
-    private static ClaimsPrincipal Principal(Guid userId, params string[] roles)
-    {
-        var claims = new List<Claim> { new(ClaimTypes.NameIdentifier, userId.ToString()) };
-        claims.AddRange(roles.Select(role => new Claim(ClaimTypes.Role, role)));
-        return new ClaimsPrincipal(new ClaimsIdentity(claims, authenticationType: "Test"));
-    }
+    private static ClaimsPrincipal Principal(Guid userId) =>
+        new(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, userId.ToString())], authenticationType: "Test"));
 }

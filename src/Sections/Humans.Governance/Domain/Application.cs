@@ -31,8 +31,6 @@ internal sealed class Application
 
     public Instant UpdatedAt { get; set; }
 
-    public Instant? ReviewStartedAt { get; private set; }
-
     public Instant? ResolvedAt { get; private set; }
 
     public Guid? ReviewedByUserId { get; private set; }

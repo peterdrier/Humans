@@ -23,6 +23,9 @@ public sealed record EventSettingsInfo(
     int? EarlyEntryStartOffset = null,
     bool IsOffSeason = false) : IEventSettingsInfo
 {
+    /// <inheritdoc cref="IEventSettingsInfo.TimeZone" />
+    public DateTimeZone TimeZone => ((IEventSettingsInfo)this).TimeZone;
+
     /// <summary>
     /// Step function: the capacity at the largest key ≤ <paramref name="dayOffset"/>, or 0 if none qualifies.
     /// </summary>

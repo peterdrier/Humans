@@ -11,15 +11,12 @@
         <page-header-subtitle>
             <a asp-action="Team" asp-route-teamId="@Model.Event.OwningTeamId">@Model.OwningTeamName</a>
         </page-header-subtitle>
-        @if (Model.CanEdit)
-        {
-            <a class="btn btn-sm btn-outline-primary" asp-action="Edit" asp-route-id="@Model.Event.Id">@SharedLocalizer["Common_Edit"]</a>
-            <form asp-action="Delete" asp-route-id="@Model.Event.Id" method="post" class="d-inline"
-                  data-confirm="@Localizer["Calendar_DeleteConfirm"]">
-                @Html.AntiForgeryToken()
-                <button type="submit" class="btn btn-sm btn-outline-danger">@SharedLocalizer["Common_Delete"]</button>
-            </form>
-        }
+        <a class="btn btn-sm btn-outline-primary" asp-action="Edit" asp-route-id="@Model.Event.Id">@SharedLocalizer["Common_Edit"]</a>
+        <form asp-action="Delete" asp-route-id="@Model.Event.Id" method="post" class="d-inline"
+              data-confirm="@Localizer["Calendar_DeleteConfirm"]">
+            @Html.AntiForgeryToken()
+            <button type="submit" class="btn btn-sm btn-outline-danger">@SharedLocalizer["Common_Delete"]</button>
+        </form>
     </page-header>
 
     <dl class="row">
@@ -53,19 +50,10 @@
             <dd class="col-sm-9">@Localizer["Calendar_Yes"]</dd>
         }
 
-        @if (!string.IsNullOrWhiteSpace(Model.Event.Location))
+        @if (!string.IsNullOrWhiteSpace(Model.Event.Location) || !string.IsNullOrWhiteSpace(Model.Event.LocationUrl))
         {
             <dt class="col-sm-3">@SharedLocalizer["Profile_Location"]</dt>
-            <dd class="col-sm-9">
-                @if (!string.IsNullOrWhiteSpace(Model.Event.LocationUrl))
-                {
-                    <a href="@Model.Event.LocationUrl" target="_blank" rel="noopener">@Model.Event.Location</a>
-                }
-                else
-                {
-                    @Model.Event.Location
-                }
-            </dd>
+            <dd class="col-sm-9"><partial name="_CalendarLocation" model="(Model.Event.Location, Model.Event.LocationUrl)" /></dd>
         }
 
         @if (!string.IsNullOrWhiteSpace(Model.Event.Description))
@@ -104,7 +92,7 @@
                             <em class="text-muted">— @o.Title</em>
                         }
                     </span>
-                    @if (Model.CanEdit && o.IsRecurring && (o.OriginalOccurrenceStartUtc is not null || o.OriginalOccurrenceDate is not null))
+                    @if (o.IsRecurring && (o.OriginalOccurrenceStartUtc is not null || o.OriginalOccurrenceDate is not null))
                     {
                         <a class="btn btn-sm btn-outline-secondary"
                            asp-action="EditOccurrence"

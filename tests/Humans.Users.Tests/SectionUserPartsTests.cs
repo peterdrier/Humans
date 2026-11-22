@@ -6,7 +6,7 @@ namespace Humans.Users.Tests;
 public sealed class SectionUserPartsTests
 {
     [HumansFact]
-    public void Parts_ContributesProfileCardAndHumanSummaryToForeignHostSlots()
+    public void Parts_ContributesProfileCardToForeignHostSlots()
     {
         IUserPart contribution = ((IUserPart)new Section());
 
@@ -16,7 +16,6 @@ public sealed class SectionUserPartsTests
         [
             UserPartSlots.BoardVoteApplicant,
             UserPartSlots.ConsentReviewApplicant,
-            UserPartSlots.TicketTransferParty,
         ]);
     }
 }

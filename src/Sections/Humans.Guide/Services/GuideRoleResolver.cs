@@ -1,3 +1,4 @@
+using Humans.Base.Extensions;
 using System.Security.Claims;
 using Humans.Camps.Contracts;
 using Humans.Teams.Contracts;
@@ -29,10 +30,9 @@ internal sealed class GuideRoleResolver(
             }
         }
 
-        var userIdClaim = user.FindFirstValue(ClaimTypes.NameIdentifier);
         var isCoordinator = false;
         var isCampLead = false;
-        if (Guid.TryParse(userIdClaim, out var userId)
+        if (user.GetUserId() is { } userId
             && await users.GetUserInfoAsync(userId, cancellationToken) is { } viewer)
         {
             // Camp lead is a per-camp role, not a claim: the guide's unit of visibility is
@@ -47,7 +47,6 @@ internal sealed class GuideRoleResolver(
         }
 
         return new GuideRoleContext(
-            IsAuthenticated: true,
             IsTeamCoordinator: isCoordinator,
             IsCampLead: isCampLead,
             SystemRoles: systemRoles);

@@ -72,7 +72,7 @@ public sealed class FacilitatedMessageControllerTests
         var target = Info(_targetId, "Target", "target@example.com");
         _users.GetUserInfoAsync(_viewerId, Arg.Any<CancellationToken>()).Returns(viewer);
         _users.GetUserInfoAsync(_targetId, Arg.Any<CancellationToken>()).Returns(target);
-        _users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+        _users.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, UserInfo> { [_viewerId] = viewer, [_targetId] = target });
         _commPrefs.AcceptsFacilitatedMessagesAsync(_targetId, Arg.Any<CancellationToken>()).Returns(true);
         _emailMessages.FacilitatedMessage(
@@ -154,7 +154,7 @@ public sealed class FacilitatedMessageControllerTests
         var view = services.GetRequiredService<IRazorViewEngine>()
             .GetView(null, "/Views/FacilitatedMessage/SendMessage.cshtml", isMainPage: false);
         Assert.True(view.Success);
-        var http = new DefaultHttpContext { RequestServices = services };
+        var http = new DefaultHttpContext { RequestServices = services, User = new System.Security.Claims.ClaimsPrincipal(new System.Security.Claims.ClaimsIdentity([new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.Name, "viewer")], "test")) };
         var action = new ActionContext(http, new RouteData(), new Microsoft.AspNetCore.Mvc.Abstractions.ActionDescriptor());
         var data = new ViewDataDictionary(services.GetRequiredService<IModelMetadataProvider>(), new ModelStateDictionary()) { Model = result.Model };
         using var writer = new StringWriter();
@@ -168,7 +168,7 @@ public sealed class FacilitatedMessageControllerTests
             .GetString("Email_SendMessage_Heading", CultureInfo.GetCultureInfo(language));
         Assert.NotNull(template);
         Assert.Equal(string.Format(CultureInfo.CurrentCulture, template,
-            $"<span>{HtmlEncoder.Default.Encode(currentName)}</span>"), heading);
+            $"<a href=\"/\" class=\"text-decoration-none\" data-human-popover=\"true\" data-user-id=\"{_targetId}\">{HtmlEncoder.Default.Encode(currentName)}</a>"), heading);
         Assert.DoesNotContain("name=\"RecipientDisplayName\"", html, StringComparison.Ordinal);
     }
 
@@ -256,7 +256,7 @@ public sealed class FacilitatedMessageControllerTests
     public async Task Post_RendersInTheRecipientsSupportedLanguage(string language, string expectedCulture)
     {
         using var actorCulture = new CultureScope("fr");
-        _users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+        _users.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, UserInfo>
             {
                 [_viewerId] = Info(_viewerId, "Viewer", "viewer@example.com"),

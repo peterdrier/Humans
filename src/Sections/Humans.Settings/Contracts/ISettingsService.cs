@@ -3,8 +3,8 @@ using Humans.Base.Interfaces;
 namespace Humans.Settings.Contracts;
 
 /// <summary>
-/// No <c>SaveEventSettingsAsync</c> here: only the section's own <c>/Settings/Admin</c> POST writes event settings.
-/// <see cref="SetValueAsync"/> stays because some keys are written from outside the section.
+/// <see cref="SetValueAsync"/> is here because other sections write their own keys; event-settings writes stay
+/// section-internal.
 /// </summary>
 public interface ISettingsService : IApplicationService
 {
@@ -16,8 +16,8 @@ public interface ISettingsService : IApplicationService
     /// <summary>The organisation's IANA timezone, which every event is read in; Europe/Madrid until an admin sets one.</summary>
     Task<string> GetTimeZoneIdAsync(CancellationToken cancellationToken = default);
 
-    /// <summary>Null when no event is active.</summary>
-    Task<EventSettingsInfo?> GetActiveEventSettingsAsync(CancellationToken cancellationToken = default);
+    /// <summary>Null when no event is active. Served from memory: the event settings load at startup.</summary>
+    EventSettingsInfo? GetActiveEventSettings();
 
     /// <summary>Includes inactive cycles. Null when the id is unknown.</summary>
     Task<EventSettingsInfo?> GetEventSettingsByIdAsync(Guid id, CancellationToken cancellationToken = default);

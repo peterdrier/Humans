@@ -280,9 +280,9 @@ public class ConsentReviewQueueControllerTests
 
     private static UserInfo MakeUserInfo(Guid userId)
     {
-        var profile = UserFixtures.Profile(burnerName: "User");
+        var profile = UserFixtures.Profile();
         return UserInfo.Create(
-            new User { Id = userId, PreferredLanguage = "en", BurnerName = profile.BurnerName, State = UserFixtures.StateFor(profile) },
+            new User { Id = userId, PreferredLanguage = "en", BurnerName = "User", State = UserState.Bare },
             [], [], profile: profile);
     }
 }

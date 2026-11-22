@@ -1,0 +1,9 @@
+@model Humans.Users.Models.ProfileViewModel
+
+@if (Model.IsOwnProfile && Model.HasPendingConsents)
+{
+    <div class="alert alert-warning" role="alert">
+        <strong>@Localizer["Users_Profile_ActionRequired"]</strong> @string.Format(Localizer["Users_Profile_PendingConsents"].Value, Model.PendingConsentCount)
+        <a asp-controller="Consent" asp-action="Index" class="alert-link">@Localizer["Users_Profile_ReviewNow"]</a>
+    </div>
+}

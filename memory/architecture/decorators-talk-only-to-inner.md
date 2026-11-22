@@ -23,4 +23,4 @@ It does **not** inject `IUserRepository`, sibling repos, `IUserService`, or any 
 
 - `caching-transparent` (no `Cached*` types in the domain surface).
 - `cached-reads-no-shape-variants` (one shape per cache, not `IncludeFoo` variants).
-- `docs/architecture/design-rules.md` §15 (caching pattern).
+- `docs/architecture/design-rules.md`, *Section caching pattern* (caching pattern).

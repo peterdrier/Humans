@@ -567,15 +567,6 @@
   <data name="Dashboard_ManageConsents" xml:space="preserve">
     <value>Esamina accordi</value>
   </data>
-  <data name="Dashboard_RejectedTitle" xml:space="preserve">
-    <value>Registrazione rifiutata</value>
-  </data>
-  <data name="Dashboard_RejectedMessage" xml:space="preserve">
-    <value>La Sua registrazione è stata esaminata e non è stata approvata. Per domande, contatti il team di amministrazione.</value>
-  </data>
-  <data name="Dashboard_RejectionReason" xml:space="preserve">
-    <value>Motivo</value>
-  </data>
   <data name="Dashboard_Subtitle" xml:space="preserve">
     <value>Ecco cosa succede.</value>
   </data>
@@ -661,9 +652,6 @@
   <data name="Profile_MembershipTier" xml:space="preserve">
     <value>Categoria di adesione</value>
   </data>
-  <data name="Profile_MotivationRequired" xml:space="preserve">
-    <value>Una dichiarazione di motivazione è richiesta per le domande di Colaborador e Asociado.</value>
-  </data>
   <data name="ProfileEdit_TierDescription" xml:space="preserve">
     <value>Scegli come vuoi partecipare:</value>
   </data>
@@ -675,27 +663,6 @@
   </data>
   <data name="ProfileEdit_TierAsociadoSubtitle" xml:space="preserve">
     <value>membro votante</value>
-  </data>
-  <data name="Application_AsociadoQuestionsHeader" xml:space="preserve">
-    <value>Domande aggiuntive per i candidati Asociado</value>
-  </data>
-  <data name="Application_SignificantContribution" xml:space="preserve">
-    <value>Qual è stato il tuo contributo più significativo a Elsewhere?</value>
-  </data>
-  <data name="Application_SignificantContributionPlaceholder" xml:space="preserve">
-    <value>Se non te ne viene in mente nessuno, ma hai contribuito in modo significativo a un altro Burn, raccontacelo.</value>
-  </data>
-  <data name="Application_SignificantContributionRequired" xml:space="preserve">
-    <value>Descrivi il tuo contributo più significativo per una domanda di Asociado.</value>
-  </data>
-  <data name="Application_RoleUnderstanding" xml:space="preserve">
-    <value>Con le tue parole, cosa capisci del ruolo di un asociado e perché vuoi questa responsabilità?</value>
-  </data>
-  <data name="Application_RoleUnderstandingPlaceholder" xml:space="preserve">
-    <value>Raccontaci cosa significa questo ruolo per te e perché sei pronto/a.</value>
-  </data>
-  <data name="Application_RoleUnderstandingRequired" xml:space="preserve">
-    <value>Descrivi la tua comprensione del ruolo di asociado.</value>
   </data>
   <data name="Profile_Updated" xml:space="preserve">
     <value>Profilo aggiornato con successo.</value>
@@ -726,27 +693,6 @@
   </data>
   <data name="Admin_StatsPending" xml:space="preserve">
     <value>In attesa</value>
-  </data>
-  <data name="Application_AlreadyPending" xml:space="preserve">
-    <value>Ha già una domanda in sospeso.</value>
-  </data>
-  <data name="Application_InvalidTier" xml:space="preserve">
-    <value>Selezionare Colaborador o Asociado per la domanda.</value>
-  </data>
-  <data name="Application_ConfirmAccuracy" xml:space="preserve">
-    <value>Deve confermare l'accuratezza delle Sue informazioni.</value>
-  </data>
-  <data name="Application_Submitted" xml:space="preserve">
-    <value>La Sua domanda è stata inviata con successo!</value>
-  </data>
-  <data name="Application_SubmitError" xml:space="preserve">
-    <value>Si è verificato un errore durante l’invio della domanda. Per favore, riprovi.</value>
-  </data>
-  <data name="Application_CannotWithdraw" xml:space="preserve">
-    <value>Questa domanda non può essere ritirata.</value>
-  </data>
-  <data name="Application_Withdrawn" xml:space="preserve">
-    <value>La Sua domanda è stata ritirata.</value>
   </data>
   <data name="Teams_Title" xml:space="preserve">
     <value>Team</value>
@@ -927,9 +873,6 @@
   <data name="Nav_City" xml:space="preserve">
     <value>Mappa</value>
   </data>
-  <data name="Nav_Rideshare" xml:space="preserve">
-    <value>Passaggi</value>
-  </data>
   <data name="Nav_Budget" xml:space="preserve">
     <value>Budget</value>
   </data>
@@ -959,17 +902,8 @@
   <data name="Search_Title" xml:space="preserve">
     <value>Cerca Humans</value>
   </data>
-  <data name="Search_Placeholder" xml:space="preserve">
-    <value>Cerca per nome, città, interessi, bio...</value>
-  </data>
-  <data name="Search_NoResults" xml:space="preserve">
-    <value>Nessun human trovato corrispondente alla tua ricerca.</value>
-  </data>
   <data name="Search_MatchedIn" xml:space="preserve">
     <value>Corrispondenza in</value>
-  </data>
-  <data name="Search_MinChars" xml:space="preserve">
-    <value>Inserisci almeno 2 caratteri per cercare.</value>
   </data>
   <data name="Camp_Plural" xml:space="preserve">
     <value>Barrios</value>
@@ -1089,15 +1023,6 @@
   <data name="Todo_Consents_Action" xml:space="preserve">
     <value>Esamina gli accordi</value>
   </data>
-  <data name="Todo_ConsentCheck_Title" xml:space="preserve">
-    <value>Revisione del coordinatore</value>
-  </data>
-  <data name="Todo_ConsentCheck_Done" xml:space="preserve">
-    <value>Un coordinatore ha verificato e approvato i tuoi documenti.</value>
-  </data>
-  <data name="Todo_ConsentCheck_Pending" xml:space="preserve">
-    <value>Un coordinatore verificherà i tuoi documenti una volta completati profilo e accordi.</value>
-  </data>
   <data name="Todo_ShiftInfo_Title" xml:space="preserve">
     <value>Imposta le tue preferenze di turno</value>
   </data>
@@ -1136,34 +1061,6 @@
   </data>
   <data name="Nav_Guide" xml:space="preserve">
     <value>Aiuto</value>
-  </data>
-  <data name="ShiftsSummary_Title" xml:space="preserve">
-    <value>Turni</value>
-  </data>
-  <data name="ShiftsSummary_SlotsFilled" xml:space="preserve">
-    <value>{0} / {1} posti occupati</value>
-    <comment>{0} = filled, {1} = total</comment>
-  </data>
-  <data name="ShiftsSummary_HumansSignedUp" xml:space="preserve">
-    <value>{0} humans iscritti</value>
-    <comment>{0} = count</comment>
-  </data>
-  <data name="ShiftsSummary_PendingCount" xml:space="preserve">
-    <value>{0} in sospeso</value>
-    <comment>{0} = count</comment>
-  </data>
-  <data name="ShiftsSummary_NoShifts" xml:space="preserve">
-    <value>Nessun turno configurato ancora.</value>
-  </data>
-  <data name="ShiftsSummary_IncludesSubTeams" xml:space="preserve">
-    <value>Include turni da {0} sotto-team</value>
-    <comment>{0} = count</comment>
-  </data>
-  <data name="ShiftsSummary_ManageShifts" xml:space="preserve">
-    <value>Gestisci turni</value>
-  </data>
-  <data name="Medical_Badge" xml:space="preserve">
-    <value>Medico</value>
   </data>
   <data name="Privacy_Lead" xml:space="preserve">
     <value>Humans gestisce l'appartenenza a Nobodies Collective e tratta i dati personali in conformità con il GDPR e la legge spagnola sulla protezione dei dati (LOPDGDD).</value>
@@ -1352,7 +1249,7 @@
     <value>N/D</value>
   </data>
   <data name="EmailGrid_LinkFailed" xml:space="preserve">
-    <value>Non siamo riusciti a collegare questo account Google. Riprova.</value>
+    <value>Non siamo riusciti a collegare questo account Google. Se l'account, o il suo indirizzo, appartiene già a un altro tuo account, aggiungi quell'indirizzo da "Aggiungi email" e segui il link che ti inviamo per unire i due.</value>
   </data>
   <data name="Profile_BuildStrip_Title" xml:space="preserve">
     <value>Disponibilità e monitoraggio del montaggio</value>
@@ -1562,6 +1459,15 @@
   <data name="Settings_TabGate" xml:space="preserve">
     <value>Cancello</value>
   </data>
+  <data name="Settings_TabTickets" xml:space="preserve">
+    <value>Biglietti</value>
+  </data>
+  <data name="Settings_TabStore" xml:space="preserve">
+    <value>Negozio</value>
+  </data>
+  <data name="Settings_TabFinance" xml:space="preserve">
+    <value>Finanze</value>
+  </data>
   <data name="Settings_TabBarrios" xml:space="preserve">
     <value>Barrios</value>
   </data>
@@ -1594,11 +1500,8 @@
   <data name="Enum_SystemTeamType_Asociados" xml:space="preserve"><value>Asociados</value></data>
   <data name="Enum_SystemTeamType_Colaboradors" xml:space="preserve"><value>Colaboradores</value></data>
   <data name="Enum_SystemTeamType_BarrioLeads" xml:space="preserve"><value>Responsabili dei camp</value></data>
-  <data name="Application_MotivationLength" xml:space="preserve"><value>La motivazione deve contenere tra 50 e 2000 caratteri.</value></data>
-  <data name="Application_AdditionalInfoTooLong" xml:space="preserve"><value>Le informazioni aggiuntive non devono superare i 1000 caratteri.</value></data>
-  <data name="Application_SignificantContributionTooLong" xml:space="preserve"><value>Il contributo significativo non deve superare i 2000 caratteri.</value></data>
-  <data name="Application_RoleUnderstandingTooLong" xml:space="preserve"><value>La descrizione del ruolo non deve superare i 2000 caratteri.</value></data>
   <data name="Document_LegalLabel" xml:space="preserve"><value>Versione legale</value></data>
   <data name="Todo_Medical_Title" xml:space="preserve"><value>C’è qualcosa sulla tua salute che i coordinatori dovrebbero sapere?</value></data>
   <data name="Todo_Medical_Pending" xml:space="preserve"><value>Facoltativo. Lo vedete solo tu e i No-Info Admin.</value></data>
+  <data name="Nav_Roles" xml:space="preserve"><value>Ruoli</value></data>
 </root>

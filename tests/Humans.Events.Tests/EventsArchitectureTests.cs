@@ -113,7 +113,7 @@ public class EventsArchitectureTests
             BindingFlags.Public | BindingFlags.Static);
 
         field.Should().NotBeNull(
-            because: "§15d — the decorator must publish the keyed DI key it uses to resolve the inner service");
+            because: "the decorator must publish the keyed DI key it uses to resolve the inner service");
         field.GetValue(null).Should().Be("event-inner",
             because: "convention: <section>-inner");
     }

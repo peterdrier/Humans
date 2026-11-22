@@ -7,6 +7,7 @@ using Humans.Base.Interfaces.Caching;
 using Humans.Base.Models;
 using Humans.Consent.Contracts;
 using Humans.Consent.Data;
+using Humans.Consent.Health;
 using Humans.Consent.Jobs;
 using Humans.Consent.Services;
 using Humans.Consent.ViewComponents;
@@ -22,6 +23,8 @@ using Humans.Users.Contracts;
 using static Humans.Base.Models.AccessLevel;
 using static Humans.Base.Models.AccessMatrixFeature;
 
+[assembly: Humans.Base.Demo.NoDemoStory("No demo story written yet.")]
+
 namespace Humans.Consent;
 
 public sealed class Section :
@@ -32,10 +35,16 @@ public sealed class Section :
     ISectionAdminNav,
     ISectionHelp,
     ISectionJobs,
+    ISectionHealthChecks,
     ISectionPolicies,
     IUserPart,
     ISectionChrome
 {
+    void ISectionHealthChecks.AddHealthChecks(IHealthChecksBuilder builder, IConfiguration configuration)
+    {
+        builder.AddCheck<GitHubHealthCheck>("github", tags: [HealthCheckTags.External]);
+    }
+
     IReadOnlyList<RoleDefinition> ISectionRoles.Roles { get; } =
     [
         new(ConsentRoles.ConsentCoordinator, "Consent Coordinator",
@@ -54,6 +63,7 @@ public sealed class Section :
 
         services.AddSingleton<IAuditActionContributor, ConsentAuditActions>();
         services.AddSingleton<INotificationSourceContributor, ConsentNotificationSources>();
+        services.AddScoped<INotificationMeterContributor, ConsentNotificationMeters>();
         services.AddSectionDbContext<LegalDbContext>(sentinelTable: "legal_documents");
 
         services.AddSingleton<ILegalDocumentRepository, LegalDocumentRepository>();
@@ -68,8 +78,6 @@ public sealed class Section :
                 CachingLegalDocumentSyncService.InnerServiceKey));
         services.AddSingleton<CachingLegalDocumentSyncService>();
         services.AddSingleton<ILegalDocumentSyncManagement>(sp =>
-            sp.GetRequiredService<CachingLegalDocumentSyncService>());
-        services.AddSingleton<ILegalDocumentSyncService>(sp =>
             sp.GetRequiredService<CachingLegalDocumentSyncService>());
         services.AddSingleton<ICacheStats>(sp =>
             sp.GetRequiredService<CachingLegalDocumentSyncService>());
@@ -139,13 +147,24 @@ public sealed class Section :
             Key = "ConsentReview",
             SectionName = "Consent Review",
             Order = 50,
-            Roles = ["ConsentCoordinator", "ShiftsAdmin", "Board"],
+            Roles = ["ConsentCoordinator", "Board"],
             Features =
             [
-                Of("View review queue", ("ConsentCoordinator", Allowed), ("ShiftsAdmin", Allowed), ("Board", Allowed)),
-                Of("Clear consent checks", ("ConsentCoordinator", Allowed), ("ShiftsAdmin", Denied), ("Board", Allowed)),
-                Of("Flag / reject signup", ("ConsentCoordinator", Allowed), ("ShiftsAdmin", Denied), ("Board", Allowed)),
-                Of("Board voting", ("ConsentCoordinator", Denied), ("ShiftsAdmin", Denied), ("Board", Allowed)),
+                Of("View review queue", ("ConsentCoordinator", Allowed), ("Board", Allowed)),
+                Of("Clear consent checks", ("ConsentCoordinator", Allowed), ("Board", Allowed)),
+                Of("Flag / reject signup", ("ConsentCoordinator", Allowed), ("Board", Allowed)),
+                Of("Board voting", ("ConsentCoordinator", Denied), ("Board", Allowed)),
+            ]
+        },
+        new()
+        {
+            Key = "LegalDocuments",
+            SectionName = "Legal Documents",
+            Order = 92,
+            Roles = ["Board", "Admin"],
+            Features =
+            [
+                Of("Legal documents", ("Board", Allowed), ("Admin", Allowed)),
             ]
         }
     ];
@@ -164,7 +183,7 @@ public sealed class Section :
         var users = sp.GetRequiredService<IUserService>();
         var reviews = await sp.GetRequiredService<IConsentService>().GetConsentReviewsAsync();
         var count = (await users.GetAllUserInfosAsync()).Count(u =>
-            u.NeedsConsentReview(reviews.GetValueOrDefault(u.Id) ?? ConsentReviewInfo.None(u.Id)));
+            (reviews.GetValueOrDefault(u.Id) ?? ConsentReviewInfo.None(u.Id)).NeedsConsentReview(u));
         return count > 0 ? count : null;
     }
 
@@ -173,6 +192,7 @@ public sealed class Section :
     private static readonly IReadOnlyList<SectionHelpEntry> HelpEntries =
     [
         SectionHelpEntry.FromEmbeddedMarkdown(typeof(Section).Assembly, "ConsentReview", 70),
+        SectionHelpEntry.FromEmbeddedMarkdown(typeof(Section).Assembly, "LegalDocuments", 83),
     ];
 
     IEnumerable<RecurringJobDescriptor> ISectionJobs.Jobs(IServiceProvider services)
@@ -188,6 +208,9 @@ public sealed class Section :
     void ISectionPolicies.AddPolicies(AuthorizationOptions options)
     {
         options.AddPolicy(PolicyNames.ConsentCoordinatorBoardOrAdmin, policy =>
+            policy.RequireRole(ConsentRoles.ConsentCoordinator, RoleNames.Board, RoleNames.Admin));
+
+        options.AddPolicy(PolicyNames.ReviewQueueAccess, policy =>
             policy.RequireRole(ConsentRoles.ConsentCoordinator, RoleNames.Board, RoleNames.Admin));
     }
 

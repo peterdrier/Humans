@@ -16,6 +16,8 @@ using Humans.Notifications.Contracts;
 using Microsoft.Extensions.DependencyInjection;
 using Humans.AuditLog.Contracts;
 
+[assembly: Humans.Base.Demo.NoDemoStory("No demo story written yet.")]
+
 namespace Humans.Preapprovals;
 
 public sealed class Section : ISection, ISectionAdminNav, ISectionJobs, ISectionPolicies
@@ -36,6 +38,14 @@ public sealed class Section : ISection, ISectionAdminNav, ISectionJobs, ISection
 
         services.AddSingleton<IPreapprovalRepository, PreapprovalRepository>();
 
+        services.AddScoped<PreapprovalNotices>(sp => new(
+            sp.GetRequiredService<IUserService>(),
+            sp.GetRequiredService<INotificationEmitter>(),
+            sp.GetRequiredService<INotificationAutoResolve>(),
+            sp.GetRequiredService<IEmailService>(),
+            sp.GetRequiredService<PreapprovalsEmails>(),
+            sp.GetRequiredService<ILogger<PreapprovalService>>()));
+        services.AddScoped<PreapprovalDeadlineReminders>();
         services.AddScoped<PreapprovalService>();
         services.AddScoped<IPreapprovalManagement>(sp => sp.GetRequiredService<PreapprovalService>());
         services.AddScoped<IPreapprovalService>(sp => sp.GetRequiredService<PreapprovalService>());

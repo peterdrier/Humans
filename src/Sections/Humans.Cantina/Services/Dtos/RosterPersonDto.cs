@@ -2,10 +2,7 @@ using NodaTime;
 
 namespace Humans.Cantina.Services.Dtos;
 
-/// <summary>
-/// Deliberately has no <c>MedicalConditions</c>: the cached profile the service reads carries it, and this record is
-/// where it stops.
-/// </summary>
+/// <summary>One person on the cantina weekly roster.</summary>
 /// <remarks>
 /// <paramref name="ArrivesOn"/> is the true arrival day, the day before the first confirmed shift of the event, even
 /// when it falls before this week.

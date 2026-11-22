@@ -232,9 +232,10 @@ is empty. Re-run Finds for new actionable view moves.
 **What:** Confirmed-dead code (zero call sites, a duplicate private helper,
 an unused enum flag) with no public-surface change. A "duplicate mutation
 pipeline" collapsed into one owner-section method replacing ≥2 identical
-caller sequences is pre-approved (D1) — do it and list it in the PR, as is a section-internal
-split into a new `internal` class (D1). Only a "god class" split needing a NEW interface or service goes to Peter, as a D3
-yes/no proposal with the concrete signatures.
+caller sequences is pre-approved (D1) — do it and list it in the PR. Never split a large
+service ([`one-service-class-no-helpers`](../../memory/architecture/one-service-class-no-helpers.md)):
+a helper it constructs and forwards to is forbidden, and a split into separate services is
+Peter's call, so propose it in the report instead. An existing helper moves back into its service.
 
 **Finds:** `review: light` rows mentioning dead/duplicate code:
 ```
@@ -334,7 +335,7 @@ future run doesn't re-derive it:
 - **`NoDestructiveMigrationOps.baseline.txt`.** An approval ledger of
   immutable, already-shipped migrations with Peter's written sign-off above
   each — not a backlog. The rule guards new drops, never sweep existing ones.
-- **The `[DontFix]` classes** (`AuditLogService`, `RoleAssignmentService`).
+- **The `[DontFix]` classes** (`AuditLogService`).
   Peter-only, permanent. Never "fix" them, never add the attribute elsewhere.
 - **The `TicketRepository` rows in `DisplaySortInControllers.baseline.txt`.**
   Peter ruled these stay until the paged grid's sort is redesigned

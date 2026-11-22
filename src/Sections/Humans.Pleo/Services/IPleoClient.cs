@@ -1,3 +1,4 @@
+using Humans.Pleo.Contracts;
 using System.Text.Json;
 
 namespace Humans.Pleo.Services;
@@ -12,6 +13,10 @@ internal interface IPleoClient
     Task<IReadOnlyList<JsonElement>> SearchEntriesAsync(CancellationToken ct = default);
 
     Task<IReadOnlyList<PleoAccountWire>> SearchAccountsAsync(CancellationToken ct = default);
+    /// <summary>Every spending category, archived ones included: old entries still carry them.</summary>
+    Task<IReadOnlyList<PleoCategoryWire>> SearchCategoriesAsync(CancellationToken ct = default);
+
+    /// <summary>Active and deleted cardholders, so historical entries retain their names.</summary>
     Task<IReadOnlyList<PleoEmployeeWire>> ListEmployeesAsync(CancellationToken ct = default);
     Task<PleoBalanceWire> GetBalanceAsync(CancellationToken ct = default);
 
@@ -51,10 +56,12 @@ internal sealed record PleoEntryWire(
 
 internal sealed record PleoAccountWire(string Id, string? Code, string? Name, string? ExternalId, bool Archived);
 
+/// <summary><paramref name="AccountId"/> is the chart account (<see cref="PleoAccountWire.Id"/>) the category books to.</summary>
+internal sealed record PleoCategoryWire(string Id, string? Name, string? AccountId, bool Archived);
+
 internal sealed record PleoEmployeeWire(string Id, string? FirstName, string? LastName, string? Code, bool IsDeleted);
 
 internal sealed record PleoBalanceWire(string Currency, long Current, long Available, long PendingDebits);
 
 internal sealed record PleoReceiptWire(string Id, string? MimeType, string? Url);
 
-internal sealed record PleoReceiptFile(byte[] Content, string ContentType);

@@ -1,4 +1,3 @@
-@using Humans.Governance.Contracts
 @inject IAuthorizationService AuthService
 @model Humans.Users.Models.ProfileViewModel
 @{
@@ -7,55 +6,24 @@
 
 <div class="row align-items-start">
     <div class="@(Model.IsOwnProfile ? "col-md-8" : "col-md-12")">
-        <div class="d-flex justify-content-between align-items-center">
-            <h1>
+        <page-header>
+            <page-header-title>
                 @if (Model.IsOwnProfile)
                 {
                     @Localizer["Users_Profile_Title"]
                 }
                 else
                 {
-                    <vc:human user-id="@Model.UserId" link="None" />
+                    <vc:human user-id="@Model.UserId" />
                 }
-            </h1>
-            <div class="d-flex gap-2">
-                <vc:access-matrix section="Profile" />
-                <a asp-controller="UsersAdmin" asp-action="AdminDetail" asp-route-id="@Model.UserId" class="btn btn-sm btn-outline-secondary" authorize-policy="@Humans.Users.Contracts.UsersPolicies.Read">
-                    <i class="fa-solid fa-user-shield"></i> @SharedLocalizer["Common_Admin"] <i class="fa-solid fa-lock auth-lock-icon"></i>
-                </a>
-            </div>
-        </div>
+            </page-header-title>
+            <vc:access-matrix section="Profile" />
+            <a asp-controller="UsersAdmin" asp-action="AdminDetail" asp-route-id="@Model.UserId" class="btn btn-sm btn-outline-secondary" authorize-policy="@Humans.Users.Contracts.UsersPolicies.Read">
+                <i class="fa-solid fa-user-shield"></i> @SharedLocalizer["Common_Admin"] <i class="fa-solid fa-lock auth-lock-icon"></i>
+            </a>
+        </page-header>
 
-        @if (Model.IsOwnProfile)
-        {
-        }
-
-        @if (Model.IsOwnProfile && Model.HasPendingConsents)
-        {
-            <div class="alert alert-warning" role="alert">
-                <strong>@Localizer["Users_Profile_ActionRequired"]</strong> @string.Format(Localizer["Users_Profile_PendingConsents"].Value, Model.PendingConsentCount)
-                <a asp-controller="Consent" asp-action="Index" class="alert-link">@Localizer["Users_Profile_ReviewNow"]</a>
-            </div>
-        }
-
-        @if (Model.IsOwnProfile && Model.TierApplicationStatus != null)
-        {
-            var alertClass = Model.TierApplicationStatus switch
-            {
-                ApplicationStatus.Approved => "alert-success",
-                ApplicationStatus.Rejected => "alert-danger",
-                _ => "alert-info"
-            };
-            <div class="alert @alertClass" role="alert">
-                <div class="d-flex justify-content-between align-items-center">
-                    <span>
-                        @string.Format(Localizer["Users_Profile_TierApplicationStatus"].Value, Model.TierApplicationTier)
-                        <span class="badge @Model.TierApplicationBadgeClass ms-1">@SharedLocalizer["ApplicationStatus_" + Model.TierApplicationStatus.ToString()]</span>
-                    </span>
-                    <a asp-controller="Governance" asp-action="Index" class="alert-link">@Localizer["Users_Profile_TierApplicationDetails"]</a>
-                </div>
-            </div>
-        }
+        <partial name="_ProfileAlerts" model="Model" />
 
         @{
             var cardViewMode = Model.IsOwnProfile
@@ -66,42 +34,20 @@
         }
         <vc:profile-card user-id="@Model.UserId" view-mode="@cardViewMode" />
 
-        @if (Model.IsOwnProfile)
-        {
-            <vc:my-camps />
-        }
-
         <vc:user-parts slot="@Humans.Base.Interfaces.UserPartSlots.Profile" user-id="@Model.UserId" view-mode="@cardViewMode" />
 
-        @if (!Model.IsOwnProfile && Model.CanViewShiftSignups)
+        @if (!Model.IsOwnProfile && (await AuthService.AuthorizeAsync(User, Humans.Users.Contracts.UsersPolicies.MedicalDataViewer)).Succeeded)
         {
-            <vc:shift-signups user-id="@Model.UserId" view-mode="@ShiftSignupsViewMode.Admin" />
-            <vc:volunteer-build-strip user-id="@Model.UserId" />
-        }
-
-        @if (Model.NoShowHistory != null && Model.NoShowHistory.Count > 0)
-        {
-            <div class="card mb-3">
-                <div class="card-header">
-                    <h5 class="mb-0"><i class="fa-solid fa-user-xmark me-1"></i> @Localizer["Users_Profile_NoShowHistory", Model.NoShowHistory!.Count]</h5>
-                </div>
-                <div class="card-body p-0">
-                    @{
-                        Func<NoShowHistoryItem, IHtmlContent> reviewerCell = @<text>
-                            @if (item.MarkedByUserId is { } reviewerId)
-                            {
-                                <vc:human user-id="@reviewerId" link="None" />
-                            }
-                        </text>;
-                        var noShowTable = TableModel.For(Model.NoShowHistory!)
-                            .Column(SharedLocalizer["Common_Shift"].Value, r => r.ShiftLabel)
-                            .Column(SharedLocalizer["Common_Department"].Value, r => r.DepartmentName)
-                            .Column(SharedLocalizer["Common_Date"].Value, r => r.ShiftDateLabel)
-                            .Template(Localizer["Users_Profile_MarkedBy"].Value, reviewerCell)
-                            .Column(Localizer["Users_Profile_MarkedAt"].Value, r => r.MarkedAtLabel)
-                            .Build();
-                    }
-                    <partial name="_Table" model="noShowTable" />
+            @* Art. 9: the text is not in the page. Each click is one audited reveal, listed to the member. *@
+            <div class="card mb-4">
+                <div class="card-header"><i class="fa-solid fa-notes-medical me-1"></i> @Localizer["Users_Profile_DietaryMedical_MedicalConditions_Title"]</div>
+                <div class="card-body">
+                    <button type="button" class="btn btn-sm btn-outline-danger" id="medical-reveal"
+                            data-reveal-url="@Url.Action("RevealMedical", "ProfileView", new { id = Model.UserId })"
+                            data-none-text="@Localizer["Users_Medical_NoneOnFile"].Value"
+                            data-failed-text="@Localizer["Users_Medical_RevealFailed"].Value">
+                        <i class="fa-solid fa-eye me-1"></i>@Localizer["Users_Medical_RevealTitle"]
+                    </button>
                 </div>
             </div>
         }
@@ -150,3 +96,25 @@
         </div>
     }
 </div>
+
+@section Scripts {
+    <script>
+        document.getElementById('medical-reveal')?.addEventListener('click', function () {
+            var btn = this;
+            btn.disabled = true;
+            Humans.postJson(btn.getAttribute('data-reveal-url'))
+                .then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); })
+                .then(function (data) {
+                    var text = document.createElement('p');
+                    text.className = data.text ? 'mb-0 text-danger' : 'mb-0 text-muted';
+                    text.style.whiteSpace = 'pre-wrap';
+                    text.textContent = data.text || btn.getAttribute('data-none-text');
+                    btn.replaceWith(text);
+                })
+                .catch(function () {
+                    btn.disabled = false;
+                    btn.title = btn.getAttribute('data-failed-text');
+                });
+        });
+    </script>
+}

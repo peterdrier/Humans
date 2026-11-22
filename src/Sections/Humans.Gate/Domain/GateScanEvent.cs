@@ -2,7 +2,10 @@ using NodaTime;
 
 namespace Humans.Gate.Domain;
 
-/// <summary>Append-only. The unique index on <see cref="AdmitDedupeKey"/> is the duplicate guard; it doesn't wait for a vendor sync.</summary>
+/// <summary>
+/// Append-only, except that undoing an admit stamps its row and frees <see cref="AdmitDedupeKey"/>. The unique index on
+/// that key is the duplicate guard; it doesn't wait for a vendor sync.
+/// </summary>
 internal sealed class GateScanEvent
 {
     internal const int BarcodeMaxLength = 128;
@@ -20,8 +23,11 @@ internal sealed class GateScanEvent
     /// <summary>Normalized.</summary>
     public string Barcode { get; init; } = string.Empty;
 
-    /// <summary>Null when the barcode matched no current-event ticket.</summary>
+    /// <summary>The Ticket Tailor attendee scanned; null when the barcode matched none for the current event.</summary>
     public Guid? TicketAttendeeId { get; init; }
+
+    /// <summary>The ticket Humans' own checkout issued; null for a Ticket Tailor or unknown barcode.</summary>
+    public Guid? CheckoutTicketId { get; init; }
 
     /// <summary>Null when the ticket is unmatched. Settable only so account merge can re-point it.</summary>
     public Guid? GuestUserId { get; set; }
@@ -43,8 +49,18 @@ internal sealed class GateScanEvent
 
     /// <summary>
     /// The normalized barcode for an admit, null otherwise. Its unique index makes the first admit win atomically
-    /// across lanes; Postgres excludes nulls, so rejects never collide.
+    /// across lanes; Postgres excludes nulls, so rejects never collide. Cleared by an undo so the ticket can scan again.
     /// </summary>
-    public string? AdmitDedupeKey { get; init; }
+    public string? AdmitDedupeKey { get; set; }
+
+    /// <summary>Set when the admit was undone; the row stays as the record that it happened.</summary>
+    public Instant? UndoneAt { get; set; }
+
+    /// <summary>Who undid it. Settable so account merge can re-point it.</summary>
+    public Guid? UndoneByUserId { get; set; }
+
+    public string? UndoReason { get; set; }
+
+    public bool IsLiveAdmit => AdmitDedupeKey is not null;
 }
 

@@ -14,7 +14,6 @@
   <ItemGroup>
     <!--
       Microsoft.NET.Sdk.Web adds these to ImplicitUsings; Microsoft.NET.Sdk.Razor does not.
-      Declaring them keeps the files moved out of Humans.Web byte-identical to their originals.
     -->
     <Using Include="Microsoft.AspNetCore.Http" />
     <Using Include="Microsoft.AspNetCore.Routing" />
@@ -24,10 +23,8 @@
   <ItemGroup>
     <!--
       Guide owns no tables, so there is no DbContext, no repository and no AddSectionDbContext
-      call (G5-SECTION-TEMPLATE.md step 1 / the Data-and-DbContext steps are skipped wholesale).
-      GuideSettings binds Guide:* and is read by GitHubGuideContentSource, which stays in Base
-      as a shared GitHub-markdown connector (its consumers are mostly not Guide's), so
-      the settings type stays in Humans.Base/Configuration with it.
+      call. GuideSettings stays in Humans.Base/Configuration beside GitHubGuideContentSource,
+      the shared GitHub-markdown connector Agent and Base read too.
     -->
     <ProjectReference Include="..\..\Humans.Base\Humans.Base.csproj" />
     <ProjectReference Include="..\Humans.Auth\Humans.Auth.csproj" />
@@ -37,17 +34,14 @@
 
   <ItemGroup>
     <!--
-      Markdig renders the guide markdown; it came across with GuideRenderer, its only
-      consumer in the old Base project. No AspNetCore package: those ship with
+      Markdig renders the guide markdown and gives GuideSegmenter its block parse; AngleSharp
+      parses the rendered HTML for GuideHtmlPostprocessor. No AspNetCore package: those ship with
       no PackageVersion on purpose and would fail the build with NU1010 under Central Package
       Management — IMemoryCache and IOptions arrive through the framework reference Sdk.Razor
-      already adds. No EF Core either — the section owns no tables.
-      Octokit is here for GitHubHealthCheck (nobodies-collective/Humans#1075), which moved in
-      with the "github" monitoring key — the same client Base's GitHubGuideContentSource uses.
+      already adds.
     -->
     <PackageReference Include="AngleSharp" />
     <PackageReference Include="Markdig" />
-    <PackageReference Include="Octokit" />
   </ItemGroup>
 
   <ItemGroup>

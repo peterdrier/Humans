@@ -28,9 +28,9 @@ internal static class UserStateEvaluator
         User user, Profile? profile, bool isSuspended, bool isAdminSuspended, bool isRejected = false)
     {
         var hasName = profile is not null
-            && !string.IsNullOrWhiteSpace(profile.BurnerName)
-            && !string.IsNullOrWhiteSpace(profile.FirstName)
-            && !string.IsNullOrWhiteSpace(profile.LastName);
+            && !string.IsNullOrWhiteSpace(user.BurnerName)
+            && !string.IsNullOrWhiteSpace(user.FirstName)
+            && !string.IsNullOrWhiteSpace(user.LastName);
         var isGdprDeleted = IsGdprTombstoned(user);
         return UserStateClassifier.Classify(
             hasRequiredNameFields: hasName,

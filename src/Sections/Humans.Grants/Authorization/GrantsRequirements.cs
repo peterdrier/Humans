@@ -1,7 +1,7 @@
+using Humans.Base.Extensions;
 using Humans.Base.Authorization;
 using System.Security.Claims;
 using Humans.Base.Constants;
-using Humans.Grants.Contracts;
 using Humans.Grants.Services;
 using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Authorization;
@@ -36,7 +36,7 @@ internal sealed class GrantsPolicyHandler(
     /// one place the section reads the viewer's id claim. Null when signed out or unknown.
     /// </summary>
     internal static async ValueTask<UserInfo?> ViewerAsync(IUserService users, ClaimsPrincipal user, CancellationToken ct = default) =>
-        Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out var id)
+        user.GetUserId() is { } id
             ? await users.GetUserInfoAsync(id, ct)
             : null;
 }

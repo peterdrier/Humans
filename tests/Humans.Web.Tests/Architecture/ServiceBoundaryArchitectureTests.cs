@@ -81,9 +81,8 @@ public class ServiceBoundaryArchitectureTests
     [
         typeof(Users.Contracts.User),
         typeof(Users.Contracts.UserEmail),
-        typeof(GoogleIntegration.Contracts.GoogleResource),
-        typeof(GoogleIntegration.Contracts.GoogleSyncOutboxEvent),
-        typeof(GoogleIntegration.Contracts.SyncServiceSettings),
+        typeof(Google.Contracts.TeamGoogleResource),
+        typeof(Google.Contracts.GoogleSyncOutboxEvent),
     ];
 
     internal static IEnumerable<string> ScanApplicationServiceEntityReadReturns()
@@ -94,15 +93,16 @@ public class ServiceBoundaryArchitectureTests
             .Where(t => string.Equals(t.Namespace, "Humans.Domain.Entities", StringComparison.Ordinal))
             .Concat(SectionAssemblies()
                 .SelectMany(a => a.GetTypes())
-                .Where(t => t.Namespace?.EndsWith(".Domain", StringComparison.Ordinal) == true))
+                .Where(t => t.IsClass && t.Namespace?.EndsWith(".Domain", StringComparison.Ordinal) == true))
             .Concat(LeafResidentEntities)
             .ToHashSet();
 
         foreach (var serviceType in ApplicationInterfaceTypes()
                      // Both role markers: the axis is exclusive, so a service reclassified as an orchestrator
-                     // would otherwise drop out.
+                     // would otherwise drop out. The unmarked Users.Contracts leaf interfaces are scanned by name.
                      .Where(t => typeof(IApplicationService).IsAssignableFrom(t)
-                                 || typeof(IOrchestrator).IsAssignableFrom(t))
+                                 || typeof(IOrchestrator).IsAssignableFrom(t)
+                                 || MarkersDroppedForBaseCycle.Contains(t.FullName ?? string.Empty))
                      .Where(t => t != typeof(IApplicationService) && t != typeof(IOrchestrator))
                      .OrderBy(t => t.FullName, StringComparer.Ordinal))
         {

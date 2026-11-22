@@ -21,7 +21,6 @@ internal sealed record WorkgroupInfo(
     string? Reasons,
     string? DriveFolderId,
     string? DiscordChannelUrl,
-    Guid? AppliedByUserId,
     Instant AppliedAt,
     Instant? RegisteredAt,
     Instant? EndedAt,
@@ -32,7 +31,8 @@ internal sealed record WorkgroupInfo(
     decimal? BudgetAmount,
     int? HoldedAccountNumber,
     string? HoldedAccountId,
-    bool IsSensitive = false)
+    bool IsSensitive = false,
+    string? GoogleGroupEmail = null)
 {
     public bool HasBudget => BudgetAmount is not null;
 
@@ -149,8 +149,6 @@ internal sealed record WorkgroupMeetingInfo(
     bool IsPublic,
     string? Minutes,
     Guid? CreatedByUserId,
-    Instant CreatedAt,
-    Instant UpdatedAt,
     string? Description = null,
     string? RecurrenceRule = null,
     string? RecurrenceTimezone = null)
@@ -190,7 +188,6 @@ internal sealed record WorkgroupLogEntryInfo(
     Guid? DocumentId,
     Guid? SurveyId,
     Instant CreatedAt,
-    Instant UpdatedAt,
     Guid? MeetingId = null);
 
 internal sealed record WorkgroupDocumentInfo(

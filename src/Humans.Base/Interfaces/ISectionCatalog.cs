@@ -26,6 +26,12 @@ public sealed record SectionInfo(string Name, bool IsActive)
     /// <summary>Sections this one consumes, from its real assembly references.</summary>
     public IReadOnlyList<string> DependsOn { get; init; } = [];
 
+    /// <summary>
+    /// For an inactive section, the running consumers (sections, or the Shell itself) that still reference it: each
+    /// fails at the request that reaches it. Empty when the section is active or nothing running consumes it.
+    /// </summary>
+    public IReadOnlyList<string> ConsumedWhileInactiveBy { get; init; } = [];
+
     /// <summary>The <see cref="ISectionContribution"/> seams the section implements, by interface name.</summary>
     public IReadOnlyList<string> Seams { get; init; } = [];
 

@@ -290,14 +290,8 @@
   <data name="Consent_Queue_LegalName" xml:space="preserve">
     <value>Nom légal</value>
   </data>
-  <data name="Consent_Queue_HasApplication" xml:space="preserve">
-    <value>A une candidature</value>
-  </data>
   <data name="Consent_Queue_Signed" xml:space="preserve">
     <value>signé(s)</value>
-  </data>
-  <data name="Consent_Queue_ApplicationMotivation" xml:space="preserve">
-    <value>Motivation de la candidature</value>
   </data>
   <data name="Consent_Queue_PreviousNotes" xml:space="preserve">
     <value>Notes d'examen précédentes</value>
@@ -379,4 +373,8 @@
   </data>
   <data name="Consent_Queue_ReviewLink" xml:space="preserve"><value>Examiner</value></data>
   <data name="Consent_Queue_SelectRowLabel" xml:space="preserve"><value>Sélectionner {0}</value></data>
+  <data name="Consent_Meter_ReviewsPending" xml:space="preserve"><value>Vérifications du consentement en attente</value></data>
+  <data name="Consent_Meter_OnboardingProfilesPending" xml:space="preserve"><value>Profils d’inscription en attente</value></data>
+  <data name="Consent_Meter_AudienceConsentCoordinator" xml:space="preserve"><value>coordinateurs du consentement</value></data>
+  <data name="Consent_Meter_AudienceBoard" xml:space="preserve"><value>le Conseil</value></data>
 </root>

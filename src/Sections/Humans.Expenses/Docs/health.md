@@ -57,12 +57,17 @@ What the shapes imply, written fresh:
 - **One authorization handler** that owns the actor × operation × status matrix, and one
   operation per thing a person can do. What the handler grants, the service accepts; nothing
   hand-rolls an ownership check beside it.
-- **One service** holding the state machine, with one method per transition. A transition
+- **Two services, one state machine.** `ExpenseReportService` owns the member's side (drafts,
+  lines, files, IBAN, submit, withdraw, finance corrections) and the reads; `ExpenseReviewService`
+  owns the decisions (endorse, reject, line decline, approve, finance reject, push re-queue) and
+  the coordinator queue. They share one static transition lock, so a submit or withdraw never
+  interleaves with an approval, and review resolves bookings through `IExpenseReportManagement`.
+  One method per transition. A transition
   method validates, calls exactly one repository write, and writes an audit entry per auditable
   action it took — normally one, and two where approval also overrides the category.
 - **One repository** owning the section's tables, each write atomic, returning DTOs only.
 - **The outbox drain owns queue semantics** in `ExpenseReportBackgroundProcessor`;
-  `ExpenseHoldedPublisher` owns the Holded conversation, and the scheduler shim holds neither —
+  `ExpenseReportBackgroundProcessor` owns the Holded conversation, and the scheduler shim holds neither —
   with **one cap allocation** (`PayableAllocation`) that the push, the detail page and the audit
   text all read.
 - **The public surface is what another section consumes:** `Section`, the background-processor
@@ -99,16 +104,16 @@ list is `Expenses.md`; these are the ones a change is most likely to break silen
 - **Proof rows never reach `Total`** (`Data/ExpenseRepository.cs:123`) and never reach Holded —
   the allocation skips them (`Services/PayableAllocation.cs:29`).
 - **The cap allocates greedily in line order**, and a line past the cap gets no Holded doc and
-  no upload (`ExpenseHoldedPublisher.PushPerLineDocsAsync`).
+  no upload (`ExpenseReportBackgroundProcessor.PushPerLineDocsAsync`).
 - **A retried push resumes from what it recorded.** A line's doc id is written the moment Holded
-  issues it (`ExpenseHoldedPublisher.PushPerLineDocsAsync`), an upload is stamped
+  issues it (`ExpenseReportBackgroundProcessor.PushPerLineDocsAsync`), an upload is stamped
   (`UploadLineAttachmentAsync`), and a legacy single-doc claim resumes onto its one
   doc (`ResumeLegacySingleDocPushAsync`). A failure between Holded issuing a doc and that
   write can still mint a second one; nothing guards that window, by the small-scale rule.
 - **A header edit never moves a claim between budget years** once submitted
   (`Services/ExpenseReportService.cs:324`).
 - **Masking is a rule about output, not storage.** The approval email and the GDPR export carry
-  the masked form (`Services/ExpenseReportService.cs:1079`, `Services/ExpenseReportService.cs:1354`);
+  the masked form (`ExpenseReviewService.SendApprovedEmailAsync`, `Services/ExpenseReportService.cs:1354`);
   the one unmasked write is an IBAN audit row whose actor is not its subject
   (`Services/ExpenseReportService.cs:968`).
 - **The drain does nothing without a Holded key** (`Services/ExpenseReportBackgroundProcessor.cs:44`), and a

@@ -110,11 +110,11 @@ public sealed class GrantTests : GrantsTestHarness
         var grantId = source
             ? (await service.IssueAsync("low-income", person, "app-42", actor, Ct)).GrantId
             : (await service.IssueToAsync(program.Id, [person], null, actor, Ct)).Value!.Single();
-        (await service.ResendNoticeAsync(grantId, actor, Ct)).Refusal.Should().BeNull();
+        (await service.ResendNoticeAsync(program.Id, grantId, actor, Ct)).Refusal.Should().BeNull();
         if (source)
             (await service.RevokeAsync("low-income", person, "Withdrew", actor, Ct)).Succeeded.Should().BeTrue();
         else
-            (await service.RevokeGrantAsync(grantId, "Withdrew", actor, Ct)).Refusal.Should().BeNull();
+            (await service.RevokeGrantAsync(program.Id, grantId, "Withdrew", actor, Ct)).Refusal.Should().BeNull();
 
         foreach (var action in new[] { GrantsAuditActions.GrantIssued, GrantsAuditActions.GrantNoticeResent, GrantsAuditActions.GrantRevoked })
             await AuditLog.Received(1).LogAsync(action, AuditEntityTypes.Grant, grantId,
@@ -235,8 +235,8 @@ public sealed class GrantTests : GrantsTestHarness
         var grant = await SeedGrantAsync(program, person);
         var service = NewService();
 
-        (await service.RevokeGrantAsync(grant.Id, " Left the crew ", actor, Ct)).Refusal.Should().BeNull();
-        (await service.RevokeGrantAsync(grant.Id, null, actor, Ct)).Refusal.Should().NotBeNull();
+        (await service.RevokeGrantAsync(program.Id, grant.Id, " Left the crew ", actor, Ct)).Refusal.Should().BeNull();
+        (await service.RevokeGrantAsync(program.Id, grant.Id, null, actor, Ct)).Refusal.Should().NotBeNull();
 
         var saved = await ReadGrantAsync(grant.Id);
         saved.RevokedAt.Should().Be(Clock.GetCurrentInstant());
@@ -246,6 +246,36 @@ public sealed class GrantTests : GrantsTestHarness
             Arg.Any<string>(), actor, person, AuditSubjectTypes.User);
         await ReceivedNoticeAsync(GrantsNotificationSources.GrantRevoked, person);
         await Email.Received(1).SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>());
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(false, false)]
+    [Xunit.InlineData(false, true)]
+    [Xunit.InlineData(true, false)]
+    [Xunit.InlineData(true, true)]
+    public async Task ManualGrantMutation_RefusesMissingOrForeignGrant_BeforeAnySideEffects(bool resend, bool missingGrant)
+    {
+        var actor = SeedUser("Manager");
+        var routedProgram = await SeedProgramAsync(name: "A", managers: actor);
+        var grant = await SeedGrantAsync(await SeedProgramAsync(name: "B"));
+        var targetId = missingGrant ? Guid.NewGuid() : grant.Id;
+        Clock.Advance(Duration.FromDays(2));
+        var service = NewService();
+
+        var result = resend
+            ? await service.ResendNoticeAsync(routedProgram.Id, targetId, actor, Ct)
+            : await service.RevokeGrantAsync(routedProgram.Id, targetId, "Wrong program", actor, Ct);
+
+        result.NotFound.Should().BeTrue();
+        result.Refusal.Should().NotBeNull();
+        var saved = await ReadGrantAsync(grant.Id);
+        saved.RevokedAt.Should().BeNull();
+        saved.RevokedByUserId.Should().BeNull();
+        saved.RevokeReason.Should().BeNull();
+        saved.NotifiedAt.Should().Be(grant.NotifiedAt);
+        AuditLog.ReceivedCalls().Should().BeEmpty();
+        Notifications.ReceivedCalls().Should().BeEmpty();
+        Email.ReceivedCalls().Should().BeEmpty();
     }
 
     [HumansFact]
@@ -259,8 +289,8 @@ public sealed class GrantTests : GrantsTestHarness
         Clock.Advance(Duration.FromDays(2));
         var service = NewService();
 
-        (await service.ResendNoticeAsync(live.Id, actor, Ct)).Refusal.Should().BeNull();
-        (await service.ResendNoticeAsync(revoked.Id, actor, Ct)).Refusal.Should().NotBeNull();
+        (await service.ResendNoticeAsync(program.Id, live.Id, actor, Ct)).Refusal.Should().BeNull();
+        (await service.ResendNoticeAsync(program.Id, revoked.Id, actor, Ct)).Refusal.Should().NotBeNull();
 
         (await ReadGrantAsync(live.Id)).NotifiedAt.Should().Be(Clock.GetCurrentInstant());
         await AuditLog.Received(1).LogAsync(GrantsAuditActions.GrantNoticeResent, AuditEntityTypes.Grant, live.Id,
@@ -300,6 +330,24 @@ public sealed class GrantTests : GrantsTestHarness
         await Email.Received(1).SendAsync(Arg.Is<EmailMessage>(m => m.RecipientEmail == $"{person}@example.org"), Arg.Any<CancellationToken>());
     }
 
+    [HumansFact]
+    public async Task EmailFailure_StillSendsTheInAppNotice()
+    {
+        var person = SeedUser();
+        var program = await SeedProgramAsync();
+        Email.SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new InvalidOperationException("smtp down"));
+
+        var result = await NewService().IssueToAsync(program.Id, [person], null, SeedUser(), Ct);
+
+        result.Refusal.Should().BeNull();
+        Logger.Entries.Should().Contain(e => e.Exception is InvalidOperationException);
+        await Notifications.Received(1).SendAsync(Arg.Any<NotificationSourceDefinition>(), Arg.Any<NotificationClass>(),
+            Arg.Any<NotificationPriority>(), Arg.Any<string>(), Arg.Is<IReadOnlyList<Guid>>(r => r.Contains(person)),
+            Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(),
+            Arg.Any<CancellationToken>());
+    }
+
     public static Xunit.TheoryData<string, string> RecipientLanguages()
     {
         var data = new Xunit.TheoryData<string, string>
@@ -330,7 +378,7 @@ public sealed class GrantTests : GrantsTestHarness
             return new ValueTask<Humans.Users.Contracts.UserInfo?>(snapshot);
         });
 
-        var result = await NewService().ResendNoticeAsync(grant.Id, actor, Ct);
+        var result = await NewService().ResendNoticeAsync(program.Id, grant.Id, actor, Ct);
 
         result.Refusal.Should().BeNull();
         (await ReadGrantAsync(grant.Id)).NotifiedAt.Should().Be(Clock.GetCurrentInstant());
@@ -437,6 +485,17 @@ public sealed class GrantTests : GrantsTestHarness
 
         (await ReadGrantAsync(grant.Id)).RevokeReason.Should().Be("Withdrew");
         await ReceivedNoticeAsync(GrantsNotificationSources.GrantRevoked, person);
+    }
+
+    [HumansFact]
+    public async Task State_RevokedWinsOverExpired()
+    {
+        var person = SeedUser();
+        await SeedGrantAsync(await SeedProgramAsync(), person, expiresOn: Today.PlusDays(-1), revoked: true);
+
+        var grant = (await NewService().GetGrantsForUserAsync(person, Ct)).Single();
+
+        grant.State(Today).Should().Be(GrantState.Revoked);
     }
 
     [HumansFact]

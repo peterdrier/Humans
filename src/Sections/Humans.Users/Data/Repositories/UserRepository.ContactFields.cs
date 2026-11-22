@@ -5,13 +5,13 @@ namespace Humans.Users.Data.Repositories;
 
 internal sealed partial class UserRepository
 {
-    public async Task<IReadOnlyList<ContactField>> GetByProfileIdReadOnlyAsync(
-        Guid profileId, CancellationToken ct = default)
+    public async Task<IReadOnlyList<ContactField>> GetContactFieldsByUserIdReadOnlyAsync(
+        Guid userId, CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
         return await ctx.ContactFields
             .AsNoTracking()
-            .Where(cf => cf.ProfileId == profileId)
+            .Where(cf => cf.UserId == userId)
             .ToListAsync(ct);
     }
 
@@ -23,13 +23,13 @@ internal sealed partial class UserRepository
             .ToListAsync(ct);
     }
 
-    public async Task<IReadOnlyList<ContactField>> GetByProfileIdForMutationAsync(
-        Guid profileId, CancellationToken ct = default)
+    public async Task<IReadOnlyList<ContactField>> GetContactFieldsByUserIdForMutationAsync(
+        Guid userId, CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
         return await ctx.ContactFields
             .AsNoTracking()
-            .Where(cf => cf.ProfileId == profileId)
+            .Where(cf => cf.UserId == userId)
             .ToListAsync(ct);
     }
 
@@ -55,26 +55,14 @@ internal sealed partial class UserRepository
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
 
-        // ContactField FKs to Profile, not User, so the move pivots on profile id.
-        var sourceProfileId = await ctx.Profiles
-            .Where(p => p.UserId == sourceUserId)
-            .Select(p => (Guid?)p.Id)
-            .FirstOrDefaultAsync(ct);
-        if (sourceProfileId is null)
-            return;
-
-        var targetProfileId = await ctx.Profiles
-            .Where(p => p.UserId == targetUserId)
-            .Select(p => (Guid?)p.Id)
-            .FirstOrDefaultAsync(ct);
-        if (targetProfileId is null)
+        if (!await ctx.Profiles.AnyAsync(p => p.UserId == targetUserId, ct))
             return;
 
         var sourceRows = await ctx.ContactFields
-            .Where(cf => cf.ProfileId == sourceProfileId.Value)
+            .Where(cf => cf.UserId == sourceUserId)
             .ToListAsync(ct);
         var targetRows = await ctx.ContactFields
-            .Where(cf => cf.ProfileId == targetProfileId.Value)
+            .Where(cf => cf.UserId == targetUserId)
             .ToListAsync(ct);
 
         // Value has no canonical comparison, so match case-insensitively; target wins.
@@ -91,7 +79,7 @@ internal sealed partial class UserRepository
             }
             else
             {
-                ctx.Entry(src).Property(nameof(ContactField.ProfileId)).CurrentValue = targetProfileId.Value;
+                src.UserId = targetUserId;
                 src.UpdatedAt = updatedAt;
                 targetKeys.Add(key);
             }

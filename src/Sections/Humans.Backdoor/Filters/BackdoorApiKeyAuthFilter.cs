@@ -1,5 +1,4 @@
 using System.Security.Claims;
-using Humans.Backdoor.Contracts;
 using Humans.Backdoor.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
@@ -9,14 +8,15 @@ namespace Humans.Backdoor.Filters;
 /// <summary>
 /// Installs the key's owner (id and active roles) as the request principal. A missing header and an unknown or revoked
 /// key are both 401, deliberately indistinguishable. Controllers carrying it are <c>[AllowAnonymous]</c>: the
-/// authenticated-by-default fallback policy runs before MVC filters and would reject the request first.
+/// authenticated-by-default fallback policy runs before MVC filters and would reject the request first. That same
+/// attribute is what lets the key's principal, which carries no account-state claim, past the Shell's membership gates.
 /// </summary>
 internal sealed class BackdoorApiKeyAuthFilter(
     IBackdoorApiKeyService keys) : IAsyncAuthorizationFilter
 {
     public const string ApiKeyHeaderName = "X-Api-Key";
 
-    public const string AuthenticationScheme = BackdoorAuthentication.SchemeName;
+    public const string AuthenticationScheme = "BackdoorApiKey";
 
     public async Task OnAuthorizationAsync(AuthorizationFilterContext context)
     {

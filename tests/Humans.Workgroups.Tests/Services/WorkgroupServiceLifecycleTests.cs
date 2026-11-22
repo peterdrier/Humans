@@ -21,6 +21,55 @@ namespace Humans.Workgroups.Tests.Services;
 /// </summary>
 public sealed class WorkgroupServiceLifecycleTests : WorkgroupsTestHarness
 {
+    public enum NoticeAudience { Coordinators, Board }
+
+    [HumansTheory]
+    [InlineData(NoticeAudience.Coordinators)]
+    [InlineData(NoticeAudience.Board)]
+    public async Task LifecycleEmails_ResolveAndDeduplicateMergedRecipients(NoticeAudience audience)
+    {
+        var firstAlias = SeedUser("Archived first");
+        var secondAlias = SeedUser("Archived second");
+        var survivorId = SeedUser("Live recipient", language: "es");
+        var otherId = SeedUser("Other recipient", language: "de");
+        var survivor = (await Users.GetUserInfoAsync(survivorId, Ct))!;
+        var other = (await Users.GetUserInfoAsync(otherId, Ct))!;
+        var people = new Dictionary<Guid, UserInfo>
+        {
+            [firstAlias] = survivor,
+            [secondAlias] = survivor,
+            [survivorId] = survivor,
+            [otherId] = other
+        };
+        Users.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(call => new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
+                call.Arg<IEnumerable<Guid>>().Where(people.ContainsKey).ToDictionary(id => id, id => people[id])));
+        var group = await SeedWorkgroupAsync(
+            status: audience == NoticeAudience.Coordinators ? WorkgroupStatus.Dormant : WorkgroupStatus.Applied,
+            coordinatorUserId: firstAlias);
+        if (audience == NoticeAudience.Coordinators)
+            await AddMemberAsync(group.Id, secondAlias, WorkgroupMemberRole.Coordinator);
+        else
+            Roles.GetActiveUserIdsInRoleAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+                .Returns([firstAlias, secondAlias, survivorId, otherId]);
+
+        var service = NewService();
+        var result = audience == NoticeAudience.Coordinators
+            ? await service.ReactivateAsync(group.Id, survivorId, Ct)
+            : await service.ReferAsync(group.Id, survivorId, "Review", Ct);
+
+        result.Refusal.Should().BeNull();
+        var messages = Email.ReceivedCalls().Select(call => call.GetArguments()[0])
+            .Cast<Humans.Email.Contracts.EmailMessage>().ToList();
+        messages.Select(message => message.UserId).Should().BeEquivalentTo(
+            audience == NoticeAudience.Coordinators ? new Guid?[] { survivorId } : [survivorId, otherId]);
+        var liveMessage = messages.Should().ContainSingle(message => message.UserId == survivorId).Subject;
+        liveMessage.RecipientEmail.Should().Be(survivor.Email);
+        liveMessage.RecipientName.Should().Be("Live recipient");
+        liveMessage.Culture.Should().Be("es");
+        liveMessage.Subject.Should().EndWith("#es");
+    }
+
     [HumansTheory]
     [InlineData("register")]
     [InlineData("refer")]
@@ -107,7 +156,7 @@ public sealed class WorkgroupServiceLifecycleTests : WorkgroupsTestHarness
             var lookups = 0;
             var coordinator = group.Members.Single().UserId;
             var person = await Users.GetUserInfoAsync(coordinator, Ct);
-            Users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            Users.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
                 .Returns(_ => ++lookups == 1
                     ? throw new IOException("Recipient lookup failed")
                     : new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
@@ -141,7 +190,7 @@ public sealed class WorkgroupServiceLifecycleTests : WorkgroupsTestHarness
         var group = await SeedWorkgroupAsync(status: WorkgroupStatus.Applied);
         var actor = group.Members.Single().UserId;
         Roles.GetActiveUserIdsInRoleAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns([actor]);
-        Notifications.SendToRoleAsync(Arg.Any<NotificationSourceDefinition>(), Arg.Any<NotificationClass>(),
+        RoleNotifications.SendToRoleAsync(Arg.Any<NotificationSourceDefinition>(), Arg.Any<NotificationClass>(),
                 Arg.Any<NotificationPriority>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>(),
                 Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new IOException("Notification storage unavailable"));

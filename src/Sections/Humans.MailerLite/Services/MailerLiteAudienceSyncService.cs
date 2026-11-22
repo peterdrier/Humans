@@ -23,16 +23,35 @@ internal sealed class MailerLiteAudienceSyncService(
         Guid? actorUserId = null, CancellationToken ct = default)
     {
         var results = new List<AudienceSyncResult>();
-        foreach (var audience in audiences)
+        var failures = new List<Exception>();
+        try
         {
-            try
+            foreach (var audience in audiences)
             {
-                results.Add(await SyncAsync(audience, actorUserId, ct));
+                ct.ThrowIfCancellationRequested();
+                try
+                {
+                    results.Add(await SyncAsync(audience, actorUserId, ct));
+                }
+                catch (OperationCanceledException) when (ct.IsCancellationRequested)
+                {
+                    throw;
+                }
+                catch (Exception ex)
+                {
+                    failures.Add(ex);
+                    logger.LogError(ex, "Audience sync failed for {Audience}", audience.Key);
+                }
             }
-            catch (Exception ex)
-            {
-                logger.LogError(ex, "Audience sync failed for {Audience}", audience.Key);
-            }
+        }
+        catch (OperationCanceledException ex) when (ct.IsCancellationRequested)
+        {
+            var operationErrors = results.Sum(r => r.Errors);
+            if (failures.Count > 0 || operationErrors > 0)
+                throw new AggregateException(
+                    $"MailerLite sync interrupted after {failures.Count} audience failure(s) and {operationErrors} subscriber operation failure(s).",
+                    failures.Append(ex));
+            throw;
         }
         return results;
     }
@@ -75,13 +94,24 @@ internal sealed class MailerLiteAudienceSyncService(
         var userEmailMap = await emails.GetNotificationTargetEmailsAsync(memberUserIds.ToList(), ct);
         var droppedNoEmail = memberUserIds.Count - userEmailMap.Count;
         if (droppedNoEmail > 0)
-            logger.LogInformation(
+            logger.LogWarning(
                 "Audience {Audience}: dropped {Count} candidates with no notification-target email",
                 audience.Key, droppedNoEmail);
 
         var snapshot = await BuildSnapshotAsync(ct);
-        var group = snapshot.Groups.FirstOrDefault(g => string.Equals(g.Name, audience.MailerLiteGroupName, StringComparison.Ordinal))
-            ?? await ml.CreateGroupAsync(audience.MailerLiteGroupName, ct);
+        ct.ThrowIfCancellationRequested();
+        // One audience owns one summary and audit: finish its write phase before stopping the next audience.
+        var mutationCt = CancellationToken.None;
+        MailerLiteGroup group;
+        try
+        {
+            group = snapshot.Groups.FirstOrDefault(g => string.Equals(g.Name, audience.MailerLiteGroupName, StringComparison.Ordinal))
+                ?? await ml.CreateGroupAsync(audience.MailerLiteGroupName, mutationCt);
+        }
+        catch (OperationCanceledException ex) when (ct.IsCancellationRequested)
+        {
+            throw new InvalidOperationException("MailerLite group creation failed during the detached write phase.", ex);
+        }
 
         var currentGroupMemberIds = snapshot.ByEmail.Values
             .Where(s => s.GroupIds.Contains(group.Id, StringComparer.Ordinal))
@@ -121,7 +151,7 @@ internal sealed class MailerLiteAudienceSyncService(
         {
             try
             {
-                var bulk = await ml.BulkImportSubscribersToGroupAsync(group.Id, toBulkImport.Values.ToList(), ct);
+                var bulk = await ml.BulkImportSubscribersToGroupAsync(group.Id, toBulkImport.Values.ToList(), mutationCt);
                 created = bulk.Created;
                 errors += bulk.Errors;
             }
@@ -136,7 +166,7 @@ internal sealed class MailerLiteAudienceSyncService(
         {
             try
             {
-                await ml.AssignSubscriberToGroupAsync(subId, group.Id, ct);
+                await ml.AssignSubscriberToGroupAsync(subId, group.Id, mutationCt);
                 assigned++;
             }
             catch (Exception ex)
@@ -150,7 +180,7 @@ internal sealed class MailerLiteAudienceSyncService(
         {
             try
             {
-                await ml.UnassignSubscriberFromGroupAsync(subId, group.Id, ct);
+                await ml.UnassignSubscriberFromGroupAsync(subId, group.Id, mutationCt);
                 unassigned++;
             }
             catch (Exception ex)
@@ -171,21 +201,29 @@ internal sealed class MailerLiteAudienceSyncService(
             Errors: errors);
 
         // The section's own state first, so the audit entry can point at a row that exists.
-        var state = await repository.UpsertSyncStateAsync(new MailerLiteSyncState
+        MailerLiteSyncState state;
+        try
         {
-            Key = result.Key,
-            LastSyncAt = clock.GetCurrentInstant(),
-            Summary = result.FormatSummary(),
-            GroupId = result.GroupId,
-            GroupName = result.GroupName,
-            Candidates = result.Candidates,
-            ExcludedUnsubscribed = result.ExcludedUnsubscribed,
-            Created = result.Created,
-            Assigned = result.Assigned,
-            AlreadyAssigned = result.AlreadyAssigned,
-            Unassigned = result.Unassigned,
-            Errors = result.Errors,
-        }, ct);
+            state = await repository.UpsertSyncStateAsync(new MailerLiteSyncState
+            {
+                Key = result.Key,
+                LastSyncAt = clock.GetCurrentInstant(),
+                Summary = result.FormatSummary(),
+                GroupId = result.GroupId,
+                GroupName = result.GroupName,
+                Candidates = result.Candidates,
+                ExcludedUnsubscribed = result.ExcludedUnsubscribed,
+                Created = result.Created,
+                Assigned = result.Assigned,
+                AlreadyAssigned = result.AlreadyAssigned,
+                Unassigned = result.Unassigned,
+                Errors = result.Errors,
+            }, mutationCt);
+        }
+        catch (OperationCanceledException ex) when (ct.IsCancellationRequested)
+        {
+            throw new InvalidOperationException("MailerLite audience summary failed during the detached write phase.", ex);
+        }
 
         var description = $"Audience '{audience.DisplayName}' synced to " +
                           $"'{result.GroupName}': {result.FormatSummary()}";

@@ -21,7 +21,7 @@ public sealed class BackdoorAgentControllerTests
     {
         var agent = Substitute.For<IAgentTranscriptRead>();
         var users = Substitute.For<IUserService>();
-        users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+        users.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(ValueTask.FromResult<IReadOnlyDictionary<Guid, UserInfo>>(
                 new Dictionary<Guid, UserInfo>()));
         var conversationId = Guid.NewGuid();

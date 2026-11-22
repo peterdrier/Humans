@@ -1,5 +1,6 @@
 using Humans.Users.Services;
 using Humans.Auth.Contracts;
+using Humans.Base.Constants;
 using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.Users.Contracts;
@@ -74,6 +75,7 @@ public class AccountControllerOAuthReconcileTests
             _userService,
             _userService,
             _clock,
+            FixedOrgTimeZone.Madrid,
             NullLogger<AccountController>.Instance,
             externalLoginService,
             _magicLinkService,
@@ -103,7 +105,7 @@ public class AccountControllerOAuthReconcileTests
                 Arg.Any<string>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
             .Returns(new OAuthReconcileResult(
                 ReconcileOutcome.NoChange, null, Guid.NewGuid(),
-                null, null, null, false));
+                null, null, null));
     }
 
     private static ExternalLoginInfo MakeInfo(string email, bool emailVerified, string name = "Test User")
@@ -143,13 +145,52 @@ public class AccountControllerOAuthReconcileTests
         await _userEmailService.Received(1).ReconcileOAuthIdentityAsync(
             userId, Provider, ProviderKey, "user@example.com",
             claimEmailVerified: true, Arg.Any<CancellationToken>());
+        await _userService.Received(1).EnsureStubProfileAsync(userId, null, null, null,
+            Arg.Any<CancellationToken>(), userId);
 
         _loginMethods.Google.Should().Be(1);
         _loginMethods.MagicLink.Should().Be(0);
     }
 
     [HumansFact]
-    public async Task ExistingUserSignInSuccess_ReconcileThrows_SignInStillSucceeds()
+    public async Task OAuthProfileFailure_DoesNotBlockNewAccount_AndKnownLoginRetriesRepair()
+    {
+        var email = "fresh@example.com";
+        _signInManager.GetExternalLoginInfoAsync().Returns(MakeInfo(email, emailVerified: true));
+        _signInManager.ExternalLoginSignInAsync(Provider, ProviderKey, true, true).Returns(SignInResult.Failed);
+        StubVerifiedEmailOwner(email, null);
+        User? created = null;
+        _userManager.CreateAsync(Arg.Do<User>(user => created = user)).Returns(IdentityResult.Success);
+        _userManager.FindByIdAsync(Arg.Any<string>()).Returns(_ => created);
+        _userManager.AddLoginAsync(Arg.Any<User>(), Arg.Any<UserLoginInfo>()).Returns(IdentityResult.Success);
+        var profileAttempts = 0;
+        _userService.EnsureStubProfileAsync(Arg.Any<Guid>(), null, null, null,
+                Arg.Any<CancellationToken>(), Arg.Any<Guid?>())
+            .Returns(_ => ++profileAttempts == 1 ? throw new IOException("profile store unavailable") : true);
+
+        var first = await _controller.ExternalLoginCallback(returnUrl: null, remoteError: null);
+
+        first.Should().BeOfType<RedirectResult>();
+        created.Should().NotBeNull();
+        await _signInManager.Received(1).SignInAsync(created!, true);
+        await _userManager.DidNotReceive().DeleteAsync(Arg.Any<User>());
+        _signInManager.ExternalLoginSignInAsync(Provider, ProviderKey, true, true).Returns(SignInResult.Success);
+        _userManager.FindByLoginAsync(Provider, ProviderKey).Returns(created);
+
+        var retry = await _controller.ExternalLoginCallback(returnUrl: null, remoteError: null);
+
+        retry.Should().BeOfType<RedirectResult>();
+        profileAttempts.Should().Be(2);
+        await _userService.Received(1).EnsureStubProfileAsync(created!.Id, null, null, null,
+            Arg.Any<CancellationToken>(), null);
+        await _userService.Received(1).EnsureStubProfileAsync(created.Id, null, null, null,
+            Arg.Any<CancellationToken>(), created.Id);
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task ExistingUserSignInSuccess_RepairFailure_SignInStillSucceeds(bool profileFailure)
     {
         var userId = Guid.NewGuid();
         var info = MakeInfo("user@example.com", emailVerified: true);
@@ -162,14 +203,50 @@ public class AccountControllerOAuthReconcileTests
         _userManager.FindByLoginAsync(Provider, ProviderKey).Returns(existingUser);
         _userManager.UpdateAsync(Arg.Any<User>()).Returns(IdentityResult.Success);
 
-        _userEmailService.ReconcileOAuthIdentityAsync(
-                Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<string>(),
-                Arg.Any<string>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
-            .Returns<OAuthReconcileResult>(_ => throw new InvalidOperationException("boom"));
+        if (profileFailure)
+            _userService.EnsureStubProfileAsync(userId, null, null, null,
+                    Arg.Any<CancellationToken>(), userId)
+                .Returns<bool>(_ => throw new IOException("profile store unavailable"));
+        else
+            _userEmailService.ReconcileOAuthIdentityAsync(
+                    Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<string>(),
+                    Arg.Any<string>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
+                .Returns<OAuthReconcileResult>(_ => throw new InvalidOperationException("boom"));
 
         // Sign-in never blocks.
         var result = await _controller.ExternalLoginCallback(returnUrl: null, remoteError: null);
-        result.Should().NotBeNull();
+        result.Should().BeOfType<RedirectResult>();
+        await _userEmailService.Received(1).ReconcileOAuthIdentityAsync(
+            userId, Provider, ProviderKey, "user@example.com", true, Arg.Any<CancellationToken>());
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task OAuthLink_ProfileRepairCancellation_DoesNotFallThroughToAccountCreation(bool lockedOut)
+    {
+        var target = new User { Id = Guid.NewGuid() };
+        var info = MakeInfo("linked@example.com", emailVerified: true);
+        StubVerifiedEmailOwner("linked@example.com", target);
+        _userManager.FindByLoginAsync(Provider, ProviderKey).Returns(new User { Id = Guid.NewGuid() });
+        _userManager.RemoveLoginAsync(Arg.Any<User>(), Provider, ProviderKey).Returns(IdentityResult.Success);
+        _userManager.AddLoginAsync(target, Arg.Any<UserLoginInfo>()).Returns(IdentityResult.Success);
+        using var cancelled = new CancellationTokenSource();
+        _userService.EnsureStubProfileAsync(target.Id, null, null, null, cancelled.Token, target.Id)
+            .Returns<bool>(_ =>
+            {
+                cancelled.Cancel();
+                throw new OperationCanceledException(cancelled.Token);
+            });
+        var service = new ExternalLoginService(_userManager, _userService, _userEmailService, _clock,
+            NullLogger<ExternalLoginService>.Instance);
+
+        var act = () => service.CompleteExternalLoginAsync(
+            new ExternalLoginAttempt(info, "linked@example.com", "Linked human", true,
+                ProviderSignInSucceeded: false, ProviderSignInLockedOut: lockedOut, CurrentUserId: null), cancelled.Token);
+
+        await act.Should().ThrowAsync<OperationCanceledException>();
+        await _userManager.DidNotReceive().CreateAsync(Arg.Any<User>());
     }
 
     [HumansFact]
@@ -180,8 +257,6 @@ public class AccountControllerOAuthReconcileTests
         var info = MakeInfo(newEmail, emailVerified: true);
 
         _signInManager.GetExternalLoginInfoAsync().Returns(info);
-        _signInManager.ExternalLoginSignInAsync(Provider, ProviderKey, true, true)
-            .Returns(SignInResult.Failed);
 
         var identity = new ClaimsIdentity([
             new Claim(ClaimTypes.NameIdentifier, currentUserId.ToString())
@@ -201,16 +276,99 @@ public class AccountControllerOAuthReconcileTests
 
         await _controller.ExternalLoginCallback(returnUrl: null, remoteError: null);
 
+        await _signInManager.DidNotReceiveWithAnyArgs()
+            .ExternalLoginSignInAsync(default!, default!, default, default);
         await _userManager.DidNotReceive().CreateAsync(Arg.Any<User>());
         await _userEmailService.Received(1).ReconcileOAuthIdentityAsync(
             currentUserId, Provider, ProviderKey, newEmail,
             claimEmailVerified: true, Arg.Any<CancellationToken>());
+        await _userService.Received(1).EnsureStubProfileAsync(currentUserId, null, null, null,
+            Arg.Any<CancellationToken>(), currentUserId);
 
         // Already-authenticated link keeps the existing session — no re-issue.
         await _signInManager.DidNotReceive().SignInAsync(
             Arg.Any<User>(), Arg.Any<bool>(), Arg.Any<string?>());
 
         // ...and linking is not a sign-in, so the dashboard tally doesn't move.
+        _loginMethods.Google.Should().Be(0);
+    }
+
+    [HumansFact]
+    public async Task AlreadyAuthenticatedLink_LoginOwnedByAnotherUser_NeverCallsExternalSignInAndFlashesLinkFailed()
+    {
+        var userAId = Guid.NewGuid();
+        var userA = new User { Id = userAId, State = UserState.Active };
+        var userB = new User { Id = Guid.NewGuid(), State = UserState.Active };
+        var info = MakeInfo("userb@google.test", emailVerified: true);
+
+        _signInManager.GetExternalLoginInfoAsync().Returns(info);
+        // Even if Identity would succeed for User B, authenticated link must never call ExternalLoginSignInAsync.
+        _signInManager.ExternalLoginSignInAsync(Provider, ProviderKey, true, true)
+            .Returns(SignInResult.Success);
+
+        var principal = new ClaimsPrincipal(new ClaimsIdentity(
+            [new Claim(ClaimTypes.NameIdentifier, userAId.ToString())],
+            authenticationType: "TestAuth"));
+        _controller.ControllerContext = new ControllerContext
+        {
+            HttpContext = new DefaultHttpContext { User = principal }
+        };
+        _controller.Url.IsLocalUrl("/Profile/Me/Emails").Returns(true);
+
+        _userManager.FindByIdAsync(userAId.ToString()).Returns(userA);
+        _userManager.FindByLoginAsync(Provider, ProviderKey).Returns(userB);
+
+        var result = await _controller.ExternalLoginCallback(returnUrl: "/Profile/Me/Emails", remoteError: null);
+
+        result.Should().BeOfType<LocalRedirectResult>().Which.Url.Should().Be("/Profile/Me/Emails");
+        _controller.TempData[TempDataKeys.ErrorMessage].Should().Be("EmailGrid_LinkFailed");
+        await _signInManager.DidNotReceiveWithAnyArgs()
+            .ExternalLoginSignInAsync(default!, default!, default, default);
+        await _signInManager.DidNotReceive().SignInAsync(
+            Arg.Any<User>(), Arg.Any<bool>(), Arg.Any<string?>());
+        await _userManager.DidNotReceiveWithAnyArgs().AddLoginAsync(default!, default!);
+        await _userEmailService.DidNotReceiveWithAnyArgs()
+            .ReconcileOAuthIdentityAsync(default, default!, default!, default!, default);
+        await _userService.DidNotReceiveWithAnyArgs().RecordLoginAsync(default, default);
+        _loginMethods.Google.Should().Be(0);
+    }
+
+    [HumansFact]
+    public async Task AlreadyAuthenticatedLink_LoginAlreadyOwnedByCurrentUser_ReconcilesWithoutAddLoginOrCookieSwitch()
+    {
+        var userAId = Guid.NewGuid();
+        var userA = new User { Id = userAId, State = UserState.Active };
+        var info = MakeInfo("usera@google.test", emailVerified: true);
+
+        _signInManager.GetExternalLoginInfoAsync().Returns(info);
+        _signInManager.ExternalLoginSignInAsync(Provider, ProviderKey, true, true)
+            .Returns(SignInResult.Success);
+
+        var principal = new ClaimsPrincipal(new ClaimsIdentity(
+            [new Claim(ClaimTypes.NameIdentifier, userAId.ToString())],
+            authenticationType: "TestAuth"));
+        _controller.ControllerContext = new ControllerContext
+        {
+            HttpContext = new DefaultHttpContext { User = principal }
+        };
+        _controller.Url.IsLocalUrl("/Profile/Me/Emails").Returns(true);
+
+        _userManager.FindByIdAsync(userAId.ToString()).Returns(userA);
+        _userManager.FindByLoginAsync(Provider, ProviderKey).Returns(userA);
+
+        var result = await _controller.ExternalLoginCallback(returnUrl: "/Profile/Me/Emails", remoteError: null);
+
+        result.Should().BeOfType<LocalRedirectResult>().Which.Url.Should().Be("/Profile/Me/Emails");
+        _controller.TempData[TempDataKeys.ErrorMessage].Should().BeNull();
+        await _signInManager.DidNotReceiveWithAnyArgs()
+            .ExternalLoginSignInAsync(default!, default!, default, default);
+        await _signInManager.DidNotReceive().SignInAsync(
+            Arg.Any<User>(), Arg.Any<bool>(), Arg.Any<string?>());
+        await _userManager.DidNotReceiveWithAnyArgs().AddLoginAsync(default!, default!);
+        await _userEmailService.Received(1).ReconcileOAuthIdentityAsync(
+            userAId, Provider, ProviderKey, "usera@google.test",
+            claimEmailVerified: true, Arg.Any<CancellationToken>());
+        await _userService.Received(1).RecordLoginAsync(userAId, Arg.Any<CancellationToken>());
         _loginMethods.Google.Should().Be(0);
     }
 
@@ -270,6 +428,8 @@ public class AccountControllerOAuthReconcileTests
         await _userEmailService.Received(1).ReconcileOAuthIdentityAsync(
             activeTargetId, Provider, ProviderKey, email,
             claimEmailVerified: true, Arg.Any<CancellationToken>());
+        await _userService.Received(1).EnsureStubProfileAsync(activeTargetId, null, null, null,
+            Arg.Any<CancellationToken>(), activeTargetId);
 
         // The relink resolves to a different account than Identity matched; the cookie goes to the active target.
         await _signInManager.Received(1).SignInAsync(activeTarget, true);
@@ -324,6 +484,8 @@ public class AccountControllerOAuthReconcileTests
         await _userEmailService.Received(1).ReconcileOAuthIdentityAsync(
             existingUserId, Provider, ProviderKey, email,
             claimEmailVerified: true, Arg.Any<CancellationToken>());
+        await _userService.Received(1).EnsureStubProfileAsync(existingUserId, null, null, null,
+            Arg.Any<CancellationToken>(), existingUserId);
 
         // No login row yet, so Identity's sign-in failed and the callback issues the cookie itself.
         await _signInManager.Received(1).SignInAsync(existingUser, true);
@@ -351,7 +513,7 @@ public class AccountControllerOAuthReconcileTests
             claimEmailVerified: true, Arg.Any<CancellationToken>())
             .Returns(new OAuthReconcileResult(
                 ReconcileOutcome.NewRowCreated, null, Guid.NewGuid(),
-                null, null, null, false));
+                null, null, null));
 
         await _controller.ExternalLoginCallback(returnUrl: null, remoteError: null);
 
@@ -419,10 +581,9 @@ public class AccountControllerOAuthReconcileTests
                 ReconcileOutcome.CrossUserBlocked,
                 PreviousEmail: null,
                 AffectedRowId: null,
-                DisplacedUserId: Guid.NewGuid(),
-                DisplacedRowId: Guid.NewGuid(),
-                DisplacedEmail: newEmail,
-                DisplacedUserLeftWithoutVerifiedEmail: false));
+                BlockingUserId: Guid.NewGuid(),
+                BlockingRowId: Guid.NewGuid(),
+                BlockingEmail: newEmail));
 
         await _controller.ExternalLoginCallback(returnUrl: null, remoteError: null);
 

@@ -1,6 +1,6 @@
 <!-- freshness:triggers
   src/Sections/Humans.Teams/**
-  src/Sections/Humans.GoogleIntegration/Services/GoogleWorkspaceSyncService.cs
+  src/Sections/Humans.Google/Services/GoogleWorkspaceSyncService.cs
   src/Sections/Humans.EarlyEntry/Services/EarlyEntryService.cs
 -->
 <!-- freshness:flag-on-change
@@ -162,11 +162,11 @@ Nobodies Collective operates through self-organizing working groups (teams). Tea
 - A team must have Early Entry enabled (a flag on the team's admin settings, set by TeamsAdmin/Admin) before it can grant EE
 - The Early Entry page at `/Teams/{slug}/EarlyEntry` is only reachable when the team has Early Entry enabled
 - Coordinators (and parent-department coordinators) manage EE for their own team; the cross-team Early Entry Admin role can manage EE on any enabled team
-- Grant an entry by choosing a person (search by name or ticket barcode), an entry date, and a project name; the service resolves merge aliases to the survivor and refuses unavailable people before any write or audit
-- Edit or remove existing grants; removing a grant that is already gone is a no-op
+- Grant an entry by choosing an event, a person (search by name or ticket barcode), an entry date, and a project name; the active event is the add-form default. The service resolves merge aliases to the survivor and refuses unavailable people or events before any write or audit
+- Edit existing grants with Save, or remove them; removing a grant that is already gone is a no-op. Legacy grants without an event stay visible for review and contribute nothing until an operator selects an event and saves
 - Grants are listed ordered by project name, then entry date
 - Turning Early Entry off on a team keeps existing grants (they just stop counting toward early access)
-- Each grant feeds the festival early-entry roster as "{Team name}: {Project name}"
+- Each grant feeds the festival early-entry roster as "{Team name}: {Project name}" only while its selected event is active. Grants for other events remain stored; events in the same year remain distinct, and no active event means no contributed grants
 
 ### US-6.13: Board/Admin Team Roster
 **As a** Board member or Admin
@@ -174,7 +174,7 @@ Nobodies Collective operates through self-organizing working groups (teams). Tea
 **So that** I can identify who's who for compliance/legal purposes without needing coordinator access
 
 **Acceptance Criteria:**
-- Roster page at `/Teams/{slug}/Roster`, gated to Board or Admin (narrower than the coordinator-inclusive team-management resolver used elsewhere on `TeamAdminController`)
+- Roster page at `/Teams/{slug}/Roster`, gated to Board or Admin (the policy narrows the coordinator-inclusive team-view resolver; Board holds no team-management right)
 - Lists every team member with their human card (avatar + burner name), legal name, and join date
 - Sorted by legal name by default; any column header re-sorts the table
 - Linked from the team detail page's management sidebar, visible only to Board/Admin
@@ -297,6 +297,6 @@ User clicks "Leave"
 
 - [Authentication](../../../Humans.Auth/Docs/features/authentication.md) — Teams Admin and Admin roles enable team creation
 - [Volunteer Status](../../../Humans.Onboarding/Docs/features/volunteer-status.md) — Determines Volunteers team membership
-- [Google Integration](../../../Humans.GoogleIntegration/Docs/features/google-integration.md) — Team resource provisioning
+- [Google](../../../Humans.Google/Docs/features/google-integration.md) — Team resource provisioning
 - [Background Jobs](../../../../../docs/features/global/background-jobs.md) — System team sync job
 - [Hidden Teams](hidden-teams.md) — Admin-only team visibility flag

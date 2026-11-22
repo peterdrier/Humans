@@ -7,6 +7,7 @@ using Humans.Expenses.Contracts;
 using Humans.Finance.Contracts;
 using Humans.Finance.Data;
 using Humans.Finance.Domain;
+using Humans.Finance.Models;
 using Humans.Finance.Services;
 using Humans.Holded.Contracts;
 using Humans.Users.Contracts;
@@ -32,21 +33,21 @@ public class SepaWithdrawTests
     private static readonly Guid UserId = Guid.NewGuid();
     private static readonly Guid Actor = Guid.NewGuid();
 
-    private readonly IHoldedRepository _repo = Substitute.For<IHoldedRepository>();
+    private readonly IFinanceRepository _repo = Substitute.For<IFinanceRepository>();
     private readonly IAuditLogService _audit = Substitute.For<IAuditLogService>();
     private readonly IUserService _users = Substitute.For<IUserService>();
     private readonly IEmailService _emailService = Substitute.For<IEmailService>();
 
     private Service MakeService() => new(
-        _repo, Substitute.For<IHoldedClient>(), Substitute.For<IBudgetService>(), Substitute.For<IHoldedService>(), Substitute.For<IHoldedWrite>(),
-        Substitute.For<IExpenseHoldedBookingService>(), new FakeClock(FixedNow), new MemoryCache(new MemoryCacheOptions()),
+        FixedOrgTimeZone.Madrid, _repo, Substitute.For<IBudgetService>(), TestContacts.Holded(), Substitute.For<IHoldedWrite>(),
+        Substitute.For<IExpenseHoldedBookingService>(), new FakeClock(FixedNow),
         _audit, _users, _emailService, TestFinanceEmails.Create(), Options.Create(new SepaOptions()),
         new TrackedCache<string, Dictionary<string, int>>("Finance.SepaStuckBankLines", warmOnStartup: false, NullLogger<Service>.Instance),
         Substitute.For<IPaymentDetailsManagement>(), NullLogger<Service>.Instance);
 
     public SepaWithdrawTests()
     {
-        _users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+        _users.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, UserInfo>
             {
                 [UserId] = new(
@@ -156,7 +157,7 @@ public class SepaWithdrawTests
     {
         Seed();
         var members = await _users.GetUserInfosAsync([UserId], TestContext.Current.CancellationToken);
-        _users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+        _users.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, UserInfo> { [UserId] = members[UserId] with { IdentityEmailColumn = null } });
 
         var result = await MakeService().WithdrawSepaTransferAsync(TransferId, Actor, TestContext.Current.CancellationToken);
@@ -199,11 +200,18 @@ public class SepaWithdrawTests
     public async Task CancelFile_IsRefused_WhenAnyTransferIsBooked_OrTheFileIsAlreadyCancelled(bool booked)
     {
         var fileId = Guid.NewGuid();
-        _repo.GetSepaPayoutTransferRowsAsync(Arg.Any<CancellationToken>()).Returns(new List<SepaPayoutTransferRow>
+        var rows = new List<SepaPayoutTransferRow>
         {
             FileRow(fileId, 1000m, withdrawnAt: booked ? null : GeneratedAt),
             FileRow(fileId, 250m, bookedAt: booked ? FixedNow : null, withdrawnAt: booked ? null : GeneratedAt),
-        });
+        };
+        _repo.GetSepaPayoutTransferRowsAsync(Arg.Any<CancellationToken>()).Returns(rows);
+        var file = new SepaPayoutFileVm(fileId, "f.xml", GeneratedAt, Actor,
+            rows.Select(row => new SepaTransferVm(row, "Member")).ToList(), null);
+        file.IsCancelled.Should().Be(!booked);
+        file.CanCancel.Should().BeFalse();
+        file.SummaryTransferCount.Should().Be(2);
+        file.SummaryTotal.Should().Be(1250m);
 
         var result = await MakeService().CancelSepaFileAsync(fileId, Actor, TestContext.Current.CancellationToken);
 

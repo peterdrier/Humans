@@ -28,6 +28,9 @@ internal sealed class RoleAssignmentsController(
     ILogger<RoleAssignmentsController> logger,
     IStringLocalizer<SharedResource> localizer) : HumansControllerBase(userService)
 {
+    // Admin-only page: English per memory/code/localization-admin-exempt.md.
+    private const string NotesTooLongMessage = "Notes must be 2,000 characters or fewer.";
+
     [HttpGet("Auth/Admin/Roles")]
     public async Task<IActionResult> Roles(string? role, bool showInactive = false, int page = 1)
     {
@@ -94,6 +97,12 @@ internal sealed class RoleAssignmentsController(
             return View(model);
         }
 
+        if (RoleAssignmentRules.IsAddedInGovernance(model.RoleName))
+        {
+            SetError(BoardInGovernanceMessage);
+            return RedirectToAction("AdminDetail", "UsersAdmin", new { id });
+        }
+
         var currentUser = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
         if (currentUser is null)
         {
@@ -115,22 +124,34 @@ internal sealed class RoleAssignmentsController(
 
         if (result.Success)
             SetSuccess(string.Format(localizer["Admin_RoleAssigned"].Value, model.RoleName));
+        else if (string.Equals(result.ErrorKey, "NotesTooLong", StringComparison.Ordinal))
+            SetError(NotesTooLongMessage);
         else
             SetError(string.Format(localizer["Admin_RoleAlreadyActive"].Value, model.RoleName));
 
         return RedirectToAction("AdminDetail", "UsersAdmin", new { id });
     }
 
+    private const string BoardInGovernanceMessage =
+        "Board seats are added and ended on the Board page in Governance (/Governance/Board).";
+
     [HttpPost("Auth/Admin/{id:guid}/Roles/{roleId:guid}/End")]
     [Authorize(Policy = UsersPolicies.Manage)]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> EndRole(Guid id, Guid roleId, string? notes)
     {
-        var roleAssignment = await roleAssignmentService.GetByIdAsync(roleId, HttpContext.RequestAborted);
+        var roleAssignment = await roleAssignmentManagement.GetByIdAsync(roleId, HttpContext.RequestAborted);
 
         if (roleAssignment is null)
         {
             return NotFound();
+        }
+
+        // Ending a seat here would skip Governance's Board office cleanup and its Google sync request.
+        if (RoleAssignmentRules.IsAddedInGovernance(roleAssignment.RoleName))
+        {
+            SetError(BoardInGovernanceMessage);
+            return RedirectToAction("AdminDetail", "UsersAdmin", new { id = roleAssignment.UserId });
         }
 
         var currentUser = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
@@ -157,6 +178,8 @@ internal sealed class RoleAssignmentsController(
                 localizer["Admin_RoleEnded"].Value,
                 roleAssignment.RoleName,
                 roleAssignment.UserDisplayName));
+        else if (string.Equals(result.ErrorKey, "NotesTooLong", StringComparison.Ordinal))
+            SetError(NotesTooLongMessage);
         else
             SetError(localizer["Admin_RoleNotActive"].Value);
 

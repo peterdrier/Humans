@@ -1,19 +1,18 @@
 ---
-name: No URL aliases except Barrios↔Camps
-description: Single canonical URL per page; the only sanctioned alias is Barrios↔Camps.
+name: One URL per page; a moved page takes its new owner's URL
+description: Adding a route, or moving a page or action to another section: one canonical URL under the owning section, no aliases, no redirects. Only Barrios↔Camps is an alias.
 ---
 
-When adding new pages to an existing section, route them on the existing controller using the existing route convention. Do **NOT** add singular-form aliases (`/Camp/Admin` alongside `/Camps/Admin`), do **NOT** split into a new controller just to vary the URL, do **NOT** introduce any second route prefix.
+Every page has exactly one URL, under its owning section: `/<Section>/...`, admin pages `/<Section>/Admin/...`.
 
-The single sanctioned alias is **`Barrios` ↔ `Camps`** (Spanish-language UX equivalent). Every camp-section controller that exposes `[Route("Camps")]` also exposes `[Route("Barrios")]`, and `[Route("Camps/Admin")]` is paired with `[Route("Barrios/Admin")]`. That's it.
-
-**Why:** Peter's words: "NEVER ANY FUCKING ALIASES (except barrios for camps)." Aliases create URL surface area that has to be maintained, indexed by search, and explained to users. A second route attribute that resolves to the same action is technical debt with no upside. Single canonical URL per page; one well-known alias for the bilingual UX.
+- **No aliases.** No singular/plural pairs (`/Camp/Admin` beside `/Camps/Admin`), no second route prefix, no new controller just to vary a URL. The single sanctioned alias is `Barrios` ↔ `Camps`, on every Camps controller. Peter: "NEVER ANY FUCKING ALIASES (except barrios for camps)."
+- **A move is a move.** A page or action that changes section takes the new owner's route. Don't keep the old prefix and don't add a redirect. Peter, 2026-10-21: "DO NOT keep urls. a move is a move. bookmarks are not a thing we worry about anymore." This includes URLs in already-sent emails and `List-Unsubscribe` headers: update the code that mints them and report any external system that must change.
 
 **How to apply:**
 
-- New pages in the Camps section → existing `CampController` (plural, public + per-camp slug routes) or existing `CampAdminController` (plural, global admin) — match the page's scope.
-- Same convention by analogy in other sections (Profiles, Teams, etc.) — single canonical URL, no singular/plural aliasing.
-- If a brief or prior review claims "URL must change to X" and X isn't the section's existing convention, verify with Peter before refactoring routes.
-- The only acceptable controller-level multi-route is the Barrios alias.
+- New pages go on the section's existing controller and route convention.
+- When moving, update every link, test, allowlist and doc naming the old path, and delete any legacy redirect. `asp-controller`/`Url.Action` links follow by name; literal paths in docs, the guide, JS, e2e helpers and agent prompts need hand edits.
+- If a brief says "the URL must change to X" and X isn't the section's convention, check with Peter first.
+- This is not a licence to churn routes that never moved in unrelated work.
 
-**Related:** [`no-admin-url-section`](../architecture/no-admin-url-section.md) — `/<Section>/Admin/*` is the convention for admin URLs going forward.
+**Related:** [`no-admin-url-section`](../architecture/no-admin-url-section.md)

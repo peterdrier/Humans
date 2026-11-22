@@ -12,7 +12,7 @@ using Humans.Camps.ViewComponents;
 using Humans.CityPlanning.Contracts;
 using Humans.EarlyEntry.Contracts;
 using Humans.Gdpr.Contracts;
-using Humans.GoogleIntegration.Contracts;
+using Humans.Google.Contracts;
 using Humans.Issues.Contracts;
 using Humans.Settings.Contracts;
 using Humans.Users.Contracts;
@@ -20,9 +20,12 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Configuration;
 using Humans.Notifications.Contracts;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Localization;
 using static Humans.Base.Models.AccessLevel;
 using static Humans.Base.Models.AccessMatrixFeature;
 using Humans.AuditLog.Contracts;
+
+[assembly: Humans.Base.Demo.NoDemoStory("No demo story written yet.")]
 
 namespace Humans.Camps;
 
@@ -37,10 +40,13 @@ public sealed class Section :
     ISectionAccessMatrix,
     ISectionAdminNav,
     ISectionChrome,
+    ISectionDataMigrations,
     ISectionHelp,
     ISectionNav,
     ISectionPolicies,
-    ISectionSettings
+    ISectionSettings,
+    ISearchContributor,
+    IUserPart
 {
     IEnumerable<ChromeComponent> ISectionChrome.Components() =>
         [new(ChromeSlots.WidgetGallery, typeof(CampsGalleryViewComponent))];
@@ -57,6 +63,7 @@ public sealed class Section :
     {
         services.AddSingleton<IAuditActionContributor, CampsAuditActions>();
         services.AddSingleton<INotificationSourceContributor, CampsNotificationSources>();
+        services.AddScoped<INotificationMeterContributor, CampsNotificationMeters>();
         services.AddSectionDbContext<CampsDbContext>(sentinelTable: "camps");
 
         services.AddSingleton<ICampRepository, CampRepository>();
@@ -98,9 +105,8 @@ public sealed class Section :
         services.AddScoped<IGoogleGroupMembershipSource>(sp => sp.GetRequiredService<CampRoleService>());
         // Lazy<ICampRoleService> resolves a circular dep: CampService -> ICampRoleService -> ICampRoleCampAccess.
         services.AddTransient(sp => new Lazy<ICampRoleService>(sp.GetRequiredService<ICampRoleService>));
-        // Lazy<ICityPlanningWrite> resolves a circular dep: CampService -> ICityPlanningWrite
-        // -> ICampService. Used on the camp-delete path to clear the section's polygons.
-        services.AddTransient(sp => new Lazy<ICityPlanningWrite>(sp.GetRequiredService<ICityPlanningWrite>));
+        // Lazy: a deletion listener (City Planning) injects ICampService, so resolving them eagerly would be circular.
+        services.AddTransient(sp => new Lazy<IEnumerable<ICampDeletionListener>>(sp.GetServices<ICampDeletionListener>));
 
         services.AddScoped<ICampContactService, CampContactService>();
         services.AddScoped<CampAdminPageBuilder>();
@@ -148,6 +154,45 @@ public sealed class Section :
         ])
     ];
 
+    internal const string RegistrationInfoCopyKey = "camps.registration-info-from-city-planning";
+
+    IEnumerable<DataMigration> ISectionDataMigrations.Migrations() =>
+    [
+        new(RegistrationInfoCopyKey, "Camps",
+            "Copy each event's Register page info from City Planning's settings onto the Camps event row",
+            "City Planning's registration_info column and the Register page fallback that reads it",
+            RegistrationInfoCopyStatusAsync, ApplyRegistrationInfoCopyAsync),
+    ];
+
+    private static async Task<IReadOnlyList<(CampEventRegistration Event, string Info)>> PendingRegistrationInfoCopiesAsync(
+        IServiceProvider sp, CancellationToken ct)
+    {
+        var cityPlanning = sp.GetRequiredService<ICityPlanningService>();
+        var pending = new List<(CampEventRegistration, string)>();
+        foreach (var ev in await sp.GetRequiredService<ICampManagement>().GetRegistrationByEventAsync(ct))
+        {
+            if (ev.RegistrationInfo is not null) continue;
+            if (await cityPlanning.GetLegacyRegistrationInfoAsync(ev.Year, ct) is { } info
+                && !string.IsNullOrWhiteSpace(info))
+                pending.Add((ev, info));
+        }
+        return pending;
+    }
+
+    private static async Task<DataMigrationStatus> RegistrationInfoCopyStatusAsync(IServiceProvider sp, CancellationToken ct) =>
+        new(["Event", "Registration info from City Planning"],
+            [.. (await PendingRegistrationInfoCopiesAsync(sp, ct))
+                .Select(p => (IReadOnlyList<string>)[p.Event.EventName, p.Info])]);
+
+    private static async Task<int> ApplyRegistrationInfoCopyAsync(IServiceProvider sp, Guid actorUserId, CancellationToken ct)
+    {
+        var camps = sp.GetRequiredService<ICampManagement>();
+        var pending = await PendingRegistrationInfoCopiesAsync(sp, ct);
+        foreach (var (ev, info) in pending)
+            await camps.SetRegistrationInfoAsync(ev.EventSettingsId, info, actorUserId, ct);
+        return pending.Count;
+    }
+
     IReadOnlyList<SectionHelpEntry> ISectionHelp.HelpEntries => Entries;
 
     // Read once per process: the markdown ships inside this assembly and never changes at runtime.
@@ -179,4 +224,17 @@ public sealed class Section :
         new SettingsTab("barrios", "Settings_TabBarrios", typeof(CampBarriosSettingsTabViewComponent), CampsPolicies.Manage)
     ];
 
+    IEnumerable<UserPart> IUserPart.Parts() => [new(UserPartSlots.Profile, typeof(MyCampsViewComponent))];
+
+    IEnumerable<SearchCategory> ISearchContributor.Categories() =>
+    [
+        new("Camp",
+            sp => sp.GetRequiredService<IStringLocalizer<CampsResource>>()["Camps_Search_Category"].Value,
+            "fa-solid fa-campground", typeof(CampsSearchResultViewComponent), SearchCampsAsync, Weight: 20),
+    ];
+
+    private static async Task<IReadOnlyList<SearchHit>> SearchCampsAsync(
+        IServiceProvider sp, string query, CancellationToken ct) =>
+        [.. (await sp.GetRequiredService<ICampService>().SearchAsync(query, int.MaxValue, ct))
+            .Select(c => new SearchHit(c.CampId, c.Name, c.Score))];
 }

@@ -1153,10 +1153,6 @@
   <data name="Shifts_Dashboard_CampsDescription" xml:space="preserve">
     <value>Els barris que fan que Elsewhere sembli casa.</value>
   </data>
-  <data name="Shifts_DietaryMissingBanner_Title" xml:space="preserve"><value>Ens expliques les teves preferències alimentàries?</value></data>
-  <data name="Shifts_DietaryMissingBanner_Body" xml:space="preserve"><value>Estàs en un torn llarg. Si ens expliques les teves preferències alimentàries, la cantina pot planificar els teus àpats. És opcional.</value></data>
-  <data name="Shifts_DietaryMissingBanner_Cta" xml:space="preserve"><value>Digues-nos-ho ara</value></data>
-  <data name="Shifts_DietaryMissingBanner_Decline" xml:space="preserve"><value>Prefereixo no respondre</value></data>
   <data name="Shifts_ViewAllMyShifts" xml:space="preserve"><value>Veure tots els meus torns</value></data>
   <data name="Shifts_SortOrder" xml:space="preserve"><value>Ordre</value></data>
   <data name="Shifts_BailRangeSuccess" xml:space="preserve"><value>Has cancel·lat el rang de torns.</value></data>
@@ -1210,8 +1206,6 @@
   <data name="Shifts_Signup_AtCapacity" xml:space="preserve"><value>Aquest torn està complet.</value></data>
   <data name="Shifts_Signup_RotaNotFound" xml:space="preserve"><value>No s’ha trobat la rota.</value></data>
   <data name="Shifts_Signup_RangeEmpty" xml:space="preserve"><value>No s’han trobat torns en l’interval de dates indicat.</value></data>
-  <data name="Shifts_Signup_RangeAlreadySignedUp" xml:space="preserve"><value>Ja t’has inscrit en tots els torns d’aquest interval.</value></data>
-  <data name="Shifts_Signup_RangeConflicts" xml:space="preserve"><value>Tots els torns de l’interval se superposen amb inscripcions existents.</value></data>
   <data name="Shifts_Signup_RangeAtCapacity" xml:space="preserve"><value>Tots els torns d’aquest interval estan complets.</value></data>
   <data name="Shifts_Signup_RangeRestricted" xml:space="preserve"><value>Un o més torns d’aquest interval estan reservats a coordinadors i administradors.</value></data>
   <data name="Shifts_Signup_RangeDuplicate" xml:space="preserve"><value>Ja t’has apuntat a un o més torns d’aquest interval.</value></data>
@@ -1274,8 +1268,6 @@
   </data>
   <data name="Shifts_StatusReasonTooLong" xml:space="preserve"><value>El motiu no pot superar els 1000 caràcters.</value></data>
   <data name="Shifts_Bail_NotActive" xml:space="preserve"><value>Aquesta inscripció ja no està activa i no es pot cancel·lar.</value></data>
-  <data name="Shifts_Medical_RevealTitle" xml:space="preserve"><value>Mostra les dades mèdiques (cada consulta queda registrada al registre d'auditoria)</value></data>
-  <data name="Shifts_Medical_RevealFailed" xml:space="preserve"><value>No s'han pogut carregar les dades mèdiques.</value></data>
   <data name="Shifts_Notification_CoverageGapTitle" xml:space="preserve"><value>Falta de cobertura: {0} dia {1}</value></data>
   <data name="Shifts_Notification_CoverageGapBody" xml:space="preserve"><value>Només {0}/{1} humans confirmats.</value></data>
   <data name="Shifts_Notification_FindCover" xml:space="preserve"><value>Cerca cobertura →</value></data>
@@ -1293,4 +1285,38 @@
   <data name="Shifts_Notification_ChangeRefusedRange" xml:space="preserve"><value>Inscripció a diversos torns de '{0}' rebutjada ({1} torns).</value></data>
   <data name="Shifts_Notification_ChangeBailedRange" xml:space="preserve"><value>Cancel·lació de diversos torns de '{0}' ({1} torns).</value></data>
   <data name="Shifts_TagPreferencesInvalid" xml:space="preserve"><value>Algunes etiquetes seleccionades ja no estan disponibles. Revisa la selecció i torna-ho a provar.</value></data>
+  <data name="Shifts_Profile_NoShowHistory" xml:space="preserve"><value>Historial d'absències ({0})</value></data>
+  <data name="Shifts_Profile_MarkedBy" xml:space="preserve"><value>Marcat per</value></data>
+  <data name="Shifts_Profile_MarkedAt" xml:space="preserve"><value>Marcat el</value></data>
+  <data name="ShiftsSummary_Title" xml:space="preserve">
+    <value>Torns</value>
+  </data>
+  <data name="ShiftsSummary_SlotsFilled" xml:space="preserve">
+    <value>{0} / {1} places ocupades</value>
+    <comment>{0} = filled, {1} = total</comment>
+  </data>
+  <data name="ShiftsSummary_HumansSignedUp" xml:space="preserve">
+    <value>{0} humans inscrits</value>
+    <comment>{0} = count</comment>
+  </data>
+  <data name="ShiftsSummary_PendingCount" xml:space="preserve">
+    <value>{0} pendents</value>
+    <comment>{0} = count</comment>
+  </data>
+  <data name="ShiftsSummary_NoShifts" xml:space="preserve">
+    <value>Encara no hi ha torns configurats.</value>
+  </data>
+  <data name="ShiftsSummary_IncludesSubTeams" xml:space="preserve">
+    <value>Inclou torns de {0} subequip(s)</value>
+    <comment>{0} = count</comment>
+  </data>
+  <data name="ShiftsSummary_ManageShifts" xml:space="preserve">
+    <value>Gestionar torns</value>
+  </data>
+  <data name="Shifts_Search_Category" xml:space="preserve"><value>Torns</value></data>
+  <data name="Shifts_NameRequiredBeforeShifts" xml:space="preserve"><value>Afegeix primer el teu nom — el necessitem abans que puguis apuntar-te a torns.</value></data>
+  <data name="Shifts_Permission_Manage_Title" xml:space="preserve"><value>Gestionar torns</value></data>
+  <data name="Shifts_Permission_Manage_Blurb" xml:space="preserve"><value>Crear i editar les rotacions i els torns de l'equip, i escriure als seus voluntaris.</value></data>
+  <data name="Shifts_Permission_Approve_Title" xml:space="preserve"><value>Aprovar inscripcions</value></data>
+  <data name="Shifts_Permission_Approve_Blurb" xml:space="preserve"><value>Aprovar, rebutjar i assignar inscripcions als torns de l'equip.</value></data>
 </root>

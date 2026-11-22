@@ -1,5 +1,4 @@
 using System.Security.Claims;
-using Humans.Cantina.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Shifts.Controllers;
 using Humans.Shifts.Domain;
@@ -8,7 +7,6 @@ using Humans.Shifts.Models;
 using Humans.Shifts.Services;
 using Humans.Shifts.Services.Dtos;
 using Humans.Users.Contracts;
-using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -173,8 +171,8 @@ public class ShiftDashboardControllerTests
 
     private ShiftDashboardController Controller() => new(
         _settings, _management, _signups, _users,
-        new ShiftDashboardPageBuilder(_management, Substitute.For<IWebHostEnvironment>(), SystemClock.Instance),
-        new ShiftVolunteerSearchBuilder(_settings, _users, Substitute.For<ICantinaService>(),
+        new ShiftDashboardPageBuilder(_management, SystemClock.Instance),
+        new ShiftVolunteerSearchBuilder(_settings, _users,
             Substitute.For<IShiftRowView>(), _signups, Substitute.For<IVolunteerTrackingManagement>()),
         NullLogger<ShiftDashboardController>.Instance)
     {

@@ -1,12 +1,12 @@
+using Humans.Monitor.Services;
 using Hangfire;
 using NodaTime;
 using Humans.Base.Interfaces;
-using Humans.Monitor.Contracts;
 
 namespace Humans.Monitor.Jobs;
 
 [DisableConcurrentExecution(timeoutInSeconds: 300)]
-public class DriveActivityMonitorJob(
+internal sealed class DriveActivityMonitorJob(
     IDriveActivityMonitorService monitorService,
     IHumansMetrics metrics,
     ILogger<DriveActivityMonitorJob> logger,
@@ -31,6 +31,11 @@ public class DriveActivityMonitorJob(
             }
 
             metrics.RecordJobRun("drive_activity_monitor", "success");
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            logger.LogWarning("Drive activity monitor interrupted by shutdown");
+            throw;
         }
         catch (Exception ex)
         {

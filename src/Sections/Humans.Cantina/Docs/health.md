@@ -162,10 +162,8 @@ The layout matches.
   broken markup with a green build and no runtime error.
 - **The weekly page is overview-only.** Per-person detail lives on the day drill-down, so the
   weekly multi-key sort shapes only the CSV; the HTML action does not run it.
-- **The burner name comes off `UserInfo`, never off `ProfileInfo`.** `UserInfo.BurnerName` is the
-  resolved value (`User.BurnerName` → `Profile.BurnerName` → legacy display name,
-  nobodies-collective/Humans#1097); `ProfileInfo.BurnerName` renders `"(unknown)"` for a human
-  whose name only ever landed on the user row. This section is a pure read-side consumer of
+- **The burner name comes off `UserInfo`.** `UserInfo.BurnerName` is the resolved value
+  (nobodies-collective/Humans#1097); `ProfileInfo` carries no names. This section is a pure read-side consumer of
   Users' read-model, so a change on that side lands here silently. Pinned by
   `GetDailyRoster_BurnerName_ComesFromTheResolvedUserName`.
 - **The "Other" text rule is checked twice on save.** The controller checks first so the error

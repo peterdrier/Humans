@@ -1,7 +1,9 @@
 <!-- freshness:triggers
-  src/Sections/Humans.Holded/Contracts/IHoldedClient.cs
+  src/Sections/Humans.Holded/Services/IHoldedClient.cs
   src/Sections/Humans.Holded/Contracts/Holded*.cs
-  src/Sections/Humans.Holded/Services/Holded*Client.cs
+  src/Sections/Humans.Holded/Services/HoldedClient.cs
+  src/Sections/Humans.Holded/Services/Holded*Dto*.cs
+  src/Sections/Humans.Holded/Services/HoldedClientOptions.cs
   src/Sections/Humans.Holded/Services/HoldedTransport.cs
   src/Sections/Humans.Holded/Services/HoldedJson.cs
   src/Sections/Humans.Holded/Services/HoldedCallLog.cs
@@ -21,9 +23,10 @@ section** it belongs to (ledger mirror, sync, `/Holded` admin screen) has its ow
   (`items[].account`); tags are never written (dead v1 workaround). Only the single GET
   (`GetPurchaseDocumentAsync`) returns `notes` (null when absent or blank) — the v2 list never
   does (verified live 2026-10-21) — which is how Finance confirms a document the push wrote
-  twice before deleting it; `DeletePurchaseDocumentAsync` and `DeleteContactAsync` are the
-  two deletes, used only by Finance: both by its duplicate removal, and the contact delete also
-  to retract a creditor contact minted by a run that lost the member's binding race.
+  twice before deleting it. `DeletePurchaseDocumentAsync` and `DeleteContactAsync` are the
+  deletes, reached through `IHoldedWrite` by Finance only: both by its duplicate removal, and
+  the contact delete also to retract a creditor contact minted by a run that lost the member's
+  binding race.
 - A **Sales Document** is the org's outgoing revenue record, in two kinds behind one
   `HoldedSalesDocumentKind`: a full `invoice` (identified contact required) and a
   `sales-receipt` (*factura simplificada*, no contact). They share one payload shape and one
@@ -44,10 +47,13 @@ section** it belongs to (ledger mirror, sync, `/Holded` admin screen) has its ow
 ## Invariants
 
 - Contact creation accepts no custom user id: Holded v2 cannot write it. Finance keeps the user-to-contact binding locally.
-- Connector reads omit unused sales status, bank origin, per-line purchase amounts and secondary usage metadata; consumers use document totals, the draft flag and bank reconciliation status.
-- `HoldedClient` remains the typed-client entry point. Its internal operation clients share one
-  `HoldedTransport`, which owns every HTTP send, Bearer authorization, retry, cursor page walk,
-  call-meter record and timed-operation log. The metered endpoint names remain the public operation names.
+- Purchase detail reads parse only approval time, notes and payment details. Identity, document number, totals, balances and tags come from the list mirror where needed; unused detail metadata cannot fail approval, note sync or payment-reference reads. Other connector reads omit unused sales status, bank origin, per-line purchase amounts and secondary usage metadata.
+- Every HTTP send goes through `HoldedTransport`, which owns Bearer authorization, retry, the
+  cursor page walk, the call-meter record and the timed-operation log. The metered endpoint name is
+  the operation's method name.
+- An error message never carries an IBAN: 4xx bodies and the preview of a page without `items`
+  are masked (JSON strings decoded first, plain text through the same IBAN formatter) before
+  truncation. `HoldedPermanentException.ResponseBody` keeps the raw body for business checks.
 - 429 with `Retry-After` is honored (wait capped at 60 s) and retried once for content-free
   GETs. HTTP-date waits retain their fractional remaining seconds and round up to the delay's millisecond
   precision, so a future retry date is never rounded down to an immediate retry; past dates still retry immediately. Every write, including a bodyless sales-approval POST,
@@ -67,12 +73,12 @@ section** it belongs to (ledger mirror, sync, `/Holded` admin screen) has its ow
   new `payments_detail` entry matching amount, date and treasury on a re-read of the document
   (the POST answers `{"status":"paid"}` alone); an entry's id comes from its own response body.
   Callers must not repeat a posting because its reference is unconfirmed.
-- Expense-account `account_num` and `id`, and chart account `id`, are required. Missing numbers or missing/null/blank IDs fail the complete read with `HoldedPermanentException` before callers can provision or invoice from an incomplete account map.
-- Account numbers, supplier account numbers, ledger entry numbers and ledger line numbers must be integral. Numeric forms such as `40000001.0` are accepted; fractions are rejected instead of truncated. Contact-list parsing retains its existing skip-and-log behavior for unreadable contacts.
+- Expense-account reads need only `account_num` and `id`; the unused name is not parsed. Both fields, and chart account `id`, are required. Missing numbers or missing/null/blank IDs fail the complete read with `HoldedPermanentException` before callers can provision or invoice from an incomplete account map.
+- Account numbers, supplier account numbers, ledger entry numbers and ledger line numbers must be integral. Numeric forms such as `40000001.0` are accepted; fractions are rejected instead of truncated. An unreadable contact fails the complete list with `HoldedPermanentException`; valid contacts are never returned as a shortened replacement dataset.
 - Purchase-document IDs must be nonblank; a missing/blank ID fails the complete read with `HoldedPermanentException`, so Finance never syncs an empty document identity. Approved (`draft: false`) purchase documents require a non-null `payments_pending`; a missing balance fails the complete read with `HoldedPermanentException`. Otherwise Finance could omit an unpaid invoice and post a journal remainder instead. Drafts and unknown approval states may omit the balance and read as 0; neither is bookable.
 - Sales-document totals are required: a missing or null `total` fails as a permanent connector error before Store can finish issuance or compare a recovered invoice. Explicit zero remains valid.
 - A sales-document read returns its `lines` (v2's name for v1's `products`) as name, units, unit price and the line's `tax`, which the v2 spec defines as the primary tax percent (the document-level `tax` is an amount); not yet confirmed against a live read. The read follows an approval, so a line without a readable `units`, `price` or `tax` never fails it: the document reads as having no lines, with a warning.
-- Contact and sales-document detail IDs must be nonblank when returned; an absent/null ID retains the requested-ID fallback. Contact lists skip and log unidentified rows while retaining valid contacts. Tagged sales-document searches reject unidentified matches, including whitespace IDs, rather than returning an incomplete recovery result.
+- Sales-document detail IDs must be nonblank when returned; an absent/null ID retains the requested-ID fallback. Contact lists reject unidentified rows rather than omitting them from mirror replacement or live contact matching. Tagged sales-document searches reject unidentified matches, including whitespace IDs, rather than returning an incomplete recovery result.
 - Accounting-account debit, credit and balance are required decimal strings. Missing or null totals reject the complete page with `HoldedPermanentException`; they never become fabricated zero balances.
 - A `ledger-entries` item is exactly `id, entry_number, line, date, type, description,
   doc_description, account, debit, credit, tags[], checked`. `id` is the journal entry's id
@@ -84,7 +90,7 @@ section** it belongs to (ledger mirror, sync, `/Holded` admin screen) has its ow
   is never returned. `ListLedgerEntriesAsync` requests `end_date = to + 1 day` so its own `to`
   parameter stays inclusive for callers; without this, same-day entries never reach the ledger
   mirror even though account balances already include them.
-- Bank movements (`GET /treasury/accounts/{id}/bank-movements`, read live, never mirrored) carry
+- Bank movements (`GET /treasury/accounts/{id}/bank-movements`, read only by the bank-feed mirror sync) carry
   no `date` key: a line's date is `booking_date` (what Holded stamps on the payment leg and ledger
   entry at reconciliation), falling back to `value_date`. Both are ISO 8601 with an offset and the
   date part is taken as given, never shifted to Europe/Madrid. A line with neither date is skipped
@@ -102,32 +108,30 @@ section** it belongs to (ledger mirror, sync, `/Holded` admin screen) has its ow
   mints the contact a second creditor account ([`holded-contact-put-is-full-replacement`](../../../../memory/code/holded-contact-put-is-full-replacement.md)).
 - There is **no tag/doc-update endpoint in v2**; recategorizing a pushed doc is done inside
   Holded (reclassify the line) and the ledger mirror picks the correction up.
-- The two deletes are `DELETE /api/v2/purchases/{id}` and `DELETE /api/v2/contacts/{id}`. A 404
+- The deletes are `DELETE /api/v2/purchases/{id}` and `DELETE /api/v2/contacts/{id}`. A 404
   on the contact delete (already gone) is success, logged at Error; a 404 on the purchase delete
   throws like any other 4xx. Holded refuses to delete a purchase document that carries a payment.
   The routes are not documented in this repo; unverified against Holded's published reference.
 
 ## Cross-Section Dependencies
 
-Inbound: the consumers listed under Architecture, plus this section's own mirror
-(ledger, accounts, usage). Outbound: none — the connector owns no tables and no UI.
+Inbound: this section only: its mirror syncs (ledger, accounts, documents, contacts, bank movements,
+usage) and `HoldedWrite`. Outbound: none — the connector owns no tables and no UI.
 
 ## Architecture
 
-**Owning surface:** `IHoldedClient`, its DTOs, its typed exceptions and `HoldedClientOptions`
-are public in `Humans.Holded/Contracts/` (namespace `Humans.Holded.Contracts`); the impl `HoldedClient` and the `IHoldedCallLog`
-singleton are `internal` in `Humans.Holded/Services/`. All of it is registered by this
+**Owning surface:** `IHoldedClient`, its impl `HoldedClient` and the `IHoldedCallLog` singleton are
+`internal` in `Humans.Holded/Services/`, so the compiler stops any other section from calling Holded. Connector-only DTOs and `HoldedClientOptions` are internal beside the client in `Services/`.
+The DTOs carried by `IHoldedService` and `IHoldedWrite` and typed exceptions remain public in
+`Contracts/`. Finance uses the purchase mirror directly, never a connector list shape. All of it is registered by this
 section's `Section.cs`.
 
-`HoldedClient` composes internal purchases, sales, contacts, accounting and treasury clients over
-one `HoldedTransport`. Operation clients own their wire payloads, parsing and endpoint-specific
-failure rules; `HoldedJson` holds the shared wire-value readers and null-omitting serializer
-options. They add no interfaces or DI registrations, and the public contract stays unchanged.
+`HoldedClient` holds the purchases, sales, contacts, accounting and treasury calls over one
+`HoldedTransport`: their wire payloads, parsing and endpoint-specific failure rules; `HoldedJson` holds the shared wire-value readers and null-omitting serializer
+options.
 
-**Consumers outside the section** (each to move onto `IHoldedService` / `IHoldedWrite`, ledger debt
-`CENTRAL-105`; `IHoldedClient` goes internal when none remain): Expenses (`ExpenseHoldedPublisher` and
-`ExpenseReportBackgroundProcessor` for the push), Finance (`Service`, `SepaBankBooking`) and Store
-(`Service`, `StoreInvoiceIssuer`) reach it through the public `Contracts/` folder, as does this section's own mirror sync.
+**Consumers outside the section:** none, and none can compile: every other section calls only
+`IHoldedService` and `IHoldedWrite`.
 
 **The jobs live with their sections.** `HoldedSyncJob` is in `Humans.Holded/Jobs/`, a shim over
 this section's own `IHoldedNightlySync`; `HoldedExpenseOutboxJob` is in `Humans.Expenses/Jobs/`,
@@ -138,4 +142,4 @@ this section's connector types directly — each section names its own concrete 
 
 **GDPR** — the connector owns no per-user data. Finance's own `Service` (exposed as
 `IFinanceService` / `IFinanceWrite`) is the `IUserDataContributor` that exports the member's
-`holded_creditor_contacts` binding.
+`finance_holded_creditor_contacts` binding.

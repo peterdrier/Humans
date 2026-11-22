@@ -296,6 +296,8 @@ public class SurveyAdminControllerTests(HumansTestDatabase database) : Integrati
         using var form = new MultipartFormDataContent();
         AddField("__RequestVerificationToken", token);
         AddField("Title[en]", $"Information integration survey {Guid.NewGuid():N}");
+        AddField("AllowAnonymous", "false");
+        AddField("IsAsociadoVote", "false");
         AddField("Questions.Index", "information");
         AddField("Questions[information].Id", questionId.ToString());
         AddField("Questions[information].PageNumber", "1");
@@ -618,7 +620,15 @@ public class SurveyAdminControllerTests(HumansTestDatabase database) : Integrati
 
     private static FormUrlEncodedContent BuildForm(params (string Key, string Value)[] fields)
     {
-        return new FormUrlEncodedContent(fields.Select(f =>
+        // The builder form always posts its two checkboxes (a hidden "false" beside each), and both are BindRequired.
+        var posted = fields.ToList();
+        foreach (var checkbox in new[] { "AllowAnonymous", "IsAsociadoVote" })
+        {
+            if (posted.TrueForAll(f => !string.Equals(f.Key, checkbox, StringComparison.Ordinal)))
+                posted.Add((checkbox, "false"));
+        }
+
+        return new FormUrlEncodedContent(posted.Select(f =>
             new KeyValuePair<string, string>(f.Key, f.Value)));
     }
 

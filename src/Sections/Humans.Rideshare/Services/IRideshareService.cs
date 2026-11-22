@@ -5,13 +5,13 @@ using NodaTime;
 namespace Humans.Rideshare.Services;
 
 /// <summary>
-/// Error contract: <see cref="KeyNotFoundException"/> → 404, <see cref="UnauthorizedAccessException"/> → 403.
-/// Expected refusals return resource keys for the controller to localize; dependency exceptions propagate.
+/// Missing and forbidden targets return explicit access failures (404 / 403).
+/// Expected rule refusals return resource keys for the controller to localize; dependency exceptions propagate.
 /// </summary>
 internal interface IRideshareService : IApplicationService
 {
     /// <summary>Null when no event is active.</summary>
-    Task<Guid?> GetActiveEventIdAsync(CancellationToken ct = default);
+    Guid? GetActiveEventId();
 
     /// <summary>A null or unknown event gives an empty snapshot with no settings, labelled with the current year.</summary>
     Task<RideshareSnapshot> GetSnapshotAsync(Guid? eventSettingsId, CancellationToken ct = default);
@@ -44,9 +44,15 @@ internal interface IRideshareService : IApplicationService
     Task ReassignAsync(Guid mergedFromUserId, Guid mergedToUserId, Guid actorUserId, Instant now, CancellationToken ct);
 }
 
+/// <summary>A mutation success (optionally with a created id), access failure, or untranslated rule refusal.</summary>
+internal sealed record RideshareMutationResult(
+    Guid? Id = null, RideshareRefusal? Refusal = null, RideshareAccessFailure? AccessFailure = null);
 
-/// <summary>A mutation success (optionally with a created id) or an untranslated refusal.</summary>
-internal sealed record RideshareMutationResult(Guid? Id = null, RideshareRefusal? Refusal = null);
+internal enum RideshareAccessFailure
+{
+    NotFound,
+    Forbidden
+}
 
 /// <summary>Expected input or state failure, localized only by the caller.</summary>
 internal sealed record RideshareRefusal(string Key, params object[] Args);

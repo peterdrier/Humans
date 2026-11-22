@@ -146,68 +146,41 @@
 <div class="wg-card">
     <div class="wg-card-header">
         <div>
-            <span class="wg-card-name">&lt;vc:dietary-missing-banner&gt;</span>
-            <span class="wg-card-kind kind-vc">ViewComponent</span>
-        </div>
-        <span class="wg-card-path">src/Sections/Humans.Shifts/ViewComponents/DietaryMissingBannerViewComponent.cs</span>
-    </div>
-    <div class="wg-card-note">
-        Gentle dietary-info prompt shown on /Shifts and /Shifts/Mine, with an "I don't want to answer" opt-out. It never
-        blocks signups. Self-gates: renders only when the user has a qualifying cantina signup and Cantina's
-        dietary profile has neither a preference nor the opt-out — so it's empty here unless your account matches.
-    </div>
-    @ParamsBlock(
-        ("userId", "<code>Guid</code> — required")
-    )
-    <div class="wg-card-example">
-        <vc:dietary-missing-banner user-id="@Model.CurrentUserId" />
-    </div>
-</div>
-
-<div class="wg-card">
-    <div class="wg-card-header">
-        <div>
             <span class="wg-card-name">_VolunteerProfileBadges.cshtml</span>
             <span class="wg-card-kind kind-pa">Partial</span>
         </div>
         <span class="wg-card-path">src/Sections/Humans.Shifts/Views/Shared/_VolunteerProfileBadges.cshtml</span>
     </div>
     <div class="wg-card-note">
-        Badges showing volunteer event profile info — skills, quirks, dietary, languages, optional medical. Synthetic sample below.
+        Badges showing volunteer event profile info — skills, quirks, languages. Synthetic sample below.
     </div>
     @ParamsBlock(
-        ("@@model", "<code>VolunteerBadgesViewModel</code> (skills from VEP; dietary from Cantina, medical from Profile)")
+        ("@@model", "<code>VolunteerBadgesViewModel</code> (from the volunteer event profile)")
     )
-    <div class="wg-auth-line"><code>CanRevealMedical=true</code> only for a MedicalDataViewer — gate at the call site; the text itself comes from the audited reveal, never the model.</div>
     <div class="wg-card-example">
         @await Html.PartialAsync("_VolunteerProfileBadges",
             new VolunteerBadgesViewModel(
-                UserId: Guid.Empty,
                 Skills: ["Welding", "First Aid"],
                 Quirks: ["Early riser", "Coffee snob"],
-                Languages: ["English", "Spanish"],
-                DietaryPreference: null,
-                HasMedicalConditions: false,
-                CanRevealMedical: true))
+                Languages: ["English", "Spanish"]))
     </div>
 </div>
 
 <div class="wg-card">
     <div class="wg-card-header">
         <div>
-            <span class="wg-card-name">&lt;vc:shift-signups&gt;</span>
+            <span class="wg-card-name">ShiftSignupsViewComponent</span>
             <span class="wg-card-kind kind-vc">ViewComponent</span>
         </div>
-        <span class="wg-card-path">src/Sections/Humans.Shifts/Contracts/ShiftSignupsViewComponent.cs</span>
+        <span class="wg-card-path">src/Sections/Humans.Shifts/ViewComponents/ShiftSignupsViewComponent.cs</span>
     </div>
     <div class="wg-card-note">A human's shift signups for the active event, split into Upcoming / Pending / Past.</div>
     @ParamsBlock(
         ("userId", "<code>Guid</code> — required"),
-        ("viewMode", "<code>ShiftSignupsViewMode</code> — Self · Admin"),
-        ("displayName", "<code>string?</code> — caller-provided name to label the panel")
+        ("viewMode", "<code>ProfileCardViewMode</code> — Self · Admin")
     )
     <div class="wg-card-example">
-        <vc:shift-signups user-id="@Model.CurrentUserId" view-mode="@ShiftSignupsViewMode.Self" />
+        @await Component.InvokeAsync(typeof(ShiftSignupsViewComponent), new { userId = Model.CurrentUserId, viewMode = ProfileCardViewMode.Self })
     </div>
 </div>
 
@@ -271,7 +244,7 @@
         @if (Model.Rota is not null)
         {
             <div class="list-group">
-                <vc:shifts-search-result rota-id="@Model.Rota.Id" />
+                <vc:shifts-search-result key="@Model.Rota.Id" />
             </div>
         }
         else
@@ -284,15 +257,41 @@
 <div class="wg-card">
     <div class="wg-card-header">
         <div>
-            <span class="wg-card-name">&lt;vc:volunteer-build-strip&gt;</span>
+            <span class="wg-card-name">VolunteerBuildStripViewComponent</span>
             <span class="wg-card-kind kind-vc">ViewComponent</span>
         </div>
         <span class="wg-card-path">src/Sections/Humans.Shifts/Views/Shared/_VolunteerHeatmap.cshtml</span>
     </div>
     <div class="wg-card-note">
-        Not rendered here: the single-user build heatmap (<code>_VolunteerHeatmap</code>, <code>ShowAvailabilityControls=true</code>) renders on the
-        <a href="/Profile/Me">profile</a>; the full-tracking variant (<code>_VolunteerUnbookedHeatmap</code>) needs the whole
+        Not rendered here: the single-user build heatmap (<code>_VolunteerHeatmap</code>, <code>ShowAvailabilityControls=true</code>) renders in the
+        Shifts card on another member's profile; the full-tracking variant (<code>_VolunteerUnbookedHeatmap</code>) needs the whole
         <code>VolunteerTrackingPageViewModel</code>. See <a href="/Shifts/Dashboard/VolunteerTracking">/Shifts/Dashboard/VolunteerTracking</a>.
     </div>
     @ParamsBlock()
+</div>
+
+<div class="wg-card">
+    <div class="wg-card-header">
+        <div>
+            <span class="wg-card-name">_TeamShiftsCard.cshtml</span>
+            <span class="wg-card-kind kind-pa">Partial</span>
+        </div>
+        <span class="wg-card-path">src/Sections/Humans.Shifts/Views/Shared/_TeamShiftsCard.cshtml</span>
+    </div>
+    <div class="wg-card-note">The team page's shift-staffing box: progress bar, slot count, sub-team note. Synthetic numbers in this gallery.</div>
+    @ParamsBlock(
+        ("@@model", "<code>TeamShiftsCardViewModel</code> — TotalSlots, ConfirmedCount, PendingCount, UniqueVolunteerCount, ShiftsUrl, CanManageShifts, IncludesSubTeamCount")
+    )
+    <div class="wg-card-example" style="max-width: 360px;">
+        @await Html.PartialAsync("_TeamShiftsCard", new TeamShiftsCardViewModel
+        {
+            TotalSlots = 24,
+            ConfirmedCount = 17,
+            PendingCount = 3,
+            UniqueVolunteerCount = 12,
+            ShiftsUrl = Url.Action("Index", "Shifts") ?? "#",
+            CanManageShifts = true,
+            IncludesSubTeamCount = 2,
+        })
+    </div>
 </div>

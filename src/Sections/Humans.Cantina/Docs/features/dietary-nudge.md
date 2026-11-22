@@ -6,7 +6,7 @@
   src/Sections/Humans.Cantina/Section.cs
   src/Sections/Humans.Users/Section.cs
   src/Sections/Humans.Shifts/Services/ShiftManagementService.cs
-  src/Sections/Humans.Shifts/ViewComponents/DietaryMissingBannerViewComponent.cs
+  src/Sections/Humans.Cantina/ViewComponents/DietaryMissingBannerViewComponent.cs
   src/Humans.Base/ViewComponents/ThingsToDoViewComponent.cs
 -->
 <!-- freshness:flag-on-change
@@ -27,7 +27,7 @@ The food answers are Cantina's (`cantina_dietary_profiles`, Users decomposition 
 
 - **Dietary form** (`/Cantina/Dietary`, Cantina's `CantinaProfileController`): any authenticated user, own answers only — the controller takes the user from the principal, never from the route.
 - **Medical form** (`/Profile/Me/Medical`, Users' `ProfileController`): any authenticated user, own conditions only.
-- **Reading medical conditions:** owner, `ShiftsNoInfo`, `Admin` (`ShiftsPolicies.MedicalDataViewer`). Shifts' badges show it only through an audited reveal (`POST /Shifts/Medical/{userId}/Reveal`); Cantina never reads or returns medical data.
+- **Reading medical conditions:** owner, `ShiftsNoInfo`, `Board`, `Admin` (`UsersPolicies.MedicalDataViewer`), only through Users' audited reveal (`POST /Profile/{id}/Medical/Reveal`). The button is on the member's profile page (`/Profile/{id}`); neither Shifts nor Cantina knows medical data exists.
 - **Reading dietary answers:** any surface that already shows the volunteer's shift profile (coordinators, shift admins, volunteer search) and the `CantinaPolicies.Read` roster, all through `ICantinaService`.
 
 Both forms carry `[AllowBeforeActiveMembership]` so a not-yet-Active member can still answer them.
@@ -35,7 +35,7 @@ Both forms carry `[AllowBeforeActiveMembership]` so a not-yet-Active member can 
 ## GDPR
 
 - **Dietary:** Cantina's `DietaryProfileService` exports the `DietaryProfile` slice (including `DeclinedToAnswer`) and deletes the row on erasure; merges keep the survivor's answers (the source's move only when the survivor has none).
-- **Medical:** stays in Users' `Profile` export/erasure. The legacy food columns on `profiles` stay in Users' export and are erased with the profile until the retirement drops them.
+- **Medical:** stays in Users' `Profile` export/erasure. The legacy food columns on `user_profiles` stay in Users' export and are erased with the profile until the retirement drops them.
 
 ## User Stories
 
@@ -66,7 +66,7 @@ Both forms carry `[AllowBeforeActiveMembership]` so a not-yet-Active member can 
 ### US-35.5: Gentle banner on /Shifts, never a gate
 **Acceptance Criteria:**
 - No signup path checks dietary info: every Sign-Up button stays enabled and `ToggleDay` signs up regardless (nobodies-collective/Humans#2104).
-- `DietaryMissingBannerViewComponent` on `/Shifts` and `/Shifts/Mine` shows an info banner while the member holds a qualifying signup **and** Cantina's profile shows neither a preference nor `DeclinedToAnswer` (Shifts composes this itself).
+- `DietaryMissingBannerViewComponent` on `/Shifts` and `/Shifts/Mine` shows an info banner while the member holds a qualifying signup **and** Cantina's profile shows neither a preference nor `DeclinedToAnswer` (Cantina owns the banner and fills Shifts' `IShiftsPageBanner` slot).
 - The banner offers **Tell us now** (`/Cantina/Dietary?returnAction=shifts`) and **I don't want to answer** (a POST to `/Cantina/Dietary` with `DeclineToAnswer=true`, back to `/Shifts`), after which it no longer renders.
 
 ## Qualifying Shift
@@ -88,7 +88,7 @@ A shift qualifies when `Shift.IsAllDay` (08:00–18:00) **or** `Shift.Duration �
 | `IntoleranceOtherText` | `varchar(500)?` | Only with `Other` |
 | `UpdatedAt` | `timestamptz` | |
 
-Dietary answers are read only from `cantina_dietary_profiles`. Users' legacy food columns are dropped. `MedicalConditions` (`varchar(4000)?`) stays on `profiles`.
+Dietary answers are read only from `cantina_dietary_profiles`. Users' legacy food columns are dropped. `MedicalConditions` (`varchar(4000)?`) stays on `user_profiles`.
 
 ## Triggers
 
@@ -102,12 +102,12 @@ Dietary answers are read only from `cantina_dietary_profiles`. Users' legacy foo
 
 ## Cross-section dependencies
 
-- **Shifts** → Cantina: `ICantinaService` for the banner (`GetDietaryProfileAsync`), volunteer search and admin badges. Cantina → Shifts: `IShiftService.HasQualifyingCantinaSignupAsync` (nudge copy).
+- **Shifts** → Cantina: `ICantinaService` for the banner (`GetDietaryProfileAsync`). Cantina → Shifts: `IShiftService.HasQualifyingCantinaSignupAsync` (nudge copy).
 - **Users** → Cantina: `ICantinaService.GetDietaryProfileAsync` for the medical prompt's "dietary still open" check. Cantina → Users: `IUserService` for the merge chain.
 
 ## Negative access rules
 
-- No one sees another member's `MedicalConditions` unless `ShiftsPolicies.MedicalDataViewer`; Cantina's DTOs carry no medical field.
+- No one sees another member's `MedicalConditions` except through Users' audited reveal (`UsersPolicies.MedicalDataViewer`); Shifts and Cantina carry no medical field.
 - Neither form takes a user id from the request; there is no admin edit of another member's answers.
 
 ## Out of scope

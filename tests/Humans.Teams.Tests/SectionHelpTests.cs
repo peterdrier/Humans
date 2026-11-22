@@ -26,7 +26,7 @@ public class SectionHelpTests
         var entry = Entry("Teams");
 
         entry.Guide.Should().StartWith("## How Teams Work");
-        entry.Guide.Should().EndWith("Use the **Search** button to find humans across all teams by name or email. The **Roster** view shows all active humans in a flat list. The **Map** shows humans by location. **Birthdays** shows upcoming celebrations.", "the file's trailing newline is framing, not content");
+        entry.Guide.Should().EndWith("Use the **Search** button to find humans by name. The **Roster** view shows every team's role slots and which are still open.", "the file's trailing newline is framing, not content");
         entry.Glossary.Should().StartWith("## Teams Glossary");
         entry.Glossary.Should().Contain("| **Human** | A member of Nobodies Collective. We say \"humans\", not \"members\" or \"volunteers\". |");
     }

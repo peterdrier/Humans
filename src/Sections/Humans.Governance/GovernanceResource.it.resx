@@ -137,9 +137,6 @@
     <value>Statuto</value>
   </data>
   <data name="Governance_Statutes_ContentNotAvailable" xml:space="preserve"><value>Contenuto non disponibile.</value></data>
-  <data name="Governance_MemberCounts" xml:space="preserve">
-    <value>Comunità</value>
-  </data>
   <data name="Governance_Colaboradores" xml:space="preserve">
     <value>Colaboradores</value>
   </data>
@@ -199,9 +196,6 @@
   </data>
   <data name="Governance_ApplicationDetail_ApplicationInfo" xml:space="preserve">
     <value>Informazioni sulla domanda</value>
-  </data>
-  <data name="Governance_ApplicationDetail_ReviewStarted" xml:space="preserve">
-    <value>Esame iniziato</value>
   </data>
   <data name="Governance_ApplicationDetail_ReviewedBy" xml:space="preserve">
     <value>Esaminata da</value>
@@ -745,4 +739,103 @@
   <data name="Governance_BoardVoting_NoteTooLong" xml:space="preserve"><value>La nota deve contenere al massimo 4000 caratteri. Il tuo voto non è stato modificato.</value></data>
   <data name="Governance_BoardVoting_DecisionNoteTooLong" xml:space="preserve"><value>La nota della decisione deve contenere al massimo 4000 caratteri. La domanda non è stata finalizzata.</value></data>
   <data name="Governance_BoardVoting_DecisionNoteRequired" xml:space="preserve"><value>Per respingere una domanda serve una nota della decisione. La domanda non è stata finalizzata.</value></data>
+  <data name="Governance_BoardMembers" xml:space="preserve"><value>Membri del Consiglio</value></data>
+  <data name="Governance_TheBoard" xml:space="preserve"><value>Il Consiglio</value></data>
+  <data name="Governance_NoBoardMembers" xml:space="preserve"><value>Al momento nessuno ha il ruolo di Consiglio.</value></data>
+  <data name="Governance_Body_MemberCount" xml:space="preserve"><value>{0} membri</value></data>
+  <data name="Governance_Body_NoMembers" xml:space="preserve"><value>Al momento nessuno fa parte di questo gruppo.</value></data>
+  <data name="Governance_GroupAndFiles" xml:space="preserve"><value>Gruppo e file Google</value></data>
+  <data name="Governance_YourAccess" xml:space="preserve"><value>Il tuo accesso Google</value></data>
+  <data name="Governance_ViewAll" xml:space="preserve"><value>Vedi tutti</value></data>
+  <data name="Governance_ManageBoard" xml:space="preserve"><value>Gestisci i membri del Consiglio</value></data>
+  <data name="Governance_FindPerson" xml:space="preserve"><value>Cerca una persona</value></data>
+  <data name="Governance_AddBoardMember" xml:space="preserve"><value>Aggiungi al Consiglio</value></data>
+  <data name="Governance_EndBoardSeat" xml:space="preserve"><value>Termina</value></data>
+  <data name="Governance_BoardMemberAdded" xml:space="preserve"><value>{0} ora fa parte del Consiglio.</value></data>
+  <data name="Governance_BoardMemberEnded" xml:space="preserve"><value>{0} non fa più parte del Consiglio.</value></data>
+  <data name="Governance_BoardMemberAlreadyOn" xml:space="preserve"><value>{0} fa già parte del Consiglio.</value></data>
+  <data name="Governance_BoardMemberNotOn" xml:space="preserve"><value>{0} non fa parte del Consiglio.</value></data>
+  <data name="Governance_NeedsDecision" xml:space="preserve"><value>In attesa di decisione</value></data>
+  <data name="Governance_NothingToDecide" xml:space="preserve"><value>Al momento non c'è nulla da decidere.</value></data>
+  <data name="Governance_AllVotes" xml:space="preserve"><value>Tutte le votazioni</value></data>
+  <data name="Governance_CastVote" xml:space="preserve"><value>Vota</value></data>
+  <data name="Governance_UnvotedApplications" xml:space="preserve"><value>Candidature in attesa del tuo voto: {0}</value></data>
+  <data name="Governance_ReviewApplications" xml:space="preserve"><value>Esamina</value></data>
+  <data name="Governance_YourMembership" xml:space="preserve"><value>La tua adesione</value></data>
+  <data name="Governance_Application_AsociadoQuestionsHeader" xml:space="preserve">
+    <value>Domande aggiuntive per i candidati Asociado</value>
+  </data>
+  <data name="Governance_Application_SignificantContribution" xml:space="preserve">
+    <value>Qual è stato il tuo contributo più significativo a Elsewhere?</value>
+  </data>
+  <data name="Governance_Application_SignificantContributionPlaceholder" xml:space="preserve">
+    <value>Se non te ne viene in mente nessuno, ma hai contribuito in modo significativo a un altro Burn, raccontacelo.</value>
+  </data>
+  <data name="Governance_Application_SignificantContributionRequired" xml:space="preserve">
+    <value>Descrivi il tuo contributo più significativo per una domanda di Asociado.</value>
+  </data>
+  <data name="Governance_Application_RoleUnderstanding" xml:space="preserve">
+    <value>Con le tue parole, cosa capisci del ruolo di un asociado e perché vuoi questa responsabilità?</value>
+  </data>
+  <data name="Governance_Application_RoleUnderstandingPlaceholder" xml:space="preserve">
+    <value>Raccontaci cosa significa questo ruolo per te e perché sei pronto/a.</value>
+  </data>
+  <data name="Governance_Application_RoleUnderstandingRequired" xml:space="preserve">
+    <value>Descrivi la tua comprensione del ruolo di asociado.</value>
+  </data>
+  <data name="Governance_Application_AlreadyPending" xml:space="preserve">
+    <value>Ha già una domanda in sospeso.</value>
+  </data>
+  <data name="Governance_Application_InvalidTier" xml:space="preserve">
+    <value>Selezionare Colaborador o Asociado per la domanda.</value>
+  </data>
+  <data name="Governance_Application_ConfirmAccuracy" xml:space="preserve">
+    <value>Deve confermare l'accuratezza delle Sue informazioni.</value>
+  </data>
+  <data name="Governance_Application_Submitted" xml:space="preserve">
+    <value>La Sua domanda è stata inviata con successo!</value>
+  </data>
+  <data name="Governance_Application_SubmitError" xml:space="preserve">
+    <value>Si è verificato un errore durante l’invio della domanda. Per favore, riprovi.</value>
+  </data>
+  <data name="Governance_Application_CannotWithdraw" xml:space="preserve">
+    <value>Questa domanda non può essere ritirata.</value>
+  </data>
+  <data name="Governance_Application_Withdrawn" xml:space="preserve">
+    <value>La Sua domanda è stata ritirata.</value>
+  </data>
+  <data name="Governance_Application_MotivationLength" xml:space="preserve"><value>La motivazione deve contenere tra 50 e 2000 caratteri.</value></data>
+  <data name="Governance_Application_AdditionalInfoTooLong" xml:space="preserve"><value>Le informazioni aggiuntive non devono superare i 1000 caratteri.</value></data>
+  <data name="Governance_Application_SignificantContributionTooLong" xml:space="preserve"><value>Il contributo significativo non deve superare i 2000 caratteri.</value></data>
+  <data name="Governance_Application_RoleUnderstandingTooLong" xml:space="preserve"><value>La descrizione del ruolo non deve superare i 2000 caratteri.</value></data>
+  <data name="Governance_Application_MotivationRequired" xml:space="preserve">
+    <value>Una dichiarazione di motivazione è richiesta per le domande di Colaborador e Asociado.</value>
+  </data>
+  <data name="Governance_Meter_ApplicationsPendingVote" xml:space="preserve"><value>Domande in attesa del tuo voto</value></data>
+  <data name="Governance_Meter_AudienceBoard" xml:space="preserve"><value>il Consiglio</value></data>
+  <data name="Governance_Status_Board" xml:space="preserve"><value>Consiglio</value></data>
+  <data name="Governance_MemberSince" xml:space="preserve"><value>Membro dal</value></data>
+  <data name="Governance_Position" xml:space="preserve"><value>Carica</value></data>
+  <data name="Governance_Position_President" xml:space="preserve"><value>Presidenza</value></data>
+  <data name="Governance_Position_VicePresident" xml:space="preserve"><value>Vicepresidenza</value></data>
+  <data name="Governance_Position_Secretary" xml:space="preserve"><value>Segreteria</value></data>
+  <data name="Governance_Position_Treasurer" xml:space="preserve"><value>Tesoreria</value></data>
+  <data name="Governance_Position_None" xml:space="preserve"><value>Nessuna carica</value></data>
+  <data name="Governance_Save" xml:space="preserve"><value>Salva</value></data>
+  <data name="Governance_BoardPositionSaved" xml:space="preserve"><value>Carica del Consiglio salvata.</value></data>
+  <data name="Governance_BoardPositionNotOnBoard" xml:space="preserve"><value>Solo un membro attuale del Consiglio può ricoprire una carica.</value></data>
+  <data name="Governance_Manage_Title" xml:space="preserve"><value>Gestisci gruppo e file</value></data>
+  <data name="Governance_Manage_GroupName" xml:space="preserve"><value>Gruppo Google</value></data>
+  <data name="Governance_Manage_NoFiles" xml:space="preserve"><value>Ancora nessuna cartella o file di Drive.</value></data>
+  <data name="Governance_Manage_Remove" xml:space="preserve"><value>Rimuovi</value></data>
+  <data name="Governance_Manage_DriveLink" xml:space="preserve"><value>Link di Drive</value></data>
+  <data name="Governance_Manage_Access" xml:space="preserve"><value>Accesso</value></data>
+  <data name="Governance_Manage_AddFile" xml:space="preserve"><value>Aggiungi</value></data>
+  <data name="Governance_Manage_GroupSaved" xml:space="preserve"><value>Gruppo Google salvato.</value></data>
+  <data name="Governance_Manage_FileAdded" xml:space="preserve"><value>Cartella o file di Drive aggiunto.</value></data>
+  <data name="Governance_Manage_FileRemoved" xml:space="preserve"><value>Cartella o file di Drive rimosso. La condivisione resta com'è.</value></data>
+  <data name="Governance_Manage_InvalidGroupName" xml:space="preserve"><value>Usa solo lettere minuscole, numeri e trattini per il nome del gruppo.</value></data>
+  <data name="Governance_Manage_GroupNameTaken" xml:space="preserve"><value>Un altro organo usa già questo gruppo.</value></data>
+  <data name="Governance_Manage_FileAlreadyLinked" xml:space="preserve"><value>Questa cartella o file di Drive è già nell'elenco.</value></data>
+  <data name="Governance_Manage_FileNotFound" xml:space="preserve"><value>Quella cartella o file di Drive non è più nell'elenco.</value></data>
 </root>

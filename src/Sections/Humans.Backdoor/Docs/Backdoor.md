@@ -55,14 +55,15 @@ The machine surface. Every key-authed API an agent talks to lives here, under `/
 | `/api/backdoor/agent/conversations` | read | Agent conversation transcripts — list, one conversation, its messages; list previews retain a 200 UTF-16 code-unit cap without splitting Unicode surrogate pairs — via `IAgentTranscriptRead` |
 | `/api/backdoor/issues` | read + write | The issue queue, via `IIssueTriage`; `GET /{id}/screenshot` streams the screenshot (the payload's `ScreenshotUrl`) behind the same reach check |
 | `/api/backdoor/surveys` | read | Survey definitions, responses and aggregates, via `ISurveyAnalysisRead` |
-| `/api/backdoor/store/order-lines?year=` | read | One row per Store order line of the year — camp and team orders — with effective price, VAT, revenue account and invoice number, via `IStoreAccountingRead` |
+| `/api/backdoor/store/order-lines?year=` | read | One row per Store order line of the year — camp and team orders — with effective price, stored snapshot price, VAT, revenue account and invoice number, via `IStoreAccountingRead` |
+| `/api/backdoor/store/order-history?year=` | read | One row per audit entry about a Store order of the year (lines added/removed, payments, refunds, deposit returns, invoice, catalog price changes to its products), with actor and description, via `IStoreAccountingRead`; each call is audited (`StoreOrderHistoryExported`) against the key owner, and refused (403) unless the holder can administer the Store (Admin, StoreAdmin, FinanceAdmin) |
 | `/api/backdoor/store/payments?year=` | read | One row per `Paid` Store payment of the year (refunds negative) with its Stripe payment intent id, via `IStoreAccountingRead` |
 | `/api/backdoor/finance/expense-reports?year=&status=` | read | The key owner's expense-report review queue — everything `/Expenses/Review` would show them, filterable by budget year and status — via `IExpenseReportService.GetReviewQueueAsync` |
 | `/api/backdoor/finance/expense-reports/{id}` | read | One report in full, including its lines, gated by the same `View` check `/Expenses` uses. The payee name, masked IBAN and Holded timeline fields are further narrowed to the report's submitter (payment half) or a finance admin (push half); the Holded contact/supplier-account/doc ids are finance-admin only — the same split `/Expenses` shows in the browser; a viewer whose `View` passes on another ground (e.g. a category coordinator) gets none of them |
 | `/api/backdoor/finance/expense-reports/{id}/attachments/{attachmentId}` | read | The stored bytes of one attachment, same `View` gate as the owning report |
 | `/api/backdoor/finance/creditor-accounts` | read | Every 400000xx creditor account, its bindings (all of them) and the bindings with no account at all, via `IFinanceService.ListCreditorAccountsAsync` |
 | `/api/backdoor/finance/creditor-accounts/{num}/ledger` | read | One account's balance and cached journal lines, contact header included, via `GetCreditorLedgerAsync` |
-| `/api/backdoor/finance/category-map` | read | Every live `holded_category_map` row, via `GetCategoryMapAsync` |
+| `/api/backdoor/finance/category-map` | read | Every live `finance_holded_category_maps` row, via `GetCategoryMapAsync` |
 | `/api/backdoor/finance/sepa-transfers` | read | Every generated SEPA transfer with its booking state, via `GetSepaTransfersAsync` |
 | `/api/backdoor/finance/expense-recon?year=` | read | `/Finance/ExpenseRecon` as JSON — totals, lines, orphans, members with open transfers — via `IFinanceService.GetExpenseReconAsync`. Finance admins only; carries no IBAN field. The controller orders lines by problem/status/newest date, orphans newest-first, and members warning-first then ordinal name ignoring case |
 | `/api/backdoor/finance/holded-sync` | read | Holded's purchase-document sync state (`IHoldedService.GetPurchaseDocumentsAsync`) plus the docs Finance could not attribute (`IFinanceService.GetUnmatchedAsync`); no creditor-binding count |
@@ -86,6 +87,7 @@ Authentication is the `X-Api-Key` header on every `/api/backdoor/*` request. The
 - The notifications JSON projection orders unread rows newest first and visible meters by priority descending. Notifications supplies the role-filtered data and priority metadata; the JSON meter fields remain label, count and link.
 - The Holded-sync JSON projection orders unmatched documents by document date descending, matching Finance's unmatched queue. Finance supplies date metadata without imposing list order; the JSON document fields remain unchanged.
 
+- Direct IBAN masking strips presentation separators, including no-break spaces, tabs and wrapped lines, before retaining the visible prefix and suffix.
 - Finance response text redaction recognizes valid human-formatted IBANs even when whitespace or hyphens split the country code and check digits.
 
 - The operator key list renders owner identity through `Human` without profile links. Picker labels and eligibility remain separate from key-row attribution; key status and actions use the stored owner ID.
@@ -94,19 +96,25 @@ Authentication is the `X-Api-Key` header on every `/api/backdoor/*` request. The
 - Surveys response exports pass the authenticated API key owner to the Surveys service for its disclosure audit (survey id and row count); requests without an actor cannot export.
 - Surveys Markdown response exports use the owning section’s table escaping, preserving literal backslashes and pipes in prompts, names and answers within their cells.
 - Surveys aggregate JSON orders questions by authored page and position, and choice option counts by authored option position, using owner-supplied metadata without adding JSON fields.
+- Surveys response timestamps use the shared ISO-8601 UTC formatter; the `since` filter parses with `DateFormattingExtensions.Iso8601InstantPattern`.
 - Surveys response exports preserve the owning section's privacy rules: closed Asociado ballots have no identity or submission timestamps and order by response id. A `since` filter cannot match their suppressed timestamps.
 - Issues list/detail/comments GETs pass request cancellation to their existing read contracts, including issue display-name reads. Write calls retain their existing cancellation boundaries.
 
 - A key resolves to exactly one human, and that human is installed as the request principal — `ClaimTypes.NameIdentifier` plus one `ClaimTypes.Role` claim per active role assignment — so every write records a real actor and every log line is enriched with them. The Issues queue read consults those role claims to scope its result (see below), and the Notifications read passes the whole principal on so its meters are role-gated the same way the bell is; Agent, Logs, Store, and Surveys reads do not. Finance's routes authorize imperatively: each action calls `IAuthorizationService.AuthorizeAsync` against the installed principal — `FinancePolicies.Manage` for the finance-wide routes (creditor accounts, ledger, category map, SEPA transfers, expense reconciliation, Holded sync), and `PolicyNames.ExpenseReportView` (a named policy Expenses' own `ISectionPolicies` registers, wrapping its internal `ExpenseReportOperationRequirement(View)`/handler) for a single report or attachment — the same check `ExpensesController` uses, not a bespoke Backdoor check (peterdrier/Humans#1838).
 - JSON triage writes reject undefined issue categories and issue statuses with HTTP 400 using shared localized validation; defined names and numeric values remain accepted.
-- Issue status JSON bodies require an explicit `Status` property. Missing status fails JSON binding with HTTP 400 before triage; explicit numeric zero remains valid. Issue-creation JSON likewise requires an explicit `Category`; omission cannot create a Bug by default.
+- Issue status JSON bodies require an explicit `Status` property. Missing status fails JSON binding with HTTP 400 before triage; explicit numeric zero remains valid. Issue-creation JSON likewise requires an explicit `Category`; omission cannot create a Bug by default. It also requires an explicit `ReporterUserId`: empty and unknown IDs return HTTP 400 before issue creation. The reporter lookup retains request cancellation; the existing mutation and key-owner audit attribution are unchanged.
 - Every `/api/backdoor/issues/*` route is fetched as the key's owner — id, roles and admin flag — so a Board-only key lists the Board-only queue, and an issue whose id it happens to hold but whose queue would not list it is a 404 to read, to comment on and to patch. Issues enforces that itself, on the same `IssueSectionRouting.CanHandle` the browser reads, so a key reaches exactly as far as its holder does in the browser.
-- `/api/backdoor/finance/expense-reports` lists exactly the key owner's `/Expenses/Review` queue (`GetReviewQueueAsync(ownerId, isFinanceAdmin)`, narrowed by `year`/`status`). A report or attachment the owner's `View` check refuses is a 403, not a 404 — unlike Issues, a machine caller here is told a resource exists but is denied, since the finance-wide routes already disclose that much.
+- Expense list/detail financial ownership uses the resolved key owner's `UserInfo.AllUserIds`,
+  so reports retained under archived merge ids keep their submitter-only payee fields and detail
+  payment timeline. Missing viewer information grants no submitter fields. View authorization,
+  IBAN masking and finance-only push fields retain their existing gates; list rows still load
+  no payment timeline for non-finance viewers. Viewer lookups retain request cancellation.
+- `/api/backdoor/finance/expense-reports` lists exactly the key owner's `/Expenses/Review` queue (unscoped `GetReviewQueueAsync(ct)` candidates filtered by the owner’s report View authorization and the existing active-year category scope before metadata is projected, narrowed by `year`/`status`). A report or attachment the owner's `View` check refuses is a 403, not a 404 — unlike Issues, a machine caller here is told a resource exists but is denied, since the finance-wide routes already disclose that much.
 - The database never holds a plaintext key. `BackdoorApiKeyService` hashes on the way in and compares hashes on the way out.
 - A key only works for a full Admin or a Board member **whose account state is `Active`** — checked at issue, at rotation, **and on every authentication**. A role that expires, is revoked, or is swept by account deletion stops the key working on the next request, and so does suspension, which moves `users.State` while deliberately leaving role assignments standing. The row is refused, not revoked, so restoring the role or lifting the suspension restores the key. The admin page shows such a key as **Disabled** and withholds Rotate, since rotation applies the same test.
 - Issue and revoke both write an audit entry naming the key and its owner (`BackdoorApiKeyIssued` / `BackdoorApiKeyRevoked`); a rotation is recorded as a revoke followed by an issue.
 - Every controller here is an orchestrator: it calls another section's contracts interface and formats the result. None of them touch a repository or a `DbContext` other than through `IBackdoorApiKeyRepository`.
-- A key-authed principal carries the `BackdoorApiKey` authentication scheme (`BackdoorAuthentication.SchemeName`). It never passes through the Shell's claims transformation, so its role claims come from the same snapshot the key service used for eligibility and it carries no state claims — and the Shell's onboarding gates (`NameRequiredFilter`, `MembershipRequiredFilter`) skip it rather than redirecting a JSON client to an HTML page.
+- A key-authed principal carries the `BackdoorApiKey` authentication scheme (`BackdoorApiKeyAuthFilter.AuthenticationScheme`). It never passes through the Shell's claims transformation, so its role claims come from the same snapshot the key service used for eligibility and it carries no state claims — and the Shell's onboarding gates (`NameRequiredFilter`, `MembershipRequiredFilter`) skip it — every key-authed controller is `[AllowAnonymous]` — rather than redirecting a JSON client to an HTML page.
 - Every `PATCH /api/backdoor/issues/{id}/*` answers the same way whichever field moved: `{success:true}`, 404 for a missing item, 422 carrying the service's reason for a rejected change.
 
 - Issues mutations map owner-section results to 404 for missing/inaccessible issues, 422 for rule refusals, and 500 for dependency failures. Comment posting uses an explicit missing result. Exceptions and their diagnostic text never select 404/422 or enter the response body.
@@ -137,7 +145,7 @@ Authentication is the `X-Api-Key` header on every `/api/backdoor/*` request. The
 - **Agent**: reads transcripts via `IAgentTranscriptRead` (`Humans.Agent.Contracts`).
 - **Issues**: reads and triages via `IIssueTriage` (`Humans.Issues.Contracts`).
 - **Surveys**: reads definitions, exports and aggregates via `ISurveyAnalysisRead` (`Humans.Surveys.Contracts`).
-- **Store**: reads the accounting export — order lines and settled payments per year — via `IStoreAccountingRead` (`Humans.Store.Contracts`). Any active key may read; there is no role scoping.
+- **Store**: reads the accounting export — order lines, settled payments and order history per year — via `IStoreAccountingRead` (`Humans.Store.Contracts`). Any active key may read order lines and payments; order history needs a holder who can administer the Store.
 - **Expenses**: reads reports, lines, attachments and the review queue via `IExpenseReportService` (`Humans.Expenses/Contracts`, not the contracts leaf: a section reference, since `IExpenseReportService` itself lives there, not in a separate `.Contracts` project). Gated per route (see Invariants) — peterdrier/Humans#1838.
 - **Finance**: reads creditor accounts, ledgers, the category map, SEPA transfers and the expense reconciliation via `IFinanceService` (`Humans.Finance.Contracts`). `FinancePolicies.Manage`-gated — peterdrier/Humans#1838.
 - **Holded**: `IHoldedService.GetPurchaseDocumentsAsync` for the purchase-document sync state on `holded-sync` (`Humans.Holded`'s `Contracts/` folder, a section reference).
@@ -149,7 +157,7 @@ Authentication is the `X-Api-Key` header on every `/api/backdoor/*` request. The
 - **Users**: `IUserService.GetUserInfoAsync` for the account-state half of key eligibility and `GetUserInfosAsync` for display names on the admin page and on the API's issue, agent and finance projections (the finance report detail reads its one submitter through `GetUserInfoAsync`); `IUserMerge` to fold an eliminated account's keys onto the survivor.
 - **Base**: `InMemoryLogSink` behind `/api/backdoor/logs`.
 
-No section depends on Backdoor. It is a leaf, and deliberately so — the fan-in would otherwise be a cycle. The Shell reads one constant from it, `BackdoorAuthentication.SchemeName`, so its onboarding gates can tell a machine request from a browsing session.
+No section depends on Backdoor. It is a leaf, and deliberately so — the fan-in would otherwise be a cycle. The Shell references nothing in it.
 
 ## Architecture
 
@@ -165,7 +173,7 @@ None. No other section consumes Backdoor; its whole surface is HTTP, and its ser
 |---|---:|---|
 | — | — | Not cross-section-consumed |
 
-- `BackdoorApiKeyService` never imports `Microsoft.EntityFrameworkCore`; `IBackdoorApiKeyRepository` (Singleton + `IDbContextFactory`, §15b) is the only path to the table.
+- `BackdoorApiKeyService` never imports `Microsoft.EntityFrameworkCore`; `IBackdoorApiKeyRepository` (Singleton + `IDbContextFactory`, per *Repository rules* in `design-rules.md`) is the only path to the table.
 - Rotation changes the old row's revocation fields and inserts its replacement in one repository `SaveChangesAsync` call. A concurrent or already-revoked old key writes neither row, so a failed rotation never strands its owner without a credential.
 - **Decorator decision** — no caching decorator. Key lookups are one indexed hash probe per API request at a handful of requests per minute, and a cache would have to be invalidated on every revoke to stay correct about the thing that matters most.
 - **Display stitching** — `IUserService.GetUserInfosAsync`.

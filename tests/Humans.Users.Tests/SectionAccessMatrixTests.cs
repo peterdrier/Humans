@@ -7,7 +7,7 @@ namespace Humans.Users.Tests;
 public class SectionAccessMatrixTests
 {
     private static AccessMatrixData Matrix() =>
-        ((ISectionAccessMatrix)new Section()).AccessMatrices.Should().ContainSingle().Subject;
+        ((ISectionAccessMatrix)new Section()).AccessMatrices.Single(m => string.Equals(m.Key, "Profile", StringComparison.Ordinal));
 
     [HumansFact]
     public void Contributes_the_Profile_matrix_under_the_key_the_page_calls_it_with()
@@ -35,5 +35,19 @@ public class SectionAccessMatrixTests
                 "View other profiles: Volunteer=Limited, Coordinator=Allowed, Board=Allowed, UsersAdmin=Allowed, Admin=Allowed",
                 "View contact fields: Volunteer=Limited, Coordinator=Limited, Board=Allowed, UsersAdmin=Allowed, Admin=Allowed",
                 "Admin view of profile: Volunteer=Denied, Coordinator=Denied, Board=Allowed, UsersAdmin=Allowed, Admin=Allowed");
+    }
+
+    [HumansFact]
+    public void Pins_the_UsersAdmin_matrix()
+    {
+        var matrix = ((ISectionAccessMatrix)new Section()).AccessMatrices
+            .Single(m => string.Equals(m.Key, "UsersAdmin", StringComparison.Ordinal));
+
+        (matrix.SectionName, matrix.Order).Should().Be(("All Humans", 90));
+        matrix.Roles.Should().Equal("Board", "UsersAdmin", "Admin");
+        matrix.Features
+            .Select(f => $"{f.Name}: {string.Join(", ", f.RoleAccess.Select(kv => $"{kv.Key}={kv.Value}"))}")
+            .Should().Equal(
+                "All humans list: Board=Allowed, UsersAdmin=Allowed, Admin=Allowed");
     }
 }

@@ -7,10 +7,8 @@
 }
 
 @{
-    Func<WorkloadByPersonRow, IHtmlContent> humanCell =
-        @<text><vc:human user-id="@item.UserId" layout="Text" link="Admin" /></text>;
     var table = TableModel.For(Model)
-        .Template("Human", humanCell)
+        .Human("Human", r => r.UserId, HumanLink.Admin, HumanLayout.Text)
         .Column("Confirmed signups", r => r.ConfirmedSignupCount, c => c.Number().End())
         .Column("Pending signups", r => r.PendingSignupCount, c => c.Number().End())
         .Column("Year-round", r => r.YearRoundHours, c => c.Number().End())

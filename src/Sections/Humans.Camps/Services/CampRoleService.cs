@@ -1,6 +1,6 @@
 using System.Globalization;
 using System.Resources;
-using Humans.GoogleIntegration.Contracts;
+using Humans.Google.Contracts;
 using Humans.AuditLog.Contracts;
 using Humans.Notifications.Contracts;
 using Humans.Users.Contracts;
@@ -12,7 +12,7 @@ namespace Humans.Camps.Services;
 internal sealed class CampRoleService(
     ICampRepository repo,
     ICampRoleCampAccess campAccess,
-    IGoogleIntegrationService googleIdentities,
+    IGoogleService googleIdentities,
     IUserService userService,
     IAuditLogService auditLog,
     INotificationEmitter notificationEmitter,
@@ -20,27 +20,7 @@ internal sealed class CampRoleService(
     IClock clock,
     ILogger<CampRoleService> logger) : ICampRoleService, ICampRoleSeeding, IGoogleGroupMembershipSource
 {
-    private readonly GoogleWorkspaceOptions _googleOptions = googleOptions.Value;
     private static readonly ResourceManager NoticeResources = new(typeof(CampsResource));
-
-    public async Task<IReadOnlyList<CampRoleDefinitionInfo>> ListDefinitionsAsync(bool includeDeactivated, CancellationToken ct = default)
-    {
-        var definitions = await repo.ListDefinitionsAsync(includeDeactivated, ct);
-        return definitions.Select(CreateCampRoleDefinitionInfo).ToList();
-    }
-
-    public async Task<CampRoleDefinitionInfo?> GetDefinitionByIdAsync(Guid id, CancellationToken ct = default)
-    {
-        var definition = await repo.GetDefinitionByIdAsync(id, ct);
-        return definition is null ? null : CreateCampRoleDefinitionInfo(definition);
-    }
-
-    public async Task<CampRoleDefinitionInfo?> GetDefinitionBySlugAsync(string slug, CancellationToken ct = default)
-    {
-        if (string.IsNullOrWhiteSpace(slug)) return null;
-        var definition = await repo.GetDefinitionBySlugAsync(slug.Trim(), ct);
-        return definition is null ? null : CreateCampRoleDefinitionInfo(definition);
-    }
 
     public async Task<CampAdminMutationResult> CreateDefinitionAsync(CampRoleDefinitionInput input, Guid actorUserId, CancellationToken ct = default)
     {
@@ -98,20 +78,6 @@ internal sealed class CampRoleService(
         return string.Equals(normalized, "create", StringComparison.Ordinal)
             ? "\"create\" is reserved and cannot be used as a camp role slug." : null;
     }
-
-    private static CampRoleDefinitionInfo CreateCampRoleDefinitionInfo(CampRoleDefinition definition) =>
-        new(
-            definition.Id,
-            definition.Name,
-            definition.Slug,
-            definition.Description,
-            definition.SlotCount,
-            definition.MinimumRequired,
-            definition.SortOrder,
-            definition.CreatedAt,
-            definition.UpdatedAt,
-            definition.DeactivatedAt,
-            definition.SpecialRole);
 
     public async Task<UpdateCampRoleDefinitionResult> UpdateDefinitionAsync(Guid id, CampRoleDefinitionInput input, Guid actorUserId, CancellationToken ct = default)
     {
@@ -204,31 +170,6 @@ internal sealed class CampRoleService(
         return true;
     }
 
-    public async Task<CampRolesPanelData> BuildPanelAsync(Guid campSeasonId, CancellationToken ct = default)
-    {
-        var definitions = await repo.ListDefinitionsAsync(includeDeactivated: false, ct);
-        var assignments = await repo.GetAssignmentsForSeasonAsync(campSeasonId, ct);
-
-        var rows = definitions.Select(def =>
-        {
-            var defAssignments = assignments
-                .Where(a => a.CampRoleDefinitionId == def.Id)
-                .OrderBy(a => a.AssignedAt)
-                .ToList();
-
-            var filled = defAssignments.Select(a =>
-                new CampRolesPanelSlot(a.Id, a.CampMemberId, a.CampMember.UserId)).ToList();
-
-            var current = filled.Count;
-            var empty = Math.Max(0, def.SlotCount - current);
-            var overCapacity = current > def.SlotCount;
-
-            return new CampRolesPanelRow(def, filled, empty, overCapacity, current);
-        }).ToList();
-
-        return new CampRolesPanelData(campSeasonId, rows);
-    }
-
     public async Task<AssignCampRoleOutcome> AssignAsync(
         Guid campSeasonId, Guid roleDefinitionId, Guid campMemberId, Guid actorUserId, CancellationToken ct = default,
         Guid? addUserId = null)
@@ -301,10 +242,13 @@ internal sealed class CampRoleService(
         // Assignment is committed; request cancellation must not skip its notification.
         try
         {
+            var recipientId = memberLookup.UserId;
             var culture = CultureInfo.GetCultureInfo("en");
             try
             {
-                var language = (await userService.GetUserInfoAsync(memberLookup.UserId, CancellationToken.None))?.PreferredLanguage;
+                var person = await userService.GetUserInfoAsync(memberLookup.UserId, CancellationToken.None);
+                recipientId = person?.Id ?? memberLookup.UserId;
+                var language = person?.PreferredLanguage;
                 culture = CultureInfo.GetCultureInfo(language.IsSupportedCultureCode() ? language! : "en");
             }
             catch (Exception ex)
@@ -317,7 +261,7 @@ internal sealed class CampRoleService(
                 notificationClass: NotificationClass.Informational,
                 priority: NotificationPriority.Normal,
                 title: string.Format(culture, NoticeResources.GetString("Camps_Notification_RoleAssigned", culture)!, def.Name),
-                recipientUserIds: [memberLookup.UserId],
+                recipientUserIds: [recipientId],
                 cancellationToken: CancellationToken.None);
         }
         catch (Exception ex)
@@ -326,18 +270,6 @@ internal sealed class CampRoleService(
         }
 
         return AssignCampRoleOutcome.Assigned;
-    }
-
-    public async Task<CampRoleAssignmentInfo?> GetAssignmentByIdAsync(Guid assignmentId, CancellationToken ct = default)
-    {
-        var assignment = await repo.GetAssignmentByIdAsync(assignmentId, ct);
-        return assignment is null
-            ? null
-            : new CampRoleAssignmentInfo(
-                assignment.Id,
-                assignment.CampSeasonId,
-                assignment.CampRoleDefinitionId,
-                assignment.CampMemberId);
     }
 
     public async Task<bool> UnassignAsync(Guid assignmentId, Guid actorUserId, CancellationToken ct = default)
@@ -360,8 +292,171 @@ internal sealed class CampRoleService(
         return true;
     }
 
+    public Task<IReadOnlyDictionary<Guid, IReadOnlyList<CampDirectoryRoleSummary>>>
+        GetDirectoryRoleSummariesAsync(Guid eventSettingsId, CancellationToken ct = default) =>
+        GetDirectoryRoleSummariesCoreAsync(eventSettingsId, ct);
+
+    public async Task<int> SeedSystemRolesAsync(
+        Guid actorUserId, CancellationToken ct = default)
+    {
+        var now = clock.GetCurrentInstant();
+
+        // Idempotent seed across every non-None CampSpecialRole value. The
+        // enum is the source of truth — adding a new value automatically picks
+        // it up on the next seed-button click.
+        var definitionsCreated = 0;
+        foreach (var specialRole in Enum.GetValues<CampSpecialRole>())
+        {
+            if (specialRole == CampSpecialRole.None) continue;
+            var (name, slug, sortOrder, slotCount, minimumRequired, description) = specialRole switch
+            {
+                CampSpecialRole.Lead => (
+                    CampSystemRoles.CampLeadName,
+                    CampSystemRoles.CampLeadSlug,
+                    CampSystemRoles.CampLeadSortOrder,
+                    CampSystemRoles.CampLeadSlotCount,
+                    CampSystemRoles.CampLeadMinimumRequired,
+                    "Authorizes camp-management actions (Edit, members, roles, leads) and camp-event submission. Sort-to-top of the camp's Roles panel."),
+                CampSpecialRole.Workshop => (
+                    CampSystemRoles.WorkshopLeadName,
+                    CampSystemRoles.WorkshopLeadSlug,
+                    CampSystemRoles.WorkshopLeadSortOrder,
+                    CampSystemRoles.WorkshopLeadSlotCount,
+                    CampSystemRoles.WorkshopLeadMinimumRequired,
+                    "Authorizes camp-event submission alongside Camp Lead. Does not grant general camp-management authority."),
+                _ => throw new InvalidOperationException($"No seed defaults for special role '{specialRole}'."),
+            };
+
+            if (await repo.GetSpecialDefinitionAsync(specialRole, ct) is null)
+            {
+                var definition = new CampRoleDefinition
+                {
+                    Id = Guid.NewGuid(),
+                    Name = name,
+                    Slug = slug,
+                    Description = description,
+                    SlotCount = slotCount,
+                    MinimumRequired = minimumRequired,
+                    SortOrder = sortOrder,
+                    SpecialRole = specialRole,
+                    CreatedAt = now,
+                    UpdatedAt = now,
+                };
+                await repo.AddDefinitionAsync(definition, ct);
+                await auditLog.LogAsync(
+                    CampsAuditActions.CampRoleDefinitionCreated,
+                    nameof(CampRoleDefinition),
+                    definition.Id,
+                    $"Seeded system camp role '{name}'.",
+                    actorUserId);
+                definitionsCreated++;
+            }
+        }
+
+        return definitionsCreated;
+    }
+
+    // Leaf carve: the camp-role verbs the dev seeders drive (see ICampRoleSeeding).
+
+    /// <inheritdoc />
+    async Task<IReadOnlyList<CampRoleDefinitionSeedInfo>> ICampRoleSeeding.ListDefinitionsForSeedAsync(
+        bool includeDeactivated, CancellationToken cancellationToken)
+    {
+        var definitions = await ListDefinitionsAsync(includeDeactivated, cancellationToken);
+        return definitions.Select(d => new CampRoleDefinitionSeedInfo(d.Id, d.Slug, d.Name)).ToList();
+    }
+
+    /// <inheritdoc />
+    async Task ICampRoleSeeding.CreateDefinitionForSeedAsync(
+        string name, string slug, string? description, int slotCount, int minimumRequired,
+        int sortOrder, Guid actorUserId, CancellationToken cancellationToken)
+    {
+        var result = await CreateDefinitionAsync(
+            new CampRoleDefinitionInput(name, slug, description, slotCount, minimumRequired, sortOrder),
+            actorUserId, cancellationToken);
+        if (!result.Succeeded) throw new InvalidOperationException(result.ErrorMessage);
+    }
+
+    /// <inheritdoc />
+    Task<int> ICampRoleSeeding.SeedSystemRolesAsync(Guid actorUserId, CancellationToken cancellationToken) =>
+        SeedSystemRolesAsync(actorUserId, cancellationToken);
+
+    /// <inheritdoc />
+    async Task<Guid?> ICampRoleSeeding.GetDefinitionIdBySlugAsync(string slug, CancellationToken cancellationToken) =>
+        (await GetDefinitionBySlugAsync(slug, cancellationToken))?.Id;
+
+    public async Task<IReadOnlyList<CampRoleDefinitionInfo>> ListDefinitionsAsync(bool includeDeactivated, CancellationToken ct = default)
+    {
+        var definitions = await repo.ListDefinitionsAsync(includeDeactivated, ct);
+        return definitions.Select(CreateCampRoleDefinitionInfo).ToList();
+    }
+
+    public async Task<CampRoleDefinitionInfo?> GetDefinitionByIdAsync(Guid id, CancellationToken ct = default)
+    {
+        var definition = await repo.GetDefinitionByIdAsync(id, ct);
+        return definition is null ? null : CreateCampRoleDefinitionInfo(definition);
+    }
+
+    public async Task<CampRoleDefinitionInfo?> GetDefinitionBySlugAsync(string slug, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(slug)) return null;
+        var definition = await repo.GetDefinitionBySlugAsync(slug.Trim(), ct);
+        return definition is null ? null : CreateCampRoleDefinitionInfo(definition);
+    }
+
+    private static CampRoleDefinitionInfo CreateCampRoleDefinitionInfo(CampRoleDefinition definition) =>
+        new(
+            definition.Id,
+            definition.Name,
+            definition.Slug,
+            definition.Description,
+            definition.SlotCount,
+            definition.MinimumRequired,
+            definition.SortOrder,
+            definition.CreatedAt,
+            definition.UpdatedAt,
+            definition.DeactivatedAt,
+            definition.SpecialRole);
+
+    public async Task<CampRolesPanelData> BuildPanelAsync(Guid campSeasonId, CancellationToken ct = default)
+    {
+        var definitions = await repo.ListDefinitionsAsync(includeDeactivated: false, ct);
+        var assignments = await repo.GetAssignmentsForSeasonAsync(campSeasonId, ct);
+
+        var rows = definitions.Select(def =>
+        {
+            var defAssignments = assignments
+                .Where(a => a.CampRoleDefinitionId == def.Id)
+                .ToList();
+
+            var filled = defAssignments.Select(a =>
+                new CampRolesPanelSlot(a.Id, a.CampMemberId, a.CampMember.UserId)
+                { AssignedAt = a.AssignedAt }).ToList();
+
+            var current = filled.Count;
+            var empty = Math.Max(0, def.SlotCount - current);
+            var overCapacity = current > def.SlotCount;
+
+            return new CampRolesPanelRow(def, filled, empty, overCapacity, current);
+        }).ToList();
+
+        return new CampRolesPanelData(campSeasonId, rows);
+    }
+
+    public async Task<CampRoleAssignmentInfo?> GetAssignmentByIdAsync(Guid assignmentId, CancellationToken ct = default)
+    {
+        var assignment = await repo.GetAssignmentByIdAsync(assignmentId, ct);
+        return assignment is null
+            ? null
+            : new CampRoleAssignmentInfo(
+                assignment.Id,
+                assignment.CampSeasonId,
+                assignment.CampRoleDefinitionId,
+                assignment.CampMemberId);
+    }
+
     public async Task<IReadOnlyDictionary<Guid, IReadOnlyList<CampDirectoryRoleSummary>>>
-        GetDirectoryRoleSummariesAsync(Guid eventSettingsId, CancellationToken ct = default)
+        GetDirectoryRoleSummariesCoreAsync(Guid eventSettingsId, CancellationToken ct = default)
     {
         var definitions = await repo.ListDefinitionsAsync(includeDeactivated: false, ct);
         var targetEvent = await FindEventAsync(eventSettingsId, ct);
@@ -432,66 +527,6 @@ internal sealed class CampRoleService(
             .ToList();
     }
 
-    public async Task<int> SeedSystemRolesAsync(
-        Guid actorUserId, CancellationToken ct = default)
-    {
-        var now = clock.GetCurrentInstant();
-
-        // Idempotent seed across every non-None CampSpecialRole value. The
-        // enum is the source of truth — adding a new value automatically picks
-        // it up on the next seed-button click.
-        var definitionsCreated = 0;
-        foreach (var specialRole in Enum.GetValues<CampSpecialRole>())
-        {
-            if (specialRole == CampSpecialRole.None) continue;
-            var (name, slug, sortOrder, slotCount, minimumRequired, description) = specialRole switch
-            {
-                CampSpecialRole.Lead => (
-                    CampSystemRoles.CampLeadName,
-                    CampSystemRoles.CampLeadSlug,
-                    CampSystemRoles.CampLeadSortOrder,
-                    CampSystemRoles.CampLeadSlotCount,
-                    CampSystemRoles.CampLeadMinimumRequired,
-                    "Authorizes camp-management actions (Edit, members, roles, leads) and camp-event submission. Sort-to-top of the camp's Roles panel."),
-                CampSpecialRole.Workshop => (
-                    CampSystemRoles.WorkshopLeadName,
-                    CampSystemRoles.WorkshopLeadSlug,
-                    CampSystemRoles.WorkshopLeadSortOrder,
-                    CampSystemRoles.WorkshopLeadSlotCount,
-                    CampSystemRoles.WorkshopLeadMinimumRequired,
-                    "Authorizes camp-event submission alongside Camp Lead. Does not grant general camp-management authority."),
-                _ => throw new InvalidOperationException($"No seed defaults for special role '{specialRole}'."),
-            };
-
-            if (await repo.GetSpecialDefinitionAsync(specialRole, ct) is null)
-            {
-                var definition = new CampRoleDefinition
-                {
-                    Id = Guid.NewGuid(),
-                    Name = name,
-                    Slug = slug,
-                    Description = description,
-                    SlotCount = slotCount,
-                    MinimumRequired = minimumRequired,
-                    SortOrder = sortOrder,
-                    SpecialRole = specialRole,
-                    CreatedAt = now,
-                    UpdatedAt = now,
-                };
-                await repo.AddDefinitionAsync(definition, ct);
-                await auditLog.LogAsync(
-                    CampsAuditActions.CampRoleDefinitionCreated,
-                    nameof(CampRoleDefinition),
-                    definition.Id,
-                    $"Seeded system camp role '{name}'.",
-                    actorUserId);
-                definitionsCreated++;
-            }
-        }
-
-        return definitionsCreated;
-    }
-
     public async Task<CampRoleDrillDownData?> BuildDrillDownAsync(Guid roleDefinitionId, Guid eventSettingsId, CancellationToken ct = default)
     {
         var def = await repo.GetDefinitionByIdAsync(roleDefinitionId, ct);
@@ -518,7 +553,7 @@ internal sealed class CampRoleService(
                     ? list.Select(a =>
                     {
                         var userId = a.CampMember.UserId;
-                        // The member's Google Workspace identity (GoogleIntegration); null without a verified address.
+                        // The member's Google Workspace identity (Google); null without a verified address.
                         var googleEmail = identitiesByUserId.TryGetValue(userId, out var identity) ? identity.Email : null;
 
                         return new CampRoleDrillDownAssignee(userId, googleEmail, a.AssignedAt);
@@ -538,7 +573,6 @@ internal sealed class CampRoleService(
         return new CampRoleDrillDownData(info, targetEvent, groupEmail, rows);
     }
 
-    /// <inheritdoc />
     public async Task<Dictionary<string, Guid[]>> GetExpectedAsync(
         string? groupKey = null,
         CancellationToken ct = default)
@@ -615,35 +649,5 @@ internal sealed class CampRoleService(
     }
 
     public string BuildGroupKey(int year, string slug) =>
-        $"barrios-{year}-{slug}@{_googleOptions.Domain}";
-
-    // Leaf carve: the camp-role verbs the dev seeders drive (see ICampRoleSeeding).
-
-    /// <inheritdoc />
-    async Task<IReadOnlyList<CampRoleDefinitionSeedInfo>> ICampRoleSeeding.ListDefinitionsForSeedAsync(
-        bool includeDeactivated, CancellationToken cancellationToken)
-    {
-        var definitions = await ListDefinitionsAsync(includeDeactivated, cancellationToken);
-        return definitions.Select(d => new CampRoleDefinitionSeedInfo(d.Id, d.Slug, d.Name)).ToList();
-    }
-
-    /// <inheritdoc />
-    async Task ICampRoleSeeding.CreateDefinitionForSeedAsync(
-        string name, string slug, string? description, int slotCount, int minimumRequired,
-        int sortOrder, Guid actorUserId, CancellationToken cancellationToken)
-    {
-        var result = await CreateDefinitionAsync(
-            new CampRoleDefinitionInput(name, slug, description, slotCount, minimumRequired, sortOrder),
-            actorUserId, cancellationToken);
-        if (!result.Succeeded) throw new InvalidOperationException(result.ErrorMessage);
-    }
-
-    /// <inheritdoc />
-    Task<int> ICampRoleSeeding.SeedSystemRolesAsync(Guid actorUserId, CancellationToken cancellationToken) =>
-        SeedSystemRolesAsync(actorUserId, cancellationToken);
-
-    /// <inheritdoc />
-    async Task<Guid?> ICampRoleSeeding.GetDefinitionIdBySlugAsync(string slug, CancellationToken cancellationToken) =>
-        (await GetDefinitionBySlugAsync(slug, cancellationToken))?.Id;
-
+        $"barrios-{year}-{slug}@{googleOptions.Value.Domain}";
 }

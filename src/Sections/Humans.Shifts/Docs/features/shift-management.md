@@ -3,7 +3,7 @@
   src/Sections/Humans.Shifts/Controllers/ShiftsController.cs
   src/Sections/Humans.Shifts/Controllers/ShiftAdminController.cs
   src/Sections/Humans.Shifts/Controllers/ShiftDashboardController.cs
-  src/Sections/Humans.Shifts.Contracts/ShiftsRoles.cs
+  src/Sections/Humans.Shifts/Contracts/ShiftsRoles.cs
   src/Humans.Base/Authorization/PolicyNames.cs
   src/Sections/Humans.Shifts/Domain/EventSettings.cs
   src/Sections/Humans.Shifts/Domain/Rota.cs
@@ -93,7 +93,7 @@ Browse signup display ordering is shared by the browse page, row refresh, onboar
 **So that** I can manage my schedule
 
 **Acceptance Criteria:**
-- View upcoming, pending, and past shifts on /Shifts/Mine
+- View upcoming, pending, and past shifts on /Shifts/Mine; upcoming range blocks use the shared localized single-day or multi-day summary, including dates and day count
 - Bail from confirmed or pending signups. A stale request for a Refused, Cancelled or NoShow signup returns localized refusal feedback without changing its history.
 - Range bail via `BailRangeAsync` — bails all signups sharing a `SignupBlockId` (build/strike date-range signups)
 - Build shift bail blocked after EE close for non-privileged users
@@ -149,7 +149,7 @@ Browse signup display ordering is shared by the browse page, row refresh, onboar
 
 | Entity | Purpose |
 |--------|---------|
-| `EventSettings` | Shifts' own per-event knobs row: `IsShiftBrowsingOpen`, `GlobalVolunteerCap`, `ReminderLeadTimeHours`, and the four nullable `SubPeriod*Start` offsets (defaults -25/-16/-9/-4). The global calendar (dates, timezone, EE capacity) and "active cycle" are Settings-owned; their legacy columns on this entity are dead |
+| `EventSettings` | Shifts' own per-event knobs row: `IsShiftBrowsingOpen` and the four nullable `SubPeriod*Start` offsets (defaults -25/-16/-9/-4). The global calendar (dates, timezone, EE capacity) and "active cycle" are Settings-owned; their legacy columns on this entity are dead |
 | `Rota` | Shift container per department+event, with period (Build/Event/Strike), priority, signup policy, practical info, and visibility toggle (`IsVisibleToVolunteers`, default true) |
 | `Shift` | Single work slot: day offset, time, duration, volunteer min/max; IsAllDay flag for build/strike shifts |
 | `ShiftSignup` | User-to-shift link with state machine; SignupBlockId groups range signups |
@@ -250,7 +250,7 @@ Pending --> Cancelled   (system: shift deleted, account deletion)
 
 At our small scale, the dashboard view hits the cache on most loads and the underlying aggregation queries only run on first visit per coordinator per 5 minutes. Signup mutations evict the event's dashboard aggregates after a successful save, so approving, refusing, bailing, or creating signups is reflected on the next dashboard read.
 
-**Development seeder:** `DevelopmentDashboardSeeder` populates a realistic demo dataset (one event, several departments including one with subteams, ticket holders with mixed signup states, pending signups of varying ages, and ~85 days of spread signup/ticket/login activity for the trend chart). Exposed at `POST /dev/seed/dashboard`, button rendered on `/Shifts/Dashboard` only when the app is running in the Development environment. Not reachable in QA / preview / production regardless of role.
+**Demo data:** the demo world (`/dev/seed`, outside Production) fills the dashboard: `ShiftsDemoStory` adds rotas, shifts and signups for the demo departments on the active event.
 
 ## Related Features
 

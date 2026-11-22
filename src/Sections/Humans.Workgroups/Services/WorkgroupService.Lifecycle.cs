@@ -35,7 +35,7 @@ internal sealed partial class WorkgroupService
         await AuditAsync(WorkgroupsAuditActions.WorkgroupRegistered, workgroup,
             $"Registered '{workgroup.Name}' with Drive folder {workgroup.DriveFolderId}", actorUserId);
         await AnnounceDecisionAsync(workgroup, WorkgroupNoticeKind.Registered, detail: null, ct);
-        await RequestDriveSyncAsync(workgroup, ct);
+        await RequestGoogleSyncAsync(workgroup, ct);
         return new();
     }
 
@@ -59,10 +59,10 @@ internal sealed partial class WorkgroupService
             actorUserId);
 
         var info = ToInfo(workgroup);
-        await notices.NotifyBoardAsync(WorkgroupsNotificationSources.WorkgroupRegistrationPending,
+        await NotifyBoardAsync(WorkgroupsNotificationSources.WorkgroupRegistrationPending,
             $"Referred to the Board: {workgroup.Name}", info,
             Trimmed(note) ?? "A refusal ground may apply; the Board decides at its next meeting.", ct);
-        await notices.EmailBoardAsync(WorkgroupNoticeKind.Referred, info, Trimmed(note), ct);
+        await EmailBoardAsync(WorkgroupNoticeKind.Referred, info, Trimmed(note), ct);
         return new();
     }
 
@@ -111,8 +111,8 @@ internal sealed partial class WorkgroupService
         await AuditAsync(WorkgroupsAuditActions.WorkgroupWithdrawn, workgroup,
             $"Withdrew registration of '{workgroup.Name}': {reasons.Trim()}", actorUserId);
         await AnnounceDecisionAsync(workgroup, WorkgroupNoticeKind.Withdrawn, reasons.Trim(), ct);
-        // Withdrawn isn't Active, so the source stops claiming write access.
-        await RequestDriveSyncAsync(workgroup, ct);
+        // Withdrawn isn't Active, so the source stops claiming write 
+        await RequestGoogleSyncAsync(workgroup, ct);
         await SetAccountActiveAsync(workgroup, isActive: false, ct);
         return new();
     }
@@ -151,7 +151,7 @@ internal sealed partial class WorkgroupService
         await AuditAsync(WorkgroupsAuditActions.WorkgroupReactivated, workgroup,
             $"Reactivated '{workgroup.Name}'", actorUserId);
         await AnnounceDecisionAsync(workgroup, WorkgroupNoticeKind.Reactivated, detail: null, ct);
-        await RequestDriveSyncAsync(workgroup, ct);
+        await RequestGoogleSyncAsync(workgroup, ct);
         await SetAccountActiveAsync(workgroup, isActive: true, ct);
         return new();
     }
@@ -225,7 +225,7 @@ internal sealed partial class WorkgroupService
                 + $"{bootstrap.RegisteredAt.InUtc().Date.ToInvariantDate()}",
             actorUserId);
         await AnnounceDecisionAsync(workgroup, WorkgroupNoticeKind.Registered, detail: null, ct);
-        await RequestDriveSyncAsync(workgroup, ct);
+        await RequestGoogleSyncAsync(workgroup, ct);
         if (budget is not null)
             await AuditAsync(WorkgroupsAuditActions.WorkgroupBudgetSet, workgroup, BudgetAuditSummary(workgroup), actorUserId);
 
@@ -263,31 +263,12 @@ internal sealed partial class WorkgroupService
             AuditEntityTypes.WorkgroupDocument, document.Id);
 
         var info = ToInfo(workgroup);
-        await notices.NotifyAsync(info.CurrentMemberUserIds(), WorkgroupsNotificationSources.WorkgroupDispositionRecorded,
+        await NotifyAsync(info.CurrentMemberUserIds(), WorkgroupsNotificationSources.WorkgroupDispositionRecorded,
             $"Enum_WorkgroupDisposition_{disposition}", info, $"{document.Title}: {note.Trim()}", ct);
         // The coordinators owe the follow-up, so they also get the email.
-        await notices.EmailAsync(info.CoordinatorUserIds(), WorkgroupNoticeKind.DispositionRecorded, info,
+        await EmailAsync(info.CoordinatorUserIds(), WorkgroupNoticeKind.DispositionRecorded, info,
             $"{disposition}: {note.Trim()}", ct);
         return new();
-    }
-
-    /// <summary>Neither failure (unset root, Google error) leaves the group half-registered.</summary>
-    private async Task<WorkgroupMutationResult<string>> CreateGroupFolderAsync(Workgroup workgroup, CancellationToken ct)
-    {
-        var root = await GetRootDriveFolderIdAsync(ct);
-        if (string.IsNullOrWhiteSpace(root))
-            return new(Refusal: new(WorkgroupErrorKeys.RootFolderNotConfigured));
-
-        try
-        {
-            return new(await googleSyncWrite.CreateSubfolderAsync(root, workgroup.Name, CancellationToken.None));
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Failed to create the Drive subfolder for workgroup {WorkgroupId}",
-                workgroup.Id);
-            return new(Refusal: new(WorkgroupErrorKeys.DriveFolderCreationFailed));
-        }
     }
 
     private async Task AnnounceDecisionAsync(
@@ -298,7 +279,7 @@ internal sealed partial class WorkgroupService
     {
         var info = ToInfo(workgroup);
         var coordinators = info.CoordinatorUserIds();
-        await notices.NotifyAsync(coordinators, WorkgroupsNotificationSources.WorkgroupRegistrationDecided, $"Enum_WorkgroupLogKind_{kind}", info, detail, ct);
-        await notices.EmailAsync(coordinators, kind, info, detail, ct);
+        await NotifyAsync(coordinators, WorkgroupsNotificationSources.WorkgroupRegistrationDecided, $"Enum_WorkgroupLogKind_{kind}", info, detail, ct);
+        await EmailAsync(coordinators, kind, info, detail, ct);
     }
 }

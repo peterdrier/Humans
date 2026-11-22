@@ -4,8 +4,6 @@
 @{
     ViewData["Title"] = Localizer["Camps_AdminTitle"];
 
-    Func<CampSummaryRowViewModel, IHtmlContent> campNameCell =
-        @<text><a asp-controller="Camp" asp-action="Details" asp-route-slug="@item.Slug">@item.Name</a></text>;
     Func<CampSummaryRowViewModel, IHtmlContent> eeSlotsCell = @<text>
         @if (item.SeasonId.HasValue)
         {
@@ -39,7 +37,7 @@
         }
     </text>;
     var summaryTable = TableModel.For(Model.AllCampSummaries)
-        .Template("Camp Name", campNameCell, sortBy: c => c.Name)
+        .Link("Camp Name", c => c.Name, c => Url.Action("Details", "Camp", new { slug = c.Slug }))
         .Column("Accepting", c => c.AcceptingMembers)
         .Column("Humans", c => c.MemberCount, o => o.Number().End())
         .Column("Joined", c => c.JoinedMemberCount, o => o.Number().End())
@@ -49,10 +47,10 @@
         .Template("EE Slots", eeSlotsCell, sortBy: c => c.EeGrantedCount)
         .Template("Lead(s)", leadsCell)
         .Footer(new TableFooterCell("Totals"), new TableFooterCell(""),
-            new TableFooterCell(Model.AllCampSummaries.Sum(c => c.MemberCount).ToString(), "text-end"),
-            new TableFooterCell(Model.AllCampSummaries.Sum(c => c.JoinedMemberCount).ToString(), "text-end"),
+            new TableFooterCell(Model.TotalReportedMembers.ToString(), "text-end"),
+            new TableFooterCell(Model.TotalJoinedMembers.ToString(), "text-end"),
             new TableFooterCell(""), new TableFooterCell(""), new TableFooterCell(""),
-            new TableFooterCell($"{Model.AllCampSummaries.Sum(c => c.EeGrantedCount)} / {Model.AllCampSummaries.Sum(c => c.EeSlotCount)}"),
+            new TableFooterCell($"{Model.TotalEeGranted} / {Model.TotalEeSlots}"),
             new TableFooterCell(""))
         .Build();
 }
@@ -302,13 +300,9 @@
         <i class="fa-solid fa-ticket me-2"></i>Early Entry (@Model.ActiveEventName)
     </div>
     <div class="card-body">
-        @{
-            var totalSlots = Model.AllCampSummaries.Sum(c => c.EeSlotCount);
-            var totalGranted = Model.AllCampSummaries.Sum(c => c.EeGrantedCount);
-        }
         <p class="mb-2">
-            <strong>@totalGranted granted</strong> across <strong>@totalSlots configured slots</strong>
-            @if (totalGranted > totalSlots)
+            <strong>@Model.TotalEeGranted granted</strong> across <strong>@Model.TotalEeSlots configured slots</strong>
+            @if (Model.TotalEeGranted > Model.TotalEeSlots)
             {
                 <span class="badge bg-warning ms-2">over cap</span>
             }

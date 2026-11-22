@@ -3,10 +3,8 @@ using Humans.Base.Interfaces.Caching;
 using Humans.AuditLog.Contracts;
 using Humans.Auth.Contracts;
 using Humans.EarlyEntry.Contracts;
-using Humans.GoogleIntegration.Contracts;
+using Humans.Google.Contracts;
 using Humans.Notifications.Contracts;
-using Humans.Shifts.Contracts;
-using Humans.Shifts.Services;
 using Humans.Teams.Data;
 using Humans.Teams.Domain;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -42,7 +40,6 @@ public class TeamServiceSlugRaceTests
         created.Slug.Should().Be("design-2",
             because: "the first persist reported a slug conflict, so the loop must advance to the suffixed slug");
 
-        // Sanity: two persist attempts, both from the retry loop.
         await repo.Received(2).AddTeamWithRequiresApprovalOverrideAsync(
             Arg.Any<Team>(), Arg.Any<bool>(), Arg.Any<CancellationToken>());
     }
@@ -111,11 +108,10 @@ public class TeamServiceSlugRaceTests
             repo,
             Substitute.For<IAuditLogService>(),
             Substitute.For<INotificationEmitter>(),
-            Substitute.For<IShiftManagement>(),
             Substitute.For<IAdminAuthorizationService>(),
             new ServiceLocatorBuilder()
                 .With<IGoogleSyncOutboxService>()
-                .With<IGoogleIntegrationService>()
+                .With<IGoogleService>()
                 .Build(),
             clock,
             NullLogger<TeamService>.Instance);

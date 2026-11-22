@@ -10,4 +10,5 @@ public record ProfileSaveRequest(
     byte[]? ProfilePictureData, string? ProfilePictureContentType, bool RemoveProfilePicture,
     // Null leaves stored history untouched (name-only saves); any list, even empty, is a full replace
     // validated against NoPriorBurnExperience.
-    IReadOnlyList<CVEntry>? VolunteerHistory = null);
+    IReadOnlyList<CVEntry>? VolunteerHistory = null,
+    string? ProfilePictureFileName = null);

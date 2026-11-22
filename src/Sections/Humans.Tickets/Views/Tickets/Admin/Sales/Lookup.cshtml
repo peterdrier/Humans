@@ -1,0 +1,63 @@
+@using Humans.Tickets.Services.Checkout
+@model Humans.Tickets.Controllers.LookupViewModel
+@{
+    ViewData["Title"] = "Find an order";
+    var tooShort = Model.Query.Length > 0 && Model.Query.Length < TicketSupportReports.MinimumQueryLength;
+
+    Func<OrderSearchHit, IHtmlContent> createdCell = @<text><a asp-controller="TicketsSalesAdmin" asp-action="Order" asp-route-id="@item.Order.Id">@item.Order.CreatedAt.ToDateTime()</a></text>;
+    Func<OrderSearchHit, IHtmlContent> buyerCell = @<text>@item.Order.BuyerName <span class="small">(<vc:human user-id="@item.Order.BuyerUserId" link="Admin" />)</span> <span class="small d-block">@item.Order.BuyerEmail</span></text>;
+    Func<OrderSearchHit, IHtmlContent> holdersCell = @<text>
+        @if (item.Tickets.Count > 0)
+        {
+            @foreach (var t in item.Tickets)
+            {
+                <span class="d-block">@t.HolderName @if (t.HolderUserId is { } hid) { <span class="small">(<vc:human user-id="@hid" link="Admin" />)</span> } <code class="small">@t.Barcode</code> <status-badge value="@t.State" /></span>
+            }
+        }
+        else
+        {
+            @string.Join(", ", item.Order.Lines.Where(l => l.Kind == CheckoutLineKind.Ticket).Select(l => l.AttendeeName))
+        }
+    </text>;
+    var table = TableModel.For(Model.Hits)
+        .Template("Created", createdCell, o => o.Css("text-nowrap"), sortBy: h => h.Order.CreatedAt.ToUnixTimeTicks())
+        .Column("Reference", h => h.Order.Reference, o => o.Code())
+        .Column("Event", h => h.EventName)
+        .Template("Buyer", buyerCell, sortBy: h => h.Order.BuyerName)
+        .Template("Holders", holdersCell, o => o.NoSort())
+        .Column("Total (€)", h => h.Order.TotalMinor / 100m, o => o.Currency().End())
+        .Column("State", h => h.Order.State, o => o.EnumBadge())
+        .RowHref(h => Url.Action("Order", "TicketsSalesAdmin", new { id = h.Order.Id }))
+        .Empty("No order matches.")
+        .Build();
+}
+
+<page-header title="Find an order" />
+
+<form method="get" asp-action="Lookup" class="row g-2 mb-4" role="search">
+    <div class="col-md-6">
+        <label class="visually-hidden" for="q">Search orders</label>
+        <input class="form-control" id="q" name="q" value="@Model.Query" autofocus
+               placeholder="Buyer or holder name, email, order reference or ticket code" />
+    </div>
+    <div class="col-auto"><button class="btn btn-primary" type="submit">Search</button></div>
+</form>
+
+@if (Model.Query.Length == 0)
+{
+    <empty-state>Search by a buyer's or holder's name, an email, an order reference or a ticket code.</empty-state>
+}
+else if (tooShort)
+{
+    <empty-state>Type at least @TicketSupportReports.MinimumQueryLength characters.</empty-state>
+}
+else
+{
+    <div class="card mb-3">
+        <partial name="_Table" model="table" />
+    </div>
+    @if (Model.Hits.Count == TicketSupportReports.MaxHits)
+    {
+        <p class="small text-muted">Showing the newest @Model.Hits.Count. Narrow the search to see older orders.</p>
+    }
+}

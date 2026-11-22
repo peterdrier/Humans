@@ -1,4 +1,4 @@
-using Humans.GoogleIntegration.Contracts;
+using Humans.Google.Contracts;
 using Humans.Base.Interfaces;
 using Humans.Teams.Contracts;
 using Humans.Base.Enums;
@@ -55,17 +55,9 @@ internal sealed record MyTeamMembershipSummary(
     bool CanLeave,
     int PendingRequestCount);
 
-internal sealed record TeamDetailMemberSummary(
-    Guid UserId,
-    string DisplayName,
-    string? Email,
-    string? ProfilePictureUrl,
-    TeamMemberRole Role,
-    Instant JoinedAt);
-
 internal sealed record TeamDetailResult(
     TeamPageTeamSummary Team,
-    IReadOnlyList<TeamDetailMemberSummary> Members,
+    IReadOnlyList<TeamPageMemberSummary> Members,
     IReadOnlyList<TeamPageTeamLink> ChildTeams,
     IReadOnlyList<TeamRoleDefinitionSnapshot> RoleDefinitions,
     bool IsAuthenticated,
@@ -81,24 +73,13 @@ internal sealed record TeamDetailResult(
 internal sealed record TeamPageMemberSummary(
     Guid UserId,
     string DisplayName,
-    string? Email,
-    string? ProfilePictureUrl,
-    TeamMemberRole Role,
-    Instant? JoinedAt);
+    TeamMemberRole Role);
 
 internal sealed record TeamPageResourceSummary(
     string Name,
     string Url,
     GoogleResourceType ResourceType,
     Instant ProvisionedAt);
-
-internal sealed record TeamPageShiftsSummary(
-    int TotalSlots,
-    int ConfirmedCount,
-    int PendingCount,
-    int UniqueVolunteerCount,
-    bool CanManageShifts,
-    int IncludesSubTeamCount = 0);
 
 internal sealed record TeamPageTeamLink(Guid Id, string Name, string Slug);
 
@@ -147,7 +128,6 @@ internal sealed record TeamPageDetailResult(
     bool CanCurrentUserEditTeam,
     Guid? CurrentUserPendingRequestId,
     int PendingRequestCount,
-    TeamPageShiftsSummary? ShiftsSummary,
     IReadOnlyList<TeamPageChildTeamMemberSummary> SubteamLeads,
     IReadOnlyList<TeamPageChildTeamMemberSummary> SubteamMembers);
 
@@ -169,6 +149,5 @@ internal interface ITeamPageService : IApplicationService
     Task<TeamPageDetailResult?> GetTeamPageDetailAsync(
         string slug,
         Guid? userId,
-        bool canManageShiftsByRole,
         CancellationToken cancellationToken = default);
 }

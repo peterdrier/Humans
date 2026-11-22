@@ -6,7 +6,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- The section is one controller; a plain Microsoft.NET.Sdk test project needs the shared framework. -->
+    <!-- A plain Microsoft.NET.Sdk test project needs the shared framework for the MVC types. -->
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
   </ItemGroup>
 

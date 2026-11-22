@@ -137,9 +137,6 @@
     <value>Statuten</value>
   </data>
   <data name="Governance_Statutes_ContentNotAvailable" xml:space="preserve"><value>Inhoud niet beschikbaar.</value></data>
-  <data name="Governance_MemberCounts" xml:space="preserve">
-    <value>Community</value>
-  </data>
   <data name="Governance_Colaboradores" xml:space="preserve">
     <value>Colaboradores</value>
   </data>
@@ -199,9 +196,6 @@
   </data>
   <data name="Governance_ApplicationDetail_ApplicationInfo" xml:space="preserve">
     <value>Aanvraaginformatie</value>
-  </data>
-  <data name="Governance_ApplicationDetail_ReviewStarted" xml:space="preserve">
-    <value>Beoordeling gestart</value>
   </data>
   <data name="Governance_ApplicationDetail_ReviewedBy" xml:space="preserve">
     <value>Beoordeeld door</value>
@@ -745,4 +739,103 @@
   <data name="Governance_BoardVoting_NoteTooLong" xml:space="preserve"><value>De notitie mag maximaal 4.000 tekens bevatten. Je stem is niet gewijzigd.</value></data>
   <data name="Governance_BoardVoting_DecisionNoteTooLong" xml:space="preserve"><value>De toelichting bij het besluit mag maximaal 4.000 tekens bevatten. De aanvraag is niet afgerond.</value></data>
   <data name="Governance_BoardVoting_DecisionNoteRequired" xml:space="preserve"><value>Er is een toelichting bij het besluit vereist om een aanvraag af te wijzen. De aanvraag is niet afgerond.</value></data>
+  <data name="Governance_BoardMembers" xml:space="preserve"><value>Bestuursleden</value></data>
+  <data name="Governance_TheBoard" xml:space="preserve"><value>Het bestuur</value></data>
+  <data name="Governance_NoBoardMembers" xml:space="preserve"><value>Niemand heeft op dit moment de bestuursrol.</value></data>
+  <data name="Governance_Body_MemberCount" xml:space="preserve"><value>{0} leden</value></data>
+  <data name="Governance_Body_NoMembers" xml:space="preserve"><value>Er zit op dit moment niemand in deze groep.</value></data>
+  <data name="Governance_GroupAndFiles" xml:space="preserve"><value>Google-groep en bestanden</value></data>
+  <data name="Governance_YourAccess" xml:space="preserve"><value>Jouw Google-toegang</value></data>
+  <data name="Governance_ViewAll" xml:space="preserve"><value>Alles bekijken</value></data>
+  <data name="Governance_ManageBoard" xml:space="preserve"><value>Bestuursleden beheren</value></data>
+  <data name="Governance_FindPerson" xml:space="preserve"><value>Zoek een persoon</value></data>
+  <data name="Governance_AddBoardMember" xml:space="preserve"><value>Toevoegen aan het bestuur</value></data>
+  <data name="Governance_EndBoardSeat" xml:space="preserve"><value>Beëindigen</value></data>
+  <data name="Governance_BoardMemberAdded" xml:space="preserve"><value>{0} zit nu in het bestuur.</value></data>
+  <data name="Governance_BoardMemberEnded" xml:space="preserve"><value>{0} zit niet meer in het bestuur.</value></data>
+  <data name="Governance_BoardMemberAlreadyOn" xml:space="preserve"><value>{0} zit al in het bestuur.</value></data>
+  <data name="Governance_BoardMemberNotOn" xml:space="preserve"><value>{0} zit niet in het bestuur.</value></data>
+  <data name="Governance_NeedsDecision" xml:space="preserve"><value>Wacht op een besluit</value></data>
+  <data name="Governance_NothingToDecide" xml:space="preserve"><value>Er staat op dit moment niets open voor een besluit.</value></data>
+  <data name="Governance_AllVotes" xml:space="preserve"><value>Alle stemmingen</value></data>
+  <data name="Governance_CastVote" xml:space="preserve"><value>Stemmen</value></data>
+  <data name="Governance_UnvotedApplications" xml:space="preserve"><value>Lidmaatschapsaanvragen die op jouw stem wachten: {0}</value></data>
+  <data name="Governance_ReviewApplications" xml:space="preserve"><value>Beoordelen</value></data>
+  <data name="Governance_YourMembership" xml:space="preserve"><value>Jouw lidmaatschap</value></data>
+  <data name="Governance_Application_AsociadoQuestionsHeader" xml:space="preserve">
+    <value>Aanvullende vragen voor Asociado-aanvragers</value>
+  </data>
+  <data name="Governance_Application_SignificantContribution" xml:space="preserve">
+    <value>Wat is je belangrijkste bijdrage aan Elsewhere geweest?</value>
+  </data>
+  <data name="Governance_Application_SignificantContributionPlaceholder" xml:space="preserve">
+    <value>Als je niets kunt bedenken, maar wel een belangrijke bijdrage hebt geleverd aan een andere Burn, vertel ons daar dan over.</value>
+  </data>
+  <data name="Governance_Application_SignificantContributionRequired" xml:space="preserve">
+    <value>Beschrijf je belangrijkste bijdrage voor een Asociado-aanvraag.</value>
+  </data>
+  <data name="Governance_Application_RoleUnderstanding" xml:space="preserve">
+    <value>Wat is volgens jou, in je eigen woorden, de rol van een Asociado, en waarom wil je die verantwoordelijkheid?</value>
+  </data>
+  <data name="Governance_Application_RoleUnderstandingPlaceholder" xml:space="preserve">
+    <value>Vertel ons wat deze rol voor je betekent en waarom je er klaar voor bent.</value>
+  </data>
+  <data name="Governance_Application_RoleUnderstandingRequired" xml:space="preserve">
+    <value>Beschrijf wat de rol van Asociado volgens jou inhoudt.</value>
+  </data>
+  <data name="Governance_Application_AlreadyPending" xml:space="preserve">
+    <value>Je hebt al een aanvraag in afwachting.</value>
+  </data>
+  <data name="Governance_Application_InvalidTier" xml:space="preserve">
+    <value>Kies Colaborador of Asociado voor je aanvraag.</value>
+  </data>
+  <data name="Governance_Application_ConfirmAccuracy" xml:space="preserve">
+    <value>Je moet bevestigen dat je gegevens kloppen.</value>
+  </data>
+  <data name="Governance_Application_Submitted" xml:space="preserve">
+    <value>Je aanvraag is ingediend!</value>
+  </data>
+  <data name="Governance_Application_SubmitError" xml:space="preserve">
+    <value>Er is iets misgegaan bij het indienen van je aanvraag. Probeer het opnieuw.</value>
+  </data>
+  <data name="Governance_Application_CannotWithdraw" xml:space="preserve">
+    <value>Deze aanvraag kan niet worden ingetrokken.</value>
+  </data>
+  <data name="Governance_Application_Withdrawn" xml:space="preserve">
+    <value>Je aanvraag is ingetrokken.</value>
+  </data>
+  <data name="Governance_Application_MotivationLength" xml:space="preserve"><value>De motivatie moet tussen de 50 en 2000 tekens bevatten.</value></data>
+  <data name="Governance_Application_AdditionalInfoTooLong" xml:space="preserve"><value>Aanvullende informatie mag niet langer zijn dan 1000 tekens.</value></data>
+  <data name="Governance_Application_SignificantContributionTooLong" xml:space="preserve"><value>De beschrijving van je belangrijke bijdrage mag maximaal 2000 tekens bevatten.</value></data>
+  <data name="Governance_Application_RoleUnderstandingTooLong" xml:space="preserve"><value>Je uitleg over hoe je de rol ziet mag maximaal 2000 tekens bevatten.</value></data>
+  <data name="Governance_Application_MotivationRequired" xml:space="preserve">
+    <value>Voor aanvragen voor Colaborador en Asociado is een motivatie verplicht.</value>
+  </data>
+  <data name="Governance_Meter_ApplicationsPendingVote" xml:space="preserve"><value>Aanvragen die op je stem wachten</value></data>
+  <data name="Governance_Meter_AudienceBoard" xml:space="preserve"><value>het bestuur</value></data>
+  <data name="Governance_Status_Board" xml:space="preserve"><value>Bestuur</value></data>
+  <data name="Governance_MemberSince" xml:space="preserve"><value>Lid sinds</value></data>
+  <data name="Governance_Position" xml:space="preserve"><value>Functie</value></data>
+  <data name="Governance_Position_President" xml:space="preserve"><value>Voorzitter</value></data>
+  <data name="Governance_Position_VicePresident" xml:space="preserve"><value>Vicevoorzitter</value></data>
+  <data name="Governance_Position_Secretary" xml:space="preserve"><value>Secretaris</value></data>
+  <data name="Governance_Position_Treasurer" xml:space="preserve"><value>Penningmeester</value></data>
+  <data name="Governance_Position_None" xml:space="preserve"><value>Geen functie</value></data>
+  <data name="Governance_Save" xml:space="preserve"><value>Opslaan</value></data>
+  <data name="Governance_BoardPositionSaved" xml:space="preserve"><value>Bestuursfunctie opgeslagen.</value></data>
+  <data name="Governance_BoardPositionNotOnBoard" xml:space="preserve"><value>Alleen een huidig bestuurslid kan een bestuursfunctie bekleden.</value></data>
+  <data name="Governance_Manage_Title" xml:space="preserve"><value>Groep en bestanden beheren</value></data>
+  <data name="Governance_Manage_GroupName" xml:space="preserve"><value>Google-groep</value></data>
+  <data name="Governance_Manage_NoFiles" xml:space="preserve"><value>Nog geen Drive-mappen of -bestanden.</value></data>
+  <data name="Governance_Manage_Remove" xml:space="preserve"><value>Verwijderen</value></data>
+  <data name="Governance_Manage_DriveLink" xml:space="preserve"><value>Drive-link</value></data>
+  <data name="Governance_Manage_Access" xml:space="preserve"><value>Toegang</value></data>
+  <data name="Governance_Manage_AddFile" xml:space="preserve"><value>Toevoegen</value></data>
+  <data name="Governance_Manage_GroupSaved" xml:space="preserve"><value>Google-groep opgeslagen.</value></data>
+  <data name="Governance_Manage_FileAdded" xml:space="preserve"><value>Drive-map of -bestand toegevoegd.</value></data>
+  <data name="Governance_Manage_FileRemoved" xml:space="preserve"><value>Drive-map of -bestand verwijderd. Het delen blijft zoals het is.</value></data>
+  <data name="Governance_Manage_InvalidGroupName" xml:space="preserve"><value>Gebruik alleen kleine letters, cijfers en koppeltekens voor de groepsnaam.</value></data>
+  <data name="Governance_Manage_GroupNameTaken" xml:space="preserve"><value>Een ander orgaan gebruikt deze groep al.</value></data>
+  <data name="Governance_Manage_FileAlreadyLinked" xml:space="preserve"><value>Deze Drive-map of dit bestand staat al op de lijst.</value></data>
+  <data name="Governance_Manage_FileNotFound" xml:space="preserve"><value>Die Drive-map of dat bestand staat niet meer op de lijst.</value></data>
 </root>

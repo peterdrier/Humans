@@ -7,14 +7,6 @@
         <input asp-for="IsShiftBrowsingOpen" type="checkbox" class="form-check-input" />
         <label asp-for="IsShiftBrowsingOpen" class="form-check-label">Shift Browsing Open</label>
     </div>
-    <div class="mb-3">
-        <label asp-for="GlobalVolunteerCap" class="form-label">Global Volunteer Cap (optional)</label>
-        <input asp-for="GlobalVolunteerCap" type="number" class="form-control" />
-    </div>
-    <div class="mb-3">
-        <label asp-for="ReminderLeadTimeHours" class="form-label">Reminder Lead Time (hours)</label>
-        <input asp-for="ReminderLeadTimeHours" type="number" class="form-control" />
-    </div>
 
     <hr />
     <p class="small text-muted mb-2">Build sub-periods: the dashboard and shift browser split the build window into four named phases. Each is the start day relative to gate opening; the next one's start ends it. -365 ≤ First crew &lt; Set-up week &lt; Pre-event week &lt; Finishing weekend &lt; 0.</p>

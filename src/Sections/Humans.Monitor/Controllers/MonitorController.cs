@@ -1,11 +1,11 @@
+using Humans.Monitor.Services;
 using Humans.AuditLog.Contracts;
-using Humans.Monitor.Contracts;
 using Humans.Base.Authorization;
 using Humans.Base.Controllers;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Humans.Users.Contracts;
-using Humans.GoogleIntegration.Contracts;
+using Humans.Google.Contracts;
 
 namespace Humans.Monitor.Controllers;
 
@@ -38,6 +38,6 @@ internal sealed class MonitorController(
             SetError("Drive activity check failed. Check logs for details.");
         }
 
-        return RedirectToAction("Index", "AuditLog", new { filter = GoogleIntegrationAuditActions.AnomalousPermissionDetected.Name });
+        return RedirectToAction("Index", "AuditLog", new { filter = GoogleAuditActions.AnomalousPermissionDetected.Name });
     }
 }

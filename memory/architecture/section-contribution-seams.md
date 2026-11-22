@@ -14,4 +14,4 @@ description: When adding a nav link, admin tile, job, or health check, implement
 - File-local helpers a seam needs (a `PillCounts` static class, a response record) stay in `Section.cs` beside the class. Do not add sibling `Section<Seam>.cs` classes.
 - Never edit Shell's composition classes (`AdminNavComposition`, `SectionNavViewComponent`, `ChromeSlotViewComponent`, `RecurringJobExtensions`, `AuthorizationPolicyExtensions`, `Program.cs`) to name a section directly. Implementing an existing seam changes only the contributing section; a new seam may need generic consumer support.
 
-See [design-rules.md §8b](../../docs/architecture/design-rules.md#8b-cross-section-fanout--contributor-pattern) for the seam catalog and ordering rules.
+See [design-rules.md, *Section contributions to the Shell*](../../docs/architecture/design-rules.md#section-contributions-to-the-shell) for the rules and [`Shell.md`](../../src/Humans.Web/Docs/Shell.md) for the seam catalog.

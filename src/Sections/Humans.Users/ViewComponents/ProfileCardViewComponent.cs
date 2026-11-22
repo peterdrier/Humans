@@ -1,3 +1,4 @@
+using Humans.Base.Extensions;
 using Humans.Email.Contracts;
 using Humans.Users.Models;
 using Humans.Base.Helpers;
@@ -20,7 +21,11 @@ public sealed class ProfileCardViewComponent(
     IRoleAssignmentService roleAssignmentService,
     ICommunicationPreferenceService commPrefService) : ViewComponent
 {
-    public async Task<IViewComponentResult> InvokeAsync(Guid userId, ProfileCardViewMode viewMode)
+    // Default is the whole card (/Profile/Me, /Profile/{id}); /Users/Me splits it into
+    // Identity (left column), Teams (a tile) and History (Burner CV).
+    private static readonly HashSet<string> Layouts = new(StringComparer.Ordinal) { "Default", "Identity", "Board", "Teams", "History" };
+
+    public async Task<IViewComponentResult> InvokeAsync(Guid userId, ProfileCardViewMode viewMode, string layout = "Default")
     {
         var ct = HttpContext.RequestAborted;
         var info = await userService.GetUserInfoAsync(userId, ct);
@@ -37,7 +42,7 @@ public sealed class ProfileCardViewComponent(
 
         if (viewMode == ProfileCardViewMode.Public)
         {
-            if (!Guid.TryParse(UserClaimsPrincipal.FindFirstValue(ClaimTypes.NameIdentifier), out var viewerId))
+            if (UserClaimsPrincipal.GetUserId() is not { } viewerId)
                 return Content(string.Empty);
             var viewer = await userService.GetUserInfoAsync(viewerId, ct);
             if (viewer is null) return Content(string.Empty);
@@ -50,15 +55,7 @@ public sealed class ProfileCardViewComponent(
             ? await contactFieldService.GetVisibleContactFieldsAsync(userId, viewerUserId, ct)
             : [];
 
-        ContactFieldVisibility accessLevel;
-        if (isOwnProfile || viewMode == ProfileCardViewMode.Admin)
-        {
-            accessLevel = ContactFieldVisibility.BoardOnly;
-        }
-        else
-        {
-            accessLevel = await contactFieldService.GetViewerAccessLevelAsync(userId, viewerUserId, ct);
-        }
+        var accessLevel = await contactFieldService.GetViewerAccessLevelAsync(userId, viewerUserId, ct);
         var visibleEmails = await userEmailService.GetVisibleEmailsAsync(userId, accessLevel, ct);
 
         var teamsById = await teamService.GetTeamsAsync(ct);
@@ -94,8 +91,8 @@ public sealed class ProfileCardViewComponent(
             Bio = profile?.Bio,
             ContributionInterests = profile?.ContributionInterests,
             BoardNotes = canViewLegalName ? profile?.BoardNotes : null,
-            FirstName = canViewLegalName ? profile?.FirstName : null,
-            LastName = canViewLegalName ? profile?.LastName : null,
+            FirstName = canViewLegalName && profile is not null ? info.FirstName : null,
+            LastName = canViewLegalName && profile is not null ? info.LastName : null,
             EmergencyContactName = canViewLegalName ? profile?.EmergencyContactName : null,
             EmergencyContactPhone = canViewLegalName ? profile?.EmergencyContactPhone : null,
             EmergencyContactRelationship = canViewLegalName ? profile?.EmergencyContactRelationship : null,
@@ -139,7 +136,7 @@ public sealed class ProfileCardViewComponent(
                 && await commPrefService.AcceptsFacilitatedMessagesAsync(userId, ct)
         };
 
-        return View(model);
+        return View(Layouts.Contains(layout) ? layout : "Default", model);
     }
 
     private static string GetDisplayName(

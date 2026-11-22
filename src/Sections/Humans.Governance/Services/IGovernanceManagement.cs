@@ -1,19 +1,21 @@
 using Humans.Base.Interfaces;
 using Humans.Governance.Contracts;
+using Humans.Governance.Services.Dtos;
 using NodaTime;
 
 namespace Humans.Governance.Services;
 
-internal interface IGovernanceManagement : IGovernanceService, IApplicationService
+internal interface IGovernanceManagement : IApplicationService
 {
-    /// <summary>
-    /// Term expiry for <paramref name="tier"/>: every member holding it without an Approved
-    /// application for it still in term on <paramref name="today"/> drops to their other in-term
-    /// tier, or to Volunteer. Returns each member with the tier written, for the caller's
-    /// <c>TierDowngraded</c> audit entries. Run by <c>MembershipTierExpiryJob</c>.
-    /// </summary>
-    Task<IReadOnlyList<(Guid UserId, MembershipTier NewTier)>> ExpireMembershipTiersAsync(
-        MembershipTier tier, LocalDate today, CancellationToken ct = default);
+    /// <summary>Newest first.</summary>
+    Task<IReadOnlyList<UserApplicationSnapshot>> GetUserApplicationsAsync(
+        Guid userId, CancellationToken ct = default);
+
+    Task<SubmittedApplicationSnapshot?> GetSubmittedApplicationForUserAsync(
+        Guid userId, CancellationToken ct = default);
+
+    Task<int> GetUnvotedApplicationCountAsync(
+        Guid boardMemberUserId, CancellationToken ct = default);
 
     /// <summary>
     /// The latest Approved application per user and tier whose term ends between

@@ -13,7 +13,7 @@ public static partial class IbanFormatter
     public static string Mask(string? iban)
     {
         if (string.IsNullOrEmpty(iban)) return "";
-        var compact = iban.Replace(" ", "").Replace(" ", "");
+        var compact = Compact(iban);
         if (compact.Length <= 7) return "****";
         return $"{compact[..4]}****{compact[^3..]}";
     }

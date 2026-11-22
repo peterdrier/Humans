@@ -567,15 +567,6 @@
   <data name="Dashboard_ManageConsents" xml:space="preserve">
     <value>Revisar acords</value>
   </data>
-  <data name="Dashboard_RejectedTitle" xml:space="preserve">
-    <value>Registre rebutjat</value>
-  </data>
-  <data name="Dashboard_RejectedMessage" xml:space="preserve">
-    <value>El teu registre ha estat revisat i no va ser aprovat. Si tens preguntes, contacta amb l'equip d'administració.</value>
-  </data>
-  <data name="Dashboard_RejectionReason" xml:space="preserve">
-    <value>Motiu</value>
-  </data>
   <data name="Dashboard_Subtitle" xml:space="preserve">
     <value>Això és el que passa.</value>
   </data>
@@ -661,9 +652,6 @@
   <data name="Profile_MembershipTier" xml:space="preserve">
     <value>Categoria de membresia</value>
   </data>
-  <data name="Profile_MotivationRequired" xml:space="preserve">
-    <value>Es requereix una declaració de motivació per a les sol·licituds de Col·laborador i Associat.</value>
-  </data>
   <data name="ProfileEdit_TierDescription" xml:space="preserve">
     <value>Tria com vols participar:</value>
   </data>
@@ -675,27 +663,6 @@
   </data>
   <data name="ProfileEdit_TierAsociadoSubtitle" xml:space="preserve">
     <value>membre amb vot</value>
-  </data>
-  <data name="Application_AsociadoQuestionsHeader" xml:space="preserve">
-    <value>Preguntes addicionals per a sol·licitants d'Associat</value>
-  </data>
-  <data name="Application_SignificantContribution" xml:space="preserve">
-    <value>Quina ha estat la teva contribució més significativa a Elsewhere?</value>
-  </data>
-  <data name="Application_SignificantContributionPlaceholder" xml:space="preserve">
-    <value>Si no se t'acudeix cap, però has contribuït significativament a un altre Burn, explica'ns-ho.</value>
-  </data>
-  <data name="Application_SignificantContributionRequired" xml:space="preserve">
-    <value>Si us plau, descriu la teva contribució més significativa per a una sol·licitud d'Associat.</value>
-  </data>
-  <data name="Application_RoleUnderstanding" xml:space="preserve">
-    <value>Amb les teves pròpies paraules, què entens que és el rol d'un associat i per què vols aquesta responsabilitat?</value>
-  </data>
-  <data name="Application_RoleUnderstandingPlaceholder" xml:space="preserve">
-    <value>Explica'ns què significa aquest rol per a tu i per què hi estàs preparat/da.</value>
-  </data>
-  <data name="Application_RoleUnderstandingRequired" xml:space="preserve">
-    <value>Si us plau, descriu la teva comprensió del rol d'associat.</value>
   </data>
   <data name="Profile_Updated" xml:space="preserve">
     <value>Perfil actualitzat correctament.</value>
@@ -726,27 +693,6 @@
   </data>
   <data name="Admin_StatsPending" xml:space="preserve">
     <value>Pendents</value>
-  </data>
-  <data name="Application_AlreadyPending" xml:space="preserve">
-    <value>Ja tens una sol·licitud pendent.</value>
-  </data>
-  <data name="Application_InvalidTier" xml:space="preserve">
-    <value>Selecciona Col·laborador o Associat per a la teva sol·licitud.</value>
-  </data>
-  <data name="Application_ConfirmAccuracy" xml:space="preserve">
-    <value>Has de confirmar la veracitat de la teva informació.</value>
-  </data>
-  <data name="Application_Submitted" xml:space="preserve">
-    <value>La teva sol·licitud s'ha enviat correctament!</value>
-  </data>
-  <data name="Application_SubmitError" xml:space="preserve">
-    <value>Alguna cosa ha anat malament en enviar la teva sol·licitud. Si us plau, torna-ho a provar.</value>
-  </data>
-  <data name="Application_CannotWithdraw" xml:space="preserve">
-    <value>Aquesta sol·licitud no pot ser retirada.</value>
-  </data>
-  <data name="Application_Withdrawn" xml:space="preserve">
-    <value>La teva sol·licitud s'ha retirat.</value>
   </data>
   <data name="Teams_Title" xml:space="preserve">
     <value>Equips</value>
@@ -927,9 +873,6 @@
   <data name="Nav_City" xml:space="preserve">
     <value>Mapa</value>
   </data>
-  <data name="Nav_Rideshare" xml:space="preserve">
-    <value>Compartir cotxe</value>
-  </data>
   <data name="Nav_Budget" xml:space="preserve">
     <value>Pressupost</value>
   </data>
@@ -959,17 +902,8 @@
   <data name="Search_Title" xml:space="preserve">
     <value>Cerca Humans</value>
   </data>
-  <data name="Search_Placeholder" xml:space="preserve">
-    <value>Cerca per nom, ciutat, interessos, bio...</value>
-  </data>
-  <data name="Search_NoResults" xml:space="preserve">
-    <value>No s’han trobat humans amb aquesta cerca.</value>
-  </data>
   <data name="Search_MatchedIn" xml:space="preserve">
     <value>Coincidència a</value>
-  </data>
-  <data name="Search_MinChars" xml:space="preserve">
-    <value>Escriu almenys 2 caràcters per cercar.</value>
   </data>
   <data name="Camp_Plural" xml:space="preserve">
     <value>Barris</value>
@@ -1089,15 +1023,6 @@
   <data name="Todo_Consents_Action" xml:space="preserve">
     <value>Revisa els acords</value>
   </data>
-  <data name="Todo_ConsentCheck_Title" xml:space="preserve">
-    <value>Revisió del coordinador</value>
-  </data>
-  <data name="Todo_ConsentCheck_Done" xml:space="preserve">
-    <value>Un coordinador ha revisat i aprovat els teus documents.</value>
-  </data>
-  <data name="Todo_ConsentCheck_Pending" xml:space="preserve">
-    <value>Un coordinador revisarà els teus documents un cop el perfil i els acords estiguin complets.</value>
-  </data>
   <data name="Todo_ShiftInfo_Title" xml:space="preserve">
     <value>Configura les teves preferències de torn</value>
   </data>
@@ -1136,34 +1061,6 @@
   </data>
   <data name="Nav_Guide" xml:space="preserve">
     <value>Ajuda</value>
-  </data>
-  <data name="ShiftsSummary_Title" xml:space="preserve">
-    <value>Torns</value>
-  </data>
-  <data name="ShiftsSummary_SlotsFilled" xml:space="preserve">
-    <value>{0} / {1} places ocupades</value>
-    <comment>{0} = filled, {1} = total</comment>
-  </data>
-  <data name="ShiftsSummary_HumansSignedUp" xml:space="preserve">
-    <value>{0} humans inscrits</value>
-    <comment>{0} = count</comment>
-  </data>
-  <data name="ShiftsSummary_PendingCount" xml:space="preserve">
-    <value>{0} pendents</value>
-    <comment>{0} = count</comment>
-  </data>
-  <data name="ShiftsSummary_NoShifts" xml:space="preserve">
-    <value>Encara no hi ha torns configurats.</value>
-  </data>
-  <data name="ShiftsSummary_IncludesSubTeams" xml:space="preserve">
-    <value>Inclou torns de {0} subequip(s)</value>
-    <comment>{0} = count</comment>
-  </data>
-  <data name="ShiftsSummary_ManageShifts" xml:space="preserve">
-    <value>Gestionar torns</value>
-  </data>
-  <data name="Medical_Badge" xml:space="preserve">
-    <value>Mèdic</value>
   </data>
   <data name="Privacy_Lead" xml:space="preserve">
     <value>Humans gestiona la pertinença a Nobodies Collective i processa dades personals d'acord amb el RGPD i la llei espanyola de protecció de dades (LOPDGDD).</value>
@@ -1352,7 +1249,7 @@
     <value>N/D</value>
   </data>
   <data name="EmailGrid_LinkFailed" xml:space="preserve">
-    <value>No hem pogut vincular aquest compte de Google. Torna-ho a provar.</value>
+    <value>No hem pogut vincular aquest compte de Google. Si el compte, o la seva adreça, ja pertany a un altre compte teu, afegeix aquesta adreça a "Afegeix correu" i segueix l'enllaç que t'enviem per unir els dos.</value>
   </data>
   <data name="Profile_BuildStrip_Title" xml:space="preserve">
     <value>Disponibilitat i seguiment del muntatge</value>
@@ -1562,6 +1459,15 @@
   <data name="Settings_TabGate" xml:space="preserve">
     <value>Porta</value>
   </data>
+  <data name="Settings_TabTickets" xml:space="preserve">
+    <value>Entrades</value>
+  </data>
+  <data name="Settings_TabStore" xml:space="preserve">
+    <value>Botiga</value>
+  </data>
+  <data name="Settings_TabFinance" xml:space="preserve">
+    <value>Finances</value>
+  </data>
   <data name="Settings_TabBarrios" xml:space="preserve">
     <value>Barris</value>
   </data>
@@ -1594,11 +1500,8 @@
   <data name="Enum_SystemTeamType_Asociados" xml:space="preserve"><value>Asociados</value></data>
   <data name="Enum_SystemTeamType_Colaboradors" xml:space="preserve"><value>Colaboradores</value></data>
   <data name="Enum_SystemTeamType_BarrioLeads" xml:space="preserve"><value>Responsables de campament</value></data>
-  <data name="Application_MotivationLength" xml:space="preserve"><value>La motivació ha de tenir entre 50 i 2000 caràcters.</value></data>
-  <data name="Application_AdditionalInfoTooLong" xml:space="preserve"><value>La informació addicional no ha de superar els 1000 caràcters.</value></data>
-  <data name="Application_SignificantContributionTooLong" xml:space="preserve"><value>La contribució significativa no ha de superar els 2000 caràcters.</value></data>
-  <data name="Application_RoleUnderstandingTooLong" xml:space="preserve"><value>L’explicació del rol no ha de superar els 2000 caràcters.</value></data>
   <data name="Document_LegalLabel" xml:space="preserve"><value>Legal</value></data>
   <data name="Todo_Medical_Title" xml:space="preserve"><value>Hi ha alguna cosa de la teva salut que els coordinadors hagin de saber?</value></data>
   <data name="Todo_Medical_Pending" xml:space="preserve"><value>Opcional. Només ho veieu tu i els No-Info Admins.</value></data>
+  <data name="Nav_Roles" xml:space="preserve"><value>Rols</value></data>
 </root>

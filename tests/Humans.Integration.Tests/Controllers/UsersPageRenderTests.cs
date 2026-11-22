@@ -6,7 +6,6 @@ using Humans.Events.Contracts;
 using Humans.Events.Domain;
 using Humans.Events.Services;
 using Humans.Integration.Tests.Infrastructure;
-using Humans.Settings.Contracts;
 using Humans.Tickets.Contracts;
 using Humans.Tickets.Data;
 using Humans.Tickets.Domain;
@@ -58,6 +57,8 @@ public class UsersPageRenderTests(HumansTestDatabase database) : IntegrationTest
         ("/Profile/Me/Medical", "Medical conditions"),                       // Users_Profile_DietaryMedical_MedicalConditions_Title
         ("/Email/CommunicationPreferences", "Communication Preferences"),    // Users_CommPrefs_Title (served by Email)
         ("/Email/Outbox", "My Emails"),                                      // Email_Outbox_MyTitle (served by Email)
+        ("/Users/Birthdays", "Birthday Calendar"),                           // Users_Birthdays_Title
+        ("/Users/Map", "Humans Map"),                                        // Users_Map_Title
     ];
 
     [HumansFact(Timeout = 180000)]
@@ -107,25 +108,14 @@ public class UsersPageRenderTests(HumansTestDatabase database) : IntegrationTest
     }
 
     /// <summary>
-    /// Both assertions are on content only the row can have produced: a <c>NotContain("&lt;vc:")</c> check passes on
-    /// an empty-state page, so the persona's own name and the match badge prove the element bound.
+    /// Assertions are on content only the row can have produced: a <c>NotContain("&lt;vc:")</c> check passes on
+    /// an empty-state page, so the persona's own name and the row's meta line prove it bound.
     /// </summary>
     [HumansFact(Timeout = 120000)]
-    public async Task Both_person_search_surfaces_render_their_result_rows()
+    public async Task Admin_directory_renders_its_result_rows()
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         var userId = await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Admin);
-
-        var publicSearch = await Client.GetAsync("/Profile/Search?q=Dev", ct);
-        publicSearch.StatusCode.Should().Be(HttpStatusCode.OK);
-        var publicHtml = await publicSearch.Content.ReadAsStringAsync(ct);
-
-        publicHtml.Should().Contain("Dev Admin",
-            because: "<vc:user-search-result> must resolve the hit and render the human");
-        publicHtml.Should().Contain("Matched in",
-            because: "Search_MatchedIn is written by the component's own markup and nothing else "
-                   + "on this page emits it");
-        AssertRenderedCleanly(publicHtml, "GET /Profile/Search?q=Dev");
 
         var adminList = await Client.GetAsync("/Users/Admin", ct);
         adminList.StatusCode.Should().Be(HttpStatusCode.OK);
@@ -287,21 +277,7 @@ public class UsersPageRenderTests(HumansTestDatabase database) : IntegrationTest
 
         // A season belongs to an event, so make sure one is active.
         if ((await camps.GetSettingsAsync(ct)).ActiveEventSettingsId is null)
-        {
-            await scope.ServiceProvider.GetRequiredService<IEventSettingsSeeding>().CreateActiveEventAsync(
-                new EventSettingsInfo(
-                    Id: Guid.NewGuid(),
-                    EventName: "Users Render Test Burn",
-                    Year: 2026,
-                    TimeZoneId: "Europe/Madrid",
-                    GateOpeningDate: new LocalDate(2026, 7, 1),
-                    BuildStartOffset: -14,
-                    EventEndOffset: 6,
-                    StrikeEndOffset: 9,
-                    EarlyEntryCapacity: new Dictionary<int, int>(),
-                    BarriosEarlyEntryAllocation: null,
-                    EarlyEntryClose: null));
-        }
+            await Factory.SeedActiveEventAsync();
 
         var eventSettingsId = (await camps.GetSettingsAsync(ct)).ActiveEventSettingsId!.Value;
 
@@ -347,6 +323,8 @@ public class UsersPageRenderTests(HumansTestDatabase database) : IntegrationTest
 
     private async Task SeedApprovedPersonalEventAsync(Guid userId, CancellationToken ct)
     {
+        await Factory.OpenEventSubmissionWindowAsync();
+
         // The Events decorator has no blanket invalidator; submit and moderate reload its approved-event projection.
         using var scope = Factory.Services.CreateScope();
         var events = scope.ServiceProvider.GetRequiredService<IEventManagement>();
@@ -384,7 +362,7 @@ public class UsersPageRenderTests(HumansTestDatabase database) : IntegrationTest
             StartAt = now + Duration.FromDays(7),
             DurationMinutes = 90,
             PriorityRank = 1,
-            Status = EventStatus.Pending,
+            Status = EventStatus.Draft,
             SubmittedAt = now,
             LastUpdatedAt = now,
         };

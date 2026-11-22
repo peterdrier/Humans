@@ -180,4 +180,5 @@
   <data name="Events_RecurrenceDaysInvalid" xml:space="preserve"><value>Kies elke herhalingsdag één keer uit de kalender van dit evenement.</value></data>
   <data name="Events_CategoryUnavailable" xml:space="preserve"><value>Kies een actieve categorie. De geselecteerde categorie is niet meer beschikbaar.</value></data>
   <data name="Events_VenueUnavailable" xml:space="preserve"><value>Kies een actieve locatie. De geselecteerde locatie is niet meer beschikbaar.</value></data>
+  <data name="Events_Search_Category" xml:space="preserve"><value>Evenementen</value></data>
 </root>

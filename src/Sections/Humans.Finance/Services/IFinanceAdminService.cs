@@ -2,6 +2,7 @@ using Humans.Base.Attributes;
 using Humans.Base.Interfaces;
 using Humans.Finance.Contracts;
 using Humans.Finance.Models;
+using NodaTime;
 
 namespace Humans.Finance.Services;
 
@@ -42,7 +43,8 @@ internal interface IFinanceAdminService : IApplicationService
         IReadOnlyList<SepaPayoutSelection> selections, decimal maxPerTransfer, Guid actorUserId,
         CancellationToken ct = default);
 
-    /// <summary>One live bank-feed call; a vendor failure costs the candidates and the panel, not the page.
+    /// <summary>Pairs over Holded's bank-feed mirror as it stands (no Holded call); <c>BankFeedSyncedAt</c> is when
+    /// it last synced. An unsynced mirror costs the candidates and the panel, not the page.
     /// <para><paramref name="toleranceDays"/> is how far a bank line may sit from its file's date: either side for a
     /// textless line (the date is half of what ties it), before only for a line naming the account. The same value
     /// rides every booking posted from the view, so the booking re-validates under the window the page paired
@@ -50,7 +52,8 @@ internal interface IFinanceAdminService : IApplicationService
     Task<(IReadOnlyList<SepaPayoutTransferRow> Rows,
           string? UnavailableReason,
           IReadOnlyList<SepaBankMovementVm> UnmatchedMovements,
-          string? BankFeedError)>
+          string? BankFeedError,
+          Instant? BankFeedSyncedAt)>
         GetSepaPayoutsAsync(int toleranceDays = DefaultSepaMatchToleranceDays, CancellationToken ct = default);
 
     /// <summary>Also the slack the sweep reads the feed back by.</summary>

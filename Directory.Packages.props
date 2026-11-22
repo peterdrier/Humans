@@ -5,29 +5,29 @@
   </PropertyGroup>
   <ItemGroup>
     <!-- AI/LLM -->
-    <PackageVersion Include="Anthropic" Version="13.3.0" />
+    <PackageVersion Include="Anthropic" Version="13.8.0" />
     <!-- Core Framework -->
     <PackageVersion Include="ClosedXML" Version="0.105.1" />
     <!-- CSV — ALL CSV reading/writing goes through CsvHelper (memory/code/csv-use-csvhelper.md). Exact package name "CsvHelper" only; "CsvHelper.Excel.Core.Net" is known malware. -->
     <PackageVersion Include="CsvHelper" Version="34.0.0" />
     <!-- 9.1.973 is the first stable release resolving AngleSharp 1.x — required to clear GHSA-pgww-w46g-26qg (nobodies-collective/Humans#929). -->
-    <PackageVersion Include="HtmlSanitizer" Version="10.0.1120" />
+    <PackageVersion Include="HtmlSanitizer" Version="11.0.26" />
     <PackageVersion Include="Ical.Net" Version="5.2.4" />
-    <PackageVersion Include="Markdig" Version="1.5.1" />
+    <PackageVersion Include="Markdig" Version="1.6.0" />
     <!-- User-Agent parsing for /Admin/ClientStats (code-based, no regex DB; library telemetry left off) -->
     <PackageVersion Include="MyCSharp.HttpUserAgentParser" Version="3.1.6" />
-    <PackageVersion Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="10.0.13" />
-    <PackageVersion Include="Microsoft.AspNetCore.Authentication.Google" Version="10.0.13" />
-    <PackageVersion Include="Microsoft.AspNetCore.Mvc.Razor.RuntimeCompilation" Version="10.0.13" />
-    <PackageVersion Include="Microsoft.EntityFrameworkCore" Version="10.0.13" />
-    <PackageVersion Include="Microsoft.EntityFrameworkCore.InMemory" Version="10.0.13" />
-    <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.13" />
+    <PackageVersion Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="10.0.15" />
+    <PackageVersion Include="Microsoft.AspNetCore.Authentication.Google" Version="10.0.15" />
+    <PackageVersion Include="Microsoft.AspNetCore.Mvc.Razor.RuntimeCompilation" Version="10.0.15" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore" Version="10.0.15" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.InMemory" Version="10.0.15" />
+    <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.15" />
     <!-- Database -->
-    <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.13" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.15" />
     <PackageVersion Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.3" />
     <PackageVersion Include="Npgsql.EntityFrameworkCore.PostgreSQL.NodaTime" Version="10.0.3" />
     <!-- NodaTime -->
-    <PackageVersion Include="NodaTime" Version="3.3.5" />
+    <PackageVersion Include="NodaTime" Version="3.3.7" />
     <PackageVersion Include="NodaTime.Serialization.SystemTextJson" Version="1.4.0" />
     <!-- State Machine -->
     <PackageVersion Include="Stateless" Version="5.20.1" />
@@ -38,8 +38,9 @@
     <PackageVersion Include="Hangfire.Core" Version="1.8.25" />
     <PackageVersion Include="Hangfire.AspNetCore" Version="1.8.25" />
     <PackageVersion Include="Hangfire.PostgreSql" Version="1.21.1" />
+    <PackageVersion Include="Hangfire.InMemory" Version="1.0.0" />
     <!-- Email -->
-    <PackageVersion Include="MailKit" Version="4.18.2" />
+    <PackageVersion Include="MailKit" Version="5.0.0" />
     <!-- GitHub API -->
     <PackageVersion Include="Octokit" Version="14.0.0" />
     <!-- Direct pin over Octokit's transitive Newtonsoft.Json 11.0.1 (GHSA-5crp-9r3c-p9vr,
@@ -48,23 +49,23 @@
          exposed the latent Octokit constraint. Drop when Octokit ships without Newtonsoft. -->
     <PackageVersion Include="Newtonsoft.Json" Version="13.0.4" />
     <!-- Google Workspace APIs -->
-    <PackageVersion Include="Google.Apis.Admin.Directory.directory_v1" Version="1.76.0.4274" />
-    <PackageVersion Include="Google.Apis.CloudIdentity.v1" Version="1.77.0.4309" />
-    <PackageVersion Include="Google.Apis.Drive.v3" Version="1.77.0.4301" />
-    <PackageVersion Include="Google.Apis.DriveActivity.v2" Version="1.74.0.3880" />
-    <PackageVersion Include="Google.Apis.Groupssettings.v1" Version="1.74.0.2721" />
+    <PackageVersion Include="Google.Apis.Admin.Directory.directory_v1" Version="1.78.0.4325" />
+    <PackageVersion Include="Google.Apis.CloudIdentity.v1" Version="1.78.0.4309" />
+    <PackageVersion Include="Google.Apis.Drive.v3" Version="1.78.0.4327" />
+    <PackageVersion Include="Google.Apis.DriveActivity.v2" Version="1.78.0.3880" />
+    <PackageVersion Include="Google.Apis.Groupssettings.v1" Version="1.78.0.2721" />
     <PackageVersion Include="Google.Apis.Auth" Version="1.78.0" />
     <!-- Resilience -->
-    <PackageVersion Include="Polly" Version="8.7.0" />
+    <PackageVersion Include="Polly" Version="8.9.1" />
     <!-- Observability -->
     <!-- 1.15.3 patches GHSA-g94r-2vxg-569j (OpenTelemetry.Api) and GHSA-mr8r-92fq-pj8p (OpenTelemetry.Exporter.OpenTelemetryProtocol). -->
-    <PackageVersion Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.20.1" />
-    <PackageVersion Include="OpenTelemetry.Exporter.Prometheus.AspNetCore" Version="1.20.1-beta.1" />
-    <PackageVersion Include="OpenTelemetry.Extensions.Hosting" Version="1.20.1" />
-    <PackageVersion Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.20.1" />
-    <PackageVersion Include="OpenTelemetry.Instrumentation.EntityFrameworkCore" Version="1.20.1-beta.1" />
-    <PackageVersion Include="OpenTelemetry.Instrumentation.Http" Version="1.20.1" />
-    <PackageVersion Include="OpenTelemetry.Instrumentation.Runtime" Version="1.20.1" />
+    <PackageVersion Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.21.0" />
+    <PackageVersion Include="OpenTelemetry.Exporter.Prometheus.AspNetCore" Version="1.21.0-beta.1" />
+    <PackageVersion Include="OpenTelemetry.Extensions.Hosting" Version="1.21.0" />
+    <PackageVersion Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.21.0" />
+    <PackageVersion Include="OpenTelemetry.Instrumentation.EntityFrameworkCore" Version="1.21.0-beta.1" />
+    <PackageVersion Include="OpenTelemetry.Instrumentation.Http" Version="1.21.0" />
+    <PackageVersion Include="OpenTelemetry.Instrumentation.Runtime" Version="1.21.0" />
     <!-- Logging -->
     <PackageVersion Include="Serilog" Version="4.4.0" />
     <PackageVersion Include="Serilog.AspNetCore" Version="10.0.0" />
@@ -72,40 +73,42 @@
     <PackageVersion Include="Serilog.Sinks.OpenTelemetry" Version="4.2.0" />
     <!-- Image Processing -->
     <!-- 14.15.0 patches GHSA-422r-8c97-xcg4 / GHSA-56m6-8q75-f2rw -->
-    <PackageVersion Include="Magick.NET-Q8-AnyCPU" Version="15.0.0" />
+    <PackageVersion Include="Magick.NET-Q8-AnyCPU" Version="15.1.0" />
+    <!-- Ticket QR codes: managed PNG encoder, no System.Drawing -->
+    <PackageVersion Include="QRCoder" Version="1.8.1" />
     <!-- Transitive pin: patches GHSA-37gx-xxp4-5rgx / GHSA-w3x6-4m5h-cxqf / GHSA-9mv3-2cwr-p262;
          10.0.10 patches GHSA-23rf-6693-g89p / GHSA-8q5v-6pqq-x66h / GHSA-cvvh-rhrc-wg4q /
          GHSA-g8r8-53c2-pm3f / GHSA-mmjf-rqrv-855v -->
-    <PackageVersion Include="System.Security.Cryptography.Pkcs" Version="10.0.13" />
-    <PackageVersion Include="System.Security.Cryptography.Xml" Version="10.0.13" />
+    <PackageVersion Include="System.Security.Cryptography.Pkcs" Version="10.0.15" />
+    <PackageVersion Include="System.Security.Cryptography.Xml" Version="10.0.15" />
     <!-- Localization -->
-    <PackageVersion Include="Microsoft.Extensions.Localization" Version="10.0.13" />
+    <PackageVersion Include="Microsoft.Extensions.Localization" Version="10.0.15" />
     <!-- Data Protection: 10.0.7 patches GHSA-9mv3-2cwr-p262; 10.0.8 backports ManagedAuthenticatedEncryptor calc fix -->
-    <PackageVersion Include="Microsoft.AspNetCore.DataProtection.EntityFrameworkCore" Version="10.0.13" />
-    <PackageVersion Include="Microsoft.AspNetCore.DataProtection.Extensions" Version="10.0.13" />
+    <PackageVersion Include="Microsoft.AspNetCore.DataProtection.EntityFrameworkCore" Version="10.0.15" />
+    <PackageVersion Include="Microsoft.AspNetCore.DataProtection.Extensions" Version="10.0.15" />
     <!-- Health Checks -->
     <PackageVersion Include="AspNetCore.HealthChecks.NpgSql" Version="9.0.0" />
     <PackageVersion Include="AspNetCore.HealthChecks.Hangfire" Version="9.0.0" />
     <PackageVersion Include="AspNetCore.HealthChecks.Uris" Version="9.0.0" />
     <!-- Analyzers -->
     <PackageVersion Include="Roslynator.Analyzers" Version="5.0.1" />
-    <PackageVersion Include="Meziantou.Analyzer" Version="3.0.315" />
+    <PackageVersion Include="Meziantou.Analyzer" Version="3.0.325" />
     <PackageVersion Include="Microsoft.VisualStudio.Threading.Analyzers" Version="18.12.1" />
     <!-- Testing -->
-    <PackageVersion Include="coverlet.collector" Version="10.1.0" />
+    <PackageVersion Include="coverlet.collector" Version="10.1.1" />
     <PackageVersion Include="AwesomeAssertions" Version="9.6.0" />
-    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.11.0" />
-    <PackageVersion Include="NodaTime.Testing" Version="3.3.5" />
+    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.12.0" />
+    <PackageVersion Include="NodaTime.Testing" Version="3.3.7" />
     <PackageVersion Include="NSubstitute" Version="6.2.0" />
-    <PackageVersion Include="Stripe.net" Version="53.0.0" />
+    <PackageVersion Include="Stripe.net" Version="53.1.0" />
     <PackageVersion Include="Testcontainers.PostgreSql" Version="4.16.0" />
     <!-- Direct pin over Testcontainers' transitive SSH.NET 2025.1.0 (GHSA-q939-rpr3-3284,
          NU1903 fails restore). Drop when Testcontainers ships against SSH.NET >= 2026.0.0. -->
     <PackageVersion Include="SSH.NET" Version="2026.0.0" />
     <!-- HTML parsing for the localization-coverage sweep; pinned to the version HtmlSanitizer already resolves so the solution-wide graph is unchanged. -->
-    <PackageVersion Include="AngleSharp" Version="1.9.0" />
-    <PackageVersion Include="xunit.v3.mtp-off" Version="4.0.2" />
-    <PackageVersion Include="xunit.v3.extensibility.core" Version="4.0.2" />
+    <PackageVersion Include="AngleSharp" Version="1.10.4" />
+    <PackageVersion Include="xunit.v3.mtp-off" Version="4.0.3" />
+    <PackageVersion Include="xunit.v3.extensibility.core" Version="4.0.3" />
     <PackageVersion Include="xunit.runner.visualstudio" Version="4.0.1" />
     <PackageVersion Include="Microsoft.CodeAnalysis.BannedApiAnalyzers" Version="5.6.0" />
     <!-- Held on purpose, not stale: Humans.Analyzers compiles against this, and an analyzer

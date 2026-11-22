@@ -12,8 +12,10 @@ internal sealed record FinanceOverviewVm(
     FinanceBudgetVm? Budget,
     FinanceRunwayVm? Runway,
     FinanceIncomeVm? Income,
-    FinancePleoVm Pleo)
+    IReadOnlyList<FinanceSepaTransferVm> SepaInProgress)
 {
+    public decimal SepaInProgressTotal => SepaInProgress.Sum(transfer => transfer.Amount);
+
     /// <summary>Cash plus what others owe us, less what we owe. Null until every part is known.</summary>
     public decimal? NetPosition => Ledger is { } l && Owed.Total is { } owed
         ? l.CashTotal + l.ReceivablesTotal - owed
@@ -28,11 +30,33 @@ internal sealed record FinanceLedgerCardsVm(
     decimal TaxesOwed,
     IReadOnlyList<FinanceTaxFilingVm> TaxFilings)
 {
+    public IReadOnlyList<FinanceAccountLineVm> CashAccounts =>
+        [.. Banks.OrderBy(a => a.AccountNum), .. Stripe.OrderBy(a => a.AccountNum)];
     public decimal CashTotal => Banks.Sum(a => a.Amount) + Stripe.Sum(a => a.Amount);
     public decimal ReceivablesTotal => Receivables.Sum(a => a.Amount);
 }
 
-internal sealed record FinanceAccountLineVm(int AccountNum, string Name, decimal Amount);
+/// <summary><see cref="Amount"/> is Holded's ledger balance. <see cref="Source"/> is set on an account whose provider
+/// reports its own balance, <see cref="BankFeed"/> on the account Holded's bank feed is mirrored for.</summary>
+internal sealed record FinanceAccountLineVm(
+    int AccountNum, string Name, decimal Amount, FinanceAccountSourceVm? Source = null,
+    FinanceBankFeedVm? BankFeed = null)
+{
+    public decimal? Difference => Source?.Balance is { } b ? b - Amount : null;
+}
+
+/// <summary>The provider's own balance from its mirror and the page that reconciles the two. <see cref="Balance"/> is
+/// null when unknown, and <see cref="Unknown"/> then says why. <see cref="Pending"/> is the part of the balance not
+/// available yet, where the provider reports one; <see cref="ReadAt"/> is when the mirror read it.</summary>
+internal sealed record FinanceAccountSourceVm(
+    decimal? Balance, string ReconcileUrl, string? Unknown = null, Instant? ReadAt = null, decimal? Pending = null);
+
+/// <summary>Bank lines of the last <see cref="Services.Service.FeedWindowDays"/> days that Holded has not fully
+/// reconciled, as of <see cref="SyncedAt"/>. Both null when the feed has never been mirrored.</summary>
+internal sealed record FinanceBankFeedVm(int? Unreconciled, Instant? SyncedAt);
+
+/// <summary>A transfer sent to the bank in a SEPA file and not booked in Holded yet.</summary>
+internal sealed record FinanceSepaTransferVm(Guid UserId, string FileName, Instant GeneratedAt, decimal Amount);
 
 /// <summary>A quarterly return. <see cref="IsComplete"/> false: the quarter is still running, so the amount is so
 /// far.</summary>
@@ -54,7 +78,10 @@ internal sealed record FinanceOwedVm(
     public decimal? Total => Unavailable is null && Taxes is { } t ? Members + Suppliers + t : null;
 }
 
-/// <summary><see cref="Problems"/> is null when the expense recon is unavailable.</summary>
+/// <summary>The reimbursement pipeline in order. <see cref="Problems"/> and <see cref="PushingToHolded"/> are null
+/// when the expense recon is unavailable, <see cref="AwaitingBankLine"/> and
+/// <see cref="TransfersToBook"/> when open transfers could not be paired with the bank feed. <see cref="DuplicateAccounts"/> counts only accounts with duplicate documents
+/// that the recon does not already report.</summary>
 internal sealed record FinanceWorkVm(
     int AwaitingCoordinator,
     Instant? OldestAwaitingCoordinator,
@@ -62,7 +89,9 @@ internal sealed record FinanceWorkVm(
     Instant? OldestAwaitingFinance,
     int ReadyToPay,
     decimal ReadyToPayAmount,
-    int AwaitingBooking,
+    int? PushingToHolded,
+    int? AwaitingBankLine,
+    int? TransfersToBook,
     int? Problems,
     int DuplicateAccounts,
     int? ReconProblems,

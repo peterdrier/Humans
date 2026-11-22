@@ -65,11 +65,6 @@ public sealed class FileSystemFileStorage(IHostEnvironment environment, ILogger<
     public async Task<byte[]?> TryReadAsync(string key, CancellationToken ct = default)
     {
         var fullPath = ResolveAbsolute(key);
-        if (!File.Exists(fullPath))
-        {
-            return null;
-        }
-
         try
         {
             return await File.ReadAllBytesAsync(fullPath, ct);
@@ -78,10 +73,10 @@ public sealed class FileSystemFileStorage(IHostEnvironment environment, ILogger<
         {
             return null;
         }
-        catch (IOException ex)
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
             logger.LogError(ex, "Failed to read file at {Path}", fullPath);
-            return null;
+            throw;
         }
     }
 
@@ -126,20 +121,32 @@ public sealed class FileSystemFileStorage(IHostEnvironment environment, ILogger<
     public Task<IReadOnlyList<StoredFileInfo>> ListAsync(string prefix, CancellationToken ct = default)
     {
         var directory = new DirectoryInfo(ResolveAbsolute(prefix));
-        if (!directory.Exists)
+        try
         {
-            return Task.FromResult<IReadOnlyList<StoredFileInfo>>([]);
-        }
+            try
+            {
+                _ = File.GetAttributes(directory.FullName);
+            }
+            catch (IOException ex) when (ex is FileNotFoundException or DirectoryNotFoundException)
+            {
+                return Task.FromResult<IReadOnlyList<StoredFileInfo>>([]);
+            }
 
-        var files = new List<StoredFileInfo>();
-        foreach (var file in directory.EnumerateFiles("*", SearchOption.AllDirectories))
-        {
-            ct.ThrowIfCancellationRequested();
-            if (file.Name.EndsWith(".tmp", StringComparison.Ordinal)) continue;
-            var key = Path.GetRelativePath(_root, file.FullName).Replace(Path.DirectorySeparatorChar, '/');
-            files.Add(new StoredFileInfo(key, file.Length, Instant.FromDateTimeUtc(file.LastWriteTimeUtc)));
+            var files = new List<StoredFileInfo>();
+            foreach (var file in directory.EnumerateFiles("*", SearchOption.AllDirectories))
+            {
+                ct.ThrowIfCancellationRequested();
+                if (file.Name.EndsWith(".tmp", StringComparison.Ordinal)) continue;
+                var key = Path.GetRelativePath(_root, file.FullName).Replace(Path.DirectorySeparatorChar, '/');
+                files.Add(new StoredFileInfo(key, file.Length, Instant.FromDateTimeUtc(file.LastWriteTimeUtc)));
+            }
+            return Task.FromResult<IReadOnlyList<StoredFileInfo>>(files);
         }
-        return Task.FromResult<IReadOnlyList<StoredFileInfo>>(files);
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            logger.LogError(ex, "Failed to list files at {Path}", directory.FullName);
+            throw;
+        }
     }
 
     private string ResolveAbsolute(string key)

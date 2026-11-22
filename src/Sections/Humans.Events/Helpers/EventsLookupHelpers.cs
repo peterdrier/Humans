@@ -1,3 +1,4 @@
+using Humans.Events.Services.Dtos;
 using Humans.Base.Extensions;
 using Humans.Camps.Contracts;
 using Humans.Settings.Contracts;
@@ -14,14 +15,11 @@ internal static class EventsLookupHelpers
     /// <summary>One option per day from gate opening to <see cref="EventSettingsInfo.EventEndOffset"/>.</summary>
     public static List<EventDayOptionViewModel> BuildEventDayOptions(EventSettingsInfo burn)
     {
-        var tz = DateTimeZoneProviders.Tzdb.GetZoneOrNull(burn.TimeZoneId);
         var days = new List<EventDayOptionViewModel>();
         for (var offset = 0; offset <= burn.EventEndOffset; offset++)
         {
             var date = burn.GateOpeningDate.PlusDays(offset);
-            var dt = tz != null
-                ? date.AtStartOfDayInZone(tz).ToDateTimeUnspecified()
-                : new DateTime(date.Year, date.Month, date.Day, 0, 0, 0);
+            var dt = date.AtStartOfDayInZone(burn.TimeZone).ToDateTimeUnspecified();
             days.Add(new EventDayOptionViewModel
             {
                 DayOffset = offset,
@@ -47,12 +45,13 @@ internal static class EventsLookupHelpers
         return new Dictionary<Guid, UserInfo>(infos);
     }
 
-    /// <summary>Null when the guide is not configured.</summary>
+    /// <summary>The record's event when supplied, otherwise the guide's; null when the guide is not configured.</summary>
     public static async Task<EventSettingsInfo?> LoadBurnSettingsAsync(
-        IEventManagement guide, EventGuideSettingsView? guideSettings, CancellationToken ct = default)
+        IEventManagement guide, EventGuideSettingsView? guideSettings, CancellationToken ct = default,
+        Guid? eventSettingsId = null)
     {
         if (guideSettings == null) return null;
-        return await guide.GetEventSettingsByIdAsync(guideSettings.EventSettingsId, ct);
+        return await guide.GetEventSettingsByIdAsync(eventSettingsId ?? guideSettings.EventSettingsId, ct);
     }
 
     // Event-scoped CampInfo carries only that season, so Active cannot pick another event's name.

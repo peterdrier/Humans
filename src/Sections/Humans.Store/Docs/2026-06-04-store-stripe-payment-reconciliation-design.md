@@ -65,7 +65,7 @@ absent from the Stripe list — is reported read-only (never auto-deleted).
 Layers respected: DbContext → Repository → Service → Controller. The Store service calls
 its own repository and the `IStripeService` connector (the established Store pattern for
 checkout + webhook parse). No cross-section access. Stripe SDK types stay behind the
-connector seam (design-rules §15i).
+connector seam (design-rules.md, *Layers and projects*).
 
 ### New surface (all flagged for Peter's sign-off)
 

@@ -1,4 +1,5 @@
 using Humans.Finance.Contracts;
+using Humans.Finance.Services;
 using NodaTime;
 
 namespace Humans.Finance.Models;
@@ -20,8 +21,7 @@ internal sealed record SepaPaymentFileRequest(
     IReadOnlyList<SepaTransfer> Transfers)
 {
     /// <summary>For the SEPA creation timestamp.</summary>
-    public DateTimeZone CreationTimeZone { get; init; } =
-        DateTimeZoneProviders.Tzdb["Europe/Madrid"];
+    public required DateTimeZone CreationTimeZone { get; init; }
 }
 
 internal sealed record SepaPayoutSelection(int SupplierAccountNum, decimal Amount);
@@ -88,13 +88,34 @@ internal sealed record SepaPayoutFileVm(
     Instant GeneratedAt,
     Guid GeneratedByUserId,
     IReadOnlyList<SepaTransferVm> Transfers,
-    SepaBatchLineVm? BatchLine);
+    SepaBatchLineVm? BatchLine)
+{
+    public int WithdrawnCount => Transfers.Count(transfer => transfer.Row.IsWithdrawn);
+    public bool IsCancelled => WithdrawnCount == Transfers.Count;
+    public int UnbookedCount => Transfers.Count(transfer => !transfer.Row.IsBooked && !transfer.Row.IsWithdrawn);
+    public int MatchedUnbookedCount => Transfers.Count(transfer =>
+        !transfer.Row.IsBooked && !transfer.Row.IsWithdrawn && transfer.Row.CanBook);
+    public bool AllUnbookedMatched => UnbookedCount > 0 && MatchedUnbookedCount == UnbookedCount;
+    public int SummaryTransferCount => IsCancelled ? Transfers.Count : Transfers.Count - WithdrawnCount;
+
+    // A fully cancelled file keeps its original total; a live file excludes withdrawn transfers.
+    public decimal SummaryTotal
+    {
+        get
+        {
+            var cancelled = IsCancelled;
+            return Transfers.Where(transfer => cancelled || !transfer.Row.IsWithdrawn).Sum(transfer => transfer.Row.Amount);
+        }
+    }
+
+    public bool CanCancel => Service.CancelFileRefusal(Transfers.Select(transfer => transfer.Row).ToList()) is null;
+}
 
 /// <summary>
 /// <list type="bullet">
 /// <item><paramref name="UnavailableReason"/> is set when missing configuration turns booking off for every row; the
 /// page says so once.</item>
-/// <item><paramref name="BankFeedError"/> is set when the live feed failed: every row falls back to "waiting for the
+/// <item><paramref name="BankFeedError"/> is set when the feed mirror has never synced: every row falls back to "waiting for the
 /// Sabadell line" and the page shows a banner instead of failing.</item>
 /// <item><paramref name="ToleranceDays"/> is the page's editable matching window, posted back with every booking.</item>
 /// </list>
@@ -104,7 +125,15 @@ internal sealed record SepaPayoutsPageVm(
     string? UnavailableReason,
     IReadOnlyList<SepaBankMovementVm> UnmatchedMovements,
     string? BankFeedError,
-    int ToleranceDays);
+    Instant? BankFeedSyncedAt,
+    int ToleranceDays,
+    SepaBookingRunVm? Run = null);
+
+/// <summary>The current or last booking run started from the page. <paramref name="Result"/> is null while it runs.</summary>
+internal sealed record SepaBookingRunVm(string What, Instant StartedAt, Instant? FinishedAt, SepaBookingResult? Result)
+{
+    public bool IsRunning => FinishedAt is null;
+}
 
 /// <summary><paramref name="Message"/> is admin-facing: the reason on failure, what was posted on success.</summary>
 internal sealed record SepaBookingResult(bool Succeeded, string Message);

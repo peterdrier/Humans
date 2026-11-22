@@ -1,6 +1,7 @@
 using System.Net;
 using AwesomeAssertions;
 using Humans.Integration.Tests.Infrastructure;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Humans.Integration.Tests.Controllers;
 
@@ -36,7 +37,15 @@ public class CampsPageRenderTests(HumansTestDatabase database) : IntegrationTest
     public async Task Every_camps_page_renders_without_raw_resource_keys_or_unbound_tag_helpers()
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
-        await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Admin);
+        var eventId = await Factory.SeedActiveEventAsync();
+        var adminId = await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Admin);
+
+        // /Camps/Register redirects to the directory until an event has registration open.
+        using (var scope = Factory.Services.CreateScope())
+        {
+            await scope.ServiceProvider.GetRequiredService<Humans.Camps.Services.ICampManagement>()
+                .OpenSeasonAsync(eventId, adminId, ct);
+        }
 
         foreach (var url in Pages)
         {
@@ -60,6 +69,7 @@ public class CampsPageRenderTests(HumansTestDatabase database) : IntegrationTest
     public async Task The_camps_index_renders_the_sections_own_copy()
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
+        await Factory.SeedActiveEventAsync();
         await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Admin);
 
         var html = await (await Client.GetAsync("/Camps", ct)).Content.ReadAsStringAsync(ct);
@@ -81,6 +91,7 @@ public class CampsPageRenderTests(HumansTestDatabase database) : IntegrationTest
     public async Task The_shared_camp_plural_key_still_resolves_on_both_sides()
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
+        await Factory.SeedActiveEventAsync();
         await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Admin);
 
         var sectionPage = await (await Client.GetAsync("/Camps/Register", ct))
@@ -96,6 +107,7 @@ public class CampsPageRenderTests(HumansTestDatabase database) : IntegrationTest
     {
         // HtmlEncoder escapes non-ASCII ("Guía" reaches the body as "Gu&#xED;a"), so the checks stay on ASCII runs.
         var ct = Xunit.TestContext.Current.CancellationToken;
+        await Factory.SeedActiveEventAsync();
         await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Admin);
 
         // Accept-Language doesn't reach a signed-in user: the PreferredLanguage provider short-circuits the chain. Switch

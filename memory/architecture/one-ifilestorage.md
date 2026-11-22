@@ -16,7 +16,7 @@ Do NOT:
 **How to apply:**
 
 - Adding file storage to a new section? Reuse `IFileStorage`. Define the key prefix in the service.
-- See visibility-controlled examples in `Humans.Application.Services.Profile.ProfileService` (profile pictures, gated via middleware exclusion in `Program.cs`) and `Humans.Application.Services.Camps.CampService` (camp photos, public static files).
+- See visibility-controlled examples in `ProfileService` in `Humans.Users` (profile pictures, gated via middleware exclusion in `Program.cs`) and `CampService` in `Humans.Camps` (camp photos, public static files).
 - For non-public files where the original filename matters on download, keep a thin authz-gated controller that calls `IFileStorage.TryReadAsync` and returns `File(bytes, contentType, originalFileName)` — see `ExpensesController.Attachment`.
 - Domain validation (allowed extensions, max size, content-type whitelist) lives in the consuming service, not in `IFileStorage`.
 - Whole owned upload directories use `DeleteAsync(key, ct, recursiveDirectory: true)` through the same store; missing directories are a no-op and other IO failures propagate.

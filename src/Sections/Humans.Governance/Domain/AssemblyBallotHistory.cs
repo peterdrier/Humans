@@ -4,7 +4,7 @@ namespace Humans.Governance.Domain;
 
 /// <summary>
 /// One recorded revision of a ballot. Append-only: the repository exposes add and read
-/// only (design-rules §12), so a member's voting history can never be rewritten.
+/// only (design-rules.md, *Append-only entities*), so a member's voting history can never be rewritten.
 /// </summary>
 internal sealed class AssemblyBallotHistory
 {

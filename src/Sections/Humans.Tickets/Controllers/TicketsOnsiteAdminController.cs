@@ -24,7 +24,7 @@ internal sealed class TicketsOnsiteAdminController(
         [FromQuery] string? role,
         CancellationToken ct)
     {
-        var active = await settingsService.GetActiveEventSettingsAsync(ct);
+        var active = settingsService.GetActiveEventSettings();
         var year = active?.Year ?? 0;
 
         var result = await roster.GetRosterAsync(year, camp, team, role, ct);

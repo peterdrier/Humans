@@ -5,36 +5,18 @@ using Humans.Tickets.Contracts;
 using Humans.Tickets.Data;
 using Humans.Users.Contracts;
 using NodaTime;
-using EventParticipation = Humans.Tickets.Domain.EventParticipation;
 
 namespace Humans.Tickets.Services;
 
 internal sealed class EventParticipationService(
     IEventParticipationRepository repo,
-    IUserService users,
+    ITicketService tickets,
     IAuditLogService audit,
     IClock clock,
     ILogger<EventParticipationService> logger)
     : IEventParticipationManagement, IUserDataContributor, IUserMerge
 {
     internal const string EventParticipationsSlice = "EventParticipations";
-
-    public async Task<IReadOnlyList<EventParticipationInfo>> GetParticipationsAsync(
-        Guid userId, CancellationToken ct = default)
-    {
-        var info = await users.GetUserInfoAsync(userId, ct);
-        var id = info?.Id ?? userId;
-        return ToInfos(await repo.GetByUserIdAsync(id, ct));
-    }
-
-    public async Task<IReadOnlyList<EventParticipationInfo>> GetAllParticipationsAsync(CancellationToken ct = default) =>
-        ToInfos(await repo.GetAllAsync(ct));
-
-    private static List<EventParticipationInfo> ToInfos(IReadOnlyList<EventParticipation> rows) =>
-        [.. rows.Where(r => r.Status is not null).Select(ToInfo)];
-
-    private static EventParticipationInfo ToInfo(EventParticipation r) =>
-        new(r.UserId, r.Year, r.Status!.Value, r.Source, r.DeclaredAt, r.CheckedInAt);
 
     public async Task<bool> DeclareNotAttendingAsync(Guid userId, int year, CancellationToken ct = default)
     {
@@ -77,6 +59,9 @@ internal sealed class EventParticipationService(
             userId, year, status, ParticipationSource.TicketSync,
             declaredAt: null, checkedInAt, ct);
 
+    public Task<bool> UndoCheckInAsync(Guid userId, int year, CancellationToken ct = default) =>
+        repo.UndoCheckInAsync(userId, year, ct);
+
     public async Task RemoveTicketSyncParticipationAsync(Guid userId, int year, CancellationToken ct = default) =>
         await repo.ClearAsync(
             userId, year, ParticipationSource.TicketSync, ct);
@@ -106,7 +91,7 @@ internal sealed class EventParticipationService(
 
     public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
     {
-        var rows = await GetParticipationsAsync(userId, ct);
+        var rows = await tickets.GetParticipationsAsync(userId, ct);
         return
         [
             new UserDataSlice(EventParticipationsSlice, rows.OrderBy(ep => ep.Year).Select(ep => new

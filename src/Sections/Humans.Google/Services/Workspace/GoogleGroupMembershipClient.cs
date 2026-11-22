@@ -1,0 +1,187 @@
+using Google.Apis.Admin.Directory.directory_v1;
+using Google.Apis.Admin.Directory.directory_v1.Data;
+using Google.Apis.Services;
+using Humans.Base.Extensions;
+using Humans.Base.Configuration;
+using Microsoft.Extensions.Options;
+
+namespace Humans.Google.Services.Workspace;
+
+/// <summary>
+/// Directory, not Cloud Identity: Directory adds external addresses (e.g. hotmail) as members, while Cloud Identity's
+/// <c>memberships.create</c> returns 403 (Error 2028) for an email that is not a Google identity.
+/// </summary>
+/// <remarks>The membership name keeps the <c>groups/{groupId}/memberships/{memberId}</c> shape; it is never persisted.</remarks>
+internal sealed class GoogleGroupMembershipClient(
+    IOptions<GoogleWorkspaceSettings> settings,
+    ILogger<GoogleGroupMembershipClient> logger) : IGoogleGroupMembershipClient
+{
+    private readonly GoogleWorkspaceSettings _settings = settings.Value;
+
+    private DirectoryService? _directoryService;
+
+    public async Task<GroupMembershipListResult> ListMembershipsAsync(
+        string groupGoogleId,
+        CancellationToken ct = default)
+    {
+        using var _ = logger.TimeOperation();
+        var memberships = new List<GroupMembership>();
+        string? pageToken = null;
+        var seenPageTokens = new HashSet<string>(StringComparer.Ordinal);
+
+        var directory = await GetDirectoryServiceAsync(ct);
+        try
+        {
+            do
+            {
+                var request = directory.Members.List(groupGoogleId);
+                request.MaxResults = 200;
+                if (pageToken is not null)
+                {
+                    request.PageToken = pageToken;
+                }
+
+                var response = await request.ExecuteAsync(ct);
+
+                pageToken = response.NextPageToken;
+                if (!string.IsNullOrEmpty(pageToken) && !seenPageTokens.Add(pageToken))
+                {
+                    logger.LogWarning("Google group memberships returned a repeated page token for {GroupId}.", groupGoogleId);
+                    return new GroupMembershipListResult(Memberships: null,
+                        Error: new GoogleClientError(502, "Google group memberships returned a repeated page token."));
+                }
+
+                if (response.MembersValue is not null)
+                {
+                    foreach (var m in response.MembersValue)
+                    {
+                        memberships.Add(new GroupMembership(
+                            MemberEmail: m.Email,
+                            ResourceName: $"groups/{groupGoogleId}/memberships/{m.Email}"));
+                    }
+                }
+            } while (!string.IsNullOrEmpty(pageToken));
+
+            return new GroupMembershipListResult(memberships, Error: null);
+        }
+        catch (global::Google.GoogleApiException ex)
+        {
+            logger.LogWarning(
+                "Google API error listing memberships for group {GroupId}: Code={Code} Message={Message}",
+                groupGoogleId, ex.Error?.Code, ex.Error?.Message);
+            return new GroupMembershipListResult(
+                Memberships: null,
+                Error: new GoogleClientError(ex.Error?.Code ?? 0, ex.Error?.Message));
+        }
+        catch (Exception ex) when (GoogleClientError.IsTransportError(ex))
+        {
+            logger.LogWarning("Transport error listing memberships for group {GroupId}: {Reason}", groupGoogleId, ex.Message);
+            return new GroupMembershipListResult(Memberships: null, Error: new GoogleClientError(0, ex.Message));
+        }
+    }
+
+    public async Task<GroupMembershipMutationResult> CreateMembershipAsync(
+        string groupGoogleId,
+        string memberEmail,
+        CancellationToken ct = default)
+    {
+        using var _ = logger.TimeOperation();
+        var directory = await GetDirectoryServiceAsync(ct);
+        try
+        {
+            var member = new Member
+            {
+                Email = memberEmail,
+                Role = "MEMBER"
+            };
+
+            await directory.Members
+                .Insert(member, groupGoogleId)
+                .ExecuteAsync(ct);
+
+            return new GroupMembershipMutationResult(
+                GroupMembershipMutationOutcome.Added,
+                Error: null);
+        }
+        catch (global::Google.GoogleApiException ex) when (ex.Error?.Code == 409)
+        {
+            // Treat as idempotent success — the membership already exists.
+            return new GroupMembershipMutationResult(
+                GroupMembershipMutationOutcome.AlreadyExists,
+                Error: null);
+        }
+        catch (global::Google.GoogleApiException ex)
+        {
+            logger.LogWarning(
+                "Google API error adding {Email} to group {GroupId}: Code={Code} Message={Message}",
+                memberEmail, groupGoogleId, ex.Error?.Code, ex.Error?.Message);
+            return new GroupMembershipMutationResult(
+                GroupMembershipMutationOutcome.Failed,
+                Error: new GoogleClientError(ex.Error?.Code ?? 0, ex.Error?.Message));
+        }
+        catch (Exception ex) when (GoogleClientError.IsTransportError(ex))
+        {
+            logger.LogWarning("Transport error adding {Email} to group {GroupId}: {Reason}", memberEmail, groupGoogleId, ex.Message);
+            return new GroupMembershipMutationResult(
+                GroupMembershipMutationOutcome.Failed, Error: new GoogleClientError(0, ex.Message));
+        }
+    }
+
+    public async Task<GoogleClientError?> DeleteMembershipAsync(
+        string membershipResourceName,
+        CancellationToken ct = default)
+    {
+        using var _ = logger.TimeOperation();
+        // Resource name shape: groups/{groupKey}/memberships/{memberKey}.
+        // The Directory delete needs the group and member keys separately.
+        var parts = membershipResourceName.Split('/');
+        if (parts.Length != 4
+            || !string.Equals(parts[0], "groups", StringComparison.Ordinal)
+            || !string.Equals(parts[2], "memberships", StringComparison.Ordinal))
+        {
+            return new GoogleClientError(0,
+                $"Malformed membership resource name '{membershipResourceName}'");
+        }
+
+        var groupKey = parts[1];
+        var memberKey = parts[3];
+
+        var directory = await GetDirectoryServiceAsync(ct);
+        try
+        {
+            await directory.Members.Delete(groupKey, memberKey).ExecuteAsync(ct);
+            return null;
+        }
+        catch (global::Google.GoogleApiException ex)
+        {
+            logger.LogWarning(
+                "Google API error deleting membership {Name}: Code={Code} Message={Message}",
+                membershipResourceName, ex.Error?.Code, ex.Error?.Message);
+            return new GoogleClientError(ex.Error?.Code ?? 0, ex.Error?.Message);
+        }
+        catch (Exception ex) when (GoogleClientError.IsTransportError(ex))
+        {
+            logger.LogWarning("Transport error deleting membership {Name}: {Reason}", membershipResourceName, ex.Message);
+            return new GoogleClientError(0, ex.Message);
+        }
+    }
+
+    private async Task<DirectoryService> GetDirectoryServiceAsync(CancellationToken ct)
+    {
+        if (_directoryService is not null)
+        {
+            return _directoryService;
+        }
+
+        var credential = await GoogleCredentialLoader
+            .LoadScopedAsync(_settings, ct, DirectoryService.Scope.AdminDirectoryGroupMember);
+
+        _directoryService = new DirectoryService(new BaseClientService.Initializer
+        {
+            HttpClientInitializer = credential,
+            ApplicationName = "Humans"
+        });
+
+        return _directoryService;
+    }
+}

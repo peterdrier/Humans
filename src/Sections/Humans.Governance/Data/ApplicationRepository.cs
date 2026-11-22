@@ -35,6 +35,7 @@ internal sealed partial class ApplicationRepository(IDbContextFactory<Governance
     public async Task<(IReadOnlyList<MemberApplication> Items, int TotalCount)> GetFilteredAsync(
         ApplicationStatus? status,
         MembershipTier? tier,
+        Guid? userId,
         int page,
         int pageSize,
         CancellationToken ct = default)
@@ -42,9 +43,19 @@ internal sealed partial class ApplicationRepository(IDbContextFactory<Governance
         await using var ctx = await factory.CreateDbContextAsync(ct);
         var query = ctx.Applications.AsNoTracking().AsQueryable();
 
-        query = status is null
-            ? query.Where(a => a.Status == ApplicationStatus.Submitted)
-            : query.Where(a => a.Status == status);
+        if (userId is not null)
+        {
+            query = query.Where(a => a.UserId == userId);
+        }
+
+        if (status is not null)
+        {
+            query = query.Where(a => a.Status == status);
+        }
+        else if (userId is null)
+        {
+            query = query.Where(a => a.Status == ApplicationStatus.Submitted);
+        }
 
         if (tier is not null)
         {
@@ -109,23 +120,6 @@ internal sealed partial class ApplicationRepository(IDbContextFactory<Governance
             .Distinct()
             .ToListAsync(ct), ct);
 
-    public async Task<IReadOnlySet<Guid>> GetUserIdsWithSubmittedAsync(
-        IReadOnlyCollection<Guid> userIds, CancellationToken ct = default)
-    {
-        if (userIds.Count == 0)
-            return new HashSet<Guid>();
-
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        var matched = await ctx.Applications
-            .AsNoTracking()
-            .Where(a => userIds.Contains(a.UserId) && a.Status == ApplicationStatus.Submitted)
-            .Select(a => a.UserId)
-            .Distinct()
-            .ToListAsync(ct);
-
-        return matched.ToHashSet();
-    }
-
     public Task<MemberApplication?> GetSubmittedForUserAsync(
         Guid userId, CancellationToken ct = default) =>
         WithContextAsync(ctx => ctx.Applications
@@ -185,27 +179,13 @@ internal sealed partial class ApplicationRepository(IDbContextFactory<Governance
                  !a.BoardVotes.Any(v => v.BoardMemberUserId == boardMemberUserId),
             ct), ct);
 
-    public async Task<ApplicationAdminStats> GetAdminStatsAsync(CancellationToken ct = default)
+    public async Task<IReadOnlyList<MemberApplication>> GetNonWithdrawnAsync(CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
-        var stats = await ctx.Applications
+        return await ctx.Applications
             .AsNoTracking()
             .Where(a => a.Status != ApplicationStatus.Withdrawn)
-            .GroupBy(_ => 1)
-            .Select(g => new
-            {
-                Total = g.Count(),
-                Approved = g.Count(a => a.Status == ApplicationStatus.Approved),
-                Rejected = g.Count(a => a.Status == ApplicationStatus.Rejected),
-                Colaborador = g.Count(a => a.MembershipTier == MembershipTier.Colaborador),
-                Asociado = g.Count(a => a.MembershipTier == MembershipTier.Asociado)
-            })
-            .FirstOrDefaultAsync(ct);
-
-        return stats is null
-            ? new ApplicationAdminStats(0, 0, 0, 0, 0)
-            : new ApplicationAdminStats(
-                stats.Total, stats.Approved, stats.Rejected, stats.Colaborador, stats.Asociado);
+            .ToListAsync(ct);
     }
 
     public async Task<IReadOnlyList<MemberApplication>> GetExpiringApplicationsNeedingReminderAsync(
@@ -257,36 +237,23 @@ internal sealed partial class ApplicationRepository(IDbContextFactory<Governance
 
     public async Task<IReadOnlyList<Guid>> GetActiveApprovedTierUserIdsAsync(
         MembershipTier tier, LocalDate today, CancellationToken ct = default) =>
-        await WithContextAsync(async ctx => await ctx.Applications
-            .AsNoTracking()
-            .Where(a => a.Status == ApplicationStatus.Approved
-                && a.MembershipTier == tier
-                && (a.TermExpiresAt == null || a.TermExpiresAt >= today))
+        await WithContextAsync(async ctx => await ActiveApprovedApplications(ctx, today)
+            .Where(a => a.MembershipTier == tier)
             .Select(a => a.UserId)
             .Distinct()
             .ToListAsync(ct), ct);
 
     public Task<bool> HasActiveApprovedTierAsync(
         Guid userId, MembershipTier tier, LocalDate today, CancellationToken ct = default) =>
-        WithContextAsync(ctx => ctx.Applications
-            .AsNoTracking()
-            .AnyAsync(a =>
-                a.UserId == userId &&
-                a.Status == ApplicationStatus.Approved &&
-                a.MembershipTier == tier &&
-                (a.TermExpiresAt == null || a.TermExpiresAt >= today),
-                ct), ct);
+        WithContextAsync(ctx => ActiveApprovedApplications(ctx, today)
+            .AnyAsync(a => a.UserId == userId && a.MembershipTier == tier, ct), ct);
 
     public async Task<IReadOnlyDictionary<Guid, MembershipTier>> GetOtherActiveTierAssignmentsAsync(
         MembershipTier excludeTier, LocalDate today, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
-        var rows = await ctx.Applications
-            .AsNoTracking()
-            .Where(a => a.Status == ApplicationStatus.Approved
-                && a.MembershipTier != excludeTier
-                && a.MembershipTier != MembershipTier.Volunteer
-                && (a.TermExpiresAt == null || a.TermExpiresAt >= today))
+        var rows = await ActiveApprovedApplications(ctx, today)
+            .Where(a => a.MembershipTier != excludeTier && a.MembershipTier != MembershipTier.Volunteer)
             .Select(a => new { a.UserId, a.MembershipTier })
             .ToListAsync(ct);
 
@@ -294,6 +261,11 @@ internal sealed partial class ApplicationRepository(IDbContextFactory<Governance
             .GroupBy(r => r.UserId)
             .ToDictionary(g => g.Key, g => g.First().MembershipTier);
     }
+
+    private static IQueryable<MemberApplication> ActiveApprovedApplications(GovernanceDbContext ctx, LocalDate today) =>
+        ctx.Applications.AsNoTracking()
+            .Where(a => a.Status == ApplicationStatus.Approved
+                && (a.TermExpiresAt == null || a.TermExpiresAt >= today));
 
     public async Task<int> ScrubFreeTextForUserAsync(
         Guid userId, Instant updatedAt, CancellationToken ct = default)

@@ -14,7 +14,7 @@ best-effort vendor check-in mirror back to TicketTailor.
 from the `IEntityTypeConfiguration` classes under
 `src/Sections/Humans.Gate/Data/Configurations/`, `ToTable("gate_…")`).
 `GateRepository` accesses them via `ctx.Set<T>()` and is a **Singleton**
-(`IDbContextFactory` short-lived context pattern, §15b).
+(`IDbContextFactory` short-lived context pattern, design-rules.md, *Section caching pattern*).
 
 **Deliberately no caching decorator** — gate reads must be live: a stale
 verdict admits or blocks the wrong person. Ticket/EE inputs still come from
@@ -34,6 +34,8 @@ its original admit timestamp; the admin controller holds no ledger or job-client
 | gate_staff_pins | R/W (per-staffer PIN hash via `IPasswordHasher<GateStaffPin>`; `AdminEnrolled` flag gates override authority) |
 | tickets_event_participations | W via `ITicketWrite.RecordParticipationAsync` (**not** a foreign table access — an admit projects an `Attended` participation row through the owning Tickets service, so consumed camp EE can't be revoked) |
 
+Checkout-issued tickets come from `ITicketGateLookup` (Tickets, live, no cache). `GateAdmissionReads` serves
+`IGateAdmissions` (admitted codes) to Tickets from `gate_scan_events`.
 Cross-section calls via `ITicketService` (barcode → attendee resolved by
 filtering the cached orders projection in memory — no new interface method),
 `IEarlyEntryService` (cached per-user EE for the too-early rule),

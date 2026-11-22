@@ -2,117 +2,532 @@
 @{
     ViewData["Title"] = "Configuration Status";
 
-    static int ImportanceRank(string importance) => importance switch
-    {
-        "critical" => 0,
-        "recommended" => 1,
-        _ => 2,
-    };
+    var sections = Model.Items
+        .GroupBy(i => i.Section)
+        .OrderBy(g => g.Key, StringComparer.OrdinalIgnoreCase)
+        .ToList();
 
-    Func<ConfigurationItemViewModel, IHtmlContent> keyCell = @<text>
-        <code>@item.Key</code>
-        @if (item.IsSensitive)
-        {
-            <i class="fa-solid fa-lock text-muted ms-1" title="Sensitive — value masked"></i>
-        }
-    </text>;
-    Func<ConfigurationItemViewModel, IHtmlContent> importanceCell = @<text>
-        @if (string.Equals(item.Importance, "critical", StringComparison.Ordinal))
-        {
-            <span class="badge bg-danger">Critical</span>
-        }
-        else if (string.Equals(item.Importance, "recommended", StringComparison.Ordinal))
-        {
-            <span class="badge bg-warning text-dark">Recommended</span>
-        }
-        else
-        {
-            <span class="badge bg-secondary">Optional</span>
-        }
-    </text>;
-    Func<ConfigurationItemViewModel, IHtmlContent> statusCell = @<text>
-        @if (item.IsSet)
-        {
-            <span class="badge bg-success">Set</span>
-        }
-        else if (string.Equals(item.Importance, "critical", StringComparison.Ordinal))
-        {
-            <span class="badge bg-danger">Missing</span>
-        }
-        else if (string.Equals(item.Importance, "recommended", StringComparison.Ordinal))
-        {
-            <span class="badge bg-warning text-dark">Not set</span>
-        }
-        else
-        {
-            <span class="badge bg-secondary">Not set</span>
-        }
-    </text>;
-    Func<ConfigurationItemViewModel, IHtmlContent> valueCell = @<text><code>@item.DisplayValue</code></text>;
-}
-
-<page-header title="Configuration Status">
-    <a asp-controller="Admin" asp-action="Index" class="btn btn-outline-secondary">Back to Dashboard</a>
-</page-header>
-
-@{
-    var sections = Model.Items.GroupBy(i => i.Section);
+    var totalCount = Model.Items.Count;
+    var setCount = Model.Items.Count(i => i.IsSet);
+    var totalCritical = Model.Items.Count(i => string.Equals(i.Importance, "critical", StringComparison.Ordinal));
+    var totalRecommended = Model.Items.Count(i => string.Equals(i.Importance, "recommended", StringComparison.Ordinal));
     var missingCritical = Model.Items.Count(i => string.Equals(i.Importance, "critical", StringComparison.Ordinal) && !i.IsSet);
     var missingRecommended = Model.Items.Count(i => string.Equals(i.Importance, "recommended", StringComparison.Ordinal) && !i.IsSet);
+    var unsetOptional = Model.Items.Count(i => !string.Equals(i.Importance, "critical", StringComparison.Ordinal)
+        && !string.Equals(i.Importance, "recommended", StringComparison.Ordinal) && !i.IsSet);
+    var attentionCount = missingCritical + missingRecommended;
+    var secretCount = Model.Items.Count(i => i.IsSensitive);
 }
+
+<page-header title="Configuration Status" variant="compact">
+    <page-header-subtitle>
+        @totalCount auto-discovered setting@(totalCount == 1 ? "" : "s") across @sections.Count section@(sections.Count == 1 ? "" : "s") — adding a config consumer via the registry helpers automatically surfaces it here.
+    </page-header-subtitle>
+    <a asp-controller="Admin" asp-action="Index" class="btn btn-outline-secondary btn-sm">
+        <i class="fa-solid fa-arrow-left me-1"></i>Admin
+    </a>
+</page-header>
 
 @if (missingCritical > 0)
 {
     <div class="alert alert-danger" role="alert">
         <i class="fa-solid fa-circle-exclamation me-1"></i>
-        <strong>@missingCritical critical configuration value(s) missing.</strong> The application may not function correctly.
+        <strong>@missingCritical critical configuration value@(missingCritical == 1 ? "" : "s") missing.</strong> The application may not function correctly.
     </div>
 }
 
-@if (missingRecommended > 0)
+@if (totalCount == 0)
 {
-    <div class="alert alert-warning" role="alert">
-        <i class="fa-solid fa-triangle-exclamation me-1"></i>
-        <strong>@missingRecommended recommended configuration value(s) missing.</strong> Some features may be degraded.
-    </div>
+    <empty-state>No configuration settings registered.</empty-state>
 }
-
-<div class="mb-3 text-muted small">
-    <i class="fa-solid fa-circle-info me-1"></i>
-    Settings are auto-discovered from code. Adding a new config consumer via the registry helpers automatically surfaces it here.
-</div>
-
-@foreach (var group in sections)
+else
 {
-    var sectionCriticalMissing = group.Count(i => string.Equals(i.Importance, "critical", StringComparison.Ordinal) && !i.IsSet);
-    var sectionRecommendedMissing = group.Count(i => string.Equals(i.Importance, "recommended", StringComparison.Ordinal) && !i.IsSet);
-    var allSet = group.All(i => i.IsSet);
-    <div class="card mb-3">
-        <div class="card-header d-flex justify-content-between align-items-center">
-            <strong>@group.Key</strong>
-            <span>
-                @if (sectionCriticalMissing > 0)
-                {
-                    <span class="badge bg-danger">@sectionCriticalMissing critical missing</span>
-                }
-                @if (sectionRecommendedMissing > 0)
-                {
-                    <span class="badge bg-warning text-dark">@sectionRecommendedMissing recommended missing</span>
-                }
-                @if (allSet)
-                {
-                    <span class="badge bg-success">All set</span>
-                }
-            </span>
+    <div class="stats config-stats">
+        <button type="button" class="stat config-stat-btn is-active" data-config-filter="all" aria-pressed="true">
+            <div class="label">Configured</div>
+            <div class="value @(setCount == totalCount ? "text-success" : null)">@setCount<em>/ @totalCount</em></div>
+            <div class="config-stat-sub">@sections.Count section@(sections.Count == 1 ? "" : "s")</div>
+        </button>
+        <button type="button" class="stat config-stat-btn" data-config-filter="crit-missing" aria-pressed="false">
+            <div class="label">Critical missing</div>
+            <div class="value @(missingCritical > 0 ? "danger" : "text-success")">@missingCritical</div>
+            <div class="config-stat-sub">@(missingCritical == 0 ? $"All {totalCritical} critical set" : "Click to inspect")</div>
+        </button>
+        <button type="button" class="stat config-stat-btn" data-config-filter="rec-missing" aria-pressed="false">
+            <div class="label">Recommended missing</div>
+            <div class="value @(missingRecommended > 0 ? "warning" : "text-success")">@missingRecommended</div>
+            <div class="config-stat-sub">@(missingRecommended == 0 ? $"All {totalRecommended} recommended set" : "Click to inspect")</div>
+        </button>
+        <button type="button" class="stat config-stat-btn" data-config-filter="opt-unset" aria-pressed="false">
+            <div class="label">Optional unset</div>
+            <div class="value">@unsetOptional</div>
+            <div class="config-stat-sub">Defaults active</div>
+        </button>
+    </div>
+
+    <div class="config-toolbar">
+        <input type="search" id="configSearch" class="form-control form-control-sm config-search"
+               placeholder="Filter by key, section, or value…" autocomplete="off"
+               aria-label="Filter configuration settings" />
+        <div class="config-pills" role="group" aria-label="Quick filters">
+            <button type="button" class="config-pill is-active" data-config-filter="all" aria-pressed="true">
+                All (@totalCount)
+            </button>
+            @if (attentionCount > 0)
+            {
+                <button type="button" class="config-pill @(missingCritical > 0 ? "config-pill-danger" : "config-pill-warning")"
+                        data-config-filter="attention" aria-pressed="false">
+                    Needs attention (@attentionCount)
+                </button>
+            }
+            @if (secretCount > 0)
+            {
+                <button type="button" class="config-pill" data-config-filter="secrets" aria-pressed="false">
+                    Secrets only (@secretCount)
+                </button>
+            }
         </div>
-        @{
-            var configTable = TableModel.For(group.ToList())
-                .Template("Key", keyCell, sortBy: i => i.Key)
-                .Template("Importance", importanceCell, sortBy: i => ImportanceRank(i.Importance))
-                .Template("Status", statusCell, sortBy: i => i.IsSet ? 1 : 0)
-                .Template("Value", valueCell, sortBy: i => i.DisplayValue)
-                .Build();
-        }
-        <partial name="_Table" model="configTable" />
+        <span id="configMatchCount" class="config-match-count text-muted small d-none"></span>
     </div>
+
+    <div class="card">
+        <div class="table-responsive">
+            <table class="table table-sm mb-0 config-ledger" id="configLedger">
+                <colgroup>
+                    <col class="config-col-key" />
+                    <col class="config-col-importance" />
+                    <col class="config-col-value" />
+                </colgroup>
+                <thead>
+                    <tr>
+                        <th scope="col">Setting</th>
+                        <th scope="col">Importance</th>
+                        <th scope="col">Value</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var group in sections)
+                    {
+                        var groupItems = group.OrderBy(i => i.Key, StringComparer.OrdinalIgnoreCase).ToList();
+                        var groupSet = groupItems.Count(i => i.IsSet);
+                        var groupCriticalMissing = groupItems.Count(i => string.Equals(i.Importance, "critical", StringComparison.Ordinal) && !i.IsSet);
+                        var groupRecommendedMissing = groupItems.Count(i => string.Equals(i.Importance, "recommended", StringComparison.Ordinal) && !i.IsSet);
+                        var allSet = groupSet == groupItems.Count;
+
+                        <tr class="config-section-row" data-section="@group.Key">
+                            <td colspan="3">
+                                <div class="config-section-inner">
+                                    <span class="config-section-title">@group.Key</span>
+                                    <span class="config-section-meta">
+                                        @if (groupCriticalMissing > 0)
+                                        {
+                                            <span class="badge bg-danger">@groupCriticalMissing critical missing</span>
+                                        }
+                                        @if (groupRecommendedMissing > 0)
+                                        {
+                                            <span class="badge bg-warning">@groupRecommendedMissing recommended missing</span>
+                                        }
+                                        @if (allSet)
+                                        {
+                                            <span class="badge bg-success">All set</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="config-section-ratio">@groupSet / @groupItems.Count set</span>
+                                        }
+                                    </span>
+                                </div>
+                            </td>
+                        </tr>
+
+                        @foreach (var item in groupItems)
+                        {
+                            var isCritical = string.Equals(item.Importance, "critical", StringComparison.Ordinal);
+                            var isRecommended = string.Equals(item.Importance, "recommended", StringComparison.Ordinal);
+
+                            var rowState = item.IsSet
+                                ? "set"
+                                : isCritical ? "crit-missing"
+                                : isRecommended ? "rec-missing"
+                                : "opt-unset";
+
+                            var rowCss = rowState switch
+                            {
+                                "crit-missing" => "table-danger",
+                                "rec-missing" => "table-warning",
+                                _ => null,
+                            };
+
+                            var dotCss = rowState switch
+                            {
+                                "set" => "config-dot-ok",
+                                "crit-missing" => "config-dot-danger",
+                                "rec-missing" => "config-dot-warning",
+                                _ => "config-dot-unset",
+                            };
+
+                            var dotTitle = rowState switch
+                            {
+                                "set" => "Set",
+                                "crit-missing" => "Critical — missing",
+                                "rec-missing" => "Recommended — not set",
+                                _ => "Optional — not set",
+                            };
+
+                            var colonIndex = item.Key.IndexOf(':');
+                            var envSuffix = " (env)";
+                            var hasEnvSuffix = colonIndex < 0 && item.Key.EndsWith(envSuffix, StringComparison.Ordinal);
+
+                            <tr class="config-data-row @rowCss"
+                                data-section="@item.Section"
+                                data-state="@rowState"
+                                data-secret="@(item.IsSensitive ? "true" : "false")">
+                                <td>
+                                    <span class="config-dot @dotCss" title="@dotTitle" aria-hidden="true"></span>
+                                    <span class="visually-hidden">@dotTitle: </span>
+                                    <span class="config-key">@if (colonIndex > 0)
+                                        {<span class="config-key-muted">@item.Key[..(colonIndex + 1)]</span>@item.Key[(colonIndex + 1)..]}
+                                        else if (hasEnvSuffix)
+                                        {@item.Key[..^envSuffix.Length]<span class="config-key-muted">@envSuffix</span>}
+                                        else
+                                        {@item.Key}</span>
+                                    @if (item.IsSensitive)
+                                    {
+                                        <i class="fa-solid fa-lock config-lock" title="Sensitive — value masked" aria-label="Sensitive — value masked"></i>
+                                    }
+                                </td>
+                                <td>
+                                    @if (isCritical)
+                                    {
+                                        <span class="config-imp config-imp-critical">Critical</span>
+                                    }
+                                    else if (isRecommended)
+                                    {
+                                        <span class="config-imp config-imp-recommended">Recommended</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="config-imp config-imp-optional">Optional</span>
+                                    }
+                                </td>
+                                <td>
+                                    @if (item.IsSet)
+                                    {
+                                        <span class="config-value">@item.DisplayValue</span>
+                                    }
+                                    else if (isCritical)
+                                    {
+                                        <span class="config-missing-critical">Missing</span>
+                                    }
+                                    else if (isRecommended)
+                                    {
+                                        <span class="config-missing-recommended">Not set</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="config-unset" title="Not set">—</span>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    }
+                    <tr id="configEmptyRow" class="d-none">
+                        <td colspan="3" class="text-center text-muted py-4">
+                            No configuration settings match the current filter.
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
+
+@section Styles {
+    <style>
+        .config-stats {
+            margin-bottom: 1rem;
+        }
+        .config-stat-btn {
+            text-align: left;
+            font: inherit;
+            cursor: pointer;
+            transition: border-color 0.15s ease, box-shadow 0.15s ease;
+        }
+        .config-stat-btn:hover {
+            border-color: var(--h-gold-dark);
+        }
+        .config-stat-btn.is-active {
+            border-color: var(--h-gold-dark);
+            box-shadow: 0 0 0 2px rgba(168, 138, 78, 0.25);
+        }
+        .config-stat-btn:focus-visible {
+            outline: 2px solid var(--h-gold);
+            outline-offset: 2px;
+        }
+        .config-stat-sub {
+            font-size: 0.78rem;
+            color: var(--h-sepia);
+            margin-top: 4px;
+        }
+
+        .config-toolbar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            align-items: center;
+            margin-bottom: 0.75rem;
+        }
+        .config-search {
+            flex: 1 1 15rem;
+            max-width: 24rem;
+        }
+        .config-pills {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.35rem;
+        }
+        .config-pill {
+            padding: 0.25rem 0.7rem;
+            font-size: 0.8rem;
+            font-weight: 600;
+            border-radius: 999px;
+            border: 1px solid var(--h-border);
+            background: var(--h-warm-white);
+            color: var(--h-aged-ink-light);
+            cursor: pointer;
+            transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+        }
+        .config-pill:hover {
+            background: var(--h-vellum);
+        }
+        .config-pill.is-active {
+            background: var(--h-aged-ink);
+            border-color: var(--h-aged-ink);
+            color: var(--h-parchment);
+        }
+        .config-pill-warning.is-active {
+            background: var(--h-amber);
+            border-color: var(--h-amber);
+            color: var(--h-text-on-dark);
+        }
+        .config-pill-danger.is-active {
+            background: var(--h-rust);
+            border-color: var(--h-rust);
+            color: var(--h-text-on-dark);
+        }
+        .config-match-count {
+            margin-left: auto;
+        }
+
+        .config-ledger {
+            table-layout: fixed;
+        }
+        .config-col-key { width: 47%; }
+        .config-col-importance { width: 16%; }
+        .config-col-value { width: 37%; }
+
+        .config-section-row > td {
+            background-color: var(--h-vellum);
+            border-top: 1px solid var(--h-border);
+            border-bottom: 1px solid var(--h-border);
+            padding: 0.45rem 0.75rem;
+        }
+        .config-ledger tbody > .config-section-row:first-child > td {
+            border-top: none;
+        }
+        .config-section-inner {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.5rem;
+        }
+        .config-section-title {
+            font-family: var(--h-font-display);
+            font-weight: 700;
+            font-size: 1.05rem;
+            color: var(--h-aged-ink);
+            letter-spacing: 0.01em;
+        }
+        .config-section-meta {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .config-section-ratio {
+            font-size: 0.78rem;
+            font-weight: 600;
+            color: var(--h-sepia);
+        }
+
+        .config-data-row:hover {
+            background-color: var(--h-vellum);
+        }
+        .config-data-row.table-warning:hover > * {
+            --bs-table-bg-state: #f9e6c4;
+        }
+        .config-data-row.table-danger:hover > * {
+            --bs-table-bg-state: #efd5d2;
+        }
+
+        .config-dot {
+            display: inline-block;
+            width: 0.5rem;
+            height: 0.5rem;
+            border-radius: 50%;
+            margin-right: 0.5rem;
+            vertical-align: middle;
+        }
+        .config-dot-ok { background-color: var(--h-sage-dark); }
+        .config-dot-warning { background-color: var(--h-amber); }
+        .config-dot-danger { background-color: var(--h-rust); }
+        .config-dot-unset {
+            background-color: var(--h-border-light);
+            border: 1px solid var(--h-sepia-light);
+        }
+
+        .config-key {
+            font-family: var(--bs-font-monospace);
+            font-size: 0.84rem;
+            color: var(--h-aged-ink);
+            overflow-wrap: anywhere;
+        }
+        .config-key-muted {
+            color: var(--h-sepia-light);
+        }
+        .config-lock {
+            color: var(--h-sepia-light);
+            font-size: 0.75rem;
+            margin-left: 0.35rem;
+        }
+
+        .config-imp {
+            font-size: 0.82rem;
+            white-space: nowrap;
+        }
+        .config-imp-critical {
+            font-weight: 700;
+            color: var(--h-rust);
+        }
+        .config-imp-recommended {
+            font-weight: 600;
+            color: var(--h-amber-dark);
+        }
+        .config-imp-optional {
+            color: var(--h-sepia);
+        }
+
+        .config-value {
+            font-family: var(--bs-font-monospace);
+            font-size: 0.84rem;
+            color: var(--h-aged-ink-light);
+            overflow-wrap: anywhere;
+        }
+        .config-missing-critical {
+            font-size: 0.84rem;
+            font-weight: 700;
+            color: var(--h-alert-danger-text);
+        }
+        .config-missing-recommended {
+            font-size: 0.84rem;
+            font-weight: 600;
+            color: var(--h-alert-warning-text);
+        }
+        .config-unset {
+            color: var(--h-sepia-light);
+        }
+
+        @@media (max-width: 767.98px) {
+            .config-ledger {
+                table-layout: auto;
+            }
+            .config-col-key,
+            .config-col-importance,
+            .config-col-value {
+                width: auto;
+            }
+        }
+    </style>
+}
+
+@section Scripts {
+    <script>
+        (function () {
+            var table = document.getElementById('configLedger');
+            if (!table) return;
+
+            var searchInput = document.getElementById('configSearch');
+            var matchCount = document.getElementById('configMatchCount');
+            var emptyRow = document.getElementById('configEmptyRow');
+            var filterButtons = Array.prototype.slice.call(document.querySelectorAll('[data-config-filter]'));
+            var dataRows = Array.prototype.slice.call(table.querySelectorAll('tbody tr.config-data-row'));
+            var sectionRows = Array.prototype.slice.call(table.querySelectorAll('tbody tr.config-section-row'));
+            var activeFilter = 'all';
+
+            function matchesFilter(row, filter) {
+                var state = row.getAttribute('data-state');
+                switch (filter) {
+                    case 'crit-missing': return state === 'crit-missing';
+                    case 'rec-missing': return state === 'rec-missing';
+                    case 'opt-unset': return state === 'opt-unset';
+                    case 'attention': return state === 'crit-missing' || state === 'rec-missing';
+                    case 'secrets': return row.getAttribute('data-secret') === 'true';
+                    default: return true;
+                }
+            }
+
+            function apply() {
+                var query = (searchInput ? searchInput.value : '').trim().toLowerCase();
+                var visibleSections = Object.create(null);
+                var visibleCount = 0;
+
+                dataRows.forEach(function (row) {
+                    var section = (row.getAttribute('data-section') || '').toLowerCase();
+                    var textMatch = !query || row.textContent.toLowerCase().indexOf(query) !== -1 || section.indexOf(query) !== -1;
+                    var show = textMatch && matchesFilter(row, activeFilter);
+                    row.classList.toggle('d-none', !show);
+                    if (show) {
+                        visibleSections[row.getAttribute('data-section')] = true;
+                        visibleCount++;
+                    }
+                });
+
+                sectionRows.forEach(function (row) {
+                    row.classList.toggle('d-none', !visibleSections[row.getAttribute('data-section')]);
+                });
+
+                if (emptyRow) {
+                    emptyRow.classList.toggle('d-none', visibleCount > 0);
+                }
+
+                if (matchCount) {
+                    var isFiltered = activeFilter !== 'all' || query.length > 0;
+                    matchCount.classList.toggle('d-none', !isFiltered);
+                    if (isFiltered) {
+                        matchCount.textContent = 'Showing ' + visibleCount + ' of ' + dataRows.length;
+                    }
+                }
+            }
+
+            function setFilter(nextFilter) {
+                activeFilter = (nextFilter !== 'all' && nextFilter === activeFilter) ? 'all' : nextFilter;
+                filterButtons.forEach(function (btn) {
+                    var isActive = btn.getAttribute('data-config-filter') === activeFilter;
+                    btn.classList.toggle('is-active', isActive);
+                    btn.setAttribute('aria-pressed', isActive.toString());
+                });
+                apply();
+            }
+
+            filterButtons.forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                    setFilter(btn.getAttribute('data-config-filter') || 'all');
+                });
+            });
+
+            if (searchInput) {
+                searchInput.addEventListener('input', apply);
+            }
+        })();
+    </script>
 }

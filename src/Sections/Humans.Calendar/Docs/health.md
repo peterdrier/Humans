@@ -47,8 +47,8 @@ Every externally reachable thing, grouped by the question it answers.
 | *What is this one entry?* | `/Calendar/Event/{id}` route; `GetEventByIdAsync` (UI projection) and `GetEventInfoAsync` / `GetAllEventInfosAsync` (cache projections) | One question, several projections of it — all but the UI one exist for the cache, not for a caller. |
 | *Change a whole entry* | `Event/Create`, `Event/{id}/Edit`, `Event/{id}/Delete`; `CreateEventWithResultAsync` / `UpdateEventWithResultAsync` / `DeleteEventAsync` on `ICalendarService` | One silhouette each. Create and update share one input record and are published only in their result-returning form. |
 | *Change one occurrence of a repeating entry* | `Event/{id}/Occurrence/{originalStartUtc}/Edit`, `.../Cancel`; `OverrideOccurrenceAsync`, `CancelOccurrenceAsync` | Both are one upsert against the occurrence's identity with a different field-setter. The identity is a date for an all-day series and an instant for a timed one. |
-| *What has this person committed to?* | `GET /api/ical/{userId}/{token}.ics`; `IICalFeedService.GetFeedItemsAsync` (Scanner's ticket card, admin widget); `<vc:user-calendar>` | Reads no Calendar table except the token check. |
-| *What is my feed URL, and replace it* | the card on `/Calendar`; `POST /Calendar/Ical/Create`; `POST /Calendar/Ical/Regenerate`; `ICalendarFeedTokenService`; `IICalFeedService.HasFeedAsync` | Mint on the card's create button (never on GET), rotate on demand. Only the yes/no leaves the section. |
+| *What has this person committed to?* | `GET /api/ical/{userId}/{token}.ics`; `IICalFeedService.GetFeedItemsAsync` (Scanner's ticket card, admin widget); `UserCalendarViewComponent` | Reads no Calendar table except the token check. |
+| *What is my feed URL, and replace it* | the card on `/Calendar`; `POST /Calendar/Ical/Create`; `POST /Calendar/Ical/Regenerate`; `ICalendarFeedTokenService` | Mint on the card's create button (never on GET), rotate on demand. The internal admin widget renders only token presence. |
 | *What does Calendar hold about this person, erase it, fold it into another account* | `CalendarFeedTokenService` as `IUserDataContributor` and `IUserMerge` | Inbound fan-outs owned by Gdpr and Users; Calendar answers for the token row only. |
 | *Contribute items to a person's feed, or to the community window* | `ICalendarFeedContributor` + `CalendarFeedItem` | Inbound-only: implementers reference Calendar, never the reverse. Two independent calls on one interface — a section may answer either, both, or neither with an empty list. |
 
@@ -96,13 +96,13 @@ Stated so a violation is recognisable.
    (`Services/ICalFeedService.cs:66`, `Services/ICalFeedService.cs:71`), and the controller
    maps it to a bare 404 (`Controllers/ICalFeedApiController.cs:31`).
 3. The feed URL and the token never appear in any rendered admin view: the view model
-   carries a bool, not the token (`Contracts/UserCalendarViewComponent.cs:30`), and the view
+   carries a bool, not the token (`ViewComponents/UserCalendarViewComponent.cs`), and the view
    renders only that (`Views/Shared/Components/UserCalendar/Default.cshtml:10`).
 4. Every mutation writes an audit entry naming the actor. Entry-level mutations also name
    the owning team (`Services/CalendarService.cs:90`); occurrence-level ones do not
-   (`Services/CalendarService.cs:489`).
+   (`Services/CalendarService.cs`).
 5. A failed audit write never rolls back or hides a committed change, and never passes
-   silently (`Services/CalendarService.cs:94`).
+   silently (`Services/CalendarService.cs`).
 6. On a timed entry, `RecurrenceRule` and `RecurrenceTimezone` are both set or both null —
    never one (`Domain/CalendarEvent.cs:54`). An all-day series carries a rule and no zone:
    its dates do not convert.

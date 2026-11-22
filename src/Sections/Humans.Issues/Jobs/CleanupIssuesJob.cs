@@ -1,6 +1,6 @@
 using Hangfire;
 using Humans.Base.Interfaces;
-using Humans.Issues.Contracts;
+using Humans.Issues.Services;
 
 namespace Humans.Issues.Jobs;
 
@@ -8,7 +8,7 @@ namespace Humans.Issues.Jobs;
 /// Hangfire rewrites the stored type string on every startup, so the job id, not the type, is the stable key.
 /// </summary>
 [DisableConcurrentExecution(timeoutInSeconds: 300)]
-public class CleanupIssuesJob(IIssuesRetention issues, IHumansMetrics metrics, ILogger<CleanupIssuesJob> logger)
+internal sealed class CleanupIssuesJob(IIssuesService issues, IHumansMetrics metrics, ILogger<CleanupIssuesJob> logger)
     : IRecurringJob
 {
     public async Task ExecuteAsync(CancellationToken cancellationToken = default)
@@ -22,6 +22,11 @@ public class CleanupIssuesJob(IIssuesRetention issues, IHumansMetrics metrics, I
                 deleted);
 
             metrics.RecordJobRun("cleanup_issues", "success");
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            logger.LogWarning("Issue retention cancelled during shutdown");
+            throw;
         }
         catch (Exception ex)
         {

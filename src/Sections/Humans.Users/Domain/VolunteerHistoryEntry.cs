@@ -7,9 +7,8 @@ internal sealed class VolunteerHistoryEntry
 {
     public Guid Id { get; init; }
 
-    public Guid ProfileId { get; init; }
-
-    public Profile Profile { get; set; } = null!;
+    /// <summary>The owning user.</summary>
+    public Guid UserId { get; set; }
 
     /// <summary>Full date, or the first of the month; displayed as "Mar'25".</summary>
     public LocalDate Date { get; set; }

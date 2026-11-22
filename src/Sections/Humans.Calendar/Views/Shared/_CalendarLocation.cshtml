@@ -1,0 +1,11 @@
+@model (string? Location, string? Url)
+@* A calendar item's place: the location text, linked to its meeting URL when it has one. An online-only
+   meeting has no text, so the URL's host stands in. The URL is trusted to be http(s); each owner validates it on save. *@
+@if (Uri.TryCreate(Model.Url, UriKind.Absolute, out var url))
+{
+    <a href="@Model.Url" target="_blank" rel="noopener">@(string.IsNullOrWhiteSpace(Model.Location) ? url.Host : Model.Location)</a>
+}
+else
+{
+    @Model.Location
+}

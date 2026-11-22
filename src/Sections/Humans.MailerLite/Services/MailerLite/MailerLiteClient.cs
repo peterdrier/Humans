@@ -212,18 +212,19 @@ internal sealed class MailerLiteClient(IHttpClientFactory httpFactory, IClock cl
         _lastFetchedAt = clock.GetCurrentInstant();
     }
 
-    private static MailerLiteAccountSummary SummarizeSubscribers(IReadOnlyList<MailerLiteSubscriber> subscribers)
+    private MailerLiteAccountSummary SummarizeSubscribers(IReadOnlyList<MailerLiteSubscriber> subscribers)
     {
         int active = 0, unsub = 0, unc = 0, bnc = 0, jnk = 0;
         foreach (var subscriber in subscribers)
         {
-            switch (subscriber.Status)
+            switch (subscriber.Status.ToUpperInvariant())
             {
-                case "active": active++; break;
-                case "unsubscribed": unsub++; break;
-                case "unconfirmed": unc++; break;
-                case "bounced": bnc++; break;
-                case "junk": jnk++; break;
+                case "ACTIVE": active++; break;
+                case "UNSUBSCRIBED": unsub++; break;
+                case "UNCONFIRMED": unc++; break;
+                case "BOUNCED": bnc++; break;
+                case "JUNK": jnk++; break;
+                default: logger.SwitchDefaultWarn(subscriber.Status); break;
             }
         }
         return new MailerLiteAccountSummary(active, unsub, unc, bnc, jnk);
@@ -241,7 +242,7 @@ internal sealed class MailerLiteClient(IHttpClientFactory httpFactory, IClock cl
             if (cursor is not null) url += $"&cursor={Uri.EscapeDataString(cursor)}";
             using var resp = await SendAsync(HttpMethod.Get, url, content: null, ct);
             resp.EnsureSuccessStatusCode();
-            var body = await resp.Content.ReadFromJsonAsync<SubscriberListEnvelope>(Json, ct);
+            var body = await ReadPageAsync<SubscriberListEnvelope>(resp.Content, "subscriber", ct);
             if (body?.Data is null || body.Meta is null)
                 throw new HttpRequestException("MailerLite returned an incomplete subscriber page.");
             foreach (var s in body.Data)
@@ -265,7 +266,7 @@ internal sealed class MailerLiteClient(IHttpClientFactory httpFactory, IClock cl
         {
             using var resp = await SendAsync(HttpMethod.Get, $"/api/groups?page={page}&limit=100", content: null, ct);
             resp.EnsureSuccessStatusCode();
-            var body = await resp.Content.ReadFromJsonAsync<GroupListEnvelope>(Json, ct);
+            var body = await ReadPageAsync<GroupListEnvelope>(resp.Content, "group", ct);
             if (body?.Data is null || body.Meta is null ||
                 body.Meta.CurrentPage != page || body.Meta.LastPage < page)
                 throw new HttpRequestException("MailerLite returned invalid group pagination metadata.");
@@ -277,6 +278,20 @@ internal sealed class MailerLiteClient(IHttpClientFactory httpFactory, IClock cl
             page++;
         }
         return results;
+    }
+
+    private static async Task<T?> ReadPageAsync<T>(HttpContent content, string kind, CancellationToken ct)
+        where T : class
+    {
+        try
+        {
+            return await content.ReadFromJsonAsync<T>(Json, ct);
+        }
+        catch (Exception ex) when (ex is JsonException or InvalidOperationException
+            or KeyNotFoundException or FormatException or OverflowException)
+        {
+            throw new HttpRequestException($"MailerLite {kind} page could not be read.", ex);
+        }
     }
 
     // Test seam.
@@ -384,7 +399,7 @@ internal sealed class MailerLiteClient(IHttpClientFactory httpFactory, IClock cl
         [property: JsonPropertyName("meta")] SubscriberMeta Meta);
 
     private sealed record SubscriberMeta(
-        [property: JsonPropertyName("next_cursor")] string? NextCursor);
+        [property: JsonPropertyName("next_cursor"), JsonRequired] string? NextCursor);
 
     private sealed record GroupListEnvelope(
         [property: JsonPropertyName("data")] IReadOnlyList<MailerLiteGroup> Data,

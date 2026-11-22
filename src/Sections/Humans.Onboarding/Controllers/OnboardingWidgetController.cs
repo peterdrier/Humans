@@ -1,6 +1,6 @@
+using Humans.Base.Extensions;
 using Humans.Base.Attributes;
 using Humans.Base.Controllers;
-using System.Security.Claims;
 using Humans.Consent.Contracts;
 using Humans.Users.Contracts;
 using Humans.Settings.Contracts;
@@ -24,7 +24,6 @@ internal sealed class OnboardingWidgetController(
     IShiftSignups signupService,
     IShiftService shiftMgmt,
     ISettingsService settingsService,
-    IShiftView shiftView,
     IOnboardingService onboardingService,
     IStringLocalizer<OnboardingResource> localizer,
     ILogger<OnboardingWidgetController> logger) : HumansControllerBase(userService)
@@ -33,7 +32,7 @@ internal sealed class OnboardingWidgetController(
 
     // [Authorize] guarantees NameIdentifier is present.
     private Guid CurrentUserId() =>
-        Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        User.GetUserId()!.Value;
 
     public async Task<IActionResult> Index(CancellationToken ct)
     {
@@ -51,12 +50,13 @@ internal sealed class OnboardingWidgetController(
     public async Task<IActionResult> Names(CancellationToken ct)
     {
         // Prefill from the user's own saved profile, never from OAuth claims, which are unverified.
-        var profile = (await _userService.GetUserInfoAsync(CurrentUserId(), ct))?.Profile;
+        var info = await _userService.GetUserInfoAsync(CurrentUserId(), ct);
+        var saved = info?.Profile is null ? null : info;
         return View(new NamesViewModel
         {
-            BurnerName = profile?.BurnerName ?? string.Empty,
-            FirstName = profile?.FirstName ?? string.Empty,
-            LastName = profile?.LastName ?? string.Empty,
+            BurnerName = saved?.BurnerName ?? string.Empty,
+            FirstName = saved?.FirstName ?? string.Empty,
+            LastName = saved?.LastName ?? string.Empty,
         });
     }
 
@@ -112,7 +112,7 @@ internal sealed class OnboardingWidgetController(
     [HttpGet]
     public async Task<IActionResult> Shifts(string? priority = null, CancellationToken ct = default)
     {
-        var es = await settingsService.GetActiveEventSettingsAsync(ct);
+        var es = settingsService.GetActiveEventSettings();
         if (es is null)
             return View(OnboardingShiftsStepBuilder.BuildEmpty(priority ?? string.Empty));
 
@@ -121,10 +121,7 @@ internal sealed class OnboardingWidgetController(
         var urgentShifts = await shiftMgmt.GetBrowseShiftsAsync(new ShiftBrowseQuery(
             es.Id,
             Flags: ShiftBrowseQueryFlags.IncludeSignups, ViewerUserId: userId), ct);
-        var userShiftView = await shiftView.GetUserAsync(userId, ct);
-        var (shiftIds, statuses) = ShiftSignupHelper.ResolveActiveStatuses(userShiftView.Signups);
-        var vm = OnboardingShiftsStepBuilder.Build(
-            es, urgentShifts, shiftIds, statuses, priority ?? string.Empty);
+        var vm = OnboardingShiftsStepBuilder.Build(es, urgentShifts, userId, priority ?? string.Empty);
         return View(vm);
     }
 

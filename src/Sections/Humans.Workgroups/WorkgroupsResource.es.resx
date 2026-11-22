@@ -208,6 +208,7 @@
   <data name="Workgroups_Leave" xml:space="preserve"><value>Salir</value></data>
   <data name="Workgroups_DiscordChannel" xml:space="preserve"><value>Canal de Discord</value></data>
   <data name="Workgroups_DriveFolder" xml:space="preserve"><value>Carpeta de Drive</value></data>
+  <data name="Workgroups_EmailGroup" xml:space="preserve"><value>Grupo de correo</value></data>
   <data name="Workgroups_Budget" xml:space="preserve"><value>Presupuesto</value></data>
   <data name="Workgroups_BudgetAccount" xml:space="preserve"><value>Cuenta de Holded</value></data>
   <data name="Enum_WorkgroupLogKind_BudgetSet" xml:space="preserve"><value>Presupuesto asignado</value></data>
@@ -338,7 +339,6 @@
   <data name="Workgroups_Field_IsSensitiveHelp" xml:space="preserve"><value>Solo los miembros y la Junta ven la lista de miembros, los documentos y el historial. El nombre y el propósito siguen en el registro.</value></data>
   <data name="Workgroups_Error_MembershipPending" xml:space="preserve"><value>Tu solicitud ya está esperando a una persona coordinadora.</value></data>
   <data name="Workgroups_Error_NoPendingRequest" xml:space="preserve"><value>No hay ninguna solicitud pendiente de esa persona.</value></data>
-  <data name="Workgroups_Error_NotACoordinator" xml:space="preserve"><value>Solo una persona coordinadora puede decidir quién entra.</value></data>
   <data name="Workgroups_Error_MembersOnly" xml:space="preserve"><value>Este grupo es sensible; solo sus miembros pueden hacer eso.</value></data>
   <data name="Workgroups_Notice_MembershipRequested" xml:space="preserve"><value>Alguien ha solicitado unirse</value></data>
   <data name="Workgroups_Notice_MembershipApproved" xml:space="preserve"><value>Tu solicitud de ingreso ha sido aprobada</value></data>
@@ -348,6 +348,7 @@
   <data name="Workgroups_Todo_MembershipRequests_Description" xml:space="preserve"><value>{0} tiene {1} solicitud(es) de ingreso.</value></data>
   <data name="Workgroups_Todo_MembershipRequests_Action" xml:space="preserve"><value>Revisar solicitudes</value></data>
   <data name="Workgroups_Error_DiscordUrlInvalid" xml:space="preserve"><value>Introduce una URL absoluta HTTP o HTTPS para el enlace de Discord.</value></data>
+  <data name="Workgroups_Error_LocationUrlInvalid" xml:space="preserve"><value>Introduce una URL HTTP o HTTPS absoluta para el enlace de la reunión.</value></data>
   <data name="Enum_MembershipTier_Volunteer" xml:space="preserve"><value>Voluntario</value></data>
   <data name="Enum_MembershipTier_Colaborador" xml:space="preserve"><value>Colaborador</value></data>
   <data name="Enum_MembershipTier_Asociado" xml:space="preserve"><value>Asociado</value></data>

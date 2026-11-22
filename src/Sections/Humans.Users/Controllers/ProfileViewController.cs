@@ -4,7 +4,9 @@ using Humans.Users.Services;
 using Humans.Base.Controllers;
 using Humans.Base.Extensions;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Net.Http.Headers;
 using Microsoft.Extensions.Localization;
 using Humans.Base.Enums;
 using Humans.Users.Models;
@@ -13,6 +15,7 @@ using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Governance.Contracts;
 using Humans.Users.Contracts;
+using Humans.Auth.Contracts;
 using NodaTime;
 using Humans.Base;
 using Humans.Base.Authorization;
@@ -24,20 +27,20 @@ namespace Humans.Users.Controllers;
 internal sealed class ProfileViewController(
     IUserManagement userService,
     IProfilePictureService profilePictureService,
-    IShiftSignups shiftSignupService,
     IShiftService shiftMgmt,
     IStringLocalizer<SharedResource> sharedLocalizer,
     ITeamService teamService,
     ICampService campService,
     IGovernanceService governanceService,
-    IAuthorizationService authorizationService) : HumansControllerBase(userService)
+    IRoleAssignmentService roleAssignments,
+    IAuthorizationService authorizationService,
+    MedicalConditionsService medicalConditions) : HumansControllerBase(userService)
 {
     private readonly IUserManagement _userService = userService;
 
     [HttpGet("Picture")]
     [AllowAnonymous]
-    [ResponseCache(Duration = 3600, Location = ResponseCacheLocation.Client)]
-    public async Task<IActionResult> Picture(Guid id, CancellationToken ct)
+    public async Task<IActionResult> Picture(Guid id, long? v, CancellationToken ct)
     {
         // The picture service owns the file read and the GDPR gate.
         var result = await profilePictureService.GetProfilePictureAsync(id, ct);
@@ -46,6 +49,16 @@ internal sealed class ProfileViewController(
             return NotFound();
         }
 
+        // UserInfo.ProfilePictureUrl stamps v with the profile's UpdatedAt, so a new picture is a new URL.
+        var cacheControl = new CacheControlHeaderValue
+        {
+            Private = true,
+            MaxAge = v is null ? TimeSpan.FromHours(1) : TimeSpan.FromDays(365),
+        };
+        if (v is not null)
+            cacheControl.Extensions.Add(new NameValueHeaderValue("immutable"));
+        Response.GetTypedHeaders().CacheControl = cacheControl;
+
         return File(result.Value.Data, result.Value.ContentType);
     }
 
@@ -53,9 +66,7 @@ internal sealed class ProfileViewController(
     public async Task<IActionResult> ViewProfile(Guid id, CancellationToken ct)
     {
         var profileInfo = await _userService.GetUserInfoAsync(id, ct);
-        var profile = profileInfo?.Profile;
-
-        if (profile is null || profileInfo!.IsSuspended)
+        if (profileInfo is null || !profileInfo.IsProfileBrowsable)
         {
             return NotFound();
         }
@@ -71,82 +82,34 @@ internal sealed class ProfileViewController(
         }
 
         var isOwnProfile = viewer.Id == id;
-        var viewerIsCoordinator = !isOwnProfile
-            && (await shiftMgmt.GetCoordinatorTeamIdsAsync(viewer.Id, ct)).Count > 0;
+        var viewerRunsShifts = !isOwnProfile
+            && await shiftMgmt.CanManageOrApproveAnyShiftsAsync(viewer.Id, ct);
 
-        var noShowContext = await BuildNoShowHistoryContextAsync(id, isOwnProfile, viewerIsCoordinator, ct);
-
-        var canViewSentMessages = await CanViewSentMessagesAsync(isOwnProfile, viewerIsCoordinator);
+        var canViewSentMessages = await CanViewSentMessagesAsync(isOwnProfile, viewerRunsShifts);
 
         var viewModel = new ProfileViewModel
         {
-            Id = profile.Id,
+            Id = profileInfo.Profile!.Id,
             UserId = id,
             PageTitle = profileInfo.BurnerName,
             IsOwnProfile = isOwnProfile,
-            NoShowHistory = noShowContext.History,
-            CanViewShiftSignups = noShowContext.CanView,
             CanViewSentMessages = canViewSentMessages,
         };
 
         return View("~/Views/Profile/Index.cshtml", viewModel);
     }
 
-    private async Task<(bool CanView, List<NoShowHistoryItem>? History)> BuildNoShowHistoryContextAsync(
-        Guid profileUserId,
-        bool isOwnProfile,
-        bool viewerIsCoordinator,
-        CancellationToken ct)
-    {
-        if (isOwnProfile)
-        {
-            return (false, null);
-        }
-
-        var viewerCanViewShiftHistory = viewerIsCoordinator || ShiftsRoles.IsPrivilegedSignupApprover(User);
-        if (!viewerCanViewShiftHistory)
-        {
-            return (false, null);
-        }
-
-        var noShows = await shiftSignupService.GetNoShowHistoryAsync(profileUserId, ct);
-        if (noShows.Count == 0)
-        {
-            return (true, null);
-        }
-
-        var noShowTeamIds = noShows.Select(s => s.TeamId).Distinct().ToList();
-        var teamsById = await teamService.GetTeamsAsync(ct);
-        var noShowTeamNames = noShowTeamIds
-            .Where(teamsById.ContainsKey)
-            .ToDictionary(id => id, id => teamsById[id].Name);
-
-        return (true, noShows.OrderByDescending(s => s.ReviewedAt).Select(s =>
-        {
-            var signupTz = DateTimeZoneProviders.Tzdb[s.TimeZoneId];
-            var zoned = s.ShiftStart.InZone(signupTz);
-            return new NoShowHistoryItem
-            {
-                ShiftLabel = s.ShiftLabel,
-                DepartmentName = noShowTeamNames.GetValueOrDefault(s.TeamId, ""),
-                ShiftDateLabel = zoned.ToDateTimeUnspecified().ToMonthDayTime(),
-                MarkedByUserId = s.ReviewedByUserId,
-                MarkedAtLabel = s.ReviewedAt?.InZone(signupTz).ToDateTimeUnspecified().ToMonthDayTime()
-            };
-        }).ToList());
-    }
-
     /// <summary>
-    /// A coordinator or privileged shift role, never on one's own profile. Same coordinator check as
-    /// <see cref="BuildNoShowHistoryContextAsync"/>, so the two panels share access rules.
+    /// A coordinator or privileged shift role, never on one's own profile: the same audience as Shifts' profile
+    /// card.
     /// </summary>
-    private async Task<bool> CanViewSentMessagesAsync(bool isOwnProfile, bool viewerIsCoordinator)
+    private async Task<bool> CanViewSentMessagesAsync(bool isOwnProfile, bool viewerRunsShifts)
     {
         if (isOwnProfile)
             return false;
 
         var isPrivilegedApprover = (await authorizationService.AuthorizeAsync(User, ShiftsPolicies.PrivilegedSignupApprover)).Succeeded;
-        return viewerIsCoordinator || isPrivilegedApprover;
+        return viewerRunsShifts || isPrivilegedApprover;
     }
 
     [HttpGet("{id:guid}/Popover")]
@@ -156,16 +119,15 @@ internal sealed class ProfileViewController(
         if (info?.Profile is null) return NotFound();
         id = info.Id; // memberships and camp below are keyed by the live id
 
-        var memberships = (await teamService.GetTeamsAsync(ct)).Values
-            .Where(t => t.IsActive && t.SystemTeamType != SystemTeamType.Volunteers)
-            .Select(t => new { TeamInfo = t, Membership = t.Members.FirstOrDefault(m => m.UserId == id) })
-            .Where(x => x.Membership is not null)
-            .Select(x => new TeamMembership(x.TeamInfo.Name, x.Membership!.Role) { IsHidden = x.TeamInfo.IsHidden })
+        var memberships = (await teamService.GetUserTeamMembershipsAsync(id, ct))
+            .Where(m => m.IsProfileMembership)
+            .Select(m => new TeamMembership(m.TeamName, m.Role) { IsHidden = m.IsHidden })
             .ToList();
         // Rendered admin-only in the view.
         var camp = await campService.GetCampUserInfoAsync(id, ct);
         var tier = await governanceService.GetMembershipTierAsync(id, ct);
-        var vm = ProfileSummaryViewModelBuilder.BuildWithProfile(info, memberships, tier, camp);
+        var isBoard = await roleAssignments.IsUserBoardMemberAsync(id, ct);
+        var vm = ProfileSummaryViewModelBuilder.BuildWithProfile(info, memberships, tier, isBoard, camp);
 
         return PartialView("_HumanPopover", vm);
     }
@@ -201,24 +163,21 @@ internal sealed class ProfileViewController(
         return PartialView("_HumanPopoverPublic", vm);
     }
 
-    [HttpGet("Search")]
-    public async Task<IActionResult> Search(string? q, CancellationToken ct)
+    /// <summary>
+    /// Hands one member's medical conditions to a MedicalDataViewer and records who looked (the IBAN reveal
+    /// pattern). The text never renders in a page: a reveal button posts here and shows the answer.
+    /// </summary>
+    [HttpPost("{id:guid}/Medical/Reveal")]
+    [Authorize(Policy = UsersPolicies.MedicalDataViewer)]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> RevealMedical(Guid id, CancellationToken ct)
     {
-        var viewModel = new HumanSearchViewModel { Query = q };
+        // Resolved, so a merged-away session audits the survivor and a gone account reads nothing.
+        if (await GetCurrentUserInfoAsync(ct) is not { } actor) return Forbid();
 
-        if (!q.HasSearchTerm())
-        {
-            return View(viewModel);
-        }
-
-        // Never the Admin bit here. Uncapped, so relevance ranking can surface the right person.
-        var results = await _userService.SearchUsersAsync(
-            q, PersonSearchFields.PublicAll, limit: int.MaxValue, ct);
-
-        viewModel.Results = results
-            .OrderByRelevance()
-            .ToList();
-
-        return View(viewModel);
+        // Null text is "nothing on file": the button shows for every viewer the policy admits, because no
+        // other section may know whether a member has conditions.
+        var text = await medicalConditions.RevealAsync(id, actor.Id, ct);
+        return Json(new { text });
     }
 }

@@ -18,10 +18,6 @@ internal interface IAuditLogReader : IApplicationService
         Guid? userId,
         IReadOnlyList<string>? actions,
         int limit,
-        CancellationToken ct = default);
-
-    Task<IReadOnlySet<Guid>> GetEntityIdsForEntityTypeActionsAsync(
-        string entityType,
-        IReadOnlyList<AuditActionDefinition> actions,
+        bool includeRelated = false,
         CancellationToken ct = default);
 }

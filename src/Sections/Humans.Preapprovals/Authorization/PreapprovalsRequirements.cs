@@ -1,3 +1,4 @@
+using Humans.Base.Extensions;
 using Humans.Base.Authorization;
 using Humans.Finance.Contracts;
 using System.Security.Claims;
@@ -33,7 +34,7 @@ internal sealed class PreapprovalsPolicyHandler(IPreapprovalManagement preapprov
                 case ManagesPreapprovalsRequirement manage when await ManagesAsync(context.User, ct):
                     context.Succeed(manage);
                     break;
-                case PreapprovalsAccessRequirement access when await ManagesAsync(context.User, ct) || await HasAnythingAsync(context.User, ct):
+                case PreapprovalsAccessRequirement access when IsReadingRole(context.User) || await HasAnythingAsync(context.User, ct):
                     context.Succeed(access);
                     break;
             }
@@ -54,5 +55,5 @@ internal sealed class PreapprovalsPolicyHandler(IPreapprovalManagement preapprov
         UserId(user) is { } id && await preapprovals.HasAnythingForUserAsync(id, ct);
 
     private static Guid? UserId(ClaimsPrincipal user) =>
-        Guid.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out var id) ? id : null;
+        user.GetUserId();
 }

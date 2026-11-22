@@ -1,3 +1,4 @@
+using Humans.Users.Services;
 using AwesomeAssertions;
 using Humans.Base.Interfaces;
 using Humans.Users.Contracts;
@@ -14,6 +15,7 @@ namespace Humans.Users.Tests.Contributions;
 public class SectionDataMigrationsTests
 {
     private readonly IEmailProblemsService _emailProblems = Substitute.For<IEmailProblemsService>();
+    private readonly IAccountMergeService _merges = Substitute.For<IAccountMergeService>();
     private readonly Guid _actorId = Guid.NewGuid();
     private readonly IServiceProvider _services;
 
@@ -22,6 +24,7 @@ public class SectionDataMigrationsTests
         var services = new ServiceCollection();
         services.AddLogging();
         services.AddSingleton(_emailProblems);
+        services.AddSingleton(_merges);
         _services = services.BuildServiceProvider();
     }
 
@@ -38,6 +41,7 @@ public class SectionDataMigrationsTests
         migrations.Select(m => m.Key).Should().BeEquivalentTo(
         [
             Section.LegacyIdentityEmailsKey,
+            Section.LeftoverMergeRequestsKey,
         ]);
         migrations.Should().OnlyContain(m => string.Equals(m.Section, "Users", StringComparison.Ordinal) && m.Key.StartsWith("users.", StringComparison.Ordinal));
         migrations.Should().OnlyContain(m => !string.IsNullOrWhiteSpace(m.Title) && !string.IsNullOrWhiteSpace(m.Retires));
@@ -63,5 +67,25 @@ public class SectionDataMigrationsTests
 
         (await migration.Apply(_services, _actorId, Ct)).Should().Be(1);
         await _emailProblems.Received(1).BackfillLegacyIdentityEmailsAsync(_actorId, Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task Leftover_merge_requests_are_listed_and_dismissed_with_the_actor()
+    {
+        var asked = new AccountMergeUserSnapshot(Guid.NewGuid(), null, null, null);
+        var holder = new AccountMergeUserSnapshot(Guid.NewGuid(), null, null, null);
+        var request = new AccountMergeRequestSnapshot(Guid.NewGuid(), "shared@x.com", asked, holder,
+            AccountMergeRequestStatus.Pending, Instant.FromUtc(2026, 1, 1, 0, 0), null, null, null);
+        _merges.GetPendingRequestsAsync(Arg.Any<CancellationToken>()).Returns([request]);
+        _merges.RejectAsync(request.Id, _actorId, Arg.Any<string?>(), Arg.Any<CancellationToken>())
+            .Returns(new AccountMergeResult());
+        var migration = Migration(Section.LeftoverMergeRequestsKey);
+
+        var status = await migration.Status(_services, Ct);
+        status.PendingRows.Should().ContainSingle()
+            .Which.Take(3).Should().Equal("shared@x.com", asked.Id.ToString(), holder.Id.ToString());
+
+        (await migration.Apply(_services, _actorId, Ct)).Should().Be(1);
+        await _merges.Received(1).RejectAsync(request.Id, _actorId, Arg.Any<string?>(), Arg.Any<CancellationToken>());
     }
 }

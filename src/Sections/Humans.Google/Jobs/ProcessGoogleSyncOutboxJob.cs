@@ -1,0 +1,37 @@
+using Humans.Google.Services;
+using Hangfire;
+using Humans.Base.Interfaces;
+using Humans.Google.Contracts;
+
+namespace Humans.Google.Jobs;
+
+[DisableConcurrentExecution(timeoutInSeconds: 300)]
+internal sealed class ProcessGoogleSyncOutboxJob(
+    IGoogleSyncOutboxProcessor outbox,
+    IGoogleDriveActivityClient googleClient,
+    IHumansMetrics metrics,
+    ILogger<ProcessGoogleSyncOutboxJob> logger) : IRecurringJob
+{
+    public async Task ExecuteAsync(CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            await outbox.ProcessQueuedAsync(cancellationToken);
+
+            metrics.RecordJobRun(
+                "process_google_sync_outbox",
+                googleClient.IsConfigured ? "success" : "skipped");
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            logger.LogWarning("Google sync outbox processing interrupted by shutdown");
+            throw;
+        }
+        catch (Exception ex)
+        {
+            metrics.RecordJobRun("process_google_sync_outbox", "failure");
+            logger.LogError(ex, "Error processing Google sync outbox");
+            throw;
+        }
+    }
+}

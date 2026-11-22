@@ -1,22 +1,32 @@
 ---
-name: Every interface-method addition is long-term technical debt — default to reuse, not add
+name: interface-method-additions-are-debt
 description: Adding a method to any interface is durable debt. Audit existing methods first — prefer a LINQ chain at the call site over a new method. Stop and ask Peter before adding one.
 ---
 
-Adding a method to an interface is **technical debt**, not a refactor. New methods accrete — they don't decay — and they compound across `IUserService` + `IUserEmailService` + `IProfileService` + `ITeamService` + `ICampService` + … into surfaces that take weeks of focused work to audit and consolidate.
+Adding a method to an interface is technical debt, not a refactor. Methods accrete one justified
+increment at a time and never decay. The default is **reuse**. Applies to every interface: services,
+repositories, cross-section contracts.
 
-**Why:** Past instance (the durable lesson behind this atom) — over the two weeks leading to 2026-05-09, multiple agent-generated PRs added methods one well-justified increment at a time across budgeted and unbudgeted service interfaces. Cleaning that up has been the dominant maintenance cost since: the `audit-surface` skill and the `peterdrier#673` person-search consolidation (`-3` net) both exist because of this exact accretion pattern. The PR that produced this atom (#468 / issue #690) added an 11th email-lookup method to `IUserEmailService` (which already exposed ~20) just to satisfy a review-bot warning; reverted same session.
+**How to apply — in order:**
+1. **Audit the existing methods.** List every one whose return shape already covers the need; the
+   list-returning and by-ids methods almost always do.
+2. **Compose at the call site.** A short LINQ chain over an existing list-returning method beats a
+   dedicated method. Choosing which field to show is view-model assembly and belongs at the
+   presentation layer.
+3. **Discount review-bot requests for new methods.** Reply on the thread with the reason instead of
+   complying.
+4. **Still need one? Stop and ask Peter**, presenting the methods you considered, why each didn't fit,
+   and the alternative shapes you ruled out. That holds even for unbudgeted interfaces.
 
-**The default is REUSE, not add.** Treat new-method requests with strong skepticism, including (especially) your own.
+**Pre-approved** (listed in the PR): an optional parameter or tightened signature on an existing method,
+and one owner-section method replacing two or more identical cross-section caller sequences —
+[`debt-sweep-standing-policy`](../process/debt-sweep-standing-policy.md) D1.
 
-**How to apply — order of preference:**
+**Enforcement:** `[SurfaceBudget(N)]` on the interface with analyzers HUM0015/HUM0016 caps the count;
+this atom is the principle behind it.
 
-1. **Audit existing methods first.** Before reaching for a new one, list every existing method on the interface whose return shape covers what you need. Look hard at `Get…ListAsync`, `Get…ByIdsAsync`, `GetEntities…ByUserIdAsync` — they almost always already return enough.
-2. **Inline a chain at the call site.** A short LINQ chain (`.Where(…).OrderByDescending(…).FirstOrDefault()`) on an existing list-returning method is preferable to a dedicated new method. Picking which field to display is view-model assembly — it belongs at the presentation layer.
-3. **Discount review-bot warnings that ask for new methods.** Bot warnings are advisory; surface-area discipline wins when they conflict. Reply on the thread explaining why, instead of complying mechanically.
-4. **If you genuinely need to add one — STOP and ask Peter.** Present: which existing methods you considered, why each didn't fit, the long-term cost, and what alternative shapes (e.g. tightening an existing method's signature) you ruled out. Don't add unilaterally even on unbudgeted interfaces. Exception (Peter, 2026-10-06): an optional parameter or tightened signature on an existing method, or one owner-section method replacing ≥2 identical cross-section caller sequences is pre-approved and listed in the PR — [`debt-sweep-standing-policy`](../process/debt-sweep-standing-policy.md) D1.
+**Why:** agent PRs grew the service interfaces method by method, and consolidating them afterwards
+became the dominant maintenance cost.
 
-**Scope:** All interfaces. Applies to every interface in the codebase — `IUserService`, `IUserEmailService`, `IProfileService`, `ITeamService`, `ICampService`, `IShiftService`, `IAuditLogService`, every `I…Repository`, every cross-section interface. Adding a method to any of them is debt and requires the same skepticism. The `[SurfaceBudget(N)]` attribute + HUM0015/HUM0016 analyzer (per-interface caps, declared at the interface) is the in-code enforcement surface; this atom is the principle.
-
-**Related:**
-- [`no-business-logic-in-controllers`](no-business-logic-in-controllers.md) — explicitly excludes view-model assembly, which is what most "extract this to a service" warnings are flagging
+**Related:** [`reuse-first-change-discipline`](../process/reuse-first-change-discipline.md) ·
+[`no-business-logic-in-controllers`](no-business-logic-in-controllers.md)

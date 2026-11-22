@@ -59,7 +59,7 @@ email it only when nothing else worked.
 15. [Expenses](Expenses.md)
 16. [Store](Store.md)
 17. [City Planning](CityPlanning.md)
-18. [Google Integration](GoogleIntegration.md)
+18. [Google](Google.md)
 19. [Admin](Admin.md)
 
 ## Common questions
@@ -69,7 +69,6 @@ a quick, jargon-free hand.
 
 - [Your `@nobodies.team` email](EmailAccount.md)
 - [Two-step verification (2FA)](TwoStepVerification.md)
-- [Transferring your ticket](TicketTransfers.md)
 - [The in-app AI helper](AiHelper.md)
 - [Signing in & getting unstuck](SigningIn.md)
 - [Your data & privacy](YourData.md)

@@ -15,4 +15,4 @@ Canonical case — "audit for this user, following merged accounts" needs the me
 
 Terminology note (same ruling): the horizontal/vertical tier language retires. The binding form of this rule is **wide-fan-in sections (Auth, Audit, Users) never gain outbound links to other sections** — loops there break the whole system; keep inter-project edges minimal, especially outbound from widely-used assemblies. `peters-hard-rules.md` still carries the old wording; that edit is Peter's to make.
 
-Same direction as the foundational outbound-zero rule ([[user-profile-foundational]]) and the consumer-resolves rule (design-rules §6b): orchestrators and consumers reach *down*; tools and foundations never reach *up*. Marker/ownership side of this is [[orchestrator-marker]].
+Same direction as the foundational outbound-zero rule ([[user-profile-foundational]]) and the consumer-resolves rule (design-rules.md, *No cross-domain joins*): orchestrators and consumers reach *down*; tools and foundations never reach *up*. Marker/ownership side of this is [[orchestrator-marker]].

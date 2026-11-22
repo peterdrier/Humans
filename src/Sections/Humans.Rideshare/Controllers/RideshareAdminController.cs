@@ -23,7 +23,7 @@ internal sealed class RideshareAdminController(
     [HttpGet("")]
     public async Task<IActionResult> Index(CancellationToken ct)
     {
-        var snapshot = await rideshare.GetSnapshotAsync(await rideshare.GetActiveEventIdAsync(ct), ct);
+        var snapshot = await rideshare.GetSnapshotAsync(rideshare.GetActiveEventId(), ct);
         return View(RideshareSettingsViewModel.From(snapshot));
     }
 
@@ -60,7 +60,7 @@ internal sealed class RideshareAdminController(
     [HttpGet("Day")]
     public async Task<IActionResult> Day(string? date, CancellationToken ct)
     {
-        var snapshot = await rideshare.GetSnapshotAsync(await rideshare.GetActiveEventIdAsync(ct), ct);
+        var snapshot = await rideshare.GetSnapshotAsync(rideshare.GetActiveEventId(), ct);
         var day = RideshareDates.Parse(date) ?? RideshareDates.Today(clock);
         return View(DayViewModel.Build(snapshot, day));
     }

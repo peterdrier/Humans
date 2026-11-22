@@ -22,7 +22,8 @@ access.
 ### GuideRoleResolver (Scoped)
 
 No repository, no DB access, no cache. Resolves the viewer's guide role context
-from cross-section reads: `ITeamService` (team coordinator membership) and
-`ICampLeadDirectory` (Camps — camp-lead status).
+from claims (every role name in Auth's `RoleCatalog`) and cross-section reads:
+`IUserService` (the viewer's account), `ITeamService` (team coordinator
+membership) and `ICampLeadDirectory` (Camps — camp-lead status).
 
 ---

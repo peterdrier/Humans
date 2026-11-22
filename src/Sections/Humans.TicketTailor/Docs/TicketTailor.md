@@ -3,7 +3,7 @@
   src/Sections/Humans.Tickets/Contracts/ITicketVendorService.cs
   src/Sections/Humans.Tickets/Contracts/TicketVendorSettings.cs
   src/Sections/Humans.Tickets/Services/Stores/CachingTicketVendorService.cs
-  src/Humans.Web/Extensions/Infrastructure/TicketVendorInfrastructureExtensions.cs
+  src/Sections/Humans.Tickets/Section.cs
   tests/Humans.Web.Tests/Architecture/TicketVendorPortArchitectureTests.cs
   tests/Humans.TicketTailor.Tests/**
   src/Sections/Humans.Tickets.Contracts/TicketVendorServiceKeys.cs
@@ -11,7 +11,6 @@
   src/Sections/Humans.Tickets/Section.cs
   src/Sections/Humans.Tickets/Services/TicketVendorGateway.cs
   src/Sections/Humans.Tickets/Services/TicketSyncService.cs
-  src/Sections/Humans.Tickets/Services/TicketTransferService.cs
   src/Sections/Humans.Tickets/Models/TicketDashboardPageBuilder.cs
   src/Sections/Humans.Tickets/Health/TicketVendorHealthCheck.cs
   src/Humans.Base/Extensions/LoggerTimingExtensions.cs
@@ -39,7 +38,7 @@ None — the section owns no tables. Tickets owns every local row mirrored from 
 
 | Actor | Capabilities |
 |-------|--------------|
-| Tickets (`TicketVendorGateway`, `TicketSyncService`, `TicketTransferService`, `TicketDashboardPageBuilder`, `TicketVendorHealthCheck`) | The only injectors of the port (`tests/Humans.Web.Tests/Architecture/TicketVendorPortArchitectureTests.cs`) |
+| Tickets (`TicketVendorGateway`, `TicketSyncService`, `TicketDashboardPageBuilder`, `TicketVendorHealthCheck`) | The only injectors of the port (`tests/Humans.Web.Tests/Architecture/TicketVendorPortArchitectureTests.cs`) |
 | Any human | None — the section has no controllers, views or routes |
 
 ## Invariants
@@ -48,15 +47,16 @@ None — the section owns no tables. Tickets owns every local row mirrored from 
 - Outside Production `TicketVendorSettings.EventId` and `ApiKey` are filled with placeholders when empty, so `IsConfigured` is true and Tickets' sync runs against the fixture.
 - The Basic auth header is set only when `ApiKey` is non-empty.
 - Each vendor response is disposed after its body is read or its failure is classified, so repeated paginated syncs release response streams promptly.
-- Orders, issued tickets and check-ins share one page walk, which pages until `links.next` is null. Missing data, null items, missing/blank item identities, empty nonterminal pages and missing/blank/repeated continuation cursors throw `HttpRequestException`; a broken walk never returns a partial list. Each page is timed alone, never the whole walk: `HttpClient.Timeout` and `LoggerTimingExtensions`' Error threshold are both per request (nobodies-collective/Humans#946). Orders and issued tickets filter on `updated_at.gte`; check-ins filter on `created_at.gte` (upload time, not scan time), so a late-uploaded offline scan is never skipped.
+- Orders, issued tickets and check-ins share one page walk, which pages until an explicitly present `links.next` is null. Every page, including an empty terminal page, requires a non-null `links` object and a `next` field; missing continuation metadata or unreadable JSON fails the read with `HttpRequestException`. Missing data, null items, missing/blank item identities, empty nonterminal pages and missing/blank/repeated continuation cursors throw `HttpRequestException`; a broken walk never returns a partial list. Each page is timed alone, never the whole walk: `HttpClient.Timeout` and `LoggerTimingExtensions`' Error threshold are both per request (nobodies-collective/Humans#946). Orders and issued tickets filter on `updated_at.gte`; check-ins filter on `created_at.gte` (upload time, not scan time), so a late-uploaded offline scan is never skipped.
 - `HttpClient.Timeout` is 90s (`Section.cs`) — production calls routinely land at 21.6-27.1s (nobodies-collective/Humans#946).
-- A check-in is reported only when a ticket's net quantity across records is positive; its time is the earliest positive record's `check_in_at`, falling back to `created_at`.
+- A check-in is reported only when a ticket's net quantity across records is positive; its time is the earliest positive record's `check_in_at`, falling back to `created_at`. Unrepresentable selected timestamps fail the read with `HttpRequestException`, preserving that fallback and netting behavior.
 - Issued-ticket reads require a nonblank vendor status and preserve it verbatim; a missing/null/blank status fails the complete read with `HttpRequestException`, never inventing a valid ticket. Nullable list prices remain supported.
 - Attendee email is the answer to the custom question whose text is exactly `Email`, else the ticket's top-level email.
-- Money crosses the boundary in euros: vendor cents divided by 100 on the way in, monetary discount values multiplied by 100 on the way out. Order reads require an explicit EUR currency code (case-insensitive), a total and a nonblank payment status. Missing financial fields or unsupported currency fail the complete read with `HttpRequestException`; no zero total, completed status or currency is invented. Explicit zero totals and nonblank status values are preserved.
+- Money crosses the boundary in euros: vendor cents divided by 100 on the way in, monetary discount values multiplied by 100 on the way out. Order reads require an explicit EUR currency code (case-insensitive), a total, a nonblank payment status and a representable `created_at` timestamp. Missing/null creation time cannot become the Unix epoch; an explicitly supplied zero remains the epoch. Out-of-range order timestamps fail with `HttpRequestException`. Missing financial fields or unsupported currency fail the complete read with `HttpRequestException`; no zero total, completed status or currency is invented. Explicit zero totals and nonblank status values are preserved.
 - Event capacity is `ticket_groups.max_quantity` summed, falling back to `ticket_types.quantity_total`. A missing/unreadable event response, missing/blank name, or missing/null `total_issued_tickets` throws `HttpRequestException` rather than producing a successful unnamed or zero-sold summary. An explicitly reported zero remains valid. `TicketTailorService` itself is cache-free; Tickets' `CachingTicketVendorService` holds the summary for 15 minutes, and a failed read is never cached.
-- Void and issue throw `TicketVendorWriteException` with a `TicketVendorFailureKind`: 400/422 Validation, 401/403 AuthFailed, 404 NotFound, 429 RateLimited, anything else and transport failure Transient. Every other method — reads, discount codes, check-in — throws `HttpRequestException`.
+- Void and issue throw `TicketVendorWriteException` with a `TicketVendorFailureKind`: 400/422 Validation, 401/403 AuthFailed, 404 NotFound, 429 RateLimited, anything else and transport failure Transient. Every other method — reads, discount codes, check-in — throws `HttpRequestException`. Unreadable JSON in a successful void or issue response is a typed Transient failure; unreadable discount responses throw `HttpRequestException`. These decoding failures retain their cause and never retry the write.
 - Issue requires either `HoldId` or both `EventId` and `TicketTypeId`; anything else is an `ArgumentException` before any call. A successful response must contain a nonblank ticket ID and status `valid`; a missing ID or missing/invalid status follows the existing empty-body vendor-failure path so Tickets records the committed void as partial state instead of attempting to persist an unusable replacement. The connector never retries the issue write.
+- Discount generation posts form-encoded requests to `/discounts`, with the generated `NOBO-` code also used as the required name. Percentage discounts use `type=percentage` and `price_percent`; fixed discounts use `type=fixed_amount` and `price` in cents. Numeric fields use invariant formatting, and a supplied expiry is sent as Unix seconds; an absent expiry is omitted. Missing or blank response codes throw `HttpRequestException` without retrying the creation. Wire fields follow [TicketTailor’s discount API](https://developers.tickettailor.com/docs/api/create-discount-code/).
 - Check-in posts form-encoded `issued_ticket_id`, `quantity=1` and `check_in_at`; the vendor call is not idempotent, so callers never retry it. The key needs Event-manager scope.
 - The stub dataset is deterministic: the first order is `peter@nobodies.team`; every paid order holds one or two valid tickets and every non-paid order one void ticket; check-ins fall on 2026-07-08; incremental syncs (`since` set) return no tickets and no check-ins. Exact totals are the tests' to own (`tests/Humans.TicketTailor.Tests/Services/StubTicketVendorServiceTests.cs`).
 
@@ -73,7 +73,7 @@ None — the section is a pure request/response surface. Side effects around syn
 
 ## Cross-Section Dependencies
 
-- **Tickets**: implements `Humans.Tickets.Contracts.ITicketVendorService`; reads `TicketVendorSettings` through `IOptions<>`, which Shell binds (`src/Humans.Web/Extensions/Infrastructure/TicketVendorInfrastructureExtensions.cs`) so that deleting this project cannot take the port's configuration with it. The `.csproj` references `Humans.Tickets` (the owner, not a leaf) directly — sanctioned and acyclic, nobodies-collective/Humans#866 — and `Humans.Tickets.Contracts`.
+- **Tickets**: implements `Humans.Tickets.Contracts.ITicketVendorService`; reads `TicketVendorSettings` through `IOptions<>`, which Tickets' `Section.Register` binds so that deleting this project cannot take the port's configuration with it. The `.csproj` references `Humans.Tickets` (the owner, not a leaf) directly — sanctioned and acyclic, nobodies-collective/Humans#866 — and `Humans.Tickets.Contracts`.
 - **Base**: `TimeOperation`.
 
 ## Architecture

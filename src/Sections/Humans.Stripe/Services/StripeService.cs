@@ -44,9 +44,18 @@ internal sealed class StripeSettings
 }
 
 internal sealed class StripeService(
-    IOptions<StripeSettings> settings, ILogger<StripeService> logger, IHttpClient? httpClient = null) : IStripeService
+    IOptions<StripeSettings> settings,
+    ILogger<StripeService> logger,
+    IHttpClient? httpClient = null,
+    IOptions<StripeMirrorOptions>? mirrorOptions = null) : IStripeService
 {
+    /// <summary>The <c>Stripe:MirrorAccounts</c> entry naming the Store account; refunds are read through its key.</summary>
+    internal const string StoreAccountName = "Store";
+
     private readonly StripeSettings _settings = settings.Value;
+
+    private StripeMirrorAccount? StoreAccount => mirrorOptions?.Value.Accounts
+        .FirstOrDefault(a => string.Equals(a.Name, StoreAccountName, StringComparison.Ordinal));
 
     public bool IsConfigured => _settings.IsConfigured;
 
@@ -359,6 +368,88 @@ internal sealed class StripeService(
         }
 
         return results;
+    }
+
+    public async Task<IReadOnlyList<StoreRefundData>?> ListStoreRefundsAsync(
+        string paymentIntentId, CancellationToken ct = default)
+    {
+        using var _ = logger.TimeOperation();
+        if (StoreAccount is not { IsConfigured: true } account)
+        {
+            logger.LogWarning("Store refunds for {PaymentIntentId} requested without a configured Store mirror account; Stripe not queried.",
+                paymentIntentId);
+            return null;
+        }
+
+        var client = new StripeClient(account.ApiKey, httpClient: httpClient);
+        var request = account.UsesOrgKey ? new RequestOptions { StripeContext = account.Id } : new RequestOptions();
+        var results = new List<StoreRefundData>();
+        try
+        {
+            await foreach (var r in new RefundService(client).ListAutoPagingAsync(
+                               new RefundListOptions { PaymentIntent = paymentIntentId, Limit = 100 }, request, ct))
+            {
+                if (!string.Equals(r.Currency, "eur", StringComparison.OrdinalIgnoreCase))
+                    throw new InvalidOperationException($"Stripe refund {r.Id} does not declare EUR currency.");
+                results.Add(new StoreRefundData(
+                    r.Id,
+                    paymentIntentId,
+                    FromStripeMinorUnits(r.Amount),
+                    r.Status ?? "",
+                    Instant.FromDateTimeUtc(DateTime.SpecifyKind(r.Created, DateTimeKind.Utc))));
+            }
+        }
+        catch (StripeException ex) when (StripeStartupSmokeService.IsPermissionError(ex))
+        {
+            logger.LogWarning(
+                "Stripe permission_error listing refunds for {PaymentIntentId}: the Store account's read key is missing refund read scope. {Message}",
+                paymentIntentId, ex.Message);
+            return null;
+        }
+
+        return results;
+    }
+
+    public async Task<StoreChargeData?> GetStoreChargeAsync(string paymentIntentId, CancellationToken ct = default)
+    {
+        using var _ = logger.TimeOperation();
+        if (StoreAccount is not { IsConfigured: true } account)
+        {
+            logger.LogWarning("Store charge for {PaymentIntentId} requested without a configured Store mirror account; Stripe not queried.",
+                paymentIntentId);
+            return null;
+        }
+
+        var client = new StripeClient(account.ApiKey, httpClient: httpClient);
+        var request = account.UsesOrgKey ? new RequestOptions { StripeContext = account.Id } : new RequestOptions();
+        try
+        {
+            var pi = await new PaymentIntentService(client).GetAsync(
+                paymentIntentId, new PaymentIntentGetOptions { Expand = ["latest_charge"] }, request, ct);
+            if (pi.LatestCharge is not { } charge) return null;
+            if (!string.Equals(charge.Currency, "eur", StringComparison.OrdinalIgnoreCase))
+                throw new InvalidOperationException($"Stripe charge {charge.Id} does not declare EUR currency.");
+            return new StoreChargeData(
+                charge.Id,
+                paymentIntentId,
+                FromStripeMinorUnits(charge.Amount),
+                Instant.FromDateTimeUtc(DateTime.SpecifyKind(charge.Created, DateTimeKind.Utc)));
+        }
+        catch (StripeException ex) when (StripeStartupSmokeService.IsPermissionError(ex))
+        {
+            logger.LogWarning(
+                "Stripe permission_error reading the charge of {PaymentIntentId}: the Store account's read key is missing payment read scope. {Message}",
+                paymentIntentId, ex.Message);
+            return null;
+        }
+    }
+
+    public string StorePaymentDashboardUrl(string paymentIntentId)
+    {
+        var id = Uri.EscapeDataString(paymentIntentId);
+        return StoreAccount is { Id: { Length: > 0 } accountId }
+            ? $"https://dashboard.stripe.com/{Uri.EscapeDataString(accountId)}/payments/{id}"
+            : $"https://dashboard.stripe.com/payments/{id}";
     }
 
     /// <summary>Shared by the webhook and reconciliation paths so both read a session identically.</summary>

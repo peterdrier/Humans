@@ -4,6 +4,7 @@ using Humans.Base.ViewComponents;
 using Humans.Base.Extensions;
 using Humans.Store.Models;
 using Humans.Store.Contracts;
+using Humans.Store.Domain;
 using Humans.Store.Services.Dtos;
 using Humans.AuditLog.Contracts;
 using Humans.AuditLog.ViewComponents;
@@ -37,17 +38,30 @@ public class StorePricesViewTests
             new LocalDate(2026, 7, 1), true);
         var index = await RenderAsync("Index", new IndexViewModel { Year = 2026, Catalog = [product] });
 
-        var now = Instant.FromUtc(2026, 7, 1, 0, 0);
-        var orderId = Guid.NewGuid();
-        var line = new OrderLineDto(Guid.NewGuid(), orderId, product.Id, product.Name, 1,
-            100, 10.5m, null, now, 100, 10.5m, 0, 110.5m);
-        var order = new OrderDto(orderId, Guid.NewGuid(), null, OrderCounterpartyType.Camp, "Camp", 2026,
-            OrderState.Open, null, null, null, null, null, null, [line], [], 100, 10.5m, 0, 0, 110.5m, now);
-        var detail = await RenderAsync("Order", new OrderViewModel { Order = order });
         using var assertions = new AwesomeAssertions.Execution.AssertionScope();
         index.Should().Contain(HtmlEncoder.Default.Encode($" + {vat}% "));
-        detail.Should().Contain(HtmlEncoder.Default.Encode($" + {vat}% "));
         CultureInfo.CurrentCulture.Name.Should().Be("en");
+    }
+
+    [HumansFact]
+    public async Task OrderPayments_ShowMoneyBackAsReturnedOrRefunded_AndAddUpToTheOrder()
+    {
+        using var culture = new CultureScope(CultureCatalog.DefaultCultureCode);
+        var now = Instant.FromUtc(2026, 7, 1, 0, 0);
+        OrderPaymentDto PaymentDto(decimal amount, PaymentMethod method) =>
+            new(Guid.NewGuid(), amount, method, PaymentStatus.Paid, null, "ref", now, null);
+        var order = new OrderDto(Guid.NewGuid(), Guid.NewGuid(), null, OrderCounterpartyType.Camp, "Camp", 2026,
+            OrderState.Open, null, null, null, null, null, null, [],
+            [PaymentDto(130m, PaymentMethod.BankTransfer), PaymentDto(20m, PaymentMethod.DepositReturn), PaymentDto(-30m, PaymentMethod.Refund)],
+            100m, 21m, 20m, 120m, 21m, now)
+        { TotalDueEur = 141m };
+
+        var html = await RenderAsync("Order", new OrderViewModel { Order = order });
+
+        using var assertions = new AwesomeAssertions.Execution.AssertionScope();
+        html.Should().Contain(">Returned</span>").And.Contain(">Refunded</span>");
+        html.Should().Contain(HtmlEncoder.Default.Encode("Order total (lines, VAT and deposits)"));
+        html.Should().Contain(HtmlEncoder.Default.Encode(141m.ToEuro())).And.Contain(HtmlEncoder.Default.Encode(21m.ToEuro()));
     }
 
     [HumansTheory]
@@ -70,7 +84,7 @@ public class StorePricesViewTests
     }
 
     [HumansFact]
-    public async Task PriceHistory_UsesHostColumnLabels()
+    public async Task OrderHistory_UsesHostColumnLabels()
     {
         using var culture = new CultureScope(CultureCatalog.DefaultCultureCode);
         var now = Instant.FromUtc(2026, 7, 1, 0, 0);
@@ -87,8 +101,14 @@ public class StorePricesViewTests
 
         var table = html[html.LastIndexOf("<thead>", StringComparison.Ordinal)..];
         var headers = table[..table.IndexOf("</thead>", StringComparison.Ordinal)];
-        foreach (var label in new[] { "Date", "Action", "Description" })
+        foreach (var label in new[] { "Date", "Who", "Action", "Description" })
             headers.Should().Contain(HtmlEncoder.Default.Encode(label));
+        html.Should().Contain("Order history").And.Contain("Price history fixture");
+        // A lead's view never asks for the admin-only entries.
+        await _lastAudit!.Received().GetFilteredAsync(Arg.Any<string?>(), Arg.Any<Guid?>(), Arg.Any<Guid?>(),
+            Arg.Is<IReadOnlyList<string>?>(a => a != null && a.Contains(StoreAuditActions.StoreLineRemoved.Name)
+                && !a.Contains(StoreAuditActions.StorePaymentDeleted.Name)),
+            Arg.Any<int>(), true, Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -102,13 +122,20 @@ public class StorePricesViewTests
         {
             Summary = new SummaryDto(2026,
                 [new OrderSummaryDto(Guid.NewGuid(), OrderCounterpartyType.Camp, Guid.NewGuid(), "Camp",
-                    OrderState.Open, 2469m, 1234.5m, 1234.5m)], [], new CrossTabDto([], [])),
+                    OrderState.Open, 2469m, 1234.5m, 1234.5m),
+                 new OrderSummaryDto(Guid.NewGuid(), OrderCounterpartyType.Team, Guid.NewGuid(), "Team",
+                    OrderState.Open, 9000m, 0m, 0m)], [], new CrossTabDto([], [])),
         };
 
         var html = await RenderAsync("Summary", model, viewPath: "/Views/StoreAdmin/Summary.cshtml");
 
         var footer = html[html.IndexOf("<tfoot", StringComparison.Ordinal)..];
         footer = footer[..footer.IndexOf("</tfoot>", StringComparison.Ordinal)];
+        model.Summary.CampOrders.Should().ContainSingle();
+        model.Summary.CampTotalDueEur.Should().Be(2469m);
+        model.Summary.CampPaymentsTotalEur.Should().Be(1234.5m);
+        model.Summary.CampBalanceEur.Should().Be(1234.5m);
+        footer.Should().Contain("1 camps");
         footer.Should().Contain(HtmlEncoder.Default.Encode(due));
         footer.Split(HtmlEncoder.Default.Encode(paidAndBalance)).Should().HaveCount(3);
         CultureInfo.CurrentCulture.Name.Should().Be("en");
@@ -127,12 +154,45 @@ public class StorePricesViewTests
         var row = new StripeReconciliationRow("cs", "pi", 100m, "paid", now, Guid.NewGuid(), "Camp", (StripeReconciliationStatus)status);
         var report = new StripeReconciliationReport(true, true, true, [row],
             orphan ? [new StripeOrphanPayment("pi_orphan", Guid.NewGuid(), "Camp", 100m, now)] : []);
+        report.IsReconciled.Should().Be(expectedSuccess);
+        report.RecordedFailedCount.Should().Be(status == (int)StripeReconciliationStatus.RecordedFailed ? 1 : 0);
         var model = new PaymentsReconciliationViewModel { Report = report, Rows = [] };
 
         var html = await RenderAsync("Payments", model, viewPath: "/Views/StoreAdmin/Payments.cshtml");
 
         html.Contains("Stripe and the ledger are reconciled.", StringComparison.Ordinal).Should().Be(expectedSuccess);
     }
+
+    [HumansTheory]
+    [Xunit.InlineData(null)]
+    [Xunit.InlineData(75900001)]
+    [Xunit.InlineData(75999999)]
+    public async Task AccountPicker_OrdersChoicesByNumber_AndPreservesSelection(int? selected)
+    {
+        var model = new AccountPickerModel("Income", "Income", "Income account", selected,
+        [
+            new AccountChoice(75900008, "Gas cylinders"),
+            new AccountChoice(70500000, "Services"),
+            new AccountChoice(75900001, "Ice"),
+        ]);
+
+        var html = await RenderAsync("_AccountPicker", model,
+            viewPath: "/Views/StoreAdmin/_AccountPicker.cshtml");
+        var options = System.Text.RegularExpressions.Regex.Matches(html, "<option value=\"(?<value>[^\"]*)\"(?<attributes>[^>]*)>",
+            System.Text.RegularExpressions.RegexOptions.ExplicitCapture, TimeSpan.FromSeconds(1));
+        var values = options.Select(option => option.Groups["value"].Value).ToList();
+        var expected = new List<string> { "" };
+        if (selected == 75999999) expected.Add("75999999");
+        expected.AddRange(["70500000", "75900001", "75900008"]);
+
+        values.Should().Equal(expected);
+        options.Where(option => option.Groups["attributes"].Value.Contains("selected", StringComparison.Ordinal))
+            .Select(option => option.Groups["value"].Value)
+            .Should().Equal(selected is null ? [] : [selected.Value.ToString(CultureInfo.InvariantCulture)]);
+        html.Contains("no longer in the chart", StringComparison.Ordinal).Should().Be(selected == 75999999);
+    }
+
+    private static IAuditViewerService? _lastAudit;
 
     private static async Task<string> RenderAsync(string page, object model, IReadOnlyList<AuditEvent>? history = null, string? viewPath = null)
     {
@@ -142,9 +202,9 @@ public class StorePricesViewTests
             EnvironmentName = "Testing",
         });
         builder.Services.AddLocalization();
-        var audit = Substitute.For<IAuditViewerService>();
+        var audit = _lastAudit = Substitute.For<IAuditViewerService>();
         audit.GetFilteredAsync(Arg.Any<string?>(), Arg.Any<Guid?>(), Arg.Any<Guid?>(),
-            Arg.Any<IReadOnlyList<string>?>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
+            Arg.Any<IReadOnlyList<string>?>(), Arg.Any<int>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
             .Returns(history ?? []);
         builder.Services.AddSingleton(audit);
         var authorization = Substitute.For<IAuthorizationService>();

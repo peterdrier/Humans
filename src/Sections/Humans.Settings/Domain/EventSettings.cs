@@ -7,7 +7,6 @@ internal sealed class EventSettings : IEventSettingsInfo
 {
     public Guid Id { get; init; }
 
-    /// <summary>E.g. "Elsewhere 2026".</summary>
     public string EventName { get; set; } = string.Empty;
 
     /// <summary>Always <see cref="GateOpeningDate"/>'s year, derived on save; the form has no Year field.</summary>
@@ -32,8 +31,8 @@ internal sealed class EventSettings : IEventSettingsInfo
     public int? EarlyEntryStartOffset { get; set; }
 
     /// <summary>
-    /// Admin-set "cycle is wrapped" switch: the member dashboard drops its in-season cards. Set by hand until the
-    /// settings revamp derives it. Nullable because a new column on an existing table must be; null reads as false.
+    /// Admin-set "cycle is wrapped" switch: the member dashboard drops its in-season cards. Nullable because a new
+    /// column on an existing table must be; null reads as false.
     /// </summary>
     public bool? IsOffSeason { get; set; }
 
@@ -47,7 +46,7 @@ internal sealed class EventSettings : IEventSettingsInfo
 
     /// <summary>
     /// No production path removes the row (other sections point at <see cref="Id"/>): a cycle ends by going Inactive,
-    /// and nothing sets Deleted today. Only <c>IEventSettingsSeeding.DeleteEventAsync</c> removes rows, for fixtures.
+    /// and nothing sets Deleted today.
     /// </summary>
     public EventSettingsStatus Status { get; set; } = EventSettingsStatus.Active;
 

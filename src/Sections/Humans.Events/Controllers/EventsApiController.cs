@@ -8,7 +8,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Cors;
 using Microsoft.AspNetCore.Mvc;
 using NodaTime;
-using NodaTime.Text;
+using Humans.Base.Extensions;
 using Humans.Events.Contracts;
 using Humans.Events.Services.Dtos;
 using Humans.Users.Contracts;
@@ -39,7 +39,7 @@ internal sealed class EventsApiController(
         var ct = HttpContext.RequestAborted;
         var guideSettings = await guide.GetGuideSettingsAsync(ct);
         var eventSettings = await LoadBurnSettingsAsync(guide, guideSettings, ct);
-        var tz = GetTimeZone(eventSettings);
+        var tz = eventSettings?.TimeZone;
         var gateOpeningDate = eventSettings?.GateOpeningDate;
 
         var excludedSlugs = await GetExcludedSlugsAsync(ct);
@@ -75,7 +75,7 @@ internal sealed class EventsApiController(
         var ct = HttpContext.RequestAborted;
         var guideSettings = await guide.GetGuideSettingsAsync(ct);
         var eventSettings = await LoadBurnSettingsAsync(guide, guideSettings, ct);
-        var tz = GetTimeZone(eventSettings);
+        var tz = eventSettings?.TimeZone;
 
         var e = await guide.GetApprovedEventByIdAsync(id, ct);
         if (e == null) return NotFound();
@@ -124,7 +124,7 @@ internal sealed class EventsApiController(
         var ct = HttpContext.RequestAborted;
         var guideSettings = await guide.GetGuideSettingsAsync(ct);
         var eventSettings = await LoadBurnSettingsAsync(guide, guideSettings, ct);
-        var tz = GetTimeZone(eventSettings);
+        var tz = eventSettings?.TimeZone;
         var gateOpeningDate = eventSettings?.GateOpeningDate;
 
         var events = await guide.GetApprovedEventsAsync(id, null, null, null, [], ct);
@@ -210,7 +210,7 @@ internal sealed class EventsApiController(
 
         var guideSettings = await guide.GetGuideSettingsAsync(ct);
         var eventSettings = await LoadBurnSettingsAsync(guide, guideSettings, ct);
-        var tz = GetTimeZone(eventSettings);
+        var tz = eventSettings?.TimeZone;
         var gateOpeningDate = eventSettings?.GateOpeningDate;
 
         var favourites = await guide.GetFavouritesWithEventsAsync(user.Id, ct);
@@ -243,21 +243,21 @@ internal sealed class EventsApiController(
         var user = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
         if (user is null) return Unauthorized();
 
-        try
+        var outcome = await guide.AddFavouriteAsync(user.Id, eventId, day);
+        switch (outcome)
         {
-            var added = await guide.AddFavouriteAsync(user.Id, eventId, day);
-            if (!added) return Conflict(new { error = "Already favourited" });
-            return Ok(new { favourited = true });
-        }
-        catch (KeyNotFoundException ex)
-        {
-            logger.LogWarning("Rejected favourite for user {UserId} event {EventId}: {Reason}", user.Id, eventId, ex.Message);
-            return NotFound();
-        }
-        catch (ArgumentOutOfRangeException ex)
-        {
-            logger.LogWarning("Rejected favourite for user {UserId} event {EventId} day {Day}: {Reason}", user.Id, eventId, day, ex.Message);
-            return BadRequest();
+            case AddFavouriteOutcome.Added:
+                return Ok(new { favourited = true });
+            case AddFavouriteOutcome.AlreadyExists:
+                return Conflict(new { error = "Already favourited" });
+            case AddFavouriteOutcome.EventUnavailable:
+                logger.LogWarning("Rejected favourite for user {UserId}: event {EventId} is unavailable", user.Id, eventId);
+                return NotFound();
+            case AddFavouriteOutcome.InvalidDay:
+                logger.LogWarning("Rejected favourite for user {UserId} event {EventId}: day {Day} is not an occurrence", user.Id, eventId, day);
+                return BadRequest();
+            default:
+                throw new InvalidOperationException($"Unexpected favourite outcome {outcome}.");
         }
     }
 
@@ -321,7 +321,7 @@ internal sealed class EventsApiController(
                 categoryName,
                 categorySlug,
                 categoryIsSensitive),
-            InstantPattern.General.Format(startAt),
+            startAt.ToIso8601(),
             durationMinutes,
             dayOffset,
             isRecurring,

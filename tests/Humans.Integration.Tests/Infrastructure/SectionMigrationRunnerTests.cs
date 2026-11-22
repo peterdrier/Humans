@@ -33,7 +33,7 @@ using Npgsql;
 using Xunit;
 using Humans.Events.Data;
 using Humans.Surveys.Data;
-using Humans.GoogleIntegration.Data;
+using Humans.Google.Data;
 using Humans.Users.Data;
 
 namespace Humans.Integration.Tests.Infrastructure;
@@ -62,7 +62,7 @@ public sealed class SectionMigrationRunnerTests(HumansTestDatabase database)
             "Settings",
             "system_settings",
             CreateSectionContext<SettingsDbContext>,
-            """SELECT count(*) FROM system_settings WHERE "Key" = 'IsEmailSendingPaused'"""),
+            """SELECT count(*) FROM settings_system_values WHERE "Key" = 'IsEmailSendingPaused'"""),
         new(
             "Containers",
             "containers",
@@ -146,12 +146,12 @@ public sealed class SectionMigrationRunnerTests(HumansTestDatabase database)
             "google_resources",
             CreateSectionContext<GoogleIntegrationDbContext>,
             // Three seed rows: probe one reserved Id so the count is 1 on both paths.
-            """SELECT count(*) FROM sync_service_settings WHERE "Id" = '00000000-0000-0000-0002-000000000002'"""),
+            """SELECT count(*) FROM google_sync_service_settings WHERE "Id" = '00000000-0000-0000-0002-000000000002'"""),
         new(
             "Tickets",
             "ticket_orders",
             CreateSectionContext<TicketsDbContext>,
-            "SELECT count(*) FROM ticket_sync_state"),
+            "SELECT count(*) FROM ticket_sync_states"),
         new(
             "CityPlanning",
             "city_planning_settings",

@@ -11,8 +11,9 @@ the service layer (`actor == trip.UserId` / `actor == request.UserId`) — `AppA
 not let one human edit another's posting. Interest `Accept`/`Decline` require the actor be the
 posting owner (`request.UserId` when the interest answered a pin, else `trip.UserId`); `Withdraw`
 requires the actor be the interest's author or that same posting owner. There is no resource-based
-`AuthorizationHandler` — ownership checks live in `IRideshareService` and surface as
-`UnauthorizedAccessException` → 403; the offer and request edit forms also answer 403 to a
+`AuthorizationHandler` — ownership checks live in `IRideshareService` and return an explicit
+`RideshareAccessFailure.Forbidden` → 403; missing mutation targets return `NotFound` → 404.
+Dependency exceptions propagate. The offer and request edit forms also answer 403 to a
 non-owner before rendering.
 
 ## Negative cases

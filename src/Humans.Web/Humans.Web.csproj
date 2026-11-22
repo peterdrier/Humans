@@ -19,13 +19,12 @@
     <ProjectReference Include="..\Sections\Humans.Consent\Humans.Consent.csproj" />
     <ProjectReference Include="..\Sections\Humans.Email.Contracts\Humans.Email.Contracts.csproj" />
     <ProjectReference Include="..\Sections\Humans.Gdpr\Humans.Gdpr.csproj" />
-    <ProjectReference Include="..\Sections\Humans.GoogleIntegration\Humans.GoogleIntegration.csproj" />
+    <ProjectReference Include="..\Sections\Humans.Google\Humans.Google.csproj" />
     <ProjectReference Include="..\Sections\Humans.Governance.Contracts\Humans.Governance.Contracts.csproj" />
     <ProjectReference Include="..\Sections\Humans.Holded\Humans.Holded.csproj" />
     <ProjectReference Include="..\Sections\Humans.Pleo\Humans.Pleo.csproj" />
     <ProjectReference Include="..\Sections\Humans.Notifications.Contracts\Humans.Notifications.Contracts.csproj" />
     <ProjectReference Include="..\Sections\Humans.Onboarding.Contracts\Humans.Onboarding.Contracts.csproj" />
-    <ProjectReference Include="..\Sections\Humans.Shifts.Contracts\Humans.Shifts.Contracts.csproj" />
     <ProjectReference Include="..\Sections\Humans.Teams.Contracts\Humans.Teams.Contracts.csproj" />
     <ProjectReference Include="..\Sections\Humans.Tickets.Contracts\Humans.Tickets.Contracts.csproj" />
     <ProjectReference Include="..\Sections\Humans.Users.Contracts\Humans.Users.Contracts.csproj" />
@@ -57,9 +56,12 @@
     <ProjectReference Include="..\Sections\Humans.Notifications\Humans.Notifications.csproj" />
     <ProjectReference Include="..\Sections\Humans.Rideshare\Humans.Rideshare.csproj" />
     <ProjectReference Include="..\Sections\Humans.Preapprovals\Humans.Preapprovals.csproj" />
+    <ProjectReference Include="..\Sections\Humans.Pretix\Humans.Pretix.csproj" />
     <ProjectReference Include="..\Sections\Humans.Workgroups\Humans.Workgroups.csproj" />
     <ProjectReference Include="..\Sections\Humans.Scanner\Humans.Scanner.csproj" />
     <ProjectReference Include="..\Sections\Humans.Monitor\Humans.Monitor.csproj" />
+    <ProjectReference Include="..\Sections\Humans.Permissions\Humans.Permissions.csproj" />
+    <ProjectReference Include="..\Sections\Humans.Roles\Humans.Roles.csproj" />
     <ProjectReference Include="..\Sections\Humans.Search\Humans.Search.csproj" />
     <ProjectReference Include="..\Sections\Humans.Shifts\Humans.Shifts.csproj" />
     <ProjectReference Include="..\Sections\Humans.Store\Humans.Store.csproj" />
@@ -68,7 +70,9 @@
     <ProjectReference Include="..\Sections\Humans.Settings\Humans.Settings.csproj" />
     <ProjectReference Include="..\Sections\Humans.Teams\Humans.Teams.csproj" />
     <ProjectReference Include="..\Sections\Humans.Tickets\Humans.Tickets.csproj" />
+    <ProjectReference Include="..\Sections\Humans.HiEvents\Humans.HiEvents.csproj" />
     <ProjectReference Include="..\Sections\Humans.TicketTailor\Humans.TicketTailor.csproj" />
+    <ProjectReference Include="..\Sections\Humans.BoxOffice\Humans.BoxOffice.csproj" />
     <ProjectReference Include="..\Sections\Humans.Tour\Humans.Tour.csproj" />
     <ProjectReference Include="..\Sections\Humans.Users\Humans.Users.csproj" />
   </ItemGroup>

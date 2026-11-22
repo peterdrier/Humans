@@ -84,9 +84,9 @@ public sealed class CampaignServiceTests
             .Returns(call => new ValueTask<UserInfo?>(_people.GetValueOrDefault(call.ArgAt<Guid>(0))));
 
         userService
-            .GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+            .GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(call => call
-                .ArgAt<IReadOnlyCollection<Guid>>(0)
+                .ArgAt<IEnumerable<Guid>>(0)
                 .Where(_people.ContainsKey)
                 .ToDictionary(id => id, id => _people[id]));
 
@@ -104,16 +104,17 @@ public sealed class CampaignServiceTests
     }
 
     [HumansTheory]
-    [Xunit.InlineData("Create")]
-    [Xunit.InlineData("Edit")]
-    [Xunit.InlineData("Import")]
-    [Xunit.InlineData("Generate")]
-    [Xunit.InlineData("Activate")]
-    [Xunit.InlineData("Complete")]
-    [Xunit.InlineData("Wave")]
-    [Xunit.InlineData("Resend")]
-    [Xunit.InlineData("ResendGrant")]
-    public async Task MutationPreflightReads_StopAbandonedRequestsBeforeWrites(string operation)
+    [Xunit.InlineData(CampaignMutationRead.Create)]
+    [Xunit.InlineData(CampaignMutationRead.Edit)]
+    [Xunit.InlineData(CampaignMutationRead.Import)]
+    [Xunit.InlineData(CampaignMutationRead.Generate)]
+    [Xunit.InlineData(CampaignMutationRead.Activate)]
+    [Xunit.InlineData(CampaignMutationRead.Complete)]
+    [Xunit.InlineData(CampaignMutationRead.Wave)]
+    [Xunit.InlineData(CampaignMutationRead.Resend)]
+    [Xunit.InlineData(CampaignMutationRead.ResendGrant)]
+    [Xunit.InlineData(CampaignMutationRead.EditRefusal)]
+    public async Task MutationReads_StopAbandonedRequestsBeforeWrites(CampaignMutationRead operation)
     {
         using var request = new CancellationTokenSource();
         var users = Substitute.For<IUserService>();
@@ -127,13 +128,18 @@ public sealed class CampaignServiceTests
         }
         users.GetUserInfoAsync(_actorId, Arg.Any<CancellationToken>()).Returns(call =>
         {
-            if (!string.Equals(operation, "ResendGrant", StringComparison.Ordinal)) Read(call.Arg<CancellationToken>());
+            if (operation is not (CampaignMutationRead.ResendGrant or CampaignMutationRead.EditRefusal)) Read(call.Arg<CancellationToken>());
             return SeedUser(_actorId);
         });
         repository.GetCampaignIdForGrantAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(call =>
         {
             Read(call.Arg<CancellationToken>());
             return (Guid?)Guid.NewGuid();
+        });
+        repository.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            Read(call.Arg<CancellationToken>());
+            return (Campaign?)null;
         });
         var service = new CampaignServiceImpl(repository, Substitute.For<ITeamService>(), users,
             _notifications, _emailService, _emailMessages, _ticketDiscountCodes, Clock, _audit,
@@ -154,20 +160,21 @@ public sealed class CampaignServiceTests
         {
             _ = operation switch
             {
-                "Create" => await controller.Create("Title", null, "Subject", "Body", null),
-                "Edit" => await controller.Edit(id, "Title", null, "Subject", "Body", null),
-                "Import" => await controller.ImportCodes(id, null),
-                "Generate" => await controller.GenerateCodes(id, 1, "percentage", 10),
-                "Activate" => await controller.Activate(id),
-                "Complete" => await controller.Complete(id),
-                "Wave" => await controller.SendWave(id, Guid.NewGuid()),
+                CampaignMutationRead.Create => await controller.Create("Title", null, "Subject", "Body", null),
+                CampaignMutationRead.Edit => await controller.Edit(id, "Title", null, "Subject", "Body", null),
+                CampaignMutationRead.EditRefusal => await controller.Edit(id, string.Empty, null, "Subject", "Body", null),
+                CampaignMutationRead.Import => await controller.ImportCodes(id, null),
+                CampaignMutationRead.Generate => await controller.GenerateCodes(id, 1, "percentage", 10),
+                CampaignMutationRead.Activate => await controller.Activate(id),
+                CampaignMutationRead.Complete => await controller.Complete(id),
+                CampaignMutationRead.Wave => await controller.SendWave(id, Guid.NewGuid()),
                 _ => await controller.Resend(id),
             };
         };
 
         await run.Should().ThrowAsync<OperationCanceledException>();
         observed.Should().Be(request.Token);
-        if (string.Equals(operation, "ResendGrant", StringComparison.Ordinal))
+        if (operation is CampaignMutationRead.ResendGrant or CampaignMutationRead.EditRefusal)
             repository.ReceivedCalls().Should().ContainSingle();
         else
             repository.ReceivedCalls().Should().BeEmpty();
@@ -382,6 +389,43 @@ public sealed class CampaignServiceTests
                 Arg.Is<TicketDiscountCodeRequest>(request => request.Value == 0m), CancellationToken.None);
             (await CampaignsDb.CampaignCodes.CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(1);
         }
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData("Percentage", "-1", false)]
+    [Xunit.InlineData("Percentage", "100.01", false)]
+    [Xunit.InlineData("Percentage", "25.5", false)]
+    [Xunit.InlineData("Fixed", "-0.01", false)]
+    [Xunit.InlineData("Fixed", "0.001", false)]
+    [Xunit.InlineData("Fixed", "79228162514264337593543950335", false)]
+    [Xunit.InlineData("Percentage", "0", true)]
+    [Xunit.InlineData("Percentage", "100", true)]
+    [Xunit.InlineData("Fixed", "0.01", true)]
+    public async Task GenerateCodes_validates_numeric_discount_before_generation_or_import(
+        string kind, string text, bool valid)
+    {
+        var campaign = await SeedCampaignAsync();
+        var controller = CreateImportController();
+        var value = decimal.Parse(text, CultureInfo.InvariantCulture);
+        _ticketDiscountCodes.GenerateAsync(Arg.Any<TicketDiscountCodeRequest>(), Arg.Any<CancellationToken>())
+            .Returns(["GENERATED"]);
+
+        var result = await controller.GenerateCodes(campaign.Id, 1, kind, value);
+
+        result.Should().BeOfType<RedirectToActionResult>();
+        if (!valid)
+        {
+            controller.TempData[TempDataKeys.ErrorMessage].Should().BeOfType<string>().Which.Should().Contain("Discount value");
+            controller.TempData.ContainsKey(TempDataKeys.SuccessMessage).Should().BeFalse();
+            _ticketDiscountCodes.ReceivedCalls().Should().BeEmpty();
+            (await CampaignsDb.CampaignCodes.CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(0);
+            _audit.ReceivedCalls().Should().BeEmpty();
+            return;
+        }
+        controller.TempData.ContainsKey(TempDataKeys.ErrorMessage).Should().BeFalse();
+        await _ticketDiscountCodes.Received(1).GenerateAsync(
+            Arg.Is<TicketDiscountCodeRequest>(request => request.Value == value), CancellationToken.None);
+        (await CampaignsDb.CampaignCodes.CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(1);
     }
 
     [HumansFact]
@@ -1025,6 +1069,7 @@ public sealed class CampaignServiceTests
 
         // The wave survives the throw: both grants exist and the second send still ran.
         result.SentCount.Should().Be(2);
+        result.EnqueueFailedCount.Should().Be(1);
         sendCalls.Should().Be(2);
         var grants = await CampaignsDb.CampaignGrants
             .Where(g => g.CampaignId == campaign.Id)
@@ -1035,6 +1080,42 @@ public sealed class CampaignServiceTests
         notice[5].Should().Be("Your campaign code is available under My Codes in your profile.");
         notice[6].Should().Be("/Profile/Me");
         notice[7].Should().Be("My Codes");
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(0)]
+    [Xunit.InlineData(1)]
+    [Xunit.InlineData(2)]
+    public async Task SendWavePost_ReportsEnqueueFailuresWithoutLosingGrants(int failures)
+    {
+        var campaign = await SeedActiveCampaignWithCodesAsync(["POST-1", "POST-2"]);
+        var team = SeedTeam("Post outcome");
+        SeedTeamMember(team.Id, SeedUser(displayName: "First").Id);
+        SeedTeamMember(team.Id, SeedUser(displayName: "Second").Id);
+        await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
+        var sendCalls = 0;
+        _emailService.SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>())
+            .Returns(_ => ++sendCalls <= failures
+                ? Task.FromException(new InvalidOperationException("enqueue boom"))
+                : Task.CompletedTask);
+        var controller = CreateImportController();
+
+        var response = (await controller.SendWave(campaign.Id, team.Id)).Should().BeOfType<RedirectToActionResult>().Which;
+
+        response.ActionName.Should().Be(nameof(CampaignController.Detail));
+        sendCalls.Should().Be(2);
+        (await CampaignsDb.CampaignGrants.CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(2);
+        if (failures == 0)
+        {
+            controller.TempData[TempDataKeys.SuccessMessage].Should().NotBeNull();
+            controller.TempData.ContainsKey(TempDataKeys.ErrorMessage).Should().BeFalse();
+        }
+        else
+        {
+            controller.TempData.ContainsKey(TempDataKeys.SuccessMessage).Should().BeFalse();
+            controller.TempData[TempDataKeys.ErrorMessage]!.ToString().Should()
+                .Contain($"email could not be queued for {failures}").And.Contain("Resend");
+        }
     }
 
     [HumansFact]
@@ -1426,3 +1507,5 @@ public sealed class CampaignServiceTests
 
     private void ClearAllTrackers() => CampaignsDb.ChangeTracker.Clear();
 }
+
+public enum CampaignMutationRead { Create, Edit, Import, Generate, Activate, Complete, Wave, Resend, ResendGrant, EditRefusal }

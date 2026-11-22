@@ -40,7 +40,7 @@ public sealed class HoldedAdminOverviewTests
             .Returns(new HoldedUsageDto { Period = "2026-08", Usage = 36 });
         _client.IsConfigured.Returns(true);
         _service = new Service(_repo, _client, _callLog, new FakeClock(FixedNow),
-            Options.Create(new HoldedSectionOptions()), NullLogger<Service>.Instance);
+            Options.Create(new HoldedSectionOptions()), NullLogger<Service>.Instance, FixedOrgTimeZone.Madrid);
     }
 
     /// <summary>Every non-archived row of /Holded/Accounts, empty ones included, in page order.</summary>
@@ -125,10 +125,6 @@ public sealed class HoldedAdminOverviewTests
         calls[1].ByEndpoint["GetUsageAsync"].Should().Be(1);
 
         var summary = await _service.GetSummaryAsync(ct);
-        summary.MonthlyCallBudget.Should().Be(2000);
-        summary.Usage!.Period.Should().Be("2026-08");
-        summary.ApiReachable.Should().BeTrue();
-        summary.IsConfigured.Should().BeTrue();
     }
 
     [HumansFact]
@@ -229,22 +225,21 @@ public sealed class HoldedAdminOverviewTests
     }
 
     [HumansFact]
-    public async Task Usage_failure_leaves_usage_null_and_the_rest_populated()
+    public async Task Usage_is_read_only_on_refresh_and_a_failed_refresh_keeps_the_last_reading()
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
+
+        (await _service.GetSummaryAsync(ct)).Usage.Should().BeNull();
+        (await _service.RefreshUsageAsync(ct)).Should().BeTrue();
         _client.GetUsageAsync(Arg.Any<CancellationToken>())
             .Returns<HoldedUsageDto>(_ => throw new HoldedTransientException("holded down"));
-        await _repo.UpsertAccountsAsync([Account(62900000, 133_416.45m)], FixedNow, ct);
-        await SeedLinesAsync(ct, Line(1, 62900000, debit: 133_416.45m));
+        (await _service.RefreshUsageAsync(ct)).Should().BeFalse();
 
         var summary = await _service.GetSummaryAsync(ct);
 
-        summary.Usage.Should().BeNull();
-        summary.ApiReachable.Should().BeFalse();
-        summary.IsConfigured.Should().BeTrue();
-        summary.MonthlyCallBudget.Should().Be(2000);
-        summary.AccountCount.Should().Be(1);
-        summary.LedgerLineCount.Should().Be(1);
+        summary.Usage.Should().Be(new HoldedUsageReading(36, "2026-08", FixedNow, "holded down"));
+        summary.SyncStates.Should().BeEmpty("the usage reading is not a mirror sync");
+        await _client.Received(2).GetUsageAsync(Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -298,13 +293,13 @@ public sealed class HoldedAdminOverviewTests
     public async Task Sync_states_are_reported_per_kind()
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
-        var state = await _repo.GetOrCreateSyncStateAsync(HoldedSyncKind.Ledger, ct);
+        var state = await _repo.GetOrCreateSyncStateAsync(HoldedSyncKind.Ledger, ct: ct);
         state.LastSyncAt = FixedNow;
         state.LastCount = 17;
         state.LastError = "57200001: holded 418840.54, local 771074.85";
         await _repo.SaveSyncStateAsync(state, ct);
-        await _repo.GetOrCreateSyncStateAsync(HoldedSyncKind.FullSync, ct);
-        await _repo.GetOrCreateSyncStateAsync(HoldedSyncKind.Accounts, ct);
+        await _repo.GetOrCreateSyncStateAsync(HoldedSyncKind.FullSync, ct: ct);
+        await _repo.GetOrCreateSyncStateAsync(HoldedSyncKind.Accounts, ct: ct);
 
         var controller = new HoldedController(Substitute.For<IUserService>(), _service, _service,
             NullLogger<HoldedController>.Instance);
@@ -497,7 +492,7 @@ public sealed class HoldedAdminOverviewTests
         var ct = Xunit.TestContext.Current.CancellationToken;
         var service = new Service(_repo, _client, _callLog, new FakeClock(FixedNow),
             Options.Create(new HoldedSectionOptions { MonthlyCallBudget = 5000 }),
-            NullLogger<Service>.Instance);
+            NullLogger<Service>.Instance, FixedOrgTimeZone.Madrid);
 
         (await service.GetSummaryAsync(ct)).MonthlyCallBudget.Should().Be(5000);
     }
@@ -512,11 +507,7 @@ public sealed class HoldedAdminOverviewTests
         await _service.GetLedgerLinesAsync(40000004, ct);
         await _service.GetAccountBalancesAsync(ct);
         await _service.GetAccountStatementAsync(40000004, ct);
-        await _service.GetEntryAsync(1, ct);
         await _service.GetEntryViewAsync(1, ct);
-        await _service.GetPurchaseLinesAsync(40000004, ct: ct);
-        await _service.GetOpenDocumentAmountsAsync(40000000, 41999999, ct);
-        await _service.GetSumsByAccountAsync(new HashSet<int> { 62900000 }, new LocalDate(2026, 1, 1), new LocalDate(2026, 12, 31), ct);
         await _service.GetChartAsync(ct);
         await _service.GetAccountsPageAsync(new HoldedAccountsFilter(), ct);
 

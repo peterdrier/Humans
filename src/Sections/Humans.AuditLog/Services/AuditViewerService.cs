@@ -20,17 +20,12 @@ internal sealed class AuditViewerService(
         Guid? userId,
         IReadOnlyList<string>? actions,
         int limit,
+        bool includeRelated = false,
         CancellationToken ct = default)
     {
-        var entries = await auditLog.GetFilteredEntriesAsync(entityType, entityId, userId, actions, limit, ct);
+        var entries = await auditLog.GetFilteredEntriesAsync(entityType, entityId, userId, actions, limit, includeRelated, ct);
         return await ResolveAsync(entries, ct);
     }
-
-    public Task<IReadOnlySet<Guid>> GetEntityIdsForEntityTypeActionsAsync(
-        string entityType,
-        IReadOnlyList<AuditActionDefinition> actions,
-        CancellationToken ct = default) =>
-        auditLog.GetEntityIdsForEntityTypeActionsAsync(entityType, actions, ct);
 
     /// <summary><paramref name="actionFilter"/> is a case-insensitive match on a declared action name.</summary>
     public async Task<AuditEventPage> GetPageAsync(string? actionFilter, int page, int pageSize, CancellationToken ct = default)

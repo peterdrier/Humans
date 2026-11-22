@@ -3,7 +3,7 @@ using Humans.AuditLog.Contracts;
 using Humans.Base.Constants;
 using Humans.Email.Contracts;
 using Humans.Auth.Contracts;
-using Humans.GoogleIntegration.Contracts;
+using Humans.Google.Contracts;
 using Humans.Governance.Data;
 using Humans.Governance.Domain;
 using Humans.Governance.Services;
@@ -61,7 +61,7 @@ internal sealed class AssemblyVoteServiceFixture : IDisposable
             .Returns(Task.FromResult<IReadOnlyList<Guid>>([]));
         RoleAssignments.GetActiveUserIdsInRoleAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<Guid>>([]));
-        Users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+        Users.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
                 new Dictionary<Guid, UserInfo>()));
 
@@ -78,6 +78,7 @@ internal sealed class AssemblyVoteServiceFixture : IDisposable
             Audit,
             Translation,
             Clock,
+            FixedOrgTimeZone.Madrid,
             NullLogger<AssemblyVoteService>.Instance);
     }
 
@@ -88,7 +89,7 @@ internal sealed class AssemblyVoteServiceFixture : IDisposable
     {
         var map = userIds.ToDictionary(
             id => id,
-            id => new User
+            id => UserInfoFixtures.FromUser(new User
             {
                 Id = id,
                 DisplayName = "Member " + id,
@@ -98,9 +99,9 @@ internal sealed class AssemblyVoteServiceFixture : IDisposable
                 Email = id + "@example.org",
                 PreferredLanguage = "en",
                 State = UserState.Active
-            }.ToUserInfo());
+            }));
 
-        Users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+        Users.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(map));
 
     }
@@ -116,9 +117,9 @@ internal sealed class AssemblyVoteServiceFixture : IDisposable
         var resolved = TombstoneInfo(survivor, null) with { MergedUserIds = [source] };
         var map = new Dictionary<Guid, UserInfo> { [source] = resolved, [survivor] = resolved };
 
-        Users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+        Users.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(call => new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
-                ((IReadOnlyCollection<Guid>)call[0])
+                (((IEnumerable<Guid>)call[0]))
                     .Where(map.ContainsKey)
                     .ToDictionary(id => id, id => map[id])));
         Users.GetUserInfoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
@@ -128,7 +129,7 @@ internal sealed class AssemblyVoteServiceFixture : IDisposable
     }
 
     private UserInfo TombstoneInfo(Guid id, Guid? mergedTo) =>
-        new User
+        UserInfoFixtures.FromUser(new User
         {
             Id = id,
             DisplayName = "Member " + id,
@@ -138,7 +139,7 @@ internal sealed class AssemblyVoteServiceFixture : IDisposable
             State = UserState.Active,
             MergedToUserId = mergedTo,
             MergedAt = mergedTo is null ? null : Clock.GetCurrentInstant()
-        }.ToUserInfo();
+        });
 
     public async Task<AssemblyVote> AddVoteAsync(
         AssemblyVoteStatus status = AssemblyVoteStatus.Open,

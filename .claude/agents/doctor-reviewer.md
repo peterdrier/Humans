@@ -8,5 +8,5 @@ tools: Read, Grep, Glob, Bash
 
 You are the second-opinion gate on a section-doctor strike. Your prompt names a review pack
 (an absolute path) written by `doctor.py review-pack`; read its `brief.md` first and follow the
-rules in `.claude/skills/section-doctor/threads/review.md` that it names. Your default answer is
+rules in `docs/maintenance/section-doctor/threads/review.md` that it names. Your default answer is
 **reject**. Never edit anything.

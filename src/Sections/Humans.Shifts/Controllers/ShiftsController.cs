@@ -1,13 +1,11 @@
 using Humans.Base.Controllers;
 using System.Globalization;
 using Humans.Base.Extensions;
-using Humans.AuditLog.Contracts;
 using Humans.Shifts.Services;
 using Humans.Shifts.Services.Dtos;
 using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Shifts.Domain;
-using Humans.Onboarding;
 using Humans.Base.Authorization;
 using Humans.Shifts.Models;
 using Microsoft.AspNetCore.Authorization;
@@ -27,12 +25,8 @@ internal sealed class ShiftsController(
     IVolunteerTrackingManagement volunteerTrackingService,
     IShiftRowView shiftView,
     ITeamService teamService,
-    IAuditLogService auditLogService,
-    IAuditViewerService auditViewer,
     IUserService userService,
     IStringLocalizer<ShiftsResource> localizer,
-    // The name-gate message is Onboarding's copy, rendered from here.
-    IStringLocalizer<OnboardingResource> onboardingLocalizer,
     IClock clock,
     ShiftBrowsePageBuilder browsePageBuilder,
     ILogger<ShiftsController> logger) : HumansControllerBase(userService)
@@ -53,8 +47,7 @@ internal sealed class ShiftsController(
         var es = await burnSettings.GetActiveAsync(HttpContext.RequestAborted);
         if (es is null) return View("NoActiveEvent");
 
-        var isPrivileged = ShiftsRoles.IsPrivilegedSignupApprover(User) ||
-                           (await shiftMgmt.GetCoordinatorTeamIdsAsync(user.Id, HttpContext.RequestAborted)).Count > 0;
+        var isPrivileged = await shiftMgmt.CanManageOrApproveAnyShiftsAsync(user.Id, HttpContext.RequestAborted);
 
         var userView = await shiftView.GetUserAsync(user.Id, HttpContext.RequestAborted);
         var userSignups = userView.Signups;
@@ -91,7 +84,7 @@ internal sealed class ShiftsController(
     private IActionResult? RedirectIfNameMissing(UserInfo user)
     {
         if (user.HasRequiredNameFields) return null;
-        SetInfo(onboardingLocalizer["Onboarding_NameRequiredBeforeShifts"].Value);
+        SetInfo(localizer["Shifts_NameRequiredBeforeShifts"].Value);
         return RedirectToAction("Index", "OnboardingWidget");
     }
 
@@ -169,7 +162,7 @@ internal sealed class ShiftsController(
         var outcome = await signupService.ToggleDayAsync(user.Id, shiftId, es.Id, privileged, ct);
 
         var result = outcome.Result;
-        var row = await browsePageBuilder.BuildRowAsync(shiftId, outcome.SignupsAfter, outcome.CanViewRestricted, ct);
+        var row = await browsePageBuilder.BuildRowAsync(shiftId, outcome.SignupsAfter.Select(s => (s.ShiftId, s.Status)), outcome.CanViewRestricted, ct);
         // The shift closed or vanished between write and re-read: resync the page rather than swap a missing row.
         if (row is null)
             return RedirectHeader(Url.Action(nameof(Index)));
@@ -314,15 +307,11 @@ internal sealed class ShiftsController(
                 .Where(teamsById.ContainsKey)
                 .ToDictionary(id => id, id => teamsById[id].Name);
         }
-        var buckets = ShiftSignupBucketer.Build(signups, es, mineTeamNames, now, onMissingSignupData: signup =>
-            logger.LogWarning(
-                "Skipping shift signup {SignupId} for user {UserId} because related shift data was missing",
-                signup.Id,
-                user.Id));
+        var buckets = ShiftSignupBucketer.Build(signups, es, mineTeamNames, now);
 
         foreach (var item in buckets.Upcoming.Concat(buckets.Pending))
             item.BailLocked = item.Signup.Shift.IsEarlyEntry &&
-                              bailLockedTeamIds.Contains(item.Signup.Shift.Rota.TeamId);
+                              bailLockedTeamIds.Contains(item.Signup.Rota.TeamId);
 
         model.Upcoming = buckets.Upcoming;
         model.Pending = buckets.Pending;
@@ -410,7 +399,7 @@ internal sealed class ShiftsController(
         }
 
         await shiftMgmt.SaveKnobsAsync(
-            active.Id, model.IsShiftBrowsingOpen, model.GlobalVolunteerCap, model.ReminderLeadTimeHours,
+            active.Id, model.IsShiftBrowsingOpen,
             new BuildSubPeriodStarts(model.FirstCrewStartOffset, model.SetupWeekStartOffset,
                 model.PreEventWeekStartOffset, model.FinishingWeekendStartOffset),
             actor.Id);
@@ -444,7 +433,7 @@ internal sealed class ShiftsController(
 
             var absStart = s.AbsoluteStart;
             var absEnd = s.AbsoluteEnd;
-            var tz = DateTimeZoneProviders.Tzdb[sEs.TimeZoneId];
+            var tz = sEs.TimeZone;
             var localStart = absStart.InZone(tz).LocalDateTime;
             var localEnd = absEnd.InZone(tz).LocalDateTime;
             items.Add(new UserSignupConflictItem(
@@ -458,102 +447,6 @@ internal sealed class ShiftsController(
 
         return items;
     }
-
-    // Signups with no Created/Voluntold/Confirmed audit row: Pending self-signups that skipped Confirm.
-    [HttpGet("OrphanSignups")]
-    [Authorize(Policy = PolicyNames.AdminOnly)]
-    public async Task<IActionResult> OrphanSignups(CancellationToken ct)
-    {
-        var allSignups = await signupService.GetAllForOrphanScanAsync(ct);
-        var auditedIds = await auditViewer.GetEntityIdsForEntityTypeActionsAsync(
-            nameof(ShiftSignup),
-            [ShiftsAuditActions.ShiftSignupCreated, ShiftsAuditActions.ShiftSignupVoluntold, ShiftsAuditActions.ShiftSignupConfirmed],
-            ct);
-
-        var orphans = allSignups.Where(s => !auditedIds.Contains(s.Id)).ToList();
-        var users = await ResolveOrphanActorsAsync(orphans, _userService, ct);
-        var rows = BuildOrphanRows(orphans, users);
-
-        return View(new OrphanSignupsViewModel(
-            TotalSignups: allSignups.Count,
-            OrphanCount: rows.Count,
-            UniqueUsers: rows.Select(r => r.UserId).Distinct().Count(),
-            Rows: rows));
-    }
-
-    private static async Task<IReadOnlyDictionary<Guid, UserInfo>> ResolveOrphanActorsAsync(
-        IReadOnlyList<OrphanSignupSnapshot> orphans, IUserService userService, CancellationToken ct)
-    {
-        var userIds = orphans
-            .Select(s => s.UserId)
-            .Distinct()
-            .ToList();
-        return userIds.Count == 0
-            ? new Dictionary<Guid, UserInfo>()
-            : await userService.GetUserInfosAsync(userIds, ct);
-    }
-
-    private static List<OrphanSignupRow> BuildOrphanRows(
-        IReadOnlyList<OrphanSignupSnapshot> orphans,
-        IReadOnlyDictionary<Guid, UserInfo> users)
-    {
-        string? GetName(Guid? id) => id.HasValue && users.TryGetValue(id.Value, out var u) ? u.BurnerName : null;
-
-        return orphans
-            .Select(s => new OrphanSignupRow(
-                SignupId: s.Id,
-                UserId: s.UserId,
-                UserDisplayName: GetName(s.UserId) ?? s.UserId.ToString(),
-                RotaName: s.RotaName,
-                ShiftDate: s.ShiftDate,
-                Status: s.Status,
-                CreatedAt: s.CreatedAt,
-                ReviewedByUserId: s.ReviewedByUserId,
-                EnrolledByUserId: s.EnrolledByUserId,
-                SignupBlockId: s.SignupBlockId))
-            .OrderBy(r => r.UserDisplayName, StringComparer.OrdinalIgnoreCase)
-            .ThenBy(r => r.CreatedAt)
-            .ToList();
-    }
-
-    /// <summary>
-    /// Hands one member's medical conditions to a MedicalDataViewer and records who looked (the IBAN reveal pattern).
-    /// The text never renders in a page: the badge in <c>_VolunteerProfileBadges</c> posts here and shows the answer.
-    /// </summary>
-    [HttpPost("Medical/{userId:guid}/Reveal")]
-    [Authorize(Policy = ShiftsPolicies.MedicalDataViewer)]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> RevealMedical(Guid userId, CancellationToken ct)
-    {
-        var actor = await GetCurrentUserInfoAsync(ct);
-        if (actor is null) return Forbid();
-
-        var info = await _userService.GetUserInfoAsync(userId, ct);
-        var text = info?.Profile?.MedicalConditions;
-        if (info is null || string.IsNullOrEmpty(text)) return NotFound();
-
-        // Entity "User" + the subject's id is what the member's own medical page lists.
-        await auditLogService.LogAsync(
-            ShiftsAuditActions.MedicalConditionsRevealed, AuditSubjectTypes.User, info.Id,
-            $"Medical conditions revealed for user {info.Id}", actor.Id);
-        return Json(new { text });
-    }
 }
 
-internal sealed record OrphanSignupRow(
-    Guid SignupId,
-    Guid UserId,
-    string UserDisplayName,
-    string RotaName,
-    LocalDate ShiftDate,
-    SignupStatus Status,
-    Instant CreatedAt,
-    Guid? ReviewedByUserId,
-    Guid? EnrolledByUserId,
-    Guid? SignupBlockId);
 
-internal sealed record OrphanSignupsViewModel(
-    int TotalSignups,
-    int OrphanCount,
-    int UniqueUsers,
-    IReadOnlyList<OrphanSignupRow> Rows);

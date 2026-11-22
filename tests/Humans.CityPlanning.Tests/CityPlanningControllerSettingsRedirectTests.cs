@@ -46,10 +46,10 @@ public sealed class CityPlanningControllerSettingsRedirectTests : CityPlanningTe
         _service = new CityPlanningService(
             new CityPlanningRepository(CityPlanningDbFactory), Clock,
             Options.Create(new CityPlanningOptions { CityPlanningTeamSlug = "city-planning" }),
-            _campService, Substitute.For<ITeamService>(), _userService, Substitute.For<IAuditLogService>(), ActiveEvent(2026));
+            _campService, Substitute.For<ITeamService>(), _userService, Substitute.For<IAuditLogService>(), ActiveEvent(2026), Substitute.For<IContainerService>());
 
         _controller = new CityPlanningController(
-            _service, _campService, Substitute.For<IContainerService>(), Substitute.For<IStringLocalizer<ContainersResource>>(), _userService,
+            _service, Substitute.For<IContainerService>(), Substitute.For<IStringLocalizer<ContainersResource>>(), _userService,
             MapAdminAuthorization(_service), NullLogger<CityPlanningController>.Instance);
 
         var claims = new[]
@@ -99,15 +99,6 @@ public sealed class CityPlanningControllerSettingsRedirectTests : CityPlanningTe
         var result = await _controller.UpdatePlacementSchedule(-30, -10, -5, TestContext.Current.CancellationToken);
 
         result.Should().BeOfType<RedirectResult>().Which.Url.Should().Be("/Settings#city-planning");
-    }
-
-    [HumansFact]
-    public async Task UpdateRegistrationInfo_SavesAndRedirectsToTheSettingsPageCityPlanningTab()
-    {
-        var result = await _controller.UpdateRegistrationInfo("Bring water.", TestContext.Current.CancellationToken);
-
-        result.Should().BeOfType<RedirectResult>().Which.Url.Should().Be("/Settings#city-planning");
-        (await _service.GetRegistrationInfoAsync(TestContext.Current.CancellationToken)).Should().Be("Bring water.");
     }
 
     [HumansTheory]

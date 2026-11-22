@@ -20,3 +20,8 @@ public sealed record ConsentReviewDetail(
     string? UserFullName);
 
 public sealed record RequiredConsentRow(Guid DocumentVersionId, string Title, bool Signed);
+
+public sealed record ConsentProgress(int RequiredCount, IReadOnlyList<Guid> MissingVersionIds)
+{
+    public int PendingCount => MissingVersionIds.Count;
+}

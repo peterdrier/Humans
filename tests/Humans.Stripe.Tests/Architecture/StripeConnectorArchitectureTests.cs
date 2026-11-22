@@ -25,7 +25,7 @@ public class StripeConnectorArchitectureTests
 
         allTypes.Should().NotContain(
             t => (t.Namespace ?? string.Empty).StartsWith("Stripe", StringComparison.Ordinal),
-            because: "IStripeService is the bridge — SDK types must stay on the section's Services/ side of the seam (design-rules §15i)");
+            because: "IStripeService is the bridge — SDK types must stay on the section's Services/ side of the seam (design-rules.md, *Layers and projects*)");
     }
 
     // Walks to any generic depth so a nested leak like Task<List<Stripe.X>> cannot bypass the guard.

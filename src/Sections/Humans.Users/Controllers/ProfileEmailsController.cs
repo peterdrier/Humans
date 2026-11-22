@@ -3,11 +3,8 @@ using Humans.Users.Services;
 // @e2e: profile.spec.ts
 using Humans.Base.Attributes;
 using Humans.Base.Controllers;
-using System.ComponentModel.DataAnnotations;
 using System.Globalization;
-using System.Web;
 using Humans.Users.Authorization;
-using Humans.Base.Extensions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -15,14 +12,11 @@ using Microsoft.Extensions.Localization;
 using Humans.Base.Constants;
 using Humans.Users.Models;
 using Microsoft.Extensions.Options;
-using Humans.AuditLog.Contracts;
-using Humans.Email.Contracts;
-using Humans.Tickets.Contracts;
 using Humans.Users.Contracts;
 using Humans.Base;
 using Humans.Base.Authorization;
 
-using Humans.GoogleIntegration.Contracts;
+using Humans.Google.Contracts;
 
 namespace Humans.Users.Controllers;
 
@@ -31,21 +25,18 @@ namespace Humans.Users.Controllers;
 internal sealed class ProfileEmailsController(
     IUserManagement userService,
     UserManager<User> userManager,
-    IEmailService emailService,
-    UsersEmails emailMessages,
     IUserEmailService userEmailService,
-    IAuditLogService auditLogService,
     ILogger<ProfileEmailsController> logger,
     IStringLocalizer<UsersResource> localizer,
     IStringLocalizer<SharedResource> sharedLocalizer,
-    ITicketService ticketQueryService,
+    IEnumerable<IUserEmailLock> emailLocks,
     IAuthorizationService authorizationService,
     SignInManager<User> signInManager,
     IOptions<GoogleWorkspaceOptions> googleWorkspaceOptions) : HumansControllerBase(userService)
 {
-    private readonly ITicketService _ticketQueryService = ticketQueryService;
+    private readonly EmailsViewModelBuilder emailsViewModelBuilder = new(
+        userService, userManager, userEmailService, emailLocks, googleWorkspaceOptions.Value);
     private readonly IUserManagement _userService = userService;
-    private readonly GoogleWorkspaceOptions _googleWorkspaceOptions = googleWorkspaceOptions.Value;
 
     [HttpGet("Me/Emails")]
     [AllowBeforeActiveMembership]
@@ -55,7 +46,7 @@ internal sealed class ProfileEmailsController(
         if (user is null)
             return NotFound();
 
-        var viewModel = await BuildEmailsViewModelAsync(user, ct: HttpContext.RequestAborted);
+        var viewModel = await BuildEmailsViewModelAsync(user, HttpContext.RequestAborted);
         return View(viewModel);
     }
 
@@ -72,103 +63,22 @@ internal sealed class ProfileEmailsController(
         {
             if (string.IsNullOrWhiteSpace(model.NewEmail))
                 ModelState.AddModelError(nameof(model.NewEmail), localizer["Users_Profile_EnterEmail"].Value);
-            return View(nameof(Emails), await BuildEmailsViewModelAsync(user));
+            return View(nameof(Emails), await BuildEmailsViewModelAsync(user, HttpContext.RequestAborted));
         }
 
-        var result = await userEmailService.AddEmailAsync(user.Id, model.NewEmail);
+        // Verification can send mail; a browser disconnect must not interrupt the workflow.
+        var result = await userEmailService.AddEmailAsync(user.Id, model.NewEmail, CancellationToken.None, user.Id);
         if (result.ErrorKey is { } errorKey)
         {
             ModelState.AddModelError(nameof(model.NewEmail), LocalizeEmailRefusal(errorKey));
-            return View(nameof(Emails), await BuildEmailsViewModelAsync(user));
+            return View(nameof(Emails), await BuildEmailsViewModelAsync(user, HttpContext.RequestAborted));
         }
 
-        await SendAddedEmailVerificationAsync(user, model.NewEmail, result);
-        logger.LogInformation(
-            "Sent email verification to {Email} for user {UserId} (conflict: {IsConflict})",
-            model.NewEmail.Trim(), user.Id, result.IsConflict);
-        SetAddedEmailFlash(model.NewEmail, result.IsConflict);
+        logger.LogInformation("Sent email confirmation to {Email} for user {UserId}", model.NewEmail.Trim(), user.Id);
+        // The same words whether or not another account has the address: only its mailbox learns that.
+        SetSuccess(string.Format(CultureInfo.CurrentCulture, localizer["Users_Profile_VerificationSent"].Value, model.NewEmail.Trim()));
 
         return RedirectToAction(nameof(Emails));
-    }
-
-    private async Task SendAddedEmailVerificationAsync(User user, string email, AddEmailResult result)
-    {
-        var trimmedEmail = email.Trim();
-        var verificationUrl = Url.Action(
-            nameof(VerifyEmail),
-            "ProfileEmails",
-            new { userId = user.Id, emailId = result.EmailId, token = HttpUtility.UrlEncode(result.Token) },
-            Request.Scheme);
-
-        var info = await _userService.GetUserInfoAsync(user.Id);
-
-        var message = emailMessages.EmailVerification(
-            user.Id,
-            trimmedEmail,
-            info?.BurnerName ?? string.Empty,
-            verificationUrl!,
-            result.IsConflict,
-            user.PreferredLanguage.IsSupportedCultureCode()
-                ? user.PreferredLanguage : CultureCatalog.DefaultCultureCode);
-        await emailService.SendAsync(message);
-    }
-
-    private void SetAddedEmailFlash(string email, bool isConflict)
-    {
-        if (isConflict)
-        {
-            SetInfo(localizer["Users_Profile_EmailLinkedToAnotherAccount"].Value);
-            return;
-        }
-
-        SetSuccess(string.Format(CultureInfo.CurrentCulture, localizer["Users_Profile_VerificationSent"].Value, email.Trim()));
-    }
-
-    [HttpGet("Me/Emails/Verify")]
-    [AllowAnonymous]
-    public async Task<IActionResult> VerifyEmail(Guid userId, Guid emailId, string token)
-    {
-        if (string.IsNullOrEmpty(token) || emailId == Guid.Empty)
-        {
-            return VerifyEmailError(localizer["Users_Profile_InvalidVerificationLink"].Value);
-        }
-
-        var decodedToken = HttpUtility.UrlDecode(token);
-        var result = await userEmailService.VerifyEmailAsync(userId, emailId, decodedToken);
-        return result.ErrorKey is { } errorKey
-            ? VerifyEmailError(localizer[errorKey].Value)
-            : VerifyEmailSuccess(userId, result);
-    }
-
-    private IActionResult VerifyEmailSuccess(Guid userId, VerifyEmailResult result)
-    {
-        if (result.MergeRequestCreated)
-        {
-            logger.LogInformation(
-                "User {UserId} verified email {Email} - merge request created",
-                userId, result.Email);
-
-            ViewData["Success"] = true;
-            ViewData["Message"] = string.Format(
-                CultureInfo.CurrentCulture,
-                localizer["Users_Profile_EmailVerifiedMergeRequested"].Value,
-                result.Email);
-            return View("VerifyEmailResult");
-        }
-
-        logger.LogInformation(
-            "User {UserId} verified email {Email}",
-            userId, result.Email);
-
-        ViewData["Success"] = true;
-        ViewData["Message"] = string.Format(localizer["Users_Profile_EmailVerified"].Value, result.Email);
-        return View("VerifyEmailResult");
-    }
-    private IActionResult VerifyEmailError(string message)
-    {
-        ViewData["Success"] = false;
-        ViewData["Message"] = message;
-        return View("VerifyEmailResult");
     }
 
     [HttpPost("Me/Emails/SetPrimary")]
@@ -184,23 +94,7 @@ internal sealed class ProfileEmailsController(
         if (!authz.Succeeded)
             return Forbid();
 
-        var result = await userEmailService.SetPrimaryAsync(user.Id, emailId, ct);
-        if (!result.Succeeded)
-        {
-            logger.LogWarning("Email SetPrimary refused for email {EmailId}, user {UserId}, actor {ActorId}: {Reason}",
-                emailId, user.Id, user.Id, result.ErrorKey);
-            SetError(LocalizeEmailRefusal(result.ErrorKey ?? "Common_Error"));
-            return RedirectToAction(nameof(Emails));
-        }
-        // SetPrimaryAsync takes no actor, so the controller audits.
-        await auditLogService.LogAsync(
-            UsersAuditActions.UserEmailPrimarySet,
-            nameof(User), user.Id,
-            $"Set primary email row {emailId}",
-            user.Id,
-            relatedEntityId: emailId, relatedEntityType: nameof(UserEmail));
-        SetSuccess(localizer["Users_Profile_NotificationTargetUpdated"].Value);
-
+        await SetPrimaryEmailAsync(user.Id, emailId, user.Id, isAdminContext: false, ct);
         return RedirectToAction(nameof(Emails));
     }
 
@@ -219,7 +113,7 @@ internal sealed class ProfileEmailsController(
 
         var parsedVisibility = ParseEmailVisibility(visibility);
 
-        var result = await userEmailService.SetVisibilityAsync(user.Id, emailId, parsedVisibility);
+        var result = await userEmailService.SetVisibilityAsync(user.Id, emailId, parsedVisibility, actorUserId: user.Id);
         if (!result.Succeeded)
         {
             logger.LogWarning("Email SetEmailVisibility refused for email {EmailId}, user {UserId}, actor {ActorId}: {Reason}",
@@ -227,7 +121,6 @@ internal sealed class ProfileEmailsController(
             SetError(LocalizeEmailRefusal(result.ErrorKey ?? "Common_Error"));
             return RedirectToAction(nameof(Emails));
         }
-        await LogSelfEmailVisibilityChangedAsync(user.Id, emailId, parsedVisibility);
         SetSuccess(localizer["Users_Profile_EmailVisibilityUpdated"].Value);
 
         return RedirectToAction(nameof(Emails));
@@ -239,17 +132,6 @@ internal sealed class ProfileEmailsController(
             ? parsed
             : null;
 
-    private Task LogSelfEmailVisibilityChangedAsync(
-        Guid userId,
-        Guid emailId,
-        ContactFieldVisibility? visibility) =>
-        auditLogService.LogAsync(
-            UsersAuditActions.UserEmailVisibilityChanged,
-            nameof(User), userId,
-            $"Changed visibility on email row {emailId} to {(visibility?.ToString() ?? "hidden")}",
-            userId,
-            relatedEntityId: emailId,
-            relatedEntityType: nameof(UserEmail));
     [HttpPost("Me/Emails/Delete")]
     [ValidateAntiForgeryToken]
     [AllowBeforeActiveMembership]
@@ -263,10 +145,9 @@ internal sealed class ProfileEmailsController(
         if (!authz.Succeeded)
             return Forbid();
 
-        var deleted = await userEmailService.DeleteEmailAsync(user.Id, emailId);
+        var deleted = await userEmailService.DeleteEmailAsync(user.Id, emailId, actorUserId: user.Id);
         if (deleted.Succeeded)
         {
-            await LogSelfEmailDeletedAsync(user.Id, emailId);
             SetSuccess(localizer["Users_Profile_EmailDeleted"].Value);
         }
         else
@@ -278,14 +159,6 @@ internal sealed class ProfileEmailsController(
         return RedirectToAction(nameof(Emails));
     }
 
-    private Task LogSelfEmailDeletedAsync(Guid userId, Guid emailId) =>
-        auditLogService.LogAsync(
-            UsersAuditActions.UserEmailDeleted,
-            nameof(User), userId,
-            $"Deleted email row {emailId}",
-            userId,
-            relatedEntityId: emailId,
-            relatedEntityType: nameof(UserEmail));
     [HttpPost("Me/Emails/ClearPrimary")]
     [ValidateAntiForgeryToken]
     [AllowBeforeActiveMembership]
@@ -364,7 +237,7 @@ internal sealed class ProfileEmailsController(
         return message.ResourceNotFound ? sharedLocalizer[key].Value : message.Value;
     }
 
-    private void SetEmailUnlinkedResult(UnlinkEmailResult result, Guid userId, Guid emailId, Guid actorId)
+    private void SetEmailUnlinkedResult(UnlinkEmailResult result, Guid userId, Guid? emailId, Guid actorId)
     {
         if (!result.Succeeded || result.ErrorKey is not null)
             logger.LogWarning("Email unlink refused for email {EmailId}, user {UserId}, actor {ActorId}: {Reason}",
@@ -405,58 +278,8 @@ internal sealed class ProfileEmailsController(
         if (!authz.Succeeded)
             return Forbid();
 
-        // Stale page or forged request: fail soft.
-        var logins = await userManager.GetLoginsAsync(user);
-        var hasLogin = logins.Any(l =>
-            string.Equals(l.LoginProvider, provider, StringComparison.Ordinal)
-            && string.Equals(l.ProviderKey, providerKey, StringComparison.Ordinal));
-        if (!hasLogin)
-        {
-            SetError(localizer["Users_EmailGrid_UnlinkRejected"].Value);
-            return RedirectToAction(nameof(Emails));
-        }
-
-        // UnlinkAsync keeps the login and email rows in sync and refuses removing the last verified sign-in method.
-        // An orphan login falls back to RemoveLoginAsync.
-        var rawRows = await userEmailService.GetEntitiesByUserIdAsync(user.Id, ct);
-        var matching = rawRows.FirstOrDefault(r =>
-            string.Equals(r.Provider, provider, StringComparison.Ordinal)
-            && string.Equals(r.ProviderKey, providerKey, StringComparison.Ordinal));
-
-        if (matching is not null)
-        {
-            var result = await userEmailService.UnlinkAsync(user.Id, matching.Id, user.Id, ct);
-            SetEmailUnlinkedResult(result, user.Id, matching.Id, user.Id);
-        }
-        else
-        {
-            // Orphan login: UnlinkAsync's guard can't see it, so enforce the invariant here. With no verified
-            // email this login may be the only way in.
-            if (rawRows.Count(r => r.IsVerified) < 1)
-            {
-                SetError(localizer["Users_LinkedAccounts_UnlinkBlockedLastSignInMethod"].Value);
-                return RedirectToAction(nameof(Emails));
-            }
-
-            var removeLogin = await userManager.RemoveLoginAsync(user, provider, providerKey);
-            if (removeLogin.Succeeded)
-            {
-                await auditLogService.LogAsync(
-                    UsersAuditActions.UserEmailUnlinked,
-                    nameof(User), user.Id,
-                    $"Unlinked orphan {provider} login (no matching UserEmail row)",
-                    user.Id);
-                SetSuccess(localizer["Users_EmailGrid_UnlinkSuccess"].Value);
-            }
-            else
-            {
-                logger.LogWarning(
-                    "UnlinkLinkedAccount: RemoveLoginAsync failed for user {UserId} provider {Provider}: {Errors}",
-                    user.Id, provider,
-                    string.Join("; ", removeLogin.Errors.Select(e => $"{e.Code}:{e.Description}")));
-                SetError(localizer["Users_EmailGrid_UnlinkRejected"].Value);
-            }
-        }
+        var result = await userEmailService.UnlinkAsync(user.Id, null, user.Id, ct, provider, providerKey);
+        SetEmailUnlinkedResult(result, user.Id, null, user.Id);
 
         return RedirectToAction(nameof(Emails));
     }
@@ -479,7 +302,7 @@ internal sealed class ProfileEmailsController(
         if (resolved is not null && resolved.Id != id)
             return RedirectToAction(nameof(AdminEmails), new { id = resolved.Id });
 
-        var viewModel = await BuildEmailsViewModelAsync(targetUser, isAdminContext: true, ct);
+        var viewModel = await BuildEmailsViewModelAsync(targetUser, ct, isAdminContext: true);
         return View("Emails", viewModel);
     }
 
@@ -495,24 +318,23 @@ internal sealed class ProfileEmailsController(
         if (actor is null)
             return Forbid();
 
-        var result = await userEmailService.SetPrimaryAsync(id, emailId, ct);
-        if (!result.Succeeded)
-        {
-            logger.LogWarning("Email AdminSetPrimary refused for email {EmailId}, user {UserId}, actor {ActorId}: {Reason}",
-                emailId, id, actor.Id, result.ErrorKey);
-            SetError(LocalizeEmailRefusal(result.ErrorKey ?? "Common_Error"));
-            return RedirectToAction(nameof(AdminEmails), new { id });
-        }
-        // SetPrimaryAsync takes no actor, so the controller audits.
-        await auditLogService.LogAsync(
-            UsersAuditActions.UserEmailPrimarySet,
-            nameof(User), id,
-            $"Admin set primary email row {emailId}",
-            actor.Id,
-            relatedEntityId: emailId, relatedEntityType: nameof(UserEmail));
-        SetSuccess(localizer["Users_Profile_NotificationTargetUpdated"].Value);
+        await SetPrimaryEmailAsync(id, emailId, actor.Id, isAdminContext: true, ct);
 
         return RedirectToAction(nameof(AdminEmails), new { id });
+    }
+
+    private async Task SetPrimaryEmailAsync(
+        Guid userId, Guid emailId, Guid actorId, bool isAdminContext, CancellationToken ct)
+    {
+        var result = await userEmailService.SetPrimaryAsync(userId, emailId, ct, actorId);
+        if (!result.Succeeded)
+        {
+            logger.LogWarning("Email {Operation} refused for email {EmailId}, user {UserId}, actor {ActorId}: {Reason}",
+                isAdminContext ? nameof(AdminSetPrimary) : nameof(SetPrimary), emailId, userId, actorId, result.ErrorKey);
+            SetError(LocalizeEmailRefusal(result.ErrorKey ?? "Common_Error"));
+            return;
+        }
+        SetSuccess(localizer["Users_Profile_NotificationTargetUpdated"].Value);
     }
 
     [HttpPost("{id:guid}/Admin/Emails/ClearPrimary")]
@@ -555,7 +377,8 @@ internal sealed class ProfileEmailsController(
         if (targetUser is null)
             return NotFound();
 
-        var result = await userEmailService.AddEmailAsync(id, email, ct);
+        // Verification can send mail; a browser disconnect must not interrupt the workflow.
+        var result = await userEmailService.AddEmailAsync(id, email, CancellationToken.None, actor.Id);
         if (result.ErrorKey is { } errorKey)
         {
             logger.LogWarning("Admin email addition refused for user {UserId} by {ActorId}: {ErrorKey}",
@@ -564,32 +387,8 @@ internal sealed class ProfileEmailsController(
             return RedirectToAction(nameof(AdminEmails), new { id });
         }
 
-        // The address committed: finish its audit and verification queueing even after a disconnect.
-        await SendAdminAddedEmailVerificationAsync(id, targetUser, email, result, actor.Id);
-
-        return RedirectToAction(nameof(AdminEmails), new { id });
-    }
-
-    private async Task SendAdminAddedEmailVerificationAsync(
-        Guid userId,
-        User targetUser,
-        string email,
-        AddEmailResult result,
-        Guid actorId)
-    {
-        var trimmedEmail = email.Trim();
-        await auditLogService.LogAsync(
-            UsersAuditActions.UserEmailAdded,
-            nameof(User), userId,
-            $"Admin added pending email {trimmedEmail} for user {userId} (conflict: {result.IsConflict})",
-            actorId);
-
-        await SendAddedEmailVerificationAsync(targetUser, email, result);
-        logger.LogInformation(
-            "Admin sent email verification to {Email} for user {UserId} (conflict: {IsConflict})",
-            trimmedEmail, userId, result.IsConflict);
-
         SetSuccess(localizer["Users_EmailGrid_AdminAddSentVerification"].Value);
+        return RedirectToAction(nameof(AdminEmails), new { id });
     }
     // Admin recovery: a verified row without a verification email.
     [HttpPost("{id:guid}/Admin/Emails/AddVerified")]
@@ -622,7 +421,7 @@ internal sealed class ProfileEmailsController(
         if (targetUser is null)
             return NotFound();
 
-        var result = await userEmailService.AddVerifiedEmailAsync(userId, email, ct);
+        var result = await userEmailService.AddVerifiedEmailAsync(userId, email, ct, actor.Id);
         if (result.ErrorKey is { } errorKey)
         {
             logger.LogWarning("Admin verified email addition refused for user {UserId} by {ActorId}: {ErrorKey}",
@@ -631,29 +430,19 @@ internal sealed class ProfileEmailsController(
         }
         else
         {
-            await ReportVerifiedEmailAddAsync(result.Added, userId, email, actor.Id);
+            ReportVerifiedEmailAdd(result.Added, email);
         }
 
         return RedirectToAction(nameof(AdminEmails), new { id = userId });
     }
 
-    private async Task ReportVerifiedEmailAddAsync(
-        bool inserted,
-        Guid userId,
-        string email,
-        Guid actorUserId)
+    private void ReportVerifiedEmailAdd(bool inserted, string email)
     {
         if (!inserted)
         {
             SetInfo($"Email {email} already exists on this user — no change.");
             return;
         }
-
-        await auditLogService.LogAsync(
-            UsersAuditActions.UserEmailAdded,
-            nameof(User), userId,
-            $"Admin added pre-verified email {email} for user {userId} (no verification flow)",
-            actorUserId);
 
         SetSuccess($"Verified email {email} added.");
     }
@@ -667,28 +456,20 @@ internal sealed class ProfileEmailsController(
         if (actor is null)
             return Forbid();
 
-        try
+        var result = await userEmailService.AdminMarkVerifiedAsync(id, emailId, actor.Id, ct);
+        if (result.NoPendingVerification)
         {
-            var result = await userEmailService.AdminMarkVerifiedAsync(id, emailId, actor.Id, ct);
-            if (result.ErrorKey is { } errorKey)
-            {
-                SetError(LocalizeEmailRefusal(errorKey));
-            }
-            else if (result.MergeRequestCreated)
-            {
-                SetSuccess(localizer["Users_EmailGrid_AdminVerifyMergeRequested"].Value);
-            }
-            else
-            {
-                SetSuccess(localizer["Users_EmailGrid_AdminVerifySuccess"].Value);
-            }
+            logger.LogWarning("Admin email verification refused: no pending plain email {EmailId} for user {UserId}", emailId, id);
+            SetError("No email pending verification.");
         }
-        catch (Exception ex) when (ex is ValidationException or InvalidOperationException)
+        else if (result.ErrorKey is { } errorKey)
         {
-            logger.LogWarning(
-                "Admin failed to manually verify email {EmailId} for user {UserId}: {Reason}",
-                emailId, id, ex.Message);
-            SetError(ex.Message);
+            logger.LogWarning("Admin email verification refused for email {EmailId}, user {UserId}: {ErrorKey}", emailId, id, errorKey);
+            SetError(LocalizeEmailRefusal(errorKey));
+        }
+        else
+        {
+            SetSuccess(localizer["Users_EmailGrid_AdminVerifySuccess"].Value);
         }
 
         return RedirectToAction(nameof(AdminEmails), new { id });
@@ -724,13 +505,13 @@ internal sealed class ProfileEmailsController(
         if (actor is null)
             return Forbid();
 
-        var deleted = await userEmailService.DeleteEmailAsync(id, emailId, ct);
-        await SetAdminEmailDeletedResultAsync(id, emailId, actor.Id, deleted);
+        var deleted = await userEmailService.DeleteEmailAsync(id, emailId, ct, actor.Id);
+        SetAdminEmailDeletedResult(id, emailId, actor.Id, deleted);
 
         return RedirectToAction(nameof(AdminEmails), new { id });
     }
 
-    private async Task SetAdminEmailDeletedResultAsync(Guid userId, Guid emailId, Guid actorId, DeleteEmailResult deleted)
+    private void SetAdminEmailDeletedResult(Guid userId, Guid emailId, Guid actorId, DeleteEmailResult deleted)
     {
         if (!deleted.Succeeded)
         {
@@ -740,13 +521,6 @@ internal sealed class ProfileEmailsController(
             return;
         }
 
-        await auditLogService.LogAsync(
-            UsersAuditActions.UserEmailDeleted,
-            nameof(User), userId,
-            $"Admin deleted email row {emailId}",
-            actorId,
-            relatedEntityId: emailId,
-            relatedEntityType: nameof(UserEmail));
         SetSuccess(localizer["Users_Profile_EmailDeleted"].Value);
     }
     [HttpPost("{id:guid}/Admin/Emails/SetVisibility")]
@@ -762,7 +536,7 @@ internal sealed class ProfileEmailsController(
         if (actor is null)
             return Forbid();
 
-        var result = await userEmailService.SetVisibilityAsync(id, emailId, visibility, ct);
+        var result = await userEmailService.SetVisibilityAsync(id, emailId, visibility, ct, actor.Id);
         if (!result.Succeeded)
         {
             logger.LogWarning("Email AdminSetVisibility refused for email {EmailId}, user {UserId}, actor {ActorId}: {Reason}",
@@ -770,193 +544,13 @@ internal sealed class ProfileEmailsController(
             SetError(LocalizeEmailRefusal(result.ErrorKey ?? "Common_Error"));
             return RedirectToAction(nameof(AdminEmails), new { id });
         }
-        await SetAdminEmailVisibilityChangedResultAsync(id, emailId, actor.Id, visibility);
+        SetSuccess(localizer["Users_Profile_EmailVisibilityUpdated"].Value);
 
         return RedirectToAction(nameof(AdminEmails), new { id });
     }
 
-    private async Task SetAdminEmailVisibilityChangedResultAsync(
-        Guid userId,
-        Guid emailId,
-        Guid actorId,
-        ContactFieldVisibility? visibility)
-    {
-        await auditLogService.LogAsync(
-            UsersAuditActions.UserEmailVisibilityChanged,
-            nameof(User), userId,
-            $"Admin changed visibility on email row {emailId} to {(visibility?.ToString() ?? "hidden")}",
-            actorId,
-            relatedEntityId: emailId,
-            relatedEntityType: nameof(UserEmail));
-        SetSuccess(localizer["Users_Profile_EmailVisibilityUpdated"].Value);
-    }
-
-    private async Task<EmailsViewModel> BuildEmailsViewModelAsync(User user, bool isAdminContext = false, CancellationToken ct = default)
-    {
-        var emails = await userEmailService.GetUserEmailsAsync(user.Id, ct);
-        var info = await _userService.GetUserInfoAsync(user.Id, ct);
-        var burnerName = info?.BurnerName ?? string.Empty;
-
-        var (canAdd, minutesUntilResend) = await GetEmailAddCooldownStatusAsync(emails, ct);
-
-        var workspaceLockedEmail = FindWorkspaceLockedEmail(emails);
-
-        var (userLogins, rawUserEmails) = await GetAdminEmailDiagnosticsAsync(user.Id, isAdminContext, ct);
-
-        var linkedAccounts = await BuildLinkedAccountsAsync(user, emails, isAdminContext, ct);
-
-        // Addresses linked to the event ticket: the grid hides Delete, and DeleteEmailAsync re-validates.
-        var ticketEmails = await GetTicketLinkedEmailsAsync(user.Id, ct);
-
-        bool RowIsTicketLinked(string address) =>
-            ticketEmails.Any(ticketEmail => Base.Helpers.EmailNormalization.EmailsMatch(address, ticketEmail));
-
-        bool RowHasOrphanProviderTag(string? provider, string? providerKey) =>
-            isAdminContext
-            && !string.IsNullOrEmpty(provider)
-            && !string.IsNullOrEmpty(providerKey)
-            && !userLogins.Any(l =>
-                string.Equals(l.Provider, provider, StringComparison.Ordinal)
-                && string.Equals(l.ProviderKey, providerKey, StringComparison.Ordinal));
-
-        bool LoginHasOrphanRow(string provider, string providerKey) =>
-            !emails.Any(e =>
-                string.Equals(e.Provider, provider, StringComparison.Ordinal)
-                && string.Equals(e.ProviderKey, providerKey, StringComparison.Ordinal));
-
-        return new EmailsViewModel
-        {
-            Emails = emails.Select(e => new EmailRowViewModel
-            {
-                Id = e.Id,
-                Email = e.Email,
-                IsVerified = e.IsVerified,
-                IsPrimary = e.IsPrimary,
-                Visibility = e.Visibility,
-                IsPendingVerification = e.IsPendingVerification,
-                IsMergePending = e.IsMergePending,
-                Provider = e.Provider,
-                HasOrphanProviderTag = RowHasOrphanProviderTag(e.Provider, e.ProviderKey),
-                IsTicketLinked = RowIsTicketLinked(e.Email),
-            }).ToList(),
-            ExternalLogins = userLogins.Select(l => new ExternalLoginRowViewModel
-            {
-                LoginProvider = l.Provider,
-                ProviderKeyHash = UserEmailService.ShortProviderKeyHash(l.ProviderKey),
-                ProviderDisplayName = null,
-                HasOrphanLogin = LoginHasOrphanRow(l.Provider, l.ProviderKey),
-            }).ToList(),
-            RawUserEmails = rawUserEmails,
-            LinkedAccounts = linkedAccounts,
-            CanAddEmail = !UserStateEvaluator.IsTombstone(user) && (isAdminContext || canAdd),
-            MinutesUntilResend = minutesUntilResend,
-            TargetUserId = user.Id,
-            TargetDisplayName = burnerName,
-            IsAdminContext = isAdminContext,
-            WorkspaceLockedEmailId = workspaceLockedEmail?.Id,
-            LegacyIdentityEmailColumn = isAdminContext
-                && User.IsInRole(RoleNames.Admin)
-                ? user.IdentityEmailColumn
-                : null,
-            TargetUserInfo = isAdminContext
-                && User.IsInRole(RoleNames.Admin)
-                    ? info
-                    : null,
-        };
-    }
-
-    private async Task<(bool CanAdd, int MinutesUntilResend)> GetEmailAddCooldownStatusAsync(
-        IReadOnlyList<UserEmailEditDto> emails, CancellationToken ct)
-    {
-        var pendingEmail = emails.FirstOrDefault(e => e.IsPendingVerification);
-        if (pendingEmail is null)
-            return (true, 0);
-
-        var (cooldownCanAdd, cooldownMinutes, _) =
-            await userEmailService.GetEmailCooldownInfoAsync(pendingEmail.Id, ct);
-        return (cooldownCanAdd, cooldownMinutes);
-    }
-
-    // Provider Google on a Workspace-domain address: locks the Primary and Google radios.
-    private UserEmailEditDto? FindWorkspaceLockedEmail(IReadOnlyList<UserEmailEditDto> emails)
-    {
-        var workspaceDomainSuffix = "@" + _googleWorkspaceOptions.Domain;
-        var workspaceCandidates = emails
-            .Where(e => !string.IsNullOrEmpty(e.Provider)
-                && string.Equals(e.Provider, "Google", StringComparison.OrdinalIgnoreCase)
-                && e.Email.EndsWith(workspaceDomainSuffix, StringComparison.OrdinalIgnoreCase))
-            .ToList();
-        return workspaceCandidates.FirstOrDefault(e => e.IsPrimary)
-            ?? workspaceCandidates.FirstOrDefault();
-    }
-
-    // Admin diagnostic: the login rows beside the email rows, to show where the stores disagree.
-    private async Task<(IReadOnlyList<(string Provider, string ProviderKey)> UserLogins, IReadOnlyList<UserEmailRowSnapshot> RawUserEmails)>
-        GetAdminEmailDiagnosticsAsync(Guid userId, bool isAdminContext, CancellationToken ct)
-    {
-        IReadOnlyList<(string Provider, string ProviderKey)> userLogins = [];
-        IReadOnlyList<UserEmailRowSnapshot> rawUserEmails = [];
-        if (!isAdminContext)
-            return (userLogins, rawUserEmails);
-
-        var loginsByUser = await _userService.GetExternalLoginsByUserIdsAsync([userId], ct);
-        if (loginsByUser.TryGetValue(userId, out var list))
-            userLogins = list;
-        rawUserEmails = await userEmailService.GetEntitiesByUserIdAsync(userId, ct);
-        return (userLogins, rawUserEmails);
-    }
-
-    // Self view goes through UserManager for ProviderDisplayName, then stitches each row's id and CreatedAt.
-    private async Task<IReadOnlyList<LinkedOAuthAccountViewModel>> BuildLinkedAccountsAsync(
-        User user, IReadOnlyList<UserEmailEditDto> emails, bool isAdminContext, CancellationToken ct)
-    {
-        if (isAdminContext)
-            return [];
-
-        var logins = await userManager.GetLoginsAsync(user);
-        if (logins.Count == 0)
-            return [];
-
-        // (Provider, ProviderKey) uniqueness is service-enforced, not in the database: keep the first row per key.
-        var rowsByKey = new Dictionary<(string, string), UserEmailRowSnapshot>();
-        foreach (var r in await userEmailService.GetEntitiesByUserIdAsync(user.Id, ct))
-        {
-            if (string.IsNullOrEmpty(r.Provider) || string.IsNullOrEmpty(r.ProviderKey))
-                continue;
-            rowsByKey.TryAdd((r.Provider!, r.ProviderKey!), r);
-        }
-
-        return logins.Select(l =>
-        {
-            rowsByKey.TryGetValue((l.LoginProvider, l.ProviderKey), out var row);
-            // A row's unlink invariant is the service's (CanUnlink); an orphan login touches no row.
-            var canUnlink = row is not null
-                ? emails.FirstOrDefault(e => e.Id == row.Id)?.CanUnlink == true
-                : emails.Any(e => e.IsVerified);
-            return new LinkedOAuthAccountViewModel
-            {
-                Provider = l.LoginProvider,
-                ProviderKey = l.ProviderKey,
-                ProviderDisplayName = l.ProviderDisplayName,
-                ProviderKeyHash = UserEmailService.ShortProviderKeyHash(l.ProviderKey),
-                Email = row?.Email,
-                LinkedAt = row?.CreatedAt,
-                CanUnlink = canUnlink,
-            };
-        }).ToList();
-    }
-
-    private async Task<List<string>> GetTicketLinkedEmailsAsync(Guid userId, CancellationToken ct)
-    {
-        var ticketOrders = await _ticketQueryService.GetTicketOrdersAsync(ct);
-        return ticketOrders
-            .Where(o => o.MatchedUserId == userId && !string.IsNullOrWhiteSpace(o.BuyerEmail))
-            .Select(o => o.BuyerEmail!)
-            .Concat(ticketOrders
-                .SelectMany(o => o.Attendees)
-                .Where(a => a.MatchedUserId == userId && !string.IsNullOrWhiteSpace(a.AttendeeEmail))
-                .Select(a => a.AttendeeEmail!))
-            .ToList();
-    }
+    private Task<EmailsViewModel> BuildEmailsViewModelAsync(
+        User user, CancellationToken ct, bool isAdminContext = false) =>
+        emailsViewModelBuilder.BuildAsync(user, isAdminContext, User.IsInRole(RoleNames.Admin), ct);
 
 }

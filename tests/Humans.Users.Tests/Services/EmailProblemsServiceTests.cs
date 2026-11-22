@@ -44,9 +44,6 @@ public sealed class EmailProblemsServiceTests : ServiceTestHarness
         {
             Id = Guid.NewGuid(),
             UserId = userId,
-            BurnerName = "Test",
-            FirstName = "Test",
-            LastName = "User",
             CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
             UpdatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
         };
@@ -70,9 +67,6 @@ public sealed class EmailProblemsServiceTests : ServiceTestHarness
             {
                 Id = Guid.NewGuid(),
                 UserId = userId,
-                BurnerName = "Test",
-                FirstName = "Test",
-                LastName = "User",
                 CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
                 UpdatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
             }
@@ -124,9 +118,10 @@ public sealed class EmailProblemsServiceTests : ServiceTestHarness
             MergedAt = Instant.FromUtc(2026, 2, 1, 0, 0),
             MergedToUserId = Guid.NewGuid(),
         };
-        AddInfo(mergedUser.ToUserInfo(
-            userEmails: [Email(mergedId, "merged-1@merged.local", isVerified: false)],
-            profile: MakeProfile(mergedId)));
+        AddInfo(UserInfoStubHelpers.FromEntities(
+            mergedUser,
+            MakeProfile(mergedId),
+            [Email(mergedId, "merged-1@merged.local", isVerified: false)]));
 
         var deletedId = Guid.NewGuid();
         var deletedUser = new User
@@ -139,9 +134,10 @@ public sealed class EmailProblemsServiceTests : ServiceTestHarness
             // is user-editable and not enough.
             Email = $"deleted-{deletedId:N}@deleted.local",
         };
-        AddInfo(deletedUser.ToUserInfo(
-            userEmails: [Email(deletedId, "deleted-1@deleted.local", isVerified: false)],
-            profile: MakeProfile(deletedId)));
+        AddInfo(UserInfoStubHelpers.FromEntities(
+            deletedUser,
+            MakeProfile(deletedId),
+            [Email(deletedId, "deleted-1@deleted.local", isVerified: false)]));
 
         SetOrphans();
         SetGhosts();
@@ -171,7 +167,7 @@ public sealed class EmailProblemsServiceTests : ServiceTestHarness
             MergedAt = Instant.FromUtc(2026, 2, 1, 0, 0),
             MergedToUserId = Guid.NewGuid(),
         };
-        AddInfo(mergedUser.ToUserInfo(profile: MakeProfile(mergedId)));
+        AddInfo(UserInfoStubHelpers.FromEntities(mergedUser, MakeProfile(mergedId)));
 
         var ghostId = Guid.NewGuid();
         var ghostUser = new User
@@ -183,7 +179,7 @@ public sealed class EmailProblemsServiceTests : ServiceTestHarness
             MergedAt = Instant.FromUtc(2026, 2, 1, 0, 0),
             MergedToUserId = Guid.NewGuid(),
         };
-        AddInfo(ghostUser.ToUserInfo());
+        AddInfo(UserInfoFixtures.FromUser(ghostUser));
 
         var orphanEmailId = Guid.NewGuid();
         SetOrphans(new UserEmailOrphan(mergedId, orphanEmailId, "leftover@merged.local"));
@@ -517,6 +513,61 @@ public sealed class EmailProblemsServiceTests : ServiceTestHarness
         await _audit.DidNotReceive().LogAsync(
             UsersAuditActions.LegacyIdentityEmailBackfilled, nameof(User), refused,
             Arg.Any<string>(), Arg.Any<Guid>());
+    }
+
+    [HumansFact]
+    public async Task BackfillLegacyIdentityEmails_ExistingUnverifiedRow_VerifiesIt()
+    {
+        var actorId = Guid.NewGuid();
+        var userId = Guid.NewGuid();
+        var pending = Email(userId, "legacy@x.com", isVerified: false);
+        AddInfo(MakeInfo(userId, identityEmailColumn: "legacy@x.com", emails: [pending]));
+        _userEmailService.AddVerifiedEmailAsync(userId, "legacy@x.com", Arg.Any<CancellationToken>())
+            .Returns(new UserEmailAddResult(pending.Id, Added: false, IsConflict: false));
+        _userEmailService.AdminMarkVerifiedAsync(userId, pending.Id, actorId, Arg.Any<CancellationToken>())
+            .Returns(new VerifyEmailResult("legacy@x.com"));
+
+        var result = await Sut.BackfillLegacyIdentityEmailsAsync(actorId, Xunit.TestContext.Current.CancellationToken);
+
+        result.Should().ContainSingle().Which.Should().Be((userId, "legacy@x.com"));
+        await _userEmailService.Received(1).AdminMarkVerifiedAsync(
+            userId, pending.Id, actorId, Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
+    public async Task BackfillLegacyIdentityEmails_ExistingRowVerifiedElsewhere_IsNotCountedOrAudited()
+    {
+        var userId = Guid.NewGuid();
+        var pending = Email(userId, "legacy@x.com", isVerified: false);
+        AddInfo(MakeInfo(userId, identityEmailColumn: "legacy@x.com", emails: [pending]));
+        _userEmailService.AddVerifiedEmailAsync(userId, "legacy@x.com", Arg.Any<CancellationToken>())
+            .Returns(new UserEmailAddResult(pending.Id, Added: false, IsConflict: false));
+        _userEmailService.AdminMarkVerifiedAsync(userId, pending.Id, Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(new VerifyEmailResult(string.Empty, "Users_Profile_EmailVerifiedOnAnotherAccount"));
+
+        var result = await Sut.BackfillLegacyIdentityEmailsAsync(Guid.NewGuid(), Xunit.TestContext.Current.CancellationToken);
+
+        result.Should().BeEmpty();
+        await _audit.DidNotReceive().LogAsync(
+            UsersAuditActions.LegacyIdentityEmailBackfilled, nameof(User), userId,
+            Arg.Any<string>(), Arg.Any<Guid>());
+    }
+
+    [HumansFact]
+    public async Task DoesNotFlagLegacyEmail_WhenVerifiedRowIsTheGooglemailSpelling()
+    {
+        var userId = Guid.NewGuid();
+        AddInfo(MakeInfo(userId, identityEmailColumn: "Legacy@gmail.com", emails:
+        [
+            Email(userId, "legacy@googlemail.com", isVerified: true, isPrimary: true)
+        ]));
+        SetOrphans();
+        SetGhosts();
+
+        var report = await Sut.ScanAsync(Xunit.TestContext.Current.CancellationToken);
+
+        report.Problems.Should().NotContain(p =>
+            p.Kind == EmailProblemKind.LegacyIdentityEmailNotInUserEmails);
     }
 
     [HumansFact]

@@ -1,5 +1,7 @@
 using Humans.Base.Interfaces;
 using Humans.Governance.Contracts;
+using Humans.Governance.Domain;
+using Humans.Governance.Services.Dtos;
 using NodaTime;
 
 namespace Humans.Governance.Services;
@@ -7,6 +9,9 @@ namespace Humans.Governance.Services;
 internal interface IGovernanceIndexService : IApplicationService
 {
     Task<GovernanceIndexData> GetIndexDataAsync(Guid userId, CancellationToken ct = default);
+
+    /// <summary>The body's members, and its group and files (null when it has none).</summary>
+    Task<GovernanceBodyPageData> GetBodyPageAsync(GovernanceBody body, CancellationToken ct = default);
 }
 
 internal sealed record GovernanceIndexData(
@@ -20,4 +25,23 @@ internal sealed record GovernanceIndexData(
     bool CanApply,
     bool IsApprovedColaborador,
     int ColaboradorCount,
-    int AsociadoCount);
+    int AsociadoCount,
+    IReadOnlyList<Guid> BoardMemberIds,
+    IReadOnlyList<AssemblyVoteListItem> OpenVotes,
+    int UnvotedApplicationCount,
+    IReadOnlyList<GovernanceBodyAccess> YourAccess,
+    MembershipTier CurrentTier,
+    Instant? MemberSince);
+
+internal sealed record GovernanceBodyPageData(
+    GovernanceBody Body,
+    IReadOnlyList<Guid> MemberIds,
+    GovernanceBodyAccess? Links);
+
+/// <summary>A body's Google group address and files, as shown to members.</summary>
+internal sealed record GovernanceBodyAccess(
+    GovernanceBody Body,
+    string? GroupAddress,
+    IReadOnlyList<GovernanceBodyAccessFile> Files);
+
+internal sealed record GovernanceBodyAccessFile(string Name, string? Url);

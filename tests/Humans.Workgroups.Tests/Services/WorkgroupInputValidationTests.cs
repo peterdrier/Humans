@@ -306,4 +306,18 @@ public sealed class WorkgroupInputValidationTests : WorkgroupsTestHarness
         var meetings = await ctx.Meetings.Where(m => m.WorkgroupId == group.Id).ToListAsync(Ct);
         meetings.Should().ContainSingle().Which.LocationUrl.Should().Be(url);
     }
+
+    [HumansTheory]
+    [InlineData("javascript:alert(1)")]
+    [InlineData("meet.example.org/abc")]
+    public async Task MeetingUrl_RejectsAnythingButAbsoluteHttp(string url)
+    {
+        var group = await SeedWorkgroupAsync();
+        var now = Clock.GetCurrentInstant();
+        var save = new WorkgroupMeetingSave("Meeting", now, now.Plus(Duration.FromHours(1)), null, url, false);
+
+        var result = await NewService().CreateMeetingAsync(group.Id, group.Members.Single().UserId, save, Ct);
+
+        result.Refusal!.Key.Should().Be(WorkgroupErrorKeys.LocationUrlInvalid);
+    }
 }

@@ -255,6 +255,8 @@ public class StoreStripeWebhookControllerTests(HumansTestDatabase database) : In
             AllowAutoRedirect = false
         }))
         {
+            // The lead persona's camp and season are only seeded into an active event.
+            await Factory.SeedActiveEventAsync();
             await Factory.SignInAsFullyOnboardedAsync(seedClient, new DevPersona("barrio-1-lead"));
         }
 

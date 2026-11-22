@@ -45,7 +45,7 @@ Several system operations need to run automatically without user interaction: sy
 | AgentConversationRetentionJob | Daily 3:15 AM | Purge agent conversations past the retention window |
 | MailerLiteAudienceSyncJob | Opt-in; no default schedule | Sync all MailerLite audiences. Always contributed, scheduled only when `MailerLite:AudienceSyncCron` is set to a cron expression; the setting ships empty, so by default syncing is on demand via the `/MailerLite/Admin` "Push Now" button |
 | WorkgroupRhythmJob | Daily 6:00 AM | Workgroups' daily reporting-rhythm pass (design §13) |
-| PreapprovalRemindersJob | Daily 5:00 AM | `preapprovals-reminders`: 14-day and 3-day claim-deadline reminders to Open pre-approval holders, each recorded once per `(grant, kind, deadline)` in `pre_reminders_sent`; never changes a grant |
+| PreapprovalRemindersJob | Daily 5:00 AM | `preapprovals-reminders`: 14-day and 3-day claim-deadline reminders to Open pre-approval holders, each recorded once per `(grant, kind, deadline)` in `preapproval_sent_reminders`; never changes a grant |
 | SepaBankBookingJob | Every 2 hours at :17 | `sepa-bank-booking`: the SEPA bank-line sweep — book the transfers whose Sabadell line has landed and retry pending reconciles |
 
 > **Note:** `SystemTeamSyncJob` and `GoogleResourceReconciliationJob` were historically disabled by default because they modify Google Shared Drive and Group permissions; both are now registered as normal scheduled jobs (`teams-system-sync` hourly, `google-resource-reconciliation` daily at 03:00) in `RecurringJobExtensions.UseHumansRecurringJobs`. `GoogleResourceReconciliationJob` still no-ops per service when that service's sync mode is `None` (configured at `/Google/SyncSettings`). The manual "Sync Now" button at `/Google/Sync` remains available for on-demand runs. `SendAdminDailyDigestJob` / `SendBoardDailyDigestJob` have been retired and their job types no longer exist; deleting a job needs no cleanup step, because startup removes every stored Hangfire schedule that is not in the roll-call.
@@ -202,12 +202,7 @@ See [Profiles — Account Deletion](../../../src/Sections/Humans.Users/Docs/feat
    - Add: New coordinators
    - Remove: Users who are no longer coordinator anywhere
 
-3. SyncBoardTeamAsync()
-   - Eligible: Users with active "Board" RoleAssignment + Board-team consents
-   - Add: New board members
-   - Remove: Users whose assignment expired
-
-4. For each membership change:
+3. For each membership change:
    - Update Google resource permissions
    - Log change for audit
 ```
@@ -225,23 +220,20 @@ See [Profiles — Account Deletion](../../../src/Sections/Humans.Users/Docs/feat
 
 ### GoogleResourceReconciliationJob
 
-**Purpose**: Full reconciliation of all Google resources (Shared Drive folders + Groups) with the expected state from the database. Reads per-service sync mode from the `sync_service_settings` table to determine what actions to take.
+**Purpose**: Full reconciliation of all Google resources (Shared Drive folders + Groups) with the expected state from the database. Reads per-service sync mode from the `google_sync_service_settings` table to determine what actions to take.
 
 **Schedule**: Daily at 3:00 AM (Hangfire recurring job `google-resource-reconciliation`)
 
 **Process**:
 ```
-1. For each service type (GoogleDrive, GoogleGroups):
-   a. Read SyncMode from sync_service_settings
-   b. If mode is None → skip this service entirely
-   c. Map SyncMode to SyncAction:
-      - AddOnly → SyncAction.AddOnly (adds only)
-      - AddAndRemove → SyncAction.AddAndRemove (adds + removes)
-   d. Call SyncResourcesByTypeAsync(resourceType, action)
-      - Computes diff for all active resources of that type
-      - Executes adds (and removes if AddAndRemove) per resource
-      - Per-resource error handling (log + store ErrorMessage, continue)
-      - Updates LastSyncedAt on each resource
+1. Skip the run without Google credentials.
+2. Reconcile Drive claims through IGoogleDriveSync.ReconcileAllAsync(Execute).
+3. Reconcile Group claims through IGoogleGroupSync.ReconcileAllAsync(Execute).
+   Each owner applies its stored SyncMode and reports per-resource errors.
+4. Update Drive folder paths and enforce inherited-access restrictions.
+5. Check Group settings and remediate reported drift.
+   Phases isolate failures and report one accumulated summary; shutdown propagates
+   after reporting the outcomes already recorded.
 ```
 
 **Sync modes** (configured at `/Google/SyncSettings` by Admin users):
@@ -407,5 +399,5 @@ BackgroundJob.Enqueue<SystemTeamSyncJob>(
 - [Legal Documents & Consent](../../../src/Sections/Humans.Consent/Docs/features/legal-documents-consent.md) - Document sync job
 - [Volunteer Status](../../../src/Sections/Humans.Onboarding/Docs/features/volunteer-status.md) - Compliance jobs
 - [Teams](../../../src/Sections/Humans.Teams/Docs/features/Teams-feature.md) - System team sync
-- [Google Integration](../../../src/Sections/Humans.GoogleIntegration/Docs/features/google-integration.md) - Resource provisioning job
+- [Google](../../../src/Sections/Humans.Google/Docs/features/google-integration.md) - Resource provisioning job
 - [Drive Activity Monitoring](../../../src/Sections/Humans.Monitor/Docs/features/drive-activity-monitoring.md) - Anomalous permission detection

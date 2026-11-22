@@ -12,12 +12,13 @@ using Humans.Expenses.Services.Dtos;
 using Humans.Base.Helpers;
 using Microsoft.Extensions.Options;
 using NodaTime;
-using System.Globalization;
-using System.Transactions;
 using Humans.Expenses.Contracts;
 using Humans.Expenses.Data;
 using Humans.Expenses.Domain;
 using Humans.Users.Contracts;
+using System.Globalization;
+using System.Transactions;
+using Humans.Base.Threading;
 
 namespace Humans.Expenses.Services;
 
@@ -25,10 +26,7 @@ internal sealed class ExpenseReportService(
     IExpenseRepository repo,
     IFileStorage fileStorage,
     IBudgetService budgetService,
-    ITeamService teamService,
     IUserService userService,
-    IEmailService emailService,
-    ExpensesEmails emails,
     IAuditLogService auditLogService,
     IAuditViewerService auditViewer,
     IHoldedService holded,
@@ -41,39 +39,17 @@ internal sealed class ExpenseReportService(
     IOptions<TravelReimbursementConfig> travelConfig) : IExpenseReportManagement,
         IUserDataContributor
 {
-    internal const string ExpenseReports = ExpenseReportExport.ExpenseReports;
-    internal const string ExpenseAuditLog = ExpenseReportExport.ExpenseAuditLog;
-
-    private readonly ExpenseReportAccess reportAccess = new(repo, userService, budgetService, teamService, preapprovals);
-    private readonly ExpenseHoldedTimelineReader holdedTimeline = new(repo, finance, userService, holded);
-    private readonly ExpenseReportExport reportExport = new(repo, userService, auditViewer);
+    private static readonly ExpenseReportStatus[] DraftEditStatuses = [ExpenseReportStatus.Draft];
+    private static readonly ExpenseReportStatus[] FinanceCorrectionStatuses =
+        [ExpenseReportStatus.Draft, ExpenseReportStatus.Submitted, ExpenseReportStatus.CoordinatorEndorsed];
 
     private readonly TravelReimbursementConfig _travel = travelConfig.Value;
-
-    /// <summary>Claim deadlines are Europe/Madrid dates.</summary>
-    private static readonly DateTimeZone MadridZone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
-
-    internal static string AttachmentKey(Guid id, string extension) =>
-        $"uploads/expense-attachments/{id}{extension}";
-
-    private static readonly HashSet<string> AllowedExtensions =
-        new(StringComparer.OrdinalIgnoreCase)
-        {
-            ".pdf", ".jpg", ".jpeg", ".png", ".heic"
-        };
 
     public Task<ExpenseReportDto?> GetAsync(Guid id, CancellationToken ct = default)
         => repo.GetByIdAsync(id, ct);
 
     public Task<IReadOnlyList<ExpenseReportDto>> GetAllAsync(CancellationToken ct = default)
         => repo.GetAllAsync(ct);
-
-    /// <summary>
-    /// The creditor balance already sums all of a member's outstanding docs, so whatever exceeds their own
-    /// registered-unpaid report totals shows as fronted amounts and adjustments.
-    /// </summary>
-    public Task<ExpenseHoldedTimeline?> GetHoldedTimelineAsync(ExpenseReportDto report, CancellationToken ct = default) =>
-        holdedTimeline.GetHoldedTimelineAsync(report, ct);
 
     public async Task<IReadOnlyList<ExpenseReportDto>> GetForSubmitterAsync(
         Guid submitterUserId, CancellationToken ct = default)
@@ -85,9 +61,257 @@ internal sealed class ExpenseReportService(
         return reports;
     }
 
-    public Task<IReadOnlyList<ExpenseReportDto>> GetReviewQueueAsync(
-        Guid viewerUserId, bool isFinanceAdmin, CancellationToken ct = default) =>
-        reportAccess.GetReviewQueueAsync(viewerUserId, isFinanceAdmin, ct);
+    public Task<IReadOnlyList<ExpenseReportDto>> GetReviewQueueAsync(CancellationToken ct = default) =>
+        repo.GetForReviewQueueAsync(ct);
+
+    public async Task<ExpenseCreateDraftResult> CreateDraftAsync(
+        Guid submitterUserId, Guid actorUserId, int holdedAccountNumber, string? note,
+        Guid? preapprovalGrantId = null,
+        CancellationToken ct = default)
+    {
+        Guid? reportId = null;
+        Guid? attemptedId = null;
+        var result = await RunMutationAsync(logger, ct, async () =>
+        {
+            var (resolved, refusal) = preapprovalGrantId is { } grantId
+                ? await ResolveGrantBookingAsync(grantId, submitterUserId, heldGrantId: null, ct)
+                : await ResolveBookingAsync(holdedAccountNumber, pinnedYearId: null, ct);
+            if (refusal is not null) return refusal;
+            var booking = resolved!;
+
+            var now = clock.GetCurrentInstant();
+            var report = new ExpenseReport
+            {
+                Id = Guid.NewGuid(),
+                SubmitterUserId = submitterUserId,
+                HoldedAccountNumber = booking.HoldedAccountNumber,
+                HoldedAccountId = booking.HoldedAccountId,
+                BudgetCategoryId = booking.BudgetCategoryId,
+                BudgetYearId = booking.BudgetYearId,
+                PreapprovalGrantId = preapprovalGrantId,
+                Status = ExpenseReportStatus.Draft,
+                Note = note,
+                PayeeName = "",
+                PayeeIban = "",
+                Total = 0m,
+                CreatedAt = now,
+                UpdatedAt = now
+            };
+            attemptedId = report.Id;
+            await repo.AddDraftAsync(report, ct);
+            reportId = report.Id;
+
+            // Self-created drafts stay unaudited — the report itself is the record. A report filed for
+            // somebody else is an action taken on their behalf, so it leaves a trail naming both.
+            if (!await IsSameUserAsync(submitterUserId, actorUserId, CancellationToken.None))
+            {
+                await auditLogService.LogAsync(
+                    ExpensesAuditActions.ExpenseCreatedOnBehalf,
+                    AuditEntityTypes.Report, report.Id,
+                    $"Created expense report on behalf of {await DescribeMemberAsync(submitterUserId, CancellationToken.None)}."
+                    + DescribeGrant(preapprovalGrantId),
+                    actorUserId,
+                    relatedEntityId: submitterUserId,
+                    relatedEntityType: AuditSubjectTypes.User);
+            }
+
+            return ExpenseMutationResult.Success;
+        }, "Error creating draft expense report for {SubmitterUserId}", submitterUserId);
+
+        var uncertain = false;
+        if (!result.Succeeded && reportId is null && attemptedId is { } candidate)
+        {
+            try
+            {
+                // A save can commit before its acknowledgement fails. Recover the draft instead of offering a duplicate.
+                if (await repo.GetByIdAsync(candidate, CancellationToken.None) is not null)
+                    reportId = candidate;
+            }
+            catch (Exception ex)
+            {
+                uncertain = true;
+                logger.LogError(ex, "Could not verify new expense draft {ReportId} after a failed save", candidate);
+            }
+        }
+        return new ExpenseCreateDraftResult(result.Succeeded, result.Error, reportId) { OutcomeUncertain = uncertain };
+    }
+
+    public Task<ExpenseMutationResult> UpdateDraftWithResultAsync(
+        Guid reportId, Guid actorUserId,
+        int holdedAccountNumber, string? note,
+        Guid? preapprovalGrantId = null,
+        CancellationToken ct = default) =>
+        RunMutationAsync(logger, ct, () => UpdateDraftWithResultCoreAsync(reportId, actorUserId, DraftEditStatuses, holdedAccountNumber, note, preapprovalGrantId, ct),
+            "Error updating expense report {ReportId}", reportId);
+
+    public Task<ExpenseMutationResult> UpdateHeaderForFinanceCorrectionWithResultAsync(
+        Guid reportId, Guid actorUserId,
+        int holdedAccountNumber, string? note,
+        Guid? preapprovalGrantId = null,
+        CancellationToken ct = default) =>
+        RunMutationAsync(logger, ct, () => UpdateDraftWithResultCoreAsync(reportId, actorUserId, FinanceCorrectionStatuses, holdedAccountNumber, note, preapprovalGrantId, ct),
+            "Error updating expense report {ReportId}", reportId);
+
+    public Task<ExpenseAddLineResult> AddLineWithResultAsync(
+        Guid reportId, Guid actorUserId,
+        string description, decimal amount, ExpenseLineType lineType = ExpenseLineType.Receipt,
+        Guid? parentLineId = null, ExpenseFileUpload? file = null, CancellationToken ct = default) =>
+        AddLineWithResultCoreAsync(reportId, actorUserId, DraftEditStatuses,
+            description, amount, lineType, parentLineId, file, ct);
+
+    public Task<ExpenseAddLineResult> AddLineForFinanceCorrectionWithResultAsync(
+        Guid reportId, Guid actorUserId,
+        string description, decimal amount, ExpenseLineType lineType = ExpenseLineType.Receipt,
+        Guid? parentLineId = null, ExpenseFileUpload? file = null, CancellationToken ct = default) =>
+        AddLineWithResultCoreAsync(reportId, actorUserId, FinanceCorrectionStatuses,
+            description, amount, lineType, parentLineId, file, ct);
+
+    public Task<ExpenseMutationResult> AddMileageLineWithResultAsync(
+        Guid reportId, Guid submitterUserId,
+        string origin, string destination, decimal km,
+        CancellationToken ct = default) =>
+        RunMutationAsync(logger, ct, () => AddMileageLineWithResultCoreAsync(reportId, submitterUserId, origin, destination, km, ct),
+            "Error adding mileage line to report {ReportId}", reportId);
+
+    public Task<ExpenseMutationResult> AddPerDiemLineWithResultAsync(
+        Guid reportId, Guid submitterUserId,
+        PerDiemKind kind, int days, string? note,
+        CancellationToken ct = default) =>
+        RunMutationAsync(logger, ct, () => AddPerDiemLineWithResultCoreAsync(reportId, submitterUserId, kind, days, note, ct),
+            "Error adding per-diem line to report {ReportId}", reportId);
+
+    public Task<ExpenseMutationResult> UpdateLineWithResultAsync(
+        Guid reportId, Guid actorUserId,
+        Guid lineId, string description, decimal amount,
+        CancellationToken ct = default) =>
+        RunMutationAsync(logger, ct, () => UpdateLineWithResultCoreAsync(reportId, actorUserId, DraftEditStatuses, lineId, description, amount, ct),
+            "Error updating line {LineId} on report {ReportId}", lineId, reportId);
+
+    public Task<ExpenseMutationResult> UpdateLineForFinanceCorrectionWithResultAsync(
+        Guid reportId, Guid actorUserId,
+        Guid lineId, string description, decimal amount,
+        CancellationToken ct = default) =>
+        RunMutationAsync(logger, ct, () => UpdateLineWithResultCoreAsync(reportId, actorUserId, FinanceCorrectionStatuses, lineId, description, amount, ct),
+            "Error updating line {LineId} on report {ReportId}", lineId, reportId);
+
+    public Task<ExpenseMutationResult> RemoveLineWithResultAsync(
+        Guid reportId, Guid actorUserId, Guid lineId,
+        CancellationToken ct = default) =>
+        RunMutationAsync(logger, ct, () => RemoveLineWithResultCoreAsync(reportId, actorUserId, DraftEditStatuses, lineId, ct),
+            "Error removing line {LineId} from report {ReportId}", lineId, reportId);
+
+    public Task<ExpenseMutationResult> RemoveLineForFinanceCorrectionWithResultAsync(
+        Guid reportId, Guid actorUserId, Guid lineId,
+        CancellationToken ct = default) =>
+        RunMutationAsync(logger, ct, () => RemoveLineWithResultCoreAsync(reportId, actorUserId, FinanceCorrectionStatuses, lineId, ct),
+            "Error removing line {LineId} from report {ReportId}", lineId, reportId);
+
+    public Task<ExpenseMutationResult> AttachFileToLineWithResultAsync(
+        Guid reportId, Guid actorUserId,
+        Guid lineId, string originalFileName, string contentType,
+        Stream content, CancellationToken ct = default) =>
+        RunMutationAsync(logger, ct, async () =>
+        {
+            var refusal = await StoreAttachmentAsync(
+                reportId, actorUserId, DraftEditStatuses, lineId, originalFileName, contentType, content, ct);
+            return refusal is null ? ExpenseMutationResult.Success : new(false, refusal);
+        }, "Error uploading attachment to line {LineId} on report {ReportId}", lineId, reportId);
+
+    public Task<ExpenseMutationResult> AttachFileToLineForFinanceCorrectionWithResultAsync(
+        Guid reportId, Guid actorUserId,
+        Guid lineId, string originalFileName, string contentType,
+        Stream content, CancellationToken ct = default) =>
+        RunMutationAsync(logger, ct, async () =>
+        {
+            var refusal = await StoreAttachmentAsync(
+                reportId, actorUserId, FinanceCorrectionStatuses, lineId, originalFileName, contentType, content, ct);
+            return refusal is null ? ExpenseMutationResult.Success : new(false, refusal);
+        }, "Error uploading attachment to line {LineId} on report {ReportId}", lineId, reportId);
+
+    public Task<ExpenseMutationResult> RemoveAttachmentFromLineAsync(
+        Guid reportId, Guid actorUserId,
+        Guid lineId, CancellationToken ct = default) =>
+        RunMutationAsync(logger, ct,
+            () => RemoveAsync(reportId, actorUserId, DraftEditStatuses, lineId, ct),
+            "Error removing attachment from line {LineId} on report {ReportId}", lineId, reportId);
+
+    public Task<ExpenseMutationResult> RemoveAttachmentFromLineForFinanceCorrectionAsync(
+        Guid reportId, Guid actorUserId,
+        Guid lineId, CancellationToken ct = default) =>
+        RunMutationAsync(logger, ct,
+            () => RemoveAsync(reportId, actorUserId, FinanceCorrectionStatuses, lineId, ct),
+            "Error removing attachment from line {LineId} on report {ReportId}", lineId, reportId);
+
+    public Task<ExpenseMutationResult> SubmitWithResultAsync(
+        Guid reportId, Guid actorUserId, CancellationToken ct = default) =>
+        RunMutationAsync(logger, ct, () => SubmitWithResultCoreAsync(reportId, actorUserId, ct),
+            "Error submitting expense report {ReportId}", reportId);
+
+    /// <summary>
+    /// A member-facing refusal, or null when the claim should be attempted. Mirrors
+    /// <see cref="IPreapprovalWrite.ClaimAsync"/>: the report already holding the grant resubmits past the deadline.
+    /// </summary>
+    public Task<ExpenseMutationResult> WithdrawWithResultAsync(
+        Guid reportId, Guid submitterUserId, CancellationToken ct = default) =>
+        RunMutationAsync(logger, ct, () => WithdrawWithResultCoreAsync(reportId, submitterUserId, ct),
+            "Error withdrawing expense report {ReportId}", reportId);
+
+    /// <summary>Logs a refusal or an unexpected failure; the controller supplies the localized fallback.</summary>
+    internal static async Task<ExpenseMutationResult> RunMutationAsync(
+        ILogger logger,
+        CancellationToken ct,
+        Func<Task<ExpenseMutationResult>> mutation,
+        string logMessage,
+        params object?[] logArgs)
+    {
+        try
+        {
+            var result = await mutation();
+            if (!result.Succeeded && result.Error is { } refusal)
+                logger.LogWarning($"{logMessage}: {{Reason}}", [.. logArgs, refusal.ResourceKey ?? refusal.OperatorMessage]);
+            return result;
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, logMessage, logArgs);
+            // Unexpected diagnostics belong in the log; controllers supply the
+            // localized fallback for a failed mutation with no validation detail.
+            return new ExpenseMutationResult(Succeeded: false, Error: null);
+        }
+    }
+
+    private const string FiscalRetention =
+        "Retained in full, nothing erased: the voucher keeps the payee's legal name, their " +
+        "bank account (IBAN, stored unmasked — the export masks it, the row does not), the " +
+        "amounts and dates, the free-text note and per-line descriptions, the approval trail " +
+        "and any uploaded receipt. A reimbursement is an accounting voucher and Spanish law " +
+        "requires the books and their supporting documents be kept 6 years (Código de " +
+        "Comercio Art. 30) and 4 years for tax purposes (Ley 58/2003 Art. 66) — an " +
+        "incomplete voucher is not a voucher. GDPR Art. 17(3)(b).";
+
+    private static readonly IReadOnlyDictionary<string, string?> Erasure =
+        new Dictionary<string, string?>(StringComparer.Ordinal)
+        {
+            [ExpenseReports] = FiscalRetention,
+            [ExpenseAuditLog] = FiscalRetention
+        };
+
+    public IReadOnlyDictionary<string, string?> ErasureDeclaration => Erasure;
+
+    public Task EraseForUserAsync(Guid userId, CancellationToken ct) => Task.CompletedTask;
+
+    internal static string AttachmentKey(Guid id, string extension) =>
+        $"uploads/expense-attachments/{id}{extension}";
+
+    private static readonly HashSet<string> AllowedExtensions =
+        new(StringComparer.OrdinalIgnoreCase)
+        {
+            ".pdf", ".jpg", ".jpeg", ".png", ".heic"
+        };
 
     public async Task<ExpenseReportDto?> GetReportOwningAttachmentAsync(
         Guid attachmentId, CancellationToken ct = default)
@@ -114,439 +338,26 @@ internal sealed class ExpenseReportService(
             : new ExpenseAttachmentDownload(bytes, attachment.ContentType, attachment.OriginalFileName);
     }
 
-    public Task<IReadOnlyList<ExpenseReportDto>> GetCoordinatorQueueAsync(
-        Guid coordinatorUserId, CancellationToken ct = default) =>
-        reportAccess.GetCoordinatorQueueAsync(coordinatorUserId, ct);
-
-    public async Task<ExpenseCreateDraftResult> CreateDraftAsync(
-        Guid submitterUserId, Guid actorUserId, int holdedAccountNumber, string? note,
-        Guid? preapprovalGrantId = null,
-        CancellationToken ct = default)
+    internal async Task CleanupUnlinkedAttachmentsAsync(
+        IEnumerable<(Guid Id, string Extension)> attachments, Guid lineId)
     {
-        Guid? reportId = null;
-        var result = await RunMutationAsync(ct, async () =>
+        foreach (var attachment in attachments.Distinct())
         {
-            var (resolved, refusal) = preapprovalGrantId is { } grantId
-                ? await ResolveGrantBookingAsync(grantId, submitterUserId, heldGrantId: null, ct)
-                : await ResolveBookingAsync(holdedAccountNumber, pinnedYearId: null, ct);
-            if (refusal is not null) return refusal;
-            var booking = resolved!;
-
-            var now = clock.GetCurrentInstant();
-            var report = new ExpenseReport
+            try
             {
-                Id = Guid.NewGuid(),
-                SubmitterUserId = submitterUserId,
-                HoldedAccountNumber = booking.HoldedAccountNumber,
-                HoldedAccountId = booking.HoldedAccountId,
-                BudgetCategoryId = booking.BudgetCategoryId,
-                BudgetYearId = booking.BudgetYearId,
-                PreapprovalGrantId = preapprovalGrantId,
-                Status = ExpenseReportStatus.Draft,
-                Note = note,
-                PayeeName = "",
-                PayeeIban = "",
-                Total = 0m,
-                CreatedAt = now,
-                UpdatedAt = now
-            };
-            await repo.AddDraftAsync(report, ct);
-            reportId = report.Id;
-
-            // Self-created drafts stay unaudited — the report itself is the record. A report filed for
-            // somebody else is an action taken on their behalf, so it leaves a trail naming both.
-            if (actorUserId != submitterUserId)
-            {
-                await auditLogService.LogAsync(
-                    ExpensesAuditActions.ExpenseCreatedOnBehalf,
-                    AuditEntityTypes.Report, report.Id,
-                    $"Created expense report on behalf of {await DescribeMemberAsync(submitterUserId, ct)}."
-                    + DescribeGrant(preapprovalGrantId),
-                    actorUserId,
-                    relatedEntityId: submitterUserId,
-                    relatedEntityType: AuditSubjectTypes.User);
+                // A save can commit before its acknowledgement or audit fails. Verify the actual linkage
+                // without caller cancellation; a failed verification retains the file for safety.
+                if (await repo.GetReportIdByAttachmentIdAsync(attachment.Id, CancellationToken.None) is not null)
+                    continue;
+                await fileStorage.DeleteAsync(AttachmentKey(attachment.Id, attachment.Extension), CancellationToken.None);
             }
-
-            return ExpenseMutationResult.Success;
-        }, "Error creating draft expense report for {SubmitterUserId}", submitterUserId);
-
-        return new ExpenseCreateDraftResult(result.Succeeded, result.Error, reportId);
-    }
-
-    private static string DescribeGrant(Guid? grantId) =>
-        grantId is { } id ? $" Filed against pre-approval {id}." : "";
-
-    /// <summary>
-    /// The grant's account, with no category or year, which routes the report past endorsement. The grant must be
-    /// claimable by the submitter today; the one a draft already holds (<paramref name="heldGrantId"/>) is always kept,
-    /// so a rejected report can be corrected after the deadline it met.
-    /// </summary>
-    private async Task<(ExpenseBooking? Booking, ExpenseMutationResult? Refusal)> ResolveGrantBookingAsync(
-        Guid grantId, Guid submitterUserId, Guid? heldGrantId, CancellationToken ct)
-    {
-        var grant = grantId == heldGrantId
-            ? await preapprovals.GetGrantAsync(grantId, ct)
-            : (await preapprovals.ListClaimableForUserAsync(submitterUserId, ct)).FirstOrDefault(g => g.Id == grantId);
-        if (grant is null)
-            return (null, ExpenseMutationResult.Failure("Expenses_Validation_PreapprovalNotClaimable"));
-        return (new ExpenseBooking(grant.HoldedAccountNumber, grant.HoldedAccountId, null, null), null);
-    }
-
-    /// <summary>Best-effort display name for an audit of an already committed edit.</summary>
-    private async Task<string> DescribeMemberAsync(Guid userId, CancellationToken ct)
-    {
-        try
-        {
-            return (await userService.GetUserInfoAsync(userId, ct))?.BurnerName ?? userId.ToString();
-        }
-        catch (OperationCanceledException) when (ct.IsCancellationRequested)
-        {
-            logger.LogWarning("Audit display-name lookup cancelled for member {UserId}; using member ID", userId);
-        }
-        catch (Exception ex)
-        {
-            // Name enrichment must not skip the audit or fail an edit that already committed.
-            logger.LogError(ex, "Could not resolve audit display name for member {UserId}; using member ID", userId);
-        }
-        return userId.ToString();
-    }
-
-    /// <summary>
-    /// An edit to somebody else's report owes them a trail naming both; a member editing their own leaves none.
-    /// <paramref name="whatChanged"/> is the sentence opener, e.g. "Added line 'Fuel'".
-    /// </summary>
-    private async Task AuditOnBehalfEditAsync(
-        ExpenseReportDto report, Guid actorUserId, string whatChanged, CancellationToken ct)
-    {
-        if (actorUserId == report.SubmitterUserId) return;
-
-        await auditLogService.LogAsync(
-            ExpensesAuditActions.ExpenseEditedOnBehalf,
-            AuditEntityTypes.Report, report.Id,
-            $"{whatChanged} on behalf of {await DescribeMemberAsync(report.SubmitterUserId, ct)}.",
-            actorUserId,
-            relatedEntityId: report.SubmitterUserId,
-            relatedEntityType: AuditSubjectTypes.User);
-    }
-
-    private static string DescribeNote(string? note) =>
-        string.IsNullOrWhiteSpace(note) ? "cleared" : $"\"{note}\"";
-
-    public Task<ExpenseMutationResult> UpdateDraftWithResultAsync(
-        Guid reportId, Guid actorUserId, bool actorIsFinanceAdmin,
-        int holdedAccountNumber, string? note,
-        Guid? preapprovalGrantId = null,
-        CancellationToken ct = default) =>
-        RunMutationAsync(ct, async () =>
-        {
-            var (editableReport, refusal) = await GetEditableReportAsync(reportId, actorUserId, actorIsFinanceAdmin, ct);
-            if (refusal is not null) return refusal;
-            var report = editableReport!;
-
-            ExpenseBooking booking;
-            if (report.Status != ExpenseReportStatus.Draft
-                && (preapprovalGrantId != report.PreapprovalGrantId
-                    || (report.PreapprovalGrantId is not null && holdedAccountNumber != report.HoldedAccountNumber)))
+            catch (Exception ex)
             {
-                // The grant was claimed at submit and the report stamped from it; neither moves until
-                // the report leaves the pending window (withdraw releases, approval consumes).
-                return ExpenseMutationResult.Failure("Expenses_Validation_PreapprovalLocked");
+                logger.LogError(ex, "Could not verify or delete attachment file {AttachmentId} for line {LineId}",
+                    attachment.Id, lineId);
             }
-            if (report.Status != ExpenseReportStatus.Draft && report.PreapprovalGrantId is not null)
-            {
-                // A program edit must not rebook a submitted report during an unrelated header edit.
-                booking = new ExpenseBooking(report.HoldedAccountNumber, report.HoldedAccountId,
-                    report.BudgetCategoryId, report.BudgetYearId);
-            }
-            else if (preapprovalGrantId is { } grantId)
-            {
-                var (grantBooking, grantRefusal) = await ResolveGrantBookingAsync(
-                    grantId, report.SubmitterUserId, report.PreapprovalGrantId, ct);
-                if (grantRefusal is not null) return grantRefusal;
-                booking = grantBooking!;
-            }
-            else
-            {
-                // A draft resolves through the active year. A submitted report already belongs to a year;
-                // re-resolving it would silently move last year's accounting into this year's books.
-                var pinnedYearId = IsPendingApproval(report.Status) ? report.BudgetYearId : null;
-                var (resolved, bookingRefusal) = await ResolveBookingAsync(holdedAccountNumber, pinnedYearId, ct);
-                if (bookingRefusal is not null) return bookingRefusal;
-                booking = resolved!;
-            }
-
-            var updated = new ExpenseReport
-            {
-                Id = reportId,
-                HoldedAccountNumber = booking.HoldedAccountNumber,
-                HoldedAccountId = booking.HoldedAccountId,
-                BudgetCategoryId = booking.BudgetCategoryId,
-                BudgetYearId = booking.BudgetYearId,
-                PreapprovalGrantId = preapprovalGrantId,
-                Note = note,
-                UpdatedAt = clock.GetCurrentInstant()
-            };
-
-            // A rejected draft still holds (Claimed) the grant it was submitted against. Dropping or swapping it
-            // releases that claim in the same transaction. A grant revoked meanwhile is left behind.
-            var released = report.PreapprovalGrantId is { } held && held != preapprovalGrantId
-                && (await preapprovals.GetGrantAsync(held, ct))?.Status == GrantStatus.Claimed
-                ? held
-                : (Guid?)null;
-            if (released is { } releasedId)
-            {
-                var afterCommit = new List<Func<CancellationToken, Task>>();
-                using (var scope = new TransactionScope(
-                    TransactionScopeOption.Required,
-                    new TransactionOptions { IsolationLevel = IsolationLevel.ReadCommitted },
-                    TransactionScopeAsyncFlowOption.Enabled))
-                {
-                    var release = await preapprovalWrites.ReleaseAsync(releasedId, reportId, actorUserId, ct, afterCommit.Add);
-                    if (release.Refusal is { } releaseRefusal)
-                    {
-                        logger.LogWarning("Pre-approval {GrantId} refused release by report {ReportId}: {Reason}", releasedId, reportId, releaseRefusal);
-                        return ExpenseMutationResult.Failure("Expenses_Validation_PreapprovalUnavailable");
-                    }
-                    await repo.UpdateDraftAsync(updated, ct);
-                    scope.Complete();
-                }
-                foreach (var complete in afterCommit) await complete(CancellationToken.None);
-            }
-            else
-            {
-                await repo.UpdateDraftAsync(updated, ct);
-            }
-
-            await AuditOnBehalfEditAsync(report, actorUserId,
-                $"Updated header (account {booking.HoldedAccountNumber}, subject {DescribeNote(note)})"
-                + (preapprovalGrantId != report.PreapprovalGrantId
-                    ? $" and pre-approval ({report.PreapprovalGrantId?.ToString() ?? "none"} → {preapprovalGrantId?.ToString() ?? "none"})"
-                    : ""), ct);
-
-            return ExpenseMutationResult.Success;
-        }, "Error updating expense report {ReportId}", reportId);
-
-    private async Task<(ExpenseAddLineResult Result, ExpenseReportDto? Report)> AddLineWithoutAuditAsync(
-        Guid reportId, Guid actorUserId, bool actorIsFinanceAdmin,
-        string description, decimal amount, ExpenseLineType lineType,
-        Guid? parentLineId, CancellationToken ct)
-    {
-        var (editableReport, refusal) = await GetEditableReportAsync(reportId, actorUserId, actorIsFinanceAdmin, ct);
-        if (refusal is not null) return (new(false, refusal.Error, null), null);
-        var report = editableReport!;
-
-        if (parentLineId is { } parentId)
-        {
-            // A proof row is a Receipt backing an Invoice line on the same report. One level only.
-            if (lineType != ExpenseLineType.Receipt)
-                return (new(false, ExpenseMutationResult.Failure("Expenses_Validation_ProofRowsMustBeReceipts").Error, null), null);
-            var parent = report.Lines.FirstOrDefault(l => l.Id == parentId);
-            if (parent is null) return (new(false, ExpenseMutationResult.Failure("Expenses_Validation_ParentLineNotFound").Error, null), null);
-            if (parent.LineType != ExpenseLineType.Invoice)
-                return (new(false, ExpenseMutationResult.Failure("Expenses_Validation_ProofRowsRequireInvoice").Error, null), null);
-        }
-
-        var line = new ExpenseLine
-        {
-            Id = Guid.NewGuid(),
-            ExpenseReportId = reportId,
-            Description = description,
-            Amount = amount,
-            LineType = lineType,
-            ParentLineId = parentLineId
-        };
-        var ok = await repo.AddLineAsync(reportId, line, ct);
-        if (!ok) throw new InvalidOperationException("Failed to add line.");
-
-        return (new(true, null, line.Id), report);
-    }
-
-    public async Task<ExpenseAddLineResult> AddLineWithResultAsync(
-        Guid reportId, Guid actorUserId, bool actorIsFinanceAdmin,
-        string description, decimal amount,
-        ExpenseLineType lineType = ExpenseLineType.Receipt,
-        Guid? parentLineId = null,
-        ExpenseFileUpload? file = null,
-        CancellationToken ct = default)
-    {
-        ExpenseAddLineResult Reject(ExpenseError refusal)
-        {
-            logger.LogWarning("Error adding line to report {ReportId}: {Reason}", reportId, refusal.ResourceKey);
-            return new(false, refusal, null);
-        }
-
-        try
-        {
-            // This path takes free-text amounts; travel lines are computed.
-            if (lineType is not (ExpenseLineType.Receipt or ExpenseLineType.Invoice))
-                return Reject(new("Expenses_Validation_OnlyReceiptAndInvoiceLines", []));
-            if (decimal.Round(amount, 2) != amount)
-                return Reject(new("Expenses_Validation_AmountPrecision", []));
-            // Validate the file before creating anything, so a bad upload leaves no half-made line.
-            if (file is not null && ValidateAttachmentUpload(file.FileName, file.ContentType, file.Content).Refusal is { } uploadRefusal)
-                return Reject(uploadRefusal);
-
-            var (added, report) = await AddLineWithoutAuditAsync(
-                reportId, actorUserId, actorIsFinanceAdmin,
-                description, amount, lineType, parentLineId, ct);
-            if (added.Error is { } addRefusal) return Reject(addRefusal);
-            var lineId = added.LineId!.Value;
-            if (file is not null)
-            {
-                ExpenseError? attachmentRefusal;
-                try
-                {
-                    attachmentRefusal = await StoreAttachmentAsync(
-                        reportId, actorUserId, actorIsFinanceAdmin, lineId, file.FileName, file.ContentType, file.Content, ct);
-                }
-                catch
-                {
-                    // The form retries the whole add, so a line left behind here would duplicate.
-                    await repo.RemoveLineAsync(reportId, lineId, CancellationToken.None);
-                    throw;
-                }
-                if (attachmentRefusal is not null)
-                {
-                    await repo.RemoveLineAsync(reportId, lineId, CancellationToken.None);
-                    return Reject(attachmentRefusal);
-                }
-            }
-            await AuditOnBehalfEditAsync(report!, actorUserId,
-                $"Added {(parentLineId is null ? "line" : "proof row")} \"{description}\" €{amount}", ct);
-            return new ExpenseAddLineResult(true, null, lineId);
-        }
-        catch (OperationCanceledException) when (ct.IsCancellationRequested)
-        {
-            throw;
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Error adding line to report {ReportId}", reportId);
-            return new ExpenseAddLineResult(false, null, null);
         }
     }
-
-    private async Task<ExpenseMutationResult> AddComputedLineAsync(
-        Guid reportId, Guid actorUserId, string description, decimal amount, ExpenseLineType lineType,
-        CancellationToken ct)
-    {
-        var (added, report) = await AddLineWithoutAuditAsync(
-            reportId, actorUserId, false, description, amount, lineType, null, ct);
-        if (added.Error is not null) return new(false, added.Error);
-        await AuditOnBehalfEditAsync(report!, actorUserId, $"Added line \"{description}\" €{amount}", ct);
-        return ExpenseMutationResult.Success;
-    }
-
-    public Task<ExpenseMutationResult> AddMileageLineWithResultAsync(
-        Guid reportId, Guid submitterUserId,
-        string origin, string destination, decimal km,
-        CancellationToken ct = default) =>
-        RunMutationAsync(ct, async () =>
-        {
-            var rate = _travel.MileageRatePerKm;
-            var amount = Math.Round(km * rate, 2, MidpointRounding.AwayFromZero);
-            var description =
-                $"{origin.Trim()} to {destination.Trim()}, " +
-                $"{km.ToString("0.#", CultureInfo.InvariantCulture)} km @ " +
-                $"€{rate.ToString("0.00", CultureInfo.InvariantCulture)} = " +
-                $"€{amount.ToString("0.00", CultureInfo.InvariantCulture)}";
-            return await AddComputedLineAsync(reportId, submitterUserId, description, amount, ExpenseLineType.Mileage, ct);
-        }, "Error adding mileage line to report {ReportId}", reportId);
-
-    public Task<ExpenseMutationResult> AddPerDiemLineWithResultAsync(
-        Guid reportId, Guid submitterUserId,
-        PerDiemKind kind, int days, string? note,
-        CancellationToken ct = default) =>
-        RunMutationAsync(ct, async () =>
-        {
-            var rate = kind == PerDiemKind.Overnight ? _travel.PerDiemOvernightRate : _travel.PerDiemDayTripRate;
-            var amount = Math.Round(days * rate, 2, MidpointRounding.AwayFromZero);
-            var kindLabel = kind == PerDiemKind.Overnight ? "overnight" : "day-trip";
-            var dayWord = days == 1 ? "day" : "days";
-            var description =
-                $"Per diem: {days} {dayWord} {kindLabel} @ " +
-                $"€{rate.ToString("0.00", CultureInfo.InvariantCulture)} = " +
-                $"€{amount.ToString("0.00", CultureInfo.InvariantCulture)}";
-            if (!string.IsNullOrWhiteSpace(note))
-                description += $" — {note.Trim()}";
-            return await AddComputedLineAsync(reportId, submitterUserId, description, amount, ExpenseLineType.PerDiem, ct);
-        }, "Error adding per-diem line to report {ReportId}", reportId);
-
-    public Task<ExpenseMutationResult> UpdateLineWithResultAsync(
-        Guid reportId, Guid actorUserId, bool actorIsFinanceAdmin,
-        Guid lineId, string description, decimal amount,
-        CancellationToken ct = default) =>
-        RunMutationAsync(ct, async () =>
-        {
-            var (editableReport, refusal) = await GetEditableReportAsync(reportId, actorUserId, actorIsFinanceAdmin, ct);
-            if (refusal is not null) return refusal;
-            var report = editableReport!;
-
-            var existing = report.Lines.FirstOrDefault(l => l.Id == lineId);
-            if (existing is null) return ExpenseMutationResult.Failure("Expenses_Validation_LineNotOnReport");
-            // Travel lines carry computed amounts and waive the receipt on that basis; a free-text edit would allow an
-            // arbitrary unreceipted claim. Remove and re-add to recompute.
-            if (existing.LineType is ExpenseLineType.Mileage or ExpenseLineType.PerDiem)
-                return ExpenseMutationResult.Failure("Expenses_Validation_TravelLinesComputedCannotEdit");
-
-            if (decimal.Round(amount, 2) != amount)
-                return ExpenseMutationResult.Failure("Expenses_Validation_AmountPrecision");
-
-            var line = new ExpenseLine
-            {
-                Id = lineId,
-                ExpenseReportId = reportId,
-                Description = description,
-                Amount = amount
-            };
-            var ok = await repo.UpdateLineAsync(reportId, line, ct);
-            if (!ok) throw new InvalidOperationException("Failed to update line.");
-
-            await AuditOnBehalfEditAsync(report, actorUserId,
-                $"Updated line \"{existing.Description}\" €{existing.Amount} to \"{description}\" €{amount}", ct);
-
-            return ExpenseMutationResult.Success;
-        }, "Error updating line {LineId} on report {ReportId}", lineId, reportId);
-
-    public Task<ExpenseMutationResult> RemoveLineWithResultAsync(
-        Guid reportId, Guid actorUserId, bool actorIsFinanceAdmin, Guid lineId,
-        CancellationToken ct = default) =>
-        RunMutationAsync(ct, async () =>
-        {
-            var (editableReport, refusal) = await GetEditableReportAsync(reportId, actorUserId, actorIsFinanceAdmin, ct);
-            if (refusal is not null) return refusal;
-            var report = editableReport!;
-            // Read the line before it is gone — the audit entry names what was removed, not an id.
-            var removed = report.Lines.FirstOrDefault(l => l.Id == lineId);
-
-            // One atomic save removes the line, its proof rows and their attachment rows; files go only after the
-            // commit; cleanup failures cannot reverse the metadata deletion.
-            var removedAttachments = await repo.RemoveLineAsync(reportId, lineId, ct)
-                ?? throw new InvalidOperationException("Failed to remove line.");
-
-            // The deletion has committed; its audit and file cleanup must finish even if the request ends.
-            await AuditOnBehalfEditAsync(report, actorUserId,
-                removed is null
-                    ? $"Removed line {lineId}"
-                    : $"Removed line \"{removed.Description}\" €{removed.Amount}", CancellationToken.None);
-
-            foreach (var attachment in removedAttachments)
-            {
-                try
-                {
-                    await fileStorage.DeleteAsync(
-                        AttachmentKey(attachment.Id, attachment.Extension), CancellationToken.None);
-                }
-                catch (Exception ex)
-                {
-                    logger.LogError(ex,
-                        "Could not delete attachment file {AttachmentId} while removing line {LineId}",
-                        attachment.Id, lineId);
-                }
-            }
-
-            return ExpenseMutationResult.Success;
-        }, "Error removing line {LineId} from report {ReportId}", lineId, reportId);
 
     private const long AttachmentMaxBytes = 20 * 1024 * 1024;
     private const int AttachmentFileNameMaxLength = 255;
@@ -556,7 +367,7 @@ internal sealed class ExpenseReportService(
         "application/pdf", "image/jpeg", "image/jpg", "image/png", "image/heic"
     };
 
-    private static (string? Extension, ExpenseError? Refusal) ValidateAttachmentUpload(
+    internal static (string? Extension, ExpenseError? Refusal) ValidateAttachmentUpload(
         string originalFileName, string contentType, Stream content)
     {
         if (content is null || content.Length == 0)
@@ -575,15 +386,15 @@ internal sealed class ExpenseReportService(
         return (extension, null);
     }
 
-    private async Task<ExpenseError?> StoreAttachmentAsync(
-        Guid reportId, Guid actorUserId, bool actorIsFinanceAdmin,
+    internal async Task<ExpenseError?> StoreAttachmentAsync(
+        Guid reportId, Guid actorUserId, IReadOnlyCollection<ExpenseReportStatus> allowedStatuses,
         Guid lineId, string originalFileName, string contentType,
         Stream content, CancellationToken ct = default)
     {
         var (fileExtension, uploadRefusal) = ValidateAttachmentUpload(originalFileName, contentType, content);
         if (uploadRefusal is not null) return uploadRefusal;
         var extension = fileExtension!;
-        var (editableReport, refusal) = await GetEditableReportAsync(reportId, actorUserId, actorIsFinanceAdmin, ct);
+        var (editableReport, refusal) = await GetEditableReportAsync(reportId, allowedStatuses, ct);
         if (refusal is not null) return refusal.Error;
         var report = editableReport!;
 
@@ -647,40 +458,24 @@ internal sealed class ExpenseReportService(
         }
         catch
         {
-            var metadataRemoved = true;
             try
             {
                 // Restore metadata, linkage and any decline/total change atomically, including when the failed
                 // save committed before throwing. Keep the old file until audit succeeds.
-                var rollback = await repo.ReplaceLineAttachmentAsync(
+                await repo.ReplaceLineAttachmentAsync(
                     reportId, lineId, previousAttachment, CancellationToken.None,
                     declineState: line.Declined
                         ? (report.UpdatedAt, line.DeclinedReason, line.DeclinedByUserId, line.DeclinedAt)
                         : null);
-                metadataRemoved = rollback.Found;
             }
             catch (Exception ex)
             {
-                metadataRemoved = false;
                 logger.LogError(ex,
                     "Could not roll back attachment metadata {AttachmentId} for line {LineId}",
                     attachmentId, lineId);
             }
 
-            if (metadataRemoved)
-            {
-                try
-                {
-                    await fileStorage.DeleteAsync(
-                        AttachmentKey(attachmentId, extension), CancellationToken.None);
-                }
-                catch (Exception ex)
-                {
-                    logger.LogError(ex,
-                        "Could not delete attachment file {AttachmentId} after upload rollback",
-                        attachmentId);
-                }
-            }
+            await CleanupUnlinkedAttachmentsAsync([(attachmentId, extension)], lineId);
 
             throw;
         }
@@ -701,33 +496,24 @@ internal sealed class ExpenseReportService(
         return null;
     }
 
-    public Task<ExpenseMutationResult> AttachFileToLineWithResultAsync(
-        Guid reportId, Guid actorUserId, bool actorIsFinanceAdmin,
-        Guid lineId, string originalFileName, string contentType,
-        Stream content, CancellationToken ct = default) =>
-        RunMutationAsync(ct, async () =>
+    internal async Task<ExpenseMutationResult> RemoveAsync(
+        Guid reportId, Guid actorUserId, IReadOnlyCollection<ExpenseReportStatus> allowedStatuses,
+        Guid lineId, CancellationToken ct)
+    {
+        var (editableReport, refusal) = await GetEditableReportAsync(reportId, allowedStatuses, ct);
+        if (refusal is not null) return refusal;
+        var report = editableReport!;
+
+        var line = report.Lines.FirstOrDefault(l => l.Id == lineId);
+        if (line is null)
+            return ExpenseMutationResult.Failure("Expenses_Validation_LineNotOnReport");
+
+        if (line.Attachment is null) return ExpenseMutationResult.Success; // idempotent
+
+        ExpenseAttachment? removed = null;
+        try
         {
-            var refusal = await StoreAttachmentAsync(
-                reportId, actorUserId, actorIsFinanceAdmin, lineId, originalFileName, contentType, content, ct);
-            return refusal is null ? ExpenseMutationResult.Success : new(false, refusal);
-        }, "Error uploading attachment to line {LineId} on report {ReportId}", lineId, reportId);
-
-    public Task<ExpenseMutationResult> RemoveAttachmentFromLineAsync(
-        Guid reportId, Guid actorUserId, bool actorIsFinanceAdmin,
-        Guid lineId, CancellationToken ct = default) =>
-        RunMutationAsync(ct, async () =>
-        {
-            var (editableReport, refusal) = await GetEditableReportAsync(reportId, actorUserId, actorIsFinanceAdmin, ct);
-            if (refusal is not null) return refusal;
-            var report = editableReport!;
-
-            var line = report.Lines.FirstOrDefault(l => l.Id == lineId);
-            if (line is null)
-                return ExpenseMutationResult.Failure("Expenses_Validation_LineNotOnReport");
-
-            if (line.Attachment is null) return ExpenseMutationResult.Success; // idempotent
-
-            var removed = await repo.RemoveLineAttachmentAsync(reportId, lineId, ct);
+            removed = await repo.RemoveLineAttachmentAsync(reportId, lineId, ct);
             if (removed is null) return ExpenseMutationResult.Success;
 
             await auditLogService.LogAsync(
@@ -737,194 +523,95 @@ internal sealed class ExpenseReportService(
                 actorUserId,
                 relatedEntityId: report.SubmitterUserId,
                 relatedEntityType: AuditSubjectTypes.User);
-
-            // Post-commit cleanup: metadata and audit are written, so request cancellation
-            // must not strand the file.
-            try
-            {
-                await fileStorage.DeleteAsync(
-                    AttachmentKey(removed.Id, removed.Extension), CancellationToken.None);
-            }
-            catch (Exception ex)
-            {
-                logger.LogError(ex,
-                    "Could not delete attachment file {AttachmentId} for line {LineId}",
-                    removed.Id, lineId);
-            }
-
             return ExpenseMutationResult.Success;
-        }, "Error removing attachment from line {LineId} on report {ReportId}", lineId, reportId);
-
-    public Task<ExpenseMutationResult> SubmitWithResultAsync(
-        Guid reportId, Guid actorUserId, bool actorIsFinanceAdmin, CancellationToken ct = default) =>
-        RunMutationAsync(ct, async () =>
+        }
+        finally
         {
-            var report = await repo.GetByIdAsync(reportId, ct);
-            if (report is null) return ExpenseMutationResult.Failure("Expenses_Validation_CouldNotSubmitReport");
-            if (!actorIsFinanceAdmin && !await IsSubmitterAsync(report, actorUserId, ct))
-                return ExpenseMutationResult.Failure("Expenses_Validation_OnlySubmitterCanSubmit");
-            if (report.Status != ExpenseReportStatus.Draft) return ExpenseMutationResult.Failure("Expenses_Validation_CouldNotSubmitReport");
-
-            // The Subject carries the project name; reviewers cannot tell what was paid for without it.
-            if (string.IsNullOrWhiteSpace(report.Note))
-                return ExpenseMutationResult.Failure("Expenses_Validation_SubjectRequired");
-
-            if (!report.Lines.Any())
-                return ExpenseMutationResult.Failure("Expenses_Validation_ReportNeedsLine");
-
-            // Receipt lines (proof rows included) need their receipt; invoice lines need the invoice file.
-            if (report.Lines.Any(l => l.LineType is ExpenseLineType.Receipt or ExpenseLineType.Invoice
-                                      && l.AttachmentId is null))
-                return ExpenseMutationResult.Failure("Expenses_Validation_ReceiptInvoiceNeedAttachment");
-
-            // The payee is the report's owner, never whoever pressed Submit, or an on-behalf submit pays the wrong
-            // account.
-            var profile = (await userService.GetUserInfoAsync(report.SubmitterUserId, ct))?.Profile;
-            if (await finance.GetIbanAsync(report.SubmitterUserId, ct) is not { Length: > 0 } payeeIban)
-                return ExpenseMutationResult.Failure("Expenses_Validation_SubmitterNeedsIban");
-
-            // Financial records use the legal name, not BurnerName.
-            if (string.IsNullOrWhiteSpace(profile?.FirstName) || string.IsNullOrWhiteSpace(profile.LastName))
-            {
-                return ExpenseMutationResult.Failure("Expenses_Validation_SubmitterNeedsFirstAndLastName");
-            }
-            var legalName = $"{profile.FirstName} {profile.LastName}".Trim();
-
-            var now = clock.GetCurrentInstant();
-            if (report.PreapprovalGrantId is not { } grantId)
-            {
-                var ok = await repo.SubmitAsync(reportId, legalName, payeeIban, now, ct: ct);
-                if (!ok) return ExpenseMutationResult.Failure("Expenses_Validation_CouldNotSubmitReport");
-            }
-            else
-            {
-                // The claim pre-check only picks the member's message; ClaimAsync is the gate, and it
-                // runs first inside the transaction so a refused claim leaves the report untouched.
-                var grantRefusal = await GetGrantClaimRefusalAsync(grantId, reportId, ct);
-                if (grantRefusal is not null) return grantRefusal;
-
-                var afterCommit = new List<Func<CancellationToken, Task>>();
-                using (var scope = new TransactionScope(
-                    TransactionScopeOption.Required,
-                    new TransactionOptions { IsolationLevel = IsolationLevel.ReadCommitted },
-                    TransactionScopeAsyncFlowOption.Enabled))
-                {
-                    var claim = await preapprovalWrites.ClaimAsync(grantId, reportId, actorUserId, ct, afterCommit.Add);
-                    if (claim.Refusal is { } refusal)
-                    {
-                        logger.LogWarning("Pre-approval {GrantId} refused the claim by report {ReportId}: {Reason}", grantId, reportId, refusal);
-                        return ExpenseMutationResult.Failure("Expenses_Validation_PreapprovalUnavailable");
-                    }
-                    var stamp = claim.Stamp!;
-                    var ok = await repo.SubmitAsync(
-                        reportId, legalName, payeeIban, now,
-                        grantStamp: new ExpenseBooking(stamp.HoldedAccountNumber, stamp.HoldedAccountId, null, null),
-                        grantMaxAmount: stamp.MaxAmount,
-                        ct: ct);
-                    if (!ok) return ExpenseMutationResult.Failure("Expenses_Validation_CouldNotSubmitReport");
-                    scope.Complete();
-                }
-                foreach (var complete in afterCommit) await complete(CancellationToken.None);
-            }
-
-            await auditLogService.LogAsync(
-                ExpensesAuditActions.ExpenseSubmit,
-                AuditEntityTypes.Report, reportId,
-                (report.SubmitterUserId == actorUserId
-                    ? "Submitted expense report."
-                    : $"Submitted expense report on behalf of {await DescribeMemberAsync(report.SubmitterUserId, ct)}.")
-                + DescribeGrant(report.PreapprovalGrantId),
-                actorUserId,
-                relatedEntityId: report.SubmitterUserId,
-                relatedEntityType: AuditSubjectTypes.User);
-
-            return ExpenseMutationResult.Success;
-
-        }, "Error submitting expense report {ReportId}", reportId);
-
-    /// <summary>
-    /// A member-facing refusal, or null when the claim should be attempted. Mirrors
-    /// <see cref="IPreapprovalWrite.ClaimAsync"/>: the report already holding the grant resubmits past the deadline.
-    /// </summary>
-    private async Task<ExpenseMutationResult?> GetGrantClaimRefusalAsync(Guid grantId, Guid reportId, CancellationToken ct)
-    {
-        var grant = await preapprovals.GetGrantAsync(grantId, ct);
-        switch (grant?.Status)
-        {
-            case GrantStatus.Revoked:
-                return ExpenseMutationResult.Failure("Expenses_Validation_PreapprovalRevoked");
-            case GrantStatus.Open:
-                var today = clock.GetCurrentInstant().InZone(MadridZone).Date;
-                return grant.ClaimBy < today
-                    ? ExpenseMutationResult.Failure("Expenses_Validation_PreapprovalDeadlinePassed", grant.ClaimBy.ToInvariantDate())
-                    : null;
-            case GrantStatus.Claimed:
-                // Held by this report (a resubmit) or by another one; ClaimAsync tells them apart.
-                return null;
-            default:
-                return ExpenseMutationResult.Failure("Expenses_Validation_PreapprovalUnavailable");
+            await CleanupUnlinkedAttachmentsAsync(
+                [(removed?.Id ?? line.Attachment.Id, removed?.Extension ?? line.Attachment.Extension)], lineId);
         }
     }
 
-    public Task<ExpenseMutationResult> WithdrawWithResultAsync(
-        Guid reportId, Guid submitterUserId, CancellationToken ct = default) =>
-        RunMutationAsync(ct, async () =>
+    public async Task<ExpenseHoldedTimeline?> GetHoldedTimelineAsync(
+        ExpenseReportDto report, CancellationToken ct = default)
+    {
+        var outboxEvent = await repo.GetLatestOutboxForReportAsync(report.Id, ct);
+
+        decimal owed = 0m, totalPaid = 0m, memberRegisteredTotal = 0m;
+        var paid = false;
+        LocalDate? paidOn = null;
+
+        // No contact id means no push has ever linked this member to a Holded creditor, so there is
+        // no ledger to read. The push half below still has something to say about why.
+        if (!string.IsNullOrEmpty(report.HoldedContactId))
         {
-            var report = await repo.GetByIdAsync(reportId, ct);
-            if (report is null) return ExpenseMutationResult.Failure("Expenses_Flash_WithdrawFailed");
-            if (!await IsSubmitterAsync(report, submitterUserId, ct))
-                return ExpenseMutationResult.Failure("Expenses_Validation_OnlySubmitterCanWithdraw");
+            var status = await finance.GetCreditorStatusAsync(
+                report.HoldedSupplierAccountNum, ct);
 
-            // Approval queues the Holded push, so only a report still pending approval can be
-            // withdrawn; the repository refuses anything else too.
-            if (!IsPendingApproval(report.Status))
-                return ExpenseMutationResult.Failure("Expenses_Flash_WithdrawFailed");
-
-            var now = clock.GetCurrentInstant();
-            // A held pre-approval goes back to the member. A grant revoked while pending is no longer held and is left
-            // alone, so the withdrawal still goes through.
-            var heldGrant = report.PreapprovalGrantId is { } grantId
-                ? await preapprovals.GetGrantAsync(grantId, ct)
-                : null;
-            var releasesGrant = heldGrant?.Status == GrantStatus.Claimed;
-            if (!releasesGrant)
+            // The creditor contact covers every id the human has held, so the total does too.
+            var submitter = await userService.GetUserInfoAsync(report.SubmitterUserId, ct);
+            foreach (var id in submitter?.AllUserIds ?? [report.SubmitterUserId])
             {
-                var ok = await repo.WithdrawAsync(reportId, now, ct);
-                if (!ok) return ExpenseMutationResult.Failure("Expenses_Flash_WithdrawFailed");
-            }
-            else
-            {
-                var afterCommit = new List<Func<CancellationToken, Task>>();
-                using (var scope = new TransactionScope(
-                    TransactionScopeOption.Required,
-                    new TransactionOptions { IsolationLevel = IsolationLevel.ReadCommitted },
-                    TransactionScopeAsyncFlowOption.Enabled))
-                {
-                    var release = await preapprovalWrites.ReleaseAsync(report.PreapprovalGrantId!.Value, reportId, submitterUserId, ct, afterCommit.Add);
-                    if (release.Refusal is { } releaseRefusal)
-                    {
-                        logger.LogWarning("Pre-approval {GrantId} refused release by report {ReportId}: {Reason}", report.PreapprovalGrantId, reportId, releaseRefusal);
-                        return ExpenseMutationResult.Failure("Expenses_Flash_WithdrawFailed");
-                    }
-                    var ok = await repo.WithdrawAsync(reportId, now, ct);
-                    if (!ok) return ExpenseMutationResult.Failure("Expenses_Flash_WithdrawFailed");
-                    scope.Complete();
-                }
-                foreach (var complete in afterCommit) await complete(CancellationToken.None);
+                // Count the documents whatever the report status: reports withdrawn after approval (before that
+                // was refused) still have their booking. RegisteredAmount excludes lines not pushed yet.
+                memberRegisteredTotal += (await repo.GetForSubmitterAsync(id, ct)).Sum(RegisteredAmount);
             }
 
-            await auditLogService.LogAsync(
-                ExpensesAuditActions.ExpenseWithdraw,
-                AuditEntityTypes.Report, reportId,
-                "Withdrew expense report."
-                + (releasesGrant
-                    ? $" Released pre-approval {report.PreapprovalGrantId}."
-                    : heldGrant is not null ? $" Pre-approval {report.PreapprovalGrantId} is {heldGrant.Status}; left as is." : ""),
-                submitterUserId);
+            owed = status?.OwedToMember ?? 0m;
+            totalPaid = status?.TotalPaid ?? 0m;
+            // Settled iff the derived creditor balance (Σdebit − Σcredit) is non-negative. A null status
+            // means no cached ledger lines for the account — unknown, not settled.
+            paid = status is { } s && s.Balance >= 0m;
+            paidOn = status?.LastPaymentDate;
+        }
 
-            return ExpenseMutationResult.Success;
+        return new ExpenseHoldedTimeline
+        {
+            RegisteredInHolded = report.HoldedDocIds.Count > 0,
+            OwedToMember = owed,
+            MemberRegisteredTotal = memberRegisteredTotal,
+            OtherAmount = Math.Max(0m, owed - memberRegisteredTotal),
+            Paid = paid,
+            PaidOn = paidOn,
+            TotalPaid = totalPaid,
+            SyncState = ResolveSyncState(outboxEvent),
+            QueuedAt = outboxEvent?.OccurredAt,
+            SettledAt = outboxEvent?.ProcessedAt,
+            RetryCount = outboxEvent?.RetryCount ?? 0,
+            MaxRetries = ExpenseReportBackgroundProcessor.MaxOutboxRetries,
+            LastError = outboxEvent?.LastError,
+            NextRetryAt = outboxEvent is { ProcessedAt: null, FailedPermanently: false }
+                ? outboxEvent.NextRetryAt
+                : null,
+        };
+    }
 
-        }, "Error withdrawing expense report {ReportId}", reportId);
+    /// <summary>
+    /// A legacy report-level doc carried the whole payable; per-line docs count only lines whose doc exists, so a
+    /// half-done push doesn't overstate the registered total against the ledger.
+    /// </summary>
+    private static decimal RegisteredAmount(ExpenseReportDto report) =>
+        report.HoldedDocId is not null
+            ? report.Payable
+            : PayableAllocation.Allocate(report)
+                .Where(a => a.Line.HoldedDocId is not null)
+                .Sum(a => a.Booked);
+
+    private ExpenseHoldedSyncState ResolveSyncState(HoldedExpenseOutboxEvent? outboxEvent) =>
+        ResolveSyncState(outboxEvent, holded.IsConfigured);
+
+    internal static ExpenseHoldedSyncState ResolveSyncState(
+        HoldedExpenseOutboxEvent? outboxEvent, bool holdedConfigured)
+    {
+        if (outboxEvent is null) return ExpenseHoldedSyncState.NotQueued;
+        // Written off sets ProcessedAt too, so it has to be tested before the success case.
+        if (outboxEvent.FailedPermanently) return ExpenseHoldedSyncState.Failed;
+        if (outboxEvent.ProcessedAt is not null) return ExpenseHoldedSyncState.Pushed;
+        if (!holdedConfigured) return ExpenseHoldedSyncState.NotConfigured;
+        return outboxEvent.RetryCount > 0
+            ? ExpenseHoldedSyncState.Retrying
+            : ExpenseHoldedSyncState.Queued;
+    }
 
     public async Task<ExpenseIbanSaveResult> SaveSubmitterIbanWithResultAsync(
         Guid reportId, Guid actorUserId, string? iban, CancellationToken ct = default)
@@ -995,10 +682,6 @@ internal sealed class ExpenseReportService(
     private static ExpenseIbanSaveResult IbanFailure(string messageKey, bool isValidationError) =>
         new(Succeeded: false, IsValidationError: isValidationError, MessageKey: messageKey);
 
-    /// <summary>Submitted, not yet approved: has a payee snapshot and a booked year, but is not final.</summary>
-    private static bool IsPendingApproval(ExpenseReportStatus status) =>
-        status is ExpenseReportStatus.Submitted or ExpenseReportStatus.CoordinatorEndorsed;
-
     private async Task RefreshPayeeIbanSnapshotAsync(
         ExpenseReportDto report, Guid actorUserId, string normalizedIban, CancellationToken ct)
     {
@@ -1010,7 +693,7 @@ internal sealed class ExpenseReportService(
 
         // On the report so it lands in the history the correcting admin is looking at. Unmasked when set for another
         // member, as above.
-        var description = actorUserId == report.SubmitterUserId
+        var description = await IsSubmitterAsync(report, actorUserId, ct)
             ? "Payee IBAN updated"
             : $"Payee IBAN updated for {await DescribeMemberAsync(report.SubmitterUserId, ct)} to {normalizedIban}";
 
@@ -1031,7 +714,7 @@ internal sealed class ExpenseReportService(
     private async Task<string> DescribeIbanChangeAsync(
         Guid submitterUserId, Guid actorUserId, string? normalizedIban, CancellationToken ct)
     {
-        if (actorUserId == submitterUserId)
+        if (await IsSameUserAsync(submitterUserId, actorUserId, ct))
             return normalizedIban is null ? "IBAN removed" : "IBAN set";
 
         var member = await DescribeMemberAsync(submitterUserId, ct);
@@ -1040,339 +723,47 @@ internal sealed class ExpenseReportService(
             : $"IBAN set for {member} to {normalizedIban}";
     }
 
-    private async Task<ExpenseMutationResult> RunMutationAsync(
-        CancellationToken ct,
-        Func<Task<ExpenseMutationResult>> mutation,
-        string logMessage,
-        params object?[] logArgs)
+    /// <summary>Requires the command's edit window; the caller authorizes the actor.</summary>
+    internal async Task<(ExpenseReportDto? Report, ExpenseMutationResult? Refusal)> GetEditableReportAsync(
+        Guid reportId, IReadOnlyCollection<ExpenseReportStatus> allowedStatuses, CancellationToken ct)
     {
-        try
-        {
-            var result = await mutation();
-            if (!result.Succeeded && result.Error is { } refusal)
-                logger.LogWarning($"{logMessage}: {{Reason}}", [.. logArgs, refusal.ResourceKey ?? refusal.OperatorMessage]);
-            return result;
-        }
-        catch (OperationCanceledException) when (ct.IsCancellationRequested)
-        {
-            throw;
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, logMessage, logArgs);
-            // Unexpected diagnostics belong in the log; controllers supply the
-            // localized fallback for a failed mutation with no validation detail.
-            return new ExpenseMutationResult(Succeeded: false, Error: null);
-        }
+        var report = await repo.GetByIdAsync(reportId, ct);
+        if (report is null)
+            return (null, ExpenseMutationResult.Failure("Expenses_Iban_ReportNotFound"));
+        return allowedStatuses.Contains(report.Status)
+            ? (report, null)
+            : (null, ExpenseMutationResult.Failure("Expenses_Validation_ReportCannotBeEditedInStatus", report.Status));
     }
 
-    private static string MaxAmountDetail(decimal? maxAmount) =>
-        maxAmount is { } cap
-            ? $" Authorized maximum {cap.ToString("0.00", CultureInfo.InvariantCulture)} EUR."
-            : "";
+    internal Task<bool> IsSubmitterAsync(ExpenseReportDto report, Guid actorUserId, CancellationToken ct) =>
+        IsSameUserAsync(report.SubmitterUserId, actorUserId, ct);
 
-    private async Task<(decimal? Amount, ExpenseMutationResult? Refusal)> ResolveReviewCapAsync(
-        Guid? grantId, decimal? requestedAmount, CancellationToken ct)
-    {
-        if (requestedAmount is { } amount && decimal.Round(amount, 2) != amount)
-            return (null, ExpenseMutationResult.Failure("Expenses_Validation_AmountPrecision"));
+    private async Task<bool> IsSameUserAsync(Guid targetUserId, Guid actorUserId, CancellationToken ct) =>
+        targetUserId == actorUserId
+        || (await userService.GetUserInfoAsync(actorUserId, ct))?.AllUserIds.Contains(targetUserId) == true;
 
-        if (grantId is not { } id) return (requestedAmount, null);
+    private async Task<IReadOnlyList<Guid>> AllIdsAsync(Guid userId, CancellationToken ct) =>
+        (await userService.GetUserInfoAsync(userId, ct))?.AllUserIds ?? [userId];
 
-        var grant = await preapprovals.GetGrantAsync(id, ct);
-        if (grant is null)
-            return (null, ExpenseMutationResult.OperatorFailure("The report's pre-approval no longer exists; reject the report."));
-        if (requestedAmount > grant.MaxAmount)
-            return (null, ExpenseMutationResult.OperatorFailure(
-                $"The cap cannot exceed the pre-approved {grant.MaxAmount.ToString("0.00", CultureInfo.InvariantCulture)} EUR."));
-
-        return (requestedAmount ?? grant.MaxAmount, null);
-    }
-
-    public Task<ExpenseMutationResult> CoordinatorEndorseWithResultAsync(
-        Guid reportId, Guid coordinatorUserId, bool actorIsFinanceAdmin, decimal? maxAmount,
-        CancellationToken ct = default) =>
-        RunMutationAsync(ct, async () =>
-        {
-            var report = await repo.GetByIdAsync(reportId, ct);
-            if (report is null) return ExpenseMutationResult.OperatorFailure("Could not endorse the report. It may no longer be in Submitted status.");
-
-            if (!actorIsFinanceAdmin && await GetFirstReviewerRefusalAsync(report, coordinatorUserId, ct) is { } refusal)
-                return refusal;
-
-            var cap = await ResolveReviewCapAsync(report.PreapprovalGrantId, maxAmount, ct);
-            if (cap.Refusal is { } capRefusal) return capRefusal;
-            maxAmount = cap.Amount;
-
-            var now = clock.GetCurrentInstant();
-            var ok = await repo.CoordinatorEndorseAsync(reportId, coordinatorUserId, maxAmount, now, ct);
-            if (!ok) return ExpenseMutationResult.OperatorFailure("Could not endorse the report. It may no longer be in Submitted status.");
-
-            await auditLogService.LogAsync(
-                ExpensesAuditActions.ExpenseEndorse,
-                AuditEntityTypes.Report, reportId,
-                ReviewerLabel(report, actorIsFinanceAdmin)
-                    + " endorsed expense report." + MaxAmountDetail(maxAmount),
-                coordinatorUserId);
-
-            return ExpenseMutationResult.Success;
-
-        }, "Error endorsing expense report {ReportId}", reportId);
-
-    public Task<ExpenseMutationResult> CoordinatorRejectWithResultAsync(
-        Guid reportId, Guid coordinatorUserId, bool actorIsFinanceAdmin, string reason,
-        CancellationToken ct = default) =>
-        RunMutationAsync(ct, async () =>
-        {
-            var report = await repo.GetByIdAsync(reportId, ct);
-            if (report is null) return ExpenseMutationResult.OperatorFailure("Could not reject the report. It may no longer be in Submitted status.");
-
-            if (!actorIsFinanceAdmin && await GetFirstReviewerRefusalAsync(report, coordinatorUserId, ct) is { } refusal)
-                return refusal;
-
-            var now = clock.GetCurrentInstant();
-            var ok = await repo.CoordinatorRejectAsync(reportId, coordinatorUserId, reason, now, ct);
-            if (!ok) return ExpenseMutationResult.OperatorFailure("Could not reject the report. It may no longer be in Submitted status.");
-
-            await auditLogService.LogAsync(
-                ExpensesAuditActions.ExpenseCoordinatorReject,
-                AuditEntityTypes.Report, reportId,
-                $"{ReviewerLabel(report, actorIsFinanceAdmin)} rejected expense report: {reason}",
-                coordinatorUserId);
-
-            return ExpenseMutationResult.Success;
-
-        }, "Error coordinator-rejecting expense report {ReportId}", reportId);
-
-    public Task<ExpenseMutationResult> DeclineLineWithResultAsync(
-        Guid reportId, Guid actorUserId, bool actorIsFinanceAdmin, Guid lineId, string reason,
-        CancellationToken ct = default) =>
-        RunMutationAsync(ct, async () =>
-        {
-            var trimmed = reason?.Trim();
-            if (string.IsNullOrEmpty(trimmed))
-                return ExpenseMutationResult.OperatorFailure("A reason is required to decline a line.");
-            if (trimmed.Length > DeclineReasonMaxLength)
-                return ExpenseMutationResult.OperatorFailure(
-                    $"The reason can be at most {DeclineReasonMaxLength} characters.");
-
-            var (report, line, refusal) = await GetDeclinableLineAsync(
-                reportId, actorUserId, actorIsFinanceAdmin, lineId, ct);
-            if (refusal is not null) return refusal;
-            if (line!.Declined)
-                return ExpenseMutationResult.OperatorFailure("That line is already declined.");
-
-            var ok = await repo.SetLineDeclinedAsync(
-                reportId, lineId, declined: true, trimmed, actorUserId, clock.GetCurrentInstant(), ct);
-            if (!ok) return ExpenseMutationResult.OperatorFailure("Could not decline the line.");
-
-            await auditLogService.LogAsync(
-                ExpensesAuditActions.ExpenseLineDeclined,
-                AuditEntityTypes.Report, reportId,
-                $"{ReviewerLabel(report!, actorIsFinanceAdmin)} declined line "
-                    + $"\"{line.Description}\" ({line.Amount.ToString("0.00", CultureInfo.InvariantCulture)} EUR): {trimmed}",
-                actorUserId);
-
-            return ExpenseMutationResult.Success;
-        }, "Error declining line {LineId} on report {ReportId}", lineId, reportId);
-
-    public Task<ExpenseMutationResult> UndoDeclineLineWithResultAsync(
-        Guid reportId, Guid actorUserId, bool actorIsFinanceAdmin, Guid lineId,
-        CancellationToken ct = default) =>
-        RunMutationAsync(ct, async () =>
-        {
-            var (report, line, refusal) = await GetDeclinableLineAsync(
-                reportId, actorUserId, actorIsFinanceAdmin, lineId, ct);
-            if (refusal is not null) return refusal;
-            if (!line!.Declined)
-                return ExpenseMutationResult.OperatorFailure("That line is not declined.");
-
-            var ok = await repo.SetLineDeclinedAsync(
-                reportId, lineId, declined: false, reason: null, byUserId: null, clock.GetCurrentInstant(), ct);
-            if (!ok) return ExpenseMutationResult.OperatorFailure("Could not undo the decline.");
-
-            await auditLogService.LogAsync(
-                ExpensesAuditActions.ExpenseLineDeclineUndone,
-                AuditEntityTypes.Report, reportId,
-                $"{ReviewerLabel(report!, actorIsFinanceAdmin)} undid the decline of line "
-                    + $"\"{line.Description}\" ({line.Amount.ToString("0.00", CultureInfo.InvariantCulture)} EUR); "
-                    + $"it had been declined: {line.DeclinedReason}",
-                actorUserId);
-
-            return ExpenseMutationResult.Success;
-        }, "Error undoing decline of line {LineId} on report {ReportId}", lineId, reportId);
-
-    private const int DeclineReasonMaxLength = 1000;
-
-    private Task<(ExpenseReportDto? Report, ExpenseLineDto? Line, ExpenseMutationResult? Refusal)>
-        GetDeclinableLineAsync(Guid reportId, Guid actorUserId, bool actorIsFinanceAdmin, Guid lineId, CancellationToken ct) =>
-        reportAccess.GetDeclinableLineAsync(reportId, actorUserId, actorIsFinanceAdmin, lineId, ct);
+    /// <summary>Submitted, not yet approved: has a payee snapshot and a booked year, but is not final.</summary>
+    internal static bool IsPendingApproval(ExpenseReportStatus status) =>
+        status is ExpenseReportStatus.Submitted or ExpenseReportStatus.CoordinatorEndorsed;
 
     /// <summary>
-    /// Re-reads the report so the amount is the DTO's own <c>Payable</c>, cap included. Sent after the save: the outbox
-    /// row is a promise of money, and a failed approval must not make it.
+    /// The grant's account, with no category or year, which routes the report past endorsement. The grant must be
+    /// claimable by the submitter today; the one a draft already holds (<paramref name="heldGrantId"/>) is always kept,
+    /// so a rejected report can be corrected after the deadline it met.
     /// </summary>
-    private async Task SendApprovedEmailAsync(Guid reportId, CancellationToken ct)
+    internal async Task<(ExpenseBooking? Booking, ExpenseMutationResult? Refusal)> ResolveGrantBookingAsync(
+        Guid grantId, Guid submitterUserId, Guid? heldGrantId, CancellationToken ct)
     {
-        var approved = await GetAsync(reportId, ct);
-        if (approved is null) return;
-
-        var submitter = await userService.GetUserInfoAsync(approved.SubmitterUserId, ct);
-        var recipient = submitter?.Email;
-        if (submitter is null || string.IsNullOrWhiteSpace(recipient))
-        {
-            logger.LogWarning(
-                "Skipping expense-approved email for report {ReportId}: submitter {UserId} has no notification email",
-                reportId, approved.SubmitterUserId);
-            return;
-        }
-
-        var language = submitter.PreferredLanguage;
-        await emailService.SendAsync(emails.ReportApproved(
-            submitter.Id,
-            recipient, submitter.BurnerName, reportId, approved.Payable,
-            IbanFormatter.Mask(approved.PayeeIban),
-            language.IsSupportedCultureCode() ? language : CultureCatalog.DefaultCultureCode), ct);
+        var grant = grantId == heldGrantId
+            ? await PreapprovalGrantQueries.GetGrantAsync(preapprovals, grantId, ct)
+            : (await PreapprovalGrantQueries.ListClaimableAsync(preapprovals, await AllIdsAsync(submitterUserId, ct), ct)).FirstOrDefault(g => g.Id == grantId);
+        if (grant is null)
+            return (null, ExpenseMutationResult.Failure("Expenses_Validation_PreapprovalNotClaimable"));
+        return (new ExpenseBooking(grant.HoldedAccountNumber, grant.HoldedAccountId, null, null), null);
     }
-
-    public Task<ExpenseMutationResult> ApproveWithResultAsync(
-        Guid reportId, Guid actorUserId, int? overrideAccountNumber, decimal? maxAmount,
-        CancellationToken ct = default) =>
-        RunMutationAsync(ct, async () =>
-        {
-            var report = await repo.GetByIdAsync(reportId, ct);
-            if (report is null) return ExpenseMutationResult.OperatorFailure("Could not approve the report. It may not be in an approvable status.");
-
-            // Re-booking at approval keeps the report's year: a category account from another year
-            // is refused the same way a header edit would refuse it.
-            ExpenseBooking? overrideBooking = null;
-            if (overrideAccountNumber is { } overrideNumber && overrideNumber != report.HoldedAccountNumber)
-            {
-                if (report.PreapprovalGrantId is not null)
-                    return ExpenseMutationResult.OperatorFailure("The account is locked by the report's pre-approval; reject the report to change it.");
-                var (resolved, refusal) = await ResolveBookingAsync(overrideNumber, report.BudgetYearId, ct);
-                if (refusal is not null) return refusal;
-                overrideBooking = resolved;
-            }
-
-            var cap = await ResolveReviewCapAsync(report.PreapprovalGrantId, maxAmount, ct);
-            if (cap.Refusal is { } capRefusal) return capRefusal;
-            maxAmount = cap.Amount;
-
-            var outboxEventId = Guid.NewGuid();
-            var now = clock.GetCurrentInstant();
-            bool ok;
-            if (report.PreapprovalGrantId is not { } consumedGrantId)
-            {
-                ok = await repo.ApproveAsync(
-                    reportId, actorUserId, overrideBooking, maxAmount, now, outboxEventId, ct);
-            }
-            else
-            {
-                var afterCommit = new List<Func<CancellationToken, Task>>();
-                using (var scope = new TransactionScope(
-                    TransactionScopeOption.Required,
-                    new TransactionOptions { IsolationLevel = IsolationLevel.ReadCommitted },
-                    TransactionScopeAsyncFlowOption.Enabled))
-                {
-                    var consumption = await preapprovalWrites.ConsumeAsync(consumedGrantId, reportId, actorUserId, ct, afterCommit.Add);
-                    if (consumption.Refusal is { } refusal)
-                    {
-                        logger.LogWarning("Pre-approval {GrantId} refused consumption by report {ReportId}: {Reason}", consumedGrantId, reportId, refusal);
-                        return ExpenseMutationResult.OperatorFailure("The report's pre-approval was revoked or is no longer held by it; reject the report.");
-                    }
-                    ok = await repo.ApproveAsync(
-                        reportId, actorUserId, overrideBooking, maxAmount, now, outboxEventId, ct);
-                    if (ok) scope.Complete();
-                }
-                if (ok)
-                    foreach (var complete in afterCommit) await complete(CancellationToken.None);
-            }
-            if (!ok) return ExpenseMutationResult.OperatorFailure("Could not approve the report. It may not be in an approvable status.");
-
-            await auditLogService.LogAsync(
-                ExpensesAuditActions.ExpenseApprove,
-                AuditEntityTypes.Report, reportId,
-                "Finance approved expense report." + MaxAmountDetail(maxAmount)
-                + (report.PreapprovalGrantId is { } g ? $" Consumed pre-approval {g}." : ""),
-                actorUserId);
-
-            if (overrideBooking is not null)
-            {
-                await auditLogService.LogAsync(
-                    ExpensesAuditActions.ExpenseCategoryOverride,
-                    AuditEntityTypes.Report, reportId,
-                    $"Account overridden during approval from {report.HoldedAccountNumber} to {overrideBooking.HoldedAccountNumber}"
-                    + (overrideBooking.BudgetCategoryId is { } overrideCategory
-                        ? $" (budget category {overrideCategory})."
-                        : " (no budget category)."),
-                    actorUserId);
-            }
-
-            // The approval is committed and its Holded push queued; a failed notice must not
-            // report it as a failed approval.
-            try
-            {
-                await SendApprovedEmailAsync(reportId, ct);
-            }
-            catch (Exception ex) when (ex is not OperationCanceledException)
-            {
-                logger.LogError(ex, "Expense report {ReportId} approved but the approval email failed", reportId);
-            }
-
-            return ExpenseMutationResult.Success;
-
-        }, "Error approving expense report {ReportId}", reportId);
-
-    public Task<ExpenseMutationResult> FinanceRejectWithResultAsync(
-        Guid reportId, Guid actorUserId, string reason,
-        CancellationToken ct = default) =>
-        RunMutationAsync(ct, async () =>
-        {
-            var report = await repo.GetByIdAsync(reportId, ct);
-            if (report is null) return ExpenseMutationResult.OperatorFailure("Could not reject the report. It may not be in a rejectable status.");
-
-            var now = clock.GetCurrentInstant();
-            var ok = await repo.FinanceRejectAsync(reportId, actorUserId, reason, now, ct);
-            if (!ok) return ExpenseMutationResult.OperatorFailure("Could not reject the report. It may not be in a rejectable status.");
-
-            await auditLogService.LogAsync(
-                ExpensesAuditActions.ExpenseReject,
-                AuditEntityTypes.Report, reportId,
-                $"Finance rejected expense report: {reason}",
-                actorUserId);
-
-            return ExpenseMutationResult.Success;
-
-        }, "Error finance-rejecting expense report {ReportId}", reportId);
-
-    public async Task<IReadOnlyList<Guid>> GetFailedHoldedPushReportIdsAsync(bool actorIsFinanceAdmin, CancellationToken ct = default)
-        => actorIsFinanceAdmin ? await repo.GetFailedOutboxReportIdsAsync(ct) : [];
-
-    public Task<ExpenseMutationResult> RequeueHoldedPushWithResultAsync(
-        Guid reportId, Guid actorUserId, CancellationToken ct = default) =>
-        RunMutationAsync(ct, async () =>
-        {
-            var requeued = await repo.RequeueOutboxForReportAsync(reportId, ct);
-            if (!requeued) return ExpenseMutationResult.OperatorFailure(
-                        "This report has no failed or retrying Holded push to re-queue.");
-
-            await auditLogService.LogAsync(
-                ExpensesAuditActions.ExpenseHoldedRequeued,
-                AuditEntityTypes.Report, reportId,
-                "Finance re-queued the Holded push.",
-                actorUserId);
-
-            return ExpenseMutationResult.Success;
-
-        }, "Error re-queuing Holded push for expense report {ReportId}", reportId);
-
-    private Task<(ExpenseReportDto? Report, ExpenseMutationResult? Refusal)> GetEditableReportAsync(
-        Guid reportId, Guid actorUserId, bool actorIsFinanceAdmin, CancellationToken ct) =>
-        reportAccess.GetEditableReportAsync(reportId, actorUserId, actorIsFinanceAdmin, ct);
-
-    private Task<bool> IsSubmitterAsync(ExpenseReportDto report, Guid actorUserId, CancellationToken ct) =>
-        reportAccess.IsSubmitterAsync(report, actorUserId, ct);
 
     /// <summary>
     /// Resolves what a report books to from the account the submitter picked. A budget-category
@@ -1381,7 +772,7 @@ internal sealed class ExpenseReportService(
     /// the active year's categories; a report past submit (<paramref name="pinnedYearId"/> set)
     /// accepts only its own year's, so a header edit never moves its accounting year.
     /// </summary>
-    private async Task<(ExpenseBooking? Booking, ExpenseMutationResult? Refusal)> ResolveBookingAsync(
+    public async Task<(ExpenseBooking? Booking, ExpenseMutationResult? Refusal)> ResolveBookingAsync(
         int holdedAccountNumber, Guid? pinnedYearId, CancellationToken ct)
     {
         var account = (await finance.ListExpenseAccountsAsync(activeOnly: true, ct))
@@ -1416,36 +807,709 @@ internal sealed class ExpenseReportService(
         return (new ExpenseBooking(account.AccountNum, account.AccountId, mapRow.BudgetCategoryId, activeYear.Id), null);
     }
 
-    private static string ReviewerLabel(ExpenseReportDto report, bool actorIsFinanceAdmin) =>
-        actorIsFinanceAdmin ? "Finance admin"
-        : report.PreapprovalGrantId is null ? "Coordinator"
-        : "Pre-approval manager";
-
-    private Task<ExpenseMutationResult?> GetFirstReviewerRefusalAsync(
-        ExpenseReportDto report, Guid actorUserId, CancellationToken ct) =>
-        reportAccess.GetFirstReviewerRefusalAsync(report, actorUserId, ct);
-
-    /// <summary>Includes accounts merged into this one. The member's IBAN is Finance's slice.</summary>
-    public Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct) =>
-        reportExport.ContributeForUserAsync(userId, ct);
-
-    private const string FiscalRetention =
-        "Retained in full, nothing erased: the voucher keeps the payee's legal name, their " +
-        "bank account (IBAN, stored unmasked — the export masks it, the row does not), the " +
-        "amounts and dates, the free-text note and per-line descriptions, the approval trail " +
-        "and any uploaded receipt. A reimbursement is an accounting voucher and Spanish law " +
-        "requires the books and their supporting documents be kept 6 years (Código de " +
-        "Comercio Art. 30) and 4 years for tax purposes (Ley 58/2003 Art. 66) — an " +
-        "incomplete voucher is not a voucher. GDPR Art. 17(3)(b).";
-
-    private static readonly IReadOnlyDictionary<string, string?> Erasure =
-        new Dictionary<string, string?>(StringComparer.Ordinal)
+    /// <summary>Best-effort display name for an audit of an already committed edit.</summary>
+    internal async Task<string> DescribeMemberAsync(Guid userId, CancellationToken ct)
+    {
+        try
         {
-            [ExpenseReports] = FiscalRetention,
-            [ExpenseAuditLog] = FiscalRetention
+            return (await userService.GetUserInfoAsync(userId, ct))?.BurnerName ?? userId.ToString();
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            logger.LogWarning("Audit display-name lookup cancelled for member {UserId}; using member ID", userId);
+        }
+        catch (Exception ex)
+        {
+            // Name enrichment must not skip the audit or fail an edit that already committed.
+            logger.LogError(ex, "Could not resolve audit display name for member {UserId}; using member ID", userId);
+        }
+        return userId.ToString();
+    }
+
+    /// <summary>
+    /// An edit to somebody else's report owes them a trail naming both; a member editing their own leaves none.
+    /// <paramref name="whatChanged"/> is the sentence opener, e.g. "Added line 'Fuel'".
+    /// </summary>
+    internal async Task AuditOnBehalfEditAsync(
+        ExpenseReportDto report, Guid actorUserId, string whatChanged, CancellationToken ct)
+    {
+        if (await IsSubmitterAsync(report, actorUserId, ct)) return;
+
+        await auditLogService.LogAsync(
+            ExpensesAuditActions.ExpenseEditedOnBehalf,
+            AuditEntityTypes.Report, report.Id,
+            $"{whatChanged} on behalf of {await DescribeMemberAsync(report.SubmitterUserId, ct)}.",
+            actorUserId,
+            relatedEntityId: report.SubmitterUserId,
+            relatedEntityType: AuditSubjectTypes.User);
+    }
+
+    internal static string MaxAmountDetail(decimal? maxAmount) =>
+        maxAmount is { } cap
+            ? $" Authorized maximum {cap.ToString("0.00", CultureInfo.InvariantCulture)} EUR."
+            : "";
+
+    internal static string DescribeGrant(Guid? grantId) =>
+        grantId is { } id ? $" Filed against pre-approval {id}." : "";
+
+    internal static string DescribeNote(string? note) =>
+        string.IsNullOrWhiteSpace(note) ? "cleared" : $"\"{note}\"";
+
+    internal const string ExpenseReports = "ExpenseReports";
+    internal const string ExpenseAuditLog = "ExpenseAuditLog";
+
+    public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(
+        Guid userId, CancellationToken ct)
+    {
+        // Asked with an archived id, the survivor's own reports count too.
+        var user = await userService.GetUserInfoAsync(userId, ct);
+        var allIds = user?.AllUserIds ?? [userId];
+
+        var allReports = new List<ExpenseReportDto>();
+        foreach (var id in allIds)
+        {
+            var reports = await repo.GetForSubmitterAsync(id, ct);
+            allReports.AddRange(reports);
+        }
+
+        var expenseActions = new List<AuditActionDefinition>
+        {
+            ExpensesAuditActions.ExpenseCreatedOnBehalf,
+            ExpensesAuditActions.ExpenseEditedOnBehalf,
+            ExpensesAuditActions.ExpensePayeeIbanUpdated,
+            ExpensesAuditActions.ExpenseSubmit,
+            ExpensesAuditActions.ExpenseEndorse,
+            ExpensesAuditActions.ExpenseCoordinatorReject,
+            ExpensesAuditActions.ExpenseApprove,
+            ExpensesAuditActions.ExpenseReject,
+            ExpensesAuditActions.ExpenseWithdraw,
+            ExpensesAuditActions.ExpenseCategoryOverride,
+            ExpensesAuditActions.ExpenseSepaSent,
+            ExpensesAuditActions.ExpenseSepaReopened,
+            ExpensesAuditActions.ExpensePaid,
+            ExpensesAuditActions.ExpenseAttachmentUploaded,
+            ExpensesAuditActions.ExpenseAttachmentRemoved,
+            ExpensesAuditActions.ExpenseLineDeclined,
+            ExpensesAuditActions.ExpenseLineDeclineUndone,
+            ExpensesAuditActions.IbanSet,
+            ExpensesAuditActions.IbanRemove,
+            FinanceAuditActions.IbanReveal,
+        }.Select(a => a.Name).ToList();
+
+        var auditEntries = (await auditViewer.GetFilteredAsync(
+            entityType: null,
+            entityId: null,
+            userId: userId,
+            actions: expenseActions,
+            limit: 10_000,
+            ct: ct)).ToList();
+
+        // Decisions others took on the member's claims name the claim, not the member.
+        foreach (var report in allReports)
+        {
+            auditEntries.AddRange(await auditViewer.GetFilteredAsync(
+                entityType: AuditEntityTypes.Report,
+                entityId: report.Id,
+                userId: null,
+                actions: expenseActions,
+                limit: 10_000,
+                ct: ct));
+        }
+
+        var allIdSet = allIds.ToHashSet();
+        var reportIds = allReports.Select(r => r.Id).ToHashSet();
+        auditEntries = auditEntries
+            .Where(e => IsSubjectAuditEntry(e, allIdSet, reportIds))
+            .DistinctBy(e => e.Id)
+            .OrderByDescending(e => e.OccurredAt)
+            .ToList();
+
+        var shapedReports = allReports
+            .OrderBy(r => r.CreatedAt)
+            .Select(r => new
+            {
+                r.Id,
+                r.Status,
+                r.Note,
+                r.PayeeName,
+                PayeeIban = IbanFormatter.Mask(r.PayeeIban),
+                r.Total,
+                r.MaxAmount,
+                SubmittedAt = r.SubmittedAt?.ToIso8601(),
+                CoordinatorEndorsedAt = r.CoordinatorEndorsedAt?.ToIso8601(),
+                ApprovedAt = r.ApprovedAt?.ToIso8601(),
+                r.LastRejectionReason,
+                LastRejectedAt = r.LastRejectedAt?.ToIso8601(),
+                CreatedAt = r.CreatedAt.ToIso8601(),
+                Lines = r.Lines.Select(l => new
+                {
+                    l.Id,
+                    l.Description,
+                    l.Amount,
+                    l.LineType,
+                    l.ParentLineId,
+                    l.SortOrder,
+                    l.Declined,
+                    l.DeclinedReason,
+                    DeclinedAt = l.DeclinedAt?.ToIso8601(),
+                    Attachment = l.Attachment is null
+                        ? null
+                        : new
+                        {
+                            l.Attachment.OriginalFileName,
+                            l.Attachment.ContentType,
+                            l.Attachment.SizeBytes,
+                        }
+                }).ToList()
+            }).ToList();
+
+        var shapedAudit = auditEntries
+            .Select(e => new
+            {
+                Action = e.Action.Name,
+                e.EntityType,
+                e.EntityId,
+                Description = IbanFormatter.MaskAllIn(e.Description),
+                OccurredAt = e.OccurredAt.ToIso8601()
+            }).ToList();
+
+        return
+        [
+            new UserDataSlice(ExpenseReports,
+                shapedReports.Count > 0 ? shapedReports : null),
+            new UserDataSlice(ExpenseAuditLog,
+                shapedAudit.Count > 0
+                    ? new { Entries = shapedAudit }
+                    : (object?)null),
+        ];
+    }
+
+    private static bool IsSubjectAuditEntry(
+        AuditEvent entry, HashSet<Guid> userIds, HashSet<Guid> reportIds) =>
+        (entry.RelatedEntityId is { } relatedId
+            && (entry.RelatedEntityType is null
+                || string.Equals(entry.RelatedEntityType, AuditSubjectTypes.User, StringComparison.Ordinal))
+            && userIds.Contains(relatedId))
+        || (string.Equals(entry.EntityType, AuditSubjectTypes.User, StringComparison.Ordinal)
+            && userIds.Contains(entry.EntityId))
+        || (string.Equals(entry.EntityType, AuditEntityTypes.Profile, StringComparison.Ordinal)
+            && userIds.Contains(entry.EntityId))
+        || (string.Equals(entry.EntityType, AuditEntityTypes.Report, StringComparison.Ordinal)
+            && reportIds.Contains(entry.EntityId));
+
+    private async Task<(ExpenseAddLineResult Result, ExpenseReportDto? Report)> AddLineWithoutAuditAsync(
+        Guid reportId, IReadOnlyCollection<ExpenseReportStatus> allowedStatuses,
+        string description, decimal amount, ExpenseLineType lineType,
+        Guid? parentLineId, CancellationToken ct)
+    {
+        var (editableReport, refusal) = await GetEditableReportAsync(reportId, allowedStatuses, ct);
+        if (refusal is not null) return (new(false, refusal.Error, null), null);
+        var report = editableReport!;
+
+        if (parentLineId is { } parentId)
+        {
+            // A proof row is a Receipt backing an Invoice line on the same report. One level only.
+            if (lineType != ExpenseLineType.Receipt)
+                return (new(false, ExpenseMutationResult.Failure("Expenses_Validation_ProofRowsMustBeReceipts").Error, null), null);
+            var parent = report.Lines.FirstOrDefault(l => l.Id == parentId);
+            if (parent is null) return (new(false, ExpenseMutationResult.Failure("Expenses_Validation_ParentLineNotFound").Error, null), null);
+            if (parent.LineType != ExpenseLineType.Invoice)
+                return (new(false, ExpenseMutationResult.Failure("Expenses_Validation_ProofRowsRequireInvoice").Error, null), null);
+        }
+
+        var line = new ExpenseLine
+        {
+            Id = Guid.NewGuid(),
+            ExpenseReportId = reportId,
+            Description = description,
+            Amount = amount,
+            LineType = lineType,
+            ParentLineId = parentLineId
+        };
+        try
+        {
+            var ok = await repo.AddLineAsync(reportId, line, ct);
+            if (!ok) throw new InvalidOperationException("Failed to add line.");
+        }
+        catch
+        {
+            await TryRollbackAddedLineAsync(reportId, line.Id);
+            throw;
+        }
+
+        return (new(true, null, line.Id), report);
+    }
+
+    internal async Task<ExpenseAddLineResult> AddLineWithResultCoreAsync(
+        Guid reportId, Guid actorUserId, IReadOnlyCollection<ExpenseReportStatus> allowedStatuses,
+        string description, decimal amount,
+        ExpenseLineType lineType = ExpenseLineType.Receipt,
+        Guid? parentLineId = null,
+        ExpenseFileUpload? file = null,
+        CancellationToken ct = default)
+    {
+        ExpenseAddLineResult Reject(ExpenseError refusal)
+        {
+            logger.LogWarning("Error adding line to report {ReportId}: {Reason}", reportId, refusal.ResourceKey);
+            return new(false, refusal, null);
+        }
+
+        try
+        {
+            // This path takes free-text amounts; travel lines are computed.
+            if (lineType is not (ExpenseLineType.Receipt or ExpenseLineType.Invoice))
+                return Reject(new("Expenses_Validation_OnlyReceiptAndInvoiceLines", []));
+            if (decimal.Round(amount, 2) != amount)
+                return Reject(new("Expenses_Validation_AmountPrecision", []));
+            // Validate the file before creating anything, so a bad upload leaves no half-made line.
+            if (file is not null && ExpenseReportService.ValidateAttachmentUpload(file.FileName, file.ContentType, file.Content).Refusal is { } uploadRefusal)
+                return Reject(uploadRefusal);
+
+            var (added, report) = await AddLineWithoutAuditAsync(
+                reportId, allowedStatuses,
+                description, amount, lineType, parentLineId, ct);
+            if (added.Error is { } addRefusal) return Reject(addRefusal);
+            var lineId = added.LineId!.Value;
+            ExpenseError? attachmentRefusal = null;
+            try
+            {
+                if (file is not null)
+                    attachmentRefusal = await StoreAttachmentAsync(
+                        reportId, actorUserId, allowedStatuses, lineId, file.FileName, file.ContentType, file.Content, ct);
+                if (attachmentRefusal is null)
+                    await AuditOnBehalfEditAsync(report!, actorUserId,
+                        $"Added {(parentLineId is null ? "line" : "proof row")} \"{description}\" €{amount}", CancellationToken.None);
+            }
+            catch
+            {
+                // The form retries the whole add. Undo the new line and any linked upload before failing.
+                await TryRollbackAddedLineAsync(reportId, lineId);
+                throw;
+            }
+            if (attachmentRefusal is not null)
+            {
+                if (!await TryRollbackAddedLineAsync(reportId, lineId))
+                    return new ExpenseAddLineResult(false, null, null);
+                return Reject(attachmentRefusal);
+            }
+            return new ExpenseAddLineResult(true, null, lineId);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error adding line to report {ReportId}", reportId);
+            return new ExpenseAddLineResult(false, null, null);
+        }
+    }
+
+    private async Task<bool> TryRollbackAddedLineAsync(Guid reportId, Guid lineId)
+    {
+        ExpenseReportDto? report = null;
+        try
+        {
+            report = await repo.GetByIdAsync(reportId, CancellationToken.None);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Could not read attachments before rolling back new line {LineId}", lineId);
+        }
+        var candidates = report?.Lines.Where(line => line.Id == lineId || line.ParentLineId == lineId)
+            .Select(line => line.Attachment).OfType<ExpenseAttachmentDto>()
+            .Select(attachment => (attachment.Id, attachment.Extension)).ToList() ?? [];
+        IReadOnlyList<ExpenseAttachment>? removed = null;
+        try
+        {
+            try
+            {
+                removed = await repo.RemoveLineAsync(reportId, lineId, CancellationToken.None);
+            }
+            finally
+            {
+                // Retain the pre-delete ids too: compensation can itself commit before its acknowledgement fails.
+                await CleanupUnlinkedAttachmentsAsync(
+                    removed is null ? candidates : removed.Select(a => (a.Id, a.Extension)), lineId);
+            }
+            return true;
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Could not roll back new expense line {LineId} on report {ReportId}", lineId, reportId);
+            return false;
+        }
+    }
+
+    private async Task<ExpenseMutationResult> AddComputedLineAsync(
+        Guid reportId, Guid actorUserId, string description, decimal amount, ExpenseLineType lineType,
+        CancellationToken ct)
+    {
+        var (added, report) = await AddLineWithoutAuditAsync(
+            reportId, [ExpenseReportStatus.Draft], description, amount, lineType, null, ct);
+        if (added.Error is not null) return new(false, added.Error);
+        await AuditOnBehalfEditAsync(report!, actorUserId, $"Added line \"{description}\" €{amount}", ct);
+        return ExpenseMutationResult.Success;
+    }
+
+    internal async Task<ExpenseMutationResult> AddMileageLineWithResultCoreAsync(
+        Guid reportId, Guid submitterUserId,
+        string origin, string destination, decimal km,
+        CancellationToken ct = default)
+    {
+        var rate = _travel.MileageRatePerKm;
+        var amount = Math.Round(km * rate, 2, MidpointRounding.AwayFromZero);
+        var description =
+            $"{origin.Trim()} to {destination.Trim()}, " +
+            $"{km.ToString("0.#", CultureInfo.InvariantCulture)} km @ " +
+            $"€{rate.ToString("0.00", CultureInfo.InvariantCulture)} = " +
+            $"€{amount.ToString("0.00", CultureInfo.InvariantCulture)}";
+        return await AddComputedLineAsync(reportId, submitterUserId, description, amount, ExpenseLineType.Mileage, ct);
+    }
+
+    internal async Task<ExpenseMutationResult> AddPerDiemLineWithResultCoreAsync(
+        Guid reportId, Guid submitterUserId,
+        PerDiemKind kind, int days, string? note,
+        CancellationToken ct = default)
+    {
+        var rate = kind == PerDiemKind.Overnight ? _travel.PerDiemOvernightRate : _travel.PerDiemDayTripRate;
+        var amount = Math.Round(days * rate, 2, MidpointRounding.AwayFromZero);
+        var kindLabel = kind == PerDiemKind.Overnight ? "overnight" : "day-trip";
+        var dayWord = days == 1 ? "day" : "days";
+        var description =
+            $"Per diem: {days} {dayWord} {kindLabel} @ " +
+            $"€{rate.ToString("0.00", CultureInfo.InvariantCulture)} = " +
+            $"€{amount.ToString("0.00", CultureInfo.InvariantCulture)}";
+        if (!string.IsNullOrWhiteSpace(note))
+            description += $" — {note.Trim()}";
+        return await AddComputedLineAsync(reportId, submitterUserId, description, amount, ExpenseLineType.PerDiem, ct);
+    }
+
+    internal async Task<ExpenseMutationResult> UpdateLineWithResultCoreAsync(
+        Guid reportId, Guid actorUserId, IReadOnlyCollection<ExpenseReportStatus> allowedStatuses,
+        Guid lineId, string description, decimal amount,
+        CancellationToken ct = default)
+    {
+        var (editableReport, refusal) = await GetEditableReportAsync(reportId, allowedStatuses, ct);
+        if (refusal is not null) return refusal;
+        var report = editableReport!;
+
+        var existing = report.Lines.FirstOrDefault(l => l.Id == lineId);
+        if (existing is null) return ExpenseMutationResult.Failure("Expenses_Validation_LineNotOnReport");
+        // Travel lines carry computed amounts and waive the receipt on that basis; a free-text edit would allow an
+        // arbitrary unreceipted claim. Remove and re-add to recompute.
+        if (existing.LineType is ExpenseLineType.Mileage or ExpenseLineType.PerDiem)
+            return ExpenseMutationResult.Failure("Expenses_Validation_TravelLinesComputedCannotEdit");
+
+        if (decimal.Round(amount, 2) != amount)
+            return ExpenseMutationResult.Failure("Expenses_Validation_AmountPrecision");
+
+        var line = new ExpenseLine
+        {
+            Id = lineId,
+            ExpenseReportId = reportId,
+            Description = description,
+            Amount = amount
+        };
+        var ok = await repo.UpdateLineAsync(reportId, line, ct);
+        if (!ok) throw new InvalidOperationException("Failed to update line.");
+
+        await AuditOnBehalfEditAsync(report, actorUserId,
+            $"Updated line \"{existing.Description}\" €{existing.Amount} to \"{description}\" €{amount}", ct);
+
+        return ExpenseMutationResult.Success;
+    }
+
+    internal async Task<ExpenseMutationResult> RemoveLineWithResultCoreAsync(
+        Guid reportId, Guid actorUserId, IReadOnlyCollection<ExpenseReportStatus> allowedStatuses, Guid lineId,
+        CancellationToken ct = default)
+    {
+        var (editableReport, refusal) = await GetEditableReportAsync(reportId, allowedStatuses, ct);
+        if (refusal is not null) return refusal;
+        var report = editableReport!;
+        // Read the line before it is gone — the audit entry names what was removed, not an id.
+        var removed = report.Lines.FirstOrDefault(l => l.Id == lineId);
+
+        var candidates = report.Lines.Where(line => line.Id == lineId || line.ParentLineId == lineId)
+            .Select(line => line.Attachment).OfType<ExpenseAttachmentDto>()
+            .Select(attachment => (attachment.Id, attachment.Extension)).ToList();
+        IReadOnlyList<ExpenseAttachment>? removedAttachments = null;
+        try
+        {
+            // One atomic save removes the line, its proof rows and their attachment metadata.
+            removedAttachments = await repo.RemoveLineAsync(reportId, lineId, ct)
+                ?? throw new InvalidOperationException("Failed to remove line.");
+
+            await AuditOnBehalfEditAsync(report, actorUserId,
+                removed is null
+                    ? $"Removed line {lineId}"
+                    : $"Removed line \"{removed.Description}\" €{removed.Amount}", CancellationToken.None);
+            return ExpenseMutationResult.Success;
+        }
+        finally
+        {
+            await CleanupUnlinkedAttachmentsAsync(
+                removedAttachments is null ? candidates : removedAttachments.Select(a => (a.Id, a.Extension)), lineId);
+        }
+    }
+
+    // Scoped transitions hold this through ambient transaction disposal and completion. Shared with
+    // ExpenseReviewService: submit, withdraw, header edits and approval must not interleave.
+    internal static readonly TrackedLock TransitionLock = new("Expenses.ReportTransitions");
+
+    internal async Task<ExpenseMutationResult> UpdateDraftWithResultCoreAsync(
+        Guid reportId, Guid actorUserId, IReadOnlyCollection<ExpenseReportStatus> allowedStatuses,
+        int holdedAccountNumber, string? note,
+        Guid? preapprovalGrantId = null,
+        CancellationToken ct = default)
+    {
+        using var transition = await TransitionLock.AcquireAsync(logger, ct);
+        var (editableReport, refusal) = await GetEditableReportAsync(reportId, allowedStatuses, ct);
+        if (refusal is not null) return refusal;
+        var report = editableReport!;
+
+        ExpenseBooking booking;
+        if (report.Status != ExpenseReportStatus.Draft
+            && (preapprovalGrantId != report.PreapprovalGrantId
+                || (report.PreapprovalGrantId is not null && holdedAccountNumber != report.HoldedAccountNumber)))
+        {
+            // The grant was claimed at submit and the report stamped from it; neither moves until
+            // the report leaves the pending window (withdraw releases, approval consumes).
+            return ExpenseMutationResult.Failure("Expenses_Validation_PreapprovalLocked");
+        }
+        if (report.Status != ExpenseReportStatus.Draft && report.PreapprovalGrantId is not null)
+        {
+            // A program edit must not rebook a submitted report during an unrelated header edit.
+            booking = new ExpenseBooking(report.HoldedAccountNumber, report.HoldedAccountId,
+                report.BudgetCategoryId, report.BudgetYearId);
+        }
+        else if (preapprovalGrantId is { } grantId)
+        {
+            var (grantBooking, grantRefusal) = await ResolveGrantBookingAsync(
+                grantId, report.SubmitterUserId, report.PreapprovalGrantId, ct);
+            if (grantRefusal is not null) return grantRefusal;
+            booking = grantBooking!;
+        }
+        else
+        {
+            // A draft resolves through the active year. A submitted report already belongs to a year;
+            // re-resolving it would silently move last year's accounting into this year's books.
+            var pinnedYearId = ExpenseReportService.IsPendingApproval(report.Status) ? report.BudgetYearId : null;
+            var (resolved, bookingRefusal) = await ResolveBookingAsync(holdedAccountNumber, pinnedYearId, ct);
+            if (bookingRefusal is not null) return bookingRefusal;
+            booking = resolved!;
+        }
+
+        var updated = new ExpenseReport
+        {
+            Id = reportId,
+            HoldedAccountNumber = booking.HoldedAccountNumber,
+            HoldedAccountId = booking.HoldedAccountId,
+            BudgetCategoryId = booking.BudgetCategoryId,
+            BudgetYearId = booking.BudgetYearId,
+            PreapprovalGrantId = preapprovalGrantId,
+            Note = note,
+            UpdatedAt = clock.GetCurrentInstant()
         };
 
-    public IReadOnlyDictionary<string, string?> ErasureDeclaration => Erasure;
+        // A rejected draft still holds (Claimed) the grant it was submitted against. Dropping or swapping it
+        // releases that claim in the same transaction. A grant revoked meanwhile is left behind.
+        var released = report.PreapprovalGrantId is { } held && held != preapprovalGrantId
+            && (await PreapprovalGrantQueries.GetGrantAsync(preapprovals, held, ct))?.Status == GrantStatus.Claimed
+            ? held
+            : (Guid?)null;
+        if (released is { } releasedId)
+        {
+            var afterCommit = new List<Func<CancellationToken, Task>>();
+            using (var scope = new TransactionScope(
+                TransactionScopeOption.Required,
+                new TransactionOptions { IsolationLevel = IsolationLevel.ReadCommitted },
+                TransactionScopeAsyncFlowOption.Enabled))
+            {
+                var release = await preapprovalWrites.ReleaseAsync(releasedId, reportId, actorUserId, ct, afterCommit.Add);
+                if (release.Refusal is { } releaseRefusal)
+                {
+                    logger.LogWarning("Pre-approval {GrantId} refused release by report {ReportId}: {Reason}", releasedId, reportId, releaseRefusal);
+                    return ExpenseMutationResult.Failure("Expenses_Validation_PreapprovalUnavailable");
+                }
+                await repo.UpdateDraftAsync(updated, ct);
+                scope.Complete();
+            }
+            foreach (var complete in afterCommit) await complete(CancellationToken.None);
+        }
+        else
+        {
+            await repo.UpdateDraftAsync(updated, ct);
+        }
 
-    public Task EraseForUserAsync(Guid userId, CancellationToken ct) => Task.CompletedTask;
+        await AuditOnBehalfEditAsync(report, actorUserId,
+            $"Updated header (account {booking.HoldedAccountNumber}, subject {ExpenseReportService.DescribeNote(note)})"
+            + (preapprovalGrantId != report.PreapprovalGrantId
+                ? $" and pre-approval ({report.PreapprovalGrantId?.ToString() ?? "none"} → {preapprovalGrantId?.ToString() ?? "none"})"
+                : ""), ct);
+
+        return ExpenseMutationResult.Success;
+    }
+
+    internal async Task<ExpenseMutationResult> SubmitWithResultCoreAsync(
+        Guid reportId, Guid actorUserId, CancellationToken ct = default)
+    {
+        using var transition = await TransitionLock.AcquireAsync(logger, ct);
+        var report = await repo.GetByIdAsync(reportId, ct);
+        if (report is null) return ExpenseMutationResult.Failure("Expenses_Validation_CouldNotSubmitReport");
+        if (report.Status != ExpenseReportStatus.Draft) return ExpenseMutationResult.Failure("Expenses_Validation_CouldNotSubmitReport");
+
+        // The Subject carries the project name; reviewers cannot tell what was paid for without it.
+        if (string.IsNullOrWhiteSpace(report.Note))
+            return ExpenseMutationResult.Failure("Expenses_Validation_SubjectRequired");
+
+        if (!report.Lines.Any())
+            return ExpenseMutationResult.Failure("Expenses_Validation_ReportNeedsLine");
+
+        // Receipt lines (proof rows included) need their receipt; invoice lines need the invoice file.
+        if (report.Lines.Any(l => l.LineType is ExpenseLineType.Receipt or ExpenseLineType.Invoice
+                                  && l.AttachmentId is null))
+            return ExpenseMutationResult.Failure("Expenses_Validation_ReceiptInvoiceNeedAttachment");
+
+        // The payee is the report's owner, never whoever pressed Submit, or an on-behalf submit pays the wrong
+        // account.
+        var submitter = await userService.GetUserInfoAsync(report.SubmitterUserId, ct);
+        if (await finance.GetIbanAsync(report.SubmitterUserId, ct) is not { Length: > 0 } payeeIban)
+            return ExpenseMutationResult.Failure("Expenses_Validation_SubmitterNeedsIban");
+
+        // Financial records use the legal name, not BurnerName.
+        if (string.IsNullOrWhiteSpace(submitter?.FirstName) || string.IsNullOrWhiteSpace(submitter.LastName))
+        {
+            return ExpenseMutationResult.Failure("Expenses_Validation_SubmitterNeedsFirstAndLastName");
+        }
+        var legalName = submitter.FullName;
+
+        var now = clock.GetCurrentInstant();
+        if (report.PreapprovalGrantId is not { } grantId)
+        {
+            var ok = await repo.SubmitAsync(reportId, legalName, payeeIban, now, ct: ct);
+            if (!ok) return ExpenseMutationResult.Failure("Expenses_Validation_CouldNotSubmitReport");
+        }
+        else
+        {
+            // The claim pre-check only picks the member's message; ClaimAsync is the gate, and it
+            // runs first inside the transaction so a refused claim leaves the report untouched.
+            var grantRefusal = await GetGrantClaimRefusalAsync(grantId, reportId, ct);
+            if (grantRefusal is not null) return grantRefusal;
+
+            var afterCommit = new List<Func<CancellationToken, Task>>();
+            using (var scope = new TransactionScope(
+                TransactionScopeOption.Required,
+                new TransactionOptions { IsolationLevel = IsolationLevel.ReadCommitted },
+                TransactionScopeAsyncFlowOption.Enabled))
+            {
+                var claim = await preapprovalWrites.ClaimAsync(grantId, reportId, actorUserId, ct, afterCommit.Add);
+                if (claim.Refusal is { } refusal)
+                {
+                    logger.LogWarning("Pre-approval {GrantId} refused the claim by report {ReportId}: {Reason}", grantId, reportId, refusal);
+                    return ExpenseMutationResult.Failure("Expenses_Validation_PreapprovalUnavailable");
+                }
+                var stamp = claim.Claimed!;
+                var ok = await repo.SubmitAsync(
+                    reportId, legalName, payeeIban, now,
+                    grantStamp: new ExpenseBooking(stamp.HoldedAccountNumber, stamp.HoldedAccountId, null, null),
+                    grantMaxAmount: stamp.MaxAmount,
+                    ct: ct);
+                if (!ok) return ExpenseMutationResult.Failure("Expenses_Validation_CouldNotSubmitReport");
+                scope.Complete();
+            }
+            foreach (var complete in afterCommit) await complete(CancellationToken.None);
+        }
+
+        await auditLogService.LogAsync(
+            ExpensesAuditActions.ExpenseSubmit,
+            AuditEntityTypes.Report, reportId,
+            (await IsSubmitterAsync(report, actorUserId, ct)
+                ? "Submitted expense report."
+                : $"Submitted expense report on behalf of {await DescribeMemberAsync(report.SubmitterUserId, ct)}.")
+            + ExpenseReportService.DescribeGrant(report.PreapprovalGrantId),
+            actorUserId,
+            relatedEntityId: report.SubmitterUserId,
+            relatedEntityType: AuditSubjectTypes.User);
+
+        return ExpenseMutationResult.Success;
+    }
+
+    internal async Task<ExpenseMutationResult> WithdrawWithResultCoreAsync(
+        Guid reportId, Guid submitterUserId, CancellationToken ct = default)
+    {
+        using var transition = await TransitionLock.AcquireAsync(logger, ct);
+        var report = await repo.GetByIdAsync(reportId, ct);
+        if (report is null) return ExpenseMutationResult.Failure("Expenses_Flash_WithdrawFailed");
+        if (!await IsSubmitterAsync(report, submitterUserId, ct))
+            return ExpenseMutationResult.Failure("Expenses_Validation_OnlySubmitterCanWithdraw");
+
+        // Approval queues the Holded push, so only a report still pending approval can be
+        // withdrawn; the repository refuses anything else too.
+        if (!ExpenseReportService.IsPendingApproval(report.Status))
+            return ExpenseMutationResult.Failure("Expenses_Flash_WithdrawFailed");
+
+        var now = clock.GetCurrentInstant();
+        // A held pre-approval goes back to the member. A grant revoked while pending is no longer held and is left
+        // alone, so the withdrawal still goes through.
+        var heldGrant = report.PreapprovalGrantId is { } grantId
+            ? await PreapprovalGrantQueries.GetGrantAsync(preapprovals, grantId, ct)
+            : null;
+        var releasesGrant = heldGrant?.Status == GrantStatus.Claimed;
+        if (!releasesGrant)
+        {
+            var ok = await repo.WithdrawAsync(reportId, now, ct);
+            if (!ok) return ExpenseMutationResult.Failure("Expenses_Flash_WithdrawFailed");
+        }
+        else
+        {
+            var afterCommit = new List<Func<CancellationToken, Task>>();
+            using (var scope = new TransactionScope(
+                TransactionScopeOption.Required,
+                new TransactionOptions { IsolationLevel = IsolationLevel.ReadCommitted },
+                TransactionScopeAsyncFlowOption.Enabled))
+            {
+                var release = await preapprovalWrites.ReleaseAsync(report.PreapprovalGrantId!.Value, reportId, submitterUserId, ct, afterCommit.Add);
+                if (release.Refusal is { } releaseRefusal)
+                {
+                    logger.LogWarning("Pre-approval {GrantId} refused release by report {ReportId}: {Reason}", report.PreapprovalGrantId, reportId, releaseRefusal);
+                    return ExpenseMutationResult.Failure("Expenses_Flash_WithdrawFailed");
+                }
+                var ok = await repo.WithdrawAsync(reportId, now, ct);
+                if (!ok) return ExpenseMutationResult.Failure("Expenses_Flash_WithdrawFailed");
+                scope.Complete();
+            }
+            foreach (var complete in afterCommit) await complete(CancellationToken.None);
+        }
+
+        await auditLogService.LogAsync(
+            ExpensesAuditActions.ExpenseWithdraw,
+            AuditEntityTypes.Report, reportId,
+            "Withdrew expense report."
+            + (releasesGrant
+                ? $" Released pre-approval {report.PreapprovalGrantId}."
+                : heldGrant is not null ? $" Pre-approval {report.PreapprovalGrantId} is {heldGrant.Status}; left as is." : ""),
+            submitterUserId);
+
+        return ExpenseMutationResult.Success;
+    }
+
+    private async Task<ExpenseMutationResult?> GetGrantClaimRefusalAsync(Guid grantId, Guid reportId, CancellationToken ct)
+    {
+        var grant = await PreapprovalGrantQueries.GetGrantAsync(preapprovals, grantId, ct);
+        switch (grant?.Status)
+        {
+            case GrantStatus.Revoked:
+                return ExpenseMutationResult.Failure("Expenses_Validation_PreapprovalRevoked");
+            case GrantStatus.Open:
+                return grant.ClaimableToday
+                    ? null
+                    : ExpenseMutationResult.Failure("Expenses_Validation_PreapprovalDeadlinePassed", grant.ClaimBy.ToInvariantDate());
+            case GrantStatus.Claimed:
+                // Held by this report (a resubmit) or by another one; ClaimAsync tells them apart.
+                return null;
+            default:
+                return ExpenseMutationResult.Failure("Expenses_Validation_PreapprovalUnavailable");
+        }
+    }
 }

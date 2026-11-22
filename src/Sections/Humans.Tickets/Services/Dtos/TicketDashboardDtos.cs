@@ -65,29 +65,28 @@ internal sealed class TicketSalesAggregates
     public List<DiscountCampaignAggregate> ByDiscountCampaign { get; init; } = [];
 }
 
-internal sealed class WeeklySalesAggregate
+internal abstract class PeriodSalesAggregate
 {
-    public LocalDate WeekStart { get; init; }
-    public string WeekLabel { get; init; } = string.Empty;
     public int TicketsSold { get; init; }
     public decimal GrossRevenue { get; init; }
     public int OrderCount { get; init; }
     public decimal Donations { get; init; }
     public decimal VatAmount { get; init; }
     public decimal VipDonations { get; init; }
+    public decimal NetTicketRevenue => GrossRevenue - VatAmount - Donations - VipDonations;
 }
 
-internal sealed class QuarterlySalesAggregate
+internal sealed class WeeklySalesAggregate : PeriodSalesAggregate
+{
+    public LocalDate WeekStart { get; init; }
+    public string WeekLabel { get; init; } = string.Empty;
+}
+
+internal sealed class QuarterlySalesAggregate : PeriodSalesAggregate
 {
     public string QuarterLabel { get; init; } = string.Empty;
     public int Year { get; init; }
     public int Quarter { get; init; }
-    public int TicketsSold { get; init; }
-    public decimal GrossRevenue { get; init; }
-    public int OrderCount { get; init; }
-    public decimal Donations { get; init; }
-    public decimal VatAmount { get; init; }
-    public decimal VipDonations { get; init; }
 }
 
 /// <summary>
@@ -119,6 +118,22 @@ internal sealed class MonthlySalesAggregate
     public decimal TicketIncomeInclVat { get; init; }
 
     public decimal TicketIncomeExVat => TicketIncomeInclVat - VatAmount;
+
+    internal static MonthlySalesAggregate Total(IReadOnlyCollection<MonthlySalesAggregate> months) => new()
+    {
+        OrderCount = months.Sum(m => m.OrderCount),
+        TicketsSold = months.Sum(m => m.TicketsSold),
+        GrossRevenue = months.Sum(m => m.GrossRevenue),
+        Donations = months.Sum(m => m.Donations),
+        VipDonations = months.Sum(m => m.VipDonations),
+        VatAmount = months.Sum(m => m.VatAmount),
+        StripeFees = months.Sum(m => m.StripeFees),
+        ApplicationFees = months.Sum(m => m.ApplicationFees),
+        FeeTax = months.Sum(m => m.FeeTax),
+        WithheldTax = months.Sum(m => m.WithheldTax),
+        RefundedGross = months.Sum(m => m.RefundedGross),
+        TicketIncomeInclVat = months.Sum(m => m.TicketIncomeInclVat),
+    };
 }
 
 internal sealed class TicketTypeSalesAggregate
@@ -145,7 +160,7 @@ internal sealed class DiscountCampaignAggregate
 
     public int CodesUsed { get; init; }
 
-    public decimal AverageDiscount { get; init; }
+    public decimal AverageDiscount => CodesUsed > 0 ? Math.Round(TotalDiscount / CodesUsed, 2) : 0m;
     public decimal TotalDiscount { get; init; }
 }
 
@@ -363,8 +378,9 @@ internal sealed class OrderExportRow
     public decimal VipDonations { get; init; }
 }
 
-/// <summary><see cref="Date"/> is in Europe/Madrid, the zone the monthly accountant report buckets by.</summary>
+/// <summary><see cref="Date"/> is in the org time zone, the zone the monthly accountant report buckets by.</summary>
 internal sealed record DonationExportRow(
+    Instant PurchasedAt,
     string Date,
     string VendorOrderId,
     string BuyerName,

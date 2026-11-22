@@ -76,15 +76,6 @@
   <data name="Notifications_Section_WorkQueues" xml:space="preserve">
     <value>Files d'attente</value>
   </data>
-  <data name="Notifications_Meter_ConsentReviewsPending" xml:space="preserve"><value>Vérifications du consentement en attente</value></data>
-  <data name="Notifications_Meter_ApplicationsPendingVote" xml:space="preserve"><value>Candidatures en attente de ton vote</value></data>
-  <data name="Notifications_Meter_PendingAccountDeletions" xml:space="preserve"><value>Suppressions de comptes en attente</value></data>
-  <data name="Notifications_Meter_FailedGoogleSyncEvents" xml:space="preserve"><value>Synchronisations Google échouées</value></data>
-  <data name="Notifications_Meter_OnboardingProfilesPending" xml:space="preserve"><value>Profils d’inscription en attente</value></data>
-  <data name="Notifications_Meter_TeamJoinRequestsPending" xml:space="preserve"><value>Demandes d’adhésion aux équipes en attente</value></data>
-  <data name="Notifications_Meter_TicketSyncError" xml:space="preserve"><value>Erreur de synchronisation des billets</value></data>
-  <data name="Notifications_Meter_CampJoinRequest" xml:space="preserve"><value>1 personne souhaite rejoindre ton camp</value></data>
-  <data name="Notifications_Meter_CampJoinRequests" xml:space="preserve"><value>{0} personnes souhaitent rejoindre ton camp</value></data>
   <data name="Notifications_MarkAllRead" xml:space="preserve">
     <value>Tout marquer comme lu</value>
   </data>
@@ -152,9 +143,6 @@
   <data name="Notifications_Popup_LoadError" xml:space="preserve"><value>Impossible de charger les notifications. Réessaie.</value></data>
   <data name="Notifications_SentTo" xml:space="preserve">
     <value>Pour {0}</value>
-  </data>
-  <data name="Notifications_Audience_CampLeads" xml:space="preserve">
-    <value>responsables de barrio</value>
   </data>
   <data name="Notifications_Audience_Admin" xml:space="preserve">
     <value>administrateurs</value>

@@ -1,3 +1,4 @@
+using Humans.AuditLog.Contracts;
 using AwesomeAssertions;
 using Humans.Campaigns.Contracts;
 using Humans.Tickets.Data;
@@ -60,8 +61,9 @@ public sealed class TicketSyncServiceNullOrderTests : TicketsTestHarness
             NullLogger<TicketSyncService>.Instance,
             _userService,
             Substitute.For<IEventParticipationManagement>(),
+            Substitute.For<ITicketService>(),
             _campaignService,
-            _shiftManagementService);
+            _shiftManagementService, Substitute.For<IAuditLogService>());
 
         // Seed the singleton TicketSyncState row (required by the service)
         TicketsDb.TicketSyncStates.Add(new TicketSyncState

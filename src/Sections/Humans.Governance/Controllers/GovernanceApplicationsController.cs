@@ -1,3 +1,4 @@
+using Humans.Governance.Domain;
 using Humans.Base.Attributes;
 using Humans.Base.Models.Tables;
 using Humans.Governance.Services;
@@ -7,7 +8,6 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Localization;
 using Humans.Governance.Contracts;
-using Humans.Base;
 using Humans.Base.Authorization;
 using Humans.Governance.Models;
 using Humans.Users.Contracts;
@@ -20,8 +20,9 @@ namespace Humans.Governance.Controllers;
 [AllowBeforeActiveMembership]
 internal sealed class GovernanceApplicationsController(
     ApplicationDecisionService applicationDecisionService,
+    IGovernanceService membershipTiers,
     IUserService userService,
-    IStringLocalizer<SharedResource> sharedLocalizer,
+    IStringLocalizer<GovernanceResource> localizer,
     ILogger<GovernanceApplicationsController> logger,
     IClock clock) : HumansControllerBase(userService)
 {
@@ -37,7 +38,7 @@ internal sealed class GovernanceApplicationsController(
         var pendingApplication = await applicationDecisionService.GetSubmittedApplicationForUserAsync(
             user.Id, HttpContext.RequestAborted);
 
-        var isApprovedColaborador = await applicationDecisionService.HasActiveApprovedTierAsync(
+        var isApprovedColaborador = await membershipTiers.HasActiveApprovedTierAsync(
             user.Id, MembershipTier.Colaborador, clock.GetCurrentInstant().InUtc().Date, HttpContext.RequestAborted);
 
         var viewModel = new ApplicationIndexViewModel
@@ -73,12 +74,12 @@ internal sealed class GovernanceApplicationsController(
 
         if (hasPending)
         {
-            SetError(sharedLocalizer["Application_AlreadyPending"].Value);
+            SetError(localizer["Governance_Application_AlreadyPending"].Value);
             return RedirectToAction(nameof(Index));
         }
 
         // Radio default only: Submit accepts either tier.
-        var isApprovedColaborador = await applicationDecisionService.HasActiveApprovedTierAsync(
+        var isApprovedColaborador = await membershipTiers.HasActiveApprovedTierAsync(
             user.Id, MembershipTier.Colaborador, clock.GetCurrentInstant().InUtc().Date, HttpContext.RequestAborted);
 
         return View("~/Views/Governance/Applications/Create.cshtml", new ApplicationCreateViewModel
@@ -93,7 +94,7 @@ internal sealed class GovernanceApplicationsController(
     {
         if (!model.ConfirmAccuracy)
         {
-            ModelState.AddModelError(nameof(model.ConfirmAccuracy), sharedLocalizer["Application_ConfirmAccuracy"].Value);
+            ModelState.AddModelError(nameof(model.ConfirmAccuracy), localizer["Governance_Application_ConfirmAccuracy"].Value);
         }
 
         if (!ModelState.IsValid)
@@ -122,13 +123,13 @@ internal sealed class GovernanceApplicationsController(
                 return RedirectToAction(nameof(Index));
             }
 
-            SetSuccess(sharedLocalizer["Application_Submitted"].Value);
+            SetSuccess(localizer["Governance_Application_Submitted"].Value);
             return RedirectToAction(nameof(Details), new { id = result.ApplicationId });
         }
         catch (Exception ex)
         {
             logger.LogError(ex, "Failed to submit application for user {UserId}", user.Id);
-            SetError(sharedLocalizer["Application_SubmitError"].Value);
+            SetError(localizer["Governance_Application_SubmitError"].Value);
             return RedirectToAction(nameof(Index));
         }
     }
@@ -137,24 +138,24 @@ internal sealed class GovernanceApplicationsController(
     {
         if (string.Equals(errorKey, "AlreadyPending", StringComparison.Ordinal))
         {
-            SetError(sharedLocalizer["Application_AlreadyPending"].Value);
+            SetError(localizer["Governance_Application_AlreadyPending"].Value);
             return;
         }
 
         (string? Field, string? ResourceKey) fieldError = errorKey switch
         {
-            "InvalidTier" => (nameof(ApplicationCreateViewModel.MembershipTier), "Application_InvalidTier"),
-            "MotivationRequired" => (nameof(ApplicationCreateViewModel.Motivation), "Profile_MotivationRequired"),
-            "SignificantContributionRequired" => (nameof(ApplicationCreateViewModel.SignificantContribution), "Application_SignificantContributionRequired"),
-            "RoleUnderstandingRequired" => (nameof(ApplicationCreateViewModel.RoleUnderstanding), "Application_RoleUnderstandingRequired"),
-            "MotivationLength" => (nameof(ApplicationCreateViewModel.Motivation), "Application_MotivationLength"),
-            "AdditionalInfoTooLong" => (nameof(ApplicationCreateViewModel.AdditionalInfo), "Application_AdditionalInfoTooLong"),
-            "SignificantContributionTooLong" => (nameof(ApplicationCreateViewModel.SignificantContribution), "Application_SignificantContributionTooLong"),
-            "RoleUnderstandingTooLong" => (nameof(ApplicationCreateViewModel.RoleUnderstanding), "Application_RoleUnderstandingTooLong"),
+            "InvalidTier" => (nameof(ApplicationCreateViewModel.MembershipTier), "Governance_Application_InvalidTier"),
+            "MotivationRequired" => (nameof(ApplicationCreateViewModel.Motivation), "Governance_Application_MotivationRequired"),
+            "SignificantContributionRequired" => (nameof(ApplicationCreateViewModel.SignificantContribution), "Governance_Application_SignificantContributionRequired"),
+            "RoleUnderstandingRequired" => (nameof(ApplicationCreateViewModel.RoleUnderstanding), "Governance_Application_RoleUnderstandingRequired"),
+            "MotivationLength" => (nameof(ApplicationCreateViewModel.Motivation), "Governance_Application_MotivationLength"),
+            "AdditionalInfoTooLong" => (nameof(ApplicationCreateViewModel.AdditionalInfo), "Governance_Application_AdditionalInfoTooLong"),
+            "SignificantContributionTooLong" => (nameof(ApplicationCreateViewModel.SignificantContribution), "Governance_Application_SignificantContributionTooLong"),
+            "RoleUnderstandingTooLong" => (nameof(ApplicationCreateViewModel.RoleUnderstanding), "Governance_Application_RoleUnderstandingTooLong"),
             _ => (null, null)
         };
         if (fieldError.Field is not null)
-            ModelState.AddModelError(fieldError.Field, sharedLocalizer[fieldError.ResourceKey!].Value);
+            ModelState.AddModelError(fieldError.Field, localizer[fieldError.ResourceKey!].Value);
     }
 
     [HttpGet("Details/{id:guid}")]
@@ -178,7 +179,6 @@ internal sealed class GovernanceApplicationsController(
             RoleUnderstanding = application.RoleUnderstanding,
             MembershipTier = application.MembershipTier,
             SubmittedAt = application.SubmittedAt.ToDateTimeUtc(),
-            ReviewStartedAt = application.ReviewStartedAt?.ToDateTimeUtc(),
             ResolvedAt = application.ResolvedAt?.ToDateTimeUtc(),
             ReviewedByUserId = application.ReviewedByUserId,
             ReviewNotes = application.ReviewNotes,
@@ -212,28 +212,28 @@ internal sealed class GovernanceApplicationsController(
             if (!result.Success)
             {
                 if (string.Equals(result.ErrorKey, "CannotWithdraw", StringComparison.Ordinal))
-                    SetError(sharedLocalizer["Application_CannotWithdraw"].Value);
+                    SetError(localizer["Governance_Application_CannotWithdraw"].Value);
                 return RedirectToAction(nameof(Details), new { id });
             }
 
-            SetSuccess(sharedLocalizer["Application_Withdrawn"].Value);
+            SetSuccess(localizer["Governance_Application_Withdrawn"].Value);
             return RedirectToAction(nameof(Index));
         }
         catch (Exception ex)
         {
             logger.LogError(ex, "Failed to withdraw application {ApplicationId}", id);
-            SetError(sharedLocalizer["Application_CannotWithdraw"].Value);
+            SetError(localizer["Governance_Application_CannotWithdraw"].Value);
             return RedirectToAction(nameof(Details), new { id });
         }
     }
 
     [HttpGet("Admin")]
     [Authorize(Policy = PolicyNames.BoardOrAdmin)]
-    public async Task<IActionResult> Admin(string? status, string? tier, int page = 1)
+    public async Task<IActionResult> Admin(string? status, string? tier, Guid? userId, int page = 1)
     {
         var pageSize = 20;
         var (items, totalCount) = await applicationDecisionService.GetFilteredApplicationsAsync(
-            status, tier, page, pageSize, HttpContext.RequestAborted);
+            status, tier, userId, page, pageSize, HttpContext.RequestAborted);
 
         var applications = items.Select(a => new AdminApplicationViewModel
         {
@@ -254,6 +254,7 @@ internal sealed class GovernanceApplicationsController(
             Applications = applications,
             StatusFilter = status,
             TierFilter = tier,
+            UserIdFilter = userId,
             TotalCount = totalCount,
             PageNumber = page,
             PageSize = pageSize
@@ -309,7 +310,6 @@ internal sealed class GovernanceApplicationsController(
             MembershipTier = application.MembershipTier,
             Language = application.Language,
             SubmittedAt = application.SubmittedAt.ToDateTimeUtc(),
-            ReviewStartedAt = application.ReviewStartedAt?.ToDateTimeUtc(),
             ReviewedByUserId = application.ReviewedByUserId,
             ReviewNotes = application.ReviewNotes,
             CanApproveReject = application.CanApproveReject,

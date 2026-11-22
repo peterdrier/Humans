@@ -11,9 +11,11 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 
+[assembly: Humans.Base.Demo.NoDemoStory("Vendor mirror: its data arrives through the Pleo sync, never from demo stories.")]
+
 namespace Humans.Pleo;
 
-/// <summary>No GDPR contributor: cardholders are mirrored by Pleo id and name only, bound to no member, and a sweep
+/// <summary>No GDPR contributor: cardholders are mirrored by Pleo id, name and code only, bound to no member, and a sweep
 /// drops anyone Pleo no longer returns.</summary>
 public sealed class Section : ISection, ISectionAdminNav, ISectionConfiguration, ISectionJobs
 {

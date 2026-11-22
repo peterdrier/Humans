@@ -1,3 +1,4 @@
+using Humans.Users.Domain;
 using Humans.Onboarding.Contracts;
 using Humans.Users.Contracts;
 using NodaTime;
@@ -29,7 +30,7 @@ internal interface IUserManagement : IUserService, IUserWrite, IUserMerge
     /// <summary>
     /// The identity half of the GDPR expiry anonymization; returns the prior identity, or null when
     /// the user does not exist. The cross-section cascade is
-    /// <see cref="IAccountDeletionService.AnonymizeExpiredAccountAsync"/>'s.
+    /// <see cref="Humans.Application.Services.Users.AccountLifecycle.AccountDeletionService.AnonymizeExpiredAccountAsync"/>'s.
     /// </summary>
     Task<ExpiredDeletionAnonymizationResult?> ApplyExpiredDeletionAnonymizationAsync(
         Guid userId, CancellationToken ct = default);
@@ -78,7 +79,7 @@ internal interface IUserManagement : IUserService, IUserWrite, IUserMerge
         CancellationToken ct = default);
 
     Task<UserProfileLanguagesSaveResult> SaveProfileLanguagesAsync(
-        Guid profileId,
+        Guid userId,
         IReadOnlyList<ProfileLanguageInfo> languages,
         CancellationToken ct = default);
 

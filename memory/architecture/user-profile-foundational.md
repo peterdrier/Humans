@@ -1,25 +1,24 @@
 ---
-name: User and Profile are foundational — no outbound calls to higher-level sections
+name: user-profile-foundational
 description: UserService/ProfileService sit at the bottom of the stack — no outbound calls to Teams, Shifts, Tickets, etc. Only Crosscuts (Audit, Email, Notification, Metrics) are exempt.
 ---
 
-> Vocabulary ([`CONTEXT.md`](../../CONTEXT.md)): **foundational** is a *descriptor* (a Section with outbound-width-into-sections = 0), not a separate tier; the "universal crosscuts" below are **Crosscuts** (Audit/Email/Notification/Metrics).
+Users (user and profile data) sits at the bottom of the service dependency hierarchy. Every other
+section may call into it. It never calls out to a higher-level section; the only outbound calls allowed
+are to Crosscuts (`IAuditLogService`, `IEmailService`, `INotificationService`, `IHumansMetrics`), and
+those sparingly.
 
-User and Profile sit at the bottom of the service dependency hierarchy. Higher-level sections (Teams, Shifts, Tickets, Campaigns, Applications, Google, Legal, Governance) can freely call into User/Profile. **The reverse is wrong direction and must be avoided.**
+**Why:** outbound injections from the user and profile services into higher sections produced a family
+of lazy dependency cycles. A pure foundation removes that whole class of complexity.
 
-The only outbound calls User/Profile may make are to universal crosscuts: `IAuditLogService`, `IEmailService`, `INotificationService`, `IHumansMetrics`. Even those should be minimised.
+**How to apply — when Users seems to need another section, invert:**
+- **Read for display** (a profile page wants tickets or applications) → assemble in the caller
+  (controller, view model, a section-contributed part). Users does not aggregate.
+- **Data that truly belongs on the profile** → store it there; the owning section pushes updates in.
+- **Cascade on delete** → an orchestrator above Users (`IAccountDeletionService`) calls each section.
+- **Cross-section cache invalidation** → don't. The cache owner evicts on its own writes; no section
+  flushes another's cache (HUM0028).
 
-**Why:** Peter stated this explicitly during the 2026-04-23 post-§15-Part-1 review. The dependency graph showed `ProfileService` had 14 outbound ctor injections and `UserService` had 4 eager + 4 lazy — most pointing at higher-level sections. The resulting Profile↔User, User↔Role, User↔Shifts lazy cycles are all symptoms of this wrong-direction coupling. Making the foundational layer pure collapses a whole class of architectural complexity.
-
-**How to apply:**
-
-Before adding a dependency on `UserService` or `ProfileService` from a higher-level section, that's fine. Before having User/Profile call OUT to a higher-level section, **stop.** Use one of these inversion patterns:
-
-- **Read-for-display** (profile page wants tickets/campaigns/applications data) → move the assembly up to the caller (controller/view-model). Don't let Profile aggregate.
-- **Data that really belongs on Profile** (membership level, event-attendance flag) → denormalize onto Profile; the owning section pushes updates via an inbound call (Applications → Profile on approval, Tickets → Profile on event-ticket purchase).
-- **Cascade-on-delete** → extract an orchestrator (e.g. `IAccountDeletionService`) that lives above User/Profile and calls each section to clean up.
-- **Cache invalidation across sections** → don't. The cache owner evicts on its own writes, or reads live; no section flushes another's cache (HUM0028 blocks new invalidator interfaces).
-
-If a dependency seems unavoidable, the feature is probably in the wrong service — check whether it belongs on a higher-level orchestrator instead.
-
-Interface narrowing (e.g., Profile injecting a narrow query interface instead of a full service) is acceptable but doesn't fix the direction — only a loose-coupling mitigation. Prefer true inversion: relocate the predicate/write to the leaf that owns the field. See `memory/architecture/no-leaf-to-director-callbacks.md`.
+A dependency that seems unavoidable usually means the feature belongs on an orchestrator. Injecting a
+narrowed interface doesn't fix the direction —
+[`no-leaf-to-director-callbacks`](no-leaf-to-director-callbacks.md).

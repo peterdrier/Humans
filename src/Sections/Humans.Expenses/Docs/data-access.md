@@ -20,43 +20,42 @@ Repository: `IExpenseRepository`.
 | ExpenseAttachments | R/W |
 | HoldedExpenseOutboxEvents | R/W (outbox to Holded) |
 
-Cross-section calls via `IFileStorage`, `IBudgetService`, `ITeamService`,
+Cross-section calls via `IFileStorage`, `IBudgetService`,
 `IUserService`, `IFinanceService` / `IFinanceWrite` (Finance section — `GetIbanAsync` /
-`SetIbanAsync`: the submitter's IBAN is read and written through its owner), `IEmailService`, `IAuditLogService`,
+`SetIbanAsync`: the submitter's IBAN is read and written through its owner), `IAuditLogService`,
 `IHoldedService.IsConfigured`, `IFinanceService` (Finance section — creditor balance exposure to
 expense submitters; `ListExpenseAccountsAsync` / `GetCategoryMapAsync` resolve the
 account a report books to and the budget category it maps to), `IPreapprovalService`
-(Preapprovals section — `GetGrantAsync` / `ListClaimableForUserAsync` for the grant a report
-files against) and `IPreapprovalWrite` (`ClaimAsync` / `ReleaseAsync` / `ConsumeAsync` — the
-grant's lifecycle follows the report's), plus the section's own `ExpensesEmails` builder,
+(Preapprovals section — `GetGrantsAsync`, every grant, for the one a report
+files against and who manages it) and `IPreapprovalWrite` (`ClaimAsync` / `ReleaseAsync` / `ConsumeAsync` — the
+grant's lifecycle follows the report's), plus
 `IClock` and `IOptions<TravelReimbursementConfig>`. Implements `IUserDataContributor`. No
 `IMemoryCache`.
+
+### ExpenseReviewService (Scoped — `IExpenseReview`)
+
+Coordinator and finance decisions, the coordinator queue and the Holded push re-queue.
+Repository: `IExpenseRepository`.
+
+| Table | R/W |
+|-------|-----|
+| ExpenseReports | R/W (endorse, reject, approve) |
+| ExpenseLines | R/W (decline, undo decline) |
+| HoldedExpenseOutboxEvents | R/W (approval queues the push; re-queue) |
+
+Resolves an approval's account override through `IExpenseReportManagement.ResolveBookingAsync`.
+Cross-section calls via `IBudgetService` and `ITeamService` (coordinator queue),
+`IUserService`, `IEmailService` with `ExpensesEmails` (approval email), `IAuditLogService`,
+`IPreapprovalService` / `IPreapprovalWrite` (`ConsumeAsync` at approval), plus `IClock`.
+No `IMemoryCache`.
 
 ### ExpenseReportBackgroundProcessor (Scoped — `IExpenseReportBackgroundProcessor`)
 
 Repository: `IExpenseRepository` (reads approved reports, updates
-`HoldedExpenseOutboxEvents`). Selection, the in-process single-drain gate, retry/backoff, permanent-failure audit and the
-configured-key gate live here; the section's `HoldedExpenseOutboxJob` drives it. Cross-section
-calls via `IFileStorage`, `IUserService`, `IHoldedClient`, `IFinanceService`,
+`HoldedExpenseOutboxEvents`). Selection, the in-process single-drain gate, retry/backoff, permanent-failure audit, the
+configured-key gate and the resumable Holded document + attachment conversation live here; the section's `HoldedExpenseOutboxJob` drives it. Cross-section
+calls via `IFileStorage`, `IUserService`, `IHoldedService`, `IHoldedWrite`, `IFinanceService`,
 `IFinanceWrite`, `IAuditLogService`, plus `IClock`. No `IMemoryCache`.
-
-### ExpenseHoldedPublisher (internal — `IApplicationService`, constructed by `ExpenseReportBackgroundProcessor`)
-
-Not DI-registered: the processor news it up with its own dependencies. The resumable Holded
-document + attachment conversation for one approved report. Repository: `IExpenseRepository`
-(contact/document links, pushed-attachment stamps, outbox completion).
-
-| Table | R/W |
-|-------|-----|
-| ExpenseReports | R/W (submitter's reports; Holded contact link) |
-| ExpenseLines | W (per-line Holded document id) |
-| ExpenseAttachments | W (pushed-attachment stamps) |
-| HoldedExpenseOutboxEvents | W (completion) |
-
-Cross-section calls via `IFileStorage`, `IUserService` (submitter, survivor after merge),
-`IHoldedClient` (Holded section — vendor API), `IFinanceService` / `IFinanceWrite`
-(Finance section owns creditor identity and the contact binding), `IAuditLogService`. No
-`IMemoryCache`.
 
 Expense lines can be travel reimbursements (mileage / per-diem; an
 `ExpenseLineType` column on `ExpenseLines` — same table, no new DbSet).
@@ -81,13 +80,5 @@ dependency so Finance can inject it without a DI cycle.
 | HoldedExpenseOutboxEvents | R (latest create event per report) |
 
 Cross-section calls via `IUserService` (resolves the submitter to the survivor after a merge,
-the creditor as `ExpenseHoldedPublisher` binds it) and `IHoldedService.IsConfigured` (the
+the creditor as `ExpenseReportBackgroundProcessor` binds it) and `IHoldedService.IsConfigured` (the
 `NotConfigured` sync state). No `IMemoryCache`.
-
----
-
-### ExpenseReportAccess (internal, owned by `ExpenseReportService`)
-
-Reads through `IExpenseRepository`: both review queues, per-report edit/decline eligibility,
-and submitter/first-reviewer authority. The report service calls it before the unchanged
-mutations; it performs no writes and has no DI registration.

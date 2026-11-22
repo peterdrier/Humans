@@ -12,8 +12,12 @@
   src/Sections/Humans.Shifts/Controllers/ShiftsController.cs
   src/Sections/Humans.Shifts/Models/ShiftBrowsePageBuilder.cs
   src/Sections/Humans.Camps.Contracts/CampSearchHit.cs
-  src/Sections/Humans.Shifts.Contracts/IShiftService.cs
+  src/Sections/Humans.Shifts/Contracts/IShiftService.cs
   src/Sections/Humans.Teams.Contracts/TeamSearchHit.cs
+  src/Humans.Base/Interfaces/ISearchContributor.cs
+  src/Sections/Humans.Users/Section.cs
+  src/Sections/Humans.Camps/Section.cs
+  src/Sections/Humans.Shifts/Section.cs
 -->
 <!-- freshness:flag-on-change
   Search scope (which fields are searched per section), the authorization model (role-blind on both paths; public-only on text queries), the US-GS.4 GUID exception, and per-section SearchAsync contracts — review when search code, the auth-conventions atom, or the person-search atom change.
@@ -74,7 +78,7 @@ The feature matches **each entity's own public fields only** — no cross-modal 
 **So that** I find what I'm looking for without typing exactly the right field
 
 **Acceptance Criteria:**
-- **Humans** match via `IUserService.SearchUsersAsync` with `PersonSearchFields.PublicAll` (`Name | Bio`, per `memory/architecture/person-search.md`) — the resolved display name plus the `Bio` bucket: bio, city, contribution-interests, CV, pronouns, `AllActiveProfiles`-visible ContactFields, and publicly-exposed emails. The bit-flag's existing fields are unchanged — humans inherit the same scope as `/Profile/Search` for non-admin viewers. Emergency-contact data and admin-only fields are never searchable.
+- **Humans** match via `IUserService.SearchUsersAsync` with `PersonSearchFields.PublicAll` (`Name | Bio`, per `memory/architecture/person-search.md`) — the resolved display name plus the `Bio` bucket: bio, city, contribution-interests, CV, pronouns, `AllActiveProfiles`-visible ContactFields, and publicly-exposed emails. Emergency-contact data and admin-only fields are never searchable.
 - **Teams** match on `Team.Name` only.
 - **Camps** match on the active event's `CampSeason.Name` only.
 - **Shifts** (rotas) match on `Rota.Name` only.
@@ -124,16 +128,17 @@ If privileged search is added later, the right shape is per-bucket scope (TeamsA
 
 ## Architecture
 
-`ISearchService` is a thin orchestrator (the Search section, `src/Sections/Humans.Search`). It owns no tables, has no repository, and reaches every other section through public service interfaces only — no direct repository fan-out, no cross-section table access. Per design-rules §6, the section that owns a table owns the query against it; the orchestrator just merges and ranks within each type bucket.
+`ISearchService` is a thin orchestrator (the Search section, `src/Sections/Humans.Search`). It owns no tables, has no repository, references only `Humans.Base`, and names no other section: every category is an `ISearchContributor` (Base) a section implements on its own `Section.cs`. Per design-rules.md, *No cross-domain joins*, the section that owns a table owns the query against it; the orchestrator just collects the contributed buckets.
 
 ```
 SearchController
-   └── ISearchService.SearchAsync(query, onlyType)
-         ├── IUserService.SearchUsersAsync(query, PersonSearchFields.PublicAll, limit)   → IReadOnlyList<HumanSearchResult>
-         ├── ITeamService.SearchAsync(query, max)                                         → IReadOnlyList<TeamSearchHit>
-         ├── ICampService.SearchAsync(query, max)                                         → IReadOnlyList<CampSearchHit>
-         ├── IShiftService.SearchAsync(query, max)                              → IReadOnlyList<RotaSearchHit>
-         └── IEventService.SearchAsync(query, max)  (skipped when Features:Events is off)  → IReadOnlyList<EventSearchHit>
+   └── ISearchService.SearchAsync(query, filter)
+         └── every enabled SearchCategory (IEnumerable<ISearchContributor>), by weight
+               ├── Users  "Human"  → IUserService.SearchUsersAsync(query, PersonSearchFields.PublicAll, int.MaxValue)
+               ├── Teams  "Team"   → ITeamService.SearchAsync(query, int.MaxValue)
+               ├── Camps  "Camp"   → ICampService.SearchAsync(query, int.MaxValue)
+               ├── Shifts "Shift"  → IShiftService.SearchAsync(query, int.MaxValue)
+               └── Events "Event"  → IEventService.SearchAsync(query, int.MaxValue)  (IsEnabled: Features:Events)
 ```
 
 Humans, Teams, Camps and Events are served entirely from their caching decorators' warm in-memory snapshots — the inner `TeamService` / `CampService` / `EventService` `SearchAsync` throw `NotSupportedException` and the DB-search repository methods are gone. `IEventService` is registered as the `CachingEventService` singleton (Events' `Section.cs`), whose `SearchAsync` filters the approved-event cache in memory with `Contains(…, OrdinalIgnoreCase)` — no DB round trip per search. **Shifts is the only bucket that reaches Postgres**, running the case-insensitive `ILike` filter against the name field with `EscapeLikePattern` to defang `%` / `_` / `\` in user input. Section services map their domain entities to type-specific search-hit DTOs (`TeamSearchHit`, `CampSearchHit`, `RotaSearchHit`, `EventSearchHit`) so the orchestrator never has to traverse cross-domain navigation properties to render a row.
@@ -150,7 +155,7 @@ a Description-only match, per US-GS.3). No bucket scores in the orchestrator any
 | Name (prefix)   |   80  |
 | Name (contains) |   60  |
 
-Display ordering is a presentation concern and lives in `SearchController.BuildViewModel` per `memory/architecture/display-sort-in-controllers.md` — the service returns scored but unsorted buckets. Each non-human bucket sorts by `Score desc, SortKey asc` at the controller; the humans bucket sorts by relevance (`OrderByRelevance()`: `Score` desc, then `BurnerName`), matching `/Profile/Search`.
+Display ordering is a presentation concern and lives in `SearchController.BuildViewModel` per `memory/architecture/display-sort-in-controllers.md` — the service returns scored but unsorted buckets. Every bucket sorts by `Score desc, SortKey asc` (case-insensitive) at the controller; the Humans sort key is the burner name, so that is the person-search `OrderByRelevance()` order.
 
 Counts reflect every match — there is no cap, so the chip count is the true number of hits the user can scroll to. There is no separate `CountMatchingAsync` per section; the buckets are already the full result set.
 
@@ -158,22 +163,19 @@ Counts reflect every match — there is no cap, so the chip count is the true nu
 
 | DTO | Returned by | Used by |
 |---|---|---|
-| `HumanSearchResult` | `IUserService.SearchUsersAsync` | View passes each hit's id + match context to `<vc:user-search-result>` |
-| `TeamSearchHit (TeamId, Name, Score)` | `ITeamService.SearchAsync` | Key + ordering → `GlobalSearchResult` |
-| `CampSearchHit (CampId, Name, Score)` | `ICampService.SearchAsync` | Key + ordering → `GlobalSearchResult` |
-| `RotaSearchHit (RotaId, Name, Score)` | `IShiftService.SearchAsync` | Key + ordering → `GlobalSearchResult` |
-| `EventSearchHit (EventId, Title, Score)` | `IEventService.SearchAsync` | Key + ordering → `GlobalSearchResult` |
-| `GlobalSearchResult (Type, Key, SortKey, Score)` | Orchestrator | `Key` is a `Guid` for every bucket; view passes it to the owning section's `<vc:…-search-result>` |
-| `GlobalSearchResults (Query, Humans, Teams, Camps, Shifts, Events)` | `ISearchService` | View-model / view |
+| `SearchCategory (Key, Label, IconCssClass, ResultComponent, SearchAsync, Weight, IsEnabled)` | each section's `ISearchContributor.Categories()` | Orchestrator |
+| `SearchHit (Key, SortKey, Score, MatchField?, MatchSnippet?)` | a category's `SearchAsync` | View invokes the category's `ResultComponent` with the hit as arguments |
+| `HumanSearchResult` / `TeamSearchHit` / `CampSearchHit` / `RotaSearchHit` / `EventSearchHit` | each section's own search method | That section's contributor maps it to `SearchHit` |
+| `SearchBucket (Key, Label, IconCssClass, ResultComponent, Hits)` | Orchestrator | View-model / view |
+| `GlobalSearchResults (Query, Filter, Buckets)` | `ISearchService` | Controller |
 
 ## UI
 
-`/Search` renders type-grouped sections, in order: **Humans**, **Teams**, **Camps**, **Shifts**, **Events**. Each section is hidden when its bucket is empty. The Events section and chip are also hidden when `Features:Events` is off (the view reads `IConfiguration` directly for this gate).
+`/Search` renders one section per enabled category in weight order — **Humans**, **Teams**, **Camps**, **Shifts**, **Events** today. Each section is hidden when its bucket is empty. A disabled category (Events with `Features:Events` off) has no chip, no heading and no search.
 
-- **Humans** are rendered one row at a time by Users' own `<vc:user-search-result>` (see `memory/architecture/person-search.md`). Search holds ids and the match context Users' own search produced, and builds no display model — `/Profile/Search` renders the same component (nobodies-collective/Humans#1062).
-- **Teams / Camps / Shifts / Events** are rendered the same way: `_GlobalSearchSection` switches on the row's `Type` and emits that section's own component — `<vc:teams-search-result team-id>`, `<vc:camps-search-result camp-id>`, `<vc:shifts-search-result rota-id>`, `<vc:events-search-result event-id>`. Search projects no `Title`/`Subtitle`/`Url` for any of them (nobodies-collective/Humans#1062). Every bucket keys by the entity's `Guid`; a component that needs a slug for its link fetches it from the entity it just loaded.
+Every row is the owning section's own view component, invoked by the `Type` its category declares with the `SearchHit` as arguments: `UserSearchResultViewComponent` (`key`, `matchField`, `matchSnippet`), `TeamsSearchResultViewComponent`, `CampsSearchResultViewComponent`, `ShiftsSearchResultViewComponent`, `EventsSearchResultViewComponent` (each `key`). Search projects no `Title`/`Subtitle`/`Url` for any of them (nobodies-collective/Humans#1062) and imports no section's tag helpers. Every bucket keys by the entity's `Guid`; a component that needs a slug for its link fetches it from the entity it just loaded.
 
-A type-filter chip row at the top (All | Humans | Teams | Camps | Shifts | Events) preserves the query and toggles the active filter. Counts on each chip reflect the full match count.
+A type-filter chip row at the top (All, then one chip per category) preserves the query and toggles the active filter (`filter=<category key>`, matched case-insensitively; an unknown key searches everything). Counts on each chip reflect the full match count. Labels come from each contributor's own resources (`<Section>_Search_Category`); the empty-query hint joins them into `Search_GlobalHint`.
 
 ## Out of Scope
 

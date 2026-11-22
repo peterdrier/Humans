@@ -57,14 +57,10 @@ internal sealed class Repository(IDbContextFactory<HoldedDbContext> factory)
     }
 
     public async Task<IReadOnlyList<HoldedLedgerLine>> GetLedgerLinesByAccountNumAsync(
-        int accountNum, Instant? from = null, Instant? toExclusive = null, string? type = null,
-        CancellationToken ct = default)
+        int accountNum, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
         var q = ctx.HoldedLedgerLines.AsNoTracking().Where(l => l.AccountNum == accountNum);
-        if (from is { } f) q = q.Where(l => l.Date >= f);
-        if (toExclusive is { } t) q = q.Where(l => l.Date < t);
-        if (type is not null) q = q.Where(l => l.Type == type);
         return await q.ToListAsync(ct);
     }
 
@@ -86,31 +82,6 @@ internal sealed class Repository(IDbContextFactory<HoldedDbContext> factory)
             .GroupBy(l => l.AccountNum)
             .Select(g => new HoldedAccountTotals(g.Key, g.Sum(l => l.Debit), g.Sum(l => l.Credit), g.Count()))
             .ToListAsync(ct);
-    }
-
-    public async Task<IReadOnlyList<HoldedAccountTypeTotals>> GetAccountTypeTotalsAsync(
-        int fromAccount, int toAccount, CancellationToken ct = default)
-    {
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.HoldedLedgerLines.AsNoTracking()
-            .Where(l => l.AccountNum >= fromAccount && l.AccountNum <= toAccount)
-            .GroupBy(l => new { l.AccountNum, l.Type })
-            .Select(g => new HoldedAccountTypeTotals(
-                g.Key.AccountNum, g.Key.Type, g.Sum(l => l.Debit), g.Sum(l => l.Credit)))
-            .ToListAsync(ct);
-    }
-
-    public async Task<IReadOnlyDictionary<int, decimal>> GetSumsByAccountAsync(
-        IReadOnlyCollection<int> accounts, Instant from, Instant toExclusive, CancellationToken ct = default)
-    {
-        if (accounts.Count == 0) return new Dictionary<int, decimal>();
-        await using var ctx = await factory.CreateDbContextAsync(ct);
-        var numbers = accounts.Distinct().ToList();
-        return await ctx.HoldedLedgerLines.AsNoTracking()
-            .Where(l => numbers.Contains(l.AccountNum) && l.Date >= from && l.Date < toExclusive)
-            .GroupBy(l => l.AccountNum)
-            .Select(g => new { g.Key, Sum = g.Sum(l => l.Debit) - g.Sum(l => l.Credit) })
-            .ToDictionaryAsync(x => x.Key, x => x.Sum, ct);
     }
 
     public async Task<(int Lines, int Entries)> GetMirrorCountsAsync(CancellationToken ct = default)
@@ -178,6 +149,16 @@ internal sealed class Repository(IDbContextFactory<HoldedDbContext> factory)
         return await ctx.HoldedApiCalls.AsNoTracking().ToListAsync(ct);
     }
 
+    public async Task SetPurchaseDocNotesAsync(
+        IReadOnlyDictionary<string, string> notesById, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        var ids = notesById.Keys.ToList();
+        foreach (var doc in await ctx.HoldedPurchaseDocs.Where(d => ids.Contains(d.Id)).ToListAsync(ct))
+            doc.Notes = notesById[doc.Id];
+        await ctx.SaveChangesAsync(ct);
+    }
+
     public async Task ReplacePurchaseDocsAsync(
         IReadOnlyList<HoldedPurchaseDoc> docs, Instant now, CancellationToken ct = default)
     {
@@ -199,6 +180,7 @@ internal sealed class Repository(IDbContextFactory<HoldedDbContext> factory)
                 cur.Total = d.Total;
                 cur.Currency = d.Currency;
                 cur.IsApproved = d.IsApproved;
+                cur.PaymentsPending = d.PaymentsPending;
                 cur.Notes = d.Notes ?? cur.Notes;
                 cur.Tags = d.Tags;
                 cur.BookedAccountId = d.BookedAccountId;
@@ -219,14 +201,94 @@ internal sealed class Repository(IDbContextFactory<HoldedDbContext> factory)
         return await ctx.HoldedPurchaseDocs.AsNoTracking().ToListAsync(ct);
     }
 
-    public async Task<HoldedSyncState> GetOrCreateSyncStateAsync(
-        HoldedSyncKind kind, CancellationToken ct = default)
+    public async Task ReplaceContactsAsync(
+        IReadOnlyList<HoldedContact> contacts, Instant now, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
-        var state = await ctx.HoldedSyncStates.AsNoTracking().FirstOrDefaultAsync(s => s.Kind == kind, ct);
+        var ids = contacts.Select(c => c.Id).ToHashSet(StringComparer.Ordinal);
+        var existing = await ctx.HoldedContacts.ToDictionaryAsync(c => c.Id, StringComparer.Ordinal, ct);
+        ctx.HoldedContacts.RemoveRange(existing.Values.Where(c => !ids.Contains(c.Id)));
+        foreach (var c in contacts)
+        {
+            if (existing.TryGetValue(c.Id, out var cur))
+            {
+                cur.Name = c.Name;
+                cur.SupplierAccountNum = c.SupplierAccountNum;
+                cur.TradeName = c.TradeName;
+                cur.Email = c.Email;
+                cur.Phone = c.Phone;
+                cur.Mobile = c.Mobile;
+                cur.Iban = c.Iban;
+                cur.TaxCode = c.TaxCode;
+                cur.Address = c.Address;
+                cur.LastSyncedAt = now;
+            }
+            else
+            {
+                c.LastSyncedAt = now;
+                ctx.HoldedContacts.Add(c);
+            }
+        }
+        await ctx.SaveChangesAsync(ct);
+    }
+
+    public async Task ReplaceBankMovementsAsync(
+        string treasuryAccountId, LocalDate from, LocalDate to, IReadOnlyList<HoldedBankMovement> movements,
+        Instant now, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        var ids = movements.Select(m => m.Id).ToList();
+        // A line Holded re-dated across the window's edge is matched by id too.
+        var existing = await ctx.HoldedBankMovements
+            .Where(m => m.TreasuryAccountId == treasuryAccountId
+                        && ((m.Date >= from && m.Date <= to) || ids.Contains(m.Id)))
+            .ToDictionaryAsync(m => m.Id, StringComparer.Ordinal, ct);
+        var keep = ids.ToHashSet(StringComparer.Ordinal);
+        ctx.HoldedBankMovements.RemoveRange(existing.Values.Where(m => !keep.Contains(m.Id)));
+        foreach (var m in movements)
+        {
+            if (existing.TryGetValue(m.Id, out var cur))
+            {
+                cur.Date = m.Date;
+                cur.BookedAt = m.BookedAt;
+                cur.Amount = m.Amount;
+                cur.Description = m.Description;
+                cur.Status = m.Status;
+                cur.LastSyncedAt = now;
+            }
+            else
+            {
+                m.LastSyncedAt = now;
+                ctx.HoldedBankMovements.Add(m);
+            }
+        }
+        await ctx.SaveChangesAsync(ct);
+    }
+
+    public async Task<IReadOnlyList<HoldedBankMovement>> GetBankMovementsAsync(
+        string treasuryAccountId, LocalDate from, LocalDate to, CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        return await ctx.HoldedBankMovements.AsNoTracking()
+            .Where(m => m.TreasuryAccountId == treasuryAccountId && m.Date >= from && m.Date <= to)
+            .ToListAsync(ct);
+    }
+
+    public async Task<IReadOnlyList<HoldedContact>> GetContactsAsync(CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        return await ctx.HoldedContacts.AsNoTracking().ToListAsync(ct);
+    }
+
+    public async Task<HoldedSyncState> GetOrCreateSyncStateAsync(
+        HoldedSyncKind kind, string scope = "", CancellationToken ct = default)
+    {
+        await using var ctx = await factory.CreateDbContextAsync(ct);
+        var state = await ctx.HoldedSyncStates.AsNoTracking()
+            .FirstOrDefaultAsync(s => s.Kind == kind && s.Scope == scope, ct);
         if (state is not null) return state;
 
-        state = new HoldedSyncState { Kind = kind };
+        state = new HoldedSyncState { Kind = kind, Scope = scope };
         ctx.HoldedSyncStates.Add(state);
         await ctx.SaveChangesAsync(ct);
         return state;
@@ -235,7 +297,8 @@ internal sealed class Repository(IDbContextFactory<HoldedDbContext> factory)
     public async Task SaveSyncStateAsync(HoldedSyncState state, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
-        var existing = await ctx.HoldedSyncStates.FirstOrDefaultAsync(s => s.Kind == state.Kind, ct);
+        var existing = await ctx.HoldedSyncStates.FirstOrDefaultAsync(
+            s => s.Kind == state.Kind && s.Scope == state.Scope, ct);
         if (existing is null)
         {
             ctx.HoldedSyncStates.Add(state);

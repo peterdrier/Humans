@@ -4,6 +4,7 @@ using Humans.Teams.Contracts;
 using Humans.Base.Enums;
 using Microsoft.AspNetCore.Mvc;
 using Humans.Users.Contracts;
+using Humans.Auth.Contracts;
 
 namespace Humans.Users.ViewComponents;
 
@@ -12,7 +13,8 @@ namespace Humans.Users.ViewComponents;
 /// identity context without hovering.
 /// </summary>
 public sealed class HumanSummaryViewComponent(
-    IUserService userService, ITeamService teamService, IGovernanceService governanceService) : ViewComponent
+    IUserService userService, ITeamService teamService, IGovernanceService governanceService,
+    IRoleAssignmentService roleAssignments) : ViewComponent
 {
     public async Task<IViewComponentResult> InvokeAsync(Guid userId)
     {
@@ -34,23 +36,21 @@ public sealed class HumanSummaryViewComponent(
             return View("Default", new ProfileSummaryViewModel
             {
                 UserId = userId,
-                Email = info.PrimaryEmail
-                    ?? info.UserEmails.FirstOrDefault(e => e.IsVerified)?.Email,
+                Email = info.Email,
                 PreferredLanguage = info.PreferredLanguage,
                 HasProfile = false,
             });
         }
 
-        var memberships = (await teamService.GetTeamsAsync(ct)).Values
-            .Where(t => t.IsActive && t.SystemTeamType != SystemTeamType.Volunteers)
-            .Select(t => new { TeamInfo = t, Membership = t.Members.FirstOrDefault(m => m.UserId == userId) })
-            .Where(x => x.Membership is not null)
-            .Select(x => new TeamMembership(x.TeamInfo.Name, x.Membership!.Role) { IsHidden = x.TeamInfo.IsHidden })
+        var memberships = (await teamService.GetUserTeamMembershipsAsync(userId, ct))
+            .Where(m => m.IsProfileMembership)
+            .Select(m => new TeamMembership(m.TeamName, m.Role) { IsHidden = m.IsHidden })
             .ToList();
 
         var tier = await governanceService.GetMembershipTierAsync(userId, ct);
 
-        var vm = ProfileSummaryViewModelBuilder.BuildWithProfile(info, memberships, tier);
+        var isBoard = await roleAssignments.IsUserBoardMemberAsync(userId, ct);
+        var vm = ProfileSummaryViewModelBuilder.BuildWithProfile(info, memberships, tier, isBoard);
 
         return View("Default", vm);
     }

@@ -1,7 +1,7 @@
+using Humans.Monitor.Services;
 using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.Base.Constants;
-using Humans.Monitor.Contracts;
 using Humans.Monitor.Controllers;
 using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Http;

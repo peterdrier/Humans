@@ -68,7 +68,7 @@ internal sealed class WorkgroupsAdminController(
     [HttpPost("{id:guid}/Coordinators")]
     [ValidateAntiForgeryToken]
     public Task<IActionResult> Coordinators(Guid id, Guid?[] coordinatorUserIds, string? slug, CancellationToken ct) =>
-        ActAsync(actor => workgroups.SetCoordinatorsAsync(id, actor, coordinatorUserIds.OfType<Guid>().ToArray(), asAdmin: true, ct),
+        ActAsync(actor => workgroups.AppointCoordinatorsAsync(id, actor, coordinatorUserIds.OfType<Guid>().ToArray(), ct),
             "Coordinators set", ct, id, slug);
 
     [HttpGet("RegisterExisting")]
@@ -148,6 +148,11 @@ internal sealed class WorkgroupsAdminController(
         }
         return RedirectToAction("Details", "Workgroups", new { slug = id });
     }
+
+    [HttpPost("{id:guid}/GoogleGroup")]
+    [ValidateAntiForgeryToken]
+    public Task<IActionResult> GoogleGroup(Guid id, string? prefix, string? slug, CancellationToken ct) =>
+        ActAsync(actor => workgroups.SetGoogleGroupAsync(id, actor, prefix, ct), "Email group saved", ct, id, slug);
 
     [HttpPost("Documents/{id:guid}/Disposition")]
     [ValidateAntiForgeryToken]

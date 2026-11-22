@@ -1,4 +1,5 @@
 using System.Net;
+using System.Text.Json.Nodes;
 using AwesomeAssertions;
 using Humans.Stripe.Services;
 using NSubstitute;
@@ -61,6 +62,46 @@ public sealed class StripeMirrorClientTests
         return query.Contains("starting_after=txn_c", StringComparison.Ordinal) ? List(false, Payout) : List(true, Charge);
     }
 
+    public enum MirrorList { Transactions, Payouts }
+
+    [HumansTheory]
+    [Xunit.InlineData(MirrorList.Transactions, "id")]
+    [Xunit.InlineData(MirrorList.Transactions, "type")]
+    [Xunit.InlineData(MirrorList.Transactions, "status")]
+    [Xunit.InlineData(MirrorList.Transactions, "currency")]
+    [Xunit.InlineData(MirrorList.Transactions, "reporting_category")]
+    [Xunit.InlineData(MirrorList.Transactions, "amount")]
+    [Xunit.InlineData(MirrorList.Transactions, "fee")]
+    [Xunit.InlineData(MirrorList.Transactions, "net")]
+    [Xunit.InlineData(MirrorList.Transactions, "created")]
+    [Xunit.InlineData(MirrorList.Transactions, "available_on")]
+    [Xunit.InlineData(MirrorList.Payouts, "id")]
+    [Xunit.InlineData(MirrorList.Payouts, "currency")]
+    [Xunit.InlineData(MirrorList.Payouts, "status")]
+    [Xunit.InlineData(MirrorList.Payouts, "amount")]
+    [Xunit.InlineData(MirrorList.Payouts, "created")]
+    [Xunit.InlineData(MirrorList.Payouts, "arrival_date")]
+    [Xunit.InlineData(MirrorList.Payouts, "automatic")]
+    public async Task Incomplete_mirror_records_do_not_become_SDK_defaults(MirrorList list, string field)
+    {
+        Respond(request =>
+        {
+            var payload = Route(request);
+            var path = list == MirrorList.Payouts ? "/payouts" : "/balance_transactions";
+            if (!request.Uri.AbsolutePath.EndsWith(path, StringComparison.Ordinal)
+                || request.Uri.Query.Contains("payout=", StringComparison.Ordinal)) return payload;
+            var body = JsonNode.Parse(payload)!.AsObject();
+            body["has_more"] = false;
+            body["data"]!.AsArray()[0]!.AsObject().Remove(field);
+            return body.ToJsonString();
+        });
+        var account = new StripeMirrorAccount { Name = "Tickets", Id = "acct_t", ApiKey = "sk_org_test" };
+
+        var fetch = () => new StripeMirrorClient(_http).FetchAsync(account, Ct);
+
+        await fetch.Should().ThrowAsync<InvalidOperationException>().WithMessage($"*{field}*");
+    }
+
     [HumansFact]
     public async Task Org_key_reads_every_page_through_Stripe_Context_and_links_automatic_payouts()
     {
@@ -88,6 +129,62 @@ public sealed class StripeMirrorClientTests
         fetch.Balances.Single().Currency.Should().Be("EUR");
     }
 
+    [HumansTheory]
+    [Xunit.InlineData("", "receipt@example.org", "metadata@example.org", "receipt@example.org")]
+    [Xunit.InlineData("  ", " ", "metadata@example.org", "metadata@example.org")]
+    [Xunit.InlineData("", "", " ", "legacy@example.org")]
+    public async Task Blank_billing_values_do_not_hide_receipt_or_metadata_buyer_details(
+        string blank, string receipt, string metadataAddress, string expectedEmail)
+    {
+        static string Encode(string value) => System.Text.Json.JsonSerializer.Serialize(value);
+        Respond(r => Route(r)
+            .Replace("\"name\":null", "\"name\":" + Encode(blank), StringComparison.Ordinal)
+            .Replace("\"buyer@example.org\"", Encode(blank), StringComparison.Ordinal)
+            .Replace("\"receipt_email\":null", "\"receipt_email\":" + Encode(receipt), StringComparison.Ordinal)
+            .Replace("\"name\":\"Ana Buyer\"", "\"name\":\"Ana Buyer\",\"email_address\":" + Encode(metadataAddress)
+                + ",\"email\":\"legacy@example.org\"", StringComparison.Ordinal));
+        var account = new StripeMirrorAccount { Name = "Tickets", Id = "acct_t", ApiKey = "sk_org_test" };
+
+        var fetch = await new StripeMirrorClient(_http).FetchAsync(account, Ct);
+
+        var charge = fetch.Transactions.Single(t => string.Equals(t.Id, "txn_c", StringComparison.Ordinal));
+        charge.CustomerName.Should().Be("Ana Buyer");
+        charge.CustomerEmail.Should().Be(expectedEmail);
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task Bounded_mirror_fields_preserve_complete_unicode_characters(bool pairFits)
+    {
+        var namePrefix = new string('n', pairFits ? 254 : 255);
+        var descriptionPrefix = new string('d', pairFits ? 998 : 999);
+        var name = System.Text.Json.JsonSerializer.Serialize(namePrefix + "😀tail");
+        var description = System.Text.Json.JsonSerializer.Serialize(descriptionPrefix + "😀tail");
+        Respond(r => Route(r)
+            .Replace("\"Order for Elsewhere\"", description, StringComparison.Ordinal)
+            .Replace("\"Ana Buyer\"", name, StringComparison.Ordinal)
+            .Replace("\"buyer@example.org\"", name, StringComparison.Ordinal)
+            .Replace("\"reconciliation_status\":\"completed\"",
+                "\"reconciliation_status\":\"completed\",\"failure_message\":" + description, StringComparison.Ordinal));
+        var account = new StripeMirrorAccount { Name = "Tickets", Id = "acct_t", ApiKey = "sk_org_test" };
+
+        var fetch = await new StripeMirrorClient(_http).FetchAsync(account, Ct);
+
+        var charge = fetch.Transactions[0];
+        var suffix = pairFits ? "😀" : "";
+        charge.CustomerName.Should().Be(namePrefix + suffix);
+        charge.CustomerEmail.Should().Be(namePrefix + suffix);
+        charge.Description.Should().Be(descriptionPrefix + suffix);
+        fetch.Payouts[0].FailureMessage.Should().Be(descriptionPrefix + suffix);
+        var encoder = new System.Text.UTF8Encoding(false, true);
+        foreach (var value in new[] { charge.CustomerName, charge.CustomerEmail, charge.Description, fetch.Payouts[0].FailureMessage })
+        {
+            var encode = () => encoder.GetBytes(value!);
+            encode.Should().NotThrow();
+        }
+    }
+
     [HumansFact]
     public async Task An_account_with_its_own_key_sends_no_Stripe_Context()
     {
@@ -97,6 +194,81 @@ public sealed class StripeMirrorClientTests
         await new StripeMirrorClient(_http).FetchAsync(account, Ct);
 
         _requests.Should().NotBeEmpty().And.OnlyContain(r => !r.StripeHeaders.ContainsKey("Stripe-Context"));
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData("""{"object":"balance","pending":[]}""")]
+    [Xunit.InlineData("""{"object":"balance","available":[]}""")]
+    [Xunit.InlineData("""{"object":"balance","available":null,"pending":[]}""")]
+    [Xunit.InlineData("""{"object":"balance","available":[],"pending":null}""")]
+    [Xunit.InlineData("""{"object":"balance","available":[{"currency":"eur"}],"pending":[]}""")]
+    [Xunit.InlineData("""{"object":"balance","available":[],"pending":[{"currency":"eur"}]}""")]
+    [Xunit.InlineData("""{"object":"balance","available":[{"amount":25,"currency":""}],"pending":[]}""")]
+    [Xunit.InlineData("""{"object":"balance","available":[],"pending":[{"amount":25,"currency":"  "}]}""")]
+    public async Task Incomplete_wallet_balance_cannot_publish_a_fetch(string body)
+    {
+        Respond(r => r.Uri.AbsolutePath.EndsWith("/balance", StringComparison.Ordinal) ? body : Route(r));
+        var account = new StripeMirrorAccount { Name = "Tickets", Id = "acct_t", ApiKey = "sk_org_test" };
+
+        var act = () => new StripeMirrorClient(_http).FetchAsync(account, Ct);
+
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*balance*");
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(true)]
+    [Xunit.InlineData(false)]
+    public async Task Complete_wallet_buckets_preserve_empty_zero_and_signed_amounts(bool empty)
+    {
+        var body = empty
+            ? """{"object":"balance","available":[],"pending":[]}"""
+            : """{"object":"balance","available":[{"amount":0,"currency":"eur"},{"amount":-50,"currency":"usd"}],"pending":[{"amount":25,"currency":"EUR"},{"amount":0,"currency":"usd"}]}""";
+        Respond(r => r.Uri.AbsolutePath.EndsWith("/balance", StringComparison.Ordinal) ? body : Route(r));
+        var account = new StripeMirrorAccount { Name = "Tickets", Id = "acct_t", ApiKey = "sk_org_test" };
+
+        var fetch = await new StripeMirrorClient(_http).FetchAsync(account, Ct);
+
+        if (empty)
+        {
+            fetch.Balances.Should().BeEmpty();
+            return;
+        }
+        fetch.Balances.Should().HaveCount(2);
+        fetch.Balances.Single(b => string.Equals(b.Currency, "EUR", StringComparison.Ordinal))
+            .Should().Match<Domain.StripeBalance>(b => b.Available == 0 && b.Pending == 25);
+        fetch.Balances.Single(b => string.Equals(b.Currency, "USD", StringComparison.Ordinal))
+            .Should().Match<Domain.StripeBalance>(b => b.Available == -50 && b.Pending == 0);
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData("transactions")]
+    [Xunit.InlineData("payouts")]
+    [Xunit.InlineData("payout-breakdown")]
+    public async Task Missing_completion_metadata_cannot_publish_a_partial_fetch(string consumer)
+    {
+        var targetCalls = 0;
+        Respond(r =>
+        {
+            var path = r.Uri.AbsolutePath;
+            var query = Uri.UnescapeDataString(r.Uri.Query);
+            var isTarget = consumer switch
+            {
+                "payouts" => path.EndsWith("/payouts", StringComparison.Ordinal),
+                "payout-breakdown" => query.Contains("payout=po_1", StringComparison.Ordinal),
+                _ => path.EndsWith("/balance_transactions", StringComparison.Ordinal)
+                    && !query.Contains("payout=", StringComparison.Ordinal),
+            };
+            if (!isTarget) return Route(r);
+            return ++targetCalls == 1
+                ? Route(r).Replace("\"has_more\":false", "\"has_more\":true", StringComparison.Ordinal)
+                : """{"object":"list","data":[]}""";
+        });
+        var account = new StripeMirrorAccount { Name = "Tickets", Id = "acct_t", ApiKey = "sk_org_test" };
+
+        var act = () => new StripeMirrorClient(_http).FetchAsync(account, Ct);
+
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*boolean has_more*");
+        targetCalls.Should().Be(2);
     }
 
     [HumansFact]

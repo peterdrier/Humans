@@ -1,3 +1,4 @@
+using Humans.Base.Interfaces;
 using Humans.Base.Enums;
 using Humans.Grants.Authorization;
 using Humans.Grants.Services;
@@ -11,7 +12,7 @@ namespace Humans.Grants.ViewComponents;
 /// merged-away id matches the surviving account the page passes in. Shows active grants and ones that ended this year
 /// or later.
 /// </summary>
-internal sealed class MyGrantsViewComponent(IGrantManagement grants, IUserService users) : ViewComponent
+internal sealed class MyGrantsViewComponent(IGrantManagement grants, IUserService users, IOrgTimeZone orgTimeZone) : ViewComponent
 {
     public async Task<IViewComponentResult> InvokeAsync(Guid userId, ProfileCardViewMode viewMode)
     {
@@ -31,6 +32,6 @@ internal sealed class MyGrantsViewComponent(IGrantManagement grants, IUserServic
     }
 
     /// <summary>Its revocation, else its expiry.</summary>
-    private static int? EndedIn(GrantInfo grant) =>
-        grant.RevokedAt is { } revoked ? revoked.InZone(GrantService.MadridZone).Year : grant.ExpiresOn?.Year;
+    private int? EndedIn(GrantInfo grant) =>
+        grant.RevokedAt is { } revoked ? revoked.InZone(orgTimeZone.Zone).Year : grant.ExpiresOn?.Year;
 }

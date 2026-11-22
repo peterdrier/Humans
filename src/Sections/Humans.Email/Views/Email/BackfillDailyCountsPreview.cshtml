@@ -26,10 +26,9 @@ else
     <div class="card mb-3">
         <div class="card-header">Sample (first @Model.Sample.Count of @Model.RowsToAdd)</div>
         @{
-            Func<Humans.Email.Services.DailyTemplateSendCountRow, IHtmlContent> templateCell = @<text><code class="small">@item.TemplateName</code></text>;
             var sampleTable = TableModel.For(Model.Sample)
                 .Column("Date (UTC)", r => r.Date, o => o.Date())
-                .Template("Template", templateCell, sortBy: r => r.TemplateName)
+                .Column("Template", r => r.TemplateName, o => o.Code().Css("small"))
                 .Column("Would add Sent", r => r.SentCount, o => o.Number().Css("text-success"))
                 .Column("Would add Failed", r => r.FailedCount, o => o.Number().Css("text-danger"))
                 .Build();

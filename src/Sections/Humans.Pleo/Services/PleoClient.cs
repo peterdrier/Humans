@@ -1,3 +1,4 @@
+using Humans.Pleo.Contracts;
 using System.Globalization;
 using System.Net;
 using System.Net.Http.Headers;
@@ -53,10 +54,19 @@ internal sealed class PleoClient : IPleoClient
         return items.Select(Read<PleoAccountWire>).ToList();
     }
 
+    public async Task<IReadOnlyList<PleoCategoryWire>> SearchCategoriesAsync(CancellationToken ct = default)
+    {
+        var body = JsonSerializer.Serialize(new { companyId = _options.CompanyId });
+        var items = await GetAllPagesAsync("bookkeeping-categories:search", after =>
+            Post($"/v1/bookkeeping-categories:search?limit={PageLimit}{After(after)}", body), ct);
+        return items.Select(Read<PleoCategoryWire>).ToList();
+    }
+
     public async Task<IReadOnlyList<PleoEmployeeWire>> ListEmployeesAsync(CancellationToken ct = default)
     {
+        // Historical entries still reference deleted cardholders; an active-only sweep would erase their names.
         var items = await GetAllPagesAsync("employees", after =>
-            new HttpRequestMessage(HttpMethod.Get, $"/v2/employees?companyId={Company}&limit={PageLimit}{After(after)}"), ct);
+            new HttpRequestMessage(HttpMethod.Get, $"/v2/employees?companyId={Company}&includeDeleted=true&limit={PageLimit}{After(after)}"), ct);
         return items.Select(Read<PleoEmployeeWire>).ToList();
     }
 
@@ -73,8 +83,11 @@ internal sealed class PleoClient : IPleoClient
                 throw new PleoPermanentException($"Pleo balance: no primary account among {accounts.Count}.");
             var balance = primary.GetProperty("balance");
             var current = balance.GetProperty("current");
+            var currency = current.GetProperty("currency").GetString();
+            if (string.IsNullOrWhiteSpace(currency))
+                throw new PleoPermanentException("Pleo balance: primary account currency is missing.");
             return new PleoBalanceWire(
-                current.GetProperty("currency").GetString() ?? "",
+                currency,
                 current.GetProperty("value").GetInt64(),
                 balance.GetProperty("available").GetProperty("value").GetInt64(),
                 balance.GetProperty("pendingDebits").GetProperty("value").GetInt64());
@@ -121,6 +134,12 @@ internal sealed class PleoClient : IPleoClient
 
     private static T Read<T>(JsonElement item) where T : class
     {
+        if (item.ValueKind != JsonValueKind.Object
+            || !item.TryGetProperty("id", out var id)
+            || id.ValueKind != JsonValueKind.String
+            || string.IsNullOrWhiteSpace(id.GetString()))
+            throw new PleoPermanentException($"Pleo returned a {typeof(T).Name} without a usable id.");
+
         try
         {
             return item.Deserialize<T>(Json) ?? throw new PleoPermanentException($"Pleo returned a null {typeof(T).Name}.");
@@ -147,9 +166,12 @@ internal sealed class PleoClient : IPleoClient
                 throw new PleoTransientException($"Pleo {endpoint}: a 200 without a data array.");
             items.AddRange(data.EnumerateArray());
 
-            var hasNext = root.TryGetProperty("pagination", out var pagination)
-                && pagination.TryGetProperty("hasNextPage", out var next) && next.ValueKind == JsonValueKind.True;
-            if (!hasNext) return items;
+            if (!root.TryGetProperty("pagination", out var pagination)
+                || pagination.ValueKind != JsonValueKind.Object
+                || !pagination.TryGetProperty("hasNextPage", out var next)
+                || next.ValueKind is not (JsonValueKind.True or JsonValueKind.False))
+                throw new PleoTransientException($"Pleo {endpoint}: a page without a boolean hasNextPage.");
+            if (next.ValueKind == JsonValueKind.False) return items;
 
             after = pagination.TryGetProperty("endCursor", out var end) && end.ValueKind == JsonValueKind.String
                 ? end.GetString()
@@ -172,6 +194,8 @@ internal sealed class PleoClient : IPleoClient
         try
         {
             using var doc = JsonDocument.Parse(body);
+            if (doc.RootElement.ValueKind != JsonValueKind.Object)
+                throw new PleoPermanentException($"Pleo {endpoint}: expected a JSON object.");
             return doc.RootElement.Clone();
         }
         catch (JsonException ex)
@@ -206,7 +230,7 @@ internal sealed class PleoClient : IPleoClient
             if (status >= 500 || resp.StatusCode == HttpStatusCode.TooManyRequests)
                 throw new PleoTransientException(label);
             var body = await resp.Content.ReadAsStringAsync(ct);
-            throw new PleoPermanentException($"{label}: {body[..Math.Min(body.Length, 300)]}", status);
+            throw new PleoPermanentException($"{label}: {PleoTextBounds.Bound(body, 300)}", status);
         }
     }
 }

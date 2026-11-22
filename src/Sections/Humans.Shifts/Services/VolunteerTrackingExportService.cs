@@ -28,7 +28,7 @@ internal sealed class VolunteerTrackingExportService(
     {
         var eventSettings = await _burnSettingsService.GetByIdAsync(request.EventSettingsId, ct)
             ?? throw new InvalidOperationException($"EventSettings {request.EventSettingsId} not found.");
-        var zone = DateTimeZoneProviders.Tzdb[eventSettings.TimeZoneId];
+        var zone = eventSettings.TimeZone;
 
         var days = EnumerateDays(request.StartDate, request.EndDate);
         var shifts = await _shiftManagementRepository.GetConfirmedShiftsInRangeAsync(
@@ -106,7 +106,7 @@ internal sealed class VolunteerTrackingExportService(
             .ThenBy(dg => dg.TeamName, StringComparer.OrdinalIgnoreCase)
             .ToList();
 
-        var totals = ComputeTotals(days, rows, firstShiftDay);
+        var totals = ComputeTotals(days, rows);
 
         return await BuildModelAsync(request, days, groups, totals, filteredTeamName);
     }
@@ -168,20 +168,12 @@ internal sealed class VolunteerTrackingExportService(
 
     private static int[] ComputeTotals(
         IReadOnlyList<LocalDate> days,
-        Dictionary<Guid, HumanRow> rows,
-        Dictionary<Guid, LocalDate> firstShiftDay)
+        Dictionary<Guid, HumanRow> rows)
     {
         var totals = new int[days.Count];
         for (var i = 0; i < days.Count; i++)
         {
-            var d = days[i];
-            var count = 0;
-            foreach (var (userId, row) in rows)
-            {
-                if (firstShiftDay[userId] > d) continue;
-                if (row.Cells[i].Kind == CellKind.Worked) count++;
-            }
-            totals[i] = count;
+            totals[i] = rows.Values.Count(row => row.Cells[i].Kind is CellKind.Arrival or CellKind.Worked);
         }
         return totals;
     }
@@ -245,7 +237,7 @@ internal sealed class VolunteerTrackingExportService(
             .GroupBy(d => d.TeamId)
             .ToDictionary(g => g.Key, g => g.First().TeamName);
 
-        var zone = DateTimeZoneProviders.Tzdb[es.TimeZoneId];
+        var zone = es.TimeZone;
         return ShiftEarlyEntryProjection.Project(rows, zone, teamNames);
     }
 

@@ -32,7 +32,7 @@ public sealed class TestEventCalendar
 
     public Instant? EarlyEntryClose { get; set; }
 
-    /// <summary>Which calendar <see cref="ISettingsService.GetActiveEventSettingsAsync"/> serves.</summary>
+    /// <summary>Which calendar <see cref="ISettingsService.GetActiveEventSettings"/> serves.</summary>
     public bool IsActive { get; set; }
 
     public EventSettingsInfo ToInfo() => new(

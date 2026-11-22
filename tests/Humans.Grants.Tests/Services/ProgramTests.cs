@@ -181,7 +181,7 @@ public sealed class ProgramTests : GrantsTestHarness
             .AddInterceptors(new FailManagerSave())
             .Options;
         var service = new GrantService(
-            new GrantRepository(new TestDbContextFactory<GrantsDbContext>(options)),
+            FixedOrgTimeZone.Madrid, new GrantRepository(new TestDbContextFactory<GrantsDbContext>(options)),
             Users, Notifications, Email, EmailFactory, AuditLog, Settings, Clock, Logger);
 
         Func<Task> update = () => service.UpdateProgramAsync(

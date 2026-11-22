@@ -15,12 +15,14 @@ namespace Humans.Surveys.Controllers;
 /// <summary>
 /// Two entry paths share one page flow: the invite link (<c>/Survey/Answer?t=…</c>), where identity comes from the
 /// token's invitation, never the current principal; and the public slug (<c>/Survey/{slug}</c>). Flow decisions live
-/// in <see cref="ISurveyService.AdvanceWizardAsync"/>.
+/// in <see cref="ISurveyResponses.AdvanceWizardAsync"/>.
 /// </summary>
 [AllowAnonymous]
 [Route("Survey")]
 internal sealed class SurveyController(
     ISurveyService surveyService,
+    ISurveyResponses responses,
+    SurveyAudience audience,
     IUserService userService,
     IClock clock,
     SurveyPreviewTokenProvider previewTokens,
@@ -38,7 +40,7 @@ internal sealed class SurveyController(
                 new { id = preview.SurveyId, culture = preview.Culture });
         }
 
-        var ctx = await surveyService.ResolveAnswerContextAsync(t, ct);
+        var ctx = await responses.ResolveAnswerContextAsync(t, ct);
         if (ctx is null)
         {
             logger.LogWarning("Survey answer link could not be resolved (invalid or expired token).");
@@ -68,20 +70,7 @@ internal sealed class SurveyController(
             resumeState.Started = true;
             if (resumeAnonymity == ResponseAnonymity.Identified)
                 resumeState.DraftResponseId = ctx.DraftResponseId;
-            foreach (var a in ctx.DraftAnswers)
-            {
-                resumeState.Answers[a.QuestionId.ToString()] = new SurveyWizardAnswer
-                {
-                    SelectedOptionValues = a.SelectedOptionValues.ToList(),
-                    GridSelections = a.GridSelections?.ToDictionary(
-                        kv => kv.Key,
-                        kv => kv.Value.ToList(),
-                        StringComparer.Ordinal) ?? new(StringComparer.Ordinal),
-                    TextValue = a.TextValue,
-                    RatingValue = a.RatingValue,
-                    RankedValue = a.RankedValue,
-                };
-            }
+            resumeState.Answers = SurveyWizardFlow.ToWizardAnswers(ctx.DraftAnswers);
 
             resumeState.CurrentPage = SurveyWizardFlow.FirstVisiblePage(
                 editable.Questions, SurveyWizardFlow.ToAnswerStates(resumeState.Answers)) ?? 0;
@@ -112,7 +101,7 @@ internal sealed class SurveyController(
             return BadRequest();
         }
 
-        var ctx = await surveyService.ResolveAnswerContextAsync(model.Token, ct);
+        var ctx = await responses.ResolveAnswerContextAsync(model.Token, ct);
         if (ctx is null)
         {
             return View("Closed", new SurveyClosedViewModel { Reason = "invalid" });
@@ -141,13 +130,13 @@ internal sealed class SurveyController(
 
         if (anonymity == ResponseAnonymity.Identified)
         {
-            state.DraftResponseId = await surveyService.StartIdentifiedDraftAsync(
+            state.DraftResponseId = await responses.StartIdentifiedDraftAsync(
                 ctx.SurveyId, ctx.InvitationId, ctx.UserId,
                 SurveyInputMethod.UserSpecificLink, culture, ct);
         }
 
         // Flips the invitation's funnel Started flag (all invited tiers).
-        await surveyService.MarkInvitationStartedAsync(ctx.InvitationId, ct);
+        await responses.MarkInvitationStartedAsync(ctx.InvitationId, ct);
 
         // 0 ⇒ no questions or nothing visible.
         state.CurrentPage = SurveyWizardFlow.FirstVisiblePage(
@@ -239,7 +228,7 @@ internal sealed class SurveyController(
         var stateAnswers = new Dictionary<string, SurveyWizardAnswer>(StringComparer.Ordinal);
         if (resolvedAnonymity != ResponseAnonymity.Anonymous)
         {
-            var tracked = await surveyService.StartPublicTrackedResponseAsync(
+            var tracked = await responses.StartPublicTrackedResponseAsync(
                 ctx.SurveyId, userId!.Value, resolvedAnonymity, resolvedCulture, ct);
             if (tracked is null)
             {
@@ -248,22 +237,7 @@ internal sealed class SurveyController(
 
             participationId = tracked.ParticipationId;
             draftResponseId = tracked.DraftResponseId;
-            foreach (var answer in tracked.DraftAnswers)
-            {
-                stateAnswers[answer.QuestionId.ToString()] = new SurveyWizardAnswer
-                {
-                    SelectedOptionValues = answer.SelectedOptionValues.ToList(),
-                    TextValue = answer.TextValue,
-                    RatingValue = answer.RatingValue,
-                    GridSelections = answer.GridSelections is null
-                        ? new Dictionary<string, List<string>>(StringComparer.Ordinal)
-                        : answer.GridSelections.ToDictionary(
-                            pair => pair.Key,
-                            pair => pair.Value.ToList(),
-                            StringComparer.Ordinal),
-                    RankedValue = answer.RankedValue,
-                };
-            }
+            stateAnswers = SurveyWizardFlow.ToWizardAnswers(tracked.DraftAnswers);
         }
 
         var state = new SurveyWizardState
@@ -283,7 +257,7 @@ internal sealed class SurveyController(
         // Record the public start at intro advance, not the first page POST, so SlugStarted counts visitors who
         // abandon on the first page.
         state.Started = true;
-        await surveyService.IncrementPublicStartedAsync(ctx.SurveyId, ct);
+        await responses.IncrementPublicStartedAsync(ctx.SurveyId, ct);
 
         SurveyWizardSession.SaveBySlug(HttpContext.Session, slug, state);
         return RedirectToAction("PublicPage", new { slug });
@@ -356,7 +330,7 @@ internal sealed class SurveyController(
             return View("ThankYou", BuildThankYou(await surveyService.GetForEditAsync(done.SurveyId, ct), done.Culture));
         }
 
-        var ctx = await surveyService.ResolvePublicContextAsync(slug, GetCurrentUserId(), ct);
+        var ctx = await responses.ResolvePublicContextAsync(slug, GetCurrentUserId(), ct);
         if (ctx is null) return View("ThankYou", BuildThankYou(null));
         if (ctx.Access == SurveyPublicAccess.AuthenticationRequired) return Challenge();
         if (ctx.Access == SurveyPublicAccess.Ineligible)
@@ -382,7 +356,7 @@ internal sealed class SurveyController(
             return View("ThankYou", BuildThankYou(await surveyService.GetForEditAsync(done.SurveyId, ct), done.Culture));
         }
 
-        var ctx = await surveyService.ResolveAnswerContextAsync(t, ct);
+        var ctx = await responses.ResolveAnswerContextAsync(t, ct);
         return View("ThankYou", BuildThankYou(ctx?.Definition));
     }
 
@@ -431,7 +405,7 @@ internal sealed class SurveyController(
         string slug,
         CancellationToken ct)
     {
-        var ctx = await surveyService.ResolvePublicContextAsync(slug, GetCurrentUserId(), ct);
+        var ctx = await responses.ResolvePublicContextAsync(slug, GetCurrentUserId(), ct);
         if (ctx is null) return (null, NotFound());
 
         return ctx.Access switch
@@ -468,7 +442,7 @@ internal sealed class SurveyController(
         }
         if (editable.IsAsociadoVote
             && (state.UserId is not { } userId
-                || !await surveyService.IsEligibleAsociadoAsync(userId, ct)))
+                || !await audience.IsEligibleAsociadoAsync(userId, ct)))
         {
             return View("Closed", new SurveyClosedViewModel { Reason = "ineligible-asociado" });
         }
@@ -527,7 +501,7 @@ internal sealed class SurveyController(
                 ToRankedAnswer(a.RankedOptions)))
             .ToList();
 
-        var result = await surveyService.AdvanceWizardAsync(state, model.Page, model.Back, posted, ct);
+        var result = await responses.AdvanceWizardAsync(state, model.Page, model.Back, posted, ct);
 
         switch (result.Outcome)
         {

@@ -16,17 +16,15 @@ public class TeamsPageRenderTests(HumansTestDatabase database) : IntegrationTest
     private static readonly string[] CarvedPrefixes =
     [
         "Teams_", "TeamDetail_", "TeamAdmin_", "AdminTeams_", "MyTeams_", "Roster_",
-        "JoinTeam_", "Birthdays_", "Team_", "AdminCreateTeam_", "AdminEditTeam_",
-        "EditTeamPage_", "Map_",
+        "JoinTeam_", "Team_", "AdminCreateTeam_", "AdminEditTeam_",
+        "EditTeamPage_",
     ];
 
     private static (string Url, string Copy)[] Pages =>
     [
-        ("/Teams", "Birthday Calendar"),           // Birthdays_Title, on the directory's nav strip
+        ("/Teams", "My Teams"),                    // MyTeams_Title, on the directory's nav strip
         ("/Teams/My", "My Teams"),                 // MyTeams_Title
         ("/Teams/Roster", "Team Roster"),          // Roster_Title
-        ("/Teams/Birthdays", "Birthday Calendar"), // Birthdays_Title
-        ("/Teams/Map", "Humans Map"),              // Map_Title
         ("/Teams/Summary", "Teams Summary"),       // Shell-era literal, not a carved key
         ("/Teams/Create", "Create Team"),          // AdminCreateTeam_Title
     ];
@@ -110,9 +108,8 @@ public class TeamsPageRenderTests(HumansTestDatabase database) : IntegrationTest
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var html = await response.Content.ReadAsStringAsync(ct);
 
-        html.Should().Contain("Calendario de cumplea");   // Birthdays_Title, accent-free run
-        html.Should().Contain("Mapa de Humans");           // Map_Title
-        html.Should().NotContain("Birthday Calendar");
+        html.Should().Contain("Mis equipos");   // MyTeams_Title
+        html.Should().NotContain(">My Teams<");
     }
 
     private static string? ExtractAntiForgeryToken(string html)

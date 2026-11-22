@@ -68,11 +68,11 @@ the section implements rather than surface it publishes, and that is the right p
 
 Written fresh from the shapes above, not from today's tree.
 
-- **The repository is the section's only SQL surface.** `role_assignments` is the section's only
+- **The repository is the section's only SQL surface.** `auth_role_assignments` is the section's only
   data. The repository exposes exactly the queries the shapes need — no method exists for a
   caller that does not exist.
 - **The service holds the invariants.** Temporal overlap, the ended/not-yet-active guard, the
-  audit row, the notification, the Board team sync, the cache pokes. Nothing else may write, and
+  audit row, the notification, the cache pokes. Nothing else may write, and
   no member exists on the service for a question only its own write path asks.
 - **The caching decorator wraps the service interface**, holding the whole row set in memory and
   deriving S1–S3 from it at the caller's clock instant. It is a decorator, so it may reach the
@@ -90,7 +90,7 @@ Written fresh from the shapes above, not from today's tree.
   `src/Humans.Web/Views/Account/*` stay in Shell because the controller is the app's sign-in surface: it drives
   sign-in (through Users' `IUserSignInService`) and the cookie and external-auth handlers the Shell
   configures in `Program.cs`, and the actions that do more than render or challenge provision
-  users through `Humans.Users`. None of them writes `role_assignments`. That is a deliberate
+  users through `Humans.Users`. None of them writes `auth_role_assignments`. That is a deliberate
   boundary, not an unfinished move.
 - **S6 does not belong on a role-assignment contract — and is gone.** The cache-flush verbs
   sat on `IRoleAssignmentWrite` so Users' `AccountMergeService` could poke Auth's caches after
@@ -111,21 +111,20 @@ Stated so a violation is recognisable, each with the line that enforces it. Thes
    (`Services/RoleAssignmentService.cs:172`).
 4. One *semantics* of "active at *t*" — `ValidFrom <= t && (ValidTo is null || ValidTo > t)` —
    governs every read, in SQL and in memory alike. It is necessarily implemented more than
-   once (`Domain/RoleAssignment.cs:38`, `Contracts/RoleAssignmentRow.cs:23`,
-   `Contracts/IRoleAssignmentService.cs:87`, and the repository's EF expressions, which cannot
+   once (`Domain/RoleAssignment.cs:38`, `Services/RoleAssignmentRow.cs`,
+   `Contracts/IRoleAssignmentService.cs`, and the repository's EF expressions, which cannot
    call a method and be translated). What this forbids is a second *predicate*, not a second
    implementation: an in-memory read that spells the comparison out where a method is in reach
    is the violation.
 5. Assign, end, the bulk revoke and the merge fold (`ReassignAsync`) clear the row cache right
-   after their repository write, before the Board team sync reads roles back
-   (`Services/RoleAssignmentService.cs`). There is no claims cache to flush: the Shell's
+   after their repository write (`Services/RoleAssignmentService.cs`). There is no claims cache to flush: the Shell's
    claims transformation derives claims per request from the row cache.
 6. Every single-row write leaves an audit entry attributed to the actor
    (`Services/RoleAssignmentService.cs:125`, `Services/RoleAssignmentService.cs:188`), and
    best-effort notifies the affected person; a notification failure never fails the write
    (`Services/RoleAssignmentService.cs:145`, `Services/RoleAssignmentService.cs:208`).
-7. Granting or ending `Board` reconciles the Board system team
-   (`Services/RoleAssignmentService.cs:152`, `Services/RoleAssignmentService.cs:215`).
+7. A role write calls out to no other section. Governance asks Google to sync the Board's group
+   and files after a Board change it makes; the hourly group sweep catches the rest.
 8. Only an Admin may assign `Admin`; Board and HumanAdmin are confined to
    `RoleNames.BoardManageableRoles` (`Authorization/RoleAssignmentAuthorizationHandler.cs:22`,
    `Authorization/RoleAssignmentAuthorizationHandler.cs:30`).
@@ -155,7 +154,7 @@ Reserved, not ranked, not built:
 
 ## 6. Deliberately not done
 
-- **No FK constraint and no navigation property from `role_assignments` to `users`.** The
+- **No FK constraint and no navigation property from `auth_role_assignments` to `users`.** The
   columns are bare `Guid`s on purpose — a nav would couple Auth's schema to Users' schema and
   is the coupling the architecture exists to prevent. Display names are stitched in memory.
 - **No per-row cache invalidation.** Writes are rare; a wholesale flush is cheaper to reason
@@ -191,8 +190,8 @@ Settled decisions that read as smells. Stop re-litigating these.
   must not consume the user's cooldown. The login cooldown is the in-memory reservation alone;
   it closes the overlapping-request race and is deliberately not persisted.
 - **Auth is a horizontal that references vertical *leaves*.** Legal since Peter's Base-floor
-  decision of 2026-08-14. The `[DontFix]` on `RoleAssignmentService` records the remaining
-  inversion as a Peter-led item, not a bug to fix in passing.
+  decision of 2026-08-14. Inverting `RoleAssignmentService`'s reads of Users and Teams remains a
+  Peter-led item, not a refactor to do in passing; ordinary fixes in the class are fine.
 
 ## Run history
 

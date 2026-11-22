@@ -14,13 +14,14 @@ The account-merge surface (`AccountMergeService`, `DuplicateAccountService`,
 [Users](#users) below; the `AccountMergeRequests` table is owned there, not
 by Profiles. `DuplicateAccountService` is detection-only (no repository, no
 DB access; its one write is the `DuplicateAccountFlagged` audit entry through
-`IAuditLogService`).
+`IAuditLogService`). The picture, duplicate-account, email-diagnostic and merge interfaces
+and their diagnostic/snapshot DTOs stay internal beside the owning services.
 
 Per-user persistence is a single `IUserRepository`, which owns `Users`,
 `Profiles`, `UserEmails`, `ContactFields`, `ProfileLanguages`,
 `VolunteerHistoryEntries` and the ASP.NET-Identity
 `IdentityUserLogins` bridge. `ProfileService` exposes only
-`IProfilePictureService`; the unified User+Profile read-model lives behind
+internal `IProfilePictureService` under `Services/`; the unified User+Profile read-model lives behind
 `IUserService.GetUserInfoAsync`. Repositories are **Singletons**
 (`IDbContextFactory` pattern).
 
@@ -40,8 +41,20 @@ the profile-edit flow below.
 
 No repository or cache. Serializes profile/CV submissions per user and delegates
 fields, CV history and picture bytes to `IUserManagement.SaveProfileAsync`.
-The internal `UserProfileMutations`, owned by `UserService`, writes picture bytes before publishing metadata, commits fields and
+`UserService` writes picture bytes before publishing metadata, commits fields and
 CV together with the legacy identity name, and cleans superseded files after the save.
+
+### MedicalConditionsService (Scoped)
+
+Repository: `IUserRepository`.
+
+| Table | R/W |
+|-------|-----|
+| Profiles | R (`MedicalConditions` column, read-only) |
+
+Serves the member's own medical text and the audited reveal to a medical-data viewer. Each reveal
+resolves the subject through `IUserService` and writes a `MedicalConditionsRevealed` entry through
+`IAuditLogService`. No cache.
 
 ### ContactFieldService (Scoped)
 
@@ -64,10 +77,10 @@ Repository: `IUserRepository`. Notification-address projections use existing `IU
 | Table | R/W |
 |-------|-----|
 | UserEmails | R/W |
-| Users | R/W (the only direct EF write to `Users.Email`). The `Users.GoogleEmail` shadow column has no reader or writer left (nobodies-collective/Humans#1102); the mapping survives only until the drop PR. `UserEmails.IsGoogle` / `UserEmails.GoogleEmailStatus` and `Users.GoogleEmailStatus` are frozen and unwritten: the Google Workspace identity is GoogleIntegration's `google_workspace_identities` (Users decomposition commit 15). |
+| Users | R/W (the only direct EF write to `Users.Email`). The `Users.GoogleEmail` shadow column has no reader or writer left (nobodies-collective/Humans#1102); the mapping survives only until the drop PR. `Users.GoogleEmailStatus` is frozen and unwritten: the Google Workspace identity is Google's `google_workspace_identities` (Users decomposition commit 15). |
 
 Cross-section calls via `IUserService`, plus ASP.NET `UserManager<User>` and
-`IAuditLogService` (manual-verify and primary-cleared entries) and `IServiceProvider` for lazy resolution (Tickets' `ITicketService`, Users' `IAccountMergeService`, and GoogleIntegration's `IGoogleIntegrationWrite.ClearIfAddressAsync` after each committed delete, unlink or OAuth tag-move/rename/displacement). Implements `IUserMerge`. No
+`IAuditLogService` (manual-verify and primary-cleared entries), the `IUserEmailLock` fan-out (addresses another section needs kept; Tickets), the `IUserEmailRemovalListener` fan-out (after each committed delete, unlink or OAuth tag-move/rename; Google), `IDataProtectionProvider` for the emailed link's token (`EmailConfirmationService.CreateToken`), and `UsersEmails` + `IEmailService` for verification mail. No service location. Implements `IUserMerge`. No
 `IMemoryCache` directly.
 **Cross-section design-rule note:** `Users` reads/writes overlap the User
 section — `IUserRepository` is the consolidated owner and this is the
@@ -124,7 +137,7 @@ No repository. Implements `SuspendNonCompliantMembersJob`'s body
 (`Humans.Users/Jobs/SuspendNonCompliantMembersJob.cs`). Suspends members who
 have not re-consented after the grace period and runs each suspension's
 downstream side effects. Cross-section calls via `IUserService`,
-`IMembershipCalculator`, `IEmailService`, the section's own `UsersEmails` builder, `INotificationEmitter`,
+`IConsentService` (who is past the consent deadline), `IEmailService`, the section's own `UsersEmails` builder, `INotificationEmitter`,
 `IAuditLogService` and `IHumansMetrics`. Google access ends at the next Google reconciliation,
 which excludes suspended humans. No direct DB access or `IMemoryCache`.
 Per-member suspension metrics stay here; run success/failure metrics belong to the scheduled job.
@@ -189,15 +202,6 @@ unified persistence layer. Implements `IUserDataContributor`,
 
 Cross-section calls via `IAdminAuthorizationService` and `IAuditLogService` (admin stub-profile creation after save). No direct
 `IMemoryCache` — caching is in the Singleton decorator.
-
-### UserProfileMutations (internal, owned by UserService)
-
-Repository: `IUserRepository`. Owns stub creation, profile/CV/picture saves,
-medical text and profile-language replacement. Reuses `UserInfoReader` for the
-existing stub-account checks, `IAuditLogService` for admin stub creation and
-`IFileStorage` for picture writes and cleanup. Shares the existing static profile
-locks across its write paths; `UserService` also uses its superseded-picture
-cleanup after merge. No separate DI registration or cache.
 
 ### CachingUserService (Singleton, `Humans.Users.Data`)
 
@@ -309,7 +313,7 @@ already-flagged `DuplicateAccountFlagged` entries). No cache.
 No repository. OAuth-callback decision ladder (link-while-signed-in →
 lockout-relink → verified-email link → create-new-account) per HUM0031.
 Uses ASP.NET `UserManager<User>`
-directly (framework concern, per design-rules §2a — `AspNetUserLogins` is
+directly (framework concern, per design-rules.md, *Service ownership* — `AspNetUserLogins` is
 the authoritative store for `(Provider, ProviderKey)` → `UserId`) plus
 `IUserService` (login-timestamp recording, stub-profile provisioning on
 create), `IUserEmailService` (`ReconcileOAuthIdentityAsync` — the sole

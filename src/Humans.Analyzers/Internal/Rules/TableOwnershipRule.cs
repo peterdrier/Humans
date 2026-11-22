@@ -42,7 +42,7 @@ internal static class TableOwnershipRule
             "Each section owns its tables and a table must exist in exactly one repository (peters-hard-rules.md). " +
             "When more than one repository references an application DbContext's DbSet — read or write — the table is shared " +
             "across the repository (and usually the section) boundary, bypassing the owning section's service and its " +
-            "§15 cache. Route foreign access through the owning section's IRepository / application service. Existing " +
+            "cache (design-rules.md, *Section caching pattern*). Route foreign access through the owning section's IRepository / application service. Existing " +
             "shared tables carry [Grandfathered(\"HUM0025\", …, scope: \"<DbSet>\")] on each participating repository, " +
             "which downgrades the diagnostic to a warning for that (repository, table) pair only — the attribute is a " +
             "TODO for migration, not a permanent exemption.",

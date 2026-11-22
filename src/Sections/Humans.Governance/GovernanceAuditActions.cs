@@ -14,6 +14,12 @@ internal sealed class GovernanceAuditActions : AuditActionContributor
     // From the temporary /Governance/Applications/Admin/TermExpiry screen.
     public static readonly AuditActionDefinition TierTermExpiryCorrected = new("TierTermExpiryCorrected");
 
+    public static readonly AuditActionDefinition GovernanceBodyLinksCopied = new("GovernanceBodyLinksCopied");
+
+    public static readonly AuditActionDefinition GovernanceBodyLinksChanged = new("GovernanceBodyLinksChanged");
+
+    public static readonly AuditActionDefinition BoardPositionSet = new("BoardPositionSet");
+
     public static readonly AuditActionDefinition AssemblyVoteOpened = new("AssemblyVoteOpened");
 
     public static readonly AuditActionDefinition AssemblyVoteStopped = new("AssemblyVoteStopped");

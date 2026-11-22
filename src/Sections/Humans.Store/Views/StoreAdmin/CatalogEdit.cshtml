@@ -60,24 +60,31 @@
                     <input asp-for="OrderableUntil" type="date" class="form-control" />
                     <span asp-validation-for="OrderableUntil" class="text-danger small"></span>
                 </div>
-                <div class="col-md-6">
-                    <label asp-for="HoldedRevenueAccountNum" class="form-label">Holded revenue account</label>
-                    <input asp-for="HoldedRevenueAccountNum" type="number" step="1" class="form-control"
-                           placeholder="e.g. 75900002" />
-                    <span asp-validation-for="HoldedRevenueAccountNum" class="text-danger small"></span>
-                    <div class="form-text">
-                        The per-item account Acountax issued. Invoices book this item's revenue here, so
-                        per-item break-even reads straight off the ledger. Internal department recharges
-                        go to the derived twin (<code>75910002</code> for <code>75900002</code>) — it is
-                        not stored. Required before this item can be invoiced.
-                    </div>
-                </div>
                 <div class="col-12">
                     <div class="form-check">
                         <input asp-for="IsActive" class="form-check-input" />
                         <label asp-for="IsActive" class="form-check-label">Active (visible to camp leads)</label>
                         <span asp-validation-for="IsActive" class="text-danger small"></span>
                     </div>
+                </div>
+            </div>
+
+            <h2 class="h5 mt-4">Accounting</h2>
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <label for="HoldedRevenueAccountNum" class="form-label">Income account</label>
+                    <partial name="_AccountPicker" model="@(new AccountPickerModel("HoldedRevenueAccountNum", "HoldedRevenueAccountNum", "Income account", Model.HoldedRevenueAccountNum, Model.AccountChoices.Income))" />
+                    <div class="form-text">Where camp sales of this item are booked.</div>
+                </div>
+                <div class="col-md-4">
+                    <label for="HoldedExpenseAccountNum" class="form-label">Cost account</label>
+                    <partial name="_AccountPicker" model="@(new AccountPickerModel("HoldedExpenseAccountNum", "HoldedExpenseAccountNum", "Cost account", Model.HoldedExpenseAccountNum, Model.AccountChoices.Cost))" />
+                    <div class="form-text">Where what NCA spends on this item is booked.</div>
+                </div>
+                <div class="col-md-4">
+                    <label for="HoldedTransferAccountNum" class="form-label">Dept transfers</label>
+                    <partial name="_AccountPicker" model="@(new AccountPickerModel("HoldedTransferAccountNum", "HoldedTransferAccountNum", "Dept transfers", Model.HoldedTransferAccountNum, Model.AccountChoices.TeamUsage))" />
+                    <div class="form-text">Credited when a department's team order uses this item.</div>
                 </div>
             </div>
 
@@ -101,6 +108,7 @@
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
+    <partial name="_AccountPickerScripts" />
     <script nonce="@Context.Items["CspNonce"]">
         (function () {
             var exInput = document.getElementById('priceExVat');

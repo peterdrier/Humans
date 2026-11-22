@@ -9,6 +9,9 @@ internal sealed class ProfileSummaryViewModel
     public string? Email { get; set; }
     public string? PreferredLanguage { get; set; }
     public string? MembershipTier { get; set; }
+
+    /// <summary>Shown instead of the tier: a Board seat outranks it.</summary>
+    public bool IsBoardMember { get; set; }
     public string? MembershipStatus { get; set; }
     public DateTime? MemberSince { get; set; }
     public DateTime? LastLogin { get; set; }
@@ -32,6 +35,15 @@ internal sealed class ProfileSummaryViewModel
 
     /// <summary>Ordered by role sort order; same admin-only gate as <see cref="CampName"/>.</summary>
     public IReadOnlyList<string> CampRoles { get; set; } = [];
+
+    /// <summary>Lifts the admin-only camp gate: the viewer is looking at their own account.</summary>
+    public bool CampVisibleToViewer { get; set; }
+
+    /// <summary>
+    /// The legal name, under the burner name. Set only where the viewer proved the account is their own
+    /// (the merge page); everywhere else it stays null and nothing renders.
+    /// </summary>
+    public string? LegalName { get; set; }
 
     /// <summary>
     /// False for inline summaries whose referenced user or Profile row is unavailable.

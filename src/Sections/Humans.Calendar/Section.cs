@@ -11,6 +11,8 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Humans.AuditLog.Contracts;
 
+[assembly: Humans.Base.Demo.NoDemoStory("No demo story written yet.")]
+
 namespace Humans.Calendar;
 
 /// <summary>The keyed inner service and the Singleton decorator move as a unit.</summary>
@@ -40,11 +42,12 @@ public sealed class Section : ISection, ISectionChrome, ISectionNav, IUserPart
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<CalendarFeedTokenService>());
         services.AddScoped<IUserMerge>(sp => sp.GetRequiredService<CalendarFeedTokenService>());
 
-        services.AddScoped<IICalFeedService, ICalFeedService>();
+        services.AddScoped<ICalFeedService>();
+        services.AddScoped<IICalFeedService>(sp => sp.GetRequiredService<ICalFeedService>());
     }
 
     IEnumerable<MemberNavItem> ISectionNav.Items() =>
-        [new("Calendar", Controller: "Calendar", Action: "Index", Weight: 30)];
+        [new("Calendar", Controller: "Calendar", Action: "Index", Weight: 1, IconCssClass: "fa-solid fa-calendar-days")];
 
     IEnumerable<UserPart> IUserPart.Parts() => [new(UserPartSlots.AdminDetail, typeof(UserCalendarViewComponent))];
 }

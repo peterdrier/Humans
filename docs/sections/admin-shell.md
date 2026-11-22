@@ -37,15 +37,15 @@ The `/Admin` route is the shared dashboard. One rule picks the layout for every 
 
 ## Actors & Roles
 
-Sidebar groups, alphabetical: Agent, Audit, Backdoor, Barrios, Budget, Campaigns, Cantina, City Planning, Consent, Debug, Development (env-gated to `IsDevelopment()`), Early Entry, Email, Events, Expenses, Finance, Gate, Google, Governance, Grants, Holded, Issues, Low income, MailerLite, Onboarding, Pleo, Pre-approvals, Rideshare, Scanner, Settings, Shifts, Store, Surveys, Tickets, Users, Workgroups. Each section contributes its groups via `ISectionAdminNav.Groups()` (`src/Sections/*/Section.cs`); `AdminNavComposition.Compose` merges same-label groups from different sections orders items by weight and groups by label. The per-role expected rows and tabs below are pinned by `tests/e2e/tests/admin-shell.spec.ts` (`sidebarMatrix`).
+Sidebar groups, alphabetical: Agent, Audit, Backdoor, Barrios, Budget, Campaigns, Cantina, City Planning, Consent, Debug, Development (env-gated to `IsDevelopment()`), Early Entry, Email, Events, Expenses, Finance, Gate, Google, Governance, Grants, Holded, Issues, Low income, MailerLite, Onboarding, Pleo, Pre-approvals, Rideshare, Scanner, Settings, Shifts, Store, Stripe, Surveys, Tickets, Users, Workgroups. Each section contributes its groups via `ISectionAdminNav.Groups()` (`src/Sections/*/Section.cs`); `AdminNavComposition.Compose` merges same-label groups from different sections orders items by weight and groups by label. The per-role expected rows and tabs below are pinned by `tests/e2e/tests/admin-shell.spec.ts` (`sidebarMatrix`).
 
 | Actor | Capabilities |
 |-------|--------------|
 | Admin | Full access — every group and every item |
-| Board | Reads every section admin page: Agent (Status, History), Audit (Audit log), Backdoor (API keys), Barrios (Overview, Roles, Compliance), Budget (Overview), Cantina (Roster), Consent (Legal documents), Debug (every item), Early Entry, Events (Dashboard, Moderation, Categories, Venues, Export), Finance (Overview, Cash flow, Creditors, SEPA payouts, Expense recon, Account map, Unmatched docs), Gate (Terminal), Google (Resource sync), Governance (Voting, Applications, Assembly Votes), Grants (Programs), Holded (Summary, Accounts, Purchases, API calls), Issues, Onboarding (Review), Pleo, Pre-approvals (Programs), Rideshare (Settings & stats, Day roster), Scanner, Shifts (Dashboard, Summary by camp, Volunteer tracking, Workload, Post-event stats), Store (Catalog, Summary, Payments, Order years, Payment methods), Surveys (Surveys, Approvals), Tickets (Tickets, Onsite roster, Transfer requests, Attendee contacts), Users (Humans, Roles), Workgroups. Never Expenses (Review), City Planning, Campaigns, Email, Low income, MailerLite, Settings, or an `AdminOnly` item inside a group. Writes are limited to its own decisions (Governance, Workgroups, legal documents, audited reveals); every other POST is `Manage`-gated |
+| Board | Reads every section admin page: Agent (Status, History), Audit (Audit log), Backdoor (API keys), Barrios (Overview, Roles, Compliance), Budget (Overview), Cantina (Roster), Consent (Legal documents), Debug (every item), Early Entry, Events (Dashboard, Moderation, Categories, Venues, Export), Finance (Overview, Cash flow, Creditors, SEPA payouts, Pleo reconcile, Expense recon, Account map, Unmatched docs), Gate (Terminal), Google (Resource sync), Governance (Voting, Applications, Assembly Votes), Grants (Programs), Holded (Summary, Accounts, Purchases, API calls), Issues, Onboarding (Review), Pleo, Pre-approvals (Programs), Rideshare (Settings & stats, Day roster), Scanner, Shifts (Dashboard, Summary by camp, Volunteer tracking, Workload, Post-event stats), Store (Catalog, Summary, Payments, Order years, Payment methods), Stripe, Surveys (Surveys, Approvals), Tickets (Tickets, Onsite roster, Attendee contacts, Sales, Find an order), Users (Humans, Roles), Workgroups. Never Expenses (Review), City Planning, Campaigns, Email, Low income, MailerLite, Settings, or an `AdminOnly` item inside a group. Writes are limited to its own decisions (Governance, Workgroups, legal documents, audited reveals); every other POST is `Manage`-gated |
 | UsersAdmin | Users (Humans, Roles) |
-| TicketsAdmin | Tickets (Tickets, Transfer requests, Attendee contacts, Onsite roster), Scanner, Gate (Terminal) |
-| FinanceAdmin | Budget (Overview), Expenses (Review), Finance (Overview, Cash flow, Creditors, SEPA payouts, Expense recon, Account map, Unmatched docs), Holded (Summary, Accounts, Purchases, API calls), Pleo, Pre-approvals (Programs), Store (Catalog, Summary, Payments, Order years, Payment methods) |
+| TicketsAdmin | Tickets (Tickets, Attendee contacts, Onsite roster, Sales, Find an order), Scanner, Gate (Terminal) |
+| FinanceAdmin | Budget (Overview), Expenses (Review), Finance (Overview, Cash flow, Creditors, SEPA payouts, Pleo reconcile, Expense recon, Account map, Unmatched docs), Holded (Summary, Accounts, Purchases, API calls), Pleo, Pre-approvals (Programs), Store (Catalog, Summary, Payments, Order years, Payment methods), Stripe |
 | StoreAdmin | Store (Catalog, Summary, Payments, Order years, Payment methods) |
 | EventsAdmin | Events (Dashboard, Moderation, Categories, Venues, Export) |
 | CantinaAdmin | Cantina (Roster) |
@@ -53,14 +53,15 @@ Sidebar groups, alphabetical: Agent, Audit, Backdoor, Barrios, Budget, Campaigns
 | GrantsAdmin | Grants (Programs) |
 | SurveysAdmin | Surveys (Surveys, Approvals) |
 | ConsentCoordinator | Onboarding (Review) |
-| ShiftsAdmin | Early Entry, Onboarding (Review), Shifts (Dashboard, Summary by camp, Volunteer tracking, Workload, Post-event stats) |
+| EarlyEntryAdmin | Early Entry |
+| ShiftsAdmin | Shifts (Dashboard, Summary by camp, Volunteer tracking, Workload, Post-event stats) |
 | TeamsAdmin | Google (Resource sync) |
 | CampsAdmin | Barrios (Overview, Roles, Compliance), City Planning (Barrio map) |
 | ShiftsNoInfo | Early Entry, Shifts (Dashboard, Summary by camp, Volunteer tracking, Workload, Post-event stats) |
 
 ## Invariants
 
-- The `Admin` top-nav link and the `/Admin` dashboard are gated by `PolicyNames.AnyAdminRole`, derived from the sections' `ISectionRoles` — every role with `OpensAdminShell`; `EarlyEntryAdmin` is the one that opts out (16 roles today: Admin, Board, UsersAdmin, TeamsAdmin, CampsAdmin, TicketsAdmin, EventsAdmin, FinanceAdmin, StoreAdmin, CantinaAdmin, RideshareAdmin, GrantsAdmin, SurveysAdmin, ShiftsNoInfo, ShiftsAdmin, ConsentCoordinator). Concrete admin tools are gated on their section controllers.
+- The `Admin` top-nav link and the `/Admin` dashboard are gated by `PolicyNames.AnyAdminRole`, derived from the sections' `ISectionRoles` — every role with `OpensAdminShell` (17 roles today: Admin, Board, UsersAdmin, TeamsAdmin, CampsAdmin, TicketsAdmin, EventsAdmin, FinanceAdmin, StoreAdmin, CantinaAdmin, RideshareAdmin, GrantsAdmin, SurveysAdmin, ShiftsNoInfo, ShiftsAdmin, ConsentCoordinator, EarlyEntryAdmin). Concrete admin tools are gated on their section controllers.
 - The Surveys group's "Surveys" item is gated by `PolicyNames.AppAccess` (any Active human), not a Board/Admin policy — every admin-shaped role's holder sees it once they reach the shell, not only Board. Only "Approvals" (the authoring approval queue) is `BoardOrAdmin`.
 - Sidebar items are filtered per-item by `IAuthorizationService.AuthorizeAsync`; an item the current user cannot access does not appear in the rendered HTML.
 - Sidebar groups whose entire visible-item list is empty do not render; the tab strip shows only the current group's visible items, under the same per-item gate.
@@ -82,7 +83,8 @@ None — this section is a pure rendering surface with no DB writes and no side 
 
 None directly — since nobodies-collective/Humans#1091, the shell names no section. Nav groups (`ISectionAdminNav`), dashboard tiles (`ISectionAdminTiles`) and dashboard cards (`ISectionChrome`, `admin-dashboard` slot) are section-contributed and merged by Shell's composition/rendering code, which reaches no section service directly. The tiles and cards are owned by (and call the service interfaces of) their contributing sections:
 
-- **Users:** `users.total` / `users.profiles` / `users.tickets` tiles (`IUserService`); the "Preferred language" card.
+- **Users:** `users.total` / `users.profiles` tiles (`IUserService`); the "Preferred language" card.
+- **Tickets:** `tickets.holders` tile (`ITicketService` participations for the active event year, `ISettingsService`, `IUserService`).
 - **Shifts:** `shifts.coverage` tile and the "Staffing by department" card (`IShiftManagement`, section-internal).
 - **Teams:** `teams.total` tile (`ITeamService`).
 - **Workgroups:** `workgroups.queue` tile, `BoardOrAdmin`.

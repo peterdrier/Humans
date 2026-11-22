@@ -21,7 +21,14 @@ internal static class RoleAssignmentRules
             && !string.Equals(roleName, RoleNames.Admin, StringComparison.Ordinal);
     }
 
-    /// <summary>The roles the principal may assign, in catalog order.</summary>
+    /// <summary>
+    /// The roles the principal may assign here, in catalog order. Board seats are added on /Governance/Board,
+    /// which authorizes through <see cref="MayManage"/>, so Board stays manageable but isn't offered here.
+    /// </summary>
     public static IReadOnlyList<RoleDefinition> Assignable(ClaimsPrincipal user, RoleCatalog catalog) =>
-        [.. catalog.Roles.Where(r => MayManage(user, r.Name))];
+        [.. catalog.Roles.Where(r => MayManage(user, r.Name) && !IsAddedInGovernance(r.Name))];
+
+    /// <summary>Board seats are added and ended on /Governance/Board, never on the role admin pages.</summary>
+    public static bool IsAddedInGovernance(string roleName) =>
+        string.Equals(roleName, RoleNames.Board, StringComparison.Ordinal);
 }

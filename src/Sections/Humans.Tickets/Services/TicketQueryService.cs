@@ -11,13 +11,17 @@ using Humans.Teams.Contracts;
 using Humans.Tickets.Contracts;
 using Humans.Tickets.Data;
 using Humans.Tickets.Domain;
+using Humans.Tickets.Domain.Checkout;
+using Humans.Tickets.Services.Checkout;
 using Humans.Tickets.Services.Dtos;
 using Humans.Gdpr.Contracts;
 using Humans.Governance.Contracts;
+using Humans.Base.Interfaces;
 
 namespace Humans.Tickets.Services;
 
 internal sealed class TicketQueryService(
+    IOrgTimeZone orgTimeZone,
     ITicketRepository ticketRepository,
     ITicketTransferRepository ticketTransferRepository,
     IBudgetService budgetService,
@@ -29,16 +33,25 @@ internal sealed class TicketQueryService(
     ISettingsService settingsService,
     IAuditLogService auditLog,
     IClock clock,
-    IEventParticipationManagement participations) : ITicketManagement
+    IEventParticipationRepository participations,
+    ITicketCheckoutService checkout) : ITicketManagement
 {
-    private readonly TicketSalesReports salesReports = new(ticketRepository, campaignService, budgetService, clock);
-    private readonly UserTicketPersonalData personalData = new(ticketRepository, ticketTransferRepository, userService, settingsService, clock);
+    public async Task<IReadOnlyList<EventParticipationInfo>> GetParticipationsAsync(
+        Guid userId, CancellationToken ct = default)
+    {
+        var info = await userService.GetUserInfoAsync(userId, ct);
+        var id = info?.Id ?? userId;
+        return ToParticipationInfos(await participations.GetByUserIdAsync(id, ct));
+    }
 
-    public Task<IReadOnlyList<EventParticipationInfo>> GetParticipationsAsync(Guid userId, CancellationToken ct = default) =>
-        participations.GetParticipationsAsync(userId, ct);
+    public async Task<IReadOnlyList<EventParticipationInfo>> GetAllParticipationsAsync(CancellationToken ct = default) =>
+        ToParticipationInfos(await participations.GetAllAsync(ct));
 
-    public Task<IReadOnlyList<EventParticipationInfo>> GetAllParticipationsAsync(CancellationToken ct = default) =>
-        participations.GetAllParticipationsAsync(ct);
+    private static List<EventParticipationInfo> ToParticipationInfos(IReadOnlyList<EventParticipation> rows) =>
+        [.. rows.Where(r => r.Status is not null).Select(ToParticipationInfo)];
+
+    private static EventParticipationInfo ToParticipationInfo(EventParticipation r) =>
+        new(r.UserId, r.Year, r.Status!.Value, r.Source, r.DeclaredAt, r.CheckedInAt);
 
     public async Task<IReadOnlyList<TicketOrderInfo>> GetTicketOrdersAsync(CancellationToken ct = default)
     {
@@ -46,7 +59,7 @@ internal sealed class TicketQueryService(
         var currentEventId = syncState?.VendorEventId;
         var orders = await ticketRepository.GetAllOrdersWithAttendeesAsync(ct);
 
-        var approved = await ticketTransferRepository.GetByStatusAsync(TicketTransferStatus.Approved, ct);
+        var approved = await ticketTransferRepository.GetApprovedAsync(ct);
         var transfersByAttendee = approved
             .GroupBy(t => t.OriginalTicketAttendeeId)
             .ToDictionary(g => g.Key, g => g.OrderByDescending(t => t.DecidedAt).First());
@@ -75,29 +88,6 @@ internal sealed class TicketQueryService(
         var types = await ticketRepository.GetDistinctTicketTypesAsync(ct);
         return types.ToList();
     }
-
-    private async Task<HashSet<Guid>> GetCurrentEventTicketHolderIdsAsync(CancellationToken ct)
-    {
-        var syncState = await ticketRepository.GetSyncStateAsync(ct);
-        if (syncState is null || string.IsNullOrEmpty(syncState.VendorEventId))
-            return [];
-
-        var ids = await ticketRepository.GetEventTicketHolderUserIdsAsync(syncState.VendorEventId, ct);
-        return ids.ToHashSet();
-    }
-
-    public Task<TicketDashboardStats> GetDashboardStatsAsync() =>
-        salesReports.GetDashboardStatsAsync();
-
-    public Task<BreakEvenResult> CalculateBreakEvenAsync(
-        int ticketsSold, decimal grossRevenue, string currency, bool canAccessFinance, int fallbackTarget) =>
-        salesReports.CalculateBreakEvenAsync(ticketsSold, grossRevenue, currency, canAccessFinance, fallbackTarget);
-
-    public Task<CodeTrackingData> GetCodeTrackingDataAsync(string? search, CancellationToken ct = default) =>
-        salesReports.GetCodeTrackingDataAsync(search, ct);
-
-    public Task<TicketSalesAggregates> GetSalesAggregatesAsync(CancellationToken ct = default) =>
-        salesReports.GetSalesAggregatesAsync(ct);
 
     public async Task<OrdersPageResult> GetOrdersPageAsync(
         string? search, string sortBy, bool sortDesc,
@@ -138,6 +128,122 @@ internal sealed class TicketQueryService(
         return new AttendeesPageResult { Rows = rows.ToList(), TotalCount = totalCount };
     }
 
+    public async Task<List<AttendeeExportRow>> GetAttendeeExportDataAsync(Guid actorUserId, CancellationToken ct = default)
+    {
+        var rows = await ticketRepository.GetAttendeeExportDataAsync(ct);
+        await auditLog.LogAsync(TicketsAuditActions.TicketAttendeesExported, "Tickets", Guid.Empty,
+            $"Attendee list exported: {rows.Count} rows", actorUserId);
+        return rows.ToList();
+    }
+
+    public async Task<List<OrderExportRow>> GetOrderExportDataAsync(Guid actorUserId, CancellationToken ct = default)
+    {
+        var rows = await ticketRepository.GetOrderExportDataAsync(ct);
+        await auditLog.LogAsync(TicketsAuditActions.TicketOrdersExported, "Tickets", Guid.Empty,
+            $"Order list exported: {rows.Count} rows", actorUserId);
+        return rows.ToList();
+    }
+
+    public async Task<List<DonationExportRow>> GetDonationExportDataAsync(Guid actorUserId, CancellationToken ct = default)
+    {
+        var orders = (await ticketRepository.GetOrderExportDataAsync(ct))
+            .Where(o => string.Equals(o.PaymentStatus, nameof(TicketPaymentStatus.Paid), StringComparison.Ordinal));
+
+        var rows = new List<DonationExportRow>();
+        foreach (var o in orders)
+        {
+            var date = o.PurchasedAt.InZone(OrgZone).Date.ToInvariantDate();
+            if (o.VipDonations > 0)
+                rows.Add(new DonationExportRow(o.PurchasedAt, date, o.VendorOrderId, o.BuyerName, o.BuyerEmail, DonationExportRow.VipTicket, o.VipDonations));
+            if (o.DonationAmount > 0)
+                rows.Add(new DonationExportRow(o.PurchasedAt, date, o.VendorOrderId, o.BuyerName, o.BuyerEmail, DonationExportRow.SeparateDonation, o.DonationAmount));
+        }
+
+        // Orders taken through Humans' own checkout: each donation line is one row, never refunded.
+        var checkoutOrders = new List<TicketCheckoutOrder>();
+        foreach (var salesEvent in await checkout.GetSalesEventsAsync(ct))
+            checkoutOrders.AddRange((await checkout.GetOrdersForSalesEventAsync(salesEvent.Id, ct))
+                .Where(o => o.State == TicketCheckoutOrderState.Paid));
+        foreach (var o in checkoutOrders.OrderBy(o => o.PaidAt))
+        {
+            var paidAt = o.PaidAt ?? o.UpdatedAt;
+            var date = paidAt.InZone(OrgZone).Date.ToInvariantDate();
+            foreach (var line in o.Lines.Where(l => l.Kind == CheckoutLineKind.Donation))
+                rows.Add(new DonationExportRow(paidAt, date, o.Reference, o.BuyerName, o.BuyerEmail,
+                    $"Donation: {line.DonationPurpose ?? "General"}", line.AmountMinor / 100m));
+        }
+
+        rows = rows.OrderBy(r => r.PurchasedAt).ToList();
+
+        await auditLog.LogAsync(
+            TicketsAuditActions.TicketDonationsExported,
+            "Tickets", Guid.Empty,
+            description: $"Donor list exported: {rows.Count} donation rows, {rows.Sum(r => r.Amount):F2} EUR",
+            actorUserId: actorUserId);
+
+        return rows;
+    }
+
+    private static TicketOrderInfo Project(
+        TicketOrder o, string? currentEventId,
+        IReadOnlyDictionary<Guid, TicketTransferRequest> transfersByAttendee) => new(
+        Id: o.Id,
+        VendorOrderId: o.VendorOrderId,
+        BuyerName: o.BuyerName,
+        BuyerEmail: o.BuyerEmail,
+        TotalAmount: o.TotalAmount,
+        Currency: o.Currency,
+        DiscountCode: o.DiscountCode,
+        PaymentStatus: o.PaymentStatus,
+        VendorEventId: o.VendorEventId,
+        PurchasedAt: o.PurchasedAt,
+        MatchedUserId: o.MatchedUserId,
+        IsCurrentEvent: !string.IsNullOrEmpty(currentEventId)
+            && string.Equals(o.VendorEventId, currentEventId, StringComparison.Ordinal),
+        Attendees: o.Attendees.Select(a =>
+        {
+            transfersByAttendee.TryGetValue(a.Id, out var tr);
+            var hasTransfer = a.Status == TicketAttendeeStatus.Void && tr is not null;
+            return new TicketAttendeeInfo(
+                Id: a.Id,
+                VendorTicketId: a.VendorTicketId,
+                AttendeeName: a.AttendeeName,
+                AttendeeEmail: a.AttendeeEmail,
+                TicketTypeName: a.TicketTypeName,
+                Price: a.Price,
+                Status: a.Status,
+                MatchedUserId: a.MatchedUserId,
+                Barcode: a.Barcode,
+                TransferredToName: hasTransfer ? tr!.ReceiverLegalName : null,
+                TransferredAt: hasTransfer ? tr!.DecidedAt : null,
+                CheckedInAt: a.CheckedInAt);
+        }).ToList(),
+        StripeFee: o.StripeFee,
+        ApplicationFee: o.ApplicationFee,
+        FeeTax: o.FeeTax,
+        WithheldTax: o.WithheldTax);
+
+    private const string SalesRecordRetention =
+        "Partially retained: the order/attendee row itself (amount, currency, ticket type, " +
+        "payment status, dates) is a sales record backing the association's books — Código de " +
+        "Comercio Art. 30 and Ley 58/2003 Art. 66, GDPR Art. 17(3)(b). Every identifier on it " +
+        "is erased: BuyerName/BuyerEmail and AttendeeName/AttendeeEmail are overwritten with " +
+        "tombstones, MatchedUserId is dropped, and the free text on their ticket-transfer " +
+        "requests is cleared.";
+
+    internal static readonly IReadOnlyDictionary<string, string?> Erasure =
+        new Dictionary<string, string?>(StringComparer.Ordinal)
+        {
+            [TicketOrders] = SalesRecordRetention,
+            [TicketAttendeeMatches] = SalesRecordRetention
+        };
+
+    public async Task EraseForUserAsync(Guid userId, CancellationToken ct)
+    {
+        await ticketRepository.EraseUserPiiAsync(userId, ct);
+        await ticketTransferRepository.ErasePiiForUserAsync(userId, ct);
+    }
+
     public async Task<WhoHasntBoughtResult> GetWhoHasntBoughtAsync(
         string? search, string? filterTeam, string? filterTier, string? filterTicketStatus,
         int page, int pageSize, CancellationToken ct = default)
@@ -153,11 +259,11 @@ internal sealed class TicketQueryService(
             .Select(u => u.Id)
             .ToList();
 
-        var activeEvent = await settingsService.GetActiveEventSettingsAsync(ct);
+        var activeEvent = settingsService.GetActiveEventSettings();
         HashSet<Guid> notAttendingSet = [];
         if (activeEvent is not null && activeEvent.Year > 0)
         {
-            notAttendingSet = (await participations.GetAllParticipationsAsync(ct))
+            notAttendingSet = (await GetAllParticipationsAsync(ct))
                 .Where(ep => ep.Year == activeEvent.Year && ep.Status == ParticipationStatus.NotAttending)
                 .Select(ep => ep.UserId)
                 .ToHashSet();
@@ -302,116 +408,550 @@ internal sealed class TicketQueryService(
         return filtered.ToList();
     }
 
-    public async Task<List<AttendeeExportRow>> GetAttendeeExportDataAsync(Guid actorUserId, CancellationToken ct = default)
+    private async Task<HashSet<Guid>> GetCurrentEventTicketHolderIdsAsync(CancellationToken ct)
     {
-        var rows = await ticketRepository.GetAttendeeExportDataAsync(ct);
-        await auditLog.LogAsync(TicketsAuditActions.TicketAttendeesExported, "Tickets", Guid.Empty,
-            $"Attendee list exported: {rows.Count} rows", actorUserId);
-        return rows.ToList();
+        var syncState = await ticketRepository.GetSyncStateAsync(ct);
+        if (syncState is null || string.IsNullOrEmpty(syncState.VendorEventId))
+            return [];
+
+        var ids = await ticketRepository.GetEventTicketHolderUserIdsAsync(syncState.VendorEventId, ct);
+        return ids.ToHashSet();
     }
 
-    public async Task<List<OrderExportRow>> GetOrderExportDataAsync(Guid actorUserId, CancellationToken ct = default)
+    public async Task<TicketDashboardStats> GetDashboardStatsAsync(CancellationToken ct = default)
     {
-        var rows = await ticketRepository.GetOrderExportDataAsync(ct);
-        await auditLog.LogAsync(TicketsAuditActions.TicketOrdersExported, "Tickets", Guid.Empty,
-            $"Order list exported: {rows.Count} rows", actorUserId);
-        return rows.ToList();
-    }
+        // Crash recovery: a sync stuck in Running for 30 minutes resets.
+        var now = clock.GetCurrentInstant();
+        var staleThreshold = now - Duration.FromMinutes(30);
+        var syncState = await ticketRepository.ResetStaleRunningStateAsync(
+            olderThan: staleThreshold,
+            now: now,
+            errorMessage: "Sync state was stuck in Running for >30 minutes (likely crash). Auto-reset.", ct);
 
-    public async Task<List<DonationExportRow>> GetDonationExportDataAsync(Guid actorUserId, CancellationToken ct = default)
-    {
-        var orders = (await ticketRepository.GetOrderExportDataAsync(ct))
-            .Where(o => string.Equals(o.PaymentStatus, nameof(TicketPaymentStatus.Paid), StringComparison.Ordinal))
-            .OrderBy(o => o.PurchasedAt);
+        var totals = await ticketRepository.GetDashboardTotalsAsync(ct);
 
-        var rows = new List<DonationExportRow>();
-        foreach (var o in orders)
+        var revenue = totals.GrossRevenue;
+        var totalStripeFees = totals.TotalStripeFees;
+        var totalAppFees = totals.TotalApplicationFees;
+        var ticketsSold = totals.TicketsSold;
+        // Stripe keeps fee VAT and withheld tax like the fees, so they reduce the payout too.
+        var netRevenue = revenue - totalStripeFees - totalAppFees - totals.TotalFeeTax - totals.TotalWithheldTax;
+        var grossAvgPrice = ticketsSold > 0 ? revenue / ticketsSold : 0;
+        var unmatchedCount = totals.UnmatchedOrderCount;
+
+        var feeData = await ticketRepository.GetPaidOrderPaymentMethodsAsync(ct);
+
+        var feesByMethod = feeData
+            .GroupBy(
+                o => o.PaymentMethodDetail != null ? $"{o.PaymentMethod}/{o.PaymentMethodDetail}" : o.PaymentMethod!,
+                StringComparer.Ordinal)
+            .Select(g =>
+            {
+                var totalAmt = g.Sum(o => o.TotalAmount);
+                var totalStripe = g.Sum(o => o.StripeFee ?? 0m);
+                return new FeeBreakdownByMethod
+                {
+                    PaymentMethod = g.Key,
+                    OrderCount = g.Count(),
+                    TotalAmount = totalAmt,
+                    TotalStripeFees = totalStripe,
+                    TotalApplicationFees = g.Sum(o => o.ApplicationFee ?? 0m),
+                    EffectiveRate = totalAmt > 0 ? Math.Round(totalStripe / totalAmt * 100, 2) : 0,
+                };
+            })
+            .ToList();
+
+        var orderDates = await ticketRepository.GetOrderDateAttendeeCountsAsync(ct);
+
+        var salesByDate = orderDates
+            .GroupBy(o => o.PurchasedAt.InUtc().Date)
+            .ToDictionary(g => g.Key, g => g.Sum(o => o.AttendeeCount));
+
+        var dailySalesPoints = new List<DailySales>();
+        if (salesByDate.Count > 0)
         {
-            var date = o.PurchasedAt.InZone(TicketSalesReports.MadridZone).Date.ToInvariantDate();
-            if (o.VipDonations > 0)
-                rows.Add(new DonationExportRow(date, o.VendorOrderId, o.BuyerName, o.BuyerEmail, DonationExportRow.VipTicket, o.VipDonations));
-            if (o.DonationAmount > 0)
-                rows.Add(new DonationExportRow(date, o.VendorOrderId, o.BuyerName, o.BuyerEmail, DonationExportRow.SeparateDonation, o.DonationAmount));
+            var startDate = salesByDate.Keys.Min();
+            var endDate = salesByDate.Keys.Max();
+            var allDays = new List<(LocalDate Date, int Count)>();
+
+            for (var d = startDate; d <= endDate; d = d.PlusDays(1))
+                allDays.Add((d, salesByDate.GetValueOrDefault(d, 0)));
+
+            for (var i = 0; i < allDays.Count; i++)
+            {
+                var (date, count) = allDays[i];
+                var windowStart = Math.Max(0, i - 6);
+                var window = allDays.Skip(windowStart).Take(i - windowStart + 1);
+                var rollingAvg = window.Average(d => (decimal)d.Count);
+
+                dailySalesPoints.Add(new DailySales
+                {
+                    Date = date.ToInvariantDate(),
+                    TicketsSold = count,
+                    RollingAverage = Math.Round(rollingAvg, 1),
+                });
+            }
         }
 
-        await auditLog.LogAsync(
-            TicketsAuditActions.TicketDonationsExported,
-            "Tickets", Guid.Empty,
-            description: $"Donor list exported: {rows.Count} donation rows, {rows.Sum(r => r.Amount):F2} EUR",
-            actorUserId: actorUserId);
+        var recentOrders = await ticketRepository.GetRecentOrdersAsync(count: 10, ct);
+
+        return new TicketDashboardStats
+        {
+            TicketsSold = ticketsSold,
+            Revenue = revenue,
+            TotalStripeFees = totalStripeFees,
+            TotalApplicationFees = totalAppFees,
+            TotalFeeTax = totals.TotalFeeTax,
+            TotalWithheldTax = totals.TotalWithheldTax,
+            NetRevenue = netRevenue,
+            GrossAveragePrice = grossAvgPrice,
+            UnmatchedOrderCount = unmatchedCount,
+            FeesByPaymentMethod = feesByMethod,
+            DailySalesPoints = dailySalesPoints,
+            RecentOrders = recentOrders.ToList(),
+            SyncStatus = syncState?.SyncStatus ?? TicketSyncStatus.Idle,
+            SyncError = syncState?.LastError,
+            LastSyncAt = syncState?.LastSyncAt,
+        };
+    }
+
+    public async Task<BreakEvenResult> CalculateBreakEvenAsync(
+        int ticketsSold,
+        decimal grossRevenue,
+        string currency,
+        bool canAccessFinance,
+        int fallbackTarget, CancellationToken ct = default)
+    {
+        if (ticketsSold <= 0 || grossRevenue <= 0)
+            return new BreakEvenResult { Target = fallbackTarget, Currency = currency };
+
+        var activeBudgetYear = await budgetService.GetActiveYearAsync(ct);
+        if (activeBudgetYear is null)
+            return new BreakEvenResult { Target = fallbackTarget, Currency = currency };
+
+        var summary = budgetService.ComputeBudgetSummary(activeBudgetYear.Groups);
+        var plannedExpenses = Math.Abs(summary.TotalExpenses);
+        if (plannedExpenses <= 0)
+            return new BreakEvenResult { Target = fallbackTarget, Currency = currency };
+
+        // break-even = sold + ceil((plannedExpenses - revenue) / avgPrice)
+        var grossAverageTicketPrice = grossRevenue / ticketsSold;
+        var remainingExpenses = Math.Max(0m, plannedExpenses - grossRevenue);
+        long remainingTicketsToSell = 0;
+        if (remainingExpenses > 0)
+        {
+            var remainingTicketCount = Math.Ceiling(remainingExpenses / grossAverageTicketPrice);
+            remainingTicketsToSell = remainingTicketCount > int.MaxValue
+                ? int.MaxValue
+                : decimal.ToInt32(remainingTicketCount);
+        }
+
+        var breakEvenTarget = ticketsSold + remainingTicketsToSell;
+        var target = breakEvenTarget > int.MaxValue ? int.MaxValue : (int)breakEvenTarget;
+
+        var detail = canAccessFinance
+            ? $"{currency} {remainingExpenses:N2} remaining expenses / {currency} {grossAverageTicketPrice:N2} gross avg. per ticket = {remainingTicketsToSell:N0} tickets still to sell"
+            : null;
+
+        return new BreakEvenResult { Target = target, Detail = detail, Currency = currency };
+    }
+
+    public async Task<CodeTrackingData> GetCodeTrackingDataAsync(string? search, CancellationToken ct = default)
+    {
+        var campaignData = await campaignService.GetCodeTrackingAsync(ct);
+
+        var campaignSummaries = campaignData.Campaigns
+            .Select(c => new CampaignCodeSummaryDto
+            {
+                CampaignId = c.CampaignId,
+                CampaignTitle = c.CampaignTitle,
+                CreatedAt = c.CreatedAt,
+                TotalGrants = c.TotalGrants,
+                Redeemed = c.Redeemed,
+                Unused = c.TotalGrants - c.Redeemed,
+                RedemptionRate = c.TotalGrants > 0
+                    ? Math.Round(c.Redeemed * 100m / c.TotalGrants, 1)
+                    : 0,
+            })
+            .ToList();
+
+        IEnumerable<CampaignCodeTrackingGrant> allGrants = campaignData.Grants;
+        var trimmed = search?.Trim();
+        if (!string.IsNullOrEmpty(trimmed))
+        {
+            allGrants = allGrants.Where(g =>
+                (g.Code?.Contains(trimmed, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                g.RecipientName.Contains(trimmed, StringComparison.OrdinalIgnoreCase));
+        }
+
+        var ordersWithCodes = await ticketRepository.GetOrdersWithDiscountCodesAsync(ct);
+        var orderByCode = ordersWithCodes
+            .GroupBy(o => o.DiscountCode, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
+
+        var codeRows = allGrants.Select(g =>
+        {
+            var code = g.Code;
+            orderByCode.TryGetValue(code ?? string.Empty, out var matchedOrder);
+            return new CodeDetailDto
+            {
+                Code = code ?? "—",
+                RecipientUserId = g.UserId,
+                CampaignTitle = g.CampaignTitle,
+                Status = g.RedeemedAt is not null ? "Redeemed" : "Pending",
+                RedeemedAt = g.RedeemedAt,
+                RedeemedByName = matchedOrder?.BuyerName,
+                RedeemedByEmail = matchedOrder?.BuyerEmail,
+                RedeemedOrderVendorId = matchedOrder?.VendorOrderId,
+            };
+        }).ToList();
+
+        var totalSent = campaignSummaries.Sum(c => c.TotalGrants);
+        var totalRedeemed = campaignSummaries.Sum(c => c.Redeemed);
+
+        return new CodeTrackingData
+        {
+            TotalCodesSent = totalSent,
+            CodesRedeemed = totalRedeemed,
+            CodesUnused = totalSent - totalRedeemed,
+            RedemptionRate = totalSent > 0 ? Math.Round(totalRedeemed * 100m / totalSent, 1) : 0,
+            Campaigns = campaignSummaries,
+            Codes = codeRows,
+        };
+    }
+
+    private DateTimeZone OrgZone => orgTimeZone.Zone;
+
+    /// <summary>
+    /// The org time zone, the zone the association books in, so a 00:30 UTC purchase on the 1st lands in the right month.
+    /// </summary>
+    private (int Year, int Month) MonthKey(Instant purchasedAt)
+    {
+        var d = purchasedAt.InZone(OrgZone).Date;
+        return (d.Year, d.Month);
+    }
+
+    public async Task<TicketSalesAggregates> GetSalesAggregatesAsync(CancellationToken ct = default)
+    {
+        var orders = await ticketRepository.GetPaidOrderSalesRowsAsync(ct);
+
+        var weeklySales = orders
+            .GroupBy(o =>
+            {
+                var date = o.PurchasedAt.InUtc().Date;
+                var monday = date.PlusDays(-(int)date.DayOfWeek + 1);
+                return monday;
+            })
+            .Select(g =>
+            {
+                var monday = g.Key;
+                var sunday = monday.PlusDays(6);
+                return new WeeklySalesAggregate
+                {
+                    WeekStart = monday,
+                    WeekLabel = $"{monday.ToWeekdayDayMonth()} – {sunday.ToWeekdayDayMonth()}",
+                    TicketsSold = g.Sum(o => o.AttendeeCount),
+                    GrossRevenue = g.Sum(o => o.TotalAmount),
+                    OrderCount = g.Count(),
+                    Donations = g.Sum(o => o.DonationAmount),
+                    VatAmount = g.Sum(o => o.VatAmount),
+                    VipDonations = g.Sum(o => o.VipDonations),
+                };
+            })
+            .ToList();
+
+        var quarterlySales = orders
+            .GroupBy(o =>
+            {
+                var date = o.PurchasedAt.InUtc().Date;
+                var quarter = (date.Month - 1) / 3 + 1;
+                return (date.Year, quarter);
+            })
+            .Select(g => new QuarterlySalesAggregate
+            {
+                QuarterLabel = $"Q{g.Key.quarter} {g.Key.Year}",
+                Year = g.Key.Year,
+                Quarter = g.Key.quarter,
+                TicketsSold = g.Sum(o => o.AttendeeCount),
+                GrossRevenue = g.Sum(o => o.TotalAmount),
+                OrderCount = g.Count(),
+                Donations = g.Sum(o => o.DonationAmount),
+                VatAmount = g.Sum(o => o.VatAmount),
+                VipDonations = g.Sum(o => o.VipDonations),
+            })
+            .ToList();
+
+        var refunded = await ticketRepository.GetRefundedOrderRowsAsync(ct);
+        var refundedByMonth = refunded
+            .GroupBy(r => MonthKey(r.PurchasedAt))
+            .ToDictionary(g => g.Key, g => g.ToList());
+        var paidByMonth = orders.GroupBy(o => MonthKey(o.PurchasedAt)).ToDictionary(g => g.Key, g => g.ToList());
+        var monthlySales = paidByMonth.Keys.Union(refundedByMonth.Keys)
+            .Select(k =>
+            {
+                var paid = paidByMonth.GetValueOrDefault(k) ?? [];
+                var refundedRows = refundedByMonth.GetValueOrDefault(k) ?? [];
+                return new MonthlySalesAggregate
+                {
+                    MonthLabel = new YearMonth(k.Year, k.Month).ToInvariantYearMonth(),
+                    OrderCount = paid.Count,
+                    TicketsSold = paid.Sum(o => o.AttendeeCount),
+                    GrossRevenue = paid.Sum(o => o.TotalAmount),
+                    Donations = paid.Sum(o => o.DonationAmount),
+                    VipDonations = paid.Sum(o => o.VipDonations),
+                    VatAmount = paid.Sum(o => o.VatAmount),
+                    // Built per order like ComputeOrderVat's base. TotalAmount can't stand in: a transfer voids a
+                    // seat and adds a live replacement at the same price without changing the order total.
+                    TicketIncomeInclVat = paid.Sum(o =>
+                        Math.Max(0m, o.LiveSeatGross - o.VipDonations - o.DiscountAmount)),
+                    // A refund returns the gross, never the processing fees already charged.
+                    StripeFees = paid.Sum(o => o.StripeFee ?? 0m) + refundedRows.Sum(r => r.StripeFee ?? 0m),
+                    ApplicationFees = paid.Sum(o => o.ApplicationFee ?? 0m)
+                                      + refundedRows.Sum(r => r.ApplicationFee ?? 0m),
+                    FeeTax = paid.Sum(o => o.FeeTax ?? 0m) + refundedRows.Sum(r => r.FeeTax ?? 0m),
+                    WithheldTax = paid.Sum(o => o.WithheldTax ?? 0m) + refundedRows.Sum(r => r.WithheldTax ?? 0m),
+                    RefundedGross = refundedRows.Sum(r => r.TotalAmount),
+                };
+            })
+            .ToList();
+
+        var attendees = await ticketRepository.GetPaidAttendeeTypePriceRowsAsync(ct);
+
+        var byTicketType = attendees
+            .GroupBy(a => (a.TicketTypeName, a.Price))
+            .Select(g => new TicketTypeSalesAggregate
+            {
+                TicketTypeName = g.Key.TicketTypeName,
+                Price = g.Key.Price,
+                TicketsSold = g.Count(),
+                FaceValue = g.Sum(a => a.Price),
+            })
+            .ToList();
+
+        return new TicketSalesAggregates
+        {
+            WeeklySales = weeklySales,
+            QuarterlySales = quarterlySales,
+            MonthlySales = monthlySales,
+            ByTicketType = byTicketType,
+            ByDiscountCampaign = await BuildDiscountCampaignAggregatesAsync(ct),
+        };
+    }
+
+    /// <summary>
+    /// One row per campaign that granted codes, used or not, so the granted column totals org-wide. Redeemed codes
+    /// with no matching grant collapse into one unattributed row.
+    /// </summary>
+    private async Task<List<DiscountCampaignAggregate>> BuildDiscountCampaignAggregatesAsync(CancellationToken ct)
+    {
+        var campaignData = await campaignService.GetCodeTrackingAsync(ct);
+        var campaignIds = campaignData.Campaigns.Select(c => c.CampaignId).ToHashSet();
+
+        var campaignByCode = campaignData.Grants
+            .Where(g => !string.IsNullOrWhiteSpace(g.Code) && campaignIds.Contains(g.CampaignId))
+            .GroupBy(g => g.Code!, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(g => g.Key, g => g.First().CampaignId, StringComparer.OrdinalIgnoreCase);
+
+        var paidDiscountOrders = (await ticketRepository.GetOrdersWithDiscountCodesAsync(ct))
+            .Where(o => o.IsPaid)
+            .ToList();
+
+        var usageByCampaign = paidDiscountOrders
+            .Where(o => campaignByCode.ContainsKey(o.DiscountCode))
+            .GroupBy(o => campaignByCode[o.DiscountCode])
+            .ToDictionary(
+                g => g.Key,
+                g => (Used: g.Count(), Total: g.Sum(o => o.DiscountAmount ?? 0m)));
+
+        var rows = campaignData.Campaigns
+            .Where(c => c.TotalGrants > 0)
+            .Select(c =>
+            {
+                usageByCampaign.TryGetValue(c.CampaignId, out var usage);
+                return new DiscountCampaignAggregate
+                {
+                    CampaignTitle = c.CampaignTitle,
+                    CreatedAt = c.CreatedAt,
+                    CodesGranted = c.TotalGrants,
+                    CodesUsed = usage.Used,
+                    TotalDiscount = usage.Total,
+                };
+            })
+            .ToList();
+
+        var unattributed = paidDiscountOrders
+            .Where(o => !campaignByCode.ContainsKey(o.DiscountCode))
+            .ToList();
+        if (unattributed.Count > 0)
+        {
+            var total = unattributed.Sum(o => o.DiscountAmount ?? 0m);
+            rows.Add(new DiscountCampaignAggregate
+            {
+                CampaignTitle = "No campaign (vendor codes)",
+                CodesGranted = null,
+                CodesUsed = unattributed.Count,
+                TotalDiscount = total,
+            });
+        }
 
         return rows;
     }
 
-    public Task<UserTicketHoldings> GetUserTicketHoldingsAsync(Guid userId, CancellationToken ct = default) =>
-        personalData.GetUserTicketHoldingsAsync(userId, ct);
-
-    private static TicketOrderInfo Project(
-        TicketOrder o, string? currentEventId,
-        IReadOnlyDictionary<Guid, TicketTransferRequest> transfersByAttendee) => new(
-        Id: o.Id,
-        VendorOrderId: o.VendorOrderId,
-        BuyerName: o.BuyerName,
-        BuyerEmail: o.BuyerEmail,
-        TotalAmount: o.TotalAmount,
-        Currency: o.Currency,
-        DiscountCode: o.DiscountCode,
-        PaymentStatus: o.PaymentStatus,
-        VendorEventId: o.VendorEventId,
-        PurchasedAt: o.PurchasedAt,
-        MatchedUserId: o.MatchedUserId,
-        IsCurrentEvent: !string.IsNullOrEmpty(currentEventId)
-            && string.Equals(o.VendorEventId, currentEventId, StringComparison.Ordinal),
-        Attendees: o.Attendees.Select(a =>
-        {
-            transfersByAttendee.TryGetValue(a.Id, out var tr);
-            var hasTransfer = a.Status == TicketAttendeeStatus.Void && tr is not null;
-            return new TicketAttendeeInfo(
-                Id: a.Id,
-                VendorTicketId: a.VendorTicketId,
-                AttendeeName: a.AttendeeName,
-                AttendeeEmail: a.AttendeeEmail,
-                TicketTypeName: a.TicketTypeName,
-                Price: a.Price,
-                Status: a.Status,
-                MatchedUserId: a.MatchedUserId,
-                Barcode: a.Barcode,
-                TransferredToName: hasTransfer ? tr!.ReceiverLegalName : null,
-                TransferredAt: hasTransfer ? tr!.DecidedAt : null,
-                CheckedInAt: a.CheckedInAt);
-        }).ToList(),
-        StripeFee: o.StripeFee,
-        ApplicationFee: o.ApplicationFee,
-        FeeTax: o.FeeTax,
-        WithheldTax: o.WithheldTax);
-
-    public Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct) =>
-        personalData.ContributeForUserAsync(userId, ct);
-
-    internal const string TicketOrders = UserTicketPersonalData.TicketOrders;
-    internal const string TicketAttendeeMatches = UserTicketPersonalData.TicketAttendeeMatches;
-
-    private const string SalesRecordRetention =
-        "Partially retained: the order/attendee row itself (amount, currency, ticket type, " +
-        "payment status, dates) is a sales record backing the association's books — Código de " +
-        "Comercio Art. 30 and Ley 58/2003 Art. 66, GDPR Art. 17(3)(b). Every identifier on it " +
-        "is erased: BuyerName/BuyerEmail and AttendeeName/AttendeeEmail are overwritten with " +
-        "tombstones, MatchedUserId is dropped, and the free text on their ticket-transfer " +
-        "requests is cleared.";
-
-    internal static readonly IReadOnlyDictionary<string, string?> Erasure =
-        new Dictionary<string, string?>(StringComparer.Ordinal)
-        {
-            [TicketOrders] = SalesRecordRetention,
-            [TicketAttendeeMatches] = SalesRecordRetention
-        };
-
-    public async Task EraseForUserAsync(Guid userId, CancellationToken ct)
+    public async Task<UserTicketHoldings> GetUserTicketHoldingsAsync(
+        Guid userId, CancellationToken ct = default)
     {
-        await ticketRepository.EraseUserPiiAsync(userId, ct);
-        await ticketTransferRepository.ErasePiiForUserAsync(userId, ct);
+        var orders = await ticketRepository.GetOrdersMatchedToUserAsync(userId, ct);
+        var orderCount = orders.Count;
+        var orderSummaries = orders.Select(o => new UserTicketOrderSummary(
+            o.BuyerName,
+            o.PurchasedAt,
+            o.Attendees.Count,
+            o.TotalAmount,
+            o.Currency)).ToList();
+        var openTicketOrderIds = orders
+            .Where(o => o.PaymentStatus is TicketPaymentStatus.Paid or TicketPaymentStatus.Pending)
+            .Select(o => o.Id)
+            .ToList();
+
+        var attendees = await ticketRepository.GetAttendeesVisibleToUserAsync(userId, ct);
+        var tickets = attendees
+            .Where(a => TicketAttendeeOwnership.IsCurrentOwner(a, userId))
+            .Select(a => new UserTicketHoldingRow(
+                a.Id,
+                a.AttendeeName,
+                a.AttendeeEmail,
+                a.VendorTicketId,
+                a.TicketTypeName,
+                a.Status,
+                CheckedInAt: a.CheckedInAt))
+            .ToList();
+
+        var ticketCount = await ComputeUserTicketCountAsync(userId, ct);
+        var syncState = await ticketRepository.GetSyncStateAsync(ct);
+        var hasCurrentEventTicket = syncState is not null
+            && !string.IsNullOrEmpty(syncState.VendorEventId)
+            && await ticketRepository.HasEventTicketAsync(userId, syncState.VendorEventId, ct);
+        var postEventHoldDate = await GetPostEventHoldDateAsync(userId, hasCurrentEventTicket, ct);
+
+        return new UserTicketHoldings(
+            orderCount,
+            tickets,
+            hasCurrentEventTicket,
+            ticketCount,
+            postEventHoldDate)
+        {
+            OrderSummaries = orderSummaries,
+            OpenTicketOrderIds = openTicketOrderIds,
+        };
     }
 
-    public Task<IReadOnlyList<OrderDriftRow>> GetOrderDriftAsync(CancellationToken ct = default) =>
-        ticketRepository.GetOrderDriftAsync(ct);
+    /// <summary>
+    /// The latest hold over the active event (a vendor-synced ticket) and every event the person holds a Humans-issued
+    /// ticket for; null once all of them are past.
+    /// </summary>
+    private async Task<Instant?> GetPostEventHoldDateAsync(Guid userId, bool hasCurrentEventTicket, CancellationToken ct)
+    {
+        var events = new List<EventSettingsInfo>();
+        if (hasCurrentEventTicket && settingsService.GetActiveEventSettings() is { } activeEvent)
+            events.Add(activeEvent);
+
+        var heldSalesEventIds = (await checkout.GetTicketsForHolderAsync(userId, ct))
+            .Where(t => t.State is TicketCheckoutTicketState.Valid or TicketCheckoutTicketState.Offered)
+            .Select(t => t.SalesEventId)
+            .Distinct();
+        foreach (var salesEventId in heldSalesEventIds)
+        {
+            if (await checkout.GetSalesEventAsync(salesEventId, ct) is { } salesEvent
+                && await settingsService.GetEventSettingsByIdAsync(salesEvent.EventSettingsId, ct) is { } ev)
+                events.Add(ev);
+        }
+
+        var now = clock.GetCurrentInstant();
+        return events.Select(PostEventHoldDate)
+            .Where(hold => hold > now)
+            .Select(hold => (Instant?)hold)
+            .Max();
+    }
+
+    /// <summary>A ticket holder's deletion waits until about 30 days after the event (use case H19).</summary>
+    private static readonly Period PostEventHold = Period.FromDays(30);
+
+    private static Instant PostEventHoldDate(EventSettingsInfo ev) =>
+        ev.GateOpeningDate.PlusDays(ev.StrikeEndOffset + 1).Plus(PostEventHold).AtStartOfDayInZone(ev.TimeZone).ToInstant();
+
+    private async Task<int> ComputeUserTicketCountAsync(Guid userId, CancellationToken ct)
+    {
+        // Attendees only: buyers don't count for themselves.
+        var matchedCount = await ticketRepository
+            .CountValidAttendeesMatchedToUserAsync(userId, ct);
+        if (matchedCount > 0)
+            return matchedCount;
+
+        // Same verified-email index the sync matches with, so an alias verified by two users counts for neither.
+        var attendeeEmails = await ticketRepository.GetValidAttendeeEmailsAsync(ct);
+        if (attendeeEmails.Count == 0)
+            return 0;
+
+        var (lookup, _) = VerifiedEmailLookup.Build(await userService.GetAllUserInfosAsync(ct));
+        return attendeeEmails.Count(email => lookup.TryGetValue(email, out var owner) && owner == userId);
+    }
+
+    private async Task<UserTicketExportData> GetUserTicketExportDataAsync(
+        Guid userId, CancellationToken ct = default)
+    {
+        var orders = await ticketRepository.GetOrdersMatchedToUserAsync(userId, ct);
+        var orderRows = orders
+            .Select(o => new UserTicketOrderExportRow(
+                o.BuyerName,
+                o.BuyerEmail,
+                o.TotalAmount,
+                o.Currency,
+                o.PaymentStatus.ToString(),
+                o.DiscountCode,
+                o.PurchasedAt))
+            .ToList();
+
+        var attendees = await ticketRepository.GetAttendeesMatchedToUserAsync(userId, ct);
+        var attendeeRows = attendees
+            .Select(a => new UserTicketAttendeeExportRow(
+                a.AttendeeName,
+                a.AttendeeEmail,
+                a.TicketTypeName,
+                a.Price,
+                a.Status.ToString()))
+            .ToList();
+
+        return new UserTicketExportData(orderRows, attendeeRows);
+    }
+
+    public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(
+        Guid userId, CancellationToken ct)
+    {
+        var export = await GetUserTicketExportDataAsync(userId, ct);
+
+        var ordersSlice = new UserDataSlice(TicketOrders, export.Orders.Select(o => new
+        {
+            o.BuyerName,
+            o.BuyerEmail,
+            o.TotalAmount,
+            o.Currency,
+            o.PaymentStatus,
+            o.DiscountCode,
+            PurchasedAt = o.PurchasedAt.ToIso8601(),
+        }).ToList());
+
+        var attendeesSlice = new UserDataSlice(TicketAttendeeMatches, export.Attendees.Select(a => new
+        {
+            a.AttendeeName,
+            a.AttendeeEmail,
+            a.TicketTypeName,
+            a.Price,
+            a.Status,
+        }).ToList());
+
+        return [ordersSlice, attendeesSlice];
+    }
+
+    internal const string TicketOrders = "TicketOrders";
+    internal const string TicketAttendeeMatches = "TicketAttendeeMatches";
 }

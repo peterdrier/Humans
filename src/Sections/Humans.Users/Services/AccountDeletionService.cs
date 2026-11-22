@@ -1,3 +1,4 @@
+using Humans.Users.Domain;
 using System.Transactions;
 using Humans.Base.Extensions;
 using Humans.Users.Services;
@@ -8,6 +9,7 @@ using Humans.Gdpr.Contracts;
 using Humans.Onboarding.Contracts;
 using Humans.Users.Contracts;
 using Humans.Users.Data;
+using Humans.Users.Jobs;
 using Humans.Teams.Contracts;
 using Humans.Tickets.Contracts;
 using Humans.Base.Interfaces;
@@ -52,12 +54,7 @@ internal sealed class AccountDeletionService(
         var deletionDate = now.Plus(Duration.FromDays(30));
 
         // Held until after the event so the ticket stays usable.
-        Instant? eligibleAfter = null;
-        var ticketHoldings = await ticketQueryService.GetUserTicketHoldingsAsync(userId, ct);
-        if (ticketHoldings.HasCurrentEventTicket)
-        {
-            eligibleAfter = ticketHoldings.PostEventHoldDate;
-        }
+        var eligibleAfter = (await ticketQueryService.GetUserTicketHoldingsAsync(userId, ct)).PostEventHoldDate;
 
         var effectiveDeletionDate = eligibleAfter is { } holdDate && holdDate > deletionDate
             ? holdDate : deletionDate;
@@ -95,7 +92,7 @@ internal sealed class AccountDeletionService(
         }
 
         await auditLogService.LogAsync(
-            UsersAuditActions.MembershipsRevokedOnDeletionRequest, nameof(User), userId,
+            UsersAuditActions.MembershipsRevokedOnDeletionRequest, AuditSubjectTypes.User, userId,
             $"Revoked {endedMemberships} team membership(s) and {endedRoles} role assignment(s) on deletion request",
             userId);
 
@@ -174,24 +171,45 @@ internal sealed class AccountDeletionService(
         // the real name and break IsGdprAnonymized.
         await EraseEverySectionAsync(userId, ct);
 
-        // Contributors run against the inner UserService, so the decorator hasn't seen the collapse.
-        await userInfoRefresher.RefreshAsync(userId, ct);
-
         // Must not name the human: the audit log survives erasure.
         const string description = "Admin-initiated purge: identity collapsed";
         if (actorId is Guid actor)
         {
             await auditLogService.LogAsync(
-                UsersAuditActions.AccountPurged, nameof(User), userId, description, actor);
+                UsersAuditActions.AccountPurged, AuditSubjectTypes.User, userId, description, actor);
         }
         else
         {
             await auditLogService.LogAsync(
-                UsersAuditActions.AccountPurged, nameof(User), userId, description,
+                UsersAuditActions.AccountPurged, AuditSubjectTypes.User, userId, description,
                 jobName: nameof(AccountDeletionService));
         }
 
         return new OnboardingResult(true);
+    }
+
+    /// <summary>
+    /// A ticket taken after the request (bought for them, or a resale) holds a due deletion too: pushes the hold out and
+    /// returns it, or returns null when nothing holds the account.
+    /// </summary>
+    internal async Task<Instant?> ExtendTicketHoldAsync(Guid userId, CancellationToken ct)
+    {
+        var user = await userService.GetRawUserInfoAsync(userId, ct);
+        if (user is not { DeletionRequestedAt: { } requestedAt, DeletionScheduledFor: { } scheduledFor })
+            return null;
+
+        var hold = (await ticketQueryService.GetUserTicketHoldingsAsync(userId, ct)).PostEventHoldDate;
+        if (hold is not { } holdDate || holdDate <= clock.GetCurrentInstant())
+            return null;
+
+        if (!await userService.SetDeletionPendingAsync(userId, requestedAt, scheduledFor, holdDate, ct))
+            return null;
+
+        await auditLogService.LogAsync(
+            UsersAuditActions.DeletionHeldForTicket, AuditSubjectTypes.User, userId,
+            $"Deletion held for a ticket until {holdDate.ToIso8601()}",
+            nameof(ProcessAccountDeletionsJob));
+        return holdDate;
     }
 
     public async Task<AnonymizedAccountSummary?> AnonymizeExpiredAccountAsync(
@@ -209,10 +227,6 @@ internal sealed class AccountDeletionService(
         // mid-cascade failure retries the whole fan-out tomorrow.
         await EraseEverySectionAsync(userId, ct);
 
-        // Contributors write through the inner UserService, so the decorator hasn't seen these
-        // writes and admin search would keep matching the erased human by their real name.
-        await userInfoRefresher.RefreshAsync(userId, ct);
-
         return summary;
     }
 
@@ -223,18 +237,40 @@ internal sealed class AccountDeletionService(
     /// </summary>
     /// <remarks>
     /// Cache invalidation is interleaved, not batched: a contributor that throws mid-chain still
-    /// leaves every earlier id erased and dropped, and a <see cref="PurgeAsync"/> has no daily retry.
+    /// leaves every attempted id refreshed or evicted, and a <see cref="PurgeAsync"/> has no daily retry.
     /// </remarks>
     private async Task EraseEverySectionAsync(Guid userId, CancellationToken ct)
     {
         foreach (var subjectId in await MergeChainAsync(userId, ct))
         {
-            await gdprService.EraseForUserAsync(subjectId, ct);
+            try
+            {
+                await gdprService.EraseForUserAsync(subjectId, ct);
+            }
+            catch
+            {
+                try
+                {
+                    // A contributor may commit before a later one fails. Refresh the attempted
+                    // id independently of cancellation; ReplaceAsync evicts if refresh fails.
+                    await userInfoRefresher.RefreshAsync(subjectId, CancellationToken.None);
+                }
+                catch (Exception ex)
+                {
+                    logger.LogError(ex, "UserInfo refresh failed after incomplete erasure for {UserId}", subjectId);
+                }
+                throw;
+            }
 
-            // Callers only invalidate the survivor; a stale entry would keep the tombstone's name
-            // searchable after it was erased.
-            if (subjectId != userId)
-                await userInfoRefresher.RefreshAsync(subjectId, ct);
+            try
+            {
+                // Erasure committed: finish its refresh independently of shutdown.
+                await userInfoRefresher.RefreshAsync(subjectId, CancellationToken.None);
+            }
+            catch (OperationCanceledException ex)
+            {
+                throw new InvalidOperationException("UserInfo refresh failed after completed erasure.", ex);
+            }
         }
     }
 

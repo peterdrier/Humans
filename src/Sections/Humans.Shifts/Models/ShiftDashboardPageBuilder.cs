@@ -1,8 +1,7 @@
+using Humans.Base.Extensions;
 using Humans.Shifts.Services;
 using Humans.Shifts.Contracts;
 using NodaTime;
-using Microsoft.AspNetCore.Hosting;
-using Microsoft.Extensions.Hosting;
 
 namespace Humans.Shifts.Models;
 
@@ -22,7 +21,6 @@ internal sealed record ShiftDashboardPageRequest(
 
 internal sealed class ShiftDashboardPageBuilder(
     IShiftManagement shiftManagement,
-    IWebHostEnvironment environment,
     IClock clock)
 {
     public async Task<ShiftDashboardViewModel> BuildAsync(ShiftDashboardPageRequest request, CancellationToken ct = default)
@@ -98,7 +96,6 @@ internal sealed class ShiftDashboardPageBuilder(
                     .ToList()
             },
             TrendWindow = request.TrendWindow,
-            IsDevelopment = environment.IsDevelopment(),
             Countdown = BuildCountdown(es)
         };
     }
@@ -133,8 +130,8 @@ internal sealed class ShiftDashboardPageBuilder(
 
     private BuildDayCountdown BuildCountdown(BurnSettingsInfo eventSettings)
     {
-        var tz = DateTimeZoneProviders.Tzdb.GetZoneOrNull(eventSettings.TimeZoneId) ?? DateTimeZone.Utc;
-        var todayLocal = clock.GetCurrentInstant().InZone(tz).Date;
+        var tz = eventSettings.TimeZone;
+        var todayLocal = clock.TodayIn(tz);
         var (firstBuildDay, _) = ShiftFilterResolver.ResolvePeriodRange(ShiftPeriod.Build, eventSettings);
         var daysToBuild = Period.Between(todayLocal, firstBuildDay, PeriodUnits.Days).Days;
 

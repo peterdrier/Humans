@@ -1,9 +1,10 @@
 @model Humans.Finance.Models.SepaPayoutsPageVm
+@inject Humans.Base.Interfaces.IOrgTimeZone OrgTimeZone
 @{
     ViewData["Title"] = "SEPA Transfers";
 
     // Generation stamps are instants; the treasurer reads them in the org's own timezone.
-    var madrid = NodaTime.DateTimeZoneProviders.Tzdb["Europe/Madrid"];
+    var orgZone = OrgTimeZone.Zone;
 }
 
 <style>
@@ -11,9 +12,12 @@
 </style>
 
 <page-header title="SEPA Transfers">
-    <a asp-action="Creditors" class="btn btn-outline-secondary">
-        <i class="fa-solid fa-arrow-left me-1"></i>Back to Creditor Accounts
-    </a>
+    <div class="d-flex align-items-center gap-3">
+        <span class="small text-muted">Holded bank feed synced @(Model.BankFeedSyncedAt?.ToDateTime() ?? "never")</span>
+        <a asp-action="Creditors" class="btn btn-outline-secondary">
+            <i class="fa-solid fa-arrow-left me-1"></i>Back to Creditor Accounts
+        </a>
+    </div>
 </page-header>
 
 <p class="text-muted">
@@ -42,6 +46,23 @@
     <span class="text-muted small">Default @Humans.Finance.Services.IFinanceAdminService.DefaultSepaMatchToleranceDays. Widen it when the bank executed a file late; every booking from this view uses the same window.</span>
 </form>
 
+@if (Model.Run is { IsRunning: true } running)
+{
+    <div class="alert alert-info">
+        <i class="fa-solid fa-spinner fa-spin me-1"></i>@running.What, started
+        @running.StartedAt.ToDateTime(orgZone). This page refreshes itself; leaving it
+        does not stop the booking.
+    </div>
+    <script>setTimeout(function () { location.reload(); }, 3000);</script>
+}
+else if (Model.Run is { Result: { } last } finished)
+{
+    <div class="alert @(last.Succeeded ? "alert-success" : "alert-danger")">
+        <strong>Last booking</strong> (@finished.What.ToLowerInvariant(),
+        @finished.StartedAt.ToDateTime(orgZone)): @last.Message
+    </div>
+}
+
 @if (Model.UnavailableReason is { } unavailable)
 {
     <div class="alert alert-warning">
@@ -61,17 +82,14 @@
     <div class="card mb-4">
         <div class="card-header">Bank lines needing a human</div>
         @{
-            Func<SepaBankMovementVm, IHtmlContent> unmatchedCell0 = @<text>@item.Date.ToInvariantDate()</text>;
-            Func<SepaBankMovementVm, IHtmlContent> unmatchedCell1 = @<text>@item.Amount.ToEuro()</text>;
-            Func<SepaBankMovementVm, IHtmlContent> unmatchedCell2 = @<text>@(item.Description ?? "—")</text>;
-            Func<SepaBankMovementVm, IHtmlContent> unmatchedCell3 = @<text>@(item.ParsedAccountNum?.ToString() ?? "—")</text>;
-            Func<SepaBankMovementVm, IHtmlContent> unmatchedCell4 = @<text>@item.Reason</text>;
+            Func<SepaBankMovementVm, IHtmlContent> dateCell = @<text>@item.Date.ToInvariantDate()</text>;
+            Func<SepaBankMovementVm, IHtmlContent> unmatchedAmountCell = @<text>@item.Amount.ToEuro()</text>;
             var unmatchedTable = TableModel.For(Model.UnmatchedMovements)
-                .Template("Date", unmatchedCell0, sortBy: m => m.Date)
-                .Template("Amount", unmatchedCell1, o => o.End(), sortBy: m => m.Amount)
-                .Template("Description", unmatchedCell2, o => o.Css("text-muted small"))
-                .Template("Account", unmatchedCell3)
-                .Template("Why", unmatchedCell4, o => o.Css("text-muted small"))
+                .Template("Date", dateCell, c => c.Css("text-nowrap"), sortBy: m => m.Date)
+                .Template("Amount", unmatchedAmountCell, o => o.Css("text-nowrap").End(), sortBy: m => m.Amount)
+                .Column("Description", r => r.Description ?? "—", o => o.Css("text-muted small"))
+                .Column("Account", r => r.ParsedAccountNum?.ToString() ?? "—")
+                .Column("Why", r => r.Reason, o => o.Css("text-muted small"))
                 .Css("align-middle")
                 .Build();
         }
@@ -91,46 +109,38 @@
 {
     <div class="card mb-4">
         @{
-            var withdrawn = file.Transfers.Count(t => t.Row.IsWithdrawn);
-            var cancelled = withdrawn == file.Transfers.Count;
-            var unbooked = file.Transfers.Where(t => !t.Row.IsBooked && !t.Row.IsWithdrawn).ToList();
-            var matched = unbooked.Count(t => t.Row.CanBook);
-            var allMatched = unbooked.Count > 0 && matched == unbooked.Count
-                             && Model.UnavailableReason is null;
-            // A cancelled file summarises what it held; any other file what it still pays.
-            var summarised = cancelled ? file.Transfers : file.Transfers.Where(t => !t.Row.IsWithdrawn).ToList();
-            var summaryTotal = summarised.Sum(t => t.Row.Amount).ToEuro();
+            var allMatched = file.AllUnbookedMatched && Model.UnavailableReason is null;
+            var summaryTotal = file.SummaryTotal.ToEuro();
             var collapseId = $"sepa-file-{file.FileId:N}";
-            var expanded = unbooked.Count > 0;
-            var canCancel = Humans.Finance.Services.Service.CancelFileRefusal(file.Transfers.Select(t => t.Row).ToList()) is null;
+            var expanded = file.UnbookedCount > 0;
         }
         <div class="card-header d-flex justify-content-between align-items-center gap-3">
             <button type="button" class="btn btn-link text-reset text-decoration-none p-0 text-start @(expanded ? "" : "collapsed")"
                     data-bs-toggle="collapse" data-bs-target="#@collapseId" aria-expanded="@(expanded ? "true" : "false")" aria-controls="@collapseId">
                 <i class="fa-solid fa-chevron-down fa-fw me-1 small"></i>
                 <span class="font-monospace">@file.FileName</span>
-                @if (cancelled)
+                @if (file.IsCancelled)
                 {
                     <span class="badge text-bg-dark ms-2" title="Cancelled whole: every transfer was withdrawn and the bank never executed it.">Cancelled</span>
                 }
-                else if (unbooked.Count == 0)
+                else if (file.UnbookedCount == 0)
                 {
                     <span class="badge text-bg-success ms-2">Done</span>
                 }
-                @if (withdrawn > 0 && !cancelled)
+                @if (file.WithdrawnCount > 0 && !file.IsCancelled)
                 {
-                    <span class="badge text-bg-dark ms-2" title="Cancelled at the bank before execution and withdrawn from this file; not counted toward booking it.">@withdrawn withdrawn</span>
+                    <span class="badge text-bg-dark ms-2" title="Cancelled at the bank before execution and withdrawn from this file; not counted toward booking it.">@file.WithdrawnCount withdrawn</span>
                 }
-                <span class="ms-2">@summarised.Count transfers · <strong>@summaryTotal</strong></span>
+                <span class="ms-2">@file.SummaryTransferCount transfers · <strong>@summaryTotal</strong></span>
             </button>
             <span class="d-flex align-items-center gap-3">
                 <span class="text-muted small">
-                    @file.GeneratedAt.ToDateTime(madrid) by <vc:human user-id="@file.GeneratedByUserId" link="None" />
+                    @file.GeneratedAt.ToDateTime(orgZone) by <vc:human user-id="@file.GeneratedByUserId" />
                 </span>
-                @if (canCancel)
+                @if (file.CanCancel)
                 {
                     <form authorize-policy="@Humans.Finance.Contracts.FinancePolicies.Manage" asp-action="CancelSepaFile" method="post"
-                          data-confirm="Are you sure? Cancel the whole file @file.FileName (@summarised.Count transfers, @summaryTotal)? Only do this once the bank has rejected the file. Every transfer in it is marked withdrawn, their accounts become payable again, and no member is emailed. This cannot be undone.">
+                          data-confirm="Are you sure? Cancel the whole file @file.FileName (@file.SummaryTransferCount transfers, @summaryTotal)? Only do this once the bank has rejected the file. Every transfer in it is marked withdrawn, their accounts become payable again, and no member is emailed. This cannot be undone.">
                         @Html.AntiForgeryToken()
                         <input type="hidden" name="fileId" value="@file.FileId" />
                         <input type="hidden" name="days" value="@Model.ToleranceDays" />
@@ -147,10 +157,10 @@
             <div class="card-body border-bottom d-flex justify-content-between align-items-center gap-3">
                 <div>
                     <strong>Every unbooked transfer in this file has its Sabadell line</strong>
-                    <span class="text-muted">(@matched of @matched)</span> — check the lines below, then book them all.
+                    <span class="text-muted">(@file.MatchedUnbookedCount of @file.MatchedUnbookedCount)</span> — check the lines below, then book them all.
                 </div>
                 <form authorize-policy="@Humans.Finance.Contracts.FinancePolicies.Manage" asp-action="BookSepaFileMatches" method="post"
-                      data-confirm="Book all @matched transfers of @file.FileName, each against the Sabadell line shown on its row? This posts real payments, and a journal entry for anything a member's documents do not cover.">
+                      data-confirm="Book all @file.MatchedUnbookedCount transfers of @file.FileName, each against the Sabadell line shown on its row? This posts real payments, and a journal entry for anything a member's documents do not cover.">
                     @Html.AntiForgeryToken()
                     <input type="hidden" name="fileId" value="@file.FileId" />
                     <input type="hidden" name="days" value="@Model.ToleranceDays" />
@@ -160,10 +170,10 @@
                 </form>
             </div>
         }
-        else if (unbooked.Count > 0 && matched > 0 && Model.UnavailableReason is null)
+        else if (file.UnbookedCount > 0 && file.MatchedUnbookedCount > 0 && Model.UnavailableReason is null)
         {
             <div class="card-body border-bottom text-muted small">
-                @matched of @unbooked.Count unbooked transfers have a Sabadell line; the file is booked
+                @file.MatchedUnbookedCount of @file.UnbookedCount unbooked transfers have a Sabadell line; the file is booked
                 only once all of them do.
             </div>
         }
@@ -208,15 +218,13 @@
             </div>
         }
         @{
-            Func<SepaTransferVm, IHtmlContent> transferCell0 = @<text><a asp-action="CreditorStatement" asp-route-accountNum="@item.Row.SupplierAccountNum">@item.Row.SupplierAccountNum</a></text>;
-            Func<SepaTransferVm, IHtmlContent> transferCell1 = @<text><vc:human user-id="@item.Row.UserId" link="None" /><div class="text-muted small">@item.Row.CreditorName</div></text>;
-            Func<SepaTransferVm, IHtmlContent> transferCell2 = @<text>@item.Row.IbanMasked</text>;
-            Func<SepaTransferVm, IHtmlContent> transferCell3 = @<text>@item.Row.Amount.ToEuro()</text>;
-            Func<SepaTransferVm, IHtmlContent> transferCell4 = @<text>
+            Func<SepaTransferVm, IHtmlContent> memberCell = @<text><vc:human user-id="@item.Row.UserId" /><div class="text-muted small">@item.Row.CreditorName</div></text>;
+            Func<SepaTransferVm, IHtmlContent> amountCell = @<text>@item.Row.Amount.ToEuro()</text>;
+            Func<SepaTransferVm, IHtmlContent> statusCell = @<text>
                 @if (item.Row.WithdrawnAt is { } withdrawnAt)
                 {
                     <span class="badge text-bg-dark">Withdrawn</span>
-                    <div class="text-muted small">@withdrawnAt.ToDateTime(madrid) by <vc:human user-id="@(item.Row.WithdrawnByUserId ?? Guid.Empty)" link="None" /></div>
+                    <div class="text-muted small">@withdrawnAt.ToDateTime(orgZone) by <vc:human user-id="@(item.Row.WithdrawnByUserId ?? Guid.Empty)" /></div>
                 }
                 else if (item.Row.BookedAt is { } bookedAt)
                 {
@@ -229,10 +237,10 @@
                     {
                         <span class="badge text-bg-warning" title="While Holded reads the line pending, the sweep re-issues the reconcile from the recorded payment ids every two hours and stamps the row once the line reads reconciled. A line that reads partial is a human's to finish in Holded.">Reconcile pending (@item.Row.HoldedBankMovementId)</span>
                     }
-                    <div class="text-muted small">@bookedAt.ToDateTime(madrid) by
+                    <div class="text-muted small">@bookedAt.ToDateTime(orgZone) by
                         @if (item.Row.BookedByUserId is { } bookedBy)
                         {
-                            <vc:human user-id="@bookedBy" link="None" />
+                            <vc:human user-id="@bookedBy" />
                         }
                         else
                         {
@@ -240,13 +248,18 @@
                         }
                     </div>
                 }
+                else if (item.Row.PostedButNotBooked)
+                {
+                    <span class="badge text-bg-warning" title="An earlier attempt stopped after Holded accepted these postings. Booking again posts only what is still missing.">Partially booked</span>
+                    <div class="text-muted small font-monospace">@item.Row.HoldedPaymentRefs</div>
+                }
                 else
                 {
                     <span class="badge text-bg-secondary">Generated</span>
                 }
 
             </text>;
-            Func<SepaTransferVm, IHtmlContent> transferCell5 = @<text>
+            Func<SepaTransferVm, IHtmlContent> bookCell = @<text>
                 @if (item.Row.IsWithdrawn)
                 {
                     <span class="text-muted small">cancelled at the bank — nothing to book</span>
@@ -301,7 +314,7 @@
                 }
 
             </text>;
-            Func<SepaTransferVm, IHtmlContent> transferCell6 = @<text>
+            Func<SepaTransferVm, IHtmlContent> withdrawCell = @<text>
                 @if (Humans.Finance.Services.Service.WithdrawRefusal(item.Row) is { } cannotWithdraw)
                 {
                     @if (!item.Row.IsWithdrawn)
@@ -324,13 +337,13 @@
 
             </text>;
             var transfersTable = TableModel.For(file.Transfers)
-                .Template("Account", transferCell0, sortBy: t => t.Row.SupplierAccountNum)
-                .Template("Member", transferCell1)
-                .Template("IBAN", transferCell2, o => o.Css("font-monospace small"))
-                .Template("Amount", transferCell3, o => o.End(), sortBy: t => t.Row.Amount)
-                .Template("Status", transferCell4, sortBy: t => t.Row.IsWithdrawn ? 2 : t.Row.IsBooked ? 1 : 0)
-                .Template("Book", transferCell5, o => o.NoSort())
-                .Template("Withdraw", transferCell6, o => o.NoSort())
+                .Link("Account", r => r.Row.SupplierAccountNum, r => Url.Action("CreditorStatement", new { accountNum = r.Row.SupplierAccountNum }))
+                .Template("Member", memberCell)
+                .Column("IBAN", r => r.Row.IbanMasked, o => o.Css("font-monospace small"))
+                .Template("Amount", amountCell, o => o.Css("text-nowrap").End(), sortBy: t => t.Row.Amount)
+                .Template("Status", statusCell, sortBy: t => t.Row.IsWithdrawn ? 2 : t.Row.IsBooked ? 1 : 0)
+                .Template("Book", bookCell, o => o.NoSort())
+                .Template("Withdraw", withdrawCell, o => o.NoSort())
                 .Css("align-middle")
                 .Build();
         }

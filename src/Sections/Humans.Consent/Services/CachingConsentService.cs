@@ -1,6 +1,7 @@
 using Humans.Base.Caching;
 using Humans.Consent.Contracts;
 using Microsoft.Extensions.DependencyInjection;
+using NodaTime;
 
 namespace Humans.Consent.Services;
 
@@ -96,6 +97,20 @@ internal sealed class CachingConsentService(
     public Task<ConsentReviewDetail?> GetConsentReviewDetailAsync(
         Guid documentVersionId, Guid userId, CancellationToken ct = default) =>
         WithInnerAsync(inner => inner.GetConsentReviewDetailAsync(documentVersionId, userId, ct));
+
+    public Task<bool> HasAllRequiredConsentsForTeamAsync(Guid userId, Guid teamId, CancellationToken ct = default) =>
+        WithInnerAsync(inner => inner.HasAllRequiredConsentsForTeamAsync(userId, teamId, ct));
+
+    public Task<IReadOnlySet<Guid>> GetUsersWithAllRequiredConsentsForTeamAsync(
+        IEnumerable<Guid> userIds, Guid teamId, CancellationToken ct = default) =>
+        WithInnerAsync(inner => inner.GetUsersWithAllRequiredConsentsForTeamAsync(userIds, teamId, ct));
+
+    public Task<ConsentProgress> GetConsentProgressAsync(Guid userId, CancellationToken ct = default) =>
+        WithInnerAsync(inner => inner.GetConsentProgressAsync(userId, ct));
+
+    public Task<IReadOnlyList<Guid>> GetUsersPastConsentDeadlineAsync(
+        Duration? expiringWithin = null, CancellationToken ct = default) =>
+        WithInnerAsync(inner => inner.GetUsersPastConsentDeadlineAsync(expiringWithin, ct));
 
     public Task<int> GetConsentRecordCountAsync(Guid userId, CancellationToken ct = default) =>
         WithInnerAsync(inner => inner.GetConsentRecordCountAsync(userId, ct));

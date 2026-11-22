@@ -5,7 +5,6 @@ using Humans.Base.Extensions;
 using Humans.Surveys.Services;
 using Humans.Surveys.Domain;
 using NodaTime;
-using NodaTime.Text;
 
 namespace Humans.Surveys.Models;
 
@@ -144,11 +143,11 @@ internal sealed class SurveyBuilderViewModel
     public SurveyStatus Status { get; set; } = SurveyStatus.Draft;
     public string? RejectionNote { get; set; }
 
-    public Dictionary<string, string> Title { get; set; } = new(StringComparer.Ordinal);
-    public Dictionary<string, string> Intro { get; set; } = new(StringComparer.Ordinal);
-    public Dictionary<string, string> ThankYou { get; set; } = new(StringComparer.Ordinal);
-    public Dictionary<string, string> InvitationEmailSubject { get; set; } = new(StringComparer.Ordinal);
-    public Dictionary<string, string> InvitationEmailMessage { get; set; } = new(StringComparer.Ordinal);
+    public Dictionary<string, string> Title { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+    public Dictionary<string, string> Intro { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+    public Dictionary<string, string> ThankYou { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+    public Dictionary<string, string> InvitationEmailSubject { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+    public Dictionary<string, string> InvitationEmailMessage { get; set; } = new(StringComparer.OrdinalIgnoreCase);
 
     public string DefaultCulture { get; set; } = CultureCatalog.DefaultCultureCode;
     [BindRequired]
@@ -188,7 +187,7 @@ internal sealed class SurveyBuilderViewModel
 
     // date <input> value (empty when unset).
     public string AudienceLoggedInSinceInput
-        => AudienceLoggedInSince is null ? string.Empty : LocalDatePattern.Iso.Format(AudienceLoggedInSince.Value);
+        => AudienceLoggedInSince.ToInvariantDate() ?? string.Empty;
 
     private static string FormatLocal(LocalDateTime? local)
         => local is null ? string.Empty : DateFormattingExtensions.PlacementDateTimePattern.Format(local.Value);
@@ -251,7 +250,7 @@ internal sealed class SurveyBuilderViewModel
     }
 
     internal static Dictionary<string, string> ToDict(LocalizedText text)
-        => new(text.Values, StringComparer.Ordinal);
+        => new(text.Values, StringComparer.OrdinalIgnoreCase);
 
     internal static Instant? ToInstant(LocalDateTime? local, DateTimeZone zone)
         => local?.InZoneLeniently(zone).ToInstant();
@@ -268,13 +267,13 @@ internal sealed class SurveyQuestionBuilderViewModel
     public Guid? Id { get; set; }
     public int PageNumber { get; set; } = 1;
     public SurveyQuestionType Type { get; set; } = SurveyQuestionType.SingleChoice;
-    public Dictionary<string, string> Prompt { get; set; } = new(StringComparer.Ordinal);
-    public Dictionary<string, string> HelpText { get; set; } = new(StringComparer.Ordinal);
+    public Dictionary<string, string> Prompt { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+    public Dictionary<string, string> HelpText { get; set; } = new(StringComparer.OrdinalIgnoreCase);
     public bool IsRequired { get; set; }
     public int? RatingMin { get; set; }
     public int? RatingMax { get; set; }
-    public Dictionary<string, string> RatingMinLabel { get; set; } = new(StringComparer.Ordinal);
-    public Dictionary<string, string> RatingMaxLabel { get; set; } = new(StringComparer.Ordinal);
+    public Dictionary<string, string> RatingMinLabel { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+    public Dictionary<string, string> RatingMaxLabel { get; set; } = new(StringComparer.OrdinalIgnoreCase);
     public GridSelectionMode? GridSelectionMode { get; set; }
     public bool RankedAllowEqualRanks { get; set; } = true;
     public bool RankedAllowReject { get; set; }
@@ -348,8 +347,8 @@ internal sealed class SurveyQuestionBuilderViewModel
 internal sealed class SurveyInformationImageBuilderViewModel
 {
     public Guid? Id { get; set; }
-    public Dictionary<string, string> Label { get; set; } = new(StringComparer.Ordinal);
-    public Dictionary<string, string> AltText { get; set; } = new(StringComparer.Ordinal);
+    public Dictionary<string, string> Label { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+    public Dictionary<string, string> AltText { get; set; } = new(StringComparer.OrdinalIgnoreCase);
     public string? ExistingStoragePath { get; set; }
     public string? ExistingFileName { get; set; }
     public IFormFile? Upload { get; set; }
@@ -399,7 +398,7 @@ internal sealed class SurveyOptionBuilderViewModel
 {
     public Guid? Id { get; set; }
     public string Value { get; set; } = string.Empty;
-    public Dictionary<string, string> Label { get; set; } = new(StringComparer.Ordinal);
+    public Dictionary<string, string> Label { get; set; } = new(StringComparer.OrdinalIgnoreCase);
 
     public OptionInput ToInput(int order) => new(Id, order, Value, new LocalizedText(Label));
 
@@ -414,7 +413,7 @@ internal sealed class SurveyOptionBuilderViewModel
 internal sealed class SurveyGridRowBuilderViewModel
 {
     public string Value { get; set; } = string.Empty;
-    public Dictionary<string, string> Label { get; set; } = new(StringComparer.Ordinal);
+    public Dictionary<string, string> Label { get; set; } = new(StringComparer.OrdinalIgnoreCase);
 
     public GridRowInput ToInput() => new(Value, new LocalizedText(Label));
 

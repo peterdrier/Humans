@@ -76,7 +76,7 @@ Two failed patches in a row are a signal that the search strategy is too shallow
 
 ## Hard Limits
 
-- Section-owned persistence and generated migrations are allowed when the refactor needs them. Follow [section-migrations-in-maintenance](../../../memory/process/section-migrations-in-maintenance.md); substantial architecture transitions get explicitly scoped tasks and dedicated PRs. Preserve JSON serialization contracts unless the task authorizes changing them.
+- Section-owned persistence and generated migrations are allowed when the refactor needs them. Follow [`no-hand-edited-migrations`](../../../memory/architecture/no-hand-edited-migrations.md); substantial architecture transitions get explicitly scoped tasks and dedicated PRs. Preserve JSON serialization contracts unless the task authorizes changing them.
 - Do not revert user changes or unrelated work.
 - Do not move debt across sections to win points. Regressions outside the target section count against the change.
 - Public members may be removed when they are internal application surface and the call graph is updated. Preserve reflection/external contracts, Razor action routes, serialized DTO contracts, and public APIs that are intentionally consumed outside the repo.
@@ -150,7 +150,7 @@ Search at least these categories before declaring stasis:
 - full-service dependencies that should be read DTO/read-service dependencies
 - methods where callers only need one or two scalar values from a heavier service path
 - duplicate query/include/call sequences that can become one cohesive read shape
-- large service/repository/controller clusters whose methods naturally split by workflow
+- helper classes a service constructs and forwards to (`XReader`, `XMutations`, ...): move them back into the service ([`one-service-class-no-helpers`](../../../memory/architecture/one-service-class-no-helpers.md)); a big service splits only into separate DI-registered services along natural lines, with Peter's approval, never to lower `classSize`
 - stale public methods, DTO fields, or wrappers no longer used by production code
 - cross-section reads, entity returns, or persistence joins that bypass canonical read models
 - long parameter lists only when the fix is a real domain command/query object, not a parameter bag

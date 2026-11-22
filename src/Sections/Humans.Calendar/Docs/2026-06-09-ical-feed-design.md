@@ -63,7 +63,7 @@ public sealed record CalendarFeedItem(
 // link to /Shifts/Mine and events to /Events/Schedule. Make it configurable for 2027.
 ```
 
-Contributors return absolute `Instant`s — each section resolves its own wall-clock times through `EventSettings.TimeZoneId`. The serializer emits UTC; calendar clients localize.
+Contributors return absolute `Instant`s — each section resolves its own wall-clock times through `EventSettings.TimeZoneId`. The serializer emits one-off items in UTC. Recurring items retain timezone-qualified starts so local meeting times survive DST; finite `UNTIL` cutoffs are converted to UTC without changing their boundary. Calendar clients localize.
 
 ## Coordinator — `ICalFeedService`
 

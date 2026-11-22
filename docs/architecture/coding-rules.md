@@ -13,7 +13,7 @@
 >
 > Reviewer handoff content (the rules passed verbatim to Codex/Gemini/Claude) lives in [`code-review-rules.md`](code-review-rules.md), which intentionally stays as a single file.
 >
-> Architectural narrative (layer responsibilities, table ownership, the §15 caching story) lives in [`design-rules.md`](design-rules.md), which intentionally stays as a single prose document.
+> Architectural narrative (layer responsibilities, table ownership, the caching pattern) lives in [`design-rules.md`](design-rules.md), which intentionally stays as a single prose document.
 
 For a starting point on the most-cited rules:
 

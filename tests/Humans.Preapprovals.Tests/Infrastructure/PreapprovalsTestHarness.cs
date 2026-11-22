@@ -42,10 +42,10 @@ public abstract class PreapprovalsTestHarness : IDisposable
         Users = Substitute.For<IUserService>();
         Users.GetUserInfoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(call => new ValueTask<UserInfo?>(_users.GetValueOrDefault(call.Arg<Guid>())));
-        Users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+        Users.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(call =>
             {
-                var ids = call.Arg<IReadOnlyCollection<Guid>>();
+                var ids = call.Arg<IEnumerable<Guid>>();
                 IReadOnlyDictionary<Guid, UserInfo> dict = ids.Distinct()
                     .Where(_users.ContainsKey)
                     .ToDictionary(id => id, id => _users[id]);
@@ -84,8 +84,13 @@ public abstract class PreapprovalsTestHarness : IDisposable
 
     /// <summary>The service over the real repository and the substitutes above.</summary>
     private protected PreapprovalService NewService(PreapprovalsEmails? emailFactory = null) => new(
-        new PreapprovalRepository(DbFactory), Users, Finance, Notifications, NotificationResolve,
-        Email, emailFactory ?? EmailFactory, AuditLog, Clock, Logger);
+        FixedOrgTimeZone.Madrid, new PreapprovalRepository(DbFactory), Users, Finance, NewNotices(emailFactory), AuditLog, Clock, Logger);
+
+    private protected PreapprovalNotices NewNotices(PreapprovalsEmails? emailFactory = null) => new(
+        Users, Notifications, NotificationResolve, Email, emailFactory ?? EmailFactory, Logger);
+
+    private protected PreapprovalDeadlineReminders NewReminders() => new(
+        FixedOrgTimeZone.Madrid, new PreapprovalRepository(DbFactory), NewNotices(), AuditLog, Clock, Logger);
 
     /// <summary>A fresh context over the same store — what a test reads back through.</summary>
     private protected PreapprovalsDbContext OpenContext() => DbFactory.CreateDbContext();
@@ -101,7 +106,7 @@ public abstract class PreapprovalsTestHarness : IDisposable
             userId, burnerName, false, language, null, Instant.FromUtc(2026, 1, 1, 0, 0),
             null, null, null, null, null, null,
             null, null, null, [], [],
-            UserFixtures.Profile(burnerName: burnerName))
+            UserFixtures.Profile())
         { IdentityEmailColumn = $"{userId}@example.org", MergedUserIds = mergedIds ?? [] };
         return userId;
     }

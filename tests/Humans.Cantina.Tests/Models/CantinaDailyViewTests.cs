@@ -34,13 +34,12 @@ public sealed class CantinaDailyViewTests
         using var culture = new CultureScope("en");
         var userId = Guid.NewGuid();
         const string name = "Current <script>&";
-        const string medical = "PRIVATE MEDICAL CONDITION";
         const string allergy = "Private allergy note";
         const string intolerance = "Private intolerance note";
         var users = Substitute.For<IUserService>();
         users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(
             UserInfo.Create(new User { Id = userId, BurnerName = name }, [], [],
-                UserFixtures.Profile(medicalConditions: medical)));
+                UserFixtures.Profile()));
         var matrix = new DailyMatrixDto(0, new LocalDate(2026, 7, 7), new LocalDate(2026, 7, 7), "Event", 0, 2, 1,
         [
             new(userId, "Stored known name", "Vegan", new HashSet<string>(StringComparer.Ordinal) { DietaryOptions.OtherOption }, allergy,
@@ -51,7 +50,7 @@ public sealed class CantinaDailyViewTests
         var html = await RenderAsync(matrix, users, revealed);
 
         html.Should().Contain(HtmlEncoder.Default.Encode(name)).And.NotContain(name)
-            .And.NotContain("Stored known name").And.NotContain("Stored missing name").And.NotContain(medical);
+            .And.NotContain("Stored known name").And.NotContain("Stored missing name");
         html.Should().Contain(HtmlEncoder.Default.Encode(new ResourceManager(typeof(SharedResource))
             .GetString("Common_Unknown", CultureInfo.CurrentUICulture)!));
         html.Contains(allergy, StringComparison.Ordinal).Should().Be(revealed);

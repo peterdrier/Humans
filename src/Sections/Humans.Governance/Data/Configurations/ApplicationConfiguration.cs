@@ -8,7 +8,7 @@ internal sealed class ApplicationConfiguration : IEntityTypeConfiguration<Member
 {
     public void Configure(EntityTypeBuilder<MemberApplication> builder)
     {
-        builder.ToTable("applications");
+        builder.ToTable("governance_applications");
 
         builder.HasKey(a => a.Id);
 

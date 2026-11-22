@@ -1,14 +1,26 @@
 using System.Security.Claims;
 using Humans.Governance.Controllers;
 using Humans.Governance.Tests.Infrastructure;
+using Microsoft.AspNetCore.Authorization;
+using Humans.Base.Authorization;
+using Humans.Governance.Models;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using NSubstitute.Core;
 using AwesomeAssertions;
 using Humans.Consent.Contracts;
 using Humans.Governance.Contracts;
+using Humans.Auth.Contracts;
+using Humans.Base.Constants;
+using Humans.Governance.Data;
+using Humans.Governance.Domain;
 using Humans.Governance.Services;
+using Humans.Governance.Services.Dtos;
 using Humans.Users.Contracts;
+using Humans.AuditLog.Contracts;
+using Humans.Google.Contracts;
+using Humans.Teams.Contracts;
+using Microsoft.EntityFrameworkCore;
 using NodaTime;
 using NSubstitute;
 using Xunit;
@@ -17,18 +29,123 @@ namespace Humans.Governance.Tests.Services;
 
 public sealed class GovernanceIndexServiceTests
 {
-    private readonly IGovernanceService Applications = Substitute.For<IGovernanceService>();
+    private readonly IGovernanceManagement Applications = Substitute.For<IGovernanceManagement>();
+    private readonly IApplicationRepository TierApplications = Substitute.For<IApplicationRepository>();
     private readonly ILegalDocumentService LegalDocuments = Substitute.For<ILegalDocumentService>();
     private readonly IUserService Users = Substitute.For<IUserService>();
+    private readonly IAssemblyVoteService Votes = Substitute.For<IAssemblyVoteService>();
+    private readonly IRoleAssignmentService Roles = Substitute.For<IRoleAssignmentService>();
+    private readonly HashSet<Guid> _inactive = [];
+    private readonly GovernanceBodyRepository _bodies = new(new TestDbContextFactory<GovernanceDbContext>(
+        new DbContextOptionsBuilder<GovernanceDbContext>().UseInMemoryDatabase(Guid.NewGuid().ToString()).Options));
 
     private GovernanceIndexService CreateService()
     {
+        var clock = new NodaTime.Testing.FakeClock(Instant.FromUtc(2026, 10, 17, 12, 0));
         LegalDocuments.GetDocumentContentAsync("statutes", Arg.Any<CancellationToken>())
             .Returns(new Dictionary<string, string>(StringComparer.Ordinal));
         Users.GetAllUserInfosAsync(Arg.Any<CancellationToken>())
             .Returns((IReadOnlyList<UserInfo>)[]);
-        return new GovernanceIndexService(Applications, LegalDocuments,
-            new NodaTime.Testing.FakeClock(Instant.FromUtc(2026, 10, 17, 12, 0)));
+        Users.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(call => ValueTask.FromResult<IReadOnlyDictionary<Guid, UserInfo>>(call.Arg<IEnumerable<Guid>>().Distinct()
+                .ToDictionary(id => id, id => UserInfo.Create(
+                    new User { Id = id, BurnerName = "Member", CreatedAt = clock.GetCurrentInstant() },
+                    [], [], _inactive.Contains(id) ? null : UserFixtures.Profile()))));
+        return new GovernanceIndexService(Applications, LegalDocuments, Votes, Roles, Users, BodyLinks(),
+            new GovernanceBodyRosters(TierApplications, Roles, clock));
+    }
+
+    private Task StoreLinksAsync(GovernanceBody body, string prefix) =>
+        _bodies.ReplaceAsync(new GovernanceBodyLinks
+        {
+            Body = body,
+            GoogleGroupPrefix = prefix,
+            Files = [new GovernanceBodyFile { Id = Guid.NewGuid(), Body = body, GoogleId = "f", Name = "Folder",
+                ResourceType = GoogleResourceType.DriveFolder, PermissionLevel = DrivePermissionLevel.Viewer }],
+        });
+
+    [HumansTheory]
+    [InlineData(true, false, true)]
+    [InlineData(false, true, true)]
+    [InlineData(false, false, false)]
+    public async Task Body_page_shows_links_only_to_members_and_board_or_admin(bool isMember, bool boardOrAdmin, bool expected)
+    {
+        var viewer = Guid.NewGuid();
+        Users.GetUserInfoAsync(viewer, Arg.Any<CancellationToken>())
+            .Returns(UserInfoFixtures.FromUser(new User { Id = viewer, DisplayName = "Viewer", Email = "viewer@example.com" }));
+        TierApplications.GetActiveApprovedTierUserIdsAsync(MembershipTier.Asociado, Arg.Any<LocalDate>(), Arg.Any<CancellationToken>())
+            .Returns(isMember ? [viewer, Guid.NewGuid()] : [Guid.NewGuid()]);
+        await StoreLinksAsync(GovernanceBody.Asociados, "asociados");
+        var authorization = Substitute.For<IAuthorizationService>();
+        authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), PolicyNames.BoardOrAdmin)
+            .Returns(boardOrAdmin ? AuthorizationResult.Success() : AuthorizationResult.Failed());
+
+        var result = await CreateController(viewer, authorization).Body("Asociados");
+
+        var model = result.Should().BeOfType<ViewResult>().Which.Model.Should().BeOfType<GovernanceBodyViewModel>().Which;
+        (model.Links is not null).Should().Be(expected);
+        (model.Manage is not null).Should().Be(boardOrAdmin, "only Board and Admin manage a body's links");
+        model.MemberIds.Should().HaveCount(isMember ? 2 : 1, "everyone signed in sees the members");
+    }
+
+    [HumansFact]
+    public async Task A_member_who_is_not_Board_or_Admin_cannot_change_a_bodys_links()
+    {
+        var viewer = Guid.NewGuid();
+        Users.GetUserInfoAsync(viewer, Arg.Any<CancellationToken>())
+            .Returns(UserInfoFixtures.FromUser(new User { Id = viewer, DisplayName = "Viewer", Email = "viewer@example.com" }));
+        await StoreLinksAsync(GovernanceBody.Asociados, "asociados");
+        var authorization = Substitute.For<IAuthorizationService>();
+        authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), PolicyNames.BoardOrAdmin)
+            .Returns(AuthorizationResult.Failed());
+        var controller = CreateController(viewer, authorization);
+
+        (await controller.SetGroup("Asociados", "taken-over")).Should().BeOfType<ForbidResult>();
+        (await controller.AddFile("Asociados", "https://drive.google.com/drive/folders/x", DrivePermissionLevel.Manager))
+            .Should().BeOfType<ForbidResult>();
+        (await controller.RemoveFile("Asociados", Guid.NewGuid())).Should().BeOfType<ForbidResult>();
+
+        (await _bodies.GetAllAsync(TestContext.Current.CancellationToken)).Single().GoogleGroupPrefix.Should().Be("asociados");
+    }
+
+    [HumansFact]
+    public async Task A_board_member_is_a_member_since_the_earlier_of_their_seat_and_approval()
+    {
+        var viewer = Guid.NewGuid();
+        var approved = Instant.FromUtc(2026, 9, 12, 0, 0);
+        var seated = Instant.FromUtc(2024, 3, 1, 0, 0);
+        Applications.GetUserApplicationsAsync(viewer, Arg.Any<CancellationToken>()).Returns([
+            new UserApplicationSnapshot(Guid.NewGuid(), viewer, ApplicationStatus.Approved, MembershipTier.Asociado,
+                approved, approved, new LocalDate(2027, 12, 31), "m", null, null, null)]);
+        TierApplications.GetActiveApprovedTierUserIdsAsync(MembershipTier.Asociado, Arg.Any<LocalDate>(), Arg.Any<CancellationToken>())
+            .Returns([viewer]);
+        Roles.GetActiveUserIdsInRoleAsync(RoleNames.Board, Arg.Any<CancellationToken>()).Returns([viewer]);
+        Roles.GetByUserIdAsync(viewer, Arg.Any<CancellationToken>()).Returns([
+            new RoleAssignmentSummarySnapshot(Guid.NewGuid(), viewer, null, "Viewer", RoleNames.Board, seated, null, null,
+                Guid.NewGuid(), null, seated)]);
+
+        var data = await CreateService().GetIndexDataAsync(viewer);
+
+        data.CurrentTier.Should().Be(MembershipTier.Asociado);
+        data.MemberSince.Should().Be(seated);
+    }
+
+    [HumansFact]
+    public async Task Rosters_leave_out_inactive_accounts_and_your_access_lists_only_your_bodies()
+    {
+        var viewer = Guid.NewGuid();
+        var gone = Guid.NewGuid();
+        _inactive.Add(gone);
+        Applications.GetUserApplicationsAsync(viewer, Arg.Any<CancellationToken>()).Returns([]);
+        TierApplications.GetActiveApprovedTierUserIdsAsync(MembershipTier.Asociado, Arg.Any<LocalDate>(), Arg.Any<CancellationToken>())
+            .Returns([viewer, gone]);
+        await StoreLinksAsync(GovernanceBody.Asociados, "asociados");
+        await StoreLinksAsync(GovernanceBody.Board, "board");
+
+        var data = await CreateService().GetIndexDataAsync(viewer);
+
+        data.AsociadoCount.Should().Be(1);
+        data.YourAccess.Select(l => l.Body).Should().Equal(GovernanceBody.Asociados);
     }
 
     [HumansFact]
@@ -37,10 +154,10 @@ public sealed class GovernanceIndexServiceTests
         var userId = Guid.NewGuid();
         Applications.GetUserApplicationsAsync(userId, Arg.Any<CancellationToken>())
             .Returns([]);
-        Applications.GetActiveApprovedTierUserIdsAsync(
+        TierApplications.GetActiveApprovedTierUserIdsAsync(
                 MembershipTier.Colaborador, Arg.Any<LocalDate>(), Arg.Any<CancellationToken>())
             .Returns([userId]);
-        Applications.GetActiveApprovedTierUserIdsAsync(
+        TierApplications.GetActiveApprovedTierUserIdsAsync(
                 MembershipTier.Asociado, Arg.Any<LocalDate>(), Arg.Any<CancellationToken>())
             .Returns([userId, Guid.NewGuid()]);
 
@@ -61,6 +178,43 @@ public sealed class GovernanceIndexServiceTests
         await CreateService().GetIndexDataAsync(Guid.NewGuid(), cancellation.Token);
 
         await LegalDocuments.Received(1).GetDocumentContentAsync("statutes", cancellation.Token);
+    }
+
+    private static AssemblyVoteListItem Vote(AssemblyVoteStatus status, int closesOnDay) =>
+        new(Guid.NewGuid(), $"{status} {closesOnDay}", status, AssemblyVoteKind.YesNo,
+            Instant.FromUtc(2026, 11, closesOnDay, 12, 0), null, IsOnRoster: true, IsOfficial: true, HasBallot: false,
+            new AssemblyVoteParticipation(0, 0, 0, 0, 0, 0, null));
+
+    [HumansFact]
+    public async Task GetIndexDataAsync_lists_only_open_votes()
+    {
+        var userId = Guid.NewGuid();
+        Applications.GetUserApplicationsAsync(userId, Arg.Any<CancellationToken>()).Returns([]);
+        var later = Vote(AssemblyVoteStatus.Open, 20);
+        var sooner = Vote(AssemblyVoteStatus.Open, 10);
+        Votes.GetVotesForMemberAsync(userId, Arg.Any<CancellationToken>())
+            .Returns([later, Vote(AssemblyVoteStatus.Closed, 1), sooner, Vote(AssemblyVoteStatus.Cancelled, 5)]);
+
+        var data = await CreateService().GetIndexDataAsync(userId);
+
+        data.OpenVotes.Should().BeEquivalentTo([later, sooner]);
+    }
+
+    [HumansTheory]
+    [InlineData(true, 3)]
+    [InlineData(false, 0)]
+    public async Task GetIndexDataAsync_counts_unvoted_applications_only_for_board_members(bool onBoard, int expected)
+    {
+        var userId = Guid.NewGuid();
+        Applications.GetUserApplicationsAsync(userId, Arg.Any<CancellationToken>()).Returns([]);
+        Applications.GetUnvotedApplicationCountAsync(userId, Arg.Any<CancellationToken>()).Returns(3);
+        Roles.GetActiveUserIdsInRoleAsync(RoleNames.Board, Arg.Any<CancellationToken>())
+            .Returns(onBoard ? [userId, Guid.NewGuid()] : [Guid.NewGuid()]);
+
+        var data = await CreateService().GetIndexDataAsync(userId);
+
+        data.UnvotedApplicationCount.Should().Be(expected);
+        data.BoardMemberIds.Should().HaveCount(onBoard ? 2 : 1);
     }
 
     private static UserApplicationSnapshot Approved(Guid userId, LocalDate? termExpiresAt) =>
@@ -100,7 +254,7 @@ public sealed class GovernanceIndexServiceTests
     {
         using var cancellation = new CancellationTokenSource();
         var userId = Guid.NewGuid();
-        var user = new User { Id = userId, DisplayName = "Member", Email = "member@example.com" }.ToUserInfo();
+        var user = UserInfoFixtures.FromUser(new User { Id = userId, DisplayName = "Member", Email = "member@example.com" });
         var abandon = false;
         async ValueTask<UserInfo?> ReadUserAsync(CallInfo call)
         {
@@ -114,17 +268,7 @@ public sealed class GovernanceIndexServiceTests
             call.Arg<CancellationToken>().ThrowIfCancellationRequested();
             return Task.FromResult<IReadOnlyList<UserApplicationSnapshot>>([]);
         });
-        var controller = new GovernanceController(Users, CreateService())
-        {
-            ControllerContext = new ControllerContext
-            {
-                HttpContext = new DefaultHttpContext
-                {
-                    RequestAborted = cancellation.Token,
-                    User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, userId.ToString())], "Test")),
-                }
-            },
-        };
+        var controller = CreateController(userId, Substitute.For<IAuthorizationService>(), cancellation.Token);
 
         (await controller.Index()).Should().BeOfType<ViewResult>();
         abandon = true;
@@ -132,4 +276,28 @@ public sealed class GovernanceIndexServiceTests
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => controller.Index());
     }
 
+    private GovernanceBodyLinksService BodyLinks() =>
+        new(_bodies, Substitute.For<ITeamService>(), Substitute.For<ITeamResourceService>(), Substitute.For<IAuditLogService>(),
+            new GovernanceBodySync(_bodies, Substitute.For<IGoogleGroupSync>(), Substitute.For<IGoogleSyncWrite>()),
+            NodaTime.SystemClock.Instance);
+
+    private GovernanceController CreateController(Guid userId, IAuthorizationService authorization, CancellationToken ct = default) =>
+        new(Users, CreateService(),
+            new GovernanceBoardSeats(Roles, Substitute.For<IRoleAssignmentWrite>(), Users, _bodies,
+                Substitute.For<IAuditLogService>(),
+                new GovernanceBodySync(_bodies, Substitute.For<IGoogleGroupSync>(), Substitute.For<IGoogleSyncWrite>()),
+                NodaTime.SystemClock.Instance),
+            BodyLinks(),
+            authorization,
+            Substitute.For<Microsoft.Extensions.Localization.IStringLocalizer<GovernanceResource>>())
+        {
+            ControllerContext = new ControllerContext
+            {
+                HttpContext = new DefaultHttpContext
+                {
+                    RequestAborted = ct,
+                    User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, userId.ToString())], "Test")),
+                }
+            },
+        };
 }

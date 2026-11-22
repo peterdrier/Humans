@@ -4,13 +4,12 @@
     ViewData["Title"] = Model.IsAdminView ? "Agent Conversations" : Localizer["Agent_HistoryTitle"].Value;
 }
 
-<div class="d-flex justify-content-between align-items-center mb-3">
-    <h2 class="mb-0">@ViewData["Title"]</h2>
+<page-header title="@(ViewData["Title"] as string)">
     @if (Model.IsAdminView)
     {
         <a href="/Settings#agent" class="btn btn-outline-secondary btn-sm">Settings</a>
     }
-</div>
+</page-header>
 
 @if (Model.IsAdminView)
 {
@@ -33,8 +32,6 @@
 }
 else
 {
-    Func<AgentConversationListSnapshot, IHtmlContent> humanCell =
-        @<text><vc:human user-id="@item.UserId" link="Admin" /></text>;
     Func<AgentConversationListSnapshot, IHtmlContent> startedCell =
         @<text><span class="text-nowrap">@item.StartedAt.ToInvariantTimestamp()</span></text>;
     Func<AgentConversationListSnapshot, IHtmlContent> lastMessageCell =
@@ -46,7 +43,7 @@ else
     var b = TableModel.For(Model.Rows);
     if (Model.IsAdminView)
     {
-        b = b.Template("Human", humanCell);
+        b = b.Human("Human", r => r.UserId, HumanLink.Admin);
     }
     b = b.Template(Localizer["Agent_HistoryStarted"].Value, startedCell);
     if (Model.IsAdminView)

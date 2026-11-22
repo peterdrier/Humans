@@ -137,9 +137,6 @@
     <value>Estatuts</value>
   </data>
   <data name="Governance_Statutes_ContentNotAvailable" xml:space="preserve"><value>Contingut no disponible.</value></data>
-  <data name="Governance_MemberCounts" xml:space="preserve">
-    <value>Comunitat</value>
-  </data>
   <data name="Governance_Colaboradores" xml:space="preserve">
     <value>Col·laboradors</value>
   </data>
@@ -199,9 +196,6 @@
   </data>
   <data name="Governance_ApplicationDetail_ApplicationInfo" xml:space="preserve">
     <value>Informació de la sol·licitud</value>
-  </data>
-  <data name="Governance_ApplicationDetail_ReviewStarted" xml:space="preserve">
-    <value>Revisió iniciada</value>
   </data>
   <data name="Governance_ApplicationDetail_ReviewedBy" xml:space="preserve">
     <value>Revisada per</value>
@@ -745,4 +739,103 @@
   <data name="Governance_BoardVoting_NoteTooLong" xml:space="preserve"><value>La nota ha de tenir com a màxim 4000 caràcters. El teu vot no s’ha modificat.</value></data>
   <data name="Governance_BoardVoting_DecisionNoteTooLong" xml:space="preserve"><value>La nota de la decisió ha de tenir com a màxim 4000 caràcters. La sol·licitud no s’ha finalitzat.</value></data>
   <data name="Governance_BoardVoting_DecisionNoteRequired" xml:space="preserve"><value>Per rebutjar una sol·licitud cal una nota de la decisió. La sol·licitud no s’ha finalitzat.</value></data>
+  <data name="Governance_BoardMembers" xml:space="preserve"><value>Membres de la Junta</value></data>
+  <data name="Governance_TheBoard" xml:space="preserve"><value>La Junta</value></data>
+  <data name="Governance_NoBoardMembers" xml:space="preserve"><value>Ara mateix ningú no té el rol de la Junta.</value></data>
+  <data name="Governance_Body_MemberCount" xml:space="preserve"><value>{0} membres</value></data>
+  <data name="Governance_Body_NoMembers" xml:space="preserve"><value>Ara mateix no hi ha ningú en aquest grup.</value></data>
+  <data name="Governance_GroupAndFiles" xml:space="preserve"><value>Grup i fitxers de Google</value></data>
+  <data name="Governance_YourAccess" xml:space="preserve"><value>El teu accés a Google</value></data>
+  <data name="Governance_ViewAll" xml:space="preserve"><value>Veure tots</value></data>
+  <data name="Governance_ManageBoard" xml:space="preserve"><value>Gestionar membres de la Junta</value></data>
+  <data name="Governance_FindPerson" xml:space="preserve"><value>Cerca una persona</value></data>
+  <data name="Governance_AddBoardMember" xml:space="preserve"><value>Afegeix a la Junta</value></data>
+  <data name="Governance_EndBoardSeat" xml:space="preserve"><value>Finalitza</value></data>
+  <data name="Governance_BoardMemberAdded" xml:space="preserve"><value>{0} ja forma part de la Junta.</value></data>
+  <data name="Governance_BoardMemberEnded" xml:space="preserve"><value>{0} ja no forma part de la Junta.</value></data>
+  <data name="Governance_BoardMemberAlreadyOn" xml:space="preserve"><value>{0} ja és a la Junta.</value></data>
+  <data name="Governance_BoardMemberNotOn" xml:space="preserve"><value>{0} no és a la Junta.</value></data>
+  <data name="Governance_NeedsDecision" xml:space="preserve"><value>Pendent de decisió</value></data>
+  <data name="Governance_NothingToDecide" xml:space="preserve"><value>Ara mateix no hi ha res obert per decidir.</value></data>
+  <data name="Governance_AllVotes" xml:space="preserve"><value>Totes les votacions</value></data>
+  <data name="Governance_CastVote" xml:space="preserve"><value>Vota</value></data>
+  <data name="Governance_UnvotedApplications" xml:space="preserve"><value>Sol·licituds de nivell pendents del teu vot: {0}</value></data>
+  <data name="Governance_ReviewApplications" xml:space="preserve"><value>Revisa</value></data>
+  <data name="Governance_YourMembership" xml:space="preserve"><value>La teva membresia</value></data>
+  <data name="Governance_Application_AsociadoQuestionsHeader" xml:space="preserve">
+    <value>Preguntes addicionals per a sol·licitants d'Associat</value>
+  </data>
+  <data name="Governance_Application_SignificantContribution" xml:space="preserve">
+    <value>Quina ha estat la teva contribució més significativa a Elsewhere?</value>
+  </data>
+  <data name="Governance_Application_SignificantContributionPlaceholder" xml:space="preserve">
+    <value>Si no se t'acudeix cap, però has contribuït significativament a un altre Burn, explica'ns-ho.</value>
+  </data>
+  <data name="Governance_Application_SignificantContributionRequired" xml:space="preserve">
+    <value>Si us plau, descriu la teva contribució més significativa per a una sol·licitud d'Associat.</value>
+  </data>
+  <data name="Governance_Application_RoleUnderstanding" xml:space="preserve">
+    <value>Amb les teves pròpies paraules, què entens que és el rol d'un associat i per què vols aquesta responsabilitat?</value>
+  </data>
+  <data name="Governance_Application_RoleUnderstandingPlaceholder" xml:space="preserve">
+    <value>Explica'ns què significa aquest rol per a tu i per què hi estàs preparat/da.</value>
+  </data>
+  <data name="Governance_Application_RoleUnderstandingRequired" xml:space="preserve">
+    <value>Si us plau, descriu la teva comprensió del rol d'associat.</value>
+  </data>
+  <data name="Governance_Application_AlreadyPending" xml:space="preserve">
+    <value>Ja tens una sol·licitud pendent.</value>
+  </data>
+  <data name="Governance_Application_InvalidTier" xml:space="preserve">
+    <value>Selecciona Col·laborador o Associat per a la teva sol·licitud.</value>
+  </data>
+  <data name="Governance_Application_ConfirmAccuracy" xml:space="preserve">
+    <value>Has de confirmar la veracitat de la teva informació.</value>
+  </data>
+  <data name="Governance_Application_Submitted" xml:space="preserve">
+    <value>La teva sol·licitud s'ha enviat correctament!</value>
+  </data>
+  <data name="Governance_Application_SubmitError" xml:space="preserve">
+    <value>Alguna cosa ha anat malament en enviar la teva sol·licitud. Si us plau, torna-ho a provar.</value>
+  </data>
+  <data name="Governance_Application_CannotWithdraw" xml:space="preserve">
+    <value>Aquesta sol·licitud no pot ser retirada.</value>
+  </data>
+  <data name="Governance_Application_Withdrawn" xml:space="preserve">
+    <value>La teva sol·licitud s'ha retirat.</value>
+  </data>
+  <data name="Governance_Application_MotivationLength" xml:space="preserve"><value>La motivació ha de tenir entre 50 i 2000 caràcters.</value></data>
+  <data name="Governance_Application_AdditionalInfoTooLong" xml:space="preserve"><value>La informació addicional no ha de superar els 1000 caràcters.</value></data>
+  <data name="Governance_Application_SignificantContributionTooLong" xml:space="preserve"><value>La contribució significativa no ha de superar els 2000 caràcters.</value></data>
+  <data name="Governance_Application_RoleUnderstandingTooLong" xml:space="preserve"><value>L’explicació del rol no ha de superar els 2000 caràcters.</value></data>
+  <data name="Governance_Application_MotivationRequired" xml:space="preserve">
+    <value>Es requereix una declaració de motivació per a les sol·licituds de Col·laborador i Associat.</value>
+  </data>
+  <data name="Governance_Meter_ApplicationsPendingVote" xml:space="preserve"><value>Sol·licituds pendents del teu vot</value></data>
+  <data name="Governance_Meter_AudienceBoard" xml:space="preserve"><value>la Junta</value></data>
+  <data name="Governance_Status_Board" xml:space="preserve"><value>Junta</value></data>
+  <data name="Governance_MemberSince" xml:space="preserve"><value>Membre des de</value></data>
+  <data name="Governance_Position" xml:space="preserve"><value>Càrrec</value></data>
+  <data name="Governance_Position_President" xml:space="preserve"><value>Presidència</value></data>
+  <data name="Governance_Position_VicePresident" xml:space="preserve"><value>Vicepresidència</value></data>
+  <data name="Governance_Position_Secretary" xml:space="preserve"><value>Secretaria</value></data>
+  <data name="Governance_Position_Treasurer" xml:space="preserve"><value>Tresoreria</value></data>
+  <data name="Governance_Position_None" xml:space="preserve"><value>Sense càrrec</value></data>
+  <data name="Governance_Save" xml:space="preserve"><value>Desa</value></data>
+  <data name="Governance_BoardPositionSaved" xml:space="preserve"><value>Càrrec de la Junta desat.</value></data>
+  <data name="Governance_BoardPositionNotOnBoard" xml:space="preserve"><value>Només un membre actual de la Junta pot ocupar un càrrec.</value></data>
+  <data name="Governance_Manage_Title" xml:space="preserve"><value>Gestionar grup i fitxers</value></data>
+  <data name="Governance_Manage_GroupName" xml:space="preserve"><value>Grup de Google</value></data>
+  <data name="Governance_Manage_NoFiles" xml:space="preserve"><value>Encara no hi ha carpetes ni fitxers de Drive.</value></data>
+  <data name="Governance_Manage_Remove" xml:space="preserve"><value>Treu</value></data>
+  <data name="Governance_Manage_DriveLink" xml:space="preserve"><value>Enllaç de Drive</value></data>
+  <data name="Governance_Manage_Access" xml:space="preserve"><value>Accés</value></data>
+  <data name="Governance_Manage_AddFile" xml:space="preserve"><value>Afegeix</value></data>
+  <data name="Governance_Manage_GroupSaved" xml:space="preserve"><value>Grup de Google desat.</value></data>
+  <data name="Governance_Manage_FileAdded" xml:space="preserve"><value>Carpeta o fitxer de Drive afegit.</value></data>
+  <data name="Governance_Manage_FileRemoved" xml:space="preserve"><value>Carpeta o fitxer de Drive tret. La compartició es queda com està.</value></data>
+  <data name="Governance_Manage_InvalidGroupName" xml:space="preserve"><value>Fes servir només minúscules, números i guions per al nom del grup.</value></data>
+  <data name="Governance_Manage_GroupNameTaken" xml:space="preserve"><value>Un altre òrgan ja fa servir aquest grup.</value></data>
+  <data name="Governance_Manage_FileAlreadyLinked" xml:space="preserve"><value>Aquesta carpeta o fitxer de Drive ja és a la llista.</value></data>
+  <data name="Governance_Manage_FileNotFound" xml:space="preserve"><value>Aquesta carpeta o fitxer de Drive ja no és a la llista.</value></data>
 </root>

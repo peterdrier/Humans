@@ -17,6 +17,8 @@ using Humans.Notifications.Contracts;
 using Microsoft.Extensions.DependencyInjection;
 using Humans.AuditLog.Contracts;
 
+[assembly: Humans.Base.Demo.NoDemoStory("No demo story written yet.")]
+
 namespace Humans.Issues;
 
 /// <summary>
@@ -48,7 +50,6 @@ public sealed class Section : ISection, ISectionAdminNav, ISectionChrome, ISecti
 
         services.AddScoped<IssuesService>();
         services.AddScoped<IIssuesService>(sp => sp.GetRequiredService<IssuesService>());
-        services.AddScoped<IIssuesRetention>(sp => sp.GetRequiredService<IssuesService>());
         services.AddScoped<IIssueTriage>(sp => sp.GetRequiredService<IssuesService>());
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<IssuesService>());
 

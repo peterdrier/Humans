@@ -70,7 +70,7 @@ internal sealed record ProgramSave(
     IReadOnlyList<Guid> ManagerUserIds);
 
 /// <summary>The refusal is shown as is: admin pages are English-only.</summary>
-internal record GrantMutationResult(string? Refusal = null)
+internal record GrantMutationResult(string? Refusal = null, bool NotFound = false)
 {
     public static readonly GrantMutationResult Ok = new();
 }

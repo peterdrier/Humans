@@ -3,21 +3,25 @@ using Humans.Shifts.Contracts;
 using Humans.Shifts.Models;
 using Humans.Shifts.ViewComponents;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.AspNetCore.Mvc.ViewComponents;
 using NodaTime;
 using NSubstitute;
+using Humans.Shifts.Services;
 
 namespace Humans.Shifts.Tests.ViewComponents;
 
 /// <summary>
-/// Onboarding invokes this component by name, so its arguments are unchecked at compile
-/// time. It takes the event by id and resolves Shifts' own <see cref="BurnSettingsInfo"/>:
-/// handing it Settings' <c>EventSettingsInfo</c> threw an InvalidCastException at render.
+/// It takes the event by id and resolves Shifts' own <see cref="BurnSettingsInfo"/>: handing it Settings'
+/// <c>EventSettingsInfo</c> threw an InvalidCastException at render.
 /// </summary>
 public sealed class OnboardingShiftsListViewComponentTests
 {
     private readonly IBurnSettingsService _burnSettings = Substitute.For<IBurnSettingsService>();
+    private readonly IShiftService _shifts = Substitute.For<IShiftService>();
+    private readonly IShiftView _shiftView = Substitute.For<IShiftView>();
+    private readonly Guid _viewer = Guid.NewGuid();
     private readonly OnboardingShiftsListViewComponent _sut;
 
     private static readonly BurnSettingsInfo Event = new(
@@ -40,13 +44,24 @@ public sealed class OnboardingShiftsListViewComponentTests
 
     public OnboardingShiftsListViewComponentTests()
     {
-        _sut = new OnboardingShiftsListViewComponent(_burnSettings)
+        _sut = new OnboardingShiftsListViewComponent(_burnSettings, _shifts, _shiftView)
         {
             ViewComponentContext = new ViewComponentContext
             {
                 ViewContext = new ViewContext { HttpContext = new DefaultHttpContext() },
             },
         };
+        _shiftView.GetUserAsync(_viewer, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<ShiftUserSummary>(ShiftUserSummary.Empty(_viewer)));
+    }
+
+    private Task<IViewComponentResult> InvokeAsync(Guid eventId, UrgentShiftInfo[] rows, IReadOnlyList<Guid>? shown = null)
+    {
+        _shifts.GetBrowseShiftsAsync(
+                Arg.Is<ShiftBrowseQuery>(q => q.EventSettingsId == eventId && q.ViewerUserId == _viewer),
+                Arg.Any<CancellationToken>())
+            .Returns(rows);
+        return _sut.InvokeAsync(eventId, _viewer, shown ?? rows.Select(u => u.Shift.Id).ToList());
     }
 
     [HumansFact]
@@ -56,7 +71,7 @@ public sealed class OnboardingShiftsListViewComponentTests
 
         var locked = UrgentShiftFixtures.Urgent() with { EarlyEntrySignupsClosed = true };
         var open = UrgentShiftFixtures.Urgent() with { EarlyEntrySignupsClosed = false };
-        var result = await _sut.InvokeAsync(Event.Id, [locked, open], [], new Dictionary<Guid, SignupStatus>());
+        var result = await InvokeAsync(Event.Id, [locked, open]);
 
         var model = result.Should().BeOfType<ViewViewComponentResult>()
             .Which.ViewData!.Model.Should().BeOfType<ShiftBrowseViewModel>().Subject;
@@ -66,9 +81,44 @@ public sealed class OnboardingShiftsListViewComponentTests
     }
 
     [HumansFact]
+    public async Task Unordered_browse_rows_preserve_ranked_rota_and_equal_time_shift_ties()
+    {
+        _burnSettings.GetByIdAsync(Event.Id, Arg.Any<CancellationToken>()).Returns(Event);
+        var low = UrgentShiftFixtures.Urgent(urgencyScore: 1);
+        var other = UrgentShiftFixtures.Urgent(urgencyScore: 10);
+        var high = UrgentShiftFixtures.Urgent(
+            shift: UrgentShiftFixtures.Shift(rotaId: low.Rota.Id), rota: low.Rota, urgencyScore: 10);
+
+        var result = await InvokeAsync(Event.Id, [low, other, high]);
+
+        var model = result.Should().BeOfType<ViewViewComponentResult>()
+            .Which.ViewData!.Model.Should().BeOfType<ShiftBrowseViewModel>().Subject;
+        model.UrgencyRankedRotas.Select(r => r.Rota.Id).Should().Equal(other.Rota.Id, low.Rota.Id);
+        model.UrgencyRankedRotas[1].Shifts.Select(s => s.Shift.Id).Should().Equal(high.Shift.Id, low.Shift.Id);
+    }
+
+    [HumansFact]
+    public async Task Shows_only_the_passed_shifts_with_the_viewers_signups()
+    {
+        _burnSettings.GetByIdAsync(Event.Id, Arg.Any<CancellationToken>()).Returns(Event);
+        var shown = UrgentShiftFixtures.Urgent();
+        var hidden = UrgentShiftFixtures.Urgent();
+        _shiftView.GetUserAsync(_viewer, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<ShiftUserSummary>(ShiftFixtures.UserSummary(_viewer,
+                [ShiftFixtures.Signup(shiftId: shown.Shift.Id, status: SignupStatus.Pending)])));
+
+        var result = await InvokeAsync(Event.Id, [shown, hidden], [shown.Shift.Id]);
+
+        var model = result.Should().BeOfType<ViewViewComponentResult>()
+            .Which.ViewData!.Model.Should().BeOfType<ShiftBrowseViewModel>().Subject;
+        model.UrgencyRankedRotas.Select(r => r.Rota.Id).Should().Equal(shown.Rota.Id);
+        model.UserSignupStatuses[shown.Shift.Id].Should().Be(SignupStatus.Pending);
+    }
+
+    [HumansFact]
     public async Task Renders_nothing_when_the_event_is_unknown()
     {
-        var result = await _sut.InvokeAsync(Guid.NewGuid(), [], [], new Dictionary<Guid, SignupStatus>());
+        var result = await InvokeAsync(Guid.NewGuid(), []);
 
         result.Should().BeOfType<ContentViewComponentResult>()
             .Which.Content.Should().BeEmpty();

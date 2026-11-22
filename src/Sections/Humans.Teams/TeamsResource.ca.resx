@@ -404,33 +404,6 @@
   <data name="Teams_EditTeamPage_Saved" xml:space="preserve">
     <value>Pàgina de l'equip actualitzada.</value>
   </data>
-  <data name="Teams_Birthdays_Title" xml:space="preserve">
-    <value>Calendari d'aniversaris</value>
-  </data>
-  <data name="Teams_Birthdays_Count" xml:space="preserve">
-    <value>{0} aniversaris a {1}</value>
-  </data>
-  <data name="Teams_Birthdays_Count_One" xml:space="preserve">
-    <value>{0} aniversari a {1}</value>
-  </data>
-  <data name="Teams_Birthdays_None" xml:space="preserve">
-    <value>No hi ha aniversaris a {0}.</value>
-  </data>
-  <data name="Teams_Birthdays_Privacy" xml:space="preserve">
-    <value>Només es mostren els humans que han establert el seu aniversari.</value>
-  </data>
-  <data name="Teams_Map_Title" xml:space="preserve">
-    <value>Mapa de Humans</value>
-  </data>
-  <data name="Teams_Map_Count" xml:space="preserve">
-    <value>{0} humans amb ubicació</value>
-  </data>
-  <data name="Teams_Map_None" xml:space="preserve">
-    <value>Cap human no ha establert encara la seva ubicació.</value>
-  </data>
-  <data name="Teams_Map_Privacy" xml:space="preserve">
-    <value>Només es mostren els humans que han establert la seva ubicació. La ubicació és aproximada i es basa en la ciutat.</value>
-  </data>
   <data name="Teams_TeamAdmin_AddMember" xml:space="preserve">
     <value>Afegeix membre</value>
   </data>
@@ -552,4 +525,9 @@
   <data name="Teams_Notification_ReviewRequest" xml:space="preserve"><value>Revisa la sol·licitud</value></data>
   <data name="Teams_Notification_ViewMembers" xml:space="preserve"><value>Mostra els membres</value></data>
   <data name="Teams_Notification_Someone" xml:space="preserve"><value>Algú</value></data>
+  <data name="Teams_Meter_JoinRequestsPending" xml:space="preserve"><value>Sol·licituds d’entrada a equips pendents</value></data>
+  <data name="Teams_Meter_AudienceAdmin" xml:space="preserve"><value>administradors</value></data>
+  <data name="Teams_Search_Category" xml:space="preserve"><value>Equips</value></data>
+  <data name="Teams_Roles_SystemTeam" xml:space="preserve"><value>Els equips del sistema no poden tenir rols.</value></data>
+  <data name="Teams_Roles_InactiveTeam" xml:space="preserve"><value>Aquest equip no està actiu.</value></data>
 </root>

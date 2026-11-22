@@ -32,11 +32,6 @@ namespace Humans.Tickets.Tests.Controllers;
 /// </summary>
 public class TicketControllerTests
 {
-    public enum PreflightRead
-    {
-        Viewer,
-        Settings
-    }
 
     public enum AuditedAction
     {
@@ -44,6 +39,51 @@ public class TicketControllerTests
         ExportAttendees,
         ExportOrders,
         ExportDonations
+    }
+
+    [HumansFact]
+    public async Task ExportDonations_OrdersByPurchaseInstantAndKeepsBothDonationKindsTogether()
+    {
+        var actorId = Guid.NewGuid();
+        var users = Substitute.For<IUserService>();
+        users.GetUserInfoAsync(actorId, Arg.Any<CancellationToken>())
+            .Returns(UserInfo.Create(new User { Id = actorId }, [], [], null));
+        var queries = Substitute.For<ITicketManagement>();
+        var earlier = Instant.FromUtc(2026, 3, 31, 23, 30);
+        var later = Instant.FromUtc(2026, 4, 1, 10, 0);
+        queries.GetDonationExportDataAsync(actorId, Arg.Any<CancellationToken>()).Returns(
+        [
+            new(later, "2026-04-01", "later", "Buyer", "buyer@example.com", DonationExportRow.VipTicket, 85m),
+            new(earlier, "2026-04-01", "earlier", "Buyer", "buyer@example.com", DonationExportRow.VipTicket, 85m),
+            new(earlier, "2026-04-01", "earlier", "Buyer", "buyer@example.com", DonationExportRow.SeparateDonation, 50m),
+        ]);
+        var dashboard = new TicketDashboardPageBuilder(Substitute.For<ITicketVendorService>(),
+            Options.Create(new TicketVendorSettings()), queries, NullLogger<TicketDashboardPageBuilder>.Instance);
+        var controller = new TicketController(queries, Substitute.For<ITicketSyncService>(),
+            Substitute.For<IUserParticipationBackfillService>(), dashboard, users, NullLogger<TicketController>.Instance)
+        {
+            ControllerContext = new ControllerContext
+            {
+                HttpContext = new DefaultHttpContext
+                {
+                    User = new ClaimsPrincipal(new ClaimsIdentity(
+                        [new Claim(ClaimTypes.NameIdentifier, actorId.ToString())], "test")),
+                },
+            },
+        };
+
+        var export = (await controller.ExportDonations()).Should().BeOfType<FileContentResult>().Which;
+
+        export.FileDownloadName.Should().Be("ticketing-donations.csv");
+        using var csv = CsvReader.Create(export.FileContents, HumansCsv.ReadConfig());
+        var rows = new List<(string? OrderId, string? Type, string? Amount)>();
+        while (await csv.ReadAsync())
+            rows.Add((csv.GetString("Order ID"), csv.GetString("Type"), csv.GetString("Amount")));
+        rows.Should().Equal(
+            ("earlier", DonationExportRow.VipTicket, "85"),
+            ("earlier", DonationExportRow.SeparateDonation, "50"),
+            ("later", DonationExportRow.VipTicket, "85"),
+            ("", "", "220"));
     }
 
     [HumansFact]
@@ -146,30 +186,19 @@ public class TicketControllerTests
     }
 
     [HumansTheory]
-    [InlineData(false, PreflightRead.Viewer)]
-    [InlineData(true, PreflightRead.Viewer)]
-    [InlineData(false, PreflightRead.Settings)]
-    [InlineData(true, PreflightRead.Settings)]
-    public async Task AttendanceDeclaration_CancelsPreflightReadsWithoutFailureFeedback(bool undo, PreflightRead boundary)
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task AttendanceDeclaration_CancelsPreflightReadsWithoutFailureFeedback(bool undo)
     {
         using var request = new CancellationTokenSource();
         var id = Guid.NewGuid();
         var users = Substitute.For<IUserService>();
         users.GetUserInfoAsync(id, Arg.Any<CancellationToken>()).Returns(call =>
         {
-            if (boundary == PreflightRead.Viewer)
-            {
-                call.Arg<CancellationToken>().ThrowIfCancellationRequested();
-                return new ValueTask<UserInfo?>((UserInfo?)null);
-            }
-            return new ValueTask<UserInfo?>(UserInfo.Create(new User { Id = id }, [], [], null));
+            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+            return new ValueTask<UserInfo?>((UserInfo?)null);
         });
         var settings = Substitute.For<ISettingsService>();
-        settings.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(call =>
-        {
-            call.Arg<CancellationToken>().ThrowIfCancellationRequested();
-            return Task.FromResult<EventSettingsInfo?>(null);
-        });
         var participations = Substitute.For<IEventParticipationManagement>();
         var localizer = Substitute.For<Microsoft.Extensions.Localization.IStringLocalizer<TicketsResource>>();
         localizer[Arg.Any<string>()].Returns(call => new Microsoft.Extensions.Localization.LocalizedString(call.Arg<string>(), call.Arg<string>()));
@@ -386,31 +415,6 @@ public class TicketControllerTests
         }
     }
 
-    [HumansFact]
-    public async Task ParticipationBackfill_RequestAborted_CancelsDefaultYearRead()
-    {
-        using var aborted = new CancellationTokenSource();
-        await aborted.CancelAsync();
-        var backfill = Substitute.For<IUserParticipationBackfillService>();
-        backfill.GetDefaultYearAsync(aborted.Token)
-            .Returns(Task.FromException<int>(new OperationCanceledException(aborted.Token)));
-        var queries = Substitute.For<ITicketManagement>();
-        var dashboard = new TicketDashboardPageBuilder(Substitute.For<ITicketVendorService>(),
-            Options.Create(new TicketVendorSettings()), queries, NullLogger<TicketDashboardPageBuilder>.Instance);
-        var controller = new TicketController(queries, Substitute.For<ITicketSyncService>(),
-            backfill, dashboard, Substitute.For<IUserService>(), NullLogger<TicketController>.Instance)
-        {
-            ControllerContext = new ControllerContext
-            {
-                HttpContext = new DefaultHttpContext { RequestAborted = aborted.Token },
-            },
-        };
-
-        var act = () => controller.ParticipationBackfill();
-
-        await act.Should().ThrowAsync<OperationCanceledException>();
-    }
-
     [HumansTheory]
     [InlineData(true, true)]
     [InlineData(false, true)]
@@ -540,15 +544,5 @@ public class TicketControllerTests
 
         actions.Should().NotBeEmpty();
         actions.Should().AllSatisfy(a => a.GetCustomAttribute<AuthorizeAttribute>(inherit: false)!.Policy.Should().Be(policy));
-    }
-
-    [HumansFact]
-    public void TransferAdmin_class_reads_and_decisions_manage()
-    {
-        typeof(TicketTransferAdminController).GetCustomAttribute<AuthorizeAttribute>(inherit: false)!.Policy
-            .Should().Be(TicketsPolicies.Read);
-        typeof(TicketTransferAdminController).GetMethod(nameof(TicketTransferAdminController.Decide))!
-            .GetCustomAttribute<AuthorizeAttribute>(inherit: false)!.Policy
-            .Should().Be(TicketsPolicies.Manage);
     }
 }

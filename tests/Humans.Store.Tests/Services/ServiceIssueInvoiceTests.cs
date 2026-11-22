@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Security.Claims;
 using Humans.Store.Controllers;
 using Humans.Users.Contracts;
@@ -30,16 +31,13 @@ namespace Humans.Store.Tests.Services;
 
 /// <summary>
 /// Issuance: the v2 create+approve pipeline, per-line
-/// revenue accounts, tax-0 deposit lines to the fianzas account, the receipt/factura branch, and
+/// revenue accounts, kept deposits and write-offs, the receipt/factura branch, and
 /// both idempotency guards — the local one, and the pre-issue search that adopts a document an
 /// earlier attempt approved before failing to save.
 /// </summary>
 public class ServiceIssueInvoiceTests
 {
     private const int IceAccountNum = 75_900_002;
-    private const int DepositAccountNum = 56_000_000;
-    private const string IceAccountId = "acct-ice";
-    private const string DepositAccountId = "acct-deposit";
 
     private readonly IStoreRepository _repo = Substitute.For<IStoreRepository>();
     private readonly IAuditLogService _audit = Substitute.For<IAuditLogService>();
@@ -47,34 +45,33 @@ public class ServiceIssueInvoiceTests
     private readonly ITeamService _teams = Substitute.For<ITeamService>();
     private readonly ISettingsService _shifts = Substitute.For<ISettingsService>();
     private readonly IStripeService _stripe = Substitute.For<IStripeService>();
-    private readonly IHoldedClient _holded = Substitute.For<IHoldedClient>();
+    private readonly IHoldedService _holdedService = Substitute.For<IHoldedService>();
+    private readonly IHoldedWrite _holded = Substitute.For<IHoldedWrite>();
     private readonly FakeClock _clock = new(Instant.FromUtc(2026, 9, 1, 10, 0));
-    private readonly StoreSectionOptions _options = new()
+    private readonly StoreSettings _settings = new()
     {
-        DepositLiabilityAccountNum = DepositAccountNum,
         SimplifiedInvoiceThresholdEur = 400m,
     };
-    private readonly Service _service;
+    private readonly CatalogService _catalog;
+    private readonly Service _orders;
+    private readonly InvoiceService _service;
 
     private readonly Guid _productId = Guid.NewGuid();
     private readonly Guid _actor = Guid.NewGuid();
 
     public ServiceIssueInvoiceTests()
     {
-        _shifts.GetActiveEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(BurnFixtures.Burn(year: 2026, timeZoneId: "Europe/Madrid"));
+        _shifts.GetActiveEventSettings().Returns(BurnFixtures.Burn(year: 2026, timeZoneId: "Europe/Madrid"));
         _camps.GetCampsForYearAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns(new List<CampInfo>());
-        _holded.IsConfigured.Returns(true);
-        _holded.ListAccountingAccountsAsync(Arg.Any<CancellationToken>()).Returns(
+        _holdedService.IsConfigured.Returns(true);
+        _repo.GetSettingsAsync(Arg.Any<CancellationToken>()).Returns(_settings);
+        _holdedService.GetChartAsync(Arg.Any<CancellationToken>()).Returns(
         [
-            Account(IceAccountNum, IceAccountId),
-            Account(DepositAccountNum, DepositAccountId),
+            Account(IceAccountNum),
         ]);
-        _holded.CreateSalesDocumentAsync(
+        _holded.IssueSalesDocumentAsync(
                 Arg.Any<HoldedSalesDocumentKind>(), Arg.Any<HoldedSalesDocumentInput>(), Arg.Any<CancellationToken>())
-            .Returns("doc-1");
-        _holded.GetSalesDocumentAsync(
-                Arg.Any<HoldedSalesDocumentKind>(), "doc-1", Arg.Any<CancellationToken>())
             .Returns(new HoldedSalesDocumentDto
             {
                 Id = "doc-1",
@@ -87,24 +84,23 @@ public class ServiceIssueInvoiceTests
             });
         _holded.CreateContactAsync(Arg.Any<HoldedContactInput>(), Arg.Any<CancellationToken>())
             .Returns("contact-1");
-        _holded.FindSalesDocumentIdsByTagAsync(
-                Arg.Any<HoldedSalesDocumentKind>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
-            .Returns(new List<string>());
+        _holded.FindSalesDocumentsByTagAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(Found());
 
-        _service = new Service(
-            _repo, _audit, _camps, _teams, _clock, _shifts, _stripe, _holded,
-            Options.Create(_options), NullLogger<Service>.Instance);
+        _catalog = new CatalogService(_repo, _audit, _clock, _holdedService, NullLogger<CatalogService>.Instance);
+        _orders = new Service(
+            _repo, _audit, Substitute.For<IAuditViewerService>(), _camps, _teams, _clock, _shifts, _stripe, _catalog,
+            NullLogger<Service>.Instance);
+        _service = new InvoiceService(_repo, _audit, _clock, _holdedService, _holded, _stripe,
+            Substitute.For<Humans.Finance.Contracts.IFinanceService>(), _orders, NullLogger<InvoiceService>.Instance);
     }
 
-    private static HoldedAccountDto Account(int number, string id) => new()
-    {
-        Id = id,
-        Number = number,
-        Name = $"Account {number}",
-        Debit = 0m,
-        Credit = 0m,
-        Balance = 0m,
-    };
+    private static HoldedChartAccountInfo Account(int number) =>
+        new(number, $"Account {number}", null, null, false, 0m);
+
+    /// <summary>What Holded's tag search returns: documents of either kind.</summary>
+    private static IReadOnlyList<(HoldedSalesDocumentKind Kind, HoldedSalesDocumentDto Document)> Found(
+        params (HoldedSalesDocumentKind Kind, HoldedSalesDocumentDto Document)[] docs) => docs;
 
     private Product IceProduct(decimal unitPrice = 5m, decimal vat = 21m, decimal? deposit = null, int? account = IceAccountNum) => new()
     {
@@ -171,7 +167,7 @@ public class ServiceIssueInvoiceTests
             });
         }
         _repo.GetOrderWithLinesAndPaymentsAsync(order.Id, Arg.Any<CancellationToken>()).Returns(order);
-        _repo.GetAllProductsForYearAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
+        _repo.GetAllProductsForYearAsync(product.Year, Arg.Any<CancellationToken>())
             .Returns(new List<Product> { product });
         _repo.GetProductsByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new List<Product> { product });
@@ -180,7 +176,7 @@ public class ServiceIssueInvoiceTests
     private async Task<HoldedSalesDocumentInput> CapturedInputAsync(Order order)
     {
         HoldedSalesDocumentInput? captured = null;
-        await _holded.CreateSalesDocumentAsync(
+        await _holded.IssueSalesDocumentAsync(
             Arg.Any<HoldedSalesDocumentKind>(),
             Arg.Do<HoldedSalesDocumentInput>(i => captured = i),
             Arg.Any<CancellationToken>());
@@ -199,24 +195,26 @@ public class ServiceIssueInvoiceTests
 
         input.ContactId.Should().Be("contact-1");
         input.Lines.Should().HaveCount(1);
-        input.Lines[0].AccountId.Should().Be(IceAccountId);
+        input.Lines[0].AccountNum.Should().Be(IceAccountNum);
         input.Lines[0].Taxes.Should().Equal("s_iva_21");
         input.Lines[0].Units.Should().Be(20m);
         // Priced from the live catalog, not the stale €4 snapshot — the freeze seam.
         input.Lines[0].Price.Should().Be(5m);
 
-        await _holded.Received(1).CreateSalesDocumentAsync(
+        await _holded.Received(1).IssueSalesDocumentAsync(
             HoldedSalesDocumentKind.Invoice, Arg.Any<HoldedSalesDocumentInput>(), Arg.Any<CancellationToken>());
-        // A draft books no revenue: approval is part of issuance.
-        await _holded.Received(1).ApproveSalesDocumentAsync(
-            HoldedSalesDocumentKind.Invoice, "doc-1", Arg.Any<CancellationToken>());
     }
 
-    [HumansFact]
-    public async Task Writes_the_invoice_row_with_both_payloads_and_freezes_the_order()
+    [HumansTheory]
+    [InlineData(2026)]
+    [InlineData(2025)]
+    public async Task Writes_the_invoice_row_with_both_payloads_and_freezes_the_order(int year)
     {
         var order = CampOrder();
-        Arrange(order, IceProduct());
+        order.Year = year;
+        var product = IceProduct();
+        product.Year = year;
+        Arrange(order, product);
         Invoice? savedInvoice = null;
         Order? savedOrder = null;
         await _repo.SaveIssuedInvoiceAsync(
@@ -230,7 +228,7 @@ public class ServiceIssueInvoiceTests
         savedInvoice!.HoldedDocId.Should().Be("doc-1");
         savedInvoice.HoldedDocNumber.Should().Be("2026-0007");
         savedInvoice.IssuedByUserId.Should().Be(_actor);
-        savedInvoice.RequestPayload.Should().Contain(IceAccountId);
+        savedInvoice.RequestPayload.Should().Contain(IceAccountNum.ToString(CultureInfo.InvariantCulture));
         savedInvoice.ResponsePayload.Should().Be("""{"id":"doc-1"}""");
 
         savedOrder.Should().NotBeNull();
@@ -261,37 +259,150 @@ public class ServiceIssueInvoiceTests
     }
 
     [HumansFact]
-    public async Task Deposit_lines_post_tax_free_to_the_liability_account()
+    public async Task Kept_deposits_go_on_as_income_at_21_percent_and_returned_deposits_only_in_the_notes()
     {
+        // EUR 60 charged, EUR 20 returned and refunded: EUR 40 kept, a net 33.06 + 6.94 VAT line on Ice's revenue account.
         var order = CampOrder(qty: 2, depositSnapshot: 30m);
         Arrange(order, IceProduct(unitPrice: 5m, deposit: 30m));
+        order.Payments.Add(new Payment
+        {
+            Id = Guid.NewGuid(),
+            OrderId = order.Id,
+            AmountEur = 20m,
+            Method = PaymentMethod.DepositReturn,
+            Status = PaymentStatus.Paid,
+            ProductId = _productId,
+            ReceivedAt = Instant.FromUtc(2026, 8, 20, 0, 0),
+        });
+        order.Payments.Add(new Payment
+        {
+            Id = Guid.NewGuid(),
+            OrderId = order.Id,
+            AmountEur = -20m,
+            Method = PaymentMethod.Refund,
+            Status = PaymentStatus.Paid,
+            ExternalRef = "re_1",
+        });
 
         var input = await CapturedInputAsync(order);
 
         input.Lines.Should().HaveCount(2);
-        var deposit = input.Lines[1];
-        deposit.AccountId.Should().Be(DepositAccountId);
-        deposit.Taxes.Should().Equal("s_iva_0");
-        deposit.Units.Should().Be(2m);
-        deposit.Price.Should().Be(30m);
-        // The goods line keeps its own rate and its own account.
-        input.Lines[0].AccountId.Should().Be(IceAccountId);
-        input.Lines[0].Taxes.Should().Equal("s_iva_21");
+        var kept = input.Lines[1];
+        kept.Name.Should().Be("Ice – kept deposit");
+        kept.AccountNum.Should().Be(IceAccountNum);
+        kept.Taxes.Should().Equal("s_iva_21");
+        kept.Units.Should().Be(1m);
+        kept.Price.Should().Be(33.06m);
+        input.Notes.Should().Contain("Deposit returned: EUR 20.00 on 2026-08-20 (Ice)");
     }
 
     [HumansFact]
-    public async Task Deposit_without_a_configured_liability_account_is_refused_before_calling_holded()
+    public async Task Returns_recorded_without_a_product_return_every_deposit()
     {
-        _options.DepositLiabilityAccountNum = null;
-        var order = CampOrder(qty: 1, depositSnapshot: 30m);
-        Arrange(order, IceProduct(deposit: 30m));
+        var order = CampOrder(qty: 2, depositSnapshot: 30m);
+        Arrange(order, IceProduct(unitPrice: 5m, deposit: 30m));
+        order.Payments.Add(new Payment
+        {
+            Id = Guid.NewGuid(),
+            OrderId = order.Id,
+            AmountEur = 60m,
+            Method = PaymentMethod.DepositReturn,
+            Status = PaymentStatus.Paid,
+        });
+        order.Payments.Add(new Payment
+        {
+            Id = Guid.NewGuid(),
+            OrderId = order.Id,
+            AmountEur = -60m,
+            Method = PaymentMethod.Refund,
+            Status = PaymentStatus.Paid,
+            ExternalRef = "re_1",
+        });
+
+        var input = await CapturedInputAsync(order);
+
+        input.Lines.Should().ContainSingle().Which.Name.Should().Be("Ice");
+    }
+
+    [HumansFact]
+    public async Task A_write_off_goes_on_as_a_document_discount_that_lands_on_the_paid_amount()
+    {
+        // 20 x EUR 5 + 21% = 121.00; the camp paid 101.00 and 20.00 was written off.
+        var order = CampOrder();
+        Arrange(order, IceProduct(), settled: false);
+        order.Payments.Add(new Payment
+        {
+            Id = Guid.NewGuid(),
+            OrderId = order.Id,
+            AmountEur = 101m,
+            Method = PaymentMethod.BankTransfer,
+            Status = PaymentStatus.Paid,
+        });
+        order.Payments.Add(new Payment
+        {
+            Id = Guid.NewGuid(),
+            OrderId = order.Id,
+            AmountEur = 20m,
+            Method = PaymentMethod.WriteOff,
+            Status = PaymentStatus.Paid,
+            Notes = "Agreed with the camp",
+        });
+
+        var input = await CapturedInputAsync(order);
+
+        input.DiscountPercent.Should().NotBeNull();
+        var lines = input.Lines.Select(l => new StoreInvoicePlan.Line(Guid.Empty, l.Name, l.Units, l.Price, 21m, false)).ToList();
+        StoreInvoicePlan.Model(lines, input.DiscountPercent!.Value).Total.Should().Be(101m);
+    }
+
+    [HumansFact]
+    public async Task A_receipt_is_refused_when_a_refund_would_need_its_missing_contact()
+    {
+        var order = CampOrder(identified: false);
+        Arrange(order, IceProduct());
+        order.Payments.Add(new Payment
+        {
+            Id = Guid.NewGuid(),
+            OrderId = order.Id,
+            AmountEur = 10m,
+            Method = PaymentMethod.BankTransfer,
+            Status = PaymentStatus.Paid,
+        });
+        order.Payments.Add(new Payment
+        {
+            Id = Guid.NewGuid(),
+            OrderId = order.Id,
+            AmountEur = -10m,
+            Method = PaymentMethod.Refund,
+            Status = PaymentStatus.Paid,
+            ExternalRef = "re_1",
+        });
 
         var result = await _service.IssueInvoiceAsync(order.Id, _actor, TestContext.Current.CancellationToken);
 
-        result.Succeeded.Should().BeFalse();
-        result.Refusal.Should().Match("*deposit liability account*");
-        await _holded.DidNotReceive().CreateSalesDocumentAsync(
-            Arg.Any<HoldedSalesDocumentKind>(), Arg.Any<HoldedSalesDocumentInput>(), Arg.Any<CancellationToken>());
+        result.Refusal.Should().Match("*refund*contact*");
+        await _holded.DidNotReceiveWithAnyArgs().IssueSalesDocumentAsync(default, default!);
+    }
+
+    [HumansFact]
+    public async Task A_pending_refund_holds_the_invoice_back()
+    {
+        var order = CampOrder();
+        Arrange(order, IceProduct());
+        order.Payments.Add(new Payment
+        {
+            Id = Guid.NewGuid(),
+            OrderId = order.Id,
+            AmountEur = -1m,
+            Method = PaymentMethod.Refund,
+            Status = PaymentStatus.Pending,
+            ExternalRef = "re_1",
+        });
+
+        var result = await _service.IssueInvoiceAsync(order.Id, _actor, TestContext.Current.CancellationToken);
+
+        result.Refusal.Should().Match("*refund is still pending*");
+        await _holded.DidNotReceiveWithAnyArgs().IssueSalesDocumentAsync(default, default!);
     }
 
     [HumansTheory]
@@ -308,8 +419,8 @@ public class ServiceIssueInvoiceTests
         var result = await _service.IssueInvoiceAsync(order.Id, _actor, TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeFalse();
-        result.Refusal.Should().Match("*balance is zero*");
-        await _holded.DidNotReceive().CreateSalesDocumentAsync(
+        result.Refusal.Should().Match("*before invoicing*");
+        await _holded.DidNotReceive().IssueSalesDocumentAsync(
             Arg.Any<HoldedSalesDocumentKind>(), Arg.Any<HoldedSalesDocumentInput>(), Arg.Any<CancellationToken>());
         await _repo.DidNotReceive().SaveIssuedInvoiceAsync(
             Arg.Any<Invoice>(), Arg.Any<Order>(), Arg.Any<CancellationToken>());
@@ -324,7 +435,7 @@ public class ServiceIssueInvoiceTests
         var result = await _service.IssueInvoiceAsync(order.Id, _actor, TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeFalse();
-        result.Refusal.Should().Match("*balance is zero*");
+        result.Refusal.Should().Match("*before invoicing*");
     }
 
     [HumansFact]
@@ -348,10 +459,8 @@ public class ServiceIssueInvoiceTests
 
         await _service.IssueInvoiceAsync(order.Id, _actor, TestContext.Current.CancellationToken);
 
-        await _holded.Received(1).CreateSalesDocumentAsync(
+        await _holded.Received(1).IssueSalesDocumentAsync(
             HoldedSalesDocumentKind.SalesReceipt, Arg.Any<HoldedSalesDocumentInput>(), Arg.Any<CancellationToken>());
-        await _holded.Received(1).ApproveSalesDocumentAsync(
-            HoldedSalesDocumentKind.SalesReceipt, "doc-1", Arg.Any<CancellationToken>());
         // A receipt has no counterparty, so no contact is created for it.
         await _holded.DidNotReceive().CreateContactAsync(
             Arg.Any<HoldedContactInput>(), Arg.Any<CancellationToken>());
@@ -368,7 +477,7 @@ public class ServiceIssueInvoiceTests
 
         result.Succeeded.Should().BeFalse();
         result.Refusal.Should().Match("*full factura*");
-        await _holded.DidNotReceive().CreateSalesDocumentAsync(
+        await _holded.DidNotReceive().IssueSalesDocumentAsync(
             Arg.Any<HoldedSalesDocumentKind>(), Arg.Any<HoldedSalesDocumentInput>(), Arg.Any<CancellationToken>());
     }
 
@@ -384,9 +493,9 @@ public class ServiceIssueInvoiceTests
 
         result.Succeeded.Should().BeFalse();
         result.Refusal.Should().Match("*already been invoiced*");
-        await _holded.DidNotReceive().CreateSalesDocumentAsync(
+        await _holded.DidNotReceive().IssueSalesDocumentAsync(
             Arg.Any<HoldedSalesDocumentKind>(), Arg.Any<HoldedSalesDocumentInput>(), Arg.Any<CancellationToken>());
-        await _holded.DidNotReceive().ListAccountingAccountsAsync(Arg.Any<CancellationToken>());
+        await _holdedService.DidNotReceive().SyncChartAsync(Arg.Any<CancellationToken>());
         await _repo.DidNotReceive().SaveIssuedInvoiceAsync(
             Arg.Any<Invoice>(), Arg.Any<Order>(), Arg.Any<CancellationToken>());
     }
@@ -401,15 +510,15 @@ public class ServiceIssueInvoiceTests
 
         result.Succeeded.Should().BeFalse();
         result.Refusal.Should().Match("*Ice*");
-        await _holded.DidNotReceive().CreateSalesDocumentAsync(
+        await _holded.DidNotReceive().IssueSalesDocumentAsync(
             Arg.Any<HoldedSalesDocumentKind>(), Arg.Any<HoldedSalesDocumentInput>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
     public async Task Account_missing_from_the_holded_chart_is_refused()
     {
-        _holded.ListAccountingAccountsAsync(Arg.Any<CancellationToken>())
-            .Returns([Account(DepositAccountNum, DepositAccountId)]);
+        _holdedService.GetChartAsync(Arg.Any<CancellationToken>())
+            .Returns([Account(70_000_000)]);
         var order = CampOrder();
         Arrange(order, IceProduct());
 
@@ -417,7 +526,7 @@ public class ServiceIssueInvoiceTests
 
         result.Succeeded.Should().BeFalse();
         result.Refusal.Should().Match($"*{IceAccountNum}*");
-        await _holded.DidNotReceive().CreateSalesDocumentAsync(
+        await _holded.DidNotReceive().IssueSalesDocumentAsync(
             Arg.Any<HoldedSalesDocumentKind>(), Arg.Any<HoldedSalesDocumentInput>(), Arg.Any<CancellationToken>());
     }
 
@@ -438,7 +547,7 @@ public class ServiceIssueInvoiceTests
     [HumansFact]
     public async Task Unconfigured_holded_refuses_issuance_rather_than_silently_freezing_the_order()
     {
-        _holded.IsConfigured.Returns(false);
+        _holdedService.IsConfigured.Returns(false);
         var order = CampOrder();
         Arrange(order, IceProduct());
 
@@ -469,7 +578,7 @@ public class ServiceIssueInvoiceTests
             User = new ClaimsPrincipal(new ClaimsIdentity(
             [new Claim(ClaimTypes.NameIdentifier, _actor.ToString())], "test"))
         };
-        var controller = new StoreController(_service, _camps, authorization, users, logger, localizer)
+        var controller = new StoreController(_orders, _catalog, _service, _camps, authorization, users, logger, localizer)
         {
             ControllerContext = new ControllerContext { HttpContext = http },
             TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>())
@@ -478,17 +587,16 @@ public class ServiceIssueInvoiceTests
 
         (await controller.IssueInvoice(order.Id)).Should().BeOfType<RedirectToActionResult>();
         controller.TempData["ErrorMessage"].Should().Be("This order has already been invoiced.");
-        await _holded.DidNotReceive().ListAccountingAccountsAsync(Arg.Any<CancellationToken>());
+        await _holdedService.DidNotReceive().SyncChartAsync(Arg.Any<CancellationToken>());
 
         order.State = OrderState.Open;
         var failure = new InvalidOperationException("Private Holded diagnostic");
-        _holded.ListAccountingAccountsAsync(Arg.Any<CancellationToken>())
-            .Returns(Task.FromException<IReadOnlyList<HoldedAccountDto>>(failure));
+        _holdedService.SyncChartAsync(Arg.Any<CancellationToken>()).Returns(Task.FromException(failure));
         (await controller.IssueInvoice(order.Id)).Should().BeOfType<RedirectToActionResult>();
         controller.TempData["ErrorMessage"].Should().Be(localizer["Store_InvoiceFailed"].Value);
         logger.ReceivedCalls().Should().ContainSingle(call => call.GetMethodInfo().Name == "Log"
             && (LogLevel)call.GetArguments()[0]! == LogLevel.Error && ReferenceEquals(call.GetArguments()[3], failure));
-        await _holded.DidNotReceive().CreateSalesDocumentAsync(Arg.Any<HoldedSalesDocumentKind>(),
+        await _holded.DidNotReceive().IssueSalesDocumentAsync(Arg.Any<HoldedSalesDocumentKind>(),
             Arg.Any<HoldedSalesDocumentInput>(), Arg.Any<CancellationToken>());
         await _repo.DidNotReceive().SaveIssuedInvoiceAsync(Arg.Any<Invoice>(), Arg.Any<Order>(), Arg.Any<CancellationToken>());
     }
@@ -496,9 +604,7 @@ public class ServiceIssueInvoiceTests
     [HumansTheory]
     [InlineData("lookup")]
     [InlineData("chart")]
-    [InlineData("create")]
-    [InlineData("approve")]
-    [InlineData("read")]
+    [InlineData("issue")]
     [InlineData("save")]
     public async Task Invoice_dependency_InvalidOperationException_propagates_unchanged(string stage)
     {
@@ -508,23 +614,14 @@ public class ServiceIssueInvoiceTests
         switch (stage)
         {
             case "lookup":
-                _holded.FindSalesDocumentIdsByTagAsync(Arg.Any<HoldedSalesDocumentKind>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
-                    .Returns(Task.FromException<IReadOnlyList<string>>(failure));
+                _holded.FindSalesDocumentsByTagAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+                    .Returns(Task.FromException<IReadOnlyList<(HoldedSalesDocumentKind, HoldedSalesDocumentDto)>>(failure));
                 break;
             case "chart":
-                _holded.ListAccountingAccountsAsync(Arg.Any<CancellationToken>())
-                    .Returns(Task.FromException<IReadOnlyList<HoldedAccountDto>>(failure));
+                _holdedService.SyncChartAsync(Arg.Any<CancellationToken>()).Returns(Task.FromException(failure));
                 break;
-            case "create":
-                _holded.CreateSalesDocumentAsync(Arg.Any<HoldedSalesDocumentKind>(), Arg.Any<HoldedSalesDocumentInput>(), Arg.Any<CancellationToken>())
-                    .Returns(Task.FromException<string>(failure));
-                break;
-            case "approve":
-                _holded.ApproveSalesDocumentAsync(Arg.Any<HoldedSalesDocumentKind>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
-                    .Returns(Task.FromException(failure));
-                break;
-            case "read":
-                _holded.GetSalesDocumentAsync(Arg.Any<HoldedSalesDocumentKind>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            case "issue":
+                _holded.IssueSalesDocumentAsync(Arg.Any<HoldedSalesDocumentKind>(), Arg.Any<HoldedSalesDocumentInput>(), Arg.Any<CancellationToken>())
                     .Returns(Task.FromException<HoldedSalesDocumentDto>(failure));
                 break;
             case "save":
@@ -569,16 +666,16 @@ public class ServiceIssueInvoiceTests
         };
 
     /// <summary>Stubs a document already tagged with <paramref name="order"/>'s tag, of
-    /// <paramref name="kind"/>, as a failed earlier attempt would have left behind. Extra
-    /// <paramref name="thenReads"/> are what successive read-backs return.</summary>
+    /// <paramref name="kind"/>, as a failed earlier attempt would have left behind.
+    /// <paramref name="afterApproval"/> is what approving it returns.</summary>
     private void ArrangeAlreadyIssued(
         Order order, HoldedSalesDocumentKind kind,
-        HoldedSalesDocumentDto? document = null, params HoldedSalesDocumentDto[] thenReads)
+        HoldedSalesDocumentDto? document = null, HoldedSalesDocumentDto? afterApproval = null)
     {
-        _holded.FindSalesDocumentIdsByTagAsync(kind, $"humans-order-{order.Id}", Arg.Any<CancellationToken>())
-            .Returns(new List<string> { "doc-earlier" });
-        _holded.GetSalesDocumentAsync(kind, "doc-earlier", Arg.Any<CancellationToken>())
-            .Returns(document ?? SalesDoc(), thenReads);
+        _holded.FindSalesDocumentsByTagAsync($"humans-order-{order.Id}", Arg.Any<CancellationToken>())
+            .Returns(Found((kind, document ?? SalesDoc())));
+        _holded.ApproveSalesDocumentAsync(kind, "doc-earlier", Arg.Any<CancellationToken>())
+            .Returns(afterApproval ?? document ?? SalesDoc());
     }
 
     [HumansFact]
@@ -589,14 +686,9 @@ public class ServiceIssueInvoiceTests
 
         var input = await CapturedInputAsync(order);
 
-        // Both kinds are searched: the counterparty details decide the kind and can change
-        // between two attempts, so an earlier document may be of the other kind.
-        await _holded.Received(1).FindSalesDocumentIdsByTagAsync(
-            HoldedSalesDocumentKind.Invoice, $"humans-order-{order.Id}", Arg.Any<CancellationToken>());
-        await _holded.Received(1).FindSalesDocumentIdsByTagAsync(
-            HoldedSalesDocumentKind.SalesReceipt, $"humans-order-{order.Id}", Arg.Any<CancellationToken>());
+        await _holded.Received(1).FindSalesDocumentsByTagAsync($"humans-order-{order.Id}", Arg.Any<CancellationToken>());
         input.Tags.Should().Equal($"humans-order-{order.Id}");
-        await _holded.Received(1).CreateSalesDocumentAsync(
+        await _holded.Received(1).IssueSalesDocumentAsync(
             Arg.Any<HoldedSalesDocumentKind>(), Arg.Any<HoldedSalesDocumentInput>(), Arg.Any<CancellationToken>());
     }
 
@@ -614,7 +706,7 @@ public class ServiceIssueInvoiceTests
         await _service.IssueInvoiceAsync(order.Id, _actor, TestContext.Current.CancellationToken);
 
         // A second approved factura is a real legal document, correctable only by a rectificativa.
-        await _holded.DidNotReceive().CreateSalesDocumentAsync(
+        await _holded.DidNotReceive().IssueSalesDocumentAsync(
             Arg.Any<HoldedSalesDocumentKind>(), Arg.Any<HoldedSalesDocumentInput>(), Arg.Any<CancellationToken>());
         await _holded.DidNotReceive().ApproveSalesDocumentAsync(
             Arg.Any<HoldedSalesDocumentKind>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
@@ -648,11 +740,11 @@ public class ServiceIssueInvoiceTests
         var result = await _service.IssueInvoiceAsync(order.Id, _actor, TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().Be(!isDraft);
-        await _holded.DidNotReceiveWithAnyArgs().CreateSalesDocumentAsync(default, default!);
+        await _holded.DidNotReceiveWithAnyArgs().IssueSalesDocumentAsync(default, default!);
         await _holded.DidNotReceiveWithAnyArgs().ApproveSalesDocumentAsync(default, default!);
         if (isDraft)
         {
-            result.Refusal.Should().Match("*balance is zero*");
+            result.Refusal.Should().Match("*before invoicing*");
             await _repo.DidNotReceiveWithAnyArgs().SaveIssuedInvoiceAsync(default!, default!);
             order.State.Should().Be(OrderState.Open);
         }
@@ -677,7 +769,7 @@ public class ServiceIssueInvoiceTests
 
         await _service.IssueInvoiceAsync(order.Id, _actor, TestContext.Current.CancellationToken);
 
-        await _holded.DidNotReceive().CreateSalesDocumentAsync(
+        await _holded.DidNotReceive().IssueSalesDocumentAsync(
             Arg.Any<HoldedSalesDocumentKind>(), Arg.Any<HoldedSalesDocumentInput>(), Arg.Any<CancellationToken>());
         await _repo.Received(1).SaveIssuedInvoiceAsync(
             Arg.Any<Invoice>(), Arg.Any<Order>(), Arg.Any<CancellationToken>());
@@ -713,7 +805,8 @@ public class ServiceIssueInvoiceTests
             ArrangeAlreadyIssued(order, HoldedSalesDocumentKind.Invoice,
                 SalesDoc(docNumber: "", isDraft: true), unconfirmed);
         else
-            _holded.GetSalesDocumentAsync(HoldedSalesDocumentKind.Invoice, id, Arg.Any<CancellationToken>())
+            _holded.IssueSalesDocumentAsync(
+                    HoldedSalesDocumentKind.Invoice, Arg.Any<HoldedSalesDocumentInput>(), Arg.Any<CancellationToken>())
                 .Returns(unconfirmed);
 
         var result = await _service.IssueInvoiceAsync(order.Id, _actor, TestContext.Current.CancellationToken);
@@ -724,16 +817,13 @@ public class ServiceIssueInvoiceTests
         await _repo.DidNotReceive().SaveIssuedInvoiceAsync(
             Arg.Any<Invoice>(), Arg.Any<Order>(), Arg.Any<CancellationToken>());
 
-        _holded.FindSalesDocumentIdsByTagAsync(
-                HoldedSalesDocumentKind.Invoice, $"humans-order-{order.Id}", Arg.Any<CancellationToken>())
-            .Returns(new List<string> { id });
-        _holded.GetSalesDocumentAsync(HoldedSalesDocumentKind.Invoice, id, Arg.Any<CancellationToken>())
-            .Returns(unconfirmed with { IsDraft = false, DocNumber = "2026-0003" });
+        _holded.FindSalesDocumentsByTagAsync($"humans-order-{order.Id}", Arg.Any<CancellationToken>())
+            .Returns(Found((HoldedSalesDocumentKind.Invoice, unconfirmed with { IsDraft = false, DocNumber = "2026-0003" })));
 
         var retry = await _service.IssueInvoiceAsync(order.Id, _actor, TestContext.Current.CancellationToken);
 
         retry.Succeeded.Should().BeTrue();
-        await _holded.Received(recovery ? 0 : 1).CreateSalesDocumentAsync(
+        await _holded.Received(recovery ? 0 : 1).IssueSalesDocumentAsync(
             Arg.Any<HoldedSalesDocumentKind>(), Arg.Any<HoldedSalesDocumentInput>(), Arg.Any<CancellationToken>());
         await _repo.Received(1).SaveIssuedInvoiceAsync(
             Arg.Any<Invoice>(), Arg.Any<Order>(), Arg.Any<CancellationToken>());
@@ -756,7 +846,7 @@ public class ServiceIssueInvoiceTests
         order.IssuedInvoiceId.Should().BeNull();
         await _holded.Received(1).ApproveSalesDocumentAsync(
             HoldedSalesDocumentKind.Invoice, "doc-earlier", Arg.Any<CancellationToken>());
-        await _holded.DidNotReceive().CreateSalesDocumentAsync(
+        await _holded.DidNotReceive().IssueSalesDocumentAsync(
             Arg.Any<HoldedSalesDocumentKind>(), Arg.Any<HoldedSalesDocumentInput>(), Arg.Any<CancellationToken>());
         await _repo.DidNotReceive().SaveIssuedInvoiceAsync(
             Arg.Any<Invoice>(), Arg.Any<Order>(), Arg.Any<CancellationToken>());
@@ -782,7 +872,7 @@ public class ServiceIssueInvoiceTests
         await _holded.Received(1).ApproveSalesDocumentAsync(
             HoldedSalesDocumentKind.Invoice, "doc-earlier", Arg.Any<CancellationToken>());
         // Still no second document.
-        await _holded.DidNotReceive().CreateSalesDocumentAsync(
+        await _holded.DidNotReceive().IssueSalesDocumentAsync(
             Arg.Any<HoldedSalesDocumentKind>(), Arg.Any<HoldedSalesDocumentInput>(), Arg.Any<CancellationToken>());
         // And the number Holded assigns at approval is the one that gets stored.
         saved.Should().NotBeNull();
@@ -797,15 +887,9 @@ public class ServiceIssueInvoiceTests
         var order = CampOrder();
         Arrange(order, IceProduct());
         var tag = $"humans-order-{order.Id}";
-        _holded.FindSalesDocumentIdsByTagAsync(
-                HoldedSalesDocumentKind.Invoice, tag, Arg.Any<CancellationToken>())
-            .Returns(new List<string> { "doc-draft", "doc-approved" });
-        _holded.GetSalesDocumentAsync(
-                HoldedSalesDocumentKind.Invoice, "doc-draft", Arg.Any<CancellationToken>())
-            .Returns(SalesDoc(docNumber: "", isDraft: true, id: "doc-draft"));
-        _holded.GetSalesDocumentAsync(
-                HoldedSalesDocumentKind.Invoice, "doc-approved", Arg.Any<CancellationToken>())
-            .Returns(SalesDoc(isDraft: false, id: "doc-approved"));
+        _holded.FindSalesDocumentsByTagAsync(tag, Arg.Any<CancellationToken>()).Returns(Found(
+            (HoldedSalesDocumentKind.Invoice, SalesDoc(docNumber: "", isDraft: true, id: "doc-draft")),
+            (HoldedSalesDocumentKind.Invoice, SalesDoc(isDraft: false, id: "doc-approved"))));
         Invoice? saved = null;
         await _repo.SaveIssuedInvoiceAsync(
             Arg.Do<Invoice>(i => saved = i), Arg.Any<Order>(), Arg.Any<CancellationToken>());
@@ -814,7 +898,7 @@ public class ServiceIssueInvoiceTests
 
         await _holded.DidNotReceive().ApproveSalesDocumentAsync(
             Arg.Any<HoldedSalesDocumentKind>(), Arg.Any<string>(), Arg.Any<CancellationToken>());
-        await _holded.DidNotReceive().CreateSalesDocumentAsync(
+        await _holded.DidNotReceive().IssueSalesDocumentAsync(
             Arg.Any<HoldedSalesDocumentKind>(), Arg.Any<HoldedSalesDocumentInput>(), Arg.Any<CancellationToken>());
         saved.Should().NotBeNull();
         saved!.HoldedDocId.Should().Be("doc-approved");
@@ -826,18 +910,9 @@ public class ServiceIssueInvoiceTests
         var order = CampOrder();
         Arrange(order, IceProduct());
         var tag = $"humans-order-{order.Id}";
-        _holded.FindSalesDocumentIdsByTagAsync(
-                HoldedSalesDocumentKind.Invoice, tag, Arg.Any<CancellationToken>())
-            .Returns(new List<string> { "doc-draft" });
-        _holded.GetSalesDocumentAsync(
-                HoldedSalesDocumentKind.Invoice, "doc-draft", Arg.Any<CancellationToken>())
-            .Returns(SalesDoc(docNumber: "", isDraft: true, id: "doc-draft"));
-        _holded.FindSalesDocumentIdsByTagAsync(
-                HoldedSalesDocumentKind.SalesReceipt, tag, Arg.Any<CancellationToken>())
-            .Returns(new List<string> { "doc-receipt" });
-        _holded.GetSalesDocumentAsync(
-                HoldedSalesDocumentKind.SalesReceipt, "doc-receipt", Arg.Any<CancellationToken>())
-            .Returns(SalesDoc(isDraft: false, id: "doc-receipt"));
+        _holded.FindSalesDocumentsByTagAsync(tag, Arg.Any<CancellationToken>()).Returns(Found(
+            (HoldedSalesDocumentKind.Invoice, SalesDoc(docNumber: "", isDraft: true, id: "doc-draft")),
+            (HoldedSalesDocumentKind.SalesReceipt, SalesDoc(isDraft: false, id: "doc-receipt"))));
         Invoice? saved = null;
         await _repo.SaveIssuedInvoiceAsync(
             Arg.Do<Invoice>(i => saved = i), Arg.Any<Order>(), Arg.Any<CancellationToken>());
@@ -882,7 +957,8 @@ public class ServiceIssueInvoiceTests
             "tax" => document with { Tax = 22m },
             _ => document with { Total = 122m },
         };
-        _holded.GetSalesDocumentAsync(kind, document.Id, Arg.Any<CancellationToken>()).Returns(document);
+        _holded.IssueSalesDocumentAsync(kind, Arg.Any<HoldedSalesDocumentInput>(), Arg.Any<CancellationToken>())
+            .Returns(document);
 
         var result = await _service.IssueInvoiceAsync(order.Id, _actor, TestContext.Current.CancellationToken);
 
@@ -890,15 +966,15 @@ public class ServiceIssueInvoiceTests
         result.Refusal.Should().Match("*no longer matches*");
         order.State.Should().Be(OrderState.Open);
         order.IssuedInvoiceId.Should().BeNull();
-        _holded.FindSalesDocumentIdsByTagAsync(kind, $"humans-order-{order.Id}", Arg.Any<CancellationToken>())
-            .Returns(new List<string> { document.Id });
+        _holded.FindSalesDocumentsByTagAsync($"humans-order-{order.Id}", Arg.Any<CancellationToken>())
+            .Returns(Found((kind, document)));
 
         var retry = await _service.IssueInvoiceAsync(order.Id, _actor, TestContext.Current.CancellationToken);
 
         retry.Succeeded.Should().BeFalse();
         retry.Refusal.Should().Match("*no longer matches*");
-        await _holded.Received(1).CreateSalesDocumentAsync(kind, Arg.Any<HoldedSalesDocumentInput>(), Arg.Any<CancellationToken>());
-        await _holded.Received(1).ApproveSalesDocumentAsync(kind, document.Id, Arg.Any<CancellationToken>());
+        await _holded.Received(1).IssueSalesDocumentAsync(kind, Arg.Any<HoldedSalesDocumentInput>(), Arg.Any<CancellationToken>());
+        await _holded.DidNotReceiveWithAnyArgs().ApproveSalesDocumentAsync(default, default!);
         await _repo.DidNotReceive().SaveIssuedInvoiceAsync(Arg.Any<Invoice>(), Arg.Any<Order>(), Arg.Any<CancellationToken>());
         await _audit.DidNotReceive().LogAsync(
             StoreAuditActions.StoreInvoiceIssued, Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<string>(),
@@ -924,7 +1000,7 @@ public class ServiceIssueInvoiceTests
         order.State.Should().Be(OrderState.Open);
         await _repo.DidNotReceive().SaveIssuedInvoiceAsync(
             Arg.Any<Invoice>(), Arg.Any<Order>(), Arg.Any<CancellationToken>());
-        await _holded.DidNotReceiveWithAnyArgs().CreateSalesDocumentAsync(default, default!);
+        await _holded.DidNotReceiveWithAnyArgs().IssueSalesDocumentAsync(default, default!);
     }
 
     [HumansFact]
@@ -934,9 +1010,9 @@ public class ServiceIssueInvoiceTests
         var order = CampOrder(qty: 10);
         Arrange(order, IceProduct(deposit: 3m));
         ArrangeAlreadyIssued(order, HoldedSalesDocumentKind.Invoice, SalesDoc(
-            isDraft: false, subtotal: 80m, tax: 10.50m, total: 90.50m) with
+            isDraft: false, subtotal: 74.79m, tax: 15.71m, total: 90.50m) with
         {
-            Lines = [new("Ice — refundable deposit", 10m, 3m, 0m), new("Ice", 10m, 5m, 21m)],
+            Lines = [new("Ice – kept deposit", 1m, 24.79m, 21m), new("Ice", 10m, 5m, 21m)],
         });
 
         var result = await _service.IssueInvoiceAsync(order.Id, _actor, TestContext.Current.CancellationToken);
@@ -965,7 +1041,8 @@ public class ServiceIssueInvoiceTests
         // order that can never freeze, so only the totals gate first issuance.
         var order = CampOrder();
         Arrange(order, IceProduct());
-        _holded.GetSalesDocumentAsync(HoldedSalesDocumentKind.Invoice, "doc-1", Arg.Any<CancellationToken>())
+        _holded.IssueSalesDocumentAsync(
+                HoldedSalesDocumentKind.Invoice, Arg.Any<HoldedSalesDocumentInput>(), Arg.Any<CancellationToken>())
             .Returns(SalesDoc(isDraft: false, id: "doc-1") with { Lines = [] });
 
         var result = await _service.IssueInvoiceAsync(order.Id, _actor, TestContext.Current.CancellationToken);
@@ -990,7 +1067,7 @@ public class ServiceIssueInvoiceTests
         result.Refusal.Should().Match("*no longer matches*");
         await _repo.DidNotReceive().SaveIssuedInvoiceAsync(
             Arg.Any<Invoice>(), Arg.Any<Order>(), Arg.Any<CancellationToken>());
-        await _holded.DidNotReceive().CreateSalesDocumentAsync(
+        await _holded.DidNotReceive().IssueSalesDocumentAsync(
             Arg.Any<HoldedSalesDocumentKind>(), Arg.Any<HoldedSalesDocumentInput>(), Arg.Any<CancellationToken>());
         // A divergent draft is not approved either — that would make the mismatch legal.
         await _holded.DidNotReceive().ApproveSalesDocumentAsync(

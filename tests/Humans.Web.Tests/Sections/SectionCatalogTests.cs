@@ -20,8 +20,11 @@ public class SectionCatalogTests
     private static IReadOnlyList<(string Name, Assembly Assembly, ISection Section)> Shipped() =>
         SectionDiscoveryExtensions.ShippedSections();
 
+    private static readonly IReadOnlyDictionary<string, IReadOnlyList<string>> NoneUnmet =
+        new Dictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal);
+
     private static ISectionCatalog Build(params ISectionAnnotations[] annotators) =>
-        SectionCatalogBuilder.Build(Shipped(), annotators);
+        SectionCatalogBuilder.Build(Shipped(), annotators, NoneUnmet);
 
     [HumansFact]
     public void Catalog_Describes_Every_Shipped_Section()
@@ -117,9 +120,24 @@ public class SectionCatalogTests
         annotators.Select(a => a.GetType().Assembly.GetName().Name)
             .Should().Contain(["Humans.Agent", "Humans.Guide", "Humans.Tickets"]);
 
-        SectionCatalogBuilder.Build(Shipped(), annotators)
+        SectionCatalogBuilder.Build(Shipped(), annotators, NoneUnmet)
             .Sections.SelectMany(s => s.Annotations)
             .Select(a => a.Facet).Distinct(StringComparer.Ordinal)
             .Should().Contain(["Agent doc key", "Guide page", "Issue queue"]);
+    }
+
+    [HumansFact]
+    public void An_Unmet_Dependency_Is_Published_On_The_Section_It_Names()
+    {
+        var target = Shipped()[0].Name;
+        var unmet = new Dictionary<string, IReadOnlyList<string>>(StringComparer.OrdinalIgnoreCase)
+        {
+            [target] = ["Web"],
+        };
+
+        var sections = SectionCatalogBuilder.Build(Shipped(), [], unmet).Sections;
+
+        sections.Single(s => string.Equals(s.Name, target, StringComparison.Ordinal)).ConsumedWhileInactiveBy.Should().Equal("Web");
+        sections.Where(s => !string.Equals(s.Name, target, StringComparison.Ordinal)).Should().OnlyContain(s => s.ConsumedWhileInactiveBy.Count == 0);
     }
 }

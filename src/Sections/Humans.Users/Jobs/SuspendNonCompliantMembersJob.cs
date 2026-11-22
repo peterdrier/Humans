@@ -1,3 +1,4 @@
+using Humans.Users.Services;
 using Hangfire;
 using NodaTime;
 using Humans.Base.Interfaces;
@@ -10,7 +11,7 @@ namespace Humans.Users.Jobs;
 /// The schedule, metric and failure boundary; the sweep is <see cref="INonCompliantMemberSuspension"/>.
 /// </remarks>
 [DisableConcurrentExecution(timeoutInSeconds: 300)]
-public class SuspendNonCompliantMembersJob(
+internal sealed class SuspendNonCompliantMembersJob(
     INonCompliantMemberSuspension suspension,
     IHumansMetrics metrics,
     ILogger<SuspendNonCompliantMembersJob> logger,
@@ -26,6 +27,11 @@ public class SuspendNonCompliantMembersJob(
         {
             await suspension.SuspendNonCompliantAsync(cancellationToken);
             metrics.RecordJobRun("suspend_noncompliant_members", "success");
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            logger.LogWarning("Non-compliant member suspension check interrupted by shutdown");
+            throw;
         }
         catch (Exception ex)
         {

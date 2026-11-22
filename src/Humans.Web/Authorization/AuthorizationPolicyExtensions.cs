@@ -1,7 +1,4 @@
 using Humans.Auth.Contracts;
-using Humans.Consent.Contracts;
-using Humans.Shifts.Contracts;
-using Humans.Tickets.Contracts;
 using Humans.Base.Interfaces;
 using Humans.Web.Extensions;
 using Humans.Base.Constants;
@@ -33,20 +30,6 @@ public static class AuthorizationPolicyExtensions
 
             options.AddPolicy(PolicyNames.BoardOrAdmin, policy =>
                 policy.RequireRole(RoleNames.Board, RoleNames.Admin));
-
-            // Composite spanning Tickets (TicketsAdmin) and Gate (terminal identity).
-            options.AddPolicy(PolicyNames.ScannerAccess, policy =>
-                policy.AddRequirements(new TicketsAdminOrGateTerminalRequirement(admitsBoard: true)));
-
-            // Gate write actions (/Gate/Decision, /Gate/Claim POST): the ScannerAccess principals minus Board, which
-            // reads the gate and admits no one. Composite spanning Tickets (TicketsAdmin) and Gate (terminal identity).
-            options.AddPolicy(PolicyNames.GateAdmit, policy =>
-                policy.AddRequirements(new TicketsAdminOrGateTerminalRequirement(admitsBoard: false)));
-
-            // Composite spanning Consent (ConsentCoordinator) and Shifts (ShiftsAdmin) roles.
-            options.AddPolicy(PolicyNames.ReviewQueueAccess, policy =>
-                policy.RequireRole(ConsentRoles.ConsentCoordinator, ShiftsRoles.ShiftsAdmin,
-                    RoleNames.Board, RoleNames.Admin));
 
             // Single nav-visibility gate: only Active users see app navigation.
             options.AddPolicy(PolicyNames.AppAccess, policy =>
@@ -80,21 +63,5 @@ public static class AuthorizationPolicyExtensions
         }
 
         return services;
-    }
-
-    /// <summary>
-    /// Ticket-admin roles OR the shared gate-terminal account (by well-known id — it holds no roles), in one
-    /// assertion because a policy's requirements AND together.
-    /// </summary>
-    private sealed class TicketsAdminOrGateTerminalRequirement(bool admitsBoard) : AssertionRequirement(ctx =>
-        ctx.User.IsInRole(TicketsRoles.TicketsAdmin)
-        || (admitsBoard && ctx.User.IsInRole(RoleNames.Board))
-        || ctx.User.IsInRole(RoleNames.Admin)
-        || ctx.User.HasClaim(System.Security.Claims.ClaimTypes.NameIdentifier, SystemUserIds.GateTerminal.ToString())),
-        IDescribedRequirement
-    {
-        public IReadOnlyList<string> Admits => admitsBoard
-            ? [TicketsRoles.TicketsAdmin, RoleNames.Board, RoleNames.Admin]
-            : [TicketsRoles.TicketsAdmin, RoleNames.Admin];
     }
 }

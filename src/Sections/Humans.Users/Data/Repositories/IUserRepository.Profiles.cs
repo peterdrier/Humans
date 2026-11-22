@@ -14,7 +14,6 @@ internal partial interface IUserRepository
     /// <summary>Every profile with <c>VolunteerHistory</c> and <c>Languages</c>, read-only.</summary>
     Task<IReadOnlyList<Profile>> GetAllProfilesAsync(CancellationToken ct = default);
 
-    Task<Guid?> GetOwnerUserIdAsync(Guid profileId, CancellationToken ct = default);
 
     /// <summary>
     /// The content type (the GDPR gate checked before serving the file) and versioned storage key
@@ -26,20 +25,26 @@ internal partial interface IUserRepository
 
     /// <summary>Ordered by proficiency descending, then language code.</summary>
     Task<IReadOnlyList<ProfileLanguage>> GetLanguagesAsync(
-        Guid profileId, CancellationToken ct = default);
+        Guid userId, CancellationToken ct = default);
 
-    Task ReplaceLanguagesAsync(Guid profileId, IReadOnlyList<ProfileLanguage> languages, CancellationToken ct = default);
+    /// <summary>Replaces every language row of the user with <paramref name="languages"/>.</summary>
+    Task ReplaceLanguagesAsync(Guid userId, IReadOnlyList<ProfileLanguage> languages, CancellationToken ct = default);
 
-    /// <summary>Also updates the owning user's stored <see cref="UserState"/>.</summary>
-    Task AddAsync(Profile profile, CancellationToken ct = default);
+    /// <summary>
+    /// Also updates the owning user's stored <see cref="UserState"/>, and its names when
+    /// <paramref name="names"/> is given.
+    /// </summary>
+    Task AddAsync(Profile profile, CancellationToken ct = default, UserNames? names = null);
 
     /// <summary>
     /// Saves a profile from <see cref="GetByUserIdAsync"/> and the owning user's stored
-    /// <see cref="UserState"/>. A non-null CV payload is reconciled by <see cref="CVEntry.Id"/>:
-    /// known ids update in place, empty or unknown ids insert, missing ids delete.
+    /// <see cref="UserState"/>, and its names when <paramref name="names"/> is given. A non-null CV
+    /// payload is reconciled by <see cref="CVEntry.Id"/>: known ids update in place, empty or unknown
+    /// ids insert, missing ids delete.
     /// </summary>
     Task UpdateAsync(
-        Profile profile, CancellationToken ct = default, IReadOnlyList<CVEntry>? volunteerHistory = null);
+        Profile profile, CancellationToken ct = default, IReadOnlyList<CVEntry>? volunteerHistory = null,
+        UserNames? names = null);
 
     /// <summary>
     /// Clears identifying profile fields, labels the profile "Deleted User", and
@@ -73,9 +78,13 @@ internal partial interface IUserRepository
     /// <remarks>
     /// History dedups on (year, event name); languages on code, keeping the higher proficiency
     /// (target wins ties). Contact fields are not touched. No-op if either user has no profile.
+    /// <paramref name="keptProfile"/> and <paramref name="keptNames"/> are what the caller decided the
+    /// target profile and its users row hold after the merge; they are written in the same save.
     /// </remarks>
-    /// <returns>The source picture metadata after the fold commits, or null when no profiles were folded.</returns>
-    Task<(Guid ProfileId, string? ContentType, string? StorageKey)?> ReassignSubAggregatesToUserAsync(
-        Guid sourceUserId, Guid targetUserId, Instant updatedAt,
+    Task ReassignSubAggregatesToUserAsync(
+        Guid sourceUserId, Guid targetUserId, Instant updatedAt, Profile? keptProfile, UserNames? keptNames,
         CancellationToken ct = default);
 }
+
+/// <summary>The names a profile save writes to the users row.</summary>
+internal sealed record UserNames(string BurnerName, string FirstName, string LastName);

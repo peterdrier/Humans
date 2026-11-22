@@ -48,9 +48,6 @@ public sealed class DuplicateAccountServiceTests
         {
             Id = Guid.NewGuid(),
             UserId = userId,
-            BurnerName = "Test",
-            FirstName = "Test",
-            LastName = "User",
             CreatedAt = Now,
             UpdatedAt = Now,
         };
@@ -94,13 +91,33 @@ public sealed class DuplicateAccountServiceTests
     {
         var a = Guid.NewGuid();
         var b = Guid.NewGuid();
+        var typedIt = Guid.NewGuid();
         SetUsers(
             MakeInfo(a, emails: [Email(a, "dup@foo.com", verified: true, primary: true)]),
-            MakeInfo(b, emails: [Email(b, "dup@foo.com", verified: true, primary: true)]));
+            MakeInfo(b, emails: [Email(b, "dup@foo.com", verified: true, primary: true)]),
+            MakeInfo(typedIt, emails: [Email(typedIt, "dup@foo.com", verified: false)]));
 
         var groups = await Sut.DetectDuplicatesAsync(Xunit.TestContext.Current.CancellationToken);
 
-        groups.Should().ContainSingle("two live accounts sharing a verified email is a real duplicate");
+        // Anyone can type anyone's address: an unconfirmed one makes no pair.
+        groups.Should().ContainSingle("two live accounts sharing a verified email is a real duplicate")
+            .Which.Accounts.Select(x => x.UserId).Should().BeEquivalentTo([a, b]);
+    }
+
+    [HumansFact]
+    public async Task DetectDuplicatesAsync_FlagsALegacyColumnHiddenBehindAnotherVerifiedRow()
+    {
+        var legacy = Guid.NewGuid();
+        var bare = Guid.NewGuid();
+        SetUsers(
+            MakeInfo(legacy, identityEmailColumn: "old@gmail.com",
+                emails: [Email(legacy, "new@hotmail.fr", verified: true, primary: true)]),
+            MakeInfo(bare, emails: [Email(bare, "old@gmail.com", verified: true, primary: true)]));
+
+        var groups = await Sut.DetectDuplicatesAsync(Xunit.TestContext.Current.CancellationToken);
+
+        groups.Should().ContainSingle().Which.Accounts.Select(a => a.UserId)
+            .Should().BeEquivalentTo([legacy, bare]);
     }
 
     [HumansFact]
@@ -129,7 +146,7 @@ public sealed class DuplicateAccountServiceTests
         SetUsers(
             MakeInfo(a, emails: [Email(a, "dup@foo.com", verified: true, primary: true)]),
             MakeInfo(b, emails: [Email(b, "dup@foo.com", verified: true, primary: true)]));
-        _auditViewer.GetFilteredAsync(nameof(User), low, null, Arg.Any<IReadOnlyList<string>?>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
+        _auditViewer.GetFilteredAsync(nameof(User), low, null, Arg.Any<IReadOnlyList<string>?>(), Arg.Any<int>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<AuditEvent>>(
             [
                 new(Guid.NewGuid(), Now, UsersAuditActions.DuplicateAccountFlagged, null, null, nameof(User), low,

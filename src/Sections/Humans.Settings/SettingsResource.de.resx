@@ -76,4 +76,7 @@
   <data name="Settings_NoTabs" xml:space="preserve">
     <value>Es sind noch keine Einstellungen verfügbar.</value>
   </data>
+  <data name="Settings_NoStrike" xml:space="preserve">
+    <value>Keine Abbautage</value>
+  </data>
 </root>

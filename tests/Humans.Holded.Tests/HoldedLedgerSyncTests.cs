@@ -14,6 +14,8 @@ using Xunit;
 
 namespace Humans.Holded.Tests;
 
+// Mirror sync gates are process-wide, so classes exercising real syncs must run serially.
+[Collection("HoldedMirrorSyncGates")]
 public sealed class HoldedLedgerSyncTests
 {
     private static readonly Instant FixedNow = Instant.FromUtc(2026, 8, 10, 12, 0);
@@ -35,7 +37,7 @@ public sealed class HoldedLedgerSyncTests
         _client.ListAccountingAccountsAsync(Arg.Any<CancellationToken>())
             .Returns(new List<HoldedAccountDto>());
         _service = new Service(_repo, _client, _callLog, new FakeClock(FixedNow),
-            Options.Create(new HoldedSectionOptions()), NullLogger<Service>.Instance);
+            Options.Create(new HoldedSectionOptions()), NullLogger<Service>.Instance, FixedOrgTimeZone.Madrid);
     }
 
     private static HoldedLedgerLineDto Dto(int entry, int line, int account, Instant date,
@@ -72,6 +74,175 @@ public sealed class HoldedLedgerSyncTests
             .Select(c => c.GetArguments())
             .Select(a => (From: (LocalDate)a[0]!, To: (LocalDate)a[1]!, Account: (int?)a[2]))
             .ToArray();
+
+    public enum SyncPath { Ledger, PurchaseDocs, Contacts, BankMovements, Accounts }
+    public enum SyncBoundary { Startup, BeforeReplacement, Completion, CompletionFailure }
+
+    [HumansTheory]
+    [InlineData(SyncPath.Ledger, SyncBoundary.Startup)]
+    [InlineData(SyncPath.Ledger, SyncBoundary.BeforeReplacement)]
+    [InlineData(SyncPath.Ledger, SyncBoundary.Completion)]
+    [InlineData(SyncPath.Ledger, SyncBoundary.CompletionFailure)]
+    [InlineData(SyncPath.PurchaseDocs, SyncBoundary.Startup)]
+    [InlineData(SyncPath.PurchaseDocs, SyncBoundary.BeforeReplacement)]
+    [InlineData(SyncPath.PurchaseDocs, SyncBoundary.Completion)]
+    [InlineData(SyncPath.PurchaseDocs, SyncBoundary.CompletionFailure)]
+    [InlineData(SyncPath.Contacts, SyncBoundary.Startup)]
+    [InlineData(SyncPath.Contacts, SyncBoundary.BeforeReplacement)]
+    [InlineData(SyncPath.Contacts, SyncBoundary.Completion)]
+    [InlineData(SyncPath.Contacts, SyncBoundary.CompletionFailure)]
+    [InlineData(SyncPath.BankMovements, SyncBoundary.BeforeReplacement)]
+    [InlineData(SyncPath.BankMovements, SyncBoundary.Completion)]
+    [InlineData(SyncPath.BankMovements, SyncBoundary.CompletionFailure)]
+    [InlineData(SyncPath.Accounts, SyncBoundary.BeforeReplacement)]
+    [InlineData(SyncPath.Accounts, SyncBoundary.Completion)]
+    [InlineData(SyncPath.Accounts, SyncBoundary.CompletionFailure)]
+    public async Task Mirror_outcomes_respect_startup_and_completion_boundaries(SyncPath path, SyncBoundary boundary)
+    {
+        using var shutdown = new CancellationTokenSource();
+        var repository = Substitute.For<IHoldedMirrorRepository>();
+        repository.HasAnyLedgerLinesAsync(Arg.Any<CancellationToken>()).Returns(true);
+        var states = Enum.GetValues<HoldedSyncKind>().ToDictionary(k => k, k => new HoldedSyncState { Kind = k });
+        var kind = Enum.Parse<HoldedSyncKind>(path.ToString());
+        var state = states[kind];
+        repository.GetOrCreateSyncStateAsync(Arg.Any<HoldedSyncKind>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(call => states[call.Arg<HoldedSyncKind>()]);
+        repository.GetAccountTotalsAsync(Arg.Any<CancellationToken>()).Returns([]);
+        var startupFailure = new IOException("Cannot start sync");
+        var completionFailure = new OperationCanceledException("Completion dependency canceled");
+        CancellationToken? completionToken = null;
+        repository.SaveSyncStateAsync(Arg.Any<HoldedSyncState>(), Arg.Any<CancellationToken>()).Returns(async call =>
+        {
+            var saved = call.Arg<HoldedSyncState>();
+            if (saved.Kind != kind) return;
+            if (saved.SyncStatus == HoldedSyncStatus.Running && boundary == SyncBoundary.Startup) throw startupFailure;
+            if (saved.SyncStatus != HoldedSyncStatus.Idle) return;
+            completionToken = call.Arg<CancellationToken>();
+            await shutdown.CancelAsync();
+            if (boundary == SyncBoundary.CompletionFailure) throw completionFailure;
+            completionToken.Value.ThrowIfCancellationRequested();
+        });
+        async Task PrepareAsync(SyncPath selected)
+        {
+            if (boundary == SyncBoundary.BeforeReplacement && path == selected) await shutdown.CancelAsync();
+        }
+        _client.ListLedgerEntriesAsync(Arg.Any<LocalDate>(), Arg.Any<LocalDate>(), null, Arg.Any<CancellationToken>())
+            .Returns(async Task<IReadOnlyList<HoldedLedgerLineDto>> (_) => { await PrepareAsync(SyncPath.Ledger); return []; });
+        _client.ListPurchaseDocumentsAsync(Arg.Any<CancellationToken>())
+            .Returns(async Task<IReadOnlyList<HoldedPurchaseDocListItemDto>> (_) => { await PrepareAsync(SyncPath.PurchaseDocs); return []; });
+        _client.ListContactsAsync(Arg.Any<CancellationToken>())
+            .Returns(async Task<IReadOnlyList<HoldedContactDto>> (_) => { await PrepareAsync(SyncPath.Contacts); return []; });
+        _client.ListBankMovementsAsync("treasury", Today, Today, Arg.Any<CancellationToken>(), null)
+            .Returns(async Task<IReadOnlyList<HoldedBankMovementDto>> (_) => { await PrepareAsync(SyncPath.BankMovements); return []; });
+        _client.ListAccountingAccountsAsync(Arg.Any<CancellationToken>())
+            .Returns(async Task<IReadOnlyList<HoldedAccountDto>> (_) => { await PrepareAsync(SyncPath.Accounts); return []; });
+        var service = new Service(repository, _client, _callLog, new FakeClock(FixedNow),
+            Options.Create(new HoldedSectionOptions()), NullLogger<Service>.Instance, FixedOrgTimeZone.Madrid);
+        Task RunAsync() => path switch
+        {
+            SyncPath.Ledger => service.SyncLedgerAsync(ct: shutdown.Token),
+            SyncPath.PurchaseDocs => service.SyncPurchaseDocumentsAsync(shutdown.Token),
+            SyncPath.Contacts => service.SyncContactsAsync(shutdown.Token),
+            SyncPath.BankMovements => service.SyncBankMovementsAsync("treasury", Today, Today, ct: shutdown.Token),
+            _ => service.SyncChartAsync(shutdown.Token)
+        };
+
+        var error = await Record.ExceptionAsync(RunAsync);
+        if (boundary == SyncBoundary.Startup)
+        {
+            error.Should().BeSameAs(startupFailure);
+            state.SyncStatus.Should().Be(HoldedSyncStatus.Error);
+            await repository.Received(1).SaveSyncStateAsync(state, CancellationToken.None);
+        }
+        else if (boundary == SyncBoundary.BeforeReplacement)
+        {
+            error.Should().BeOfType<OperationCanceledException>();
+            await repository.DidNotReceiveWithAnyArgs().ReplaceLedgerWindowAsync(default, default, default, default!, default);
+            await repository.DidNotReceiveWithAnyArgs().ReplacePurchaseDocsAsync(default!, default);
+            await repository.DidNotReceiveWithAnyArgs().ReplaceContactsAsync(default!, default);
+            await repository.DidNotReceiveWithAnyArgs().ReplaceBankMovementsAsync(default!, default, default, default!, default);
+            await repository.DidNotReceiveWithAnyArgs().UpsertAccountsAsync(default!, default);
+        }
+        else
+        {
+            completionToken.Should().Be(CancellationToken.None);
+            if (boundary == SyncBoundary.CompletionFailure)
+                error.Should().BeOfType<InvalidOperationException>().Which.InnerException.Should().BeSameAs(completionFailure);
+            else
+            {
+                error.Should().BeNull();
+                state.SyncStatus.Should().Be(HoldedSyncStatus.Idle);
+                state.LastSyncAt.Should().Be(FixedNow);
+                _callLog.Received().DrainAll();
+            }
+        }
+    }
+
+    [HumansTheory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task Committed_chart_or_targeted_window_finishes_its_call_log(bool chart)
+    {
+        using var shutdown = new CancellationTokenSource();
+        var repository = Substitute.For<IHoldedMirrorRepository>();
+        repository.GetOrCreateSyncStateAsync(HoldedSyncKind.Accounts, "", Arg.Any<CancellationToken>())
+            .Returns(new HoldedSyncState { Kind = HoldedSyncKind.Accounts });
+        repository.UpsertAccountsAsync(Arg.Any<IReadOnlyList<HoldedAccount>>(), FixedNow, shutdown.Token)
+            .Returns(async _ => await shutdown.CancelAsync());
+        repository.ReplaceLedgerWindowAsync(Arg.Any<Instant>(), FixedNow, 123,
+                Arg.Any<IReadOnlyList<HoldedLedgerLine>>(), FixedNow, shutdown.Token)
+            .Returns(async _ => await shutdown.CancelAsync());
+        StubWindowFetch();
+        var service = new Service(repository, _client, _callLog, new FakeClock(FixedNow),
+            Options.Create(new HoldedSectionOptions()), NullLogger<Service>.Instance, FixedOrgTimeZone.Madrid);
+        Func<Task> action = chart ? () => service.SyncChartAsync(shutdown.Token)
+            : () => service.SyncAccountLedgerAsync(123, shutdown.Token);
+
+        await action.Should().NotThrowAsync();
+        _callLog.Received(1).DrainAll();
+        if (chart)
+            await repository.Received(1).GetOrCreateSyncStateAsync(HoldedSyncKind.Accounts, "", CancellationToken.None);
+    }
+
+    [HumansFact]
+    public async Task Consumed_call_log_cancellation_is_a_persistence_failure()
+    {
+        var repository = Substitute.For<IHoldedMirrorRepository>();
+        _callLog.DrainAll().Returns([new HoldedApiCallRecord(FixedNow, "ledger", "GET", 200, null, null)]);
+        var canceled = new OperationCanceledException("Call log save canceled");
+        repository.AddApiCallsAsync(Arg.Any<IReadOnlyList<HoldedApiCall>>(), CancellationToken.None)
+            .Returns(Task.FromException(canceled));
+        var sync = new Service(repository, _client, _callLog, new FakeClock(FixedNow),
+            Options.Create(new HoldedSectionOptions()), NullLogger<Service>.Instance, FixedOrgTimeZone.Madrid);
+
+        var action = () => sync.DrainCallLogAsync(TestContext.Current.CancellationToken);
+        (await action.Should().ThrowAsync<InvalidOperationException>()).Which.InnerException.Should().BeSameAs(canceled);
+    }
+
+    [HumansFact]
+    public async Task Shutdown_after_the_ledger_window_does_not_claim_reconciliation_finished()
+    {
+        using var shutdown = new CancellationTokenSource();
+        var repository = Substitute.For<IHoldedMirrorRepository>();
+        repository.HasAnyLedgerLinesAsync(shutdown.Token).Returns(true);
+        var state = new HoldedSyncState { Kind = HoldedSyncKind.Ledger, LastSyncAt = FixedNow - Duration.FromDays(1) };
+        repository.GetOrCreateSyncStateAsync(HoldedSyncKind.Ledger, "", shutdown.Token).Returns(state);
+        repository.GetOrCreateSyncStateAsync(HoldedSyncKind.Accounts, "", Arg.Any<CancellationToken>())
+            .Returns(new HoldedSyncState { Kind = HoldedSyncKind.Accounts });
+        repository.GetAccountTotalsAsync(Arg.Any<CancellationToken>()).Returns([]);
+        repository.ReplaceLedgerWindowAsync(Arg.Any<Instant>(), FixedNow, null,
+                Arg.Any<IReadOnlyList<HoldedLedgerLine>>(), FixedNow, shutdown.Token)
+            .Returns(async _ => await shutdown.CancelAsync());
+        StubWindowFetch();
+        var service = new Service(repository, _client, _callLog, new FakeClock(FixedNow),
+            Options.Create(new HoldedSectionOptions()), NullLogger<Service>.Instance, FixedOrgTimeZone.Madrid);
+
+        var action = () => service.SyncLedgerAsync(ct: shutdown.Token);
+        await action.Should().ThrowAsync<OperationCanceledException>();
+        state.SyncStatus.Should().Be(HoldedSyncStatus.Error);
+        state.LastSyncAt.Should().Be(FixedNow - Duration.FromDays(1));
+        await _client.DidNotReceive().ListAccountingAccountsAsync(Arg.Any<CancellationToken>());
+    }
 
     [HumansFact]
     public async Task Cold_cache_sweeps_from_inception_and_caches_all_accounts()
@@ -220,7 +391,7 @@ public sealed class HoldedLedgerSyncTests
         using var cancellation = new CancellationTokenSource();
         var logger = new CapturingLogger<Service>();
         var service = new Service(_repo, _client, _callLog, new FakeClock(FixedNow),
-            Options.Create(new HoldedSectionOptions()), logger);
+            Options.Create(new HoldedSectionOptions()), logger, FixedOrgTimeZone.Madrid);
         _client.ListLedgerEntriesAsync(Arg.Any<LocalDate>(), Arg.Any<LocalDate>(), null, Arg.Any<CancellationToken>())
             .Returns<IReadOnlyList<HoldedLedgerLineDto>>(_ =>
             {
@@ -241,31 +412,27 @@ public sealed class HoldedLedgerSyncTests
     }
 
     [HumansFact]
-    public async Task Manual_sync_propagates_request_abort_with_a_stack_free_warning()
+    public async Task Manual_sync_propagates_request_abort_with_stack_free_warnings()
     {
         using var cancellation = new CancellationTokenSource();
-        var holded = Substitute.For<IHoldedService>();
-        holded.SyncLedgerAsync(false, cancellation.Token).Returns<bool>(_ =>
-        {
-            cancellation.Cancel();
-            throw new OperationCanceledException(cancellation.Token);
-        });
-        var logger = new CapturingLogger<Humans.Holded.Controllers.HoldedController>();
-        var controller = new Humans.Holded.Controllers.HoldedController(
-            Substitute.For<Humans.Users.Contracts.IUserService>(),
-            Substitute.For<IHoldedAdminService>(), holded, logger)
-        {
-            TempData = new Microsoft.AspNetCore.Mvc.ViewFeatures.TempDataDictionary(
-                new Microsoft.AspNetCore.Http.DefaultHttpContext(),
-                Substitute.For<Microsoft.AspNetCore.Mvc.ViewFeatures.ITempDataProvider>()),
-        };
+        var logger = new CapturingLogger<Service>();
+        var service = new Service(_repo, _client, _callLog, new FakeClock(FixedNow),
+            Options.Create(new HoldedSectionOptions()), logger, FixedOrgTimeZone.Madrid);
+        _client.ListPurchaseDocumentsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedPurchaseDocListItemDto>());
+        _client.ListContactsAsync(Arg.Any<CancellationToken>()).Returns(new List<HoldedContactDto>());
+        _client.ListLedgerEntriesAsync(Arg.Any<LocalDate>(), Arg.Any<LocalDate>(), null, Arg.Any<CancellationToken>())
+            .Returns<IReadOnlyList<HoldedLedgerLineDto>>(_ =>
+            {
+                cancellation.Cancel();
+                throw new OperationCanceledException(cancellation.Token);
+            });
 
-        var act = () => controller.SyncNow(cancellation.Token);
+        var act = () => service.SyncNowAsync(cancellation.Token);
         await act.Should().ThrowAsync<OperationCanceledException>();
 
-        var entry = logger.Entries.Should().ContainSingle().Subject;
-        entry.Level.Should().Be(LogLevel.Warning);
-        entry.Exception.Should().BeNull();
+        logger.Entries.Should().NotContain(e => e.Level >= LogLevel.Error);
+        logger.Entries.Where(e => e.Level == LogLevel.Warning).Should().NotBeEmpty()
+            .And.OnlyContain(e => e.Exception == null);
     }
 
     [HumansTheory]

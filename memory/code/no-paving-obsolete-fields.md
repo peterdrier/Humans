@@ -3,23 +3,24 @@ name: no-paving-obsolete-fields
 description: When migrating a read/write, switch to the canonical replacement — never carry an `[Obsolete]` field/predicate into new code (e.g. `Profile.IsSuspended` → `State`).
 ---
 
-When migrating a caller to a new service / read-model / interface, do NOT carry the call site's pre-existing reliance on a legacy/obsolete field, predicate, or helper. Switch to the canonical replacement at the same time as the migration. New code is never written against the obsolete field — full stop, even if the obsolete one is "still there and still works."
+When you migrate a caller to a new service, read model or interface, switch it to the canonical
+replacement for any legacy field, predicate or helper it used, in the same change. New code is never
+written against an obsolete member, even when it "still works".
 
-**Why:** Migrations are the only realistic window to retire the legacy member. If new code (and freshly-migrated old code) keeps reading the obsolete field, the dead member never reaches zero callers, and the codebase carries two parallel sources of truth indefinitely. Peter has explicitly stopped this multiple times: "stop using the damn obsolete field. migrate to the replacement, don't pave the cow path." Two readers of the same fact = an invariant waiting to be violated.
+**Why:** migrations are the only realistic window to retire a legacy member. If new and freshly migrated
+code keeps reading it, it never reaches zero callers and the codebase keeps two sources of truth.
+Peter: *"stop using the damn obsolete field. migrate to the replacement, don't pave the cow path."*
 
 **How to apply:**
+- An `[Obsolete]` attribute or a `#pragma warning disable HUM_*_OBSOLETE` is a stop sign for the line
+  under it: replace it with the successor, don't propagate it.
+- Known successors: suspension and stub state → `User.State` / `UserInfo.IsSuspended` / `IsStub`;
+  "has the name been filled in" → `UserInfo.HasRequiredNameFields`
+  ([`derived-predicates-on-userinfo`](../architecture/derived-predicates-on-userinfo.md)); a name for
+  display → `UserInfo.BurnerName` / `<vc:human>`
+  ([`burnername-is-the-display-name`](../architecture/burnername-is-the-display-name.md)).
+- No canonical replacement to be found? Stop and ask. Don't invent one and don't suppress the warning.
+- Tests too: a test ported off an obsolete field seeds the new field.
 
-- `Profile.IsSuspended` (bool; was `[Obsolete]`-flagged with `HUM_PROFILE_ISSUSPENDED`, since fully dropped via migration `DropProfileIsSuspended`) → then `Profile.State`, now `UserInfo.IsSuspended` off the stored `User.State`. Worked example of the pattern this rule teaches: the column existed alongside the replacement for a dual-write window, then was removed once callers migrated.
-- `Profile.State` / `ProfileState` (the C# property and enum are retired, and `profiles.state` was dropped in `DropProfileState`) → `User.State` (`UserState`) for suspension, `UserInfo.IsSuspended` / `IsStub` for the predicates.
-- "Has this user filled in their name?" → `UserInfo.HasRequiredNameFields` on the read side. Write paths inline the three null/whitespace checks at the callsite (`UserService.SaveProfileAsync`, `UserService.SuspendProfilesForMissingConsentAsync`) — both now live on `IUserService` after the `ProfileService` → `UserService` consolidation. The former `Profile.HasRequiredIdentityFields()` entity method has been removed — see [`derived-predicates-on-userinfo`](../architecture/derived-predicates-on-userinfo.md).
-- `User.DisplayName` for public rendering → `UserInfo.BurnerName` / `<vc:human>` (see [`burnername-is-the-display-name`](../architecture/burnername-is-the-display-name.md)).
-- Any `[Obsolete]` attribute or `#pragma warning disable HUM_*_OBSOLETE` you see while editing is a stop-sign for the line under it: replace it with the canonical successor, don't propagate it.
-- If you genuinely can't find a canonical replacement — STOP and ask. Don't invent one and don't suppress the obsolete warning.
-- Applies to tests too: when porting a test off the obsolete field, the test setup uses the new field. Don't seed Profile entities with the obsolete bool just because that's what the old test did.
-
-**Exceptions:** Identity / framework interop sites that must use the legacy `User.DisplayName` for the underlying Identity column (e.g. claims transformation, `UserManager.UpdateAsync`).
-
-**Related:**
-
-- [`burnername-is-the-display-name`](../architecture/burnername-is-the-display-name.md) — concrete instance for the User.DisplayName → BurnerName migration.
-- [`iuserservice-onestop-userinfo`](../architecture/iuserservice-onestop-userinfo.md) — the broader IProfileService → IUserService consolidation this rule supports.
+**Exception:** Identity/framework interop that must use the legacy column (claims transformation,
+`UserManager.UpdateAsync`).

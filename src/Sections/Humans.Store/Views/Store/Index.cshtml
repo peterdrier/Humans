@@ -133,7 +133,7 @@ else
         .Template(Localizer["Store_ColDescription"].Value, catalogDescriptionCell)
         .Template(Localizer["Store_ColUnitPrice"].Value, catalogPriceCell, c => c.NoSort().End())
         .Column(Localizer["Store_ColDeposit"].Value, r => r.DepositAmountEur, c => c.Currency().End())
-        .Column(Localizer["Store_ColOrderBy"].Value, r => r.OrderableUntil.ToDate())
+        .Column(Localizer["Store_ColOrderBy"].Value, r => r.OrderableUntil.ToDate(), c => c.Css("text-nowrap"))
         .Build();
     <partial name="_Table" model="catalogTable" />
 }

@@ -11,7 +11,7 @@ A stub for the future Low Income process. Today it is one Admin-only page that g
 
 ## Concepts
 
-- A **Low Income grant** is a grant under the one open Grants program whose issuer is a source with key `low-income` (`Section.SourceKey`). Board or Admin creates that program under Grants → Programs.
+- A **Low Income grant** is a grant under the one open Grants program whose issuer is a source with key `low-income` (`Section.SourceKey`). Grants Admin or Admin creates that program under Grants → Programs.
 
 ## Routing
 

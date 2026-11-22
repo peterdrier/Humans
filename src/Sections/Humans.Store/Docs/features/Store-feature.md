@@ -19,7 +19,7 @@ The Store section lets Camp Leads order infrastructure-as-a-service items from t
 
 This is fundamentally **camp data** with provenance recording (per `memory/architecture/provenance-fks-not-user-scoped.md`): order lines, payments, and invoices belong to the `CampSeason`, not to the lead who clicked the button. The `AddedByUserId` / `RecordedByUserId` / `IssuedByUserId` columns are audit/provenance only — deleting a user does not delete the order data.
 
-Payouts and chargebacks remain Stripe-dashboard-manual, and so do refunds until the guarded refund path ships (`memory/architecture/stripe-money-out.md`, nobodies-collective/Humans#1254). Humans only does the bookkeeping side: a returned deposit is credited to the order as a `DepositReturn` payment, and a refund issued in Stripe is recorded as a negative `Refund` payment, both by a Store admin.
+Refunds, payouts and chargebacks remain Stripe-dashboard-manual (`memory/architecture/stripe-money-out.md`, nobodies-collective/Humans#1254). Humans only does the bookkeeping side: a returned deposit is credited to the order as a `DepositReturn` payment by a Store admin, and a refund issued in Stripe is read back and recorded as a negative `Refund` payment when a FinanceAdmin presses "Check Stripe for refunds" on the order (each paid Stripe payment row has a "Refund in Stripe" button to its dashboard page).
 
 The section invariant doc is [`Store.md`](../Store.md).
 
@@ -33,7 +33,7 @@ The section invariant doc is [`Store.md`](../Store.md).
 - `/Store/Admin/Catalog` lists every product for the current event year (active and inactive) with name, description, unit price, VAT rate, optional deposit, OrderableUntil deadline, and IsActive state.
 - Create/edit share a single action at `/Store/Admin/Catalog/Edit` (no id = create, `/Store/Admin/Catalog/Edit/{id}` = edit). Submit posts to `/Store/Admin/Catalog/Save`. Trim+validate name (≤200), description (≤2000), non-negative numerics, VAT rate 0–100. `OrderableUntil` accepts any date — past, present, or future. The authorization guard in `OrderAuthorizationHandler` denies non-admin line edits once today's event-zone date has passed it, so a date in the past simply makes the product no longer orderable by Camp Leads; admins can extend or shorten it freely and are not blocked past the deadline.
 - "Deactivate" button performs a soft-deactivate (sets `IsActive = false`); never a hard delete. Deactivated products are hidden from the Camp Lead catalog view immediately, and `Service.AddLineAsync` rejects new lines against them with a clear error.
-- The active year is derived via `ISettingsService.GetActiveEventSettingsAsync(ct)`, preserving read cancellation through catalog-year and live-price lookups (see Cross-Section Dependencies in `Store.md`).
+- The active year is derived via `ISettingsService.GetActiveEventSettings()`, preserving read cancellation through live-price lookups (see Cross-Section Dependencies in `Store.md`).
 - Audit-logged: `StoreProductCreated`, `StoreProductUpdated`, `StoreProductDeactivated` with the actor user id. A unit-price change additionally emits a dedicated `StoreProductPriceChanged` entry (nobodies-collective/Humans#816); the catalog edit page shows that product's price history.
 
 ### US-30.2: Build a Camp's Running Tab (Camp Lead)
@@ -42,7 +42,7 @@ The section invariant doc is [`Store.md`](../Store.md).
 
 **Acceptance Criteria:**
 - The index and editable order catalogs display products alphabetically; controllers own their display order.
-- `/Store` shows the lead's camp seasons for the active year (resolved via `ICampService.GetCampsForYearAsync`, scanning each camp's `GetLeadSeasonIdForYear`) with a list of orders for each.
+- `/Store` shows the lead's camp seasons for the active year (resolved via `ICampService.GetCampsForYearAsync`, including every season in that year the viewer leads) with a list of orders for each.
 - "Create order" creates a new `Order` in `Open` state attached to the camp season; `CreateOrderAsync` rejects a second order for a season that already has one — any one, including a legacy row still at `Year = 0` — so a camp season carries at most one.
 - Order detail at `/Store/Order/{id}` shows the line list, payment list, running balance, and counterparty fields.
 - Add-line form posts to `/Store/Order/{id}/AddLine` with a product id and quantity. The line snapshots `UnitPriceSnapshot`, `VatRateSnapshot`, and `DepositAmountSnapshot` from the product at add-time. **An `Open` order is a live running tab (nobodies-collective/Humans#816):** it reprices its lines to the current catalog price, so catalog edits DO propagate to Open orders; the snapshot is only frozen into the effective price once the order is `InvoiceIssued` (`Store.md`).
@@ -57,7 +57,7 @@ The section invariant doc is [`Store.md`](../Store.md).
 **As** a Camp Lead, **I want** to pay against my order with a card through Stripe Checkout, **so that** I don't have to wait for a bank transfer to clear and the Treasurer doesn't have to manually reconcile the payment.
 
 **Acceptance Criteria:**
-- Pay form is rendered when the order has `Balance > 0`, the lead has `Pay` authorization, and Stripe is configured (`STRIPE_STORE_KEY` set). The amount input defaults to the balance owed and is capped at it.
+- Pay form is rendered when the order has `Balance > 0`, the lead has `Pay` authorization, and Stripe is configured (`STRIPE_STORE_KEY` set). The amount input defaults to and is capped at the lesser of the balance owed and Stripe's EUR 999,999.99 per-checkout limit. The service rejects amounts above that limit with localized feedback before reading or changing a checkout attempt.
 - POST to `/Store/Order/{id}/Pay` calls `IStripeService.CreateCheckoutSessionAsync` with `humans_store_order_id` metadata, EUR-cents amount (rounded `MidpointRounding.AwayFromZero`), success and cancel URLs (absolute, scheme + host from request), and the lead's email if available; redirects the browser to Stripe's hosted checkout. The order holds one open checkout attempt: the same amount again reuses its session, a changed amount expires it before a new one is opened, and a session that already completed opens nothing (the lead sees the pending-payment refusal).
 - Stripe's POST to `/Store/StripeWebhook` is verified via `EventUtility.ConstructEvent(body, signature, signingSecret, throwOnApiVersionMismatch: false)`. The endpoint is subscribed to all four `checkout.session.*` events, all handled by `HandleStripeCheckoutWebhookEventAsync` (nobodies-collective/Humans#638): `completed` records a payment, `async_payment_succeeded`/`async_payment_failed` transition the matching Pending row, `expired` cleans up an orphan Pending row. Malformed JSON, unsupported payload shapes, missing event identity/type/data, or checkout events without a session object return 400 before dispatch, even with a valid signature. Unrelated well-formed event types log at Debug + return 200.
 - For `completed`, the handler extracts `humans_store_order_id` metadata, the `PaymentIntentId`, `AmountTotal / 100m`, and `payment_status`, then calls `Service.RecordStripePaymentAsync` with status `Paid` when `payment_status == "paid"` (sync card/wallet) or `Pending` when `"unpaid"` (async mandate captured, e.g. SEPA). The service is idempotent on `paymentIntentId` — duplicate webhook deliveries record nothing.
@@ -84,9 +84,9 @@ The section invariant doc is [`Store.md`](../Store.md).
 **As** a Store admin (`StoreAdmin`, `FinanceAdmin` or `Admin`), **I want** to emit one Holded factura per order once the camp's purchases are finalized, **so that** the camp gets a single consolidated invoice rather than line-item-by-line-item paperwork.
 
 **Acceptance Criteria:**
-- POST to `/Store/Order/{id}/IssueInvoice` validates: order must be `Open`, must have at least one line, `IssuedInvoiceId` must be null, and Holded must be configured. New issuance and draft approval also require a zero balance; recovery of an already approved document is checked first and may proceed at a nonzero balance.
+- POST to `/Store/Order/{id}/IssueInvoice` validates: order must be `Open`, must have at least one line, `IssuedInvoiceId` must be null, and Holded must be configured. New issuance and draft approval also require a zero balance and no pending refund; recovery of an already approved document is checked first and may proceed at a nonzero balance.
 - Before issuing, each line's `UnitPriceSnapshot` / `VatRateSnapshot` / `DepositAmountSnapshot` is rewritten from the live catalog (nobodies-collective/Humans#816), so the document and the order agree forever after.
-- Issues a full Holded `invoice` (with an upserted `client` contact) when the counterparty has name, address, and a tax id; otherwise a contact-less `sales-receipt`, allowed only at or below `Store:SimplifiedInvoiceThresholdEur` (default €400) — above it issuance is refused rather than downgraded. Each line resolves its Holded revenue account from the product's `HoldedRevenueAccountNum`; deposit lines post tax-0 to `Store:DepositLiabilityAccountNum`.
+- Issues a full Holded `invoice` (with an upserted `client` contact) when the counterparty has name, address, and a tax id; otherwise a contact-less `sales-receipt`, allowed only at or below the simplified invoice limit on `/Settings#store` (default €400) — above it issuance is refused rather than downgraded. Each line resolves its Holded revenue account from the product's `HoldedRevenueAccountNum`; each product's kept deposit (charged minus returned) is one 21% line on the product's revenue account; returned deposits are listed in the notes only. After approval the order's Stripe and bank money is booked onto the invoice and reconciled in one go, then Holded emails the invoice (see Store.md, One-shot booking).
 - The document is approved (a Holded draft books no revenue) and read back for its `document_number`, then written to an `Invoice` row (`OrderId`, `HoldedDocId`, `HoldedDocNumber`, `IssuedAt`, `IssuedByUserId`, full request/response payloads) in the same save that sets the order's `State = InvoiceIssued` and `IssuedInvoiceId`. A read-back that still reports a draft or lacks a document number leaves the order open without an invoice row; retries recover that same tagged document.
 - Idempotent: re-issuing an already-issued order is refused without calling Holded. If an earlier attempt created a Holded document but failed before the local save, the retry recovers that same document by tag instead of creating a second one — and refuses if the order changed since. Every approved read-back, including first issuance, must match the calculated order subtotal (including deposits), VAT and total before the local save and issuance audit. A recovered draft must also match before approval; a mismatch leaves the order open and retries recover the same document rather than issuing another.
 - Implemented per nobodies-collective/Humans#1029.
@@ -106,7 +106,7 @@ The section invariant doc is [`Store.md`](../Store.md).
 
 **Acceptance Criteria:**
 - `/Store/Admin/Summary` is gated by `StorePolicies.Read` (the same policy as the `/Store/Admin/Catalog` list); volunteers receive 403/redirect.
-- Year selector at the top defaults to the active event year via `ISettingsService.GetActiveEventSettingsAsync()`, falling back to the clock's current year if there is no active event. `?year=N` overrides the default.
+- Year selector at the top defaults to the active event year via `ISettingsService.GetActiveEventSettings()`, falling back to the clock's current year if there is no active event. `?year=N` overrides the default.
 - Three projections render in this order, each as its own card:
   - **By-camp** — one row per order with Camp / State / Total due / Paid / Balance. Camp name links to `/Store/Order/{id}`. Columns are client-side sortable. A paid-status dropdown (All / Paid / Partial / Unpaid) filters rows in-place; classification rule: `Balance ≤ 0` → paid, else `Paid > 0` → partial, else unpaid. A footer summary row totals Total due / Paid / Balance across **camp counterparties only** (team orders are excluded so the totals reconcile: teams never pay, so their due would break `Total due = Paid + Balance`). **Totals use effective pricing** — Open orders use the live catalog price (same as the order page); InvoiceIssued orders use frozen snapshots.
   - **By-item** — one row per product (qty, revenue €), including deactivated products that still have lines in the year. Amounts use effective pricing (live catalog for Open orders).
@@ -179,7 +179,7 @@ Resource-based via `OrderAuthorizationHandler` keyed on `OrderOperationRequireme
 | `ISettingsService` | derive the active event year + time zone for OrderableUntil deadline gate |
 | `IAuditLogService` | audit every write |
 | `IStripeService` | Checkout Session creation; webhook signature verification; listing Store Checkout Sessions (`ListStoreCheckoutSessionsAsync`) for reconciliation |
-| `IHoldedClient` | factura issuance (treasury sync is not built) |
+| `IHoldedService` / `IHoldedWrite` | factura issuance and the chart check (treasury sync is not built) |
 | `IUserService` | current-user resolution in the Store controllers |
 | Backdoor (consumer) | `/api/backdoor/store/*` reads the accounting export through `IStoreAccountingRead` |
 
@@ -195,7 +195,7 @@ The Store section reads several environment variables — see `Store.md` *Stripe
 ## Related Features / Sections
 
 - [`Store.md`](../Store.md) — section invariants (canonical reference)
-- [`memory/architecture/stripe-money-out.md`](../../../../../memory/architecture/stripe-money-out.md) — money-out rules: guarded refunds only, payouts dashboard-manual
+- [`memory/architecture/stripe-money-out.md`](../../../../../memory/architecture/stripe-money-out.md) — money-out rules: refunds, payouts and chargebacks dashboard-manual; refunds read back
 - [`memory/code/stripe-restricted-keys.md`](../../../../../memory/code/stripe-restricted-keys.md) — production keys must be RAKs
 - [`memory/architecture/provenance-fks-not-user-scoped.md`](../../../../../memory/architecture/provenance-fks-not-user-scoped.md) — Store FKs are provenance, not user-scoped data
 - [`Camps.md`](../../../Humans.Camps/Docs/Camps.md) — `CampSeason` is the order's owning aggregate
@@ -210,5 +210,6 @@ The Store section reads several environment variables — see `Store.md` *Stripe
 - Invoice issuance distinguishes typed operator refusals from dependency faults; an external InvalidOperationException cannot be surfaced as an expected refusal.
 
 - Manual payment and deletion feedback distinguishes typed operator refusals from persistence faults; expected refusals do not write money records or audits.
+- An unresolved Stripe checkout prevents order deletion even when the order has become zero-balance. The service and delete affordance enforce this; deletion shares checkout/webhook coordination so an in-flight session cannot lose its order. Existing completion/expiry handling resolves the attempt, and recorded payment rows continue to prevent deletion.
 
 Catalog validation and missing-product refusals are typed operator outcomes. Actual deactivation persistence/audit faults propagate; the catalog save form keeps generic failure feedback and private Error diagnostics.

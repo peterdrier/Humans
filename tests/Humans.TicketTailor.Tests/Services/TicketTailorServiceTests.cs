@@ -92,6 +92,10 @@ public class TicketTailorServiceTests
     }
 
     [HumansTheory]
+    [Xunit.InlineData("created_at", null)]
+    [Xunit.InlineData("created_at", "null")]
+    [Xunit.InlineData("created_at", "9223372036854775807")]
+    [Xunit.InlineData("created_at", "-9223372036854775808")]
     [Xunit.InlineData("total", null)]
     [Xunit.InlineData("total", "null")]
     [Xunit.InlineData("status", null)]
@@ -129,7 +133,7 @@ public class TicketTailorServiceTests
         var handler = new RecordingHttpHandler();
         handler.EnqueueResponse(HttpStatusCode.OK, new
         {
-            data = new[] { new { id = "ord_free", created_at = 1716811200L, total = 0, currency = new { code = "eur" }, status = "pending" } },
+            data = new[] { new { id = "ord_free", created_at = 0L, total = 0, currency = new { code = "eur" }, status = "pending" } },
             links = new { next = (string?)null }
         });
 
@@ -138,6 +142,7 @@ public class TicketTailorServiceTests
 
         orders.Should().ContainSingle();
         orders[0].TotalAmount.Should().Be(0m);
+        orders[0].PurchasedAt.Should().Be(Instant.FromUnixTimeSeconds(0));
         orders[0].PaymentStatus.Should().Be("pending");
     }
 
@@ -459,6 +464,28 @@ public class TicketTailorServiceTests
         checkIns.Single().CheckedInAt.Should().Be(Instant.FromUnixTimeSeconds(1751983320L));
     }
 
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task GetCheckInsAsync_RejectsOutOfRangeTimestampsWithTheVendorReadException(bool scanTimestamp)
+    {
+        var handler = new RecordingHttpHandler();
+        handler.EnqueueResponse(HttpStatusCode.OK, new
+        {
+            data = new[]
+            {
+                new { id = "ci_bad", issued_ticket_id = "it_bad", check_in_at = scanTimestamp ? long.MaxValue : (long?)null,
+                    created_at = long.MaxValue, quantity = 1 }
+            },
+            links = new { next = (string?)null }
+        });
+
+        var read = () => TicketTailorTestHost.CreateService(handler)
+            .GetCheckInsAsync(null, "ev_test", Xunit.TestContext.Current.CancellationToken);
+
+        await read.Should().ThrowAsync<HttpRequestException>().WithMessage("*timestamp*");
+    }
+
     [HumansFact]
     public async Task GetCheckInsAsync_ReportsEarliestPositiveScan_FallingBackToCreatedAt()
     {
@@ -528,6 +555,15 @@ public class TicketTailorServiceTests
     [Xunit.InlineData("orders", "whitespace-identity")]
     [Xunit.InlineData("tickets", "whitespace-identity")]
     [Xunit.InlineData("check-ins", "whitespace-identity")]
+    [Xunit.InlineData("orders", "missing-links")]
+    [Xunit.InlineData("tickets", "missing-links")]
+    [Xunit.InlineData("check-ins", "missing-links")]
+    [Xunit.InlineData("orders", "null-links")]
+    [Xunit.InlineData("tickets", "null-links")]
+    [Xunit.InlineData("check-ins", "null-links")]
+    [Xunit.InlineData("orders", "missing-next")]
+    [Xunit.InlineData("tickets", "missing-next")]
+    [Xunit.InlineData("check-ins", "missing-next")]
     public async Task Paging_RejectsInvalidContinuationWithoutReturningPartialData(string endpoint, string shape)
     {
         var handler = new RecordingHttpHandler();
@@ -547,6 +583,14 @@ public class TicketTailorServiceTests
                 data = new[] { invalidItem, new { id = "valid", created_at = 1716811200L } },
                 links = new { next = (string?)null },
             });
+        }
+        else if (shape is "missing-links" or "null-links" or "missing-next")
+        {
+            var page = JsonNode.Parse("""{"data":[{"id":"valid","created_at":1716811200,"total":100,"currency":{"code":"eur"},"status":"valid"}],"links":{"next":null}}""")!;
+            if (string.Equals(shape, "missing-links", StringComparison.Ordinal)) page.AsObject().Remove("links");
+            else if (string.Equals(shape, "null-links", StringComparison.Ordinal)) page["links"] = null;
+            else page["links"]!.AsObject().Remove("next");
+            handler.EnqueueResponse(HttpStatusCode.OK, page);
         }
         else if (string.Equals(shape, "missing-data", StringComparison.Ordinal))
             handler.EnqueueResponse(HttpStatusCode.OK, new { links = new { next = "more" } });

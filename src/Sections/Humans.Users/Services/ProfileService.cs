@@ -1,24 +1,25 @@
-using Humans.Users.Data.Repositories;
 using Humans.Users.Contracts;
 using Humans.Base.Interfaces;
 
 namespace Humans.Users.Services;
 
-internal sealed class ProfileService(IUserRepository userRepository,
+internal sealed class ProfileService(IUserService userService,
     IFileStorage fileStorage) : IProfilePictureService
 {
+    /// <summary>
+    /// Answers from the cached UserInfo, which every profile save and merge refreshes. GDPR gate: a cleared content
+    /// type leaves no file key, so nothing is served from disk once cleared.
+    /// </summary>
     public async Task<(byte[] Data, string ContentType)?> GetProfilePictureAsync(
-        Guid profileId, CancellationToken ct = default)
+        Guid userId, CancellationToken ct = default)
     {
-        // GDPR gate: the content-type column is the source of truth; never serve from disk once cleared.
-        var location = await userRepository.GetProfilePictureLocationAsync(profileId, ct);
-        if (location is not { } picture || string.IsNullOrEmpty(picture.ContentType))
+        var profile = (await userService.GetRawUserInfoAsync(userId, ct))?.Profile;
+        if (profile is not { ProfilePictureFileKey: { } key, ProfilePictureContentType: { } contentType })
         {
             return null;
         }
 
-        var key = ProfilePictureKeys.Resolve(profileId, picture.ContentType, picture.StorageKey)!;
         var fsBytes = await fileStorage.TryReadAsync(key, ct);
-        return fsBytes is not null ? (fsBytes, picture.ContentType) : null;
+        return fsBytes is not null ? (fsBytes, contentType) : null;
     }
 }

@@ -19,7 +19,7 @@ namespace Humans.Holded.Data.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.13")
+                .HasAnnotation("ProductVersion", "10.0.15")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -97,6 +97,86 @@ namespace Humans.Holded.Data.Migrations
                     b.HasIndex("CalledAt");
 
                     b.ToTable("holded_api_calls", (string)null);
+                });
+
+            modelBuilder.Entity("Humans.Holded.Domain.HoldedBankMovement", b =>
+                {
+                    b.Property<string>("TreasuryAccountId")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("Id")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<decimal>("Amount")
+                        .HasColumnType("decimal(14,2)");
+
+                    b.Property<Instant?>("BookedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<LocalDate>("Date")
+                        .HasColumnType("date");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("text");
+
+                    b.Property<Instant>("LastSyncedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.HasKey("TreasuryAccountId", "Id");
+
+                    b.HasIndex("TreasuryAccountId", "Date");
+
+                    b.ToTable("holded_bank_movements", (string)null);
+                });
+
+            modelBuilder.Entity("Humans.Holded.Domain.HoldedContact", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("Address")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Email")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Iban")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<Instant>("LastSyncedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Mobile")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Name")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Phone")
+                        .HasColumnType("text");
+
+                    b.Property<int?>("SupplierAccountNum")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("TaxCode")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("TradeName")
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("holded_contacts", (string)null);
                 });
 
             modelBuilder.Entity("Humans.Holded.Domain.HoldedLedgerLine", b =>
@@ -195,6 +275,9 @@ namespace Humans.Holded.Data.Migrations
                     b.Property<string>("Notes")
                         .HasColumnType("text");
 
+                    b.Property<decimal?>("PaymentsPending")
+                        .HasColumnType("decimal(14,2)");
+
                     b.Property<decimal>("Subtotal")
                         .HasColumnType("decimal(14,2)");
 
@@ -219,6 +302,12 @@ namespace Humans.Holded.Data.Migrations
                         .HasMaxLength(16)
                         .HasColumnType("character varying(16)");
 
+                    b.Property<string>("Scope")
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasDefaultValue("");
+
                     b.Property<int>("LastCount")
                         .HasColumnType("integer");
 
@@ -237,7 +326,7 @@ namespace Humans.Holded.Data.Migrations
                         .HasMaxLength(16)
                         .HasColumnType("character varying(16)");
 
-                    b.HasKey("Kind");
+                    b.HasKey("Kind", "Scope");
 
                     b.ToTable("holded_sync_states", (string)null);
                 });

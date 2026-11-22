@@ -12,6 +12,7 @@ using Microsoft.AspNetCore.Mvc.ModelBinding;
 using NodaTime;
 using Humans.Base.Authorization;
 using Humans.Users.Contracts;
+using Humans.Permissions.Contracts;
 
 namespace Humans.Shifts.Controllers;
 
@@ -22,13 +23,14 @@ internal sealed class ShiftAdminController(
     IShiftManagement shiftMgmt,
     IBurnSettingsService burnSettings,
     IShiftSignupService signupService,
-    IShiftRowView shiftView,
+    IShiftRotaRows rotaRows,
     IUserService userService,
     IAuthorizationService authorizationService,
     IClock clock,
     ShiftAdminPageBuilder pageBuilder,
     ShiftVolunteerSearchBuilder volunteerSearchBuilder,
     IRotaCoordinatorMessageService rotaMessenger,
+    IPermissionService permissions,
     ILogger<ShiftAdminController> logger,
     IStringLocalizer<ShiftsResource> localizer) : HumansTeamControllerBase(userService, teamService, authorizationService)
 {
@@ -36,18 +38,14 @@ internal sealed class ShiftAdminController(
     [HttpGet("")]
     public async Task<IActionResult> Index(string slug, bool incompleteOnboarding = false, CancellationToken ct = default)
     {
-        var canManage = ShiftsRoles.IsVolunteerManager(User);
-        var canApprove = ShiftsRoles.CanManageDepartment(User);
+        var canManage = false;
+        var canApprove = false;
         var (teamError, _, team) = await ResolveDepartmentAccessAsync(
             slug,
             async (resolvedTeam, resolvedUser) =>
             {
-                if (!canManage || !canApprove)
-                {
-                    var coordinates = await shiftMgmt.IsDeptCoordinatorAsync(resolvedUser.Id, resolvedTeam.Id, ct);
-                    canManage |= coordinates;
-                    canApprove |= coordinates;
-                }
+                canManage = await CanManageDepartmentAsync(resolvedUser, resolvedTeam, ct);
+                canApprove = await CanApproveDepartmentAsync(resolvedUser, resolvedTeam, ct);
                 // Board reads every department's rotas with both flags off.
                 return canManage || canApprove
                     || (await AuthorizationService.AuthorizeAsync(User, ShiftsPolicies.Read)).Succeeded;
@@ -65,7 +63,6 @@ internal sealed class ShiftAdminController(
             es,
             canManage,
             canApprove,
-            ShiftsRoles.CanViewMedical(User),
             incompleteOnboarding,
             clock.GetCurrentInstant()), ct);
 
@@ -405,8 +402,9 @@ internal sealed class ShiftAdminController(
 
     private async Task<IReadOnlyList<string>> GetRotaRecipientNamesAsync(Guid rotaId, CancellationToken ct = default)
     {
-        var view = await shiftView.GetRotaAsync(rotaId, ct);
-        var userIds = view.Signups
+        var rows = await rotaRows.GetRotaRowsAsync([rotaId], ct);
+        var userIds = rows
+            .SelectMany(r => r.Shifts.SelectMany(s => s.Signups))
             .Where(s => s.Status is SignupStatus.Pending or SignupStatus.Confirmed)
             .Select(s => s.UserId)
             .Distinct()
@@ -850,18 +848,11 @@ internal sealed class ShiftAdminController(
             .ToList();
     }
 
-    private async Task<bool> CanManageDepartmentAsync(UserInfo user, TeamInfo team, CancellationToken ct = default)
-    {
-        // NoInfoAdmin can approve signups but not manage rotas or shifts.
-        return ShiftsRoles.IsVolunteerManager(User) ||
-               await shiftMgmt.IsDeptCoordinatorAsync(user.Id, team.Id, ct);
-    }
+    private Task<bool> CanManageDepartmentAsync(UserInfo user, TeamInfo team, CancellationToken ct = default) =>
+        permissions.HasAsync(user.Id, ShiftsPermissions.Manage, new Owner(TeamOwner.Kind, team.Id), ct);
 
-    private async Task<bool> CanApproveDepartmentAsync(UserInfo user, TeamInfo team, CancellationToken ct = default)
-    {
-        return ShiftsRoles.CanManageDepartment(User) ||
-               await shiftMgmt.IsDeptCoordinatorAsync(user.Id, team.Id, ct);
-    }
+    private Task<bool> CanApproveDepartmentAsync(UserInfo user, TeamInfo team, CancellationToken ct = default) =>
+        permissions.HasAsync(user.Id, ShiftsPermissions.Approve, new Owner(TeamOwner.Kind, team.Id), ct);
 }
 
 internal sealed record ShiftTagResult(Guid Id, string Name);

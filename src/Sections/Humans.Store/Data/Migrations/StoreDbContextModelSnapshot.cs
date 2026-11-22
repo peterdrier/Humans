@@ -18,7 +18,7 @@ namespace Humans.Store.Data.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.13")
+                .HasAnnotation("ProductVersion", "10.0.15")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -28,6 +28,14 @@ namespace Humans.Store.Data.Migrations
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
+
+                    b.Property<string>("BookingNote")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<string>("BookingState")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
 
                     b.Property<string>("HoldedDocId")
                         .IsRequired()
@@ -55,6 +63,9 @@ namespace Humans.Store.Data.Migrations
                     b.Property<string>("ResponsePayload")
                         .IsRequired()
                         .HasColumnType("jsonb");
+
+                    b.Property<Instant?>("SentAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.HasKey("Id");
 
@@ -205,6 +216,9 @@ namespace Humans.Store.Data.Migrations
                     b.Property<Guid>("OrderId")
                         .HasColumnType("uuid");
 
+                    b.Property<Guid?>("ProductId")
+                        .HasColumnType("uuid");
+
                     b.Property<Instant>("ReceivedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -248,7 +262,13 @@ namespace Humans.Store.Data.Migrations
                         .HasMaxLength(2000)
                         .HasColumnType("character varying(2000)");
 
+                    b.Property<int?>("HoldedExpenseAccountNum")
+                        .HasColumnType("integer");
+
                     b.Property<int?>("HoldedRevenueAccountNum")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("HoldedTransferAccountNum")
                         .HasColumnType("integer");
 
                     b.Property<bool>("IsActive")
@@ -279,6 +299,26 @@ namespace Humans.Store.Data.Migrations
                     b.HasIndex("Year", "IsActive");
 
                     b.ToTable("store_products", (string)null);
+                });
+
+            modelBuilder.Entity("Humans.Store.Domain.StoreSettings", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("DepositLiabilityAccountNum")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal>("SimplifiedInvoiceThresholdEur")
+                        .HasColumnType("numeric(12,2)");
+
+                    b.Property<string>("StripeGatewayTreasuryId")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("store_settings", (string)null);
                 });
 
             modelBuilder.Entity("Humans.Store.Domain.Invoice", b =>

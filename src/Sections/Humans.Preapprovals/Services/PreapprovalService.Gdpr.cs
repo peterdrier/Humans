@@ -1,15 +1,13 @@
-using Humans.AuditLog.Contracts;
-using Humans.Base.Extensions;
 using Humans.Gdpr.Contracts;
 using Humans.Users.Contracts;
 using NodaTime;
+using Humans.AuditLog.Contracts;
+using Humans.Base.Extensions;
+using Humans.Base.Interfaces;
+using Humans.Preapprovals.Data;
 
 namespace Humans.Preapprovals.Services;
 
-/// <summary>
-/// Erasure deletes only what was never decided: every decided grant commits the association's money and is kept under
-/// Art. 17(3)(b).
-/// </summary>
 internal sealed partial class PreapprovalService : IUserDataContributor, IUserMerge
 {
     internal const string Preapprovals = "Preapprovals";
@@ -36,12 +34,9 @@ internal sealed partial class PreapprovalService : IUserDataContributor, IUserMe
     public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
     {
         var rows = await repository.GetRowsForUsersAsync(await AllIdsAsync(userId, ct), ct);
-        var programs = (await repository.GetProgramsAsync(ct)).ToDictionary(p => p.Id, p => p.Name);
-        string NameOf(Guid programId) => programs.TryGetValue(programId, out var name) ? name : "(unknown)";
-
         var grants = rows.Grants.Select(g => new
         {
-            Program = NameOf(g.ProgramId),
+            Program = g.Program.Name,
             g.Label,
             g.MaxAmount,
             Status = g.Status.ToString(),
@@ -55,11 +50,11 @@ internal sealed partial class PreapprovalService : IUserDataContributor, IUserMe
         var decisions = new
         {
             ProgramsCreated = rows.ProgramsCreated.Select(p => new { p.Name, CreatedAt = p.CreatedAt.ToIso8601() }).ToList(),
-            ManagerOf = rows.ManagerRows.Select(m => new { Program = NameOf(m.ProgramId), AddedAt = m.AddedAt.ToIso8601() }).ToList(),
-            ManagersAdded = rows.ManagersAdded.Select(m => new { Program = NameOf(m.ProgramId), AddedAt = m.AddedAt.ToIso8601() }).ToList(),
+            ManagerOf = rows.ManagerRows.Select(m => new { Program = m.Program.Name, AddedAt = m.AddedAt.ToIso8601() }).ToList(),
+            ManagersAdded = rows.ManagersAdded.Select(m => new { Program = m.Program.Name, AddedAt = m.AddedAt.ToIso8601() }).ToList(),
             GrantsDecided = rows.GrantsDecided.Select(g => new
             {
-                Program = NameOf(g.ProgramId),
+                Program = g.Program.Name,
                 g.MaxAmount,
                 Status = g.Status.ToString(),
                 DecidedAt = g.DecidedAt.ToIso8601()

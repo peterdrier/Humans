@@ -57,8 +57,8 @@ internal sealed class ScannerController(
             pendingConsents = (await consents.GetPendingDocumentNamesAsync(userId, ct))
                 .Order(StringComparer.Ordinal).ToList();
 
-            var burn = await settingsService.GetActiveEventSettingsAsync(ct);
-            burnTz = burn is null ? null : DateTimeZoneProviders.Tzdb.GetZoneOrNull(burn.TimeZoneId);
+            var burn = settingsService.GetActiveEventSettings();
+            burnTz = burn?.TimeZone;
             if (burn is not null)
             {
                 checkedInAt = (await tickets.GetParticipationsAsync(userId, ct))
@@ -72,8 +72,6 @@ internal sealed class ScannerController(
             AttendeeName: hit.AttendeeName ?? "",
             AttendeeEmail: hit.AttendeeEmail,
             Status: hit.Status,
-            HasPendingTransfer: false,
-            PendingTransferRequestId: null,
             EarlyEntryDate: ee?.EarliestEntryDate);
 
         return PartialView("_TicketCard", new ScannerTicketCardViewModel(

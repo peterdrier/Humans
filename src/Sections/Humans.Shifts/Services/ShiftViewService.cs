@@ -10,28 +10,25 @@ internal sealed class ShiftViewService : IShiftRowView
     private readonly IShiftManagementRepository _management;
     private readonly IVolunteerTrackingRepository _tracking;
     private readonly EventCalendarResolver _calendarResolver;
-    private readonly IShiftManagement _shiftManagement;
+    private readonly IShiftRotaRows _rotaRows;
 
     public ShiftViewService(
         IShiftManagementRepository management,
         IVolunteerTrackingRepository tracking,
         EventCalendarResolver calendarResolver,
-        IShiftManagement shiftManagement)
+        IShiftRotaRows rotaRows)
     {
         _management = management;
         _tracking = tracking;
         _calendarResolver = calendarResolver;
-        _shiftManagement = shiftManagement;
+        _rotaRows = rotaRows;
     }
-
-    public void EventSettingsChanged(Guid eventSettingsId) =>
-        _shiftManagement.InvalidateDashboardCaches(eventSettingsId);
 
     public async ValueTask<ShiftUserView> GetUserAsync(Guid userId, CancellationToken ct = default) =>
         (await GetUsersAsync([userId], ct).ConfigureAwait(false))[userId];
 
     /// <summary>
-    /// One query per table for all ids. Every requested id gets a view, empty when it has no rows, never absent.
+    /// One query per table for all ids; signups come from the cached rota rows. Every requested id gets a view, empty when it has no rows, never absent.
     /// </summary>
     public async ValueTask<IReadOnlyDictionary<Guid, ShiftUserView>> GetUsersAsync(
         IEnumerable<Guid> userIds, CancellationToken ct = default)
@@ -52,8 +49,8 @@ internal sealed class ShiftViewService : IShiftRowView
 
         Dictionary<Guid, GeneralAvailability> availabilityByUser = [];
         Dictionary<Guid, VolunteerBuildStatus> buildStatusByUser = [];
-        Dictionary<Guid, IReadOnlyList<ShiftSignup>> signupsByUser = [];
-        Humans.Shifts.Contracts.BurnSettingsInfo? calendar = null;
+        Dictionary<Guid, IReadOnlyList<ShiftUserSignup>> signupsByUser = [];
+        BurnSettingsInfo? calendar = null;
 
         if (activeEvent is not null)
         {
@@ -65,13 +62,15 @@ internal sealed class ShiftViewService : IShiftRowView
                 .GetBuildStatusesForEventAsync(activeEvent.Id, ids, ct).ConfigureAwait(false);
             buildStatusByUser = builds.ToDictionary(b => b.UserId);
 
-            var batchSignups = await _management
-                .GetForUsersAsync(ids, activeEvent.Id, ct).ConfigureAwait(false);
-            signupsByUser = batchSignups
-                .GroupBy(s => s.UserId)
-                .ToDictionary(
-                    g => g.Key,
-                    g => (IReadOnlyList<ShiftSignup>)g.ToList());
+            var wanted = ids as IReadOnlySet<Guid> ?? ids.ToHashSet();
+            var rows = await _rotaRows.GetRotaRowsAsync(ct: ct).ConfigureAwait(false);
+            signupsByUser = rows
+                .Where(r => r.Rota.EventSettingsId == activeEvent.Id)
+                .SelectMany(r => r.Shifts.SelectMany(s => s.Signups
+                    .Where(signup => wanted.Contains(signup.UserId))
+                    .Select(signup => new ShiftUserSignup(signup, s.Shift, r.Rota))))
+                .GroupBy(s => s.Signup.UserId)
+                .ToDictionary(g => g.Key, g => (IReadOnlyList<ShiftUserSignup>)g.ToList());
 
             calendar = activeEvent;
         }
@@ -92,29 +91,4 @@ internal sealed class ShiftViewService : IShiftRowView
         return result;
     }
 
-    public async ValueTask<ShiftRotaView> GetRotaAsync(Guid rotaId, CancellationToken ct = default)
-    {
-        var rota = await _management.GetRotaAsync(rotaId, RotaReadShape.View, ct).ConfigureAwait(false);
-        if (rota is null)
-            return ShiftRotaView.Empty(rotaId);
-
-        var shifts = rota.Shifts.ToList();
-        var tags = rota.Tags.ToList();
-        var signups = shifts.SelectMany(s => s.ShiftSignups).ToList();
-
-        return new ShiftRotaView(rotaId, rota, shifts, tags, signups);
-    }
-
-    public async ValueTask<IReadOnlyDictionary<Guid, ShiftRotaView>> GetRotasAsync(
-        IEnumerable<Guid> rotaIds, CancellationToken ct = default)
-    {
-        var ids = rotaIds as IList<Guid> ?? rotaIds.Distinct().ToList();
-        var result = new Dictionary<Guid, ShiftRotaView>(ids.Count);
-        foreach (var id in ids)
-        {
-            if (!result.ContainsKey(id))
-                result[id] = await GetRotaAsync(id, ct).ConfigureAwait(false);
-        }
-        return result;
-    }
 }

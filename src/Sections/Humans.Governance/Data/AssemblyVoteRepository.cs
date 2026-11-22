@@ -100,7 +100,7 @@ internal sealed class AssemblyVoteRepository(IDbContextFactory<GovernanceDbConte
 
         var tx = await ctx.Database.BeginTransactionAsync(ct);
         await ctx.Database.ExecuteSqlAsync(
-            $"""SELECT 1 FROM assembly_votes WHERE "Id" = {voteId} FOR UPDATE""", ct);
+            $"""SELECT 1 FROM governance_assembly_votes WHERE "Id" = {voteId} FOR UPDATE""", ct);
         return tx;
     }
 

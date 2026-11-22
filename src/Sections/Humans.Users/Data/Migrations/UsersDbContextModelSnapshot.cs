@@ -18,7 +18,7 @@ namespace Humans.Users.Data.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.13")
+                .HasAnnotation("ProductVersion", "10.0.15")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -141,13 +141,7 @@ namespace Humans.Users.Data.Migrations
                         .HasColumnType("character varying(50)")
                         .HasDefaultValue("Bare");
 
-                    b.Property<bool>("SuppressScheduleChangeEmails")
-                        .HasColumnType("boolean");
-
                     b.Property<bool>("TwoFactorEnabled")
-                        .HasColumnType("boolean");
-
-                    b.Property<bool>("UnsubscribedFromCampaigns")
                         .HasColumnType("boolean");
 
                     b.Property<string>("UserName")
@@ -187,16 +181,6 @@ namespace Humans.Users.Data.Migrations
                         .IsRequired()
                         .HasMaxLength(256)
                         .HasColumnType("character varying(256)");
-
-                    b.Property<string>("GoogleEmailStatus")
-                        .IsRequired()
-                        .ValueGeneratedOnAdd()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasDefaultValue("Unknown");
-
-                    b.Property<bool>("IsGoogle")
-                        .HasColumnType("boolean");
 
                     b.Property<bool>("IsPrimary")
                         .HasColumnType("boolean")
@@ -285,7 +269,7 @@ namespace Humans.Users.Data.Migrations
 
                     b.HasIndex("TargetUserId");
 
-                    b.ToTable("account_merge_requests", (string)null);
+                    b.ToTable("user_account_merge_requests", (string)null);
                 });
 
             modelBuilder.Entity("Humans.Users.Domain.ContactField", b =>
@@ -309,11 +293,13 @@ namespace Humans.Users.Data.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)");
 
-                    b.Property<Guid>("ProfileId")
-                        .HasColumnType("uuid");
-
                     b.Property<Instant>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("UserId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasDefaultValue(new Guid("00000000-0000-0000-0000-000000000000"));
 
                     b.Property<string>("Value")
                         .IsRequired()
@@ -327,11 +313,9 @@ namespace Humans.Users.Data.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("ProfileId");
+                    b.HasIndex("UserId");
 
-                    b.HasIndex("ProfileId", "Visibility");
-
-                    b.ToTable("contact_fields", (string)null);
+                    b.ToTable("user_contact_fields", (string)null);
                 });
 
             modelBuilder.Entity("Humans.Users.Domain.Profile", b =>
@@ -350,11 +334,6 @@ namespace Humans.Users.Data.Migrations
 
                     b.Property<string>("BoardNotes")
                         .HasColumnType("text");
-
-                    b.Property<string>("BurnerName")
-                        .IsRequired()
-                        .HasMaxLength(256)
-                        .HasColumnType("character varying(256)");
 
                     b.Property<string>("City")
                         .HasMaxLength(256)
@@ -384,16 +363,6 @@ namespace Humans.Users.Data.Migrations
                     b.Property<string>("EmergencyContactRelationship")
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
-
-                    b.Property<string>("FirstName")
-                        .IsRequired()
-                        .HasMaxLength(256)
-                        .HasColumnType("character varying(256)");
-
-                    b.Property<string>("LastName")
-                        .IsRequired()
-                        .HasMaxLength(256)
-                        .HasColumnType("character varying(256)");
 
                     b.Property<double?>("Latitude")
                         .HasColumnType("double precision");
@@ -435,7 +404,7 @@ namespace Humans.Users.Data.Migrations
                     b.HasIndex("UserId")
                         .IsUnique();
 
-                    b.ToTable("profiles", (string)null);
+                    b.ToTable("user_profiles", (string)null);
                 });
 
             modelBuilder.Entity("Humans.Users.Domain.ProfileLanguage", b =>
@@ -454,14 +423,16 @@ namespace Humans.Users.Data.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)");
 
-                    b.Property<Guid>("ProfileId")
-                        .HasColumnType("uuid");
+                    b.Property<Guid>("UserId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasDefaultValue(new Guid("00000000-0000-0000-0000-000000000000"));
 
                     b.HasKey("Id");
 
-                    b.HasIndex("ProfileId");
+                    b.HasIndex("UserId");
 
-                    b.ToTable("profile_languages", (string)null);
+                    b.ToTable("user_profile_languages", (string)null);
                 });
 
             modelBuilder.Entity("Humans.Users.Domain.VolunteerHistoryEntry", b =>
@@ -485,17 +456,19 @@ namespace Humans.Users.Data.Migrations
                         .HasMaxLength(256)
                         .HasColumnType("character varying(256)");
 
-                    b.Property<Guid>("ProfileId")
-                        .HasColumnType("uuid");
-
                     b.Property<Instant>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<Guid>("UserId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasDefaultValue(new Guid("00000000-0000-0000-0000-000000000000"));
+
                     b.HasKey("Id");
 
-                    b.HasIndex("ProfileId");
+                    b.HasIndex("UserId");
 
-                    b.ToTable("volunteer_history_entries", (string)null);
+                    b.ToTable("user_volunteer_history_entries", (string)null);
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRole<System.Guid>", b =>
@@ -673,13 +646,11 @@ namespace Humans.Users.Data.Migrations
 
             modelBuilder.Entity("Humans.Users.Domain.ContactField", b =>
                 {
-                    b.HasOne("Humans.Users.Domain.Profile", "Profile")
-                        .WithMany("ContactFields")
-                        .HasForeignKey("ProfileId")
+                    b.HasOne("Humans.Users.Contracts.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-
-                    b.Navigation("Profile");
                 });
 
             modelBuilder.Entity("Humans.Users.Domain.Profile", b =>
@@ -693,24 +664,20 @@ namespace Humans.Users.Data.Migrations
 
             modelBuilder.Entity("Humans.Users.Domain.ProfileLanguage", b =>
                 {
-                    b.HasOne("Humans.Users.Domain.Profile", "Profile")
-                        .WithMany("Languages")
-                        .HasForeignKey("ProfileId")
+                    b.HasOne("Humans.Users.Contracts.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-
-                    b.Navigation("Profile");
                 });
 
             modelBuilder.Entity("Humans.Users.Domain.VolunteerHistoryEntry", b =>
                 {
-                    b.HasOne("Humans.Users.Domain.Profile", "Profile")
-                        .WithMany("VolunteerHistory")
-                        .HasForeignKey("ProfileId")
+                    b.HasOne("Humans.Users.Contracts.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-
-                    b.Navigation("Profile");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<System.Guid>", b =>
@@ -767,15 +734,6 @@ namespace Humans.Users.Data.Migrations
             modelBuilder.Entity("Humans.Users.Contracts.User", b =>
                 {
                     b.Navigation("UserEmails");
-                });
-
-            modelBuilder.Entity("Humans.Users.Domain.Profile", b =>
-                {
-                    b.Navigation("ContactFields");
-
-                    b.Navigation("Languages");
-
-                    b.Navigation("VolunteerHistory");
                 });
 #pragma warning restore 612, 618
         }

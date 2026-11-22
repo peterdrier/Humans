@@ -3,6 +3,7 @@
   src/Humans.Base/Services/GitHubGuideContentSource.cs
   src/Humans.Base/Configuration/GuideSettings.cs
   docs/guide/**
+  src/Humans.Web/Views/Shared/_LoginPartial.cshtml
 -->
 <!-- freshness:flag-on-change
   Guide page role-scoped block visibility, cache TTL, refresh trigger rules, or file set — review when GuideController/GuideSegmenter/GuideFilter/GuideRolePrivilegeMap/GuideFiles or guide markdown content changes.
@@ -11,6 +12,8 @@
 # Guide — Section Invariants
 
 <!-- Stateless read section: serves markdown from docs/guide/ via a GitHub content source, segmented and cached in-memory, with role-scoped filtering per request before rendering. -->
+
+Guide refresh logs expected GitHub API/transport failures and independent timeouts at Warning without exception objects; unexpected fetch or segmentation failures log at Error with their original exception. Stale-cache retention and requested-cancellation propagation are unchanged.
 
 ## Concepts
 
@@ -21,12 +24,7 @@
   its parenthetical's privilege tokens, and dropped at request time by
   `GuideFilter` before the markdown reaches Markdig. No role metadata
   survives into the rendered HTML.
-- A `##` line **inside a fenced code block** is sample text, not a heading: it neither opens a
-  role-scoped block nor closes the one it sits in. `GuideSegmenter` tracks fence state for that
-  reason — an untracked fenced `##` ends the block around it and serves its remainder to
-  everyone. The rule cuts both ways: a backtick fence's info string may not itself contain a
-  backtick, so `` ```md`x `` opens no fence, and treating it as one would swallow a real heading
-  below it and leave the block *that* opens unscoped.
+- A **heading boundary** is a line the renderer's Markdig pipeline parses as an ATX `##` heading. Sample headings inside code, HTML comments or raw HTML blocks never open or close a role-scoped block, and each segment keeps the original markdown.
 - A **parenthetical** is text in parens after `## As a …` (e.g. `## As a
   Board member / Admin (Teams Admin)`) that specifies which domain admin
   role sees that block. Every parenthetical must be a role title in Auth's
@@ -72,12 +70,14 @@ Unknown stems return 404 (`NotFound.cshtml`). GitHub unavailability on cold cach
 - If a file contains any Board/Admin block visible to the current user, all Coordinator blocks in that file are also shown (within-file superset rule, enforced in `GuideFilter.Apply`).
 - Guide content is `GuideFiles.All`: `README`, `GettingStarted`, `Glossary`, the sections enumerated in `GuideFiles.Sections`, plus the plain-language pages enumerated in `GuideFiles.CommonQuestions` (rendered as the "Common questions" sidebar group). One markdown file under `docs/guide/` per stem, in both directions. Nothing is authored in-app.
 - Link and image rewrites use parsed HTML attributes, including single-quoted and unquoted URLs. Known sibling markdown links stay in-app; other relative markdown links resolve to GitHub. External links default to a new tab, preserve authored targets and `rel` tokens, and add `noopener` for new-tab targets. Rewriting preserves fragment styles and comments.
-- Concrete app paths in inline code become links only outside existing anchors and code blocks. Explicit Markdown links keep their authored destination, including a code-formatted label; linkification never nests anchors.
+- Current-directory prefixes on sibling Markdown links are normalized before route lookup; query strings and fragments survive route and GitHub rewrites. Protocol-relative links receive external-link handling, protocol-relative images keep their source, and protocol-relative code examples are not treated as app paths.
+- Network URLs include mixed slash/backslash authority prefixes, matching browser URL normalization. Links receive external-link handling and images retain their authored source; inline code containing backslashes never becomes an app link.
+- Concrete app paths in inline code become links only outside existing anchors and code blocks. Validation uses the entire decoded code text, so attributes are preserved while escaped placeholders and whitespace remain unlinked. Explicit Markdown links keep their authored destination, including a code-formatted label; linkification never nests anchors.
 - Cache key is `guide:<FileStem>`; the cached value is the segmented `GuideDocument`, never rendered HTML — filtering happens before rendering, so rendering is per request. TTL is sliding, configured via `Guide:CacheTtlHours` (default 6 hours, floor 1 hour).
 - Segmenting is lossless: a file's segments rejoin to the file exactly, so a reader who can see every block gets the page as written.
 - Only `GuideContentService` reads or writes `guide:*` cache entries. No other service touches guide content.
 - Caller cancellation stops a GitHub fetch/refresh without treating it as an availability failure or publishing a partially refreshed cache. Existing cached documents remain intact.
-- Configured GitHub health probes await the repository read with the framework's timeout/abort token. Requested cancellation propagates without logging or returning an availability failure; an already-canceled probe starts no request.
+- The `github` health check belongs to Consent and probes the legal-document repository (`GitHubSettings`); it does not report availability of Guide's source (`GuideSettings`).
 
 ## Negative Access Rules
 
@@ -90,7 +90,7 @@ Unknown stems return 404 (`NotFound.cshtml`). GitHub unavailability on cold cach
 ## Triggers
 
 - First `GET /Guide/*` on cold cache → `GuideContentService` fetches and segments every stem in `GuideFiles.All`; entries populated with sliding TTL. Queued cold reads recheck their requested page after acquiring the refresh lock and reuse it when a preceding load succeeded, even if other files failed.
-- `POST /Guide/Refresh` (Admin) → re-fetches and re-segments every stem in `GuideFiles.All`; existing cache entries overwritten.
+- `POST /Guide/Refresh` (Admin) → re-fetches and re-segments every stem in `GuideFiles.All`; existing cache entries overwritten. The status message names every stem whose fetch failed, so a partial refresh never reads as success.
 - GitHub fetch failure for a stem that is still cached → the cached copy is kept (only successful fetches overwrite) and served; warning logged. A cached stem is served without any fetch at all.
 - A render failure on the request path (Markdig, or `GuideHtmlPostprocessor`'s timeout-bounded path regex) → translated to `GuideContentUnavailableException`; controller returns the same 503 `Unavailable.cshtml`, never a raw 500. The cached segments are left in place.
 - GitHub fetch failure for the requested stem while it is *not* cached → `GuideContentUnavailableException` thrown; controller returns 503 `Unavailable.cshtml`. Other stems being cached does not rescue it — it only stops `PopulateAsync` throwing first.
@@ -98,12 +98,11 @@ Unknown stems return 404 (`NotFound.cshtml`). GitHub unavailability on cold cach
 ## Cross-Section Dependencies
 
 - **Users**: `GuideRoleResolver` resolves the session ID through `IUserService.GetUserInfoAsync` before membership checks, using the surviving account ID after a merge. A missing account grants no coordinator or camp-lead visibility; anonymous handling and system-role claims remain unchanged. The lookup observes request cancellation.
-
 - **Teams**: `GuideRoleResolver` calls `ITeamService.GetTeamsAsync` and determines `IsTeamCoordinator` from the cached `TeamInfo` snapshot (any team where the user holds `TeamMemberRole.Coordinator`) — no direct `TeamMembers` read.
 - **Camps**: `GuideRoleResolver` calls `ICampLeadDirectory.IsLeadAnywhereAsync` for `IsCampLead` — camp lead is a role on a camp season, never a claim, so it cannot come from `IsInRole`. Visibility is "leads *some* camp", the same collapse Teams already makes for coordinators; the guide has no per-camp scope. Not `ICampService.GetCampUserInfoAsync`: that resolves the first camp where the user is an Active *member* and would miss a lead of a second camp.
 - **Auth/Roles**: `GuideRoleResolver` reads `ClaimsPrincipal.IsInRole` against every role name in Auth's `RoleCatalog` (`GuideRolePrivilegeMap.MappedRoles`) to build the `SystemRoles` set.
 - **Base (inward, publishing)**: `Section`'s `ISectionAnnotations` publishes one "Guide page" annotation per `GuideFiles.Sections` stem into `ISectionCatalog`, so `/Debug/Sections` can show which sections have help written for them (nobodies-collective/Humans#1509). Guide names no other section and no other section names Guide. Some stems match no section on purpose — `Profiles` and `LegalAndConsent` are pre-rename spellings the `docs/guide/` corpus still uses, and `Admin` is a nav holder — so they show as unmatched annotations until the guide files are renamed.
-- **Base (inward, publishing)**: `Section`'s `ISectionNav` contributes a single `Guide` item to the member top nav, with no `Visible` predicate — `/Guide` is `[AllowAnonymous]`, so the link is the anonymous reader's way in.
+- **Shell (inward)**: Guide has no member top-nav link; signed-in members reach `/Guide` from the user menu in `_LoginPartial`, and anonymous readers only by URL.
 - **Base (inward)**: `IGuideContentSource` / `GitHubGuideContentSource` / `GuideSettings` stay in `Humans.Base`. Despite the name they are not Guide's: the interface is a GitHub-markdown fetcher whose signatures name only `string`, and its consumers are elsewhere — the Agent section's `AgentSectionDocReader` / `AgentFeatureSpecReader` / `CommunityFaqReader` / `AgentDocsHealthCheck`, and Base's `GitHubCommunityKbContentSource`. Shell registers both, and the section consumes the interface inward.
 
 ## Architecture
@@ -114,5 +113,5 @@ Unknown stems return 404 (`NotFound.cshtml`). GitHub unavailability on cold cach
 
 #### Accepted deviations
 
-- `GuideContentService` injects `IMemoryCache` directly rather than using §15's repository/decorator options. Content is not an entity read and the section owns no tables to decorate — the service *is* the cache. Allowlisted with that rationale in `ApplicationServicesTakeNoMemoryCacheRule`, which the section entered at its G5 move.
+- `GuideContentService` injects `IMemoryCache` directly rather than using the caching pattern's repository/decorator options (`design-rules.md`, *Section caching pattern*). Content is not an entity read and the section owns no tables to decorate — the service *is* the cache. Allowlisted with that rationale in `ApplicationServicesTakeNoMemoryCacheRule`, which the section entered at its G5 move.
 - `docs/guide/**` stayed in the repo root rather than moving into `Docs/`. `GitHubGuideContentSource` fetches `{GuideSettings.FolderPath}/{stem}.md` from `nobodies-collective/Humans@main` **at runtime**, so the path is a live API with no fallback: moving the folder 404s every guide page on every deployed instance until the change reaches production `main`.

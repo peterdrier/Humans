@@ -31,6 +31,15 @@ public static class SanitizedMarkdownRenderer
         sanitizer.AllowedAttributes.Add("type");
         sanitizer.AllowedAttributes.Add("checked");
         sanitizer.AllowedAttributes.Add("disabled");
+        sanitizer.PostProcessDom += (_, e) =>
+        {
+            foreach (var input in e.Document.QuerySelectorAll("input"))
+            {
+                if (!string.Equals(input.GetAttribute("type"), "checkbox", StringComparison.OrdinalIgnoreCase)
+                    || !input.HasAttribute("disabled"))
+                    input.Remove();
+            }
+        };
 
         // User Markdown never needs inline CSS, and a style attribute's url(...) (e.g.
         // background-image) is not covered by the https-only <img> rule below — it would be a
@@ -43,17 +52,10 @@ public static class SanitizedMarkdownRenderer
         }
         else
         {
-            // Images may only reference https:// URLs. This blocks data:/http:/javascript:
-            // (and any other scheme) on <img src> and <input type="image" src> (the allowed
-            // "input" tag's own image-fetching form, kept for task-list checkboxes) specifically,
-            // without touching the broader http/https/mailto allowance FilterUrl leaves for <a href>.
+            // Image sources require HTTPS; links retain the sanitizer's broader URL allowance.
             sanitizer.FilterUrl += (_, e) =>
             {
-                var isImageSource = string.Equals(e.Tag.TagName, "IMG", StringComparison.OrdinalIgnoreCase)
-                    || (string.Equals(e.Tag.TagName, "INPUT", StringComparison.OrdinalIgnoreCase)
-                        && string.Equals(e.Tag.GetAttribute("type"), "image", StringComparison.OrdinalIgnoreCase));
-
-                if (!isImageSource)
+                if (!string.Equals(e.Tag.TagName, "IMG", StringComparison.OrdinalIgnoreCase))
                 {
                     return;
                 }

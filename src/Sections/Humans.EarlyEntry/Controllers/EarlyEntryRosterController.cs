@@ -1,4 +1,3 @@
-using Humans.Shifts.Contracts;
 using Humans.EarlyEntry.Contracts;
 using Humans.EarlyEntry.Models;
 using Humans.Base.Authorization;
@@ -10,7 +9,7 @@ using Humans.Users.Contracts;
 namespace Humans.EarlyEntry.Controllers;
 
 [Route("Shifts/Admin/EarlyEntry")]
-[Authorize(Policy = ShiftsPolicies.Read)]
+[Authorize(Policy = EarlyEntryPolicies.Roster)]
 internal sealed class EarlyEntryRosterController(
     IEarlyEntryService earlyEntryService,
     IUserService userService) : HumansControllerBase(userService)
@@ -30,7 +29,7 @@ internal sealed class EarlyEntryRosterController(
         foreach (var r in ordered)
         {
             var info = await FindUserInfoByIdAsync(r.UserId, ct);
-            var legalName = info?.Profile?.FullName ?? string.Empty;
+            var legalName = info?.FullName ?? string.Empty;
             vms.Add(new EarlyEntryRosterRowVm(r.UserId, legalName, r.EarliestEntryDate, r.Sources, r.HasMultiple));
         }
 

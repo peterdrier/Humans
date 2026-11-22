@@ -18,6 +18,8 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Humans.AuditLog.Contracts;
 
+[assembly: Humans.Base.Demo.NoDemoStory("No demo story written yet.")]
+
 namespace Humans.Expenses;
 
 public sealed class Section :
@@ -36,6 +38,7 @@ public sealed class Section :
         services.AddScoped<ExpenseReportService>();
         services.AddScoped<IExpenseReportManagement>(sp => sp.GetRequiredService<ExpenseReportService>());
         services.AddScoped<IExpenseReportService>(sp => sp.GetRequiredService<ExpenseReportService>());
+        services.AddScoped<IExpenseReview, ExpenseReviewService>();
         services.AddScoped<IExpenseReportBackgroundProcessor, ExpenseReportBackgroundProcessor>();
         // Takes nothing from Finance, so Finance can depend on it while ExpenseReportService depends on Finance.
         services.AddScoped<IExpenseHoldedBookingService, ExpenseHoldedBookingService>();

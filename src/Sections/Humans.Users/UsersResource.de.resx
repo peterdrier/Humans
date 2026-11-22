@@ -56,13 +56,6 @@
   <data name="Users_Profile_ReviewNow" xml:space="preserve">
     <value>Jetzt prüfen</value>
   </data>
-  <data name="Users_Profile_TierApplicationStatus" xml:space="preserve">
-    <value>Ihre {0}-Bewerbung:</value>
-    <comment>{0} = tier name (Colaborador/Asociado)</comment>
-  </data>
-  <data name="Users_Profile_TierApplicationDetails" xml:space="preserve">
-    <value>Details ansehen</value>
-  </data>
   <data name="Users_Profile_Information" xml:space="preserve">
     <value>Profilinformationen</value>
   </data>
@@ -191,11 +184,8 @@
   <data name="Users_Profile_DietaryMedical_MedicalConditions_Hint" xml:space="preserve"><value>Sichtbar für dich, die Shifts-NoInfo-Admins und den Vorstand; jeder Aufruf durch sie wird festgehalten und unten aufgeführt. Alles, was Koordinator:innen wissen sollten — Diabetes, Epilepsie, schwere Verletzungen usw.</value></data>
   <data name="Users_Profile_DietaryMedical_MedicalConditions_Title" xml:space="preserve"><value>Erkrankungen</value></data>
   <data name="Users_Profile_DietaryMedical_MedicalConditions_VisibilityNote" xml:space="preserve"><value>Optional. Sichtbar für dich, die Shifts-NoInfo-Admins und den Vorstand; jeder Aufruf wird festgehalten.</value></data>
-  <data name="Users_Profile_MarkedAt" xml:space="preserve"><value>Markiert am</value></data>
-  <data name="Users_Profile_MarkedBy" xml:space="preserve"><value>Markiert von</value></data>
   <data name="Users_Profile_MyEmails" xml:space="preserve"><value>Meine E-Mails</value></data>
   <data name="Users_Profile_NoSentMessages" xml:space="preserve"><value>Keine plattforminternen Nachrichten vorhanden.</value></data>
-  <data name="Users_Profile_NoShowHistory" xml:space="preserve"><value>No-Show-Verlauf ({0})</value></data>
   <data name="Users_Profile_SentMessages" xml:space="preserve"><value>Gesendete Nachrichten</value></data>
   <data name="Users_Profile_ShiftInfo" xml:space="preserve"><value>Schichtinfo</value></data>
 
@@ -204,15 +194,6 @@
   <!-- ======================== -->
   <data name="Users_ProfileEdit_Title" xml:space="preserve">
     <value>Profil bearbeiten</value>
-  </data>
-  <data name="Users_ProfileEdit_TierVolunteerDesc" xml:space="preserve">
-    <value>Du möchtest zum Event kommen, deine Energie einbringen, eine Schicht übernehmen oder einem Team beitreten. Keine formale Verpflichtung gegenüber der Vereinsführung. Die meisten Leute sind hier und das ist völlig in Ordnung.</value>
-  </data>
-  <data name="Users_ProfileEdit_TierChangeNote" xml:space="preserve">
-    <value>Hinweis: Du kannst jederzeit eine Änderung beantragen.</value>
-  </data>
-  <data name="Users_ProfileEdit_TierLocked" xml:space="preserve">
-    <value>Ihre Kategorie ist gesperrt, da Sie einen aktiven oder ausstehenden Antrag haben.</value>
   </data>
   <data name="Users_ProfileEdit_BurnerNamePlaceholder" xml:space="preserve">
     <value>Der Name, unter dem Sie bekannt sind</value>
@@ -231,9 +212,6 @@
   </data>
   <data name="Users_ProfileEdit_LegalNameHelp" xml:space="preserve">
     <value>Erforderlich für offizielle Dokumente und Unterschriften.</value>
-  </data>
-  <data name="Users_ProfileEdit_Select" xml:space="preserve">
-    <value>Auswählen</value>
   </data>
   <data name="Users_ProfileEdit_City" xml:space="preserve">
     <value>Stadt</value>
@@ -367,7 +345,7 @@
     <value>Konten zusammenführen?</value>
   </data>
   <data name="Users_Emails_MergeWarningBody" xml:space="preserve">
-    <value>Das Zusammenführen von Konten dient dazu, zwei Konten zu kombinieren, die derselben Person gehören (zum Beispiel eine alte und eine neue E-Mail-Adresse, die beide dir gehören). Es ist kein Weg, Tickets, Buchungen oder andere Elemente zwischen zwei verschiedenen Personen zu teilen oder zu übertragen. Um ein Ticket an einen anderen Menschen zu übertragen, nutze die Ticket-Übertragungsfunktion unter /Tickets/Transfers.</value>
+    <value>Das Zusammenführen von Konten dient dazu, zwei Konten zu kombinieren, die derselben Person gehören (zum Beispiel eine alte und eine neue E-Mail-Adresse, die beide dir gehören). Es ist kein Weg, Tickets, Buchungen oder andere Elemente zwischen zwei verschiedenen Personen zu teilen oder zu übertragen. Um ein Ticket an einen anderen Menschen weiterzugeben, biete es unter /Tickets/Buy/Mine zum Weiterverkauf an und lade die Person per E-Mail ein.</value>
   </data>
   <data name="Users_Emails_VerificationWillBeSent" xml:space="preserve">
     <value>Eine Bestätigungs-E-Mail wird an diese Adresse gesendet.</value>
@@ -418,9 +396,6 @@
   <!-- ======================== -->
   <!-- Email grid               -->
   <!-- ======================== -->
-  <data name="Users_EmailGrid_AdminContextBanner" xml:space="preserve">
-    <value>E-Mails eines anderen Benutzers verwalten</value>
-  </data>
   <data name="Users_EmailGrid_AdminContextBannerNamed" xml:space="preserve">
     <value>E-Mails von {0} verwalten</value>
     <comment>{0} = target user display name</comment>
@@ -454,9 +429,6 @@
   </data>
   <data name="Users_EmailGrid_Actions" xml:space="preserve">
     <value>Aktionen</value>
-  </data>
-  <data name="Users_EmailGrid_StatusMergePending" xml:space="preserve">
-    <value>Zusammenführung ausstehend</value>
   </data>
   <data name="Users_EmailGrid_StatusVerified" xml:space="preserve">
     <value>Verifiziert</value>
@@ -521,9 +493,6 @@
   <data name="Users_EmailGrid_AdminVerifySuccess" xml:space="preserve">
     <value>E-Mail manuell verifiziert.</value>
   </data>
-  <data name="Users_EmailGrid_AdminVerifyMergeRequested" xml:space="preserve">
-    <value>Diese Adresse ist bereits in einem anderen Konto verifiziert. Es wurde ein Antrag auf Zusammenführung erstellt, anstatt sie zu verifizieren.</value>
-  </data>
   <data name="Users_EmailGrid_OrphanProviderTag" xml:space="preserve"><value>Mit {0} getaggt, aber keine passende AspNetUserLogins-Zeile — korrigiert sich beim nächsten OAuth-Login von selbst.</value></data>
   <data name="Users_EmailGrid_WorkspaceLocked" xml:space="preserve"><value>Gesperrt durch die Workspace-E-Mail-Zeile</value></data>
 
@@ -546,9 +515,6 @@
   </data>
   <data name="Users_VerifyEmail_GoToSettings" xml:space="preserve">
     <value>Zu den E-Mail-Einstellungen</value>
-  </data>
-  <data name="Users_VerifyEmail_GoHome" xml:space="preserve">
-    <value>Zur Startseite</value>
   </data>
 
   <!-- ======================== -->
@@ -627,17 +593,14 @@
   <data name="Users_AdminHuman_AdminNotesGdprHint" xml:space="preserve">
     <value>Dieses Mitglied kann diese Notizen gemäß DSGVO einsehen.</value>
   </data>
-  <data name="Users_AdminHuman_RecentApplications" xml:space="preserve">
-    <value>Letzte Anträge</value>
+  <data name="Users_AdminHuman_Applications" xml:space="preserve">
+    <value>Anträge</value>
   </data>
   <data name="Users_AdminHuman_AuditHistory" xml:space="preserve">
     <value>Prüfverlauf</value>
   </data>
   <data name="Users_AdminHuman_Statistics" xml:space="preserve">
     <value>Statistiken</value>
-  </data>
-  <data name="Users_AdminHuman_ApplicationCount" xml:space="preserve">
-    <value>Anträge</value>
   </data>
   <data name="Users_AdminHuman_ConsentCount" xml:space="preserve">
     <value>Vereinbarungen</value>
@@ -700,18 +663,24 @@
     <value>Bestätigen Sie Ihre E-Mail-Adresse</value>
   </data>
   <data name="Users_Email_EmailVerification_Body" xml:space="preserve">
-    <value>&lt;h2&gt;E-Mail-Verifizierung&lt;/h2&gt;
-&lt;p&gt;Hallo {0},&lt;/p&gt;
-&lt;p&gt;Du hast angefordert, &lt;strong&gt;{1}&lt;/strong&gt; zu deinem Konto hinzuzufügen.&lt;/p&gt;
-&lt;p&gt;Klicke auf den folgenden Link, um diese E-Mail-Adresse zu verifizieren:&lt;/p&gt;
-&lt;p&gt;&lt;a href="{2}" style="display:inline-block; padding:12px 24px; background-color:#0d6efd; color:#ffffff; text-decoration:none; border-radius:6px; font-weight:bold; font-size:16px;"&gt;E-Mail-Adresse verifizieren&lt;/a&gt;&lt;/p&gt;
-&lt;p&gt;Dieser Link läuft in 24 Stunden ab.&lt;/p&gt;
-&lt;p&gt;Wenn du diese Änderung nicht angefordert hast, kannst du diese E-Mail ignorieren.&lt;/p&gt;
+    <value>&lt;h2&gt;Bestätige diese E-Mail-Adresse&lt;/h2&gt;
+&lt;p&gt;Jemand, der bei Humans als &lt;strong&gt;{0}&lt;/strong&gt; angemeldet ist, möchte &lt;strong&gt;{1}&lt;/strong&gt; zu diesem Konto hinzufügen.&lt;/p&gt;
+&lt;p&gt;Wenn du das warst, öffne den Link, während du als {0} angemeldet bist, und drücke den Knopf auf der Seite:&lt;/p&gt;
+&lt;p&gt;&lt;a href="{2}" style="display:inline-block; padding:12px 24px; background-color:#0d6efd; color:#ffffff; text-decoration:none; border-radius:6px; font-weight:bold; font-size:16px;"&gt;E-Mail-Adresse bestätigen&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;Der Link funktioniert einmal, eine Stunde lang.&lt;/p&gt;
+&lt;p&gt;Wenn du das nicht warst, ignoriere diese E-Mail. Es ändert sich nichts.&lt;/p&gt;
 &lt;p&gt;Das Humans-Team&lt;/p&gt;</value>
     <comment>{0} = user name, {1} = email address, {2} = verification URL</comment>
   </data>
   <data name="Users_Email_EmailVerification_Merge_Body" xml:space="preserve">
-    <value>&lt;h2&gt;Kontoverknüpfung bestätigen&lt;/h2&gt;&lt;p&gt;Hallo {0},&lt;/p&gt;&lt;p&gt;Du hast angefordert, &lt;strong&gt;{1}&lt;/strong&gt; zu deinem Konto hinzuzufügen. Diese E-Mail-Adresse ist derzeit mit einem anderen Konto verknüpft.&lt;/p&gt;&lt;p&gt;Wenn du diese E-Mail bestätigst, wird eine Zusammenführungsanfrage zur Überprüfung durch einen Administrator eingereicht. Nach Genehmigung werden die Daten des anderen Kontos in dein Konto übernommen und das doppelte Konto wird archiviert.&lt;/p&gt;&lt;p&gt;Bitte klicke auf den folgenden Link, um die Zusammenführung zu bestätigen und anzufordern:&lt;/p&gt;&lt;p&gt;&lt;a href="{2}" style="display:inline-block; padding:12px 24px; background-color:#0d6efd; color:#ffffff; text-decoration:none; border-radius:6px; font-weight:bold; font-size:16px;"&gt;Bestätigen und Zusammenführung anfordern&lt;/a&gt;&lt;/p&gt;&lt;p&gt;Dieser Link läuft in 24 Stunden ab.&lt;/p&gt;&lt;p&gt;Falls du dies nicht angefordert hast, kannst du diese E-Mail ignorieren. Es werden keine Änderungen vorgenommen.&lt;/p&gt;&lt;p&gt;Das Humans Team&lt;/p&gt;</value>
+    <value>&lt;h2&gt;Bestätige diese Adresse und führe zwei Konten zusammen&lt;/h2&gt;
+&lt;p&gt;Jemand, der bei Humans als &lt;strong&gt;{0}&lt;/strong&gt; angemeldet ist, möchte &lt;strong&gt;{1}&lt;/strong&gt; zu diesem Konto hinzufügen.&lt;/p&gt;
+&lt;p&gt;Diese Adresse hat bereits ein eigenes Humans-Konto. Wenn beide Konten dir gehören, werden sie beim Bestätigen zu einem zusammengeführt. Die Seite zeigt beide Konten, bevor etwas passiert.&lt;/p&gt;
+&lt;p&gt;Öffne den Link, während du als {0} angemeldet bist:&lt;/p&gt;
+&lt;p&gt;&lt;a href="{2}" style="display:inline-block; padding:12px 24px; background-color:#0d6efd; color:#ffffff; text-decoration:none; border-radius:6px; font-weight:bold; font-size:16px;"&gt;Ansehen und zusammenführen&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;Der Link funktioniert einmal, eine Stunde lang. Leite diese E-Mail nicht weiter: Wer den Link als {0} öffnet, kann die Konten zusammenführen.&lt;/p&gt;
+&lt;p&gt;Wenn du das nicht warst, ignoriere diese E-Mail. Es ändert sich nichts. Ohne diesen Link kann niemand diese Adresse übernehmen.&lt;/p&gt;
+&lt;p&gt;Das Humans-Team&lt;/p&gt;</value>
   </data>
   <data name="Users_Email_DeletionRequested_Subject" xml:space="preserve">
     <value>Kontolöschung beantragt</value>
@@ -737,8 +706,6 @@
 &lt;p&gt;Alles Gute,&lt;br/&gt;Das Humans-Team&lt;/p&gt;</value>
     <comment>{0} = user name</comment>
   </data>
-  <data name="Users_Profile_EmailLinkedToAnotherAccount" xml:space="preserve"><value>Diese E-Mail ist mit einem anderen Konto verknüpft. Die Verifizierung fordert eine Kontozusammenführung an. Prüfe deinen Posteingang auf den Bestätigungslink.</value></data>
-  <data name="Users_Profile_EmailVerifiedMergeRequested" xml:space="preserve"><value>E-Mail verifiziert. Eine Zusammenführungsanfrage wurde zur Prüfung durch die Administration eingereicht. Die E-Mail-Adresse {0} wird nach der Genehmigung deinem Konto hinzugefügt.</value><comment>{0} = email address</comment></data>
   <data name="Users_ProfilePopover_ImportedNoProfile" xml:space="preserve"><value>Importiert · noch kein Profil</value></data>
   <data name="Users_ProfilePopover_ImportedNoProfileHelp" xml:space="preserve"><value>Diese Person existiert im System, hat aber noch kein Profil ausgefüllt (zum Beispiel wurde sie aus einer Mailingliste oder dem Ticketing importiert).</value></data>
   <data name="Users_Notification_AdminSuspendedWithReason" xml:space="preserve"><value>Dein Zugang wurde gesperrt: {0}</value></data>
@@ -749,9 +716,6 @@
   </data>
   <data name="Users_Profile_EmailVerifiedOnAnotherAccount" xml:space="preserve">
     <value>Diese E-Mail-Adresse ist bereits in einem anderen Konto bestätigt.</value>
-  </data>
-  <data name="Users_Profile_EmailMergePending" xml:space="preserve">
-    <value>Für diese E-Mail-Adresse ist bereits eine Anfrage zur Zusammenführung offen.</value>
   </data>
   <data name="Users_EmailDelete_LastVerifiedBlocked" xml:space="preserve">
     <value>Du kannst deine letzte verifizierte E-Mail-Adresse nicht entfernen. Füge zuerst eine weitere verifizierte Adresse hinzu, damit du weiterhin Systembenachrichtigungen erhältst.</value>
@@ -765,8 +729,6 @@
   <data name="Users_Profile_DietaryLink" xml:space="preserve"><value>Ernährungsangaben</value></data>
   <data name="Users_Medical_Saved" xml:space="preserve"><value>Deine medizinischen Angaben wurden gespeichert.</value></data>
   <data name="Users_Medical_SaveFailed" xml:space="preserve"><value>Die medizinischen Angaben konnten nicht gespeichert werden.</value></data>
-  <data name="Users_ProfileEdit_TierApplyLink" xml:space="preserve"><value>Als Colaborador oder Asociado bewerben</value></data>
-  <data name="Users_ProfileEdit_TierVolunteer" xml:space="preserve"><value>Freiwillige</value></data>
   <data name="Users_EmailUpdate_AccountUnavailable" xml:space="preserve">
     <value>Für dieses Konto können keine E-Mail-Adressen mehr geändert werden.</value>
   </data>
@@ -777,4 +739,91 @@
   <data name="Users_Medical_RevealsTitle" xml:space="preserve"><value>Wer das angesehen hat</value></data>
   <data name="Users_Medical_RevealsEmpty" xml:space="preserve"><value>Niemand hat deine medizinischen Angaben angesehen.</value></data>
   <data name="Users_Medical_RevealedBy" xml:space="preserve"><value>Angesehen von</value></data>
+  <data name="Users_Birthdays_Title" xml:space="preserve">
+    <value>Geburtstagskalender</value>
+  </data>
+  <data name="Users_Birthdays_Count" xml:space="preserve">
+    <value>{0} Geburtstage im {1}</value>
+  </data>
+  <data name="Users_Birthdays_Count_One" xml:space="preserve">
+    <value>{0} Geburtstag im {1}</value>
+  </data>
+  <data name="Users_Birthdays_None" xml:space="preserve">
+    <value>Keine Geburtstage im {0}.</value>
+  </data>
+  <data name="Users_Birthdays_Privacy" xml:space="preserve">
+    <value>Nur Humans, die ihren Geburtstag angegeben haben, werden angezeigt.</value>
+  </data>
+  <data name="Users_Map_Title" xml:space="preserve">
+    <value>Humans-Karte</value>
+  </data>
+  <data name="Users_Map_Count" xml:space="preserve">
+    <value>{0} Humans mit Standort</value>
+  </data>
+  <data name="Users_Map_None" xml:space="preserve">
+    <value>Noch kein Human hat seinen Standort angegeben.</value>
+  </data>
+  <data name="Users_Map_Privacy" xml:space="preserve">
+    <value>Nur Humans, die ihren Standort angegeben haben, werden angezeigt. Der Standort ist ungefähr und basiert auf der Stadt.</value>
+  </data>
+  <data name="Users_Birthdays_CardDescription" xml:space="preserve"><value>Sieh, wer diesen Monat Geburtstag hat.</value></data>
+  <data name="Users_Map_CardDescription" xml:space="preserve"><value>Sieh, wo auf der Welt die Humans sind.</value></data>
+  <data name="Users_Profile_Participation" xml:space="preserve">
+    <value>Mitwirkung</value>
+  </data>
+  <data name="Users_Profile_Settings" xml:space="preserve">
+    <value>Einstellungen</value>
+  </data>
+  <data name="Users_Profile_ShowAllCv" xml:space="preserve">
+    <value>Alle anzeigen ({0})</value>
+  </data>
+  <data name="Users_Profile_NewLayoutNote" xml:space="preserve">
+    <value>Vorschau eines neuen Layouts. Die aktuelle Seite:</value>
+  </data>
+  <data name="Users_Medical_NoneOnFile" xml:space="preserve"><value>Keine medizinischen Angaben hinterlegt.</value></data>
+  <data name="Users_Medical_RevealFailed" xml:space="preserve"><value>Die medizinischen Angaben konnten nicht geladen werden.</value></data>
+  <data name="Users_Medical_RevealTitle" xml:space="preserve"><value>Medizinische Angaben anzeigen (jeder Aufruf wird im Audit-Log festgehalten)</value></data>
+  <data name="Users_Profile_InvalidLocation" xml:space="preserve"><value>Wähle einen gültigen Standort aus.</value></data>
+  <data name="Users_ProfileEdit_ShiftPreferences" xml:space="preserve">
+    <value>Einstellungen bearbeiten</value>
+  </data>
+  <data name="Users_ProfileEdit_ShiftPreferencesHelp" xml:space="preserve">
+    <value>Wähle Tags aus, die zur Art von Arbeit passen, die du magst. Passende Schichten werden mit einem Stern markiert.</value>
+  </data>
+  <data name="Users_Status_Board" xml:space="preserve"><value>Vorstand</value></data>
+  <data name="Users_Meter_PendingAccountDeletions" xml:space="preserve"><value>Ausstehende Kontolöschungen</value></data>
+  <data name="Users_Meter_AudienceAdmin" xml:space="preserve"><value>Admins</value></data>
+  <data name="Users_Search_Category" xml:space="preserve"><value>Humans</value></data>
+  <data name="Users_ConfirmEmail_Prompt" xml:space="preserve"><value>{0} zu deinem Konto hinzufügen?</value></data>
+  <data name="Users_ConfirmEmail_Button" xml:space="preserve"><value>Diese Adresse bestätigen</value></data>
+  <data name="Users_ConfirmEmail_Invalid" xml:space="preserve"><value>Dieser Link funktioniert nicht mehr. Ein Link funktioniert einmal, eine Stunde lang. Für einen neuen Link entferne die Adresse in deinen E-Mail-Einstellungen und füge sie erneut hinzu.</value></data>
+  <data name="Users_ConfirmEmail_WrongAccount" xml:space="preserve"><value>Dieser Link wurde von einem anderen Konto erstellt als dem, mit dem du angemeldet bist.</value></data>
+  <data name="Users_ConfirmEmail_LinkMadeBy" xml:space="preserve"><value>Link erstellt von:</value></data>
+  <data name="Users_ConfirmEmail_SignedInAs" xml:space="preserve"><value>Du bist angemeldet als:</value></data>
+  <data name="Users_ConfirmEmail_WrongAccountHelp" xml:space="preserve"><value>Melde dich ab, melde dich mit dem Konto an, das den Link erstellt hat, und öffne den Link erneut.</value></data>
+  <data name="Users_MergeAccounts_Title" xml:space="preserve"><value>Führe deine zwei Konten zusammen</value></data>
+  <data name="Users_MergeAccounts_Intro" xml:space="preserve"><value>{0} gehört bereits zu einem anderen Konto. Beim Bestätigen werden beide Konten zu einem zusammengeführt. Das lässt sich nicht rückgängig machen.</value></data>
+  <data name="Users_MergeAccounts_KeepsEverything" xml:space="preserve"><value>Alles aus beiden Konten bleibt erhalten: Teams, Schichten, Tickets, Rollen, Camp, Einwilligungen und jede Adresse, mit der du dich anmeldest.</value></data>
+  <data name="Users_MergeAccounts_SignedInCard" xml:space="preserve"><value>Das Konto, mit dem du angemeldet bist</value></data>
+  <data name="Users_MergeAccounts_OtherCard" xml:space="preserve"><value>Dein anderes Konto</value></data>
+  <data name="Users_MergeAccounts_OtherEmpty" xml:space="preserve"><value>Dein anderes Konto wurde nie ausgefüllt, dein Profil bleibt also, wie es ist.</value></data>
+  <data name="Users_MergeAccounts_Choose" xml:space="preserve"><value>Beide Konten haben ein Profil. Wähle, welches bleibt. Was ihm fehlt, wird aus dem anderen ergänzt.</value></data>
+  <data name="Users_MergeAccounts_KeepThis" xml:space="preserve"><value>Dieses Profil behalten</value></data>
+  <data name="Users_MergeAccounts_Button" xml:space="preserve"><value>Diese Konten zusammenführen</value></data>
+  <data name="Users_MergeAccounts_NotNow" xml:space="preserve"><value>Jetzt nicht</value></data>
+  <data name="Users_MergeAccounts_Blocked" xml:space="preserve"><value>Diese zwei Konten können hier nicht zusammengeführt werden. Schreibe an {0}, dann klären wir das.</value></data>
+  <data name="Users_MergeAccounts_Done" xml:space="preserve"><value>Deine zwei Konten sind jetzt eins.</value></data>
+  <data name="Users_MergeAccounts_SignsInWith" xml:space="preserve"><value>Meldet sich an mit</value></data>
+  <data name="Users_MergeAccounts_Roles" xml:space="preserve"><value>Rollen</value></data>
+  <data name="Users_MergeAccounts_Shifts" xml:space="preserve"><value>Schichten</value></data>
+  <data name="Users_MergeAccounts_ShiftsValue" xml:space="preserve"><value>{0} bevorstehend, {1} geleistet</value></data>
+  <data name="Users_MergeAccounts_Tickets" xml:space="preserve"><value>Tickets</value></data>
+  <data name="Users_MergeAccounts_Created" xml:space="preserve"><value>Erstellt</value></data>
+  <data name="Users_MergeAccounts_LastSignIn" xml:space="preserve"><value>Letzter Login</value></data>
+  <data name="Users_Email_AccountsMerged_Subject" xml:space="preserve"><value>Deine zwei Konten wurden zusammengeführt</value></data>
+  <data name="Users_Email_AccountsMerged_Body" xml:space="preserve"><value>&lt;h2&gt;Konten zusammengeführt&lt;/h2&gt;
+&lt;p&gt;Hallo {0},&lt;/p&gt;
+&lt;p&gt;Zwei Humans-Konten, die beide dir gehörten, wurden zu einem zusammengeführt. Alles aus beiden liegt jetzt im verbleibenden Konto, und jede Adresse, mit der du dich angemeldet hast, funktioniert weiter.&lt;/p&gt;
+&lt;p&gt;Wenn du das nicht warst, schreibe sofort an {1}.&lt;/p&gt;
+&lt;p&gt;Das Humans-Team&lt;/p&gt;</value></data>
 </root>

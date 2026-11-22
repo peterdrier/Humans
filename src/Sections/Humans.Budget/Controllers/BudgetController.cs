@@ -1,4 +1,5 @@
 using Humans.Finance.Contracts;
+using Humans.Teams.Contracts;
 using Humans.Budget.Services;
 using Humans.Base.Authorization;
 using Humans.Base.Controllers;
@@ -16,6 +17,7 @@ namespace Humans.Budget.Controllers;
 [Authorize]
 [Route("Budget")]
 internal sealed class BudgetController(
+    ITeamService teams,
     IBudgetManagement budgetService,
     IAuthorizationService authService,
     IUserService userService,
@@ -32,12 +34,12 @@ internal sealed class BudgetController(
             if (errorResult is not null) return errorResult;
 
             var isFinanceAdmin = (await authService.AuthorizeAsync(User, FinancePolicies.Manage)).Succeeded;
-            var data = await budgetService.GetCoordinatorBudgetViewDataAsync(user.Id, isFinanceAdmin, ct);
-
-            if (data.ShouldRedirectToSummary)
+            var coordinatorTeamIds = (await teams.GetEffectiveBudgetCoordinatorTeamIdsAsync(user.Id, ct)).ToHashSet();
+            if (!isFinanceAdmin && coordinatorTeamIds.Count == 0)
                 return RedirectToAction(nameof(Summary));
 
-            if (data.Year is null)
+            var activeYear = await budgetService.GetActiveYearAsync(ct);
+            if (activeYear is null)
             {
                 SetInfo(localizer["Budget_Flash_NoActiveYear"].Value);
                 return View("NoActiveBudget");
@@ -45,9 +47,9 @@ internal sealed class BudgetController(
 
             var model = new CoordinatorBudgetViewModel
             {
-                Year = data.Year,
-                EditableTeamIds = data.EditableTeamIds,
-                IsFinanceAdmin = data.IsFinanceAdmin
+                Year = activeYear,
+                EditableTeamIds = coordinatorTeamIds,
+                IsFinanceAdmin = isFinanceAdmin
             };
             return View(model);
         }
@@ -75,10 +77,10 @@ internal sealed class BudgetController(
                 return View("NoActiveBudget");
             }
 
-            var visibleGroups = activeYear.Groups.ToList();
+            var visibleGroups = activeYear.Groups.OrderBy(group => group.SortOrder).ToList();
             var summary = budgetService.ComputeBudgetSummaryWithBuffers(visibleGroups);
 
-            var coordinatorTeamIds = await budgetService.GetEffectiveCoordinatorTeamIdsAsync(user.Id, ct);
+            var coordinatorTeamIds = (await teams.GetEffectiveBudgetCoordinatorTeamIdsAsync(user.Id, ct)).ToHashSet();
 
             var model = new BudgetSummaryViewModel
             {
@@ -86,8 +88,10 @@ internal sealed class BudgetController(
                 TotalIncome = summary.TotalIncome,
                 TotalExpenses = summary.TotalExpenses,
                 NetBalance = summary.NetBalance,
-                IncomeSlices = summary.IncomeSlices,
-                ExpenseSlices = summary.ExpenseSlices,
+                IncomeSlices = summary.IncomeSlices.OrderBy(slice => slice.BudgetCategoryId is null)
+                    .ThenByDescending(slice => slice.BudgetCategoryId is null ? 0m : slice.Amount).ToList(),
+                ExpenseSlices = summary.ExpenseSlices.OrderBy(slice => slice.BudgetCategoryId is null)
+                    .ThenByDescending(slice => slice.BudgetCategoryId is null ? 0m : slice.Amount).ToList(),
                 IsCoordinator = coordinatorTeamIds.Count > 0 || (await authService.AuthorizeAsync(User, FinancePolicies.Manage)).Succeeded
             };
             return View(model);
@@ -110,19 +114,19 @@ internal sealed class BudgetController(
             if (errorResult is not null) return errorResult;
 
             var isFinanceAdmin = (await authService.AuthorizeAsync(User, FinancePolicies.Manage)).Succeeded;
-            var detail = await budgetService.GetCoordinatorCategoryDetailViewDataAsync(id, user.Id, isFinanceAdmin, ct);
-            if (detail.Category is null) return NotFound();
-            if (detail.ShouldForbid)
+            var category = await budgetService.GetCategoryByIdAsync(id, ct);
+            if (category is null) return NotFound();
+            if (!(await authService.AuthorizeAsync(User, category, BudgetOperationRequirement.View)).Succeeded)
                 return Forbid();
 
-            var canEdit = (await authService.AuthorizeAsync(User, detail.Category, BudgetOperationRequirement.Edit)).Succeeded;
+            var canEdit = (await authService.AuthorizeAsync(User, category, BudgetOperationRequirement.Edit)).Succeeded;
 
             var model = new CoordinatorCategoryDetailViewModel
             {
-                Category = detail.Category,
+                Category = category,
                 CanEdit = canEdit,
                 IsFinanceAdmin = isFinanceAdmin,
-                Teams = detail.Teams
+                Teams = (await budgetService.GetActiveTeamsAsync(ct))
                     .OrderBy(t => t.Name, StringComparer.Ordinal)
                     .ToList()
             };
@@ -184,10 +188,10 @@ internal sealed class BudgetController(
         var (errorResult, user) = await RequireCurrentUserAsync(HttpContext.RequestAborted);
         if (errorResult is not null) return errorResult;
 
-        var lineItem = await budgetService.GetLineItemByIdAsync(id, HttpContext.RequestAborted);
-        if (lineItem is null) return NotFound();
+        var categoryId = await budgetService.GetLineItemCategoryIdAsync(id, HttpContext.RequestAborted);
+        if (categoryId is null) return NotFound();
 
-        var authResult = await AuthorizeCategoryEditAsync(lineItem.BudgetCategoryId);
+        var authResult = await AuthorizeCategoryEditAsync(categoryId.Value);
         if (authResult is not null) return authResult;
 
         if (!ModelState.IsValid)
@@ -206,7 +210,7 @@ internal sealed class BudgetController(
             {
                 logger.LogWarning("Rejected budget line item input for actor {ActorId}", user.Id);
                 SetError(localizer["Budget_Flash_LineUpdateFailed"].Value);
-                return RedirectToAction(nameof(CategoryDetail), new { id = lineItem.BudgetCategoryId });
+                return RedirectToAction(nameof(CategoryDetail), new { id = categoryId.Value });
             }
             SetSuccess(localizer["Budget_Flash_LineUpdated", description].Value);
         }
@@ -216,7 +220,7 @@ internal sealed class BudgetController(
             SetError(localizer["Budget_Flash_LineUpdateFailed"].Value);
         }
 
-        return RedirectToAction(nameof(CategoryDetail), new { id = lineItem.BudgetCategoryId });
+        return RedirectToAction(nameof(CategoryDetail), new { id = categoryId.Value });
     }
 
     [HttpPost("LineItems/{id:guid}/Delete")]
@@ -226,10 +230,10 @@ internal sealed class BudgetController(
         var (errorResult, user) = await RequireCurrentUserAsync(HttpContext.RequestAborted);
         if (errorResult is not null) return errorResult;
 
-        var lineItem = await budgetService.GetLineItemByIdAsync(id, HttpContext.RequestAborted);
-        if (lineItem is null) return NotFound();
+        var categoryId = await budgetService.GetLineItemCategoryIdAsync(id, HttpContext.RequestAborted);
+        if (categoryId is null) return NotFound();
 
-        var authResult = await AuthorizeCategoryEditAsync(lineItem.BudgetCategoryId);
+        var authResult = await AuthorizeCategoryEditAsync(categoryId.Value);
         if (authResult is not null) return authResult;
 
         try
@@ -248,7 +252,7 @@ internal sealed class BudgetController(
             logger.LogError(ex, "Failed to delete line item {LineItemId}", id);
             SetError(localizer["Budget_Flash_LineDeleteFailed"].Value);
         }
-        return RedirectToAction(nameof(CategoryDetail), new { id = lineItem.BudgetCategoryId });
+        return RedirectToAction(nameof(CategoryDetail), new { id = categoryId.Value });
     }
 
     private async Task<IActionResult?> AuthorizeCategoryEditAsync(Guid categoryId)

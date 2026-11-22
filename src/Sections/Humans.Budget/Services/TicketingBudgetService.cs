@@ -1,5 +1,6 @@
 using Humans.Base.Extensions;
 using Humans.Budget.Contracts;
+using Humans.Budget.Data;
 using Humans.Tickets.Contracts;
 using NodaTime;
 
@@ -14,7 +15,7 @@ internal sealed class TicketingBudgetService(
     public async Task<int> SyncActualsAsync(
         Guid budgetYearId, Guid? actorUserId, CancellationToken ct = default)
     {
-        var activeYear = await budgetService.GetActiveYearAsync();
+        var activeYear = await budgetService.GetActiveYearAsync(ct);
         if (activeYear is null || activeYear.Id != budgetYearId)
             throw new InvalidOperationException(
                 "Ticketing actuals can only be synced into the active budget year.");
@@ -38,7 +39,7 @@ internal sealed class TicketingBudgetService(
 
             // Canonical English descriptions whatever the operator's UI language: BudgetRepository matches existing
             // actuals rows by description.
-            List<TicketingWeeklyActuals> weeklyActuals;
+            List<TicketingWeeklyActualsInput> weeklyActuals;
             using (new CultureScope("en"))
             {
                 weeklyActuals = orders
@@ -50,9 +51,8 @@ internal sealed class TicketingBudgetService(
                     {
                         var monday = g.Key;
                         var sunday = monday.PlusDays(6);
-                        return new TicketingWeeklyActuals(
+                        return new TicketingWeeklyActualsInput(
                             Monday: monday,
-                            Sunday: sunday,
                             WeekLabel: $"{monday.ToWeekdayDayMonth()}–{sunday.ToWeekdayDayMonth()}",
                             TicketCount: g.Sum(o => o.Attendees.Count(a =>
                                 a.Status == TicketAttendeeStatus.Valid ||
@@ -70,6 +70,11 @@ internal sealed class TicketingBudgetService(
 
             return await budgetService.SyncTicketingActualsAsync(
                 budgetYearId, weeklyActuals, actorUserId, ct);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            logger.LogWarning("Ticketing actuals sync cancelled for budget year {YearId}", budgetYearId);
+            throw;
         }
         catch (Exception ex)
         {

@@ -18,7 +18,7 @@
   src/Sections/Humans.Users/Services/DuplicateAccountService.cs
   src/Sections/Humans.Auth/Services/RoleAssignmentService.cs
   src/Sections/Humans.Users/Services/AccountProvisioningService.cs
-  src/Sections/Humans.GoogleIntegration/Services/SyncSettingsService.cs
+  src/Sections/Humans.Google/Services/SyncSettingsService.cs
 -->
 <!-- freshness:flag-on-change
   Global control panel — humans list, audit log, notifications, sync settings, duplicate/merge resolution, and admin diagnostics. Review when admin views, role-management surface, or sync-mode plumbing changes.
@@ -43,7 +43,7 @@ Admin is layered. **UsersAdmin** does human management — the list, detail, rol
 - `/AuditLog` — global audit log, filterable and paginated.
 - `/Notifications` — your notification inbox.
 - `/Settings#google-sync` — per-service sync mode (Admin only), a tab on the Settings page.
-- `/Debug/Configuration`, `/Debug/Logs`, `/Debug/HttpErrors`, `/Debug/DbStats`, `/Debug/CacheStats`, `/Debug/DbVersion` — technical diagnostics.
+- `/Debug/Configuration`, `/Debug/Logs`, `/Debug/HttpErrors`, `/Debug/Database`, `/Debug/DbStats`, `/Debug/CacheStats`, `/Debug/DbVersion` — technical diagnostics.
 - `/Debug/Maintenance/ClearHangfireLocks` — clear stuck job locks (Admin only; requires restart).
 - `/Users/Admin/AccountMerges` — the unified duplicate-detection + merge-request queue.
 - `/Users/Admin/{id}/Purge` — permanent delete, disabled in production.
@@ -87,7 +87,7 @@ The **Google sync** tab of `/Settings#google-sync` (Admin only) sets each Google
 
 The sync outbox (`/Google/SyncOutbox`) shows pending and failed events. From there you can **Requeue** a single failed event or **Requeue All Failed** to retry all permanently-failed events in bulk; both actions are audited. On a human's admin detail page (`/Users/Admin/{id}`), **Re-run Google Sync** enqueues sync events for all of that human's teams (Admin only, also audited).
 
-See [GoogleIntegration](GoogleIntegration.md) for the full Google surface.
+See [Google](Google.md) for the full Google surface.
 
 ### Run technical operations
 
@@ -97,13 +97,14 @@ Board can open these pages and read them; every action on them is **Admin only**
 - **API keys** (`/Backdoor`) allocates, rotates and revokes the personal keys that open the `/api/backdoor/*` machine APIs — the log, agent-transcript, issue and survey surfaces. A key goes to one human (a full Admin or a Board member), authenticates as them, and is shown in plaintext exactly once. Board sees the key list; only Admin allocates, rotates and revokes.
 - **Logs** (`/Debug/Logs`) shows recent in-memory Serilog entries for quick triage without shelling in.
 - **HTTP errors** (`/Debug/HttpErrors`) shows recent HTTP error responses for quick diagnosis.
+- **Database** (`/Debug/Database`) shows the database server's version, size, connections and settings, plus per-table row counts, sizes and activity and per-index size and scans.
 - **DbStats**, **CacheStats**, **DbVersion** report query statistics, cache hit/miss rates, and applied and pending EF migrations.
 - **ClearHangfireLocks** removes stuck background-job locks; the app must be restarted afterwards to re-register recurring jobs.
 - **Hangfire dashboard** (`/hangfire`) opens for Board and Admin; only Admin can re-queue or otherwise change jobs.
 
 ### Resolve duplicate accounts
 
-`/Users/Admin/AccountMerges` is the single merge surface. It lists, in one queue, both user-submitted merge requests and auto-detected duplicate pairs (humans whose email addresses overlap across `User.Email` and `UserEmail.Email`, with Gmail / Googlemail equivalence). For any row you pick the survivor and merge; merging tombstones the archived account, re-FKs its data to the survivor, and consolidates all associated data onto the surviving account. You can also dismiss a request, or close an orphan request whose accounts were already merged.
+People merge their own accounts: adding an address that another account has confirmed mails a link, and confirming it while signed in merges the two. `/Users/Admin/AccountMerges` is for the rest. It lists auto-detected duplicate pairs (humans whose email addresses overlap across `User.Email` and `UserEmail.Email`, with Gmail / Googlemail equivalence) and lets you pick any two accounts by hand. For a pair you pick the survivor and merge; merging tombstones the archived account, re-FKs its data to the survivor, and consolidates all associated data onto the surviving account. **Recently merged** at the bottom shows every merge, self-service or by hand; a merge that stopped part-way is finished by merging the same two accounts again.
 
 ### Purge (non-production only)
 
@@ -113,5 +114,5 @@ Board can open these pages and read them; every action on them is **Admin only**
 
 - [Profiles](Profiles.md) — the humans list and per-human detail page are the Profiles admin surface.
 - [Teams](Teams.md) — Teams Admin and Coordinator duties live here; system team sync is triggered from the Google overview page (`/Google`).
-- [Google Integration](GoogleIntegration.md) — sync settings, workspace accounts, and sync audit views.
+- [Google](Google.md) — sync settings, workspace accounts, and sync audit views.
 - [Governance](Governance.md) — role assignments (Admin, Board, UsersAdmin, Coordinator roles) and tier application vote finalization.

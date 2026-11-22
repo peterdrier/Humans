@@ -69,7 +69,7 @@ internal sealed class PaymentDetailsService(
 
     public IReadOnlyDictionary<string, string?> ErasureDeclaration => Erasure;
 
-    /// <summary>Users' profile erasure still owns and erases the legacy <c>profiles.Iban</c>.</summary>
+    /// <summary>Users' profile erasure still owns and erases the legacy <c>user_profiles.Iban</c>.</summary>
     public async Task EraseForUserAsync(Guid userId, CancellationToken ct) =>
         await repo.DeleteAsync(userId, ct);
 }

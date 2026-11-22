@@ -1,4 +1,3 @@
-using Humans.Grants.Contracts;
 using Humans.Grants.Services;
 using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Authorization;

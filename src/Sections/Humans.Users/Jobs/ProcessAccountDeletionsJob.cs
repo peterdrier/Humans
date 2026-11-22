@@ -1,3 +1,4 @@
+using Humans.Application.Services.Users.AccountLifecycle;
 using Humans.Base.Extensions;
 using Hangfire;
 using NodaTime;
@@ -11,13 +12,13 @@ namespace Humans.Users.Jobs;
 
 /// <summary>Anonymizes accounts whose deletion grace period has expired.</summary>
 /// <remarks>
-/// <see cref="IAccountDeletionService.AnonymizeExpiredAccountAsync"/> owns the cross-section
+/// <see cref="AccountDeletionService.AnonymizeExpiredAccountAsync"/> owns the cross-section
 /// write order; the job keeps the loop, audit and confirmation email so one failure doesn't stop the run.
 /// </remarks>
 [DisableConcurrentExecution(timeoutInSeconds: 300)]
 internal sealed class ProcessAccountDeletionsJob(
     IUserManagement userService,
-    IAccountDeletionService accountDeletionService,
+    AccountDeletionService accountDeletionService,
     IEmailService emailService,
     UsersEmails emailMessages,
     IAuditLogService auditLogService,
@@ -25,6 +26,8 @@ internal sealed class ProcessAccountDeletionsJob(
     ILogger<ProcessAccountDeletionsJob> logger,
     IClock clock) : IRecurringJob
 {
+    private const string FailureMessage = "Failed to process one or more account deletions.";
+
     public async Task ExecuteAsync(CancellationToken cancellationToken = default)
     {
         var now = clock.GetCurrentInstant();
@@ -54,6 +57,13 @@ internal sealed class ProcessAccountDeletionsJob(
             {
                 try
                 {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    if (await accountDeletionService.ExtendTicketHoldAsync(userId, cancellationToken) is { } hold)
+                    {
+                        logger.LogInformation("Deletion of account {UserId} held for a ticket until {Hold}", userId, hold);
+                        continue;
+                    }
+
                     var summary = await accountDeletionService.AnonymizeExpiredAccountAsync(
                         userId, cancellationToken);
 
@@ -68,14 +78,14 @@ internal sealed class ProcessAccountDeletionsJob(
                     // Must not name the human: the audit log outlives erasure, so a name here
                     // would re-seed the identity just removed.
                     await auditLogService.LogAsync(
-                        UsersAuditActions.AccountAnonymized, nameof(User), userId,
+                        UsersAuditActions.AccountAnonymized, AuditSubjectTypes.User, userId,
                         "Account anonymized",
                         nameof(ProcessAccountDeletionsJob));
 
                     if (!string.IsNullOrWhiteSpace(summary.OriginalEmail))
                     {
-                        // Sent without an outbox row, so a transport failure is terminal; the
-                        // erasure already succeeded and must not be reported as failed or retried.
+                        // Erasure has committed: finish confirmation independently of shutdown.
+                        // No outbox row is kept, so a transport failure remains terminal.
                         try
                         {
                             await emailService.SendAsync(emailMessages.AccountDeleted(
@@ -84,7 +94,7 @@ internal sealed class ProcessAccountDeletionsJob(
                                 summary.OriginalBurnerName,
                                 summary.PreferredLanguage.IsSupportedCultureCode()
                                     ? summary.PreferredLanguage : CultureCatalog.DefaultCultureCode),
-                                cancellationToken);
+                                CancellationToken.None);
                         }
                         catch (Exception ex)
                         {
@@ -105,6 +115,12 @@ internal sealed class ProcessAccountDeletionsJob(
                         "Successfully anonymized account {UserId}",
                         userId);
                 }
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                {
+                    if (failures.Count > 0)
+                        throw new AggregateException(FailureMessage, failures);
+                    throw;
+                }
                 catch (Exception ex)
                 {
                     failures.Add(ex);
@@ -115,12 +131,17 @@ internal sealed class ProcessAccountDeletionsJob(
             }
 
             if (failures.Count > 0)
-                throw new AggregateException("Failed to process one or more account deletions.", failures);
+                throw new AggregateException(FailureMessage, failures);
 
             metrics.RecordJobRun("process_account_deletions", "success");
             logger.LogInformation(
                 "Completed account deletion processing, processed {Count} accounts",
                 processed);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            logger.LogWarning("Account deletion processing interrupted by shutdown");
+            throw;
         }
         catch (Exception ex)
         {

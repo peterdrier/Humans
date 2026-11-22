@@ -8,6 +8,46 @@ namespace Humans.Calendar.Tests.Services;
 
 public sealed class CalendarOccurrenceExpanderTests
 {
+    [HumansFact]
+    public void Expand_AllDayUntilAtDateLimit_KeepsCurrentWindowAndStoredRule()
+    {
+        const string rule = "FREQ=DAILY;UNTIL=99991231";
+        var info = BuildInfo(recurrenceRule: rule) with
+        {
+            IsAllDay = true,
+            StartUtc = null,
+            EndUtc = null,
+            RecurrenceTimezone = null,
+            StartDate = new LocalDate(2026, 6, 1),
+            EndDateExclusive = new LocalDate(2026, 6, 3),
+        };
+
+        var results = CalendarOccurrenceExpander.Expand([info], Instant.FromUtc(2026, 6, 3, 0, 0),
+            Instant.FromUtc(2026, 6, 5, 0, 0), new Dictionary<Guid, string>(), NullLogger.Instance,
+            DateTimeZone.Utc);
+
+        results.Select(o => o.StartDate).Should().Equal(
+            new LocalDate(2026, 6, 2), new LocalDate(2026, 6, 3), new LocalDate(2026, 6, 4));
+        info.RecurrenceRule.Should().Be(rule);
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public void RecurrenceBounds_DateUntilAtLimit_RemainConservativeWithoutOverflow(bool allDay)
+    {
+        const string rule = "FREQ=DAILY;UNTIL=99991231";
+        var start = new LocalDate(2026, 6, 1);
+
+        if (allDay)
+            CalendarRecurrenceRules.ComputeRecurrenceUntilDate(rule, start, start.PlusDays(2))
+                .Should().Be(LocalDate.MaxIsoValue);
+        else
+            CalendarRecurrenceRules.ComputeRecurrenceUntilUtc(rule, "Europe/Madrid",
+                Instant.FromUtc(2026, 6, 1, 10, 0), Instant.FromUtc(2026, 6, 1, 11, 0))
+                .Should().Be(Instant.MaxValue);
+    }
+
     [HumansTheory]
     [Xunit.InlineData(false)]
     [Xunit.InlineData(true)]

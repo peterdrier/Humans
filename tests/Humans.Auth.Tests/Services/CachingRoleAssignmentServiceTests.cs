@@ -1,6 +1,7 @@
 using AwesomeAssertions;
 using Humans.Auth.Contracts;
 using Humans.Auth.Services;
+using Humans.Base.Constants;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -17,6 +18,89 @@ namespace Humans.Auth.Tests.Services;
 /// </summary>
 public sealed class CachingRoleAssignmentServiceTests
 {
+    [HumansTheory]
+    [Xunit.InlineData("assign", false)]
+    [Xunit.InlineData("assign", true)]
+    [Xunit.InlineData("end", false)]
+    [Xunit.InlineData("end", true)]
+    [Xunit.InlineData("revoke", false)]
+    [Xunit.InlineData("revoke", true)]
+    public async Task Mutation_UnknownCompletion_EvictsThePreviousClaims(string operation, bool cancelled)
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var now = Instant.FromUtc(2026, 5, 17, 12, 0);
+        var userId = Guid.NewGuid();
+        var row = ActiveFor(userId, "Board", now);
+        var assigning = string.Equals(operation, "assign", StringComparison.Ordinal);
+        var source = new List<RoleAssignmentSummarySnapshot>();
+        if (!assigning) source.Add(row);
+        var (service, inner) = BuildService(source, new FakeClock(now));
+        await service.GetActiveForUserAsync(userId, ct);
+        Exception failure = cancelled ? new OperationCanceledException(ct) : new IOException("Write acknowledgement failed");
+        void Commit()
+        {
+            source.Clear();
+            if (assigning) source.Add(row);
+        }
+        inner.AssignRoleAsync(userId, "Board", Arg.Any<Guid>(), null, ct).Returns(_ =>
+        {
+            Commit();
+            return Task.FromException<RoleAssignmentResult>(failure);
+        });
+        inner.EndRoleAsync(row.Id, Arg.Any<Guid>(), null, ct).Returns(_ =>
+        {
+            Commit();
+            return Task.FromException<RoleAssignmentResult>(failure);
+        });
+        inner.RevokeAllActiveAsync(userId, ct).Returns(_ =>
+        {
+            Commit();
+            return Task.FromException<int>(failure);
+        });
+        Func<Task> mutate = operation switch
+        {
+            "assign" => () => service.AssignRoleAsync(userId, "Board", Guid.NewGuid(), null, ct),
+            "end" => () => service.EndRoleAsync(row.Id, Guid.NewGuid(), null, ct),
+            _ => () => service.RevokeAllActiveAsync(userId, ct)
+        };
+
+        (await Xunit.Record.ExceptionAsync(mutate)).Should().BeSameAs(failure);
+
+        service.IsWarmedUp.Should().BeFalse();
+        var roles = await service.GetActiveForUserAsync(userId, ct);
+        roles.Select(role => role.RoleName).Should().BeEquivalentTo(assigning ? new[] { "Board" } : []);
+        var counts = await service.GetActiveCountsByRoleAsync(ct);
+        counts.GetValueOrDefault("Board").Should().Be(assigning ? 1 : 0);
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData("assign")]
+    [Xunit.InlineData("end")]
+    [Xunit.InlineData("revoke")]
+    public async Task Mutation_KnownNoWrite_PreservesTheWarmedSnapshot(string operation)
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var now = Instant.FromUtc(2026, 5, 17, 12, 0);
+        var userId = Guid.NewGuid();
+        var row = ActiveFor(userId, "Board", now);
+        var (service, inner) = BuildService([row], new FakeClock(now));
+        await service.GetActiveForUserAsync(userId, ct);
+        inner.AssignRoleAsync(userId, "Board", Arg.Any<Guid>(), null, ct).Returns(new RoleAssignmentResult(false, "RoleAlreadyActive"));
+        inner.EndRoleAsync(row.Id, Arg.Any<Guid>(), null, ct).Returns(new RoleAssignmentResult(false, "NotFound"));
+        inner.RevokeAllActiveAsync(userId, ct).Returns(0);
+
+        switch (operation)
+        {
+            case "assign": await service.AssignRoleAsync(userId, "Board", Guid.NewGuid(), null, ct); break;
+            case "end": await service.EndRoleAsync(row.Id, Guid.NewGuid(), null, ct); break;
+            default: await service.RevokeAllActiveAsync(userId, ct); break;
+        }
+
+        service.IsWarmedUp.Should().BeTrue();
+        service.BulkInvalidations.Should().Be(0);
+        (await service.GetActiveForUserAsync(userId, ct)).Should().ContainSingle();
+    }
+
     [HumansFact]
     public async Task GetActiveCountsByRoleAsync_GroupsActiveRowsByRoleName()
     {
@@ -143,6 +227,29 @@ public sealed class CachingRoleAssignmentServiceTests
         var roles = await service.GetActiveForUserAsync(userA, Xunit.TestContext.Current.CancellationToken);
 
         roles.Select(r => r.RoleName).Should().Equal("Board", "Coordinator");
+    }
+
+    [HumansFact]
+    public async Task RoleChecks_AnswerFromActiveCachedRows_WithoutAskingInner()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var now = Instant.FromUtc(2026, 5, 17, 12, 0);
+        var board = Guid.NewGuid();
+        var lapsed = Guid.NewGuid();
+        var (service, inner) = BuildService(
+            [ActiveFor(board, RoleNames.Board, now), ExpiredFor(lapsed, RoleNames.Admin, now)],
+            new FakeClock(now));
+
+        (await service.IsUserBoardMemberAsync(board, ct)).Should().BeTrue();
+        (await service.IsUserAdminAsync(lapsed, ct)).Should().BeFalse();
+        (await service.HasAnyActiveAssignmentAsync(lapsed, ct)).Should().BeFalse();
+        (await service.GetActiveUserIdsInRoleAsync(RoleNames.Board, ct)).Should().Equal(board);
+        (await service.GetUserIdsWithActiveAssignmentsAsync(ct)).Should().Equal(board);
+
+        await inner.DidNotReceiveWithAnyArgs().HasActiveRoleAsync(default, default!, default);
+        await inner.DidNotReceiveWithAnyArgs().GetActiveUserIdsInRoleAsync(default!, default);
+        await inner.DidNotReceiveWithAnyArgs().GetUserIdsWithActiveAssignmentsAsync(default);
+        await inner.DidNotReceiveWithAnyArgs().HasAnyActiveAssignmentAsync(default, default);
     }
 
     [HumansFact]

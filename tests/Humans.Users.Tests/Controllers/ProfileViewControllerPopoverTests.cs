@@ -37,7 +37,6 @@ public class ProfileViewControllerPopoverTests
     private readonly IUserEmailService _userEmailService = Substitute.For<IUserEmailService>();
     private readonly IProfilePictureService _profilePictureService = Substitute.For<IProfilePictureService>();
     private readonly ITeamService _teamService = Substitute.For<ITeamService>();
-    private readonly IShiftSignups _shiftSignups = Substitute.For<IShiftSignups>();
     private readonly IShiftService _shiftManagement = Substitute.For<IShiftService>();
     private readonly IAuthorizationService _authorizationService = Substitute.For<IAuthorizationService>();
     private readonly ICampService _campService = Substitute.For<ICampService>();
@@ -67,13 +66,16 @@ public class ProfileViewControllerPopoverTests
         _controller = new ProfileViewController(
             _userService,
             _profilePictureService,
-            _shiftSignups,
             _shiftManagement,
             _sharedLocalizer,
             _teamService,
             _campService,
             Substitute.For<IGovernanceService>(),
-            _authorizationService);
+            Substitute.For<Humans.Auth.Contracts.IRoleAssignmentService>(),
+            _authorizationService,
+            new MedicalConditionsService(
+                Substitute.For<Humans.Users.Data.Repositories.IUserRepository>(), _userService,
+                Substitute.For<Humans.AuditLog.Contracts.IAuditLogService>()));
 
         var identity = new ClaimsIdentity([
             new Claim(ClaimTypes.NameIdentifier, _viewerId.ToString()),
@@ -90,43 +92,18 @@ public class ProfileViewControllerPopoverTests
             .Returns(AuthorizationResult.Failed());
     }
 
-    [HumansFact]
-    public async Task ViewProfile_OrdersNoShowHistoryAndPreservesCancellation()
+    [HumansTheory]
+    [InlineData(638000000000000000L, "max-age=31536000, private, immutable")]
+    [InlineData(null, "max-age=3600, private")]
+    public async Task Picture_VersionedUrl_IsCachedForAYear(long? version, string expected)
     {
-        using var source = new CancellationTokenSource();
-        var targetId = Guid.NewGuid();
-        _userService.GetUserInfoAsync(_viewerId, Arg.Any<CancellationToken>())
-            .Returns(BuildActiveUserInfo(_viewerId, "Viewer", "viewer@example.com"));
-        _userService.GetUserInfoAsync(targetId, Arg.Any<CancellationToken>())
-            .Returns(BuildActiveUserInfo(targetId, "Target", "target@example.com"));
-        _shiftManagement.GetCoordinatorTeamIdsAsync(_viewerId, Arg.Any<CancellationToken>())
-            .Returns(new[] { Guid.NewGuid() });
-        var reviewerId = Guid.NewGuid();
-        var missingReviewerId = Guid.NewGuid();
-        _userService.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(new Dictionary<Guid, UserInfo>());
-        var reviewed = Instant.FromUtc(2026, 3, 1, 12, 0);
-        _shiftSignups.GetNoShowHistoryAsync(targetId, Arg.Any<CancellationToken>())
-            .Returns(new[]
-            {
-                new NoShowHistoryEntry("Undated", Guid.Empty, reviewed, "UTC", null, null),
-                new NoShowHistoryEntry("Older", Guid.Empty, reviewed, "UTC", missingReviewerId, reviewed),
-                new NoShowHistoryEntry("Newest", Guid.Empty, reviewed, "UTC", reviewerId, reviewed + Duration.FromHours(1)),
-            });
-        _teamService.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo>());
+        var userId = Guid.NewGuid();
+        _profilePictureService.GetProfilePictureAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(((byte[] Data, string ContentType)?)(new byte[] { 1, 2, 3 }, "image/jpeg"));
 
-        var result = await _controller.ViewProfile(targetId, source.Token);
+        await _controller.Picture(userId, version, TestContext.Current.CancellationToken);
 
-        var model = result.Should().BeOfType<ViewResult>().Subject.Model
-            .Should().BeOfType<ProfileViewModel>().Subject;
-        model.PageTitle.Should().Be("Target");
-        model.CanViewShiftSignups.Should().BeTrue();
-        model.CanViewSentMessages.Should().BeTrue();
-        model.NoShowHistory!.Select(row => row.ShiftLabel).Should().Equal("Newest", "Older", "Undated");
-        model.NoShowHistory!.Select(row => row.MarkedByUserId).Should().Equal(reviewerId, missingReviewerId, null);
-        await _userService.DidNotReceive().GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>());
-        await _shiftManagement.Received(1).GetCoordinatorTeamIdsAsync(_viewerId, source.Token);
-        await _shiftSignups.Received(1).GetNoShowHistoryAsync(targetId, source.Token);
+        _controller.Response.Headers.CacheControl.ToString().Should().Be(expected);
     }
 
     [HumansTheory]
@@ -141,8 +118,7 @@ public class ProfileViewControllerPopoverTests
             .Returns(BuildActiveUserInfo(_viewerId, "Viewer", "viewer@example.com"));
         _userService.GetUserInfoAsync(targetId, Arg.Any<CancellationToken>())
             .Returns(BuildActiveUserInfo(targetId, "Target", "target@example.com"));
-        _shiftManagement.GetCoordinatorTeamIdsAsync(_viewerId, Arg.Any<CancellationToken>()).Returns([]);
-        _shiftSignups.GetNoShowHistoryAsync(targetId, Arg.Any<CancellationToken>()).Returns([]);
+        _shiftManagement.CanManageOrApproveAnyShiftsAsync(_viewerId, Arg.Any<CancellationToken>()).Returns(false);
         if (privileged)
         {
             ((ClaimsIdentity)_controller.User.Identity!).AddClaim(new Claim(ClaimTypes.Role, ShiftsRoles.ShiftsNoInfo));
@@ -153,10 +129,8 @@ public class ProfileViewControllerPopoverTests
         var result = await _controller.ViewProfile(targetId, ct);
 
         var model = result.Should().BeOfType<ViewResult>().Which.Model.Should().BeOfType<ProfileViewModel>().Which;
-        model.CanViewShiftSignups.Should().Be(!ownProfile && privileged);
         model.CanViewSentMessages.Should().Be(!ownProfile && privileged);
-        await _shiftManagement.Received(ownProfile ? 0 : 1).GetCoordinatorTeamIdsAsync(_viewerId, ct);
-        await _shiftSignups.Received(!ownProfile && privileged ? 1 : 0).GetNoShowHistoryAsync(targetId, ct);
+        await _shiftManagement.Received(ownProfile ? 0 : 1).CanManageOrApproveAnyShiftsAsync(_viewerId, ct);
     }
 
     [HumansFact]
@@ -321,7 +295,6 @@ public class ProfileViewControllerPopoverTests
         {
             Id = Guid.NewGuid(),
             UserId = id,
-            BurnerName = displayName,
         };
         var emails = new List<UserEmail>
         {

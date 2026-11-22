@@ -130,9 +130,7 @@
   <data name="Consent_Queue_FlaggedBadge" xml:space="preserve"><value>Flagged</value></data>
   <data name="Consent_Queue_NewHumanSummary" xml:space="preserve"><value>New Human Summary</value></data>
   <data name="Consent_Queue_LegalName" xml:space="preserve"><value>Legal Name</value></data>
-  <data name="Consent_Queue_HasApplication" xml:space="preserve"><value>Has Application</value></data>
   <data name="Consent_Queue_Signed" xml:space="preserve"><value>signed</value></data>
-  <data name="Consent_Queue_ApplicationMotivation" xml:space="preserve"><value>Application Motivation</value></data>
   <data name="Consent_Queue_PreviousNotes" xml:space="preserve"><value>Previous Review Notes</value></data>
   <data name="Consent_Queue_Actions" xml:space="preserve"><value>Actions</value></data>
   <data name="Consent_Queue_NotesPlaceholder" xml:space="preserve"><value>Optional notes...</value></data>
@@ -161,4 +159,8 @@
   <data name="Consent_Queue_DocsNote" xml:space="preserve"><value>Profile review can proceed independently. Human will join Volunteers once all documents are signed.</value></data>
   <data name="Consent_Queue_ReviewLink" xml:space="preserve"><value>Review</value></data>
   <data name="Consent_Queue_SelectRowLabel" xml:space="preserve"><value>Select {0}</value></data>
+  <data name="Consent_Meter_ReviewsPending" xml:space="preserve"><value>Consent reviews pending</value></data>
+  <data name="Consent_Meter_OnboardingProfilesPending" xml:space="preserve"><value>Onboarding profiles pending</value></data>
+  <data name="Consent_Meter_AudienceConsentCoordinator" xml:space="preserve"><value>Consent Coordinators</value></data>
+  <data name="Consent_Meter_AudienceBoard" xml:space="preserve"><value>the Board</value></data>
 </root>

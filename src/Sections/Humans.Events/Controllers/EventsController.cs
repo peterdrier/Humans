@@ -30,6 +30,8 @@ internal sealed class EventsController(
     ILogger<EventsController> logger,
     IStringLocalizer<EventsResource> localizer) : HumansCampControllerBase(users, camps, authorizationService)
 {
+    private readonly EventGuidePageBuilder guidePageBuilder = new(guide, camps);
+
     [HttpGet("MySubmissions")]
     public async Task<IActionResult> MySubmissions()
     {
@@ -41,13 +43,12 @@ internal sealed class EventsController(
         var eventSettings = await LoadBurnSettingsAsync(guide, guideSettings, ct);
         var isSubmissionOpen = IsSubmissionOpen(guideSettings);
 
-        var tz = GetTimeZone(eventSettings);
+        var tz = eventSettings?.TimeZone;
 
-        var individualEvents = await guide.GetUserSubmissionsAsync(user.Id, ct);
+        var personalSummary = await guide.GetUserSubmissionsSummaryAsync(user.Id, ct);
 
         // Camps the user leads or runs workshops for.
-        var campSettings = await CampService.GetSettingsAsync(ct);
-        var managedCamps = (await CampService.GetCampsForYearAsync(campSettings.PublicYear, ct))
+        var managedCamps = (await LoadCampsByIdAsync(CampService, guideSettings?.EventSettingsId, ct)).Values
             .Where(camp => camp.IsEventManager(user.Id))
             .ToList();
 
@@ -94,10 +95,10 @@ internal sealed class EventsController(
             TimeZoneId = eventSettings?.TimeZoneId,
             Personal = new PersonalSubmissionsBlock
             {
-                SubmittedCount = individualEvents.Count,
-                ApprovedCount = individualEvents.Count(e => e.Status == EventStatus.Approved),
-                PendingCount = individualEvents.Count(e => e.Status == EventStatus.Pending),
-                Events = individualEvents.OrderByDescending(e => e.SubmittedAt).Select(e => new IndividualEventRowViewModel
+                SubmittedCount = personalSummary.SubmittedCount,
+                ApprovedCount = personalSummary.ApprovedCount,
+                PendingCount = personalSummary.PendingCount,
+                Events = personalSummary.Events.OrderByDescending(e => e.SubmittedAt).Select(e => new IndividualEventRowViewModel
                 {
                     Id = e.Id,
                     Title = e.Title,
@@ -162,7 +163,7 @@ internal sealed class EventsController(
             return View("IndividualEventForm", model);
         }
 
-        var tz = GetTimeZone(eventSettings);
+        var tz = eventSettings.TimeZone;
         var (startTime, durationMinutes) = Event.ResolveAllDaySchedule(
             model.IsAllDay, model.StartTime.ToTimeSpan(), model.DurationMinutes);
 
@@ -195,7 +196,7 @@ internal sealed class EventsController(
                 return RedirectToAction(nameof(MySubmissions));
             }
             ModelState.AddModelError(result.Field ?? string.Empty, localizer[errorKey].Value);
-            await PopulateDropdownsAsync(model, eventSettings);
+            await PopulateDropdownsAsync(model, eventSettings, ct);
             return View("IndividualEventForm", model);
         }
 
@@ -223,9 +224,9 @@ internal sealed class EventsController(
             return RedirectToAction(nameof(MySubmissions));
         }
 
-        var eventSettings = await LoadBurnSettingsAsync(guide, guideSettings, ct)
+        var eventSettings = await LoadBurnSettingsAsync(guide, guideSettings, ct, guideEvent.EventSettingsId)
             ?? throw new InvalidOperationException("Event settings not configured.");
-        var tz = GetTimeZone(eventSettings);
+        var tz = eventSettings.TimeZone;
         var localStart = ToLocalDateTime(guideEvent.StartAt, tz);
 
         var model = await BuildFormAsync(eventSettings, ct);
@@ -255,7 +256,7 @@ internal sealed class EventsController(
             return RedirectToAction(nameof(MySubmissions));
         }
 
-        var eventSettings = await LoadBurnSettingsAsync(guide, guideSettings, ct)
+        var eventSettings = await LoadBurnSettingsAsync(guide, guideSettings, ct, editable.Event!.EventSettingsId)
             ?? throw new InvalidOperationException("Event settings not configured.");
 
         ValidateRecurrenceDays(model.IsRecurring, model.RecurrenceDays, eventSettings);
@@ -270,7 +271,7 @@ internal sealed class EventsController(
             return View("IndividualEventForm", model);
         }
 
-        var tz = GetTimeZone(eventSettings);
+        var tz = eventSettings.TimeZone;
         var (startTime, durationMinutes) = Event.ResolveAllDaySchedule(
             model.IsAllDay, model.StartTime.ToTimeSpan(), model.DurationMinutes);
 
@@ -283,7 +284,7 @@ internal sealed class EventsController(
             logger.LogWarning("Event resubmission refused for event {EventId}, category {CategoryId}: {ErrorKey}", eventId, model.CategoryId, errorKey);
             ModelState.AddModelError(result.Field ?? string.Empty, localizer[errorKey].Value);
             model.Id = eventId;
-            await PopulateDropdownsAsync(model, eventSettings);
+            await PopulateDropdownsAsync(model, eventSettings, ct);
             return View("IndividualEventForm", model);
         }
 
@@ -324,67 +325,7 @@ internal sealed class EventsController(
         var user = await GetCurrentUserInfoAsync(ct);
         if (user == null) return Challenge();
 
-        var guideSettings = await guide.GetGuideSettingsAsync(ct);
-        var eventSettings = await LoadBurnSettingsAsync(guide, guideSettings, ct);
-        var tz = GetTimeZone(eventSettings);
-
-        var gateOpeningDate = eventSettings?.GateOpeningDate;
-        var favourites = await guide.GetFavouritesWithEventsAsync(user.Id, ct);
-        var campsById = await LoadCampsByIdAsync(CampService, eventSettings?.Id, ct);
-
-        var scheduleItems = favourites.SelectMany(f =>
-        {
-            var e = f.Event;
-            var camp = e.CampId.HasValue ? campsById.GetValueOrDefault(e.CampId.Value) : null;
-            var campName = ResolveCampName(camp);
-
-            IReadOnlyList<Instant> occurrences = e.GetOccurrenceInstants(gateOpeningDate, tz, f.DayOffset);
-
-            return occurrences.Select(startInstant =>
-            {
-                var localStart = ToLocalDateTime(startInstant, tz);
-
-                var dayOffset = ComputeDayOffset(startInstant, gateOpeningDate, tz);
-
-                return new ScheduleItemViewModel
-                {
-                    EventId = e.Id,
-                    Title = e.Title,
-                    CategoryName = e.CategoryName,
-                    CampName = campName,
-                    VenueName = e.VenueName,
-                    LocationNote = e.LocationNote,
-                    StartAt = localStart,
-                    DurationMinutes = e.DurationMinutes,
-                    DayOffset = dayOffset,
-                    DayLabel = gateOpeningDate != null
-                        ? gateOpeningDate.Value.PlusDays(dayOffset).ToWeekdayDayMonth()
-                        : localStart.ToWeekdayDayMonth(),
-                    StartInstant = startInstant,
-                    FavouriteDayOffset = f.DayOffset,
-                    HasConflict = false
-                };
-            });
-        }).OrderBy(i => i.StartInstant).ToList();
-
-        foreach (var index in EventConflictDetector.FindConflictingIndexes(
-                     scheduleItems, i => i.StartInstant, i => i.DurationMinutes))
-        {
-            scheduleItems[index].HasConflict = true;
-        }
-
-        var model = new ScheduleViewModel
-        {
-            TimeZoneId = eventSettings?.TimeZoneId,
-            DayGroups = scheduleItems
-                .GroupBy(i => i.DayOffset)
-                .OrderBy(g => g.Key)
-                .Select(g => new ScheduleDayGroup
-                {
-                    DayLabel = g.First().DayLabel,
-                    Items = g.OrderBy(i => i.StartAt).ToList()
-                }).ToList()
-        };
+        var model = await guidePageBuilder.BuildScheduleAsync(user.Id, ct);
 
         return View(model);
     }
@@ -397,79 +338,7 @@ internal sealed class EventsController(
         var user = await GetCurrentUserInfoAsync(ct);
         if (user == null) return Challenge();
 
-        var guideSettings = await guide.GetGuideSettingsAsync(ct);
-        var eventSettings = await LoadBurnSettingsAsync(guide, guideSettings, ct);
-        var tz = GetTimeZone(eventSettings);
-
-        var gateOpeningDate = eventSettings?.GateOpeningDate;
-        var filterDays = days != null && days.Length > 0 ? days.ToHashSet() : null;
-
-        var excludedSlugs = await guide.GetExcludedCategorySlugsAsync(user.Id, ct);
-        var favouriteDaysByEventId = (await guide.GetFavouritesWithEventsAsync(user.Id, ct))
-            .ToLookup(f => f.GuideEventId, f => f.DayOffset);
-        var events = await guide.GetApprovedEventsAsync(null, venueId, categoryId, q, excludedSlugs, ct);
-
-        var campsById = await LoadCampsByIdAsync(CampService, eventSettings?.Id, ct);
-
-        var occurrences = EventOccurrenceExpander.Expand(
-            events, favouriteDaysByEventId, gateOpeningDate, tz, filterDays);
-
-        var items = occurrences.Select(o =>
-        {
-            var e = o.Event;
-            var camp = e.CampId.HasValue ? campsById.GetValueOrDefault(e.CampId.Value) : null;
-            var campName = ResolveCampName(camp);
-
-            return new BrowseEventItem
-            {
-                EventId = e.Id,
-                Title = e.Title,
-                Description = e.Description,
-                CategoryName = e.CategoryName,
-                CampName = campName,
-                VenueName = e.VenueName,
-                LocationNote = e.LocationNote,
-                StartAt = ToLocalDateTime(o.StartAt, tz),
-                DurationMinutes = e.DurationMinutes,
-                DayOffset = o.DayOffset,
-                FavouriteDayOffset = o.FavouriteDayOffset,
-                IsFavourited = o.IsFavourited,
-                SubmitterUserId = e.CampId == null ? e.SubmitterUserId : null,
-                Host = e.Host
-            };
-        }).ToList();
-
-        if (favouritesOnly)
-            items = items.Where(i => i.IsFavourited).ToList();
-
-        var categories = await guide.GetActiveCategoriesAsync(ct);
-        var venues = await guide.GetActiveVenuesAsync(ct);
-
-        var eventDays = eventSettings != null ? BuildEventDayOptions(eventSettings) : [];
-
-        var model = new BrowseViewModel
-        {
-            TimeZoneId = eventSettings?.TimeZoneId,
-            Categories = categories.OrderBy(c => c.DisplayOrder).Select(c => new CategoryOptionViewModel { Id = c.Id, Name = c.Name }).ToList(),
-            Venues = venues.OrderBy(v => v.DisplayOrder).Select(v => new VenueOptionViewModel { Id = v.Id, Name = v.Name }).ToList(),
-            Days = eventDays,
-            FilterDays = filterDays ?? [],
-            FilterCategoryId = categoryId,
-            FilterVenueId = venueId,
-            SearchQuery = q,
-            FavouritesOnly = favouritesOnly,
-            DayGroups = items
-                .GroupBy(i => i.DayOffset)
-                .OrderBy(g => g.Key)
-                .Select(g => new BrowseDayGroup
-                {
-                    DayOffset = g.Key,
-                    DayLabel = gateOpeningDate != null
-                        ? gateOpeningDate.Value.PlusDays(g.Key).ToWeekdayDayMonth()
-                        : g.First().StartAt.ToWeekdayDayMonth(),
-                    Items = g.OrderBy(i => i.StartAt).ToList()
-                }).ToList()
-        };
+        var model = await guidePageBuilder.BuildBrowseAsync(user.Id, days, categoryId, venueId, q, favouritesOnly, ct);
 
         return View(model);
     }
@@ -495,7 +364,7 @@ internal sealed class EventsController(
     private void ValidateSchedule(DateOnly date, TimeOnly time, int durationMinutes, EventSettingsInfo settings)
     {
         if (!ModelState.IsValid || CanDisplaySchedule(
-            LocalDateTime.FromDateTime(date.ToDateTime(time)), durationMinutes, GetTimeZone(settings))) return;
+            LocalDateTime.FromDateTime(date.ToDateTime(time)), durationMinutes, settings?.TimeZone)) return;
         logger.LogWarning("Event form rejected: schedule is outside the supported calendar range");
         ModelState.AddModelError(nameof(IndividualEventFormViewModel.StartDate),
             localizer["Events_Upload_DateRange"].Value);
@@ -534,7 +403,7 @@ internal sealed class EventsController(
         return model;
     }
 
-    private async Task PopulateDropdownsAsync(EventProposalFormViewModel model, EventSettingsInfo burn, CancellationToken ct = default)
+    private async Task PopulateDropdownsAsync(EventProposalFormViewModel model, EventSettingsInfo burn, CancellationToken ct)
     {
         var categories = await guide.GetActiveCategoriesAsync(ct);
         var venues = model is IndividualEventFormViewModel
@@ -599,7 +468,7 @@ internal sealed class EventsController(
             return View("BarrioEventForm", model);
         }
 
-        var tz = GetTimeZone(eventSettings);
+        var tz = eventSettings.TimeZone;
         var guideEvent = new Event
         {
             Id = Guid.NewGuid(),
@@ -632,7 +501,7 @@ internal sealed class EventsController(
             model.CampId = camp.Id;
             model.CampName = ResolveCampDisplayName(camp, eventSettings.Id);
             model.CampSlug = slug;
-            await PopulateDropdownsAsync(model, eventSettings);
+            await PopulateDropdownsAsync(model, eventSettings, ct);
             return View("BarrioEventForm", model);
         }
         logger.LogInformation("User {UserId} submitted barrio event '{Title}' for camp {CampId}", user.Id, model.Title, camp.Id);
@@ -659,9 +528,9 @@ internal sealed class EventsController(
 
         var guideSettings = await guide.GetGuideSettingsAsync(ct)
             ?? throw new InvalidOperationException("Guide settings not configured.");
-        var eventSettings = await LoadBurnSettingsAsync(guide, guideSettings, ct)
+        var eventSettings = await LoadBurnSettingsAsync(guide, guideSettings, ct, guideEvent.EventSettingsId)
             ?? throw new InvalidOperationException("Event settings not configured.");
-        var tz = GetTimeZone(eventSettings);
+        var tz = eventSettings.TimeZone;
         var localStart = ToLocalDateTime(guideEvent.StartAt, tz);
 
         var model = await BuildBarrioFormAsync(slug, camp, eventSettings, ct);
@@ -691,7 +560,7 @@ internal sealed class EventsController(
 
         var guideSettings = await guide.GetGuideSettingsAsync(ct)
             ?? throw new InvalidOperationException("Guide settings not configured.");
-        var eventSettings = await LoadBurnSettingsAsync(guide, guideSettings, ct)
+        var eventSettings = await LoadBurnSettingsAsync(guide, guideSettings, ct, guideEvent.EventSettingsId)
             ?? throw new InvalidOperationException("Event settings not configured.");
 
         ValidateRecurrenceDays(model.IsRecurring, model.RecurrenceDays, eventSettings);
@@ -707,7 +576,7 @@ internal sealed class EventsController(
             return View("BarrioEventForm", model);
         }
 
-        var tz = GetTimeZone(eventSettings);
+        var tz = eventSettings.TimeZone;
         var result = await guide.UpdateAndResubmitAsync(eventId, new EventEdit(
             model.CategoryId, VenueId: null, model.Title, model.Description,
             ToInstant(model.StartDate.ToDateTime(model.StartTime), tz), model.DurationMinutes,
@@ -720,7 +589,7 @@ internal sealed class EventsController(
             model.CampId = camp.Id;
             model.CampName = ResolveCampDisplayName(camp, eventSettings.Id);
             model.CampSlug = slug;
-            await PopulateDropdownsAsync(model, eventSettings);
+            await PopulateDropdownsAsync(model, eventSettings, ct);
             return View("BarrioEventForm", model);
         }
 
@@ -791,8 +660,7 @@ internal sealed class EventsController(
 
         var eventSettings = await LoadBurnSettingsAsync(guide, guideSettings, ct)
             ?? throw new InvalidOperationException("Event settings not configured.");
-        var tz = GetTimeZone(eventSettings)
-            ?? throw new InvalidOperationException("Event timezone not configured.");
+        var tz = eventSettings.TimeZone;
 
         BulkCsvParseResult parsed;
         try

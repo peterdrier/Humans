@@ -238,14 +238,12 @@
   <data name="Expenses_Validation_FileTooLarge" xml:space="preserve"><value>Fichier trop volumineux. La taille maximale est de {0} Mo.</value></data>
   <data name="Expenses_Validation_FilenameTooLong" xml:space="preserve"><value>Le nom du fichier doit comporter au maximum {0} caractères.</value></data>
   <data name="Expenses_Validation_UnsupportedFileType" xml:space="preserve"><value>Type de fichier non pris en charge. Téléversez un fichier PDF, JPEG, PNG ou HEIC.</value></data>
-  <data name="Expenses_Validation_OnlySubmitterCanSubmit" xml:space="preserve"><value>Seule la personne qui a déposé le rapport peut le soumettre.</value></data>
   <data name="Expenses_Validation_ReportNeedsLine" xml:space="preserve"><value>Le rapport doit comporter au moins une ligne.</value></data>
   <data name="Expenses_Validation_ReceiptInvoiceNeedAttachment" xml:space="preserve"><value>Les lignes de reçu et de facture doivent avoir une pièce jointe avant l’envoi.</value></data>
   <data name="Expenses_Validation_SubmitterNeedsIban" xml:space="preserve"><value>La personne qui soumet le rapport doit avoir un IBAN enregistré dans son profil.</value></data>
   <data name="Expenses_Validation_SubmitterNeedsFirstAndLastName" xml:space="preserve"><value>La personne qui soumet le rapport doit avoir ses nom et prénom renseignés dans son profil.</value></data>
   <data name="Expenses_Validation_CouldNotSubmitReport" xml:space="preserve"><value>Impossible de soumettre le rapport. Il n’est peut-être plus à l’état de brouillon.</value></data>
   <data name="Expenses_Validation_OnlySubmitterCanWithdraw" xml:space="preserve"><value>Seule la personne qui a déposé le rapport peut le retirer.</value></data>
-  <data name="Expenses_Validation_OnlySubmitterCanEdit" xml:space="preserve"><value>Seule la personne qui a déposé le rapport peut modifier ce rapport.</value></data>
   <data name="Expenses_Validation_ReportCannotBeEditedInStatus" xml:space="preserve"><value>Ce rapport ne peut pas être modifié lorsqu’il est au statut {0}.</value></data>
   <data name="Expenses_ReportTitle" xml:space="preserve"><value>Note de frais</value></data>
   <data name="Expenses_Withdraw" xml:space="preserve"><value>Retirer</value></data>
@@ -305,4 +303,6 @@
   <data name="Expenses_SubjectHelp" xml:space="preserve"><value>Obligatoire. Indiquez le nom du projet concerné par cette dépense, p. ex. votre projet artistique.</value></data>
   <data name="Expenses_Validation_SubjectRequired" xml:space="preserve"><value>Ajoutez un objet (le nom du projet) avant de soumettre.</value></data>
   <data name="Expenses_Validation_AmountPrecision" xml:space="preserve"><value>Saisissez un montant avec au maximum deux décimales.</value></data>
+  <data name="Expenses_Flash_DraftSavedFollowupFailed" xml:space="preserve"><value>Le brouillon a été enregistré, mais la demande n’a pas pu être terminée. Vérifiez-le avant de continuer.</value></data>
+  <data name="Expenses_Flash_DraftOutcomeUnknown" xml:space="preserve"><value>Nous n’avons pas pu confirmer si le brouillon a été enregistré. Vérifiez les notes de frais existantes avant de créer un autre brouillon.</value></data>
 </root>

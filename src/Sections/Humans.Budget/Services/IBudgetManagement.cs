@@ -1,3 +1,4 @@
+using Humans.Teams.Contracts;
 using Humans.Budget.Data;
 using Humans.Base.Interfaces;
 using Humans.Budget.Contracts;
@@ -9,7 +10,6 @@ namespace Humans.Budget.Services;
 internal interface IBudgetManagement : IBudgetService, IApplicationService
 {
     Task<IReadOnlyList<BudgetYearSummarySnapshot>> GetAllYearsAsync(bool includeArchived = false, CancellationToken ct = default);
-    Task<CoordinatorBudgetViewData> GetCoordinatorBudgetViewDataAsync(Guid userId, bool isFinanceAdmin, CancellationToken ct = default);
     Task<BudgetYearDetail> CreateYearAsync(string year, string name, Guid actorUserId);
     Task<BudgetYearMutationResult> UpdateYearStatusAsync(Guid yearId, BudgetYearStatus status, Guid actorUserId);
     Task<BudgetYearMutationResult> UpdateYearAsync(Guid yearId, string year, string name, string? vendorEventId, Guid actorUserId);
@@ -30,12 +30,12 @@ internal interface IBudgetManagement : IBudgetService, IApplicationService
     /// </summary>
     Task<int> SyncTicketingActualsAsync(
         Guid budgetYearId,
-        IReadOnlyList<TicketingWeeklyActuals> weeklyActuals,
+        IReadOnlyList<TicketingWeeklyActualsInput> weeklyActuals,
         Guid? actorUserId,
         CancellationToken ct = default);
 
-    /// <summary>Virtual (not persisted) weeks, for the break-even forecasts.</summary>
-    Task<IReadOnlyList<TicketingWeekProjection>> GetTicketingProjectionEntriesAsync(
+    /// <summary>Remaining ticket count from the same weekly policy as materialized forecasts.</summary>
+    Task<int> GetProjectedRemainingTicketsAsync(
         Guid budgetGroupId, CancellationToken ct = default);
 
     /// <summary>Through completed weeks, from the revenue line items' notes.</summary>
@@ -45,15 +45,15 @@ internal interface IBudgetManagement : IBudgetService, IApplicationService
     Task<BudgetSaveResult<BudgetGroupDetail>> UpdateGroupAsync(Guid groupId, string name, int sortOrder, bool isRestricted, Guid actorUserId);
     Task<BudgetSaveResult<BudgetGroupDetail>> DeleteGroupAsync(Guid groupId, Guid actorUserId);
 
-    Task<CoordinatorCategoryDetailViewData> GetCoordinatorCategoryDetailViewDataAsync(Guid categoryId, Guid userId, bool isFinanceAdmin, CancellationToken ct = default);
+    Task<IReadOnlyList<TeamInfo>> GetActiveTeamsAsync(CancellationToken ct = default);
     Task<BudgetSaveResult<BudgetCategoryDetail>> CreateCategoryAsync(Guid budgetGroupId, string name, decimal allocatedAmount, ExpenditureType expenditureType, Guid? teamId, Guid actorUserId);
     Task<BudgetSaveResult<BudgetCategoryDetail>> UpdateCategoryAsync(Guid categoryId, string name, decimal allocatedAmount, ExpenditureType expenditureType, Guid actorUserId);
     Task<BudgetSaveResult<BudgetCategoryDetail>> DeleteCategoryAsync(Guid categoryId, Guid actorUserId);
 
-    Task<BudgetLineItemSnapshot?> GetLineItemByIdAsync(Guid id, CancellationToken ct = default);
-    Task<BudgetSaveResult<BudgetLineItemSnapshot>> CreateLineItemAsync(Guid budgetCategoryId, string description, decimal amount, Guid? responsibleTeamId, string? notes, LocalDate? expectedDate, int vatRate, Guid actorUserId);
-    Task<BudgetSaveResult<BudgetLineItemSnapshot>> UpdateLineItemAsync(Guid lineItemId, string description, decimal amount, Guid? responsibleTeamId, string? notes, LocalDate? expectedDate, int vatRate, Guid actorUserId);
-    Task<BudgetSaveResult<BudgetLineItemSnapshot>> DeleteLineItemAsync(Guid lineItemId, Guid actorUserId);
+    Task<Guid?> GetLineItemCategoryIdAsync(Guid id, CancellationToken ct = default);
+    Task<BudgetSaveResult> CreateLineItemAsync(Guid budgetCategoryId, string description, decimal amount, Guid? responsibleTeamId, string? notes, LocalDate? expectedDate, int vatRate, Guid actorUserId);
+    Task<BudgetSaveResult> UpdateLineItemAsync(Guid lineItemId, string description, decimal amount, Guid? responsibleTeamId, string? notes, LocalDate? expectedDate, int vatRate, Guid actorUserId);
+    Task<BudgetSaveResult> DeleteLineItemAsync(Guid lineItemId, Guid actorUserId);
 
     Task<IReadOnlyList<BudgetAuditLogSnapshot>> GetAuditLogAsync(Guid? budgetYearId, CancellationToken ct = default);
 

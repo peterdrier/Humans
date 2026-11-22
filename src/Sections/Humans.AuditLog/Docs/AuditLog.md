@@ -9,28 +9,28 @@
 
 # Audit Log — Section Invariants
 
-Append-only system audit trail: who did what, when, to which entity. Used by every section that performs a privileged or irreversible action. Enforced append-only per design-rules §12.
+Append-only system audit trail: who did what, when, to which entity. Used by every section that performs a privileged or irreversible action. Enforced append-only per design-rules.md, *Append-only entities*.
 
 - **For:** the Board can see what people, admins and automation did to members' records and the association's data, after the fact, without trusting anyone's memory.
 - **Good looks like:** every privileged or automated change leaves one row, written after the change saves; nothing can edit or delete a row; any page can show the history of the thing it shows without reading audit itself; every shown entry names people, never ids.
 - **Deliberate choices:** best-effort writes (an audit hiccup never fails the business step); no cache; database-side filtering because the table never stops growing; no retention or pruning, under GDPR Art. 30 and 17(3)(b).
-- **Out of scope:** field-level change history (Budget keeps its own), Google sync history (GoogleIntegration's own log), deciding anything from audit rows.
+- **Out of scope:** field-level change history (Budget keeps its own), Google sync history (Google's own log), deciding anything from audit rows.
 
 ## Concepts
 
 - An **Audit Log Entry** is an append-only record of a single user-initiated or job-initiated action. Captures actor, action, entity type + id, free-text description, and timestamp. The retired Google-sync columns (see below) are kept for historical rows only.
 - An **audit action** is an `AuditActionDefinition` (`Humans.AuditLog.Contracts`): the stored `Name`, the English `Verb` and `SelfVerb` for the narrative line, `DescriptionIsTail`, `Alert` (highlighted rows, counted on the admin page) and `QuickFilter` (a button label on the admin page). The section that writes an action declares it as a `public static readonly` field on its `<Section>AuditActions : AuditActionContributor` class and registers that class as an `IAuditActionContributor`; `AuditActionRegistry` collects every contributor at startup, fails the boot on a duplicate (ignoring case, as filters match) or over-long name, and resolves a stored name back to its definition for rendering (a name nobody declares any more renders as a bare definition). When a section is deleted, its stored names move to this section's `RetiredAuditActions`, so they stay declared. The name is a contract — grep it to find the single writer.
 - `SurveyResponsesExported` records the requesting human, survey id and response row count for available Surveys response exports.
-- **Self-persisting audit** (design-rules §7a): `IAuditLogService.LogAsync` saves each entry immediately via `IAuditLogRepository.AddAsync`, which uses `IDbContextFactory<AuditLogDbContext>` to open a fresh per-call context and `SaveChangesAsync`. Callers do not need to `SaveChanges` to flush audit, and must not expect audit to roll back if a later business step fails.
+- **Self-persisting audit** (design-rules.md, *Decorators versus in-service crosscuts*): `IAuditLogService.LogAsync` saves each entry immediately via `IAuditLogRepository.AddAsync`, which uses `IDbContextFactory<AuditLogDbContext>` to open a fresh per-call context and `SaveChangesAsync`. Callers do not need to `SaveChanges` to flush audit, and must not expect audit to roll back if a later business step fails.
 - **Best-effort** — audit save failures are logged at Error and swallowed inside `AuditLogService.PersistAsync`. An audit hiccup never fails the business operation that called it.
 
 ## Data Model
 
 ### AuditLogEntry
 
-Append-only per design-rules §12. Enforced by the Postgres triggers `prevent_audit_log_update` / `prevent_audit_log_delete` (both calling `prevent_audit_log_modification()`, which raises an exception on any UPDATE or DELETE against `audit_log`). The section's baseline migration, `Data/Migrations/20260810193154_BaselineAuditLog.cs`, creates them.
+Append-only per design-rules.md, *Append-only entities*. Enforced by the Postgres triggers `prevent_audit_log_update` / `prevent_audit_log_delete` (both calling `prevent_audit_log_modification()`, which raises an exception on any UPDATE or DELETE against `audit_log_entries`). The section's baseline migration, `Data/Migrations/20260810193154_BaselineAuditLog.cs`, creates them.
 
-**Table:** `audit_log` (DbSet `AuditLogEntries`, `AuditLogDbContext`, history `__EFMigrationsHistory_AuditLog`)
+**Table:** `audit_log_entries` (DbSet `AuditLogEntries`, `AuditLogDbContext`, history `__EFMigrationsHistory_AuditLog`)
 
 | Property | Type | Purpose |
 |----------|------|---------|
@@ -44,11 +44,11 @@ Append-only per design-rules §12. Enforced by the Postgres triggers `prevent_au
 | RelatedEntityId | Guid? | Id of a secondary related entity (e.g. UserId when EntityType=Team) |
 | RelatedEntityType | string? (100) | Type of the secondary related entity |
 
-**Retired columns.** `ResourceId`, `Success`, `ErrorMessage`, `Role`, `SyncSource` and `UserEmail` were the Google-sync wing. GoogleIntegration's own `google_sync_log` replaced them in nobodies-collective/Humans#1083, and nothing reads or writes them any more: they are off `AuditLogEntrySnapshot` and `AuditEvent`, and the entity keeps them only so the historical rows stay readable until the data move retires them. `ILegacyGoogleSyncAuditReader` (`Contracts/` folder, implemented by `AuditLogService`) is the one read left over them — it feeds GoogleIntegration's `/Google/Admin/SyncHistoryMigration` screen, which copies the history into `google_sync_log` and changes nothing here. The column drop, and this reader, are their own PR under `no-drops-until-prod-verified`.
+**Retired columns.** `ResourceId`, `Success`, `ErrorMessage`, `Role`, `SyncSource` and `UserEmail` were the Google-sync wing. Google's own `google_sync_log_entries` replaced them in nobodies-collective/Humans#1083, and nothing reads or writes them any more: they are off `AuditLogEntrySnapshot` and `AuditEvent`, and the entity keeps them only so the historical rows stay readable until the data move retires them. `ILegacyGoogleSyncAuditReader` (`Contracts/` folder, implemented by `AuditLogService`) is the one read left over them — it feeds Google's `/Google/Admin/SyncHistoryMigration` screen, which copies the history into `google_sync_log_entries` and changes nothing here. The column drop, and this reader, are their own PR under `destructive-drops-need-approval`.
 
 **Indexes:** `(EntityType, EntityId)`, `(RelatedEntityType, RelatedEntityId)`, `OccurredAt`, `Action`, `ResourceId`.
 
-Note: `BudgetAuditLog` is a separate per-section append-only log owned by Budget — it is **not** an audit action and does not write to `audit_log`.
+Note: `BudgetAuditLog` is a separate per-section append-only log owned by Budget — it is **not** an audit action and does not write to `audit_log_entries`.
 
 ## Routing
 
@@ -60,7 +60,7 @@ All Audit Log routes are owned by `AuditLogController` (`[Route("AuditLog")]`).
 
 Drive-activity checks belong to [Monitor](../../Humans.Monitor/Docs/Monitor.md).
 Per-resource and per-human sync audits belong to
-[GoogleIntegration](../../Humans.GoogleIntegration/Docs/GoogleIntegration.md):
+[Google](../../Humans.Google/Docs/Google.md):
 
 | Route | Now |
 |---|---|
@@ -87,33 +87,33 @@ No one reads audit entries anonymously. The `/AuditLog` dashboard is gated to Bo
 - The Audit Log GET forwards request cancellation through the viewer to repository and name reads; an abandoned page does not complete its data load.
 
 - Audit entries are append-only. `IAuditLogRepository` exposes `AddAsync` and `GetXxxAsync` — **no** `UpdateAsync`, **no** `DeleteAsync`, **no** `RemoveAsync`.
-- The `audit_log` table itself rejects UPDATE and DELETE at the database layer via the `prevent_audit_log_update` and `prevent_audit_log_delete` Postgres triggers (created by `Data/Migrations/20260810193154_BaselineAuditLog.cs`). No application path can mutate or delete an existing row.
+- The `audit_log_entries` table itself rejects UPDATE and DELETE at the database layer via the `prevent_audit_log_update` and `prevent_audit_log_delete` Postgres triggers (created by `Data/Migrations/20260810193154_BaselineAuditLog.cs`). No application path can mutate or delete an existing row.
 - `LogAsync` is self-persisting — each call routes through `AuditLogRepository.AddAsync`, which opens a fresh `DbContext` via `IDbContextFactory<AuditLogDbContext>`, adds the entry, and calls `SaveChangesAsync`. Callers do not flush audit.
 - Descriptions preserve complete action details and job prefixes without a separate length cap. Valid 4000-character Workgroup notes still fit when their audit descriptions include action and document names.
-- Callers must audit **after** their business transaction commits (design-rules §7a). An independent audit write cannot roll back with a later business failure.
+- Callers must audit **after** their business transaction commits (design-rules.md, *Decorators versus in-service crosscuts*). An independent audit write cannot roll back with a later business failure.
 - Audit commits separately from the business change. The repository suppresses any caller ambient transaction while creating, saving and disposing its per-write context; the caller transaction is restored afterward. The rare failure mode is "business saved, audit did not" — logged loudly, detectable by reconciling row counts, and strictly better than "audit silently vanishes".
 - Audit save failures are swallowed after a log at Error inside `AuditLogService.PersistAsync`. The audit `LogAsync` overloads do not throw back to the caller.
 - `ActorUserId` is nullable — system jobs (Hangfire recurring jobs) write audit entries with no actor; the job-overload `LogAsync(..., string jobName, ...)` prepends the job name to the description.
 - `AuditLogService` implements `IUserDataContributor`, exposing every entry where the user is actor, primary entity, or related entity to the GDPR export orchestrator.
-- Per-user reads chain-follow merge tombstones via `UserInfo.AllUserIds` of the record `IUserService.GetUserInfoAsync(userId)` returned (the survivor's own id plus `MergedUserIds`; never the requested id) so audit entries written under a now-merged source id surface for the fold target, and a read through a merged-away id shows the survivor's rows too. Applies to `GetByUserAsync`, the per-entity history filter when entity is a User, and `ContributeForUserAsync` (GDPR). Audit entries are append-only (§12) and stay attributed to the source User row by design, `AnonymizeForMergeAsync` does NOT rewrite `ActorUserId` / `EntityId` / `RelatedEntityId` columns.
+- Per-user reads chain-follow merge tombstones via `UserInfo.AllUserIds` of the record `IUserService.GetUserInfoAsync(userId)` returned (the survivor's own id plus `MergedUserIds`; never the requested id) so audit entries written under a now-merged source id surface for the fold target, and a read through a merged-away id shows the survivor's rows too. Applies to `GetByUserAsync`, the per-entity history filter when entity is a User, and `ContributeForUserAsync` (GDPR). Audit entries are append-only (`design-rules.md`, *Append-only entities*) and stay attributed to the source User row by design, `AnonymizeForMergeAsync` does NOT rewrite `ActorUserId` / `EntityId` / `RelatedEntityId` columns.
 
 ### `<vc:audit-log>` — the render path for other sections
 
-A section that wants to *show* audit history emits `<vc:audit-log>` with a predicate; it never reads audit itself. The component owns the read (`IAuditViewerService`) and the render; it propagates a cancelled host request instead of logging it as a failed empty history.
+A section that wants to *show* audit history emits `<vc:audit-log>` with a predicate; it never reads audit itself. The component owns the read (`IAuditViewerService`) and the render; it propagates a cancelled host request instead of logging it as a failed empty history. `include-related="true"` lets each entity id also match rows that name it as their related entity, so one component shows everything logged about, say, a Store order: its lines, payments and invoice.
 
 - **Predicates** (first match wins): `entity-ids` (several ids of one `entity-type`, one query each, merged newest-first, capped at `limit`); otherwise `entity-type` / `entity-id` / `user-id` / `actions`. `since` drops anything older, applied after the read.
-- **Layouts** (`layout`): `line` (default) is the narrative one-line-per-entry list; `table` is When · Actor · Action · Subject · Description · Target, subsettable via `columns`. The Google sync grid is GoogleIntegration's own `<vc:google-sync-log>`, not a layout here.
+- **Layouts** (`layout`): `line` (default) is the narrative one-line-per-entry list; `table` is When · Actor · Action · Subject · Description · Target, subsettable via `columns`. The Google sync grid is Google's own internal `GoogleSyncLogViewComponent`, not a layout here.
 - **Chrome:** `title`, `empty-text`, `column-labels` and `show-card`. A localized host page supplies the chrome; AuditLogResource supplies entry labels, action badges and narrative verbs in all supported cultures, keyed by action name, and a definition without entries renders its English verb and its name split into words. `column-labels` is **keyed, not positional** (`when:Fecha,actor:Remitente`): an unsupplied or unknown key falls back to the English column name, and reordering `columns` can never silently mis-header the table.
-- Every consuming assembly needs `@addTagHelper *, Humans.AuditLog` in its `_ViewImports.cshtml`. Missing it is silent: the element ships as inert literal markup with a green build and no runtime error. Pinned by `AuditLogPageRenderTests` (`Humans.Integration.Tests`, nightly, not CI).
+- Every consuming assembly needs `@addTagHelper *, Humans.AuditLog` in its `_ViewImports.cshtml`. Missing it is silent: the element ships as inert literal markup with a green build and no runtime error. Pinned by `AuditLogPageRenderTests` (`Humans.Integration.Tests`, a PR check).
 
 ## Negative Access Rules
 
 - Sections **cannot** read audit to render it. Reading `IAuditViewerService` from another section's service, controller or view model to build a table is the anti-pattern `<vc:audit-log>` exists to remove.
 - Callers **cannot** `UpdateAsync`, `DeleteAsync`, or `RemoveAsync` an audit entry. The repository exposes no such methods, and the database triggers reject the operation even if a caller went around the repository.
 - Services **cannot** call `IAuditLogService.LogAsync` inside an outer `DbContext` transaction expecting audit to roll back with it — audit uses its own context via `IDbContextFactory`.
-- Services **cannot** bypass `IAuditLogService` and write `audit_log` directly. `AuditLogRepository` is the only file that touches `DbContext.AuditLogEntries`.
+- Services **cannot** bypass `IAuditLogService` and write `audit_log_entries` directly. `AuditLogRepository` is the only file that touches `DbContext.AuditLogEntries`.
 - The log **cannot** be pruned by production admins. There is no retention/cleanup job — entries persist indefinitely.
-- Controllers **cannot** read `audit_log` directly. The `/AuditLog` page goes through the internal `AuditViewerService.GetPageAsync`, and per-entity / per-user views go through `IAuditViewerService` — the viewer service composes the page (entries + actor/subject/team display batching, with display names resolved through Base's `IEntityNameContributor` fan-out) inside the Audit Log section. `IAuditLogService` is the write side; the read+render path is `IAuditViewerService`.
+- Controllers **cannot** read `audit_log_entries` directly. The `/AuditLog` page goes through the internal `AuditViewerService.GetPageAsync`, and per-entity / per-user views go through `IAuditViewerService` — the viewer service composes the page (entries + actor/subject/team display batching, with display names resolved through Base's `IEntityNameContributor` fan-out) inside the Audit Log section. `IAuditLogService` is the write side; the read+render path is `IAuditViewerService`.
 
 ## Triggers
 
@@ -134,25 +134,26 @@ No other cross-section writes from this section outward. Audit is a sink.
 ## Architecture
 
 **Owning services:** `AuditLogService` (write + raw queries) and `AuditViewerService` (read+render), both `Humans.AuditLog.Services`, plus the singleton `AuditActionRegistry` (also registered as an `IHostedService` so it is built at startup). Verbs and flags come from the `AuditActionDefinition` on each `AuditEvent`, which backs both `RenderPlainText` (agent tool output, with viewer-GUID → "You" substitution) and `RenderStructured` (view-component HTML composition).
-**Owned tables:** `audit_log`
+**Append failures:** user and background-job writes remain best-effort. A failed save logs Error with the exception and the attempted entry's ID, action, subject, timestamp, actor, related entity and description (including the job name). Only a successful save emits the informational audit-success log.
+**Owned tables:** `audit_log_entries`
 **Status:** G5 — own project `src/Sections/Humans.AuditLog`, cross-section surface in its `Contracts/` folder (nobodies-collective/Humans#866).
 
 ### Read+render path and the Contracts home
 
 `AuditViewerService` wraps the section's own `IAuditLogReader` raw queries with actor, subject and team name resolution, taken from `IEnumerable<IEntityNameContributor>` (`Humans.Base`). Its one project reference is `Humans.Base`, which also carries `IUserService` for merge-tombstone chain-following.
 
-**Two homes, one namespace.** The append path every section calls — `IAuditLogService` (writes only) and `AuditActionDefinition` / `IAuditActionContributor` / `AuditActionContributor` — lives in `src/Humans.Base/AuditLog/`, so writers need no reference to this section. The section's `Contracts/` folder keeps every read: `IAuditViewerService` / `AuditEvent` (Agent, Issues, Expenses, Users, Shifts) and `ILegacyGoogleSyncAuditReader` (GoogleIntegration). Both use namespace `Humans.AuditLog.Contracts`.
+**Two homes, one namespace.** The append path every section calls — `IAuditLogService` (writes only) and `AuditActionDefinition` / `IAuditActionContributor` / `AuditActionContributor` — lives in `src/Humans.Base/AuditLog/`, so writers need no reference to this section. The section's `Contracts/` folder keeps every read: `IAuditViewerService` / `AuditEvent` (Agent, Issues, Expenses, Users, Shifts) and `ILegacyGoogleSyncAuditReader` (Google). Both use namespace `Humans.AuditLog.Contracts`.
 
-**Section-internal reads: `IAuditLogReader`.** `internal interface IAuditLogReader` (`Services/IAuditLogReader.cs`) holds the raw-snapshot reads, over the internal `AuditLogEntrySnapshot`, whose only caller is `AuditViewerService` — `GetFilteredAsync`, `GetByUserAsync`, `GetFilteredEntriesAsync` and `GetEntityIdsForEntityTypeActionsAsync`. `AuditLogService` implements it alongside `IAuditLogService`; `Section.Register` maps both to the same scoped instance. Nothing outside this assembly can name it, which is the point: those reads stay off the public surface.
+**Section-internal reads: `IAuditLogReader`.** `internal interface IAuditLogReader` (`Services/IAuditLogReader.cs`) holds the raw-snapshot reads, over the internal `AuditLogEntrySnapshot`, whose only caller is `AuditViewerService` — `GetFilteredAsync`, `GetByUserAsync` and `GetFilteredEntriesAsync`. `AuditLogService` implements it alongside `IAuditLogService`; `Section.Register` maps both to the same scoped instance. Nothing outside this assembly can name it, which is the point: those reads stay off the public surface.
 
-**`<vc:audit-log>` binding.** The component is public in `Humans.AuditLog.ViewComponents`; its views are at `Views/Shared/Components/AuditLog/`. Every consuming assembly — `Humans.Calendar`, `Humans.Expenses`, `Humans.Store`, `Humans.Teams`, `Humans.Tickets`, `Humans.Users` — needs both a `ProjectReference` and `@addTagHelper *, Humans.AuditLog` in its `_ViewImports.cshtml`; a missing directive ships inert literal markup with a green build. Note the reference can be IL-invisible: Razor resolves `@addTagHelper` at compile time and the generated tag helper names no type from this assembly, so a consumer that only *renders* audit shows no `Humans.AuditLog` entry in `GetReferencedAssemblies()`. Seeded-marker render assertions guard the binding (`Humans.Integration.Tests`, nightly, not CI): `AuditLogPageRenderTests` on `/Users/Admin/{id}`, `/Debug/WidgetGallery` and `/Profile/{id}`, `StoreControllerTests` on `/Store/Order/{id}`, plus a source scan asserting every `<vc:audit-log>` call site sits under a `_ViewImports` chain that binds it.
+**`<vc:audit-log>` binding.** The component is public in `Humans.AuditLog.ViewComponents`; its views are at `Views/Shared/Components/AuditLog/`. Every consuming assembly — `Humans.Calendar`, `Humans.Expenses`, `Humans.Store`, `Humans.Teams`, `Humans.Tickets`, `Humans.Users` — needs both a `ProjectReference` and `@addTagHelper *, Humans.AuditLog` in its `_ViewImports.cshtml`; a missing directive ships inert literal markup with a green build. Note the reference can be IL-invisible: Razor resolves `@addTagHelper` at compile time and the generated tag helper names no type from this assembly, so a consumer that only *renders* audit shows no `Humans.AuditLog` entry in `GetReferencedAssemblies()`. Seeded-marker render assertions guard the binding (`Humans.Integration.Tests`, a PR check): `AuditLogPageRenderTests` on `/Users/Admin/{id}`, `/Debug/WidgetGallery` and `/Profile/{id}`, `StoreControllerTests` on `/Store/Order/{id}`, plus a source scan asserting every `<vc:audit-log>` call site sits under a `_ViewImports` chain that binds it.
 
 - `AuditLogService` (`internal sealed`, `Humans.AuditLog.Services`) depends only on abstractions — no `DbContext`, no `IMemoryCache`. Its cross-section surface is `IAuditLogService`'s two `LogAsync` overloads; cross-section reads go through `IAuditViewerService`.
 - `IAuditLogRepository` (impl `src/Sections/Humans.AuditLog/Data/AuditLogRepository.cs`, `internal sealed`) is the only file that touches `DbContext.AuditLogEntries` — confirmed by source: no other repository references the `AuditLogEntries` DbSet. Uses `IDbContextFactory<AuditLogDbContext>` with short-lived contexts per call.
-- **Decorator decision — no caching decorator (§15 Option A).** Writes are scattered across most sections; reads are admin-only and already filtered server-side by index. No benefit from a section-owned cache.
-- **Predicate-pushed reads (sanctioned exception to `no-linq-at-db-layer`).** Unlike most sections where in-memory filtering is preferred, `IAuditLogRepository` keeps predicate-pushed query methods (`GetByUserIdsAsync`, `GetFilteredAsync`, `GetFilteredEntriesAsync`, etc.) rather than exposing a `GetAll().Where(...)` surface. Reason: `audit_log` is a large append-only table with many writers, indefinite retention, and no ceiling on row count — loading all rows into RAM for in-memory filtering does not scale here. The section doc explicitly justifies this exception.
+- **Decorator decision — no caching decorator (the no-decorator shape in design-rules.md, *Section caching pattern*).** Writes are scattered across most sections; reads are admin-only and already filtered server-side by index. No benefit from a section-owned cache.
+- **Predicate-pushed reads (sanctioned exception to `no-linq-at-db-layer`).** Unlike most sections where in-memory filtering is preferred, `IAuditLogRepository` keeps predicate-pushed query methods (`GetByUserIdsAsync`, `GetFilteredAsync`, `GetFilteredEntriesAsync`, etc.) rather than exposing a `GetAll().Where(...)` surface. Reason: `audit_log_entries` is a large append-only table with many writers, indefinite retention, and no ceiling on row count — loading all rows into RAM for in-memory filtering does not scale here. The section doc explicitly justifies this exception.
 - **Append-only enforcement:** the Postgres triggers `prevent_audit_log_update` and `prevent_audit_log_delete` reject UPDATE/DELETE at the database; `IAuditLogRepository` exposes no `Update*` / `Delete*` / `Remove*` surface to begin with.
-- **Own DbContext (#858):** `AuditLogDbContext` (`src/Sections/Humans.AuditLog/Data/AuditLogDbContext.cs`) maps only `audit_log`, migrates under `Data/Migrations/` against `__EFMigrationsHistory_AuditLog`, and carries the immutability triggers in its baseline.
+- **Own DbContext (#858):** `AuditLogDbContext` (`src/Sections/Humans.AuditLog/Data/AuditLogDbContext.cs`) maps only `audit_log_entries`, migrates under `Data/Migrations/` against `__EFMigrationsHistory_AuditLog`, and carries the immutability triggers in its baseline.
 - **Cross-domain navs on the entity:** `ActorUserId`, `EntityId` and `RelatedEntityId` are bare cross-section Guid columns — no FK constraint, no nav property. Display names for those Guids come from the `IEntityNameContributor` fan-out.
 
 - **Member-facing resources.** `AuditLogResource` localizes line/table entry labels, action badges and subject/self/no-subject verb forms in en, es, de, it, fr, ca and nl, keyed by action name; a definition with no entry falls back to its English verb and its name split into words. Stored descriptions and `RenderPlainText` output stay unchanged. Admin-only `/AuditLog` pages retain English copy under the admin localization exemption; the admin page's quick-filter buttons and alert banner come from the registry's `QuickFilter` and `Alert` flags, not from the view.
@@ -163,5 +164,5 @@ No other cross-section writes from this section outward. Audit is a sink.
 - Do **not** call `IAuditLogService.LogAsync` before the business save. Audit goes after, always.
 - Do **not** add an `Update*` / `Delete*` / `Remove*` method to `IAuditLogRepository`; the database triggers will reject the operation regardless.
 - Do **not** attempt to log inside an outer transaction expecting rollback — audit commits independently via its own `DbContext`.
-- Do **not** read `audit_log` from outside this section. New admin dashboards go through `IAuditViewerService`; a new raw-snapshot read belongs on the internal `IAuditLogReader`, and only a read another section genuinely cannot get from the view component earns a place on `IAuditLogService`.
-- Do **not** confuse `audit_log` with `budget_audit_logs` — the Budget section owns its own append-only field-level log (`BudgetAuditLog`), rendered at `/Finance/AuditLog`. That is a separate table, separate service, and not part of this section.
+- Do **not** read `audit_log_entries` from outside this section. New admin dashboards go through `IAuditViewerService`; a new raw-snapshot read belongs on the internal `IAuditLogReader`, and only a read another section genuinely cannot get from the view component earns a place on `IAuditLogService`.
+- Do **not** confuse `audit_log_entries` with `budget_audit_logs` — the Budget section owns its own append-only field-level log (`BudgetAuditLog`), rendered at `/Finance/AuditLog`. That is a separate table, separate service, and not part of this section.

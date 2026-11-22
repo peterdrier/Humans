@@ -4,7 +4,7 @@ using Humans.AuditLog.Contracts;
 using Humans.Email.Contracts;
 using Humans.Finance.Contracts;
 using Humans.Holded.Contracts;
-using Humans.GoogleIntegration.Contracts;
+using Humans.Google.Contracts;
 using Humans.Governance.Contracts;
 using Humans.Notifications.Contracts;
 using Humans.Settings.Contracts;
@@ -52,10 +52,10 @@ public abstract class WorkgroupsTestHarness : IDisposable
                 var id = call.Arg<Guid>();
                 return new ValueTask<UserInfo?>(_users.GetValueOrDefault(id));
             });
-        Users.GetUserInfosAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
+        Users.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(call =>
             {
-                var ids = call.Arg<IReadOnlyCollection<Guid>>();
+                var ids = call.Arg<IEnumerable<Guid>>();
                 IReadOnlyDictionary<Guid, UserInfo> dict = ids
                     .Where(_users.ContainsKey)
                     .ToDictionary(id => id, id => _users[id]);
@@ -87,6 +87,7 @@ public abstract class WorkgroupsTestHarness : IDisposable
 
         GoogleSyncRead = Substitute.For<IGoogleSyncService>();
         GoogleSync = Substitute.For<IGoogleSyncWrite>();
+        GoogleGroupSync = Substitute.For<IGoogleGroupSync>();
         GoogleSync.CreateSubfolderAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(_ => $"folder-{Guid.NewGuid()}");
         GoogleSyncRead.IsFolderReachableAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(true);
@@ -97,7 +98,8 @@ public abstract class WorkgroupsTestHarness : IDisposable
                 call.Arg<int?>() ?? 62900150, $"acc-{call.Arg<int?>() ?? 62900150}", call.Arg<string>(),
                 Created: call.Arg<int?>() is null));
 
-        Notifications = Substitute.For<INotificationService>();
+        Notifications = Substitute.For<INotificationEmitter, INotificationService>();
+        RoleNotifications = (INotificationService)Notifications;
         Email = Substitute.For<IEmailService>();
         EmailFactory = TestWorkgroupsEmails.Create();
 
@@ -123,9 +125,11 @@ public abstract class WorkgroupsTestHarness : IDisposable
     private protected ISettingsService Settings { get; }
     private protected IGoogleSyncService GoogleSyncRead { get; }
     private protected IGoogleSyncWrite GoogleSync { get; }
+    private protected IGoogleGroupSync GoogleGroupSync { get; }
     private protected IFinanceWrite Finance { get; }
     private protected IHoldedService Holded { get; }
-    private protected INotificationService Notifications { get; }
+    private protected INotificationEmitter Notifications { get; }
+    private protected INotificationService RoleNotifications { get; }
     private protected IEmailService Email { get; }
     private protected WorkgroupsEmails EmailFactory { get; }
     private protected IAuditLogService AuditLog { get; }
@@ -136,7 +140,7 @@ public abstract class WorkgroupsTestHarness : IDisposable
     /// <summary>The undecorated service over the real repository and the substitutes above.</summary>
     private protected WorkgroupService NewService(IWorkgroupRepository? repository = null) => new(
         repository ?? new WorkgroupRepository(DbFactory), Users, Surveys, Roles, Settings, GoogleSyncRead,
-        GoogleSync, Finance, Holded, Notifications, Email, EmailFactory, AuditLog, Clock, Logger);
+        GoogleSync, GoogleGroupSync, Finance, Holded, RoleNotifications, Notifications, Email, EmailFactory, AuditLog, Clock, Logger);
 
     /// <summary>A fresh context over the same store — what a test reads back through.</summary>
     private protected WorkgroupsDbContext OpenContext() => DbFactory.CreateDbContext();
@@ -168,7 +172,8 @@ public abstract class WorkgroupsTestHarness : IDisposable
         Instant? registeredAt = null,
         string? driveFolderId = "group-folder",
         WorkgroupDormantReason? dormantReason = null,
-        bool isSensitive = false)
+        bool isSensitive = false,
+        string? googleGroupPrefix = null)
     {
         var now = Clock.GetCurrentInstant();
         var coordinator = coordinatorUserId ?? SeedUser("Coordinator");
@@ -184,6 +189,7 @@ public abstract class WorkgroupsTestHarness : IDisposable
             Status = status,
             DormantReason = dormantReason,
             IsSensitive = isSensitive ? true : null,
+            GoogleGroupPrefix = googleGroupPrefix,
             DriveFolderId = status is WorkgroupStatus.Active or WorkgroupStatus.Dormant ? driveFolderId : null,
             AppliedByUserId = coordinator,
             AppliedAt = appliedAt ?? now,
@@ -331,7 +337,7 @@ public abstract class WorkgroupsTestHarness : IDisposable
         id, burnerName, false, language, null, Instant.FromUtc(2026, 1, 1, 0, 0),
         null, null, null, null, null, null,
         null, null, $"{id}@example.org", [], [],
-        profile ?? UserFixtures.Profile(burnerName: burnerName));
+        profile ?? UserFixtures.Profile());
 
     public void Dispose()
     {

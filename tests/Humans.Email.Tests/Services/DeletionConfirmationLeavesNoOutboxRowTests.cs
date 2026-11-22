@@ -1,3 +1,10 @@
+using Humans.Users.Data;
+using Humans.Application.Services.Users.AccountLifecycle;
+using Humans.Auth.Contracts;
+using Humans.Gdpr.Contracts;
+using Humans.Teams.Contracts;
+using Humans.Tickets.Contracts;
+using Microsoft.Extensions.Hosting;
 using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
 using Humans.Base.Interfaces;
@@ -24,7 +31,7 @@ namespace Humans.Email.Tests.Services;
 /// The deletion job mails a confirmation to the address it has just erased. An outbox row backing
 /// that send would re-create the erased address, name and body with a null <c>UserId</c>, out of
 /// reach of both <c>EraseForUserAsync</c> and the retention sweep. Runs the real
-/// <see cref="ProcessAccountDeletionsJob"/>, <see cref="OutboxEmailService"/> and
+/// <see cref="ProcessAccountDeletionsJob"/>, <see cref="AccountDeletionService"/>, <see cref="OutboxEmailService"/> and
 /// <see cref="EmailOutboxRepository"/> so the whole chain is exercised.
 /// </summary>
 public sealed class DeletionConfirmationLeavesNoOutboxRowTests : IDisposable
@@ -74,9 +81,16 @@ public sealed class DeletionConfirmationLeavesNoOutboxRowTests : IDisposable
         userService.GetAccountsDueForAnonymizationAsync(Now, Arg.Any<CancellationToken>())
             .Returns([_userId]);
 
-        var deletionService = Substitute.For<IAccountDeletionService>();
-        deletionService.AnonymizeExpiredAccountAsync(_userId, Arg.Any<CancellationToken>())
-            .Returns(new AnonymizedAccountSummary(ErasedEmail, ErasedName, "en"));
+        var user = UserFixtures.MakeUserInfo(_userId, displayName: ErasedName) with
+        {
+            IdentityEmailColumn = ErasedEmail,
+        };
+        userService.GetRawUserInfoAsync(_userId, Arg.Any<CancellationToken>()).Returns(user);
+        var deletionService = new AccountDeletionService(
+            userService, Substitute.For<IUserEmailService>(), Substitute.For<ITeamWrite>(),
+            Substitute.For<IRoleAssignmentWrite>(), Substitute.For<IGdprService>(), Substitute.For<ITicketService>(),
+            Substitute.For<IUserInfoSliceRefresher>(), Substitute.For<IAuditLogService>(), emailService,
+            usersEmails, new FakeClock(Now), Substitute.For<IHostEnvironment>(), NullLogger<AccountDeletionService>.Instance);
 
         _job = new ProcessAccountDeletionsJob(
             userService,

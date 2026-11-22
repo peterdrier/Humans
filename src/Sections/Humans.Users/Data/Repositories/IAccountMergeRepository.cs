@@ -11,9 +11,6 @@ internal interface IAccountMergeRepository : IRepository
     /// <summary>Pending requests, oldest first, read-only.</summary>
     Task<IReadOnlyList<AccountMergeRequest>> GetPendingAsync(CancellationToken ct = default);
 
-    /// <summary>Tracked for modification.</summary>
-    Task<AccountMergeRequest?> GetByIdAsync(Guid id, CancellationToken ct = default);
-
     /// <summary>Read-only.</summary>
     Task<AccountMergeRequest?> GetByIdPlainAsync(Guid id, CancellationToken ct = default);
 
@@ -30,18 +27,6 @@ internal interface IAccountMergeRepository : IRepository
     /// </summary>
     Task<IReadOnlyList<AccountMergeRequestGdprRow>> GetForUserGdprAsync(
         IReadOnlyCollection<Guid> userIds, CancellationToken ct = default);
-
-    Task<IReadOnlySet<Guid>> GetPendingEmailIdsAsync(
-        IReadOnlyList<Guid> emailIds, CancellationToken ct = default);
-
-    /// <summary>Matches the normalized email or its gmail/googlemail alternate.</summary>
-    Task<bool> HasPendingForUserAndEmailAsync(
-        Guid targetUserId, string normalizedEmail, string? alternateEmail,
-        CancellationToken ct = default);
-
-    Task<bool> HasPendingForEmailIdAsync(Guid pendingEmailId, CancellationToken ct = default);
-
-    Task AddAsync(AccountMergeRequest request, CancellationToken ct = default);
 
     Task UpdateAsync(AccountMergeRequest request, CancellationToken ct = default);
 }

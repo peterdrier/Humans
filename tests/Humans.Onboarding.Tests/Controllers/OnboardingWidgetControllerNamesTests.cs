@@ -1,3 +1,8 @@
+using AwesomeAssertions;
+using Humans.Base;
+using Humans.Base.Extensions;
+using Microsoft.AspNetCore.Mvc.ModelBinding.Validation;
+using Microsoft.Extensions.DependencyInjection;
 using System.Security.Claims;
 using Humans.Consent;
 using Humans.Consent.Contracts;
@@ -18,12 +23,47 @@ namespace Humans.Onboarding.Tests.Controllers;
 
 public class OnboardingWidgetControllerNamesTests
 {
+    [HumansFact]
+    public void Names_ValidationUsesTheCurrentSupportedCulture()
+    {
+        var registrations = new ServiceCollection().AddLogging().AddLocalization();
+        registrations.AddControllers().AddDataAnnotationsLocalization(options =>
+            options.DataAnnotationLocalizerProvider = (_, factory) => factory.Create(typeof(SharedResource)));
+        using var services = registrations.BuildServiceProvider();
+        var validator = services.GetRequiredService<IObjectModelValidator>();
+        var localizer = services.GetRequiredService<IStringLocalizer<SharedResource>>();
+
+        foreach (var culture in CultureCatalog.SupportedCultureCodes)
+        {
+            using var cultureScope = new CultureScope(culture);
+            foreach (var tooLong in new[] { false, true })
+            {
+                var name = tooLong ? new string('x', 101) : string.Empty;
+                var model = new NamesViewModel { BurnerName = name, FirstName = name, LastName = name };
+                var context = new ActionContext
+                {
+                    HttpContext = new DefaultHttpContext { RequestServices = services },
+                };
+                validator.Validate(context, null, string.Empty, model);
+
+                var expected = tooLong ? localizer["Validation_MaxLength", string.Empty, 100]
+                    : localizer["Validation_Required"];
+                expected.ResourceNotFound.Should().BeFalse();
+                context.ModelState.ErrorCount.Should().Be(3);
+                foreach (var field in new[] { nameof(model.BurnerName), nameof(model.FirstName), nameof(model.LastName) })
+                {
+                    context.ModelState[field]!.Errors.Should().ContainSingle().Which.ErrorMessage
+                        .Should().Be(expected.Value, $"{field} must use the {culture} validation message");
+                }
+            }
+        }
+    }
+
     private readonly IOnboardingWidgetState _state = Substitute.For<IOnboardingWidgetState>();
     private readonly IProfileEditorService _profileEditor = Substitute.For<IProfileEditorService>();
     private readonly IShiftSignups _signups = Substitute.For<IShiftSignups>();
     private readonly IShiftService _shiftMgmt = Substitute.For<IShiftService>();
     private readonly ISettingsService _burnSettings = Substitute.For<ISettingsService>();
-    private readonly IShiftView _shiftView = Substitute.For<IShiftView>();
     private readonly IOnboardingService _onboardingService = Substitute.For<IOnboardingService>();
     private readonly IUserService _userService = Substitute.For<IUserService>();
 
@@ -33,7 +73,7 @@ public class OnboardingWidgetControllerNamesTests
     public OnboardingWidgetControllerNamesTests()
     {
         _profileEditor.SaveProfileAsync(Arg.Any<Guid>(), Arg.Any<ProfileSaveRequest>(), Arg.Any<CancellationToken>())
-            .Returns(new ProfileEditResult(true, Guid.NewGuid()));
+            .Returns(new ProfileEditResult(true));
         _localizer[Arg.Any<string>()].Returns(ci =>
             new LocalizedString(ci.Arg<string>(), ci.Arg<string>()));
     }
@@ -41,7 +81,7 @@ public class OnboardingWidgetControllerNamesTests
     private OnboardingWidgetController BuildSut(Guid userId, string lang = "en", OnboardingWidgetStep currentStep = OnboardingWidgetStep.Names)
     {
         _state.GetCurrentStepAsync(userId, Arg.Any<CancellationToken>()).Returns(currentStep);
-        var ctrl = new OnboardingWidgetController(_userService, _state, _profileEditor, _signups, _shiftMgmt, _burnSettings, _shiftView, _onboardingService, _localizer, Microsoft.Extensions.Logging.Abstractions.NullLogger<OnboardingWidgetController>.Instance);
+        var ctrl = new OnboardingWidgetController(_userService, _state, _profileEditor, _signups, _shiftMgmt, _burnSettings, _onboardingService, _localizer, Microsoft.Extensions.Logging.Abstractions.NullLogger<OnboardingWidgetController>.Instance);
         var http = new DefaultHttpContext
         {
             User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, userId.ToString())],
@@ -58,7 +98,7 @@ public class OnboardingWidgetControllerNamesTests
         // OAuth-supplied names are unverified: the prefill reads the saved profile (none here), never claims.
         var userId = Guid.NewGuid();
         var ctrl = new OnboardingWidgetController(
-            _userService, _state, _profileEditor, _signups, _shiftMgmt, _burnSettings, _shiftView, _onboardingService, _localizer, Microsoft.Extensions.Logging.Abstractions.NullLogger<OnboardingWidgetController>.Instance);
+            _userService, _state, _profileEditor, _signups, _shiftMgmt, _burnSettings, _onboardingService, _localizer, Microsoft.Extensions.Logging.Abstractions.NullLogger<OnboardingWidgetController>.Instance);
         var http = new DefaultHttpContext
         {
             User = new ClaimsPrincipal(new ClaimsIdentity(
@@ -106,7 +146,7 @@ public class OnboardingWidgetControllerNamesTests
                 userId,
                 Arg.Any<ProfileSaveRequest>(),
                 Arg.Any<CancellationToken>())
-            .Returns(new ProfileEditResult(true, Guid.NewGuid()));
+            .Returns(new ProfileEditResult(true));
 
         var ctrl = BuildSut(userId);
         var vm = new NamesViewModel { BurnerName = "Burner1", FirstName = "First", LastName = "Last" };
@@ -150,7 +190,7 @@ public class OnboardingWidgetControllerNamesTests
         var userId = Guid.NewGuid();
         _profileEditor.SaveProfileAsync(
                 userId, Arg.Any<ProfileSaveRequest>(), Arg.Any<CancellationToken>())
-            .Returns(new ProfileEditResult(true, Guid.NewGuid()));
+            .Returns(new ProfileEditResult(true));
 
         var ctrl = BuildSut(userId);
         var vm = new NamesViewModel { BurnerName = "Burner1", FirstName = "First", LastName = "Last" };
@@ -221,13 +261,13 @@ public class OnboardingWidgetControllerNamesTests
                 State = string.IsNullOrWhiteSpace(burner) || string.IsNullOrWhiteSpace(first) || string.IsNullOrWhiteSpace(last)
                     ? UserState.Bare
                     : UserState.Active,
+                BurnerName = burner,
+                FirstName = first,
+                LastName = last,
             },
             userEmails: [],
             externalLogins: [],
             profile: UserFixtures.Profile(
-                burnerName: burner,
-                firstName: first,
-                lastName: last,
                 city: city,
                 bio: bio));
 

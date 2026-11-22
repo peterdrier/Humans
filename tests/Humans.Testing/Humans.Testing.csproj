@@ -19,8 +19,21 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- UserInfoFixtures takes Base-internal types (UserEmail), so it is internal too. -->
+    <InternalsVisibleTo Include="Humans.Camps.Tests" />
+    <InternalsVisibleTo Include="Humans.Google.Tests" />
+    <InternalsVisibleTo Include="Humans.Governance.Tests" />
+    <InternalsVisibleTo Include="Humans.MailerLite.Tests" />
+    <InternalsVisibleTo Include="Humans.Notifications.Tests" />
+    <InternalsVisibleTo Include="Humans.Shifts.Tests" />
+    <InternalsVisibleTo Include="Humans.Teams.Tests" />
+    <InternalsVisibleTo Include="Humans.Tickets.Tests" />
+    <InternalsVisibleTo Include="Humans.Users.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <!-- ShiftUserSummary / UrgentShiftInfo fixtures. -->
-    <ProjectReference Include="..\..\src\Sections\Humans.Shifts.Contracts\Humans.Shifts.Contracts.csproj" />
+    <ProjectReference Include="..\..\src\Sections\Humans.Shifts\Humans.Shifts.csproj" />
     <!-- EventSettingsInfo (BurnFixtures) fixture. -->
     <ProjectReference Include="..\..\src\Sections\Humans.Settings\Humans.Settings.csproj" />
     <!-- ProfileInfo / UserInfo fixtures (nobodies-collective/Humans#1051). -->

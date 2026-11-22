@@ -33,9 +33,7 @@ internal sealed class AdminHumanDetailViewModel
     public string? PreferredLanguage { get; set; }
     public List<AdminUserEmailViewModel> UserEmails { get; set; } = [];
 
-    public int ApplicationCount { get; set; }
     public int ConsentCount { get; set; }
-    public List<AdminHumanApplicationViewModel> Applications { get; set; } = [];
     public IReadOnlyList<ProfileLanguageDisplayViewModel> Languages { get; set; } = [];
 }
 
@@ -47,28 +45,27 @@ internal sealed class AdminUserEmailViewModel
     public ContactFieldVisibility? Visibility { get; set; }
 }
 
-internal sealed class AdminHumanApplicationViewModel
-{
-    public Guid Id { get; set; }
-    public ApplicationStatus Status { get; set; }
-    public DateTime SubmittedAt { get; set; }
-}
-
 internal sealed class AccountMergeQueueViewModel
 {
+    /// <summary>The pair picked by hand first, then every detected duplicate.</summary>
     public List<AccountMergeRowViewModel> Rows { get; set; } = [];
+
+    /// <summary>Newest first, from the audit log: every merge, by whoever ran it, and every one that faulted.</summary>
+    public IReadOnlyList<RecentMergeRow> Recent { get; set; } = [];
 }
 
 internal sealed class AccountMergeRowViewModel
 {
-    public Guid? RequestId { get; set; }
-    public string SharedEmail { get; set; } = string.Empty;
+    /// <summary>Null for a pair picked by hand.</summary>
+    public string? SharedEmail { get; set; }
     public ProfileSummaryViewModel AccountA { get; set; } = new();
     public ProfileSummaryViewModel AccountB { get; set; } = new();
-    public bool FromUserRequest { get; set; }
     public bool AlreadyMerged { get; set; }
-    public DateTime? RequestedAt { get; set; }
 }
+
+/// <summary>One merge from the audit log. <c>By</c> is null when the account holder merged their own two accounts.</summary>
+internal sealed record RecentMergeRow(
+    NodaTime.Instant When, Guid KeptUserId, Guid MergedAwayUserId, Guid? By, bool Failed, string Details);
 
 /// <summary>Total accounts, with tickets, with profiles, both, or neither.</summary>
 internal sealed class AudienceSegmentationViewModel

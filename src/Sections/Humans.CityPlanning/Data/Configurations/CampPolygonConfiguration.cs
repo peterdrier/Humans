@@ -8,7 +8,7 @@ internal sealed class CampPolygonConfiguration : IEntityTypeConfiguration<CampPo
 {
     public void Configure(EntityTypeBuilder<CampPolygon> builder)
     {
-        builder.ToTable("camp_polygons");
+        builder.ToTable("city_camp_polygons");
 
         builder.HasIndex(p => p.CampSeasonId).IsUnique();
 

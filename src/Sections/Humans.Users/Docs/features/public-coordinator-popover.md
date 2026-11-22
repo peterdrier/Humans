@@ -43,8 +43,8 @@ Fixes [nobodies-collective/Humans#771](https://github.com/nobodies-collective/Hu
 
 **Acceptance Criteria:**
 - Authenticated `GET /Profile/{id}/Popover` continues to return the existing full partial.
-- The 8 existing `link="None"` `<vc:human>` call sites still suppress the popover by default.
-- `<vc:human popover-public="true">` opts in to the reduced popover even when `link="None"`.
+- `<vc:human>` with `link="InsideControl"` or `link="Kiosk"`, or any signed-out viewer, gets no link and no popover by default.
+- `<vc:human popover-public="true">` opts in to the reduced popover when there is no link.
 
 ## Endpoints
 
@@ -67,7 +67,7 @@ No schema changes. The public-coordinator gate filters the existing `ITeamServic
 
 ## View Component Wiring
 
-`HumanViewComponent` gains a `popoverPublic` parameter (and `HumanViewModel.ShowPopoverPublic` flag). When set, `Default.cshtml` emits `data-human-popover-public="true"` on the Card no-link branch and bypasses the usual `link != HumanLink.None` gate. The scope is intentionally limited to the Card no-link branch — that is the only layout the public coordinator card uses today, and other layouts have no public-popover caller. See the `Default.cshtml` comments for the explicit scope contract.
+`HumanViewComponent` gains a `popoverPublic` parameter (and `HumanViewModel.ShowPopoverPublic` flag). When set, `Default.cshtml` emits `data-human-popover-public="true"` on the Card no-link branch and bypasses the usual signed-in link gate. The scope is intentionally limited to the Card no-link branch — that is the only layout the public coordinator card uses today, and other layouts have no public-popover caller. See the `Default.cshtml` comments for the explicit scope contract.
 
 `wwwroot/js/site.js` popover bootstrap delegate matches `[data-human-popover-public]` in addition to `[data-human-popover]` and fetches `/Profile/{id}/PublicPopover` on hover or keyboard focus. Public no-link cards have `tabindex="0"`; focus and hover share initialization and the cache. Requests reject redirects instead of embedding or caching another page as profile content. A 404 response disposes the popover silently. Other HTTP or network failures dispose the loading spinner and allow the next hover or focus to retry.
 

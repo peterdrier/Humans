@@ -14,7 +14,7 @@ internal sealed class HoldedPurchaseDoc
     public string? ContactId { get; set; }
     public string? Description { get; set; }
 
-    /// <summary>The document's Europe/Madrid date.</summary>
+    /// <summary>The document's date in the org time zone.</summary>
     public LocalDate Date { get; set; }
 
     public decimal Subtotal { get; set; }
@@ -24,6 +24,10 @@ internal sealed class HoldedPurchaseDoc
 
     /// <summary>Holded's <c>draft</c> is false. An absent <c>draft</c> is not approved.</summary>
     public bool IsApproved { get; set; }
+
+    /// <summary>Holded's <c>payments_pending</c>: what is still unpaid. Null on a row not re-synced since the column
+    /// was added, which reads as unknown.</summary>
+    public decimal? PaymentsPending { get; set; }
 
     /// <summary>Null until a GET has read it; the list endpoint does not return notes.</summary>
     public string? Notes { get; set; }

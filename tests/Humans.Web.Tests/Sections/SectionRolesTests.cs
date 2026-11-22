@@ -26,7 +26,7 @@ public class SectionRolesTests
     private static readonly RoleCatalog Catalog = new(Contributors);
 
     /// <summary>
-    /// Every name a role_assignments row has ever been stored under, on QA or production. Nothing is ever removed
+    /// Every name an auth_role_assignments row has ever been stored under, on QA or production. Nothing is ever removed
     /// from this list: a rename adds the new name here and the old one to the role's <c>FormerNames</c>, so the
     /// stored rows keep resolving until the <c>auth.role-renames</c> data migration rewrites them.
     /// </summary>
@@ -48,6 +48,7 @@ public class SectionRolesTests
         "ShiftsNoInfo", "NoInfoAdmin",
         "GrantsAdmin",
         "SurveysAdmin",
+        "RolesAdmin",
     ];
 
     [HumansFact]
@@ -108,7 +109,6 @@ public class SectionRolesTests
             .Should().BeOfType<RolesAuthorizationRequirement>().Which.AllowedRoles;
 
         allowed.Should().BeEquivalentTo(Catalog.Roles.Where(r => r.OpensAdminShell).Select(r => r.Name));
-        allowed.Should().NotContain("EarlyEntryAdmin", because: "Early Entry admins work from their own pages, not the shell");
         allowed.Should().Contain([RoleNames.Admin, RoleNames.Board]);
     }
 

@@ -40,7 +40,7 @@ internal sealed class AuditLogService(
             RelatedEntityType = relatedEntityType
         };
 
-        await PersistAsync(entry);
+        if (!await PersistAsync(entry)) return;
 
         logger.LogInformation("Audit: {Action} on {EntityType} {EntityId} by {Actor} — {Description}",
             action.Name, entityType, entityId, jobName, description);
@@ -64,26 +64,26 @@ internal sealed class AuditLogService(
             RelatedEntityType = relatedEntityType
         };
 
-        await PersistAsync(entry);
+        if (!await PersistAsync(entry)) return;
 
         logger.LogInformation("Audit: {Action} on {EntityType} {EntityId} by user {ActorUserId} — {Description}",
             action.Name, entityType, entityId, actorUserId, description);
     }
 
-    private static IReadOnlyList<string> Names(IReadOnlyList<AuditActionDefinition> actions) =>
-        actions.Select(a => a.Name).ToList();
-
-    private async Task PersistAsync(AuditLogEntry entry)
+    private async Task<bool> PersistAsync(AuditLogEntry entry)
     {
         try
         {
             await repo.AddAsync(entry);
+            return true;
         }
         catch (Exception ex)
         {
             logger.LogError(ex,
-                "Failed to persist audit entry {EntryId} ({Action} on {EntityType} {EntityId})",
-                entry.Id, entry.Action, entry.EntityType, entry.EntityId);
+                "Failed to persist audit entry {EntryId}: {Action} on {EntityType} {EntityId} at {OccurredAt} by user {ActorUserId}; related {RelatedEntityType} {RelatedEntityId}; {Description}",
+                entry.Id, entry.Action, entry.EntityType, entry.EntityId, entry.OccurredAt, entry.ActorUserId,
+                entry.RelatedEntityType, entry.RelatedEntityId, entry.Description);
+            return false;
         }
     }
 
@@ -126,8 +126,9 @@ internal sealed class AuditLogService(
         Guid? userId,
         IReadOnlyList<string>? actions,
         int limit,
+        bool includeRelated = false,
         CancellationToken ct = default) =>
-        FilterByNamesAsync(entityType, entityId, userId, actions, limit, ct);
+        FilterByNamesAsync(entityType, entityId, userId, actions, limit, includeRelated, ct);
 
     private async Task<IReadOnlyList<AuditLogEntrySnapshot>> FilterByNamesAsync(
         string? entityType,
@@ -135,6 +136,7 @@ internal sealed class AuditLogService(
         Guid? userId,
         IReadOnlyList<string>? actionNames,
         int limit,
+        bool includeRelated,
         CancellationToken ct)
     {
         IReadOnlyCollection<Guid>? userIds = null;
@@ -143,7 +145,7 @@ internal sealed class AuditLogService(
             userIds = (await userService.GetUserInfoAsync(userId.Value, ct))?.AllUserIds ?? [userId.Value];
         }
 
-        var entries = await repo.GetFilteredEntriesAsync(entityType, entityId, userIds, actionNames, limit, ct);
+        var entries = await repo.GetFilteredEntriesAsync(entityType, entityId, userIds, actionNames, limit, includeRelated, ct);
         return entries.Select(ToSnapshot).ToList();
     }
 
@@ -178,12 +180,6 @@ internal sealed class AuditLogService(
     public IReadOnlyDictionary<string, string?> ErasureDeclaration => Erasure;
 
     public Task EraseForUserAsync(Guid userId, CancellationToken ct) => Task.CompletedTask;
-
-    public Task<IReadOnlySet<Guid>> GetEntityIdsForEntityTypeActionsAsync(
-        string entityType,
-        IReadOnlyList<AuditActionDefinition> actions,
-        CancellationToken ct = default) =>
-        repo.GetEntityIdsForEntityTypeActionsAsync(entityType, Names(actions), ct);
 
     public async Task<IReadOnlyList<LegacyGoogleSyncAuditRow>> GetLegacyGoogleSyncRowsAsync(
         CancellationToken ct = default)

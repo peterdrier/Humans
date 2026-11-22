@@ -1,6 +1,5 @@
-/* Tour landing page — visual language borrowed from nobodies.team (warm desert
-   palette, Inter + Permanent Marker, scroll fade-ups). Scoped to the Tour layout;
-   nothing here loads anywhere else in the app. */
+/* Visual language borrowed from nobodies.team (warm desert palette, Inter + Permanent
+   Marker, scroll fade-ups). */
 
 :root {
     --tour-bg: #faf5ee;
@@ -42,7 +41,7 @@ body.tour-body {
     padding: 0 1.5rem;
 }
 
-/* ===== Fixed header bar — the way back into Humans ===== */
+/* ===== Fixed header bar ===== */
 .tour-header {
     position: fixed;
     top: 0;
@@ -145,7 +144,6 @@ body.tour-body {
         radial-gradient(ellipse 55% 45% at 92% 10%, rgba(160, 60, 10, 0.28) 0%, transparent 65%);
 }
 
-/* Animated film grain */
 .tour-hero-grain {
     position: absolute;
     inset: 0;
@@ -266,7 +264,6 @@ body.tour-body {
 }
 .tour-btn--ghost:hover { background: #fff; color: var(--tour-text); border-color: #fff; }
 
-/* Stat strip pinned at the hero's bottom */
 .tour-hero-stats {
     position: absolute;
     left: 0;
@@ -461,9 +458,7 @@ body.tour-body {
     color: var(--tour-text-muted);
 }
 
-/* ===== Scroll animations =====
-   The hidden state is gated on .tour-js (set by an inline script in _TourLayout's
-   head) so content stays visible when JavaScript is disabled or fails to load. */
+/* ===== Scroll animations ===== */
 .anim {
     transition: opacity 0.7s ease, transform 0.7s ease;
     will-change: opacity, transform;

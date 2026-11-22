@@ -6,8 +6,7 @@
     var productColumns = s.CrossTab.Products.OrderBy(p => p.ProductName, StringComparer.Ordinal).ToList();
 }
 
-<div class="page-head">
-    <h1 class="title">Store summary</h1>
+<page-header title="Store summary" variant="compact">
     <form method="get" class="d-flex gap-2 align-items-center mb-0">
         <label for="year" class="form-label mb-0">Year</label>
         <input type="number" name="year" id="year" value="@s.Year"
@@ -15,7 +14,7 @@
         <button type="submit" class="btn btn-sm btn-secondary">Go</button>
         <a asp-controller="Store" asp-action="Index" class="btn btn-sm btn-outline-secondary">Back to Store</a>
     </form>
-</div>
+</page-header>
 
 <section class="card mb-4">
     <div class="card-header d-flex justify-content-between align-items-center">
@@ -28,8 +27,6 @@
         }
         else
         {
-            Func<OrderSummaryDto, IHtmlContent> counterpartyCell =
-                @<text><a asp-controller="Store" asp-action="Order" asp-route-id="@item.OrderId">@item.CounterpartyName</a></text>;
 
             bool IsTeam(OrderSummaryDto r) =>
                 r.CounterpartyType == OrderCounterpartyType.Team;
@@ -43,13 +40,10 @@
                 .OrderBy(r => r.CounterpartyType)
                 .ThenBy(r => r.CounterpartyName, StringComparer.Ordinal)
                 .ToList();
-            var camps = s.ByCounterparty
-                .Where(r => !IsTeam(r))
-                .ToList();
 
             var counterpartyTable = TableModel.For(counterpartyRows)
                 .Column("Type", r => r.CounterpartyType)
-                .Template("Counterparty", counterpartyCell)
+                .Link("Counterparty", r => r.CounterpartyName, r => Url.Action("Order", "Store", new { id = r.OrderId }))
                 .Column("State", r => r.State)
                 .Column("Payment", r => PaymentStatus(r), c => c.SelectFilter())
                 .Column("Total due (€)", r => r.TotalDueEur, c => c.Currency().End())
@@ -58,12 +52,12 @@
                 .Id("by-camp-table")
                 // Camps only: teams never pay, so including their due would break Total due = Paid + Balance.
                 .Footer(new TableFooterCell("Total"),
-                        new TableFooterCell($"{camps.Count} camps"),
+                        new TableFooterCell($"{s.CampOrders.Count} camps"),
                         new TableFooterCell(""),
                         new TableFooterCell(""),
-                        new TableFooterCell(camps.Sum(r => r.TotalDueEur).ToString("N2", System.Globalization.CultureInfo.CurrentUICulture), "text-end"),
-                        new TableFooterCell(camps.Sum(r => r.PaymentsTotalEur).ToString("N2", System.Globalization.CultureInfo.CurrentUICulture), "text-end"),
-                        new TableFooterCell(camps.Sum(r => r.BalanceEur).ToString("N2", System.Globalization.CultureInfo.CurrentUICulture), "text-end"))
+                        new TableFooterCell(s.CampTotalDueEur.ToString("N2", System.Globalization.CultureInfo.CurrentUICulture), "text-end"),
+                        new TableFooterCell(s.CampPaymentsTotalEur.ToString("N2", System.Globalization.CultureInfo.CurrentUICulture), "text-end"),
+                        new TableFooterCell(s.CampBalanceEur.ToString("N2", System.Globalization.CultureInfo.CurrentUICulture), "text-end"))
                 .Build();
             <partial name="_Table" model="counterpartyTable" />
         }

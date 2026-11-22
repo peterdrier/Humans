@@ -1,4 +1,3 @@
-using Humans.Agent.Contracts;
 using Humans.AuditLog.Contracts;
 using Humans.Agent.Data;
 using Humans.Agent.Services.Anthropic;
@@ -15,14 +14,12 @@ internal sealed class AgentSettingsService(
     IAuditLogService audit,
     IAnthropicClient anthropic,
     ILogger<AgentSettingsService> logger)
-    : IAgentSettingsService, IAgentAvailability
+    : IAgentSettingsService
 {
     // The list is fetched on every settings-tab render, so a slow Anthropic must not hold the page up.
     private static readonly TimeSpan ModelListTimeout = TimeSpan.FromSeconds(5);
 
     public AgentSettingsDto Current => ToDto(store.Current);
-
-    public bool IsEnabled => store.Current.Enabled;
 
     public async Task LoadAsync(CancellationToken cancellationToken)
     {
@@ -63,7 +60,10 @@ internal sealed class AgentSettingsService(
         }
         catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
         {
-            logger.LogWarning(ex, "Could not list Anthropic models; the settings dropdown shows only the saved model.");
+            if (ex is HttpRequestException or IOException or TimeoutException or OperationCanceledException)
+                logger.LogWarning("Could not list Anthropic models; the settings dropdown shows only the saved model: {Reason}", ex.Message);
+            else
+                logger.LogError(ex, "Could not list Anthropic models; the settings dropdown shows only the saved model: {Reason}", ex.Message);
             return null;
         }
     }

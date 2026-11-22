@@ -16,6 +16,24 @@ public class UserInfoTests
         CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
     };
 
+    [HumansTheory]
+    [InlineData(UserState.Active, true, true, false)]
+    [InlineData(UserState.Bare, true, true, true)]
+    [InlineData(UserState.Suspended, true, false, false)]
+    [InlineData(UserState.AdminSuspended, true, false, false)]
+    [InlineData(UserState.Rejected, true, true, false)]
+    [InlineData(UserState.Active, false, false, true)]
+    public void ProfileReadPredicates_PreserveBrowsingAndSetupRules(
+        UserState state, bool hasProfile, bool browsable, bool needsSetup)
+    {
+        var user = MinimalUser();
+        user.State = state;
+        var info = UserInfoFactory.Create(user, [], [], hasProfile ? NamedProfile(user.Id, "Name") : null, [], [], []);
+
+        info.IsProfileBrowsable.Should().Be(browsable);
+        info.NeedsProfileSetup.Should().Be(needsSetup);
+    }
+
     // User.BurnerName is the sole source: no Profile.BurnerName or legacy-DisplayName fallback.
 
     [HumansFact]
@@ -162,7 +180,7 @@ public class UserInfoTests
     [HumansFact]
     public void IsGdprAnonymized_false_for_the_retired_name_only_tombstone()
     {
-        // Production migration is complete: names no longer identify erased accounts.
+        // Names alone never identify erased accounts.
         var userId = Guid.NewGuid();
         var user = MinimalUser(userId);
         user.DisplayName = UserInfo.GdprAnonymizedBurnerName;
@@ -253,9 +271,6 @@ public class UserInfoTests
     {
         Id = Guid.NewGuid(),
         UserId = userId,
-        BurnerName = burnerName,
-        FirstName = "First",
-        LastName = "Last",
         CreatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
         UpdatedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
     };

@@ -27,39 +27,36 @@ namespace Humans.Expenses.Tests.Services;
 [Collection("HoldedDrainGate")]
 public class HoldedOutboxDuplicateGuardTests
 {
+    public enum PublishOutcome
+    {
+        Accepted,
+        TransientFailure,
+        PermanentFailure
+    }
+
     private static readonly Instant Now = Instant.FromUtc(2026, 5, 10, 12, 0);
 
     private readonly ExpenseRepository _repo;
-    private readonly IHoldedClient _holded = Substitute.For<IHoldedClient>();
+    private readonly IHoldedWrite _holded = Substitute.For<IHoldedWrite>();
+    private readonly IHoldedService _holdedService = Substitute.For<IHoldedService>();
     private readonly IAuditLogService _audit = Substitute.For<IAuditLogService>();
     private readonly Guid _reportId = Guid.NewGuid();
     private readonly Guid _lineId = Guid.NewGuid();
     private readonly Guid _eventId = Guid.NewGuid();
+    private readonly DbContextOptions<ExpensesDbContext> _options;
 
     public HoldedOutboxDuplicateGuardTests()
     {
-        var options = new DbContextOptionsBuilder<ExpensesDbContext>()
+        _options = new DbContextOptionsBuilder<ExpensesDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .Options;
-        _repo = new ExpenseRepository(new TestDbContextFactory<ExpensesDbContext>(options));
+        _repo = new ExpenseRepository(new TestDbContextFactory<ExpensesDbContext>(_options));
 
-        _holded.IsConfigured.Returns(true);
-        _holded.GetContactAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
-            .Returns(new HoldedContactDto { Id = "contact-1", SupplierAccountNum = 40000050 });
-        _holded.GetPurchaseDocumentAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
-            .Returns(new HoldedPurchaseDocumentDto
-            {
-                Id = "doc",
-                DocNumber = "",
-                Subtotal = 0m,
-                Tax = 0m,
-                Total = 0m,
-                PaymentsTotal = 0m,
-                PaymentsPending = 0m,
-                ApprovedAt = null,
-            });
+        _holdedService.IsConfigured.Returns(true);
+        _holdedService.GetContactsAsync(Arg.Any<CancellationToken>())
+            .Returns(new HoldedContactMirror(Instant.FromUtc(2026, 1, 1, 0, 0), [new HoldedContactDto { Id = "contact-1", SupplierAccountNum = 40000050 }]));
 
-        using var ctx = new ExpensesDbContext(options);
+        using var ctx = new ExpensesDbContext(_options);
         ctx.ExpenseReports.Add(new ExpenseReport
         {
             Id = _reportId,
@@ -94,7 +91,7 @@ public class HoldedOutboxDuplicateGuardTests
                 Arg.Any<string?>(), Arg.Any<int?>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns("contact-1");
         return new ExpenseReportBackgroundProcessor(
-            _repo, Substitute.For<IFileStorage>(), Substitute.For<IUserService>(), _holded,
+            _repo, Substitute.For<IFileStorage>(), Substitute.For<IUserService>(), _holdedService, _holded,
             Substitute.For<IFinanceService>(), writes, _audit, new FakeClock(Now),
             NullLogger<ExpenseReportBackgroundProcessor>.Instance);
     }
@@ -115,8 +112,8 @@ public class HoldedOutboxDuplicateGuardTests
 
         await NewProcessor().DrainHoldedOutboxAsync(10, ct);
 
-        await _holded.Received(1).ApprovePurchaseDocumentAsync("doc-A", Arg.Any<CancellationToken>());
-        await _holded.DidNotReceive().ApprovePurchaseDocumentAsync("doc-B", Arg.Any<CancellationToken>());
+        await _holded.Received(1).EnsurePurchaseDocumentApprovedAsync("doc-A", Arg.Any<CancellationToken>());
+        await _holded.DidNotReceive().EnsurePurchaseDocumentApprovedAsync("doc-B", Arg.Any<CancellationToken>());
         (await _repo.GetByIdAsync(_reportId, ct))!.Lines.Single().HoldedDocId.Should().Be("doc-A");
         (await _repo.GetUnprocessedOutboxAsync(Now + Duration.FromDays(1), 10, ct)).Should().BeEmpty();
         await _audit.Received(1).LogAsync(
@@ -125,5 +122,98 @@ public class HoldedOutboxDuplicateGuardTests
                 && d.Contains("orphan purchase document doc-B", StringComparison.Ordinal)
                 && d.Contains("manual removal in Holded", StringComparison.Ordinal)),
             Arg.Any<string>());
+    }
+
+    [HumansTheory]
+    [InlineData(PublishOutcome.Accepted)]
+    [InlineData(PublishOutcome.TransientFailure)]
+    [InlineData(PublishOutcome.PermanentFailure)]
+    public async Task CancellationAfterVendorCreate_PreservesCompletedOrFailureState_AndStopsBeforeNextEvent(PublishOutcome outcome)
+    {
+        using var cancellation = new CancellationTokenSource();
+        var ct = cancellation.Token;
+        var secondReportId = Guid.NewGuid();
+        var secondLineId = Guid.NewGuid();
+        var secondEventId = Guid.NewGuid();
+        using (var ctx = new ExpensesDbContext(_options))
+        {
+            ctx.ExpenseReports.Add(new ExpenseReport
+            {
+                Id = secondReportId,
+                SubmitterUserId = Guid.NewGuid(),
+                BudgetCategoryId = Guid.NewGuid(),
+                BudgetYearId = Guid.NewGuid(),
+                Status = ExpenseReportStatus.Approved,
+                PayeeName = "Bob Smith",
+                Total = 25m,
+                CreatedAt = Now,
+                UpdatedAt = Now,
+                Lines = [new ExpenseLine { Id = secondLineId, Description = "Paper", Amount = 25m, LineType = ExpenseLineType.Receipt }],
+            });
+            ctx.HoldedExpenseOutboxEvents.Add(new HoldedExpenseOutboxEvent
+            {
+                Id = secondEventId,
+                ExpenseReportId = secondReportId,
+                EventType = HoldedExpenseOutboxEventType.CreateIncomingDoc,
+                OccurredAt = Now + Duration.FromSeconds(1),
+            });
+            await ctx.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        }
+
+        _holded.CreatePurchaseDocumentAsync(Arg.Any<HoldedPurchaseDocumentInput>(), Arg.Any<CancellationToken>())
+            .Returns(async call =>
+            {
+                if (outcome == PublishOutcome.Accepted)
+                {
+                    await cancellation.CancelAsync();
+                    call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+                }
+                return "doc-created";
+            });
+
+        if (outcome is PublishOutcome.TransientFailure or PublishOutcome.PermanentFailure)
+        {
+            _holded.EnsurePurchaseDocumentApprovedAsync("doc-created", Arg.Any<CancellationToken>())
+                .Returns(async call =>
+                {
+                    await cancellation.CancelAsync();
+                    if (outcome == PublishOutcome.TransientFailure)
+                        await Task.FromException(new HoldedTransientException("temporary approval failure"));
+                    else
+                        await Task.FromException(new HoldedPermanentException("permanent approval failure"));
+                });
+        }
+
+        var action = () => NewProcessor().DrainHoldedOutboxAsync(10, ct);
+        await action.Should().ThrowAsync<OperationCanceledException>();
+
+        var report = (await _repo.GetByIdAsync(_reportId, CancellationToken.None))!;
+        report.Lines.Single().HoldedDocId.Should().Be("doc-created");
+        var events = await _repo.GetUnprocessedOutboxAsync(Now + Duration.FromDays(1), 10, CancellationToken.None);
+        events.Select(e => e.Id).Should().Contain(secondEventId);
+        if (outcome == PublishOutcome.Accepted)
+        {
+            events.Select(e => e.Id).Should().NotContain(_eventId);
+            await _audit.Received(1).LogAsync(
+                ExpensesAuditActions.ExpenseHoldedPushed, Arg.Any<string>(), _reportId,
+                Arg.Any<string>(), Arg.Any<string>());
+            await _holded.DidNotReceive().CreatePurchaseDocumentAsync(
+                Arg.Is<HoldedPurchaseDocumentInput>(input => input.ContactName == "Bob Smith"), Arg.Any<CancellationToken>());
+        }
+        else
+        {
+            if (outcome == PublishOutcome.TransientFailure)
+            {
+                events.Select(e => e.Id).Should().Contain(_eventId);
+                (await _repo.GetLatestOutboxForReportAsync(_reportId, CancellationToken.None))!.RetryCount.Should().Be(1);
+            }
+            else
+            {
+                events.Select(e => e.Id).Should().NotContain(_eventId);
+                (await _repo.GetLatestOutboxForReportAsync(_reportId, CancellationToken.None))!.FailedPermanently.Should().BeTrue();
+            }
+            await _holded.DidNotReceive().CreatePurchaseDocumentAsync(
+                Arg.Is<HoldedPurchaseDocumentInput>(input => input.ContactName == "Bob Smith"), Arg.Any<CancellationToken>());
+        }
     }
 }

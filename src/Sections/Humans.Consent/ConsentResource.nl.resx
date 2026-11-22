@@ -290,14 +290,8 @@
   <data name="Consent_Queue_LegalName" xml:space="preserve">
     <value>Officiële naam</value>
   </data>
-  <data name="Consent_Queue_HasApplication" xml:space="preserve">
-    <value>Heeft aanvraag</value>
-  </data>
   <data name="Consent_Queue_Signed" xml:space="preserve">
     <value>ondertekend</value>
-  </data>
-  <data name="Consent_Queue_ApplicationMotivation" xml:space="preserve">
-    <value>Motivatie bij aanvraag</value>
   </data>
   <data name="Consent_Queue_PreviousNotes" xml:space="preserve">
     <value>Eerdere beoordelingsnotities</value>
@@ -379,4 +373,8 @@
   </data>
   <data name="Consent_Queue_ReviewLink" xml:space="preserve"><value>Beoordelen</value></data>
   <data name="Consent_Queue_SelectRowLabel" xml:space="preserve"><value>{0} selecteren</value></data>
+  <data name="Consent_Meter_ReviewsPending" xml:space="preserve"><value>Toestemmingscontroles in afwachting</value></data>
+  <data name="Consent_Meter_OnboardingProfilesPending" xml:space="preserve"><value>Onboardingprofielen in afwachting</value></data>
+  <data name="Consent_Meter_AudienceConsentCoordinator" xml:space="preserve"><value>Toestemmingscoördinatoren</value></data>
+  <data name="Consent_Meter_AudienceBoard" xml:space="preserve"><value>het bestuur</value></data>
 </root>

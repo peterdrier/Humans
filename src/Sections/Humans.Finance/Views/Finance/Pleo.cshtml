@@ -1,30 +1,38 @@
 @model Humans.Finance.Models.PleoReconcileVm
 @using Humans.Finance.Services
+@using NodaTime
+@inject Humans.Base.Interfaces.IOrgTimeZone OrgTimeZone
 @{
     ViewData["Title"] = "Pleo reconcile";
     var running = (bool)(ViewBag.PleoRunning ?? false) || Model.Run is { IsRunning: true };
     var spend = Model.View.Spend;
     var booked = spend.Where(r => r.State == PleoSpendState.Booked).ToList();
     var ready = spend.Where(r => r.State == PleoSpendState.Ready).ToList();
-    var notReady = spend.Where(r => r.State is not (PleoSpendState.Booked or PleoSpendState.Ready)).ToList();
+    var unfinished = spend.Where(r => r.State == PleoSpendState.Unfinished).ToList();
+    var toBook = ready.Count + unfinished.Count;
+    var readyNoReceipt = ready.Count(r => !r.Entry.HasReceipt && !r.IsRefund);
+    var notReady = spend.Where(r => r.State is PleoSpendState.NoCategory or PleoSpendState.NotMapped or PleoSpendState.NoAmount).ToList();
+    var checkInHolded = spend.Where(r => r.State == PleoSpendState.CheckInHolded).ToList();
     var groups = new[]
     {
-        (PleoSpendState.NoReceipt, "No receipt"),
         (PleoSpendState.NoCategory, "No category"),
         (PleoSpendState.NotMapped, "Category not mapped to an open Holded account"),
-        (PleoSpendState.NoReceiptNoCategory, "No receipt and no category"),
         (PleoSpendState.NoAmount, "No EUR amount"),
     };
+    var refunds = spend.Where(r => r.IsRefund).ToList();
+    var origins = Model.View.RefundOrigins.ToDictionary(o => o.RefundId);
+    var fixable = Model.View.Changes.Where(c => c.Corrections.Count > 0).ToList();
     var difference = Model.Difference;
     var run = Model.Run;
+    var canRun = !running && Model.NotConfigured is null;
 }
 
 @functions {
     private static string Signed(decimal amount) => amount > 0m ? "+" + amount.ToEuro() : amount.ToEuro();
+    private string Day(Instant at) => at.InZone(OrgTimeZone.Zone).Date.ToDate();
 }
 
-<div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-4">
-    <h1 class="mb-0">Pleo reconcile</h1>
+<page-header title="Pleo reconcile">
     <div class="d-flex align-items-center gap-3">
         <span class="small text-muted">
             Pleo synced @(Model.Wallet?.SyncedAt.ToInvariantTimestamp() ?? "never")
@@ -33,7 +41,7 @@
         <a href="/Pleo" class="btn btn-outline-secondary btn-sm">Pleo</a>
         <a asp-action="Index" class="btn btn-outline-secondary btn-sm"><i class="fa-solid fa-arrow-left me-1"></i>Finance</a>
     </div>
-</div>
+</page-header>
 
 <div class="row g-3 mb-4">
     <div class="col-md-4">
@@ -84,6 +92,28 @@
     <div class="card-footer small text-muted">Book a missing top-up by categorising the Sabadell line in Holded.</div>
 </div>
 
+@if (Model.View.Unattributed.Count > 0)
+{
+    <div class="card border-danger mb-4">
+        <div class="card-header text-danger">@PleoBooking.PleoTreasury lines not from Humans, check (@Model.View.Unattributed.Count)</div>
+        <table class="table table-sm mb-0">
+            <thead><tr><th class="ps-3">Date</th><th>Entry</th><th>Description</th><th class="text-end pe-3">Debit − credit</th></tr></thead>
+            <tbody>
+                @foreach (var l in Model.View.Unattributed)
+                {
+                    <tr>
+                        <td class="ps-3">@Day(l.Date)</td>
+                        <td><a href="/Holded/Entries/@l.EntryNumber">entry @l.EntryNumber</a></td>
+                        <td>@l.Description</td>
+                        <td class="text-end pe-3">@((l.Debit - l.Credit).ToEuro())</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+        <div class="card-footer small text-muted">These name no Pleo id, so they never count as booking a Pleo entry. Anything paid from Pleo goes through Humans only.</div>
+    </div>
+}
+
 <h2 class="h4 mb-3">Spend</h2>
 <div class="row g-3 mb-3">
     <div class="col-md-4">
@@ -96,7 +126,17 @@
         <div class="card h-100"><div class="card-body">
             <div class="text-muted small text-uppercase">Ready to book</div>
             <div class="fs-3 fw-bold">@ready.Count · @ready.Sum(r => r.Amount).ToEuro()</div>
-            <div class="small text-muted">Receipt attached and category mapped to a Holded account@(ready.Count > 0 ? $" · {ready[0].Date.ToDate()} → {ready[^1].Date.ToDate()}" : "")</div>
+            <div class="small text-muted">
+                Category mapped to a Holded account@(ready.Count > 0 ? $" · {ready[0].Date.ToDate()} → {ready[^1].Date.ToDate()}" : "")
+                @if (readyNoReceipt > 0)
+                {
+                    <br /><span>@readyNoReceipt charge@(readyNoReceipt == 1 ? " has" : "s have") no receipt yet; it is attached when it arrives.</span>
+                }
+                @if (unfinished.Count > 0)
+                {
+                    <br /><span>@unfinished.Count half-done purchase@(unfinished.Count == 1 ? "" : "s"), finished by the next run.</span>
+                }
+            </div>
         </div></div>
     </div>
     <div class="col-md-4">
@@ -107,6 +147,21 @@
     </div>
 </div>
 
+@if (running)
+{
+    <div class="alert alert-info">
+        <i class="fa-solid fa-spinner fa-spin me-1"></i>
+        @(run?.Kind switch { PleoRunKind.Receipts => "Attaching receipts", PleoRunKind.Corrections => "Posting corrections", _ => "Booking" })…
+        @(run?.Lines.Count ?? 0) / @(run?.Total ?? 0) done@(run is not null && run.Lines.Any(l => l.Outcome == PleoBookingOutcome.Failed) ? $" · {run.Lines.Count(l => l.Outcome == PleoBookingOutcome.Failed)} failed" : "").
+        This page refreshes itself; leaving it does not stop the run.
+    </div>
+    <script>setTimeout(function () { location.reload(); }, 3000);</script>
+}
+else if (Model.NotConfigured is { } why)
+{
+    <div class="alert alert-warning">@why Nothing can be booked.</div>
+}
+
 <div class="card mb-4">
     <div class="card-header">Book into Holded</div>
     <div class="card-body">
@@ -114,40 +169,39 @@
         {
             <div class="alert alert-danger">
                 <i class="fa-solid fa-clone me-1"></i>
-                @Model.View.Duplicates.Count Pleo entr@(Model.View.Duplicates.Count == 1 ? "y is" : "ies are") booked more than once. Delete the extra entry in Holded:
+                @Model.View.Duplicates.Count Pleo entr@(Model.View.Duplicates.Count == 1 ? "y has" : "ies have") more than one purchase. Delete the extra one in Holded:
                 <ul class="mb-0">
                     @foreach (var dup in Model.View.Duplicates)
                     {
                         <li>
                             <a href="/Pleo/Entries/@dup.PleoId">Pleo @dup.PleoId</a>:
-                            @foreach (var n in dup.HoldedEntries)
+                            @foreach (var url in dup.HoldedUrls)
                             {
-                                <a href="/Holded/Entries/@n" class="me-1">entry @n</a>
+                                <a href="@url" target="_blank" rel="noopener" class="me-1">purchase</a>
                             }
                         </li>
                     }
                 </ul>
             </div>
         }
-
-        @if (running)
+        @if (checkInHolded.Count > 0)
         {
-            <div class="alert alert-info mb-0">
-                <i class="fa-solid fa-spinner fa-spin me-1"></i>
-                Booking… @(run?.Lines.Count ?? 0) / @(run?.Total ?? 0) done@(run is not null && run.Lines.Any(l => l.Outcome == PleoBookingOutcome.Failed) ? $" · {run.Lines.Count(l => l.Outcome == PleoBookingOutcome.Failed)} failed" : "").
-                This page refreshes itself; leaving it does not stop the run.
+            <div class="alert alert-warning">
+                @checkInHolded.Count entr@(checkInHolded.Count == 1 ? "y was" : "ies were") sent to Holded but Holded does not list the purchase. They are never sent again; check in Holded:
+                <ul class="mb-0">
+                    @foreach (var r in checkInHolded)
+                    {
+                        <li><a href="/Pleo/Entries/@r.Entry.Id">@r.Date.ToDate() @r.Entry.MerchantName @Signed(r.Amount)</a> · purchase @PleoBooking.Number(r.Entry.Id)</li>
+                    }
+                </ul>
             </div>
-            <script>setTimeout(function () { location.reload(); }, 3000);</script>
         }
-        else if (!Model.HoldedConfigured)
-        {
-            <p class="text-muted mb-0">Holded is not configured here, so nothing can be booked.</p>
-        }
-        else if (ready.Count == 0)
+
+        @if (toBook == 0)
         {
             <p class="text-muted mb-0">Nothing is ready to book.</p>
         }
-        else
+        else if (canRun)
         {
             <form authorize-policy="@Humans.Finance.Contracts.FinancePolicies.Manage" asp-action="BookPleo" method="post"
                   class="d-flex align-items-center gap-2 flex-wrap">
@@ -156,7 +210,7 @@
                     <option value="1" selected>1</option>
                     <option value="10">10</option>
                     <option value="50">50</option>
-                    <option value="all">all @ready.Count</option>
+                    <option value="all">all @toBook</option>
                 </select>
                 <span class="text-muted small">oldest first</span>
                 <button type="submit" class="btn btn-primary btn-sm">Book into Holded</button>
@@ -169,18 +223,19 @@
     {
         <div class="card-body border-top">
             <div class="mb-2">
-                <strong>Last run</strong> @run.StartedAt.ToInvariantTimestamp():
-                @run.Lines.Count(l => l.Outcome is PleoBookingOutcome.Posted or PleoBookingOutcome.Unconfirmed) booked
+                <strong>Last run</strong> (@(run.Kind switch { PleoRunKind.Receipts => "receipts", PleoRunKind.Corrections => "corrections", _ => "booking" }))
+                @run.StartedAt.ToInvariantTimestamp():
+                @run.Lines.Count(l => l.Outcome is PleoBookingOutcome.Posted or PleoBookingOutcome.Unconfirmed) done
                 of @run.Total · @run.Lines.Count(l => l.Outcome == PleoBookingOutcome.Failed) failed
-                @if (run.Refused is { } why)
+                @if (run.Refused is { } refused)
                 {
-                    <div class="text-danger small">@why</div>
+                    <div class="text-danger small">@refused</div>
                 }
             </div>
             @if (run.Lines.Count > 0)
             {
                 <table class="table table-sm mb-0">
-                    <thead><tr><th>Date</th><th>Merchant</th><th>Account</th><th class="text-end">Amount</th><th>Holded</th><th>Pleo</th></tr></thead>
+                    <thead><tr><th>Date</th><th>Merchant</th><th>Account</th><th class="text-end">Amount</th><th>Holded</th><th class="text-end">Receipts</th><th>Pleo</th></tr></thead>
                     <tbody>
                         @foreach (var l in run.Lines)
                         {
@@ -190,11 +245,15 @@
                                 <td>@l.Account</td>
                                 <td class="text-end">@Signed(l.Amount)</td>
                                 <td>
-                                    @if (l.HoldedEntry is { } n)
+                                    @if (l.HoldedUrl is { } url)
                                     {
-                                        <a href="/Holded/Entries/@n">entry @n</a>
+                                        <a href="@url" target="_blank" rel="noopener">@PleoBooking.Number(l.PleoId)</a>
                                     }
-                                    else if (l.Outcome is PleoBookingOutcome.Posted or PleoBookingOutcome.Unconfirmed)
+                                    else if (run.Kind == PleoRunKind.Book)
+                                    {
+                                        <span>@PleoBooking.Number(l.PleoId)</span>
+                                    }
+                                    @if (l.Outcome == PleoBookingOutcome.Unconfirmed)
                                     {
                                         <span class="text-warning">check in Holded</span>
                                     }
@@ -203,6 +262,7 @@
                                         <div class="small @(l.Outcome == PleoBookingOutcome.Failed ? "text-danger" : "text-muted")">@err</div>
                                     }
                                 </td>
+                                <td class="text-end">@l.Receipts</td>
                                 <td><a href="/Pleo/Entries/@l.PleoId">Pleo</a></td>
                             </tr>
                         }
@@ -263,9 +323,136 @@
     </div>
 </div>
 
+<div class="card mb-4">
+    <div class="card-header">Receipts waiting (@Model.View.ReceiptsWaiting.Count purchase@(Model.View.ReceiptsWaiting.Count == 1 ? "" : "s"))</div>
+    @if (Model.View.ReceiptsWaiting.Count > 0)
+    {
+        <table class="table table-sm mb-0">
+            <thead><tr><th class="ps-3">Date</th><th>Merchant</th><th class="text-end">Amount</th><th>Purchase</th><th class="text-end pe-3">Receipts to attach</th></tr></thead>
+            <tbody>
+                @foreach (var w in Model.View.ReceiptsWaiting)
+                {
+                    <tr>
+                        <td class="ps-3"><a href="/Pleo/Entries/@w.Row.Entry.Id">@w.Row.Date.ToDate()</a></td>
+                        <td>@w.Row.Entry.MerchantName</td>
+                        <td class="text-end">@Signed(w.Row.Amount)</td>
+                        <td><a href="@w.Row.Purchase!.HoldedUrl" target="_blank" rel="noopener">@w.Row.Purchase.Number</a></td>
+                        <td class="text-end pe-3">@w.ReceiptIds.Count</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+    <div class="card-body">
+        @if (Model.View.UnconfirmedReceipts.Count > 0)
+        {
+            <div class="small text-warning mb-2">Holded did not answer an upload for @Model.View.UnconfirmedReceipts.Count entr@(Model.View.UnconfirmedReceipts.Count == 1 ? "y" : "ies"); check those purchases in Holded. They are never sent again.</div>
+        }
+        @if (Model.View.ReceiptsWaiting.Count == 0)
+        {
+            <p class="text-muted mb-0">Every booked purchase has all its Pleo receipts.</p>
+        }
+        else if (canRun)
+        {
+            <form authorize-policy="@Humans.Finance.Contracts.FinancePolicies.Manage" asp-action="AttachPleoReceipts" method="post">
+                <button type="submit" class="btn btn-primary btn-sm">Attach waiting receipts</button>
+            </form>
+        }
+    </div>
+</div>
+
+<div class="card mb-4">
+    <div class="card-header">Changed since booking (@Model.View.Changes.Count)</div>
+    @if (Model.View.Changes.Count > 0)
+    {
+        <table class="table table-sm mb-0">
+            <thead><tr><th class="ps-3">Pleo</th><th>Merchant</th><th>Holded now</th><th>What changed</th><th class="pe-3">Correction</th></tr></thead>
+            <tbody>
+                @foreach (var c in Model.View.Changes)
+                {
+                    <tr class="@(c.Corrections.Count == 0 ? "table-warning" : "")">
+                        <td class="ps-3"><a href="/Pleo/Entries/@c.PleoId">@(c.Entry is { } e ? Day(e.SettledAt) : c.PleoId)</a></td>
+                        <td>@c.Entry?.MerchantName</td>
+                        <td>@string.Join(", ", c.Holded.OrderBy(h => h.Key).Select(h => $"{h.Key} {h.Value.ToEuro()}"))</td>
+                        <td>@c.What</td>
+                        <td class="pe-3">
+                            @foreach (var x in c.Corrections)
+                            {
+                                <div>Dr @x.Debit / Cr @x.Credit @x.Amount.ToEuro()</div>
+                            }
+                            @if (c.Corrections.Count == 0)
+                            {
+                                <span class="text-muted">listed only</span>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+    <div class="card-body">
+        @if (fixable.Count == 0)
+        {
+            <p class="text-muted mb-0">Nothing to correct.</p>
+        }
+        else if (canRun)
+        {
+            <form authorize-policy="@Humans.Finance.Contracts.FinancePolicies.Manage" asp-action="CorrectPleo" method="post"
+                  class="d-flex align-items-center gap-2 flex-wrap">
+                <label for="correctBatch" class="mb-0">Post corrections for next</label>
+                <select id="correctBatch" name="batch" class="form-select form-select-sm w-auto">
+                    <option value="1" selected>1</option>
+                    <option value="10">10</option>
+                    <option value="50">50</option>
+                    <option value="all">all @fixable.Count</option>
+                </select>
+                <button type="submit" class="btn btn-primary btn-sm">Post corrections</button>
+            </form>
+            <div class="small text-muted mt-2">One journal entry per change, dated today; the purchase is never edited. An entry gone from Pleo is listed only.</div>
+        }
+    </div>
+</div>
+
+@if (refunds.Count > 0)
+{
+    <div class="card mb-4">
+        <div class="card-header">Refunds (@refunds.Count · @refunds.Sum(r => r.Amount).ToEuro())</div>
+        <table class="table table-sm mb-0">
+            <thead><tr><th class="ps-3">Date</th><th>Merchant</th><th class="text-end">Amount</th><th>Account</th><th class="pe-3">Likely original charge</th></tr></thead>
+            <tbody>
+                @foreach (var r in refunds)
+                {
+                    origins.TryGetValue(r.Entry.Id, out var o);
+                    <tr class="@(o?.CategoryDiffers == true ? "table-warning" : "")">
+                        <td class="ps-3"><a href="/Pleo/Entries/@r.Entry.Id">@r.Date.ToDate()</a></td>
+                        <td>@r.Entry.MerchantName</td>
+                        <td class="text-end">@Signed(r.Amount)</td>
+                        <td>@(r.Account?.ToString() ?? "—")</td>
+                        <td class="pe-3">
+                            @if (o is not null)
+                            {
+                                <a href="/Pleo/Entries/@o.Charge.Id">@Day(o.Charge.SettledAt) @Signed(o.Charge.AmountEur ?? 0m)</a>
+                                @if (o.CategoryDiffers)
+                                {
+                                    <span class="text-warning small ms-1">different category</span>
+                                }
+                            }
+                            else
+                            {
+                                <span class="text-muted">none found</span>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+        <div class="card-footer small text-muted">Display only: a refund is booked on its own category, never the original's.</div>
+    </div>
+}
+
 <p class="small text-muted">
-    One journal entry per Pleo entry, gross: spend debits its category's account and credits @PleoBooking.PleoTreasury;
-    a refund the other way round. The description <code>Pleo {id}: {merchant}</code> is how an entry is found in Holded
-    again. Loads are booked from the Sabadell line; out-of-pocket entries never touched the wallet and go through
-    expense claims.
+    Each Pleo charge is a purchase numbered <code>Pleo-{id}</code> on the "Pleo card purchases" contact, gross with no tax,
+    on its category's account, paid in full from @PleoBooking.PleoTreasury, with its receipts attached. A refund is the
+    same with a negative amount, paid back into @PleoBooking.PleoTreasury. A purchase is never edited once created.
+    Loads are booked from the Sabadell line; out-of-pocket entries never touched the wallet and go through expense claims.
 </p>

@@ -2,16 +2,16 @@
   src/Sections/Humans.Users/Services/UserEmailService.cs
   src/Humans.Base/Users/IUserEmailService.cs
   src/Sections/Humans.Users/Controllers/ProfileEmailsController.cs
-  src/Sections/Humans.GoogleIntegration/Controllers/GoogleController.cs
+  src/Sections/Humans.Google/Controllers/GoogleController.cs
   src/Sections/Humans.Users/Views/ProfileEmails/Emails.cshtml
-  src/Sections/Humans.GoogleIntegration/Views/Google/EmailFlagViolations.cshtml
+  src/Sections/Humans.Google/Views/Google/EmailFlagViolations.cshtml
 -->
 <!-- freshness:flag-on-change
   Clear / violations service surface, the admin EmailFlagViolations page, and the Profile Emails grid behavior on N>1 violations — review when these change.
 -->
 
 > **Superseded in part (Users decomposition commit 15).** The `IsGoogle` half of this spec is
-> retired: the Google Workspace identity is GoogleIntegration's `google_workspace_identities`,
+> retired: the Google Workspace identity is Google's `google_workspace_identities`,
 > resolved at read time, so there is no `IsGoogle` invariant to violate. `ClearGoogleAsync` and the
 > `ClearGoogle` routes are gone, `UserEmailFlagViolation` carries the primary counts only, and the
 > EmailFlagViolations page lists `IsPrimary` violations. The `IsPrimary` half below stands.
@@ -31,7 +31,7 @@ Production data showed at least one user with two `IsGoogle = true` rows. The Pr
 
 This feature adds:
 
-1. Service-level recovery methods (`ClearGoogleAsync`, `ClearPrimaryAsync`) that drop a single row's flag without auto-promoting a successor — so the operator can deliberately resolve the duplicate state.
+1. A service-level recovery method (`ClearPrimaryAsync`) that drops a single row's primary flag without auto-promoting a successor — so the operator can deliberately resolve the duplicate state.
 2. UI exposure on the Emails grid, for both admin and self, surfaced only on rows in an N>1 violation state — so a stuck user can self-recover.
 3. A site-wide admin scan page (`/Google/EmailFlagViolations`) that lists every affected user and deep-links to their grid.
 
@@ -46,7 +46,7 @@ This feature adds:
 - On `/Profile/{id}/Admin/Emails`, a flagged row shows an inline `×` Clear button next to its flag icon when that flag is in an N>1 violation state (same gating as the self path — `hasMultipleGoogle` / `hasMultiplePrimary` over the user's rows).
 - Clicking Clear drops only that row's flag — the sibling row's flag stays unchanged.
 - `ClearPrimary` does not auto-promote a successor; the admin sets the new primary explicitly.
-- An audit row is written (`UserEmailGoogleCleared` / `UserEmailPrimaryCleared`).
+- An audit row is written (`UserEmailPrimaryCleared`).
 
 ### US-46.2: User self-recovers from a stuck-radio state
 **As a** member with two `IsGoogle = true` rows in my data
@@ -56,7 +56,7 @@ This feature adds:
 **Acceptance Criteria:**
 - On `/Profile/Me/Emails`, a Clear button appears on a flagged row only when the user is in an N>1 violation state for that flag (`hasMultipleGoogle` or `hasMultiplePrimary` over verified rows).
 - When data is healthy, only the existing exclusive Set Primary / Set Google buttons are shown — no Clear.
-- The same `ClearGoogleAsync` / `ClearPrimaryAsync` service methods back self and admin paths; auth is `UserEmailOperations.Edit` (self-or-admin), symmetric with `SetPrimary` / `SetGoogle`.
+- The same `ClearPrimaryAsync` service method backs self and admin paths; auth is `UserEmailOperations.Edit` (self-or-admin), symmetric with `SetPrimary`.
 
 ### US-46.3: Admin scans for invariant violations site-wide
 **As an** admin
@@ -101,7 +101,7 @@ New audit action: `UsersAuditActions.UserEmailPrimaryCleared` (`UserEmailGoogleC
 ## Cross-Section Dependencies
 
 - **[Users section](../../../Humans.Users/Docs/Users.md)** — owns `UserEmail` and the `EnsurePrimaryInvariantAsync` invariant. `ClearPrimaryAsync` is the deliberate-bypass admin recovery path; document there.
-- **[GoogleIntegration section](../../../Humans.GoogleIntegration/Docs/GoogleIntegration.md)** — owns the `/Google/*` admin surface; the violations page lives there because Google identity (`IsGoogle`) is the primary invariant under remediation, even though the data is `UserEmail`-shaped.
+- **[Google section](../../../Humans.Google/Docs/Google.md)** — owns the `/Google/*` admin surface; the violations page lives there because Google identity (`IsGoogle`) is the primary invariant under remediation, even though the data is `UserEmail`-shaped.
 
 ## Related
 

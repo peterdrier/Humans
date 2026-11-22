@@ -10,15 +10,9 @@
     <!-- The one assembly allowed to see many sections. -->
     <InternalsVisibleTo Include="Humans.Integration.Tests" />
     <!--
-      Same shape, same expiry: Humans.Teams.Tests' harness seeds this section's rows
-      through its own copy of ServiceTestHarness (Teams finding 36's two-way pattern).
-    -->
-    <InternalsVisibleTo Include="Humans.Teams.Tests" />
-    <!--
       AuthorizationPolicyTests builds its own ServiceCollection rather than the full
       Section.Register graph, so it registers IsAnyTeamManagerOrCoordinatorHandler
-      directly (backs PolicyNames.ShiftDepartmentManager) — same shape as
-      Humans.Users.csproj's grant for HumanAdminOnlyHandler.
+      directly (backs PolicyNames.ShiftDepartmentManager).
     -->
     <InternalsVisibleTo Include="Humans.Web.Tests" />
   </ItemGroup>
@@ -40,33 +34,21 @@
     <!--
       Humans.Base above carries the shared enums whose persisted strings this section reads;
       the section's own persisted-string enums (SignupStatus, ShiftPriority, SignupPolicy,
-      RotaPeriod, ShiftPeriod, BuildSubPeriod) live on Humans.Shifts.Contracts, with their
+      RotaPeriod, ShiftPeriod, BuildSubPeriod) live in Contracts/, with their
       EnumStringStabilityTests rows in tests/Humans.Shifts.Tests/Enums.
     -->
-    <ProjectReference Include="..\Humans.Shifts.Contracts\Humans.Shifts.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Camps.Contracts\Humans.Camps.Contracts.csproj" />
-    <!-- ICantinaService (Contracts/ folder): the missing-dietary banner, volunteer search and the
-         admin badges. Acyclic: Cantina references Shifts.Contracts, never Shifts. -->
-    <ProjectReference Include="..\Humans.Cantina\Humans.Cantina.csproj" />
-    <ProjectReference Include="..\Humans.Users.Contracts\Humans.Users.Contracts.csproj" />
+    <!-- Fills Onboarding's IOnboardingShiftsStep slot. The leaf only, which references Base alone. -->
+    <ProjectReference Include="..\Humans.Onboarding.Contracts\Humans.Onboarding.Contracts.csproj" />
     <!--
-      Outbound section references, all acyclic — none of these names a Humans.Shifts
-      type (they may name Humans.Shifts.Contracts, which is
-      below this project).
+      Outbound section references, all acyclic: none of these references Humans.Shifts.
         Camps         — ICampService: camp labels and rosters for the summary-by-camp.
-        Users         — UserInfo snapshots, IUserMerge, and the profile-side reads.
-        AuditLog      — IAuditViewerService for the orphan-signup scan.
         Auth          — the coordinator/manager authorization surface.
         EarlyEntry    — VolunteerTrackingExportService implements IEarlyEntryProvider;
                         the section project, since EarlyEntry's contracts are a folder.
         Email         — the "email a rota" coordinator message.
         Governance    — early-entry capacity reads the membership tier.
         Notifications — signup approval/refusal notifies the volunteer.
-        Onboarding    — the section project, not the leaf: /Shifts renders Onboarding's
-                        name-gate copy through IStringLocalizer&lt;OnboardingResource&gt;, and a
-                        resource marker is a section type (CityPlanning's rule, design
-                        §15 step 3b). Acyclic: Humans.Onboarding names only
-                        Humans.Shifts.Contracts.
         Settings      — ISettingsService: the app-wide event calendar (nobodies-collective/Humans#1630).
         Teams         — a rota's department is a team row. The *section* project, not
                         only the leaf: ShiftAdminController derives from
@@ -75,7 +57,6 @@
                         names no Humans.Shifts type at all.
         Tickets       — early entry gates on the volunteer holding a ticket.
     -->
-    <ProjectReference Include="..\Humans.AuditLog\Humans.AuditLog.csproj" />
     <ProjectReference Include="..\Humans.Settings\Humans.Settings.csproj" />
     <ProjectReference Include="..\Humans.Auth\Humans.Auth.csproj" />
     <!--
@@ -87,9 +68,10 @@
     -->
     <ProjectReference Include="..\Humans.Calendar\Humans.Calendar.csproj" />
     <ProjectReference Include="..\Humans.Email.Contracts\Humans.Email.Contracts.csproj" />
-    <ProjectReference Include="..\Humans.Governance.Contracts\Humans.Governance.Contracts.csproj" />
+    <ProjectReference Include="..\Humans.Consent\Humans.Consent.csproj" />
     <ProjectReference Include="..\Humans.Notifications.Contracts\Humans.Notifications.Contracts.csproj" />
-    <ProjectReference Include="..\Humans.Onboarding\Humans.Onboarding.csproj" />
+    <!-- Permissions: declares Shifts.Manage and Shifts.Approve, and checks them on teams. -->
+    <ProjectReference Include="..\Humans.Permissions\Humans.Permissions.csproj" />
     <ProjectReference Include="..\Humans.Teams\Humans.Teams.csproj" />
     <ProjectReference Include="..\Humans.Teams.Contracts\Humans.Teams.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Tickets.Contracts\Humans.Tickets.Contracts.csproj" />

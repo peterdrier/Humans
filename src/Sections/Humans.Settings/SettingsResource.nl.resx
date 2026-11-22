@@ -76,4 +76,7 @@
   <data name="Settings_NoTabs" xml:space="preserve">
     <value>Er zijn nog geen instellingen beschikbaar.</value>
   </data>
+  <data name="Settings_NoStrike" xml:space="preserve">
+    <value>Geen afbouwdagen</value>
+  </data>
 </root>

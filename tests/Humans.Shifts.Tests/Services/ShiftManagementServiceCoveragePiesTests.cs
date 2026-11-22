@@ -50,13 +50,11 @@ public sealed class ShiftManagementServiceCoveragePiesTests : ShiftsTestHarness
         _service = new ShiftManagementService(
             repo,
             AuditLog,
-            AdminAuthorization,
             serviceProvider,
-            Cache,
-            new ShiftViewProbe().Cache,
             NewCalendarResolver(),
             Clock,
             Microsoft.Extensions.Logging.Abstractions.NullLogger<ShiftManagementService>.Instance);
+        serviceProvider.GetService(typeof(IShiftRotaRows)).Returns(_service);
     }
 
     [HumansFact]

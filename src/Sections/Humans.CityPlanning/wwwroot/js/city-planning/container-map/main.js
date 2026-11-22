@@ -1,4 +1,3 @@
-// Entry point for the container placement map.
 import { CONFIG }                                          from './config.js';
 import { loadContainers, savePlacement, clearPlacement }   from './api.js';
 import { initPlacementNotes, openPlacementNotes }           from './placement-notes.js';
@@ -8,7 +7,7 @@ import { initInteraction, activateContainer, selectPlacedContainer, deactivate }
 import { initMeasure, exitMeasureMode, wireMeasureButtons } from '../shared/measure.js';
 
 const toast = document.getElementById('map-toast');
-let containers = []; // live container data array
+let containers = [];
 
 function showToast(msg) {
     toast.textContent = msg;
@@ -16,13 +15,11 @@ function showToast(msg) {
     setTimeout(() => { toast.style.display = 'none'; }, 4000);
 }
 
-/** Update locationGeoJson for a container in the local array. */
 function patchContainer(id, locationGeoJson) {
     const c = containers.find(x => x.id === id);
     if (c) c.locationGeoJson = locationGeoJson;
 }
 
-/** Apply notes-update result to the local array and refresh the sidebar. */
 function applyPlacementNotesUpdate(id, fields) {
     const c = containers.find(x => x.id === id);
     if (!c) return;

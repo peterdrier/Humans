@@ -64,9 +64,6 @@ public class PersonSearchMatcherTests
         {
             Id = profileId,
             UserId = userId,
-            BurnerName = burnerName,
-            FirstName = firstName,
-            LastName = lastName,
             City = city,
             Bio = bio,
             Pronouns = pronouns,
@@ -82,8 +79,10 @@ public class PersonSearchMatcherTests
         var user = new User
         {
             Id = userId,
-            // Every real Profile save copies BurnerName onto the owning User row.
+            // Every real Profile save copies the names onto the owning User row.
             BurnerName = burnerName,
+            FirstName = firstName,
+            LastName = lastName,
             DisplayName = displayName,
             State = isRejected ? UserState.Rejected : UserState.Active,
             PreferredLanguage = "en",
@@ -94,7 +93,6 @@ public class PersonSearchMatcherTests
             .Select((c, i) => new ContactField
             {
                 Id = Guid.NewGuid(),
-                ProfileId = profileId,
                 FieldType = ContactFieldType.Other,
                 Value = c.Value,
                 CustomLabel = contactLabel,
@@ -122,7 +120,6 @@ public class PersonSearchMatcherTests
             .Select(v => new VolunteerHistoryEntry
             {
                 Id = Guid.NewGuid(),
-                ProfileId = profileId,
                 Date = new LocalDate(2025, 7, 1),
                 EventName = v.EventName,
                 Description = v.Description,

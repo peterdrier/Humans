@@ -50,7 +50,7 @@ No new entities. Reads from:
 - `ContactField` rows (visibility-filtered).
 - `RoleAssignment` (board check is upstream of the visibility ladder, not surfaced here directly).
 
-`HumanSearchResult` (the service-returned DTO) carries `ProfileId` alongside `UserId`. `IContactFieldService.GetVisibleContactFieldsAsync` now keys by `userId` directly, reading from the cached `UserInfo` projection, so the controller does not need `ProfileId` to drive it.
+`HumanSearchResult` (the service-returned DTO) carries `UserId`. `IContactFieldService.GetVisibleContactFieldsAsync` keys by `userId`, reading from the cached `UserInfo` projection.
 
 ## Detail Priority Order
 
@@ -67,7 +67,7 @@ For each result row, the controller calls `GetSharedDetailAsync(userId, viewerUs
    The obsolete `ContactFieldType.Email` is skipped (`UserEmail` is the canonical email source).
 3. `null` — no second line is rendered.
 
-Legal name (`Profile.FirstName + Profile.LastName`) is deliberately **not** part of the priority order, even for self or board viewers — a settled decision. Board members see legal name via the profile card on click-through.
+Legal name (`UserInfo.FullName`) is deliberately **not** part of the priority order, even for self or board viewers — a settled decision. Board members see legal name via the profile card on click-through.
 
 ## Privacy Gating
 
@@ -87,13 +87,13 @@ This is the same ladder used by `ProfileCardViewComponent` for the canonical pro
 
 ## Avatar Rule
 
-Each row renders an `<img>` thumbnail using `UserInfo.ProfilePictureUrl` — the single source of profile-picture URLs across the app. When the target has a custom-uploaded profile picture, that property resolves to `/Profile/Picture?id={ProfileId}&v={ticks}`; otherwise it falls back to whatever's stored on `User.ProfilePictureUrl` (typically null today). The picker is consistent with every other picture-display site (profile card, `<vc:human>`, etc.) for free.
+Each row renders an `<img>` thumbnail using `UserInfo.ProfilePictureUrl` — the single source of profile-picture URLs across the app. When the target has a custom-uploaded profile picture, that property resolves to `/Profile/Picture?id={userId}&v={ticks}`; otherwise it falls back to whatever's stored on `User.ProfilePictureUrl` (typically null today). The picker is consistent with every other picture-display site (profile card, `<vc:human>`, etc.) for free.
 
 The view defends against broken URLs with `img.onerror = () => img.remove();` — a bad picture URL silently drops the thumbnail without leaving a broken-image icon.
 
 ## Caching
 
-- **Search index + ProfileId resolution**: served from the `CachingUserService` `ConcurrentDictionary<Guid, UserInfo>` warmed at startup by the decorator's own `IHostedService.StartAsync` (inherited from `TrackedCache`, see design-rules §15d). No DB hit for the matcher itself; `ProfileId` lives on `UserInfo.Profile.Id`.
+- **Search index**: served from the `CachingUserService` `ConcurrentDictionary<Guid, UserInfo>` warmed at startup by the decorator's own `IHostedService.StartAsync` (inherited from `TrackedCache`, see design-rules.md, *Section caching pattern*). No DB hit for the matcher itself.
 - **Single-person lookup endpoint**: served from the same dict via `IUserService.GetUserInfoAsync(userId)`.
 - **Per-result email / contact-field reads**: not cached. These remain DB-bound, one round-trip per result row per visibility category. Acceptable at the project's small scale per `CLAUDE.md` ("prefer in-memory caching over query optimization"). Batching these is a separate, follow-up optimization if the picker latency ever becomes user-visible.
 

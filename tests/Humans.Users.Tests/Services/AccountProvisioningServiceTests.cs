@@ -1,3 +1,4 @@
+using Humans.Users.Domain;
 using System.Transactions;
 using Humans.Users.Data;
 using NSubstitute.ExceptionExtensions;
@@ -88,18 +89,16 @@ public class AccountProvisioningServiceTests
             throw new NotSupportedException();
         public Task<IReadOnlyList<Guid>> GetUserIdsWithExternalLoginsAsync(CancellationToken ct = default) =>
             throw new NotSupportedException();
-        public Task<int> DeleteUsersAsync(IReadOnlyCollection<Guid> userIds, CancellationToken ct = default) =>
-            throw new NotSupportedException();
         public Task<IReadOnlyDictionary<Guid, IReadOnlyList<(string Provider, string ProviderKey)>>>
             GetExternalLoginsByUserIdsAsync(IReadOnlyCollection<Guid> userIds, CancellationToken ct = default) =>
             throw new NotSupportedException();
-        public Task<IReadOnlyList<ContactField>> GetByProfileIdReadOnlyAsync(
-            Guid profileId, CancellationToken ct = default) =>
+        public Task<IReadOnlyList<ContactField>> GetContactFieldsByUserIdReadOnlyAsync(
+            Guid userId, CancellationToken ct = default) =>
             throw new NotSupportedException();
         public Task<IReadOnlyList<ContactField>> GetAllContactFieldsAsync(CancellationToken ct = default) =>
             throw new NotSupportedException();
-        public Task<IReadOnlyList<ContactField>> GetByProfileIdForMutationAsync(
-            Guid profileId, CancellationToken ct = default) =>
+        public Task<IReadOnlyList<ContactField>> GetContactFieldsByUserIdForMutationAsync(
+            Guid userId, CancellationToken ct = default) =>
             throw new NotSupportedException();
         public Task BatchSaveAsync(
             IReadOnlyList<ContactField> toAdd,
@@ -116,8 +115,6 @@ public class AccountProvisioningServiceTests
             throw new NotSupportedException();
         public Task<IReadOnlyList<Profile>> GetAllProfilesAsync(CancellationToken ct = default) =>
             throw new NotSupportedException();
-        public Task<Guid?> GetOwnerUserIdAsync(Guid profileId, CancellationToken ct = default) =>
-            throw new NotSupportedException();
         public Task<(string ContentType, string? StorageKey)?> GetProfilePictureLocationAsync(
             Guid profileId, CancellationToken ct = default) =>
             throw new NotSupportedException();
@@ -127,9 +124,9 @@ public class AccountProvisioningServiceTests
         public Task ReplaceLanguagesAsync(
             Guid profileId, IReadOnlyList<ProfileLanguage> languages, CancellationToken ct = default) =>
             throw new NotSupportedException();
-        public Task AddAsync(Profile profile, CancellationToken ct = default) =>
+        public Task AddAsync(Profile profile, CancellationToken ct = default, UserNames? names = null) =>
             throw new NotSupportedException();
-        public Task UpdateAsync(Profile profile, CancellationToken ct = default, IReadOnlyList<CVEntry>? volunteerHistory = null) =>
+        public Task UpdateAsync(Profile profile, CancellationToken ct = default, IReadOnlyList<CVEntry>? volunteerHistory = null, UserNames? names = null) =>
             throw new NotSupportedException();
         public Task<bool> AnonymizeForDeletionByUserIdAsync(Guid userId, CancellationToken ct = default) =>
             throw new NotSupportedException();
@@ -138,8 +135,9 @@ public class AccountProvisioningServiceTests
         public Task<IReadOnlySet<Guid>> SuspendManyAsync(
             IReadOnlyCollection<Guid> userIds, CancellationToken ct = default) =>
             throw new NotSupportedException();
-        public Task<(Guid ProfileId, string? ContentType, string? StorageKey)?> ReassignSubAggregatesToUserAsync(
-            Guid sourceUserId, Guid targetUserId, Instant updatedAt, CancellationToken ct = default) =>
+        public Task ReassignSubAggregatesToUserAsync(
+            Guid sourceUserId, Guid targetUserId, Instant updatedAt, Profile? keptProfile, UserNames? keptNames,
+            CancellationToken ct = default) =>
             throw new NotSupportedException();
         public Task<bool> SetSuspensionAsync(
             Guid userId, bool suspended, bool adminSuspension, CancellationToken ct = default) =>
@@ -170,9 +168,6 @@ public class AccountProvisioningServiceTests
             throw new NotSupportedException();
         public Task RemoveAllUserEmailsForUserAndSaveAsync(Guid userId, CancellationToken ct = default) =>
             throw new NotSupportedException();
-        public Task RemoveAllUserEmailsForUsersAndSaveAsync(
-            IReadOnlyCollection<Guid> userIds, CancellationToken ct = default) =>
-            throw new NotSupportedException();
         public Task<bool> MarkUserEmailVerifiedAsync(
             Guid emailId, Instant now, CancellationToken ct = default) =>
             throw new NotSupportedException();
@@ -181,11 +176,7 @@ public class AccountProvisioningServiceTests
         public Task<IReadOnlyList<UserEmail>> GetUserEmailsByEmailsAsync(
             IReadOnlyCollection<string> emails, CancellationToken ct = default) =>
             throw new NotSupportedException();
-        public Task<IReadOnlyList<Guid>> GetUserIdsByUserEmailPrefixAndSuffixAsync(
-            string prefix, string suffix, CancellationToken ct = default) =>
-            throw new NotSupportedException();
         public Task ApplyUserEmailReconcilePlanAsync(
-            UserEmail? displacedRowToDelete,
             UserEmail? rowToDelete,
             UserEmail? rowToUpdate,
             UserEmail? rowToInsert,
@@ -531,7 +522,7 @@ public class AccountProvisioningServiceTests
             "alice@example.com", "Alice Smith", ContactSource.TicketTailor, Xunit.TestContext.Current.CancellationToken);
 
         result.Created.Should().BeTrue();
-        // User.Email is no longer the identity — the verified row is.
+        // User.Email is not the identity: the verified row is.
         StoredUser(result.UserId).Email.Should().BeNull();
         StoredUser(result.UserId).BurnerName.Should().Be("Alice Smith");
         StoredUser(result.UserId).ContactSource.Should().Be(ContactSource.TicketTailor);
@@ -717,8 +708,7 @@ public class AccountProvisioningServiceTests
         result2.Created.Should().BeFalse();
         result3.Created.Should().BeFalse();
 
-        // Only one user should exist. User.Email is no longer the identity —
-        // assert via the UserEmail row instead.
+        // Only one user should exist. User.Email is not the identity: assert via the UserEmail row.
         _userEmailFake.All
             .Count(ue => string.Equals(ue.Email, "henry@example.com", StringComparison.Ordinal))
             .Should().Be(1);

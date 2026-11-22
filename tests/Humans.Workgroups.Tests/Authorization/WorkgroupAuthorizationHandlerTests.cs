@@ -158,6 +158,29 @@ public sealed class WorkgroupAuthorizationHandlerTests
         result.Should().BeTrue();
     }
 
+    [HumansTheory]
+    [Xunit.InlineData("Coordinator", true, true)]
+    [Xunit.InlineData("Coordinator", false, false)]
+    [Xunit.InlineData("Member", true, false)]
+    [Xunit.InlineData("Stranger", true, false)]
+    [Xunit.InlineData("Board", false, true)]
+    [Xunit.InlineData("Admin", false, true)]
+    public async Task ManageMembership_PreservesCoordinatorAndPrivilegedAccess(string actor, bool active, bool allowed)
+    {
+        var workgroup = active ? ActiveWorkgroup() : DormantWorkgroup();
+        if (string.Equals(actor, "Member", StringComparison.Ordinal))
+            workgroup = workgroup with { Members = workgroup.Members.Select(m => m with { Role = WorkgroupMemberRole.Member }).ToList() };
+        var principal = actor switch
+        {
+            "Board" => SignedInWithRole(RoleNames.Board),
+            "Admin" => SignedInWithRole(RoleNames.Admin),
+            "Stranger" => SignedInAs(StrangerId),
+            _ => SignedInAs(MemberId)
+        };
+
+        (await EvaluateAsync(principal, workgroup, WorkgroupOperationRequirement.ManageMembership)).Should().Be(allowed);
+    }
+
     private async Task<bool> EvaluateAsync(
         ClaimsPrincipal user, WorkgroupInfo resource, WorkgroupOperationRequirement requirement)
     {
@@ -174,7 +197,7 @@ public sealed class WorkgroupAuthorizationHandlerTests
         Guid.NewGuid(), "finance-2026", "Finance 2026", "Purpose", "A report",
         WorkgroupDeliverableKind.Report, WorkgroupAudience.Board, null, status,
         status == WorkgroupStatus.Dormant ? WorkgroupDormantReason.Quiet : null,
-        null, null, null, null, Instant.FromUtc(2026, 1, 1, 0, 0),
+        null, null, null, Instant.FromUtc(2026, 1, 1, 0, 0),
         Instant.FromUtc(2026, 1, 1, 0, 0), null,
         [new WorkgroupMemberInfo(Guid.NewGuid(), MemberId, WorkgroupMemberRole.Coordinator,
             Instant.FromUtc(2026, 1, 1, 0, 0), null)],

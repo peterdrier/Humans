@@ -18,7 +18,7 @@ namespace Humans.Expenses.Data.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.10")
+                .HasAnnotation("ProductVersion", "10.0.13")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -269,7 +269,7 @@ namespace Humans.Expenses.Data.Migrations
 
                     b.HasIndex("ProcessedAt", "FailedPermanently");
 
-                    b.ToTable("holded_expense_outbox_events", (string)null);
+                    b.ToTable("expense_holded_outbox_events", (string)null);
                 });
 
             modelBuilder.Entity("Humans.Expenses.Domain.ExpenseLine", b =>

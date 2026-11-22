@@ -28,6 +28,7 @@ html { scrollbar-gutter: stable; }
     --bs-link-hover-color: var(--h-aged-ink);
     --bs-link-hover-color-rgb: 61, 43, 31;
     --bs-focus-ring-color: rgba(201, 169, 110, 0.2);
+    --bs-code-color: var(--h-umber);
 
     --bs-primary: var(--h-gold-dark);
     --bs-primary-rgb: 168, 138, 78;
@@ -70,6 +71,11 @@ html { scrollbar-gutter: stable; }
     --bs-dark-bg-subtle: var(--h-aged-ink-light);
     --bs-dark-text-emphasis: var(--h-parchment);
     --bs-dark-border-subtle: var(--h-aged-ink);
+}
+
+/* Code on a dark band (card-header bg-danger text-white) follows the band's text colour. */
+.text-white code {
+    color: inherit;
 }
 
 /* --- Environment Banner (non-production) --- */
@@ -2905,34 +2911,78 @@ body.city-map-fullscreen main {
     }
 }
 
-/* ── Budget/Finance figure strips (peterdrier/Humans, /Finance year page) ────
-   The accordion header lives inside an <h2>, so the display serif leaked into
-   the numbers and <small> shrank them to ~13px — unreadable for a money
-   figure. These keep the figures in the body face at full size, with the
-   label as a quiet caption above-the-line rather than another sentence. */
-.budget-figures {
+/* ── Budget year page (/Budget/Admin) ─────────────────────────────────────
+   Group headers, the column-label row and category headers share one grid, so
+   the figures line up as columns and each label is printed once per group.
+   The accordion header lives inside an <h2>; the body face keeps the display
+   serif out of the numbers. */
+.budget-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) repeat(4, 8.5rem);
+    column-gap: 0.75rem;
+    align-items: center;
+    width: 100%;
     font-family: var(--h-font-body);
     font-variant-numeric: tabular-nums;
-    font-size: 0.95rem;
 }
 
-.budget-figure + .budget-figure {
-    margin-left: 0.9rem;
-    padding-left: 0.9rem;
-    border-left: 1px solid var(--h-border-light);
+@media (max-width: 767.98px) {
+    .budget-row {
+        grid-template-columns: minmax(0, 1fr) repeat(4, 5.5rem);
+        column-gap: 0.4rem;
+        font-size: 0.8rem;
+    }
 }
 
-.budget-figure-label {
+.budget-num {
+    text-align: right;
+    white-space: nowrap;
+}
+
+/* Clears the accordion chevron (1.25rem wide) plus its button's 1.25rem
+   padding and the row's me-3, so labels sit over the figures. */
+.budget-colhead {
+    width: auto;
+    padding: 0.35rem 3.5rem 0.35rem 1.5rem;
     font-size: 0.7rem;
     font-weight: 700;
     letter-spacing: 0.06em;
     text-transform: uppercase;
     color: var(--h-sepia);
+    background: var(--h-vellum);
+    border-bottom: 1px solid var(--h-border);
 }
 
-.budget-figure-value {
-    font-weight: 600;
-    color: var(--h-aged-ink);
+.budget-capex {
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--h-blue-muted);
+    border: 1px solid var(--h-blue-muted);
+    border-radius: 3px;
+    padding: 0 0.25rem;
+}
+
+.budget-detail {
+    background: var(--h-parchment-light);
+    border-bottom: 1px solid var(--h-border);
+}
+
+.budget-note {
+    font-size: 0.78rem;
+    font-style: italic;
+    color: var(--h-sepia);
+}
+
+.budget-doc-desc {
+    display: block;
+    max-width: 16rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.8rem;
+    color: var(--h-sepia);
 }
 
 /* Holded actuals are a different kind of number from the budget's own — they
@@ -2944,12 +2994,11 @@ body.city-map-fullscreen main {
 
 .budget-subhead {
     font-family: var(--h-font-body);
-    font-size: 0.78rem;
+    font-size: 0.72rem;
     font-weight: 700;
     letter-spacing: 0.08em;
     text-transform: uppercase;
     color: var(--h-sepia);
-    background: var(--h-vellum);
 }
 
 .budget-table {
@@ -3024,4 +3073,86 @@ body.city-map-fullscreen main {
 
 @media (max-width: 767.98px) {
     .stats { grid-template-columns: 1fr; }
+}
+
+/* Member checkout pages (/Tickets/Buy): the price summary beside the form, its lines, the pay button. */
+.buy-total {
+    font-family: var(--h-font-display);
+    font-size: 3rem;
+    font-weight: 700;
+    line-height: 1.05;
+    color: var(--h-aged-ink);
+    font-variant-numeric: tabular-nums;
+}
+
+.buy-lines {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    row-gap: 6px;
+    margin: 16px 0 0;
+    padding-top: 12px;
+    border-top: 1px solid var(--h-border-light);
+    font-variant-numeric: tabular-nums;
+}
+
+.buy-lines dt { font-weight: 400; }
+.buy-lines dd { margin: 0; padding-left: 16px; text-align: right; white-space: nowrap; }
+.buy-lines .buy-lines-sub { border-top: 1px solid var(--h-border-light); padding-top: 6px; }
+
+@media (min-width: 992px) {
+    .buy-summary { position: sticky; top: 24px; }
+}
+
+@media (max-width: 767.98px) {
+    .buy-pay { width: 100%; }
+}
+
+.ticket-code {
+    max-width: 260px;
+    image-rendering: pixelated;
+}
+
+/* /Users/Me: section-contributed cards packed into columns so a short card never leaves a hole beside a tall one. */
+.profile-tiles {
+    columns: 2 300px;
+    column-gap: 1rem;
+}
+.profile-tiles > * { break-inside: avoid; }
+.profile-facts {
+    display: grid;
+    grid-template-columns: max-content minmax(0, 1fr);
+    gap: .4rem 1rem;
+}
+.profile-facts dt { color: var(--h-text-secondary); font-weight: 600; }
+.profile-facts dd { margin: 0; }
+.profile-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: "identity" "main" "settings" "board";
+    gap: 0 1.5rem;
+    align-items: start;
+}
+.profile-layout-identity { grid-area: identity; }
+.profile-layout-main { grid-area: main; }
+.profile-layout-settings { grid-area: settings; }
+.profile-layout-board { grid-area: board; }
+@media (min-width: 992px) {
+    .profile-layout {
+        grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+        grid-template-rows: auto auto 1fr;
+        grid-template-areas: "identity main" "settings main" "board main";
+    }
+}
+/* Fixed date/event widths keep the folded "show all" rows aligned with the recent ones. */
+.profile-cv {
+    display: grid;
+    grid-template-columns: 4.5rem minmax(0, 11rem) minmax(0, 1fr);
+    gap: .35rem 1rem;
+    align-items: baseline;
+}
+
+/* --- Ticket rules on the buy page: legal markdown inside a form, so its headings stay small --- */
+.ticket-rules .document-content :is(h1, h2, h3) {
+    font-size: 1.15rem;
+    margin-top: 1rem;
 }

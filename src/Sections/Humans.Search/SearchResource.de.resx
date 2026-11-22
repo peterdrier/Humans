@@ -33,16 +33,15 @@
   <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
   <data name="Search_FilterAll" xml:space="preserve"><value>Alle</value></data>
   <data name="Search_FilterAriaLabel" xml:space="preserve"><value>Ergebnisse nach Typ filtern</value></data>
-  <data name="Search_FilterCamps" xml:space="preserve"><value>Camps</value></data>
-  <data name="Search_FilterEvents" xml:space="preserve"><value>Veranstaltungen</value></data>
-  <data name="Search_FilterHumans" xml:space="preserve"><value>Humans</value></data>
-  <data name="Search_FilterShifts" xml:space="preserve"><value>Schichten</value></data>
-  <data name="Search_FilterTeams" xml:space="preserve"><value>Teams</value></data>
-  <data name="Search_GlobalHint" xml:space="preserve"><value>Gib mindestens 2 Zeichen ein, um Humans, Teams, Camps und Schichten zu durchsuchen.</value></data>
-  <data name="Search_GlobalHintEvents" xml:space="preserve"><value>Gib mindestens 2 Zeichen ein, um Humans, Teams, Camps, Schichten und Veranstaltungen zu durchsuchen.</value></data>
+  <data name="Search_GlobalHint" xml:space="preserve"><value>Gib mindestens 2 Zeichen ein, um {0} zu durchsuchen.</value></data>
   <data name="Search_GlobalNoResults" xml:space="preserve"><value>Keine Ergebnisse für {0}.</value></data>
-  <data name="Search_GlobalPlaceholder" xml:space="preserve"><value>Humans, Teams, Camps, Schichten durchsuchen…</value></data>
-  <data name="Search_GlobalPlaceholderEvents" xml:space="preserve"><value>Humans, Teams, Camps, Schichten, Veranstaltungen durchsuchen…</value></data>
+  <data name="Search_GlobalPlaceholder" xml:space="preserve"><value>Suchen…</value></data>
   <data name="Search_GlobalTitle" xml:space="preserve"><value>Suche</value></data>
   <data name="Search_QueryAriaLabel" xml:space="preserve"><value>Suchbegriff</value></data>
+  <data name="Search_MinChars" xml:space="preserve">
+    <value>Gib mindestens 2 Zeichen ein, um zu suchen.</value>
+  </data>
+  <data name="Search_Unavailable" xml:space="preserve">
+    <value>Die Suche ist nicht verfügbar. Bitte versuche es erneut.</value>
+  </data>
 </root>

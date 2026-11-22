@@ -1,0 +1,12 @@
+@model AccountPickerModel
+<select name="@Model.Name" id="@Model.Id" class="form-select js-account-picker" aria-label="@Model.AriaLabel">
+    <option value="">— none —</option>
+    @if (Model.Selected is { } stale && Model.Choices.All(c => c.Number != stale))
+    {
+        <option value="@stale" selected>@stale · no longer in the chart</option>
+    }
+    @foreach (var c in Model.Choices.OrderBy(c => c.Number))
+    {
+        <option value="@c.Number" selected="@(c.Number == Model.Selected ? "selected" : null)">@c.Label</option>
+    }
+</select>

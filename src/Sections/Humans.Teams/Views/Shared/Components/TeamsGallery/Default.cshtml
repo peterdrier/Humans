@@ -27,23 +27,6 @@
 <div class="wg-card">
     <div class="wg-card-header">
         <div>
-            <span class="wg-card-name">_ShiftsSummaryCard.cshtml</span>
-            <span class="wg-card-kind kind-pa">Partial</span>
-        </div>
-        <span class="wg-card-path">src/Sections/Humans.Teams/Views/Shared/_ShiftsSummaryCard.cshtml</span>
-    </div>
-    <div class="wg-card-note">Compact shift-staffing card — progress bar, slot count, sub-team note. Synthetic numbers in this gallery.</div>
-    @ParamsBlock(
-        ("@@model", "<code>ShiftsSummaryCardViewModel</code> — TotalSlots, ConfirmedCount, PendingCount, UniqueVolunteerCount, ShiftsUrl, CanManageShifts, IncludesSubTeamCount")
-    )
-    <div class="wg-card-example" style="max-width: 360px;">
-        @await Html.PartialAsync("_ShiftsSummaryCard", Model.ShiftsSummary)
-    </div>
-</div>
-
-<div class="wg-card">
-    <div class="wg-card-header">
-        <div>
             <span class="wg-card-name">_RoleBadge.cshtml</span>
             <span class="wg-card-kind kind-pa">Partial</span>
         </div>
@@ -78,7 +61,7 @@
         @if (Model.TeamId is { } teamId)
         {
             <div class="list-group">
-                <vc:teams-search-result team-id="@teamId" />
+                <vc:teams-search-result key="@teamId" />
             </div>
         }
         else

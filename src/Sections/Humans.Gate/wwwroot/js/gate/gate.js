@@ -2,7 +2,7 @@
 // route-restricted gate account.
 
 export function initGate(refs) {
-    const { form, input, result, override, evaluateUrl, decisionUrl, logoutUrl, token } = refs;
+    const { form, input, result, override, find, evaluateUrl, decisionUrl, undoUrl, findUrl, logoutUrl, token } = refs;
 
     const focusInput = () => { input.value = ''; input.focus(); };
     input.focus();
@@ -10,6 +10,8 @@ export function initGate(refs) {
 
     const overrideController = initOverride();
     const overrideOpen = () => override && !override.classList.contains('d-none');
+    const findController = initFind();
+    const findOpen = () => find && !find.classList.contains('d-none');
 
     // Auto-return to Ready so the previous guest's name never lingers on the shared kiosk. A refusal lingers longer
     // than an admit (it gets explained); the ID-confirm card gets only a long safety timeout. Any tap pushes it back.
@@ -118,7 +120,7 @@ export function initGate(refs) {
 
     // Keep the scan field focused, except while the agent uses the buttons or the override panel.
     document.addEventListener('click', (e) => {
-        if (overrideOpen()) return;
+        if (overrideOpen() || findOpen()) return;
         if (!e.target.closest('.gate-decide') && !e.target.closest('.gate-override')
             && !e.target.closest('[data-override]') && !e.target.closest('[data-child]')) {
             input.focus();
@@ -156,12 +158,17 @@ export function initGate(refs) {
         e.preventDefault();
         clearScanTimer();
         const code = input.value.trim();
-        if (!code || busy || overrideOpen()) return; // ignore scans mid-override
+        if (!code || busy || overrideOpen() || findOpen()) return; // ignore scans mid-override
         // Confirm-tap only: a barcode that encodes "logout" must not knock the terminal offline by itself.
         if (code.toLowerCase() === 'logout') {
             showLogoutConfirm();
             return;
         }
+        await evaluate(code);
+    });
+
+    async function evaluate(code) {
+        if (busy) return;
         busy = true;
         flashNeutral(result);
         try {
@@ -170,7 +177,7 @@ export function initGate(refs) {
             busy = false;
             focusInput();
         }
-    });
+    }
 
     async function render(url, body) {
         clearResetTimer();
@@ -248,6 +255,11 @@ export function initGate(refs) {
             overrideBtn.addEventListener('click', () =>
                 overrideController.open('early', overrideBtn.getAttribute('data-barcode')));
         }
+        const undoBtn = card.querySelector('[data-override="undo"]');
+        if (undoBtn) {
+            undoBtn.addEventListener('click', () =>
+                overrideController.open('undo', undoBtn.getAttribute('data-barcode')));
+        }
 
         const decide = card.querySelector('.gate-decide');
         if (!decide) {
@@ -299,6 +311,102 @@ export function initGate(refs) {
         }
     }
 
+    async function submitUndo(barcode, supervisorPin) {
+        if (busy) return;
+        busy = true;
+        const body = new URLSearchParams();
+        body.set('barcode', barcode);
+        body.set('supervisorPin', supervisorPin);
+        flashNeutral(result);
+        try {
+            await render(undoUrl, body);
+        } finally {
+            busy = false;
+            focusInput();
+        }
+    }
+
+    // The results name guests, so the panel empties whenever it closes and closes itself when left alone.
+    function initFind() {
+        const openBtn = document.getElementById('gate-find-open');
+        if (!find || !openBtn) return { close: () => {} };
+
+        const findForm = find.querySelector('#gate-find-form');
+        const findInput = find.querySelector('#gate-find-input');
+        const results = find.querySelector('#gate-find-results');
+        const IDLE_MS = 60000;
+        const TYPE_QUIET_MS = 400;
+        let idleTimer = null, typeTimer = null, seq = 0;
+
+        const bumpIdle = () => {
+            if (idleTimer) clearTimeout(idleTimer);
+            idleTimer = setTimeout(close, IDLE_MS);
+        };
+
+        function open() {
+            clearResetTimer();
+            if (readyCard) result.replaceChildren(readyCard.cloneNode(true));
+            findInput.value = '';
+            results.replaceChildren();
+            find.classList.remove('d-none');
+            find.setAttribute('aria-hidden', 'false');
+            findInput.focus();
+            bumpIdle();
+        }
+
+        function close() {
+            if (idleTimer) { clearTimeout(idleTimer); idleTimer = null; }
+            if (typeTimer) { clearTimeout(typeTimer); typeTimer = null; }
+            seq++;
+            find.classList.add('d-none');
+            find.setAttribute('aria-hidden', 'true');
+            findInput.value = '';
+            results.replaceChildren();
+            focusInput();
+        }
+
+        async function search() {
+            const q = findInput.value.trim();
+            const mine = ++seq;
+            try {
+                const resp = await fetch(`${findUrl}?q=${encodeURIComponent(q)}`,
+                    { headers: { 'X-Requested-With': 'fetch' }, redirect: 'error' });
+                if (mine !== seq) return;
+                if (!resp.ok) throw new Error(`status ${resp.status}`);
+                const html = await resp.text();
+                if (mine !== seq) return;
+                results.innerHTML = html;
+            } catch (err) {
+                if (mine !== seq) return;
+                console.error('Gate: name search failed', err);
+                results.innerHTML = '<p class="gate-find-hint">Connection problem — search again</p>';
+            }
+        }
+
+        openBtn.addEventListener('click', open);
+        find.querySelector('[data-find-cancel]').addEventListener('click', close);
+        find.addEventListener('pointerdown', bumpIdle, { passive: true });
+        findForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            if (typeTimer) { clearTimeout(typeTimer); typeTimer = null; }
+            search();
+        });
+        findInput.addEventListener('input', () => {
+            bumpIdle();
+            if (typeTimer) clearTimeout(typeTimer);
+            typeTimer = setTimeout(search, TYPE_QUIET_MS);
+        });
+        results.addEventListener('click', (e) => {
+            const pick = e.target.closest('[data-barcode]');
+            if (!pick) return;
+            const code = pick.getAttribute('data-barcode');
+            close();
+            evaluate(code);
+        });
+
+        return { close };
+    }
+
     function initOverride() {
         if (!override) return { open: () => {} };
 
@@ -318,9 +426,11 @@ export function initGate(refs) {
             clearResetTimer(); // hold the auto-return while the supervisor enters the PIN
             mode = nextMode;
             barcode = nextBarcode;
-            if (titleEl) titleEl.textContent = mode === 'child' ? 'Admit: child without ID' : 'Supervisor override';
+            if (titleEl) titleEl.textContent = mode === 'child' ? 'Admit: child without ID'
+                : mode === 'undo' ? 'Undo check-in' : 'Supervisor override';
             if (promptEl) promptEl.textContent = mode === 'child'
                 ? 'Admit this child with the accompanying adult?'
+                : mode === 'undo' ? 'Undo this admit? Take the wristband back.'
                 : 'Admit this guest before general entry?';
             keypad.reset();
             override.classList.remove('d-none');
@@ -345,6 +455,11 @@ export function initGate(refs) {
 
         function submit(pin) {
             if (!barcode) return;
+            if (mode === 'undo') {
+                close();
+                submitUndo(barcode, pin);
+                return;
+            }
             const opts = { supervisorPin: pin };
             if (mode === 'child') opts.childWithAdult = true; else opts.overrideEarly = true;
             close();

@@ -1,0 +1,1517 @@
+{
+  "reviewedAt": "2026-11-05",
+  "routes": {
+    "/": {
+      "safe": true,
+      "reason": "may close a lapsed assembly vote early, exactly as the hourly lapse job would (AssemblyVoteService.cs:81,341); accepted"
+    },
+    "/About": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/About/Staff": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Account/AccessDenied": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Account/ExternalLoginCallback": {
+      "safe": false,
+      "reason": "Completes external login, signs in/links account, sets auth cookie (AccountController.cs:95)"
+    },
+    "/Account/GateLogin": {
+      "safe": true,
+      "reason": "read-only login form view"
+    },
+    "/Account/Login": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Account/MagicLinkConfirm": {
+      "safe": true,
+      "reason": "read-only landing page; sign-in is POST"
+    },
+    "/Account/MagicLinkSignup": {
+      "safe": true,
+      "reason": "read-only; VerifySignupToken does not consume the token"
+    },
+    "/Admin": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Agent/Admin": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Agent/Admin/Conversations/{id}/Prompt": {
+      "safe": true,
+      "reason": "read-only; calls Anthropic count_tokens, no state change"
+    },
+    "/Agent/Admin/Status": {
+      "safe": true,
+      "reason": "read-only; reads Anthropic balance API, no state change"
+    },
+    "/Agent/Conversation/{id}": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Agent/Conversations": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Agent/Conversations/{id}": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/AuditLog": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Auth/Admin/Roles": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Auth/Admin/{id}/Roles/Add": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Backdoor": {
+      "safe": true,
+      "reason": "read-only key list; TempData new-key only after POST"
+    },
+    "/Barrios": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Barrios/Admin": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Barrios/Admin/Compliance": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Barrios/Admin/Export": {
+      "safe": false,
+      "reason": "Audited CSV export CampsExported (CampAdminController.cs:217; CampCsvExportBuilder.cs:74)"
+    },
+    "/Barrios/Admin/Roles": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Barrios/Admin/Roles/Create": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Barrios/Admin/Roles/{id}/Edit": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Barrios/Admin/Roles/{slug}": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Barrios/Register": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Barrios/{slug}": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Barrios/{slug}/Contact": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Barrios/{slug}/Edit": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Barrios/{slug}/Edit/Members": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Barrios/{slug}/Season/{eventSettingsId}": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Budget": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Budget/Admin": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Budget/Admin/AuditLog": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Budget/Admin/Categories/{id}": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Budget/Admin/Years": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Budget/Admin/Years/{id}": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Budget/Category/{id}": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Budget/Summary": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Calendar": {
+      "safe": true,
+      "reason": "read-only; GET never mints iCal token (CalendarController.cs:50)"
+    },
+    "/Calendar/Agenda": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Calendar/Event/Create": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Calendar/Event/{id}": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Calendar/Event/{id}/Edit": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Calendar/Event/{id}/Occurrence/{originalStartUtc}/Edit": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Calendar/List": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Calendar/Team/{teamId}": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Camp/{slug}/Containers": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Campaigns/Admin": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Campaigns/Admin/Create": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Campaigns/Admin/Edit/{id}": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Campaigns/Admin/{id}": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Campaigns/Admin/{id}/SendWave": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Camps": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Camps/Admin": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Camps/Admin/Compliance": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Camps/Admin/Export": {
+      "safe": false,
+      "reason": "Audited CSV export CampsExported (CampAdminController.cs:217; CampCsvExportBuilder.cs:74)"
+    },
+    "/Camps/Admin/Roles": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Camps/Admin/Roles/Create": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Camps/Admin/Roles/{id}/Edit": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Camps/Admin/Roles/{slug}": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Camps/Register": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Camps/{slug}": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Camps/{slug}/Contact": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Camps/{slug}/Edit": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Camps/{slug}/Edit/Members": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Camps/{slug}/Season/{eventSettingsId}": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Cantina/Dietary": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Cantina/Roster": {
+      "safe": true,
+      "reason": "read-only; no disclosure object passed, so no audit"
+    },
+    "/Cantina/Roster/Csv": {
+      "safe": false,
+      "reason": "Audited export CantinaRosterExported, file download (CantinaController.cs:65)"
+    },
+    "/Cantina/Roster/Day": {
+      "safe": true,
+      "reason": "read-only; no disclosure object passed, so no audit"
+    },
+    "/Cantina/Roster/Day/Csv": {
+      "safe": false,
+      "reason": "Audited export CantinaRosterExported, file download (CantinaController.cs:111)"
+    },
+    "/CityPlanning": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/CityPlanning/BarrioMap": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/CityPlanning/BarrioMap/Admin": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/CityPlanning/BarrioMap/Admin/Containers/{year}": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/CityPlanning/BarrioMap/Admin/DownloadLimitZone": {
+      "safe": false,
+      "reason": "GeoJSON file download (CityPlanningController.cs:171)"
+    },
+    "/CityPlanning/BarrioMap/Admin/DownloadOfficialZones": {
+      "safe": false,
+      "reason": "GeoJSON file download (CityPlanningController.cs:175)"
+    },
+    "/CityPlanning/ContainerMap/{year}": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/ColorPalette": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Consent": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Consent/MyData": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Consent/Review": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Consent/ReviewQueue": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Consent/ReviewQueue/{userId}": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Debug/CacheStats": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Debug/ClientStats": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Debug/Configuration": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Debug/Database": {
+      "safe": true,
+      "reason": "read-only pg_stat queries"
+    },
+    "/Debug/DataMigrations": {
+      "safe": true,
+      "reason": "read-only status; apply is POST"
+    },
+    "/Debug/DbStats": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Debug/DbVersion": {
+      "safe": true,
+      "reason": "read-only JSON migration status"
+    },
+    "/Debug/FormatGallery": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Debug/HttpErrors": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Debug/Logs": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Debug/Maintenance": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Debug/Sections": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Debug/Timings": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Debug/Translations": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Debug/Users": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Debug/WidgetGallery": {
+      "safe": true,
+      "reason": "may close a lapsed assembly vote early, exactly as the hourly lapse job would (AssemblyVoteService.cs:81,341); accepted"
+    },
+    "/Email": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Email/Admin/{id}/Outbox": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Email/CommunicationPreferences": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Email/EmailOutbox": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Email/EmailOutbox/BackfillDailyCounts": {
+      "safe": true,
+      "reason": "read-only preview; backfill is POST"
+    },
+    "/Email/EmailPreview": {
+      "safe": true,
+      "reason": "read-only; renders sample emails, sends nothing"
+    },
+    "/Email/Guest/CommunicationPreferences": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Email/Outbox": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Email/SendMessage/{id}": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Email/Unsubscribe/{token}": {
+      "safe": true,
+      "reason": "read-only token validation; confirm is POST"
+    },
+    "/Events/Admin/Categories": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Events/Admin/Categories/Create": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Events/Admin/Categories/{id}/Edit": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Events/Admin/Venues": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Events/Admin/Venues/Create": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Events/Admin/Venues/{id}/Edit": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Events/Barrio/{slug}/BulkUpload/Template": {
+      "safe": false,
+      "reason": "CSV template file download (EventsController.cs:758)"
+    },
+    "/Events/Barrio/{slug}/Submit": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Events/Barrio/{slug}/{eventId}/Edit": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Events/Browse": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Events/Dashboard": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Events/Export": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Events/Export/Csv": {
+      "safe": false,
+      "reason": "Audited CSV export EventGuideExported (EventsExportController.cs:30; Events Service.cs:568)"
+    },
+    "/Events/Export/PrintGuide": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Events/Moderate": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Events/Moderate/{eventId}/Edit": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Events/MySubmissions": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Events/Schedule": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Events/Submit": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Events/Submit/{eventId}/Edit": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Expenses": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Expenses/Attachment/{attachmentId}": {
+      "safe": false,
+      "reason": "File download of receipt (ExpensesController.cs:612)"
+    },
+    "/Expenses/Attachment/{attachmentId}/View": {
+      "safe": false,
+      "reason": "Inline view falls back to file download for other types (ExpensesController.cs:616)"
+    },
+    "/Expenses/New": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Expenses/Review": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Expenses/{id}": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Expenses/{id}/Edit": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Expenses/{id}/Iban": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Expenses/{id}/Lines/New": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Expenses/{id}/Lines/{lineId}": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Expenses/{id}/Lines/{lineId}/Proofs": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Finance": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Finance/CashFlow": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Finance/Creditors": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Finance/Creditors/{accountNum}": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Finance/ExpenseRecon": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Finance/HoldedAccounts": {
+      "safe": true,
+      "reason": "read-only; provisioning plan only, live Holded reads"
+    },
+    "/Finance/HoldedDuplicates": {
+      "safe": true,
+      "reason": "read-only; builds delete plan, live Holded reads; deletion is POST"
+    },
+    "/Finance/HoldedUnmatched": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Finance/Pleo": {
+      "safe": true,
+      "reason": "read-only; live Holded/Pleo GET calls, nothing persisted"
+    },
+    "/Finance/Sepa": {
+      "safe": true,
+      "reason": "read-only; live Holded bank-feed reads"
+    },
+    "/Gate": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Gate/Admin": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Gate/Admin/VendorCheckInBackfill": {
+      "safe": true,
+      "reason": "read-only preview; enqueueing is a separate POST (GateService.cs:310)"
+    },
+    "/Gate/Claim": {
+      "safe": true,
+      "reason": "read-only roster; PIN/stamp logic is POST-only"
+    },
+    "/Gate/Evaluate": {
+      "safe": true,
+      "reason": "read-only pre-check; GateService.EvaluateAsync records nothing (GateService.cs:54)"
+    },
+    "/Gate/Leaderboard": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Gate/Search": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Gdpr/Deletion": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Gdpr/DownloadData": {
+      "safe": false,
+      "reason": "Personal data export file download (MemberDataController.cs:54)"
+    },
+    "/Gdpr/Guest/DownloadData": {
+      "safe": false,
+      "reason": "Personal data export file download (GuestDataController.cs:26)"
+    },
+    "/Gdpr/Status": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Google": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Google/Accounts": {
+      "safe": true,
+      "reason": "read-only; Google Directory list, TempData read-once creds"
+    },
+    "/Google/ActivityLog": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Google/Admin/SyncHistoryMigration": {
+      "safe": true,
+      "reason": "read-only preview (PreviewAsync apply:false)"
+    },
+    "/Google/AllGroups": {
+      "safe": true,
+      "reason": "read-only; Google group list and settings GETs"
+    },
+    "/Google/EmailFlagViolations": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Google/EmailRenames": {
+      "safe": true,
+      "reason": "read-only; TempData result, redirects when empty"
+    },
+    "/Google/GroupSettingsResults": {
+      "safe": true,
+      "reason": "read-only; TempData result, redirects when empty"
+    },
+    "/Google/Human/{id}": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Google/Resource/{id}": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Google/Sync": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Google/SyncOutbox": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Google/SyncResults": {
+      "safe": true,
+      "reason": "read-only; TempData report, redirects when empty"
+    },
+    "/Google/Teams/{slug}/Resources": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Governance": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Governance/Applications": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Governance/Applications/Admin": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Governance/Applications/Admin/TermExpiry": {
+      "safe": true,
+      "reason": "read-only drift report; fix is POST"
+    },
+    "/Governance/Applications/Admin/{id}": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Governance/Applications/Create": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Governance/Applications/Details/{id}": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Governance/BoardVoting": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Governance/BoardVoting/{applicationId}": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Governance/Votes": {
+      "safe": true,
+      "reason": "may close a lapsed assembly vote early, exactly as the hourly lapse job would (AssemblyVoteService.cs:81,341); accepted"
+    },
+    "/Governance/Votes/Admin": {
+      "safe": true,
+      "reason": "may close a lapsed assembly vote early, exactly as the hourly lapse job would (AssemblyVoteService.cs:81,341); accepted"
+    },
+    "/Governance/Votes/Admin/Create": {
+      "safe": true,
+      "reason": "read-only blank form"
+    },
+    "/Governance/Votes/Admin/{voteId}/Ballots": {
+      "safe": false,
+      "reason": "Audits AssemblyBallotsViewed on every view (AssemblyVoteService.cs:894)"
+    },
+    "/Governance/Votes/Admin/{voteId}/Edit": {
+      "safe": true,
+      "reason": "read-only; GetDraftAsync does not settle"
+    },
+    "/Governance/Votes/Admin/{voteId}/Peek": {
+      "safe": false,
+      "reason": "Audited peek at embargoed live tally, AssemblyVotePeeked (AssemblyVoteService.cs:877)"
+    },
+    "/Governance/Votes/{voteId}": {
+      "safe": true,
+      "reason": "may close a lapsed assembly vote early, exactly as the hourly lapse job would (AssemblyVoteService.cs:81,341); accepted"
+    },
+    "/Governance/Votes/{voteId}/Results": {
+      "safe": false,
+      "reason": "Board/Admin view audits AssemblyBallotsViewed; also settles vote (AssemblyVoteService.cs:473,499)"
+    },
+    "/Governance/Votes/{voteId}/Results.csv": {
+      "safe": false,
+      "reason": "CSV download; also settles vote (GovernanceVotesController.cs:140; AssemblyVoteService.cs:473)"
+    },
+    "/Grants/Admin": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Grants/Admin/New": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Grants/Admin/{programId}": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Grants/Admin/{programId}/Edit": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Guest": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Guide": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Guide/{name}": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Holded": {
+      "safe": false,
+      "reason": "Persists drained API-call log rows; calls Holded usage API (Holded Service.cs:351,478)"
+    },
+    "/Holded/Accounts": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Holded/Accounts/{number}": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Holded/Calls": {
+      "safe": false,
+      "reason": "Persists drained API-call log rows to DB (Holded Service.cs:390,478)"
+    },
+    "/Holded/Entries/{number}": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Holded/Purchases": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Home/Error": {
+      "safe": true,
+      "reason": "read-only error view"
+    },
+    "/Home/Privacy": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Issues": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Issues/New": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Issues/{id}": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Issues/{id}/Screenshot": {
+      "safe": true,
+      "reason": "read-only inline image"
+    },
+    "/Legal": {
+      "safe": true,
+      "reason": "read-only; GitHub fetch cached in memory"
+    },
+    "/Legal/Admin/Documents": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Legal/Admin/Documents/Create": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Legal/Admin/Documents/{id}/Edit": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/LowIncome/Admin": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/MailerLite/Admin": {
+      "safe": true,
+      "reason": "read-only; MailerLite GET calls"
+    },
+    "/MailerLite/Admin/Audiences/{key}/Debug": {
+      "safe": true,
+      "reason": "read-only; MailerLite GET calls"
+    },
+    "/MailerLite/Admin/Import": {
+      "safe": true,
+      "reason": "read-only plan; MailerLite GET calls, TempData cookie only"
+    },
+    "/Notifications": {
+      "safe": true,
+      "reason": "read-only inbox; does not mark read"
+    },
+    "/Notifications/ClickThrough/{id}": {
+      "safe": false,
+      "reason": "Marks notification read before redirect (NotificationsController.cs:154)"
+    },
+    "/Notifications/Popup": {
+      "safe": true,
+      "reason": "read-only popup; does not mark read"
+    },
+    "/OnboardingWidget": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/OnboardingWidget/Consents": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/OnboardingWidget/Names": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/OnboardingWidget/Shifts": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Pleo": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Pleo/Categories": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Pleo/Entries": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Pleo/Entries/{id}": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Pleo/Entries/{id}/Receipts/{receiptId}": {
+      "safe": true,
+      "reason": "read-only inline receipt fetch from Pleo"
+    },
+    "/Preapprovals": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Preapprovals/Admin": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Preapprovals/Admin/New": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Preapprovals/Admin/{programId}": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Preapprovals/Admin/{programId}/Edit": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Preapprovals/{programId}": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Profile": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Profile/Admin/EmailProblems": {
+      "safe": true,
+      "reason": "read-only scan; backfill is POST"
+    },
+    "/Profile/Me": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Profile/Me/Edit": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Profile/Me/Emails": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Profile/Me/Emails/Verify": {
+      "safe": false,
+      "reason": "Consumes token and marks email verified (ProfileEmailsController.cs:137)"
+    },
+    "/Profile/Me/Medical": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Profile/Picture": {
+      "safe": true,
+      "reason": "read-only inline image"
+    },
+    "/Profile/Search": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Profile/{id}": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Profile/{id}/Admin/Emails": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Profile/{id}/Popover": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Profile/{id}/PublicPopover": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Rideshare": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Rideshare/Admin": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Rideshare/Admin/Day": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Rideshare/Mine": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Rideshare/Offer": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Rideshare/Request": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Scanner": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Scanner/Barcode": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Scanner/Tickets": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Scanner/Tickets/Card": {
+      "safe": true,
+      "reason": "read-only ticket lookup"
+    },
+    "/Search": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Settings": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Shifts": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Shifts/Admin/EarlyEntry": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Shifts/Admin/Workload": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Shifts/Dashboard": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Shifts/Dashboard/PostEventStats": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Shifts/Dashboard/SearchVolunteers": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Shifts/Dashboard/VolunteerTracking": {
+      "safe": true,
+      "reason": "read-only tracking view"
+    },
+    "/Shifts/Dashboard/VolunteerTracking/ExportXlsx": {
+      "safe": false,
+      "reason": "Audited XLSX export VolunteerTrackingExported (VolunteerTrackingController.cs:103)"
+    },
+    "/Shifts/Mine": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Shifts/OrphanSignups": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Shifts/ShiftInfo": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Shifts/Summary": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Shifts/Summary/{teamSlug}": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Shifts/Summary/{teamSlug}/{rotaGuid}": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Store": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Store/Admin/Catalog": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Store/Admin/Catalog/Edit": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Store/Admin/Catalog/Edit/{id}": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Store/Admin/OrderYears": {
+      "safe": true,
+      "reason": "read-only repair report; repair is POST"
+    },
+    "/Store/Admin/PaymentMethods": {
+      "safe": true,
+      "reason": "read-only repair report; repair is POST"
+    },
+    "/Store/Admin/Payments": {
+      "safe": true,
+      "reason": "read-only; Stripe list GET, nothing recorded"
+    },
+    "/Store/Admin/Summary": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Store/Order/{id}": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Stripe": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Stripe/Payouts": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Stripe/Reserves": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Stripe/Transactions": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Stripe/Transactions/{id}": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Survey/Admin": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Survey/Admin/Create": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Survey/Admin/Edit/{id}": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Survey/Admin/Official/{id}": {
+      "safe": true,
+      "reason": "read-only; redirects to survey link"
+    },
+    "/Survey/Admin/Preview/{id}": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Survey/Admin/Preview/{id}/Email": {
+      "safe": true,
+      "reason": "read-only render of invitation; sending is POST"
+    },
+    "/Survey/Admin/Preview/{id}/Page": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Survey/Admin/Preview/{id}/ThankYou": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Survey/Admin/Queue": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Survey/Admin/Results/{id}": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Survey/Admin/Results/{id}/Export.csv": {
+      "safe": false,
+      "reason": "Audited response export SurveyResponsesExported (SurveyAdminController.cs:559; SurveyResultsReader.cs:177)"
+    },
+    "/Survey/Admin/Results/{id}/Export.json": {
+      "safe": false,
+      "reason": "Audited response export SurveyResponsesExported (SurveyAdminController.cs:574; SurveyResultsReader.cs:177)"
+    },
+    "/Survey/Admin/Send/{id}": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Survey/Answer": {
+      "safe": true,
+      "reason": "session-only wizard state; funnel Started flag is POST (SurveyController.cs:31)"
+    },
+    "/Survey/Answer/Page": {
+      "safe": true,
+      "reason": "session-only wizard state, no DB write"
+    },
+    "/Survey/Answer/ThankYou": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Survey/{slug}": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Survey/{slug}/Page": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Survey/{slug}/ThankYou": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Teams": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Teams/Birthdays": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Teams/Create": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Teams/Map": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Teams/My": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Teams/Roster": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Teams/Summary": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Teams/Tree": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Teams/{id}/Edit": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Teams/{slug}": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Teams/{slug}/EarlyEntry": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Teams/{slug}/EarlyEntry/LookupTicket": {
+      "safe": true,
+      "reason": "read-only ticket lookup JSON"
+    },
+    "/Teams/{slug}/EditPage": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Teams/{slug}/Join": {
+      "safe": true,
+      "reason": "read-only join form; join is POST"
+    },
+    "/Teams/{slug}/Members": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Teams/{slug}/Members/Search": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Teams/{slug}/Roles": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Teams/{slug}/Roles/SearchMembers": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Teams/{slug}/Roster": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Teams/{slug}/Shifts": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Teams/{slug}/Shifts/Email": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Teams/{slug}/Shifts/Rotas/{rotaId}/Email": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Teams/{slug}/Shifts/SearchVolunteers": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Teams/{slug}/Shifts/Tags/Search": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Teams/{teamId}/GoogleResources": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Teams/{teamId}/SendMessage/{id}": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Tickets": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Tickets/Admin/Contacts": {
+      "safe": true,
+      "reason": "read-only import preview; apply is POST"
+    },
+    "/Tickets/Admin/Gate": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Tickets/Admin/Onsite": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Tickets/Admin/Transfers": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Tickets/Admin/Transfers/Detail/{id}": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Tickets/Attendees": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Tickets/Codes": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Tickets/Export/AccountantReport": {
+      "safe": false,
+      "reason": "CSV file download (TicketController.cs:310)"
+    },
+    "/Tickets/Export/Attendees": {
+      "safe": false,
+      "reason": "Audited export TicketAttendeesExported, file download (TicketController.cs:251)"
+    },
+    "/Tickets/Export/Donations": {
+      "safe": false,
+      "reason": "Audited export TicketDonationsExported, file download (TicketController.cs:337)"
+    },
+    "/Tickets/Export/Orders": {
+      "safe": false,
+      "reason": "Audited export TicketOrdersExported, file download (TicketController.cs:272)"
+    },
+    "/Tickets/Orders": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Tickets/Participation/Backfill": {
+      "safe": true,
+      "reason": "read-only form; backfill is POST"
+    },
+    "/Tickets/SalesAggregates": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Tickets/Transfers": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Tickets/WhoHasntBought": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Tour": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Users/Admin": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Users/Admin/AccountMerges": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Users/Admin/Audience": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Users/Admin/{id}": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Welcome": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Workgroups": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Workgroups/Admin": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Workgroups/Admin/RegisterExisting": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Workgroups/Admin/Settings": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Workgroups/Apply": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Workgroups/{slug}": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Workgroups/{slug}/Documents/Create": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Workgroups/{slug}/Documents/{id}": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Workgroups/{slug}/Documents/{id}/Edit": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Workgroups/{slug}/Edit": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Workgroups/{slug}/Log/Add": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Workgroups/{slug}/Log/{id}/Edit": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Workgroups/{slug}/Meetings/Create": {
+      "safe": true,
+      "reason": "read-only"
+    },
+    "/Workgroups/{slug}/Meetings/{id}/Edit": {
+      "safe": true,
+      "reason": "read-only"
+    }
+  }
+}

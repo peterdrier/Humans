@@ -107,7 +107,8 @@ Stored as string (`HasConversion<string>()`, max length 20).
 - Campaign status follows: Draft then Active then Completed. `ActivateAsync` requires Draft + at least one code; `CompleteAsync` requires Active; `SendWaveAsync` requires Active. Wrong-state attempts (double-clicks, stale forms, the Send Wave GET on a non-Active campaign) return error results the controller surfaces as an error toast + redirect, never a 500.
 - Vendor-generated codes can only be created while the campaign is in Draft status (service enforces). CSV code import has no service-side status guard — the Campaign Detail view exposes the import form in both Draft and Active. Code uploads are capped at 1 MB and their reads observe request cancellation. CSV files use the shared CSV reader, with one column and no header; quoted commas, quotes and newlines remain part of one code. Malformed or multi-column CSV is refused before importing any row. TXT retains one literal code per line, including commas and quotes. Trimmed codes are limited to 200 Unicode characters, matching the existing database column; an oversized code refuses the entire import before persistence or success audit. Both upload and generation actions surface import refusals as errors.
 - Code-generation POSTs require an explicitly submitted discount value (including zero), resolve the actor, then reject binding errors with HTTP 400 and a Warning before vendor generation, local import or audit. Explicitly bound zero values keep the existing service behavior.
-- Undefined discount kinds, including numeric enum values, return InvalidDiscountType before vendor generation or code import.
+- Code generation accepts whole percentages from 0 through 100, or nonnegative fixed euro amounts with at most two decimal places that fit the euro-to-cent conversion. Invalid values return `InvalidDiscountValue` before vendor generation, code import or audit; the controller shows operator error feedback. Explicit zero remains valid for both kinds.
+- Undefined discount kinds, including numeric enum values, return InvalidDiscountType before vendor generation or code import. Live generation uses TicketTailor’s form-encoded discount resource, mapping percentage values and euro amounts to their distinct wire fields. A successful vendor response without a usable code fails generation rather than silently importing a partial result.
 - Each code is unique per campaign (DB-enforced via unique `(CampaignId, Code)` index) and can be assigned to at most one human (DB-enforced via unique `CampaignCodeId` on grants).
 - Each human can hold at most one grant per campaign (DB-enforced via unique `(CampaignId, UserId)` on grants).
 - Wave allocation pulls available codes ordered by `CampaignCode.ImportOrder` so batch order is stable and reproducible.
@@ -127,9 +128,9 @@ Stored as string (`HasConversion<string>()`, max length 20).
 
 - Campaign notice titles fit the 200-Unicode-character notification limit; an oversized title is shortened with an ellipsis and retained in full before the body text.
 - When a campaign wave is sent (`SendWaveAsync`), emails are queued to the outbox via `IEmailService.SendAsync(CampaignsEmails.CampaignCode(...))` for each eligible human, and a `CampaignReceived` in-app notification is dispatched (best-effort) to every recipient who actually received a grant. Copy is rendered from Campaigns resources in each recipient’s supported preferred language (English fallback), grouped by language with isolated dispatch failures. The notice links to My Codes in `/Profile/Me`, where the persisted grant is available even if email enqueue failed; it never promises email delivery. Campaigns sends full copy to Notifications, which bounds stored preview titles to 200 Unicode characters and preserves oversized titles in the body.
-- Legacy campaign-only unsubscribe tokens map to `MessageCategory.Marketing`, which is opt-outable; `ICommunicationPreferenceService.UpdatePreferenceAsync` flips that preference as normal. There is no live path to a `CampaignCodes` unsubscribe token — `OutboxEmailService` never generates one for an always-on category — and `UpdatePreferenceAsync`/`GuestAccountController.CanUpdatePreference` would refuse the change regardless. (The legacy `User.UnsubscribedFromCampaigns` boolean still exists on the entity for GDPR export but is not read by any active gate.)
-- When `TicketSyncService` detects a granted code redeemed in a ticket purchase, it calls `ICampaignWrite.MarkGrantsRedeemedAsync` to set `CampaignGrant.RedeemedAt`.
-- When an enqueue throws during `SendWaveAsync`, the error is logged for that grant and the wave goes on; an admin can Resend that grant. A single-grant resend propagates recipient lookup, message preparation and enqueue failures to the admin, so a resend that queued nothing never reports success.
+- Legacy campaign-only unsubscribe tokens map to `MessageCategory.Marketing`, which is opt-outable; `ICommunicationPreferenceService.UpdatePreferenceAsync` flips that preference as normal. There is no live path to a `CampaignCodes` unsubscribe token — `OutboxEmailService` never generates one for an always-on category — and `UpdatePreferenceAsync`/`GuestAccountController.CanUpdatePreference` would refuse the change regardless.
+- `TicketSyncService` passes the complete order-code snapshot to `ICampaignWrite.MarkGrantsRedeemedAsync`. Existing redeemed grants count toward each code's purchase count, so repeated snapshots never consume additional grants. Timestamp matches are consumed first so newly arrived purchases keep their own dates even when the snapshot order changes; identical timestamps retain their multiplicity. Remaining purchases select unredeemed grants case-insensitively from Active/Completed campaigns, newest campaign first. Existing redemption dates are never cleared or rewritten, including when a snapshot changes or shrinks.
+- When an enqueue throws during `SendWaveAsync`, the error is logged for that grant and the wave goes on; an admin can Resend that grant. The wave result carries the enqueue-failure count separately from assigned grants. Any enqueue failure produces an admin error message with both counts and outbox/Resend guidance rather than a full-success toast; grants and in-app notices remain available. This adds no persisted delivery status. A single-grant resend propagates recipient lookup, message preparation and enqueue failures to the admin, so a resend that queued nothing never reports success.
 - When an account merge accepts, `IUserMerge.ReassignAsync` (implemented by `CampaignService`) re-FKs `CampaignGrant.UserId` from source to target (collapsing duplicates where target already holds a grant for the same campaign). Called only by `IAccountMergeService.AcceptAsync` (Users section).
 
 Admin mutations write audit entries after the business save, attributed to the
@@ -152,24 +153,25 @@ email template is copied into audit. Refused mutations emit no success entry.
 
 ## Architecture
 
-`CampaignService` owns campaign configuration, lifecycle, code imports, tracking and personal-data coordination. Its internal `CampaignWaveDelivery` owns the complete preview/send/resend job: team targeting, per-grant persistence and audit, email enqueueing and localized in-app notices. The existing management interface delegates to that owner; it adds no public contract or DI registration.
+`CampaignService` owns campaign configuration, lifecycle and personal-data coordination. `CampaignService` owns manual code import and vendor generation through Tickets, reusing the campaign reader. Draft checks, input validation, case-insensitive duplicate detection, Unicode length limits, import order, persistence/audit order and cancellation are unchanged. `CampaignService` owns grant summaries, campaign edit/list/detail snapshots, send-page composition and code tracking. The send page calls the existing wave-preview owner directly; read order, active-team filtering, grant counts, identity enrichment and cancellation are unchanged. `CampaignService` owns the complete preview/send/resend job: team targeting, per-grant persistence and audit, email enqueueing and localized in-app notices. The existing management interface delegates to that owner; it adds no public contract or DI registration.
 
-**Owning services:** `CampaignService`, internal `CampaignWaveDelivery`
+**Owning services:** `CampaignService`
 **Owned tables:** `campaigns`, `campaign_codes`, `campaign_grants`
 **Status:** (A) Own project. Everything but `Section` is `internal` (HUM0034); the cross-section surface is the `Contracts/` folder (namespace `Humans.Campaigns.Contracts`).
 
 ### Public contract
 
-| Public interface | Methods | Notes |
-|---|---:|---|
-| `ICampaignService` | 3 | Read contract: `GetCodeTrackingAsync` (Tickets); `GetActiveOrCompletedGrantsForUserAsync` and `GetAllGrantsForUserAsync` are read by Campaigns' own member and admin cards (below). DTOs only. |
-| `ICampaignWrite` | 1 | `MarkGrantsRedeemedAsync` (Tickets sync marks redeemed codes). Unavoidable: it is driven by another section's job. |
+| Public interface | Notes |
+|---|---|
+| `ICampaignService` | `GetCodeTrackingAsync` (Tickets). DTOs only. |
+| `ICampaignWrite` | `MarkGrantsRedeemedAsync` (Tickets sync marks redeemed codes). Unavoidable: it is driven by another section's job. |
 
-`CampaignService` implements the internal `ICampaignManagement` (`ICampaignService` + `ICampaignWrite`); DI registers each face to the same instance. Campaign/code CRUD, activation, wave sending and resend are not public: the section's controller injects the concrete service.
+`CampaignService` implements the internal `ICampaignManagement` (`ICampaignService` + `ICampaignWrite`); DI registers each face to the same instance. The two grant-summary reads belong to management for its own cards. `CampaignGrantSummary` is internal under `Services/Dtos`, shared by this section's detail page and cards. Campaign/code CRUD, activation, wave sending and resend are not public: the section's controller injects the concrete service.
 
 - `CampaignService` lives in `Humans.Campaigns.Services` and depends only on Application-layer abstractions.
 - `ICampaignRepository` (interface `src/Sections/Humans.Campaigns/Data/ICampaignRepository.cs`, impl `src/Sections/Humans.Campaigns/Data/CampaignRepository.cs`) is the only file that touches this section's tables via `DbContext`.
 - **Decorator decision — no caching decorator.** Admin-only, low write/read volume.
+- Controller and view-component reads observe request cancellation, including reloading the edit form after a validation refusal.
 - **Cross-section reads** route through `ITeamService.GetTeamsAsync` / `GetTeamAsync` and `IUserService.GetUserInfoAsync` / `GetUserInfosAsync` for recipient addresses and display data. Outbound email queueing goes through `IEmailService.SendAsync` with `CampaignsEmails.CampaignCode` (the outbox service owns the email_outbox_messages table and applies opt-out/unsubscribe policy itself — `CampaignService` does not call `ICommunicationPreferenceService`).
 - **No cross-domain navs:** `Campaign.CreatedByUserId` and `CampaignGrant.UserId` are bare Guid columns — no nav property, no DB-level FK constraint: the section assembly cannot name `User`, so `CampaignConfiguration` / `CampaignGrantConfiguration` declare no relationship at all. All callers — including `TicketQueryService.GetCodeTrackingDataAsync` via `ICampaignService.GetCodeTrackingAsync` — resolve display names through `IUserService`.
 - **Architecture test** — `tests/Humans.Campaigns.Tests/Architecture/CampaignsArchitectureTests.cs`, alongside the cross-cutting analyzer coverage (`HUM0009`, `HUM0034`).
@@ -183,7 +185,7 @@ email template is copied into audit. Refused mutations emit no success entry.
 | `UserPartSlots.Profile` | `MyCodesViewComponent` ("My Codes", member-facing, `Campaigns_MyCodes_*` keys in all supported cultures) | Own profile only |
 | `UserPartSlots.AdminDetail` | `CampaignCodesViewComponent` ("Campaign Codes", English, admin-only) | `/Users/Admin/{id}`, `UsersPolicies.Read` |
 
-Both render nothing when the member has no grants. The cards add no routes, nav entries or data; they are reached from the profile and admin-detail pages.
+Both components are internal and inject existing management. The host discovers them through its section feature provider and invokes them by type through the user-part slots. Their audience checks, request cancellation and rendering are unchanged. Both render nothing when the member has no grants. The cards add no routes, nav entries or data; they are reached from the profile and admin-detail pages.
 
 ### Touch-and-clean guidance
 

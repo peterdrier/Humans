@@ -1,14 +1,17 @@
 using Humans.Auth.Contracts;
 using Humans.Base.Caching;
+using Humans.Base.Constants;
 using Microsoft.Extensions.DependencyInjection;
 using NodaTime;
+using Humans.Teams.Contracts;
 
 namespace Humans.Auth.Services;
 
 /// <summary>
-/// Caches every <c>role_assignments</c> row. <c>RoleAssignmentService</c> clears it right after each repository
+/// Caches every <c>auth_role_assignments</c> row. <c>RoleAssignmentService</c> clears it right after each repository
 /// write (merge and erasure included, which bypass this decorator), because the Board team sync inside
-/// Assign/End must read the new rows.
+/// Assign/End must read the new rows. This decorator also evicts after successful or uncertain writes;
+/// explicit refusals and zero-row revocations preserve the warmed snapshot.
 /// </summary>
 internal sealed class CachingRoleAssignmentService
     : TrackedCache<Guid, RoleAssignmentRow>,
@@ -45,7 +48,7 @@ internal sealed class CachingRoleAssignmentService
         return counts;
     }
 
-    protected override async Task WarmAllAsync(CancellationToken ct)
+    protected override async Task WarmAllAsync(Action<Guid, RoleAssignmentRow> publish, CancellationToken ct)
     {
         var now = _clock.GetCurrentInstant();
         var (items, _) = await WithInnerAsync(inner => inner.GetFilteredAsync(
@@ -64,7 +67,7 @@ internal sealed class CachingRoleAssignmentService
                 item.RoleName,
                 item.ValidFrom,
                 item.ValidTo);
-            Set(row.Id, row);
+            publish(row.Id, row);
         }
     }
 
@@ -82,36 +85,41 @@ internal sealed class CachingRoleAssignmentService
     public Task<RoleAssignmentResult> AssignRoleAsync(
         Guid userId, string roleName, Guid assignerId, string? notes,
         CancellationToken ct = default) =>
-        WithInnerAsync(inner => inner.AssignRoleAsync(userId, roleName, assignerId, notes, ct));
+        MutateAsync(inner => inner.AssignRoleAsync(userId, roleName, assignerId, notes, ct), static result => result.Success);
 
     public Task<RoleAssignmentResult> EndRoleAsync(
         Guid assignmentId, Guid enderId, string? notes,
         CancellationToken ct = default) =>
-        WithInnerAsync(inner => inner.EndRoleAsync(assignmentId, enderId, notes, ct));
+        MutateAsync(inner => inner.EndRoleAsync(assignmentId, enderId, notes, ct), static result => result.Success);
 
     public Task<bool> IsUserAdminAsync(Guid userId, CancellationToken cancellationToken = default) =>
-        WithInnerAsync(inner => inner.IsUserAdminAsync(userId, cancellationToken));
+        HasActiveRoleAsync(userId, RoleNames.Admin, cancellationToken);
 
     public Task<bool> IsUserBoardMemberAsync(Guid userId, CancellationToken cancellationToken = default) =>
-        WithInnerAsync(inner => inner.IsUserBoardMemberAsync(userId, cancellationToken));
+        HasActiveRoleAsync(userId, RoleNames.Board, cancellationToken);
 
     public Task<bool> IsUserTeamsAdminAsync(Guid userId, CancellationToken cancellationToken = default) =>
-        WithInnerAsync(inner => inner.IsUserTeamsAdminAsync(userId, cancellationToken));
+        HasActiveRoleAsync(userId, TeamsRoles.TeamsAdmin, cancellationToken);
 
-    public Task<bool> HasActiveRoleAsync(Guid userId, string roleName, CancellationToken cancellationToken = default) =>
-        WithInnerAsync(inner => inner.HasActiveRoleAsync(userId, roleName, cancellationToken));
+    public async Task<bool> HasActiveRoleAsync(Guid userId, string roleName, CancellationToken cancellationToken = default) =>
+        (await ActiveRowsAsync(cancellationToken)).Any(row =>
+            row.UserId == userId && string.Equals(row.RoleName, roleName, StringComparison.Ordinal));
 
-    public Task<bool> HasAnyActiveAssignmentAsync(Guid userId, CancellationToken cancellationToken = default) =>
-        WithInnerAsync(inner => inner.HasAnyActiveAssignmentAsync(userId, cancellationToken));
+    public async Task<bool> HasAnyActiveAssignmentAsync(Guid userId, CancellationToken cancellationToken = default) =>
+        (await ActiveRowsAsync(cancellationToken)).Any(row => row.UserId == userId);
 
-    public Task<IReadOnlyList<Guid>> GetUserIdsWithActiveAssignmentsAsync(CancellationToken cancellationToken = default) =>
-        WithInnerAsync(inner => inner.GetUserIdsWithActiveAssignmentsAsync(cancellationToken));
+    public async Task<IReadOnlyList<Guid>> GetUserIdsWithActiveAssignmentsAsync(CancellationToken cancellationToken = default) =>
+        (await ActiveRowsAsync(cancellationToken)).Select(row => row.UserId).Distinct().ToList();
 
     public Task<int> RevokeAllActiveAsync(Guid userId, CancellationToken ct = default) =>
-        WithInnerAsync(inner => inner.RevokeAllActiveAsync(userId, ct));
+        MutateAsync(inner => inner.RevokeAllActiveAsync(userId, ct), static count => count > 0);
 
-    public Task<IReadOnlyList<Guid>> GetActiveUserIdsInRoleAsync(string roleName, CancellationToken ct = default) =>
-        WithInnerAsync(inner => inner.GetActiveUserIdsInRoleAsync(roleName, ct));
+    public async Task<IReadOnlyList<Guid>> GetActiveUserIdsInRoleAsync(string roleName, CancellationToken ct = default) =>
+        (await ActiveRowsAsync(ct))
+            .Where(row => string.Equals(row.RoleName, roleName, StringComparison.Ordinal))
+            .Select(row => row.UserId)
+            .Distinct()
+            .ToList();
 
     public async Task<IReadOnlyList<RoleAssignmentSnapshot>> GetActiveForUserAsync(Guid userId, CancellationToken ct = default)
     {
@@ -122,6 +130,30 @@ internal sealed class CachingRoleAssignmentService
             .OrderBy(row => row.RoleName, StringComparer.Ordinal)
             .Select(row => new RoleAssignmentSnapshot(row.RoleName, row.ValidTo))
             .ToList();
+    }
+
+    /// <summary>Rows carry canonical role names, so callers pass a role's current name.</summary>
+    private async Task<IEnumerable<RoleAssignmentRow>> ActiveRowsAsync(CancellationToken ct)
+    {
+        await EnsureWarmedAsync(ct);
+        var now = _clock.GetCurrentInstant();
+        return AsReadOnlyDictionary.Values.Where(row => row.IsActiveAt(now));
+    }
+
+    private async Task<TResult> MutateAsync<TResult>(
+        Func<IRoleAssignmentManagement, Task<TResult>> action, Func<TResult, bool> changed)
+    {
+        var invalidate = true;
+        try
+        {
+            var result = await WithInnerAsync(action);
+            invalidate = changed(result);
+            return result;
+        }
+        finally
+        {
+            if (invalidate) Clear();
+        }
     }
 
     private async Task<TResult> WithInnerAsync<TResult>(Func<IRoleAssignmentManagement, Task<TResult>> action)

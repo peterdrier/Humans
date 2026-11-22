@@ -1,3 +1,4 @@
+using Humans.Governance.Domain;
 using Humans.Governance.Contracts;
 using NodaTime;
 
@@ -12,7 +13,6 @@ internal sealed record ApplicationUserDetailDto(
     string? SignificantContribution,
     string? RoleUnderstanding,
     Instant SubmittedAt,
-    Instant? ReviewStartedAt,
     Instant? ResolvedAt,
     Guid? ReviewedByUserId,
     string? ReviewNotes,

@@ -53,30 +53,6 @@ internal sealed class EventsModerationController(
             Events = events.Select(e => BuildRow(e, tz, campsById)).ToList()
         };
 
-        var campEvents = events.Where(e => e.CampId.HasValue).ToList();
-        if (campEvents.Count > 0)
-        {
-            var allCampEvents = await guide.GetCampEventsForOverlapAsync(ct);
-
-            foreach (var row in model.Events)
-            {
-                var evt = campEvents.FirstOrDefault(e => e.Id == row.Id);
-                if (evt?.CampId == null) continue;
-
-                row.DuplicateCandidates = EventConflictDetector.FindCampDuplicateCandidates(
-                        evt, allCampEvents, eventSettings?.GateOpeningDate, tz)
-                    .Select(other => new DuplicateCandidateViewModel
-                    {
-                        Id = other.Id,
-                        Title = other.Title,
-                        StartAt = ToLocalDateTime(other.StartAt, tz),
-                        DurationMinutes = other.DurationMinutes,
-                        Status = other.Status
-                    })
-                    .ToList();
-            }
-        }
-
         return View(model);
     }
 
@@ -135,7 +111,7 @@ internal sealed class EventsModerationController(
         var guideEvent = await guide.GetEventForModerationAsync(eventId, ct);
         if (guideEvent == null) return NotFound();
 
-        var (eventSettings, tz) = await LoadEventSettingsAsync(ct);
+        var (eventSettings, tz) = await LoadEventSettingsAsync(ct, guideEvent.EventSettingsId);
         if (eventSettings == null)
         {
             SetError("Event settings not configured.");
@@ -203,7 +179,7 @@ internal sealed class EventsModerationController(
                 ModelState.AddModelError(nameof(model.VenueId), "Venue is required.");
         }
 
-        var (eventSettings, tz) = await LoadEventSettingsAsync(ct);
+        var (eventSettings, tz) = await LoadEventSettingsAsync(ct, guideEvent.EventSettingsId);
         if (eventSettings == null)
         {
             SetError("Event settings not configured.");
@@ -244,10 +220,11 @@ internal sealed class EventsModerationController(
         return RedirectToAction(nameof(Index), new { tab = guideEvent.Status });
     }
 
-    private async Task<(EventSettingsInfo? eventSettings, DateTimeZone? tz)> LoadEventSettingsAsync(CancellationToken ct = default)
+    private async Task<(EventSettingsInfo? eventSettings, DateTimeZone? tz)> LoadEventSettingsAsync(
+        CancellationToken ct = default, Guid? eventSettingsId = null)
     {
-        var eventSettings = await LoadBurnSettingsAsync(guide, await guide.GetGuideSettingsAsync(ct), ct);
-        return (eventSettings, GetTimeZone(eventSettings));
+        var eventSettings = await LoadBurnSettingsAsync(guide, await guide.GetGuideSettingsAsync(ct), ct, eventSettingsId);
+        return (eventSettings, eventSettings?.TimeZone);
     }
 
     private async Task<string?> ResolveCampNameAsync(Guid campId, EventSettingsInfo eventSettings, CancellationToken ct = default)
@@ -319,7 +296,7 @@ internal sealed class EventsModerationController(
         string? campSlug = null;
         if (guideEvent.CampId.HasValue)
         {
-            var (eventSettings, _) = await LoadEventSettingsAsync(ct);
+            var (eventSettings, _) = await LoadEventSettingsAsync(ct, guideEvent.EventSettingsId);
             var campsById = await LoadCampsByIdAsync(camps, eventSettings?.Id, ct);
             campSlug = campsById.GetValueOrDefault(guideEvent.CampId.Value)?.Slug;
         }
@@ -384,6 +361,14 @@ internal sealed class EventsModerationController(
             PriorityRank = e.PriorityRank,
             SubmittedAt = ToLocalDateTime(e.SubmittedAt, tz),
             Status = e.Status,
+            DuplicateCandidates = e.DuplicateCandidates.Select(other => new DuplicateCandidateViewModel
+            {
+                Id = other.Id,
+                Title = other.Title,
+                StartAt = ToLocalDateTime(other.StartAt, tz),
+                DurationMinutes = other.DurationMinutes,
+                Status = other.Status
+            }).ToList(),
             History = e.ModerationHistory
                 .OrderByDescending(a => a.CreatedAt)
                 .Select(a => new ModerationHistoryItemViewModel

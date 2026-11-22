@@ -18,7 +18,7 @@ namespace Humans.Governance.Data.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.10")
+                .HasAnnotation("ProductVersion", "10.0.15")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -63,9 +63,6 @@ namespace Humans.Governance.Data.Migrations
                         .HasMaxLength(4000)
                         .HasColumnType("character varying(4000)");
 
-                    b.Property<Instant?>("ReviewStartedAt")
-                        .HasColumnType("timestamp with time zone");
-
                     b.Property<Guid?>("ReviewedByUserId")
                         .HasColumnType("uuid");
 
@@ -103,7 +100,7 @@ namespace Humans.Governance.Data.Migrations
 
                     b.HasIndex("UserId", "Status");
 
-                    b.ToTable("applications", (string)null);
+                    b.ToTable("governance_applications", (string)null);
                 });
 
             modelBuilder.Entity("Humans.Governance.Domain.ApplicationStateHistory", b =>
@@ -135,7 +132,7 @@ namespace Humans.Governance.Data.Migrations
 
                     b.HasIndex("ChangedAt");
 
-                    b.ToTable("application_state_history", (string)null);
+                    b.ToTable("governance_application_state_history", (string)null);
                 });
 
             modelBuilder.Entity("Humans.Governance.Domain.AssemblyBallot", b =>
@@ -174,7 +171,7 @@ namespace Humans.Governance.Data.Migrations
                     b.HasIndex("VoteId", "RosterId")
                         .IsUnique();
 
-                    b.ToTable("assembly_ballots", (string)null);
+                    b.ToTable("governance_assembly_ballots", (string)null);
                 });
 
             modelBuilder.Entity("Humans.Governance.Domain.AssemblyBallotHistory", b =>
@@ -205,7 +202,7 @@ namespace Humans.Governance.Data.Migrations
                     b.HasIndex("BallotId", "Revision")
                         .IsUnique();
 
-                    b.ToTable("assembly_ballot_history", (string)null);
+                    b.ToTable("governance_assembly_ballot_history", (string)null);
                 });
 
             modelBuilder.Entity("Humans.Governance.Domain.AssemblyVote", b =>
@@ -300,7 +297,7 @@ namespace Humans.Governance.Data.Migrations
 
                     b.HasIndex("Status", "ClosesAt");
 
-                    b.ToTable("assembly_votes", (string)null);
+                    b.ToTable("governance_assembly_votes", (string)null);
                 });
 
             modelBuilder.Entity("Humans.Governance.Domain.AssemblyVoteOption", b =>
@@ -330,7 +327,7 @@ namespace Humans.Governance.Data.Migrations
 
                     b.HasIndex("VoteId");
 
-                    b.ToTable("assembly_vote_options", (string)null);
+                    b.ToTable("governance_assembly_vote_options", (string)null);
                 });
 
             modelBuilder.Entity("Humans.Governance.Domain.AssemblyVotePeek", b =>
@@ -352,7 +349,7 @@ namespace Humans.Governance.Data.Migrations
 
                     b.HasIndex("VoteId");
 
-                    b.ToTable("assembly_vote_peeks", (string)null);
+                    b.ToTable("governance_assembly_vote_peeks", (string)null);
                 });
 
             modelBuilder.Entity("Humans.Governance.Domain.AssemblyVoteRoster", b =>
@@ -392,7 +389,7 @@ namespace Humans.Governance.Data.Migrations
                         .IsUnique()
                         .HasFilter("\"UserId\" IS NOT NULL");
 
-                    b.ToTable("assembly_vote_roster", (string)null);
+                    b.ToTable("governance_assembly_vote_roster_entries", (string)null);
                 });
 
             modelBuilder.Entity("Humans.Governance.Domain.BoardVote", b =>
@@ -428,7 +425,87 @@ namespace Humans.Governance.Data.Migrations
                     b.HasIndex("ApplicationId", "BoardMemberUserId")
                         .IsUnique();
 
-                    b.ToTable("board_votes", (string)null);
+                    b.ToTable("governance_board_votes", (string)null);
+                });
+
+            modelBuilder.Entity("Humans.Governance.Domain.GovernanceBoardPosition", b =>
+                {
+                    b.Property<string>("Position")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<Instant>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Position");
+
+                    b.HasIndex("UserId")
+                        .IsUnique();
+
+                    b.ToTable("governance_board_positions", (string)null);
+                });
+
+            modelBuilder.Entity("Humans.Governance.Domain.GovernanceBodyFile", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Body")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<string>("GoogleId")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)");
+
+                    b.Property<string>("PermissionLevel")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<string>("ResourceType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<string>("Url")
+                        .HasMaxLength(2048)
+                        .HasColumnType("character varying(2048)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Body", "GoogleId")
+                        .IsUnique();
+
+                    b.ToTable("governance_body_files", (string)null);
+                });
+
+            modelBuilder.Entity("Humans.Governance.Domain.GovernanceBodyLinks", b =>
+                {
+                    b.Property<string>("Body")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<string>("GoogleGroupPrefix")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<Instant>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Body");
+
+                    b.ToTable("governance_body_links", (string)null);
                 });
 
             modelBuilder.Entity("Humans.Governance.Domain.MembershipTierRecord", b =>
@@ -539,6 +616,15 @@ namespace Humans.Governance.Data.Migrations
                     b.Navigation("Application");
                 });
 
+            modelBuilder.Entity("Humans.Governance.Domain.GovernanceBodyFile", b =>
+                {
+                    b.HasOne("Humans.Governance.Domain.GovernanceBodyLinks", null)
+                        .WithMany("Files")
+                        .HasForeignKey("Body")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Humans.Governance.Domain.Application", b =>
                 {
                     b.Navigation("BoardVotes");
@@ -554,6 +640,11 @@ namespace Humans.Governance.Data.Migrations
             modelBuilder.Entity("Humans.Governance.Domain.AssemblyVote", b =>
                 {
                     b.Navigation("Options");
+                });
+
+            modelBuilder.Entity("Humans.Governance.Domain.GovernanceBodyLinks", b =>
+                {
+                    b.Navigation("Files");
                 });
 #pragma warning restore 612, 618
         }

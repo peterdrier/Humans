@@ -2,10 +2,8 @@
 @{
     ViewData["Title"] = "Grant programs";
 
-    Func<ProgramInfo, IHtmlContent> nameCell =
-        @<text><a asp-action="Program" asp-route-programId="@item.Id" class="text-decoration-none">@item.Name</a></text>;
     var table = TableModel.For(Model.Programs)
-        .Template("Program", nameCell, sortBy: p => p.Name)
+        .Link("Program", p => p.Name, p => Url.Action("Program", new { programId = p.Id }))
         .Column("Event", p => p.EventName)
         .Column("Entitles", p => p.Entitles, o => o.Css("small"))
         .Column("Issued by", p => p.IssuedBy == GrantIssuer.Source ? p.SourceKey : "Managers")
@@ -16,13 +14,13 @@
         .Build();
 }
 
-<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
-    <h1 class="mb-0"><i class="fa-solid fa-gift me-2"></i>Grant programs</h1>
+<page-header>
+    <page-header-title><i class="fa-solid fa-gift me-2"></i>Grant programs</page-header-title>
     @if (Model.CanAdminister)
     {
         <a asp-action="New" class="btn btn-primary"><i class="fa-solid fa-plus me-1"></i>New program</a>
     }
-</div>
+</page-header>
 
 @if (Model.Programs.Count == 0)
 {

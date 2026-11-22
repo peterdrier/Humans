@@ -1,3 +1,4 @@
+using Humans.Permissions.Contracts;
 using System.Globalization;
 using System.Resources;
 using Humans.Shifts.Domain;
@@ -39,6 +40,7 @@ public sealed class ShiftSignupServiceEarlyEntryTests : ShiftsTestHarness
             .With(teamService)
             .With(teamService)
             .With(roleAssignmentService)
+            .With<IPermissionService>()
             .Build();
 
         var shiftRepo = new ShiftRepository(ShiftsDbFactory, ShiftsDb, Clock);
@@ -46,10 +48,7 @@ public sealed class ShiftSignupServiceEarlyEntryTests : ShiftsTestHarness
         _shiftMgmt = new ShiftManagementService(
             shiftRepo,
             AuditLog,
-            AdminAuthorization,
             serviceProvider,
-            new MemoryCache(new MemoryCacheOptions()),
-            new ShiftViewProbe().Cache,
             NewCalendarResolver(),
             Clock,
             NullLogger<ShiftManagementService>.Instance);
@@ -57,7 +56,7 @@ public sealed class ShiftSignupServiceEarlyEntryTests : ShiftsTestHarness
         _repo = new ShiftRepository(ShiftsDbFactory, ShiftsDb, Clock);
         var users = Substitute.For<IUserService>();
         users.GetUserInfoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns(call => UserInfoStubHelpers.MakeUserInfo(call.Arg<Guid>()) with { State = UserState.Active });
+            .Returns(call => UserFixtures.MakeUserInfo(call.Arg<Guid>()) with { State = UserState.Active });
         var localizer = Substitute.For<IStringLocalizer<ShiftsResource>>();
         const string warningKey = "Shifts_Signup_RangeEarlyEntryCapacityDays";
         localizer[warningKey, Arg.Any<object[]>()].Returns(call => new LocalizedString(warningKey,
@@ -71,8 +70,6 @@ public sealed class ShiftSignupServiceEarlyEntryTests : ShiftsTestHarness
             NewCalendarResolver(),
             AuditLog,
             Substitute.For<INotificationEmitter>(),
-            AdminAuthorization,
-            new ShiftViewProbe().Cache,
             serviceProvider,
             Clock,
             NullLogger<ShiftSignupService>.Instance,

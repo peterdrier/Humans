@@ -20,10 +20,11 @@ account state, the teams and the member's mail.
 
 | Shape | Question it answers | Surface |
 |---|---|---|
-| Per-user signed-state | "Which versions has this user signed?" | `IConsentService`: `GetConsentedVersionIdsAsync`, `GetConsentMapForUsersAsync`, `GetRequiredConsentRowsForUserAsync`, `GetPendingDocumentNamesAsync`, `GetConsentRecordCountAsync`: projections of one fact table, the first two per-user cached |
+| Per-user signed-state | "Which versions has this user signed?" | `IConsentService` plus internal `IConsentManagement`: `GetConsentedVersionIdsAsync`, `GetConsentMapForUsersAsync`, `GetRequiredConsentRowsForUserAsync`, `GetPendingDocumentNamesAsync`, `GetConsentRecordCountAsync`: projections of one fact table, the first two per-user cached |
 | Review & sign | "Show one document; record my agreement" | `GetConsentReviewDetailAsync` + `IConsentSubmission.SubmitConsentAsync`; `/Consent`, `/Consent/Review`, `/Consent/Submit` |
 | My data | "What have I signed; is my deletion pending?" | `/Consent/MyData` over the internal dashboard read |
-| Required-document set | "What is required, per team, right now?" | `ILegalDocumentSyncService` + internal reads, all views over one cached active+required set |
+| Required-document set | "What is required, per team, right now?" | `ILegalDocumentSyncManagement` internal reads, all views over one cached active+required set |
+| Repository access | "Can the legal-document source be reached?" | `Health/GitHubHealthCheck`, registered as `github` through `ISectionHealthChecks` |
 | Keep documents current | "Has the source changed? Pull it." | the internal sync surface, the sync runner, the sync and reminder Hangfire jobs at 04:00 |
 | Admin CRUD | "Create/edit/archive/sync a document" | `IAdminLegalDocumentService`, the routes under `/Legal/Admin/Documents` |
 | Public statutes | "Show the published statutes/terms" | `ILegalDocumentService`, `/Legal/{slug?}`, GitHub-direct, no DB |
@@ -50,8 +51,8 @@ Three aggregates and one content proxy, each with a single writer:
   contributor), `CachingConsentService` (per-user lazy cache, synchronous refresh on submit).
 - **Member-review side**: `ConsentReviewRepository` + `ConsentReviewService` (verdict rows), `ConsentReminderRepository` +
   `ConsentReminderService` (the reminder cooldown stamp).
-- **Review queue**: `ConsentReviewQueueService` composes the queue from Users, Governance (tiers,
-  pending applications) and the membership calculator, and writes through the section's own
+- **Review queue**: `ConsentReviewQueueService` composes the queue from Users, Governance (tiers)
+  and the membership calculator, and writes through the section's own
   `IConsentWrite`. It owns no repository.
 - **Statutes proxy**: `LegalDocumentService`, GitHub to IMemoryCache, no DB.
 - Controllers translate only; jobs are schedule + metric + failure boundary over the sync runner
@@ -63,7 +64,7 @@ Three aggregates and one content proxy, each with a single writer:
   (`Data/IConsentRepository.cs:12`) and DB triggers reject UPDATE and DELETE
   (`Data/Migrations/20260810192942_BaselineLegal.cs:151`).
 - Every per-user consent read follows the merge chain: `ConsentService` resolves
-  `UserInfo.AllUserIds` before reading (`Services/ConsentService.cs:33`).
+  `UserInfo.AllUserIds` before reading (`Services/ConsentService.cs`).
 - A consent is recorded only with explicit consent (`Services/ConsentService.cs:126`), from a
   profile with all required names (`Services/ConsentService.cs:130`), once per user and version
   (unique index, `Data/ConsentRecordConfiguration.cs:34`), with the user agent cut to 500
@@ -88,7 +89,7 @@ Three aggregates and one content proxy, each with a single writer:
 - Auth: `/Consent` any signed-in human (`Controllers/ConsentController.cs:14`); `/Legal`
   anonymous (`Controllers/LegalController.cs:13`); `/Legal/Admin/*` Board or Admin only
   (`Controllers/AdminLegalDocumentsController.cs:13`), so a Consent Coordinator cannot manage
-  documents; `/Consent/ReviewQueue` readable by ConsentCoordinator, ShiftsAdmin, Board, Admin, its
+  documents; `/Consent/ReviewQueue` readable by ConsentCoordinator, Board, Admin, its
   writes by ConsentCoordinator, Board, Admin only (`Controllers/ConsentReviewQueueController.cs`).
 
 ## Seams
@@ -96,7 +97,7 @@ Three aggregates and one content proxy, each with a single writer:
 - **The Consent Coordinator review queue** lives here (`/Consent/ReviewQueue`), next to the
   verdicts it writes. Reject is Onboarding's orchestration (`IOnboardingIntake.RejectSignupAsync`),
   shared with Users' admin screen; Onboarding also sets `Pending` at the review threshold.
-  Fake accounts (Users' `UserInfo.IsFake`) never count, through `ConsentReviewPredicates`.
+  Fake accounts (Users' `UserInfo.IsFake`) never count, through `ConsentReviewInfo.NeedsConsentReview` / `IsConsentCheckFlagged`.
 - **A cleared human can still be rejected; Flag stays withheld until a cross-section fix.**
   Settled by Peter on 2026-08-23: cause can surface after the fact, so Reject stays available, gated
   by the `ConsentCoordinatorBoardOrAdmin` policy on the action, not the markup; add no service-side
@@ -104,8 +105,8 @@ Three aggregates and one content proxy, each with a single writer:
   which tier-team eligibility reads. Expose it once one of those two stops.
 - **Legacy review retirement:** production reported `consent.profile-review` done on 2026-11-03.
   The copy and fallback are retired and the legacy profile review columns are dropped.
-- `ILegalDocumentSyncService` cannot fold inward while Governance's `MembershipCalculator`
-  injects it.
+- Legal-document version queries and bulk consent-map reads stay on internal management interfaces;
+  the review queue calls the existing internal review service for clear/flag annotations.
 
 ## Deliberately not done
 

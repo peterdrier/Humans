@@ -1,3 +1,4 @@
+using Humans.Governance.Domain;
 using Humans.Governance.Contracts;
 using NodaTime;
 
@@ -31,7 +32,6 @@ internal abstract class ApplicationDetailViewModelBase
     public string? RoleUnderstanding { get; set; }
     public MembershipTier MembershipTier { get; set; }
     public DateTime SubmittedAt { get; set; }
-    public DateTime? ReviewStartedAt { get; set; }
     public Guid? ReviewedByUserId { get; set; }
     public string? ReviewNotes { get; set; }
     public List<ApplicationHistoryViewModel> History { get; set; } = [];

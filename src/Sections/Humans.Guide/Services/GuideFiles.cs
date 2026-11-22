@@ -28,7 +28,7 @@ internal static class GuideFiles
         "Expenses",
         "Store",
         "CityPlanning",
-        "GoogleIntegration",
+        "Google",
         "Admin"
     ];
 
@@ -37,7 +37,6 @@ internal static class GuideFiles
     [
         "EmailAccount",
         "TwoStepVerification",
-        "TicketTransfers",
         "AiHelper",
         "SigningIn",
         "YourData"

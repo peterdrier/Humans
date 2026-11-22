@@ -290,14 +290,8 @@
   <data name="Consent_Queue_LegalName" xml:space="preserve">
     <value>Nome legale</value>
   </data>
-  <data name="Consent_Queue_HasApplication" xml:space="preserve">
-    <value>Ha una domanda</value>
-  </data>
   <data name="Consent_Queue_Signed" xml:space="preserve">
     <value>firmato/i</value>
-  </data>
-  <data name="Consent_Queue_ApplicationMotivation" xml:space="preserve">
-    <value>Motivazione della domanda</value>
   </data>
   <data name="Consent_Queue_PreviousNotes" xml:space="preserve">
     <value>Note di revisione precedenti</value>
@@ -379,4 +373,8 @@
   </data>
   <data name="Consent_Queue_ReviewLink" xml:space="preserve"><value>Rivedi</value></data>
   <data name="Consent_Queue_SelectRowLabel" xml:space="preserve"><value>Seleziona {0}</value></data>
+  <data name="Consent_Meter_ReviewsPending" xml:space="preserve"><value>Revisioni del consenso in sospeso</value></data>
+  <data name="Consent_Meter_OnboardingProfilesPending" xml:space="preserve"><value>Profili di iscrizione in sospeso</value></data>
+  <data name="Consent_Meter_AudienceConsentCoordinator" xml:space="preserve"><value>coordinatori del consenso</value></data>
+  <data name="Consent_Meter_AudienceBoard" xml:space="preserve"><value>il Consiglio</value></data>
 </root>

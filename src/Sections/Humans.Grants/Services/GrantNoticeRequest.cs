@@ -18,6 +18,5 @@ internal sealed record GrantNoticeRequest(
     string ProgramName,
     string Entitles,
     LocalDate? ExpiresOn,
-    string Url,
     string? Reason = null,
     string? Culture = null);

@@ -54,7 +54,7 @@ account has nowhere to go on the report.
 
 ## Data model (`PreapprovalsDbContext`, all tables owned by `Humans.Preapprovals`, prefixed `pre_`)
 
-### `pre_programs`
+### `preapproval_programs`
 
 | Property | Type | Notes |
 |----------|------|-------|
@@ -67,25 +67,25 @@ account has nowhere to go on the report.
 | HoldedAccountNumber | int | From `IFinanceService.ListExpenseAccountsAsync(activeOnly: true)` |
 | HoldedAccountId | string(64) | |
 | AcceptsApplications | bool | Public apply page open |
-| ClaimBy | LocalDate | Claim deadline. Required. Reports must be submitted on or before this date (Europe/Madrid, end of day). Editable at any time by Board / FinanceAdmin, audited with old and new value. The edit also resolves each `Open` grant holder's `pre-grant:{id}` notification and emits a new one with the new date, so the stale prompt never sits beside the replacement. Reminder markers carry the deadline they announced (see `pre_reminders_sent`), so the reminders run again against the new date with nothing to clear. Pushing it back needs nothing undone: an `Open` grant past the old date is simply claimable again |
+| ClaimBy | LocalDate | Claim deadline. Required. Reports must be submitted on or before this date (Europe/Madrid, end of day). Editable at any time by Board / FinanceAdmin, audited with old and new value. The edit also resolves each `Open` grant holder's `pre-grant:{id}` notification and emits a new one with the new date, so the stale prompt never sits beside the replacement. Reminder markers carry the deadline they announced (see `preapproval_sent_reminders`), so the reminders run again against the new date with nothing to clear. Pushing it back needs nothing undone: an `Open` grant past the old date is simply claimable again |
 | Status | enum `ProgramStatus` | `Open` / `Closed`. Closed: no new grants, no applications, the apply page and form are hidden and the POST refused whatever `AcceptsApplications` says; existing `Open` grants stay claimable until `ClaimBy`. Closing freezes the numbers: nothing is zeroed or rewritten |
 | CreatedByUserId, CreatedAt, UpdatedAt | | |
 
-### `pre_program_managers`
+### `preapproval_program_managers`
 
 | Property | Type | Notes |
 |----------|------|-------|
-| ProgramId | Guid | FK → `pre_programs` |
+| ProgramId | Guid | FK → `preapproval_programs` |
 | UserId | Guid | Bare Guid (Users), no FK |
 | AddedByUserId, AddedAt | | |
 
 PK `(ProgramId, UserId)`. One role; a manager is a manager.
 
-### `pre_reminders_sent`
+### `preapproval_sent_reminders`
 
 | Property | Type | Notes |
 |----------|------|-------|
-| GrantId | Guid | FK → `pre_grants` |
+| GrantId | Guid | FK → `preapproval_grants` |
 | Kind | enum `ReminderKind` | `D14` / `D3` |
 | ClaimBy | LocalDate | The deadline the reminder announced |
 | SentAt | Instant | |
@@ -96,7 +96,7 @@ per-grant transaction and stamps that value, so a concurrent deadline edit can n
 marker that suppresses the reminder for the new date. Not grant state; nothing reads it but the
 job.
 
-### `pre_grants`
+### `preapproval_grants`
 
 | Property | Type | Notes |
 |----------|------|-------|
@@ -175,24 +175,24 @@ The public surface is a `Contracts/` folder in the section (no `.Contracts` leaf
 ```csharp
 public interface IPreapprovalService
 {
-    // Grants the member may file against today: Open and ClaimBy not passed.
-    Task<IReadOnlyList<GrantOption>> ListClaimableForUserAsync(Guid userId, CancellationToken ct);
-    Task<GrantOption?> GetGrantAsync(Guid grantId, CancellationToken ct);
-    // Grants whose program the user is a named manager of (Expenses' first-review queue).
-    Task<IReadOnlySet<Guid>> ListManagedGrantIdsAsync(Guid userId, CancellationToken ct);
+    // Every grant of every program, any state. Expenses picks a member's claimable grants and a
+    // manager's grants itself, comparing every id the person has held.
+    Task<IReadOnlyList<GrantOption>> GetGrantsAsync(CancellationToken ct);
 }
 
 public sealed record GrantOption(
-    Guid Id, string ProgramName, string? Label, decimal MaxAmount,
-    int HoldedAccountNumber, string HoldedAccountId, LocalDate ClaimBy, GrantStatus Status);
+    Guid Id, Guid HolderUserId, IReadOnlyList<Guid> ManagerUserIds, string ProgramName, string? Label,
+    decimal MaxAmount, int HoldedAccountNumber, string HoldedAccountId, LocalDate ClaimBy, GrantStatus Status,
+    bool ClaimableToday); // Open and ClaimBy not passed (Europe/Madrid)
 
 // IPreapprovalWrite, called by Expenses only. Each one audited with the report id. A refusal comes back
-// in the result (Refusal), not as an exception; afterCommit defers notices until Expenses' transaction commits.
-Task<PreapprovalWriteResult> ClaimAsync(Guid grantId, Guid expenseReportId, Guid actorUserId, CancellationToken ct, Action<Func<CancellationToken, Task>>? afterCommit = null); // Open → Claimed; idempotent for the same report; refused unless claimable
+// in the result (Refusal), not as an exception; audit and notices go into afterCommit, which Expenses runs after its
+// transaction commits.
+Task<PreapprovalWriteResult> ClaimAsync(Guid grantId, Guid expenseReportId, Guid actorUserId, CancellationToken ct, Action<Func<CancellationToken, Task>> afterCommit); // Open → Claimed; idempotent for the same report; refused unless claimable
 Task<PreapprovalWriteResult> ReleaseAsync(/* same parameters */); // Claimed → Open (withdraw before approval)
 Task<PreapprovalWriteResult> ConsumeAsync(/* same parameters */); // Claimed → Consumed (approve)
 
-public sealed record PreapprovalWriteResult(GrantStamp? Stamp = null, string? Refusal = null);
+public sealed record PreapprovalWriteResult(GrantOption? Claimed = null, string? Refusal = null);
 ```
 
 Program and manager administration, issuing, applying, approving, declining and revoking live on
@@ -200,9 +200,8 @@ the internal `IPreapprovalManagement` (the `I<Section>Management` pattern), whic
 controllers inject. Nothing outside the section sees them. When Creativity exists it gets one narrow
 issue command on the public contract, not the whole management surface.
 
-A successful `ClaimAsync` carries the stamp Expenses must write in `PreapprovalWriteResult.Stamp`: `GrantStamp(decimal MaxAmount,
-int HoldedAccountNumber, string HoldedAccountId, LocalDate ClaimBy)`, read from the program as
-it is **at submit time**.
+A successful `ClaimAsync` carries the grant in `PreapprovalWriteResult.Claimed`; Expenses writes its `MaxAmount`,
+`HoldedAccountNumber` and `HoldedAccountId`, read from the program as it is **at submit time**.
 
 ## Expenses changes
 
@@ -219,7 +218,7 @@ Builds on Phase 2's `ExpenseReport.HoldedAccountNumber` / nullable category.
   (`HoldedAccountNumber` is non-nullable after Phase 2) and the grant's cap for display; submit
   overwrites both from the stamp. A finance admin
   filing on a member's behalf may pick one of **that member's** grants.
-- **Submit:** `ClaimAsync` in the same transaction as the status change; its `GrantStamp` is
+- **Submit:** `ClaimAsync` in the same transaction as the status change; the claimed grant's cap and account are
   written to `MaxAmount`, `HoldedAccountNumber` / `HoldedAccountId` **then**, so a program whose
   account was changed between draft and submit books to the account the program has now. If the
   grant is no longer claimable (revoked, claimed by another report, `ClaimBy` passed)
@@ -306,7 +305,7 @@ preferred culture (the English here is the key's meaning, not the copy):
 | Grant issued / application approved | Actionable | Program, amount, **claim by {date}**, link to file. |
 | Application declined | Informational | Program, note from the manager if any. |
 | Application received (to each manager of the program) | Actionable | Who, requested amount, link to the manage page. |
-| Deadline reminder, 14 days and 3 days before `ClaimBy`, to every `Open` grant holder | Actionable | "File by {date}." Sent by the nightly job; each send is recorded in `pre_reminders_sent` so a retry never sends it twice. |
+| Deadline reminder, 14 days and 3 days before `ClaimBy`, to every `Open` grant holder | Actionable | "File by {date}." Sent by the nightly job; each send is recorded in `preapproval_sent_reminders` so a retry never sends it twice. |
 | Report rejected (Expenses' existing rejection notification) | Actionable | For a pre-approved report it also says the report was filed in time and may be fixed and resubmitted; no deadline is imposed, since the holding report is exempt from `ClaimBy` (see Expenses changes). The grant is `Claimed` during a rejection, so the deadline job does not reach it. |
 | Grant amount changed | Informational | Program, old and new amount. |
 | Grant revoked | Actionable | Program, label, amount, reason if given. For a `Claimed` grant it links the report and says what to do (drop or swap the grant on the draft, or wait for Finance to reject a submitted one). The report's detail view and Finance's review row show "pre-approval revoked" from the moment of revocation, not first at approve. |
@@ -339,11 +338,11 @@ maps `Preapprovals` and `PreapprovalDecisions` to the same fiscal-retention reas
 `ExpenseReports`: every grant that was ever decided (`Open`, `Claimed`, `Consumed`, `Declined`,
 `Revoked`) is retained in full, beneficiary and actor ids included, exactly as an
 expense report's submitter and approver are. `EraseForUserAsync` deletes only what was never
-decided: the person's `Applied` rows, and their `pre_program_managers` rows. A `Claimed` grant
+decided: the person's `Applied` rows, and their `preapproval_program_managers` rows. A `Claimed` grant
 is never released or deleted by erasure; its report is retained by Expenses and finishes
 normally.
 
-**Merge** (`IUserMerge`): `pre_grants.BeneficiaryUserId`, `pre_program_managers.UserId` and the
+**Merge** (`IUserMerge`): `preapproval_grants.BeneficiaryUserId`, `preapproval_program_managers.UserId` and the
 actor columns are re-keyed from the eliminated id to the survivor. A survivor already managing
 the same program keeps one row. Two `Applied` rows for the same program collapse to the older
 one (the other is deleted, audited as `…MergeDroppedApplication`); decided grants are never
@@ -354,7 +353,7 @@ like Expenses' creditor binding does, so a grant issued under a since-merged id 
 
 The section's `ISectionJobs`: one nightly job (`PreapprovalRemindersJob`, 05:00), `preapprovals-reminders`, which **sends** the
 14-day and 3-day reminders to `Open` grant holders and records each send in
-`pre_reminders_sent` (GrantId, Kind `D14` | `D3`, ClaimBy, SentAt; PK GrantId + Kind + ClaimBy). The in-app
+`preapproval_sent_reminders` (GrantId, Kind `D14` | `D3`, ClaimBy, SentAt; PK GrantId + Kind + ClaimBy). The in-app
 notification, the email outbox row, the marker and one audit entry
 (`PreapprovalReminderSent`, system actor, program, grant, kind, deadline) are written in one
 ambient `TransactionScope` per grant (all four contexts share the database), so a crash leaves
@@ -396,7 +395,7 @@ Steps 2 and 3 can be built in parallel once Phase 2 is on QA; 3 merges after 2.
   `PerPersonAmount`, `MaxAmount` and `RequestedAmount` refused on every path; revoke notifies the
   holder; apply-twice edits, never
   duplicates; claim/release/consume transitions and every refused transition;
-  reminders idempotent through `pre_reminders_sent` per deadline and write nothing else; "deadline passed"
+  reminders idempotent through `preapproval_sent_reminders` per deadline and write nothing else; "deadline passed"
   rows carry no filing link; issue-many is all or nothing; manager of A → 403 on B; member → 403 on admin routes;
   closed program: apply form hidden, POST refused, `Open` grants still claimable; `Open` grant
   past `ClaimBy` not claimable, claimable again after `ClaimBy` is pushed back with no state

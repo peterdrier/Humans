@@ -7,58 +7,29 @@ using NodaTime;
 namespace Humans.Settings.Tests;
 
 /// <summary>
-/// The build window is <c>[BuildStartOffset, 0)</c> and the four sub-periods
-/// partition it, so <c>BuildStartOffset ≤ FirstCrew &lt; SetupWeek &lt; PreEvent
-/// &lt; FinishingWeekend &lt; 0</c>. The shipped defaults have to satisfy that.
+/// Window order and the early-entry range are the service's rules (<c>ServiceTests</c>); the form only
+/// binds and parses.
 /// </summary>
 public sealed class EventSettingsViewModelTests
 {
-    private static IReadOnlyList<ValidationResult> Validate(EventSettingsViewModel model) =>
-        [.. model.Validate(new ValidationContext(model))];
-
-    /// <summary>
-    /// The path MVC actually takes: attributes first, then <c>Validate</c>. <see cref="Validate"/>
-    /// alone never runs the <c>[Range]</c>s, so the "&lt; 0" half of the sub-period rule is
-    /// invisible to it.
-    /// </summary>
-    private static IReadOnlyList<ValidationResult> ValidateFully(EventSettingsViewModel model)
+    private static IReadOnlyList<ValidationResult> Validate(EventSettingsViewModel model)
     {
         List<ValidationResult> results = [];
         Validator.TryValidateObject(model, new ValidationContext(model), results, validateAllProperties: true);
         return results;
     }
 
-    /// <summary>The defaults plus the three `[Required]` fields the operator always fills in.</summary>
+    /// <summary>The defaults plus the `[Required]` fields the operator always fills in.</summary>
     private static EventSettingsViewModel FilledForm() => new()
     {
         EventName = "Nowhere 2026",
         GateOpeningDate = "2026-07-09",
     };
 
-    [HumansTheory]
-    [Xunit.InlineData(-1, 9, false)]
-    [Xunit.InlineData(6, 5, false)]
-    [Xunit.InlineData(0, 0, true)]
-    [Xunit.InlineData(6, 6, true)]
-    public void EventWindows_KeepGateDayInsideTheEventAndStrikeAfterIt(int eventEnd, int strikeEnd, bool valid)
-    {
-        var model = FilledForm();
-        model.EventEndOffset = eventEnd;
-        model.StrikeEndOffset = strikeEnd;
-
-        ValidateFully(model).Any().Should().Be(!valid);
-    }
-
-    [HumansFact]
-    public void TheShippedDefaults_Validate()
-    {
-        Validate(new EventSettingsViewModel()).Should().BeEmpty();
-    }
-
     [HumansFact]
     public void TheShippedDefaults_PassFullModelValidation()
     {
-        ValidateFully(FilledForm()).Should().BeEmpty();
+        Validate(FilledForm()).Should().BeEmpty();
     }
 
     private static EventSettingsInfo SavedRow() => new(
@@ -106,47 +77,10 @@ public sealed class EventSettingsViewModelTests
         var form = EventSettingsFormMapper.ToViewModel(saved);
         form.EventName = "Nowhere 2026 (renamed)";
 
-        Validate(form).Should().BeEmpty();
-
         var parsed = EventSettingsFormMapper.Parse(form);
 
         parsed.Success.Should().BeTrue();
         parsed.Settings!.EventName.Should().Be("Nowhere 2026 (renamed)");
         parsed.Settings.BuildStartOffset.Should().Be(saved.BuildStartOffset);
-    }
-
-    // EarlyEntryStartOffset: BuildStartOffset ≤ offset < 0, null until configured.
-
-    [HumansFact]
-    public void NullEarlyEntryStartOffset_IsAccepted()
-    {
-        Validate(new EventSettingsViewModel { EarlyEntryStartOffset = null }).Should().BeEmpty();
-    }
-
-    [HumansFact]
-    public void EarlyEntryStartOffset_BeforeBuildStart_IsRejected()
-    {
-        // BuildStartOffset defaults to -25.
-        var model = new EventSettingsViewModel { EarlyEntryStartOffset = -26 };
-
-        Validate(model).Should().ContainSingle()
-            .Which.MemberNames.Should().ContainSingle(nameof(EventSettingsViewModel.EarlyEntryStartOffset));
-    }
-
-    [HumansFact]
-    public void EarlyEntryStartOffset_AtZero_IsRejected()
-    {
-        var model = new EventSettingsViewModel { EarlyEntryStartOffset = 0 };
-
-        Validate(model).Should().ContainSingle()
-            .Which.MemberNames.Should().ContainSingle(nameof(EventSettingsViewModel.EarlyEntryStartOffset));
-    }
-
-    [HumansFact]
-    public void EarlyEntryStartOffset_WithinRange_IsAccepted()
-    {
-        var model = new EventSettingsViewModel { EarlyEntryStartOffset = -7 };
-
-        Validate(model).Should().BeEmpty();
     }
 }

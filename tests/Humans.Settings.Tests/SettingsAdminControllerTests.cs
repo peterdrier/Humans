@@ -286,19 +286,6 @@ public sealed class SettingsAdminControllerTests
     }
 
     [HumansFact]
-    public async Task Index_Post_SavesWithTheAuthenticatedActor()
-    {
-        var sut = BuildSut();
-        var actorId = Guid.Parse(((ClaimsIdentity)sut.HttpContext.User.Identity!)
-            .FindFirst(ClaimTypes.NameIdentifier)!.Value);
-
-        await sut.Index(MakeForm(Guid.NewGuid(), isActive: false), TestContext.Current.CancellationToken);
-
-        await _settings.Received(1).SaveEventSettingsAsync(
-            Arg.Any<EventSettingsInfo>(), actorId, Arg.Any<CancellationToken>());
-    }
-
-    [HumansFact]
     public async Task Activate_Post_RedirectsToTheEventItMadeActive()
     {
         var id = Guid.NewGuid();

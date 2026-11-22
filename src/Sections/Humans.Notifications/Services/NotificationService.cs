@@ -12,22 +12,6 @@ internal sealed class NotificationService(
     IRoleAssignmentService roleAssignmentService,
     ILogger<NotificationService> logger) : INotificationService, IUserMerge
 {
-    public Task SendAsync(
-        NotificationSourceDefinition source,
-        NotificationClass notificationClass,
-        NotificationPriority priority,
-        string title,
-        IReadOnlyList<Guid> recipientUserIds,
-        string? body = null,
-        string? actionUrl = null,
-        string? actionLabel = null,
-        string? targetGroupName = null,
-        string? sourceKey = null,
-        CancellationToken cancellationToken = default) =>
-        emitter.SendAsync(
-            source, notificationClass, priority, title, recipientUserIds,
-            body, actionUrl, actionLabel, targetGroupName, sourceKey, cancellationToken);
-
     public async Task SendToRoleAsync(
         NotificationSourceDefinition source,
         NotificationClass notificationClass,

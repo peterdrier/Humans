@@ -111,9 +111,6 @@ internal sealed class AssemblyVoteAdminListViewModel
 /// </summary>
 internal sealed class AssemblyVoteDraftFormViewModel
 {
-    /// <summary>Every closing time is authored in Madrid local time.</summary>
-    private static readonly DateTimeZone MadridZone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
-
     /// <summary>Null on the create form; set on edit.</summary>
     public Guid? VoteId { get; set; }
 
@@ -132,7 +129,7 @@ internal sealed class AssemblyVoteDraftFormViewModel
     public BallotDisclosure BallotDisclosure { get; set; }
     public DateTime? AssemblyDate { get; set; }
 
-    /// <summary>Posted as Europe/Madrid local time; converted to an <see cref="Instant"/> in <see cref="ToDraft"/>.</summary>
+    /// <summary>Posted as org-zone local time; converted to an <see cref="Instant"/> in <see cref="ToDraft"/>.</summary>
     public DateTime ClosesAt { get; set; }
 
     /// <summary>RankedChoice options only; ignored for a YesNo vote (fixed Yes/No/Abstain).</summary>
@@ -141,7 +138,7 @@ internal sealed class AssemblyVoteDraftFormViewModel
     public IReadOnlyList<string> Cultures { get; } = CultureCatalog.SupportedCultureCodes;
 
     /// <summary>Builds the service DTO from the posted form. Authored order is the row order posted.</summary>
-    public AssemblyVoteDraft ToDraft()
+    public AssemblyVoteDraft ToDraft(DateTimeZone orgZone)
     {
         return new AssemblyVoteDraft(
             Title,
@@ -153,14 +150,14 @@ internal sealed class AssemblyVoteDraftFormViewModel
             IndicativeAudience,
             BallotDisclosure,
             AssemblyDate is { } assemblyDate ? LocalDate.FromDateTime(assemblyDate) : null,
-            LocalDateTime.FromDateTime(ClosesAt).InZoneLeniently(MadridZone).ToInstant(),
+            LocalDateTime.FromDateTime(ClosesAt).InZoneLeniently(orgZone).ToInstant(),
             Options
                 .Select((row, order) => new AssemblyVoteDraftOption(row.Key, order, row.Label))
                 .ToList());
     }
 
     /// <summary>Rehydrates the form from a stored draft, for the Edit GET.</summary>
-    public static AssemblyVoteDraftFormViewModel FromDraft(Guid voteId, AssemblyVoteDraft draft)
+    public static AssemblyVoteDraftFormViewModel FromDraft(Guid voteId, AssemblyVoteDraft draft, DateTimeZone orgZone)
     {
         ArgumentNullException.ThrowIfNull(draft);
 
@@ -176,7 +173,7 @@ internal sealed class AssemblyVoteDraftFormViewModel
             IndicativeAudience = draft.IndicativeAudience,
             BallotDisclosure = draft.BallotDisclosure,
             AssemblyDate = draft.AssemblyDate?.ToDateTimeUnspecified(),
-            ClosesAt = draft.ClosesAt.InZone(MadridZone).ToDateTimeUnspecified(),
+            ClosesAt = draft.ClosesAt.InZone(orgZone).ToDateTimeUnspecified(),
             Options = draft.Options
                 .OrderBy(o => o.Order)
                 .Select(o => new AssemblyVoteDraftOptionFormRow
@@ -227,16 +224,14 @@ internal sealed class AssemblyVoteBallotsViewModel
         Options.FirstOrDefault(o => string.Equals(o.Key, key, StringComparison.Ordinal))?.Label ?? key;
 }
 
-/// <summary>Posted Extend action: the new closing time, Europe/Madrid local.</summary>
+/// <summary>Posted Extend action: the new closing time, org-zone local.</summary>
 internal sealed class AssemblyVoteExtendFormModel
 {
-    private static readonly DateTimeZone MadridZone = DateTimeZoneProviders.Tzdb["Europe/Madrid"];
-
     public Guid VoteId { get; set; }
     public DateTime NewClosesAt { get; set; }
 
-    public Instant ToInstant() =>
-        LocalDateTime.FromDateTime(NewClosesAt).InZoneLeniently(MadridZone).ToInstant();
+    public Instant ToInstant(DateTimeZone orgZone) =>
+        LocalDateTime.FromDateTime(NewClosesAt).InZoneLeniently(orgZone).ToInstant();
 }
 
 /// <summary>Posted Cancel action: a required reason (statutes Art. 8.2 exit).</summary>

@@ -13,6 +13,8 @@ using NSubstitute;
 using Humans.Tickets.Domain;
 using Humans.Tickets.Contracts;
 
+using Humans.Tickets.Services.Checkout;
+
 namespace Humans.Tickets.Tests.Services;
 
 public sealed class TicketQueryService_HoldingsTests
@@ -27,13 +29,11 @@ public sealed class TicketQueryService_HoldingsTests
 
     public TicketQueryService_HoldingsTests()
     {
-        _transferRepo.GetByStatusAsync(Arg.Any<TicketTransferStatus>(), Arg.Any<CancellationToken>())
-            .Returns([]);
-        _transferRepo.GetBySenderAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+        _transferRepo.GetApprovedAsync(Arg.Any<CancellationToken>())
             .Returns([]);
 
         Service = new TicketQueryService(
-            _ticketRepo,
+            FixedOrgTimeZone.Madrid, _ticketRepo,
             _transferRepo,
             Substitute.For<IBudgetService>(),
             Substitute.For<ICampaignService>(),
@@ -44,7 +44,8 @@ public sealed class TicketQueryService_HoldingsTests
             Substitute.For<ISettingsService>(),
             Substitute.For<IAuditLogService>(),
             SystemClock.Instance,
-            Substitute.For<IEventParticipationManagement>());
+            Substitute.For<IEventParticipationRepository>(),
+            Substitute.For<ITicketCheckoutService>());
 
         // Default: no orders, no visible attendees
         _ticketRepo.GetOrdersMatchedToUserAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
@@ -146,59 +147,6 @@ public sealed class TicketQueryService_HoldingsTests
     }
 
     [HumansFact]
-    public async Task StampsPendingOutgoingTransferOnTheAffectedRowOnly()
-    {
-        var orderId = Guid.NewGuid();
-        var order = new TicketOrder { Id = orderId, MatchedUserId = UserA };
-        var inTransfer = new TicketAttendee
-        {
-            Id = Guid.NewGuid(),
-            AttendeeName = "Ada In-Transfer",
-            MatchedUserId = UserA,
-            TicketOrder = order,
-            TicketOrderId = orderId,
-        };
-        var untouched = new TicketAttendee
-        {
-            Id = Guid.NewGuid(),
-            AttendeeName = "Zoe Untouched",
-            MatchedUserId = UserA,
-            TicketOrder = order,
-            TicketOrderId = orderId,
-        };
-        _ticketRepo.GetAttendeesVisibleToUserAsync(UserA, Arg.Any<CancellationToken>())
-            .Returns([inTransfer, untouched]);
-
-        var transferId = Guid.NewGuid();
-        _transferRepo.GetBySenderAsync(UserA, Arg.Any<CancellationToken>())
-            .Returns([
-                new TicketTransferRequest
-                {
-                    Id = transferId,
-                    OriginalTicketAttendeeId = inTransfer.Id,
-                    SenderUserId = UserA,
-                    Status = TicketTransferStatus.Pending,
-                },
-                new TicketTransferRequest
-                {
-                    Id = Guid.NewGuid(),
-                    OriginalTicketAttendeeId = untouched.Id,
-                    SenderUserId = UserA,
-                    Status = TicketTransferStatus.Cancelled,
-                },
-            ]);
-
-        var result = await Service.GetUserTicketHoldingsAsync(UserA, Xunit.TestContext.Current.CancellationToken);
-
-        var pendingRow = result.Tickets.Single(t => t.AttendeeId == inTransfer.Id);
-        pendingRow.HasPendingOutgoingTransfer.Should().BeTrue();
-        pendingRow.PendingTransferRequestId.Should().Be(transferId);
-        var cleanRow = result.Tickets.Single(t => t.AttendeeId == untouched.Id);
-        cleanRow.HasPendingOutgoingTransfer.Should().BeFalse();
-        cleanRow.PendingTransferRequestId.Should().BeNull();
-    }
-
-    [HumansFact]
     public async Task ExcludesTicketsTheUserBoughtButDoesNotHold_AndCarriesCheckedInAt()
     {
         var orderId = Guid.NewGuid();
@@ -241,7 +189,7 @@ public sealed class TicketQueryService_HoldingsTests
     }
 
     private static UserInfo UserWithVerifiedEmail(Guid id, string email) =>
-        new User { Id = id, DisplayName = id.ToString() }.ToUserInfo(
+        UserInfoFixtures.FromUser(new User { Id = id, DisplayName = id.ToString() },
             [new UserEmail { Id = Guid.NewGuid(), UserId = id, Email = email, IsVerified = true }]);
 
     [HumansFact]

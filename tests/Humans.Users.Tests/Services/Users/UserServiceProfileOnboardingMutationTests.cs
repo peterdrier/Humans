@@ -1,12 +1,18 @@
 using AwesomeAssertions;
+using Humans.Base.Configuration;
+using Humans.Email.Contracts;
+using Microsoft.Extensions.Options;
 using Humans.AuditLog.Contracts;
 using Humans.Base.Interfaces;
 using Humans.Base.Extensions;
 using Humans.Users.Services;
 using Humans.Users.Tests.Infrastructure;
 using Humans.Users.Data.Repositories;
+using Humans.Users.Data;
+using NodaTime;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using Xunit;
@@ -24,10 +30,34 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
         var userRepository = new UserRepository(DbFactory, Clock);
         _service = new UserService(
             userRepository,
-            AdminAuthorization,
             _fileStorage,
             Clock,
             NullLogger<UserService>.Instance, AuditLog);
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task RecordLogin_MetadataFailure_DoesNotBlockSignIn_ButPreservesCancellation(bool cancelled)
+    {
+        var userId = Guid.NewGuid();
+        using var request = new CancellationTokenSource();
+        if (cancelled) await request.CancelAsync();
+        var repository = Substitute.For<IUserRepository>();
+        var failure = cancelled
+            ? (Exception)new OperationCanceledException(request.Token)
+            : new IOException("Last-login write unavailable");
+        repository.SetLastLoginAsync(userId, Arg.Any<Instant>(), request.Token)
+            .Returns(Task.FromException<bool>(failure));
+        var service = new UserService(repository, _fileStorage, Clock,
+            NullLogger<UserService>.Instance, AuditLog);
+
+        var record = () => service.RecordLoginAsync(userId, request.Token);
+
+        if (cancelled)
+            await record.Should().ThrowAsync<OperationCanceledException>();
+        else
+            await record.Should().NotThrowAsync();
     }
 
     [HumansTheory]
@@ -45,8 +75,7 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
             .Returns(string.Equals(kind, "duplicate", StringComparison.Ordinal)
                 ? [new UserEmail { Id = Guid.NewGuid(), UserId = userId, Email = "held@example.com" }]
                 : []);
-        var service = new UserService(repository,
-            AdminAuthorization, _fileStorage, Clock, NullLogger<UserService>.Instance, AuditLog);
+        var service = new UserService(repository, _fileStorage, Clock, NullLogger<UserService>.Instance, AuditLog);
 
         var email = kind switch
         {
@@ -75,8 +104,7 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
         repository.GetByIdAsync(userId, Arg.Any<CancellationToken>()).Returns(new User { Id = userId });
         repository.GetUserEmailsByAddressAsync(Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns([new UserEmail { Id = Guid.NewGuid(), UserId = Guid.NewGuid(), Email = "held@example.com", IsVerified = true }]);
-        var service = new UserService(repository,
-            AdminAuthorization, _fileStorage, Clock, NullLogger<UserService>.Instance, AuditLog);
+        var service = new UserService(repository, _fileStorage, Clock, NullLogger<UserService>.Instance, AuditLog);
 
         var result = await service.AddUserEmailAsync(userId,
             new UserEmailAddCommand("held@example.com", IsVerified: verified),
@@ -345,9 +373,6 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
         {
             Id = Guid.NewGuid(),
             UserId = userId,
-            BurnerName = "Loaded",
-            FirstName = "First",
-            LastName = "Last",
             CreatedAt = Clock.GetCurrentInstant(),
             UpdatedAt = Clock.GetCurrentInstant(),
         });
@@ -524,7 +549,7 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
             });
         fakeRepo.GetByUserIdAsync(userId, Arg.Any<CancellationToken>())
             .Returns(_ => Task.FromResult(stored));
-        fakeRepo.When(r => r.AddAsync(Arg.Any<Profile>(), Arg.Any<CancellationToken>()))
+        fakeRepo.When(r => r.AddAsync(Arg.Any<Profile>(), Arg.Any<CancellationToken>(), Arg.Any<UserNames?>()))
             .Do(call => stored = call.Arg<Profile>());
 
         var service = BuildWithUserRepository(fakeRepo);
@@ -535,7 +560,7 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
             Task.Run(() => service.EnsureStubProfileAsync(userId, ct: TestContext.Current.CancellationToken)));
 #pragma warning restore VSTHRD003
 
-        await fakeRepo.Received(1).AddAsync(Arg.Any<Profile>(), Arg.Any<CancellationToken>());
+        await fakeRepo.Received(1).AddAsync(Arg.Any<Profile>(), Arg.Any<CancellationToken>(), Arg.Any<UserNames?>());
     }
 
     [HumansFact]
@@ -547,11 +572,9 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
 
         await _service.EnsureStubProfileAsync(userId, " Sparkle ", " Ada ", " Lovelace ", TestContext.Current.CancellationToken);
 
-        var profile = await Db.Profiles.SingleAsync(p => p.UserId == userId, TestContext.Current.CancellationToken);
-        profile.BurnerName.Should().Be("Sparkle");
-        profile.FirstName.Should().Be("Ada");
-        profile.LastName.Should().Be("Lovelace");
+        (await Db.Profiles.AnyAsync(p => p.UserId == userId, TestContext.Current.CancellationToken)).Should().BeTrue();
         var user = await Db.Users.AsNoTracking().SingleAsync(u => u.Id == userId, TestContext.Current.CancellationToken);
+        (user.BurnerName, user.FirstName, user.LastName).Should().Be(("Sparkle", "Ada", "Lovelace"));
         user.State.Should().Be(UserState.Active);
         AuditLog.ReceivedCalls().Should().BeEmpty();
     }
@@ -590,8 +613,7 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
             });
         await _service.EnsureStubProfileAsync(userId, ct: TestContext.Current.CancellationToken, actorUserId: actorId);
 
-        var profile = await Db.Profiles.SingleAsync(p => p.UserId == userId, TestContext.Current.CancellationToken);
-        profile.BurnerName.Should().BeEmpty();
+        (await Db.Profiles.AnyAsync(p => p.UserId == userId, TestContext.Current.CancellationToken)).Should().BeTrue();
         var user = await Db.Users.AsNoTracking().SingleAsync(u => u.Id == userId, TestContext.Current.CancellationToken);
         user.State.Should().Be(UserState.Bare);
         await AuditLog.Received(1).LogAsync(UsersAuditActions.StubProfileBackfilled, nameof(User), userId,
@@ -604,10 +626,8 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
     [HumansFact]
     public async Task EnsureStubProfileAsync_WithoutNames_InheritsBurnerNameAlreadySeededOnUser()
     {
-        // OAuth/import account creation seeds User.BurnerName directly,
-        // then calls EnsureStubProfileAsync with no names. The stub must inherit that
-        // BurnerName, or the Profile->User mirror in UpdateUserStateFromProfileAsync wipes
-        // it back to empty on the very same save.
+        // OAuth/import account creation seeds User.BurnerName directly, then calls
+        // EnsureStubProfileAsync with no names. The stub must not wipe it.
         var userId = Guid.NewGuid();
         var user = SeedUser(userId);
         user.BurnerName = "Seeded Burner";
@@ -615,8 +635,6 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
 
         await _service.EnsureStubProfileAsync(userId, ct: TestContext.Current.CancellationToken);
 
-        var profile = await Db.Profiles.SingleAsync(p => p.UserId == userId, TestContext.Current.CancellationToken);
-        profile.BurnerName.Should().Be("Seeded Burner");
         var fresh = await Db.Users.AsNoTracking().SingleAsync(u => u.Id == userId, TestContext.Current.CancellationToken);
         fresh.BurnerName.Should().Be("Seeded Burner");
         // FirstName/LastName are still blank, so the user stays Bare, not Active.
@@ -699,7 +717,7 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
         if (reconcile)
         {
             Func<Task> act = () => _service.ApplyUserEmailReconcilePlanAsync(userId,
-                new UserEmailReconcilePlanCommand(null, null, null,
+                new UserEmailReconcilePlanCommand(null, null,
                     new UserEmail { Id = Guid.NewGuid(), UserId = userId, Email = "recreated@example.com", IsVerified = verified }),
                 TestContext.Current.CancellationToken);
             await act.Should().ThrowAsync<InvalidOperationException>();
@@ -718,7 +736,7 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
     }
 
     [HumansFact]
-    public async Task AddEmailAsync_OverlappingRequests_CreateOneRowAndOneVerificationToken()
+    public async Task AddEmailAsync_OverlappingRequests_CreateOneRowAndOneVerificationMail()
     {
         var ct = TestContext.Current.CancellationToken;
         var userId = Guid.NewGuid();
@@ -754,10 +772,11 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
         var manager = Substitute.For<UserManager<User>>(
             Substitute.For<IUserStore<User>>(), null, null, null, null, null, null, null, null);
         manager.FindByIdAsync(userId.ToString()).Returns(new User { Id = userId });
-        manager.GenerateUserTokenAsync(Arg.Any<User>(), Arg.Any<string>(), Arg.Any<string>()).Returns("verification-token");
-        var services = new ServiceLocatorBuilder().With(Substitute.For<IAccountMergeService>()).Build();
+        var emailService = Substitute.For<IEmailService>();
         UserEmailService BuildEmailService() => new(
-            repository, BuildWithUserRepository(repository), manager, Clock, AuditLog, services,
+            repository, BuildWithUserRepository(repository), manager, Clock, AuditLog, [], [],
+            new Microsoft.AspNetCore.DataProtection.EphemeralDataProtectionProvider(), TestUsersEmails.Create(),
+            Options.Create(new EmailSettings { BaseUrl = TestUsersEmails.BaseUrl }), emailService,
             NullLogger<UserEmailService>.Instance);
 
         var first = BuildEmailService().AddEmailAsync(userId, "same@example.com", ct);
@@ -775,10 +794,10 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
 
         (await Db.UserEmails.AsNoTracking().Where(email => email.UserId == userId).ToListAsync(ct))
             .Should().ContainSingle();
-        results.Should().ContainSingle(result => result.ErrorKey == null && result.Token == "verification-token");
+        results.Should().ContainSingle(result => result.ErrorKey == null && result.Token != string.Empty);
         results.Should().ContainSingle(result => result.ErrorKey == "Users_Profile_EmailAlreadyAdded"
             && result.EmailId == Guid.Empty && result.Token == string.Empty);
-        await manager.Received(1).GenerateUserTokenAsync(Arg.Any<User>(), Arg.Any<string>(), Arg.Any<string>());
+        await emailService.Received(1).SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>());
     }
 
     [HumansTheory]
@@ -902,6 +921,105 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
     }
 
     [HumansFact]
+    public async Task ReassignAsync_KeptProfileTakesWhatItLacksAndTheNotesOfBoth()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var sourceUserId = Guid.NewGuid();
+        var targetUserId = Guid.NewGuid();
+        var sourceProfileId = await SeedUserWithProfileAsync(sourceUserId);
+        var targetProfileId = await SeedUserWithProfileAsync(targetUserId);
+        var source = await Db.Profiles.SingleAsync(p => p.Id == sourceProfileId, ct);
+        (source.Bio, source.Pronouns, source.MedicalConditions) = ("Archived bio", "they", "Archived medical");
+        (source.City, source.CountryCode) = ("Madrid", "ES");
+        (source.AdminNotes, source.BoardNotes) = ("Archived admin note", "Archived board note");
+        source.ProfilePictureContentType = "image/png";
+        var pictureKey = ProfilePictureStorageKeys.ProfilePictureKey(sourceProfileId, "image/png");
+        var target = await Db.Profiles.SingleAsync(p => p.Id == targetProfileId, ct);
+        (target.Bio, target.City, target.CountryCode, target.AdminNotes) = ("Kept bio", "Berlin", "DE", "Kept admin note");
+        await Db.SaveChangesAsync(ct);
+
+        await _service.ReassignAsync(sourceUserId, targetUserId, Guid.NewGuid(), Clock.GetCurrentInstant(), ct);
+
+        var kept = await Db.Profiles.AsNoTracking().SingleAsync(p => p.Id == targetProfileId, ct);
+        // What the kept profile has wins; a place is never mixed from both.
+        (kept.Bio, kept.City, kept.CountryCode).Should().Be(("Kept bio", "Berlin", "DE"));
+        (kept.Pronouns, kept.MedicalConditions).Should().Be(("they", "Archived medical"));
+        kept.AdminNotes.Should().Contain("Kept admin note").And.Contain("Archived admin note");
+        kept.BoardNotes.Should().Be("Archived board note");
+        // The picture file is still in use, by the kept profile.
+        (kept.ProfilePictureContentType, kept.ProfilePictureStorageKey).Should().Be(("image/png", pictureKey));
+        await _fileStorage.DidNotReceive().DeleteAsync(pictureKey, Arg.Any<CancellationToken>());
+    }
+
+    [HumansTheory]
+    [InlineData("before")]
+    [InlineData("after")]
+    [InlineData("verification")]
+    public async Task ReassignAsync_UncertainProfileFold_CleansOnlyAnUnreferencedSourcePicture(string failureStage)
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var sourceUserId = Guid.NewGuid();
+        var targetUserId = Guid.NewGuid();
+        var sourceId = await SeedUserWithProfileAsync(sourceUserId);
+        var targetId = await SeedUserWithProfileAsync(targetUserId);
+        var source = await Db.Profiles.SingleAsync(p => p.Id == sourceId, ct);
+        var target = await Db.Profiles.SingleAsync(p => p.Id == targetId, ct);
+        var sourceKey = $"uploads/profile-pictures/{sourceId}-old.png";
+        const string targetKey = "uploads/profile-pictures/survivor.png";
+        source.ProfilePictureContentType = target.ProfilePictureContentType = "image/png";
+        source.ProfilePictureStorageKey = sourceKey;
+        target.ProfilePictureStorageKey = targetKey;
+        await Db.SaveChangesAsync(ct);
+        var failure = new IOException("Profile fold save failed");
+        var options = new DbContextOptionsBuilder<UsersDbContext>(DbOptions)
+            .AddInterceptors(new FailProfileFoldSave(failure, string.Equals(failureStage, "before", StringComparison.Ordinal))).Options;
+        var inner = new UserRepository(new TestDbContextFactory(options), Clock);
+        var repo = Substitute.For<IUserRepository>();
+        repo.ReassignLoginsToUserAsync(sourceUserId, targetUserId, Arg.Any<CancellationToken>())
+            .Returns(call => inner.ReassignLoginsToUserAsync(sourceUserId, targetUserId, call.Arg<CancellationToken>()));
+        repo.GetByUserIdReadOnlyAsync(sourceUserId, Arg.Any<CancellationToken>())
+            .Returns(call => inner.GetByUserIdReadOnlyAsync(sourceUserId, call.Arg<CancellationToken>()));
+        repo.GetByUserIdReadOnlyAsync(targetUserId, Arg.Any<CancellationToken>())
+            .Returns(call => inner.GetByUserIdReadOnlyAsync(targetUserId, call.Arg<CancellationToken>()));
+        repo.ReassignSubAggregatesToUserAsync(sourceUserId, targetUserId, Arg.Any<Instant>(), Arg.Any<Profile?>(), Arg.Any<UserNames?>(), Arg.Any<CancellationToken>())
+            .Returns(call => inner.ReassignSubAggregatesToUserAsync(sourceUserId, targetUserId, call.Arg<Instant>(), call.Arg<Profile?>(), call.Arg<UserNames?>(), call.Arg<CancellationToken>()));
+        repo.GetProfilePictureLocationAsync(sourceId, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            call.Arg<CancellationToken>().Should().Be(CancellationToken.None);
+            return string.Equals(failureStage, "verification", StringComparison.Ordinal)
+                ? Task.FromException<(string, string?)?>(new IOException("Verification unavailable"))
+                : inner.GetProfilePictureLocationAsync(sourceId, call.Arg<CancellationToken>());
+        });
+        var service = new UserService(repo, _fileStorage, Clock, NullLogger<UserService>.Instance, AuditLog);
+
+        var merge = () => service.ReassignAsync(sourceUserId, targetUserId, Guid.NewGuid(), Clock.GetCurrentInstant(), ct);
+        (await merge.Should().ThrowAsync<IOException>()).Which.Should().BeSameAs(failure);
+
+        var stored = await Db.Profiles.AsNoTracking().SingleAsync(p => p.Id == sourceId, ct);
+        stored.ProfilePictureStorageKey.Should().Be(string.Equals(failureStage, "before", StringComparison.Ordinal) ? sourceKey : null);
+        await _fileStorage.Received(string.Equals(failureStage, "after", StringComparison.Ordinal) ? 1 : 0).DeleteAsync(sourceKey, CancellationToken.None);
+        await _fileStorage.DidNotReceive().DeleteAsync(targetKey, Arg.Any<CancellationToken>());
+    }
+
+    private sealed class FailProfileFoldSave(Exception failure, bool beforeCommit) : SaveChangesInterceptor
+    {
+        private bool _savingProfile;
+        public override ValueTask<InterceptionResult<int>> SavingChangesAsync(DbContextEventData eventData,
+            InterceptionResult<int> result, CancellationToken cancellationToken = default)
+        {
+            _savingProfile = eventData.Context!.ChangeTracker.Entries<Profile>().Any(entry => entry.State == EntityState.Modified);
+            if (_savingProfile && beforeCommit) throw failure;
+            return ValueTask.FromResult(result);
+        }
+        public override ValueTask<int> SavedChangesAsync(SaveChangesCompletedEventData eventData,
+            int result, CancellationToken cancellationToken = default)
+        {
+            if (_savingProfile && !beforeCommit) throw failure;
+            return ValueTask.FromResult(result);
+        }
+    }
+
+    [HumansFact]
     public async Task AnonymizeProfileForDeletionAsync_ClearsProfilePicture()
     {
         var userId = Guid.NewGuid();
@@ -918,20 +1036,18 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
         var fresh = await Db.Profiles.AsNoTracking().SingleAsync(p => p.UserId == userId, TestContext.Current.CancellationToken);
         fresh.ProfilePictureContentType.Should().BeNull();
         fresh.ProfilePictureStorageKey.Should().BeNull();
-        fresh.FirstName.Should().Be("Deleted");
-        fresh.LastName.Should().Be("User");
+        var user = await Db.Users.AsNoTracking().SingleAsync(u => u.Id == userId, TestContext.Current.CancellationToken);
+        (user.FirstName, user.LastName).Should().Be(("Deleted", "User"));
     }
 
     private async Task<Guid> SeedUserWithProfileAsync(Guid userId)
     {
-        SeedUser(userId);
+        var user = SeedUser(userId);
+        (user.BurnerName, user.FirstName, user.LastName) = ("Test", "First", "Last");
         var profile = new Profile
         {
             Id = Guid.NewGuid(),
             UserId = userId,
-            BurnerName = "Test",
-            FirstName = "First",
-            LastName = "Last",
             CreatedAt = Clock.GetCurrentInstant(),
             UpdatedAt = Clock.GetCurrentInstant(),
         };
@@ -943,7 +1059,6 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
     private UserService BuildWithUserRepository(IUserRepository userRepository) =>
         new(
             userRepository,
-            AdminAuthorization,
             Substitute.For<IFileStorage>(),
             Clock,
             NullLogger<UserService>.Instance, AuditLog);

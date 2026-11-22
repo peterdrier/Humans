@@ -24,6 +24,9 @@ public class MailerLiteClientRetryTests
     [Xunit.InlineData("blank-group-id")]
     [Xunit.InlineData("missing-group-name")]
     [Xunit.InlineData("blank-group-name")]
+    [Xunit.InlineData("missing-subscriber-cursor")]
+    [Xunit.InlineData("mistyped-subscriber-cursor")]
+    [Xunit.InlineData("mistyped-group-page")]
     public async Task RefreshAsync_RejectsInvalidPaginationAndPreservesSnapshot(string shape)
     {
         const string subscriberPage = """{"data":[{"id":"sub-1","email":"alice@example.org","status":"active"}],"meta":{"next_cursor":null}}""";
@@ -36,6 +39,10 @@ public class MailerLiteClientRetryTests
 
         if (string.Equals(shape, "null-subscribers", StringComparison.Ordinal))
             handler.EnqueueJson(HttpStatusCode.OK, "null");
+        else if (string.Equals(shape, "missing-subscriber-cursor", StringComparison.Ordinal))
+            handler.EnqueueJson(HttpStatusCode.OK, subscriberPage.Replace("\"next_cursor\":null", "", StringComparison.Ordinal));
+        else if (string.Equals(shape, "mistyped-subscriber-cursor", StringComparison.Ordinal))
+            handler.EnqueueJson(HttpStatusCode.OK, subscriberPage.Replace("\"next_cursor\":null", "\"next_cursor\":false", StringComparison.Ordinal));
         else if (string.Equals(shape, "null-subscriber-item", StringComparison.Ordinal))
             handler.EnqueueJson(HttpStatusCode.OK, """{"data":[null],"meta":{"next_cursor":null}}""");
         else if (string.Equals(shape, "repeated-cursor", StringComparison.Ordinal))
@@ -57,6 +64,7 @@ public class MailerLiteClientRetryTests
             "missing-group-name" => HumansGroupPage.Replace("\"name\":\"Humans - Test\",", "", StringComparison.Ordinal),
             "blank-group-name" => HumansGroupPage.Replace("\"name\":\"Humans - Test\"", "\"name\":\"  \"", StringComparison.Ordinal),
             "wrong-group-page" => HumansGroupPage.Replace("\"current_page\":1", "\"current_page\":2", StringComparison.Ordinal),
+            "mistyped-group-page" => HumansGroupPage.Replace("\"current_page\":1", "\"current_page\":\"bad\"", StringComparison.Ordinal),
             "invalid-last-page" => HumansGroupPage.Replace("\"last_page\":1", "\"last_page\":0", StringComparison.Ordinal),
             _ => HumansGroupPage,
         };
@@ -75,32 +83,51 @@ public class MailerLiteClientRetryTests
     }
 
     [HumansTheory]
-    [Xunit.InlineData("")]
-    [Xunit.InlineData(",\"status\":null")]
-    [Xunit.InlineData(",\"status\":\"\"")]
-    [Xunit.InlineData(",\"status\":\"  \\t\"")]
-    public async Task RefreshAsync_RejectsMissingStatusAndPreservesSnapshot(string statusProperty)
+    [Xunit.InlineData("status", null, "subscriber.status missing")]
+    [Xunit.InlineData("status", "null", "subscriber.status missing")]
+    [Xunit.InlineData("status", "\"\"", "subscriber.status missing")]
+    [Xunit.InlineData("status", "\"  \\t\"", "subscriber.status missing")]
+    [Xunit.InlineData("id", "\"  \"", "subscriber.id missing")]
+    [Xunit.InlineData("email", "\"\"", "subscriber.email missing")]
+    [Xunit.InlineData("groups", "null", "subscriber.groups must be an array")]
+    [Xunit.InlineData("groups", "{}", "subscriber.groups must be an array")]
+    [Xunit.InlineData("groups", "[\"42\",null]", "subscriber.groups contains an invalid id")]
+    [Xunit.InlineData("groups", "[\"\"]", "subscriber.groups contains an invalid id")]
+    [Xunit.InlineData("groups", "[{\"id\":\"  \"}]", "subscriber.groups contains an invalid id")]
+    [Xunit.InlineData("groups", "[{}]", "subscriber.groups contains an invalid id")]
+    [Xunit.InlineData("subscribed_at", "42", "subscriber.subscribed_at must be a timestamp string or null")]
+    [Xunit.InlineData("unsubscribed_at", "true", "subscriber.unsubscribed_at must be a timestamp string or null")]
+    [Xunit.InlineData("opted_in_at", "{}", "subscriber.opted_in_at must be a timestamp string or null")]
+    public async Task RefreshAsync_RejectsInvalidSubscriberAndPreservesSnapshot(string field, string? jsonValue, string error)
     {
         var handler = new ScriptedHandler();
         handler.EnqueueJson(HttpStatusCode.OK,
-            """{"data":[{"id":"sub-1","email":"alice@example.org","status":"active"}],"meta":{"next_cursor":null}}""");
+            """{"data":[{"id":"sub-1","email":"alice@example.org","status":"active","groups":["42"]}],"meta":{"next_cursor":null}}""");
         handler.EnqueueJson(HttpStatusCode.OK, HumansGroupPage);
         var client = NewClient(handler);
         var original = await client.GetAccountSummaryAsync(Xunit.TestContext.Current.CancellationToken);
         var fetchedAt = client.LastFetchedAt;
+        var payload = System.Text.Json.Nodes.JsonNode.Parse(
+            """{"id":"sub-2","email":"bob@example.org","status":"active"}""")!.AsObject();
+        if (jsonValue is null) payload.Remove(field);
+        else payload[field] = System.Text.Json.Nodes.JsonNode.Parse(jsonValue);
         handler.EnqueueJson(HttpStatusCode.OK,
-            "{\"data\":[{\"id\":\"sub-2\",\"email\":\"bob@example.org\"" + statusProperty + "}],\"meta\":{\"next_cursor\":null}}");
+            "{\"data\":[" + payload.ToJsonString() + "],\"meta\":{\"next_cursor\":null}}");
         handler.EnqueueJson(HttpStatusCode.OK, HumansGroupPage);
 
         var act = async () => await client.RefreshAsync(Xunit.TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<System.Text.Json.JsonException>()
-            .WithMessage("subscriber.status missing");
+        var failure = (await act.Should().ThrowAsync<HttpRequestException>()).Which;
+        failure.InnerException.Should().BeOfType<System.Text.Json.JsonException>().Which.Message
+            .Should().Be(error);
         (await client.GetAccountSummaryAsync(Xunit.TestContext.Current.CancellationToken)).Should().BeSameAs(original);
         client.LastFetchedAt.Should().Be(fetchedAt);
         var emails = new List<string>();
         await foreach (var subscriber in client.ListSubscribersAsync(Xunit.TestContext.Current.CancellationToken))
+        {
             emails.Add(subscriber.Email);
+            subscriber.GroupIds.Should().Equal("42");
+        }
         emails.Should().ContainSingle().Which.Should().Be("alice@example.org");
     }
 

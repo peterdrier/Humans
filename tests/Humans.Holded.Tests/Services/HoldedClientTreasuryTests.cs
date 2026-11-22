@@ -19,7 +19,7 @@ public class HoldedClientTreasuryTests
             Options.Create(new HoldedClientOptions { ApiKey = "test-key" }),
             logger ?? NullLogger<HoldedClient>.Instance,
             new HoldedCallLog(),
-            new FakeClock(Instant.FromUtc(2026, 8, 10, 12, 0)));
+            new FakeClock(Instant.FromUtc(2026, 8, 10, 12, 0)), FixedOrgTimeZone.Madrid);
 
     [HumansFact]
     public async Task ListBankMovementsAsync_RequestsTheAccountsFeed_WithTheWindow()
@@ -89,6 +89,43 @@ public class HoldedClientTreasuryTests
 
         movements.Select(m => m.Date).Should().Equal(new LocalDate(2026, 10, 16), new LocalDate(2026, 10, 20));
         logger.Entries.Should().NotContain(e => e.Level == LogLevel.Warning);
+    }
+
+    [HumansFact]
+    public async Task ListBankMovementsAsync_KeepsTheBookingInstantToTheSecond()
+    {
+        // A Stripe gateway line's booking_date is the charge's `created`: the only key, with the amount, to match it.
+        var json = $$"""
+        {"items":[{{Line("stripe-1", "40.00", "pending", booking: "2026-10-20T18:13:31+02:00", origin: "gateway")}}],
+         "cursor":null,"has_more":false}
+        """;
+        var client = Make(new StubHandler(_ => Respond(HttpStatusCode.OK, json)));
+
+        var movements = await client.ListBankMovementsAsync(
+            "tr-1", new LocalDate(2026, 10, 1), new LocalDate(2026, 10, 31),
+            Xunit.TestContext.Current.CancellationToken);
+
+        movements.Single().BookedAt.Should().Be(Instant.FromUtc(2026, 10, 20, 16, 13, 31));
+    }
+
+    [HumansFact]
+    public async Task CreateTreasuryPaymentAsync_PostsTypeContactBankAccountAndAStringAmount()
+    {
+        string? body = null;
+        var client = Make(new StubHandler(req =>
+        {
+            req.RequestUri!.AbsolutePath.Should().Be("/api/v2/payments");
+            body = new StreamReader(req.Content!.ReadAsStream()).ReadToEnd();
+            return Respond(HttpStatusCode.Created, """{"id":"pay-9"}""");
+        }));
+
+        var id = await client.CreateTreasuryPaymentAsync(HoldedTreasuryPaymentKind.Collection, "contact-1", "tr-1", 10.5m,
+            new LocalDate(2026, 6, 3), "Store order x", Xunit.TestContext.Current.CancellationToken);
+
+        id.Should().Be("pay-9");
+        body.Should().Contain("\"type\":\"collection\"").And.Contain("\"contact_id\":\"contact-1\"")
+            .And.Contain("\"bank_account_id\":\"tr-1\"").And.Contain("\"amount\":\"10.50\"")
+            .And.Contain("\"date\":\"2026-06-03\"");
     }
 
     [HumansFact]

@@ -3,7 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Humans.Finance.Services;
 
-/// <summary>Process-wide: the current or last booking run, for the page to follow.</summary>
+/// <summary>Process-wide: the current or last Pleo run (booking, receipts or corrections), for the page to follow.</summary>
 internal sealed class PleoBookingState
 {
     private readonly Lock _lock = new();
@@ -20,15 +20,15 @@ internal sealed class PleoBookingState
     }
 }
 
-/// <summary>Runs a booking off the request, so it survives the page being left. One at a time: a second start while
-/// one is going is refused here, and <see cref="PleoBooking"/>'s own gate refuses any other caller.</summary>
+/// <summary>Runs a Pleo run off the request, so it survives the page being left. One at a time, of any kind: a second
+/// start while one is going is refused here, and <see cref="PleoBooking"/>'s own gate refuses any other caller.</summary>
 internal sealed class PleoBookingRunner(IServiceScopeFactory scopes, ILogger<PleoBookingRunner> logger)
 {
     private int _running;
 
     public bool IsRunning => Volatile.Read(ref _running) == 1;
 
-    public bool TryStart(int? limit, Guid actorUserId)
+    public bool TryStart(PleoRunKind kind, int? limit, Guid actorUserId)
     {
         if (Interlocked.CompareExchange(ref _running, 1, 0) != 0) return false;
         _ = Task.Run(async () =>
@@ -37,11 +37,11 @@ internal sealed class PleoBookingRunner(IServiceScopeFactory scopes, ILogger<Ple
             {
                 await using var scope = scopes.CreateAsyncScope();
                 await scope.ServiceProvider.GetRequiredService<PleoBooking>()
-                    .BookAsync(limit, actorUserId, CancellationToken.None);
+                    .RunAsync(kind, limit, actorUserId, CancellationToken.None);
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, "Pleo booking run failed");
+                logger.LogError(ex, "Pleo {Kind} run failed", kind);
             }
             finally
             {

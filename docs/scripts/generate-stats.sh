@@ -237,10 +237,12 @@ count_source_types() {
 }
 
 
-# Last-commit-of-each-day on the current ref, oldest first.
+# Pick each day's last commit in traversal order, then sort the days:
+# merged or rebased commits can have author dates earlier than their ancestors.
 DAY_COMMITS=$(git log --reverse --format="%ad %H" --date=format:"%Y-%m-%d" 2>/dev/null \
   | awk '{ last[$1] = $2; if (!seen[$1]++) order[++n] = $1 }
-         END { for (i=1; i<=n; i++) print order[i] " " last[order[i]] }')
+         END { for (i=1; i<=n; i++) print order[i] " " last[order[i]] }' \
+  | LC_ALL=C sort -k1,1)
 
 # Filter to days strictly after LAST_DATE (in incremental mode).
 if [ -n "$LAST_DATE" ]; then
