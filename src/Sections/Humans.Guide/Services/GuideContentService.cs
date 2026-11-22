@@ -81,8 +81,6 @@ internal sealed class GuideContentService(
             cache.TryGetValue<GuideDocument>(CacheKey(requestedStem), out var loaded) && loaded is not null)
             return [];
 
-        var hasStale = GuideFiles.All.Any(s => cache.TryGetValue(CacheKey(s), out GuideDocument? _));
-
         var ttl = TimeSpan.FromHours(Math.Max(1, settings.Value.CacheTtlHours));
         var failed = new List<string>();
         var newEntries = new Dictionary<string, GuideDocument>(StringComparer.OrdinalIgnoreCase);
@@ -99,17 +97,15 @@ internal sealed class GuideContentService(
                 failed.Add(stem);
                 var expected = ex is ApiException or HttpRequestException or IOException or TimeoutException or OperationCanceledException;
                 logger.Log(expected ? LogLevel.Warning : LogLevel.Error, expected ? null : ex,
-                    "Failed to fetch or segment guide file {FileStem}; {Outcome}: {Reason}",
-                    stem,
-                    hasStale ? "keeping stale cached copy" : "no stale copy available", ex.Message);
+                    "Failed to fetch or segment guide file {FileStem}; content is unavailable: {Reason}",
+                    stem, ex.Message);
             }
         }
 
-        if (!hasStale && newEntries.Count == 0)
-        {
-            throw new GuideContentUnavailableException(
-                "Guide content is unavailable and the cache is cold.");
-        }
+        cancellationToken.ThrowIfCancellationRequested();
+
+        foreach (var stem in failed)
+            cache.Remove(CacheKey(stem));
 
         foreach (var (stem, document) in newEntries)
         {
@@ -122,7 +118,7 @@ internal sealed class GuideContentService(
         if (failed.Count > 0)
         {
             logger.LogWarning(
-                "Guide refresh completed with failures (isRefresh={IsRefresh}); stale entries retained.",
+                "Guide refresh completed with failures (isRefresh={IsRefresh}); failed pages are unavailable.",
                 requestedStem is null);
         }
 

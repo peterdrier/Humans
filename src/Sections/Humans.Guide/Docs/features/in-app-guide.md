@@ -63,7 +63,8 @@ cached in-memory from GitHub. No migrations, no new tables.
 
 1. Admin submits `POST /Guide/Refresh` (CSRF-protected).
 2. `GuideContentService.RefreshAllAsync` re-fetches every stem in
-   `GuideFiles.All` and re-segments; existing cache entries are overwritten.
+   `GuideFiles.All` and re-segments; successful entries are replaced and failed stems are evicted.
+   A failed page returns the existing localized 503 until a successful fetch. Requested cancellation publishes no cache changes.
 3. Admin is redirected back to `/Guide` with a status flash naming any page
    whose fetch failed.
 
