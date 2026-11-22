@@ -89,17 +89,21 @@ difference everywhere.
 
 ### Fees and payouts
 
-Where Humans can read the backend's payment account (Box Office: the ticket Stripe account), the page and the daily run
+Where Humans can read the backend's payment account (each backend's Stripe account through a read key: Box Office's
+`STRIPE_BOXOFFICE_KEY`; pretix's and Hi.Events' through the Stripe section, as the `Stripe:MirrorAccounts` entries
+`Pretix` and `HiEvents`), the page and the daily run
 also reconcile it by the day the money moved (`GetPaymentLedgerAsync`), so a refund months after the sale counts in the
-month it was made. Every balance movement is tied to the Humans order its payment carries in metadata. A payment must
+month it was made. Every balance movement is tied to its Humans order: Box Office's payments carry it in metadata; pretix's and Hi.Events'
+carry the vendor's own order, whose Humans order the adapter reads back from the vendor. A payment must
 name a paid (or settling) order on that backend, for the order's total, with the fee Humans recorded on the order (a
 failed delayed debit whose payment came back, in the period or any time after it, may be Failed); a refund or chargeback must name an order; a payout must
 send exactly the net of the movements Stripe says it contains. A failed payout is shown but does not unbalance: Stripe
 returns the money and pays it out again, and it would otherwise hold the nightly alert forever. Totals show charged, refunded, chargebacks, fees, net into the balance and paid out to the
 bank, and the fees on order payments Humans against Stripe. Fees not on a payment (Stripe's own billing, a chargeback
 fee) name no order: they are listed and counted, not a difference. A manual payout's contents cannot be listed, nor an
-automatic one's until Stripe has finished reconciling it, so only its status is checked. pretix and Hi.Events take payments through their own Stripe accounts, which Humans holds no
-keys for, so their fees and payouts are not reconciled here.
+automatic one's until Stripe has finished reconciling it, so only its status is checked. pretix and Hi.Events record the fee on a paid order from
+Stripe as Box Office does, so their fees reconcile the same way; until a backend's key is set its ledger is null and the
+backends page Test says so.
 
 Per backend: Box Office lists every Checkout Session on the ticket Stripe account (it has no events) and reads the ticket
 count from the session's `humans_ticket_count` metadata, since free lines never reach Stripe; a session without it
@@ -217,7 +221,7 @@ addresses were typed. Directed resale links buy only the buyer's own ticket.
   leaves one `TicketResaleRefundBatch` audit row per event with the count and total started, held back and waiting;
   the batch refunds are reconciled with the backend like every other refund. The resale queue page shows a sold offer
   without its refund as waiting for the batch.
-- **Did not sell** (H12): once sales close (mode `Closed` or `SalesCloseAt` passed), the reconcile job tells each
+- **Did not sell** (H12): once sales close (mode `Closed` or `SalesCloseAt` passed) on an event that is not cancelled, the reconcile job tells each
   holder whose offer is still open, once (`UnsoldNotifiedAt`, `ResaleUnsold` on the timeline, `ticket_resale_unsold`):
   no refund, and the ticket admits them. It is marked only once the mail is queued, so a failed hand-off is retried
   by the next sweep. The offer stays open in case sales reopen.
@@ -294,7 +298,6 @@ and nothing goes to Consent.
   longer current (`Tickets_Buy_TermsChanged`), so the buyer reads the new text first. While there are no rules to show
   (unreadable or invalid), the event is unavailable to buy (`Tickets_Buy_TermsUnavailable`).
 - The order keeps `TermsFolder` and `TermsVersion`; its `TermsAccepted` timeline entry links that exact version on GitHub.
-- The earlier `TermsUrl` column (an external page address) was dropped: 2027 ticketing had no live data (Peter, 2026-11-21).
 
 ## Assumptions to confirm
 
@@ -302,15 +305,12 @@ and nothing goes to Consent.
 
 ## Not yet
 
-- Ticket email with QR and the post-purchase
-  shifts email (delivery thread, through `ITicketDelivery`).
 - Checkout tickets in holdings, the gate list and the Scanner lookup. (Gate admits them: `ITicketGateLookup`.)
-- Chargebacks and disputes: a dispute is read only as `RefundedMinor` and nothing voids the ticket yet.
+- Voiding a ticket on a chargeback: a dispute is recorded (`DisputedMinor`) and flagged, and the team decides.
 - Payment-method-dependent prices.
 - Check-in report: the gate's per-event check-in is not built and Gate has no read Tickets may call.
 - Moving a ticket to another person moves its order line, so the order is no longer the previous holder's and erasing them
   never asks the backend to erase its copy of that order (pretix, Hi.Events; Box Office keeps none).
-- A renamed ticket is not emailed to its new holder (`ITicketDelivery` is per order, sent once); they see it in their profile.
-- Fees and payouts of pretix's and Hi.Events' own payment accounts; matching a payout to the bank statement.
+- Matching a payout to the bank statement.
 - Reconciliation follow-ups: signing off a difference (an unresolved one is mailed every night); a vendor admin link on extra rows; currency on backend rows (all are summed as EUR cents); comparing
   refunds with Humans' own refund records rather than the backend's copy.

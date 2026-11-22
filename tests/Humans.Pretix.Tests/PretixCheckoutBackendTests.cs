@@ -117,6 +117,23 @@ public class PretixCheckoutBackendTests
         pretix.BodiesFor("POST", $"{OrderPath}mark_canceled/").Should().ContainSingle();
     }
 
+    [HumansTheory]
+    [InlineData("200.00", "1000.00", "*line 1 costs 200.00*")]
+    [InlineData("225.00", "1015.52", "*total 1015.52*")]
+    public async Task Create_ChargedDifferentlyThanAsked_CancelsTheOrderAndThrows(string ticketPrice, string total, string message)
+    {
+        var pretix = WithEvent()
+            .On("POST", $"{Api}orders/", HttpStatusCode.Created,
+                Order(Code, total: decimal.Parse(total, System.Globalization.CultureInfo.InvariantCulture),
+                    positions: [Position(1, ticketPrice, "21.00"), Position(2, "775.00", "0.00")]))
+            .On("POST", $"{OrderPath}mark_canceled/", HttpStatusCode.OK, Order(Code, status: "c"));
+
+        var act = () => Create(pretix).CreateCheckoutAsync(Request(), TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<TicketCheckoutException>().WithMessage(message);
+        pretix.BodiesFor("POST", $"{OrderPath}mark_canceled/").Should().ContainSingle();
+    }
+
     [HumansFact]
     public async Task Create_LanguageTheEventDoesNotOffer_RetriesWithoutLocale()
     {
@@ -414,6 +431,24 @@ public class PretixCheckoutBackendTests
         var fee = JsonNode.Parse(pretix.BodiesFor("POST", $"{OrderPath}change/").Single()!)!["create_fees"]![0]!;
         fee["value"]!.GetValue<string>().Should().Be("-225.00");
         fee["internal_type"]!.GetValue<string>().Should().Be($"humans-refund:{refundId}");
+    }
+
+    [HumansTheory]
+    [InlineData("transit", "stripe", RefundState.Pending)]
+    [InlineData("created", "stripe", RefundState.Pending)]
+    [InlineData("created", "manual", RefundState.ManualRequired)]
+    public async Task Refund_AcceptedButNotYetDone_IsNotReportedSucceeded(string state, string provider, RefundState expected)
+    {
+        var refundId = Guid.NewGuid();
+        var pretix = RefundablePretix(refundId)
+            .On("POST", $"{OrderPath}payments/1/refund/", HttpStatusCode.OK,
+                new { local_id = 3, state, amount = "225.00", payment = 1, comment = "", provider });
+
+        var result = await Create(pretix).RefundAsync(
+            new RefundRequest(refundId, $"nowhere2027/{Code}", 22500, "Resold"), TestContext.Current.CancellationToken);
+
+        result.State.Should().Be(expected);
+        result.BackendRefundId.Should().Be("3");
     }
 
     [HumansFact]

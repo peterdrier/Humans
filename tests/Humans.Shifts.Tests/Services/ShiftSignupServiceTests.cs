@@ -1,3 +1,5 @@
+using Humans.Permissions.Contracts;
+using Humans.Base.Authorization;
 using Humans.Shifts.Services.Dtos;
 using Microsoft.Extensions.DependencyInjection;
 using System.Globalization;
@@ -64,6 +66,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         recipients.Should().BeEquivalentTo(notice == CanonicalNotice.CoverageGap ? new[] { live, other } : [live]);
     }
 
+    private readonly IPermissionService _permissions = Substitute.For<IPermissionService>();
     private readonly ShiftManagementService _shiftMgmt;
     private readonly ShiftRepository _repo;
     private readonly ShiftSignupService _service;
@@ -85,6 +88,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
             .With(_teamService)
             .With(_teamService)
             .With(_roleAssignmentService)
+            .With(_permissions)
             .With<ITicketService>()
             .With(_users)
             .With<ICampService>()
@@ -95,7 +99,6 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         _shiftMgmt = new ShiftManagementService(
             shiftRepo,
             AuditLog,
-            AdminAuthorization,
             serviceProvider,
             NewCalendarResolver(),
             Clock,
@@ -128,7 +131,6 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
             NewCalendarResolver(),
             AuditLog,
             Notifier,
-            AdminAuthorization,
             serviceProvider,
             Clock,
             NullLogger<ShiftSignupService>.Instance,
@@ -186,7 +188,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         var repo = new ShiftRepository(ShiftsDbFactory, db, Clock);
         var management = Substitute.For<IShiftManagement>();
         var service = new ShiftSignupService(repo, Substitute.For<IVolunteerTrackingRepository>(), management,
-            NewCalendarResolver(), AuditLog, Notifier, AdminAuthorization, new ServiceLocatorBuilder().With(_teamService).With(_roleAssignmentService).Build(),
+            NewCalendarResolver(), AuditLog, Notifier, new ServiceLocatorBuilder().With(_teamService).With(_roleAssignmentService).Build(),
             Clock, NullLogger<ShiftSignupService>.Instance, _users, _localizer);
         Func<Task> write = operation switch
         {
@@ -257,7 +259,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         await using var db = new ShiftsDbContext(options);
         var repo = new ShiftRepository(new Humans.Testing.TestDbContextFactory<ShiftsDbContext>(options), db, Clock);
         var service = new ShiftSignupService(repo, new VolunteerTrackingRepository(db), Substitute.For<IShiftManagement>(),
-            NewCalendarResolver(), AuditLog, Notifier, AdminAuthorization, new ServiceLocatorBuilder().Build(), Clock, NullLogger<ShiftSignupService>.Instance, _users, _localizer);
+            NewCalendarResolver(), AuditLog, Notifier, new ServiceLocatorBuilder().Build(), Clock, NullLogger<ShiftSignupService>.Instance, _users, _localizer);
 
         Func<Task> erase = () => service.EraseForUserAsync(userId, ct);
 
@@ -356,7 +358,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         _users.GetUserInfoAsync(target, Arg.Any<CancellationToken>()).Returns(info);
         _teamService.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo>());
         var service = new ShiftSignupService(_repo, new VolunteerTrackingRepository(ShiftsDb), _shiftMgmt,
-            NewCalendarResolver(), AuditLog, Notifier, AdminAuthorization, new ServiceLocatorBuilder().With(_teamService).Build(), Clock,
+            NewCalendarResolver(), AuditLog, Notifier, new ServiceLocatorBuilder().With(_teamService).Build(), Clock,
             NullLogger<ShiftSignupService>.Instance, _users, _localizer);
 
         var slices = await service.ContributeForUserAsync(archivedId ? source : target, TestContext.Current.CancellationToken);
@@ -453,7 +455,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         ShiftSignupService NewService(ShiftsDbContext db) => new(
             new ShiftRepository(factory, db, Clock), new VolunteerTrackingRepository(db),
             Substitute.For<IShiftManagement>(), NewCalendarResolver(), AuditLog, Notifier,
-            AdminAuthorization, services, Clock,
+            services, Clock,
             NullLogger<ShiftSignupService>.Instance, _users, _localizer);
         Task<SignupResult> EnrollAsync(ShiftSignupService service, string path, Guid userId) => path switch
         {
@@ -645,7 +647,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         Saved(result).ReviewedAt.Should().BeNull();
         if (range) Saved(result).SignupBlockId.Should().NotBeNull();
         else Saved(result).SignupBlockId.Should().BeNull();
-        await _teamService.Received(1).GetUserCoordinatedTeamIdsAsync(userId, Arg.Any<CancellationToken>());
+        await _permissions.Received(1).HasAsync(userId, ShiftsPermissions.Approve, Arg.Any<Owner>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -773,9 +775,9 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
             shift = SeedAllDayShift(rota, 1);
         }
         var userId = Guid.NewGuid();
-        // Coordinating another department grants no access to this hidden rota.
-        _teamService.GetUserCoordinatedTeamIdsAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(new List<Guid> { Guid.NewGuid() });
+        // Approving on another department grants no access to this hidden rota.
+        _permissions.HasAsync(userId, ShiftsPermissions.Approve, new Owner(TeamOwner.Kind, Guid.NewGuid()), Arg.Any<CancellationToken>())
+            .Returns(true);
         await SaveAllAsync(TestContext.Current.CancellationToken);
 
         var result = path switch
@@ -808,8 +810,8 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         }
         var userId = Guid.NewGuid();
         if (departmentCoordinator)
-            _teamService.GetUserCoordinatedTeamIdsAsync(userId, Arg.Any<CancellationToken>())
-                .Returns(new List<Guid> { rota.TeamId });
+            _permissions.HasAsync(userId, ShiftsPermissions.Approve, new Owner(TeamOwner.Kind, rota.TeamId), Arg.Any<CancellationToken>())
+                .Returns(true);
         var flags = departmentCoordinator ? ShiftSignupRequestFlags.None : ShiftSignupRequestFlags.Privileged;
         await SaveAllAsync(TestContext.Current.CancellationToken);
 
@@ -819,8 +821,8 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
 
         result.Success.Should().BeTrue();
         (await ShiftsDb.ShiftSignups.CountAsync(TestContext.Current.CancellationToken)).Should().Be(1);
-        await _teamService.Received(departmentCoordinator ? 1 : 0)
-            .GetUserCoordinatedTeamIdsAsync(userId, Arg.Any<CancellationToken>());
+        await _permissions.Received(departmentCoordinator ? 1 : 0)
+            .HasAsync(userId, ShiftsPermissions.Approve, Arg.Any<Owner>(), Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -946,6 +948,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         var signup = SeedSignup(Guid.NewGuid(), shift.Id, SignupStatus.Pending);
         var reviewerId = Guid.NewGuid();
         _roleAssignmentService.HasActiveRoleAsync(reviewerId, RoleNames.Admin).Returns(true);
+        _permissions.HasAsync(reviewerId, ShiftsPermissions.Approve, Arg.Any<Owner>(), Arg.Any<CancellationToken>()).Returns(true);
         await SaveAllAsync(TestContext.Current.CancellationToken);
 
         var result = await _service.ApproveAsync(signup.Id, reviewerId);
@@ -968,8 +971,8 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         var userId = Guid.NewGuid();
         var signup = SeedSignup(userId, shift.Id, SignupStatus.Confirmed);
         await SaveAllAsync(TestContext.Current.CancellationToken);
-        _teamService.GetUserCoordinatedTeamIdsAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(Task.FromException<IReadOnlyList<Guid>>(new IOException("Permission lookup unavailable")));
+        _permissions.HasAsync(userId, Arg.Any<string>(), Arg.Any<Owner>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<bool>(new IOException("Permission lookup unavailable")));
 
         var result = await _service.BailAsync(signup.Id, userId, "Can't make it");
 
@@ -2025,7 +2028,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
             .With(_roleAssignmentService).With(_users).Build();
         var service = new ShiftSignupService(
             _repo, Substitute.For<IVolunteerTrackingRepository>(), _shiftMgmt, new EventCalendarResolver(settings, Substitute.For<Humans.Shifts.Data.IShiftManagementRepository>()),
-            AuditLog, Notifier, AdminAuthorization, serviceProvider, Clock, NullLogger<ShiftSignupService>.Instance, _users, _localizer);
+            AuditLog, Notifier, serviceProvider, Clock, NullLogger<ShiftSignupService>.Instance, _users, _localizer);
 
         var result = await service.BailRangeAsync(signup.SignupBlockId.Value, userId);
 
@@ -2052,8 +2055,8 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
             signup.SignupBlockId = blockId;
         }
         await SaveAllAsync(TestContext.Current.CancellationToken);
-        _teamService.GetUserCoordinatedTeamIdsAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(Task.FromException<IReadOnlyList<Guid>>(new IOException("Permission lookup unavailable")));
+        _permissions.HasAsync(userId, Arg.Any<string>(), Arg.Any<Owner>(), Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<bool>(new IOException("Permission lookup unavailable")));
 
         await _service.BailRangeAsync(blockId, userId);
 
@@ -2515,7 +2518,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
             .Returns([new ShiftAdminRota(rota, [new ShiftAdminShift(shift, [signup])])]);
         var service = new ShiftSignupService(Substitute.For<IShiftManagementRepository>(),
             Substitute.For<IVolunteerTrackingRepository>(), _shiftMgmt,
-            NewCalendarResolver(), AuditLog, Notifier, AdminAuthorization, new ServiceLocatorBuilder().With(rows).Build(), Clock, NullLogger<ShiftSignupService>.Instance, _users, _localizer);
+            NewCalendarResolver(), AuditLog, Notifier, new ServiceLocatorBuilder().With(rows).Build(), Clock, NullLogger<ShiftSignupService>.Instance, _users, _localizer);
         var scope = block ? ShiftSignupTeamProbeScope.SignupBlock : ShiftSignupTeamProbeScope.Signup;
 
         var probe = await service.GetTeamProbeAsync(block ? blockId : signup.Id, scope, TestContext.Current.CancellationToken);
@@ -2566,7 +2569,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
         await SaveAllAsync(TestContext.Current.CancellationToken);
         var management = Substitute.For<IShiftManagement>();
         var service = new ShiftSignupService(_repo, Substitute.For<IVolunteerTrackingRepository>(), management,
-            NewCalendarResolver(), AuditLog, Notifier, AdminAuthorization, new ServiceLocatorBuilder().Build(), Clock, NullLogger<ShiftSignupService>.Instance, _users, _localizer);
+            NewCalendarResolver(), AuditLog, Notifier, new ServiceLocatorBuilder().Build(), Clock, NullLogger<ShiftSignupService>.Instance, _users, _localizer);
         var mergedAt = TestNow + Duration.FromHours(1);
         var actor = Guid.NewGuid();
 

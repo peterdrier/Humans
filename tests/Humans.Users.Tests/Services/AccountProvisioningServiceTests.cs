@@ -89,8 +89,6 @@ public class AccountProvisioningServiceTests
             throw new NotSupportedException();
         public Task<IReadOnlyList<Guid>> GetUserIdsWithExternalLoginsAsync(CancellationToken ct = default) =>
             throw new NotSupportedException();
-        public Task<int> DeleteUsersAsync(IReadOnlyCollection<Guid> userIds, CancellationToken ct = default) =>
-            throw new NotSupportedException();
         public Task<IReadOnlyDictionary<Guid, IReadOnlyList<(string Provider, string ProviderKey)>>>
             GetExternalLoginsByUserIdsAsync(IReadOnlyCollection<Guid> userIds, CancellationToken ct = default) =>
             throw new NotSupportedException();
@@ -170,9 +168,6 @@ public class AccountProvisioningServiceTests
             throw new NotSupportedException();
         public Task RemoveAllUserEmailsForUserAndSaveAsync(Guid userId, CancellationToken ct = default) =>
             throw new NotSupportedException();
-        public Task RemoveAllUserEmailsForUsersAndSaveAsync(
-            IReadOnlyCollection<Guid> userIds, CancellationToken ct = default) =>
-            throw new NotSupportedException();
         public Task<bool> MarkUserEmailVerifiedAsync(
             Guid emailId, Instant now, CancellationToken ct = default) =>
             throw new NotSupportedException();
@@ -180,9 +175,6 @@ public class AccountProvisioningServiceTests
             throw new NotSupportedException();
         public Task<IReadOnlyList<UserEmail>> GetUserEmailsByEmailsAsync(
             IReadOnlyCollection<string> emails, CancellationToken ct = default) =>
-            throw new NotSupportedException();
-        public Task<IReadOnlyList<Guid>> GetUserIdsByUserEmailPrefixAndSuffixAsync(
-            string prefix, string suffix, CancellationToken ct = default) =>
             throw new NotSupportedException();
         public Task ApplyUserEmailReconcilePlanAsync(
             UserEmail? rowToDelete,

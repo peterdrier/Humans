@@ -152,8 +152,6 @@ public class TicketCheckoutRepositoryTests(HumansTestDatabase database) : Integr
                 new TicketResaleInvite { Email = "Ana@Example.com", TokenHash = "DEF", SentAt = Now },
                 new TicketResaleInvite { Email = "cy@example.com", TokenHash = "GHI", SentAt = Now },
             ],
-            DirectedEmail = "ana@example.com",
-            DirectedTokenHash = "OLD",
         };
         await repo.AddOfferAsync(invitedElsewhere, ct);
         var unattached = new TicketCheckoutTicket
@@ -191,7 +189,6 @@ public class TicketCheckoutRepositoryTests(HumansTestDatabase database) : Integr
         (await repo.GetTicketAsync(child.Id, ct))!.HolderName.Should().NotBe("Kid García");
         var storedElsewhere = (await repo.GetOfferAsync(invitedElsewhere.Id, ct))!;
         storedElsewhere.Invites.Select(i => i.Email).Should().Equal("cy@example.com");
-        storedElsewhere.DirectedEmail.Should().BeNull("a row written before the invitation list still loses the address");
         (await repo.GetTicketAsync(unattached.Id, ct))!.HolderName.Should().NotBe("Ana García");
         var stored = (await repo.GetTicketAsync(adult.Id, ct))!;
         stored.HolderName.Should().NotBe("Ana García");

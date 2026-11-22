@@ -70,6 +70,8 @@
     <ProjectReference Include="..\Humans.Email.Contracts\Humans.Email.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Consent\Humans.Consent.csproj" />
     <ProjectReference Include="..\Humans.Notifications.Contracts\Humans.Notifications.Contracts.csproj" />
+    <!-- Permissions: declares Shifts.Manage and Shifts.Approve, and checks them on teams. -->
+    <ProjectReference Include="..\Humans.Permissions\Humans.Permissions.csproj" />
     <ProjectReference Include="..\Humans.Teams\Humans.Teams.csproj" />
     <ProjectReference Include="..\Humans.Teams.Contracts\Humans.Teams.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Tickets.Contracts\Humans.Tickets.Contracts.csproj" />

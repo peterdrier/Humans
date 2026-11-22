@@ -1,3 +1,4 @@
+using Humans.Permissions.Contracts;
 using Humans.Base.Extensions;
 using Humans.Shifts.Domain;
 using Humans.Auth.Contracts;
@@ -41,13 +42,13 @@ public sealed class ShiftSignupServiceCoverageGapTests : ShiftsTestHarness
             .With(_teamService)
             .With(_teamService)
             .With(roleAssignmentService)
+            .With<IPermissionService>()
             .Build();
 
         var shiftRepo = new ShiftRepository(ShiftsDbFactory, ShiftsDb, Clock);
         var shiftMgmt = new ShiftManagementService(
             shiftRepo,
             AuditLog,
-            AdminAuthorization,
             serviceProvider,
             NewCalendarResolver(),
             Clock,
@@ -61,7 +62,6 @@ public sealed class ShiftSignupServiceCoverageGapTests : ShiftsTestHarness
             NewCalendarResolver(),
             AuditLog,
             _notificationService,
-            AdminAuthorization,
             serviceProvider,
             Clock,
             NullLogger<ShiftSignupService>.Instance,

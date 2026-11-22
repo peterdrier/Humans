@@ -14,7 +14,8 @@ account's ledger and the `/Stripe` pages over it (recon: find an order, match pa
 see reserve holds). Spec: [`features/stripe-mirror.md`](features/stripe-mirror.md).
 
 - **For:** the one place Humans talks to Stripe. Store gets hosted checkout and a verified
-  webhook; Tickets gets each payment's fee breakdown.
+  webhook; Tickets gets each payment's fee breakdown; the pretix and Hi.Events adapters read the
+  Stripe accounts those vendors charge into (ledger, fees, key check) for Tickets' reconciliation.
 - **Good looks like:** a thin, honest translator. Each call answers, returns `null` for a case
   it checked, or throws — never a silent failure, never a decision about what a payment means.
 - **Deliberate choices:** two Stripe accounts on least-privilege restricted keys; no retries, no
@@ -30,6 +31,12 @@ see reserve holds). Spec: [`features/stripe-mirror.md`](features/stripe-mirror.m
   **Tickets account** (`STRIPE_TICKETS_KEY`, PaymentIntent + BalanceTransaction reads for
   fee enrichment) and the **Store account** (`STRIPE_STORE_KEY`, Checkout Session
   create/list).
+- A **mirror account** is a `Stripe:MirrorAccounts` entry: a name, its `acct_` id, and a read key (its own
+  through `KeyVariable`, or the org read key with `Stripe-Context`). Besides the nightly sweep, the
+  **account reads** (`GetAccountLedgerAsync`, `GetAccountPaymentFeeAsync`, `FindAccountPaymentFeeAsync`,
+  `CheckAccountAsync`) read one by name, live: `Pretix` and `HiEvents` are the ticket vendors'
+  accounts. A ledger refusal throws `InvalidOperationException`; a fee read never throws (unknown is null,
+  and logged), so a fee never holds up a paid order; the check never throws.
 - A **Checkout Session** is a Stripe-hosted payment page created for one Store order.
   `humans_store_order_id` is stamped on both the session's and the PaymentIntent's
   metadata, which is how a payment is matched back to an order from the dashboard,
@@ -95,7 +102,8 @@ integration uses — see [`memory/code/stripe-restricted-keys.md`](../../../../m
 ## Invariants
 
 - No Stripe.NET SDK type appears on `Contracts/`; consumers see only `StripePaymentDetails`,
-  `StoreCheckoutWebhookEvent`, `StoreCheckoutSessionData` and `StripeAccountBalance` — verified by
+  `StoreCheckoutWebhookEvent`, `StoreCheckoutSessionData`, `StripeAccountBalance` and the account-read records
+  (`StripeAccountLedger`, `StripeLedgerLine`, `StripeLedgerPayment`, `StripeLedgerPayout`, `StripeAccountCheck`) — verified by
   `StripeConnectorArchitectureTests.IStripeService_ExposesNoStripeSdkTypesOnItsPublicSurface`,
   which walks nested generics and arrays.
 - `Humans.Stripe` is the only production project with a `Stripe.net` package reference.
@@ -202,10 +210,11 @@ integration uses — see [`memory/code/stripe-restricted-keys.md`](../../../../m
 
 - Outbound, contracts leaves only: Finance.Contracts (`FinancePolicies`) and Users.Contracts
   (`IUserService`, through `HumansControllerBase`). Neither reaches back to Stripe, so
-  `Humans.Store → Humans.Stripe` and `Humans.Tickets → Humans.Stripe` stay acyclic.
+  `Humans.Store`, `Humans.Tickets`, `Humans.Pretix` and `Humans.HiEvents → Humans.Stripe` stay acyclic.
 - Inbound: **Finance** injects `IStripeMirrorService` for the Stripe rows of /Finance's Cash on hand. **Store** injects `IStripeService` for checkout creation, webhook parsing,
   reconciliation and refund read-back with dashboard links (`Service`, `StoreStripeWebhookController`). **Tickets** injects it for
-  fee enrichment on `TicketOrder` (`TicketSyncService`).
+  fee enrichment on `TicketOrder` (`TicketSyncService`). **Pretix** and **HiEvents** inject it for their
+  account reads (`PretixCheckoutBackend`, `HiEventsCheckoutBackend`).
 
 ## Architecture
 
@@ -217,7 +226,7 @@ integration uses — see [`memory/code/stripe-restricted-keys.md`](../../../../m
 
 | Public interface | Methods | Notes |
 |---|---:|---|
-| `IStripeService` | 6 + 3 flags | The live connector. |
+| `IStripeService` | 10 + 3 flags | The live connector. |
 | `IStripeMirrorService` | 1 | Mirror reads: each account's EUR balance as last swept. Never calls Stripe. |
 | `I<Section>Write` | — | The connector's one write is a call to Stripe, not to a table. |
 

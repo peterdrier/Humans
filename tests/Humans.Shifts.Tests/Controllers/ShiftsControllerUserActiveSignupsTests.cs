@@ -62,7 +62,7 @@ public class ShiftsControllerUserActiveSignupsTests
         _burnSettings.GetByIdAsync(ActiveBurnId, Arg.Any<CancellationToken>()).Returns(ActiveBurn);
         _burnSettings.GetByIdAsync(PastBurnId, Arg.Any<CancellationToken>()).Returns(PastBurn);
 
-        _shiftMgmt.GetCoordinatorTeamIdsAsync(_userId, Arg.Any<CancellationToken>()).Returns([]);
+        _shiftMgmt.CanManageOrApproveAnyShiftsAsync(_userId, Arg.Any<CancellationToken>()).Returns(false);
         _shiftMgmt.GetBrowseShiftsAsync(Arg.Any<ShiftBrowseQuery>(), Arg.Any<CancellationToken>()).Returns([]);
         _shiftMgmt.GetTagsAsync().Returns([]);
         _shiftMgmt.GetDepartmentCoveragePiesAsync(
@@ -89,7 +89,11 @@ public class ShiftsControllerUserActiveSignupsTests
         _signupService.GetByUserAsync(_userId, ct: Arg.Any<CancellationToken>()).Returns([]);
 
         if (string.Equals(boundary, "coordinators", StringComparison.Ordinal))
-            _shiftMgmt.GetCoordinatorTeamIdsAsync(_userId, Arg.Any<CancellationToken>()).ReturnsForAnyArgs(ReadAsync<Guid>);
+            _shiftMgmt.CanManageOrApproveAnyShiftsAsync(_userId, Arg.Any<CancellationToken>()).ReturnsForAnyArgs(call =>
+            {
+                call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+                return Task.FromResult(false);
+            });
         else if (string.Equals(boundary, "signups", StringComparison.Ordinal))
             _signupService.GetByUserAsync(_userId, ct: Arg.Any<CancellationToken>()).ReturnsForAnyArgs(ReadAsync<ShiftSignupSummary>);
         else if (string.Equals(boundary, "browse", StringComparison.Ordinal))

@@ -1,5 +1,7 @@
 using Humans.Users.Contracts;
 using Humans.Teams.Contracts;
+using Humans.Permissions.Contracts;
+using Humans.Base.Authorization;
 using Humans.Finance.Contracts;
 using System.Security.Claims;
 using AwesomeAssertions;
@@ -16,7 +18,7 @@ namespace Humans.Budget.Tests.Authorization;
 public sealed class BudgetAuthorizationHandlerTests
 {
     private readonly IUserService _users = Substitute.For<IUserService>();
-    private readonly ITeamService _teams = Substitute.For<ITeamService>();
+    private readonly IPermissionService _permissions = Substitute.For<IPermissionService>();
     private readonly BudgetAuthorizationHandler _handler;
 
     private static readonly Guid CoordinatorTeamId = Guid.NewGuid();
@@ -27,9 +29,8 @@ public sealed class BudgetAuthorizationHandlerTests
     {
         _users.GetUserInfoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(call => UserInfo.Create(new User { Id = call.Arg<Guid>() }, [], [], null));
-        _handler = new BudgetAuthorizationHandler(_teams, _users, new Microsoft.AspNetCore.Http.HttpContextAccessor());
-        _teams.GetEffectiveBudgetCoordinatorTeamIdsAsync(UserId)
-            .Returns([CoordinatorTeamId]);
+        _handler = new BudgetAuthorizationHandler(_permissions, _users, new Microsoft.AspNetCore.Http.HttpContextAccessor());
+        Holds(UserId);
     }
 
     [HumansTheory]
@@ -47,8 +48,6 @@ public sealed class BudgetAuthorizationHandlerTests
         _users.GetUserInfoAsync(cookieId, Arg.Any<CancellationToken>()).Returns(accountExists
             ? UserInfo.Create(new User { Id = survivorId }, [], [], null)
             : null);
-        if (!survivorAuthorized)
-            _teams.GetEffectiveBudgetCoordinatorTeamIdsAsync(survivorId, Arg.Any<CancellationToken>()).Returns([]);
 
         var allowed = await EvaluateAsync(CreateUserWithId(cookieId), CreateCategory("coordinator"),
             viewing ? BudgetOperationRequirement.View : BudgetOperationRequirement.Edit);
@@ -77,14 +76,20 @@ public sealed class BudgetAuthorizationHandlerTests
             ct.ThrowIfCancellationRequested();
             return UserInfo.Create(new User { Id = UserId }, [], [], null);
         });
-        _teams.GetEffectiveBudgetCoordinatorTeamIdsAsync(UserId, Arg.Any<CancellationToken>()).Returns(call =>
+        bool Permission(CancellationToken ct)
         {
-            observed = call.Arg<CancellationToken>();
+            observed = ct;
             if (!atUser) request.Cancel();
-            observed.ThrowIfCancellationRequested();
-            return new HashSet<Guid> { CoordinatorTeamId };
-        });
-        var handler = new BudgetAuthorizationHandler(_teams, _users, http);
+            ct.ThrowIfCancellationRequested();
+            return true;
+        }
+        _permissions.HasAsync(UserId, BudgetPermissions.Edit, Arg.Any<Owner>(), Arg.Any<CancellationToken>())
+            .Returns(call => Permission(call.Arg<CancellationToken>()));
+        _permissions.GetOwnersAsync(UserId, BudgetPermissions.Edit, Arg.Any<CancellationToken>())
+            .Returns(call => Permission(call.Arg<CancellationToken>())
+                ? (IReadOnlyList<Owner>)[new Owner(TeamOwner.Kind, CoordinatorTeamId)]
+                : []);
+        var handler = new BudgetAuthorizationHandler(_permissions, _users, http);
         var requirement = viewing ? BudgetOperationRequirement.View : BudgetOperationRequirement.Edit;
         var context = new AuthorizationHandlerContext([requirement], CreateUser("coordinator"), CreateCategory("coordinator"));
         Func<Task> authorize = () => handler.HandleAsync(context);
@@ -125,12 +130,6 @@ public sealed class BudgetAuthorizationHandlerTests
         bool hasBudgetGroup,
         bool expected)
     {
-        if (string.Equals(userKind, "regular", StringComparison.Ordinal))
-        {
-            _teams.GetEffectiveBudgetCoordinatorTeamIdsAsync(Arg.Any<Guid>())
-                .Returns([]);
-        }
-
         var user = CreateUser(userKind);
         var category = CreateCategory(teamKind, isRestricted, isDeleted, isTicketing, hasBudgetGroup);
 
@@ -154,13 +153,18 @@ public sealed class BudgetAuthorizationHandlerTests
     public async Task View_PreservesCoordinatorReadScope_WithoutGrantingEditAccess(
         string userKind, string teamKind, bool restricted, bool deleted, bool ticketing, bool expected)
     {
-        if (string.Equals(userKind, "regular", StringComparison.Ordinal))
-            _teams.GetEffectiveBudgetCoordinatorTeamIdsAsync(Arg.Any<Guid>()).Returns([]);
-
         var allowed = await EvaluateAsync(CreateUser(userKind),
             CreateCategory(teamKind, restricted, deleted, ticketing), BudgetOperationRequirement.View);
 
         allowed.Should().Be(expected);
+    }
+
+    private void Holds(Guid userId)
+    {
+        _permissions.HasAsync(userId, BudgetPermissions.Edit, new Owner(TeamOwner.Kind, CoordinatorTeamId), Arg.Any<CancellationToken>())
+            .Returns(true);
+        _permissions.GetOwnersAsync(userId, BudgetPermissions.Edit, Arg.Any<CancellationToken>())
+            .Returns([new Owner(TeamOwner.Kind, CoordinatorTeamId)]);
     }
 
     private async Task<bool> EvaluateAsync(ClaimsPrincipal user, BudgetCategorySnapshot resource, BudgetOperationRequirement? requirement = null)

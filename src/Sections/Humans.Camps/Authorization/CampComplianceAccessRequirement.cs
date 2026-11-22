@@ -11,5 +11,5 @@ namespace Humans.Camps.Authorization;
 /// </summary>
 internal sealed class CampComplianceAccessRequirement : IAuthorizationRequirement, IDescribedRequirement
 {
-    public IReadOnlyList<string> Admits => [CampsRoles.CampsAdmin, RoleNames.Board, RoleNames.Admin, "Team Coordinator"];
+    public IReadOnlyList<string> Admits => [CampsRoles.CampsAdmin, RoleNames.Board, RoleNames.Admin, "Shift managers and approvers"];
 }

@@ -54,6 +54,6 @@ internal sealed class ProfileShiftsViewComponent(
             return false;
         // A session from a merged-away account asks as the survivor.
         var viewer = await users.GetUserInfoAsync(claimId, ct);
-        return viewer is not null && (await shifts.GetCoordinatorTeamIdsAsync(viewer.Id, ct)).Count > 0;
+        return viewer is not null && await shifts.CanManageOrApproveAnyShiftsAsync(viewer.Id, ct);
     }
 }

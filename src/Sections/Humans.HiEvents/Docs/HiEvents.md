@@ -17,7 +17,7 @@ price, the named ticket and the QR code.
 
 Hi.Events is an open-source event ticketing platform. This section lets Humans use the Nobodies fork of it (`peterdrier/Hi.Events`, `docker/coolify/` there for Coolify) as a payment desk: it creates a reserved Hi.Events order at Humans' exact prices, sends the buyer to Hi.Events' Stripe pay page, and reports back what Hi.Events holds.
 
-**What good looks like.** A Humans order and its Hi.Events order always agree on amount, payment and refund state. A retried create or refund never doubles. Hi.Events sends buyers nothing, and nothing sells on its public event page.
+**What good looks like.** A Humans order and its Hi.Events order always agree on amount, payment and refund state. Reconciliation's vendor side cannot see unpaid orders, because Hi.Events' order list leaves out reserved and abandoned ones. A retried create or refund never doubles. Hi.Events sends buyers nothing, and nothing sells on its public event page.
 
 **Deliberate choices.** A small fork patch (checkout endpoint, refund idempotency, anonymize) instead of per-person promo codes, since stock Hi.Events takes a caller price only for donations. One hidden `TICKET` and one hidden `GENERAL` carrier product per event instead of mirroring Humans' catalogue. Erasure anonymizes the whole order, because Hi.Events copies the buyer's email onto every attendee.
 
@@ -37,7 +37,9 @@ Hi.Events is an open-source event ticketing platform. This section lets Humans u
 - **Settings**, all owned here: `HiEvents:ApiUrl` (ends in `/api`); `HiEvents:AppUrl` (the web app, for the order's
   admin link; defaults to `ApiUrl` without `/api`; both must be absolute http(s), or the backend reads as unconfigured and
   Tickets opens no checkout on it); and the environment variables `HIEVENTS_API_KEY` (a Hi.Events API key whose owner can
-  edit the event, see financials and issue refunds) and `HIEVENTS_WEBHOOK_SECRET`. Only infrastructure lives in
+  edit the event, see financials and issue refunds), `HIEVENTS_WEBHOOK_SECRET`. The Stripe account behind the fork's
+  `STRIPE_SECRET_KEY` is the Stripe section's `Stripe:MirrorAccounts` entry named `HiEvents` (its `acct_` id, and a
+  read-only key: its own through `KeyVariable`, or the org read key), with Balance, Balance transactions, Payouts, PaymentIntents, Charges, Refunds and Disputes read; it moves no money. Only infrastructure lives in
   configuration: there is no per-event mapping to keep, because each event's carrier products are found in Hi.Events.
 - **Carrier products**: Humans owns the catalogue and prices every line, so each Hi.Events event needs exactly one
   product of type `TICKET` (ticket lines) and one of type `GENERAL` (donation lines), neither with taxes or fees, and
@@ -63,13 +65,15 @@ None — the section owns no tables.
   (`N` format) is the `external_reference`, so a retried create returns the same Hi.Events order. The event's products are read
   first: ticket lines go to its one `TICKET` product with the line's attendee name, donation lines to its one `GENERAL`
   product, and none or several of the kind a line needs throws `TicketCheckoutException` before any order is made. A 409 or 422 from Hi.Events, a currency other than the request's, or a total
-  other than the sum of the lines throws `TicketCheckoutException`. The products must carry no taxes or fees in
-  Hi.Events.
+  other than the sum of the lines throws `TicketCheckoutException`.
 - Checkout returns `AdminUrl`, the order in Hi.Events' event order list, so the ticketing team can jump to it.
 - Status: `COMPLETED` with `PAYMENT_RECEIVED` is Paid; other `COMPLETED` is Failed; `CANCELLED` is Cancelled;
   Processing as below; otherwise `ABANDONED`, or `RESERVED` past `reserved_until`, is Expired; other `RESERVED` is Pending (a failed card attempt can
-  be retried on the same link). `RefundedMinor` is `total_refunded`. Fee and paid time are not exposed by Hi.Events and
-  stay null.
+  be retried on the same link). `RefundedMinor` is `total_refunded`. Paid time is not exposed by Hi.Events and stays
+  null. A paid order's fee is what Stripe kept on its payment, found through `IStripeService` by the `event_id` and
+  `order_id` Hi.Events puts on every PaymentIntent: Stripe's search, and while the order is under two hours old (search
+  trails a payment by up to a minute) the PaymentIntents listed since it was created. Null while the account is not configured, the
+  payment is not found or Stripe cannot be read: the fee never holds up a paid order.
 - Refund: the Humans refund id is the idempotency key. Hi.Events answers with the Stripe refund made under it
   (`BackendRefundId`) and its state: `succeeded` is `Succeeded`, `pending` or `requires_action` is `Pending`, `failed`
   or `canceled` is `Failed`. A repeat of the id never refunds again, whatever that refund's state, so Tickets repeats it
@@ -91,19 +95,22 @@ None — the section owns no tables.
 - Cancel: a no-op on a cancelled order, `TicketCheckoutException` on a paid or Processing one, otherwise Hi.Events' cancel without
   refund.
 - Webhook: 503 without a secret, 401 on a bad signature, 200 and no call for anything but `order.*`.
+- The pay page opens in the buyer's language where Hi.Events has it; Catalan, which it lacks, opens in Spanish, and
+  any other missing language in English.
 - After paying, Hi.Events' payment return page sends the buyer to `CheckoutRequest.ReturnUrl`.
 - Hi.Events sends the buyer and attendees no email for these orders (`send_buyer_emails: false`, refunds with
   `notify_buyer: false`); Humans owns the ticket, receipt and refund emails. Organizer and team notices in Hi.Events
   still go out.
 - Offline payment must be off on every Hi.Events event Humans sells through; an order moved to
-  `AWAITING_OFFLINE_PAYMENT` reads as `Pending` until it expires.
+  `AWAITING_OFFLINE_PAYMENT` reads as `Pending` and Hi.Events never expires it, so Tickets cancels it at Hi.Events
+  when its hold lapses, like any unpaid order.
 - A reserved order whose `reserved_until` does not parse is an error, not `Pending`.
 - A malformed `HiEvents:ApiUrl` only makes this backend unconfigured; it never throws while Tickets resolves backends.
 - Buyer names go in 50 Unicode scalar characters of first name and 50 of last name, split at a space without cutting
   surrogate pairs; attendee lines carry the full legal name (Hi.Events allows 255 on this endpoint).
 - `Setup` shows the URLs and only set or missing for the key and secret; an API host on `hi.events` reads as Hi.Events Cloud, unsupported because it lacks the fork's checkout endpoint, and never passes the check. `CheckAsync` reads `users/me` (a body without a user, such as the web app's HTML, fails), the event's status and products, then posts an empty body to the checkout endpoint: the fork answers 422 before creating anything, stock Hi.Events 404 or 405.
 - Backend setup checks propagate caller cancellation instead of reporting a vendor failure; independent transport timeouts remain diagnostic findings.
-- `ListOrdersAsync` pages through an event's orders by `created_at` (100 a page, to `meta.last_page`), reading the Humans order id from `external_reference` and counting attendees as tickets. It throws when the distinct orders read differ from `meta.total`, since ties in a second can move across pages. The list leaves out `RESERVED` and `ABANDONED` orders. It needs the key's user to see financials, as refunds already do. `EventRefOf` reads the event id from the order id. `GetPaymentLedgerAsync` answers null: Hi.Events takes payments through its own Stripe account, so its fees and payouts are not reconciled in Humans.
+- `ListOrdersAsync` pages through an event's orders by `created_at` (100 a page, to `meta.last_page`), reading the Humans order id from `external_reference` and counting attendees as tickets. It throws when the distinct orders read differ from `meta.total`, since ties in a second can move across pages. The list leaves out `RESERVED` and `ABANDONED` orders. It needs the key's user to see financials, as refunds already do. `EventRefOf` reads the event id from the order id. `GetPaymentLedgerAsync` reads the `HiEvents` Stripe account through `IStripeService` (null while not configured; a Stripe refusal is a `TicketCheckoutException`): its balance transactions and payouts created in the period, each movement tied to the `external_reference` of the Hi.Events order its PaymentIntent's `event_id`/`order_id` names. An order the API key's user cannot see (403/404), or one Humans did not open, names no Humans order. A payout's contents are listed as for Box Office.
 
 - Checkout creation and setup checks read every product page before validating carrier counts and visibility. Product pages require data and valid paging metadata. Product and order traversals stop at 500 pages and fail instead of returning a partial result.
 
@@ -130,6 +137,7 @@ keeps the names it needs. A failure throws, so Tickets retries before tombstonin
 ## Cross-Section Dependencies
 
 - **Tickets**: implements `ITicketCheckoutBackend`, calls `ITicketCheckoutEvents`, both from the `Humans.Tickets.Contracts` leaf.
+- **Stripe**: `IStripeService`'s account reads of the `HiEvents` mirror account (ledger, fee, key check).
 - **Base**: configuration registry.
 
 ## Architecture

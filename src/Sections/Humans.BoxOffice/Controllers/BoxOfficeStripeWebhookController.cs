@@ -7,8 +7,8 @@ namespace Humans.BoxOffice.Controllers;
 
 /// <summary>
 /// Anonymous: authenticated by the Stripe signature. Only a nudge: Tickets reads the session's state back from Stripe,
-/// so a replay changes nothing. 503 while the signing secret is unset; 400 on a bad signature, so a wrong secret shows
-/// as failed deliveries in Stripe instead of green ones Humans ignores.
+/// so a replay changes nothing. 503 while either <c>STRIPE_BOXOFFICE_*</c> variable is unset; 400 on a bad signature, so
+/// a wrong secret shows as failed deliveries in Stripe instead of green ones Humans ignores.
 /// </summary>
 [ApiController]
 [AllowAnonymous]

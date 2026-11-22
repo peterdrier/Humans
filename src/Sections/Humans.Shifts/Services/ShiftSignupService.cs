@@ -27,7 +27,6 @@ internal sealed class ShiftSignupService(
     EventCalendarResolver calendarResolver,
     IAuditLogService auditLogService,
     INotificationEmitter notificationService,
-    IAdminAuthorizationService adminAuthorization,
     IServiceProvider serviceProvider,
     IClock clock,
     ILogger<ShiftSignupService> logger,
@@ -660,14 +659,6 @@ internal sealed class ShiftSignupService(
         return await repo.CancelActiveSignupsForUserAsync(userId, reason, ct);
     }
 
-    public async Task<int> DeleteAllForUsersAsync(
-        IReadOnlyCollection<Guid> userIds,
-        CancellationToken ct = default)
-    {
-        await adminAuthorization.RequireCurrentUserIsAdminAsync(ct);
-        return await repo.DeleteAllForUsersAsync(userIds, ct);
-    }
-
     public async Task<ToggleDaySignupOutcome> ToggleDayAsync(
         Guid userId,
         Guid shiftId,
@@ -695,7 +686,7 @@ internal sealed class ShiftSignupService(
             signedUp = result.Success;
         }
 
-        var canViewRestricted = privileged || (await shiftMgmt.GetCoordinatorTeamIdsAsync(userId)).Count > 0;
+        var canViewRestricted = privileged || await shiftMgmt.CanManageOrApproveAnyShiftsAsync(userId, ct);
         var after = await repo.GetForUsersAsync([userId], eventSettingsId, ct);
 
         return new ToggleDaySignupOutcome(result, signedUp, canViewRestricted, after);
@@ -1087,7 +1078,6 @@ internal sealed class ShiftSignupService(
 
         return null;
     }
-
 
     private RangeSignupCandidateSelection PruneDuplicateRangeShifts(
         List<Shift> shiftsInRange,

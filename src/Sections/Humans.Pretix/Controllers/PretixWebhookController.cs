@@ -54,6 +54,5 @@ internal sealed class PretixWebhookController(
     internal sealed record PretixNotification(
         [property: JsonPropertyName("organizer")] string? Organizer,
         [property: JsonPropertyName("event")] string? Event,
-        [property: JsonPropertyName("code")] string? Code,
-        [property: JsonPropertyName("action")] string? Action);
+        [property: JsonPropertyName("code")] string? Code);
 }

@@ -17,7 +17,6 @@ namespace Humans.Users.Services;
 
 internal sealed class UserService(
     IUserRepository repo,
-    IAdminAuthorizationService adminAuthorization,
     IFileStorage fileStorage,
     IClock clock,
     ILogger<UserService> logger,
@@ -288,15 +287,6 @@ internal sealed class UserService(
         var withEmail = await repo.GetUserIdsHavingAnyUserEmailAsync(loginUserIds, ct);
         var withEmailSet = withEmail.ToHashSet();
         return loginUserIds.Where(id => !withEmailSet.Contains(id)).ToList();
-    }
-
-    public async Task<int> DeleteUsersAsync(
-        IReadOnlyCollection<Guid> userIds,
-        CancellationToken ct = default)
-    {
-        await adminAuthorization.RequireCurrentUserIsAdminAsync(ct);
-        await repo.RemoveAllUserEmailsForUsersAndSaveAsync(userIds, ct);
-        return await repo.DeleteUsersAsync(userIds, ct);
     }
 
     public Task<IReadOnlyDictionary<Guid, IReadOnlyList<(string Provider, string ProviderKey)>>>

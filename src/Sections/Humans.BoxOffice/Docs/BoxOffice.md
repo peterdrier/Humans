@@ -1,6 +1,9 @@
 <!-- freshness:triggers
   src/Sections/Humans.BoxOffice/**
   src/Sections/Humans.Tickets.Contracts/ITicketCheckoutBackend.cs
+  src/Sections/Humans.Tickets.Contracts/TicketsBackendAdminNav.cs
+  src/Sections/Humans.Tickets/Views/Tickets/Admin/Sales/Index.cshtml
+  memory/architecture/stripe-money-out.md
   tests/Humans.BoxOffice.Tests/**
 -->
 <!-- freshness:flag-on-change
@@ -33,18 +36,17 @@ same for all three backends.
 **Out of scope.** Stripe products, prices, coupons and invoices; erasing data inside
 Stripe, which keeps it as the payment processor.
 
-
 **Admin.** The section's only page is its admin sidebar row, "Box Office" (`TicketsBackendAdminNav`, `TicketsPolicies.Read`), which opens Tickets' status page for key `boxoffice` at `/Tickets/Admin/Backends/boxoffice`: settings, connection test, orders, stuck orders, unsettled refunds and a link to reconciliation. The data is Tickets'; this section contributes only the row.
 
 ## Concepts
 
 - The backend order id is the Checkout Session id. Each order line becomes one Stripe line at exactly its amount
-  (zero lines are left out); the order id is the idempotency key, the `client_reference_id` and the
-  `humans_ticket_order_id` metadata on the session and its PaymentIntent.
+  (zero lines are left out); the order id keys the Stripe idempotency key (`humans_ticket_checkout_<order id>`) and is the
+  `client_reference_id` and the `humans_ticket_order_id` metadata on the session and its PaymentIntent.
 - Payment methods are whatever the Stripe account enables for Checkout (card, Klarna, iDEAL). The locale follows the
   buyer's culture where Stripe has it; Catalan falls back to Stripe's choice.
-- Status is read from the session with its PaymentIntent, latest charge and balance transaction: `complete` + `paid` is
-  Paid, `expired` is Expired, a completed session whose PaymentIntent is `canceled` or back at `requires_payment_method`
+- Status is read from the session with its PaymentIntent, latest charge and balance transaction: `complete` + `paid` (or
+  `no_payment_required`, a session made outside Humans) is Paid, `expired` is Expired, a completed session whose PaymentIntent is `canceled` or back at `requires_payment_method`
   (an async debit that failed) is Failed, any other completed session is Processing (a SEPA debit or bank transfer
   still settling, which Stripe no longer lets anyone expire), and an open session is Pending. 3-D Secure and other
   buyer actions happen on Stripe's page while the session is open. A disputed charge reports the amount of its
@@ -70,13 +72,14 @@ None. The section owns no tables. The Checkout Session is the record of the paym
 
 - Charges EUR only; a non-EUR request, a negative line or a non-positive total throws `TicketCheckoutException` before
   any Stripe call. The adapter never changes an amount.
-- Session expiry is clamped to Stripe's 30 minutes to 24 hours.
+- Session expiry is clamped to 31 minutes .. 23 hours from now, inside Stripe's 30 minutes .. 24 hours.
 - A refund goes only against the session's own PaymentIntent, never above what the charge still holds (amount minus
-  `amount_refunded`), with the Humans refund id as the idempotency key. Tickets' own cap (ticket lines net of earlier
+  `amount_refunded`), with the idempotency key `humans_ticket_refund_<refund id>`. Tickets' own cap (ticket lines net of earlier
   refunds) sits in front. This is the one money-out exception in `memory/architecture/stripe-money-out.md`.
-- The webhook (`POST /BoxOffice/StripeWebhook`, anonymous, Stripe-signature verified, 503 while unset) only names
-  sessions to `ITicketCheckoutEvents`: `checkout.session.*` events by their session, `charge.refunded` by the sessions
-  of the refunded PaymentIntent. An invalid signature answers 400, so a wrong secret shows as failed deliveries in Stripe. `refund.*` and `charge.dispute.*` events are mapped like `charge.refunded`.
+- The webhook (`POST /BoxOffice/StripeWebhook`, anonymous, Stripe-signature verified, 503 while either variable is
+  unset) only names sessions to `ITicketCheckoutEvents`, by the event's object: a Checkout Session names itself; a
+  charge, refund or dispute names the sessions of its PaymentIntent; anything else names none. An invalid signature
+  answers 400, so a wrong secret shows as failed deliveries in Stripe.
 - Cancelling expires the session; Stripe refusing that is an error only when the session is complete and not failed.
 - `Setup` shows both variables only as set or missing, and test or live mode from the key prefix. `CheckAsync` lists one Checkout Session, balance transaction and payout (each its own finding, so a key missing a read the reconciliation needs shows before deploy) and reports a missing webhook secret; it cannot test the refund permission without refunding.
 - Backend setup checks propagate caller cancellation instead of reporting a vendor failure; independent transport timeouts remain diagnostic findings.
@@ -96,7 +99,7 @@ Tickets' `/Tickets/Admin/Sales` shows whether the backend is configured.
 
 - The webhook never trusts its payload for state: Tickets re-reads the session from Stripe.
 - No page here; buyers and admins act only through Tickets' pages and policies.
-- Code outside this project **cannot** name `BoxOfficeCheckoutBackend` or `BoxOfficeSettings`.
+- No other section **can** name `BoxOfficeCheckoutBackend` or `BoxOfficeSettings`: both are internal.
 - `ErasePersonalDataAsync` **cannot** remove anything: Stripe offers no way to strip a session, and this section holds
   nothing.
 
@@ -115,4 +118,20 @@ Tickets' `/Tickets/Admin/Sales` shows whether the backend is configured.
 
 **Owning services:** `BoxOfficeCheckoutBackend`
 **Owned tables:** None, adapter over Tickets' port.
-**Status:** (A) Migrated, the adapter shape: no tables, no public contract, one webhook controller.
+**Status:** (A) Migrated, the adapter shape: no tables, no public contract, one webhook controller (built 2026-11-21).
+
+### Public contract
+
+| Public interface | Methods | Notes |
+|---|---:|---|
+| Read contract | — | None: Tickets resolves `ITicketCheckoutBackend` by key `boxoffice` |
+| Write contract | — | None |
+
+### For (A) Migrated sections
+
+- No repository and no DbContext: the service reads and writes Stripe through Stripe.NET only.
+- No caching decorator: every call exists to see Stripe's current state.
+- Cross-section calls: `ITicketCheckoutEvents` from the webhook.
+- Architecture enforcement: the anonymous webhook is allow-listed in
+  `tests/Humans.Web.Tests/Authorization/EndpointAuthorizationTests.cs`; the project references only Base and
+  `Humans.Tickets.Contracts`.

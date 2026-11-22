@@ -49,7 +49,6 @@ public sealed class ShiftManagementReadMathTests : ShiftsTestHarness
         _service = new ShiftManagementService(
             new ShiftRepository(ShiftsDbFactory, ShiftsDb, Clock),
             AuditLog,
-            AdminAuthorization,
             serviceProvider,
             NewCalendarResolver(),
             Clock,

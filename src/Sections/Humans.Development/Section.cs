@@ -27,7 +27,6 @@ public sealed class Section : ISection, ISectionAdminNav
         }
 
         services.AddScoped<DevelopmentCampRoleSeeder>();
-        services.AddScoped<DevelopmentDashboardSeeder>();
         services.AddScoped<DevPersonaSeeder>();
 
         // Outside Production only, like everything above: the demo ledger's table never exists there.

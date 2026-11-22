@@ -547,11 +547,6 @@ internal sealed class CachingTeamService(
         MutateAsync(inner => inner.AddSeededMemberAsync(
             teamId, userId, role, joinedAt, cancellationToken));
 
-    public Task<bool> PermanentlyDeleteTeamAsync(
-        Guid teamId,
-        CancellationToken cancellationToken = default) =>
-        MutateAsync(inner => inner.PermanentlyDeleteTeamAsync(teamId, cancellationToken), static result => result);
-
     public async Task<IReadOnlyCollection<Guid>> GetEffectiveBudgetCoordinatorTeamIdsAsync(
         Guid userId,
         CancellationToken cancellationToken = default)

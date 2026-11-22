@@ -32,6 +32,8 @@ using NSubstitute;
 using Xunit;
 using BudgetServiceImpl = Humans.Budget.Services.BudgetService;
 using Humans.Users.Contracts;
+using Humans.Permissions.Contracts;
+using Humans.Base.Authorization;
 
 namespace Humans.Budget.Tests.Services;
 
@@ -51,6 +53,7 @@ public sealed class BudgetServiceTests
 
     private readonly BudgetRepository _repository;
     private readonly ITeamService _teamService;
+    private readonly IPermissionService _permissions = Substitute.For<IPermissionService>();
     private readonly IUserService _userService;
     private readonly BudgetServiceImpl _service;
     private readonly Guid _yearId = Guid.NewGuid();
@@ -230,7 +233,7 @@ public sealed class BudgetServiceTests
             .Returns(AuthorizationResult.Success());
         var localizer = Substitute.For<IStringLocalizer<BudgetResource>>();
         localizer[Arg.Any<string>()].Returns(call => new LocalizedString(call.Arg<string>(), call.Arg<string>()));
-        var controller = new BudgetController(_teamService, budget, auth, users, localizer, NullLogger<BudgetController>.Instance)
+        var controller = new BudgetController(_permissions, budget, auth, users, localizer, NullLogger<BudgetController>.Instance)
         { ControllerContext = admin.ControllerContext, TempData = admin.TempData, Url = admin.Url };
         controller.HttpContext.RequestAborted = request.Token;
         if (boundary == PreflightBoundary.ActorLookup) await request.CancelAsync();
@@ -302,12 +305,12 @@ public sealed class BudgetServiceTests
         var auth = Substitute.For<IAuthorizationService>();
         auth.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), Arg.Any<string>())
             .Returns(AuthorizationResult.Success());
-        _teamService.GetEffectiveBudgetCoordinatorTeamIdsAsync(viewerId, Arg.Any<CancellationToken>()).Returns([]);
+        _permissions.GetOwnersAsync(viewerId, BudgetPermissions.Edit, Arg.Any<CancellationToken>()).Returns([]);
         budget.GetActiveYearAsync(Arg.Any<CancellationToken>())
             .Returns(Task.FromException<BudgetYearDetail?>(new OperationCanceledException(request.Token)));
         budget.GetCategoryByIdAsync(_yearId, Arg.Any<CancellationToken>())
             .Returns(Task.FromException<BudgetCategorySnapshot?>(new OperationCanceledException(request.Token)));
-        var controller = new BudgetController(_teamService, budget, auth, users,
+        var controller = new BudgetController(_permissions, budget, auth, users,
             Substitute.For<IStringLocalizer<BudgetResource>>(), NullLogger<BudgetController>.Instance)
         {
             ControllerContext = admin.ControllerContext,
@@ -346,14 +349,14 @@ public sealed class BudgetServiceTests
         var users = Substitute.For<IUserService>();
         users.GetUserInfoAsync(viewerId, Arg.Any<CancellationToken>()).Returns(
             UserInfo.Create(new User { Id = viewerId }, [], [], null));
-        var teams = coordinator ? new HashSet<Guid> { Guid.NewGuid() } : [];
-        _teamService.GetEffectiveBudgetCoordinatorTeamIdsAsync(viewerId, Arg.Any<CancellationToken>()).Returns(teams);
+        IReadOnlyList<Owner> owners = coordinator ? [new Owner(TeamOwner.Kind, Guid.NewGuid())] : [];
+        _permissions.GetOwnersAsync(viewerId, BudgetPermissions.Edit, Arg.Any<CancellationToken>()).Returns(owners);
         budget.GetActiveYearAsync(Arg.Any<CancellationToken>()).Returns(
             new BudgetYearDetail(_yearId, "2026", "Budget", BudgetYearStatus.Active, false, []));
         var auth = Substitute.For<IAuthorizationService>();
         auth.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), FinancePolicies.Manage)
             .Returns(finance ? AuthorizationResult.Success() : AuthorizationResult.Failed());
-        var controller = new BudgetController(_teamService, budget, auth, users,
+        var controller = new BudgetController(_permissions, budget, auth, users,
             Substitute.For<IStringLocalizer<BudgetResource>>(), NullLogger<BudgetController>.Instance)
         { ControllerContext = admin.ControllerContext, TempData = admin.TempData };
 
@@ -370,7 +373,7 @@ public sealed class BudgetServiceTests
                 .Should().BeOfType<CoordinatorBudgetViewModel>().Which;
             model.Year.Id.Should().Be(_yearId);
             model.IsFinanceAdmin.Should().Be(finance);
-            model.EditableTeamIds.Should().BeEquivalentTo(teams);
+            model.EditableTeamIds.Should().BeEquivalentTo(owners.Select(o => o.Id));
         }
     }
 
@@ -397,7 +400,7 @@ public sealed class BudgetServiceTests
         auth.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), category, Arg.Any<IEnumerable<IAuthorizationRequirement>>())
             .Returns(call => permitted && call.Arg<IEnumerable<IAuthorizationRequirement>>().Contains(BudgetOperationRequirement.View)
                 ? AuthorizationResult.Success() : AuthorizationResult.Failed());
-        var controller = new BudgetController(_teamService, budget, auth, users,
+        var controller = new BudgetController(_permissions, budget, auth, users,
             Substitute.For<IStringLocalizer<BudgetResource>>(), NullLogger<BudgetController>.Instance)
         { ControllerContext = admin.ControllerContext, TempData = admin.TempData };
 
@@ -498,7 +501,8 @@ public sealed class BudgetServiceTests
         {
             saved.Name.Should().Be(refused ? "Departments" : "Changed group");
             var coordinator = Guid.NewGuid();
-            _teamService.GetEffectiveBudgetCoordinatorTeamIdsAsync(coordinator, Arg.Any<CancellationToken>()).Returns([Guid.NewGuid()]);
+            _permissions.GetOwnersAsync(coordinator, BudgetPermissions.Edit, Arg.Any<CancellationToken>())
+                .Returns([new Owner(TeamOwner.Kind, Guid.NewGuid())]);
             _teamService.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo>());
             _userService.GetUserInfoAsync(coordinator, Arg.Any<CancellationToken>()).Returns(
                 UserInfo.Create(new User { Id = coordinator }, [], [], null));
@@ -507,7 +511,7 @@ public sealed class BudgetServiceTests
                 [new Claim(ClaimTypes.NameIdentifier, coordinator.ToString())], "test"));
             var context = new AuthorizationHandlerContext([requirement], principal,
                 (await _service.GetCategoryByIdAsync(category.Id, TestContext.Current.CancellationToken))!);
-            await new BudgetAuthorizationHandler(_teamService, _userService, new HttpContextAccessor()).HandleAsync(context);
+            await new BudgetAuthorizationHandler(_permissions, _userService, new HttpContextAccessor()).HandleAsync(context);
             context.HasSucceeded.Should().Be(!(refused || restriction == true));
         }
         else if (!refused) groups.Single(g => g.Id != group.Id).IsRestricted.Should().Be(restriction!.Value);
@@ -912,7 +916,7 @@ public sealed class BudgetServiceTests
         var localizer = Substitute.For<IStringLocalizer<BudgetResource>>();
         localizer[Arg.Any<string>()].Returns(call => new LocalizedString(call.Arg<string>(), call.Arg<string>()));
         localizer[Arg.Any<string>(), Arg.Any<object[]>()].Returns(call => new LocalizedString(call.Arg<string>(), call.Arg<string>()));
-        var controller = new BudgetController(_teamService, budget, auth, users, localizer, NullLogger<BudgetController>.Instance)
+        var controller = new BudgetController(_permissions, budget, auth, users, localizer, NullLogger<BudgetController>.Instance)
         {
             ControllerContext = admin.ControllerContext,
             TempData = admin.TempData,
@@ -982,7 +986,7 @@ public sealed class BudgetServiceTests
             new LocalizedString(call.Arg<string>(), string.Format(culture,
                 resources.GetString(call.Arg<string>(), culture)!, call.Arg<object[]>())));
         var logger = Substitute.For<Microsoft.Extensions.Logging.ILogger<BudgetController>>();
-        var controller = new BudgetController(_teamService, budget, auth, users, localizer, logger)
+        var controller = new BudgetController(_permissions, budget, auth, users, localizer, logger)
         {
             ControllerContext = admin.ControllerContext,
             TempData = admin.TempData,
@@ -1454,8 +1458,8 @@ public sealed class BudgetServiceTests
         var (admin, budget, userId) = CreateAdminController(true);
         using var request = new CancellationTokenSource();
         Guid[] expected = [Guid.NewGuid(), Guid.NewGuid()];
-        _teamService.GetEffectiveBudgetCoordinatorTeamIdsAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(expected);
+        _permissions.GetOwnersAsync(userId, BudgetPermissions.Edit, Arg.Any<CancellationToken>())
+            .Returns([.. expected.Select(id => new Owner(TeamOwner.Kind, id))]);
         budget.GetActiveYearAsync(Arg.Any<CancellationToken>()).Returns(
             new BudgetYearDetail(_yearId, "2026", "Budget", BudgetYearStatus.Active, false, []));
         var users = Substitute.For<IUserService>();
@@ -1464,7 +1468,7 @@ public sealed class BudgetServiceTests
         var auth = Substitute.For<IAuthorizationService>();
         auth.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), FinancePolicies.Manage)
             .Returns(AuthorizationResult.Failed());
-        var controller = new BudgetController(_teamService, budget, auth, users,
+        var controller = new BudgetController(_permissions, budget, auth, users,
             Substitute.For<IStringLocalizer<BudgetResource>>(), NullLogger<BudgetController>.Instance)
         { ControllerContext = admin.ControllerContext, TempData = admin.TempData };
         controller.HttpContext.RequestAborted = request.Token;
@@ -1474,7 +1478,7 @@ public sealed class BudgetServiceTests
         var model = result.Should().BeOfType<ViewResult>().Which.Model
             .Should().BeOfType<CoordinatorBudgetViewModel>().Which;
         model.EditableTeamIds.Should().BeEquivalentTo(expected);
-        await _teamService.Received(1).GetEffectiveBudgetCoordinatorTeamIdsAsync(userId, request.Token);
+        await _permissions.Received(1).GetOwnersAsync(userId, BudgetPermissions.Edit, request.Token);
         await _teamService.DidNotReceive().GetTeamsAsync(Arg.Any<CancellationToken>());
     }
 
@@ -2439,7 +2443,7 @@ public sealed class BudgetServiceTests
         budget.GetActiveYearAsync(Arg.Any<CancellationToken>()).Returns(year);
         budget.GetYearByIdAsync(_yearId, Arg.Any<CancellationToken>()).Returns(year);
         budget.GetAllYearsAsync(Arg.Any<bool>(), Arg.Any<CancellationToken>()).Returns([]);
-        _teamService.GetEffectiveBudgetCoordinatorTeamIdsAsync(viewerId, Arg.Any<CancellationToken>()).Returns([]);
+        _permissions.GetOwnersAsync(viewerId, BudgetPermissions.Edit, Arg.Any<CancellationToken>()).Returns([]);
         budget.ComputeBudgetSummaryWithBuffers(Arg.Any<IReadOnlyList<BudgetGroupDetail>>())
             .Returns(call => _service.ComputeBudgetSummaryWithBuffers(call.Arg<IReadOnlyList<BudgetGroupDetail>>()));
 
@@ -2460,7 +2464,7 @@ public sealed class BudgetServiceTests
             var auth = Substitute.For<IAuthorizationService>();
             auth.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), Arg.Any<string>())
                 .Returns(AuthorizationResult.Success());
-            var controller = new BudgetController(_teamService, budget, auth, users,
+            var controller = new BudgetController(_permissions, budget, auth, users,
                 Substitute.For<IStringLocalizer<BudgetResource>>(), NullLogger<BudgetController>.Instance)
             { ControllerContext = admin.ControllerContext, TempData = admin.TempData, Url = admin.Url };
             var view = (await controller.Summary()).Should().BeOfType<ViewResult>().Subject;

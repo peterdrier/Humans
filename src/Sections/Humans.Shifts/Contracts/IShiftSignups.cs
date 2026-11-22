@@ -41,10 +41,6 @@ public interface IShiftSignupSeeding : IShiftSignups
 
     Task<SignupResult> RefuseAsync(Guid signupId, Guid reviewerUserId, string? reason);
 
-    /// <summary>Requires the current user to hold the full Admin role.</summary>
-    Task<int> DeleteAllForUsersAsync(
-        IReadOnlyCollection<Guid> userIds,
-        CancellationToken ct = default);
 }
 
 [Flags]

@@ -217,9 +217,10 @@ internal sealed class TicketBuyController(
         var (errorResult, user) = await RequireCurrentUserAsync(ct);
         if (errorResult is not null) return errorResult;
 
-        var order = await checkout.RefreshOrderAsync(id, ct);
-        if (order is null || !CanSee(order, user.Id))
+        // Checked before the refresh, so only the order's own people make it call the payment backend.
+        if (await checkout.GetOrderDetailAsync(id, ct) is not { } detail || !CanSee(detail.Order, user.Id))
             return NotFound();
+        var order = await checkout.RefreshOrderAsync(id, ct) ?? detail.Order;
 
         var tickets = (await checkout.GetTicketsForOrderAsync(order.Id, ct))
             .OrderBy(ticket => ticket.Kind).ThenBy(ticket => ticket.IssuedAt).ToList();

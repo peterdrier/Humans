@@ -6,6 +6,7 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Humans.Base.Extensions;
+using Humans.Stripe.Contracts;
 using Humans.Tickets.Contracts;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -28,6 +29,8 @@ namespace Humans.HiEvents.Services;
 internal sealed class HiEventsCheckoutBackend : ITicketCheckoutBackend
 {
     public const string BackendKey = "hievents";
+    /// <summary>The <c>Stripe:MirrorAccounts</c> entry for the account the fork's STRIPE_SECRET_KEY charges into.</summary>
+    internal const string StripeAccountName = "HiEvents";
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -43,17 +46,20 @@ internal sealed class HiEventsCheckoutBackend : ITicketCheckoutBackend
     private readonly HiEventsSettings _settings;
     private readonly IClock _clock;
     private readonly ILogger<HiEventsCheckoutBackend> _logger;
+    private readonly IStripeService _stripe;
 
     public HiEventsCheckoutBackend(
         HttpClient http,
         IOptions<HiEventsSettings> settings,
         IClock clock,
-        ILogger<HiEventsCheckoutBackend> logger)
+        ILogger<HiEventsCheckoutBackend> logger,
+        IStripeService stripe)
     {
         _http = http;
         _settings = settings.Value;
         _clock = clock;
         _logger = logger;
+        _stripe = stripe;
 
         // Never throw here: Tickets resolves every backend together, so a bad setting must only switch this one off.
         if (_settings.ApiBaseUri is { } baseUri)
@@ -79,7 +85,7 @@ internal sealed class HiEventsCheckoutBackend : ITicketCheckoutBackend
             throw new TicketCheckoutException($"Hi.Events needs a numeric event id, got '{request.BackendEventRef}'.");
 
         var products = await GetProductsAsync(eventId, ct);
-        if (products.FirstOrDefault(p => p.ProductType is "TICKET" or "GENERAL" && p.IsHidden != true) is { } visible)
+        if (products.FirstOrDefault(IsVisibleCarrier) is { } visible)
         {
             throw new TicketCheckoutException(
                 $"Hi.Events product {visible.Id} on event {eventId} must be hidden, or it sells on the event's public page.");
@@ -129,19 +135,30 @@ internal sealed class HiEventsCheckoutBackend : ITicketCheckoutBackend
     public async Task<CheckoutStatus> GetStatusAsync(string backendOrderId, CancellationToken ct = default)
     {
         var (eventId, orderId) = ParseBackendOrderId(backendOrderId);
-
-        using var response = await _http.GetAsync($"events/{eventId}/orders/{orderId}", ct);
-        var order = await ReadOrderAsync(response, ct);
+        var order = await GetOrderAsync(eventId, orderId, ct);
+        var state = ToState(order);
 
         return new CheckoutStatus(
-            State: ToState(order),
-            FeeMinor: null,
+            State: state,
+            FeeMinor: state == CheckoutState.Paid ? await FeeAsync(eventId, order, ct) : null,
             PaymentMethod: order.PaymentProvider?.ToLowerInvariant(),
             PaidAt: null,
             RefundedMinor: ToMinor(order.TotalRefunded ?? 0m),
             RefundFailed: string.Equals(order.RefundStatus, "REFUND_FAILED", StringComparison.Ordinal),
             DisputedMinor: ToMinor(order.TotalDisputed ?? 0m));
     }
+
+    /// <summary>
+    /// What Stripe kept on the order's payment, found by the <c>event_id</c> and <c>order_id</c> Hi.Events puts on every
+    /// PaymentIntent, since its API does not expose the intent's id. Null while unknown: the reconciliation shows a fee
+    /// Humans did not record.
+    /// </summary>
+    private Task<long?> FeeAsync(int eventId, HiEventsOrder order, CancellationToken ct) =>
+        _stripe.FindAccountPaymentFeeAsync(StripeAccountName, new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["event_id"] = eventId.ToString(CultureInfo.InvariantCulture),
+            ["order_id"] = order.Id.ToString(CultureInfo.InvariantCulture),
+        }, ParseCreatedAt(order.CreatedAt) ?? _clock.GetCurrentInstant(), ct);
 
     public async Task<RefundResult> RefundAsync(RefundRequest request, CancellationToken ct = default)
     {
@@ -233,6 +250,7 @@ internal sealed class HiEventsCheckoutBackend : ITicketCheckoutBackend
             "Each event needs exactly one TICKET and one GENERAL product, both hidden, without taxes or fees, offline payment off, and the event live. The sales setup's event id is the numeric Hi.Events event id.",
             "The webhook goes on the order events.",
             "The fork's Stripe webhook must include payment_intent.processing and the charge.dispute.* events, or slow bank payments get cancelled at the hold and chargebacks never reach Humans.",
+            $"Fees and payouts reconcile from the Stripe account behind the fork's STRIPE_SECRET_KEY: a Stripe:MirrorAccounts entry named {StripeAccountName} with that account's id and a read-only key (Balance, Balance transactions, Payouts, PaymentIntents, Charges, Refunds, Disputes read).",
         ]);
 
     private bool IsCloud => _settings.ApiBaseUri is { } api
@@ -256,6 +274,7 @@ internal sealed class HiEventsCheckoutBackend : ITicketCheckoutBackend
                 ? new(false, "HIEVENTS_WEBHOOK_SECRET is unset: the webhook answers 503 and outcomes arrive only from Tickets' poll.")
                 : new(true, "Webhook signing secret is set."),
         };
+        findings.AddRange((await _stripe.CheckAccountAsync(StripeAccountName, ct)).Select(c => new CheckoutBackendFinding(c.Ok, c.Text)));
         if (IsCloud)
             findings.Add(new(false, "Hi.Events Cloud cannot sell Humans orders: it has no checkout endpoint taking Humans' prices."));
         try
@@ -294,13 +313,13 @@ internal sealed class HiEventsCheckoutBackend : ITicketCheckoutBackend
             var products = await GetProductsAsync(eventId, ct);
             foreach (var type in new[] { "TICKET", "GENERAL" })
             {
-                var carriers = products.Where(p => string.Equals(p.ProductType, type, StringComparison.Ordinal)).ToList();
+                var carriers = CarriersOf(products, type);
                 findings.Add(carriers.Count == 1
                     ? new(true, $"One {type} carrier product found.")
                     : new(false, $"The event has {carriers.Count} {type} products; it needs exactly one."));
             }
 
-            var visible = products.Where(p => p.ProductType is "TICKET" or "GENERAL" && p.IsHidden != true).Select(p => p.Id).ToList();
+            var visible = products.Where(IsVisibleCarrier).Select(p => p.Id).ToList();
             if (visible.Count > 0)
                 findings.Add(new(false, $"Products {string.Join(", ", visible)} are visible and would sell on the event's public page; hide them."));
 
@@ -330,9 +349,70 @@ internal sealed class HiEventsCheckoutBackend : ITicketCheckoutBackend
     public string? EventRefOf(string backendOrderId) =>
         ParseBackendOrderId(backendOrderId).EventId.ToString(CultureInfo.InvariantCulture);
 
-    /// <summary>Hi.Events takes payments through its own payment account, whose keys Humans does not hold.</summary>
-    public Task<PaymentLedger?> GetPaymentLedgerAsync(Instant from, Instant to, CancellationToken ct = default) =>
-        Task.FromResult<PaymentLedger?>(null);
+    /// <summary>
+    /// The Stripe account Hi.Events charges into; null while its mirror account is not configured. A movement's Humans
+    /// order is the <c>external_reference</c> of the Hi.Events order its PaymentIntent names; an order the API key
+    /// cannot see, or one Humans did not open, names none.
+    /// </summary>
+    public async Task<PaymentLedger?> GetPaymentLedgerAsync(Instant from, Instant to, CancellationToken ct = default)
+    {
+        if (!IsConfigured)
+            return null;
+        StripeAccountLedger? stripe;
+        try
+        {
+            stripe = await _stripe.GetAccountLedgerAsync(StripeAccountName, from, to, ct);
+        }
+        catch (InvalidOperationException ex)
+        {
+            throw new TicketCheckoutException(ex.Message, ex);
+        }
+        if (stripe is null)
+            return null;
+
+        var orderOf = new Dictionary<string, Guid?>(StringComparer.Ordinal);
+        var entries = new List<PaymentLedgerEntry>();
+        foreach (var line in stripe.Lines)
+        {
+            Guid? humansOrderId = null;
+            if (line.Payment is { } payment && !orderOf.TryGetValue(payment.PaymentIntentId, out humansOrderId))
+                orderOf[payment.PaymentIntentId] = humansOrderId = await HumansOrderOfAsync(payment.Metadata, ct);
+            entries.Add(new PaymentLedgerEntry(line.Id, line.CreatedAt, KindOf(line.ReportingCategory),
+                line.AmountMinor, line.FeeMinor, humansOrderId, line.Description));
+        }
+
+        return new PaymentLedger(entries, stripe.Payouts.Select(p => new PaymentPayout(
+            p.Id, p.CreatedAt, p.ArrivalAt, p.AmountMinor, p.Status, p.ContentsNetMinor, p.ContentsCount)).ToList());
+    }
+
+    /// <summary>By Stripe's reporting category, as Box Office reads its own account.</summary>
+    private static PaymentLedgerEntryKind KindOf(string reportingCategory) => reportingCategory switch
+    {
+        "charge" or "charge_failure" or "partial_capture_reversal" => PaymentLedgerEntryKind.Charge,
+        "refund" or "refund_failure" => PaymentLedgerEntryKind.Refund,
+        "dispute" or "dispute_reversal" => PaymentLedgerEntryKind.Dispute,
+        "fee" => PaymentLedgerEntryKind.Fee,
+        "payout" or "payout_reversal" => PaymentLedgerEntryKind.Payout,
+        _ => PaymentLedgerEntryKind.Other,
+    };
+
+    private async Task<Guid?> HumansOrderOfAsync(IReadOnlyDictionary<string, string> metadata, CancellationToken ct)
+    {
+        if (!TryReadId(metadata, "event_id", out var eventId) || !TryReadId(metadata, "order_id", out var orderId))
+            return null;
+        using var response = await _http.GetAsync($"events/{eventId}/orders/{orderId}", ct);
+        if (response.StatusCode is HttpStatusCode.NotFound or HttpStatusCode.Forbidden)
+            return null;
+        var order = await ReadOrderAsync(response, ct);
+        return Guid.TryParseExact(order.ExternalReference, "N", out var humansOrderId) ? humansOrderId : null;
+    }
+
+    private static bool TryReadId(IReadOnlyDictionary<string, string> metadata, string key, out int id)
+    {
+        id = 0;
+        return metadata.TryGetValue(key, out var value)
+            && int.TryParse(value, NumberStyles.None, CultureInfo.InvariantCulture, out id);
+    }
 
     public async Task<IReadOnlyList<BackendOrderSummary>> ListOrdersAsync(
         string? backendEventRef, Instant from, Instant to, CancellationToken ct = default)
@@ -443,7 +523,7 @@ internal sealed class HiEventsCheckoutBackend : ITicketCheckoutBackend
     private static CheckoutOrderItem ToItem(CheckoutLine line, int eventId, IReadOnlyList<HiEventsProduct> products)
     {
         var productType = line.Kind == CheckoutLineKind.Ticket ? "TICKET" : "GENERAL";
-        var carriers = products.Where(p => string.Equals(p.ProductType, productType, StringComparison.Ordinal)).ToList();
+        var carriers = CarriersOf(products, productType);
         if (carriers.Count != 1)
         {
             throw new TicketCheckoutException(
@@ -455,6 +535,12 @@ internal sealed class HiEventsCheckoutBackend : ITicketCheckoutBackend
             Price: line.AmountMinor / 100m,
             Attendee: line.AttendeeName is null ? null : new CheckoutAttendee(line.AttendeeName));
     }
+
+    private static List<HiEventsProduct> CarriersOf(IReadOnlyList<HiEventsProduct> products, string productType) =>
+        products.Where(p => string.Equals(p.ProductType, productType, StringComparison.Ordinal)).ToList();
+
+    private static bool IsVisibleCarrier(HiEventsProduct product) =>
+        product.ProductType is "TICKET" or "GENERAL" && product.IsHidden != true;
 
     private async Task<HiEventsOrder> GetOrderAsync(int eventId, int orderId, CancellationToken ct)
     {
@@ -482,6 +568,11 @@ internal sealed class HiEventsCheckoutBackend : ITicketCheckoutBackend
     private static string ToLocale(string culture)
     {
         var language = culture.Split('-', 2)[0].ToLowerInvariant();
+        if (string.Equals(language, "ca", StringComparison.Ordinal))
+        {
+            return "es";
+        }
+
         return SupportedLocales.Contains(language) ? language : "en";
     }
 

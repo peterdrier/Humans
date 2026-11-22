@@ -17,6 +17,8 @@ using Humans.Teams.Authorization;
 using Humans.Teams.Contracts;
 using Humans.Teams.Data;
 using Humans.Teams.Services;
+using Humans.Teams.Services.Demo;
+using Humans.Base.Demo;
 using Humans.Teams.ViewComponents;
 using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Authorization;
@@ -27,8 +29,6 @@ using Microsoft.Extensions.Localization;
 using static Humans.Base.Models.AccessLevel;
 using static Humans.Base.Models.AccessMatrixFeature;
 using Humans.AuditLog.Contracts;
-
-[assembly: Humans.Base.Demo.NoDemoStory("No demo story written yet.")]
 
 namespace Humans.Teams;
 
@@ -105,6 +105,8 @@ public sealed class Section :
         services.AddHostedService(sp => sp.GetRequiredService<CachingTeamService>());
 
         services.AddScoped<ITeamPageService, TeamPageService>();
+
+        services.AddDemoStory<TeamsDemoStory>(configuration);
 
         services.AddScoped<ITeamMessageOptionsProvider, TeamMessageOptionsProvider>();
 

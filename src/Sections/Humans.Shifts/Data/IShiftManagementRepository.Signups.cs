@@ -58,10 +58,6 @@ internal partial interface IShiftManagementRepository
     Task<IReadOnlyList<(Guid SignupId, Guid ShiftId)>> CancelActiveSignupsForUserAsync(
         Guid userId, string reason, CancellationToken ct = default);
 
-    Task<int> DeleteAllForUsersAsync(
-        IReadOnlyCollection<Guid> userIds,
-        CancellationToken ct = default);
-
     /// <summary>
     /// Account-merge fold of volunteer, enrolled-by and reviewed-by references in one save. A source-owned row for a
     /// shift the target already holds is dropped. Returns the touched row count and event ids for audit/cache refresh.

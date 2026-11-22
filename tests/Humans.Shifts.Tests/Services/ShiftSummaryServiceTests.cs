@@ -118,7 +118,6 @@ public sealed class ShiftSummaryServiceTests : ShiftsTestHarness
         _service = new ShiftManagementService(
             repo,
             AuditLog,
-            AdminAuthorization,
             serviceProvider,
             NewCalendarResolver(),
             Clock,
@@ -136,7 +135,7 @@ public sealed class ShiftSummaryServiceTests : ShiftsTestHarness
         var services = new ServiceLocatorBuilder()
             .With(_teamService).With(_userService).With(_campService).With(rows).Build();
         var service = new ShiftManagementService(
-            Substitute.For<IShiftManagementRepository>(), AuditLog, AdminAuthorization, services, NewCalendarResolver(), Clock,
+            Substitute.For<IShiftManagementRepository>(), AuditLog, services, NewCalendarResolver(), Clock,
             Microsoft.Extensions.Logging.Abstractions.NullLogger<ShiftManagementService>.Instance);
 
         var summary = await service.BuildSummaryAsync(_burn, "power", _rPower, cancellation.Token);

@@ -52,7 +52,6 @@ public sealed class ProfileServiceTests : ServiceTestHarness
         _userRepository = new UserRepository(DbFactory, Clock);
         _storageUserService = new UserService(
             _userRepository,
-            AdminAuthorization,
             _pictureStorage,
             Clock,
             NullLogger<UserService>.Instance, AuditLog);
@@ -367,7 +366,7 @@ public sealed class ProfileServiceTests : ServiceTestHarness
         var options = new DbContextOptionsBuilder<UsersDbContext>(DbOptions)
             .AddInterceptors(new LoseProfileSaveAcknowledgement()).Options;
         var service = new UserService(
-            new UserRepository(new TestDbContextFactory(options), Clock), AdminAuthorization,
+            new UserRepository(new TestDbContextFactory(options), Clock),
             _pictureStorage, Clock, NullLogger<UserService>.Instance, AuditLog);
         var command = new UserProfileSaveCommand(
             "TestBurner", "Test", "User", null, null, null, null, null, null, null, null, null,
@@ -394,7 +393,7 @@ public sealed class ProfileServiceTests : ServiceTestHarness
         var profileId = await SeedUserWithProfileAsync(userId, withPicture: true);
         SaveChangesInterceptor interceptor = afterCommit ? new LoseProfileSaveAcknowledgement() : new RejectUserNameSave();
         var options = new DbContextOptionsBuilder<UsersDbContext>(DbOptions).AddInterceptors(interceptor).Options;
-        var service = new UserService(new UserRepository(new TestDbContextFactory(options), Clock), AdminAuthorization,
+        var service = new UserService(new UserRepository(new TestDbContextFactory(options), Clock),
             _pictureStorage, Clock, NullLogger<UserService>.Instance, AuditLog);
         var command = new UserProfileSaveCommand(
             "TestBurner", "Test", "User", null, null, null, null, null, null, null, null, null,
@@ -430,7 +429,7 @@ public sealed class ProfileServiceTests : ServiceTestHarness
         repo.GetProfilePictureLocationAsync(profileId, Arg.Any<CancellationToken>())
             .ThrowsAsync(new IOException("Could not verify the committed picture"));
         var service = new UserService(
-            repo, AdminAuthorization,
+            repo,
             _pictureStorage, Clock, NullLogger<UserService>.Instance, AuditLog);
         var command = new UserProfileSaveCommand(
             "TestBurner", "Test", "User", null, null, null, null, null, null, null, null, null,
@@ -459,7 +458,6 @@ public sealed class ProfileServiceTests : ServiceTestHarness
             .ThrowsAsync(new InvalidOperationException("Database unavailable"));
         var sut = new UserService(
             failingRepo,
-            AdminAuthorization,
             _pictureStorage,
             Clock,
             NullLogger<UserService>.Instance, AuditLog);
@@ -486,7 +484,7 @@ public sealed class ProfileServiceTests : ServiceTestHarness
         var options = new DbContextOptionsBuilder<UsersDbContext>(DbOptions)
             .AddInterceptors(new RejectUserNameSave()).Options;
         var sut = new UserService(
-            new UserRepository(new TestDbContextFactory(options), Clock), AdminAuthorization,
+            new UserRepository(new TestDbContextFactory(options), Clock),
             _pictureStorage, Clock, NullLogger<UserService>.Instance, AuditLog);
         var command = new UserProfileSaveCommand(
             "TestBurner", "Test", "User", null, null, null, null, null, null, null, null, null,
@@ -713,7 +711,6 @@ public sealed class ProfileServiceTests : ServiceTestHarness
 
     private UserService BuildUserServiceWith(IUserRepository userRepository) => new(
         userRepository,
-        AdminAuthorization,
         Substitute.For<IFileStorage>(),
         Clock,
         NullLogger<UserService>.Instance, AuditLog);

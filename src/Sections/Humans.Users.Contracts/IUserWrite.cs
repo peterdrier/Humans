@@ -26,13 +26,4 @@ public interface IUserWrite
     /// later re-classification. The reason and reviewer are Consent's. <c>NotFound</c> without a profile.
     /// </summary>
     Task<OnboardingResult> SetRejectedAsync(Guid userId, CancellationToken ct = default);
-
-    /// <summary>
-    /// Permanent. The caller has already cleared cross-section references. Requires the current user to hold the
-    /// full Admin role.
-    /// </summary>
-    Task<int> DeleteUsersAsync(
-        IReadOnlyCollection<Guid> userIds,
-        CancellationToken ct = default);
-
 }

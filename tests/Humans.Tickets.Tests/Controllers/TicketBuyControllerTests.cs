@@ -8,6 +8,7 @@ using Humans.Tickets.Services.Checkout;
 using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
@@ -75,6 +76,7 @@ public class TicketBuyControllerTests
         var older = new TicketCheckoutTicket { Id = Guid.NewGuid(), Kind = TicketHolderKind.Adult, IssuedAt = Now };
         var newer = new TicketCheckoutTicket { Id = Guid.NewGuid(), Kind = TicketHolderKind.Adult, IssuedAt = Now + Duration.FromDays(1) };
         var child = new TicketCheckoutTicket { Id = Guid.NewGuid(), Kind = TicketHolderKind.Child, IssuedAt = Now - Duration.FromDays(1) };
+        _checkout.GetOrderDetailAsync(order.Id, Arg.Any<CancellationToken>()).Returns(new CheckoutOrderDetail(order, [], [], []));
         _checkout.RefreshOrderAsync(order.Id, Arg.Any<CancellationToken>()).Returns(order);
         _checkout.GetTicketsForOrderAsync(order.Id, Arg.Any<CancellationToken>()).Returns([child, newer, older]);
 
@@ -125,5 +127,53 @@ public class TicketBuyControllerTests
 
         ((IReadOnlyList<BuyPage>)result.Model!).Should().ContainSingle().Which.Orders.Should().Equal(newer, older);
         controller.ViewData["DirectedToken"].Should().Be("invite");
+    }
+
+    private static readonly Guid ViewerId = Guid.NewGuid();
+
+    private TicketBuyController NewController()
+    {
+        var users = Substitute.For<IUserService>();
+        users.GetUserInfoAsync(ViewerId, Arg.Any<CancellationToken>()).Returns(new ValueTask<UserInfo?>(
+            new UserInfo(ViewerId, "Viewer", false, "en", null, Instant.MinValue, null, null, null, null, null, null, null, null,
+                "viewer@example.com", [], [], null)));
+        var http = new DefaultHttpContext
+        {
+            User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, ViewerId.ToString())], "test")),
+        };
+        return new TicketBuyController(_checkout, Substitute.For<IMagicLinkService>(), Substitute.For<IEarlyEntryService>(), users,
+            Substitute.For<IStringLocalizer<TicketsResource>>(), NullLogger<TicketBuyController>.Instance)
+        {
+            ControllerContext = new ControllerContext { HttpContext = http },
+            TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>()),
+        };
+    }
+
+    private void Stored(TicketCheckoutOrder order) =>
+        _checkout.GetOrderDetailAsync(order.Id, Arg.Any<CancellationToken>()).Returns(new CheckoutOrderDetail(order, [], [], []));
+
+    [HumansFact]
+    public async Task Someone_elses_order_is_not_found_and_never_refreshed_from_the_backend()
+    {
+        var order = new TicketCheckoutOrder { Id = Guid.NewGuid(), BuyerUserId = Guid.NewGuid() };
+        Stored(order);
+
+        var result = await NewController().Order(order.Id, Xunit.TestContext.Current.CancellationToken);
+
+        result.Should().BeOfType<NotFoundResult>();
+        await _checkout.DidNotReceiveWithAnyArgs().RefreshOrderAsync(default, default);
+    }
+
+    [HumansFact]
+    public async Task The_buyer_sees_their_order_refreshed_from_the_backend()
+    {
+        var order = new TicketCheckoutOrder { Id = Guid.NewGuid(), BuyerUserId = ViewerId };
+        Stored(order);
+        _checkout.RefreshOrderAsync(order.Id, Arg.Any<CancellationToken>()).Returns(order);
+
+        var result = await NewController().Order(order.Id, Xunit.TestContext.Current.CancellationToken);
+
+        result.Should().BeOfType<ViewResult>();
+        await _checkout.Received(1).RefreshOrderAsync(order.Id, Arg.Any<CancellationToken>());
     }
 }

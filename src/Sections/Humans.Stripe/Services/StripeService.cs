@@ -43,11 +43,12 @@ internal sealed class StripeSettings
 
 }
 
-internal sealed class StripeService(
+internal sealed partial class StripeService(
     IOptions<StripeSettings> settings,
     ILogger<StripeService> logger,
     IHttpClient? httpClient = null,
-    IOptions<StripeMirrorOptions>? mirrorOptions = null) : IStripeService
+    IOptions<StripeMirrorOptions>? mirrorOptions = null,
+    IClock? clock = null) : IStripeService
 {
     /// <summary>The <c>Stripe:MirrorAccounts</c> entry naming the Store account; refunds are read through its key.</summary>
     internal const string StoreAccountName = "Store";

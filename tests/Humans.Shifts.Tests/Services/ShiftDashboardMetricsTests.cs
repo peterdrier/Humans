@@ -66,7 +66,6 @@ public sealed class ShiftDashboardMetricsTests : ShiftsTestHarness
         _service = new ShiftManagementService(
             repo,
             AuditLog,
-            AdminAuthorization,
             serviceProvider,
             NewCalendarResolver(),
             Clock,

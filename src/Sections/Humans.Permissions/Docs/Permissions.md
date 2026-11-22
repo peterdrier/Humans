@@ -12,7 +12,7 @@ Answers one question for the whole app: may this person do this on this owner?
 ## Concepts
 
 - An **owner** (`Owner(Kind, Id)`, in Base) is what a role, task or permission belongs to: a `Team`, later a `Camp`. The owner's section registers its kind.
-- A **permission** (`Permission`) is something a person may do on an owner, such as `Shifts.Manage`. The section that checks it declares it through `ISectionPermissions`.
+- A **permission** (`Permission`) is something a person may do on an owner, such as `Shifts.Manage`. The section that checks it declares it through `ISectionPermissions`. Its title and blurb are keys in the declaring section's resource set (`Resource`), so they show in every culture.
 - An **owner kind** (`IOwnerKind`) gives the tree of owners of that kind: id, parent, active, system.
 - A **permission source** (`IPermissionSource`) says what a person holds on which owners, and why: Roles, later Tasks, and for now Teams (today's coordinators, until departments move to Roles). A holding is either the owner's coordinator role (every permission) or a list of keys.
 - A **system role** (Auth's roles: Admin, ShiftsAdmin, FinanceAdmin…) is tied to a section, not an owner. A permission lists the system roles that hold it on every owner (`AdminRoles`).
@@ -25,7 +25,7 @@ None. Nothing is stored: every answer is worked out from Auth's system roles and
 
 | Actor | Capabilities |
 |-------|--------------|
-| Any section | Declares permissions; asks `IPermissionService` or authorizes with `PermissionRequirement` |
+| Any section | Declares permissions; asks `IPermissionService` or authorizes with `PermissionRequirement`. Shifts declares and checks `Shifts.Manage` and `Shifts.Approve`; Budget declares and checks `Budget.Edit` |
 | Owner sections (Teams) | Register an owner kind |
 | Roles, later Tasks; Teams for now | Register a permission source |
 

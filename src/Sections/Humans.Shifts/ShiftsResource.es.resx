@@ -1316,4 +1316,8 @@
   </data>
   <data name="Shifts_Search_Category" xml:space="preserve"><value>Turnos</value></data>
   <data name="Shifts_NameRequiredBeforeShifts" xml:space="preserve"><value>Añade tu nombre primero — lo necesitamos antes de que puedas apuntarte a turnos.</value></data>
+  <data name="Shifts_Permission_Manage_Title" xml:space="preserve"><value>Gestionar turnos</value></data>
+  <data name="Shifts_Permission_Manage_Blurb" xml:space="preserve"><value>Crear y editar las rotas y los turnos del equipo, y escribir a sus voluntarios.</value></data>
+  <data name="Shifts_Permission_Approve_Title" xml:space="preserve"><value>Aprobar inscripciones</value></data>
+  <data name="Shifts_Permission_Approve_Blurb" xml:space="preserve"><value>Aprobar, rechazar y asignar inscripciones en los turnos del equipo.</value></data>
 </root>

@@ -8,6 +8,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
+using Humans.Stripe.Contracts;
 using Humans.Tickets.Contracts;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -31,9 +32,12 @@ namespace Humans.Pretix.Services;
 internal sealed partial class PretixCheckoutBackend(
     HttpClient http,
     IOptions<PretixSettings> options,
-    ILogger<PretixCheckoutBackend> logger) : ITicketCheckoutBackend
+    ILogger<PretixCheckoutBackend> logger,
+    IStripeService stripe) : ITicketCheckoutBackend
 {
     public const string BackendKey = "pretix";
+    /// <summary>The <c>Stripe:MirrorAccounts</c> entry for the account pretix's Stripe settings charge into.</summary>
+    internal const string StripeAccountName = "Pretix";
 
     /// <summary>
     /// Internal names of the carrier items every pretix event needs: one admission item taxed like a ticket, one
@@ -132,8 +136,21 @@ internal sealed partial class PretixCheckoutBackend(
         EnsureConfigured();
         var (eventSlug, code) = ParseBackendOrderId(backendOrderId);
         var order = await SendAsync<PretixOrder>(HttpMethod.Get, OrderPath(eventSlug, code), body: null, ct);
-        return MapStatus(order, logger);
+        var status = MapStatus(order, logger);
+        return status.State == CheckoutState.Paid && await FeeAsync(order, ct) is { } fee ? status with { FeeMinor = fee } : status;
     }
+
+    /// <summary>
+    /// What Stripe kept on the payment the status reports, read through the PaymentIntent id pretix shows in a Stripe
+    /// payment's details. Null while unknown, or when the payment is not Stripe's: the reconciliation shows a fee Humans
+    /// did not record.
+    /// </summary>
+    private async Task<long?> FeeAsync(PretixOrder order, CancellationToken ct) =>
+        LastPayment(order) is { Details: { ValueKind: JsonValueKind.Object } details }
+        && details.TryGetProperty("id", out var id) && id.ValueKind == JsonValueKind.String
+        && id.GetString() is { } intentId && intentId.StartsWith("pi_", StringComparison.Ordinal)
+            ? await stripe.GetAccountPaymentFeeAsync(StripeAccountName, intentId, ct)
+            : null;
 
     public async Task<RefundResult> RefundAsync(RefundRequest request, CancellationToken ct = default)
     {
@@ -147,13 +164,12 @@ internal sealed partial class PretixCheckoutBackend(
 
         // A repeat answers the earlier refund's current state and never refunds again; Tickets uses it to learn
         // how a refund ended. A refund that failed after pretix accepted it gives its lowered total back.
+        var fee = order.Fees.FirstOrDefault(f => !f.Canceled && string.Equals(f.InternalType, comment, StringComparison.Ordinal));
         var earlier = order.Refunds.LastOrDefault(r => r.Comment?.Contains(comment, StringComparison.Ordinal) == true);
         if (earlier is not null)
         {
-            var earlierFee = order.Fees.FirstOrDefault(f =>
-                !f.Canceled && string.Equals(f.InternalType, comment, StringComparison.Ordinal));
-            if (earlier.State is "failed" or "canceled" && earlierFee is not null)
-                await CancelFeeAsync(eventSlug, code, earlierFee.Id, ct);
+            if (earlier.State is "failed" or "canceled" && fee is not null)
+                await CancelFeeAsync(eventSlug, code, fee.Id, ct);
             return MapRefund(earlier, AdminOrderUrl(eventSlug, code));
         }
 
@@ -167,7 +183,6 @@ internal sealed partial class PretixCheckoutBackend(
         // pretix reopens a paid order for payment whenever a refund leaves its total uncovered, so the order total
         // drops by the refund first, as a negative fee that also marks the refund. The order then stays paid and
         // nobody can pay the refunded amount again.
-        var fee = order.Fees.FirstOrDefault(f => !f.Canceled && string.Equals(f.InternalType, comment, StringComparison.Ordinal));
         var feeIsNew = fee is null;
         fee ??= await AddRefundFeeAsync(eventSlug, code, comment, request.AmountMinor, ct);
 
@@ -276,6 +291,7 @@ internal sealed partial class PretixCheckoutBackend(
                 ? "pretix Hosted gives no shell for deploy/pretix/bootstrap.py: make the same settings by hand in the pretix control panel, following what bootstrap.py does."
                 : "deploy/pretix/bootstrap.py, run in the pretix container, sets this up.",
             "The webhook goes on the order actions; the sales setup's event id is the pretix event slug.",
+            $"Fees and payouts reconcile from the Stripe account set in pretix's Stripe settings: a Stripe:MirrorAccounts entry named {StripeAccountName} with that account's id and a read-only key (Balance, Balance transactions, Payouts, PaymentIntents, Charges, Refunds, Disputes read).",
         ]);
 
     private bool IsHosted => Uri.TryCreate(Settings.BaseUrl, UriKind.Absolute, out var root)
@@ -299,6 +315,7 @@ internal sealed partial class PretixCheckoutBackend(
                 ? new(false, "PRETIX_WEBHOOK_SECRET is unset: the webhook answers 503 and outcomes arrive only from Tickets' poll.")
                 : new(true, "Webhook secret is set."),
         };
+        findings.AddRange((await stripe.CheckAccountAsync(StripeAccountName, ct)).Select(c => new CheckoutBackendFinding(c.Ok, c.Text)));
         try
         {
             var events = await SendRawAsync(HttpMethod.Get,
@@ -321,7 +338,7 @@ internal sealed partial class PretixCheckoutBackend(
                 return findings;
             }
 
-            var details = Deserialize<PretixEventCheck>(ev.Body);
+            var details = Deserialize<PretixEvent>(ev.Body);
             findings.Add(string.Equals(details.Currency, "EUR", StringComparison.OrdinalIgnoreCase)
                 ? new(true, "The event sells in EUR.")
                 : new(false, $"The event sells in {details.Currency}, Humans sells in EUR."));
@@ -354,9 +371,92 @@ internal sealed partial class PretixCheckoutBackend(
 
     public string? EventRefOf(string backendOrderId) => ParseBackendOrderId(backendOrderId).EventSlug;
 
-    /// <summary>pretix takes payments through its own payment account, whose keys Humans does not hold.</summary>
-    public Task<PaymentLedger?> GetPaymentLedgerAsync(Instant from, Instant to, CancellationToken ct = default) =>
-        Task.FromResult<PaymentLedger?>(null);
+    /// <summary>
+    /// The Stripe account pretix charges into; null while its mirror account is not configured. pretix puts the order
+    /// code on each PaymentIntent and describes it as <c>{EVENT SLUG}-{code}</c> in capitals, so the slug is found among
+    /// the organizer's events, and the Humans order is that pretix order's <c>api_meta</c>. A payment on another
+    /// organizer's event, or on an order Humans did not open, names none.
+    /// </summary>
+    public async Task<PaymentLedger?> GetPaymentLedgerAsync(Instant from, Instant to, CancellationToken ct = default)
+    {
+        if (!IsConfigured)
+            return null;
+        StripeAccountLedger? account;
+        try
+        {
+            account = await stripe.GetAccountLedgerAsync(StripeAccountName, from, to, ct);
+        }
+        catch (InvalidOperationException ex)
+        {
+            throw new TicketCheckoutException(ex.Message, ex);
+        }
+        if (account is null)
+            return null;
+
+        Dictionary<string, string>? slugs = null;
+        var orderOf = new Dictionary<string, Guid?>(StringComparer.Ordinal);
+        var entries = new List<PaymentLedgerEntry>();
+        foreach (var line in account.Lines)
+        {
+            Guid? humansOrderId = null;
+            if (line.Payment is { } payment && !orderOf.TryGetValue(payment.PaymentIntentId, out humansOrderId))
+            {
+                slugs ??= await EventSlugsAsync(ct);
+                orderOf[payment.PaymentIntentId] = humansOrderId = await HumansOrderOfAsync(payment, slugs, ct);
+            }
+            entries.Add(new PaymentLedgerEntry(line.Id, line.CreatedAt, KindOf(line.ReportingCategory),
+                line.AmountMinor, line.FeeMinor, humansOrderId, line.Description));
+        }
+
+        return new PaymentLedger(entries, account.Payouts.Select(p => new PaymentPayout(
+            p.Id, p.CreatedAt, p.ArrivalAt, p.AmountMinor, p.Status, p.ContentsNetMinor, p.ContentsCount)).ToList());
+    }
+
+    private async Task<Guid?> HumansOrderOfAsync(
+        StripeLedgerPayment payment, Dictionary<string, string> slugs, CancellationToken ct)
+    {
+        if (!payment.Metadata.TryGetValue("code", out var code) || string.IsNullOrEmpty(code)
+            || payment.Description is not { } description || !description.EndsWith($"-{code}", StringComparison.Ordinal)
+            || !slugs.TryGetValue(description[..^(code.Length + 1)], out var slug))
+            return null;
+        var response = await SendRawAsync(HttpMethod.Get, OrderPath(slug, code), body: null, ct);
+        if (response.Status == HttpStatusCode.NotFound)
+            return null;
+        EnsureSuccess(response, "read order");
+        return HumansOrderId(Deserialize<PretixOrder>(response.Body));
+    }
+
+    /// <summary>By Stripe's reporting category, as Box Office reads its own account.</summary>
+    private static PaymentLedgerEntryKind KindOf(string reportingCategory) => reportingCategory switch
+    {
+        "charge" or "charge_failure" or "partial_capture_reversal" => PaymentLedgerEntryKind.Charge,
+        "refund" or "refund_failure" => PaymentLedgerEntryKind.Refund,
+        "dispute" or "dispute_reversal" => PaymentLedgerEntryKind.Dispute,
+        "fee" => PaymentLedgerEntryKind.Fee,
+        "payout" or "payout_reversal" => PaymentLedgerEntryKind.Payout,
+        _ => PaymentLedgerEntryKind.Other,
+    };
+
+    /// <summary>The organizer's event slugs, by the capitalised form pretix writes on a payment.</summary>
+    private async Task<Dictionary<string, string>> EventSlugsAsync(CancellationToken ct)
+    {
+        var slugs = new Dictionary<string, string>(StringComparer.Ordinal);
+        for (string? next = $"api/v1/organizers/{Uri.EscapeDataString(Settings.Organizer)}/events/"; next is not null;)
+        {
+            var page = await SendAsync<PretixPage<PretixEventSlug>>(HttpMethod.Get, next, body: null, ct);
+            foreach (var ev in page.Results)
+                slugs[ev.Slug.ToUpperInvariant()] = ev.Slug;
+            next = page.Next;
+        }
+
+        return slugs;
+    }
+
+    private static Guid? HumansOrderId(PretixOrder order) =>
+        order.ApiMeta?.TryGetValue(HumansOrderIdMeta, out var meta) == true
+        && meta.ValueKind == JsonValueKind.String && Guid.TryParse(meta.GetString(), out var orderId)
+            ? orderId
+            : null;
 
     public async Task<IReadOnlyList<BackendOrderSummary>> ListOrdersAsync(
         string? backendEventRef, Instant from, Instant to, CancellationToken ct = default)
@@ -404,7 +504,7 @@ internal sealed partial class PretixCheckoutBackend(
         var refundFees = order.Fees
             .Where(f => !f.Canceled && f.InternalType?.StartsWith(RefundCommentPrefix, StringComparison.Ordinal) == true)
             .Sum(f => f.Value);
-        var received = order.Payments.Where(p => p.State is "confirmed" or "refunded").Sum(p => p.Amount);
+        var received = Received(order);
         // Tickets never takes a paid order back, but pretix cancels or reopens one once a person processes a refund or
         // chargeback, and keeps a late-paid one expired. For the list, an order that took its money stays paid,
         // whatever went back afterwards; GetStatusAsync keeps the net rule because it decides whether tickets issue.
@@ -415,10 +515,7 @@ internal sealed partial class PretixCheckoutBackend(
         var charged = state == CheckoutState.Paid ? received : order.Total - refundFees;
         return new BackendOrderSummary(
             FormatBackendOrderId(eventSlug, order.Code),
-            order.ApiMeta?.TryGetValue(HumansOrderIdMeta, out var meta) == true
-                && meta.ValueKind == JsonValueKind.String && Guid.TryParse(meta.GetString(), out var orderId)
-                ? orderId
-                : null,
+            HumansOrderId(order),
             ParseInstant(order.Datetime) ?? throw new HttpRequestException($"pretix order {order.Code} has no datetime."),
             state,
             ToMinor(charged),
@@ -476,8 +573,7 @@ internal sealed partial class PretixCheckoutBackend(
             logger.LogError("pretix order {Code} carries a payment surcharge; set the payment method fees to zero", order.Code);
 
         // A full refund drops the total to zero and pretix confirms a 0.00 "free" payment; that is not how they paid.
-        var lastPayment = order.Payments.LastOrDefault(p => string.Equals(p.State, "confirmed", StringComparison.Ordinal) && p.Amount > 0)
-            ?? order.Payments.LastOrDefault(p => string.Equals(p.State, "refunded", StringComparison.Ordinal));
+        var lastPayment = LastPayment(order);
         // A refund made outside pretix (Stripe dashboard, chargeback) waits as "external" until a person processes it,
         // but the money has already gone, so it counts from the moment pretix records it.
         var gone = order.Refunds.Where(r => r.State is "done" or "external").ToList();
@@ -499,6 +595,10 @@ internal sealed partial class PretixCheckoutBackend(
             disputed);
     }
 
+    private static PretixPayment? LastPayment(PretixOrder order) =>
+        order.Payments.LastOrDefault(p => string.Equals(p.State, "confirmed", StringComparison.Ordinal) && p.Amount > 0)
+        ?? order.Payments.LastOrDefault(p => string.Equals(p.State, "refunded", StringComparison.Ordinal));
+
     /// <summary>
     /// pretix's Stripe plugin records a chargeback as an external refund carrying the Stripe dispute's id, and never
     /// updates it. A won dispute or an inquiry clears only when a person cancels that refund in pretix, which pretix
@@ -511,30 +611,28 @@ internal sealed partial class PretixCheckoutBackend(
         && id.GetString() is { } stripeId
         && (stripeId.StartsWith("dp_", StringComparison.Ordinal) || stripeId.StartsWith("du_", StringComparison.Ordinal));
 
-    /// <summary>
-    /// pretix keeps a payment confirmed after expiry or cancellation but cannot mark the order paid, and a refund made
-    /// outside this adapter can reopen a paid order. The money decides, so a late payment is reported, never stranded.
-    /// </summary>
     /// <summary>The order still holds <paramref name="amountMinor"/> beyond its total: no refund has paid it out.</summary>
     private static bool StillHolds(PretixOrder order, long amountMinor) =>
         ToMinor(NetPaid(order) - order.Total) >= amountMinor;
 
+    /// <summary>What the buyer paid in: a payment refunded since still came in.</summary>
+    private static decimal Received(PretixOrder order) =>
+        order.Payments.Where(p => p.State is "confirmed" or "refunded").Sum(p => p.Amount);
+
     private static decimal NetPaid(PretixOrder order) =>
-        order.Payments.Where(p => p.State is "confirmed" or "refunded").Sum(p => p.Amount)
+        Received(order)
         - order.Refunds.Where(r => r.State is "done" or "transit" or "created" or "external").Sum(r => r.Amount);
 
-    private static bool IsCovered(PretixOrder order, CheckoutState state)
+    /// <summary>
+    /// pretix keeps a payment confirmed after expiry or cancellation but cannot mark the order paid, and a refund made
+    /// outside this adapter can reopen a paid order. The money decides, so a late payment is reported, never stranded.
+    /// </summary>
+    private static bool IsCovered(PretixOrder order, CheckoutState state) => state switch
     {
-        var paid = order.Payments
-            .Where(p => p.State is "confirmed" or "refunded")
-            .Sum(p => p.Amount);
-        return state switch
-        {
-            CheckoutState.Pending or CheckoutState.Expired => paid > 0 && NetPaid(order) >= order.Total,
-            CheckoutState.Cancelled => NetPaid(order) > 0,
-            _ => false,
-        };
-    }
+        CheckoutState.Pending or CheckoutState.Expired => Received(order) > 0 && NetPaid(order) >= order.Total,
+        CheckoutState.Cancelled => NetPaid(order) > 0,
+        _ => false,
+    };
 
     private static int CarrierItem(IReadOnlyList<PretixItem> items, string internalName) =>
         items.SingleOrDefault(i => string.Equals(i.InternalName, internalName, StringComparison.Ordinal))?.Id
@@ -768,12 +866,10 @@ internal sealed partial class PretixCheckoutBackend(
 
     private sealed record RawResponse(HttpStatusCode Status, string Body);
 
-    internal sealed record PretixEvent(string Currency);
-
     [GeneratedRegex("^[A-Za-z0-9][A-Za-z0-9._-]*$", RegexOptions.CultureInvariant, 1000)]
     private static partial Regex EventSlug();
 
-    private sealed record PretixEventCheck(string Currency, bool Live, bool Testmode);
+    private sealed record PretixEvent(string Currency, bool Live, bool Testmode);
 
     internal sealed record PretixPage<T>(IReadOnlyList<T> Results, string? Next = null);
 
@@ -798,7 +894,10 @@ internal sealed partial class PretixCheckoutBackend(
 
     internal sealed record PretixFee(int Id, string FeeType, decimal Value, bool Canceled, string? InternalType);
 
-    internal sealed record PretixPayment(int LocalId, string State, decimal Amount, string Provider, string? PaymentDate);
+    internal sealed record PretixPayment(
+        int LocalId, string State, decimal Amount, string Provider, string? PaymentDate, JsonElement? Details = null);
+
+    private sealed record PretixEventSlug(string Slug);
 
     internal sealed record PretixRefund(
         int LocalId, string State, decimal Amount, int? Payment, string? Comment, string? Provider,

@@ -1,3 +1,4 @@
+using Humans.Permissions.Contracts;
 using System.Globalization;
 using System.Resources;
 using Humans.Shifts.Domain;
@@ -57,6 +58,7 @@ public sealed class ShiftSignupServiceAutoConfirmIgnoresConsentTests : ShiftsTes
             .With(teamService)
             .With(roleAssignmentService)
             .With(_users)
+            .With<IPermissionService>()
             .Build();
 
         var shiftRepo = new ShiftRepository(ShiftsDbFactory, ShiftsDb, Clock);
@@ -64,7 +66,6 @@ public sealed class ShiftSignupServiceAutoConfirmIgnoresConsentTests : ShiftsTes
         _shiftMgmt = new ShiftManagementService(
             shiftRepo,
             AuditLog,
-            AdminAuthorization,
             serviceProvider,
             NewCalendarResolver(),
             Clock,
@@ -84,7 +85,6 @@ public sealed class ShiftSignupServiceAutoConfirmIgnoresConsentTests : ShiftsTes
             NewCalendarResolver(),
             AuditLog,
             Substitute.For<INotificationEmitter>(),
-            AdminAuthorization,
             serviceProvider,
             Clock,
             NullLogger<ShiftSignupService>.Instance,

@@ -94,6 +94,7 @@ graph LR
     Backdoor -.-> Notifications
     BoxOffice -.-> Tickets
     Budget --> Issues
+    Budget --> Permissions
     Budget -.-> Camps
     Budget -.-> Finance
     Budget -.-> Teams
@@ -141,8 +142,6 @@ graph LR
     Development --> Auth
     Development --> Budget
     Development --> Consent
-    Development --> Settings
-    Development --> Shifts
     Development -.-> Camps
     Development -.-> CityPlanning
     Development -.-> Teams
@@ -243,6 +242,7 @@ graph LR
     Shifts --> Consent
     Shifts --> EarlyEntry
     Shifts --> Issues
+    Shifts --> Permissions
     Shifts --> Settings
     Shifts --> Teams
     Shifts -.-> Camps

@@ -118,7 +118,7 @@ public class ProfileViewControllerPopoverTests
             .Returns(BuildActiveUserInfo(_viewerId, "Viewer", "viewer@example.com"));
         _userService.GetUserInfoAsync(targetId, Arg.Any<CancellationToken>())
             .Returns(BuildActiveUserInfo(targetId, "Target", "target@example.com"));
-        _shiftManagement.GetCoordinatorTeamIdsAsync(_viewerId, Arg.Any<CancellationToken>()).Returns([]);
+        _shiftManagement.CanManageOrApproveAnyShiftsAsync(_viewerId, Arg.Any<CancellationToken>()).Returns(false);
         if (privileged)
         {
             ((ClaimsIdentity)_controller.User.Identity!).AddClaim(new Claim(ClaimTypes.Role, ShiftsRoles.ShiftsNoInfo));
@@ -130,7 +130,7 @@ public class ProfileViewControllerPopoverTests
 
         var model = result.Should().BeOfType<ViewResult>().Which.Model.Should().BeOfType<ProfileViewModel>().Which;
         model.CanViewSentMessages.Should().Be(!ownProfile && privileged);
-        await _shiftManagement.Received(ownProfile ? 0 : 1).GetCoordinatorTeamIdsAsync(_viewerId, ct);
+        await _shiftManagement.Received(ownProfile ? 0 : 1).CanManageOrApproveAnyShiftsAsync(_viewerId, ct);
     }
 
     [HumansFact]
