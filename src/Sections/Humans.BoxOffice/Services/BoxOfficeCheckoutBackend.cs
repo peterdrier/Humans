@@ -455,12 +455,12 @@ internal sealed class BoxOfficeCheckoutBackend(
         var findings = new List<CheckoutBackendFinding>
         {
             await ProbeAsync($"Checkout Sessions ({ModeLabel})",
-                () => new SessionService(client).ListAsync(new SessionListOptions { Limit = 1 }, cancellationToken: ct)),
+                () => new SessionService(client).ListAsync(new SessionListOptions { Limit = 1 }, cancellationToken: ct), ct),
             // The reconciliation reads these; without them a missing scope shows only as the nightly alert.
             await ProbeAsync("Balance transactions",
-                () => new BalanceTransactionService(client).ListAsync(new BalanceTransactionListOptions { Limit = 1 }, cancellationToken: ct)),
+                () => new BalanceTransactionService(client).ListAsync(new BalanceTransactionListOptions { Limit = 1 }, cancellationToken: ct), ct),
             await ProbeAsync("Payouts",
-                () => new PayoutService(client).ListAsync(new PayoutListOptions { Limit = 1 }, cancellationToken: ct)),
+                () => new PayoutService(client).ListAsync(new PayoutListOptions { Limit = 1 }, cancellationToken: ct), ct),
         };
 
         findings.Add(_settings.IsWebhookConfigured
@@ -471,7 +471,7 @@ internal sealed class BoxOfficeCheckoutBackend(
         return findings;
     }
 
-    private static async Task<CheckoutBackendFinding> ProbeAsync(string what, Func<Task> read)
+    private static async Task<CheckoutBackendFinding> ProbeAsync(string what, Func<Task> read, CancellationToken ct)
     {
         try
         {
@@ -481,6 +481,10 @@ internal sealed class BoxOfficeCheckoutBackend(
         catch (StripeException ex)
         {
             return new(false, $"Stripe refused the key reading {what} ({(int)ex.HttpStatusCode} {ex.StripeError?.Code ?? ex.StripeError?.Type ?? "error"}).");
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
         }
         catch (Exception ex) when (ex is HttpRequestException or OperationCanceledException)
         {

@@ -101,6 +101,24 @@ public sealed class BoxOfficeCheckoutBackendTests
         findings.Should().Contain(f => f.Ok && f.Text.Contains("Balance transactions"));
     }
 
+    [HumansTheory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task Check_propagates_caller_cancellation_but_reports_timeouts(bool cancelCaller)
+    {
+        using var caller = new CancellationTokenSource();
+        if (cancelCaller) await caller.CancelAsync();
+        _http.MakeRequestAsync(Arg.Any<StripeRequest>(), Arg.Any<CancellationToken>())
+            .Returns<StripeResponse>(_ => throw new TaskCanceledException("probe cancelled", null, caller.Token));
+
+        var check = () => Backend().CheckAsync(null, caller.Token);
+
+        if (cancelCaller)
+            await check.Should().ThrowAsync<OperationCanceledException>();
+        else
+            (await check()).Should().Contain(f => !f.Ok && f.Text.Contains("could not be reached"));
+    }
+
     [HumansFact]
     public async Task Check_reports_an_unreachable_Stripe_instead_of_throwing()
     {

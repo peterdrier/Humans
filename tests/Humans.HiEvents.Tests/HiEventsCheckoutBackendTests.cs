@@ -21,6 +21,23 @@ public class HiEventsCheckoutBackendTests
 
     private readonly RecordingHandler _handler = new();
 
+    [HumansTheory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task Check_propagates_caller_cancellation_but_reports_timeouts(bool cancelCaller)
+    {
+        using var caller = new CancellationTokenSource();
+        if (cancelCaller) await caller.CancelAsync();
+        _handler.Failure = new TaskCanceledException("probe cancelled", null, caller.Token);
+
+        var check = () => Backend().CheckAsync(null, caller.Token);
+
+        if (cancelCaller)
+            await check.Should().ThrowAsync<OperationCanceledException>();
+        else
+            (await check()).Should().Contain(f => !f.Ok && f.Text.Contains("could not be read"));
+    }
+
     [HumansFact]
     public async Task CreateCheckout_PostsFixedPricesAndNamesAndReturnsThePaymentLink()
     {
@@ -626,6 +643,7 @@ public class HiEventsCheckoutBackendTests
     private sealed class RecordingHandler : HttpMessageHandler
     {
         private readonly Queue<HttpResponseMessage> _responses = new();
+        public Exception? Failure { get; set; }
 
         public List<(HttpRequestMessage Request, string? Body)> Requests { get; } = [];
 
@@ -640,6 +658,7 @@ public class HiEventsCheckoutBackendTests
 
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
         {
+            if (Failure is { } failure) throw failure;
             var body = request.Content is null ? null : await request.Content.ReadAsStringAsync(ct);
             Requests.Add((request, body));
             return _responses.Dequeue();

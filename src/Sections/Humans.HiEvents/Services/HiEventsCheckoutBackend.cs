@@ -314,6 +314,10 @@ internal sealed class HiEventsCheckoutBackend : ITicketCheckoutBackend
                 _ => new(false, $"The checkout endpoint answered {(int)probe.StatusCode}."),
             });
         }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
+        }
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or JsonException)
         {
             findings.Add(new(false, $"Hi.Events could not be read: {ex.Message}"));
