@@ -85,7 +85,7 @@ internal sealed partial class TicketCheckoutService
                 && await backend.GetPaymentLedgerAsync(to, now, ct) is { } later)
                 returnedLater = TicketPaymentReconBuilder.Returned(later);
         }
-        catch (Exception ex) when (ex is TicketCheckoutException or HttpRequestException
+        catch (Exception ex) when (ex is TicketCheckoutException or HttpRequestException or System.Text.Json.JsonException
                                        || (ex is TaskCanceledException && !ct.IsCancellationRequested))
         {
             logger.LogWarning(ex, "Payment reconciliation could not read {Backend}", backendKey);

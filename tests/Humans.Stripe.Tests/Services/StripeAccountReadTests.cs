@@ -194,13 +194,32 @@ public sealed class StripeAccountReadTests
             new StripeResponse(HttpStatusCode.OK, headers.Headers, List("/v1/balance_transactions")),
             new StripeResponse(HttpStatusCode.Forbidden, headers.Headers,
                 """{"error":{"type":"invalid_request_error","code":"secret_key_required","message":"no payouts"}}"""),
-            new StripeResponse(HttpStatusCode.OK, headers.Headers, List("/v1/payment_intents")));
+            new StripeResponse(HttpStatusCode.OK, headers.Headers, List("/v1/payment_intents")),
+            new StripeResponse(HttpStatusCode.OK, headers.Headers, List("/v1/charges")),
+            new StripeResponse(HttpStatusCode.OK, headers.Headers, List("/v1/refunds")),
+            new StripeResponse(HttpStatusCode.OK, headers.Headers, List("/v1/disputes")));
 
         var findings = await Service(OwnKey()).CheckAccountAsync("HiEvents", Ct);
 
         findings.Should().SatisfyRespectively(
             balance => balance.Should().Match<StripeAccountCheck>(c => c.Ok && c.Text.Contains("STRIPE_HIEVENTS_KEY reads Balance transactions (test mode)")),
             payouts => payouts.Should().Match<StripeAccountCheck>(c => !c.Ok && c.Text.Contains("Payouts") && c.Text.Contains("403")),
-            intents => intents.Should().Match<StripeAccountCheck>(c => c.Ok && c.Text.Contains("PaymentIntents")));
+            intents => intents.Should().Match<StripeAccountCheck>(c => c.Ok && c.Text.Contains("PaymentIntents")),
+            charges => charges.Should().Match<StripeAccountCheck>(c => c.Ok && c.Text.Contains("Charges")),
+            refunds => refunds.Should().Match<StripeAccountCheck>(c => c.Ok && c.Text.Contains("Refunds")),
+            disputes => disputes.Should().Match<StripeAccountCheck>(c => c.Ok && c.Text.Contains("Disputes")));
+    }
+
+    [HumansFact]
+    public async Task Check_flags_a_full_live_secret_key()
+    {
+        using var headers = new HttpResponseMessage();
+        _http.MakeRequestAsync(Arg.Any<StripeRequest>(), Arg.Any<CancellationToken>())
+            .Returns(new StripeResponse(HttpStatusCode.OK, headers.Headers, List("/v1/any")));
+
+        var findings = await Service(OwnKey("sk_live_full")).CheckAccountAsync("HiEvents", Ct);
+
+        findings[0].Should().Match<StripeAccountCheck>(c => !c.Ok && c.Text.Contains("rk_live_"));
+        findings.Skip(1).Should().OnlyContain(c => c.Ok);
     }
 }
