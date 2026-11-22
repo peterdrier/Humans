@@ -114,4 +114,4 @@ has; the wire records stay private inside the adapter so the Hi.Events payload s
 
 | Run | Date | Headline | PR |
 |---|---|---|---|
-| section-doctor | 2026-11-22 | First doctoring: webhook and money-guard tests, offline-payment and lifetime doc fixes, one carrier rule | pending |
+| section-doctor | 2026-11-22 | First doctoring: webhook and money-guard tests, offline-payment and lifetime doc fixes, one carrier rule | peterdrier/Humans#2560 |
