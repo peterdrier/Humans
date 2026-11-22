@@ -56,6 +56,8 @@ internal sealed class TaskTestKit
             .Returns(teams.ToDictionary(t => t.Id));
         Teams.GetTeamAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(call => teams.FirstOrDefault(t => t.Id == call.Arg<Guid>()));
+        Teams.GetTeamBySlugAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(call => teams.FirstOrDefault(t => string.Equals(t.Slug, call.Arg<string>(), StringComparison.OrdinalIgnoreCase)));
 
         var events = new[]
         {

@@ -362,11 +362,28 @@ public sealed class TaskServiceTests
         var done = await _kit.CreateAsync(Input(title: "Done", eventId: Spring));
         await _kit.SetStatusAsync(done.Id, TaskItemStatus.Done);
 
-        var listed = await _kit.Service.GetListedTasksAsync(Ct);
+        var listed = await _kit.Service.GetListedTasksAsync(ct: Ct);
         var all = await _kit.Service.GetTasksAsync(Ct);
 
         listed.Select(t => t.Id).Should().BeEquivalentTo([spring.Id, none.Id]);
         all.Select(t => t.Id).Should().Contain([autumn.Id, done.Id]);
+    }
+
+    [HumansFact]
+    public async Task Listed_AScopeWidensOrNarrowsTheDefault()
+    {
+        var spring = await _kit.CreateAsync(Input(title: "Spring", eventId: Spring));
+        var none = await _kit.CreateAsync(Input(title: "No event"));
+        var autumn = await _kit.CreateAsync(Input(title: "Autumn", eventId: Autumn));
+        var done = await _kit.CreateAsync(Input(title: "Done", eventId: Spring));
+        await _kit.SetStatusAsync(done.Id, TaskItemStatus.Done);
+
+        async Task<IEnumerable<Guid>> IdsAsync(TaskListScope scope) =>
+            (await _kit.Service.GetListedTasksAsync(scope, Ct)).Select(t => t.Id);
+
+        (await IdsAsync(new(IncludeFinished: true))).Should().BeEquivalentTo([spring.Id, none.Id, done.Id]);
+        (await IdsAsync(new(AnyEvent: true))).Should().BeEquivalentTo([spring.Id, none.Id, autumn.Id]);
+        (await IdsAsync(new(EventId: Autumn))).Should().BeEquivalentTo([autumn.Id]);
     }
 
     [HumansFact]

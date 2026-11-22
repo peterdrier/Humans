@@ -15,8 +15,10 @@ internal interface ITaskService : IApplicationService
     /// <summary>Every task, ordered by title. Callers filter what the viewer may see.</summary>
     Task<IReadOnlyList<TaskInfo>> GetTasksAsync(CancellationToken ct = default);
 
-    /// <summary>The default list: the active event's tasks plus tasks with no event, without done and cancelled ones.</summary>
-    Task<IReadOnlyList<TaskInfo>> GetListedTasksAsync(CancellationToken ct = default);
+    /// <summary>The tasks a list shows, ordered by title. Callers filter what the viewer may see.</summary>
+    /// <param name="scope">Null for the default list: the active event's tasks plus tasks with no event, without done and cancelled ones.</param>
+    /// <param name="ct">Cancellation.</param>
+    Task<IReadOnlyList<TaskInfo>> GetListedTasksAsync(TaskListScope? scope = null, CancellationToken ct = default);
 
     Task<TaskInfo?> GetTaskAsync(Guid taskId, CancellationToken ct = default);
 
@@ -47,6 +49,12 @@ internal interface ITaskService : IApplicationService
 
     Task<TaskResult> RemoveDependencyAsync(Guid taskId, Guid dependsOnTaskId, Guid actorUserId, CancellationToken ct = default);
 }
+
+/// <summary>Which tasks a list shows. The default is the active event's tasks plus tasks with no event, without done and cancelled ones.</summary>
+/// <param name="AnyEvent">Every event's tasks and those with none.</param>
+/// <param name="EventId">Only this event's tasks. Ignored with <paramref name="AnyEvent"/>.</param>
+/// <param name="IncludeFinished">Keep done and cancelled tasks.</param>
+internal sealed record TaskListScope(bool AnyEvent = false, Guid? EventId = null, bool IncludeFinished = false);
 
 /// <summary>What a task form sends.</summary>
 /// <param name="TeamId">An active, non-system team.</param>

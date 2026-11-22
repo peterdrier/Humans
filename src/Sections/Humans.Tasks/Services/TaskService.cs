@@ -48,11 +48,14 @@ internal sealed class TaskService(
             .ToList();
     }
 
-    public async Task<IReadOnlyList<TaskInfo>> GetListedTasksAsync(CancellationToken ct = default)
+    public async Task<IReadOnlyList<TaskInfo>> GetListedTasksAsync(TaskListScope? scope = null, CancellationToken ct = default)
     {
+        scope ??= new TaskListScope();
         var activeEventId = settings.GetActiveEventSettings()?.Id;
         return (await GetTasksAsync(ct))
-            .Where(t => !t.IsFinished && (t.EventId is null || t.EventId == activeEventId))
+            .Where(t => (scope.IncludeFinished || !t.IsFinished)
+                && (scope.AnyEvent
+                    || (scope.EventId is { } eventId ? t.EventId == eventId : t.EventId is null || t.EventId == activeEventId)))
             .ToList();
     }
 
@@ -64,7 +67,7 @@ internal sealed class TaskService(
 
     public async Task<TasksAdminSummary> GetAdminSummaryAsync(CancellationToken ct = default)
     {
-        var listed = await GetListedTasksAsync(ct);
+        var listed = await GetListedTasksAsync(ct: ct);
         var rows = listed
             .GroupBy(t => t.Owner)
             .Select(g => new TeamTaskCounts(
@@ -422,12 +425,13 @@ internal sealed class TaskService(
         task.Priority = input.Priority;
         task.SlotCount = input.SlotCount;
         task.NeedsApproval = input.NeedsApproval;
-        task.ApprovalReason = input.NeedsApproval && !string.IsNullOrWhiteSpace(input.ApprovalReason)
-            ? input.ApprovalReason.Trim()
-            : null;
+        task.ApprovalReason = ApprovalReasonOf(input);
         task.IsHidden = input.IsHidden;
         task.UpdatedAt = now;
     }
+
+    private static string? ApprovalReasonOf(TaskInput input) =>
+        input.NeedsApproval && !string.IsNullOrWhiteSpace(input.ApprovalReason) ? input.ApprovalReason.Trim() : null;
 
     private static List<string> Changes(TaskItem task, TaskInput input, StoredDate start, StoredDate due)
     {
@@ -447,6 +451,7 @@ internal sealed class TaskService(
         Check(task.Priority != input.Priority, "priority");
         Check(task.SlotCount != input.SlotCount, "slots");
         Check(task.NeedsApproval != input.NeedsApproval, "needs approval");
+        Check(!string.Equals(task.ApprovalReason, ApprovalReasonOf(input), StringComparison.Ordinal), "approval reason");
         Check(task.IsHidden != input.IsHidden, "hidden");
         return changes;
     }

@@ -17,7 +17,7 @@ Pieces of work with an end, hanging on a team. A task is to a role (standing res
 - A **slot** is a place for one person. People on a task are **confirmed**, or **requested** (asked to join, no slot taken). Overfilling is allowed.
 - **Waiting on**: a link from a task to another it depends on. Shown, never enforced.
 - **Effectively hidden**: the task's own flag, or its team being hidden.
-- The **listed** tasks are the active event's plus event-less ones, minus done and cancelled.
+- The **listed** tasks are the active event's plus event-less ones, minus done and cancelled. The list filters (any event, one event, include finished) are a `TaskListScope` on `ITaskService.GetListedTasksAsync`, so the rule lives only in the service.
 
 ## Pages
 
@@ -62,6 +62,7 @@ Claiming, the open-tasks board, the bulk-load endpoint, the team-page card and t
 - A person is on a task at most once. Assigning a requester confirms the request.
 - An event is picked only if it exists and is not withdrawn; a task keeps an event withdrawn later.
 - Hidden tasks, and every task of a hidden team, show only to managers of the team, people confirmed on them, TasksAdmin, Board and Admin. A hidden task a viewer cannot see is "a hidden task" in waiting-on lists.
+- A hidden team's tasks page (`/Tasks/Team/{slug}`) is found only by TasksAdmin, Board, Admin, the team's managers and people confirmed on one of its tasks; 404 for everyone else.
 - Services are auth-free: controllers build `TasksAccess` (`Authorization/TasksAccess.cs`) from `IPermissionService` and the roles, and check it before every write and filter every read. Tests: `tests/Humans.Tasks.Tests/TasksAccessTests.cs`.
 - Every create, update, status change, delete, assign, unassign and dependency change is audited (`TasksAuditActions`, entity type `TaskItem`).
 - GDPR: export lists the person's tasks with state and date; erasure removes their places and requests; a merge moves them to the survivor, keeping one row, confirmed winning. Task text is not tied to a person and stays.

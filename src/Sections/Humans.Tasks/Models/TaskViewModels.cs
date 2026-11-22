@@ -18,10 +18,11 @@ internal sealed class TaskListFilter
 
     public string EventChoice => string.IsNullOrWhiteSpace(Event) ? ActiveEvent : Event;
 
-    public bool IsDefault => !Finished && string.Equals(EventChoice, ActiveEvent, StringComparison.Ordinal);
-
     /// <summary>Null for the active-event and any-event choices.</summary>
     public Guid? SpecificEventId => Guid.TryParse(Event, out var id) ? id : null;
+
+    public TaskListScope ToScope() =>
+        new(string.Equals(EventChoice, AnyEvent, StringComparison.Ordinal), SpecificEventId, Finished);
 }
 
 internal sealed record EventOption(Guid Id, string Name);

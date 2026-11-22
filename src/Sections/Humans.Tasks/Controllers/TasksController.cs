@@ -28,7 +28,7 @@ internal sealed class TasksController(
     {
         if (await TasksAccess.ForAsync(User, permissions, ct) is not { } access) return Unauthorized();
 
-        var visible = (await ListAsync(filter, ct)).Where(access.CanSee).ToList();
+        var visible = (await tasks.GetListedTasksAsync(filter.ToScope(), ct)).Where(access.CanSee).ToList();
         return View(new TaskListViewModel(visible, await EventsAsync(currentEventId: null, ct), filter));
     }
 
@@ -162,26 +162,10 @@ internal sealed class TasksController(
         return RedirectToAction(nameof(Details), new { id });
     }
 
-    /// <summary>The default list comes from the service; any other filter narrows or widens every task.</summary>
-    private async Task<IReadOnlyList<TaskInfo>> ListAsync(TaskListFilter filter, CancellationToken ct)
-    {
-        if (filter.IsDefault) return await tasks.GetListedTasksAsync(ct);
-
-        var activeEventId = settings.GetActiveEventSettings()?.Id;
-        return (await tasks.GetTasksAsync(ct))
-            .Where(t => (filter.Finished || !t.IsFinished) && filter.EventChoice switch
-            {
-                TaskListFilter.ActiveEvent => t.EventId is null || t.EventId == activeEventId,
-                TaskListFilter.AnyEvent => true,
-                _ => t.EventId == filter.SpecificEventId,
-            })
-            .ToList();
-    }
-
     private async Task<TeamPageViewModel> TeamPageAsync(
         TeamInfo team, TasksAccess access, IReadOnlyList<TaskInfo> onTeam, TaskListFilter filter, TaskForm addForm, CancellationToken ct)
     {
-        var listed = (await ListAsync(filter, ct)).Where(t => t.Owner.Id == team.Id && access.CanSee(t)).ToList();
+        var listed = (await tasks.GetListedTasksAsync(filter.ToScope(), ct)).Where(t => t.Owner.Id == team.Id && access.CanSee(t)).ToList();
         var canAdd = access.Manages(team.Id) && team.IsActive && !team.IsSystemTeam;
         return new TeamPageViewModel(
             team.Id, team.Name, team.Slug, listed, filter, canAdd, addForm, await EventsAsync(addForm.EventId, ct));
@@ -233,12 +217,7 @@ internal sealed class TasksController(
             .Select(e => new EventOption(e.Id, e.EventName))];
 
     /// <summary>The slug, the custom slug or the team id.</summary>
-    private async Task<TeamInfo?> FindTeamAsync(string slug, CancellationToken ct)
-    {
-        var all = await teams.GetTeamsAsync(ct);
-        return all.Values.FirstOrDefault(t =>
-                string.Equals(t.Slug, slug, StringComparison.OrdinalIgnoreCase)
-                || string.Equals(t.CustomSlug, slug, StringComparison.OrdinalIgnoreCase))
-            ?? (Guid.TryParse(slug, out var id) ? all.GetValueOrDefault(id) : null);
-    }
+    private async Task<TeamInfo?> FindTeamAsync(string slug, CancellationToken ct) =>
+        await teams.GetTeamBySlugAsync(slug, ct)
+        ?? (Guid.TryParse(slug, out var id) ? await teams.GetTeamAsync(id, ct) : null);
 }
