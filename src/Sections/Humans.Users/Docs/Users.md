@@ -100,6 +100,8 @@ and records neither a job success nor a job failure metric.
 
 Email export and verified-address lookup select a primary row directly, retaining the first matching row on equal flags. Primary-invariant repair prefers a verified Workspace address, then the minimum-ID current primary, then the newest verified address with ID as its tie-breaker.
 
+The shared `User.Email` and `UserInfo.Email` getters also select a verified primary-preferred row directly. Equal flags retain source order; absent verified addresses retain the legacy Identity-column fallback.
+
 Every newly created User has a corresponding Profile row materialized inline at the User-creation call site (see [Stub Profile invariant](#part-2--profiles)); until the names are filled the user is `UserState.Bare`. The completed `users.stub-profiles` registration is retired: production `GET https://humans.nobodies.team/api/data-migrations` reported `{"key":"users.stub-profiles","pending":0,"done":true}` on 2026-10-22.
 
 Users no longer loads, caches, exports or folds these rows. Tickets reads and merges only its own participation records.

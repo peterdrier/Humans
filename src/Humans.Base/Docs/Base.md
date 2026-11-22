@@ -11,6 +11,8 @@
 
 ## Invariant
 
+`User.Email` and `UserInfo.Email` directly select a verified primary-preferred row, retaining the first source row on equal flags and the legacy Identity-column fallback when no verified row supplies an address.
+
 **No `Humans.*` project reference.** Anything every section needs lives here; a type that needs another project's types does not belong here. External dependencies are unrestricted (Peter, 2026-08-15): the base may take any NuGet package or shared framework it needs, and today carries `Microsoft.AspNetCore.App`, EF Core + Npgsql (+ NodaTime provider), NodaTime, CsvHelper, Serilog, Octokit, HtmlSanitizer, Markdig and AngleSharp. Reason about placement from the reference rule and from whether a type is genuinely cross-section, never from package count. The csproj's header comment records which arrival forced each package.
 
 ## Namespaces
