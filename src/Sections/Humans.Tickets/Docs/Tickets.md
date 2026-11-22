@@ -31,6 +31,10 @@ Dashboard statistics, break-even budget and vendor-capacity reads honor request 
 
 Bulk cache warmups publish through the shared mutation guard. A refresh, deletion, eviction or clear overlapping the load discards the partial attempt and reloads the full snapshot and derived indexes before a read can treat the cache as warmed.
 
+Configured ticket rules must be available before checkout. Successful GitHub reads are cached for ten minutes;
+a failed refresh replaces the cached rules with an unavailable result for one minute. Buy pages and checkout
+report `Tickets_Buy_TermsUnavailable` rather than accepting an older rules version.
+
 ## Concepts
 
 - **Ticket Orders** and **Ticket Attendees** are records synced from an external ticket vendor (Ticket Tailor in production, an in-process stub in dev). They are not manually created in the system.

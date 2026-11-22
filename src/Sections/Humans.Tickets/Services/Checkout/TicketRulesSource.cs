@@ -15,8 +15,8 @@ internal interface ITicketRulesSource
 {
     /// <summary>
     /// The rules as of the last commit changing the folder, cached for a few minutes so the version a buyer is shown is
-    /// the one their checkout records. When GitHub cannot be read, the folder's last good rules (kept without expiry);
-    /// null when the folder has never been read, has no Spanish or no English text, or holds more than one set of rules
+    /// the one their checkout records. Null when GitHub cannot be read, the folder has no Spanish or no English text,
+    /// or holds more than one set of rules
     /// (several suffix-less files). <paramref name="refresh"/> skips the cache, for checking a folder an admin just set.
     /// </summary>
     Task<TicketRules?> GetAsync(string folder, bool refresh = false, CancellationToken ct = default);
@@ -31,11 +31,10 @@ internal sealed record TicketRules(string Folder, string Version, IReadOnlyDicti
 internal partial class GitHubTicketRulesSource : ITicketRulesSource
 {
     private const string CacheKeyPrefix = "tickets:rules:";
-    private const string LastGoodKeyPrefix = "tickets:rules:last-good:";
     private static readonly TimeSpan Fresh = TimeSpan.FromMinutes(10);
     private static readonly TimeSpan AfterFailure = TimeSpan.FromMinutes(1);
 
-    // Short, so a hung GitHub fails the buy page over to the last good rules instead of stalling it.
+    // Bound the wait before the buy page reports that the rules are unavailable.
     private static readonly TimeSpan RequestTimeout = TimeSpan.FromSeconds(5);
 
     [GeneratedRegex(@"^(?<name>[^/]+?)(?:-(?<lang>[A-Za-z]{2}))?\.md$", RegexOptions.ExplicitCapture, 1000)]
@@ -67,47 +66,31 @@ internal partial class GitHubTicketRulesSource : ITicketRulesSource
         if (!refresh && _cache.TryGetValue(key, out TicketRules? cached))
             return cached;
 
-        var lastGoodKey = LastGoodKeyPrefix + folder;
         TicketRules? rules;
         try
         {
             rules = await LoadAsync(folder, ct);
+            if (rules is null)
+                _logger.LogWarning("The ticket rules folder {Folder} has no Spanish or no English text, or more than one Spanish file", folder);
         }
         catch (ApiException ex) when (!ct.IsCancellationRequested)
         {
             // Status code only: the message can carry GitHub's HTML error body.
-            _logger.LogWarning("GitHub refused the ticket rules in {Folder}: {StatusCode}; using the last good version", folder, ex.StatusCode);
-            return KeepLastGood(key, lastGoodKey);
+            _logger.LogWarning("GitHub refused the ticket rules in {Folder}: {StatusCode}; ticket rules are unavailable", folder, ex.StatusCode);
+            rules = null;
         }
         catch (HttpRequestException ex) when (!ct.IsCancellationRequested)
         {
-            _logger.LogWarning("GitHub could not be reached for the ticket rules in {Folder}: {Error}; using the last good version", folder, ex.Message);
-            return KeepLastGood(key, lastGoodKey);
+            _logger.LogWarning("GitHub could not be reached for the ticket rules in {Folder}: {Error}; ticket rules are unavailable", folder, ex.Message);
+            rules = null;
         }
         catch (OperationCanceledException) when (!ct.IsCancellationRequested)
         {
-            _logger.LogWarning("GitHub timed out reading the ticket rules in {Folder}; using the last good version", folder);
-            return KeepLastGood(key, lastGoodKey);
-        }
-
-        if (rules is null)
-        {
-            _logger.LogWarning("The ticket rules folder {Folder} has no Spanish or no English text, or more than one Spanish file", folder);
-            _cache.Remove(lastGoodKey);
-        }
-        else
-        {
-            _cache.Set(lastGoodKey, rules);
+            _logger.LogWarning("GitHub timed out reading the ticket rules in {Folder}; ticket rules are unavailable", folder);
+            rules = null;
         }
 
         _cache.Set(key, rules, rules is null ? AfterFailure : Fresh);
-        return rules;
-    }
-
-    private TicketRules? KeepLastGood(string key, string lastGoodKey)
-    {
-        var rules = _cache.Get<TicketRules>(lastGoodKey);
-        _cache.Set(key, rules, AfterFailure);
         return rules;
     }
 
