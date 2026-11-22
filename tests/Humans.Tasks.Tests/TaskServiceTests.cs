@@ -294,7 +294,10 @@ public sealed class TaskServiceTests
         var requester = Guid.NewGuid();
         _kit.Repository.Seed(new TaskAssignment
         {
-            Id = Guid.NewGuid(), TaskItemId = task.Id, UserId = requester, State = TaskAssignmentState.Requested,
+            Id = Guid.NewGuid(),
+            TaskItemId = task.Id,
+            UserId = requester,
+            State = TaskAssignmentState.Requested,
         });
 
         (await _kit.Service.GetTaskAsync(task.Id, Ct))!.OpenSlots.Should().Be(2, because: "a request takes no slot");
