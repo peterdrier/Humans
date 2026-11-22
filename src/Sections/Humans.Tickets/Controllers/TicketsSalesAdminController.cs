@@ -74,7 +74,8 @@ internal sealed class TicketsSalesAdminController(
         var salesEvent = await checkout.GetSalesEventAsync(id, ct);
         if (salesEvent is null)
             return NotFound();
-        var orders = await checkout.GetOrdersForSalesEventAsync(id, ct);
+        IReadOnlyList<TicketCheckoutOrder> orders = (await checkout.GetOrdersForSalesEventAsync(id, ct))
+            .OrderByDescending(order => order.CreatedAt).ToList();
         var eventName = (await settings.GetEventSettingsByIdAsync(salesEvent.EventSettingsId, ct))?.EventName
             ?? salesEvent.EventSettingsId.ToString();
         return View("~/Views/Tickets/Admin/Sales/Orders.cshtml", (salesEvent, eventName, orders));

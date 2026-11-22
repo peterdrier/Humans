@@ -39,6 +39,10 @@ Support-page ordering belongs to `TicketsSupportAdminController`: newest refunds
 position followed by newest closed offers, and report tables by count/label, purpose or state. The report calculator
 retains queue-position calculation and paid-day chronology for running totals.
 
+Raw checkout order, holder-ticket, event-ticket, offer and refund reads return repository rows without presentation
+ordering. The admin order list sorts newest first; lookup tickets and dependent-ticket panels sort by issue time.
+Order-detail and delivery-card ordering retain their existing behavior.
+
 ## Concepts
 
 - **Ticket Orders** and **Ticket Attendees** are records synced from an external ticket vendor (Ticket Tailor in production, an in-process stub in dev). They are not manually created in the system.

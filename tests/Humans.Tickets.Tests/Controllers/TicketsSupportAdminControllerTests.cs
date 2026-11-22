@@ -1,5 +1,7 @@
 using AwesomeAssertions;
 using Humans.Settings.Contracts;
+using Humans.Base.Interfaces;
+using Humans.Grants.Contracts;
 using Humans.Tickets.Contracts;
 using Humans.Tickets.Controllers;
 using Humans.Tickets.Domain.Checkout;
@@ -22,6 +24,57 @@ public class TicketsSupportAdminControllerTests
     {
         _checkout.GetSalesEventAsync(_sale.Id, Arg.Any<CancellationToken>()).Returns(_sale);
         return new(_checkout, Substitute.For<ISettingsService>(), SystemClock.Instance, Substitute.For<IUserService>());
+    }
+
+    [HumansFact]
+    public async Task Orders_PresentsNewestFirstWithTheViewsDeclaredTupleType()
+    {
+        var older = new TicketCheckoutOrder { Id = Guid.NewGuid(), CreatedAt = Now };
+        var newer = new TicketCheckoutOrder { Id = Guid.NewGuid(), CreatedAt = Now + Duration.FromHours(1) };
+        _checkout.GetOrdersForSalesEventAsync(_sale.Id, Arg.Any<CancellationToken>()).Returns([older, newer]);
+        _checkout.GetSalesEventAsync(_sale.Id, Arg.Any<CancellationToken>()).Returns(_sale);
+        var controller = new TicketsSalesAdminController(_checkout, null!, Substitute.For<ISettingsService>(),
+            Substitute.For<IGrantService>(), Substitute.For<IOrgTimeZone>(), SystemClock.Instance, Substitute.For<IUserService>());
+
+        var result = (ViewResult)await controller.Orders(_sale.Id, TestContext.Current.CancellationToken);
+
+        var model = ((TicketSalesEvent, string, IReadOnlyList<TicketCheckoutOrder>))result.Model!;
+        model.Item3.Should().Equal(newer, older);
+    }
+
+    [HumansFact]
+    public async Task Lookup_PresentsEachOrdersTicketsByIssueTime()
+    {
+        var order = new TicketCheckoutOrder { Id = Guid.NewGuid(), BuyerName = "Target person" };
+        var older = new TicketCheckoutTicket { Id = Guid.NewGuid(), OrderId = order.Id, IssuedAt = Now };
+        var newer = new TicketCheckoutTicket { Id = Guid.NewGuid(), OrderId = order.Id, IssuedAt = Now + Duration.FromHours(1) };
+        _checkout.GetSalesEventsAsync(Arg.Any<CancellationToken>()).Returns([_sale]);
+        _checkout.GetOrdersForSalesEventAsync(_sale.Id, Arg.Any<CancellationToken>()).Returns([order]);
+        _checkout.GetTicketsForSalesEventAsync(_sale.Id, Arg.Any<CancellationToken>()).Returns([newer, older]);
+
+        var result = (ViewResult)await Controller().Lookup("Target", TestContext.Current.CancellationToken);
+
+        ((LookupViewModel)result.Model!).Hits.Should().ContainSingle().Which.Tickets.Should().Equal(older, newer);
+    }
+
+    [HumansFact]
+    public async Task Ticket_PresentsDependentsByIssueTimeAndSelectsTheLatestOffer()
+    {
+        var order = new TicketCheckoutOrder { Id = Guid.NewGuid() };
+        var ticket = new TicketCheckoutTicket { Id = Guid.NewGuid(), SalesEventId = _sale.Id };
+        var older = new TicketCheckoutTicket { Id = Guid.NewGuid(), ParentTicketId = ticket.Id, IssuedAt = Now };
+        var newer = new TicketCheckoutTicket { Id = Guid.NewGuid(), ParentTicketId = ticket.Id, IssuedAt = Now + Duration.FromHours(1) };
+        var oldOffer = new TicketResaleOffer { Id = Guid.NewGuid(), TicketId = ticket.Id, OfferedAt = Now };
+        var newOffer = new TicketResaleOffer { Id = Guid.NewGuid(), TicketId = ticket.Id, OfferedAt = Now + Duration.FromHours(1) };
+        _checkout.GetOrderDetailAsync(order.Id, Arg.Any<CancellationToken>()).Returns(new CheckoutOrderDetail(order, [], [], [ticket]));
+        _checkout.GetTicketsForSalesEventAsync(_sale.Id, Arg.Any<CancellationToken>()).Returns([newer, ticket, older]);
+        _checkout.GetOffersForSalesEventAsync(_sale.Id, Arg.Any<CancellationToken>()).Returns([newOffer, oldOffer]);
+
+        var result = (ViewResult)await Controller().Ticket(order.Id, ticket.Id, TestContext.Current.CancellationToken);
+
+        var model = (TicketAdminViewModel)result.Model!;
+        model.Dependents.Should().Equal(older, newer);
+        model.LatestOffer.Should().BeSameAs(newOffer);
     }
 
     [HumansFact]

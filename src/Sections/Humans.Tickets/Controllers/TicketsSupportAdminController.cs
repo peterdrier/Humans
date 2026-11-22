@@ -34,7 +34,8 @@ internal sealed class TicketsSupportAdminController(
             foreach (var salesEvent in await checkout.GetSalesEventsAsync(ct))
             {
                 var eventName = await EventNameAsync(salesEvent, ct);
-                var tickets = (await checkout.GetTicketsForSalesEventAsync(salesEvent.Id, ct)).ToLookup(t => t.OrderId);
+                var tickets = (await checkout.GetTicketsForSalesEventAsync(salesEvent.Id, ct))
+                    .OrderBy(ticket => ticket.IssuedAt).ToLookup(t => t.OrderId);
                 hits.AddRange((await checkout.GetOrdersForSalesEventAsync(salesEvent.Id, ct))
                     .Where(o => TicketSupportReports.Matches(o, tickets[o.Id], query))
                     .Select(o => new OrderSearchHit(o, tickets[o.Id].ToList(), eventName)));
@@ -196,7 +197,7 @@ internal sealed class TicketsSupportAdminController(
         var eventTickets = await checkout.GetTicketsForSalesEventAsync(ticket.SalesEventId, ct);
         var offer = (await checkout.GetOffersForSalesEventAsync(ticket.SalesEventId, ct))
             .Where(o => o.TicketId == ticket.Id).MaxBy(o => o.OfferedAt);
-        var dependents = eventTickets.Where(t => t.ParentTicketId == ticket.Id).ToList();
+        var dependents = eventTickets.Where(t => t.ParentTicketId == ticket.Id).OrderBy(t => t.IssuedAt).ToList();
         return View("~/Views/Tickets/Admin/Sales/Ticket.cshtml", new TicketAdminViewModel(
             detail.Order, ticket,
             ticket.ParentTicketId is { } parentId ? eventTickets.FirstOrDefault(t => t.Id == parentId) : null,

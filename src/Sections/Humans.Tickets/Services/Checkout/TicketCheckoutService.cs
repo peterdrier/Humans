@@ -476,11 +476,8 @@ internal sealed partial class TicketCheckoutService(
         }
     }
 
-    public async Task<IReadOnlyList<TicketCheckoutOrder>> GetOrdersForUserAsync(Guid userId, CancellationToken ct = default) =>
-        (await repository.GetOrdersForUserAsync(userId, ct)).OrderByDescending(o => o.CreatedAt).ToList();
-
-    public async Task<IReadOnlyList<TicketCheckoutOrder>> GetOrdersForSalesEventAsync(Guid salesEventId, CancellationToken ct = default) =>
-        (await repository.GetOrdersForSalesEventAsync(salesEventId, ct)).OrderByDescending(o => o.CreatedAt).ToList();
+    public Task<IReadOnlyList<TicketCheckoutOrder>> GetOrdersForSalesEventAsync(Guid salesEventId, CancellationToken ct = default) =>
+        repository.GetOrdersForSalesEventAsync(salesEventId, ct);
 
     public async Task<CheckoutOrderDetail?> GetOrderDetailAsync(Guid orderId, CancellationToken ct = default)
     {
