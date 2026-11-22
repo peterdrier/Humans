@@ -122,4 +122,4 @@ Docs/                                      Pretix.md (invariants), data-access.m
 
 | Run | Date | Headline | PR |
 |---|---|---|---|
-| 1 | 2026-11-21 | First doctor pass | pending |
+| 1 | 2026-11-21 | First doctor pass: docs true about erasure and refund sums, money paths pinned | peterdrier/Humans#2557 |
