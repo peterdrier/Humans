@@ -413,19 +413,6 @@ internal sealed partial class PleoBooking(
 
     // ── Runs ───────────────────────────────────────────────────────────────────────────────────────────────
 
-    /// <summary>Books (or finishes) the oldest <paramref name="limit"/> entries (all when null). A job may call this
-    /// as the button does.</summary>
-    public Task<PleoBookingRunVm> BookAsync(int? limit, Guid? actorUserId, CancellationToken ct = default) =>
-        RunAsync(PleoRunKind.Book, limit, actorUserId, ct);
-
-    /// <summary>Attaches every receipt Pleo has for a booked entry that Holded has not been sent.</summary>
-    public Task<PleoBookingRunVm> AttachReceiptsAsync(Guid? actorUserId, CancellationToken ct = default) =>
-        RunAsync(PleoRunKind.Receipts, null, actorUserId, ct);
-
-    /// <summary>Posts the corrections of the oldest <paramref name="limit"/> changed entries (all when null).</summary>
-    public Task<PleoBookingRunVm> PostCorrectionsAsync(int? limit, Guid? actorUserId, CancellationToken ct = default) =>
-        RunAsync(PleoRunKind.Corrections, limit, actorUserId, ct);
-
     /// <summary>Refused, nothing posted, while another run of any kind holds the gate, the settings are missing, or
     /// a Holded sync is running.</summary>
     internal async Task<PleoBookingRunVm> RunAsync(PleoRunKind kind, int? limit, Guid? actorUserId, CancellationToken ct)

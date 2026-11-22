@@ -174,7 +174,7 @@ public class PleoBookingTests
     {
         GivenEntries(Entry("new", -10m, day: 20), Entry("old", -12.5m, day: 2, receipts: ["r1", "r2"]));
 
-        var run = await Booking().BookAsync(1, null);
+        var run = await Booking().RunAsync(PleoRunKind.Book, 1, null, CancellationToken.None);
 
         run.Lines.Should().ContainSingle().Which.Should().Match<PleoBookingLine>(l =>
             l.PleoId == "old" && l.Outcome == PleoBookingOutcome.Posted && l.Receipts == 2);
@@ -200,7 +200,7 @@ public class PleoBookingTests
             Entry("charge", -90.27m, day: 3, merchant: "DIA"),
             Entry("refund", 90.27m, day: 3, merchant: "DIA", receipts: ["abono"]));
 
-        await Booking().BookAsync(null, null);
+        await Booking().RunAsync(PleoRunKind.Book, null, null, CancellationToken.None);
 
         _created.Select(d => d.Number).Should().Equal("Pleo-charge", "Pleo-refund");
         var refund = _created[1].Lines.Single();
@@ -222,7 +222,7 @@ public class PleoBookingTests
         _ledger.Add(Line(4700, 1, 0m, 12m, "Purchase Pleo-paid"));
         GivenEntries(Entry("done", -30m, day: 1), Entry("paid", -12m, day: 1), Entry("half", -40m, day: 2));
 
-        var run = await Booking().BookAsync(null, null);
+        var run = await Booking().RunAsync(PleoRunKind.Book, null, null, CancellationToken.None);
 
         run.Lines.Select(l => l.PleoId).Should().Equal("half");
         _created.Should().BeEmpty();
@@ -242,7 +242,7 @@ public class PleoBookingTests
         GivenPurchase("draft", -amount, approved: false, pending: mirrorPending);
         GivenEntries(Entry("draft", amount));
 
-        var run = await Booking().BookAsync(null, null);
+        var run = await Booking().RunAsync(PleoRunKind.Book, null, null, CancellationToken.None);
 
         run.Lines.Should().ContainSingle().Which.Outcome.Should().Be(PleoBookingOutcome.Posted);
         _created.Should().BeEmpty();
@@ -257,7 +257,7 @@ public class PleoBookingTests
         _claims.Add("lost");
         GivenEntries(Entry("lost", -10m));
 
-        var run = await Booking().BookAsync(null, null);
+        var run = await Booking().RunAsync(PleoRunKind.Book, null, null, CancellationToken.None);
 
         run.Lines.Should().BeEmpty();
         _created.Should().BeEmpty();
@@ -273,7 +273,7 @@ public class PleoBookingTests
             Task.FromException<string>(new HoldedPermanentException("created, no id in the answer")),
             Task.FromException<string>(new HoldedTransientException("timeout")));
 
-        var run = await Booking().BookAsync(null, null);
+        var run = await Booking().RunAsync(PleoRunKind.Book, null, null, CancellationToken.None);
 
         run.Lines.Select(l => (l.PleoId, l.Outcome)).Should().Equal(
             ("a", PleoBookingOutcome.Failed), ("b", PleoBookingOutcome.Failed), ("c", PleoBookingOutcome.Failed));
@@ -289,8 +289,8 @@ public class PleoBookingTests
         _write.CreatePurchaseDocumentAsync(default!, default)
             .ReturnsForAnyArgs(async _ => { await release.WaitAsync(); return "doc-1"; });
 
-        var first = Booking().BookAsync(1, null);
-        var second = await Booking().PostCorrectionsAsync(1, null);
+        var first = Booking().RunAsync(PleoRunKind.Book, 1, null, CancellationToken.None);
+        var second = await Booking().RunAsync(PleoRunKind.Corrections, 1, null, CancellationToken.None);
         release.Release();
         await first;
 
@@ -304,7 +304,7 @@ public class PleoBookingTests
         _repo.GetSettingsAsync(default).ReturnsForAnyArgs(new FinanceSettings());
         GivenEntries(Entry("a", -10m));
 
-        var run = await Booking().BookAsync(null, null);
+        var run = await Booking().RunAsync(PleoRunKind.Book, null, null, CancellationToken.None);
 
         run.Refused.Should().Contain("/Settings");
         _created.Should().BeEmpty();
@@ -317,8 +317,8 @@ public class PleoBookingTests
         _uploads.Add(new PleoReceiptUpload { PleoEntryId = "a", ReceiptId = "r1", Confirmed = true });
         GivenEntries(Entry("a", -10m, receipts: ["r1", "r2"]));
 
-        var run = await Booking().AttachReceiptsAsync(null);
-        await Booking().AttachReceiptsAsync(null);
+        var run = await Booking().RunAsync(PleoRunKind.Receipts, null, null, CancellationToken.None);
+        await Booking().RunAsync(PleoRunKind.Receipts, null, null, CancellationToken.None);
 
         run.Lines.Single().Receipts.Should().Be(1);
         await _write.Received(1).UploadPurchaseAttachmentAsync("doc-a",
@@ -335,7 +335,7 @@ public class PleoBookingTests
         _expenseLines.Add(Line(11, 2, 20m, 0m, "Purchase Pleo-repriced", Food));
         GivenEntries(Entry("moved", -50m, day: 1, code: "62900002"), Entry("repriced", -25m, day: 2));
 
-        var run = await Booking().PostCorrectionsAsync(null, null);
+        var run = await Booking().RunAsync(PleoRunKind.Corrections, null, null, CancellationToken.None);
 
         run.Lines.Should().HaveCount(2);
         await _write.Received(1).PostJournalEntryAsync(new LocalDate(2026, 11, 5), Geeks, Food, 50m,
@@ -346,7 +346,7 @@ public class PleoBookingTests
         _expenseLines.Add(Line(20, 5, 50m, 0m, "Pleo moved: recategorizado / recategorised", Geeks));
         _expenseLines.Add(Line(20, 5, 0m, 50m, "Pleo moved: recategorizado / recategorised", Food));
         _expenseLines.Add(Line(21, 5, 5m, 0m, "Pleo repriced: importe cambiado / amount changed", Food));
-        var again = await Booking().PostCorrectionsAsync(null, null);
+        var again = await Booking().RunAsync(PleoRunKind.Corrections, null, null, CancellationToken.None);
 
         again.Lines.Should().BeEmpty();
         await _write.ReceivedWithAnyArgs(2).PostJournalEntryAsync(default, default, default, default, default!, default);
