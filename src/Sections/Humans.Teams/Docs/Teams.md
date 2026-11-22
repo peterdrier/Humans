@@ -139,7 +139,7 @@ One event-scoped early-entry grant: a human may enter on a date for a named proj
 
 - A team has at most one role flagged `IsManagement`. Only TeamsAdmin or Admin set or clear the flag; the edit controller authorizes that field through `TeamsPolicies.Manage` and omits it for other editors. The internal update command accepts a nullable management value: null preserves the current stored flag, so no caller-supplied privilege boolean reaches the service. Toggling management on refuses a role that has assignees.
 - Editing a role into or out of management promotes or demotes its assignees' `TeamMemberRole` in the same save, audits the definition change, then reconciles each affected human's Coordinators system-team membership.
-- A role's slot count cannot shrink past an occupied slot; empty trailing slots may go. Undefined slot priorities and negative estimated hours are refused before anything is written.
+- A role's slot count cannot shrink past an occupied slot; empty trailing slots may go. Undefined slot priorities, priorities whose comma-separated representation exceeds the existing 500-character column, and negative estimated hours are refused before anything is written. Role names use the database's 100-Unicode-character limit. Refused creates and edits leave roles and audit history untouched.
 - Role definitions may exist on any team, system teams included; assigning a role on a system team never adds a non-member.
 - Members of a sub-team count as members of its department for the roster, legal requirements and Google access.
 - System-team membership is written only by the system-team sync and its bulk-apply members; manual add, remove, join and leave on a system team are refused.
