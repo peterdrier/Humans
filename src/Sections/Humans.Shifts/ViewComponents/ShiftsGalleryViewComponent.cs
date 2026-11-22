@@ -31,14 +31,12 @@ internal sealed class ShiftsGalleryViewComponent(
 
             RotaInfo? rota = null;
             Guid? sampleDeptId = null;
-            var depts = (await shiftMgmt.GetDepartmentsWithRotasAsync(es.Id, HttpContext.RequestAborted))
-                .OrderBy(d => d.TeamName, StringComparer.Ordinal)
-                .ToList();
+            var depts = await shiftMgmt.GetDepartmentsWithRotasAsync(es.Id, HttpContext.RequestAborted);
             if (depts.Count > 0)
             {
-                sampleDeptId = depts[0].TeamId;
+                sampleDeptId = depts.MinBy(d => d.TeamName, StringComparer.Ordinal).TeamId;
                 var rotas = await shiftMgmt.GetRotasByDepartmentAsync(sampleDeptId.Value, es.Id, HttpContext.RequestAborted);
-                rota = rotas.Select(r => r.Rota).OrderBy(r => r.Name, StringComparer.Ordinal).FirstOrDefault();
+                rota = rotas.Select(r => r.Rota).MinBy(r => r.Name, StringComparer.Ordinal);
             }
 
             var sampleRotaShifts = new List<ShiftDisplayItem>();
