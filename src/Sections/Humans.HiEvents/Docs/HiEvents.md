@@ -17,7 +17,7 @@ price, the named ticket and the QR code.
 
 Hi.Events is an open-source event ticketing platform. This section lets Humans use the Nobodies fork of it (`peterdrier/Hi.Events`, `docker/coolify/` there for Coolify) as a payment desk: it creates a reserved Hi.Events order at Humans' exact prices, sends the buyer to Hi.Events' Stripe pay page, and reports back what Hi.Events holds.
 
-**What good looks like.** A Humans order and its Hi.Events order always agree on amount, payment and refund state. A retried create or refund never doubles. Hi.Events sends buyers nothing, and nothing sells on its public event page.
+**What good looks like.** A Humans order and its Hi.Events order always agree on amount, payment and refund state. Reconciliation's vendor side cannot see unpaid orders, because Hi.Events' order list leaves out reserved and abandoned ones. A retried create or refund never doubles. Hi.Events sends buyers nothing, and nothing sells on its public event page.
 
 **Deliberate choices.** A small fork patch (checkout endpoint, refund idempotency, anonymize) instead of per-person promo codes, since stock Hi.Events takes a caller price only for donations. One hidden `TICKET` and one hidden `GENERAL` carrier product per event instead of mirroring Humans' catalogue. Erasure anonymizes the whole order, because Hi.Events copies the buyer's email onto every attendee.
 
@@ -90,6 +90,8 @@ None — the section owns no tables.
 - Cancel: a no-op on a cancelled order, `TicketCheckoutException` on a paid or Processing one, otherwise Hi.Events' cancel without
   refund.
 - Webhook: 503 without a secret, 401 on a bad signature, 200 and no call for anything but `order.*`.
+- The pay page opens in the buyer's language where Hi.Events has it; Catalan, which it lacks, opens in Spanish, and
+  any other missing language in English.
 - After paying, Hi.Events' payment return page sends the buyer to `CheckoutRequest.ReturnUrl`.
 - Hi.Events sends the buyer and attendees no email for these orders (`send_buyer_emails: false`, refunds with
   `notify_buyer: false`); Humans owns the ticket, receipt and refund emails. Organizer and team notices in Hi.Events

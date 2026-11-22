@@ -107,6 +107,8 @@ has; the wire records stay private inside the adapter so the Hi.Events payload s
   line carries the full legal name.
 - **The hidden-carrier rule.** The pay page needs the event live, and a visible carrier would sell on
   the event's public page at its base price; the fork's checkout ignores the flag.
+- **Catalan pays in Spanish.** Hi.Events has no Catalan, so a Catalan buyer's pay page opens in Spanish
+  (Peter, 2026-11-22); any other language Hi.Events lacks opens in English.
 - **`AWAITING_OFFLINE_PAYMENT` reads as Pending.** Offline payment must be off; if it is on, the
   order is still unpaid.
 

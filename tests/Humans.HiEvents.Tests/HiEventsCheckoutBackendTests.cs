@@ -627,6 +627,23 @@ public class HiEventsCheckoutBackendTests
         new FakeClock(Now),
         NullLogger<HiEventsCheckoutBackend>.Instance);
 
+    [HumansTheory]
+    [InlineData("ca-ES", "es")]
+    [InlineData("ca", "es")]
+    [InlineData("en-GB", "en")]
+    [InlineData("eu-ES", "en")]
+    public async Task CreateCheckout_SendsThePayPageLocale(string culture, string locale)
+    {
+        _handler.Enqueue(HttpStatusCode.OK, Products());
+        _handler.Enqueue(HttpStatusCode.Created, Order(id: 42, total: 225m, paymentLink: "https://tickets.example/pay/42"));
+
+        await Backend().CreateCheckoutAsync(
+            Request(new CheckoutLine(CheckoutLineKind.Ticket, "General", 22500, 0.10m, "Ana García López")) with { Culture = culture },
+            Ct);
+
+        JsonNode.Parse(_handler.Requests[1].Body!)!["locale"]!.GetValue<string>().Should().Be(locale);
+    }
+
     private static CheckoutRequest Request(params CheckoutLine[] lines) => RequestFor("7", lines);
 
     private static CheckoutRequest RequestFor(string? backendEventRef, params CheckoutLine[] lines) => new(

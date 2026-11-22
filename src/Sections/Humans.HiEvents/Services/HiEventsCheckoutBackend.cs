@@ -465,6 +465,11 @@ internal sealed class HiEventsCheckoutBackend : ITicketCheckoutBackend
     private static string ToLocale(string culture)
     {
         var language = culture.Split('-', 2)[0].ToLowerInvariant();
+        if (string.Equals(language, "ca", StringComparison.Ordinal))
+        {
+            return "es";
+        }
+
         return SupportedLocales.Contains(language) ? language : "en";
     }
 
