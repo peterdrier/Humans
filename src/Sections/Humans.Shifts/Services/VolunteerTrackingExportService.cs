@@ -1,6 +1,7 @@
 using Humans.Shifts.Services.Dtos;
 using Humans.AuditLog.Contracts;
 using Humans.Base.Extensions;
+using Humans.Base.Helpers;
 using Humans.EarlyEntry.Contracts;
 using Humans.Shifts.Contracts;
 using NodaTime;
@@ -185,38 +186,17 @@ internal sealed class VolunteerTrackingExportService(
 
     private static string SlugifyTeamName(string teamName)
     {
-        // The spec's slug rule: lowercase, strip diacritics, non-[a-z0-9] to '-', collapse, trim, else "team".
-        var lower = teamName.ToLowerInvariant();
-        var nfd = lower.Normalize(System.Text.NormalizationForm.FormD);
+        // Decomposition can introduce uppercase ASCII (İ → I + dot), so lowercase afterward.
+        var nfd = teamName.Normalize(System.Text.NormalizationForm.FormD);
         var sb = new System.Text.StringBuilder(nfd.Length);
         foreach (var ch in nfd)
         {
             var cat = System.Globalization.CharUnicodeInfo.GetUnicodeCategory(ch);
             if (cat == System.Globalization.UnicodeCategory.NonSpacingMark) continue;
-            sb.Append(char.IsAsciiLetterOrDigit(ch) ? ch : '-');
+            sb.Append(ch);
         }
-        var collapsed = CollapseHyphens(sb.ToString()).Trim('-');
-        return collapsed.Length > 0 ? collapsed : "team";
-    }
-
-    private static string CollapseHyphens(string s)
-    {
-        var sb = new System.Text.StringBuilder(s.Length);
-        var lastWasHyphen = false;
-        foreach (var c in s)
-        {
-            if (c == '-')
-            {
-                if (!lastWasHyphen) sb.Append('-');
-                lastWasHyphen = true;
-            }
-            else
-            {
-                sb.Append(c);
-                lastWasHyphen = false;
-            }
-        }
-        return sb.ToString();
+        var slug = SlugHelper.GenerateSlug(sb.ToString());
+        return slug.Length > 0 ? slug : "team";
     }
 
     public async Task<IReadOnlyList<EarlyEntryGrant>> GetEarlyEntriesAsync(CancellationToken ct)

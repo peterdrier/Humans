@@ -123,6 +123,21 @@ public sealed class VolunteerTrackingExportServiceTests
 
     private static readonly Guid Alice = Guid.Parse("a0000000-0000-0000-0000-000000000001");
 
+    [HumansTheory]
+    [Xunit.InlineData("İstanbul Crew", "istanbul-crew")]
+    [Xunit.InlineData("I\u0307stanbul Crew", "istanbul-crew")]
+    [Xunit.InlineData("  Café -- Crew  ", "cafe-crew")]
+    [Xunit.InlineData("---", "team")]
+    public async Task DepartmentFileName_StripsDiacriticsAndUsesLowercaseSlug(string teamName, string expectedSlug)
+    {
+        var (repo, shiftMgmt, burnSettings, users) = BuildMocks([], departments: [(TeamA, teamName)]);
+        var sut = new VolunteerTrackingExportService(repo, shiftMgmt, burnSettings, users, _audit);
+
+        var model = await sut.BuildAsync(BuildRequest(departmentId: TeamA), ct: Xunit.TestContext.Current.CancellationToken);
+
+        model.SuggestedFileName.Should().Be($"volunteer-tracking-{expectedSlug}-2026-07-07-to-2026-07-13.xlsx");
+    }
+
     [HumansFact]
     public async Task SingleHuman_ThreeConsecutiveShifts_SingleTeam()
     {
