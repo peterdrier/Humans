@@ -22,7 +22,7 @@ writes to buyers and never sells on its own public page for these events.
 | Ask what became of an order | `GetStatusAsync`, `CancelAsync` (reads before it acts) | One status mapping (`ToState`) serves status, cancel and the order list |
 | Move money back | `RefundAsync` | Idempotent on the Humans refund id; a repeat answers the earlier refund's state |
 | Forget a buyer | `ErasePersonalDataAsync` | Whole-order anonymise in the fork |
-| Reconcile a period | `ListOrdersAsync`, `EventRefOf`, `GetPaymentLedgerAsync` (Stripe, with `STRIPE_HIEVENTS_KEY`) | The vendor side of Tickets' reconciliation |
+| Reconcile a period | `ListOrdersAsync`, `EventRefOf`, `GetPaymentLedgerAsync` (Stripe, through `IStripeService`) | The vendor side of Tickets' reconciliation |
 | Connect and check | `Setup`, `CheckAsync`, `IsConfigured` | Changes nothing (the checkout probe fails validation before any order is made); never throws |
 | Hear about a change | `POST /HiEvents/Webhook` | Signature-checked nudge to Tickets, no state change here |
 | Show up in admin | the "Hi.Events" admin sidebar row | Opens Tickets' backend page; the section contributes only the row |
@@ -81,9 +81,9 @@ has; the wire records stay private inside the adapter so the Hi.Events payload s
 ## Seams
 
 - **Paid time.** The port carries `PaidAt`; Hi.Events does not expose it, so it stays null until the
-  fork does. The fee comes from Stripe (`STRIPE_HIEVENTS_KEY`), not from Hi.Events.
-- **Stripe reads.** `StripeReadAccount` is copied in `Humans.Pretix` (each adapter owns its own key, and
-  the shared home would put Stripe.net on the Tickets contracts leaf); Box Office reads its account itself.
+  fork does. The fee comes from Stripe (the `HiEvents` mirror account), not from Hi.Events.
+- **Stripe reads.** Through `IStripeService`'s account reads, as pretix's are; the adapter only maps a
+  PaymentIntent's metadata to the Hi.Events order. Box Office still reads its own account (CENTRAL-113).
 - **Unpaid orders in reconciliation.** Hi.Events' order list leaves out `RESERVED` and `ABANDONED`
   orders, so the vendor side of reconciliation sees only orders that reached a payment or a close.
 

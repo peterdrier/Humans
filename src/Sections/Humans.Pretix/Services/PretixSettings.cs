@@ -19,9 +19,6 @@ internal sealed class PretixSettings
     /// <summary>The <c>secret</c> query value of the webhook URL configured in pretix; from <c>PRETIX_WEBHOOK_SECRET</c>.</summary>
     public string WebhookSecret { get; set; } = string.Empty;
 
-    /// <summary>From <c>STRIPE_PRETIX_KEY</c>: a read-only key on the Stripe account pretix charges into.</summary>
-    public string StripeKey { get; set; } = string.Empty;
-
     public bool IsConfigured =>
         Uri.TryCreate(BaseUrl, UriKind.Absolute, out _)
         && !string.IsNullOrWhiteSpace(Organizer)

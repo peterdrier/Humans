@@ -19,9 +19,6 @@ internal sealed class HiEventsSettings
     /// <summary>From <c>HIEVENTS_WEBHOOK_SECRET</c>, never appsettings.</summary>
     public string WebhookSecret { get; set; } = string.Empty;
 
-    /// <summary>From <c>STRIPE_HIEVENTS_KEY</c>: a read-only key on the Stripe account Hi.Events charges into.</summary>
-    public string StripeKey { get; set; } = string.Empty;
-
     /// <summary>Both URLs must be absolute http(s), so a typo stops checkout before any order is made in Hi.Events.</summary>
     public bool IsConfigured => ApiBaseUri is not null && AppBaseUri is not null && !string.IsNullOrEmpty(ApiKey);
 

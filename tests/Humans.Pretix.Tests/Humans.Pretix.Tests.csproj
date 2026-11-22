@@ -11,9 +11,4 @@
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
   </ItemGroup>
 
-  <ItemGroup>
-    <!-- The Stripe tests answer Stripe.NET's IHttpClient with canned JSON. -->
-    <PackageReference Include="Stripe.net" />
-  </ItemGroup>
-
 </Project>

@@ -163,7 +163,7 @@ themes:
 inbox:
   - added: 2026-11-22
     id: CENTRAL-113
-    what: "src/Sections/Humans.HiEvents/Services/StripeReadAccount.cs and src/Sections/Humans.Pretix/Services/StripeReadAccount.cs read a backend's Stripe ledger with near-identical code, and Box Office's GetPaymentLedgerAsync repeats its core. One shared reader needs a home every adapter may reference without putting Stripe.net on Humans.Tickets.Contracts; decide that home with Peter, then fold the three into it."
+    what: "src/Sections/Humans.BoxOffice reads its Stripe account with its own Stripe.net client (GetPaymentLedgerAsync, fees, the checkout probe), against memory/architecture/vendor-connectors-own-sections.md. Hi.Events and pretix read theirs through IStripeService's account reads (GetAccountLedgerAsync and siblings); fold Box Office's reads into them too, and the Stripe reporting-category mapping each adapter repeats into one place."
     review: standard
   - added: 2026-11-22
     id: CENTRAL-112

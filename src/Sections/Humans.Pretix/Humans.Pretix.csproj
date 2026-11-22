@@ -13,13 +13,14 @@
     -->
     <ProjectReference Include="..\..\Humans.Base\Humans.Base.csproj" />
     <ProjectReference Include="..\Humans.Tickets.Contracts\Humans.Tickets.Contracts.csproj" />
+    <!-- IStripeService reads the Stripe account pretix charges into. Acyclic: Humans.Stripe references no section. -->
+    <ProjectReference Include="..\Humans.Stripe\Humans.Stripe.csproj" />
   </ItemGroup>
 
   <ItemGroup>
     <!-- No AspNetCore PackageReference: they fail NU1010 under Central Package Management. -->
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
     <PackageReference Include="NodaTime" />
-    <PackageReference Include="Stripe.net" />
   </ItemGroup>
 
   <ItemGroup>

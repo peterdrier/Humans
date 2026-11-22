@@ -4,8 +4,8 @@ using System.Text.Json;
 using Humans.Pretix.Services;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
+using Humans.Stripe.Contracts;
 using NSubstitute;
-using Stripe;
 
 namespace Humans.Pretix.Tests;
 
@@ -19,22 +19,17 @@ internal static class PretixTestHost
         Organizer = "nobodies",
         ApiToken = "tok",
         WebhookSecret = "s3cret",
-        StripeKey = "rk_test_pretix",
     };
 
-    /// <summary>Over <paramref name="stripe"/>, or a Stripe account that answers every read with an empty list.</summary>
-    public static PretixCheckoutBackend Create(FakePretix pretix, PretixSettings? settings = null, IHttpClient? stripe = null) =>
+    /// <summary>Over <paramref name="stripe"/>, or a Stripe section with no account configured for pretix.</summary>
+    public static PretixCheckoutBackend Create(FakePretix pretix, PretixSettings? settings = null, IStripeService? stripe = null) =>
         new(new HttpClient(pretix), Options.Create(settings ?? Settings()), NullLogger<PretixCheckoutBackend>.Instance,
-            stripe ?? EmptyStripe());
+            stripe ?? NoStripeAccount());
 
-    private static IHttpClient EmptyStripe()
+    public static IStripeService NoStripeAccount()
     {
-        var stripe = Substitute.For<IHttpClient>();
-        stripe.MakeRequestAsync(Arg.Any<StripeRequest>(), Arg.Any<CancellationToken>()).Returns(_ =>
-        {
-            using var message = new HttpResponseMessage();
-            return new StripeResponse(HttpStatusCode.OK, message.Headers, """{"object":"list","url":"/v1/x","has_more":false,"data":[]}""");
-        });
+        var stripe = Substitute.For<IStripeService>();
+        stripe.CheckAccountAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns([]);
         return stripe;
     }
 
