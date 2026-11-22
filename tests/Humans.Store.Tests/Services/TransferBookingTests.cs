@@ -142,4 +142,68 @@ public class TransferBookingTests
             StoreTransferBooking.Description(2026, new YearMonth(2026, 6), Team, Ice, "Ice Crew", "Ice"),
             Arg.Any<CancellationToken>());
     }
+    [HumansTheory]
+    [Xunit.InlineData("zero-month")]
+    [Xunit.InlineData("invalid-month")]
+    [Xunit.InlineData("unicode-year")]
+    [Xunit.InlineData("invalid-team")]
+    [Xunit.InlineData("missing-key")]
+    public async Task Malformed_transfer_keys_block_preview_and_booking_without_losing_known_bookings(string corruption)
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var orders = Substitute.For<IStoreAccountingRead>();
+        orders.GetOrderLinesAsync(2026, Arg.Any<CancellationToken>()).Returns([Line(40m, 5), Line(20m, 6)]);
+        var budget = Substitute.For<IBudgetService>();
+        budget.GetActiveYearAsync(Arg.Any<CancellationToken>()).Returns(new BudgetYearDetail(
+            Guid.NewGuid(), "2026", "2026", default, false,
+            [new BudgetGroupDetail(Guid.NewGuid(), Guid.NewGuid(), "Departments", 0, false, true, false, null,
+                [new BudgetCategoryDetail(DeptCategory, Guid.NewGuid(), "Ice Crew", 0m, default, Team, 0, [])])]));
+        var finance = Substitute.For<IFinanceService>();
+        finance.GetCategoryMapAsync(Arg.Any<CancellationToken>()).Returns(
+            [new CategoryAccountRow(DeptCategory, "Ice Crew", "Departments", DeptAccount, "acc", "tag", Instant.MinValue)]);
+        var description = StoreTransferBooking.Description(2026, new YearMonth(2026, 5), Team, Ice, "Ice Crew", "Ice");
+        var malformed = corruption switch
+        {
+            "zero-month" => description.Replace("2026-05", "2026-00", StringComparison.Ordinal),
+            "invalid-month" => description.Replace("2026-05", "2026-13", StringComparison.Ordinal),
+            "unicode-year" => description.Replace("2026-05", "٢٠٢٦-05", StringComparison.Ordinal),
+            "invalid-team" => description.Replace(Team.ToString("N"), "not-a-team", StringComparison.Ordinal),
+            _ => "Store transfer 2026 missing key"
+        };
+        var validLine = new HoldedLedgerLineInfo(7, 2, TransferAccount, Instant.MinValue, null, description, 0m, 40m);
+        var holded = Substitute.For<IHoldedService>();
+        holded.IsConfigured.Returns(true);
+        holded.GetChartAsync(Arg.Any<CancellationToken>()).Returns([]);
+        holded.SyncAccountLedgerAsync(TransferAccount, Arg.Any<CancellationToken>()).Returns(true);
+        holded.GetLedgerLinesAsync(TransferAccount, Arg.Any<CancellationToken>()).Returns(
+            [validLine, new HoldedLedgerLineInfo(8, 2, TransferAccount, Instant.MinValue, null, malformed, 0m, 20m)]);
+        var repo = Substitute.For<IStoreRepository>();
+        repo.GetAllProductsForYearAsync(2026, Arg.Any<CancellationToken>()).Returns([]);
+        var write = Substitute.For<IHoldedWrite>();
+        write.PostJournalEntryAsync(default, 0, 0, 0m, "", default)
+            .ReturnsForAnyArgs(new HoldedJournalEntryOutcome(true));
+        var audit = Substitute.For<IAuditLogService>();
+        var sut = new StoreTransferBooking(FixedOrgTimeZone.Madrid, orders, repo, budget, finance, holded, write,
+            audit, new FakeClock(Instant.FromUtc(2026, 9, 2, 8, 0)), NullLogger<StoreTransferBooking>.Instance);
+
+        var preview = await sut.GetPlanAsync(2026, ct);
+        preview.Rows.Should().BeEmpty();
+        preview.Unavailable.Should().Contain("invalid transfer key");
+        var (lines, refused) = await sut.BookAsync(2026, Guid.NewGuid(), ct);
+        lines.Should().BeEmpty();
+        refused.Should().Contain(TransferAccount.ToString(System.Globalization.CultureInfo.InvariantCulture));
+        refused.Should().Contain("8");
+        write.ReceivedCalls().Should().BeEmpty();
+        audit.ReceivedCalls().Should().BeEmpty();
+
+        holded.GetLedgerLinesAsync(TransferAccount, Arg.Any<CancellationToken>()).Returns(
+            [validLine, new HoldedLedgerLineInfo(9, 2, TransferAccount, Instant.MinValue, null, "Unrelated journal entry", 0m, 999m)]);
+        var (recovered, recoveryRefusal) = await sut.BookAsync(2026, Guid.NewGuid(), ct);
+        recoveryRefusal.Should().BeNull();
+        recovered.Should().ContainSingle().Which.Row.Amount.Should().Be(20m);
+        await write.Received(1).PostJournalEntryAsync(new LocalDate(2026, 6, 30), DeptAccount, TransferAccount, 20m,
+            StoreTransferBooking.Description(2026, new YearMonth(2026, 6), Team, Ice, "Ice Crew", "Ice"),
+            Arg.Any<CancellationToken>());
+    }
+
 }
