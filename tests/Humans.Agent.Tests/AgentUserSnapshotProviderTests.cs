@@ -41,7 +41,9 @@ public class AgentUserSnapshotProviderTests
         var ev = MakeEventSettings();
         var rota = "Cantina build";
         var signups = Enumerable.Range(0, 7)
-            .Select(i => MakeSignup(blockId, MakeShift(rota, dayOffset: -10 + i, isAllDay: true), SignupStatus.Confirmed))
+            .Select(i => MakeSignup(blockId, MakeShift(rota, dayOffset: -10 + i, isAllDay: true),
+                i == 0 ? SignupStatus.Pending : SignupStatus.Confirmed))
+            .Reverse()
             .ToList();
 
         var provider = MakeProvider(userId, ev, signups);
@@ -55,7 +57,7 @@ public class AgentUserSnapshotProviderTests
         entry.DayCount.Should().Be(7);
         entry.StartDate.Should().Be(new LocalDate(2026, 6, 21));
         entry.EndDate.Should().Be(new LocalDate(2026, 6, 27));
-        entry.Status.Should().Be(SignupStatus.Confirmed);
+        entry.Status.Should().Be(SignupStatus.Pending);
     }
 
     [HumansFact]
