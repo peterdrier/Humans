@@ -161,7 +161,7 @@ internal sealed partial class PleoBooking(
             .ToDictionary(g => g.Key, g => g.ToList(), StringComparer.Ordinal);
         var purchases = docGroups.ToDictionary(g => g.Key, g =>
         {
-            var d = g.Value.OrderByDescending(x => x.IsApproved).First();
+            var d = g.Value.MaxBy(x => x.IsApproved)!;
             return new PleoPurchaseRef(d.Id, d.DocNumber, d.IsApproved, d.Total, d.PaymentsPending, d.HoldedUrl);
         }, StringComparer.Ordinal);
         var duplicates = docGroups.Where(g => g.Value.Count > 1)
@@ -241,8 +241,7 @@ internal sealed partial class PleoBooking(
                 .Where(c => string.Equals(c.MerchantName!.Trim(), r.MerchantName!.Trim(), StringComparison.OrdinalIgnoreCase)
                             && -c.AmountEur!.Value >= r.AmountEur!.Value
                             && c.SettledAt <= r.SettledAt && c.SettledAt >= from)
-                .OrderByDescending(c => c.SettledAt)
-                .FirstOrDefault();
+                .MaxBy(c => c.SettledAt);
             if (charge is not null)
                 origins.Add(new PleoRefundOrigin(r.Id, charge,
                     !string.Equals(charge.CategoryId, r.CategoryId, StringComparison.Ordinal)));

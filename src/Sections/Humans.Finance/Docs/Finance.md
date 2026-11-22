@@ -289,6 +289,8 @@ The provisioning preview, unmatched queue, creditor overview (including member-n
 
 ## Invariants
 
+- Single-row business selections use direct maxima: the survivor's own creditor binding wins, pending SEPA labels use the newest file, Pleo duplicate selection prefers approved documents, and refunds use the latest eligible charge. Equal keys retain the first source row.
+
 - Creditor open-document counts, SEPA payment selection and duplicate review consume Holded's `HoldedPurchaseDocInfo` mirror directly. Approval and nullable payment state are preserved; FIFO uses the mirrored accounting date and document id. No conversion back to connector payloads or midnight instants occurs.
 
 

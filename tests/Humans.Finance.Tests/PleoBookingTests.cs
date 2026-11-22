@@ -163,6 +163,8 @@ public class PleoBookingTests
     {
         var view = PleoBooking.Classify(Snapshot(
             Entry("charge", -90.27m, day: 3, category: "food"),
+            Entry("earlier-charge", -90.27m, day: 2, category: "food"),
+            Entry("tied-charge", -90.27m, day: 3, category: "food"),
             Entry("refund", 90.27m, day: 3, category: "geeks", code: "62900002")), Madrid);
 
         view.RefundOrigins.Should().ContainSingle().Which.Should().Match<PleoRefundOrigin>(o =>
