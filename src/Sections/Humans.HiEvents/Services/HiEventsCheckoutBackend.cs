@@ -128,9 +128,7 @@ internal sealed class HiEventsCheckoutBackend : ITicketCheckoutBackend
     public async Task<CheckoutStatus> GetStatusAsync(string backendOrderId, CancellationToken ct = default)
     {
         var (eventId, orderId) = ParseBackendOrderId(backendOrderId);
-
-        using var response = await _http.GetAsync($"events/{eventId}/orders/{orderId}", ct);
-        var order = await ReadOrderAsync(response, ct);
+        var order = await GetOrderAsync(eventId, orderId, ct);
 
         return new CheckoutStatus(
             State: ToState(order),
