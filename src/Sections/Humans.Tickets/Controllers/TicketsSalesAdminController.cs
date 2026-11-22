@@ -389,7 +389,9 @@ internal sealed class SalesEditForm
     {
         minor = 0;
         if (!decimal.TryParse(text?.Trim(), NumberStyles.Number, CultureInfo.InvariantCulture, out var eur)) return false;
-        minor = (long)Math.Round(eur * 100m, MidpointRounding.AwayFromZero);
+        var rounded = Math.Round(eur, 2, MidpointRounding.AwayFromZero);
+        if (rounded < long.MinValue / 100m || rounded > long.MaxValue / 100m) return false;
+        minor = (long)(rounded * 100m);
         return true;
     }
 

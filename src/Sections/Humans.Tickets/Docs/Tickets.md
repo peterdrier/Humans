@@ -81,7 +81,7 @@ allocation, settlement and cancellation processing retain their domain ordering.
 
 ### TicketSalesEvent
 
-**Table:** `ticket_sales_events` — one per Settings event (`EventSettingsId` unique). `Waves`, `PriceRules` and `ChildTypes` (name, under age, price) are jsonb; `SupporterTotalsMinor` is `bigint[]` and `DonationPurposes` is `text[]`. `Switches` (jsonb, nullable; null reads as the defaults) holds the event's ticketing switches: resale scheme (`Off`, `Queue`, `QueueAndDirected`), tickets for others (`PartnerTickets`), donations, mailing list opt-in, companion tickets (`CompanionTickets`, null reads as on) (see checkout.md). Amounts are minor units (cents) throughout the checkout lane.
+**Table:** `ticket_sales_events` — one per Settings event (`EventSettingsId` unique). `Waves`, `PriceRules` and `ChildTypes` (name, under age, price) are jsonb; `SupporterTotalsMinor` is `bigint[]` and `DonationPurposes` is `text[]`. `Switches` (jsonb, nullable; null reads as the defaults) holds the event's ticketing switches: resale scheme (`Off`, `Queue`, `QueueAndDirected`), tickets for others (`PartnerTickets`), donations, mailing list opt-in, companion tickets (`CompanionTickets`, null reads as on) (see checkout.md). Amounts are minor units (cents) throughout the checkout lane. The sales editor rounds euro inputs to cents away from zero and refuses values outside the signed 64-bit minor-unit range with the existing field error.
 
 ### TicketCheckoutOrder
 
