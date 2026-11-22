@@ -214,7 +214,9 @@ public class TicketsSupportAdminControllerTests
     {
         var order = new TicketCheckoutOrder
         {
-            Id = Guid.NewGuid(), State = TicketCheckoutOrderState.Paid, PaidAt = Now,
+            Id = Guid.NewGuid(),
+            State = TicketCheckoutOrderState.Paid,
+            PaidAt = Now,
             Lines =
             [
                 new() { Kind = CheckoutLineKind.Donation, DonationPurpose = "Z", AmountMinor = 1 },

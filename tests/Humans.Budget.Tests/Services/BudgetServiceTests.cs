@@ -2745,8 +2745,11 @@ public sealed class BudgetServiceTests
         var category = await SeedCategoryAsync();
         var item = new BudgetLineItem
         {
-            Id = Guid.NewGuid(), BudgetCategoryId = category.Id,
-            Description = "Original", Notes = "Original notes", Amount = 10m
+            Id = Guid.NewGuid(),
+            BudgetCategoryId = category.Id,
+            Description = "Original",
+            Notes = "Original notes",
+            Amount = 10m
         };
         await using (var db = await BudgetDbFactory.CreateDbContextAsync(TestContext.Current.CancellationToken))
         {
