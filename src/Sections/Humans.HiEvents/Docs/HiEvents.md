@@ -105,6 +105,8 @@ None — the section owns no tables.
 - Backend setup checks propagate caller cancellation instead of reporting a vendor failure; independent transport timeouts remain diagnostic findings.
 - `ListOrdersAsync` pages through an event's orders by `created_at` (100 a page, to `meta.last_page`), reading the Humans order id from `external_reference` and counting attendees as tickets. It throws when the distinct orders read differ from `meta.total`, since ties in a second can move across pages. The list leaves out `RESERVED` and `ABANDONED` orders. It needs the key's user to see financials, as refunds already do. `EventRefOf` reads the event id from the order id. `GetPaymentLedgerAsync` answers null: Hi.Events takes payments through its own Stripe account, so its fees and payouts are not reconciled in Humans.
 
+- Checkout creation and setup checks read every product page before validating carrier counts and visibility. Product pages require data and valid paging metadata. Product and order traversals stop at 500 pages and fail instead of returning a partial result.
+
 ## Personal data and erasure
 
 Hi.Events holds each buyer's name and email and each attendee's legal name for orders created here.
