@@ -51,4 +51,86 @@
   <data name="Tasks_Refusal_DependencyExists" xml:space="preserve"><value>This task already waits on that one.</value></data>
   <data name="Tasks_Refusal_DependencyCycle" xml:space="preserve"><value>That would make a circle of tasks waiting on each other.</value></data>
   <data name="Tasks_Refusal_NoDependency" xml:space="preserve"><value>This task does not wait on that one.</value></data>
+  <data name="Tasks_List_Title" xml:space="preserve"><value>Tasks</value></data>
+  <data name="Tasks_List_Subtitle" xml:space="preserve"><value>What needs doing, team by team.</value></data>
+  <data name="Tasks_List_Admin" xml:space="preserve"><value>Tasks admin</value></data>
+  <data name="Tasks_List_Empty" xml:space="preserve"><value>No tasks match.</value></data>
+  <data name="Tasks_Filter_Event" xml:space="preserve"><value>Event</value></data>
+  <data name="Tasks_Filter_ActiveEvent" xml:space="preserve"><value>Active event and no event</value></data>
+  <data name="Tasks_Filter_AnyEvent" xml:space="preserve"><value>Any event</value></data>
+  <data name="Tasks_Filter_Finished" xml:space="preserve"><value>Include done and cancelled</value></data>
+  <data name="Tasks_Filter_Apply" xml:space="preserve"><value>Show</value></data>
+  <data name="Tasks_Col_Task" xml:space="preserve"><value>Task</value></data>
+  <data name="Tasks_Col_Team" xml:space="preserve"><value>Team</value></data>
+  <data name="Tasks_Col_Status" xml:space="preserve"><value>Status</value></data>
+  <data name="Tasks_Col_Priority" xml:space="preserve"><value>Priority</value></data>
+  <data name="Tasks_Col_Due" xml:space="preserve"><value>Due</value></data>
+  <data name="Tasks_Col_Slots" xml:space="preserve"><value>People</value></data>
+  <data name="Tasks_Hidden" xml:space="preserve"><value>Hidden</value></data>
+  <data name="Tasks_WaitingOn" xml:space="preserve"><value>Waiting on</value></data>
+  <data name="Tasks_Yes" xml:space="preserve"><value>Yes</value></data>
+  <data name="Tasks_No" xml:space="preserve"><value>No</value></data>
+  <data name="Tasks_Team_Title" xml:space="preserve"><value>Tasks for {0}</value></data>
+  <data name="Tasks_Team_TeamPage" xml:space="preserve"><value>Team page</value></data>
+  <data name="Tasks_Team_All" xml:space="preserve"><value>All tasks</value></data>
+  <data name="Tasks_Team_AddTitle" xml:space="preserve"><value>Add a task</value></data>
+  <data name="Tasks_Task_BlockedBy" xml:space="preserve"><value>Blocked:</value></data>
+  <data name="Tasks_Task_WaitingNow" xml:space="preserve"><value>This task is waiting on tasks that are not finished yet.</value></data>
+  <data name="Tasks_Task_People" xml:space="preserve"><value>People</value></data>
+  <data name="Tasks_Task_SlotsOf" xml:space="preserve"><value>{0} of {1}</value></data>
+  <data name="Tasks_Task_NoPeople" xml:space="preserve"><value>Nobody is on this task yet.</value></data>
+  <data name="Tasks_Task_Assign" xml:space="preserve"><value>Assign</value></data>
+  <data name="Tasks_Task_Unassign" xml:space="preserve"><value>Take off</value></data>
+  <data name="Tasks_Task_FindPerson" xml:space="preserve"><value>Find a person</value></data>
+  <data name="Tasks_Task_StatusTitle" xml:space="preserve"><value>Status</value></data>
+  <data name="Tasks_Task_StatusSave" xml:space="preserve"><value>Update status</value></data>
+  <data name="Tasks_Task_BlockedNote" xml:space="preserve"><value>What is holding it up</value></data>
+  <data name="Tasks_Task_BlockedNoteHelp" xml:space="preserve"><value>Needed when the status is blocked.</value></data>
+  <data name="Tasks_Task_Edit" xml:space="preserve"><value>Edit task</value></data>
+  <data name="Tasks_Task_Delete" xml:space="preserve"><value>Delete task</value></data>
+  <data name="Tasks_Task_DeleteConfirm" xml:space="preserve"><value>Delete this task for good? Its people and links go with it.</value></data>
+  <data name="Tasks_Task_Details" xml:space="preserve"><value>Details</value></data>
+  <data name="Tasks_Task_Event" xml:space="preserve"><value>Event</value></data>
+  <data name="Tasks_Task_NoEvent" xml:space="preserve"><value>Not tied to an event</value></data>
+  <data name="Tasks_Task_RelativeDate" xml:space="preserve"><value>moves with the event</value></data>
+  <data name="Tasks_Task_NeedsApproval" xml:space="preserve"><value>Needs approval</value></data>
+  <data name="Tasks_Task_WaitingOnTitle" xml:space="preserve"><value>Waiting on</value></data>
+  <data name="Tasks_Task_NoDependencies" xml:space="preserve"><value>Not waiting on any task.</value></data>
+  <data name="Tasks_Task_HiddenTask" xml:space="preserve"><value>a hidden task</value></data>
+  <data name="Tasks_Task_RemoveDependency" xml:space="preserve"><value>Remove</value></data>
+  <data name="Tasks_Task_AddDependency" xml:space="preserve"><value>Add</value></data>
+  <data name="Tasks_Task_DependencyPick" xml:space="preserve"><value>Wait on this task</value></data>
+  <data name="Tasks_Form_Title" xml:space="preserve"><value>Title</value></data>
+  <data name="Tasks_Form_Team" xml:space="preserve"><value>Team</value></data>
+  <data name="Tasks_Form_Description" xml:space="preserve"><value>Description</value></data>
+  <data name="Tasks_Form_Event" xml:space="preserve"><value>Event</value></data>
+  <data name="Tasks_Form_NoEvent" xml:space="preserve"><value>No event</value></data>
+  <data name="Tasks_Form_Priority" xml:space="preserve"><value>Priority</value></data>
+  <data name="Tasks_Form_Slots" xml:space="preserve"><value>Slots</value></data>
+  <data name="Tasks_Form_Start" xml:space="preserve"><value>Start</value></data>
+  <data name="Tasks_Form_Due" xml:space="preserve"><value>Due</value></data>
+  <data name="Tasks_Form_DateFixed" xml:space="preserve"><value>Fixed date</value></data>
+  <data name="Tasks_Form_DateRelative" xml:space="preserve"><value>Relative to the event</value></data>
+  <data name="Tasks_Form_DateHelp" xml:space="preserve"><value>A relative date moves with the event's gate opening day.</value></data>
+  <data name="Tasks_Form_NeedsApproval" xml:space="preserve"><value>A manager approves who takes this task</value></data>
+  <data name="Tasks_Form_ApprovalReason" xml:space="preserve"><value>Why approval is needed</value></data>
+  <data name="Tasks_Form_ApprovalReasonHelp" xml:space="preserve"><value>Optional. Shown beside the claim button, for example a licence.</value></data>
+  <data name="Tasks_Form_Hidden" xml:space="preserve"><value>Hidden</value></data>
+  <data name="Tasks_Form_HiddenHelp" xml:space="preserve"><value>Shown only to the team's managers and the people on it.</value></data>
+  <data name="Tasks_Form_Add" xml:space="preserve"><value>Add task</value></data>
+  <data name="Tasks_Form_Save" xml:space="preserve"><value>Save changes</value></data>
+  <data name="Tasks_Added" xml:space="preserve"><value>Added {0}.</value></data>
+  <data name="Tasks_Saved" xml:space="preserve"><value>Saved {0}.</value></data>
+  <data name="Tasks_Deleted" xml:space="preserve"><value>Deleted {0}.</value></data>
+  <data name="Tasks_StatusChanged" xml:space="preserve"><value>Status updated.</value></data>
+  <data name="Tasks_Assigned" xml:space="preserve"><value>Person added to the task.</value></data>
+  <data name="Tasks_Unassigned" xml:space="preserve"><value>Person taken off the task.</value></data>
+  <data name="Tasks_DependencyAdded" xml:space="preserve"><value>Now waiting on that task.</value></data>
+  <data name="Tasks_DependencyRemoved" xml:space="preserve"><value>No longer waiting on that task.</value></data>
+  <data name="Tasks_Refusal_NoPerson" xml:space="preserve"><value>Pick a person from the list.</value></data>
+  <data name="Enum_TaskItemStatus_Todo" xml:space="preserve"><value>To do</value></data>
+  <data name="Enum_TaskItemStatus_InProgress" xml:space="preserve"><value>In progress</value></data>
+  <data name="Enum_TaskItemStatus_Blocked" xml:space="preserve"><value>Blocked</value></data>
+  <data name="Enum_TaskItemStatus_Done" xml:space="preserve"><value>Done</value></data>
+  <data name="Enum_TaskItemStatus_Cancelled" xml:space="preserve"><value>Cancelled</value></data>
 </root>

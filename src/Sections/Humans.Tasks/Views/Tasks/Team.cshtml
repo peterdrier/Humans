@@ -1,0 +1,32 @@
+@model TeamPageViewModel
+
+@{
+    ViewData["Title"] = Localizer["Tasks_Team_Title", Model.TeamName].Value;
+}
+
+@section Crumbs {
+    <a href="@Url.Action("Index", "Tasks")">@SharedLocalizer["Nav_Tasks"]</a>
+    <span>@Model.TeamName</span>
+}
+
+<page-header title="@(Localizer["Tasks_Team_Title", Model.TeamName].Value)">
+    <page-header-subtitle><a href="@Url.Action("Details", "Team", new { slug = Model.TeamSlug })">@Localizer["Tasks_Team_TeamPage"]</a></page-header-subtitle>
+    <a href="@Url.Action("Index", "Tasks")" class="btn btn-outline-secondary">@Localizer["Tasks_Team_All"]</a>
+    @if (Model.CanAdd)
+    {
+        <a href="#add" class="btn btn-primary">@Localizer["Tasks_Team_AddTitle"]</a>
+    }
+</page-header>
+
+<partial name="_Filter" model="new TaskFilterViewModel(Model.Filter, null)" />
+<partial name="_TaskTable" model="new TaskTableModel(Model.Tasks, ShowTeam: false)" />
+
+@if (Model.CanAdd)
+{
+    <div class="card mt-4 col-lg-8" id="add">
+        <div class="card-header"><h2 class="h5 mb-0">@Localizer["Tasks_Team_AddTitle"]</h2></div>
+        <div class="card-body">
+            <partial name="_TaskForm" model='new TaskFormViewModel(Model.AddForm, "new", true, Url.Action("Add", new { slug = Model.TeamSlug })!, [new TeamChoice(Model.TeamId, Model.TeamName)], Model.Events)' />
+        </div>
+    </div>
+}

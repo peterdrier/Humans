@@ -47,6 +47,13 @@ internal sealed record TasksAccess(Guid UserId, bool SeesAll, IReadOnlySet<Guid>
     public bool CanSee(TaskInfo task) =>
         !task.IsEffectivelyHidden || SeesAll || Manages(task) || IsConfirmedOn(task);
 
+    /// <summary>
+    /// A hidden team's tasks page is found only by those who see all, its managers, and people confirmed on one of
+    /// its tasks. Every other team's page is found by everyone.
+    /// </summary>
+    public bool CanSeeTeam(Guid teamId, bool teamIsHidden, IEnumerable<TaskInfo> tasksOnTeam) =>
+        !teamIsHidden || SeesAll || Manages(teamId) || tasksOnTeam.Any(IsConfirmedOn);
+
     /// <summary>A manager sets any status. A person confirmed on the task sets any but cancelled.</summary>
     public bool CanSetStatus(TaskInfo task, TaskItemStatus status) =>
         Manages(task) || (IsConfirmedOn(task) && status != TaskItemStatus.Cancelled);

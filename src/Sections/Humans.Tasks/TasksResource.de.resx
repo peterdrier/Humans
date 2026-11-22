@@ -51,4 +51,86 @@
   <data name="Tasks_Refusal_DependencyExists" xml:space="preserve"><value>Diese Aufgabe wartet schon auf jene.</value></data>
   <data name="Tasks_Refusal_DependencyCycle" xml:space="preserve"><value>Das ergäbe einen Kreis von Aufgaben, die aufeinander warten.</value></data>
   <data name="Tasks_Refusal_NoDependency" xml:space="preserve"><value>Diese Aufgabe wartet nicht auf jene.</value></data>
+  <data name="Tasks_List_Title" xml:space="preserve"><value>Aufgaben</value></data>
+  <data name="Tasks_List_Subtitle" xml:space="preserve"><value>Was zu tun ist, Team für Team.</value></data>
+  <data name="Tasks_List_Admin" xml:space="preserve"><value>Aufgaben-Verwaltung</value></data>
+  <data name="Tasks_List_Empty" xml:space="preserve"><value>Keine passenden Aufgaben.</value></data>
+  <data name="Tasks_Filter_Event" xml:space="preserve"><value>Veranstaltung</value></data>
+  <data name="Tasks_Filter_ActiveEvent" xml:space="preserve"><value>Aktive Veranstaltung und ohne Veranstaltung</value></data>
+  <data name="Tasks_Filter_AnyEvent" xml:space="preserve"><value>Jede Veranstaltung</value></data>
+  <data name="Tasks_Filter_Finished" xml:space="preserve"><value>Erledigte und abgebrochene einschließen</value></data>
+  <data name="Tasks_Filter_Apply" xml:space="preserve"><value>Anzeigen</value></data>
+  <data name="Tasks_Col_Task" xml:space="preserve"><value>Aufgabe</value></data>
+  <data name="Tasks_Col_Team" xml:space="preserve"><value>Team</value></data>
+  <data name="Tasks_Col_Status" xml:space="preserve"><value>Status</value></data>
+  <data name="Tasks_Col_Priority" xml:space="preserve"><value>Priorität</value></data>
+  <data name="Tasks_Col_Due" xml:space="preserve"><value>Fällig</value></data>
+  <data name="Tasks_Col_Slots" xml:space="preserve"><value>Personen</value></data>
+  <data name="Tasks_Hidden" xml:space="preserve"><value>Verborgen</value></data>
+  <data name="Tasks_WaitingOn" xml:space="preserve"><value>Wartet auf</value></data>
+  <data name="Tasks_Yes" xml:space="preserve"><value>Ja</value></data>
+  <data name="Tasks_No" xml:space="preserve"><value>Nein</value></data>
+  <data name="Tasks_Team_Title" xml:space="preserve"><value>Aufgaben von {0}</value></data>
+  <data name="Tasks_Team_TeamPage" xml:space="preserve"><value>Team-Seite</value></data>
+  <data name="Tasks_Team_All" xml:space="preserve"><value>Alle Aufgaben</value></data>
+  <data name="Tasks_Team_AddTitle" xml:space="preserve"><value>Aufgabe hinzufügen</value></data>
+  <data name="Tasks_Task_BlockedBy" xml:space="preserve"><value>Blockiert:</value></data>
+  <data name="Tasks_Task_WaitingNow" xml:space="preserve"><value>Diese Aufgabe wartet auf Aufgaben, die noch nicht erledigt sind.</value></data>
+  <data name="Tasks_Task_People" xml:space="preserve"><value>Personen</value></data>
+  <data name="Tasks_Task_SlotsOf" xml:space="preserve"><value>{0} von {1}</value></data>
+  <data name="Tasks_Task_NoPeople" xml:space="preserve"><value>Noch niemand arbeitet an dieser Aufgabe.</value></data>
+  <data name="Tasks_Task_Assign" xml:space="preserve"><value>Zuweisen</value></data>
+  <data name="Tasks_Task_Unassign" xml:space="preserve"><value>Entfernen</value></data>
+  <data name="Tasks_Task_FindPerson" xml:space="preserve"><value>Person suchen</value></data>
+  <data name="Tasks_Task_StatusTitle" xml:space="preserve"><value>Status</value></data>
+  <data name="Tasks_Task_StatusSave" xml:space="preserve"><value>Status ändern</value></data>
+  <data name="Tasks_Task_BlockedNote" xml:space="preserve"><value>Was sie aufhält</value></data>
+  <data name="Tasks_Task_BlockedNoteHelp" xml:space="preserve"><value>Pflicht, wenn der Status blockiert ist.</value></data>
+  <data name="Tasks_Task_Edit" xml:space="preserve"><value>Aufgabe bearbeiten</value></data>
+  <data name="Tasks_Task_Delete" xml:space="preserve"><value>Aufgabe löschen</value></data>
+  <data name="Tasks_Task_DeleteConfirm" xml:space="preserve"><value>Diese Aufgabe endgültig löschen? Personen und Verknüpfungen werden mit entfernt.</value></data>
+  <data name="Tasks_Task_Details" xml:space="preserve"><value>Details</value></data>
+  <data name="Tasks_Task_Event" xml:space="preserve"><value>Veranstaltung</value></data>
+  <data name="Tasks_Task_NoEvent" xml:space="preserve"><value>Keiner Veranstaltung zugeordnet</value></data>
+  <data name="Tasks_Task_RelativeDate" xml:space="preserve"><value>verschiebt sich mit der Veranstaltung</value></data>
+  <data name="Tasks_Task_NeedsApproval" xml:space="preserve"><value>Braucht Freigabe</value></data>
+  <data name="Tasks_Task_WaitingOnTitle" xml:space="preserve"><value>Wartet auf</value></data>
+  <data name="Tasks_Task_NoDependencies" xml:space="preserve"><value>Wartet auf keine Aufgabe.</value></data>
+  <data name="Tasks_Task_HiddenTask" xml:space="preserve"><value>eine verborgene Aufgabe</value></data>
+  <data name="Tasks_Task_RemoveDependency" xml:space="preserve"><value>Entfernen</value></data>
+  <data name="Tasks_Task_AddDependency" xml:space="preserve"><value>Hinzufügen</value></data>
+  <data name="Tasks_Task_DependencyPick" xml:space="preserve"><value>Auf diese Aufgabe warten</value></data>
+  <data name="Tasks_Form_Title" xml:space="preserve"><value>Titel</value></data>
+  <data name="Tasks_Form_Team" xml:space="preserve"><value>Team</value></data>
+  <data name="Tasks_Form_Description" xml:space="preserve"><value>Beschreibung</value></data>
+  <data name="Tasks_Form_Event" xml:space="preserve"><value>Veranstaltung</value></data>
+  <data name="Tasks_Form_NoEvent" xml:space="preserve"><value>Keine Veranstaltung</value></data>
+  <data name="Tasks_Form_Priority" xml:space="preserve"><value>Priorität</value></data>
+  <data name="Tasks_Form_Slots" xml:space="preserve"><value>Plätze</value></data>
+  <data name="Tasks_Form_Start" xml:space="preserve"><value>Beginn</value></data>
+  <data name="Tasks_Form_Due" xml:space="preserve"><value>Fällig</value></data>
+  <data name="Tasks_Form_DateFixed" xml:space="preserve"><value>Festes Datum</value></data>
+  <data name="Tasks_Form_DateRelative" xml:space="preserve"><value>Relativ zur Veranstaltung</value></data>
+  <data name="Tasks_Form_DateHelp" xml:space="preserve"><value>Ein relatives Datum verschiebt sich mit dem Tag der Toröffnung.</value></data>
+  <data name="Tasks_Form_NeedsApproval" xml:space="preserve"><value>Eine Verantwortliche oder ein Verantwortlicher entscheidet, wer die Aufgabe übernimmt</value></data>
+  <data name="Tasks_Form_ApprovalReason" xml:space="preserve"><value>Warum eine Freigabe nötig ist</value></data>
+  <data name="Tasks_Form_ApprovalReasonHelp" xml:space="preserve"><value>Optional. Wird neben der Schaltfläche zum Übernehmen angezeigt, etwa eine Lizenz.</value></data>
+  <data name="Tasks_Form_Hidden" xml:space="preserve"><value>Verborgen</value></data>
+  <data name="Tasks_Form_HiddenHelp" xml:space="preserve"><value>Nur für die Verantwortlichen des Teams und die beteiligten Personen sichtbar.</value></data>
+  <data name="Tasks_Form_Add" xml:space="preserve"><value>Aufgabe hinzufügen</value></data>
+  <data name="Tasks_Form_Save" xml:space="preserve"><value>Änderungen speichern</value></data>
+  <data name="Tasks_Added" xml:space="preserve"><value>{0} hinzugefügt.</value></data>
+  <data name="Tasks_Saved" xml:space="preserve"><value>{0} gespeichert.</value></data>
+  <data name="Tasks_Deleted" xml:space="preserve"><value>{0} gelöscht.</value></data>
+  <data name="Tasks_StatusChanged" xml:space="preserve"><value>Status geändert.</value></data>
+  <data name="Tasks_Assigned" xml:space="preserve"><value>Person zur Aufgabe hinzugefügt.</value></data>
+  <data name="Tasks_Unassigned" xml:space="preserve"><value>Person von der Aufgabe entfernt.</value></data>
+  <data name="Tasks_DependencyAdded" xml:space="preserve"><value>Wartet jetzt auf diese Aufgabe.</value></data>
+  <data name="Tasks_DependencyRemoved" xml:space="preserve"><value>Wartet nicht mehr auf diese Aufgabe.</value></data>
+  <data name="Tasks_Refusal_NoPerson" xml:space="preserve"><value>Wähle eine Person aus der Liste.</value></data>
+  <data name="Enum_TaskItemStatus_Todo" xml:space="preserve"><value>Offen</value></data>
+  <data name="Enum_TaskItemStatus_InProgress" xml:space="preserve"><value>In Arbeit</value></data>
+  <data name="Enum_TaskItemStatus_Blocked" xml:space="preserve"><value>Blockiert</value></data>
+  <data name="Enum_TaskItemStatus_Done" xml:space="preserve"><value>Erledigt</value></data>
+  <data name="Enum_TaskItemStatus_Cancelled" xml:space="preserve"><value>Abgebrochen</value></data>
 </root>

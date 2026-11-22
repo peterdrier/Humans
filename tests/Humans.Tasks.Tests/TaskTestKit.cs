@@ -105,7 +105,7 @@ internal sealed class TaskTestKit
         id, name, gate.Year, "Europe/Madrid", gate, -14, 7, 10,
         new Dictionary<int, int>(), null, null, status);
 
-    private sealed class KeyLocalizer : IStringLocalizer<TasksResource>
+    internal sealed class KeyLocalizer : IStringLocalizer<TasksResource>
     {
         public LocalizedString this[string name] => new(name, name);
 

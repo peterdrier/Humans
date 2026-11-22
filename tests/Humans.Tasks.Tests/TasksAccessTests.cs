@@ -107,4 +107,15 @@ public sealed class TasksAccessTests
 
         Access(Who.Manager).Manages(task).Should().BeFalse();
     }
+
+    [HumansTheory]
+    [InlineData(Who.Human, false, true)]
+    [InlineData(Who.Human, true, false)]
+    [InlineData(Who.ConfirmedOnTask, true, true)]
+    [InlineData(Who.RequestedOnly, true, false)]
+    [InlineData(Who.Manager, true, true)]
+    [InlineData(Who.ManagerOfOtherTeam, true, false)]
+    [InlineData(Who.SeesAll, true, true)]
+    public void CanSeeTeam_AHiddenTeamIsFoundOnlyByItsPeople(Who who, bool teamHidden, bool expected) =>
+        Access(who).CanSeeTeam(Production, teamHidden, [Task(who)]).Should().Be(expected);
 }
