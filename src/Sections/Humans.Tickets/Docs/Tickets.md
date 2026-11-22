@@ -105,7 +105,7 @@ allocation, settlement and cancellation processing retain their domain ordering.
 
 ### TicketCheckoutOrderEvent
 
-**Table:** `ticket_checkout_order_events` — the order's timeline, append-only (the repository has no update or delete): created, checkout opened, backend refused, state changed, refunded total changed, refund requested and settled, cancelled. `ActorUserId` is the person, null for automation. `Detail` holds amounts, states and backend refs, never names or emails, so erasure leaves it; merge reassigns `ActorUserId`.
+**Table:** `ticket_checkout_order_events` — the order's timeline, append-only (the repository has no update or delete): created, checkout opened, backend refused, state changed, refunded total changed, refund requested and settled, cancelled. `ActorUserId` is the person, null for automation. `Detail` holds amounts, states and backend refs, never names or emails, so erasure leaves it; merge reassigns `ActorUserId`. Checkout timeline details and bounded reasons truncate without splitting a Unicode surrogate pair.
 
 ### TicketOrder
 

@@ -2286,6 +2286,23 @@ public sealed partial class TicketCheckoutServiceTests
         held[0].HasDependents.Should().BeTrue();
     }
 
+    [HumansTheory]
+    [InlineData(498, true)]
+    [InlineData(499, false)]
+    [InlineData(500, false)]
+    public async Task Delivery_details_keep_complete_surrogate_pairs_at_the_storage_limit(int prefixLength, bool keepEmoji)
+    {
+        var order = await BuyAndPayAsync(Buy(), _buyerId);
+        var prefix = new string('x', prefixLength);
+        var detail = prefix + "😀tail";
+
+        await _service.RecordDeliveryAsync(order.Id, TicketCheckoutOrderEventKind.TicketsEmailed, detail, null, Ct);
+
+        var recorded = _repo.Events.Single(e => e.Kind == TicketCheckoutOrderEventKind.TicketsEmailed).Detail;
+        var expected = prefix + (keepEmoji ? "😀" : string.Empty);
+        string.Equals(recorded, expected, StringComparison.Ordinal).Should().BeTrue();
+    }
+
     [HumansFact]
     public async Task Delivery_steps_go_on_the_timeline_and_nothing_else_does()
     {

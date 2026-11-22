@@ -1078,7 +1078,14 @@ internal sealed partial class TicketCheckoutService(
             ActorUserId = actorUserId,
         }, ct);
 
-    private static string Truncate(string text, int max = 500) => text.Length <= max ? text : text[..max];
+    private static string Truncate(string text, int max = 500)
+    {
+        if (text.Length <= max) return text;
+        var length = max;
+        if (char.IsHighSurrogate(text[length - 1]) && char.IsLowSurrogate(text[length]))
+            length--;
+        return text[..length];
+    }
 
     private void MarkPaid(TicketCheckoutOrder order, long? feeMinor, string? method, Instant paidAt)
     {
