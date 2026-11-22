@@ -217,7 +217,7 @@ addresses were typed. Directed resale links buy only the buyer's own ticket.
   leaves one `TicketResaleRefundBatch` audit row per event with the count and total started, held back and waiting;
   the batch refunds are reconciled with the backend like every other refund. The resale queue page shows a sold offer
   without its refund as waiting for the batch.
-- **Did not sell** (H12): once sales close (mode `Closed` or `SalesCloseAt` passed), the reconcile job tells each
+- **Did not sell** (H12): once sales close (mode `Closed` or `SalesCloseAt` passed) on an event that is not cancelled, the reconcile job tells each
   holder whose offer is still open, once (`UnsoldNotifiedAt`, `ResaleUnsold` on the timeline, `ticket_resale_unsold`):
   no refund, and the ticket admits them. It is marked only once the mail is queued, so a failed hand-off is retried
   by the next sweep. The offer stays open in case sales reopen.
@@ -294,7 +294,6 @@ and nothing goes to Consent.
   longer current (`Tickets_Buy_TermsChanged`), so the buyer reads the new text first. While there are no rules to show
   (never read since the app started, or invalid), the event is unavailable to buy (`Tickets_Buy_TermsUnavailable`).
 - The order keeps `TermsFolder` and `TermsVersion`; its `TermsAccepted` timeline entry links that exact version on GitHub.
-- The earlier `TermsUrl` column (an external page address) was dropped: 2027 ticketing had no live data (Peter, 2026-11-21).
 
 ## Assumptions to confirm
 
@@ -302,15 +301,12 @@ and nothing goes to Consent.
 
 ## Not yet
 
-- Ticket email with QR and the post-purchase
-  shifts email (delivery thread, through `ITicketDelivery`).
 - Checkout tickets in holdings, the gate list and the Scanner lookup. (Gate admits them: `ITicketGateLookup`.)
-- Chargebacks and disputes: a dispute is read only as `RefundedMinor` and nothing voids the ticket yet.
+- Voiding a ticket on a chargeback: a dispute is recorded (`DisputedMinor`) and flagged, and the team decides.
 - Payment-method-dependent prices.
 - Check-in report: the gate's per-event check-in is not built and Gate has no read Tickets may call.
 - Moving a ticket to another person moves its order line, so the order is no longer the previous holder's and erasing them
   never asks the backend to erase its copy of that order (pretix, Hi.Events; Box Office keeps none).
-- A renamed ticket is not emailed to its new holder (`ITicketDelivery` is per order, sent once); they see it in their profile.
 - Fees and payouts of pretix's and Hi.Events' own payment accounts; matching a payout to the bank statement.
 - Reconciliation follow-ups: signing off a difference (an unresolved one is mailed every night); a vendor admin link on extra rows; currency on backend rows (all are summed as EUR cents); comparing
   refunds with Humans' own refund records rather than the backend's copy.

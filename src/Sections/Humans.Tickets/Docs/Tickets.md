@@ -347,12 +347,11 @@ Donation export rows carry their purchase instant internally; the CSV controller
 - `OnsiteRosterService` — the "Who's Onsite" join of checked-in attendees with user, team, camp and role labels; onsite users are this year's participations with `OnsiteSince` set. The service deduplicates and filters names ignoring case without display ordering. The onsite controller orders rows newest-check-in first and all row-name lists and filter options with ordinal comparison ignoring case.
 - `EventParticipationService` — participation writes (`ITicketWrite`, the member declaration, ticket-sync reconciliation and admin backfill), the export slice and the merge fold (internal `IEventParticipationManagement`). Export reads use `ITicketService`; the retained-on-erasure policy stays here.
 - `UserParticipationBackfillService` — parses the `/Tickets/Participation/Backfill` CSV and hands valid rows to `EventParticipationService`.
+- `TicketCheckoutService` (`Services/Checkout/`) — Humans' own ticket sales: sales events, checkout through the `ITicketCheckoutBackend` backends, issued tickets, resale, companions, team tools, the reconcile sweep and reconciliation; also serves `ITicketGateLookup`, `ITicketCheckoutEvents` and the checkout GDPR slice.
+- `TicketDeliveryHandOff` / `TicketDeliveryService` (`Services/Delivery/`) — `ITicketDelivery`: queues and sends the ticket emails with their code image, receipts, resale and payment notices and the volunteer invitation.
 - `GateTerminalAccountSeeder` — provisions the roleless gate-terminal user lazily on first password set and rotates its password. Until a password exists, every attempt completes account and profile setup on the existing user; a refused setup step returns failure before setting a password or auditing success. Every password set marks the account fake in Users, which keeps it out of the Consent Coordinator review queue. Established-account rotations do not repeat setup, and a rejected password leaves the existing credential intact. Backs `/Tickets/Admin/Gate`. Its status-page user lookup honors request cancellation before querying password state; provisioning and password rotation retain independent write boundaries.
 
-**Owned tables:** `ticket_orders`, `ticket_attendees`, `ticket_sync_states`, `ticket_settings`, `ticket_transfer_requests`, `ticket_event_participations`
-
-
-Automated processing and reissue retry also refuse a missing or whitespace-only stored receiver email before any vendor call or local state change. Invalid legacy requests retain their pending/partial state and any held seat; operators receive manual-completion guidance. Manual “Mark successful” remains available for work completed in TicketTailor.
+**Owned tables:** `ticket_orders`, `ticket_attendees`, `ticket_sync_states`, `ticket_settings`, `ticket_transfer_requests`, `ticket_event_participations`, `ticket_sales_events`, `ticket_checkout_orders`, `ticket_checkout_refunds`, `ticket_checkout_order_events`, `ticket_checkout_tickets`, `ticket_resale_offers`, `ticket_companion_requests`
 
 
 
@@ -364,8 +363,8 @@ this section. The **adapter** (`Humans.TicketTailor`) is one implementation of i
 `ProjectReference` on `Humans.Tickets` to name the port. The port is deliberately **not** on the
 `Humans.Tickets.Contracts` leaf: no Base consumer names it, and the leaf must keep the vendor's
 vocabulary away from other sections (they use `ITicketDiscountCodes` / `ITicketVendorMirror`).
-When the 2027 vendor lands, the adapter project is deleted and `Humans.<NewVendor>` is added;
-nothing in `Humans.Tickets`, in Base or in any consumer changes.
+Retiring the vendor deletes the adapter project; nothing in `Humans.Tickets`, in Base or in any consumer changes.
+Selling in Humans uses the second port, `ITicketCheckoutBackend`, implemented by the BoxOffice, Pretix and HiEvents sections.
 
 - `TicketTailorService` — production HTTP client; bound when the host environment is Production.
 - `StubTicketVendorService` — deterministic in-memory fixture; bound everywhere else. The stub fills in placeholder `EventId`/`ApiKey` so `TicketVendorSettings.IsConfigured` returns true even without env vars.
@@ -389,12 +388,12 @@ because ticket admins are who rotate that credential. Whether it eventually land
 **Stripe connector:** `IStripeService` (`Humans.Stripe`) wraps the Stripe SDK and is consumed by `TicketSyncService` for fee enrichment.
 
 **Public surface:** the `Humans.Tickets.Contracts` leaf publishes `ITicketService`,
-`ITicketDiscountCodes`, `ITicketVendorMirror` and `ITicketWrite`, with `EventParticipationInfo` and the participation enums, and `TicketsBackendAdminNav`, which a checkout backend section calls for its admin sidebar row so the route to Tickets' backend status page stays Tickets' own. The `TicketDashboardDtos` surface is internal.
+`ITicketDiscountCodes`, `ITicketVendorMirror`, `ITicketWrite`, `ITicketCheckoutBackend` (the port each checkout backend section implements), `ITicketCheckoutEvents` (backends report a changed checkout) and `ITicketGateLookup` (Gate's read of Humans-issued tickets), with `EventParticipationInfo` and the participation enums, and `TicketsBackendAdminNav`, which a checkout backend section calls for its admin sidebar row so the route to Tickets' backend status page stays Tickets' own. The `TicketDashboardDtos` surface is internal.
 Tickets ships both a `.Contracts` leaf *and* a `Contracts/` folder: the
 leaf carries what cross-section consumers need, the folder carries public surface that is ASP.NET plumbing
 (`TicketStubViewComponent`) or the vendor port. The split is a judgement about what cross-section consumers should
 have to see, **not** a compiler constraint: every leaf referencing `Humans.Base` resolves `Microsoft.AspNetCore.App` transitively. All section services route every database
-read/write through `ITicketRepository` / `ITicketTransferRepository` / `IEventParticipationRepository`; no service imports `Microsoft.EntityFrameworkCore` or references `TicketsDbContext`.
+read/write through `ITicketRepository` / `ITicketTransferRepository` / `IEventParticipationRepository` / `ITicketCheckoutRepository`; no service imports `Microsoft.EntityFrameworkCore` or references `TicketsDbContext`.
 
 Issued-ticket sync never invents a valid attendee status when the vendor omits it: the complete read fails before attendee writes.
 
