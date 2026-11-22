@@ -636,6 +636,7 @@ Email Problems remediation buttons use the shared `data-confirm` handler: each c
 
 - Member communication-preference saves reject redirects. An expired or revoked session rolls back the changed checkbox and shows the existing failure feedback instead of confirming a save.
 
+- People search removes decomposed accents before lowercasing, so composed and decomposed spellings such as `İstanbul`, `İstanbul` and `istanbul` match equally, including exact-name collision counts.
 - People search evaluates all eligible cached candidates before its safety cap, selecting by relevance score with a stable user-ID tie-breaker. Callers retain display ordering; field flags, visibility filters and GUID merge resolution retain their existing rules.
 - Exact verified-email profile lookup returns the resolved survivor's id and uses it for visible contact details, matching lookup by id. Its single-owner and searchable-account guards remain in force.
 - People-search bio and contribution-interest excerpts preserve complete Unicode characters at both context boundaries. Built-in match labels (including exact user-id matches and contact-field types) use the caller’s current UI culture in all supported languages; authored custom contact labels remain verbatim. Labels are composed per search, so switching UI culture does not reuse labels from an earlier query.
