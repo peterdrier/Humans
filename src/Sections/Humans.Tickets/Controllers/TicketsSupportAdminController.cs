@@ -51,7 +51,8 @@ internal sealed class TicketsSupportAdminController(
         if (salesEvent is null)
             return NotFound();
         var rows = TicketSupportReports.RefundList(
-            await checkout.GetOrdersForSalesEventAsync(id, ct), await checkout.GetRefundsForSalesEventAsync(id, ct), state);
+            await checkout.GetOrdersForSalesEventAsync(id, ct), await checkout.GetRefundsForSalesEventAsync(id, ct), state)
+            .OrderByDescending(row => row.Refund.CreatedAt).ToList();
         return View("~/Views/Tickets/Admin/Sales/Refunds.cshtml",
             new RefundsViewModel(id, await EventNameAsync(salesEvent, ct), state, rows));
     }
@@ -64,7 +65,9 @@ internal sealed class TicketsSupportAdminController(
             return NotFound();
         var tickets = await checkout.GetTicketsForSalesEventAsync(id, ct);
         var rows = TicketSupportReports.ResaleQueue(
-            await checkout.GetOffersForSalesEventAsync(id, ct), tickets, await checkout.GetRefundsForSalesEventAsync(id, ct));
+            await checkout.GetOffersForSalesEventAsync(id, ct), tickets, await checkout.GetRefundsForSalesEventAsync(id, ct))
+            .OrderBy(row => row.Position is null).ThenBy(row => row.Position)
+            .ThenByDescending(row => row.Offer.SoldAt ?? row.Offer.WithdrawnAt ?? row.Offer.OfferedAt).ToList();
         var reservedBy = (await checkout.GetOrdersForSalesEventAsync(id, ct)).ToDictionary(o => o.Id);
         return View("~/Views/Tickets/Admin/Sales/Resale.cshtml", new ResaleViewModel(
             id, await EventNameAsync(salesEvent, ct), salesEvent, rows, reservedBy, clock.GetCurrentInstant()));
@@ -172,6 +175,13 @@ internal sealed class TicketsSupportAdminController(
             await checkout.GetRefundsForSalesEventAsync(id, ct),
             await checkout.GetOffersForSalesEventAsync(id, ct),
             evt?.TimeZone ?? DateTimeZone.Utc);
+        report = report with
+        {
+            ByPrice = report.ByPrice.OrderByDescending(row => row.Count).ThenBy(row => row.Label, StringComparer.Ordinal).ToList(),
+            DonationsByPurpose = report.DonationsByPurpose.OrderBy(row => row.Purpose, StringComparer.Ordinal).ToList(),
+            RefundsByState = report.RefundsByState.OrderBy(row => row.State).ToList(),
+            ResaleByState = report.ResaleByState.OrderBy(row => row.State).ToList(),
+        };
         return View("~/Views/Tickets/Admin/Sales/Report.cshtml",
             new ReportViewModel(id, evt?.EventName ?? salesEvent.EventSettingsId.ToString(), salesEvent.Capacity, report));
     }

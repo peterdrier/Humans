@@ -35,6 +35,10 @@ Configured ticket rules must be available before checkout. Successful GitHub rea
 a failed refresh replaces the cached rules with an unavailable result for one minute. Buy pages and checkout
 report `Tickets_Buy_TermsUnavailable` rather than accepting an older rules version.
 
+Support-page ordering belongs to `TicketsSupportAdminController`: newest refunds first, waiting resale offers by queue
+position followed by newest closed offers, and report tables by count/label, purpose or state. The report calculator
+retains queue-position calculation and paid-day chronology for running totals.
+
 ## Concepts
 
 - **Ticket Orders** and **Ticket Attendees** are records synced from an external ticket vendor (Ticket Tailor in production, an in-process stub in dev). They are not manually created in the system.
