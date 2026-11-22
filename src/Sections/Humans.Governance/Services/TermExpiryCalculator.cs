@@ -12,7 +12,7 @@ internal static class TermExpiryCalculator
     internal static (LocalDate? ExpiresAt, bool ExpiresSoon, bool Expired, bool HasPendingApplication) ComputeTermState(
         IReadOnlyList<UserApplicationSnapshot> applications, MembershipTier currentTier, LocalDate today)
     {
-        var hasPendingApplication = applications.MaxBy(a => a.SubmittedAt)?.Status == ApplicationStatus.Submitted;
+        var hasPendingApplication = applications.Any(a => a.Status == ApplicationStatus.Submitted);
         var latestApprovedApp = applications
             .Where(a => a.Status == ApplicationStatus.Approved
                 && a.MembershipTier == currentTier
