@@ -181,8 +181,8 @@ public sealed record CampSeasonMemberInfo(
     Instant? ConfirmedAt,
     bool HasEarlyEntry)
 {
-    /// <summary>Ordered by role sort order.</summary>
-    public IReadOnlyList<string> Roles { get; init; } = [];
+    /// <summary>Active role names and priorities; callers choose display order.</summary>
+    public IReadOnlyList<(string Name, int SortOrder)> Roles { get; init; } = [];
 }
 
 /// <summary>
@@ -191,7 +191,7 @@ public sealed record CampSeasonMemberInfo(
 /// </summary>
 public sealed record CampUserInfo(
     CampSeasonInfo? Season,
-    IReadOnlyList<string> Roles)
+    IReadOnlyList<(string Name, int SortOrder)> Roles)
 {
     public static readonly CampUserInfo None = new(null, []);
 

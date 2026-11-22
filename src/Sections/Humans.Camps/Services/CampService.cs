@@ -816,11 +816,11 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
     /// </summary>
     internal sealed record CampRoleProjection(
         IReadOnlyDictionary<(Guid CampSeasonId, CampSpecialRole Role), IReadOnlyList<Guid>> SpecialRoleUserIds,
-        IReadOnlyDictionary<Guid, IReadOnlyList<string>> MemberRoleNames)
+        IReadOnlyDictionary<Guid, IReadOnlyList<(string Name, int SortOrder)>> MemberRoles)
     {
         public static readonly CampRoleProjection Empty = new(
             new Dictionary<(Guid, CampSpecialRole), IReadOnlyList<Guid>>(),
-            new Dictionary<Guid, IReadOnlyList<string>>());
+            new Dictionary<Guid, IReadOnlyList<(string Name, int SortOrder)>>());
     }
 
     internal async Task<CampRoleProjection> GetRoleProjectionForYearsAsync(
@@ -840,17 +840,15 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
                     .Distinct()
                     .ToList());
 
-        var memberRoleNames = assignments
+        var memberRoles = assignments
             .GroupBy(a => a.CampMemberId)
             .ToDictionary(
                 group => group.Key,
-                group => (IReadOnlyList<string>)group
-                    .OrderBy(a => a.Definition.SortOrder)
-                    .ThenBy(a => a.Definition.Name, StringComparer.OrdinalIgnoreCase)
-                    .Select(a => a.Definition.Name)
+                group => (IReadOnlyList<(string Name, int SortOrder)>)group
+                    .Select(a => (a.Definition.Name, a.Definition.SortOrder))
                     .ToList());
 
-        return new CampRoleProjection(specialRoleUserIds, memberRoleNames);
+        return new CampRoleProjection(specialRoleUserIds, memberRoles);
     }
 
     internal static CampInfo CreateCampInfo(
@@ -928,8 +926,8 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
                     m.ConfirmedAt,
                     m.HasEarlyEntry)
                 {
-                    Roles = roles?.MemberRoleNames.TryGetValue(m.Id, out var names) == true
-                        ? names
+                    Roles = roles?.MemberRoles.TryGetValue(m.Id, out var memberRoles) == true
+                        ? memberRoles
                         : []
                 })
                 .ToList(),

@@ -3272,7 +3272,7 @@ public sealed class CampServiceTests : CampsTestHarness
         info.Season.Should().NotBeNull();
         info.Season!.CampId.Should().Be(camp.Id);
         info.Season.Year.Should().Be(2026);
-        info.Roles.Should().ContainSingle().Which.Should().Be(regularDef.Name);
+        info.Roles.Should().ContainSingle().Which.Should().Be((regularDef.Name, regularDef.SortOrder));
     }
 
     [HumansFact]
@@ -3297,7 +3297,7 @@ public sealed class CampServiceTests : CampsTestHarness
 
         info.Season.Should().NotBeNull();
         info.Season!.Year.Should().Be(2026);
-        info.Roles.Should().Equal("Camp Lead", "Greeter");
+        info.Roles.Should().Equal(("Camp Lead", 0), ("Greeter", 1));
     }
 
     [HumansFact]
@@ -3461,7 +3461,7 @@ public sealed class CampServiceTests : CampsTestHarness
                 new CampSeasonMemberInfo(
                     Guid.NewGuid(), userId, status, requestedAt, requestedAt, HasEarlyEntry: false)
                 {
-                    Roles = roles
+                    Roles = roles.Select((name, index) => (name, index)).ToList()
                 }
             ]
         };
