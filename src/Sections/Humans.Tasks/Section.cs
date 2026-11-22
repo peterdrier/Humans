@@ -1,19 +1,21 @@
 using Humans.AuditLog.Contracts;
 using Humans.Base.Constants;
+using Humans.Base.Demo;
 using Humans.Base.Hosting;
 using Humans.Base.Interfaces;
+using Humans.Base.Models.Tables;
 using Humans.Gdpr.Contracts;
 using Humans.Permissions.Contracts;
 using Humans.Tasks.Contracts;
 using Humans.Tasks.Data;
+using Humans.Tasks.Domain;
 using Humans.Tasks.Services;
+using Humans.Tasks.Services.Demo;
 using Humans.Teams.Contracts;
 using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-
-[assembly: Humans.Base.Demo.NoDemoStory("No demo story written yet.")]
 
 namespace Humans.Tasks;
 
@@ -44,10 +46,21 @@ public sealed class Section : ISection, ISectionRoles, ISectionNav, ISectionAdmi
 
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
+        EnumBadgeMap.Register(new Dictionary<Enum, string>
+        {
+            [TaskItemStatus.Todo] = "bg-light text-dark",
+            [TaskItemStatus.InProgress] = "bg-info",
+            [TaskItemStatus.Blocked] = "bg-warning text-dark",
+            [TaskItemStatus.Done] = "bg-success",
+            [TaskItemStatus.Cancelled] = "bg-secondary",
+        });
+
         services.AddSingleton<IAuditActionContributor, TasksAuditActions>();
         services.AddSectionDbContext<TasksDbContext>(sentinelTable: "task_items");
 
         services.AddSingleton<ITaskRepository, TaskRepository>();   // IDbContextFactory => Singleton-safe
+
+        services.AddDemoStory<TasksDemoStory>(configuration);
 
         services.AddScoped<TaskService>();
         services.AddScoped<ITaskService>(sp => sp.GetRequiredService<TaskService>());

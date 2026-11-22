@@ -30,6 +30,7 @@
   src/Sections/Humans.Rideshare/Services/**
   src/Sections/Humans.Workgroups/Services/**
   src/Sections/Humans.Roles/Services/**
+  src/Sections/Humans.Tasks/Services/**
   src/Sections/Humans.Preapprovals/Services/PreapprovalService.Gdpr.cs
   src/Sections/Humans.Grants/Services/GrantService.Gdpr.cs
   src/Sections/Humans.Calendar/Services/CalendarFeedTokenService.cs
@@ -222,6 +223,7 @@ archived account and the survivor.
 | `CalendarFeedToken` | `CalendarFeedTokenService` | `{ HasFeed }` — whether the human has ever minted a personal iCal feed. The token itself is never exported: it is a live credential and an export file gets forwarded; the human reads their URL off `/Calendar`, the one place it is shown. Erased in full: the row is deleted. |
 | `WorkgroupMeetings` | `CachingWorkgroupService` | Array of `{ Workgroup, Title, StartUtc, EndUtc, Location, IsPublic, Minutes, CreatedAt }`. Retained, creator attribution dropped. |
 | `Roles` | `CachingRoleService` | Array of `{ Owner, Role, AssignedAt }`: the roles the human holds, with owner names. Erased in full: they are unassigned everywhere. |
+| `Tasks` | `TaskService` | Array of `{ Task, State ("Requested"/"Confirmed"), Since }`: the tasks the human is on or has asked to join. Erased in full: places and requests are removed; task text is not tied to a person and stays. |
 | `WorkgroupDocuments` | `CachingWorkgroupService` | Array of `{ Workgroup, Title, Kind, Status, Authored, Edited, DispositionRecorded, CreatedAt, UpdatedAt }` — the three booleans say which attribution this row carries for this person. Retained, attributions dropped. |
 | `WorkgroupComments` | `CachingWorkgroupService` | Array of `{ Workgroup, Document, Category, Body, Authored, Responded, HiddenByThisPerson, Disposition, Response, Hidden, HiddenReason, CreatedAt }`. Retained, author attribution dropped: the record of what was heard and decided against. |
 | `AssemblyVotes` | `AssemblyVoteService` | Array of `{ Vote, Status, ClosesAt, Entitlement ("Official"/"Indicative"), Tier, IsBoardMember, Ballot: { Choice, Ranking[], Revision, CastAt, UpdatedAt, History: [{ Revision, Choice, Ranking[], RecordedAt }] }? }` — every assembly vote the human was on the roster for, with their current ballot and each revision of it; `Ballot` is null when they did not vote. Retained after erasure, unlinked: the vote is the association's record of a decision. |
