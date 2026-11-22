@@ -623,7 +623,7 @@ internal sealed partial class LegalDocumentSyncService(
                     v.ChangesSummary,
                     v.RequiresReConsent,
                     v.Content.Count,
-                    v.Content.Keys.Order(StringComparer.Ordinal).ToList()))
+                    v.Content.Keys.ToList()))
                 .ToList());
     }
 

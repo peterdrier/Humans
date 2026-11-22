@@ -189,7 +189,7 @@ Document archival uses the shared `data-confirm` handler: each click prompts onc
 - `ConsentService.GetRequiredConsentRowsForUserAsync` owns required-document row shaping; the cache delegates to it. It selects each document's latest effective version, omits future-only documents, and returns unsigned rows first, then ordinal title order.
 
 - The admin GitHub-folder preview renders pasted URL parts as text. It preserves the full URL until the server validates the configured repository and branch and normalizes the folder path.
-- The admin legal-document controller orders the document list by team name, then document name, using ordinal comparison. The service returns document data without display ordering.
+- The admin legal-document controller orders the document list by team name, then document name, using ordinal comparison. The version editor orders language badges ordinally. The service returns document and version-language data without display ordering.
 
 - Legal-document create, edit, archive, manual sync and version-summary actions resolve their actor through Users before mutation. Merged sessions use the surviving account for audit attribution; missing accounts receive Unauthorized. Account lookup uses request cancellation, while document writes and sync retain their non-cancellable mutation boundary.
 
