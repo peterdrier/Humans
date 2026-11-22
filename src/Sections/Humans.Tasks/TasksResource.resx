@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" msdata:Ordinal="0" />
+              <xsd:attribute name="type" type="xsd:string" />
+              <xsd:attribute name="mimetype" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>1.3</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <data name="Tasks_Permission_Manage_Title" xml:space="preserve"><value>Manage tasks</value></data>
+  <data name="Tasks_Permission_Manage_Blurb" xml:space="preserve"><value>Create, edit, assign, hide, cancel and delete the team's tasks, and set what they wait on.</value></data>
+  <data name="Tasks_Refusal_NoTask" xml:space="preserve"><value>That task no longer exists.</value></data>
+  <data name="Tasks_Refusal_NoTeam" xml:space="preserve"><value>Pick an active team that is not a system team.</value></data>
+  <data name="Tasks_Refusal_NoTitle" xml:space="preserve"><value>Give the task a title.</value></data>
+  <data name="Tasks_Refusal_TitleTooLong" xml:space="preserve"><value>The title is too long (200 characters at most).</value></data>
+  <data name="Tasks_Refusal_DescriptionTooLong" xml:space="preserve"><value>The description is too long (4000 characters at most).</value></data>
+  <data name="Tasks_Refusal_NoSlots" xml:space="preserve"><value>A task needs at least one slot.</value></data>
+  <data name="Tasks_Refusal_NoEvent" xml:space="preserve"><value>That event cannot be used.</value></data>
+  <data name="Tasks_Refusal_EventNeededForRelative" xml:space="preserve"><value>A date relative to the event needs an event.</value></data>
+  <data name="Tasks_Refusal_DueBeforeStart" xml:space="preserve"><value>The due date is before the start date.</value></data>
+  <data name="Tasks_Refusal_NoteNeeded" xml:space="preserve"><value>Say what is holding the task up.</value></data>
+  <data name="Tasks_Refusal_NoteTooLong" xml:space="preserve"><value>The note is too long (500 characters at most).</value></data>
+  <data name="Tasks_Refusal_ReasonTooLong" xml:space="preserve"><value>The reason is too long (200 characters at most).</value></data>
+  <data name="Tasks_Refusal_AlreadyOn" xml:space="preserve"><value>That person is already on this task.</value></data>
+  <data name="Tasks_Refusal_NotOn" xml:space="preserve"><value>That person is not on this task.</value></data>
+  <data name="Tasks_Refusal_DependsOnSelf" xml:space="preserve"><value>A task cannot wait on itself.</value></data>
+  <data name="Tasks_Refusal_DependencyExists" xml:space="preserve"><value>This task already waits on that one.</value></data>
+  <data name="Tasks_Refusal_DependencyCycle" xml:space="preserve"><value>That would make a circle of tasks waiting on each other.</value></data>
+  <data name="Tasks_Refusal_NoDependency" xml:space="preserve"><value>This task does not wait on that one.</value></data>
+</root>

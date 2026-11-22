@@ -1504,4 +1504,5 @@
   <data name="Todo_Medical_Title" xml:space="preserve"><value>Hi ha alguna cosa de la teva salut que els coordinadors hagin de saber?</value></data>
   <data name="Todo_Medical_Pending" xml:space="preserve"><value>Opcional. Només ho veieu tu i els No-Info Admins.</value></data>
   <data name="Nav_Roles" xml:space="preserve"><value>Rols</value></data>
+  <data name="Nav_Tasks" xml:space="preserve"><value>Tasques</value></data>
 </root>
