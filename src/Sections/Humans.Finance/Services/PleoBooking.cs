@@ -710,7 +710,10 @@ internal sealed partial class PleoBooking(
     private async Task<string?> CorrectAsync(
         PleoLedgerView view, int? limit, Guid? actor, List<PleoBookingLine> lines, Action<int?> progress)
     {
-        var batch = view.Changes.Where(c => c.Corrections.Count > 0).Take(limit ?? int.MaxValue).ToList();
+        var batch = view.Changes.Where(c => c.Corrections.Count > 0)
+            // arch:db-sort-ok oldest-settled correction batch selector
+            .OrderBy(c => c.Entry!.SettledAt).ThenBy(c => c.PleoId, StringComparer.Ordinal)
+            .Take(limit ?? int.MaxValue).ToList();
         progress(batch.Count);
         var today = OrgDate(clock.GetCurrentInstant(), OrgZone);
         foreach (var change in batch)

@@ -326,6 +326,26 @@ public class PleoBookingTests
         await _write.ReceivedWithAnyArgs(1).UploadPurchaseAttachmentAsync(default!, default!, default);
     }
 
+    [HumansTheory]
+    [InlineData(1)]
+    [InlineData(null)]
+    public async Task Corrections_SelectOldestSettledEntriesBeforeApplyingTheLimit(int? limit)
+    {
+        GivenPurchase("a-new", 20m);
+        GivenPurchase("z-old", 20m);
+        GivenPurchase("b-old", 20m);
+        _expenseLines.Add(Line(10, 1, 20m, 0m, "Purchase Pleo-a-new", Food));
+        _expenseLines.Add(Line(11, 1, 20m, 0m, "Purchase Pleo-z-old", Food));
+        _expenseLines.Add(Line(12, 1, 20m, 0m, "Purchase Pleo-b-old", Food));
+        GivenEntries(Entry("a-new", -25m, day: 20), Entry("z-old", -25m, day: 2), Entry("b-old", -25m, day: 2));
+
+        var run = await Booking().RunAsync(PleoRunKind.Corrections, limit, null, CancellationToken.None);
+
+        var expected = new[] { "b-old", "z-old", "a-new" }.Take(limit ?? int.MaxValue);
+        run.Lines.Select(l => l.PleoId).Should().Equal(expected);
+        run.Lines.Should().OnlyContain(l => l.Outcome == PleoBookingOutcome.Posted);
+    }
+
     [HumansFact]
     public async Task Corrections_RecategorisedAndRepricedEachPostOne_AndNoneOncePosted()
     {
