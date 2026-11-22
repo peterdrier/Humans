@@ -73,11 +73,11 @@ public class GuideContentServiceTests
     [Xunit.InlineData(GuideRefreshFailure.Timeout)]
     [Xunit.InlineData(GuideRefreshFailure.Cancelled)]
     [Xunit.InlineData(GuideRefreshFailure.Unexpected)]
-    public async Task Refresh_classifies_failures_and_evicts_the_unavailable_page(GuideRefreshFailure kind)
+    public async Task Refresh_classifies_failures_while_preserving_the_cached_page(GuideRefreshFailure kind)
     {
         var source = new FakeSource { MarkdownFor = _ => "# Original" };
         var logger = new Humans.Testing.CapturingLogger<GuideContentService>();
-        var service = CreateService(source, new StubRenderer(), out var cache, logger);
+        var service = CreateService(source, new StubRenderer(), out _, logger);
         await service.RefreshAllAsync(Xunit.TestContext.Current.CancellationToken);
         logger.Entries.Clear();
         Exception failure = kind switch
@@ -92,8 +92,8 @@ public class GuideContentServiceTests
         source.FailFor = stem => string.Equals(stem, "Profiles", StringComparison.Ordinal) ? failure : null;
 
         (await service.RefreshAllAsync(Xunit.TestContext.Current.CancellationToken)).Should().Equal("Profiles");
-        cache.Get<GuideDocument>("guide:Profiles").Should().BeNull();
-        cache.Get<GuideDocument>("guide:Teams").Should().NotBeNull();
+        (await service.GetPageAsync("Profiles", GuideRoleContext.Anonymous, Xunit.TestContext.Current.CancellationToken))
+            .Should().Contain("Original");
 
         var entry = logger.Entries.Should().ContainSingle(entry =>
             entry.Message.Contains("guide file Profiles", StringComparison.Ordinal)).Subject;
@@ -125,29 +125,6 @@ public class GuideContentServiceTests
         thrown.Which.CancellationToken.Should().Be(cancelled.Token);
         source.Calls.Should().Be(callsBefore + 1);
         cache.Get<GuideDocument>("guide:Profiles").Should().BeSameAs(cachedBefore);
-    }
-
-    [HumansFact]
-    public async Task RefreshAllAsync_CancelledBeforePublication_PreservesSuccessfulAndFailedCachedPages()
-    {
-        var source = new FakeSource();
-        var service = CreateService(source, out var cache);
-        await service.RefreshAllAsync(Xunit.TestContext.Current.CancellationToken);
-        var original = GuideFiles.All.ToDictionary(stem => stem, stem => cache.Get<GuideDocument>("guide:" + stem), StringComparer.Ordinal);
-        source.MarkdownFor = _ => "# New content";
-        using var cancelled = new CancellationTokenSource();
-        source.FailFor = stem =>
-        {
-            if (string.Equals(stem, GuideFiles.All.Last(), StringComparison.Ordinal))
-                cancelled.Cancel();
-            return string.Equals(stem, "Profiles", StringComparison.Ordinal) ? new IOException("unavailable") : null;
-        };
-
-        var refresh = () => service.RefreshAllAsync(cancelled.Token);
-
-        await refresh.Should().ThrowAsync<OperationCanceledException>();
-        foreach (var (stem, document) in original)
-            cache.Get<GuideDocument>("guide:" + stem).Should().BeSameAs(document);
     }
 
     [HumansFact]
@@ -247,27 +224,30 @@ public class GuideContentServiceTests
     }
 
     [HumansFact]
-    public async Task GetPageAsync_FailedRefresh_StopsServingOldContentAndRecoversOnSuccessfulRead()
+    public async Task GetPageAsync_WarmCacheThenSourceFails_ServesStale()
     {
         var source = new FakeSource();
         var service = CreateService(source, out _);
         await service.GetPageAsync("Profiles", GuideRoleContext.Anonymous, Xunit.TestContext.Current.CancellationToken);
 
+        // Nothing is evicted before the refetch, so the entries cached above are still present
+        // when every fetch below fails — which is what makes the refresh degrade to stale
+        // content instead of throwing.
         source.FailFor = _ => new InvalidOperationException("flaky");
         var failed = await service.RefreshAllAsync(Xunit.TestContext.Current.CancellationToken);
 
         failed.Should().BeEquivalentTo(GuideFiles.All);
-        var read = () => service.GetPageAsync("Profiles", GuideRoleContext.Anonymous, Xunit.TestContext.Current.CancellationToken);
-        await read.Should().ThrowAsync<GuideContentUnavailableException>();
+        var html = await service.GetPageAsync("Profiles", GuideRoleContext.Anonymous, Xunit.TestContext.Current.CancellationToken);
 
-        source.FailFor = _ => null;
-        source.MarkdownFor = _ => "# Recovered";
-        (await read()).Should().Be("[rendered:# Recovered]");
+        html.Should().Be("[rendered:# Profiles\n\nContent.]");
     }
 
     [HumansFact]
     public async Task GetPageAsync_RequestedStemEvictedAndItsFetchFails_ThrowsEvenThoughOtherStemsAreCached()
     {
+        // The cache is per stem, so "something is cached" is not the fallback condition — the
+        // requested stem's own copy is. PopulateAsync's hasStale flag only suppresses its own
+        // throw; the caller still finds the key missing and 503s.
         var source = new FakeSource();
         var service = CreateService(source, out var cache);
         await service.GetPageAsync("Profiles", GuideRoleContext.Anonymous, Xunit.TestContext.Current.CancellationToken);

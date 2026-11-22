@@ -13,7 +13,7 @@
 
 <!-- Stateless read section: serves markdown from docs/guide/ via a GitHub content source, segmented and cached in-memory, with role-scoped filtering per request before rendering. -->
 
-Guide refresh logs expected GitHub API/transport failures and independent timeouts at Warning without exception objects; unexpected fetch or segmentation failures log at Error with their original exception. Failed stems are evicted only after the fetch loop completes; requested cancellation leaves the cache untouched.
+Guide refresh logs expected GitHub API/transport failures and independent timeouts at Warning without exception objects; unexpected fetch or segmentation failures log at Error with their original exception. Stale-cache retention and requested-cancellation propagation are unchanged.
 
 ## Concepts
 
@@ -91,9 +91,9 @@ Unknown stems return 404 (`NotFound.cshtml`). GitHub unavailability on cold cach
 
 - First `GET /Guide/*` on cold cache → `GuideContentService` fetches and segments every stem in `GuideFiles.All`; entries populated with sliding TTL. Queued cold reads recheck their requested page after acquiring the refresh lock and reuse it when a preceding load succeeded, even if other files failed.
 - `POST /Guide/Refresh` (Admin) → re-fetches and re-segments every stem in `GuideFiles.All`; existing cache entries overwritten. The status message names every stem whose fetch failed, so a partial refresh never reads as success.
-- GitHub fetch or segmentation failure for a stem → the completed refresh evicts its cached copy and logs the failure. Readers get the existing localized 503 page until the source recovers; a cached stem is otherwise served without fetching.
+- GitHub fetch failure for a stem that is still cached → the cached copy is kept (only successful fetches overwrite) and served; warning logged. A cached stem is served without any fetch at all.
 - A render failure on the request path (Markdig, or `GuideHtmlPostprocessor`'s timeout-bounded path regex) → translated to `GuideContentUnavailableException`; controller returns the same 503 `Unavailable.cshtml`, never a raw 500. The cached segments are left in place.
-- GitHub fetch failure for the requested stem while it is *not* cached → `GuideContentUnavailableException` thrown; controller returns 503 `Unavailable.cshtml`. Other stems being cached does not rescue it.
+- GitHub fetch failure for the requested stem while it is *not* cached → `GuideContentUnavailableException` thrown; controller returns 503 `Unavailable.cshtml`. Other stems being cached does not rescue it — it only stops `PopulateAsync` throwing first.
 
 ## Cross-Section Dependencies
 

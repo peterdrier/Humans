@@ -15,8 +15,8 @@ internal interface IGuideContentService : IApplicationService
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Re-fetches every guide file, replaces successful entries and evicts failed stems. Returns the stems that failed.
-    /// Caller cancellation leaves all existing cache entries untouched.
+    /// Re-fetches every guide file and overwrites its cache entry. Nothing is evicted first: a failed fetch keeps the
+    /// cached copy, so a GitHub outage serves stale content, not an empty guide. Returns the stems that failed.
     /// </summary>
     Task<IReadOnlyList<string>> RefreshAllAsync(CancellationToken cancellationToken = default);
 }
