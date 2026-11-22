@@ -1,3 +1,4 @@
+using System.Text;
 using Humans.AuditLog.Contracts;
 using Humans.Auth.Contracts;
 using Humans.Base.Authorization;
@@ -347,7 +348,7 @@ internal sealed class RoleService(
 
         if (string.IsNullOrWhiteSpace(input.Name))
             return T("Roles_Refusal_NoName");
-        if (input.Name.Trim().Length > 100)
+        if (input.Name.Trim().EnumerateRunes().Count() > 100)
             return T("Roles_Refusal_NameTooLong");
         if (others.Any(r => string.Equals(r.Name, input.Name.Trim(), StringComparison.OrdinalIgnoreCase)))
             return T("Roles_Refusal_NameTaken");
@@ -358,6 +359,10 @@ internal sealed class RoleService(
             return T("Roles_Refusal_NameNoLetters");
         if (customSlug is { Length: 0 })
             return T("Roles_Refusal_LinkNoLetters");
+        if (customSlug is { Length: > 100 })
+            return T("Roles_Refusal_LinkTooLong");
+        if (!string.IsNullOrWhiteSpace(input.Description) && input.Description.EnumerateRunes().Count() > 2000)
+            return T("Roles_Refusal_DescriptionTooLong");
         var taken = others.SelectMany(r => new[] { r.Slug, r.CustomSlug }).OfType<string>().ToHashSet(StringComparer.Ordinal);
         if (taken.Contains(slug) || (customSlug is not null && (taken.Contains(customSlug) || string.Equals(customSlug, slug, StringComparison.Ordinal))))
             return T("Roles_Refusal_LinkTaken");
@@ -366,6 +371,8 @@ internal sealed class RoleService(
             return T("Roles_Refusal_NoSlots");
         if (input.Priorities.Count != input.SlotCount || input.Priorities.Any(p => !Enum.IsDefined(p)))
             return T("Roles_Refusal_Priorities");
+        if (string.Join(",", input.Priorities).Length > 500)
+            return T("Roles_Refusal_PrioritiesTooLong");
         if (input.EstimatedHours is < 0)
             return T("Roles_Refusal_NegativeHours");
         if (!Enum.IsDefined(input.Period))
