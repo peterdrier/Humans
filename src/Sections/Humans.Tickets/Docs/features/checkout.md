@@ -144,14 +144,16 @@ sold under is read (`EventRefOf`), beside the events the setups sell through now
 4. A TicketsAdmin refunds from the order page: only paid orders, never above the ticket lines net of earlier refunds
    (pending and manual ones count until they settle). A refund call that throws stays `Pending`, since the money may
    have gone, with no backend id; that is how reconcile knows to resend it, so an adapter must always name a refund it
-   accepted. A refund never voids a ticket; voiding is the admin's separate step.
+   accepted. A refund never voids a ticket; voiding is the admin's separate step. Refunds outside resale are kept for
+  rare cases such as a death or serious illness just before the event; there is no self-service refund request, and
+  resale is the answer for everyone else (Peter, 2026-11-22).
 
 Each order carries a short `Reference` (the first 8 hex digits of its id) shown to the buyer and the team.
 
 ## Ticket types per event
 
 What an event sells is its own configuration (A29), so another organisation sets up its scheme without code changes:
-waves, supporter totals, grant price rules (class prices, credits, wave pins, early access), and:
+waves, supporter totals (VIP buttons), grant price rules (class prices, discounts (`Credit` in the code), wave pins, early access), and:
 
 - **Child ticket types.** Any number, each a name, an age (under it on the event's first day) and a price; none means
   children are not sold. The buyer picks one per child (with one type, it is picked for them). The child's ticket and
@@ -203,9 +205,11 @@ addresses were typed. Directed resale links buy only the buyer's own ticket.
 - Resale opens by hand: the ticketing team presses Open resale on the resale queue page (`ResaleOpenedAt`, audited
   `TicketResaleOpenSet`) and can pause it again; `ResaleOnly` mode sells resale whatever the button. A buyer's ticket lines take
   the queue head before fresh stock; in `ResaleOnly` mode only queue tickets sell. A returned ticket sells only at the
-  resale price: the current public wave less the buyer's credits (the association keeps any difference). A buyer with
+  resale price: the current public wave less the buyer's discounts (the association keeps any difference). A buyer with
   a class price or a pinned wave is served from fresh stock while the event is `Open`, and pays the resale price for a
   queue ticket in `ResaleOnly` mode or through an invitation.
+- Only adult tickets can be offered. Child and companion tickets go with their adult ticket: voided and refunded with it,
+  never resold alone (Peter, 2026-11-22).
 - When the buyer's order is paid, the offer is sold, the old ticket becomes `Resold`, the old adult's children are
   voided, the buyer gets a new ticket, and the holder is told it sold (`ticket_resale_sold`).
 - **Evening refund batch** (`TicketResaleRefundJob`, daily 19:00 UTC, H11): the holder is refunded what they paid
@@ -270,7 +274,19 @@ chargebacks + refunded + in flight + still refundable; the vendor side is on the
 Every step lands in the order's append-only timeline (`ticket_checkout_order_events`) with who did it, shown on the
 admin order page beside a link to the order in the backend's own admin (`CheckoutSession.AdminUrl`).
 
-## At the gate
+## Chargebacks (team procedure, draft for Peter)
+
+Chargebacks are rare (one or two a year at 3,000 tickets), so they are handled by hand; nothing in Humans acts on the
+tickets by itself (Peter, 2026-11-22).
+
+1. Open the order from the alert and read its timeline: who paid, which tickets, whether any was admitted or resold.
+2. Contact the buyer. Most chargebacks are a misunderstanding or a stolen card.
+3. If the buyer agrees it was theirs, ask them to withdraw the dispute; nothing changes on the tickets.
+4. If the card was stolen or the buyer will not withdraw, void the order's tickets from their admin pages (void with no
+   refund) and answer the dispute in Stripe with the order's timeline as evidence.
+5. If the dispute is won after a void, an Admin restores the tickets with an override, giving the reason.
+
+
 
 Gate looks codes up through `ITicketGateLookup.FindIssuedTicketAsync` (exact code, any event; Gate keeps only the
 active event's). `Valid` scans valid; `Offered` scans valid only once sales are closed, so a ticket can never admit its holder and then sell. A ticket the gate admitted (or whose child ticket it admitted) cannot be offered, and an admitted offer is never sold (`IGateAdmissions`, Gate's read). A child or companion ticket without an account carries the adult's
@@ -299,15 +315,22 @@ and nothing goes to Consent.
   (never read since the app started, or invalid), the event is unavailable to buy (`Tickets_Buy_TermsUnavailable`).
 - The order keeps `TermsFolder` and `TermsVersion`; its `TermsAccepted` timeline entry links that exact version on GitHub.
 
-## Assumptions to confirm
-
-- Only adult tickets can be offered; children go with the adult and are refunded with it.
-
 ## Not yet
 
 - Checkout tickets in holdings, the gate list and the Scanner lookup. (Gate admits them: `ITicketGateLookup`.)
-- Voiding a ticket on a chargeback: a dispute is recorded (`DisputedMinor`) and flagged, and the team decides.
-- Payment-method-dependent prices.
+- Telling the team about a chargeback: an email to the ticketing team when one opens, with a link to the order, and a
+  daily reminder while it stays open. Today it is only recorded (`DisputedMinor`) and flagged on the order and in the
+  audit log. Tickets are never voided automatically on a chargeback (Peter, 2026-11-22); see "Chargebacks" above.
+- Fee transparency: one price for every payment method, but the buy page shows what each method costs the association
+  for this order (a range for cards, iDEAL, Klarna; rates per method in the sales setup) and asks buyers to pick the
+  cheapest that works for them, on every platform. Once Stripe reports the fee, the order page shows what it really
+  cost, with a thank-you for a cheap method (Peter, 2026-11-22).
+- Telling the holder who bought their resold ticket: only if the buyer opts in at checkout (off by default), and then by
+  burner name, never legal name (Peter, 2026-11-22).
+- Participation: a ticket issued here does not yet mark its holder Ticketed for the event year, so 2027 buyers would read
+  as not having bought on "Who Hasn't Bought", shift planning and mailing cohorts.
+- Moving a paid child ticket to another adult: refund and reissue for now; a reattach action only if a real case needs it.
+- Payment-method-dependent prices: not planned. One price for every method until the lawyer says a surcharge is allowed.
 - Check-in report: the gate's per-event check-in is not built and Gate has no read Tickets may call.
 - Moving a ticket to another person moves its order line, so the order is no longer the previous holder's and erasing them
   never asks the backend to erase its copy of that order (pretix, Hi.Events; Box Office keeps none).
