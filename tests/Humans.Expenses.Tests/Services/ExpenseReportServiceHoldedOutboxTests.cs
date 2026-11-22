@@ -1,3 +1,5 @@
+using Humans.Base.Authorization;
+using Humans.Permissions.Contracts;
 using Xunit;
 using AwesomeAssertions;
 using Humans.Expenses.Contracts;
@@ -102,7 +104,7 @@ public class ExpenseReportServiceHoldedOutboxTests
             .Returns(new HoldedContactMirror(Instant.FromUtc(2026, 1, 1, 0, 0), [new HoldedContactDto { Id = "holded-contact-1", SupplierAccountNum = 40000050 }]));
 
         _sut = new ExpenseReportService(_repo, _fileStorage, _budgetService, _userService, _auditLog, Substitute.For<IAuditViewerService>(), _holdedService, _finance, Substitute.For<IFinanceWrite>(), Substitute.For<Humans.Preapprovals.Contracts.IPreapprovalService>(), Substitute.For<Humans.Preapprovals.Contracts.IPreapprovalWrite>(), _clock, Substitute.For<ILogger<ExpenseReportService>>(), Options.Create(new TravelReimbursementConfig()));
-        _review = new ExpenseReviewService(_repo, _sut, _budgetService, Substitute.For<ITeamService>(), _userService, Substitute.For<IEmailService>(), TestExpensesEmails.Create(), _auditLog, Substitute.For<Humans.Preapprovals.Contracts.IPreapprovalService>(), Substitute.For<Humans.Preapprovals.Contracts.IPreapprovalWrite>(), _clock, NullLogger<ExpenseReviewService>.Instance);
+        _review = new ExpenseReviewService(_repo, _sut, _budgetService, Substitute.For<IPermissionService>(), _userService, Substitute.For<IEmailService>(), TestExpensesEmails.Create(), _auditLog, Substitute.For<Humans.Preapprovals.Contracts.IPreapprovalService>(), Substitute.For<Humans.Preapprovals.Contracts.IPreapprovalWrite>(), _clock, NullLogger<ExpenseReviewService>.Instance);
         _backgroundProcessor = new ExpenseReportBackgroundProcessor(
             _repo, _fileStorage, _userService, _holdedService, _holdedWrite, _finance, _financeWrite, _auditLog, _clock,
             NullLogger<ExpenseReportBackgroundProcessor>.Instance);
