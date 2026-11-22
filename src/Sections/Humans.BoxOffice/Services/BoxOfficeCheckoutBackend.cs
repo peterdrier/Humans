@@ -11,9 +11,9 @@ namespace Humans.BoxOffice.Services;
 internal sealed class BoxOfficeSettings
 {
     /// <summary>
-    /// STRIPE_BOXOFFICE_KEY: a restricted key with Checkout Sessions write, PaymentIntents, Charges, Disputes,
-    /// Balance transactions and Payouts read, and Refunds write. Refunds are the one money-out call, capped by Tickets at what the
-    /// order's tickets cost and by this adapter at what the charge still holds.
+    /// STRIPE_BOXOFFICE_KEY, a restricted key (its scopes are listed in <see cref="BoxOfficeCheckoutBackend.Setup"/>).
+    /// Refunds are the one money-out call, capped by Tickets at what the order's tickets cost and by this adapter at what
+    /// the charge still holds.
     /// </summary>
     public string SecretKey { get; set; } = string.Empty;
 
@@ -147,9 +147,7 @@ internal sealed class BoxOfficeCheckoutBackend(
             _ => CheckoutState.Pending,
         };
 
-        Instant? paidAt = charge is { Paid: true }
-            ? Instant.FromDateTimeUtc(DateTime.SpecifyKind(charge.Created, DateTimeKind.Utc))
-            : null;
+        Instant? paidAt = charge is { Paid: true } ? InstantOf(charge.Created) : null;
         // charge.amount_refunded counts a refund from the moment it is created, pending included, and a failed one
         // drops back out: read the refunds themselves so only money that went back counts.
         var refunds = session.PaymentIntentId is { } paymentIntentId && (everyRefund || charge is { AmountRefunded: > 0 })
@@ -189,7 +187,7 @@ internal sealed class BoxOfficeCheckoutBackend(
                 orders.Add(new BackendOrderSummary(
                     session.Id,
                     Guid.TryParse(session.Metadata?.GetValueOrDefault(OrderMetadataKey), out var orderId) ? orderId : null,
-                    Instant.FromDateTimeUtc(DateTime.SpecifyKind(session.Created, DateTimeKind.Utc)),
+                    InstantOf(session.Created),
                     status.State,
                     session.AmountTotal ?? 0,
                     int.TryParse(session.Metadata?.GetValueOrDefault(TicketCountMetadataKey), NumberStyles.None,

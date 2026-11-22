@@ -1,8 +1,14 @@
+using System.Globalization;
 using System.Net;
+using System.Security.Cryptography;
+using System.Text;
 using AwesomeAssertions;
+using Humans.BoxOffice.Controllers;
 using Humans.BoxOffice.Services;
 using Humans.Testing;
 using Humans.Tickets.Contracts;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NodaTime;
@@ -19,9 +25,27 @@ public sealed class BoxOfficeCheckoutBackendTests
     private readonly IHttpClient _http = Substitute.For<IHttpClient>();
     private readonly List<StripeRequest> _requests = [];
 
-    private BoxOfficeCheckoutBackend Backend() =>
-        new(Options.Create(new BoxOfficeSettings { SecretKey = "sk_test_boxoffice" }), new FakeClock(Now),
-            NullLogger<BoxOfficeCheckoutBackend>.Instance, _http);
+    private const string WebhookSecret = "whsec_test_boxoffice";
+
+    private BoxOfficeCheckoutBackend Backend(string webhookSecret = "") =>
+        new(Options.Create(new BoxOfficeSettings { SecretKey = "sk_test_boxoffice", WebhookSecret = webhookSecret }),
+            new FakeClock(Now), NullLogger<BoxOfficeCheckoutBackend>.Instance, _http);
+
+    private static CheckoutRequest Order(Instant expiresAt, params CheckoutLine[] lines) => new(
+        Guid.NewGuid(), Guid.NewGuid(), null, "Ana García", "ana@example.com", "EUR", "es-ES", lines, expiresAt,
+        new Uri("https://humans.example/Tickets/Buy/Order/x"));
+
+    /// <summary>A real <c>Stripe-Signature</c> header, so the parse runs Stripe.NET's own verification.</summary>
+    private static string Sign(string payload)
+    {
+        var ts = DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString(CultureInfo.InvariantCulture);
+        using var hmac = new HMACSHA256(Encoding.UTF8.GetBytes(WebhookSecret));
+        var hash = hmac.ComputeHash(Encoding.UTF8.GetBytes($"{ts}.{payload}"));
+        return $"t={ts},v1={Convert.ToHexString(hash).ToLowerInvariant()}";
+    }
+
+    private static string Event(string type, string dataObject) =>
+        $$$"""{"id":"evt_1","object":"event","type":"{{{type}}}","data":{"object":{{{dataObject}}}}}""";
 
     private void Respond(params string[] bodies)
     {
@@ -342,5 +366,168 @@ public sealed class BoxOfficeCheckoutBackendTests
             ("po_1", 24350L, "paid", (long?)24350, 3), ("po_2", 1000L, "pending", (long?)null, 0),
             ("po_3", 700L, "paid", (long?)null, 0));
         _requests.Should().HaveCount(5).And.OnlyContain(r => r.Method == HttpMethod.Get);
+    }
+
+    [HumansFact]
+    public async Task Checkout_refuses_a_negative_line_or_a_non_positive_total_before_calling_Stripe()
+    {
+        var negative = () => Backend().CreateCheckoutAsync(Order(Now + Duration.FromHours(1),
+            new CheckoutLine(CheckoutLineKind.Ticket, "T", 500, 0m, "A"),
+            new CheckoutLine(CheckoutLineKind.Donation, "D", -100, 0m, null)), TestContext.Current.CancellationToken);
+        var nothing = () => Backend().CreateCheckoutAsync(Order(Now + Duration.FromHours(1),
+            new CheckoutLine(CheckoutLineKind.Ticket, "T", 0, 0m, "A")), TestContext.Current.CancellationToken);
+
+        await negative.Should().ThrowAsync<TicketCheckoutException>();
+        await nothing.Should().ThrowAsync<TicketCheckoutException>();
+        _requests.Should().BeEmpty();
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(5, 31)]
+    [Xunit.InlineData(72 * 60, 23 * 60)]
+    public async Task Checkout_leaves_free_lines_out_and_keeps_the_session_inside_Stripes_lifetime(int askedMinutes, int sentMinutes)
+    {
+        Respond(Session("open", "unpaid"));
+
+        await Backend().CreateCheckoutAsync(Order(Now + Duration.FromMinutes(askedMinutes),
+            new CheckoutLine(CheckoutLineKind.Ticket, "Companion", 0, 0m, "Bo"),
+            new CheckoutLine(CheckoutLineKind.Ticket, "Ticket", 22500, 0.10m, "Ana García")), TestContext.Current.CancellationToken);
+
+        var body = Uri.UnescapeDataString(await _requests.Single().Content!.ReadAsStringAsync(TestContext.Current.CancellationToken));
+        body.Should().Contain($"expires_at={(Now + Duration.FromMinutes(sentMinutes)).ToUnixTimeSeconds()}")
+            .And.Contain("line_items[0][price_data][unit_amount]=22500")
+            .And.NotContain("line_items[1]")
+            .And.Contain("metadata[humans_ticket_count]=2");
+    }
+
+    [HumansFact]
+    public async Task A_failed_refund_Humans_did_not_make_does_not_flag_the_order()
+    {
+        Respond(Session("complete", "paid", PaidCharge), RefundList(Refund("re_1", "failed", 2000)));
+
+        var status = await Backend().GetStatusAsync("cs_test_1", TestContext.Current.CancellationToken);
+
+        status.RefundFailed.Should().BeFalse();
+        status.RefundedMinor.Should().Be(0);
+    }
+
+    [HumansFact]
+    public async Task Refund_of_a_checkout_with_no_settled_payment_fails_without_a_refund_call()
+    {
+        Respond(Session("complete", "unpaid", PaidCharge.Replace("\"paid\":true", "\"paid\":false", StringComparison.Ordinal)));
+
+        var result = await Backend().RefundAsync(
+            new RefundRequest(Guid.NewGuid(), "cs_test_1", 1000, "returned"), TestContext.Current.CancellationToken);
+
+        result.State.Should().Be(RefundState.Failed);
+        _requests.Should().ContainSingle().Which.Method.Should().Be(HttpMethod.Get);
+    }
+
+    [HumansFact]
+    public async Task Refund_Stripe_declines_answers_failed_with_Stripes_reason()
+    {
+        using var headers = new HttpResponseMessage();
+        _http.MakeRequestAsync(Arg.Any<StripeRequest>(), Arg.Any<CancellationToken>()).Returns(
+            new StripeResponse(HttpStatusCode.OK, headers.Headers, Session("complete", "paid", PaidCharge)),
+            new StripeResponse(HttpStatusCode.OK, headers.Headers, RefundList()),
+            new StripeResponse(HttpStatusCode.BadRequest, headers.Headers,
+                """{"error":{"type":"invalid_request_error","message":"Charge ch_1 has been disputed."}}"""));
+
+        var result = await Backend().RefundAsync(
+            new RefundRequest(Guid.NewGuid(), "cs_test_1", 1000, "returned"), TestContext.Current.CancellationToken);
+
+        result.State.Should().Be(RefundState.Failed);
+        result.FailureReason.Should().Be("Charge ch_1 has been disputed.");
+    }
+
+    [HumansFact]
+    public async Task Refund_Stripe_never_answered_throws_so_Tickets_repeats_it()
+    {
+        using var headers = new HttpResponseMessage();
+        _http.MakeRequestAsync(Arg.Any<StripeRequest>(), Arg.Any<CancellationToken>()).Returns(
+            _ => new StripeResponse(HttpStatusCode.OK, headers.Headers, Session("complete", "paid", PaidCharge)),
+            _ => new StripeResponse(HttpStatusCode.OK, headers.Headers, RefundList()),
+            _ => throw new StripeException("no answer"));
+
+        var act = () => Backend().RefundAsync(
+            new RefundRequest(Guid.NewGuid(), "cs_test_1", 1000, "returned"), TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<TicketCheckoutException>();
+    }
+
+    [HumansFact]
+    public async Task Cancelling_a_paid_session_is_refused()
+    {
+        _http.MakeRequestAsync(Arg.Any<StripeRequest>(), Arg.Any<CancellationToken>()).Returns(
+            new StripeResponse(HttpStatusCode.BadRequest, null,
+                """{"error":{"type":"invalid_request_error","message":"Only open sessions can be expired."}}"""),
+            new StripeResponse(HttpStatusCode.OK, null, Session("complete", "paid", PaidCharge)));
+
+        var act = () => Backend().CancelAsync("cs_test_1", TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<TicketCheckoutException>();
+    }
+
+    [HumansFact]
+    public async Task A_verified_session_event_names_its_session_without_calling_Stripe()
+    {
+        var body = Event("checkout.session.completed", """{"id":"cs_9","object":"checkout.session"}""");
+
+        (await Backend(WebhookSecret).ParseWebhookAsync(body, Sign(body), TestContext.Current.CancellationToken))
+            .Should().Equal("cs_9");
+        _requests.Should().BeEmpty();
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData("charge.refunded", """{"id":"ch_1","object":"charge","payment_intent":"pi_1"}""")]
+    [Xunit.InlineData("refund.failed", """{"id":"re_1","object":"refund","payment_intent":"pi_1"}""")]
+    [Xunit.InlineData("charge.dispute.created", """{"id":"dp_1","object":"dispute","payment_intent":"pi_1"}""")]
+    public async Task A_verified_money_event_names_the_sessions_of_its_payment(string type, string dataObject)
+    {
+        Respond("""{"object":"list","url":"/v1/checkout/sessions","has_more":false,"data":[{"id":"cs_1","object":"checkout.session"}]}""");
+        var body = Event(type, dataObject);
+
+        (await Backend(WebhookSecret).ParseWebhookAsync(body, Sign(body), TestContext.Current.CancellationToken))
+            .Should().Equal("cs_1");
+        _requests.Single().Uri.Query.Should().Contain("payment_intent=pi_1");
+    }
+
+    [HumansFact]
+    public async Task A_verified_unrelated_event_names_nothing()
+    {
+        var body = Event("customer.created", """{"id":"cus_1","object":"customer"}""");
+
+        (await Backend(WebhookSecret).ParseWebhookAsync(body, Sign(body), TestContext.Current.CancellationToken))
+            .Should().BeEmpty();
+    }
+
+    private static BoxOfficeStripeWebhookController Webhook(
+        BoxOfficeCheckoutBackend backend, ITicketCheckoutEvents events, string body, string signature)
+    {
+        var http = new DefaultHttpContext();
+        http.Request.Body = new MemoryStream(Encoding.UTF8.GetBytes(body));
+        http.Request.Headers["Stripe-Signature"] = signature;
+        return new BoxOfficeStripeWebhookController(backend, events, NullLogger<BoxOfficeStripeWebhookController>.Instance)
+        {
+            ControllerContext = new ControllerContext { HttpContext = http },
+        };
+    }
+
+    [HumansFact]
+    public async Task Webhook_answers_503_while_unset_400_on_a_bad_signature_and_nudges_Tickets_once_verified()
+    {
+        var events = Substitute.For<ITicketCheckoutEvents>();
+        var body = Event("checkout.session.expired", """{"id":"cs_9","object":"checkout.session"}""");
+        var ct = TestContext.Current.CancellationToken;
+
+        var unset = await Webhook(Backend(), events, body, Sign(body)).Receive(ct);
+        var forged = await Webhook(Backend(WebhookSecret), events, body, "t=1,v1=bad").Receive(ct);
+        await events.DidNotReceiveWithAnyArgs().CheckoutChangedAsync(default!, default!, default);
+        var verified = await Webhook(Backend(WebhookSecret), events, body, Sign(body)).Receive(ct);
+
+        unset.Should().BeOfType<StatusCodeResult>().Which.StatusCode.Should().Be(StatusCodes.Status503ServiceUnavailable);
+        forged.Should().BeOfType<BadRequestResult>();
+        verified.Should().BeOfType<OkResult>();
+        await events.Received(1).CheckoutChangedAsync("boxoffice", "cs_9", Arg.Any<CancellationToken>());
     }
 }
