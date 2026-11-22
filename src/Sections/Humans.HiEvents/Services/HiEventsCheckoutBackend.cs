@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Humans.Base.Extensions;
@@ -476,15 +477,17 @@ internal sealed class HiEventsCheckoutBackend : ITicketCheckoutBackend
     internal static (string FirstName, string? LastName) SplitBuyerName(string name)
     {
         name = name.Trim();
-        if (name.Length <= BuyerNamePartLength)
+        var firstLength = name.EnumerateRunes().Take(BuyerNamePartLength).Sum(rune => rune.Utf16SequenceLength);
+        if (name.Length == firstLength)
             return (name, null);
 
-        var split = name.LastIndexOf(' ', BuyerNamePartLength);
+        var split = name.LastIndexOf(' ', firstLength);
         if (split <= 0)
-            split = BuyerNamePartLength;
+            split = firstLength;
 
         var last = name[split..].Trim();
-        return (name[..split].Trim(), last.Length <= BuyerNamePartLength ? last : last[..BuyerNamePartLength].TrimEnd());
+        var lastLength = last.EnumerateRunes().Take(BuyerNamePartLength).Sum(rune => rune.Utf16SequenceLength);
+        return (name[..split].Trim(), last[..lastLength].TrimEnd());
     }
 
     private const int BuyerNamePartLength = 50;

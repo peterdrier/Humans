@@ -423,6 +423,28 @@ public class HiEventsCheckoutBackendTests
         HiEventsCheckoutBackend.SplitBuyerName(name).Should().Be((first, last));
     }
 
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void SplitBuyerName_PreservesUnicodeAtBothPartBoundaries(bool truncateLast)
+    {
+        var first = truncateLast ? "Buyer" : new string('a', 49) + "𐐀";
+        var last = truncateLast ? new string('b', 49) + "𐐀" : "Family";
+        var name = first + " " + last + (truncateLast ? "tail" : "");
+
+        var actual = HiEventsCheckoutBackend.SplitBuyerName(name);
+        string.Equals(actual.FirstName, first, StringComparison.Ordinal).Should().BeTrue();
+        string.Equals(actual.LastName, last, StringComparison.Ordinal).Should().BeTrue();
+    }
+
+    [HumansFact]
+    public void SplitBuyerName_KeepsFiftyUnicodeCharactersInOnePart()
+    {
+        var name = string.Concat(Enumerable.Repeat("𐐀", 50));
+
+        HiEventsCheckoutBackend.SplitBuyerName(name).Should().Be((name, (string?)null));
+    }
+
     [HumansFact]
     public void SplitBuyerName_CutsANameLongerThanBothParts()
     {

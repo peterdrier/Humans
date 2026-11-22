@@ -99,8 +99,8 @@ None — the section owns no tables.
   `AWAITING_OFFLINE_PAYMENT` reads as `Pending` until it expires.
 - A reserved order whose `reserved_until` does not parse is an error, not `Pending`.
 - A malformed `HiEvents:ApiUrl` only makes this backend unconfigured; it never throws while Tickets resolves backends.
-- Buyer names go in 50 characters of first name and 50 of last name, split at a space; attendee lines carry the full
-  legal name (Hi.Events allows 255 on this endpoint).
+- Buyer names go in 50 Unicode scalar characters of first name and 50 of last name, split at a space without cutting
+  surrogate pairs; attendee lines carry the full legal name (Hi.Events allows 255 on this endpoint).
 - `Setup` shows the URLs and only set or missing for the key and secret; an API host on `hi.events` reads as Hi.Events Cloud, unsupported because it lacks the fork's checkout endpoint, and never passes the check. `CheckAsync` reads `users/me` (a body without a user, such as the web app's HTML, fails), the event's status and products, then posts an empty body to the checkout endpoint: the fork answers 422 before creating anything, stock Hi.Events 404 or 405.
 - Backend setup checks propagate caller cancellation instead of reporting a vendor failure; independent transport timeouts remain diagnostic findings.
 - `ListOrdersAsync` pages through an event's orders by `created_at` (100 a page, to `meta.last_page`), reading the Humans order id from `external_reference` and counting attendees as tickets. It throws when the distinct orders read differ from `meta.total`, since ties in a second can move across pages. The list leaves out `RESERVED` and `ABANDONED` orders. It needs the key's user to see financials, as refunds already do. `EventRefOf` reads the event id from the order id. `GetPaymentLedgerAsync` answers null: Hi.Events takes payments through its own Stripe account, so its fees and payouts are not reconciled in Humans.
