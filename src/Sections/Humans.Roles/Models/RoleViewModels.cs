@@ -22,8 +22,7 @@ internal sealed record RoleRow(RoleInfo Role, string Url)
     public SlotPriority? TopOpenPriority => Enumerable.Range(0, Role.SlotCount)
         .Where(slot => Role.Holders.All(h => h.Slot != slot))
         .Select(slot => (SlotPriority?)Role.Priorities[slot])
-        .OrderBy(p => RolePriorityOrder.Rank(p!.Value))
-        .FirstOrDefault();
+        .MinBy(p => RolePriorityOrder.Rank(p!.Value));
 }
 
 internal sealed record OwnerPageViewModel(
