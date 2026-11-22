@@ -977,6 +977,7 @@ public class BackdoorFinanceControllerTests
         SetReportViewer(userId, report);
         var keys = Substitute.For<IBackdoorApiKeyService>();
         keys.ResolveOwnerAsync("key", Arg.Any<CancellationToken>()).Returns(new BackdoorKeyOwner(userId, []));
+        keys.AdmitsAsync(Arg.Any<BackdoorKeyOwner>(), BackdoorScope.Staff, Arg.Any<CancellationToken>()).Returns(true);
 
         var builder = WebApplication.CreateSlimBuilder();
         builder.WebHost.UseUrls("http://127.0.0.1:0");

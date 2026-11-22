@@ -22,6 +22,7 @@ The machine surface. Every key-authed API an agent talks to lives here, under `/
 
 - A **Backdoor API key** is a credential issued to a *person*, not a service. Its plaintext exists only at the moment of issue; the database keeps a SHA-256 hash and a 12-character display prefix.
 - **Issue / rotate / revoke** are the whole lifecycle. There is no "read the key back" — a lost key is rotated.
+- A **scope** (`BackdoorScope`) names who a key-authed controller serves. Every controller declares one with `[BackdoorScope(...)]`. A person may hold a key when any scope admits their active account, and the key reaches only the controllers whose scope admits them. Today there is one: **Staff** (a full Admin or a Board member), and every controller listed below declares it. A new scope is an enum value plus its test in `BackdoorApiKeyService.AdmitsAsync`; the Tasks bulk-load controller is the first planned one.
 - The **machine surface** is the key-authed APIs Backdoor owns. Each is a thin orchestrator over another section's public contracts interface; Backdoor owns no domain data beyond its keys.
 
 ## Data Model
@@ -38,8 +39,9 @@ The machine surface. Every key-authed API an agent talks to lives here, under `/
 | DisplayPrefix | string(16) | First 12 characters of the plaintext, so a human can tell their rows apart |
 | Label | string(100) | Free text — what the key is for |
 | CreatedAt | Instant | |
-| CreatedByUserId | Guid? | The admin who allocated it; nulled on that admin's erasure |
+| CreatedByUserId | Guid? | Who made it (the owner, or an Admin allocating it); nulled on their erasure |
 | LastUsedAt | Instant? | Stamped on every successful resolve |
+| ExpiresAt | Instant? | Null never lapses (Admin and Board holders); otherwise 30 days after issue or rotation |
 | RevokedAt | Instant? | Null means active |
 | RevokedByUserId | Guid? | |
 
@@ -68,7 +70,7 @@ The machine surface. Every key-authed API an agent talks to lives here, under `/
 | `/api/backdoor/finance/expense-recon?year=` | read | `/Finance/ExpenseRecon` as JSON — totals, lines, orphans, members with open transfers — via `IFinanceService.GetExpenseReconAsync`. Finance admins only; carries no IBAN field. The controller orders lines by problem/status/newest date, orphans newest-first, and members warning-first then ordinal name ignoring case |
 | `/api/backdoor/finance/holded-sync` | read | Holded's purchase-document sync state (`IHoldedService.GetPurchaseDocumentsAsync`) plus the docs Finance could not attribute (`IFinanceService.GetUnmatchedAsync`); no creditor-binding count |
 | `/api/backdoor/notifications` | read | The key owner's unread notifications, newest first, and the live meters their roles unlock, via `INotificationInboxRead`. Polling marks nothing read |
-| `/Backdoor` | Admin UI | Allocate, rotate and revoke keys |
+| `/Backdoor` | Key page | Anyone a scope admits makes, rotates and revokes their own keys; Admin and Board see every key, and Admin allocates, rotates and revokes anyone's. Linked only from the admin nav |
 
 Authentication is the `X-Api-Key` header on every `/api/backdoor/*` request. There is no cookie path in and no anonymous endpoint.
 
@@ -76,9 +78,10 @@ Authentication is the `X-Api-Key` header on every `/api/backdoor/*` request. The
 
 | Actor | Capabilities |
 |-------|--------------|
-| Holder of an active key | Everything the APIs expose to that person, acting as themselves and scoped to their own roles |
-| Board member | May be issued a key. Reads the key list at `/Backdoor` (owner, label, prefix, dates); never a key value |
-| Admin | All Board capabilities. Additionally: allocate, rotate and revoke anyone's key from `/Backdoor` (the three POSTs are `AdminOnly`, their forms hidden from Board) |
+| Holder of an active key | The controllers whose scope admits them, acting as themselves and scoped to their own roles |
+| Anyone a scope admits | Makes, rotates and revokes their own keys at `/Backdoor`. Below Admin and Board, a key expires 30 days after it is made or rotated |
+| Board member | All of the above, with keys that never expire. Reads every key at `/Backdoor` (owner, label, prefix, dates); never a key value |
+| Admin | All Board capabilities. Additionally: allocates a key to any Admin or Board holder, and rotates or revokes anyone's key |
 
 ## Invariants
 
@@ -111,7 +114,8 @@ Authentication is the `X-Api-Key` header on every `/api/backdoor/*` request. The
   no payment timeline for non-finance viewers. Viewer lookups retain request cancellation.
 - `/api/backdoor/finance/expense-reports` lists exactly the key owner's `/Expenses/Review` queue (unscoped `GetReviewQueueAsync(ct)` candidates filtered by the owner’s report View authorization and the existing active-year category scope before metadata is projected, narrowed by `year`/`status`). A report or attachment the owner's `View` check refuses is a 403, not a 404 — unlike Issues, a machine caller here is told a resource exists but is denied, since the finance-wide routes already disclose that much.
 - The database never holds a plaintext key. `BackdoorApiKeyService` hashes on the way in and compares hashes on the way out.
-- A key only works for a full Admin or a Board member **whose account state is `Active`** — checked at issue, at rotation, **and on every authentication**. A role that expires, is revoked, or is swept by account deletion stops the key working on the next request, and so does suspension, which moves `users.State` while deliberately leaving role assignments standing. The row is refused, not revoked, so restoring the role or lifting the suspension restores the key. The admin page shows such a key as **Disabled** and withholds Rotate, since rotation applies the same test.
+- A key only works for someone a scope admits **whose account state is `Active`**, and only until its `ExpiresAt` — checked at issue, at rotation, **and on every authentication**. Each controller then checks its own scope: a good key whose holder that scope does not admit is 403, and a controller declaring no scope answers 403 to everyone. A role that expires, is revoked, or is swept by account deletion stops the key working on the next request, and so does suspension, which moves `users.State` while deliberately leaving role assignments standing. The row is refused, not revoked, so restoring the role or lifting the suspension restores the key. The key page shows such a key as **Disabled** and withholds Rotate, since rotation applies the same test. An expired key shows as **Expired**; rotating it is how it is renewed.
+- Only the owner or a full Admin issues, rotates or revokes a key. The service enforces it; the page only hides the buttons.
 - Issue and revoke both write an audit entry naming the key and its owner (`BackdoorApiKeyIssued` / `BackdoorApiKeyRevoked`); a rotation is recorded as a revoke followed by an issue.
 - Every controller here is an orchestrator: it calls another section's contracts interface and formats the result. None of them touch a repository or a `DbContext` other than through `IBackdoorApiKeyRepository`.
 - A key-authed principal carries the `BackdoorApiKey` authentication scheme (`BackdoorApiKeyAuthFilter.AuthenticationScheme`). It never passes through the Shell's claims transformation, so its role claims come from the same snapshot the key service used for eligibility and it carries no state claims — and the Shell's onboarding gates (`NameRequiredFilter`, `MembershipRequiredFilter`) skip it — every key-authed controller is `[AllowAnonymous]` — rather than redirecting a JSON client to an HTML page.
@@ -124,18 +128,19 @@ Authentication is the `X-Api-Key` header on every `/api/backdoor/*` request. The
 - A caller with no `X-Api-Key` header **cannot** reach any endpoint — 401.
 - A caller with an unknown or revoked key **cannot** reach any endpoint — 401, deliberately indistinguishable from the above. There is no "server not configured" status: keys are rows, not environment variables.
 - An admin **cannot** recover a key's plaintext after issue, their own included.
-- A former Admin or Board member **cannot** keep using a key issued while they held the role — 401 from the next request on.
+- A former Admin or Board member **cannot** keep using a key issued while they held the role — 401 from the next request on, once no scope admits them.
+- A holder below Admin and Board **cannot** use a key past its expiry — 401 — and **cannot** reach a Staff controller (logs, agent, issues, surveys, store, finance, notifications) — 403.
 - A suspended Admin or Board member **cannot** use their key: the machine surface is exempt from the onboarding gates the account-status wall runs through, so eligibility is the only thing standing between a suspended account and the API.
-- A plain member or volunteer **cannot** be issued a key, however the request is made.
-- A Board member **cannot** issue, rotate or revoke a key: `/Backdoor` is `BoardOrAdmin` to read, and each POST is `AdminOnly`.
+- A member no scope admits **cannot** be issued a key, however the request is made, and gets 403 from `/Backdoor`.
+- A non-Admin **cannot** issue, rotate or revoke someone else's key, Board included.
 - Backdoor **cannot** read another section's tables. Anything it serves comes from that section's published contracts interface.
 
 ## Triggers
 
-- On issue: an audit entry (`BackdoorApiKeyIssued`), and the plaintext is surfaced once through TempData to the admin page.
+- On issue: an audit entry (`BackdoorApiKeyIssued`), and the plaintext is surfaced once through TempData to the key page.
 - On revoke: an audit entry (`BackdoorApiKeyRevoked`) and `RevokedAt`/`RevokedByUserId` stamped.
 - On rotate: revoke of the old key, then issue of a replacement carrying the same owner and label — two audit entries.
-- On every successful authentication: `LastUsedAt` stamped on the key. A key whose owner is no longer eligible authenticates nothing and is not stamped.
+- On every successful authentication: `LastUsedAt` stamped on the key. An expired key, or one whose owner is no longer eligible, authenticates nothing and is not stamped.
 - On GDPR erasure: the human's keys are hard-deleted, and they are detached as the creator or revoker of anyone else's — the row belongs to its owner, not to the admin who handled it.
 - On account merge: the eliminated account's keys, and its actor columns, fold onto the survivor.
 
@@ -151,7 +156,7 @@ Authentication is the `X-Api-Key` header on every `/api/backdoor/*` request. The
 - **Holded**: `IHoldedService.GetPurchaseDocumentsAsync` for the purchase-document sync state on `holded-sync` (`Humans.Holded`'s `Contracts/` folder, a section reference).
 - **Budget**: `IBudgetService.GetYearByIdAsync` for the budget-year label (e.g. "2026") an expense report is booked to, for the year filter/field — peterdrier/Humans#1838.
 - **Notifications**: reads the key owner's unread inbox and meters via `INotificationInboxRead` (the `Humans.Notifications.Contracts` leaf, so Backdoor never references the Notifications section project). Rows are the owner's own; meters follow the owner's roles.
-- **Auth**: `IRoleAssignmentService.GetActiveForUserAsync` supplies one snapshot for both Admin/Board key eligibility and the role claims installed by `BackdoorApiKeyAuthFilter`; the filter performs no second role lookup. `GetActiveUserIdsInRoleAsync` supplies the admin page's recipient list, narrowed to active accounts so the dropdown never offers someone the service would refuse. Each listed key's usable/refused badge reads `BackdoorKeyRow.IsOwnerEligible`, which `ListAsync` computes with the same eligibility test as authentication.
+- **Auth**: `IRoleAssignmentService.GetActiveForUserAsync` supplies one snapshot for both scope checks and the role claims installed by `BackdoorApiKeyAuthFilter`; the filter performs no second role lookup. `GetActiveUserIdsInRoleAsync` supplies the admin page's recipient list, narrowed to active accounts so the dropdown never offers someone the service would refuse. Each listed key's usable/refused badge reads `BackdoorKeyRow.IsOwnerEligible`, which `ListAsync` computes with the same eligibility test as authentication.
 - **AuditLog**: `IAuditLogService.LogAsync` for the key lifecycle.
 - **Gdpr**: `IUserDataContributor` — `backdoor_api_keys` is user-keyed, so the section owes an Article 15 slice (`BackdoorApiKeyService.BackdoorApiKeys`, hash excluded) and an Article 17 erasure.
 - **Users**: `IUserService.GetUserInfoAsync` for the account-state half of key eligibility and `GetUserInfosAsync` for display names on the admin page and on the API's issue, agent and finance projections (the finance report detail reads its one submitter through `GetUserInfoAsync`); `IUserMerge` to fold an eliminated account's keys onto the survivor.

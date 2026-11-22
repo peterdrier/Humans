@@ -34,6 +34,7 @@ public class BackdoorApiKeyServiceTests
         _sut = new BackdoorApiKeyService(
             _repository, _roles, _users, _audit, new FakeClock(Now),
             NullLogger<BackdoorApiKeyService>.Instance);
+        MakeEligible(_actor);
     }
 
     private void MakeEligible(
@@ -94,6 +95,58 @@ public class BackdoorApiKeyServiceTests
         var result = await _sut.IssueAsync(_owner, "board laptop", _actor);
 
         result.Succeeded.Should().BeTrue();
+    }
+
+    [HumansFact]
+    public async Task A_Board_member_makes_their_own_key_and_it_never_expires()
+    {
+        MakeEligible(_owner, admin: false, board: true);
+        BackdoorApiKey? stored = null;
+        await _repository.AddAsync(Arg.Do<BackdoorApiKey>(k => stored = k), Arg.Any<CancellationToken>());
+
+        var result = await _sut.IssueAsync(_owner, "board laptop", _owner);
+
+        result.Succeeded.Should().BeTrue();
+        stored!.ExpiresAt.Should().BeNull();
+    }
+
+    [HumansFact]
+    public async Task Only_an_Admin_makes_a_key_for_someone_else()
+    {
+        var boardActor = Guid.NewGuid();
+        MakeEligible(boardActor, admin: false, board: true);
+        MakeEligible(_owner);
+
+        var result = await _sut.IssueAsync(_owner, "laptop", boardActor);
+
+        result.Error.Should().Be(BackdoorKeyError.NotAllowed);
+        await _repository.DidNotReceiveWithAnyArgs().AddAsync(default!);
+    }
+
+    [HumansFact]
+    public async Task Only_an_Admin_revokes_someone_elses_key()
+    {
+        var boardActor = Guid.NewGuid();
+        MakeEligible(boardActor, admin: false, board: true);
+        var key = ExistingKey();
+        _repository.GetByIdAsync(key.Id, Arg.Any<CancellationToken>()).Returns(key);
+
+        (await _sut.RevokeAsync(key.Id, boardActor)).Should().BeFalse();
+
+        await _repository.DidNotReceiveWithAnyArgs().RevokeAsync(default, default, default);
+    }
+
+    [HumansFact]
+    public async Task ResolveOwner_refuses_an_expired_key()
+    {
+        MakeEligible(_owner);
+        var key = ExistingKey();
+        key.ExpiresAt = Now;
+        _repository.FindActiveByHashAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(key);
+
+        (await _sut.ResolveOwnerAsync("hmn_whatever")).Should().BeNull();
+
+        await _repository.DidNotReceiveWithAnyArgs().TouchAsync(default, default);
     }
 
     [HumansFact]

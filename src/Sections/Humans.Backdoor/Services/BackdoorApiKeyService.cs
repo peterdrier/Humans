@@ -35,34 +35,44 @@ internal sealed class BackdoorApiKeyService(
     /// error.</summary>
     private const int MaxLabelLength = 100;
 
+    /// <summary>Holders below Admin and Board get keys that lapse after this, so a forgotten key does not linger.</summary>
+    internal static readonly Duration ShortKeyLifetime = Duration.FromDays(30);
+
     public async Task<BackdoorKeyIssueResult> IssueAsync(
         Guid ownerUserId, string label, Guid actorUserId, CancellationToken ct = default)
     {
         if (string.IsNullOrWhiteSpace(label))
-            return BackdoorKeyIssueResult.Failed("A label is required.");
+            return BackdoorKeyIssueResult.Failed(BackdoorKeyError.LabelRequired);
 
         label = label.Trim();
         if (label.Length > MaxLabelLength)
-            return BackdoorKeyIssueResult.Failed($"A label must be {MaxLabelLength} characters or fewer.");
+            return BackdoorKeyIssueResult.Failed(BackdoorKeyError.LabelTooLong);
 
-        if (await GetEligibleOwnerAsync(ownerUserId, ct) is null)
+        if (!await MayHandleKeysOfAsync(ownerUserId, actorUserId, ct))
+            return BackdoorKeyIssueResult.Failed(BackdoorKeyError.NotAllowed);
+
+        var owner = await GetEligibleOwnerAsync(ownerUserId, ct);
+        if (owner is null)
         {
             logger.LogWarning(
-                "Backdoor key issue refused for {OwnerUserId}: not an active Admin or Board member", ownerUserId);
-            return BackdoorKeyIssueResult.Failed(
-                "Keys can only be issued to a full Admin or a Board member with an active account.");
+                "Backdoor key issue refused for {OwnerUserId}: no Backdoor scope admits them", ownerUserId);
+            return BackdoorKeyIssueResult.Failed(BackdoorKeyError.NotEligible);
         }
 
-        var plaintext = await PersistNewKeyAsync(ownerUserId, label, actorUserId, ct);
+        var plaintext = NewPlaintext();
+        var key = NewKey(ownerUserId, label, actorUserId, plaintext, await ExpiryForAsync(owner, ct));
+        await repository.AddAsync(key, ct);
+        await AuditAsync(BackdoorAuditActions.BackdoorApiKeyIssued, key, actorUserId, "issued");
         return BackdoorKeyIssueResult.Success(plaintext);
     }
 
     public async Task<bool> RevokeAsync(Guid keyId, Guid actorUserId, CancellationToken ct = default)
     {
         var key = await repository.GetByIdAsync(keyId, ct);
-        if (key is null || !key.IsActive)
+        if (key is null || !key.IsActive || !await MayHandleKeysOfAsync(key.UserId, actorUserId, ct))
         {
-            logger.LogWarning("Backdoor key {KeyId} not revocable: missing or already revoked", keyId);
+            logger.LogWarning("Backdoor key {KeyId} not revocable by {ActorUserId}: missing, revoked or not theirs",
+                keyId, actorUserId);
             return false;
         }
 
@@ -80,19 +90,22 @@ internal sealed class BackdoorApiKeyService(
         if (key is null || !key.IsActive)
         {
             logger.LogWarning("Backdoor key {KeyId} not rotatable: missing or already revoked", keyId);
-            return BackdoorKeyIssueResult.Failed("That key no longer exists or is already revoked.");
+            return BackdoorKeyIssueResult.Failed(BackdoorKeyError.NotFound);
         }
 
-        // Eligibility is re-checked on rotation, not just at first issue: an owner who has
-        // since lost Admin/Board, or been suspended, does not get a fresh credential out of a rotate.
-        if (await GetEligibleOwnerAsync(key.UserId, ct) is null)
-            return BackdoorKeyIssueResult.Failed(
-                "The key's owner is no longer a full Admin or a Board member with an active account.");
+        if (!await MayHandleKeysOfAsync(key.UserId, actorUserId, ct))
+            return BackdoorKeyIssueResult.Failed(BackdoorKeyError.NotFound);
+
+        // Eligibility is re-checked on rotation, not just at first issue: an owner who has since lost every scope, or
+        // been suspended, does not get a fresh credential out of a rotate. The expiry is worked out afresh too.
+        var owner = await GetEligibleOwnerAsync(key.UserId, ct);
+        if (owner is null)
+            return BackdoorKeyIssueResult.Failed(BackdoorKeyError.NotEligible);
 
         var plaintext = NewPlaintext();
-        var replacement = NewKey(key.UserId, key.Label, actorUserId, plaintext);
+        var replacement = NewKey(key.UserId, key.Label, actorUserId, plaintext, await ExpiryForAsync(owner, ct));
         if (!await repository.RotateAsync(keyId, actorUserId, clock.GetCurrentInstant(), replacement, ct))
-            return BackdoorKeyIssueResult.Failed("That key no longer exists or is already revoked.");
+            return BackdoorKeyIssueResult.Failed(BackdoorKeyError.NotFound);
 
         await AuditAsync(BackdoorAuditActions.BackdoorApiKeyRevoked, key, actorUserId, "rotated out");
         await AuditAsync(BackdoorAuditActions.BackdoorApiKeyIssued, replacement, actorUserId, "issued");
@@ -109,10 +122,14 @@ internal sealed class BackdoorApiKeyService(
                 eligibleOwners.Add(ownerId);
         }
 
+        var now = clock.GetCurrentInstant();
         return [.. keys.Select(k => new BackdoorKeyRow(
-            k.Id, k.UserId, k.Label, k.DisplayPrefix, k.CreatedAt, k.LastUsedAt, k.RevokedAt,
-            eligibleOwners.Contains(k.UserId)))];
+            k.Id, k.UserId, k.Label, k.DisplayPrefix, k.CreatedAt, k.LastUsedAt, k.RevokedAt, k.ExpiresAt,
+            eligibleOwners.Contains(k.UserId), IsExpired(k, now)))];
     }
+
+    public async Task<bool> IsEligibleAsync(Guid userId, CancellationToken ct = default) =>
+        await GetEligibleOwnerAsync(userId, ct) is not null;
 
     /// <summary>
     /// Refused, not auto-revoked: a role can expire or be revoked and an account suspended, but a restored role
@@ -125,46 +142,65 @@ internal sealed class BackdoorApiKeyService(
         var key = await repository.FindActiveByHashAsync(Hash(presentedKey), ct);
         if (key is null) return null;
 
+        var now = clock.GetCurrentInstant();
+        if (IsExpired(key, now))
+        {
+            logger.LogWarning("Backdoor key {KeyId} refused: expired at {ExpiresAt}", key.Id, key.ExpiresAt);
+            return null;
+        }
+
         var owner = await GetEligibleOwnerAsync(key.UserId, ct);
         if (owner is null)
         {
             logger.LogWarning(
-                "Backdoor key {KeyId} refused: owner {OwnerUserId} is no longer an active Admin or Board member",
+                "Backdoor key {KeyId} refused: no Backdoor scope admits owner {OwnerUserId} any more",
                 key.Id, key.UserId);
             return null;
         }
 
-        await repository.TouchAsync(key.Id, clock.GetCurrentInstant(), ct);
+        await repository.TouchAsync(key.Id, now, ct);
         return owner;
     }
 
+    public Task<bool> AdmitsAsync(BackdoorKeyOwner owner, BackdoorScope scope, CancellationToken ct = default) =>
+        scope switch
+        {
+            BackdoorScope.Staff => Task.FromResult(
+                owner.Roles.Any(a => a.RoleName is RoleNames.Admin or RoleNames.Board)),
+            _ => Task.FromResult(false),
+        };
+
     /// <summary>
     /// The state check is not redundant: suspension moves <c>users.State</c> and leaves role assignments standing, so a
-    /// role-only test would keep a suspended admin's key working.
+    /// role-only test would keep a suspended holder's key working.
     /// </summary>
     private async Task<BackdoorKeyOwner?> GetEligibleOwnerAsync(Guid userId, CancellationToken ct)
     {
         var user = await users.GetUserInfoAsync(userId, ct);
         if (user is null || user.State != UserState.Active) return null;
 
-        var assignments = await roles.GetActiveForUserAsync(userId, ct);
-        return assignments.Any(a => a.RoleName is RoleNames.Admin or RoleNames.Board)
-            ? new BackdoorKeyOwner(userId, assignments)
-            : null;
+        var owner = new BackdoorKeyOwner(userId, await roles.GetActiveForUserAsync(userId, ct));
+        foreach (var scope in Enum.GetValues<BackdoorScope>())
+        {
+            if (await AdmitsAsync(owner, scope, ct))
+                return owner;
+        }
+
+        return null;
     }
 
-    private async Task<string> PersistNewKeyAsync(
-        Guid ownerUserId, string label, Guid actorUserId, CancellationToken ct)
-    {
-        var plaintext = NewPlaintext();
-        var key = NewKey(ownerUserId, label, actorUserId, plaintext);
+    /// <summary>Your own keys always; anyone's only as a full Admin.</summary>
+    private async Task<bool> MayHandleKeysOfAsync(Guid ownerUserId, Guid actorUserId, CancellationToken ct) =>
+        ownerUserId == actorUserId
+        || (await roles.GetActiveForUserAsync(actorUserId, ct)).Any(a => string.Equals(a.RoleName, RoleNames.Admin, StringComparison.Ordinal));
 
-        await repository.AddAsync(key, ct);
-        await AuditAsync(BackdoorAuditActions.BackdoorApiKeyIssued, key, actorUserId, "issued");
-        return plaintext;
-    }
+    private async Task<Instant?> ExpiryForAsync(BackdoorKeyOwner owner, CancellationToken ct) =>
+        await AdmitsAsync(owner, BackdoorScope.Staff, ct) ? null : clock.GetCurrentInstant() + ShortKeyLifetime;
 
-    private BackdoorApiKey NewKey(Guid ownerUserId, string label, Guid actorUserId, string plaintext) => new()
+    private static bool IsExpired(BackdoorApiKey key, Instant now) => key.ExpiresAt is { } at && at <= now;
+
+    private BackdoorApiKey NewKey(
+        Guid ownerUserId, string label, Guid actorUserId, string plaintext, Instant? expiresAt) => new()
     {
         Id = Guid.NewGuid(),
         UserId = ownerUserId,
@@ -173,6 +209,7 @@ internal sealed class BackdoorApiKeyService(
         Label = label,
         CreatedAt = clock.GetCurrentInstant(),
         CreatedByUserId = actorUserId,
+        ExpiresAt = expiresAt,
     };
 
     private Task AuditAsync(AuditActionDefinition action, BackdoorApiKey key, Guid actorUserId, string verb) =>
@@ -206,6 +243,7 @@ internal sealed class BackdoorApiKeyService(
                 CreatedAt = k.CreatedAt.ToIso8601(),
                 LastUsedAt = k.LastUsedAt.ToIso8601(),
                 RevokedAt = k.RevokedAt.ToIso8601(),
+                ExpiresAt = k.ExpiresAt.ToIso8601(),
             })
             .ToList();
 
@@ -223,7 +261,7 @@ internal sealed class BackdoorApiKeyService(
     public Task EraseForUserAsync(Guid userId, CancellationToken ct) =>
         repository.EraseForUserAsync(userId, ct);
 
-    /// <summary>A key whose new owner holds neither role stops authenticating: <see cref="ResolveOwnerAsync"/> re-checks.</summary>
+    /// <summary>A key whose new owner no scope admits stops authenticating: <see cref="ResolveOwnerAsync"/> re-checks.</summary>
     public Task ReassignAsync(
         Guid mergedFromUserId, Guid mergedToUserId, Guid actorUserId, Instant now, CancellationToken ct) =>
         repository.ReassignToUserAsync(mergedFromUserId, mergedToUserId, ct);

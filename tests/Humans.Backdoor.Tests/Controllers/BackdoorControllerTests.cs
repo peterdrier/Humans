@@ -8,7 +8,9 @@ using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
+using Microsoft.Extensions.Localization;
 using NodaTime;
+using System.Security.Claims;
 using NSubstitute;
 
 namespace Humans.Backdoor.Tests.Controllers;
@@ -42,12 +44,59 @@ public class BackdoorControllerTests
                     [_suspendedAdmin] = Info(_suspendedAdmin, UserState.AdminSuspended),
                 }));
 
-        _sut = new BackdoorController(_keys, _roles, _users)
+        _users.GetUserInfoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(ci => new ValueTask<UserInfo?>(Info(ci.Arg<Guid>(), UserState.Active)));
+
+        _sut = new BackdoorController(_keys, _roles, _users, Substitute.For<IStringLocalizer<BackdoorResource>>())
         {
             TempData = new TempDataDictionary(
                 new DefaultHttpContext(), Substitute.For<ITempDataProvider>()),
         };
+        SignIn(_activeAdmin, RoleNames.Admin);
     }
+
+    [HumansFact]
+    public async Task Someone_below_Board_sees_only_their_own_keys_and_no_owner_picker()
+    {
+        var me = Guid.NewGuid();
+        SignIn(me);
+        _keys.IsEligibleAsync(me, Arg.Any<CancellationToken>()).Returns(true);
+        var mine = Guid.NewGuid();
+        _keys.ListAsync(Arg.Any<CancellationToken>()).Returns([
+            Row(mine, me, ownerEligible: true),
+            Row(Guid.NewGuid(), _activeAdmin, ownerEligible: true),
+        ]);
+
+        var model = await IndexModelAsync();
+
+        model.Keys.Should().ContainSingle().Which.Id.Should().Be(mine);
+        model.ShowsOwners.Should().BeFalse();
+        model.EligibleUsers.Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task Someone_no_scope_admits_is_turned_away()
+    {
+        var me = Guid.NewGuid();
+        SignIn(me);
+        _keys.IsEligibleAsync(me, Arg.Any<CancellationToken>()).Returns(false);
+
+        var result = await _sut.Index(Xunit.TestContext.Current.CancellationToken);
+
+        result.Should().BeOfType<ForbidResult>();
+    }
+
+    private void SignIn(Guid userId, params string[] roles) =>
+        _sut.ControllerContext = new ControllerContext
+        {
+            HttpContext = new DefaultHttpContext
+            {
+                User = new ClaimsPrincipal(new ClaimsIdentity(
+                    [new Claim(ClaimTypes.NameIdentifier, userId.ToString()),
+                        .. roles.Select(r => new Claim(ClaimTypes.Role, r))],
+                    "test")),
+            },
+        };
 
     [HumansFact]
     public async Task A_key_whose_owner_is_no_longer_eligible_is_listed_as_unusable()
@@ -89,7 +138,7 @@ public class BackdoorControllerTests
     }
 
     private static BackdoorKeyRow Row(Guid id, Guid ownerId, bool ownerEligible) => new(
-        id, ownerId, "laptop", "hum_abcd", Instant.FromUnixTimeSeconds(0), null, null, ownerEligible);
+        id, ownerId, "laptop", "hum_abcd", Instant.FromUnixTimeSeconds(0), null, null, null, ownerEligible, false);
 
     private static UserInfo Info(Guid id, UserState state) => UserInfo.Create(
         new User { Id = id, State = state, PreferredLanguage = "en" },

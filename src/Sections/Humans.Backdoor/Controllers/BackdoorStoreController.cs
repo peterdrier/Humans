@@ -1,4 +1,5 @@
 using Humans.Backdoor.Filters;
+using Humans.Backdoor.Services;
 using Humans.Base.Controllers;
 using Humans.Base.Extensions;
 using Humans.Store.Contracts;
@@ -12,6 +13,7 @@ namespace Humans.Backdoor.Controllers;
 [ApiController]
 [Route("api/backdoor/store")]
 [ServiceFilter(typeof(BackdoorApiKeyAuthFilter))]
+[BackdoorScope(BackdoorScope.Staff)]
 [AllowAnonymous]
 internal sealed class BackdoorStoreController(IStoreAccountingRead store, IUserService users)
     : ApiControllerBase(users)
