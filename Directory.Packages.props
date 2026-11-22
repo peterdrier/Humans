@@ -102,9 +102,9 @@
     <PackageVersion Include="NSubstitute" Version="6.2.0" />
     <PackageVersion Include="Stripe.net" Version="53.2.0" />
     <PackageVersion Include="Testcontainers.PostgreSql" Version="4.17.0" />
-    <!-- Direct pin over Testcontainers' transitive SSH.NET 2025.1.0 (GHSA-q939-rpr3-3284,
-         NU1903 fails restore). Drop when Testcontainers ships against SSH.NET >= 2026.0.0. -->
-    <PackageVersion Include="SSH.NET" Version="2026.0.0" />
+    <!-- Direct pin over Testcontainers' SSH.NET floor (2026.0.0 as of 4.17.0); 2026.0.1 carries
+         the GHSA-h4g8-5qcx-7ccw / GHSA-fpgr-j7rx-jw2p hardening. -->
+    <PackageVersion Include="SSH.NET" Version="2026.0.1" />
     <!-- HTML parsing for the localization-coverage sweep; pinned to the version HtmlSanitizer already resolves so the solution-wide graph is unchanged. -->
     <PackageVersion Include="AngleSharp" Version="1.10.5" />
     <PackageVersion Include="xunit.v3.mtp-off" Version="4.0.3" />
