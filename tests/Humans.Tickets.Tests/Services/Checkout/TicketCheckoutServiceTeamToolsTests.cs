@@ -172,6 +172,21 @@ public sealed partial class TicketCheckoutServiceTests
     }
 
     [HumansFact]
+    public async Task Cancelling_the_event_never_tells_a_resale_seller_that_there_is_no_refund()
+    {
+        var old = await OfferedTicketAsync();
+
+        await _service.CancelSalesEventAsync(_salesEvent.Id, "Storm", _adminId, Ct);
+        await _service.ReconcileOpenOrdersAsync(Ct);
+        await _service.ReconcileOpenOrdersAsync(Ct);
+
+        await _delivery.DidNotReceiveWithAnyArgs().ResaleUnsoldAsync(default, default);
+        _repo.Events.Should().NotContain(e => e.Kind == TicketCheckoutOrderEventKind.ResaleUnsold);
+        _repo.Offers.Single().State.Should().Be(TicketResaleOfferState.Withdrawn);
+        _repo.Tickets.Single(t => t.Id == old.Id).State.Should().Be(TicketCheckoutTicketState.Void);
+    }
+
+    [HumansFact]
     public async Task The_evening_resale_batch_skips_a_cancelled_event_whose_cancellation_refunded_both_orders()
     {
         var old = await OfferedTicketAsync();
