@@ -65,7 +65,7 @@ public sealed record CampInfo(
     public IReadOnlyList<CampImageSummary> Images { get; init; } = [];
 
     /// <summary>The latest season by year, whatever its status.</summary>
-    public CampSeasonInfo? Active => Seasons.OrderByDescending(s => s.Year).FirstOrDefault();
+    public CampSeasonInfo? Active => Seasons.MaxBy(s => s.Year);
 
     public CampSeasonInfo? GetSeasonForEvent(Guid eventSettingsId, bool fallbackToLatestSeason = false) =>
         Seasons.FirstOrDefault(s => s.EventSettingsId == eventSettingsId)
@@ -90,9 +90,7 @@ public sealed record CampInfo(
     public Guid? GetLeadSeasonIdForYear(Guid userId, int year) =>
         Seasons
             .Where(season => season.Year == year && season.IsLead(userId))
-            .OrderBy(season => season.Id)
-            .Select(season => (Guid?)season.Id)
-            .FirstOrDefault();
+            .MinBy(season => season.Id)?.Id;
 
 }
 

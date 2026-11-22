@@ -10,6 +10,8 @@
 
 Themed community camps (Barrios) with per-year season registrations, leads, images, and renaming history.
 
+`CampInfo.Active` directly selects the maximum season year, regardless of status, retaining the first source season on ties. Lead-season lookup for a year directly selects the minimum matching season ID; both selectors return null when no season matches.
+
 Bulk cache warmups publish through the shared mutation guard. A refresh, deletion, eviction or clear overlapping the load discards the partial attempt and reloads the full snapshot and derived indexes before a read can treat the cache as warmed.
 
 ## Concepts
