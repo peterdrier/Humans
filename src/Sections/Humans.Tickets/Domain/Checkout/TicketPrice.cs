@@ -38,7 +38,7 @@ internal sealed record TicketPrice(
                 .MaxBy(r => r.AmountMinor) is { } earlyDiscount)
             discounts.Add(earlyDiscount);
 
-        var amount = (classPrice?.AmountMinor ?? wave.PriceMinor) - discounts.Sum(c => c.AmountMinor);
+        var amount = (classPrice?.AmountMinor ?? wave.PriceMinor) - discounts.Sum(d => d.AmountMinor);
         return new TicketPrice(wave, classPrice, discounts, Math.Max(0, amount));
     }
 

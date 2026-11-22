@@ -118,8 +118,8 @@ internal sealed class BoxOfficePlatform(
         }
         catch (StripeException ex)
         {
-            logger.LogWarning("Stripe refused checkout for order {OrderId}: {Message}", request.OrderId, ex.Message);
-            throw new TicketingPlatformException($"Stripe refused the checkout: {ex.Message}", ex);
+            logger.LogWarning("Stripe refused the Checkout Session for order {OrderId}: {Message}", request.OrderId, ex.Message);
+            throw new TicketingPlatformException($"Stripe refused the Checkout Session: {ex.Message}", ex);
         }
     }
 
@@ -160,7 +160,7 @@ internal sealed class BoxOfficePlatform(
             paidAt,
             refunds.Where(r => StateOf(r) == RefundState.Succeeded).Sum(r => r.Amount),
             refunds.Any(r => StateOf(r) == RefundState.Failed && r.Metadata?.ContainsKey(RefundMetadataKey) == true),
-            charge is { Disputed: true, Id: { } chargeId } ? await DisputedAsync(chargeId, ct) : 0);
+            charge is { Disputed: true, Id: { } chargeId } ? await ChargedBackAsync(chargeId, ct) : 0);
     }
 
     public string? EventRefOf(string platformOrderId) => null;
@@ -198,7 +198,7 @@ internal sealed class BoxOfficePlatform(
         }
         catch (StripeException ex)
         {
-            throw new TicketingPlatformException($"Stripe could not list checkout sessions: {ex.Message}", ex);
+            throw new TicketingPlatformException($"Stripe could not list Checkout Sessions: {ex.Message}", ex);
         }
 
         return orders;
@@ -309,7 +309,7 @@ internal sealed class BoxOfficePlatform(
         _ => PaymentLedgerEntryKind.Other,
     };
 
-    private async Task<long> DisputedAsync(string chargeId, CancellationToken ct)
+    private async Task<long> ChargedBackAsync(string chargeId, CancellationToken ct)
     {
         try
         {
@@ -356,7 +356,7 @@ internal sealed class BoxOfficePlatform(
         var session = await GetSessionAsync(request.PlatformOrderId, ct);
         var charge = session.PaymentIntent?.LatestCharge;
         if (charge is not { Paid: true })
-            return new RefundResult(RefundState.Failed, null, "The checkout has no settled payment to refund.");
+            return new RefundResult(RefundState.Failed, null, "The order has no settled payment to refund.");
         // A repeat of a refund whose answer was lost gets that refund's own state, not the cap's refusal.
         var earlier = (await ListRefundsAsync(session.PaymentIntentId!, ct)).FirstOrDefault(r =>
             r.Metadata?.TryGetValue(RefundMetadataKey, out var id) == true
@@ -411,12 +411,12 @@ internal sealed class BoxOfficePlatform(
             // Stripe refuses to expire a session that is no longer open; only one that is or may still be paid is a problem.
             var session = await GetSessionAsync(platformOrderId, ct);
             if (string.Equals(session.Status, "complete", StringComparison.Ordinal) && !IsFailed(session.PaymentIntent))
-                throw new TicketingPlatformException($"Checkout {platformOrderId} is already complete.");
+                throw new TicketingPlatformException($"Checkout Session {platformOrderId} is already complete.");
         }
     }
 
     /// <summary>
-    /// Stripe keeps checkout and payment records as the payment processor under its own legal obligations, and offers
+    /// Stripe keeps Checkout Session and payment records as the payment processor under its own legal obligations, and offers
     /// no way to strip them from a session; Humans holds nothing else here.
     /// </summary>
     public Task ErasePersonalDataAsync(string platformOrderId, string email, CancellationToken ct = default) =>
@@ -436,7 +436,7 @@ internal sealed class BoxOfficePlatform(
         [
             "Webhook events: checkout.session.completed, checkout.session.async_payment_succeeded, checkout.session.async_payment_failed, checkout.session.expired, charge.refunded, refund.updated, refund.failed, charge.dispute.created, charge.dispute.closed, charge.dispute.funds_withdrawn, charge.dispute.funds_reinstated.",
             "Payment methods (card, iDEAL, Klarna) are switched on in the Stripe dashboard; Humans never lists them.",
-            "Needs no event id in the sales setup.",
+            "Needs no event id in the ticketing settings.",
         ]);
 
     private bool IsTestKey => _settings.SecretKey.StartsWith("sk_test_", StringComparison.Ordinal)
@@ -465,7 +465,7 @@ internal sealed class BoxOfficePlatform(
             ? new(true, "Webhook signing secret is set.")
             : new(false, $"{Section.WebhookSecretVariable} is unset: the webhook answers 503 and outcomes arrive only from the return page and the 5-minute poll."));
         if (!string.IsNullOrWhiteSpace(platformEventRef))
-            findings.Add(new(false, "Box Office takes no event id; clear it in the sales setup."));
+            findings.Add(new(false, "Box Office takes no event id; clear it in the ticketing settings."));
         return findings;
     }
 
@@ -532,7 +532,7 @@ internal sealed class BoxOfficePlatform(
         }
         catch (StripeException ex)
         {
-            throw new TicketingPlatformException($"Stripe could not read checkout {sessionId}: {ex.Message}", ex);
+            throw new TicketingPlatformException($"Stripe could not read Checkout Session {sessionId}: {ex.Message}", ex);
         }
     }
 }

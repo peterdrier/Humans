@@ -82,7 +82,7 @@ public sealed class HiEventsStripeTests
     }
 
     [HumansFact]
-    public async Task Without_the_Stripe_account_there_is_no_ledger_and_a_refusal_is_a_checkout_failure()
+    public async Task Without_the_Stripe_account_there_is_no_ledger_and_a_refusal_is_a_platform_failure()
     {
         (await Platform().GetPaymentLedgerAsync(Now - Duration.FromDays(1), Now, Ct)).Should().BeNull();
 

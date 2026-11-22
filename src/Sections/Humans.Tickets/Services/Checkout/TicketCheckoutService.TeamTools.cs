@@ -22,7 +22,7 @@ internal sealed partial class TicketCheckoutService
         if (offer is null || offer.State is not (TicketResaleOfferState.Open or TicketResaleOfferState.Reserved))
             return new("That ticket is not waiting in the resale queue.");
         if (offer.State == TicketResaleOfferState.Reserved)
-            return new("A buyer's checkout is paying for this ticket right now; try again once it settles.");
+            return new("A buyer's order is paying for this ticket right now; try again once it settles.");
 
         offer.State = TicketResaleOfferState.Withdrawn;
         offer.WithdrawnAt = clock.GetCurrentInstant();
@@ -53,7 +53,7 @@ internal sealed partial class TicketCheckoutService
             return refusal;
         var ticketing = await repository.GetTicketingSettingsAsync(settingsId, ct);
         if (ticketing is null)
-            return new("That sales event no longer exists.");
+            return new("Those ticketing settings no longer exist.");
         if (ticketing.CancelledAt is not null)
             return new("The event is already cancelled.");
 
@@ -100,7 +100,7 @@ internal sealed partial class TicketCheckoutService
                 }
                 catch (Exception ex) when (ex is not OperationCanceledException)
                 {
-                    logger.LogWarning(ex, "Cancelling checkout order {OrderId} of cancelled event {TicketingSettingsId} failed; next run retries",
+                    logger.LogWarning(ex, "Cancelling order {OrderId} of cancelled event {TicketingSettingsId} failed; next run retries",
                         order.Id, ticketing.Id);
                 }
             }
@@ -108,7 +108,7 @@ internal sealed partial class TicketCheckoutService
         return changed;
     }
 
-    /// <summary>False while a buyer's checkout holds one of the order's returned tickets: it waits for that to settle.</summary>
+    /// <summary>False while a buyer's unpaid order holds one of the order's tickets in resale: it waits for that to settle.</summary>
     private async Task<bool> CancelOrderAsync(
         TicketingSettings ticketing, TicketCheckoutOrder order, CancellationState state, CancellationToken ct)
     {
@@ -149,7 +149,7 @@ internal sealed partial class TicketCheckoutService
             if (!result.Succeeded)
             {
                 refundFailed = true;
-                logger.LogError("Cancellation refund of checkout order {OrderId} failed: {Refusal}", order.Id, result.Refusal);
+                logger.LogError("Cancellation refund of order {OrderId} failed: {Refusal}", order.Id, result.Refusal);
                 // Written as failed so it is not asked again and the team sees what is owed.
                 if (refundId is null)
                     await repository.AddRefundAsync(new TicketCheckoutRefund
@@ -216,7 +216,7 @@ internal sealed partial class TicketCheckoutService
         private List<TicketCheckoutOrder> Paid => orders.Where(o => o.State == TicketCheckoutOrderState.Paid).ToList();
 
         public long Refundable(TicketCheckoutOrder order) =>
-            new CheckoutOrderDetail(order, refunds[order.Id].ToList(), [], tickets[order.Id].ToList()).RefundableMinor;
+            new OrderDetail(order, refunds[order.Id].ToList(), [], tickets[order.Id].ToList()).RefundableMinor;
 
         /// <summary>
         /// The cancellation's own refund of an order has a fixed id, so a refund the team makes meanwhile never stands in for

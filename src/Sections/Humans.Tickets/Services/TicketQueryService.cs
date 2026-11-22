@@ -159,12 +159,12 @@ internal sealed class TicketQueryService(
                 rows.Add(new DonationExportRow(o.PurchasedAt, date, o.VendorOrderId, o.BuyerName, o.BuyerEmail, DonationExportRow.SeparateDonation, o.DonationAmount));
         }
 
-        // Orders taken through Humans' own checkout: each donation line is one row, never refunded.
-        var checkoutOrders = new List<TicketCheckoutOrder>();
+        // Humans orders, on any ticketing platform: each donation line is one row, never refunded.
+        var humansOrders = new List<TicketCheckoutOrder>();
         foreach (var ticketing in await checkout.ListTicketingSettingsAsync(ct))
-            checkoutOrders.AddRange((await checkout.GetOrdersForSettingsAsync(ticketing.Id, ct))
+            humansOrders.AddRange((await checkout.GetOrdersForSettingsAsync(ticketing.Id, ct))
                 .Where(o => o.State == TicketCheckoutOrderState.Paid));
-        foreach (var o in checkoutOrders.OrderBy(o => o.PaidAt))
+        foreach (var o in humansOrders.OrderBy(o => o.PaidAt))
         {
             var paidAt = o.PaidAt ?? o.UpdatedAt;
             var date = paidAt.InZone(OrgZone).Date.ToInvariantDate();

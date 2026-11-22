@@ -16,16 +16,16 @@ so every named person gets their own ticket by email, and can open it in Humans 
 | Mail | To | Category | When |
 |------|----|----------|------|
 | `ticket_issued` | each valid or offered ticket with an email, to its holder; a ticket without one (a child) rides on its adult's mail | System | as soon as the order's tickets are issued |
-| `ticket_order_receipt` | the payer | System | with the tickets |
+| `ticket_order_receipt` | the buyer | System | with the tickets |
 | `ticket_join_invitation` | each holder of an adult or companion ticket with an account | VolunteerUpdates (opt-out honoured, never locked) | two days later, only if the ticket is still `Valid` |
-| `ticket_payment_ended` | the buyer | System | when a checkout that reached its platform ends `Failed` (declined) or `Expired` (lapsed unpaid), with a link to try again (B16, B17) |
+| `ticket_payment_ended` | the buyer | System | when an order that reached its platform ends `Failed` (declined) or `Expired` (lapsed unpaid), with a link to try again (B16, B17) |
 | `ticket_resale_sold` | the holder of a resold ticket | System | at the sale; says the refund follows in the evening batch (H11) |
 | `ticket_resale_unsold` | the holder whose offer is still open at sales close, unless the event was cancelled | System | once; no refund, the ticket still admits them (H12) |
 | `ticket_issued` again | the holder of a renamed ticket | System | after a team rename, with fresh ids (H14) |
 
 - **Ticket email:** one card per ticket (the holder's, then any child riding on it): event, holder name, ticket kind, the QR code of the ticket's `Barcode` (the code the gate scans),
-  the barcode as text, a link to `/Tickets/Buy/Mine`, and the ticket rules (named ticket matching photo ID, no transfers or
-  outside resale, return through Humans refunds the ticket price when resold and never the donation, private event of
+  the barcode as text, a link to `/Tickets/Buy/Mine`, and the ticket rules (named ticket matching photo ID, no
+  outside resale, resale through Humans refunds the ticket price once it sells and never the donation, private event of
   the association). When someone else paid, it says who.
 - **Receipt:** order reference (`TicketCheckoutOrder.Reference`, also shown on the buyer and admin order pages), paid date in the event's time zone, payment
   method, each ticket line with its VAT rate, each donation line marked without VAT, total, any refund so far, and
@@ -57,7 +57,7 @@ everything again with fresh ids and no second invitation, audited with the actor
 
 ## Donation record
 
-Donation lines on paid checkout orders join the accountant donor list (`/Tickets/Export/Donations`,
+Donation lines on paid Humans orders join the accountant donor list (`/Tickets/Export/Donations`,
 [accountant-donor-list.md](accountant-donor-list.md)) with type `Donation: <purpose>` and the same order reference as
 the receipt, so one file covers TicketTailor and Humans orders.
 

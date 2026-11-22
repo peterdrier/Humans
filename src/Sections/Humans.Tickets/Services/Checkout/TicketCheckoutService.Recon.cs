@@ -9,7 +9,7 @@ internal sealed partial class TicketCheckoutService
 {
     public async Task<IReadOnlyList<string>> GetPlatformsInUseAsync(CancellationToken ct = default)
     {
-        // An order keeps its platform when its sales setup moves on, so a platform with orders stays in use.
+        // An order keeps its platform when its event's ticketing settings move on, so a platform with orders stays in use.
         var allSettings = await repository.ListTicketingSettingsAsync(ct);
         return allSettings.Select(e => e.PlatformKey)
             .Concat((await AllOrdersAsync(allSettings, ct)).Select(o => o.PlatformKey))
@@ -34,7 +34,7 @@ internal sealed partial class TicketCheckoutService
         string? eventRef = null;
         try
         {
-            // Every event the platform's orders were sold under, and every event a setup sells through it now.
+            // Every event the platform's orders were sold under, and every event whose ticketing settings sell through it now.
             var eventRefs = orders
                 .Where(o => string.Equals(o.PlatformKey, platformKey, StringComparison.Ordinal) && o.PlatformOrderId is not null)
                 .Select(o => platform.EventRefOf(o.PlatformOrderId!))

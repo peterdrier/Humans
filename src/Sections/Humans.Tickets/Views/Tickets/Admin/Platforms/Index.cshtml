@@ -15,7 +15,7 @@
         new("Paid orders", paid.Count.ToString(culture),
             Subline: $"{paid.Sum(o => o.Lines.Count(l => l.Kind == OrderLineKind.Ticket)).ToString(culture)} tickets, free orders left out"),
         new("Taken", (paid.Sum(o => o.TotalMinor) / 100m).ToEuro(),
-            Subline: $"{(paid.Sum(o => o.RefundedMinor) / 100m).ToEuro()} refunded, {(paid.Sum(o => o.ChargedBackMinor) / 100m).ToEuro()} disputed"),
+            Subline: $"{(paid.Sum(o => o.RefundedMinor) / 100m).ToEuro()} refunded, {(paid.Sum(o => o.ChargedBackMinor) / 100m).ToEuro()} charged back"),
         new("Stuck orders", stuck.Count.ToString(culture), Subline: "still open past expiry",
             Severity: stuck.Count > 0 ? TileSeverity.Critical : TileSeverity.Normal),
         new("Refunds not settled", openRefunds.Count.ToString(culture), Subline: $"pending or manual; {failedRefunds.Count.ToString(culture)} failed",
@@ -68,7 +68,7 @@
         .Empty("No failed refunds.")
         .Build();
 
-    Func<TicketCheckoutOrder, IHtmlContent> vendorCell = @<text>
+    Func<TicketCheckoutOrder, IHtmlContent> platformCell = @<text>
         @if (item.AdminUrl is not null)
         {
             <a href="@item.AdminUrl" target="_blank" rel="noopener">in @info.Setup.DisplayName</a>
@@ -81,7 +81,7 @@
         .Column("Tickets", o => o.Lines.Count(l => l.Kind == OrderLineKind.Ticket), c => c.Number().End())
         .Column("Total (€)", o => o.TotalMinor / 100m, c => c.Currency().End())
         .Column("State", o => o.State, c => c.EnumBadge().SelectFilter())
-        .Template("", vendorCell, c => c.NoSort().End().Css("text-nowrap"))
+        .Template("", platformCell, c => c.NoSort().End().Css("text-nowrap"))
         .RowHref(o => Url.Action("Order", "TicketsSalesAdmin", new { id = o.Id }))
         .Empty("No orders on this platform yet.")
         .Build();
@@ -145,7 +145,7 @@
 <partial name="~/Views/Tickets/Admin/Platforms/_PlatformCard.cshtml" model="(Model.Platform, info)" />
 
 <p class="small text-muted">
-    Pick the platform and open or close sales per event in its <a asp-controller="TicketsSalesAdmin" asp-action="Index">sales setup</a>.
+    Pick the platform and open or close sales per event in its <a asp-controller="TicketsSalesAdmin" asp-action="Index">ticketing settings</a>.
 </p>
 
 @functions {

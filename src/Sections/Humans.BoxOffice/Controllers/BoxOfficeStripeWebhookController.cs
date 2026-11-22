@@ -15,7 +15,7 @@ namespace Humans.BoxOffice.Controllers;
 [Route("BoxOffice/StripeWebhook")]
 internal sealed class BoxOfficeStripeWebhookController(
     BoxOfficePlatform platform,
-    ITicketingPlatformEvents checkoutEvents,
+    ITicketingPlatformEvents platformEvents,
     ILogger<BoxOfficeStripeWebhookController> logger) : ControllerBase
 {
     [HttpPost("")]
@@ -36,7 +36,7 @@ internal sealed class BoxOfficeStripeWebhookController(
         if (sessionIds is null)
             return BadRequest();
         foreach (var sessionId in sessionIds)
-            await checkoutEvents.PlatformOrderChangedAsync(BoxOfficePlatform.PlatformKey, sessionId, ct);
+            await platformEvents.PlatformOrderChangedAsync(BoxOfficePlatform.PlatformKey, sessionId, ct);
 
         return Ok();
     }

@@ -166,8 +166,8 @@ internal sealed record ResaleQueueRow(
 
 /// <summary>
 /// Totals over paid orders. <paramref name="TicketsIssued"/> counts every ticket ever issued (a resale issues a new
-/// one); <paramref name="TicketsLive"/> only those still valid or offered. <paramref name="RefundedMinor"/> is what the
-/// platforms report as refunded, <paramref name="ChargedBackMinor"/> what buyers charged back; <paramref name="RefundsByState"/> is every refund Humans asked for.
+/// one); <paramref name="TicketsLive"/> only those still valid or in resale. <paramref name="RefundedMinor"/> is what the
+/// platforms report as refunded, <paramref name="ChargedBackMinor"/> what buyers' banks took back in chargebacks; <paramref name="RefundsByState"/> is every refund Humans asked for.
 /// </summary>
 internal sealed record SalesReport(
     int TicketsIssued,

@@ -4,7 +4,7 @@ using Humans.Tickets.Domain.Checkout;
 
 namespace Humans.Tickets.Data;
 
-/// <summary>The checkout lane's tables: sales events, checkout orders and their refunds.</summary>
+/// <summary>The checkout lane's tables: ticketing settings, orders and their refunds.</summary>
 internal interface ITicketCheckoutRepository : IRepository
 {
     Task<IReadOnlyList<TicketingSettings>> ListTicketingSettingsAsync(CancellationToken ct = default);
@@ -85,7 +85,7 @@ internal interface ITicketCheckoutRepository : IRepository
     /// <summary>Requests where the person is the holder or the companion.</summary>
     Task<IReadOnlyList<TicketCompanionRequest>> GetCompanionRequestsForUserAsync(Guid userId, CancellationToken ct = default);
 
-    /// <summary>Every refund on the sales event's orders.</summary>
+    /// <summary>Every refund on the event's orders.</summary>
     Task<IReadOnlyList<TicketCheckoutRefund>> GetRefundsForSettingsAsync(Guid settingsId, CancellationToken ct = default);
 
     /// <summary>

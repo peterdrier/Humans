@@ -1,10 +1,10 @@
 @model (Humans.Tickets.Controllers.PlatformsViewModel Page, Humans.Tickets.Services.Checkout.PlatformInfo Platform)
 @{
-    var b = Model.Platform;
+    var p = Model.Platform;
     var site = $"{Context.Request.Scheme}://{Context.Request.Host}";
-    var s = b.Setup;
-    var events = Model.Page.SalesEvents.Where(e => e.PlatformKey == b.Key).ToList();
-    var check = Model.Page.Check?.Key == b.Key ? Model.Page.Check : null;
+    var s = p.Setup;
+    var events = Model.Page.AllSettings.Where(e => e.PlatformKey == p.Key).ToList();
+    var check = Model.Page.Check?.Key == p.Key ? Model.Page.Check : null;
 
     Func<PlatformSetting, IHtmlContent> valueCell = @<text>
         @if (!item.IsSet)
@@ -28,10 +28,10 @@
         .Build();
 }
 
-<section class="card mb-4" id="platform-@b.Key">
+<section class="card mb-4" id="platform-@p.Key">
     <div class="card-header d-flex justify-content-between align-items-center">
-        <h2 class="h5 mb-0">@s.DisplayName <code class="small ms-1">@b.Key</code></h2>
-        <span class="badge @(b.IsConfigured ? "bg-success" : "bg-secondary")">@(b.IsConfigured ? "Configured" : "Not configured")</span>
+        <h2 class="h5 mb-0">@s.DisplayName <code class="small ms-1">@p.Key</code></h2>
+        <span class="badge @(p.IsConfigured ? "bg-success" : "bg-secondary")">@(p.IsConfigured ? "Configured" : "Not configured")</span>
     </div>
     <div class="card-body">
         <dl class="row mb-3">
@@ -39,7 +39,7 @@
             <dd class="col-sm-9">@s.Hosting</dd>
             @if (s.AdminUrl is not null)
             {
-                <dt class="col-sm-3">Vendor admin</dt>
+                <dt class="col-sm-3">Platform admin</dt>
                 <dd class="col-sm-9"><a href="@s.AdminUrl" target="_blank" rel="noopener">@s.AdminUrl</a></dd>
             }
             @if (s.WebhookPath is not null)
@@ -84,10 +84,10 @@
         }
 
         <div authorize-policy="@TicketsPolicies.Manage">
-            <form method="post" asp-controller="TicketsPlatformAdmin" asp-action="Check" asp-route-key="@b.Key" class="d-flex flex-wrap gap-2 align-items-end">
+            <form method="post" asp-controller="TicketsPlatformAdmin" asp-action="Check" asp-route-key="@p.Key" class="d-flex flex-wrap gap-2 align-items-end">
                 <div>
-                    <label class="form-label small" for="ref-@b.Key">Event id in the platform (optional)</label>
-                    <input class="form-control form-control-sm" id="ref-@b.Key" name="platformEventRef" value="@(check?.PlatformEventRef ?? events.FirstOrDefault()?.PlatformEventRef)" />
+                    <label class="form-label small" for="ref-@p.Key">Event id in the platform (optional)</label>
+                    <input class="form-control form-control-sm" id="ref-@p.Key" name="platformEventRef" value="@(check?.PlatformEventRef ?? events.FirstOrDefault()?.PlatformEventRef)" />
                 </div>
                 <button type="submit" class="btn btn-sm btn-outline-secondary">Test connection</button>
             </form>

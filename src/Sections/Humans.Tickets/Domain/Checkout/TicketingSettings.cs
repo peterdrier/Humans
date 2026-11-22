@@ -16,18 +16,18 @@ internal sealed class TicketingSettings
     /// <summary>Resolved against <c>ITicketingPlatform.Key</c>.</summary>
     public string PlatformKey { get; set; } = string.Empty;
 
-    /// <summary>The event's id inside the platform, passed through on every checkout.</summary>
+    /// <summary>The event's id inside the platform, passed through on every platform order.</summary>
     public string? PlatformEventRef { get; set; }
 
     public TicketSalesMode Mode { get; set; }
 
-    /// <summary>No checkout opens at or after this instant, whatever the mode.</summary>
+    /// <summary>No order opens at or after this instant, whatever the mode.</summary>
     public Instant? SalesCloseAt { get; set; }
 
-    /// <summary>Paid tickets plus tickets held by unexpired checkouts never exceed this.</summary>
+    /// <summary>Paid tickets plus tickets held by unexpired orders never exceed this.</summary>
     public int Capacity { get; set; }
 
-    /// <summary>A fraction: 0.10 for 10% (the setup form shows a percentage). Donations carry none.</summary>
+    /// <summary>A fraction: 0.10 for 10% (the ticketing settings form shows a percentage). Donations carry none.</summary>
     public decimal TicketVatRate { get; set; }
 
     /// <summary>Ordered by <see cref="TicketSalesWave.EndsOn"/>; the last wave's price holds until sales close.</summary>
@@ -39,17 +39,17 @@ internal sealed class TicketingSettings
     public List<TicketPriceRule> PriceRules { get; set; } = [];
 
     /// <summary>
-    /// When the ticketing team opened resale by hand (on the resale queue page); null while paused, and returned tickets
-    /// wait. Not part of the sales setup form, so saving the setup keeps it.
+    /// When the ticketing team opened resale by hand (on the resale queue page); null while paused, and tickets in resale
+    /// wait. Not part of the ticketing settings form, so saving the settings keeps it.
     /// </summary>
     public Instant? ResaleOpenedAt { get; set; }
 
-    /// <summary>Which schemes this event sells; null (a setup saved before the switches) means the defaults.</summary>
-    public TicketSalesSwitches? Switches { get; set; }
+    /// <summary>Which schemes this event sells; null (settings saved before the switches) means the defaults.</summary>
+    public TicketingSwitches? Switches { get; set; }
 
-    public TicketSalesSwitches EffectiveSwitches => Switches ?? new();
+    public TicketingSwitches EffectiveSwitches => Switches ?? new();
 
-    /// <summary>Whether returned tickets sell now. Resale only mode sells nothing else, so it opens resale too.</summary>
+    /// <summary>Whether tickets in resale sell now. Resale only mode sells nothing else, so it opens resale too.</summary>
     public bool ResaleSelling =>
         EffectiveSwitches.Resale != ResaleScheme.Off && Mode is (TicketSalesMode.Open or TicketSalesMode.ResaleOnly) && (ResaleOpenedAt is not null || Mode == TicketSalesMode.ResaleOnly);
 
@@ -66,7 +66,7 @@ internal sealed class TicketingSettings
     public List<TicketChildType> ChildTypes { get; set; } = [];
 
     /// <summary>
-    /// What a free donation may be given for, as the buyer sees it. Null or empty (a setup saved before purposes
+    /// What a free donation may be given for, as the buyer sees it. Null or empty (settings saved before purposes
     /// existed): one general donation, no choice. A donation with no purpose (the VIP remainder too) is general.
     /// </summary>
     public List<string>? DonationPurposes { get; set; }
@@ -90,7 +90,7 @@ internal enum TicketSalesMode
 {
     Closed = 0,
     Open = 1,
-    /// <summary>Fresh sales stopped; only returned tickets sell.</summary>
+    /// <summary>Fresh sales stopped; only resale offers sell.</summary>
     ResaleOnly = 2,
     /// <summary>
     /// Early sales before general sale opens: only holders of an <see cref="TicketPriceRuleKind.EarlyAccess"/> grant
@@ -104,9 +104,9 @@ internal enum TicketSalesMode
 /// off what it does not sell. Enforced in the checkout service, not only hidden on the buy page.
 /// Warning: stored as JSON, and a member missing from a stored row reads as the CLR default (false, Off), not as the
 /// initializer below. A switch added later must default to false (name it so) or be nullable with null as the
-/// default. Never rename a <see cref="ResaleScheme"/> member: an unknown string fails every sales event read.
+/// default. Never rename a <see cref="ResaleScheme"/> member: an unknown string fails every ticketing settings read.
 /// </summary>
-internal sealed class TicketSalesSwitches
+internal sealed class TicketingSwitches
 {
     public ResaleScheme Resale { get; set; } = ResaleScheme.QueueAndDirected;
 
@@ -120,7 +120,7 @@ internal sealed class TicketSalesSwitches
     public bool MailingListOptIn { get; set; } = true;
 
     /// <summary>
-    /// A holder may ask for a free companion ticket, which the ticketing team approves. Null (a setup saved before this
+    /// A holder may ask for a free companion ticket, which the ticketing team approves. Null (settings saved before this
     /// switch) means on; read <see cref="CompanionTicketsOn"/>.
     /// </summary>
     public bool? CompanionTickets { get; set; }
@@ -141,13 +141,13 @@ internal sealed class TicketChildType
 /// <summary>How a holder who cannot come gets their money back.</summary>
 internal enum ResaleScheme
 {
-    /// <summary>Holders cannot hand a ticket back; the ticketing team refunds by hand when it agrees to.</summary>
+    /// <summary>Holders cannot put a ticket up for resale; the ticketing team refunds by hand when it agrees to.</summary>
     Off = 0,
 
-    /// <summary>A returned ticket waits in the public queue and sells, oldest first, before fresh stock.</summary>
+    /// <summary>A ticket in resale waits in the public queue and sells, oldest first, before fresh stock.</summary>
     Queue = 1,
 
-    /// <summary>The queue, plus a holder may send one person a link to buy their ticket.</summary>
+    /// <summary>The queue, plus a holder may send people they choose a link to buy their ticket.</summary>
     QueueAndDirected = 2,
 }
 

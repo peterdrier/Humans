@@ -107,7 +107,7 @@ internal sealed partial class TicketCheckoutService
         var offer = (await repository.GetOffersForSettingsAsync(ticket.TicketingSettingsId, ct))
             .FirstOrDefault(o => o.TicketId == ticket.Id && o.State is TicketResaleOfferState.Open or TicketResaleOfferState.Reserved);
         if (offer?.State == TicketResaleOfferState.Reserved)
-            return new("A buyer's checkout is paying for this ticket right now; try again once it settles.");
+            return new("A buyer's order is paying for this ticket right now; try again once it settles.");
 
         var why = reason.Trim();
         // Refund first: a refund the platform turns down leaves the ticket working, so the team can try again.
@@ -228,7 +228,7 @@ internal sealed partial class TicketCheckoutService
             return (new("A companion attaches to a valid adult ticket with a holder."), null);
         var ticketing = await repository.GetTicketingSettingsAsync(parent.TicketingSettingsId, ct);
         if (ticketing is null)
-            return (new("That ticket's sales event no longer exists."), null);
+            return (new("That ticket's ticketing settings no longer exist."), null);
         var now = clock.GetCurrentInstant();
         var eventTickets = await repository.GetTicketsForSettingsAsync(parent.TicketingSettingsId, ct);
         if (eventTickets.Any(t => t.ParentTicketId == parent.Id && t.Kind == TicketHolderKind.Companion && t.State == TicketCheckoutTicketState.Valid))

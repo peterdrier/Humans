@@ -30,7 +30,7 @@
                 <li><a class="dropdown-item" asp-controller="TicketsSupportAdmin" asp-action="Refunds" asp-route-id="@item.Id">Refunds</a></li>
                 <li><a class="dropdown-item" asp-controller="TicketsSupportAdmin" asp-action="Resale" asp-route-id="@item.Id">Resale queue</a></li>
                 <li><a class="dropdown-item" asp-controller="TicketsSupportAdmin" asp-action="Companions" asp-route-id="@item.Id">Companion requests</a></li>
-                <li><a class="dropdown-item" asp-action="Edit" asp-route-id="@item.Id">Sales setup</a></li>
+                <li><a class="dropdown-item" asp-action="Edit" asp-route-id="@item.Id">Ticketing settings</a></li>
                 @if (item.CancelledAt is not null)
                 {
                     <li><a class="dropdown-item" asp-controller="TicketsSupportAdmin" asp-action="Cancel" asp-route-id="@item.Id">Cancellation progress</a></li>
@@ -43,14 +43,14 @@
             </ul>
         </div>
     </text>;
-    var eventsTable = TableModel.For(Model.SalesEvents)
+    var eventsTable = TableModel.For(Model.AllSettings)
         .Link("Event", e => Model.EventName(e.EventSettingsId), e => Url.Action("Orders", new { id = e.Id }))
-        .Column("Platform", e => Model.Platforms.FirstOrDefault(b => b.Key == e.PlatformKey)?.Setup.DisplayName ?? e.PlatformKey)
+        .Column("Platform", e => Model.Platforms.FirstOrDefault(p => p.Key == e.PlatformKey)?.Setup.DisplayName ?? e.PlatformKey)
         .Template("Mode", modeCell, sortBy: e => e.Mode.ToString())
         .Column("Capacity", e => e.Capacity, o => o.Number().End())
         .Template("On sale now", waveCell, o => o.NoSort())
         .Template("", actionsCell, o => o.NoSort().End())
-        .Empty("No event sells tickets yet. Set one up to open sales.")
+        .Empty("No event sells tickets yet. Add its ticketing settings to open sales.")
         .Build();
 
     Func<PlatformInfo, IHtmlContent> configuredCell = @<text>
@@ -70,9 +70,9 @@
         </div>
     </text>;
     var platformsTable = TableModel.For(Model.Platforms)
-        .Column("Platform", b => b.Setup.DisplayName)
-        .Column("Hosting", b => b.Setup.Hosting)
-        .Template("Connection", configuredCell, sortBy: b => b.IsConfigured)
+        .Column("Platform", p => p.Setup.DisplayName)
+        .Column("Hosting", p => p.Setup.Hosting)
+        .Template("Connection", configuredCell, sortBy: p => p.IsConfigured)
         .Template("", platformLinksCell, o => o.NoSort().End())
         .Empty("No ticketing platform is registered.")
         .Build();
@@ -80,7 +80,7 @@
 
 <page-header title="Ticket sales">
     <a class="btn btn-primary" asp-action="Edit" authorize-policy="@TicketsPolicies.Manage">
-        <i class="fa-solid fa-plus me-1" aria-hidden="true"></i>Set up an event
+        <i class="fa-solid fa-plus me-1" aria-hidden="true"></i>Add ticketing settings
     </a>
 </page-header>
 

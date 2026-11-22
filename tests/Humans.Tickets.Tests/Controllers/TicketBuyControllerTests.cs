@@ -40,7 +40,7 @@ public class TicketBuyControllerTests
     }
 
     private void Stored(TicketCheckoutOrder order) =>
-        _checkout.GetOrderDetailAsync(order.Id, Arg.Any<CancellationToken>()).Returns(new CheckoutOrderDetail(order, [], [], []));
+        _checkout.GetOrderDetailAsync(order.Id, Arg.Any<CancellationToken>()).Returns(new OrderDetail(order, [], [], []));
 
     [HumansFact]
     public async Task Someone_elses_order_is_not_found_and_never_refreshed_from_the_platform()

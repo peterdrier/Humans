@@ -19,7 +19,7 @@ namespace Humans.Pretix.Services;
 
 /// <summary>
 /// <para>
-/// Fills Tickets' checkout port with stock pretix (2026.9): an order created through the REST API at Humans' prices,
+/// Fills Tickets' ticketing platform port with stock pretix (2026.9): an order created through the REST API at Humans' prices,
 /// paid by the buyer on pretix's own order page, which sends them back to <see cref="PlatformOrderRequest.ReturnUrl"/>
 /// through pretix's bundled <c>returnurl</c> plugin.
 /// </para>
@@ -97,8 +97,8 @@ internal sealed partial class PretixPlatform(
         if (response.Status == HttpStatusCode.BadRequest && HasError(response.Body, "code"))
         {
             order = await SendAsync<PretixOrder>(HttpMethod.Get, OrderPath(eventSlug, code), body: null, ct);
-            if (order.ApiMeta?.TryGetValue(HumansOrderIdMeta, out var owner) != true
-                || !string.Equals(owner.ToString(), request.OrderId.ToString(), StringComparison.Ordinal))
+            if (order.ApiMeta?.TryGetValue(HumansOrderIdMeta, out var codeOrderId) != true
+                || !string.Equals(codeOrderId.ToString(), request.OrderId.ToString(), StringComparison.Ordinal))
             {
                 throw new TicketingPlatformException(
                     $"pretix order code {code} already belongs to another order.");
@@ -291,7 +291,7 @@ internal sealed partial class PretixPlatform(
             IsHosted
                 ? "pretix Hosted gives no shell for deploy/pretix/bootstrap.py: make the same settings by hand in the pretix control panel, following what bootstrap.py does."
                 : "deploy/pretix/bootstrap.py, run in the pretix container, sets this up.",
-            "The webhook goes on the order actions; the sales setup's event id is the pretix event slug.",
+            "The webhook goes on the order actions; the event id in the ticketing settings is the pretix event slug.",
             $"Fees and payouts reconcile from the Stripe account set in pretix's Stripe settings: a Stripe:MirrorAccounts entry named {StripeAccountName} with that account's id and a read-only key (Balance, Balance transactions, Payouts, PaymentIntents, Charges, Refunds, Disputes read).",
         ]);
 
@@ -566,7 +566,7 @@ internal sealed partial class PretixPlatform(
         // A refund made outside pretix (Stripe dashboard, chargeback) waits as "external" until a person processes it,
         // but the money has already gone, so it counts from the moment pretix records it.
         var gone = order.Refunds.Where(r => r.State is "done" or "external").ToList();
-        var disputed = gone.Where(IsChargeback).Sum(r => ToMinor(r.Amount));
+        var chargedBack = gone.Where(IsChargeback).Sum(r => ToMinor(r.Amount));
         var refunded = gone.Where(r => !IsChargeback(r)).Sum(r => ToMinor(r.Amount));
 
         return new PlatformOrderStatus(
@@ -581,7 +581,7 @@ internal sealed partial class PretixPlatform(
             // An external one cancelled in pretix is a won chargeback or a mistaken record, not a failed refund.
             order.Refunds.Where(r => !string.Equals(r.Source, "external", StringComparison.Ordinal))
                 .MaxBy(r => r.LocalId)?.State is "failed" or "canceled",
-            disputed);
+            chargedBack);
     }
 
     private static PretixPayment? LastPayment(PretixOrder order) =>
@@ -591,7 +591,7 @@ internal sealed partial class PretixPlatform(
     /// <summary>
     /// pretix's Stripe plugin records a chargeback as an external refund carrying the Stripe dispute's id, and never
     /// updates it. A won dispute or an inquiry clears only when a person cancels that refund in pretix, which pretix
-    /// allows only while it is still <c>external</c>; once processed (or completed by pretix itself) it stays disputed.
+    /// allows only while it is still <c>external</c>; once processed (or completed by pretix itself) it stays charged back.
     /// </summary>
     private static bool IsChargeback(PretixRefund refund) =>
         string.Equals(refund.Source, "external", StringComparison.Ordinal)
@@ -663,7 +663,7 @@ internal sealed partial class PretixPlatform(
     private static void Validate(PlatformOrderRequest request)
     {
         if (request.Lines.Count == 0)
-            throw new TicketingPlatformException("A checkout needs at least one line.");
+            throw new TicketingPlatformException("An order needs at least one line.");
         if (request.Lines.Any(l => l.AmountMinor < 0))
             throw new TicketingPlatformException("pretix cannot charge a negative line.");
     }

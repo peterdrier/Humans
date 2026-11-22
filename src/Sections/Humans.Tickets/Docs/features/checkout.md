@@ -1,7 +1,7 @@
 # Ticket checkout (2027)
 
 Design record: [`checkout-design.md`](checkout-design.md). Humans decides who may buy which ticket at what price and owns the order and
-the named ticket; whatever sits behind Humans only takes the payment and refunds it.
+the named ticket; the ticketing platform only takes the payment and refunds it.
 
 ## The port
 
@@ -19,16 +19,16 @@ Stripe hosted Checkout), `Humans.Pretix`, `Humans.HiEvents`.
 
 Rules every platform follows:
 
-- **Exact price.** The buyer pays exactly the lines; no payment surcharge. `PlatformOrderStatus.FeeMinor` is only what the
+- **Exact price.** The buyer pays exactly the lines; no fee is added. `PlatformOrderStatus.FeeMinor` is only what the
   payment provider kept (processing cost), null when unknown.
 - **Late payments.** Tickets owns the hold. When `ExpiresAt` passes unpaid, Tickets calls `CancelAsync` (also when the
   platform reports Expired or Failed, and the order stays open until that cancel succeeds) so the platform stops taking
   money. A payment that lands anyway is reported as
   `Paid`; the adapter never refunds or keeps it silently. Tickets issues the tickets, says so on the timeline and in the
-  audit log ("after the order was Expired") and logs a warning; a released resale offer another checkout took stays
-  with that checkout, so the late ticket is fresh stock and may put the event one over capacity for the team to settle.
-- **Stuck checkout.** While a buyer's own unpaid checkout still holds their ticket, the buy page links to it and offers
-  "cancel and start again", so a dropped connection never locks them out until `ExpiresAt`. Starting a checkout runs to
+  audit log ("after the order was Expired") and logs a warning; a released resale offer another order took stays
+  with that order, so the late ticket is fresh stock and may put the event one over capacity for the team to settle.
+- **Stuck order.** While a buyer's own unpaid order still holds their ticket, the buy page links to it and offers
+  "cancel and start again", so a dropped connection never locks them out until `ExpiresAt`. Starting checkout runs to
   the end even if the buyer's request is aborted, so a half-made order always has its platform session.
 - **Payment on its way.** A platform reports `Processing` once the buyer finished paying with a method that settles
   later (a SEPA debit, a bank transfer, sometimes the next day). The order then holds its tickets past `ExpiresAt`, is
@@ -68,17 +68,17 @@ Per order it names what differs: missing at the platform, extra at the platform 
 platform), a duplicate platform order for one Humans order, a platform order Humans never recorded (a create whose answer
 was lost, or one listed in place of the recorded one, which then reads missing), paid on one side only, total, refunded,
 chargeback or ticket count, and a paid order whose tickets were not all issued. A difference where no money moved on
-either side (an open checkout, an expired leftover) is listed but does not unbalance the platform. A platform that cannot
+either side (an open order, an expired leftover) is listed but does not unbalance the platform. A platform that cannot
 be read gives an error, never a partial comparison.
 
 `/Tickets/Admin/Sales/Recon` shows it for any date range (default the last 30 days, Europe/Madrid days), differences
 only or every order, each row linking to the Humans order and the platform's admin. It is open to Read, Board included:
 checking the money is oversight, and it changes nothing. `TicketReconJob` runs daily at 04:30 over the whole sale (from
-the first sales setup to the start of today), so a late refund on an old order is caught too. It logs an error per
+the first event's ticketing settings to the start of today), so a late refund on an old order is caught too. It logs an error per
 check out of balance or unreadable, an information line per balanced one, and goes on to the next platform when one
 fails. When any check is out of balance or could not run, it queues one email to the ticketing team's mailbox
 (`tickets@`) listing each finding, with a link to the page for that range; the mail repeats every night until the
-reconciliation balances. A platform stays in use while it holds orders, whatever the sales setups point at now.
+reconciliation balances. A platform stays in use while it holds orders, whatever any ticketing settings point at now.
 
 Outside production, QA, previews and dev share the platforms' test accounts, so each sees the others' orders and
 payments. There, a platform order or a payment movement that names a Humans order this database never held (on any
@@ -94,7 +94,7 @@ Where Humans can read the platform's payment account (each platform's Stripe acc
 `Pretix` and `HiEvents`), the page and the daily run
 also reconcile it by the day the money moved (`GetPaymentLedgerAsync`), so a refund months after the sale counts in the
 month it was made. Every balance movement is tied to its Humans order: Box Office's payments carry it in metadata; pretix's and Hi.Events'
-carry the vendor's own order, whose Humans order the adapter reads back from the vendor. A payment must
+carry the platform's own order, whose Humans order the adapter reads back from the platform. A payment must
 name a paid (or settling) order on that platform, for the order's total, with the fee Humans recorded on the order (a
 failed delayed debit whose payment came back, in the period or any time after it, may be Failed); a refund or chargeback must name an order; a payout must
 send exactly the net of the movements Stripe says it contains. A failed payout is shown but does not unbalance: Stripe
@@ -111,15 +111,15 @@ counts as Humans' number. pretix lists each event's orders and counts positions 
 order is charged what pretix received, and refunds made outside pretix (`external`) count as refunded, or as a
 chargeback when they carry a Stripe dispute, exactly as the order's status reads them. Hi.Events lists
 each event's orders and counts attendees; it reports no chargebacks, and its order list leaves out unpaid orders, so an
-open checkout reads missing (no money moved) and a lost create shows only once paid. Every event a platform's orders were
-sold under is read (`EventRefOf`), beside the events the setups sell through now.
+open order reads missing (no money moved) and a lost create shows only once paid. Every event a platform's orders were
+sold under is read (`EventRefOf`), beside the events their ticketing settings sell through now.
 
 ## Flow
 
-1. A TicketsAdmin sets up the event at `/Tickets/Admin/Sales`: platform, mode, capacity, waves, supporter totals (VIP
-   buttons), grant price rules (`ClassPrice`, `Credit`, `WavePin`, `EarlyAccess`), child ticket types, donation purposes, the ticket rules folder
+1. A TicketsAdmin saves the event's ticketing settings at `/Tickets/Admin/Sales`: platform, mode, capacity, waves, VIP
+   totals (the VIP ticket buttons), grant price rules (`ClassPrice`, `Discount`, `WavePin`, `EarlyAccess`), child ticket types, donation purposes, the ticket rules folder
    (a path in the legal GitHub repo, see "Ticket rules" below) and the ticketing switches (below). The form edits waves,
-   price rules and supporter levels as rows, the VAT as a percentage and sales close in the organisation's time zone.
+   price rules and VIP totals as rows, the VAT as a percentage and sales close in the organisation's time zone.
    **Early sales** (and test purchases): mode `InvitedOnly` sells only to members holding an active grant in a program
    with an `EarlyAccess` rule (e.g. asociados and colaboradores in a wave zero, or a few testers), with the rule's
    amount off while the mode lasts (none when left empty; someone in several early access programs gets the largest
@@ -128,13 +128,13 @@ sold under is read (`EventRefOf`), beside the events the setups sell through now
 2. A member opens `/Tickets/Buy` (linked from the dashboard ticket card while any event sells through Humans), which
    lists every event that is not Closed (an `InvitedOnly` one only to the invited), each priced in its own time zone and checked for holdings on its own. They see
    their price, may add children (each at the child ticket type they pick, issued on their own ticket), other people already in Humans (see "Buying
-   for other people" below), a VIP upgrade (shown as the ticket plus a donation) and a donation.
-   They read the ticket rules on the page and tick them on every checkout (the version goes on the order; no Consent signing) and may opt in to the mailing list
+   for other people" below), a VIP ticket (shown as the ticket plus a donation) and a donation.
+   They read the ticket rules on the page and tick them on every order (the version goes on the order; no Consent signing) and may opt in to the mailing list
    (asked only while they have no Marketing choice on record), then continue to the platform's payment page.
 3. The platform returns them to `/Tickets/Buy/Order/{id}`, which refreshes the status and splits ticket and donation
    subtotals. The webhook and the 5-minute reconcile job catch the rest. The move to `Paid` is one conditional update,
    so of several callers seeing the same payment only one fulfils it. Tickets then flags anyone on the order who meanwhile
-   came to hold another ticket (a lapsed checkout that paid late) for the team, on the timeline and as a
+   came to hold another ticket (a lapsed order that paid late) for the team, on the timeline and as a
    `TicketCheckoutNeedsAttention` audit entry, issues one `ticket_checkout_tickets` row per ticket line (unique per order
    and line: barcode, holder, price paid, wave or class, children pointing at their adult) and tells every
    `ITicketDelivery` (the ticket email with QR, the receipt and the volunteer invitation: [ticket-delivery.md](ticket-delivery.md)). A delivery failure never undoes the sale; delivery steps go
@@ -153,7 +153,7 @@ Each order carries a short `Reference` (the first 8 hex digits of its id) shown 
 ## Ticket types per event
 
 What an event sells is its own configuration (A29), so another organisation sets up its scheme without code changes:
-waves, supporter totals (VIP buttons), grant price rules (class prices, discounts (`Credit` in the code), wave pins, early access), and:
+waves, VIP totals (the VIP ticket buttons), grant price rules (class prices, discounts, wave pins, early access), and:
 
 - **Child ticket types.** Any number, each a name, an age (under it on the event's first day) and a price; none means
   children are not sold. The buyer picks one per child (with one type, it is picked for them). The child's ticket and
@@ -167,14 +167,14 @@ These names are the organiser's own words and are not translated, like wave name
 
 ## Ticketing switches
 
-Each sales setup carries switches so an organisation that runs Humans differently can turn a scheme off; the
-defaults are the Nobodies scheme, and a setup saved before the switches existed reads as the defaults. The checkout
+Each event's ticketing settings carry switches so an organisation that runs Humans differently can turn a scheme off; the
+defaults are the Nobodies scheme, and settings saved before the switches existed read as the defaults. The checkout
 service enforces each one, so a switched-off scheme is refused there, not only hidden on the page. Saving them is
-part of the audited sales setup save.
+part of the audited ticketing settings save.
 
 | Switch | Values | Off means |
 |---|---|---|
-| `Resale` | `Off`, `Queue`, `QueueAndDirected` (default) | `Off`: holders cannot return a ticket, the queue never sells, `ResaleOnly` mode is refused, and saving the switch withdraws every open offer (the ticket is the holder's again, on the order timeline; one in a checkout is withdrawn if that checkout fails). `Queue`: no directed invitations; saving the switch ends live ones (on the order timeline) and those offers sell from their place in the queue. |
+| `Resale` | `Off`, `Queue`, `QueueAndDirected` (default) | `Off`: holders cannot put a ticket up for resale, the queue never sells, `ResaleOnly` mode is refused, and saving the switch withdraws every open offer (the ticket is the holder's again, on the order timeline; one an unpaid order holds is withdrawn if that order fails). `Queue`: no directed invitations; saving the switch ends live ones (on the order timeline) and those offers sell from their place in the queue. |
 | `PartnerTickets` | on (default) / off | No "tickets for other people" on the buy page; other people on an order are refused. |
 | `Donations` | on (default) / off | No VIP buttons and no free donation; donation lines are refused. |
 | `MailingListOptIn` | on (default) / off | Checkout never asks about the mailing list. |
@@ -193,18 +193,18 @@ light check that it is them; nobody gets an account made for them, so someone no
 gets an adult ticket in their own legal name, at the public price (resale queue first when it is selling), and their
 own ticket email; the buyer pays once. Before anything is saved the checkout refuses, naming the address: one verified on
 no live account or on several, the buyer's own, a person without a legal name, and anyone who already holds a ticket,
-offers one for resale, or is on another unpaid checkout. A person shows on the order once however many of their
+offers one for resale, or is on another unpaid order. A person shows on the order once however many of their
 addresses were typed. Directed resale links buy only the buyer's own ticket.
 
-## Returning a ticket and the resale queue
+## Resale and the resale queue
 
 - `/Tickets/Buy/Mine` lists the member's live tickets with the valid child tickets under their adult. Its GET is
-  open before the account is active, so someone bought for reaches their ticket from the email (name entry still comes first). A holder offers an adult ticket back while the event is not
+  open before the account is active, so someone bought for reaches their ticket from the email (name entry still comes first). A holder puts an adult ticket up for resale while the event is not
   Closed; it joins `ticket_resale_offers` (oldest first) and the gate refuses it while it can still sell (the holder withdraws it to get in; once sales close it is valid again). They see their
-  queue position and can withdraw, except while a buyer's checkout holds it.
+  queue position and can withdraw, except while a buyer's unpaid order holds it.
 - Resale opens by hand: the ticketing team presses Open resale on the resale queue page (`ResaleOpenedAt`, audited
   `TicketResaleOpenSet`) and can pause it again; `ResaleOnly` mode sells resale whatever the button. A buyer's ticket lines take
-  the queue head before fresh stock; in `ResaleOnly` mode only queue tickets sell. A returned ticket sells only at the
+  the queue head before fresh stock; in `ResaleOnly` mode only queue tickets sell. A resale offer sells only at the
   resale price: the current public wave less the buyer's discounts (the association keeps any difference). A buyer with
   a class price or a pinned wave is served from fresh stock while the event is `Open`, and pays the resale price for a
   queue ticket in `ResaleOnly` mode or through an invitation.
@@ -220,7 +220,7 @@ addresses were typed. Directed resale links buy only the buyer's own ticket.
   platform's) or a chargeback, is held back for good and flagged for the team (`TicketCheckoutNeedsAttention`,
   "Resale refund held back"): it is recorded as a `Failed` refund on the holder's order, so no later batch pays it and
   reconciliation lists it among failed refunds until the team settles it. A refund that cannot even start is recorded
-  the same way, for the team to pay by hand; the timeline of both orders records it. A cancelled sales event is
+  the same way, for the team to pay by hand; the timeline of both orders records it. A cancelled event is
   skipped: its cancellation already refunds the holder's and the buyer's orders in full. Each run
   leaves one `TicketResaleRefundBatch` audit row per event with the count and total started, held back and waiting;
   the batch refunds are reconciled with the platform like every other refund. The resale queue page shows a sold offer
@@ -230,7 +230,7 @@ addresses were typed. Directed resale links buy only the buyer's own ticket.
   no refund, and the ticket admits them. It is marked only once the mail is queued, so a failed hand-off is retried
   by the next sweep. The offer stays open in case sales reopen.
 - While fresh stock is sold out, a class-price buyer in `Open` mode takes a queue ticket at the resale price.
-- A checkout that fails, expires or is cancelled releases its offers to their original place.
+- An order that fails, expires or is cancelled releases its offers to their original place.
 - **Directed resale** (H10): a holder whose offer is open emails one or more people each their own link
   (`/Tickets/Buy/Resale/{token}`, one token per address, only its SHA-256 is stored in the offer's `directed_invites`).
   Only a signed-in buyer with that address can use a link, for themselves, and only while resale is open. The links
@@ -268,8 +268,8 @@ ticket lines through the order's platform, timeline `EventCancelled`, email the 
 and a refund asked for since the cancellation is not asked again, so one the platform turns down (or that cannot start)
 stays failed, flagged `TicketCheckoutNeedsAttention`, for the team to do by hand. Donations are not refunded; the email asks buyers to reply if they want theirs back. When the refund failed, the email
 says the team will refund by hand instead of promising it is on its way. An order with
-a returned ticket a buyer is paying for waits until that settles. The cancel page balances the ticket money: taken =
-chargebacks + refunded + in flight + still refundable; the vendor side is on the reconciliation page.
+a ticket in resale that a buyer is paying for waits until that settles. The cancel page balances the ticket money: taken =
+chargebacks + refunded + in flight + still refundable; the platform side is on the reconciliation page.
 
 Every step lands in the order's append-only timeline (`ticket_checkout_order_events`) with who did it, shown on the
 admin order page beside a link to the order in the platform's own admin (`PlatformOrderSession.AdminUrl`).
@@ -291,7 +291,7 @@ tickets by itself (Peter, 2026-11-22).
 Gate looks codes up through `ITicketGateLookup.FindIssuedTicketAsync` (exact code, any event; Gate keeps only the
 active event's). `Valid` scans valid; `Offered` scans valid only once sales are closed, so a ticket can never admit its holder and then sell. A ticket the gate admitted (or whose child ticket it admitted) cannot be offered, and an admitted offer is never sold (`IGateAdmissions`, Gate's read). A child or companion ticket without an account carries the adult's
 user as `EntryUserId`, whose Early Entry applies. Nobody signs the ticket rules at the gate: the buyer's acceptance
-covers every ticket on the order (Peter, 2026-11-21). The gate's scan row is the only check-in record; no platform is told.
+covers every ticket on the order (Peter, 2026-11-21). The gate's scan row is the only admission record; no platform is told.
 `GetIssuedTicketsForEventAsync` lists every ticket of one event in any state, for the gate's name search and
 arrivals report. The holder sees the date their Early Entry starts on My tickets.
 
@@ -300,15 +300,15 @@ People bought for do not sign the ticket rules: the buyer accepts for the whole 
 ## Ticket rules
 
 The rules are markdown in the legal GitHub repo (`GitHubSettings`, the repo the legal pages read), in the folder the
-sales setup names: `name.md` is Spanish, `name-en.md` English, more languages optional (`name-de.md`). Spanish and
-English are required: the setup refuses a new folder without both, or with a second markdown file lacking a language
+ticketing settings name: `name.md` is Spanish, `name-en.md` English, more languages optional (`name-de.md`). Spanish and
+English are required: saving the settings refuses a new folder without both, or with a second markdown file lacking a language
 suffix (a README beside the rules), since that one would read as Spanish. Display only (Peter, 2026-11-21): nothing is signed
 and nothing goes to Consent.
 
 - The version is the last commit changing the folder; the text is read at that commit, so the text shown and the version
   recorded always match. Reads are cached for 10 minutes; GitHub requests time out after 5 seconds.
 - When GitHub cannot be read, the folder's last good rules stay in use (kept in memory without expiry, retried every
-  minute), so an outage does not stop sales. A folder that reads but holds no valid rules drops them. The setup's save
+  minute), so an outage does not stop sales. A folder that reads but holds no valid rules drops them. The settings' save
   check reads GitHub afresh, so a fixed folder is accepted at once.
 - The buy page shows the rules in language tabs and sends the folder and version it showed. Checkout refuses either one no
   longer current (`Tickets_Buy_TermsChanged`), so the buyer reads the new text first. While there are no rules to show
@@ -317,12 +317,12 @@ and nothing goes to Consent.
 
 ## Not yet
 
-- Checkout tickets in holdings, the gate list and the Scanner lookup. (Gate admits them: `ITicketGateLookup`.)
+- Humans-issued tickets in holdings, the gate list and the Scanner lookup. (Gate admits them: `ITicketGateLookup`.)
 - Telling the team about a chargeback: an email to the ticketing team when one opens, with a link to the order, and a
   daily reminder while it stays open. Today it is only recorded (`ChargedBackMinor`) and flagged on the order and in the
   audit log. Tickets are never voided automatically on a chargeback (Peter, 2026-11-22); see "Chargebacks" above.
 - Fee transparency: one price for every payment method, but the buy page shows what each method costs the association
-  for this order (a range for cards, iDEAL, Klarna; rates per method in the sales setup) and asks buyers to pick the
+  for this order (a range for cards, iDEAL, Klarna; rates per method in the ticketing settings) and asks buyers to pick the
   cheapest that works for them, on every platform. Once Stripe reports the fee, the order page shows what it really
   cost, with a thank-you for a cheap method (Peter, 2026-11-22).
 - Telling the holder who bought their resold ticket: only if the buyer opts in at checkout (off by default), and then by
@@ -331,9 +331,9 @@ and nothing goes to Consent.
   as not having bought on "Who Hasn't Bought", shift planning and mailing cohorts.
 - Moving a paid child ticket to another adult: refund and reissue for now; a reattach action only if a real case needs it.
 - Payment-method-dependent prices: not planned. One price for every method until the lawyer says a surcharge is allowed.
-- Check-in report: the gate's per-event check-in is not built and Gate has no read Tickets may call.
-- Moving a ticket to another person moves its order line, so the order is no longer the previous holder's and erasing them
+- Check-in report: the gate's per-event admission list is not built and Gate has no read Tickets may call.
+- Renaming a ticket to another person moves its order line, so the order is no longer the previous holder's and erasing them
   never asks the platform to erase its copy of that order (pretix, Hi.Events; Box Office keeps none).
 - Matching a payout to the bank statement.
-- Reconciliation follow-ups: signing off a difference (an unresolved one is mailed every night); a vendor admin link on extra rows; currency on platform rows (all are summed as EUR cents); comparing
+- Reconciliation follow-ups: signing off a difference (an unresolved one is mailed every night); a platform admin link on extra rows; currency on platform rows (all are summed as EUR cents); comparing
   refunds with Humans' own refund records rather than the platform's copy.

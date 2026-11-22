@@ -8,7 +8,7 @@
 
   <ItemGroup>
     <!--
-      Adapter section: the Hi.Events implementation of Tickets' ITicketCheckoutBackend port. No tables and no
+      Adapter section: the Hi.Events implementation of Tickets' ITicketingPlatform port. No tables and no
       views, so plain Microsoft.NET.Sdk.
     -->
     <ProjectReference Include="..\..\Humans.Base\Humans.Base.csproj" />

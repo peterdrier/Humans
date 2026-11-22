@@ -1,5 +1,5 @@
 @using Humans.Tickets.Domain.Checkout
-@model Humans.Tickets.Services.Checkout.CheckoutOrderDetail
+@model Humans.Tickets.Services.Checkout.OrderDetail
 @{
     ViewData["Title"] = $"Order {Model.Order.Reference}";
     var o = Model.Order;
@@ -133,7 +133,7 @@
                     }
                     <dt class="col-7 border-top pt-2">Net</dt>
                     <dd class="col-5 text-end border-top pt-2 fw-semibold">@((netMinor / 100m).ToEuro())</dd>
-                    <dt class="col-7 fw-normal small">Platform fee</dt>
+                    <dt class="col-7 fw-normal small">Fee</dt>
                     <dd class="col-5 text-end small">@(o.FeeMinor is { } fee ? (fee / 100m).ToEuro() : "—")</dd>
                 </dl>
             </div>
@@ -149,7 +149,7 @@
                         <form asp-action="Resend" asp-route-id="@o.Id" method="post" class="mb-3">
                             @Html.AntiForgeryToken()
                             <button type="submit" class="btn btn-outline-secondary btn-sm">Resend ticket emails and receipt</button>
-                            <div class="form-text">To each holder and the payer, as when the order was paid.</div>
+                            <div class="form-text">To each holder and the buyer, as when the order was paid.</div>
                         </form>
                     }
                     @if (canRefund)

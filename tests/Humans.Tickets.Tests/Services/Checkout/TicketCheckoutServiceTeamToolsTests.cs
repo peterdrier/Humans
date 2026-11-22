@@ -267,7 +267,7 @@ public sealed partial class TicketCheckoutServiceTests
     }
 
     [HumansFact]
-    public async Task A_cancelled_event_refuses_setup_changes_resale_and_restores()
+    public async Task A_cancelled_event_refuses_ticketing_settings_changes_resale_and_restores()
     {
         var adult = await PaidAdultAsync();
         await _service.CancelEventAsync(_ticketing.Id, "Storm", _adminId, Ct);
@@ -278,7 +278,7 @@ public sealed partial class TicketCheckoutServiceTests
     }
 
     [HumansFact]
-    public async Task Cancelling_waits_for_a_buyer_paying_for_a_returned_ticket()
+    public async Task Cancelling_waits_for_a_buyer_paying_for_a_ticket_in_resale()
     {
         var adult = await OfferedTicketAsync();
         _repo.Offers.Single().State = TicketResaleOfferState.Reserved;
@@ -347,7 +347,7 @@ public sealed partial class TicketCheckoutServiceTests
     [InlineData("Pending", 1, true)]
     [InlineData("Processing", 1, false)]
     [InlineData("Expired", -1, true)]
-    public void A_reserved_offer_is_stuck_once_its_checkout_no_longer_holds_it(string state, int hoursPastHold, bool stuck)
+    public void A_reserved_offer_is_stuck_once_its_order_no_longer_holds_it(string state, int hoursPastHold, bool stuck)
     {
         var holding = new TicketCheckoutOrder { Id = Guid.NewGuid(), State = Enum.Parse<TicketCheckoutOrderState>(state), ExpiresAt = Now - Duration.FromHours(hoursPastHold) };
         var offer = new TicketResaleOffer { Id = Guid.NewGuid(), State = TicketResaleOfferState.Reserved, ReservedByOrderId = holding.Id };

@@ -54,7 +54,7 @@ internal sealed class TicketDeliveryHandOff(IBackgroundJobClient jobs) : ITicket
 
 /// <summary>
 /// Everything a buyer and each ticket holder receive once an order's tickets exist: one ticket email per named
-/// person, one receipt to the payer, and a later invitation to volunteer.
+/// person, one receipt to the buyer, and a later invitation to volunteer.
 /// </summary>
 internal sealed class TicketDeliveryService(
     ITicketCheckoutService checkout,
@@ -70,7 +70,7 @@ internal sealed class TicketDeliveryService(
 {
     private const string JobName = "TicketDelivery";
 
-    /// <summary>Long enough that it does not land beside the ticket, soon enough that the purchase is fresh.</summary>
+    /// <summary>Long enough that it does not land beside the ticket, soon enough that the order is fresh.</summary>
     internal static readonly TimeSpan JoinInvitationDelay = TimeSpan.FromDays(2);
 
     /// <summary>The Hangfire job behind <see cref="TicketDeliveryHandOff"/>. Throws on failure so Hangfire retries.</summary>
@@ -130,7 +130,7 @@ internal sealed class TicketDeliveryService(
             JobName, ticket.Id, "TicketCheckoutTicket");
     }
 
-    /// <summary>The buyer of a checkout that ended unpaid; skipped if it was paid after all.</summary>
+    /// <summary>The buyer of an order that ended unpaid; skipped if it was paid after all.</summary>
     public async Task SendPaymentEndedAsync(Guid orderId, CancellationToken ct = default)
     {
         var detail = await checkout.GetOrderDetailAsync(orderId, ct);
@@ -143,7 +143,7 @@ internal sealed class TicketDeliveryService(
             order.BuyerUserId, buyer?.Email ?? order.BuyerEmail, order.BuyerName, eventName, order.Reference, failed,
             new Uri($"{BaseUrl}/Tickets/Buy"), DeliveryIdFor("ticket_payment_ended", order.Id), CultureOf(buyer, order)), ct);
         await auditLog.LogAsync(TicketsAuditActions.TicketHolderNotified, TicketCheckoutService.AuditEntityType, orderId,
-            failed ? "Told the buyer the payment failed" : "Told the buyer the checkout lapsed unpaid", JobName);
+            failed ? "Told the buyer the payment failed" : "Told the buyer the order lapsed unpaid", JobName);
     }
 
     /// <summary>The holder of a resold ticket, with the refund the evening batch sends.</summary>
@@ -159,7 +159,7 @@ internal sealed class TicketDeliveryService(
             to.UserId, AuditSubjectTypes.User);
     }
 
-    /// <summary>The holder whose returned ticket was still in the queue at sales close.</summary>
+    /// <summary>The holder whose ticket was still in the resale queue at sales close.</summary>
     public async Task SendResaleUnsoldAsync(Guid ticketId, CancellationToken ct = default)
     {
         if (await HolderMailAsync(ticketId, TicketCheckoutTicketState.Offered, ct) is not { } to)

@@ -12,7 +12,7 @@ using NodaTime;
 namespace Humans.Tickets.Controllers;
 
 /// <summary>
-/// The ticketing team's customer service pages over the checkout lane: lookup, refund list, resale queue, report, the
+/// The ticketing team's customer service pages over ticket orders: lookup, refund list, resale queue, report, the
 /// ticket exceptions (rename, void and refund, free companion), the audited overrides, and cancelling an event. English
 /// only.
 /// </summary>
@@ -279,22 +279,22 @@ internal sealed record LookupViewModel(string Query, IReadOnlyList<OrderSearchHi
 
 internal sealed record RefundsViewModel(Guid TicketingSettingsId, string EventName, RefundState? State, IReadOnlyList<RefundListRow> Rows);
 
-/// <summary>The resale queue page. <c>Orders</c> holds the event's orders by id, to name the checkout holding a reserved ticket.</summary>
+/// <summary>The resale queue page. <c>Orders</c> holds the event's orders by id, to name the order holding a reserved ticket.</summary>
 internal sealed record ResaleViewModel(
-    Guid TicketingSettingsId, string EventName, TicketingSettings SalesEvent, IReadOnlyList<ResaleQueueRow> Rows,
+    Guid TicketingSettingsId, string EventName, TicketingSettings Ticketing, IReadOnlyList<ResaleQueueRow> Rows,
     IReadOnlyDictionary<Guid, TicketCheckoutOrder> Orders, Instant Now)
 {
     /// <summary>
-    /// A reserved offer whose checkout is over or no longer holds its tickets (a payment on its way still does), which the
+    /// A reserved offer whose order is no longer open or no longer holds its tickets (a payment on its way still does), which the
     /// reconcile job has not yet put right.
     /// </summary>
     public bool IsStuck(TicketResaleOffer offer) =>
         offer is { State: TicketResaleOfferState.Reserved, ReservedByOrderId: { } holdingId }
         && (Orders.GetValueOrDefault(holdingId) is not { IsOpen: true } holding || !holding.HoldsTickets(Now));
 
-    public TicketSalesMode Mode => SalesEvent.Mode;
-    public bool ResaleSelling => SalesEvent.ResaleSelling;
-    public bool SwitchedOff => SalesEvent.EffectiveSwitches.Resale == ResaleScheme.Off;
+    public TicketSalesMode Mode => Ticketing.Mode;
+    public bool ResaleSelling => Ticketing.ResaleSelling;
+    public bool SwitchedOff => Ticketing.EffectiveSwitches.Resale == ResaleScheme.Off;
 }
 
 internal sealed record CompanionsViewModel(Guid TicketingSettingsId, string EventName, IReadOnlyList<CompanionRequestRow> Rows);

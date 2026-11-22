@@ -19,7 +19,7 @@ public class PretixPlatformTests
     private static PlatformOrderRequest Request(string culture = "es-ES", string currency = "EUR") => new(
         OrderId, EventId, "nowhere2027", "Bea Buyer", "bea@example.org", currency, culture,
         [
-            new PlatformOrderLine(OrderLineKind.Ticket, "Entry", 22500, 0.21m, "Ana Attendee"),
+            new PlatformOrderLine(OrderLineKind.Ticket, "Entry", 22500, 0.21m, "Ana Holder"),
             new PlatformOrderLine(OrderLineKind.Donation, "Donation", 77500, 0m, null),
         ],
         Instant.FromUtc(2026, 11, 21, 1, 0),
@@ -64,7 +64,7 @@ public class PretixPlatformTests
         positions[1]!["item"]!.GetValue<int>().Should().Be(8);
         positions[1]!["price"]!.GetValue<string>().Should().Be("775.00");
         // Names stay in Humans, where an erasure reaches them.
-        pretix.BodiesFor("POST", $"{Api}orders/").Single().Should().NotContain("Ana Attendee").And.NotContain("Bea Buyer");
+        pretix.BodiesFor("POST", $"{Api}orders/").Single().Should().NotContain("Ana Holder").And.NotContain("Bea Buyer");
     }
 
     [HumansFact]
@@ -283,7 +283,7 @@ public class PretixPlatformTests
     }
 
     [HumansFact]
-    public async Task Status_Chargeback_IsDisputedNotRefundedUntilCancelledInPretix()
+    public async Task Status_Chargeback_IsChargedBackNotRefundedUntilCancelledInPretix()
     {
         var pretix = new FakePretix().On("GET", OrderPath, HttpStatusCode.OK, PaidOrder(
             new { local_id = 1, state = "done", source = "admin", amount = "100.00", payment = 1, comment = "humans-refund:x", provider = "stripe", details = new { id = "re_1" } },
@@ -338,7 +338,7 @@ public class PretixPlatformTests
     }
 
     [HumansFact]
-    public async Task Erase_BuyersOrder_ClearsEmailAndAnyAttendeeData()
+    public async Task Erase_BuyersOrder_ClearsEmailAndAnyHolderData()
     {
         var order = new
         {
@@ -782,7 +782,7 @@ public class PretixPlatformTests
     [InlineData("e", "done", "re_1", "40.00", 4000, 0)]
     [InlineData("e", "external", "dp_1", "100.00", 0, 10000)]
     public async Task ListOrders_OrderThatTookItsMoney_StaysPaidWhateverPretixMadeOfItLater(
-        string status, string refundState, string stripeId, string amount, long refunded, long disputed)
+        string status, string refundState, string stripeId, string amount, long refunded, long chargedBack)
     {
         // Processing a refund in pretix cancels or reopens the order; a late payment leaves it expired. Tickets keeps
         // all of these Paid, so the list must too or reconciliation never ties out.
@@ -814,7 +814,7 @@ public class PretixPlatformTests
         order.State.Should().Be(PlatformOrderState.Paid);
         order.TotalMinor.Should().Be(10000);
         order.RefundedMinor.Should().Be(refunded);
-        order.ChargedBackMinor.Should().Be(disputed);
+        order.ChargedBackMinor.Should().Be(chargedBack);
     }
 
     [HumansFact]

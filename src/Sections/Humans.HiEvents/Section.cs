@@ -9,7 +9,7 @@ namespace Humans.HiEvents;
 
 /// <summary>
 /// Registers the Hi.Events ticketing platform whatever the environment: it does nothing until <c>HiEvents:ApiUrl</c> and
-/// <c>HIEVENTS_API_KEY</c> are set, and Tickets refuses to open checkouts on it while <c>IsConfigured</c> is false.
+/// <c>HIEVENTS_API_KEY</c> are set, and Tickets takes no orders on it while <c>IsConfigured</c> is false.
 /// </summary>
 public sealed class Section : ISection, ISectionConfiguration, ISectionAdminNav
 {

@@ -50,7 +50,7 @@ internal sealed class TicketCheckoutRepository(IDbContextFactory<TicketsDbContex
                 Label = r.Label,
             }).ToList();
             tracked.Switches = ticketing.Switches is { } sw
-                ? new TicketSalesSwitches
+                ? new TicketingSwitches
                 {
                     Resale = sw.Resale,
                     PartnerTickets = sw.PartnerTickets,

@@ -1388,7 +1388,7 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
     }
 
     [HumansFact]
-    public async Task GetDonationExportDataAsync_IncludesDonationLinesOfPaidCheckoutOrders()
+    public async Task GetDonationExportDataAsync_IncludesDonationLinesOfPaidHumansOrders()
     {
         var ticketing = new TicketingSettings { Id = Guid.NewGuid() };
         TicketCheckoutOrder Order(TicketCheckoutOrderState state, Instant paidAt, params (long Minor, string? Purpose)[] gifts) => new()

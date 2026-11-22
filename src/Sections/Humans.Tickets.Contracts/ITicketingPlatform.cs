@@ -6,8 +6,8 @@ namespace Humans.Tickets.Contracts;
 
 /// <summary>
 /// <para>
-/// The checkout port: whatever takes the money for a Humans ticket order. Humans owns the catalogue, the price, the
-/// named ticket and the resale queue; a platform only charges the lines it is given, reports the outcome and refunds an
+/// The ticketing platform port: whatever takes the money for a Humans order. Humans owns the catalogue, the price, the
+/// named ticket and the resale queue; a ticketing platform only charges the lines it is given, reports the outcome and refunds an
 /// exact amount. Each platform is its own adapter section registering one implementation; Tickets resolves the one an
 /// event uses by <see cref="Key"/>.
 /// </para>
@@ -15,7 +15,7 @@ namespace Humans.Tickets.Contracts;
 /// Amounts are minor units. An adapter never changes a price: if its platform cannot charge exactly the requested
 /// lines, it throws <see cref="TicketingPlatformException"/>. <see cref="PlatformOrderRequest.OrderId"/> and
 /// <see cref="RefundRequest.RefundId"/> are idempotency keys: a repeat with the same id must not charge or refund twice.
-/// The buyer pays exactly the lines: no payment surcharge, ever.
+/// The buyer pays exactly the lines: never a fee for the payment method.
 /// </para>
 /// <para>
 /// Late payments: Tickets owns the hold. When <see cref="PlatformOrderRequest.ExpiresAt"/> passes unpaid, Tickets calls
@@ -29,7 +29,7 @@ public interface ITicketingPlatform : IApplicationService
     /// <summary>Stable, lowercase, stored on every order: <c>boxoffice</c>, <c>pretix</c>, <c>hievents</c>.</summary>
     string Key { get; }
 
-    /// <summary>False when the adapter's credentials are unset; Tickets refuses to open checkouts on it.</summary>
+    /// <summary>False when the adapter's credentials are unset; Tickets refuses to open orders on it.</summary>
     bool IsConfigured { get; }
 
     [ExternalWrite]
@@ -49,13 +49,13 @@ public interface ITicketingPlatform : IApplicationService
     [ExternalWrite]
     Task<RefundResult> RefundAsync(RefundRequest request, CancellationToken ct = default);
 
-    /// <summary>Closes an unpaid checkout. A no-op when it is already closed; throws when it is already paid.</summary>
+    /// <summary>Closes an unpaid platform order. A no-op when it is already closed; throws when it is already paid.</summary>
     [ExternalWrite]
     Task CancelAsync(string platformOrderId, CancellationToken ct = default);
 
     /// <summary>
     /// GDPR erasure: removes the name and email <paramref name="email"/> belongs to wherever it appears on the order
-    /// (buyer or attendee), keeping amounts and dates. Idempotent. Throws when it could not, so the erasure is retried;
+    /// (buyer or holder), keeping amounts and dates. Idempotent. Throws when it could not, so the erasure is retried;
     /// a no-op only where the platform keeps the data under its own legal basis (Stripe as payment processor).
     /// </summary>
     [ExternalWrite]
@@ -73,7 +73,7 @@ public interface ITicketingPlatform : IApplicationService
     /// <summary>
     /// The platform's side of Tickets' financial reconciliation: every order it holds that was created in
     /// [<paramref name="from"/>, <paramref name="to"/>), for <paramref name="platformEventRef"/> where the platform keeps
-    /// orders per event, read from the platform itself. Includes orders Humans did not open (one made in the vendor's
+    /// orders per event, read from the platform itself. Includes orders Humans did not open (one made in the platform's
     /// own dashboard), which reconcile as extra. Changes nothing; throws when any page cannot be read, so a partial
     /// list is never taken for the whole.
     /// </summary>
@@ -82,7 +82,7 @@ public interface ITicketingPlatform : IApplicationService
 
     /// <summary>
     /// The platform event ref <paramref name="platformOrderId"/> was sold under, so an order is still reconciled after its
-    /// sales setup moved to another event or platform; null for a platform that keeps no events.
+    /// event's ticketing settings moved to another platform event or platform; null for a platform that keeps no events.
     /// </summary>
     string? EventRefOf(string platformOrderId);
 
@@ -102,8 +102,8 @@ public interface ITicketingPlatform : IApplicationService
 public sealed record PaymentLedger(IReadOnlyList<PaymentLedgerEntry> Entries, IReadOnlyList<PaymentPayout> Payouts);
 
 /// <summary>
-/// One balance movement. <paramref name="AmountMinor"/> is signed, money into the account positive (a charge, a won
-/// dispute) and out negative (a refund, a chargeback, a payout). <paramref name="FeeMinor"/> is what the provider kept
+/// One balance movement. <paramref name="AmountMinor"/> is signed, money into the account positive (a charge, a
+/// chargeback won back) and out negative (a refund, a chargeback, a payout). <paramref name="FeeMinor"/> is what the provider kept
 /// on it; the balance moves by amount minus fee. <paramref name="HumansOrderId"/> is the order the payment carries in
 /// its metadata, null when it carries none.
 /// </summary>
@@ -163,7 +163,7 @@ public sealed record PlatformOrderSummary(
     long ChargedBackMinor);
 
 /// <summary>
-/// <paramref name="Hosting"/> says who runs the platform and where: Humans' own instance, the vendor's hosted service,
+/// <paramref name="Hosting"/> says who runs the platform and where: Humans' own instance, the platform maker's hosted service,
 /// or Stripe. <paramref name="WebhookPath"/> is the path and query on the Humans site to enter in the platform, secrets
 /// as placeholders; null when it needs no webhook. <paramref name="Notes"/> are setup steps the settings cannot show.
 /// </summary>

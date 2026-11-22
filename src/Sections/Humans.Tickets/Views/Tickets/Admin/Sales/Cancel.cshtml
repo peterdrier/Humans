@@ -56,7 +56,7 @@
         : @p.Reason
         <span class="small text-muted d-block">
             Every five minutes the reconcile job voids the next orders' tickets, refunds what their tickets cost back to how they paid, and
-            emails each buyer. A refund the provider turns down is not tried again: it shows as failed below and on the refund list, to do by hand.
+            emails each buyer. A refund the ticketing platform turns down is not tried again: it shows as failed below and on the refund list, to do by hand.
         </span>
     </p>
 
@@ -96,9 +96,9 @@
                     </tbody>
                 </table>
                 <div class="card-body small text-muted">
-                    Humans' own side; a difference means a refund made outside Humans went past the ticket lines. The provider's side is on
+                    Humans' own side; a difference means a refund made outside Humans went past the ticket lines. The ticketing platform's side is on
                     the reconciliation page. Donations of @((p.DonationsMinor / 100m).ToEuro()) are not refunded automatically: buyers are told
-                    to reply if they want theirs back, and those are refunded in the provider's dashboard.
+                    to reply if they want theirs back, and those are refunded in the platform's dashboard.
                 </div>
             </div>
         </div>
@@ -110,7 +110,7 @@ else
         <div class="card-header text-danger">Cancelling cannot be undone</div>
         <div class="card-body">
             <ul class="mb-3">
-                <li>Sales close for good, resale included, and the sales setup can no longer change.</li>
+                <li>Sales close for good, resale included, and the ticketing settings can no longer change.</li>
                 <li>Every ticket for this event stops working, children and companions too.</li>
                 <li>Every paid order is refunded what its tickets cost, back to how it was paid. Donations stay unless the buyer asks.</li>
                 <li>Each buyer gets an email saying the event is cancelled and what comes back to them.</li>

@@ -12,7 +12,7 @@ using Microsoft.Extensions.Localization;
 
 namespace Humans.Tickets.Controllers;
 
-/// <summary>Buying from a Humans profile: Humans prices the order, the event's platform takes the money.</summary>
+/// <summary>Buying from a Humans profile: Humans prices the order, the event's ticketing platform takes the money.</summary>
 [Authorize]
 [Route("Tickets/Buy")]
 internal sealed class TicketBuyController(
@@ -122,7 +122,7 @@ internal sealed class TicketBuyController(
             TermsVersion = termsVersion,
             MarketingOptIn = marketingOptIn,
             DirectedToken = string.IsNullOrWhiteSpace(directedToken) ? null : directedToken,
-        }, user.Id, CancellationToken.None); // a buyer who leaves mid-request must not strand a half-made checkout
+        }, user.Id, CancellationToken.None); // a buyer who leaves mid-request must not strand a half-made order
 
         if (result.Refusal is { } refusal)
             return Back(refusal, result.RefusalArgument);
@@ -205,7 +205,7 @@ internal sealed class TicketBuyController(
         var (errorResult, user) = await RequireCurrentUserAsync(ct);
         if (errorResult is not null) return errorResult;
 
-        // Checked before the refresh, so only the order's own people make it call the payment platform.
+        // Checked before the refresh, so only the order's own people make it call the ticketing platform.
         if (await checkout.GetOrderDetailAsync(id, ct) is not { } detail || !CanSee(detail.Order, user.Id))
             return NotFound();
         var order = await checkout.RefreshOrderAsync(id, ct) ?? detail.Order;
@@ -231,7 +231,7 @@ internal sealed class TicketBuyController(
         return startAgain && result.Refusal is null ? RedirectToAction(nameof(Index)) : RedirectToAction(nameof(Order), new { id });
     }
 
-    /// <summary>The payer sees the whole order; a holder sees only their own ticket line.</summary>
+    /// <summary>The buyer sees the whole order; a holder sees only their own ticket line.</summary>
     private static bool CanSee(TicketCheckoutOrder order, Guid userId) =>
         order.BuyerUserId == userId || order.Lines.Any(l => l.HolderUserId == userId);
 }

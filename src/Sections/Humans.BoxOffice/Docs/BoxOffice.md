@@ -12,14 +12,14 @@
 
 # BoxOffice — Section Invariants
 
-Humans' own ticket checkout: one implementation of Tickets' `ITicketingPlatform` port, key `boxoffice`, that
+Humans' own ticketing platform: one implementation of Tickets' `ITicketingPlatform` port, key `boxoffice`, that
 takes payment through Stripe hosted Checkout and refunds through the Stripe API. It owns no tables and no Tickets data:
 Tickets owns the order, the price and the named ticket; this section only turns them into a Stripe Checkout Session
 and reads it back. Spec: `src/Sections/Humans.Tickets/Docs/features/checkout.md`.
 
 ## Purpose
 
-Box Office is the option with no ticketing vendor at all: Humans sells, and Stripe only takes the card, Klarna or
+Box Office is the option with no outside ticketing platform at all: Humans sells, and Stripe only takes the card, Klarna or
 iDEAL payment on its hosted page and refunds it. It needs no container to run, only a Stripe account kept for tickets.
 
 **What good looks like.** Every Checkout Session matches one Humans order to the cent, every state Stripe can put a
@@ -49,8 +49,8 @@ Stripe, which keeps it as the payment processor.
   `no_payment_required`, a session made outside Humans) is Paid, `expired` is Expired, a completed session whose PaymentIntent is `canceled` or back at `requires_payment_method`
   (an async debit that failed) is Failed, any other completed session is Processing (a SEPA debit or bank transfer
   still settling, which Stripe no longer lets anyone expire), and an open session is Pending. 3-D Secure and other
-  buyer actions happen on Stripe's page while the session is open. A disputed charge reports the amount of its
-  disputes that hold money (not `won`, not a `warning_*` inquiry) as `ChargedBackMinor`.
+  buyer actions happen on Stripe's page while the session is open. A charge with Stripe disputes reports the amount of
+  those that hold money (not `won`, not a `warning_*` inquiry) as `ChargedBackMinor`.
   Fee is the balance transaction's total fee; refunded total is the sum of the PaymentIntent's `succeeded` refunds (Stripe's `amount_refunded` also counts pending ones), so dashboard refunds are
   seen too. `RefundFailed` is set when one of Humans' refunds on it failed or was cancelled; Tickets then repeats each pending refund by id, and a repeat answers that refund's own state.
 - A refund request first looks for a refund carrying its Humans refund id and answers with that one's state, so a
@@ -89,7 +89,7 @@ None. The section owns no tables. The Checkout Session is the record of the paym
 
 | Variable | Purpose |
 |---|---|
-| `STRIPE_BOXOFFICE_KEY` | Restricted key on the ticket Stripe account: Checkout Sessions write, PaymentIntents, Charges, Disputes, Balance transactions and Payouts read, Refunds write. Unset means `IsConfigured` is false and Tickets opens no checkout on this platform |
+| `STRIPE_BOXOFFICE_KEY` | Restricted key on the ticket Stripe account: Checkout Sessions write, PaymentIntents, Charges, Disputes, Balance transactions and Payouts read, Refunds write. Unset means `IsConfigured` is false and Tickets takes no orders on this platform |
 | `STRIPE_BOXOFFICE_WEBHOOK_SECRET` | Signing secret of the endpoint `https://<host>/BoxOffice/StripeWebhook` subscribed to `checkout.session.completed`, `checkout.session.async_payment_succeeded`, `checkout.session.async_payment_failed`, `checkout.session.expired`, `charge.refunded`, `refund.updated`, `refund.failed`, `charge.dispute.created`, `charge.dispute.closed`, `charge.dispute.funds_withdrawn`, `charge.dispute.funds_reinstated`. Without it, Tickets still learns outcomes from the return page and its 5-minute poll |
 
 Tickets' `/Tickets/Admin/Sales` shows whether the platform is configured.

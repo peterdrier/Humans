@@ -365,7 +365,7 @@ public class HiEventsPlatformTests
     public async Task GetStatus_ReportsWhatAChargebackHoldsBack()
     {
         _handler.Enqueue(HttpStatusCode.OK, Order(id: 42, total: 225m, status: "COMPLETED", paymentStatus: "PAYMENT_RECEIVED",
-            disputed: 225m));
+            chargedBack: 225m));
 
         var result = await Platform().GetStatusAsync("7:42", Ct);
 
@@ -557,11 +557,11 @@ public class HiEventsPlatformTests
     [HumansFact]
     public async Task ListOrders_PagesThroughThePeriodAndReadsHumansIdsAndTickets()
     {
-        var full = Enumerable.Range(1, 100).Select(i => ListedOrder(i, OrderId.ToString("N"), attendees: 1)).ToArray();
+        var full = Enumerable.Range(1, 100).Select(i => ListedOrder(i, OrderId.ToString("N"), tickets: 1)).ToArray();
         _handler.Enqueue(HttpStatusCode.OK, new { data = full, meta = new { last_page = 2, total = 101 } });
         _handler.Enqueue(HttpStatusCode.OK, new
         {
-            data = new[] { ListedOrder(100, OrderId.ToString("N"), attendees: 1), ListedOrder(101, null, attendees: 2, refunded: 50m, disputed: 175m) },
+            data = new[] { ListedOrder(100, OrderId.ToString("N"), tickets: 1), ListedOrder(101, null, tickets: 2, refunded: 50m, chargedBack: 175m) },
             meta = new { last_page = 2, total = 101 },
         });
 
@@ -583,8 +583,8 @@ public class HiEventsPlatformTests
     [HumansFact]
     public async Task ListOrders_WhenAnOrderSlipsBetweenPages_Throws()
     {
-        _handler.Enqueue(HttpStatusCode.OK, new { data = new[] { ListedOrder(1, null, attendees: 1) }, meta = new { last_page = 2, total = 3 } });
-        _handler.Enqueue(HttpStatusCode.OK, new { data = new[] { ListedOrder(1, null, attendees: 1) }, meta = new { last_page = 2, total = 3 } });
+        _handler.Enqueue(HttpStatusCode.OK, new { data = new[] { ListedOrder(1, null, tickets: 1) }, meta = new { last_page = 2, total = 3 } });
+        _handler.Enqueue(HttpStatusCode.OK, new { data = new[] { ListedOrder(1, null, tickets: 1) }, meta = new { last_page = 2, total = 3 } });
 
         var act = () => Platform().ListOrdersAsync("7", Instant.FromUtc(2027, 1, 1, 0, 0), Instant.FromUtc(2027, 2, 1, 0, 0), Ct);
 
@@ -594,7 +594,7 @@ public class HiEventsPlatformTests
     [HumansFact]
     public async Task ListOrders_APageWithoutItsPaging_Throws()
     {
-        _handler.Enqueue(HttpStatusCode.OK, new { data = new[] { ListedOrder(1, null, attendees: 1) } });
+        _handler.Enqueue(HttpStatusCode.OK, new { data = new[] { ListedOrder(1, null, tickets: 1) } });
 
         var act = () => Platform().ListOrdersAsync("7", Instant.FromUtc(2027, 1, 1, 0, 0), Instant.FromUtc(2027, 2, 1, 0, 0), Ct);
 
@@ -611,7 +611,7 @@ public class HiEventsPlatformTests
         await act.Should().ThrowAsync<HttpRequestException>();
     }
 
-    private static Dictionary<string, object?> ListedOrder(int id, string? externalReference, int attendees, decimal refunded = 0m, decimal disputed = 0m) =>
+    private static Dictionary<string, object?> ListedOrder(int id, string? externalReference, int tickets, decimal refunded = 0m, decimal chargedBack = 0m) =>
         new(StringComparer.Ordinal)
         {
             ["id"] = id,
@@ -620,10 +620,10 @@ public class HiEventsPlatformTests
             ["currency"] = "EUR",
             ["total_gross"] = 225m,
             ["total_refunded"] = refunded,
-            ["total_disputed"] = disputed,
+            ["total_disputed"] = chargedBack,
             ["external_reference"] = externalReference,
             ["created_at"] = "2027-01-05T09:30:00.000000Z",
-            ["attendees"] = Enumerable.Range(1, attendees).Select(a => new { id = (id * 10) + a }).ToArray(),
+            ["attendees"] = Enumerable.Range(1, tickets).Select(a => new { id = (id * 10) + a }).ToArray(),
         };
 
     private HiEventsPlatform Platform(string apiKey = "key", string apiUrl = "https://tickets.example/api", string appUrl = "") => new(
@@ -685,7 +685,7 @@ public class HiEventsPlatformTests
         string? reservedUntil = null,
         decimal refunded = 0m,
         string? refundStatus = null,
-        decimal disputed = 0m,
+        decimal chargedBack = 0m,
         string? processingAt = null,
         string currency = "EUR") => new
         {
@@ -702,7 +702,7 @@ public class HiEventsPlatformTests
                 ["payment_provider"] = "STRIPE",
                 ["payment_link_url"] = paymentLink,
                 ["reserved_until"] = reservedUntil,
-                ["total_disputed"] = disputed,
+                ["total_disputed"] = chargedBack,
                 ["payment_processing_at"] = processingAt,
             },
         };

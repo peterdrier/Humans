@@ -10,7 +10,7 @@ namespace Humans.Pretix;
 /// <summary>
 /// The pretix ticketing platform. Bound in every environment, live whenever configured: pretix runs a test mode of its
 /// own, and QA needs a real instance to try the option against. Unconfigured, <c>IsConfigured</c> is false and
-/// Tickets opens no checkout on it.
+/// Tickets takes no orders on it.
 /// </summary>
 public sealed class Section : ISection, ISectionConfiguration, ISectionAdminNav
 {

@@ -29,7 +29,7 @@ internal sealed class TicketReconJob(
         if (allSettings.Count == 0)
             return;
         var zone = orgTimeZone.Zone;
-        // No order is older than the sales setup it was sold under.
+        // No order is older than the ticketing settings it was sold under.
         var from = allSettings.Min(e => e.CreatedAt);
         var today = clock.GetCurrentInstant().InZone(zone).Date;
         var to = today.AtStartOfDayInZone(zone).ToInstant();

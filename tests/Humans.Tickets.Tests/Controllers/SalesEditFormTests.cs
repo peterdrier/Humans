@@ -12,7 +12,7 @@ public sealed class SalesEditFormTests
     private static readonly Guid LowIncome = Guid.NewGuid();
 
     [HumansFact]
-    public void Rows_become_waves_rules_and_supporter_totals_and_blank_rows_are_dropped()
+    public void Rows_become_waves_rules_and_vip_totals_and_blank_rows_are_dropped()
     {
         var form = new SalesEditForm
         {
@@ -46,7 +46,7 @@ public sealed class SalesEditFormTests
     }
 
     [HumansFact]
-    public void A_saved_setup_round_trips_through_the_form()
+    public void Saved_ticketing_settings_round_trip_through_the_form()
     {
         var ticketing = new TicketingSettings
         {

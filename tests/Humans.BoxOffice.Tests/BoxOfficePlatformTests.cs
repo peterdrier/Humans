@@ -188,7 +188,7 @@ public sealed class BoxOfficePlatformTests
     }
 
     [HumansFact]
-    public async Task Non_euro_checkout_is_refused_before_calling_Stripe()
+    public async Task Non_euro_order_is_refused_before_calling_Stripe()
     {
         var act = () => Platform().CreateOrderAsync(new PlatformOrderRequest(
             Guid.NewGuid(), Guid.NewGuid(), null, "A", "a@example.com", "USD", "en", [new PlatformOrderLine(OrderLineKind.Ticket, "T", 100, 0m, "A")],
@@ -230,10 +230,10 @@ public sealed class BoxOfficePlatformTests
     }
 
     [HumansFact]
-    public async Task A_disputed_charge_reports_what_open_and_lost_disputes_hold_but_not_inquiries_or_won_ones()
+    public async Task A_chargeback_counts_what_open_and_lost_disputes_hold_but_not_inquiries_or_won_ones()
     {
-        var disputed = PaidCharge.Replace("\"paid\":true", "\"paid\":true,\"disputed\":true", StringComparison.Ordinal);
-        Respond(Session("complete", "paid", disputed), RefundList(),
+        var chargedBack = PaidCharge.Replace("\"paid\":true", "\"paid\":true,\"disputed\":true", StringComparison.Ordinal);
+        Respond(Session("complete", "paid", chargedBack), RefundList(),
             """
             {"object":"list","url":"/v1/disputes","has_more":false,"data":[
              {"id":"dp_1","object":"dispute","amount":25000,"status":"lost","charge":"ch_1"},
@@ -284,7 +284,7 @@ public sealed class BoxOfficePlatformTests
         var refundId = Guid.NewGuid();
 
         var result = await Platform().RefundAsync(
-            new RefundRequest(refundId, "cs_test_1", 12000, "returned"), TestContext.Current.CancellationToken);
+            new RefundRequest(refundId, "cs_test_1", 12000, "resale"), TestContext.Current.CancellationToken);
 
         result.State.Should().Be(RefundState.Succeeded);
         result.PlatformRefundId.Should().Be("re_1");
@@ -301,7 +301,7 @@ public sealed class BoxOfficePlatformTests
         Respond(Session("complete", "paid", PaidCharge), RefundList(Refund("re_7", "pending", 30000, refundId)));
 
         var result = await Platform().RefundAsync(
-            new RefundRequest(refundId, "cs_test_1", 30000, "returned"), TestContext.Current.CancellationToken);
+            new RefundRequest(refundId, "cs_test_1", 30000, "resale"), TestContext.Current.CancellationToken);
 
         result.State.Should().Be(RefundState.Pending);
         result.PlatformRefundId.Should().Be("re_7");
@@ -412,12 +412,12 @@ public sealed class BoxOfficePlatformTests
     }
 
     [HumansFact]
-    public async Task Refund_of_a_checkout_with_no_settled_payment_fails_without_a_refund_call()
+    public async Task Refund_of_an_order_with_no_settled_payment_fails_without_a_refund_call()
     {
         Respond(Session("complete", "unpaid", PaidCharge.Replace("\"paid\":true", "\"paid\":false", StringComparison.Ordinal)));
 
         var result = await Platform().RefundAsync(
-            new RefundRequest(Guid.NewGuid(), "cs_test_1", 1000, "returned"), TestContext.Current.CancellationToken);
+            new RefundRequest(Guid.NewGuid(), "cs_test_1", 1000, "resale"), TestContext.Current.CancellationToken);
 
         result.State.Should().Be(RefundState.Failed);
         _requests.Should().ContainSingle().Which.Method.Should().Be(HttpMethod.Get);
@@ -434,7 +434,7 @@ public sealed class BoxOfficePlatformTests
                 """{"error":{"type":"invalid_request_error","message":"Charge ch_1 has been disputed."}}"""));
 
         var result = await Platform().RefundAsync(
-            new RefundRequest(Guid.NewGuid(), "cs_test_1", 1000, "returned"), TestContext.Current.CancellationToken);
+            new RefundRequest(Guid.NewGuid(), "cs_test_1", 1000, "resale"), TestContext.Current.CancellationToken);
 
         result.State.Should().Be(RefundState.Failed);
         result.FailureReason.Should().Be("Charge ch_1 has been disputed.");
@@ -450,7 +450,7 @@ public sealed class BoxOfficePlatformTests
             _ => throw new StripeException("no answer"));
 
         var act = () => Platform().RefundAsync(
-            new RefundRequest(Guid.NewGuid(), "cs_test_1", 1000, "returned"), TestContext.Current.CancellationToken);
+            new RefundRequest(Guid.NewGuid(), "cs_test_1", 1000, "resale"), TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<TicketingPlatformException>();
     }

@@ -8,7 +8,7 @@ using NodaTime;
 
 namespace Humans.Tickets.Services.Checkout;
 
-/// <summary>Issued tickets and the resale queue: return, withdraw, directed resale, and the evening refund batch.</summary>
+/// <summary>Issued tickets and the resale queue: offer, withdraw, directed resale, and the evening refund batch.</summary>
 internal sealed partial class TicketCheckoutService
 {
     /// <summary>Links a holder may send for one ticket over all its offers: enough for friends, too few to spam with.</summary>
@@ -100,7 +100,7 @@ internal sealed partial class TicketCheckoutService
         if (await repository.GetOrderAsync(ticket.OrderId, ct) is { ChargedBackMinor: > 0 })
             return new("Tickets_Resale_NotOfferable");
 
-        // Children go wherever their adult goes: returned with the adult and refunded with it when it sells.
+        // Children go wherever their adult goes: put up for resale with the adult and refunded with it when it sells.
         // Event-wide: an admin-issued companion lives on its own order.
         var dependents = (await repository.GetTicketsForSettingsAsync(ticket.TicketingSettingsId, ct))
             .Where(t => t.ParentTicketId == ticket.Id && t.State == TicketCheckoutTicketState.Valid)
@@ -122,7 +122,7 @@ internal sealed partial class TicketCheckoutService
         ticket.State = TicketCheckoutTicketState.Offered;
         await repository.UpdateTicketAsync(ticket, ct);
         await TimelineAsync(ticket.OrderId, TicketCheckoutOrderEventKind.ResaleOffered,
-            $"Ticket {ticket.Barcode} returned to the resale queue; {FormatMinor(offer.RefundOwedMinor)} owed if it sells" +
+            $"Ticket {ticket.Barcode} put up for resale; {FormatMinor(offer.RefundOwedMinor)} owed if it sells" +
             (dependents.Count > 0 ? $", with {dependents.Count} child ticket(s)" : string.Empty), userId, ct);
         await auditLog.LogAsync(TicketsAuditActions.TicketResaleOffered, AuditEntityType, ticket.OrderId,
             $"Ticket {ticket.Barcode} offered for resale", userId);
@@ -234,14 +234,14 @@ internal sealed partial class TicketCheckoutService
         return (ticket, offer);
     }
 
-    /// <summary>The link was sent to the signed-in buyer's email, for this sales event.</summary>
+    /// <summary>The link was sent to the signed-in buyer's email, for this event.</summary>
     private static bool InviteIsFor(TicketResaleOffer offer, string tokenHash, BuyContext context) =>
-        offer.TicketingSettingsId == context.SalesEvent.Id && offer.InviteFor(tokenHash) is { } invite
+        offer.TicketingSettingsId == context.Ticketing.Id && offer.InviteFor(tokenHash) is { } invite
         && string.Equals(invite.Email, context.Buyer?.Email, StringComparison.OrdinalIgnoreCase);
 
     /// <summary>The linked offer while it can still sell to this buyer: the link is theirs and the queue is open.</summary>
     private static TicketResaleOffer? DirectedOfferFor(TicketResaleOffer offer, string tokenHash, BuyContext context) =>
-        context.SalesEvent.ResaleSelling && offer.State == TicketResaleOfferState.Open && InviteIsFor(offer, tokenHash, context)
+        context.Ticketing.ResaleSelling && offer.State == TicketResaleOfferState.Open && InviteIsFor(offer, tokenHash, context)
             ? offer
             : null;
 
@@ -351,7 +351,7 @@ internal sealed partial class TicketCheckoutService
     }
 
     /// <summary>
-    /// Holding a ticket is checked before payment, but a lapsed checkout can still pay late after the person bought
+    /// Holding a ticket is checked before payment, but a lapsed order can still pay late after the person bought
     /// one of their own: the team then refunds one of the two.
     /// </summary>
     private async Task FlagDoubleHoldersAsync(TicketCheckoutOrder order, CancellationToken ct)
@@ -408,13 +408,13 @@ internal sealed partial class TicketCheckoutService
                 await RetireResoldTicketAsync(offer, offer.DirectedUsedAt is not null, ct);
             return;
         }
-        // A late payment finds its offer released, maybe taken by another checkout or withdrawn: its ticket is then fresh stock.
+        // A late payment finds its offer released, maybe taken by another order or withdrawn: its ticket is then fresh stock.
         if (offer.State == TicketResaleOfferState.Withdrawn
             || (offer.State == TicketResaleOfferState.Reserved && offer.ReservedByOrderId != buyerOrder.Id))
             return;
 
         var now = clock.GetCurrentInstant();
-        // The queue also sells an invited ticket, so only an invited buyer's own purchase counts as using the invitation.
+        // The queue also sells an invited ticket, so only an invited buyer's own order counts as using the invitation.
         var directed = offer.HasLiveInvite
             && offer.Invites.Any(i => string.Equals(i.Email, buyerOrder.BuyerEmail, StringComparison.OrdinalIgnoreCase));
         offer.State = TicketResaleOfferState.Sold;
@@ -451,7 +451,7 @@ internal sealed partial class TicketCheckoutService
         {
             child.State = TicketCheckoutTicketState.Void;
             child.VoidedAt = now;
-            child.VoidReason = "Returned with the adult's ticket";
+            child.VoidReason = "Resold with the adult's ticket";
             await repository.UpdateTicketAsync(child, ct);
             if (child.OrderId != old.OrderId)
                 await TimelineAsync(child.OrderId, TicketCheckoutOrderEventKind.Voided,
@@ -510,15 +510,15 @@ internal sealed partial class TicketCheckoutService
     }
 
     /// <summary>
-    /// The evening batch: refunds each holder whose returned ticket sold at least <see cref="ResaleRefundHold"/> ago to
+    /// The evening batch: refunds each holder whose ticket sold in resale at least <see cref="ResaleRefundHold"/> ago to
     /// a buyer whose order is still paid with nothing refunded, being refunded or charged back. A sale that did not hold is left for
-    /// the ticketing team as a failed refund. One audit row per sales event carries the batch's count and total.
+    /// the ticketing team as a failed refund. One audit row per event carries the batch's count and total.
     /// </summary>
     public async Task<ResaleRefundBatch> RunResaleRefundBatchAsync(CancellationToken ct = default)
     {
         var cutoff = clock.GetCurrentInstant() - ResaleRefundHold;
         var batch = new ResaleRefundBatch(0, 0, 0, 0);
-        // A cancelled event refunds both the seller's and the buyer's order in full, so a resale refund would pay twice.
+        // A cancelled event refunds both the old holder's and the buyer's order in full, so a resale refund would pay twice.
         foreach (var ticketing in (await repository.ListTicketingSettingsAsync(ct)).Where(e => e.CancelledAt is null))
         {
             var (started, startedMinor, heldBack, waiting) = (0, 0L, 0, 0);
@@ -623,7 +623,7 @@ internal sealed partial class TicketCheckoutService
                 }
                 catch (Exception ex) when (ex is not OperationCanceledException)
                 {
-                    logger.LogWarning(ex, "Finishing paid checkout order {OrderId} failed; next run retries", order.Id);
+                    logger.LogWarning(ex, "Finishing paid order {OrderId} failed; next run retries", order.Id);
                 }
             }
 
@@ -660,8 +660,8 @@ internal sealed partial class TicketCheckoutService
     }
 
     /// <summary>
-    /// Repairs offers held by a checkout that will never pay or already paid, and tells each holder whose ticket is
-    /// still offered once sales have closed. Returns how many changed.
+    /// Repairs offers held by an order that will never pay or already paid, and tells each holder whose ticket is
+    /// still in resale once sales have closed. Returns how many changed.
     /// </summary>
     private async Task<int> SweepOffersAsync(CancellationToken ct)
     {

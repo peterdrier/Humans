@@ -164,7 +164,7 @@ public sealed class Section :
 
         services.AddScoped<TicketSyncJob>();
 
-        // The checkout lane: each platform is its own adapter section registering an ITicketingPlatform.
+        // The checkout lane: each ticketing platform is its own adapter section registering an ITicketingPlatform.
         services.AddSingleton<ITicketCheckoutRepository, TicketCheckoutRepository>();
         services.AddSingleton<ITicketRulesSource, GitHubTicketRulesSource>();
         services.AddScoped<TicketCheckoutService>();
@@ -274,7 +274,7 @@ public sealed class Section :
         // The daily financial check of every platform against Humans' orders; reads only.
         yield return new RecurringJobDescriptor("tickets-checkout-recon", typeof(TicketReconJob), "30 4 * * *");
 
-        // Evening in Spain (cron is UTC): refunds resold tickets whose buyer's order has held.
+        // Evening in Spain (cron is UTC): pays the resale refunds whose buyer's order has held.
         yield return new RecurringJobDescriptor("tickets-resale-refund-batch", typeof(TicketResaleRefundJob), "0 19 * * *");
     }
 

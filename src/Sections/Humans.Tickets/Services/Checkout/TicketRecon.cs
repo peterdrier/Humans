@@ -119,7 +119,7 @@ internal sealed record TicketRecon(
 /// <para>
 /// Totals count paid orders only: a pending, expired or cancelled order took no money on either side. Each order is
 /// still matched, so one that is missing, extra or doubled shows whatever its state; where no money moved on either
-/// side (an open checkout a platform does not list, an expired leftover), it is listed and does not unbalance. An order no platform ever took (a
+/// side (an open order a platform does not list, an expired leftover), it is listed and does not unbalance. An order no platform ever took (a
 /// free one, paid with nothing to charge) stays out of both sides' totals; only its tickets are checked.
 /// </para>
 /// </summary>

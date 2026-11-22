@@ -65,8 +65,8 @@ Docs/                                      Pretix.md (invariants), data-access.m
 - Money decides the status: a pending or expired order its payments cover, or a cancelled order
   holding unrefunded money, reads Paid, `src/Sections/Humans.Pretix/Services/PretixPlatform.cs:454`;
   pinned by `Status_OrderItsPaymentsCover_IsPaid` and `Status_CancelledOrderHoldingMoney_IsPaid`.
-- A chargeback is disputed, never refunded: `src/Sections/Humans.Pretix/Services/PretixPlatform.cs:471`;
-  pinned by `Status_Chargeback_IsDisputedNotRefundedUntilCancelledInPretix`.
+- A chargeback counts as charged back, never refunded: `src/Sections/Humans.Pretix/Services/PretixPlatform.cs:471`;
+  pinned by `Status_Chargeback_IsChargedBackNotRefundedUntilCancelledInPretix`.
 - A refund id refunds once: a repeat answers the earlier refund,
   `src/Sections/Humans.Pretix/Services/PretixPlatform.cs:153`, and a retry reuses the
   marked fee, `src/Sections/Humans.Pretix/Services/PretixPlatform.cs:171`; pinned by

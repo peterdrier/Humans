@@ -38,26 +38,26 @@ public class TicketCheckoutRepositoryTests(HumansTestDatabase database) : Integr
             UpdatedAt = Now,
         };
         await repo.SaveTicketingSettingsAsync(ticketing, ct);
-        var loadedEvent = (await repo.GetTicketingSettingsAsync(ticketing.Id, ct))!;
-        loadedEvent.Waves.Add(new TicketSalesWave { Name = "Wave 2", EndsOn = new LocalDate(2027, 2, 28), PriceMinor = 25000 });
-        loadedEvent.PriceRules.Add(new TicketPriceRule { GrantProgramId = Guid.NewGuid(), Kind = TicketPriceRuleKind.Discount, AmountMinor = 5000, Label = "Discount" });
-        loadedEvent.Switches.Should().BeNull();
-        loadedEvent.Switches = new TicketSalesSwitches { Resale = ResaleScheme.Queue, Donations = false };
-        await repo.SaveTicketingSettingsAsync(loadedEvent, ct);
+        var loadedSettings = (await repo.GetTicketingSettingsAsync(ticketing.Id, ct))!;
+        loadedSettings.Waves.Add(new TicketSalesWave { Name = "Wave 2", EndsOn = new LocalDate(2027, 2, 28), PriceMinor = 25000 });
+        loadedSettings.PriceRules.Add(new TicketPriceRule { GrantProgramId = Guid.NewGuid(), Kind = TicketPriceRuleKind.Discount, AmountMinor = 5000, Label = "Discount" });
+        loadedSettings.Switches.Should().BeNull();
+        loadedSettings.Switches = new TicketingSwitches { Resale = ResaleScheme.Queue, Donations = false };
+        await repo.SaveTicketingSettingsAsync(loadedSettings, ct);
         var switches = (await repo.GetTicketingSettingsAsync(ticketing.Id, ct))!.Switches;
-        switches.Should().BeEquivalentTo(new TicketSalesSwitches { Resale = ResaleScheme.Queue, Donations = false });
+        switches.Should().BeEquivalentTo(new TicketingSwitches { Resale = ResaleScheme.Queue, Donations = false });
         switches!.CompanionTicketsOn.Should().BeTrue("a switch saved before companion tickets had one means on");
 
-        // A setup saved before child types existed has no child_types JSON at all.
+        // Ticketing settings saved before child types existed have no child_types JSON at all.
         var contexts = scope.ServiceProvider.GetRequiredService<IDbContextFactory<TicketsDbContext>>();
         await using (var db = await contexts.CreateDbContextAsync(ct))
             await db.Database.ExecuteSqlAsync($"UPDATE ticket_sales_events SET child_types = NULL WHERE \"Id\" = {ticketing.Id}", ct);
-        loadedEvent = (await repo.GetTicketingSettingsAsync(ticketing.Id, ct))!;
-        loadedEvent.ChildTypes.Should().BeEmpty();
-        loadedEvent.DonationPurposes.Should().BeNull();
-        loadedEvent.ChildTypes = [new TicketChildType { Name = "Under 13", UnderAge = 13, PriceMinor = 5000 }];
-        loadedEvent.DonationPurposes = ["Art"];
-        await repo.SaveTicketingSettingsAsync(loadedEvent, ct);
+        loadedSettings = (await repo.GetTicketingSettingsAsync(ticketing.Id, ct))!;
+        loadedSettings.ChildTypes.Should().BeEmpty();
+        loadedSettings.DonationPurposes.Should().BeNull();
+        loadedSettings.ChildTypes = [new TicketChildType { Name = "Under 13", UnderAge = 13, PriceMinor = 5000 }];
+        loadedSettings.DonationPurposes = ["Art"];
+        await repo.SaveTicketingSettingsAsync(loadedSettings, ct);
         var typed = (await repo.GetTicketingSettingsAsync(ticketing.Id, ct))!;
         typed.ChildTypes.Should().BeEquivalentTo([new TicketChildType { Name = "Under 13", UnderAge = 13, PriceMinor = 5000 }]);
         typed.DonationPurposes.Should().Equal("Art");
@@ -95,9 +95,9 @@ public class TicketCheckoutRepositoryTests(HumansTestDatabase database) : Integr
         stored.Lines.Should().ContainSingle().Which.WaveName.Should().Be("Wave 1");
         stored.Lines[0].HolderUserId.Should().NotBe(holder);
         stored.BuyerName.Should().NotBe("Ana");
-        var storedEvent = (await repo.GetTicketingSettingsAsync(ticketing.Id, ct))!;
-        storedEvent.Waves.Select(w => w.Name).Should().Equal("Wave 1", "Wave 2");
-        storedEvent.PriceRules.Should().ContainSingle();
+        var storedSettings = (await repo.GetTicketingSettingsAsync(ticketing.Id, ct))!;
+        storedSettings.Waves.Select(w => w.Name).Should().Equal("Wave 1", "Wave 2");
+        storedSettings.PriceRules.Should().ContainSingle();
     }
 
     [HumansFact]

@@ -8,7 +8,7 @@ using Microsoft.Extensions.DependencyInjection;
 namespace Humans.BoxOffice;
 
 /// <summary>
-/// Humans' own ticket checkout: Stripe hosted Checkout behind Tickets' <see cref="ITicketingPlatform"/>, key
+/// Humans' own ticketing platform: Stripe hosted Checkout behind Tickets' <see cref="ITicketingPlatform"/>, key
 /// <c>boxoffice</c>, on its own <c>STRIPE_BOXOFFICE_*</c> variables.
 /// </summary>
 public sealed class Section : ISection, ISectionConfiguration, ISectionAdminNav

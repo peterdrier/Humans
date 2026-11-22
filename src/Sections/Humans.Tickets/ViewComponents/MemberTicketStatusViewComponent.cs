@@ -33,7 +33,7 @@ public sealed class MemberTicketStatusViewComponent(
         var allSettings = await checkout.ListTicketingSettingsAsync(ct);
         var sellsInHumans = allSettings.Any(e => e.Mode is Domain.Checkout.TicketSalesMode.Open or Domain.Checkout.TicketSalesMode.ResaleOnly)
             || (allSettings.Any(e => e.Mode == Domain.Checkout.TicketSalesMode.InvitedOnly)
-                && (await checkout.GetBuyPagesAsync(userId, ct)).Any(p => p.SalesEvent.Mode == Domain.Checkout.TicketSalesMode.InvitedOnly));
+                && (await checkout.GetBuyPagesAsync(userId, ct)).Any(p => p.Ticketing.Mode == Domain.Checkout.TicketSalesMode.InvitedOnly));
         // An open sale wins over off season: this card is the members' way to the buy page.
         if (activeEvent?.IsOffSeason == true && !sellsInHumans)
         {
@@ -66,7 +66,7 @@ public sealed class MemberTicketStatusViewComponent(
     }
 
     /// <summary>
-    /// Tickets the person holds (Valid, or Offered for resale until it sells) from Humans' own checkout: for the active
+    /// Tickets the person holds (Valid, or Offered for resale until it sells) bought through Humans: for the active
     /// event, and for any sale still open, matching the events the buy page offers.
     /// </summary>
     private static async Task<int> HumansTicketCountAsync(
@@ -129,7 +129,7 @@ internal sealed record MemberTicketStatusViewModel(
 {
     public const string TicketPurchaseUrl = "https://tickets.nobodies.team";
 
-    /// <summary>Held tickets (Valid or Offered) from Humans' own checkout, for the active event and any open sale; <see cref="UserTicketCount"/> counts the vendor sync's.</summary>
+    /// <summary>Held tickets (Valid or Offered) bought through Humans, for the active event and any open sale; <see cref="UserTicketCount"/> counts the vendor sync's.</summary>
     public int HumansTicketCount { get; init; }
 
     public bool HasTicket => UserTicketCount + HumansTicketCount > 0;

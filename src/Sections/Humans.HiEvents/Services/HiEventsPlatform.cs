@@ -17,7 +17,7 @@ namespace Humans.HiEvents.Services;
 /// <summary>
 /// <para>
 /// Talks to the Nobodies fork of Hi.Events, which adds <c>POST /events/{id}/orders/checkout</c>: a reserved order at
-/// caller-set prices with buyer and attendee names filled in, returning a payment link, idempotent by
+/// caller-set prices with buyer and holder names filled in, returning a payment link, idempotent by
 /// <c>external_reference</c> (the Humans order id). Refunds pass the Humans refund id as <c>idempotency_key</c>.
 /// </para>
 /// <para>
@@ -108,7 +108,7 @@ internal sealed class HiEventsPlatform : ITicketingPlatform
         if (response.StatusCode is HttpStatusCode.UnprocessableEntity or HttpStatusCode.Conflict)
         {
             throw new TicketingPlatformException(
-                $"Hi.Events refused the checkout for order {request.OrderId}: {await response.Content.ReadAsStringAsync(ct)}");
+                $"Hi.Events refused to create order {request.OrderId}: {await response.Content.ReadAsStringAsync(ct)}");
         }
 
         var order = await ReadOrderAsync(response, ct);
@@ -218,7 +218,7 @@ internal sealed class HiEventsPlatform : ITicketingPlatform
     }
 
     /// <summary>
-    /// Hi.Events copies the buyer's email onto every attendee and Humans sends attendees no email of their own, so
+    /// Hi.Events copies the buyer's email onto every holder's attendee record and Humans sends holders no email of their own, so
     /// the person cannot be told apart from the others on the order: the whole order is anonymised. Humans keeps the
     /// legal names it needs; amounts and statuses stay in Hi.Events.
     /// </summary>
@@ -246,7 +246,7 @@ internal sealed class HiEventsPlatform : ITicketingPlatform
         "/HiEvents/Webhook",
         [
             "Needs the Humans fork (peterdrier/Hi.Events): stock Hi.Events and Hi.Events Cloud have no checkout endpoint that takes Humans' prices.",
-            "Each event needs exactly one TICKET and one GENERAL product, both hidden, without taxes or fees, offline payment off, and the event live. The sales setup's event id is the numeric Hi.Events event id.",
+            "Each event needs exactly one TICKET and one GENERAL product, both hidden, without taxes or fees, offline payment off, and the event live. The event id in the ticketing settings is the numeric Hi.Events event id.",
             "The webhook goes on the order events.",
             "The fork's Stripe webhook must include payment_intent.processing and the charge.dispute.* events, or slow bank payments get cancelled at the hold and chargebacks never reach Humans.",
             $"Fees and payouts reconcile from the Stripe account behind the fork's STRIPE_SECRET_KEY: a Stripe:MirrorAccounts entry named {StripeAccountName} with that account's id and a read-only key (Balance, Balance transactions, Payouts, PaymentIntents, Charges, Refunds, Disputes read).",
@@ -496,7 +496,7 @@ internal sealed class HiEventsPlatform : ITicketingPlatform
     /// <summary>
     /// Humans owns the catalogue and prices every line, so a Hi.Events event needs just one carrier product per line
     /// kind: one product of type <c>TICKET</c> for ticket lines and one of type <c>GENERAL</c> for donations. Neither may
-    /// carry taxes or fees in Hi.Events, or the order total stops matching the lines and the checkout is refused. Both must
+    /// carry taxes or fees in Hi.Events, or the order total stops matching the lines and the order is refused. Both must
     /// be hidden: the pay page needs the event live, and a visible carrier would sell on its public page at its base price.
     /// </summary>
     private static CheckoutOrderItem ToItem(PlatformOrderLine line, int eventId, IReadOnlyList<HiEventsProduct> products)
@@ -557,7 +557,7 @@ internal sealed class HiEventsPlatform : ITicketingPlatform
 
     /// <summary>
     /// Hi.Events keeps a buyer's first and last name in 50 characters each. A longer full name is split at a space so
-    /// it still reads whole; past 100 characters the tail is cut, since the ticket's attendee line carries the full
+    /// it still reads whole; past 100 characters the tail is cut, since the ticket line carries the holder's full
     /// legal name.
     /// </summary>
     internal static (string FirstName, string? LastName) SplitBuyerName(string name)

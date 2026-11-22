@@ -82,10 +82,10 @@ public sealed class TicketDeliveryServiceTests
         };
 
     private void Tickets(params TicketCheckoutTicket[] tickets) =>
-        _checkout.GetOrderDetailAsync(_order.Id, Arg.Any<CancellationToken>()).Returns(_ => new CheckoutOrderDetail(_order, [], [], tickets));
+        _checkout.GetOrderDetailAsync(_order.Id, Arg.Any<CancellationToken>()).Returns(_ => new OrderDetail(_order, [], [], tickets));
 
     [HumansFact]
-    public async Task Deliver_SendsOneTicketPerHolder_AndOneReceiptToThePayer()
+    public async Task Deliver_SendsOneTicketPerHolder_AndOneReceiptToTheBuyer()
     {
         var own = Ticket(BuyerId, "Ana Buyer", "ana@example.com");
         var partner = Ticket(PartnerId, "Ben Partner", "ben@example.com");

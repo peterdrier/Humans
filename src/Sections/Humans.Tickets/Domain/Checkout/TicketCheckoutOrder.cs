@@ -4,7 +4,7 @@ using NodaTime;
 namespace Humans.Tickets.Domain.Checkout;
 
 /// <summary>
-/// One purchase in Humans, whichever platform takes the money. The lines are Humans' price; the platform charges them
+/// One order in Humans, whichever ticketing platform takes the money. The lines are Humans' price; the platform charges them
 /// as given. Paid ticket lines are the named tickets.
 /// </summary>
 internal sealed class TicketCheckoutOrder
@@ -16,17 +16,17 @@ internal sealed class TicketCheckoutOrder
 
     public Guid TicketingSettingsId { get; init; }
 
-    /// <summary>The signed-in payer.</summary>
+    /// <summary>The signed-in buyer.</summary>
     public Guid BuyerUserId { get; init; }
 
     public string BuyerName { get; set; } = string.Empty;
 
     public string BuyerEmail { get; set; } = string.Empty;
 
-    /// <summary>The platform the order was opened on; never changes, even when the event's setting does.</summary>
+    /// <summary>The platform the order was opened on; never changes, even when the event's ticketing settings change.</summary>
     public string PlatformKey { get; init; } = string.Empty;
 
-    /// <summary>Null until the platform accepted the checkout.</summary>
+    /// <summary>Null until the platform accepted the order.</summary>
     public string? PlatformOrderId { get; set; }
 
     public string? PaymentUrl { get; set; }
@@ -129,10 +129,10 @@ internal sealed class TicketCheckoutOrderLine
 
     public long DiscountsMinor { get; set; }
 
-    /// <summary>Set when this line buys a returned ticket instead of fresh stock.</summary>
+    /// <summary>Set when this line buys a ticket in resale instead of fresh stock.</summary>
     public Guid? ResaleOfferId { get; set; }
 
-    /// <summary>One of the sales event's donation purposes as it read at checkout; null for a general donation.</summary>
+    /// <summary>One of the ticketing settings' donation purposes as it read at checkout; null for a general donation.</summary>
     public string? DonationPurpose { get; set; }
 }
 
@@ -154,7 +154,7 @@ internal sealed class TicketCheckoutRefund
 
     public string? ManualRefundUrl { get; set; }
 
-    /// <summary>Null for automation (the refund owed when a returned ticket resells).</summary>
+    /// <summary>Null for automation (the resale refund owed when a ticket in resale sells).</summary>
     public Guid? RequestedByUserId { get; init; }
 
     public Instant CreatedAt { get; init; }
@@ -209,6 +209,6 @@ internal enum TicketCheckoutOrderEventKind
     CompanionRequestDecided = 24,
     EventCancelled = 25,
     Restored = 26,
-    /// <summary>Sales closed with the ticket still offered; its holder was told.</summary>
+    /// <summary>Sales closed with the ticket still in resale; its holder was told.</summary>
     ResaleUnsold = 40,
 }

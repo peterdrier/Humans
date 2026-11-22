@@ -16,7 +16,7 @@ using NodaTime.Text;
 
 namespace Humans.Tickets.Controllers;
 
-/// <summary>Per-event sales setup (platform, mode, waves, price rules) and the orders it took. English only.</summary>
+/// <summary>Per-event ticketing settings (ticketing platform, sales mode, waves, price rules) and the orders they took. English only.</summary>
 [Authorize(Policy = TicketsPolicies.Read)]
 [Route("Tickets/Admin/Sales")]
 internal sealed class TicketsSalesAdminController(
@@ -64,7 +64,7 @@ internal sealed class TicketsSalesAdminController(
         if (!result.Succeeded)
             return View("~/Views/Tickets/Admin/Sales/Edit.cshtml", await EditModelAsync(form, result.Refusal, ct));
 
-        SetSuccess("Sales setup saved.");
+        SetSuccess("Ticketing settings saved.");
         return RedirectToAction(nameof(Index));
     }
 
@@ -169,7 +169,7 @@ internal sealed class TicketsSalesAdminController(
 }
 
 internal sealed record SalesAdminIndexViewModel(
-    IReadOnlyList<TicketingSettings> SalesEvents,
+    IReadOnlyList<TicketingSettings> AllSettings,
     IReadOnlyList<EventSettingsInfo> Events,
     IReadOnlyList<PlatformInfo> Platforms,
     LocalDate Today)
@@ -179,7 +179,7 @@ internal sealed record SalesAdminIndexViewModel(
 
 internal sealed record PlatformsViewModel(
     IReadOnlyList<PlatformInfo> Platforms,
-    IReadOnlyList<TicketingSettings> SalesEvents,
+    IReadOnlyList<TicketingSettings> AllSettings,
     IReadOnlyList<EventSettingsInfo> Events,
     PlatformCheckResult? Check)
 {
@@ -325,7 +325,7 @@ internal sealed class SalesEditForm
         var totals = new List<long>();
         foreach (var row in VipLevels.Where(r => !Blank(r.Total)))
         {
-            if (!TryMinor(row.Total, out var total)) return (null, $"Supporter total '{row.Total}' is not an amount.");
+            if (!TryMinor(row.Total, out var total)) return (null, $"VIP total '{row.Total}' is not an amount.");
             totals.Add(total);
         }
 
@@ -359,7 +359,7 @@ internal sealed class SalesEditForm
         {
             ChildTypes = childTypes,
             DonationPurposes = purposes,
-            Switches = new TicketSalesSwitches
+            Switches = new TicketingSwitches
             {
                 Resale = Resale,
                 PartnerTickets = PartnerTickets,

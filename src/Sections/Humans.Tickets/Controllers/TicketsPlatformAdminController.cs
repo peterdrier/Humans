@@ -26,7 +26,7 @@ internal sealed class TicketsPlatformAdminController(
     public async Task<IActionResult> Index(string key, CancellationToken ct) =>
         await StatusAsync(key, null, ct);
 
-    /// <summary>Changes nothing; Manage only because it calls the vendor with Humans' credentials.</summary>
+    /// <summary>Changes nothing; Manage only because it calls the ticketing platform with Humans' credentials.</summary>
     [HttpPost("Check")]
     [Authorize(Policy = TicketsPolicies.Manage)]
     [ValidateAntiForgeryToken]

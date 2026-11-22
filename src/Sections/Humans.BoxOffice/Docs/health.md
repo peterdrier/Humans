@@ -11,10 +11,10 @@ against the previous run's copy. Not a history: what the section *should* be tod
 
 ## 1. What the section does
 
-It is the way to sell a ticket with no ticketing vendor at all. When a member buys, Humans
+It is the way to sell a ticket with no outside ticketing platform at all. When a member buys, Humans
 already knows the order, the price and whose name goes on each ticket; this section turns that
 into a Stripe payment page on the association's ticket Stripe account, and later tells Humans
-what became of it: paid, still settling, failed, expired, refunded or disputed. When the ticketing
+what became of it: paid, still settling, failed, expired, refunded or charged back. When the ticketing
 team gives money back, it refunds through Stripe, at most once per refund and never more than
 the payment still holds. For the books it reads the ticket account back: every payment page
 opened in a period, every balance movement with the order it belongs to, and every payout to the
@@ -26,7 +26,7 @@ Humans which payment to look at again. It stores nothing of its own.
 | Shape | Members | What the caller is asking |
 |---|---|---|
 | **Take a payment** | `CreateOrderAsync` | "Open a payment page that charges exactly these lines." |
-| **What became of it?** | `GetStatusAsync` | "Read this payment back from Stripe: state, fee, method, refunded, disputed." |
+| **What became of it?** | `GetStatusAsync` | "Read this payment back from Stripe: state, fee, method, refunded, charged back." |
 | **Give money back** | `RefundAsync` | "Refund this exact amount, once, against this payment." |
 | **Stop taking money** | `CancelAsync` | "Close this unpaid page; tell me if it is too late." |
 | **Reconcile** | `ListOrdersAsync`, `GetPaymentLedgerAsync`, `EventRefOf` | "What does the ticket account hold for this period, order by order and movement by movement?" |
@@ -71,7 +71,7 @@ Docs/                                    BoxOffice.md (invariants), data-access.
   refund carrying a Humans refund id sets `RefundFailed`
   (`src/Sections/Humans.BoxOffice/Services/BoxOfficePlatform.cs:161`,
   `src/Sections/Humans.BoxOffice/Services/BoxOfficePlatform.cs:162`).
-- **A dispute counts while it holds money**: not won, not a `warning_*` inquiry
+- **A chargeback counts while its Stripe dispute holds money**: not won, not a `warning_*` inquiry
   (`src/Sections/Humans.BoxOffice/Services/BoxOfficePlatform.cs:328`).
 - **A refund never repeats and never exceeds the payment.** It needs a paid charge
   (`src/Sections/Humans.BoxOffice/Services/BoxOfficePlatform.cs:358`); a refund already

@@ -28,15 +28,15 @@
         }
     </text>;
     Func<TicketReconRow, IHtmlContent> platformCell = @<text>
-        @if (item.Platform is { } b)
+        @if (item.Platform is { } po)
         {
-            @if (item.Order?.AdminUrl is { } adminUrl && b.PlatformOrderId == item.Order.PlatformOrderId)
+            @if (item.Order?.AdminUrl is { } adminUrl && po.PlatformOrderId == item.Order.PlatformOrderId)
             {
-                <a href="@adminUrl" target="_blank" rel="noopener"><code>@b.PlatformOrderId</code></a>
+                <a href="@adminUrl" target="_blank" rel="noopener"><code>@po.PlatformOrderId</code></a>
             }
             else
             {
-                <code>@b.PlatformOrderId</code>
+                <code>@po.PlatformOrderId</code>
             }
         }
         else
@@ -55,7 +55,7 @@
     <summary>How it is counted</summary>
     <p class="mt-2 mb-0">
         Totals count paid orders; every order is matched whatever its state, so a missing, extra or doubled one shows.
-        A difference where no money moved on either side is listed but leaves the platform balanced.
+        A difference where no money moved on either side is listed but leaves the check balanced.
         Where Humans can read the platform's payment account (Box Office), its payments, refunds, chargebacks, fees and payouts
         are checked too, by the day the money moved.
         A daily run checks the whole sale and mails the ticketing team (@TicketConstants.TicketsTeamEmail) whatever is out of balance.
@@ -104,7 +104,7 @@
 
 @if (Model.Recons.Count == 0)
 {
-    <empty-state>No sales setup sells through a platform yet.</empty-state>
+    <empty-state>No event sells through a ticketing platform yet.</empty-state>
 }
 
 @foreach (var r in Model.Recons)

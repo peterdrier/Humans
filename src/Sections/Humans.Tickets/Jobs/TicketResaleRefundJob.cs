@@ -5,8 +5,8 @@ using Humans.Tickets.Services.Checkout;
 namespace Humans.Tickets.Jobs;
 
 /// <summary>
-/// The evening resale refund batch: refunds each holder whose returned ticket sold, once the new buyer's order has
-/// held. Each run leaves one audit row per sales event with its totals.
+/// The evening resale refund batch: refunds each holder whose ticket sold in resale, once the new buyer's order has
+/// held. Each run leaves one audit row per event with its totals.
 /// </summary>
 [DisableConcurrentExecution(timeoutInSeconds: 1800)]
 internal sealed class TicketResaleRefundJob(ITicketCheckoutService checkout, ILogger<TicketResaleRefundJob> logger) : IRecurringJob

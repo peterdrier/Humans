@@ -48,7 +48,7 @@
 
 @foreach (var sale in Model)
 {
-var p = sale.SalesEvent.Id.ToString("N");
+var p = sale.Ticketing.Id.ToString("N");
 <section class="mb-5" aria-label="@sale.EventName">
 @if (!single)
 {
@@ -73,7 +73,7 @@ else
     <div class="col-lg-8 order-lg-1">
         <form asp-action="Start" method="post" class="card card-body">
             @Html.AntiForgeryToken()
-            <input type="hidden" name="settingsId" value="@sale.SalesEvent.Id" />
+            <input type="hidden" name="settingsId" value="@sale.Ticketing.Id" />
             @if (directedToken is not null)
             {
                 <input type="hidden" name="directedToken" value="@directedToken" />
@@ -102,9 +102,9 @@ else
                     <label class="form-check-label" for="forSelf-@p">@string.Format(Localizer["Tickets_Buy_ForSelf"].Value, sale.BuyerName)</label>
                 </div>
 
-                @if (sale.SalesEvent.ChildTypes.Count > 0 && directedToken is null)
+                @if (sale.Ticketing.ChildTypes.Count > 0 && directedToken is null)
                 {
-                    var childTypes = sale.SalesEvent.ChildTypes;
+                    var childTypes = sale.Ticketing.ChildTypes;
                     string ChildTypeText(TicketChildType t) => string.Format(Localizer["Tickets_Buy_ChildType"].Value, t.Name,
                         t.UnderAge.ToString(System.Globalization.CultureInfo.CurrentCulture), (t.PriceMinor / 100m).ToEuro());
                     <hr class="my-4" />
@@ -139,21 +139,21 @@ else
                     </div>
                 }
 
-                @if (sale.OffersDonations && sale.SalesEvent.VipTotalsMinor.Any(t => t > own.AmountMinor))
+                @if (sale.OffersDonations && sale.Ticketing.VipTotalsMinor.Any(t => t > own.AmountMinor))
                 {
                     <hr class="my-4" />
                     <fieldset>
                         <legend class="h4">@Localizer["Tickets_Buy_Vip"]</legend>
                         <p class="small text-muted">@Localizer["Tickets_Buy_VipIntro"]</p>
                         <div class="form-check mb-2">
-                            <input class="form-check-input" type="radio" name="vipTotalMinor" id="supporter-none-@p" value="" checked />
-                            <label class="form-check-label" for="supporter-none-@p">@Localizer["Tickets_Buy_VipNone"]</label>
+                            <input class="form-check-input" type="radio" name="vipTotalMinor" id="vip-none-@p" value="" checked />
+                            <label class="form-check-label" for="vip-none-@p">@Localizer["Tickets_Buy_VipNone"]</label>
                         </div>
-                        @foreach (var total in sale.SalesEvent.VipTotalsMinor.Where(t => t > own.AmountMinor))
+                        @foreach (var total in sale.Ticketing.VipTotalsMinor.Where(t => t > own.AmountMinor))
                         {
                             <div class="form-check mb-2">
-                                <input class="form-check-input" type="radio" name="vipTotalMinor" id="supporter-@total-@p" value="@total" />
-                                <label class="form-check-label" for="supporter-@total-@p">@string.Format(Localizer["Tickets_Buy_VipOption"].Value, (total / 100m).ToEuro(), ((total - own.AmountMinor) / 100m).ToEuro())</label>
+                                <input class="form-check-input" type="radio" name="vipTotalMinor" id="vip-@total-@p" value="@total" />
+                                <label class="form-check-label" for="vip-@total-@p">@string.Format(Localizer["Tickets_Buy_VipOption"].Value, (total / 100m).ToEuro(), ((total - own.AmountMinor) / 100m).ToEuro())</label>
                             </div>
                         }
                     </fieldset>
@@ -190,7 +190,7 @@ else
                             <span class="input-group-text">€</span>
                         </div>
                     </div>
-                    @if (sale.SalesEvent.DonationPurposes is [_, ..] purposes)
+                    @if (sale.Ticketing.DonationPurposes is [_, ..] purposes)
                     {
                         <div class="col-12 col-md-8">
                             <select class="form-select" name="donationPurpose" aria-label="@Localizer["Tickets_Buy_DonationPurpose"]">

@@ -105,9 +105,9 @@
                         <details class="mb-3">
                             <summary class="fw-semibold">Rename</summary>
                             <p class="small text-muted mt-2">
-                                With the holder's own email, this corrects their legal name. With a different email it moves the ticket to
-                                that person, which is only an agreed exception: tickets are not transferable, and only a full price ticket
-                                without child or companion tickets can move. The new holder's account is found or created.
+                                With the holder's own email, this corrects their legal name. With a different email it puts the ticket in
+                                that person's name, which is only an agreed exception: tickets do not change hands, and only a full price
+                                ticket without child or companion tickets can be renamed to someone else. The new holder's account is found or created.
                             </p>
                             <form asp-action="Rename" asp-route-orderId="@Model.Order.Id" asp-route-ticketId="@t.Id" method="post">
                                 @Html.AntiForgeryToken()
@@ -140,7 +140,7 @@
                             <summary class="fw-semibold text-danger">Void and refund</summary>
                             <p class="small text-muted mt-2">
                                 The ticket stops working at the gate, with its child and companion tickets. The refund goes first, back to how
-                                the order was paid; if the provider turns it down, nothing is voided. This order can still refund
+                                the order was paid; if the ticketing platform turns it down, nothing is voided. This order can still refund
                                 @((Model.RefundableMinor / 100m).ToEuro()).
                             </p>
                             <form asp-action="Void" asp-route-orderId="@Model.Order.Id" asp-route-ticketId="@t.Id" method="post"
@@ -201,14 +201,14 @@
                     @if (renamable)
                     {
                         <details class="mb-3">
-                            <summary class="fw-semibold">Move to another person, whatever the price</summary>
-                            <p class="small text-muted mt-2">As Rename, but a ticket bought at a class price or with discounts may move too.</p>
+                            <summary class="fw-semibold">Rename to another person, whatever the price</summary>
+                            <p class="small text-muted mt-2">As Rename, but a ticket bought at a class price or with discounts may be renamed too.</p>
                             <form asp-action="OverrideRename" asp-route-orderId="@Model.Order.Id" asp-route-ticketId="@t.Id" method="post">
                                 @Html.AntiForgeryToken()
                                 <div class="mb-2"><label class="form-label" for="orename-name">Legal name</label><input class="form-control" id="orename-name" name="holderName" maxlength="200" required /></div>
                                 <div class="mb-2"><label class="form-label" for="orename-email">Email</label><input class="form-control" id="orename-email" name="holderEmail" type="email" maxlength="256" required /></div>
                                 <div class="mb-2"><label class="form-label" for="orename-reason">Reason</label><input class="form-control" id="orename-reason" name="reason" maxlength="500" required /></div>
-                                <button type="submit" class="btn btn-outline-warning btn-sm">Move ticket</button>
+                                <button type="submit" class="btn btn-outline-warning btn-sm">Rename ticket</button>
                             </form>
                         </details>
                     }
