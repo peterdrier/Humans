@@ -29,6 +29,7 @@ Bulk cache warmups publish through the shared mutation guard. A refresh, deletio
 - **Camp registration** opens and closes per Settings event (`camp_event_settings`). `CampSettingsInfo.Events` lists every non-deleted Settings event with its registration state, `OpenEvents` the open ones, and `ActiveEventSettingsId` Settings' active event (resolved live). `PublicYear` and `OpenSeasons` are the year view kept for sections not yet keyed by event: the active event's year (else the clock year) and the open events' years. **Camp Settings** retains its legacy mapped columns for a separate schema drop; they no longer determine registration.
 - Registration reads retain each event's gate opening date and leave ordering to callers. Settings/admin/profile rendering orders events by descending gate date; registration GET and POST explicitly select the open event with the latest gate opening. Role/compliance defaults still prefer the active event, then the latest gate opening.
 - Member-role projections carry each active role's name and sort priority without presentation ordering, including through `CampUserInfo.Resolve` and the cache. Users' profile-summary builder orders popover badges by priority then name (ordinal, case-insensitive); duplicate role names remain separate entries.
+- Failed or cancelled cache warmups discard partial camp publications through `TrackedCache`. Recovery reloads a complete current snapshot; a camp absent from that snapshot cannot survive from an aborted attempt.
 
 ## Data Model
 

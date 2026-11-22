@@ -290,7 +290,17 @@ public class TrackedCache<TKey, TValue> : IHostedService, ICacheStats where TKey
                 }
             }
 
-            await WarmAllAsync(Publish, ct);
+            try
+            {
+                await WarmAllAsync(Publish, ct);
+                ct.ThrowIfCancellationRequested();
+            }
+            catch
+            {
+                // A later successful warmup must not inherit rows from an aborted snapshot.
+                Clear();
+                throw;
+            }
             lock (_mutationGate)
             {
                 if (!interrupted && generation == _mutationGeneration)
