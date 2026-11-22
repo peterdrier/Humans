@@ -18,7 +18,6 @@ internal sealed partial class GrantService : IGrantService
 
     public async Task<IReadOnlyList<GrantProgramSummary>> GetProgramSummariesAsync(CancellationToken ct = default) =>
         (await GetProgramsAsync(ct))
-            .OrderByDescending(p => p.Year).ThenBy(p => p.Name, StringComparer.Ordinal)
             .Select(p => new GrantProgramSummary(p.Id, p.Name, p.Year, p.EventSettingsId, p.EventName))
             .ToList();
 }

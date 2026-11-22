@@ -27,6 +27,25 @@ public class TicketsSupportAdminControllerTests
     }
 
     [HumansFact]
+    public async Task SalesEditor_OrdersGrantProgramsByYearThenOrdinalName()
+    {
+        var grants = Substitute.For<IGrantService>();
+        var older = new GrantProgramSummary(Guid.NewGuid(), "A", 2026, null, "Old event");
+        var zed = new GrantProgramSummary(Guid.NewGuid(), "Z", 2027, null, "Current event");
+        var upper = new GrantProgramSummary(Guid.NewGuid(), "Alpha", 2027, null, "Current event");
+        var lower = new GrantProgramSummary(Guid.NewGuid(), "alpha", 2027, null, "Current event");
+        grants.GetProgramSummariesAsync(Arg.Any<CancellationToken>()).Returns([older, lower, zed, upper]);
+        var zone = Substitute.For<IOrgTimeZone>();
+        zone.Zone.Returns(DateTimeZone.Utc);
+        var controller = new TicketsSalesAdminController(_checkout, null!, Substitute.For<ISettingsService>(),
+            grants, zone, SystemClock.Instance, Substitute.For<IUserService>());
+
+        var result = (ViewResult)await controller.Edit(null, TestContext.Current.CancellationToken);
+
+        ((SalesEditViewModel)result.Model!).Programs.Should().Equal(upper, zed, lower, older);
+    }
+
+    [HumansFact]
     public async Task AdminOrder_PresentsTicketsByKindAndRefundsOldestFirst()
     {
         var order = new TicketCheckoutOrder { Id = Guid.NewGuid() };

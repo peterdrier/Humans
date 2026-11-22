@@ -8,7 +8,7 @@ public interface IGrantService : IApplicationService
     /// <summary>The person's grants that are active today, across every id they have held.</summary>
     Task<IReadOnlyList<ActiveGrantInfo>> GetActiveGrantsAsync(Guid userId, CancellationToken ct = default);
 
-    /// <summary>Every program, newest event first, for a picker that maps a program to what it delivers.</summary>
+    /// <summary>Every program, unordered; the delivering section orders its picker.</summary>
     Task<IReadOnlyList<GrantProgramSummary>> GetProgramSummariesAsync(CancellationToken ct = default);
 }
 

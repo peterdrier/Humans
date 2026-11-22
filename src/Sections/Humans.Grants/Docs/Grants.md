@@ -18,6 +18,7 @@ Grants is the one record of who is entitled to what, for which event. Any part o
 - A **Grant program** is one kind of entitlement for one event (picked from the Settings events; the program's year follows it): a name, what it **entitles** the person to (shown to them verbatim), an optional default expiry, and **who issues** it: its own managers by hand, or a **source** section (Low Income) identified by a source key.
 - A **Grant** entitles one person under one program. It is **Active** until it expires or is revoked; **Expired** the day after its expiry date (its own date, else the program's), read against today in Europe/Madrid; **Revoked** once revoked, whatever the date. Revoked wins over expired.
 - A program is **Open** or **Closed**. Closed programs take no new grants; existing grants stay.
+- Program summaries are unordered; delivering sections choose their picker order. Tickets orders its sales-setup program choices by descending year, then ordinal name.
 
 ## Data Model
 
