@@ -336,12 +336,11 @@ public sealed class VolunteerTrackingExportServiceTests
     private static readonly Guid Carol = Guid.Parse("c0000000-0000-0000-0000-000000000003");
 
     [HumansFact]
-    public async Task GroupOrdering_ByTotalTeamHoursDescending_TieBreakOnName()
+    public async Task Groups_retain_total_team_hours_for_workbook_ordering()
     {
         // Alice: TeamA 8h Day3.
         // Bob: TeamA 8h Day3, TeamA 8h Day4 (TeamA total = 24h).
         // Carol: TeamB 8h Day3, TeamB 8h Day4, TeamB 8h Day5 (TeamB total = 24h, ties with TeamA).
-        // Tie → alphabetical → TeamA first.
         var shifts = new[]
         {
             ShiftRow(Alice, TeamA, Day1.PlusDays(2), 9, 17),
@@ -365,19 +364,22 @@ public sealed class VolunteerTrackingExportServiceTests
         var model = await sut.BuildAsync(BuildRequest(), ct: Xunit.TestContext.Current.CancellationToken);
 
         model.Groups.Should().HaveCount(2);
-        model.Groups[0].TeamName.Should().Be("TeamA");  // tie → alpha
-        model.Groups[1].TeamName.Should().Be("TeamB");
-        model.Groups[0].Humans.Select(h => h.PlayaName).Should().Equal("Alice", "Bob");
-        model.Groups[1].Humans.Select(h => h.PlayaName).Should().Equal("Carol");
+        var groups = model.Groups.ToDictionary(group => group.TeamId);
+        groups[TeamA].TeamName.Should().Be("TeamA");
+        groups[TeamB].TeamName.Should().Be("TeamB");
+        groups[TeamA].TotalHours.Should().Be(24);
+        groups[TeamB].TotalHours.Should().Be(24);
+        groups[TeamA].Humans.Select(h => h.PlayaName).Should().BeEquivalentTo("Alice", "Bob");
+        groups[TeamB].Humans.Select(h => h.PlayaName).Should().Equal("Carol");
     }
 
     private static readonly Guid Zara = Guid.Parse("d0000000-0000-0000-0000-000000000004");
 
     [HumansFact]
-    public async Task WithinGroup_OrderedByArrivalDayAscending_TieBreakByName()
+    public async Task Human_rows_retain_first_shift_dates_for_workbook_ordering()
     {
         // Same team. Zara's first shift is Day2 → arrives Day1. Alice's first shift is Day4 → arrives Day3.
-        // Even though "Alice" sorts before "Zara" alphabetically, Zara arrives earlier so appears first.
+        // The workbook must receive their actual dates, independent of alphabetical order.
         var shifts = new[]
         {
             ShiftRow(Zara,  TeamA, Day1.PlusDays(1), 9, 17),
@@ -396,7 +398,12 @@ public sealed class VolunteerTrackingExportServiceTests
         var model = await sut.BuildAsync(BuildRequest(), ct: Xunit.TestContext.Current.CancellationToken);
 
         model.Groups.Should().HaveCount(1);
-        model.Groups[0].Humans.Select(h => h.PlayaName).Should().Equal("Zara", "Alice");
+        var humans = model.Groups[0].Humans.ToDictionary(human => human.UserId);
+        humans.Should().HaveCount(2);
+        humans[Zara].PlayaName.Should().Be("Zara");
+        humans[Alice].PlayaName.Should().Be("Alice");
+        humans[Zara].FirstShiftDay.Should().Be(Day1.PlusDays(1));
+        humans[Alice].FirstShiftDay.Should().Be(Day1.PlusDays(3));
     }
 
     [HumansTheory]

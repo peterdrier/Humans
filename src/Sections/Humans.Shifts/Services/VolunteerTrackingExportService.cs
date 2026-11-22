@@ -82,10 +82,9 @@ internal sealed class VolunteerTrackingExportService(
                     cells[i] = CellState.Empty;
                 }
             }
-            rows[userId] = new HumanRow(userId, playaNames[userId], cells);
+            rows[userId] = new HumanRow(userId, playaNames[userId], cells) { FirstShiftDay = firstShiftDay[userId] };
         }
 
-        // By total team hours, ties alphabetical.
         var totalTeamHours = perUserPerDay
             .SelectMany(kvp => kvp.Value)
             .GroupBy(v => v.teamId)
@@ -96,14 +95,12 @@ internal sealed class VolunteerTrackingExportService(
             .Select(g =>
             {
                 var (teamId, teamName) = g.Key;
-                var humans = g.Select(r => r.Value)
-                    .OrderBy(h => firstShiftDay[h.UserId])
-                    .ThenBy(h => h.PlayaName, StringComparer.OrdinalIgnoreCase)
-                    .ToList();
-                return new DepartmentGroup(teamId, teamName, TeamPalette.ColorFor(teamId), humans);
+                var humans = g.Select(r => r.Value).ToList();
+                return new DepartmentGroup(teamId, teamName, TeamPalette.ColorFor(teamId), humans)
+                {
+                    TotalHours = totalTeamHours[teamId]
+                };
             })
-            .OrderByDescending(dg => totalTeamHours[dg.TeamId])
-            .ThenBy(dg => dg.TeamName, StringComparer.OrdinalIgnoreCase)
             .ToList();
 
         var totals = ComputeTotals(days, rows);
