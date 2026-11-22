@@ -1,7 +1,9 @@
+using NodaTime;
+
 namespace Humans.Shifts.Services;
 
 /// <summary>
-/// <see cref="ShiftLines"/> are pre-rendered and sorted; <see cref="ShiftsEmails"/> only encodes them.
+/// <see cref="Shifts"/> carry their rota timezone; <see cref="ShiftsEmails"/> orders and formats them.
 /// <see cref="IncludeShifts"/> false drops the section, unlike an empty list, which prints the "no shifts yet" note.
 /// </summary>
 internal sealed record CoordinatorRotaMessageRequest(
@@ -12,12 +14,12 @@ internal sealed record CoordinatorRotaMessageRequest(
     string? SenderEmail,
     string RotaName,
     string MessageText,
-    IReadOnlyList<string> ShiftLines,
+    IReadOnlyList<(ZonedDateTime Start, bool IsAllDay)> Shifts,
     bool IncludeShifts = true,
     string? Culture = null);
 
 /// <summary>
-/// <see cref="ShiftGroups"/> are pre-rendered, each rota in its own timezone. <see cref="IncludeShifts"/> false
+/// <see cref="ShiftGroups"/> carry each rota's zoned shift starts. <see cref="IncludeShifts"/> false
 /// drops the shift section.
 /// </summary>
 internal sealed record CoordinatorTeamRotasMessageRequest(
@@ -32,4 +34,4 @@ internal sealed record CoordinatorTeamRotasMessageRequest(
     bool IncludeShifts = true,
     string? Culture = null);
 
-internal sealed record CoordinatorRotaShiftGroup(string RotaName, IReadOnlyList<string> ShiftLines);
+internal sealed record CoordinatorRotaShiftGroup(string RotaName, IReadOnlyList<(ZonedDateTime Start, bool IsAllDay)> Shifts);
