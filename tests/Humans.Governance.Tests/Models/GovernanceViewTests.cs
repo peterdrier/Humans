@@ -9,6 +9,8 @@ using Humans.Governance.Models;
 using Humans.Governance.Domain;
 using Humans.Governance.Data;
 using Humans.Governance.Services.Dtos;
+using Humans.Governance.Contracts;
+using Humans.Governance.ViewComponents;
 using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -25,8 +27,29 @@ using NSubstitute;
 
 namespace Humans.Governance.Tests.Models;
 
-public sealed class AssemblyBallotIdentityViewTests
+public sealed class GovernanceViewTests
 {
+    [HumansTheory]
+    [Xunit.InlineData(true, true)]
+    [Xunit.InlineData(true, false)]
+    [Xunit.InlineData(false, true)]
+    [Xunit.InlineData(false, false)]
+    public async Task TermStatus_KeepsExpiryWarningButOnlyOffersRenewalWithoutAPendingApplication(bool expired, bool pending)
+    {
+        using var culture = new CultureScope("en");
+        var model = new MemberTermStatusViewModel(MembershipTier.Colaborador,
+            new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc), !expired, expired, pending);
+        var html = await RenderAsync("/Views/Shared/Components/MemberTermStatus/Default.cshtml", model, Substitute.For<IUserService>());
+        var message = new ResourceManager(typeof(SharedResource))
+            .GetString("Dashboard_TierApplicationPending", CultureInfo.CurrentUICulture)!;
+
+        html.Should().Contain("fa-clock");
+        if (pending)
+            html.Should().NotContain("<a ").And.Contain(HtmlEncoder.Default.Encode(message));
+        else
+            html.Should().Contain("<a ").And.NotContain(HtmlEncoder.Default.Encode(message));
+    }
+
     [HumansFact]
     public async Task DisclosedBallots_RenderCanonicalIdentity_AndKeepErasedVotersUnlinked()
     {
@@ -57,7 +80,7 @@ public sealed class AssemblyBallotIdentityViewTests
         var unknown = new ResourceManager(typeof(SharedResource)).GetString("Common_Unknown", CultureInfo.CurrentUICulture)!;
         foreach (var (page, model) in new (string, object)[] { ("Results", results), ("Admin/Ballots", admin) })
         {
-            var html = await RenderAsync(page, model, users);
+            var html = await RenderAsync($"/Views/Governance/Votes/{page}.cshtml", model, users);
             var encoded = HtmlEncoder.Default.Encode("Current <b>&");
             html.Should().Contain(encoded).And.Contain(HtmlEncoder.Default.Encode(unknown));
             html.Should().NotContain("Current <b>&").And.NotContain("A stale").And.NotContain("B stale").And.NotContain("Erased identity");
@@ -67,11 +90,11 @@ public sealed class AssemblyBallotIdentityViewTests
         await users.DidNotReceive().GetUserInfoAsync(Guid.Empty, Arg.Any<CancellationToken>());
     }
 
-    private static async Task<string> RenderAsync(string page, object model, IUserService users)
+    private static async Task<string> RenderAsync(string viewPath, object model, IUserService users)
     {
         var builder = WebApplication.CreateBuilder(new WebApplicationOptions
         {
-            ApplicationName = typeof(AssemblyBallotIdentityViewTests).Assembly.GetName().Name,
+            ApplicationName = typeof(GovernanceViewTests).Assembly.GetName().Name,
             EnvironmentName = "Testing",
         });
         builder.Services.AddLocalization();
@@ -90,12 +113,12 @@ public sealed class AssemblyBallotIdentityViewTests
         using var scope = app.Services.CreateScope();
         var services = scope.ServiceProvider;
         var result = services.GetRequiredService<IRazorViewEngine>()
-            .GetView(null, $"/Views/Governance/Votes/{page}.cshtml", isMainPage: false);
+            .GetView(null, viewPath, isMainPage: false);
         result.Success.Should().BeTrue();
         var http = new DefaultHttpContext { RequestServices = services };
         var route = new RouteData();
         route.Values["controller"] = "AssemblyVotes";
-        route.Values["action"] = page;
+        route.Values["action"] = Path.GetFileNameWithoutExtension(viewPath);
         var action = new ActionContext(http, route, new Microsoft.AspNetCore.Mvc.Abstractions.ActionDescriptor());
         var data = new ViewDataDictionary(services.GetRequiredService<IModelMetadataProvider>(), new ModelStateDictionary()) { Model = model };
         using var writer = new StringWriter(CultureInfo.InvariantCulture);
