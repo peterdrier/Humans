@@ -84,16 +84,19 @@ public sealed class WorkspaceIdentityServiceTests
             .Be(new WorkspaceIdentity(info.Id, address, status));
     }
 
-    [HumansFact]
-    public async Task NoDesignation_FallsBackToTheVerifiedPrimary()
+    [HumansTheory]
+    [Xunit.InlineData(true)]
+    [Xunit.InlineData(false)]
+    public async Task NoDesignation_FallsBackToTheVerifiedPrimaryOrFirstAddress(bool hasPrimary)
     {
         var info = Seed(
             new Addr("aaa@example.org"),
-            new Addr("alice@example.org", Primary: true),
+            new Addr("alice@example.org", Primary: hasPrimary),
             new Addr("unverified@nobodies.team", Verified: false));
+        _infos[info.Id] = info with { UserEmails = info.UserEmails.Reverse().ToArray() };
 
         (await _sut.GetWorkspaceIdentityAsync(info.Id, Ct)).Should()
-            .Be(new WorkspaceIdentity(info.Id, "alice@example.org", GoogleEmailStatus.Unknown));
+            .Be(new WorkspaceIdentity(info.Id, hasPrimary ? "alice@example.org" : "aaa@example.org", GoogleEmailStatus.Unknown));
     }
 
     [HumansFact]

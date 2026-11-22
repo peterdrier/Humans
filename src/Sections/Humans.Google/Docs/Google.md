@@ -132,6 +132,8 @@ Google integration management is consolidated in `GoogleController` (`[Route("Go
 
 ## Invariants
 
+- Workspace identity's final fallback directly selects the minimum verified address using ordinal comparison ignoring case; designated, domain and primary-address preferences still precede it.
+
 - Team-resource authorization resolves non-privileged viewers before checking their
   department's resource-management permission. Merged cookies use the surviving
   account; missing accounts are denied and request cancellation propagates. The

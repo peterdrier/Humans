@@ -136,7 +136,7 @@ internal sealed class WorkspaceIdentityService(
             ? designatedRow
             : nobodies
                 ?? verified.FirstOrDefault(e => e.IsPrimary)
-                ?? verified.OrderBy(e => e.Email, StringComparer.OrdinalIgnoreCase).First();
+                ?? verified.MinBy(e => e.Email, StringComparer.OrdinalIgnoreCase)!;
 
         var status = row is not null
             ? (row.Email is not null && Same(row.Email, chosen.Email) ? row.Status : GoogleEmailStatus.Unknown)
