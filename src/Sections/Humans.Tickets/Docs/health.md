@@ -166,4 +166,4 @@ them.
 |---|---|---|---|
 | section-doctor | 2026-09-05 | First doctoring: invariant doc rebuilt against the code, narration purged, dead resx keys cut, sync-cursor test pinned | peterdrier/Humans#1589 |
 | section-doctor | 2026-10-05 | Dashboard computes and docs describe only what `/Tickets` renders; view model renders the service DTOs | peterdrier/Humans#1905 |
-| section-doctor | 2026-11-21 | Target covers Humans' own ticket sales; a cancelled event no longer tells resale sellers there is no refund | pending |
+| section-doctor | 2026-11-21 | Target covers Humans' own ticket sales; a cancelled event no longer tells resale sellers there is no refund | peterdrier/Humans#2556 |
