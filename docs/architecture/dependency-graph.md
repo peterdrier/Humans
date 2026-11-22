@@ -94,6 +94,7 @@ graph LR
     Backdoor -.-> Notifications
     BoxOffice -.-> Tickets
     Budget --> Issues
+    Budget --> Permissions
     Budget -.-> Camps
     Budget -.-> Finance
     Budget -.-> Teams
