@@ -31,6 +31,31 @@ _Avoid_: director
 **Homed** vs **Owns**:
 *Homed* is where a service's code lives (namespace / controller proximity); *owns* is table ownership. An Orchestrator may be **homed** in a section's lane for controller-wiring convenience while **owning** no lane. "Which lane is X in?" must be answered as homed-or-owns, never conflated.
 
+## Finance
+
+**Reconciliation** (recon):
+Checking that two records of the same money agree, across all of finance: ticket orders against a ticketing platform, Stripe against our orders, Pleo against Holded. It is made of **checks**, each named for the two things it compares. A **difference** is anything the two sides disagree on; a check **balances** when none is left.
+
+**Gross**:
+The first number: money charged, before refunds, chargebacks, fees, taxes or anything else come out.
+
+**Net**:
+Gross less refunds, chargebacks and fees.
+
+**Fee**:
+What the payment processor (Stripe) takes from us on a payment. Never something the buyer pays.
+_Avoid_: surcharge (there are none)
+
+**Payout**:
+Stripe sending money from its balance to our bank account.
+
+**Paid**:
+An order whose money arrived. It stays paid for good: refunds and chargebacks are amounts recorded against it, never states that replace it.
+
+**Chargeback**:
+Money the buyer's bank took back from us.
+_Avoid_: dispute (Stripe's word for the process, not the money)
+
 ## Ticketing
 
 > From the 2026-11-22 ticketing grill. Kept here until it grows too big, then it moves to a Tickets-section glossary linked from this file.
@@ -108,6 +133,46 @@ Where an event's sales stand: **Closed**; **Invited only** (early sales and test
 **Ticketing platform**:
 The system that takes payment for an event's orders at the price Humans sets. Each event uses one: **Box Office** (Humans' own, on Stripe), **pretix** or **Hi.Events**.
 _Avoid_: backend, checkout backend (the code's names), vendor (TicketTailor only)
+
+**Void**:
+A ticket stops admitting anyone. No money moves; a refund is its own step.
+
+**Cancel**:
+Close an order that was never paid, or a whole event. A cancelled event voids every ticket and refunds the ticket money. A paid order is never cancelled: it is refunded and its tickets voided.
+
+**Override**:
+An Admin breaking a ticketing rule on purpose (restoring a voided ticket, a companion past capacity), with a reason, audited. Ordinary team actions (rename, void, refund) are not overrides.
+
+**Order timeline**:
+An order's history: every step, who took it and when. It only grows; nothing on it is edited or removed.
+
+**Flag**:
+Humans marking an order for the ticketing team to look at (a late payment for someone who already holds a ticket, a held-back resale refund). It goes on the order timeline and the audit log.
+
+**Resale refund**:
+What a holder gets back once their resold ticket's sale is confirmed. Paid in batches for convenience, not at the moment of sale.
+
+**Scan**:
+Reading a ticket's code at the gate.
+
+**Admit**:
+The gate letting a holder in: the ticket is valid and their name matches their ID. Humans keeps one **admission** per ticket, the only check-in record anywhere; no ticketing platform is told.
+_Avoid_: check-in (except as the report's name)
+
+**Early entry**:
+A privilege from Camps or Shifts that lets a holder in before general entry opens. Not a kind of ticket.
+
+**Participation**:
+A member's status for one event year: not attending, ticketed, attended or no-show. Internal: it answers "does this person have a ticket" for shift planning and mailing cohorts.
+
+**Carrier product** (builders only):
+The one hidden ticket product and one donation product in a pretix or Hi.Events event, so the platform charges whatever Humans prices. No catalogue is mirrored there.
+
+**Platform order** (builders only):
+A ticketing platform's copy of a Humans order, linked by the Humans order id.
+
+**Webhook** (builders only):
+A nudge from a ticketing platform to re-read it. The truth always comes from that re-read, or from the five-minute poll that catches missed nudges.
 
 **TicketTailor order** / **TicketTailor attendee** (retired):
 The 2026 records synced in from TicketTailor. Kept as history; nothing new is built on them.

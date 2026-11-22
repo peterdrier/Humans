@@ -325,6 +325,10 @@ and nothing goes to Consent.
   for this order (a range for cards, iDEAL, Klarna; rates per method in the sales setup) and asks buyers to pick the
   cheapest that works for them, on every platform. Once Stripe reports the fee, the order page shows what it really
   cost, with a thank-you for a cheap method (Peter, 2026-11-22).
+- Telling the holder who bought their resold ticket: only if the buyer opts in at checkout (off by default), and then by
+  burner name, never legal name (Peter, 2026-11-22).
+- Participation: a ticket issued here does not yet mark its holder Ticketed for the event year, so 2027 buyers would read
+  as not having bought on "Who Hasn't Bought", shift planning and mailing cohorts.
 - Moving a paid child ticket to another adult: refund and reissue for now; a reattach action only if a real case needs it.
 - Payment-method-dependent prices: not planned. One price for every method until the lawyer says a surcharge is allowed.
 - Check-in report: the gate's per-event check-in is not built and Gate has no read Tickets may call.

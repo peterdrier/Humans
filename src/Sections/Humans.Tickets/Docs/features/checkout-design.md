@@ -154,3 +154,13 @@ decisions, including answers to the questions left open above:
   using Humans run overlapping events, so nothing may assume a single event.
 - **Box Office as a shop.** Peter expected Box Office to hold a shopping cart (people add things and buy), with the
   ticketing layer telling each platform what is for sale. Not now; possible later work.
+- **Resale is one to one.** While offers wait, every ticket sold takes the oldest offer first, in any sales mode; it
+  counts only once the buyer's payment completes (an abandoned basket releases the offer). The holder's refund goes
+  out in batches for convenience; no fixed delay is part of the rule.
+- **Who bought my ticket.** The holder is not told, unless the buyer chooses to let them know; then the holder sees the
+  buyer's burner name, never the legal name.
+- **Has a ticket.** A ticket issued in Humans must count everywhere "has a ticket" is used internally: participation,
+  shift planning (people signed up for shifts without a ticket was a 2026 problem) and mailing cohorts. Whether it is
+  shown publicly is open.
+- **TicketTailor belongs to the 2026 event.** The 2027 event's ticketing settings pick Box Office, pretix or Hi.Events;
+  once it runs, the TicketTailor code retires (2026 data kept until each drop is approved).
