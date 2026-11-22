@@ -145,13 +145,25 @@ internal sealed class MailerLiteClient(IHttpClientFactory httpFactory, IClock cl
 
     public async Task DeleteSubscriberAsync(string email, CancellationToken ct = default)
     {
-        using var resp = await SendAsync(
-            HttpMethod.Delete, $"/api/subscribers/{Uri.EscapeDataString(email)}", content: null, ct);
-        // 404 = already gone at the remote — success, but the no-TTL snapshot here
-        // can still be holding the address, so the eviction runs either way.
-        if (resp.StatusCode != HttpStatusCode.NotFound)
-            resp.EnsureSuccessStatusCode();
+        using var lookup = await SendAsync(
+            HttpMethod.Get, $"/api/subscribers/{Uri.EscapeDataString(email)}", content: null, ct);
+        if (lookup.StatusCode != HttpStatusCode.NotFound)
+        {
+            lookup.EnsureSuccessStatusCode();
+            var env = await ReadPageAsync<SubscriberSingleEnvelope>(lookup.Content, "subscriber lookup", ct);
+            var subscriber = env?.Data
+                ?? throw new HttpRequestException("MailerLite returned no subscriber for erasure.");
+            if (!string.Equals(subscriber.Email, email, StringComparison.OrdinalIgnoreCase))
+                throw new HttpRequestException("MailerLite subscriber lookup returned another address.");
 
+            // DELETE retains subscriber history; forget schedules permanent removal at MailerLite.
+            using var forgotten = await SendAsync(HttpMethod.Post,
+                $"/api/subscribers/{Uri.EscapeDataString(subscriber.Id)}/forget", content: null, ct);
+            if (forgotten.StatusCode != HttpStatusCode.NotFound)
+                forgotten.EnsureSuccessStatusCode();
+        }
+
+        // A remote 404 is idempotent success, but the no-TTL snapshot may still hold the address.
         await RemoveFromSubscribersCacheAsync(email, ct);
     }
 
@@ -417,6 +429,9 @@ internal sealed class MailerLiteClient(IHttpClientFactory httpFactory, IClock cl
     private sealed record SubscriberListEnvelope(
         [property: JsonPropertyName("data")] IReadOnlyList<MailerLiteSubscriber> Data,
         [property: JsonPropertyName("meta")] SubscriberMeta Meta);
+
+    private sealed record SubscriberSingleEnvelope(
+        [property: JsonPropertyName("data")] MailerLiteSubscriber? Data);
 
     private sealed record SubscriberMeta(
         [property: JsonPropertyName("next_cursor"), JsonRequired] string? NextCursor);
