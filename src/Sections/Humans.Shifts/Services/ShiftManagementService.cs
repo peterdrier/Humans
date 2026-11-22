@@ -16,6 +16,8 @@ using NodaTime;
 using Humans.Shifts.Data;
 using Humans.Base.Caching;
 using Humans.Users.Contracts;
+using Humans.Permissions.Contracts;
+using Humans.Base.Authorization;
 
 using Humans.Shifts.Models;
 
@@ -36,6 +38,7 @@ internal sealed class ShiftManagementService(
 
     private IShiftRotaRows RotaRows => serviceProvider.GetRequiredService<IShiftRotaRows>();
     private ISettingsService SettingsService => serviceProvider.GetRequiredService<ISettingsService>();
+    private IPermissionService Permissions => serviceProvider.GetRequiredService<IPermissionService>();
 
     private async Task<IReadOnlyDictionary<Guid, TeamInfo>> GetTeamLookupWithParentsAsync(
         IEnumerable<Guid> teamIds, CancellationToken ct = default)
@@ -44,28 +47,12 @@ internal sealed class ShiftManagementService(
         return ShiftStaffingAggregation.IncludeParents(teamsById, teamIds);
     }
 
-    public async Task<bool> IsDeptCoordinatorAsync(Guid userId, Guid departmentTeamId, CancellationToken ct = default)
-    {
-        var teamIds = await GetCoordinatorTeamIdsAsync(userId, ct);
-        if (teamIds.Contains(departmentTeamId))
-            return true;
+    public Task<bool> CanApproveSignupsAsync(Guid userId, Guid departmentTeamId, CancellationToken ct = default) =>
+        Permissions.HasAsync(userId, ShiftsPermissions.Approve, new Owner(TeamOwner.Kind, departmentTeamId), ct);
 
-        var team = await TeamService.GetTeamAsync(departmentTeamId, ct);
-        return team?.ParentTeamId is not null && teamIds.Contains(team.ParentTeamId.Value);
-    }
-
-    public async Task<bool> CanApproveSignupsAsync(Guid userId, Guid departmentTeamId, CancellationToken ct = default)
-    {
-        if (await RoleAssignmentService.HasActiveRoleAsync(userId, RoleNames.Admin, ct) ||
-            await RoleAssignmentService.HasActiveRoleAsync(userId, ShiftsRoles.ShiftsNoInfo, ct) ||
-            await RoleAssignmentService.HasActiveRoleAsync(userId, ShiftsRoles.ShiftsAdmin, ct))
-            return true;
-
-        return await IsDeptCoordinatorAsync(userId, departmentTeamId, ct);
-    }
-
-    public Task<IReadOnlyList<Guid>> GetCoordinatorTeamIdsAsync(Guid userId, CancellationToken ct = default) =>
-        TeamService.GetUserCoordinatedTeamIdsAsync(userId, ct);
+    public async Task<bool> CanManageOrApproveAnyShiftsAsync(Guid userId, CancellationToken ct = default) =>
+        (await Permissions.GetOwnersAsync(userId, ShiftsPermissions.Manage, ct)).Count > 0
+        || (await Permissions.GetOwnersAsync(userId, ShiftsPermissions.Approve, ct)).Count > 0;
 
     public async Task<ShiftEventKnobs?> GetKnobsAsync(Guid eventSettingsId, CancellationToken ct = default)
     {

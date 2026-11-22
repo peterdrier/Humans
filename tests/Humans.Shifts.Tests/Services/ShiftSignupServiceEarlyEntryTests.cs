@@ -1,3 +1,4 @@
+using Humans.Permissions.Contracts;
 using System.Globalization;
 using System.Resources;
 using Humans.Shifts.Domain;
@@ -39,6 +40,7 @@ public sealed class ShiftSignupServiceEarlyEntryTests : ShiftsTestHarness
             .With(teamService)
             .With(teamService)
             .With(roleAssignmentService)
+            .With<IPermissionService>()
             .Build();
 
         var shiftRepo = new ShiftRepository(ShiftsDbFactory, ShiftsDb, Clock);

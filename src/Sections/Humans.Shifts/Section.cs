@@ -29,6 +29,7 @@ using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Configuration;
 using Humans.Notifications.Contracts;
+using Humans.Permissions.Contracts;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
 using NodaTime;
@@ -51,6 +52,7 @@ public sealed class Section :
     ISectionMemberDashboard,
     ISectionNav,
     IOnboardingShiftsStep,
+    ISectionPermissions,
     ISectionPolicies,
     ISectionSettings,
     ISectionThingsToDo,
@@ -257,6 +259,15 @@ public sealed class Section :
     Type ITeamShiftsParts.Box => typeof(TeamShiftsBoxViewComponent);
 
     Type ITeamShiftsParts.AdminRowCell => typeof(TeamAdminRowShiftsViewComponent);
+
+    IReadOnlyList<Permission> ISectionPermissions.Permissions { get; } =
+    [
+        new(ShiftsPermissions.Manage, "Shifts_Permission_Manage_Title", "Shifts_Permission_Manage_Blurb",
+            [TeamOwner.Kind], TopLevelOnly: false, AdminRoles: [ShiftsRoles.ShiftsAdmin], typeof(ShiftsResource)),
+        new(ShiftsPermissions.Approve, "Shifts_Permission_Approve_Title", "Shifts_Permission_Approve_Blurb",
+            [TeamOwner.Kind], TopLevelOnly: false, AdminRoles: [ShiftsRoles.ShiftsAdmin, ShiftsRoles.ShiftsNoInfo],
+            typeof(ShiftsResource)),
+    ];
 
     void ISectionPolicies.AddPolicies(AuthorizationOptions options)
     {

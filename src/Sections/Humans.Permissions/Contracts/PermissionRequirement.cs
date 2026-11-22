@@ -10,5 +10,5 @@ public sealed class PermissionRequirement(Permission permission) : IAuthorizatio
     public string Key { get; } = permission.Key;
 
     public IReadOnlyList<string> Admits { get; } =
-        [RoleNames.Admin, .. permission.AdminRoles, permission.Title];
+        [RoleNames.Admin, .. permission.AdminRoles, $"{permission.Key} holders"];
 }

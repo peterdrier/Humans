@@ -695,7 +695,7 @@ internal sealed class ShiftSignupService(
             signedUp = result.Success;
         }
 
-        var canViewRestricted = privileged || (await shiftMgmt.GetCoordinatorTeamIdsAsync(userId)).Count > 0;
+        var canViewRestricted = privileged || await shiftMgmt.CanManageOrApproveAnyShiftsAsync(userId, ct);
         var after = await repo.GetForUsersAsync([userId], eventSettingsId, ct);
 
         return new ToggleDaySignupOutcome(result, signedUp, canViewRestricted, after);

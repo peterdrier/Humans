@@ -243,6 +243,7 @@ graph LR
     Shifts --> Consent
     Shifts --> EarlyEntry
     Shifts --> Issues
+    Shifts --> Permissions
     Shifts --> Settings
     Shifts --> Teams
     Shifts -.-> Camps

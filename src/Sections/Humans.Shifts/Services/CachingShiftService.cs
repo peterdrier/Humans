@@ -267,14 +267,11 @@ internal sealed class CachingShiftService(
 
     // ── Reads, passed through until each moves onto the rows ────────────
 
-    public Task<bool> IsDeptCoordinatorAsync(Guid userId, Guid departmentTeamId, CancellationToken ct = default) =>
-        MgmtAsync(m => m.IsDeptCoordinatorAsync(userId, departmentTeamId, ct));
-
     public Task<bool> CanApproveSignupsAsync(Guid userId, Guid departmentTeamId, CancellationToken ct = default) =>
         MgmtAsync(m => m.CanApproveSignupsAsync(userId, departmentTeamId, ct));
 
-    public Task<IReadOnlyList<Guid>> GetCoordinatorTeamIdsAsync(Guid userId, CancellationToken ct = default) =>
-        MgmtAsync(m => m.GetCoordinatorTeamIdsAsync(userId, ct));
+    public Task<bool> CanManageOrApproveAnyShiftsAsync(Guid userId, CancellationToken ct = default) =>
+        MgmtAsync(m => m.CanManageOrApproveAnyShiftsAsync(userId, ct));
 
     public Task<IReadOnlyList<RotaSearchHit>> SearchAsync(
         string query, int max, CancellationToken cancellationToken = default) =>

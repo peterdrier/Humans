@@ -1315,4 +1315,8 @@
   </data>
   <data name="Shifts_Search_Category" xml:space="preserve"><value>Turni</value></data>
   <data name="Shifts_NameRequiredBeforeShifts" xml:space="preserve"><value>Aggiungi prima il tuo nome — ci serve prima che tu possa iscriverti ai turni.</value></data>
+  <data name="Shifts_Permission_Manage_Title" xml:space="preserve"><value>Gestire i turni</value></data>
+  <data name="Shifts_Permission_Manage_Blurb" xml:space="preserve"><value>Creare e modificare le rotazioni e i turni del team e scrivere ai suoi volontari.</value></data>
+  <data name="Shifts_Permission_Approve_Title" xml:space="preserve"><value>Approvare le iscrizioni</value></data>
+  <data name="Shifts_Permission_Approve_Blurb" xml:space="preserve"><value>Approvare, rifiutare e assegnare le iscrizioni ai turni del team.</value></data>
 </root>

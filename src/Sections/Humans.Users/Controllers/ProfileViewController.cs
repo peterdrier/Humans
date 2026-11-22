@@ -82,10 +82,10 @@ internal sealed class ProfileViewController(
         }
 
         var isOwnProfile = viewer.Id == id;
-        var viewerIsCoordinator = !isOwnProfile
-            && (await shiftMgmt.GetCoordinatorTeamIdsAsync(viewer.Id, ct)).Count > 0;
+        var viewerRunsShifts = !isOwnProfile
+            && await shiftMgmt.CanManageOrApproveAnyShiftsAsync(viewer.Id, ct);
 
-        var canViewSentMessages = await CanViewSentMessagesAsync(isOwnProfile, viewerIsCoordinator);
+        var canViewSentMessages = await CanViewSentMessagesAsync(isOwnProfile, viewerRunsShifts);
 
         var viewModel = new ProfileViewModel
         {
@@ -103,13 +103,13 @@ internal sealed class ProfileViewController(
     /// A coordinator or privileged shift role, never on one's own profile: the same audience as Shifts' profile
     /// card.
     /// </summary>
-    private async Task<bool> CanViewSentMessagesAsync(bool isOwnProfile, bool viewerIsCoordinator)
+    private async Task<bool> CanViewSentMessagesAsync(bool isOwnProfile, bool viewerRunsShifts)
     {
         if (isOwnProfile)
             return false;
 
         var isPrivilegedApprover = (await authorizationService.AuthorizeAsync(User, ShiftsPolicies.PrivilegedSignupApprover)).Succeeded;
-        return viewerIsCoordinator || isPrivilegedApprover;
+        return viewerRunsShifts || isPrivilegedApprover;
     }
 
     [HttpGet("{id:guid}/Popover")]
