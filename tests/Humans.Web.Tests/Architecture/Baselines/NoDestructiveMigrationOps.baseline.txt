@@ -780,3 +780,14 @@ src/Sections/Humans.Holded/Data/Migrations/20261121152423_HoldedSyncStateScope.c
 src/Sections/Humans.Tickets/Data/Migrations/20261121235220_DropRetiredResaleInviteColumns.cs:DropIndex(name=IX_ticket_resale_offers_DirectedTokenHash,table=ticket_resale_offers)#1
 src/Sections/Humans.Tickets/Data/Migrations/20261121235220_DropRetiredResaleInviteColumns.cs:DropColumn(name=DirectedEmail,table=ticket_resale_offers)#1
 src/Sections/Humans.Tickets/Data/Migrations/20261121235220_DropRetiredResaleInviteColumns.cs:DropColumn(name=DirectedTokenHash,table=ticket_resale_offers)#1
+
+# Tickets: ticket_sales_events.ChildPriceMinor and ChildMaxAge (the single child price and age limit
+# of a sales event, both nullable). Replaced by per-event child ticket types (ChildTypes) in
+# peterdrier/Humans#2549, which has merged and carries every child price.
+# Evidence: pickaxe git log -S 'ChildPriceMinor =' over origin/main shows only the 2027 checkout
+# work (cbc8d82c4 through #2549). Since #2549 they are unread shadow properties nothing writes.
+# There is no ticketing data in production yet; QA holds test rows only.
+# Approval: Peter, 2026-11-22, in the project chat, asked whether to drop "the two old child price
+# columns on sales events": "oh.. how much they cost.. yea.." (TICKETS-13).
+src/Sections/Humans.Tickets/Data/Migrations/20261122020028_DropRetiredChildPriceColumns.cs:DropColumn(name=ChildMaxAge,table=ticket_sales_events)#1
+src/Sections/Humans.Tickets/Data/Migrations/20261122020028_DropRetiredChildPriceColumns.cs:DropColumn(name=ChildPriceMinor,table=ticket_sales_events)#1
