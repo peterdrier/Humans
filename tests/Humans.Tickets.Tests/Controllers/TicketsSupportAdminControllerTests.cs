@@ -27,6 +27,70 @@ public class TicketsSupportAdminControllerTests
     }
 
     [HumansFact]
+    public async Task CompanionRequests_PresentsPendingFirstThenNewestWithinEachGroup()
+    {
+        CompanionRequestRow Row(TicketCompanionRequestState state, Instant requested) =>
+            new(new TicketCompanionRequest { Id = Guid.NewGuid(), State = state, RequestedAt = requested }, "", "", "", Guid.Empty);
+        var pendingOld = Row(TicketCompanionRequestState.Pending, Now);
+        var pendingNew = Row(TicketCompanionRequestState.Pending, Now + Duration.FromHours(1));
+        var approved = Row(TicketCompanionRequestState.Approved, Now + Duration.FromHours(2));
+        _checkout.GetCompanionRequestsAsync(_sale.Id, Arg.Any<CancellationToken>()).Returns([approved, pendingOld, pendingNew]);
+
+        var result = (ViewResult)await Controller().Companions(_sale.Id, TestContext.Current.CancellationToken);
+
+        ((CompanionsViewModel)result.Model!).Rows.Should().Equal(pendingNew, pendingOld, approved);
+    }
+
+    [HumansFact]
+    public async Task Cancellation_PresentsRefundGroupsByState()
+    {
+        var failed = new RefundStateRow(RefundState.Failed, 1, 100);
+        var succeeded = new RefundStateRow(RefundState.Succeeded, 2, 200);
+        var progress = new CancellationProgress(null, null, null, 0, 0, 0, 0, 0, 0, 0, 0, 0, [failed, succeeded]);
+        _checkout.GetCancellationProgressAsync(_sale.Id, Arg.Any<CancellationToken>()).Returns(progress);
+
+        var result = (ViewResult)await Controller().Cancel(_sale.Id, TestContext.Current.CancellationToken);
+
+        ((CancelViewModel)result.Model!).Progress.RefundsSince.Should().Equal(succeeded, failed);
+    }
+
+    [HumansFact]
+    public async Task Backends_PresentsKeysInOrdinalOrder()
+    {
+        _checkout.Backends.Returns([new("z", false, null!), new("a", true, null!)]);
+        var controller = new TicketsSalesAdminController(_checkout, null!, Substitute.For<ISettingsService>(),
+            Substitute.For<IGrantService>(), Substitute.For<IOrgTimeZone>(), SystemClock.Instance, Substitute.For<IUserService>());
+
+        var result = (ViewResult)await controller.Backends(TestContext.Current.CancellationToken);
+
+        ((BackendsViewModel)result.Model!).Backends.Select(backend => backend.Key).Should().Equal("a", "z");
+    }
+
+    [HumansFact]
+    public async Task BackendStatus_OrdersRowsAndStartsReconciliationOnTheOldestLocalDay()
+    {
+        var older = new TicketCheckoutOrder { Id = Guid.NewGuid(), CreatedAt = Instant.FromUtc(2027, 1, 9, 23, 30) };
+        var newer = new TicketCheckoutOrder { Id = Guid.NewGuid(), CreatedAt = Now + Duration.FromDays(1) };
+        var oldRefund = new TicketCheckoutRefund { Id = Guid.NewGuid(), CreatedAt = Now };
+        var newRefund = new TicketCheckoutRefund { Id = Guid.NewGuid(), CreatedAt = Now + Duration.FromHours(1) };
+        var ledger = new BackendLedger(new("test", true, null!), [older, newer], [], [older, newer],
+            [newRefund, oldRefund], [newRefund, oldRefund]);
+        _checkout.GetBackendLedgerAsync("test", Arg.Any<CancellationToken>()).Returns(ledger);
+        var zone = Substitute.For<IOrgTimeZone>();
+        zone.Zone.Returns(DateTimeZoneProviders.Tzdb["Europe/Madrid"]);
+        var controller = new TicketsBackendAdminController(_checkout, Substitute.For<ISettingsService>(), zone, Substitute.For<IUserService>());
+
+        var result = (ViewResult)await controller.Index("test", TestContext.Current.CancellationToken);
+        var model = (BackendStatusViewModel)result.Model!;
+
+        model.Ledger.Orders.Should().Equal(newer, older);
+        model.Ledger.Stuck.Should().Equal(newer, older);
+        model.Ledger.UnsettledRefunds.Should().Equal(oldRefund, newRefund);
+        model.Ledger.FailedRefunds.Should().Equal(oldRefund, newRefund);
+        model.ReconFrom.Should().Be("2027-01-10");
+    }
+
+    [HumansFact]
     public async Task Orders_PresentsNewestFirstWithTheViewsDeclaredTupleType()
     {
         var older = new TicketCheckoutOrder { Id = Guid.NewGuid(), CreatedAt = Now };

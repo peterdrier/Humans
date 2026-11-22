@@ -43,10 +43,17 @@ internal sealed class TicketsBackendAdminController(
         if (await checkout.GetBackendLedgerAsync(key, ct) is not { } ledger)
             return NotFound();
 
+        ledger = ledger with
+        {
+            Orders = ledger.Orders.OrderByDescending(order => order.CreatedAt).ToList(),
+            Stuck = ledger.Stuck.OrderByDescending(order => order.CreatedAt).ToList(),
+            UnsettledRefunds = ledger.UnsettledRefunds.OrderBy(refund => refund.CreatedAt).ToList(),
+            FailedRefunds = ledger.FailedRefunds.OrderBy(refund => refund.CreatedAt).ToList(),
+        };
         return View("~/Views/Tickets/Admin/Backends/Index.cshtml", new BackendStatusViewModel(
             new BackendsViewModel([ledger.Backend], await checkout.GetSalesEventsAsync(ct), await settings.GetAllEventSettingsAsync(ct), check),
             ledger,
-            ledger.Orders.Count == 0 ? null : LocalDatePattern.Iso.Format(ledger.Orders[^1].CreatedAt.InZone(orgTimeZone.Zone).Date)));
+            ledger.Orders.Count == 0 ? null : LocalDatePattern.Iso.Format(ledger.Orders.Min(order => order.CreatedAt).InZone(orgTimeZone.Zone).Date)));
     }
 }
 

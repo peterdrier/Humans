@@ -62,7 +62,7 @@ internal sealed partial class TicketCheckoutService(
     private static partial Regex TermsFolderPattern();
 
     public IReadOnlyList<CheckoutBackendInfo> Backends =>
-        _backends.Select(b => new CheckoutBackendInfo(b.Key, b.IsConfigured, b.Setup)).OrderBy(b => b.Key, StringComparer.Ordinal).ToList();
+        _backends.Select(b => new CheckoutBackendInfo(b.Key, b.IsConfigured, b.Setup)).ToList();
 
     public async Task<IReadOnlyList<CheckoutBackendFinding>?> CheckBackendAsync(
         string key, string? backendEventRef, CancellationToken ct = default) =>

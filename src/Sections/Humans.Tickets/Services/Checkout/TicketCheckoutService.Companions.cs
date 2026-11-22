@@ -68,8 +68,7 @@ internal sealed partial class TicketCheckoutService
     {
         var tickets = (await repository.GetTicketsForSalesEventAsync(salesEventId, ct)).ToDictionary(t => t.Id);
         var rows = new List<CompanionRequestRow>();
-        foreach (var request in (await repository.GetCompanionRequestsForSalesEventAsync(salesEventId, ct))
-                     .OrderBy(r => r.State != TicketCompanionRequestState.Pending).ThenByDescending(r => r.RequestedAt))
+        foreach (var request in await repository.GetCompanionRequestsForSalesEventAsync(salesEventId, ct))
         {
             tickets.TryGetValue(request.TicketId, out var ticket);
             var companion = await users.GetUserInfoAsync(request.CompanionUserId, ct);

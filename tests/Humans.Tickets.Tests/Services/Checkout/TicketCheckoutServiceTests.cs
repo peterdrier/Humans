@@ -239,7 +239,7 @@ public sealed partial class TicketCheckoutServiceTests
 
         var ledger = await _service.GetBackendLedgerAsync("test", TestContext.Current.CancellationToken);
 
-        ledger!.Orders.Should().HaveCount(8).And.BeInDescendingOrder(o => o.CreatedAt);
+        ledger!.Orders.Should().HaveCount(8).And.OnlyContain(order => order.BackendKey == "test");
         ledger.Stuck.Should().BeEquivalentTo([pastExpiry]);
         ledger.Paid.Should().BeEquivalentTo([paid, refused, retried]);
         ledger.UnsettledRefunds.Should().ContainSingle().Which.AmountMinor.Should().Be(1000);

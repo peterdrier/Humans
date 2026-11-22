@@ -97,6 +97,7 @@ internal sealed class TicketsSupportAdminController(
         var progress = await checkout.GetCancellationProgressAsync(id, ct);
         if (salesEvent is null || progress is null)
             return NotFound();
+        progress = progress with { RefundsSince = progress.RefundsSince.OrderBy(row => row.State).ToList() };
         return View("~/Views/Tickets/Admin/Sales/Cancel.cshtml", new CancelViewModel(
             id, await EventNameAsync(salesEvent, ct), salesEvent.BackendKey, progress));
     }
@@ -143,8 +144,11 @@ internal sealed class TicketsSupportAdminController(
         var salesEvent = await checkout.GetSalesEventAsync(id, ct);
         if (salesEvent is null)
             return NotFound();
+        var rows = (await checkout.GetCompanionRequestsAsync(id, ct))
+            .OrderBy(row => row.Request.State != TicketCompanionRequestState.Pending)
+            .ThenByDescending(row => row.Request.RequestedAt).ToList();
         return View("~/Views/Tickets/Admin/Sales/Companions.cshtml", new CompanionsViewModel(
-            id, await EventNameAsync(salesEvent, ct), await checkout.GetCompanionRequestsAsync(id, ct)));
+            id, await EventNameAsync(salesEvent, ct), rows));
     }
 
     [HttpPost("{id:guid}/Companions/{requestId:guid}")]

@@ -34,7 +34,7 @@ internal sealed class TicketsSalesAdminController(
         var events = await settings.GetAllEventSettingsAsync(ct);
         var salesEvents = await checkout.GetSalesEventsAsync(ct);
         return View("~/Views/Tickets/Admin/Sales/Index.cshtml", new SalesAdminIndexViewModel(
-            salesEvents, events, checkout.Backends, clock.GetCurrentInstant().InZone(orgTimeZone.Zone).Date));
+            salesEvents, events, BackendsForDisplay, clock.GetCurrentInstant().InZone(orgTimeZone.Zone).Date));
     }
 
     [HttpGet("Backends")]
@@ -161,11 +161,14 @@ internal sealed class TicketsSalesAdminController(
     private static LocalDate? ReconDate(string? value) =>
         value is not null && LocalDatePattern.Iso.Parse(value) is { Success: true } parsed ? parsed.Value : null;
 
+    private IReadOnlyList<CheckoutBackendInfo> BackendsForDisplay =>
+        checkout.Backends.OrderBy(backend => backend.Key, StringComparer.Ordinal).ToList();
+
     private async Task<BackendsViewModel> BackendsModelAsync(CancellationToken ct) =>
-        new(checkout.Backends, await checkout.GetSalesEventsAsync(ct), await settings.GetAllEventSettingsAsync(ct), null);
+        new(BackendsForDisplay, await checkout.GetSalesEventsAsync(ct), await settings.GetAllEventSettingsAsync(ct), null);
 
     private async Task<SalesEditViewModel> EditModelAsync(SalesEditForm form, string? error, CancellationToken ct) =>
-        new(form, error, await settings.GetAllEventSettingsAsync(ct), await grants.GetProgramSummariesAsync(ct), checkout.Backends,
+        new(form, error, await settings.GetAllEventSettingsAsync(ct), await grants.GetProgramSummariesAsync(ct), BackendsForDisplay,
             orgTimeZone.Zone);
 }
 

@@ -43,6 +43,11 @@ Raw checkout order, holder-ticket, event-ticket, offer and refund reads return r
 ordering. The admin order list sorts newest first; lookup tickets and dependent-ticket panels sort by issue time.
 Order-detail and delivery-card ordering retain their existing behavior.
 
+Operator controllers order companion requests pending-first/newest-first, cancellation refund groups by state,
+and backend lists by key. Backend status pages order orders and stuck orders newest-first and refunds oldest-first;
+the reconciliation start date is the minimum order timestamp in the organisation's zone, independent of row order.
+Cancellation processing still uses oldest-paid-first work order.
+
 ## Concepts
 
 - **Ticket Orders** and **Ticket Attendees** are records synced from an external ticket vendor (Ticket Tailor in production, an in-process stub in dev). They are not manually created in the system.
