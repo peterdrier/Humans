@@ -4,11 +4,13 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using AwesomeAssertions;
 using Humans.HiEvents.Services;
+using Humans.Stripe.Contracts;
 using Humans.Tickets.Contracts;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NodaTime;
 using NodaTime.Testing;
+using NSubstitute;
 using Xunit;
 
 namespace Humans.HiEvents.Tests;
@@ -20,6 +22,14 @@ public class HiEventsCheckoutBackendTests
     private static readonly Guid OrderId = Guid.Parse("11111111-2222-3333-4444-555555555555");
 
     private readonly RecordingHandler _handler = new();
+    private readonly IStripeService _stripe = NoStripeAccount();
+
+    private static IStripeService NoStripeAccount()
+    {
+        var stripe = Substitute.For<IStripeService>();
+        stripe.CheckAccountAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns([]);
+        return stripe;
+    }
 
     [HumansFact]
     public async Task CreateCheckout_PostsFixedPricesAndNamesAndReturnsThePaymentLink()
@@ -625,7 +635,8 @@ public class HiEventsCheckoutBackendTests
             ApiKey = apiKey,
         }),
         new FakeClock(Now),
-        NullLogger<HiEventsCheckoutBackend>.Instance);
+        NullLogger<HiEventsCheckoutBackend>.Instance,
+        _stripe);
 
     [HumansTheory]
     [InlineData("ca-ES", "es")]

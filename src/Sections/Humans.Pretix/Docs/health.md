@@ -99,8 +99,6 @@ Docs/                                      Pretix.md (invariants), data-access.m
 - **No mirror of Humans' catalogue in pretix.** Two free-price carrier items per event carry
   every price; waves, classes and capacity stay in Humans.
 - **No Humans settings per pretix event.** The event slug comes per order from Tickets.
-- **No fee or payout reconciliation.** pretix takes payments through its own Stripe account,
-  which Humans does not hold; `GetPaymentLedgerAsync` answers null.
 - **No trust in the webhook body.** Tickets re-reads the order; the body names it, nothing more.
 - **No `Contracts/` surface.** The port belongs to Tickets.
 
