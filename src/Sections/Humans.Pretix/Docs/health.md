@@ -92,7 +92,8 @@ Docs/                                      Pretix.md (invariants), data-access.m
 
 - **Per-order data shred.** Erasure clears the order's contact fields, but pretix keeps the old
   email in the order log and the Stripe payment details on the payment until its event-wide
-  shredder runs; a per-order shred in the pretix fork is the open fix (debt PRETIX-1).
+  shredder runs; the fix is Humans running that shredder through pretix's API once the post-event hold
+  ends (debt PRETIX-1).
 
 ## 6. Deliberately not done
 
