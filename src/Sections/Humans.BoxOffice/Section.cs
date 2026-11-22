@@ -9,7 +9,7 @@ namespace Humans.BoxOffice;
 
 /// <summary>
 /// Humans' own ticket checkout: Stripe hosted Checkout behind Tickets' <see cref="ITicketCheckoutBackend"/>, key
-/// <c>boxoffice</c>. Declares its own <c>STRIPE_BOXOFFICE_*</c> variables; rename both places together.
+/// <c>boxoffice</c>, on its own <c>STRIPE_BOXOFFICE_*</c> variables.
 /// </summary>
 public sealed class Section : ISection, ISectionConfiguration, ISectionAdminNav
 {

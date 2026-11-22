@@ -11,9 +11,9 @@ namespace Humans.BoxOffice.Services;
 internal sealed class BoxOfficeSettings
 {
     /// <summary>
-    /// STRIPE_BOXOFFICE_KEY: a restricted key with Checkout Sessions write, PaymentIntents, Charges, Disputes,
-    /// Balance transactions and Payouts read, and Refunds write. Refunds are the one money-out call, capped by Tickets at what the
-    /// order's tickets cost and by this adapter at what the charge still holds.
+    /// STRIPE_BOXOFFICE_KEY, a restricted key (its scopes are listed in <see cref="BoxOfficeCheckoutBackend.Setup"/>).
+    /// Refunds are the one money-out call, capped by Tickets at what the order's tickets cost and by this adapter at what
+    /// the charge still holds.
     /// </summary>
     public string SecretKey { get; set; } = string.Empty;
 
