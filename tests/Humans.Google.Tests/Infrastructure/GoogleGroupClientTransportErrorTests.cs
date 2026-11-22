@@ -74,6 +74,16 @@ public sealed class GoogleGroupClientTransportErrorTests
     [Xunit.InlineData(GooglePagedRead.Activity, PageTokenSequence.Repeat)]
     [Xunit.InlineData(GooglePagedRead.Activity, PageTokenSequence.Cycle)]
     [Xunit.InlineData(GooglePagedRead.Activity, PageTokenSequence.Valid)]
+    [Xunit.InlineData(GooglePagedRead.Accounts, PageTokenSequence.Endless)]
+    [Xunit.InlineData(GooglePagedRead.Accounts, PageTokenSequence.Limit)]
+    [Xunit.InlineData(GooglePagedRead.Groups, PageTokenSequence.Endless)]
+    [Xunit.InlineData(GooglePagedRead.Groups, PageTokenSequence.Limit)]
+    [Xunit.InlineData(GooglePagedRead.Members, PageTokenSequence.Endless)]
+    [Xunit.InlineData(GooglePagedRead.Members, PageTokenSequence.Limit)]
+    [Xunit.InlineData(GooglePagedRead.Permissions, PageTokenSequence.Endless)]
+    [Xunit.InlineData(GooglePagedRead.Permissions, PageTokenSequence.Limit)]
+    [Xunit.InlineData(GooglePagedRead.Activity, PageTokenSequence.Endless)]
+    [Xunit.InlineData(GooglePagedRead.Activity, PageTokenSequence.Limit)]
     public async Task Paginated_reads_reject_repeated_tokens_without_completing_a_partial_list(GooglePagedRead kind, PageTokenSequence sequence)
     {
         using var handler = new PageHandler(kind, sequence);
@@ -126,9 +136,9 @@ public sealed class GoogleGroupClientTransportErrorTests
             }
         }
 
-        if (sequence is PageTokenSequence.Valid)
+        if (sequence is PageTokenSequence.Valid or PageTokenSequence.Limit)
         {
-            (await FetchAsync()).Should().Be(3);
+            (await FetchAsync()).Should().Be(sequence is PageTokenSequence.Limit ? 500 : 3);
             error.Should().BeNull();
         }
         else if (kind is GooglePagedRead.Groups or GooglePagedRead.Members or GooglePagedRead.Permissions)
@@ -136,14 +146,16 @@ public sealed class GoogleGroupClientTransportErrorTests
             (await FetchAsync()).Should().Be(0);
             error.Should().NotBeNull();
             error!.IsTransient.Should().BeTrue();
-            error.RawMessage.Should().Contain("repeated page token");
+            error.RawMessage.Should().Contain(sequence is PageTokenSequence.Endless ? "page limit" : "repeated page token");
         }
         else
         {
             var fetch = FetchAsync;
-            await fetch.Should().ThrowAsync<InvalidOperationException>().WithMessage("*repeated page token*");
+            await fetch.Should().ThrowAsync<InvalidOperationException>()
+                .WithMessage(sequence is PageTokenSequence.Endless ? "*page limit*" : "*repeated page token*");
         }
-        handler.Requests.Count.Should().Be(sequence is PageTokenSequence.Repeat ? 2 : 3);
+        handler.Requests.Count.Should().Be(sequence is PageTokenSequence.Endless or PageTokenSequence.Limit ? 500
+            : sequence is PageTokenSequence.Repeat ? 2 : 3);
         if (kind is not GooglePagedRead.Activity)
             handler.Requests[1].Should().Contain("cursor-a");
     }
@@ -331,8 +343,12 @@ public sealed class GoogleGroupClientTransportErrorTests
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
             Requests.Add(request.RequestUri!.ToString());
-            if (Requests.Count > 4) throw new InvalidOperationException("Test transport exceeded four pages.");
-            var next = Requests.Count == 1 ? "cursor-a"
+            if (Requests.Count > (sequence is PageTokenSequence.Endless or PageTokenSequence.Limit ? 500 : 4))
+                throw new InvalidOperationException("Test transport exceeded its expected pages.");
+            var next = sequence is PageTokenSequence.Endless or PageTokenSequence.Limit
+                ? sequence is PageTokenSequence.Limit && Requests.Count == 500 ? null
+                    : Requests.Count == 1 ? "cursor-a" : $"cursor-{Requests.Count}"
+                : Requests.Count == 1 ? "cursor-a"
                 : sequence is PageTokenSequence.Repeat ? "cursor-a"
                 : Requests.Count == 2 ? "cursor-b"
                 : sequence is PageTokenSequence.Cycle ? "cursor-a" : null;
@@ -363,7 +379,7 @@ public sealed class GoogleGroupClientTransportErrorTests
 
 public enum GooglePagedRead { Accounts, Groups, Members, Permissions, Activity }
 
-public enum PageTokenSequence { Repeat, Cycle, Valid }
+public enum PageTokenSequence { Repeat, Cycle, Valid, Endless, Limit }
 
 public enum GoogleStructuredCall { Groups, Permissions, File, Drive, Create, Update, Delete, Inherit, Folder }
 
