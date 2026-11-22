@@ -21,6 +21,7 @@ public sealed class Section : ISection, ISectionConfiguration, ISectionAdminNav
             configuration.GetSection(PretixSettings.SectionName).Bind(opts);
             opts.ApiToken = Environment.GetEnvironmentVariable("PRETIX_API_TOKEN") ?? opts.ApiToken;
             opts.WebhookSecret = Environment.GetEnvironmentVariable("PRETIX_WEBHOOK_SECRET") ?? opts.WebhookSecret;
+            opts.StripeKey = Environment.GetEnvironmentVariable(PretixCheckoutBackend.StripeKeyVariable) ?? string.Empty;
         });
 
         services.AddHttpClient<PretixCheckoutBackend>(client => client.Timeout = TimeSpan.FromSeconds(30));
@@ -33,6 +34,7 @@ public sealed class Section : ISection, ISectionConfiguration, ISectionAdminNav
         configuration.GetOptionalSetting(registry, "Pretix:Organizer", "Pretix");
         registry.RegisterEnvironmentVariable("PRETIX_API_TOKEN", "Pretix", isSensitive: true);
         registry.RegisterEnvironmentVariable("PRETIX_WEBHOOK_SECRET", "Pretix", isSensitive: true);
+        registry.RegisterEnvironmentVariable(PretixCheckoutBackend.StripeKeyVariable, "Pretix", isSensitive: true);
     }
 
     IEnumerable<AdminNavGroup> ISectionAdminNav.Groups() =>

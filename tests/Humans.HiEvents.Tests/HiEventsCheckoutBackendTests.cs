@@ -457,8 +457,9 @@ public class HiEventsCheckoutBackendTests
 
         var findings = await Backend().CheckAsync("7", Ct);
 
-        findings.Where(f => !f.Ok).Select(f => f.Text).Should().ContainSingle()
-            .Which.Should().Contain("HIEVENTS_WEBHOOK_SECRET");
+        findings.Where(f => !f.Ok).Select(f => f.Text).Should().SatisfyRespectively(
+            webhook => webhook.Should().Contain("HIEVENTS_WEBHOOK_SECRET"),
+            stripe => stripe.Should().Contain("STRIPE_HIEVENTS_KEY"));
         _handler.Requests.Select(r => $"{r.Request.Method} {r.Request.RequestUri!.AbsolutePath}").Should().Equal(
             "GET /api/users/me", "GET /api/events/7", "GET /api/events/7/products",
             "POST /api/events/7/orders/checkout");

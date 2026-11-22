@@ -19,6 +19,7 @@
     <!-- No AspNetCore PackageReference: they fail NU1010 under Central Package Management. -->
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
     <PackageReference Include="NodaTime" />
+    <PackageReference Include="Stripe.net" />
   </ItemGroup>
 
   <ItemGroup>

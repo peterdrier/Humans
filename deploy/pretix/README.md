@@ -27,7 +27,9 @@ pretix only takes the payment.
    in Stripe: it is the only way pretix, and so Humans, hears of a refund made in the Stripe dashboard or a
    chargeback. Put the event live.
 6. In Humans, set `Pretix:BaseUrl`, `Pretix:Organizer` and the env vars `PRETIX_API_TOKEN`,
-   `PRETIX_WEBHOOK_SECRET` from the bootstrap output (once per instance), then at
+   `PRETIX_WEBHOOK_SECRET` from the bootstrap output (once per instance), and `STRIPE_PRETIX_KEY`, a
+   read-only restricted key on the same Stripe account (Balance transactions, Payouts, PaymentIntents,
+   Charges, Refunds and Disputes read) so Humans reconciles its fees and payouts, then at
    `/Tickets/Admin/Sales` pick backend `pretix` and the event slug. Each further event only needs
    the bootstrap run with its own `EVENT_SLUG`; Humans finds its items by internal name
    (`humans-ticket`, `humans-donation`).

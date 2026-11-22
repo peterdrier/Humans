@@ -4,6 +4,8 @@ using System.Text.Json;
 using Humans.Pretix.Services;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
+using NSubstitute;
+using Stripe;
 
 namespace Humans.Pretix.Tests;
 
@@ -17,10 +19,24 @@ internal static class PretixTestHost
         Organizer = "nobodies",
         ApiToken = "tok",
         WebhookSecret = "s3cret",
+        StripeKey = "rk_test_pretix",
     };
 
-    public static PretixCheckoutBackend Create(FakePretix pretix, PretixSettings? settings = null) =>
-        new(new HttpClient(pretix), Options.Create(settings ?? Settings()), NullLogger<PretixCheckoutBackend>.Instance);
+    /// <summary>Over <paramref name="stripe"/>, or a Stripe account that answers every read with an empty list.</summary>
+    public static PretixCheckoutBackend Create(FakePretix pretix, PretixSettings? settings = null, IHttpClient? stripe = null) =>
+        new(new HttpClient(pretix), Options.Create(settings ?? Settings()), NullLogger<PretixCheckoutBackend>.Instance,
+            stripe ?? EmptyStripe());
+
+    private static IHttpClient EmptyStripe()
+    {
+        var stripe = Substitute.For<IHttpClient>();
+        stripe.MakeRequestAsync(Arg.Any<StripeRequest>(), Arg.Any<CancellationToken>()).Returns(_ =>
+        {
+            using var message = new HttpResponseMessage();
+            return new StripeResponse(HttpStatusCode.OK, message.Headers, """{"object":"list","url":"/v1/x","has_more":false,"data":[]}""");
+        });
+        return stripe;
+    }
 
     public static object Order(
         string code,

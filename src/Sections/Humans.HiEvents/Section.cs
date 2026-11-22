@@ -20,6 +20,7 @@ public sealed class Section : ISection, ISectionConfiguration, ISectionAdminNav
             configuration.GetSection(HiEventsSettings.SectionName).Bind(opts);
             opts.ApiKey = Environment.GetEnvironmentVariable("HIEVENTS_API_KEY") ?? string.Empty;
             opts.WebhookSecret = Environment.GetEnvironmentVariable("HIEVENTS_WEBHOOK_SECRET") ?? string.Empty;
+            opts.StripeKey = Environment.GetEnvironmentVariable(HiEventsCheckoutBackend.StripeKeyVariable) ?? string.Empty;
         });
         services.AddHttpClient<HiEventsCheckoutBackend>(client => client.Timeout = TimeSpan.FromSeconds(30));
         services.AddScoped<ITicketCheckoutBackend>(sp => sp.GetRequiredService<HiEventsCheckoutBackend>());
@@ -31,6 +32,7 @@ public sealed class Section : ISection, ISectionConfiguration, ISectionAdminNav
         configuration.GetOptionalSetting(registry, "HiEvents:AppUrl", "Hi.Events");
         registry.RegisterEnvironmentVariable("HIEVENTS_API_KEY", "Hi.Events", isSensitive: true);
         registry.RegisterEnvironmentVariable("HIEVENTS_WEBHOOK_SECRET", "Hi.Events", isSensitive: true);
+        registry.RegisterEnvironmentVariable(HiEventsCheckoutBackend.StripeKeyVariable, "Hi.Events", isSensitive: true);
     }
 
     IEnumerable<AdminNavGroup> ISectionAdminNav.Groups() =>
