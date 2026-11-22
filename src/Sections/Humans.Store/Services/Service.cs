@@ -1264,17 +1264,6 @@ internal sealed class Service(
         }
     }
 
-    public async Task RecordStripePaymentAsync(
-        Guid orderId,
-        string paymentIntentId,
-        decimal amountEur,
-        PaymentStatus status = PaymentStatus.Paid,
-        CancellationToken ct = default)
-    {
-        using var mutation = await StripePaymentLock.AcquireAsync(logger, ct);
-        await RecordStripePaymentCoreAsync(orderId, paymentIntentId, amountEur, status, ct);
-    }
-
     // Called only while the ingestion lock is held, including from webhook state transitions.
     private async Task RecordStripePaymentCoreAsync(
         Guid orderId, string paymentIntentId, decimal amountEur, PaymentStatus status, CancellationToken ct)

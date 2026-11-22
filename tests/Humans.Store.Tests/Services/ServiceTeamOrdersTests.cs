@@ -151,7 +151,7 @@ public class ServiceTeamOrdersTests
     }
 
     [HumansFact]
-    public async Task RecordStripePaymentAsync_throws_on_team_order()
+    public async Task CompletedCheckout_throws_on_team_order()
     {
         var orderId = Guid.NewGuid();
         var teamOrder = new Order { Id = orderId, TeamId = Guid.NewGuid(), CampSeasonId = null, Year = 2026 };
@@ -159,7 +159,10 @@ public class ServiceTeamOrdersTests
         _repo.StripePaymentIntentExistsAsync("pi_x", Arg.Any<CancellationToken>()).Returns(false);
 
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            _service.RecordStripePaymentAsync(orderId, "pi_x", 10m, ct: TestContext.Current.CancellationToken));
+            _service.HandleStripeCheckoutWebhookEventAsync(new StoreCheckoutWebhookEvent(
+                "evt_team", StoreCheckoutEventKind.CheckoutSessionCompleted,
+                new StoreCheckoutSessionData("cs_team", orderId, "pi_x", 10m, PaymentStatus: "paid")),
+                TestContext.Current.CancellationToken));
     }
 
     [HumansFact]
