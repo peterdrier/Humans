@@ -13,6 +13,48 @@ public class MailerLiteClientRetryTests
         """{"data":[{"id":"42","name":"Humans - Test","created_at":"2026-01-01 00:00:00","active_count":0,"unsubscribed_count":0,"unconfirmed_count":0,"bounced_count":0,"junk_count":0}],"meta":{"current_page":1,"last_page":1}}""";
 
     [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task RefreshAsync_BoundsPaginationAndRecoversWithoutTheOldSnapshot(bool subscribers)
+    {
+        const string terminalSubscribers = """{"data":[],"meta":{"next_cursor":null}}""";
+        var handler = new ScriptedHandler();
+        handler.EnqueueJson(HttpStatusCode.OK, terminalSubscribers);
+        handler.EnqueueJson(HttpStatusCode.OK, HumansGroupPage);
+        var client = NewClient(handler);
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        _ = await client.ListGroupsAsync(ct);
+        if (!subscribers) handler.EnqueueJson(HttpStatusCode.OK, terminalSubscribers);
+        for (var page = 1; page <= 501; page++)
+        {
+            var json = subscribers
+                ? System.Text.Json.JsonSerializer.Serialize(new
+                {
+                    data = Array.Empty<object>(),
+                    meta = new { next_cursor = page == 501 ? null : $"cursor-{page}" },
+                })
+                : System.Text.Json.JsonSerializer.Serialize(new
+                {
+                    data = Array.Empty<object>(),
+                    meta = new { current_page = page, last_page = 501 },
+                });
+            handler.EnqueueJson(HttpStatusCode.OK, json);
+        }
+        if (subscribers) handler.EnqueueJson(HttpStatusCode.OK, HumansGroupPage);
+
+        var refresh = () => client.RefreshAsync(ct);
+
+        (await refresh.Should().ThrowAsync<HttpRequestException>()).WithMessage("*500-page*");
+        handler.Calls.Should().Be(subscribers ? 502 : 503);
+        client.LastFetchedAt.Should().BeNull();
+        handler.Clear();
+        handler.EnqueueJson(HttpStatusCode.OK, terminalSubscribers);
+        handler.EnqueueJson(HttpStatusCode.OK, HumansGroupPage);
+        (await client.ListGroupsAsync(ct)).Should().ContainSingle().Which.Id.Should().Be("42");
+        client.LastFetchedAt.Should().NotBeNull();
+    }
+
+    [HumansTheory]
     [Xunit.InlineData("null-subscribers")]
     [Xunit.InlineData("null-groups")]
     [Xunit.InlineData("null-subscriber-item")]

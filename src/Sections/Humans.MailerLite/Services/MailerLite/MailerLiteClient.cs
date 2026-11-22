@@ -18,6 +18,7 @@ internal sealed class MailerLiteClient(IHttpClientFactory httpFactory, IClock cl
     public const string HttpClientName = "mailerlite";
     private const string HumansGroupPrefix = "Humans - ";
     private const int MaxSendAttempts = 3;
+    private const int PageSafetyCap = 500;
 
     // ML's rate-limit window is 60s; used when a 429 carries no Retry-After header.
     private static readonly TimeSpan DefaultRetryAfter = TimeSpan.FromSeconds(60);
@@ -248,7 +249,7 @@ internal sealed class MailerLiteClient(IHttpClientFactory httpFactory, IClock cl
     {
         string? cursor = null;
         var seenCursors = new HashSet<string>(StringComparer.Ordinal);
-        while (true)
+        for (var page = 1; page <= PageSafetyCap; page++)
         {
             // include=groups required — omitting it returns empty GroupIds.
             var url = "/api/subscribers?limit=100&include=groups";
@@ -269,13 +270,13 @@ internal sealed class MailerLiteClient(IHttpClientFactory httpFactory, IClock cl
                 throw new HttpRequestException("MailerLite repeated a subscriber pagination cursor.");
             cursor = body.Meta.NextCursor;
         }
+        throw new HttpRequestException($"MailerLite subscribers hit the {PageSafetyCap}-page safety cap.");
     }
 
     private async Task<IReadOnlyList<MailerLiteGroup>> FetchGroupsAsync(CancellationToken ct)
     {
         var results = new List<MailerLiteGroup>();
-        int page = 1;
-        while (true)
+        for (var page = 1; page <= PageSafetyCap; page++)
         {
             using var resp = await SendAsync(HttpMethod.Get, $"/api/groups?page={page}&limit=100", content: null, ct);
             resp.EnsureSuccessStatusCode();
@@ -287,10 +288,9 @@ internal sealed class MailerLiteClient(IHttpClientFactory httpFactory, IClock cl
                 string.IsNullOrWhiteSpace(group.Id) || string.IsNullOrWhiteSpace(group.Name)))
                 throw new HttpRequestException("MailerLite returned an incomplete group page item.");
             results.AddRange(body.Data);
-            if (body.Meta.CurrentPage >= body.Meta.LastPage) break;
-            page++;
+            if (body.Meta.CurrentPage >= body.Meta.LastPage) return results;
         }
-        return results;
+        throw new HttpRequestException($"MailerLite groups hit the {PageSafetyCap}-page safety cap.");
     }
 
     private static async Task<T?> ReadPageAsync<T>(HttpContent content, string kind, CancellationToken ct)
