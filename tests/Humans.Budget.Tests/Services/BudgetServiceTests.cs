@@ -876,13 +876,16 @@ public sealed class BudgetServiceTests
         else if (invalidField is not null) Assert.IsType<BadRequestObjectResult>(result);
         else Assert.IsType<RedirectToActionResult>(result);
         if (!viewerExists || invalidField is not null) Assert.Empty(budget.ReceivedCalls());
-        else switch (action)
+        else
+        {
+            switch (action)
             {
                 case 0: await budget.Received(1).CreateCategoryAsync(_yearId, "Category", 0m, default, null, viewerId); break;
                 case 1: await budget.Received(1).UpdateCategoryAsync(_yearId, "Category", 0m, default, viewerId); break;
                 case 2: await budget.Received(1).CreateLineItemAsync(_yearId, "Item", 0m, null, null, null, 0, viewerId); break;
                 default: await budget.Received(1).UpdateLineItemAsync(_yearId, "Item", 0m, null, null, null, 0, viewerId); break;
             }
+        }
     }
 
     [HumansTheory]
