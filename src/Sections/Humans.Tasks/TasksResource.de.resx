@@ -135,4 +135,20 @@
   <data name="Enum_TaskItemStatus_Blocked" xml:space="preserve"><value>Blockiert</value></data>
   <data name="Enum_TaskItemStatus_Done" xml:space="preserve"><value>Erledigt</value></data>
   <data name="Enum_TaskItemStatus_Cancelled" xml:space="preserve"><value>Abgebrochen</value></data>
+  <data name="Tasks_Refusal_Finished" xml:space="preserve"><value>Diese Aufgabe ist erledigt oder abgebrochen und kann nicht mehr übernommen werden.</value></data>
+  <data name="Tasks_Refusal_Full" xml:space="preserve"><value>Alle Plätze dieser Aufgabe sind besetzt.</value></data>
+  <data name="Tasks_Refusal_YouAreOn" xml:space="preserve"><value>Du bist schon bei dieser Aufgabe dabei.</value></data>
+  <data name="Tasks_Refusal_YouRequested" xml:space="preserve"><value>Du hast schon angefragt, bei dieser Aufgabe mitzumachen.</value></data>
+  <data name="Tasks_Refusal_YouAreNotOn" xml:space="preserve"><value>Du hast keinen Platz bei dieser Aufgabe.</value></data>
+  <data name="Tasks_Refusal_NoYourRequest" xml:space="preserve"><value>Du hast keine Anfrage bei dieser Aufgabe.</value></data>
+  <data name="Tasks_Refusal_NoRequest" xml:space="preserve"><value>Diese Person hat keine offene Anfrage bei dieser Aufgabe.</value></data>
+  <data name="Tasks_Email_Greeting" xml:space="preserve"><value>&lt;p&gt;Hallo {0},&lt;/p&gt;</value></data>
+  <data name="Tasks_Email_ReasonLine" xml:space="preserve"><value>&lt;p&gt;Begründung: {0}&lt;/p&gt;</value></data>
+  <data name="Tasks_Email_RequestApproved_Subject" xml:space="preserve"><value>Du bist dabei: {0}</value></data>
+  <data name="Tasks_Email_RequestApproved_Body" xml:space="preserve"><value>&lt;h2&gt;Anfrage angenommen&lt;/h2&gt;{0}&lt;p&gt;Deine Anfrage, bei &lt;strong&gt;{1}&lt;/strong&gt; ({2}) mitzumachen, wurde angenommen. Du hast jetzt einen Platz bei dieser Aufgabe.&lt;/p&gt;&lt;p&gt;&lt;a href="{3}"&gt;Aufgabe ansehen&lt;/a&gt;&lt;/p&gt;</value></data>
+  <data name="Tasks_Email_RequestDeclined_Subject" xml:space="preserve"><value>Deine Anfrage für: {0}</value></data>
+  <data name="Tasks_Email_RequestDeclined_Body" xml:space="preserve"><value>&lt;h2&gt;Anfrage nicht angenommen&lt;/h2&gt;{0}&lt;p&gt;Deine Anfrage, bei &lt;strong&gt;{1}&lt;/strong&gt; ({2}) mitzumachen, wurde diesmal nicht angenommen.&lt;/p&gt;{3}&lt;p&gt;Du kannst erneut anfragen, solange die Aufgabe noch einen freien Platz hat.&lt;/p&gt;&lt;p&gt;&lt;a href="{4}"&gt;Aufgabe ansehen&lt;/a&gt;&lt;/p&gt;</value></data>
+  <data name="Tasks_Todo_Requests_Title" xml:space="preserve"><value>Offene Aufgaben-Anfragen</value></data>
+  <data name="Tasks_Todo_Requests_Description" xml:space="preserve"><value>{0} hat {1} Anfrage(n), die auf deine Antwort warten.</value></data>
+  <data name="Tasks_Todo_Requests_Action" xml:space="preserve"><value>Anfragen beantworten</value></data>
 </root>

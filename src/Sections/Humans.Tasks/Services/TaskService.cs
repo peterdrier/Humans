@@ -1,6 +1,7 @@
 using Humans.AuditLog.Contracts;
 using Humans.Base.Authorization;
 using Humans.Base.Extensions;
+using Humans.Email.Contracts;
 using Humans.Gdpr.Contracts;
 using Humans.Settings.Contracts;
 using Humans.Tasks.Contracts;
@@ -24,6 +25,8 @@ internal sealed partial class TaskService(
     ISettingsService settings,
     IUserService users,
     IAuditLogService audit,
+    IEmailService email,
+    TasksEmails emails,
     IClock clock,
     IStringLocalizer<TasksResource> localizer,
     ILogger<TaskService> logger) : ITaskService, ITaskWrite, IUserDataContributor, IUserMerge

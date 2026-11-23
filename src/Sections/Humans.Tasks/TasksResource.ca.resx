@@ -135,4 +135,20 @@
   <data name="Enum_TaskItemStatus_Blocked" xml:space="preserve"><value>Bloquejada</value></data>
   <data name="Enum_TaskItemStatus_Done" xml:space="preserve"><value>Feta</value></data>
   <data name="Enum_TaskItemStatus_Cancelled" xml:space="preserve"><value>Cancel·lada</value></data>
+  <data name="Tasks_Refusal_Finished" xml:space="preserve"><value>Aquesta tasca està acabada o cancel·lada, així que ja no es pot reclamar.</value></data>
+  <data name="Tasks_Refusal_Full" xml:space="preserve"><value>Totes les places d'aquesta tasca estan ocupades.</value></data>
+  <data name="Tasks_Refusal_YouAreOn" xml:space="preserve"><value>Ja ets en aquesta tasca.</value></data>
+  <data name="Tasks_Refusal_YouRequested" xml:space="preserve"><value>Ja has demanat unir-te a aquesta tasca.</value></data>
+  <data name="Tasks_Refusal_YouAreNotOn" xml:space="preserve"><value>No tens plaça en aquesta tasca.</value></data>
+  <data name="Tasks_Refusal_NoYourRequest" xml:space="preserve"><value>No tens cap sol·licitud en aquesta tasca.</value></data>
+  <data name="Tasks_Refusal_NoRequest" xml:space="preserve"><value>Aquesta persona no té cap sol·licitud pendent en aquesta tasca.</value></data>
+  <data name="Tasks_Email_Greeting" xml:space="preserve"><value>&lt;p&gt;Hola {0},&lt;/p&gt;</value></data>
+  <data name="Tasks_Email_ReasonLine" xml:space="preserve"><value>&lt;p&gt;Motiu: {0}&lt;/p&gt;</value></data>
+  <data name="Tasks_Email_RequestApproved_Subject" xml:space="preserve"><value>Ets a la tasca: {0}</value></data>
+  <data name="Tasks_Email_RequestApproved_Body" xml:space="preserve"><value>&lt;h2&gt;Sol·licitud aprovada&lt;/h2&gt;{0}&lt;p&gt;La teva sol·licitud per unir-te a &lt;strong&gt;{1}&lt;/strong&gt; ({2}) ha estat aprovada. Ara tens una plaça en aquesta tasca.&lt;/p&gt;&lt;p&gt;&lt;a href="{3}"&gt;Veure la tasca&lt;/a&gt;&lt;/p&gt;</value></data>
+  <data name="Tasks_Email_RequestDeclined_Subject" xml:space="preserve"><value>La teva sol·licitud per unir-te a: {0}</value></data>
+  <data name="Tasks_Email_RequestDeclined_Body" xml:space="preserve"><value>&lt;h2&gt;Sol·licitud no aprovada&lt;/h2&gt;{0}&lt;p&gt;La teva sol·licitud per unir-te a &lt;strong&gt;{1}&lt;/strong&gt; ({2}) no ha estat aprovada aquesta vegada.&lt;/p&gt;{3}&lt;p&gt;Pots tornar-ho a demanar si la tasca encara té alguna plaça lliure.&lt;/p&gt;&lt;p&gt;&lt;a href="{4}"&gt;Veure la tasca&lt;/a&gt;&lt;/p&gt;</value></data>
+  <data name="Tasks_Todo_Requests_Title" xml:space="preserve"><value>Sol·licituds de tasques pendents</value></data>
+  <data name="Tasks_Todo_Requests_Description" xml:space="preserve"><value>{0} té {1} sol·licitud(s) esperant la teva resposta.</value></data>
+  <data name="Tasks_Todo_Requests_Action" xml:space="preserve"><value>Respondre sol·licituds</value></data>
 </root>

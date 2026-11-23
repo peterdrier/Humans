@@ -135,4 +135,20 @@
   <data name="Enum_TaskItemStatus_Blocked" xml:space="preserve"><value>Bloquée</value></data>
   <data name="Enum_TaskItemStatus_Done" xml:space="preserve"><value>Terminée</value></data>
   <data name="Enum_TaskItemStatus_Cancelled" xml:space="preserve"><value>Annulée</value></data>
+  <data name="Tasks_Refusal_Finished" xml:space="preserve"><value>Cette tâche est terminée ou annulée, elle ne peut plus être prise.</value></data>
+  <data name="Tasks_Refusal_Full" xml:space="preserve"><value>Toutes les places de cette tâche sont prises.</value></data>
+  <data name="Tasks_Refusal_YouAreOn" xml:space="preserve"><value>Tu es déjà sur cette tâche.</value></data>
+  <data name="Tasks_Refusal_YouRequested" xml:space="preserve"><value>Tu as déjà demandé à rejoindre cette tâche.</value></data>
+  <data name="Tasks_Refusal_YouAreNotOn" xml:space="preserve"><value>Tu n'as pas de place sur cette tâche.</value></data>
+  <data name="Tasks_Refusal_NoYourRequest" xml:space="preserve"><value>Tu n'as aucune demande sur cette tâche.</value></data>
+  <data name="Tasks_Refusal_NoRequest" xml:space="preserve"><value>Cette personne n'a aucune demande en attente sur cette tâche.</value></data>
+  <data name="Tasks_Email_Greeting" xml:space="preserve"><value>&lt;p&gt;Bonjour {0},&lt;/p&gt;</value></data>
+  <data name="Tasks_Email_ReasonLine" xml:space="preserve"><value>&lt;p&gt;Motif : {0}&lt;/p&gt;</value></data>
+  <data name="Tasks_Email_RequestApproved_Subject" xml:space="preserve"><value>Tu es sur la tâche : {0}</value></data>
+  <data name="Tasks_Email_RequestApproved_Body" xml:space="preserve"><value>&lt;h2&gt;Demande approuvée&lt;/h2&gt;{0}&lt;p&gt;Ta demande pour rejoindre &lt;strong&gt;{1}&lt;/strong&gt; ({2}) a été approuvée. Tu as maintenant une place sur cette tâche.&lt;/p&gt;&lt;p&gt;&lt;a href="{3}"&gt;Voir la tâche&lt;/a&gt;&lt;/p&gt;</value></data>
+  <data name="Tasks_Email_RequestDeclined_Subject" xml:space="preserve"><value>Ta demande pour rejoindre : {0}</value></data>
+  <data name="Tasks_Email_RequestDeclined_Body" xml:space="preserve"><value>&lt;h2&gt;Demande non approuvée&lt;/h2&gt;{0}&lt;p&gt;Ta demande pour rejoindre &lt;strong&gt;{1}&lt;/strong&gt; ({2}) n'a pas été approuvée cette fois.&lt;/p&gt;{3}&lt;p&gt;Tu peux redemander si la tâche a encore une place libre.&lt;/p&gt;&lt;p&gt;&lt;a href="{4}"&gt;Voir la tâche&lt;/a&gt;&lt;/p&gt;</value></data>
+  <data name="Tasks_Todo_Requests_Title" xml:space="preserve"><value>Demandes de tâches en attente</value></data>
+  <data name="Tasks_Todo_Requests_Description" xml:space="preserve"><value>{0} a {1} demande(s) en attente de ta réponse.</value></data>
+  <data name="Tasks_Todo_Requests_Action" xml:space="preserve"><value>Répondre aux demandes</value></data>
 </root>

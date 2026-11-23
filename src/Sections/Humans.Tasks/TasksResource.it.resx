@@ -135,4 +135,20 @@
   <data name="Enum_TaskItemStatus_Blocked" xml:space="preserve"><value>Bloccata</value></data>
   <data name="Enum_TaskItemStatus_Done" xml:space="preserve"><value>Completata</value></data>
   <data name="Enum_TaskItemStatus_Cancelled" xml:space="preserve"><value>Annullata</value></data>
+  <data name="Tasks_Refusal_Finished" xml:space="preserve"><value>Questa attività è completata o annullata e non può più essere presa.</value></data>
+  <data name="Tasks_Refusal_Full" xml:space="preserve"><value>Tutti i posti di questa attività sono occupati.</value></data>
+  <data name="Tasks_Refusal_YouAreOn" xml:space="preserve"><value>Sei già in questa attività.</value></data>
+  <data name="Tasks_Refusal_YouRequested" xml:space="preserve"><value>Hai già chiesto di unirti a questa attività.</value></data>
+  <data name="Tasks_Refusal_YouAreNotOn" xml:space="preserve"><value>Non hai un posto in questa attività.</value></data>
+  <data name="Tasks_Refusal_NoYourRequest" xml:space="preserve"><value>Non hai nessuna richiesta in questa attività.</value></data>
+  <data name="Tasks_Refusal_NoRequest" xml:space="preserve"><value>Quella persona non ha nessuna richiesta in attesa su questa attività.</value></data>
+  <data name="Tasks_Email_Greeting" xml:space="preserve"><value>&lt;p&gt;Ciao {0},&lt;/p&gt;</value></data>
+  <data name="Tasks_Email_ReasonLine" xml:space="preserve"><value>&lt;p&gt;Motivo: {0}&lt;/p&gt;</value></data>
+  <data name="Tasks_Email_RequestApproved_Subject" xml:space="preserve"><value>Sei nell'attività: {0}</value></data>
+  <data name="Tasks_Email_RequestApproved_Body" xml:space="preserve"><value>&lt;h2&gt;Richiesta approvata&lt;/h2&gt;{0}&lt;p&gt;La tua richiesta di unirti a &lt;strong&gt;{1}&lt;/strong&gt; ({2}) è stata approvata. Ora hai un posto in questa attività.&lt;/p&gt;&lt;p&gt;&lt;a href="{3}"&gt;Vedi l'attività&lt;/a&gt;&lt;/p&gt;</value></data>
+  <data name="Tasks_Email_RequestDeclined_Subject" xml:space="preserve"><value>La tua richiesta per: {0}</value></data>
+  <data name="Tasks_Email_RequestDeclined_Body" xml:space="preserve"><value>&lt;h2&gt;Richiesta non approvata&lt;/h2&gt;{0}&lt;p&gt;La tua richiesta di unirti a &lt;strong&gt;{1}&lt;/strong&gt; ({2}) questa volta non è stata approvata.&lt;/p&gt;{3}&lt;p&gt;Puoi chiedere di nuovo se l'attività ha ancora un posto libero.&lt;/p&gt;&lt;p&gt;&lt;a href="{4}"&gt;Vedi l'attività&lt;/a&gt;&lt;/p&gt;</value></data>
+  <data name="Tasks_Todo_Requests_Title" xml:space="preserve"><value>Richieste per le attività in attesa</value></data>
+  <data name="Tasks_Todo_Requests_Description" xml:space="preserve"><value>{0} ha {1} richiesta/e in attesa della tua risposta.</value></data>
+  <data name="Tasks_Todo_Requests_Action" xml:space="preserve"><value>Rispondi alle richieste</value></data>
 </root>

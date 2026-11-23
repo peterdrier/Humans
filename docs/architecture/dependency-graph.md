@@ -271,6 +271,7 @@ graph LR
     Surveys -.-> Tickets
     Tasks --> Permissions
     Tasks --> Settings
+    Tasks -.-> Email
     Tasks -.-> Teams
     Teams --> AuditLog
     Teams --> Auth

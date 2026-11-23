@@ -135,4 +135,20 @@
   <data name="Enum_TaskItemStatus_Blocked" xml:space="preserve"><value>Bloqueada</value></data>
   <data name="Enum_TaskItemStatus_Done" xml:space="preserve"><value>Hecha</value></data>
   <data name="Enum_TaskItemStatus_Cancelled" xml:space="preserve"><value>Cancelada</value></data>
+  <data name="Tasks_Refusal_Finished" xml:space="preserve"><value>Esta tarea está terminada o cancelada, así que ya no se puede reclamar.</value></data>
+  <data name="Tasks_Refusal_Full" xml:space="preserve"><value>Todas las plazas de esta tarea están ocupadas.</value></data>
+  <data name="Tasks_Refusal_YouAreOn" xml:space="preserve"><value>Ya estás en esta tarea.</value></data>
+  <data name="Tasks_Refusal_YouRequested" xml:space="preserve"><value>Ya has pedido unirte a esta tarea.</value></data>
+  <data name="Tasks_Refusal_YouAreNotOn" xml:space="preserve"><value>No tienes plaza en esta tarea.</value></data>
+  <data name="Tasks_Refusal_NoYourRequest" xml:space="preserve"><value>No tienes ninguna solicitud en esta tarea.</value></data>
+  <data name="Tasks_Refusal_NoRequest" xml:space="preserve"><value>Esa persona no tiene ninguna solicitud pendiente en esta tarea.</value></data>
+  <data name="Tasks_Email_Greeting" xml:space="preserve"><value>&lt;p&gt;Hola {0},&lt;/p&gt;</value></data>
+  <data name="Tasks_Email_ReasonLine" xml:space="preserve"><value>&lt;p&gt;Motivo: {0}&lt;/p&gt;</value></data>
+  <data name="Tasks_Email_RequestApproved_Subject" xml:space="preserve"><value>Estás en la tarea: {0}</value></data>
+  <data name="Tasks_Email_RequestApproved_Body" xml:space="preserve"><value>&lt;h2&gt;Solicitud aprobada&lt;/h2&gt;{0}&lt;p&gt;Tu solicitud para unirte a &lt;strong&gt;{1}&lt;/strong&gt; ({2}) ha sido aprobada. Ya tienes una plaza en ella.&lt;/p&gt;&lt;p&gt;&lt;a href="{3}"&gt;Ver la tarea&lt;/a&gt;&lt;/p&gt;</value></data>
+  <data name="Tasks_Email_RequestDeclined_Subject" xml:space="preserve"><value>Tu solicitud para unirte a: {0}</value></data>
+  <data name="Tasks_Email_RequestDeclined_Body" xml:space="preserve"><value>&lt;h2&gt;Solicitud no aprobada&lt;/h2&gt;{0}&lt;p&gt;Tu solicitud para unirte a &lt;strong&gt;{1}&lt;/strong&gt; ({2}) no ha sido aprobada esta vez.&lt;/p&gt;{3}&lt;p&gt;Puedes volver a pedirlo si la tarea aún tiene alguna plaza libre.&lt;/p&gt;&lt;p&gt;&lt;a href="{4}"&gt;Ver la tarea&lt;/a&gt;&lt;/p&gt;</value></data>
+  <data name="Tasks_Todo_Requests_Title" xml:space="preserve"><value>Solicitudes de tareas pendientes</value></data>
+  <data name="Tasks_Todo_Requests_Description" xml:space="preserve"><value>{0} tiene {1} solicitud(es) esperando tu respuesta.</value></data>
+  <data name="Tasks_Todo_Requests_Action" xml:space="preserve"><value>Responder solicitudes</value></data>
 </root>

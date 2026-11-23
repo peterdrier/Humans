@@ -135,4 +135,20 @@
   <data name="Enum_TaskItemStatus_Blocked" xml:space="preserve"><value>Blocked</value></data>
   <data name="Enum_TaskItemStatus_Done" xml:space="preserve"><value>Done</value></data>
   <data name="Enum_TaskItemStatus_Cancelled" xml:space="preserve"><value>Cancelled</value></data>
+  <data name="Tasks_Refusal_Finished" xml:space="preserve"><value>This task is done or cancelled, so it can't be claimed.</value></data>
+  <data name="Tasks_Refusal_Full" xml:space="preserve"><value>Every slot on this task is taken.</value></data>
+  <data name="Tasks_Refusal_YouAreOn" xml:space="preserve"><value>You are already on this task.</value></data>
+  <data name="Tasks_Refusal_YouRequested" xml:space="preserve"><value>You have already asked to join this task.</value></data>
+  <data name="Tasks_Refusal_YouAreNotOn" xml:space="preserve"><value>You don't have a place on this task.</value></data>
+  <data name="Tasks_Refusal_NoYourRequest" xml:space="preserve"><value>You have no request on this task.</value></data>
+  <data name="Tasks_Refusal_NoRequest" xml:space="preserve"><value>That person has no request waiting on this task.</value></data>
+  <data name="Tasks_Email_Greeting" xml:space="preserve"><value>&lt;p&gt;Hi {0},&lt;/p&gt;</value><comment>{0} = recipient name</comment></data>
+  <data name="Tasks_Email_ReasonLine" xml:space="preserve"><value>&lt;p&gt;Reason: {0}&lt;/p&gt;</value><comment>{0} = the manager's reason, free text</comment></data>
+  <data name="Tasks_Email_RequestApproved_Subject" xml:space="preserve"><value>You're on the task: {0}</value><comment>{0} = task title</comment></data>
+  <data name="Tasks_Email_RequestApproved_Body" xml:space="preserve"><value>&lt;h2&gt;Request approved&lt;/h2&gt;{0}&lt;p&gt;Your request to join &lt;strong&gt;{1}&lt;/strong&gt; ({2}) was approved. You now have a place on it.&lt;/p&gt;&lt;p&gt;&lt;a href="{3}"&gt;View the task&lt;/a&gt;&lt;/p&gt;</value><comment>{0} = greeting HTML, {1} = task title, {2} = team name, {3} = task URL</comment></data>
+  <data name="Tasks_Email_RequestDeclined_Subject" xml:space="preserve"><value>Your request to join: {0}</value><comment>{0} = task title</comment></data>
+  <data name="Tasks_Email_RequestDeclined_Body" xml:space="preserve"><value>&lt;h2&gt;Request not approved&lt;/h2&gt;{0}&lt;p&gt;Your request to join &lt;strong&gt;{1}&lt;/strong&gt; ({2}) was not approved this time.&lt;/p&gt;{3}&lt;p&gt;You can ask again if the task still has a free slot.&lt;/p&gt;&lt;p&gt;&lt;a href="{4}"&gt;View the task&lt;/a&gt;&lt;/p&gt;</value><comment>{0} = greeting HTML, {1} = task title, {2} = team name, {3} = reason line HTML (may be empty), {4} = task URL</comment></data>
+  <data name="Tasks_Todo_Requests_Title" xml:space="preserve"><value>Task requests waiting</value></data>
+  <data name="Tasks_Todo_Requests_Description" xml:space="preserve"><value>{0} has {1} request(s) waiting for your answer.</value><comment>{0} = team name, {1} = number of waiting requests</comment></data>
+  <data name="Tasks_Todo_Requests_Action" xml:space="preserve"><value>Answer requests</value></data>
 </root>

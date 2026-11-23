@@ -44,6 +44,16 @@ internal sealed record TasksAccess(Guid UserId, bool SeesAll, IReadOnlySet<Guid>
     public bool IsConfirmedOn(TaskInfo task) =>
         task.Assignments.Any(a => a.IsConfirmed && a.UserId == UserId);
 
+    public bool HasRequestOn(TaskInfo task) =>
+        task.Assignments.Any(a => !a.IsConfirmed && a.UserId == UserId);
+
+    /// <summary>
+    /// Whether the claim button shows: a task the person can see, not done or cancelled, with a free slot, that they are
+    /// not already on or waiting on. The service enforces the same state rules; seeing the task is only checked here.
+    /// </summary>
+    public bool CanClaim(TaskInfo task) =>
+        CanSee(task) && !task.IsFinished && task.OpenSlots > 0 && task.Assignments.All(a => a.UserId != UserId);
+
     /// <summary>Everyone sees a task that is not hidden. A hidden one shows to its managers, the people confirmed on it, and those who see all.</summary>
     public bool CanSee(TaskInfo task) =>
         !task.IsEffectivelyHidden || SeesAll || Manages(task) || IsConfirmedOn(task);

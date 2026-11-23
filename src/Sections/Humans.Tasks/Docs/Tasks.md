@@ -28,7 +28,7 @@ Pieces of work with an end, hanging on a team. A task is to a role (standing res
 | `GET /Tasks/{id}` | One task: description, dates, people, waiting-on; managers edit, assign, link, delete | Anyone who can see it; 404 otherwise |
 | `GET /Tasks/Admin` | Read-only per-team counts and every blocked task with its note. The admin sidebar's Tasks group. English only (admin page). | TasksAdmin, Board, Admin (`TasksPolicies.Read`) |
 
-`POST /api/backdoor/tasks/bulk` (Backdoor's key-authed API) loads a whole set of tasks; see Bulk load below. Claiming, the open-tasks board, the team-page card and the timeline arrive in later PRs.
+`POST /api/backdoor/tasks/bulk` (Backdoor's key-authed API) loads a whole set of tasks; see Bulk load below. Claiming (below) is built in the service; its buttons, the request management UI and the open-tasks board are the pages half of PR 3. The team-page card and the timeline arrive in later PRs.
 
 ## Bulk load
 
@@ -41,6 +41,27 @@ Pieces of work with an end, hanging on a team. A task is to a role (standing res
 - Loading the same payload twice creates the tasks twice: there is no identity beyond the key, and the key means nothing outside one payload.
 - Audited like normal creates: a `TaskCreated` row per task (its text ends "by bulk load") and a `TaskDependencyAdded` row per link. A refused payload is logged at Warning once and writes no audit rows.
 - Auth-free, like the rest of the service. The only caller is Backdoor's `BackdoorTasksController`, which turns each team reference (slug, custom slug, else id) into a team id through `ITeamService` and checks `Tasks.Manage` on it (`IPermissionService`) before calling, so rights are checked on exactly the team the task lands on. A team reference that matches nothing gets the same 403 as a team the caller does not manage, so a key never learns whether a team exists; Tasks still refuses a team id that is unknown, retired or a system team.
+
+## Claiming and requests
+
+`ITaskService` (all internal, auth-free; controllers ask `TasksAccess` first):
+
+- `ClaimAsync(taskId, actor)`: the actor takes a free slot. On a task that does not need approval they are **confirmed** at once; on one that does, a **request** is made. A request takes no slot, and many people may request the same last slot. Refused on a done or cancelled task, when the actor is already on it or already requested it, and when every slot is taken (confirmed people only; a needs-approval task that is full refuses requests too). Two claims at the same moment may both land (no locking), which shows as 5 of 4.
+- `ReleaseAsync`: the actor gives back their own **confirmed** place. A request is not released; it is withdrawn.
+- `WithdrawRequestAsync`: the actor takes back their own request. Never touches a confirmed place.
+- `ApproveRequestAsync(taskId, userId, actor)`: confirms the request. A task that has since filled up is **overfilled**, not refused. Emails the person.
+- `DeclineRequestAsync(taskId, userId, reason?, actor)`: deletes the request; the person may ask again. The optional reason (200 characters at most, trimmed, blank counts as none) is carried only into the email and the audit entry; no column holds it. Emails the person.
+- Approve and decline need a request row (state Requested) and never remove or change a confirmed place. A manager who assigns someone who already asked is told they are already on the task; approving is the way.
+- Claiming, assigning or approving never makes anyone a team member: Tasks calls no write on Teams.
+- Needs-approval, stored since PR 1, takes effect only here, at claim time. Turning it off later does not confirm existing requests.
+
+### The two emails
+
+`TasksEmails` (`Services/TasksEmails.cs`) builds the approved and the declined email, category `VolunteerUpdates`, templates `task_request_approved` and `task_request_declined`, in the recipient's preferred language (English when unsupported), with HTML-encoded substitutions and a link to `/Tasks/{id}`. Copy lives in `TasksResource` under `Tasks_Email_*` in all seven cultures. `TasksEmailPreviews` puts the samples in the gallery at `/Email/EmailPreview`. Email only sends: `TaskService` calls `IEmailService.SendAsync` after the change is saved and audited. A failed or impossible send (no effective address) is logged and never undoes the answer. Nothing else in Tasks sends email: claim, release, request and withdraw send none.
+
+### Home
+
+`Section` implements `ISectionThingsToDo`: one entry per team with waiting requests on unfinished tasks, for people who hold `Tasks.Manage` on that team (`IPermissionService.GetOwnersAsync`; that already includes every team for TasksAdmin and Admin, and a team's coordinators). Key `tasks-requests-{teamId}`, linking to `/Tasks/Team/{slug}`. Requests on done or cancelled tasks are not counted; requests on hidden tasks are, because the viewer manages them.
 
 ## Data Model
 
@@ -71,15 +92,16 @@ Pieces of work with an end, hanging on a team. A task is to a role (standing res
 - Blocked needs a note; leaving blocked clears it. The approval reason is dropped when needs-approval is off.
 - A due date never precedes the start date (resolved dates).
 - A task cannot wait on itself, and a dependency circle is refused.
-- A person is on a task at most once, and must exist to be assigned. Approving requests arrives with claiming.
+- A person is on a task at most once (confirmed or requested), and must exist to be assigned.
+- Only confirmed people fill slots. Open slots are slots minus confirmed, never below zero; overfilling by claiming races, approving or assigning is allowed and shows as 5 of 4.
 - An event is picked only if it exists and is not withdrawn; a task keeps an event withdrawn later.
 - Hidden tasks, and every task of a hidden team, show only to managers of the team, people confirmed on them, TasksAdmin, Board and Admin. A hidden task a viewer cannot see is "a hidden task" in waiting-on lists, without its status.
 - A done or cancelled task is never shown as waiting.
 - A hidden team's tasks page (`/Tasks/Team/{slug}`) is found only by TasksAdmin, Board, Admin, the team's managers and people confirmed on one of its tasks; 404 for everyone else.
 - Services are auth-free: controllers build `TasksAccess` (`Authorization/TasksAccess.cs`) from `IPermissionService` and the `TasksPolicies.Read` policy, and check it before every write and filter every read. Tests: `tests/Humans.Tasks.Tests/TasksAccessTests.cs`.
-- Every create (bulk or form), update, status change, delete, assign, unassign and dependency change is audited (`TasksAuditActions`, entity type `TaskItem`). Every refusal is logged at Warning.
+- Every create (bulk or form), update, status change, delete, assign, unassign, claim, release, request, withdrawn request, approval, decline and dependency change is audited (`TasksAuditActions`, entity type `TaskItem`; claim, release, request, withdraw, approve and decline carry the person as the related subject; a decline's reason is in the description). Every refusal is logged at Warning.
 - A form field that does not bind (a malformed date or event) refuses the write and shows the form again with what was typed; so does a refused status change.
-- GDPR: export lists the person's tasks with state and date; erasure removes their places and requests; a merge moves them to the survivor, keeping one row, confirmed winning. Task text is not tied to a person and stays.
+- GDPR: export lists the person's tasks with state (Confirmed or Requested) and date; erasure removes their places and requests; a decline reason is stored nowhere but the email and the audit entry; a merge moves them to the survivor, keeping one row, confirmed winning. Task text is not tied to a person and stays.
 - Demo story: `Services/Demo/TasksDemoStory.cs`, after Teams.
 
 ## Negative Access Rules
@@ -91,18 +113,25 @@ Pieces of work with an end, hanging on a team. A task is to a role (standing res
 - A manager **cannot** touch tasks of a parent or sibling team, and **cannot** move a task to a team they do not manage.
 - A person confirmed on a task **cannot** cancel it, edit it, or change who is on it.
 - A person only requested on a task **cannot** set its status and does not see it if hidden.
+- A member **cannot** claim a task they cannot see, a done or cancelled task, a full one, or one they are already on or have asked to join (`TasksAccess.CanClaim` for the button, the service for the state rules).
+- A member **cannot** approve or decline requests, release someone else's place, or withdraw someone else's request: approve and decline need `Tasks.Manage` on the task's team; release and withdraw act only on the caller's own row.
+- A manager **cannot** approve or decline a request that does not exist, and approving or declining never touches a confirmed place.
+- The waiting-requests entries on Home appear only for holders of `Tasks.Manage` on the team; nobody else, and not a person for their own request.
 - Board **cannot** change any task.
 - Only TasksAdmin, Board and Admin **can** open `/Tasks/Admin`; managers cannot. It is read-only.
 
 ## Triggers
 
 - A write to a task, its people or its links writes an audit row.
+- A claim, release, request, withdrawal, approval or decline writes one audit row; an approval or decline also queues one email to the requester.
 - A merge writes a `TaskAssigned` audit row on the survivor when places moved.
 - Erasure of a user removes their places and requests; it writes no audit row.
 
 ## Cross-Section Dependencies
 
-- **Users**: `IUserService.GetUserInfoAsync`, to check a person exists before assigning.
+- **Users**: `IUserService.GetUserInfoAsync`, to check a person exists before assigning, and for the address and language of an answer email.
+- **Email**: `IEmailService.SendAsync` and `EmailMessage`/`MessageCategory` from `Humans.Email.Contracts`; `IEmailPreviewContributor` for the gallery.
+- **Home**: `ISectionThingsToDo`, the waiting-requests entries.
 - **Permissions**: declares `Tasks.Manage` (`ISectionPermissions`, owner kind `Team`); `IPermissionService.GetOwnersAsync` in `TasksAccess`.
 - **Teams.Contracts**: `ITeamService` for team names, slugs, hidden and active flags; `TeamOwner`, `SlotPriority`.
 - **Backdoor** (consumer): calls `ITaskWrite.BulkLoadAsync` from its bulk-load controller.
@@ -114,7 +143,7 @@ Pieces of work with an end, hanging on a team. A task is to a role (standing res
 
 **Owning services:** `TaskService`
 **Owned tables:** `task_items`, `task_assignments`, `task_dependencies`
-**Status:** (A) Migrated: new section, 2026-11-22 (PR 1 of 5); bulk load (PR 2).
+**Status:** (A) Migrated: new section, 2026-11-22 (PR 1 of 5); bulk load (PR 2); claiming service, emails and Home entries (PR 3, backend).
 
 ### Public contract
 
@@ -124,7 +153,7 @@ Pieces of work with an end, hanging on a team. A task is to a role (standing res
 | `TasksSystemRoles`, `TasksPermissions` | — | The `TasksAdmin` role and the `Tasks.Manage` key |
 | `ITaskWrite` | 1 | `BulkLoadAsync`, with `BulkLoadRequest`, `BulkLoadTask`, `BulkLoadDate`, `BulkLoadResult`, `BulkLoadProblem`, `BulkLoadedTask`. Consumed by Backdoor only |
 
-Nothing else is public: `ITaskService`, its DTOs and the entities are internal.
+Nothing else is public: `ITaskService` (including claim, release, withdraw, approve and decline), `TasksEmails`, its DTOs and the entities are internal. Claiming adds no public surface.
 
 - No caching decorator: low traffic; the dataset loads whole per request.
 - `TaskService` is the only repository caller (`ITaskRepository`, `Data/`) and never imports `Microsoft.EntityFrameworkCore`.
