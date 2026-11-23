@@ -1,4 +1,3 @@
-using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
 using Humans.Backdoor.Filters;
 using Humans.Base.Controllers;
@@ -21,7 +20,7 @@ namespace Humans.Backdoor.Controllers;
 [ServiceFilter(typeof(BackdoorApiKeyAuthFilter))]
 [AllowAnonymous]
 internal sealed class BackdoorTasksController(
-    ITasksWrite tasks,
+    ITaskWrite tasks,
     IPermissionService permissions,
     ITeamService teams,
     IUserService users,
@@ -43,11 +42,14 @@ internal sealed class BackdoorTasksController(
             return Unauthorized();
 
         var ct = HttpContext.RequestAborted;
-        var denied = await TeamsWithoutManageAsync(model, actorUserId, ct);
+        var (teamIds, denied) = await ResolveManagedTeamsAsync(model, actorUserId, ct);
         if (denied.Count > 0)
-            return StatusCode(StatusCodes.Status403Forbidden, new { error = "Tasks.Manage is needed on every team in the payload.", teams = denied });
+        {
+            logger.LogWarning("Bulk task load by {ActorUserId} refused for teams {Teams}", actorUserId, denied);
+            return StatusCode(StatusCodes.Status403Forbidden, new { error = "No such team, or no Tasks.Manage on it.", teams = denied });
+        }
 
-        var result = await tasks.BulkLoadAsync(model.ToRequest(), actorUserId, ct);
+        var result = await tasks.BulkLoadAsync(model.ToRequest(teamIds), actorUserId, ct);
         if (!result.Succeeded)
             return UnprocessableEntity(new { problems = result.Problems });
 
@@ -57,11 +59,13 @@ internal sealed class BackdoorTasksController(
     }
 
     /// <summary>
-    /// The team references the owner may not manage. A reference that matches no team is answered the same way, so a
-    /// key never learns whether a team it cannot manage exists, hidden teams included.
+    /// Each team reference's id, and the references the owner may not manage. A reference that matches no team is
+    /// answered the same way, so a key never learns whether a team it cannot manage exists, hidden teams included.
     /// </summary>
-    private async Task<List<string>> TeamsWithoutManageAsync(ApiBulkTasksModel model, Guid actorUserId, CancellationToken ct)
+    private async Task<(Dictionary<string, Guid> TeamIds, List<string> Denied)> ResolveManagedTeamsAsync(
+        ApiBulkTasksModel model, Guid actorUserId, CancellationToken ct)
     {
+        var teamIds = new Dictionary<string, Guid>(StringComparer.Ordinal);
         var denied = new List<string>();
         foreach (var reference in model.Tasks.Select(t => t.Team?.Trim()).Where(r => !string.IsNullOrEmpty(r)).Distinct(StringComparer.Ordinal))
         {
@@ -69,21 +73,27 @@ internal sealed class BackdoorTasksController(
                 ?? (Guid.TryParse(reference, out var id) ? await teams.GetTeamAsync(id, ct) : null);
             if (team is null || !await permissions.HasAsync(actorUserId, TasksPermissions.Manage, new(TeamOwner.Kind, team.Id), ct))
                 denied.Add(reference!);
+            else
+                teamIds[reference!] = team.Id;
         }
 
-        return denied;
+        return (teamIds, denied);
     }
 }
 
+[JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
 internal sealed class ApiBulkTasksModel
 {
     public List<ApiBulkTaskModel> Tasks { get; set; } = [];
 
     public bool DryRun { get; set; }
 
-    public BulkLoadRequest ToRequest() => new([.. Tasks.Select(t => t.ToTask())], DryRun);
+    /// <summary>A task whose team reference is not in <paramref name="teamIds"/> goes to Tasks with no team, which refuses it.</summary>
+    /// <param name="teamIds">Each team reference's id.</param>
+    public BulkLoadRequest ToRequest(IReadOnlyDictionary<string, Guid> teamIds) => new([.. Tasks.Select(t => t.ToTask(teamIds))], DryRun);
 }
 
+[JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
 internal sealed class ApiBulkTaskModel
 {
     /// <summary>Means something only inside the payload.</summary>
@@ -102,7 +112,6 @@ internal sealed class ApiBulkTaskModel
 
     public ApiBulkDateModel? Due { get; set; }
 
-    [EnumDataType(typeof(SlotPriority), ErrorMessage = "Validation_InvalidValue")]
     [JsonConverter(typeof(JsonStringEnumConverter))]
     public SlotPriority Priority { get; set; } = SlotPriority.Important;
 
@@ -117,12 +126,13 @@ internal sealed class ApiBulkTaskModel
     /// <summary>Keys of other tasks in the payload.</summary>
     public List<string>? DependsOn { get; set; }
 
-    public BulkLoadTask ToTask() => new(
-        Key ?? string.Empty, Team ?? string.Empty, Title ?? string.Empty, Description, EventId, Start?.ToDate(), Due?.ToDate(),
+    public BulkLoadTask ToTask(IReadOnlyDictionary<string, Guid> teamIds) => new(
+        Key ?? string.Empty, Team?.Trim() is { } team && teamIds.TryGetValue(team, out var teamId) ? teamId : Guid.Empty, Title ?? string.Empty, Description, EventId, Start?.ToDate(), Due?.ToDate(),
         Priority, SlotCount, NeedsApproval, ApprovalReason, IsHidden, DependsOn);
 }
 
 /// <summary>Exactly one of the three.</summary>
+[JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
 internal sealed class ApiBulkDateModel
 {
     public DateOnly? Fixed { get; set; }

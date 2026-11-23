@@ -3,7 +3,7 @@ using Humans.Base.Interfaces;
 namespace Humans.Tasks.Contracts;
 
 /// <summary>The one write another section calls: loading a whole set of tasks. Everything else Tasks does is internal.</summary>
-public interface ITasksWrite : IApplicationService
+public interface ITaskWrite : IApplicationService
 {
     /// <summary>
     /// Creates every task in the payload, or none. The whole payload is checked first and every problem is listed; a

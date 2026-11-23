@@ -1,3 +1,5 @@
+using System.Globalization;
+using System.Resources;
 using Humans.Settings.Contracts;
 using Humans.Tasks.Contracts;
 using Humans.Tasks.Data;
@@ -13,6 +15,16 @@ internal sealed partial class TaskService
     /// <summary>A task of the payload that passed every check on its own: ready to write.</summary>
     private sealed record BulkPlan(BulkLoadTask Source, string Key, TaskInput Input, StoredDate Start, StoredDate Due);
 
+    // The form's refusal texts in their neutral (English) form: an agent API answers in one language.
+    private static readonly ResourceManager EnglishText = new(typeof(TasksResource));
+
+    // The dates a task form can show.
+    private static readonly LocalDate FirstFormDate = new(1, 1, 1);
+    private static readonly LocalDate LastFormDate = new(9999, 12, 31);
+
+    private static string English(string resourceKey) =>
+        EnglishText.GetString(resourceKey, CultureInfo.InvariantCulture) ?? resourceKey;
+
     public async Task<BulkLoadResult> BulkLoadAsync(BulkLoadRequest request, Guid actorUserId, CancellationToken ct = default)
     {
         var snapshot = await LoadAsync(ct);
@@ -22,11 +34,10 @@ internal sealed partial class TaskService
         if (request.Tasks.Count == 0)
             problems.Add(new(null, null, "tasks", "Send at least one task."));
 
-        var teamsByRef = new Dictionary<string, TeamInfo?>(StringComparer.Ordinal);
         var firstIndexOfKey = new Dictionary<string, int>(StringComparer.Ordinal);
         for (var i = 0; i < request.Tasks.Count; i++)
         {
-            var plan = await PlanAsync(i, request.Tasks[i], snapshot, teamsByRef, firstIndexOfKey, problems, ct);
+            var plan = await PlanAsync(i, request.Tasks[i], snapshot, firstIndexOfKey, problems, ct);
             plans.Add(plan);
         }
 
@@ -87,7 +98,6 @@ internal sealed partial class TaskService
         int index,
         BulkLoadTask task,
         Snapshot snapshot,
-        Dictionary<string, TeamInfo?> teamsByRef,
         Dictionary<string, int> firstIndexOfKey,
         List<BulkLoadProblem> problems,
         CancellationToken ct)
@@ -101,7 +111,7 @@ internal sealed partial class TaskService
             problems.Add(new(index, key, field, message));
         }
 
-        void Refused(string field, string resourceKey) => Problem(field, localizer[resourceKey].Value);
+        void Refused(string field, string resourceKey) => Problem(field, English(resourceKey));
 
         if (string.IsNullOrEmpty(key))
             Problem("key", "Give the task a key, to name it in the payload.");
@@ -110,31 +120,11 @@ internal sealed partial class TaskService
         else
             firstIndexOfKey[key] = index;
 
-        Guid? teamId = null;
-        if (string.IsNullOrWhiteSpace(task.Team))
-        {
-            Problem("team", "Name the team by slug or id.");
-        }
-        else
-        {
-            var reference = task.Team.Trim();
-            if (!teamsByRef.TryGetValue(reference, out var team))
-            {
-                team = await teams.GetTeamBySlugAsync(reference, ct)
-                    ?? (Guid.TryParse(reference, out var id) ? await teams.GetTeamAsync(id, ct) : null);
-                teamsByRef[reference] = team;
-            }
-
-            if (team is null)
-                Problem("team", $"No team '{reference}'.");
-            else if (team is not { IsActive: true, IsSystemTeam: false })
-                Refused("team", "Tasks_Refusal_NoTeam");
-            else
-                teamId = team.Id;
-        }
+        if (await TeamRefusalAsync(task.TeamId, ct) is { } teamRefusal)
+            Refused("team", teamRefusal);
 
         var input = new TaskInput(
-            teamId ?? Guid.Empty, task.Title, task.Description, task.EventId, null, null,
+            task.TeamId, task.Title, task.Description, task.EventId, null, null,
             task.Priority, task.SlotCount, task.NeedsApproval, task.ApprovalReason, task.IsHidden);
         foreach (var (field, resourceKey) in InputRefusals(input))
             Refused(field, resourceKey);
@@ -186,7 +176,17 @@ internal sealed partial class TaskService
         }
 
         if (date.Day is { } day)
-            return new StoredDate(null, day);
+        {
+            var gate = taskEvent.GateOpeningDate;
+            if (day >= Period.Between(gate, FirstFormDate, PeriodUnits.Days).Days
+                && day <= Period.Between(gate, LastFormDate, PeriodUnits.Days).Days)
+            {
+                return new StoredDate(null, day);
+            }
+
+            problem(field, $"Day {day} from the event's gate opening is not a date a task can have.");
+            return null;
+        }
 
         var (resolved, refusal) = ResolveDate(new TaskDateInput(IsRelative: true, date.RelativeDate!.Value), null, null, taskEvent);
         if (refusal is not null)
@@ -203,7 +203,7 @@ internal sealed partial class TaskService
         (task.DependsOn ?? []).Select(k => k?.Trim() ?? string.Empty).Distinct(StringComparer.Ordinal);
 
     /// <summary>Unknown keys, a task waiting on itself, and circles.</summary>
-    private void CheckDependencies(
+    private static void CheckDependencies(
         IReadOnlyList<BulkLoadTask> tasks, Dictionary<string, int> firstIndexOfKey, List<BulkLoadProblem> problems)
     {
         var edges = new Dictionary<string, List<string>>(StringComparer.Ordinal);
@@ -217,7 +217,7 @@ internal sealed partial class TaskService
             foreach (var dependency in DependencyKeys(tasks[i]))
             {
                 if (string.Equals(dependency, key, StringComparison.Ordinal))
-                    problems.Add(new(i, key, "dependsOn", localizer["Tasks_Refusal_DependsOnSelf"].Value));
+                    problems.Add(new(i, key, "dependsOn", English("Tasks_Refusal_DependsOnSelf")));
                 else if (!firstIndexOfKey.ContainsKey(dependency))
                     problems.Add(new(i, key, "dependsOn", $"'{dependency}' is not a task key in this payload."));
                 else
@@ -227,17 +227,40 @@ internal sealed partial class TaskService
             edges[key] = waitsOn;
         }
 
+        // Depth-first with an explicit stack: a payload can chain far more tasks than the call stack has frames.
         var reported = new HashSet<string>(StringComparer.Ordinal);
         var finished = new HashSet<string>(StringComparer.Ordinal);
         var path = new List<string>();
+        var positionOnPath = new Dictionary<string, int>(StringComparer.Ordinal);
+        var stack = new Stack<(string Key, int Next)>();
 
-        void Visit(string key)
+        void Enter(string key)
         {
+            positionOnPath[key] = path.Count;
             path.Add(key);
-            foreach (var next in edges[key])
+            stack.Push((key, 0));
+        }
+
+        foreach (var root in edges.Keys)
+        {
+            if (finished.Contains(root))
+                continue;
+
+            Enter(root);
+            while (stack.TryPop(out var frame))
             {
-                var at = path.IndexOf(next);
-                if (at >= 0)
+                var waitsOn = edges[frame.Key];
+                if (frame.Next == waitsOn.Count)
+                {
+                    path.RemoveAt(path.Count - 1);
+                    positionOnPath.Remove(frame.Key);
+                    finished.Add(frame.Key);
+                    continue;
+                }
+
+                stack.Push((frame.Key, frame.Next + 1));
+                var next = waitsOn[frame.Next];
+                if (positionOnPath.TryGetValue(next, out var at))
                 {
                     var circle = path.Skip(at).ToList();
                     if (reported.Add(string.Join('\n', circle.Order(StringComparer.Ordinal))))
@@ -248,15 +271,9 @@ internal sealed partial class TaskService
                 }
                 else if (!finished.Contains(next))
                 {
-                    Visit(next);
+                    Enter(next);
                 }
             }
-
-            path.RemoveAt(path.Count - 1);
-            finished.Add(key);
         }
-
-        foreach (var key in edges.Keys.Where(k => !finished.Contains(k)))
-            Visit(key);
     }
 }

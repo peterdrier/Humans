@@ -9,12 +9,12 @@ namespace Humans.Integration.Tests.Controllers;
 
 /// <summary>
 /// The controller unit tests skip model binding; this runs the wire model through MVC so a missing field is Tasks'
-/// 422 problem list, not the automatic 400.
+/// 422 problem list, not the automatic 400, and so is a priority number no priority has.
 /// </summary>
 public class BackdoorTasksBulkTests(HumansTestDatabase database) : IntegrationTestBase(database)
 {
     [HumansFact(Timeout = 60000)]
-    public async Task Bulk_with_missing_title_and_empty_key_is_422_listing_both_problems()
+    public async Task Bulk_with_missing_title_empty_key_and_unknown_priority_is_422_listing_all()
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         var adminId = await Factory.SignInAsFullyOnboardedAsync(Client, DevPersona.Admin);
@@ -28,6 +28,7 @@ public class BackdoorTasksBulkTests(HumansTestDatabase database) : IntegrationTe
                 {
                     new { key = "no-title", team = "volunteers" },
                     new { key = "", team = "volunteers", title = "No key" },
+                    new { key = "loud", team = "volunteers", title = "Too loud", priority = 99 },
                 },
             }),
         };
@@ -44,6 +45,7 @@ public class BackdoorTasksBulkTests(HumansTestDatabase database) : IntegrationTe
             .ToList();
         problems.Should().Contain((0, "title"), body);
         problems.Should().Contain((1, "key"), body);
+        problems.Should().Contain((2, "priority"), body);
     }
 
     private async Task<string> IssueKeyAsync(Guid ownerUserId, CancellationToken ct)

@@ -28,7 +28,7 @@ Cross-section calls via `IRoleAssignmentService` (Admin/Board eligibility),
 The `/api/backdoor/*` machine APIs that serve another section (`agent`,
 `issues`, `store`, `surveys`, `finance`, `notifications`, `tasks`) are thin controller orchestrators over that
 section's contracts interface (`IAgentTranscriptRead`, `IIssueTriage`,
-`IStoreAccountingRead`, `ISurveyAnalysisRead`, `ITasksWrite`,
+`IStoreAccountingRead`, `ISurveyAnalysisRead`, `ITaskWrite`,
 `IExpenseReportService`, `IFinanceService`, `IBudgetService`, `INotificationInboxRead`) — Backdoor's own repository is
 never touched by them, and they carry no `###` heading here since each is
 documented in the section that owns the interface. `logs` alone reads

@@ -32,15 +32,15 @@ Pieces of work with an end, hanging on a team. A task is to a role (standing res
 
 ## Bulk load
 
-`ITasksWrite.BulkLoadAsync` (`Services/TaskService.BulkLoad.cs`) is the one public write. It takes a `BulkLoadRequest`: a list of tasks and a dry-run flag.
+`ITaskWrite.BulkLoadAsync` (`Services/TaskService.BulkLoad.cs`) is the one public write. It takes a `BulkLoadRequest`: a list of tasks and a dry-run flag.
 
-- A task carries a payload-local **key**, its **team** (slug, custom slug, else team id), title, description, optional **event id**, optional start and due, priority, slot count, needs-approval and reason, hidden, and **depends-on** keys. No people, no status: every task starts as to do with nobody on it.
-- A date is exactly one of `fixed` (a calendar date), `day` (days from the event's gate opening day) or `relativeDate` (a calendar date Tasks turns into a day number from the task's event). Both relative kinds need an event.
+- A task carries a payload-local **key**, its **team id**, title, description, optional **event id**, optional start and due, priority, slot count, needs-approval and reason, hidden, and **depends-on** keys. No people, no status: every task starts as to do with nobody on it.
+- A date is exactly one of `fixed` (a calendar date), `day` (days from the event's gate opening day) or `relativeDate` (a calendar date Tasks turns into a day number from the task's event). Both relative kinds need an event, and a `day` must land on a date the form can show (years 1 to 9999).
 - Each task is checked against the same rules as a task made on the form (team, field lengths, slots, event, dates, due not before start). Dependencies name keys in the payload only: an unknown key, a task waiting on itself and a circle are problems. A key repeated within one task's list counts once.
-- All or nothing. The whole payload is planned first and every problem is returned (`BulkLoadProblem`: position, key, field, message). Only when there are none are the tasks and links saved, in one repository transaction (`ITaskRepository.AddManyAsync`). A dry run stops before saving and answers without ids.
+- All or nothing. The whole payload is planned first and every problem is returned (`BulkLoadProblem`: position, key, field, message), in plain English whatever the request culture. The dependency check walks with an explicit stack, so a long chain cannot overflow the call stack. Only when there are none are the tasks and links saved, in one repository transaction (`ITaskRepository.AddManyAsync`). A dry run stops before saving and answers without ids.
 - Loading the same payload twice creates the tasks twice: there is no identity beyond the key, and the key means nothing outside one payload.
 - Audited like normal creates: a `TaskCreated` row per task (its text ends "by bulk load") and a `TaskDependencyAdded` row per link. A refused payload is logged at Warning once and writes no audit rows.
-- Auth-free, like the rest of the service. The only caller is Backdoor's `BackdoorTasksController`, which checks `Tasks.Manage` on every team the payload names (`IPermissionService`, teams found by slug or id through `ITeamService`) before calling. A team reference that matches nothing gets the same 403 as a team the caller does not manage, so a key never learns whether a team exists; Tasks still refuses an unknown team for any other caller.
+- Auth-free, like the rest of the service. The only caller is Backdoor's `BackdoorTasksController`, which turns each team reference (slug, custom slug, else id) into a team id through `ITeamService` and checks `Tasks.Manage` on it (`IPermissionService`) before calling, so rights are checked on exactly the team the task lands on. A team reference that matches nothing gets the same 403 as a team the caller does not manage, so a key never learns whether a team exists; Tasks still refuses a team id that is unknown, retired or a system team.
 
 ## Data Model
 
@@ -105,7 +105,7 @@ Pieces of work with an end, hanging on a team. A task is to a role (standing res
 - **Users**: `IUserService.GetUserInfoAsync`, to check a person exists before assigning.
 - **Permissions**: declares `Tasks.Manage` (`ISectionPermissions`, owner kind `Team`); `IPermissionService.GetOwnersAsync` in `TasksAccess`.
 - **Teams.Contracts**: `ITeamService` for team names, slugs, hidden and active flags; `TeamOwner`, `SlotPriority`.
-- **Backdoor** (consumer): calls `ITasksWrite.BulkLoadAsync` from its bulk-load controller.
+- **Backdoor** (consumer): calls `ITaskWrite.BulkLoadAsync` from its bulk-load controller.
 - **Settings**: `ISettingsService` for event names, gate opening dates and the active event.
 - **AuditLog**: `IAuditLogService.LogAsync`, `IAuditActionContributor`.
 - **Gdpr / Users**: `IUserDataContributor` and `IUserMerge`, implemented by `TaskService`.
@@ -122,7 +122,7 @@ Pieces of work with an end, hanging on a team. A task is to a role (standing res
 |---|---:|---|
 | `TasksPolicies` | — | `Read`: the policy name for `/Tasks/Admin` |
 | `TasksSystemRoles`, `TasksPermissions` | — | The `TasksAdmin` role and the `Tasks.Manage` key |
-| `ITasksWrite` | 1 | `BulkLoadAsync`, with `BulkLoadRequest`, `BulkLoadTask`, `BulkLoadDate`, `BulkLoadResult`, `BulkLoadProblem`, `BulkLoadedTask`. Consumed by Backdoor only |
+| `ITaskWrite` | 1 | `BulkLoadAsync`, with `BulkLoadRequest`, `BulkLoadTask`, `BulkLoadDate`, `BulkLoadResult`, `BulkLoadProblem`, `BulkLoadedTask`. Consumed by Backdoor only |
 
 Nothing else is public: `ITaskService`, its DTOs and the entities are internal.
 

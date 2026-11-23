@@ -17,15 +17,15 @@ public sealed class TaskBulkLoadTests
 
     private static BulkLoadTask Item(
         string key,
-        string team = "production",
+        Guid? team = null,
         string title = "Build the bar",
         Guid? eventId = null,
         BulkLoadDate? start = null,
         BulkLoadDate? due = null,
-        params string[] dependsOn) => new(key, team, title, EventId: eventId, Start: start, Due: due, DependsOn: dependsOn);
+        params string[] dependsOn) => new(key, team ?? Production, title, EventId: eventId, Start: start, Due: due, DependsOn: dependsOn);
 
     private Task<BulkLoadResult> LoadAsync(bool dryRun, params BulkLoadTask[] tasks) =>
-        ((ITasksWrite)_kit.Service).BulkLoadAsync(new BulkLoadRequest(tasks, dryRun), _kit.Actor, Ct);
+        ((ITaskWrite)_kit.Service).BulkLoadAsync(new BulkLoadRequest(tasks, dryRun), _kit.Actor, Ct);
 
     private Task<BulkLoadResult> LoadAsync(params BulkLoadTask[] tasks) => LoadAsync(false, tasks);
 
@@ -38,7 +38,7 @@ public sealed class TaskBulkLoadTests
     {
         var result = await LoadAsync(
             Item("a", title: "Dig"),
-            Item("b", team: "art", title: "Paint"));
+            Item("b", team: Art, title: "Paint"));
 
         result.Succeeded.Should().BeTrue();
         result.Created.Should().BeTrue();
@@ -80,8 +80,8 @@ public sealed class TaskBulkLoadTests
     public async Task Load_ListsEveryProblemNotJustTheFirst()
     {
         var result = await LoadAsync(
-            Item("a", team: "nowhere", title: ""),
-            Item("a", team: "retired"),
+            Item("a", team: Guid.NewGuid(), title: ""),
+            Item("a", team: Retired),
             Item("c", due: new(Day: 3), dependsOn: ["ghost", "c"]),
             Item("", title: new string('x', 201)));
 
@@ -125,7 +125,7 @@ public sealed class TaskBulkLoadTests
     [HumansFact]
     public async Task DryRun_StillListsEveryProblem()
     {
-        var result = await LoadAsync(true, Item("a", team: "nowhere"), Item("b", title: ""));
+        var result = await LoadAsync(true, Item("a", team: Guid.NewGuid()), Item("b", title: ""));
 
         result.Succeeded.Should().BeFalse();
         Fields(result).Should().BeEquivalentTo("team", "title");
@@ -149,7 +149,7 @@ public sealed class TaskBulkLoadTests
         var result = await LoadAsync(
             Item("dig"),
             Item("pour", dependsOn: "dig"),
-            Item("finish", team: "art", dependsOn: ["dig", "pour", "dig"]));
+            Item("finish", team: Art, dependsOn: ["dig", "pour", "dig"]));
 
         var ids = result.Tasks.ToDictionary(t => t.Key, t => t.Id!.Value, StringComparer.Ordinal);
         var stored = (await StoredAsync()).ToDictionary(t => t.Id);
@@ -218,6 +218,19 @@ public sealed class TaskBulkLoadTests
     }
 
     [HumansFact]
+    public async Task Dependencies_AVeryLongChainIsChecked()
+    {
+        const int length = 100_000;
+        var tasks = Enumerable.Range(0, length)
+            .Select(i => i + 1 < length ? Item($"t{i}", dependsOn: $"t{i + 1}") : Item($"t{i}"))
+            .ToArray();
+
+        var result = await LoadAsync(true, tasks);
+
+        result.Succeeded.Should().BeTrue();
+    }
+
+    [HumansFact]
     public async Task Dates_ADayNumberIsStoredAsGiven()
     {
         var result = await LoadAsync(Item("a", eventId: Spring, start: new(Day: -14), due: new(Day: 2)));
@@ -269,7 +282,19 @@ public sealed class TaskBulkLoadTests
 
         var problem = result.Problems.Should().ContainSingle().Which;
         problem.Field.Should().Be("start");
-        problem.Message.Should().Be("Tasks_Refusal_EventNeededForRelative");
+        problem.Message.Should().Be("A date relative to the event needs an event.", "problems are plain English, not the request's language");
+    }
+
+    [HumansTheory]
+    [InlineData(-800_000)]
+    [InlineData(4_000_000)]
+    [InlineData(int.MinValue)]
+    [InlineData(int.MaxValue)]
+    public async Task Dates_ADayNumberThatIsNoDateTheFormCanShowIsRefused(int day)
+    {
+        var result = await LoadAsync(true, Item("a", eventId: Spring, start: new(Day: day)), Item("b", eventId: Spring, due: new(Day: day)));
+
+        result.Problems.Select(p => (p.Key, p.Field)).Should().BeEquivalentTo(new (string?, string)[] { ("a", "start"), ("b", "due") });
     }
 
     [HumansFact]
@@ -302,17 +327,16 @@ public sealed class TaskBulkLoadTests
     }
 
     [HumansFact]
-    public async Task Team_IsFoundBySlugOrIdAndMustBeActiveAndNotASystemTeam()
+    public async Task Team_MustBeActiveAndNotASystemTeam()
     {
         var result = await LoadAsync(
-            Item("slug", team: "Art"),
-            Item("id", team: Production.ToString()),
-            Item("retired", team: "retired"),
-            Item("system", team: "volunteers"),
-            Item("unknown", team: Guid.NewGuid().ToString()),
-            Item("blank", team: " "));
+            Item("active", team: Art),
+            Item("retired", team: Retired),
+            Item("system", team: Everyone),
+            Item("unknown", team: Guid.NewGuid()),
+            Item("none", team: Guid.Empty));
 
-        result.Problems.Select(p => p.Key).Should().Equal("retired", "system", "unknown", "blank");
+        result.Problems.Select(p => p.Key).Should().Equal("retired", "system", "unknown", "none");
         result.Problems.Should().OnlyContain(p => p.Field == "team");
     }
 
@@ -320,10 +344,10 @@ public sealed class TaskBulkLoadTests
     public async Task Load_UsesTheSameFieldRulesAsTheForm()
     {
         var result = await LoadAsync(
-            new BulkLoadTask("a", "production", "T", SlotCount: 0),
-            new BulkLoadTask("b", "production", "T", NeedsApproval: true, ApprovalReason: new string('r', 201)),
-            new BulkLoadTask("c", "production", "T", Description: new string('d', 4001)),
-            new BulkLoadTask("d", "production", "T", Priority: (SlotPriority)99));
+            new BulkLoadTask("a", Production, "T", SlotCount: 0),
+            new BulkLoadTask("b", Production, "T", NeedsApproval: true, ApprovalReason: new string('r', 201)),
+            new BulkLoadTask("c", Production, "T", Description: new string('d', 4001)),
+            new BulkLoadTask("d", Production, "T", Priority: (SlotPriority)99));
 
         result.Problems.Select(p => (p.Key, p.Field)).Should().BeEquivalentTo(new (string?, string)[]
         {
@@ -336,7 +360,7 @@ public sealed class TaskBulkLoadTests
     {
         var gate = new LocalDate(2027, 3, 10);
         await LoadAsync(new BulkLoadTask(
-            " k ", "production", " Build the bar ", "Some *words*", Spring, new(Day: -2), new(RelativeDate: gate),
+            " k ", Production, " Build the bar ", "Some *words*", Spring, new(Day: -2), new(RelativeDate: gate),
             SlotPriority.Critical, 4, NeedsApproval: true, ApprovalReason: "chainsaw licence", IsHidden: true));
 
         var task = (await StoredAsync()).Single();

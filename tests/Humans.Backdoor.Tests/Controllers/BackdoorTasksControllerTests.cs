@@ -28,7 +28,7 @@ public sealed class BackdoorTasksControllerTests
     private static readonly Guid Production = Guid.NewGuid();
     private static readonly Guid Art = Guid.NewGuid();
 
-    private readonly ITasksWrite _tasks = Substitute.For<ITasksWrite>();
+    private readonly ITaskWrite _tasks = Substitute.For<ITaskWrite>();
     private readonly IPermissionService _permissions = Substitute.For<IPermissionService>();
     private readonly ITeamService _teams = Substitute.For<ITeamService>();
     private readonly BackdoorTasksController _sut;
@@ -60,6 +60,8 @@ public sealed class BackdoorTasksControllerTests
         };
     }
 
+    private static readonly JsonSerializerOptions Web = new(JsonSerializerDefaults.Web);
+
     private static TeamInfo Team(Guid id, string slug) => new(
         id, slug, null, slug, true, false, SystemTeamType.None, false, false, false, false, Instant.FromUtc(2026, 1, 1, 0, 0), []);
 
@@ -76,7 +78,8 @@ public sealed class BackdoorTasksControllerTests
 
         result.Should().BeOfType<OkObjectResult>();
         await _tasks.Received(1).BulkLoadAsync(
-            Arg.Is<BulkLoadRequest>(r => r.Tasks.Count == 2 && !r.DryRun), KeyOwnerId, Arg.Any<CancellationToken>());
+            Arg.Is<BulkLoadRequest>(r => r.Tasks.Count == 2 && !r.DryRun && r.Tasks.All(t => t.TeamId == Production)),
+            KeyOwnerId, Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -157,9 +160,10 @@ public sealed class BackdoorTasksControllerTests
             }
             """;
 
-        var request = JsonSerializer.Deserialize<ApiBulkTasksModel>(json, new JsonSerializerOptions(JsonSerializerDefaults.Web))!.ToRequest();
+        var request = JsonSerializer.Deserialize<ApiBulkTasksModel>(json, Web)!.ToRequest(new Dictionary<string, Guid>(StringComparer.Ordinal) { ["production"] = Production, ["art"] = Art });
 
         request.DryRun.Should().BeTrue();
+        request.Tasks.Select(t => t.TeamId).Should().Equal(Production, Art);
         request.Tasks[0].Priority.Should().Be(SlotPriority.Critical);
         request.Tasks[0].SlotCount.Should().Be(3);
         request.Tasks[0].Start.Should().Be(new BulkLoadDate(Day: -14));
@@ -168,5 +172,16 @@ public sealed class BackdoorTasksControllerTests
         request.Tasks[1].DependsOn.Should().Equal("bar");
         request.Tasks[1].Priority.Should().Be(SlotPriority.Important);
         request.Tasks[1].SlotCount.Should().Be(1);
+    }
+
+    [HumansTheory]
+    [InlineData("""{ "dry_run": true, "tasks": [] }""")]
+    [InlineData("""{ "tasks": [{ "key": "a", "team": "production", "title": "T", "status": "Done" }] }""")]
+    [InlineData("""{ "tasks": [{ "key": "a", "team": "production", "title": "T", "due": { "date": "2027-01-01" } }] }""")]
+    public void Wire_AnUnknownFieldIsRefusedNotIgnored(string json)
+    {
+        var read = () => JsonSerializer.Deserialize<ApiBulkTasksModel>(json, Web);
+
+        read.Should().Throw<JsonException>();
     }
 }

@@ -26,7 +26,7 @@ internal sealed partial class TaskService(
     IAuditLogService audit,
     IClock clock,
     IStringLocalizer<TasksResource> localizer,
-    ILogger<TaskService> logger) : ITaskService, ITasksWrite, IUserDataContributor, IUserMerge
+    ILogger<TaskService> logger) : ITaskService, ITaskWrite, IUserDataContributor, IUserMerge
 {
     internal const string ExportSection = "Tasks";
     internal const string AuditEntityType = "TaskItem";

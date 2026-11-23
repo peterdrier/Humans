@@ -16,7 +16,7 @@ Repository: `ITaskRepository`. No caching decorator.
 | task_assignments | R/W |
 | task_dependencies | R/W |
 
-Also implements the public `ITasksWrite` (bulk load), whose tasks and links save in one transaction through `ITaskRepository.AddManyAsync`.
+Also implements the public `ITaskWrite` (bulk load), whose tasks and links save in one transaction through `ITaskRepository.AddManyAsync`.
 
 Cross-section calls via `ITeamService` (team names, slugs, flags), `ISettingsService` (events, gate day),
 `IAuditLogService`. Also the section's `IUserDataContributor` and `IUserMerge`.

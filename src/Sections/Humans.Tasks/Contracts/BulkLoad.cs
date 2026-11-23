@@ -10,7 +10,7 @@ public sealed record BulkLoadRequest(IReadOnlyList<BulkLoadTask> Tasks, bool Dry
 
 /// <summary>One task to load. The same rules as a task made on the form.</summary>
 /// <param name="Key">Means something only inside the payload and is unique in it. Dependencies name it.</param>
-/// <param name="Team">The team's slug or custom slug, else its id.</param>
+/// <param name="TeamId">The team it goes on. The caller turns whatever the payload names the team by into this id.</param>
 /// <param name="Title">Required, at most 200 characters.</param>
 /// <param name="Description">Markdown, at most 4000 characters.</param>
 /// <param name="EventId">A Settings event record id. Needed by a relative date.</param>
@@ -24,7 +24,7 @@ public sealed record BulkLoadRequest(IReadOnlyList<BulkLoadTask> Tasks, bool Dry
 /// <param name="DependsOn">Keys of other tasks in the payload this one waits on.</param>
 public sealed record BulkLoadTask(
     string Key,
-    string Team,
+    Guid TeamId,
     string Title,
     string? Description = null,
     Guid? EventId = null,
