@@ -922,7 +922,7 @@ internal sealed partial class TicketCheckoutService(
                 Refunded = o.BuyerUserId == userId ? FormatMinor(o.RefundedMinor) : null,
                 TicketRulesAccepted = o.BuyerUserId == userId && o.TermsVersion is not null ? $"{o.TermsFolder} at {o.TermsVersion}" : null,
                 Lines = o.Lines
-                    .Where((l, i) => o.BuyerUserId == userId || l.AttendeeUserId == userId
+                    .Where(l => o.BuyerUserId == userId || l.AttendeeUserId == userId
                         || (l.ParentLineIndex is { } parent && o.Lines[parent].AttendeeUserId == userId))
                     .Select(l => new { Kind = l.Kind.ToString(), l.Description, Amount = FormatMinor(l.AmountMinor), l.AttendeeName, l.AttendeeEmail })
                     .ToList(),

@@ -394,7 +394,7 @@ public class AccountProvisioningServiceTests
                 break;
         }
         _userInfoRefresher.RefreshAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>(), Arg.Any<string>(), Arg.Any<string>())
-            .Returns(call => { Transaction.Current.Should().BeNull(); return Task.CompletedTask; });
+            .Returns(_ => { Transaction.Current.Should().BeNull(); return Task.CompletedTask; });
 
         Func<Task> act = () => _service.ReplaceUnverifiedEmailAndProvisionAsync(
             row.UserId, row.Id, row.Email, "Victim", ContactSource.TicketTailor, Xunit.TestContext.Current.CancellationToken);
@@ -758,7 +758,7 @@ public class AccountProvisioningServiceTests
                 ? Task.FromException<bool>(new InvalidOperationException("profile save unavailable"))
                 : Task.FromResult(true));
         _userInfoRefresher.RefreshAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>(), Arg.Any<string>(), Arg.Any<string>())
-            .Returns(call => { Transaction.Current.Should().BeNull(); return Task.CompletedTask; });
+            .Returns(_ => { Transaction.Current.Should().BeNull(); return Task.CompletedTask; });
         _audit.LogAsync(UsersAuditActions.ContactCreated, nameof(User), Arg.Any<Guid>(), Arg.Any<string>(),
             nameof(AccountProvisioningService)).Returns(_ =>
             {
