@@ -17,6 +17,6 @@
 
 A Backdoor-authenticated principal never passes through the Shell's claims transformation. `BackdoorApiKeyAuthFilter` installs the owner's active role assignments as `ClaimTypes.Role` claims itself, so `User.IsInRole` behaves as it does for a cookie-authed session and everything served scopes to the key's owner — the queues, and each item fetched or patched by id; no state claims are installed. `MembershipRequiredFilter` and `NameRequiredFilter` (`src/Humans.Web/Authorization/`) pass it through because every key-authed controller is `[AllowAnonymous]`, rather than redirecting it to an onboarding page — see `docs/authorization-inventory.md` §4.
 
-Every key-authed controller also declares `[BackdoorScope(...)]`; the filter answers 403 when the scope does not admit the key's holder, or when a controller declares none. All of today's declare `Staff` (Admin or Board).
+Every key-authed controller also declares `[BackdoorScope(...)]`; the filter answers 403 when the scope does not admit the key's holder, or when a controller declares none. All declare `Staff` (Admin or Board) except `BackdoorTasksController`, which declares `Tasks` (holds `Tasks.Manage` on some team).
 
 Key eligibility (who may hold a key, and who continues to authenticate on each request) is anyone some scope admits, narrowed to accounts in `UserState.Active`; below Admin and Board, keys expire after 30 days — see `Docs/Backdoor.md` for the full invariant.
