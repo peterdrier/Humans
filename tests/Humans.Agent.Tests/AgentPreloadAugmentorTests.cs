@@ -198,22 +198,6 @@ public class AgentPreloadAugmentorTests
         terms.Should().NotBeEmpty();
     }
 
-    /// <summary>Serves any key the reader is willing to resolve, so the assertion is about key resolution only.</summary>
-    private sealed class AnySectionSource : IGuideContentSource
-    {
-        public Task<string> GetMarkdownAsync(string fileStem, CancellationToken cancellationToken = default) =>
-            Task.FromResult($"# {fileStem}");
-
-        public Task<string> GetMarkdownAsync(string folderPath, string fileStem, CancellationToken cancellationToken = default) =>
-            Task.FromResult($"# {fileStem}");
-
-        public Task<IReadOnlyList<string>> ListMarkdownStemsAsync(string folderPath, CancellationToken cancellationToken = default) =>
-            Task.FromResult<IReadOnlyList<string>>([]);
-
-        public Task<(IReadOnlyList<string> Paths, bool IsComplete)> ListMarkdownPathsAsync(CancellationToken cancellationToken = default) =>
-            Task.FromResult<(IReadOnlyList<string>, bool)>(([], true));
-    }
-
     /// <summary>A matrix with one Limited row and one all-Denied row, so both branches are exercised.</summary>
     private static AccessMatrixData SampleMatrix(string key, string name, int order) => new()
     {

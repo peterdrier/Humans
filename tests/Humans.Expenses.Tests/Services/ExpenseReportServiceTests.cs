@@ -4268,32 +4268,6 @@ public sealed partial class ExpenseReportServiceTests
         _finance.GetIbanAsync(userId, Arg.Any<CancellationToken>()).Returns(iban);
     }
 
-    private static TeamInfo MakeTeamInfo(Guid teamId,
-        IReadOnlyList<(Guid UserId, TeamMemberRole Role)> members) =>
-        new(
-            Id: teamId,
-            Name: "Test Team",
-            Description: null,
-            Slug: "test-team",
-            IsActive: true,
-            IsSystemTeam: false,
-            SystemTeamType: SystemTeamType.None,
-            RequiresApproval: false,
-            IsPublicPage: false,
-            IsHidden: false,
-            IsPromotedToDirectory: false,
-            CreatedAt: FakeNow,
-            Members: members
-                .Select(m => new TeamMemberInfo(
-                    TeamMemberId: Guid.NewGuid(),
-                    UserId: m.UserId,
-                    DisplayName: "Member",
-                    Email: null,
-                    ProfilePictureUrl: null,
-                    Role: m.Role,
-                    JoinedAt: FakeNow))
-                .ToList());
-
     private void SetupCoordinatorAuthz(Guid categoryId, Guid teamId, Guid coordinatorUserId)
     {
         _budgetService.GetCategoryByIdAsync(categoryId, Arg.Any<CancellationToken>())

@@ -28,9 +28,6 @@ namespace Humans.Expenses.Tests.Services;
 [Collection("HoldedDrainGate")]
 public class ExpenseReportServiceHoldedOutboxTests
 {
-    private readonly IStringLocalizer<ExpensesResource> _localizer =
-        new StringLocalizer<ExpensesResource>(new ResourceManagerStringLocalizerFactory(
-            Options.Create(new LocalizationOptions()), NullLoggerFactory.Instance));
 
     private const int BatchSize = 100;
 
