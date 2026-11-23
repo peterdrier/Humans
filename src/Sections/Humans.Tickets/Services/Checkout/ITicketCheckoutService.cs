@@ -1,4 +1,3 @@
-using Humans.Base.Interfaces;
 using Humans.Tickets.Contracts;
 using Humans.Tickets.Domain.Checkout;
 using NodaTime;
@@ -9,7 +8,7 @@ namespace Humans.Tickets.Services.Checkout;
 /// The checkout lane: Humans prices the order, the event's backend takes the money. Authorization is the controllers'
 /// job; every method trusts its actor.
 /// </summary>
-internal interface ITicketCheckoutService : ITicketCheckoutEvents, IApplicationService
+internal interface ITicketCheckoutService : ITicketCheckoutEvents
 {
     IReadOnlyList<CheckoutBackendInfo> Backends { get; }
 

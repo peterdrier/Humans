@@ -1,5 +1,4 @@
 using NodaTime;
-using Humans.Base.Interfaces;
 using Humans.Shifts.Services.Dtos;
 
 namespace Humans.Shifts.Services;
@@ -9,7 +8,7 @@ internal sealed record GeneralAvailabilitySnapshot(
     Guid EventSettingsId,
     IReadOnlyList<int> AvailableDayOffsets);
 
-internal interface IVolunteerTrackingManagement : IApplicationService, IVolunteerTrackingService
+internal interface IVolunteerTrackingManagement : IVolunteerTrackingService
 {
     Task<VolunteerTrackingViewModel> GetTrackingDataAsync(CancellationToken ct = default);
 

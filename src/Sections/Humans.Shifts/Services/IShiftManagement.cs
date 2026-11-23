@@ -3,7 +3,6 @@ using Humans.Shifts.Domain;
 using Humans.Shifts.Contracts;
 
 using NodaTime;
-using Humans.Base.Interfaces;
 
 using Humans.Shifts.Models;
 
@@ -15,7 +14,7 @@ namespace Humans.Shifts.Services;
 /// <see cref="IShiftVolunteerProfiles"/> and <see cref="IShiftSeeding"/>, which this inherits.
 /// </summary>
 internal interface IShiftManagement
-    : IShiftService, IShiftVolunteerProfiles, IShiftSeeding, IApplicationService
+    : IShiftService, IShiftVolunteerProfiles, IShiftSeeding
 {
     /// <summary>Null when the teams have no rotas. Pending counts a signup range once.</summary>
     Task<ShiftsSummaryData?> GetShiftsSummaryAsync(

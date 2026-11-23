@@ -1,10 +1,9 @@
-using Humans.Base.Interfaces;
 using Humans.Email.Contracts;
 
 namespace Humans.Email.Services;
 
 internal interface ICommunicationPreferenceManagement
-    : ICommunicationPreferenceService, ICommunicationPreferenceWrite, IApplicationService
+    : ICommunicationPreferenceService, ICommunicationPreferenceWrite
 {
     /// <summary>Recorded rows only; missing categories are left out.</summary>
     Task<IReadOnlyList<CommunicationPreferenceSnapshot>> GetPreferencesReadOnlyAsync(
