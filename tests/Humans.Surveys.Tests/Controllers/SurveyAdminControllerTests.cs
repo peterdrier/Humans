@@ -219,8 +219,8 @@ public sealed class SurveyAdminControllerTests
         Func<Task<IActionResult>> run = () => action switch
         {
             AuthoringAction.Index => controller.Index(request.Token),
-            AuthoringAction.Approve => controller.Approve(id, request.Token),
-            AuthoringAction.Reject => controller.Reject(id, "Reason", request.Token),
+            AuthoringAction.Approve => controller.Approve(id, null, request.Token),
+            AuthoringAction.Reject => controller.Reject(id, "Reason", null, request.Token),
             AuthoringAction.Submit => controller.Submit(id, request.Token),
             AuthoringAction.Official => controller.Official(id, request.Token),
             AuthoringAction.SendPreviewEmail => controller.SendPreviewEmail(id, previews, request.Token),
@@ -470,8 +470,8 @@ public sealed class SurveyAdminControllerTests
         var sut = CreateController(surveys, role: SurveysRoles.SurveysAdmin);
 
         var act = async () => approve
-            ? await sut.Approve(id, Xunit.TestContext.Current.CancellationToken)
-            : await sut.Reject(id, "note", Xunit.TestContext.Current.CancellationToken);
+            ? await sut.Approve(id, null, Xunit.TestContext.Current.CancellationToken)
+            : await sut.Reject(id, "note", null, Xunit.TestContext.Current.CancellationToken);
 
         (await act.Should().ThrowAsync<InvalidOperationException>()).Which.Should().BeSameAs(failure);
         sut.TempData.Should().BeEmpty();
@@ -590,13 +590,30 @@ public sealed class SurveyAdminControllerTests
         var localizer = SpanishLocalizer();
         var sut = CreateController(surveys, role: SurveysRoles.SurveysAdmin, localizer: localizer);
 
-        var result = await sut.Approve(id, Xunit.TestContext.Current.CancellationToken);
+        var result = await sut.Approve(id, null, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().BeOfType<RedirectToActionResult>().Which.ActionName.Should().Be(nameof(SurveyAdminController.Queue));
         var noticeKey = failed > 0 ? TempDataKeys.ErrorMessage : TempDataKeys.SuccessMessage;
         var absentKey = failed > 0 ? TempDataKeys.SuccessMessage : TempDataKeys.ErrorMessage;
         sut.TempData[noticeKey].Should().Be(localizer["Surveys_Admin_Queue_Approved", 3 - failed, failed].Value);
         sut.TempData.Should().NotContainKey(absentKey);
+    }
+
+    [HumansFact]
+    public async Task Approve_from_a_survey_page_returns_to_that_page()
+    {
+        var id = Guid.NewGuid();
+        var surveys = Substitute.For<ISurveyService>();
+        surveys.ApproveAndSendAsync(id, Arg.Any<SurveyViewer>(), Arg.Any<CancellationToken>())
+            .Returns(new SurveyReviewResult(new SendResult(1, 1, 0)));
+        var sut = CreateController(surveys, role: SurveysRoles.SurveysAdmin);
+        sut.Url = Substitute.For<IUrlHelper>();
+        var returnUrl = $"/Survey/Admin/Send/{id}";
+        sut.Url.IsLocalUrl(returnUrl).Returns(true);
+
+        var result = await sut.Approve(id, returnUrl, Xunit.TestContext.Current.CancellationToken);
+
+        result.Should().BeOfType<LocalRedirectResult>().Which.Url.Should().Be(returnUrl);
     }
 
     [HumansFact]
@@ -609,7 +626,7 @@ public sealed class SurveyAdminControllerTests
             .Returns(new SurveyReviewResult(Refusal: reason));
         var sut = CreateController(surveys, role: SurveysRoles.SurveysAdmin);
 
-        var result = await sut.Approve(id, Xunit.TestContext.Current.CancellationToken);
+        var result = await sut.Approve(id, null, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().BeOfType<RedirectToActionResult>().Which.ActionName.Should().Be(nameof(SurveyAdminController.Queue));
         sut.TempData[TempDataKeys.ErrorMessage].Should().Be(reason);
@@ -634,7 +651,7 @@ public sealed class SurveyAdminControllerTests
             .Returns(new SurveyReviewResult(Refusal: "A rejection note must be 4000 characters or fewer."));
         var sut = CreateController(surveys, role: SurveysRoles.SurveysAdmin);
 
-        var result = await sut.Reject(surveyId, note, Xunit.TestContext.Current.CancellationToken);
+        var result = await sut.Reject(surveyId, note, null, Xunit.TestContext.Current.CancellationToken);
 
         var view = result.Should().BeOfType<ViewResult>().Subject;
         view.ViewName.Should().Be(nameof(SurveyAdminController.Queue));
