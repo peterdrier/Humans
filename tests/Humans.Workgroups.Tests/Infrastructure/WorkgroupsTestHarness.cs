@@ -18,6 +18,7 @@ using Microsoft.EntityFrameworkCore.Diagnostics;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
+using NSubstitute.Core;
 
 namespace Humans.Workgroups.Tests.Infrastructure;
 
@@ -130,6 +131,10 @@ public abstract class WorkgroupsTestHarness : IDisposable
     private protected IHoldedService Holded { get; }
     private protected INotificationEmitter Notifications { get; }
     private protected INotificationService RoleNotifications { get; }
+
+    /// <summary>Every notification the service sent, personal and role-addressed.</summary>
+    private protected IEnumerable<ICall> NotificationCalls() =>
+        Notifications.ReceivedCalls().Concat(RoleNotifications.ReceivedCalls());
     private protected IEmailService Email { get; }
     private protected WorkgroupsEmails EmailFactory { get; }
     private protected IAuditLogService AuditLog { get; }

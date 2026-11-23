@@ -65,7 +65,7 @@ public sealed class WorkgroupServiceMembershipTests : WorkgroupsTestHarness
         (await db.LogEntries.SingleAsync(e => e.WorkgroupId == group.Id, Ct)).Kind
             .Should().Be(statusRequest ? WorkgroupLogKind.StatusRequested : WorkgroupLogKind.ScopeChanged);
         if (statusRequest)
-            Notifications.ReceivedCalls().Should().ContainSingle().Which.GetArguments()
+            NotificationCalls().Should().ContainSingle().Which.GetArguments()
                 .OfType<CancellationToken>().Should().ContainSingle().Which.Should().Be(CancellationToken.None);
         else (await db.Workgroups.FindAsync([group.Id], Ct))!.Deliverable.Should().Be("Changed deliverable");
     }
@@ -109,7 +109,7 @@ public sealed class WorkgroupServiceMembershipTests : WorkgroupsTestHarness
         after.Should().BeEquivalentTo(before);
         (await afterDb.LogEntries.CountAsync(Ct)).Should().Be(0);
         AuditLog.ReceivedCalls().Should().BeEmpty();
-        Notifications.ReceivedCalls().Should().BeEmpty();
+        NotificationCalls().Should().BeEmpty();
     }
 
     private sealed class FailMembershipLogSave : SaveChangesInterceptor
@@ -177,14 +177,14 @@ public sealed class WorkgroupServiceMembershipTests : WorkgroupsTestHarness
         if (string.Equals(action, "join", StringComparison.Ordinal))
         {
             // A request is not membership yet: the coordinators are told, nothing else moves.
-            Notifications.ReceivedCalls().Should().ContainSingle().Which.GetArguments()
+            NotificationCalls().Should().ContainSingle().Which.GetArguments()
                 .OfType<CancellationToken>().Should().ContainSingle().Which.Should().Be(CancellationToken.None);
             await GoogleSync.DidNotReceive().RequestSyncAsync(Arg.Any<string>(), Arg.Any<CancellationToken>());
         }
         else if (action is "coordinators" or "appoint")
         {
             AuditLog.ReceivedCalls().Should().ContainSingle();
-            Notifications.ReceivedCalls().Should().ContainSingle().Which.GetArguments()
+            NotificationCalls().Should().ContainSingle().Which.GetArguments()
                 .OfType<CancellationToken>().Should().ContainSingle().Which.Should().Be(CancellationToken.None);
             Email.ReceivedCalls().Should().HaveCount(2);
             Email.ReceivedCalls().SelectMany(c => c.GetArguments().OfType<CancellationToken>())
