@@ -406,7 +406,7 @@ internal sealed class SurveyResponseService(
         {
             if (question.Type == SurveyQuestionType.Information) continue;
             var id = question.Id!.Value;
-            var questionAnswers = posted[id];
+            var questionAnswers = posted[id].ToList();
             if (questionAnswers.Count() > 1)
             {
                 logger.LogWarning("Rejected duplicate wizard answers for survey {SurveyId} question {QuestionId}", state.SurveyId, id);

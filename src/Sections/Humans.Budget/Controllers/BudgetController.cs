@@ -112,7 +112,7 @@ internal sealed class BudgetController(
         var ct = HttpContext.RequestAborted;
         try
         {
-            var (errorResult, user) = await RequireCurrentUserAsync(ct);
+            var (errorResult, _) = await RequireCurrentUserAsync(ct);
             if (errorResult is not null) return errorResult;
 
             var isFinanceAdmin = (await authService.AuthorizeAsync(User, FinancePolicies.Manage)).Succeeded;

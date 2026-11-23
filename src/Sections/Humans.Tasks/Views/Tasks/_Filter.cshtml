@@ -1,0 +1,24 @@
+@* The filters of a task list: which event, and whether done and cancelled tasks count. *@
+@model TaskFilterViewModel
+
+<form method="get" class="d-flex flex-wrap align-items-end gap-3 mb-3">
+    @if (Model.Events is not null)
+    {
+        <div>
+            <label class="form-label" for="filter-event">@Localizer["Tasks_Filter_Event"]</label>
+            <select class="form-select" id="filter-event" name="Event">
+                <option value="@TaskListFilter.ActiveEvent" selected="@(Model.Filter.EventChoice == TaskListFilter.ActiveEvent)">@Localizer["Tasks_Filter_ActiveEvent"]</option>
+                <option value="@TaskListFilter.AnyEvent" selected="@(Model.Filter.EventChoice == TaskListFilter.AnyEvent)">@Localizer["Tasks_Filter_AnyEvent"]</option>
+                @foreach (var e in Model.Events)
+                {
+                    <option value="@e.Id" selected="@(Model.Filter.SpecificEventId == e.Id)">@e.Name</option>
+                }
+            </select>
+        </div>
+    }
+    <div class="form-check mb-2">
+        <input type="checkbox" class="form-check-input" id="filter-finished" name="Finished" value="true" checked="@Model.Filter.Finished" />
+        <label class="form-check-label" for="filter-finished">@Localizer["Tasks_Filter_Finished"]</label>
+    </div>
+    <button type="submit" class="btn btn-outline-secondary">@Localizer["Tasks_Filter_Apply"]</button>
+</form>

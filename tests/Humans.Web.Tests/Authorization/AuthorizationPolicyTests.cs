@@ -405,14 +405,6 @@ public class AuthorizationPolicyTests : IDisposable
         result.Succeeded.Should().BeFalse();
     }
 
-    /// <summary>Section controllers are internal; throws on a miss so a rename can't drop a row silently.</summary>
-    private static Type SectionType(string fullName) =>
-        Extensions.SectionDiscoveryExtensions.SectionAssemblies()
-            .Select(a => a.GetType(fullName, throwOnError: false))
-            .FirstOrDefault(t => t is not null)
-        ?? throw new InvalidOperationException(
-            $"{fullName} not found in any section assembly — did the section move or rename it?");
-
     [HumansTheory]
     [InlineData(FinanceRoles.FinanceAdmin, true)]
     [InlineData(RoleNames.Admin, true)]

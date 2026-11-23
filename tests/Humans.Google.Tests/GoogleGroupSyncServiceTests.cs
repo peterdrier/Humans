@@ -152,7 +152,7 @@ public sealed class GoogleGroupSyncServiceTests
             .Returns(new GroupLookupIdResult(null, new GoogleClientError(404, "not found")),
                 new GroupLookupIdResult("group-new", null));
         _provisioningClient.CreateGroupAsync("new-group@nobodies.team", Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>())
-            .Returns(call =>
+            .Returns(_ =>
             {
                 cancellation.Cancel();
                 return new GroupCreateResult("group-new", null);
@@ -213,7 +213,7 @@ public sealed class GoogleGroupSyncServiceTests
         StubUsers((alice, "Alice", "alice@nobodies.team"), (bob, "Bob", "bob@nobodies.team"));
         StubGroup("team@nobodies.team", "group-1");
         _membershipClient.CreateMembershipAsync("group-1", "alice@nobodies.team", Arg.Any<CancellationToken>())
-            .Returns(call =>
+            .Returns(_ =>
             {
                 cancellation.Cancel();
                 return new GroupMembershipMutationResult(GroupMembershipMutationOutcome.Added, null);
@@ -246,7 +246,7 @@ public sealed class GoogleGroupSyncServiceTests
         _userEmailService.MatchByEmailsAsync(Arg.Any<IReadOnlyCollection<string>>(), Arg.Any<CancellationToken>())
             .Returns(Array.Empty<UserEmailMatch>());
         _membershipClient.DeleteMembershipAsync("groups/group-1/memberships/old", Arg.Any<CancellationToken>())
-            .Returns(call =>
+            .Returns(_ =>
             {
                 cancellation.Cancel();
                 return (GoogleClientError?)null;

@@ -232,7 +232,7 @@ public class AgentServiceTests
         secondClient.EnqueueTurn(new AgentTurnToken("Next answer", null, null),
             new AgentTurnToken(null, null, new AgentTurnFinalizer(0, 0, 0, 0, "test-model", "end_turn")));
         var ct = Xunit.TestContext.Current.CancellationToken;
-        await using var active = first.AskAsync(new AgentTurnRequest(Guid.Empty, userId, "First", "en"), ct)
+        var active = first.AskAsync(new AgentTurnRequest(Guid.Empty, userId, "First", "en"), ct)
             .GetAsyncEnumerator(ct);
         (await active.MoveNextAsync()).Should().BeTrue();
 

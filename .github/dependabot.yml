@@ -5,6 +5,10 @@ updates:
     schedule:
       interval: "weekly"
       day: "monday"
+    # The Sunday upgrade run holds releases under 3 days old; 4 days here keeps
+    # Monday's cutoff at or before Sunday's (docs/maintenance/dependency-upgrades.md).
+    cooldown:
+      default-days: 4
     open-pull-requests-limit: 5
     groups:
       # Hangfire.NetCore (via AspNetCore) pins Hangfire.Core to an exact version;
@@ -18,12 +22,37 @@ updates:
       - "nuget"
     commit-message:
       prefix: "chore(deps)"
+    ignore:
+      # Held on purpose: Humans.Analyzers must load in the oldest supported compiler (CS9057).
+      # See the comment in Directory.Packages.props.
+      - dependency-name: "Microsoft.CodeAnalysis.CSharp"
+      - dependency-name: "Microsoft.CodeAnalysis.Common"
+      - dependency-name: "Microsoft.CodeAnalysis.CSharp.Workspaces"
+      - dependency-name: "Microsoft.CodeAnalysis.Workspaces.Common"
+      - dependency-name: "Microsoft.CodeAnalysis.Workspaces.MSBuild"
+      # A new .NET major waits until it is 4-6 months past GA (docs/maintenance/dependency-upgrades.md).
+      - dependency-name: "Microsoft.AspNetCore.*"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "Microsoft.EntityFrameworkCore*"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "Microsoft.Extensions.*"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "System.Security.Cryptography.*"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "Npgsql.EntityFrameworkCore.PostgreSQL*"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "Serilog.AspNetCore"
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "weekly"
       day: "monday"
+    # The Sunday upgrade run holds releases under 3 days old; 4 days here keeps
+    # Monday's cutoff at or before Sunday's (docs/maintenance/dependency-upgrades.md).
+    cooldown:
+      default-days: 4
     open-pull-requests-limit: 5
     labels:
       - "dependencies"
@@ -36,6 +65,10 @@ updates:
     schedule:
       interval: "weekly"
       day: "monday"
+    # The Sunday upgrade run holds releases under 3 days old; 4 days here keeps
+    # Monday's cutoff at or before Sunday's (docs/maintenance/dependency-upgrades.md).
+    cooldown:
+      default-days: 4
     open-pull-requests-limit: 3
     labels:
       - "dependencies"
@@ -43,3 +76,7 @@ updates:
       - "tests"
     commit-message:
       prefix: "chore(e2e-deps)"
+    ignore:
+      # Tracks the Node major the e2e workflow runs on (node-version in e2e-qa.yml).
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]

@@ -83,7 +83,7 @@
                         PushWriter(buffer);
                         try
                         {
-                            await RenderSectionAsync("Crumbs");
+                            _ = await RenderSectionAsync("Crumbs");
                         }
                         finally
                         {

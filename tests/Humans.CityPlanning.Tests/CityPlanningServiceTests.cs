@@ -508,7 +508,7 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
 
         var repo = Substitute.For<ICityPlanningRepository>();
         repo.GetOrCreateSettingsAsync(Arg.Any<int>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>())
-            .Returns(async ci =>
+            .Returns(async _ =>
             {
                 // The abort arrives after the read and before the write — the window the
                 // production repository would carry into SaveChangesAsync.

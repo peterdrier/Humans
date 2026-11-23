@@ -117,7 +117,8 @@ public sealed class HoldedBankMovementSyncTests
             .Returns<IReadOnlyList<HoldedBankMovementDto>>(_ => throw new HoldedTransientException("t2 down"));
 
         await _service.SyncBankMovementsAsync("t1", from, to, ct: ct);
-        await Record.ExceptionAsync(() => _service.SyncBankMovementsAsync("t2", from, to, ct: ct));
+        (await Record.ExceptionAsync(() => _service.SyncBankMovementsAsync("t2", from, to, ct: ct)))
+            .Should().BeOfType<HoldedTransientException>();
 
         var rows = (await _service.GetSummaryAsync(ct)).SyncStates;
         rows.Should().ContainSingle(r => r.Kind == "BankMovements · t1")

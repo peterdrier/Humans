@@ -54,7 +54,7 @@
                         </div>
                         <div class="mb-3">
                             <label class="form-label">@Localizer["Expenses_AmountEur"] <span class="text-danger">*</span></label>
-                            <input type="number" name="Amount" value="@line.Amount.ToString("F2")" class="form-control" step="0.01" min="0.01" required style="max-width:200px;" />
+                            <input type="number" name="Amount" value="@line.Amount.ToString("F2", System.Globalization.CultureInfo.InvariantCulture)" class="form-control" step="0.01" min="0.01" required style="max-width:200px;" />
                         </div>
                         <button type="submit" class="btn btn-primary">@Localizer["Expenses_Save"]</button>
                     </form>

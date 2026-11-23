@@ -9,7 +9,7 @@ namespace Humans.Analyzers.Internal;
 /// </summary>
 internal static class AssemblyScope
 {
-    private const string ISectionFullName = "Humans.Base.Interfaces.ISection";
+    private const string SectionInterfaceFullName = "Humans.Base.Interfaces.ISection";
     private const string SectionEntryPointTypeName = "Section";
 
     /// <summary>
@@ -27,7 +27,7 @@ internal static class AssemblyScope
             return false;
 
         return entryPoint.AllInterfaces.Any(i =>
-            string.Equals(i.ToDisplayString(), ISectionFullName, StringComparison.Ordinal));
+            string.Equals(i.ToDisplayString(), SectionInterfaceFullName, StringComparison.Ordinal));
     }
 
     /// <summary>

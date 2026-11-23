@@ -117,7 +117,7 @@ internal static class MailerLiteAudienceDebugSnapshotBuilder
         var nonPrimary = new List<DebugNonPrimaryRow>();
         foreach (var row in currentlyInMl)
         {
-            if (row.UserId is not Guid uid) continue;
+            if (row.UserId is not { } uid) continue;
             if (!byUserId.TryGetValue(uid, out var u)) continue;
             var primary = u.PrimaryEmail;
             if (primary is null) continue;

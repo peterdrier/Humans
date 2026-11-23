@@ -34,7 +34,7 @@ public sealed class GoogleCredentiallessProductionTests
                 await client.TryResolvePersonEmailAsync("people/123", cancelled.Token);
             else
             {
-                await foreach (var activity in client.QueryActivityAsync("item", "2026-09-30T00:00:00Z", cancelled.Token))
+                await foreach (var _ in client.QueryActivityAsync("item", "2026-09-30T00:00:00Z", cancelled.Token))
                     throw new InvalidOperationException("Cancelled query returned an activity.");
             }
         };

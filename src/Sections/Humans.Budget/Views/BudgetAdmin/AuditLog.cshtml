@@ -38,7 +38,7 @@
 {
     Func<BudgetAuditLogSnapshot, IHtmlContent> whoCell =
         @<text>
-            @if (item.ActorUserId is Guid actorId)
+            @if (item.ActorUserId is { } actorId)
             {
                 <vc:human user-id="@actorId" />
             }

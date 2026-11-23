@@ -111,15 +111,6 @@ internal sealed class TicketResaleOffer
     /// </summary>
     public List<TicketResaleInvite> Invites { get; set; } = [];
 
-    /// <summary>
-    /// Retired single-invitation columns, replaced by <see cref="Invites"/>. Nothing reads them; erasure still clears
-    /// them on rows written before. Dropping them waits for Peter's approval in a PR of its own.
-    /// </summary>
-    public string? DirectedEmail { get; set; }
-
-    /// <inheritdoc cref="DirectedEmail"/>
-    public string? DirectedTokenHash { get; set; }
-
     public Instant? DirectedUsedAt { get; set; }
 
     /// <summary>Invitations sent for this offer, capped so a holder cannot mail addresses without end.</summary>

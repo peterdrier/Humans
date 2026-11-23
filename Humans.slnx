@@ -55,6 +55,7 @@
     <Project Path="src/Sections/Humans.Store/Humans.Store.csproj" />
     <Project Path="src/Sections/Humans.Stripe/Humans.Stripe.csproj" />
     <Project Path="src/Sections/Humans.Surveys/Humans.Surveys.csproj" />
+    <Project Path="src/Sections/Humans.Tasks/Humans.Tasks.csproj" />
     <Project Path="src/Sections/Humans.Settings/Humans.Settings.csproj" />
     <Project Path="src/Sections/Humans.BoxOffice/Humans.BoxOffice.csproj" />
     <Project Path="src/Sections/Humans.HiEvents/Humans.HiEvents.csproj" />
@@ -119,6 +120,7 @@
     <Project Path="tests/Humans.Store.Tests/Humans.Store.Tests.csproj" />
     <Project Path="tests/Humans.Stripe.Tests/Humans.Stripe.Tests.csproj" />
     <Project Path="tests/Humans.Surveys.Tests/Humans.Surveys.Tests.csproj" />
+    <Project Path="tests/Humans.Tasks.Tests/Humans.Tasks.Tests.csproj" />
     <Project Path="tests/Humans.Shifts.Tests/Humans.Shifts.Tests.csproj" />
     <Project Path="tests/Humans.Teams.Tests/Humans.Teams.Tests.csproj" />
     <Project Path="tests/Humans.BoxOffice.Tests/Humans.BoxOffice.Tests.csproj" />

@@ -303,8 +303,8 @@ internal sealed class PreMigrationSnapshot(string connectionString, ILogger logg
     /// migration ID per line, read only by <see cref="FrontierStillPending"/>.
     /// </summary>
     /// <remarks>
-    /// Published by rename, for the same reason the dump is: <see cref="File.WriteAllLines(string,
-    /// IEnumerable{string})"/> truncates first, so a write that fails half-way — the snapshot
+    /// Published by rename, for the same reason the dump is:
+    /// <see cref="File.WriteAllLines(string, IEnumerable{string})"/> truncates first, so a write that fails half-way — the snapshot
     /// volume filling up is the likely way — or a process killed mid-write would leave a
     /// <em>short</em> frontier. A frontier missing the migration that is in fact still pending is
     /// exactly what makes <see cref="FrontierStillPending"/> retire a marker it should have

@@ -22,10 +22,10 @@ namespace Humans.Analyzers.Internal.Rules;
 /// </remarks>
 internal static class PublicSurfaceRule
 {
-    private const string ISectionFullName = "Humans.Base.Interfaces.ISection";
+    private const string SectionInterfaceFullName = "Humans.Base.Interfaces.ISection";
     private const string EfMigrationFullName = "Microsoft.EntityFrameworkCore.Migrations.Migration";
-    private const string IRepositoryFullName = "Humans.Base.Interfaces.Repositories.IRepository";
-    private const string IRecurringJobFullName = "Humans.Base.Interfaces.IRecurringJob";
+    private const string RepositoryInterfaceFullName = "Humans.Base.Interfaces.Repositories.IRepository";
+    private const string RecurringJobInterfaceFullName = "Humans.Base.Interfaces.IRecurringJob";
     private const string ViewComponentAttributeFullName = "Microsoft.AspNetCore.Mvc.ViewComponentAttribute";
     private const string NonViewComponentAttributeFullName = "Microsoft.AspNetCore.Mvc.NonViewComponentAttribute";
     private const string TagHelperInterfaceFullName = "Microsoft.AspNetCore.Razor.TagHelpers.ITagHelper";
@@ -75,13 +75,13 @@ internal static class PublicSurfaceRule
     }
 
     public static Context Prepare(Compilation compilation) => new(
-        compilation.GetTypeByMetadataName(ISectionFullName),
+        compilation.GetTypeByMetadataName(SectionInterfaceFullName),
         compilation.GetTypeByMetadataName(EfMigrationFullName),
-        compilation.GetTypeByMetadataName(IRepositoryFullName),
+        compilation.GetTypeByMetadataName(RepositoryInterfaceFullName),
         compilation.GetTypeByMetadataName(ViewComponentAttributeFullName),
         compilation.GetTypeByMetadataName(NonViewComponentAttributeFullName),
         compilation.GetTypeByMetadataName(TagHelperInterfaceFullName),
-        compilation.GetTypeByMetadataName(IRecurringJobFullName));
+        compilation.GetTypeByMetadataName(RecurringJobInterfaceFullName));
 
     public static void Analyze(
         SymbolAnalysisContext context,

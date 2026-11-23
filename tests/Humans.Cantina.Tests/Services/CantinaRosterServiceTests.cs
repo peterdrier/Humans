@@ -38,7 +38,6 @@ public class CantinaRosterServiceTests
     private readonly ISettingsService _burnSettings;
     private readonly IUserService _userRead;
     private readonly ICantinaService _dietary = Substitute.For<ICantinaService>();
-    private readonly IClock _clock;
     private readonly IAuditLogService _audit = Substitute.For<IAuditLogService>();
     private readonly CantinaRosterService _service;
 
@@ -53,7 +52,7 @@ public class CantinaRosterServiceTests
         _userRead = Substitute.For<IUserService>();
         // Fixed clock pinned to noon UTC on the gate-opening day; tests that
         // care about EventTodayDate semantics override on a per-test basis.
-        _clock = new FakeClock(Instant.FromUtc(2026, 7, 7, 12, 0));
+        var clock = new FakeClock(Instant.FromUtc(2026, 7, 7, 12, 0));
 
         _userRead.GetUserInfosAsync(
                 Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
@@ -66,7 +65,7 @@ public class CantinaRosterServiceTests
                 Arg.Any<Guid>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<Guid>>(Array.Empty<Guid>()));
 
-        _service = new CantinaRosterService(_shiftMgmt, _burnSettings, _userRead, _dietary, _clock, _audit);
+        _service = new CantinaRosterService(_shiftMgmt, _burnSettings, _userRead, _dietary, clock, _audit);
     }
 
     [HumansTheory]
