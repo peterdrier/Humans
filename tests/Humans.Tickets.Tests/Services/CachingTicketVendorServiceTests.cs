@@ -33,7 +33,7 @@ public sealed class CachingTicketVendorServiceTests
     }
 
     private static VendorEventSummaryDto MakeSummary(string eventId, int sold = 10) =>
-        new(EventId: eventId, EventName: "Test Event", TotalCapacity: 100, TicketsSold: sold, TicketsRemaining: 100 - sold);
+        new(EventName: "Test Event", TotalCapacity: 100, TicketsSold: sold, TicketsRemaining: 100 - sold);
 
     [HumansFact]
     public async Task GetEventSummaryAsync_Miss_CallsInnerOnceAndReturnsItsValue()

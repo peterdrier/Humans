@@ -15,7 +15,6 @@ internal sealed record PostEventStats(
 }
 
 internal sealed record PostEventDepartmentRow(
-    Guid DepartmentId,
     string DepartmentName,
     string? DepartmentSlug,
     int TotalConfirmed,

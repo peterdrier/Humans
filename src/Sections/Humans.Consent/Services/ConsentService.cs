@@ -204,7 +204,7 @@ internal sealed class ConsentService(
                     }
                 }
 
-                return new ConsentDashboardTeamGroup(first.TeamId, first.TeamName, docPairs);
+                return new ConsentDashboardTeamGroup(first.TeamName, docPairs);
             })
             .ToList();
 

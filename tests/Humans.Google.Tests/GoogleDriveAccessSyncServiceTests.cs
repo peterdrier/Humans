@@ -1182,7 +1182,7 @@ public sealed class GoogleDriveAccessSyncServiceTests
         _drivePermissions.GetFileAsync("drive-1", Arg.Any<CancellationToken>())
             .Returns(new DriveFileMetadataResult(new DriveFileMetadata("drive-1", null, null, "drive-1", null), null));
         _drivePermissions.GetSharedDriveAsync("drive-1", Arg.Any<CancellationToken>())
-            .Returns(new SharedDriveMetadataResult(new SharedDriveMetadata("drive-1", "Nobodies"), null));
+            .Returns(new SharedDriveMetadataResult(new SharedDriveMetadata("Nobodies"), null));
 
         var diff = await service.ReconcileOneAsync("sub-folder", SyncAction.Execute, Xunit.TestContext.Current.CancellationToken);
 
@@ -1211,7 +1211,7 @@ public sealed class GoogleDriveAccessSyncServiceTests
             .Returns(new DriveFileMetadataResult(new DriveFileMetadata("drive-1", "Drive", null, "drive-1", null), null));
         _drivePermissions.GetSharedDriveAsync("drive-1", Arg.Any<CancellationToken>())
             .Returns(driveNameKnown
-                ? new SharedDriveMetadataResult(new SharedDriveMetadata("drive-1", "Nobodies"), null)
+                ? new SharedDriveMetadataResult(new SharedDriveMetadata("Nobodies"), null)
                 : new SharedDriveMetadataResult(null, new GoogleClientError(503, "unavailable")));
 
         var diff = await service.ReconcileOneAsync("drive-1", SyncAction.Execute, Xunit.TestContext.Current.CancellationToken);

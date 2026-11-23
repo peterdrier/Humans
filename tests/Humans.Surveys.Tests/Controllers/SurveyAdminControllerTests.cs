@@ -1037,7 +1037,7 @@ public sealed class SurveyAdminControllerTests
         surveys.GetAdminSummariesAsync(Arg.Any<SurveyViewer>(), Arg.Any<CancellationToken>())
             .Returns(new List<SurveyAdminSummary>
             {
-                new(Guid.NewGuid(), "Mine", SurveyStatus.Draft, 0, 0, authorId, null, null),
+                new(Guid.NewGuid(), "Mine", SurveyStatus.Draft, 0, 0, authorId, null),
             });
         var sut = CreateController(surveys, userId: authorId);
 

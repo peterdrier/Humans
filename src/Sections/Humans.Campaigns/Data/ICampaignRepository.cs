@@ -94,7 +94,6 @@ internal interface ICampaignRepository : IRepository
 
 /// <summary>The recipient's address comes from the resolved <c>UserInfo</c>, not from here.</summary>
 internal sealed record GrantWithSendContext(
-    Guid GrantId,
     Guid UserId,
     Guid CampaignId,
     string CodeString,

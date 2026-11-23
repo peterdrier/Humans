@@ -3258,7 +3258,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
         var team = SeedTeam("Alpha");
         await SaveAllAsync(TestContext.Current.CancellationToken);
         _googleIdentities.GetWorkspaceIdentityAsync(target.Id, Arg.Any<CancellationToken>())
-            .Returns(new WorkspaceIdentity(target.Id, "target@example.org", status));
+            .Returns(new WorkspaceIdentity("target@example.org", status));
 
         await _service.AddMemberToTeamAsync(team.Id, target.Id, actor.Id, TestContext.Current.CancellationToken);
 

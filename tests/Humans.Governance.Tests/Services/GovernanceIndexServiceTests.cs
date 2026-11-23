@@ -116,7 +116,7 @@ public sealed class GovernanceIndexServiceTests
         var seated = Instant.FromUtc(2024, 3, 1, 0, 0);
         Applications.GetUserApplicationsAsync(viewer, Arg.Any<CancellationToken>()).Returns([
             new UserApplicationSnapshot(Guid.NewGuid(), viewer, ApplicationStatus.Approved, MembershipTier.Asociado,
-                approved, approved, new LocalDate(2027, 12, 31), "m", null, null, null)]);
+                approved, approved, new LocalDate(2027, 12, 31))]);
         TierApplications.GetActiveApprovedTierUserIdsAsync(MembershipTier.Asociado, Arg.Any<LocalDate>(), Arg.Any<CancellationToken>())
             .Returns([viewer]);
         Roles.GetActiveUserIdsInRoleAsync(RoleNames.Board, Arg.Any<CancellationToken>()).Returns([viewer]);
@@ -220,7 +220,7 @@ public sealed class GovernanceIndexServiceTests
     private static UserApplicationSnapshot Approved(Guid userId, LocalDate? termExpiresAt) =>
         new(Guid.NewGuid(), userId, ApplicationStatus.Approved, MembershipTier.Colaborador,
             Instant.FromUtc(2026, 3, 1, 12, 0), Instant.FromUtc(2026, 3, 8, 12, 0),
-            termExpiresAt, "motivation", null, null, null);
+            termExpiresAt);
 
     [HumansFact]
     public async Task GetIndexDataAsync_carries_the_stored_term_expiry()

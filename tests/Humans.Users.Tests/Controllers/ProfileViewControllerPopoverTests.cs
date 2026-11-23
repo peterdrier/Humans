@@ -230,7 +230,7 @@ public class ProfileViewControllerPopoverTests
             .Returns(BuildUserInfo(user, profile, userEmails: null));
 
         var season = new CampSeasonInfo(
-            Guid.NewGuid(), Guid.NewGuid(), "camp-funhouse", 2026, null,
+            Guid.NewGuid(), Guid.NewGuid(), 2026, null,
             "Camp Funhouse", "", "", [],
             CampSeasonStatus.Active, YesNoMaybe.Yes, YesNoMaybe.No,
             AdultPlayspacePolicy.No, 0, null, null, null, 0, null, null);

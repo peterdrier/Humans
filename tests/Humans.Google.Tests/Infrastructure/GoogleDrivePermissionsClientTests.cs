@@ -116,7 +116,7 @@ public sealed class GoogleDrivePermissionsClientTests
             : new DriveFileMetadataResult(new DriveFileMetadata("drive-1", "Drive", null, null, null), null));
         permissions.GetSharedDriveAsync("drive-1", ct).Returns(rootDenied
             ? new SharedDriveMetadataResult(null, new GoogleClientError(403, "permission denied"))
-            : new SharedDriveMetadataResult(new SharedDriveMetadata("drive-1", "Nobodies"), null));
+            : new SharedDriveMetadataResult(new SharedDriveMetadata("Nobodies"), null));
         var client = new TeamResourceGoogleClient(
             Options.Create(new GoogleWorkspaceSettings()), NullLogger<TeamResourceGoogleClient>.Instance, permissions);
         typeof(TeamResourceGoogleClient).GetField("_driveService", BindingFlags.Instance | BindingFlags.NonPublic)!

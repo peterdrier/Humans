@@ -1316,12 +1316,9 @@ internal sealed class AssemblyVoteService(
             AssemblyVoteService.SafeInfoUrl(vote.InfoUrl),
             vote.Kind,
             vote.RequiredMajority,
-            vote.IndicativeAudience,
-            vote.BallotDisclosure,
             vote.Status,
             vote.ClosesAt,
             vote.ClosedAt,
-            vote.AssemblyDate,
             vote.CancelReason,
             IsOnRoster: roster is not null,
             IsOfficial: roster?.IsOfficial ?? false,
@@ -1338,7 +1335,6 @@ internal sealed class AssemblyVoteService(
         new(ballot.Choice,
             ballot.Ranking,
             ballot.Revision,
-            ballot.CastAt,
             ballot.UpdatedAt,
             ballot.History
                 .OrderBy(h => h.Revision)

@@ -941,7 +941,7 @@ public sealed class CampServiceTests : CampsTestHarness
     public void CampSeasonInfo_IsPublic_OnlyForActiveOrFullSeasons(CampSeasonStatus status, bool expected)
     {
         var season = new CampSeasonInfo(
-            Guid.NewGuid(), Guid.NewGuid(), "camp", 2026, null, "Camp", string.Empty, string.Empty,
+            Guid.NewGuid(), Guid.NewGuid(), 2026, null, "Camp", string.Empty, string.Empty,
             [], status, YesNoMaybe.No, YesNoMaybe.No, AdultPlayspacePolicy.No,
             0, null, null, null, 0, null, null);
 
@@ -3203,7 +3203,6 @@ public sealed class CampServiceTests : CampsTestHarness
                     memberUserId,
                     CampMemberStatus.Active,
                     requestedAt,
-                    requestedAt,
                     HasEarlyEntry: false)
             ]
         };
@@ -3425,7 +3424,6 @@ public sealed class CampServiceTests : CampsTestHarness
         new(
             Guid.NewGuid(),
             campId,
-            "future-pending",
             year,
             NameLockDate: null,
             $"Future Pending {year}",
@@ -3457,7 +3455,7 @@ public sealed class CampServiceTests : CampsTestHarness
             Members =
             [
                 new CampSeasonMemberInfo(
-                    Guid.NewGuid(), userId, status, requestedAt, requestedAt, HasEarlyEntry: false)
+                    Guid.NewGuid(), userId, status, requestedAt, HasEarlyEntry: false)
                 {
                     Roles = roles
                 }

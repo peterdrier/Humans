@@ -92,7 +92,7 @@ public class UserSetMembershipCalculatorTests
                 IReadOnlyDictionary<Guid, ShiftUserSummary> dict = ids.ToDictionary(
                     id => id,
                     id => hasShift.Contains(id)
-                        ? new ShiftUserSummary(id, [], [MakeActiveSignup()])
+                        ? new ShiftUserSummary([], [MakeActiveSignup()])
                         : ShiftUserSummary.Empty(id));
                 return new ValueTask<IReadOnlyDictionary<Guid, ShiftUserSummary>>(dict);
             });
@@ -102,7 +102,6 @@ public class UserSetMembershipCalculatorTests
         ShiftId: Guid.NewGuid(),
         SignupBlockId: null,
         Status: SignupStatus.Confirmed,
-        RotaId: Guid.NewGuid(),
         RotaName: "Rota",
         RotaDescription: null,
         RotaPracticalInfo: null,

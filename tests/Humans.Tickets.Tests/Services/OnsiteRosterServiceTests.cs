@@ -152,7 +152,7 @@ public class OnsiteRosterServiceTests
                 new(campId, "thunderdome", "x@y", "p", false, 0,
                     new List<CampSeasonInfo>
                     {
-                        new(seasonId, campId, "thunderdome", 2026, null, "Thunderdome 2026",
+                        new(seasonId, campId, 2026, null, "Thunderdome 2026",
                             "", "", new List<CampVibe>(),
                             CampSeasonStatus.Active,
                             YesNoMaybe.Yes, YesNoMaybe.No,
@@ -161,7 +161,7 @@ public class OnsiteRosterServiceTests
                         {
                             Members =
                             [
-                                new(Guid.NewGuid(), aliceId, CampMemberStatus.Active, ts, ts, false),
+                                new(Guid.NewGuid(), aliceId, CampMemberStatus.Active, ts, false),
                             ],
                         },
                     }),

@@ -78,7 +78,7 @@ internal sealed class StubMailerLiteService : IMailerLiteService
 
     public Task<BulkImportResult> BulkImportSubscribersToGroupAsync(
         string groupId, IReadOnlyList<string> emails, CancellationToken ct = default) =>
-        Task.FromResult(new BulkImportResult(emails.Count, 0, 0, 0));
+        Task.FromResult(new BulkImportResult(emails.Count, 0));
 
     public Task DeleteSubscriberAsync(string email, CancellationToken ct = default)
     {

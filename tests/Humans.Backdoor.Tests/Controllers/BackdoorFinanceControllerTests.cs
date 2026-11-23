@@ -226,7 +226,7 @@ public class BackdoorFinanceControllerTests
         var groupId = Guid.NewGuid();
         _budget.GetActiveYearAsync(Arg.Any<CancellationToken>()).Returns(new BudgetYearDetail(yearId, "2026", "Year", BudgetYearStatus.Active, false,
             [new BudgetGroupDetail(groupId, yearId, "Group", 0, false, false, false, null,
-                [new BudgetCategoryDetail(report.BudgetCategoryId!.Value, groupId, "Category", 0, ExpenditureType.OpEx, Guid.NewGuid(), 0, [])])]));
+                [new BudgetCategoryDetail(report.BudgetCategoryId!.Value, "Category", 0, ExpenditureType.OpEx, Guid.NewGuid(), 0, [])])]));
     }
 
     private void SetFinanceAdmin(bool isFinanceAdmin) =>
@@ -431,7 +431,7 @@ public class BackdoorFinanceControllerTests
             [
                 new ExpenseLineDto
                 {
-                    Id = Guid.NewGuid(), ExpenseReportId = Guid.NewGuid(), Description = "Taxi",
+                    Id = Guid.NewGuid(), Description = "Taxi",
                     Amount = 20m, LineType = ExpenseLineType.Receipt, SortOrder = 0,
                 },
             ],

@@ -69,5 +69,5 @@ public class EventsSearchResultViewComponentTests
         CategoryId: Guid.NewGuid(), CategorySlug: "music", CategoryName: "Music", CategoryIsSensitive: false,
         VenueName: null, Title: title, Description: string.Empty, LocationNote: null, Host: null,
         StartAt: Instant.FromUtc(2026, 8, 1, 10, 0), DurationMinutes: 60, IsRecurring: false, RecurrenceDays: null,
-        PriorityRank: 0, SubmittedAt: Instant.FromUtc(2026, 8, 1, 10, 0), LastUpdatedAt: Instant.FromUtc(2026, 8, 1, 10, 0));
+        PriorityRank: 0);
 }

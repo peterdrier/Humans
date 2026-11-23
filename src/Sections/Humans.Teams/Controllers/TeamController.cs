@@ -243,7 +243,6 @@ internal sealed class TeamController(
         var membershipVMs = (await teamPageService.GetMyTeamMembershipsAsync(user.Id, ct))
             .Select(m => new MyTeamMembershipViewModel
             {
-                TeamId = m.TeamId,
                 TeamName = m.TeamName,
                 TeamSlug = m.TeamSlug,
                 IsSystemTeam = m.IsSystemTeam,
@@ -262,10 +261,8 @@ internal sealed class TeamController(
                 .Select(request => new TeamJoinRequestSummaryViewModel
                 {
                     Id = request.Id,
-                    TeamId = request.TeamId,
                     TeamName = request.TeamName ?? string.Empty,
                     TeamSlug = request.TeamSlug ?? string.Empty,
-                    Status = request.Status,
                     StatusBadgeClass = "bg-warning text-dark",
                     RequestedAt = request.RequestedAt.ToDateTimeUtc()
                 }).ToList()

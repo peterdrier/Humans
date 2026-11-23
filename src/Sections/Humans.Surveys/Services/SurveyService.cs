@@ -264,7 +264,6 @@ internal sealed class SurveyService(
             invited.GetValueOrDefault(s.Id),
             responses.GetValueOrDefault(s.Id),
             s.CreatedByUserId,
-            s.SubmittedAt,
             s.RejectionNote)).ToList();
     }
 

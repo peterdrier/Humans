@@ -135,7 +135,6 @@ public class GateServiceTests
             AttendeeName: "Jane Donovan",
             AttendeeEmail: "jane@example.com",
             TicketTypeName: "GA",
-            Price: 100m,
             Status: status,
             MatchedUserId: matchedUserId,
             Barcode: barcode,
@@ -143,12 +142,8 @@ public class GateServiceTests
 
         var order = new TicketOrderInfo(
             Id: Guid.NewGuid(),
-            VendorOrderId: "o1",
-            BuyerName: "Jane Donovan",
             BuyerEmail: "jane@example.com",
             TotalAmount: 100m,
-            Currency: "EUR",
-            DiscountCode: null,
             PaymentStatus: TicketPaymentStatus.Paid,
             VendorEventId: "evt",
             PurchasedAt: Clock.GetCurrentInstant(),

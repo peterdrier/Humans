@@ -183,7 +183,7 @@ internal sealed class AgentService : IAgentService
                         new AgentTurnFinalizer(
                             turnUsage.PromptTokens, turnUsage.OutputTokens,
                             turnUsage.CacheReadTokens, turnUsage.CacheCreationTokens,
-                            settings.Model, "error", conversation.Id));
+                            "error", conversation.Id));
                     yield break;
                 }
 
@@ -326,7 +326,7 @@ internal sealed class AgentService : IAgentService
             {
                 _logger.LogError(
                     "Agent provider stream ended without a finalizer for conversation {ConversationId}", conversation.Id);
-                finalFinalizer = new AgentTurnFinalizer(0, 0, 0, 0, settings.Model, "error");
+                finalFinalizer = new AgentTurnFinalizer(0, 0, 0, 0, "error");
             }
 
             // A max_tokens cutoff mid tool-call JSON still yields a (possibly truncated) call. Treat it like tool_use
@@ -449,7 +449,7 @@ internal sealed class AgentService : IAgentService
         };
         await _repo.AppendMessageAsync(message, cancellationToken);
 
-        var fallbackFinalizer = finalFinalizer ?? new AgentTurnFinalizer(0, 0, 0, 0, _settings.Current.Model, "unknown");
+        var fallbackFinalizer = finalFinalizer ?? new AgentTurnFinalizer(0, 0, 0, 0, "unknown");
         // Stamp the conversation id so the client can reuse it on the next send, and
         // the turn-wide token sums so the finalizer reflects the whole turn, not just
         // the last provider request. Other fields (stop reason, model) stay from the last one.
@@ -490,7 +490,7 @@ internal sealed class AgentService : IAgentService
         _repo.DeleteConversationsForUserAsync(userId, ct);
 
     private AgentTurnToken Finalizer(string stopReason) =>
-        new(null, null, new AgentTurnFinalizer(0, 0, 0, 0, _settings.Current.Model, stopReason));
+        new(null, null, new AgentTurnFinalizer(0, 0, 0, 0, stopReason));
 
     /// <summary>Unparseable arguments become an empty object.</summary>
     /// <remarks>
@@ -690,7 +690,6 @@ internal sealed class AgentService : IAgentService
             conversation.Messages
                 .Select(message => new AgentMessageSnapshot(
                     message.Id,
-                    message.ConversationId,
                     message.Role,
                     message.Content,
                     message.CreatedAt,

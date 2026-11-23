@@ -58,14 +58,12 @@ public sealed class ConsentServiceTests : ConsentTestHarness
                 .Where(v => v.Id == callInfo.ArgAt<Guid>(0))
                 .Select(v => new LegalDocumentVersionSnapshot(
                     v.Id,
-                    v.LegalDocumentId,
                     v.LegalDocument.Name,
                     v.LegalDocument.GracePeriodDays,
                     v.VersionNumber,
                     v.Content,
                     v.EffectiveFrom,
                     v.RequiresReConsent,
-                    v.CreatedAt,
                     v.ChangesSummary))
                 .FirstOrDefaultAsync(TestContext.Current.CancellationToken));
 
@@ -135,7 +133,7 @@ public sealed class ConsentServiceTests : ConsentTestHarness
         _legalDocumentSyncService
             .GetRequiredDocumentVersionsForTeamAsync(SystemTeamIds.Volunteers, Arg.Any<CancellationToken>())
             .Returns([new RequiredDocumentVersionSnapshot(
-                versionId, Guid.NewGuid(), "Doc", 7, "v1.0", Clock.GetCurrentInstant(), false, null)]);
+                versionId, "Doc", 7, Clock.GetCurrentInstant())]);
 
     private async ValueTask<IReadOnlyDictionary<Guid, UserInfo>> ResolveUserInfosAsync(
         IReadOnlyCollection<Guid> ids, CancellationToken ct)
@@ -221,8 +219,8 @@ public sealed class ConsentServiceTests : ConsentTestHarness
         new(Guid.NewGuid(), name, Guid.NewGuid(), "Volunteers", Clock.GetCurrentInstant(), versions);
 
     private static LegalDocumentVersionSnapshot Version(Instant effectiveFrom) =>
-        new(Guid.NewGuid(), Guid.NewGuid(), "Doc", 7, "v1.0",
-            new Dictionary<string, string>(StringComparer.Ordinal), effectiveFrom, false, effectiveFrom, null);
+        new(Guid.NewGuid(), "Doc", 7, "v1.0",
+            new Dictionary<string, string>(StringComparer.Ordinal), effectiveFrom, false, null);
 
     [HumansFact]
     public async Task SubmitConsentAsync_FinalSignature_RestoresSuspensionWithAWarmConsentCache()
@@ -460,14 +458,12 @@ public sealed class ConsentServiceTests : ConsentTestHarness
             document.LastSyncedAt,
             document.Versions.Select(v => new LegalDocumentVersionSnapshot(
                 v.Id,
-                v.LegalDocumentId,
                 document.Name,
                 document.GracePeriodDays,
                 v.VersionNumber,
                 v.Content,
                 v.EffectiveFrom,
                 v.RequiresReConsent,
-                v.CreatedAt,
                 v.ChangesSummary)).ToList());
 
     [HumansFact]

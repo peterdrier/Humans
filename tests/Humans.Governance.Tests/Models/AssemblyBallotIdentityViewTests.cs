@@ -43,8 +43,7 @@ public sealed class AssemblyBallotIdentityViewTests
             new(known, "A stale", true, AssemblyBallotChoice.Yes, null, 1),
         ];
         var vote = new AssemblyVoteDetail(Guid.NewGuid(), "Motion", "Official text", "es", false, null,
-            AssemblyVoteKind.YesNo, RequiredMajority.Simple, IndicativeAudience.None,
-            BallotDisclosure.RosterSeesNames, AssemblyVoteStatus.Closed, at, at, null, null,
+            AssemblyVoteKind.YesNo, RequiredMajority.Simple, AssemblyVoteStatus.Closed, at, at, null,
             true, true, false, [], null, new AssemblyVoteParticipation(1, 2, 1, 2, 0, 0, null));
         var result = new AssemblyVoteResult(
             new AssemblyVoteAudienceResult(1, 1, new YesNoTally(1, 0, 0), null, null, AssemblyVoteVerdict.Passed, []),

@@ -187,7 +187,7 @@ public class ServiceTeamOrdersTests
         _repo.GetOrderByIdAsync(orderId, Arg.Any<CancellationToken>()).Returns(order);
         _repo.GetProductByIdAsync(product.Id, Arg.Any<CancellationToken>()).Returns(product);
         _campService.GetCampSeasonByIdAsync(seasonId, Arg.Any<CancellationToken>())
-            .Returns(new CampSeasonInfo(seasonId, Guid.NewGuid(), "alpha", 2025, null,
+            .Returns(new CampSeasonInfo(seasonId, Guid.NewGuid(), 2025, null,
                 "Camp X", string.Empty, string.Empty, [], CampSeasonStatus.Pending,
                 YesNoMaybe.No, YesNoMaybe.No, AdultPlayspacePolicy.No, 0, null, null, null, 0, null, null));
 
@@ -500,7 +500,7 @@ public class ServiceTeamOrdersTests
     {
         var seasonId = Guid.NewGuid();
         _campService.GetCampSeasonByIdAsync(seasonId, Arg.Any<CancellationToken>())
-            .Returns(new CampSeasonInfo(seasonId, Guid.NewGuid(), "alpha", 2026, null,
+            .Returns(new CampSeasonInfo(seasonId, Guid.NewGuid(), 2026, null,
                 "Camp X", string.Empty, string.Empty, [], CampSeasonStatus.Pending,
                 YesNoMaybe.No, YesNoMaybe.No, AdultPlayspacePolicy.No, 0, null, null, null, 0, null, null));
         _repo.GetOrdersForCampSeasonAsync(seasonId, Arg.Any<CancellationToken>())
@@ -524,7 +524,7 @@ public class ServiceTeamOrdersTests
         // stays at 0 forever, and the create guard must not hand its season a second order.
         var seasonId = Guid.NewGuid();
         _campService.GetCampSeasonByIdAsync(seasonId, Arg.Any<CancellationToken>())
-            .Returns(new CampSeasonInfo(seasonId, Guid.NewGuid(), "alpha", 2026, null,
+            .Returns(new CampSeasonInfo(seasonId, Guid.NewGuid(), 2026, null,
                 "Camp X", string.Empty, string.Empty, [], CampSeasonStatus.Pending,
                 YesNoMaybe.No, YesNoMaybe.No, AdultPlayspacePolicy.No, 0, null, null, null, 0, null, null));
         _repo.GetOrdersForCampSeasonAsync(seasonId, Arg.Any<CancellationToken>())

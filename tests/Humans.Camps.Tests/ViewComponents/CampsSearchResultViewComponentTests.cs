@@ -101,7 +101,7 @@ public class CampsSearchResultViewComponentTests
             campId, slug, "camp@example.org", string.Empty,
             IsSwissCamp: false, TimesAtNowhere: 0,
             Seasons: seasons.Select(s => new CampSeasonInfo(
-                Guid.NewGuid(), campId, slug, s.Year, null, s.Name,
+                Guid.NewGuid(), campId, s.Year, null, s.Name,
                 BlurbShort: string.Empty, Languages: string.Empty, Vibes: [],
                 Status: CampSeasonStatus.Active,
                 AcceptingMembers: YesNoMaybe.Yes, KidsWelcome: YesNoMaybe.Yes,

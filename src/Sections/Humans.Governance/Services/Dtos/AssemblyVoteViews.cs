@@ -36,12 +36,9 @@ internal sealed record AssemblyVoteDetail(
     string? InfoUrl,
     AssemblyVoteKind Kind,
     RequiredMajority RequiredMajority,
-    IndicativeAudience IndicativeAudience,
-    BallotDisclosure BallotDisclosure,
     AssemblyVoteStatus Status,
     Instant ClosesAt,
     Instant? ClosedAt,
-    LocalDate? AssemblyDate,
     string? CancelReason,
     bool IsOnRoster,
     bool IsOfficial,
@@ -58,7 +55,6 @@ internal sealed record AssemblyBallotView(
     AssemblyBallotChoice Choice,
     IReadOnlyList<string>? Ranking,
     int Revision,
-    Instant CastAt,
     Instant UpdatedAt,
     IReadOnlyList<AssemblyBallotRevisionView> History);
 

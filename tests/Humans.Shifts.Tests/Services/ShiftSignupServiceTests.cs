@@ -2523,7 +2523,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
 
         var probe = await service.GetTeamProbeAsync(block ? blockId : signup.Id, scope, TestContext.Current.CancellationToken);
 
-        probe.Should().Be(new ShiftSignupTeamProbe(signup.Id, shift.Id, teamId));
+        probe.Should().Be(new ShiftSignupTeamProbe(teamId));
         (await service.GetTeamProbeAsync(Guid.NewGuid(), scope, TestContext.Current.CancellationToken)).Should().BeNull();
     }
 

@@ -47,6 +47,6 @@ public sealed class BackdoorAgentControllerTests
         conversation.Messages[1].Content.Should().Be(content);
 
         AgentMessageSnapshot Message(AgentRole role, string text, Instant createdAt) =>
-            new(Guid.NewGuid(), conversationId, role, text, createdAt, 0, 0, 0, "test", 0, [], null, null);
+            new(Guid.NewGuid(), role, text, createdAt, 0, 0, 0, "test", 0, [], null, null);
     }
 }

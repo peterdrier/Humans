@@ -42,22 +42,16 @@ internal sealed record ActiveRequiredLegalDocumentSnapshot(
 
 internal sealed record LegalDocumentVersionSnapshot(
     Guid Id,
-    Guid LegalDocumentId,
     string LegalDocumentName,
     int LegalDocumentGracePeriodDays,
     string VersionNumber,
     IReadOnlyDictionary<string, string> Content,
     Instant EffectiveFrom,
     bool RequiresReConsent,
-    Instant CreatedAt,
     string? ChangesSummary);
 
 internal sealed record RequiredDocumentVersionSnapshot(
     Guid Id,
-    Guid LegalDocumentId,
     string LegalDocumentName,
     int LegalDocumentGracePeriodDays,
-    string VersionNumber,
-    Instant EffectiveFrom,
-    bool RequiresReConsent,
-    string? ChangesSummary);
+    Instant EffectiveFrom);

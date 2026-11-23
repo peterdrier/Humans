@@ -276,7 +276,6 @@ internal sealed class MailerLiteAudienceSyncService(
 
         return new AudienceStats(
             audience.Key,
-            audience.DisplayName,
             audience.MailerLiteGroupName,
             Candidates: userEmailMap.Count,
             ExcludedUnsubscribed: excluded,

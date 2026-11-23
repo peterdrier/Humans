@@ -37,9 +37,9 @@ public class PleoBookingTests
     private static readonly IReadOnlySet<int> Open = new HashSet<int> { Food, Geeks, PleoBooking.PleoTreasury };
     private static readonly HoldedChartAccountInfo[] Chart =
     [
-        new(Food, "Comida", null, null, false, 0m),
-        new(Geeks, "Geeks", null, null, false, 0m),
-        new(PleoBooking.PleoTreasury, "Pleo", null, null, false, 0m),
+        new(Food, "Comida", null, false, 0m),
+        new(Geeks, "Geeks", null, false, 0m),
+        new(PleoBooking.PleoTreasury, "Pleo", null, false, 0m),
     ];
 
     private readonly IPleoService _pleo = Substitute.For<IPleoService>();
@@ -109,8 +109,7 @@ public class PleoBookingTests
     private static PleoEntryInfo Entry(
         string id, decimal? amount, int day = 10, string? category = "cat", string? code = "62900001",
         string family = "CARD_PURCHASE", string status = "COMPLETED", string merchant = "MAKRO", params string[] receipts) =>
-        new(id, family, null, status, Day(6, day).Plus(Duration.FromHours(12)), "EUR", 0, amount, merchant,
-            null, category, category is null ? null : code, receipts.Length > 0, null, null, receipts);
+        new(id, family, status, Day(6, day).Plus(Duration.FromHours(12)), amount, merchant, category, category is null ? null : code, receipts.Length > 0, null, null, receipts);
 
     private static HoldedLedgerLineInfo Line(int entry, int day, decimal debit, decimal credit, string? description,
         int account = PleoBooking.PleoTreasury) =>
@@ -118,7 +117,7 @@ public class PleoBookingTests
 
     private void GivenPurchase(string pleoId, decimal total, bool approved = true, decimal? pending = 0m) =>
         _docs.Add(new HoldedPurchaseDocInfo("doc-" + pleoId, PleoBooking.Number(pleoId), "Pleo card purchases", Contact,
-            null, new LocalDate(2026, 6, 10), total, 0m, total, "EUR", approved, null, [], null,
+            null, new LocalDate(2026, 6, 10), total, total, approved, null, [], null,
             "https://app.holded.com/doc-" + pleoId, pending));
 
     private PleoSnapshot Snapshot(params PleoEntryInfo[] entries) =>

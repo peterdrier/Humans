@@ -52,8 +52,7 @@ internal static class ProfileEditViewModelBuilder
                     FieldType = cf.FieldType,
                     CustomLabel = cf.CustomLabel,
                     Value = cf.Value,
-                    Visibility = cf.Visibility,
-                    DisplayOrder = cf.DisplayOrder
+                    Visibility = cf.Visibility
                 }).ToList(),
             EditableVolunteerHistory = (profile?.VolunteerHistory ?? [])
                 .OrderByDescending(cv => cv.Date)

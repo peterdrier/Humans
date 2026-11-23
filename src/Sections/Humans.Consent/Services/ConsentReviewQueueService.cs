@@ -74,8 +74,6 @@ internal sealed class ConsentReviewQueueService(
             new ReviewProfileDetail(
                 info!.FirstName,
                 info.LastName,
-                profile.City,
-                profile.CountryCode,
                 tier,
                 review.Status,
                 review.Notes,

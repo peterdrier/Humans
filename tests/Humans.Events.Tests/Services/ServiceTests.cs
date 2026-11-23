@@ -289,7 +289,7 @@ public sealed class EventServiceTests
         _burnSettings.GetEventSettingsByIdAsync(burn.Id, ct).Returns(burn);
         var campId = Guid.NewGuid();
         var season = new CampSeasonInfo(
-            Guid.NewGuid(), campId, "camp", 2026, null, "Guide Camp", "", "en", [],
+            Guid.NewGuid(), campId, 2026, null, "Guide Camp", "", "en", [],
             default, default, default, default, 1, null, null, null, 0, null, null)
         { EventSettingsId = burn.Id };
         var otherSeason = season with

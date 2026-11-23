@@ -45,13 +45,9 @@ internal sealed record TeamJoinRequestSnapshot(
     Guid TeamId,
     string? TeamName,
     Guid UserId,
-    string? UserDisplayName,
-    string? UserProfilePictureUrl,
     TeamJoinRequestStatus Status,
     string? Message,
     Instant RequestedAt,
-    Instant? ResolvedAt,
-    string? ReviewNotes,
     string? TeamSlug = null);
 
 /// <summary>The caller resolves the display name from <see cref="UserId"/>.</summary>

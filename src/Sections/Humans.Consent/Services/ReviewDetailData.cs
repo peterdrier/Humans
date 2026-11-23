@@ -12,8 +12,6 @@ internal sealed record ReviewDetailData(
 internal sealed record ReviewProfileDetail(
     string FirstName,
     string LastName,
-    string? City,
-    string? CountryCode,
     MembershipTier MembershipTier,
     ConsentCheckStatus? ConsentCheckStatus,
     string? ConsentCheckNotes,

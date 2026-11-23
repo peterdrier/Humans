@@ -3396,7 +3396,7 @@ public sealed partial class ExpenseReportServiceTests
         await _expenseRepo.SetLineHoldedDocIdAsync(seededLineId, "doc-1", FakeNow, TestContext.Current.CancellationToken);
 
         _finance.GetCreditorStatusAsync(40000007, Arg.Any<CancellationToken>())
-            .Returns(new CreditorStatus(40000007, Balance: -200m, OwedToMember: 200m,
+            .Returns(new CreditorStatus(Balance: -200m, OwedToMember: 200m,
                 LastPaymentDate: null, TotalPaid: 0m));
 
         var report = await _sut.GetAsync(reportId, TestContext.Current.CancellationToken);
@@ -3429,7 +3429,7 @@ public sealed partial class ExpenseReportServiceTests
         _userService.GetUserInfoAsync(survivorId, Arg.Any<CancellationToken>())
             .Returns(survivor! with { MergedUserIds = [sourceId] });
         _finance.GetCreditorStatusAsync(40000007, Arg.Any<CancellationToken>())
-            .Returns(new CreditorStatus(40000007, Balance: -200m, OwedToMember: 200m,
+            .Returns(new CreditorStatus(Balance: -200m, OwedToMember: 200m,
                 LastPaymentDate: null, TotalPaid: 0m));
 
         var report = await _sut.GetAsync(survivorReportId, ct);
@@ -3455,7 +3455,7 @@ public sealed partial class ExpenseReportServiceTests
         await _expenseRepo.SetLineHoldedDocIdAsync(seededLineId, "doc-1", FakeNow, TestContext.Current.CancellationToken);
 
         _finance.GetCreditorStatusAsync(40000007, Arg.Any<CancellationToken>())
-            .Returns(new CreditorStatus(40000007, Balance: -30m, OwedToMember: 30m,
+            .Returns(new CreditorStatus(Balance: -30m, OwedToMember: 30m,
                 LastPaymentDate: null, TotalPaid: 0m));
 
         if (withdrawn)
@@ -3496,7 +3496,7 @@ public sealed partial class ExpenseReportServiceTests
         await _expenseRepo.SetLineHoldedDocIdAsync(lineAId, "doc-a", FakeNow, TestContext.Current.CancellationToken);
 
         _finance.GetCreditorStatusAsync(40000007, Arg.Any<CancellationToken>())
-            .Returns(new CreditorStatus(40000007, Balance: -40m, OwedToMember: 40m,
+            .Returns(new CreditorStatus(Balance: -40m, OwedToMember: 40m,
                 LastPaymentDate: null, TotalPaid: 0m));
 
         if (withdrawn)
@@ -3521,7 +3521,7 @@ public sealed partial class ExpenseReportServiceTests
         await _expenseRepo.SetLineHoldedDocIdAsync(seededLineId, "doc-1", FakeNow, TestContext.Current.CancellationToken);
 
         _finance.GetCreditorStatusAsync(40000007, Arg.Any<CancellationToken>())
-            .Returns(new CreditorStatus(40000007, Balance: -50m, OwedToMember: 50m,
+            .Returns(new CreditorStatus(Balance: -50m, OwedToMember: 50m,
                 LastPaymentDate: new LocalDate(2026, 4, 20), TotalPaid: 50m));
 
         var report = await _sut.GetAsync(reportId, TestContext.Current.CancellationToken);
@@ -4198,7 +4198,6 @@ public sealed partial class ExpenseReportServiceTests
                     [
                         new BudgetCategoryDetail(
                             categoryId,
-                            groupId,
                             "Test Category",
                             0m,
                             ExpenditureType.CapEx,
@@ -4252,7 +4251,7 @@ public sealed partial class ExpenseReportServiceTests
             teamId,
             0,
             budgetYearId is { } yearId
-                ? new BudgetCategoryGroupSnapshot(group, yearId, "Test Group", false, false, null)
+                ? new BudgetCategoryGroupSnapshot(yearId, "Test Group", false, false, null)
                 : null,
             []);
     }

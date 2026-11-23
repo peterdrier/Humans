@@ -19,8 +19,8 @@ public class OrderDtoStateTests
     {
         var id = Guid.NewGuid();
         var lineDtos = Enumerable.Range(0, lines)
-            .Select(_ => new OrderLineDto(Guid.NewGuid(), id, Guid.NewGuid(), "Ice", 1,
-                10m, 21m, null, At, 10m, 2.1m, 0m, 12.1m))
+            .Select(_ => new OrderLineDto(Guid.NewGuid(), Guid.NewGuid(), "Ice", 1,
+                10m, 21m, null, 0m, 12.1m))
             .ToList();
         var paymentDtos = Enumerable.Range(0, payments)
             .Select(_ => new OrderPaymentDto(Guid.NewGuid(), 5m, PaymentMethod.BankTransfer,

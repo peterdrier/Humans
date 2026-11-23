@@ -87,7 +87,6 @@ internal static class MailerLiteAudienceDebugSnapshotBuilder
                 emailToUser.TryGetValue(s.Email, out var matchedUser);
                 var name = matchedUser?.BurnerName ?? "—";
                 currentlyInMl.Add(new DebugMlRow(
-                    SubscriberId: s.Id,
                     UserId: matchedUser?.Id,
                     Name: name,
                     Email: s.Email,

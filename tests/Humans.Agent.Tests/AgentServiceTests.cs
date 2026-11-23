@@ -38,8 +38,8 @@ public class AgentServiceTests
         }, rateLimitStore: store, saveInterceptor: interceptor);
         client.EnqueueTurn(
             new AgentTurnToken("Answer", null, null,
-                Usage: new AgentTurnFinalizer(100, 20, 5, 3, "test-model", null)),
-            new AgentTurnToken(null, null, new AgentTurnFinalizer(100, 20, 5, 3, "test-model", "end_turn")));
+                Usage: new AgentTurnFinalizer(100, 20, 5, 3, null)),
+            new AgentTurnToken(null, null, new AgentTurnFinalizer(100, 20, 5, 3, "end_turn")));
 
         var run = async () =>
         {
@@ -75,7 +75,7 @@ public class AgentServiceTests
         foreach (var ownerId in new[] { userId, otherUserId })
         {
             client.EnqueueTurn(new AgentTurnToken("Answer", null, null),
-                new AgentTurnToken(null, null, new AgentTurnFinalizer(0, 0, 0, 0, "claude-sonnet-4-6", "end_turn")));
+                new AgentTurnToken(null, null, new AgentTurnFinalizer(0, 0, 0, 0, "end_turn")));
             await foreach (var _ in service.AskAsync(new AgentTurnRequest(
                 Guid.Empty, ownerId, ownerId == userId ? "My question" : "Other person's secret", "es"),
                 Xunit.TestContext.Current.CancellationToken)) { }
@@ -117,7 +117,7 @@ public class AgentServiceTests
         })
         {
             client.EnqueueTurn(new AgentTurnToken("Answer", null, null),
-                new AgentTurnToken(null, null, new AgentTurnFinalizer(0, 0, 0, 0, "test-model", "end_turn")));
+                new AgentTurnToken(null, null, new AgentTurnFinalizer(0, 0, 0, 0, "end_turn")));
             await foreach (var _ in service.AskAsync(new AgentTurnRequest(Guid.Empty, ownerId, question, "es"),
                 Xunit.TestContext.Current.CancellationToken)) { }
         }
@@ -194,7 +194,7 @@ public class AgentServiceTests
         var (second, secondClient) = await BuildServiceAsync(Configure, rateLimitStore: store);
         foreach (var client in new[] { firstClient, secondClient })
             client.EnqueueTurn(new AgentTurnToken("Answer", null, null),
-                new AgentTurnToken(null, null, new AgentTurnFinalizer(2, 1, 0, 0, "test-model", "end_turn")));
+                new AgentTurnToken(null, null, new AgentTurnFinalizer(2, 1, 0, 0, "end_turn")));
 
         var ct = Xunit.TestContext.Current.CancellationToken;
         await using var active = first.AskAsync(new AgentTurnRequest(Guid.Empty, userId, "First", "en"), ct)
@@ -228,9 +228,9 @@ public class AgentServiceTests
         var (second, secondClient) = await BuildServiceAsync(s => s.Enabled = true, rateLimitStore: store);
         firstClient.EnqueueTurn(new AgentTurnToken("Partial answer", null, null));
         secondClient.EnqueueTurn(new AgentTurnToken("Other user", null, null),
-            new AgentTurnToken(null, null, new AgentTurnFinalizer(0, 0, 0, 0, "test-model", "end_turn")));
+            new AgentTurnToken(null, null, new AgentTurnFinalizer(0, 0, 0, 0, "end_turn")));
         secondClient.EnqueueTurn(new AgentTurnToken("Next answer", null, null),
-            new AgentTurnToken(null, null, new AgentTurnFinalizer(0, 0, 0, 0, "test-model", "end_turn")));
+            new AgentTurnToken(null, null, new AgentTurnFinalizer(0, 0, 0, 0, "end_turn")));
         var ct = Xunit.TestContext.Current.CancellationToken;
         await using var active = first.AskAsync(new AgentTurnRequest(Guid.Empty, userId, "First", "en"), ct)
             .GetAsyncEnumerator(ct);
@@ -270,7 +270,7 @@ public class AgentServiceTests
 
         client.EnqueueTurn(
             new AgentTurnToken("hello!", null, null),
-            new AgentTurnToken(null, null, new AgentTurnFinalizer(0, 0, 0, 0, "claude-sonnet-4-6", "end_turn")));
+            new AgentTurnToken(null, null, new AgentTurnFinalizer(0, 0, 0, 0, "end_turn")));
 
         var tokens = new List<AgentTurnToken>();
         await foreach (var t in svc.AskAsync(
@@ -294,7 +294,7 @@ public class AgentServiceTests
         // Turn 1 — establishes the conversation.
         client.EnqueueTurn(
             new AgentTurnToken("Volunteers is a team.", null, null),
-            new AgentTurnToken(null, null, new AgentTurnFinalizer(0, 0, 0, 0, "claude-sonnet-4-6", "end_turn")));
+            new AgentTurnToken(null, null, new AgentTurnFinalizer(0, 0, 0, 0, "end_turn")));
 
         Guid? conversationId = null;
         await foreach (var t in svc.AskAsync(
@@ -308,7 +308,7 @@ public class AgentServiceTests
         // Turn 2 — same conversation. Anthropic should see the prior turn replayed.
         client.EnqueueTurn(
             new AgentTurnToken("Yes, anyone can join.", null, null),
-            new AgentTurnToken(null, null, new AgentTurnFinalizer(0, 0, 0, 0, "claude-sonnet-4-6", "end_turn")));
+            new AgentTurnToken(null, null, new AgentTurnFinalizer(0, 0, 0, 0, "end_turn")));
 
         await foreach (var _ in svc.AskAsync(
             new AgentTurnRequest(ConversationId: conversationId.Value, UserId: userId, Message: "Can I join?", Locale: "es"),
@@ -334,7 +334,7 @@ public class AgentServiceTests
 
         client.EnqueueTurn(
             new AgentTurnToken("hi back", null, null),
-            new AgentTurnToken(null, null, new AgentTurnFinalizer(0, 0, 0, 0, "claude-sonnet-4-6", "end_turn")));
+            new AgentTurnToken(null, null, new AgentTurnFinalizer(0, 0, 0, 0, "end_turn")));
 
         Guid? finalConversationId = null;
         // Conversation may have been retention-purged or deleted in another tab —
@@ -358,7 +358,7 @@ public class AgentServiceTests
         var (svc, client) = await BuildServiceAsync(s => s.Enabled = true);
         client.EnqueueTurn(
             new AgentTurnToken("Hi.", null, null),
-            new AgentTurnToken(null, null, new AgentTurnFinalizer(0, 0, 0, 0, "claude-sonnet-4-6", "end_turn")));
+            new AgentTurnToken(null, null, new AgentTurnFinalizer(0, 0, 0, 0, "end_turn")));
         Guid victimConversation = Guid.Empty;
         await foreach (var t in svc.AskAsync(
             new AgentTurnRequest(ConversationId: Guid.Empty, UserId: victimId, Message: "Hello", Locale: "es"),
@@ -500,12 +500,12 @@ public class AgentServiceTests
             new AgentTurnToken(null, new AnthropicToolCall("t1", "fetch_section_guide", """{"section":"teams"}"""), null),
             new AgentTurnToken(null, new AnthropicToolCall("t2", "fetch_section_guide", """{"section":"camps"}"""), null),
             new AgentTurnToken(null, new AnthropicToolCall("t3", "fetch_community_faq", "{}"), null),
-            new AgentTurnToken(null, null, new AgentTurnFinalizer(100, 20, 5, 3, "claude-sonnet-4-6", "tool_use")));
+            new AgentTurnToken(null, null, new AgentTurnFinalizer(100, 20, 5, 3, "tool_use")));
 
         // Iteration 2: the synthesis call (tools withheld) answers from the fetched results.
         client.EnqueueTurn(
             new AgentTurnToken("Teams are groups of volunteers; see the Teams page.", null, null),
-            new AgentTurnToken(null, null, new AgentTurnFinalizer(40, 30, 7, 2, "claude-sonnet-4-6", "end_turn")));
+            new AgentTurnToken(null, null, new AgentTurnFinalizer(40, 30, 7, 2, "end_turn")));
 
         var tokens = new List<AgentTurnToken>();
         await foreach (var t in svc.AskAsync(
@@ -567,7 +567,7 @@ public class AgentServiceTests
             new AgentTurnToken(null, new AnthropicToolCall(
                 "tc1", AgentToolNames.RouteToIssue,
                 """{"title":"Broken link","category":"Bug","description":"The camps page 404s."}"""), null),
-            new AgentTurnToken(null, null, new AgentTurnFinalizer(0, 0, 0, 0, "claude-sonnet-4-6", "tool_use")));
+            new AgentTurnToken(null, null, new AgentTurnFinalizer(0, 0, 0, 0, "tool_use")));
 
         Guid handoffConversationId = Guid.Empty;
         await foreach (var t in svc.AskAsync(
@@ -605,11 +605,11 @@ public class AgentServiceTests
         client.EnqueueTurn(
             new AgentTurnToken(null, new AnthropicToolCall(
                 "tc1", AgentToolNames.RouteToIssue, """{"title":"Broken"""), null),
-            new AgentTurnToken(null, null, new AgentTurnFinalizer(0, 0, 0, 0, "claude-sonnet-4-6", "tool_use")));
+            new AgentTurnToken(null, null, new AgentTurnFinalizer(0, 0, 0, 0, "tool_use")));
         // The loop continues after the failed tool call; script the follow-up turn.
         client.EnqueueTurn(
             new AgentTurnToken("Sorry, I could not draft that issue.", null, null),
-            new AgentTurnToken(null, null, new AgentTurnFinalizer(0, 0, 0, 0, "claude-sonnet-4-6", "end_turn")));
+            new AgentTurnToken(null, null, new AgentTurnFinalizer(0, 0, 0, 0, "end_turn")));
 
         await foreach (var _ in svc.AskAsync(
             new AgentTurnRequest(ConversationId: Guid.Empty, UserId: userId, Message: "the camps page is broken", Locale: "es"),
@@ -651,12 +651,12 @@ public class AgentServiceTests
             new AgentTurnToken(null, new AnthropicToolCall("t1", "fetch_section_guide", """{"section":"teams"}"""), null),
             new AgentTurnToken(null, new AnthropicToolCall("t2", "fetch_section_guide", """{"section":"camps"}"""), null),
             new AgentTurnToken(null, new AnthropicToolCall("t3", "fetch_community_faq", "{}"), null),
-            new AgentTurnToken(null, null, new AgentTurnFinalizer(100, 20, 5, 3, "claude-sonnet-4-6", "tool_use")));
+            new AgentTurnToken(null, null, new AgentTurnFinalizer(100, 20, 5, 3, "tool_use")));
 
         // Iteration 2: the synthesis call (tools withheld) still produces no text — the
         // investigation dead-ended with nothing worth saying.
         client.EnqueueTurn(
-            new AgentTurnToken(null, null, new AgentTurnFinalizer(40, 5, 0, 0, "claude-sonnet-4-6", "end_turn")));
+            new AgentTurnToken(null, null, new AgentTurnFinalizer(40, 5, 0, 0, "end_turn")));
 
         var tokens = new List<AgentTurnToken>();
         await foreach (var t in svc.AskAsync(
@@ -717,7 +717,7 @@ public class AgentServiceTests
         client.EnqueueTurn(
             new AgentTurnToken(null, new AnthropicToolCall(
                 "tc1", AgentToolNames.RouteToIssue, arguments), null),
-            new AgentTurnToken(null, null, new AgentTurnFinalizer(0, 0, 0, 0, "claude-sonnet-4-6", "tool_use")));
+            new AgentTurnToken(null, null, new AgentTurnFinalizer(0, 0, 0, 0, "tool_use")));
 
         var tokens = new List<AgentTurnToken>();
         await foreach (var t in svc.AskAsync(
@@ -756,7 +756,7 @@ public class AgentServiceTests
 
         client.EnqueueTurn(
             new AgentTurnToken(" \n\n ", null, null),
-            new AgentTurnToken(null, null, new AgentTurnFinalizer(40, 5, 0, 0, "claude-sonnet-4-6", "end_turn")));
+            new AgentTurnToken(null, null, new AgentTurnFinalizer(40, 5, 0, 0, "end_turn")));
 
         var tokens = new List<AgentTurnToken>();
         await foreach (var t in svc.AskAsync(
@@ -794,11 +794,11 @@ public class AgentServiceTests
         var truncated = new AnthropicToolCall("t1", "fetch_section_guide", """{"section":"tea""");
         client.EnqueueTurn(
             new AgentTurnToken(null, truncated, null),
-            new AgentTurnToken(null, null, new AgentTurnFinalizer(100, 20, 0, 0, "claude-sonnet-5-5", "tool_use"),
+            new AgentTurnToken(null, null, new AgentTurnFinalizer(100, 20, 0, 0, "tool_use"),
                 AssistantContent: [new AnthropicThinkingBlock("Need the Teams doc.", "sig"), new AnthropicToolUseBlock(truncated)]));
         client.EnqueueTurn(
             new AgentTurnToken("Teams are groups of volunteers.", null, null),
-            new AgentTurnToken(null, null, new AgentTurnFinalizer(40, 10, 0, 0, "claude-sonnet-5-5", "end_turn")));
+            new AgentTurnToken(null, null, new AgentTurnFinalizer(40, 10, 0, 0, "end_turn")));
 
         await foreach (var _ in svc.AskAsync(
             new AgentTurnRequest(ConversationId: Guid.Empty, UserId: Guid.NewGuid(), Message: "What are teams?", Locale: "en"),
@@ -830,12 +830,12 @@ public class AgentServiceTests
         client.EnqueueTurn(
             new AgentTurnToken("Let me check that. ", null, null),
             new AgentTurnToken(null, new AnthropicToolCall("t1", "fetch_section_guide", """{"section":"tea"""), null),
-            new AgentTurnToken(null, null, new AgentTurnFinalizer(100, 20, 0, 0, "claude-sonnet-4-6", "max_tokens")));
+            new AgentTurnToken(null, null, new AgentTurnFinalizer(100, 20, 0, 0, "max_tokens")));
 
         // Iteration 2: the follow-up call recovers and answers normally.
         client.EnqueueTurn(
             new AgentTurnToken("Teams are groups of volunteers.", null, null),
-            new AgentTurnToken(null, null, new AgentTurnFinalizer(40, 10, 0, 0, "claude-sonnet-4-6", "end_turn")));
+            new AgentTurnToken(null, null, new AgentTurnFinalizer(40, 10, 0, 0, "end_turn")));
 
         var tokens = new List<AgentTurnToken>();
         await foreach (var t in svc.AskAsync(
@@ -889,7 +889,7 @@ public class AgentServiceTests
         {
             client.EnqueueTurn(
                 new AgentTurnToken(null, new AnthropicToolCall("complete", "fetch_section_guide", """{"section":"teams"}"""), null),
-                new AgentTurnToken(null, null, new AgentTurnFinalizer(100, 20, 5, 3, "claude-sonnet-4-6", "tool_use")));
+                new AgentTurnToken(null, null, new AgentTurnFinalizer(100, 20, 5, 3, "tool_use")));
         }
         var interrupted = new List<AgentTurnToken>
         {
@@ -897,7 +897,7 @@ public class AgentServiceTests
             new(null, new AnthropicToolCall("interrupted", "fetch_section_guide", """{"section":"camps"}"""), null)
         };
         if (hasErrorFinalizer)
-            interrupted.Add(new AgentTurnToken(null, null, new AgentTurnFinalizer(0, 0, 0, 0, "claude-sonnet-4-6", "error")));
+            interrupted.Add(new AgentTurnToken(null, null, new AgentTurnFinalizer(0, 0, 0, 0, "error")));
         client.EnqueueTurn(interrupted.ToArray());
 
         var tokens = new List<AgentTurnToken>();
@@ -950,7 +950,7 @@ public class AgentServiceTests
 
         client.EnqueueTurn(
             new AgentTurnToken(null, new AnthropicToolCall("t1", "fetch_section_guide", """{"section":"teams"}"""), null),
-            new AgentTurnToken(null, null, new AgentTurnFinalizer(100, 20, 0, 3, "claude-sonnet-4-6", "tool_use")));
+            new AgentTurnToken(null, null, new AgentTurnFinalizer(100, 20, 0, 3, "tool_use")));
 
         var tokens = new List<AgentTurnToken>();
         await foreach (var t in svc.AskAsync(
@@ -1029,7 +1029,7 @@ public class AgentServiceTests
             new AgentTurnToken(null, new AnthropicToolCall(
                 "tc1", AgentToolNames.RouteToIssue,
                 """{"title":"Broken link","category":"Bug","description":"The camps page 404s."}"""), null),
-            new AgentTurnToken(null, null, new AgentTurnFinalizer(40, 10, 0, 0, "claude-sonnet-4-6", "tool_use")));
+            new AgentTurnToken(null, null, new AgentTurnFinalizer(40, 10, 0, 0, "tool_use")));
 
         await foreach (var _ in svc.AskAsync(
             new AgentTurnRequest(ConversationId: Guid.Empty, UserId: userId, Message: "the camps page is broken", Locale: "es"),
@@ -1067,10 +1067,10 @@ public class AgentServiceTests
         using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(Xunit.TestContext.Current.CancellationToken);
 
         client.EnqueueTurn(
-            new AgentTurnToken(null, null, null, Usage: new AgentTurnFinalizer(40, 1, 5, 3, "claude-sonnet-4-6", null)),
+            new AgentTurnToken(null, null, null, Usage: new AgentTurnFinalizer(40, 1, 5, 3, null)),
             new AgentTurnToken("Teams are groups of ", null, null),
             new AgentTurnToken("volunteers.", null, null),
-            new AgentTurnToken(null, null, new AgentTurnFinalizer(40, 10, 0, 0, "claude-sonnet-4-6", "end_turn")));
+            new AgentTurnToken(null, null, new AgentTurnFinalizer(40, 10, 0, 0, "end_turn")));
 
         // `break` disposes the async enumerator — exactly what the controller's `await foreach`
         // does when the response write throws on a dead connection.
@@ -1114,9 +1114,9 @@ public class AgentServiceTests
         var (svc, client) = await BuildServiceAsync(s => s.Enabled = true);
 
         client.EnqueueTurn(
-            new AgentTurnToken(null, null, null, Usage: new AgentTurnFinalizer(40, 1, 5, 3, "claude-sonnet-4-6", null)),
+            new AgentTurnToken(null, null, null, Usage: new AgentTurnFinalizer(40, 1, 5, 3, null)),
             new AgentTurnToken("Teams are groups of volunteers.", null, null),
-            new AgentTurnToken(null, null, new AgentTurnFinalizer(40, 10, 5, 3, "claude-sonnet-4-6", "end_turn")));
+            new AgentTurnToken(null, null, new AgentTurnFinalizer(40, 10, 5, 3, "end_turn")));
 
         await foreach (var t in svc.AskAsync(
             new AgentTurnRequest(ConversationId: Guid.Empty, UserId: userId, Message: "What are teams?", Locale: "es"),
@@ -1177,7 +1177,7 @@ public class AgentServiceTests
     {
         client.EnqueueTurn(
             new AgentTurnToken("hi", null, null),
-            new AgentTurnToken(null, null, new AgentTurnFinalizer(0, 0, 0, 0, "claude-sonnet-4-6", "end_turn")));
+            new AgentTurnToken(null, null, new AgentTurnFinalizer(0, 0, 0, 0, "end_turn")));
 
         var conversationId = Guid.Empty;
         await foreach (var t in svc.AskAsync(
@@ -1230,7 +1230,7 @@ public class AgentServiceTests
         var abuse = new AgentAbuseDetector();
         var snapshots = Substitute.For<IAgentUserSnapshotProvider>();
         snapshots.LoadAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(
-            new AgentUserSnapshot(Guid.NewGuid(), "Test User", "es", "Volunteer", UserState.Active,
+            new AgentUserSnapshot("Test User", "es", "Volunteer", UserState.Active,
                 [],
                 [],
                 [],

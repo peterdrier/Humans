@@ -37,8 +37,7 @@ public sealed class RoleAssignmentsCardViewComponent(
                 ValidFrom = ra.ValidFrom.ToDateTimeUtc(),
                 ValidTo = ra.ValidTo?.ToDateTimeUtc(),
                 Notes = ra.Notes,
-                IsActive = ra.IsActive(now),
-                CreatedAt = ra.CreatedAt.ToDateTimeUtc()
+                IsActive = ra.IsActive(now)
             })]));
     }
 }

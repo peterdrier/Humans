@@ -71,7 +71,7 @@ public sealed class ExpensesControllerPreapprovalTests
         var groupId = Guid.NewGuid();
         _budget.GetActiveYearAsync(Arg.Any<CancellationToken>()).Returns(new BudgetYearDetail(yearId, "2026", "Year", BudgetYearStatus.Active, false,
             [new BudgetGroupDetail(groupId, yearId, "Group", 0, false, false, false, null,
-                [new BudgetCategoryDetail(categoryId, groupId, "Category", 0, ExpenditureType.OpEx, Guid.NewGuid(), 0, [])])]));
+                [new BudgetCategoryDetail(categoryId, "Category", 0, ExpenditureType.OpEx, Guid.NewGuid(), 0, [])])]));
         var own = ReviewRow(null) with { SubmitterUserId = archived };
         var current = ReviewRow(null) with { SubmitterUserId = Guid.NewGuid(), BudgetCategoryId = categoryId };
         var old = ReviewRow(null) with { SubmitterUserId = Guid.NewGuid(), BudgetCategoryId = Guid.NewGuid() };

@@ -116,8 +116,6 @@ internal sealed record CampRoleDefinitionInfo(
     int SlotCount,
     int MinimumRequired,
     int SortOrder,
-    Instant CreatedAt,
-    Instant UpdatedAt,
     Instant? DeactivatedAt,
     CampSpecialRole SpecialRole)
 {
@@ -126,7 +124,4 @@ internal sealed record CampRoleDefinitionInfo(
 }
 
 internal sealed record CampRoleAssignmentInfo(
-    Guid Id,
-    Guid CampSeasonId,
-    Guid CampRoleDefinitionId,
-    Guid CampMemberId);
+    Guid CampSeasonId);

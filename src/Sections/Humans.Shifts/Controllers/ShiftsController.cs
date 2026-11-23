@@ -59,7 +59,6 @@ internal sealed class ShiftsController(
 
         var model = await browsePageBuilder.BuildAsync(new ShiftBrowsePageRequest(
             es,
-            user.Id,
             userSignups,
             userView.TagPreferences,
             userActiveSignupsForUi,

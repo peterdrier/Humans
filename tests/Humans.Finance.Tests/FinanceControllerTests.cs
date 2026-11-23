@@ -1065,8 +1065,7 @@ public class FinanceControllerTests
     {
         var unmatched = new List<SepaBankMovementVm>
         {
-            new("mov-1", new LocalDate(2026, 9, 18), 50.00m, "unrecognised text", null,
-                "pending", "its text names no creditor account"),
+            new(new LocalDate(2026, 9, 18), 50.00m, "unrecognised text", null, "its text names no creditor account"),
         };
         _connector.GetSepaPayoutsAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns((new List<SepaPayoutTransferRow>(), null,

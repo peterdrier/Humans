@@ -15,7 +15,6 @@ internal interface ISyncSettingsService : IApplicationService
 }
 
 internal sealed record SyncServiceSettingsInfo(
-    Guid Id,
     SyncServiceType ServiceType,
     SyncMode SyncMode,
     Instant UpdatedAt,

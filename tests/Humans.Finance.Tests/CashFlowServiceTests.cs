@@ -243,7 +243,7 @@ public class CashFlowServiceTests
         [
             new BudgetGroupDetail(groupId, _yearId, "Ops", 0, false, false, false, null,
             [
-                new BudgetCategoryDetail(categoryId, groupId, "Supplies", 0m, ExpenditureType.OpEx, null, 0, items)
+                new BudgetCategoryDetail(categoryId, "Supplies", 0m, ExpenditureType.OpEx, null, 0, items)
             ])
         ]);
     }
@@ -254,12 +254,8 @@ public class CashFlowServiceTests
 
     private static TicketOrderInfo Order(decimal totalAmount) => new(
         Id: Guid.NewGuid(),
-        VendorOrderId: $"order-{Guid.NewGuid():N}",
-        BuyerName: null,
         BuyerEmail: null,
         TotalAmount: totalAmount,
-        Currency: "EUR",
-        DiscountCode: null,
         PaymentStatus: TicketPaymentStatus.Paid,
         VendorEventId: "event",
         PurchasedAt: Instant.FromUtc(2026, 3, 3, 10, 0),

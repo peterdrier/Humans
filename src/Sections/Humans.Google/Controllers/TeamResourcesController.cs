@@ -58,7 +58,6 @@ internal sealed class TeamResourcesController(
                 Name = r.Name,
                 Url = r.Url,
                 LastSyncedAt = r.LastSyncedAt?.ToDateTimeUtc(),
-                IsActive = r.IsActive,
                 ErrorMessage = r.ErrorMessage,
                 DrivePermissionLevel = r.DrivePermissionLevel,
                 IsDriveResource = r.ResourceType is GoogleResourceType.DriveFolder or GoogleResourceType.DriveFile or GoogleResourceType.SharedDrive,

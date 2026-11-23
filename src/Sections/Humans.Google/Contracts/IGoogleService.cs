@@ -16,8 +16,7 @@ public interface IGoogleService : IApplicationService
         IReadOnlyCollection<Guid> userIds, CancellationToken ct = default);
 }
 
-/// <summary><paramref name="UserId"/> is the surviving member.</summary>
-public sealed record WorkspaceIdentity(Guid UserId, string Email, GoogleEmailStatus Status)
+public sealed record WorkspaceIdentity(string Email, GoogleEmailStatus Status)
 {
     /// <summary>Such an address always wins resolution, so while it stands no other address can become the identity.</summary>
     public bool IsNobodiesTeamAccount => Email.EndsWith("@nobodies.team", StringComparison.OrdinalIgnoreCase);

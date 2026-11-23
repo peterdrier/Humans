@@ -47,7 +47,7 @@ public class GateIdentityViewTests
         picks[1].Value.Should().Contain($"value=\"{missing}\"").And.Contain(HtmlEncoder.Default.Encode(unknown));
         foreach (var hasPin in new[] { false, true })
         {
-            var pin = await RenderAsync("/Views/Gate/Pin.cshtml", GatePinViewModel.ForClaim(id, new GatePinStatus(hasPin, false)), users);
+            var pin = await RenderAsync("/Views/Gate/Pin.cshtml", GatePinViewModel.ForClaim(id, new GatePinStatus(hasPin)), users);
             pin.Should().Contain(HtmlEncoder.Default.Encode(name)).And.Contain($"value=\"{id}\"")
                 .And.NotContain("<script>");
             pin.Contains("data-gate-confirm>", StringComparison.Ordinal).Should().Be(!hasPin);

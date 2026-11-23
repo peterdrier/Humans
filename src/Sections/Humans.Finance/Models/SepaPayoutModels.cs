@@ -69,12 +69,10 @@ internal sealed record SepaPayoutSettings(decimal MaxPerTransfer, string? Unavai
 
 /// <summary>An outgoing Sabadell line the sweep could not book: the page's "needs a human" list.</summary>
 internal sealed record SepaBankMovementVm(
-    string MovementId,
     LocalDate Date,
     decimal Amount,
     string? Description,
     int? ParsedAccountNum,
-    string Status,
     string Reason);
 
 /// <summary>MemberName supplies native confirmation prompts; browser attribution renders Row's user IDs.</summary>
