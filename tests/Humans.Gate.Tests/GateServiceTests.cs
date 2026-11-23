@@ -1070,7 +1070,7 @@ public class GateServiceTests
         _config["Gate:VendorMirrorEnabled"] = "false";
         _tickets.ClearReceivedCalls();
 
-        foreach (var id in new string?[] { "vt-A", null })
+        foreach (var id in new[] { "vt-A", null })
         {
             var result = await _svc.EnqueueVendorCheckInBackfillAsync(id);
             result.MirrorEnabled.Should().BeFalse();

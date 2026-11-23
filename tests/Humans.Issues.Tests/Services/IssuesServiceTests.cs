@@ -2196,7 +2196,7 @@ public sealed class IssuesServiceTests
         // comment on it, and still may not move it.
         var reporter = new IssueViewer(reporterId, []);
 
-        var mutations = new Func<Task<IssueMutationResult>>[]
+        var mutations = new[]
         {
             () => _service.UpdateStatusAsync(issueId, reporter, IssueStatus.Resolved, reporterId, Ct),
             () => _service.UpdateAssigneeAsync(issueId, reporter, reporterId, reporterId, Ct),
