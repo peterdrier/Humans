@@ -173,7 +173,7 @@ internal sealed class AccountDeletionService(
 
         // Must not name the human: the audit log survives erasure.
         const string description = "Admin-initiated purge: identity collapsed";
-        if (actorId is Guid actor)
+        if (actorId is { } actor)
         {
             await auditLogService.LogAsync(
                 UsersAuditActions.AccountPurged, AuditSubjectTypes.User, userId, description, actor);

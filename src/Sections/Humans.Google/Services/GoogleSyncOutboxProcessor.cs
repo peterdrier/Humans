@@ -124,7 +124,7 @@ internal sealed class GoogleSyncOutboxProcessor(
                 {
                     throw;
                 }
-                catch (global::Google.GoogleApiException ex) when (ex.Error?.Code is int code && DrivePermissionErrorPolicy.IsPermanentFailure(code))
+                catch (global::Google.GoogleApiException ex) when (ex.Error?.Code is { } code && DrivePermissionErrorPolicy.IsPermanentFailure(code))
                 {
                     completingEvent = true;
                     metrics.RecordSyncOperation("permanent_failure");

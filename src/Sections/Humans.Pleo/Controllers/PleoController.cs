@@ -95,13 +95,11 @@ internal sealed class PleoController(
         var page = await pleo.GetCategoriesPageAsync(ct);
         ViewData["AddName"] = name;
         ViewData["AddCode"] = holdedCode;
-        return View(page with
-        {
-            Unlinked = page.Unlinked.OrderByDescending(u => u.Spend).ToList(),
-            Categories = page.Categories.OrderBy(c => c.Name, StringComparer.Ordinal).ToList(),
-            UnlinkedNames = page.UnlinkedNames.OrderBy(n => n.Label, StringComparer.Ordinal).ToList(),
-            ActiveAccounts = page.ActiveAccounts.OrderBy(a => a.Value, StringComparer.Ordinal).ToList(),
-        });
+        return View(new PleoCategoriesPage(
+            Unlinked: page.Unlinked.OrderByDescending(u => u.Spend).ToList(),
+            Categories: page.Categories.OrderBy(c => c.Name, StringComparer.Ordinal).ToList(),
+            UnlinkedNames: page.UnlinkedNames.OrderBy(n => n.Label, StringComparer.Ordinal).ToList(),
+            ActiveAccounts: page.ActiveAccounts.OrderBy(a => a.Value, StringComparer.Ordinal).ToList()));
     }
 
     [HttpPost("Categories/Link")]
