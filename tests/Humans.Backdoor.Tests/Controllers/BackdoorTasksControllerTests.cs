@@ -106,11 +106,18 @@ public sealed class BackdoorTasksControllerTests
     }
 
     [HumansFact]
-    public async Task Bulk_AnUnknownTeamIsLeftToTasksToReport()
+    public async Task Bulk_AnUnknownTeamIsAnsweredExactlyAsATeamTheOwnerCannotManage()
     {
-        await _sut.Bulk(Payload(false, "nowhere"));
+        var unknown = await _sut.Bulk(Payload(false, "nowhere"));
+        var unmanaged = await _sut.Bulk(Payload(false, "art"));
 
-        await _tasks.Received(1).BulkLoadAsync(Arg.Any<BulkLoadRequest>(), KeyOwnerId, Arg.Any<CancellationToken>());
+        var unknownBody = unknown.Should().BeOfType<ObjectResult>().Which;
+        var unmanagedBody = unmanaged.Should().BeOfType<ObjectResult>().Which;
+        unknownBody.StatusCode.Should().Be(StatusCodes.Status403Forbidden);
+        unmanagedBody.StatusCode.Should().Be(StatusCodes.Status403Forbidden);
+        JsonSerializer.Serialize(unknownBody.Value).Replace("nowhere", "art", StringComparison.Ordinal)
+            .Should().Be(JsonSerializer.Serialize(unmanagedBody.Value));
+        await _tasks.DidNotReceiveWithAnyArgs().BulkLoadAsync(default!, default, default);
     }
 
     [HumansFact]

@@ -68,7 +68,7 @@ The machine surface. Every key-authed API an agent talks to lives here, under `/
 | `/api/backdoor/finance/sepa-transfers` | read | Every generated SEPA transfer with its booking state, via `GetSepaTransfersAsync` |
 | `/api/backdoor/finance/expense-recon?year=` | read | `/Finance/ExpenseRecon` as JSON — totals, lines, orphans, members with open transfers — via `IFinanceService.GetExpenseReconAsync`. Finance admins only; carries no IBAN field. The controller orders lines by problem/status/newest date, orphans newest-first, and members warning-first then ordinal name ignoring case |
 | `/api/backdoor/finance/holded-sync` | read | Holded's purchase-document sync state (`IHoldedService.GetPurchaseDocumentsAsync`) plus the docs Finance could not attribute (`IFinanceService.GetUnmatchedAsync`); no creditor-binding count |
-| `/api/backdoor/tasks/bulk` | write | `POST`: loads a whole set of tasks, or checks it with `dryRun`, via `ITasksWrite.BulkLoadAsync`. The key owner needs `Tasks.Manage` on every team the payload names (403 otherwise, nothing loaded). Every problem in the payload comes back at once as 422; nothing is created unless there are none. Loading a payload twice creates the tasks twice. Shape and rules: Tasks' `Docs/Tasks.md` |
+| `/api/backdoor/tasks/bulk` | write | `POST`: loads a whole set of tasks, or checks it with `dryRun`, via `ITasksWrite.BulkLoadAsync`. The key owner needs `Tasks.Manage` on every team the payload names (403 otherwise, nothing loaded; a team that does not exist gets the same 403). Every problem in the payload comes back at once as 422; nothing is created unless there are none. Loading a payload twice creates the tasks twice. Shape and rules: Tasks' `Docs/Tasks.md` |
 | `/api/backdoor/notifications` | read | The key owner's unread notifications, newest first, and the live meters their roles unlock, via `INotificationInboxRead`. Polling marks nothing read |
 | `/Backdoor` | Admin UI | Allocate, rotate and revoke keys |
 
@@ -124,7 +124,7 @@ Authentication is the `X-Api-Key` header on every `/api/backdoor/*` request. The
 ## Negative Access Rules
 
 - A caller with no `X-Api-Key` header **cannot** reach any endpoint — 401.
-- A key whose owner lacks `Tasks.Manage` on any one team in a bulk-load payload **cannot** load any of it — 403 naming those teams; the payload is not checked further and nothing is created.
+- A key whose owner lacks `Tasks.Manage` on any one team in a bulk-load payload **cannot** load any of it — 403 naming those teams, and a reference that matches no team is named the same way, so the answer never tells an unknown team from an unmanaged one; the payload is not checked further and nothing is created.
 - A caller with an unknown or revoked key **cannot** reach any endpoint — 401, deliberately indistinguishable from the above. There is no "server not configured" status: keys are rows, not environment variables.
 - An admin **cannot** recover a key's plaintext after issue, their own included.
 - A former Admin or Board member **cannot** keep using a key issued while they held the role — 401 from the next request on.

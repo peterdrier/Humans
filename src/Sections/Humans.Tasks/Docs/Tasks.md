@@ -40,7 +40,7 @@ Pieces of work with an end, hanging on a team. A task is to a role (standing res
 - All or nothing. The whole payload is planned first and every problem is returned (`BulkLoadProblem`: position, key, field, message). Only when there are none are the tasks and links saved, in one repository transaction (`ITaskRepository.AddManyAsync`). A dry run stops before saving and answers without ids.
 - Loading the same payload twice creates the tasks twice: there is no identity beyond the key, and the key means nothing outside one payload.
 - Audited like normal creates: a `TaskCreated` row per task (its text ends "by bulk load") and a `TaskDependencyAdded` row per link. A refused payload is logged at Warning once and writes no audit rows.
-- Auth-free, like the rest of the service. The only caller is Backdoor's `BackdoorTasksController`, which checks `Tasks.Manage` on every team the payload names (`IPermissionService`, teams found by slug or id through `ITeamService`) before calling. A team reference that matches nothing is left to Tasks to report.
+- Auth-free, like the rest of the service. The only caller is Backdoor's `BackdoorTasksController`, which checks `Tasks.Manage` on every team the payload names (`IPermissionService`, teams found by slug or id through `ITeamService`) before calling. A team reference that matches nothing gets the same 403 as a team the caller does not manage, so a key never learns whether a team exists; Tasks still refuses an unknown team for any other caller.
 
 ## Data Model
 
@@ -86,7 +86,7 @@ Pieces of work with an end, hanging on a team. A task is to a role (standing res
 
 - A member **cannot** see a hidden task, or any task of a hidden team, unless they manage its team, are confirmed on it, or are TasksAdmin, Board or Admin. `/Tasks/{id}` answers 404.
 - A member **cannot** create, edit, assign, unassign, link, hide, cancel or delete tasks without `Tasks.Manage` on the task's team.
-- A key holder **cannot** bulk-load a payload that names a team where they lack `Tasks.Manage`: 403, and nothing is checked or created, even for the other teams.
+- A key holder **cannot** bulk-load a payload that names a team where they lack `Tasks.Manage`, or a team that does not exist: the same 403 for both, and nothing is checked or created, even for the other teams.
 - A bulk load **cannot** put people or a status on a task, or link to a task outside the payload.
 - A manager **cannot** touch tasks of a parent or sibling team, and **cannot** move a task to a team they do not manage.
 - A person confirmed on a task **cannot** cancel it, edit it, or change who is on it.

@@ -57,8 +57,8 @@ internal sealed class BackdoorTasksController(
     }
 
     /// <summary>
-    /// The team references the owner may not manage. A reference that matches no team is left to Tasks to report, so
-    /// a typo is a list of problems rather than a refusal.
+    /// The team references the owner may not manage. A reference that matches no team is answered the same way, so a
+    /// key never learns whether a team it cannot manage exists, hidden teams included.
     /// </summary>
     private async Task<List<string>> TeamsWithoutManageAsync(ApiBulkTasksModel model, Guid actorUserId, CancellationToken ct)
     {
@@ -67,7 +67,7 @@ internal sealed class BackdoorTasksController(
         {
             var team = await teams.GetTeamBySlugAsync(reference!, ct)
                 ?? (Guid.TryParse(reference, out var id) ? await teams.GetTeamAsync(id, ct) : null);
-            if (team is not null && !await permissions.HasAsync(actorUserId, TasksPermissions.Manage, new(TeamOwner.Kind, team.Id), ct))
+            if (team is null || !await permissions.HasAsync(actorUserId, TasksPermissions.Manage, new(TeamOwner.Kind, team.Id), ct))
                 denied.Add(reference!);
         }
 
@@ -87,12 +87,12 @@ internal sealed class ApiBulkTasksModel
 internal sealed class ApiBulkTaskModel
 {
     /// <summary>Means something only inside the payload.</summary>
-    public string Key { get; set; } = string.Empty;
+    public string? Key { get; set; }
 
     /// <summary>The team's slug, custom slug or id.</summary>
-    public string Team { get; set; } = string.Empty;
+    public string? Team { get; set; }
 
-    public string Title { get; set; } = string.Empty;
+    public string? Title { get; set; }
 
     public string? Description { get; set; }
 
@@ -118,7 +118,7 @@ internal sealed class ApiBulkTaskModel
     public List<string>? DependsOn { get; set; }
 
     public BulkLoadTask ToTask() => new(
-        Key, Team, Title, Description, EventId, Start?.ToDate(), Due?.ToDate(),
+        Key ?? string.Empty, Team ?? string.Empty, Title ?? string.Empty, Description, EventId, Start?.ToDate(), Due?.ToDate(),
         Priority, SlotCount, NeedsApproval, ApprovalReason, IsHidden, DependsOn);
 }
 
