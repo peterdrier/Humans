@@ -97,7 +97,6 @@ public sealed record CampInfo(
 public sealed record CampSeasonInfo(
     Guid Id,
     Guid CampId,
-    string CampSlug,
     int Year,
     LocalDate? NameLockDate,
     string Name,
@@ -176,7 +175,6 @@ public sealed record CampSeasonMemberInfo(
     Guid UserId,
     CampMemberStatus Status,
     Instant RequestedAt,
-    Instant? ConfirmedAt,
     bool HasEarlyEntry)
 {
     /// <summary>Active role names and priorities; callers choose display order.</summary>

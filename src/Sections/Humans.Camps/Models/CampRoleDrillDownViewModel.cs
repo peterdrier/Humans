@@ -17,10 +17,8 @@ internal sealed class CampRoleDrillDownViewModel
 }
 
 internal sealed record CampRoleDrillDownCampRowViewModel(
-    Guid CampId,
     string CampName,
     string CampSlug,
-    Guid CampSeasonId,
     IReadOnlyList<CampRoleDrillDownAssigneeViewModel> Assignees);
 
 internal sealed record CampRoleDrillDownAssigneeViewModel(

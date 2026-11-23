@@ -83,7 +83,6 @@ internal sealed class WorkloadService(
                 return new WorkloadByRotaRow(
                     RotaId: rota.Id,
                     RotaName: rota.Name,
-                    TeamId: rota.TeamId,
                     TeamName: teamName,
                     ShiftCount: g.Count(),
                     PlannedSlots: totals.PlannedSlots,

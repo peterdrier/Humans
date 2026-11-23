@@ -174,10 +174,8 @@ internal sealed class TicketsSalesAdminController(
         new(BackendsForDisplay, await checkout.GetSalesEventsAsync(ct), await settings.GetAllEventSettingsAsync(ct), null);
 
     private async Task<SalesEditViewModel> EditModelAsync(SalesEditForm form, string? error, CancellationToken ct) =>
-        new(form, error, await settings.GetAllEventSettingsAsync(ct),
-            (await grants.GetProgramSummariesAsync(ct)).OrderByDescending(p => p.Year)
-                .ThenBy(p => p.Name, StringComparer.Ordinal).ToList(),
-            BackendsForDisplay, orgTimeZone.Zone);
+        new(form, error, await settings.GetAllEventSettingsAsync(ct), await grants.GetProgramSummariesAsync(ct), BackendsForDisplay,
+            orgTimeZone.Zone);
 }
 
 internal sealed record SalesAdminIndexViewModel(

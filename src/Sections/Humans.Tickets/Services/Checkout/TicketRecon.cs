@@ -96,8 +96,6 @@ internal sealed record TicketReconRow(
 /// </summary>
 internal sealed record TicketRecon(
     string BackendKey,
-    Instant From,
-    Instant To,
     TicketReconTotals Humans,
     TicketReconTotals Backend,
     int TicketsIssued,
@@ -202,8 +200,6 @@ internal static class TicketReconBuilder
         var paidHere = inPeriod.Where(o => o.State == TicketCheckoutOrderState.Paid && taken.Contains(o.Id)).ToList();
         return new TicketRecon(
             backendKey,
-            from,
-            to,
             new TicketReconTotals(
                 paidHere.Count,
                 paidHere.Sum(TicketLines),
@@ -220,7 +216,7 @@ internal static class TicketReconBuilder
     public static TicketRecon Unreadable(string backendKey, Instant from, Instant to, string error)
     {
         var none = new TicketReconTotals(0, 0, 0, 0, 0);
-        return new TicketRecon(backendKey, from, to, none, none, 0, [], [], error);
+        return new TicketRecon(backendKey, none, none, 0, [], [], error);
     }
 
     /// <summary>A backend that cannot count tickets is given Humans' count for the order, so it never reads as a gap.</summary>

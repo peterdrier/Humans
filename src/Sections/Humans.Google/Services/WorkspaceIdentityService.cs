@@ -141,7 +141,7 @@ internal sealed class WorkspaceIdentityService(
         var status = row is not null
             ? (row.Email is not null && Same(row.Email, chosen.Email) ? row.Status : GoogleEmailStatus.Unknown)
             : GoogleEmailStatus.Unknown;
-        return new WorkspaceIdentity(info.Id, chosen.Email, status);
+        return new WorkspaceIdentity(chosen.Email, status);
     }
 
     private static bool Same(string a, string b) => string.Equals(a, b, StringComparison.OrdinalIgnoreCase);

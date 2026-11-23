@@ -576,15 +576,13 @@ internal sealed partial class LegalDocumentSyncService(
                 return new AdminLegalDocumentListItem(
                     d.Id,
                     d.Name,
-                    d.TeamId,
                     teamName,
                     d.IsRequired,
                     d.IsActive,
                     d.GracePeriodDays,
                     d.GitHubFolderPath,
                     currentVersion?.VersionNumber,
-                    lastSyncedAt,
-                    d.Versions.Count);
+                    lastSyncedAt);
             })
             .ToList();
     }
@@ -617,12 +615,9 @@ internal sealed partial class LegalDocumentSyncService(
                 .Select(v => new AdminLegalDocumentVersionDetail(
                     v.Id,
                     v.VersionNumber,
-                    v.CommitSha,
                     v.EffectiveFrom,
-                    v.CreatedAt,
                     v.ChangesSummary,
                     v.RequiresReConsent,
-                    v.Content.Count,
                     v.Content.Keys.ToList()))
                 .ToList());
     }
@@ -663,26 +658,19 @@ internal sealed partial class LegalDocumentSyncService(
         var version = CurrentVersionAt(document, now);
         return version is null ? null : new(
             version.Id,
-            version.LegalDocumentId,
             document.Name,
             document.GracePeriodDays,
-            version.VersionNumber,
-            version.EffectiveFrom,
-            version.RequiresReConsent,
-            version.ChangesSummary);
+            version.EffectiveFrom);
     }
 
     private static LegalDocumentVersionSnapshot ToVersionSnapshot(DocumentVersion version) =>
         new(
             version.Id,
-            version.LegalDocumentId,
             version.LegalDocument.Name,
             version.LegalDocument.GracePeriodDays,
             version.VersionNumber,
             new Dictionary<string, string>(version.Content, StringComparer.Ordinal),
             version.EffectiveFrom,
-            version.RequiresReConsent,
-            version.CreatedAt,
             version.ChangesSummary);
 
     public async Task<int> GetActiveRequiredCountAsync(CancellationToken cancellationToken = default)

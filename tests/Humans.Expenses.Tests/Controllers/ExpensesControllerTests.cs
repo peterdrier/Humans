@@ -64,7 +64,7 @@ public sealed class ExpensesControllerTests
             UpdatedAt = default,
             Lines = [new ExpenseLineDto
             {
-                Id = lineId, ExpenseReportId = reportId, Description = "Invoice", Amount = 10m,
+                Id = lineId, Description = "Invoice", Amount = 10m,
                 LineType = ExpenseLineType.Invoice, SortOrder = 0
             }]
         });
@@ -472,7 +472,7 @@ public sealed class ExpensesControllerTests
             .Returns(new BudgetYearDetail(Guid.NewGuid(), "2026", "Current", BudgetYearStatus.Active, false, []));
         budget.GetYearByIdAsync(yearId, Arg.Any<CancellationToken>()).Returns(new BudgetYearDetail(yearId, "2025", "Old", BudgetYearStatus.Closed, false,
             [new BudgetGroupDetail(groupId, yearId, "Old group", 0, false, false, false, null,
-                [new BudgetCategoryDetail(categoryId, groupId, "Old category", 0, ExpenditureType.OpEx, null, 0, [])])]));
+                [new BudgetCategoryDetail(categoryId, "Old category", 0, ExpenditureType.OpEx, null, 0, [])])]));
         _teams.GetEffectiveBudgetCoordinatorTeamIdsAsync(actorId, Arg.Any<CancellationToken>()).Returns(new HashSet<Guid>());
         var localizer = Substitute.For<IStringLocalizer<ExpensesResource>>();
         localizer[Arg.Any<string>()].Returns(call => new LocalizedString(call.Arg<string>(), call.Arg<string>()));

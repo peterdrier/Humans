@@ -21,10 +21,7 @@ internal sealed record RankedPairwiseMatrix(IReadOnlyList<PairwiseContest> Conte
 
 internal sealed record RankedPairsLock(
     string Winner,
-    string Loser,
-    int Margin,
-    int WinningVotes,
-    bool Locked);
+    string Loser);
 
 internal sealed record RankedPairsResult(
     string? Winner,
@@ -180,10 +177,7 @@ internal static class RankedChoiceCounter
 
             locks.Add(new RankedPairsLock(
                 victory.Winner,
-                victory.Loser,
-                victory.Margin,
-                victory.WinningVotes,
-                locked));
+                victory.Loser));
         }
 
         var destinations = edges.Values.SelectMany(values => values).ToHashSet(StringComparer.Ordinal);

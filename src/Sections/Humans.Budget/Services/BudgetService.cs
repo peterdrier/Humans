@@ -415,8 +415,6 @@ internal sealed class BudgetService(
             group.TicketingProjection is null
                 ? null
                 : new TicketingProjectionSnapshot(
-                    group.TicketingProjection.Id,
-                    group.TicketingProjection.BudgetGroupId,
                     group.TicketingProjection.StartDate,
                     group.TicketingProjection.EventDate,
                     group.TicketingProjection.InitialSalesCount,
@@ -425,9 +423,7 @@ internal sealed class BudgetService(
                     group.TicketingProjection.VatRate,
                     group.TicketingProjection.StripeFeePercent,
                     group.TicketingProjection.StripeFeeFixed,
-                    group.TicketingProjection.TicketTailorFeePercent,
-                    group.TicketingProjection.CreatedAt,
-                    group.TicketingProjection.UpdatedAt),
+                    group.TicketingProjection.TicketTailorFeePercent),
             group.Categories
                 .Select(ToCategoryDetail)
                 .ToList());
@@ -435,7 +431,6 @@ internal sealed class BudgetService(
     internal static BudgetCategoryDetail ToCategoryDetail(BudgetCategory category) =>
         new(
             category.Id,
-            category.BudgetGroupId,
             category.Name,
             category.AllocatedAmount,
             category.ExpenditureType,
@@ -444,7 +439,6 @@ internal sealed class BudgetService(
             category.LineItems
                 .Select(item => new BudgetLineItemDetail(
                     item.Id,
-                    item.BudgetCategoryId,
                     item.Description,
                     item.Amount,
                     item.ResponsibleTeamId,
@@ -500,7 +494,6 @@ internal sealed class BudgetService(
             category.BudgetGroup is null
                 ? null
                 : new BudgetCategoryGroupSnapshot(
-                    category.BudgetGroup.Id,
                     category.BudgetGroup.BudgetYearId,
                     category.BudgetGroup.Name,
                     category.BudgetGroup.IsRestricted,
@@ -509,13 +502,11 @@ internal sealed class BudgetService(
                         ? null
                         : new BudgetCategoryYearSnapshot(
                             category.BudgetGroup.BudgetYear.Id,
-                            category.BudgetGroup.BudgetYear.Year,
                             category.BudgetGroup.BudgetYear.Name,
                             category.BudgetGroup.BudgetYear.IsDeleted)),
             category.LineItems
                 .Select(item => new BudgetCategoryLineItemSnapshot(
                     item.Id,
-                    item.BudgetCategoryId,
                     item.Description,
                     item.Amount,
                     item.ResponsibleTeamId,
@@ -535,10 +526,7 @@ internal sealed class BudgetService(
     {
         var entries = await repository.GetAuditLogAsync(budgetYearId, ct);
         return entries.Select(e => new BudgetAuditLogSnapshot(
-            e.Id,
-            e.BudgetYearId,
             e.EntityType,
-            e.EntityId,
             e.FieldName,
             e.OldValue,
             e.NewValue,

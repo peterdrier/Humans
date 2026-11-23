@@ -191,7 +191,7 @@ internal static class CalendarOccurrenceExpander
     private static CalendarOccurrence CreateOccurrence(CalendarEventInfo ev, string name,
         Instant? start, Instant? end, LocalDate? date, LocalDate? endDate, bool recurring) => new(
             ev.Id, start, end, ev.IsAllDay, ev.Title, ev.Description, ev.Location, ev.LocationUrl,
-            ev.OwningTeamId, name, recurring, recurring ? start : null,
+            name, recurring, recurring ? start : null,
             date, endDate, recurring ? date : null);
 
     private static bool OverlapsWindow(CalendarOccurrence o, Instant from, Instant to, LocalDate fromDate, LocalDate toDate) =>

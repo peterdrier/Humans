@@ -431,8 +431,6 @@ internal sealed partial class StripeService(
             if (!string.Equals(charge.Currency, "eur", StringComparison.OrdinalIgnoreCase))
                 throw new InvalidOperationException($"Stripe charge {charge.Id} does not declare EUR currency.");
             return new StoreChargeData(
-                charge.Id,
-                paymentIntentId,
                 FromStripeMinorUnits(charge.Amount),
                 Instant.FromDateTimeUtc(DateTime.SpecifyKind(charge.Created, DateTimeKind.Utc)));
         }

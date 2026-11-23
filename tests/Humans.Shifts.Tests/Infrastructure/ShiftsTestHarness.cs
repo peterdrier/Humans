@@ -34,7 +34,6 @@ public abstract class ShiftsTestHarness : IDisposable
 
     private protected DbContextOptions<UsersDbContext> DbOptions { get; }
     private protected UsersDbContext Db { get; }
-    private protected TestDbContextFactory<UsersDbContext> DbFactory { get; }
 
     // Every pair is built on first touch: eager construction gives each test its own EF
     // internal service provider, which alone pushed a 5s-budget test past its CI timeout.
@@ -62,7 +61,6 @@ public abstract class ShiftsTestHarness : IDisposable
             .ConfigureWarnings(w => w.Ignore(InMemoryEventId.TransactionIgnoredWarning))
             .Options;
         Db = new UsersDbContext(DbOptions);
-        DbFactory = new TestDbContextFactory<UsersDbContext>(DbOptions);
 
         _shiftsDb = RegisterSection<ShiftsDbContext>(o => new(o));
         _teamsDb = RegisterSection<TeamsDbContext>(o => new(o));

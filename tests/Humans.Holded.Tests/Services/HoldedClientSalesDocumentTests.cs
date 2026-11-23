@@ -178,8 +178,8 @@ public class HoldedClientSalesDocumentTests
 
         doc.Tax.Should().Be(10.50m);
         doc.Lines.Should().Equal(
-            new HoldedSalesDocumentLineDto("Ice", 10m, 5m, 21m),
-            new HoldedSalesDocumentLineDto("Ice — refundable deposit", 10m, 3m, 0m));
+            new HoldedSalesDocumentLineDto(10m, 5m, 21m),
+            new HoldedSalesDocumentLineDto(10m, 3m, 0m));
     }
 
     [HumansFact]

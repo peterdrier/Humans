@@ -96,5 +96,5 @@ public sealed class DriveFolderPathTests
 
     private void StubDriveName(string name) =>
         _drive.GetSharedDriveAsync(DriveId, Arg.Any<CancellationToken>())
-            .Returns(new SharedDriveMetadataResult(new SharedDriveMetadata(DriveId, name), null));
+            .Returns(new SharedDriveMetadataResult(new SharedDriveMetadata(name), null));
 }

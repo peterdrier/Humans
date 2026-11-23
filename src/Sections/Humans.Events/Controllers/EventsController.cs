@@ -71,7 +71,6 @@ internal sealed class EventsController(
                     Title = e.Title,
                     CategoryName = e.CategoryName,
                     StartAt = ToLocalDateTime(e.StartAt, tz),
-                    DurationMinutes = e.DurationMinutes,
                     Status = e.Status,
                     PriorityRank = e.PriorityRank,
                     CanEdit = e.CanEdit,
@@ -102,10 +101,8 @@ internal sealed class EventsController(
                 {
                     Id = e.Id,
                     Title = e.Title,
-                    VenueName = e.VenueName ?? "—",
                     CategoryName = e.CategoryName,
                     StartAt = ToLocalDateTime(e.StartAt, tz),
-                    DurationMinutes = e.DurationMinutes,
                     Status = e.Status,
                     CanEdit = e.CanEdit,
                     CanWithdraw = e.CanWithdraw

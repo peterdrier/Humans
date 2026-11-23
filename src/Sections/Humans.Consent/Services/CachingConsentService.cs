@@ -76,7 +76,7 @@ internal sealed class CachingConsentService(
                     ? v
                     : new HashSet<Guid>();
                 var frozen = new HashSet<Guid>(versions);
-                publish(userId, new UserConsentInfo(userId, frozen, UserIdsOf(userId)));
+                publish(userId, new UserConsentInfo(frozen, UserIdsOf(userId)));
                 result[userId] = frozen;
             }
         }
@@ -181,7 +181,7 @@ internal sealed class CachingConsentService(
         var versions = await WithInnerAsync(inner => inner.GetConsentedVersionIdsAsync(userId, ct));
 
         var frozen = new HashSet<Guid>(versions);
-        return new UserConsentInfo(userId, frozen, userIds);
+        return new UserConsentInfo(frozen, userIds);
     }
 
     private async Task<IReadOnlyList<Guid>> GetUserIdsAsync(Guid userId, CancellationToken ct) =>

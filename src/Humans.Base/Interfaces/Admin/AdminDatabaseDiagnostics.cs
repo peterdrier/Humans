@@ -40,7 +40,6 @@ public sealed record DatabaseServerSummary(
     string ServerVersion,
     string FullVersion,
     string DatabaseName,
-    long DatabaseBytes,
     string DatabaseSize,
     Instant ServerStartedAt,
     Instant? StatsResetAt,

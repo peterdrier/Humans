@@ -609,7 +609,7 @@ public class CampControllerTests
             Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), Arg.Any<IEnumerable<IAuthorizationRequirement>>())
             .Returns(AuthorizationResult.Success());
         _roles.BuildPanelAsync(season.Id, Arg.Any<CancellationToken>())
-            .Returns(new CampRolesPanelData(season.Id, []));
+            .Returns(new CampRolesPanelData([]));
         var controller = BuildController(userId);
         controller.HttpContext.RequestAborted = request.Token;
         Func<Task<IActionResult>> load = route switch
@@ -1402,7 +1402,7 @@ public class CampControllerTests
             .Returns(succeeded ? SetEarlyEntryOutcome.Success : SetEarlyEntryOutcome.SlotCapExceeded);
         var assignmentId = Guid.NewGuid();
         _roles.GetAssignmentByIdAsync(assignmentId, ct)
-            .Returns(new CampRoleAssignmentInfo(assignmentId, selected.Id, Guid.NewGuid(), member.Id));
+            .Returns(new CampRoleAssignmentInfo(selected.Id));
         _roles.UnassignAsync(assignmentId, actorId, ct).Returns(succeeded);
         var controller = BuildController(actorId);
 
@@ -1471,7 +1471,7 @@ public class CampControllerTests
         _authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(),
             Arg.Any<IEnumerable<IAuthorizationRequirement>>()).Returns(AuthorizationResult.Success());
         _roles.BuildPanelAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns(call => new CampRolesPanelData(call.ArgAt<Guid>(0), []));
+            .Returns(call => new CampRolesPanelData([]));
 
         var result = await BuildController(leadId).Members(camp.Slug, selected.EventSettingsId,
             TestContext.Current.CancellationToken);
@@ -1526,7 +1526,7 @@ public class CampControllerTests
                 Arg.Any<IEnumerable<IAuthorizationRequirement>>())
             .Returns(AuthorizationResult.Success());
         _roles.BuildPanelAsync(season.Id, Arg.Any<CancellationToken>())
-            .Returns(new CampRolesPanelData(season.Id, [
+            .Returns(new CampRolesPanelData([
                 new(new CampRoleDefinition { Id = Guid.NewGuid(), Name = "Zebra", SortOrder = 1 }, [
                     new CampRolesPanelSlot(Guid.NewGuid(), members[0].Id, zeroShiftMemberId)
                     { AssignedAt = earliest.Plus(Duration.FromDays(1)) },
@@ -1618,7 +1618,7 @@ public class CampControllerTests
         _users.GetUserInfoAsync(leadUserId, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(MakeUserInfo(leadUserId)));
         _roles.BuildPanelAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns(call => Task.FromResult(new CampRolesPanelData(call.ArgAt<Guid>(0), [])));
+            .Returns(call => Task.FromResult(new CampRolesPanelData([])));
         _authorization.AuthorizeAsync(
                 Arg.Any<ClaimsPrincipal>(),
                 Arg.Any<object?>(),
@@ -1646,7 +1646,7 @@ public class CampControllerTests
         _users.GetUserInfoAsync(leadUserId, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(MakeUserInfo(leadUserId)));
         _roles.BuildPanelAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns(call => Task.FromResult(new CampRolesPanelData(call.ArgAt<Guid>(0), [])));
+            .Returns(call => Task.FromResult(new CampRolesPanelData([])));
         // Succeed only for the loaded CampInfo resource — mirrors the real handler, which
         // sees the lead assignment on the camp itself but not through the id lookup.
         _authorization.AuthorizeAsync(
@@ -1690,7 +1690,7 @@ public class CampControllerTests
         _users.GetUserInfoAsync(leadUserId, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(MakeUserInfo(leadUserId)));
         _roles.BuildPanelAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns(call => Task.FromResult(new CampRolesPanelData(call.ArgAt<Guid>(0), [])));
+            .Returns(call => Task.FromResult(new CampRolesPanelData([])));
         // Succeed only for the slug-loaded camp — the year projection cannot answer the
         // lead check, exactly as the real handler behaves.
         _authorization.AuthorizeAsync(
@@ -1720,8 +1720,7 @@ public class CampControllerTests
         var memberUserId = Guid.NewGuid();
         var member = new CampSeasonMemberInfo(
             Guid.NewGuid(), memberUserId, CampMemberStatus.Active,
-            Instant.FromUtc(2026, 1, 1, 0, 0), Instant.FromUtc(2026, 1, 2, 0, 0),
-            HasEarlyEntry: true);
+            Instant.FromUtc(2026, 1, 1, 0, 0), HasEarlyEntry: true);
         var camp = MakeCamp("alpha", "Alpha Camp", CampSeasonStatus.Active, members: [member]) with
         {
             Images = [new(Guid.NewGuid(), "/later.jpg", 3), new(Guid.NewGuid(), "/cover.jpg", 1)],
@@ -1879,7 +1878,6 @@ public class CampControllerTests
         var season = new CampSeasonInfo(
             Guid.NewGuid(),
             campId,
-            slug,
             year,
             NameLockDate: null,
             name,
@@ -1918,7 +1916,6 @@ public class CampControllerTests
             Guid.NewGuid(),
             userId,
             CampMemberStatus.Active,
-            SystemClock.Instance.GetCurrentInstant(),
             SystemClock.Instance.GetCurrentInstant(),
             HasEarlyEntry: false);
 

@@ -115,7 +115,7 @@ internal sealed class MailerLiteClient(IHttpClientFactory httpFactory, IClock cl
     {
         await RequireHumansGroupAsync(groupId, ct);
         if (emails.Count == 0)
-            return new BulkImportResult(0, 0, 0, 0);
+            return new BulkImportResult(0, 0);
 
         // Per-email upsert is synchronous; ML's bulk import endpoint requires polling.
         int created = 0, errors = 0;
@@ -140,7 +140,7 @@ internal sealed class MailerLiteClient(IHttpClientFactory httpFactory, IClock cl
             created++;
         }
 
-        return new BulkImportResult(Created: created, Updated: 0, Duplicates: 0, Errors: errors);
+        return new BulkImportResult(Created: created, Errors: errors);
     }
 
     public async Task DeleteSubscriberAsync(string email, CancellationToken ct = default)

@@ -12,11 +12,7 @@ internal sealed record UserApplicationSnapshot(
     MembershipTier MembershipTier,
     Instant SubmittedAt,
     Instant? ResolvedAt,
-    LocalDate? TermExpiresAt,
-    string Motivation,
-    string? AdditionalInfo,
-    string? SignificantContribution,
-    string? RoleUnderstanding);
+    LocalDate? TermExpiresAt);
 
 internal sealed record SubmittedApplicationSnapshot(
     Guid Id,

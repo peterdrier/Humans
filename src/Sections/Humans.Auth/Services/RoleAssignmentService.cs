@@ -87,8 +87,7 @@ internal sealed class RoleAssignmentService(
             assignment.ValidTo,
             assignment.Notes,
             assignment.CreatedByUserId,
-            creator?.BurnerName,
-            assignment.CreatedAt);
+            creator?.BurnerName);
         }).ToList();
     }
 

@@ -121,7 +121,7 @@ public class CampAdminControllerTests
         camps.GetSettingsAsync(Arg.Any<CancellationToken>()).Returns(new CampSettingsInfo(2026, [2026]));
         var roles = Substitute.For<ICampRoleService>();
         CampRoleDefinitionInfo Definition(string name, int order, bool active) =>
-            new(Guid.NewGuid(), name, "", null, 1, 1, order, default, default,
+            new(Guid.NewGuid(), name, "", null, 1, 1, order,
                 active ? null : Instant.FromUtc(2026, 1, 1, 0, 0), CampSpecialRole.None);
         roles.ListDefinitionsAsync(true, Arg.Any<CancellationToken>()).Returns([
             Definition("Zebra", 1, true), Definition("Old Zebra", 1, false),
@@ -155,7 +155,7 @@ public class CampAdminControllerTests
         if (hasSeason)
             camp = camp with
             {
-                Seasons = [new CampSeasonInfo(Guid.NewGuid(), camp.Id, camp.Slug, 2026, null,
+                Seasons = [new CampSeasonInfo(Guid.NewGuid(), camp.Id, 2026, null,
                     "Camp name", "", "en", [], CampSeasonStatus.Active, YesNoMaybe.Yes, YesNoMaybe.Yes,
                     AdultPlayspacePolicy.No, 12, null, null, null, 0, null, null) { LeadUserIds = [leadId] }]
             };
@@ -689,7 +689,7 @@ public class CampAdminControllerTests
         }
         else
         {
-            var role = new CampRoleDefinitionInfo(Guid.NewGuid(), "Worker", "worker", null, 1, 1, 0, default, default, null, default);
+            var role = new CampRoleDefinitionInfo(Guid.NewGuid(), "Worker", "worker", null, 1, 1, 0, null, default);
             roles.GetDefinitionBySlugAsync("worker", ct).Returns(role);
             roles.BuildDrillDownAsync(role.Id, selected.EventSettingsId, ct).Returns(new CampRoleDrillDownData(role, selected, null, []));
             var result = await CreateController(camps, roles, users, Guid.NewGuid()).RolesDrillDown("worker", null, ct);

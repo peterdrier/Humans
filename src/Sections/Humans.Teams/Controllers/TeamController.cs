@@ -163,8 +163,6 @@ internal sealed class TeamController(
     {
         UserId = member.UserId,
         ChildTeamName = member.ChildTeamName,
-        ChildTeamSlug = member.ChildTeamSlug,
-        IsCoordinator = member.IsCoordinator,
         RoleTitle = member.RoleTitle
     };
 
@@ -185,7 +183,6 @@ internal sealed class TeamController(
     private static TeamMemberViewModel MapTeamMember(TeamPageMemberSummary member) => new()
     {
         UserId = member.UserId,
-        Role = member.Role,
         IsCoordinator = member.Role == TeamMemberRole.Coordinator
     };
 
@@ -245,11 +242,9 @@ internal sealed class TeamController(
         var membershipVMs = (await teamPageService.GetMyTeamMembershipsAsync(user.Id, ct))
             .Select(m => new MyTeamMembershipViewModel
             {
-                TeamId = m.TeamId,
                 TeamName = m.TeamName,
                 TeamSlug = m.TeamSlug,
                 IsSystemTeam = m.IsSystemTeam,
-                Role = m.Role,
                 IsCoordinator = m.Role == TeamMemberRole.Coordinator,
                 JoinedAt = m.JoinedAt.ToDateTimeUtc(),
                 CanLeave = m.CanLeave,
@@ -265,10 +260,8 @@ internal sealed class TeamController(
                 .Select(request => new TeamJoinRequestSummaryViewModel
                 {
                     Id = request.Id,
-                    TeamId = request.TeamId,
                     TeamName = request.TeamName ?? string.Empty,
                     TeamSlug = request.TeamSlug ?? string.Empty,
-                    Status = request.Status,
                     StatusBadgeClass = "bg-warning text-dark",
                     RequestedAt = request.RequestedAt.ToDateTimeUtc()
                 }).ToList()

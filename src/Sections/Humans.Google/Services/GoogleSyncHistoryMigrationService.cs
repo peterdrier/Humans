@@ -123,7 +123,6 @@ internal sealed class GoogleSyncHistoryMigrationService(
 
         return shown
             .Select(e => new GoogleSyncHistoryMovableRow(
-                e.Id,
                 e.OccurredAt,
                 e.Action,
                 names.TryGetValue(e.ResourceId, out var name) ? name : null,

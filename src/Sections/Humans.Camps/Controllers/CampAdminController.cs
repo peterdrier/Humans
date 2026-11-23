@@ -288,7 +288,7 @@ internal sealed class CampAdminController(
         var settings = await campService.GetSettingsAsync(ct);
         var year = settings.PublicYear;
         CampRoleDefinitionListRowViewModel MapRow(CampRoleDefinitionInfo d) =>
-            new(d.Id, d.Name, d.Slug, d.Description, d.SlotCount, d.MinimumRequired, d.SortOrder, d.IsActive,
+            new(d.Id, d.Name, d.Slug, d.Description, d.SlotCount, d.MinimumRequired, d.SortOrder,
                 string.IsNullOrWhiteSpace(d.Slug) ? null : campRoleService.BuildGroupKey(year, d.Slug));
         var active = defs.Where(d => d.IsActive).Select(MapRow).ToList();
         var deactivated = defs.Where(d => !d.IsActive).Select(MapRow).ToList();
@@ -337,8 +337,7 @@ internal sealed class CampAdminController(
             Camps = data.Rows
                 .OrderBy(r => r.CampName, StringComparer.OrdinalIgnoreCase)
                 .Select(r => new CampRoleDrillDownCampRowViewModel(
-                    r.CampId, r.CampName, r.CampSlug, r.CampSeasonId,
-                    r.Assignees
+                    r.CampName, r.CampSlug, r.Assignees
                         .OrderBy(a => a.AssignedAt)
                         .Select(a => new CampRoleDrillDownAssigneeViewModel(a.UserId))
                         .ToList()))

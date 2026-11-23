@@ -49,8 +49,8 @@ public class GateControllerClaimTests
         var userA = Guid.NewGuid();
         var userB = Guid.NewGuid();
 
-        _gate.GetPinStatusAsync(userA, Arg.Any<CancellationToken>()).Returns(new GatePinStatus(true, false));
-        _gate.GetPinStatusAsync(userB, Arg.Any<CancellationToken>()).Returns(new GatePinStatus(true, false));
+        _gate.GetPinStatusAsync(userA, Arg.Any<CancellationToken>()).Returns(new GatePinStatus(true));
+        _gate.GetPinStatusAsync(userB, Arg.Any<CancellationToken>()).Returns(new GatePinStatus(true));
         _users.GetUserInfoAsync(userA, Arg.Any<CancellationToken>()).Returns(MakeUserInfo(userA));
         _users.GetUserInfoAsync(userB, Arg.Any<CancellationToken>()).Returns(MakeUserInfo(userB));
         _gate.VerifyPinAsync(userA, Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(false);
@@ -75,7 +75,7 @@ public class GateControllerClaimTests
         var ct = TestContext.Current.CancellationToken;
         var bogus = Guid.NewGuid();
 
-        _gate.GetPinStatusAsync(bogus, Arg.Any<CancellationToken>()).Returns(new GatePinStatus(false, false));
+        _gate.GetPinStatusAsync(bogus, Arg.Any<CancellationToken>()).Returns(new GatePinStatus(false));
         _users.GetUserInfoAsync(bogus, Arg.Any<CancellationToken>()).Returns((UserInfo?)null);
 
         await _controller.ClaimPin(bogus, "1357", ct);
@@ -154,7 +154,7 @@ public class GateControllerClaimTests
         var ct = TestContext.Current.CancellationToken;
         var archived = Guid.NewGuid();
         var survivor = Guid.NewGuid();
-        _gate.GetPinStatusAsync(archived, Arg.Any<CancellationToken>()).Returns(new GatePinStatus(false, false));
+        _gate.GetPinStatusAsync(archived, Arg.Any<CancellationToken>()).Returns(new GatePinStatus(false));
         _users.GetUserInfoAsync(archived, Arg.Any<CancellationToken>()).Returns(MakeUserInfo(survivor));
 
         var pin = await _controller.ClaimPin(archived, "1357", ct);

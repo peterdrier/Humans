@@ -870,7 +870,6 @@ internal sealed class ShiftManagementService(
             .Select(t => new DepartmentCoveragePie(
                 TeamId: t.Id,
                 TeamName: t.Name,
-                TeamSlug: t.Slug,
                 IsSubTeam: t.ParentTeamId is not null,
                 ParentTeamId: t.ParentTeamId,
                 ParentTeamName: t.ParentTeamId is { } pid && teamLookup.TryGetValue(pid, out var parent)
@@ -1261,7 +1260,6 @@ internal sealed class ShiftManagementService(
                 : team.Name;
 
             rows.Add(new CoverageHeatmapRotaRow(
-                team.Id,
                 team.Name,
                 departmentName,
                 cells));
@@ -1475,7 +1473,6 @@ internal sealed class ShiftManagementService(
 
         var departments = deptBuckets
             .Select(kvp => new PostEventDepartmentRow(
-                DepartmentId: kvp.Key,
                 DepartmentName: DeptNameOf(kvp.Key),
                 DepartmentSlug: DeptSlugOf(kvp.Key),
                 TotalConfirmed: kvp.Value.Values.Sum(v => v.Confirmed),
@@ -1713,7 +1710,7 @@ internal sealed class ShiftManagementService(
 
         return departmentIds
             .Select(id => teams[id])
-            .Select(t => new ShiftSummaryTeamLink(t.Id, t.Name, t.Slug))
+            .Select(t => new ShiftSummaryTeamLink(t.Name, t.Slug))
             .ToList();
     }
 

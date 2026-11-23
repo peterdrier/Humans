@@ -9,7 +9,6 @@ public sealed record TicketAttendeeInfo(
     string? AttendeeName,
     string? AttendeeEmail,
     string? TicketTypeName,
-    decimal Price,
     TicketAttendeeStatus Status,
     Guid? MatchedUserId,
     string? Barcode = null,
@@ -23,12 +22,8 @@ public sealed record TicketAttendeeInfo(
 /// </summary>
 public sealed record TicketOrderInfo(
     Guid Id,
-    string VendorOrderId,
-    string? BuyerName,
     string? BuyerEmail,
     decimal TotalAmount,
-    string Currency,
-    string? DiscountCode,
     TicketPaymentStatus PaymentStatus,
     string VendorEventId,
     Instant PurchasedAt,

@@ -91,8 +91,8 @@ public class GoogleAdminServiceTests
             _workspaceIdentities.GetWorkspaceIdentitiesAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
                 .Returns(new Dictionary<Guid, WorkspaceIdentity>
                 {
-                    [first] = new(first, "first@nobodies.team", GoogleEmailStatus.Valid),
-                    [second] = new(second, "second@nobodies.team", GoogleEmailStatus.Valid),
+                    [first] = new("first@nobodies.team", GoogleEmailStatus.Valid),
+                    [second] = new("second@nobodies.team", GoogleEmailStatus.Valid),
                 });
             _teamService.GetUserTeamMembershipsAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns([]);
             _workspaceUserService.GetAccountAsync("first@nobodies.team", Arg.Any<CancellationToken>()).ThrowsAsync(failure);

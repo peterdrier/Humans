@@ -471,5 +471,5 @@ internal sealed class RoleService(
         role.IsPublic,
         role.IsCoordinator,
         [.. role.PermissionKeys],
-        role.Assignments.OrderBy(a => a.Slot).Select(a => new RoleHolder(a.UserId, a.Slot, a.AssignedAt)).ToList());
+        role.Assignments.OrderBy(a => a.Slot).Select(a => new RoleHolder(a.UserId, a.Slot)).ToList());
 }

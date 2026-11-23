@@ -363,7 +363,7 @@ internal sealed class CampRoleService(
         bool includeDeactivated, CancellationToken cancellationToken)
     {
         var definitions = await ListDefinitionsAsync(includeDeactivated, cancellationToken);
-        return definitions.Select(d => new CampRoleDefinitionSeedInfo(d.Id, d.Slug, d.Name)).ToList();
+        return definitions.Select(d => new CampRoleDefinitionSeedInfo(d.Name)).ToList();
     }
 
     /// <inheritdoc />
@@ -413,8 +413,6 @@ internal sealed class CampRoleService(
             definition.SlotCount,
             definition.MinimumRequired,
             definition.SortOrder,
-            definition.CreatedAt,
-            definition.UpdatedAt,
             definition.DeactivatedAt,
             definition.SpecialRole);
 
@@ -440,7 +438,7 @@ internal sealed class CampRoleService(
             return new CampRolesPanelRow(def, filled, empty, overCapacity, current);
         }).ToList();
 
-        return new CampRolesPanelData(campSeasonId, rows);
+        return new CampRolesPanelData(rows);
     }
 
     public async Task<CampRoleAssignmentInfo?> GetAssignmentByIdAsync(Guid assignmentId, CancellationToken ct = default)
@@ -449,10 +447,7 @@ internal sealed class CampRoleService(
         return assignment is null
             ? null
             : new CampRoleAssignmentInfo(
-                assignment.Id,
-                assignment.CampSeasonId,
-                assignment.CampRoleDefinitionId,
-                assignment.CampMemberId);
+                assignment.CampSeasonId);
     }
 
     public async Task<IReadOnlyDictionary<Guid, IReadOnlyList<CampDirectoryRoleSummary>>>
@@ -556,12 +551,12 @@ internal sealed class CampRoleService(
                         // The member's Google Workspace identity (Google); null without a verified address.
                         var googleEmail = identitiesByUserId.TryGetValue(userId, out var identity) ? identity.Email : null;
 
-                        return new CampRoleDrillDownAssignee(userId, googleEmail, a.AssignedAt);
+                        return new CampRoleDrillDownAssignee(userId, a.AssignedAt);
                     }).ToList()
                     : new List<CampRoleDrillDownAssignee>();
 
                 return new CampRoleDrillDownCampRow(
-                    s.CampId, s.CampName, s.CampSlug, s.CampSeasonId, assignees);
+                    s.CampName, s.CampSlug, assignees);
             })
             .ToList();
 

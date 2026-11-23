@@ -412,7 +412,6 @@ internal sealed class CampController(
 
         var activeMembers = activeMemberRows
             .Select(m => new CampMemberPickerOption(
-                m.Id,
                 m.UserId,
                 users.TryGetValue(m.UserId, out var u) ? u.BurnerName : campsLocalizer["Camps_Flash_UnknownHuman"].Value))
             .OrderBy(o => o.DisplayName, StringComparer.OrdinalIgnoreCase)
@@ -429,7 +428,7 @@ internal sealed class CampController(
                 MinimumRequired = r.Definition.MinimumRequired,
                 FilledSlots = r.FilledSlots
                 .OrderBy(s => s.AssignedAt)
-                .Select(s => new CampRoleSlotViewModel(s.AssignmentId, s.CampMemberId, s.UserId))
+                .Select(s => new CampRoleSlotViewModel(s.AssignmentId, s.UserId))
                 .ToList(),
                 EmptySlotCount = r.EmptySlotCount,
                 OverCapacity = r.OverCapacity,
@@ -440,7 +439,6 @@ internal sealed class CampController(
         return new CampRolesPanelViewModel
         {
             CampSeasonId = season.Id,
-            CampSlug = campSlug,
             CanManage = canManage,
             ActiveMembers = activeMembers,
             Rows = rows,
@@ -1190,10 +1188,8 @@ internal sealed class CampController(
                 Id = season.Id,
                 Year = season.Year,
                 EventSettingsId = season.EventSettingsId,
-                Name = season.Name,
                 Status = season.Status,
                 BlurbLong = season.BlurbLong,
-                BlurbShort = season.BlurbShort,
                 Languages = season.Languages,
                 AcceptingMembers = season.AcceptingMembers,
                 KidsWelcome = season.KidsWelcome,
@@ -1206,8 +1202,7 @@ internal sealed class CampController(
                 MemberCount = season.MemberCount,
                 SpaceRequirement = season.SpaceRequirement,
                 SoundZone = season.SoundZone,
-                ElectricalGrid = season.ElectricalGrid,
-                IsNameLocked = season.IsNameLocked(today)
+                ElectricalGrid = season.ElectricalGrid
             },
             ActiveEventSettingsId = activeEventSettingsId,
             IsCurrentUserLead = isLead,

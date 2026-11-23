@@ -133,7 +133,7 @@ public class CatalogAccountsTests
     }
 
     private static HoldedChartAccountInfo Account(int number, string name, bool archived = false) =>
-        new(number, name, null, null, archived, 0m);
+        new(number, name, null, archived, 0m);
 
     private static Product MakeProduct(string name, int? income = null) => new()
     {

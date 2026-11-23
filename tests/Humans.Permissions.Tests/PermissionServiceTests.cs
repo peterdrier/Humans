@@ -118,9 +118,9 @@ public sealed class PermissionServiceTests
             roles.GetActiveForUserAsync(_userId, Arg.Any<CancellationToken>()).Returns([]);
 
         if (string.Equals(parts[0], "coordinator", StringComparison.Ordinal))
-            holdings.Add(new Holding(new Owner(Team, Id(parts[1])), IsCoordinator: true, [], "coordinator"));
+            holdings.Add(new Holding(new Owner(Team, Id(parts[1])), IsCoordinator: true, []));
         else if (parts[0].Contains('.', StringComparison.Ordinal))
-            holdings.Add(new Holding(new Owner(Team, Id(parts[1])), IsCoordinator: false, [parts[0]], "narrow role"));
+            holdings.Add(new Holding(new Owner(Team, Id(parts[1])), IsCoordinator: false, [parts[0]]));
 
         return new PermissionService(
             [new Declares(ShiftsManage, TeamsManage, BudgetEdit)],

@@ -39,7 +39,7 @@ public sealed class EventsModerationControllerTests
         {
             _guide.GetGuideSettingsAsync(Arg.Any<CancellationToken>()).Returns(new EventGuideSettingsView(
                 Guid.NewGuid(), settings.Id, Instant.MinValue, Instant.MaxValue, Instant.MaxValue, 100,
-                settings.TimeZoneId, Instant.MinValue, Instant.MinValue));
+                settings.TimeZoneId));
             _guide.GetEventSettingsByIdAsync(settings.Id, Arg.Any<CancellationToken>()).Returns(settings);
         }
         _guide.GetEventsByStatusAsync(EventStatus.Pending, Arg.Any<CancellationToken>()).Returns([pending]);
@@ -97,7 +97,7 @@ public sealed class EventsModerationControllerTests
         _guide.GetEventForModerationAsync(guideEvent.Id, Arg.Any<CancellationToken>()).Returns(guideEvent);
         _guide.GetGuideSettingsAsync(Arg.Any<CancellationToken>()).Returns(new EventGuideSettingsView(
             Guid.NewGuid(), settingsId, Instant.MinValue, Instant.MaxValue, Instant.MaxValue, 100,
-            "Europe/Madrid", Instant.MinValue, Instant.MinValue));
+            "Europe/Madrid"));
         _guide.GetEventSettingsByIdAsync(settingsId, Arg.Any<CancellationToken>()).Returns(new EventSettingsInfo(
             settingsId, "Burn", 2026, "Europe/Madrid", new LocalDate(2026, 8, 1),
             0, 2, 2, new Dictionary<int, int>(), null, null));
@@ -257,15 +257,14 @@ public sealed class EventsModerationControllerTests
         var pending = new EventInfo(
             Guid.NewGuid(), Guid.NewGuid(), null, submitterId, Guid.NewGuid(), "Music", "music", false, null,
             "Pending event", "Description", null, null, Instant.FromUtc(2026, 8, 1, 18, 0), 60,
-            false, null, null, EventStatus.Pending, Instant.FromUtc(2026, 7, 1, 0, 0), Instant.FromUtc(2026, 7, 1, 0, 0),
-            [
+            false, null, null, EventStatus.Pending, Instant.FromUtc(2026, 7, 1, 0, 0), [
                 new EventModerationHistoryInfo(moderatorId, EventModerationActionType.ResubmitRequested, "Fix the time", Instant.FromUtc(2026, 7, 2, 0, 0)),
                 new EventModerationHistoryInfo(laterModeratorId, EventModerationActionType.Approved, null, Instant.FromUtc(2026, 7, 3, 0, 0)),
             ]);
         var settings = BurnFixtures.Burn(year: 2026);
         _guide.GetGuideSettingsAsync(Arg.Any<CancellationToken>()).Returns(new EventGuideSettingsView(
             Guid.NewGuid(), settings.Id, Instant.MinValue, Instant.MaxValue, Instant.MaxValue, 100,
-            settings.TimeZoneId, Instant.MinValue, Instant.MinValue));
+            settings.TimeZoneId));
         _guide.GetEventSettingsByIdAsync(settings.Id, Arg.Any<CancellationToken>()).Returns(settings);
         _camps.GetCampsForEventAsync(settings.Id, Arg.Any<CancellationToken>()).Returns(Array.Empty<CampInfo>());
         _guide.GetEventStatusCountsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<EventStatus, int>());
@@ -308,7 +307,7 @@ public sealed class EventsModerationControllerTests
         _guide.GetEventForModerationAsync(guideEvent.Id, Arg.Any<CancellationToken>()).Returns(guideEvent);
         _guide.GetGuideSettingsAsync(Arg.Any<CancellationToken>()).Returns(new EventGuideSettingsView(
             Guid.NewGuid(), settings.Id, Instant.MinValue, Instant.MaxValue, Instant.MaxValue, 100,
-            settings.TimeZoneId, Instant.MinValue, Instant.MinValue));
+            settings.TimeZoneId));
         _guide.GetEventSettingsByIdAsync(settings.Id, Arg.Any<CancellationToken>()).Returns(settings);
         _guide.GetActiveCategoriesAsync(Arg.Any<CancellationToken>()).Returns(Array.Empty<EventCategoryView>());
         _guide.GetCategoryAsync(categoryId, Arg.Any<CancellationToken>())
@@ -400,7 +399,7 @@ public sealed class EventsModerationControllerTests
         {
             Read("guide settings", call.Arg<CancellationToken>());
             return new EventGuideSettingsView(Guid.NewGuid(), settings.Id, Instant.MinValue, Instant.MaxValue,
-                Instant.MaxValue, 100, settings.TimeZoneId, Instant.MinValue, Instant.MinValue);
+                Instant.MaxValue, 100, settings.TimeZoneId);
         });
         _guide.GetEventSettingsByIdAsync(settings.Id, Arg.Any<CancellationToken>()).Returns(call =>
         {
@@ -486,7 +485,7 @@ public sealed class EventsModerationControllerTests
         _guide.GetEventForModerationAsync(entry.Id, Arg.Any<CancellationToken>()).Returns(entry);
         _guide.GetGuideSettingsAsync(Arg.Any<CancellationToken>()).Returns(new EventGuideSettingsView(
             Guid.NewGuid(), current.Id, Instant.MinValue, Instant.MaxValue, Instant.MaxValue, 100,
-            current.TimeZoneId, Instant.MinValue, Instant.MinValue));
+            current.TimeZoneId));
         _guide.GetEventSettingsByIdAsync(current.Id, Arg.Any<CancellationToken>()).Returns(current);
         _guide.GetEventSettingsByIdAsync(original.Id, Arg.Any<CancellationToken>()).Returns(original);
         _guide.GetActiveCategoriesAsync(Arg.Any<CancellationToken>()).Returns([]);
@@ -540,7 +539,7 @@ public sealed class EventsModerationControllerTests
         _guide.GetEventForModerationAsync(entry.Id, Arg.Any<CancellationToken>()).Returns(entry);
         _guide.GetGuideSettingsAsync(Arg.Any<CancellationToken>()).Returns(new EventGuideSettingsView(
             Guid.NewGuid(), current.Id, Instant.MinValue, Instant.MaxValue, Instant.MaxValue, 100,
-            current.TimeZoneId, Instant.MinValue, Instant.MinValue));
+            current.TimeZoneId));
         _guide.GetEventSettingsByIdAsync(current.Id, Arg.Any<CancellationToken>()).Returns(current);
         _guide.GetEventSettingsByIdAsync(original.Id, Arg.Any<CancellationToken>()).Returns(original);
         _camps.GetCampsForEventAsync(current.Id, Arg.Any<CancellationToken>()).Returns([]);
@@ -583,7 +582,7 @@ public sealed class EventsModerationControllerTests
         Guid.NewGuid(), campId, campId == null ? Guid.NewGuid() : null, Guid.NewGuid(), Guid.NewGuid(),
         "Music", "music", false, null, "Test Event", "Description", null, null,
         Instant.FromUtc(2026, 8, 1, 18, 0), 60, false, null, null, status,
-        Instant.FromUtc(2026, 7, 1, 0, 0), Instant.FromUtc(2026, 7, 1, 0, 0), []);
+        Instant.FromUtc(2026, 7, 1, 0, 0), []);
 
     private static UserInfo UserInfoFor(Guid userId) => UserInfo.Create(
         new User { Id = userId, DisplayName = "Moderator", PreferredLanguage = "en", CreatedAt = Instant.MinValue, BurnerName = "Moderator", FirstName = "Mod", LastName = "Erator" },

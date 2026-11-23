@@ -15,13 +15,13 @@ public class ShiftBrowsePageBuilderPieSortTests
         var mangoId = Guid.NewGuid();
         var pies = new List<DepartmentCoveragePie>
         {
-            new(Guid.NewGuid(), "Apple Slice", "apple-slice",
+            new(Guid.NewGuid(), "Apple Slice",
                 IsSubTeam: true, ParentTeamId: mangoId, ParentTeamName: "Mango",
                 RequestedHours: 4m, FilledHours: 0m),
-            new(Guid.NewGuid(), "Banana", "banana",
+            new(Guid.NewGuid(), "Banana",
                 IsSubTeam: false, ParentTeamId: null, ParentTeamName: null,
                 RequestedHours: 4m, FilledHours: 0m),
-            new(mangoId, "Mango", "mango",
+            new(mangoId, "Mango",
                 IsSubTeam: false, ParentTeamId: null, ParentTeamName: null,
                 RequestedHours: 4m, FilledHours: 0m),
         };
@@ -38,13 +38,13 @@ public class ShiftBrowsePageBuilderPieSortTests
     {
         var pies = new List<DepartmentCoveragePie>
         {
-            new(Guid.NewGuid(), "Charlie", "charlie",
+            new(Guid.NewGuid(), "Charlie",
                 IsSubTeam: false, ParentTeamId: null, ParentTeamName: null,
                 RequestedHours: 1m, FilledHours: 0m),
-            new(Guid.NewGuid(), "Alpha", "alpha",
+            new(Guid.NewGuid(), "Alpha",
                 IsSubTeam: false, ParentTeamId: null, ParentTeamName: null,
                 RequestedHours: 1m, FilledHours: 0m),
-            new(Guid.NewGuid(), "Bravo", "bravo",
+            new(Guid.NewGuid(), "Bravo",
                 IsSubTeam: false, ParentTeamId: null, ParentTeamName: null,
                 RequestedHours: 1m, FilledHours: 0m),
         };
@@ -60,13 +60,13 @@ public class ShiftBrowsePageBuilderPieSortTests
         var parentId = Guid.NewGuid();
         var pies = new List<DepartmentCoveragePie>
         {
-            new(Guid.NewGuid(), "Zeta", "zeta",
+            new(Guid.NewGuid(), "Zeta",
                 IsSubTeam: true, ParentTeamId: parentId, ParentTeamName: "Mango",
                 RequestedHours: 1m, FilledHours: 0m),
-            new(parentId, "Mango", "mango",
+            new(parentId, "Mango",
                 IsSubTeam: false, ParentTeamId: null, ParentTeamName: null,
                 RequestedHours: 1m, FilledHours: 0m),
-            new(Guid.NewGuid(), "Alpha", "alpha",
+            new(Guid.NewGuid(), "Alpha",
                 IsSubTeam: true, ParentTeamId: parentId, ParentTeamName: "Mango",
                 RequestedHours: 1m, FilledHours: 0m),
         };

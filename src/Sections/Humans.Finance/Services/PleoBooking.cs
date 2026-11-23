@@ -162,7 +162,7 @@ internal sealed partial class PleoBooking(
         var purchases = docGroups.ToDictionary(g => g.Key, g =>
         {
             var d = g.Value.MaxBy(x => x.IsApproved)!;
-            return new PleoPurchaseRef(d.Id, d.DocNumber, d.IsApproved, d.Total, d.PaymentsPending, d.HoldedUrl);
+            return new PleoPurchaseRef(d.Id, d.DocNumber, d.IsApproved, d.PaymentsPending, d.HoldedUrl);
         }, StringComparer.Ordinal);
         var duplicates = docGroups.Where(g => g.Value.Count > 1)
             .Select(g => new PleoDuplicate(g.Key, g.Value.Select(d => d.HoldedUrl).ToList()))
@@ -418,9 +418,9 @@ internal sealed partial class PleoBooking(
     {
         var started = clock.GetCurrentInstant();
         if (!await Gate.WaitAsync(0, ct))
-            return new PleoBookingRunVm(kind, started, started, limit, 0, [],
+            return new PleoBookingRunVm(kind, started, started, 0, [],
                 "Another Pleo run is going; nothing was done.");
-        var run = new PleoBookingRunVm(kind, started, null, limit, 0, [], null);
+        var run = new PleoBookingRunVm(kind, started, null, 0, [], null);
         var lines = new List<PleoBookingLine>();
         try
         {

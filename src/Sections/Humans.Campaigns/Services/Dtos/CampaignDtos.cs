@@ -33,9 +33,7 @@ internal sealed record CampaignEditSnapshot(
 
 internal sealed record CampaignGrantSummary(
     Guid Id,
-    Guid CampaignId,
     string CampaignTitle,
-    Guid CampaignCodeId,
     string Code,
     Guid UserId,
     Instant AssignedAt,

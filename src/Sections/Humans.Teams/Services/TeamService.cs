@@ -2348,7 +2348,6 @@ internal sealed class TeamService(
             definition.IsPublic,
             definition.Assignments
                 .Select(assignment => new TeamRoleAssignmentSnapshot(
-                    assignment.Id,
                     assignment.TeamMemberId,
                     assignment.SlotIndex,
                     assignment.TeamMember?.UserId))
@@ -2407,14 +2406,7 @@ internal sealed class TeamService(
         CancellationToken cancellationToken = default)
     {
         var requests = await repo.GetPendingForTeamAsync(teamId, cancellationToken);
-        var usersById = requests.Count == 0
-            ? new Dictionary<Guid, UserInfo>()
-            : await UserService.GetUserInfosAsync(
-                requests.Select(request => request.UserId),
-                cancellationToken);
-        return requests
-            .Select(request => ToJoinRequestSnapshot(request, usersById))
-            .ToList();
+        return requests.Select(ToJoinRequestSnapshot).ToList();
     }
 
     public async Task<IReadOnlyList<TeamJoinRequestSnapshot>> GetPendingRequestsForUserAsync(
@@ -2439,26 +2431,9 @@ internal sealed class TeamService(
         request.TeamId,
         request.Team?.Name,
         request.UserId,
-        UserDisplayName: null,
-        UserProfilePictureUrl: null,
-        request.Status,
         request.Message,
         request.RequestedAt,
-        request.ResolvedAt,
-        request.ReviewNotes,
         request.Team?.Slug);
-
-    private static TeamJoinRequestSnapshot ToJoinRequestSnapshot(
-        TeamJoinRequest request,
-        IReadOnlyDictionary<Guid, UserInfo> usersById)
-    {
-        usersById.TryGetValue(request.UserId, out var user);
-        return ToJoinRequestSnapshot(request) with
-        {
-            UserDisplayName = user?.BurnerName,
-            UserProfilePictureUrl = user?.ProfilePictureUrl
-        };
-    }
 
     public async Task<IReadOnlyList<UserTeamMembershipInfo>> GetUserTeamMembershipsAsync(
         Guid userId, CancellationToken cancellationToken = default)
@@ -2466,7 +2441,7 @@ internal sealed class TeamService(
         var memberships = await repo.GetActiveByUserIdAsync(userId, cancellationToken);
         return memberships
             .Select(m => new UserTeamMembershipInfo(
-                m.Id, m.TeamId, m.Team.Name, m.Team.Slug, m.Team.IsSystemTeam, m.Role, m.JoinedAt)
+                m.TeamId, m.Team.Name, m.Team.Slug, m.Role)
             {
                 IsActive = m.Team.IsActive,
                 IsHidden = m.Team.IsHidden,

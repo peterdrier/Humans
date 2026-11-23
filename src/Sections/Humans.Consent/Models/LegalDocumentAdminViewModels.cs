@@ -15,13 +15,11 @@ internal sealed class LegalDocumentListItemViewModel
     public Guid Id { get; set; }
     public string Name { get; set; } = string.Empty;
     public string TeamName { get; set; } = string.Empty;
-    public Guid TeamId { get; set; }
     public bool IsRequired { get; set; }
     public bool IsActive { get; set; }
     public int GracePeriodDays { get; set; }
     public string? CurrentVersion { get; set; }
     public DateTime? LastSyncedAt { get; set; }
-    public int VersionCount { get; set; }
 }
 
 internal sealed class LegalDocumentEditViewModel

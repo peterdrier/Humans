@@ -31,7 +31,6 @@ internal sealed record WorkloadByPersonRow(
 internal sealed record WorkloadByRotaRow(
     Guid RotaId,
     string RotaName,
-    Guid TeamId,
     string TeamName,
     int ShiftCount,
     int PlannedSlots,

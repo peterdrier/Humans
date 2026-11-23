@@ -88,10 +88,10 @@ public class FinanceOverviewServiceTests
     private FinanceOverviewService LinkService()
     {
         _holded.GetChartAsync(Arg.Any<CancellationToken>()).Returns([
-            new HoldedChartAccountInfo(44100001, "Open", null, null, false, 0m),
-            new HoldedChartAccountInfo(44100002, "Archived, holds money", null, null, true, 0m),
-            new HoldedChartAccountInfo(44100003, "Archived, linked", null, null, true, 0m),
-            new HoldedChartAccountInfo(44100004, "Archived, empty", null, null, true, 0m),
+            new HoldedChartAccountInfo(44100001, "Open", null, false, 0m),
+            new HoldedChartAccountInfo(44100002, "Archived, holds money", null, true, 0m),
+            new HoldedChartAccountInfo(44100003, "Archived, linked", null, true, 0m),
+            new HoldedChartAccountInfo(44100004, "Archived, empty", null, true, 0m),
         ]);
         _holded.GetAccountBalancesAsync(Arg.Any<CancellationToken>())
             .Returns(new Dictionary<int, decimal> { [44100002] = 12m });
@@ -156,9 +156,9 @@ public class FinanceOverviewServiceTests
     {
         var overview = LinkService();
         _holded.GetChartAsync(Arg.Any<CancellationToken>()).Returns([
-            new HoldedChartAccountInfo(44100003, "Archived, linked", null, null, true, 0m),
-            new HoldedChartAccountInfo(44100002, "Archived, holding money", null, null, true, 0m),
-            new HoldedChartAccountInfo(44100001, "Active", null, null, false, 0m),
+            new HoldedChartAccountInfo(44100003, "Archived, linked", null, true, 0m),
+            new HoldedChartAccountInfo(44100002, "Archived, holding money", null, true, 0m),
+            new HoldedChartAccountInfo(44100001, "Active", null, false, 0m),
         ]);
         var syncedAt = Instant.FromUtc(2026, 11, 1, 0, 0);
         _stripe.GetEurBalancesAsync(Arg.Any<CancellationToken>()).Returns([
@@ -196,7 +196,7 @@ public class FinanceOverviewServiceTests
     [HumansFact]
     public void BuildLedgerCards_GroupsCashAndReceivables_AndFlipsTaxes()
     {
-        HoldedChartAccountInfo Account(int n, bool archived = false) => new(n, $"A{n}", null, null, archived, 0m);
+        HoldedChartAccountInfo Account(int n, bool archived = false) => new(n, $"A{n}", null, archived, 0m);
         var chart = new[]
         {
             Account(57200001), Account(57200002, archived: true), Account(57200003, archived: true),
@@ -366,5 +366,5 @@ public class FinanceOverviewServiceTests
         { NotPayableReason = reason };
 
     private static BudgetCategoryDetail Category(Guid yearId, string name, decimal allocated) =>
-        new(Guid.NewGuid(), yearId, name, allocated, ExpenditureType.OpEx, null, 0, []);
+        new(Guid.NewGuid(), name, allocated, ExpenditureType.OpEx, null, 0, []);
 }

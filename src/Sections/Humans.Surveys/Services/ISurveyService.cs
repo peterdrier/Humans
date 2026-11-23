@@ -210,8 +210,7 @@ internal sealed record RankedQuestionResult(
     IReadOnlyList<RankedMethodResult> Methods,
     IReadOnlyList<PairwiseContest> Pairwise,
     IReadOnlyList<string> OriginalPreferenceCycle,
-    IReadOnlyList<string> CurrentPreferenceCycle,
-    IReadOnlyList<string> UnavailableValues);
+    IReadOnlyList<string> CurrentPreferenceCycle);
 
 internal sealed record RankedCandidateResult(
     string Value,
@@ -252,7 +251,6 @@ internal sealed record SurveyAdminSummary(
     int InvitedCount,
     int ResponseCount,
     Guid CreatedByUserId,
-    Instant? SubmittedAt,
     string? RejectionNote);
 
 internal sealed record SurveyPendingApprovalItem(

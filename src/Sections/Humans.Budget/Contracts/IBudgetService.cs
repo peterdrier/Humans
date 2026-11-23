@@ -49,7 +49,6 @@ public sealed record BudgetGroupDetail(
 
 public sealed record BudgetCategoryDetail(
     Guid Id,
-    Guid BudgetGroupId,
     string Name,
     decimal AllocatedAmount,
     ExpenditureType ExpenditureType,
@@ -63,7 +62,6 @@ public sealed record BudgetCategoryDetail(
 
 public sealed record BudgetLineItemDetail(
     Guid Id,
-    Guid BudgetCategoryId,
     string Description,
     decimal Amount,
     Guid? ResponsibleTeamId,
@@ -75,8 +73,6 @@ public sealed record BudgetLineItemDetail(
     int SortOrder);
 
 public sealed record TicketingProjectionSnapshot(
-    Guid Id,
-    Guid BudgetGroupId,
     LocalDate? StartDate,
     LocalDate? EventDate,
     int InitialSalesCount,
@@ -85,9 +81,7 @@ public sealed record TicketingProjectionSnapshot(
     int VatRate,
     decimal StripeFeePercent,
     decimal StripeFeeFixed,
-    decimal TicketTailorFeePercent,
-    Instant CreatedAt,
-    Instant UpdatedAt);
+    decimal TicketTailorFeePercent);
 
 public sealed record BudgetCategorySnapshot(
     Guid Id,
@@ -105,7 +99,6 @@ public sealed record BudgetCategorySnapshot(
 }
 
 public sealed record BudgetCategoryGroupSnapshot(
-    Guid Id,
     Guid BudgetYearId,
     string Name,
     bool IsRestricted,
@@ -114,13 +107,11 @@ public sealed record BudgetCategoryGroupSnapshot(
 
 public sealed record BudgetCategoryYearSnapshot(
     Guid Id,
-    string Year,
     string Name,
     bool IsDeleted);
 
 public sealed record BudgetCategoryLineItemSnapshot(
     Guid Id,
-    Guid BudgetCategoryId,
     string Description,
     decimal Amount,
     Guid? ResponsibleTeamId,

@@ -42,8 +42,8 @@ public class StorePricesViewTests
         using var culture = new CultureScope(cultureCode);
         IReadOnlyList<PaymentMethodRepairRow> rows =
         [
-            new(Guid.NewGuid(), Guid.NewGuid(), PaymentMethod.BankTransfer, 1234.56m, Instant.FromUtc(2026, 7, 1, 0, 0)),
-            new(Guid.NewGuid(), Guid.NewGuid(), PaymentMethod.BankTransfer, 500m, Instant.FromUtc(2026, 7, 2, 0, 0)),
+            new(Guid.NewGuid(), PaymentMethod.BankTransfer, 1234.56m, Instant.FromUtc(2026, 7, 1, 0, 0)),
+            new(Guid.NewGuid(), PaymentMethod.BankTransfer, 500m, Instant.FromUtc(2026, 7, 2, 0, 0)),
         ];
 
         var html = await RenderAsync("PaymentMethods", rows, viewPath: "/Views/StoreAdmin/PaymentMethods.cshtml");
@@ -101,7 +101,7 @@ public class StorePricesViewTests
         var html = await RenderAsync("Index", new IndexViewModel
         {
             Year = 2026,
-            Counterparties = [new CounterpartyOrders(OrderCounterpartyType.Camp, campId, "Camp", 2026, [order])],
+            Counterparties = [new CounterpartyOrders(OrderCounterpartyType.Camp, campId, "Camp", [order])],
             CanManageByCounterparty = new Dictionary<Guid, bool> { [campId] = false },
         });
 
@@ -115,8 +115,8 @@ public class StorePricesViewTests
         var now = Instant.FromUtc(2026, 7, 1, 0, 0);
         var orderId = Guid.NewGuid();
         var productId = Guid.NewGuid();
-        var line = new OrderLineDto(Guid.NewGuid(), orderId, productId, "Ice", 1,
-            100, 0, null, now, 100, 0, 0, 100);
+        var line = new OrderLineDto(Guid.NewGuid(), productId, "Ice", 1,
+            100, 0, null, 0, 100);
         var order = new OrderDto(orderId, Guid.NewGuid(), null, OrderCounterpartyType.Camp, "Camp", 2026,
             OrderState.Open, null, null, null, null, null, null, [line], [], 100, 0, 0, 0, 100, now);
         var history = new AuditEvent(Guid.NewGuid(), now, new AuditActionDefinition(StoreAuditActions.StoreProductPriceChanged.Name),
@@ -146,9 +146,9 @@ public class StorePricesViewTests
         var model = new SummaryViewModel
         {
             Summary = new SummaryDto(2026,
-                [new OrderSummaryDto(Guid.NewGuid(), OrderCounterpartyType.Camp, Guid.NewGuid(), "Camp",
+                [new OrderSummaryDto(Guid.NewGuid(), OrderCounterpartyType.Camp, "Camp",
                     OrderState.Open, 2469m, 1234.5m, 1234.5m),
-                 new OrderSummaryDto(Guid.NewGuid(), OrderCounterpartyType.Team, Guid.NewGuid(), "Team",
+                 new OrderSummaryDto(Guid.NewGuid(), OrderCounterpartyType.Team, "Team",
                     OrderState.Open, 9000m, 0m, 0m)], [], new CrossTabDto([], [])),
         };
 
@@ -176,7 +176,7 @@ public class StorePricesViewTests
         int status, bool orphan, bool expectedSuccess)
     {
         var now = Instant.FromUtc(2026, 6, 4, 12, 0);
-        var row = new StripeReconciliationRow("cs", "pi", 100m, "paid", now, Guid.NewGuid(), "Camp", (StripeReconciliationStatus)status);
+        var row = new StripeReconciliationRow("cs", "pi", 100m, now, Guid.NewGuid(), "Camp", (StripeReconciliationStatus)status);
         var report = new StripeReconciliationReport(true, true, true, [row],
             orphan ? [new StripeOrphanPayment("pi_orphan", Guid.NewGuid(), "Camp", 100m, now)] : []);
         report.IsReconciled.Should().Be(expectedSuccess);

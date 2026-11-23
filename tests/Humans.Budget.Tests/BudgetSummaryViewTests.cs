@@ -56,7 +56,7 @@ public class BudgetSummaryViewTests
         {
             Category = new BudgetCategorySnapshot(id, Guid.NewGuid(), "Category", 100m,
                 ExpenditureType.OpEx, null, 0, null,
-                [new BudgetCategoryLineItemSnapshot(Guid.NewGuid(), id, "Line", 1234m,
+                [new BudgetCategoryLineItemSnapshot(Guid.NewGuid(), "Line", 1234m,
                     null, null, null, null, 0, false, false, 0)]),
             Teams = [],
         };

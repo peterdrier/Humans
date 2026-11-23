@@ -42,7 +42,6 @@ internal static class ShiftBrowseMapper
             EarlyEntrySignupsClosed = rotaGroup.First().EarlyEntrySignupsClosed,
             Shifts = shifts,
             DepartmentName = departmentName,
-            DepartmentSlug = departmentSlug,
             MaxUrgencyScore = shifts.Count > 0 ? shifts.Max(s => s.UrgencyScore) : 0,
             TotalConfirmed = shifts.Sum(s => s.ConfirmedCount),
             TotalSlots = shifts.Sum(s => s.Shift.MaxVolunteers),

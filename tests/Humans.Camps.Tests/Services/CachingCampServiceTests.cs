@@ -352,7 +352,6 @@ public sealed class CachingCampServiceTests : CampsTestHarness
                     new CampSeasonInfo(
                         seasonId,
                         campId,
-                        "role-camp",
                         2026,
                         null,
                         "Role Camp",
@@ -400,7 +399,6 @@ public sealed class CachingCampServiceTests : CampsTestHarness
         var cachedSeason = new CampSeasonInfo(
             seasonId,
             campId,
-            "season-camp",
             2026,
             null,
             "Season Camp",
@@ -988,7 +986,6 @@ public sealed class CachingCampServiceTests : CampsTestHarness
     private static CampSeasonInfo ProjectSeasonInfo(CampSeason season) => new(
             season.Id,
             season.CampId,
-            season.Camp?.Slug ?? string.Empty,
             season.Year,
             season.NameLockDate,
             season.Name,
@@ -1016,7 +1013,6 @@ public sealed class CachingCampServiceTests : CampsTestHarness
                     m.UserId,
                     m.Status,
                     m.RequestedAt,
-                    m.ConfirmedAt,
                     m.HasEarlyEntry))
                 .ToList()
     };

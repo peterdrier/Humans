@@ -46,7 +46,7 @@ Order-detail and delivery-card presentation ordering belongs to their rendering 
 Operator controllers order companion requests pending-first/newest-first, cancellation refund groups by state,
 and backend lists by key. Backend status pages order orders and stuck orders newest-first and refunds oldest-first;
 the reconciliation start date is the minimum order timestamp in the organisation's zone, independent of row order.
-Cancellation processing still uses oldest-paid-first work order. The sales editor orders grant-program choices by descending year, then ordinal name, for both price-rule selectors; Grants returns summaries unordered.
+Cancellation processing still uses oldest-paid-first work order.
 
 Buy-page read models carry the event's gate-opening date. `TicketBuyController` orders public and signed-in sales
 by that date and each normal or directed buy page's order history newest-first; service reads do not choose those

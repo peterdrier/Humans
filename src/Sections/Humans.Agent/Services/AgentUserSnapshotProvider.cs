@@ -45,7 +45,6 @@ internal sealed class AgentUserSnapshotProvider(
             .ToList();
 
         return new AgentUserSnapshot(
-            UserId: userId,
             DisplayName: user?.BurnerName ?? string.Empty,
             PreferredLocale: user?.PreferredLanguage ?? "es",
             Tier: tier.ToString(),

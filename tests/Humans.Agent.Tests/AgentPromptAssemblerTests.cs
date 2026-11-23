@@ -14,7 +14,6 @@ public class AgentPromptAssemblerTests
     public void BuildUserContextTail_includes_display_name_and_locale_header()
     {
         var snapshot = new AgentUserSnapshot(
-            UserId: Guid.NewGuid(),
             DisplayName: "Felipe García",
             PreferredLocale: "es",
             Tier: "Volunteer",
@@ -43,7 +42,6 @@ public class AgentPromptAssemblerTests
     public void BuildUserContextTail_renders_team_with_role_per_team()
     {
         var snapshot = new AgentUserSnapshot(
-            UserId: Guid.NewGuid(),
             DisplayName: "Volunteer",
             PreferredLocale: "es",
             Tier: "Volunteer",
@@ -133,7 +131,6 @@ public class AgentPromptAssemblerTests
     public void BuildUserContextTail_sorts_teams_alphabetically_at_render_time()
     {
         var snapshot = new AgentUserSnapshot(
-            UserId: Guid.NewGuid(),
             DisplayName: "Test",
             PreferredLocale: "es",
             Tier: "Volunteer",
@@ -194,7 +191,6 @@ public class AgentPromptAssemblerTests
 
     private static AgentUserSnapshot MakeSnapshot(params UpcomingShiftEntry[] upcoming) =>
         new(
-            UserId: Guid.NewGuid(),
             DisplayName: "Test",
             PreferredLocale: "es",
             Tier: "Volunteer",
