@@ -994,7 +994,8 @@ public class BackdoorFinanceControllerTests
         app.MapControllers();
         await app.StartAsync(ct);
 
-        using var client = new HttpClient { BaseAddress = new Uri(app.Urls.Single()) };
+        using var client = new HttpClient();
+        client.BaseAddress = new Uri(app.Urls.Single());
         client.DefaultRequestHeaders.Add(BackdoorApiKeyAuthFilter.ApiKeyHeaderName, "key");
         var body = await client.GetStringAsync("/api/backdoor/finance/expense-reports", ct);
         await app.StopAsync(ct);

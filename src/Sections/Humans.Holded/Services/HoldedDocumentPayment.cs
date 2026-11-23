@@ -31,8 +31,8 @@ internal static class HoldedDocumentPayment
         };
 
         using var req = new HttpRequestMessage(
-            HttpMethod.Post, $"/api/v2/{segment}/{documentId}/payments")
-        { Content = JsonContent.Create(payload, options: OmitNulls) };
+            HttpMethod.Post, $"/api/v2/{segment}/{documentId}/payments");
+        req.Content = JsonContent.Create(payload, options: OmitNulls);
 
         // A 5xx can arrive after Holded saved the payment (production, 2026-11-05): only the document says which.
         HoldedTransientException? refused = null;

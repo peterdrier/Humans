@@ -488,14 +488,12 @@ public sealed class ApplicationRepositoryTests : IDisposable
         await (Task)refresh.Invoke(sut, null)!;
 
         int? observed = null;
-        using var listener = new MeterListener
+        using var listener = new MeterListener();
+        listener.InstrumentPublished = (instrument, meterListener) =>
         {
-            InstrumentPublished = (instrument, meterListener) =>
-            {
-                if (string.Equals(instrument.Meter.Name, "Humans.Metrics", StringComparison.Ordinal)
-                    && string.Equals(instrument.Name, "humans.asociados", StringComparison.Ordinal))
-                    meterListener.EnableMeasurementEvents(instrument);
-            }
+            if (string.Equals(instrument.Meter.Name, "Humans.Metrics", StringComparison.Ordinal)
+                && string.Equals(instrument.Name, "humans.asociados", StringComparison.Ordinal))
+                meterListener.EnableMeasurementEvents(instrument);
         };
         listener.SetMeasurementEventCallback<int>((_, value, _, _) => observed = value);
         listener.Start();
