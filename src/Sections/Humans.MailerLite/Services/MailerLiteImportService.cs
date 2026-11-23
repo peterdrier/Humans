@@ -376,12 +376,12 @@ internal sealed class MailerLiteImportService(
     private enum DeltaResult { NoChange, FlippedToOptIn, FlippedToOptOut, Preserved }
 
     private async Task<DeltaResult> ApplyMarketingDeltaAsync(
-        Guid userId, MailerLiteSubscriber ml, CancellationToken ct)
+        Guid userId, MailerLiteSubscriber subscriber, CancellationToken ct)
     {
-        var mlOptedOut = !string.Equals(ml.Status, "active", StringComparison.OrdinalIgnoreCase);
+        var mlOptedOut = !string.Equals(subscriber.Status, "active", StringComparison.OrdinalIgnoreCase);
         var marketing = await prefs.GetPreferenceOrNullAsync(userId, MessageCategory.Marketing, ct);
 
-        var outcome = ClassifyVerifiedMatch(ml, marketing);
+        var outcome = ClassifyVerifiedMatch(subscriber, marketing);
         switch (outcome)
         {
             case SubscriberOutcome.VerifiedKeepHumansPref:
