@@ -122,7 +122,7 @@ public sealed class HoldedPurchaseDocSyncTests
     [HumansFact]
     public async Task Sync_TransientNotesFailure_StopsFetching_AndTheSyncSucceeds()
     {
-        StubList(Listed("a", 2), Listed("b", 1));
+        StubList(Listed("a", 2), Listed("b"));
         _client.GetPurchaseDocumentAsync("a", Arg.Any<CancellationToken>())
             .ThrowsAsync(new HoldedTransientException("timeout"));
 

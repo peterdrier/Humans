@@ -76,7 +76,7 @@ public sealed class SurveyIdentityViewTests
         };
         var html = await RenderAsync("Results", model, users);
         html.Should().NotContain("id=\"respondents\"");
-        await users.DidNotReceiveWithAnyArgs().GetUserInfoAsync(default, default);
+        await users.DidNotReceiveWithAnyArgs().GetUserInfoAsync(default);
     }
 
     private static async Task<string> RenderAsync(string page, object model, IUserService users)

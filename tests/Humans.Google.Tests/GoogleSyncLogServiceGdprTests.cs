@@ -144,7 +144,7 @@ public sealed class GoogleSyncLogServiceGdprTests
         if (secondFails)
         {
             error.Should().BeOfType<InvalidOperationException>();
-            await _repo.DidNotReceiveWithAnyArgs().DeleteByUserIdsAsync(default!, default);
+            await _repo.DidNotReceiveWithAnyArgs().DeleteByUserIdsAsync(default!);
         }
         else
         {

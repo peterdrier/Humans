@@ -88,7 +88,7 @@ public class BackdoorIssuesControllerTests
 
         result.Should().BeOfType<BadRequestObjectResult>();
         await _issues.DidNotReceiveWithAnyArgs().CreateIssueAsync(
-            default, default, default!, default!, default, default, default, default);
+            default, default, default!, default!, default);
     }
 
     public BackdoorIssuesControllerTests()

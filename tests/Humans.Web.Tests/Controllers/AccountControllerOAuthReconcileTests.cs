@@ -182,7 +182,7 @@ public class AccountControllerOAuthReconcileTests
         retry.Should().BeOfType<RedirectResult>();
         profileAttempts.Should().Be(2);
         await _userService.Received(1).EnsureStubProfileAsync(created!.Id, null, null, null,
-            Arg.Any<CancellationToken>(), null);
+            Arg.Any<CancellationToken>());
         await _userService.Received(1).EnsureStubProfileAsync(created.Id, null, null, null,
             Arg.Any<CancellationToken>(), created.Id);
     }
@@ -329,7 +329,7 @@ public class AccountControllerOAuthReconcileTests
         await _userManager.DidNotReceiveWithAnyArgs().AddLoginAsync(default!, default!);
         await _userEmailService.DidNotReceiveWithAnyArgs()
             .ReconcileOAuthIdentityAsync(default, default!, default!, default!, default);
-        await _userService.DidNotReceiveWithAnyArgs().RecordLoginAsync(default, default);
+        await _userService.DidNotReceiveWithAnyArgs().RecordLoginAsync(default);
         _loginMethods.Google.Should().Be(0);
     }
 

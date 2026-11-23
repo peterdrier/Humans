@@ -1166,7 +1166,7 @@ public class HoldedFinanceServiceTests
             userId, 40000012, "TestJob", TestContext.Current.CancellationToken);
 
         await _audit.DidNotReceiveWithAnyArgs().LogAsync(
-            null!, default!, default, default!, default(string)!, default, default);
+            null!, default!, default, default!, default(string)!);
     }
 
     [HumansFact]
@@ -1193,7 +1193,7 @@ public class HoldedFinanceServiceTests
         await _repo.DidNotReceive().UpsertCreditorContactAsync(
             Arg.Any<HoldedCreditorContact>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>());
         await _audit.DidNotReceiveWithAnyArgs().LogAsync(
-            null!, default!, default, default!, default(string)!, default, default);
+            null!, default!, default, default!, default(string)!);
     }
 
     [HumansFact]
@@ -2329,7 +2329,7 @@ public class HoldedFinanceServiceTests
         await _repo.DidNotReceive().AddSepaPayoutAsync(
             Arg.Any<SepaPayoutFile>(), Arg.Any<IReadOnlyList<SepaPayoutTransfer>>(), Arg.Any<CancellationToken>());
         await _audit.DidNotReceiveWithAnyArgs().LogAsync(
-            default!, default!, default, default!, default(Guid), default, default);
+            default!, default!, default, default!, default(Guid));
     }
 
     [HumansFact]
@@ -3459,7 +3459,7 @@ public class HoldedFinanceServiceTests
         await _audit.Received(1).LogAsync(
             FinanceAuditActions.HoldedExpenseAccountCreated, Service.HoldedExpenseAccount, Guid.Empty,
             Arg.Is<string>(description => description.Contains("62900100") && description.Contains("Workgroups / New")),
-            "Finance", null, null);
+            "Finance");
     }
 
     [HumansFact]

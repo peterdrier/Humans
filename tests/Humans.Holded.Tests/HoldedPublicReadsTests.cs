@@ -116,7 +116,7 @@ public sealed class HoldedPublicReadsTests
             Account(40000004, "Member A", -10m),
             Account(47200000, "Hacienda Pública, IVA soportado", 5m),
             Account(57200001, "Banco Sabadell", 500m),
-            Account(57200002, "Old bank", 0m, archived: true),
+            Account(57200002, "Old bank", archived: true),
             Account(57200003, "Never used"),
         ], FixedNow, ct);
         await SeedAsync(ct,

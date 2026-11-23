@@ -121,7 +121,7 @@ public sealed class TeamMessageButtonsViewComponentTests
         var result = await Build(_viewerId).InvokeAsync(_viewerId, ProfileCardViewMode.Self);
 
         AssertEmpty(result);
-        await _teams.DidNotReceiveWithAnyArgs().GetTeamsAsync(default);
+        await _teams.DidNotReceiveWithAnyArgs().GetTeamsAsync();
     }
 
     [HumansFact]
@@ -132,7 +132,7 @@ public sealed class TeamMessageButtonsViewComponentTests
         var result = await Build(_viewerId).InvokeAsync(_targetId, ProfileCardViewMode.Public);
 
         AssertEmpty(result);
-        await _teams.DidNotReceiveWithAnyArgs().GetTeamsAsync(default);
+        await _teams.DidNotReceiveWithAnyArgs().GetTeamsAsync();
     }
 
     [HumansFact]
@@ -147,7 +147,7 @@ public sealed class TeamMessageButtonsViewComponentTests
     public async Task RendersNothing_ForAnAnonymousViewer()
     {
         AssertEmpty(await Build(null).InvokeAsync(_targetId, ProfileCardViewMode.Public));
-        await _teams.DidNotReceiveWithAnyArgs().GetTeamsAsync(default);
+        await _teams.DidNotReceiveWithAnyArgs().GetTeamsAsync();
     }
 
     private void StubOptions(Guid viewerId, params TeamMessageOption[] options)

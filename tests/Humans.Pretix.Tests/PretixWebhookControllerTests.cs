@@ -38,7 +38,7 @@ public class PretixWebhookControllerTests
         var result = await Controller().Receive("guess", Paid(), TestContext.Current.CancellationToken);
 
         result.Should().BeOfType<NotFoundResult>();
-        await _events.DidNotReceiveWithAnyArgs().CheckoutChangedAsync(default!, default!, default);
+        await _events.DidNotReceiveWithAnyArgs().CheckoutChangedAsync(default!, default!);
     }
 
     [HumansFact]
@@ -47,7 +47,7 @@ public class PretixWebhookControllerTests
         var result = await Controller(secret: "").Receive("", Paid(), TestContext.Current.CancellationToken);
 
         result.Should().BeOfType<StatusCodeResult>().Which.StatusCode.Should().Be(503);
-        await _events.DidNotReceiveWithAnyArgs().CheckoutChangedAsync(default!, default!, default);
+        await _events.DidNotReceiveWithAnyArgs().CheckoutChangedAsync(default!, default!);
     }
 
     [HumansFact]
@@ -56,7 +56,7 @@ public class PretixWebhookControllerTests
         var result = await Controller().Receive("s3cret", Paid("someone-else"), TestContext.Current.CancellationToken);
 
         result.Should().BeOfType<OkResult>();
-        await _events.DidNotReceiveWithAnyArgs().CheckoutChangedAsync(default!, default!, default);
+        await _events.DidNotReceiveWithAnyArgs().CheckoutChangedAsync(default!, default!);
     }
 
     [HumansFact]
@@ -66,6 +66,6 @@ public class PretixWebhookControllerTests
             "s3cret", new("nobodies", "nowhere2027", null), TestContext.Current.CancellationToken);
 
         result.Should().BeOfType<OkResult>();
-        await _events.DidNotReceiveWithAnyArgs().CheckoutChangedAsync(default!, default!, default);
+        await _events.DidNotReceiveWithAnyArgs().CheckoutChangedAsync(default!, default!);
     }
 }

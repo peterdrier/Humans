@@ -124,7 +124,7 @@ public class TransferBookingTests
             [new HoldedLedgerLineInfo(7, 2, TransferAccount, Instant.MinValue, null, mayDescription, 0m, 40m)]);
 
         var write = Substitute.For<IHoldedWrite>();
-        write.PostJournalEntryAsync(default, 0, 0, 0m, "", default)
+        write.PostJournalEntryAsync(default, 0, 0, 0m, "")
             .ReturnsForAnyArgs(new HoldedJournalEntryOutcome(true));
 
         var repo = Substitute.For<IStoreRepository>();

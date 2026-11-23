@@ -1008,7 +1008,7 @@ public class GateServiceTests
             await act.Should().ThrowAsync<OperationCanceledException>();
         else
             await act.Should().NotThrowAsync();
-        await vendor.DidNotReceiveWithAnyArgs().CreateCheckInAsync(default!, default, default);
+        await vendor.DidNotReceiveWithAnyArgs().CreateCheckInAsync(default!, default);
     }
 
     [HumansFact]

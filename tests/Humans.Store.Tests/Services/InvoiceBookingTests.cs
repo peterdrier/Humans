@@ -53,7 +53,7 @@ public class InvoiceBookingTests
         _repo.GetInvoicesForOrdersAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>()).Returns([_invoice]);
         _repo.GetSettingsAsync(Arg.Any<CancellationToken>()).Returns(new StoreSettings { StripeGatewayTreasuryId = Gateway });
         _holded.IsConfigured.Returns(true);
-        _holded.SyncBankMovementsAsync(default!, default, default, default, default).ReturnsForAnyArgs(true);
+        _holded.SyncBankMovementsAsync(default!, default, default).ReturnsForAnyArgs(true);
         _holded.GetBankMovementsAsync(Gateway, Arg.Any<LocalDate>(), Arg.Any<LocalDate>(), Arg.Any<CancellationToken>())
             .Returns(_ => new HoldedBankMovementMirror(null, _feed.ToList()));
         _holded.SyncAccountLedgerAsync(CampAccount, Arg.Any<CancellationToken>()).Returns(true);
@@ -81,7 +81,7 @@ public class InvoiceBookingTests
             return id;
         });
         _write.CreateTreasuryPaymentAsync(default, default!, default!, default, default, default).ReturnsForAnyArgs("collection-1");
-        _write.ReconcileBankMovementAsync(default!, default!, default!, default).ReturnsForAnyArgs(call =>
+        _write.ReconcileBankMovementAsync(default!, default!, default!).ReturnsForAnyArgs(call =>
         {
             var i = _feed.FindIndex(m => string.Equals(m.Id, call.ArgAt<string>(1), StringComparison.Ordinal));
             _feed[i] = _feed[i] with { Status = "reconciled" };
@@ -153,8 +153,8 @@ public class InvoiceBookingTests
         state.Should().Be(InvoiceBookingState.WaitingForFeed);
         _invoice.BookingNote.Should().Contain("pi_2");
         await _write.DidNotReceiveWithAnyArgs().PaySalesDocumentAsync(default, default!, default, default!, default, default);
-        await _write.DidNotReceiveWithAnyArgs().ReconcileBankMovementAsync(default!, default!, default!, default);
-        await _write.DidNotReceiveWithAnyArgs().SendSalesDocumentAsync(default, default!, default, default);
+        await _write.DidNotReceiveWithAnyArgs().ReconcileBankMovementAsync(default!, default!, default!);
+        await _write.DidNotReceiveWithAnyArgs().SendSalesDocumentAsync(default, default!, default);
     }
 
     [HumansFact]
@@ -169,8 +169,8 @@ public class InvoiceBookingTests
         state.Should().Be(InvoiceBookingState.Booked);
         await _write.DidNotReceiveWithAnyArgs().PaySalesDocumentAsync(default, default!, default, default!, default, default);
         await _write.DidNotReceiveWithAnyArgs().CreateTreasuryPaymentAsync(default, default!, default!, default, default, default);
-        await _write.DidNotReceiveWithAnyArgs().ReconcileBankMovementAsync(default!, default!, default!, default);
-        await _write.DidNotReceiveWithAnyArgs().SendSalesDocumentAsync(default, default!, default, default);
+        await _write.DidNotReceiveWithAnyArgs().ReconcileBankMovementAsync(default!, default!, default!);
+        await _write.DidNotReceiveWithAnyArgs().SendSalesDocumentAsync(default, default!, default);
     }
 
     [HumansFact]
@@ -214,14 +214,14 @@ public class InvoiceBookingTests
 
         state.Should().Be(InvoiceBookingState.NeedsReview);
         _invoice.BookingNote.Should().Contain("12.50");
-        await _write.DidNotReceiveWithAnyArgs().SendSalesDocumentAsync(default, default!, default, default);
+        await _write.DidNotReceiveWithAnyArgs().SendSalesDocumentAsync(default, default!, default);
     }
 
     [HumansFact]
     public async Task A_step_failing_after_a_post_hands_the_order_over_and_a_rerun_posts_nothing()
     {
         Charge("pi_1", 110m, FirstCharge);
-        _write.WhenForAnyArgs(w => w.ReconcileBankMovementAsync(default!, default!, default!, default))
+        _write.WhenForAnyArgs(w => w.ReconcileBankMovementAsync(default!, default!, default!))
             .Do(_ => throw new InvalidOperationException("boom"));
 
         var state = await BookAsync();

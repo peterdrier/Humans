@@ -1183,7 +1183,7 @@ public class FinanceControllerTests
         var result = await controller.HoldedDuplicates(TestContext.Current.CancellationToken);
 
         result.Should().BeOfType<ViewResult>().Subject.Model.Should().BeSameAs(vm);
-        await _users.DidNotReceiveWithAnyArgs().GetUserInfosAsync(default!, default);
+        await _users.DidNotReceiveWithAnyArgs().GetUserInfosAsync(default!);
     }
 
     [HumansFact]

@@ -86,6 +86,6 @@ public sealed class PretixStripeTests
 
         (await Create(pretix, stripe: _stripe).GetStatusAsync($"nowhere2027/{Code}", Ct)).FeeMinor.Should().BeNull();
 
-        await _stripe.DidNotReceiveWithAnyArgs().GetAccountPaymentFeeAsync(default!, default!, default);
+        await _stripe.DidNotReceiveWithAnyArgs().GetAccountPaymentFeeAsync(default!, default!);
     }
 }

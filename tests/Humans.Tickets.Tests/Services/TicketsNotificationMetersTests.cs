@@ -46,7 +46,7 @@ public sealed class TicketsNotificationMetersTests : IDisposable
         var meters = await _sut.GetMetersAsync(Viewer(RoleNames.Board), Guid.NewGuid(), TestContext.Current.CancellationToken);
 
         meters.Should().BeEmpty();
-        await _sync.DidNotReceiveWithAnyArgs().IsInErrorStateAsync(default);
+        await _sync.DidNotReceiveWithAnyArgs().IsInErrorStateAsync();
     }
 
     private static ClaimsPrincipal Viewer(string role) =>

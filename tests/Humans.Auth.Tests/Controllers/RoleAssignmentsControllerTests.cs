@@ -157,7 +157,7 @@ public sealed class RoleAssignmentsControllerTests
         (await BuildController().EndRole(TargetId, seatId, null)).Should().BeOfType<RedirectToActionResult>();
 
         await _write.DidNotReceiveWithAnyArgs().AssignRoleAsync(default, default!, default, default);
-        await _write.DidNotReceiveWithAnyArgs().EndRoleAsync(default, default, default, default);
+        await _write.DidNotReceiveWithAnyArgs().EndRoleAsync(default, default, default);
     }
 
     [HumansFact]

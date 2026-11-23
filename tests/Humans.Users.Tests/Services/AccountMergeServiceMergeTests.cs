@@ -554,8 +554,8 @@ public class AccountMergeServiceMergeTests
         merger.ReceivedCalls().Should().BeEmpty();
         _userEmailRepo.ReceivedCalls().Should().BeEmpty();
         _audit.ReceivedCalls().Should().BeEmpty();
-        await _userService.DidNotReceiveWithAnyArgs().AnonymizeForMergeAsync(default, default, default, default);
-        await _mergeRepo.DidNotReceiveWithAnyArgs().UpdateAsync(default!, default);
+        await _userService.DidNotReceiveWithAnyArgs().AnonymizeForMergeAsync(default, default, default);
+        await _mergeRepo.DidNotReceiveWithAnyArgs().UpdateAsync(default!);
     }
 
     [HumansFact]

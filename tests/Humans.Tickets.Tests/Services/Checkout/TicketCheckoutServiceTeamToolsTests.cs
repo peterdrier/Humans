@@ -179,7 +179,7 @@ public sealed partial class TicketCheckoutServiceTests
         await _service.ReconcileOpenOrdersAsync(Ct);
         await _service.ReconcileOpenOrdersAsync(Ct);
 
-        await _delivery.DidNotReceiveWithAnyArgs().ResaleUnsoldAsync(default, default);
+        await _delivery.DidNotReceiveWithAnyArgs().ResaleUnsoldAsync(default);
         _repo.Events.Should().NotContain(e => e.Kind == TicketCheckoutOrderEventKind.ResaleUnsold);
         _repo.Offers.Single().State.Should().Be(TicketResaleOfferState.Withdrawn);
         _repo.Tickets.Single(t => t.Id == old.Id).State.Should().Be(TicketCheckoutTicketState.Void);

@@ -341,7 +341,7 @@ public sealed class OnboardingServiceTests
         if (expectCancel)
             await _accountDeletion.Received(1).CancelDeletionAsync(userId, Arg.Any<CancellationToken>());
         else
-            await _accountDeletion.DidNotReceiveWithAnyArgs().CancelDeletionAsync(default, default);
+            await _accountDeletion.DidNotReceiveWithAnyArgs().CancelDeletionAsync(default);
     }
 
     [HumansFact]

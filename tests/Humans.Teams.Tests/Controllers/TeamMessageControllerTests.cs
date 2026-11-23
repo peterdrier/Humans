@@ -217,7 +217,7 @@ public sealed class TeamMessageControllerTests
 
         result.Should().BeOfType<RedirectToActionResult>().Which.ActionName.Should().Be("ViewProfile");
         _controller.TempData.Should().ContainKey(Base.Constants.TempDataKeys.ErrorMessage);
-        await _teams.DidNotReceiveWithAnyArgs().GetTeamsAsync(default);
+        await _teams.DidNotReceiveWithAnyArgs().GetTeamsAsync();
     }
 
     [HumansFact]

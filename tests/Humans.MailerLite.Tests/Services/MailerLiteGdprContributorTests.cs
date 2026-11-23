@@ -71,7 +71,7 @@ public class MailerLiteGdprContributorTests
 
         await EraseAsync();
 
-        await _mailerLite.DidNotReceiveWithAnyArgs().DeleteSubscriberAsync(default!, default);
+        await _mailerLite.DidNotReceiveWithAnyArgs().DeleteSubscriberAsync(default!);
     }
 
     [HumansFact]

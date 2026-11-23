@@ -108,7 +108,7 @@ public class TeamAdminControllerMembersTests
             Check("definitions", call.Arg<CancellationToken>());
             return Task.FromResult<IReadOnlyList<TeamRoleDefinitionSnapshot>>([]);
         });
-        teams.UpdateTeamPageContentAsync(default, default, default!, default, default, default, default)
+        teams.UpdateTeamPageContentAsync(default, default, default!, default, default, default)
             .ReturnsForAnyArgs(async call =>
             {
                 call.Arg<CancellationToken>().Should().Be(CancellationToken.None);
@@ -678,7 +678,7 @@ public class TeamAdminControllerMembersTests
         result.Should().BeOfType<RedirectToActionResult>();
         await provisioning.Received(1).ProvisionNobodiesEmailAsync(targetId, "person", actorId, team.Id);
         controller.TempData[TempDataKeys.InfoMessage].Should().Be(warning);
-        await teams.DidNotReceiveWithAnyArgs().GetTeamAsync(default, default);
+        await teams.DidNotReceiveWithAnyArgs().GetTeamAsync(default);
         controller.TempData[TempDataKeys.SuccessMessage].Should().BeNull();
         controller.TempData[TempDataKeys.ErrorMessage].Should().BeNull();
     }

@@ -521,7 +521,7 @@ public sealed class BoxOfficeCheckoutBackendTests
 
         var unset = await Webhook(Backend(), events, body, Sign(body)).Receive(ct);
         var forged = await Webhook(Backend(WebhookSecret), events, body, "t=1,v1=bad").Receive(ct);
-        await events.DidNotReceiveWithAnyArgs().CheckoutChangedAsync(default!, default!, default);
+        await events.DidNotReceiveWithAnyArgs().CheckoutChangedAsync(default!, default!);
         var verified = await Webhook(Backend(WebhookSecret), events, body, Sign(body)).Receive(ct);
 
         unset.Should().BeOfType<StatusCodeResult>().Which.StatusCode.Should().Be(StatusCodes.Status503ServiceUnavailable);

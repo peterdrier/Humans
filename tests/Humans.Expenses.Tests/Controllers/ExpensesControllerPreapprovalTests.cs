@@ -731,7 +731,7 @@ public sealed class ExpensesControllerPreapprovalTests
         else
         {
             model.FailedHoldedPushReportIds.Should().BeEmpty();
-            await _review.DidNotReceiveWithAnyArgs().GetFailedHoldedPushReportIdsAsync(default);
+            await _review.DidNotReceiveWithAnyArgs().GetFailedHoldedPushReportIdsAsync();
         }
     }
 

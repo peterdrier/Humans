@@ -471,7 +471,7 @@ public class ProfileControllerEditTests
 
         result.Should().BeOfType<ViewResult>();
         _controller.ModelState[expectedField]!.Errors.Should().ContainSingle().Which.ErrorMessage.Should().Be(errorKey);
-        await _onboardingService.DidNotReceiveWithAnyArgs().ProfileSavedAsync(default, default);
+        await _onboardingService.DidNotReceiveWithAnyArgs().ProfileSavedAsync(default);
     }
 
     [HumansFact]
@@ -496,8 +496,8 @@ public class ProfileControllerEditTests
         result.Should().BeOfType<ViewResult>().Which.Model.Should().BeSameAs(model);
         _controller.ModelState[nameof(ProfileViewModel.NoPriorBurnExperience)]!.Errors.Should().ContainSingle()
             .Which.ErrorMessage.Should().Be("Users_Profile_BurnerCVRequired");
-        await _userService.DidNotReceiveWithAnyArgs().SaveProfileLanguagesAsync(default, default!, default);
-        await _onboardingService.DidNotReceiveWithAnyArgs().ProfileSavedAsync(default, default);
+        await _userService.DidNotReceiveWithAnyArgs().SaveProfileLanguagesAsync(default, default!);
+        await _onboardingService.DidNotReceiveWithAnyArgs().ProfileSavedAsync(default);
     }
 
     [HumansFact]
@@ -539,7 +539,7 @@ public class ProfileControllerEditTests
 
         result.Should().BeOfType<ViewResult>().Which.Model.Should().BeOfType<MedicalViewModel>()
             .Which.UserId.Should().Be(_userId, "a posted id never picks whose reveal list renders");
-        await _userService.DidNotReceiveWithAnyArgs().SaveMedicalConditionsAsync(default, default, default);
+        await _userService.DidNotReceiveWithAnyArgs().SaveMedicalConditionsAsync(default, default);
     }
 
     [HumansFact]

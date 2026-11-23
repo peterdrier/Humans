@@ -77,13 +77,13 @@ public sealed class GoogleGroupSyncServiceTests
 
         diff.ErrorMessage.Should().Contain(failure.Message);
         await _teamResourceService.Received(1).RecordResourceErrorAsync(resource.Id, diff.ErrorMessage!, CancellationToken.None);
-        await _teamResourceService.DidNotReceiveWithAnyArgs().MarkResourceSyncedAsync(default, default, default);
+        await _teamResourceService.DidNotReceiveWithAnyArgs().MarkResourceSyncedAsync(default, default);
         _syncScheduler.Scheduled.Should().ContainSingle().Which.GroupKey.Should().Be(groupKey);
         await _googleSyncLog.Received(1).LogAsync(Arg.Any<GoogleSyncLogAction>(), resource.Id, Arg.Any<string>(),
             nameof(GoogleGroupSyncService), Arg.Any<string>(), "MEMBER", GoogleSyncSource.ScheduledSync,
             success: false, errorMessage: diff.ErrorMessage, userId: Arg.Any<Guid?>(), ct: CancellationToken.None);
-        await _identities.DidNotReceiveWithAnyArgs().SetStatusFromSyncAsync(default, default!, default, default);
-        await _removalNotifications.DidNotReceiveWithAnyArgs().NotifyRemovalAsync(default!, default, default!, default!, default, default);
+        await _identities.DidNotReceiveWithAnyArgs().SetStatusFromSyncAsync(default, default!, default);
+        await _removalNotifications.DidNotReceiveWithAnyArgs().NotifyRemovalAsync(default!, default, default!, default!, default);
     }
 
     [HumansTheory]
@@ -122,7 +122,7 @@ public sealed class GoogleGroupSyncServiceTests
         var error = await Xunit.Record.ExceptionAsync(() => service.ReconcileOneAsync(groupKey, SyncAction.Execute, shutdown.Token));
 
         error.Should().BeOfType<InvalidOperationException>().Which.InnerException.Should().BeSameAs(failure);
-        await _teamResourceService.DidNotReceiveWithAnyArgs().MarkResourceSyncedAsync(default, default, default);
+        await _teamResourceService.DidNotReceiveWithAnyArgs().MarkResourceSyncedAsync(default, default);
     }
 
     [HumansFact]

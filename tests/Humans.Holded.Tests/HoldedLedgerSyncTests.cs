@@ -132,7 +132,7 @@ public sealed class HoldedLedgerSyncTests
             .Returns(async Task<IReadOnlyList<HoldedPurchaseDocListItemDto>> (_) => { await PrepareAsync(SyncPath.PurchaseDocs); return []; });
         _client.ListContactsAsync(Arg.Any<CancellationToken>())
             .Returns(async Task<IReadOnlyList<HoldedContactDto>> (_) => { await PrepareAsync(SyncPath.Contacts); return []; });
-        _client.ListBankMovementsAsync("treasury", Today, Today, Arg.Any<CancellationToken>(), null)
+        _client.ListBankMovementsAsync("treasury", Today, Today, Arg.Any<CancellationToken>())
             .Returns(async Task<IReadOnlyList<HoldedBankMovementDto>> (_) => { await PrepareAsync(SyncPath.BankMovements); return []; });
         _client.ListAccountingAccountsAsync(Arg.Any<CancellationToken>())
             .Returns(async Task<IReadOnlyList<HoldedAccountDto>> (_) => { await PrepareAsync(SyncPath.Accounts); return []; });

@@ -109,7 +109,7 @@ public class MedicalConditionsServiceTests
         var result = await Controller(_actorId).RevealMedical(subjectId, CancellationToken.None);
 
         result.Should().BeOfType<ForbidResult>();
-        await _repo.DidNotReceiveWithAnyArgs().GetByUserIdReadOnlyAsync(default, default);
+        await _repo.DidNotReceiveWithAnyArgs().GetByUserIdReadOnlyAsync(default);
         await _audit.DidNotReceiveWithAnyArgs().LogAsync(default!, default!, default, default!, default(Guid));
     }
 
@@ -124,7 +124,7 @@ public class MedicalConditionsServiceTests
         var reveal = () => Controller(_actorId).RevealMedical(subjectId, aborted.Token);
 
         await reveal.Should().ThrowAsync<OperationCanceledException>();
-        await _repo.DidNotReceiveWithAnyArgs().GetByUserIdReadOnlyAsync(default, default);
+        await _repo.DidNotReceiveWithAnyArgs().GetByUserIdReadOnlyAsync(default);
     }
 
     private ProfileViewController Controller(Guid viewerId)

@@ -174,7 +174,7 @@ public class ProfileEmailsControllerGridTests
         if (serviceRefused)
             await _userEmailService.Received(1).AddEmailAsync(_userId, address, CancellationToken.None, _userId);
         else
-            await _userEmailService.DidNotReceiveWithAnyArgs().AddEmailAsync(default, default!, default, default);
+            await _userEmailService.DidNotReceiveWithAnyArgs().AddEmailAsync(default, default!);
     }
 
     public enum AdminVerificationOutcome { NoPending, Refused, Verified }

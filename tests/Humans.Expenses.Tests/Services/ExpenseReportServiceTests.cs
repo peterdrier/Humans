@@ -353,7 +353,7 @@ public sealed partial class ExpenseReportServiceTests
             .Should().BeOfType<ExpenseReviewViewModel>().Subject;
         model.Reports.Should().HaveCount(3);
         model.Reports.Select(r => r.SubmitterUserId).Should().BeEquivalentTo([namedId, blankId, missingId]);
-        await _userService.DidNotReceiveWithAnyArgs().GetUserInfosAsync(default!, default);
+        await _userService.DidNotReceiveWithAnyArgs().GetUserInfosAsync(default!);
         controller.TempData.Should().BeEmpty();
     }
 

@@ -60,7 +60,7 @@ public class DevLoginControllerTests
         var result = await BuildSut().SignIn("admin");
 
         result.Should().BeOfType<NotFoundResult>();
-        _ = _users.DidNotReceiveWithAnyArgs().GetUserInfoAsync(default, default);
+        _ = _users.DidNotReceiveWithAnyArgs().GetUserInfoAsync(default);
         await _signIn.DidNotReceiveWithAnyArgs().SignInAsync(default);
     }
 
