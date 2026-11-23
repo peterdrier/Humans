@@ -111,7 +111,7 @@ internal sealed class ConsentController(
     }
 
     private IActionResult RedirectAfterSubmit(string? returnUrl) =>
-        Url.IsLocalUrl(returnUrl) ? LocalRedirect(returnUrl!) : RedirectToAction(nameof(Index));
+        Url.IsLocalUrl(returnUrl) ? LocalRedirect(returnUrl) : RedirectToAction(nameof(Index));
 
     private async Task<IActionResult> RedisplayUncheckedConsentAsync(
         Guid documentVersionId, Guid userId, string? returnUrl, CancellationToken ct)

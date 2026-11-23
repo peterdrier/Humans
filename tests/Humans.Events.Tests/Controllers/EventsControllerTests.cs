@@ -1039,7 +1039,7 @@ public class EventsControllerTests
         };
         var camp = new CampInfo(campId, "camp", "camp@example.org", "", false, 0, [season]);
         _camps.GetCampsForEventAsync(settings.EventSettingsId, Arg.Any<CancellationToken>()).Returns([camp]);
-        _guide.GetGuideSettingsAsync(Arg.Any<CancellationToken>()).Returns(settings! with
+        _guide.GetGuideSettingsAsync(Arg.Any<CancellationToken>()).Returns(settings with
         {
             SubmissionOpenAt = Instant.FromUtc(2026, 5, 1, 0, 0),
             SubmissionCloseAt = Instant.FromUtc(2026, 6, 1, 0, 0)

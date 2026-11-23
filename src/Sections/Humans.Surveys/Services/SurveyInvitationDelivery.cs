@@ -105,7 +105,7 @@ internal sealed class SurveyInvitationDelivery(
             {
                 var preferredCulture = user.PreferredLanguage;
                 var culture = preferredCulture.IsSupportedCultureCode()
-                    ? preferredCulture!
+                    ? preferredCulture
                     : survey.DefaultCulture;
                 var name = user.BurnerName;
                 var title = survey.Title.Resolve(culture, survey.DefaultCulture);
@@ -240,7 +240,7 @@ internal sealed class SurveyInvitationDelivery(
 
                     var preferredCulture = user.PreferredLanguage;
                     var culture = preferredCulture.IsSupportedCultureCode()
-                        ? preferredCulture!
+                        ? preferredCulture
                         : meta.DefaultCulture;
                     var name = user.BurnerName;
                     var token = tokenProvider.Create(inv.Id);

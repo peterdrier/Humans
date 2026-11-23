@@ -625,7 +625,7 @@ public sealed class ShiftDashboardMetricsTests : ShiftsTestHarness
 
         var postEvent = await _service.GetPostEventStatsAsync(es.Id, TestContext.Current.CancellationToken);
         postEvent.Should().NotBeNull();
-        postEvent!.TotalShifts.Should().Be(1);
+        postEvent.TotalShifts.Should().Be(1);
         postEvent.ShiftsWithData.Should().Be(1);
         postEvent.TotalConfirmed.Should().Be(1);
         postEvent.TotalNoShow.Should().Be(1);

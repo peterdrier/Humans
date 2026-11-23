@@ -45,7 +45,7 @@ public class AuditLogRepositoryTests
             transaction = Transaction.Current!.Clone();
             await repository.AddAsync(entry, TestContext.Current.CancellationToken);
             Transaction.Current.Should().NotBeNull();
-            Transaction.Current!.TransactionInformation.LocalIdentifier.Should().Be(transaction.TransactionInformation.LocalIdentifier);
+            Transaction.Current.TransactionInformation.LocalIdentifier.Should().Be(transaction.TransactionInformation.LocalIdentifier);
             if (callerCommits) scope.Complete();
         }
         using (transaction)

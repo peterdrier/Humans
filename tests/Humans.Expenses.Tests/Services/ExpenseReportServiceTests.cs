@@ -4406,7 +4406,7 @@ public sealed partial class ExpenseReportServiceTests
             : (await _sut.AddLineWithResultAsync(id, owner, "Extra", amount, type, ct: ct)).Error;
 
         error.Should().NotBeNull();
-        error!.ResourceKey.Should().Be("Expenses_Validation_AmountPrecision");
+        error.ResourceKey.Should().Be("Expenses_Validation_AmountPrecision");
         var loaded = (await _sut.GetAsync(id, ct))!;
         loaded.Total.Should().Be(10m);
         loaded.Lines.Should().ContainSingle().Which.Description.Should().Be("Original");

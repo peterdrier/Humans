@@ -195,7 +195,7 @@ public sealed class ConsentReviewServiceTests : IDisposable
 
         var row = await RowAsync(user.Id);
         row.Should().NotBeNull();
-        (string.Equals(action, "reject", StringComparison.Ordinal) ? row!.RejectionReason : row!.Notes)
+        (string.Equals(action, "reject", StringComparison.Ordinal) ? row.RejectionReason : row.Notes)
             .Should().Be(text);
     }
 

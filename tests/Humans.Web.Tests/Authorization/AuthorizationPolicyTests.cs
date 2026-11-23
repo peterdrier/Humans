@@ -552,7 +552,7 @@ public class AuthorizationPolicyTests : IDisposable
         {
             var policy = await AuthorizationPolicy.CombineAsync(provider, endpoint.Metadata.GetOrderedMetadata<IAuthorizeData>());
             policy.Should().NotBeNull();
-            var result = await _authorizationService.AuthorizeAsync(user, resource: null, policy!);
+            var result = await _authorizationService.AuthorizeAsync(user, resource: null, policy);
             result.Succeeded.Should().Be(allowed, endpoint.RoutePattern.RawText);
         }
     }

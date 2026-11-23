@@ -186,7 +186,7 @@ public class FinanceOverviewServiceTests
 
         var viewData = result.Should().BeOfType<ViewViewComponentResult>().Which.ViewData;
         viewData.Should().NotBeNull();
-        var model = viewData!.Model.Should().BeOfType<FinanceSettingsViewModel>().Subject;
+        var model = viewData.Model.Should().BeOfType<FinanceSettingsViewModel>().Subject;
         model.Rows.Select(r => r.LedgerAccountNum).Should().Equal(44100001, 44100002, 44100003);
         model.Rows.Select(r => r.Index).Should().Equal(0, 1, 2);
         model.Rows.Last().StripeAccountId.Should().Be("acct_old");

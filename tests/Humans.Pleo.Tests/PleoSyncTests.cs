@@ -99,7 +99,7 @@ public sealed class PleoSyncTests
         row.Currency.Should().Be(currency);
         var detail = await _service.GetEntryViewAsync("currency-entry", ct);
         detail.Should().NotBeNull();
-        detail!.Row.Should().Be(row);
+        detail.Row.Should().Be(row);
     }
 
     private static JsonElement Parse(string json) => JsonDocument.Parse(json).RootElement.Clone();

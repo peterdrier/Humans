@@ -159,7 +159,7 @@ public class MailerLiteAudienceSyncServiceTests
         await act.Should().ThrowAsync<OperationCanceledException>();
         var state = await _repository.GetSyncStateAsync(audience.Key, TestContext.Current.CancellationToken);
         state.Should().NotBeNull();
-        state!.Created.Should().Be(1);
+        state.Created.Should().Be(1);
         state.Assigned.Should().Be(1);
         state.Unassigned.Should().Be(createsGroup ? 0 : 1);
         state.Errors.Should().Be(0);

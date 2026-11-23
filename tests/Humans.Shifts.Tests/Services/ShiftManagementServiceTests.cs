@@ -404,7 +404,7 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
         var found = await service.GetShiftByIdAsync(shift.Id, Xunit.TestContext.Current.CancellationToken);
 
         found.Should().NotBeNull();
-        found!.Shift.Id.Should().Be(shift.Id);
+        found.Shift.Id.Should().Be(shift.Id);
         found.Shift.DayOffset.Should().Be(2);
         found.Rota.Id.Should().Be(rota.Id);
         found.Rota.TeamId.Should().Be(rota.TeamId);
