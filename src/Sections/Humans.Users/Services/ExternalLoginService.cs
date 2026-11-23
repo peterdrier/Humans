@@ -3,7 +3,7 @@ using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Identity;
 using NodaTime;
 
-namespace Humans.Application.Services.Users;
+namespace Humans.Users.Services;
 
 // UserManager allowed per design-rules.md, *Service ownership*: AspNetUserLogins is the authoritative
 // (Provider, ProviderKey) → UserId store. HUM0005 pins ReconcileOAuthIdentityAsync to this class

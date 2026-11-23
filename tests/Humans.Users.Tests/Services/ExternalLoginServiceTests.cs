@@ -1,6 +1,5 @@
 using System.Security.Claims;
 using AwesomeAssertions;
-using Humans.Application.Services.Users;
 using Humans.Users.Contracts;
 using Humans.Users.Data;
 using Humans.Users.Services;

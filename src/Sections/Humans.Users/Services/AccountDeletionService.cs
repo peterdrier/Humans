@@ -17,7 +17,7 @@ using Microsoft.Extensions.Hosting;
 using NodaTime;
 using Humans.Users;
 
-namespace Humans.Application.Services.Users.AccountLifecycle;
+namespace Humans.Users.Services;
 
 // Sits above User/Profile so the foundational services stay free of Teams/Shifts/Tickets.
 internal sealed class AccountDeletionService(

@@ -53,7 +53,7 @@ public sealed class EmailMutationPathsAnalyzer : DiagnosticAnalyzer
     private const string RepositoryInterface = "Humans.Users.Data.Repositories.IUserRepository";
     private const string ServiceMethodName = "ReconcileOAuthIdentityAsync";
     private const string RepositoryMethodName = "ApplyUserEmailReconcilePlanAsync";
-    private const string AllowedServiceCaller = "Humans.Application.Services.Users.ExternalLoginService";
+    private const string AllowedServiceCaller = "Humans.Users.Services.ExternalLoginService";
     private static readonly ImmutableHashSet<string> AllowedRepositoryCallers =
         ImmutableHashSet.Create(
             StringComparer.Ordinal,

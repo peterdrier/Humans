@@ -10,7 +10,6 @@ using Humans.Users.Controllers;
 using Humans.Users.Models;
 using Humans.Users.Services;
 using Humans.Users.Tests.Infrastructure;
-using Humans.Application.Services.Users.AccountLifecycle;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
