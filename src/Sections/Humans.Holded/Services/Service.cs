@@ -366,7 +366,8 @@ internal sealed class Service(
         ResolveCounterparty(line, byEntry, accountsByNumber), line.EntryId, line.Checked);
 
     /// <summary>A debit line's counterparties are the entry's credit lines and vice versa: the API returns no contra
-    /// account. Null when the entry has no opposing leg (unbalanced or partly mirrored).</summary>
+    /// account. Sides go by debit minus credit, because Holded posts a negative amount on its normal side (a negative
+    /// purchase is Dr 629 -x / Cr 400 -x). Null when the entry has no opposing leg (unbalanced or partly mirrored).</summary>
     private static HoldedCounterparty? ResolveCounterparty(
         HoldedLedgerLine line,
         IReadOnlyDictionary<int, List<HoldedLedgerLine>> byEntry,
@@ -375,13 +376,12 @@ internal sealed class Service(
         if (!byEntry.TryGetValue(line.EntryNumber, out var siblings))
             return null;
 
-        var opposing = line.Debit > 0
-            ? siblings.Where(s => s.Line != line.Line && s.Credit > 0).ToList()
-            : siblings.Where(s => s.Line != line.Line && s.Debit > 0).ToList();
-        if (opposing.Count == 0)
+        var side = Math.Sign(line.Debit - line.Credit);
+        var opposing = siblings.Where(s => s.Line != line.Line && Math.Sign(s.Debit - s.Credit) == -side).ToList();
+        if (side == 0 || opposing.Count == 0)
             return null;
 
-        var largest = opposing.MaxBy(s => Math.Max(s.Debit, s.Credit))!;
+        var largest = opposing.MaxBy(s => Math.Abs(s.Debit - s.Credit))!;
         accountsByNumber.TryGetValue(largest.AccountNum, out var account);
         return new HoldedCounterparty(largest.AccountNum, account?.Name, opposing.Count);
     }

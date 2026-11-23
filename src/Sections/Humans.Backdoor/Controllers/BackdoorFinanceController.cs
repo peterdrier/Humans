@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Humans.Backdoor.Filters;
+using Humans.Backdoor.Services;
 using Humans.Base.Authorization;
 using Humans.Base.Controllers;
 using Humans.Base.Extensions;
@@ -27,6 +28,7 @@ namespace Humans.Backdoor.Controllers;
 [ApiController]
 [Route("api/backdoor/finance")]
 [ServiceFilter(typeof(BackdoorApiKeyAuthFilter))]
+[BackdoorScope(BackdoorScope.Staff)]
 [AllowAnonymous]
 internal sealed class BackdoorFinanceController(
     IExpenseReportService expenses,

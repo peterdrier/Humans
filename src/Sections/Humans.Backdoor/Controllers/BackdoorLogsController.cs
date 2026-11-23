@@ -1,4 +1,5 @@
 using Humans.Backdoor.Filters;
+using Humans.Backdoor.Services;
 using Humans.Base.Extensions;
 using Humans.Base.Logging;
 using Microsoft.AspNetCore.Mvc;
@@ -10,6 +11,7 @@ namespace Humans.Backdoor.Controllers;
 [ApiController]
 [Route("api/backdoor/logs")]
 [ServiceFilter(typeof(BackdoorApiKeyAuthFilter))]
+[BackdoorScope(BackdoorScope.Staff)]
 [AllowAnonymous]
 internal sealed class BackdoorLogsController(InMemoryLogSink logSink) : ControllerBase
 {

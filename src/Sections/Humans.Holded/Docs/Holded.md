@@ -133,8 +133,10 @@ Account statements render in date, entry-number and line-number order; entry det
 
 ### Counterparty
 
-Each ledger row's counterparty is resolved from the entry's *other* legs posted to the opposite
-raw side (a debit line's counterparties are the entry's credit lines) — Holded's API does not
+Each ledger row's counterparty is resolved from the entry's *other* legs on the opposite side by
+the sign of `Debit − Credit` (a debit line's counterparties are the entry's credit lines). Holded
+posts a negative amount on its normal side (a negative purchase is Dr 629 −x / Cr 400 −x), so the
+raw column alone would pair nothing. Holded's API does not
 return a contra account, so this is derived by grouping the mirror's lines on `EntryNumber`.
 Exactly one opposing line shows that account, linked; more than one (e.g. a purchase invoice:
 expense + VAT + creditor) shows the largest by absolute amount plus "+N more", linked to the
