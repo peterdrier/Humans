@@ -8,7 +8,7 @@
         <vc:human user-id="@Model.MergedInto.UserId" link="Admin" raw="true" popover="false" />
         @if (Model.MergedAt is { } mergedAt)
         {
-            <text> on @mergedAt.ToString("g") UTC</text>
+            <text> on @mergedAt.ToString("g", System.Globalization.CultureInfo.CurrentCulture) UTC</text>
         }
         and is locked out (sign-in disabled). Its data was reassigned to the surviving account.
     </div>
@@ -26,7 +26,7 @@
                     <vc:human user-id="@account.UserId" link="Admin" raw="true" popover="false" />
                     @if (account.MergedAt is { } at)
                     {
-                        <text> — @at.ToString("g") UTC</text>
+                        <text> — @at.ToString("g", System.Globalization.CultureInfo.CurrentCulture) UTC</text>
                     }
                 </li>
             }

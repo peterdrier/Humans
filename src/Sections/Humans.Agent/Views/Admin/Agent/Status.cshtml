@@ -2,9 +2,9 @@
 @{
     ViewData["Title"] = "Agent — Status";
     var report = Model.Report;
-    string Pct(double r) => (r * 100).ToString("0.0") + "%";
+    string Pct(double r) => (r * 100).ToString("0.0", System.Globalization.CultureInfo.CurrentCulture) + "%";
     string Tokens(long t) => t.ToString("N0");
-    string Usd(decimal v) => "$" + v.ToString("N2");
+    string Usd(decimal v) => "$" + v.ToString("N2", System.Globalization.CultureInfo.CurrentCulture);
 }
 
 <page-header title="Agent Status">
