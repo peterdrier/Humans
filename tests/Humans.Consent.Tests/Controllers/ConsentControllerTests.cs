@@ -274,7 +274,7 @@ public sealed class ConsentControllerTests
         var services = scope.ServiceProvider;
         var engine = services.GetRequiredService<IRazorViewEngine>();
         var result = engine.GetView(null, "/Views/Consent/Index.cshtml", isMainPage: false);
-        Assert.True(result.Success, string.Join(", ", result.SearchedLocations ?? []));
+        Assert.True(result.Success, string.Join(", ", result.SearchedLocations));
         var http = new DefaultHttpContext { RequestServices = services };
         var route = new RouteData();
         route.Values["controller"] = "Consent";
