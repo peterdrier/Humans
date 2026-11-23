@@ -19,9 +19,6 @@ internal interface ITaskRepository : IRepository
     /// <summary>False when the person is already on that task.</summary>
     Task<bool> AddAssignmentAsync(TaskAssignment assignment, CancellationToken ct = default);
 
-    /// <summary>False when the person has no assignment on that task.</summary>
-    Task<bool> ConfirmAssignmentAsync(Guid taskId, Guid userId, CancellationToken ct = default);
-
     Task<bool> RemoveAssignmentAsync(Guid taskId, Guid userId, CancellationToken ct = default);
 
     /// <summary>False when the link already exists.</summary>

@@ -21,9 +21,11 @@ internal sealed class TaskService(
     ITaskRepository repository,
     ITeamService teams,
     ISettingsService settings,
+    IUserService users,
     IAuditLogService audit,
     IClock clock,
-    IStringLocalizer<TasksResource> localizer) : ITaskService, IUserDataContributor, IUserMerge
+    IStringLocalizer<TasksResource> localizer,
+    ILogger<TaskService> logger) : ITaskService, IUserDataContributor, IUserMerge
 {
     internal const string ExportSection = "Tasks";
     internal const string AuditEntityType = "TaskItem";
@@ -42,10 +44,7 @@ internal sealed class TaskService(
     public async Task<IReadOnlyList<TaskInfo>> GetTasksAsync(CancellationToken ct = default)
     {
         var snapshot = await LoadAsync(ct);
-        return snapshot.Tasks.Values
-            .Select(t => ToInfo(t, snapshot))
-            .OrderBy(t => t.Title, StringComparer.CurrentCultureIgnoreCase)
-            .ToList();
+        return snapshot.Tasks.Values.Select(t => ToInfo(t, snapshot)).ToList();
     }
 
     public async Task<IReadOnlyList<TaskInfo>> GetListedTasksAsync(TaskListScope? scope = null, CancellationToken ct = default)
@@ -77,13 +76,8 @@ internal sealed class TaskService(
                 g.Count(),
                 g.Sum(t => t.OpenSlots),
                 g.Count(t => t.Status == TaskItemStatus.Blocked)))
-            .OrderBy(r => r.TeamName, StringComparer.CurrentCultureIgnoreCase)
             .ToList();
-        var blocked = listed
-            .Where(t => t.Status == TaskItemStatus.Blocked)
-            .OrderBy(t => t.TeamName, StringComparer.CurrentCultureIgnoreCase)
-            .ThenBy(t => t.Title, StringComparer.CurrentCultureIgnoreCase)
-            .ToList();
+        var blocked = listed.Where(t => t.Status == TaskItemStatus.Blocked).ToList();
         return new TasksAdminSummary(rows, blocked);
     }
 
@@ -91,18 +85,18 @@ internal sealed class TaskService(
     {
         var snapshot = await LoadAsync(ct);
         if (await TeamRefusalAsync(input.TeamId, ct) is { } teamRefusal)
-            return Refuse(teamRefusal);
+            return Refuse(teamRefusal, actorUserId);
         if (InputRefusal(input) is { } refusal)
-            return Refuse(refusal);
+            return Refuse(refusal, actorUserId);
         if (EventRefusal(input.EventId, currentEventId: null, snapshot) is { } eventRefusal)
-            return Refuse(eventRefusal);
+            return Refuse(eventRefusal, actorUserId);
 
         var newEvent = EventOf(input.EventId, snapshot);
         var (start, startRefusal) = ResolveDate(input.Start, currentOffset: null, oldEvent: null, newEvent);
         var (due, dueRefusal) = ResolveDate(input.Due, currentOffset: null, oldEvent: null, newEvent);
         var dateRefusal = startRefusal ?? dueRefusal ?? OrderRefusal(start, due, newEvent);
         if (dateRefusal is not null)
-            return Refuse(dateRefusal);
+            return Refuse(dateRefusal, actorUserId);
 
         var now = clock.GetCurrentInstant();
         var task = new TaskItem
@@ -126,13 +120,13 @@ internal sealed class TaskService(
     {
         var snapshot = await LoadAsync(ct);
         if (!snapshot.Tasks.TryGetValue(taskId, out var task))
-            return Refuse(T("Tasks_Refusal_NoTask"));
+            return Refuse("Tasks_Refusal_NoTask", actorUserId, taskId);
         if (input.TeamId != task.OwnerId && await TeamRefusalAsync(input.TeamId, ct) is { } teamRefusal)
-            return Refuse(teamRefusal);
+            return Refuse(teamRefusal, actorUserId, taskId);
         if (InputRefusal(input) is { } refusal)
-            return Refuse(refusal);
+            return Refuse(refusal, actorUserId, taskId);
         if (EventRefusal(input.EventId, task.EventId, snapshot) is { } eventRefusal)
-            return Refuse(eventRefusal);
+            return Refuse(eventRefusal, actorUserId, taskId);
 
         var oldEvent = EventOf(task.EventId, snapshot);
         var newEvent = EventOf(input.EventId, snapshot);
@@ -140,7 +134,7 @@ internal sealed class TaskService(
         var (due, dueRefusal) = ResolveDate(input.Due, task.DueDayOffset, oldEvent, newEvent);
         var dateRefusal = startRefusal ?? dueRefusal ?? OrderRefusal(start, due, newEvent);
         if (dateRefusal is not null)
-            return Refuse(dateRefusal);
+            return Refuse(dateRefusal, actorUserId, taskId);
 
         var changes = Changes(task, input, start, due);
         var fromTeam = TeamName(task, snapshot);
@@ -162,17 +156,17 @@ internal sealed class TaskService(
     {
         var snapshot = await LoadAsync(ct);
         if (!snapshot.Tasks.TryGetValue(taskId, out var task))
-            return Refuse(T("Tasks_Refusal_NoTask"));
+            return Refuse("Tasks_Refusal_NoTask", actorUserId, taskId);
         if (!Enum.IsDefined(status))
-            return Refuse(T("Tasks_Refusal_NoTask"));
+            return Refuse("Tasks_Refusal_NoTask", actorUserId, taskId);
 
         var note = status == TaskItemStatus.Blocked ? blockedNote?.Trim() : null;
         if (status == TaskItemStatus.Blocked)
         {
             if (string.IsNullOrEmpty(note))
-                return Refuse(T("Tasks_Refusal_NoteNeeded"));
+                return Refuse("Tasks_Refusal_NoteNeeded", actorUserId, taskId);
             if (note.Length > NoteMaxLength)
-                return Refuse(T("Tasks_Refusal_NoteTooLong"));
+                return Refuse("Tasks_Refusal_NoteTooLong", actorUserId, taskId);
         }
 
         var before = task.Status;
@@ -192,11 +186,11 @@ internal sealed class TaskService(
     {
         var snapshot = await LoadAsync(ct);
         if (!snapshot.Tasks.TryGetValue(taskId, out var task))
-            return Refuse(T("Tasks_Refusal_NoTask"));
+            return Refuse("Tasks_Refusal_NoTask", actorUserId, taskId);
 
         var info = ToInfo(task, snapshot);
         if (!await repository.DeleteAsync(taskId, ct))
-            return Refuse(T("Tasks_Refusal_NoTask"));
+            return Refuse("Tasks_Refusal_NoTask", actorUserId, taskId);
 
         await audit.LogAsync(TasksAuditActions.TaskDeleted, AuditEntityType, task.Id,
             $"Task '{task.Title}' on {info.TeamName} deleted with {task.Assignments.Count} person(s) and {task.Dependencies.Count} link(s)",
@@ -209,35 +203,26 @@ internal sealed class TaskService(
     {
         var snapshot = await LoadAsync(ct);
         if (!snapshot.Tasks.TryGetValue(taskId, out var task))
-            return Refuse(T("Tasks_Refusal_NoTask"));
+            return Refuse("Tasks_Refusal_NoTask", actorUserId, taskId);
+        if (await users.GetUserInfoAsync(userId, ct) is null)
+            return Refuse("Tasks_Refusal_NoPerson", actorUserId, taskId);
+        if (task.Assignments.Any(a => a.UserId == userId))
+            return Refuse("Tasks_Refusal_AlreadyOn", actorUserId, taskId);
 
-        var existing = task.Assignments.FirstOrDefault(a => a.UserId == userId);
-        if (existing is { State: TaskAssignmentState.Confirmed })
-            return Refuse(T("Tasks_Refusal_AlreadyOn"));
-
-        if (existing is not null)
+        var assignment = new TaskAssignment
         {
-            if (!await repository.ConfirmAssignmentAsync(taskId, userId, ct))
-                return Refuse(T("Tasks_Refusal_NotOn"));
-            existing.State = TaskAssignmentState.Confirmed;
-        }
-        else
-        {
-            var assignment = new TaskAssignment
-            {
-                Id = Guid.NewGuid(),
-                TaskItemId = task.Id,
-                UserId = userId,
-                State = TaskAssignmentState.Confirmed,
-                CreatedAt = clock.GetCurrentInstant(),
-            };
-            if (!await repository.AddAssignmentAsync(assignment, ct))
-                return Refuse(T("Tasks_Refusal_AlreadyOn"));
-            task.Assignments.Add(assignment);
-        }
+            Id = Guid.NewGuid(),
+            TaskItemId = task.Id,
+            UserId = userId,
+            State = TaskAssignmentState.Confirmed,
+            CreatedAt = clock.GetCurrentInstant(),
+        };
+        if (!await repository.AddAssignmentAsync(assignment, ct))
+            return Refuse("Tasks_Refusal_AlreadyOn", actorUserId, taskId);
+        task.Assignments.Add(assignment);
 
         await audit.LogAsync(TasksAuditActions.TaskAssigned, AuditEntityType, task.Id,
-            $"Assigned to task '{task.Title}' on {TeamName(task, snapshot)}{(existing is null ? string.Empty : " (request approved)")}",
+            $"Assigned to task '{task.Title}' on {TeamName(task, snapshot)}",
             actorUserId, relatedEntityId: userId, relatedEntityType: AuditSubjectTypes.User);
 
         return new(ToInfo(task, snapshot));
@@ -247,11 +232,11 @@ internal sealed class TaskService(
     {
         var snapshot = await LoadAsync(ct);
         if (!snapshot.Tasks.TryGetValue(taskId, out var task))
-            return Refuse(T("Tasks_Refusal_NoTask"));
+            return Refuse("Tasks_Refusal_NoTask", actorUserId, taskId);
 
         var existing = task.Assignments.FirstOrDefault(a => a.UserId == userId);
         if (existing is null || !await repository.RemoveAssignmentAsync(taskId, userId, ct))
-            return Refuse(T("Tasks_Refusal_NotOn"));
+            return Refuse("Tasks_Refusal_NotOn", actorUserId, taskId);
         task.Assignments.Remove(existing);
 
         await audit.LogAsync(TasksAuditActions.TaskUnassigned, AuditEntityType, task.Id,
@@ -265,17 +250,17 @@ internal sealed class TaskService(
     {
         var snapshot = await LoadAsync(ct);
         if (!snapshot.Tasks.TryGetValue(taskId, out var task) || !snapshot.Tasks.TryGetValue(dependsOnTaskId, out var other))
-            return Refuse(T("Tasks_Refusal_NoTask"));
+            return Refuse("Tasks_Refusal_NoTask", actorUserId, taskId);
         if (taskId == dependsOnTaskId)
-            return Refuse(T("Tasks_Refusal_DependsOnSelf"));
+            return Refuse("Tasks_Refusal_DependsOnSelf", actorUserId, taskId);
         if (task.Dependencies.Any(d => d.DependsOnTaskItemId == dependsOnTaskId))
-            return Refuse(T("Tasks_Refusal_DependencyExists"));
+            return Refuse("Tasks_Refusal_DependencyExists", actorUserId, taskId);
         if (Reaches(snapshot.Tasks, from: dependsOnTaskId, to: taskId))
-            return Refuse(T("Tasks_Refusal_DependencyCycle"));
+            return Refuse("Tasks_Refusal_DependencyCycle", actorUserId, taskId);
 
         var dependency = new TaskDependency { Id = Guid.NewGuid(), TaskItemId = taskId, DependsOnTaskItemId = dependsOnTaskId };
         if (!await repository.AddDependencyAsync(dependency, ct))
-            return Refuse(T("Tasks_Refusal_DependencyExists"));
+            return Refuse("Tasks_Refusal_DependencyExists", actorUserId, taskId);
         task.Dependencies.Add(dependency);
 
         await audit.LogAsync(TasksAuditActions.TaskDependencyAdded, AuditEntityType, task.Id,
@@ -289,11 +274,11 @@ internal sealed class TaskService(
     {
         var snapshot = await LoadAsync(ct);
         if (!snapshot.Tasks.TryGetValue(taskId, out var task))
-            return Refuse(T("Tasks_Refusal_NoTask"));
+            return Refuse("Tasks_Refusal_NoTask", actorUserId, taskId);
 
         var dependency = task.Dependencies.FirstOrDefault(d => d.DependsOnTaskItemId == dependsOnTaskId);
         if (dependency is null || !await repository.RemoveDependencyAsync(taskId, dependsOnTaskId, ct))
-            return Refuse(T("Tasks_Refusal_NoDependency"));
+            return Refuse("Tasks_Refusal_NoDependency", actorUserId, taskId);
         task.Dependencies.Remove(dependency);
 
         var otherTitle = snapshot.Tasks.TryGetValue(dependsOnTaskId, out var other) ? other.Title : dependsOnTaskId.ToString();
@@ -352,22 +337,22 @@ internal sealed class TaskService(
     private async Task<string?> TeamRefusalAsync(Guid teamId, CancellationToken ct)
     {
         var team = await teams.GetTeamAsync(teamId, ct);
-        return team is { IsActive: true, IsSystemTeam: false } ? null : T("Tasks_Refusal_NoTeam");
+        return team is { IsActive: true, IsSystemTeam: false } ? null : "Tasks_Refusal_NoTeam";
     }
 
     private string? InputRefusal(TaskInput input)
     {
         var title = input.Title?.Trim();
         if (string.IsNullOrEmpty(title))
-            return T("Tasks_Refusal_NoTitle");
+            return "Tasks_Refusal_NoTitle";
         if (title.Length > TitleMaxLength)
-            return T("Tasks_Refusal_TitleTooLong");
+            return "Tasks_Refusal_TitleTooLong";
         if (input.Description is { Length: > DescriptionMaxLength })
-            return T("Tasks_Refusal_DescriptionTooLong");
+            return "Tasks_Refusal_DescriptionTooLong";
         if (input.SlotCount < 1)
-            return T("Tasks_Refusal_NoSlots");
+            return "Tasks_Refusal_NoSlots";
         if (input.ApprovalReason is { } reason && input.NeedsApproval && reason.Trim().Length > ReasonMaxLength)
-            return T("Tasks_Refusal_ReasonTooLong");
+            return "Tasks_Refusal_ReasonTooLong";
         return null;
     }
 
@@ -378,7 +363,7 @@ internal sealed class TaskService(
             return null;
         return snapshot.Events.TryGetValue(eventId.Value, out var e) && e.Status != EventSettingsStatus.Deleted
             ? null
-            : T("Tasks_Refusal_NoEvent");
+            : "Tasks_Refusal_NoEvent";
     }
 
     private static EventSettingsInfo? EventOf(Guid? eventId, Snapshot snapshot) =>
@@ -392,7 +377,7 @@ internal sealed class TaskService(
         if (!input.IsRelative)
             return (new StoredDate(input.Date, null), null);
         if (newEvent is null)
-            return (new StoredDate(null, null), T("Tasks_Refusal_EventNeededForRelative"));
+            return (new StoredDate(null, null), "Tasks_Refusal_EventNeededForRelative");
 
         // The form shows the date as the old event resolves it; posting it back unchanged keeps the day number.
         if (currentOffset is { } offset && oldEvent is not null && oldEvent.GateOpeningDate.PlusDays(offset) == input.Date)
@@ -405,7 +390,7 @@ internal sealed class TaskService(
     {
         var from = Resolve(start, newEvent);
         var to = Resolve(due, newEvent);
-        return from is { } f && to is { } t && t < f ? T("Tasks_Refusal_DueBeforeStart") : null;
+        return from is { } f && to is { } t && t < f ? "Tasks_Refusal_DueBeforeStart" : null;
     }
 
     private static LocalDate? Resolve(StoredDate date, EventSettingsInfo? taskEvent) =>
@@ -507,7 +492,6 @@ internal sealed class TaskService(
                 .Select(d => snapshot.Tasks.GetValueOrDefault(d.DependsOnTaskItemId))
                 .OfType<TaskItem>()
                 .Select(o => new TaskLinkInfo(o.Id, o.Title, o.Status))
-                .OrderBy(l => l.Title, StringComparer.CurrentCultureIgnoreCase)
                 .ToList(),
             task.CreatedAt,
             task.UpdatedAt);
@@ -518,7 +502,10 @@ internal sealed class TaskService(
             ? null
             : new TaskDateInfo(fixedDate, offset, Resolve(new StoredDate(fixedDate, offset), taskEvent));
 
-    private TaskResult Refuse(string refusal) => new(Refusal: refusal);
-
-    private string T(string key) => localizer[key].Value;
+    /// <summary>Logs the refusal by its resource key and answers it in the current UI culture.</summary>
+    private TaskResult Refuse(string key, Guid actorUserId, Guid? taskId = null)
+    {
+        logger.LogWarning("Task write refused ({Refusal}) for {ActorUserId} on task {TaskId}", key, actorUserId, taskId);
+        return new(Refusal: localizer[key].Value);
+    }
 }

@@ -27,7 +27,7 @@ internal sealed class TaskListFilter
 
 internal sealed record EventOption(Guid Id, string Name);
 
-internal sealed record TeamChoice(Guid Id, string Name);
+internal sealed record TeamChoice(Guid Id, string Name, string Slug);
 
 /// <summary>The rows of a task table, with or without the team column.</summary>
 internal sealed record TaskTableModel(IReadOnlyList<TaskInfo> Tasks, bool ShowTeam);
@@ -47,10 +47,12 @@ internal static class TaskPriorityOrder
 /// <summary>The filter form. <see cref="Events"/> is null on a team's page, which filters only on finished tasks.</summary>
 internal sealed record TaskFilterViewModel(TaskListFilter Filter, IReadOnlyList<EventOption>? Events);
 
+/// <summary><see cref="ManagedTeams"/> links a manager to each team's tasks page, where the add form is, before it has any tasks.</summary>
 internal sealed record TaskListViewModel(
     IReadOnlyList<TaskInfo> Tasks,
     IReadOnlyList<EventOption> Events,
-    TaskListFilter Filter);
+    TaskListFilter Filter,
+    IReadOnlyList<TeamChoice> ManagedTeams);
 
 internal sealed record TeamPageViewModel(
     Guid TeamId,
@@ -62,8 +64,8 @@ internal sealed record TeamPageViewModel(
     TaskForm AddForm,
     IReadOnlyList<EventOption> Events);
 
-/// <summary>A task this one waits on. <see cref="Title"/> is null when the viewer cannot see it.</summary>
-internal sealed record DependencyRow(Guid Id, string? Title, TaskItemStatus Status);
+/// <summary>A task this one waits on. <see cref="Title"/> and <see cref="Status"/> are null when the viewer cannot see it.</summary>
+internal sealed record DependencyRow(Guid Id, string? Title, TaskItemStatus? Status);
 
 /// <summary>A task a manager may pick as something this one waits on.</summary>
 internal sealed record DependencyChoice(Guid Id, string Label);
@@ -77,7 +79,8 @@ internal sealed record TaskPageViewModel(
     TaskForm EditForm,
     bool EditOpen,
     IReadOnlyList<TeamChoice> Teams,
-    IReadOnlyList<EventOption> Events);
+    IReadOnlyList<EventOption> Events,
+    StatusForm StatusForm);
 
 /// <summary>What the status form posts.</summary>
 internal sealed class StatusForm

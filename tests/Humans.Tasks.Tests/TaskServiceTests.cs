@@ -2,6 +2,7 @@ using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
 using Humans.Tasks.Domain;
 using Humans.Tasks.Services;
+using Humans.Users.Contracts;
 using NodaTime;
 using NSubstitute;
 using Xunit;
@@ -206,6 +207,18 @@ public sealed class TaskServiceTests
     }
 
     [HumansFact]
+    public async Task IsWaiting_AFinishedTaskWaitsOnNothing()
+    {
+        var waiting = await _kit.CreateAsync(Input(title: "Paint"));
+        var first = await _kit.CreateAsync(Input(title: "Build"));
+        await _kit.Service.AddDependencyAsync(waiting.Id, first.Id, _kit.Actor, Ct);
+
+        await _kit.SetStatusAsync(waiting.Id, TaskItemStatus.Done);
+
+        (await _kit.Service.GetTaskAsync(waiting.Id, Ct))!.IsWaiting.Should().BeFalse();
+    }
+
+    [HumansFact]
     public async Task IsWaiting_IsNotTheStoredBlockedStatus()
     {
         var waiting = await _kit.CreateAsync(Input(title: "Paint"));
@@ -288,25 +301,17 @@ public sealed class TaskServiceTests
     }
 
     [HumansFact]
-    public async Task Assign_ConfirmsARequestAndRefusesAnExistingConfirmedPerson()
+    public async Task Assign_RefusesSomeoneAlreadyOnAndAnUnknownPerson()
     {
-        var task = await _kit.CreateAsync(Input(slots: 2, needsApproval: true));
-        var requester = Guid.NewGuid();
-        _kit.Repository.Seed(new TaskAssignment
-        {
-            Id = Guid.NewGuid(),
-            TaskItemId = task.Id,
-            UserId = requester,
-            State = TaskAssignmentState.Requested,
-        });
+        var task = await _kit.CreateAsync(Input(slots: 2));
+        var person = Guid.NewGuid();
+        var nobody = Guid.NewGuid();
+        _kit.Users.GetUserInfoAsync(nobody, Arg.Any<CancellationToken>()).Returns((UserInfo?)null);
 
-        (await _kit.Service.GetTaskAsync(task.Id, Ct))!.OpenSlots.Should().Be(2, because: "a request takes no slot");
-
-        var approved = await _kit.Service.AssignAsync(task.Id, requester, _kit.Actor, Ct);
-
-        approved.Task!.Assignments.Should().ContainSingle().Which.IsConfirmed.Should().BeTrue();
-        approved.Task.OpenSlots.Should().Be(1);
-        (await _kit.Service.AssignAsync(task.Id, requester, _kit.Actor, Ct)).Refusal.Should().Be("Tasks_Refusal_AlreadyOn");
+        (await _kit.Service.AssignAsync(task.Id, person, _kit.Actor, Ct)).Task!.OpenSlots.Should().Be(1);
+        (await _kit.Service.AssignAsync(task.Id, person, _kit.Actor, Ct)).Refusal.Should().Be("Tasks_Refusal_AlreadyOn");
+        (await _kit.Service.AssignAsync(task.Id, nobody, _kit.Actor, Ct)).Refusal.Should().Be("Tasks_Refusal_NoPerson");
+        (await _kit.Service.GetTaskAsync(task.Id, Ct))!.Assignments.Should().ContainSingle();
     }
 
     [HumansFact]
@@ -405,13 +410,13 @@ public sealed class TaskServiceTests
 
         var summary = await _kit.Service.GetAdminSummaryAsync(Ct);
 
-        summary.Teams.Select(t => t.TeamName).Should().Equal("Art", "Production");
+        summary.Teams.Select(t => t.TeamName).Should().BeEquivalentTo(["Art", "Production"]);
         var production = summary.Teams.Single(t => string.Equals(t.TeamName, "Production", StringComparison.Ordinal));
         production.Tasks.Should().Be(2);
         production.OpenSlots.Should().Be(3, because: "3 for the first task, never below zero for the overfilled one");
         production.BlockedTasks.Should().Be(1);
         summary.Teams.Single(t => string.Equals(t.TeamName, "Art", StringComparison.Ordinal)).Tasks.Should().Be(1);
-        summary.BlockedTasks.Select(t => t.Title).Should().Equal("Art", "Two");
+        summary.BlockedTasks.Select(t => t.Title).Should().BeEquivalentTo(["Art", "Two"]);
         summary.BlockedTasks.Should().OnlyContain(t => t.BlockedNote != null);
     }
 

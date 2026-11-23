@@ -266,7 +266,6 @@ graph LR
     Surveys -.-> Governance
     Surveys -.-> Teams
     Surveys -.-> Tickets
-    Tasks --> Auth
     Tasks --> Permissions
     Tasks --> Settings
     Tasks -.-> Teams

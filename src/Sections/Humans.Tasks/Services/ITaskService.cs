@@ -12,12 +12,13 @@ namespace Humans.Tasks.Services;
 /// </summary>
 internal interface ITaskService : IApplicationService
 {
-    /// <summary>Every task, ordered by title. Callers filter what the viewer may see.</summary>
+    /// <summary>Every task. Callers filter what the viewer may see, and sort.</summary>
     Task<IReadOnlyList<TaskInfo>> GetTasksAsync(CancellationToken ct = default);
 
-    /// <summary>The tasks a list shows, ordered by title. Callers filter what the viewer may see.</summary>
-    /// <param name="scope">Null for the default list: the active event's tasks plus tasks with no event, without done and cancelled ones.</param>
-    /// <param name="ct">Cancellation.</param>
+    /// <summary>
+    /// The tasks a list shows; a null scope is the default <see cref="TaskListScope"/>. Callers filter what the viewer
+    /// may see, and sort.
+    /// </summary>
     Task<IReadOnlyList<TaskInfo>> GetListedTasksAsync(TaskListScope? scope = null, CancellationToken ct = default);
 
     Task<TaskInfo?> GetTaskAsync(Guid taskId, CancellationToken ct = default);
@@ -39,7 +40,7 @@ internal interface ITaskService : IApplicationService
 
     Task<TaskResult> DeleteAsync(Guid taskId, Guid actorUserId, CancellationToken ct = default);
 
-    /// <summary>Confirms the person, answering their request if they made one. May exceed the slots.</summary>
+    /// <summary>Confirms a known person not yet on the task. May exceed the slots.</summary>
     Task<TaskResult> AssignAsync(Guid taskId, Guid userId, Guid actorUserId, CancellationToken ct = default);
 
     Task<TaskResult> UnassignAsync(Guid taskId, Guid userId, Guid actorUserId, CancellationToken ct = default);
@@ -56,18 +57,11 @@ internal interface ITaskService : IApplicationService
 /// <param name="IncludeFinished">Keep done and cancelled tasks.</param>
 internal sealed record TaskListScope(bool AnyEvent = false, Guid? EventId = null, bool IncludeFinished = false);
 
-/// <summary>What a task form sends.</summary>
-/// <param name="TeamId">An active, non-system team.</param>
-/// <param name="Title">Required, at most 200 characters.</param>
-/// <param name="Description">Markdown.</param>
-/// <param name="EventId">The Settings event record, or null for none.</param>
-/// <param name="Start">Null for none.</param>
-/// <param name="Due">Null for none.</param>
-/// <param name="Priority">How much the task matters.</param>
-/// <param name="SlotCount">How many people it needs, at least 1.</param>
-/// <param name="NeedsApproval">A claim waits for a manager's answer.</param>
-/// <param name="ApprovalReason">Dropped when <paramref name="NeedsApproval"/> is off.</param>
-/// <param name="IsHidden">Shown only to the team's managers, people on it, and those who see all.</param>
+/// <summary>
+/// What a task form sends. The team is active and not a system team; the title is required, at most 200 characters;
+/// the description is Markdown; a null event or date means none; the approval reason is dropped when needs-approval
+/// is off.
+/// </summary>
 internal sealed record TaskInput(
     Guid TeamId,
     string Title,
@@ -82,12 +76,10 @@ internal sealed record TaskInput(
     bool IsHidden);
 
 /// <summary>
-/// A date as the form picks it: always a calendar date. Tasks works out the day number for a relative one. On an
-/// edit, a relative date equal to what the task already shows keeps its stored day number, so changing the event alone
-/// keeps the day numbers.
+/// A date as the form picks it: always a calendar date, stored as days from the event's gate opening day when
+/// relative. On an edit, a relative date equal to what the task already shows keeps its stored day number, so changing
+/// the event alone keeps the day numbers.
 /// </summary>
-/// <param name="IsRelative">Stored as days from the event's gate opening day instead of as the date.</param>
-/// <param name="Date">The calendar date picked.</param>
 internal sealed record TaskDateInput(bool IsRelative, LocalDate Date);
 
 /// <summary>A stored date: fixed, or days from the event's gate opening day.</summary>
@@ -99,41 +91,17 @@ internal sealed record TaskDateInfo(LocalDate? Fixed, int? DayOffset, LocalDate?
     public bool IsRelative => DayOffset is not null;
 }
 
-/// <summary>A person on a task.</summary>
-/// <param name="UserId">The person.</param>
-/// <param name="IsConfirmed">False for a request waiting for a manager.</param>
-/// <param name="CreatedAt">When they were put or asked to be on it.</param>
+/// <summary>A person on a task: confirmed, or a request waiting for a manager.</summary>
 internal sealed record TaskAssignmentInfo(Guid UserId, bool IsConfirmed, Instant CreatedAt);
 
-/// <summary>A task this one waits on.</summary>
-/// <param name="Id">The other task.</param>
-/// <param name="Title">Its title. Show "a hidden task" when the viewer cannot see it.</param>
-/// <param name="Status">Its status.</param>
+/// <summary>A task this one waits on. Show "a hidden task" in place of the title when the viewer cannot see it.</summary>
 internal sealed record TaskLinkInfo(Guid Id, string Title, TaskItemStatus Status);
 
-/// <summary>One task as the pages show it.</summary>
-/// <param name="Id">The task.</param>
-/// <param name="Owner">The team, as owner kind plus id.</param>
-/// <param name="TeamName">Empty when the team is gone.</param>
-/// <param name="TeamSlug">Empty when the team is gone.</param>
-/// <param name="TeamIsHidden">Every task of a hidden team counts as hidden.</param>
-/// <param name="Title">Task title.</param>
-/// <param name="Description">Markdown.</param>
-/// <param name="EventId">Null when not tied to an event.</param>
-/// <param name="EventName">Null when not tied to an event.</param>
-/// <param name="Start">Null for none.</param>
-/// <param name="Due">Null for none.</param>
-/// <param name="Status">To do, in progress, blocked, done or cancelled.</param>
-/// <param name="BlockedNote">What holds it up. Only while blocked.</param>
-/// <param name="Priority">How much the task matters.</param>
-/// <param name="SlotCount">How many people it needs.</param>
-/// <param name="NeedsApproval">A claim waits for a manager's answer.</param>
-/// <param name="ApprovalReason">Shown beside the claim button.</param>
-/// <param name="IsHidden">The task's own switch. See <see cref="TaskInfo.IsEffectivelyHidden"/>.</param>
-/// <param name="Assignments">Confirmed people and requests, oldest first.</param>
-/// <param name="WaitingOn">The tasks it depends on, whatever their state.</param>
-/// <param name="CreatedAt">When it was made.</param>
-/// <param name="UpdatedAt">When it last changed.</param>
+/// <summary>
+/// One task as the pages show it. The owner is the team; team name and slug are empty when the team is gone. The
+/// description is Markdown; the blocked note is set only while blocked. Assignments are confirmed people and requests,
+/// oldest first; waiting-on lists what it depends on, whatever its state.
+/// </summary>
 internal sealed record TaskInfo(
     Guid Id,
     Owner Owner,
@@ -165,8 +133,8 @@ internal sealed record TaskInfo(
     /// <summary>Slots minus confirmed people, never below zero. Requests take no slot.</summary>
     public int OpenSlots => Math.Max(0, SlotCount - ConfirmedCount);
 
-    /// <summary>Something it waits on is not finished. A cancelled task holds nothing up.</summary>
-    public bool IsWaiting => WaitingOn.Any(l => l.Status is not (TaskItemStatus.Done or TaskItemStatus.Cancelled));
+    /// <summary>An unfinished task with something it waits on not finished. A cancelled task holds nothing up.</summary>
+    public bool IsWaiting => !IsFinished && WaitingOn.Any(l => l.Status is not (TaskItemStatus.Done or TaskItemStatus.Cancelled));
 
     public bool IsFinished => Status is TaskItemStatus.Done or TaskItemStatus.Cancelled;
 }
@@ -180,13 +148,7 @@ internal sealed record TaskResult(TaskInfo? Task = null, string? Refusal = null,
     public bool Succeeded => Refusal is null;
 }
 
-/// <summary>Counts over the listed tasks of one team.</summary>
-/// <param name="TeamId">The team.</param>
-/// <param name="TeamName">Team name.</param>
-/// <param name="TeamSlug">Team slug.</param>
-/// <param name="Tasks">Listed tasks on the team.</param>
-/// <param name="OpenSlots">Slots minus confirmed people, summed, never below zero per task.</param>
-/// <param name="BlockedTasks">Listed tasks that are blocked.</param>
+/// <summary>Counts over the listed tasks of one team. Open slots are summed, never below zero per task.</summary>
 internal sealed record TeamTaskCounts(Guid TeamId, string TeamName, string TeamSlug, int Tasks, int OpenSlots, int BlockedTasks);
 
 /// <summary>The read-only admin page.</summary>

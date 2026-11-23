@@ -101,13 +101,13 @@
                             <select class="form-select" id="status-select" name="Status">
                                 @foreach (var status in Model.StatusChoices)
                                 {
-                                    <option value="@status" selected="@(task.Status == status)">@Localizer[$"Enum_TaskItemStatus_{status}"]</option>
+                                    <option value="@status" selected="@(Model.StatusForm.Status == status)">@Localizer[$"Enum_TaskItemStatus_{status}"]</option>
                                 }
                             </select>
                         </div>
                         <div class="col-sm-5">
                             <label class="form-label" for="status-note">@Localizer["Tasks_Task_BlockedNote"]</label>
-                            <input type="text" class="form-control" id="status-note" name="BlockedNote" value="@task.BlockedNote" maxlength="500" />
+                            <input type="text" class="form-control" id="status-note" name="BlockedNote" value="@Model.StatusForm.BlockedNote" maxlength="500" />
                         </div>
                         <div class="col-sm-3">
                             <button type="submit" class="btn btn-outline-secondary w-100">@Localizer["Tasks_Task_StatusSave"]</button>
@@ -192,7 +192,10 @@
                             {
                                 <span class="text-muted fst-italic">@Localizer["Tasks_Task_HiddenTask"]</span>
                             }
-                            <status-badge value="@link.Status" localizer="@Localizer" />
+                            @if (link.Status is { } linkStatus)
+                            {
+                                <status-badge value="@linkStatus" localizer="@Localizer" />
+                            }
                             @if (Model.CanManage)
                             {
                                 <form action="@Url.Action("RemoveDependency", route)" method="post" class="ms-auto">

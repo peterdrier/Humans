@@ -3,6 +3,7 @@ using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.Base.Authorization;
 using Humans.Base.Constants;
+using Humans.Base.Interfaces;
 using Humans.Permissions.Contracts;
 using Humans.Tasks.Contracts;
 using Humans.Tasks.Controllers;
@@ -15,6 +16,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
+using Microsoft.Extensions.DependencyInjection;
 using NSubstitute;
 using Xunit;
 
@@ -28,6 +30,13 @@ public sealed class TasksControllerTests
 
     private static CancellationToken Ct => TestContext.Current.CancellationToken;
 
+    /// <summary>The section's own registered policies, evaluated for real.</summary>
+    private static readonly IAuthorizationService Authorization = new ServiceCollection()
+        .AddLogging()
+        .AddAuthorizationCore(o => ((ISectionPolicies)new Section()).AddPolicies(o))
+        .BuildServiceProvider()
+        .GetRequiredService<IAuthorizationService>();
+
     /// <summary>A signed-in human who manages the given teams and holds the given roles.</summary>
     private TasksController As(Guid[] manages, params string[] roles)
     {
@@ -39,7 +48,7 @@ public sealed class TasksControllerTests
             [new Claim(ClaimTypes.NameIdentifier, _me.ToString()), .. roles.Select(r => new Claim(ClaimTypes.Role, r))], "test");
         var http = new DefaultHttpContext { User = new ClaimsPrincipal(identity) };
         return new TasksController(
-            _kit.Service, permissions, _kit.Teams, _kit.Settings, Substitute.For<IUserService>(), new TaskTestKit.KeyLocalizer())
+            _kit.Service, permissions, _kit.Teams, _kit.Settings, Substitute.For<IUserService>(), Authorization, new TaskTestKit.KeyLocalizer())
         {
             ControllerContext = new ControllerContext { HttpContext = http },
             TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>()),
@@ -83,6 +92,17 @@ public sealed class TasksControllerTests
         var result = await As([], RoleNames.Board).Index(new TaskListFilter(), Ct);
 
         result.Should().BeOfType<ViewResult>().Which.Model.Should().BeOfType<TaskListViewModel>().Which.Tasks.Should().HaveCount(3);
+    }
+
+    [HumansFact]
+    public async Task Index_LinksAManagerToEachTeamTheyManage_EvenWithoutTasks()
+    {
+        static IReadOnlyList<TeamChoice> Teams(IActionResult r) =>
+            r.Should().BeOfType<ViewResult>().Which.Model.Should().BeOfType<TaskListViewModel>().Which.ManagedTeams;
+
+        Teams(await ManagerOfProduction().Index(new TaskListFilter(), Ct)).Should().ContainSingle().Which.Slug.Should().Be("production");
+        Teams(await Human().Index(new TaskListFilter(), Ct)).Should().BeEmpty();
+        Teams(await As([TaskTestKit.Retired]).Index(new TaskListFilter(), Ct)).Should().BeEmpty();
     }
 
     [HumansFact]
@@ -135,7 +155,9 @@ public sealed class TasksControllerTests
 
         var model = (await Human().Details(waiting.Id, Ct)).Should().BeOfType<ViewResult>().Which.Model.Should().BeOfType<TaskPageViewModel>().Which;
 
-        model.WaitingOn.Should().ContainSingle().Which.Title.Should().BeNull();
+        var row = model.WaitingOn.Should().ContainSingle().Which;
+        row.Title.Should().BeNull();
+        row.Status.Should().BeNull();
     }
 
     [HumansTheory]
@@ -170,6 +192,14 @@ public sealed class TasksControllerTests
         CanAdd(await As([], RoleNames.Board).Team("production", new TaskListFilter(), Ct)).Should().BeFalse();
         CanAdd(await ManagerOfProduction().Team("production", new TaskListFilter(), Ct)).Should().BeTrue();
         CanAdd(await As([TaskTestKit.Retired]).Team("retired", new TaskListFilter(), Ct)).Should().BeFalse();
+    }
+
+    [HumansFact]
+    public async Task Team_TheAddFormStartsOnTheActiveEvent()
+    {
+        var result = await ManagerOfProduction().Team("production", new TaskListFilter(), Ct);
+
+        result.Should().BeOfType<ViewResult>().Which.Model.Should().BeOfType<TeamPageViewModel>().Which.AddForm.EventId.Should().Be(TaskTestKit.Spring);
     }
 
     [HumansFact]
@@ -213,6 +243,35 @@ public sealed class TasksControllerTests
         var result = await ManagerOfProduction().Add("production", form, Ct);
 
         result.Should().BeOfType<ViewResult>().Which.Model.Should().BeOfType<TeamPageViewModel>().Which.AddForm.Should().BeSameAs(form);
+        (await _kit.Service.GetTasksAsync(Ct)).Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task Edit_AFieldThatDidNotBindIsRefused_NotTakenAsNone()
+    {
+        var task = await _kit.CreateAsync(TaskTestKit.Input(eventId: TaskTestKit.Spring));
+        var form = TaskForm.From(task);
+        form.EventId = null;
+        var controller = ManagerOfProduction();
+        controller.ModelState.AddModelError(nameof(TaskForm.EventId), "not a guid");
+
+        var result = await controller.Edit(task.Id, form, Ct);
+
+        var model = result.Should().BeOfType<ViewResult>().Which.Model.Should().BeOfType<TaskPageViewModel>().Which;
+        model.EditOpen.Should().BeTrue();
+        model.EditForm.Should().BeSameAs(form);
+        (await _kit.Service.GetTaskAsync(task.Id, Ct))!.EventId.Should().Be(TaskTestKit.Spring);
+    }
+
+    [HumansFact]
+    public async Task Add_AFieldThatDidNotBindIsRefused()
+    {
+        var controller = ManagerOfProduction();
+        controller.ModelState.AddModelError(nameof(TaskForm.DueDate), "not a date");
+
+        var result = await controller.Add("production", FormFor(TaskTestKit.Production), Ct);
+
+        result.Should().BeOfType<ViewResult>();
         (await _kit.Service.GetTasksAsync(Ct)).Should().BeEmpty();
     }
 
@@ -271,6 +330,18 @@ public sealed class TasksControllerTests
     }
 
     [HumansFact]
+    public async Task SetStatus_ARefusalShowsTheFormAgainWithWhatWasPicked()
+    {
+        var task = await TaskOnAsync(TaskTestKit.Production);
+        var form = new StatusForm { Status = TaskItemStatus.Blocked, BlockedNote = " " };
+
+        var result = await ManagerOfProduction().SetStatus(task.Id, form, Ct);
+
+        result.Should().BeOfType<ViewResult>().Which.Model.Should().BeOfType<TaskPageViewModel>().Which.StatusForm.Should().BeSameAs(form);
+        (await _kit.Service.GetTaskAsync(task.Id, Ct))!.Status.Should().Be(TaskItemStatus.Todo);
+    }
+
+    [HumansFact]
     public async Task SetStatus_AManagerMayCancel()
     {
         var task = await TaskOnAsync(TaskTestKit.Production);
@@ -298,6 +369,7 @@ public sealed class TasksControllerTests
     {
         var task = await TaskOnAsync(TaskTestKit.Production);
         var someone = Guid.NewGuid();
+        _kit.Users.GetUserInfoAsync(someone, Arg.Any<CancellationToken>()).Returns((UserInfo?)null);
 
         (await Human().Assign(task.Id, someone, Ct)).Should().BeOfType<ForbidResult>();
         (await As([TaskTestKit.Art]).Assign(task.Id, someone, Ct)).Should().BeOfType<ForbidResult>();

@@ -4,7 +4,7 @@ using Npgsql;
 
 namespace Humans.Tasks.Data;
 
-internal sealed class TaskRepository(IDbContextFactory<TasksDbContext> factory) : ITaskRepository
+internal sealed class TaskRepository(IDbContextFactory<TasksDbContext> factory, ILogger<TaskRepository> logger) : ITaskRepository
 {
     public async Task<IReadOnlyList<TaskItem>> GetAllAsync(CancellationToken ct = default)
     {
@@ -39,15 +39,7 @@ internal sealed class TaskRepository(IDbContextFactory<TasksDbContext> factory) 
     {
         await using var db = await factory.CreateDbContextAsync(ct);
         db.TaskAssignments.Add(assignment);
-        return await TrySaveAsync(db, ct);
-    }
-
-    public async Task<bool> ConfirmAssignmentAsync(Guid taskId, Guid userId, CancellationToken ct = default)
-    {
-        await using var db = await factory.CreateDbContextAsync(ct);
-        return await db.TaskAssignments
-            .Where(a => a.TaskItemId == taskId && a.UserId == userId)
-            .ExecuteUpdateAsync(s => s.SetProperty(a => a.State, TaskAssignmentState.Confirmed), ct) > 0;
+        return await TrySaveAsync(db, "person", assignment.TaskItemId, assignment.UserId, ct);
     }
 
     public async Task<bool> RemoveAssignmentAsync(Guid taskId, Guid userId, CancellationToken ct = default)
@@ -62,7 +54,7 @@ internal sealed class TaskRepository(IDbContextFactory<TasksDbContext> factory) 
     {
         await using var db = await factory.CreateDbContextAsync(ct);
         db.TaskDependencies.Add(dependency);
-        return await TrySaveAsync(db, ct);
+        return await TrySaveAsync(db, "dependency on task", dependency.TaskItemId, dependency.DependsOnTaskItemId, ct);
     }
 
     public async Task<bool> RemoveDependencyAsync(Guid taskId, Guid dependsOnTaskId, CancellationToken ct = default)
@@ -108,7 +100,8 @@ internal sealed class TaskRepository(IDbContextFactory<TasksDbContext> factory) 
         return rows.Count;
     }
 
-    private static async Task<bool> TrySaveAsync(TasksDbContext db, CancellationToken ct)
+    /// <summary>False, logged, when the row already exists.</summary>
+    private async Task<bool> TrySaveAsync(TasksDbContext db, string what, Guid taskId, Guid otherId, CancellationToken ct)
     {
         try
         {
@@ -117,6 +110,7 @@ internal sealed class TaskRepository(IDbContextFactory<TasksDbContext> factory) 
         }
         catch (DbUpdateException ex) when (ex.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation })
         {
+            logger.LogWarning("Task {TaskId} already has {What} {OtherId}; the add was refused", taskId, what, otherId);
             return false;
         }
     }

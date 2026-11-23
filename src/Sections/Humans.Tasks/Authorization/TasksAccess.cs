@@ -1,11 +1,11 @@
 using System.Security.Claims;
-using Humans.Base.Constants;
 using Humans.Base.Extensions;
 using Humans.Permissions.Contracts;
 using Humans.Tasks.Contracts;
 using Humans.Tasks.Domain;
 using Humans.Tasks.Services;
 using Humans.Teams.Contracts;
+using Microsoft.AspNetCore.Authorization;
 
 namespace Humans.Tasks.Authorization;
 
@@ -15,12 +15,13 @@ namespace Humans.Tasks.Authorization;
 /// answers.
 /// </summary>
 /// <param name="UserId">The signed-in person.</param>
-/// <param name="SeesAll">TasksAdmin, Board or Admin: sees every task, hidden ones included. Changes nothing by itself.</param>
+/// <param name="SeesAll">Passes <see cref="TasksPolicies.Read"/>: sees every task, hidden ones included. Changes nothing by itself.</param>
 /// <param name="ManagedTeamIds">The teams where the person holds <see cref="TasksPermissions.Manage"/>, sub-teams included.</param>
 internal sealed record TasksAccess(Guid UserId, bool SeesAll, IReadOnlySet<Guid> ManagedTeamIds)
 {
     /// <summary>Null when the principal carries no user id.</summary>
-    public static async Task<TasksAccess?> ForAsync(ClaimsPrincipal user, IPermissionService permissions, CancellationToken ct = default)
+    public static async Task<TasksAccess?> ForAsync(
+        ClaimsPrincipal user, IPermissionService permissions, IAuthorizationService authorization, CancellationToken ct = default)
     {
         if (user.GetUserId() is not { } userId)
             return null;
@@ -28,7 +29,7 @@ internal sealed record TasksAccess(Guid UserId, bool SeesAll, IReadOnlySet<Guid>
         var managed = await permissions.GetOwnersAsync(userId, TasksPermissions.Manage, ct);
         return new TasksAccess(
             userId,
-            user.IsInRole(TasksSystemRoles.TasksAdmin) || user.IsInRole(RoleNames.Board) || user.IsInRole(RoleNames.Admin),
+            (await authorization.AuthorizeAsync(user, TasksPolicies.Read)).Succeeded,
             managed.Where(o => string.Equals(o.Kind, TeamOwner.Kind, StringComparison.Ordinal)).Select(o => o.Id).ToHashSet());
     }
 

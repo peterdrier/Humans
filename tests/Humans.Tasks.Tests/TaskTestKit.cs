@@ -6,7 +6,9 @@ using Humans.Tasks.Data;
 using Humans.Tasks.Domain;
 using Humans.Tasks.Services;
 using Humans.Teams.Contracts;
+using Humans.Users.Contracts;
 using Microsoft.Extensions.Localization;
+using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
@@ -40,6 +42,9 @@ internal sealed class TaskTestKit
 
     public ISettingsService Settings { get; } = Substitute.For<ISettingsService>();
 
+    /// <summary>Knows every person, unless a test says otherwise.</summary>
+    public IUserService Users { get; } = Substitute.For<IUserService>();
+
     public TaskService Service { get; }
 
     public TaskTestKit()
@@ -68,10 +73,14 @@ internal sealed class TaskTestKit
         Settings.GetAllEventSettingsAsync(Arg.Any<CancellationToken>()).Returns(events);
         Settings.GetActiveEventSettings().Returns(events[0]);
 
+        Users.GetUserInfoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(call => UserFixtures.MakeUserInfo(call.Arg<Guid>()));
+
         Service = new TaskService(
-            Repository, Teams, Settings, Audit,
+            Repository, Teams, Settings, Users, Audit,
             new FakeClock(Instant.FromUtc(2027, 1, 5, 12, 0)),
-            new KeyLocalizer());
+            new KeyLocalizer(),
+            NullLogger<TaskService>.Instance);
     }
 
     public static TaskInput Input(
@@ -157,15 +166,6 @@ internal sealed class FakeTaskRepository : ITaskRepository
         return Task.FromResult(true);
     }
 
-    public Task<bool> ConfirmAssignmentAsync(Guid taskId, Guid userId, CancellationToken ct = default)
-    {
-        var row = _assignments.FirstOrDefault(a => a.TaskItemId == taskId && a.UserId == userId);
-        if (row is null)
-            return Task.FromResult(false);
-        row.State = TaskAssignmentState.Confirmed;
-        return Task.FromResult(true);
-    }
-
     public Task<bool> RemoveAssignmentAsync(Guid taskId, Guid userId, CancellationToken ct = default) =>
         Task.FromResult(_assignments.RemoveAll(a => a.TaskItemId == taskId && a.UserId == userId) > 0);
 
@@ -187,7 +187,7 @@ internal sealed class FakeTaskRepository : ITaskRepository
     }
 
     public Task<int> ReassignUserAsync(Guid fromUserId, Guid toUserId, CancellationToken ct = default) =>
-        throw new NotSupportedException("Covered against EF in TaskRepositoryTests.");
+        throw new NotSupportedException("Covered against EF in TaskGdprTests.");
 
     public void Seed(TaskAssignment assignment) => _assignments.Add(assignment);
 

@@ -2,6 +2,7 @@ using AwesomeAssertions;
 using Humans.Tasks.Data;
 using Humans.Tasks.Domain;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NSubstitute;
 using Xunit;
@@ -97,7 +98,8 @@ public sealed class TaskGdprTests
         var repository = Substitute.For<ITaskRepository>();
         repository.ReassignUserAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(2);
         var service = new Humans.Tasks.Services.TaskService(
-            repository, kit.Teams, kit.Settings, kit.Audit, new NodaTime.Testing.FakeClock(Instant.FromUtc(2027, 1, 1, 0, 0)), Substitute.For<Microsoft.Extensions.Localization.IStringLocalizer<TasksResource>>());
+            repository, kit.Teams, kit.Settings, kit.Users, kit.Audit, new NodaTime.Testing.FakeClock(Instant.FromUtc(2027, 1, 1, 0, 0)),
+            Substitute.For<Microsoft.Extensions.Localization.IStringLocalizer<TasksResource>>(), NullLogger<Humans.Tasks.Services.TaskService>.Instance);
         var to = Guid.NewGuid();
 
         await service.ReassignAsync(Guid.NewGuid(), to, kit.Actor, Instant.FromUtc(2027, 1, 1, 0, 0), Ct);
@@ -118,7 +120,7 @@ public sealed class TaskGdprTests
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .Options;
         var factory = new Factory(options);
-        return (new TaskRepository(factory), factory);
+        return (new TaskRepository(factory, NullLogger<TaskRepository>.Instance), factory);
     }
 
     private sealed class Factory(DbContextOptions<TasksDbContext> options) : IDbContextFactory<TasksDbContext>

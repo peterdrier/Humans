@@ -58,7 +58,7 @@
         <div class="col-md-6">
             <label class="form-label" for="start-@id">@Localizer["Tasks_Form_Start"]</label>
             <div class="input-group">
-                <input type="date" class="form-control" id="start-@id" name="StartDate" value="@form.StartDate?.ToString("yyyy-MM-dd")" />
+                <input type="date" class="form-control" id="start-@id" name="StartDate" value="@form.StartDate?.ToDateTime(TimeOnly.MinValue).ToInvariantDate()" />
                 <select class="form-select" name="StartRelative" aria-label="@Localizer["Tasks_Form_Start"]">
                     <option value="false" selected="@(!form.StartRelative)">@Localizer["Tasks_Form_DateFixed"]</option>
                     <option value="true" selected="@form.StartRelative">@Localizer["Tasks_Form_DateRelative"]</option>
@@ -68,7 +68,7 @@
         <div class="col-md-6">
             <label class="form-label" for="due-@id">@Localizer["Tasks_Form_Due"]</label>
             <div class="input-group">
-                <input type="date" class="form-control" id="due-@id" name="DueDate" value="@form.DueDate?.ToString("yyyy-MM-dd")" />
+                <input type="date" class="form-control" id="due-@id" name="DueDate" value="@form.DueDate?.ToDateTime(TimeOnly.MinValue).ToInvariantDate()" />
                 <select class="form-select" name="DueRelative" aria-label="@Localizer["Tasks_Form_Due"]">
                     <option value="false" selected="@(!form.DueRelative)">@Localizer["Tasks_Form_DateFixed"]</option>
                     <option value="true" selected="@form.DueRelative">@Localizer["Tasks_Form_DateRelative"]</option>

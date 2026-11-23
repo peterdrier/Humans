@@ -26,7 +26,7 @@
     <div class="card mt-4 col-lg-8" id="add">
         <div class="card-header"><h2 class="h5 mb-0">@Localizer["Tasks_Team_AddTitle"]</h2></div>
         <div class="card-body">
-            <partial name="_TaskForm" model='new TaskFormViewModel(Model.AddForm, "new", true, Url.Action("Add", new { slug = Model.TeamSlug })!, [new TeamChoice(Model.TeamId, Model.TeamName)], Model.Events)' />
+            <partial name="_TaskForm" model='new TaskFormViewModel(Model.AddForm, "new", true, Url.Action("Add", new { slug = Model.TeamSlug })!, [new TeamChoice(Model.TeamId, Model.TeamName, Model.TeamSlug)], Model.Events)' />
         </div>
     </div>
 }

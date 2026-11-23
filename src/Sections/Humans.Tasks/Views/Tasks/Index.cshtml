@@ -9,5 +9,16 @@
     <a authorize-policy="@TasksPolicies.Read" href="@Url.Action("Index", "TasksAdmin")" class="btn btn-outline-secondary">@Localizer["Tasks_List_Admin"]</a>
 </page-header>
 
+@if (Model.ManagedTeams.Count > 0)
+{
+    <div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+        <span class="text-muted">@Localizer["Tasks_List_YourTeams"]</span>
+        @foreach (var team in Model.ManagedTeams)
+        {
+            <a href="@Url.Action("Team", new { slug = team.Slug })" class="btn btn-sm btn-outline-secondary">@team.Name</a>
+        }
+    </div>
+}
+
 <partial name="_Filter" model="new TaskFilterViewModel(Model.Filter, Model.Events)" />
 <partial name="_TaskTable" model="new TaskTableModel(Model.Tasks, ShowTeam: true)" />

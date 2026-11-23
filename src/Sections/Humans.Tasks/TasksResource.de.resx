@@ -54,6 +54,7 @@
   <data name="Tasks_List_Title" xml:space="preserve"><value>Aufgaben</value></data>
   <data name="Tasks_List_Subtitle" xml:space="preserve"><value>Was zu tun ist, Team für Team.</value></data>
   <data name="Tasks_List_Admin" xml:space="preserve"><value>Aufgaben-Verwaltung</value></data>
+  <data name="Tasks_List_YourTeams" xml:space="preserve"><value>Deine Teams:</value></data>
   <data name="Tasks_List_Empty" xml:space="preserve"><value>Keine passenden Aufgaben.</value></data>
   <data name="Tasks_Filter_Event" xml:space="preserve"><value>Veranstaltung</value></data>
   <data name="Tasks_Filter_ActiveEvent" xml:space="preserve"><value>Aktive Veranstaltung und ohne Veranstaltung</value></data>
@@ -128,6 +129,7 @@
   <data name="Tasks_DependencyAdded" xml:space="preserve"><value>Wartet jetzt auf diese Aufgabe.</value></data>
   <data name="Tasks_DependencyRemoved" xml:space="preserve"><value>Wartet nicht mehr auf diese Aufgabe.</value></data>
   <data name="Tasks_Refusal_NoPerson" xml:space="preserve"><value>Wähle eine Person aus der Liste.</value></data>
+  <data name="Tasks_Refusal_Unreadable" xml:space="preserve"><value>Ein Datum oder Event konnte nicht gelesen werden. Prüfe sie und versuche es erneut.</value></data>
   <data name="Enum_TaskItemStatus_Todo" xml:space="preserve"><value>Offen</value></data>
   <data name="Enum_TaskItemStatus_InProgress" xml:space="preserve"><value>In Arbeit</value></data>
   <data name="Enum_TaskItemStatus_Blocked" xml:space="preserve"><value>Blockiert</value></data>
