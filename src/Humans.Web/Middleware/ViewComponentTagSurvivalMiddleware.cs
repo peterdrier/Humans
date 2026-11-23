@@ -63,15 +63,15 @@ public sealed class ViewComponentTagSurvivalMiddleware(
     /// </summary>
     private sealed class HtmlCaptureStream(Stream inner, HttpResponse response) : Stream
     {
-        private bool decided;
+        private bool _decided;
 
         public MemoryStream? Captured { get; private set; }
 
         private Stream Target()
         {
-            if (!decided)
+            if (!_decided)
             {
-                decided = true;
+                _decided = true;
                 if (response.ContentType is { } contentType
                     && contentType.Contains("text/html", StringComparison.OrdinalIgnoreCase))
                 {

@@ -36,7 +36,6 @@ internal sealed class ShiftManagementService(
 {
 
     private IShiftRotaRows RotaRows => serviceProvider.GetRequiredService<IShiftRotaRows>();
-    private ISettingsService SettingsService => serviceProvider.GetRequiredService<ISettingsService>();
     private IPermissionService Permissions => serviceProvider.GetRequiredService<IPermissionService>();
 
     private async Task<IReadOnlyDictionary<Guid, TeamInfo>> GetTeamLookupWithParentsAsync(
@@ -553,7 +552,6 @@ internal sealed class ShiftManagementService(
         if (confirmedCount > 0)
             return RefuseDeletion(shiftId, "Shifts_Delete_ConfirmedSignups", confirmedCount);
 
-        var rotaId = shift.RotaId;
         var removedSignups = shift.ShiftSignups.ToList();
 
         await repo.DeleteShiftCascadeAsync(shiftId);
@@ -1719,8 +1717,6 @@ internal sealed class ShiftManagementService(
             .Select(t => new ShiftSummaryTeamLink(t.Id, t.Name, t.Slug))
             .ToList();
     }
-
-    private IRoleAssignmentService RoleAssignmentService => serviceProvider.GetRequiredService<IRoleAssignmentService>();
 
     // Mirrors the pie bucketing in GetDepartmentCoveragePiesAsync: non-promoted sub-teams roll into the parent,
     // promoted ones have their own pie and filter.

@@ -28,8 +28,6 @@ namespace Humans.Shifts.Tests.Services;
 public sealed class ShiftManagementServiceTests : ShiftsTestHarness
 {
     private readonly ITeamService _teamService;
-    private readonly IUserService _userService;
-    private readonly IRoleAssignmentService _roleAssignmentService;
     private readonly IPermissionService _permissions = Substitute.For<IPermissionService>();
     private readonly Humans.Settings.Contracts.ISettingsService _settingsService = Substitute.For<Humans.Settings.Contracts.ISettingsService>();
     private readonly ShiftManagementService _service;
@@ -40,13 +38,13 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
         : base(TestNow)
     {
         _teamService = Substitute.For<ITeamService>();
-        _userService = Substitute.For<IUserService>();
-        _roleAssignmentService = Substitute.For<IRoleAssignmentService>();
+        var userService = Substitute.For<IUserService>();
+        var roleAssignmentService = Substitute.For<IRoleAssignmentService>();
 
         // Default: users looked up by id resolve to the entities seeded in Db
         // so the cross-section signup stitching in GetBrowseShiftsAsync returns the
         // correct DisplayName.
-        _userService.StubGetUserInfosFromContext(Db);
+        userService.StubGetUserInfosFromContext(Db);
 
         _teamService.GetTeamsAsync(Arg.Any<CancellationToken>())
             .Returns(_ => Task.FromResult<IReadOnlyDictionary<Guid, TeamInfo>>(
@@ -63,9 +61,9 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
 
         var serviceProvider = new ServiceLocatorBuilder()
             .With(_teamService)
-            .With(_userService)
-            .With(_userService)
-            .With(_roleAssignmentService)
+            .With(userService)
+            .With(userService)
+            .With(roleAssignmentService)
             .With(_permissions)
             .With(_settingsService)
             .Build();

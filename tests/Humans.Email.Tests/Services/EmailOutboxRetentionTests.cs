@@ -113,7 +113,7 @@ public class EmailOutboxRetentionTests : IDisposable
         remainingCounts.Should().Be(1);
     }
 
-    private async Task<EmailOutboxMessage> SeedMessageAsync(EmailOutboxStatus status, Instant? sentAt)
+    private async Task SeedMessageAsync(EmailOutboxStatus status, Instant? sentAt)
     {
         var message = new EmailOutboxMessage
         {
@@ -129,6 +129,5 @@ public class EmailOutboxRetentionTests : IDisposable
 
         _dbContext.EmailOutboxMessages.Add(message);
         await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
-        return message;
     }
 }

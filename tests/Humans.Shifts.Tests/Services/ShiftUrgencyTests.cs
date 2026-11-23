@@ -137,14 +137,6 @@ public class ShiftUrgencyTests
     [HumansFact]
     public void ApplyPeriodDiverseLimit_OnlyBuildShifts_TakesTopN()
     {
-        var es = new EventSettings
-        {
-            GateOpeningDate = new LocalDate(2026, 7, 1),
-            EventEndOffset = 3,
-            StrikeEndOffset = 5,
-            TimeZoneId = "UTC"
-        };
-
         var ranked = Enumerable.Range(0, 5).Select(i =>
             MakeUrgentShift(dayOffset: -5 + i, score: 50 - i * 5, remaining: 10))
             .OrderByDescending(u => u.UrgencyScore)
@@ -175,14 +167,6 @@ public class ShiftUrgencyTests
     [HumansFact]
     public void ApplyPeriodDiverseLimit_FewShifts_ReturnsAll()
     {
-        var es = new EventSettings
-        {
-            GateOpeningDate = new LocalDate(2026, 7, 1),
-            EventEndOffset = 3,
-            StrikeEndOffset = 5,
-            TimeZoneId = "UTC"
-        };
-
         var ranked = new List<UrgentShiftInfo>
         {
             MakeUrgentShift(dayOffset: -1, score: 50, remaining: 5),
@@ -197,14 +181,6 @@ public class ShiftUrgencyTests
     [HumansFact]
     public void ApplyPeriodDiverseLimit_ResultIsSortedByScoreDescending()
     {
-        var es = new EventSettings
-        {
-            GateOpeningDate = new LocalDate(2026, 7, 1),
-            EventEndOffset = 3,
-            StrikeEndOffset = 5,
-            TimeZoneId = "UTC"
-        };
-
         var ranked = new List<UrgentShiftInfo>
         {
             MakeUrgentShift(dayOffset: -3, score: 100, remaining: 10),

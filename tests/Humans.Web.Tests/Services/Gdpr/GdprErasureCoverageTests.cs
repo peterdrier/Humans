@@ -80,7 +80,7 @@ public class GdprErasureCoverageTests
     public void EveryRetainedCategoryStatesItsLawfulBasis()
     {
         // A non-null value means the data survives erasure, which Article 17(3) allows only with a legible reason.
-        const int MinimumReasonLength = 20;
+        const int minimumReasonLength = 20;
 
         foreach (var contributor in Contributors)
         {
@@ -91,7 +91,7 @@ public class GdprErasureCoverageTests
                     continue;
                 }
 
-                retention.Trim().Length.Should().BeGreaterThanOrEqualTo(MinimumReasonLength,
+                retention.Trim().Length.Should().BeGreaterThanOrEqualTo(minimumReasonLength,
                     $"{contributor.GetType().Name} keeps {section} after erasure, so the declaration must name " +
                     "what survives and the lawful basis for keeping it");
             }
