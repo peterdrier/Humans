@@ -556,7 +556,7 @@ internal sealed class CampRoleService(
                     : new List<CampRoleDrillDownAssignee>();
 
                 return new CampRoleDrillDownCampRow(
-                    s.CampId, s.CampName, s.CampSlug, s.CampSeasonId, assignees);
+                    s.CampName, s.CampSlug, assignees);
             })
             .ToList();
 

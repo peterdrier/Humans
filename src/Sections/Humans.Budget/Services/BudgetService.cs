@@ -410,7 +410,6 @@ internal sealed class BudgetService(
             category.LineItems
                 .Select(item => new BudgetLineItemDetail(
                     item.Id,
-                    item.BudgetCategoryId,
                     item.Description,
                     item.Amount,
                     item.ResponsibleTeamId,

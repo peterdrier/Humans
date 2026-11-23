@@ -63,7 +63,6 @@ public sealed class ConsentServiceTests : ConsentTestHarness
                     v.VersionNumber,
                     v.Content,
                     v.EffectiveFrom,
-                    v.RequiresReConsent,
                     v.ChangesSummary))
                 .FirstOrDefaultAsync(TestContext.Current.CancellationToken));
 
@@ -220,7 +219,7 @@ public sealed class ConsentServiceTests : ConsentTestHarness
 
     private static LegalDocumentVersionSnapshot Version(Instant effectiveFrom) =>
         new(Guid.NewGuid(), "Doc", 7, "v1.0",
-            new Dictionary<string, string>(StringComparer.Ordinal), effectiveFrom, false, null);
+            new Dictionary<string, string>(StringComparer.Ordinal), effectiveFrom, null);
 
     [HumansFact]
     public async Task SubmitConsentAsync_FinalSignature_RestoresSuspensionWithAWarmConsentCache()
@@ -463,7 +462,6 @@ public sealed class ConsentServiceTests : ConsentTestHarness
                 v.VersionNumber,
                 v.Content,
                 v.EffectiveFrom,
-                v.RequiresReConsent,
                 v.ChangesSummary)).ToList());
 
     [HumansFact]

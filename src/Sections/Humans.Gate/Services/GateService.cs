@@ -93,7 +93,6 @@ internal sealed class GateService(
             IsEarly: outcome == GatePreCheckOutcome.NeedsIdCheckEarly,
             TicketAttendeeId: ticket.TicketAttendeeId,
             GuestUserId: ticket.GuestUserId,
-            PreviousAdmitAt: priorAdmit?.OccurredAt,
             PreviousAdmitByUserId: priorAdmit?.ScannedByUserId,
             VendorTicketId: ticket.VendorTicketId,
             // Date only, never the EE source (privacy).

@@ -45,7 +45,6 @@ internal sealed record TeamJoinRequestSnapshot(
     Guid TeamId,
     string? TeamName,
     Guid UserId,
-    TeamJoinRequestStatus Status,
     string? Message,
     Instant RequestedAt,
     string? TeamSlug = null);

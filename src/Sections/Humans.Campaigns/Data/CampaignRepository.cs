@@ -67,7 +67,6 @@ internal sealed class CampaignRepository(IDbContextFactory<CampaignsDbContext> f
             .Select(g => new CampaignCodeTrackingGrantRow(
                 g.CampaignId,
                 g.Campaign.Title,
-                g.Id,
                 g.UserId,
                 g.Code.Code,
                 g.RedeemedAt))

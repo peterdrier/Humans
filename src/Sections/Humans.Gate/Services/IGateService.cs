@@ -103,7 +103,6 @@ internal sealed record GateScanResult(
     bool IsEarly,
     Guid? TicketAttendeeId,
     Guid? GuestUserId,
-    Instant? PreviousAdmitAt,
     Guid? PreviousAdmitByUserId,
     string? VendorTicketId = null,
     LocalDate? EarliestEntryDate = null,

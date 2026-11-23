@@ -576,15 +576,13 @@ internal sealed partial class LegalDocumentSyncService(
                 return new AdminLegalDocumentListItem(
                     d.Id,
                     d.Name,
-                    d.TeamId,
                     teamName,
                     d.IsRequired,
                     d.IsActive,
                     d.GracePeriodDays,
                     d.GitHubFolderPath,
                     currentVersion?.VersionNumber,
-                    lastSyncedAt,
-                    d.Versions.Count);
+                    lastSyncedAt);
             })
             .ToList();
     }
@@ -673,7 +671,6 @@ internal sealed partial class LegalDocumentSyncService(
             version.VersionNumber,
             new Dictionary<string, string>(version.Content, StringComparer.Ordinal),
             version.EffectiveFrom,
-            version.RequiresReConsent,
             version.ChangesSummary);
 
     public async Task<int> GetActiveRequiredCountAsync(CancellationToken cancellationToken = default)

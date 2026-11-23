@@ -391,7 +391,7 @@ public class TeamControllerPageContentTests
             [visible.Id] = visible
         });
         var hiddenRequest = new TeamJoinRequestSnapshot(Guid.NewGuid(), hidden.Id, hidden.Name,
-            userId, TeamJoinRequestStatus.Pending, null,
+            userId, null,
             Instant.FromUtc(2026, 10, 1, 0, 0), hidden.Slug);
         var visibleRequest = hiddenRequest with
         {
@@ -475,7 +475,7 @@ public class TeamControllerPageContentTests
         var pages = Substitute.For<ITeamPageService>();
         pages.GetMyTeamMembershipsAsync(userId, Arg.Any<CancellationToken>()).Returns(Array.Empty<MyTeamMembershipSummary>());
         var pendingRequest = new TeamJoinRequestSnapshot(Guid.NewGuid(), team.Id, team.Name,
-            userId, TeamJoinRequestStatus.Pending, null,
+            userId, null,
             Instant.FromUtc(2026, 10, 1, 0, 0), team.Slug);
         teams.GetPendingRequestsForUserAsync(userId, Arg.Any<CancellationToken>()).Returns(call =>
         {

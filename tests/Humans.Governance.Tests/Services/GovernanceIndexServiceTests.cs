@@ -122,7 +122,7 @@ public sealed class GovernanceIndexServiceTests
         Roles.GetActiveUserIdsInRoleAsync(RoleNames.Board, Arg.Any<CancellationToken>()).Returns([viewer]);
         Roles.GetByUserIdAsync(viewer, Arg.Any<CancellationToken>()).Returns([
             new RoleAssignmentSummarySnapshot(Guid.NewGuid(), viewer, null, "Viewer", RoleNames.Board, seated, null, null,
-                Guid.NewGuid(), null, seated)]);
+                Guid.NewGuid(), null)]);
 
         var data = await CreateService().GetIndexDataAsync(viewer);
 

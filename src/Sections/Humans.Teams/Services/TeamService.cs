@@ -2428,7 +2428,6 @@ internal sealed class TeamService(
         request.TeamId,
         request.Team?.Name,
         request.UserId,
-        request.Status,
         request.Message,
         request.RequestedAt,
         request.Team?.Slug);

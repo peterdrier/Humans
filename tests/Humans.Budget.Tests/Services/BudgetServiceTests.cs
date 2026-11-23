@@ -2384,15 +2384,15 @@ public sealed class BudgetServiceTests
         var groupId = Guid.NewGuid();
         var catSales = new BudgetCategoryDetail(Guid.NewGuid(), "Sales", 0m, ExpenditureType.OpEx, null, 0,
         [
-            new BudgetLineItemDetail(Guid.NewGuid(), Guid.NewGuid(), "Ticket income", 110m, null, null, new LocalDate(2026, 5, 1), 10, false, false, 0)
+            new BudgetLineItemDetail(Guid.NewGuid(), "Ticket income", 110m, null, null, new LocalDate(2026, 5, 1), 10, false, false, 0)
         ]);
         var catOps = new BudgetCategoryDetail(Guid.NewGuid(), "Ops", 0m, ExpenditureType.OpEx, null, 0,
         [
-            new BudgetLineItemDetail(Guid.NewGuid(), Guid.NewGuid(), "Equipment", -121m, null, null, new LocalDate(2026, 5, 1), 21, false, false, 0)
+            new BudgetLineItemDetail(Guid.NewGuid(), "Equipment", -121m, null, null, new LocalDate(2026, 5, 1), 21, false, false, 0)
         ]);
         var catDonations = new BudgetCategoryDetail(Guid.NewGuid(), "Donations", 0m, ExpenditureType.OpEx, null, 0,
         [
-            new BudgetLineItemDetail(Guid.NewGuid(), Guid.NewGuid(), "Donations", 999m, null, null, null, 0, false, true, 0)
+            new BudgetLineItemDetail(Guid.NewGuid(), "Donations", 999m, null, null, null, 0, false, true, 0)
         ]);
         IReadOnlyList<BudgetGroupDetail> groups =
         [
@@ -2427,7 +2427,7 @@ public sealed class BudgetServiceTests
         {
             var id = Guid.NewGuid();
             return new(id, name, amount, ExpenditureType.OpEx, null, 0,
-                [new BudgetLineItemDetail(Guid.NewGuid(), id, "Line", amount, null, null,
+                [new BudgetLineItemDetail(Guid.NewGuid(), "Line", amount, null, null,
                     new LocalDate(2026, 5, 1), vatRate, false, false, 0)]);
         }
         var smallIncome = Category("VAT Credit", 10m, 0);
@@ -2490,9 +2490,9 @@ public sealed class BudgetServiceTests
             new(groupId, Guid.NewGuid(), "Main", 0, false, false, false, null,
             [
                 new(Guid.NewGuid(), "Sales", 0m, ExpenditureType.OpEx, null, 0,
-                [new(Guid.NewGuid(), Guid.NewGuid(), "Income", 110m, null, null, new LocalDate(2026, 5, 1), 10, false, false, 0)]),
+                [new(Guid.NewGuid(), "Income", 110m, null, null, new LocalDate(2026, 5, 1), 10, false, false, 0)]),
                 new(Guid.NewGuid(), "Ops", 0m, ExpenditureType.OpEx, null, 0,
-                [new(Guid.NewGuid(), Guid.NewGuid(), "Equipment", -12.1m, null, null, new LocalDate(2026, 5, 1), 21, false, false, 0)])
+                [new(Guid.NewGuid(), "Equipment", -12.1m, null, null, new LocalDate(2026, 5, 1), 21, false, false, 0)])
             ])
         ];
 
@@ -2512,9 +2512,9 @@ public sealed class BudgetServiceTests
         var groupId = Guid.NewGuid();
         var cat = new BudgetCategoryDetail(Guid.NewGuid(), "Ops", 0m, ExpenditureType.OpEx, null, 0,
         [
-            new BudgetLineItemDetail(Guid.NewGuid(), Guid.NewGuid(), "Income", 200m, null, null, null, 0, false, false, 0),
-            new BudgetLineItemDetail(Guid.NewGuid(), Guid.NewGuid(), "Equipment", -50m, null, null, null, 0, false, false, 0),
-            new BudgetLineItemDetail(Guid.NewGuid(), Guid.NewGuid(), "Loan", 999m, null, null, null, 0, false, true, 0)
+            new BudgetLineItemDetail(Guid.NewGuid(), "Income", 200m, null, null, null, 0, false, false, 0),
+            new BudgetLineItemDetail(Guid.NewGuid(), "Equipment", -50m, null, null, null, 0, false, false, 0),
+            new BudgetLineItemDetail(Guid.NewGuid(), "Loan", 999m, null, null, null, 0, false, true, 0)
         ]);
         IReadOnlyList<BudgetGroupDetail> groups =
         [

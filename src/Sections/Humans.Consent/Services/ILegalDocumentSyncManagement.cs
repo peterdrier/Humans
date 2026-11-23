@@ -47,7 +47,6 @@ internal sealed record LegalDocumentVersionSnapshot(
     string VersionNumber,
     IReadOnlyDictionary<string, string> Content,
     Instant EffectiveFrom,
-    bool RequiresReConsent,
     string? ChangesSummary);
 
 internal sealed record RequiredDocumentVersionSnapshot(

@@ -62,7 +62,6 @@ public sealed record BudgetCategoryDetail(
 
 public sealed record BudgetLineItemDetail(
     Guid Id,
-    Guid BudgetCategoryId,
     string Description,
     decimal Amount,
     Guid? ResponsibleTeamId,

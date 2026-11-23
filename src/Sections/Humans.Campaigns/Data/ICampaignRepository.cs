@@ -110,7 +110,6 @@ internal sealed record CampaignCodeTrackingSummaryRow(
 internal sealed record CampaignCodeTrackingGrantRow(
     Guid CampaignId,
     string CampaignTitle,
-    Guid GrantId,
     Guid UserId,
     string? Code,
     Instant? RedeemedAt);
