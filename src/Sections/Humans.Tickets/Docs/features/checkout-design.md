@@ -19,7 +19,7 @@ Humans dictates, reports the outcome, refunds an exact amount, and offers the pa
   public prices, gets an emailed link to sign in or sign up, then buys as a member. No pay-first guest checkout
   (Peter, 2026-11-21).
 - **No discount codes.** Humans knows what the buyer is entitled to and asks for a checkout at that price.
-- **No vendor catalogue.** Waves and ticket classes are configured once, in Humans.
+- **No platform catalogue.** Waves and ticket classes are configured once, in Humans.
 - **Tickets is the router.** It owns the port, the per-event platform choice and the shared order and ticket records,
   and holds nothing specific to a platform. Each platform is its own section (`Humans.BoxOffice`, `Humans.Pretix`,
   `Humans.HiEvents`). The port may be extended as the work needs without asking Peter (standing approval, 2026-11-21:
@@ -28,7 +28,7 @@ Humans dictates, reports the outcome, refunds an exact amount, and offers the pa
 ## Price rule
 
 What a person pays is the wave price on their pricing date, replaced by a class price if they have one, minus their
-credits, plus any donation.
+discounts, plus any donation.
 
 1. **Wave price.** Waves end on a date (for example 225, 250, 275, 300). Capacity is capped (3,000 for 2027).
 2. **Pricing date.** Today, unless the person has a pin. Applying for low income pins that day's wave. An applicant
@@ -36,12 +36,12 @@ credits, plus any donation.
    the pin exists so nobody manages it by hand.
 3. **Class price.** At most one of low income (one fixed price, probably 125 for 2027), student (under 26), local,
    child. A companion ticket is free.
-4. **Credits.** Fixed amounts (25, 50, 100) that stack on anything.
+4. **Discounts.** Fixed amounts (25, 50, 100) that stack on anything.
 5. **Donation.** A separate line with a purpose (general, creativity, low income pool), with or without a ticket.
    A VIP button (400, 500, 1,000) is the current wave price as the ticket plus the remainder as a donation, and must
    read that way at checkout. The ticket plus donation VAT split was validated by the lawyer or accountant in 2026.
 
-Class prices and credits are never transferable. Sales stop about a week before the event, decided late.
+Class prices and discounts never travel with the ticket. Sales stop about a week before the event, decided late.
 
 ## Tickets and people
 
@@ -75,7 +75,7 @@ offers their ticket back; they are refunded only when someone else buys it, and 
 
 Selling a ticket is the small part (Peter, 2026-11-21, on the first Box Office build). The design covers the order
 page with plain copy, the ticket rules checkbox recorded on the order, the mailing list opt-in, the ticket email with
-QR code, the receipt, the follow-up inviting the buyer to take shifts, self-service returns, and the ticketing team's
+QR code, the receipt, the follow-up inviting the buyer to take shifts, self-service resale, and the ticketing team's
 tools: order lookup, order timeline, resale queue, refund list, reports. These are built once in Tickets over the
 shared records so they work the same on every platform, and the platform's own emails are switched off.
 
@@ -130,7 +130,7 @@ decisions, including answers to the questions left open above:
 - **Only adult tickets** can go into resale.
 - **Wave pins** last the whole sales season of the event.
 - **"Credit" is "discount".** A credit implies something given in trade, which is a tax problem. Buyers already see
-  the rule's own label; the code's `Credit` name is to be renamed later.
+  the rule's own label. The code says `Discount` since 2026-11-22; the database still stores `Credit`.
 - **VIP ticket** stays the name ("Very Unimportant Person"): a ticket plus a large donation, no privileges.
 - **No ticket without the money.** A payment on its way holds tickets and never issues them, for any method. Bank
   debit (SEPA) is not offered for now, so the paid date of a debit (Box Office review question) waits until it is.

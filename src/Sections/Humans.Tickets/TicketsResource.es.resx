@@ -411,7 +411,7 @@
     <value>Las entradas no se pueden ceder, regalar ni vender a otra persona. Una entrada comprada a otra persona o en una web de reventa no es válida.</value>
   </data>
   <data name="Tickets_Delivery_Rules_Resale" xml:space="preserve">
-    <value>Si no puedes venir, pon tu entrada en reventa en Humans. Cuando otra persona la compre, el precio de la entrada se reembolsa al comprador que la pagó; las donaciones no se reembolsan.</value>
+    <value>Si no puedes venir, pon tu entrada en reventa en Humans. Cuando otra persona la compre, el precio de la entrada se reembolsa a quien la pagó; las donaciones no se reembolsan.</value>
   </data>
   <data name="Tickets_Delivery_Rules_Private" xml:space="preserve">
     <value>El evento es un evento privado de la asociación Nobodies Collective. Al usar esta entrada aceptas sus condiciones.</value>
