@@ -11,10 +11,10 @@ internal interface ITicketDelivery
 {
     Task TicketsIssuedAsync(Guid orderId, CancellationToken ct = default);
 
-    /// <summary>A checkout that reached its backend ended Failed or Expired.</summary>
+    /// <summary>An order that reached its platform ended Failed or Expired.</summary>
     Task PaymentEndedAsync(Guid orderId, CancellationToken ct = default);
 
-    /// <summary>A returned ticket sold; <paramref name="refundMinor"/> goes back to its holder in the evening batch.</summary>
+    /// <summary>A ticket in resale sold; <paramref name="refundMinor"/> goes back to its holder in the evening batch.</summary>
     Task ResaleSoldAsync(Guid ticketId, long refundMinor, CancellationToken ct = default);
 
     /// <summary>Sales closed with the ticket still in the resale queue.</summary>

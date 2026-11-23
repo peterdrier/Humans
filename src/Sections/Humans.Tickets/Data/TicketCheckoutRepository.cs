@@ -7,50 +7,50 @@ namespace Humans.Tickets.Data;
 
 internal sealed class TicketCheckoutRepository(IDbContextFactory<TicketsDbContext> factory) : ITicketCheckoutRepository
 {
-    public async Task<IReadOnlyList<TicketSalesEvent>> GetSalesEventsAsync(CancellationToken ct = default)
+    public async Task<IReadOnlyList<TicketingSettings>> ListTicketingSettingsAsync(CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.TicketSalesEvents.AsNoTracking().ToListAsync(ct);
+        return await ctx.TicketingSettings.AsNoTracking().ToListAsync(ct);
     }
 
-    public async Task<TicketSalesEvent?> GetSalesEventAsync(Guid id, CancellationToken ct = default)
+    public async Task<TicketingSettings?> GetTicketingSettingsAsync(Guid id, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.TicketSalesEvents.AsNoTracking().FirstOrDefaultAsync(e => e.Id == id, ct);
+        return await ctx.TicketingSettings.AsNoTracking().FirstOrDefaultAsync(e => e.Id == id, ct);
     }
 
-    public async Task<TicketSalesEvent?> GetSalesEventForEventAsync(Guid eventSettingsId, CancellationToken ct = default)
+    public async Task<TicketingSettings?> GetTicketingSettingsForEventAsync(Guid eventSettingsId, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.TicketSalesEvents.AsNoTracking().FirstOrDefaultAsync(e => e.EventSettingsId == eventSettingsId, ct);
+        return await ctx.TicketingSettings.AsNoTracking().FirstOrDefaultAsync(e => e.EventSettingsId == eventSettingsId, ct);
     }
 
-    public async Task SaveSalesEventAsync(TicketSalesEvent salesEvent, CancellationToken ct = default)
+    public async Task SaveTicketingSettingsAsync(TicketingSettings ticketing, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
-        var tracked = await ctx.TicketSalesEvents.FirstOrDefaultAsync(e => e.Id == salesEvent.Id, ct);
+        var tracked = await ctx.TicketingSettings.FirstOrDefaultAsync(e => e.Id == ticketing.Id, ct);
         if (tracked is null)
         {
-            ctx.TicketSalesEvents.Add(salesEvent);
+            ctx.TicketingSettings.Add(ticketing);
         }
         else
         {
             // Owned JSON lists carry shadow ordinal keys, so a detached graph cannot be attached with Update().
-            ctx.Entry(tracked).CurrentValues.SetValues(salesEvent);
-            tracked.Waves = salesEvent.Waves.Select(w => new TicketSalesWave { Name = w.Name, EndsOn = w.EndsOn, PriceMinor = w.PriceMinor }).ToList();
-            tracked.SupporterTotalsMinor = salesEvent.SupporterTotalsMinor.ToList();
-            tracked.DonationPurposes = salesEvent.DonationPurposes?.ToList();
-            tracked.ChildTypes = salesEvent.ChildTypes
+            ctx.Entry(tracked).CurrentValues.SetValues(ticketing);
+            tracked.Waves = ticketing.Waves.Select(w => new TicketSalesWave { Name = w.Name, EndsOn = w.EndsOn, PriceMinor = w.PriceMinor }).ToList();
+            tracked.VipTotalsMinor = ticketing.VipTotalsMinor.ToList();
+            tracked.DonationPurposes = ticketing.DonationPurposes?.ToList();
+            tracked.ChildTypes = ticketing.ChildTypes
                 .Select(c => new TicketChildType { Name = c.Name, UnderAge = c.UnderAge, PriceMinor = c.PriceMinor }).ToList();
-            tracked.PriceRules = salesEvent.PriceRules.Select(r => new TicketPriceRule
+            tracked.PriceRules = ticketing.PriceRules.Select(r => new TicketPriceRule
             {
                 GrantProgramId = r.GrantProgramId,
                 Kind = r.Kind,
                 AmountMinor = r.AmountMinor,
                 Label = r.Label,
             }).ToList();
-            tracked.Switches = salesEvent.Switches is { } sw
-                ? new TicketSalesSwitches
+            tracked.Switches = ticketing.Switches is { } sw
+                ? new TicketingSwitches
                 {
                     Resale = sw.Resale,
                     PartnerTickets = sw.PartnerTickets,
@@ -69,20 +69,20 @@ internal sealed class TicketCheckoutRepository(IDbContextFactory<TicketsDbContex
         return await ctx.TicketCheckoutOrders.AsNoTracking().FirstOrDefaultAsync(o => o.Id == id, ct);
     }
 
-    public async Task<TicketCheckoutOrder?> GetOrderByBackendIdAsync(
-        string backendKey, string backendOrderId, CancellationToken ct = default)
+    public async Task<TicketCheckoutOrder?> GetOrderByPlatformIdAsync(
+        string platformKey, string platformOrderId, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.TicketCheckoutOrders.AsNoTracking()
-            .FirstOrDefaultAsync(o => o.BackendKey == backendKey && o.BackendOrderId == backendOrderId, ct);
+            .FirstOrDefaultAsync(o => o.PlatformKey == platformKey && o.PlatformOrderId == platformOrderId, ct);
     }
 
-    public async Task<IReadOnlyList<TicketCheckoutOrder>> GetOrdersForSalesEventAsync(
-        Guid salesEventId, CancellationToken ct = default)
+    public async Task<IReadOnlyList<TicketCheckoutOrder>> GetOrdersForSettingsAsync(
+        Guid settingsId, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.TicketCheckoutOrders.AsNoTracking()
-            .Where(o => o.SalesEventId == salesEventId)
+            .Where(o => o.TicketingSettingsId == settingsId)
             .ToListAsync(ct);
     }
 
@@ -92,7 +92,7 @@ internal sealed class TicketCheckoutRepository(IDbContextFactory<TicketsDbContex
         // Ticket lines live in a JSON column; the whole table fits in memory, so filter holders there.
         var orders = await ctx.TicketCheckoutOrders.AsNoTracking().ToListAsync(ct);
         return orders
-            .Where(o => o.BuyerUserId == userId || o.Lines.Any(l => l.AttendeeUserId == userId))
+            .Where(o => o.BuyerUserId == userId || o.Lines.Any(l => l.HolderUserId == userId))
             .ToList();
     }
 
@@ -216,10 +216,10 @@ internal sealed class TicketCheckoutRepository(IDbContextFactory<TicketsDbContex
         return await ctx.TicketCheckoutTickets.AsNoTracking().Where(t => t.HolderUserId == userId).ToListAsync(ct);
     }
 
-    public async Task<IReadOnlyList<TicketCheckoutTicket>> GetTicketsForSalesEventAsync(Guid salesEventId, CancellationToken ct = default)
+    public async Task<IReadOnlyList<TicketCheckoutTicket>> GetTicketsForSettingsAsync(Guid settingsId, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.TicketCheckoutTickets.AsNoTracking().Where(t => t.SalesEventId == salesEventId).ToListAsync(ct);
+        return await ctx.TicketCheckoutTickets.AsNoTracking().Where(t => t.TicketingSettingsId == settingsId).ToListAsync(ct);
     }
 
     public async Task AddOfferAsync(TicketResaleOffer offer, CancellationToken ct = default)
@@ -252,10 +252,10 @@ internal sealed class TicketCheckoutRepository(IDbContextFactory<TicketsDbContex
         return (await ctx.TicketResaleOffers.AsNoTracking().ToListAsync(ct)).FirstOrDefault(o => o.InviteFor(tokenHash) is not null);
     }
 
-    public async Task<IReadOnlyList<TicketResaleOffer>> GetOffersForSalesEventAsync(Guid salesEventId, CancellationToken ct = default)
+    public async Task<IReadOnlyList<TicketResaleOffer>> GetOffersForSettingsAsync(Guid settingsId, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.TicketResaleOffers.AsNoTracking().Where(o => o.SalesEventId == salesEventId).ToListAsync(ct);
+        return await ctx.TicketResaleOffers.AsNoTracking().Where(o => o.TicketingSettingsId == settingsId).ToListAsync(ct);
     }
 
     public async Task AddCompanionRequestAsync(TicketCompanionRequest request, CancellationToken ct = default)
@@ -278,10 +278,10 @@ internal sealed class TicketCheckoutRepository(IDbContextFactory<TicketsDbContex
         return await ctx.TicketCompanionRequests.AsNoTracking().FirstOrDefaultAsync(r => r.Id == id, ct);
     }
 
-    public async Task<IReadOnlyList<TicketCompanionRequest>> GetCompanionRequestsForSalesEventAsync(Guid salesEventId, CancellationToken ct = default)
+    public async Task<IReadOnlyList<TicketCompanionRequest>> GetCompanionRequestsForSettingsAsync(Guid settingsId, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
-        return await ctx.TicketCompanionRequests.AsNoTracking().Where(r => r.SalesEventId == salesEventId).ToListAsync(ct);
+        return await ctx.TicketCompanionRequests.AsNoTracking().Where(r => r.TicketingSettingsId == settingsId).ToListAsync(ct);
     }
 
     public async Task<IReadOnlyList<TicketCompanionRequest>> GetCompanionRequestsForUserAsync(Guid userId, CancellationToken ct = default)
@@ -291,11 +291,11 @@ internal sealed class TicketCheckoutRepository(IDbContextFactory<TicketsDbContex
             .Where(r => r.HolderUserId == userId || r.CompanionUserId == userId).ToListAsync(ct);
     }
 
-    public async Task<IReadOnlyList<TicketCheckoutRefund>> GetRefundsForSalesEventAsync(Guid salesEventId, CancellationToken ct = default)
+    public async Task<IReadOnlyList<TicketCheckoutRefund>> GetRefundsForSettingsAsync(Guid settingsId, CancellationToken ct = default)
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
         return await ctx.TicketCheckoutRefunds.AsNoTracking()
-            .Where(r => ctx.TicketCheckoutOrders.Any(o => o.Id == r.OrderId && o.SalesEventId == salesEventId))
+            .Where(r => ctx.TicketCheckoutOrders.Any(o => o.Id == r.OrderId && o.TicketingSettingsId == settingsId))
             .ToListAsync(ct);
     }
 
@@ -328,12 +328,12 @@ internal sealed class TicketCheckoutRepository(IDbContextFactory<TicketsDbContex
                 touched = true;
             }
             var own = order.Lines.Select((l, i) => (l, i))
-                .Where(x => Theirs(x.l.AttendeeUserId, x.l.AttendeeEmail) || childLines.Contains((order.Id, x.i)))
+                .Where(x => Theirs(x.l.HolderUserId, x.l.HolderEmail) || childLines.Contains((order.Id, x.i)))
                 .Select(x => x.i).ToHashSet();
             foreach (var line in order.Lines.Where((l, i) => own.Contains(i) || l.ParentLineIndex is { } parent && own.Contains(parent)))
             {
-                line.AttendeeName = TicketPiiTombstone.Name;
-                line.AttendeeEmail = line.AttendeeEmail is null ? null : TicketPiiTombstone.EmailFor(userId);
+                line.HolderName = TicketPiiTombstone.Name;
+                line.HolderEmail = line.HolderEmail is null ? null : TicketPiiTombstone.EmailFor(userId);
                 touched = true;
             }
             if (!touched) continue;
@@ -379,9 +379,9 @@ internal sealed class TicketCheckoutRepository(IDbContextFactory<TicketsDbContex
                 ctx.Entry(order).Property(nameof(TicketCheckoutOrder.BuyerUserId)).CurrentValue = toUserId;
                 touched = true;
             }
-            foreach (var line in order.Lines.Where(l => l.AttendeeUserId == fromUserId))
+            foreach (var line in order.Lines.Where(l => l.HolderUserId == fromUserId))
             {
-                line.AttendeeUserId = toUserId;
+                line.HolderUserId = toUserId;
                 touched = true;
             }
             if (touched) ctx.TicketCheckoutOrders.Update(order);
@@ -409,15 +409,15 @@ internal sealed class TicketCheckoutRepository(IDbContextFactory<TicketsDbContex
         Description = l.Description,
         AmountMinor = l.AmountMinor,
         VatRate = l.VatRate,
-        AttendeeName = l.AttendeeName,
-        AttendeeEmail = l.AttendeeEmail,
-        AttendeeUserId = l.AttendeeUserId,
+        HolderName = l.HolderName,
+        HolderEmail = l.HolderEmail,
+        HolderUserId = l.HolderUserId,
         HolderKind = l.HolderKind,
         ParentLineIndex = l.ParentLineIndex,
         WaveName = l.WaveName,
         ClassProgramId = l.ClassProgramId,
         ClassLabel = l.ClassLabel,
-        CreditsMinor = l.CreditsMinor,
+        DiscountsMinor = l.DiscountsMinor,
         ResaleOfferId = l.ResaleOfferId,
         DonationPurpose = l.DonationPurpose,
     };

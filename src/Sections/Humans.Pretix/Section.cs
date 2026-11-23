@@ -8,9 +8,9 @@ using Microsoft.Extensions.DependencyInjection;
 namespace Humans.Pretix;
 
 /// <summary>
-/// The pretix checkout backend. Bound in every environment, live whenever configured: pretix runs a test mode of its
+/// The pretix ticketing platform. Bound in every environment, live whenever configured: pretix runs a test mode of its
 /// own, and QA needs a real instance to try the option against. Unconfigured, <c>IsConfigured</c> is false and
-/// Tickets opens no checkout on it.
+/// Tickets takes no orders on it.
 /// </summary>
 public sealed class Section : ISection, ISectionConfiguration, ISectionAdminNav
 {
@@ -23,8 +23,8 @@ public sealed class Section : ISection, ISectionConfiguration, ISectionAdminNav
             opts.WebhookSecret = Environment.GetEnvironmentVariable("PRETIX_WEBHOOK_SECRET") ?? opts.WebhookSecret;
         });
 
-        services.AddHttpClient<PretixCheckoutBackend>(client => client.Timeout = TimeSpan.FromSeconds(30));
-        services.AddScoped<ITicketCheckoutBackend>(sp => sp.GetRequiredService<PretixCheckoutBackend>());
+        services.AddHttpClient<PretixPlatform>(client => client.Timeout = TimeSpan.FromSeconds(30));
+        services.AddScoped<ITicketingPlatform>(sp => sp.GetRequiredService<PretixPlatform>());
     }
 
     void ISectionConfiguration.DeclareSettings(IConfiguration configuration, ConfigurationRegistry registry)
@@ -36,5 +36,5 @@ public sealed class Section : ISection, ISectionConfiguration, ISectionAdminNav
     }
 
     IEnumerable<AdminNavGroup> ISectionAdminNav.Groups() =>
-        [TicketsBackendAdminNav.Group("pretix", PretixCheckoutBackend.BackendKey, "fa-solid fa-store")];
+        [TicketsPlatformAdminNav.Group("pretix", PretixPlatform.PlatformKey, "fa-solid fa-store")];
 }

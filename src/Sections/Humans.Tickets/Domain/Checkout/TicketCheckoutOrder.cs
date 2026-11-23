@@ -4,7 +4,7 @@ using NodaTime;
 namespace Humans.Tickets.Domain.Checkout;
 
 /// <summary>
-/// One purchase in Humans, whichever backend takes the money. The lines are Humans' price; the backend charges them
+/// One order in Humans, whichever ticketing platform takes the money. The lines are Humans' price; the platform charges them
 /// as given. Paid ticket lines are the named tickets.
 /// </summary>
 internal sealed class TicketCheckoutOrder
@@ -14,24 +14,24 @@ internal sealed class TicketCheckoutOrder
     /// <summary>The short code a buyer quotes to the ticketing team and that receipts print.</summary>
     public string Reference => Id.ToString("N")[..8].ToUpperInvariant();
 
-    public Guid SalesEventId { get; init; }
+    public Guid TicketingSettingsId { get; init; }
 
-    /// <summary>The signed-in payer.</summary>
+    /// <summary>The signed-in buyer.</summary>
     public Guid BuyerUserId { get; init; }
 
     public string BuyerName { get; set; } = string.Empty;
 
     public string BuyerEmail { get; set; } = string.Empty;
 
-    /// <summary>The backend the order was opened on; never changes, even when the event's setting does.</summary>
-    public string BackendKey { get; init; } = string.Empty;
+    /// <summary>The platform the order was opened on; never changes, even when the event's ticketing settings change.</summary>
+    public string PlatformKey { get; init; } = string.Empty;
 
-    /// <summary>Null until the backend accepted the checkout.</summary>
-    public string? BackendOrderId { get; set; }
+    /// <summary>Null until the platform accepted the order.</summary>
+    public string? PlatformOrderId { get; set; }
 
     public string? PaymentUrl { get; set; }
 
-    /// <summary>The order in the backend's own admin, for the ticketing team.</summary>
+    /// <summary>The order in the platform's own admin, for the ticketing team.</summary>
     public string? AdminUrl { get; set; }
 
     public TicketCheckoutOrderState State { get; set; }
@@ -49,11 +49,11 @@ internal sealed class TicketCheckoutOrder
 
     public Instant? PaidAt { get; set; }
 
-    /// <summary>As the backend reports it, however the refund was issued.</summary>
+    /// <summary>As the platform reports it, however the refund was issued.</summary>
     public long RefundedMinor { get; set; }
 
-    /// <summary>As the backend reports it: taken back by the buyer's bank in a chargeback not (yet) won.</summary>
-    public long DisputedMinor { get; set; }
+    /// <summary>As the platform reports it: taken back by the buyer's bank in a chargeback not (yet) won.</summary>
+    public long ChargedBackMinor { get; set; }
 
     /// <summary>The legal repo folder of the ticket rules the buyer accepted; null when the sale had none.</summary>
     public string? TermsFolder { get; init; }
@@ -72,7 +72,7 @@ internal sealed class TicketCheckoutOrder
 
     public List<TicketCheckoutOrderLine> Lines { get; set; } = [];
 
-    public long TicketTotalMinor => Lines.Where(l => l.Kind == CheckoutLineKind.Ticket).Sum(l => l.AmountMinor);
+    public long TicketTotalMinor => Lines.Where(l => l.Kind == OrderLineKind.Ticket).Sum(l => l.AmountMinor);
 
     /// <summary>Holds capacity: paid, a payment on its way, or still payable.</summary>
     public bool HoldsTickets(Instant now) =>
@@ -86,7 +86,7 @@ internal sealed class TicketCheckoutOrder
 
 internal enum TicketCheckoutOrderState
 {
-    /// <summary>Saved, backend not yet called (or the call failed).</summary>
+    /// <summary>Saved, platform not yet called (or the call failed).</summary>
     Created = 0,
     Pending = 1,
     Paid = 2,
@@ -100,7 +100,7 @@ internal enum TicketCheckoutOrderState
 
 internal sealed class TicketCheckoutOrderLine
 {
-    public CheckoutLineKind Kind { get; set; }
+    public OrderLineKind Kind { get; set; }
 
     public string Description { get; set; } = string.Empty;
 
@@ -109,12 +109,12 @@ internal sealed class TicketCheckoutOrderLine
     public decimal VatRate { get; set; }
 
     /// <summary>The legal name on the ticket; null on donations.</summary>
-    public string? AttendeeName { get; set; }
+    public string? HolderName { get; set; }
 
-    public string? AttendeeEmail { get; set; }
+    public string? HolderEmail { get; set; }
 
     /// <summary>The ticket holder when known; null for a child or a companion issued without an account.</summary>
-    public Guid? AttendeeUserId { get; set; }
+    public Guid? HolderUserId { get; set; }
 
     public TicketHolderKind? HolderKind { get; set; }
 
@@ -127,12 +127,12 @@ internal sealed class TicketCheckoutOrderLine
 
     public string? ClassLabel { get; set; }
 
-    public long CreditsMinor { get; set; }
+    public long DiscountsMinor { get; set; }
 
-    /// <summary>Set when this line buys a returned ticket instead of fresh stock.</summary>
+    /// <summary>Set when this line buys a ticket in resale instead of fresh stock.</summary>
     public Guid? ResaleOfferId { get; set; }
 
-    /// <summary>One of the sales event's donation purposes as it read at checkout; null for a general donation.</summary>
+    /// <summary>One of the ticketing settings' donation purposes as it read at checkout; null for a general donation.</summary>
     public string? DonationPurpose { get; set; }
 }
 
@@ -148,13 +148,13 @@ internal sealed class TicketCheckoutRefund
 
     public RefundState State { get; set; }
 
-    public string? BackendRefundId { get; set; }
+    public string? PlatformRefundId { get; set; }
 
     public string? FailureReason { get; set; }
 
     public string? ManualRefundUrl { get; set; }
 
-    /// <summary>Null for automation (the refund owed when a returned ticket resells).</summary>
+    /// <summary>Null for automation (the resale refund owed when a ticket in resale sells).</summary>
     public Guid? RequestedByUserId { get; init; }
 
     public Instant CreatedAt { get; init; }
@@ -184,7 +184,7 @@ internal enum TicketCheckoutOrderEventKind
 {
     Created = 0,
     CheckoutOpened = 1,
-    BackendRefused = 2,
+    PlatformRefused = 2,
     StateChanged = 3,
     RefundedTotalChanged = 4,
     RefundRequested = 5,
@@ -209,6 +209,6 @@ internal enum TicketCheckoutOrderEventKind
     CompanionRequestDecided = 24,
     EventCancelled = 25,
     Restored = 26,
-    /// <summary>Sales closed with the ticket still offered; its holder was told.</summary>
+    /// <summary>Sales closed with the ticket still in resale; its holder was told.</summary>
     ResaleUnsold = 40,
 }

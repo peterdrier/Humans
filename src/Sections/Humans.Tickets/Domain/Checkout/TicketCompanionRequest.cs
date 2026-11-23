@@ -10,7 +10,7 @@ internal sealed class TicketCompanionRequest
 {
     public Guid Id { get; init; }
 
-    public Guid SalesEventId { get; init; }
+    public Guid TicketingSettingsId { get; init; }
 
     /// <summary>The holder's adult ticket the companion attaches to.</summary>
     public Guid TicketId { get; init; }

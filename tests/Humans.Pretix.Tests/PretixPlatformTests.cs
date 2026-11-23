@@ -9,18 +9,18 @@ using static Humans.Pretix.Tests.PretixTestHost;
 
 namespace Humans.Pretix.Tests;
 
-public class PretixCheckoutBackendTests
+public class PretixPlatformTests
 {
     private static readonly Guid OrderId = Guid.Parse("0193a1b2-0000-7000-8000-000000000001");
     private static readonly Guid EventId = Guid.NewGuid();
-    private static readonly string Code = PretixCheckoutBackend.OrderCode(OrderId);
+    private static readonly string Code = PretixPlatform.OrderCode(OrderId);
     private static readonly string OrderPath = $"{Api}orders/{Code}/";
 
-    private static CheckoutRequest Request(string culture = "es-ES", string currency = "EUR") => new(
+    private static PlatformOrderRequest Request(string culture = "es-ES", string currency = "EUR") => new(
         OrderId, EventId, "nowhere2027", "Bea Buyer", "bea@example.org", currency, culture,
         [
-            new CheckoutLine(CheckoutLineKind.Ticket, "Entry", 22500, 0.21m, "Ana Attendee"),
-            new CheckoutLine(CheckoutLineKind.Donation, "Donation", 77500, 0m, null),
+            new PlatformOrderLine(OrderLineKind.Ticket, "Entry", 22500, 0.21m, "Ana Holder"),
+            new PlatformOrderLine(OrderLineKind.Donation, "Donation", 77500, 0m, null),
         ],
         Instant.FromUtc(2026, 11, 21, 1, 0),
         new Uri("https://humans.test/Tickets/Checkout/Return?order=1"));
@@ -43,9 +43,9 @@ public class PretixCheckoutBackendTests
     {
         var pretix = WithEvent().On("POST", $"{Api}orders/", HttpStatusCode.Created, Order(Code));
 
-        var session = await Create(pretix).CreateCheckoutAsync(Request(), TestContext.Current.CancellationToken);
+        var session = await Create(pretix).CreateOrderAsync(Request(), TestContext.Current.CancellationToken);
 
-        session.BackendOrderId.Should().Be($"nowhere2027/{Code}");
+        session.PlatformOrderId.Should().Be($"nowhere2027/{Code}");
         session.AdminUrl!.AbsoluteUri.Should().Be($"https://pretix.test/control/event/nobodies/nowhere2027/orders/{Code}/");
         session.PaymentUrl.AbsoluteUri.Should().Be(
             $"https://pretix.test/nobodies/nowhere2027/order/{Code}/secret/pay/change?return_url="
@@ -64,7 +64,7 @@ public class PretixCheckoutBackendTests
         positions[1]!["item"]!.GetValue<int>().Should().Be(8);
         positions[1]!["price"]!.GetValue<string>().Should().Be("775.00");
         // Names stay in Humans, where an erasure reaches them.
-        pretix.BodiesFor("POST", $"{Api}orders/").Single().Should().NotContain("Ana Attendee").And.NotContain("Bea Buyer");
+        pretix.BodiesFor("POST", $"{Api}orders/").Single().Should().NotContain("Ana Holder").And.NotContain("Bea Buyer");
     }
 
     [HumansFact]
@@ -74,9 +74,9 @@ public class PretixCheckoutBackendTests
             .On("POST", $"{Api}orders/", HttpStatusCode.BadRequest, new { code = new[] { "This order code is already in use." } })
             .On("GET", OrderPath, HttpStatusCode.OK, Order(Code, total: 1015.52m, apiMeta: new { humans_order_id = OrderId.ToString() }));
 
-        var session = await Create(pretix).CreateCheckoutAsync(Request(), TestContext.Current.CancellationToken);
+        var session = await Create(pretix).CreateOrderAsync(Request(), TestContext.Current.CancellationToken);
 
-        session.BackendOrderId.Should().Be($"nowhere2027/{Code}");
+        session.PlatformOrderId.Should().Be($"nowhere2027/{Code}");
         pretix.BodiesFor("POST", $"{Api}orders/").Should().ContainSingle();
     }
 
@@ -87,9 +87,9 @@ public class PretixCheckoutBackendTests
             .On("POST", $"{Api}orders/", HttpStatusCode.BadRequest, new { code = new[] { "This order code is already in use." } })
             .On("GET", OrderPath, HttpStatusCode.OK, Order(Code, apiMeta: new { humans_order_id = Guid.NewGuid().ToString() }));
 
-        var act = () => Create(pretix).CreateCheckoutAsync(Request(), TestContext.Current.CancellationToken);
+        var act = () => Create(pretix).CreateOrderAsync(Request(), TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<TicketCheckoutException>();
+        await act.Should().ThrowAsync<TicketingPlatformException>();
     }
 
     [HumansFact]
@@ -100,9 +100,9 @@ public class PretixCheckoutBackendTests
                 Order(Code, positions: [Position(1, "225.00", "10.00"), Position(2, "775.00", "0.00")]))
             .On("POST", $"{OrderPath}mark_canceled/", HttpStatusCode.OK, Order(Code, status: "c"));
 
-        var act = () => Create(pretix).CreateCheckoutAsync(Request(), TestContext.Current.CancellationToken);
+        var act = () => Create(pretix).CreateOrderAsync(Request(), TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<TicketCheckoutException>().WithMessage("*taxed at 10*");
+        await act.Should().ThrowAsync<TicketingPlatformException>().WithMessage("*taxed at 10*");
         pretix.BodiesFor("POST", $"{OrderPath}mark_canceled/").Should().ContainSingle();
     }
 
@@ -117,9 +117,9 @@ public class PretixCheckoutBackendTests
                     positions: [Position(1, ticketPrice, "21.00"), Position(2, "775.00", "0.00")]))
             .On("POST", $"{OrderPath}mark_canceled/", HttpStatusCode.OK, Order(Code, status: "c"));
 
-        var act = () => Create(pretix).CreateCheckoutAsync(Request(), TestContext.Current.CancellationToken);
+        var act = () => Create(pretix).CreateOrderAsync(Request(), TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<TicketCheckoutException>().WithMessage(message);
+        await act.Should().ThrowAsync<TicketingPlatformException>().WithMessage(message);
         pretix.BodiesFor("POST", $"{OrderPath}mark_canceled/").Should().ContainSingle();
     }
 
@@ -130,7 +130,7 @@ public class PretixCheckoutBackendTests
             .On("POST", $"{Api}orders/", HttpStatusCode.BadRequest, new { locale = new[] { "\"ca\" is not a valid choice." } })
             .On("POST", $"{Api}orders/", HttpStatusCode.Created, Order(Code));
 
-        await Create(pretix).CreateCheckoutAsync(Request(culture: "ca-ES"), TestContext.Current.CancellationToken);
+        await Create(pretix).CreateOrderAsync(Request(culture: "ca-ES"), TestContext.Current.CancellationToken);
 
         var bodies = pretix.BodiesFor("POST", $"{Api}orders/").ToList();
         bodies.Should().HaveCount(2);
@@ -142,9 +142,9 @@ public class PretixCheckoutBackendTests
     {
         var pretix = WithEvent(donationItemName: "something-else");
 
-        var act = () => Create(pretix).CreateCheckoutAsync(Request(), TestContext.Current.CancellationToken);
+        var act = () => Create(pretix).CreateOrderAsync(Request(), TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<TicketCheckoutException>().WithMessage("*humans-donation*");
+        await act.Should().ThrowAsync<TicketingPlatformException>().WithMessage("*humans-donation*");
         pretix.BodiesFor("POST", $"{Api}orders/").Should().BeEmpty();
     }
 
@@ -153,9 +153,9 @@ public class PretixCheckoutBackendTests
     {
         var pretix = WithEvent("CHF");
 
-        var act = () => Create(pretix).CreateCheckoutAsync(Request(), TestContext.Current.CancellationToken);
+        var act = () => Create(pretix).CreateOrderAsync(Request(), TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<TicketCheckoutException>();
+        await act.Should().ThrowAsync<TicketingPlatformException>();
         pretix.Requests.Should().ContainSingle();
     }
 
@@ -164,11 +164,11 @@ public class PretixCheckoutBackendTests
     {
         var settings = PretixTestHost.Settings();
         settings.ApiToken = "";
-        var backend = Create(new FakePretix(), settings);
+        var platform = Create(new FakePretix(), settings);
 
-        backend.IsConfigured.Should().BeFalse();
-        var act = () => backend.CreateCheckoutAsync(Request(), TestContext.Current.CancellationToken);
-        await act.Should().ThrowAsync<TicketCheckoutException>();
+        platform.IsConfigured.Should().BeFalse();
+        var act = () => platform.CreateOrderAsync(Request(), TestContext.Current.CancellationToken);
+        await act.Should().ThrowAsync<TicketingPlatformException>();
     }
 
     [HumansFact]
@@ -186,7 +186,7 @@ public class PretixCheckoutBackendTests
 
         var status = await Create(pretix).GetStatusAsync($"nowhere2027/{Code}", TestContext.Current.CancellationToken);
 
-        status.State.Should().Be(CheckoutState.Paid);
+        status.State.Should().Be(PlatformOrderState.Paid);
         // What Stripe kept is unknown to pretix; the 15.52 is a surcharge, which the port forbids.
         status.FeeMinor.Should().BeNull();
         status.RefundFailed.Should().BeTrue();
@@ -208,10 +208,10 @@ public class PretixCheckoutBackendTests
     }
 
     [HumansTheory]
-    [InlineData("n", CheckoutState.Pending)]
-    [InlineData("e", CheckoutState.Expired)]
-    [InlineData("c", CheckoutState.Cancelled)]
-    public async Task Status_MapsPretixOrderStates(string pretixStatus, CheckoutState expected)
+    [InlineData("n", PlatformOrderState.Pending)]
+    [InlineData("e", PlatformOrderState.Expired)]
+    [InlineData("c", PlatformOrderState.Cancelled)]
+    public async Task Status_MapsPretixOrderStates(string pretixStatus, PlatformOrderState expected)
     {
         var pretix = new FakePretix().On("GET", OrderPath, HttpStatusCode.OK, Order(Code, status: pretixStatus));
 
@@ -252,7 +252,7 @@ public class PretixCheckoutBackendTests
 
         var status = await Create(pretix).GetStatusAsync($"nowhere2027/{Code}", TestContext.Current.CancellationToken);
 
-        status.State.Should().Be(CheckoutState.Paid);
+        status.State.Should().Be(PlatformOrderState.Paid);
         status.PaidAt.Should().NotBeNull();
     }
 
@@ -277,13 +277,13 @@ public class PretixCheckoutBackendTests
 
         var status = await Create(pretix).GetStatusAsync($"nowhere2027/{Code}", TestContext.Current.CancellationToken);
 
-        status.State.Should().Be(CheckoutState.Paid);
+        status.State.Should().Be(PlatformOrderState.Paid);
         status.RefundedMinor.Should().Be(4000);
-        status.DisputedMinor.Should().Be(0);
+        status.ChargedBackMinor.Should().Be(0);
     }
 
     [HumansFact]
-    public async Task Status_Chargeback_IsDisputedNotRefundedUntilCancelledInPretix()
+    public async Task Status_Chargeback_IsChargedBackNotRefundedUntilCancelledInPretix()
     {
         var pretix = new FakePretix().On("GET", OrderPath, HttpStatusCode.OK, PaidOrder(
             new { local_id = 1, state = "done", source = "admin", amount = "100.00", payment = 1, comment = "humans-refund:x", provider = "stripe", details = new { id = "re_1" } },
@@ -293,7 +293,7 @@ public class PretixCheckoutBackendTests
 
         var status = await Create(pretix).GetStatusAsync($"nowhere2027/{Code}", TestContext.Current.CancellationToken);
 
-        status.DisputedMinor.Should().Be(50000, "an open and a processed chargeback hold money; a cancelled one was won");
+        status.ChargedBackMinor.Should().Be(50000, "an open and a processed chargeback hold money; a cancelled one was won");
         status.RefundedMinor.Should().Be(10000);
         status.RefundFailed.Should().BeFalse("cancelling a won chargeback is not a failed refund");
     }
@@ -308,7 +308,7 @@ public class PretixCheckoutBackendTests
 
         var status = await Create(pretix).GetStatusAsync($"nowhere2027/{Code}", TestContext.Current.CancellationToken);
 
-        status.State.Should().Be(CheckoutState.Cancelled, "the money has already gone back");
+        status.State.Should().Be(PlatformOrderState.Cancelled, "the money has already gone back");
         status.RefundedMinor.Should().Be(100000);
     }
 
@@ -321,7 +321,7 @@ public class PretixCheckoutBackendTests
 
         var status = await Create(pretix).GetStatusAsync($"nowhere2027/{Code}", TestContext.Current.CancellationToken);
 
-        status.State.Should().Be(CheckoutState.Paid);
+        status.State.Should().Be(PlatformOrderState.Paid);
     }
 
     [HumansFact]
@@ -333,12 +333,12 @@ public class PretixCheckoutBackendTests
 
         var cancel = () => Create(pretix).CancelAsync($"nowhere2027/{Code}", TestContext.Current.CancellationToken);
 
-        await cancel.Should().ThrowAsync<TicketCheckoutException>();
+        await cancel.Should().ThrowAsync<TicketingPlatformException>();
         pretix.Requests.Should().ContainSingle();
     }
 
     [HumansFact]
-    public async Task Erase_BuyersOrder_ClearsEmailAndAnyAttendeeData()
+    public async Task Erase_BuyersOrder_ClearsEmailAndAnyHolderData()
     {
         var order = new
         {
@@ -409,7 +409,7 @@ public class PretixCheckoutBackendTests
             new RefundRequest(refundId, $"nowhere2027/{Code}", 22500, "Resold"), TestContext.Current.CancellationToken);
 
         result.State.Should().Be(RefundState.Succeeded);
-        result.BackendRefundId.Should().Be("3");
+        result.PlatformRefundId.Should().Be("3");
         var body = JsonNode.Parse(pretix.BodiesFor("POST", $"{OrderPath}payments/1/refund/").Single()!)!;
         body["amount"]!.GetValue<string>().Should().Be("225.00");
         body["mark_canceled"]!.GetValue<bool>().Should().BeFalse();
@@ -437,7 +437,7 @@ public class PretixCheckoutBackendTests
             new RefundRequest(refundId, $"nowhere2027/{Code}", 22500, "Resold"), TestContext.Current.CancellationToken);
 
         result.State.Should().Be(expected);
-        result.BackendRefundId.Should().Be("3");
+        result.PlatformRefundId.Should().Be("3");
     }
 
     [HumansFact]
@@ -559,7 +559,7 @@ public class PretixCheckoutBackendTests
             new RefundRequest(refundId, $"nowhere2027/{Code}", 22500, "Resold"), TestContext.Current.CancellationToken);
 
         result.State.Should().Be(RefundState.Succeeded);
-        result.BackendRefundId.Should().Be("3");
+        result.PlatformRefundId.Should().Be("3");
         pretix.Requests.Should().ContainSingle();
     }
 
@@ -579,7 +579,7 @@ public class PretixCheckoutBackendTests
             new RefundRequest(refundId, $"nowhere2027/{Code}", 22500, "Resold"), TestContext.Current.CancellationToken);
 
         result.State.Should().Be(RefundState.Failed);
-        result.BackendRefundId.Should().Be("3");
+        result.PlatformRefundId.Should().Be("3");
         pretix.BodiesFor("POST", $"{OrderPath}payments/1/refund/").Should().BeEmpty();
         JsonNode.Parse(pretix.BodiesFor("POST", $"{OrderPath}change/").Single()!)!["cancel_fees"]![0]!["fee"]!.GetValue<int>().Should().Be(7);
     }
@@ -624,13 +624,13 @@ public class PretixCheckoutBackendTests
                 new { local_id = 1, state = "created", amount = "1000.00", provider = "banktransfer", payment_date = (string?)null },
                 new { local_id = 2, state = "pending", amount = "1000.00", provider = "stripe_sepa_debit", payment_date = (string?)null },
             ]));
-        var backend = Create(pretix);
+        var platform = Create(pretix);
 
-        var status = await backend.GetStatusAsync($"nowhere2027/{Code}", TestContext.Current.CancellationToken);
-        var cancel = () => backend.CancelAsync($"nowhere2027/{Code}", TestContext.Current.CancellationToken);
+        var status = await platform.GetStatusAsync($"nowhere2027/{Code}", TestContext.Current.CancellationToken);
+        var cancel = () => platform.CancelAsync($"nowhere2027/{Code}", TestContext.Current.CancellationToken);
 
-        status.State.Should().Be(CheckoutState.Processing);
-        await cancel.Should().ThrowAsync<TicketCheckoutException>();
+        status.State.Should().Be(PlatformOrderState.Processing);
+        await cancel.Should().ThrowAsync<TicketingPlatformException>();
         pretix.Requests.Should().NotContain(r => r.Route.Contains("mark_canceled", StringComparison.Ordinal));
     }
 
@@ -641,7 +641,7 @@ public class PretixCheckoutBackendTests
 
         var act = () => Create(pretix).CancelAsync($"nowhere2027/{Code}", TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<TicketCheckoutException>();
+        await act.Should().ThrowAsync<TicketingPlatformException>();
     }
 
     [HumansFact]
@@ -674,9 +674,9 @@ public class PretixCheckoutBackendTests
         var first = Guid.CreateVersion7();
         var second = Guid.CreateVersion7();
 
-        PretixCheckoutBackend.OrderCode(first).Should().Be(PretixCheckoutBackend.OrderCode(first));
-        PretixCheckoutBackend.OrderCode(first).Should().NotBe(PretixCheckoutBackend.OrderCode(second));
-        PretixCheckoutBackend.OrderCode(first).Should().HaveLength(16)
+        PretixPlatform.OrderCode(first).Should().Be(PretixPlatform.OrderCode(first));
+        PretixPlatform.OrderCode(first).Should().NotBe(PretixPlatform.OrderCode(second));
+        PretixPlatform.OrderCode(first).Should().HaveLength(16)
             .And.MatchRegex("^[ABCDEFGHJKLMNPQRSTUVWXYZ23456789]+$");
     }
     [HumansFact]
@@ -726,8 +726,8 @@ public class PretixCheckoutBackendTests
             "nowhere2027", Instant.FromUtc(2027, 1, 1, 0, 0), Instant.FromUtc(2027, 2, 1, 0, 0), TestContext.Current.CancellationToken);
 
         orders.Should().HaveCount(2);
-        orders[0].Should().Be(new BackendOrderSummary(
-            $"nowhere2027/{Code}", OrderId, Instant.FromUtc(2027, 1, 5, 9, 30).PlusTicks(1234560), CheckoutState.Paid, 30000, 2, 0, 0));
+        orders[0].Should().Be(new PlatformOrderSummary(
+            $"nowhere2027/{Code}", OrderId, Instant.FromUtc(2027, 1, 5, 9, 30).PlusTicks(1234560), PlatformOrderState.Paid, 30000, 2, 0, 0));
         orders[1].HumansOrderId.Should().BeNull();
         orders[1].TotalMinor.Should().Be(30000, "the refund fee comes back on; the refund counts on its own");
         orders[1].RefundedMinor.Should().Be(5000);
@@ -772,7 +772,7 @@ public class PretixCheckoutBackendTests
 
         order.TotalMinor.Should().Be(60000, "paid twice");
         order.RefundedMinor.Should().Be(4000, "a refund made outside pretix has left");
-        order.DisputedMinor.Should().Be(6000, "a chargeback is not a refund");
+        order.ChargedBackMinor.Should().Be(6000, "a chargeback is not a refund");
     }
 
     [HumansTheory]
@@ -782,7 +782,7 @@ public class PretixCheckoutBackendTests
     [InlineData("e", "done", "re_1", "40.00", 4000, 0)]
     [InlineData("e", "external", "dp_1", "100.00", 0, 10000)]
     public async Task ListOrders_OrderThatTookItsMoney_StaysPaidWhateverPretixMadeOfItLater(
-        string status, string refundState, string stripeId, string amount, long refunded, long disputed)
+        string status, string refundState, string stripeId, string amount, long refunded, long chargedBack)
     {
         // Processing a refund in pretix cancels or reopens the order; a late payment leaves it expired. Tickets keeps
         // all of these Paid, so the list must too or reconciliation never ties out.
@@ -811,10 +811,10 @@ public class PretixCheckoutBackendTests
         var order = (await Create(pretix).ListOrdersAsync(
             "nowhere2027", Instant.FromUtc(2027, 1, 1, 0, 0), Instant.FromUtc(2027, 2, 1, 0, 0), TestContext.Current.CancellationToken)).Single();
 
-        order.State.Should().Be(CheckoutState.Paid);
+        order.State.Should().Be(PlatformOrderState.Paid);
         order.TotalMinor.Should().Be(10000);
         order.RefundedMinor.Should().Be(refunded);
-        order.DisputedMinor.Should().Be(disputed);
+        order.ChargedBackMinor.Should().Be(chargedBack);
     }
 
     [HumansFact]
@@ -844,7 +844,7 @@ public class PretixCheckoutBackendTests
         var order = (await Create(pretix).ListOrdersAsync(
             "nowhere2027", Instant.FromUtc(2027, 1, 1, 0, 0), Instant.FromUtc(2027, 2, 1, 0, 0), TestContext.Current.CancellationToken)).Single();
 
-        order.State.Should().Be(CheckoutState.Pending);
+        order.State.Should().Be(PlatformOrderState.Pending);
         order.TotalMinor.Should().Be(10000);
     }
 
@@ -854,6 +854,6 @@ public class PretixCheckoutBackendTests
         var act = () => Create(new FakePretix()).ListOrdersAsync(
             null, Instant.FromUtc(2027, 1, 1, 0, 0), Instant.FromUtc(2027, 2, 1, 0, 0), TestContext.Current.CancellationToken);
 
-        await act.Should().ThrowAsync<TicketCheckoutException>();
+        await act.Should().ThrowAsync<TicketingPlatformException>();
     }
 }
