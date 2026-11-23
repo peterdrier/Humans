@@ -56,7 +56,7 @@ public sealed class WorkgroupServiceBudgetTests : WorkgroupsTestHarness
             Finance.ReceivedCalls().Should().BeEmpty();
             GoogleSync.ReceivedCalls().Should().BeEmpty();
             AuditLog.ReceivedCalls().Should().BeEmpty();
-            Notifications.ReceivedCalls().Should().BeEmpty();
+            NotificationCalls().Should().BeEmpty();
             Email.ReceivedCalls().Should().BeEmpty();
             (await db.Workgroups.CountAsync(Ct)).Should().Be(bootstrap ? 0 : 1);
             if (!bootstrap) (await db.Workgroups.SingleAsync(Ct)).BudgetAmount.Should().BeNull();

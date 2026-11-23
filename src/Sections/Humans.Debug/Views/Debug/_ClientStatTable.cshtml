@@ -18,7 +18,7 @@
                         <tr>
                             <td>@row.Label</td>
                             <td class="text-end font-monospace">@row.Count.ToString("N0")</td>
-                            <td class="text-end text-muted small" style="width:4.5rem;">@row.Percent.ToString("F1")%</td>
+                            <td class="text-end text-muted small" style="width:4.5rem;">@row.Percent.ToString("F1", System.Globalization.CultureInfo.CurrentCulture)%</td>
                         </tr>
                     }
                 </tbody>

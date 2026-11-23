@@ -25,7 +25,6 @@ public class UserEmailServiceReconcileOAuthTests
     private readonly IUserRepository _repository = Substitute.For<IUserRepository>();
     private readonly IUserEmailRemovalListener _googleIdentity = Substitute.For<IUserEmailRemovalListener>();
     private readonly IUserManagement _userService = Substitute.For<IUserManagement>();
-    private readonly UserManager<User> _userManager;
     private readonly FakeClock _clock = new(Instant.FromUtc(2026, 5, 11, 12, 0));
     private readonly IAuditLogService _auditLogService = Substitute.For<IAuditLogService>();
     private readonly UserEmailService _service;
@@ -36,12 +35,12 @@ public class UserEmailServiceReconcileOAuthTests
     public UserEmailServiceReconcileOAuthTests()
     {
         var store = Substitute.For<IUserStore<User>>();
-        _userManager = Substitute.For<UserManager<User>>(
+        var userManager = Substitute.For<UserManager<User>>(
             store, null, null, null, null, null, null, null, null);
         _service = new UserEmailService(
             _repository,
             _userService,
-            _userManager,
+            userManager,
             _clock,
             _auditLogService,
             [],

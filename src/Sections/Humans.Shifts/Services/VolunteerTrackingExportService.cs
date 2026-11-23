@@ -41,7 +41,7 @@ internal sealed class VolunteerTrackingExportService(
             .GroupBy(d => d.TeamId)
             .ToDictionary(g => g.Key, g => g.First().TeamName);
 
-        string? filteredTeamName = request.DepartmentId is Guid deptId
+        string? filteredTeamName = request.DepartmentId is { } deptId
             ? teamNames.GetValueOrDefault(deptId)
             : null;
 

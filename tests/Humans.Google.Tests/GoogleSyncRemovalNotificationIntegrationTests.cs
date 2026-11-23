@@ -24,7 +24,6 @@ public sealed class GoogleSyncRemovalNotificationIntegrationTests
     private readonly ITeamResourceManagement _teamResourceService = Substitute.For<ITeamResourceManagement>();
     private readonly ITeamService _teamService = Substitute.For<ITeamService>();
     private readonly IUserService _userService = Substitute.For<IUserService>();
-    private readonly IWorkspaceIdentityManagement _identities;
     private readonly IUserEmailService _userEmailService = Substitute.For<IUserEmailService>();
     private readonly ISyncSettingsService _syncSettingsService = Substitute.For<ISyncSettingsService>();
     private readonly IAuditLogService _auditLogService = Substitute.For<IAuditLogService>();
@@ -44,7 +43,7 @@ public sealed class GoogleSyncRemovalNotificationIntegrationTests
 
     public GoogleSyncRemovalNotificationIntegrationTests()
     {
-        _identities = WorkspaceIdentityFakes.ResolvingThrough(_userService);
+        var identities = WorkspaceIdentityFakes.ResolvingThrough(_userService);
         _syncSettingsService
             .GetModeAsync(SyncServiceType.GoogleGroups, Arg.Any<CancellationToken>())
             .Returns(SyncMode.AddAndRemove);
@@ -54,7 +53,7 @@ public sealed class GoogleSyncRemovalNotificationIntegrationTests
         var notifications = new GoogleRemovalNotificationService(
             _userEmailService,
             _userService,
-            _identities,
+            identities,
             _emailService,
             _emailMessages,
             NullLogger<GoogleRemovalNotificationService>.Instance);
@@ -66,7 +65,7 @@ public sealed class GoogleSyncRemovalNotificationIntegrationTests
             _teamResourceClient,
             _teamResourceService,
             _teamService,
-            _userService, _identities,
+            _userService, identities,
             _userEmailService,
             _syncSettingsService,
             _auditLogService,

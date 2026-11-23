@@ -224,7 +224,7 @@ internal sealed partial class PleoBooking(
             unattributed,
             RefundOrigins(spendEntries),
             waiting,
-            Changes(s, spend, purchases, open, names),
+            Changes(s, spend, purchases, names),
             s.Uploads.Where(u => !u.Confirmed).Select(u => u.PleoEntryId).ToHashSet(StringComparer.Ordinal));
     }
 
@@ -256,7 +256,7 @@ internal sealed partial class PleoBooking(
     /// </summary>
     private static List<PleoChangeRow> Changes(
         PleoSnapshot s, IReadOnlyList<PleoSpendRow> spend, IReadOnlyDictionary<string, PleoPurchaseRef> purchases,
-        IReadOnlySet<int> open, IReadOnlyDictionary<int, string> names)
+        IReadOnlyDictionary<int, string> names)
     {
         var holdedById = s.ExpenseLines
             .Select(l => (Id: PleoIdOf(l.Description), Line: l))

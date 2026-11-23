@@ -63,6 +63,7 @@ graph LR
     Store
     Stripe
     Surveys
+    Tasks
     Teams
     TicketTailor
     Tickets
@@ -265,6 +266,9 @@ graph LR
     Surveys -.-> Governance
     Surveys -.-> Teams
     Surveys -.-> Tickets
+    Tasks --> Permissions
+    Tasks --> Settings
+    Tasks -.-> Teams
     Teams --> AuditLog
     Teams --> Auth
     Teams --> Consent

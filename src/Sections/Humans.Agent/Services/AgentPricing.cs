@@ -9,7 +9,7 @@ internal static class AgentPricing
 
     // https://platform.claude.com/docs/en/about-claude/pricing, as of October 2026. Anthropic publishes no pricing API,
     // so update this table when new models ship. Cache writes are priced at the input rate, without their premium.
-    private static readonly Dictionary<string, PriceRow> _pricesByModelPrefix = new(StringComparer.OrdinalIgnoreCase)
+    private static readonly Dictionary<string, PriceRow> PricesByModelPrefix = new(StringComparer.OrdinalIgnoreCase)
     {
         ["claude-fable-5"] = new PriceRow(10.00m, 50.00m, 1.00m),
         ["claude-fable-5-1"] = new PriceRow(10.00m, 50.00m, 0.25m),
@@ -31,19 +31,19 @@ internal static class AgentPricing
         ["claude-opus-4"] = new PriceRow(15.00m, 75.00m, 1.50m),
     };
 
-    private static readonly PriceRow _fallback = new(3.00m, 15.00m, 0.30m);
+    private static readonly PriceRow Fallback = new(3.00m, 15.00m, 0.30m);
 
-    public static PriceRow GetPriceRow(string model) => FindPriceRow(model) ?? _fallback;
+    public static PriceRow GetPriceRow(string model) => FindPriceRow(model) ?? Fallback;
 
     /// <summary>Null for a model the table doesn't know, where <see cref="GetPriceRow"/> would guess Sonnet rates.</summary>
     public static PriceRow? FindPriceRow(string model)
     {
         if (string.IsNullOrWhiteSpace(model)) return null;
         // Longest matching prefix wins, so claude-opus-4-5 never falls through to claude-opus-4.
-        var prefix = _pricesByModelPrefix.Keys
+        var prefix = PricesByModelPrefix.Keys
             .Where(key => model.StartsWith(key, StringComparison.OrdinalIgnoreCase))
             .MaxBy(key => key.Length);
-        return prefix is null ? null : _pricesByModelPrefix[prefix];
+        return prefix is null ? null : PricesByModelPrefix[prefix];
     }
 
     /// <summary><paramref name="promptTokens"/> excludes cache reads, which Anthropic reports separately.</summary>

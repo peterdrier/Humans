@@ -17,7 +17,7 @@ using Humans.Tickets.Services.Checkout;
 
 namespace Humans.Tickets.Tests.Services;
 
-public sealed class TicketQueryService_HoldingsTests
+public sealed class TicketQueryServiceHoldingsTests
 {
     private static readonly Guid UserA = Guid.NewGuid();
     private static readonly Guid UserB = Guid.NewGuid();
@@ -25,14 +25,14 @@ public sealed class TicketQueryService_HoldingsTests
     private readonly ITicketRepository _ticketRepo = Substitute.For<ITicketRepository>();
     private readonly ITicketTransferRepository _transferRepo = Substitute.For<ITicketTransferRepository>();
     private readonly IUserService _users = Substitute.For<IUserService>();
-    private readonly TicketQueryService Service;
+    private readonly TicketQueryService _service;
 
-    public TicketQueryService_HoldingsTests()
+    public TicketQueryServiceHoldingsTests()
     {
         _transferRepo.GetApprovedAsync(Arg.Any<CancellationToken>())
             .Returns([]);
 
-        Service = new TicketQueryService(
+        _service = new TicketQueryService(
             FixedOrgTimeZone.Madrid, _ticketRepo,
             _transferRepo,
             Substitute.For<IBudgetService>(),
@@ -57,7 +57,7 @@ public sealed class TicketQueryService_HoldingsTests
     [HumansFact]
     public async Task ReturnsEmpty_WhenUserHasNoOrdersAndNoAttendees()
     {
-        var result = await Service.GetUserTicketHoldingsAsync(UserA, Xunit.TestContext.Current.CancellationToken);
+        var result = await _service.GetUserTicketHoldingsAsync(UserA, Xunit.TestContext.Current.CancellationToken);
         result.OrderCount.Should().Be(0);
         result.Tickets.Should().BeEmpty();
     }
@@ -82,7 +82,7 @@ public sealed class TicketQueryService_HoldingsTests
         // Order 1: attendee matched to UserA (counts); unmatched attendee not returned by repo
         // Order 2: attendee matched to UserB (not returned for UserA)
         // Order 3 (UserB's order): attendee matched to UserA via MatchedUserId (counts for UserA)
-        var attendeeMatchedA_Order1 = new TicketAttendee
+        var attendeeMatchedAOrder1 = new TicketAttendee
         {
             Id = Guid.NewGuid(),
             AttendeeName = "Matched-A-Order1",
@@ -90,7 +90,7 @@ public sealed class TicketQueryService_HoldingsTests
             TicketOrder = order1,
             TicketOrderId = order1Id,
         };
-        var attendeeMatchedA_Order3 = new TicketAttendee
+        var attendeeMatchedAOrder3 = new TicketAttendee
         {
             Id = Guid.NewGuid(),
             AttendeeName = "Matched-A-Order3",
@@ -101,11 +101,11 @@ public sealed class TicketQueryService_HoldingsTests
 
         _ticketRepo.GetAttendeesVisibleToUserAsync(UserA, Arg.Any<CancellationToken>())
             .Returns([
-                attendeeMatchedA_Order1,
-                attendeeMatchedA_Order3
+                attendeeMatchedAOrder1,
+                attendeeMatchedAOrder3
             ]);
 
-        var result = await Service.GetUserTicketHoldingsAsync(UserA, Xunit.TestContext.Current.CancellationToken);
+        var result = await _service.GetUserTicketHoldingsAsync(UserA, Xunit.TestContext.Current.CancellationToken);
 
         result.OrderCount.Should().Be(2);
         result.Tickets.Should().HaveCount(2);
@@ -139,7 +139,7 @@ public sealed class TicketQueryService_HoldingsTests
         _ticketRepo.GetAttendeesVisibleToUserAsync(UserA, Arg.Any<CancellationToken>())
             .Returns([voided, active]);
 
-        var result = await Service.GetUserTicketHoldingsAsync(UserA, Xunit.TestContext.Current.CancellationToken);
+        var result = await _service.GetUserTicketHoldingsAsync(UserA, Xunit.TestContext.Current.CancellationToken);
 
         result.Tickets.Should().HaveCount(2);
         result.Tickets.Should().ContainSingle(t => t.Status == TicketAttendeeStatus.Valid);
@@ -181,7 +181,7 @@ public sealed class TicketQueryService_HoldingsTests
         _ticketRepo.GetAttendeesVisibleToUserAsync(UserA, Arg.Any<CancellationToken>())
             .Returns([mine, someoneElses, unmatched]);
 
-        var result = await Service.GetUserTicketHoldingsAsync(UserA, Xunit.TestContext.Current.CancellationToken);
+        var result = await _service.GetUserTicketHoldingsAsync(UserA, Xunit.TestContext.Current.CancellationToken);
 
         var row = result.Tickets.Should().ContainSingle().Subject;
         row.AttendeeId.Should().Be(mine.Id);
@@ -202,7 +202,7 @@ public sealed class TicketQueryService_HoldingsTests
         _users.GetAllUserInfosAsync(Arg.Any<CancellationToken>()).Returns([UserWithVerifiedEmail(UserA, "Ada@GoogleMail.com")]);
         _ticketRepo.GetValidAttendeeEmailsAsync(Arg.Any<CancellationToken>()).Returns(["ada@gmail.com", "other@example.com"]);
 
-        var result = await Service.GetUserTicketHoldingsAsync(UserA, Xunit.TestContext.Current.CancellationToken);
+        var result = await _service.GetUserTicketHoldingsAsync(UserA, Xunit.TestContext.Current.CancellationToken);
 
         result.TicketCount.Should().Be(1);
     }
@@ -220,7 +220,7 @@ public sealed class TicketQueryService_HoldingsTests
         _ticketRepo.GetValidAttendeeEmailsAsync(Arg.Any<CancellationToken>()).Returns(["ada@gmail.com"]);
 
         var ct = Xunit.TestContext.Current.CancellationToken;
-        (await Service.GetUserTicketHoldingsAsync(UserA, ct)).TicketCount.Should().Be(0);
-        (await Service.GetUserTicketHoldingsAsync(UserB, ct)).TicketCount.Should().Be(0);
+        (await _service.GetUserTicketHoldingsAsync(UserA, ct)).TicketCount.Should().Be(0);
+        (await _service.GetUserTicketHoldingsAsync(UserB, ct)).TicketCount.Should().Be(0);
     }
 }

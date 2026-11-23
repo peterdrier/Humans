@@ -346,7 +346,7 @@ internal sealed class HiEventsCheckoutBackend : ITicketCheckoutBackend
         return findings;
     }
 
-    public string? EventRefOf(string backendOrderId) =>
+    public string EventRefOf(string backendOrderId) =>
         ParseBackendOrderId(backendOrderId).EventId.ToString(CultureInfo.InvariantCulture);
 
     /// <summary>

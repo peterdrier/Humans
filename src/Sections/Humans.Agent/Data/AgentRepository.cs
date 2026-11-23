@@ -92,7 +92,7 @@ internal sealed class AgentRepository(AgentDbContext db, IClock clock) : IAgentR
     {
         IQueryable<AgentConversation> q = db.AgentConversations.AsNoTracking();
 
-        if (userId is Guid u) q = q.Where(c => c.UserId == u);
+        if (userId is { } u) q = q.Where(c => c.UserId == u);
         if (refusalsOnly) q = q.Where(c => c.Messages.Any(m => m.RefusalReason != null));
 
         // arch:db-sort-ok admin page window over conversation history
@@ -107,7 +107,7 @@ internal sealed class AgentRepository(AgentDbContext db, IClock clock) : IAgentR
     {
         IQueryable<AgentConversation> q = db.AgentConversations.AsNoTracking();
 
-        if (userId is Guid u) q = q.Where(c => c.UserId == u);
+        if (userId is { } u) q = q.Where(c => c.UserId == u);
         if (refusalsOnly) q = q.Where(c => c.Messages.Any(m => m.RefusalReason != null));
 
         // arch:db-sort-ok pagination top-N by LastMessageAt

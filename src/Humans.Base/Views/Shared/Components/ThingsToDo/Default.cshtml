@@ -31,7 +31,7 @@
                             <div class="@(item.IsDone ? "text-muted" : "text-body-secondary") small mt-1">
                                 @item.Description
                             </div>
-                            @if (item.PercentComplete is int pct)
+                            @if (item.PercentComplete is { } pct)
                             {
                                 <div class="progress mt-2" style="height: 6px; max-width: 320px;">
                                     <div class="progress-bar" role="progressbar"

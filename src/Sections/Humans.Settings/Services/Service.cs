@@ -40,7 +40,7 @@ internal sealed class Service(
     private const string DefaultTimeZoneId = "Europe/Madrid";
 
     /// <summary>Only the cache answers this: <see cref="CachingSettingsService"/> holds every event from startup.</summary>
-    public EventSettingsInfo? GetActiveEventSettings() =>
+    public EventSettingsInfo GetActiveEventSettings() =>
         throw new NotSupportedException("The active event is read from CachingSettingsService.");
 
     public async Task<EventSettingsInfo?> GetEventSettingsByIdAsync(

@@ -9,7 +9,6 @@ namespace Humans.Settings.Tests;
 public sealed class RepositoryTests : IDisposable
 {
     private readonly SettingsDbContext _seedContext;
-    private readonly TestDbContextFactory<SettingsDbContext> _factory;
     private readonly Repository _repository;
 
     public RepositoryTests()
@@ -18,9 +17,9 @@ public sealed class RepositoryTests : IDisposable
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .Options;
 
-        _factory = new TestDbContextFactory<SettingsDbContext>(options);
-        _seedContext = _factory.CreateDbContext();
-        _repository = new Repository(_factory);
+        var factory = new TestDbContextFactory<SettingsDbContext>(options);
+        _seedContext = factory.CreateDbContext();
+        _repository = new Repository(factory);
     }
 
     public void Dispose()

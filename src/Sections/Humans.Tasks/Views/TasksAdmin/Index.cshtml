@@ -1,0 +1,36 @@
+@model TasksAdminSummary
+@using Microsoft.AspNetCore.Html
+
+@{
+    ViewData["Title"] = "Tasks";
+    var openSlots = Model.Teams.Sum(t => t.OpenSlots);
+    var blocked = Model.BlockedTasks.Count;
+    var teams = TableModel.For(Model.Teams)
+        .Link("Team", t => t.TeamName, t => t.TeamSlug.Length > 0 ? Url.Action("Team", "Tasks", new { slug = t.TeamSlug }) : null)
+        .Column("Tasks", t => t.Tasks, c => c.End())
+        .Column("Open slots", t => t.OpenSlots, c => c.End())
+        .Column("Blocked", t => t.BlockedTasks, c => c.End())
+        .Empty("No team has tasks yet.")
+        .Build();
+    var blockedTable = TableModel.For(Model.BlockedTasks)
+        .Link("Task", t => t.Title, t => Url.Action("Details", "Tasks", new { id = t.Id }))
+        .Link("Team", t => t.TeamName, t => t.TeamSlug.Length > 0 ? Url.Action("Team", "Tasks", new { slug = t.TeamSlug }) : null)
+        .Column("Held up by", t => t.BlockedNote)
+        .Empty("No task is blocked.")
+        .Build();
+}
+
+<page-header title="Tasks">
+    <page-header-subtitle>Every team's open tasks, open slots and what is blocked. Same set as /Tasks: the active event's tasks and tasks with no event, without done and cancelled ones.</page-header-subtitle>
+</page-header>
+
+<div class="stats" style="--stats-cols: 3">
+    <partial name="_StatTile" model='new StatTileViewModel("Teams with tasks", Model.Teams.Count.ToString())' />
+    <partial name="_StatTile" model='new StatTileViewModel("Open slots", openSlots.ToString())' />
+    <partial name="_StatTile" model='new StatTileViewModel("Blocked tasks", blocked.ToString(), Severity: blocked > 0 ? Humans.Base.Interfaces.TileSeverity.Warning : Humans.Base.Interfaces.TileSeverity.Normal)' />
+</div>
+
+<partial name="_Table" model="teams" />
+
+<h2 class="h5 mt-4">Blocked</h2>
+<partial name="_Table" model="blockedTable" />

@@ -17,7 +17,7 @@ namespace Humans.Auth.Tests.Services;
 
 public sealed class MagicLinkServiceTests
 {
-    private readonly FakeClock Clock = new(Instant.FromUtc(2026, 3, 25, 12, 0));
+    private readonly FakeClock _clock = new(Instant.FromUtc(2026, 3, 25, 12, 0));
     private readonly IUserEmailService _userEmailService;
     private readonly IUserService _userService;
     private readonly IEmailService _emailService;
@@ -58,7 +58,7 @@ public sealed class MagicLinkServiceTests
             _emailMessages,
             _urlBuilder,
             _rateLimiter,
-            Clock,
+            _clock,
             NullLogger<MagicLinkService>.Instance);
     }
 
@@ -77,7 +77,7 @@ public sealed class MagicLinkServiceTests
             DisplayName = "Alice",
             // UserInfo.BurnerName reads User.BurnerName, so it is seeded there.
             BurnerName = "Alice",
-            CreatedAt = Clock.GetCurrentInstant()
+            CreatedAt = _clock.GetCurrentInstant()
         };
 
         _userEmailService
@@ -112,7 +112,7 @@ public sealed class MagicLinkServiceTests
             DisplayName = "Alice",
             // UserInfo.BurnerName reads User.BurnerName, so it is seeded there.
             BurnerName = "Alice",
-            CreatedAt = Clock.GetCurrentInstant()
+            CreatedAt = _clock.GetCurrentInstant()
         };
 
         _userEmailService
@@ -164,7 +164,7 @@ public sealed class MagicLinkServiceTests
             UserName = "alice@gmail.com",
             Email = "alice@gmail.com",
             DisplayName = "Alice",
-            CreatedAt = Clock.GetCurrentInstant()
+            CreatedAt = _clock.GetCurrentInstant()
         };
 
         _userEmailService
@@ -219,7 +219,7 @@ public sealed class MagicLinkServiceTests
         var userId = Guid.NewGuid();
         using var cache = new MemoryCache(new MemoryCacheOptions());
         var service = new MagicLinkService(_userEmailService, _userService, _emailService,
-            _emailMessages, _urlBuilder, new MagicLinkRateLimiter(cache), Clock, NullLogger<MagicLinkService>.Instance);
+            _emailMessages, _urlBuilder, new MagicLinkRateLimiter(cache), _clock, NullLogger<MagicLinkService>.Instance);
         _userEmailService.FindByAddressAsync("first@example.com", true, true, Arg.Any<CancellationToken>())
             .Returns([UserEmailFixtures.Row(userId, "first@example.com")]);
         _userEmailService.FindByAddressAsync("second@example.com", true, true, Arg.Any<CancellationToken>())
@@ -254,7 +254,7 @@ public sealed class MagicLinkServiceTests
             UserName = "alice@gmail.com",
             Email = "alice@gmail.com",
             DisplayName = "Alice",
-            CreatedAt = Clock.GetCurrentInstant()
+            CreatedAt = _clock.GetCurrentInstant()
         };
 
         _userEmailService
@@ -282,7 +282,7 @@ public sealed class MagicLinkServiceTests
             UserName = "alice@gmail.com",
             Email = "alice@gmail.com",
             DisplayName = "Alice",
-            CreatedAt = Clock.GetCurrentInstant()
+            CreatedAt = _clock.GetCurrentInstant()
         };
 
         _userEmailService
@@ -505,7 +505,7 @@ public sealed class MagicLinkServiceTests
         _rateLimiter.Received(1).ReleaseTokenReservation("good-token");
     }
 
-    private MagicLinkToken Token(string payload) => new(payload, Clock.GetCurrentInstant() + Duration.FromMinutes(15));
+    private MagicLinkToken Token(string payload) => new(payload, _clock.GetCurrentInstant() + Duration.FromMinutes(15));
 
-    private MagicLinkToken ExpiredToken(string payload) => new(payload, Clock.GetCurrentInstant() - Duration.FromMinutes(1));
+    private MagicLinkToken ExpiredToken(string payload) => new(payload, _clock.GetCurrentInstant() - Duration.FromMinutes(1));
 }

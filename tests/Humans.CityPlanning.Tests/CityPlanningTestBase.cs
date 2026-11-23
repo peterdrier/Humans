@@ -21,21 +21,19 @@ namespace Humans.CityPlanning.Tests;
 /// </summary>
 public abstract class CityPlanningTestBase : IDisposable
 {
-    private readonly DbContextOptions<CityPlanningDbContext> _dbOptions;
-
     private protected FakeClock Clock { get; }
     private protected CityPlanningDbContext CityPlanningDb { get; }
     private protected TestDbContextFactory<CityPlanningDbContext> CityPlanningDbFactory { get; }
 
     private protected CityPlanningTestBase(Instant? now = null)
     {
-        _dbOptions = new DbContextOptionsBuilder<CityPlanningDbContext>()
+        var dbOptions = new DbContextOptionsBuilder<CityPlanningDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .ConfigureWarnings(w => w.Ignore(InMemoryEventId.TransactionIgnoredWarning))
             .Options;
 
-        CityPlanningDb = new CityPlanningDbContext(_dbOptions);
-        CityPlanningDbFactory = new TestDbContextFactory<CityPlanningDbContext>(_dbOptions);
+        CityPlanningDb = new CityPlanningDbContext(dbOptions);
+        CityPlanningDbFactory = new TestDbContextFactory<CityPlanningDbContext>(dbOptions);
         Clock = new FakeClock(now ?? Instant.FromUtc(2026, 3, 1, 12, 0));
     }
 

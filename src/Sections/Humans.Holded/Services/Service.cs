@@ -266,7 +266,7 @@ internal sealed class Service(
         return new HoldedAccountStatement(
             MakeAccountRow(
                 number, account?.Name ?? "", holdedBalanceRaw, localBalanceRaw, lines.Count,
-                account is { } a && (a.Debit != 0m || a.Credit != 0m), account?.Archived ?? false),
+                account is { } held && (held.Debit != 0m || held.Credit != 0m), account?.Archived ?? false),
             lines
                 .Select(l => ToStatementLine(l, number, byEntry, accountsByNumber))
                 .ToList());

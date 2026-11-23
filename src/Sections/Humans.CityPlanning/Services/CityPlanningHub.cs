@@ -14,7 +14,7 @@ namespace Humans.CityPlanning.Services;
 [Authorize(Policy = PolicyNames.AppAccess)]
 internal sealed class CityPlanningHub(IUserService userService) : Hub
 {
-    private static readonly ConcurrentDictionary<string, string> _displayNames = new(StringComparer.Ordinal);
+    private static readonly ConcurrentDictionary<string, string> DisplayNames = new(StringComparer.Ordinal);
 
     public override async Task OnConnectedAsync()
     {
@@ -22,7 +22,7 @@ internal sealed class CityPlanningHub(IUserService userService) : Hub
         if (Guid.TryParse(Context.UserIdentifier, out var userId))
         {
             var burnerName = (await userService.GetUserInfoAsync(userId))?.BurnerName;
-            _displayNames[Context.ConnectionId] = !string.IsNullOrWhiteSpace(burnerName)
+            DisplayNames[Context.ConnectionId] = !string.IsNullOrWhiteSpace(burnerName)
                 ? burnerName
                 : Context.User?.Identity?.Name ?? "Unknown";
         }
@@ -33,13 +33,13 @@ internal sealed class CityPlanningHub(IUserService userService) : Hub
     [HubMethodName("UpdateCursor")]
     public async Task UpdateCursorAsync(double lat, double lng)
     {
-        var displayName = _displayNames.GetValueOrDefault(Context.ConnectionId, Context.User?.Identity?.Name ?? "Unknown");
+        var displayName = DisplayNames.GetValueOrDefault(Context.ConnectionId, Context.User?.Identity?.Name ?? "Unknown");
         await Clients.Others.SendAsync("CursorMoved", Context.ConnectionId, displayName, lat, lng);
     }
 
     public override async Task OnDisconnectedAsync(Exception? exception)
     {
-        _displayNames.TryRemove(Context.ConnectionId, out _);
+        DisplayNames.TryRemove(Context.ConnectionId, out _);
         await Clients.Others.SendAsync("CursorLeft", Context.ConnectionId);
         await base.OnDisconnectedAsync(exception);
     }

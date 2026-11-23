@@ -14,7 +14,7 @@ public class TrackedLockTests
     {
         var sut = new TrackedLock("test");
 
-        using (var releaser = await sut.AcquireAsync(NullLogger.Instance, TestContext.Current.CancellationToken))
+        using (await sut.AcquireAsync(NullLogger.Instance, TestContext.Current.CancellationToken))
         {
             // Inside the lock — no exception means it was acquired.
         }

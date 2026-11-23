@@ -50,17 +50,17 @@ public sealed class MagicLinkRateLimiterTests : IDisposable
         // Single-use must hold against two simultaneous POSTs. IMemoryCache has no atomic add, so
         // only TryReserveAsync's lock makes the reservation exclusive. A partial guard: without the
         // lock it goes red only on some runs; with it there is one winner every round, never flaky.
-        const int Rounds = 25;
-        const int Racers = 64;
+        const int roundCount = 25;
+        const int racerCount = 64;
 
-        var winnersPerRound = new List<int>(Rounds);
+        var winnersPerRound = new List<int>(roundCount);
 
-        for (var round = 0; round < Rounds; round++)
+        for (var round = 0; round < roundCount; round++)
         {
             var token = $"token-{round}";
             using var start = new ManualResetEventSlim(false);
 
-            var racers = Enumerable.Range(0, Racers).Select(_ => Task.Run(() =>
+            var racers = Enumerable.Range(0, racerCount).Select(_ => Task.Run(() =>
             {
                 start.Wait();
                 return _limiter.TryConsumeTokenAsync(token, TokenLifetime);
@@ -77,15 +77,15 @@ public sealed class MagicLinkRateLimiterTests : IDisposable
     [HumansFact]
     public async Task TokensSharingAPrefix_HaveIndependentRedemptionAndRelease()
     {
-        const string First = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-one";
-        const string Second = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-two";
-        (await _limiter.TryConsumeTokenAsync(First, TokenLifetime)).Should().BeTrue();
-        (await _limiter.TryConsumeTokenAsync(Second, TokenLifetime)).Should().BeTrue();
+        const string first = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-one";
+        const string second = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-two";
+        (await _limiter.TryConsumeTokenAsync(first, TokenLifetime)).Should().BeTrue();
+        (await _limiter.TryConsumeTokenAsync(second, TokenLifetime)).Should().BeTrue();
 
-        _limiter.ReleaseTokenReservation(First);
+        _limiter.ReleaseTokenReservation(first);
 
-        (await _limiter.TryConsumeTokenAsync(First, TokenLifetime)).Should().BeTrue();
-        (await _limiter.TryConsumeTokenAsync(Second, TokenLifetime)).Should().BeFalse();
+        (await _limiter.TryConsumeTokenAsync(first, TokenLifetime)).Should().BeTrue();
+        (await _limiter.TryConsumeTokenAsync(second, TokenLifetime)).Should().BeFalse();
     }
 
     [HumansFact]

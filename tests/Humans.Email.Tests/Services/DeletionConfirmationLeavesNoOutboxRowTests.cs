@@ -1,5 +1,4 @@
 using Humans.Users.Data;
-using Humans.Application.Services.Users.AccountLifecycle;
 using Humans.Auth.Contracts;
 using Humans.Gdpr.Contracts;
 using Humans.Teams.Contracts;

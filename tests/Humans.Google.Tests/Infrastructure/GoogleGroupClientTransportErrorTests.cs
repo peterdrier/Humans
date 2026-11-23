@@ -129,7 +129,7 @@ public sealed class GoogleGroupClientTransportErrorTests
                     var activity = new GoogleDriveActivityClient(settings, NullLogger<GoogleDriveActivityClient>.Instance);
                     Inject(activity, "_activityService", sdk);
                     var count = 0;
-                    await foreach (var item in activity.QueryActivityAsync("file", "2026-11-20T00:00:00Z",
+                    await foreach (var _ in activity.QueryActivityAsync("file", "2026-11-20T00:00:00Z",
                                        Xunit.TestContext.Current.CancellationToken))
                         count++;
                     return count;

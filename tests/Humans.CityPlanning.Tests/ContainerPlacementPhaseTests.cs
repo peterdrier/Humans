@@ -16,20 +16,19 @@ namespace Humans.CityPlanning.Tests;
 
 public sealed class ContainerPlacementPhaseTests : CityPlanningTestBase
 {
-    private readonly ICampService _campService;
     private readonly CityPlanningService _sut;
 
     public ContainerPlacementPhaseTests()
         : base(Instant.FromUtc(2026, 4, 26, 10, 0))
     {
-        _campService = Substitute.For<ICampService>();
-        _campService.GetSettingsAsync(Arg.Any<CancellationToken>())
+        var campService = Substitute.For<ICampService>();
+        campService.GetSettingsAsync(Arg.Any<CancellationToken>())
             .Returns(new CampSettingsInfo(PublicYear: 2026, OpenSeasons: []));
         var repo = new CityPlanningRepository(CityPlanningDbFactory);
         var options = new CityPlanningOptions { CityPlanningTeamSlug = "city-planning" };
         _sut = new CityPlanningService(
             repo, Clock, Options.Create(options),
-            _campService,
+            campService,
             Substitute.For<ITeamService>(),
             Substitute.For<IUserService>(),
             Substitute.For<IAuditLogService>(),

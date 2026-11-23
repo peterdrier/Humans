@@ -1,8 +1,6 @@
 using Humans.Base.Extensions;
 using System.Globalization;
 using System.Security.Claims;
-using Humans.Application.Services.Users;
-using Humans.Application.Services.Users.AccountLifecycle;
 using Humans.Base;
 using Humans.Base.Authorization;
 using Humans.Base.Configuration;
@@ -144,8 +142,6 @@ public sealed class Section :
         services.AddScoped<IHumanLifecycleService, HumanLifecycleService>();
         services.AddScoped<INonCompliantMemberSuspension, NonCompliantMemberSuspension>();
 
-        // ExternalLoginService keeps its Humans.Application.Services.Users namespace: HUM0005
-        // names it by full name as the sole caller of ReconcileOAuthIdentityAsync.
         services.AddScoped<AccountDeletionService>();
         services.AddScoped<IAccountDeletionService>(sp => sp.GetRequiredService<AccountDeletionService>());
         services.AddScoped<IExternalLoginService, ExternalLoginService>();

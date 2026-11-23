@@ -77,16 +77,14 @@ public sealed class MetersServiceTests
     private static int ReadOtelValue(string name)
     {
         var captured = 0;
-        using var listener = new MeterListener
+        using var listener = new MeterListener();
+        listener.InstrumentPublished = (instrument, l) =>
         {
-            InstrumentPublished = (instrument, l) =>
+            if (string.Equals(instrument.Meter.Name, "Humans.Metrics", StringComparison.Ordinal)
+                && string.Equals(instrument.Name, name, StringComparison.Ordinal))
             {
-                if (string.Equals(instrument.Meter.Name, "Humans.Metrics", StringComparison.Ordinal)
-                    && string.Equals(instrument.Name, name, StringComparison.Ordinal))
-                {
-                    l.EnableMeasurementEvents(instrument);
-                }
-            },
+                l.EnableMeasurementEvents(instrument);
+            }
         };
         listener.SetMeasurementEventCallback<int>((_, value, _, _) => captured = value);
         listener.Start();
