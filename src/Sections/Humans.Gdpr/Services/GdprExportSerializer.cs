@@ -1,10 +1,11 @@
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Humans.Gdpr.Contracts;
 
-namespace Humans.Gdpr.Contracts;
+namespace Humans.Gdpr.Services;
 
-public static class GdprExportSerializer
+internal static class GdprExportSerializer
 {
     private static readonly JsonSerializerOptions Options = new()
     {
