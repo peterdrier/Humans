@@ -102,7 +102,7 @@ public sealed class LegalDocumentSyncServiceTests : ConsentTestHarness
         using var shutdown = new CancellationTokenSource();
         StubActiveUser();
         var first = await SeedDocumentAsync("First", "first/", "old");
-        var next = await SeedDocumentAsync("Next", "next/", "old");
+        await SeedDocumentAsync("Next", "next/", "old");
         StubGitHubFolder("first/", "First content", "new-first", "First update");
         StubGitHubFolder("next/", "Next content", "new-next", "Next update");
         _audit.LogAsync(ConsentAuditActions.LegalDocumentVersionPublished, "LegalDocument", first.Id,
@@ -347,7 +347,7 @@ public sealed class LegalDocumentSyncServiceTests : ConsentTestHarness
         await SeedDocumentAsync("First", folderPath: "first/");
         await SeedDocumentAsync("Second", folderPath: "second/");
         using var request = new CancellationTokenSource();
-        _gitHub.DiscoverLanguageFilesAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(async call =>
+        _gitHub.DiscoverLanguageFilesAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(async _ =>
         {
             await request.CancelAsync();
             return await Task.FromException<IReadOnlyDictionary<string, string>>(new OperationCanceledException(request.Token));

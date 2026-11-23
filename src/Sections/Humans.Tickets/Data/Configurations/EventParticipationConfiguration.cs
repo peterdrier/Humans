@@ -2,7 +2,7 @@ using Humans.Tickets.Domain;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
-namespace Humans.Tickets.Data;
+namespace Humans.Tickets.Data.Configurations;
 
 internal sealed class EventParticipationConfiguration : IEntityTypeConfiguration<EventParticipation>
 {

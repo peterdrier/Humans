@@ -51,7 +51,6 @@ internal sealed partial class TicketCheckoutService
     public async Task<IReadOnlyList<HeldTicket>> GetHeldTicketsAsync(Guid userId, CancellationToken ct = default)
     {
         var held = new List<HeldTicket>();
-        var now = clock.GetCurrentInstant();
         foreach (var group in (await repository.GetTicketsForHolderAsync(userId, ct))
                      .Where(t => t.State is TicketCheckoutTicketState.Valid or TicketCheckoutTicketState.Offered)
                      .GroupBy(t => t.TicketingSettingsId))

@@ -4,7 +4,7 @@
     ViewData["Title"] = "Shift summary by camp";
 
     string Hours(double h) => h.ToString("0.#", System.Globalization.CultureInfo.CurrentCulture);
-    const string NoCamp = "(no camp)";
+    const string noCamp = "(no camp)";
 }
 
 <div class="container-fluid py-3">
@@ -40,7 +40,7 @@
                 Func<ShiftSummaryHumanRow, IHtmlContent> campCell = @<text>
                     @if (item.CampId is null)
                     {
-                        <span class="text-muted">@NoCamp</span>
+                        <span class="text-muted">@noCamp</span>
                     }
                     else
                     {
@@ -61,7 +61,7 @@
             <h2 class="h5">By camp</h2>
             @{
                 var campTable = TableModel.For(Model.Camps)
-                    .Column("Camp", r => r.CampName ?? NoCamp)
+                    .Column("Camp", r => r.CampName ?? noCamp)
                     .Column("People", r => r.People, c => c.Number().End())
                     .Column("Hours", r => Hours(r.Hours), c => c.End())
                     .Column("Count", r => r.Count, c => c.Number().End())

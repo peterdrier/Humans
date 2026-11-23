@@ -1956,7 +1956,7 @@ public sealed partial class TicketCheckoutServiceTests
     [HumansFact]
     public async Task Erasure_reaches_the_platform_first_and_a_platform_failure_leaves_everything_for_the_retry()
     {
-        var order = await BuyAndPayAsync(Buy(), _buyerId);
+        await BuyAndPayAsync(Buy(), _buyerId);
         await _service.EraseForUserAsync(_buyerId, Ct);
         await _platform.Received(1).ErasePersonalDataAsync("cs_1", "ana@example.com", Arg.Any<CancellationToken>());
 
@@ -2067,7 +2067,7 @@ public sealed partial class TicketCheckoutServiceTests
     [HumansFact]
     public async Task A_resale_refund_whose_platform_call_threw_is_retried_under_the_same_id()
     {
-        var old = await OfferedTicketAsync();
+        await OfferedTicketAsync();
         _platform.RefundAsync(Arg.Any<RefundRequest>(), Arg.Any<CancellationToken>())
             .Returns<RefundResult>(_ => throw new TicketingPlatformException("timeout"));
 

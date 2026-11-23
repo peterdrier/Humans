@@ -16,7 +16,7 @@ namespace Humans.Base.Extensions;
 public sealed class CultureScope : IDisposable
 {
     private readonly CultureInfo? _originalCulture;
-    private readonly CultureInfo? _originalUICulture;
+    private readonly CultureInfo? _originalUiCulture;
 
     public CultureScope(string? culture, ILogger? logger = null)
     {
@@ -26,7 +26,7 @@ public sealed class CultureScope : IDisposable
         {
             var target = new CultureInfo(culture);
             _originalCulture = CultureInfo.CurrentCulture;
-            _originalUICulture = CultureInfo.CurrentUICulture;
+            _originalUiCulture = CultureInfo.CurrentUICulture;
             CultureInfo.CurrentUICulture = target;
             CultureInfo.CurrentCulture = target;
         }
@@ -34,15 +34,15 @@ public sealed class CultureScope : IDisposable
         {
             logger?.LogWarning("Invalid culture '{Culture}', using current culture fallback", culture);
             _originalCulture = null;
-            _originalUICulture = null;
+            _originalUiCulture = null;
         }
     }
 
     public void Dispose()
     {
-        if (_originalUICulture is null) return;
+        if (_originalUiCulture is null) return;
 
-        CultureInfo.CurrentUICulture = _originalUICulture;
+        CultureInfo.CurrentUICulture = _originalUiCulture;
         CultureInfo.CurrentCulture = _originalCulture!;
     }
 }

@@ -28,15 +28,14 @@ public class GateControllerClaimTests
     private readonly FakeClock _clock = new(Instant.FromUtc(2026, 6, 10, 12, 0));
     private readonly IGateService _gate = Substitute.For<IGateService>();
     private readonly IUserService _users = Substitute.For<IUserService>();
-    private readonly GatePinThrottle _throttle;
     private readonly GateController _controller;
     private readonly TestSession _session = new();
 
     public GateControllerClaimTests()
     {
-        _throttle = new GatePinThrottle(new MemoryCache(new MemoryCacheOptions()), _clock);
+        var throttle = new GatePinThrottle(new MemoryCache(new MemoryCacheOptions()), _clock);
         _controller = new GateController(
-            _gate, _users, new ConfigurationBuilder().Build(), _throttle, _clock, NullLogger<GateController>.Instance);
+            _gate, _users, new ConfigurationBuilder().Build(), throttle, _clock, NullLogger<GateController>.Instance);
 
         var http = new DefaultHttpContext { Session = _session };
         _controller.ControllerContext = new ControllerContext { HttpContext = http };

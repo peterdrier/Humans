@@ -207,13 +207,13 @@ public sealed class GoogleDriveAccessSyncServiceTests
 
         if (string.Equals(mutation, "create", StringComparison.Ordinal))
             _drivePermissions.CreatePermissionAsync("folder-1", "alice@nobodies.team", "writer", Arg.Any<CancellationToken>())
-                .Returns(call => { cancellation.Cancel(); return new DrivePermissionMutationResult(DrivePermissionCreateOutcome.Created, null); });
+                .Returns(_ => { cancellation.Cancel(); return new DrivePermissionMutationResult(DrivePermissionCreateOutcome.Created, null); });
         else if (string.Equals(mutation, "update", StringComparison.Ordinal))
             _drivePermissions.UpdatePermissionAsync("folder-1", "perm-1", "reader", Arg.Any<CancellationToken>())
-                .Returns(call => { cancellation.Cancel(); return (GoogleClientError?)null; });
+                .Returns(_ => { cancellation.Cancel(); return (GoogleClientError?)null; });
         else
             _drivePermissions.DeletePermissionAsync("folder-1", "perm-1", Arg.Any<CancellationToken>())
-                .Returns(call => { cancellation.Cancel(); return new DrivePermissionDeleteResult(DrivePermissionDeleteOutcome.Deleted, null); });
+                .Returns(_ => { cancellation.Cancel(); return new DrivePermissionDeleteResult(DrivePermissionDeleteOutcome.Deleted, null); });
 
         await service.ReconcileOneAsync("folder-1", SyncAction.Execute, ct);
 
@@ -256,7 +256,7 @@ public sealed class GoogleDriveAccessSyncServiceTests
         StubUsers((alice, "Alice", "alice@nobodies.team"), (bob, "Bob", "bob@nobodies.team"));
         StubFolder("folder-1");
         _drivePermissions.CreatePermissionAsync("folder-1", Arg.Any<string>(), "writer", Arg.Any<CancellationToken>())
-            .Returns(call =>
+            .Returns(_ =>
             {
                 cancellation.Cancel();
                 return new DrivePermissionMutationResult(DrivePermissionCreateOutcome.Created, null);
@@ -349,7 +349,7 @@ public sealed class GoogleDriveAccessSyncServiceTests
                 DrivePermissionCreateOutcome.Failed,
                 new GoogleClientError(403, "Cannot share a shared drive with non Google accounts.")));
         _identities.SetStatusFromSyncAsync(alice, "alice@example.org", GoogleEmailStatus.Rejected, Arg.Any<CancellationToken>())
-            .Returns(call =>
+            .Returns(_ =>
             {
                 _identityRows.Rows[alice] = new Humans.Google.Domain.WorkspaceIdentityRecord
                 {

@@ -28,7 +28,6 @@ internal sealed class TeamController(
     IAuthorizationService authorizationService,
     ILogger<TeamController> logger) : HumansControllerBase(userService)
 {
-    private readonly IUserService _userService = userService;
 
     [AllowAnonymous]
     [HttpGet("")]
