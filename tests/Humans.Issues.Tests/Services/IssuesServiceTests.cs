@@ -2598,10 +2598,7 @@ public sealed class IssuesServiceTests
     {
         public override ValueTask<InterceptionResult<int>> SavingChangesAsync(DbContextEventData eventData,
             InterceptionResult<int> result, CancellationToken cancellationToken = default)
-        {
-            if (beforeCommit) throw failure;
-            return ValueTask.FromResult(result);
-        }
+            => beforeCommit ? throw failure : ValueTask.FromResult(result);
         public override ValueTask<int> SavedChangesAsync(SaveChangesCompletedEventData eventData,
             int result, CancellationToken cancellationToken = default) => throw failure;
     }

@@ -400,10 +400,7 @@ public sealed class ServiceImageTests
     {
         public override ValueTask<InterceptionResult<int>> SavingChangesAsync(
             DbContextEventData eventData, InterceptionResult<int> result, CancellationToken cancellationToken = default)
-        {
-            if (!afterCommit) throw failure;
-            return base.SavingChangesAsync(eventData, result, cancellationToken);
-        }
+            => afterCommit ? base.SavingChangesAsync(eventData, result, cancellationToken) : throw failure;
 
         public override ValueTask<int> SavedChangesAsync(
             SaveChangesCompletedEventData eventData, int result, CancellationToken cancellationToken = default)
