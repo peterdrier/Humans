@@ -17,22 +17,22 @@ internal sealed partial class TicketCheckoutService
         var ticket = await repository.GetTicketAsync(ticketId, ct);
         if (ticket is null || ticket.HolderUserId != holderUserId)
             return new("Tickets_Resale_NotFound");
-        var salesEvent = await repository.GetSalesEventAsync(ticket.SalesEventId, ct);
-        var requests = await repository.GetCompanionRequestsForSalesEventAsync(ticket.SalesEventId, ct);
-        if (!CanAskCompanion(ticket, salesEvent, await repository.GetTicketsForSalesEventAsync(ticket.SalesEventId, ct), requests))
+        var ticketing = await repository.GetTicketingSettingsAsync(ticket.TicketingSettingsId, ct);
+        var requests = await repository.GetCompanionRequestsForSettingsAsync(ticket.TicketingSettingsId, ct);
+        if (!CanAskCompanion(ticket, ticketing, await repository.GetTicketsForSettingsAsync(ticket.TicketingSettingsId, ct), requests))
             return new("Tickets_Companion_NotAllowed");
         note = note.Trim();
         if (note.Length == 0 || note.Length > MaxCompanionNoteLength)
             return new("Tickets_Companion_NoteRequired");
         var now = clock.GetCurrentInstant();
-        var (companion, problem) = await FindOtherAsync(companionEmail.Trim(), holderUserId, ticket.SalesEventId, now, ct);
+        var (companion, problem) = await FindOtherAsync(companionEmail.Trim(), holderUserId, ticket.TicketingSettingsId, now, ct);
         if (problem is not null)
             return new("Tickets_Companion_" + problem);
 
         var request = new TicketCompanionRequest
         {
             Id = Guid.NewGuid(),
-            SalesEventId = ticket.SalesEventId,
+            TicketingSettingsId = ticket.TicketingSettingsId,
             TicketId = ticket.Id,
             HolderUserId = holderUserId,
             CompanionUserId = companion!.Id,
@@ -51,7 +51,7 @@ internal sealed partial class TicketCheckoutService
         var ticket = await repository.GetTicketAsync(ticketId, ct);
         if (ticket is null || ticket.HolderUserId != holderUserId)
             return new("Tickets_Resale_NotFound");
-        var pending = (await repository.GetCompanionRequestsForSalesEventAsync(ticket.SalesEventId, ct))
+        var pending = (await repository.GetCompanionRequestsForSettingsAsync(ticket.TicketingSettingsId, ct))
             .FirstOrDefault(r => r.TicketId == ticketId && r.State == TicketCompanionRequestState.Pending);
         if (pending is null)
             return new("Tickets_Companion_NothingPending");
@@ -63,11 +63,11 @@ internal sealed partial class TicketCheckoutService
         return CheckoutMutationResult.Ok;
     }
 
-    public async Task<IReadOnlyList<CompanionRequestRow>> GetCompanionRequestsAsync(Guid salesEventId, CancellationToken ct = default)
+    public async Task<IReadOnlyList<CompanionRequestRow>> GetCompanionRequestsAsync(Guid settingsId, CancellationToken ct = default)
     {
-        var tickets = (await repository.GetTicketsForSalesEventAsync(salesEventId, ct)).ToDictionary(t => t.Id);
+        var tickets = (await repository.GetTicketsForSettingsAsync(settingsId, ct)).ToDictionary(t => t.Id);
         var rows = new List<CompanionRequestRow>();
-        foreach (var request in (await repository.GetCompanionRequestsForSalesEventAsync(salesEventId, ct))
+        foreach (var request in (await repository.GetCompanionRequestsForSettingsAsync(settingsId, ct))
                      .OrderBy(r => r.State != TicketCompanionRequestState.Pending).ThenByDescending(r => r.RequestedAt))
         {
             tickets.TryGetValue(request.TicketId, out var ticket);
@@ -96,7 +96,7 @@ internal sealed partial class TicketCheckoutService
         if (approve)
         {
             var (companion, problem) = await CheckOtherAsync(
-                request.CompanionUserId, request.HolderUserId, request.SalesEventId, clock.GetCurrentInstant(), ct);
+                request.CompanionUserId, request.HolderUserId, request.TicketingSettingsId, clock.GetCurrentInstant(), ct);
             if (problem is not null)
                 return new(problem switch
                 {
@@ -132,10 +132,10 @@ internal sealed partial class TicketCheckoutService
     internal const string CompanionRequestAuditEntityType = "TicketCompanionRequest";
 
     private static bool CanAskCompanion(
-        TicketCheckoutTicket ticket, TicketSalesEvent? salesEvent,
+        TicketCheckoutTicket ticket, TicketingSettings? ticketing,
         IReadOnlyList<TicketCheckoutTicket> eventTickets, IReadOnlyList<TicketCompanionRequest> requests) =>
         ticket is { State: TicketCheckoutTicketState.Valid, Kind: TicketHolderKind.Adult, HolderUserId: not null }
-        && salesEvent is { Mode: not TicketSalesMode.Closed, EffectiveSwitches.CompanionTicketsOn: true }
+        && ticketing is { Mode: not TicketSalesMode.Closed, EffectiveSwitches.CompanionTicketsOn: true }
         && !eventTickets.Any(t => t.ParentTicketId == ticket.Id && t.Kind == TicketHolderKind.Companion && t.State == TicketCheckoutTicketState.Valid)
         && !requests.Any(r => r.TicketId == ticket.Id && r.State == TicketCompanionRequestState.Pending);
 }

@@ -7,7 +7,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- Client tests build the backend over a stubbed HttpMessageHandler; the webhook test builds the controller. -->
+    <!-- Client tests build the platform over a stubbed HttpMessageHandler; the webhook test builds the controller. -->
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
   </ItemGroup>
 

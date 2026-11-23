@@ -12,7 +12,7 @@
 else
 {
     <p class="text-muted">
-        @Model.Rows.Count human@(Model.Rows.Count == 1 ? "" : "s") currently checked in for the @Model.Year event.
+        @Model.Rows.Count human@(Model.Rows.Count == 1 ? "" : "s") currently admitted for the @Model.Year event.
         Sorted by most-recent arrival first.
     </p>
 
@@ -61,7 +61,7 @@ else
     {
         var table = TableModel.For(Model.Rows.ToList())
             .Human("Human", r => r.UserId)
-            .Column("Checked in at", r => r.CheckedInAt, c => c.DateTime())
+            .Column("Admitted at", r => r.CheckedInAt, c => c.DateTime())
             .Column("Camps", r => r.CampNames.Count == 0 ? "—" : string.Join(", ", r.CampNames))
             .Column("Teams", r => r.TeamNames.Count == 0 ? "—" : string.Join(", ", r.TeamNames))
             .Column("Governance roles", r => r.RoleNames.Count == 0 ? "—" : string.Join(", ", r.RoleNames))

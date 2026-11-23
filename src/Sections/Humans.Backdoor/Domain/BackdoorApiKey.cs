@@ -33,6 +33,9 @@ internal sealed class BackdoorApiKey
     /// <summary>Stamped on every authenticated request, so dormant keys are visible.</summary>
     public Instant? LastUsedAt { get; set; }
 
+    /// <summary>Null for a key that never lapses (Admin and Board holders). Past it, the key authenticates nothing.</summary>
+    public Instant? ExpiresAt { get; set; }
+
     public Instant? RevokedAt { get; set; }
 
     public Guid? RevokedByUserId { get; set; }

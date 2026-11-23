@@ -55,14 +55,14 @@ public sealed class IssuedTicketsViewComponentTests
     public async Task ListsTheHoldersTickets_NewestFirst_WithTheirEvent()
     {
         var userId = Guid.NewGuid();
-        var salesEvent = new TicketSalesEvent { Id = Guid.NewGuid(), EventSettingsId = Guid.NewGuid() };
-        _checkout.GetSalesEventsAsync(Arg.Any<CancellationToken>()).Returns([salesEvent]);
+        var ticketing = new TicketingSettings { Id = Guid.NewGuid(), EventSettingsId = Guid.NewGuid() };
+        _checkout.ListTicketingSettingsAsync(Arg.Any<CancellationToken>()).Returns([ticketing]);
         _settings.GetAllEventSettingsAsync(Arg.Any<CancellationToken>()).Returns([
-            new EventSettingsInfo(salesEvent.EventSettingsId, "Nowhere 2027", 2027, "Europe/Madrid",
+            new EventSettingsInfo(ticketing.EventSettingsId, "Nowhere 2027", 2027, "Europe/Madrid",
                 new NodaTime.LocalDate(2027, 6, 1), 0, 5, 7, new Dictionary<int, int>(), null, null)]);
         _checkout.GetTicketsForHolderAsync(userId, Arg.Any<CancellationToken>()).Returns([
-            new TicketCheckoutTicket { SalesEventId = salesEvent.Id, Barcode = "HOLD", State = TicketCheckoutTicketState.Void, IssuedAt = NodaTime.Instant.FromUtc(2026, 1, 1, 0, 0) },
-            new TicketCheckoutTicket { SalesEventId = salesEvent.Id, Barcode = "HNEW", IssuedAt = NodaTime.Instant.FromUtc(2027, 1, 1, 0, 0) },
+            new TicketCheckoutTicket { TicketingSettingsId = ticketing.Id, Barcode = "HOLD", State = TicketCheckoutTicketState.Void, IssuedAt = NodaTime.Instant.FromUtc(2026, 1, 1, 0, 0) },
+            new TicketCheckoutTicket { TicketingSettingsId = ticketing.Id, Barcode = "HNEW", IssuedAt = NodaTime.Instant.FromUtc(2027, 1, 1, 0, 0) },
         ]);
 
         var result = await BuildSut().InvokeAsync(userId, ProfileCardViewMode.Self);

@@ -34,6 +34,7 @@ public class BackdoorApiKeyServiceTests
         _sut = new BackdoorApiKeyService(
             _repository, _roles, _users, _audit, new FakeClock(Now),
             NullLogger<BackdoorApiKeyService>.Instance);
+        MakeEligible(_actor);
     }
 
     private void MakeEligible(
@@ -66,6 +67,20 @@ public class BackdoorApiKeyServiceTests
     }
 
     [HumansFact]
+    public async Task A_never_expiring_key_lapses_once_its_owner_is_no_longer_Admin_or_Board()
+    {
+        MakeEligible(_owner, admin: false, board: false);
+        var key = ExistingKey();
+        key.CreatedAt = Now - BackdoorApiKeyService.ShortKeyLifetime;
+        _repository.GetAllAsync(Arg.Any<CancellationToken>()).Returns([key]);
+
+        var row = (await _sut.ListAsync(Xunit.TestContext.Current.CancellationToken)).Single();
+
+        row.ExpiresAt.Should().Be(Now);
+        row.IsExpired.Should().BeTrue();
+    }
+
+    [HumansFact]
     public async Task Issue_stores_only_a_hash_and_a_prefix()
     {
         MakeEligible(_owner);
@@ -94,6 +109,32 @@ public class BackdoorApiKeyServiceTests
         var result = await _sut.IssueAsync(_owner, "board laptop", _actor);
 
         result.Succeeded.Should().BeTrue();
+    }
+
+    [HumansFact]
+    public async Task A_Board_member_makes_their_own_key_and_it_never_expires()
+    {
+        MakeEligible(_owner, admin: false, board: true);
+        BackdoorApiKey? stored = null;
+        await _repository.AddAsync(Arg.Do<BackdoorApiKey>(k => stored = k), Arg.Any<CancellationToken>());
+
+        var result = await _sut.IssueAsync(_owner, "board laptop", _owner);
+
+        result.Succeeded.Should().BeTrue();
+        stored!.ExpiresAt.Should().BeNull();
+    }
+
+    [HumansFact]
+    public async Task ResolveOwner_refuses_an_expired_key()
+    {
+        MakeEligible(_owner);
+        var key = ExistingKey();
+        key.ExpiresAt = Now;
+        _repository.FindActiveByHashAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(key);
+
+        (await _sut.ResolveOwnerAsync("hmn_whatever")).Should().BeNull();
+
+        await _repository.DidNotReceiveWithAnyArgs().TouchAsync(default, default);
     }
 
     [HumansFact]

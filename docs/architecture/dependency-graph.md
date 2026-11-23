@@ -89,10 +89,13 @@ graph LR
     Backdoor --> Expenses
     Backdoor --> Holded
     Backdoor --> Issues
+    Backdoor --> Permissions
     Backdoor --> Store
     Backdoor --> Surveys
+    Backdoor --> Tasks
     Backdoor -.-> Finance
     Backdoor -.-> Notifications
+    Backdoor -.-> Teams
     BoxOffice -.-> Tickets
     Budget --> Issues
     Budget --> Permissions
@@ -156,6 +159,7 @@ graph LR
     Expenses --> AuditLog
     Expenses --> Budget
     Expenses --> Holded
+    Expenses --> Permissions
     Expenses --> Preapprovals
     Expenses -.-> Email
     Expenses -.-> Finance
@@ -196,6 +200,7 @@ graph LR
     Guide --> Auth
     Guide -.-> Camps
     Guide -.-> Teams
+    HiEvents --> Stripe
     HiEvents -.-> Tickets
     Holded -.-> Finance
     Issues --> AuditLog
@@ -225,6 +230,7 @@ graph LR
     Preapprovals -.-> Email
     Preapprovals -.-> Finance
     Preapprovals -.-> Notifications
+    Pretix --> Stripe
     Pretix -.-> Tickets
     Rideshare --> Settings
     Rideshare -.-> Notifications

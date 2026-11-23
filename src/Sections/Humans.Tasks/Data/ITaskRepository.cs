@@ -10,6 +10,9 @@ internal interface ITaskRepository : IRepository
 
     Task AddAsync(TaskItem task, CancellationToken ct = default);
 
+    /// <summary>Saves all the tasks and links in one transaction: every one lands, or none.</summary>
+    Task AddManyAsync(IReadOnlyList<TaskItem> tasks, IReadOnlyList<TaskDependency> dependencies, CancellationToken ct = default);
+
     /// <summary>Saves the task's own fields; assignments and links are untouched.</summary>
     Task UpdateAsync(TaskItem task, CancellationToken ct = default);
 

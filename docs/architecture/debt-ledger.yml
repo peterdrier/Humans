@@ -23,7 +23,7 @@
 # citing its id in the PR. Shape, `status:` values and `root:` linking:
 # memory/process/debt-ledger-additions.md.
 version: 1
-next_id: 114
+next_id: 115
 recent_sections: [Campaigns, Feedback, Governance]
 themes:
   - id: grandfathered-hum0028-invalidators
@@ -161,6 +161,10 @@ themes:
       memory/process/debt-ledger-additions.md. Count re-measured 2026-11-05
       across the central ledger plus every src/Sections/*/Docs/debt.yml.
 inbox:
+  - added: 2026-11-22
+    id: CENTRAL-114
+    what: "src/Sections/Humans.Tickets: the 2027 ticketing types keep the TicketCheckout prefix (TicketCheckoutOrder, TicketCheckoutTicket, TicketCheckoutRefund, TicketCheckoutOrderEvent, TicketCheckoutService, TicketCheckoutRepository, ITicketCheckoutService, ITicketCheckoutRepository, TicketCheckoutConfiguration and their siblings) because TicketTailor's TicketOrder holds the plain name; the glossary words are order, ticket, refund (CONTEXT.md, Ticketing). Peter chose (2026-11-22) to rename them when the TicketTailor code retires, about January 2027. Table names stay through EF mapping."
+    review: standard
   - added: 2026-11-22
     id: CENTRAL-113
     what: "src/Sections/Humans.BoxOffice reads its Stripe account with its own Stripe.net client (GetPaymentLedgerAsync, fees, the checkout probe), against memory/architecture/vendor-connectors-own-sections.md. Hi.Events and pretix read theirs through IStripeService's account reads (GetAccountLedgerAsync and siblings); fold Box Office's reads into them too, and the Stripe reporting-category mapping each adapter repeats into one place."

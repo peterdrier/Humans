@@ -1,3 +1,5 @@
+using Humans.Base.Authorization;
+using Humans.Permissions.Contracts;
 using Humans.Base.Extensions;
 using Humans.AuditLog.Contracts;
 using Humans.Budget.Contracts;
@@ -19,7 +21,7 @@ internal sealed class ExpenseReviewService(
     IExpenseRepository repo,
     IExpenseReportManagement reports,
     IBudgetService budgetService,
-    ITeamService teamService,
+    IPermissionService permissions,
     IUserService userService,
     IEmailService emailService,
     ExpensesEmails emails,
@@ -126,7 +128,7 @@ internal sealed class ExpenseReviewService(
         var coordinatedTeamIds = new HashSet<Guid>();
         foreach (var teamId in categories.Select(c => c.TeamId!.Value).Distinct())
         {
-            if (await teamService.IsUserCoordinatorOfTeamAsync(teamId, coordinatorUserId, ct))
+            if (await permissions.HasAsync(coordinatorUserId, ExpensesPermissions.Endorse, new Owner(TeamOwner.Kind, teamId), ct))
                 coordinatedTeamIds.Add(teamId);
         }
 

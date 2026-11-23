@@ -22,6 +22,15 @@ internal sealed class TaskRepository(IDbContextFactory<TasksDbContext> factory, 
         await db.SaveChangesAsync(ct);
     }
 
+    public async Task AddManyAsync(
+        IReadOnlyList<TaskItem> tasks, IReadOnlyList<TaskDependency> dependencies, CancellationToken ct = default)
+    {
+        await using var db = await factory.CreateDbContextAsync(ct);
+        db.TaskItems.AddRange(tasks);
+        db.TaskDependencies.AddRange(dependencies);
+        await db.SaveChangesAsync(ct);
+    }
+
     public async Task UpdateAsync(TaskItem task, CancellationToken ct = default)
     {
         await using var db = await factory.CreateDbContextAsync(ct);

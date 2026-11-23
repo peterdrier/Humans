@@ -1,5 +1,5 @@
 @using Humans.Tickets.Domain.Checkout
-@model Humans.Tickets.Controllers.BackendStatusViewModel
+@model Humans.Tickets.Controllers.PlatformStatusViewModel
 @{
     var info = Model.Info;
     ViewData["Title"] = info.Setup.DisplayName;
@@ -12,9 +12,9 @@
     StatTileViewModel[] tiles =
     [
         new("Paid orders", paid.Count.ToString(culture),
-            Subline: $"{paid.Sum(o => o.Lines.Count(l => l.Kind == CheckoutLineKind.Ticket)).ToString(culture)} tickets, free orders left out"),
+            Subline: $"{paid.Sum(o => o.Lines.Count(l => l.Kind == OrderLineKind.Ticket)).ToString(culture)} tickets, free orders left out"),
         new("Taken", (paid.Sum(o => o.TotalMinor) / 100m).ToEuro(),
-            Subline: $"{(paid.Sum(o => o.RefundedMinor) / 100m).ToEuro()} refunded, {(paid.Sum(o => o.DisputedMinor) / 100m).ToEuro()} disputed"),
+            Subline: $"{(paid.Sum(o => o.RefundedMinor) / 100m).ToEuro()} refunded, {(paid.Sum(o => o.ChargedBackMinor) / 100m).ToEuro()} charged back"),
         new("Stuck orders", stuck.Count.ToString(culture), Subline: "still open past expiry",
             Severity: stuck.Count > 0 ? TileSeverity.Critical : TileSeverity.Normal),
         new("Refunds not settled", openRefunds.Count.ToString(culture), Subline: $"pending or manual; {failedRefunds.Count.ToString(culture)} failed",
@@ -31,7 +31,7 @@
         .Column("State", x => x.State, c => c.EnumBadge())
         .Column("Orders", x => x.Count, c => c.Number().End())
         .Column("Order value (€)", x => x.TotalMinor / 100m, c => c.Currency().End())
-        .Empty("No orders on this backend yet.")
+        .Empty("No orders on this platform yet.")
         .Build();
 
     var stuckTable = TableModel.For(stuck)
@@ -39,7 +39,7 @@
         .Column("Created", o => o.CreatedAt, c => c.DateTime())
         .Column("Expires", o => o.ExpiresAt, c => c.DateTime())
         .Column("State", o => o.State, c => c.EnumBadge())
-        .Column("Backend order", o => o.BackendOrderId ?? "none", c => c.Code())
+        .Column("Platform order", o => o.PlatformOrderId ?? "none", c => c.Code())
         .Empty("No stuck orders.")
         .Build();
 
@@ -47,7 +47,7 @@
         @item.FailureReason
         @if (item.ManualRefundUrl is not null)
         {
-            <a href="@item.ManualRefundUrl" target="_blank" rel="noopener">issue in the backend</a>
+            <a href="@item.ManualRefundUrl" target="_blank" rel="noopener">issue in the platform</a>
         }
     </text>;
     var openRefundsTable = TableModel.For(openRefunds)
@@ -67,7 +67,7 @@
         .Empty("No failed refunds.")
         .Build();
 
-    Func<TicketCheckoutOrder, IHtmlContent> vendorCell = @<text>
+    Func<TicketCheckoutOrder, IHtmlContent> platformCell = @<text>
         @if (item.AdminUrl is not null)
         {
             <a href="@item.AdminUrl" target="_blank" rel="noopener">in @info.Setup.DisplayName</a>
@@ -77,17 +77,17 @@
         .Template("Reference", referenceCell, sortBy: o => o.Reference)
         .Column("Created", o => o.CreatedAt, c => c.DateTime())
         .Column("Buyer", o => o.BuyerName, c => c.TextFilter())
-        .Column("Tickets", o => o.Lines.Count(l => l.Kind == CheckoutLineKind.Ticket), c => c.Number().End())
+        .Column("Tickets", o => o.Lines.Count(l => l.Kind == OrderLineKind.Ticket), c => c.Number().End())
         .Column("Total (€)", o => o.TotalMinor / 100m, c => c.Currency().End())
         .Column("State", o => o.State, c => c.EnumBadge().SelectFilter())
-        .Template("", vendorCell, c => c.NoSort().End().Css("text-nowrap"))
+        .Template("", platformCell, c => c.NoSort().End().Css("text-nowrap"))
         .RowHref(o => Url.Action("Order", "TicketsSalesAdmin", new { id = o.Id }))
-        .Empty("No orders on this backend yet.")
+        .Empty("No orders on this platform yet.")
         .Build();
 }
 
-<page-header title="@info.Setup.DisplayName" subtitle="Orders and refunds Humans opened on this backend, for every event">
-    <a class="btn btn-outline-secondary btn-sm" asp-controller="TicketsSalesAdmin" asp-action="Recon" asp-route-backend="@info.Key" asp-route-from="@Model.ReconFrom">Reconciliation</a>
+<page-header title="@info.Setup.DisplayName" subtitle="Orders and refunds Humans opened on this platform, for every event">
+    <a class="btn btn-outline-secondary btn-sm" asp-controller="TicketsSalesAdmin" asp-action="Recon" asp-route-platform="@info.Key" asp-route-from="@Model.ReconFrom">Reconciliation</a>
 </page-header>
 
 <div class="stats">
@@ -104,7 +104,7 @@
         <partial name="_Table" model="stuckTable" />
         <div class="card-footer small text-muted">
             Still open well after they should have expired: neither a webhook nor the five-minute reconcile has settled
-            them. Opening an order asks the backend for its state.
+            them. Opening an order asks the platform for its state.
         </div>
     </div>
 }
@@ -114,7 +114,7 @@
     <div class="card mb-4">
         <div class="card-header text-danger">Failed refunds</div>
         <partial name="_Table" model="failedRefundsTable" />
-        <div class="card-footer small text-muted">The backend refused these and no later refund on the order went through.</div>
+        <div class="card-footer small text-muted">The platform refused these and no later refund on the order went through.</div>
     </div>
 }
 
@@ -141,10 +141,10 @@
     </div>
 </div>
 
-<partial name="~/Views/Tickets/Admin/Backends/_BackendCard.cshtml" model="(Model.Backend, info)" />
+<partial name="~/Views/Tickets/Admin/Platforms/_PlatformCard.cshtml" model="(Model.Platform, info)" />
 
 <p class="small text-muted">
-    Pick the backend and open or close sales per event in its <a asp-controller="TicketsSalesAdmin" asp-action="Index">sales setup</a>.
+    Pick the platform and open or close sales per event in its <a asp-controller="TicketsSalesAdmin" asp-action="Index">ticketing settings</a>.
 </p>
 
 @functions {

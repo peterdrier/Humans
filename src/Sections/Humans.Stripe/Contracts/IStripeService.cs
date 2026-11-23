@@ -123,7 +123,7 @@ public sealed record StripeLedgerPayment(string PaymentIntentId, string? Descrip
 public sealed record StripeLedgerPayout(
     string Id, Instant CreatedAt, Instant ArrivalAt, long AmountMinor, string Status, long? ContentsNetMinor, int ContentsCount);
 
-/// <summary>One line of a key check, for a backends page.</summary>
+/// <summary>One line of a key check, for a ticketing platform page.</summary>
 public sealed record StripeAccountCheck(bool Ok, string Text);
 
 /// <summary>

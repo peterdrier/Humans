@@ -18,15 +18,15 @@ public class HiEventsWebhookControllerTests
     private const string Secret = "whsec";
     private const string OrderBody = """{"event_type":"order.updated","payload":{"id":42,"event_id":7}}""";
 
-    private readonly ITicketCheckoutEvents _events = Substitute.For<ITicketCheckoutEvents>();
+    private readonly ITicketingPlatformEvents _events = Substitute.For<ITicketingPlatformEvents>();
 
     [HumansFact]
-    public async Task SignedOrderEvent_NudgesTicketsWithTheBackendOrderId()
+    public async Task SignedOrderEvent_NudgesTicketsWithThePlatformOrderId()
     {
         var result = await Controller(OrderBody, Sign(OrderBody)).Receive(TestContext.Current.CancellationToken);
 
         result.Should().BeOfType<OkResult>();
-        await _events.Received(1).CheckoutChangedAsync("hievents", "7:42", Arg.Any<CancellationToken>());
+        await _events.Received(1).PlatformOrderChangedAsync("hievents", "7:42", Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -37,7 +37,7 @@ public class HiEventsWebhookControllerTests
         var result = await Controller(body, Sign(body)).Receive(TestContext.Current.CancellationToken);
 
         result.Should().BeOfType<OkResult>();
-        await _events.DidNotReceiveWithAnyArgs().CheckoutChangedAsync(default!, default!);
+        await _events.DidNotReceiveWithAnyArgs().PlatformOrderChangedAsync(default!, default!);
     }
 
     [HumansFact]
@@ -46,7 +46,7 @@ public class HiEventsWebhookControllerTests
         var result = await Controller(OrderBody, Sign("other body")).Receive(TestContext.Current.CancellationToken);
 
         result.Should().BeOfType<UnauthorizedResult>();
-        await _events.DidNotReceiveWithAnyArgs().CheckoutChangedAsync(default!, default!);
+        await _events.DidNotReceiveWithAnyArgs().PlatformOrderChangedAsync(default!, default!);
     }
 
     [HumansFact]
@@ -55,7 +55,7 @@ public class HiEventsWebhookControllerTests
         var result = await Controller(OrderBody, Sign(OrderBody), secret: "").Receive(TestContext.Current.CancellationToken);
 
         result.Should().BeOfType<StatusCodeResult>().Which.StatusCode.Should().Be(StatusCodes.Status503ServiceUnavailable);
-        await _events.DidNotReceiveWithAnyArgs().CheckoutChangedAsync(default!, default!);
+        await _events.DidNotReceiveWithAnyArgs().PlatformOrderChangedAsync(default!, default!);
     }
 
     private HiEventsWebhookController Controller(string body, string signature, string secret = Secret)

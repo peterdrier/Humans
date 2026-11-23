@@ -12,7 +12,7 @@ using Microsoft.Extensions.Localization;
 
 namespace Humans.Tickets.Controllers;
 
-/// <summary>Buying from a Humans profile: Humans prices the order, the event's backend takes the money.</summary>
+/// <summary>Buying from a Humans profile: Humans prices the order, the event's ticketing platform takes the money.</summary>
 [Authorize]
 [Route("Tickets/Buy")]
 internal sealed class TicketBuyController(
@@ -90,7 +90,7 @@ internal sealed class TicketBuyController(
     [HttpPost("")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Start(
-        Guid salesEventId, bool forSelf, string?[]? otherEmails, long? supporterTotalMinor, decimal? donation,
+        Guid settingsId, bool forSelf, string?[]? otherEmails, long? vipTotalMinor, decimal? donation,
         string? donationPurpose, string?[]? childNames, string?[]? childTypes, bool acceptTerms, string? termsFolder, string? termsVersion,
         bool marketingOptIn, string? directedToken, CancellationToken ct)
     {
@@ -112,7 +112,7 @@ internal sealed class TicketBuyController(
         var donationMinor = donation is > 0 ? (long)Math.Round(donation.Value * 100m, MidpointRounding.AwayFromZero) : 0;
 
         var result = await checkout.StartCheckoutAsync(new StartCheckout(
-            salesEventId, forSelf, supporterTotalMinor, donationMinor, donationPurpose,
+            settingsId, forSelf, vipTotalMinor, donationMinor, donationPurpose,
             returnBase, CultureInfo.CurrentUICulture.Name)
         {
             Children = (childNames ?? []).Select((name, i) => new ChildEntry(name, childTypes?.ElementAtOrDefault(i))).ToList(),
@@ -122,7 +122,7 @@ internal sealed class TicketBuyController(
             TermsVersion = termsVersion,
             MarketingOptIn = marketingOptIn,
             DirectedToken = string.IsNullOrWhiteSpace(directedToken) ? null : directedToken,
-        }, user.Id, CancellationToken.None); // a buyer who leaves mid-request must not strand a half-made checkout
+        }, user.Id, CancellationToken.None); // a buyer who leaves mid-request must not strand a half-made order
 
         if (result.Refusal is { } refusal)
             return Back(refusal, result.RefusalArgument);
@@ -205,7 +205,7 @@ internal sealed class TicketBuyController(
         var (errorResult, user) = await RequireCurrentUserAsync(ct);
         if (errorResult is not null) return errorResult;
 
-        // Checked before the refresh, so only the order's own people make it call the payment backend.
+        // Checked before the refresh, so only the order's own people make it call the ticketing platform.
         if (await checkout.GetOrderDetailAsync(id, ct) is not { } detail || !CanSee(detail.Order, user.Id))
             return NotFound();
         var order = await checkout.RefreshOrderAsync(id, ct) ?? detail.Order;
@@ -231,9 +231,9 @@ internal sealed class TicketBuyController(
         return startAgain && result.Refusal is null ? RedirectToAction(nameof(Index)) : RedirectToAction(nameof(Order), new { id });
     }
 
-    /// <summary>The payer sees the whole order; a holder sees only their own ticket line.</summary>
+    /// <summary>The buyer sees the whole order; a holder sees only their own ticket line.</summary>
     private static bool CanSee(TicketCheckoutOrder order, Guid userId) =>
-        order.BuyerUserId == userId || order.Lines.Any(l => l.AttendeeUserId == userId);
+        order.BuyerUserId == userId || order.Lines.Any(l => l.HolderUserId == userId);
 }
 
 internal sealed record TicketBuyOrderViewModel(TicketCheckoutOrder Order, IReadOnlyList<TicketCheckoutTicket> Tickets, Guid ViewerId)
@@ -241,7 +241,7 @@ internal sealed record TicketBuyOrderViewModel(TicketCheckoutOrder Order, IReadO
     public bool IsBuyer => Order.BuyerUserId == ViewerId;
 
     public IEnumerable<TicketCheckoutOrderLine> VisibleLines =>
-        IsBuyer ? Order.Lines : Order.Lines.Where(l => l.AttendeeUserId == ViewerId);
+        IsBuyer ? Order.Lines : Order.Lines.Where(l => l.HolderUserId == ViewerId);
 
     public IEnumerable<TicketCheckoutTicket> VisibleTickets =>
         IsBuyer ? Tickets : Tickets.Where(t => t.HolderUserId == ViewerId);

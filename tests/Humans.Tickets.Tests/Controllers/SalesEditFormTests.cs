@@ -11,12 +11,12 @@ public sealed class SalesEditFormTests
     private static readonly Guid LowIncome = Guid.NewGuid();
 
     [HumansFact]
-    public void Rows_become_waves_rules_and_supporter_totals_and_blank_rows_are_dropped()
+    public void Rows_become_waves_rules_and_vip_totals_and_blank_rows_are_dropped()
     {
         var form = new SalesEditForm
         {
             EventSettingsId = Guid.NewGuid(),
-            BackendKey = "boxoffice",
+            PlatformKey = "boxoffice",
             TicketVatPercent = "21",
             SalesCloseAt = "2027-05-25T23:59",
             Waves =
@@ -24,7 +24,7 @@ public sealed class SalesEditFormTests
                 new() { Name = "Wave 1", EndsOn = "2027-01-31", Price = "225" },
                 new(),
             ],
-            SupporterLevels = [new() { Total = "400" }, new() { Total = " " }],
+            VipLevels = [new() { Total = "400" }, new() { Total = " " }],
             PriceRules =
             [
                 new() { GrantProgramId = LowIncome, Kind = TicketPriceRuleKind.WavePin, Amount = null, Label = "Low income" },
@@ -39,34 +39,34 @@ public sealed class SalesEditFormTests
         save!.TicketVatRate.Should().Be(0.21m);
         save.SalesCloseAt.Should().Be(Instant.FromUtc(2027, 5, 25, 21, 59));
         save.Waves.Should().ContainSingle().Which.PriceMinor.Should().Be(22500);
-        save.SupporterTotalsMinor.Should().Equal(40000);
+        save.VipTotalsMinor.Should().Equal(40000);
         save.PriceRules.Select(r => (r.Kind, r.AmountMinor)).Should().Equal(
             (TicketPriceRuleKind.WavePin, 0L), (TicketPriceRuleKind.ClassPrice, 12550L), (TicketPriceRuleKind.EarlyAccess, 0L));
     }
 
     [HumansFact]
-    public void A_saved_setup_round_trips_through_the_form()
+    public void Saved_ticketing_settings_round_trip_through_the_form()
     {
-        var salesEvent = new TicketSalesEvent
+        var ticketing = new TicketingSettings
         {
             EventSettingsId = Guid.NewGuid(),
-            BackendKey = "pretix",
+            PlatformKey = "pretix",
             TicketVatRate = 0.10m,
             SalesCloseAt = Instant.FromUtc(2027, 5, 25, 21, 59),
             Waves = [new TicketSalesWave { Name = "Wave 1", EndsOn = new LocalDate(2027, 1, 31), PriceMinor = 22550 }],
-            SupporterTotalsMinor = [100000],
-            PriceRules = [new TicketPriceRule { GrantProgramId = LowIncome, Kind = TicketPriceRuleKind.Credit, AmountMinor = 5000, Label = "Credit" }],
+            VipTotalsMinor = [100000],
+            PriceRules = [new TicketPriceRule { GrantProgramId = LowIncome, Kind = TicketPriceRuleKind.Discount, AmountMinor = 5000, Label = "Discount" }],
         };
 
-        var form = SalesEditForm.From(salesEvent, Madrid);
+        var form = SalesEditForm.From(ticketing, Madrid);
         form.TicketVatPercent.Should().Be("10");
         form.SalesCloseAt.Should().Be("2027-05-25T23:59");
 
         var (save, _) = form.ToSave(null, Madrid);
         save!.TicketVatRate.Should().Be(0.10m);
-        save.SalesCloseAt.Should().Be(salesEvent.SalesCloseAt);
+        save.SalesCloseAt.Should().Be(ticketing.SalesCloseAt);
         save.Waves.Single().PriceMinor.Should().Be(22550);
-        save.SupporterTotalsMinor.Should().Equal(100000);
+        save.VipTotalsMinor.Should().Equal(100000);
         save.PriceRules.Single().AmountMinor.Should().Be(5000);
     }
 

@@ -250,15 +250,15 @@ public class TicketDashboardViewTests
     }
 
     [HumansFact]
-    public async Task BackendStatusPage_ListsStuckOrdersAndUnsettledRefunds()
+    public async Task PlatformStatusPage_ListsStuckOrdersAndUnsettledRefunds()
     {
         var at = Instant.FromUtc(2027, 3, 1, 12, 0);
         var stuck = new TicketCheckoutOrder
         {
             Id = Guid.NewGuid(),
-            BackendKey = "pretix",
+            PlatformKey = "pretix",
             State = TicketCheckoutOrderState.Pending,
-            BackendOrderId = "E:1",
+            PlatformOrderId = "E:1",
             CreatedAt = at,
             ExpiresAt = at,
             TotalMinor = 22500,
@@ -279,14 +279,14 @@ public class TicketDashboardViewTests
             State = RefundState.Failed,
             FailureReason = "card expired",
         };
-        var info = new Humans.Tickets.Services.Checkout.CheckoutBackendInfo("pretix", true,
-            new CheckoutBackendSetup("pretix", "Self-hosted", null, [], "/Pretix/Webhook", []));
-        var model = new Humans.Tickets.Controllers.BackendStatusViewModel(
-            new Humans.Tickets.Controllers.BackendsViewModel([info], [], [], null),
-            new Humans.Tickets.Services.Checkout.BackendLedger(info, [stuck], [], [stuck], [refund], [failed]),
+        var info = new Humans.Tickets.Services.Checkout.PlatformInfo("pretix", true,
+            new PlatformSetup("pretix", "Self-hosted", null, [], "/Pretix/Webhook", []));
+        var model = new Humans.Tickets.Controllers.PlatformStatusViewModel(
+            new Humans.Tickets.Controllers.PlatformsViewModel([info], [], [], null),
+            new Humans.Tickets.Services.Checkout.PlatformLedger(info, [stuck], [], [stuck], [refund], [failed]),
             "2027-03-01");
 
-        var html = await RenderAsync("Backend", model, viewPath: "/Views/Tickets/Admin/Backends/Index.cshtml");
+        var html = await RenderAsync("Platform", model, viewPath: "/Views/Tickets/Admin/Platforms/Index.cshtml");
 
         Assert.Contains("Stuck orders", html);
         Assert.Contains(stuck.Reference, html);

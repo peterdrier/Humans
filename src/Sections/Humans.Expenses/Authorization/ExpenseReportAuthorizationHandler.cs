@@ -1,8 +1,10 @@
 using Humans.Base.Extensions;
 using Humans.Finance.Contracts;
+using Humans.Base.Authorization;
 using Humans.Budget.Contracts;
 using Humans.Expenses.Contracts;
 using Humans.Expenses.Services;
+using Humans.Permissions.Contracts;
 using Humans.Preapprovals.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Users.Contracts;
@@ -12,7 +14,7 @@ namespace Humans.Expenses.Authorization;
 
 /// <summary>Deny by default: only explicit Succeed paths grant access.</summary>
 internal sealed class ExpenseReportAuthorizationHandler(
-    IBudgetService budgetService, ITeamService teamService, IUserService userService, IPreapprovalService preapprovals,
+    IBudgetService budgetService, IPermissionService permissions, IUserService userService, IPreapprovalService preapprovals,
     IHttpContextAccessor httpContextAccessor)
     : AuthorizationHandler<ExpenseReportOperationRequirement, ExpenseReportDto>
 {
@@ -117,6 +119,6 @@ internal sealed class ExpenseReportAuthorizationHandler(
         if (category?.TeamId is null)
             return false;
 
-        return await teamService.IsUserCoordinatorOfTeamAsync(category.TeamId.Value, viewer.Id, ct);
+        return await permissions.HasAsync(viewer.Id, ExpensesPermissions.Endorse, new Owner(TeamOwner.Kind, category.TeamId.Value), ct);
     }
 }
