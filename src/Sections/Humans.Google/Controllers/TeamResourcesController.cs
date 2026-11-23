@@ -57,8 +57,6 @@ internal sealed class TeamResourcesController(
                 },
                 Name = r.Name,
                 Url = r.Url,
-                GoogleId = r.GoogleId,
-                ProvisionedAt = r.ProvisionedAt.ToDateTimeUtc(),
                 LastSyncedAt = r.LastSyncedAt?.ToDateTimeUtc(),
                 IsActive = r.IsActive,
                 ErrorMessage = r.ErrorMessage,

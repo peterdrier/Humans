@@ -568,7 +568,6 @@ internal sealed class TicketQueryService(
                 CreatedAt = c.CreatedAt,
                 TotalGrants = c.TotalGrants,
                 Redeemed = c.Redeemed,
-                Unused = c.TotalGrants - c.Redeemed,
                 RedemptionRate = c.TotalGrants > 0
                     ? Math.Round(c.Redeemed * 100m / c.TotalGrants, 1)
                     : 0,

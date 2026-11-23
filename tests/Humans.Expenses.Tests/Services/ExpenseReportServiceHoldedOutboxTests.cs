@@ -243,7 +243,6 @@ public class ExpenseReportServiceHoldedOutboxTests
                 new()
                 {
                     Id = Guid.NewGuid(),
-                    ExpenseReportId = reportId,
                     Description = "Wood",
                     Amount = 50m,
                     LineType = ExpenseLineType.Receipt,
@@ -276,7 +275,6 @@ public class ExpenseReportServiceHoldedOutboxTests
         return new ExpenseLineDto
         {
             Id = Guid.NewGuid(),
-            ExpenseReportId = reportId,
             Description = fileName,
             Amount = 10m,
             LineType = ExpenseLineType.Receipt,
@@ -845,7 +843,6 @@ public class ExpenseReportServiceHoldedOutboxTests
         ExpenseLineDto Line(string description, int sortOrder) => new()
         {
             Id = Guid.NewGuid(),
-            ExpenseReportId = Guid.NewGuid(),
             Description = description,
             Amount = 100m,
             LineType = ExpenseLineType.Receipt,

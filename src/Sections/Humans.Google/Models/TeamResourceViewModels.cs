@@ -19,10 +19,7 @@ internal sealed class GoogleResourceViewModel
     public string ResourceType { get; set; } = string.Empty;
     public string Name { get; set; } = string.Empty;
     public string? Url { get; set; }
-    public string GoogleId { get; set; } = string.Empty;
-    public DateTime ProvisionedAt { get; set; }
     public DateTime? LastSyncedAt { get; set; }
-    public bool IsActive { get; set; }
     public string? ErrorMessage { get; set; }
     public DrivePermissionLevel DrivePermissionLevel { get; set; }
     public bool IsDriveResource { get; set; }

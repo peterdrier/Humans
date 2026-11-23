@@ -90,7 +90,6 @@ public class ExpenseReportServiceGdprTests
             new()
             {
                 Id = Guid.NewGuid(),
-                ExpenseReportId = Guid.NewGuid(),
                 Description = "Flight ticket",
                 Amount = 100m,
                 LineType = ExpenseLineType.Receipt,

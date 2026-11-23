@@ -703,7 +703,6 @@ internal sealed class TicketRepository(IDbContextFactory<TicketsDbContext> facto
                 StripeFee = o.StripeFee,
                 ApplicationFee = o.ApplicationFee,
                 PaymentStatus = o.PaymentStatus,
-                VendorDashboardUrl = o.VendorDashboardUrl,
                 MatchedUserId = o.MatchedUserId,
             })
             .ToListAsync(ct);

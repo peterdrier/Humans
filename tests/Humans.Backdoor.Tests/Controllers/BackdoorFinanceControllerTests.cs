@@ -520,7 +520,6 @@ public class BackdoorFinanceControllerTests
     private static ExpenseLineDto LineWithHoldedDoc(string docId) => new()
     {
         Id = Guid.NewGuid(),
-        ExpenseReportId = Guid.NewGuid(),
         Description = "Taxi",
         Amount = 20m,
         LineType = ExpenseLineType.Receipt,

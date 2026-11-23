@@ -20,8 +20,6 @@ internal sealed class AdminRoleAssignmentViewModel
     public DateTime? ValidTo { get; set; }
     public string? Notes { get; set; }
     public bool IsActive { get; set; }
-    public string? CreatedByName { get; set; }
-    public DateTime CreatedAt { get; set; }
 }
 
 internal sealed class CreateRoleAssignmentViewModel

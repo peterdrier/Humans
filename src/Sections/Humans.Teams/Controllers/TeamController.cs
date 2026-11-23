@@ -164,8 +164,6 @@ internal sealed class TeamController(
     {
         UserId = member.UserId,
         ChildTeamName = member.ChildTeamName,
-        ChildTeamSlug = member.ChildTeamSlug,
-        IsCoordinator = member.IsCoordinator,
         RoleTitle = member.RoleTitle
     };
 
@@ -186,7 +184,6 @@ internal sealed class TeamController(
     private static TeamMemberViewModel MapTeamMember(TeamPageMemberSummary member) => new()
     {
         UserId = member.UserId,
-        Role = member.Role,
         IsCoordinator = member.Role == TeamMemberRole.Coordinator
     };
 
@@ -250,7 +247,6 @@ internal sealed class TeamController(
                 TeamName = m.TeamName,
                 TeamSlug = m.TeamSlug,
                 IsSystemTeam = m.IsSystemTeam,
-                Role = m.Role,
                 IsCoordinator = m.Role == TeamMemberRole.Coordinator,
                 JoinedAt = m.JoinedAt.ToDateTimeUtc(),
                 CanLeave = m.CanLeave,

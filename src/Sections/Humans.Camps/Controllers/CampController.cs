@@ -1193,7 +1193,6 @@ internal sealed class CampController(
                 Name = season.Name,
                 Status = season.Status,
                 BlurbLong = season.BlurbLong,
-                BlurbShort = season.BlurbShort,
                 Languages = season.Languages,
                 AcceptingMembers = season.AcceptingMembers,
                 KidsWelcome = season.KidsWelcome,
