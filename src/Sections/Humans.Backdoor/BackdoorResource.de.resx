@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" msdata:Ordinal="0" />
+              <xsd:attribute name="type" type="xsd:string" />
+              <xsd:attribute name="mimetype" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>1.3</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+
+  <!-- Enums -->
+  <data name="Backdoor_Title" xml:space="preserve"><value>API-Schlüssel</value></data>
+  <data name="Backdoor_Subtitle" xml:space="preserve"><value>Persönliche Schlüssel für /api/backdoor/*</value></data>
+  <data name="Backdoor_CopyNow" xml:space="preserve"><value>Kopiere diesen Schlüssel jetzt</value></data>
+  <data name="Backdoor_CopyNowBody" xml:space="preserve"><value>Er wird nur als Hash gespeichert. Er wird nur dieses eine Mal angezeigt.</value></data>
+  <data name="Backdoor_NewKey" xml:space="preserve"><value>Schlüssel erstellen</value></data>
+  <data name="Backdoor_Label" xml:space="preserve"><value>Bezeichnung</value></data>
+  <data name="Backdoor_LabelPlaceholder" xml:space="preserve"><value>z. B. Laptop-Agent</value></data>
+  <data name="Backdoor_Create" xml:space="preserve"><value>Erstellen</value></data>
+  <data name="Backdoor_Key" xml:space="preserve"><value>Schlüssel</value></data>
+  <data name="Backdoor_Created" xml:space="preserve"><value>Erstellt</value></data>
+  <data name="Backdoor_LastUsed" xml:space="preserve"><value>Zuletzt benutzt</value></data>
+  <data name="Backdoor_Expires" xml:space="preserve"><value>Läuft ab</value></data>
+  <data name="Backdoor_Status" xml:space="preserve"><value>Status</value></data>
+  <data name="Backdoor_Actions" xml:space="preserve"><value>Aktionen</value></data>
+  <data name="Backdoor_Never" xml:space="preserve"><value>nie</value></data>
+  <data name="Backdoor_Status_Revoked" xml:space="preserve"><value>Widerrufen {0}</value></data>
+  <data name="Backdoor_Status_Expired" xml:space="preserve"><value>Abgelaufen</value></data>
+  <data name="Backdoor_Status_Disabled" xml:space="preserve"><value>Deaktiviert</value></data>
+  <data name="Backdoor_Status_DisabledHint" xml:space="preserve"><value>Sein Inhaber darf keinen Schlüssel mehr haben, daher wird jede Anfrage damit abgelehnt.</value></data>
+  <data name="Backdoor_Status_Active" xml:space="preserve"><value>Aktiv</value></data>
+  <data name="Backdoor_Rotate" xml:space="preserve"><value>Erneuern</value></data>
+  <data name="Backdoor_Revoke" xml:space="preserve"><value>Widerrufen</value></data>
+  <data name="Backdoor_Empty" xml:space="preserve"><value>Noch keine Schlüssel.</value></data>
+  <data name="Backdoor_About" xml:space="preserve"><value>Ein Schlüssel handelt als du: Jede Anfrage damit wird dir zugeordnet, und er erreicht nur, was du selbst erreichen kannst. Sende ihn im Header X-Api-Key.</value></data>
+  <data name="Backdoor_ShortLived" xml:space="preserve"><value>Schlüssel für alle außer Admin und Vorstand laufen nach {0} Tagen ab. Erneuere einen Schlüssel, um ihn zu verlängern.</value></data>
+  <data name="Backdoor_Created_Flash" xml:space="preserve"><value>Schlüssel erstellt. Kopiere ihn jetzt: Er wird nicht noch einmal angezeigt.</value></data>
+  <data name="Backdoor_Revoked" xml:space="preserve"><value>Schlüssel widerrufen.</value></data>
+  <data name="Backdoor_Error_LabelRequired" xml:space="preserve"><value>Eine Bezeichnung ist erforderlich.</value></data>
+  <data name="Backdoor_Error_LabelTooLong" xml:space="preserve"><value>Die Bezeichnung darf höchstens 100 Zeichen lang sein.</value></data>
+  <data name="Backdoor_Error_NotEligible" xml:space="preserve"><value>Dieses Konto darf keinen Schlüssel haben.</value></data>
+  <data name="Backdoor_Error_NotAllowed" xml:space="preserve"><value>Du kannst nur deine eigenen Schlüssel erstellen und ändern.</value></data>
+  <data name="Backdoor_Error_NotFound" xml:space="preserve"><value>Dieser Schlüssel existiert nicht mehr oder ist bereits widerrufen.</value></data>
+</root>

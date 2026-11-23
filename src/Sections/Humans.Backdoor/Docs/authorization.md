@@ -2,8 +2,8 @@
 
 | Controller | Scope | Roles | Source |
 |---|---|---|---|
-| `BackdoorController` (`/Backdoor`) | Class | `Board, Admin` | `PolicyNames.BoardOrAdmin` (`Index` — the key list shows who holds a key, never the key itself) |
-| `BackdoorController.Issue` / `Rotate` / `Revoke` | Action | `Admin` | `PolicyNames.AdminOnly` |
+| `BackdoorController` (`/Backdoor`) | Class | Signed in, then anyone a `BackdoorScope` admits (403 otherwise; Admin and Board always pass) | `PolicyNames.BoardOrAdmin` through `IAuthorizationService`, else `IBackdoorApiKeyService.IsEligibleAsync`, in `Index`. Admin and Board see every key, everyone else only their own; never a key value |
+| `BackdoorController.Issue` / `Rotate` / `Revoke` | Action | The key's owner, or `Admin` for anyone's | `BackdoorController` compares the actor with the key's owner, else evaluates `PolicyNames.AdminOnly` through `IAuthorizationService` |
 | `BackdoorAgentController` | Class | `[AllowAnonymous]` + `[ServiceFilter(typeof(BackdoorApiKeyAuthFilter))]` (personal-key auth) | `BackdoorApiKeyAuthFilter` (key-authed agent transcript read API at `/api/backdoor/agent/conversations` — `List`, `Get`, `GetMessages`; reads `Humans.Agent` through `IAgentTranscriptRead`) |
 | `BackdoorFinanceController` | Per-action | `[AllowAnonymous]` + `[ServiceFilter(typeof(BackdoorApiKeyAuthFilter))]` class-wide, then imperative `IAuthorizationService` per action — `FinancePolicies.Manage` on the finance-wide routes, `PolicyNames.ExpenseReportView` (resource: the report) on the report routes | `BackdoorApiKeyAuthFilter` plus `IAuthorizationService.AuthorizeAsync`, the same check `ExpensesController` uses (key-authed read API at `/api/backdoor/finance`; reads `Humans.Expenses` through `IExpenseReportService` and `Humans.Finance` through `IFinanceService`; peterdrier/Humans#1838) |
 | `BackdoorIssuesController` | Class | `[AllowAnonymous]` + `[ServiceFilter(typeof(BackdoorApiKeyAuthFilter))]` (personal-key auth) | `BackdoorApiKeyAuthFilter` (key-authed read+write API at `/api/backdoor/issues`; reads and triages `Humans.Issues` through `IIssueTriage`) |
@@ -17,4 +17,6 @@
 
 A Backdoor-authenticated principal never passes through the Shell's claims transformation. `BackdoorApiKeyAuthFilter` installs the owner's active role assignments as `ClaimTypes.Role` claims itself, so `User.IsInRole` behaves as it does for a cookie-authed session and everything served scopes to the key's owner — the queues, and each item fetched or patched by id; no state claims are installed. `MembershipRequiredFilter` and `NameRequiredFilter` (`src/Humans.Web/Authorization/`) pass it through because every key-authed controller is `[AllowAnonymous]`, rather than redirecting it to an onboarding page — see `docs/authorization-inventory.md` §4.
 
-Key eligibility (who `BackdoorController` may issue a key to, and who continues to authenticate on each request) is Admin ∪ Board, narrowed to accounts in `UserState.Active` — see `Docs/Backdoor.md` for the full invariant.
+Every key-authed controller also declares `[BackdoorScope(...)]`; the filter answers 403 when the scope does not admit the key's holder, or when a controller declares none. All of today's declare `Staff` (Admin or Board).
+
+Key eligibility (who may hold a key, and who continues to authenticate on each request) is anyone some scope admits, narrowed to accounts in `UserState.Active`; below Admin and Board, keys expire after 30 days — see `Docs/Backdoor.md` for the full invariant.
