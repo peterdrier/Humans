@@ -36,7 +36,7 @@ public sealed class TicketReconJobTests
     private static TicketRecon Balanced(string key)
     {
         var totals = new TicketReconTotals(0, 0, 0, 0, 0);
-        return new TicketRecon(key, Opened, Now, totals, totals, 0, [], [], null);
+        return new TicketRecon(key, totals, totals, 0, [], [], null);
     }
 
     private TicketReconJob Job()

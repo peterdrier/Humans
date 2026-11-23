@@ -22,9 +22,7 @@ public sealed record TranslationsGalleryViewModel(
 
 /// <summary>Keys sharing one prefix (the text before the first underscore).</summary>
 public sealed record TranslationGroup(
-    string Prefix,
-    IReadOnlyList<TranslationRow> Rows,
-    IReadOnlyDictionary<string, int> MissingByLanguage);
+    IReadOnlyList<TranslationRow> Rows);
 
 /// <summary>One resource key; a null per-language value means the key is untranslated there.</summary>
 public sealed record TranslationRow(
@@ -64,9 +62,7 @@ public static class TranslationsGalleryModelBuilder
             .GroupBy(r => r.Key.Split('_', 2)[0], StringComparer.Ordinal)
             .OrderBy(g => g.Key, StringComparer.Ordinal)
             .Select(g => new TranslationGroup(
-                g.Key,
-                [.. g],
-                languages.ToDictionary(l => l, l => g.Count(r => r.Values[l] is null), StringComparer.Ordinal)))
+                [.. g]))
             .ToList();
 
         // Keys a language file defines that en no longer does — stale leftovers worth deleting.

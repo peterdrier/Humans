@@ -18,7 +18,7 @@ internal sealed class CampComplianceViewModel
     public int NonCompliantCount => Rows.Count(r => r.IsBelowMinimum);
 }
 
-internal sealed record CampComplianceRoleColumn(Guid DefinitionId, string Name, int MinimumRequired);
+internal sealed record CampComplianceRoleColumn(string Name, int MinimumRequired);
 
 internal sealed record CampComplianceRow(
     string CampName,

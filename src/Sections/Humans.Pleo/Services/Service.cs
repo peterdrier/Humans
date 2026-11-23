@@ -135,8 +135,7 @@ internal sealed class Service(
         var m = await LoadAsync(ct);
         return m.Entries
             .Where(e => e.SettledAt is { } s && s >= start && s < end)
-            .Select(e => new PleoEntryInfo(e.Id, e.Family, e.SubFamily, e.Status, e.SettledAt!.Value, e.Currency,
-                e.Minors, e.AmountEur, e.MerchantName, e.EmployeeId, e.CategoryId, m.HoldedCodeOf(e), e.ReceiptCount > 0,
+            .Select(e => new PleoEntryInfo(e.Id, e.Family, e.Status, e.SettledAt!.Value, e.AmountEur, e.MerchantName, e.CategoryId, m.HoldedCodeOf(e), e.ReceiptCount > 0,
                 e.Note, e.EmployeeId is null ? null : m.CardholderOf(e), ReceiptIdsOf(e)))
             .ToList();
     }

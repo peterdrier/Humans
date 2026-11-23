@@ -30,7 +30,7 @@ internal sealed record PleoSpendRow(
 /// <summary>A <c>Pleo-{Id}</c> purchase as the purchase mirror holds it. <see cref="PaymentsPending"/> is null when
 /// the mirror has not read it.</summary>
 internal sealed record PleoPurchaseRef(
-    string DocumentId, string Number, bool Approved, decimal Total, decimal? PaymentsPending, string HoldedUrl)
+    string DocumentId, string Number, bool Approved, decimal? PaymentsPending, string HoldedUrl)
 {
     public bool Complete => Approved && PaymentsPending == 0m;
 }
@@ -82,7 +82,7 @@ internal sealed record PleoBookingLine(
 
 /// <summary>A run, current or last. <see cref="Refused"/> says why nothing (more) was done.</summary>
 internal sealed record PleoBookingRunVm(
-    PleoRunKind Kind, Instant StartedAt, Instant? FinishedAt, int? Requested, int Total,
+    PleoRunKind Kind, Instant StartedAt, Instant? FinishedAt, int Total,
     IReadOnlyList<PleoBookingLine> Lines, string? Refused)
 {
     public bool IsRunning => FinishedAt is null;

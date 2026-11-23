@@ -33,7 +33,7 @@ public sealed class CachingTicketVendorServiceTests
     }
 
     private static VendorEventSummaryDto MakeSummary(string eventId, int sold = 10) =>
-        new(EventId: eventId, EventName: "Test Event", TotalCapacity: 100, TicketsSold: sold, TicketsRemaining: 100 - sold);
+        new(EventName: "Test Event", TotalCapacity: 100, TicketsSold: sold, TicketsRemaining: 100 - sold);
 
     [HumansFact]
     public async Task GetEventSummaryAsync_Miss_CallsInnerOnceAndReturnsItsValue()
@@ -133,9 +133,9 @@ public sealed class CachingTicketVendorServiceTests
     [HumansFact]
     public async Task GetOrdersAsync_ForwardsToInner()
     {
-        var orders = new List<VendorOrderDto>();
+        IReadOnlyList<VendorOrderDto> orders = [];
         _inner.GetOrdersAsync(null, "ev_test", Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<IReadOnlyList<VendorOrderDto>>(orders));
+            .Returns(Task.FromResult(orders));
 
         var result = await _decorator.GetOrdersAsync(null, "ev_test", Xunit.TestContext.Current.CancellationToken);
 
@@ -146,9 +146,9 @@ public sealed class CachingTicketVendorServiceTests
     [HumansFact]
     public async Task GetIssuedTicketsAsync_ForwardsToInner()
     {
-        var tickets = new List<VendorTicketDto>();
+        IReadOnlyList<VendorTicketDto> tickets = [];
         _inner.GetIssuedTicketsAsync(null, "ev_test", Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<IReadOnlyList<VendorTicketDto>>(tickets));
+            .Returns(Task.FromResult(tickets));
 
         var result = await _decorator.GetIssuedTicketsAsync(null, "ev_test", Xunit.TestContext.Current.CancellationToken);
 
@@ -159,9 +159,9 @@ public sealed class CachingTicketVendorServiceTests
     [HumansFact]
     public async Task GetCheckInsAsync_ForwardsToInner()
     {
-        var checkIns = new List<VendorCheckInDto>();
+        IReadOnlyList<VendorCheckInDto> checkIns = [];
         _inner.GetCheckInsAsync(null, "ev_test", Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<IReadOnlyList<VendorCheckInDto>>(checkIns));
+            .Returns(Task.FromResult(checkIns));
 
         var result = await _decorator.GetCheckInsAsync(null, "ev_test", Xunit.TestContext.Current.CancellationToken);
 

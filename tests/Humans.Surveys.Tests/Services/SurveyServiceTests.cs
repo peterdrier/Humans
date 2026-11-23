@@ -1481,9 +1481,9 @@ public class SurveyServiceTests
             {
                 var ids = call.Arg<IEnumerable<Guid>>().ToList();
                 requestedShiftIds.AddRange(ids);
-                return ids.ToDictionary(id => id, id => new ShiftUserSummary(id, [],
+                return ids.ToDictionary(id => id, id => new ShiftUserSummary([],
                 [new ShiftSignupSummary(Guid.NewGuid(), Guid.NewGuid(), null, SignupStatus.Confirmed,
-                    Guid.NewGuid(), "Rota", null, null, Guid.NewGuid(), Guid.NewGuid(),
+                    "Rota", null, null, Guid.NewGuid(), Guid.NewGuid(),
                     new LocalDate(2026, 7, 1), ShiftPeriod.Event, false,
                     new LocalTime(10, 0), new LocalTime(12, 0), 2, null,
                     Instant.FromUtc(2026, 7, 1, 10, 0), Instant.FromUtc(2026, 7, 1, 12, 0))]));

@@ -30,7 +30,6 @@ internal static class ShiftUserSummaryProjection
             ShiftId: signup.ShiftId,
             SignupBlockId: signup.SignupBlockId,
             Status: signup.Status,
-            RotaId: rota.Id,
             RotaName: rota.Name,
             RotaDescription: rota.Description,
             RotaPracticalInfo: rota.PracticalInfo,

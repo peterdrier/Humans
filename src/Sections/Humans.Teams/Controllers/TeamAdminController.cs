@@ -287,8 +287,6 @@ internal sealed class TeamAdminController(
         var teamMembers = members.Select(m => new TeamMemberViewModel
         {
             UserId = m.UserId,
-            Email = m.Email ?? "",
-            Role = m.Role,
             JoinedAt = m.JoinedAt.ToDateTimeUtc(),
             IsCoordinator = m.Role == TeamMemberRole.Coordinator
         }).ToList();

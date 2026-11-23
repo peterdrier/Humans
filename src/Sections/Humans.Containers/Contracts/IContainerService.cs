@@ -32,7 +32,6 @@ public interface IContainerService : IApplicationService
 }
 
 public record ContainerAdminOverview(
-    int Year,
     IReadOnlyList<ContainerCampGroup> CampGroups);
 
 public record ContainerCampGroup(
@@ -57,10 +56,7 @@ public record ContainerDto(
     Guid CampId,
     string Name,
     string? Description,
-    IReadOnlyList<ContainerImageDto> Images,
-    Instant CreatedAt,
-    Instant UpdatedAt
-);
+    IReadOnlyList<ContainerImageDto> Images);
 
 public record ContainerPlacementDto(
     Guid ContainerId,
@@ -69,7 +65,6 @@ public record ContainerPlacementDto(
     string? PlacementNotes,
     string? PlacementImageUrl,
     string? PlacementImageFileName,
-    Instant CreatedAt,
     Instant UpdatedAt
 )
 {

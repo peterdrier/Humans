@@ -50,7 +50,6 @@ internal sealed record DebugExpectedRow(
 
 /// <summary>UserId is null when the email doesn't resolve to a known human.</summary>
 internal sealed record DebugMlRow(
-    string SubscriberId,
     Guid? UserId,
     string Name,
     string Email,

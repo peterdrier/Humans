@@ -129,7 +129,7 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
             .Returns(call => ReadAsync<BudgetYearDetail?>(TicketDashboardRead.Budget, call.Arg<CancellationToken>(), null));
         var vendor = Substitute.For<ITicketVendorService>();
         vendor.GetEventSummaryAsync("event", Arg.Any<CancellationToken>())
-            .Returns(call => ReadAsync(TicketDashboardRead.Vendor, call.Arg<CancellationToken>(), new VendorEventSummaryDto("event", "Event", 100, 1, 99)));
+            .Returns(call => ReadAsync(TicketDashboardRead.Vendor, call.Arg<CancellationToken>(), new VendorEventSummaryDto("Event", 100, 1, 99)));
         var service = new TicketQueryService(FixedOrgTimeZone.Madrid, repository, _transferRepo, _budgetService, _campaignService,
             _userService, _userEmailService, _teamService, Substitute.For<IGovernanceService>(),
             _shiftManagementService, _auditLog, Clock, _participations, _checkout);
@@ -890,7 +890,7 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
     {
         var grantRows = grants
             .Select(g => new CampaignCodeTrackingGrant(
-                Guid.NewGuid(), g.CampaignId, summary.CampaignTitle, Guid.NewGuid(),
+                g.CampaignId, summary.CampaignTitle, Guid.NewGuid(),
                 "Recipient", g.Code, RedeemedAt: null))
             .ToList();
 

@@ -13,7 +13,7 @@ public static class ShiftFixtures
         Guid? userId = null,
         IReadOnlyList<ShiftSignupSummary>? signups = null,
         IReadOnlyList<ShiftTagPreferenceInfo>? tagPreferences = null) =>
-        new(userId ?? Guid.NewGuid(), tagPreferences ?? [], signups ?? []);
+        new(tagPreferences ?? [], signups ?? []);
 
     public static ShiftSignupSummary Signup(
         Guid? id = null,
@@ -44,7 +44,6 @@ public static class ShiftFixtures
             ShiftId: shiftId ?? Guid.NewGuid(),
             SignupBlockId: signupBlockId,
             Status: status,
-            RotaId: rotaId ?? Guid.NewGuid(),
             RotaName: rotaName,
             RotaDescription: rotaDescription,
             RotaPracticalInfo: rotaPracticalInfo,

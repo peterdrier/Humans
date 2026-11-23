@@ -318,7 +318,7 @@ public sealed partial class TicketCheckoutServiceTests
     public async Task Others_already_in_Humans_each_get_a_ticket_in_their_legal_name_at_the_public_price()
     {
         _grants.GetActiveGrantsAsync(_buyerId, Arg.Any<CancellationToken>())
-            .Returns([new ActiveGrantInfo(Guid.NewGuid(), LowIncomeProgram, "Low income", _event.Id, Now)]);
+            .Returns([new ActiveGrantInfo(LowIncomeProgram, _event.Id, Now)]);
         var katie = Human("katie@example.com", "Katie", "Jones");
         var sarah = Human("sarah@example.com", "Sarah", "Lee");
 
@@ -670,7 +670,7 @@ public sealed partial class TicketCheckoutServiceTests
         await BuyAndPayAsync(Buy() with { DirectedToken = TokenFor("cy@example.com") }, cy);
         _ticketing.Mode = TicketSalesMode.Open;
         _grants.GetActiveGrantsAsync(_otherBuyerId, Arg.Any<CancellationToken>())
-            .Returns([new ActiveGrantInfo(Guid.NewGuid(), LowIncomeProgram, "Low income", _event.Id, Now)]);
+            .Returns([new ActiveGrantInfo(LowIncomeProgram, _event.Id, Now)]);
 
         var page = await _service.GetDirectedBuyPageAsync(boToken, _otherBuyerId, Ct);
         var bosOrder = await BuyAndPayAsync(Buy() with { DirectedToken = boToken }, _otherBuyerId);
@@ -1332,7 +1332,7 @@ public sealed partial class TicketCheckoutServiceTests
         _ticketing.PriceRules.Add(new TicketPriceRule { GrantProgramId = pinProgram, Kind = TicketPriceRuleKind.WavePin });
         _clock.Reset(Instant.FromUtc(2027, 2, 10, 12, 0));
         _grants.GetActiveGrantsAsync(_buyerId, Arg.Any<CancellationToken>())
-            .Returns([new ActiveGrantInfo(Guid.NewGuid(), pinProgram, "Low income wave", _event.Id, Now)]);
+            .Returns([new ActiveGrantInfo(pinProgram, _event.Id, Now)]);
 
         var page = (await _service.GetBuyPagesAsync(_buyerId, Ct)).Single();
 
@@ -1362,8 +1362,8 @@ public sealed partial class TicketCheckoutServiceTests
         _ticketing.Mode = TicketSalesMode.InvitedOnly;
         _grants.GetActiveGrantsAsync(_buyerId, Arg.Any<CancellationToken>())
             .Returns([
-                new ActiveGrantInfo(Guid.NewGuid(), invitedProgram, "Asociados", _event.Id, Now),
-                new ActiveGrantInfo(Guid.NewGuid(), secondProgram, "Colaboradores", _event.Id, Now),
+                new ActiveGrantInfo(invitedProgram, _event.Id, Now),
+                new ActiveGrantInfo(secondProgram, _event.Id, Now),
             ]);
 
         (await _service.GetBuyPagesAsync(_otherBuyerId, Ct)).Should().BeEmpty();
@@ -1497,7 +1497,7 @@ public sealed partial class TicketCheckoutServiceTests
     public async Task Rename_to_another_person_refuses_class_priced_tickets_but_a_name_fix_is_allowed()
     {
         _grants.GetActiveGrantsAsync(_buyerId, Arg.Any<CancellationToken>())
-            .Returns([new ActiveGrantInfo(Guid.NewGuid(), LowIncomeProgram, "Low income", _event.Id, Now)]);
+            .Returns([new ActiveGrantInfo(LowIncomeProgram, _event.Id, Now)]);
         var ticket = await PaidAdultAsync();
         var buyer = await _users.GetUserInfoAsync(_buyerId, Ct);
         _users.GetByEmailOrAlternateAsync("ana@example.com", Arg.Any<CancellationToken>()).Returns(buyer);
@@ -1972,7 +1972,7 @@ public sealed partial class TicketCheckoutServiceTests
         await OfferedTicketAsync();
         _ticketing.Mode = TicketSalesMode.Open;
         _grants.GetActiveGrantsAsync(_otherBuyerId, Arg.Any<CancellationToken>())
-            .Returns([new ActiveGrantInfo(Guid.NewGuid(), LowIncomeProgram, "Low income", _event.Id, Now)]);
+            .Returns([new ActiveGrantInfo(LowIncomeProgram, _event.Id, Now)]);
 
         var fresh = await _service.StartCheckoutAsync(Buy(), _otherBuyerId, Ct);
 
@@ -1988,8 +1988,8 @@ public sealed partial class TicketCheckoutServiceTests
         var old = await OfferedTicketAsync();
         _grants.GetActiveGrantsAsync(_otherBuyerId, Arg.Any<CancellationToken>())
             .Returns([
-                new ActiveGrantInfo(Guid.NewGuid(), LowIncomeProgram, "Low income", _event.Id, Now),
-                new ActiveGrantInfo(Guid.NewGuid(), DiscountProgram, "Discount", _event.Id, Now),
+                new ActiveGrantInfo(LowIncomeProgram, _event.Id, Now),
+                new ActiveGrantInfo(DiscountProgram, _event.Id, Now),
             ]);
         (await _service.GetBuyPagesAsync(_otherBuyerId, Ct)).Single().OwnPrice!.AmountMinor.Should().Be(17500);
 
@@ -2194,7 +2194,7 @@ public sealed partial class TicketCheckoutServiceTests
         _ticketing.Mode = TicketSalesMode.Open;
         _ticketing.Capacity = 1;
         _grants.GetActiveGrantsAsync(_otherBuyerId, Arg.Any<CancellationToken>())
-            .Returns([new ActiveGrantInfo(Guid.NewGuid(), LowIncomeProgram, "Low income", _event.Id, Now)]);
+            .Returns([new ActiveGrantInfo(LowIncomeProgram, _event.Id, Now)]);
 
         var result = await _service.StartCheckoutAsync(Buy(), _otherBuyerId, Ct);
 
@@ -2211,7 +2211,7 @@ public sealed partial class TicketCheckoutServiceTests
         _ticketing.Mode = TicketSalesMode.Open;
         _ticketing.Capacity = 1;
         _grants.GetActiveGrantsAsync(_otherBuyerId, Arg.Any<CancellationToken>())
-            .Returns([new ActiveGrantInfo(Guid.NewGuid(), LowIncomeProgram, "Low income", _event.Id, Now)]);
+            .Returns([new ActiveGrantInfo(LowIncomeProgram, _event.Id, Now)]);
 
         (await _service.GetBuyPagesAsync(_otherBuyerId, Ct)).Single().OwnPrice!.AmountMinor.Should().Be(22500);
     }

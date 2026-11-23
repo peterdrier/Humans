@@ -5,9 +5,7 @@ using NodaTime;
 namespace Humans.Store.Data;
 
 internal sealed record LineContext(
-    Guid LineId,
     Guid OrderId,
-    Guid? CampSeasonId,
     OrderState OrderState,
     LocalDate ProductOrderableUntil,
     string ProductName,

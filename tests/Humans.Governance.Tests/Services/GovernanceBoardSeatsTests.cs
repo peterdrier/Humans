@@ -121,7 +121,7 @@ public sealed class GovernanceBoardSeatsTests
     }
 
     private static RoleAssignmentSummarySnapshot Row(Guid userId, string role, Instant? validTo = null) =>
-        new(Guid.NewGuid(), userId, null, "Member", role, Now - Duration.FromDays(30), validTo, null, Guid.NewGuid(), null, Now);
+        new(Guid.NewGuid(), userId, null, "Member", role, Now - Duration.FromDays(30), validTo, null, Guid.NewGuid(), null);
 
     [HumansFact]
     public async Task End_ends_only_the_active_Board_seat()

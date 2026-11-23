@@ -42,7 +42,7 @@ public class RankedChoiceCounterTests
         var result = RankedChoiceCounter.CountRankedPairs(Candidates, matrix);
 
         result.Winner.Should().Be("A");
-        result.Locks.Should().ContainEquivalentOf(new RankedPairsLock("C", "A", 1, 4, false));
+        result.Locks.Should().ContainEquivalentOf(new RankedPairsLock("C", "A"));
     }
 
     [HumansFact]

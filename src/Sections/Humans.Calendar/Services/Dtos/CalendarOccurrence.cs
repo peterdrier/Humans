@@ -4,7 +4,7 @@ using Microsoft.Extensions.Localization;
 namespace Humans.Calendar.Services.Dtos;
 
 /// <summary>
-/// Contributed items carry <c>Guid.Empty</c> for <see cref="EventId"/> and <see cref="OwningTeamId"/>, so views
+/// Contributed items carry <c>Guid.Empty</c> for <see cref="EventId"/>, so views
 /// link them through <see cref="Url"/> instead of <c>/Calendar/Event/{id}</c>.
 /// </summary>
 internal sealed record CalendarOccurrence(
@@ -16,7 +16,6 @@ internal sealed record CalendarOccurrence(
     string? Description,
     string? Location,
     string? LocationUrl,
-    Guid OwningTeamId,
     string OwningTeamName,
     bool IsRecurring,
     Instant? OriginalOccurrenceStartUtc,

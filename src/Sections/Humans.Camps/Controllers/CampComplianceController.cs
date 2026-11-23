@@ -40,7 +40,7 @@ internal sealed class CampComplianceController(
             Event = matrix.Event,
             EventOptions = settings.Events,
             Roles = columns
-                .Select(column => new CampComplianceRoleColumn(column.Role.Id, column.Role.Name, column.Role.MinimumRequired))
+                .Select(column => new CampComplianceRoleColumn(column.Role.Name, column.Role.MinimumRequired))
                 .ToList(),
             Rows = matrix.Rows
                 .OrderBy(r => r.CampName, StringComparer.OrdinalIgnoreCase)

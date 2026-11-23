@@ -4,7 +4,6 @@ using Humans.Users.Contracts;
 namespace Humans.Agent.Models;
 
 internal sealed record AgentUserSnapshot(
-    Guid UserId,
     string DisplayName,
     string PreferredLocale,
     string Tier,

@@ -1177,7 +1177,7 @@ internal sealed partial class TicketCheckoutService(
     /// <paramref name="Held"/> counts against capacity: issued tickets still valid or in resale, and fresh-stock lines on
     /// unpaid orders that have not lapsed. A resold ticket replaces the one put up for resale, so it adds nothing.
     /// </summary>
-    private sealed record Stock(int Held, int Sold, bool ResaleOpen, IReadOnlyList<TicketResaleOffer> Offers);
+    private sealed record Stock(int Held, bool ResaleOpen, IReadOnlyList<TicketResaleOffer> Offers);
 
     private async Task<Stock> LoadStockAsync(TicketingSettings ticketing, Instant now, CancellationToken ct)
     {
@@ -1196,7 +1196,7 @@ internal sealed partial class TicketCheckoutService(
                 .Select(c => c.Barcode)
                 .ToList());
         var admitted = await gateAdmissions.GetAdmittedAsync(offeredCodes.Values.SelectMany(c => c).ToList(), ct);
-        return new Stock(sold + pending, sold, resaleOpen,
+        return new Stock(sold + pending, resaleOpen,
             offers.Where(o => !(offeredCodes.TryGetValue(o.TicketId, out var codes) && codes.Any(admitted.Contains))).ToList());
     }
 

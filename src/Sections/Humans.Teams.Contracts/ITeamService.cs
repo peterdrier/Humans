@@ -43,13 +43,10 @@ public record TeamMemberInfo(
 
 /// <summary>One active membership, with the team's identity stitched in.</summary>
 public sealed record UserTeamMembershipInfo(
-    Guid TeamMemberId,
     Guid TeamId,
     string TeamName,
     string TeamSlug,
-    bool IsSystemTeam,
-    TeamMemberRole Role,
-    Instant JoinedAt)
+    TeamMemberRole Role)
 {
     public bool IsActive { get; init; }
     public bool IsHidden { get; init; }
@@ -122,7 +119,6 @@ public sealed record TeamRoleDefinitionSnapshot(
     IReadOnlyList<TeamRoleAssignmentSnapshot> Assignments);
 
 public sealed record TeamRoleAssignmentSnapshot(
-    Guid Id,
     Guid TeamMemberId,
     int SlotIndex,
     Guid? AssignedUserId);

@@ -421,7 +421,7 @@ public sealed class WorkgroupsAdminControllerTests : WorkgroupsTestHarness
     {
         Holded.GetChartAsync(Arg.Any<CancellationToken>())
             .Returns(_ => Task.FromResult<IReadOnlyList<HoldedChartAccountInfo>>(
-                [new HoldedChartAccountInfo(62900007, "Sound (legacy)", null, null, false, 0m)]));
+                [new HoldedChartAccountInfo(62900007, "Sound (legacy)", null, false, 0m)]));
         var sut = MakeAdminController(nameof(WorkgroupsAdminController.RegisterExisting));
 
         var result = await sut.RegisterExisting(Ct);

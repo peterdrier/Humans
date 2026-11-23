@@ -233,9 +233,9 @@ public sealed class ConsentControllerTests
             Guid.NewGuid(), name, "v1", stamp, signed, signed ? stamp : null, "Changes", stamp);
         _consentService.GetConsentDashboardAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new ConsentDashboard([
-                new(Guid.NewGuid(), "Z-complete-team", [Document("Completed-document", true)]),
-                new(Guid.NewGuid(), "B-pending-team", [Document("Other-document", false)]),
-                new(Guid.NewGuid(), "A-pending-team", [Document("0-signed-document", true),
+                new("Z-complete-team", [Document("Completed-document", true)]),
+                new("B-pending-team", [Document("Other-document", false)]),
+                new("A-pending-team", [Document("0-signed-document", true),
                     Document("Zulu-pending-document", false), Document("Alpha-pending-document", false)])
             ], Enumerable.Range(0, 11).Select(i => new ConsentDashboardHistoryItem(
                 Guid.NewGuid(), $"History{i:D2}", "v1", stamp)).ToList()));

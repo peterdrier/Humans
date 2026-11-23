@@ -4,7 +4,6 @@ using NodaTime;
 namespace Humans.Camps.Services;
 
 internal sealed record CampRolesPanelData(
-    Guid CampSeasonId,
     IReadOnlyList<CampRolesPanelRow> Rows);
 
 internal sealed record CampRolesPanelRow(

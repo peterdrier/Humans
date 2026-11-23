@@ -216,7 +216,6 @@ internal sealed class TicketTailorService : ITicketVendorService
         if (totalCapacity == 0)
             totalCapacity = evt.TicketTypes?.Sum(tt => tt.QuantityTotal ?? 0) ?? 0;
         var summary = new VendorEventSummaryDto(
-            EventId: eventId,
             EventName: evt.Name,
             TotalCapacity: totalCapacity,
             TicketsSold: ticketsSold,

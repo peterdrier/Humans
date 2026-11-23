@@ -91,10 +91,8 @@ internal sealed class GateService(
             ticket.Name,
             ticket.TypeName,
             IsEarly: outcome == GatePreCheckOutcome.NeedsIdCheckEarly,
-            EarlyEntrySource: ee is { Sources.Count: > 0 } ? string.Join(", ", ee.Sources) : null,
             TicketAttendeeId: ticket.TicketAttendeeId,
             GuestUserId: ticket.GuestUserId,
-            PreviousAdmitAt: priorAdmit?.OccurredAt,
             PreviousAdmitByUserId: priorAdmit?.ScannedByUserId,
             VendorTicketId: ticket.VendorTicketId,
             // Date only, never the EE source (privacy).
@@ -160,7 +158,7 @@ internal sealed class GateService(
             || !FitsStorage(input.Note, GateScanEvent.NoteMaxLength))
         {
             logger.LogWarning("Rejected gate decision exceeding storage limits from scanner {ScannerId}", scannedByUserId);
-            return new GateDecisionResult(GateVerdict.Unresolved, null, null, false, null, null, InputTooLong: true);
+            return new GateDecisionResult(GateVerdict.Unresolved, null, false, null, InputTooLong: true);
         }
 
         var overrideAuthorized = input.ChildWithAdult || input.OverrideEarly;
@@ -181,8 +179,7 @@ internal sealed class GateService(
             verdict = GateVerdict.RejectedDuplicate;
             await repository.RecordScanAsync(BuildEvent(eval, input, scannedByUserId, verdict, admit: false, overrideAuthorized), ct);
             var prior = await repository.GetAdmitForBarcodeAsync(eval.Barcode, ct);
-            return new GateDecisionResult(verdict, eval.GuestName, eval.TicketTypeName,
-                IsEarly: false, prior?.OccurredAt, prior?.ScannedByUserId);
+            return new GateDecisionResult(verdict, eval.GuestName, IsEarly: false, prior?.ScannedByUserId);
         }
 
         if (admit)
@@ -192,10 +189,8 @@ internal sealed class GateService(
                 MirrorVendorCheckIn(vendorTicketId, scan.OccurredAt);
         }
 
-        return new GateDecisionResult(verdict, eval.GuestName, eval.TicketTypeName,
-            IsEarly: admit && eval.IsEarly,
-            eval.PreviousAdmitAt, eval.PreviousAdmitByUserId,
-            VendorTicketId: admit ? eval.VendorTicketId : null);
+        return new GateDecisionResult(verdict, eval.GuestName, IsEarly: admit && eval.IsEarly,
+            eval.PreviousAdmitByUserId);
     }
 
     private static bool FitsStorage(string? value, int limit) =>
@@ -222,7 +217,7 @@ internal sealed class GateService(
     }
 
     private static GateDecisionResult Refused(GateOverrideFailure failure, int? retryAfterSeconds = null) =>
-        new(GateVerdict.Unresolved, null, null, false, null, null,
+        new(GateVerdict.Unresolved, null, false, null,
             OverrideFailure: failure, RetryAfterSeconds: retryAfterSeconds);
 
     /// <summary>
@@ -583,7 +578,7 @@ internal sealed class GateService(
     }
 
     public async Task<GatePinStatus> GetPinStatusAsync(Guid userId, CancellationToken ct = default) =>
-        new(await repository.GetStaffPinAsync(userId, ct) is not null, await IsSupervisorAsync(userId, ct));
+        new(await repository.GetStaffPinAsync(userId, ct) is not null);
 
     public async Task<GatePinSetResult> SetOwnPinAsync(Guid userId, string pin, CancellationToken ct = default)
     {

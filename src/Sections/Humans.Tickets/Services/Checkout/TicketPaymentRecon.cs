@@ -55,8 +55,6 @@ internal sealed record TicketPaymentTotals(
 /// </summary>
 internal sealed record TicketPaymentRecon(
     string PlatformKey,
-    Instant From,
-    Instant To,
     TicketPaymentTotals Totals,
     long PaymentFeesMinor,
     long HumansPaymentFeesMinor,
@@ -128,8 +126,6 @@ internal static class TicketPaymentReconBuilder
         var entries = ledger.Entries;
         return new TicketPaymentRecon(
             platformKey,
-            from,
-            to,
             new TicketPaymentTotals(
                 Sum(entries, PaymentLedgerEntryKind.Charge),
                 -Sum(entries, PaymentLedgerEntryKind.Refund),
@@ -146,7 +142,7 @@ internal static class TicketPaymentReconBuilder
     }
 
     public static TicketPaymentRecon Unreadable(string platformKey, Instant from, Instant to, string error) =>
-        new(platformKey, from, to, new TicketPaymentTotals(0, 0, 0, 0, 0, 0), 0, 0, [], [], [], error);
+        new(platformKey, new TicketPaymentTotals(0, 0, 0, 0, 0, 0), 0, 0, [], [], [], error);
 
     /// <summary>
     /// Whether a payment in the ledger is on a failed order whose return is not in it, so the return must be looked for

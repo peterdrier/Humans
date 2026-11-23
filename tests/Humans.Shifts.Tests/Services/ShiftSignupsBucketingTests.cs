@@ -63,7 +63,7 @@ public class ShiftSignupsBucketingTests
                 Rota = new Rota { TeamId = summary.TeamId }
             }
         };
-        var noTeams = new Dictionary<Guid, string>();
+        IReadOnlyDictionary<Guid, string> noTeams = new Dictionary<Guid, string>();
 
         var card = ShiftSignupSummaryBucketer.Build([summary], noTeams, TestNow);
         var mine = ShiftSignupBucketer.Build([ShiftUserSignup.From(signup)], TestEvent, noTeams, TestNow);

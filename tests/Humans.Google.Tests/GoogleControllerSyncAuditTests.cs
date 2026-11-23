@@ -74,7 +74,7 @@ public sealed class GoogleControllerSyncAuditTests
     public async Task ActivityLog_ConvertsInclusiveDatesToUtcRange_AndPassesFilters()
     {
         using var cancellation = new CancellationTokenSource();
-        var views = new List<GoogleSyncLogView>();
+        IReadOnlyList<GoogleSyncLogView> views = [];
         _syncLog.GetRecentAsync(default, default, default, default, default, default)
             .ReturnsForAnyArgs(views);
 

@@ -133,7 +133,7 @@ internal sealed class CachingTeamService(
         (await GetTeamsByIdAsync(ct)).Values
             .Where(t => t.Members.Any(m => m.UserId == userId && m.Role == TeamMemberRole.Coordinator)
                         || t.ManagementRoleHolderUserIds?.Contains(userId) == true)
-            .Select(t => new Holding(new Owner(TeamOwner.Kind, t.Id), IsCoordinator: true, [], $"{t.Name} coordinator (old team roles)"))
+            .Select(t => new Holding(new Owner(TeamOwner.Kind, t.Id), IsCoordinator: true, []))
             .ToList();
 
     /// <summary>System teams take no roles: their membership is computed, so a role could outlive it.</summary>
@@ -211,8 +211,7 @@ internal sealed class CachingTeamService(
                 continue;
 
             result.Add(new UserTeamMembershipInfo(
-                membership.TeamMemberId, team.Team.Id, team.Team.Name, team.Team.Slug, team.Team.IsSystemTeam,
-                membership.Role, membership.JoinedAt)
+                team.Team.Id, team.Team.Name, team.Team.Slug, membership.Role)
             {
                 IsActive = team.Team.IsActive,
                 IsHidden = team.Team.IsHidden,

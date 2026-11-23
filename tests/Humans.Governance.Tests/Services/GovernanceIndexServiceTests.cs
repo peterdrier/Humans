@@ -116,13 +116,13 @@ public sealed class GovernanceIndexServiceTests
         var seated = Instant.FromUtc(2024, 3, 1, 0, 0);
         _applications.GetUserApplicationsAsync(viewer, Arg.Any<CancellationToken>()).Returns([
             new UserApplicationSnapshot(Guid.NewGuid(), viewer, ApplicationStatus.Approved, MembershipTier.Asociado,
-                approved, approved, new LocalDate(2027, 12, 31), "m", null, null, null)]);
+                approved, approved, new LocalDate(2027, 12, 31))]);
         _tierApplications.GetActiveApprovedTierUserIdsAsync(MembershipTier.Asociado, Arg.Any<LocalDate>(), Arg.Any<CancellationToken>())
             .Returns([viewer]);
         _roles.GetActiveUserIdsInRoleAsync(RoleNames.Board, Arg.Any<CancellationToken>()).Returns([viewer]);
         _roles.GetByUserIdAsync(viewer, Arg.Any<CancellationToken>()).Returns([
             new RoleAssignmentSummarySnapshot(Guid.NewGuid(), viewer, null, "Viewer", RoleNames.Board, seated, null, null,
-                Guid.NewGuid(), null, seated)]);
+                Guid.NewGuid(), null)]);
 
         var data = await CreateService().GetIndexDataAsync(viewer);
 
@@ -220,7 +220,7 @@ public sealed class GovernanceIndexServiceTests
     private static UserApplicationSnapshot Approved(Guid userId, LocalDate? termExpiresAt) =>
         new(Guid.NewGuid(), userId, ApplicationStatus.Approved, MembershipTier.Colaborador,
             Instant.FromUtc(2026, 3, 1, 12, 0), Instant.FromUtc(2026, 3, 8, 12, 0),
-            termExpiresAt, "motivation", null, null, null);
+            termExpiresAt);
 
     [HumansFact]
     public async Task GetIndexDataAsync_carries_the_stored_term_expiry()

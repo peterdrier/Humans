@@ -78,4 +78,4 @@ public sealed record HoldedSalesDocumentDto
 
 /// <summary>One line of an issued sales document. <paramref name="Price"/> is the VAT-exclusive unit price;
 /// <paramref name="TaxPercent"/> is the line's primary tax rate (21 for 21%).</summary>
-public sealed record HoldedSalesDocumentLineDto(string Name, decimal Units, decimal Price, decimal TaxPercent);
+public sealed record HoldedSalesDocumentLineDto(decimal Units, decimal Price, decimal TaxPercent);

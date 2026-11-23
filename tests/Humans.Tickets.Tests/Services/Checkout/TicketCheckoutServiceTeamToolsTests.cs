@@ -91,7 +91,7 @@ public sealed partial class TicketCheckoutServiceTests
     public async Task Override_rename_moves_a_class_priced_ticket_and_audits_it_as_an_override()
     {
         _grants.GetActiveGrantsAsync(_buyerId, Arg.Any<CancellationToken>())
-            .Returns([new ActiveGrantInfo(Guid.NewGuid(), LowIncomeProgram, "Low income", _event.Id, Now)]);
+            .Returns([new ActiveGrantInfo(LowIncomeProgram, _event.Id, Now)]);
         var ticket = await PaidAdultAsync();
         var newHolder = Guid.NewGuid();
         _provisioning.FindOrCreateUserByEmailAsync("cy@example.com", null, ContactSource.Manual, Arg.Any<CancellationToken>())

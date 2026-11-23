@@ -237,7 +237,6 @@ internal sealed class ConsentReviewQueueController(
             UserId = info.Id,
             LegalName = info.FullName,
             Email = info.Email ?? string.Empty,
-            ConsentCheckStatus = data.Reviews.GetValueOrDefault(info.Id)?.Status,
             MembershipTier = data.Tiers.GetValueOrDefault(info.Id, MembershipTier.Volunteer),
             ProfileCreatedAt = info.Profile!.CreatedAt.ToDateTimeUtc(),
             ConsentCount = progress?.Signed ?? 0,

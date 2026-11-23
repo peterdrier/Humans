@@ -9,7 +9,6 @@ internal sealed record ConsentDashboard(
     IReadOnlyList<ConsentDashboardHistoryItem> History);
 
 internal sealed record ConsentDashboardTeamGroup(
-    Guid TeamId,
     string TeamName,
     IReadOnlyList<ConsentDashboardDocument> Documents);
 
