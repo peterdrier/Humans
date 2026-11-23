@@ -170,4 +170,4 @@ cancel-deletion actions map the same failure differently (finding-level, see the
 | 2 | 2026-09-17 | The section's own rationale for its shape was false, and the target shape had not caught up with erasure moving in | peterdrier/Humans#1723 |
 | 3 | 2026-09-23 | The envelope learned whose account it is and the prose did not; a "logged" check was documented as "enforced" | peterdrier/Humans#1811 |
 | 4 | 2026-10-23 | The section took over the member's subject-rights pages and its docs still said it renders nothing | peterdrier/Humans#2148 |
-| 5 | 2026-11-23 | The export file format was still a public promise after both download routes had moved into the section | pending |
+| 5 | 2026-11-23 | The export file format was still a public promise after both download routes had moved into the section | peterdrier/Humans#2587 |
