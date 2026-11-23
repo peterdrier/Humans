@@ -25,10 +25,13 @@ Pieces of work with an end, hanging on a team. A task is to a role (standing res
 |---|---|---|
 | `GET /Tasks` | All tasks the viewer may see, filters; listed tasks by default. Links a manager to each team they manage. In the main nav. | Signed-in members |
 | `GET /Tasks/Team/{slug}` | A team's tasks; add form for managers, starting on the active event | Signed-in members |
-| `GET /Tasks/{id}` | One task: description, dates, people, waiting-on; managers edit, assign, link, delete | Anyone who can see it; 404 otherwise |
+| `GET /Tasks/{id}` | One task: description, dates, people, waiting-on, the viewer's claim state; managers edit, assign, link, delete and see the requests card | Anyone who can see it; 404 otherwise |
+| `GET /Tasks/Open` | The open-tasks board: every task the viewer may claim (`TasksAccess.CanClaim`: listed, not done or cancelled, a free slot, not already on or asked), most needed first, then title; open-slot and critical tiles; a claim button on each row. Linked from `/Tasks` and team pages | Signed-in members |
+| `POST /Tasks/{id}/Claim`, `/Release`, `/Withdraw` | The caller's own claim (or request), release, withdrawal. The controller checks only that the task is visible (404 otherwise); the service refuses every state case in words | Anyone who can see the task |
+| `POST /Tasks/{id}/Approve`, `/Decline` (`userId`, decline `reason`) | Answer a request | `Tasks.Manage` on the task's team; 403 otherwise, 404 first when hidden |
 | `GET /Tasks/Admin` | Read-only per-team counts and every blocked task with its note. The admin sidebar's Tasks group. English only (admin page). | TasksAdmin, Board, Admin (`TasksPolicies.Read`) |
 
-`POST /api/backdoor/tasks/bulk` (Backdoor's key-authed API) loads a whole set of tasks; see Bulk load below. Claiming (below) is built in the service; its buttons, the request management UI and the open-tasks board are the pages half of PR 3. The team-page card and the timeline arrive in later PRs.
+`POST /api/backdoor/tasks/bulk` (Backdoor's key-authed API) loads a whole set of tasks; see Bulk load below. Every claiming POST takes an optional `returnUrl`, followed only when `Url.IsLocalUrl` accepts it (else back to the task page). The team-page card and the timeline arrive in later PRs.
 
 ## Bulk load
 
@@ -54,6 +57,15 @@ Pieces of work with an end, hanging on a team. A task is to a role (standing res
 - Approve and decline need a request row (state Requested) and never remove or change a confirmed place. A manager who assigns someone who already asked is told they are already on the task; approving is the way.
 - Claiming, assigning or approving never makes anyone a team member: Tasks calls no write on Teams.
 - Needs-approval, stored since PR 1, takes effect only here, at claim time. Turning it off later does not confirm existing requests.
+- A manager's unassign removes only a confirmed place; a request is answered with approve or decline, so its email is never skipped.
+
+### Claim states on the pages
+
+`TasksAccess.PlaceOn(task)` gives the viewer's state (`MyPlace`): **CanClaim** shows "I'll do this", or "Ask to join" with the approval reason when the task needs approval; **Requested** shows "waiting for approval" and Withdraw; **Confirmed** shows "you're on this task" and Leave. No state (full, finished, or not visible) shows nothing: no disabled button. The task page has the card; `/Tasks`, team pages and the board have a Join column. Leaving a hidden task goes back to `/Tasks`, since the task may drop out of sight.
+
+### The requests card
+
+The waiting requests (state Requested) on unfinished tasks, oldest first, each with `<vc:human>`, Approve and Decline (optional reason, 200 characters). On the task page and on the team page (`#requests`, with the task named on each row), and only for viewers who manage the task's team: TasksAdmin and Admin through `Tasks.Manage` everywhere. Home's entry counts the same set and links to the team page. The People list and every slot count show confirmed people only.
 
 ### The two emails
 
@@ -79,9 +91,9 @@ Pieces of work with an end, hanging on a team. A task is to a role (standing res
 
 | Actor | Capabilities |
 |-------|--------------|
-| Signed-in human | See tasks that are not effectively hidden |
+| Signed-in human | See tasks that are not effectively hidden; claim a free slot (or ask to join), leave their own place, withdraw their own request |
 | Confirmed on a task | Set its status to anything but cancelled; sees it even when hidden |
-| Manager: `Tasks.Manage` on the team (inherited down sub-teams; team coordinators hold it) | Create, edit, assign, unassign, link, hide, cancel and delete tasks of that team. Moving a task needs `Tasks.Manage` on both teams |
+| Manager: `Tasks.Manage` on the team (inherited down sub-teams; team coordinators hold it) | Create, edit, assign, unassign, answer requests, link, hide, cancel and delete tasks of that team. Moving a task needs `Tasks.Manage` on both teams |
 | TasksAdmin, Admin | The manager's rights on every team |
 | Board | Sees every task, hidden ones included, and the admin page; changes nothing |
 
@@ -117,6 +129,7 @@ Pieces of work with an end, hanging on a team. A task is to a role (standing res
 - A member **cannot** approve or decline requests, release someone else's place, or withdraw someone else's request: approve and decline need `Tasks.Manage` on the task's team; release and withdraw act only on the caller's own row.
 - A manager **cannot** approve or decline a request that does not exist, and approving or declining never touches a confirmed place.
 - The waiting-requests entries on Home appear only for holders of `Tasks.Manage` on the team; nobody else, and not a person for their own request.
+- Board, plain members, people confirmed on a task and requesters themselves **cannot** see who has asked to join: the requests card is for the team's managers only, and lists and the board show counts of confirmed people.
 - Board **cannot** change any task.
 - Only TasksAdmin, Board and Admin **can** open `/Tasks/Admin`; managers cannot. It is read-only.
 
@@ -143,7 +156,7 @@ Pieces of work with an end, hanging on a team. A task is to a role (standing res
 
 **Owning services:** `TaskService`
 **Owned tables:** `task_items`, `task_assignments`, `task_dependencies`
-**Status:** (A) Migrated: new section, 2026-11-22 (PR 1 of 5); bulk load (PR 2); claiming service, emails and Home entries (PR 3, backend).
+**Status:** (A) Migrated: new section, 2026-11-22 (PR 1 of 5); bulk load (PR 2); claiming, requests, emails, Home entries and the open-tasks board (PR 3).
 
 ### Public contract
 

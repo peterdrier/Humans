@@ -404,4 +404,14 @@ public sealed class TaskClaimingTests
 
         (await _kit.Service.AssignAsync(task.Id, _sam, _kit.Actor, Ct)).Refusal.Should().Be("Tasks_Refusal_AlreadyOn");
     }
+
+    [HumansFact]
+    public async Task Unassign_RefusesARequest_SoDeclineIsTheOnlyWayAndItsEmailIsNeverSkipped()
+    {
+        var task = await _kit.CreateAsync(Input(slots: 3, needsApproval: true));
+        await ClaimAsync(task.Id);
+
+        (await _kit.Service.UnassignAsync(task.Id, _sam, _kit.Actor, Ct)).Refusal.Should().Be("Tasks_Refusal_NotOn");
+        (await _kit.Service.GetTaskAsync(task.Id, Ct))!.Assignments.Should().ContainSingle(a => a.UserId == _sam && !a.IsConfirmed);
+    }
 }

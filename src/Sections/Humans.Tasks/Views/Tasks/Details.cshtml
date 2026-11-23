@@ -62,12 +62,14 @@
                     else
                     {
                         var requested = place == MyPlace.Requested;
+                        @* Leaving a hidden task can take it out of sight, so that leads back to the list, not a 404. *@
+                        var backTo = task.IsEffectivelyHidden ? Url.Action("Index", "Tasks")! : taskUrl;
                         <div>
                             <i class="fa-solid @(requested ? "fa-hourglass-half" : "fa-check") me-2" aria-hidden="true"></i>@(requested ? Localizer["Tasks_Claim_Waiting"] : Localizer["Tasks_YouAreOn"])
                         </div>
                         <form action="@Url.Action(requested ? "Withdraw" : "Release", route)" method="post" class="ms-sm-auto">
                             @Html.AntiForgeryToken()
-                            <input type="hidden" name="returnUrl" value="@taskUrl" />
+                            <input type="hidden" name="returnUrl" value="@backTo" />
                             <button type="submit" class="btn btn-outline-secondary">@(requested ? Localizer["Tasks_Withdraw"] : Localizer["Tasks_Release"])</button>
                         </form>
                     }

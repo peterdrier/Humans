@@ -238,7 +238,8 @@ internal sealed partial class TaskService(
         if (!snapshot.Tasks.TryGetValue(taskId, out var task))
             return Refuse("Tasks_Refusal_NoTask", actorUserId, taskId);
 
-        var existing = task.Assignments.FirstOrDefault(a => a.UserId == userId);
+        // A request is answered with approve or decline, so its email is never skipped.
+        var existing = task.Assignments.FirstOrDefault(a => a.UserId == userId && a.State == TaskAssignmentState.Confirmed);
         if (existing is null || !await repository.RemoveAssignmentAsync(taskId, userId, ct))
             return Refuse("Tasks_Refusal_NotOn", actorUserId, taskId);
         task.Assignments.Remove(existing);

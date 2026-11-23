@@ -37,7 +37,7 @@ Hidden tasks (and every task of a hidden team) show only to managers, people on 
 ## Later PRs
 
 - **PR 2, bulk load** (built): `POST /api/backdoor/tasks/bulk` takes a set of tasks (payload-local keys, dependencies by key, dates fixed, a day number, or a date Tasks converts). All or nothing, dry-run flag, every problem listed, caller needs `Tasks.Manage` on every team. No people, no status. Loading a payload twice makes the tasks twice. The Backdoor opening-up (keys for people with `Tasks.Manage` or `TasksAdmin`) is Peter's and had not landed when this was built.
-- **PR 3, claiming** (service, emails and Home entries built; pages follow in the same PR): claim/release; without approval a claim confirms at once, with it a request (takes no slot) a manager approves or declines (optional reason). Overfilling is allowed. Approved/declined emails (`VolunteerUpdates`); waiting requests in Home's things to do. Being on a task never adds team membership.
+- **PR 3, claiming** (built): claim/release; without approval a claim confirms at once, with it a request (takes no slot) a manager approves or declines (optional reason). Overfilling is allowed. Approved/declined emails (`VolunteerUpdates`); waiting requests in Home's things to do. Being on a task never adds team membership. The open-tasks board `/Tasks/Open` lists what the viewer may claim; the task page shows the viewer's state (claim, waiting with withdraw, on it with leave); managers answer requests in a requests card on the task and team pages, which only they see.
 - **PR 4**: tasks card on the team page via a named slot in `Humans.Teams.Contracts` (copied from `ITeamRolesPart`).
 - **PR 5**: timeline and dependency graph.
 
