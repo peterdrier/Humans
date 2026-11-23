@@ -331,7 +331,7 @@ internal sealed class AgentService : IAgentService
             // A max_tokens cutoff mid tool-call JSON still yields a (possibly truncated) call. Treat it like tool_use
             // so it is dispatched, not discarded: the dispatcher handles malformed JSON, and MaxToolCallsPerTurn still
             // bounds the loop.
-            var stopReason = finalFinalizer?.StopReason;
+            var stopReason = finalFinalizer.StopReason;
             var continuesToolLoop = string.Equals(stopReason, "tool_use", StringComparison.Ordinal)
                 || string.Equals(stopReason, "max_tokens", StringComparison.Ordinal);
             if (withholdTools || pendingToolCalls.Count == 0 || !continuesToolLoop)
@@ -414,7 +414,7 @@ internal sealed class AgentService : IAgentService
             {
                 _logger.LogWarning(
                     "Agent turn produced no assistant text for conversation {ConversationId}: {ToolCallCount} tool calls, stop reason {StopReason}",
-                    conversation.Id, toolCallCount, finalFinalizer?.StopReason ?? "unknown");
+                    conversation.Id, toolCallCount, finalFinalizer.StopReason ?? "unknown");
                 assistantText = LocalizedReply("Agent_SilentTurnFallback", conversation.Locale);
                 yield return new AgentTurnToken(assistantText, null, null);
             }
@@ -443,7 +443,7 @@ internal sealed class AgentService : IAgentService
             Model = settings.Model,
             DurationMs = durationMs,
             FetchedDocs = fetchedDocs.ToArray(),
-            RefusalReason = string.Equals(finalFinalizer?.StopReason, "error", StringComparison.Ordinal) ? "error" : null,
+            RefusalReason = string.Equals(finalFinalizer.StopReason, "error", StringComparison.Ordinal) ? "error" : null,
             HandedOffToFeedbackId = null
         };
         await _repo.AppendMessageAsync(message, cancellationToken);
