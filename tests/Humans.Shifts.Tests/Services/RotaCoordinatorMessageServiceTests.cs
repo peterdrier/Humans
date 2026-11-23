@@ -217,7 +217,7 @@ public sealed class RotaCoordinatorMessageServiceTests
     [HumansFact]
     public async Task SendRotaMessageAsync_ReturnsFailure_WhenNoActiveSignups()
     {
-        var rota = MakeRota(out _);
+        var rota = MakeRota();
         _repo.GetRotaAsync(rota.Id, RotaReadShape.View, Arg.Any<CancellationToken>()).Returns(rota);
 
         var result = await CreateSut().SendRotaMessageAsync(rota.Id, Guid.NewGuid(), "hello", includeShifts: true, Xunit.TestContext.Current.CancellationToken);
@@ -235,7 +235,7 @@ public sealed class RotaCoordinatorMessageServiceTests
     public async Task SendRotaMessageAsync_FansOut_OneEmailPerDistinctUser(string language, string expectedCulture)
     {
         using var actorCulture = new CultureScope("fr");
-        var rota = MakeRota(out _);
+        var rota = MakeRota();
         _repo.GetRotaAsync(rota.Id, RotaReadShape.View, Arg.Any<CancellationToken>()).Returns(rota);
 
         var userA = Guid.NewGuid();
@@ -274,7 +274,7 @@ public sealed class RotaCoordinatorMessageServiceTests
     [HumansFact]
     public async Task SendRotaMessageAsync_PersonalisesShiftListPerRecipient()
     {
-        var rota = MakeRota(out _);
+        var rota = MakeRota();
         _repo.GetRotaAsync(rota.Id, RotaReadShape.View, Arg.Any<CancellationToken>()).Returns(rota);
 
         var userA = Guid.NewGuid();
@@ -322,7 +322,7 @@ public sealed class RotaCoordinatorMessageServiceTests
     {
         // Reply-To is the sending coordinator while From stays shared (Shifts.md). This
         // section's part is passing the sender's address through as SenderEmail.
-        var rota = MakeRota(out _);
+        var rota = MakeRota();
         _repo.GetRotaAsync(rota.Id, RotaReadShape.View, Arg.Any<CancellationToken>()).Returns(rota);
 
         var userA = Guid.NewGuid();
@@ -347,7 +347,7 @@ public sealed class RotaCoordinatorMessageServiceTests
         var prefix = new string('x', prefixLength);
         var message = prefix + tail;
         var expectedSnippet = prefix + expectedTail;
-        var rota = MakeRota(out _);
+        var rota = MakeRota();
         _repo.GetRotaAsync(rota.Id, RotaReadShape.View, Arg.Any<CancellationToken>()).Returns(rota);
 
         var userA = Guid.NewGuid();
@@ -377,7 +377,7 @@ public sealed class RotaCoordinatorMessageServiceTests
     [HumansFact]
     public async Task SendRotaMessageAsync_SkipsRecipientWithNoEmail_DoesNotFail()
     {
-        var rota = MakeRota(out _);
+        var rota = MakeRota();
         _repo.GetRotaAsync(rota.Id, RotaReadShape.View, Arg.Any<CancellationToken>()).Returns(rota);
 
         var withEmail = Guid.NewGuid();
@@ -418,7 +418,7 @@ public sealed class RotaCoordinatorMessageServiceTests
     [Xunit.InlineData(EnqueueFailure.Cancellation)]
     public async Task SendRotaMessageAsync_IsolatesPerRecipientFailures_AndStillAudits(EnqueueFailure failure)
     {
-        var rota = MakeRota(out _);
+        var rota = MakeRota();
         _repo.GetRotaAsync(rota.Id, RotaReadShape.View, Arg.Any<CancellationToken>()).Returns(rota);
 
         var userA = Guid.NewGuid();
@@ -465,7 +465,7 @@ public sealed class RotaCoordinatorMessageServiceTests
     [Xunit.InlineData(EnqueueFailure.Cancellation)]
     public async Task SendRotaMessageAsync_ReturnsFailure_WhenAllRecipientEnqueuesThrow(EnqueueFailure failure)
     {
-        var rota = MakeRota(out _);
+        var rota = MakeRota();
         _repo.GetRotaAsync(rota.Id, RotaReadShape.View, Arg.Any<CancellationToken>()).Returns(rota);
 
         var userA = Guid.NewGuid();
@@ -811,7 +811,7 @@ public sealed class RotaCoordinatorMessageServiceTests
     [HumansFact]
     public async Task SendRotaMessageAsync_DropsShiftSection_WhenIncludeShiftsCleared()
     {
-        var rota = MakeRota(out _);
+        var rota = MakeRota();
         _repo.GetRotaAsync(rota.Id, RotaReadShape.View, Arg.Any<CancellationToken>()).Returns(rota);
 
         var userA = Guid.NewGuid();
@@ -998,9 +998,9 @@ public sealed class RotaCoordinatorMessageServiceTests
         return rota;
     }
 
-    private Rota MakeRota(out EventSettings es)
+    private Rota MakeRota()
     {
-        es = new EventSettings
+        var es = new EventSettings
         {
             Id = Guid.NewGuid(),
             EventName = "Test Event",
