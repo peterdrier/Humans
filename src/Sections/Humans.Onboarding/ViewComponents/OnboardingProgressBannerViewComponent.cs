@@ -15,7 +15,7 @@ internal sealed class OnboardingProgressBannerViewComponent(
         var hidden = new OnboardingProgressBannerViewModel(Show: false);
         var ct = HttpContext.RequestAborted;
 
-        if (User?.Identity?.IsAuthenticated != true)
+        if (User.Identity?.IsAuthenticated != true)
             return View(hidden);
 
         var userIdRaw = UserClaimsPrincipal.FindFirst(ClaimTypes.NameIdentifier)?.Value;

@@ -362,7 +362,7 @@ internal sealed class EventsController(
     private void ValidateSchedule(DateOnly date, TimeOnly time, int durationMinutes, EventSettingsInfo settings)
     {
         if (!ModelState.IsValid || CanDisplaySchedule(
-            LocalDateTime.FromDateTime(date.ToDateTime(time)), durationMinutes, settings?.TimeZone)) return;
+            LocalDateTime.FromDateTime(date.ToDateTime(time)), durationMinutes, settings.TimeZone)) return;
         logger.LogWarning("Event form rejected: schedule is outside the supported calendar range");
         ModelState.AddModelError(nameof(IndividualEventFormViewModel.StartDate),
             localizer["Events_Upload_DateRange"].Value);
