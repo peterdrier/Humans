@@ -7,15 +7,13 @@ namespace Humans.Backdoor.Services;
 internal interface IBackdoorApiKeyService : IApplicationService
 {
     /// <summary>
-    /// Returns the plaintext: the only moment it exists. Rejects a missing or over-long label, an actor who is neither
-    /// the owner nor a full Admin, and an owner no <see cref="BackdoorScope"/> admits. Owners below Admin and Board get
+    /// Returns the plaintext: the only moment it exists. Rejects a missing or over-long label and an owner no <see cref="BackdoorScope"/> admits. Owners below Admin and Board get
     /// a key that expires after <see cref="BackdoorApiKeyService.ShortKeyLifetime"/>.
     /// </summary>
     Task<BackdoorKeyIssueResult> IssueAsync(
         Guid ownerUserId, string label, Guid actorUserId, CancellationToken ct = default);
 
-    /// <summary>Revokes an active key. Returns false if it is missing, already revoked, or neither the actor's own nor
-    /// the actor a full Admin.</summary>
+    /// <summary>Revokes an active key. Returns false if it is missing or already revoked.</summary>
     Task<bool> RevokeAsync(Guid keyId, Guid actorUserId, CancellationToken ct = default);
 
     /// <summary>
@@ -50,7 +48,6 @@ internal enum BackdoorKeyError
     LabelRequired,
     LabelTooLong,
     NotEligible,
-    NotAllowed,
     NotFound,
 }
 

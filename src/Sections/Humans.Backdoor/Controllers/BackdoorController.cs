@@ -1,9 +1,11 @@
 using Humans.Auth.Contracts;
 using Humans.Backdoor.Models;
 using Humans.Backdoor.Services;
+using Humans.Base.Authorization;
 using Humans.Base.Constants;
 using Humans.Base.Controllers;
 using Humans.Users.Contracts;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Localization;
 
@@ -21,6 +23,7 @@ internal sealed class BackdoorController(
     IBackdoorApiKeyService keys,
     IRoleAssignmentService roles,
     IUserService users,
+    IAuthorizationService authorization,
     IStringLocalizer<BackdoorResource> localizer) : HumansControllerBase(users)
 {
     private const string NewKeyTempDataKey = "BackdoorNewKey";
@@ -31,12 +34,12 @@ internal sealed class BackdoorController(
         var (userMissing, me) = await RequireCurrentUserAsync(ct);
         if (userMissing is not null) return userMissing;
 
-        if (!SeesEveryKey && !await keys.IsEligibleAsync(me.Id, ct)) return Forbid();
+        if (!await SeesEveryKeyAsync() && !await keys.IsEligibleAsync(me.Id, ct)) return Forbid();
 
         return View(await BuildViewModelAsync(me.Id, TempData[NewKeyTempDataKey] as string, ct));
     }
 
-    /// <summary>No owner means the caller's own key; naming someone else is Admin-only, enforced by the service.</summary>
+    /// <summary>No owner means the caller's own key; naming someone else is Admin-only.</summary>
     [HttpPost("Issue")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Issue(Guid? ownerUserId, string label, CancellationToken ct)
@@ -44,7 +47,14 @@ internal sealed class BackdoorController(
         var (userMissing, actor) = await RequireCurrentUserAsync(ct);
         if (userMissing is not null) return userMissing;
 
-        var result = await keys.IssueAsync(ownerUserId ?? actor.Id, label ?? string.Empty, actor.Id, ct);
+        var owner = ownerUserId ?? actor.Id;
+        if (!await MayHandleKeysOfAsync(owner, actor.Id))
+        {
+            SetError(localizer["Backdoor_Error_NotAllowed"]);
+            return RedirectToAction(nameof(Index));
+        }
+
+        var result = await keys.IssueAsync(owner, label ?? string.Empty, actor.Id, ct);
         return RedirectAfter(result);
     }
 
@@ -54,6 +64,9 @@ internal sealed class BackdoorController(
     {
         var (userMissing, actor) = await RequireCurrentUserAsync(ct);
         if (userMissing is not null) return userMissing;
+
+        if (!await MayHandleKeyAsync(id, actor.Id, ct))
+            return RedirectAfter(BackdoorKeyIssueResult.Failed(BackdoorKeyError.NotFound));
 
         var result = await keys.RotateAsync(id, actor.Id, ct);
         return RedirectAfter(result);
@@ -66,7 +79,7 @@ internal sealed class BackdoorController(
         var (userMissing, actor) = await RequireCurrentUserAsync(ct);
         if (userMissing is not null) return userMissing;
 
-        if (await keys.RevokeAsync(id, actor.Id, ct))
+        if (await MayHandleKeyAsync(id, actor.Id, ct) && await keys.RevokeAsync(id, actor.Id, ct))
             SetSuccess(localizer["Backdoor_Revoked"]);
         else
             SetError(localizer["Backdoor_Error_NotFound"]);
@@ -89,15 +102,28 @@ internal sealed class BackdoorController(
         return RedirectToAction(nameof(Index));
     }
 
-    private bool SeesEveryKey => User.IsInRole(RoleNames.Admin) || User.IsInRole(RoleNames.Board);
+    private async Task<bool> SeesEveryKeyAsync() =>
+        (await authorization.AuthorizeAsync(User, PolicyNames.BoardOrAdmin)).Succeeded;
+
+    private async Task<bool> IsAdminAsync() =>
+        (await authorization.AuthorizeAsync(User, PolicyNames.AdminOnly)).Succeeded;
+
+    /// <summary>Your own keys always; anyone's only as a full Admin. Someone else's key reads as missing.</summary>
+    private async Task<bool> MayHandleKeysOfAsync(Guid ownerUserId, Guid actorUserId) =>
+        ownerUserId == actorUserId || await IsAdminAsync();
+
+    private async Task<bool> MayHandleKeyAsync(Guid keyId, Guid actorUserId, CancellationToken ct) =>
+        (await keys.ListAsync(ct)).FirstOrDefault(k => k.Id == keyId) is { } key
+        && await MayHandleKeysOfAsync(key.UserId, actorUserId);
 
     private async Task<BackdoorKeysViewModel> BuildViewModelAsync(
         Guid me, string? newPlaintextKey, CancellationToken ct)
     {
         var rows = await keys.ListAsync(ct);
-        if (!SeesEveryKey)
+        var seesEveryKey = await SeesEveryKeyAsync();
+        if (!seesEveryKey)
             rows = [.. rows.Where(r => r.UserId == me)];
-        var isAdmin = User.IsInRole(RoleNames.Admin);
+        var isAdmin = await IsAdminAsync();
 
         return new BackdoorKeysViewModel
         {
@@ -116,7 +142,7 @@ internal sealed class BackdoorController(
             EligibleUsers = isAdmin ? await AllocationCandidatesAsync(ct) : [],
             NewPlaintextKey = newPlaintextKey,
             ShortKeyLifetimeDays = (int)BackdoorApiKeyService.ShortKeyLifetime.TotalDays,
-            ShowsOwners = SeesEveryKey,
+            ShowsOwners = seesEveryKey,
         };
     }
 

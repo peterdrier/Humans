@@ -48,9 +48,6 @@ internal sealed class BackdoorApiKeyService(
         if (label.Length > MaxLabelLength)
             return BackdoorKeyIssueResult.Failed(BackdoorKeyError.LabelTooLong);
 
-        if (!await MayHandleKeysOfAsync(ownerUserId, actorUserId, ct))
-            return BackdoorKeyIssueResult.Failed(BackdoorKeyError.NotAllowed);
-
         var owner = await GetEligibleOwnerAsync(ownerUserId, ct);
         if (owner is null)
         {
@@ -69,10 +66,9 @@ internal sealed class BackdoorApiKeyService(
     public async Task<bool> RevokeAsync(Guid keyId, Guid actorUserId, CancellationToken ct = default)
     {
         var key = await repository.GetByIdAsync(keyId, ct);
-        if (key is null || !key.IsActive || !await MayHandleKeysOfAsync(key.UserId, actorUserId, ct))
+        if (key is null || !key.IsActive)
         {
-            logger.LogWarning("Backdoor key {KeyId} not revocable by {ActorUserId}: missing, revoked or not theirs",
-                keyId, actorUserId);
+            logger.LogWarning("Backdoor key {KeyId} not revocable: missing or already revoked", keyId);
             return false;
         }
 
@@ -92,9 +88,6 @@ internal sealed class BackdoorApiKeyService(
             logger.LogWarning("Backdoor key {KeyId} not rotatable: missing or already revoked", keyId);
             return BackdoorKeyIssueResult.Failed(BackdoorKeyError.NotFound);
         }
-
-        if (!await MayHandleKeysOfAsync(key.UserId, actorUserId, ct))
-            return BackdoorKeyIssueResult.Failed(BackdoorKeyError.NotFound);
 
         // Eligibility is re-checked on rotation, not just at first issue: an owner who has since lost every scope, or
         // been suspended, does not get a fresh credential out of a rotate. The expiry is worked out afresh too.
@@ -194,11 +187,6 @@ internal sealed class BackdoorApiKeyService(
 
         return null;
     }
-
-    /// <summary>Your own keys always; anyone's only as a full Admin.</summary>
-    private async Task<bool> MayHandleKeysOfAsync(Guid ownerUserId, Guid actorUserId, CancellationToken ct) =>
-        ownerUserId == actorUserId
-        || (await roles.GetActiveForUserAsync(actorUserId, ct)).Any(a => string.Equals(a.RoleName, RoleNames.Admin, StringComparison.Ordinal));
 
     private async Task<Instant?> ExpiryForAsync(BackdoorKeyOwner owner, CancellationToken ct) =>
         await IsStaffAsync(owner, ct) ? null : clock.GetCurrentInstant() + ShortKeyLifetime;

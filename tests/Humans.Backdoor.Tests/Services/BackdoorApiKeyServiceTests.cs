@@ -125,32 +125,6 @@ public class BackdoorApiKeyServiceTests
     }
 
     [HumansFact]
-    public async Task Only_an_Admin_makes_a_key_for_someone_else()
-    {
-        var boardActor = Guid.NewGuid();
-        MakeEligible(boardActor, admin: false, board: true);
-        MakeEligible(_owner);
-
-        var result = await _sut.IssueAsync(_owner, "laptop", boardActor);
-
-        result.Error.Should().Be(BackdoorKeyError.NotAllowed);
-        await _repository.DidNotReceiveWithAnyArgs().AddAsync(default!);
-    }
-
-    [HumansFact]
-    public async Task Only_an_Admin_revokes_someone_elses_key()
-    {
-        var boardActor = Guid.NewGuid();
-        MakeEligible(boardActor, admin: false, board: true);
-        var key = ExistingKey();
-        _repository.GetByIdAsync(key.Id, Arg.Any<CancellationToken>()).Returns(key);
-
-        (await _sut.RevokeAsync(key.Id, boardActor)).Should().BeFalse();
-
-        await _repository.DidNotReceiveWithAnyArgs().RevokeAsync(default, default, default);
-    }
-
-    [HumansFact]
     public async Task ResolveOwner_refuses_an_expired_key()
     {
         MakeEligible(_owner);
