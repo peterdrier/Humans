@@ -188,12 +188,8 @@ internal sealed class TicketQueryService(
         TicketOrder o, string? currentEventId,
         IReadOnlyDictionary<Guid, TicketTransferRequest> transfersByAttendee) => new(
         Id: o.Id,
-        VendorOrderId: o.VendorOrderId,
-        BuyerName: o.BuyerName,
         BuyerEmail: o.BuyerEmail,
         TotalAmount: o.TotalAmount,
-        Currency: o.Currency,
-        DiscountCode: o.DiscountCode,
         PaymentStatus: o.PaymentStatus,
         VendorEventId: o.VendorEventId,
         PurchasedAt: o.PurchasedAt,
@@ -210,7 +206,6 @@ internal sealed class TicketQueryService(
                 AttendeeName: a.AttendeeName,
                 AttendeeEmail: a.AttendeeEmail,
                 TicketTypeName: a.TicketTypeName,
-                Price: a.Price,
                 Status: a.Status,
                 MatchedUserId: a.MatchedUserId,
                 Barcode: a.Barcode,
@@ -523,16 +518,16 @@ internal sealed class TicketQueryService(
         int fallbackTarget, CancellationToken ct = default)
     {
         if (ticketsSold <= 0 || grossRevenue <= 0)
-            return new BreakEvenResult { Target = fallbackTarget, Currency = currency };
+            return new BreakEvenResult { Target = fallbackTarget };
 
         var activeBudgetYear = await budgetService.GetActiveYearAsync(ct);
         if (activeBudgetYear is null)
-            return new BreakEvenResult { Target = fallbackTarget, Currency = currency };
+            return new BreakEvenResult { Target = fallbackTarget };
 
         var summary = budgetService.ComputeBudgetSummary(activeBudgetYear.Groups);
         var plannedExpenses = Math.Abs(summary.TotalExpenses);
         if (plannedExpenses <= 0)
-            return new BreakEvenResult { Target = fallbackTarget, Currency = currency };
+            return new BreakEvenResult { Target = fallbackTarget };
 
         // break-even = sold + ceil((plannedExpenses - revenue) / avgPrice)
         var grossAverageTicketPrice = grossRevenue / ticketsSold;
@@ -553,7 +548,7 @@ internal sealed class TicketQueryService(
             ? $"{currency} {remainingExpenses:N2} remaining expenses / {currency} {grossAverageTicketPrice:N2} gross avg. per ticket = {remainingTicketsToSell:N0} tickets still to sell"
             : null;
 
-        return new BreakEvenResult { Target = target, Detail = detail, Currency = currency };
+        return new BreakEvenResult { Target = target, Detail = detail };
     }
 
     public async Task<CodeTrackingData> GetCodeTrackingDataAsync(string? search, CancellationToken ct = default)
@@ -568,7 +563,6 @@ internal sealed class TicketQueryService(
                 CreatedAt = c.CreatedAt,
                 TotalGrants = c.TotalGrants,
                 Redeemed = c.Redeemed,
-                Unused = c.TotalGrants - c.Redeemed,
                 RedemptionRate = c.TotalGrants > 0
                     ? Math.Round(c.Redeemed * 100m / c.TotalGrants, 1)
                     : 0,
@@ -820,8 +814,6 @@ internal sealed class TicketQueryService(
                 a.Id,
                 a.AttendeeName,
                 a.AttendeeEmail,
-                a.VendorTicketId,
-                a.TicketTypeName,
                 a.Status,
                 CheckedInAt: a.CheckedInAt))
             .ToList();

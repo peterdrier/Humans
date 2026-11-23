@@ -30,7 +30,5 @@ public record UserTicketHoldingRow(
     Guid AttendeeId,
     string AttendeeName,
     string? AttendeeEmail,
-    string VendorTicketId,
-    string TicketTypeName,
     TicketAttendeeStatus Status,
     Instant? CheckedInAt = null);

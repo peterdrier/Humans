@@ -1,4 +1,3 @@
-using Humans.Consent.Contracts;
 using Humans.Users.Tests.Infrastructure;
 using Humans.Users.Controllers;
 using Humans.Users.Services;
@@ -31,8 +30,6 @@ namespace Humans.Users.Tests.Controllers;
 
 public class ProfileViewControllerPopoverTests
 {
-    private readonly Dictionary<Guid, ConsentReviewInfo> _reviews = [];
-    private readonly IConsentService _consentService;
     private readonly IUserManagement _userService = Substitute.For<IUserManagement>();
     private readonly IProfilePictureService _profilePictureService = Substitute.For<IProfilePictureService>();
     private readonly ITeamService _teamService = Substitute.For<ITeamService>();
@@ -45,7 +42,6 @@ public class ProfileViewControllerPopoverTests
 
     public ProfileViewControllerPopoverTests()
     {
-        _consentService = ConsentReviewStubs.Create(_reviews);
         _sharedLocalizer[Arg.Any<string>()].Returns(ci => new LocalizedString(ci.Arg<string>(), ci.Arg<string>()));
 
         _controller = new ProfileViewController(
@@ -219,7 +215,7 @@ public class ProfileViewControllerPopoverTests
             .Returns(BuildUserInfo(user, profile, userEmails: null));
 
         var season = new CampSeasonInfo(
-            Guid.NewGuid(), Guid.NewGuid(), "camp-funhouse", 2026, null,
+            Guid.NewGuid(), Guid.NewGuid(), 2026, null,
             "Camp Funhouse", "", "", [],
             CampSeasonStatus.Active, YesNoMaybe.Yes, YesNoMaybe.No,
             AdultPlayspacePolicy.No, 0, null, null, null, 0, null, null);

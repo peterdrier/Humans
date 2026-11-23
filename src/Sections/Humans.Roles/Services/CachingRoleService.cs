@@ -36,7 +36,7 @@ internal sealed class CachingRoleService(
     public async Task<IReadOnlyList<Holding>> GetHoldingsAsync(Guid userId, CancellationToken ct = default) =>
         (await GetRolesAsync(ct))
             .Where(r => r.Holders.Any(h => h.UserId == userId))
-            .Select(r => new Holding(r.Owner, r.IsCoordinator, r.PermissionKeys, r.Name))
+            .Select(r => new Holding(r.Owner, r.IsCoordinator, r.PermissionKeys))
             .ToList();
 
     public Task<bool> CanManageAsync(Owner owner, Guid userId, CancellationToken ct = default) =>

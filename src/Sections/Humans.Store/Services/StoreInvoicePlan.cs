@@ -32,7 +32,7 @@ internal sealed record StoreInvoicePlan(
     public decimal KeptDepositsEur => DepositsChargedEur - DepositsReturnedEur;
 
     /// <summary><paramref name="Price"/> is VAT-exclusive per unit.</summary>
-    internal sealed record Line(Guid ProductId, string Name, decimal Units, decimal Price, decimal VatRate, bool IsKeptDeposit);
+    internal sealed record Line(Guid ProductId, string Name, decimal Units, decimal Price, decimal VatRate);
 
     internal sealed record DepositReturn(decimal AmountEur, NodaTime.Instant ReturnedAt, string? ProductName);
 
@@ -46,7 +46,7 @@ internal sealed record StoreInvoicePlan(
         {
             var t = totalsByLine[line.Id];
             lines.Add(new Line(line.ProductId, productNames[line.ProductId], line.Qty, t.EffectiveUnitPrice,
-                t.EffectiveVatRate, IsKeptDeposit: false));
+                t.EffectiveVatRate));
         }
 
         var chargedByProduct = order.Lines
@@ -76,8 +76,7 @@ internal sealed record StoreInvoicePlan(
             }
             if (kept == 0m) continue;
             if (SolveNetPrice(kept, KeptDepositVatRate) is { } net)
-                lines.Add(new Line(productId, $"{productNames[productId]} – kept deposit", 1m, net, KeptDepositVatRate,
-                    IsKeptDeposit: true));
+                lines.Add(new Line(productId, $"{productNames[productId]} – kept deposit", 1m, net, KeptDepositVatRate));
             else
                 refusal ??= $"The kept deposit of EUR {kept:0.00} for {productNames[productId]} can't be invoiced to the "
                     + $"cent at {KeptDepositVatRate:0}% VAT.";

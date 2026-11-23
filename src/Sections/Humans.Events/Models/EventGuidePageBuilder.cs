@@ -146,7 +146,6 @@ internal sealed class EventGuidePageBuilder(IEventManagement guide, ICampService
                 .OrderBy(g => g.Key)
                 .Select(g => new BrowseDayGroup
                 {
-                    DayOffset = g.Key,
                     DayLabel = gateOpeningDate != null
                         ? gateOpeningDate.Value.PlusDays(g.Key).ToWeekdayDayMonth()
                         : g.First().StartAt.ToWeekdayDayMonth(),

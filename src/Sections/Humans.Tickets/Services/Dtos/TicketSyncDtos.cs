@@ -8,6 +8,6 @@ namespace Humans.Tickets.Services.Dtos;
 /// Read <c>CheckedInAt</c> for check-in; <c>Status</c> stays Valid once scanned.
 /// </summary>
 internal sealed record MatchedAttendeeRow(
-    string VendorTicketId, Guid MatchedUserId, TicketAttendeeStatus Status, Instant? CheckedInAt);
+    Guid MatchedUserId, TicketAttendeeStatus Status, Instant? CheckedInAt);
 
 internal sealed record OrderDiscountCodeRow(string Code, Instant PurchasedAt);

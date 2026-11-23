@@ -285,7 +285,7 @@ public class MailerLiteAudienceDebugSnapshotBuilderTests
             }
             if (string.Equals(section, "ml", StringComparison.Ordinal))
             {
-                var rows = Enumerable.Range(0, count).Select(i => new DebugMlRow($"s{i}", null, $"User {i:D3}", $"u{i}@x.com", null)).ToList();
+                var rows = Enumerable.Range(0, count).Select(i => new DebugMlRow(null, $"User {i:D3}", $"u{i}@x.com", null)).ToList();
                 var result = MailerLiteAudienceDebugSnapshotBuilder.PageMl(rows, requested, options);
                 return (result.Rows.Select(r => r.Name).ToList(), result.State, result.Total);
             }

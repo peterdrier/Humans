@@ -46,9 +46,7 @@ internal sealed class VolunteerTrackingService(
         return all
             .Where(g => g.AvailableDayOffsets.Contains(dayOffset))
             .Select(availability => new GeneralAvailabilitySnapshot(
-                availability.UserId,
-                availability.EventSettingsId,
-                availability.AvailableDayOffsets))
+                availability.UserId))
             .ToList();
     }
 

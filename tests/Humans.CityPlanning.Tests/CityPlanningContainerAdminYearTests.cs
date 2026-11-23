@@ -187,13 +187,13 @@ public sealed class CityPlanningContainerAdminYearTests : CityPlanningTestBase
     }
 
     private static ContainerDto ContainerDtoFor(Guid id) =>
-        new(id, Guid.NewGuid(), "Box", null, [], Instant.MinValue, Instant.MinValue);
+        new(id, Guid.NewGuid(), "Box", null, []);
 
     private Guid SeedLeadCamp()
     {
         var campId = Guid.NewGuid();
         var season = new CampSeasonInfo(
-            Guid.NewGuid(), campId, string.Empty, RouteYear, null, "Lead Camp", string.Empty, string.Empty,
+            Guid.NewGuid(), campId, RouteYear, null, "Lead Camp", string.Empty, string.Empty,
             [], CampSeasonStatus.Pending, YesNoMaybe.No, YesNoMaybe.No, AdultPlayspacePolicy.No,
             0, null, null, null, 0, null, null)
         {

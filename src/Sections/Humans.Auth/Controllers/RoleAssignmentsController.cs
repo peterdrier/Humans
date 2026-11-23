@@ -51,9 +51,7 @@ internal sealed class RoleAssignmentsController(
                 ValidFrom = ra.ValidFrom.ToDateTimeUtc(),
                 ValidTo = ra.ValidTo?.ToDateTimeUtc(),
                 Notes = ra.Notes,
-                IsActive = ra.IsActive(now),
-                CreatedByName = ra.CreatedByDisplayName,
-                CreatedAt = ra.CreatedAt.ToDateTimeUtc()
+                IsActive = ra.IsActive(now)
             }).ToList(),
             RoleFilter = role,
             ShowInactive = showInactive,

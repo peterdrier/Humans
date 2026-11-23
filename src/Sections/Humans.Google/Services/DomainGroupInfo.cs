@@ -4,7 +4,6 @@ internal sealed class DomainGroupInfo
 {
     public string GroupEmail { get; init; } = string.Empty;
     public string DisplayName { get; init; } = string.Empty;
-    public string? GoogleId { get; init; }
     public int MemberCount { get; init; }
     public string? LinkedTeamName { get; init; }
     public Guid? LinkedTeamId { get; init; }

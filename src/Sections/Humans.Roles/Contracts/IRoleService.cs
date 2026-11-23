@@ -49,5 +49,4 @@ public sealed record RoleInfo(
 /// <summary>A person in one slot.</summary>
 /// <param name="UserId">The holder.</param>
 /// <param name="Slot">Zero-based.</param>
-/// <param name="AssignedAt">When they took the slot.</param>
-public sealed record RoleHolder(Guid UserId, int Slot, Instant AssignedAt);
+public sealed record RoleHolder(Guid UserId, int Slot);

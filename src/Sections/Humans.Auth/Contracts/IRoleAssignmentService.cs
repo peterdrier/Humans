@@ -45,8 +45,7 @@ public sealed record RoleAssignmentSummarySnapshot(
     Instant? ValidTo,
     string? Notes,
     Guid CreatedByUserId,
-    string? CreatedByDisplayName,
-    Instant CreatedAt)
+    string? CreatedByDisplayName)
 {
     public bool IsActive(Instant now) =>
         ValidFrom <= now && (ValidTo is null || ValidTo > now);

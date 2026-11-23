@@ -25,9 +25,7 @@ public sealed record ApprovedEventView(
     int DurationMinutes,
     bool IsRecurring,
     string? RecurrenceDays,
-    int? PriorityRank,
-    Instant SubmittedAt,
-    Instant LastUpdatedAt)
+    int? PriorityRank)
 {
     public IReadOnlyList<Instant> GetOccurrenceInstants(LocalDate gateOpeningDate, DateTimeZone timeZone) =>
         EventRecurrenceDays.GetOccurrenceInstants(

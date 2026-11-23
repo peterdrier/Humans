@@ -20,10 +20,7 @@ internal sealed record BudgetGroupSummarySnapshot(
     bool IsDepartmentGroup);
 
 internal sealed record BudgetAuditLogSnapshot(
-    Guid Id,
-    Guid BudgetYearId,
     string EntityType,
-    Guid EntityId,
     string? FieldName,
     string? OldValue,
     string? NewValue,

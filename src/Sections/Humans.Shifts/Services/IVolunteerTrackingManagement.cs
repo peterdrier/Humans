@@ -7,9 +7,7 @@ using Humans.Shifts.Services.Dtos;
 namespace Humans.Shifts.Services;
 
 internal sealed record GeneralAvailabilitySnapshot(
-    Guid UserId,
-    Guid EventSettingsId,
-    IReadOnlyList<int> AvailableDayOffsets);
+    Guid UserId);
 
 internal interface IVolunteerTrackingManagement : IApplicationService, IVolunteerTrackingService
 {

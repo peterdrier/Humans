@@ -60,7 +60,7 @@ public class ExpenseReportServiceHoldedOutboxTests
             default,
             null,
             0,
-            new BudgetCategoryGroupSnapshot(groupId, Guid.NewGuid(), "Camp Build", false, false, null),
+            new BudgetCategoryGroupSnapshot(Guid.NewGuid(), "Camp Build", false, false, null),
             []);
 
         _repo = Substitute.For<IExpenseRepository>();
@@ -238,7 +238,6 @@ public class ExpenseReportServiceHoldedOutboxTests
                 new()
                 {
                     Id = Guid.NewGuid(),
-                    ExpenseReportId = reportId,
                     Description = "Wood",
                     Amount = 50m,
                     LineType = ExpenseLineType.Receipt,
@@ -271,7 +270,6 @@ public class ExpenseReportServiceHoldedOutboxTests
         return new ExpenseLineDto
         {
             Id = Guid.NewGuid(),
-            ExpenseReportId = reportId,
             Description = fileName,
             Amount = 10m,
             LineType = ExpenseLineType.Receipt,
@@ -474,7 +472,7 @@ public class ExpenseReportServiceHoldedOutboxTests
         {
             Lines = new List<ExpenseLineDto>
             {
-                new() { Id = Guid.NewGuid(), ExpenseReportId = Guid.NewGuid(), Description = "Wood", Amount = 42m, LineType = ExpenseLineType.Receipt, SortOrder = 1 },
+                new() { Id = Guid.NewGuid(), Description = "Wood", Amount = 42m, LineType = ExpenseLineType.Receipt, SortOrder = 1 },
             },
         };
         var outboxEvent = MakeEvent(report.Id, HoldedExpenseOutboxEventType.CreateIncomingDoc);
@@ -510,7 +508,7 @@ public class ExpenseReportServiceHoldedOutboxTests
             BudgetYearId = null,
             Lines = new List<ExpenseLineDto>
             {
-                new() { Id = Guid.NewGuid(), ExpenseReportId = Guid.NewGuid(), Description = "Wood", Amount = 42m, LineType = ExpenseLineType.Receipt, SortOrder = 1 },
+                new() { Id = Guid.NewGuid(), Description = "Wood", Amount = 42m, LineType = ExpenseLineType.Receipt, SortOrder = 1 },
             },
         };
         var outboxEvent = MakeEvent(report.Id, HoldedExpenseOutboxEventType.CreateIncomingDoc);
@@ -539,7 +537,7 @@ public class ExpenseReportServiceHoldedOutboxTests
         {
             Lines = new List<ExpenseLineDto>
             {
-                new() { Id = Guid.NewGuid(), ExpenseReportId = Guid.NewGuid(), Description = "Wood", Amount = 42m, LineType = ExpenseLineType.Receipt, SortOrder = 1 },
+                new() { Id = Guid.NewGuid(), Description = "Wood", Amount = 42m, LineType = ExpenseLineType.Receipt, SortOrder = 1 },
             },
         };
         var outboxEvent = MakeEvent(report.Id, HoldedExpenseOutboxEventType.CreateIncomingDoc);
@@ -571,7 +569,7 @@ public class ExpenseReportServiceHoldedOutboxTests
             MaxAmount = 60m,
             Lines = new List<ExpenseLineDto>
             {
-                new() { Id = Guid.NewGuid(), ExpenseReportId = Guid.NewGuid(), Description = "Wood", Amount = 100m, LineType = ExpenseLineType.Receipt, SortOrder = 1 },
+                new() { Id = Guid.NewGuid(), Description = "Wood", Amount = 100m, LineType = ExpenseLineType.Receipt, SortOrder = 1 },
             },
         };
         var outboxEvent = MakeEvent(report.Id, HoldedExpenseOutboxEventType.CreateIncomingDoc);
@@ -605,7 +603,7 @@ public class ExpenseReportServiceHoldedOutboxTests
             MaxAmount = 100m,
             Lines = new List<ExpenseLineDto>
             {
-                new() { Id = Guid.NewGuid(), ExpenseReportId = Guid.NewGuid(), Description = "Wood", Amount = 100m, LineType = ExpenseLineType.Receipt, SortOrder = 1 },
+                new() { Id = Guid.NewGuid(), Description = "Wood", Amount = 100m, LineType = ExpenseLineType.Receipt, SortOrder = 1 },
             },
         };
         var outboxEvent = MakeEvent(report.Id, HoldedExpenseOutboxEventType.CreateIncomingDoc);
@@ -652,8 +650,8 @@ public class ExpenseReportServiceHoldedOutboxTests
         {
             Lines = new List<ExpenseLineDto>
             {
-                new() { Id = Guid.NewGuid(), ExpenseReportId = Guid.NewGuid(), Description = "Line A", Amount = 10m, LineType = ExpenseLineType.Receipt, SortOrder = 1, AttachmentId = attachment1.Id, Attachment = attachment1 },
-                new() { Id = Guid.NewGuid(), ExpenseReportId = Guid.NewGuid(), Description = "Line B", Amount = 20m, LineType = ExpenseLineType.Receipt, SortOrder = 2, AttachmentId = attachment2.Id, Attachment = attachment2 },
+                new() { Id = Guid.NewGuid(), Description = "Line A", Amount = 10m, LineType = ExpenseLineType.Receipt, SortOrder = 1, AttachmentId = attachment1.Id, Attachment = attachment1 },
+                new() { Id = Guid.NewGuid(), Description = "Line B", Amount = 20m, LineType = ExpenseLineType.Receipt, SortOrder = 2, AttachmentId = attachment2.Id, Attachment = attachment2 },
             }
         };
 
@@ -703,7 +701,7 @@ public class ExpenseReportServiceHoldedOutboxTests
         {
             Lines = new List<ExpenseLineDto>
             {
-                new() { Id = Guid.NewGuid(), ExpenseReportId = Guid.NewGuid(), Description = "No receipt", Amount = 5m, LineType = ExpenseLineType.Receipt, SortOrder = 1, AttachmentId = null, Attachment = null },
+                new() { Id = Guid.NewGuid(), Description = "No receipt", Amount = 5m, LineType = ExpenseLineType.Receipt, SortOrder = 1, AttachmentId = null, Attachment = null },
             }
         };
 
@@ -745,7 +743,7 @@ public class ExpenseReportServiceHoldedOutboxTests
         {
             Lines = new List<ExpenseLineDto>
             {
-                new() { Id = Guid.NewGuid(), ExpenseReportId = Guid.NewGuid(), Description = "Line A", Amount = 10m, LineType = ExpenseLineType.Receipt, SortOrder = 1, AttachmentId = attachment.Id, Attachment = attachment },
+                new() { Id = Guid.NewGuid(), Description = "Line A", Amount = 10m, LineType = ExpenseLineType.Receipt, SortOrder = 1, AttachmentId = attachment.Id, Attachment = attachment },
             }
         };
         var outboxEvent = MakeEvent(report.Id, HoldedExpenseOutboxEventType.CreateIncomingDoc);
@@ -840,7 +838,6 @@ public class ExpenseReportServiceHoldedOutboxTests
         ExpenseLineDto Line(string description, int sortOrder) => new()
         {
             Id = Guid.NewGuid(),
-            ExpenseReportId = Guid.NewGuid(),
             Description = description,
             Amount = 100m,
             LineType = ExpenseLineType.Receipt,

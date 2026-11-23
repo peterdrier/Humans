@@ -132,7 +132,6 @@ internal sealed record WorkgroupInfo(
 /// <summary><paramref name="LeftAt"/> is null for a current member; <paramref name="IsPending"/> is true until a
 /// coordinator approves the request.</summary>
 internal sealed record WorkgroupMemberInfo(
-    Guid Id,
     Guid UserId,
     WorkgroupMemberRole Role,
     Instant JoinedAt,
@@ -185,14 +184,11 @@ internal sealed record WorkgroupLogEntryInfo(
     string? Title,
     string? Body,
     Guid? AuthorUserId,
-    Guid? DocumentId,
-    Guid? SurveyId,
     Instant CreatedAt,
     Guid? MeetingId = null);
 
 internal sealed record WorkgroupDocumentInfo(
     Guid Id,
-    Guid WorkgroupId,
     string Title,
     WorkgroupDocumentKind Kind,
     string Body,
@@ -203,8 +199,6 @@ internal sealed record WorkgroupDocumentInfo(
     Instant? DeliveredAt,
     WorkgroupDisposition? Disposition,
     string? DispositionNote,
-    Instant? DispositionAt,
-    Guid? DispositionByUserId,
     Guid? CreatedByUserId,
     Guid? UpdatedByUserId,
     Instant CreatedAt,
@@ -221,17 +215,13 @@ internal sealed record WorkgroupDocumentInfo(
 
 internal sealed record WorkgroupCommentInfo(
     Guid Id,
-    Guid DocumentId,
     string Category,
     Guid? AuthorUserId,
     string Body,
     Instant CreatedAt,
     WorkgroupCommentDisposition Disposition,
     string? Response,
-    Guid? RespondedByUserId,
-    Instant? RespondedAt,
     Instant? HiddenAt,
-    Guid? HiddenByUserId,
     string? HiddenReason);
 
 /// <summary>The applicant is always a coordinator; <paramref name="SecondCoordinatorUserId"/> is optional.</summary>
