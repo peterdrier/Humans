@@ -30,7 +30,7 @@ internal sealed class EventsController(
     ILogger<EventsController> logger,
     IStringLocalizer<EventsResource> localizer) : HumansCampControllerBase(users, camps, authorizationService)
 {
-    private readonly EventGuidePageBuilder guidePageBuilder = new(guide, camps);
+    private readonly EventGuidePageBuilder _guidePageBuilder = new(guide, camps);
 
     [HttpGet("MySubmissions")]
     public async Task<IActionResult> MySubmissions()
@@ -325,7 +325,7 @@ internal sealed class EventsController(
         var user = await GetCurrentUserInfoAsync(ct);
         if (user == null) return Challenge();
 
-        var model = await guidePageBuilder.BuildScheduleAsync(user.Id, ct);
+        var model = await _guidePageBuilder.BuildScheduleAsync(user.Id, ct);
 
         return View(model);
     }
@@ -338,7 +338,7 @@ internal sealed class EventsController(
         var user = await GetCurrentUserInfoAsync(ct);
         if (user == null) return Challenge();
 
-        var model = await guidePageBuilder.BuildBrowseAsync(user.Id, days, categoryId, venueId, q, favouritesOnly, ct);
+        var model = await _guidePageBuilder.BuildBrowseAsync(user.Id, days, categoryId, venueId, q, favouritesOnly, ct);
 
         return View(model);
     }

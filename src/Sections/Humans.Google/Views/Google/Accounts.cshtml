@@ -170,7 +170,7 @@
                     }
 
                 </text>;
-                Func<WorkspaceAccountInfo, IHtmlContent> account2faCell = @<text>
+                Func<WorkspaceAccountInfo, IHtmlContent> accountTwoFactorCell = @<text>
                     @if (item.IsEnrolledIn2Sv)
                     {
                         <span class="badge bg-success" title="2-Step Verification is enrolled on this account" data-bs-toggle="tooltip">
@@ -246,7 +246,7 @@
                     .Template("Name", nameCell, sortBy: a => a.FirstName + " " + a.LastName)
                     .Template("Linked Human", linkedHumanCell, sortBy: a => a.MatchedUserId.HasValue ? 1 : 0)
                     .Template("Status", statusCell, sortBy: a => a.IsSuspended ? 1 : 0)
-                    .Template("2FA", account2faCell, sortBy: a => a.IsEnrolledIn2Sv ? 1 : 0)
+                    .Template("2FA", accountTwoFactorCell, sortBy: a => a.IsEnrolledIn2Sv ? 1 : 0)
                     .Template("Recovery Email", recoveryEmailCell, sortBy: a => a.RecoveryEmail)
                     .Template("Created", createdCell, c => c.Css("text-nowrap"), sortBy: a => a.CreationTime)
                     .Template("Last Login", lastLoginCell, sortBy: a => a.LastLoginTime)

@@ -53,20 +53,20 @@ public sealed class IssuesServiceTests
     /// </summary>
     private static readonly IssueViewer Admin = new(Guid.NewGuid(), [RoleNames.Admin]);
 
-    private readonly FakeClock Clock = new(Instant.FromUtc(2026, 4, 29, 12, 0));
-    private readonly IAuditLogService AuditLog = Substitute.For<IAuditLogService>();
-    private readonly IAuditViewerService AuditViewer = Substitute.For<IAuditViewerService>();
-    private readonly InMemoryFileStorage FileStorage = new();
+    private readonly FakeClock _clock = new(Instant.FromUtc(2026, 4, 29, 12, 0));
+    private readonly IAuditLogService _auditLog = Substitute.For<IAuditLogService>();
+    private readonly IAuditViewerService _auditViewer = Substitute.For<IAuditViewerService>();
+    private readonly InMemoryFileStorage _fileStorage = new();
 
     /// <summary>
     /// The published section list. A substitute: the service
     /// reads it only to say, in the log line, whether an unrouted value at least names a real
     /// section — the routing decision itself is <c>IssueSectionRouting</c>'s.
     /// </summary>
-    private readonly ISectionCatalog SectionCatalog = Substitute.For<ISectionCatalog>();
+    private readonly ISectionCatalog _sectionCatalog = Substitute.For<ISectionCatalog>();
 
     /// <summary>Stands in for a users context; <c>SaveChangesAsync</c> is a no-op because the registry is the store the stubs read.</summary>
-    private readonly PeopleRegistry Db = new();
+    private readonly PeopleRegistry _db = new();
 
     private readonly IEmailService _emailService;
     private readonly IssuesEmails _emailMessages;
@@ -92,7 +92,7 @@ public sealed class IssuesServiceTests
         });
         _emailService = Substitute.For<IEmailService>();
         _emailMessages = TestIssuesEmails.Create(culture => _renderedEmailCultures.Add(culture));
-        AuditViewer
+        _auditViewer
             .GetFilteredAsync(
                 Arg.Any<string?>(), Arg.Any<Guid?>(), Arg.Any<Guid?>(), Arg.Any<IReadOnlyList<string>?>(),
                 Arg.Any<int>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
@@ -115,8 +115,8 @@ public sealed class IssuesServiceTests
 
         _service = new IssuesApplicationService(
             _repository, _userService, _roleService,
-            _emailService, _emailMessages, _notificationService, _notificationInbox, AuditLog, AuditViewer,
-            Clock, FileStorage, SectionCatalog, Domain.TestIssueQueues.Shipped(),
+            _emailService, _emailMessages, _notificationService, _notificationInbox, _auditLog, _auditViewer,
+            _clock, _fileStorage, _sectionCatalog, Domain.TestIssueQueues.Shipped(),
             _logger);
     }
 
@@ -146,7 +146,7 @@ public sealed class IssuesServiceTests
 
     private UserInfo? Info(Guid id)
     {
-        var user = Db.Users.FirstOrDefault(u => u.Id == id);
+        var user = _db.Users.FirstOrDefault(u => u.Id == id);
         // Seeded users are active members (have a profile) unless a test rejects them.
         return user is null
             ? null
@@ -171,9 +171,9 @@ public sealed class IssuesServiceTests
             FirstName = "Test",
             LastName = "User",
             PreferredLanguage = "en",
-            CreatedAt = Clock.GetCurrentInstant()
+            CreatedAt = _clock.GetCurrentInstant()
         };
-        Db.Users.Add(user);
+        _db.Users.Add(user);
         return user;
     }
 
@@ -334,7 +334,7 @@ public sealed class IssuesServiceTests
     {
         var reporterId = Guid.NewGuid();
         SeedUser(reporterId, "Reporter").Email = "r@r.com";
-        await Db.SaveChangesAsync(TestContext.Current.CancellationToken);
+        await _db.SaveChangesAsync(TestContext.Current.CancellationToken);
         var filerId = Guid.NewGuid();
 
         var issueId = await _service.CreateIssueAsync(
@@ -343,7 +343,7 @@ public sealed class IssuesServiceTests
             actorUserId: filerId, ct: TestContext.Current.CancellationToken);
 
         // The issue row records only the reporter, so the audit entry is the filer's one record.
-        await AuditLog.Received().LogAsync(
+        await _auditLog.Received().LogAsync(
             IssuesAuditActions.IssueCreated,
             nameof(Issue),
             issueId,
@@ -354,7 +354,7 @@ public sealed class IssuesServiceTests
 
         await _service.GetThreadAsync(issueId, Admin, TestContext.Current.CancellationToken);
 
-        await AuditViewer.Received().GetFilteredAsync(
+        await _auditViewer.Received().GetFilteredAsync(
             Arg.Any<string?>(), issueId, Arg.Any<Guid?>(),
             Arg.Is<IReadOnlyList<string>?>(a => a != null && a.Contains(IssuesAuditActions.IssueCreated.Name)),
             Arg.Any<int>(), Arg.Any<bool>(), Arg.Any<CancellationToken>());
@@ -366,10 +366,10 @@ public sealed class IssuesServiceTests
         var (_, issueId) = await SeedIssueAsync(IssueStatus.Open);
         var commenterId = Guid.NewGuid();
         SeedUser(commenterId, "Commenter").Email = "commenter@test.com";
-        await Db.SaveChangesAsync(TestContext.Current.CancellationToken);
+        await _db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var auditAt = Clock.GetCurrentInstant() + Duration.FromMinutes(1);
-        AuditViewer.GetFilteredAsync(
+        var auditAt = _clock.GetCurrentInstant() + Duration.FromMinutes(1);
+        _auditViewer.GetFilteredAsync(
                 Arg.Any<string?>(), issueId, Arg.Any<Guid?>(), Arg.Any<IReadOnlyList<string>?>(),
                 Arg.Any<int>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<AuditEvent>>(
@@ -395,7 +395,7 @@ public sealed class IssuesServiceTests
     {
         var userId = Guid.NewGuid();
         SeedUser(userId, "U").Email = "u@u.com";
-        await Db.SaveChangesAsync(TestContext.Current.CancellationToken);
+        await _db.SaveChangesAsync(TestContext.Current.CancellationToken);
         var bystanderId = Guid.NewGuid();
         var viewer = new IssueViewer(userId, []);
         var bystander = new IssueViewer(bystanderId, []);
@@ -428,7 +428,7 @@ public sealed class IssuesServiceTests
         var adminId = Guid.NewGuid();
         var ticketAdminId = Guid.NewGuid();
         SeedUser(reporterId, "R").Email = "r@x";
-        await Db.SaveChangesAsync(TestContext.Current.CancellationToken);
+        await _db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         _roleService
             .GetActiveUserIdsInRoleAsync(RoleNames.Admin, Arg.Any<CancellationToken>())
@@ -487,8 +487,8 @@ public sealed class IssuesServiceTests
             repo.AddIssueAsync(Arg.Any<Issue>(), Arg.Any<CancellationToken>()).Returns(Task.FromException(failure));
             var service = new IssuesApplicationService(
                 repo, _userService, _roleService,
-                _emailService, _emailMessages, _notificationService, _notificationInbox, AuditLog, AuditViewer,
-                Clock, _fileStorage, SectionCatalog, Domain.TestIssueQueues.Shipped(), _logger);
+                _emailService, _emailMessages, _notificationService, _notificationInbox, _auditLog, _auditViewer,
+                _clock, _fileStorage, _sectionCatalog, Domain.TestIssueQueues.Shipped(), _logger);
             using var content = new MemoryStream([1, 2, 3]);
             var screenshot = new FormFile(content, 0, content.Length, "Screenshot", "shot.png")
             {
@@ -535,8 +535,8 @@ public sealed class IssuesServiceTests
                 : _repository.GetByIdAsync(call.ArgAt<Guid>(0), CancellationToken.None));
         var service = new IssuesApplicationService(
             repo, _userService, _roleService,
-            _emailService, _emailMessages, _notificationService, _notificationInbox, AuditLog, AuditViewer,
-            Clock, FileStorage, SectionCatalog, Domain.TestIssueQueues.Shipped(), _logger);
+            _emailService, _emailMessages, _notificationService, _notificationInbox, _auditLog, _auditViewer,
+            _clock, _fileStorage, _sectionCatalog, Domain.TestIssueQueues.Shipped(), _logger);
         var screenshot = PngUpload([1, 2, 3]);
 
         var act = () => service.SubmitIssueAsync(Guid.NewGuid(), IssueCategory.Bug, "Title", "Detail",
@@ -545,8 +545,8 @@ public sealed class IssuesServiceTests
         (await act.Should().ThrowAsync<IOException>()).Which.Should().BeSameAs(failure);
         var saved = await _repository.GetByIdAsync(issueId, TestContext.Current.CancellationToken);
         saved.Should().NotBeNull();
-        FileStorage.Files.Should().ContainKey(saved.ScreenshotStoragePath!);
-        FileStorage.Files[saved.ScreenshotStoragePath!].Should().Equal(1, 2, 3);
+        _fileStorage.Files.Should().ContainKey(saved.ScreenshotStoragePath!);
+        _fileStorage.Files[saved.ScreenshotStoragePath!].Should().Equal(1, 2, 3);
     }
 
     [HumansFact]
@@ -565,7 +565,7 @@ public sealed class IssuesServiceTests
         result.Issue.Should().BeNull();
         result.ErrorKey.Should().Be("Issue_ScreenshotTooLarge");
         (await _issuesDb.Issues.CountAsync(Ct)).Should().Be(0);
-        FileStorage.Files.Should().BeEmpty();
+        _fileStorage.Files.Should().BeEmpty();
     }
 
     [HumansTheory]
@@ -601,7 +601,7 @@ public sealed class IssuesServiceTests
             controller.ModelState.IsValid.Should().BeFalse();
         }
         (await _issuesDb.Issues.CountAsync(Ct)).Should().Be(0);
-        FileStorage.Files.Should().BeEmpty();
+        _fileStorage.Files.Should().BeEmpty();
     }
 
     [HumansFact]
@@ -620,7 +620,7 @@ public sealed class IssuesServiceTests
         result.Issue.Should().BeNull();
         result.ErrorKey.Should().Be("Issue_ScreenshotTypeInvalid");
         (await _issuesDb.Issues.CountAsync(Ct)).Should().Be(0);
-        FileStorage.Files.Should().BeEmpty();
+        _fileStorage.Files.Should().BeEmpty();
     }
 
     [HumansFact]
@@ -679,7 +679,7 @@ public sealed class IssuesServiceTests
 
         await _service.PostCommentAsync(issueId, Admin, reporterId, "Still broken", ct: TestContext.Current.CancellationToken);
 
-        await AuditLog.Received(1).LogAsync(
+        await _auditLog.Received(1).LogAsync(
             IssuesAuditActions.IssueStatusChanged,
             nameof(Issue),
             issueId,
@@ -879,7 +879,7 @@ public sealed class IssuesServiceTests
             ? Guid.NewGuid() : reporterId;
         if (recipientId != reporterId)
             SeedUser(recipientId, "Recipient").Email = "recipient@test.com";
-        Db.Users.Single(user => user.Id == recipientId).PreferredLanguage = "es";
+        _db.Users.Single(user => user.Id == recipientId).PreferredLanguage = "es";
         _roleService.GetActiveUserIdsInRoleAsync(RoleNames.Admin, Arg.Any<CancellationToken>())
             .Returns([recipientId]);
         var title = string.Concat(Enumerable.Repeat("🚀", 200));
@@ -948,7 +948,7 @@ public sealed class IssuesServiceTests
         var reporter = SeedUser(reporterId, "Reporter");
         reporter.Email = "reporter@test.com";
         reporter.PreferredLanguage = language!;
-        await Db.SaveChangesAsync(TestContext.Current.CancellationToken);
+        await _db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var issueId = await SeedIssueRowAsync(reporterId, IssueStatus.Open, "Report Title");
         var adminId = Guid.NewGuid();
@@ -1075,7 +1075,7 @@ public sealed class IssuesServiceTests
             ? new IssuesApplicationService(
                 _repository, _userService, _roleService, _emailService,
                 TestIssuesEmails.Create(_ => throw error), _notificationService, _notificationInbox,
-                AuditLog, AuditViewer, Clock, FileStorage, SectionCatalog, Domain.TestIssueQueues.Shipped(), _logger)
+                _auditLog, _auditViewer, _clock, _fileStorage, _sectionCatalog, Domain.TestIssueQueues.Shipped(), _logger)
             : _service;
         var result = await service.PostCommentAsync(issueId, Admin, Admin.UserId, "Fixed this",
             resolveOnPost: true, ct: TestContext.Current.CancellationToken);
@@ -1143,7 +1143,7 @@ public sealed class IssuesServiceTests
         result.Rejected.Should().BeTrue();
         result.ErrorMessage.Should().Be("Unknown issue status.");
         (await _issuesDb.Issues.AsNoTracking().SingleAsync(ct)).Status.Should().Be(IssueStatus.Open);
-        AuditLog.ReceivedCalls().Should().BeEmpty();
+        _auditLog.ReceivedCalls().Should().BeEmpty();
         _notificationService.ReceivedCalls().Should().BeEmpty();
     }
 
@@ -1215,7 +1215,7 @@ public sealed class IssuesServiceTests
 
         await _service.UpdateStatusAsync(issueId, Admin, IssueStatus.Open, actorId, TestContext.Current.CancellationToken);
 
-        await AuditLog.DidNotReceive().LogAsync(
+        await _auditLog.DidNotReceive().LogAsync(
             Arg.Any<AuditActionDefinition>(), Arg.Any<string>(), Arg.Any<Guid>(),
             Arg.Any<string>(), Arg.Any<Guid>(),
             Arg.Any<Guid?>(), Arg.Any<string?>());
@@ -1230,7 +1230,7 @@ public sealed class IssuesServiceTests
             issueId, Admin, IssueStatus.InProgress, actorUserId: null,
             ct: TestContext.Current.CancellationToken);
 
-        await AuditLog.Received(1).LogAsync(
+        await _auditLog.Received(1).LogAsync(
             IssuesAuditActions.IssueStatusChanged, nameof(Issue), issueId,
             Arg.Any<string>(), "API", Arg.Any<Guid?>(), Arg.Any<string?>());
     }
@@ -1244,7 +1244,7 @@ public sealed class IssuesServiceTests
         // to notify alongside the reporter.
         var assigneeId = Guid.NewGuid();
         SeedUser(assigneeId, "Assignee").Email = "ass@x.com";
-        await Db.SaveChangesAsync(TestContext.Current.CancellationToken);
+        await _db.SaveChangesAsync(TestContext.Current.CancellationToken);
         await _service.UpdateAssigneeAsync(issueId, Admin, assigneeId, Guid.NewGuid(), TestContext.Current.CancellationToken);
         _notificationService.ClearReceivedCalls();
 
@@ -1309,11 +1309,11 @@ public sealed class IssuesServiceTests
         repo.SaveTrackedIssueAsync(issue, Arg.Any<CancellationToken>()).Returns(Task.FromException(failure));
         var service = new IssuesApplicationService(
             repo, _userService, _roleService,
-            _emailService, _emailMessages, _notificationService, _notificationInbox, AuditLog, AuditViewer,
-            Clock, FileStorage, SectionCatalog, Domain.TestIssueQueues.Shipped(), _logger);
+            _emailService, _emailMessages, _notificationService, _notificationInbox, _auditLog, _auditViewer,
+            _clock, _fileStorage, _sectionCatalog, Domain.TestIssueQueues.Shipped(), _logger);
         var ct = TestContext.Current.CancellationToken;
         var assignee = SeedUser();
-        await Db.SaveChangesAsync(ct);
+        await _db.SaveChangesAsync(ct);
 
         var result = field switch
         {
@@ -1344,8 +1344,8 @@ public sealed class IssuesServiceTests
         repo.CountActionableAsync(null, null, ct).Returns(snapshot.Task, Task.FromResult(0));
         var service = new IssuesApplicationService(
             repo, _userService, _roleService,
-            _emailService, _emailMessages, _notificationService, _notificationInbox, AuditLog, AuditViewer,
-            Clock, FileStorage, SectionCatalog, Domain.TestIssueQueues.Shipped(), _logger);
+            _emailService, _emailMessages, _notificationService, _notificationInbox, _auditLog, _auditViewer,
+            _clock, _fileStorage, _sectionCatalog, Domain.TestIssueQueues.Shipped(), _logger);
 
         var beforeWrite = service.GetActionableCountForViewerAsync(Admin, ct);
         (await service.UpdateStatusAsync(issue.Id, Admin, IssueStatus.Resolved, Admin.UserId, ct)).Succeeded.Should().BeTrue();
@@ -1406,8 +1406,8 @@ public sealed class IssuesServiceTests
         (await _service.GetActionableCountForViewerAsync(reporter, ct)).Should().Be(1);
         var service = new IssuesApplicationService(
             repo, _userService, _roleService,
-            _emailService, _emailMessages, _notificationService, _notificationInbox, AuditLog, AuditViewer,
-            Clock, FileStorage, SectionCatalog, Domain.TestIssueQueues.Shipped(), _logger);
+            _emailService, _emailMessages, _notificationService, _notificationInbox, _auditLog, _auditViewer,
+            _clock, _fileStorage, _sectionCatalog, Domain.TestIssueQueues.Shipped(), _logger);
 
         switch (operation)
         {
@@ -1544,13 +1544,13 @@ public sealed class IssuesServiceTests
         oldAssignee.Email = "old@x.com";
         var newAssignee = SeedUser(Guid.NewGuid(), "New Person");
         newAssignee.Email = "new@x.com";
-        await Db.SaveChangesAsync(TestContext.Current.CancellationToken);
+        await _db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var actorId = Guid.NewGuid();
         await _service.UpdateAssigneeAsync(issueId, Admin, oldAssignee.Id, actorId, TestContext.Current.CancellationToken);
         await _service.UpdateAssigneeAsync(issueId, Admin, newAssignee.Id, actorId, TestContext.Current.CancellationToken);
 
-        await AuditLog.Received().LogAsync(
+        await _auditLog.Received().LogAsync(
             IssuesAuditActions.IssueAssigneeChanged,
             nameof(Issue),
             issueId,
@@ -1569,7 +1569,7 @@ public sealed class IssuesServiceTests
         var assignee = SeedUser(newAssigneeId, "Assignee");
         assignee.Email = "a@a.com";
         assignee.PreferredLanguage = "es";
-        await Db.SaveChangesAsync(TestContext.Current.CancellationToken);
+        await _db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         await _service.UpdateAssigneeAsync(issueId, Admin, newAssigneeId, Guid.NewGuid(), TestContext.Current.CancellationToken);
 
@@ -1593,7 +1593,7 @@ public sealed class IssuesServiceTests
         var (_, issueId) = await SeedIssueAsync(IssueStatus.Open);
         var actorId = Guid.NewGuid();
         SeedUser(actorId, "Self").Email = "self@x.com";
-        await Db.SaveChangesAsync(TestContext.Current.CancellationToken);
+        await _db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         await _service.UpdateAssigneeAsync(issueId, Admin, actorId, actorId, TestContext.Current.CancellationToken);
 
@@ -1617,7 +1617,7 @@ public sealed class IssuesServiceTests
         var (_, issueId) = await SeedIssueAsync(IssueStatus.Open);
         var assigneeId = Guid.NewGuid();
         SeedUser(assigneeId, "Assignee").Email = "assignee@x.com";
-        await Db.SaveChangesAsync(TestContext.Current.CancellationToken);
+        await _db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var result = await _service.UpdateAssigneeAsync(issueId, Admin, assigneeId, Guid.NewGuid(), TestContext.Current.CancellationToken);
 
@@ -1648,7 +1648,7 @@ public sealed class IssuesServiceTests
         (await _service.GetActionableCountForViewerAsync(ticketViewer, TestContext.Current.CancellationToken)).Should().Be(0);
         (await _service.GetActionableCountForViewerAsync(teamsViewer, TestContext.Current.CancellationToken)).Should().Be(1);
 
-        await AuditLog.Received().LogAsync(
+        await _auditLog.Received().LogAsync(
             IssuesAuditActions.IssueSectionChanged,
             nameof(Issue),
             issueId,
@@ -1690,7 +1690,7 @@ public sealed class IssuesServiceTests
     {
         var userId = Guid.NewGuid();
         SeedUser(userId, "U").Email = "u@u.com";
-        await Db.SaveChangesAsync(TestContext.Current.CancellationToken);
+        await _db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var issue = (await _service.SubmitIssueAsync(
             userId, IssueCategory.Bug, "Title", "Desc",
@@ -1707,7 +1707,7 @@ public sealed class IssuesServiceTests
     {
         var userId = Guid.NewGuid();
         SeedUser(userId, "U").Email = "u@u.com";
-        await Db.SaveChangesAsync(TestContext.Current.CancellationToken);
+        await _db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var issue = (await _service.SubmitIssueAsync(
             userId, IssueCategory.Bug, "Title", "Desc",
@@ -1723,7 +1723,7 @@ public sealed class IssuesServiceTests
     {
         var userId = Guid.NewGuid();
         SeedUser(userId, "U").Email = "u@u.com";
-        await Db.SaveChangesAsync(TestContext.Current.CancellationToken);
+        await _db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var act = async () => await _service.SubmitIssueAsync(
             userId, IssueCategory.Bug, "Title", "Desc",
@@ -1807,7 +1807,7 @@ public sealed class IssuesServiceTests
         var ct = TestContext.Current.CancellationToken;
         var (_, issueId) = await SeedIssueAsync(IssueStatus.Open);
         await _service.SetGitHubIssueNumberAsync(issueId, Admin, 123, Admin.UserId, ct);
-        AuditLog.ClearReceivedCalls();
+        _auditLog.ClearReceivedCalls();
 
         var result = await _service.SetGitHubIssueNumberAsync(issueId, Admin, number, Admin.UserId, ct);
 
@@ -1817,7 +1817,7 @@ public sealed class IssuesServiceTests
         result.ErrorMessage.Should().Contain("positive");
         (await _issuesDb.Issues.AsNoTracking().SingleAsync(i => i.Id == issueId, ct))
             .GitHubIssueNumber.Should().Be(123);
-        AuditLog.ReceivedCalls().Should().BeEmpty();
+        _auditLog.ReceivedCalls().Should().BeEmpty();
     }
 
     [HumansFact]
@@ -1831,7 +1831,7 @@ public sealed class IssuesServiceTests
         var stored = await _issuesDb.Issues.AsNoTracking().FirstAsync(i => i.Id == issueId, TestContext.Current.CancellationToken);
         stored.GitHubIssueNumber.Should().Be(1234);
 
-        await AuditLog.Received(1).LogAsync(
+        await _auditLog.Received(1).LogAsync(
             IssuesAuditActions.IssueGitHubLinked, nameof(Issue), issueId,
             Arg.Is<string>(s => s.Contains("1234", StringComparison.Ordinal)), actorId,
             Arg.Any<Guid?>(), Arg.Any<string?>());
@@ -1851,8 +1851,8 @@ public sealed class IssuesServiceTests
             Title = "Older",
             Description = "Description",
             Status = IssueStatus.Open,
-            CreatedAt = Clock.GetCurrentInstant(),
-            UpdatedAt = Clock.GetCurrentInstant() - Duration.FromHours(2)
+            CreatedAt = _clock.GetCurrentInstant(),
+            UpdatedAt = _clock.GetCurrentInstant() - Duration.FromHours(2)
         };
         var newer = new Issue
         {
@@ -1862,8 +1862,8 @@ public sealed class IssuesServiceTests
             Title = "Newer",
             Description = "Description",
             Status = IssueStatus.Open,
-            CreatedAt = Clock.GetCurrentInstant(),
-            UpdatedAt = Clock.GetCurrentInstant()
+            CreatedAt = _clock.GetCurrentInstant(),
+            UpdatedAt = _clock.GetCurrentInstant()
         };
         var middle = new Issue
         {
@@ -1873,8 +1873,8 @@ public sealed class IssuesServiceTests
             Title = "Middle",
             Description = "Description",
             Status = IssueStatus.Open,
-            CreatedAt = Clock.GetCurrentInstant(),
-            UpdatedAt = Clock.GetCurrentInstant() - Duration.FromHours(1)
+            CreatedAt = _clock.GetCurrentInstant(),
+            UpdatedAt = _clock.GetCurrentInstant() - Duration.FromHours(1)
         };
         await _issuesDb.Issues.AddRangeAsync(older, newer, middle);
         await _issuesDb.SaveChangesAsync(TestContext.Current.CancellationToken);
@@ -1894,7 +1894,7 @@ public sealed class IssuesServiceTests
         var strangerId = Guid.NewGuid();
         SeedUser(viewerId, "Viewer").Email = "viewer@example.org";
         SeedUser(strangerId, "Stranger").Email = "stranger@example.org";
-        await Db.SaveChangesAsync(TestContext.Current.CancellationToken);
+        await _db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var inSection = await SeedIssueRowAsync(
             strangerId, IssueStatus.Open, "In my section", "Tickets");
@@ -1913,7 +1913,7 @@ public sealed class IssuesServiceTests
     {
         var reporterId = Guid.NewGuid();
         SeedUser(reporterId, "Reporter").Email = "reporter@example.org";
-        await Db.SaveChangesAsync(TestContext.Current.CancellationToken);
+        await _db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var tickets = await SeedIssueRowAsync(reporterId, IssueStatus.Open, "Tickets", "Tickets");
         var camps = await SeedIssueRowAsync(reporterId, IssueStatus.Open, "Camps", "Camps");
@@ -1931,7 +1931,7 @@ public sealed class IssuesServiceTests
         var strangerId = Guid.NewGuid();
         SeedUser(viewerId, "Viewer").Email = "viewer@example.org";
         SeedUser(strangerId, "Stranger").Email = "stranger@example.org";
-        await Db.SaveChangesAsync(TestContext.Current.CancellationToken);
+        await _db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var ownReport = await SeedIssueRowAsync(viewerId, IssueStatus.Open, "Mine", "Tickets");
         await SeedIssueRowAsync(strangerId, IssueStatus.Open, "Not mine", "Tickets");
@@ -1948,7 +1948,7 @@ public sealed class IssuesServiceTests
         var strangerId = Guid.NewGuid();
         SeedUser(viewerId, "Viewer").Email = "viewer@example.org";
         SeedUser(strangerId, "Stranger").Email = "stranger@example.org";
-        await Db.SaveChangesAsync(TestContext.Current.CancellationToken);
+        await _db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         await SeedIssueRowAsync(strangerId, IssueStatus.Open, "In my section", "Tickets");
         await SeedIssueRowAsync(strangerId, IssueStatus.Open, "Not mine", "Camps");
@@ -1994,7 +1994,7 @@ public sealed class IssuesServiceTests
                 IssueId = sourceIssueId,
                 SenderUserId = sender,
                 Content = content,
-                CreatedAt = Clock.GetCurrentInstant()
+                CreatedAt = _clock.GetCurrentInstant()
             });
         foreach (var (sender, content) in new[]
         {
@@ -2008,7 +2008,7 @@ public sealed class IssuesServiceTests
                 IssueId = strangerIssueId,
                 SenderUserId = sender,
                 Content = content,
-                CreatedAt = Clock.GetCurrentInstant()
+                CreatedAt = _clock.GetCurrentInstant()
             });
         await _issuesDb.SaveChangesAsync(ct);
 
@@ -2047,7 +2047,7 @@ public sealed class IssuesServiceTests
         var bobId = Guid.NewGuid();
         SeedUser(aliceId, "Alice").Email = "a@a.com";
         SeedUser(bobId, "Bob").Email = "b@b.com";
-        await Db.SaveChangesAsync(TestContext.Current.CancellationToken);
+        await _db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var firstId = await SeedIssueRowAsync(aliceId, IssueStatus.Open, "Alice's first");
         await SeedIssueRowAsync(aliceId, IssueStatus.Open, "Alice's second");
@@ -2082,7 +2082,7 @@ public sealed class IssuesServiceTests
         var bobId = Guid.NewGuid();
         SeedUser(aliceId, "Alice").Email = "a@a.com";
         SeedUser(bobId, "Bob").Email = "b@b.com";
-        await Db.SaveChangesAsync(TestContext.Current.CancellationToken);
+        await _db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var aliceIssue = await SeedIssueRowAsync(aliceId, IssueStatus.Open, "Alice's", "Camps");
         var bobIssue = await SeedIssueRowAsync(bobId, IssueStatus.Open, "Bob's", "Tickets");
@@ -2108,7 +2108,7 @@ public sealed class IssuesServiceTests
             IssueId = bobIssue,
             SenderUserId = aliceId,
             Content = "Alice's comment on Bob's issue",
-            CreatedAt = Clock.GetCurrentInstant()
+            CreatedAt = _clock.GetCurrentInstant()
         });
         await _issuesDb.SaveChangesAsync(TestContext.Current.CancellationToken);
 
@@ -2260,10 +2260,10 @@ public sealed class IssuesServiceTests
         string? section = null)
     {
         var reporterId = Guid.NewGuid();
-        if (!Db.Users.Any(u => u.Id == reporterId))
+        if (!_db.Users.Any(u => u.Id == reporterId))
         {
             SeedUser(reporterId, "Reporter").Email = $"{reporterId}@test.com";
-            await Db.SaveChangesAsync(TestContext.Current.CancellationToken);
+            await _db.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         var issueId = await SeedIssueRowAsync(reporterId, status, "Title", section, withResolvedFields);
@@ -2277,7 +2277,7 @@ public sealed class IssuesServiceTests
         string? section = null,
         bool withResolvedFields = false)
     {
-        var now = Clock.GetCurrentInstant();
+        var now = _clock.GetCurrentInstant();
         var issue = new Issue
         {
             Id = Guid.NewGuid(),
@@ -2352,7 +2352,7 @@ public sealed class IssuesServiceTests
         issue.ScreenshotFileName.Should().Be(fileName);
         issue.ScreenshotStoragePath.Should().StartWith($"uploads/issues/{issue.Id}/").And.EndWith(".png");
         issue.ScreenshotContentType.Should().Be("image/png");
-        FileStorage.Files[issue.ScreenshotStoragePath!].Should().Equal(bytes);
+        _fileStorage.Files[issue.ScreenshotStoragePath!].Should().Equal(bytes);
     }
 
     [HumansFact]
@@ -2362,21 +2362,21 @@ public sealed class IssuesServiceTests
         var bobId = Guid.NewGuid();
         SeedUser(aliceId, "Alice").Email = "a@a.com";
         SeedUser(bobId, "Bob").Email = "b@b.com";
-        await Db.SaveChangesAsync(Ct);
+        await _db.SaveChangesAsync(Ct);
         var aliceIssue = await SeedIssueRowAsync(aliceId, IssueStatus.Open, "Alice's");
         var bobIssue = await SeedIssueRowAsync(bobId, IssueStatus.Open, "Bob's");
         var aliceKey = $"uploads/issues/{aliceIssue}/a.png";
         var bobKey = $"uploads/issues/{bobIssue}/b.png";
-        FileStorage.Files[aliceKey] = [1];
-        FileStorage.Files[bobKey] = [2];
+        _fileStorage.Files[aliceKey] = [1];
+        _fileStorage.Files[bobKey] = [2];
         (await _issuesDb.Issues.FirstAsync(i => i.Id == aliceIssue, Ct)).ScreenshotStoragePath = aliceKey;
         (await _issuesDb.Issues.FirstAsync(i => i.Id == bobIssue, Ct)).ScreenshotStoragePath = bobKey;
         await _issuesDb.SaveChangesAsync(Ct);
 
         await _service.EraseForUserAsync(aliceId, Ct);
 
-        FileStorage.Files.Should().NotContainKey(aliceKey);
-        FileStorage.Files.Should().ContainKey(bobKey);
+        _fileStorage.Files.Should().NotContainKey(aliceKey);
+        _fileStorage.Files.Should().ContainKey(bobKey);
     }
 
     private async Task<Guid> SeedIssueWithScreenshotAsync(
@@ -2384,7 +2384,7 @@ public sealed class IssuesServiceTests
     {
         var id = await SeedIssueRowAsync(reporterId, IssueStatus.Open, "With screenshot", section);
         var key = $"uploads/issues/{id}/shot.png";
-        FileStorage.Files[key] = bytes;
+        _fileStorage.Files[key] = bytes;
         var row = await _issuesDb.Issues.FirstAsync(i => i.Id == id, Ct);
         row.ScreenshotStoragePath = key;
         row.ScreenshotContentType = contentType;
@@ -2397,7 +2397,7 @@ public sealed class IssuesServiceTests
     {
         var reporterId = Guid.NewGuid();
         SeedUser(reporterId, "Reporter").Email = "r@r.com";
-        await Db.SaveChangesAsync(Ct);
+        await _db.SaveChangesAsync(Ct);
         byte[] bytes = [1, 2, 3];
         var issueId = await SeedIssueWithScreenshotAsync(reporterId, "Tickets", "image/png", bytes);
 
@@ -2416,7 +2416,7 @@ public sealed class IssuesServiceTests
     {
         var reporterId = Guid.NewGuid();
         SeedUser(reporterId, "Reporter").Email = "r@r.com";
-        await Db.SaveChangesAsync(Ct);
+        await _db.SaveChangesAsync(Ct);
         var issueId = await SeedIssueWithScreenshotAsync(reporterId, "Tickets", "image/png", [1]);
         var noScreenshot = await SeedIssueRowAsync(reporterId, IssueStatus.Open, "Plain", "Tickets");
 
@@ -2473,15 +2473,15 @@ public sealed class IssuesServiceTests
     {
         const string key = "uploads/issues/retry/shot.png";
         var issueId = await SeedIssueWithResolvedAtAsync(
-            IssueStatus.Resolved, Clock.GetCurrentInstant() - Duration.FromDays(200), key);
+            IssueStatus.Resolved, _clock.GetCurrentInstant() - Duration.FromDays(200), key);
         var reporterId = (await _issuesDb.Issues.SingleAsync(i => i.Id == issueId, Ct)).ReporterUserId;
         var attempts = 0;
         _fileStorage.DeleteAsync(key, Arg.Any<CancellationToken>()).Returns(_ =>
             ++attempts == 1 ? Task.FromException(new IOException("Storage unavailable")) : Task.CompletedTask);
         var service = new IssuesApplicationService(
             _repository, _userService, _roleService,
-            _emailService, _emailMessages, _notificationService, _notificationInbox, AuditLog, AuditViewer,
-            Clock, _fileStorage, SectionCatalog, Domain.TestIssueQueues.Shipped(), _logger);
+            _emailService, _emailMessages, _notificationService, _notificationInbox, _auditLog, _auditViewer,
+            _clock, _fileStorage, _sectionCatalog, Domain.TestIssueQueues.Shipped(), _logger);
 
         var erase = () => service.EraseForUserAsync(reporterId, Ct);
         await erase.Should().ThrowAsync<IOException>();
@@ -2498,7 +2498,7 @@ public sealed class IssuesServiceTests
     {
         const string key = "uploads/issues/cleanup/shot.png";
         var issueId = await SeedIssueWithResolvedAtAsync(
-            IssueStatus.Resolved, Clock.GetCurrentInstant() - Duration.FromDays(200), key);
+            IssueStatus.Resolved, _clock.GetCurrentInstant() - Duration.FromDays(200), key);
         var rowRemovedAtCleanup = false;
         CancellationToken? cleanupToken = null;
         _fileStorage.DeleteAsync(key, Arg.Any<CancellationToken>()).Returns(async call =>
@@ -2509,8 +2509,8 @@ public sealed class IssuesServiceTests
         });
         var service = new IssuesApplicationService(
             _repository, _userService, _roleService,
-            _emailService, _emailMessages, _notificationService, _notificationInbox, AuditLog, AuditViewer,
-            Clock, _fileStorage, SectionCatalog, Domain.TestIssueQueues.Shipped(), _logger);
+            _emailService, _emailMessages, _notificationService, _notificationInbox, _auditLog, _auditViewer,
+            _clock, _fileStorage, _sectionCatalog, Domain.TestIssueQueues.Shipped(), _logger);
 
         (await service.PurgeExpiredAsync(Ct)).Should().Be(1);
 
@@ -2535,7 +2535,7 @@ public sealed class IssuesServiceTests
         var firstKey = $"uploads/issues/{first}/shot.png";
         var secondKey = $"uploads/issues/{second}/shot.png";
         var liveKey = $"uploads/issues/{live}/shot.png";
-        var old = Clock.GetCurrentInstant() - Duration.FromDays(200);
+        var old = _clock.GetCurrentInstant() - Duration.FromDays(200);
         await using (var seed = new IssuesDbContext(options))
         {
             foreach (var (id, key) in new[] { (first, firstKey), (second, secondKey), (live, liveKey) })
@@ -2581,8 +2581,8 @@ public sealed class IssuesServiceTests
             return Task.CompletedTask;
         });
         var service = new IssuesApplicationService(repo, _userService, _roleService,
-            _emailService, _emailMessages, _notificationService, _notificationInbox, AuditLog, AuditViewer,
-            Clock, storage, SectionCatalog, Domain.TestIssueQueues.Shipped(), _logger);
+            _emailService, _emailMessages, _notificationService, _notificationInbox, _auditLog, _auditViewer,
+            _clock, storage, _sectionCatalog, Domain.TestIssueQueues.Shipped(), _logger);
 
         var purge = () => service.PurgeExpiredAsync(ct);
         (await purge.Should().ThrowAsync<IOException>()).Which.Should().BeSameAs(failure);
@@ -2606,7 +2606,7 @@ public sealed class IssuesServiceTests
     [HumansFact]
     public async Task PurgeExpiredAsync_DeletesTerminalIssuesOlderThanSixMonths()
     {
-        var now = Clock.GetCurrentInstant();
+        var now = _clock.GetCurrentInstant();
         var oldResolved = now - Duration.FromDays(181);
 
         var toPurge = await SeedIssueWithResolvedAtAsync(IssueStatus.Resolved, oldResolved);
@@ -2624,7 +2624,7 @@ public sealed class IssuesServiceTests
     [HumansFact]
     public async Task PurgeExpiredAsync_KeepsTerminalIssuesYoungerThanSixMonths()
     {
-        var now = Clock.GetCurrentInstant();
+        var now = _clock.GetCurrentInstant();
         var recentResolved = now - Duration.FromDays(179);
 
         var keep = await SeedIssueWithResolvedAtAsync(IssueStatus.Resolved, recentResolved);
@@ -2638,7 +2638,7 @@ public sealed class IssuesServiceTests
     [HumansFact]
     public async Task PurgeExpiredAsync_NeverDeletesNonTerminalIssuesEvenWhenAncient()
     {
-        var ancient = Clock.GetCurrentInstant() - Duration.FromDays(365 * 5);
+        var ancient = _clock.GetCurrentInstant() - Duration.FromDays(365 * 5);
 
         var keepOpen = await SeedIssueWithResolvedAtAsync(IssueStatus.Open, ancient);
         var keepInProgress = await SeedIssueWithResolvedAtAsync(IssueStatus.InProgress, ancient);
@@ -2655,10 +2655,10 @@ public sealed class IssuesServiceTests
     [HumansFact]
     public async Task PurgeExpiredAsync_DeletesScreenshotThroughFileStorage()
     {
-        var oldResolved = Clock.GetCurrentInstant() - Duration.FromDays(200);
+        var oldResolved = _clock.GetCurrentInstant() - Duration.FromDays(200);
         var issueId = Guid.NewGuid();
         var key = $"uploads/issues/{issueId}/shot.png";
-        FileStorage.Files[key] = [1, 2, 3];
+        _fileStorage.Files[key] = [1, 2, 3];
 
         var reporterId = Guid.NewGuid();
         SeedUser(reporterId, "Reporter").Email = $"{reporterId}@test.com";
@@ -2680,7 +2680,7 @@ public sealed class IssuesServiceTests
         var deleted = await _service.PurgeExpiredAsync(TestContext.Current.CancellationToken);
 
         deleted.Should().Be(1);
-        FileStorage.Files.Should().NotContainKey(key);
+        _fileStorage.Files.Should().NotContainKey(key);
     }
 
     [HumansFact]
@@ -2689,7 +2689,7 @@ public sealed class IssuesServiceTests
         // Issue claims a screenshot path but the directory was already removed
         // (e.g. wiped manually, prior partial sweep). The DB delete must still
         // succeed.
-        var oldResolved = Clock.GetCurrentInstant() - Duration.FromDays(200);
+        var oldResolved = _clock.GetCurrentInstant() - Duration.FromDays(200);
 
         var reporterId = Guid.NewGuid();
         SeedUser(reporterId, "Reporter").Email = $"{reporterId}@test.com";
@@ -2739,7 +2739,7 @@ public sealed class IssuesServiceTests
             IssueId = own,
             SenderUserId = survivor.Id,
             Content = "My follow-up",
-            CreatedAt = Clock.GetCurrentInstant()
+            CreatedAt = _clock.GetCurrentInstant()
         });
         await _issuesDb.SaveChangesAsync(Ct);
         var viewer = new IssueViewer(survivor.Id, []);
@@ -2830,7 +2830,7 @@ public sealed class IssuesServiceTests
         var (reporterId, issueId) = await SeedIssueAsync(IssueStatus.Open);
         var survivorId = Guid.NewGuid();
         SeedUser(survivorId, "Survivor").Email = "s@x.com";
-        Db.Users.Single(u => u.Id == reporterId).MergedToUserId = survivorId;
+        _db.Users.Single(u => u.Id == reporterId).MergedToUserId = survivorId;
         StubResolution(reporterId, survivorId);
 
         await _service.UpdateStatusAsync(issueId, Admin, IssueStatus.Resolved, Guid.NewGuid(), TestContext.Current.CancellationToken);
@@ -2858,7 +2858,7 @@ public sealed class IssuesServiceTests
         var assigneeId = Guid.NewGuid();
         if (string.Equals(who, "rejected", StringComparison.Ordinal))
             SeedUser(assigneeId, "Rejected").State = UserState.Rejected;
-        await Db.SaveChangesAsync(TestContext.Current.CancellationToken);
+        await _db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var result = await _service.UpdateAssigneeAsync(issueId, Admin, assigneeId, Guid.NewGuid(), TestContext.Current.CancellationToken);
 
@@ -2866,7 +2866,7 @@ public sealed class IssuesServiceTests
         result.Rejected.Should().BeTrue();
         var stored = await _issuesDb.Issues.AsNoTracking().SingleAsync(i => i.Id == issueId, TestContext.Current.CancellationToken);
         stored.AssigneeUserId.Should().BeNull();
-        AuditLog.ReceivedCalls().Should().NotContain(call => call.GetArguments().Contains(IssuesAuditActions.IssueAssigneeChanged));
+        _auditLog.ReceivedCalls().Should().NotContain(call => call.GetArguments().Contains(IssuesAuditActions.IssueAssigneeChanged));
     }
 
     [HumansFact]

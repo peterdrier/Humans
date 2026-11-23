@@ -36,10 +36,10 @@ internal sealed class ExpensesController(
     ILogger<ExpensesController> logger,
     IStringLocalizer<ExpensesResource> localizer) : HumansControllerBase(userService)
 {
-    private readonly ExpensePageBuilder pageBuilder = new(teams, orgTimeZone, service, review, budgetService, finance, preapprovals, clock, localizer);
+    private readonly ExpensePageBuilder _pageBuilder = new(teams, orgTimeZone, service, review, budgetService, finance, preapprovals, clock, localizer);
     private readonly IUserService _userService = userService;
 
-    private LocalDate Today => pageBuilder.Today;
+    private LocalDate Today => _pageBuilder.Today;
 
     [HttpGet("")]
     public async Task<IActionResult> Index()
@@ -49,7 +49,7 @@ internal sealed class ExpensesController(
             var (errorResult, user) = await RequireCurrentUserAsync(HttpContext.RequestAborted);
             if (errorResult is not null) return errorResult;
 
-            var model = await pageBuilder.BuildIndexAsync(user, HttpContext.RequestAborted);
+            var model = await _pageBuilder.BuildIndexAsync(user, HttpContext.RequestAborted);
             return View(model);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
@@ -741,7 +741,7 @@ internal sealed class ExpensesController(
                 }
                 reports = visible;
             }
-            return View(await pageBuilder.BuildReviewAsync(reports, isFinanceAdmin, ct));
+            return View(await _pageBuilder.BuildReviewAsync(reports, isFinanceAdmin, ct));
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
@@ -879,7 +879,7 @@ internal sealed class ExpensesController(
     /// predate the account column, their category in the booked year.</summary>
     private Task<IReadOnlyDictionary<Guid, string>> ResolveBookingLabelsAsync(
         IReadOnlyList<ExpenseReportDto> reports, CancellationToken ct) =>
-        pageBuilder.ResolveBookingLabelsAsync(reports, ct);
+        _pageBuilder.ResolveBookingLabelsAsync(reports, ct);
 
     private async Task PopulateEditModelAsync(ExpenseEditViewModel model, ExpenseReportDto report)
     {
@@ -939,6 +939,6 @@ internal sealed class ExpensesController(
     }
 
     private Task<(bool HasIban, string? MaskedIban)> GetIbanViewAsync(Guid userId, CancellationToken ct = default) =>
-        pageBuilder.GetIbanViewAsync(userId, ct);
+        _pageBuilder.GetIbanViewAsync(userId, ct);
 
 }

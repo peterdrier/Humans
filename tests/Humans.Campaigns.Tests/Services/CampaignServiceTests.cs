@@ -40,15 +40,15 @@ namespace Humans.Campaigns.Tests.Services;
 /// </summary>
 public sealed class CampaignServiceTests
 {
-    private readonly FakeClock Clock = new(Instant.FromUtc(2026, 3, 31, 12, 0));
+    private readonly FakeClock _clock = new(Instant.FromUtc(2026, 3, 31, 12, 0));
 
-    private readonly TestDbContextFactory<CampaignsDbContext> CampaignsDbFactory =
+    private readonly TestDbContextFactory<CampaignsDbContext> _campaignsDbFactory =
         new(new DbContextOptionsBuilder<CampaignsDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .ConfigureWarnings(w => w.Ignore(InMemoryEventId.TransactionIgnoredWarning))
             .Options);
 
-    private readonly CampaignsDbContext CampaignsDb;
+    private readonly CampaignsDbContext _campaignsDb;
 
     private readonly Dictionary<Guid, UserInfo> _people = [];
     private readonly Dictionary<Guid, TeamInfo> _teams = [];
@@ -63,9 +63,9 @@ public sealed class CampaignServiceTests
 
     public CampaignServiceTests()
     {
-        CampaignsDb = CampaignsDbFactory.CreateDbContext();
+        _campaignsDb = _campaignsDbFactory.CreateDbContext();
 
-        var repository = new CampaignRepository(CampaignsDbFactory);
+        var repository = new CampaignRepository(_campaignsDbFactory);
         var teamService = Substitute.For<ITeamService>();
         var userService = Substitute.For<IUserService>();
         _ticketDiscountCodes = Substitute.For<ITicketDiscountCodes>();
@@ -98,7 +98,7 @@ public sealed class CampaignServiceTests
             _emailService,
             _emailMessages,
             _ticketDiscountCodes,
-            Clock,
+            _clock,
             _audit,
             NullLogger<CampaignServiceImpl>.Instance);
     }
@@ -142,7 +142,7 @@ public sealed class CampaignServiceTests
             return (Campaign?)null;
         });
         var service = new CampaignServiceImpl(repository, Substitute.For<ITeamService>(), users,
-            _notifications, _emailService, _emailMessages, _ticketDiscountCodes, Clock, _audit,
+            _notifications, _emailService, _emailMessages, _ticketDiscountCodes, _clock, _audit,
             NullLogger<CampaignServiceImpl>.Instance);
         var controller = new CampaignController(service, users, NullLogger<CampaignController>.Instance)
         {
@@ -191,7 +191,7 @@ public sealed class CampaignServiceTests
             Arg.Any<string>(), _actorId).Returns(async call =>
             {
                 var savedId = call.ArgAt<Guid>(2);
-                (await CampaignsDb.Campaigns.AnyAsync(campaign => campaign.Id == savedId, ct)).Should().BeTrue();
+                (await _campaignsDb.Campaigns.AnyAsync(campaign => campaign.Id == savedId, ct)).Should().BeTrue();
             });
         var created = await _service.CreateAsync("Audited campaign", null, "Code", "{{Code}}", null, _actorId, ct);
         var campaignId = created.Campaign!.Id;
@@ -202,7 +202,7 @@ public sealed class CampaignServiceTests
         var team = SeedTeam("Audited team");
         SeedTeamMember(team.Id, user.Id);
         await _service.SendWaveAsync(_actorId, campaignId, team.Id, ct);
-        var grant = await CampaignsDb.CampaignGrants.SingleAsync(ct);
+        var grant = await _campaignsDb.CampaignGrants.SingleAsync(ct);
         await _service.ResendToGrantAsync(_actorId, grant.Id, ct);
         await _service.CompleteAsync(_actorId, campaignId, ct);
 
@@ -215,9 +215,9 @@ public sealed class CampaignServiceTests
         entries.Should().OnlyContain(args => (Guid)args[4]! == _actorId);
         entries.Single(args => (AuditActionDefinition)args[0]! == CampaignsAuditActions.CampaignWaveSent)[5].Should().Be(user.Id);
         ClearAllTrackers();
-        (await CampaignsDb.Campaigns.SingleAsync(ct)).Status.Should().Be(CampaignStatus.Completed);
+        (await _campaignsDb.Campaigns.SingleAsync(ct)).Status.Should().Be(CampaignStatus.Completed);
 #pragma warning disable CS0618 // a retired column must stay unwritten until its drop is approved
-        (await CampaignsDb.CampaignGrants.SingleAsync(ct)).LatestEmailStatus.Should().BeNull(
+        (await _campaignsDb.CampaignGrants.SingleAsync(ct)).LatestEmailStatus.Should().BeNull(
             "delivery state is no longer tracked on a grant (nobodies-collective/Humans#1243)");
 #pragma warning restore CS0618
     }
@@ -253,7 +253,7 @@ public sealed class CampaignServiceTests
 
         foreach (var action in actions)
             (await action()).Should().BeOfType<UnauthorizedResult>();
-        (await CampaignsDb.Campaigns.CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(0);
+        (await _campaignsDb.Campaigns.CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(0);
         _audit.ReceivedCalls().Should().BeEmpty();
         _emailService.ReceivedCalls().Should().BeEmpty();
         _ticketDiscountCodes.ReceivedCalls().Should().BeEmpty();
@@ -281,7 +281,7 @@ public sealed class CampaignServiceTests
         var result = await controller.ImportCodes(campaign.Id, file);
 
         result.Should().BeOfType<RedirectToActionResult>();
-        var codes = await CampaignsDb.CampaignCodes.AsNoTracking().Where(c => c.CampaignId == campaign.Id)
+        var codes = await _campaignsDb.CampaignCodes.AsNoTracking().Where(c => c.CampaignId == campaign.Id)
             .OrderBy(c => c.ImportOrder).Select(c => c.Code).ToListAsync(Xunit.TestContext.Current.CancellationToken);
         codes.Should().Equal(format switch { "multiline" => "A,\nOne", "plain" => "AOne", _ => "A,One" },
             format is "plain" ? "BTwo" : "B\"Two");
@@ -302,7 +302,7 @@ public sealed class CampaignServiceTests
         var result = await controller.ImportCodes(campaign.Id, file);
 
         result.Should().BeOfType<RedirectToActionResult>();
-        (await CampaignsDb.CampaignCodes.CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(0);
+        (await _campaignsDb.CampaignCodes.CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(0);
         controller.TempData[TempDataKeys.ErrorMessage].Should().BeOfType<string>();
         _audit.ReceivedCalls().Should().BeEmpty();
     }
@@ -322,7 +322,7 @@ public sealed class CampaignServiceTests
         _audit.ClearReceivedCalls();
         var result = await controller.ImportCodes(campaign.Id, file);
         result.Should().BeOfType<RedirectToActionResult>();
-        var stored = await CampaignsDb.CampaignCodes.AsNoTracking().ToListAsync(Xunit.TestContext.Current.CancellationToken);
+        var stored = await _campaignsDb.CampaignCodes.AsNoTracking().ToListAsync(Xunit.TestContext.Current.CancellationToken);
         if (length <= 200)
         {
             stored.Select(c => c.Code).Should().BeEquivalentTo("VALID", code);
@@ -379,7 +379,7 @@ public sealed class CampaignServiceTests
             result.Should().BeOfType<BadRequestObjectResult>();
             controller.ModelState["discountValue"]!.Errors.Should().HaveCount(submittedValue is null ? 1 : 2);
             _ticketDiscountCodes.ReceivedCalls().Should().BeEmpty();
-            (await CampaignsDb.CampaignCodes.CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(0);
+            (await _campaignsDb.CampaignCodes.CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(0);
             _audit.ReceivedCalls().Should().BeEmpty();
         }
         else
@@ -387,7 +387,7 @@ public sealed class CampaignServiceTests
             result.Should().BeOfType<RedirectToActionResult>();
             await _ticketDiscountCodes.Received(1).GenerateAsync(
                 Arg.Is<TicketDiscountCodeRequest>(request => request.Value == 0m), CancellationToken.None);
-            (await CampaignsDb.CampaignCodes.CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(1);
+            (await _campaignsDb.CampaignCodes.CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(1);
         }
     }
 
@@ -418,14 +418,14 @@ public sealed class CampaignServiceTests
             controller.TempData[TempDataKeys.ErrorMessage].Should().BeOfType<string>().Which.Should().Contain("Discount value");
             controller.TempData.ContainsKey(TempDataKeys.SuccessMessage).Should().BeFalse();
             _ticketDiscountCodes.ReceivedCalls().Should().BeEmpty();
-            (await CampaignsDb.CampaignCodes.CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(0);
+            (await _campaignsDb.CampaignCodes.CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(0);
             _audit.ReceivedCalls().Should().BeEmpty();
             return;
         }
         controller.TempData.ContainsKey(TempDataKeys.ErrorMessage).Should().BeFalse();
         await _ticketDiscountCodes.Received(1).GenerateAsync(
             Arg.Is<TicketDiscountCodeRequest>(request => request.Value == value), CancellationToken.None);
-        (await CampaignsDb.CampaignCodes.CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(1);
+        (await _campaignsDb.CampaignCodes.CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(1);
     }
 
     [HumansFact]
@@ -439,7 +439,7 @@ public sealed class CampaignServiceTests
         result.Should().BeOfType<RedirectToActionResult>();
         controller.TempData[TempDataKeys.ErrorMessage].Should().BeOfType<string>();
         controller.TempData.ContainsKey(TempDataKeys.SuccessMessage).Should().BeFalse();
-        (await CampaignsDb.CampaignCodes.CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(0);
+        (await _campaignsDb.CampaignCodes.CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(0);
     }
 
     private CampaignController CreateImportController()
@@ -505,10 +505,10 @@ public sealed class CampaignServiceTests
         result.Campaign!.Title.Should().Be("Test Campaign");
         result.Campaign.Description.Should().Be("A description");
         result.Campaign.Status.Should().Be(CampaignStatus.Draft);
-        result.Campaign.CreatedAt.Should().Be(Clock.GetCurrentInstant());
+        result.Campaign.CreatedAt.Should().Be(_clock.GetCurrentInstant());
         result.Campaign.CreatedByUserId.Should().Be(userId);
 
-        var inDb = await CampaignsDb.Campaigns.FindAsync(result.Campaign.Id, Xunit.TestContext.Current.CancellationToken);
+        var inDb = await _campaignsDb.Campaigns.FindAsync(result.Campaign.Id, Xunit.TestContext.Current.CancellationToken);
         inDb.Should().NotBeNull();
         inDb.Status.Should().Be(CampaignStatus.Draft);
     }
@@ -555,7 +555,7 @@ public sealed class CampaignServiceTests
         create.ModelState[field]!.Errors.Should().ContainSingle().Which.ErrorMessage.Should().NotBeNullOrWhiteSpace();
         var submitted = new CampaignFormValues(title, description, subject, "Changed body", replyTo);
         create.ViewData[nameof(CampaignFormValues)].Should().Be(submitted);
-        (await CampaignsDb.Campaigns.CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(1);
+        (await _campaignsDb.Campaigns.CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(1);
 
         var edit = Controller();
         (await edit.Edit(existing.Id, title, description, subject, "Changed body", replyTo)).Should().BeOfType<ViewResult>();
@@ -616,7 +616,7 @@ public sealed class CampaignServiceTests
 
         result.Success.Should().BeFalse();
         result.ErrorKey.Should().Be("TitleRequired");
-        (await CampaignsDb.Campaigns.CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(0);
+        (await _campaignsDb.Campaigns.CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(0);
     }
 
     [HumansFact]
@@ -629,7 +629,7 @@ public sealed class CampaignServiceTests
 
         first.Should().Be(new CampaignImportResult(true, Imported: 2, Skipped: 1));
         second.Should().Be(new CampaignImportResult(true, Imported: 1, Skipped: 1));
-        var codes = await CampaignsDb.CampaignCodes
+        var codes = await _campaignsDb.CampaignCodes
             .Where(c => c.CampaignId == campaign.Id)
             .ToListAsync(Xunit.TestContext.Current.CancellationToken);
         codes.OrderBy(c => c.ImportOrder).Select(c => c.Code).Should().Equal("CODE1", "CODE2", "CODE3");
@@ -656,7 +656,7 @@ public sealed class CampaignServiceTests
                 r.Kind == TicketDiscountKind.Fixed &&
                 r.Value == 10m),
             Arg.Any<CancellationToken>());
-        var codes = await CampaignsDb.CampaignCodes
+        var codes = await _campaignsDb.CampaignCodes
             .Where(c => c.CampaignId == campaign.Id)
             .Select(c => c.Code)
             .ToListAsync(Xunit.TestContext.Current.CancellationToken);
@@ -678,7 +678,7 @@ public sealed class CampaignServiceTests
 
         result.Success.Should().BeTrue();
         result.GeneratedCount.Should().Be(1);
-        var codes = await CampaignsDb.CampaignCodes
+        var codes = await _campaignsDb.CampaignCodes
             .Where(c => c.CampaignId == campaign.Id)
             .Select(c => c.Code)
             .ToListAsync(Xunit.TestContext.Current.CancellationToken);
@@ -716,7 +716,7 @@ public sealed class CampaignServiceTests
         result.ErrorKey.Should().Be("InvalidDiscountType");
         await _ticketDiscountCodes.DidNotReceive().GenerateAsync(
             Arg.Any<TicketDiscountCodeRequest>(), Arg.Any<CancellationToken>());
-        (await CampaignsDb.CampaignCodes.CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(0);
+        (await _campaignsDb.CampaignCodes.CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(0);
     }
 
     [HumansFact]
@@ -727,7 +727,7 @@ public sealed class CampaignServiceTests
 
         await _service.ActivateAsync(_actorId, campaign.Id, Xunit.TestContext.Current.CancellationToken);
 
-        var updated = await CampaignsDb.Campaigns.FindAsync(campaign.Id, Xunit.TestContext.Current.CancellationToken);
+        var updated = await _campaignsDb.Campaigns.FindAsync(campaign.Id, Xunit.TestContext.Current.CancellationToken);
         updated!.Status.Should().Be(CampaignStatus.Active);
     }
 
@@ -740,7 +740,7 @@ public sealed class CampaignServiceTests
 
         result.Success.Should().BeFalse();
         result.ErrorKey.Should().Be("NoCodes");
-        var updated = await CampaignsDb.Campaigns.FindAsync(campaign.Id, Xunit.TestContext.Current.CancellationToken);
+        var updated = await _campaignsDb.Campaigns.FindAsync(campaign.Id, Xunit.TestContext.Current.CancellationToken);
         updated!.Status.Should().Be(CampaignStatus.Draft);
     }
 
@@ -771,7 +771,7 @@ public sealed class CampaignServiceTests
 
         updated.Success.Should().BeTrue();
 
-        var refreshed = await CampaignsDb.Campaigns.FindAsync(campaign.Id, Xunit.TestContext.Current.CancellationToken);
+        var refreshed = await _campaignsDb.Campaigns.FindAsync(campaign.Id, Xunit.TestContext.Current.CancellationToken);
         refreshed.Should().NotBeNull();
         refreshed.Title.Should().Be("Updated Campaign");
         refreshed.Description.Should().Be("Updated description");
@@ -803,17 +803,17 @@ public sealed class CampaignServiceTests
     {
         var campaign = await SeedActiveCampaignWithCodesAsync(["A", "B", "C"]);
         var user = SeedUser(displayName: "Stats User");
-        var grantedCode = await CampaignsDb.CampaignCodes
+        var grantedCode = await _campaignsDb.CampaignCodes
             .FirstAsync(c => c.CampaignId == campaign.Id && c.Code == "A", Xunit.TestContext.Current.CancellationToken);
 
-        CampaignsDb.CampaignGrants.Add(new CampaignGrant
+        _campaignsDb.CampaignGrants.Add(new CampaignGrant
         {
             Id = Guid.NewGuid(),
             CampaignId = campaign.Id,
             CampaignCodeId = grantedCode.Id,
             UserId = user.Id,
-            AssignedAt = Clock.GetCurrentInstant(),
-            RedeemedAt = Clock.GetCurrentInstant()
+            AssignedAt = _clock.GetCurrentInstant(),
+            RedeemedAt = _clock.GetCurrentInstant()
         });
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
@@ -870,7 +870,7 @@ public sealed class CampaignServiceTests
         SeedTeamMember(team.Id, user.Id);
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
         await _service.SendWaveAsync(_actorId, campaign.Id, team.Id, Xunit.TestContext.Current.CancellationToken);
-        var grant = await CampaignsDb.CampaignGrants.SingleAsync(Xunit.TestContext.Current.CancellationToken);
+        var grant = await _campaignsDb.CampaignGrants.SingleAsync(Xunit.TestContext.Current.CancellationToken);
 
         var campaignId = await _service.GetCampaignIdForGrantAsync(grant.Id, Xunit.TestContext.Current.CancellationToken);
 
@@ -884,7 +884,7 @@ public sealed class CampaignServiceTests
 
         await _service.CompleteAsync(_actorId, campaign.Id, Xunit.TestContext.Current.CancellationToken);
 
-        var updated = await CampaignsDb.Campaigns.FindAsync(campaign.Id, Xunit.TestContext.Current.CancellationToken);
+        var updated = await _campaignsDb.Campaigns.FindAsync(campaign.Id, Xunit.TestContext.Current.CancellationToken);
         updated!.Status.Should().Be(CampaignStatus.Completed);
     }
 
@@ -897,7 +897,7 @@ public sealed class CampaignServiceTests
 
         result.Success.Should().BeFalse();
         result.ErrorKey.Should().Be("NotActive");
-        var updated = await CampaignsDb.Campaigns.FindAsync(campaign.Id, Xunit.TestContext.Current.CancellationToken);
+        var updated = await _campaignsDb.Campaigns.FindAsync(campaign.Id, Xunit.TestContext.Current.CancellationToken);
         updated!.Status.Should().Be(CampaignStatus.Draft);
     }
 
@@ -917,7 +917,7 @@ public sealed class CampaignServiceTests
 
         result.SentCount.Should().Be(1);
 
-        var grants = await CampaignsDb.CampaignGrants
+        var grants = await _campaignsDb.CampaignGrants
             .Where(g => g.CampaignId == campaign.Id)
             .ToListAsync(Xunit.TestContext.Current.CancellationToken);
         grants.Should().ContainSingle();
@@ -946,7 +946,7 @@ public sealed class CampaignServiceTests
     {
         var campaign = await SeedActiveCampaignWithCodesAsync(["CODE-A"]);
         campaign.Title = string.Concat(Enumerable.Repeat(character, 200));
-        CampaignsDb.Campaigns.Update(campaign);
+        _campaignsDb.Campaigns.Update(campaign);
         var user = SeedUser();
         var team = SeedTeam("Notice Team");
         SeedTeamMember(team.Id, user.Id);
@@ -1044,7 +1044,7 @@ public sealed class CampaignServiceTests
 
         result.Success.Should().BeFalse();
         result.ErrorKey.Should().Be("NotActive");
-        (await CampaignsDb.CampaignGrants.CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(0);
+        (await _campaignsDb.CampaignGrants.CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(0);
     }
 
     [HumansFact]
@@ -1071,7 +1071,7 @@ public sealed class CampaignServiceTests
         result.SentCount.Should().Be(2);
         result.EnqueueFailedCount.Should().Be(1);
         sendCalls.Should().Be(2);
-        var grants = await CampaignsDb.CampaignGrants
+        var grants = await _campaignsDb.CampaignGrants
             .Where(g => g.CampaignId == campaign.Id)
             .ToListAsync(Xunit.TestContext.Current.CancellationToken);
         grants.Should().HaveCount(2);
@@ -1104,7 +1104,7 @@ public sealed class CampaignServiceTests
 
         response.ActionName.Should().Be(nameof(CampaignController.Detail));
         sendCalls.Should().Be(2);
-        (await CampaignsDb.CampaignGrants.CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(2);
+        (await _campaignsDb.CampaignGrants.CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(2);
         if (failures == 0)
         {
             controller.TempData[TempDataKeys.SuccessMessage].Should().NotBeNull();
@@ -1137,7 +1137,7 @@ public sealed class CampaignServiceTests
         var act = () => _service.SendWaveAsync(_actorId, campaign.Id, team.Id, cancellation.Token);
 
         await act.Should().ThrowAsync<OperationCanceledException>();
-        var grant = await CampaignsDb.CampaignGrants.SingleAsync(Xunit.TestContext.Current.CancellationToken);
+        var grant = await _campaignsDb.CampaignGrants.SingleAsync(Xunit.TestContext.Current.CancellationToken);
         await _audit.Received(1).LogAsync(CampaignsAuditActions.CampaignWaveSent, "Campaign", campaign.Id,
             Arg.Is<string>(description => description.Contains(grant.Id.ToString(), StringComparison.Ordinal)),
             _actorId, user.Id, "User");
@@ -1182,7 +1182,7 @@ public sealed class CampaignServiceTests
         result.ErrorKey.Should().Be("NotEnoughCodes");
         result.CodesNeeded.Should().Be(2);
         result.CodesAvailable.Should().Be(1);
-        (await CampaignsDb.CampaignGrants.CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(0);
+        (await _campaignsDb.CampaignGrants.CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(0);
     }
 
 
@@ -1199,7 +1199,7 @@ public sealed class CampaignServiceTests
         await _service.SendWaveAsync(_actorId, campaign.Id, team.Id, Xunit.TestContext.Current.CancellationToken);
         _emailService.ClearReceivedCalls();
 
-        var grant = await CampaignsDb.CampaignGrants.SingleAsync(Xunit.TestContext.Current.CancellationToken);
+        var grant = await _campaignsDb.CampaignGrants.SingleAsync(Xunit.TestContext.Current.CancellationToken);
 
         await _service.ResendToGrantAsync(_actorId, grant.Id, Xunit.TestContext.Current.CancellationToken);
 
@@ -1222,7 +1222,7 @@ public sealed class CampaignServiceTests
         SeedTeamMember(team.Id, user.Id);
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
         await _service.SendWaveAsync(_actorId, campaign.Id, team.Id, Xunit.TestContext.Current.CancellationToken);
-        var grant = await CampaignsDb.CampaignGrants.SingleAsync(Xunit.TestContext.Current.CancellationToken);
+        var grant = await _campaignsDb.CampaignGrants.SingleAsync(Xunit.TestContext.Current.CancellationToken);
         _emailService.ClearReceivedCalls();
         if (string.Equals(failure, "user", StringComparison.Ordinal))
             _people.Remove(user.Id);
@@ -1236,7 +1236,7 @@ public sealed class CampaignServiceTests
         await act.Should().ThrowAsync<InvalidOperationException>();
 
         ClearAllTrackers();
-        (await CampaignsDb.CampaignGrants.FindAsync(grant.Id, Xunit.TestContext.Current.CancellationToken))
+        (await _campaignsDb.CampaignGrants.FindAsync(grant.Id, Xunit.TestContext.Current.CancellationToken))
             .Should().NotBeNull();
     }
 
@@ -1255,14 +1255,14 @@ public sealed class CampaignServiceTests
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
         // Grant a code to alreadyGranted user manually
-        var code = await CampaignsDb.CampaignCodes.FirstAsync(c => c.CampaignId == campaign.Id, Xunit.TestContext.Current.CancellationToken);
-        CampaignsDb.CampaignGrants.Add(new CampaignGrant
+        var code = await _campaignsDb.CampaignCodes.FirstAsync(c => c.CampaignId == campaign.Id, Xunit.TestContext.Current.CancellationToken);
+        _campaignsDb.CampaignGrants.Add(new CampaignGrant
         {
             Id = Guid.NewGuid(),
             CampaignId = campaign.Id,
             CampaignCodeId = code.Id,
             UserId = alreadyGranted.Id,
-            AssignedAt = Clock.GetCurrentInstant()
+            AssignedAt = _clock.GetCurrentInstant()
         });
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
@@ -1284,27 +1284,27 @@ public sealed class CampaignServiceTests
         var archivedId = Guid.NewGuid();
         _people[user.Id] = user with { MergedUserIds = [archivedId] };
         _people[archivedId] = _people[user.Id];
-        var codes = await CampaignsDb.CampaignCodes.ToListAsync(Xunit.TestContext.Current.CancellationToken);
+        var codes = await _campaignsDb.CampaignCodes.ToListAsync(Xunit.TestContext.Current.CancellationToken);
         var code = codes.Single(c => string.Equals(c.Code, "EXPORT-CODE", StringComparison.Ordinal));
-        CampaignsDb.CampaignGrants.Add(new CampaignGrant
+        _campaignsDb.CampaignGrants.Add(new CampaignGrant
         {
             Id = Guid.NewGuid(),
             CampaignId = campaign.Id,
             CampaignCodeId = code.Id,
             UserId = user.Id,
-            AssignedAt = Clock.GetCurrentInstant(),
+            AssignedAt = _clock.GetCurrentInstant(),
 #pragma warning disable CS0618 // old grants still hand over their stored status
             // A grant from before delivery tracking was dropped still hands over what it holds.
             LatestEmailStatus = EmailOutboxStatus.Sent
 #pragma warning restore CS0618
         });
-        CampaignsDb.CampaignGrants.Add(new CampaignGrant
+        _campaignsDb.CampaignGrants.Add(new CampaignGrant
         {
             Id = Guid.NewGuid(),
             CampaignId = campaign.Id,
             CampaignCodeId = codes.Single(c => string.Equals(c.Code, "OTHER-CODE", StringComparison.Ordinal)).Id,
             UserId = SeedUser(displayName: "Unrelated user").Id,
-            AssignedAt = Clock.GetCurrentInstant()
+            AssignedAt = _clock.GetCurrentInstant()
         });
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
@@ -1324,9 +1324,9 @@ public sealed class CampaignServiceTests
     {
         var campaign = await SeedActiveCampaignWithCodesAsync(["TRACK-CODE"]);
         var recipient = SeedUser(displayName: "Tracker");
-        var code = await CampaignsDb.CampaignCodes.SingleAsync(Xunit.TestContext.Current.CancellationToken);
-        var redeemedAt = Clock.GetCurrentInstant();
-        await CampaignsDb.CampaignGrants.AddAsync(new CampaignGrant
+        var code = await _campaignsDb.CampaignCodes.SingleAsync(Xunit.TestContext.Current.CancellationToken);
+        var redeemedAt = _clock.GetCurrentInstant();
+        await _campaignsDb.CampaignGrants.AddAsync(new CampaignGrant
         {
             Id = Guid.NewGuid(),
             CampaignId = campaign.Id,
@@ -1362,7 +1362,7 @@ public sealed class CampaignServiceTests
         await _service.EraseForUserAsync(erased.Id, Xunit.TestContext.Current.CancellationToken);
 
         ClearAllTrackers();
-        var remaining = await CampaignsDb.CampaignGrants.ToListAsync(Xunit.TestContext.Current.CancellationToken);
+        var remaining = await _campaignsDb.CampaignGrants.ToListAsync(Xunit.TestContext.Current.CancellationToken);
         remaining.Should().ContainSingle();
         remaining[0].UserId.Should().Be(kept.Id);
     }
@@ -1378,18 +1378,18 @@ public sealed class CampaignServiceTests
         var target = SeedUser(displayName: "Target");
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
 
-        var codes = await CampaignsDb.CampaignCodes.ToListAsync(Xunit.TestContext.Current.CancellationToken);
+        var codes = await _campaignsDb.CampaignCodes.ToListAsync(Xunit.TestContext.Current.CancellationToken);
         Guid GrantOn(string code, Guid userId)
         {
             var c = codes.Single(x => string.Equals(x.Code, code, StringComparison.Ordinal));
             var id = Guid.NewGuid();
-            CampaignsDb.CampaignGrants.Add(new CampaignGrant
+            _campaignsDb.CampaignGrants.Add(new CampaignGrant
             {
                 Id = id,
                 CampaignId = c.CampaignId,
                 CampaignCodeId = c.Id,
                 UserId = userId,
-                AssignedAt = Clock.GetCurrentInstant()
+                AssignedAt = _clock.GetCurrentInstant()
             });
             return id;
         }
@@ -1400,11 +1400,11 @@ public sealed class CampaignServiceTests
         ClearAllTrackers();
 
         await _service.ReassignAsync(
-            source.Id, target.Id, Guid.NewGuid(), Clock.GetCurrentInstant(),
+            source.Id, target.Id, Guid.NewGuid(), _clock.GetCurrentInstant(),
             Xunit.TestContext.Current.CancellationToken);
 
         ClearAllTrackers();
-        var grants = await CampaignsDb.CampaignGrants.ToListAsync(Xunit.TestContext.Current.CancellationToken);
+        var grants = await _campaignsDb.CampaignGrants.ToListAsync(Xunit.TestContext.Current.CancellationToken);
         grants.Should().OnlyContain(g => g.UserId == target.Id);
         grants.Select(g => g.Id).Should().BeEquivalentTo([targetGrantA, sourceGrantB]);
         grants.Single(g => g.CampaignId == campaignA.Id).Id.Should().Be(targetGrantA);
@@ -1425,10 +1425,10 @@ public sealed class CampaignServiceTests
             EmailSubject = emailSubject,
             EmailBodyTemplate = emailBodyTemplate,
             Status = status,
-            CreatedAt = Clock.GetCurrentInstant(),
+            CreatedAt = _clock.GetCurrentInstant(),
             CreatedByUserId = creatorId
         };
-        CampaignsDb.Campaigns.Add(campaign);
+        _campaignsDb.Campaigns.Add(campaign);
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);
         ClearAllTrackers();
         return campaign;
@@ -1444,10 +1444,10 @@ public sealed class CampaignServiceTests
             emailSubject,
             emailBodyTemplate);
 
-        var now = Clock.GetCurrentInstant();
+        var now = _clock.GetCurrentInstant();
         for (var i = 0; i < codes.Length; i++)
         {
-            CampaignsDb.CampaignCodes.Add(new CampaignCode
+            _campaignsDb.CampaignCodes.Add(new CampaignCode
             {
                 Id = Guid.NewGuid(),
                 CampaignId = campaign.Id,
@@ -1473,7 +1473,7 @@ public sealed class CampaignServiceTests
             // UserInfo.BurnerName reads User.BurnerName only, so the fixture sets it directly.
             BurnerName = displayName,
             PreferredLanguage = preferredLanguage,
-            CreatedAt = Clock.GetCurrentInstant()
+            CreatedAt = _clock.GetCurrentInstant()
         };
         var info = UserInfo.Create(
             user: user,
@@ -1490,7 +1490,7 @@ public sealed class CampaignServiceTests
             Guid.NewGuid(), name, null, name.ToLowerInvariant().Replace(" ", "-"),
             IsActive: true, IsSystemTeam: false, SystemTeamType.None, RequiresApproval: false,
             IsPublicPage: false, IsHidden: false, IsPromotedToDirectory: false,
-            Clock.GetCurrentInstant(), []);
+            _clock.GetCurrentInstant(), []);
         _teams[team.Id] = team;
         return team;
     }
@@ -1500,12 +1500,12 @@ public sealed class CampaignServiceTests
         _people.TryGetValue(userId, out var person);
         _teams[teamId].Members.Add(new TeamMemberInfo(
             Guid.NewGuid(), userId, person?.BurnerName ?? string.Empty,
-            person?.Email, null, TeamMemberRole.Member, Clock.GetCurrentInstant()));
+            person?.Email, null, TeamMemberRole.Member, _clock.GetCurrentInstant()));
     }
 
-    private Task SaveAllAsync(CancellationToken ct = default) => CampaignsDb.SaveChangesAsync(ct);
+    private Task SaveAllAsync(CancellationToken ct = default) => _campaignsDb.SaveChangesAsync(ct);
 
-    private void ClearAllTrackers() => CampaignsDb.ChangeTracker.Clear();
+    private void ClearAllTrackers() => _campaignsDb.ChangeTracker.Clear();
 }
 
 public enum CampaignMutationRead { Create, Edit, Import, Generate, Activate, Complete, Wave, Resend, ResendGrant, EditRefusal }

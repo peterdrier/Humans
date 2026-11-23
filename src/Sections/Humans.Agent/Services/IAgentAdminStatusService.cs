@@ -9,17 +9,17 @@ internal interface IAgentAdminStatusService : IApplicationService
 }
 
 internal sealed record AgentAdminStatusReport(
-    AgentUsageStats Usage24h,
-    AgentUsageStats Usage7d,
-    AgentUsageStats Usage30d,
-    AgentSpendStats Spend24h,
-    AgentSpendStats Spend7d,
-    AgentSpendStats Spend30d,
+    AgentUsageStats Usage24Hours,
+    AgentUsageStats Usage7Days,
+    AgentUsageStats Usage30Days,
+    AgentSpendStats Spend24Hours,
+    AgentSpendStats Spend7Days,
+    AgentSpendStats Spend30Days,
     AgentSpendStats SpendMtd,
-    int Refusals7dCount,
-    IReadOnlyList<AgentRefusalBucket> Refusals7d,
-    IReadOnlyList<AgentTopDoc> TopDocs7d,
-    IReadOnlyList<AgentTopUser> TopUsers7d,
+    int Refusals7DaysCount,
+    IReadOnlyList<AgentRefusalBucket> Refusals7Days,
+    IReadOnlyList<AgentTopDoc> TopDocs7Days,
+    IReadOnlyList<AgentTopUser> TopUsers7Days,
     AgentRetentionRunSnapshot Retention,
     AgentBalanceStatus Balance,
     bool SettingsStoreWarm);

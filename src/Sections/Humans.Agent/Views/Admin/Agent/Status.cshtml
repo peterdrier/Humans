@@ -88,9 +88,9 @@
             <tbody>
                 @foreach (var (label, u) in new[]
                 {
-                    ("24h", report.Usage24h),
-                    ("7d",  report.Usage7d),
-                    ("30d", report.Usage30d),
+                    ("24h", report.Usage24Hours),
+                    ("7d",  report.Usage7Days),
+                    ("30d", report.Usage30Days),
                 })
                 {
                     <tr>
@@ -127,9 +127,9 @@
             <tbody>
                 @foreach (var (label, s) in new[]
                 {
-                    ("24h", report.Spend24h),
-                    ("7d",  report.Spend7d),
-                    ("30d", report.Spend30d),
+                    ("24h", report.Spend24Hours),
+                    ("7d",  report.Spend7Days),
+                    ("30d", report.Spend30Days),
                     ("MTD", report.SpendMtd),
                 })
                 {
@@ -175,14 +175,14 @@
         </a>
     </div>
     <div class="card-body">
-        @if (report.Refusals7dCount == 0)
+        @if (report.Refusals7DaysCount == 0)
         {
             <empty-state class="mb-0">No refusals in the last 7 days.</empty-state>
         }
         else
         {
-            <p class="mb-2"><strong>@report.Refusals7dCount</strong> refusals</p>
-            var refusalsTable = TableModel.For(report.Refusals7d.OrderByDescending(bucket => bucket.Count).ToList())
+            <p class="mb-2"><strong>@report.Refusals7DaysCount</strong> refusals</p>
+            var refusalsTable = TableModel.For(report.Refusals7Days.OrderByDescending(bucket => bucket.Count).ToList())
                 .Column("Reason", bucket => bucket.Reason, o => o.Code())
                 .Column("Count", r => r.Count, o => o.Number().End())
                 .Css("w-auto")
@@ -195,13 +195,13 @@
 <div class="card mb-3">
     <div class="card-header">Top fetched docs (last 7d)</div>
     <div class="card-body">
-        @if (!report.TopDocs7d.Any())
+        @if (!report.TopDocs7Days.Any())
         {
             <empty-state class="mb-0">No tool fetches in the last 7 days.</empty-state>
         }
         else
         {
-            var docsTable = TableModel.For(report.TopDocs7d)
+            var docsTable = TableModel.For(report.TopDocs7Days)
                 .Column("Slug", d => d.Slug, o => o.Code())
                 .Column("Fetches", d => d.Count, o => o.Number().End())
                 .Css("w-auto")
@@ -214,13 +214,13 @@
 <div class="card mb-3">
     <div class="card-header">Top users (last 7d)</div>
     <div class="card-body">
-        @if (!report.TopUsers7d.Any())
+        @if (!report.TopUsers7Days.Any())
         {
             <empty-state class="mb-0">No activity in the last 7 days.</empty-state>
         }
         else
         {
-            var usersTable = TableModel.For(report.TopUsers7d)
+            var usersTable = TableModel.For(report.TopUsers7Days)
                 .Human("Human", u => u.UserId, HumanLink.Admin)
                 .Column("Messages (7d)", u => u.MessageCount, o => o.Number().End())
                 .Column("Daily remaining", u => u.MessagesTodayRemaining, o => o.Number().End())
