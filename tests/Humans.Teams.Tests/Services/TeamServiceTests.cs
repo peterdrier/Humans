@@ -1951,7 +1951,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
             _teamResourceService.GetTeamResourcesAsync(team.Id, Arg.Any<CancellationToken>())
                 .Returns(Task.FromException<IReadOnlyList<GoogleResourceSnapshot>>(new IOException("Email resource lookup unavailable")));
         if (string.Equals(mode, "profile-lookup-failure", StringComparison.Ordinal))
-            _userService.GetUserInfosAsync(Arg.Is<IEnumerable<Guid>>(ids => ids.Distinct().Count() == 1 && ids.Contains(requester.Id)), Arg.Any<CancellationToken>())
+            _userService.GetUserInfosAsync(Arg.Is<IEnumerable<Guid>>(ids => ids.ToHashSet().SetEquals(new[] { requester.Id })), Arg.Any<CancellationToken>())
                 .Returns(ValueTask.FromException<IReadOnlyDictionary<Guid, UserInfo>>(new IOException("Profile lookup unavailable")));
 
         await _service.ApproveJoinRequestAsync(request.Id, coordinator.Id, null, ct);
@@ -1968,7 +1968,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
                     && m.Subject.EndsWith($"#{expectedCulture}", StringComparison.Ordinal)),
                 Arg.Any<CancellationToken>());
         await _userService.Received(1).GetUserInfosAsync(
-            Arg.Is<IEnumerable<Guid>>(ids => ids.Distinct().Count() == 1 && ids.Contains(requester.Id)), Arg.Any<CancellationToken>());
+            Arg.Is<IEnumerable<Guid>>(ids => ids.ToHashSet().SetEquals(new[] { requester.Id })), Arg.Any<CancellationToken>());
     }
 
     [HumansTheory]

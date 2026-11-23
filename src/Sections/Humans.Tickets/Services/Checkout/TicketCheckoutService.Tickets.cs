@@ -365,25 +365,25 @@ internal sealed partial class TicketCheckoutService
     }
 
     /// <summary>
-    /// The account a ticket for <paramref name="email"/> belongs to. Only a verified address attaches a ticket to an
+    /// The account a ticket for <paramref name="address"/> belongs to. Only a verified address attaches a ticket to an
     /// existing account; a single unverified row is replaced by a new account, as the attendee import does; an
     /// ambiguous address gives no account and the reason. The legal name stays on the line and ticket: as a display
     /// name it would become the account's public burner name.
     /// </summary>
-    private async Task<(Guid? UserId, string? Problem)> ResolveAccountAsync(string email, CancellationToken ct)
+    private async Task<(Guid? UserId, string? Problem)> ResolveAccountAsync(string address, CancellationToken ct)
     {
-        var verified = (await userEmails.FindByAddressAsync(email, aliased: true, verifiedOnly: true, ct))
+        var verified = (await userEmails.FindByAddressAsync(address, aliased: true, verifiedOnly: true, ct))
             .Select(r => r.UserId).Distinct().ToList();
         if (verified.Count == 1)
             return ((await users.GetUserInfoAsync(verified[0], ct))?.Id ?? verified[0], null);
         if (verified.Count > 1)
             return (null, "the address is verified on more than one account");
-        var rows = await userEmails.FindByAddressAsync(email, aliased: true, verifiedOnly: false, ct);
+        var rows = await userEmails.FindByAddressAsync(address, aliased: true, verifiedOnly: false, ct);
         if (rows.Count > 1)
             return (null, "the address is unverified on more than one account");
         var provisioned = rows.Count == 1
-            ? await provisioning.ReplaceUnverifiedEmailAndProvisionAsync(rows[0].UserId, rows[0].Id, email, displayName: null, ContactSource.Manual, ct)
-            : await provisioning.FindOrCreateUserByEmailAsync(email, displayName: null, ContactSource.Manual, ct);
+            ? await provisioning.ReplaceUnverifiedEmailAndProvisionAsync(rows[0].UserId, rows[0].Id, address, displayName: null, ContactSource.Manual, ct)
+            : await provisioning.FindOrCreateUserByEmailAsync(address, displayName: null, ContactSource.Manual, ct);
         return (provisioned.UserId, null);
     }
 

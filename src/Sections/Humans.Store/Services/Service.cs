@@ -1245,20 +1245,20 @@ internal sealed class Service(
             return true;
         }
 
-        async Task<StoreCheckoutSessionData?> TryReplayAsync(Guid attemptId)
+        async Task<StoreCheckoutSessionData?> TryReplayAsync(Guid replayAttemptId)
         {
             try
             {
                 return await stripeService.CreateCheckoutSessionAsync(
                     orderId, amountEur, returnUrl, returnUrl, customerEmail, description, ct,
-                    checkoutAttemptId: attemptId);
+                    checkoutAttemptId: replayAttemptId);
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
                 // Stripe rejects a replay whose other arguments changed (a counterparty edit). Replacing the attempt
                 // expires its session first, so falling through never leaves two payable.
                 logger.LogWarning(ex, "Replaying checkout attempt {AttemptId} for order {OrderId} failed; replacing it.",
-                    attemptId, orderId);
+                    replayAttemptId, orderId);
                 return null;
             }
         }

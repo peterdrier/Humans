@@ -989,7 +989,7 @@ internal sealed class ShiftManagementService(
         foreach (var id in relevantTeamIds.ToList())
         {
             var current = teamMeta.GetValueOrDefault(id);
-            while (current?.ParentTeamId is Guid parentId && teamMeta.ContainsKey(parentId))
+            while (current?.ParentTeamId is { } parentId && teamMeta.ContainsKey(parentId))
             {
                 if (!relevantTeamIds.Add(parentId))
                     break;
@@ -1221,7 +1221,7 @@ internal sealed class ShiftManagementService(
             if (!teamLookup.TryGetValue(s.Rota.TeamId, out var team)) return null;
             if (team.ParentTeamId is null) return team;
             if (team.IsPromotedToDirectory) return team;
-            return team.ParentTeamId is Guid pid && teamLookup.TryGetValue(pid, out var parent) ? parent : null;
+            return team.ParentTeamId is { } pid && teamLookup.TryGetValue(pid, out var parent) ? parent : null;
         }
 
         var shiftsByDisplayTeam = allShifts
@@ -1257,7 +1257,7 @@ internal sealed class ShiftManagementService(
 
             if (!teamHasAnyShift) continue;
 
-            var departmentName = team.ParentTeamId is Guid pid && teamLookup.TryGetValue(pid, out var parentTeam)
+            var departmentName = team.ParentTeamId is { } pid && teamLookup.TryGetValue(pid, out var parentTeam)
                 ? parentTeam.Name
                 : team.Name;
 

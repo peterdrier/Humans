@@ -202,7 +202,7 @@ internal sealed class TeamController(
             .Where(slot => canSeeHiddenTeams
                 || (teamsBySlug.TryGetValue(slot.TeamSlug, out var team) && !team.IsHidden))
             .Where(slot => slot.IsPublic || canSeeHiddenTeams
-                || (viewerId is Guid userId && teamsBySlug.TryGetValue(slot.TeamSlug, out var team)
+                || (viewerId is { } userId && teamsBySlug.TryGetValue(slot.TeamSlug, out var team)
                     && TeamCoordinatorAccess.IsCoordinatorOfActiveTeam(teamsById, team.Id, userId)))
             .OrderBy(slot => slot.Priority switch
             {

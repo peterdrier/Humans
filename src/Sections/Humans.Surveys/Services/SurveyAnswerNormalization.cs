@@ -18,7 +18,7 @@ internal static class SurveyAnswerNormalization
             return (answer, "A single-choice question permits only one option.");
 
         var rating = question.Type == SurveyQuestionType.Rating ? answer.RatingValue : null;
-        if (rating is { } value && (value < (question.RatingMin ?? 1) || value > (question.RatingMax ?? 5)))
+        if (rating is { } ratingValue && (ratingValue < (question.RatingMin ?? 1) || ratingValue > (question.RatingMax ?? 5)))
             return (answer, "The rating is outside the question's range.");
 
         var text = question.Type is SurveyQuestionType.ShortText or SurveyQuestionType.LongText

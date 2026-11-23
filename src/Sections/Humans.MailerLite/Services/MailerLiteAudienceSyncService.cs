@@ -228,7 +228,7 @@ internal sealed class MailerLiteAudienceSyncService(
         var description = $"Audience '{audience.DisplayName}' synced to " +
                           $"'{result.GroupName}': {result.FormatSummary()}";
 
-        if (actorUserId is Guid actor)
+        if (actorUserId is { } actor)
         {
             await audit.LogAsync(
                 MailerLiteAuditActions.MailerLiteAudienceSyncCompleted,

@@ -17,7 +17,7 @@ public static class TeamCoordinatorAccess
         if (!team.IsSystemTeam && team.ManagementRoleHolderUserIds?.Contains(userId) == true)
             return true;
 
-        return team.ParentTeamId is Guid parentTeamId
+        return team.ParentTeamId is { } parentTeamId
             && IsCoordinatorOfActiveTeam(teamsById, parentTeamId, userId);
     }
 }

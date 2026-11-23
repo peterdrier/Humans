@@ -149,7 +149,7 @@
                 {
                     <tr>
                         <td>
-                            @if (r.UserId is Guid uid)
+                            @if (r.UserId is { } uid)
                             {
                                 <vc:human user-id="@uid" link="Admin" />
                             }
@@ -231,7 +231,7 @@
                 {
                     <tr>
                         <td>
-                            @if (r.UserId is Guid uid)
+                            @if (r.UserId is { } uid)
                             {
                                 <vc:human user-id="@uid" link="Admin" />
                             }

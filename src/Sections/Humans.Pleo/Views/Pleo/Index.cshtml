@@ -189,7 +189,7 @@
                 Func<PleoSpendTotal, IHtmlContent> entriesCell = @<text>@N(item.Count)</text>;
                 Func<PleoSpendTotal, IHtmlContent> spendCell = @<text>@item.Spend.ToEuro()</text>;
                 var cardholderTable = TableModel.For(Model.ByCardholder)
-                    .Link("Cardholder", r => r.Label, r => Url.Action("Entries", new { cardholder = r.Key }))
+                    .Link("Cardholder", row => row.Label, row => Url.Action("Entries", new { cardholder = row.Key }))
                     .Template("Entries", entriesCell, o => o.End(), sortBy: c => c.Count)
                     .Template("Spend", spendCell, o => o.End().Css("text-nowrap"), sortBy: c => c.Spend)
                     .Css("align-middle")

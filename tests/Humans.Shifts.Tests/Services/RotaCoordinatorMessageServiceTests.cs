@@ -396,7 +396,7 @@ public sealed class RotaCoordinatorMessageServiceTests
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
                 new Dictionary<Guid, UserInfo> { [sender] = MakeUserInfoWithEmail(sender, "sender@example.com", "Sender") }));
         _userService.GetUserInfosAsync(
-            Arg.Is<IEnumerable<Guid>>(c => c.Contains(withEmail) || c.Contains(noEmail)),
+            Arg.Is<IEnumerable<Guid>>(c => c.Intersect(new[] { withEmail, noEmail }).Any()),
             Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
                 new Dictionary<Guid, UserInfo>
@@ -793,7 +793,7 @@ public sealed class RotaCoordinatorMessageServiceTests
             .Returns([rota1, rota2]);
 
         _userService.GetUserInfosAsync(
-            Arg.Is<IEnumerable<Guid>>(c => c.Contains(userA) && c.Contains(userB)),
+            Arg.Is<IEnumerable<Guid>>(c => c.ToHashSet().IsSupersetOf(new[] { userA, userB })),
             Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
                 new Dictionary<Guid, UserInfo>
@@ -1094,7 +1094,7 @@ public sealed class RotaCoordinatorMessageServiceTests
         }
 
         _userService.GetUserInfosAsync(
-            Arg.Is<IEnumerable<Guid>>(c => c.Distinct().Count() == 1 && c.Contains(sender)),
+            Arg.Is<IEnumerable<Guid>>(c => c.ToHashSet().SetEquals(new[] { sender })),
             Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
                 new Dictionary<Guid, UserInfo> { [sender] = senderInfo }));

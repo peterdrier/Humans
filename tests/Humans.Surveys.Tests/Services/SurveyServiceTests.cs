@@ -4602,7 +4602,7 @@ public class SurveyServiceTests
             .Should().Equal(Enumerable.Range(expectedMin, expectedMax - expectedMin + 1));
         rating.RatingDistribution.Select(bucket => bucket.Count)
             .Should().Equal(Enumerable.Range(expectedMin, expectedMax - expectedMin + 1)
-                .Select(value => answer == value ? 1 : 0));
+                .Select(bucketValue => answer == bucketValue ? 1 : 0));
         rating.RatingAverage.Should().Be(answer);
     }
 

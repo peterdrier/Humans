@@ -31,8 +31,8 @@ public sealed class MemberTermStatusViewComponentTests
         var clock = new FakeClock(Instant.FromUtc(2026, 3, 1, 12, 0));
         var now = clock.GetCurrentInstant();
         var expiry = new LocalDate(2026, 3, 1).PlusDays(daysToExpiry);
-        var governance = Substitute.For<IGovernanceManagement, IGovernanceService>();
-        var tierReads = (IGovernanceService)governance;
+        var governance = Substitute.For<IGovernanceManagement>();
+        var tierReads = Substitute.For<IGovernanceService>();
         tierReads.GetMembershipTierAsync(userId, Arg.Any<CancellationToken>()).Returns(MembershipTier.Colaborador);
         var application = new UserApplicationSnapshot(Guid.NewGuid(), userId, ApplicationStatus.Approved,
             MembershipTier.Colaborador, now, now, expiry, "Motivation", null, null, null);
@@ -72,8 +72,8 @@ public sealed class MemberTermStatusViewComponentTests
     {
         using var aborted = new CancellationTokenSource();
         await aborted.CancelAsync();
-        var governance = Substitute.For<IGovernanceManagement, IGovernanceService>();
-        var tierReads = (IGovernanceService)governance;
+        var governance = Substitute.For<IGovernanceManagement>();
+        var tierReads = Substitute.For<IGovernanceService>();
         tierReads.GetMembershipTierAsync(Arg.Any<Guid>(), aborted.Token)
             .Returns(_ => Task.FromException<MembershipTier>(new OperationCanceledException(aborted.Token)));
         var httpContext = new DefaultHttpContext { RequestAborted = aborted.Token };

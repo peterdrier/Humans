@@ -156,7 +156,7 @@ internal sealed class AgentAdminStatusService(
 
     private List<AgentTopUser> BuildTopUsers(
         IReadOnlyList<AgentStatusMessageRow> rows, Instant since,
-        AgentSettingsDto settings, Instant now)
+        AgentSettingsDto agentSettings, Instant now)
     {
         // Rate-limit keys: (UserId, LocalDate, Hour) in UTC — see AgentRateLimitHandler.
         var utcNow = now.InUtc();
@@ -176,8 +176,8 @@ internal sealed class AgentAdminStatusService(
             .Select(kv =>
             {
                 var snapshot = rateLimit.Get(kv.Key, today, hour);
-                var dailyRemaining = Math.Max(0, settings.DailyMessageCap - snapshot.MessagesToday);
-                var hourlyRemaining = Math.Max(0, settings.HourlyMessageCap - snapshot.MessagesThisHour);
+                var dailyRemaining = Math.Max(0, agentSettings.DailyMessageCap - snapshot.MessagesToday);
+                var hourlyRemaining = Math.Max(0, agentSettings.HourlyMessageCap - snapshot.MessagesThisHour);
                 return new AgentTopUser(
                     UserId: kv.Key,
                     MessageCount: kv.Value,

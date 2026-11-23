@@ -1249,11 +1249,11 @@ internal sealed partial class TicketCheckoutService(
     /// address verified on exactly one live account counts; nobody gets an account made for them.
     /// </summary>
     private async Task<(UserInfo? Person, string? Problem)> FindOtherAsync(
-        string email, Guid askerId, Guid salesEventId, Instant now, CancellationToken ct)
+        string address, Guid askerId, Guid salesEventId, Instant now, CancellationToken ct)
     {
-        if (!LooksLikeEmail(email) || email.Length > MaxEmailLength)
+        if (!LooksLikeEmail(address) || address.Length > MaxEmailLength)
             return (null, "NotFound");
-        var owners = (await userEmails.FindByAddressAsync(email, aliased: true, verifiedOnly: true, ct))
+        var owners = (await userEmails.FindByAddressAsync(address, aliased: true, verifiedOnly: true, ct))
             .Select(r => r.UserId).Distinct().ToList();
         return owners.Count != 1 ? (null, "NotFound") : await CheckOtherAsync(owners[0], askerId, salesEventId, now, ct);
     }

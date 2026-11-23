@@ -3,7 +3,7 @@
 @{
     ViewData["Title"] = "Shift summary by camp";
 
-    string Hours(double h) => h.ToString("0.#");
+    string Hours(double h) => h.ToString("0.#", System.Globalization.CultureInfo.CurrentCulture);
     const string noCamp = "(no camp)";
 }
 

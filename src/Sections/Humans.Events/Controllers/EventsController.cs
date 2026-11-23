@@ -688,8 +688,8 @@ internal sealed class EventsController(
         if (parsed.Errors.Count > 0)
         {
             logger.LogWarning("Bulk CSV validation failed for camp slug {Slug}: {ErrorKeys}",
-                slug, string.Join(", ", parsed.Errors.Select(error => error.Key)));
-            var detail = string.Join(" ", parsed.Errors.Select(error => localizer[error.Key, error.Args].Value));
+                slug, string.Join(", ", parsed.Errors.Select(parseError => parseError.Key)));
+            var detail = string.Join(" ", parsed.Errors.Select(parseError => localizer[parseError.Key, parseError.Args].Value));
             SetError(localizer["Events_Upload_ParseErrorDetail", detail].Value);
             return RedirectToAction(nameof(MySubmissions));
         }
