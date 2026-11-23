@@ -163,7 +163,7 @@ public class RequestScopedCancellationOnExternalWriteAnalyzerTests
     [HumansFact]
     public async Task Fires_when_called_through_the_implementing_class()
     {
-        const string Implementation = """
+        const string implementation = """
 
             namespace Humans.Application.Services
             {
@@ -178,7 +178,7 @@ public class RequestScopedCancellationOnExternalWriteAnalyzerTests
             }
             """;
 
-        var diagnostics = await RunAsync(Implementation + """
+        var diagnostics = await RunAsync(implementation + """
 
             namespace Humans.Web.Controllers
             {
@@ -215,7 +215,7 @@ public class RequestScopedCancellationOnExternalWriteAnalyzerTests
     {
         // The Section : ISection entry point is what makes AssemblyScope.IsSection
         // recognise the "Humans.Store" compilation below as a section.
-        const string Source = """
+        const string source = """
             namespace Humans.Base.Interfaces
             {
                 public interface ISection { }
@@ -242,7 +242,7 @@ public class RequestScopedCancellationOnExternalWriteAnalyzerTests
         var diagnostics = await AnalyzerTestHarness.RunAsync(
             new RequestScopedCancellationOnExternalWriteAnalyzer(),
             "Humans.Store",
-            Source + Stubs);
+            source + Stubs);
 
         diagnostics.Should().ContainSingle(d => IsHum0033(d));
     }

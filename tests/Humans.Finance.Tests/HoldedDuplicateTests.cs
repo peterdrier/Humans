@@ -85,7 +85,7 @@ public class HoldedDuplicateTests
     private static HoldedPurchaseDocInfo Doc(
         string id, decimal total = 120m, string description = "ER: Train to Madrid", string contactId = "c1",
         decimal? pending = null, bool? draft = false) => new HoldedPurchaseDocInfo(
-            id, id, "Catherine Morgaine Ryan", contactId, description, FixedNow.InZone(DateTimeZoneProviders.Tzdb["Europe/Madrid"]).Date, total, 0m, total, "eur", draft == false, null, [], null, "", pending ?? total);
+            id, id, "Catherine Morgaine Ryan", contactId, description, FixedNow.InZone(DateTimeZoneProviders.Tzdb["Europe/Madrid"]).Date, total, total, draft == false, null, [], null, "", pending ?? total);
 
     private static readonly IReadOnlyDictionary<Guid, IReadOnlySet<string>> NoExtraContacts =
         new Dictionary<Guid, IReadOnlySet<string>>();
@@ -478,5 +478,5 @@ public class HoldedDuplicateTests
     }
 
     private static HoldedChartAccountInfo Account_(int number, decimal balance) =>
-        new(number, "Creditor", null, null, false, balance);
+        new(number, "Creditor", null, false, balance);
 }

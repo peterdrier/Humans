@@ -24,7 +24,6 @@ public abstract class CampsTestHarness : IDisposable
 
     private protected DbContextOptions<UsersDbContext> DbOptions { get; }
     private protected UsersDbContext Db { get; }
-    private protected TestDbContextFactory<UsersDbContext> DbFactory { get; }
 
     // Section contexts are separate in-memory stores: a test seeding across two saves each.
     // Every pair is built on first touch: eager construction gave each test its own EF
@@ -52,7 +51,6 @@ public abstract class CampsTestHarness : IDisposable
             .ConfigureWarnings(w => w.Ignore(InMemoryEventId.TransactionIgnoredWarning))
             .Options;
         Db = new UsersDbContext(DbOptions);
-        DbFactory = new TestDbContextFactory<UsersDbContext>(DbOptions);
 
 
         _campsDb = RegisterSection<CampsDbContext>(o => new(o));

@@ -267,7 +267,7 @@ internal sealed class Service(
     {
         var payments = await repo.GetPaymentsMissingMethodNameAsync(ct);
         return payments
-            .Select(p => new PaymentMethodRepairRow(p.Id, p.OrderId, p.Method, p.AmountEur, p.ReceivedAt))
+            .Select(p => new PaymentMethodRepairRow(p.OrderId, p.Method, p.AmountEur, p.ReceivedAt))
             .ToList();
     }
 
@@ -561,7 +561,6 @@ internal sealed class Service(
                 OrderCounterpartyType.Camp,
                 season.Id,
                 season.Name,
-                year,
                 orders));
         }
 
@@ -575,7 +574,6 @@ internal sealed class Service(
                 OrderCounterpartyType.Team,
                 team.Id,
                 team.Name,
-                year,
                 orders));
         }
 
@@ -626,10 +624,9 @@ internal sealed class Service(
         {
             var t = totalsByLine[l.Id];
             return new OrderLineDto(
-                l.Id, l.OrderId, l.ProductId,
+                l.Id, l.ProductId,
                 productNames.GetValueOrDefault(l.ProductId, Resources.GetString("Store_UnknownProduct", CultureInfo.CurrentUICulture)!),
-                l.Qty, t.EffectiveUnitPrice, t.EffectiveVatRate, t.EffectiveDeposit, l.AddedAt,
-                t.SubtotalEur, t.VatEur, t.DepositEur, t.TotalEur);
+                l.Qty, t.EffectiveUnitPrice, t.EffectiveVatRate, t.EffectiveDeposit, t.DepositEur, t.TotalEur);
         }).ToList();
 
         var payments = o.Payments
@@ -740,7 +737,7 @@ internal sealed class Service(
             var totals = totalsByOrder[c.Order.Id];
             var billable = c.Type == OrderCounterpartyType.Camp;
             return new OrderSummaryDto(
-                c.Order.Id, c.Type, c.Id, c.Name, c.Order.State,
+                c.Order.Id, c.Type, c.Name, c.Order.State,
                 totals.TotalDueEur,
                 billable ? totals.PaymentsTotalEur : 0m,
                 billable ? totals.BalanceEur : 0m);
@@ -777,7 +774,7 @@ internal sealed class Service(
                     .GroupBy(l => l.ProductId)
                     .ToDictionary(lg => lg.Key, lg => lg.Sum(l => (long)l.Qty));
                 return new CrossTabRow(
-                    g.Key.Type, g.Key.Id, g.First().Name, perProduct.Values.Sum(), perProduct);
+                    g.Key.Type, g.First().Name, perProduct.Values.Sum(), perProduct);
             }).ToList();
         return new SummaryDto(
             year,
@@ -1000,7 +997,7 @@ internal sealed class Service(
         {
             OrderDto? order = s.OrderId is { } oid && orders.TryGetValue(oid, out var o) ? o : null;
             rows.Add(new StripeReconciliationRow(
-                s.SessionId, s.PaymentIntentId, s.AmountEur, s.PaymentStatus, s.CreatedAt,
+                s.SessionId, s.PaymentIntentId, s.AmountEur, s.CreatedAt,
                 s.OrderId, order?.CounterpartyDisplayName,
                 ClassifyStripeSession(s, order, recordedByPi)));
         }
@@ -1241,20 +1238,20 @@ internal sealed class Service(
             return true;
         }
 
-        async Task<StoreCheckoutSessionData?> TryReplayAsync(Guid attemptId)
+        async Task<StoreCheckoutSessionData?> TryReplayAsync(Guid replayAttemptId)
         {
             try
             {
                 return await stripeService.CreateCheckoutSessionAsync(
                     orderId, amountEur, returnUrl, returnUrl, customerEmail, description, ct,
-                    checkoutAttemptId: attemptId);
+                    checkoutAttemptId: replayAttemptId);
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
                 // Stripe rejects a replay whose other arguments changed (a counterparty edit). Replacing the attempt
                 // expires its session first, so falling through never leaves two payable.
                 logger.LogWarning(ex, "Replaying checkout attempt {AttemptId} for order {OrderId} failed; replacing it.",
-                    attemptId, orderId);
+                    replayAttemptId, orderId);
                 return null;
             }
         }

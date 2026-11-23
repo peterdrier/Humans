@@ -548,12 +548,8 @@ public class TicketingBudgetServiceTests
     {
         return new TicketOrderInfo(
             Id: Guid.NewGuid(),
-            VendorOrderId: $"order-{Guid.NewGuid():N}",
-            BuyerName: null,
             BuyerEmail: null,
             TotalAmount: totalAmount,
-            Currency: "EUR",
-            DiscountCode: null,
             PaymentStatus: paymentStatus,
             VendorEventId: "event",
             PurchasedAt: purchasedAt,
@@ -565,7 +561,6 @@ public class TicketingBudgetServiceTests
                 AttendeeName: null,
                 AttendeeEmail: null,
                 TicketTypeName: null,
-                Price: 0m,
                 Status: status,
                 MatchedUserId: null)).ToList(),
             StripeFee: stripeFee,

@@ -5,5 +5,4 @@ internal sealed record EmailProblem(
     Guid? UserId,
     Guid? OtherUserId,
     Guid? UserEmailId,
-    string? Email,
-    string? Detail);
+    string? Email);

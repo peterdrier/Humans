@@ -1213,7 +1213,7 @@ public class CachingUserServiceTests
             UpdatedAt = Instant.FromUtc(2026, 1, 2, 0, 0),
         }, burnerName: "New Burner");
 
-        var result = await sut.SaveProfileAsync(
+        await sut.SaveProfileAsync(
             userId,
             new UserProfileSaveCommand(
                 BurnerName: "New Burner",

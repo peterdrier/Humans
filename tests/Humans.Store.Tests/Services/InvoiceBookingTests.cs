@@ -107,7 +107,7 @@ public class InvoiceBookingTests
             StripePaymentIntentId = pi,
             ReceivedAt = created,
         });
-        _stripe.GetStoreChargeAsync(pi, Arg.Any<CancellationToken>()).Returns(new StoreChargeData("ch_" + pi, pi, amount, created));
+        _stripe.GetStoreChargeAsync(pi, Arg.Any<CancellationToken>()).Returns(new StoreChargeData(amount, created));
         if (fedToHolded)
             _feed.Add(new HoldedBankMovementDto
             {

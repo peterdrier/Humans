@@ -367,7 +367,6 @@ internal sealed class ApplicationDecisionService(
                 application.Id,
                 application.UserId,
                 application.MembershipTier,
-                application.SubmittedAt,
                 application.TermExpiresAt))
             .ToList();
     }
@@ -568,11 +567,7 @@ internal sealed class ApplicationDecisionService(
                 application.MembershipTier,
                 application.SubmittedAt,
                 application.ResolvedAt,
-                application.TermExpiresAt,
-                application.Motivation,
-                application.AdditionalInfo,
-                application.SignificantContribution,
-                application.RoleUnderstanding))
+                application.TermExpiresAt))
             .ToList();
     }
 

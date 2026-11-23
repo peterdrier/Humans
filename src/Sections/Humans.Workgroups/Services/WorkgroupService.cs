@@ -197,7 +197,7 @@ internal sealed partial class WorkgroupService(
         ct = CancellationToken.None;
 
         await AuditAsync(WorkgroupsAuditActions.WorkgroupGoogleGroupSet, workgroup,
-            workgroup.GoogleGroupEmail is { } email ? $"Email group set to {email}" : "Email group cleared", actorUserId);
+            workgroup.GoogleGroupEmail is { } groupEmail ? $"Email group set to {groupEmail}" : "Email group cleared", actorUserId);
         await RequestGoogleSyncAsync(workgroup, ct);
         return new();
     }
@@ -1635,7 +1635,7 @@ internal sealed partial class WorkgroupService(
         w.RegisteredAt,
         w.EndedAt,
         w.Members
-            .Select(m => new WorkgroupMemberInfo(m.Id, m.UserId, m.Role, m.JoinedAt, m.LeftAt, m.IsPending == true))
+            .Select(m => new WorkgroupMemberInfo(m.UserId, m.Role, m.JoinedAt, m.LeftAt, m.IsPending == true))
             .ToList(),
         // Soft-deleted meetings are gone outside the repository; the log keeps the history.
         w.Meetings
@@ -1647,8 +1647,7 @@ internal sealed partial class WorkgroupService(
             .ToList(),
         w.LogEntries
             .Select(e => new WorkgroupLogEntryInfo(
-                e.Id, e.Kind, e.OccurredOn, e.Title, e.Body, e.AuthorUserId, e.DocumentId,
-                e.SurveyId, e.CreatedAt, e.MeetingId))
+                e.Id, e.Kind, e.OccurredOn, e.Title, e.Body, e.AuthorUserId, e.CreatedAt, e.MeetingId))
             .ToList(),
         w.Documents
             .Select(ToInfo)
@@ -1661,7 +1660,6 @@ internal sealed partial class WorkgroupService(
 
     public static WorkgroupDocumentInfo ToInfo(WorkgroupDocument d) => new(
         d.Id,
-        d.WorkgroupId,
         d.Title,
         d.Kind,
         d.Body,
@@ -1672,17 +1670,15 @@ internal sealed partial class WorkgroupService(
         d.DeliveredAt,
         d.Disposition,
         d.DispositionNote,
-        d.DispositionAt,
-        d.DispositionByUserId,
         d.CreatedByUserId,
         d.UpdatedByUserId,
         d.CreatedAt,
         d.UpdatedAt,
         d.Comments
             .Select(c => new WorkgroupCommentInfo(
-                c.Id, c.DocumentId, c.Category, c.AuthorUserId, c.Body, c.CreatedAt,
-                c.Disposition, c.Response, c.RespondedByUserId, c.RespondedAt, c.HiddenAt,
-                c.HiddenByUserId, c.HiddenReason))
+                c.Id, c.Category, c.AuthorUserId, c.Body, c.CreatedAt,
+                c.Disposition, c.Response, c.HiddenAt,
+                c.HiddenReason))
             .ToList());
 
     // Also guards stored legacy links when projecting them into an href.

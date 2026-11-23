@@ -79,7 +79,7 @@ public sealed class WorkspaceIdentityServiceTests
             new Addr(address, Designated: true, Status: status));
 
         (await _sut.GetWorkspaceIdentityAsync(info.Id, Ct)).Should()
-            .Be(new WorkspaceIdentity(info.Id, address, status));
+            .Be(new WorkspaceIdentity(address, status));
     }
 
     [HumansFact]
@@ -91,7 +91,7 @@ public sealed class WorkspaceIdentityServiceTests
             new Addr("unverified@nobodies.team", Verified: false));
 
         (await _sut.GetWorkspaceIdentityAsync(info.Id, Ct)).Should()
-            .Be(new WorkspaceIdentity(info.Id, "alice@example.org", GoogleEmailStatus.Unknown));
+            .Be(new WorkspaceIdentity("alice@example.org", GoogleEmailStatus.Unknown));
     }
 
     [HumansFact]
@@ -130,7 +130,7 @@ public sealed class WorkspaceIdentityServiceTests
         var result = await _sut.GetWorkspaceIdentitiesAsync([archivedId, Guid.NewGuid()], Ct);
 
         result.Should().ContainSingle().Which.Should().Be(new KeyValuePair<Guid, WorkspaceIdentity>(
-            archivedId, new WorkspaceIdentity(info.Id, "alice@nobodies.team", GoogleEmailStatus.Unknown)));
+            archivedId, new WorkspaceIdentity("alice@nobodies.team", GoogleEmailStatus.Unknown)));
     }
 
     [HumansFact]
@@ -144,7 +144,7 @@ public sealed class WorkspaceIdentityServiceTests
 
         _repo.Rows[info.Id].Email.Should().BeNull();
         (await _sut.GetWorkspaceIdentityAsync(info.Id, Ct)).Should()
-            .Be(new WorkspaceIdentity(info.Id, "alice@example.org", GoogleEmailStatus.Unknown));
+            .Be(new WorkspaceIdentity("alice@example.org", GoogleEmailStatus.Unknown));
     }
 
     [HumansFact]
@@ -169,7 +169,7 @@ public sealed class WorkspaceIdentityServiceTests
         (await _sut.SetAsync(info.Id, "alice@gmail.com", actor, Ct)).Should().BeTrue();
 
         (await _sut.GetWorkspaceIdentityAsync(info.Id, Ct)).Should()
-            .Be(new WorkspaceIdentity(info.Id, "alice@gmail.com", GoogleEmailStatus.Unknown));
+            .Be(new WorkspaceIdentity("alice@gmail.com", GoogleEmailStatus.Unknown));
         await _audit.Received(1).LogAsync(
             GoogleAuditActions.UserEmailGoogleSet, nameof(User), info.Id,
             "Set Google identity to alice@gmail.com (was alice@example.org)", actor,
@@ -258,7 +258,7 @@ public sealed class WorkspaceIdentityServiceTests
         (await _sut.SetDriveEmailFromSyncAsync(info.Id, "alice+burn@example.org", "alice@example.org", Ct)).Should().BeFalse();
 
         var identity = await _sut.GetWorkspaceIdentityAsync(info.Id, Ct);
-        identity.Should().Be(new WorkspaceIdentity(info.Id, "alice+burn@example.org", GoogleEmailStatus.Valid));
+        identity.Should().Be(new WorkspaceIdentity("alice+burn@example.org", GoogleEmailStatus.Valid));
         (await _sut.GetDriveEmailsAsync(Ct)).Should().ContainSingle().Which.Should().Be(
             new KeyValuePair<Guid, DriveEmailOverride>(info.Id, new DriveEmailOverride("alice+burn@example.org", "alice@example.org")));
     }

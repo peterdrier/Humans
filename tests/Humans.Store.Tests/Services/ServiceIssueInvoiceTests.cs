@@ -78,7 +78,7 @@ public class ServiceIssueInvoiceTests
                 Subtotal = 100m,
                 Tax = 21m,
                 Total = 121m,
-                Lines = [new HoldedSalesDocumentLineDto("Ice", 20m, 5m, 21m)],
+                Lines = [new HoldedSalesDocumentLineDto(20m, 5m, 21m)],
                 RawJson = """{"id":"doc-1"}""",
             });
         _holded.CreateContactAsync(Arg.Any<HoldedContactInput>(), Arg.Any<CancellationToken>())
@@ -95,7 +95,7 @@ public class ServiceIssueInvoiceTests
     }
 
     private static HoldedChartAccountInfo Account(int number) =>
-        new(number, $"Account {number}", null, null, false, 0m);
+        new(number, $"Account {number}", null, false, 0m);
 
     /// <summary>What Holded's tag search returns: documents of either kind.</summary>
     private static IReadOnlyList<(HoldedSalesDocumentKind Kind, HoldedSalesDocumentDto Document)> Found(
@@ -350,7 +350,7 @@ public class ServiceIssueInvoiceTests
         var input = await CapturedInputAsync(order);
 
         input.DiscountPercent.Should().NotBeNull();
-        var lines = input.Lines.Select(l => new StoreInvoicePlan.Line(Guid.Empty, l.Name, l.Units, l.Price, 21m, false)).ToList();
+        var lines = input.Lines.Select(l => new StoreInvoicePlan.Line(Guid.Empty, l.Name, l.Units, l.Price, 21m)).ToList();
         StoreInvoicePlan.Model(lines, input.DiscountPercent!.Value).Total.Should().Be(101m);
     }
 
@@ -660,7 +660,7 @@ public class ServiceIssueInvoiceTests
             Tax = tax,
             Total = total,
             IsDraft = isDraft,
-            Lines = [new HoldedSalesDocumentLineDto("Ice", 20m, 5m, 21m)],
+            Lines = [new HoldedSalesDocumentLineDto(20m, 5m, 21m)],
             RawJson = $$"""{"id":"{{id}}"}""",
         };
 
@@ -989,7 +989,7 @@ public class ServiceIssueInvoiceTests
         Arrange(order, IceProduct());
         ArrangeAlreadyIssued(order, HoldedSalesDocumentKind.Invoice, SalesDoc(isDraft: false) with
         {
-            Lines = [new("Ice", 10m, 6m, 21m), new("Ice", 10m, 4m, 21m)],
+            Lines = [new(10m, 6m, 21m), new(10m, 4m, 21m)],
         });
 
         var result = await _service.IssueInvoiceAsync(order.Id, _actor, TestContext.Current.CancellationToken);
@@ -1011,7 +1011,7 @@ public class ServiceIssueInvoiceTests
         ArrangeAlreadyIssued(order, HoldedSalesDocumentKind.Invoice, SalesDoc(
             isDraft: false, subtotal: 74.79m, tax: 15.71m, total: 90.50m) with
         {
-            Lines = [new("Ice – kept deposit", 1m, 24.79m, 21m), new("Ice", 10m, 5m, 21m)],
+            Lines = [new(1m, 24.79m, 21m), new(10m, 5m, 21m)],
         });
 
         var result = await _service.IssueInvoiceAsync(order.Id, _actor, TestContext.Current.CancellationToken);

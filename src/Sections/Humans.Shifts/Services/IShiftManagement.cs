@@ -154,7 +154,6 @@ internal interface IShiftManagement
 internal sealed record DepartmentCoveragePie(
     Guid TeamId,
     string TeamName,
-    string TeamSlug,
     bool IsSubTeam,
     Guid? ParentTeamId,
     string? ParentTeamName,

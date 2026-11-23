@@ -77,7 +77,7 @@ public class HoldedFinanceServiceTests
     private static HoldedPurchaseDocInfo PDoc(
         string id, decimal total = 10m, bool approved = true, string? account = null, IReadOnlyList<string>? tags = null,
         LocalDate? date = null, string docNumber = "", string contactName = "", string? description = null) =>
-        new(id, docNumber, contactName, null, description, date ?? new LocalDate(2026, 4, 15), total, 0m, total, "eur",
+        new(id, docNumber, contactName, null, description, date ?? new LocalDate(2026, 4, 15), total, total,
             approved, null, tags ?? [], account, $"https://app.holded.com/expenses/list#open:purchase-{id}");
 
     private void StubDocs(params HoldedPurchaseDocInfo[] docs) =>
@@ -299,8 +299,8 @@ public class HoldedFinanceServiceTests
                     TicketingProjection: null,
                     Categories:
                     [
-                        new BudgetCategoryDetail(catIdA, Guid.NewGuid(), "Staff", 0, ExpenditureType.OpEx, null, 0, []),
-                        new BudgetCategoryDetail(catIdB, Guid.NewGuid(), "Toilets", 0, ExpenditureType.OpEx, null, 1, []),
+                        new BudgetCategoryDetail(catIdA, "Staff", 0, ExpenditureType.OpEx, null, 0, []),
+                        new BudgetCategoryDetail(catIdB, "Toilets", 0, ExpenditureType.OpEx, null, 1, []),
                     ])
             ]));
 
@@ -358,7 +358,7 @@ public class HoldedFinanceServiceTests
                     TicketingProjection: null,
                     Categories:
                     [
-                        new BudgetCategoryDetail(catId, Guid.NewGuid(), "Staff", 0, ExpenditureType.OpEx, null, 0, []),
+                        new BudgetCategoryDetail(catId, "Staff", 0, ExpenditureType.OpEx, null, 0, []),
                     ])
             ]));
 
@@ -367,7 +367,7 @@ public class HoldedFinanceServiceTests
 
         // … but Holded already has an account at the first block number.
         _holded.GetChartAsync(Arg.Any<CancellationToken>()).ReturnsForAnyArgs(
-            new List<HoldedChartAccountInfo> { new(6290010, "Existing", null, null, false, 0m) });
+            new List<HoldedChartAccountInfo> { new(6290010, "Existing", null, false, 0m) });
 
         var svc = MakeService();
         var plan = await svc.GetProvisioningPlanAsync(blockStart: 6290010, ct: TestContext.Current.CancellationToken);
@@ -1304,7 +1304,7 @@ public class HoldedFinanceServiceTests
         await _feed.DidNotReceiveWithAnyArgs().ListPurchaseDocumentsAsync();
 
         static HoldedPurchaseDocInfo OpenDoc(string id, string? contactId, decimal pending, bool draft = false) => new HoldedPurchaseDocInfo(
-            id, id, "x", contactId, null, FixedNow.InZone(DateTimeZoneProviders.Tzdb["Europe/Madrid"]).Date, 10m, 0m, 10m, "eur", draft == false, null, [], null, "", pending);
+            id, id, "x", contactId, null, FixedNow.InZone(DateTimeZoneProviders.Tzdb["Europe/Madrid"]).Date, 10m, 10m, draft == false, null, [], null, "", pending);
     }
 
     [HumansFact]
@@ -1654,8 +1654,8 @@ public class HoldedFinanceServiceTests
                     IsTicketingGroup: false, TicketingProjection: null,
                     Categories:
                     [
-                        new BudgetCategoryDetail(toAddCat, Guid.NewGuid(), "S-taff", 0, ExpenditureType.OpEx, null, 0, []),
-                        new BudgetCategoryDetail(mappedCat, Guid.NewGuid(), "Staff", 0, ExpenditureType.OpEx, null, 1, []),
+                        new BudgetCategoryDetail(toAddCat, "S-taff", 0, ExpenditureType.OpEx, null, 0, []),
+                        new BudgetCategoryDetail(mappedCat, "Staff", 0, ExpenditureType.OpEx, null, 1, []),
                     ])
             ]));
         _repo.GetCategoryMapAsync(Arg.Any<CancellationToken>()).ReturnsForAnyArgs(
@@ -1702,8 +1702,7 @@ public class HoldedFinanceServiceTests
         _budget.GetActiveYearAsync(Arg.Any<CancellationToken>()).Returns(new BudgetYearDetail(
             Guid.NewGuid(), "2026", "Camp 2026", BudgetYearStatus.Active, false,
             [new BudgetGroupDetail(Guid.NewGuid(), Guid.NewGuid(), group, 0, false, false, false, null,
-                ids.Select((id, index) => new BudgetCategoryDetail(id, Guid.NewGuid(),
-                    category + new string('-', index), 0, ExpenditureType.OpEx, null, index, [])).ToList())]));
+                ids.Select((id, index) => new BudgetCategoryDetail(id, category + new string('-', index), 0, ExpenditureType.OpEx, null, index, [])).ToList())]));
         _repo.GetCategoryMapAsync(Arg.Any<CancellationToken>()).Returns(reservedTags.Select((tag, index) =>
             new HoldedCategoryMap
             {
@@ -1825,8 +1824,8 @@ public class HoldedFinanceServiceTests
                     IsTicketingGroup: false, TicketingProjection: null,
                     Categories:
                     [
-                        new BudgetCategoryDetail(catA, Guid.NewGuid(), "Alpha", 0, ExpenditureType.OpEx, null, 0, []),
-                        new BudgetCategoryDetail(catB, Guid.NewGuid(), "Beta", 0, ExpenditureType.OpEx, null, 1, []),
+                        new BudgetCategoryDetail(catA, "Alpha", 0, ExpenditureType.OpEx, null, 0, []),
+                        new BudgetCategoryDetail(catB, "Beta", 0, ExpenditureType.OpEx, null, 1, []),
                     ])
             ]));
         _repo.GetCategoryMapAsync(Arg.Any<CancellationToken>())
@@ -2233,7 +2232,7 @@ public class HoldedFinanceServiceTests
                     TicketingProjection: null,
                     Categories: categories
                         .Select((c, i) => new BudgetCategoryDetail(
-                            c.Id, Guid.NewGuid(), c.Name, 0, ExpenditureType.OpEx, null, i, []))
+                            c.Id, c.Name, 0, ExpenditureType.OpEx, null, i, []))
                         .ToList())
             ]));
 
@@ -2876,7 +2875,7 @@ public class HoldedFinanceServiceTests
     private static HoldedPurchaseDocInfo Doc(
         string id, decimal pending, int dayOfMonth, string contactId = "c1", bool? draft = false) =>
         new HoldedPurchaseDocInfo(
-            id, id.ToUpperInvariant(), "Ana Ruiz", contactId, null, (Instant.FromUtc(2026, 4, dayOfMonth, 0, 0)).InZone(DateTimeZoneProviders.Tzdb["Europe/Madrid"]).Date, pending, 0m, pending, "eur", draft == false, null, [], null, "", pending);
+            id, id.ToUpperInvariant(), "Ana Ruiz", contactId, null, (Instant.FromUtc(2026, 4, dayOfMonth, 0, 0)).InZone(DateTimeZoneProviders.Tzdb["Europe/Madrid"]).Date, pending, pending, draft == false, null, [], null, "", pending);
 
     private void SeedOpenDocs(params HoldedPurchaseDocInfo[] docs) =>
         _feed.ListPurchaseDocumentsAsync(Arg.Any<CancellationToken>()).Returns(docs.ToList());
@@ -2916,7 +2915,7 @@ public class HoldedFinanceServiceTests
             .Returns(new List<HoldedChartAccountInfo>
             {
                 new HoldedChartAccountInfo(
-                    40000004, "Ana Ruiz", null, null, false, -owed),
+                    40000004, "Ana Ruiz", null, false, -owed),
             });
     }
 
@@ -3411,7 +3410,7 @@ public class HoldedFinanceServiceTests
     private void LiveChart(params (int Num, string Id, string Name)[] accounts)
     {
         _holded.GetChartAsync(Arg.Any<CancellationToken>()).Returns(
-            accounts.Select(a => new HoldedChartAccountInfo(a.Num, a.Name, null, null, false, 0m)).ToList());
+            accounts.Select(a => new HoldedChartAccountInfo(a.Num, a.Name, null, false, 0m)).ToList());
         foreach (var a in accounts)
             _write.EnsureExpenseAccountAsync(a.Num, Arg.Any<string>(), Arg.Any<CancellationToken>())
                 .Returns(new HoldedExpenseAccountOutcome(a.Id, Created: false));
@@ -3591,7 +3590,7 @@ public class HoldedFinanceServiceTests
         [
             new BudgetGroupDetail(Guid.NewGuid(), Guid.NewGuid(), "Departments", 0, false, true, false, null,
             [
-                new BudgetCategoryDetail(catId, Guid.NewGuid(), "Geeks", -100m, ExpenditureType.OpEx, null, 0, []),
+                new BudgetCategoryDetail(catId, "Geeks", -100m, ExpenditureType.OpEx, null, 0, []),
             ]),
         ]));
 

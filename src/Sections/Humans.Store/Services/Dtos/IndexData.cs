@@ -11,7 +11,6 @@ internal sealed record CounterpartyOrders(
     OrderCounterpartyType CounterpartyType,
     Guid CounterpartyId,
     string DisplayName,
-    int Year,
     IReadOnlyList<OrderDto> Orders);
 
 internal sealed record OrderPageData(

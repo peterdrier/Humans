@@ -19,7 +19,7 @@
         Model.NonPrimary.State,
     };
 
-    DebugUrlBuilder UrlFor = (state, page, size, sort, desc) =>
+    DebugUrlBuilder urlFor = (state, page, size, sort, desc) =>
     {
         var ns = state.Section;
         bool newDesc;
@@ -103,8 +103,8 @@
             <table class="table table-sm table-hover mb-0">
                 <thead>
                 <tr>
-                    <th>@await Html.PartialAsync("~/Views/MailerLite/Admin/_DebugSortHeader.cshtml", new DebugSortHeader(expected.State, DebugSortColumn.Name, "Human", UrlFor))</th>
-                    <th>@await Html.PartialAsync("~/Views/MailerLite/Admin/_DebugSortHeader.cshtml", new DebugSortHeader(expected.State, DebugSortColumn.Email, "Notification email", UrlFor))</th>
+                    <th>@await Html.PartialAsync("~/Views/MailerLite/Admin/_DebugSortHeader.cshtml", new DebugSortHeader(expected.State, DebugSortColumn.Name, "Human", urlFor))</th>
+                    <th>@await Html.PartialAsync("~/Views/MailerLite/Admin/_DebugSortHeader.cshtml", new DebugSortHeader(expected.State, DebugSortColumn.Email, "Notification email", urlFor))</th>
                 </tr>
                 </thead>
                 <tbody>
@@ -123,7 +123,7 @@
             </table>
         </div>
     </div>
-    @await Html.PartialAsync("~/Views/MailerLite/Admin/_DebugPager.cshtml", new DebugPagerModel(expected.State, expected.Total, Model.Options, UrlFor))
+    @await Html.PartialAsync("~/Views/MailerLite/Admin/_DebugPager.cshtml", new DebugPagerModel(expected.State, expected.Total, Model.Options, urlFor))
 </section>
 
 <section class="card mb-4">
@@ -139,9 +139,9 @@
             <table class="table table-sm table-hover mb-0">
                 <thead>
                 <tr>
-                    <th>@await Html.PartialAsync("~/Views/MailerLite/Admin/_DebugSortHeader.cshtml", new DebugSortHeader(inMl.State, DebugSortColumn.Name, "Human", UrlFor))</th>
-                    <th>@await Html.PartialAsync("~/Views/MailerLite/Admin/_DebugSortHeader.cshtml", new DebugSortHeader(inMl.State, DebugSortColumn.Email, "Subscribed as", UrlFor))</th>
-                    <th>@await Html.PartialAsync("~/Views/MailerLite/Admin/_DebugSortHeader.cshtml", new DebugSortHeader(inMl.State, DebugSortColumn.InMlSince, "In ML since", UrlFor))</th>
+                    <th>@await Html.PartialAsync("~/Views/MailerLite/Admin/_DebugSortHeader.cshtml", new DebugSortHeader(inMl.State, DebugSortColumn.Name, "Human", urlFor))</th>
+                    <th>@await Html.PartialAsync("~/Views/MailerLite/Admin/_DebugSortHeader.cshtml", new DebugSortHeader(inMl.State, DebugSortColumn.Email, "Subscribed as", urlFor))</th>
+                    <th>@await Html.PartialAsync("~/Views/MailerLite/Admin/_DebugSortHeader.cshtml", new DebugSortHeader(inMl.State, DebugSortColumn.InMlSince, "In ML since", urlFor))</th>
                 </tr>
                 </thead>
                 <tbody>
@@ -149,7 +149,7 @@
                 {
                     <tr>
                         <td>
-                            @if (r.UserId is Guid uid)
+                            @if (r.UserId is { } uid)
                             {
                                 <vc:human user-id="@uid" link="Admin" />
                             }
@@ -170,7 +170,7 @@
             </table>
         </div>
     </div>
-    @await Html.PartialAsync("~/Views/MailerLite/Admin/_DebugPager.cshtml", new DebugPagerModel(inMl.State, inMl.Total, Model.Options, UrlFor))
+    @await Html.PartialAsync("~/Views/MailerLite/Admin/_DebugPager.cshtml", new DebugPagerModel(inMl.State, inMl.Total, Model.Options, urlFor))
 </section>
 
 <section class="card mb-4 border-success">
@@ -186,8 +186,8 @@
             <table class="table table-sm table-hover mb-0">
                 <thead>
                 <tr>
-                    <th>@await Html.PartialAsync("~/Views/MailerLite/Admin/_DebugSortHeader.cshtml", new DebugSortHeader(toAdd.State, DebugSortColumn.Name, "Human", UrlFor))</th>
-                    <th>@await Html.PartialAsync("~/Views/MailerLite/Admin/_DebugSortHeader.cshtml", new DebugSortHeader(toAdd.State, DebugSortColumn.Email, "Notification email", UrlFor))</th>
+                    <th>@await Html.PartialAsync("~/Views/MailerLite/Admin/_DebugSortHeader.cshtml", new DebugSortHeader(toAdd.State, DebugSortColumn.Name, "Human", urlFor))</th>
+                    <th>@await Html.PartialAsync("~/Views/MailerLite/Admin/_DebugSortHeader.cshtml", new DebugSortHeader(toAdd.State, DebugSortColumn.Email, "Notification email", urlFor))</th>
                 </tr>
                 </thead>
                 <tbody>
@@ -206,7 +206,7 @@
             </table>
         </div>
     </div>
-    @await Html.PartialAsync("~/Views/MailerLite/Admin/_DebugPager.cshtml", new DebugPagerModel(toAdd.State, toAdd.Total, Model.Options, UrlFor))
+    @await Html.PartialAsync("~/Views/MailerLite/Admin/_DebugPager.cshtml", new DebugPagerModel(toAdd.State, toAdd.Total, Model.Options, urlFor))
 </section>
 
 <section class="card mb-4 border-danger">
@@ -222,8 +222,8 @@
             <table class="table table-sm table-hover mb-0">
                 <thead>
                 <tr>
-                    <th>@await Html.PartialAsync("~/Views/MailerLite/Admin/_DebugSortHeader.cshtml", new DebugSortHeader(toRemove.State, DebugSortColumn.Name, "Human", UrlFor))</th>
-                    <th>@await Html.PartialAsync("~/Views/MailerLite/Admin/_DebugSortHeader.cshtml", new DebugSortHeader(toRemove.State, DebugSortColumn.Email, "Subscribed as", UrlFor))</th>
+                    <th>@await Html.PartialAsync("~/Views/MailerLite/Admin/_DebugSortHeader.cshtml", new DebugSortHeader(toRemove.State, DebugSortColumn.Name, "Human", urlFor))</th>
+                    <th>@await Html.PartialAsync("~/Views/MailerLite/Admin/_DebugSortHeader.cshtml", new DebugSortHeader(toRemove.State, DebugSortColumn.Email, "Subscribed as", urlFor))</th>
                 </tr>
                 </thead>
                 <tbody>
@@ -231,7 +231,7 @@
                 {
                     <tr>
                         <td>
-                            @if (r.UserId is Guid uid)
+                            @if (r.UserId is { } uid)
                             {
                                 <vc:human user-id="@uid" link="Admin" />
                             }
@@ -251,7 +251,7 @@
             </table>
         </div>
     </div>
-    @await Html.PartialAsync("~/Views/MailerLite/Admin/_DebugPager.cshtml", new DebugPagerModel(toRemove.State, toRemove.Total, Model.Options, UrlFor))
+    @await Html.PartialAsync("~/Views/MailerLite/Admin/_DebugPager.cshtml", new DebugPagerModel(toRemove.State, toRemove.Total, Model.Options, urlFor))
 </section>
 
 <section class="card mb-4 border-warning">
@@ -267,8 +267,8 @@
             <table class="table table-sm table-hover mb-0">
                 <thead>
                 <tr>
-                    <th>@await Html.PartialAsync("~/Views/MailerLite/Admin/_DebugSortHeader.cshtml", new DebugSortHeader(np.State, DebugSortColumn.Name, "Human", UrlFor))</th>
-                    <th>@await Html.PartialAsync("~/Views/MailerLite/Admin/_DebugSortHeader.cshtml", new DebugSortHeader(np.State, DebugSortColumn.Email, "Subscribed under", UrlFor))</th>
+                    <th>@await Html.PartialAsync("~/Views/MailerLite/Admin/_DebugSortHeader.cshtml", new DebugSortHeader(np.State, DebugSortColumn.Name, "Human", urlFor))</th>
+                    <th>@await Html.PartialAsync("~/Views/MailerLite/Admin/_DebugSortHeader.cshtml", new DebugSortHeader(np.State, DebugSortColumn.Email, "Subscribed under", urlFor))</th>
                     <th>Their current primary</th>
                 </tr>
                 </thead>
@@ -289,7 +289,7 @@
             </table>
         </div>
     </div>
-    @await Html.PartialAsync("~/Views/MailerLite/Admin/_DebugPager.cshtml", new DebugPagerModel(np.State, np.Total, Model.Options, UrlFor))
+    @await Html.PartialAsync("~/Views/MailerLite/Admin/_DebugPager.cshtml", new DebugPagerModel(np.State, np.Total, Model.Options, urlFor))
 </section>
 
 <div class="d-flex justify-content-end my-4">

@@ -59,7 +59,7 @@ public class EmailMutationPathsAnalyzerTests
     {
         var source = InterfaceStubs + """
 
-            namespace Humans.Application.Services.Users
+            namespace Humans.Users.Services
             {
                 public class ExternalLoginService
                 {

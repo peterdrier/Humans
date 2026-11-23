@@ -9,7 +9,6 @@ internal sealed record ApplicationRenewalReminderCandidate(
     Guid Id,
     Guid UserId,
     MembershipTier MembershipTier,
-    Instant SubmittedAt,
     LocalDate? TermExpiresAt);
 
 internal sealed record ApplicationAdminStats(

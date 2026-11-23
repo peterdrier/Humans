@@ -27,14 +27,13 @@ public sealed class ShiftManagementWriteGuardTests : ShiftsTestHarness
 
     private readonly IPermissionService _permissions = Substitute.For<IPermissionService>();
     private readonly ITeamService _teamService;
-    private readonly IRoleAssignmentService _roleAssignments;
     private readonly ShiftManagementService _service;
 
     public ShiftManagementWriteGuardTests()
         : base(TestNow)
     {
         _teamService = Substitute.For<ITeamService>();
-        _roleAssignments = Substitute.For<IRoleAssignmentService>();
+        var roleAssignments = Substitute.For<IRoleAssignmentService>();
         var userService = Substitute.For<IUserService>();
         userService.StubGetUserInfosFromContext(Db);
 
@@ -53,7 +52,7 @@ public sealed class ShiftManagementWriteGuardTests : ShiftsTestHarness
             .With(_teamService)
             .With(userService)
             .With(userService)
-            .With(_roleAssignments)
+            .With(roleAssignments)
             .With(_permissions)
             .Build();
 

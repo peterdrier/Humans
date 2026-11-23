@@ -238,7 +238,6 @@ internal sealed class ContactFieldEditViewModel
     [BindRequired]
     public ContactFieldVisibility Visibility { get; set; } = ContactFieldVisibility.AllActiveProfiles;
 
-    public int DisplayOrder { get; set; }
 }
 
 internal sealed class VolunteerHistoryEntryViewModel
@@ -332,7 +331,6 @@ internal sealed class ProfileLanguageEditViewModel
 
 internal sealed class ProfileLanguageDisplayViewModel
 {
-    public string LanguageCode { get; set; } = string.Empty;
     public string LanguageName { get; set; } = string.Empty;
     public LanguageProficiency Proficiency { get; set; }
 

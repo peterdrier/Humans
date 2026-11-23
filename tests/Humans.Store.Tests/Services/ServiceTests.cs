@@ -517,7 +517,7 @@ public class ServiceTests
         Order? captured = null;
         await _repo.AddOrderAsync(Arg.Do<Order>(o => captured = o), Arg.Any<CancellationToken>());
         _campService.GetCampSeasonByIdAsync(campSeasonId, Arg.Any<CancellationToken>())
-            .Returns(new CampSeasonInfo(campSeasonId, Guid.NewGuid(), "alpha", 2026, null,
+            .Returns(new CampSeasonInfo(campSeasonId, Guid.NewGuid(), 2026, null,
                 "Camp X", string.Empty, string.Empty, [], CampSeasonStatus.Pending,
                 YesNoMaybe.No, YesNoMaybe.No, AdultPlayspacePolicy.No, 0, null, null, null, 0, null, null));
 
@@ -708,8 +708,7 @@ public class ServiceTests
                 ? Task.FromException<Product?>(failure) : Task.FromResult<Product?>(product));
         _repo.GetLineWithOrderAndProductAsync(lineId, Arg.Any<CancellationToken>()).Returns(_ => lookupFailure
             ? Task.FromException<LineContext?>(failure)
-            : Task.FromResult<LineContext?>(new LineContext(lineId, order.Id, product.Id,
-                OrderState.Open, product.OrderableUntil, "Ice", 1, 10m)));
+            : Task.FromResult<LineContext?>(new LineContext(order.Id, OrderState.Open, product.OrderableUntil, "Ice", 1, 10m)));
         _repo.UpdateProductAsync(product, Arg.Any<CancellationToken>()).Returns(Task.FromException(failure));
         _repo.AddLineAsync(Arg.Any<OrderLine>(), Arg.Any<CancellationToken>()).Returns(Task.FromException(failure));
         _repo.RemoveLineAsync(lineId, Arg.Any<CancellationToken>()).Returns(Task.FromException(failure));
@@ -836,8 +835,7 @@ public class ServiceTests
         var routeOrderId = Guid.NewGuid();
         _repo.GetLineWithOrderAndProductAsync(lineId, Arg.Any<CancellationToken>())
             .Returns(new LineContext(
-                lineId, actualOrderId, Guid.NewGuid(),
-                OrderState.Open, new LocalDate(2026, 12, 31), "Ice", 1, 10m));
+                actualOrderId, OrderState.Open, new LocalDate(2026, 12, 31), "Ice", 1, 10m));
 
         var rejection = await _service.RemoveLineAsync(routeOrderId, lineId, Guid.NewGuid(), TestContext.Current.CancellationToken);
         rejection.Succeeded.Should().BeFalse();
@@ -852,8 +850,7 @@ public class ServiceTests
         var orderId = Guid.NewGuid();
         _repo.GetLineWithOrderAndProductAsync(lineId, Arg.Any<CancellationToken>())
             .Returns(new LineContext(
-                lineId, orderId, Guid.NewGuid(),
-                OrderState.InvoiceIssued, new LocalDate(2026, 12, 31), "Ice", 1, 10m));
+                orderId, OrderState.InvoiceIssued, new LocalDate(2026, 12, 31), "Ice", 1, 10m));
 
         var rejection = await _service.RemoveLineAsync(orderId, lineId, Guid.NewGuid(), TestContext.Current.CancellationToken);
         rejection.Succeeded.Should().BeFalse();
@@ -871,8 +868,7 @@ public class ServiceTests
         var actor = Guid.NewGuid();
         _repo.GetLineWithOrderAndProductAsync(lineId, Arg.Any<CancellationToken>())
             .Returns(new LineContext(
-                lineId, orderId, Guid.NewGuid(),
-                OrderState.Open, new LocalDate(2026, 1, 1), "Ice", 3, 10m));
+                orderId, OrderState.Open, new LocalDate(2026, 1, 1), "Ice", 3, 10m));
 
         await _service.RemoveLineAsync(orderId, lineId, actor, TestContext.Current.CancellationToken);
 
@@ -891,8 +887,7 @@ public class ServiceTests
         var actor = Guid.NewGuid();
         _repo.GetLineWithOrderAndProductAsync(lineId, Arg.Any<CancellationToken>())
             .Returns(new LineContext(
-                lineId, orderId, Guid.NewGuid(),
-                OrderState.Open, new LocalDate(2026, 12, 31), "Ice", 1, 10m));
+                orderId, OrderState.Open, new LocalDate(2026, 12, 31), "Ice", 1, 10m));
 
         await _service.RemoveLineAsync(orderId, lineId, actor, TestContext.Current.CancellationToken);
 
@@ -925,8 +920,7 @@ public class ServiceTests
         var actor = Guid.NewGuid();
         _repo.GetLineWithOrderAndProductAsync(lineId, Arg.Any<CancellationToken>())
             .Returns(new LineContext(
-                lineId, orderId, Guid.NewGuid(),
-                OrderState.Open, new LocalDate(2026, 12, 31), "Ice", 1, 10m));
+                orderId, OrderState.Open, new LocalDate(2026, 12, 31), "Ice", 1, 10m));
 
         var result = await _service.RemoveLineAsync(orderId, lineId, actor, TestContext.Current.CancellationToken);
 
@@ -1086,7 +1080,7 @@ public class ServiceTests
         await _repo.AddProductAsync(Arg.Do<Product>(p => captured = p), Arg.Any<CancellationToken>());
 
         _holded.GetChartAsync(Arg.Any<CancellationToken>())
-            .Returns([new HoldedChartAccountInfo(75900002, "Hielo", null, null, Archived: false, 0m)]);
+            .Returns([new HoldedChartAccountInfo(75900002, "Hielo", null, Archived: false, 0m)]);
         var draft = new ProductDto(
             Guid.Empty, 2026, "  Tent  ", "Big tent", 50m, 21m, 100m,
             new LocalDate(2026, 8, 1), IsActive: true, HoldedRevenueAccountNum: 75900002);
@@ -1221,7 +1215,7 @@ public class ServiceTests
 
         var actor = Guid.NewGuid();
         _holded.GetChartAsync(Arg.Any<CancellationToken>())
-            .Returns([new HoldedChartAccountInfo(75900002, "Hielo", null, null, Archived: false, 0m)]);
+            .Returns([new HoldedChartAccountInfo(75900002, "Hielo", null, Archived: false, 0m)]);
         var draft = new ProductDto(
             existing.Id, 2026, "  New  ", "New desc", 99m, 10m, 25m,
             new LocalDate(2026, 9, 1), IsActive: true, HoldedRevenueAccountNum: 75900002);
@@ -2864,7 +2858,6 @@ public class ServiceTests
                 new CampSeasonInfo(
                     seasonId,
                     campId,
-                    "camp-alpha",
                     2026,
                     null,
                     seasonName,
@@ -2888,7 +2881,7 @@ public class ServiceTests
             ]);
 
     private static CampSeasonInfo MakeCampSeasonInfo(Guid seasonId, string name, int year) =>
-        new(seasonId, Guid.NewGuid(), "camp", year, null, name, string.Empty, string.Empty, [],
+        new(seasonId, Guid.NewGuid(), year, null, name, string.Empty, string.Empty, [],
             CampSeasonStatus.Active, YesNoMaybe.Yes, YesNoMaybe.No, AdultPlayspacePolicy.No,
             0, null, null, null, 0, null, null);
 

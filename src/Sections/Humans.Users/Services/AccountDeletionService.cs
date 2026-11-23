@@ -16,7 +16,7 @@ using Microsoft.Extensions.Hosting;
 using NodaTime;
 using Humans.Users;
 
-namespace Humans.Application.Services.Users.AccountLifecycle;
+namespace Humans.Users.Services;
 
 // Sits above User/Profile so the foundational services stay free of Teams/Shifts/Tickets.
 internal sealed class AccountDeletionService(
@@ -172,7 +172,7 @@ internal sealed class AccountDeletionService(
 
         // Must not name the human: the audit log survives erasure.
         const string description = "Admin-initiated purge: identity collapsed";
-        if (actorId is Guid actor)
+        if (actorId is { } actor)
         {
             await auditLogService.LogAsync(
                 UsersAuditActions.AccountPurged, AuditSubjectTypes.User, userId, description, actor);

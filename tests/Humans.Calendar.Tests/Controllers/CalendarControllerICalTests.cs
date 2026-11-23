@@ -621,10 +621,10 @@ public class CalendarControllerICalTests
     {
         _session.SetString(DateTimeDisplayExtensions.SessionKey, timezone);
         var allDay = new CalendarOccurrence(Guid.NewGuid(), null, null, true, "All-day", null, null, null,
-            Guid.NewGuid(), "Team", false, null, new LocalDate(2026, 6, 6), new LocalDate(2026, 6, 7));
+            "Team", false, null, new LocalDate(2026, 6, 6), new LocalDate(2026, 6, 7));
         var start = Instant.FromUtc(2026, 6, contributedDay, 0, 0);
         var contributed = new CalendarOccurrence(Guid.Empty, start, start.Plus(Duration.FromHours(1)), false,
-            "Contributed", null, null, null, Guid.Empty, "", false, start, Source: "Workgroups");
+            "Contributed", null, null, null, "", false, start, Source: "Workgroups");
         IReadOnlyList<CalendarOccurrence> unordered = contributionFirst ? [allDay, contributed] : [contributed, allDay];
         _calendarRead.GetOccurrencesInWindowAsync(Arg.Any<Instant>(), Arg.Any<Instant>(),
             Arg.Any<DateTimeZone>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>())
@@ -649,7 +649,7 @@ public class CalendarControllerICalTests
         {
             var start = _now.Plus(Duration.FromDays(day));
             return new CalendarOccurrence(id, start, start.Plus(Duration.FromHours(1)), false,
-                "Recurring", null, null, null, teamId, "Team", true, start);
+                "Recurring", null, null, null, "Team", true, start);
         }).ToList();
         _calendarRead.GetOccurrencesInWindowAsync(Arg.Any<Instant>(), Arg.Any<Instant>(),
             Arg.Any<DateTimeZone>(), teamId, Arg.Any<CancellationToken>()).Returns(occurrences);

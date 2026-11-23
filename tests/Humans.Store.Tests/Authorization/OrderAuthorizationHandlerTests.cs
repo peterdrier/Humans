@@ -441,7 +441,6 @@ public class OrderAuthorizationHandlerTests
                 new CampSeasonInfo(
                     seasonId,
                     campId,
-                    "camp-alpha",
                     2026,
                     null,
                     "Camp Alpha",

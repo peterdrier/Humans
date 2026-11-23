@@ -55,7 +55,7 @@ internal sealed class Service(
     public async Task<IReadOnlyList<HoldedChartAccountInfo>> GetChartAsync(CancellationToken ct = default) =>
         (await repo.GetAccountsAsync(ct))
             .Select(a => new HoldedChartAccountInfo(
-                a.Number, a.Name, PgcAccountNames.EnglishName(a.Number, a.Name), a.Group, a.Archived, a.Balance))
+                a.Number, a.Name, PgcAccountNames.EnglishName(a.Number, a.Name), a.Archived, a.Balance))
             .ToList();
 
     public async Task<HoldedPurchaseDocMirror> GetPurchaseDocumentsAsync(CancellationToken ct = default)
@@ -69,8 +69,8 @@ internal sealed class Service(
             state?.LastCount ?? 0,
             state?.StatusChangedAt,
             docs.Select(d => new HoldedPurchaseDocInfo(
-                    d.Id, d.DocNumber, d.ContactName, d.ContactId, d.Description, d.Date, d.Subtotal, d.Tax, d.Total,
-                    d.Currency, d.IsApproved, d.Notes, d.Tags, d.BookedAccountId, PurchaseDocUrl(d.Id),
+                    d.Id, d.DocNumber, d.ContactName, d.ContactId, d.Description, d.Date, d.Subtotal, d.Total,
+                    d.IsApproved, d.Notes, d.Tags, d.BookedAccountId, PurchaseDocUrl(d.Id),
                     d.PaymentsPending))
                 .ToList());
     }
@@ -265,7 +265,7 @@ internal sealed class Service(
         return new HoldedAccountStatement(
             MakeAccountRow(
                 number, account?.Name ?? "", holdedBalanceRaw, localBalanceRaw, lines.Count,
-                account is { } a && (a.Debit != 0m || a.Credit != 0m), account?.Archived ?? false),
+                account is { } held && (held.Debit != 0m || held.Credit != 0m), account?.Archived ?? false),
             lines
                 .OrderBy(l => l.Date)
                 .ThenBy(l => l.EntryNumber)

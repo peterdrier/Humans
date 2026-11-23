@@ -623,7 +623,6 @@ public sealed class ProfileServiceTests : ServiceTestHarness
     {
         var userId = Guid.NewGuid();
         await SeedUserWithProfileAsync(userId, withPicture: true);
-        var profile = await Db.Profiles.FirstAsync(p => p.UserId == userId, Xunit.TestContext.Current.CancellationToken);
 
         var result = await _service.GetProfilePictureAsync(userId, Xunit.TestContext.Current.CancellationToken);
 
@@ -637,7 +636,6 @@ public sealed class ProfileServiceTests : ServiceTestHarness
     {
         var userId = Guid.NewGuid();
         await SeedUserWithProfileAsync(userId, withPicture: false);
-        var profile = await Db.Profiles.FirstAsync(p => p.UserId == userId, Xunit.TestContext.Current.CancellationToken);
 
         var result = await _service.GetProfilePictureAsync(userId, Xunit.TestContext.Current.CancellationToken);
 
@@ -759,7 +757,7 @@ public sealed class ProfileServiceTests : ServiceTestHarness
         // Name-only saves (onboarding widget) pass no CV payload — they must not
         // be blocked by the completeness rule nor overwrite stored history.
         var userId = Guid.NewGuid();
-        var profileId = await SeedUserWithProfileAsync(userId);
+        await SeedUserWithProfileAsync(userId);
         Db.VolunteerHistoryEntries.Add(new VolunteerHistoryEntry
         {
             Id = Guid.NewGuid(),

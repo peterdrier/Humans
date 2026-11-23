@@ -162,7 +162,7 @@ internal sealed partial class PleoBooking(
         var purchases = docGroups.ToDictionary(g => g.Key, g =>
         {
             var d = g.Value.OrderByDescending(x => x.IsApproved).First();
-            return new PleoPurchaseRef(d.Id, d.DocNumber, d.IsApproved, d.Total, d.PaymentsPending, d.HoldedUrl);
+            return new PleoPurchaseRef(d.Id, d.DocNumber, d.IsApproved, d.PaymentsPending, d.HoldedUrl);
         }, StringComparer.Ordinal);
         var duplicates = docGroups.Where(g => g.Value.Count > 1)
             .Select(g => new PleoDuplicate(g.Key, g.Value.Select(d => d.HoldedUrl).ToList()))
@@ -224,7 +224,7 @@ internal sealed partial class PleoBooking(
             unattributed.OrderBy(l => l.Date).ThenBy(l => l.EntryNumber).ToList(),
             RefundOrigins(spendEntries),
             waiting,
-            Changes(s, spend, purchases, open, names),
+            Changes(s, spend, purchases, names),
             s.Uploads.Where(u => !u.Confirmed).Select(u => u.PleoEntryId).ToHashSet(StringComparer.Ordinal));
     }
 
@@ -257,7 +257,7 @@ internal sealed partial class PleoBooking(
     /// </summary>
     private static List<PleoChangeRow> Changes(
         PleoSnapshot s, IReadOnlyList<PleoSpendRow> spend, IReadOnlyDictionary<string, PleoPurchaseRef> purchases,
-        IReadOnlySet<int> open, IReadOnlyDictionary<int, string> names)
+        IReadOnlyDictionary<int, string> names)
     {
         var holdedById = s.ExpenseLines
             .Select(l => (Id: PleoIdOf(l.Description), Line: l))
@@ -433,9 +433,9 @@ internal sealed partial class PleoBooking(
     {
         var started = clock.GetCurrentInstant();
         if (!await Gate.WaitAsync(0, ct))
-            return new PleoBookingRunVm(kind, started, started, limit, 0, [],
+            return new PleoBookingRunVm(kind, started, started, 0, [],
                 "Another Pleo run is going; nothing was done.");
-        var run = new PleoBookingRunVm(kind, started, null, limit, 0, [], null);
+        var run = new PleoBookingRunVm(kind, started, null, 0, [], null);
         var lines = new List<PleoBookingLine>();
         try
         {

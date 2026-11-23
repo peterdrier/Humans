@@ -14,7 +14,7 @@ internal static class CachingDecoratorRule
 {
     public const string DiagnosticId = "HUM0020";
 
-    private const string IRepositoryFullName = "Humans.Base.Interfaces.Repositories.IRepository";
+    private const string RepositoryInterfaceFullName = "Humans.Base.Interfaces.Repositories.IRepository";
 
     private static readonly LocalizableString Title =
         "Caching decorator references a repository directly";
@@ -38,7 +38,7 @@ internal static class CachingDecoratorRule
 
     public static void Register(CompilationStartAnalysisContext context)
     {
-        var repositoryMarker = context.Compilation.GetTypeByMetadataName(IRepositoryFullName);
+        var repositoryMarker = context.Compilation.GetTypeByMetadataName(RepositoryInterfaceFullName);
         if (repositoryMarker is null)
             return;
 

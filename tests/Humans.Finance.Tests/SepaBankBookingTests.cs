@@ -2520,7 +2520,7 @@ public class SepaBankBookingTests
 
     private static List<HoldedChartAccountInfo> OwedAccounts(decimal owed) =>
     [
-        new(Account, "Creditor", null, null, false, -owed),
+        new(Account, "Creditor", null, false, -owed),
     ];
 
     private SepaPayoutTransfer Transfer(decimal amount, Instant? bookedAt = null) =>
@@ -2601,7 +2601,7 @@ public class SepaBankBookingTests
         _feed.ListAccountingAccountsAsync(Arg.Any<CancellationToken>()).Returns(
             others.Prepend((Account, Owed: owed))
                 .Select(a => new HoldedChartAccountInfo(
-                    a.Account, "Creditor", null, null, false, -a.Owed))
+                    a.Account, "Creditor", null, false, -a.Owed))
                 .ToList());
 
     /// <summary>A ledger line this transfer's tag already put on the creditor account — what a
@@ -2617,7 +2617,7 @@ public class SepaBankBookingTests
     private static HoldedPurchaseDocInfo Doc(
         string id, decimal pending, int day, string contactId = "c1") =>
         new HoldedPurchaseDocInfo(
-            id, id.ToUpperInvariant(), "Ana Ruiz", contactId, null, (Instant.FromUtc(2026, 4, 1, 0, 0) + Duration.FromDays(day - 1)).InZone(DateTimeZoneProviders.Tzdb["Europe/Madrid"]).Date, pending, 0m, pending, "eur", true, null, [], null, "", pending);
+            id, id.ToUpperInvariant(), "Ana Ruiz", contactId, null, (Instant.FromUtc(2026, 4, 1, 0, 0) + Duration.FromDays(day - 1)).InZone(DateTimeZoneProviders.Tzdb["Europe/Madrid"]).Date, pending, pending, true, null, [], null, "", pending);
 
     /// <summary>Document-payment lines on the creditor account dated the bank line, in the ledger mirror.</summary>
     private void SeedPaymentLines(params decimal[] amounts) =>

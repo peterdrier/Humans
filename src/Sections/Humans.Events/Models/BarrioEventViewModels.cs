@@ -10,7 +10,6 @@ internal sealed class CampEventRowViewModel
     public string Title { get; set; } = string.Empty;
     public string CategoryName { get; set; } = string.Empty;
     public DateTime StartAt { get; set; }
-    public int DurationMinutes { get; set; }
     public EventStatus Status { get; set; }
     public int? PriorityRank { get; set; }
     public bool CanEdit { get; set; }

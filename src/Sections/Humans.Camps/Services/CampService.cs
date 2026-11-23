@@ -886,7 +886,6 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
         return new CampSeasonInfo(
             season.Id,
             season.CampId,
-            campSlug,
             season.Year,
             season.NameLockDate,
             season.Name,
@@ -922,7 +921,6 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
                     m.UserId,
                     m.Status,
                     m.RequestedAt,
-                    m.ConfirmedAt,
                     m.HasEarlyEntry)
                 {
                     Roles = roles?.MemberRoleNames.TryGetValue(m.Id, out var names) == true

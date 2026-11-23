@@ -129,7 +129,7 @@ public sealed class WorkgroupServiceLifecycleTests : WorkgroupsTestHarness
         saved.Members.Single(m => m.IsPending == true).LeftAt.Should().BeNull();
         (await db.LogEntries.CountAsync(Ct)).Should().Be(0);
         AuditLog.ReceivedCalls().Should().BeEmpty();
-        Notifications.ReceivedCalls().Should().BeEmpty();
+        NotificationCalls().Should().BeEmpty();
     }
 
     private sealed class FailWorkgroupLogSave : SaveChangesInterceptor
@@ -271,7 +271,7 @@ public sealed class WorkgroupServiceLifecycleTests : WorkgroupsTestHarness
         (await db.LogEntries.CountAsync(e => e.WorkgroupId == group.Id, Ct)).Should().Be(1);
         await repository.DidNotReceive().AddLogEntryAsync(Arg.Any<WorkgroupLogEntry>(), cancellation.Token);
         AuditLog.ReceivedCalls().Should().ContainSingle();
-        Notifications.ReceivedCalls().Should().ContainSingle().Which.GetArguments()
+        NotificationCalls().Should().ContainSingle().Which.GetArguments()
             .OfType<CancellationToken>().Should().ContainSingle().Which.Should().Be(CancellationToken.None);
         Email.ReceivedCalls().Should().ContainSingle().Which.GetArguments()
             .OfType<CancellationToken>().Should().ContainSingle().Which.Should().Be(CancellationToken.None);
@@ -315,7 +315,7 @@ public sealed class WorkgroupServiceLifecycleTests : WorkgroupsTestHarness
             }
         }
 
-        var args = Notifications.ReceivedCalls().Should().ContainSingle().Subject.GetArguments();
+        var args = NotificationCalls().Should().ContainSingle().Subject.GetArguments();
         args[3].Should().Be(fullTitle);
         args[5].Should().Be(string.Equals(action, "apply", StringComparison.Ordinal)
             ? "A new working group is waiting on the Secretary." : detail);

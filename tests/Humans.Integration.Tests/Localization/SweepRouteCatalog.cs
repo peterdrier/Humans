@@ -85,7 +85,7 @@ internal static class SweepRouteCatalog
             || methods.Contains("GET", StringComparer.OrdinalIgnoreCase);
     }
 
-    private static Audience Classify(IEnumerable<object> metadata)
+    private static Audience Classify(IList<object> metadata)
     {
         if (metadata.OfType<IAllowAnonymous>().Any())
             return Audience.Public;

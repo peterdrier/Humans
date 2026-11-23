@@ -13,9 +13,7 @@ internal sealed record EventGuideSettingsView(
     Instant SubmissionCloseAt,
     Instant GuidePublishAt,
     int MaxPrintSlots,
-    string? TimeZoneId,
-    Instant CreatedAt,
-    Instant UpdatedAt)
+    string? TimeZoneId)
 {
     /// <summary>Mirrors <c>EventGuideSettings.IsSubmissionOpenAt</c>.</summary>
     public bool IsSubmissionOpenAt(Instant now) =>

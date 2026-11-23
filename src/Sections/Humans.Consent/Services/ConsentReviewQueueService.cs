@@ -33,13 +33,13 @@ internal sealed class ConsentReviewQueueService(
 
         var tiers = await governanceService.GetMembershipTiersAsync(ct);
 
-        return new ReviewQueueData(pending, flagged, consentProgress, tiers, reviews);
+        return new ReviewQueueData(pending, flagged, consentProgress, tiers);
     }
 
     // Bulk clear's eligibility is defined as "a row in the queue", so it partitions here too and the two can't
     // drift. Both callers depend on the order.
     private static (List<UserInfo> Pending, List<UserInfo> Flagged) PartitionReviewQueue(
-        IEnumerable<UserInfo> all, IReadOnlyDictionary<Guid, ConsentReviewInfo> reviews)
+        IReadOnlyCollection<UserInfo> all, IReadOnlyDictionary<Guid, ConsentReviewInfo> reviews)
     {
         ConsentReviewInfo ReviewOf(UserInfo u) => reviews.GetValueOrDefault(u.Id) ?? ConsentReviewInfo.None(u.Id);
 
@@ -74,8 +74,6 @@ internal sealed class ConsentReviewQueueService(
             new ReviewProfileDetail(
                 info!.FirstName,
                 info.LastName,
-                profile.City,
-                profile.CountryCode,
                 tier,
                 review.Status,
                 review.Notes,

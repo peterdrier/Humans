@@ -64,12 +64,8 @@ public class MarketingNoTicketAudienceTests
     private static IReadOnlyList<TicketOrderInfo> OrdersForTicketHolders(IEnumerable<Guid> userIds) =>
         userIds.Select(userId => new TicketOrderInfo(
             Id: Guid.NewGuid(),
-            VendorOrderId: $"ord_{userId:N}",
-            BuyerName: null,
             BuyerEmail: null,
             TotalAmount: 0m,
-            Currency: "EUR",
-            DiscountCode: null,
             PaymentStatus: TicketPaymentStatus.Paid,
             VendorEventId: "ev_test",
             PurchasedAt: Instant.FromUtc(2026, 1, 1, 0, 0),
@@ -81,7 +77,6 @@ public class MarketingNoTicketAudienceTests
                 AttendeeName: null,
                 AttendeeEmail: null,
                 TicketTypeName: null,
-                Price: 0m,
                 Status: TicketAttendeeStatus.Valid,
                 MatchedUserId: userId)])).ToList();
 

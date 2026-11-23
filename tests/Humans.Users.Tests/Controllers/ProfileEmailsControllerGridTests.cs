@@ -772,22 +772,6 @@ public class ProfileEmailsControllerGridTests
     // Linked OAuth accounts: unlink is keyed by (Provider, ProviderKey), and is refused when no
     // verified UserEmail row would remain (that row is what keeps magic-link sign-in working).
 
-    private static UserEmailRowSnapshot Snapshot(
-        Guid userId, Guid id, string email, bool isVerified,
-        string? provider, string? providerKey)
-        => new(
-            Id: id,
-            UserId: userId,
-            Email: email,
-            IsVerified: isVerified,
-            Provider: provider,
-            ProviderKey: providerKey,
-            IsPrimary: false,
-            Visibility: null,
-            VerificationSentAt: null,
-            CreatedAt: Instant.FromUtc(2026, 1, 1, 0, 0),
-            UpdatedAt: Instant.FromUtc(2026, 1, 1, 0, 0));
-
     [HumansTheory]
     [InlineData(true)]
     [InlineData(false)]

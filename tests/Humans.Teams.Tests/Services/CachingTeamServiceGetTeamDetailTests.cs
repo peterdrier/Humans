@@ -23,7 +23,6 @@ public sealed class CachingTeamServiceGetTeamDetailTests : IDisposable
     private readonly ServiceProvider _serviceProvider;
     private readonly ITeamManagementService _innerTeamService;
     private readonly IRoleAssignmentService _roleAssignmentService;
-    private readonly CachingTeamService _service;
     private readonly TeamPageService _pages;
 
     public CachingTeamServiceGetTeamDetailTests()
@@ -58,11 +57,11 @@ public sealed class CachingTeamServiceGetTeamDetailTests : IDisposable
             (_, _) => _innerTeamService);
         _serviceProvider = services.BuildServiceProvider();
 
-        _service = new CachingTeamService(
+        var service = new CachingTeamService(
             _serviceProvider.GetRequiredService<IServiceScopeFactory>(),
             NullLogger<CachingTeamService>.Instance, Substitute.For<IStringLocalizer<TeamsResource>>());
         _pages = new TeamPageService(
-            _service,
+            service,
             Substitute.For<Humans.Google.Contracts.ITeamResourceService>(),
             _roleAssignmentService);
     }

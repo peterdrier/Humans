@@ -15,7 +15,6 @@ namespace Humans.Camps.Tests.Services;
 public sealed class CampRoleServiceTests : CampsTestHarness
 {
     private readonly CampRoleService _service;
-    private readonly IGoogleService _googleIdentities;
     private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly ICampRoleCampAccess _campAccess;
     private readonly Guid _actorUserId = Guid.NewGuid();
@@ -24,7 +23,7 @@ public sealed class CampRoleServiceTests : CampsTestHarness
     public CampRoleServiceTests()
         : base(Instant.FromUtc(2026, 4, 26, 12, 0))
     {
-        _googleIdentities = Substitute.For<IGoogleService>();
+        var googleIdentities = Substitute.For<IGoogleService>();
         _campAccess = Substitute.For<ICampRoleCampAccess>();
         _campAccess.GetSettingsAsync(Arg.Any<CancellationToken>())
             .Returns(new CampSettingsInfo(2026, [2026]) { Events = [Event2026] });
@@ -34,7 +33,7 @@ public sealed class CampRoleServiceTests : CampsTestHarness
         _service = new CampRoleService(
             repo,
             _campAccess,
-            _googleIdentities,
+            googleIdentities,
             _userService,
             AuditLog,
             Notifier,

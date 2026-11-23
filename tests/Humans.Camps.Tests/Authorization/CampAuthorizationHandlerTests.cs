@@ -213,7 +213,6 @@ public sealed class CampAuthorizationHandlerTests
                 new CampSeasonInfo(
                     isLeadCamp ? LeadCampSeasonId : OtherCampSeasonId,
                     campId,
-                    "camp",
                     2026,
                     null,
                     "Camp",

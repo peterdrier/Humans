@@ -158,7 +158,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
     public async Task SignupWrite_CommittedButAcknowledgementFails_SkipsAuditAndNotices(SignupWrite operation)
     {
         var ct = TestContext.Current.CancellationToken;
-        var (es, rota, shift) = SeedShiftScenario(SignupPolicy.Public);
+        var (_, rota, shift) = SeedShiftScenario(SignupPolicy.Public);
         rota.IsVisibleToVolunteers = true;
         shift.IsAllDay = operation is SignupWrite.VoluntellRange or SignupWrite.SignUpRange
             or SignupWrite.ApproveRange or SignupWrite.RefuseRange or SignupWrite.BailRange;
@@ -236,7 +236,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
     public async Task Erasure_AnyCommittedStepFails_KeepsEarlierSteps(ErasureSave failingSave)
     {
         var ct = TestContext.Current.CancellationToken;
-        var (es, rota, shift) = SeedShiftScenario(SignupPolicy.Public);
+        var (es, _, shift) = SeedShiftScenario(SignupPolicy.Public);
         var userId = Guid.NewGuid();
         var signup = SeedSignup(userId, shift.Id, SignupStatus.Confirmed);
         signup.StatusReason = "Private note";
@@ -2519,7 +2519,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
 
         var probe = await service.GetTeamProbeAsync(block ? blockId : signup.Id, scope, TestContext.Current.CancellationToken);
 
-        probe.Should().Be(new ShiftSignupTeamProbe(signup.Id, shift.Id, teamId));
+        probe.Should().Be(new ShiftSignupTeamProbe(teamId));
         (await service.GetTeamProbeAsync(Guid.NewGuid(), scope, TestContext.Current.CancellationToken)).Should().BeNull();
     }
 
@@ -2547,7 +2547,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
     [InlineData(true)]
     public async Task Reassign_MovesActorReferences(bool ownsDuplicateSignup)
     {
-        var (eventSettings, rota, shift) = SeedShiftScenario(SignupPolicy.Public);
+        var (_, _, shift) = SeedShiftScenario(SignupPolicy.Public);
         var source = Guid.NewGuid();
         var target = Guid.NewGuid();
         var otherActor = Guid.NewGuid();

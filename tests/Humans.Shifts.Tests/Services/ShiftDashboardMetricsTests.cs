@@ -32,7 +32,7 @@ public sealed class ShiftDashboardMetricsTests : ShiftsTestHarness
         int confirmed, int noShow, int expectedNoShow, int expectedCompletion)
     {
         var period = new PostEventPeriodRow(confirmed, noShow);
-        var department = new PostEventDepartmentRow(Guid.NewGuid(), "Team", "team",
+        var department = new PostEventDepartmentRow("Team", "team",
             confirmed, noShow, period, period, period);
         var overall = new PostEventStats(0, 0, confirmed, noShow, [department]);
 
@@ -1104,12 +1104,8 @@ public sealed class ShiftDashboardMetricsTests : ShiftsTestHarness
     {
         _ticketOrders.Add(new TicketOrderInfo(
             Id: Guid.NewGuid(),
-            VendorOrderId: Guid.NewGuid().ToString("N"),
-            BuyerName: "Buyer",
             BuyerEmail: $"{userId:N}@buyer.test",
             TotalAmount: 0m,
-            Currency: "EUR",
-            DiscountCode: null,
             PaymentStatus: status,
             VendorEventId: isCurrentEvent ? "v1" : "historical",
             PurchasedAt: purchasedAt ?? TestNow.Minus(Duration.FromDays(10)),

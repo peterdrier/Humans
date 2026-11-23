@@ -69,8 +69,6 @@ internal sealed record ToggleDaySignupOutcome(
 }
 
 internal sealed record ShiftSignupTeamProbe(
-    Guid Id,
-    Guid ShiftId,
     Guid TeamId);
 
 internal enum ShiftSignupTeamProbeScope

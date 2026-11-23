@@ -109,7 +109,7 @@ public class TransferBookingTests
             Guid.NewGuid(), "2026", "2026", default, false,
             [
                 new BudgetGroupDetail(Guid.NewGuid(), Guid.NewGuid(), "Departments", 0, false, true, false, null,
-                    [new BudgetCategoryDetail(DeptCategory, Guid.NewGuid(), "Ice Crew", 0m, default, Team, 0, [])]),
+                    [new BudgetCategoryDetail(DeptCategory, "Ice Crew", 0m, default, Team, 0, [])]),
             ]));
         var finance = Substitute.For<IFinanceService>();
         finance.GetCategoryMapAsync(Arg.Any<CancellationToken>()).Returns(

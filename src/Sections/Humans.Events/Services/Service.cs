@@ -157,9 +157,7 @@ internal sealed class EventService(
         DurationMinutes: e.DurationMinutes,
         IsRecurring: e.IsRecurring,
         RecurrenceDays: e.RecurrenceDays,
-        PriorityRank: e.PriorityRank,
-        SubmittedAt: e.SubmittedAt,
-        LastUpdatedAt: e.LastUpdatedAt);
+        PriorityRank: e.PriorityRank);
 
     // Nothing public to contribute to the community calendar yet.
     public Task<IReadOnlyList<CalendarFeedItem>> GetPublicItemsForWindowAsync(Instant from, Instant to, CancellationToken ct) =>
@@ -429,9 +427,7 @@ internal sealed class EventService(
             SubmissionCloseAt: settings.SubmissionCloseAt,
             GuidePublishAt: settings.GuidePublishAt,
             MaxPrintSlots: settings.MaxPrintSlots,
-            TimeZoneId: burn?.TimeZoneId,
-            CreatedAt: settings.CreatedAt,
-            UpdatedAt: settings.UpdatedAt);
+            TimeZoneId: burn?.TimeZoneId);
     }
 
     public IReadOnlyList<EventSettingsInfo> GetEventSettingsOptions()
@@ -641,7 +637,7 @@ internal sealed class EventService(
         // An unknown zone id must not expand recurrences in UTC, so this checks the raw id, not TimeZone.
         var canExpand = eventSettings is not null && DateTimeZoneProviders.Tzdb.GetZoneOrNull(eventSettings.TimeZoneId) is not null;
         var projected = favourites.Where(f => f.Event.IsInEvent(guideEventId)).Select(f => new EventFavouriteInfo(
-                f.Id, f.UserId, f.GuideEventId, f.DayOffset, f.CreatedAt, EventInfo.FromEvent(f.Event)))
+                f.GuideEventId, f.DayOffset, EventInfo.FromEvent(f.Event)))
             .GroupBy(f => f.GuideEventId)
             .SelectMany(group =>
             {

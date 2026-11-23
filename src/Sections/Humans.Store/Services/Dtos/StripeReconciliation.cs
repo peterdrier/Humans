@@ -25,7 +25,6 @@ internal sealed record StripeReconciliationRow(
     string SessionId,
     string? PaymentIntentId,
     decimal? AmountEur,
-    string? PaymentStatus,
     Instant? CreatedAt,
     Guid? OrderId,
     string? OrderLabel,

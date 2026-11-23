@@ -300,8 +300,7 @@ public sealed class CachingRoleAssignmentServiceTests
             ValidTo: validTo,
             Notes: null,
             CreatedByUserId: Guid.Empty,
-            CreatedByDisplayName: null,
-            CreatedAt: validFrom);
+            CreatedByDisplayName: null);
 
     private static RoleAssignmentSummarySnapshot Active(string role, Instant now) =>
         ActiveFor(Guid.NewGuid(), role, now);

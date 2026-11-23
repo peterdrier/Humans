@@ -34,7 +34,6 @@ public class ServiceTeamOrdersTests
     private readonly IStripeService _stripe = Substitute.For<IStripeService>();
     private readonly FakeClock _clock = new(Instant.FromUtc(2026, 3, 14, 12, 0));
     private readonly IHoldedService _holded = Substitute.For<IHoldedService>();
-    private readonly IHoldedWrite _holdedWrite = Substitute.For<IHoldedWrite>();
     private readonly Service _service;
 
     public ServiceTeamOrdersTests()
@@ -186,7 +185,7 @@ public class ServiceTeamOrdersTests
         _repo.GetOrderByIdAsync(orderId, Arg.Any<CancellationToken>()).Returns(order);
         _repo.GetProductByIdAsync(product.Id, Arg.Any<CancellationToken>()).Returns(product);
         _campService.GetCampSeasonByIdAsync(seasonId, Arg.Any<CancellationToken>())
-            .Returns(new CampSeasonInfo(seasonId, Guid.NewGuid(), "alpha", 2025, null,
+            .Returns(new CampSeasonInfo(seasonId, Guid.NewGuid(), 2025, null,
                 "Camp X", string.Empty, string.Empty, [], CampSeasonStatus.Pending,
                 YesNoMaybe.No, YesNoMaybe.No, AdultPlayspacePolicy.No, 0, null, null, null, 0, null, null));
 
@@ -270,7 +269,6 @@ public class ServiceTeamOrdersTests
     [HumansFact]
     public async Task GetIndexDataAsync_privileged_reader_lists_departments_it_does_not_coordinate()
     {
-        var viewerId = Guid.NewGuid();
         var otherDeptId = Guid.NewGuid();
         _teams.GetTeamsAsync(Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, TeamInfo>
@@ -499,7 +497,7 @@ public class ServiceTeamOrdersTests
     {
         var seasonId = Guid.NewGuid();
         _campService.GetCampSeasonByIdAsync(seasonId, Arg.Any<CancellationToken>())
-            .Returns(new CampSeasonInfo(seasonId, Guid.NewGuid(), "alpha", 2026, null,
+            .Returns(new CampSeasonInfo(seasonId, Guid.NewGuid(), 2026, null,
                 "Camp X", string.Empty, string.Empty, [], CampSeasonStatus.Pending,
                 YesNoMaybe.No, YesNoMaybe.No, AdultPlayspacePolicy.No, 0, null, null, null, 0, null, null));
         _repo.GetOrdersForCampSeasonAsync(seasonId, Arg.Any<CancellationToken>())
@@ -523,7 +521,7 @@ public class ServiceTeamOrdersTests
         // stays at 0 forever, and the create guard must not hand its season a second order.
         var seasonId = Guid.NewGuid();
         _campService.GetCampSeasonByIdAsync(seasonId, Arg.Any<CancellationToken>())
-            .Returns(new CampSeasonInfo(seasonId, Guid.NewGuid(), "alpha", 2026, null,
+            .Returns(new CampSeasonInfo(seasonId, Guid.NewGuid(), 2026, null,
                 "Camp X", string.Empty, string.Empty, [], CampSeasonStatus.Pending,
                 YesNoMaybe.No, YesNoMaybe.No, AdultPlayspacePolicy.No, 0, null, null, null, 0, null, null));
         _repo.GetOrdersForCampSeasonAsync(seasonId, Arg.Any<CancellationToken>())

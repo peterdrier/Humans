@@ -27,7 +27,7 @@ internal sealed class CampController(
     IStringLocalizer<SharedResource> sharedLocalizer)
     : HumansCampControllerBase(userService, campService, authorizationService)
 {
-    private readonly CampDirectoryPageBuilder directoryPageBuilder = new(campService, campRoleService);
+    private readonly CampDirectoryPageBuilder _directoryPageBuilder = new(campService, campRoleService);
     private readonly ICampManagement _campService = campService;
     private readonly IUserService _userService = userService;
     private readonly IClock _clock = clock;
@@ -44,7 +44,7 @@ internal sealed class CampController(
         }
 
         var user = await GetCurrentUserInfoAsync(ct);
-        var (viewModel, pendingCount) = await directoryPageBuilder.BuildAsync(user, filters, ct);
+        var (viewModel, pendingCount) = await _directoryPageBuilder.BuildAsync(user, filters, ct);
         ViewBag.PendingCount = pendingCount;
 
         return View(viewModel);
@@ -411,7 +411,6 @@ internal sealed class CampController(
 
         var activeMembers = activeMemberRows
             .Select(m => new CampMemberPickerOption(
-                m.Id,
                 m.UserId,
                 users.TryGetValue(m.UserId, out var u) ? u.BurnerName : campsLocalizer["Camps_Flash_UnknownHuman"].Value))
             .OrderBy(o => o.DisplayName, StringComparer.OrdinalIgnoreCase)
@@ -428,7 +427,7 @@ internal sealed class CampController(
                 MinimumRequired = r.Definition.MinimumRequired,
                 FilledSlots = r.FilledSlots
                 .OrderBy(s => s.AssignedAt)
-                .Select(s => new CampRoleSlotViewModel(s.AssignmentId, s.CampMemberId, s.UserId))
+                .Select(s => new CampRoleSlotViewModel(s.AssignmentId, s.UserId))
                 .ToList(),
                 EmptySlotCount = r.EmptySlotCount,
                 OverCapacity = r.OverCapacity,
@@ -439,7 +438,6 @@ internal sealed class CampController(
         return new CampRolesPanelViewModel
         {
             CampSeasonId = season.Id,
-            CampSlug = campSlug,
             CanManage = canManage,
             ActiveMembers = activeMembers,
             Rows = rows,
@@ -1189,10 +1187,8 @@ internal sealed class CampController(
                 Id = season.Id,
                 Year = season.Year,
                 EventSettingsId = season.EventSettingsId,
-                Name = season.Name,
                 Status = season.Status,
                 BlurbLong = season.BlurbLong,
-                BlurbShort = season.BlurbShort,
                 Languages = season.Languages,
                 AcceptingMembers = season.AcceptingMembers,
                 KidsWelcome = season.KidsWelcome,
@@ -1205,8 +1201,7 @@ internal sealed class CampController(
                 MemberCount = season.MemberCount,
                 SpaceRequirement = season.SpaceRequirement,
                 SoundZone = season.SoundZone,
-                ElectricalGrid = season.ElectricalGrid,
-                IsNameLocked = season.IsNameLocked(today)
+                ElectricalGrid = season.ElectricalGrid
             },
             ActiveEventSettingsId = activeEventSettingsId,
             IsCurrentUserLead = isLead,

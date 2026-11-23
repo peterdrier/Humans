@@ -14,7 +14,6 @@ internal sealed class ConsentReviewQueueItemViewModel
     public Guid UserId { get; set; }
     public string LegalName { get; set; } = string.Empty;
     public string Email { get; set; } = string.Empty;
-    public ConsentCheckStatus? ConsentCheckStatus { get; set; }
     public MembershipTier MembershipTier { get; set; }
     public DateTime ProfileCreatedAt { get; set; }
     public int ConsentCount { get; set; }

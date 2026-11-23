@@ -73,7 +73,7 @@ public sealed class GdprTests : PreapprovalsTestHarness
     {
         var person = SeedUser("Person");
         var program = await SeedProgramAsync(managers: person);
-        var applied = await SeedGrantAsync(program, person, status: GrantStatus.Applied);
+        await SeedGrantAsync(program, person, status: GrantStatus.Applied);
         var open = await SeedGrantAsync(program, person);
         var consumed = await SeedGrantAsync(program, person, status: GrantStatus.Consumed, expenseReportId: Guid.NewGuid());
         var declined = await SeedGrantAsync(program, person, status: GrantStatus.Declined);

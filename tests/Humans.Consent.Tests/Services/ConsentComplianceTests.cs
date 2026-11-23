@@ -53,7 +53,7 @@ public sealed class ConsentComplianceTests
     private Guid Require(Guid teamId, Instant? effectiveFrom = null, int graceDays = 7)
     {
         var version = new RequiredDocumentVersionSnapshot(
-            Guid.NewGuid(), Guid.NewGuid(), "Doc", graceDays, "v1", effectiveFrom ?? Now, false, null);
+            Guid.NewGuid(), "Doc", graceDays, effectiveFrom ?? Now);
         _legalDocuments.GetRequiredDocumentVersionsForTeamAsync(teamId, Arg.Any<CancellationToken>())
             .Returns([version]);
         return version.Id;

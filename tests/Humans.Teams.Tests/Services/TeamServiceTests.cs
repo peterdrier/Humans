@@ -39,7 +39,6 @@ namespace Humans.Teams.Tests.Services;
 
 public sealed class TeamServiceTests : TeamsTestHarness
 {
-
     public enum CanonicalNotice { JoinRequest, MemberJoined, Approved, Rejected, Added, Removed }
 
     [HumansTheory]
@@ -90,7 +89,6 @@ public sealed class TeamServiceTests : TeamsTestHarness
     private readonly TeamPageService _pages;
     private readonly IUserService _userService;
     private readonly IEmailService _emailService = Substitute.For<IEmailService>();
-    private readonly RoleAssignmentService _roleAssignmentService;
     private readonly ITeamResourceManagement _teamResourceService;
     private readonly IGoogleSyncWrite _googleSyncService = Substitute.For<IGoogleSyncWrite>();
     private readonly IGoogleService _googleIdentities = Substitute.For<IGoogleService>();
@@ -99,7 +97,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
 
     public TeamServiceTests()
     {
-        _roleAssignmentService = new RoleAssignmentService(
+        var roleAssignmentService = new RoleAssignmentService(
             new RoleAssignmentRepository(AuthDbFactory),
             Substitute.For<IUserService>(),
             AuditLog,
@@ -128,7 +126,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
         var serviceProvider = new ServiceLocatorBuilder()
             .With<ITeamManagement>()
             .With(_teamCache)
-            .With<IRoleAssignmentService>(_roleAssignmentService)
+            .With<IRoleAssignmentService>(roleAssignmentService)
             .With(_emailService)
             .With(TestTeamsEmails.Create())
             .With(_systemTeamSync)
@@ -150,7 +148,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
             Clock,
             NullLogger<TeamService>.Instance);
         _pages = new TeamPageService(
-            _service, _teamResourceService, _roleAssignmentService);
+            _service, _teamResourceService, roleAssignmentService);
     }
 
     [HumansTheory]
@@ -1946,7 +1944,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
             _teamResourceService.GetTeamResourcesAsync(team.Id, Arg.Any<CancellationToken>())
                 .Returns(Task.FromException<IReadOnlyList<GoogleResourceSnapshot>>(new IOException("Email resource lookup unavailable")));
         if (string.Equals(mode, "profile-lookup-failure", StringComparison.Ordinal))
-            _userService.GetUserInfosAsync(Arg.Is<IEnumerable<Guid>>(ids => ids.Distinct().Count() == 1 && ids.Contains(requester.Id)), Arg.Any<CancellationToken>())
+            _userService.GetUserInfosAsync(Arg.Is<IEnumerable<Guid>>(ids => ids.ToHashSet().SetEquals(new[] { requester.Id })), Arg.Any<CancellationToken>())
                 .Returns(ValueTask.FromException<IReadOnlyDictionary<Guid, UserInfo>>(new IOException("Profile lookup unavailable")));
 
         await _service.ApproveJoinRequestAsync(request.Id, coordinator.Id, null, ct);
@@ -1963,7 +1961,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
                     && m.Subject.EndsWith($"#{expectedCulture}", StringComparison.Ordinal)),
                 Arg.Any<CancellationToken>());
         await _userService.Received(1).GetUserInfosAsync(
-            Arg.Is<IEnumerable<Guid>>(ids => ids.Distinct().Count() == 1 && ids.Contains(requester.Id)), Arg.Any<CancellationToken>());
+            Arg.Is<IEnumerable<Guid>>(ids => ids.ToHashSet().SetEquals(new[] { requester.Id })), Arg.Any<CancellationToken>());
     }
 
     [HumansTheory]
@@ -3251,7 +3249,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
         var team = SeedTeam("Alpha");
         await SaveAllAsync(TestContext.Current.CancellationToken);
         _googleIdentities.GetWorkspaceIdentityAsync(target.Id, Arg.Any<CancellationToken>())
-            .Returns(new WorkspaceIdentity(target.Id, "target@example.org", status));
+            .Returns(new WorkspaceIdentity("target@example.org", status));
 
         await _service.AddMemberToTeamAsync(team.Id, target.Id, actor.Id, TestContext.Current.CancellationToken);
 

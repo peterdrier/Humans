@@ -160,13 +160,7 @@ internal sealed class AccountMergeService(
             request.Email,
             ToUserSnapshot(request.TargetUserId, users),
             ToUserSnapshot(request.SourceUserId, users),
-            request.Status,
-            request.CreatedAt,
-            request.ResolvedAt,
-            request.ResolvedByUserId is Guid id && users.TryGetValue(id, out var rb)
-                ? rb.BurnerName
-                : null,
-            request.AdminNotes);
+            request.CreatedAt);
 
     private static AccountMergeUserSnapshot ToUserSnapshot(
         Guid userId,
@@ -175,12 +169,9 @@ internal sealed class AccountMergeService(
         if (users.TryGetValue(userId, out var user))
         {
             return new(
-                user.Id,
-                user.Email,
-                user.PreferredLanguage,
-                user.LastLoginAt);
+                user.Id);
         }
-        return new(userId, null, null, null);
+        return new(userId);
     }
 
     // Filters GetPendingAsync in memory rather than adding a pair-scoped query; the set is tiny.

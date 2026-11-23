@@ -1392,7 +1392,7 @@ internal sealed class ExpenseReportService(
         {
             // The claim pre-check only picks the member's message; ClaimAsync is the gate, and it
             // runs first inside the transaction so a refused claim leaves the report untouched.
-            var grantRefusal = await GetGrantClaimRefusalAsync(grantId, reportId, ct);
+            var grantRefusal = await GetGrantClaimRefusalAsync(grantId, ct);
             if (grantRefusal is not null) return grantRefusal;
 
             var afterCommit = new List<Func<CancellationToken, Task>>();
@@ -1492,7 +1492,7 @@ internal sealed class ExpenseReportService(
         return ExpenseMutationResult.Success;
     }
 
-    private async Task<ExpenseMutationResult?> GetGrantClaimRefusalAsync(Guid grantId, Guid reportId, CancellationToken ct)
+    private async Task<ExpenseMutationResult?> GetGrantClaimRefusalAsync(Guid grantId, CancellationToken ct)
     {
         var grant = await PreapprovalGrantQueries.GetGrantAsync(preapprovals, grantId, ct);
         switch (grant?.Status)

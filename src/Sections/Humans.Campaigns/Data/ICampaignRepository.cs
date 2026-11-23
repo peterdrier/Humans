@@ -94,7 +94,6 @@ internal interface ICampaignRepository : IRepository
 
 /// <summary>The recipient's address comes from the resolved <c>UserInfo</c>, not from here.</summary>
 internal sealed record GrantWithSendContext(
-    Guid GrantId,
     Guid UserId,
     Guid CampaignId,
     string CodeString,
@@ -111,7 +110,6 @@ internal sealed record CampaignCodeTrackingSummaryRow(
 internal sealed record CampaignCodeTrackingGrantRow(
     Guid CampaignId,
     string CampaignTitle,
-    Guid GrantId,
     Guid UserId,
     string? Code,
     Instant? RedeemedAt);

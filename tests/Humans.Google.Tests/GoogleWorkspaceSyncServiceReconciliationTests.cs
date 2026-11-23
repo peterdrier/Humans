@@ -29,7 +29,6 @@ public sealed class GoogleWorkspaceSyncServiceReconciliationTests : GoogleTestHa
 
     private readonly ITeamService _teamService = Substitute.For<ITeamService>();
     private readonly IUserService _userService = Substitute.For<IUserService>();
-    private readonly IWorkspaceIdentityManagement _identities;
     private readonly IGoogleDriveAccessSource _driveSource = Substitute.For<IGoogleDriveAccessSource>();
     private readonly IUserEmailService _userEmailService = Substitute.For<IUserEmailService>();
     private readonly ISyncSettingsService _syncSettingsService = Substitute.For<ISyncSettingsService>();
@@ -44,7 +43,7 @@ public sealed class GoogleWorkspaceSyncServiceReconciliationTests : GoogleTestHa
     public GoogleWorkspaceSyncServiceReconciliationTests()
         : base(Instant.FromUtc(2026, 8, 2, 9, 0))
     {
-        _identities = WorkspaceIdentityFakes.ResolvingThrough(_userService);
+        var identities = WorkspaceIdentityFakes.ResolvingThrough(_userService);
         _teamResourceClient.GetServiceAccountEmailAsync(Arg.Any<CancellationToken>())
             .Returns("sa@nobodies.team");
 
@@ -82,7 +81,7 @@ public sealed class GoogleWorkspaceSyncServiceReconciliationTests : GoogleTestHa
                     && (call.ArgAt<string?>(0) is null || string.Equals(r.GoogleId, call.ArgAt<string?>(0), StringComparison.Ordinal)))
                 .Select(r => r.GoogleId).Distinct(StringComparer.Ordinal).ToDictionary(id => id, _ => new GoogleDriveAccessClaim([]), StringComparer.Ordinal)));
         _driveSync = new GoogleDriveAccessSyncService(
-            [_driveSource], _drivePermissions, _userService, _identities, _userEmailService, _syncSettingsService,
+            [_driveSource], _drivePermissions, _userService, identities, _userEmailService, _syncSettingsService,
             _syncLog, Substitute.For<IGoogleSyncLogViewer>(), _removalNotifications, repository, _teamService, teamResourceService,
             Clock, NullLogger<GoogleDriveAccessSyncService>.Instance);
 
@@ -95,7 +94,7 @@ public sealed class GoogleWorkspaceSyncServiceReconciliationTests : GoogleTestHa
             repository,
             Substitute.For<IGoogleSyncOutboxRepository>(),
             _teamService,
-            _userService, _identities,
+            _userService, identities,
             _googleGroupSync,
             _driveSync,
             [_driveSource],

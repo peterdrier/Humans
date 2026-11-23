@@ -142,7 +142,6 @@ public class SystemTeamSyncJobBarrioLeadsTests
             "Barrio Leads",
             "barrio-leads",
             IsHidden: true,
-            SystemTeamType.BarrioLeads,
             activeMembers?
                 .Where(member => member.LeftAt is null)
                 .Select(member => member.UserId)

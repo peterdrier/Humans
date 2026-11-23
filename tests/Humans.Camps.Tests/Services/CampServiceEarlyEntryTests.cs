@@ -15,21 +15,18 @@ namespace Humans.Camps.Tests.Services;
 public sealed class CampServiceEarlyEntryTests : CampsTestHarness
 {
     private readonly CampService _service;
-    private readonly InMemoryFileStorage _fileStorage;
-    private readonly ICampRoleService _campRoleService;
-    private readonly IUserService _userService;
     private readonly ITicketService _tickets = Substitute.For<ITicketService>();
 
     public CampServiceEarlyEntryTests()
         : base(Instant.FromUtc(2026, 3, 13, 12, 0))
     {
-        _fileStorage = new InMemoryFileStorage();
+        var fileStorage = new InMemoryFileStorage();
 
         var repo = new CampRepository(CampsDbFactory);
 
-        _campRoleService = Substitute.For<ICampRoleService>();
+        var campRoleService = Substitute.For<ICampRoleService>();
 
-        _userService = Substitute.For<IUserService>();
+        var userService = Substitute.For<IUserService>();
 
         var settingsService = Substitute.For<ISettingsService>();
         settingsService.GetActiveEventSettings()
@@ -39,11 +36,11 @@ public sealed class CampServiceEarlyEntryTests : CampsTestHarness
             repo,
             AuditLog,
             Substitute.For<ISystemTeamSync>(),
-            _fileStorage,
+            fileStorage,
             Notifier,
-            new Lazy<ICampRoleService>(() => _campRoleService),
+            new Lazy<ICampRoleService>(() => campRoleService),
             new Lazy<IEnumerable<ICampDeletionListener>>(() => []),
-            _userService,
+            userService,
             _tickets,
             settingsService,
             Clock,

@@ -549,7 +549,7 @@ internal sealed class WorkgroupsController(
         }
     }
 
-    private string? ActionName() => ControllerContext.ActionDescriptor.ActionName;
+    private string ActionName() => ControllerContext.ActionDescriptor.ActionName;
 
     private async Task<DateTimeZone> OrganisationZoneAsync(CancellationToken ct) =>
         CalendarEventForm.TryResolveZone(await settings.GetTimeZoneIdAsync(ct)) ?? DateTimeZone.Utc;

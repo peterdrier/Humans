@@ -32,7 +32,6 @@ internal sealed record DepartmentStaffingRow(
     IReadOnlyList<SubgroupStaffingRow> Subgroups);
 
 internal sealed record SubgroupStaffingRow(
-    Guid? TeamId,
     string Name,
     string? Slug,
     bool IsDirect,
@@ -88,7 +87,6 @@ internal sealed record CoverageHeatmap(
 internal sealed record CoverageHeatmapDay(int DayOffset, LocalDate Date, string DateLabel, ShiftPeriod Period);
 
 internal sealed record CoverageHeatmapRotaRow(
-    Guid RotaId,
     string RotaName,
     string DepartmentName,
     IReadOnlyList<CoverageHeatmapCell> Cells);

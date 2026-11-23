@@ -34,7 +34,6 @@ internal sealed class ShiftManagementService(
 {
 
     private IShiftRotaRows RotaRows => serviceProvider.GetRequiredService<IShiftRotaRows>();
-    private ISettingsService SettingsService => serviceProvider.GetRequiredService<ISettingsService>();
     private IPermissionService Permissions => serviceProvider.GetRequiredService<IPermissionService>();
 
     private async Task<IReadOnlyDictionary<Guid, TeamInfo>> GetTeamLookupWithParentsAsync(
@@ -551,7 +550,6 @@ internal sealed class ShiftManagementService(
         if (confirmedCount > 0)
             return RefuseDeletion(shiftId, "Shifts_Delete_ConfirmedSignups", confirmedCount);
 
-        var rotaId = shift.RotaId;
         var removedSignups = shift.ShiftSignups.ToList();
 
         await repo.DeleteShiftCascadeAsync(shiftId);
@@ -871,7 +869,6 @@ internal sealed class ShiftManagementService(
             .Select(t => new DepartmentCoveragePie(
                 TeamId: t.Id,
                 TeamName: t.Name,
-                TeamSlug: t.Slug,
                 IsSubTeam: t.ParentTeamId is not null,
                 ParentTeamId: t.ParentTeamId,
                 ParentTeamName: t.ParentTeamId is { } pid && teamLookup.TryGetValue(pid, out var parent)
@@ -989,7 +986,7 @@ internal sealed class ShiftManagementService(
         foreach (var id in relevantTeamIds.ToList())
         {
             var current = teamMeta.GetValueOrDefault(id);
-            while (current?.ParentTeamId is Guid parentId && teamMeta.ContainsKey(parentId))
+            while (current?.ParentTeamId is { } parentId && teamMeta.ContainsKey(parentId))
             {
                 if (!relevantTeamIds.Add(parentId))
                     break;
@@ -1221,7 +1218,7 @@ internal sealed class ShiftManagementService(
             if (!teamLookup.TryGetValue(s.Rota.TeamId, out var team)) return null;
             if (team.ParentTeamId is null) return team;
             if (team.IsPromotedToDirectory) return team;
-            return team.ParentTeamId is Guid pid && teamLookup.TryGetValue(pid, out var parent) ? parent : null;
+            return team.ParentTeamId is { } pid && teamLookup.TryGetValue(pid, out var parent) ? parent : null;
         }
 
         var shiftsByDisplayTeam = allShifts
@@ -1257,12 +1254,11 @@ internal sealed class ShiftManagementService(
 
             if (!teamHasAnyShift) continue;
 
-            var departmentName = team.ParentTeamId is Guid pid && teamLookup.TryGetValue(pid, out var parentTeam)
+            var departmentName = team.ParentTeamId is { } pid && teamLookup.TryGetValue(pid, out var parentTeam)
                 ? parentTeam.Name
                 : team.Name;
 
             rows.Add(new CoverageHeatmapRotaRow(
-                team.Id,
                 team.Name,
                 departmentName,
                 cells));
@@ -1476,7 +1472,6 @@ internal sealed class ShiftManagementService(
 
         var departments = deptBuckets
             .Select(kvp => new PostEventDepartmentRow(
-                DepartmentId: kvp.Key,
                 DepartmentName: DeptNameOf(kvp.Key),
                 DepartmentSlug: DeptSlugOf(kvp.Key),
                 TotalConfirmed: kvp.Value.Values.Sum(v => v.Confirmed),
@@ -1714,11 +1709,9 @@ internal sealed class ShiftManagementService(
 
         return departmentIds
             .Select(id => teams[id])
-            .Select(t => new ShiftSummaryTeamLink(t.Id, t.Name, t.Slug))
+            .Select(t => new ShiftSummaryTeamLink(t.Name, t.Slug))
             .ToList();
     }
-
-    private IRoleAssignmentService RoleAssignmentService => serviceProvider.GetRequiredService<IRoleAssignmentService>();
 
     // Mirrors the pie bucketing in GetDepartmentCoveragePiesAsync: non-promoted sub-teams roll into the parent,
     // promoted ones have their own pie and filter.

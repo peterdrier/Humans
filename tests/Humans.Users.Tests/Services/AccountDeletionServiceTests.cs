@@ -11,7 +11,6 @@ using Humans.Gdpr.Contracts;
 using Humans.Users.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Tickets.Contracts;
-using Humans.Application.Services.Users.AccountLifecycle;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NodaTime.Testing;

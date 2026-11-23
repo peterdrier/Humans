@@ -61,8 +61,7 @@ internal sealed class AdminDatabaseDiagnosticsRepository(
 
         return new DatabaseInfo(
             new DatabaseServerSummary(
-                summary.ServerVersion, summary.FullVersion, summary.DatabaseName, summary.DatabaseBytes,
-                summary.DatabaseSize, summary.ServerStartedAt, summary.StatsResetAt, summary.Connections,
+                summary.ServerVersion, summary.FullVersion, summary.DatabaseName, summary.DatabaseSize, summary.ServerStartedAt, summary.StatsResetAt, summary.Connections,
                 summary.MaxConnections, summary.CacheHitPercent, summary.Commits, summary.Rollbacks,
                 summary.Deadlocks, summary.TempFiles, summary.TempBytes),
             [.. tables.Select(t => new DatabaseTableInfo(

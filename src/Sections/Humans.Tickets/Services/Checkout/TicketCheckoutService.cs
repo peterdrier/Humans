@@ -922,7 +922,7 @@ internal sealed partial class TicketCheckoutService(
                 Refunded = o.BuyerUserId == userId ? FormatMinor(o.RefundedMinor) : null,
                 TicketRulesAccepted = o.BuyerUserId == userId && o.TermsVersion is not null ? $"{o.TermsFolder} at {o.TermsVersion}" : null,
                 Lines = o.Lines
-                    .Where((l, i) => o.BuyerUserId == userId || l.AttendeeUserId == userId
+                    .Where(l => o.BuyerUserId == userId || l.AttendeeUserId == userId
                         || (l.ParentLineIndex is { } parent && o.Lines[parent].AttendeeUserId == userId))
                     .Select(l => new { Kind = l.Kind.ToString(), l.Description, Amount = FormatMinor(l.AmountMinor), l.AttendeeName, l.AttendeeEmail })
                     .ToList(),
@@ -1176,7 +1176,7 @@ internal sealed partial class TicketCheckoutService(
     /// <paramref name="Held"/> counts against capacity: issued tickets still valid or offered, and fresh-stock lines on
     /// unpaid checkouts that have not lapsed. A resold ticket replaces the one it was offered as, so it adds nothing.
     /// </summary>
-    private sealed record Stock(int Held, int Sold, bool ResaleOpen, IReadOnlyList<TicketResaleOffer> Offers);
+    private sealed record Stock(int Held, bool ResaleOpen, IReadOnlyList<TicketResaleOffer> Offers);
 
     private async Task<Stock> LoadStockAsync(TicketSalesEvent salesEvent, Instant now, CancellationToken ct)
     {
@@ -1195,7 +1195,7 @@ internal sealed partial class TicketCheckoutService(
                 .Select(c => c.Barcode)
                 .ToList());
         var admitted = await gateAdmissions.GetAdmittedAsync(offeredCodes.Values.SelectMany(c => c).ToList(), ct);
-        return new Stock(sold + pending, sold, resaleOpen,
+        return new Stock(sold + pending, resaleOpen,
             offers.Where(o => !(offeredCodes.TryGetValue(o.TicketId, out var codes) && codes.Any(admitted.Contains))).ToList());
     }
 
@@ -1249,11 +1249,11 @@ internal sealed partial class TicketCheckoutService(
     /// address verified on exactly one live account counts; nobody gets an account made for them.
     /// </summary>
     private async Task<(UserInfo? Person, string? Problem)> FindOtherAsync(
-        string email, Guid askerId, Guid salesEventId, Instant now, CancellationToken ct)
+        string address, Guid askerId, Guid salesEventId, Instant now, CancellationToken ct)
     {
-        if (!LooksLikeEmail(email) || email.Length > MaxEmailLength)
+        if (!LooksLikeEmail(address) || address.Length > MaxEmailLength)
             return (null, "NotFound");
-        var owners = (await userEmails.FindByAddressAsync(email, aliased: true, verifiedOnly: true, ct))
+        var owners = (await userEmails.FindByAddressAsync(address, aliased: true, verifiedOnly: true, ct))
             .Select(r => r.UserId).Distinct().ToList();
         return owners.Count != 1 ? (null, "NotFound") : await CheckOtherAsync(owners[0], askerId, salesEventId, now, ct);
     }

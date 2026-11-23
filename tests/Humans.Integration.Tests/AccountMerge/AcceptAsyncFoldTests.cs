@@ -511,7 +511,6 @@ public class AcceptAsyncFoldTests(HumansTestDatabase database) : IntegrationTest
         await MergeRequestedPairAsync(requestId, adminId);
 
         await using var assertScope = Factory.Services.CreateAsyncScope();
-        var db = assertScope.ServiceProvider.GetRequiredService<UsersDbContext>();
         var authDb = assertScope.ServiceProvider.GetRequiredService<AuthDbContext>();
 
         var targetRows = await authDb.RoleAssignments
@@ -555,7 +554,6 @@ public class AcceptAsyncFoldTests(HumansTestDatabase database) : IntegrationTest
         await MergeRequestedPairAsync(requestId, adminId);
 
         await using var assertScope = Factory.Services.CreateAsyncScope();
-        var db = assertScope.ServiceProvider.GetRequiredService<UsersDbContext>();
         var teamsDb = assertScope.ServiceProvider.GetRequiredService<TeamsDbContext>();
 
         var targetActiveTeams = await teamsDb.TeamMembers
@@ -598,7 +596,6 @@ public class AcceptAsyncFoldTests(HumansTestDatabase database) : IntegrationTest
         await MergeRequestedPairAsync(requestId, adminId);
 
         await using var assertScope = Factory.Services.CreateAsyncScope();
-        var db = assertScope.ServiceProvider.GetRequiredService<UsersDbContext>();
         var teamsDb = assertScope.ServiceProvider.GetRequiredService<TeamsDbContext>();
 
         var targetRequests = await teamsDb.TeamJoinRequests
@@ -639,7 +636,6 @@ public class AcceptAsyncFoldTests(HumansTestDatabase database) : IntegrationTest
         await MergeRequestedPairAsync(requestId, adminId);
 
         await using var assertScope = Factory.Services.CreateAsyncScope();
-        var db = assertScope.ServiceProvider.GetRequiredService<UsersDbContext>();
         var notificationsDb = assertScope.ServiceProvider.GetRequiredService<NotificationsDbContext>();
 
         var targetRecipients = await notificationsDb.NotificationRecipients

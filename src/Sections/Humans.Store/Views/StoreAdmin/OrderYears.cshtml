@@ -54,7 +54,7 @@ else
             <span class="text-danger">Camp season no longer exists</span>
         }
     </text>;
-    var rows = Model.Rows.OrderBy(row => row.ResolvedYear).ThenBy(row => row.CampName).ToList();
+    var rows = Model.Rows.OrderBy(row => row.ResolvedYear).ThenBy(row => row.CampName, StringComparer.CurrentCulture).ToList();
     var table = TableModel.For(rows)
         .Link("Order", r => r.OrderId, r => Url.Action("Order", "Store", new { id = r.OrderId }), o => o.Code())
         .Template("Camp season", seasonCell)

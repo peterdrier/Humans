@@ -30,7 +30,6 @@ public record VendorTicketDto(
 public record VendorCheckInDto(string VendorTicketId, Instant CheckedInAt);
 
 public record VendorEventSummaryDto(
-    string EventId,
     string EventName,
     int TotalCapacity,
     int TicketsSold,

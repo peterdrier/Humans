@@ -78,7 +78,7 @@
             <small class="text-muted">@pct.ToString("N0", System.Globalization.CultureInfo.CurrentUICulture)%</small>
         </div>
         <div class="progress" style="height: 8px;">
-            <div class="progress-bar @barClass" style="width: @Math.Min(pct, 100).ToString("N0")%"></div>
+            <div class="progress-bar @barClass" style="width: @Math.Min(pct, 100).ToString("0", System.Globalization.CultureInfo.InvariantCulture)%"></div>
         </div>
     </div>
 }

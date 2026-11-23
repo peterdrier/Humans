@@ -1057,7 +1057,6 @@ public class VolunteerTrackingServiceTests
         public List<(Guid UserId, Guid EventSettingsId, LocalDate? Date, string? Notes, Guid? SetByUserId, Instant? SetAt)> UpsertCalls { get; } =
             [];
         public List<(Guid UserId, Guid EventSettingsId, DayOffEntry Entry)> UpsertDayOffCalls { get; } = [];
-        public List<(Guid UserId, Guid EventSettingsId, int DayOffset)> RemoveDayOffCalls { get; } = [];
 
         public Task<IReadOnlyList<VolunteerBuildStatus>> GetBuildStatusesForEventAsync(
             Guid? eventSettingsId,
@@ -1191,7 +1190,6 @@ public class VolunteerTrackingServiceTests
         public Task<bool> RemoveDayOffAsync(
             Guid userId, Guid eventSettingsId, int dayOffset, CancellationToken ct = default)
         {
-            RemoveDayOffCalls.Add((userId, eventSettingsId, dayOffset));
             var existing = BuildStatuses.FirstOrDefault(b => b.UserId == userId && b.EventSettingsId == eventSettingsId);
             if (existing is null) return Task.FromResult(false);
             var removed = existing.DayOffs.RemoveAll(d => d.DayOffset == dayOffset) > 0;

@@ -33,7 +33,7 @@ internal static class DbContextOwnershipRule
             "[Grandfathered(\"HUM0009\", …)] which downgrades this diagnostic to a warning for the tagged " +
             "class only — the attribute is a TODO for migration, not a permanent exemption.");
 
-    private const string IRepositoryFullName = "Humans.Base.Interfaces.Repositories.IRepository";
+    private const string RepositoryInterfaceFullName = "Humans.Base.Interfaces.Repositories.IRepository";
     private const string DesignTimeDbContextFactoryFullName =
         "Microsoft.EntityFrameworkCore.Design.IDesignTimeDbContextFactory`1";
     private const string HostedLifecycleServiceFullName =
@@ -48,7 +48,7 @@ internal static class DbContextOwnershipRule
         if (efDbContext is null)
             return;
 
-        var repositoryMarker = context.Compilation.GetTypeByMetadataName(IRepositoryFullName);
+        var repositoryMarker = context.Compilation.GetTypeByMetadataName(RepositoryInterfaceFullName);
         if (repositoryMarker is null)
             return;
 

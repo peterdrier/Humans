@@ -27,9 +27,9 @@ public sealed class TicketEmailLockTests
     }
 
     private static TicketOrderInfo Order(Guid buyerId, string buyerEmail, params TicketAttendeeInfo[] attendees) => new(
-        Guid.NewGuid(), "order", "Buyer", buyerEmail, 100m, "EUR", null, TicketPaymentStatus.Paid, "event",
+        Guid.NewGuid(), buyerEmail, 100m, TicketPaymentStatus.Paid, "event",
         Instant.MinValue, buyerId, true, attendees);
 
     private static TicketAttendeeInfo Attendee(Guid userId, string email) => new(
-        Guid.NewGuid(), "ticket", "Attendee", email, "Full Week", 100m, TicketAttendeeStatus.Valid, userId);
+        Guid.NewGuid(), "ticket", "Attendee", email, "Full Week", TicketAttendeeStatus.Valid, userId);
 }

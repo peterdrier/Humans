@@ -14,7 +14,6 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Localization;
 using Humans.Users.Services;
-using Humans.Application.Services.Users.AccountLifecycle;
 
 namespace Humans.Users.Controllers;
 

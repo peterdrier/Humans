@@ -209,7 +209,6 @@ internal sealed class DepartmentShiftGroup
     public Guid TeamId { get; set; }
     public string TeamName { get; set; } = string.Empty;
     public string? TeamDescription { get; set; }
-    public string TeamSlug { get; set; } = string.Empty;
     public List<RotaShiftGroup> Rotas { get; set; } = [];
 }
 
@@ -223,7 +222,6 @@ internal sealed class RotaShiftGroup
     /// <summary>Set only in the urgency view, where rotas are shown flat.</summary>
     public string? DepartmentName { get; set; }
 
-    public string? DepartmentSlug { get; set; }
 
     public double MaxUrgencyScore { get; set; }
 

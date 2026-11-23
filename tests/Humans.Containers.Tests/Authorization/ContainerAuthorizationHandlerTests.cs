@@ -275,7 +275,6 @@ public sealed class ContainerAuthorizationHandlerTests
                 new CampSeasonInfo(
                     Guid.NewGuid(),
                     CampId,
-                    "lead-camp",
                     year,
                     null,
                     "Lead Camp",

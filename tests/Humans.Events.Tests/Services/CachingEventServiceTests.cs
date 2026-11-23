@@ -349,7 +349,7 @@ public sealed class CachingEventServiceTests
         CategoryId: Guid.NewGuid(), CategorySlug: "music", CategoryName: "Music", CategoryIsSensitive: false,
         VenueName: null, Title: title, Description: description, LocationNote: null, Host: null,
         StartAt: Instant.FromUtc(2026, 8, 1, 10, 0), DurationMinutes: 60, IsRecurring: false, RecurrenceDays: null,
-        PriorityRank: 0, SubmittedAt: Instant.FromUtc(2026, 8, 1, 10, 0), LastUpdatedAt: Instant.FromUtc(2026, 8, 1, 10, 0));
+        PriorityRank: 0);
 
     [HumansFact]
     public async Task EventSettingsChanged_ReloadsTheGuideSettingsProjection()
@@ -440,7 +440,5 @@ public sealed class CachingEventServiceTests
         SubmissionCloseAt: Instant.FromUtc(2026, 2, 1, 0, 0),
         GuidePublishAt: Instant.FromUtc(2026, 3, 1, 0, 0),
         MaxPrintSlots: 3,
-        TimeZoneId: timeZoneId,
-        CreatedAt: Instant.FromUtc(2026, 1, 1, 0, 0),
-        UpdatedAt: Instant.FromUtc(2026, 1, 1, 0, 0));
+        TimeZoneId: timeZoneId);
 }

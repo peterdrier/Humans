@@ -143,7 +143,7 @@ public sealed class ShiftSignupServiceCalendarFeedTests : ShiftsTestHarness
     [HumansFact]
     public async Task GetCalendarItems_ConfirmedSignup_ResolvesAbsoluteTimesAndTeamName()
     {
-        var (es, rota, shift) = SeedShiftScenario();
+        var (_, rota, shift) = SeedShiftScenario();
         var userId = Guid.NewGuid();
         var signup = SeedSignup(shift, userId, SignupStatus.Confirmed);
         _teamService.GetTeamsAsync(Arg.Any<CancellationToken>())

@@ -118,7 +118,7 @@ public sealed class AssemblyVoteEmbargoTests : IDisposable
     {
         var vote = await _fx.AddVoteAsync();
         var r1 = await _fx.AddRosterRowAsync(vote.Id, Guid.NewGuid(), isOfficial: true);
-        var r2 = await _fx.AddRosterRowAsync(vote.Id, Guid.NewGuid(), isOfficial: true);
+        await _fx.AddRosterRowAsync(vote.Id, Guid.NewGuid(), isOfficial: true);
         await _fx.AddBallotAsync(vote.Id, r1.Id, AssemblyBallotChoice.Yes);
 
         var detail = await _fx.Service.GetVoteForMemberAsync(

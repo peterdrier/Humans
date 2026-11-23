@@ -338,7 +338,6 @@ internal sealed class CalendarService(
         Description: item.Description,
         Location: item.Location,
         LocationUrl: item.LocationUrl,
-        OwningTeamId: Guid.Empty,
         OwningTeamName: string.Empty,
         IsRecurring: recurring,
         OriginalOccurrenceStartUtc: recurring ? start : null,

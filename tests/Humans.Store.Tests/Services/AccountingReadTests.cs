@@ -298,7 +298,7 @@ public class AccountingReadTests
             Seasons:
             [
                 new CampSeasonInfo(
-                    seasonId, campId, "alpha", 2026, null, name, string.Empty, string.Empty, [],
+                    seasonId, campId, 2026, null, name, string.Empty, string.Empty, [],
                     CampSeasonStatus.Active, YesNoMaybe.No, YesNoMaybe.No, AdultPlayspacePolicy.No,
                     0, null, null, null, 0, null, null)
             ]);

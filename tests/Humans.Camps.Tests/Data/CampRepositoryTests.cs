@@ -511,16 +511,6 @@ public sealed class CampRepositoryTests : IDisposable
         await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
     }
 
-    private async Task SeedSettingsAsync()
-    {
-        _dbContext.CampSettings.Add(new CampSettings
-        {
-            Id = Guid.NewGuid(),
-            PublicYear = 2026
-        });
-        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
-    }
-
     private Camp BuildCamp(string slug) => new()
     {
         Id = Guid.NewGuid(),

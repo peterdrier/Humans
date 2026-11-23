@@ -38,7 +38,6 @@ internal sealed record GoogleSyncHistoryMigrationReport(
 
 /// <summary>An audit row as it will land in <c>google_sync_log_entries</c>.</summary>
 internal sealed record GoogleSyncHistoryMovableRow(
-    Guid AuditId,
     Instant OccurredAt,
     GoogleSyncLogAction Action,
     string? ResourceName,

@@ -1379,7 +1379,7 @@ public sealed class GoogleWorkspaceSyncServiceTests
             _drivePermissions.GetFileAsync("folder-1", ct).Returns(new DriveFileMetadataResult(
                 new DriveFileMetadata("folder-1", null, [], "folder-1", null), null));
             _drivePermissions.GetSharedDriveAsync("folder-1", ct).Returns(string.Equals(scenario, "complete", StringComparison.Ordinal)
-                ? new SharedDriveMetadataResult(new SharedDriveMetadata("folder-1", "Shared Drive"), null)
+                ? new SharedDriveMetadataResult(new SharedDriveMetadata("Shared Drive"), null)
                 : new SharedDriveMetadataResult(null, new GoogleClientError(503, "Drive unavailable")));
         }
 

@@ -158,7 +158,8 @@ public class UnsubscribeFlowTests(HumansTestDatabase database) : IntegrationTest
             ["__RequestVerificationToken"] = formToken,
         };
         using var content = new FormUrlEncodedContent(withToken);
-        using var req = new HttpRequestMessage(HttpMethod.Post, url) { Content = content };
+        using var req = new HttpRequestMessage(HttpMethod.Post, url);
+        req.Content = content;
         req.Headers.TryAddWithoutValidation("Cookie", antiforgeryCookie);
         return await Client.SendAsync(req, Xunit.TestContext.Current.CancellationToken);
     }

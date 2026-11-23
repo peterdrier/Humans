@@ -1,0 +1,20 @@
+@* A section RCL does NOT inherit the host's Views/_ViewImports.cshtml. Omitting a line
+   here ships broken markup with a green build and no runtime error. *@
+@using Humans.Tasks
+@using Humans.Tasks.Contracts
+@using Humans.Tasks.Domain
+@using Humans.Tasks.Models
+@using Humans.Tasks.Services
+@using Humans.Base
+@using Humans.Base.Authorization
+@using Humans.Base.Extensions
+@using Humans.Base.Models
+@using Humans.Base.Models.Tables
+@using Humans.Teams.Contracts
+@using Microsoft.Extensions.Localization
+@inject IStringLocalizer<TasksResource> Localizer
+@* Enum_SlotPriority_* stays in SharedResource; Enum_TaskItemStatus_* is in TasksResource (pass localizer to status-badge). *@
+@inject IStringLocalizer<SharedResource> SharedLocalizer
+@addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
+@addTagHelper *, Humans.Base
+@addTagHelper *, Humans.Tasks
