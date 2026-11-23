@@ -26,13 +26,11 @@ namespace Humans.Expenses.Tests.Services;
 
 public class ExpenseReportServiceGdprTests
 {
-
     private static readonly Instant FakeNow = Instant.FromUtc(2026, 5, 10, 12, 0);
     private static readonly Guid UserId = Guid.NewGuid();
 
     private readonly IExpenseRepository _repo;
     private readonly IUserService _userService;
-    private readonly IAuditLogService _auditLogService;
     private readonly IAuditViewerService _auditViewer = Substitute.For<IAuditViewerService>();
     private readonly IFinanceService _finance = Substitute.For<IFinanceService>();
     private readonly IUserDataContributor _sut;
@@ -41,7 +39,7 @@ public class ExpenseReportServiceGdprTests
     {
         _repo = Substitute.For<IExpenseRepository>();
         _userService = Substitute.For<IUserService>();
-        _auditLogService = Substitute.For<IAuditLogService>();
+        var auditLogService = Substitute.For<IAuditLogService>();
 
         // Nothing merged into anybody by default: GetUserInfoAsync returns null and the
         // export reads the single id.
@@ -55,7 +53,7 @@ public class ExpenseReportServiceGdprTests
                 ct: Arg.Any<CancellationToken>())
             .Returns([]);
 
-        _sut = new ExpenseReportService(_repo, Substitute.For<IFileStorage>(), Substitute.For<IBudgetService>(), _userService, _auditLogService, _auditViewer, Substitute.For<IHoldedService>(), _finance, Substitute.For<IFinanceWrite>(), Substitute.For<Humans.Preapprovals.Contracts.IPreapprovalService>(), Substitute.For<Humans.Preapprovals.Contracts.IPreapprovalWrite>(), new FakeClock(FakeNow), NullLogger<ExpenseReportService>.Instance, Options.Create(new TravelReimbursementConfig()));
+        _sut = new ExpenseReportService(_repo, Substitute.For<IFileStorage>(), Substitute.For<IBudgetService>(), _userService, auditLogService, _auditViewer, Substitute.For<IHoldedService>(), _finance, Substitute.For<IFinanceWrite>(), Substitute.For<Humans.Preapprovals.Contracts.IPreapprovalService>(), Substitute.For<Humans.Preapprovals.Contracts.IPreapprovalWrite>(), new FakeClock(FakeNow), NullLogger<ExpenseReportService>.Instance, Options.Create(new TravelReimbursementConfig()));
     }
 
     private static UserInfo WrapInUserInfo(Guid userId, ProfileInfo profile) => UserInfo.Create(

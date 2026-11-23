@@ -17,7 +17,6 @@ public sealed class ExternalLoginServiceTests : ServiceTestHarness
 {
     private const string Provider = "Google";
 
-    private readonly UserStore<User, IdentityRole<Guid>, UsersDbContext, Guid> _userStore;
     private readonly UserManager<User> _userManager;
     private readonly IUserManagement _userService = Substitute.For<IUserManagement>();
     private readonly IUserEmailService _userEmailService = Substitute.For<IUserEmailService>();
@@ -25,9 +24,9 @@ public sealed class ExternalLoginServiceTests : ServiceTestHarness
 
     public ExternalLoginServiceTests()
     {
-        _userStore = new UserStore<User, IdentityRole<Guid>, UsersDbContext, Guid>(Db);
+        var userStore = new UserStore<User, IdentityRole<Guid>, UsersDbContext, Guid>(Db);
         _userManager = new UserManager<User>(
-            _userStore,
+            userStore,
             Options.Create(new IdentityOptions
             {
                 User = { RequireUniqueEmail = false },
