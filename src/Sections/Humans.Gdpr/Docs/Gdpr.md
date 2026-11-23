@@ -2,6 +2,7 @@
   src/Sections/Humans.Gdpr/**
   src/Sections/Humans.Gdpr/Contracts/**
   src/Humans.Base/Gdpr/**
+  src/Sections/Humans.Users/Services/AccountDeletionService.cs
 -->
 <!-- freshness:flag-on-change
   The fan-out contract (IUserDataContributor / UserDataSlice) and the failure rules the orchestrator enforces — never swallow a contributor exception, never accept a duplicate export section name, log an error for an exported section with no erasure declaration, never leave an erasure section behind silently — review whenever the Contracts/ folder, src/Humans.Base/Gdpr/ or GdprService changes.
