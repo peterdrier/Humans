@@ -1,5 +1,6 @@
 using System.Text.Json.Serialization;
 using Humans.Backdoor.Filters;
+using Humans.Backdoor.Services;
 using Humans.Base.Controllers;
 using Humans.Permissions.Contracts;
 using Humans.Tasks.Contracts;
@@ -18,6 +19,7 @@ namespace Humans.Backdoor.Controllers;
 [ApiController]
 [Route("api/backdoor/tasks")]
 [ServiceFilter(typeof(BackdoorApiKeyAuthFilter))]
+[BackdoorScope(BackdoorScope.Tasks)]
 [AllowAnonymous]
 internal sealed class BackdoorTasksController(
     ITaskWrite tasks,
