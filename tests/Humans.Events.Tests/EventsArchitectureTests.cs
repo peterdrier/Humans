@@ -2,7 +2,6 @@ using System.Reflection;
 using AwesomeAssertions;
 using NSubstitute;
 using NodaTime;
-using Humans.Base.Authorization;
 using Humans.Gdpr.Contracts;
 using Humans.Users.Contracts;
 using Humans.Events.Contracts;

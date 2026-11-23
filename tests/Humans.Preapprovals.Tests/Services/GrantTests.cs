@@ -1,5 +1,4 @@
 using System.Net;
-using Humans.Base.Enums;
 using AwesomeAssertions.Execution;
 using Humans.Base.Extensions;
 using Humans.Email.Contracts;

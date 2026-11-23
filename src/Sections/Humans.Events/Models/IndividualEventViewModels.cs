@@ -1,7 +1,6 @@
 using Humans.Events.Domain;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 using System.ComponentModel.DataAnnotations;
-using Humans.Events.Contracts;
 
 namespace Humans.Events.Models;
 

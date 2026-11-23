@@ -1,6 +1,5 @@
 using System.Globalization;
 using Humans.AuditLog.Contracts;
-using Humans.Base.Interfaces.Caching;
 using Humans.EarlyEntry.Contracts;
 using Humans.Gdpr.Contracts;
 using Humans.Notifications.Contracts;
@@ -11,8 +10,6 @@ using Humans.Tickets.Contracts;
 using Humans.Users.Contracts;
 
 using Humans.Teams.Contracts;
-using Humans.Base.Extensions;
-using Humans.Base.Interfaces;
 using System.Transactions;
 using System.Resources;
 

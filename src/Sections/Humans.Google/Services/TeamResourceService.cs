@@ -5,9 +5,7 @@ using Humans.AuditLog.Contracts;
 using Humans.Teams.Contracts;
 using Microsoft.Extensions.DependencyInjection;
 using NodaTime;
-using Humans.Google.Data;
 using Humans.Google.Services.Workspace;
-using Humans.Base.Interfaces;
 
 namespace Humans.Google.Services;
 

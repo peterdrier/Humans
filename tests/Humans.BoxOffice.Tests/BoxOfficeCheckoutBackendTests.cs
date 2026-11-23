@@ -5,7 +5,6 @@ using System.Text;
 using AwesomeAssertions;
 using Humans.BoxOffice.Controllers;
 using Humans.BoxOffice.Services;
-using Humans.Testing;
 using Humans.Tickets.Contracts;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;

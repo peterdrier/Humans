@@ -2,7 +2,6 @@ using AwesomeAssertions;
 using Humans.Base.Configuration;
 using Humans.Email.Contracts;
 using Microsoft.Extensions.Options;
-using Humans.AuditLog.Contracts;
 using Humans.Base.Interfaces;
 using Humans.Base.Extensions;
 using Humans.Users.Services;

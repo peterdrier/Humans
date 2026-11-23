@@ -4,7 +4,6 @@ using Xunit;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Humans.Auth.Contracts;
-using Humans.Base.Interfaces;
 using Humans.Teams.Contracts;
 using Microsoft.Extensions.Localization;
 using Humans.Users.Data;

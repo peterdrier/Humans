@@ -1,24 +1,16 @@
 using Humans.Base.Extensions;
-using Humans.Base.Interfaces;
 using Humans.AuditLog.Contracts;
 using Humans.Budget.Contracts;
 using Humans.Email.Contracts;
-using Humans.Finance.Contracts;
-using Humans.Gdpr.Contracts;
-using Humans.Holded.Contracts;
 using Humans.Preapprovals.Contracts;
 using Humans.Teams.Contracts;
-using Humans.Expenses.Services.Dtos;
 using Humans.Base.Helpers;
-using Microsoft.Extensions.Options;
 using NodaTime;
 using Humans.Expenses.Contracts;
 using Humans.Expenses.Data;
-using Humans.Expenses.Domain;
 using Humans.Users.Contracts;
 using System.Globalization;
 using System.Transactions;
-using Humans.Base.Threading;
 
 namespace Humans.Expenses.Services;
 

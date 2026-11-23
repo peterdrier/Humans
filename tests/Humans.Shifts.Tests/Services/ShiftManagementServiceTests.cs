@@ -11,15 +11,11 @@ using Humans.Base.Enums;
 using Humans.Base.Extensions;
 using Humans.Shifts.Data;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Infrastructure;
-using Microsoft.EntityFrameworkCore.Diagnostics;
-using Microsoft.Extensions.Caching.Memory;
 using NodaTime;
 using NSubstitute;
 using Humans.Permissions.Contracts;
 using Humans.Base.Authorization;
 using Humans.Users.Contracts;
-using Humans.AuditLog.Contracts;
 
 using Humans.Shifts.Models;
 

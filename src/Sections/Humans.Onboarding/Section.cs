@@ -1,6 +1,4 @@
-using Humans.Base.Constants;
 using Humans.Base.Interfaces;
-using Humans.Base.Models;
 using Humans.Consent.Contracts;
 using Humans.Email.Contracts;
 using Humans.Issues.Contracts;

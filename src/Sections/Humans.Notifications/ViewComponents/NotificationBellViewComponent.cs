@@ -3,7 +3,6 @@ using Humans.Notifications.Services;
 using Humans.Users.Contracts;
 using Humans.Notifications.Models;
 using Microsoft.AspNetCore.Mvc;
-using System.Security.Claims;
 
 namespace Humans.Notifications.ViewComponents;
 

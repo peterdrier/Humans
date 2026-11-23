@@ -1,13 +1,12 @@
 using AwesomeAssertions;
-using Humans.AuditLog.Contracts;
 using Humans.Governance.Domain;
 using Humans.Governance.Services.Dtos;
 using Humans.Governance.Tests.Infrastructure;
 using Humans.Notifications.Contracts;
 using Microsoft.EntityFrameworkCore;
 using NSubstitute;
-
 using Xunit;
+
 
 namespace Humans.Governance.Tests.Services;
 

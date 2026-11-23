@@ -1,4 +1,3 @@
-using Humans.Teams;
 using Microsoft.Extensions.Localization;
 using Humans.Base.Extensions;
 using Humans.Base.Constants;

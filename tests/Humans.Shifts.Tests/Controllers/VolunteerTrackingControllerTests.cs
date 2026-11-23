@@ -1,12 +1,9 @@
 using Humans.Shifts.Services.Dtos;
-using Humans.Shifts.Domain;
 using System.Reflection;
 using System.Security.Claims;
 using AwesomeAssertions;
-using Humans.AuditLog.Contracts;
 using Humans.Shifts.Services;
 using Humans.Shifts.Contracts;
-using Humans.Base.Authorization;
 using Humans.Base.Constants;
 using Humans.Shifts.Controllers;
 using Humans.Shifts.Models;

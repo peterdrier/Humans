@@ -4,7 +4,6 @@ using Humans.Consent.Contracts;
 using Humans.Events.Contracts;
 using Humans.Cantina.Contracts;
 using Humans.Rideshare.Contracts;
-using System.Reflection;
 using Humans.Auth.Contracts;
 using Humans.Base.Interfaces;
 using Humans.Web.Extensions;

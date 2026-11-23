@@ -12,8 +12,6 @@ using Humans.Users.Contracts;
 using Humans.Users.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
-using Humans.Users.Data.Repositories;
-using Humans.Users.Tests.Infrastructure;
 
 namespace Humans.Users.Tests.Services.Users;
 

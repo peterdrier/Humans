@@ -5,10 +5,8 @@ using Humans.Budget.Data;
 using Humans.Teams.Contracts;
 using Humans.Budget.Domain;
 using Humans.Gdpr.Contracts;
-using Humans.Finance.Contracts;
 using NodaTime;
 using Humans.Users.Contracts;
-using Humans.Base.Interfaces;
 
 namespace Humans.Budget.Services;
 

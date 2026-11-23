@@ -1,13 +1,11 @@
 using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
-using Humans.Base.Constants;
 using Humans.Base.Enums;
 using Humans.Camps.Contracts;
 using Humans.CityPlanning.Contracts;
 using Humans.CityPlanning.Controllers;
 using Humans.CityPlanning.Data;
-using Humans.CityPlanning.Domain;
 using Humans.CityPlanning.Services;
 using Humans.Containers;
 using Humans.Containers.Contracts;

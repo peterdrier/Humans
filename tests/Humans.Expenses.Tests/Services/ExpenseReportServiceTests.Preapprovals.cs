@@ -5,7 +5,6 @@ using Xunit;
 using Humans.Expenses.Contracts;
 using Humans.Expenses.Data;
 using Humans.Expenses.Services;
-using Humans.Expenses.Tests.Infrastructure;
 using Humans.Expenses.Services.Dtos;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;

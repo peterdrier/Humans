@@ -4,7 +4,6 @@ using Humans.Camps.Contracts;
 using Humans.CityPlanning.Contracts;
 using Humans.Containers.Authorization;
 using Humans.Containers.Contracts;
-using Humans.Base.Constants;
 using Humans.Base.Enums;
 using Humans.Settings.Contracts;
 using Microsoft.AspNetCore.Authorization;

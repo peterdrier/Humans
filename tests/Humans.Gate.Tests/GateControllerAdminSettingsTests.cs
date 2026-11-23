@@ -1,4 +1,3 @@
-using Hangfire;
 using AwesomeAssertions;
 using Humans.Gate.Controllers;
 using Humans.Gate.Models;

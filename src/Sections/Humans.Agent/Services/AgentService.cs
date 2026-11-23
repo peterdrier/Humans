@@ -15,7 +15,6 @@ using Humans.Agent.Contracts;
 using Humans.Issues.Contracts;
 using Humans.Users.Contracts;
 using Humans.Agent.Services.Anthropic;
-using Humans.Base.Interfaces;
 
 namespace Humans.Agent.Services;
 

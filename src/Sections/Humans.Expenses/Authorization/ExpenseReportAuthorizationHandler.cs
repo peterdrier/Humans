@@ -1,6 +1,5 @@
 using Humans.Base.Extensions;
 using Humans.Finance.Contracts;
-using Humans.Base.Authorization;
 using Humans.Budget.Contracts;
 using Humans.Expenses.Contracts;
 using Humans.Expenses.Services;
@@ -8,7 +7,6 @@ using Humans.Preapprovals.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
 
 namespace Humans.Expenses.Authorization;
 

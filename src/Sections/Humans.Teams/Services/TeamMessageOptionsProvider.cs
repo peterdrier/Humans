@@ -1,5 +1,4 @@
 using Humans.AuditLog.Contracts;
-using Humans.Base;
 using Humans.Base.Attributes;
 using Humans.Base.Extensions;
 using Humans.Base.Interfaces;

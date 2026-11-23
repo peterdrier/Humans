@@ -1,13 +1,9 @@
 using Humans.Base.Helpers;
-using Humans.Base.Caching;
-using Microsoft.Extensions.Caching.Memory;
 using Humans.Base.Interfaces;
 using Xunit;
 using System.Text.Json;
 using Humans.Notifications.Contracts;
 using AwesomeAssertions;
-using Humans.Base.Interfaces.Caching;
-using Humans.EarlyEntry.Contracts;
 using Humans.Settings.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Base.Enums;

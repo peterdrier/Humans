@@ -1,7 +1,5 @@
 using Humans.Consent.Contracts;
-using Humans.Shifts.Domain;
 using AwesomeAssertions;
-using Humans.Governance.Contracts;
 using Humans.Shifts.Services;
 using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
@@ -12,8 +10,6 @@ using Humans.Shifts.Services.Dtos;
 using NodaTime;
 using NSubstitute;
 using Humans.Users.Contracts;
-using Humans.Users.Domain;
-using Humans.Shifts.Tests.Infrastructure;
 
 namespace Humans.Shifts.Tests.Models;
 

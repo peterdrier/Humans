@@ -1,7 +1,6 @@
 using System.Security.Claims;
 using Humans.Shifts.Contracts;
 using Humans.Shifts.Controllers;
-using Humans.Shifts.Domain;
 using Humans.Shifts.Helpers;
 using Humans.Shifts.Models;
 using Humans.Shifts.Services;

@@ -14,7 +14,6 @@ using Humans.Users.Contracts;
 using Humans.Workgroups.Data;
 using Humans.Workgroups.Domain;
 using NodaTime;
-using Humans.Base.Interfaces;
 using Humans.Calendar.Contracts;
 using System.Globalization;
 using Humans.Gdpr.Contracts;

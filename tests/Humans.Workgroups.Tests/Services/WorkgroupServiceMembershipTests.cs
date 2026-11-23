@@ -1,6 +1,5 @@
 using Xunit;
 using AwesomeAssertions;
-using Humans.AuditLog.Contracts;
 using Humans.Workgroups.Domain;
 using Humans.Workgroups.Services;
 using Humans.Workgroups.Tests.Infrastructure;

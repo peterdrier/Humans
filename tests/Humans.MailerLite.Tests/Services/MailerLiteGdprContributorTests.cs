@@ -1,6 +1,5 @@
 using Humans.MailerLite.Services;
 using Humans.Users.Contracts;
-using Humans.MailerLite.Tests.Infrastructure;
 using AwesomeAssertions;
 using NSubstitute;
 using Xunit;

@@ -12,7 +12,6 @@ using Humans.Auth.Contracts;
 using Humans.Auth.Data;
 using Humans.Auth.Domain;
 using Humans.Auth.Services;
-using Humans.AuditLog.Contracts;
 using Humans.Base.Constants;
 using Humans.Notifications.Contracts;
 using NSubstitute;
@@ -22,7 +21,6 @@ using Humans.Camps.Contracts;
 using Humans.Users.Contracts;
 
 
-using Humans.Teams.Contracts;
 
 namespace Humans.Auth.Tests.Services;
 

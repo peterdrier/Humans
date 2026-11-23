@@ -11,7 +11,6 @@ using Humans.Store.Services.Dtos;
 using Humans.Stripe.Contracts;
 using Humans.Teams.Contracts;
 using Microsoft.Extensions.Logging.Abstractions;
-using Microsoft.Extensions.Options;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;

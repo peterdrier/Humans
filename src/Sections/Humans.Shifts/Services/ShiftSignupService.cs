@@ -1,6 +1,5 @@
 using System.Globalization;
 using System.Resources;
-using Humans.Auth.Contracts;
 using Humans.Base.Extensions;
 using Humans.Base.Threading;
 using Humans.AuditLog.Contracts;

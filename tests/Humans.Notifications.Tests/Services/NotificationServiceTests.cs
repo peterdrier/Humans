@@ -1,5 +1,4 @@
 using Humans.Email.Contracts;
-using Humans.Users.Contracts;
 using Humans.Auth.Contracts;
 using Humans.Notifications.Data;
 using Humans.Notifications.Services;

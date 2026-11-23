@@ -1,7 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Configuration;
 using Humans.Budget.Jobs;
-using Humans.Testing;
 using Microsoft.Extensions.Logging;
 using NSubstitute.ExceptionExtensions;
 using AwesomeAssertions;

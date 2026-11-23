@@ -1,11 +1,9 @@
 using Humans.Events.Contracts;
 using Humans.Settings.Contracts;
-using Humans.Base.Interfaces;
 using System.ComponentModel.DataAnnotations;
 using Xunit;
 using Humans.Events.Models;
 using AwesomeAssertions;
-using Humans.Base.Authorization;
 
 namespace Humans.Events.Tests;
 

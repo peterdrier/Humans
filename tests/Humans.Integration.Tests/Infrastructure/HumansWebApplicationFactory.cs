@@ -1,6 +1,5 @@
 using System.Net;
 using Humans.Base.Constants;
-using Humans.Consent.Contracts;
 using Humans.Consent.Domain;
 using Humans.Consent.Data;
 using Humans.Consent.Services;

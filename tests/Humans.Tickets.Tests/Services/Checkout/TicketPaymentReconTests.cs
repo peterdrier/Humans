@@ -1,10 +1,8 @@
 using AwesomeAssertions;
-using Humans.Testing;
 using Humans.Tickets.Contracts;
 using Humans.Tickets.Domain.Checkout;
 using Humans.Tickets.Services.Checkout;
 using NodaTime;
-using Xunit;
 
 namespace Humans.Tickets.Tests.Services.Checkout;
 

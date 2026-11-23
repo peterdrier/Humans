@@ -1,7 +1,6 @@
 using Humans.Permissions.Contracts;
 using Humans.Base.Authorization;
 using Humans.Shifts.Services.Dtos;
-using Microsoft.Extensions.DependencyInjection;
 using System.Globalization;
 using System.Resources;
 using Humans.Shifts.Domain;
@@ -11,7 +10,6 @@ using AwesomeAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Diagnostics;
-using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using Humans.Tickets.Contracts;
@@ -25,12 +23,10 @@ using Humans.Base.Extensions;
 using ShiftSignupService = Humans.Shifts.Services.ShiftSignupService;
 using Humans.Teams.Contracts;
 using Humans.Notifications.Contracts;
-using Humans.EarlyEntry.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Shifts.Data;
 using Xunit;
 using Humans.Users.Contracts;
-using Humans.AuditLog.Contracts;
 using Microsoft.Extensions.Localization;
 
 namespace Humans.Shifts.Tests.Services;

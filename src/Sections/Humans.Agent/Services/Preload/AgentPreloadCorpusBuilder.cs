@@ -1,6 +1,5 @@
 using System.Text;
 using Microsoft.Extensions.Caching.Memory;
-using Humans.Agent.Contracts;
 using Humans.Agent.Domain;
 
 namespace Humans.Agent.Services.Preload;

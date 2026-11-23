@@ -1,4 +1,3 @@
-using Humans.Base.Authorization;
 using Humans.Base.Caching;
 using Humans.Base.Configuration;
 using Humans.Base.Constants;

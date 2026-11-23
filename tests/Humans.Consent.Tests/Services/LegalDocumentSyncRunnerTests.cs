@@ -11,7 +11,6 @@ using Microsoft.Extensions.Options;
 using AwesomeAssertions;
 using Humans.Base.Enums;
 using Humans.Consent.Data;
-using Humans.Consent.Contracts;
 using Humans.Consent.Domain;
 using Humans.Consent.Services;
 using Humans.Consent.Tests.Infrastructure;

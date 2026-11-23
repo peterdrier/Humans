@@ -1,7 +1,6 @@
 using Humans.Users.Services;
 using AwesomeAssertions;
 using Humans.Base.Interfaces;
-using Humans.Users.Contracts;
 using Microsoft.Extensions.DependencyInjection;
 using NodaTime;
 using NSubstitute;

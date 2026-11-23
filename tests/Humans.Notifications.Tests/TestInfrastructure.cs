@@ -1,7 +1,6 @@
 using Humans.Email.Contracts;
 using Humans.Notifications.Contracts;
 using Humans.Notifications.Services;
-using Humans.Users.Contracts;
 using NSubstitute;
 
 namespace Humans.Notifications.Tests;

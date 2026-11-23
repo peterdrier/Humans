@@ -2,7 +2,6 @@ using Humans.Base.Extensions;
 using Humans.Shifts.Contracts;
 using Humans.AuditLog.Contracts;
 using Humans.Shifts.Domain;
-using Humans.Settings.Contracts;
 using NodaTime;
 using NodaTime.Text;
 using Humans.Shifts.Data;

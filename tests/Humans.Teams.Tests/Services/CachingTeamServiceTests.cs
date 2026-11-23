@@ -1,4 +1,3 @@
-using Humans.Teams;
 using Microsoft.Extensions.Localization;
 using Humans.Base.Constants;
 using AwesomeAssertions;

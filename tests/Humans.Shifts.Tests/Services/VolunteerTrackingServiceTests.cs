@@ -7,7 +7,6 @@ using AwesomeAssertions;
 using Humans.Settings.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Shifts.Services;
-using Humans.Shifts.Tests.Infrastructure;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;

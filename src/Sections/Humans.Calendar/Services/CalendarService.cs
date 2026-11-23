@@ -7,7 +7,6 @@ using Humans.Calendar.Data;
 using Humans.Calendar.Domain;
 using Humans.Teams.Contracts;
 using NodaTime;
-using Humans.Base.Interfaces;
 
 namespace Humans.Calendar.Services;
 

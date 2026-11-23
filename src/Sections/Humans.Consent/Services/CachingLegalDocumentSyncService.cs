@@ -1,5 +1,4 @@
 using Humans.Base.Caching;
-using Humans.Consent.Contracts;
 using Microsoft.Extensions.DependencyInjection;
 using NodaTime;
 using Humans.Consent.Domain;

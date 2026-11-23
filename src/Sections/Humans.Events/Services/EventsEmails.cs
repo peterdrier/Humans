@@ -3,7 +3,6 @@ using System.Globalization;
 using System.Net;
 using Humans.Base.Extensions;
 using Humans.Email.Contracts;
-using Humans.Events.Contracts;
 using Microsoft.Extensions.Localization;
 
 namespace Humans.Events.Services;

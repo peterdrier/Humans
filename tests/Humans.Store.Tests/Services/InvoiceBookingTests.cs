@@ -5,7 +5,6 @@ using Humans.Holded.Contracts;
 using Humans.Store.Contracts;
 using Humans.Store.Data;
 using Humans.Store.Domain;
-using Humans.Store;
 using Humans.Store.Services;
 using Humans.Stripe.Contracts;
 using Microsoft.Extensions.Logging.Abstractions;

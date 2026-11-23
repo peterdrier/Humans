@@ -2,7 +2,6 @@ using Humans.Auth.Services;
 using AwesomeAssertions;
 using NodaTime;
 using Xunit;
-using Humans.Auth.Contracts;
 using Humans.Auth.Domain;
 
 namespace Humans.Auth.Tests.Domain;

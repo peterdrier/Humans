@@ -4,7 +4,6 @@ using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.Auth.Contracts;
 using Humans.Auth.ViewComponents;
-using Humans.Base.Authorization;
 using Humans.Base.Constants;
 using Humans.Base.Enums;
 using Humans.Base.Interfaces;

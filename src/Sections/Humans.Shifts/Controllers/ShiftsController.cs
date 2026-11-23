@@ -5,7 +5,6 @@ using Humans.Shifts.Services;
 using Humans.Shifts.Services.Dtos;
 using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
-using Humans.Shifts.Domain;
 using Humans.Base.Authorization;
 using Humans.Shifts.Models;
 using Microsoft.AspNetCore.Authorization;

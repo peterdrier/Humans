@@ -7,10 +7,8 @@ using Humans.Camps.Contracts;
 using Humans.Settings.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Users.Contracts;
-using Humans.Store.Services;
 using Humans.Store.Services.Dtos;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
 using NodaTime;
 
 namespace Humans.Store.Authorization;

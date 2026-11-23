@@ -1,6 +1,5 @@
 using Humans.Calendar.Domain;
 using Humans.Calendar.Services.Dtos;
-using Humans.Base.Extensions;
 using Ical.Net.DataTypes;
 using Ical.Net.Evaluation;
 using NodaTime;

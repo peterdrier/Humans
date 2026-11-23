@@ -26,7 +26,6 @@ using Humans.Teams.Contracts;
 using Humans.Consent.Services;
 using Humans.Consent.Domain;
 using Humans.Consent.Data;
-using Humans.Consent.Contracts;
 using Humans.Email.Contracts;
 using Humans.Users.Contracts;
 

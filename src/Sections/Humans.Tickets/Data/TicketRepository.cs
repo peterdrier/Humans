@@ -1,7 +1,6 @@
 using System.Text.RegularExpressions;
 using Humans.Base.Extensions;
 using Humans.Tickets.Contracts;
-using Humans.Tickets.Services;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
 using Humans.Tickets.Domain;

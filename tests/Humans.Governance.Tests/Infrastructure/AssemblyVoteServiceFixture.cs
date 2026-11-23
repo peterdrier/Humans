@@ -1,6 +1,5 @@
 using Humans.Governance.Contracts;
 using Humans.AuditLog.Contracts;
-using Humans.Base.Constants;
 using Humans.Email.Contracts;
 using Humans.Auth.Contracts;
 using Humans.Google.Contracts;
@@ -17,8 +16,8 @@ using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
-
 using Xunit;
+
 
 namespace Humans.Governance.Tests.Infrastructure;
 

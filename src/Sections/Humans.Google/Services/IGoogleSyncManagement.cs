@@ -1,5 +1,4 @@
 using Humans.Base.Attributes;
-using Humans.Base.Enums;
 using Humans.Base.Interfaces;
 using Humans.Google.Contracts;
 using NodaTime;

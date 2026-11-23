@@ -1,6 +1,5 @@
 using Humans.Finance.Contracts;
 using System.Globalization;
-using Humans.Base.Authorization;
 using Humans.Base.Configuration;
 using Humans.Base.Hosting;
 using Humans.Base.Interfaces;

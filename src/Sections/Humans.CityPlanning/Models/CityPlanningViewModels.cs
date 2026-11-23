@@ -1,5 +1,4 @@
 using Humans.CityPlanning.Services;
-using Humans.CityPlanning.Contracts;
 using Humans.Containers.Contracts;
 
 namespace Humans.CityPlanning.Models;

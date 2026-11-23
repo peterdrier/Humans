@@ -3,7 +3,6 @@ using System.Text;
 using Humans.Tickets.Contracts;
 using Humans.Users.Contracts;
 using Humans.Tickets.Domain.Checkout;
-using Humans.Base.Extensions;
 using NodaTime;
 
 namespace Humans.Tickets.Services.Checkout;

@@ -9,7 +9,6 @@ using Humans.Finance.Contracts;
 using Humans.Gdpr.Contracts;
 using Humans.Holded.Contracts;
 using Humans.Expenses.Data;
-using Humans.Teams.Contracts;
 using Humans.Expenses.Services;
 using Humans.Expenses.Services.Dtos;
 using Microsoft.Extensions.Options;
@@ -19,8 +18,6 @@ using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
 using Humans.Users.Contracts;
-using Humans.Email.Contracts;
-using Humans.Expenses.Tests.Infrastructure;
 
 namespace Humans.Expenses.Tests.Services;
 

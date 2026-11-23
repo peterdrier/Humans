@@ -1,23 +1,15 @@
-using Humans.Base.Extensions;
 using Humans.AuditLog.Contracts;
 using Humans.Base.Attributes;
 using Humans.Base.Interfaces;
-using Humans.Camps.Contracts;
 using Humans.Finance.Contracts;
 using Humans.Holded.Contracts;
-using Humans.Settings.Contracts;
 using Humans.Store.Contracts;
 using Humans.Store.Data;
 using Humans.Store.Domain;
-using NodaTime.Text;
-using Humans.Teams.Contracts;
-using Humans.Store.Services.Dtos;
 using Humans.Stripe.Contracts;
 using NodaTime;
 using System.Globalization;
 using System.Text.Json;
-using System.Resources;
-using Humans.Base.Threading;
 
 namespace Humans.Store.Services;
 

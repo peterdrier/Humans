@@ -6,7 +6,6 @@ using Humans.Settings.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Tickets.Contracts;
-using Humans.Base.Enums;
 using NodaTime;
 using Humans.Agent.Models;
 using Humans.Users.Contracts;

@@ -1,7 +1,6 @@
 using Humans.Users.Contracts;
 using Humans.Shifts.Services;
 using Humans.Shifts.Contracts;
-using Humans.Shifts.Domain;
 using Humans.Base.Extensions;
 using Humans.Shifts.Models;
 using Humans.Shifts.Services.Dtos;

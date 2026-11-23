@@ -2,7 +2,6 @@ using Humans.Base.Interfaces;
 using Humans.Users.Contracts;
 using System.Security.Claims;
 using AwesomeAssertions;
-using Humans.Base.Authorization;
 using Humans.Base.Constants;
 using Humans.Base.Enums;
 using Humans.Grants.Authorization;

@@ -2,7 +2,6 @@ using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
 using Humans.Email.Contracts;
 using Humans.Grants.Contracts;
-using Humans.Testing;
 using Humans.Tickets.Contracts;
 using Humans.Tickets.Controllers;
 using Humans.Tickets.Domain.Checkout;

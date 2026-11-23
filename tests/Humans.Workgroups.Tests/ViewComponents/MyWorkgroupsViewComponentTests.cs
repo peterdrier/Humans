@@ -2,7 +2,6 @@ using AwesomeAssertions;
 using Humans.Base.Interfaces;
 using Humans.Users.Contracts;
 using Humans.Workgroups.Domain;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
 using Humans.Workgroups.Services;

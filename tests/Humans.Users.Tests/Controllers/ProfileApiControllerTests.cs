@@ -1,4 +1,3 @@
-using Humans.Users.Tests.Infrastructure;
 using Humans.Users.Services;
 using System.Security.Claims;
 using AwesomeAssertions;

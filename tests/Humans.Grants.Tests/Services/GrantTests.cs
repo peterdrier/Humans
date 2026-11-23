@@ -1,5 +1,4 @@
 using Humans.Grants.Contracts;
-using Humans.Base.Enums;
 using Humans.Base.Extensions;
 using Humans.Users.Contracts;
 using AwesomeAssertions;

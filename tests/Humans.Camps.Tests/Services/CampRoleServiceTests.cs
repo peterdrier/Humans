@@ -1,5 +1,4 @@
 using Humans.Google.Contracts;
-using Humans.Camps.Controllers;
 using Microsoft.AspNetCore.Mvc;
 using Humans.Notifications.Contracts;
 using AwesomeAssertions;

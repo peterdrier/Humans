@@ -1,5 +1,4 @@
 using Humans.Tickets.Contracts;
-using Humans.Base.Authorization;
 using Humans.Base.Controllers;
 using Humans.Tickets.Services;
 using Microsoft.AspNetCore.Authorization;

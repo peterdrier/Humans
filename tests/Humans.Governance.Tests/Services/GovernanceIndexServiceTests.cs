@@ -1,6 +1,5 @@
 using System.Security.Claims;
 using Humans.Governance.Controllers;
-using Humans.Governance.Tests.Infrastructure;
 using Microsoft.AspNetCore.Authorization;
 using Humans.Base.Authorization;
 using Humans.Governance.Models;

@@ -2,7 +2,6 @@ using Humans.Auth.Domain;
 using Humans.Auth.Data;
 using Humans.Auth.Contracts;
 using Humans.AuditLog.Contracts;
-using Humans.EarlyEntry.Contracts;
 using Humans.Notifications.Contracts;
 using Humans.Teams.Data;
 using Humans.Teams.Domain;

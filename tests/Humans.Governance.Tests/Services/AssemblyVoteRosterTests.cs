@@ -10,8 +10,8 @@ using Humans.Users.Contracts;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
 using NSubstitute;
-
 using Xunit;
+
 
 namespace Humans.Governance.Tests.Services;
 

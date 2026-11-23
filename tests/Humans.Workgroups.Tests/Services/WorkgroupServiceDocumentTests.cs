@@ -1,4 +1,3 @@
-using Humans.AuditLog.Contracts;
 using NSubstitute;
 using Xunit;
 using AwesomeAssertions;

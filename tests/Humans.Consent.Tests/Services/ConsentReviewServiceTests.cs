@@ -7,7 +7,6 @@ using Humans.Consent.Data;
 using Humans.Consent.Domain;
 using Humans.Consent.Services;
 using Humans.Consent.ViewComponents;
-using Humans.Onboarding.Contracts;
 using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;

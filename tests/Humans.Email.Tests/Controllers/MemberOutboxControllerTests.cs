@@ -1,7 +1,6 @@
 using System.Reflection;
 using System.Security.Claims;
 using AwesomeAssertions;
-using Humans.Base.Authorization;
 using Humans.Email.Services;
 using Humans.Email.Controllers;
 using Humans.Users.Contracts;

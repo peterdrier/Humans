@@ -1,7 +1,6 @@
 using AwesomeAssertions;
 using Humans.Base.Interfaces;
 using Humans.Email.Contracts;
-using Humans.Testing;
 using Humans.Tickets.Contracts;
 using Humans.Tickets.Domain.Checkout;
 using Humans.Tickets.Jobs;

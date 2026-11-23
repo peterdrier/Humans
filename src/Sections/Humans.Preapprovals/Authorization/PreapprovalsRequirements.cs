@@ -5,7 +5,6 @@ using System.Security.Claims;
 using Humans.Base.Constants;
 using Humans.Preapprovals.Services;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
 
 namespace Humans.Preapprovals.Authorization;
 

@@ -1,8 +1,6 @@
 using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.Base.Enums;
-using Humans.Camps.Contracts;
-using Humans.Camps.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
 using NodaTime;

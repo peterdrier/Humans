@@ -1,6 +1,5 @@
 using Humans.Consent.Contracts;
 using System.Globalization;
-using Microsoft.AspNetCore.Mvc.Controllers;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.Extensions.Primitives;
 using Microsoft.Extensions.DependencyInjection;
@@ -14,21 +13,11 @@ using System.Reflection;
 using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.Base.Configuration;
-using Humans.Tickets.Contracts;
 using Humans.AuditLog.Contracts;
-using Humans.Camps.Contracts;
-using Humans.Email.Contracts;
-using Humans.Governance.Contracts;
 using Humans.Onboarding.Contracts;
 using Humans.Users.Contracts;
-using Humans.Settings.Contracts;
-using Humans.Shifts.Contracts;
-using Humans.Teams.Contracts;
 
-using Humans.Users.Tests.Infrastructure;
 using Humans.Base;
-using Humans.Base.Constants;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -36,13 +25,9 @@ using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging.Abstractions;
-using Microsoft.Extensions.Options;
-using NodaTime;
-using NodaTime.Testing;
 using NSubstitute;
 using Xunit;
 
-using Humans.Google.Contracts;
 
 namespace Humans.Users.Tests.Controllers;
 
