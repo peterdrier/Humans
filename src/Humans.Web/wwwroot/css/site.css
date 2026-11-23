@@ -1042,9 +1042,7 @@ body.page-wide .main-content {
 }
 
 .form-text {
-    font-family: var(--h-font-display);
-    font-style: italic;
-    font-size: 0.78rem;
+    font-size: 0.875rem;
     color: var(--h-umber);
 }
 
