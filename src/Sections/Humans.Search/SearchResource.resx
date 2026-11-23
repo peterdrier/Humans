@@ -33,16 +33,9 @@
   <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
   <data name="Search_FilterAll" xml:space="preserve"><value>All</value></data>
   <data name="Search_FilterAriaLabel" xml:space="preserve"><value>Filter results by type</value></data>
-  <data name="Search_FilterCamps" xml:space="preserve"><value>Camps</value></data>
-  <data name="Search_FilterEvents" xml:space="preserve"><value>Events</value></data>
-  <data name="Search_FilterHumans" xml:space="preserve"><value>Humans</value></data>
-  <data name="Search_FilterShifts" xml:space="preserve"><value>Shifts</value></data>
-  <data name="Search_FilterTeams" xml:space="preserve"><value>Teams</value></data>
-  <data name="Search_GlobalHint" xml:space="preserve"><value>Type at least 2 characters to search across humans, teams, camps, shifts.</value></data>
-  <data name="Search_GlobalHintEvents" xml:space="preserve"><value>Type at least 2 characters to search across humans, teams, camps, shifts, and events.</value></data>
+  <data name="Search_GlobalHint" xml:space="preserve"><value>Type at least 2 characters to search across {0}.</value></data>
   <data name="Search_GlobalNoResults" xml:space="preserve"><value>No results for {0}.</value></data>
-  <data name="Search_GlobalPlaceholder" xml:space="preserve"><value>Search humans, teams, camps, shifts…</value></data>
-  <data name="Search_GlobalPlaceholderEvents" xml:space="preserve"><value>Search humans, teams, camps, shifts, events…</value></data>
+  <data name="Search_GlobalPlaceholder" xml:space="preserve"><value>Search…</value></data>
   <data name="Search_GlobalTitle" xml:space="preserve"><value>Search</value></data>
   <data name="Search_QueryAriaLabel" xml:space="preserve"><value>Search query</value></data>
   <data name="Search_MinChars" xml:space="preserve"><value>Enter at least 2 characters to search.</value></data>

@@ -3,7 +3,7 @@
   src/Sections/Humans.TicketTailor/Services/TicketTailorService.cs
   src/Sections/Humans.Tickets.Contracts/**
   src/Sections/Humans.EarlyEntry/**
-  src/Sections/Humans.Shifts.Contracts/**
+  src/Sections/Humans.Shifts/Contracts/**
   src/Sections/Humans.Settings/Contracts/**
   src/Sections/Humans.Users.Contracts/**
   src/Sections/Humans.Auth/Contracts/**
@@ -21,8 +21,8 @@ Gate ticket scanning that **decides entry** at the event door and writes the dur
 admission record. Distinct from the read-only `Scanner` section, which must never check anyone in.
 
 **Purpose:** one fast, fail-safe admission decision per ticket at the door. The server clock
-decides, and the result is one append-only record: Humans is the system of record for gate
-admission.
+decides, and the result is one append-only record (an undo only stamps it): Humans is the system of
+record for gate admission.
 
 **Good looks like:** an agent scans, sees a red, amber or green card, confirms the photo ID with
 Yes or No, and moves on. Nobody is silently admitted when settings are missing. Every admit and
@@ -31,7 +31,8 @@ override can be traced afterwards.
 **Deliberate choices:** the vendor mirror is best-effort and off unless enabled; scans are purged
 after the retention window.
 
-**Out of scope:** undoing an admit (nobodies-collective/Humans#906).
+**Out of scope:** any signing or consent step at the gate (Peter, 2026-11-21), and an alert for
+no-show build shifts.
 
 ## Concepts
 
@@ -41,6 +42,40 @@ after the retention window.
   `gate_scan_events` row. This makes Humans the **system of record for gate admission** — a
   deliberate posture distinct from the rest of the app, where ticket check-in is inbound-only from
   the vendor.
+- **Two ticket sources, one check-in record.** A scanned code is looked up first among the current
+  event's Ticket Tailor attendees, then among the tickets Humans' own checkout issued
+  (`ITicketGateLookup.FindIssuedTicketAsync`, live), accepted only when the ticket's event is the
+  active event. A `Valid` checkout ticket scans valid; an `Offered` one (in the resale queue) STOPs
+  with "withdraw it first" while it can still sell, and is valid once sales close; `Resold` and
+  `Void` STOP. Tickets reads Gate's `IGateAdmissions` (`GateAdmissionReads`, live) so an admitted
+  ticket is never offered or sold. Its scan row carries `CheckoutTicketId` instead of
+  `TicketAttendeeId`, it is never mirrored to a vendor and never appears in the vendor backfill: the
+  gate row is its only check-in record. A child or companion ticket without an account takes the
+  Early Entry of the adult it belongs to (`IssuedTicketInfo.EntryUserId`) and STOPs while that adult's
+  ticket is on resale (it would be voided with it); with no guest account, no
+  attendance row is written.
+- **Find by name** (`/Gate/Find`, G3) — a guest without their QR code is found by the ticket's
+  name, or by the burner or legal name of the human behind it (`IUserService.SearchUsersAsync`
+  with `Name | LegalName`, matched against the attendee's `MatchedUserId` or the checkout ticket's
+  holder or entry user). Email never matches. Accent- and case-blind, at least 2 letters, the
+  first 20 matches. The list shows only the ticket's own name and type, never the name it matched
+  on; picking one runs the normal scan, so the photo ID check still decides. The panel clears
+  itself after 60s idle so names don't linger on the shared kiosk.
+- **Undo an admit** (G6) — at the kiosk the admit card offers "Undo — admitted by mistake" behind
+  the shared supervisor PIN (same throttle as overrides); `/Gate/Report` offers it to
+  `TicketsPolicies.Manage` with a required reason. Undo nulls `AdmitDedupeKey` and stamps
+  `UndoneAt`/`UndoneByUserId`/`UndoReason`, so the barcode can be scanned again and Tickets'
+  `IGateAdmissions` no longer counts it. It writes the `GateAdmitUndone` audit entry and, unless
+  another live admit of the same guest stands within 30 days, reverts the guest's Attended row to
+  Ticketed (`ITicketWrite.UndoCheckInAsync`). A Ticket Tailor admit cannot be undone while the vendor
+  mirror is on or the vendor shows the ticket checked in: Ticket Tailor has no undo, so the ticket
+  sync would mark the guest Attended again and the rescan would STOP as a duplicate. Humans-issued
+  tickets (the 2027 backends) have no vendor copy and always undo.
+- **Arrivals report** (`/Gate/Report`, G8) — per event day (event time zone): admitted, early,
+  overrides, refused and undone, against tickets held (Ticket Tailor non-void plus checkout tickets
+  valid or on resale), and each check-in of the chosen day. A scan counts only when its ticket
+  belongs to the active event. On-site status across Humans is the existing participation row
+  (onsite chip, `/Tickets/Admin/Onsite` roster), which the report links to.
 - **Verdict precedence** (`GateAdmissionRules.Evaluate`, fresh per scan): not-found/void → STOP;
   already-admitted-locally or vendor-checked-in → STOP duplicate; **cutoff not configured →
   AMBER** (fail-safe — see below); `now ≥ cutoff` → needs-ID; before cutoff + unmatched → AMBER
@@ -123,11 +158,14 @@ after the retention window.
 
 ## Data Model
 
-- **`gate_scan_events`** (owned) — append-only. `OccurredAt` (server), `ScannedByUserId`,
-  `Barcode`, `TicketAttendeeId?`, `GuestUserId?`, `Verdict`, `LaneId?`, `ClientScanAt?`
+- **`gate_scan_events`** (owned) — append-only, except an undo, which nulls `AdmitDedupeKey` and
+  stamps `UndoneAt?`, `UndoneByUserId?`, `UndoReason?`. `OccurredAt` (server), `ScannedByUserId`,
+  `Barcode`, `TicketAttendeeId?` (Ticket Tailor), `CheckoutTicketId?` (Humans checkout),
+  `GuestUserId?`, `Verdict`, `LaneId?`, `ClientScanAt?`
   (audit only, never trusted for the cutoff), `Note?`, `OverrideByUserId?` (the authorizing
   supervisor on an override admit), `AdmitDedupeKey?`. Cross-section links are bare Guid columns
-  (no nav/FK); `GuestUserId`/`ScannedByUserId`/`OverrideByUserId` are re-pointed on account merge.
+  (no nav/FK); `GuestUserId`/`ScannedByUserId`/`OverrideByUserId`/`UndoneByUserId` are re-pointed on account merge.
+  A live admit is a row whose `AdmitDedupeKey` is set; the leaderboard and vendor backfill count only those.
 - **`gate_settings`** (owned) — singleton (`Id` = 1). `GeneralEntryOpensAt` (UTC `Instant`),
   `MinorAgeThresholdYears` (stored and edited; nothing reads it yet).
 - **`gate_staff_pins`** (owned) — one row per staffer, key = bare `UserId`. `PinHash`
@@ -141,6 +179,10 @@ after the retention window.
 | `/Gate` | GET | `ScannerAccess` | Scan terminal (scans as the authenticated gate account — no claim step) |
 | `/Gate/Evaluate` | GET | `ScannerAccess` | Live verdict card for a barcode (write-free) |
 | `/Gate/Decision` | POST | `GateAdmit` | Record the agent's Yes/No decision (incl. supervisor override); enqueue vendor mirror on admit |
+| `/Gate/Find` | GET | `ScannerAccess` | Name search results partial for the kiosk (G3) |
+| `/Gate/Undo` | POST | `GateAdmit` | Undo a live admit with the shared supervisor PIN; returns a verdict card |
+| `/Gate/Report` | GET | `TicketsPolicies.Read` | Arrivals report: daily numbers and the check-ins of one day |
+| `/Gate/Report/Undo` | POST | `TicketsPolicies.Manage` | Undo one check-in from the report, reason required |
 | `/Gate/Claim` | GET (`ScannerAccess`) / POST (`GateAdmit`) | — | Pick who is scanning → hands off to the PIN keypad |
 | `/Gate/ClaimPin` | POST | `GateAdmit` | Set/verify the staffer's PIN, then stamp the scanning session. Both POSTs require the posted id to be an active member and the id the user read resolves to: a merged-away id fails closed rather than claiming the session as its survivor |
 | `/Gate/Leaderboard` | GET | `ScannerAccess` | Service tally DTOs rendered directly, ordered by admitted then total scans (descending); names resolved by the Human component |
@@ -191,8 +233,8 @@ nobodies-collective/Humans#933.)
   active event's year — consumed-Early-Entry guards (Camps) and other attendance readers see a gate
   check-in in real time, never contingent on the vendor mirror or the ticket sync. Unmatched
   barcodes and no-active-event still admit; only the projection is skipped.
-- Gate participates in GDPR export (`IUserDataContributor`), account merge (`IUserMerge` re-FKs
-  `GuestUserId`/`ScannedByUserId`), and retention purge.
+- Gate participates in GDPR export (`IUserDataContributor`; scans as guest, scanner or undoer), account
+  merge (`IUserMerge` re-FKs `GuestUserId`/`ScannedByUserId`/`OverrideByUserId`/`UndoneByUserId`), and retention purge.
 - The gate view shows name + verdict + one reason line only; Early-Entry source, the previous
   scanner's id, and internal GUIDs stay server-side.
 - **A result card auto-clears** back to the Ready screen so the previous guest's name never lingers on
@@ -220,8 +262,11 @@ nobodies-collective/Humans#933.)
 
 ## Cross-Section Dependencies
 
-- **Audit actions:** declared on `GateAuditActions` (`src/Sections/Humans.Gate/GateAuditActions.cs`), one `AuditActionDefinition` each, written through `IAuditLogService`: `GateStaffPinSet`, `GateStaffPinReset`.
-- **Tickets** — `ITicketService.GetTicketOrdersAsync` (barcode lookup) and
+- **Audit actions:** declared on `GateAuditActions` (`src/Sections/Humans.Gate/GateAuditActions.cs`), one `AuditActionDefinition` each, written through `IAuditLogService`: `GateStaffPinSet`, `GateStaffPinReset`, `GateAdmitUndone`.
+- **Tickets** — `ITicketGateLookup.FindIssuedTicketAsync` (checkout-issued tickets, live) and
+  `GetIssuedTicketsForEventAsync` (name search and arrivals report); Tickets
+  in turn reads Gate's `IGateAdmissions` before offering or selling a returned ticket. Also
+  `ITicketService.GetTicketOrdersAsync` (Ticket Tailor barcode lookup) and
   `ITicketVendorMirror.CreateCheckInAsync` (vendor mirror, via the Gate job).
   **Cache freshness:** the barcode lookup reads the cached Tickets projection, so a ticket bought,
   transferred, or refunded at the door won't scan correctly until the next Tickets sync. The window
@@ -234,7 +279,7 @@ nobodies-collective/Humans#933.)
   peterdrier/Humans#1075). Read-only consumption of the existing Shifts surface — no new Shifts surface.
   _Cross-section read approved by Peter (verbal, 2026-06-29)._
 - **Users** — `IUserService` (resolving the signed-in account to its survivor for scanner/actor attribution; the
-  claim-search lookup; names render via `<vc:human>`).
+  claim-search lookup; the kiosk name search by burner or legal name; names render via `<vc:human>`).
 - **Tickets** — `ITicketWrite.RecordParticipationAsync` — on an
   admit with a matched guest, `GateService` projects the check-in onto the guest's
   `EventParticipation` row (Attended, `CheckedInAt` = admit instant, year = the active event's).
@@ -242,6 +287,8 @@ nobodies-collective/Humans#933.)
   the two writers commute. Without this write the consumed-Early-Entry guards (Camps) never learn
   of a gate check-in, because the vendor mirror is best-effort and off by default.
   _Cross-section write approved by Peter (2026-07-02, camp-EE-revoke-after-check-in fix)._
+  `ITicketWrite.UndoCheckInAsync` reverses it when an admit is undone (Attended → Ticketed, TicketSync,
+  `CheckedInAt` cleared); the next ticket sync converges the row.
 - **Auth** — `IRoleAssignmentService.HasActiveRoleAsync` (is this user a supervisor? — now serves
   only the unreachable per-PIN claim/override methods queued under nobodies-collective/Humans#933).
 
@@ -267,9 +314,9 @@ nobodies-collective/Humans#933.)
 ## Architecture
 
 **Project:** `src/Sections/Humans.Gate`, its own assembly. Everything in it is `internal`
-except `Section`; there is no `GateResource` because the kiosk carries no resource keys
-(every string is inline English by design — a staff-facing, single-locale terminal).
-There is no `Contracts/` folder: nothing outside the section calls into it.
+except `Section` and `Contracts/`: `IGateAdmissions` (Tickets' read of admits); there is no `GateResource` because the
+kiosk carries no resource keys (every string is inline English by design — a staff-facing,
+single-locale terminal).
 **Owning service:** `GateService` (`Humans.Gate.Services`) — also implements `IUserMerge`,
 `IUserDataContributor`.
 **Owned tables:** `gate_scan_events`, `gate_settings`, `gate_staff_pins` via `IGateRepository`.

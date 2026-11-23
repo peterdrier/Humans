@@ -8,7 +8,7 @@ The Sunday slot of the [maintenance dispatcher](dispatcher.md) follows this doc 
 - npm: `tests/e2e/package.json`.
 - GitHub Actions: `uses:` refs in `.github/workflows/*.yml`.
 
-Out of scope: the .NET SDK band in `global.json` and moving the framework (`Microsoft.*`, EF Core, Npgsql) to a new major. Flag those under **Needs Peter** instead.
+Out of scope: the .NET SDK band in `global.json` and moving the framework (`Microsoft.*`, EF Core, Npgsql) to a new major. Flag those under **Needs Peter** instead, except a new .NET major (and the packages that track it, such as Serilog.AspNetCore): don't raise it until it is 4-6 months past GA (.NET 11: GA 2026-11-10).
 
 ## Steps
 

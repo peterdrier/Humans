@@ -11,6 +11,8 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
+[assembly: Humans.Base.Demo.NoDemoStory("Crosscut: filled by the actions other sections' stories take.")]
+
 namespace Humans.Notifications;
 
 public sealed class Section : ISection, ISectionChrome, ISectionJobs
@@ -35,7 +37,6 @@ public sealed class Section : ISection, ISectionChrome, ISectionJobs
         services.AddScoped<NotificationInboxService>();
         services.AddScoped<INotificationInboxService>(sp => sp.GetRequiredService<NotificationInboxService>());
         services.AddScoped<INotificationAutoResolve>(sp => sp.GetRequiredService<NotificationInboxService>());
-        services.AddScoped<INotificationRetention>(sp => sp.GetRequiredService<NotificationInboxService>());
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<NotificationInboxService>());
 
         services.AddScoped<NotificationMeterProvider>();

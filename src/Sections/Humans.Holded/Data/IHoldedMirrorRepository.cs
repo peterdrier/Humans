@@ -57,7 +57,8 @@ internal interface IHoldedMirrorRepository : IRepository
     Task<IReadOnlyList<HoldedBankMovement>> GetBankMovementsAsync(
         string treasuryAccountId, LocalDate from, LocalDate to, CancellationToken ct = default);
 
-    Task<HoldedSyncState> GetOrCreateSyncStateAsync(HoldedSyncKind kind, CancellationToken ct = default);
+    Task<HoldedSyncState> GetOrCreateSyncStateAsync(
+        HoldedSyncKind kind, string scope = "", CancellationToken ct = default);
     Task SaveSyncStateAsync(HoldedSyncState state, CancellationToken ct = default);
     Task<IReadOnlyList<HoldedSyncState>> GetSyncStatesAsync(CancellationToken ct = default);
 }

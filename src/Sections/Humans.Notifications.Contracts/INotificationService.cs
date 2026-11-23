@@ -3,7 +3,7 @@ using Humans.Base.Interfaces;
 namespace Humans.Notifications.Contracts;
 
 /// <summary>Emitting never queues an email; a section that needs both sends both.</summary>
-public interface INotificationService : IApplicationService, INotificationEmitter
+public interface INotificationService : IApplicationService
 {
     /// <summary>One shared notification: when any recipient resolves it, it resolves for all.</summary>
     Task SendToRoleAsync(

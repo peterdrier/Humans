@@ -3,7 +3,7 @@
   src/Sections/Humans.Shifts/Controllers/ShiftsController.cs
   src/Sections/Humans.Shifts/Controllers/ShiftAdminController.cs
   src/Sections/Humans.Shifts/Controllers/ShiftDashboardController.cs
-  src/Sections/Humans.Shifts.Contracts/ShiftsRoles.cs
+  src/Sections/Humans.Shifts/Contracts/ShiftsRoles.cs
   src/Humans.Base/Authorization/PolicyNames.cs
   src/Sections/Humans.Shifts/Domain/EventSettings.cs
   src/Sections/Humans.Shifts/Domain/Rota.cs
@@ -250,7 +250,7 @@ Pending --> Cancelled   (system: shift deleted, account deletion)
 
 At our small scale, the dashboard view hits the cache on most loads and the underlying aggregation queries only run on first visit per coordinator per 5 minutes. Signup mutations evict the event's dashboard aggregates after a successful save, so approving, refusing, bailing, or creating signups is reflected on the next dashboard read.
 
-**Development seeder:** `DevelopmentDashboardSeeder` populates a realistic demo dataset (one event, several departments including one with subteams, ticket holders with mixed signup states, pending signups of varying ages, and ~85 days of spread signup/ticket/login activity for the trend chart). Exposed at `POST /dev/seed/dashboard`, button rendered on `/Shifts/Dashboard` only when the app is running in the Development environment. Not reachable in QA / preview / production regardless of role.
+**Demo data:** the demo world (`/dev/seed`, outside Production) fills the dashboard: `ShiftsDemoStory` adds rotas, shifts and signups for the demo departments on the active event.
 
 ## Related Features
 

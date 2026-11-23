@@ -47,7 +47,6 @@ internal sealed class GoogleResourceConfiguration : IEntityTypeConfiguration<Tea
             .HasFilter("\"IsActive\" = true")
             .IsUnique();
 
-        // TeamId has no FK: the pre-check in TeamService.PermanentlyDeleteTeamAsync keeps a team with
-        // resources from being hard-deleted.
+        // TeamId has no FK: Teams never hard-deletes a team, it only deactivates one.
     }
 }

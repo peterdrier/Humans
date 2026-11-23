@@ -45,7 +45,7 @@ internal sealed class FinanceOverviewService(
             var balances = await holded.GetAccountBalancesAsync(ct);
             var chart = await holded.GetChartAsync(ct);
             var filings = await TaxFilingsAsync(chart, today, ct);
-            var sources = StripeSources(chart.Where(a => Under(a.Number, "441")).Select(a => a.Number),
+            var sources = StripeSources(chart.Where(a => IsStripeGateway(a.Number)).Select(a => a.Number),
                 await repo.GetStripeLedgerLinksAsync(ct), await stripe.GetEurBalancesAsync(ct));
             sources[PleoBooking.PleoTreasury] = PleoSource(await pleo.GetWalletBalanceAsync(ct));
             ledger = BuildLedgerCards(chart, balances, filings, sources,
@@ -98,6 +98,9 @@ internal sealed class FinanceOverviewService(
     private static bool Under(int accountNum, string prefix) =>
         accountNum.ToString(CultureInfo.InvariantCulture).StartsWith(prefix, StringComparison.Ordinal);
 
+    /// <summary>A 441 subaccount. 44100000 itself is the chart's generic debtors account, not a Stripe gateway.</summary>
+    internal static bool IsStripeGateway(int accountNum) => Under(accountNum, "441") && accountNum % 100000 != 0;
+
     private static readonly (string Prefix, string Name)[] ReceivableGroups =
     [
         ("430", "Customers (430)"),
@@ -140,11 +143,11 @@ internal sealed class FinanceOverviewService(
         var links = await repo.GetStripeLedgerLinksAsync(ct);
         var balances = await holded.GetAccountBalancesAsync(ct);
         var ledger = (await holded.GetChartAsync(ct))
-            .Where(a => Under(a.Number, "441")
+            .Where(a => (IsStripeGateway(a.Number) || links.ContainsKey(a.Number))
                 && (!a.Archived || balances.GetValueOrDefault(a.Number) != 0m || links.ContainsKey(a.Number)))
-            .OrderBy(a => a.Number).ToList();
+            .ToList();
         var stripeAccounts = (await stripe.GetEurBalancesAsync(ct))
-            .Select(b => b.AccountId).Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).ToList();
+            .Select(b => b.AccountId).Distinct(StringComparer.Ordinal).ToList();
         return (ledger, stripeAccounts, links);
     }
 
@@ -188,7 +191,6 @@ internal sealed class FinanceOverviewService(
 
         List<FinanceAccountLineVm> Accounts(Func<int, bool> match) => chart
             .Where(a => match(a.Number) && (!a.Archived || Balance(a.Number) != 0m))
-            .OrderBy(a => a.Number)
             .Select(a => new FinanceAccountLineVm(a.Number, a.Name, Balance(a.Number),
                 sources?.GetValueOrDefault(a.Number),
                 a.Number == bankFeedAccount ? bankFeed : null))

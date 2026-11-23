@@ -14,16 +14,6 @@ internal partial interface IUserRepository
     /// <summary>Every profile with <c>VolunteerHistory</c> and <c>Languages</c>, read-only.</summary>
     Task<IReadOnlyList<Profile>> GetAllProfilesAsync(CancellationToken ct = default);
 
-    Task<Guid?> GetOwnerUserIdAsync(Guid profileId, CancellationToken ct = default);
-
-    /// <summary>
-    /// Per user, the contact-field, language and volunteer-history rows that carry no <c>UserId</c> yet. Read-only.
-    /// </summary>
-    Task<IReadOnlyList<ProfileChildRowsWithoutUser>> GetProfileChildRowsWithoutUserAsync(CancellationToken ct = default);
-
-    /// <summary>Stamps the owning user onto every such row. Returns the rows written.</summary>
-    Task<int> FillProfileChildUserIdsAsync(CancellationToken ct = default);
-
 
     /// <summary>
     /// The content type (the GDPR gate checked before serving the file) and versioned storage key
@@ -35,9 +25,10 @@ internal partial interface IUserRepository
 
     /// <summary>Ordered by proficiency descending, then language code.</summary>
     Task<IReadOnlyList<ProfileLanguage>> GetLanguagesAsync(
-        Guid profileId, CancellationToken ct = default);
+        Guid userId, CancellationToken ct = default);
 
-    Task ReplaceLanguagesAsync(Guid profileId, IReadOnlyList<ProfileLanguage> languages, CancellationToken ct = default);
+    /// <summary>Replaces every language row of the user with <paramref name="languages"/>.</summary>
+    Task ReplaceLanguagesAsync(Guid userId, IReadOnlyList<ProfileLanguage> languages, CancellationToken ct = default);
 
     /// <summary>
     /// Also updates the owning user's stored <see cref="UserState"/>, and its names when
@@ -87,13 +78,13 @@ internal partial interface IUserRepository
     /// <remarks>
     /// History dedups on (year, event name); languages on code, keeping the higher proficiency
     /// (target wins ties). Contact fields are not touched. No-op if either user has no profile.
+    /// <paramref name="keptProfile"/> and <paramref name="keptNames"/> are what the caller decided the
+    /// target profile and its users row hold after the merge; they are written in the same save.
     /// </remarks>
     Task ReassignSubAggregatesToUserAsync(
-        Guid sourceUserId, Guid targetUserId, Instant updatedAt,
+        Guid sourceUserId, Guid targetUserId, Instant updatedAt, Profile? keptProfile, UserNames? keptNames,
         CancellationToken ct = default);
 }
 
 /// <summary>The names a profile save writes to the users row.</summary>
 internal sealed record UserNames(string BurnerName, string FirstName, string LastName);
-
-internal sealed record ProfileChildRowsWithoutUser(Guid UserId, int ContactFields, int Languages, int VolunteerHistory);

@@ -1,6 +1,10 @@
 using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
+using Humans.Budget.Contracts;
+using Humans.Campaigns.Contracts;
+using Humans.Governance.Contracts;
+using Humans.Teams.Contracts;
 using Humans.Base.Authorization;
 using Humans.Base.Constants;
 using Humans.Base.Enums;
@@ -40,15 +44,22 @@ public sealed class EventParticipationServiceTests : IDisposable
     private readonly IAuditLogService _audit = Substitute.For<IAuditLogService>();
     private readonly TicketsDbContext _db;
     private readonly EventParticipationService _sut;
+    private readonly TicketQueryService _queries;
 
     public EventParticipationServiceTests()
     {
         var options = new DbContextOptionsBuilder<TicketsDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString()).Options;
         _db = new TicketsDbContext(options);
-        _sut = new EventParticipationService(
-            new EventParticipationRepository(new TestDbContextFactory<TicketsDbContext>(options)),
-            _users, _audit, _clock, NullLogger<EventParticipationService>.Instance);
+        var repo = new EventParticipationRepository(new TestDbContextFactory<TicketsDbContext>(options));
+        _queries = new TicketQueryService(FixedOrgTimeZone.Madrid, Substitute.For<ITicketRepository>(),
+            Substitute.For<ITicketTransferRepository>(), Substitute.For<IBudgetService>(),
+            Substitute.For<ICampaignService>(), _users, Substitute.For<IUserEmailService>(),
+            Substitute.For<ITeamService>(), Substitute.For<IGovernanceService>(),
+            Substitute.For<ISettingsService>(), _audit, _clock, repo,
+            Substitute.For<Humans.Tickets.Services.Checkout.ITicketCheckoutService>());
+        _sut = new EventParticipationService(repo, _queries, _audit, _clock,
+            NullLogger<EventParticipationService>.Instance);
     }
 
     public void Dispose() => _db.Dispose();
@@ -86,7 +97,7 @@ public sealed class EventParticipationServiceTests : IDisposable
             (2025, ParticipationStatus.Attended, ParticipationSource.TicketSync),
             (2026, ParticipationStatus.Ticketed, ParticipationSource.TicketSync));
 
-        (await _sut.GetParticipationsAsync(user.Id, Ct)).Should().BeEquivalentTo(
+        (await _queries.GetParticipationsAsync(user.Id, Ct)).Should().BeEquivalentTo(
         [
             new { Year = 2025, Status = ParticipationStatus.Attended, OnsiteSince = (Instant?)Earlier },
             new { Year = 2026, Status = ParticipationStatus.Ticketed, OnsiteSince = (Instant?)null },
@@ -94,10 +105,10 @@ public sealed class EventParticipationServiceTests : IDisposable
 
         await _sut.RecordParticipationAsync(user.Id, 2026, ParticipationStatus.Attended, Now, Ct);
 
-        var read = await _sut.GetParticipationsAsync(user.Id, Ct);
+        var read = await _queries.GetParticipationsAsync(user.Id, Ct);
         read.Single(p => p.Year == 2026).OnsiteSince.Should().Be(Now);
         read.Single(p => p.Year == 2025).Status.Should().Be(ParticipationStatus.Attended);
-        (await _sut.GetAllParticipationsAsync(Ct)).Should().BeEquivalentTo(read);
+        (await _queries.GetAllParticipationsAsync(Ct)).Should().BeEquivalentTo(read);
     }
 
     [HumansFact]
@@ -107,7 +118,7 @@ public sealed class EventParticipationServiceTests : IDisposable
         var archivedId = Guid.NewGuid();
         _users.GetUserInfoAsync(archivedId, Arg.Any<CancellationToken>()).Returns(survivor);
 
-        (await _sut.GetParticipationsAsync(archivedId, Ct)).Should().ContainSingle()
+        (await _queries.GetParticipationsAsync(archivedId, Ct)).Should().ContainSingle()
             .Which.UserId.Should().Be(survivor.Id);
     }
 
@@ -118,8 +129,8 @@ public sealed class EventParticipationServiceTests : IDisposable
 
         (await _sut.UndoNotAttendingAsync(user.Id, 2026, Ct)).Should().BeTrue();
 
-        (await _sut.GetParticipationsAsync(user.Id, Ct)).Should().BeEmpty();
-        (await _sut.GetAllParticipationsAsync(Ct)).Should().BeEmpty();
+        (await _queries.GetParticipationsAsync(user.Id, Ct)).Should().BeEmpty();
+        (await _queries.GetAllParticipationsAsync(Ct)).Should().BeEmpty();
         (await RowsAsync(user.Id)).Should().BeEmpty();
         (await _sut.UndoNotAttendingAsync(user.Id, 2026, Ct)).Should().BeFalse();
     }
@@ -138,13 +149,13 @@ public sealed class EventParticipationServiceTests : IDisposable
         await _db.SaveChangesAsync(Ct);
         _db.ChangeTracker.Clear();
 
-        (await _sut.GetParticipationsAsync(user.Id, Ct)).Should().BeEmpty();
-        (await _sut.GetAllParticipationsAsync(Ct)).Should().BeEmpty();
+        (await _queries.GetParticipationsAsync(user.Id, Ct)).Should().BeEmpty();
+        (await _queries.GetAllParticipationsAsync(Ct)).Should().BeEmpty();
         (await _sut.UndoNotAttendingAsync(user.Id, 2026, Ct)).Should().BeFalse();
 
         await _sut.RecordParticipationAsync(user.Id, 2026, ParticipationStatus.Ticketed, null, Ct);
 
-        (await _sut.GetParticipationsAsync(user.Id, Ct)).Should().ContainSingle()
+        (await _queries.GetParticipationsAsync(user.Id, Ct)).Should().ContainSingle()
             .Which.Status.Should().Be(ParticipationStatus.Ticketed);
     }
 
@@ -157,9 +168,27 @@ public sealed class EventParticipationServiceTests : IDisposable
         await _sut.RemoveTicketSyncParticipationAsync(user.Id, 2026, Ct);
         await _sut.RecordParticipationAsync(user.Id, 2026, ParticipationStatus.Ticketed, null, Ct);
 
-        (await _sut.GetParticipationsAsync(user.Id, Ct)).Should().ContainSingle().Which.Should().BeEquivalentTo(
+        (await _queries.GetParticipationsAsync(user.Id, Ct)).Should().ContainSingle().Which.Should().BeEquivalentTo(
             new { Status = ParticipationStatus.Attended, CheckedInAt = (Instant?)Earlier },
             o => o.ExcludingMissingMembers());
+    }
+
+    [HumansFact]
+    public async Task UndoCheckIn_RevertsOnlyAnAttendedRow_ToTicketed()
+    {
+        var user = SeedUser((2026, ParticipationStatus.Attended, ParticipationSource.TicketSync),
+            (2025, ParticipationStatus.NotAttending, ParticipationSource.UserDeclared));
+
+        (await _sut.UndoCheckInAsync(user.Id, 2026, Ct)).Should().BeTrue();
+        (await _sut.UndoCheckInAsync(user.Id, 2026, Ct)).Should().BeFalse();
+        (await _sut.UndoCheckInAsync(user.Id, 2025, Ct)).Should().BeFalse();
+        (await _sut.UndoCheckInAsync(user.Id, 2024, Ct)).Should().BeFalse();
+
+        var rows = await RowsAsync(user.Id);
+        rows.Single(r => r.Year == 2026).Should().BeEquivalentTo(
+            new { Status = ParticipationStatus.Ticketed, Source = ParticipationSource.TicketSync, CheckedInAt = (Instant?)null },
+            o => o.ExcludingMissingMembers());
+        rows.Single(r => r.Year == 2025).Status.Should().Be(ParticipationStatus.NotAttending);
     }
 
     [HumansFact]
@@ -168,7 +197,7 @@ public sealed class EventParticipationServiceTests : IDisposable
         var user = SeedUser();
 
         (await _sut.DeclareNotAttendingAsync(user.Id, 2026, Ct)).Should().BeTrue();
-        (await _sut.GetParticipationsAsync(user.Id, Ct)).Should().ContainSingle().Which.Should().BeEquivalentTo(
+        (await _queries.GetParticipationsAsync(user.Id, Ct)).Should().ContainSingle().Which.Should().BeEquivalentTo(
             new { Status = ParticipationStatus.NotAttending, Source = ParticipationSource.UserDeclared, DeclaredAt = (Instant?)Now },
             o => o.ExcludingMissingMembers());
 
@@ -194,7 +223,7 @@ public sealed class EventParticipationServiceTests : IDisposable
             Arg.Is<string>(d => d.Contains("NoShow", StringComparison.Ordinal) && d.Contains("2025", StringComparison.Ordinal)),
             actorId);
         _audit.ReceivedCalls().Should().HaveCount(1);
-        (await _sut.GetParticipationsAsync(attended.Id, Ct)).Single().Status.Should().Be(ParticipationStatus.Attended);
+        (await _queries.GetParticipationsAsync(attended.Id, Ct)).Single().Status.Should().Be(ParticipationStatus.Attended);
 
         (await _sut.BackfillParticipationsAsync(2025, entries, actorId, Ct)).Should().Be(0);
         _audit.ReceivedCalls().Should().HaveCount(1);
@@ -213,13 +242,13 @@ public sealed class EventParticipationServiceTests : IDisposable
 
         await _sut.ReassignAsync(source.Id, target.Id, Guid.NewGuid(), Now, Ct);
 
-        (await _sut.GetParticipationsAsync(target.Id, Ct)).Select(p => (p.Year, p.Status)).Should().BeEquivalentTo(
+        (await _queries.GetParticipationsAsync(target.Id, Ct)).Select(p => (p.Year, p.Status)).Should().BeEquivalentTo(
         [
             (2023, ParticipationStatus.Attended),
             (2024, ParticipationStatus.Attended),
             (2025, ParticipationStatus.Ticketed),
         ]);
-        (await _sut.GetParticipationsAsync(source.Id, Ct)).Should().BeEmpty();
+        (await _queries.GetParticipationsAsync(source.Id, Ct)).Should().BeEmpty();
         (await RowsAsync(source.Id)).Should().BeEmpty();
     }
 

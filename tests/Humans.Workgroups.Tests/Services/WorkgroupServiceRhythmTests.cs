@@ -116,7 +116,7 @@ public sealed class WorkgroupServiceRhythmTests : WorkgroupsTestHarness
         }
         else if (boardNotice)
         {
-            Notifications.SendToRoleAsync(Arg.Any<NotificationSourceDefinition>(), Arg.Any<NotificationClass>(),
+            RoleNotifications.SendToRoleAsync(Arg.Any<NotificationSourceDefinition>(), Arg.Any<NotificationClass>(),
                 Arg.Any<NotificationPriority>(), Arg.Any<string>(), Arg.Any<string>(),
                 Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
                 .Returns(call => CancelAsync(call.Arg<CancellationToken>()));

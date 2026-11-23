@@ -25,13 +25,13 @@ using NodaTime;
 namespace Humans.Integration.Tests.Controllers;
 
 /// <summary>
-/// The four non-human <c>/Search</c> buckets render their section's own view component, invoked with the entity's
-/// Guid only.
+/// The four non-human <c>/Search</c> buckets render their section's own view component, invoked by the
+/// <c>Type</c> its <c>ISearchContributor</c> declared with the entity's Guid only.
 /// </summary>
 /// <remarks>
-/// Each binds through one <c>@addTagHelper</c> line in Search's <c>_ViewImports</c>. Whether a tag can bind is checked
-/// statically by <c>ViewComponentTagHelperBindingTests</c>; this checks the row it produced is the right one, by
-/// markers only the component writes. One instance per row must also not mean one query per row.
+/// <c>ViewComponentSlotContractTests</c> checks statically that each component binds from a <c>SearchHit</c>; this
+/// checks the row it produced is the right one, by markers only the component writes. One instance per row must also
+/// not mean one query per row.
 /// </remarks>
 public class GlobalSearchSectionRenderTests(HumansTestDatabase database) : IntegrationTestBase(database)
 {

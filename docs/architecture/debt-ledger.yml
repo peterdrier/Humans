@@ -23,7 +23,7 @@
 # citing its id in the PR. Shape, `status:` values and `root:` linking:
 # memory/process/debt-ledger-additions.md.
 version: 1
-next_id: 111
+next_id: 114
 recent_sections: [Campaigns, Feedback, Governance]
 themes:
   - id: grandfathered-hum0028-invalidators
@@ -160,4 +160,12 @@ themes:
       recycled. Shape, id format and `status:` values:
       memory/process/debt-ledger-additions.md. Count re-measured 2026-11-05
       across the central ledger plus every src/Sections/*/Docs/debt.yml.
-inbox: []
+inbox:
+  - added: 2026-11-22
+    id: CENTRAL-113
+    what: "src/Sections/Humans.BoxOffice reads its Stripe account with its own Stripe.net client (GetPaymentLedgerAsync, fees, the checkout probe), against memory/architecture/vendor-connectors-own-sections.md. Hi.Events and pretix read theirs through IStripeService's account reads (GetAccountLedgerAsync and siblings); fold Box Office's reads into them too, and the Stripe reporting-category mapping each adapter repeats into one place."
+    review: standard
+  - added: 2026-11-22
+    id: CENTRAL-112
+    what: "tests/Humans.Web.Tests/Authorization/EndpointAuthorizationTests.cs, AnonymousControllers_AreExplicitlyAllowlisted: the HashSet initializer lists HiEventsWebhookController twice; drop the second line. Found by the HiEvents section-doctor Tests thread; left for a run that owns the Shell test file, since sibling ticketing runs edit the neighbouring lines."
+    review: light

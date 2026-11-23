@@ -22,6 +22,11 @@ internal interface ITicketRepository : IRepository
     /// <summary>No-op when the row doesn't exist.</summary>
     Task ResetSyncStateLastSyncAsync(CancellationToken ct = default);
 
+    Task<bool> IsScheduledSyncEnabledAsync(CancellationToken ct = default);
+
+    /// <summary>Inserts the settings row when it doesn't exist yet.</summary>
+    Task SetScheduledSyncEnabledAsync(bool enabled, CancellationToken ct = default);
+
     Task<IReadOnlyDictionary<string, TicketOrder>> GetOrdersByVendorIdsAsync(
         IReadOnlyCollection<string> vendorOrderIds,
         CancellationToken ct = default);
@@ -151,9 +156,6 @@ internal interface ITicketRepository : IRepository
         Instant now,
         string errorMessage,
         CancellationToken ct = default);
-
-    /// <summary>Paid orders with fewer live (Valid or CheckedIn) tickets than attendees.</summary>
-    Task<IReadOnlyList<OrderDriftRow>> GetOrderDriftAsync(CancellationToken ct = default);
 
     /// <summary>Plain re-FK: tickets are unique per purchase.</summary>
     Task ReassignToUserAsync(Guid sourceUserId, Guid targetUserId, CancellationToken ct = default);

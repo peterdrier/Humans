@@ -121,7 +121,6 @@ Application
 ├── Language: string? (10) [ISO 639-1 code]
 ├── SubmittedAt: Instant
 ├── UpdatedAt: Instant
-├── ReviewStartedAt: Instant? [Obsolete, unread]
 ├── ResolvedAt: Instant?
 ├── RenewalReminderSentAt: Instant?
 ├── ReviewedByUserId: Guid?
@@ -236,7 +235,7 @@ When an Application is approved:
 3. `Application.BoardMeetingDate` = entered meeting date
 4. `Application.DecisionNote` = Board's collective note
 5. Membership tier row (`governance_membership_tiers`) → Application's tier
-6. User added to Colaboradors or Asociados system team
+6. The Colaboradores or Asociados body's Google group and files are synced
 7. Individual BoardVote records deleted
 8. Approval email attempted best-effort, including recipient lookup; email failure does not skip the in-app notice.
 

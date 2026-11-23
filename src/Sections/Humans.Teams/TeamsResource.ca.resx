@@ -527,4 +527,7 @@
   <data name="Teams_Notification_Someone" xml:space="preserve"><value>Algú</value></data>
   <data name="Teams_Meter_JoinRequestsPending" xml:space="preserve"><value>Sol·licituds d’entrada a equips pendents</value></data>
   <data name="Teams_Meter_AudienceAdmin" xml:space="preserve"><value>administradors</value></data>
+  <data name="Teams_Search_Category" xml:space="preserve"><value>Equips</value></data>
+  <data name="Teams_Roles_SystemTeam" xml:space="preserve"><value>Els equips del sistema no poden tenir rols.</value></data>
+  <data name="Teams_Roles_InactiveTeam" xml:space="preserve"><value>Aquest equip no està actiu.</value></data>
 </root>

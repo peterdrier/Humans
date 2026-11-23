@@ -113,6 +113,19 @@ internal sealed class ExternalLoginService(
             return new ExternalLoginCompletionResult(ExternalLoginOutcome.SignedIn);
         }
 
+        // The provider's address is confirmed on another account: one person, two accounts. A login never
+        // moves an address between accounts; they merge by adding the address and confirming the mailed link.
+        if (!string.IsNullOrEmpty(attempt.Email)
+            && (await userEmailService.FindByAddressAsync(attempt.Email, aliased: true, verifiedOnly: true, ct))
+                .Any(e => e.UserId != currentUser.Id))
+        {
+            logger.LogWarning(
+                "Refused to link {Provider} login to authenticated user {UserId}: its address is confirmed on another account",
+                attempt.Login.LoginProvider,
+                currentUser.Id);
+            return new ExternalLoginCompletionResult(ExternalLoginOutcome.LinkToCurrentUserFailed);
+        }
+
         var addLinkResult = await userManager.AddLoginAsync(currentUser, attempt.Login);
         if (addLinkResult.Succeeded)
         {

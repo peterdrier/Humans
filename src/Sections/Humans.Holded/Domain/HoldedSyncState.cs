@@ -5,6 +5,11 @@ namespace Humans.Holded.Domain;
 internal sealed class HoldedSyncState
 {
     public HoldedSyncKind Kind { get; init; }
+
+    /// <summary>The treasury account for <see cref="HoldedSyncKind.BankMovements"/>: each feed has its own state.
+    /// Empty for every other kind.</summary>
+    public string Scope { get; init; } = "";
+
     public Instant? LastSyncAt { get; set; }
     public HoldedSyncStatus SyncStatus { get; set; } = HoldedSyncStatus.Idle;
 

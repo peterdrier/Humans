@@ -16,7 +16,7 @@ Team create/edit form redisplays use request cancellation for parent-team picker
 ## Concepts
 
 - A **Department** is a team with no parent. A **Sub-Team** sits under exactly one department; only one level of nesting is allowed.
-- **System teams** (Volunteers, Coordinators, Board, Asociados, Colaboradors, Barrio Leads) are computed by the system-team sync; nobody adds or removes their members by hand.
+- **System teams** (Volunteers, Coordinators, Barrio Leads) are computed by the system-team sync; nobody adds or removes their members by hand. The Board, Asociados and Colaboradors teams now belong to Governance's bodies: Teams no longer syncs them or claims their Google group and files (`TeamService.GovernanceBodyTeamIds`), and the `teams.retire-governance-bodies` data migration deactivates them, ending their memberships with an audit entry per member.
 - A **Coordinator** holds the management role on a department: full authority over the department and its sub-teams, including Google resources. Coordinators are members of the Coordinators system team.
 - A **Sub-team Manager** holds the management role on a sub-team: members, join requests, roles, shifts and the page of that sub-team only. Managers have no authority over Google resources, the parent department or sibling sub-teams, and are not added to the Coordinators system team.
 - A **Team Page** is the Markdown page of a department, public or member-facing, with up to three calls to action.
@@ -41,7 +41,7 @@ One membership of a human in a team, with `TeamMemberRole` and `JoinedAt`/`LeftA
 
 **Tables:** `team_join_requests`, `team_join_request_state_history`
 
-A request to join an approval-required team (`Pending → Approved / Rejected / Withdrawn`), with the requester's message and the reviewer's notes, both at most 2,000 characters. The state history is append-only per design-rules.md, *Append-only entities*. `TeamService` owns review and withdrawal workflows; repository writes persist their transitions, and approval saves the request, new membership and any Google outbox event together.
+A request to join an approval-required team (`Pending → Approved / Rejected / Withdrawn`), with the requester's message and the reviewer's notes, both at most 2,000 characters. The state history is append-only per design-rules.md, *Append-only entities*. `TeamJoinRequestStatus` is internal in `Domain/`; only Teams uses it in production. Requests and history store the unchanged names `Pending`, `Approved`, `Rejected` and `Withdrawn` as required strings of at most 50 characters; their enum values remain 0–3. `TeamService` owns review and withdrawal workflows; repository writes persist their transitions, and approval saves the request, new membership and any Google outbox event together.
 
 ### TeamRoleDefinition / TeamRoleAssignment
 
@@ -133,7 +133,7 @@ One event-scoped early-entry grant: a human may enter on a date for a named proj
 | EarlyEntryAdmin | Early entry on any team with `EarlyEntryEnabled`, and nothing else in Teams |
 | TeamsAdmin | Every coordinator capability on every team; create teams, edit team settings, toggle the management role |
 | Board | Read the summary, team settings, every team's Members page and the Board roster; change nothing |
-| Admin | Every TeamsAdmin capability; deactivate and permanently delete teams; set the sensitive flag |
+| Admin | Every TeamsAdmin capability; deactivate teams; set the sensitive flag |
 
 ## Invariants
 
@@ -149,6 +149,7 @@ One event-scoped early-entry grant: a human may enter on a date for a named proj
 - Team-scoped Workspace email provisioning passes the team ID to Google, which requires a current Teams membership before provisioning. The controller authorizes management of that team; it does not decide membership eligibility from its page snapshot.
 - Every membership add or remove made one at a time is audited (`TeamsAuditActions`) and its Google outbox event commits in the same transaction as the membership. Deactivating a team closes its live memberships, audits each closure against the acting admin, and reconciles its former coordinators' Coordinators system-team membership.
 - Hidden teams are invisible to non-admins everywhere Teams lists or links a team: directory, tree, detail, join, My Teams, roster, parent and child links, pending-request links, and other people's profile cards. A human still sees their own hidden memberships on their own profile.
+- Sub-team rollups derive coordinator role titles from the same cached team snapshot as their members. Only public management definitions qualify; the lowest sort order wins, with the current culture's name comparison as the tie-breaker. Members shared across child teams retain their first name-ordered affiliation; ordinary members have no coordinator title.
 - The directory lists active departments and the sub-teams with `IsPromotedToDirectory`; every sub-team stays reachable from its department's page. Anonymous visitors see public-page departments and promoted sub-teams only, coordinators only if `ShowCoordinatorsOnPublicPage`, and never emails.
 - Only departments can have a public page. Calls to action accept relative URLs and absolute `http`, `https` and `mailto` links; anything else is refused on save and left out of the rendered page. Page Markdown renders through the shared sanitizer.
 - `IsSensitive` is written only by a global Admin, checked in `TeamService.UpdateTeamAsync` on a change to the flag; non-Admin editors never see the checkbox.
@@ -161,6 +162,7 @@ One event-scoped early-entry grant: a human may enter on a date for a named proj
 - Expected refusals (missing record, no permission, validation) return a result before anything is written or audited, and log at Warning without a stack. Unexpected failures propagate.
 - Mutations of the cached team graph invalidate the whole cache, even when the inner call throws after writing. Pending join-request reads bypass the cache.
 - Resource keys use the `Teams_` prefix; shared vocabulary stays in `SharedResource`.
+- `TeamsDemoStory` (outside Production only) makes the demo departments and subteams listed in `TeamsDemo`, named "… (demo)", staffs each from the demo cast and gives it two coordinators. Retire deactivates them, subteams first; teams are never hard-deleted.
 
 ## Negative Access Rules
 
@@ -179,8 +181,9 @@ One event-scoped early-entry grant: a human may enter on a date for a named proj
 - When a join request is approved, or a coordinator adds a member, the membership is created and the human gets a welcome email and an inbox notice. Coordinators get a notice for every new request and direct join. Notices and emails go in the recipient's saved language, falling back to English, and finish after the membership commits; a notice failure never undoes the membership.
 - When a member is added, the Google outbox event grants their Drive and Group access, including the parent's resources for a sub-team add. Removals wait for Google's daily reconciliation.
 - When a department's management-role assignment changes, or a team moves into or out of being an active department, the affected humans' Coordinators system-team membership is recalculated. Sub-team manager changes do not touch the Coordinators system team.
-- The system-team sync runs hourly (Hangfire `teams-system-sync`) and on demand from the sections whose facts it reads. It recomputes Volunteers (approved, unsuspended, consents signed, not rejected by the Consent Coordinator), Coordinators, Board, Asociados and Colaboradors (approved tiers with active terms), and Barrio Leads (active camp leads), reconciles `TeamMember.Role` against management assignments, audits every committed change before Google provisioning, and ends with a Google Group reconciliation pass when Workspace credentials are configured. It sends no "added to team" email for hidden teams.
+- The system-team sync runs hourly (Hangfire `teams-system-sync`) and on demand from the sections whose facts it reads. It recomputes Volunteers (approved, unsuspended, consents signed, not rejected by the Consent Coordinator), Coordinators and Barrio Leads (active camp leads), reconciles `TeamMember.Role` against management assignments, audits every committed change before Google provisioning, and ends with a Google Group reconciliation pass when Workspace credentials are configured. It sends no "added to team" email for hidden teams.
 - When an account merge is accepted, Teams ends the source's non-system memberships, adds the survivor where needed, moves role assignments, join requests and early-entry grants to the survivor (a source Pending request colliding with a survivor Pending request for the same team is dropped), and reconciles both humans' Coordinators membership.
+- Before a person leaves or is removed from a team, when account deletion revokes all their memberships, and for each member when a team is deactivated, Teams calls Roles' `IRoleWrite.RemoveAsync` so they hold no role there. A merge doesn't: Roles moves its own slots.
 - On erasure, Teams ends live memberships, hard-deletes the human's join requests and early-entry grants, and keeps ended membership rows. The GDPR export carries the `TeamMemberships`, `TeamJoinRequests` (own requests, notes and status history) and `TeamEarlyEntry` slices, following the merge chain.
 
 ## Cross-Section Dependencies
@@ -193,6 +196,7 @@ One event-scoped early-entry grant: a human may enter on a date for a named proj
 - **Auth:** `IRoleAssignmentService` for role holders, `IAdminAuthorizationService` for actor checks.
 - **Google:** `IGoogleSyncOutboxService` and `IGoogleSyncWrite` for membership grants, `ITeamResourceService` for a team's linked resources, `IGoogleGroupSync` for the sync's reconciliation pass; Teams implements its `IGoogleGroupMembershipSource` and `IGoogleDriveAccessSource`.
 - **Shifts (through a slot):** Teams declares `ITeamShiftsParts` in `Teams.Contracts`; Shifts fills its `Box` (the team page's shifts card, shown to signed-in members with a profile on non-system teams) and `AdminRowCell` (the admin team list's pending-signups cell). Teams calls no Shifts code.
+- **Roles (through a slot):** Teams declares `ITeamRolesPart` in `Teams.Contracts`; Roles fills its `Card` (the new roles card on the team page, shown to signed-in members beside the old one until the old roles retire).
 - **Email.Contracts:** `IEmailService`, `IEmailMessageFactory` and `ICommunicationPreferenceService` for send as team and the welcome email; Teams owns its templates (`TeamsEmails`, previewed through `TeamsEmailPreviews`).
 - **EarlyEntry:** Teams implements `IEarlyEntryProvider` for the roster and reads `EarlyEntryRoles`.
 - **Tickets.Contracts:** `ITicketService.FindCurrentEventAttendeeByBarcodeAsync` for the early-entry ticket lookup.
@@ -202,10 +206,12 @@ One event-scoped early-entry grant: a human may enter on a date for a named proj
 - **Settings:** `ISettingsService` for the active event on the team page, the early-entry event picker, event validation and the active-event roster filter. Grants store an event ID without a cross-section EF relationship.
 - **Issues:** Teams implements `IIssueQueueOwner` for its `Teams` issue queue.
 - **Base (`Humans.Base.Gdpr`):** `IUserDataContributor` (export and erasure).
+- **Roles:** Teams registers the `Team` owner kind (`IRoleOwner`, which adds a member before an assign and refuses system and inactive teams) and calls `IRoleWrite.RemoveAsync` when a membership ends.
+- **Permissions:** Teams registers the team tree (`IOwnerKind`) and, until departments have moved to Roles, a temporary permission source (`IPermissionSource`): a coordinator member or management role holder holds everything on their team, reason "{team} coordinator (old team roles)". It goes when the old roles retire.
 
 **Inbound** — sections that reference Teams:
 
-- **Search:** renders team hits with `<vc:teams-search-result>`.
+- **Search (contributor):** Teams' `Section` is an `ISearchContributor` — the `Team` category (`Teams_Search_Category`, weight 10) maps `ITeamService.SearchAsync(query, int.MaxValue)` to `SearchHit`s, each rendered by `<vc:teams-search-result key>`.
 - **Budget, Expenses:** coordinator scoping (`GetEffectiveBudgetCoordinatorTeamIdsAsync`, `IsUserCoordinatorOfTeamAsync`); Budget's dev seeder uses `ITeamSeeding`.
 - **Onboarding, Governance, Auth, Camps, Google, Development:** call `ISystemTeamSync` after the facts they own change.
 - **Users:** account deletion calls `RevokeAllMembershipsAsync`; account merge reaches `IUserMerge.ReassignAsync`; profiles read team memberships.
@@ -230,7 +236,7 @@ One event-scoped early-entry grant: a human may enter on a date for a named proj
 - **Repository:** `ITeamRepository` / `TeamRepository` owns every Teams table; only `TeamService` calls it.
 - **Inner service:** `TeamService` holds every Teams workflow: lifecycle, joining, membership administration, role definitions, page content, early entry, GDPR export and Google group membership, plus the team, permission and account reads and the atomic membership-plus-outbox write.
 - **Decorator decision:** caching decorator. `CachingTeamService` is a singleton `TrackedCache` over `ITeamManagementService` holding the Teams-owned graph and a user-to-team index; member display data resolves live through `IUserService` on each read. Every write to the graph clears the cache and the next read re-warms it whole; early-entry grants are read live. Team search is served only from the cache.
-- **Page composer:** `TeamPageService` builds the directory, team detail, My Teams and roster pages from the cached graph and role checks; it owns no tables and calls no repository. Detail-page member projections share one internal shape with ID, role and display name for ordering; names and avatars render through `<vc:human>`. They do not copy unused email, photo URL or join date into the page pipeline. Admin membership projections and My Teams join dates retain their separate live uses.
+- **Page composer:** `TeamPageService` builds the directory, team detail, My Teams and roster pages from the cached graph and role checks; it owns no tables and calls no repository. Directory role checks and visibility projection live directly in this service; `TeamDirectoryBuilder` only builds the dependency-free navigation tree. Anonymous, hidden-team, parent-metadata and create-team visibility rules are unchanged. Detail-page member projections share one internal shape with ID, role and display name for ordering; names and avatars render through `<vc:human>`. They do not copy unused email, photo URL or join date into the page pipeline. Admin membership projections and My Teams join dates retain their separate live uses.
 - **Display stitching:** `IUserService.GetUserInfosAsync`.
 - **Architecture enforcement:** `tests/Humans.Teams.Tests/Architecture/TeamsArchitectureTests.cs` (one singleton behind every face), `TeamPageArchitectureTests.cs`.
 - **System-team sync:** `SystemTeamSyncJob` (internal, registered and scheduled in `Section.cs`) behind `ISystemTeamSync`. Hangfire keys the recurring job on its id.

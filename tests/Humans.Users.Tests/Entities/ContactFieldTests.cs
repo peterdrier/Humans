@@ -54,7 +54,6 @@ public class ContactFieldTests
         return new ContactField
         {
             Id = Guid.NewGuid(),
-            ProfileId = Guid.NewGuid(),
             FieldType = type,
             Value = "test@example.com",
             Visibility = ContactFieldVisibility.AllActiveProfiles,

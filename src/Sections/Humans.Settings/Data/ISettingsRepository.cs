@@ -8,6 +8,8 @@ internal interface ISettingsRepository : IRepository
 {
     Task<string?> GetValueAsync(string key, CancellationToken ct = default);
 
+    Task<IReadOnlyDictionary<string, string>> GetAllValuesAsync(CancellationToken ct = default);
+
     Task SetValueAsync(string key, string value, CancellationToken ct = default);
 
     Task<EventSettings?> GetActiveEventSettingsAsync(CancellationToken ct = default);
@@ -29,6 +31,4 @@ internal interface ISettingsRepository : IRepository
     /// </summary>
     Task<IReadOnlyList<EventSettings>> SetActiveEventSettingsAsync(Guid id, Instant now, CancellationToken ct = default);
 
-    /// <summary>Returns 0 or 1.</summary>
-    Task<int> DeleteEventSettingsAsync(Guid id, CancellationToken ct = default);
 }

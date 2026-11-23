@@ -105,12 +105,11 @@ internal sealed class DevPersonaSeeder(
         var save = await profileEditorService.SaveProfileAsync(id, saveRequest);
         if (!save.Succeeded)
             throw new InvalidOperationException("Dev persona profile validation failed.");
-        var profileId = save.ProfileId!.Value;
 
         await userWrite.MarkFakeAsync(id, id, PersonaFakeReason);
 
         await contactFieldService.SaveContactFieldsAsync(
-            profileId,
+            id,
             [
                 new ContactFieldEditDto(
                     Id: null,
@@ -133,12 +132,6 @@ internal sealed class DevPersonaSeeder(
         if (IsBarrioLeadSlug(slug))
         {
             await systemTeamSync.SyncMembershipForUserAsync(id, SystemTeamType.BarrioLeads);
-        }
-
-        // Board membership has no per-user sync arm in SystemTeamSyncJob, so apply directly.
-        if (roleName is not null && string.Equals(roleName, RoleNames.Board, StringComparison.Ordinal))
-        {
-            await teamWrite.ApplySystemTeamMembershipDeltaAsync(SystemTeamIds.Board, [id], [], now);
         }
 
         foreach (var role in roles)
@@ -287,7 +280,7 @@ internal sealed class DevPersonaSeeder(
     }
 
     /// <summary>Shared by seeding and the No-Name reset so the two cannot drift.</summary>
-    private static ProfileSaveRequest BuildPersonaProfileRequest(
+    internal static ProfileSaveRequest BuildPersonaProfileRequest(
         string burnerName, string firstName, string lastName, string bio) =>
         new(
             BurnerName: burnerName,

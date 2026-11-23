@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using Humans.Users.Contracts;
 
 namespace Humans.Users.Data.Configurations;
 
@@ -37,14 +38,16 @@ internal sealed class ContactFieldConfiguration : IEntityTypeConfiguration<Conta
         builder.Property(cf => cf.UpdatedAt)
             .IsRequired();
 
-        builder.HasOne(cf => cf.Profile)
-            .WithMany(p => p.ContactFields)
-            .HasForeignKey(cf => cf.ProfileId)
+        builder.HasOne<User>()
+            .WithMany()
+            .HasForeignKey(cf => cf.UserId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        builder.HasIndex(cf => cf.ProfileId);
+        // Declared so the model matches the default EF's nullable-to-required migration leaves in the
+        // database (required-columns-need-approval). Every write sets a real user id.
+        builder.Property(cf => cf.UserId).HasDefaultValue(Guid.Empty);
+
         builder.HasIndex(cf => cf.UserId);
-        builder.HasIndex(cf => new { cf.ProfileId, cf.Visibility });
 
         builder.Ignore(cf => cf.DisplayLabel);
     }

@@ -6,18 +6,20 @@
 
 # Development - Section Invariants
 
-Dev-only tooling: persona sign-in and fixture seeding. Never reachable in Production. Owns no tables.
+Dev-only tooling: persona sign-in, fixture seeding and the demo world. Never reachable in Production. Owns one table, the demo ledger, which exists only outside Production.
 
 ## Concepts
 
 - **Persona** - a named, deterministic dev user. `DevPersonaSeeder.PersonaGuid(slug)` is a SHA-256 of `dev-persona:{slug}`, so the same slug is the same user id across restarts and machines, and seeding is idempotent. Every role in Auth's `RoleCatalog` becomes a persona automatically (`PascalToKebab` of its name, labelled with its catalog title), plus seven hand-written ones: `guest`, `no-name`, `volunteer`, `barrio-1-lead`, `barrio-2-lead`, `coordinator`, `city-planning`.
-- **Fixture seeder** - a dev-only writer that builds realistic demo data through *other* sections' service interfaces. Three live here (personas, camp roles, the coordinator dashboard); a fourth, `DevelopmentBudgetSeeder`, lives in `Humans.Budget` behind `IBudgetDemoSeeder` because it drives Budget's whole write surface.
-- **Dev-auth gate** - `DevAuth:Enabled` (a `ConfigurationRegistry` setting in the `Development` category) **and** a non-Production host environment. Both are required; the dashboard seed additionally requires `ASPNETCORE_ENVIRONMENT=Development` exactly.
+- **Fixture seeder** - a dev-only writer that builds realistic demo data through *other* sections' service interfaces. Two live here (personas, camp roles); a third, `DevelopmentBudgetSeeder`, lives in `Humans.Budget` behind `IBudgetDemoSeeder` because it drives Budget's whole write surface.
+- **Dev-auth gate** - `DevAuth:Enabled` (a `ConfigurationRegistry` setting in the `Development` category) **and** a non-Production host environment. Both are required.
 - **Admin opt-in** - `DevAuth:AllowAdmin` (same category), which re-admits the Admin persona and Admin impersonation on a deployed host. Set only on per-PR previews, by `docker-entrypoint.sh`.
 
 ## Data Model
 
-This section owns no entities and no tables. Everything it creates belongs to another section and is created through that section's service.
+One entity, `DemoLedgerEntry` (`demo_ledger`, `DevelopmentDbContext`): one row per row the demo world made in another section, holding that row's id, the story key, the generation and a state (`Pending`, `Made`, `Retired`, `LeftBehind`). Its id is a hash of key and generation. It holds ids only, of rows that belong to invented cast members, so it carries no personal data and needs no GDPR contributor. Everything the demo creates belongs to another section and is created through that section's service.
+
+The context is registered only outside Production, with the rest of the section, so the table never exists in Production.
 
 ## Routing
 
@@ -29,8 +31,7 @@ This section owns no entities and no tables. Everything it creates belongs to an
 | `/dev/seed` | GET | `AdminOnly` | The admin nav's "Development" page: POST buttons for the budget and camp-role seeds |
 | `/dev/seed/budget` | POST | `FinancePolicies.Manage` | Budget demo data, via `IBudgetDemoSeeder` in Budget's `Contracts/` folder |
 | `/dev/seed/camp-roles` | POST | `CampsPolicies.Manage` | Five system camp-role definitions |
-| `/dev/seed/dashboard` | POST | `ShiftsPolicies.Manage` | Coordinator-dashboard demo: one event, 8 departments, 5 subteams, ~120 humans, rotas/shifts/signups |
-| `/dev/seed/dashboard/reset` | POST | `AdminOnly` | Delete everything the dashboard seed created, then reseed |
+| `/dev/seed/demo` | POST | `AdminOnly` | Build or top up the demo world in the background; with `reset=true`, retire it first |
 
 Every route 404s when the dev-auth gate is closed. `/dev/login/*` additionally does not exist at all in Production - see Negative Access Rules.
 
@@ -41,9 +42,8 @@ Every route 404s when the dev-auth gate is closed. `/dev/login/*` additionally d
 | Anyone (anonymous) | `/dev/login/*`, in dev/preview only. This is the point of the section: it exists to get *into* an account |
 | Finance Admin / Admin | `/dev/seed/budget` |
 | Camps Admin / Admin | `/dev/seed/camp-roles` |
-| Shifts Admin / Shifts NoInfo / Admin | `/dev/seed/dashboard` |
 | Admin | `/dev/seed` (the seed page) |
-| Admin | `/dev/seed/dashboard/reset` - destructive, deletes seeded humans and teams |
+| Admin | `/dev/seed/demo` |
 | Everyone, in Production | Nothing |
 
 ## Invariants
@@ -52,17 +52,17 @@ Every route 404s when the dev-auth gate is closed. `/dev/login/*` additionally d
   seeder is resolved or invoked. The environment gates and seed/reset tokens remain
   the same.
 
-- Persona and dashboard seeders abort when Users refuses a verified-email addition, before subsequent profile setup or reporting that user as seeded. An already-present address without a refusal remains an idempotent no-op.
+- The persona seeder aborts when Users refuses a verified-email addition, before subsequent profile setup or reporting that user as seeded. An already-present address without a refusal remains an idempotent no-op.
 
+- **The demo world sits on top of what the database already holds.** Each section's `IDemoStory` (`Humans.Base.Demo`) tells its part through its own services; `DemoWorldRunner` orders them by `After`, records every created row in the ledger through `IDemoWorld.EnsureAsync`, and a second run adds nothing and repairs only demo rows that vanished. Rows the demo did not make are never read or changed.
+- **Reset never adds a delete verb.** It first tops up, so no row is left half-made, then stories retire in reverse order through actions the app already has; the cast is retired with `IAccountDeletionService.PurgeAsync`. What cannot be retired is marked `LeftBehind` and reported. The generation then goes up and the stories build a fresh copy. Cast emails are `demo-<generation>-<n>@localhost`: not a `.local` tombstone, and Email drops them.
+- **Any section's `IDemoSafetyCheck` stops a demo run before it writes.** Google refuses while any sync mode is not `None` with real credentials; MailerLite refuses while it has an API key.
+- **The demo run is a background job, started only from the page.** Never at deploy or start-up. One run at a time (`DemoRunStatus`); its report is held in memory and shown on `/dev/seed`.
 - **Nothing in this section is reachable in Production.** Three independent mechanisms, deliberately not one: the seeders are not registered (`Section.Register` returns early), `DevLoginController` is removed from MVC's controller feature by Shell's `DevLoginControllerExclusionProvider`, and both controllers' own `IsDevAuthEnabled()` / `IsDevSeedEnabled()` guards return `NotFound()`.
 - **`Section.Register` fails closed.** `ISection.Register` takes no `IHostEnvironment`, so it reads `HostDefaults.EnvironmentKey` from the configuration Shell hands it. An environment name it cannot read registers *nothing* - the failure lands as dev login 404ing in the test host, not as dev seeders reaching Production. Pinned by `DevelopmentArchitectureTests.Register_binds_nothing_in_production_or_when_the_environment_is_unknown`.
-- **The dashboard seed is stricter than the rest**: `IsDevelopment()` **and** `DevAuth:Enabled`. QA, preview and production cannot invoke it regardless of role. (`src/Sections/Humans.Shifts/Docs/Shifts.md` states the same invariant from the other side; `DevSeedControllerTests` covers both branches.)
-- **The dashboard seed creates a valid event calendar.** Its build start is no later than the first-crew boundary, so the seeded fixture satisfies Settings' build-window partition invariant.
-- **Dashboard fixtures reach Active through the normal Users path.** Their complete names are saved through `IProfileEditorService` after their Identity timestamp updates and before self-signup, so the profile save derives Active state and no stale Identity instance overwrites it. Profile-edit refusals stop fixture/persona setup and legal-name resets before follow-on effects. Pinned by `DevelopmentDashboardSeederTests`.
 - **Dev login never yields an Admin session outside a dev host.** A "dev host" is `Development`, the in-process `Testing` integration host, or any host that sets `DevAuth:AllowAdmin` - QA runs `Staging` with `DevAuth:Enabled` on and real Google Workspace data, so an anonymous URL that mints Admin there is a live privilege escalation. Both doors are shut: the `admin` persona (matched by its slug, `PascalToKebab(RoleNames.Admin)`, before any seeding runs) and impersonation of any human with an active `RoleNames.Admin` assignment (`IRoleAssignmentService.IsUserAdminAsync`). `_DevLoginPanel` renders `DevLoginController.PersonasFor(env, config, catalog)` so the button and the route share one predicate. Covered by `DevLoginControllerTests`.
 - **Per-PR previews are the exception, and only the entrypoint can name them.** A preview container runs the same `Staging` environment name as QA, so the discriminator lives where the difference is already known: `docker-entrypoint.sh` derives `PR_ID` from Coolify's container name/FQDN, points the connection string at `humans_pr_{N}`, and defaults `DevAuth__AllowAdmin=true` **inside that same block** - the flag means "this container is on a throwaway PR database", so it must follow the switch actually happening, not `PR_ID` alone. A container that could not switch (no `DB_PASSWORD`, or a hand-supplied connection string) is still on the inherited QA connection, and anonymous Admin over QA data is exactly the escalation this invariant closes. QA's `deploy-qa.sh` never sets the flag. It is only a *default*, so a deploy that wants a preview without Admin can set it to `false`.
-- **Every write goes through the owning section's service.** No `DbContext`, no repository, no cross-section table access - held by the section's csproj (no `Humans.Infrastructure` reference, no EF Core package) and by every seeder taking only application-service dependencies. Not pinned by a test, deliberately - the section has no tables, and an absence has no behaviour to regress.
-- **Dashboard coordinator picks are deduplicated before writes.** Repeated RNG picks for the same team/user produce one membership call. Unexpected membership failures propagate and stop the seed before profile/sign-up creation; they are never treated as duplicate-membership success.
+- **Every write to another section goes through that section's service.** The section's only repository is the demo ledger's; every seeder and story takes only application-service dependencies for other sections' data.
 - **Persona seeding is idempotent and repairs.** `EnsurePersonaAsync` returns the existing user when there is one, and `EnsureActiveAsync` runs on *every* sign-in: it submits any missing required consents through the canonical consent path and lifts a consent suspension, because personas hold governance roles and the nightly `SuspendNonCompliantMembersJob` suspends them otherwise (nobodies-collective/Humans#867).
 - **Every persona except `guest` is marked fake** (`IUserWrite.MarkFakeAsync`) on creation and every sign-in, which keeps them out of Consent's review queue. Guests stay unmarked so onboarding can be tested end to end.
 - **The `no-name` persona is re-blanked on every sign-in** so the onboarding name gate (#812) re-triggers each time.
@@ -78,7 +78,7 @@ Every route 404s when the dev-auth gate is closed. `/dev/login/*` additionally d
 ## Triggers
 
 - `GET /dev/login/{persona}` seeds or repairs the persona, then signs in.
-- `POST /dev/seed/*` seeds on demand; only `dashboard/reset` deletes.
+- `POST /dev/seed/*` seeds on demand and never deletes. `POST /dev/seed/demo` enqueues `DemoWorldJob`.
 - Nothing here runs on a schedule and nothing subscribes to another section's events.
 
 ## Cross-Section Dependencies
@@ -102,16 +102,16 @@ Nothing depends on Development in the other direction. Shell reaches it twice an
 ## Architecture
 
 **Owning services:** None - two controllers over three internal fixture seeders.
-**Owned tables:** None.
-**Status:** Own project at `src/Sections/Humans.Development`. The section owns no tables, so there is no `DbContext`, no history table and no baseline.
+**Owned tables:** `demo_ledger` (outside Production only).
+**Status:** Own project at `src/Sections/Humans.Development`, with `DevelopmentDbContext` registered outside Production only.
 
 - `DevLoginController` and `DevSeedController` are `internal sealed` in `Humans.Development.Controllers`, routed by Shell's `SectionControllerFeatureProvider`.
 - No `Humans.Infrastructure` reference (Scanner's and Cantina's shape, not Debug's): every write goes through another section's published contract.
 - `Contracts/` is an empty folder. Folder-vs-project is decided by where the consumer lives, and there is no compile-time consumer at all.
 - `DevPersonaSeeder` takes no `IMemoryCache`: every role and team write goes through the owning section's service, which evicts its own caches.
-- **Gap #5 from the G0 audit is closed.** `DevPersonaSeeder` and `DevelopmentDashboardSeeder` create accounts through Users' `IAccountProvisioningService.CreateAccountAsync`; the section never names the `User` entity (HUM0039).
-- **Gap #6 from the G0 audit is closed.** Shifts, Teams and Settings carried out their read-splits: `DevelopmentDashboardSeeder` creates/deletes the seeded event through `IEventSettingsSeeding.CreateActiveEventAsync`/`DeleteEventAsync` (input records, not a mutated `EventSettings` entity), opens shift browsing via `IShiftSeeding.SetShiftBrowsingOpenAsync`, resolves the event via `ISettingsService.GetEventSettingsByIdAsync`, and resolves teams via `ITeamService.GetTeamBySlugAsync` (`TeamInfo`, not the `Team` entity). No baselined entity-returning read remains in this section.
+- **Gap #5 from the G0 audit is closed.** `DevPersonaSeeder` and the demo cast create accounts through Users' `IAccountProvisioningService.CreateAccountAsync`; the section never names the `User` entity (HUM0039).
+- **Gap #6 from the G0 audit is closed.** Shifts, Teams and Settings carried out their read-splits; the demo departments and rotas are now told by Teams' and Shifts' own stories. No baselined entity-returning read remains in this section.
 - **Known deviation, carried from the G0 audit (gap #4):** the Production exclusion covers `DevLoginController` only. `DevSeedController` stays in the MVC graph in Production behind its action-level guards. Generalising the provider to the whole section's controller surface is behavioural.
-- **No renames.** `DevelopmentCampRoleSeeder` and `DevelopmentDashboardSeeder` duplicate the section name, but `DevPersonaSeeder`, `DevLoginController` and `DevSeedController` all use the shorter `Dev` prefix, so stripping half of them would leave the section inconsistently named. `nameof(DevPersonaSeeder)` is also written to `consent_records.user_agent` on every seeded consent, which makes that one a persisted string.
-- **Decorator decision - no caching decorator.** Owns no data.
-- **Cross-domain navs:** N/A - owns no entities.
+- **No renames.** `DevelopmentCampRoleSeeder` duplicates the section name, but `DevPersonaSeeder`, `DevLoginController` and `DevSeedController` all use the shorter `Dev` prefix, so stripping it would leave the section inconsistently named. `nameof(DevPersonaSeeder)` is also written to `consent_records.user_agent` on every seeded consent, which makes that one a persisted string.
+- **Decorator decision - no caching decorator.** The ledger is read once per demo run.
+- **Cross-domain navs:** none; the ledger stores foreign ids without navigations.

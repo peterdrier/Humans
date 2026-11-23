@@ -46,7 +46,7 @@ internal sealed class EventSettings : IEventSettingsInfo
 
     /// <summary>
     /// No production path removes the row (other sections point at <see cref="Id"/>): a cycle ends by going Inactive,
-    /// and nothing sets Deleted today. Only <c>IEventSettingsSeeding.DeleteEventAsync</c> removes rows, for fixtures.
+    /// and nothing sets Deleted today.
     /// </summary>
     public EventSettingsStatus Status { get; set; } = EventSettingsStatus.Active;
 

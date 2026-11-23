@@ -1,4 +1,6 @@
+using Microsoft.Extensions.Localization;
 using System.Collections.Concurrent;
+using Humans.Base.Authorization;
 using Humans.Base.Caching;
 using Humans.Base.Interfaces;
 using Humans.Base.Extensions;
@@ -9,6 +11,8 @@ using Humans.Gdpr.Contracts;
 using Microsoft.Extensions.DependencyInjection;
 using NodaTime;
 using Humans.Users.Contracts;
+using Humans.Permissions.Contracts;
+using Humans.Roles.Contracts;
 
 namespace Humans.Teams.Services;
 
@@ -19,8 +23,10 @@ namespace Humans.Teams.Services;
 /// </summary>
 internal sealed class CachingTeamService(
     IServiceScopeFactory scopeFactory,
-    ILogger<CachingTeamService> logger) : TrackedCache<Guid, TeamReadSnapshot>("Team.TeamInfo", warmOnStartup: true, logger),
-    ITeamManagementService, ITeamSeeding, IUserMerge, IUserDataContributor, IEntityNameContributor
+    ILogger<CachingTeamService> logger,
+    IStringLocalizer<TeamsResource> localizer) : TrackedCache<Guid, TeamReadSnapshot>("Team.TeamInfo", warmOnStartup: true, logger),
+    ITeamManagementService, ITeamSeeding, IUserMerge, IUserDataContributor, IEntityNameContributor, IOwnerKind, IRoleOwner,
+    IPermissionSource
 {
     public const string InnerServiceKey = "team-inner";
 
@@ -109,6 +115,49 @@ internal sealed class CachingTeamService(
         }
         return result;
     }
+
+    string IOwnerKind.Kind => TeamOwner.Kind;
+
+    string IRoleOwner.Kind => TeamOwner.Kind;
+
+    public async Task<IReadOnlyList<OwnerNode>> GetOwnersAsync(CancellationToken ct = default) =>
+        (await GetTeamSnapshotsAsync(ct)).Values
+            .Select(s => new OwnerNode(s.Team.Id, s.Team.ParentTeamId, s.Team.IsActive, s.Team.IsSystemTeam))
+            .ToList();
+
+    /// <summary>
+    /// Temporary, until departments have moved to Roles: today's coordinators (a coordinator member or a management
+    /// role holder) hold everything on their team. Permissions reaches down the tree and skips system and inactive teams.
+    /// </summary>
+    public async Task<IReadOnlyList<Holding>> GetHoldingsAsync(Guid userId, CancellationToken ct = default) =>
+        (await GetTeamsByIdAsync(ct)).Values
+            .Where(t => t.Members.Any(m => m.UserId == userId && m.Role == TeamMemberRole.Coordinator)
+                        || t.ManagementRoleHolderUserIds?.Contains(userId) == true)
+            .Select(t => new Holding(new Owner(TeamOwner.Kind, t.Id), IsCoordinator: true, [], $"{t.Name} coordinator (old team roles)"))
+            .ToList();
+
+    /// <summary>System teams take no roles: their membership is computed, so a role could outlive it.</summary>
+    public async Task<string?> EnsureMemberAsync(Guid ownerId, Guid userId, Guid actorUserId, CancellationToken ct = default)
+    {
+        if (!(await GetTeamSnapshotsAsync(ct)).TryGetValue(ownerId, out var snapshot))
+            return localizer["Teams_NotFound"].Value;
+        if (snapshot.Team.IsSystemTeam)
+            return localizer["Teams_Roles_SystemTeam"].Value;
+        if (!snapshot.Team.IsActive)
+            return localizer["Teams_Roles_InactiveTeam"].Value;
+        if (snapshot.Members.Any(m => m.UserId == userId))
+            return null;
+
+        var added = await AddMemberToTeamAsync(ownerId, userId, actorUserId, ct);
+        if (added.Succeeded)
+            return null;
+        return added.ErrorKey is { } key ? localizer[key].Value : added.Refusal;
+    }
+
+    public async Task<IReadOnlyList<RoleOwnerInfo>> ListAsync(CancellationToken ct = default) =>
+        (await GetTeamSnapshotsAsync(ct)).Values
+            .Select(s => new RoleOwnerInfo(s.Team.Id, s.Team.Slug, s.Team.Name, s.Team.IsHidden, $"/Teams/{s.Team.Slug}"))
+            .ToList();
 
     public async Task<IReadOnlyList<TeamSearchHit>> SearchAsync(
         string query, int max,
@@ -211,6 +260,9 @@ internal sealed class CachingTeamService(
     public Task<TeamDeactivationResult> DeleteTeamAsync(Guid teamId, Guid actorUserId, CancellationToken cancellationToken = default) =>
         MutateAsync(inner => inner.DeleteTeamAsync(teamId, actorUserId, cancellationToken), static result => result.Succeeded);
 
+    public Task<int> RetireGovernanceBodyTeamsAsync(Guid actorUserId, CancellationToken cancellationToken = default) =>
+        MutateAsync(inner => inner.RetireGovernanceBodyTeamsAsync(actorUserId, cancellationToken), static retired => retired > 0);
+
     public Task<TeamJoinResult> JoinTeamAsync(
         Guid teamId,
         Guid userId,
@@ -276,29 +328,6 @@ internal sealed class CachingTeamService(
         CancellationToken cancellationToken = default) =>
         MutateAsync(inner => inner.RemoveMemberAsync(
             teamId, userId, actorUserId, cancellationToken));
-
-    public async Task<IReadOnlyDictionary<Guid, string>> GetManagementRoleNamesByTeamIdsAsync(
-        IEnumerable<Guid> teamIds,
-        CancellationToken cancellationToken = default)
-    {
-        // The definition flagged both IsManagement and IsPublic; teams without one are omitted.
-        var teamsById = await GetTeamsByIdAsync(cancellationToken);
-        var result = new Dictionary<Guid, string>();
-        foreach (var teamId in teamIds)
-        {
-            if (!teamsById.TryGetValue(teamId, out var team) || team.RoleDefinitions is null)
-                continue;
-            var mgmt = team.RoleDefinitions
-                .Where(d => d.IsManagement && d.IsPublic)
-                // arch:db-sort-ok first authored public management-role selector (FirstOrDefault)
-                .OrderBy(d => d.SortOrder)
-                .ThenBy(d => d.Name, StringComparer.CurrentCulture)
-                .FirstOrDefault();
-            if (mgmt is not null)
-                result[teamId] = mgmt.Name;
-        }
-        return result;
-    }
 
     public Task<(bool Updated, string? PreviousPrefix)> SetGoogleGroupPrefixAsync(
         Guid teamId,
@@ -517,11 +546,6 @@ internal sealed class CachingTeamService(
         CancellationToken cancellationToken = default) =>
         MutateAsync(inner => inner.AddSeededMemberAsync(
             teamId, userId, role, joinedAt, cancellationToken));
-
-    public Task<bool> PermanentlyDeleteTeamAsync(
-        Guid teamId,
-        CancellationToken cancellationToken = default) =>
-        MutateAsync(inner => inner.PermanentlyDeleteTeamAsync(teamId, cancellationToken), static result => result);
 
     public async Task<IReadOnlyCollection<Guid>> GetEffectiveBudgetCoordinatorTeamIdsAsync(
         Guid userId,

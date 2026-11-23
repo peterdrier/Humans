@@ -1,0 +1,8 @@
+# Section debt ledger for Humans.Pretix. Shape + routing: memory/process/debt-ledger-additions.md.
+version: 1
+next_id: 2
+inbox:
+  - added: 2026-11-21
+    id: PRETIX-1
+    what: "PretixCheckoutBackend.ErasePersonalDataAsync clears the order email, but pretix keeps the old address in the order log (pretix.event.order.contact.changed, old_email) and its API cannot delete log entries; erasure completes only when pretix's data shredder runs for the event. Fix (Peter, 2026-11-22): stay on stock pretix; Humans runs pretix's event shredder API (events/{e}/shredders/) once the 30-day post-event hold ends. No fork. Found in PR review of peterdrier/Humans#2496."
+    review: panel

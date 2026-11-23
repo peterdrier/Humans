@@ -174,7 +174,7 @@ internal sealed class TicketController(
     [Authorize(Policy = TicketsPolicies.Manage)]
     public IActionResult Sync()
     {
-        BackgroundJob.Enqueue<TicketSyncJob>(job => job.ExecuteAsync(CancellationToken.None));
+        BackgroundJob.Enqueue<TicketSyncJob>(job => job.RunNowAsync(CancellationToken.None));
         SetSuccess("Ticket sync triggered. Data will update shortly.");
         return RedirectToAction(nameof(Index));
     }
@@ -186,9 +186,22 @@ internal sealed class TicketController(
     {
         await ticketSyncService.ResetSyncStateForFullResyncAsync();
 
-        BackgroundJob.Enqueue<TicketSyncJob>(job => job.ExecuteAsync(CancellationToken.None));
+        BackgroundJob.Enqueue<TicketSyncJob>(job => job.RunNowAsync(CancellationToken.None));
         SetSuccess("Full re-sync triggered. All orders will be re-fetched.");
         return RedirectToAction(nameof(Index));
+    }
+
+    [HttpPost("ScheduledSync")]
+    [ValidateAntiForgeryToken]
+    [Authorize(Policy = TicketsPolicies.Manage)]
+    public async Task<IActionResult> ScheduledSync(bool enabled)
+    {
+        var (userError, user) = await ResolveCurrentUserOrUnauthorizedAsync(HttpContext.RequestAborted);
+        if (userError is not null) return userError;
+
+        await ticketSyncService.SetScheduledSyncEnabledAsync(enabled, user.Id, HttpContext.RequestAborted);
+        SetSuccess(enabled ? "Scheduled ticket sync turned on." : "Scheduled ticket sync turned off.");
+        return Redirect("/Settings#tickets");
     }
 
     [HttpGet("Participation/Backfill")]
@@ -345,7 +358,7 @@ internal sealed class TicketController(
         var bytes = HumansCsv.WriteBytes(csv =>
         {
             csv.WriteRow("Date", "Order ID", "Name", "Email", "Type", "Amount");
-            foreach (var r in rows)
+            foreach (var r in rows.OrderBy(row => row.PurchasedAt))
             {
                 csv.WriteRow(r.Date, r.VendorOrderId, r.BuyerName, r.BuyerEmail, r.Type, r.Amount);
             }

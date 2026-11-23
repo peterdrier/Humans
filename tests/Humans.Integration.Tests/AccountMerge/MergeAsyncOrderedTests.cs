@@ -1,3 +1,4 @@
+using Humans.Users.Services;
 using Humans.Auth.Data;
 using Humans.Auth.Domain;
 using AwesomeAssertions;

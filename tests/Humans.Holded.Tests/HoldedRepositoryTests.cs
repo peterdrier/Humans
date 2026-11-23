@@ -57,7 +57,7 @@ public sealed class HoldedRepositoryTests
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
 
-        var created = await _repo.GetOrCreateSyncStateAsync(HoldedSyncKind.Ledger, ct);
+        var created = await _repo.GetOrCreateSyncStateAsync(HoldedSyncKind.Ledger, ct: ct);
         created.Kind.Should().Be(HoldedSyncKind.Ledger);
         created.SyncStatus.Should().Be(HoldedSyncStatus.Idle);
 
@@ -66,13 +66,13 @@ public sealed class HoldedRepositoryTests
         created.LastCount = 7;
         await _repo.SaveSyncStateAsync(created, ct);
 
-        var again = await _repo.GetOrCreateSyncStateAsync(HoldedSyncKind.Ledger, ct);
+        var again = await _repo.GetOrCreateSyncStateAsync(HoldedSyncKind.Ledger, ct: ct);
         again.SyncStatus.Should().Be(HoldedSyncStatus.Error);
         again.LastError.Should().Be("57200001: holded 418840.54, local 771074.85");
         again.LastCount.Should().Be(7);
 
         // One row per kind, and a second kind does not disturb the first.
-        await _repo.GetOrCreateSyncStateAsync(HoldedSyncKind.Accounts, ct);
+        await _repo.GetOrCreateSyncStateAsync(HoldedSyncKind.Accounts, ct: ct);
         var states = await _repo.GetSyncStatesAsync(ct);
         states.Select(s => s.Kind).Should().BeEquivalentTo([HoldedSyncKind.Ledger, HoldedSyncKind.Accounts]);
     }

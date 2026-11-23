@@ -1,4 +1,5 @@
 using System.Transactions;
+using Humans.AuditLog.Contracts;
 using Humans.Campaigns.Contracts;
 using Humans.Settings.Contracts;
 using Humans.Tickets.Contracts;
@@ -22,8 +23,10 @@ internal sealed class TicketSyncService(
     ILogger<TicketSyncService> logger,
     IUserService userService,
     IEventParticipationManagement participations,
+    ITicketService participationReads,
     ICampaignWrite campaignService,
-    ISettingsService settingsService) : ITicketSyncService
+    ISettingsService settingsService,
+    IAuditLogService auditLog) : ITicketSyncService
 {
     private readonly TicketVendorSettings _settings = settings.Value;
 
@@ -222,6 +225,19 @@ internal sealed class TicketSyncService(
     public async Task ResetSyncStateForFullResyncAsync()
     {
         await ticketRepository.ResetSyncStateLastSyncAsync();
+    }
+
+    public Task<bool> IsScheduledSyncEnabledAsync(CancellationToken ct = default) =>
+        ticketRepository.IsScheduledSyncEnabledAsync(ct);
+
+    public async Task SetScheduledSyncEnabledAsync(bool enabled, Guid actorUserId, CancellationToken ct = default)
+    {
+        await ticketRepository.SetScheduledSyncEnabledAsync(enabled, ct);
+        await auditLog.LogAsync(
+            enabled ? TicketsAuditActions.TicketScheduledSyncEnabled : TicketsAuditActions.TicketScheduledSyncDisabled,
+            "TicketSettings", Guid.Empty,
+            enabled ? "Turned the scheduled ticket vendor sync on." : "Turned the scheduled ticket vendor sync off.",
+            actorUserId);
     }
 
     public async Task ReassignAsync(Guid sourceUserId, Guid targetUserId, Guid actorUserId, Instant updatedAt,
@@ -459,7 +475,7 @@ internal sealed class TicketSyncService(
                 });
 
         // Read once and diffed, to skip the upsert for the many holders whose status hasn't changed.
-        var current = (await participations.GetAllParticipationsAsync(ct))
+        var current = (await participationReads.GetAllParticipationsAsync(ct))
             .Where(ep => ep.Year == year)
             .ToDictionary(ep => ep.UserId);
 

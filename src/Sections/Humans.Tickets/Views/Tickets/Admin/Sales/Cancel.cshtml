@@ -1,0 +1,129 @@
+@using Humans.Base.Authorization
+@using Humans.Tickets.Contracts
+@using Humans.Tickets.Services.Checkout
+@model Humans.Tickets.Controllers.CancelViewModel
+@{
+    var p = Model.Progress;
+    var cancelled = p.CancelledAt is not null;
+    ViewData["Title"] = cancelled ? "Event cancelled" : "Cancel the event";
+    ViewData[AdminNavComposition.ParentKey] = "TicketsSalesAdmin/Index";
+    var culture = System.Globalization.CultureInfo.CurrentCulture;
+    var accounted = p.DisputedMinor + p.RefundedMinor + p.InFlightMinor + p.StillRefundableMinor;
+    var difference = p.TicketMoneyMinor - accounted;
+    StatTileViewModel[] tiles = cancelled
+        ?
+        [
+            new("Orders still to do", p.ToDo.ToString(culture), Subline: $"of {p.PaidOrders.ToString(culture)} paid orders",
+                Severity: p.ToDo > 0 ? TileSeverity.Warning : TileSeverity.Normal),
+            new("Tickets still working", p.LiveTickets.ToString(culture),
+                Severity: p.LiveTickets > 0 ? TileSeverity.Warning : TileSeverity.Normal),
+            new("Still to refund", (p.StillRefundableMinor / 100m).ToEuro(),
+                Severity: p.StillRefundableMinor > 0 ? TileSeverity.Warning : TileSeverity.Normal),
+        ]
+        :
+        [
+            new("Paid orders", p.PaidOrders.ToString(culture)),
+            new("Tickets to void", p.LiveTickets.ToString(culture)),
+            new("To refund", (p.StillRefundableMinor / 100m).ToEuro(), Subline: $"{(p.DonationsMinor / 100m).ToEuro()} of donations stay"),
+        ];
+}
+
+@section Crumbs {
+    <a asp-controller="TicketsSalesAdmin" asp-action="Orders" asp-route-id="@Model.SalesEventId">Orders</a>
+    <span>@ViewData["Title"]</span>
+}
+
+<page-header title="@(ViewData["Title"])" subtitle="@Model.EventName" badge="@(cancelled ? "Cancelled" : null)" badge-class="bg-danger">
+    <a class="btn btn-outline-secondary btn-sm" asp-action="Refunds" asp-route-id="@Model.SalesEventId">Refunds</a>
+    <a class="btn btn-outline-secondary btn-sm" asp-controller="TicketsSalesAdmin" asp-action="Recon" asp-route-backend="@Model.BackendKey">Reconciliation</a>
+</page-header>
+
+<div class="stats" style="--stats-cols: 3">
+    @foreach (var tile in tiles)
+    {
+        <partial name="_StatTile" model="tile" />
+    }
+</div>
+
+@if (cancelled)
+{
+    <p class="mb-4">
+        Cancelled @p.CancelledAt!.Value.ToDateTime()
+        @if (p.CancelledByUserId is { } by)
+        {
+            <span>by <vc:human user-id="@by" link="Admin" /></span>
+        }
+        : @p.Reason
+        <span class="small text-muted d-block">
+            Every five minutes the reconcile job voids the next orders' tickets, refunds what their tickets cost back to how they paid, and
+            emails each buyer. A refund the provider turns down is not tried again: it shows as failed below and on the refund list, to do by hand.
+        </span>
+    </p>
+
+    <div class="row g-4">
+        <div class="col-lg-6">
+            <div class="card mb-4">
+                <div class="card-header">Refunds asked for since the cancellation</div>
+                <ul class="list-group list-group-flush">
+                    @foreach (var row in p.RefundsSince)
+                    {
+                        <li class="list-group-item d-flex justify-content-between">
+                            <a asp-action="Refunds" asp-route-id="@Model.SalesEventId" asp-route-state="@row.State"><status-badge value="@row.State" /></a>
+                            <span>@row.Count.ToString(culture), @((row.AmountMinor / 100m).ToEuro())</span>
+                        </li>
+                    }
+                    @if (p.RefundsSince.Count == 0)
+                    {
+                        <li class="list-group-item text-muted">None yet: the first run starts within five minutes.</li>
+                    }
+                </ul>
+            </div>
+        </div>
+        <div class="col-lg-6">
+            <div class="card mb-4">
+                <div class="card-header">Where the ticket money is</div>
+                <table class="table table-sm mb-0">
+                    <tbody>
+                        <tr><td>Ticket money taken, paid orders</td><td class="text-end">@((p.TicketMoneyMinor / 100m).ToEuro())</td></tr>
+                        <tr><td>Taken back by banks (chargebacks)</td><td class="text-end">@((p.DisputedMinor / 100m).ToEuro())</td></tr>
+                        <tr><td>Refunded</td><td class="text-end">@((p.RefundedMinor / 100m).ToEuro())</td></tr>
+                        <tr><td>Refunds on their way</td><td class="text-end">@((p.InFlightMinor / 100m).ToEuro())</td></tr>
+                        <tr><td>Still to refund</td><td class="text-end">@((p.StillRefundableMinor / 100m).ToEuro())</td></tr>
+                        <tr class="@(difference == 0 ? "" : "table-danger")">
+                            <th>Difference</th>
+                            <th class="text-end">@((difference / 100m).ToEuro())</th>
+                        </tr>
+                    </tbody>
+                </table>
+                <div class="card-body small text-muted">
+                    Humans' own side; a difference means a refund made outside Humans went past the ticket lines. The provider's side is on
+                    the reconciliation page. Donations of @((p.DonationsMinor / 100m).ToEuro()) are not refunded automatically: buyers are told
+                    to reply if they want theirs back, and those are refunded in the provider's dashboard.
+                </div>
+            </div>
+        </div>
+    </div>
+}
+else
+{
+    <div class="card border-danger mb-4">
+        <div class="card-header text-danger">Cancelling cannot be undone</div>
+        <div class="card-body">
+            <ul class="mb-3">
+                <li>Sales close for good, resale included, and the sales setup can no longer change.</li>
+                <li>Every ticket for this event stops working, children and companions too.</li>
+                <li>Every paid order is refunded what its tickets cost, back to how it was paid. Donations stay unless the buyer asks.</li>
+                <li>Each buyer gets an email saying the event is cancelled and what comes back to them.</li>
+                <li>The work runs in the background, a batch every five minutes; this page shows how far it got and where the money is.</li>
+            </ul>
+            <form method="post" asp-action="Cancel" asp-route-id="@Model.SalesEventId" authorize-policy="@PolicyNames.AdminOnly"
+                  data-confirm="Cancel @Model.EventName, void every ticket and refund every buyer? This cannot be undone.">
+                @Html.AntiForgeryToken()
+                <div class="mb-2"><label class="form-label" for="cancel-reason">Reason (goes to the audit log and every order's timeline)</label><input class="form-control" id="cancel-reason" name="reason" maxlength="500" required /></div>
+                <div class="mb-3"><label class="form-label" for="cancel-confirm">Type <strong>@Model.EventName</strong> to confirm</label><input class="form-control" id="cancel-confirm" name="confirmName" autocomplete="off" required /></div>
+                <button type="submit" class="btn btn-danger">Cancel the event and refund everyone</button>
+            </form>
+            <p class="small text-muted mb-0 mt-2">Only an Admin can cancel an event.</p>
+        </div>
+    </div>
+}

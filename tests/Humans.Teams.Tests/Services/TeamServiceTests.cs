@@ -1,3 +1,6 @@
+using Humans.Teams;
+using Microsoft.Extensions.Localization;
+using Humans.Roles.Contracts;
 using System.Globalization;
 using System.Resources;
 using Humans.Base.Interfaces;
@@ -99,6 +102,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
     private readonly IGoogleSyncWrite _googleSyncService = Substitute.For<IGoogleSyncWrite>();
     private readonly IGoogleService _googleIdentities = Substitute.For<IGoogleService>();
     private readonly ISystemTeamSync _systemTeamSync = Substitute.For<ISystemTeamSync>();
+    private readonly IRoleWrite _roleWrite = Substitute.For<IRoleWrite>();
 
     public TeamServiceTests()
     {
@@ -107,7 +111,6 @@ public sealed class TeamServiceTests : TeamsTestHarness
             Substitute.For<IUserService>(),
             AuditLog,
             Notifier,
-            Substitute.For<ISystemTeamSync>(),
             new CachingRoleAssignmentService(
                 Substitute.For<IServiceScopeFactory>(), Clock,
                 NullLogger<CachingRoleAssignmentService>.Instance),
@@ -136,6 +139,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
             .With(_emailService)
             .With(TestTeamsEmails.Create())
             .With(_systemTeamSync)
+            .With(_roleWrite)
             .With(_googleSyncService)
             .With<IGoogleSyncOutboxService>(googleOutboxService)
             .With(_googleIdentities)
@@ -1280,7 +1284,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
             .AddKeyedScoped<ITeamManagementService>(CachingTeamService.InnerServiceKey, (_, _) => _service)
             .BuildServiceProvider();
         var cached = new CachingTeamService(provider.GetRequiredService<IServiceScopeFactory>(),
-            NullLogger<CachingTeamService>.Instance);
+            NullLogger<CachingTeamService>.Instance, Substitute.For<IStringLocalizer<TeamsResource>>());
         await cached.GetTeamsAsync(TestContext.Current.CancellationToken);
         _teamCache.When(t => t.InvalidateActiveTeamsCache()).Do(_ => cached.InvalidateActiveTeamsCache());
         TeamInfo? observedTeam = null;
@@ -2542,44 +2546,6 @@ public sealed class TeamServiceTests : TeamsTestHarness
     }
 
     [HumansFact]
-    public async Task PermanentlyDeleteTeamAsync_TeamNotFound_Throws()
-    {
-        var act = () => _service.PermanentlyDeleteTeamAsync(Guid.NewGuid(), TestContext.Current.CancellationToken);
-
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*not found*");
-    }
-
-    [HumansFact]
-    public async Task PermanentlyDeleteTeamAsync_SystemTeam_Throws()
-    {
-        var team = SeedTeam("Volunteers", type: SystemTeamType.Volunteers);
-        await SaveAllAsync(TestContext.Current.CancellationToken);
-
-        var act = () => _service.PermanentlyDeleteTeamAsync(team.Id, TestContext.Current.CancellationToken);
-
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*system team*");
-    }
-
-    [HumansFact]
-    public async Task PermanentlyDeleteTeamAsync_HasActiveChildren_Throws()
-    {
-        var parent = SeedTeam("Parent");
-        var child = SeedTeam("Child");
-        child.ParentTeamId = parent.Id;
-        await SaveAllAsync(TestContext.Current.CancellationToken);
-
-        var act = () => _service.PermanentlyDeleteTeamAsync(parent.Id, TestContext.Current.CancellationToken);
-
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*sub-teams*");
-    }
-
-    // Happy-path PermanentlyDeleteTeamAsync needs a real transactional store; the in-memory
-    // EF provider used in this harness does not support transactions. Cover it in Integration tests.
-
-    [HumansFact]
     public async Task GetTeamBySlugAsync_ExistingSlug_ReturnsTeamWithActiveMembers()
     {
         var user = SeedUser();
@@ -3053,7 +3019,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
             .AddKeyedScoped<ITeamManagementService>(CachingTeamService.InnerServiceKey, (_, _) => _service)
             .BuildServiceProvider();
         var cache = new CachingTeamService(provider.GetRequiredService<IServiceScopeFactory>(),
-            NullLogger<CachingTeamService>.Instance);
+            NullLogger<CachingTeamService>.Instance, Substitute.For<IStringLocalizer<TeamsResource>>());
         var before = await cache.GetTeamAsync(team.Id, ct);
         before!.Members.Should().ContainSingle().Which.DisplayName.Should().Be("Alice");
         var invalidations = cache.BulkInvalidations;
@@ -3680,6 +3646,30 @@ public sealed class TeamServiceTests : TeamsTestHarness
         var result = await _service.GetExpectedAsync(ct: TestContext.Current.CancellationToken);
 
         result.Should().NotContainKey($"shared@{DomainConstants.GoogleGroupDomain}");
+    }
+
+    [HumansFact]
+    public async Task GovernanceBodyTeam_IsNotClaimed_AndRetiringItEndsItsMembershipsOnce()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var member = SeedUser(displayName: "Asociada");
+        var board = await TeamsDb.Teams.FindAsync([SystemTeamIds.Board], ct)
+            ?? SeedTeam("Board", SystemTeamType.Board, SystemTeamIds.Board);
+        board.GoogleGroupPrefix = "board";
+        SeedTeamMember(board.Id, member.Id);
+        await SaveAllAsync(ct);
+        var actor = Guid.NewGuid();
+
+        (await _service.GetExpectedAsync(ct: ct)).Should().NotContainKey($"board@{DomainConstants.GoogleGroupDomain}");
+        (await _service.RetireGovernanceBodyTeamsAsync(actor, ct)).Should().BeGreaterThan(0);
+
+        await using var stored = await TeamsDbFactory.CreateDbContextAsync(ct);
+        (await stored.Teams.FindAsync([SystemTeamIds.Board], ct))!.IsActive.Should().BeFalse();
+        (await stored.TeamMembers.SingleAsync(m => m.TeamId == SystemTeamIds.Board, ct)).LeftAt.Should().NotBeNull();
+        await AuditLog.Received(1).LogAsync(
+            TeamsAuditActions.TeamMemberRemoved, nameof(Team), SystemTeamIds.Board,
+            "Membership ended when Board was deactivated", actor, member.Id, AuditSubjectTypes.User);
+        (await _service.RetireGovernanceBodyTeamsAsync(actor, ct)).Should().Be(0);
     }
 
     private TeamRoleDefinition SeedTeamRoleDefinition(Guid teamId, bool isManagement)

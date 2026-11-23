@@ -237,4 +237,7 @@
   <data name="Teams_Notification_Someone" xml:space="preserve"><value>Someone</value></data>
   <data name="Teams_Meter_JoinRequestsPending" xml:space="preserve"><value>Team join requests pending</value></data>
   <data name="Teams_Meter_AudienceAdmin" xml:space="preserve"><value>Admins</value></data>
+  <data name="Teams_Search_Category" xml:space="preserve"><value>Teams</value></data>
+  <data name="Teams_Roles_SystemTeam" xml:space="preserve"><value>System teams can't hold roles.</value></data>
+  <data name="Teams_Roles_InactiveTeam" xml:space="preserve"><value>This team isn't active.</value></data>
 </root>

@@ -22,8 +22,17 @@ public record GoogleResourceSnapshot(
     DrivePermissionLevel DrivePermissionLevel = DrivePermissionLevel.None,
     bool RestrictInheritedAccess = false);
 
+/// <summary>A Drive folder or file Google found for a pasted link, as <see cref="Item"/>; otherwise
+/// <see cref="ErrorMessage"/> says why (English, for whoever manages the links).</summary>
+public sealed record DriveLinkLookup(DriveLinkItem? Item, string? ErrorMessage = null);
+
+public sealed record DriveLinkItem(string GoogleId, GoogleResourceType ResourceType, string Name, string? Url);
+
 public interface ITeamResourceService : IApplicationService
 {
+    /// <summary>Resolves a pasted Drive folder or file link and checks the service account can reach it. Stores nothing.</summary>
+    Task<DriveLinkLookup> LookUpDriveLinkAsync(string url, CancellationToken ct = default);
+
     /// <summary>Active only.</summary>
     Task<IReadOnlyList<GoogleResourceSnapshot>> GetTeamResourcesAsync(Guid teamId, CancellationToken ct = default);
 
@@ -38,11 +47,4 @@ public interface ITeamResourceService : IApplicationService
         CancellationToken ct = default);
 
     Task<IReadOnlyList<GoogleResourceSnapshot>> GetActiveDriveFoldersAsync(CancellationToken ct = default);
-
-    /// <summary>TeamsAdmin always can; coordinators only when AllowCoordinatorsToManageResources is on.</summary>
-    Task<bool> CanManageTeamResourcesAsync(Guid teamId, Guid userId, CancellationToken ct = default);
-
-    Task<string> GetServiceAccountEmailAsync(CancellationToken ct = default);
-
-    Task<GoogleResourceSnapshot?> GetResourceByIdAsync(Guid resourceId, CancellationToken ct = default);
 }

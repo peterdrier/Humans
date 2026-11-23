@@ -50,7 +50,7 @@ public sealed class RotaCoordinatorMessageServiceTests
         var rowsRepo = Substitute.For<IShiftManagementRepository>();
         rowsRepo.GetRotaRowsAsync(Arg.Any<IReadOnlyCollection<Guid>?>(), Arg.Any<CancellationToken>())
             .Returns(ci => StubbedRotasAsync(ci.Arg<IReadOnlyCollection<Guid>?>()));
-        IShiftRotaRows rows = new ShiftManagementService(rowsRepo, _auditLog, Substitute.For<IAdminAuthorizationService>(),
+        IShiftRotaRows rows = new ShiftManagementService(rowsRepo, _auditLog,
             Substitute.For<IServiceProvider>(), resolver, _clock, NullLogger<ShiftManagementService>.Instance);
         return new(rows, _teamService, _userService, _emailService, _emailMessages, _auditLog, resolver, _clock,
             logger ?? NullLogger<RotaCoordinatorMessageService>.Instance);

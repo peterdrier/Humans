@@ -1023,15 +1023,6 @@
   <data name="Todo_Consents_Action" xml:space="preserve">
     <value>Revisar acuerdos</value>
   </data>
-  <data name="Todo_ConsentCheck_Title" xml:space="preserve">
-    <value>Revisión del coordinador</value>
-  </data>
-  <data name="Todo_ConsentCheck_Done" xml:space="preserve">
-    <value>Un coordinador ha revisado y aprobado tus documentos.</value>
-  </data>
-  <data name="Todo_ConsentCheck_Pending" xml:space="preserve">
-    <value>Un coordinador revisará tus documentos una vez que el perfil y los acuerdos estén completos.</value>
-  </data>
   <data name="Todo_ShiftInfo_Title" xml:space="preserve">
     <value>Configura tus preferencias de turno</value>
   </data>
@@ -1258,7 +1249,7 @@
     <value>N/D</value>
   </data>
   <data name="EmailGrid_LinkFailed" xml:space="preserve">
-    <value>No hemos podido vincular esta cuenta de Google. Inténtalo de nuevo.</value>
+    <value>No hemos podido vincular esta cuenta de Google. Si la cuenta, o su dirección, ya pertenece a otra cuenta tuya, añade esa dirección en "Añadir correo" y sigue el enlace que te enviamos para unir las dos.</value>
   </data>
   <data name="Profile_BuildStrip_Title" xml:space="preserve">
     <value>Disponibilidad y seguimiento de montaje</value>
@@ -1468,6 +1459,9 @@
   <data name="Settings_TabGate" xml:space="preserve">
     <value>Puerta</value>
   </data>
+  <data name="Settings_TabTickets" xml:space="preserve">
+    <value>Entradas</value>
+  </data>
   <data name="Settings_TabStore" xml:space="preserve">
     <value>Tienda</value>
   </data>
@@ -1509,4 +1503,5 @@
   <data name="Document_LegalLabel" xml:space="preserve"><value>Legal</value></data>
   <data name="Todo_Medical_Title" xml:space="preserve"><value>¿Algo de tu salud que deban saber los coordinadores?</value></data>
   <data name="Todo_Medical_Pending" xml:space="preserve"><value>Opcional. Solo lo veis tú y los No-Info Admins.</value></data>
+  <data name="Nav_Roles" xml:space="preserve"><value>Roles</value></data>
 </root>

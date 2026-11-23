@@ -77,9 +77,9 @@ Written fresh, not as today's layout with fixes.
 - **A vote is a survey with a flag, not a second aggregate.** Eligibility, embargo, lock and
   no-reopen are branches inside the existing flows, keyed off that flag; there is no parallel
   ballot table or vote controller.
-- **The public surface is `ISurveyAnalysisRead` for the machine API, `ISurveyReminderSender` for
-  the job, and the two GDPR contributor interfaces, and nothing else.** Everything else is
-  internal to the section.
+- **External reads use `ISurveyAnalysisRead`; reminders use internal `ISurveyInvitations`.**
+  GDPR export/erasure and merge still use their shared contributor interfaces. Authoring,
+  invitation delivery and answering remain internal to the section.
 - **Contracts carry data, not behaviour.** The enums and read models are public because they
   cross the boundary; the editing shape does not cross it and stays internal.
 

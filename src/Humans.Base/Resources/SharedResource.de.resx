@@ -1023,15 +1023,6 @@
   <data name="Todo_Consents_Action" xml:space="preserve">
     <value>Vereinbarungen prüfen</value>
   </data>
-  <data name="Todo_ConsentCheck_Title" xml:space="preserve">
-    <value>Koordinatorenprüfung</value>
-  </data>
-  <data name="Todo_ConsentCheck_Done" xml:space="preserve">
-    <value>Ein Koordinator hat Ihre Dokumente geprüft und freigegeben.</value>
-  </data>
-  <data name="Todo_ConsentCheck_Pending" xml:space="preserve">
-    <value>Ein Koordinator wird Ihre Dokumente prüfen, sobald Profil und Vereinbarungen vollständig sind.</value>
-  </data>
   <data name="Todo_ShiftInfo_Title" xml:space="preserve">
     <value>Schichtpräferenzen festlegen</value>
   </data>
@@ -1258,7 +1249,7 @@
     <value>k. A.</value>
   </data>
   <data name="EmailGrid_LinkFailed" xml:space="preserve">
-    <value>Dieses Google-Konto konnte nicht verknüpft werden. Bitte versuche es erneut.</value>
+    <value>Dieses Google-Konto konnte nicht verknüpft werden. Wenn es, oder seine Adresse, schon zu einem anderen Konto von dir gehört, füge die Adresse stattdessen unter "E-Mail hinzufügen" hinzu und folge dem Link, den wir dir schicken, um beide zusammenzuführen.</value>
   </data>
   <data name="Profile_BuildStrip_Title" xml:space="preserve">
     <value>Verfügbarkeit und Nachverfolgung des Aufbaus</value>
@@ -1468,6 +1459,9 @@
   <data name="Settings_TabGate" xml:space="preserve">
     <value>Einlass</value>
   </data>
+  <data name="Settings_TabTickets" xml:space="preserve">
+    <value>Tickets</value>
+  </data>
   <data name="Settings_TabStore" xml:space="preserve">
     <value>Shop</value>
   </data>
@@ -1509,4 +1503,5 @@
   <data name="Document_LegalLabel" xml:space="preserve"><value>Rechtsverbindlich</value></data>
   <data name="Todo_Medical_Title" xml:space="preserve"><value>Sollten Koordinator*innen etwas über deine Gesundheit wissen?</value></data>
   <data name="Todo_Medical_Pending" xml:space="preserve"><value>Optional. Nur du und die No-Info-Admins können es sehen.</value></data>
+  <data name="Nav_Roles" xml:space="preserve"><value>Rollen</value></data>
 </root>

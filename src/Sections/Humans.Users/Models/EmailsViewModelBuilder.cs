@@ -1,6 +1,5 @@
 using Humans.Base.Authorization;
 using Humans.Google.Contracts;
-using Humans.Tickets.Contracts;
 using Humans.Users.Contracts;
 using Humans.Users.Services;
 using Microsoft.AspNetCore.Identity;
@@ -11,7 +10,7 @@ internal sealed class EmailsViewModelBuilder(
     IUserManagement userService,
     UserManager<User> userManager,
     IUserEmailService userEmailService,
-    ITicketService ticketQueryService,
+    IEnumerable<IUserEmailLock> emailLocks,
     GoogleWorkspaceOptions googleWorkspaceOptions)
 {
     public async Task<EmailsViewModel> BuildAsync(
@@ -28,11 +27,13 @@ internal sealed class EmailsViewModelBuilder(
 
         var linkedAccounts = await BuildLinkedAccountsAsync(user, emails, isAdminContext, ct);
 
-        // Addresses linked to the event ticket: the grid hides Delete, and DeleteEmailAsync re-validates.
-        var ticketEmails = await GetTicketLinkedEmailsAsync(user.Id, ct);
+        // Locked addresses: the grid hides Delete, and DeleteEmailAsync re-validates.
+        var lockedEmails = new List<string>();
+        foreach (var emailLock in emailLocks)
+            lockedEmails.AddRange(await emailLock.GetLockedAddressesAsync(user.Id, ct));
 
         bool RowIsTicketLinked(string address) =>
-            ticketEmails.Any(ticketEmail => Base.Helpers.EmailNormalization.EmailsMatch(address, ticketEmail));
+            lockedEmails.Any(locked => Base.Helpers.EmailNormalization.EmailsMatch(address, locked));
 
         bool RowHasOrphanProviderTag(string? provider, string? providerKey) =>
             isAdminContext
@@ -57,7 +58,6 @@ internal sealed class EmailsViewModelBuilder(
                 IsPrimary = e.IsPrimary,
                 Visibility = e.Visibility,
                 IsPendingVerification = e.IsPendingVerification,
-                IsMergePending = e.IsMergePending,
                 Provider = e.Provider,
                 HasOrphanProviderTag = RowHasOrphanProviderTag(e.Provider, e.ProviderKey),
                 IsTicketLinked = RowIsTicketLinked(e.Email),
@@ -166,18 +166,5 @@ internal sealed class EmailsViewModelBuilder(
                 CanUnlink = canUnlink,
             };
         }).ToList();
-    }
-
-    private async Task<List<string>> GetTicketLinkedEmailsAsync(Guid userId, CancellationToken ct)
-    {
-        var ticketOrders = await ticketQueryService.GetTicketOrdersAsync(ct);
-        return ticketOrders
-            .Where(o => o.MatchedUserId == userId && !string.IsNullOrWhiteSpace(o.BuyerEmail))
-            .Select(o => o.BuyerEmail!)
-            .Concat(ticketOrders
-                .SelectMany(o => o.Attendees)
-                .Where(a => a.MatchedUserId == userId && !string.IsNullOrWhiteSpace(a.AttendeeEmail))
-                .Select(a => a.AttendeeEmail!))
-            .ToList();
     }
 }

@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using Humans.Holded.Contracts;
 using Humans.Holded.Data;
 using Humans.Holded.Domain;
@@ -98,7 +99,9 @@ internal sealed class Service(
     public async Task<HoldedBankMovementMirror> GetBankMovementsAsync(
         string treasuryAccountId, LocalDate from, LocalDate to, CancellationToken ct = default)
     {
-        var state = (await repo.GetSyncStatesAsync(ct)).FirstOrDefault(s => s.Kind == HoldedSyncKind.BankMovements);
+        var state = (await repo.GetSyncStatesAsync(ct))
+            .FirstOrDefault(s => s.Kind == HoldedSyncKind.BankMovements
+                && string.Equals(s.Scope, treasuryAccountId, StringComparison.Ordinal));
         var rows = await repo.GetBankMovementsAsync(treasuryAccountId, from, to, ct);
         return new HoldedBankMovementMirror(state?.LastSyncAt, rows
             .Select(m => new HoldedBankMovementDto
@@ -124,8 +127,11 @@ internal sealed class Service(
         var usage = states.FirstOrDefault(s => s.Kind == HoldedSyncKind.Usage);
         var syncStates = states
             .Where(s => s.Kind != HoldedSyncKind.Usage)
+            // The bank feed's state is per treasury; the unscoped row predates that and describes no feed.
+            .Where(s => s.Kind != HoldedSyncKind.BankMovements || s.Scope.Length > 0)
             .Select(s => new HoldedSyncStateRow(
-                s.Kind.ToString(), s.SyncStatus.ToString(), s.LastSyncAt, s.LastError, s.LastCount))
+                s.Scope.Length == 0 ? s.Kind.ToString() : $"{s.Kind} · {s.Scope}",
+                s.SyncStatus.ToString(), s.LastSyncAt, s.LastError, s.LastCount))
             .ToList();
 
         var (lineCount, entryCount) = await repo.GetMirrorCountsAsync(ct);
@@ -405,7 +411,9 @@ internal sealed class Service(
     // Same reasoning, one gate per sync: each writes its own table.
     private static readonly SemaphoreSlim PurchaseDocSyncGate = new(1, 1);
     private static readonly SemaphoreSlim ContactSyncGate = new(1, 1);
-    private static readonly SemaphoreSlim BankMovementSyncGate = new(1, 1);
+    // The bank feed's gate is per treasury: each owns its own rows and state.
+    private static readonly ConcurrentDictionary<string, SemaphoreSlim> BankMovementSyncGates =
+        new(StringComparer.Ordinal);
 
     // The plan allows ~2,000 Holded calls a month: 50 a night is at most ~1,500, leaving the rest for the ledger sweep,
     // the list call and the pushes. A backlog drains over several nights, newest documents first.
@@ -427,7 +435,7 @@ internal sealed class Service(
 
         try
         {
-            var accountsState = await repo.GetOrCreateSyncStateAsync(HoldedSyncKind.Accounts, CancellationToken.None);
+            var accountsState = await repo.GetOrCreateSyncStateAsync(HoldedSyncKind.Accounts, ct: CancellationToken.None);
             accountsState.SyncStatus = HoldedSyncStatus.Idle;
             accountsState.LastSyncAt = now;
             accountsState.StatusChangedAt = now;
@@ -457,7 +465,7 @@ internal sealed class Service(
 
             var sweepAll = full || !await repo.HasAnyLedgerLinesAsync(ct);
             var state = await repo.GetOrCreateSyncStateAsync(
-                sweepAll ? HoldedSyncKind.FullSync : HoldedSyncKind.Ledger, ct);
+                sweepAll ? HoldedSyncKind.FullSync : HoldedSyncKind.Ledger, ct: ct);
             state.SyncStatus = HoldedSyncStatus.Running;
             state.StatusChangedAt = now;
             try
@@ -541,7 +549,7 @@ internal sealed class Service(
         try
         {
             var now = clock.GetCurrentInstant();
-            var state = await repo.GetOrCreateSyncStateAsync(HoldedSyncKind.PurchaseDocs, ct);
+            var state = await repo.GetOrCreateSyncStateAsync(HoldedSyncKind.PurchaseDocs, ct: ct);
             state.SyncStatus = HoldedSyncStatus.Running;
             state.StatusChangedAt = now;
             try
@@ -599,7 +607,8 @@ internal sealed class Service(
         string treasuryAccountId, LocalDate from, LocalDate to, IReadOnlySet<string>? skipUnreadableDateIds = null,
         CancellationToken ct = default)
     {
-        if (!await BankMovementSyncGate.WaitAsync(0, ct))
+        var gate = BankMovementSyncGates.GetOrAdd(treasuryAccountId, _ => new SemaphoreSlim(1, 1));
+        if (!await gate.WaitAsync(0, ct))
         {
             logger.LogInformation("Holded bank-feed sync already in progress — skipping this request.");
             return false;
@@ -608,7 +617,7 @@ internal sealed class Service(
         try
         {
             var now = clock.GetCurrentInstant();
-            var state = await repo.GetOrCreateSyncStateAsync(HoldedSyncKind.BankMovements, ct);
+            var state = await repo.GetOrCreateSyncStateAsync(HoldedSyncKind.BankMovements, treasuryAccountId, ct);
             try
             {
                 var movements = (await client.ListBankMovementsAsync(
@@ -650,7 +659,7 @@ internal sealed class Service(
         }
         finally
         {
-            BankMovementSyncGate.Release();
+            gate.Release();
         }
     }
 
@@ -665,7 +674,7 @@ internal sealed class Service(
         try
         {
             var now = clock.GetCurrentInstant();
-            var state = await repo.GetOrCreateSyncStateAsync(HoldedSyncKind.Contacts, ct);
+            var state = await repo.GetOrCreateSyncStateAsync(HoldedSyncKind.Contacts, ct: ct);
             state.SyncStatus = HoldedSyncStatus.Running;
             state.StatusChangedAt = now;
             try
@@ -900,7 +909,7 @@ internal sealed class Service(
     /// answers false; the last good reading and its stamp stay.</summary>
     public async Task<bool> RefreshUsageAsync(CancellationToken ct = default)
     {
-        var state = await repo.GetOrCreateSyncStateAsync(HoldedSyncKind.Usage, ct);
+        var state = await repo.GetOrCreateSyncStateAsync(HoldedSyncKind.Usage, ct: ct);
         try
         {
             var usage = await client.GetUsageAsync(ct);

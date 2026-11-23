@@ -91,6 +91,8 @@ The most common defect here is a change that works on the path you tested and is
 - **The section's invariant doc.** Behavior changes must keep `src/Sections/Humans.<Section>/Docs/<Section>.md` true — update it in the same PR or you've shipped documentation drift.
 - **Migrations.** Schema changes get an EF-generated migration in that section's own context ([`no-hand-edited-migrations`](memory/architecture/no-hand-edited-migrations.md)).
 - **Navigation.** A feature nobody can find is a dead end: the page needs a link that reaches it and a way back out.
+- **The look.** A new or reshaped page follows [`docs/design/DESIGN.md`](docs/design/DESIGN.md) and has been looked at rendered, desktop and phone ([`design-direction-for-views`](memory/code/design-direction-for-views.md)).
+- **Demo data.** New data or a new state the UI shows goes into the section's demo story ([`every-data-section-has-a-demo-story`](memory/architecture/every-data-section-has-a-demo-story.md)).
 - **Tests.** Under the section's own test project (`tests/Humans.<Section>.Tests`), covering the invariant you changed — not a screenshot of the happy path.
 
 ## Designing

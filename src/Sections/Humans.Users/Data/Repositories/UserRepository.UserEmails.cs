@@ -97,18 +97,6 @@ internal sealed partial class UserRepository
         await ctx.SaveChangesAsync(ct);
     }
 
-    public async Task RemoveAllUserEmailsForUsersAndSaveAsync(
-        IReadOnlyCollection<Guid> userIds, CancellationToken ct = default)
-    {
-        if (userIds.Count == 0)
-            return;
-
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        await ctx.UserEmails
-            .Where(e => userIds.Contains(e.UserId))
-            .ExecuteDeleteAsync(ct);
-    }
-
     public async Task ReassignUserEmailsToUserAsync(
         Guid sourceUserId, Guid targetUserId, Instant updatedAt,
         CancellationToken ct = default)
@@ -197,20 +185,6 @@ internal sealed partial class UserRepository
         return [.. exact, .. aliases];
     }
 
-    public async Task<IReadOnlyList<Guid>> GetUserIdsByUserEmailPrefixAndSuffixAsync(
-        string prefix,
-        string suffix,
-        CancellationToken ct = default)
-    {
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        return await ctx.UserEmails
-            .AsNoTracking()
-            .Where(ue => ue.Email.StartsWith(prefix) && ue.Email.EndsWith(suffix))
-            .Select(ue => ue.UserId)
-            .Distinct()
-            .ToListAsync(ct);
-    }
-
     public async Task AddUserEmailAsync(UserEmail email, CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
@@ -246,24 +220,16 @@ internal sealed partial class UserRepository
     }
 
     public async Task ApplyUserEmailReconcilePlanAsync(
-        UserEmail? displacedRowToDelete,
         UserEmail? rowToDelete,
         UserEmail? rowToUpdate,
         UserEmail? rowToInsert,
         CancellationToken ct = default)
     {
-        if (displacedRowToDelete is null && rowToDelete is null
-            && rowToUpdate is null && rowToInsert is null)
+        if (rowToDelete is null && rowToUpdate is null && rowToInsert is null)
             return;
 
         await using var ctx = await _factory.CreateDbContextAsync(ct);
         await using var tx = await ctx.Database.BeginTransactionAsync(ct);
-
-        if (displacedRowToDelete is not null)
-        {
-            ctx.Attach(displacedRowToDelete);
-            ctx.UserEmails.Remove(displacedRowToDelete);
-        }
 
         if (rowToDelete is not null)
         {

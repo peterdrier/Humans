@@ -22,7 +22,7 @@ public sealed class MemberOutboxControllerTests
     private static readonly Guid UserId = Guid.NewGuid();
 
     private readonly IUserService _users = Substitute.For<IUserService>();
-    private readonly IEmailOutboxService _outbox = Substitute.For<IEmailOutboxService>();
+    private readonly IEmailOutboxManagement _outbox = Substitute.For<IEmailOutboxManagement>();
 
     private MemberOutboxController BuildController(Guid? signedInAs, CancellationToken aborted = default)
     {

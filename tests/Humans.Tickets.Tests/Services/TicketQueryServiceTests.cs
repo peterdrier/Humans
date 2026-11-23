@@ -16,6 +16,7 @@ using Humans.Budget.Contracts;
 using Humans.Campaigns.Contracts;
 using Humans.Users.Contracts;
 using Humans.Tickets.Data;
+using Humans.Tickets.Domain.Checkout;
 using Humans.Settings.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Tickets.Services;
@@ -25,6 +26,8 @@ using NodaTime;
 using NSubstitute;
 using Humans.Tickets.Domain;
 using Humans.Tickets.Contracts;
+
+using Humans.Tickets.Services.Checkout;
 
 namespace Humans.Tickets.Tests.Services;
 
@@ -39,14 +42,15 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
     private readonly ITeamService _teamService = Substitute.For<ITeamService>();
     private readonly ISettingsService _shiftManagementService = Substitute.For<ISettingsService>();
     private readonly IAuditLogService _auditLog = Substitute.For<IAuditLogService>();
-    private readonly IEventParticipationManagement _participations = Substitute.For<IEventParticipationManagement>();
+    private readonly IEventParticipationRepository _participations = Substitute.For<IEventParticipationRepository>();
+    private readonly ITicketCheckoutService _checkout = Substitute.For<ITicketCheckoutService>();
     private readonly TicketQueryService _service;
 
     public TicketQueryServiceTests()
     {
         _repo = new TicketRepository(TicketsDbFactory, Clock);
 
-        _transferRepo.GetByStatusAsync(Arg.Any<TicketTransferStatus>(), Arg.Any<CancellationToken>())
+        _transferRepo.GetApprovedAsync(Arg.Any<CancellationToken>())
             .Returns([]);
 
         _service = new TicketQueryService(
@@ -61,13 +65,14 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
             _shiftManagementService,
             _auditLog,
             SystemClock.Instance,
-            _participations);
+            _participations,
+            _checkout);
 
         // Defaults for the Volunteers team lookup — tests that care override them.
         _teamService.GetTeamAsync(SystemTeamIds.Volunteers, Arg.Any<CancellationToken>())
             .Returns(VolunteersTeam([]));
 
-        _participations.GetAllParticipationsAsync(Arg.Any<CancellationToken>())
+        _participations.GetAllAsync(Arg.Any<CancellationToken>())
             .Returns([]);
 
         StubUserInfos(_userService);
@@ -127,7 +132,7 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
             .Returns(call => ReadAsync(TicketDashboardRead.Vendor, call.Arg<CancellationToken>(), new VendorEventSummaryDto("event", "Event", 100, 1, 99)));
         var service = new TicketQueryService(FixedOrgTimeZone.Madrid, repository, _transferRepo, _budgetService, _campaignService,
             _userService, _userEmailService, _teamService, Substitute.For<IGovernanceService>(),
-            _shiftManagementService, _auditLog, Clock, _participations);
+            _shiftManagementService, _auditLog, Clock, _participations, _checkout);
         var services = new ServiceCollection();
         services.AddKeyedScoped<ITicketManagement>(CachingTicketQueryService.InnerServiceKey, (_, _) => service);
         await using var provider = services.BuildServiceProvider();
@@ -203,7 +208,6 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
         var repository = Substitute.For<ITicketRepository>();
         repository.GetOrdersMatchedToUserAsync(userId, Arg.Any<CancellationToken>()).Returns([]);
         repository.GetAttendeesVisibleToUserAsync(userId, Arg.Any<CancellationToken>()).Returns([]);
-        _transferRepo.GetBySenderAsync(userId, Arg.Any<CancellationToken>()).Returns([]);
         repository.CountValidAttendeesMatchedToUserAsync(userId, Arg.Any<CancellationToken>())
             .Returns(boundary is "matched" or "hold" ? 1 : 0);
         repository.GetValidAttendeeEmailsAsync(Arg.Any<CancellationToken>()).Returns(["fallback@example.org"]);
@@ -249,7 +253,7 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
             default: throw new ArgumentOutOfRangeException(nameof(boundary));
         }
         var service = new TicketQueryService(FixedOrgTimeZone.Madrid, repository, _transferRepo, _budgetService, _campaignService,
-            _userService, _userEmailService, _teamService, Substitute.For<IGovernanceService>(), _shiftManagementService, _auditLog, Clock, _participations);
+            _userService, _userEmailService, _teamService, Substitute.For<IGovernanceService>(), _shiftManagementService, _auditLog, Clock, _participations, _checkout);
 
         if (cancel)
         {
@@ -262,6 +266,35 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
             result.TicketCount.Should().Be(boundary is "matched" or "hold" ? 1 : 0);
             result.HasCurrentEventTicket.Should().Be(string.Equals(boundary, "hold", StringComparison.Ordinal));
         }
+    }
+
+    [HumansTheory]
+    [InlineData("Valid", 2026, true)]
+    [InlineData("Offered", 2026, true)]
+    [InlineData("Void", 2026, false)]
+    [InlineData("Valid", 2025, false)]
+    public async Task Holdings_HumansIssuedTicket_HoldsDeletionUntil30DaysAfterStrike(string state, int year, bool held)
+    {
+        var userId = Guid.NewGuid();
+        var salesEvent = new TicketSalesEvent { Id = Guid.NewGuid(), EventSettingsId = Guid.NewGuid() };
+        _checkout.GetTicketsForHolderAsync(userId, Arg.Any<CancellationToken>()).Returns(
+        [
+            new TicketCheckoutTicket { Id = Guid.NewGuid(), SalesEventId = salesEvent.Id, HolderUserId = userId, State = Enum.Parse<TicketCheckoutTicketState>(state) },
+        ]);
+        _checkout.GetSalesEventAsync(salesEvent.Id, Arg.Any<CancellationToken>()).Returns(salesEvent);
+        _shiftManagementService.GetEventSettingsByIdAsync(salesEvent.EventSettingsId, Arg.Any<CancellationToken>())
+            .Returns(new EventSettingsInfo(salesEvent.EventSettingsId, "Nowhere", year, "Europe/Madrid",
+                new LocalDate(year, 7, 1), -10, 5, 9, new Dictionary<int, int>(), null, null));
+        var service = new TicketQueryService(FixedOrgTimeZone.Madrid, _repo, _transferRepo, _budgetService, _campaignService,
+            _userService, _userEmailService, _teamService, Substitute.For<IGovernanceService>(), _shiftManagementService,
+            _auditLog, Clock, _participations, _checkout);
+
+        var holdings = await service.GetUserTicketHoldingsAsync(userId, TestContext.Current.CancellationToken);
+
+        // Strike's last day is 10 July; the hold runs to the start of 10 August, Madrid time.
+        holdings.PostEventHoldDate.Should().Be(held
+            ? new LocalDate(year, 8, 10).AtStartOfDayInZone(DateTimeZoneProviders.Tzdb["Europe/Madrid"]).ToInstant()
+            : null);
     }
 
     [HumansTheory]
@@ -1317,7 +1350,7 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
     }
 
     [HumansFact]
-    public async Task GetDonationExportDataAsync_PaidDonorsOldestFirst_AndAudited()
+    public async Task GetDonationExportDataAsync_PaidDonorsCarryPurchaseInstants_AndAudited()
     {
         var ct = TestContext.Current.CancellationToken;
         TicketsDb.TicketOrders.Add(MakeOrder("ord_plain", TicketPaymentStatus.Paid,
@@ -1336,17 +1369,55 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
 
         var rows = await _service.GetDonationExportDataAsync(actor);
 
-        rows.Select(r => (r.VendorOrderId, r.Type, r.Amount)).Should().Equal(
+        rows.OrderBy(r => r.PurchasedAt).Select(r => (r.VendorOrderId, r.Type, r.Amount)).Should().Equal(
             ("ord_gift", DonationExportRow.SeparateDonation, 50m),
             ("ord_both", DonationExportRow.VipTicket, 85m),
             ("ord_both", DonationExportRow.SeparateDonation, 50m),
             ("ord_vip", DonationExportRow.VipTicket, 85m));
-        rows[1].Date.Should().Be("2026-04-01");
-        rows[0].BuyerEmail.Should().Be("buyer@example.com");
+        rows.Where(r => string.Equals(r.VendorOrderId, "ord_both", StringComparison.Ordinal))
+            .Should().AllSatisfy(r =>
+            {
+                r.Date.Should().Be("2026-04-01");
+                r.PurchasedAt.Should().Be(Instant.FromUtc(2026, 3, 31, 23, 30));
+            });
+        rows.Should().AllSatisfy(r => r.BuyerEmail.Should().Be("buyer@example.com"));
         await _auditLog.Received(1).LogAsync(
             TicketsAuditActions.TicketDonationsExported, "Tickets", Guid.Empty,
             Arg.Is<string>(d => d.Contains("4 donation rows", StringComparison.Ordinal) && d.Contains("270.00", StringComparison.Ordinal)),
             actor);
+    }
+
+    [HumansFact]
+    public async Task GetDonationExportDataAsync_IncludesDonationLinesOfPaidCheckoutOrders()
+    {
+        var salesEvent = new TicketSalesEvent { Id = Guid.NewGuid() };
+        TicketCheckoutOrder Order(TicketCheckoutOrderState state, Instant paidAt, params (long Minor, string? Purpose)[] gifts) => new()
+        {
+            Id = Guid.NewGuid(),
+            SalesEventId = salesEvent.Id,
+            BuyerName = "Ana Buyer",
+            BuyerEmail = "ana@example.com",
+            State = state,
+            PaidAt = paidAt,
+            Lines =
+            [
+                new TicketCheckoutOrderLine { Kind = CheckoutLineKind.Ticket, AmountMinor = 22500, AttendeeName = "Ana Buyer" },
+                .. gifts.Select(g => new TicketCheckoutOrderLine
+                    { Kind = CheckoutLineKind.Donation, AmountMinor = g.Minor, DonationPurpose = g.Purpose }),
+            ],
+        };
+        var paid = Order(TicketCheckoutOrderState.Paid, Instant.FromUtc(2027, 1, 2, 9, 0),
+            (17500, null), (2000, "Low income pool"));
+        var unpaid = Order(TicketCheckoutOrderState.Pending, Instant.FromUtc(2027, 1, 2, 9, 0), (5000, null));
+        _checkout.GetSalesEventsAsync(Arg.Any<CancellationToken>()).Returns([salesEvent]);
+        _checkout.GetOrdersForSalesEventAsync(salesEvent.Id, Arg.Any<CancellationToken>()).Returns([paid, unpaid]);
+
+        var rows = await _service.GetDonationExportDataAsync(Guid.NewGuid());
+
+        rows.Select(r => (r.Date, r.VendorOrderId, r.Type, r.Amount)).Should().Equal(
+            ("2027-01-02", paid.Reference, "Donation: General", 175m),
+            ("2027-01-02", paid.Reference, "Donation: Low income pool", 20m));
+        rows[0].BuyerName.Should().Be("Ana Buyer");
     }
 
     [HumansFact]
@@ -1424,7 +1495,7 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
             DecidedAt = decidedAt,
         };
 
-        _transferRepo.GetByStatusAsync(TicketTransferStatus.Approved, Arg.Any<CancellationToken>())
+        _transferRepo.GetApprovedAsync(Arg.Any<CancellationToken>())
             .Returns([transfer]);
 
         var result = await _service.GetTicketOrdersAsync(TestContext.Current.CancellationToken);

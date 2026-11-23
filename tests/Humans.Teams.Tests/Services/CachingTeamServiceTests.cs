@@ -1,3 +1,5 @@
+using Humans.Teams;
+using Microsoft.Extensions.Localization;
 using Humans.Base.Constants;
 using AwesomeAssertions;
 using Humans.Auth.Contracts;
@@ -65,7 +67,7 @@ public sealed class CachingTeamServiceTests : TeamsTestHarness
 
         _service = new CachingTeamService(
             _serviceProvider.GetRequiredService<IServiceScopeFactory>(),
-            NullLogger<CachingTeamService>.Instance);
+            NullLogger<CachingTeamService>.Instance, Substitute.For<IStringLocalizer<TeamsResource>>());
         _pages = new TeamPageService(
             _service,
             Substitute.For<Humans.Google.Contracts.ITeamResourceService>(),
@@ -166,6 +168,28 @@ public sealed class CachingTeamServiceTests : TeamsTestHarness
         var result = await _service.GetEffectiveBudgetCoordinatorTeamIdsAsync(userId, TestContext.Current.CancellationToken);
 
         result.Should().BeEquivalentTo(new[] { deptId });
+    }
+
+    [HumansFact]
+    public async Task GetHoldingsAsync_TodaysCoordinatorsHoldTheirTeam()
+    {
+        var coordinator = Guid.NewGuid();
+        var manager = Guid.NewGuid();
+        var member = Guid.NewGuid();
+        var teamId = Guid.NewGuid();
+        _innerTeamService.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo>
+        {
+            [teamId] = MakeTeam(teamId, "Kitchen", parentTeamId: null, isActive: true,
+                members: [MakeMember(coordinator, TeamMemberRole.Coordinator), MakeMember(member, TeamMemberRole.Member)],
+                managementRoleHolderUserIds: new HashSet<Guid> { manager }),
+        });
+        var ct = TestContext.Current.CancellationToken;
+
+        foreach (var userId in new[] { coordinator, manager })
+            (await _service.GetHoldingsAsync(userId, ct)).Should().ContainSingle()
+                .Which.Should().Match<Humans.Permissions.Contracts.Holding>(h =>
+                    h.Owner == new Humans.Base.Authorization.Owner(TeamOwner.Kind, teamId) && h.IsCoordinator);
+        (await _service.GetHoldingsAsync(member, ct)).Should().BeEmpty();
     }
 
     [HumansFact]

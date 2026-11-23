@@ -89,7 +89,6 @@ Business requirements, user stories, data model, and workflows for each feature 
 | [Test System Reliability](testing/test-system-reliability.md) | Multi-phase rebuild of the test setup so CI catches what local sees, integration tests survive concurrent runs, and "pre-existing failures on main" stops being said |
 | [Accountant Donor List](../src/Sections/Humans.Tickets/Docs/features/accountant-donor-list.md) | Yearly audited export of ticketing donors (VIP amount above the threshold plus standalone donations) so the accountant can declare donations apart from taxable ticket income |
 | [Event Participation Tracking](../src/Sections/Humans.Tickets/Docs/features/event-participation.md) | Yearly event participation status per human, including self-service opt-out and ticket-driven auto-tracking |
-| [Ticket Transfer](../src/Sections/Humans.Tickets/Docs/features/ticket-transfer.md) | Sender-initiated transfer of a ticket to another verified member, processed by the ticket team either via automated void+reissue through the TicketTailor API or manually in the vendor dashboard |
 | [Ticket Vendor Integration](../src/Sections/Humans.Tickets/Docs/features/ticket-vendor-integration.md) | Dedicated Tickets section with TicketTailor sync, sales dashboard, revenue metrics, and attendee tracking |
 | [User Search Overhaul](../src/Sections/Humans.Users/Docs/features/user-search-overhaul.md) | Rework of human-name matching so search hits resolved burner names and legal names with accent folding and token splitting, while excluding board/private profiles |
 
@@ -133,6 +132,8 @@ Terse, authoritative invariant docs for each major section: concepts, data model
 | [Monitor](../src/Sections/Humans.Monitor/Docs/Monitor.md) | Operator-facing monitoring of the Google Workspace estate: detect unrequested permission changes, and show the Google-sync audit trail for one resource or one human |
 | [Notifications](../src/Sections/Humans.Notifications/Docs/Notifications.md) | In-app notification fan-out (stored events plus per-user inbox) and live meter counts (computed) |
 | [Onboarding](../src/Sections/Humans.Onboarding/Docs/Onboarding.md) | Pure orchestrator over Profiles, Consent, Teams, and Governance — owns no tables |
+| [Permissions](../src/Sections/Humans.Permissions/Docs/Permissions.md) | May this person do this on this owner: permissions declared by sections, granted by roles (later tasks) and system roles; stores nothing |
+| [Roles](../src/Sections/Humans.Roles/Docs/Roles.md) | Standing responsibilities on an owner (a team today, camps next): slots, holders, and the permission keys they carry |
 | [Pleo](../src/Sections/Humans.Pleo/Docs/Pleo.md) | Read-only mirror of the Pleo card wallet (entries, chart, cardholders, balance), the category → Holded account mapping, and the `/Pleo` admin pages with the wallet reconciliation |
 | [Rideshare](../src/Sections/Humans.Rideshare/Docs/Rideshare.md) | Members-only map board for organizing rides to and from the burn — offers, requests, and a lightweight interest lifecycle, no booking or payment |
 | [Scanner](../src/Sections/Humans.Scanner/Docs/Scanner.md) | In-browser camera tools for barcode decode (`/Scanner/Barcode`) and read-only ticket lookup (`/Scanner/Tickets`); no owned tables |
@@ -184,7 +185,6 @@ Plain-language pages for the things people ask most.
 |----------|-------------|
 | [Your `@nobodies.team` email](guide/EmailAccount.md) | Your org mailbox: what it is, signing in, and using your team's shared address |
 | [Two-step verification (2FA)](guide/TwoStepVerification.md) | The required extra sign-in step on your `@nobodies.team` account, in plain language |
-| [Transferring your ticket](guide/TicketTransfers.md) | Hand a ticket you hold to someone else through the app |
 | [The in-app AI helper](guide/AiHelper.md) | What the chat helper does, what it can see, and that it's optional |
 | [Signing in & getting unstuck](guide/SigningIn.md) | The two ways into the app and what to do when you can't get in |
 | [Your data & privacy](guide/YourData.md) | Who can see your details, exporting your data, and deleting your account |

@@ -56,8 +56,6 @@
     <ProjectReference Include="..\Humans.CityPlanning.Contracts\Humans.CityPlanning.Contracts.csproj" />
     <ProjectReference Include="..\Humans.Consent\Humans.Consent.csproj" />
     <ProjectReference Include="..\Humans.Teams.Contracts\Humans.Teams.Contracts.csproj" />
-    <ProjectReference Include="..\Humans.Shifts.Contracts\Humans.Shifts.Contracts.csproj" />
-    <ProjectReference Include="..\Humans.Settings\Humans.Settings.csproj" />
     <ProjectReference Include="..\Humans.Users.Contracts\Humans.Users.Contracts.csproj" />
   </ItemGroup>
 
@@ -67,9 +65,13 @@
       the build with NU1010 under Central Package Management. UserManager<User>,
       SignInManager<User> and IWebHostEnvironment all arrive through the framework reference
       Sdk.Razor already adds (step 1). NodaTime: the seeders stamp Instant/Duration/LocalTime
-      on every fixture they create. No EF Core — the section owns no tables.
+      on every fixture they create. EF Core for the demo ledger, its one table; Hangfire for the background demo run.
     -->
     <PackageReference Include="NodaTime" />
+    <PackageReference Include="Hangfire.Core" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL.NodaTime" />
   </ItemGroup>
 
   <ItemGroup>

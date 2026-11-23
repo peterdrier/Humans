@@ -1,5 +1,5 @@
 using AwesomeAssertions;
-using Humans.Expenses.Contracts;
+using Humans.Expenses.Services;
 
 namespace Humans.Expenses.Tests;
 

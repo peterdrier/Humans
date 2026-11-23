@@ -66,7 +66,6 @@
   <data name="Onboarding_LegalNameExplainerPost" xml:space="preserve"><value>en maken deze alleen bekend als de wet of een formele controle dat vereist.</value></data>
   <data name="Onboarding_LegalNameExplainerPre" xml:space="preserve"><value>Wordt intern bewaard, is alleen zichtbaar voor beheerders en wordt alleen gebruikt waar de Spaanse wet dat vereist — bijvoorbeeld voor onze auditregistratie dat je op een specifieke datum en tijd akkoord bent gegaan met de vrijwilligersovereenkomst. We exporteren deze gegevens nadrukkelijk</value></data>
   <data name="Onboarding_LegalNameLabel" xml:space="preserve"><value>Officiële naam</value></data>
-  <data name="Onboarding_NameRequiredBeforeShifts" xml:space="preserve"><value>Voeg eerst je naam toe — die hebben we nodig voordat je je kunt aanmelden voor diensten.</value></data>
   <data name="Onboarding_NamesSubtitle" xml:space="preserve"><value>Twee korte stappen voordat je een dienst kiest.</value></data>
   <data name="Onboarding_NamesTitle" xml:space="preserve"><value>Welkom — laten we beginnen met je naam</value></data>
   <data name="Onboarding_PriorityCritical" xml:space="preserve"><value>Kritiek</value></data>

@@ -121,13 +121,7 @@
                                     }
                                 </td>
                                 <td>
-                                    @if (row.IsMergePending)
-                                    {
-                                        <span class="badge bg-warning text-dark">
-                                            <i class="fa-solid fa-code-merge me-1"></i>@Localizer["Users_EmailGrid_StatusMergePending"]
-                                        </span>
-                                    }
-                                    else if (row.IsVerified)
+                                    @if (row.IsVerified)
                                     {
                                         <span class="badge bg-success">
                                             <i class="fa-solid fa-check me-1"></i>@Localizer["Users_EmailGrid_StatusVerified"]

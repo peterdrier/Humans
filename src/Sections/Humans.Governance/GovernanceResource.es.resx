@@ -815,4 +815,27 @@
   <data name="Governance_Meter_AudienceBoard" xml:space="preserve"><value>la Junta</value></data>
   <data name="Governance_Status_Board" xml:space="preserve"><value>Junta</value></data>
   <data name="Governance_MemberSince" xml:space="preserve"><value>Miembro desde</value></data>
+  <data name="Governance_Position" xml:space="preserve"><value>Cargo</value></data>
+  <data name="Governance_Position_President" xml:space="preserve"><value>Presidencia</value></data>
+  <data name="Governance_Position_VicePresident" xml:space="preserve"><value>Vicepresidencia</value></data>
+  <data name="Governance_Position_Secretary" xml:space="preserve"><value>Secretaría</value></data>
+  <data name="Governance_Position_Treasurer" xml:space="preserve"><value>Tesorería</value></data>
+  <data name="Governance_Position_None" xml:space="preserve"><value>Sin cargo</value></data>
+  <data name="Governance_Save" xml:space="preserve"><value>Guardar</value></data>
+  <data name="Governance_BoardPositionSaved" xml:space="preserve"><value>Cargo de la Junta guardado.</value></data>
+  <data name="Governance_BoardPositionNotOnBoard" xml:space="preserve"><value>Solo un miembro actual de la Junta puede ocupar un cargo.</value></data>
+  <data name="Governance_Manage_Title" xml:space="preserve"><value>Gestionar grupo y archivos</value></data>
+  <data name="Governance_Manage_GroupName" xml:space="preserve"><value>Grupo de Google</value></data>
+  <data name="Governance_Manage_NoFiles" xml:space="preserve"><value>Aún no hay carpetas ni archivos de Drive.</value></data>
+  <data name="Governance_Manage_Remove" xml:space="preserve"><value>Quitar</value></data>
+  <data name="Governance_Manage_DriveLink" xml:space="preserve"><value>Enlace de Drive</value></data>
+  <data name="Governance_Manage_Access" xml:space="preserve"><value>Acceso</value></data>
+  <data name="Governance_Manage_AddFile" xml:space="preserve"><value>Añadir</value></data>
+  <data name="Governance_Manage_GroupSaved" xml:space="preserve"><value>Grupo de Google guardado.</value></data>
+  <data name="Governance_Manage_FileAdded" xml:space="preserve"><value>Carpeta o archivo de Drive añadido.</value></data>
+  <data name="Governance_Manage_FileRemoved" xml:space="preserve"><value>Carpeta o archivo de Drive quitado. Su uso compartido sigue igual.</value></data>
+  <data name="Governance_Manage_InvalidGroupName" xml:space="preserve"><value>Usa solo minúsculas, números y guiones en el nombre del grupo.</value></data>
+  <data name="Governance_Manage_GroupNameTaken" xml:space="preserve"><value>Otro órgano ya usa este grupo.</value></data>
+  <data name="Governance_Manage_FileAlreadyLinked" xml:space="preserve"><value>Esta carpeta o archivo de Drive ya está en la lista.</value></data>
+  <data name="Governance_Manage_FileNotFound" xml:space="preserve"><value>Esa carpeta o archivo de Drive ya no está en la lista.</value></data>
 </root>

@@ -199,7 +199,7 @@ public sealed class IssuesServiceTests
             ? (Exception)new IOException("Retention unavailable")
             : new OperationCanceledException(kind == RetentionFailureKind.Shutdown
                 ? shutdown.Token : new CancellationToken(true));
-        var retention = Substitute.For<IIssuesRetention>();
+        var retention = Substitute.For<IIssuesService>();
         retention.PurgeExpiredAsync(shutdown.Token).Returns(async Task<int> (_) =>
         {
             if (kind == RetentionFailureKind.Shutdown) await shutdown.CancelAsync();
@@ -231,7 +231,7 @@ public sealed class IssuesServiceTests
     public async Task RetentionJob_RecordsSuccessAfterThePurgeCompletes()
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
-        var retention = Substitute.For<IIssuesRetention>();
+        var retention = Substitute.For<IIssuesService>();
         retention.PurgeExpiredAsync(ct).Returns(2);
         var metrics = Substitute.For<IHumansMetrics>();
         var logger = new CapturingLogger<CleanupIssuesJob>();

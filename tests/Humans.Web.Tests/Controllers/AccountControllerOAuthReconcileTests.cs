@@ -105,7 +105,7 @@ public class AccountControllerOAuthReconcileTests
                 Arg.Any<string>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
             .Returns(new OAuthReconcileResult(
                 ReconcileOutcome.NoChange, null, Guid.NewGuid(),
-                null, null, null, false));
+                null, null, null));
     }
 
     private static ExternalLoginInfo MakeInfo(string email, bool emailVerified, string name = "Test User")
@@ -513,7 +513,7 @@ public class AccountControllerOAuthReconcileTests
             claimEmailVerified: true, Arg.Any<CancellationToken>())
             .Returns(new OAuthReconcileResult(
                 ReconcileOutcome.NewRowCreated, null, Guid.NewGuid(),
-                null, null, null, false));
+                null, null, null));
 
         await _controller.ExternalLoginCallback(returnUrl: null, remoteError: null);
 
@@ -581,10 +581,9 @@ public class AccountControllerOAuthReconcileTests
                 ReconcileOutcome.CrossUserBlocked,
                 PreviousEmail: null,
                 AffectedRowId: null,
-                DisplacedUserId: Guid.NewGuid(),
-                DisplacedRowId: Guid.NewGuid(),
-                DisplacedEmail: newEmail,
-                DisplacedUserLeftWithoutVerifiedEmail: false));
+                BlockingUserId: Guid.NewGuid(),
+                BlockingRowId: Guid.NewGuid(),
+                BlockingEmail: newEmail));
 
         await _controller.ExternalLoginCallback(returnUrl: null, remoteError: null);
 

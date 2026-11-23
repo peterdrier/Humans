@@ -1,3 +1,4 @@
+using Humans.Application.Services.Users.AccountLifecycle;
 using Humans.Base.Extensions;
 using Hangfire;
 using NodaTime;
@@ -11,13 +12,13 @@ namespace Humans.Users.Jobs;
 
 /// <summary>Anonymizes accounts whose deletion grace period has expired.</summary>
 /// <remarks>
-/// <see cref="IAccountDeletionService.AnonymizeExpiredAccountAsync"/> owns the cross-section
+/// <see cref="AccountDeletionService.AnonymizeExpiredAccountAsync"/> owns the cross-section
 /// write order; the job keeps the loop, audit and confirmation email so one failure doesn't stop the run.
 /// </remarks>
 [DisableConcurrentExecution(timeoutInSeconds: 300)]
 internal sealed class ProcessAccountDeletionsJob(
     IUserManagement userService,
-    IAccountDeletionService accountDeletionService,
+    AccountDeletionService accountDeletionService,
     IEmailService emailService,
     UsersEmails emailMessages,
     IAuditLogService auditLogService,
@@ -57,6 +58,12 @@ internal sealed class ProcessAccountDeletionsJob(
                 try
                 {
                     cancellationToken.ThrowIfCancellationRequested();
+                    if (await accountDeletionService.ExtendTicketHoldAsync(userId, cancellationToken) is { } hold)
+                    {
+                        logger.LogInformation("Deletion of account {UserId} held for a ticket until {Hold}", userId, hold);
+                        continue;
+                    }
+
                     var summary = await accountDeletionService.AnonymizeExpiredAccountAsync(
                         userId, cancellationToken);
 

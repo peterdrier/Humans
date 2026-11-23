@@ -1,3 +1,5 @@
+using Humans.Permissions.Contracts;
+using Humans.Roles.Contracts;
 using System.Globalization;
 using Humans.Base.Models.Tables;
 using Humans.Base.Authorization;
@@ -15,12 +17,15 @@ using Humans.Teams.Authorization;
 using Humans.Teams.Contracts;
 using Humans.Teams.Data;
 using Humans.Teams.Services;
+using Humans.Teams.Services.Demo;
+using Humans.Base.Demo;
 using Humans.Teams.ViewComponents;
 using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Configuration;
 using Humans.Notifications.Contracts;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Localization;
 using static Humans.Base.Models.AccessLevel;
 using static Humans.Base.Models.AccessMatrixFeature;
 using Humans.AuditLog.Contracts;
@@ -34,10 +39,12 @@ public sealed class Section :
     ISectionAccessMatrix,
     ISectionAdminTiles,
     ISectionChrome,
+    ISectionDataMigrations,
     ISectionHelp,
     ISectionJobs,
     ISectionNav,
     ISectionPolicies,
+    ISearchContributor,
     IUserPart
 {
     IEnumerable<ChromeComponent> ISectionChrome.Components() =>
@@ -89,12 +96,17 @@ public sealed class Section :
         services.AddSingleton<IUserMerge>(sp => sp.GetRequiredService<CachingTeamService>());
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<CachingTeamService>());
         services.AddSingleton<IEntityNameContributor>(sp => sp.GetRequiredService<CachingTeamService>());
+        services.AddSingleton<IOwnerKind>(sp => sp.GetRequiredService<CachingTeamService>());
+        services.AddSingleton<IRoleOwner>(sp => sp.GetRequiredService<CachingTeamService>());
+        services.AddSingleton<IPermissionSource>(sp => sp.GetRequiredService<CachingTeamService>());
 
         services.AddSingleton<ICacheStats>(sp => sp.GetRequiredService<CachingTeamService>());
 
         services.AddHostedService(sp => sp.GetRequiredService<CachingTeamService>());
 
         services.AddScoped<ITeamPageService, TeamPageService>();
+
+        services.AddDemoStory<TeamsDemoStory>(configuration);
 
         services.AddScoped<ITeamMessageOptionsProvider, TeamMessageOptionsProvider>();
 
@@ -107,6 +119,30 @@ public sealed class Section :
 
         services.AddSingleton<TeamsMetricsService>();
         services.AddHostedService(sp => sp.GetRequiredService<TeamsMetricsService>());
+    }
+
+    internal const string RetireGovernanceBodiesKey = "teams.retire-governance-bodies";
+
+    IEnumerable<DataMigration> ISectionDataMigrations.Migrations() =>
+    [
+        new(RetireGovernanceBodiesKey, "Teams",
+            "Deactivate the Asociados, Colaboradores and Board teams, ending their memberships, now that Governance runs those bodies",
+            "The three governance system teams, when their rows are deleted",
+            RetireGovernanceBodiesStatusAsync,
+            (sp, actorUserId, ct) => sp.GetRequiredService<ITeamManagementService>().RetireGovernanceBodyTeamsAsync(actorUserId, ct)),
+    ];
+
+    private static async Task<DataMigrationStatus> RetireGovernanceBodiesStatusAsync(IServiceProvider sp, CancellationToken ct)
+    {
+        var teams = sp.GetRequiredService<ITeamService>();
+        var rows = new List<IReadOnlyList<string>>();
+        foreach (var teamId in TeamService.GovernanceBodyTeamIds)
+        {
+            if (await teams.GetTeamAsync(teamId, ct) is { IsActive: true } team)
+                rows.Add([team.Name, team.Members.Count.ToString(CultureInfo.InvariantCulture)]);
+        }
+
+        return new(["Team", "Active members"], rows);
     }
 
     string IIssueQueueOwner.QueueKey => "Teams";
@@ -180,4 +216,16 @@ public sealed class Section :
     [
         new(UserPartSlots.Profile, typeof(TeamMessageButtonsViewComponent), Weight: 200),
     ];
+
+    IEnumerable<SearchCategory> ISearchContributor.Categories() =>
+    [
+        new("Team",
+            sp => sp.GetRequiredService<IStringLocalizer<TeamsResource>>()["Teams_Search_Category"].Value,
+            "fa-solid fa-users", typeof(TeamsSearchResultViewComponent), SearchTeamsAsync, Weight: 10),
+    ];
+
+    private static async Task<IReadOnlyList<SearchHit>> SearchTeamsAsync(
+        IServiceProvider sp, string query, CancellationToken ct) =>
+        [.. (await sp.GetRequiredService<ITeamService>().SearchAsync(query, int.MaxValue, ct))
+            .Select(t => new SearchHit(t.TeamId, t.Name, t.Score))];
 }

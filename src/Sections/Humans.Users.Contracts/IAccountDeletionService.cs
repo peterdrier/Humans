@@ -4,7 +4,7 @@ using NodaTime;
 namespace Humans.Users.Contracts;
 
 /// <summary>
-/// Owns the cross-section write order of every deletion path; foundational services only delete their own
+/// Owns the cross-section write order of public deletion actions; foundational services only delete their own
 /// data, and this calls them, so the call graph flows one way.
 /// </summary>
 public interface IAccountDeletionService
@@ -25,13 +25,6 @@ public interface IAccountDeletionService
     /// <c>AccountPurged</c> audit entry keyed by <paramref name="actorId"/>. <c>NotFound</c> if the user doesn't exist.
     /// </summary>
     Task<OnboardingResult> PurgeAsync(Guid userId, Guid? actorId = null, CancellationToken ct = default);
-
-    /// <summary>
-    /// Runs every cross-section cleanup before collapsing the identity, so a mid-cascade failure leaves the
-    /// deletion fields intact and the next day's run retries. Returns null when the user vanished meanwhile.
-    /// </summary>
-    Task<AnonymizedAccountSummary?> AnonymizeExpiredAccountAsync(
-        Guid userId, CancellationToken ct = default);
 }
 
 /// <summary>

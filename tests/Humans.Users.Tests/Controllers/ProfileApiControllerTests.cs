@@ -79,7 +79,6 @@ public class ProfileApiControllerTests
         Guid userId, Guid profileId, string burnerName, int score = 0) =>
         new(
             UserId: userId,
-            ProfileId: profileId,
             BurnerName: burnerName,
             ProfilePictureUrl: null,
             MatchField: "Name",

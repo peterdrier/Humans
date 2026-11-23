@@ -30,7 +30,8 @@ internal sealed record FinanceLedgerCardsVm(
     decimal TaxesOwed,
     IReadOnlyList<FinanceTaxFilingVm> TaxFilings)
 {
-    public IReadOnlyList<FinanceAccountLineVm> CashAccounts => [.. Banks, .. Stripe];
+    public IReadOnlyList<FinanceAccountLineVm> CashAccounts =>
+        [.. Banks.OrderBy(a => a.AccountNum), .. Stripe.OrderBy(a => a.AccountNum)];
     public decimal CashTotal => Banks.Sum(a => a.Amount) + Stripe.Sum(a => a.Amount);
     public decimal ReceivablesTotal => Receivables.Sum(a => a.Amount);
 }

@@ -49,7 +49,9 @@ internal sealed class DuplicateAccountService(
                 list.Add((u.Id, $"User.Email ({u.IdentityEmailColumn})"));
             }
 
-            foreach (var ue in u.UserEmails)
+            // Confirmed rows only: an address somebody typed and never confirmed proves nothing, and
+            // anyone can type anyone's address.
+            foreach (var ue in u.UserEmails.Where(e => e.IsVerified))
             {
                 var ueNormalized = EmailNormalization.NormalizeForComparison(ue.Email);
                 if (!emailToUsers.TryGetValue(ueNormalized, out var ueList))
@@ -57,8 +59,7 @@ internal sealed class DuplicateAccountService(
                     ueList = [];
                     emailToUsers[ueNormalized] = ueList;
                 }
-                var verifiedTag = ue.IsVerified ? "verified" : "unverified";
-                ueList.Add((u.Id, $"UserEmail ({ue.Email}, {verifiedTag})"));
+                ueList.Add((u.Id, $"UserEmail ({ue.Email}, verified)"));
             }
         }
 

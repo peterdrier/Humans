@@ -23,12 +23,15 @@ using Humans.Shifts.Data;
 using Humans.Shifts.Helpers;
 using Humans.Shifts.Models;
 using Humans.Shifts.Services;
+using Humans.Shifts.Services.Demo;
+using Humans.Base.Demo;
 using Humans.Shifts.ViewComponents;
 using Humans.Teams.Contracts;
 using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Configuration;
 using Humans.Notifications.Contracts;
+using Humans.Permissions.Contracts;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
 using NodaTime;
@@ -49,10 +52,12 @@ public sealed class Section :
     ISectionMemberDashboard,
     ISectionNav,
     IOnboardingShiftsStep,
+    ISectionPermissions,
     ISectionPolicies,
     ISectionSettings,
     ISectionThingsToDo,
     ITeamShiftsParts,
+    ISearchContributor,
     IUserPart
 {
     IReadOnlyList<RoleDefinition> ISectionRoles.Roles { get; } =
@@ -98,6 +103,8 @@ public sealed class Section :
         services.AddSingleton<IShiftSignupService>(sp => sp.GetRequiredService<CachingShiftService>());
         services.AddSingleton<IShiftSignups>(sp => sp.GetRequiredService<CachingShiftService>());
         services.AddSingleton<IShiftSignupSeeding>(sp => sp.GetRequiredService<CachingShiftService>());
+
+        services.AddDemoStory<ShiftsDemoStory>(configuration);
         services.AddSingleton<IShiftRowView>(sp => sp.GetRequiredService<CachingShiftService>());
         services.AddSingleton<IShiftView>(sp => sp.GetRequiredService<CachingShiftService>());
         services.AddSingleton<IUserMerge>(sp => sp.GetRequiredService<CachingShiftService>());
@@ -255,6 +262,15 @@ public sealed class Section :
 
     Type ITeamShiftsParts.AdminRowCell => typeof(TeamAdminRowShiftsViewComponent);
 
+    IReadOnlyList<Permission> ISectionPermissions.Permissions { get; } =
+    [
+        new(ShiftsPermissions.Manage, "Shifts_Permission_Manage_Title", "Shifts_Permission_Manage_Blurb",
+            [TeamOwner.Kind], TopLevelOnly: false, AdminRoles: [ShiftsRoles.ShiftsAdmin], typeof(ShiftsResource)),
+        new(ShiftsPermissions.Approve, "Shifts_Permission_Approve_Title", "Shifts_Permission_Approve_Blurb",
+            [TeamOwner.Kind], TopLevelOnly: false, AdminRoles: [ShiftsRoles.ShiftsAdmin, ShiftsRoles.ShiftsNoInfo],
+            typeof(ShiftsResource)),
+    ];
+
     void ISectionPolicies.AddPolicies(AuthorizationOptions options)
     {
         // DepartmentRead below additionally admits any team coordinator.
@@ -339,4 +355,17 @@ public sealed class Section :
             return false;
         }
     }
+
+    IEnumerable<SearchCategory> ISearchContributor.Categories() =>
+    [
+        new("Shift",
+            sp => sp.GetRequiredService<IStringLocalizer<ShiftsResource>>()["Shifts_Search_Category"].Value,
+            "fa-solid fa-clock", typeof(ShiftsSearchResultViewComponent), SearchRotasAsync, Weight: 30),
+    ];
+
+    // Hits are rotas (named shift groupings), not individual shifts.
+    private static async Task<IReadOnlyList<SearchHit>> SearchRotasAsync(
+        IServiceProvider sp, string query, CancellationToken ct) =>
+        [.. (await sp.GetRequiredService<IShiftService>().SearchAsync(query, int.MaxValue, ct))
+            .Select(r => new SearchHit(r.RotaId, r.Name, r.Score))];
 }

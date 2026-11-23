@@ -1,0 +1,160 @@
+@using Humans.Tickets.Domain.Checkout
+@using Humans.Tickets.Services.Checkout
+@model Humans.Tickets.Controllers.ResaleViewModel
+@{
+    ViewData["Title"] = "Resale queue";
+    ViewData[AdminNavComposition.ParentKey] = "TicketsSalesAdmin/Index";
+    var waiting = Model.Rows.Where(r => r.Offer.State is TicketResaleOfferState.Open or TicketResaleOfferState.Reserved).ToList();
+    var closed = Model.Rows.Except(waiting).ToList();
+    var culture = System.Globalization.CultureInfo.CurrentCulture;
+    var canToggle = !Model.SwitchedOff && Model.Mode != TicketSalesMode.ResaleOnly;
+    var (resaleState, resaleBadge, whyStill) = Model.ResaleSelling
+        ? ("Selling", "bg-success", null)
+        : Model.SwitchedOff
+            ? ("Switched off", "bg-secondary", "Resale is switched off for this event in its sales setup, so nothing in the queue sells.")
+            : Model.Mode is TicketSalesMode.Closed or TicketSalesMode.InvitedOnly
+                ? ("Not open to everyone", "bg-secondary", "Sales are not open to everyone, so nothing in the queue sells.")
+                : ("Paused", "bg-warning text-dark", "Resale is paused, so the queue is not moving yet.");
+    StatTileViewModel[] tiles =
+    [
+        new("Waiting", waiting.Count.ToString(culture)),
+        new("Owed if all sell", (waiting.Sum(r => r.Offer.RefundOwedMinor) / 100m).ToEuro()),
+        new("Sold", closed.Count(r => r.Offer.State == TicketResaleOfferState.Sold).ToString(culture),
+            Subline: $"{closed.Count(r => r.Offer.State == TicketResaleOfferState.Withdrawn).ToString(culture)} withdrawn"),
+    ];
+
+    Func<ResaleQueueRow, IHtmlContent> holderCell = @<text>@item.Ticket?.HolderName <span class="small">(<vc:human user-id="@item.Offer.HolderUserId" link="Admin" />)</span></text>;
+    Func<ResaleQueueRow, IHtmlContent> ticketCell = @<text>
+        @if (item.Ticket is { } t)
+        {
+            <a asp-action="Ticket" asp-route-orderId="@t.OrderId" asp-route-ticketId="@t.Id"><code>@t.Barcode</code></a>
+        }
+    </text>;
+    Func<ResaleQueueRow, IHtmlContent> waitingStateCell = @<text>
+        <status-badge value="@item.Offer.State" text="@(item.Offer.State == TicketResaleOfferState.Reserved ? "In a checkout" : "Waiting")" />
+        @if (item.Offer is { State: TicketResaleOfferState.Reserved, ReservedByOrderId: { } holdingId })
+        {
+            var holding = Model.Orders.GetValueOrDefault(holdingId);
+            <a class="small d-block" asp-controller="TicketsSalesAdmin" asp-action="Order" asp-route-id="@holdingId">order @(holding?.Reference ?? holdingId.ToString())</a>
+            @if (Model.IsStuck(item.Offer))
+            {
+                <span class="badge bg-danger" title="The checkout holding it is over or past its hold; the reconcile job should release or complete it within five minutes. Open the order to check it.">Stuck</span>
+            }
+        }
+    </text>;
+    Func<ResaleQueueRow, IHtmlContent> waitingActionsCell = @<text>
+        @if (item.Offer.State == TicketResaleOfferState.Open)
+        {
+            <details authorize-policy="@TicketsPolicies.Manage">
+                <summary class="small">Take out</summary>
+                <form method="post" asp-action="WithdrawOffer" asp-route-id="@Model.SalesEventId" asp-route-offerId="@item.Offer.Id" class="mt-1">
+                    @Html.AntiForgeryToken()
+                    <input class="form-control form-control-sm mb-1" name="reason" maxlength="500" required placeholder="Reason" aria-label="Reason" />
+                    <button type="submit" class="btn btn-outline-secondary btn-sm">Take out of the queue</button>
+                </form>
+            </details>
+        }
+    </text>;
+    var waitingTable = TableModel.For(waiting)
+        .Column("#", r => r.Position, o => o.Number())
+        .Template("Holder", holderCell, o => o.NoSort())
+        .Template("Ticket", ticketCell, o => o.NoSort())
+        .Column("Waiting since", r => r.Offer.OfferedAt, o => o.DateTime())
+        .Column("Owed (€)", r => r.Offer.RefundOwedMinor / 100m, o => o.Currency().End())
+        .Template("State", waitingStateCell, sortBy: r => r.Offer.State.ToString())
+        .Column("Invited buyers", r => r.DirectedLive ? string.Join(", ", r.Offer.Invites.Select(i => i.Email)) : null)
+        .Template("", waitingActionsCell, o => o.NoSort().End())
+        .Empty("Nobody is waiting.")
+        .Build();
+
+    Func<ResaleQueueRow, IHtmlContent> outcomeCell = @<text>
+        <status-badge value="@item.Offer.State" />
+        @if (item.Offer.State == TicketResaleOfferState.Sold)
+        {
+            <span class="small">@item.Offer.SoldAt?.ToDateTime()@(item.Offer.DirectedUsedAt is not null ? ", to the invited buyer" : "")</span>
+            @if (item.Offer.SoldToOrderId is { } buyer)
+            {
+                <a class="small" asp-controller="TicketsSalesAdmin" asp-action="Order" asp-route-id="@buyer">buyer's order</a>
+            }
+        }
+        else
+        {
+            <span class="small">@item.Offer.WithdrawnAt?.ToDateTime()</span>
+        }
+    </text>;
+    Func<ResaleQueueRow, IHtmlContent> refundCell = @<text>
+        @if (item.Offer.State == TicketResaleOfferState.Sold)
+        {
+            <span class="me-1">@((item.Offer.RefundOwedMinor / 100m).ToEuro())</span>
+            @if (item.Refund is { } refund)
+            {
+                <a asp-action="Refunds" asp-route-id="@Model.SalesEventId" asp-route-state="@refund.State"><status-badge value="@refund.State" /></a>
+            }
+            else
+            {
+                <span class="text-muted small">in the evening refund batch</span>
+            }
+        }
+    </text>;
+    var closedTable = TableModel.For(closed)
+        .Template("Holder", holderCell, o => o.NoSort())
+        .Template("Ticket", ticketCell, o => o.NoSort())
+        .Column("Offered", r => r.Offer.OfferedAt, o => o.DateTime())
+        .Template("Outcome", outcomeCell, sortBy: r => r.Offer.State.ToString())
+        .Template("Refund", refundCell, o => o.End(), sortBy: r => r.Offer.RefundOwedMinor)
+        .Empty("Nothing sold or withdrawn yet.")
+        .Build();
+}
+
+<page-header title="Resale queue" subtitle="@Model.EventName" badge="@resaleState" badge-class="@resaleBadge">
+    @if (canToggle)
+    {
+        <form method="post" asp-action="SetResaleOpen" asp-route-id="@Model.SalesEventId" authorize-policy="@TicketsPolicies.Manage">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="open" value="@(Model.SalesEvent.ResaleOpenedAt is null ? "true" : "false")" />
+            @if (Model.SalesEvent.ResaleOpenedAt is null)
+            {
+                <button type="submit" class="btn btn-primary">Open resale</button>
+            }
+            else
+            {
+                <button type="submit" class="btn btn-outline-secondary">Pause resale</button>
+            }
+        </form>
+    }
+</page-header>
+
+<div class="stats" style="--stats-cols: 3">
+    @foreach (var tile in tiles)
+    {
+        <partial name="_StatTile" model="tile" />
+    }
+</div>
+
+<p class="small text-muted mb-4">
+    @if (whyStill is not null)
+    {
+        <span class="d-block">@whyStill</span>
+    }
+    @if (canToggle && Model.SalesEvent.ResaleOpenedAt is { } openedAt)
+    {
+        <span class="d-block">Opened @openedAt.ToDateTime(). Pausing stops returned tickets selling; they keep their place.</span>
+    }
+    else if (canToggle)
+    {
+        <span class="d-block">Opening lets returned tickets sell, oldest first, before fresh stock.</span>
+    }
+    <span class="d-block">An invited ticket keeps its place: any invited buyer can buy it through their link, and the queue can sell it too. Whoever buys first gets it; a later link offers the next returned ticket.</span>
+    <span class="d-block">Refunds for sold tickets go out in the evening batch once the buyer's order has held for 12 hours. A buyer order that was refunded or disputed holds the refund back for the team.</span>
+    <span class="d-block">Taking a ticket out gives it back to its holder, valid. To void it and refund instead, open the ticket.</span>
+</p>
+
+<div class="card mb-4">
+    <div class="card-header">Waiting, in queue order</div>
+    <partial name="_Table" model="waitingTable" />
+</div>
+
+<div class="card mb-4">
+    <div class="card-header">Sold and withdrawn</div>
+    <partial name="_Table" model="closedTable" />
+</div>

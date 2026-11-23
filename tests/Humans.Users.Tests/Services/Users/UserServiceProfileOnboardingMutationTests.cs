@@ -30,7 +30,6 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
         var userRepository = new UserRepository(DbFactory, Clock);
         _service = new UserService(
             userRepository,
-            AdminAuthorization,
             _fileStorage,
             Clock,
             NullLogger<UserService>.Instance, AuditLog);
@@ -50,7 +49,7 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
             : new IOException("Last-login write unavailable");
         repository.SetLastLoginAsync(userId, Arg.Any<Instant>(), request.Token)
             .Returns(Task.FromException<bool>(failure));
-        var service = new UserService(repository, AdminAuthorization, _fileStorage, Clock,
+        var service = new UserService(repository, _fileStorage, Clock,
             NullLogger<UserService>.Instance, AuditLog);
 
         var record = () => service.RecordLoginAsync(userId, request.Token);
@@ -76,8 +75,7 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
             .Returns(string.Equals(kind, "duplicate", StringComparison.Ordinal)
                 ? [new UserEmail { Id = Guid.NewGuid(), UserId = userId, Email = "held@example.com" }]
                 : []);
-        var service = new UserService(repository,
-            AdminAuthorization, _fileStorage, Clock, NullLogger<UserService>.Instance, AuditLog);
+        var service = new UserService(repository, _fileStorage, Clock, NullLogger<UserService>.Instance, AuditLog);
 
         var email = kind switch
         {
@@ -106,8 +104,7 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
         repository.GetByIdAsync(userId, Arg.Any<CancellationToken>()).Returns(new User { Id = userId });
         repository.GetUserEmailsByAddressAsync(Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>())
             .Returns([new UserEmail { Id = Guid.NewGuid(), UserId = Guid.NewGuid(), Email = "held@example.com", IsVerified = true }]);
-        var service = new UserService(repository,
-            AdminAuthorization, _fileStorage, Clock, NullLogger<UserService>.Instance, AuditLog);
+        var service = new UserService(repository, _fileStorage, Clock, NullLogger<UserService>.Instance, AuditLog);
 
         var result = await service.AddUserEmailAsync(userId,
             new UserEmailAddCommand("held@example.com", IsVerified: verified),
@@ -720,7 +717,7 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
         if (reconcile)
         {
             Func<Task> act = () => _service.ApplyUserEmailReconcilePlanAsync(userId,
-                new UserEmailReconcilePlanCommand(null, null, null,
+                new UserEmailReconcilePlanCommand(null, null,
                     new UserEmail { Id = Guid.NewGuid(), UserId = userId, Email = "recreated@example.com", IsVerified = verified }),
                 TestContext.Current.CancellationToken);
             await act.Should().ThrowAsync<InvalidOperationException>();
@@ -739,7 +736,7 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
     }
 
     [HumansFact]
-    public async Task AddEmailAsync_OverlappingRequests_CreateOneRowAndOneVerificationToken()
+    public async Task AddEmailAsync_OverlappingRequests_CreateOneRowAndOneVerificationMail()
     {
         var ct = TestContext.Current.CancellationToken;
         var userId = Guid.NewGuid();
@@ -775,12 +772,11 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
         var manager = Substitute.For<UserManager<User>>(
             Substitute.For<IUserStore<User>>(), null, null, null, null, null, null, null, null);
         manager.FindByIdAsync(userId.ToString()).Returns(new User { Id = userId });
-        manager.GenerateUserTokenAsync(Arg.Any<User>(), Arg.Any<string>(), Arg.Any<string>()).Returns("verification-token");
-        var services = new ServiceLocatorBuilder().With(Substitute.For<IAccountMergeService>())
-            .With(Substitute.For<IEmailService>()).With(TestUsersEmails.Create())
-            .With(Options.Create(new EmailSettings { BaseUrl = TestUsersEmails.BaseUrl })).Build();
+        var emailService = Substitute.For<IEmailService>();
         UserEmailService BuildEmailService() => new(
-            repository, BuildWithUserRepository(repository), manager, Clock, AuditLog, services,
+            repository, BuildWithUserRepository(repository), manager, Clock, AuditLog, [], [],
+            new Microsoft.AspNetCore.DataProtection.EphemeralDataProtectionProvider(), TestUsersEmails.Create(),
+            Options.Create(new EmailSettings { BaseUrl = TestUsersEmails.BaseUrl }), emailService,
             NullLogger<UserEmailService>.Instance);
 
         var first = BuildEmailService().AddEmailAsync(userId, "same@example.com", ct);
@@ -798,10 +794,10 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
 
         (await Db.UserEmails.AsNoTracking().Where(email => email.UserId == userId).ToListAsync(ct))
             .Should().ContainSingle();
-        results.Should().ContainSingle(result => result.ErrorKey == null && result.Token == "verification-token");
+        results.Should().ContainSingle(result => result.ErrorKey == null && result.Token != string.Empty);
         results.Should().ContainSingle(result => result.ErrorKey == "Users_Profile_EmailAlreadyAdded"
             && result.EmailId == Guid.Empty && result.Token == string.Empty);
-        await manager.Received(1).GenerateUserTokenAsync(Arg.Any<User>(), Arg.Any<string>(), Arg.Any<string>());
+        await emailService.Received(1).SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>());
     }
 
     [HumansTheory]
@@ -924,6 +920,37 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
         await _fileStorage.DidNotReceive().DeleteAsync(survivorKey, Arg.Any<CancellationToken>());
     }
 
+    [HumansFact]
+    public async Task ReassignAsync_KeptProfileTakesWhatItLacksAndTheNotesOfBoth()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var sourceUserId = Guid.NewGuid();
+        var targetUserId = Guid.NewGuid();
+        var sourceProfileId = await SeedUserWithProfileAsync(sourceUserId);
+        var targetProfileId = await SeedUserWithProfileAsync(targetUserId);
+        var source = await Db.Profiles.SingleAsync(p => p.Id == sourceProfileId, ct);
+        (source.Bio, source.Pronouns, source.MedicalConditions) = ("Archived bio", "they", "Archived medical");
+        (source.City, source.CountryCode) = ("Madrid", "ES");
+        (source.AdminNotes, source.BoardNotes) = ("Archived admin note", "Archived board note");
+        source.ProfilePictureContentType = "image/png";
+        var pictureKey = ProfilePictureStorageKeys.ProfilePictureKey(sourceProfileId, "image/png");
+        var target = await Db.Profiles.SingleAsync(p => p.Id == targetProfileId, ct);
+        (target.Bio, target.City, target.CountryCode, target.AdminNotes) = ("Kept bio", "Berlin", "DE", "Kept admin note");
+        await Db.SaveChangesAsync(ct);
+
+        await _service.ReassignAsync(sourceUserId, targetUserId, Guid.NewGuid(), Clock.GetCurrentInstant(), ct);
+
+        var kept = await Db.Profiles.AsNoTracking().SingleAsync(p => p.Id == targetProfileId, ct);
+        // What the kept profile has wins; a place is never mixed from both.
+        (kept.Bio, kept.City, kept.CountryCode).Should().Be(("Kept bio", "Berlin", "DE"));
+        (kept.Pronouns, kept.MedicalConditions).Should().Be(("they", "Archived medical"));
+        kept.AdminNotes.Should().Contain("Kept admin note").And.Contain("Archived admin note");
+        kept.BoardNotes.Should().Be("Archived board note");
+        // The picture file is still in use, by the kept profile.
+        (kept.ProfilePictureContentType, kept.ProfilePictureStorageKey).Should().Be(("image/png", pictureKey));
+        await _fileStorage.DidNotReceive().DeleteAsync(pictureKey, Arg.Any<CancellationToken>());
+    }
+
     [HumansTheory]
     [InlineData("before")]
     [InlineData("after")]
@@ -952,8 +979,10 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
             .Returns(call => inner.ReassignLoginsToUserAsync(sourceUserId, targetUserId, call.Arg<CancellationToken>()));
         repo.GetByUserIdReadOnlyAsync(sourceUserId, Arg.Any<CancellationToken>())
             .Returns(call => inner.GetByUserIdReadOnlyAsync(sourceUserId, call.Arg<CancellationToken>()));
-        repo.ReassignSubAggregatesToUserAsync(sourceUserId, targetUserId, Arg.Any<Instant>(), Arg.Any<CancellationToken>())
-            .Returns(call => inner.ReassignSubAggregatesToUserAsync(sourceUserId, targetUserId, call.Arg<Instant>(), call.Arg<CancellationToken>()));
+        repo.GetByUserIdReadOnlyAsync(targetUserId, Arg.Any<CancellationToken>())
+            .Returns(call => inner.GetByUserIdReadOnlyAsync(targetUserId, call.Arg<CancellationToken>()));
+        repo.ReassignSubAggregatesToUserAsync(sourceUserId, targetUserId, Arg.Any<Instant>(), Arg.Any<Profile?>(), Arg.Any<UserNames?>(), Arg.Any<CancellationToken>())
+            .Returns(call => inner.ReassignSubAggregatesToUserAsync(sourceUserId, targetUserId, call.Arg<Instant>(), call.Arg<Profile?>(), call.Arg<UserNames?>(), call.Arg<CancellationToken>()));
         repo.GetProfilePictureLocationAsync(sourceId, Arg.Any<CancellationToken>()).Returns(call =>
         {
             call.Arg<CancellationToken>().Should().Be(CancellationToken.None);
@@ -961,7 +990,7 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
                 ? Task.FromException<(string, string?)?>(new IOException("Verification unavailable"))
                 : inner.GetProfilePictureLocationAsync(sourceId, call.Arg<CancellationToken>());
         });
-        var service = new UserService(repo, AdminAuthorization, _fileStorage, Clock, NullLogger<UserService>.Instance, AuditLog);
+        var service = new UserService(repo, _fileStorage, Clock, NullLogger<UserService>.Instance, AuditLog);
 
         var merge = () => service.ReassignAsync(sourceUserId, targetUserId, Guid.NewGuid(), Clock.GetCurrentInstant(), ct);
         (await merge.Should().ThrowAsync<IOException>()).Which.Should().BeSameAs(failure);
@@ -1030,7 +1059,6 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
     private UserService BuildWithUserRepository(IUserRepository userRepository) =>
         new(
             userRepository,
-            AdminAuthorization,
             Substitute.For<IFileStorage>(),
             Clock,
             NullLogger<UserService>.Instance, AuditLog);

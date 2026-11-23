@@ -63,6 +63,7 @@
   <data name="Email_Outbox_DescriptionAdmin" xml:space="preserve"><value>E-mails die het systeem naar deze human heeft gestuurd.</value></data>
   <data name="Email_Outbox_DescriptionSelf" xml:space="preserve"><value>E-mails die het systeem naar jou heeft gestuurd (in de afgelopen 150 dagen).</value></data>
   <data name="Email_Outbox_Empty" xml:space="preserve"><value>Geen e-mails geregistreerd.</value></data>
+  <data name="Email_Outbox_BodyHidden" xml:space="preserve"><value>Verzonden naar {0}. De tekst staat hier zodra dat adres voor dit account is bevestigd.</value></data>
   <data name="Email_Outbox_Subject" xml:space="preserve"><value>Onderwerp</value></data>
   <data name="Email_Outbox_MyTitle" xml:space="preserve"><value>Mijn e-mails</value></data>
   <data name="Email_SendMessage_Title" xml:space="preserve">

@@ -62,7 +62,7 @@ internal sealed class GovernanceMetricsService : PolledGaugeService
         var consentDeadlineApproaching = usersRequiringUpdate.Count;
 
         var today = scope.ServiceProvider.GetRequiredService<IClock>().GetCurrentInstant().InUtc().Date;
-        var asociados = await applicationDecisionService.GetActiveApprovedTierUserIdsAsync(MembershipTier.Asociado, today);
+        var asociados = await scope.ServiceProvider.GetRequiredService<IGovernanceService>().GetActiveApprovedTierUserIdsAsync(MembershipTier.Asociado, today);
         var applicationsSubmitted = await applicationDecisionService.GetPendingApplicationCountAsync();
 
         _snapshot = new GaugeSnapshot

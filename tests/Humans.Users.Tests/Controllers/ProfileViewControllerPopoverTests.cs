@@ -93,6 +93,20 @@ public class ProfileViewControllerPopoverTests
     }
 
     [HumansTheory]
+    [InlineData(638000000000000000L, "max-age=31536000, private, immutable")]
+    [InlineData(null, "max-age=3600, private")]
+    public async Task Picture_VersionedUrl_IsCachedForAYear(long? version, string expected)
+    {
+        var userId = Guid.NewGuid();
+        _profilePictureService.GetProfilePictureAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(((byte[] Data, string ContentType)?)(new byte[] { 1, 2, 3 }, "image/jpeg"));
+
+        await _controller.Picture(userId, version, TestContext.Current.CancellationToken);
+
+        _controller.Response.Headers.CacheControl.ToString().Should().Be(expected);
+    }
+
+    [HumansTheory]
     [InlineData(true, false)]
     [InlineData(false, false)]
     [InlineData(false, true)]
@@ -104,7 +118,7 @@ public class ProfileViewControllerPopoverTests
             .Returns(BuildActiveUserInfo(_viewerId, "Viewer", "viewer@example.com"));
         _userService.GetUserInfoAsync(targetId, Arg.Any<CancellationToken>())
             .Returns(BuildActiveUserInfo(targetId, "Target", "target@example.com"));
-        _shiftManagement.GetCoordinatorTeamIdsAsync(_viewerId, Arg.Any<CancellationToken>()).Returns([]);
+        _shiftManagement.CanManageOrApproveAnyShiftsAsync(_viewerId, Arg.Any<CancellationToken>()).Returns(false);
         if (privileged)
         {
             ((ClaimsIdentity)_controller.User.Identity!).AddClaim(new Claim(ClaimTypes.Role, ShiftsRoles.ShiftsNoInfo));
@@ -116,7 +130,7 @@ public class ProfileViewControllerPopoverTests
 
         var model = result.Should().BeOfType<ViewResult>().Which.Model.Should().BeOfType<ProfileViewModel>().Which;
         model.CanViewSentMessages.Should().Be(!ownProfile && privileged);
-        await _shiftManagement.Received(ownProfile ? 0 : 1).GetCoordinatorTeamIdsAsync(_viewerId, ct);
+        await _shiftManagement.Received(ownProfile ? 0 : 1).CanManageOrApproveAnyShiftsAsync(_viewerId, ct);
     }
 
     [HumansFact]

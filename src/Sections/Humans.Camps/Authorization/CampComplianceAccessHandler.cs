@@ -31,8 +31,7 @@ internal sealed class CampComplianceAccessHandler(
         var ct = httpContextAccessor.HttpContext?.RequestAborted ?? CancellationToken.None;
         var viewer = await users.GetUserInfoAsync(userId, ct);
         if (viewer is null) return;
-        var coordinatedTeamIds = await shiftManagement.GetCoordinatorTeamIdsAsync(viewer.Id, ct);
-        if (coordinatedTeamIds.Count > 0)
+        if (await shiftManagement.CanManageOrApproveAnyShiftsAsync(viewer.Id, ct))
             context.Succeed(requirement);
     }
 }

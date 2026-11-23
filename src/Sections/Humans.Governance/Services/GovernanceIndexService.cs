@@ -16,7 +16,7 @@ internal sealed class GovernanceIndexService(
     IRoleAssignmentService roleAssignments,
     IUserService users,
     GovernanceBodyLinksService bodyLinks,
-    IClock clock) : IGovernanceIndexService
+    GovernanceBodyRosters bodyRosters) : IGovernanceIndexService
 {
     public async Task<GovernanceIndexData> GetIndexDataAsync(Guid userId, CancellationToken ct = default)
     {
@@ -79,13 +79,7 @@ internal sealed class GovernanceIndexService(
     /// <summary>Approved tier in term, or the Board role, for accounts that are still active members.</summary>
     private async Task<IReadOnlyDictionary<GovernanceBody, IReadOnlyList<Guid>>> GetRostersAsync(CancellationToken ct)
     {
-        var today = clock.GetCurrentInstant().InUtc().Date;
-        var raw = new Dictionary<GovernanceBody, IReadOnlyList<Guid>>
-        {
-            [GovernanceBody.Asociados] = await applicationDecisionService.GetActiveApprovedTierUserIdsAsync(MembershipTier.Asociado, today, ct),
-            [GovernanceBody.Colaboradores] = await applicationDecisionService.GetActiveApprovedTierUserIdsAsync(MembershipTier.Colaborador, today, ct),
-            [GovernanceBody.Board] = await roleAssignments.GetActiveUserIdsInRoleAsync(RoleNames.Board, ct),
-        };
+        var raw = await bodyRosters.GetAsync(ct);
         var infos = await users.GetUserInfosAsync(raw.Values.SelectMany(ids => ids), ct);
         return raw.ToDictionary(
             e => e.Key,
@@ -108,7 +102,7 @@ internal sealed class GovernanceIndexService(
 
     private static GovernanceBodyAccess ToAccess(GovernanceBodyLinks links) => new(
         links.Body,
-        links.GoogleGroupPrefix is { } prefix ? $"{prefix}@{DomainConstants.GoogleGroupDomain}" : null,
+        links.GoogleGroupEmail,
         [.. links.Files.Select(f => new GovernanceBodyAccessFile(f.Name, f.Url))]);
 
     private static bool HasAnyLink(GovernanceBodyLinks links) =>

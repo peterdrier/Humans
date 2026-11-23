@@ -1,7 +1,6 @@
 using Humans.Shifts.Domain;
 using AwesomeAssertions;
 using System.Security.Claims;
-using Humans.Onboarding;
 using Humans.Shifts.Services.Dtos;
 using Humans.AuditLog.Contracts;
 using Humans.Shifts.Services;
@@ -63,7 +62,7 @@ public class ShiftsControllerUserActiveSignupsTests
         _burnSettings.GetByIdAsync(ActiveBurnId, Arg.Any<CancellationToken>()).Returns(ActiveBurn);
         _burnSettings.GetByIdAsync(PastBurnId, Arg.Any<CancellationToken>()).Returns(PastBurn);
 
-        _shiftMgmt.GetCoordinatorTeamIdsAsync(_userId, Arg.Any<CancellationToken>()).Returns([]);
+        _shiftMgmt.CanManageOrApproveAnyShiftsAsync(_userId, Arg.Any<CancellationToken>()).Returns(false);
         _shiftMgmt.GetBrowseShiftsAsync(Arg.Any<ShiftBrowseQuery>(), Arg.Any<CancellationToken>()).Returns([]);
         _shiftMgmt.GetTagsAsync().Returns([]);
         _shiftMgmt.GetDepartmentCoveragePiesAsync(
@@ -90,7 +89,11 @@ public class ShiftsControllerUserActiveSignupsTests
         _signupService.GetByUserAsync(_userId, ct: Arg.Any<CancellationToken>()).Returns([]);
 
         if (string.Equals(boundary, "coordinators", StringComparison.Ordinal))
-            _shiftMgmt.GetCoordinatorTeamIdsAsync(_userId, Arg.Any<CancellationToken>()).ReturnsForAnyArgs(ReadAsync<Guid>);
+            _shiftMgmt.CanManageOrApproveAnyShiftsAsync(_userId, Arg.Any<CancellationToken>()).ReturnsForAnyArgs(call =>
+            {
+                call.Arg<CancellationToken>().ThrowIfCancellationRequested();
+                return Task.FromResult(false);
+            });
         else if (string.Equals(boundary, "signups", StringComparison.Ordinal))
             _signupService.GetByUserAsync(_userId, ct: Arg.Any<CancellationToken>()).ReturnsForAnyArgs(ReadAsync<ShiftSignupSummary>);
         else if (string.Equals(boundary, "browse", StringComparison.Ordinal))
@@ -279,7 +282,7 @@ public class ShiftsControllerUserActiveSignupsTests
 
         var ctrl = new ShiftsController(
             _shiftMgmt, _burnSettings, _signupService, _volunteerTracking, _shiftView, _teamService,
-            _userService, _localizer, Substitute.For<IStringLocalizer<OnboardingResource>>(), _clock,
+            _userService, _localizer, _clock,
             new ShiftBrowsePageBuilder(_shiftMgmt, _burnSettings, _teamService),
             NullLogger<ShiftsController>.Instance);
 

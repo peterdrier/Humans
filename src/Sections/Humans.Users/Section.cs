@@ -1,5 +1,4 @@
 using Humans.Base.Extensions;
-using Humans.Teams.Contracts;
 using System.Globalization;
 using System.Security.Claims;
 using Humans.Application.Services.Users;
@@ -13,18 +12,16 @@ using Humans.Base.Interfaces;
 using Humans.Base.Interfaces.Caching;
 using Humans.Base.Models;
 using Humans.Cantina.Contracts;
-using Humans.Consent.Contracts;
 using Humans.Email.Contracts;
 using Humans.Gdpr.Contracts;
 using Humans.Issues.Contracts;
-using Humans.Settings.Contracts;
 using Humans.Shifts.Contracts;
-using Humans.Tickets.Contracts;
 using Humans.Users.Authorization;
 using Humans.Users.Contracts;
 using Humans.Users.Data;
 using Humans.Users.Data.Repositories;
 using Humans.Users.Jobs;
+using Humans.Users.Models;
 using Humans.Users.Services;
 using Humans.Users.ViewComponents;
 using Microsoft.AspNetCore.Authorization;
@@ -37,6 +34,8 @@ using Microsoft.Extensions.Localization;
 using static Humans.Base.Models.AccessLevel;
 using static Humans.Base.Models.AccessMatrixFeature;
 using Humans.AuditLog.Contracts;
+
+[assembly: Humans.Base.Demo.NoDemoStory("The demo cast is created through Users by Development's cast story.")]
 
 namespace Humans.Users;
 
@@ -55,6 +54,7 @@ public sealed class Section :
     ISectionMemberDashboard,
     ISectionPolicies,
     ISectionThingsToDo,
+    ISearchContributor,
     IUserPart
 {
     IReadOnlyList<RoleDefinition> ISectionRoles.Roles { get; } =
@@ -137,6 +137,8 @@ public sealed class Section :
 
         services.AddScoped<ProfileService>();
         services.AddScoped<MedicalConditionsService>();
+        services.AddScoped<EmailConfirmationService>();
+        services.AddScoped<MergeAccountCardBuilder>();
         services.AddScoped<IProfilePictureService>(sp => sp.GetRequiredService<ProfileService>());
 
         services.AddScoped<IHumanLifecycleService, HumanLifecycleService>();
@@ -144,7 +146,8 @@ public sealed class Section :
 
         // ExternalLoginService keeps its Humans.Application.Services.Users namespace: HUM0005
         // names it by full name as the sole caller of ReconcileOAuthIdentityAsync.
-        services.AddScoped<IAccountDeletionService, AccountDeletionService>();
+        services.AddScoped<AccountDeletionService>();
+        services.AddScoped<IAccountDeletionService>(sp => sp.GetRequiredService<AccountDeletionService>());
         services.AddScoped<IExternalLoginService, ExternalLoginService>();
         services.AddScoped<IUserSignInService, UserSignInService>();
 
@@ -206,8 +209,7 @@ public sealed class Section :
     IEnumerable<AdminTile> ISectionAdminTiles.Tiles() =>
     [
         new AdminTile("users.total", "Total users", "fa-solid fa-users", TotalAsync, Weight: 10),
-        new AdminTile("users.profiles", "Active (has profile)", "fa-solid fa-id-card", ProfilesAsync, Weight: 20),
-        new AdminTile("users.tickets", "Ticket holders", "fa-solid fa-ticket", TicketHoldersAsync, Weight: 30)
+        new AdminTile("users.profiles", "Active (has profile)", "fa-solid fa-id-card", ProfilesAsync, Weight: 20)
     ];
 
     private static async ValueTask<AdminTileValue?> TotalAsync(IServiceProvider sp, CancellationToken ct)
@@ -220,19 +222,6 @@ public sealed class Section :
     {
         var count = (await SnapshotAsync(sp, ct)).Count(u => u.IsActive);
         return new AdminTileValue(count.ToString(CultureInfo.CurrentCulture), Summary: $"{count} with profile");
-    }
-
-    private static async ValueTask<AdminTileValue?> TicketHoldersAsync(IServiceProvider sp, CancellationToken ct)
-    {
-        var activeEvent = sp.GetRequiredService<ISettingsService>().GetActiveEventSettings();
-        var count = 0;
-        if (activeEvent is { Year: > 0 })
-        {
-            var living = (await SnapshotAsync(sp, ct)).Select(u => u.Id).ToHashSet();
-            count = (await sp.GetRequiredService<ITicketService>().GetAllParticipationsAsync(ct))
-                .Count(p => p.Year == activeEvent.Year && p.HasTicket && living.Contains(p.UserId));
-        }
-        return new AdminTileValue(count.ToString(CultureInfo.CurrentCulture), Summary: $"{count} with ticket");
     }
 
     private static async Task<IReadOnlyCollection<UserInfo>> SnapshotAsync(IServiceProvider sp, CancellationToken ct) =>
@@ -256,7 +245,7 @@ public sealed class Section :
 
     internal const string LegacyIdentityEmailsKey = "users.legacy-identity-emails";
 
-    internal const string ProfileChildrenUserIdKey = "users.profile-children-user-id";
+    internal const string LeftoverMergeRequestsKey = "users.leftover-merge-requests";
 
     IEnumerable<DataMigration> ISectionDataMigrations.Migrations() =>
     [
@@ -264,25 +253,33 @@ public sealed class Section :
             "Create a verified UserEmail row from the legacy User.Email Identity column",
             "The legacy-column fallback in User.Email / UserInfo.Email",
             LegacyEmailsStatusAsync, ApplyLegacyEmailsAsync),
-        new(ProfileChildrenUserIdKey, SectionName,
-            "Stamp the owning user id onto contact fields, profile languages and volunteer history",
-            "The ProfileId key on user_contact_fields, user_profile_languages and user_volunteer_history_entries",
-            ProfileChildrenStatusAsync, ApplyProfileChildrenAsync),
+        new(LeftoverMergeRequestsKey, SectionName,
+            "Dismiss merge requests left from before merges were self-service: removes each pending email, the accounts are untouched",
+            "The leftover-request listing and dismiss code in AccountMergeService",
+            LeftoverMergeRequestsStatusAsync, ApplyLeftoverMergeRequestsAsync),
     ];
 
-    private static async Task<DataMigrationStatus> ProfileChildrenStatusAsync(IServiceProvider sp, CancellationToken ct) =>
-        new(["User", "Contact fields", "Languages", "Volunteer history"],
-            [.. (await sp.GetRequiredService<ProfileService>().GetProfileChildRowsWithoutUserAsync(ct))
+    private static async Task<DataMigrationStatus> LeftoverMergeRequestsStatusAsync(IServiceProvider sp, CancellationToken ct) =>
+        new(["Address", "Asked by", "Already on", "Asked"],
+            [.. (await sp.GetRequiredService<IAccountMergeService>().GetPendingRequestsAsync(ct))
                 .Select(r => (IReadOnlyList<string>)
                 [
-                    r.UserId.ToString(),
-                    r.ContactFields.ToString(CultureInfo.InvariantCulture),
-                    r.Languages.ToString(CultureInfo.InvariantCulture),
-                    r.VolunteerHistory.ToString(CultureInfo.InvariantCulture),
+                    r.Email, r.TargetUser.Id.ToString(), r.SourceUser.Id.ToString(),
+                    r.CreatedAt.ToInvariantTimestamp(),
                 ])]);
 
-    private static Task<int> ApplyProfileChildrenAsync(IServiceProvider sp, Guid actorUserId, CancellationToken ct) =>
-        sp.GetRequiredService<ProfileService>().FillProfileChildUserIdsAsync(ct);
+    private static async Task<int> ApplyLeftoverMergeRequestsAsync(IServiceProvider sp, Guid actorUserId, CancellationToken ct)
+    {
+        var merges = sp.GetRequiredService<IAccountMergeService>();
+        var dismissed = 0;
+        foreach (var request in await merges.GetPendingRequestsAsync(ct))
+        {
+            var result = await merges.RejectAsync(
+                request.Id, actorUserId, "Dismissed: merges are self-service now.", ct);
+            if (result.Refusal is null) dismissed++;
+        }
+        return dismissed;
+    }
 
     private static async Task<DataMigrationStatus> LegacyEmailsStatusAsync(IServiceProvider sp, CancellationToken ct) =>
         new(["User", "Legacy User.Email"],
@@ -337,16 +334,8 @@ public sealed class Section :
         var localizer = services.GetRequiredService<IStringLocalizer<SharedResource>>();
         var logger = services.GetRequiredService<ILogger<Section>>();
         var info = await services.GetRequiredService<IUserService>().GetUserInfoAsync(userId, ct);
-        var isVolunteerMember = (await services.GetRequiredService<ITeamService>().GetTeamAsync(SystemTeamIds.Volunteers, ct))
-            is { IsActive: true } volunteers && volunteers.Members.Any(m => m.UserId == userId);
 
         var entries = new List<ThingsToDoEntry> { await ProfileEntryAsync(services, localizer, info, userId, ct) };
-
-        if (!isVolunteerMember)
-        {
-            var review = await services.GetRequiredService<IConsentService>().GetConsentReviewAsync(userId, ct);
-            entries.Add(ConsentCheckEntry(localizer, info?.Profile is not null && review.Status == ConsentCheckStatus.Cleared));
-        }
 
         var medical = await MedicalEntryAsync(services, localizer, logger, userId, ct);
         if (medical is not null)
@@ -380,18 +369,6 @@ public sealed class Section :
             IsDone = complete,
             ActionText = localizer["Todo_Profile_Action"].Value,
             PercentComplete = complete ? null : percent,
-        };
-    }
-
-    private static ThingsToDoEntry ConsentCheckEntry(IStringLocalizer<SharedResource> localizer, bool cleared)
-    {
-        return new ThingsToDoEntry("consent-check", localizer["Todo_ConsentCheck_Title"].Value,
-            "fa-solid fa-clipboard-check", Weight: 30)
-        {
-            Description = cleared
-                ? localizer["Todo_ConsentCheck_Done"].Value
-                : localizer["Todo_ConsentCheck_Pending"].Value,
-            IsDone = cleared,
         };
     }
 
@@ -437,6 +414,18 @@ public sealed class Section :
     [
         new(UserPartSlots.BoardVoteApplicant, typeof(ProfileCardViewComponent)),
         new(UserPartSlots.ConsentReviewApplicant, typeof(ProfileCardViewComponent)),
-        new(UserPartSlots.TicketTransferParty, typeof(HumanSummaryViewComponent)),
     ];
+
+    IEnumerable<SearchCategory> ISearchContributor.Categories() =>
+    [
+        new("Human",
+            sp => sp.GetRequiredService<IStringLocalizer<UsersResource>>()["Users_Search_Category"].Value,
+            "fa-solid fa-user", typeof(UserSearchResultViewComponent), SearchHumansAsync, Weight: 0),
+    ];
+
+    // Public surface only: admin fields never reach /Search, whatever the viewer's role.
+    private static async Task<IReadOnlyList<SearchHit>> SearchHumansAsync(
+        IServiceProvider sp, string query, CancellationToken ct) =>
+        [.. (await sp.GetRequiredService<IUserService>().SearchUsersAsync(query, PersonSearchFields.PublicAll, int.MaxValue, ct))
+            .Select(h => new SearchHit(h.UserId, h.BurnerName, h.Score, h.MatchField, h.MatchSnippet))];
 }

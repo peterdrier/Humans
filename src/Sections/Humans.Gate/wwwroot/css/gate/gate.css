@@ -232,3 +232,24 @@ body.gate-kiosk { margin: 0; min-height: 100vh; background: #f4ede1; }
     background: #2b3440; color: #fff;
 }
 .gate-roster-pick:hover, .gate-roster-pick:focus { background: #1e2a33; color: #fff; }
+
+/* Undo on an ADMIT card: solid dark so it reads on the green, and clearly not the next-ticket button. */
+.gate-undo-btn { display: block; width: 100%; margin-top: 1rem; background: #3a4753; font-size: 1.15rem; }
+
+/* ── Find by name panel (Index.cshtml) — reuses the override scrim ───────── */
+.gate-find-open { font-size: 1.15rem; font-weight: 700; white-space: nowrap; }
+.gate-find-form { display: flex; gap: .6rem; margin-bottom: 1rem; }
+#gate-find-input {
+    flex: 1; min-width: 0; font-size: 1.4rem; padding: .8rem 1rem; border-radius: 12px; border: 2px solid #c9d2da;
+}
+#gate-find-input:focus { outline: none; border-color: #1e2a33; box-shadow: 0 0 0 4px rgba(30,42,51,.15); }
+.gate-find-go { flex: none; background: #2b3440; font-size: 1.2rem; padding: .8rem 1.2rem; }
+.gate-find-list { display: flex; flex-direction: column; gap: .6rem; max-height: 55vh; overflow-y: auto; }
+.gate-find-pick {
+    display: flex; flex-direction: column; align-items: flex-start; text-align: left; width: 100%;
+    padding: .9rem 1.1rem; border: none; border-radius: 12px; cursor: pointer; background: #2b3440; color: #fff;
+}
+.gate-find-pick:active { background: #11181d; }
+.gate-find-name { font-size: 1.4rem; font-weight: 700; line-height: 1.15; }
+.gate-find-type { font-size: 1.05rem; margin-top: .2rem; }
+.gate-find-hint { font-size: 1.15rem; color: #2b3440; text-align: center; margin: .5rem 0 0; }

@@ -20,6 +20,7 @@ graph LR
     AuditLog
     Auth
     Backdoor
+    BoxOffice
     Budget
     Calendar
     Campaigns
@@ -41,6 +42,7 @@ graph LR
     Governance
     Grants
     Guide
+    HiEvents
     Holded
     Issues
     LowIncome
@@ -48,9 +50,12 @@ graph LR
     Monitor
     Notifications
     Onboarding
+    Permissions
     Pleo
     Preapprovals
+    Pretix
     Rideshare
+    Roles
     Scanner
     Search
     Settings
@@ -69,8 +74,8 @@ graph LR
     Agent --> Consent
     Agent --> Issues
     Agent --> Settings
+    Agent --> Shifts
     Agent -.-> Governance
-    Agent -.-> Shifts
     Agent -.-> Teams
     Agent -.-> Tickets
     Auth -.-> Email
@@ -87,7 +92,9 @@ graph LR
     Backdoor --> Surveys
     Backdoor -.-> Finance
     Backdoor -.-> Notifications
+    BoxOffice -.-> Tickets
     Budget --> Issues
+    Budget --> Permissions
     Budget -.-> Camps
     Budget -.-> Finance
     Budget -.-> Teams
@@ -99,18 +106,18 @@ graph LR
     Campaigns -.-> Teams
     Campaigns -.-> Tickets
     Campaigns -.-> Users
-    Camps --> CityPlanning
     Camps --> EarlyEntry
     Camps --> Google
     Camps --> Issues
     Camps --> Settings
+    Camps --> Shifts
+    Camps -.-> CityPlanning
     Camps -.-> Email
     Camps -.-> Notifications
-    Camps -.-> Shifts
     Camps -.-> Teams
     Camps -.-> Tickets
     Cantina --> Settings
-    Cantina -.-> Shifts
+    Cantina --> Shifts
     CityPlanning --> Containers
     CityPlanning --> Issues
     CityPlanning --> Settings
@@ -122,23 +129,21 @@ graph LR
     Consent -.-> Governance
     Consent -.-> Notifications
     Consent -.-> Onboarding
-    Consent -.-> Shifts
     Consent -.-> Teams
     Consent -.-> Users
+    Containers --> Settings
     Containers -.-> Camps
     Containers -.-> CityPlanning
     Debug --> Consent
     Debug --> Settings
+    Debug --> Shifts
     Debug -.-> Email
-    Debug -.-> Shifts
     Debug -.-> Tickets
     Development --> Auth
     Development --> Budget
     Development --> Consent
-    Development --> Settings
     Development -.-> Camps
     Development -.-> CityPlanning
-    Development -.-> Shifts
     Development -.-> Teams
     Development -.-> Users
     Email --> Settings
@@ -165,7 +170,7 @@ graph LR
     Gate --> Auth
     Gate --> EarlyEntry
     Gate --> Settings
-    Gate -.-> Shifts
+    Gate --> Shifts
     Gate -.-> Tickets
     Gdpr -.-> Users
     Google --> AuditLog
@@ -190,14 +195,15 @@ graph LR
     Guide --> Auth
     Guide -.-> Camps
     Guide -.-> Teams
+    HiEvents -.-> Tickets
     Holded -.-> Finance
     Issues --> AuditLog
     Issues --> Auth
     Issues -.-> Email
     Issues -.-> Notifications
     LowIncome --> Grants
+    MailerLite --> Shifts
     MailerLite -.-> Email
-    MailerLite -.-> Shifts
     MailerLite -.-> Tickets
     MailerLite -.-> Users
     Monitor --> Google
@@ -207,18 +213,23 @@ graph LR
     Onboarding --> Consent
     Onboarding --> Issues
     Onboarding --> Settings
+    Onboarding --> Shifts
     Onboarding -.-> Email
     Onboarding -.-> Governance
     Onboarding -.-> Notifications
-    Onboarding -.-> Shifts
     Onboarding -.-> Teams
     Onboarding -.-> Users
+    Permissions --> Auth
     Pleo -.-> Finance
     Preapprovals -.-> Email
     Preapprovals -.-> Finance
     Preapprovals -.-> Notifications
+    Pretix -.-> Tickets
     Rideshare --> Settings
     Rideshare -.-> Notifications
+    Roles --> Auth
+    Roles --> Permissions
+    Roles -.-> Teams
     Scanner --> Calendar
     Scanner --> Consent
     Scanner --> EarlyEntry
@@ -226,22 +237,18 @@ graph LR
     Scanner --> Issues
     Scanner --> Settings
     Scanner --> Tickets
-    Search --> Camps
-    Search --> Events
-    Search --> Shifts
-    Search --> Teams
-    Search --> Users
     Shifts --> Auth
     Shifts --> Calendar
     Shifts --> Consent
     Shifts --> EarlyEntry
     Shifts --> Issues
-    Shifts --> Onboarding
+    Shifts --> Permissions
     Shifts --> Settings
     Shifts --> Teams
     Shifts -.-> Camps
     Shifts -.-> Email
     Shifts -.-> Notifications
+    Shifts -.-> Onboarding
     Shifts -.-> Tickets
     Store --> AuditLog
     Store --> Budget
@@ -253,9 +260,9 @@ graph LR
     Store -.-> Teams
     Stripe -.-> Finance
     Surveys --> Google
+    Surveys --> Shifts
     Surveys -.-> Email
     Surveys -.-> Governance
-    Surveys -.-> Shifts
     Surveys -.-> Teams
     Surveys -.-> Tickets
     Teams --> AuditLog
@@ -264,6 +271,8 @@ graph LR
     Teams --> EarlyEntry
     Teams --> Google
     Teams --> Issues
+    Teams --> Permissions
+    Teams --> Roles
     Teams --> Settings
     Teams -.-> Camps
     Teams -.-> Email
@@ -275,8 +284,9 @@ graph LR
     Tickets --> Auth
     Tickets --> Budget
     Tickets --> Campaigns
-    Tickets --> Consent
     Tickets --> EarlyEntry
+    Tickets --> Gate
+    Tickets --> Grants
     Tickets --> Issues
     Tickets --> Settings
     Tickets --> Stripe
@@ -289,18 +299,17 @@ graph LR
     Tickets -.-> Users
     Users --> AuditLog
     Users --> Auth
-    Users --> Camps
     Users --> Cantina
     Users --> Consent
     Users --> Gdpr
     Users --> Google
     Users --> Issues
-    Users --> Settings
+    Users --> Shifts
+    Users -.-> Camps
     Users -.-> Email
     Users -.-> Governance
     Users -.-> Notifications
     Users -.-> Onboarding
-    Users -.-> Shifts
     Users -.-> Teams
     Users -.-> Tickets
     Workgroups --> Auth

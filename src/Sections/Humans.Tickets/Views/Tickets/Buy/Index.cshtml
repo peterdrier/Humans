@@ -1,0 +1,308 @@
+@using Humans.Tickets.Domain.Checkout
+@model IReadOnlyList<Humans.Tickets.Services.Checkout.BuyPage>
+@{
+    ViewData["Title"] = Localizer["Tickets_Buy_Title"].Value;
+    var directedToken = ViewData["DirectedToken"] as string;
+    var single = Model.Count == 1;
+}
+
+@{
+    void Summary(TicketPrice own)
+    {
+        <div class="stat buy-summary">
+            <div class="label">@Localizer["Tickets_Buy_YourPrice"]</div>
+            <div class="value buy-total">@((own.AmountMinor / 100m).ToEuro())</div>
+            <dl class="buy-lines">
+                <dt>@own.Wave.Name</dt>
+                <dd>@((own.Wave.PriceMinor / 100m).ToEuro())</dd>
+                @if (own.ClassPrice is { } cls)
+                {
+                    <dt>@cls.Label</dt>
+                    <dd>@((cls.AmountMinor / 100m).ToEuro())</dd>
+                }
+                @foreach (var credit in own.Credits)
+                {
+                    <dt>@credit.Label</dt>
+                    <dd>−@((credit.AmountMinor / 100m).ToEuro())</dd>
+                }
+            </dl>
+        </div>
+    }
+}
+
+<page-header title="@(Localizer["Tickets_Buy_Title"].Value)" subtitle="@(single ? Model[0].EventName : null)">
+    <a class="btn btn-outline-secondary" asp-action="Mine">@Localizer["Tickets_Mine_Title"]</a>
+</page-header>
+
+@if (Model.Count == 0)
+{
+    <empty-state>@Localizer["Tickets_Buy_NotOnSale"]</empty-state>
+    return;
+}
+
+<p class="text-muted">@Localizer["Tickets_Buy_Intro"]</p>
+@if (directedToken is not null)
+{
+    <div class="alert alert-info">@Localizer[Model[0].InviteTaken ? "Tickets_Resale_InviteTaken" : "Tickets_Resale_DirectedIntro"]</div>
+}
+
+@foreach (var sale in Model)
+{
+var p = sale.SalesEvent.Id.ToString("N");
+<section class="mb-5" aria-label="@sale.EventName">
+@if (!single)
+{
+    <h2 class="h3 mb-3">@sale.EventName</h2>
+}
+
+<div class="row g-4">
+@if (sale.Unavailable is not null)
+{
+    <div class="col-lg-8">
+        <div class="alert alert-info mb-0">@Localizer[sale.Unavailable]</div>
+    </div>
+}
+else
+{
+    var own = sale.OwnPrice!;
+    var nothingToBuy = sale.AlreadyHoldsTicket && (!sale.OffersOthers || directedToken is not null) && !sale.OffersDonations;
+    <div class="col-lg-4 order-lg-2 d-none d-lg-block">
+        @{ Summary(own); }
+    </div>
+
+    <div class="col-lg-8 order-lg-1">
+        <form asp-action="Start" method="post" class="card card-body">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="salesEventId" value="@sale.SalesEvent.Id" />
+            @if (directedToken is not null)
+            {
+                <input type="hidden" name="directedToken" value="@directedToken" />
+            }
+
+            <h3 class="h4">@Localizer["Tickets_Buy_ForSelfHeading"]</h3>
+            @if (sale.AlreadyHoldsTicket)
+            {
+                <input type="hidden" name="forSelf" value="false" />
+                @if (sale.OpenOrder is null)
+                {
+                    <p class="text-muted mb-0">@Localizer["Tickets_Buy_AlreadyHolds"]</p>
+                }
+                else
+                {
+                    <p class="text-muted mb-0">
+                        @Localizer["Tickets_Buy_OpenOrder"]
+                        <a asp-action="Order" asp-route-id="@sale.OpenOrder.Id">@Localizer["Tickets_Buy_OrderTitle"]</a>
+                    </p>
+                }
+            }
+            else
+            {
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="forSelf-@p" name="forSelf" value="true" checked />
+                    <label class="form-check-label" for="forSelf-@p">@string.Format(Localizer["Tickets_Buy_ForSelf"].Value, sale.BuyerName)</label>
+                </div>
+
+                @if (sale.SalesEvent.ChildTypes.Count > 0 && directedToken is null)
+                {
+                    var childTypes = sale.SalesEvent.ChildTypes;
+                    string ChildTypeText(TicketChildType t) => string.Format(Localizer["Tickets_Buy_ChildType"].Value, t.Name,
+                        t.UnderAge.ToString(System.Globalization.CultureInfo.CurrentCulture), (t.PriceMinor / 100m).ToEuro());
+                    <hr class="my-4" />
+                    <h3 class="h4">@Localizer["Tickets_Buy_Children"]</h3>
+                    <p class="small text-muted mb-1">@Localizer["Tickets_Buy_ChildrenHelp"]</p>
+                    <ul class="small text-muted ps-3">
+                        @foreach (var t in childTypes)
+                        {
+                            <li>@ChildTypeText(t)</li>
+                        }
+                    </ul>
+                    <div class="row g-2">
+                        @for (var c = 0; c < 3; c++)
+                        {
+                            var childLabel = string.Format(Localizer["Tickets_Buy_ChildName"].Value, c + 1);
+                            <div class="@(childTypes.Count > 1 ? "col-md-7" : "col-md-8")">
+                                <input class="form-control" name="childNames" maxlength="513" autocomplete="off"
+                                       aria-label="@childLabel" placeholder="@childLabel" />
+                            </div>
+                            @if (childTypes.Count > 1)
+                            {
+                                <div class="col-md-5">
+                                    <select class="form-select" name="childTypes" aria-label="@string.Format(Localizer["Tickets_Buy_ChildTypeLabel"].Value, c + 1)">
+                                        @foreach (var t in childTypes)
+                                        {
+                                            <option value="@t.Name">@t.Name, @((t.PriceMinor / 100m).ToEuro())</option>
+                                        }
+                                    </select>
+                                </div>
+                            }
+                        }
+                    </div>
+                }
+
+                @if (sale.OffersDonations && sale.SalesEvent.SupporterTotalsMinor.Any(t => t > own.AmountMinor))
+                {
+                    <hr class="my-4" />
+                    <fieldset>
+                        <legend class="h4">@Localizer["Tickets_Buy_Supporter"]</legend>
+                        <p class="small text-muted">@Localizer["Tickets_Buy_SupporterIntro"]</p>
+                        <div class="form-check mb-2">
+                            <input class="form-check-input" type="radio" name="supporterTotalMinor" id="supporter-none-@p" value="" checked />
+                            <label class="form-check-label" for="supporter-none-@p">@Localizer["Tickets_Buy_SupporterNone"]</label>
+                        </div>
+                        @foreach (var total in sale.SalesEvent.SupporterTotalsMinor.Where(t => t > own.AmountMinor))
+                        {
+                            <div class="form-check mb-2">
+                                <input class="form-check-input" type="radio" name="supporterTotalMinor" id="supporter-@total-@p" value="@total" />
+                                <label class="form-check-label" for="supporter-@total-@p">@string.Format(Localizer["Tickets_Buy_SupporterOption"].Value, (total / 100m).ToEuro(), ((total - own.AmountMinor) / 100m).ToEuro())</label>
+                            </div>
+                        }
+                    </fieldset>
+                }
+            }
+
+            @if (directedToken is null && sale.OffersOthers)
+            {
+                <hr class="my-4" />
+                <h3 class="h4">@Localizer["Tickets_Buy_Others"]</h3>
+                <p class="small text-muted">@string.Format(Localizer["Tickets_Buy_OthersHelp"].Value, (sale.PublicPrice!.AmountMinor / 100m).ToEuro())</p>
+                <div class="row g-2" data-buy-others>
+                    @for (var o = 0; o < 3; o++)
+                    {
+                        var label = string.Format(Localizer["Tickets_Buy_OtherEmail"].Value, o + 1);
+                        <div class="col-md-8" data-buy-other>
+                            <input class="form-control" name="otherEmails" type="email" maxlength="320" autocomplete="off"
+                                   aria-label="@label" placeholder="@label" />
+                        </div>
+                    }
+                </div>
+                <button type="button" class="btn btn-outline-secondary btn-sm mt-2 align-self-start d-none" data-buy-others-add
+                        data-label="@Localizer["Tickets_Buy_OtherEmail"].Value">@Localizer["Tickets_Buy_OthersAdd"]</button>
+            }
+
+            @if (sale.OffersDonations)
+            {
+                <hr class="my-4" />
+                <h3 class="h4">@Localizer["Tickets_Buy_Donation"]</h3>
+                <div class="row g-2 mb-2">
+                    <div class="col-7 col-md-4">
+                        <div class="input-group">
+                            <input class="form-control" name="donation" type="number" min="0" step="1" aria-label="@Localizer["Tickets_Buy_Donation"]" />
+                            <span class="input-group-text">€</span>
+                        </div>
+                    </div>
+                    @if (sale.SalesEvent.DonationPurposes is [_, ..] purposes)
+                    {
+                        <div class="col-12 col-md-8">
+                            <select class="form-select" name="donationPurpose" aria-label="@Localizer["Tickets_Buy_DonationPurpose"]">
+                                <option value="">@Localizer["Tickets_Buy_Purpose_General"]</option>
+                                @foreach (var purpose in purposes)
+                                {
+                                    <option value="@purpose">@purpose</option>
+                                }
+                            </select>
+                        </div>
+                    }
+                </div>
+                <p class="small text-muted mb-0">@Localizer["Tickets_Buy_DonationNote"]</p>
+            }
+
+            @if (!nothingToBuy)
+            {
+                <hr class="my-4" />
+                @if (sale.Terms is { } terms)
+                {
+                    var termsTabs = new TabbedMarkdownDocumentsViewModel
+                    {
+                        Documents = terms.Texts.OrderByDisplayLanguage(canonicalFirst: true).ToList(),
+                        DefaultLanguage = terms.Texts.GetDefaultDocumentLanguage(),
+                        TabsId = $"terms-tabs-{p}",
+                        ContentId = $"terms-content-{p}",
+                        ContentCssClass = "tab-content pt-3",
+                        ContentStyle = "",
+                        UseLegalLanguageLabels = false,
+                    };
+                    <details class="ticket-rules mb-2">
+                        <summary>@Localizer["Tickets_Buy_Terms"]</summary>
+                        <div class="mt-2">
+                            <partial name="_TabbedMarkdownDocuments" model="termsTabs" />
+                        </div>
+                    </details>
+                    <input type="hidden" name="termsFolder" value="@terms.Folder" />
+                    <input type="hidden" name="termsVersion" value="@terms.Version" />
+                    <div class="form-check mb-3">
+                        <input class="form-check-input" type="checkbox" id="acceptTerms-@p" name="acceptTerms" value="true" required />
+                        <label class="form-check-label" for="acceptTerms-@p">@Localizer["Tickets_Buy_TermsAccept"]</label>
+                    </div>
+                }
+                @if (sale.AskMarketing)
+                {
+                    <div class="form-check mb-3">
+                        <input class="form-check-input" type="checkbox" id="marketing-@p" name="marketingOptIn" value="true" />
+                        <label class="form-check-label" for="marketing-@p">@Localizer["Tickets_Buy_Marketing"]</label>
+                    </div>
+                }
+                <div class="d-lg-none mb-3">
+                    @{ Summary(own); }
+                </div>
+                <div>
+                    <button type="submit" class="btn btn-primary btn-lg buy-pay mt-2">@Localizer["Tickets_Buy_Pay"]</button>
+                </div>
+            }
+        </form>
+
+        @if (sale.OpenOrder is { } openOrder)
+        {
+            <form asp-action="Cancel" asp-route-id="@openOrder.Id" method="post" class="mt-3">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="startAgain" value="true" />
+                <button type="submit" class="btn btn-outline-danger btn-sm">@Localizer["Tickets_Buy_CancelAndRestart"]</button>
+            </form>
+        }
+    </div>
+}
+
+@if (sale.Orders.Count > 0)
+{
+    <div class="col-lg-8 order-lg-3">
+        <h3 class="h4">@Localizer["Tickets_Buy_YourOrders"]</h3>
+        <div class="list-group">
+            @foreach (var order in sale.Orders)
+            {
+                <a class="list-group-item list-group-item-action d-flex justify-content-between align-items-center gap-2" asp-action="Order" asp-route-id="@order.Id">
+                    <span>@order.CreatedAt.ToDateTime()</span>
+                    <span class="d-flex align-items-center gap-2">
+                        @((order.TotalMinor / 100m).ToEuro())
+                        <status-badge value="@order.State" text="@(Localizer[$"Tickets_Buy_State_{order.State}"].Value)" />
+                    </span>
+                </a>
+            }
+        </div>
+    </div>
+}
+</div>
+</section>
+}
+
+@section Scripts {
+    <script>
+        (function () {
+            document.querySelectorAll('[data-buy-others-add]').forEach(function (button) {
+                var list = button.previousElementSibling;
+                var max = 10;
+                button.classList.remove('d-none');
+                button.addEventListener('click', function () {
+                    var rows = list.querySelectorAll('[data-buy-other]');
+                    var row = rows[rows.length - 1].cloneNode(true);
+                    var input = row.querySelector('input');
+                    var label = button.dataset.label.replace('{0}', rows.length + 1);
+                    input.value = '';
+                    input.placeholder = label;
+                    input.setAttribute('aria-label', label);
+                    list.appendChild(row);
+                    input.focus();
+                    if (rows.length + 1 >= max) button.classList.add('d-none');
+                });
+            });
+        })();
+    </script>
+}

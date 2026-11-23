@@ -26,7 +26,7 @@
 # In development, log in with any Google account.
 # To get Admin access, insert a role_assignment via:
 #   docker exec humans-db-1 psql -U humans -d humans -c \
-#     "INSERT INTO role_assignments (\"Id\", \"UserId\", \"RoleName\", \"ValidFrom\", \"ValidTo\", \"Notes\", \"CreatedAt\", \"CreatedByUserId\") \
+#     "INSERT INTO auth_role_assignments (\"Id\", \"UserId\", \"RoleName\", \"ValidFrom\", \"ValidTo\", \"Notes\", \"CreatedAt\", \"CreatedByUserId\") \
 #      VALUES (gen_random_uuid(), '<user-id>', 'Admin', now(), NULL, 'Dev setup', now(), '<user-id>');"
 # Then log out and back in.
 

@@ -46,12 +46,10 @@ internal interface ITicketManagement : ITicketService, IApplicationService
     Task<List<OrderExportRow>> GetOrderExportDataAsync(Guid actorUserId, CancellationToken ct = default);
 
     /// <summary>
-    /// Oldest first, dated in the org time zone. Audits the actor: this is a bulk export of buyer identity leaving the
-    /// system.
+    /// Unordered and dated in the org time zone; the export controller orders by purchase time.
+    /// Audits the actor: this is a bulk export of buyer identity leaving the system.
     /// </summary>
     Task<List<DonationExportRow>> GetDonationExportDataAsync(Guid actorUserId, CancellationToken ct = default);
-
-    Task<IReadOnlyList<OrderDriftRow>> GetOrderDriftAsync(CancellationToken ct = default);
 
     Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct);
 
@@ -78,10 +76,3 @@ internal sealed record UserTicketAttendeeExportRow(
     decimal Price,
     string Status);
 
-internal sealed record OrderDriftRow(
-    Guid OrderId,
-    string VendorOrderId,
-    string BuyerName,
-    int IssuedCount,
-    int ValidCount,
-    string? VendorDashboardUrl);

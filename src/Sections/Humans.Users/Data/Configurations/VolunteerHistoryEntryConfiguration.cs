@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using Humans.Users.Contracts;
 
 namespace Humans.Users.Data.Configurations;
 
@@ -27,12 +28,15 @@ internal sealed class VolunteerHistoryEntryConfiguration : IEntityTypeConfigurat
         builder.Property(v => v.UpdatedAt)
             .IsRequired();
 
-        builder.HasOne(v => v.Profile)
-            .WithMany(p => p.VolunteerHistory)
-            .HasForeignKey(v => v.ProfileId)
+        builder.HasOne<User>()
+            .WithMany()
+            .HasForeignKey(v => v.UserId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        builder.HasIndex(v => v.ProfileId);
+        // Declared so the model matches the default EF's nullable-to-required migration leaves in the
+        // database (required-columns-need-approval). Every write sets a real user id.
+        builder.Property(v => v.UserId).HasDefaultValue(Guid.Empty);
+
         builder.HasIndex(v => v.UserId);
     }
 }

@@ -57,13 +57,18 @@ and the total in EUR.
 `PolicyNames.AdminOnly`, tightening the controller-wide `TicketsPolicies.Read`; the button is
 only rendered for admins. Anonymous callers are denied by the same policy.
 
+**From 2027, Humans checkout orders too:** each donation line on a `Paid` checkout order is one row, type
+`Donation: <purpose>` (one of the sales setup's donation purposes, or `General`; the supporter-total part is `General`), dated by
+`PaidAt` in Europe/Madrid, with the receipt's 8-character order reference as the order id. The whole list is sorted by
+date. See [ticket-delivery.md](ticket-delivery.md).
+
 ## Data Model
 
 No schema change. Reads `TicketOrder` (buyer name/email, `DonationAmount`, `PurchasedAt`,
 `PaymentStatus`, `VendorOrderId`) and its `TicketAttendee` rows (`Price`, `Status`).
 
 - `OrderExportRow` (existing) gained `VendorOrderId`, `PurchasedAt`, `VipDonations`.
-- `DonationExportRow` (new, section-internal): `Date, VendorOrderId, BuyerName, BuyerEmail, Type, Amount`.
+- `DonationExportRow` (new, section-internal): `PurchasedAt, Date, VendorOrderId, BuyerName, BuyerEmail, Type, Amount`. `PurchasedAt` stays internal for ordering; it is not a CSV column.
 - `TicketsAuditActions.TicketDonationsExported` (new).
 
 ## Workflow
@@ -73,7 +78,7 @@ No schema change. Reads `TicketOrder` (buyer name/email, `DonationAmount`, `Purc
    `ITicketManagement.GetDonationExportDataAsync(actorUserId)`.
 3. `TicketQueryService` filters paid orders, splits each into its donation rows, dates them in
    Europe/Madrid, writes the audit entry, returns the rows.
-4. The controller renders the CSV through `HumansCsv` and appends the `Total` row.
+4. The controller orders rows by purchase instant, renders the CSV through `HumansCsv` and appends the `Total` row. Equal instants retain their service order, keeping each order’s VIP row before its separate donation.
 
 ## Related
 

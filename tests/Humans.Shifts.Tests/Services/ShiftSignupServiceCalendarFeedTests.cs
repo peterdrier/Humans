@@ -1,3 +1,4 @@
+using Humans.Permissions.Contracts;
 using Humans.Shifts.Domain;
 using System.Globalization;
 using System.Resources;
@@ -35,13 +36,13 @@ public sealed class ShiftSignupServiceCalendarFeedTests : ShiftsTestHarness
     {
         var serviceProvider = new ServiceLocatorBuilder()
             .With(_teamService)
+            .With<IPermissionService>()
             .Build();
 
         var repo = new ShiftRepository(ShiftsDbFactory, ShiftsDb, Clock);
         var shiftMgmt = new ShiftManagementService(
             repo,
             AuditLog,
-            AdminAuthorization,
             serviceProvider,
             NewCalendarResolver(),
             Clock,
@@ -54,7 +55,6 @@ public sealed class ShiftSignupServiceCalendarFeedTests : ShiftsTestHarness
             NewCalendarResolver(),
             AuditLog,
             Substitute.For<INotificationEmitter>(),
-            AdminAuthorization,
             serviceProvider,
             Clock,
             NullLogger<ShiftSignupService>.Instance,

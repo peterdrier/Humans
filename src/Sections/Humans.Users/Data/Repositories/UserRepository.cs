@@ -1,3 +1,4 @@
+using Humans.Users.Domain;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
@@ -231,28 +232,6 @@ internal sealed partial class UserRepository : IUserRepository
         user.ContactSource = source;
         await ctx.SaveChangesAsync(ct);
         return true;
-    }
-
-    public async Task<int> DeleteUsersAsync(
-        IReadOnlyCollection<Guid> userIds,
-        CancellationToken ct = default)
-    {
-        if (userIds.Count == 0)
-            return 0;
-
-        await using var ctx = await _factory.CreateDbContextAsync(ct);
-        await using var tx = await ctx.Database.BeginTransactionAsync(ct);
-
-        await ctx.Set<IdentityUserLogin<Guid>>()
-            .Where(l => userIds.Contains(l.UserId))
-            .ExecuteDeleteAsync(ct);
-
-        var deleted = await ctx.Users
-            .Where(u => userIds.Contains(u.Id))
-            .ExecuteDeleteAsync(ct);
-
-        await tx.CommitAsync(ct);
-        return deleted;
     }
 
     public async Task<IReadOnlyDictionary<Guid, IReadOnlyList<(string Provider, string ProviderKey)>>>

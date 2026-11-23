@@ -1,3 +1,4 @@
+using Humans.Events.Services.Dtos;
 using Humans.Base.Extensions;
 using Humans.Camps.Contracts;
 using Humans.Settings.Contracts;

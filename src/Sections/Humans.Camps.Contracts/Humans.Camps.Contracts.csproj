@@ -13,8 +13,9 @@
     signatures name. The directory, detail, admin, roster, join-request, role-management,
     compliance, image and early-entry DTOs are internal to the section.
 
-    The camp enums live here rather than in the section's internal Domain/ because the
-    leaf's own records name them (Budget's rule). Teams' hard floor does not apply: no
+    The camp enums named by the leaf's records live here rather than in the section's
+    internal Domain/ (Budget's rule). CampSpecialRole is section-only and stays in Domain/.
+    Teams' hard floor does not apply: no
     Humans.UI partial renders any of them — _CampCard.cshtml is the section's own view.
 
     Its only project reference is Humans.Base.

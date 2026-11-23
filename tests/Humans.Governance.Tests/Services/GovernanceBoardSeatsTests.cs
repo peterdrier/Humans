@@ -1,6 +1,12 @@
 using System.Security.Claims;
 using AwesomeAssertions;
+using Humans.AuditLog.Contracts;
 using Humans.Auth.Contracts;
+using Humans.Governance;
+using Humans.Governance.Data;
+using Humans.Google.Contracts;
+using Humans.Governance.Domain;
+using Microsoft.EntityFrameworkCore;
 using Humans.Base.Authorization;
 using Humans.Base.Constants;
 using Humans.Governance.Controllers;
@@ -25,7 +31,86 @@ public sealed class GovernanceBoardSeatsTests
 
     private readonly IUserService _users = Substitute.For<IUserService>();
 
-    private GovernanceBoardSeats Seats() => new(_roles, _write, _users, new FakeClock(Now));
+    private readonly GovernanceBodyRepository _repo = new(new TestDbContextFactory<GovernanceDbContext>(
+        new DbContextOptionsBuilder<GovernanceDbContext>().UseInMemoryDatabase(Guid.NewGuid().ToString()).Options));
+
+    private readonly IGoogleGroupSync _groupSync = Substitute.For<IGoogleGroupSync>();
+
+    private GovernanceBoardSeats Seats() =>
+        new(_roles, _write, _users, _repo, _audit,
+            new GovernanceBodySync(_repo, _groupSync, Substitute.For<IGoogleSyncWrite>()), new FakeClock(Now));
+
+    private readonly IAuditLogService _audit = Substitute.For<IAuditLogService>();
+
+    private void OnBoard(params Guid[] userIds)
+    {
+        _roles.GetActiveUserIdsInRoleAsync(RoleNames.Board, Arg.Any<CancellationToken>()).Returns(userIds);
+        _roles.IsUserBoardMemberAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(ci => userIds.Contains(ci.Arg<Guid>()));
+    }
+
+    [HumansFact]
+    public async Task An_office_moves_to_its_new_holder_who_gives_up_their_old_one()
+    {
+        var (ana, ben) = (Guid.NewGuid(), Guid.NewGuid());
+        OnBoard(ana, ben);
+        await Seats().SetPositionAsync(BoardPosition.President, ana, Guid.NewGuid());
+        await Seats().SetPositionAsync(BoardPosition.Treasurer, ben, Guid.NewGuid());
+
+        await Seats().SetPositionAsync(BoardPosition.President, ben, Guid.NewGuid());
+
+        (await Seats().GetPositionsAsync()).Should().BeEquivalentTo(
+            new Dictionary<Guid, BoardPosition> { [ben] = BoardPosition.President });
+        await _audit.Received(1).LogAsync(GovernanceAuditActions.BoardPositionSet, Arg.Any<string>(), ana,
+            "Board office President removed", Arg.Any<Guid>(), Arg.Any<Guid?>(), Arg.Any<string?>());
+        await _audit.Received(1).LogAsync(GovernanceAuditActions.BoardPositionSet, Arg.Any<string>(), ben,
+            "Board office President given (gave up Treasurer)", Arg.Any<Guid>(), Arg.Any<Guid?>(), Arg.Any<string?>());
+    }
+
+    [HumansFact]
+    public async Task Clearing_empties_the_members_office_and_is_a_no_op_without_one()
+    {
+        var ana = Guid.NewGuid();
+        OnBoard(ana);
+        (await Seats().ClearPositionAsync(ana, Guid.NewGuid())).Success.Should().BeTrue();
+        await Seats().SetPositionAsync(BoardPosition.Secretary, ana, Guid.NewGuid());
+
+        await Seats().ClearPositionAsync(ana, Guid.NewGuid());
+
+        (await _repo.GetBoardPositionsAsync()).Should().BeEmpty();
+        await _audit.Received(1).LogAsync(GovernanceAuditActions.BoardPositionSet, Arg.Any<string>(), ana,
+            "Board office Secretary removed", Arg.Any<Guid>(), Arg.Any<Guid?>(), Arg.Any<string?>());
+    }
+
+    [HumansFact]
+    public async Task Only_a_current_Board_member_can_hold_an_office_and_ending_the_seat_drops_it()
+    {
+        var (ana, outsider) = (Guid.NewGuid(), Guid.NewGuid());
+        OnBoard(ana);
+        (await Seats().SetPositionAsync(BoardPosition.Secretary, outsider, Guid.NewGuid())).ErrorKey
+            .Should().Be(GovernanceBoardSeats.NotOnBoard);
+        await Seats().SetPositionAsync(BoardPosition.Secretary, ana, Guid.NewGuid());
+        var seat = Row(ana, RoleNames.Board);
+        _roles.GetByUserIdAsync(ana, Arg.Any<CancellationToken>()).Returns([seat]);
+        _write.EndRoleAsync(seat.Id, Arg.Any<Guid>(), null, Arg.Any<CancellationToken>()).Returns(new RoleAssignmentResult(true));
+
+        await Seats().EndAsync(ana, Guid.NewGuid());
+
+        (await _repo.GetBoardPositionsAsync()).Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task Merge_moves_the_office_unless_the_survivor_holds_one()
+    {
+        var (from, to, other) = (Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid());
+        await _repo.SetBoardPositionAsync(BoardPosition.Secretary, from, Now);
+        await Seats().ReassignAsync(from, to, Guid.NewGuid(), Now, Xunit.TestContext.Current.CancellationToken);
+        await _repo.SetBoardPositionAsync(BoardPosition.Treasurer, other, Now);
+        await Seats().ReassignAsync(other, to, Guid.NewGuid(), Now, Xunit.TestContext.Current.CancellationToken);
+
+        (await _repo.GetBoardPositionsAsync()).Select(p => (p.Position, p.UserId))
+            .Should().BeEquivalentTo([(BoardPosition.Secretary, to)]);
+    }
 
     [HumansFact]
     public async Task Add_refuses_an_unknown_account()
@@ -76,7 +161,10 @@ public sealed class GovernanceBoardSeatsTests
         var authorization = Substitute.For<IAuthorizationService>();
         authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), RoleNames.Board, PolicyNames.RoleAssignmentManage)
             .Returns(AuthorizationResult.Failed());
-        var controller = new GovernanceController(users, Substitute.For<IGovernanceIndexService>(), Seats(), authorization,
+        var controller = new GovernanceController(users, Substitute.For<IGovernanceIndexService>(), Seats(),
+            new GovernanceBodyLinksService(_repo, Substitute.For<Humans.Teams.Contracts.ITeamService>(), Substitute.For<ITeamResourceService>(),
+                _audit, new GovernanceBodySync(_repo, _groupSync, Substitute.For<IGoogleSyncWrite>()), new FakeClock(Now)),
+            authorization,
             Substitute.For<IStringLocalizer<GovernanceResource>>())
         {
             ControllerContext = new ControllerContext

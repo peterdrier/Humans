@@ -30,6 +30,7 @@ namespace Humans.Governance.Tests.Services;
 public sealed class GovernanceIndexServiceTests
 {
     private readonly IGovernanceManagement Applications = Substitute.For<IGovernanceManagement>();
+    private readonly IApplicationRepository TierApplications = Substitute.For<IApplicationRepository>();
     private readonly ILegalDocumentService LegalDocuments = Substitute.For<ILegalDocumentService>();
     private readonly IUserService Users = Substitute.For<IUserService>();
     private readonly IAssemblyVoteService Votes = Substitute.For<IAssemblyVoteService>();
@@ -50,9 +51,8 @@ public sealed class GovernanceIndexServiceTests
                 .ToDictionary(id => id, id => UserInfo.Create(
                     new User { Id = id, BurnerName = "Member", CreatedAt = clock.GetCurrentInstant() },
                     [], [], _inactive.Contains(id) ? null : UserFixtures.Profile()))));
-        var bodyLinks = new GovernanceBodyLinksService(_bodies, Substitute.For<ITeamService>(),
-            Substitute.For<ITeamResourceService>(), Substitute.For<IAuditLogService>(), clock);
-        return new GovernanceIndexService(Applications, LegalDocuments, Votes, Roles, Users, bodyLinks, clock);
+        return new GovernanceIndexService(Applications, LegalDocuments, Votes, Roles, Users, BodyLinks(),
+            new GovernanceBodyRosters(TierApplications, Roles, clock));
     }
 
     private Task StoreLinksAsync(GovernanceBody body, string prefix) =>
@@ -73,7 +73,7 @@ public sealed class GovernanceIndexServiceTests
         var viewer = Guid.NewGuid();
         Users.GetUserInfoAsync(viewer, Arg.Any<CancellationToken>())
             .Returns(UserInfoFixtures.FromUser(new User { Id = viewer, DisplayName = "Viewer", Email = "viewer@example.com" }));
-        Applications.GetActiveApprovedTierUserIdsAsync(MembershipTier.Asociado, Arg.Any<LocalDate>(), Arg.Any<CancellationToken>())
+        TierApplications.GetActiveApprovedTierUserIdsAsync(MembershipTier.Asociado, Arg.Any<LocalDate>(), Arg.Any<CancellationToken>())
             .Returns(isMember ? [viewer, Guid.NewGuid()] : [Guid.NewGuid()]);
         await StoreLinksAsync(GovernanceBody.Asociados, "asociados");
         var authorization = Substitute.For<IAuthorizationService>();
@@ -84,7 +84,28 @@ public sealed class GovernanceIndexServiceTests
 
         var model = result.Should().BeOfType<ViewResult>().Which.Model.Should().BeOfType<GovernanceBodyViewModel>().Which;
         (model.Links is not null).Should().Be(expected);
+        (model.Manage is not null).Should().Be(boardOrAdmin, "only Board and Admin manage a body's links");
         model.MemberIds.Should().HaveCount(isMember ? 2 : 1, "everyone signed in sees the members");
+    }
+
+    [HumansFact]
+    public async Task A_member_who_is_not_Board_or_Admin_cannot_change_a_bodys_links()
+    {
+        var viewer = Guid.NewGuid();
+        Users.GetUserInfoAsync(viewer, Arg.Any<CancellationToken>())
+            .Returns(UserInfoFixtures.FromUser(new User { Id = viewer, DisplayName = "Viewer", Email = "viewer@example.com" }));
+        await StoreLinksAsync(GovernanceBody.Asociados, "asociados");
+        var authorization = Substitute.For<IAuthorizationService>();
+        authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), PolicyNames.BoardOrAdmin)
+            .Returns(AuthorizationResult.Failed());
+        var controller = CreateController(viewer, authorization);
+
+        (await controller.SetGroup("Asociados", "taken-over")).Should().BeOfType<ForbidResult>();
+        (await controller.AddFile("Asociados", "https://drive.google.com/drive/folders/x", DrivePermissionLevel.Manager))
+            .Should().BeOfType<ForbidResult>();
+        (await controller.RemoveFile("Asociados", Guid.NewGuid())).Should().BeOfType<ForbidResult>();
+
+        (await _bodies.GetAllAsync(TestContext.Current.CancellationToken)).Single().GoogleGroupPrefix.Should().Be("asociados");
     }
 
     [HumansFact]
@@ -96,7 +117,7 @@ public sealed class GovernanceIndexServiceTests
         Applications.GetUserApplicationsAsync(viewer, Arg.Any<CancellationToken>()).Returns([
             new UserApplicationSnapshot(Guid.NewGuid(), viewer, ApplicationStatus.Approved, MembershipTier.Asociado,
                 approved, approved, new LocalDate(2027, 12, 31), "m", null, null, null)]);
-        Applications.GetActiveApprovedTierUserIdsAsync(MembershipTier.Asociado, Arg.Any<LocalDate>(), Arg.Any<CancellationToken>())
+        TierApplications.GetActiveApprovedTierUserIdsAsync(MembershipTier.Asociado, Arg.Any<LocalDate>(), Arg.Any<CancellationToken>())
             .Returns([viewer]);
         Roles.GetActiveUserIdsInRoleAsync(RoleNames.Board, Arg.Any<CancellationToken>()).Returns([viewer]);
         Roles.GetByUserIdAsync(viewer, Arg.Any<CancellationToken>()).Returns([
@@ -116,7 +137,7 @@ public sealed class GovernanceIndexServiceTests
         var gone = Guid.NewGuid();
         _inactive.Add(gone);
         Applications.GetUserApplicationsAsync(viewer, Arg.Any<CancellationToken>()).Returns([]);
-        Applications.GetActiveApprovedTierUserIdsAsync(MembershipTier.Asociado, Arg.Any<LocalDate>(), Arg.Any<CancellationToken>())
+        TierApplications.GetActiveApprovedTierUserIdsAsync(MembershipTier.Asociado, Arg.Any<LocalDate>(), Arg.Any<CancellationToken>())
             .Returns([viewer, gone]);
         await StoreLinksAsync(GovernanceBody.Asociados, "asociados");
         await StoreLinksAsync(GovernanceBody.Board, "board");
@@ -133,10 +154,10 @@ public sealed class GovernanceIndexServiceTests
         var userId = Guid.NewGuid();
         Applications.GetUserApplicationsAsync(userId, Arg.Any<CancellationToken>())
             .Returns([]);
-        Applications.GetActiveApprovedTierUserIdsAsync(
+        TierApplications.GetActiveApprovedTierUserIdsAsync(
                 MembershipTier.Colaborador, Arg.Any<LocalDate>(), Arg.Any<CancellationToken>())
             .Returns([userId]);
-        Applications.GetActiveApprovedTierUserIdsAsync(
+        TierApplications.GetActiveApprovedTierUserIdsAsync(
                 MembershipTier.Asociado, Arg.Any<LocalDate>(), Arg.Any<CancellationToken>())
             .Returns([userId, Guid.NewGuid()]);
 
@@ -255,9 +276,18 @@ public sealed class GovernanceIndexServiceTests
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => controller.Index());
     }
 
+    private GovernanceBodyLinksService BodyLinks() =>
+        new(_bodies, Substitute.For<ITeamService>(), Substitute.For<ITeamResourceService>(), Substitute.For<IAuditLogService>(),
+            new GovernanceBodySync(_bodies, Substitute.For<IGoogleGroupSync>(), Substitute.For<IGoogleSyncWrite>()),
+            NodaTime.SystemClock.Instance);
+
     private GovernanceController CreateController(Guid userId, IAuthorizationService authorization, CancellationToken ct = default) =>
         new(Users, CreateService(),
-            new GovernanceBoardSeats(Roles, Substitute.For<IRoleAssignmentWrite>(), Users, NodaTime.SystemClock.Instance),
+            new GovernanceBoardSeats(Roles, Substitute.For<IRoleAssignmentWrite>(), Users, _bodies,
+                Substitute.For<IAuditLogService>(),
+                new GovernanceBodySync(_bodies, Substitute.For<IGoogleGroupSync>(), Substitute.For<IGoogleSyncWrite>()),
+                NodaTime.SystemClock.Instance),
+            BodyLinks(),
             authorization,
             Substitute.For<Microsoft.Extensions.Localization.IStringLocalizer<GovernanceResource>>())
         {

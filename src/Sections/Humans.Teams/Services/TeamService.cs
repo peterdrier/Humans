@@ -1,3 +1,5 @@
+using Humans.Roles.Contracts;
+using Humans.Base.Constants;
 using Humans.Google.Contracts;
 using Humans.Auth.Contracts;
 using Microsoft.Extensions.DependencyInjection;
@@ -317,11 +319,6 @@ internal sealed class TeamService(
         return member;
     }
 
-    public Task<IReadOnlyDictionary<Guid, string>> GetManagementRoleNamesByTeamIdsAsync(
-        IEnumerable<Guid> teamIds,
-        CancellationToken cancellationToken = default) =>
-        repo.GetPublicManagementRoleNamesByTeamIdsAsync(teamIds.ToList(), cancellationToken);
-
     // CachingTeamService owns the cache.
     public void InvalidateActiveTeamsCache() { }
 
@@ -370,6 +367,13 @@ internal sealed class TeamService(
         return await repo.ApplySystemTeamMembershipDeltaAsync(
             teamId, userIdsToAdd, userIdsToRemove, now, cancellationToken);
     }
+
+    /// <summary>
+    /// The Asociados, Colaboradores and Board teams. Governance owns these bodies and claims their Google group and
+    /// files, so Teams neither claims nor syncs them, and they are only ever retired.
+    /// </summary>
+    internal static readonly IReadOnlySet<Guid> GovernanceBodyTeamIds =
+        new HashSet<Guid> { SystemTeamIds.Asociados, SystemTeamIds.Colaboradors, SystemTeamIds.Board };
 
     internal const string TeamMemberships = "TeamMemberships";
     internal const string TeamJoinRequests = "TeamJoinRequests";
@@ -562,7 +566,7 @@ internal sealed class TeamService(
 
         var teams = await repo.GetAllActiveAsync(ct);
         var groupTeams = teams
-            .Where(t => t.GoogleGroupEmail is not null)
+            .Where(t => t.GoogleGroupEmail is not null && !GovernanceBodyTeamIds.Contains(t.Id))
             .Where(t => requestedKey is null
                 || string.Equals(t.GoogleGroupEmail, requestedKey, StringComparison.OrdinalIgnoreCase))
             .ToList();
@@ -1124,6 +1128,7 @@ internal sealed class TeamService(
         var closedUsers = await repo.DeactivateTeamAsync(teamId, now, cancellationToken);
         foreach (var userId in closedUsers)
         {
+            await RoleWrite.RemoveAsync(TeamOwner.Of(teamId), userId, actorUserId, cancellationToken);
             await auditLogService.LogAsync(
                 TeamsAuditActions.TeamMemberRemoved, nameof(Team), teamId,
                 $"Membership ended when {team.Name} was deactivated",
@@ -1139,28 +1144,30 @@ internal sealed class TeamService(
         return new();
     }
 
-    public async Task<bool> PermanentlyDeleteTeamAsync(
-        Guid teamId,
-        CancellationToken cancellationToken = default)
+    public async Task<int> RetireGovernanceBodyTeamsAsync(Guid actorUserId, CancellationToken cancellationToken = default)
     {
-        await adminAuthorization.RequireCurrentUserIsAdminAsync(cancellationToken);
+        var retired = 0;
+        foreach (var teamId in GovernanceBodyTeamIds)
+        {
+            if (await repo.GetByIdAsync(teamId, cancellationToken) is not { IsActive: true } team)
+                continue;
 
-        var team = await repo.GetByIdAsync(teamId, cancellationToken)
-            ?? throw new InvalidOperationException($"Team {teamId} not found");
+            var closedUsers = await repo.DeactivateTeamAsync(teamId, clock.GetCurrentInstant(), cancellationToken);
+            foreach (var userId in closedUsers)
+            {
+                await auditLogService.LogAsync(
+                    TeamsAuditActions.TeamMemberRemoved, nameof(Team), teamId,
+                    $"Membership ended when {team.Name} was deactivated",
+                    actorUserId, relatedEntityId: userId, relatedEntityType: AuditSubjectTypes.User);
+            }
 
-        if (team.IsSystemTeam)
-            throw new InvalidOperationException("Cannot permanently delete system team");
+            logger.LogInformation(
+                "Retired governance body team {TeamId} ({TeamName}); closed {MemberCount} memberships",
+                teamId, team.Name, closedUsers.Count);
+            retired++;
+        }
 
-        var hasActiveChildren = await repo.HasActiveChildrenAsync(teamId, cancellationToken);
-        if (hasActiveChildren)
-            throw new InvalidOperationException("Cannot permanently delete a team that has active sub-teams. Remove or reassign sub-teams first.");
-
-        // Restrict FK: pre-check for a clear message instead of a raw violation.
-        var resources = await TeamResourceService.GetTeamResourcesAsync(teamId, cancellationToken);
-        if (resources.Count > 0)
-            throw new InvalidOperationException("Cannot permanently delete a team that has Google resources linked. Unlink resources first.");
-
-        return await repo.PermanentlyDeleteTeamAsync(teamId, cancellationToken);
+        return retired;
     }
 
     public async Task<TeamMembershipMutationResult> LeaveTeamAsync(
@@ -1181,6 +1188,7 @@ internal sealed class TeamService(
 
         var wasCoordinator = member.Role == TeamMemberRole.Coordinator;
 
+        await RoleWrite.RemoveAsync(TeamOwner.Of(teamId), userId, userId, cancellationToken);
         await MarkMemberLeftWithOutboxAsync(member, null, cancellationToken);
 
         await auditLogService.LogAsync(
@@ -1237,6 +1245,9 @@ internal sealed class TeamService(
         }
         var wasCoordinator = member.Role == TeamMemberRole.Coordinator;
 
+        // A merge leaves Roles alone: Roles' own merge step moves the person's roles to the survivor.
+        if (mergeTarget is null)
+            await RoleWrite.RemoveAsync(TeamOwner.Of(teamId), userId, actorUserId, cancellationToken);
         var removedAssignments = await MarkMemberLeftWithOutboxAsync(member, mergeTarget?.Id, cancellationToken);
 
         await auditLogService.LogAsync(
@@ -1371,8 +1382,13 @@ internal sealed class TeamService(
             relatedEntityId: userId, relatedEntityType: AuditSubjectTypes.User);
     }
 
-    public Task<int> RevokeAllMembershipsAsync(Guid userId, CancellationToken cancellationToken = default) =>
-        repo.RevokeAllMembershipsAsync(userId, clock.GetCurrentInstant(), cancellationToken);
+    public async Task<int> RevokeAllMembershipsAsync(Guid userId, CancellationToken cancellationToken = default)
+    {
+        foreach (var membership in await GetUserTeamMembershipsAsync(userId, cancellationToken))
+            await RoleWrite.RemoveAsync(TeamOwner.Of(membership.TeamId), userId, userId, cancellationToken);
+
+        return await repo.RevokeAllMembershipsAsync(userId, clock.GetCurrentInstant(), cancellationToken);
+    }
 
     public async Task ReassignAsync(
         Guid sourceUserId,
@@ -2180,6 +2196,8 @@ internal sealed class TeamService(
         await SystemTeamSync.SyncMembershipForUserAsync(targetUserId, SystemTeamType.Coordinators, cancellationToken);
         return result;
     }
+
+    private IRoleWrite RoleWrite => serviceProvider.GetRequiredService<IRoleWrite>();
 
     private IRoleAssignmentService RoleAssignmentService => serviceProvider.GetRequiredService<IRoleAssignmentService>();
 

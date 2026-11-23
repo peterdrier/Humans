@@ -1,10 +1,10 @@
-using Humans.Agent.Contracts;
+using Humans.Agent.Services;
 using Humans.Base.Interfaces;
 
 namespace Humans.Agent.Jobs;
 
 internal sealed class AgentConversationRetentionJob(
-    IAgentConversationRetention retention,
+    IAgentService retention,
     ILogger<AgentConversationRetentionJob> logger) : IRecurringJob
 {
     public async Task ExecuteAsync(CancellationToken cancellationToken = default)

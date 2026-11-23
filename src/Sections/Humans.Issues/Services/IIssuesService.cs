@@ -5,8 +5,13 @@ using Humans.Issues.Domain;
 
 namespace Humans.Issues.Services;
 
-internal interface IIssuesService : IApplicationService, IIssuesRetention, IIssueTriage
+internal interface IIssuesService : IApplicationService, IIssueTriage
 {
+    /// <summary>
+    /// Deletes issues terminal for at least 6 months, with their screenshot files. Returns rows removed.
+    /// </summary>
+    Task<int> PurgeExpiredAsync(CancellationToken ct = default);
+
     /// <summary>
     /// Open + Triage issues in the viewer's sections, plus their own; all of them for Admin. <c>InProgress</c>
     /// counts for nobody.

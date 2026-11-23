@@ -605,9 +605,6 @@
   <data name="Todo_Consents_Done" xml:space="preserve"><value>All agreements are up to date.</value></data>
   <data name="Todo_Consents_Pending" xml:space="preserve"><value>{0} of {1} documents need your consent.</value><comment>{0} = pending count, {1} = total required</comment></data>
   <data name="Todo_Consents_Action" xml:space="preserve"><value>Review Agreements</value></data>
-  <data name="Todo_ConsentCheck_Title" xml:space="preserve"><value>Coordinator review</value></data>
-  <data name="Todo_ConsentCheck_Done" xml:space="preserve"><value>A coordinator has reviewed and cleared your documents.</value></data>
-  <data name="Todo_ConsentCheck_Pending" xml:space="preserve"><value>A coordinator will review your documents once profile and agreements are complete.</value></data>
   <data name="Todo_ShiftInfo_Title" xml:space="preserve"><value>Set your shift preferences</value></data>
   <data name="Todo_ShiftInfo_Done" xml:space="preserve"><value>Your shift preferences are set.</value></data>
   <data name="Todo_ShiftInfo_Pending" xml:space="preserve"><value>Fill out your shift info so coordinators know your skills and preferences.</value></data>
@@ -703,7 +700,7 @@
   <data name="Privacy_ContactBody" xml:space="preserve"><value>For questions or concerns about this policy, contact our Data Protection Officer at {0}.</value><comment>{0} = DPO email</comment></data>
   <data name="Privacy_ComplaintBody" xml:space="preserve"><value>If you are not satisfied with our response, you have the right to lodge a complaint with the Spanish Data Protection Agency (AEPD) at {0}.</value><comment>{0} = AEPD URL</comment></data>
   <data name="Common_NotAvailable" xml:space="preserve"><value>N/A</value></data>
-  <data name="EmailGrid_LinkFailed" xml:space="preserve"><value>We couldn't link this Google account. Please try again.</value></data>
+  <data name="EmailGrid_LinkFailed" xml:space="preserve"><value>We couldn't link this Google account. If it, or its address, already belongs to another account of yours, add that address under "Add email" instead and follow the link we send to merge the two.</value></data>
 
   <!-- Issues section -->
 
@@ -906,6 +903,7 @@
   <data name="Settings_TabEmail" xml:space="preserve"><value>Email</value></data>
   <data name="Settings_TabCityPlanning" xml:space="preserve"><value>Barrio Map</value></data>
   <data name="Settings_TabGate" xml:space="preserve"><value>Gate</value></data>
+  <data name="Settings_TabTickets" xml:space="preserve"><value>Tickets</value></data>
   <data name="Settings_TabStore" xml:space="preserve"><value>Store</value></data>
   <data name="Settings_TabFinance" xml:space="preserve"><value>Finance</value></data>
   <data name="Settings_TabBarrios" xml:space="preserve"><value>Barrios</value></data>
@@ -937,4 +935,5 @@
   <data name="Document_LegalLabel" xml:space="preserve"><value>Legal</value></data>
   <data name="Todo_Medical_Title" xml:space="preserve"><value>Anything coordinators should know about your health?</value></data>
   <data name="Todo_Medical_Pending" xml:space="preserve"><value>Optional. Only you and the No-Info Admins can see it.</value></data>
+  <data name="Nav_Roles" xml:space="preserve"><value>Roles</value></data>
 </root>

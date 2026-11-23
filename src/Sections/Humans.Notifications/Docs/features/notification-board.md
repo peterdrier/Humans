@@ -206,14 +206,14 @@ These have no channel once the in-app row goes. The list is a recommendation Pet
 
 ### Deleted with no replacement
 
-TeamMemberAdded (both branches; the member branch already emails), TeamJoinRequestDecided approve branch (already emails), ApplicationApproved, ApplicationRejected, ProfileRejected, FeedbackResponse, WorkspaceCredentialsReady, CampaignReceived (all already email), IssueComment (assignee sees it on the issue; the admin-comment email to the reporter stays), ShiftSignupChange (a coordinator's news about a signup; the consequence that matters is the coverage-gap entry), CampRoleAssigned, GoogleDriftDetected, FacilitatedMessageReceived (already emails), the three dead sources ConsentReviewNeeded, ApplicationSubmitted, VolunteerApproved, and the Users consent-check things-to-do entry (a status with no action for the member; the coordinator side is the consent-review row above).
+TeamMemberAdded (both branches; the member branch already emails), TeamJoinRequestDecided approve branch (already emails), ApplicationApproved, ApplicationRejected, ProfileRejected, FeedbackResponse, WorkspaceCredentialsReady, CampaignReceived (all already email), IssueComment (assignee sees it on the issue; the admin-comment email to the reporter stays), ShiftSignupChange (a coordinator's news about a signup; the consequence that matters is the coverage-gap entry), CampRoleAssigned, GoogleDriftDetected, FacilitatedMessageReceived (already emails), and the three dead sources ConsentReviewNeeded, ApplicationSubmitted, VolunteerApproved.
 
 Every `NotificationSourceDefinition` declared at the time of writing appears in exactly one of the three tables above. A source added between now and phase 4 gets a row before the switch lands.
 
 ## What is deleted
 
 - Tables `notifications` and `notification_recipients`, `NotificationsDbContext`, its migrations and factory. The drop is its own PR after prod verification, per [`destructive-drops-need-approval`](../../../../../memory/architecture/destructive-drops-need-approval.md).
-- `INotificationEmitter`, `INotificationService`, `INotificationAutoResolve`, `INotificationRetention`, `NotificationSourceDefinition`, `NotificationSourceContributor`, `INotificationSourceContributor`, `NotificationSourceRegistry`, `NotificationClass`, `NotificationPriority`.
+- `INotificationEmitter`, `INotificationService`, `INotificationAutoResolve`, `NotificationSourceDefinition`, `NotificationSourceContributor`, `INotificationSourceContributor`, `NotificationSourceRegistry`, `NotificationClass`, `NotificationPriority`.
 - `NotificationService`, `NotificationEmitter`, `NotificationInboxService`, `NotificationMeterProvider`, `NotificationRepository`, `CleanupNotificationsJob`, the `IUserMerge` and `IUserDataContributor` participation (the board holds nothing to export; a merged or deleted user's entries go with the owning section's state and the next reconcile).
 - Controller routes Resolve, Dismiss, MarkRead, MarkAllRead, BulkResolve, BulkDismiss, ClickThrough, and the inbox views behind them.
 - The 35 emitting call sites across Teams, Shifts, Issues, Camps, Auth, Governance, Feedback, Onboarding, Users, Campaigns, Google, Consent, Rideshare; the three auto-resolve call sites.

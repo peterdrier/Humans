@@ -19,7 +19,6 @@ public sealed class UserServiceGetByEmailOrAlternateTests : ServiceTestHarness
     {
         _service = new UserService(
             _repo,
-            AdminAuthorization,
             Substitute.For<IFileStorage>(),
             Clock,
             NullLogger<UserService>.Instance, AuditLog);

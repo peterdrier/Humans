@@ -130,9 +130,6 @@ internal sealed class CachingShiftService(
     public Task<ShiftDeletionResult> DeleteRotaAsync(Guid rotaId, Guid actorUserId) =>
         WriteAsync(() => MgmtAsync(m => m.DeleteRotaAsync(rotaId, actorUserId)), () => [rotaId]);
 
-    public Task<int> DeleteEventAsync(Guid eventSettingsId, CancellationToken cancellationToken = default) =>
-        WriteAsync(() => MgmtAsync(m => m.DeleteEventAsync(eventSettingsId, cancellationToken)), AllRotas);
-
     public Task<ShiftGenerationResult> CreateBuildStrikeShiftsAsync(ConfigureBuildStrikeStaffingInput input) =>
         WriteAsync(() => MgmtAsync(m => m.CreateBuildStrikeShiftsAsync(input)), () => [input.RotaId]);
 
@@ -212,9 +209,6 @@ internal sealed class CachingShiftService(
         Guid userId, string reason, CancellationToken ct = default) =>
         WriteAsync(() => SignupsAsync(s => s.CancelActiveSignupsForUserAsync(userId, reason, ct)), AllRotas);
 
-    public Task<int> DeleteAllForUsersAsync(IReadOnlyCollection<Guid> userIds, CancellationToken ct = default) =>
-        WriteAsync(() => SignupsAsync(s => s.DeleteAllForUsersAsync(userIds, ct)), AllRotas);
-
     public Task EraseForUserAsync(Guid userId, CancellationToken ct) =>
         WriteAsync(() => WithInnerAsync<ShiftSignupService>(s => s.EraseForUserAsync(userId, ct)), AllRotas);
 
@@ -267,14 +261,11 @@ internal sealed class CachingShiftService(
 
     // ── Reads, passed through until each moves onto the rows ────────────
 
-    public Task<bool> IsDeptCoordinatorAsync(Guid userId, Guid departmentTeamId, CancellationToken ct = default) =>
-        MgmtAsync(m => m.IsDeptCoordinatorAsync(userId, departmentTeamId, ct));
-
     public Task<bool> CanApproveSignupsAsync(Guid userId, Guid departmentTeamId, CancellationToken ct = default) =>
         MgmtAsync(m => m.CanApproveSignupsAsync(userId, departmentTeamId, ct));
 
-    public Task<IReadOnlyList<Guid>> GetCoordinatorTeamIdsAsync(Guid userId, CancellationToken ct = default) =>
-        MgmtAsync(m => m.GetCoordinatorTeamIdsAsync(userId, ct));
+    public Task<bool> CanManageOrApproveAnyShiftsAsync(Guid userId, CancellationToken ct = default) =>
+        MgmtAsync(m => m.CanManageOrApproveAnyShiftsAsync(userId, ct));
 
     public Task<IReadOnlyList<RotaSearchHit>> SearchAsync(
         string query, int max, CancellationToken cancellationToken = default) =>

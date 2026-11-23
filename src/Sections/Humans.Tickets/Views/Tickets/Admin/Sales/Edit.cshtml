@@ -1,0 +1,428 @@
+@using Humans.Tickets.Domain.Checkout
+@model Humans.Tickets.Controllers.SalesEditViewModel
+@{
+    ViewData["Title"] = "Sales setup";
+    var f = Model.Form;
+    List<SalesEditForm.WaveRow> waves = f.Waves.Count > 0 ? f.Waves : [new()];
+    var supporterLevels = f.SupporterLevels;
+    var priceRules = f.PriceRules;
+    string ModeLabel(TicketSalesMode m) => m switch
+    {
+        TicketSalesMode.ResaleOnly => "Resale only: fresh sales stopped, returned tickets still sell",
+        TicketSalesMode.Open => "Open",
+        TicketSalesMode.InvitedOnly => "Invited only: early sales for the programs with an early access rule",
+        _ => "Closed",
+    };
+    (ResaleScheme Scheme, string Label, string Help)[] schemes =
+    [
+        (ResaleScheme.Off, "No resale", "Holders cannot hand a ticket back. The ticketing team refunds by hand when it agrees to."),
+        (ResaleScheme.Queue, "Resale queue", "A returned ticket waits in a queue and sells, oldest first, before fresh stock. The holder is refunded when it sells."),
+        (ResaleScheme.QueueAndDirected, "Resale queue and personal links", "The queue, plus a holder may send one person a link to buy their ticket. The ticket stays in the queue meanwhile; whoever buys first gets it."),
+    ];
+    (TicketPriceRuleKind Kind, string Label)[] ruleKinds =
+    [
+        (TicketPriceRuleKind.ClassPrice, "Fixed ticket price"),
+        (TicketPriceRuleKind.Credit, "Amount off"),
+        (TicketPriceRuleKind.WavePin, "Price of the wave on sale when the grant was given"),
+        (TicketPriceRuleKind.EarlyAccess, "Early access: buys while sales are invited only"),
+    ];
+}
+
+<page-header title="Sales setup" subtitle="Backend, prices and checkout options for one event" />
+
+@if (Model.Error is not null)
+{
+    <div class="alert alert-danger">@Model.Error</div>
+}
+
+<form method="post" id="salesSetupForm">
+    @Html.AntiForgeryToken()
+
+    <div class="card mb-3">
+        <div class="card-header fw-semibold">Event and payment backend</div>
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="form-label" for="EventSettingsId">Event</label>
+                    <select class="form-select" id="EventSettingsId" name="EventSettingsId">
+                        @foreach (var e in Model.Events)
+                        {
+                            <option value="@e.Id" selected="@(e.Id == f.EventSettingsId)">@e.EventName@(e.EventName.Contains(e.Year.ToString(System.Globalization.CultureInfo.InvariantCulture), StringComparison.Ordinal) ? "" : $" ({e.Year})")</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label" for="BackendKey">Backend</label>
+                    <select class="form-select" id="BackendKey" name="BackendKey">
+                        @foreach (var b in Model.Backends)
+                        {
+                            <option value="@b.Key" selected="@(b.Key == f.BackendKey)">@b.Setup.DisplayName@(b.IsConfigured ? "" : " (not configured)")</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label" for="BackendEventRef">Event id in the backend</label>
+                    <input class="form-control" id="BackendEventRef" name="BackendEventRef" value="@f.BackendEventRef" />
+                    <div class="form-text">The pretix event slug or Hi.Events event id. Leave empty for Box Office. <a asp-action="Backends">Check the backends</a></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card mb-3">
+        <div class="card-header fw-semibold">Sales</div>
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-md-5">
+                    <label class="form-label" for="Mode">Sales are</label>
+                    <select class="form-select" id="Mode" name="Mode">
+                        @foreach (var m in Enum.GetValues<TicketSalesMode>())
+                        {
+                            <option value="@m" selected="@(m == f.Mode)">@ModeLabel(m)</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label" for="SalesCloseAt">Sales close</label>
+                    <input class="form-control" id="SalesCloseAt" name="SalesCloseAt" type="datetime-local" value="@f.SalesCloseAt" />
+                    <div class="form-text">@Model.Zone.Id time. Empty: sales stay open until you close them.</div>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label" for="Capacity">Capacity</label>
+                    <input class="form-control" id="Capacity" name="Capacity" type="number" min="0" value="@f.Capacity" />
+                    <div class="form-text">Tickets, all kinds.</div>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label" for="TicketVatPercent">Ticket VAT</label>
+                    <div class="input-group">
+                        <input class="form-control" id="TicketVatPercent" name="TicketVatPercent" type="number" min="0" max="99.99" step="0.01" value="@f.TicketVatPercent" />
+                        <span class="input-group-text">%</span>
+                    </div>
+                    <div class="form-text">Donations carry none.</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card mb-3">
+        <div class="card-header fw-semibold d-flex justify-content-between align-items-center">
+            <span>Price waves</span>
+            <button type="button" class="btn btn-outline-primary btn-sm" data-add-row="waves">Add wave</button>
+        </div>
+        <div class="card-body">
+            <p class="form-text mt-0">Each wave sells until the end of its last day. After the last wave ends, its price holds until sales close.</p>
+            <table class="table table-sm align-middle mb-0">
+                <thead><tr><th>Name</th><th style="width:12rem">Last day</th><th style="width:10rem">Price</th><th style="width:3rem"></th></tr></thead>
+                <tbody data-rows="waves">
+                    @foreach (var w in waves)
+                    {
+                        var key = Guid.NewGuid().ToString("N");
+                        <tr>
+                            <td><input type="hidden" name="Waves.Index" value="@key" /><input class="form-control form-control-sm" name="Waves[@key].Name" value="@w.Name" placeholder="Wave 1" aria-label="Wave name" /></td>
+                            <td><input class="form-control form-control-sm" type="date" name="Waves[@key].EndsOn" value="@w.EndsOn" aria-label="Last day" /></td>
+                            <td><div class="input-group input-group-sm"><span class="input-group-text">€</span><input class="form-control" type="number" min="0" step="0.01" name="Waves[@key].Price" value="@w.Price" data-wave-price aria-label="Price" /></div></td>
+                            <td><button type="button" class="btn btn-outline-danger btn-sm" data-remove-row aria-label="Remove wave">&times;</button></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+            <template data-template="waves">
+                <tr>
+                    <td><input type="hidden" name="Waves.Index" value="__KEY__" /><input class="form-control form-control-sm" name="Waves[__KEY__].Name" placeholder="Wave 2" aria-label="Wave name" /></td>
+                    <td><input class="form-control form-control-sm" type="date" name="Waves[__KEY__].EndsOn" aria-label="Last day" /></td>
+                    <td><div class="input-group input-group-sm"><span class="input-group-text">€</span><input class="form-control" type="number" min="0" step="0.01" name="Waves[__KEY__].Price" data-wave-price aria-label="Price" /></div></td>
+                    <td><button type="button" class="btn btn-outline-danger btn-sm" data-remove-row aria-label="Remove wave">&times;</button></td>
+                </tr>
+            </template>
+        </div>
+    </div>
+
+    <div class="card mb-3">
+        <div class="card-header fw-semibold d-flex justify-content-between align-items-center">
+            <span>Prices from grants</span>
+            <button type="button" class="btn btn-outline-primary btn-sm" data-add-row="rules">Add rule</button>
+        </div>
+        <div class="card-body">
+            <p class="form-text mt-0">
+                A member with an active grant in the program gets this price.
+                <strong>Fixed ticket price</strong> replaces the wave price (the cheapest wins if several apply).
+                <strong>Amount off</strong> is taken off whatever the ticket costs (several add up).
+                <strong>Price of the wave on sale when the grant was given</strong> keeps the applicant's wave if it was cheaper, so applying early never costs them.
+                <strong>Early access</strong> lets the program's members buy while sales are <em>Invited only</em>, with the amount (leave empty for none) taken off while they do; it does nothing once sales open.
+                For a test purchase, give a few people a grant in a test program with early access and no amount.
+            </p>
+            @if (Model.Programs.Count == 0)
+            {
+                <p class="text-muted mb-0">There are no grant programs yet. Create one in Grants first.</p>
+            }
+            <table class="table table-sm align-middle mb-0 @(Model.Programs.Count == 0 && priceRules.Count == 0 ? "d-none" : "")">
+                <thead><tr><th>Grant program</th><th>Price</th><th style="width:9rem">Amount</th><th>Shown to the buyer as</th><th style="width:3rem"></th></tr></thead>
+                <tbody data-rows="rules">
+                    @foreach (var r in priceRules)
+                    {
+                        var key = Guid.NewGuid().ToString("N");
+                        <tr>
+                            <td>
+                                <input type="hidden" name="PriceRules.Index" value="@key" />
+                                <select class="form-select form-select-sm" name="PriceRules[@key].GrantProgramId" aria-label="Grant program">
+                                    @if (r.GrantProgramId is not null && Model.Programs.All(p => p.ProgramId != r.GrantProgramId))
+                                    {
+                                        <option value="@r.GrantProgramId" selected>Unknown program</option>
+                                    }
+                                    @foreach (var p in Model.Programs)
+                                    {
+                                        <option value="@p.ProgramId" selected="@(p.ProgramId == r.GrantProgramId)">@p.Name (@p.EventName)</option>
+                                    }
+                                </select>
+                            </td>
+                            <td>
+                                <select class="form-select form-select-sm" name="PriceRules[@key].Kind" data-rule-kind aria-label="Price">
+                                    @foreach (var (kind, label) in ruleKinds)
+                                    {
+                                        <option value="@kind" selected="@(kind == r.Kind)">@label</option>
+                                    }
+                                </select>
+                            </td>
+                            <td><div class="input-group input-group-sm"><span class="input-group-text">€</span><input class="form-control" type="number" min="0" step="0.01" name="PriceRules[@key].Amount" value="@r.Amount" data-rule-amount aria-label="Amount" /></div></td>
+                            <td><input class="form-control form-control-sm" name="PriceRules[@key].Label" value="@r.Label" placeholder="Low income" aria-label="Shown to the buyer as" /></td>
+                            <td><button type="button" class="btn btn-outline-danger btn-sm" data-remove-row aria-label="Remove rule">&times;</button></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+            <template data-template="rules">
+                <tr>
+                    <td>
+                        <input type="hidden" name="PriceRules.Index" value="__KEY__" />
+                        <select class="form-select form-select-sm" name="PriceRules[__KEY__].GrantProgramId" aria-label="Grant program">
+                            @foreach (var p in Model.Programs)
+                            {
+                                <option value="@p.ProgramId">@p.Name (@p.EventName)</option>
+                            }
+                        </select>
+                    </td>
+                    <td>
+                        <select class="form-select form-select-sm" name="PriceRules[__KEY__].Kind" data-rule-kind aria-label="Price">
+                            @foreach (var (kind, label) in ruleKinds)
+                            {
+                                <option value="@kind">@label</option>
+                            }
+                        </select>
+                    </td>
+                    <td><div class="input-group input-group-sm"><span class="input-group-text">€</span><input class="form-control" type="number" min="0" step="0.01" name="PriceRules[__KEY__].Amount" data-rule-amount aria-label="Amount" /></div></td>
+                    <td><input class="form-control form-control-sm" name="PriceRules[__KEY__].Label" placeholder="Low income" aria-label="Shown to the buyer as" /></td>
+                    <td><button type="button" class="btn btn-outline-danger btn-sm" data-remove-row aria-label="Remove rule">&times;</button></td>
+                </tr>
+            </template>
+        </div>
+    </div>
+
+    <div class="card mb-3">
+        <div class="card-header fw-semibold">Checkout</div>
+        <div class="card-body">
+            <div class="row g-4">
+                <div class="col-md-6">
+                    @foreach (var (name, label, help, on) in new[]
+                    {
+                        (nameof(f.Donations), "Donations", "Supporter tickets below, and a free donation field.", f.Donations),
+                        (nameof(f.PartnerTickets), "Tickets for others", "The buyer may add people already in Humans to the order; each gets an adult ticket at the public price.", f.PartnerTickets),
+                        (nameof(f.MailingListOptIn), "Mailing list", "Buyers who have not chosen yet are asked to join the mailing list.", f.MailingListOptIn),
+                    })
+                    {
+                        <div class="form-check form-switch mb-2">
+                            <input class="form-check-input" type="checkbox" role="switch" id="@name" name="@name" value="true" checked="@on" />
+                            <input type="hidden" name="@name" value="false" />
+                            <label class="form-check-label" for="@name">@label</label>
+                            <div class="form-text mt-0">@help</div>
+                        </div>
+                    }
+                    <label class="form-label mt-2" for="TermsFolder">Ticket rules folder in the legal repo</label>
+                    <input class="form-control" id="TermsFolder" name="TermsFolder" maxlength="200" value="@f.TermsFolder" placeholder="TicketRules/2027" />
+                    <div class="form-text">The folder holds name.md in Spanish and name-en.md in English (more languages optional, such as name-de.md). Buyers read the rules at checkout and tick that they accept them; the order keeps the exact version, the folder's last commit. Empty: no rules.</div>
+                </div>
+                <div class="col-md-6">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <span class="form-label mb-0">Supporter tickets</span>
+                        <button type="button" class="btn btn-outline-primary btn-sm" data-add-row="supporters">Add level</button>
+                    </div>
+                    <div class="form-text mt-0 mb-2">Fixed totals offered as buttons. The ticket part is the buyer's own price; the rest is a donation without VAT.</div>
+                    <div data-rows="supporters">
+                        @foreach (var level in supporterLevels)
+                        {
+                            var key = Guid.NewGuid().ToString("N");
+                            <div class="d-flex gap-2 align-items-center mb-2">
+                                <input type="hidden" name="SupporterLevels.Index" value="@key" />
+                                <div class="input-group input-group-sm" style="max-width:10rem"><span class="input-group-text">€</span><input class="form-control" type="number" min="0.01" step="0.01" name="SupporterLevels[@key].Total" value="@level.Total" data-supporter-total aria-label="Supporter total" /></div>
+                                <span class="form-text m-0 flex-grow-1" data-supporter-split></span>
+                                <button type="button" class="btn btn-outline-danger btn-sm" data-remove-row aria-label="Remove level">&times;</button>
+                            </div>
+                        }
+                    </div>
+                    <template data-template="supporters">
+                        <div class="d-flex gap-2 align-items-center mb-2">
+                            <input type="hidden" name="SupporterLevels.Index" value="__KEY__" />
+                            <div class="input-group input-group-sm" style="max-width:10rem"><span class="input-group-text">€</span><input class="form-control" type="number" min="0.01" step="0.01" name="SupporterLevels[__KEY__].Total" data-supporter-total aria-label="Supporter total" /></div>
+                            <span class="form-text m-0 flex-grow-1" data-supporter-split></span>
+                            <button type="button" class="btn btn-outline-danger btn-sm" data-remove-row aria-label="Remove level">&times;</button>
+                        </div>
+                    </template>
+
+                    <div class="d-flex justify-content-between align-items-center mb-1 mt-4">
+                        <span class="form-label mb-0">Donation purposes</span>
+                        <button type="button" class="btn btn-outline-primary btn-sm" data-add-row="purposes">Add purpose</button>
+                    </div>
+                    <div class="form-text mt-0 mb-2">What a free donation can go to, as the buyer sees it. They may also leave it general. None: one general donation, no choice.</div>
+                    <div data-rows="purposes">
+                        @foreach (var purpose in f.DonationPurposes)
+                        {
+                            var key = Guid.NewGuid().ToString("N");
+                            <div class="d-flex gap-2 align-items-center mb-2">
+                                <input type="hidden" name="DonationPurposes.Index" value="@key" />
+                                <input class="form-control form-control-sm" maxlength="64" name="DonationPurposes[@key].Name" value="@purpose.Name" placeholder="Art and creativity" aria-label="Donation purpose" />
+                                <button type="button" class="btn btn-outline-danger btn-sm" data-remove-row aria-label="Remove purpose">&times;</button>
+                            </div>
+                        }
+                    </div>
+                    <template data-template="purposes">
+                        <div class="d-flex gap-2 align-items-center mb-2">
+                            <input type="hidden" name="DonationPurposes.Index" value="__KEY__" />
+                            <input class="form-control form-control-sm" maxlength="64" name="DonationPurposes[__KEY__].Name" placeholder="Art and creativity" aria-label="Donation purpose" />
+                            <button type="button" class="btn btn-outline-danger btn-sm" data-remove-row aria-label="Remove purpose">&times;</button>
+                        </div>
+                    </template>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card mb-3">
+        <div class="card-header fw-semibold d-flex justify-content-between align-items-center">
+            <span>Child and companion tickets</span>
+            <button type="button" class="btn btn-outline-primary btn-sm" data-add-row="children">Add child ticket</button>
+        </div>
+        <div class="card-body">
+            <p class="form-text mt-0">
+                Child tickets hang off the buyer's own ticket. The buyer picks one per child; the age is on the event's first day.
+                None: children are not sold.
+            </p>
+            <div data-rows="children">
+                @foreach (var child in f.ChildTypes)
+                {
+                    var key = Guid.NewGuid().ToString("N");
+                    <div class="d-flex flex-wrap gap-2 align-items-center mb-2">
+                        <input type="hidden" name="ChildTypes.Index" value="@key" />
+                        <input class="form-control form-control-sm" style="max-width:14rem" maxlength="64" name="ChildTypes[@key].Name" value="@child.Name" placeholder="Child" aria-label="Child ticket name" />
+                        <div class="input-group input-group-sm" style="max-width:10rem"><span class="input-group-text">under</span><input class="form-control" type="number" min="1" name="ChildTypes[@key].UnderAge" value="@child.UnderAge" aria-label="Under age" /><span class="input-group-text">years</span></div>
+                        <div class="input-group input-group-sm" style="max-width:9rem"><span class="input-group-text">€</span><input class="form-control" type="number" min="0" step="0.01" name="ChildTypes[@key].Price" value="@child.Price" aria-label="Price" /></div>
+                        <button type="button" class="btn btn-outline-danger btn-sm" data-remove-row aria-label="Remove child ticket">&times;</button>
+                    </div>
+                }
+            </div>
+            <template data-template="children">
+                <div class="d-flex flex-wrap gap-2 align-items-center mb-2">
+                    <input type="hidden" name="ChildTypes.Index" value="__KEY__" />
+                    <input class="form-control form-control-sm" style="max-width:14rem" maxlength="64" name="ChildTypes[__KEY__].Name" placeholder="Child" aria-label="Child ticket name" />
+                    <div class="input-group input-group-sm" style="max-width:10rem"><span class="input-group-text">under</span><input class="form-control" type="number" min="1" name="ChildTypes[__KEY__].UnderAge" aria-label="Under age" /><span class="input-group-text">years</span></div>
+                    <div class="input-group input-group-sm" style="max-width:9rem"><span class="input-group-text">€</span><input class="form-control" type="number" min="0" step="0.01" name="ChildTypes[__KEY__].Price" aria-label="Price" /></div>
+                    <button type="button" class="btn btn-outline-danger btn-sm" data-remove-row aria-label="Remove child ticket">&times;</button>
+                </div>
+            </template>
+            <div class="form-check form-switch mt-3 mb-0">
+                @if (f.CompanionTickets)
+                {
+                    <input class="form-check-input" type="checkbox" role="switch" id="CompanionTickets" name="CompanionTickets" value="true" checked />
+                }
+                else
+                {
+                    <input class="form-check-input" type="checkbox" role="switch" id="CompanionTickets" name="CompanionTickets" value="true" />
+                }
+                <input type="hidden" name="CompanionTickets" value="false" />
+                <label class="form-check-label" for="CompanionTickets">Companion tickets</label>
+                <div class="form-text mt-0">A holder may ask for a free ticket for a companion already in Humans; the ticketing team approves each one.</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card mb-3">
+        <div class="card-header fw-semibold">Resale</div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-12">
+                    @foreach (var (scheme, label, help) in schemes)
+                    {
+                        <div class="form-check mb-2">
+                            <input class="form-check-input" type="radio" name="Resale" id="Resale_@scheme" value="@scheme" checked="@(scheme == f.Resale)" />
+                            <label class="form-check-label" for="Resale_@scheme">@label</label>
+                            <div class="form-text mt-0">@help</div>
+                        </div>
+                    }
+                    <div class="form-text">Returned tickets only start selling once the ticketing team opens resale on the event's resale queue page.</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="d-flex gap-2 mb-5">
+        <button type="submit" class="btn btn-primary" authorize-policy="@TicketsPolicies.Manage">Save</button>
+        <a class="btn btn-outline-secondary" asp-action="Index">Cancel</a>
+    </div>
+</form>
+
+@section Scripts {
+    <script>
+        (function () {
+            var form = document.getElementById('salesSetupForm');
+            if (!form) return;
+
+            function freshKey() {
+                return (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2)).replace(/-/g, '');
+            }
+
+            function euro(n) {
+                return '€' + (Math.round(n * 100) / 100).toLocaleString('en', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+            }
+
+            function refresh() {
+                form.querySelectorAll('[data-rule-kind]').forEach(function (select) {
+                    var amount = select.closest('tr').querySelector('[data-rule-amount]');
+                    var pin = select.value === 'WavePin';
+                    amount.disabled = pin;
+                    if (pin) amount.value = '';
+                });
+
+                var firstWave = form.querySelector('[data-wave-price]');
+                var price = firstWave ? parseFloat(firstWave.value) : NaN;
+                form.querySelectorAll('[data-supporter-total]').forEach(function (input) {
+                    var split = input.closest('div.d-flex').querySelector('[data-supporter-split]');
+                    var total = parseFloat(input.value);
+                    split.textContent = isNaN(price) || isNaN(total) ? ''
+                        : total <= price ? 'Not above the first wave price'
+                        : 'At the first wave: ticket ' + euro(price) + ' + donation ' + euro(total - price);
+                });
+            }
+
+            form.addEventListener('click', function (ev) {
+                var add = ev.target.closest('[data-add-row]');
+                if (add) {
+                    var name = add.getAttribute('data-add-row');
+                    var template = form.querySelector('[data-template="' + name + '"]');
+                    var rows = form.querySelector('[data-rows="' + name + '"]');
+                    rows.closest('table') && rows.closest('table').classList.remove('d-none');
+                    var holder = document.createElement(rows.tagName === 'TBODY' ? 'tbody' : 'div');
+                    holder.innerHTML = template.innerHTML.split('__KEY__').join(freshKey()).trim();
+                    rows.appendChild(holder.firstElementChild);
+                    refresh();
+                    return;
+                }
+                var remove = ev.target.closest('[data-remove-row]');
+                if (remove) {
+                    (remove.closest('tr') || remove.closest('div.d-flex')).remove();
+                    refresh();
+                }
+            });
+            form.addEventListener('input', refresh);
+            form.addEventListener('change', refresh);
+            refresh();
+        })();
+    </script>
+}

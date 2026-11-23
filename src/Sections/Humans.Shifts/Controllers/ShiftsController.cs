@@ -6,7 +6,6 @@ using Humans.Shifts.Services.Dtos;
 using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Shifts.Domain;
-using Humans.Onboarding;
 using Humans.Base.Authorization;
 using Humans.Shifts.Models;
 using Microsoft.AspNetCore.Authorization;
@@ -28,8 +27,6 @@ internal sealed class ShiftsController(
     ITeamService teamService,
     IUserService userService,
     IStringLocalizer<ShiftsResource> localizer,
-    // The name-gate message is Onboarding's copy, rendered from here.
-    IStringLocalizer<OnboardingResource> onboardingLocalizer,
     IClock clock,
     ShiftBrowsePageBuilder browsePageBuilder,
     ILogger<ShiftsController> logger) : HumansControllerBase(userService)
@@ -50,8 +47,7 @@ internal sealed class ShiftsController(
         var es = await burnSettings.GetActiveAsync(HttpContext.RequestAborted);
         if (es is null) return View("NoActiveEvent");
 
-        var isPrivileged = ShiftsRoles.IsPrivilegedSignupApprover(User) ||
-                           (await shiftMgmt.GetCoordinatorTeamIdsAsync(user.Id, HttpContext.RequestAborted)).Count > 0;
+        var isPrivileged = await shiftMgmt.CanManageOrApproveAnyShiftsAsync(user.Id, HttpContext.RequestAborted);
 
         var userView = await shiftView.GetUserAsync(user.Id, HttpContext.RequestAborted);
         var userSignups = userView.Signups;
@@ -88,7 +84,7 @@ internal sealed class ShiftsController(
     private IActionResult? RedirectIfNameMissing(UserInfo user)
     {
         if (user.HasRequiredNameFields) return null;
-        SetInfo(onboardingLocalizer["Onboarding_NameRequiredBeforeShifts"].Value);
+        SetInfo(localizer["Shifts_NameRequiredBeforeShifts"].Value);
         return RedirectToAction("Index", "OnboardingWidget");
     }
 

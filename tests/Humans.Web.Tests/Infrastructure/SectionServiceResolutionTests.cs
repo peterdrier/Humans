@@ -1,5 +1,6 @@
 using AwesomeAssertions;
 using Hangfire;
+using Hangfire.InMemory;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -75,7 +76,7 @@ public sealed class NoDatabaseFactory : WebApplicationFactory<Program>
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
-        // Testing skips Hangfire; the connection string is never opened.
+        // The connection string is never opened: job storage is in memory and hosted services are removed.
         builder.UseEnvironment("Testing");
         builder.UseSetting("ConnectionStrings:DefaultConnection",
             "Host=localhost;Database=stub;Username=stub;Password=stub");
@@ -89,6 +90,8 @@ public sealed class NoDatabaseFactory : WebApplicationFactory<Program>
         builder.ConfigureTestServices(services =>
         {
             services.RemoveAll<IHostedService>();
+            services.RemoveAll<JobStorage>();
+            services.AddSingleton<JobStorage>(new InMemoryStorage());
             services.AddSingleton(Substitute.For<IBackgroundJobClient>());
             // Key storage is the system DbContext; antiforgery and auth cookies need a provider that works without it.
             services.AddDataProtection().UseEphemeralDataProtectionProvider();

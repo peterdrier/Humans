@@ -1,6 +1,6 @@
 using Humans.Base.Constants;
 using Humans.Google.Contracts;
-using Humans.Teams.Contracts;
+using Humans.Auth.Contracts;
 using Humans.Workgroups.Domain;
 
 namespace Humans.Workgroups.Services.Contributors;
@@ -8,7 +8,7 @@ namespace Humans.Workgroups.Services.Contributors;
 /// <summary>User ids only, never emails: Google hydrates and filters them uniformly across sources.</summary>
 internal sealed class WorkgroupDriveAccessSource(
     IWorkgroupService workgroups,
-    ITeamService teams) : IGoogleDriveAccessSource
+    IRoleAssignmentService roles) : IGoogleDriveAccessSource
 {
     public async Task<Dictionary<string, GoogleDriveAccessClaim>> GetExpectedAccessAsync(
         string? folderId = null, CancellationToken ct = default)
@@ -51,16 +51,8 @@ internal sealed class WorkgroupDriveAccessSource(
     private const string RootFolderName = "Workgroups";
 
     /// <summary>The Board reads the root; everyone else reaches only their own groups' subfolders.</summary>
-    private async Task<Dictionary<Guid, DrivePermissionLevel>> RootReadersAsync(CancellationToken ct)
-    {
-        var readers = new HashSet<Guid>();
-
-        if (await teams.GetTeamAsync(SystemTeamIds.Board, ct) is { } board)
-        {
-            foreach (var member in board.Members)
-                readers.Add(member.UserId);
-        }
-
-        return readers.ToDictionary(id => id, _ => DrivePermissionLevel.Viewer);
-    }
+    private async Task<Dictionary<Guid, DrivePermissionLevel>> RootReadersAsync(CancellationToken ct) =>
+        (await roles.GetActiveUserIdsInRoleAsync(RoleNames.Board, ct))
+            .Distinct()
+            .ToDictionary(id => id, _ => DrivePermissionLevel.Viewer);
 }

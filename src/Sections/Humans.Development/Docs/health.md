@@ -9,8 +9,8 @@ Lets a running non-Production app be exercised without Google OAuth or hand-buil
 - **Dev sign-in.** Anonymous links sign the visitor in as a named persona, or as any existing
   human. Persona identities are deterministic, so reruns reach the same user.
 - **Fixture seeding.** Privileged buttons fill the app with demo data: a budget year, the
-  system camp-role definitions, and a coordinator-dashboard event with teams, humans, shifts
-  and signups (plus a reset that deletes the dashboard fixture).
+  system camp-role definitions, and the demo world (a crowd, departments, rotas, shifts and
+  signups, told by each section's own story; reset retires it through existing actions).
 
 Nothing is reachable in Production; nothing is owned.
 
@@ -22,7 +22,6 @@ Nothing is reachable in Production; nothing is owned.
 | Dev-login chooser | `Users()` | dev-auth on, host non-Production | Read via `DevPersonaSeeder.GetUsersForChooserAsync` |
 | Dev-seed page | `Index()` | `AdminOnly` + dev-auth on, host non-Production | Renders the budget and camp-role seed buttons |
 | Dev-seed request (default) | `SeedBudget`, `SeedCampRoles` | `[Authorize(policy)]` + dev-auth on, host non-Production | Seeder call, redirect to `/Admin` |
-| Dev-seed strict | `SeedDashboard`, `ResetDashboard` | `[Authorize(policy)]` + dev-auth on, host `IsDevelopment()` only | Seeder call, redirect to `/Shifts/Dashboard` |
 | Section boot | `Section.Register` | Non-Production env name only | Registers the three seeders (fail-closed on unknown env) |
 | Nav contribution | `ISectionAdminNav.Groups` | Environment gate: `env.IsDevelopment()` | Renders the "Development" admin group (one item, `/dev/seed`) |
 
@@ -40,7 +39,6 @@ Humans.Development/
 ├── Services/
 │   ├── DevPersonaSeeder.cs           # Persona create + EnsureActive repair
 │   ├── DevelopmentCampRoleSeeder.cs  # Camp-role definitions seeder
-│   ├── DevelopmentDashboardSeeder.cs # Dashboard demo seeder + reset
 │   └── AuditEntityTypes.cs           # Persisted "Profile" discriminator
 ├── Views/
 │   ├── DevLogin/Users.cshtml
@@ -65,8 +63,6 @@ Humans.Development/
 - Every dev-login and dev-seed action 404s on Production or with `DevAuth:Enabled` off —
   `src/Sections/Humans.Development/Controllers/DevLoginController.cs:158`,
   `src/Sections/Humans.Development/Controllers/DevSeedController.cs:102`.
-- The dashboard seed and reset also require `IsDevelopment()` —
-  `src/Sections/Humans.Development/Controllers/DevSeedController.cs:131`.
 - The Admin persona 404s off a dev host before any seeding —
   `src/Sections/Humans.Development/Controllers/DevLoginController.cs:58`; impersonating an
   active Admin 404s off a dev host —
@@ -81,10 +77,6 @@ Humans.Development/
   `src/Sections/Humans.Development/Controllers/DevLoginController.cs:90`.
 - Every `guest` click mints a new account —
   `src/Sections/Humans.Development/Services/DevPersonaSeeder.cs:302`.
-- The seeded event's build start is no later than its first-crew boundary —
-  `src/Sections/Humans.Development/Services/DevelopmentDashboardSeeder.cs:104`.
-- Dashboard humans get their names through the profile path before any self-signup —
-  `src/Sections/Humans.Development/Services/DevelopmentDashboardSeeder.cs:327`.
 
 ### 5. Seams (specified-but-unbuilt)
 

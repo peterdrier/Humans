@@ -16,9 +16,6 @@ internal partial interface IShiftManagementRepository : IRepository
 
     Task SaveEventSettingsAsync(EventSettings entity, EntityMutationMode mode, CancellationToken ct = default);
 
-    /// <summary>Also deletes every Shifts-owned row beneath it. Returns the number of event rows deleted.</summary>
-    Task<int> DeleteEventCascadeAsync(Guid eventSettingsId, CancellationToken ct = default);
-
     /// <summary>One save for rota fields and optional tag replacement. Null keeps tags; empty clears them; unknown ids are ignored.</summary>
     Task SaveRotaAsync(
         Rota rota, EntityMutationMode mode, CancellationToken ct = default, IReadOnlyList<Guid>? tagIds = null);

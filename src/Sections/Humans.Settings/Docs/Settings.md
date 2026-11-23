@@ -17,6 +17,9 @@ cycles and of which one is active.
 
 ## Concepts
 
+The event form renders its nullable early-entry close with `ToIso8601` and parses it
+with `DateFormattingExtensions.Iso8601InstantPattern`, using the shared seconds-precision UTC format.
+
 - A **Setting** is one key/value row in `settings_system_values`. Well-known keys live
   in `SettingKeys`; values are strings, parsed by the caller.
 - **EventSettings** is one event cycle's app-wide values: name, public year,
@@ -31,8 +34,7 @@ cycles and of which one is active.
   Never hardcode a zone id.
 - **EventSettingsStatus** is `Active` (at most one row), `Inactive`, `Deleted`.
   Other sections store the id, so a cycle ends by going `Inactive`; nothing sets
-  `Deleted` today. The only row removal is `IEventSettingsSeeding.DeleteEventAsync`,
-  for fixture teardown.
+  `Deleted` today, and no path removes a row.
 - **Settings mints event ids.** A new cycle is created at `/Settings#event` by
   saving the form with no id. Shifts' own `shift_event_settings` row carries only its
   section-local knobs and is created on demand the first time a rota or knob edit
@@ -166,11 +168,9 @@ named by `SectionMigrationsHistory.TableFor`.
 - **Every write that may have changed a cycle notifies every
   `IEventSettingsChangeListener`, before the audit, even when persistence throws
   after committing**: a save notifies its id, make-active the target and the
-  former active row, a timezone change every event, seeding each row it changed,
-  and a seeded delete unless the row was confirmed missing. Refusals notify nobody.
-- `Humans.Development`'s dashboard seeder calls `IEventSettingsSeeding.CreateActiveEventAsync`
-  before seeding Shifts fixtures against the same id, and `DeleteEventAsync` on
-  reset. Seeding writes no audit entry — it has no real actor.
+  former active row, a timezone change every event, and seeding each row it changed. Refusals notify nobody.
+- The integration test host calls `IEventSettingsSeeding.CreateActiveEventAsync` before
+  seeding Shifts fixtures against the same id. Seeding writes no audit entry — it has no real actor.
 
 ## Cross-Section Dependencies
 
@@ -199,12 +199,12 @@ too wide to keep in step by hand. Derive it from the call sites.
 registered as `ISettingsService`, `ISettingsWriteService` and `IEventSettingsSeeding`)
 **Owned tables:** `settings_system_values`, `settings_events`
 **Status:** (A) — own project, own context, repository-only data access.
-`CachingSettingsService` holds every event row and the timezone in memory, so the
-event reads never reach the database. It loads at startup, and `Service` reloads it on
-every event or timezone write, before it tells the `IEventSettingsChangeListener`s.
+`CachingSettingsService` holds every event row, the timezone and every
+`settings_system_values` row in memory, so neither the event reads nor the key reads
+(`GetValueAsync`) reach the database. It loads at startup, and `Service` reloads it on
+every key, event or timezone write, before it tells the `IEventSettingsChangeListener`s.
 `GetActiveEventSettings()` is synchronous: it only reads that copy, and the database-backed
-`Service` throws `NotSupportedException` for it. Plain key reads (`GetValueAsync`) are not
-cached.
+`Service` throws `NotSupportedException` for it.
 **Contributes:** through `Section`: `ISectionSettings` — the `/Settings#event`
 tab, rendered by `EventSettingsTabViewComponent`; `ISectionChrome` — the
 `/Settings` link in the signed-in user menu (`user-menu` slot); `ISectionAdminNav`

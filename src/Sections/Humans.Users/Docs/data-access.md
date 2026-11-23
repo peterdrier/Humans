@@ -14,13 +14,14 @@ The account-merge surface (`AccountMergeService`, `DuplicateAccountService`,
 [Users](#users) below; the `AccountMergeRequests` table is owned there, not
 by Profiles. `DuplicateAccountService` is detection-only (no repository, no
 DB access; its one write is the `DuplicateAccountFlagged` audit entry through
-`IAuditLogService`).
+`IAuditLogService`). The picture, duplicate-account, email-diagnostic and merge interfaces
+and their diagnostic/snapshot DTOs stay internal beside the owning services.
 
 Per-user persistence is a single `IUserRepository`, which owns `Users`,
 `Profiles`, `UserEmails`, `ContactFields`, `ProfileLanguages`,
 `VolunteerHistoryEntries` and the ASP.NET-Identity
 `IdentityUserLogins` bridge. `ProfileService` exposes only
-`IProfilePictureService`; the unified User+Profile read-model lives behind
+internal `IProfilePictureService` under `Services/`; the unified User+Profile read-model lives behind
 `IUserService.GetUserInfoAsync`. Repositories are **Singletons**
 (`IDbContextFactory` pattern).
 
@@ -79,7 +80,7 @@ Repository: `IUserRepository`. Notification-address projections use existing `IU
 | Users | R/W (the only direct EF write to `Users.Email`). The `Users.GoogleEmail` shadow column has no reader or writer left (nobodies-collective/Humans#1102); the mapping survives only until the drop PR. `Users.GoogleEmailStatus` is frozen and unwritten: the Google Workspace identity is Google's `google_workspace_identities` (Users decomposition commit 15). |
 
 Cross-section calls via `IUserService`, plus ASP.NET `UserManager<User>` and
-`IAuditLogService` (manual-verify and primary-cleared entries) and `IServiceProvider` for lazy resolution (Tickets' `ITicketService`, Users' `IAccountMergeService`, and Google's `IGoogleWrite.ClearIfAddressAsync` after each committed delete, unlink or OAuth tag-move/rename/displacement). Implements `IUserMerge`. No
+`IAuditLogService` (manual-verify and primary-cleared entries), the `IUserEmailLock` fan-out (addresses another section needs kept; Tickets), the `IUserEmailRemovalListener` fan-out (after each committed delete, unlink or OAuth tag-move/rename; Google), `IDataProtectionProvider` for the emailed link's token (`EmailConfirmationService.CreateToken`), and `UsersEmails` + `IEmailService` for verification mail. No service location. Implements `IUserMerge`. No
 `IMemoryCache` directly.
 **Cross-section design-rule note:** `Users` reads/writes overlap the User
 section — `IUserRepository` is the consolidated owner and this is the

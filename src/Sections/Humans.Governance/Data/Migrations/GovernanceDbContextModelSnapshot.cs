@@ -63,9 +63,6 @@ namespace Humans.Governance.Data.Migrations
                         .HasMaxLength(4000)
                         .HasColumnType("character varying(4000)");
 
-                    b.Property<Instant?>("ReviewStartedAt")
-                        .HasColumnType("timestamp with time zone");
-
                     b.Property<Guid?>("ReviewedByUserId")
                         .HasColumnType("uuid");
 
@@ -429,6 +426,26 @@ namespace Humans.Governance.Data.Migrations
                         .IsUnique();
 
                     b.ToTable("governance_board_votes", (string)null);
+                });
+
+            modelBuilder.Entity("Humans.Governance.Domain.GovernanceBoardPosition", b =>
+                {
+                    b.Property<string>("Position")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
+                    b.Property<Instant>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Position");
+
+                    b.HasIndex("UserId")
+                        .IsUnique();
+
+                    b.ToTable("governance_board_positions", (string)null);
                 });
 
             modelBuilder.Entity("Humans.Governance.Domain.GovernanceBodyFile", b =>

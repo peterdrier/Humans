@@ -61,9 +61,6 @@ internal interface ITeamRepository : IRepository
     /// <summary>Closes every active membership and deactivates the team in one transaction. Returns the users removed.</summary>
     Task<IReadOnlyList<Guid>> DeactivateTeamAsync(Guid teamId, Instant now, CancellationToken ct = default);
 
-    /// <summary>Also deletes Teams-owned child rows. False when the team doesn't exist.</summary>
-    Task<bool> PermanentlyDeleteTeamAsync(Guid teamId, CancellationToken ct = default);
-
     Task<(bool Updated, string? PreviousPrefix)> SetGoogleGroupPrefixAsync(
         Guid teamId, string? prefix, CancellationToken ct = default);
 
@@ -175,10 +172,6 @@ internal interface ITeamRepository : IRepository
 
     Task<bool> OtherRoleHasIsManagementAsync(
         Guid teamId, Guid excludingRoleDefinitionId, CancellationToken ct = default);
-
-    /// <summary>Teams without a public management role are absent.</summary>
-    Task<IReadOnlyDictionary<Guid, string>> GetPublicManagementRoleNamesByTeamIdsAsync(
-        IReadOnlyCollection<Guid> teamIds, CancellationToken ct = default);
 
     Task AddRoleDefinitionAsync(TeamRoleDefinition definition, CancellationToken ct = default);
 

@@ -1,3 +1,11 @@
+using Humans.Users.Data;
+using Humans.Application.Services.Users.AccountLifecycle;
+using Humans.Auth.Contracts;
+using Humans.Gdpr.Contracts;
+using Humans.Teams.Contracts;
+using Humans.Tickets.Contracts;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging.Abstractions;
 using AwesomeAssertions;
 using Humans.Base.Extensions;
 using Humans.Base.Interfaces;
@@ -19,7 +27,9 @@ namespace Humans.Users.Tests.Jobs;
 public class ProcessAccountDeletionsJobTests : IDisposable
 {
     private readonly IUserManagement _userService;
-    private readonly IAccountDeletionService _accountDeletionService;
+    private readonly AccountDeletionService _accountDeletionService;
+    private readonly IGdprService _gdprService = Substitute.For<IGdprService>();
+    private readonly ITicketService _tickets = Substitute.For<ITicketService>();
     private readonly IEmailService _emailService;
     private readonly UsersEmails _emailMessages = TestUsersEmails.Create();
     private readonly IAuditLogService _auditLogService;
@@ -33,11 +43,16 @@ public class ProcessAccountDeletionsJobTests : IDisposable
     public ProcessAccountDeletionsJobTests()
     {
         _userService = Substitute.For<IUserManagement>();
-        _accountDeletionService = Substitute.For<IAccountDeletionService>();
         _emailService = Substitute.For<IEmailService>();
         _auditLogService = Substitute.For<IAuditLogService>();
         _clock = new FakeClock(Now);
         _metrics = TestMetrics.Create();
+
+        _accountDeletionService = new AccountDeletionService(
+            _userService, Substitute.For<IUserEmailService>(), Substitute.For<ITeamWrite>(),
+            Substitute.For<IRoleAssignmentWrite>(), _gdprService, _tickets,
+            Substitute.For<IUserInfoSliceRefresher>(), _auditLogService, _emailService,
+            _emailMessages, _clock, Substitute.For<IHostEnvironment>(), NullLogger<AccountDeletionService>.Instance);
 
         _job = new ProcessAccountDeletionsJob(
             _userService, _accountDeletionService, _emailService, _emailMessages, _auditLogService, _metrics, _logger, _clock);
@@ -89,8 +104,9 @@ public class ProcessAccountDeletionsJobTests : IDisposable
         var next = Guid.NewGuid();
         _userService.GetAccountsDueForAnonymizationAsync(Now, shutdown.Token).Returns(new[] { first, next });
         var failure = new IOException("Erasure failed");
-        _accountDeletionService.AnonymizeExpiredAccountAsync(first, shutdown.Token)
-            .Returns(async Task<AnonymizedAccountSummary?> (_) => { await shutdown.CancelAsync(); throw failure; });
+        GivenUser(first);
+        _gdprService.EraseForUserAsync(first, shutdown.Token)
+            .Returns(async _ => { await shutdown.CancelAsync(); throw failure; });
         var metrics = Substitute.For<IHumansMetrics>();
         var logger = new CapturingLogger<ProcessAccountDeletionsJob>();
         var job = new ProcessAccountDeletionsJob(_userService, _accountDeletionService, _emailService,
@@ -100,7 +116,7 @@ public class ProcessAccountDeletionsJobTests : IDisposable
 
         error.Should().BeOfType<AggregateException>().Which.InnerExceptions.Should().ContainSingle().Which.Should().BeSameAs(failure);
         metrics.Received(1).RecordJobRun("process_account_deletions", "failure");
-        await _accountDeletionService.DidNotReceive().AnonymizeExpiredAccountAsync(next, Arg.Any<CancellationToken>());
+        await _userService.DidNotReceive().GetRawUserInfoAsync(next, Arg.Any<CancellationToken>());
         logger.Entries.Should().NotContain(e => e.Level == LogLevel.Warning);
     }
 
@@ -111,12 +127,9 @@ public class ProcessAccountDeletionsJobTests : IDisposable
         var first = Guid.NewGuid();
         var second = Guid.NewGuid();
         _userService.GetAccountsDueForAnonymizationAsync(Now, Arg.Any<CancellationToken>()).Returns([first, second]);
-        _accountDeletionService.AnonymizeExpiredAccountAsync(first, Arg.Any<CancellationToken>())
-            .Returns(async _ =>
-            {
-                await cancellation.CancelAsync();
-                return (AnonymizedAccountSummary?)new AnonymizedAccountSummary("erased@example.com", "Erased Person", "en");
-            });
+        GivenUser(first, "erased@example.com", "Erased Person");
+        _gdprService.EraseForUserAsync(first, Arg.Any<CancellationToken>())
+            .Returns(async _ => await cancellation.CancelAsync());
         _emailService.SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>())
             .Returns(call =>
             {
@@ -130,7 +143,7 @@ public class ProcessAccountDeletionsJobTests : IDisposable
         await _emailService.Received(1).SendAsync(
             Arg.Is<EmailMessage>(message => message.DoNotPersist
                 && string.Equals(message.RecipientEmail, "erased@example.com", StringComparison.Ordinal)), CancellationToken.None);
-        await _accountDeletionService.DidNotReceive().AnonymizeExpiredAccountAsync(second, Arg.Any<CancellationToken>());
+        await _userService.DidNotReceive().GetRawUserInfoAsync(second, Arg.Any<CancellationToken>());
     }
 
     [HumansFact]
@@ -139,11 +152,12 @@ public class ProcessAccountDeletionsJobTests : IDisposable
         using var cancellation = new CancellationTokenSource();
         var userId = Guid.NewGuid();
         _userService.GetAccountsDueForAnonymizationAsync(Now, Arg.Any<CancellationToken>()).Returns([userId]);
-        _accountDeletionService.AnonymizeExpiredAccountAsync(userId, Arg.Any<CancellationToken>())
+        GivenUser(userId);
+        _gdprService.EraseForUserAsync(userId, Arg.Any<CancellationToken>())
             .Returns(async _ =>
             {
                 await cancellation.CancelAsync();
-                return await Task.FromException<AnonymizedAccountSummary?>(new OperationCanceledException(cancellation.Token));
+                throw new OperationCanceledException(cancellation.Token);
             });
 
         var run = () => _job.ExecuteAsync(cancellation.Token);
@@ -160,8 +174,7 @@ public class ProcessAccountDeletionsJobTests : IDisposable
         const string email = "erased@example.com";
         const string name = "Erased Person";
         _userService.GetAccountsDueForAnonymizationAsync(Now, Arg.Any<CancellationToken>()).Returns([userId]);
-        _accountDeletionService.AnonymizeExpiredAccountAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(new AnonymizedAccountSummary(email, name, "en"));
+        GivenUser(userId, email, name);
         _emailService.SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromException(new IOException($"Failed to deliver to {email}: {name}", new Exception("private body"))));
 
@@ -186,8 +199,8 @@ public class ProcessAccountDeletionsJobTests : IDisposable
 
         await _job.ExecuteAsync(Xunit.TestContext.Current.CancellationToken);
 
-        await _accountDeletionService.DidNotReceiveWithAnyArgs()
-            .AnonymizeExpiredAccountAsync(Guid.Empty, Arg.Any<CancellationToken>());
+        await _userService.DidNotReceiveWithAnyArgs()
+            .GetRawUserInfoAsync(Guid.Empty, Arg.Any<CancellationToken>());
         await _emailService.DidNotReceiveWithAnyArgs().SendAsync(default!);
     }
 
@@ -206,15 +219,11 @@ public class ProcessAccountDeletionsJobTests : IDisposable
         _userService.GetAccountsDueForAnonymizationAsync(Now, Arg.Any<CancellationToken>())
             .Returns([userId]);
 
-        _accountDeletionService.AnonymizeExpiredAccountAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(new AnonymizedAccountSummary(
-                OriginalEmail: "test@example.com",
-                OriginalBurnerName: "Test User",
-                PreferredLanguage: language));
+        GivenUser(userId, "test@example.com", "Test User", language);
 
         await _job.ExecuteAsync(Xunit.TestContext.Current.CancellationToken);
 
-        await _accountDeletionService.Received(1).AnonymizeExpiredAccountAsync(
+        await _gdprService.Received(1).EraseForUserAsync(
             userId, Arg.Any<CancellationToken>());
 
         // The audit log is retained through erasure, so its description must NOT
@@ -242,11 +251,9 @@ public class ProcessAccountDeletionsJobTests : IDisposable
         _userService.GetAccountsDueForAnonymizationAsync(Now, Arg.Any<CancellationToken>())
             .Returns([vanishedId, goodId]);
 
-        _accountDeletionService.AnonymizeExpiredAccountAsync(vanishedId, Arg.Any<CancellationToken>())
-            .Returns((AnonymizedAccountSummary?)null);
-        _accountDeletionService.AnonymizeExpiredAccountAsync(goodId, Arg.Any<CancellationToken>())
-            .Returns(new AnonymizedAccountSummary(
-                "other@example.com", "Other User", "es"));
+        _userService.GetRawUserInfoAsync(vanishedId, Arg.Any<CancellationToken>())
+            .Returns((UserInfo?)null);
+        GivenUser(goodId, "other@example.com", "Other User", "es");
 
         await _job.ExecuteAsync(Xunit.TestContext.Current.CancellationToken);
 
@@ -268,11 +275,7 @@ public class ProcessAccountDeletionsJobTests : IDisposable
         var userId = Guid.NewGuid();
         _userService.GetAccountsDueForAnonymizationAsync(Now, Arg.Any<CancellationToken>())
             .Returns([userId]);
-        _accountDeletionService.AnonymizeExpiredAccountAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(new AnonymizedAccountSummary(
-                OriginalEmail: originalEmail,
-                OriginalBurnerName: "Orphan User",
-                PreferredLanguage: "en"));
+        GivenUser(userId, originalEmail, "Orphan User");
 
         var metrics = Substitute.For<IHumansMetrics>();
         var job = new ProcessAccountDeletionsJob(
@@ -282,7 +285,7 @@ public class ProcessAccountDeletionsJobTests : IDisposable
 
         metrics.Received(1).RecordJobRun("process_account_deletions", "success");
         metrics.DidNotReceive().RecordJobRun("process_account_deletions", "failure");
-        await _accountDeletionService.Received(1).AnonymizeExpiredAccountAsync(userId, Arg.Any<CancellationToken>());
+        await _gdprService.Received(1).EraseForUserAsync(userId, Arg.Any<CancellationToken>());
 
         await _emailService.DidNotReceiveWithAnyArgs().SendAsync(default!);
 
@@ -302,11 +305,9 @@ public class ProcessAccountDeletionsJobTests : IDisposable
             .Returns([user1, user2]);
 
         var failure = new InvalidOperationException("DB error");
-        _accountDeletionService.AnonymizeExpiredAccountAsync(user1, Arg.Any<CancellationToken>())
-            .ThrowsAsync(failure);
-        _accountDeletionService.AnonymizeExpiredAccountAsync(user2, Arg.Any<CancellationToken>())
-            .Returns(new AnonymizedAccountSummary(
-                "u2@example.com", "User Two", "en"));
+        GivenUser(user1);
+        GivenUser(user2, "u2@example.com", "User Two");
+        _gdprService.EraseForUserAsync(user1, Arg.Any<CancellationToken>()).ThrowsAsync(failure);
 
         var metrics = Substitute.For<IHumansMetrics>();
         var job = new ProcessAccountDeletionsJob(
@@ -324,4 +325,57 @@ public class ProcessAccountDeletionsJobTests : IDisposable
             Arg.Is<EmailMessage>(m => m.RecipientEmail == "u2@example.com" && m.RecipientName == "User Two"),
             Arg.Any<CancellationToken>());
     }
+
+    [HumansTheory]
+    [Xunit.InlineData(10, true)]
+    [Xunit.InlineData(-1, false)]
+    public async Task ExecuteAsync_TicketTakenAfterTheRequest_HoldsTheDueDeletion(int holdDays, bool held)
+    {
+        var userId = Guid.NewGuid();
+        var requestedAt = Now.Minus(Duration.FromDays(31));
+        var scheduledFor = Now.Minus(Duration.FromDays(1));
+        var hold = Now.Plus(Duration.FromDays(holdDays));
+        _userService.GetAccountsDueForAnonymizationAsync(Now, Arg.Any<CancellationToken>()).Returns([userId]);
+        _userService.GetRawUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(UserInfoFixtures.FromUser(new User
+        {
+            Id = userId,
+            Email = "holder@example.com",
+            UserName = "holder@example.com",
+            BurnerName = "Holder",
+            PreferredLanguage = "en",
+            DeletionRequestedAt = requestedAt,
+            DeletionScheduledFor = scheduledFor,
+        }));
+        _tickets.GetUserTicketHoldingsAsync(userId, Arg.Any<CancellationToken>())
+            .Returns(new UserTicketHoldings(0, [], PostEventHoldDate: hold));
+        _userService.SetDeletionPendingAsync(userId, requestedAt, scheduledFor, hold, Arg.Any<CancellationToken>())
+            .Returns(true);
+
+        await _job.ExecuteAsync(Xunit.TestContext.Current.CancellationToken);
+
+        await _gdprService.Received(held ? 0 : 1).EraseForUserAsync(userId, Arg.Any<CancellationToken>());
+        await _userService.Received(held ? 1 : 0).SetDeletionPendingAsync(
+            userId, requestedAt, scheduledFor, hold, Arg.Any<CancellationToken>());
+        await _auditLogService.Received(held ? 1 : 0).LogAsync(
+            UsersAuditActions.DeletionHeldForTicket, nameof(User), userId,
+            Arg.Is<string>(d => d.Contains(hold.ToIso8601(), StringComparison.Ordinal)), nameof(ProcessAccountDeletionsJob),
+            Arg.Any<Guid?>(), Arg.Any<string?>());
+        await _auditLogService.Received(held ? 0 : 1).LogAsync(
+            UsersAuditActions.AccountAnonymized, nameof(User), userId,
+            Arg.Any<string>(), nameof(ProcessAccountDeletionsJob), Arg.Any<Guid?>(), Arg.Any<string?>());
+    }
+
+    private void GivenUser(Guid userId, string? email = "test@example.com", string name = "Test User", string language = "en")
+    {
+        var user = UserInfoFixtures.FromUser(new User
+        {
+            Id = userId,
+            Email = email,
+            UserName = email,
+            BurnerName = name,
+            PreferredLanguage = language,
+        });
+        _userService.GetRawUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(user);
+    }
+
 }

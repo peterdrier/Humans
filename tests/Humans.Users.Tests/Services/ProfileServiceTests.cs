@@ -52,13 +52,12 @@ public sealed class ProfileServiceTests : ServiceTestHarness
         _userRepository = new UserRepository(DbFactory, Clock);
         _storageUserService = new UserService(
             _userRepository,
-            AdminAuthorization,
             _pictureStorage,
             Clock,
             NullLogger<UserService>.Instance, AuditLog);
 
         _service = new ProfileService(
-            _userRepository,
+            _storageUserService,
             _pictureStorage);
         _editor = new ProfileEditorService(
             _userService, _contactFields,
@@ -105,7 +104,7 @@ public sealed class ProfileServiceTests : ServiceTestHarness
         result.Succeeded.Should().BeTrue();
         (await Db.ContactFields.AsNoTracking().SingleAsync(ct)).Value.Should().Be("+34 612345678");
         (await Db.ProfileLanguages.AsNoTracking().SingleAsync(ct)).LanguageCode.Should().Be("es");
-        (await Db.Profiles.AsNoTracking().SingleAsync(ct)).Id.Should().Be(result.ProfileId!.Value);
+        (await Db.Profiles.AsNoTracking().SingleAsync(ct)).UserId.Should().Be(userId);
     }
 
     [HumansTheory]
@@ -175,7 +174,6 @@ public sealed class ProfileServiceTests : ServiceTestHarness
         var save = await _editor.SaveProfileAsync(userId, request, ct: Xunit.TestContext.Current.CancellationToken);
 
         save.Succeeded.Should().BeTrue();
-        save.ProfileId.Should().NotBeNull().And.NotBe(Guid.Empty);
         (await Db.Profiles.AsNoTracking().AnyAsync(p => p.UserId == userId, Xunit.TestContext.Current.CancellationToken)).Should().BeTrue();
         var user = await Db.Users.AsNoTracking().FirstAsync(u => u.Id == userId, Xunit.TestContext.Current.CancellationToken);
         (user.BurnerName, user.FirstName, user.LastName).Should().Be(("Flame", "Jane", "Doe"));
@@ -303,7 +301,7 @@ public sealed class ProfileServiceTests : ServiceTestHarness
         (await Db.Users.AsNoTracking().SingleAsync(u => u.Id == userId, Xunit.TestContext.Current.CancellationToken))
             .DisplayName.Should().Be("Test User");
         _fileStorage.Files[PicKey(profileId, "image/png")].Should().Equal(1, 2, 3);
-        var picture = await _service.GetProfilePictureAsync(profileId, Xunit.TestContext.Current.CancellationToken);
+        var picture = await _service.GetProfilePictureAsync(userId, Xunit.TestContext.Current.CancellationToken);
         picture.Should().NotBeNull();
         picture.Value.ContentType.Should().Be("image/png");
         picture.Value.Data.Should().Equal(1, 2, 3);
@@ -321,7 +319,7 @@ public sealed class ProfileServiceTests : ServiceTestHarness
 
         var profile = await Db.Profiles.AsNoTracking().FirstAsync(p => p.UserId == userId, Xunit.TestContext.Current.CancellationToken);
         profile.ProfilePictureContentType.Should().BeNull();
-        (await _service.GetProfilePictureAsync(profile.Id, Xunit.TestContext.Current.CancellationToken)).Should().BeNull();
+        (await _service.GetProfilePictureAsync(userId, Xunit.TestContext.Current.CancellationToken)).Should().BeNull();
     }
 
     [HumansFact]
@@ -350,7 +348,7 @@ public sealed class ProfileServiceTests : ServiceTestHarness
 
         await _editor.SaveProfileAsync(userId, MakeRequest(pictureData: PictureBytes(), pictureContentType: "image/jpeg"), ct: Xunit.TestContext.Current.CancellationToken);
 
-        var picture = await _service.GetProfilePictureAsync(profileId, Xunit.TestContext.Current.CancellationToken);
+        var picture = await _service.GetProfilePictureAsync(userId, Xunit.TestContext.Current.CancellationToken);
         picture.Should().NotBeNull();
         picture.Value.ContentType.Should().Be("image/jpeg");
         picture.Value.Data.Should().Equal(ProfilePictureProcessor.ResizeProfilePicture(PictureBytes())!.Value.Data);
@@ -368,7 +366,7 @@ public sealed class ProfileServiceTests : ServiceTestHarness
         var options = new DbContextOptionsBuilder<UsersDbContext>(DbOptions)
             .AddInterceptors(new LoseProfileSaveAcknowledgement()).Options;
         var service = new UserService(
-            new UserRepository(new TestDbContextFactory(options), Clock), AdminAuthorization,
+            new UserRepository(new TestDbContextFactory(options), Clock),
             _pictureStorage, Clock, NullLogger<UserService>.Instance, AuditLog);
         var command = new UserProfileSaveCommand(
             "TestBurner", "Test", "User", null, null, null, null, null, null, null, null, null,
@@ -379,7 +377,7 @@ public sealed class ProfileServiceTests : ServiceTestHarness
         await save.Should().ThrowAsync<InvalidOperationException>().WithMessage("Profile save acknowledgement lost");
         var saved = await Db.Profiles.AsNoTracking().SingleAsync(p => p.Id == profileId, ct);
         saved.ProfilePictureStorageKey.Should().NotBeNull();
-        var picture = await _service.GetProfilePictureAsync(profileId, ct);
+        var picture = await _service.GetProfilePictureAsync(userId, ct);
         picture.Should().NotBeNull();
         picture.Value.Data.Should().Equal(4, 5, 6);
         _fileStorage.Files.Keys.Should().ContainSingle().Which.Should().Be(saved.ProfilePictureStorageKey);
@@ -395,7 +393,7 @@ public sealed class ProfileServiceTests : ServiceTestHarness
         var profileId = await SeedUserWithProfileAsync(userId, withPicture: true);
         SaveChangesInterceptor interceptor = afterCommit ? new LoseProfileSaveAcknowledgement() : new RejectUserNameSave();
         var options = new DbContextOptionsBuilder<UsersDbContext>(DbOptions).AddInterceptors(interceptor).Options;
-        var service = new UserService(new UserRepository(new TestDbContextFactory(options), Clock), AdminAuthorization,
+        var service = new UserService(new UserRepository(new TestDbContextFactory(options), Clock),
             _pictureStorage, Clock, NullLogger<UserService>.Instance, AuditLog);
         var command = new UserProfileSaveCommand(
             "TestBurner", "Test", "User", null, null, null, null, null, null, null, null, null,
@@ -431,7 +429,7 @@ public sealed class ProfileServiceTests : ServiceTestHarness
         repo.GetProfilePictureLocationAsync(profileId, Arg.Any<CancellationToken>())
             .ThrowsAsync(new IOException("Could not verify the committed picture"));
         var service = new UserService(
-            repo, AdminAuthorization,
+            repo,
             _pictureStorage, Clock, NullLogger<UserService>.Instance, AuditLog);
         var command = new UserProfileSaveCommand(
             "TestBurner", "Test", "User", null, null, null, null, null, null, null, null, null,
@@ -460,7 +458,6 @@ public sealed class ProfileServiceTests : ServiceTestHarness
             .ThrowsAsync(new InvalidOperationException("Database unavailable"));
         var sut = new UserService(
             failingRepo,
-            AdminAuthorization,
             _pictureStorage,
             Clock,
             NullLogger<UserService>.Instance, AuditLog);
@@ -487,7 +484,7 @@ public sealed class ProfileServiceTests : ServiceTestHarness
         var options = new DbContextOptionsBuilder<UsersDbContext>(DbOptions)
             .AddInterceptors(new RejectUserNameSave()).Options;
         var sut = new UserService(
-            new UserRepository(new TestDbContextFactory(options), Clock), AdminAuthorization,
+            new UserRepository(new TestDbContextFactory(options), Clock),
             _pictureStorage, Clock, NullLogger<UserService>.Instance, AuditLog);
         var command = new UserProfileSaveCommand(
             "TestBurner", "Test", "User", null, null, null, null, null, null, null, null, null,
@@ -529,7 +526,7 @@ public sealed class ProfileServiceTests : ServiceTestHarness
             .And.NotBe(PicKey(profileId, "image/png"));
         _fileStorage.Files.Should().NotContainKey(PicKey(profileId, "image/png"));
         _fileStorage.Files.Keys.Should().ContainSingle().Which.Should().Be(profile.ProfilePictureStorageKey);
-        var picture = await _service.GetProfilePictureAsync(profileId, Xunit.TestContext.Current.CancellationToken);
+        var picture = await _service.GetProfilePictureAsync(userId, Xunit.TestContext.Current.CancellationToken);
         picture!.Value.Data.Should().Equal(ProfilePictureProcessor.ResizeProfilePicture(PictureBytes())!.Value.Data);
 
         var firstVersionedKey = profile.ProfilePictureStorageKey!;
@@ -548,7 +545,7 @@ public sealed class ProfileServiceTests : ServiceTestHarness
         (await Db.Profiles.AsNoTracking().FirstAsync(p => p.Id == profileId, Xunit.TestContext.Current.CancellationToken))
             .ProfilePictureStorageKey.Should().BeNull();
 
-        var picture = await _service.GetProfilePictureAsync(profileId, Xunit.TestContext.Current.CancellationToken);
+        var picture = await _service.GetProfilePictureAsync(userId, Xunit.TestContext.Current.CancellationToken);
 
         picture.Should().NotBeNull();
         picture.Value.Data.Should().Equal(1, 2, 3);
@@ -628,7 +625,7 @@ public sealed class ProfileServiceTests : ServiceTestHarness
         await SeedUserWithProfileAsync(userId, withPicture: true);
         var profile = await Db.Profiles.FirstAsync(p => p.UserId == userId, Xunit.TestContext.Current.CancellationToken);
 
-        var result = await _service.GetProfilePictureAsync(profile.Id, Xunit.TestContext.Current.CancellationToken);
+        var result = await _service.GetProfilePictureAsync(userId, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().NotBeNull();
         result.Value.Data.Should().BeEquivalentTo(new byte[] { 1, 2, 3 });
@@ -642,7 +639,7 @@ public sealed class ProfileServiceTests : ServiceTestHarness
         await SeedUserWithProfileAsync(userId, withPicture: false);
         var profile = await Db.Profiles.FirstAsync(p => p.UserId == userId, Xunit.TestContext.Current.CancellationToken);
 
-        var result = await _service.GetProfilePictureAsync(profile.Id, Xunit.TestContext.Current.CancellationToken);
+        var result = await _service.GetProfilePictureAsync(userId, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().BeNull();
     }
@@ -667,7 +664,7 @@ public sealed class ProfileServiceTests : ServiceTestHarness
         var fsPayload = new byte[] { 9, 9, 9, 9 };
         await _fileStorage.SaveAsync(PicKey(profile.Id, "image/png"), fsPayload, Xunit.TestContext.Current.CancellationToken);
 
-        var result = await _service.GetProfilePictureAsync(profile.Id, Xunit.TestContext.Current.CancellationToken);
+        var result = await _service.GetProfilePictureAsync(userId, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().NotBeNull();
         result.Value.Data.Should().BeEquivalentTo(fsPayload);
@@ -684,7 +681,7 @@ public sealed class ProfileServiceTests : ServiceTestHarness
 
         await _fileStorage.DeleteAsync(PicKey(profile.Id, "image/png"), Xunit.TestContext.Current.CancellationToken);
 
-        var result = await _service.GetProfilePictureAsync(profile.Id, Xunit.TestContext.Current.CancellationToken);
+        var result = await _service.GetProfilePictureAsync(userId, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().BeNull();
     }
@@ -707,43 +704,13 @@ public sealed class ProfileServiceTests : ServiceTestHarness
         // Confirm the stale file is still on disk to make the gate meaningful.
         _fileStorage.Files.ContainsKey(PicKey(profile.Id, "image/png")).Should().BeTrue();
 
-        var result = await _service.GetProfilePictureAsync(profile.Id, Xunit.TestContext.Current.CancellationToken);
+        var result = await _service.GetProfilePictureAsync(userId, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().BeNull("DB content-type is null after anonymization, so the stale on-disk file must not be served");
     }
 
-    [HumansFact]
-    public async Task SaveProfileLanguages_OwnerLookupFailure_DoesNotCommitWithoutCacheRefresh()
-    {
-        var ct = Xunit.TestContext.Current.CancellationToken;
-        var profileId = await SeedUserWithProfileAsync(Guid.NewGuid());
-        Db.ProfileLanguages.Add(new ProfileLanguage
-        {
-            Id = Guid.NewGuid(),
-            ProfileId = profileId,
-            LanguageCode = "es",
-            Proficiency = LanguageProficiency.Native,
-        });
-        await Db.SaveChangesAsync(ct);
-        var repository = Substitute.For<IUserRepository>();
-        repository.ReplaceLanguagesAsync(profileId, Arg.Any<IReadOnlyList<ProfileLanguage>>(), Arg.Any<CancellationToken>())
-            .Returns(c => _userRepository.ReplaceLanguagesAsync(profileId,
-                c.Arg<IReadOnlyList<ProfileLanguage>>(), c.Arg<CancellationToken>()));
-        repository.GetOwnerUserIdAsync(profileId, Arg.Any<CancellationToken>())
-            .ThrowsAsync(new InvalidOperationException("Owner lookup failed"));
-        var service = new UserService(repository, AdminAuthorization, _pictureStorage,
-            Clock, NullLogger<UserService>.Instance, AuditLog);
-
-        var act = () => service.SaveProfileLanguagesAsync(profileId,
-            [new ProfileLanguageInfo(Guid.Empty, "fr", LanguageProficiency.Native)], ct);
-
-        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("Owner lookup failed");
-        (await Db.ProfileLanguages.AsNoTracking().SingleAsync(ct)).LanguageCode.Should().Be("es");
-    }
-
     private UserService BuildUserServiceWith(IUserRepository userRepository) => new(
         userRepository,
-        AdminAuthorization,
         Substitute.For<IFileStorage>(),
         Clock,
         NullLogger<UserService>.Instance, AuditLog);
@@ -781,7 +748,6 @@ public sealed class ProfileServiceTests : ServiceTestHarness
         var result = await act();
 
         result.Succeeded.Should().BeFalse();
-        result.ProfileId.Should().BeNull();
         result.ErrorKey.Should().Be("Users_Profile_BurnerCVRequired");
         await _userService.DidNotReceiveWithAnyArgs().SaveProfileAsync(default, default!);
         (await Db.Profiles.CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(0);
@@ -797,7 +763,7 @@ public sealed class ProfileServiceTests : ServiceTestHarness
         Db.VolunteerHistoryEntries.Add(new VolunteerHistoryEntry
         {
             Id = Guid.NewGuid(),
-            ProfileId = profileId,
+            UserId = userId,
             Date = new LocalDate(2025, 7, 1),
             EventName = "Existing history",
             CreatedAt = Clock.GetCurrentInstant(),
@@ -828,7 +794,7 @@ public sealed class ProfileServiceTests : ServiceTestHarness
             Db.VolunteerHistoryEntries.Add(new VolunteerHistoryEntry
             {
                 Id = Guid.NewGuid(),
-                ProfileId = profileId,
+                UserId = userId,
                 Date = new LocalDate(2025, 7, 1),
                 EventName = "Original history",
                 CreatedAt = Clock.GetCurrentInstant(),
@@ -852,7 +818,7 @@ public sealed class ProfileServiceTests : ServiceTestHarness
         await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("CV save failed");
         (await Db.Profiles.AsNoTracking().SingleAsync(p => p.Id == profileId, ct))
             .NoPriorBurnExperience.Should().Be(!hadHistory);
-        var savedHistory = await Db.VolunteerHistoryEntries.AsNoTracking().Where(h => h.ProfileId == profileId).ToListAsync(ct);
+        var savedHistory = await Db.VolunteerHistoryEntries.AsNoTracking().Where(h => h.UserId == userId).ToListAsync(ct);
         if (hadHistory)
             savedHistory.Should().ContainSingle().Which.EventName.Should().Be("Original history");
         else
@@ -917,7 +883,7 @@ public sealed class ProfileServiceTests : ServiceTestHarness
 
         (await Db.Profiles.AsNoTracking().SingleAsync(p => p.Id == profileId, ct))
             .NoPriorBurnExperience.Should().BeFalse();
-        (await Db.VolunteerHistoryEntries.AsNoTracking().Where(h => h.ProfileId == profileId).ToListAsync(ct))
+        (await Db.VolunteerHistoryEntries.AsNoTracking().Where(h => h.UserId == userId).ToListAsync(ct))
             .Should().ContainSingle().Which.EventName.Should().Be("Nowhere");
     }
 

@@ -11,9 +11,13 @@ using Humans.Budget.Services;
 using Humans.Finance.Contracts;
 using Humans.Gdpr.Contracts;
 using Humans.Issues.Contracts;
+using Humans.Permissions.Contracts;
+using Humans.Teams.Contracts;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+
+[assembly: Humans.Base.Demo.NoDemoStory("No demo story written yet.")]
 
 namespace Humans.Budget;
 
@@ -22,7 +26,8 @@ public sealed class Section :
     IIssueQueueOwner,
     ISectionAdminNav,
     ISectionJobs,
-    ISectionNav
+    ISectionNav,
+    ISectionPermissions
 {
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
@@ -77,4 +82,10 @@ public sealed class Section :
 
     IEnumerable<MemberNavItem> ISectionNav.Items() =>
         [new("Nav_Budget", Controller: "Budget", Action: "Summary", Policy: PolicyNames.AppAccess, Weight: 70)];
+
+    IReadOnlyList<Permission> ISectionPermissions.Permissions { get; } =
+    [
+        new(BudgetPermissions.Edit, "Budget_Permission_Edit_Title", "Budget_Permission_Edit_Blurb",
+            [TeamOwner.Kind], TopLevelOnly: true, AdminRoles: [FinanceRoles.FinanceAdmin], typeof(BudgetResource)),
+    ];
 }

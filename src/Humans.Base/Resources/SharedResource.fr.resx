@@ -1023,15 +1023,6 @@
   <data name="Todo_Consents_Action" xml:space="preserve">
     <value>Examiner les accords</value>
   </data>
-  <data name="Todo_ConsentCheck_Title" xml:space="preserve">
-    <value>Vérification du coordinateur</value>
-  </data>
-  <data name="Todo_ConsentCheck_Done" xml:space="preserve">
-    <value>Un coordinateur a vérifié et approuvé vos documents.</value>
-  </data>
-  <data name="Todo_ConsentCheck_Pending" xml:space="preserve">
-    <value>Un coordinateur vérifiera vos documents une fois le profil et les accords complétés.</value>
-  </data>
   <data name="Todo_ShiftInfo_Title" xml:space="preserve">
     <value>Définir vos préférences de quart</value>
   </data>
@@ -1258,7 +1249,7 @@
     <value>N/D</value>
   </data>
   <data name="EmailGrid_LinkFailed" xml:space="preserve">
-    <value>Nous n'avons pas pu associer ce compte Google. Veuillez réessayer.</value>
+    <value>Nous n'avons pas pu associer ce compte Google. Si ce compte, ou son adresse, appartient déjà à un autre de vos comptes, ajoutez plutôt cette adresse via « Ajouter un e-mail » et suivez le lien que nous vous envoyons pour fusionner les deux.</value>
   </data>
   <data name="Profile_BuildStrip_Title" xml:space="preserve">
     <value>Disponibilité et suivi du montage</value>
@@ -1468,6 +1459,9 @@
   <data name="Settings_TabGate" xml:space="preserve">
     <value>Porte</value>
   </data>
+  <data name="Settings_TabTickets" xml:space="preserve">
+    <value>Billets</value>
+  </data>
   <data name="Settings_TabStore" xml:space="preserve">
     <value>Boutique</value>
   </data>
@@ -1509,4 +1503,5 @@
   <data name="Document_LegalLabel" xml:space="preserve"><value>Version légale</value></data>
   <data name="Todo_Medical_Title" xml:space="preserve"><value>Les coordinateurs doivent-ils savoir quelque chose sur ta santé ?</value></data>
   <data name="Todo_Medical_Pending" xml:space="preserve"><value>Facultatif. Seuls toi et les No-Info Admins pouvez le voir.</value></data>
+  <data name="Nav_Roles" xml:space="preserve"><value>Rôles</value></data>
 </root>

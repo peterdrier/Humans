@@ -4,7 +4,8 @@ using AwesomeAssertions;
 using Humans.Base.Authorization;
 using Humans.Base.Enums;
 using Humans.Base.Interfaces;
-using Humans.Campaigns.Contracts;
+using Humans.Campaigns.Services;
+using Humans.Campaigns.Services.Dtos;
 using Humans.Campaigns.ViewComponents;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -21,7 +22,7 @@ namespace Humans.Campaigns.Tests.ViewComponents;
 /// </summary>
 public class UserPartsTests
 {
-    private readonly ICampaignService _campaigns = Substitute.For<ICampaignService>();
+    private readonly ICampaignManagement _campaigns = Substitute.For<ICampaignManagement>();
     private readonly Guid _userId = Guid.NewGuid();
 
     private CampaignGrantSummary Grant(string title) => new(

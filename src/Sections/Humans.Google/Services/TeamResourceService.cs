@@ -417,6 +417,31 @@ internal sealed partial class TeamResourceService(
     public Task<string> GetServiceAccountEmailAsync(CancellationToken ct = default)
         => googleClient.GetServiceAccountEmailAsync(ct);
 
+    public async Task<DriveLinkLookup> LookUpDriveLinkAsync(string url, CancellationToken ct = default)
+    {
+        var folderId = ParseDriveFolderId(url);
+        var googleId = folderId ?? ParseDriveFileId(url);
+        if (googleId is null)
+        {
+            return new DriveLinkLookup(null,
+                "Invalid Google Drive URL. Please use a folder URL (https://drive.google.com/drive/folders/...) or a file URL (https://docs.google.com/spreadsheets/d/...).");
+        }
+
+        var isFolder = folderId is not null;
+        var lookup = await googleClient.GetDriveItemAsync(googleId, expectFolder: isFolder, ct);
+        if (lookup.Item is null)
+        {
+            var refused = await BuildDriveLookupErrorAsync(lookup.Error, isFolder, ct);
+            return new DriveLinkLookup(null, $"{refused.ErrorMessage} Service account: {refused.ServiceAccountEmail}");
+        }
+
+        return new DriveLinkLookup(new DriveLinkItem(
+            lookup.Item.Id,
+            lookup.Item.IsFolder ? GoogleResourceType.DriveFolder : GoogleResourceType.DriveFile,
+            lookup.Item.FullPath,
+            lookup.Item.WebViewLink));
+    }
+
     private async Task<LinkResourceResult> BuildDriveLookupErrorAsync(
         GoogleClientError? error,
         bool isFolder,

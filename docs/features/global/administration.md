@@ -170,15 +170,12 @@ Google sync, settings, account provisioning, and audit routes have been extracte
 
 ### UsersAdminAccountMergesController (`/Users/Admin/AccountMerges/`) — Admin only
 
-The single unified account-merge surface (PR #899 consolidation). It combines duplicate-account detection (`IDuplicateAccountService`, detection-only) and user-submitted merge requests (`IAccountMergeService`) into one queue. The old separate `/Admin/DuplicateAccounts` and `/Admin/MergeRequests` screens (and their controllers) were deleted. Both `AccountMergeService` and `DuplicateAccountService` are now Users-section services.
+The admin's merge tools. People merge their own two accounts through the emailed confirmation link (`EmailConfirmationService`, Users section); this page covers the pairs that never go through it and the look-back. Both `AccountMergeService` and `DuplicateAccountService` are Users-section services.
 
 | Route | Action | Description |
 |-------|--------|-------------|
-| `/Users/Admin/AccountMerges` | Index | Unified queue of pending merge requests + detected duplicate pairs |
-| `/Users/Admin/AccountMerges/Merge` | Merge | POST: Merge an ad-hoc survivor/archived pair |
-| `/Users/Admin/AccountMerges/{requestId}/Merge` | MergeRequest | POST: Accept a merge request (admin picks survivor) |
-| `/Users/Admin/AccountMerges/{requestId}/Dismiss` | Dismiss | POST: Reject a merge request, no account changes |
-| `/Users/Admin/AccountMerges/{requestId}/Close` | Close | POST: Reconcile an orphan request whose accounts already merged |
+| `/Users/Admin/AccountMerges` | Index | Detected duplicate pairs, a pair picked by hand (`?a=&b=`), and the recently merged list read from the audit log |
+| `/Users/Admin/AccountMerges/Merge` | Merge | POST: Merge the chosen survivor/archived pair |
 
 ## Dashboard Metrics
 
@@ -192,7 +189,7 @@ Each active section implementing `ISectionAdminTiles` contributes `AdminTile`s (
 |---|---|---|---|---|
 | `users.total` | Total users | Users | — | `IUserService` snapshot count |
 | `users.profiles` | Active (has profile) | Users | — | Snapshot count where `IsActive` |
-| `users.tickets` | Ticket holders | Users | — | Snapshot count with a ticket for the active event year; 0 with no active event |
+| `tickets.holders` | Ticket holders | Tickets | — | Living users (`IUserService` snapshot) with a ticket for the active event year; 0 with no active event |
 | `shifts.coverage` | Shifts staffed | Shifts | — | `IShiftManagement.GetOverallCoverageAsync` (section-internal) |
 | `shell.online.now` | Online now | Shell | — | `IUserActivityTracker`, 5-minute window |
 | `shell.online.hour` | Active (1h) | Shell | — | `IUserActivityTracker`, 1-hour window |
@@ -438,7 +435,7 @@ Sections contribute a tab to `/Settings` via `ISectionSettings`; the old standal
 
 ### Dashboard Indicators
 - **Health Check URL**: `/health/ready` (Debug sidebar group, not a dashboard indicator)
-- **Sync System Teams**: Button on the Google "Overview" page (`/Google`, `POST /Google/SyncSystemTeams`) to manually trigger `SystemTeamSyncJob`, which recalculates membership for Volunteers, Coordinators, and Board teams. Not on the `/Admin` dashboard itself. Useful for fixing users whose name or consent state changed before the scheduled sync ran.
+- **Sync System Teams**: Button on the Google "Overview" page (`/Google`, `POST /Google/SyncSystemTeams`) to manually trigger `SystemTeamSyncJob`, which recalculates membership for the Volunteers, Coordinators and Barrio Leads teams. Not on the `/Admin` dashboard itself. Useful for fixing users whose name or consent state changed before the scheduled sync ran.
 
 ### Prometheus Metrics
 - Available at `/metrics`

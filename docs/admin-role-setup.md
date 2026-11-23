@@ -1,6 +1,6 @@
 # Adding Admin Users
 
-Admin roles are managed through the `role_assignments` table with temporal assignments (ValidFrom/ValidTo).
+Admin roles are managed through the `auth_role_assignments` table with temporal assignments (ValidFrom/ValidTo).
 
 ## Prerequisites
 
@@ -18,13 +18,13 @@ SELECT "Id", "Email", "DisplayName" FROM users WHERE "Email" = 'user@nobodies.te
 ### 2. Check for existing role assignments
 
 ```sql
-SELECT "Id", "RoleName", "ValidFrom", "ValidTo" FROM role_assignments WHERE "UserId" = '<user-id>';
+SELECT "Id", "RoleName", "ValidFrom", "ValidTo" FROM auth_role_assignments WHERE "UserId" = '<user-id>';
 ```
 
 ### 3. Insert the Admin role assignment
 
 ```sql
-INSERT INTO role_assignments ("Id", "UserId", "RoleName", "ValidFrom", "ValidTo", "Notes", "CreatedAt", "CreatedByUserId")
+INSERT INTO auth_role_assignments ("Id", "UserId", "RoleName", "ValidFrom", "ValidTo", "Notes", "CreatedAt", "CreatedByUserId")
 VALUES (gen_random_uuid(), '<user-id>', 'Admin', now(), NULL, 'Initial admin setup', now(), '<user-id>');
 ```
 
@@ -47,7 +47,7 @@ The `RoleAssignmentClaimsTransformation` runs on authentication, so the new role
 To end a role assignment (set expiration to now):
 
 ```sql
-UPDATE role_assignments SET "ValidTo" = now() WHERE "UserId" = '<user-id>' AND "RoleName" = 'Admin' AND "ValidTo" IS NULL;
+UPDATE auth_role_assignments SET "ValidTo" = now() WHERE "UserId" = '<user-id>' AND "RoleName" = 'Admin' AND "ValidTo" IS NULL;
 ```
 
 ## Notes

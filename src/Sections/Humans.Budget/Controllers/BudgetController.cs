@@ -1,4 +1,6 @@
 using Humans.Finance.Contracts;
+using Humans.Budget.Contracts;
+using Humans.Permissions.Contracts;
 using Humans.Budget.Services;
 using Humans.Base.Authorization;
 using Humans.Base.Controllers;
@@ -16,6 +18,7 @@ namespace Humans.Budget.Controllers;
 [Authorize]
 [Route("Budget")]
 internal sealed class BudgetController(
+    IPermissionService permissions,
     IBudgetManagement budgetService,
     IAuthorizationService authService,
     IUserService userService,
@@ -32,8 +35,9 @@ internal sealed class BudgetController(
             if (errorResult is not null) return errorResult;
 
             var isFinanceAdmin = (await authService.AuthorizeAsync(User, FinancePolicies.Manage)).Succeeded;
-            var coordinatorTeamIds = await budgetService.GetEffectiveCoordinatorTeamIdsAsync(user.Id, ct);
-            if (!isFinanceAdmin && coordinatorTeamIds.Count == 0)
+            var editableTeamIds = (await permissions.GetOwnersAsync(user.Id, BudgetPermissions.Edit, ct))
+                .Select(o => o.Id).ToHashSet();
+            if (!isFinanceAdmin && editableTeamIds.Count == 0)
                 return RedirectToAction(nameof(Summary));
 
             var activeYear = await budgetService.GetActiveYearAsync(ct);
@@ -46,7 +50,7 @@ internal sealed class BudgetController(
             var model = new CoordinatorBudgetViewModel
             {
                 Year = activeYear,
-                EditableTeamIds = coordinatorTeamIds,
+                EditableTeamIds = editableTeamIds,
                 IsFinanceAdmin = isFinanceAdmin
             };
             return View(model);
@@ -78,7 +82,7 @@ internal sealed class BudgetController(
             var visibleGroups = activeYear.Groups.OrderBy(group => group.SortOrder).ToList();
             var summary = budgetService.ComputeBudgetSummaryWithBuffers(visibleGroups);
 
-            var coordinatorTeamIds = await budgetService.GetEffectiveCoordinatorTeamIdsAsync(user.Id, ct);
+            var canEditSomewhere = (await permissions.GetOwnersAsync(user.Id, BudgetPermissions.Edit, ct)).Count > 0;
 
             var model = new BudgetSummaryViewModel
             {
@@ -90,7 +94,7 @@ internal sealed class BudgetController(
                     .ThenByDescending(slice => slice.BudgetCategoryId is null ? 0m : slice.Amount).ToList(),
                 ExpenseSlices = summary.ExpenseSlices.OrderBy(slice => slice.BudgetCategoryId is null)
                     .ThenByDescending(slice => slice.BudgetCategoryId is null ? 0m : slice.Amount).ToList(),
-                IsCoordinator = coordinatorTeamIds.Count > 0 || (await authService.AuthorizeAsync(User, FinancePolicies.Manage)).Succeeded
+                IsCoordinator = canEditSomewhere || (await authService.AuthorizeAsync(User, FinancePolicies.Manage)).Succeeded
             };
             return View(model);
         }

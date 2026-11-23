@@ -815,4 +815,27 @@
   <data name="Governance_Meter_AudienceBoard" xml:space="preserve"><value>den Vorstand</value></data>
   <data name="Governance_Status_Board" xml:space="preserve"><value>Vorstand</value></data>
   <data name="Governance_MemberSince" xml:space="preserve"><value>Mitglied seit</value></data>
+  <data name="Governance_Position" xml:space="preserve"><value>Amt</value></data>
+  <data name="Governance_Position_President" xml:space="preserve"><value>Vorsitz</value></data>
+  <data name="Governance_Position_VicePresident" xml:space="preserve"><value>Stellvertretender Vorsitz</value></data>
+  <data name="Governance_Position_Secretary" xml:space="preserve"><value>Schriftführung</value></data>
+  <data name="Governance_Position_Treasurer" xml:space="preserve"><value>Kassenführung</value></data>
+  <data name="Governance_Position_None" xml:space="preserve"><value>Kein Amt</value></data>
+  <data name="Governance_Save" xml:space="preserve"><value>Speichern</value></data>
+  <data name="Governance_BoardPositionSaved" xml:space="preserve"><value>Vorstandsamt gespeichert.</value></data>
+  <data name="Governance_BoardPositionNotOnBoard" xml:space="preserve"><value>Nur ein aktuelles Vorstandsmitglied kann ein Vorstandsamt innehaben.</value></data>
+  <data name="Governance_Manage_Title" xml:space="preserve"><value>Gruppe und Dateien verwalten</value></data>
+  <data name="Governance_Manage_GroupName" xml:space="preserve"><value>Google-Gruppe</value></data>
+  <data name="Governance_Manage_NoFiles" xml:space="preserve"><value>Noch keine Drive-Ordner oder -Dateien.</value></data>
+  <data name="Governance_Manage_Remove" xml:space="preserve"><value>Entfernen</value></data>
+  <data name="Governance_Manage_DriveLink" xml:space="preserve"><value>Drive-Link</value></data>
+  <data name="Governance_Manage_Access" xml:space="preserve"><value>Zugriff</value></data>
+  <data name="Governance_Manage_AddFile" xml:space="preserve"><value>Hinzufügen</value></data>
+  <data name="Governance_Manage_GroupSaved" xml:space="preserve"><value>Google-Gruppe gespeichert.</value></data>
+  <data name="Governance_Manage_FileAdded" xml:space="preserve"><value>Drive-Ordner oder -Datei hinzugefügt.</value></data>
+  <data name="Governance_Manage_FileRemoved" xml:space="preserve"><value>Drive-Ordner oder -Datei entfernt. Die Freigabe bleibt, wie sie ist.</value></data>
+  <data name="Governance_Manage_InvalidGroupName" xml:space="preserve"><value>Verwende für den Gruppennamen nur Kleinbuchstaben, Ziffern und Bindestriche.</value></data>
+  <data name="Governance_Manage_GroupNameTaken" xml:space="preserve"><value>Ein anderes Gremium nutzt diese Gruppe bereits.</value></data>
+  <data name="Governance_Manage_FileAlreadyLinked" xml:space="preserve"><value>Dieser Drive-Ordner oder diese Datei steht schon auf der Liste.</value></data>
+  <data name="Governance_Manage_FileNotFound" xml:space="preserve"><value>Dieser Drive-Ordner oder diese Datei steht nicht mehr auf der Liste.</value></data>
 </root>

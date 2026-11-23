@@ -5,6 +5,10 @@ updates:
     schedule:
       interval: "weekly"
       day: "monday"
+    # The Sunday upgrade run holds releases under 3 days old; 4 days here keeps
+    # Monday's cutoff at or before Sunday's (docs/maintenance/dependency-upgrades.md).
+    cooldown:
+      default-days: 4
     open-pull-requests-limit: 5
     groups:
       # Hangfire.NetCore (via AspNetCore) pins Hangfire.Core to an exact version;
@@ -24,6 +28,10 @@ updates:
     schedule:
       interval: "weekly"
       day: "monday"
+    # The Sunday upgrade run holds releases under 3 days old; 4 days here keeps
+    # Monday's cutoff at or before Sunday's (docs/maintenance/dependency-upgrades.md).
+    cooldown:
+      default-days: 4
     open-pull-requests-limit: 5
     labels:
       - "dependencies"
@@ -36,6 +44,10 @@ updates:
     schedule:
       interval: "weekly"
       day: "monday"
+    # The Sunday upgrade run holds releases under 3 days old; 4 days here keeps
+    # Monday's cutoff at or before Sunday's (docs/maintenance/dependency-upgrades.md).
+    cooldown:
+      default-days: 4
     open-pull-requests-limit: 3
     labels:
       - "dependencies"

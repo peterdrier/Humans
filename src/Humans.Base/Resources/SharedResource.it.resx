@@ -1023,15 +1023,6 @@
   <data name="Todo_Consents_Action" xml:space="preserve">
     <value>Esamina gli accordi</value>
   </data>
-  <data name="Todo_ConsentCheck_Title" xml:space="preserve">
-    <value>Revisione del coordinatore</value>
-  </data>
-  <data name="Todo_ConsentCheck_Done" xml:space="preserve">
-    <value>Un coordinatore ha verificato e approvato i tuoi documenti.</value>
-  </data>
-  <data name="Todo_ConsentCheck_Pending" xml:space="preserve">
-    <value>Un coordinatore verificherà i tuoi documenti una volta completati profilo e accordi.</value>
-  </data>
   <data name="Todo_ShiftInfo_Title" xml:space="preserve">
     <value>Imposta le tue preferenze di turno</value>
   </data>
@@ -1258,7 +1249,7 @@
     <value>N/D</value>
   </data>
   <data name="EmailGrid_LinkFailed" xml:space="preserve">
-    <value>Non siamo riusciti a collegare questo account Google. Riprova.</value>
+    <value>Non siamo riusciti a collegare questo account Google. Se l'account, o il suo indirizzo, appartiene già a un altro tuo account, aggiungi quell'indirizzo da "Aggiungi email" e segui il link che ti inviamo per unire i due.</value>
   </data>
   <data name="Profile_BuildStrip_Title" xml:space="preserve">
     <value>Disponibilità e monitoraggio del montaggio</value>
@@ -1468,6 +1459,9 @@
   <data name="Settings_TabGate" xml:space="preserve">
     <value>Cancello</value>
   </data>
+  <data name="Settings_TabTickets" xml:space="preserve">
+    <value>Biglietti</value>
+  </data>
   <data name="Settings_TabStore" xml:space="preserve">
     <value>Negozio</value>
   </data>
@@ -1509,4 +1503,5 @@
   <data name="Document_LegalLabel" xml:space="preserve"><value>Versione legale</value></data>
   <data name="Todo_Medical_Title" xml:space="preserve"><value>C’è qualcosa sulla tua salute che i coordinatori dovrebbero sapere?</value></data>
   <data name="Todo_Medical_Pending" xml:space="preserve"><value>Facoltativo. Lo vedete solo tu e i No-Info Admin.</value></data>
+  <data name="Nav_Roles" xml:space="preserve"><value>Ruoli</value></data>
 </root>
