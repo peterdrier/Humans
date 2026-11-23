@@ -4,6 +4,9 @@ using Humans.Auth.Contracts;
 using Humans.Backdoor.Data;
 using Humans.Backdoor.Domain;
 using Humans.Backdoor.Services;
+using Humans.Base.Authorization;
+using Humans.Permissions.Contracts;
+using Humans.Tasks.Contracts;
 using Humans.Users.Contracts;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
@@ -23,6 +26,7 @@ public class BackdoorApiKeyServiceTests
     private readonly IBackdoorApiKeyRepository _repository = Substitute.For<IBackdoorApiKeyRepository>();
     private readonly IRoleAssignmentService _roles = Substitute.For<IRoleAssignmentService>();
     private readonly IUserService _users = Substitute.For<IUserService>();
+    private readonly IPermissionService _permissions = Substitute.For<IPermissionService>();
     private readonly IAuditLogService _audit = Substitute.For<IAuditLogService>();
     private readonly BackdoorApiKeyService _sut;
 
@@ -32,9 +36,26 @@ public class BackdoorApiKeyServiceTests
     public BackdoorApiKeyServiceTests()
     {
         _sut = new BackdoorApiKeyService(
-            _repository, _roles, _users, _audit, new FakeClock(Now),
+            _repository, _roles, _permissions, _users, _audit, new FakeClock(Now),
             NullLogger<BackdoorApiKeyService>.Instance);
         MakeEligible(_actor);
+        _permissions.GetOwnersAsync(Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns([]);
+    }
+
+    [HumansFact]
+    public async Task A_tasks_manager_gets_a_key_that_expires()
+    {
+        MakeEligible(_owner, admin: false, board: false);
+        _permissions.GetOwnersAsync(_owner, TasksPermissions.Manage, Arg.Any<CancellationToken>())
+            .Returns([new Owner("Team", Guid.NewGuid())]);
+        BackdoorApiKey? stored = null;
+        await _repository.AddAsync(Arg.Do<BackdoorApiKey>(k => stored = k), Arg.Any<CancellationToken>());
+
+        var result = await _sut.IssueAsync(_owner, "tasks agent", _owner);
+
+        result.Succeeded.Should().BeTrue();
+        stored!.ExpiresAt.Should().Be(Now + BackdoorApiKeyService.ShortKeyLifetime);
+        (await _sut.AdmitsAsync(new BackdoorKeyOwner(_owner, []), BackdoorScope.Staff)).Should().BeFalse();
     }
 
     private void MakeEligible(

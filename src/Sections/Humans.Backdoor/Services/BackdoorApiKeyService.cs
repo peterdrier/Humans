@@ -7,6 +7,8 @@ using Humans.Backdoor.Domain;
 using Humans.Base.Extensions;
 using Humans.Base.Constants;
 using Humans.Gdpr.Contracts;
+using Humans.Permissions.Contracts;
+using Humans.Tasks.Contracts;
 using Humans.Users.Contracts;
 using NodaTime;
 
@@ -15,6 +17,7 @@ namespace Humans.Backdoor.Services;
 internal sealed class BackdoorApiKeyService(
     IBackdoorApiKeyRepository repository,
     IRoleAssignmentService roles,
+    IPermissionService permissions,
     IUserService users,
     IAuditLogService audit,
     IClock clock,
@@ -161,12 +164,12 @@ internal sealed class BackdoorApiKeyService(
         return owner;
     }
 
-    public Task<bool> AdmitsAsync(BackdoorKeyOwner owner, BackdoorScope scope, CancellationToken ct = default) =>
+    public async Task<bool> AdmitsAsync(BackdoorKeyOwner owner, BackdoorScope scope, CancellationToken ct = default) =>
         scope switch
         {
-            BackdoorScope.Staff => Task.FromResult(
-                owner.Roles.Any(a => a.RoleName is RoleNames.Admin or RoleNames.Board)),
-            _ => Task.FromResult(false),
+            BackdoorScope.Staff => owner.Roles.Any(a => a.RoleName is RoleNames.Admin or RoleNames.Board),
+            BackdoorScope.Tasks => (await permissions.GetOwnersAsync(owner.UserId, TasksPermissions.Manage, ct)).Count > 0,
+            _ => false,
         };
 
     /// <summary>
