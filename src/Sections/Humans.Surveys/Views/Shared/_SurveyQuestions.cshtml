@@ -88,7 +88,7 @@
 
     var answerIndex = nextAnswerIndex++;
     <fieldset class="mb-4 @(hasError ? "border-start border-danger border-3 ps-3" : string.Empty)">
-        <legend class="form-label fw-semibold">
+        <legend class="h5">
             @q.Prompt
             @if (q.IsRequired)
             {
