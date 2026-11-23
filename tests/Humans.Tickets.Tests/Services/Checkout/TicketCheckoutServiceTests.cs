@@ -1959,7 +1959,7 @@ public sealed partial class TicketCheckoutServiceTests
         await _service.EraseForUserAsync(_buyerId, Ct);
         await _backend.Received(1).ErasePersonalDataAsync("cs_1", "ana@example.com", Arg.Any<CancellationToken>());
 
-        _backend.ErasePersonalDataAsync(default!, default!).ReturnsForAnyArgs<Task>(_ => throw new TicketCheckoutException("down"));
+        _backend.ErasePersonalDataAsync(default!, default!).ReturnsForAnyArgs(_ => throw new TicketCheckoutException("down"));
         var act = () => _service.EraseForUserAsync(_buyerId, Ct);
         await act.Should().ThrowAsync<TicketCheckoutException>();
         _repo.Erased.Should().Be(1);
@@ -2222,7 +2222,7 @@ public sealed partial class TicketCheckoutServiceTests
         var order = _repo.Orders.Single();
         _backend.GetStatusAsync("cs_1", Arg.Any<CancellationToken>())
             .Returns(new CheckoutStatus(CheckoutState.Expired, null, null, null));
-        _backend.CancelAsync("cs_1", Arg.Any<CancellationToken>()).Returns<Task>(_ => throw new TicketCheckoutException("down"));
+        _backend.CancelAsync("cs_1", Arg.Any<CancellationToken>()).Returns(_ => throw new TicketCheckoutException("down"));
 
         await _service.ReconcileOpenOrdersAsync(Ct);
         order.State.Should().Be(TicketCheckoutOrderState.Pending);

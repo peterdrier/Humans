@@ -203,7 +203,7 @@ internal sealed class CachingTicketQueryService
     {
         try
         {
-            return await WithInnerAsync<TInner, TResult>(work);
+            return await WithInnerAsync(work);
         }
         finally
         {

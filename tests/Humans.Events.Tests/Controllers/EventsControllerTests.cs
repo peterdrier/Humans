@@ -146,7 +146,7 @@ public class EventsControllerTests
         var id = Guid.NewGuid();
         var burn = MakeBurnSettings();
         _guide.GetEventSettingsByIdAsync(burn.Id, Arg.Any<CancellationToken>()).Returns(call =>
-            ReadAsync<EventSettingsInfo?>(action == AdminFormAction.SettingsMissing ? null : burn, AdminFormRead.Edition, call.Arg<CancellationToken>()));
+            ReadAsync(action == AdminFormAction.SettingsMissing ? null : burn, AdminFormRead.Edition, call.Arg<CancellationToken>()));
         _guide.GetEventSettingsOptions().Returns([burn]);
         _guide.GetCategoryAsync(id, Arg.Any<CancellationToken>()).Returns(call =>
             ReadAsync<EventCategoryView?>(new(id, "Category", "category", false, 0, true), AdminFormRead.Category, call.Arg<CancellationToken>()));
