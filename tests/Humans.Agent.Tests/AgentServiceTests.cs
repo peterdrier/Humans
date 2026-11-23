@@ -443,7 +443,7 @@ public class AgentServiceTests
     public async Task PromptPreview_classifies_failures_and_renders_without_a_token_count(bool unexpected)
     {
         var userId = Guid.NewGuid();
-        var logger = new Humans.Testing.CapturingLogger<AgentService>();
+        var logger = new CapturingLogger<AgentService>();
         var (svc, client) = await BuildServiceAsync(s => s.Enabled = true, logger: logger);
 
         var conversationId = await StartConversationAsync(svc, client, userId);
@@ -1224,7 +1224,7 @@ public class AgentServiceTests
         var repo = new AgentRepository(db, clock);
         var settingsService = new AgentSettingsService(repo, store, clock, Substitute.For<Humans.AuditLog.Contracts.IAuditLogService>(),
             Substitute.For<IAnthropicClient>(),
-            Microsoft.Extensions.Logging.Abstractions.NullLogger<AgentSettingsService>.Instance);
+            NullLogger<AgentSettingsService>.Instance);
         await settingsService.LoadAsync(Xunit.TestContext.Current.CancellationToken);
         var ratelimit = rateLimitStore ?? new AgentRateLimitStore();
         var abuse = new AgentAbuseDetector();

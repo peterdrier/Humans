@@ -157,7 +157,7 @@ public class HoldedOutboxDuplicateGuardTests
                 EventType = HoldedExpenseOutboxEventType.CreateIncomingDoc,
                 OccurredAt = Now + Duration.FromSeconds(1),
             });
-            await ctx.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+            await ctx.SaveChangesAsync(TestContext.Current.CancellationToken);
         }
 
         _holded.CreatePurchaseDocumentAsync(Arg.Any<HoldedPurchaseDocumentInput>(), Arg.Any<CancellationToken>())

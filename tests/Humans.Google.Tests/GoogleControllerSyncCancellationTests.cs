@@ -84,7 +84,7 @@ public class GoogleControllerSyncCancellationTests
         else
             (await act()).Should().BeOfType<RedirectToActionResult>().Which.ActionName.Should().Be(nameof(GoogleController.Index));
 
-        var resultKey = groupSettings ? Humans.Base.Constants.TempDataKeys.GroupSettingsResult : Humans.Base.Constants.TempDataKeys.EmailRenameResult;
+        var resultKey = groupSettings ? Base.Constants.TempDataKeys.GroupSettingsResult : Base.Constants.TempDataKeys.EmailRenameResult;
         controller.TempData.ContainsKey(resultKey).Should().BeFalse();
         var args = _logger.ReceivedCalls().Should().ContainSingle().Subject.GetArguments();
         args[0].Should().Be(callerAborted ? LogLevel.Warning : LogLevel.Error);

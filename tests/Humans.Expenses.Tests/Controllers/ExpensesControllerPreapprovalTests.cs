@@ -406,7 +406,7 @@ public sealed class ExpensesControllerPreapprovalTests
         using var request = new CancellationTokenSource();
         var grantId = Guid.NewGuid();
         var failure = new IOException("Draft write unavailable");
-        var logger = new Humans.Testing.CapturingLogger<ExpensesController>();
+        var logger = new CapturingLogger<ExpensesController>();
         _reports.CreateDraftAsync(_actorId, _actorId, 0, null, grantId, Arg.Any<CancellationToken>())
             .Returns(writeFails ? Task.FromException<ExpenseCreateDraftResult>(failure)
                 : Task.FromResult(new ExpenseCreateDraftResult(false, null, null)));

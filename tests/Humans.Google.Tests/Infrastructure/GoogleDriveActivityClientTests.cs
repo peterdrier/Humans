@@ -83,7 +83,7 @@ public sealed class GoogleDriveActivityClientTests
             .Returns(new ConfigurableHttpClient(new ConfigurableMessageHandler(handler)));
         using var directory = new global::Google.Apis.Admin.Directory.directory_v1.DirectoryService(
             new BaseClientService.Initializer { HttpClientFactory = factory });
-        var logger = new Humans.Testing.CapturingLogger<GoogleDriveActivityClient>();
+        var logger = new CapturingLogger<GoogleDriveActivityClient>();
         var client = new GoogleDriveActivityClient(Options.Create(new GoogleWorkspaceSettings()), logger);
         typeof(GoogleDriveActivityClient).GetField("_directoryService", BindingFlags.Instance | BindingFlags.NonPublic)!
             .SetValue(client, directory);
@@ -132,7 +132,7 @@ public sealed class GoogleDriveActivityClientTests
             .Returns(new ConfigurableHttpClient(new ConfigurableMessageHandler(handler)));
         using var directory = new global::Google.Apis.Admin.Directory.directory_v1.DirectoryService(
             new BaseClientService.Initializer { HttpClientFactory = factory });
-        var logger = new Humans.Testing.CapturingLogger<GoogleDriveActivityClient>();
+        var logger = new CapturingLogger<GoogleDriveActivityClient>();
         var client = new GoogleDriveActivityClient(Options.Create(new GoogleWorkspaceSettings()), logger);
         typeof(GoogleDriveActivityClient).GetField("_directoryService", BindingFlags.Instance | BindingFlags.NonPublic)!
             .SetValue(client, directory);

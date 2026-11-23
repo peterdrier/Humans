@@ -163,7 +163,7 @@ public abstract class ShiftsTestHarness : IDisposable
                 return local is null ? null : ToEventSettingsInfo(local);
             });
 
-        return new EventCalendarResolver(settingsService, new Humans.Shifts.Data.ShiftRepository(ShiftsDbFactory, ShiftsDb, Clock));
+        return new EventCalendarResolver(settingsService, new ShiftRepository(ShiftsDbFactory, ShiftsDb, Clock));
     }
 
     private static EventSettingsInfo ToEventSettingsInfo(EventSettings src) => new(

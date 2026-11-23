@@ -4,7 +4,7 @@
 }
 
 <page-header title="Holded Unmatched Documents">
-    <form authorize-policy="@Humans.Finance.Contracts.FinancePolicies.Manage" asp-action="RunHoldedSync" method="post" class="d-inline">
+    <form authorize-policy="@FinancePolicies.Manage" asp-action="RunHoldedSync" method="post" class="d-inline">
         @Html.AntiForgeryToken()
         <button type="submit" class="btn btn-outline-primary">
             <i class="fa-solid fa-arrows-rotate me-1"></i>Sync Now

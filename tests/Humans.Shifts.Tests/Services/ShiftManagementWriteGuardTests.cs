@@ -204,7 +204,7 @@ public sealed class ShiftManagementWriteGuardTests : ShiftsTestHarness
             new ShiftRepository(ShiftsDbFactory, ShiftsDb, Clock),
             AuditLog,
             new ServiceLocatorBuilder().With(_teamService).Build(),
-            new EventCalendarResolver(settingsService, Substitute.For<Humans.Shifts.Data.IShiftManagementRepository>()), Clock,
+            new EventCalendarResolver(settingsService, Substitute.For<IShiftManagementRepository>()), Clock,
             Microsoft.Extensions.Logging.Abstractions.NullLogger<ShiftManagementService>.Instance);
 
         await service.CreateRotaAsync(NewRota(eventId, team.Id));

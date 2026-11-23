@@ -5,10 +5,10 @@
 }
 
 <page-header title="@($"Store Catalog — {Model.Year}")">
-    <a authorize-policy="@Humans.Store.Contracts.StorePolicies.Manage" asp-action="Edit" class="btn btn-primary">
+    <a authorize-policy="@StorePolicies.Manage" asp-action="Edit" class="btn btn-primary">
         <i class="fa-solid fa-plus me-1"></i>Create product
     </a>
-    <a authorize-policy="@Humans.Store.Contracts.StorePolicies.Manage" asp-action="Accounts" asp-route-year="@Model.Year" class="btn btn-outline-secondary">
+    <a authorize-policy="@StorePolicies.Manage" asp-action="Accounts" asp-route-year="@Model.Year" class="btn btn-outline-secondary">
         <i class="fa-solid fa-book me-1"></i>Map accounts
     </a>
     <a asp-controller="Store" asp-action="Index" class="btn btn-outline-secondary">Back to Store</a>
@@ -54,12 +54,12 @@ else
         }
     </text>;
     Func<ProductDto, IHtmlContent> catalogAdminActionsCell = @<text>
-        <a authorize-policy="@Humans.Store.Contracts.StorePolicies.Manage" asp-action="Edit" asp-route-id="@item.Id" class="btn btn-sm btn-outline-secondary">
+        <a authorize-policy="@StorePolicies.Manage" asp-action="Edit" asp-route-id="@item.Id" class="btn btn-sm btn-outline-secondary">
             <i class="fa-solid fa-pen me-1"></i>Edit
         </a>
         @if (item.IsActive)
         {
-            <form authorize-policy="@Humans.Store.Contracts.StorePolicies.Manage" asp-action="Deactivate" asp-route-id="@item.Id" method="post" class="d-inline">
+            <form authorize-policy="@StorePolicies.Manage" asp-action="Deactivate" asp-route-id="@item.Id" method="post" class="d-inline">
                 @Html.AntiForgeryToken()
                 <button type="submit" class="btn btn-sm btn-outline-danger"
                         data-confirm="Deactivate &quot;@item.Name&quot;? It will no longer be orderable but historical lines remain.">

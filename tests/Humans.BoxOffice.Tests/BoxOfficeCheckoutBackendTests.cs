@@ -214,12 +214,12 @@ public sealed class BoxOfficeCheckoutBackendTests
     }
 
     [HumansTheory]
-    [Xunit.InlineData("open", "unpaid", "requires_payment_method", CheckoutState.Pending)]
-    [Xunit.InlineData("expired", "unpaid", "canceled", CheckoutState.Expired)]
-    [Xunit.InlineData("complete", "unpaid", "processing", CheckoutState.Processing)]
-    [Xunit.InlineData("complete", "unpaid", "requires_action", CheckoutState.Processing)]
-    [Xunit.InlineData("complete", "unpaid", "requires_payment_method", CheckoutState.Failed)]
-    [Xunit.InlineData("complete", "unpaid", "canceled", CheckoutState.Failed)]
+    [InlineData("open", "unpaid", "requires_payment_method", CheckoutState.Pending)]
+    [InlineData("expired", "unpaid", "canceled", CheckoutState.Expired)]
+    [InlineData("complete", "unpaid", "processing", CheckoutState.Processing)]
+    [InlineData("complete", "unpaid", "requires_action", CheckoutState.Processing)]
+    [InlineData("complete", "unpaid", "requires_payment_method", CheckoutState.Failed)]
+    [InlineData("complete", "unpaid", "canceled", CheckoutState.Failed)]
     public async Task Status_maps_open_expired_settling_and_failed_debits(
         string status, string paymentStatus, string intent, CheckoutState expected)
     {
@@ -382,8 +382,8 @@ public sealed class BoxOfficeCheckoutBackendTests
     }
 
     [HumansTheory]
-    [Xunit.InlineData(5, 31)]
-    [Xunit.InlineData(72 * 60, 23 * 60)]
+    [InlineData(5, 31)]
+    [InlineData(72 * 60, 23 * 60)]
     public async Task Checkout_leaves_free_lines_out_and_keeps_the_session_inside_Stripes_lifetime(int askedMinutes, int sentMinutes)
     {
         Respond(Session("open", "unpaid"));
@@ -478,9 +478,9 @@ public sealed class BoxOfficeCheckoutBackendTests
     }
 
     [HumansTheory]
-    [Xunit.InlineData("charge.refunded", """{"id":"ch_1","object":"charge","payment_intent":"pi_1"}""")]
-    [Xunit.InlineData("refund.failed", """{"id":"re_1","object":"refund","payment_intent":"pi_1"}""")]
-    [Xunit.InlineData("charge.dispute.created", """{"id":"dp_1","object":"dispute","payment_intent":"pi_1"}""")]
+    [InlineData("charge.refunded", """{"id":"ch_1","object":"charge","payment_intent":"pi_1"}""")]
+    [InlineData("refund.failed", """{"id":"re_1","object":"refund","payment_intent":"pi_1"}""")]
+    [InlineData("charge.dispute.created", """{"id":"dp_1","object":"dispute","payment_intent":"pi_1"}""")]
     public async Task A_verified_money_event_names_the_sessions_of_its_payment(string type, string dataObject)
     {
         Respond("""{"object":"list","url":"/v1/checkout/sessions","has_more":false,"data":[{"id":"cs_1","object":"checkout.session"}]}""");

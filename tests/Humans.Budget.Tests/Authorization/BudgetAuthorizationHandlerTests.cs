@@ -29,7 +29,7 @@ public sealed class BudgetAuthorizationHandlerTests
     {
         _users.GetUserInfoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(call => UserInfo.Create(new User { Id = call.Arg<Guid>() }, [], [], null));
-        _handler = new BudgetAuthorizationHandler(_permissions, _users, new Microsoft.AspNetCore.Http.HttpContextAccessor());
+        _handler = new BudgetAuthorizationHandler(_permissions, _users, new HttpContextAccessor());
         Holds(UserId);
     }
 

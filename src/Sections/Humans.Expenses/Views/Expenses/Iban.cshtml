@@ -9,7 +9,7 @@
         {
             userId = memberId,
         });
-        using var memberWriter = new System.IO.StringWriter();
+        using var memberWriter = new StringWriter();
         member.WriteTo(memberWriter, System.Text.Encodings.Web.HtmlEncoder.Default);
         // Keep template whitespace out of the localized sentence's punctuation.
         memberHtml = new Microsoft.AspNetCore.Html.HtmlString(memberWriter.ToString().Trim());

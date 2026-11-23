@@ -37,8 +37,8 @@
                 }
                 else
                 {
-                    <li authorize-policy="@Humans.Base.Authorization.PolicyNames.AdminOnly"><hr class="dropdown-divider"></li>
-                    <li authorize-policy="@Humans.Base.Authorization.PolicyNames.AdminOnly"><a class="dropdown-item text-danger" asp-controller="TicketsSupportAdmin" asp-action="Cancel" asp-route-id="@item.Id">Cancel event</a></li>
+                    <li authorize-policy="@PolicyNames.AdminOnly"><hr class="dropdown-divider"></li>
+                    <li authorize-policy="@PolicyNames.AdminOnly"><a class="dropdown-item text-danger" asp-controller="TicketsSupportAdmin" asp-action="Cancel" asp-route-id="@item.Id">Cancel event</a></li>
                 }
             </ul>
         </div>

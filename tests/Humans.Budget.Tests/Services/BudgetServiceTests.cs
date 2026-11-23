@@ -1002,7 +1002,7 @@ public sealed class BudgetServiceTests
         var redirect = result.Should().BeOfType<RedirectToActionResult>().Subject;
         redirect.ActionName.Should().Be(nameof(BudgetController.CategoryDetail));
         redirect.RouteValues!["id"].Should().Be(_yearId);
-        var message = controller.TempData[Humans.Base.Constants.TempDataKeys.ErrorMessage].Should().BeOfType<string>().Subject;
+        var message = controller.TempData[Base.Constants.TempDataKeys.ErrorMessage].Should().BeOfType<string>().Subject;
         message.Should().NotContain(failure.Message).And.NotContain("{0}");
         message.Should().Be(resources.GetString(errorKey, culture));
         _ = localizer.Received(1)[errorKey];
@@ -1111,8 +1111,8 @@ public sealed class BudgetServiceTests
         var redirect = result.Should().BeOfType<RedirectToActionResult>().Subject;
         redirect.ActionName.Should().Be(update ? nameof(BudgetAdminController.CategoryDetail) : nameof(BudgetAdminController.YearDetail));
         redirect.RouteValues!["id"].Should().Be(_yearId);
-        controller.TempData[Humans.Base.Constants.TempDataKeys.ErrorMessage].Should().Be(refusal);
-        controller.TempData.ContainsKey(Humans.Base.Constants.TempDataKeys.SuccessMessage).Should().BeFalse();
+        controller.TempData[Base.Constants.TempDataKeys.ErrorMessage].Should().Be(refusal);
+        controller.TempData.ContainsKey(Base.Constants.TempDataKeys.SuccessMessage).Should().BeFalse();
     }
 
     [HumansTheory]
@@ -1181,8 +1181,8 @@ public sealed class BudgetServiceTests
             ? await controller.UpdateLineItem(_yearId, "Item", 1.005m, null, null, null, 0, _yearId)
             : await controller.CreateLineItem(_yearId, "Item", 1.005m, null, null, null, 0);
         result.Should().BeOfType<RedirectToActionResult>();
-        controller.TempData[Humans.Base.Constants.TempDataKeys.ErrorMessage].Should().Be(refusal);
-        controller.TempData.ContainsKey(Humans.Base.Constants.TempDataKeys.SuccessMessage).Should().BeFalse();
+        controller.TempData[Base.Constants.TempDataKeys.ErrorMessage].Should().Be(refusal);
+        controller.TempData.ContainsKey(Base.Constants.TempDataKeys.SuccessMessage).Should().BeFalse();
     }
 
     [HumansTheory]
@@ -2098,7 +2098,7 @@ public sealed class BudgetServiceTests
     [MemberData(nameof(SupportedCultures.All), MemberType = typeof(SupportedCultures))]
     public async Task SyncTicketingActualsAsync_materializes_projected_weeks_when_projection_is_valid(string culture)
     {
-        using var scope = new Humans.Base.Extensions.CultureScope(culture);
+        using var scope = new CultureScope(culture);
         CultureInfo.CurrentCulture = CultureInfo.GetCultureInfo("en");
         var (groupId, _, revenueCatId, _) = await SeedTicketingYearAsync();
         await ConfigureProjectionAsync(groupId,

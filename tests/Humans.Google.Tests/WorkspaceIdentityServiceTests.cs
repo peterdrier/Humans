@@ -61,7 +61,7 @@ public sealed class WorkspaceIdentityServiceTests
         var info = UserInfoFixtures.FromUser(user, rows);
         _infos[id] = info;
         if (addresses.FirstOrDefault(a => a.Designated) is { } designated)
-            _repo.Rows[id] = new Humans.Google.Domain.WorkspaceIdentityRecord
+            _repo.Rows[id] = new Domain.WorkspaceIdentityRecord
             {
                 UserId = id,
                 Email = designated.Email,

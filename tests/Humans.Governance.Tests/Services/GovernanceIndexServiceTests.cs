@@ -278,14 +278,14 @@ public sealed class GovernanceIndexServiceTests
     private GovernanceBodyLinksService BodyLinks() =>
         new(_bodies, Substitute.For<ITeamService>(), Substitute.For<ITeamResourceService>(), Substitute.For<IAuditLogService>(),
             new GovernanceBodySync(_bodies, Substitute.For<IGoogleGroupSync>(), Substitute.For<IGoogleSyncWrite>()),
-            NodaTime.SystemClock.Instance);
+            SystemClock.Instance);
 
     private GovernanceController CreateController(Guid userId, IAuthorizationService authorization, CancellationToken ct = default) =>
         new(Users, CreateService(),
             new GovernanceBoardSeats(Roles, Substitute.For<IRoleAssignmentWrite>(), Users, _bodies,
                 Substitute.For<IAuditLogService>(),
                 new GovernanceBodySync(_bodies, Substitute.For<IGoogleGroupSync>(), Substitute.For<IGoogleSyncWrite>()),
-                NodaTime.SystemClock.Instance),
+                SystemClock.Instance),
             BodyLinks(),
             authorization,
             Substitute.For<Microsoft.Extensions.Localization.IStringLocalizer<GovernanceResource>>())

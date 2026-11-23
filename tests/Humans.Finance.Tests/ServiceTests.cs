@@ -162,13 +162,13 @@ public class HoldedFinanceServiceTests
         });
         var service = MakeService();
         var controller = new FinanceController(FixedOrgTimeZone.Madrid, _users, service, service, _holded,
-            Substitute.For<Humans.Expenses.Contracts.IExpenseReportService>(),
+            Substitute.For<IExpenseReportService>(),
             new CashFlowService(_budget, Substitute.For<Humans.Tickets.Contracts.ITicketService>()),
-            new FinanceOverviewService(FixedOrgTimeZone.Madrid, _holded, service, service, Substitute.For<Humans.Expenses.Contracts.IExpenseReportService>(),
+            new FinanceOverviewService(FixedOrgTimeZone.Madrid, _holded, service, service, Substitute.For<IExpenseReportService>(),
                 _budget, new CashFlowService(_budget, Substitute.For<Humans.Tickets.Contracts.ITicketService>()),
                 Substitute.For<Humans.Pleo.Contracts.IPleoService>(), Substitute.For<Humans.Stripe.Contracts.IStripeMirrorService>(),
-                Microsoft.Extensions.Options.Options.Create(new SepaOptions()),
-                Substitute.For<Humans.Finance.Data.IFinanceRepository>(), Substitute.For<Humans.AuditLog.Contracts.IAuditLogService>(),
+                Options.Create(new SepaOptions()),
+                Substitute.For<IFinanceRepository>(), Substitute.For<IAuditLogService>(),
                 SystemClock.Instance),
             TestPleo.Booking(), TestPleo.Runner(),
             new SepaBookingRunner(Substitute.For<IServiceScopeFactory>(), SystemClock.Instance,
@@ -1119,8 +1119,8 @@ public class HoldedFinanceServiceTests
     }
 
     [HumansTheory]
-    [Xunit.InlineData(40000004, "40000004")]
-    [Xunit.InlineData(null, "(unresolved)")]
+    [InlineData(40000004, "40000004")]
+    [InlineData(null, "(unresolved)")]
     public async Task SetCreditorAccountNum_ChangedNumber_IsAuditedUnderTheCallingJob(int? before, string beforeText)
     {
         // Holded can reset a contact's supplier_record, moving the member's account. Every change of the

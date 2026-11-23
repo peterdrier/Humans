@@ -116,9 +116,9 @@
                 {
                     userId = p.ManagerUserIds[i],
                 });
-                using var writer = new System.IO.StringWriter();
+                using var writer = new StringWriter();
                 manager.WriteTo(writer, System.Text.Encodings.Web.HtmlEncoder.Default);
-                Write(new Microsoft.AspNetCore.Html.HtmlString(writer.ToString().Trim()));
+                Write(new HtmlString(writer.ToString().Trim()));
             }
         }
     </dd>

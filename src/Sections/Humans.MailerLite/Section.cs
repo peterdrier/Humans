@@ -15,7 +15,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Humans.AuditLog.Contracts;
 
-[assembly: Humans.Base.Demo.NoDemoStory("Vendor mirror: demo people must never reach MailerLite.")]
+[assembly: NoDemoStory("Vendor mirror: demo people must never reach MailerLite.")]
 
 namespace Humans.MailerLite;
 

@@ -274,7 +274,7 @@ public sealed class OutboxEmailServiceTests : IDisposable
     {
         var expected = new System.Resources.ResourceManager(typeof(EmailResource))
             .GetString("Email_UnsubscribeFooter", System.Globalization.CultureInfo.GetCultureInfo(expectedCulture))!;
-        using var ambientCulture = new Humans.Base.Extensions.CultureScope("de");
+        using var ambientCulture = new CultureScope("de");
         var environment = Substitute.For<IHostEnvironment>();
         environment.EnvironmentName.Returns(Environments.Production);
         var composer = new BrandedEmailBodyComposer(

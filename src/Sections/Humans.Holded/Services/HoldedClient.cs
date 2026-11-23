@@ -858,7 +858,7 @@ internal sealed class HoldedClient : IHoldedClient
             contact_id = contactId,
             bank_account_id = treasuryId,
             // v2 takes amounts as decimal strings, as on document payments.
-            amount = amount.ToString("F2", System.Globalization.CultureInfo.InvariantCulture),
+            amount = amount.ToString("F2", CultureInfo.InvariantCulture),
             date = LocalDatePattern.Iso.Format(date),
             description,
         };

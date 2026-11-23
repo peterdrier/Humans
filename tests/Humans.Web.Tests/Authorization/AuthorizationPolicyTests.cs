@@ -406,7 +406,7 @@ public class AuthorizationPolicyTests : IDisposable
 
     /// <summary>Section controllers are internal; throws on a miss so a rename can't drop a row silently.</summary>
     private static Type SectionType(string fullName) =>
-        Extensions.SectionDiscoveryExtensions.SectionAssemblies()
+        SectionDiscoveryExtensions.SectionAssemblies()
             .Select(a => a.GetType(fullName, throwOnError: false))
             .FirstOrDefault(t => t is not null)
         ?? throw new InvalidOperationException(

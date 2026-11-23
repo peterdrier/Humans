@@ -540,7 +540,7 @@ public sealed class CityPlanningApiControllerTests : CityPlanningTestBase
     public async Task RestoreCampPolygon_NegativeHistoricArea_ReturnsBadRequestWithoutWritingOrBroadcasting()
     {
         var ct = TestContext.Current.CancellationToken;
-        var history = new Humans.CityPlanning.Domain.CampPolygonHistory
+        var history = new Domain.CampPolygonHistory
         {
             CampSeasonId = _campSeasonId,
             GeoJson = Square,

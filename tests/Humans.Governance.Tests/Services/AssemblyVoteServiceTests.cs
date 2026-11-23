@@ -112,7 +112,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
             User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, cookieId.ToString())], "test"))
         };
         var controller = new GovernanceVotesAdminController(users, votes, FixedOrgTimeZone.Madrid,
-            Microsoft.Extensions.Logging.Abstractions.NullLogger<GovernanceVotesAdminController>.Instance)
+            NullLogger<GovernanceVotesAdminController>.Instance)
         {
             ControllerContext = new ControllerContext { HttpContext = http },
             TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>()),
@@ -185,7 +185,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         };
         var controller = new GovernanceVotesController(users, votes,
             Substitute.For<IStringLocalizer<GovernanceResource>>(),
-            Microsoft.Extensions.Logging.Abstractions.NullLogger<GovernanceVotesController>.Instance)
+            NullLogger<GovernanceVotesController>.Instance)
         { ControllerContext = new ControllerContext { HttpContext = http } };
         var voteId = Guid.NewGuid();
         Func<Task<IActionResult>> run = () => action switch
@@ -241,7 +241,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         if (admin)
         {
             var controller = new GovernanceVotesAdminController(_fx.Users, votes, FixedOrgTimeZone.Madrid,
-                Microsoft.Extensions.Logging.Abstractions.NullLogger<GovernanceVotesAdminController>.Instance)
+                NullLogger<GovernanceVotesAdminController>.Instance)
             { ControllerContext = context };
             var view = (await controller.Index(TestContext.Current.CancellationToken))
                 .Should().BeOfType<ViewResult>().Subject;
@@ -251,7 +251,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         {
             var controller = new GovernanceVotesController(_fx.Users, votes,
                 Substitute.For<IStringLocalizer<GovernanceResource>>(),
-                Microsoft.Extensions.Logging.Abstractions.NullLogger<GovernanceVotesController>.Instance)
+                NullLogger<GovernanceVotesController>.Instance)
             { ControllerContext = context };
             var view = (await controller.Index(TestContext.Current.CancellationToken))
                 .Should().BeOfType<ViewResult>().Subject;
@@ -292,7 +292,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
             User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, userId.ToString())], "test"))
         };
         var controller = new GovernanceVotesController(_fx.Users, _fx.Service, localizer,
-            Microsoft.Extensions.Logging.Abstractions.NullLogger<GovernanceVotesController>.Instance)
+            NullLogger<GovernanceVotesController>.Instance)
         {
             ControllerContext = new ControllerContext { HttpContext = http },
             TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>()),
@@ -656,7 +656,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
             vote.Id, userId, viewerIsBoardOrAdmin: false, TestContext.Current.CancellationToken);
 
         results.Should().NotBeNull("a process that died between the two writes must not leave the page blank forever");
-        (await _fx.Db.AssemblyVotes.SingleAsync(v => v.Id == vote.Id, Xunit.TestContext.Current.CancellationToken)).ResultJson.Should().NotBeNull();
+        (await _fx.Db.AssemblyVotes.SingleAsync(v => v.Id == vote.Id, TestContext.Current.CancellationToken)).ResultJson.Should().NotBeNull();
     }
 
     [HumansFact]
@@ -1068,7 +1068,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         _fx.Users.GetUserInfoAsync(actorId, Arg.Any<CancellationToken>())
             .Returns(UserInfo.Create(new User { Id = actorId }, [], [], null));
         var controller = new GovernanceVotesAdminController(_fx.Users, _fx.Service, FixedOrgTimeZone.Madrid,
-            Microsoft.Extensions.Logging.Abstractions.NullLogger<GovernanceVotesAdminController>.Instance)
+            NullLogger<GovernanceVotesAdminController>.Instance)
         {
             ControllerContext = new ControllerContext { HttpContext = http },
             TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>())
@@ -1142,7 +1142,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         _fx.Users.GetUserInfoAsync(actor, Arg.Any<CancellationToken>())
             .Returns(UserInfo.Create(new User { Id = actor }, [], [], null));
         var controller = new GovernanceVotesAdminController(_fx.Users, _fx.Service, FixedOrgTimeZone.Madrid,
-            Microsoft.Extensions.Logging.Abstractions.NullLogger<GovernanceVotesAdminController>.Instance)
+            NullLogger<GovernanceVotesAdminController>.Instance)
         {
             ControllerContext = new ControllerContext { HttpContext = http },
             TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>()),
@@ -2350,7 +2350,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
                 User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, mergedAway.ToString())], "test"))
             };
             var controller = new GovernanceVotesController(_fx.Users, _fx.Service, localizer,
-                Microsoft.Extensions.Logging.Abstractions.NullLogger<GovernanceVotesController>.Instance)
+                NullLogger<GovernanceVotesController>.Instance)
             {
                 ControllerContext = new ControllerContext { HttpContext = http },
                 TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>()),

@@ -288,7 +288,7 @@ internal sealed class CatalogService(
         }
         return AdminMutationResult.Success;
 
-        static string Show(int? account) => account?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "none";
+        static string Show(int? account) => account?.ToString(CultureInfo.InvariantCulture) ?? "none";
     }
 
     /// <summary>Only accounts the save changes are checked: one the product already holds stays saveable after it

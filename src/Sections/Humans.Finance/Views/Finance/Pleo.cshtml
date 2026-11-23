@@ -203,7 +203,7 @@ else if (Model.NotConfigured is { } why)
         }
         else if (canRun)
         {
-            <form authorize-policy="@Humans.Finance.Contracts.FinancePolicies.Manage" asp-action="BookPleo" method="post"
+            <form authorize-policy="@FinancePolicies.Manage" asp-action="BookPleo" method="post"
                   class="d-flex align-items-center gap-2 flex-wrap">
                 <label for="batch" class="mb-0">Book next</label>
                 <select id="batch" name="batch" class="form-select form-select-sm w-auto">
@@ -354,7 +354,7 @@ else if (Model.NotConfigured is { } why)
         }
         else if (canRun)
         {
-            <form authorize-policy="@Humans.Finance.Contracts.FinancePolicies.Manage" asp-action="AttachPleoReceipts" method="post">
+            <form authorize-policy="@FinancePolicies.Manage" asp-action="AttachPleoReceipts" method="post">
                 <button type="submit" class="btn btn-primary btn-sm">Attach waiting receipts</button>
             </form>
         }
@@ -397,7 +397,7 @@ else if (Model.NotConfigured is { } why)
         }
         else if (canRun)
         {
-            <form authorize-policy="@Humans.Finance.Contracts.FinancePolicies.Manage" asp-action="CorrectPleo" method="post"
+            <form authorize-policy="@FinancePolicies.Manage" asp-action="CorrectPleo" method="post"
                   class="d-flex align-items-center gap-2 flex-wrap">
                 <label for="correctBatch" class="mb-0">Post corrections for next</label>
                 <select id="correctBatch" name="batch" class="form-select form-select-sm w-auto">

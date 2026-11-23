@@ -703,7 +703,7 @@ public class TeamControllerPageContentTests
                 Arg.Any<bool?>(), Arg.Any<bool?>(), Arg.Any<bool?>(), Arg.Any<bool?>(), Arg.Any<bool?>(),
                 Arg.Any<bool>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>())
             .Returns(new TeamUpdateResult(
-                Team: new Humans.Teams.Domain.Team { Id = teamId, Name = "Alpha", Slug = "alpha" },
+                Team: new Team { Id = teamId, Name = "Alpha", Slug = "alpha" },
                 GroupWarning: warning,
                 InactiveGroupResourceId: inactiveResourceId));
         var http = new DefaultHttpContext { RequestServices = services };
@@ -751,7 +751,7 @@ public class TeamControllerPageContentTests
                 Arg.Any<bool?>(), Arg.Any<bool?>(), Arg.Any<bool?>(), Arg.Any<bool?>(), Arg.Any<bool?>(),
                 Arg.Any<bool>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>())
             .Returns(new TeamUpdateResult(
-                Team: new Humans.Teams.Domain.Team { Id = teamId, Name = "Alpha", Slug = "alpha" }));
+                Team: new Team { Id = teamId, Name = "Alpha", Slug = "alpha" }));
         var http = new DefaultHttpContext { RequestServices = services };
         var controller = new TeamController(
             teams, Substitute.For<ITeamPageService>(), Substitute.For<IUserService>(),
@@ -952,10 +952,10 @@ public class TeamControllerPageContentTests
         using var request = new CancellationTokenSource();
         using var services = new ServiceCollection().AddLogging().AddLocalization().BuildServiceProvider();
         var teams = Substitute.For<ITeamManagementService>();
-        var logger = new Humans.Testing.CapturingLogger<TeamController>();
+        var logger = new CapturingLogger<TeamController>();
         var failure = new IOException("Team write unavailable");
         var teamId = Guid.NewGuid();
-        var team = new Humans.Teams.Domain.Team { Id = teamId, Name = "Alpha", Slug = "alpha" };
+        var team = new Team { Id = teamId, Name = "Alpha", Slug = "alpha" };
         var result = path is TeamParentPickerPath.EditReactivation
             ? new TeamUpdateResult(team, GroupWarning: "Confirm reactivation", InactiveGroupResourceId: Guid.NewGuid())
             : new TeamUpdateResult(ErrorMessage: "Refused");

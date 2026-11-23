@@ -449,7 +449,7 @@ internal sealed class CalendarService(
         try
         {
             var from = info.IsAllDay ? originalDate!.Value.AtMidnight().InUtc().ToInstant() : originalUtc!.Value;
-            var to = from.Plus(info.IsAllDay ? NodaTime.Duration.FromDays(1) : NodaTime.Duration.FromTicks(1));
+            var to = from.Plus(info.IsAllDay ? Duration.FromDays(1) : Duration.FromTicks(1));
             return CalendarOccurrenceExpander.Expand([info with { Exceptions = [] }], from, to,
                 new Dictionary<Guid, string>(), logger, DateTimeZone.Utc)
                 .Any(x => info.IsAllDay

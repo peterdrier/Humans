@@ -151,11 +151,11 @@ public sealed class ShiftsControllerSettingsTests
     }
 
     [HumansTheory]
-    [Xunit.InlineData("IsShiftBrowsingOpen", false)]
-    [Xunit.InlineData("FirstCrewStartOffset", false)]
-    [Xunit.InlineData("FinishingWeekendStartOffset", false)]
-    [Xunit.InlineData("", false)]
-    [Xunit.InlineData("", true)]
+    [InlineData("IsShiftBrowsingOpen", false)]
+    [InlineData("FirstCrewStartOffset", false)]
+    [InlineData("FinishingWeekendStartOffset", false)]
+    [InlineData("", false)]
+    [InlineData("", true)]
     public async Task Settings_require_posted_browsing_and_sub_period_choices(string omitted, bool clear)
     {
         _burnSettings.GetActiveAsync().Returns(ActiveEvent);

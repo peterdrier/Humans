@@ -119,8 +119,8 @@
             }
             else
             {
-                Func<Humans.Email.Services.DailySendCountRow, IHtmlContent> sentCell = @<text><span class="text-success">@item.SentCount</span></text>;
-                Func<Humans.Email.Services.DailySendCountRow, IHtmlContent> failedCell = @<text><span class="text-danger">@item.FailedCount</span></text>;
+                Func<DailySendCountRow, IHtmlContent> sentCell = @<text><span class="text-success">@item.SentCount</span></text>;
+                Func<DailySendCountRow, IHtmlContent> failedCell = @<text><span class="text-danger">@item.FailedCount</span></text>;
                 var dailyTable = TableModel.For(Model.DailyCounts)
                     .Column("Date (UTC)", r => r.Date.ToInvariantDate())
                     .Template("Sent", sentCell)
@@ -139,8 +139,8 @@
             }
             else
             {
-                Func<Humans.Email.Services.TemplateSendCountRow, IHtmlContent> sentSentCell = @<text><span class="text-success">@item.SentCount</span></text>;
-                Func<Humans.Email.Services.TemplateSendCountRow, IHtmlContent> failedFailedCell = @<text><span class="text-danger">@item.FailedCount</span></text>;
+                Func<TemplateSendCountRow, IHtmlContent> sentSentCell = @<text><span class="text-success">@item.SentCount</span></text>;
+                Func<TemplateSendCountRow, IHtmlContent> failedFailedCell = @<text><span class="text-danger">@item.FailedCount</span></text>;
                 var templateTable = TableModel.For(Model.TopTemplates)
                     .Column("Template", r => r.TemplateName, o => o.Code().Css("small"))
                     .Template("Sent", sentSentCell)

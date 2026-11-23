@@ -2,13 +2,13 @@
 @model Humans.Email.Models.SendMessageViewModel
 @{
     ViewData["Title"] = Model.PageTitle;
-    var recipient = await Component.InvokeAsync(typeof(Humans.Base.ViewComponents.HumanViewComponent), new
+    var recipient = await Component.InvokeAsync(typeof(HumanViewComponent), new
     {
         userId = Model.RecipientId,
     });
-    using var recipientWriter = new System.IO.StringWriter();
+    using var recipientWriter = new StringWriter();
     recipient.WriteTo(recipientWriter, System.Text.Encodings.Web.HtmlEncoder.Default);
-    var recipientHtml = new Microsoft.AspNetCore.Html.HtmlString(recipientWriter.ToString().Trim());
+    var recipientHtml = new HtmlString(recipientWriter.ToString().Trim());
 }
 
 @section Crumbs {

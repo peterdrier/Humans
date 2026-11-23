@@ -459,7 +459,7 @@ public sealed class GrantTests : PreapprovalsTestHarness
             // Membership lookup succeeds; one later, post-save channel fails during enrichment.
             if (++lookups == (failEmailLookup ? 3 : 2))
                 throw new IOException("Applicant name lookup failed");
-            return new ValueTask<Humans.Users.Contracts.UserInfo?>(person);
+            return new ValueTask<UserInfo?>(person);
         });
 
         var result = await service.ApplyAsync(program.Id, applicant, "Saved note", null, Ct);

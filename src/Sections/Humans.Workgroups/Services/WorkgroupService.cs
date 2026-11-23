@@ -1041,7 +1041,7 @@ internal sealed partial class WorkgroupService(
         WorkgroupCommentDisposition disposition,
         string? response,
         Guid actorUserId,
-        NodaTime.Instant now)
+        Instant now)
     {
         comment.Disposition = disposition;
         comment.Response = Trimmed(response);
@@ -1475,7 +1475,7 @@ internal sealed partial class WorkgroupService(
         {
             try
             {
-                var culture = System.Globalization.CultureInfo.GetCultureInfo(group.Key);
+                var culture = CultureInfo.GetCultureInfo(group.Key);
                 var title = $"{NoticeResources.GetString(titleKey, culture)}: {w.Name}";
                 var ids = group.Select(person => person.Id).ToList();
                 await notificationEmitter.SendAsync(source, NotificationClass.Informational, NotificationPriority.Normal,

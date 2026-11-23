@@ -1512,7 +1512,7 @@ public class ServiceTests
             CacheToken = typeof(ProductInputModel)
         });
         var context = DefaultModelBindingContext.CreateBindingContext(controller.ControllerContext,
-            new FormValueProvider(BindingSource.Form, new FormCollection(fields), System.Globalization.CultureInfo.InvariantCulture),
+            new FormValueProvider(BindingSource.Form, new FormCollection(fields), CultureInfo.InvariantCulture),
             metadata, bindingInfo: null, modelName: "");
         await binder.BindModelAsync(context);
         var model = (ProductInputModel)context.Result.Model!;
@@ -2116,7 +2116,7 @@ public class ServiceTests
         if (oversized)
         {
             result.Succeeded.Should().BeFalse();
-            result.Refusal.Should().Contain(maximum.ToString(System.Globalization.CultureInfo.InvariantCulture));
+            result.Refusal.Should().Contain(maximum.ToString(CultureInfo.InvariantCulture));
             await _repo.DidNotReceive().AddPaymentAsync(Arg.Any<Payment>(), Arg.Any<CancellationToken>());
             _audit.ReceivedCalls().Should().BeEmpty();
         }

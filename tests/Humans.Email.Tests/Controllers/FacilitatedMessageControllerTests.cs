@@ -54,7 +54,7 @@ public sealed class FacilitatedMessageControllerTests
     {
         var localizer = Substitute.For<IStringLocalizer<EmailResource>>();
         localizer[Arg.Any<string>()].Returns(ci => new LocalizedString(ci.Arg<string>(), ci.Arg<string>()));
-        var shared = Substitute.For<IStringLocalizer<Humans.Base.SharedResource>>();
+        var shared = Substitute.For<IStringLocalizer<Base.SharedResource>>();
         shared[Arg.Any<string>()].Returns(ci => new LocalizedString(ci.Arg<string>(), ci.Arg<string>()));
 
         _controller = new FacilitatedMessageController(
@@ -87,7 +87,7 @@ public sealed class FacilitatedMessageControllerTests
             null, null, null, null, null, null,
             null, null, email, [], [], null);
 
-    private static CancellationToken Ct => Xunit.TestContext.Current.CancellationToken;
+    private static CancellationToken Ct => TestContext.Current.CancellationToken;
 
     [HumansFact]
     public async Task Post_AuditFailureAfterQueueing_KeepsSuccessAndLogsCritical()
@@ -100,7 +100,7 @@ public sealed class FacilitatedMessageControllerTests
             _targetId, new SendMessageViewModel { Message = "Hello" }, Ct);
 
         result.Should().BeOfType<RedirectToActionResult>().Which.ActionName.Should().Be("ViewProfile");
-        _controller.TempData.Should().ContainKey(Humans.Base.Constants.TempDataKeys.SuccessMessage);
+        _controller.TempData.Should().ContainKey(Base.Constants.TempDataKeys.SuccessMessage);
         await _emailService.Received(1).SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>());
         var log = _logger.ReceivedCalls()
             .Single(call => string.Equals(call.GetMethodInfo().Name, "Log", StringComparison.Ordinal))
@@ -122,7 +122,7 @@ public sealed class FacilitatedMessageControllerTests
     }
 
     [HumansTheory]
-    [Xunit.MemberData(nameof(SupportedCultures.All), MemberType = typeof(SupportedCultures))]
+    [MemberData(nameof(SupportedCultures.All), MemberType = typeof(SupportedCultures))]
     public async Task ComposerHeading_RendersTheCurrentEncodedIdentity(string language)
     {
         using var culture = new CultureScope(language);
@@ -154,7 +154,7 @@ public sealed class FacilitatedMessageControllerTests
         var view = services.GetRequiredService<IRazorViewEngine>()
             .GetView(null, "/Views/FacilitatedMessage/SendMessage.cshtml", isMainPage: false);
         Assert.True(view.Success);
-        var http = new DefaultHttpContext { RequestServices = services, User = new System.Security.Claims.ClaimsPrincipal(new System.Security.Claims.ClaimsIdentity([new System.Security.Claims.Claim(System.Security.Claims.ClaimTypes.Name, "viewer")], "test")) };
+        var http = new DefaultHttpContext { RequestServices = services, User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.Name, "viewer")], "test")) };
         var action = new ActionContext(http, new RouteData(), new Microsoft.AspNetCore.Mvc.Abstractions.ActionDescriptor());
         var data = new ViewDataDictionary(services.GetRequiredService<IModelMetadataProvider>(), new ModelStateDictionary()) { Model = result.Model };
         using var writer = new StringWriter();
@@ -196,7 +196,7 @@ public sealed class FacilitatedMessageControllerTests
         var result = await _controller.SendMessage(_targetId, Ct);
 
         result.Should().BeOfType<RedirectToActionResult>().Which.ActionName.Should().Be("ViewProfile");
-        _controller.TempData.Should().ContainKey(Humans.Base.Constants.TempDataKeys.ErrorMessage);
+        _controller.TempData.Should().ContainKey(Base.Constants.TempDataKeys.ErrorMessage);
     }
 
     [HumansFact]
@@ -248,11 +248,11 @@ public sealed class FacilitatedMessageControllerTests
     }
 
     [HumansTheory]
-    [Xunit.InlineData("es", "es")]
-    [Xunit.InlineData("", "en")]
-    [Xunit.InlineData(" ", "en")]
-    [Xunit.InlineData("not-a-culture", "en")]
-    [Xunit.InlineData("pt", "en")]
+    [InlineData("es", "es")]
+    [InlineData("", "en")]
+    [InlineData(" ", "en")]
+    [InlineData("not-a-culture", "en")]
+    [InlineData("pt", "en")]
     public async Task Post_RendersInTheRecipientsSupportedLanguage(string language, string expectedCulture)
     {
         using var actorCulture = new CultureScope("fr");

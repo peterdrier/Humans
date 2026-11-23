@@ -698,7 +698,7 @@ public class CantinaRosterServiceTests
     {
         // The cantina output DTO must not expose MedicalConditions, even though
         // medical rides on the cached UserInfo (its Profile). GDPR Art.9 boundary.
-        typeof(Humans.Cantina.Services.Dtos.RosterPersonDto)
+        typeof(RosterPersonDto)
             .GetProperty("MedicalConditions").Should().BeNull(
             "RosterPersonDto must not expose MedicalConditions — GDPR Art.9 boundary.");
 

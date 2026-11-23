@@ -183,7 +183,7 @@ public sealed class RoleAssignmentServiceTests : AuthTestHarness
     [InlineData("lookup-fails")]
     public async Task RoleChanges_NotifyInTheRecipientsLanguage(string language)
     {
-        using var actorCulture = new Humans.Base.Extensions.CultureScope("en");
+        using var actorCulture = new CultureScope("en");
         var userId = Guid.NewGuid();
         var actorId = Guid.NewGuid();
         await SeedUserAsync(userId, "Target");

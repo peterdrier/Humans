@@ -378,9 +378,9 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
     }
 
     [HumansTheory]
-    [Xunit.InlineData(AccountScenario.Merged)]
-    [Xunit.InlineData(AccountScenario.Missing)]
-    [Xunit.InlineData(AccountScenario.Cancelled)]
+    [InlineData(AccountScenario.Merged)]
+    [InlineData(AccountScenario.Missing)]
+    [InlineData(AccountScenario.Cancelled)]
     public async Task TermExpiryCorrection_ResolvesItsAuditActorBeforeChangingRows(AccountScenario account)
     {
         using var request = new CancellationTokenSource();

@@ -83,7 +83,7 @@ public sealed class CachingTeamServiceTests : TeamsTestHarness
             [teamId] = MakeTeam(teamId, "Kitchen", parentTeamId: null, isActive: true,
                 members: [MakeMember(userId, TeamMemberRole.Member)]),
         });
-        (await _service.GetUserTeamMembershipsAsync(userId, Xunit.TestContext.Current.CancellationToken))
+        (await _service.GetUserTeamMembershipsAsync(userId, TestContext.Current.CancellationToken))
             .Should().HaveCount(1);
         // The inner erase ends the membership in the database.
         _innerTeamService.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo>
@@ -91,10 +91,10 @@ public sealed class CachingTeamServiceTests : TeamsTestHarness
             [teamId] = MakeTeam(teamId, "Kitchen", parentTeamId: null, isActive: true),
         });
 
-        await _service.EraseForUserAsync(userId, Xunit.TestContext.Current.CancellationToken);
+        await _service.EraseForUserAsync(userId, TestContext.Current.CancellationToken);
 
         await _innerTeamService.Received(1).EraseForUserAsync(userId, Arg.Any<CancellationToken>());
-        (await _service.GetUserTeamMembershipsAsync(userId, Xunit.TestContext.Current.CancellationToken))
+        (await _service.GetUserTeamMembershipsAsync(userId, TestContext.Current.CancellationToken))
             .Should().BeEmpty();
     }
 
@@ -108,7 +108,7 @@ public sealed class CachingTeamServiceTests : TeamsTestHarness
             [teamId] = MakeTeam(teamId, "Kitchen", parentTeamId: null, isActive: true,
                 members: [MakeMember(userId, TeamMemberRole.Member)]),
         });
-        (await _service.GetUserTeamMembershipsAsync(userId, Xunit.TestContext.Current.CancellationToken))
+        (await _service.GetUserTeamMembershipsAsync(userId, TestContext.Current.CancellationToken))
             .Should().HaveCount(1);
         // Memberships ended and committed before a later erase step failed.
         _innerTeamService.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo>
@@ -118,10 +118,10 @@ public sealed class CachingTeamServiceTests : TeamsTestHarness
         _innerTeamService.EraseForUserAsync(userId, Arg.Any<CancellationToken>())
             .Returns(Task.FromException(new InvalidOperationException("boom")));
 
-        var act = () => _service.EraseForUserAsync(userId, Xunit.TestContext.Current.CancellationToken);
+        var act = () => _service.EraseForUserAsync(userId, TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<InvalidOperationException>();
-        (await _service.GetUserTeamMembershipsAsync(userId, Xunit.TestContext.Current.CancellationToken))
+        (await _service.GetUserTeamMembershipsAsync(userId, TestContext.Current.CancellationToken))
             .Should().BeEmpty();
     }
 

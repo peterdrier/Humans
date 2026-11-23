@@ -344,7 +344,7 @@ public sealed class PleoSyncTests
         await SyncAsync();
 
         (await _service.GetWalletBalanceAsync(ct)).Should()
-            .Be(new Humans.Pleo.Contracts.PleoWalletBalance(10_000m, Instant.FromUtc(2026, 11, 3, 12, 0)));
+            .Be(new PleoWalletBalance(10_000m, Instant.FromUtc(2026, 11, 3, 12, 0)));
     }
 
     [HumansTheory]

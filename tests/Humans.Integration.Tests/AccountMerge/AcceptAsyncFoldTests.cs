@@ -294,7 +294,7 @@ public class AcceptAsyncFoldTests(HumansTestDatabase database) : IntegrationTest
 
         // Email owns the preference fold.
         await using var assertScope = Factory.Services.CreateAsyncScope();
-        var db = assertScope.ServiceProvider.GetRequiredService<Humans.Email.Data.EmailDbContext>();
+        var db = assertScope.ServiceProvider.GetRequiredService<Email.Data.EmailDbContext>();
 
         var targetPrefs = await db.CommunicationPreferences
             .AsNoTracking()

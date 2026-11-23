@@ -14,7 +14,7 @@ namespace Humans.MailerLite.Tests.Services;
 /// </summary>
 public class MailerLiteGdprContributorTests
 {
-    private static CancellationToken Ct => Xunit.TestContext.Current.CancellationToken;
+    private static CancellationToken Ct => TestContext.Current.CancellationToken;
 
     private readonly IMailerLiteService _mailerLite = Substitute.For<IMailerLiteService>();
     private readonly IUserService _users = Substitute.For<IUserService>();

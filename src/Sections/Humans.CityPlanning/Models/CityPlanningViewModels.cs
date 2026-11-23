@@ -40,7 +40,7 @@ internal sealed class CityPlanningBarrioMapViewModel
     public BarrioPlacementState PlacementState { get; set; }
     public bool IsMapAdmin { get; set; }
     public string UserCampSeasonId { get; set; } = string.Empty;
-    public List<Services.CampSeasonSummaryDto> SeasonsWithoutCampPolygon { get; set; } =
+    public List<CampSeasonSummaryDto> SeasonsWithoutCampPolygon { get; set; } =
         [];
     /// <summary>
     /// Each day null when unset. A tuple, not a type, because Camps' Details page renders the same partial and sees

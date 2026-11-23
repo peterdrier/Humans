@@ -151,7 +151,7 @@ public class AcceptAsyncFullFixtureTest(HumansTestDatabase database)
         var budgetDb = assertScope.ServiceProvider.GetRequiredService<BudgetDbContext>();
         var legalDb = assertScope.ServiceProvider.GetRequiredService<LegalDbContext>();
         var auditLogDb = assertScope.ServiceProvider.GetRequiredService<AuditLogDbContext>();
-        var emailDb = assertScope.ServiceProvider.GetRequiredService<Humans.Email.Data.EmailDbContext>();
+        var emailDb = assertScope.ServiceProvider.GetRequiredService<Email.Data.EmailDbContext>();
 
         var sourceUser = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == sourceId, TestContext.Current.CancellationToken);
         sourceUser.Should().NotBeNull();

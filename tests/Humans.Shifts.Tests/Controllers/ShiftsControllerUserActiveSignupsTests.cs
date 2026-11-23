@@ -239,7 +239,7 @@ public class ShiftsControllerUserActiveSignupsTests
     public async Task BailRange_LocalizesRefusalKeysInTheMembersCulture()
     {
         const string key = "Shifts_BailRange_NotAuthorized";
-        using var scope = new Humans.Base.Extensions.CultureScope(Humans.Base.Extensions.CultureCatalog.DefaultCultureCode);
+        using var scope = new Base.Extensions.CultureScope(Base.Extensions.CultureCatalog.DefaultCultureCode);
         var resources = new System.Resources.ResourceManager(typeof(ShiftsResource));
         var translated = resources.GetString(key, System.Globalization.CultureInfo.CurrentUICulture)!;
         _localizer[key].Returns(new LocalizedString(key, translated));

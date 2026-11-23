@@ -67,7 +67,7 @@ internal sealed class TeamsDemoStory(ITeamManagementService teams, ITeamService 
     private async Task<Guid> CreateAsync(DemoTeam team, Guid? parentId, CancellationToken ct)
     {
         var name = team.Name + NameSuffix;
-        var existing = await teamReads.GetTeamBySlugAsync(Humans.Base.Helpers.SlugHelper.GenerateSlug(name), ct);
+        var existing = await teamReads.GetTeamBySlugAsync(Base.Helpers.SlugHelper.GenerateSlug(name), ct);
         if (existing is { IsActive: true })
         {
             return existing.Members.Count == 0

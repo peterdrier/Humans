@@ -130,7 +130,7 @@ public sealed class ServicePlacementTests
     [HumansFact]
     public async Task SavePlacementAsync_RejectsInvalidGeometry()
     {
-        using var cultureScope = new Humans.Base.Extensions.CultureScope("en");
+        using var cultureScope = new Base.Extensions.CultureScope("en");
         var container = await SeedContainerAsync();
 
         var act = () => _sut.SavePlacementAsync(container.Id, Year, "{}", ActorUserId, TestContext.Current.CancellationToken);

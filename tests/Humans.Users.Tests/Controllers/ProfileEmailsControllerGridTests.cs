@@ -122,9 +122,9 @@ public class ProfileEmailsControllerGridTests
     }
 
     [HumansTheory]
-    [Xunit.InlineData(EmailMutation.SetEmailVisibility)]
-    [Xunit.InlineData(EmailMutation.DeleteEmail)]
-    [Xunit.InlineData(EmailMutation.LinkGoogle)]
+    [InlineData(EmailMutation.SetEmailVisibility)]
+    [InlineData(EmailMutation.DeleteEmail)]
+    [InlineData(EmailMutation.LinkGoogle)]
     public async Task Email_mutation_account_preflight_observes_cancellation(EmailMutation action)
     {
         using var request = new CancellationTokenSource();

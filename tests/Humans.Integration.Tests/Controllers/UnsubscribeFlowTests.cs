@@ -58,7 +58,7 @@ public class UnsubscribeFlowTests(HumansTestDatabase database) : IntegrationTest
             $"the AJAX update endpoint returns 200 OK on success (got {(int)resp.StatusCode}).");
 
         await using var assertScope = Factory.Services.CreateAsyncScope();
-        var db = assertScope.ServiceProvider.GetRequiredService<Humans.Email.Data.EmailDbContext>();
+        var db = assertScope.ServiceProvider.GetRequiredService<Email.Data.EmailDbContext>();
         var pref = await db.CommunicationPreferences
             .AsNoTracking()
             .SingleAsync(p => p.UserId == userId && p.Category == MessageCategory.VolunteerUpdates, Xunit.TestContext.Current.CancellationToken);
@@ -90,7 +90,7 @@ public class UnsubscribeFlowTests(HumansTestDatabase database) : IntegrationTest
             $"the AJAX update endpoint returns 200 OK on success (got {(int)resp.StatusCode}).");
 
         await using var assertScope = Factory.Services.CreateAsyncScope();
-        var db = assertScope.ServiceProvider.GetRequiredService<Humans.Email.Data.EmailDbContext>();
+        var db = assertScope.ServiceProvider.GetRequiredService<Email.Data.EmailDbContext>();
         var pref = await db.CommunicationPreferences
             .AsNoTracking()
             .SingleAsync(p => p.UserId == userId && p.Category == MessageCategory.VolunteerUpdates, Xunit.TestContext.Current.CancellationToken);

@@ -3358,7 +3358,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
 
         result.Succeeded.Should().BeTrue();
         result.WasCoordinator.Should().BeTrue();
-        (await _service.GetUserCoordinatedTeamIdsAsync(user.Id, Xunit.TestContext.Current.CancellationToken))
+        (await _service.GetUserCoordinatedTeamIdsAsync(user.Id, TestContext.Current.CancellationToken))
             .Should().NotContain(team.Id);
     }
 

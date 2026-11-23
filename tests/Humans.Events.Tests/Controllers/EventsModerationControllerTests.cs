@@ -159,7 +159,7 @@ public sealed class EventsModerationControllerTests
         var result = reject ? await controller.Reject(form) : await controller.RequestEdit(form);
 
         result.Should().BeOfType<RedirectToActionResult>().Which.ActionName.Should().Be("Index");
-        controller.TempData[Humans.Base.Constants.TempDataKeys.ErrorMessage].Should().Be(expected);
+        controller.TempData[Base.Constants.TempDataKeys.ErrorMessage].Should().Be(expected);
     }
 
     [HumansFact]
@@ -178,7 +178,7 @@ public sealed class EventsModerationControllerTests
         var result = await controller.Approve(new ModerationActionFormModel { EventId = guideEvent.Id });
 
         result.Should().BeOfType<RedirectToActionResult>().Which.ActionName.Should().Be("Index");
-        controller.TempData[Humans.Base.Constants.TempDataKeys.ErrorMessage].Should().Be("This event is not in a pending state.");
+        controller.TempData[Base.Constants.TempDataKeys.ErrorMessage].Should().Be("This event is not in a pending state.");
     }
 
     [HumansFact]
@@ -197,7 +197,7 @@ public sealed class EventsModerationControllerTests
         var act = () => controller.Approve(new ModerationActionFormModel { EventId = guideEvent.Id });
 
         await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("connection is not open");
-        controller.TempData.ContainsKey(Humans.Base.Constants.TempDataKeys.ErrorMessage).Should().BeFalse();
+        controller.TempData.ContainsKey(Base.Constants.TempDataKeys.ErrorMessage).Should().BeFalse();
     }
 
     [HumansTheory]

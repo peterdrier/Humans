@@ -36,7 +36,7 @@ public sealed class HoldedPurchaseDocSyncTests
             .Returns(ci => Full($"notes {ci.Arg<string>()}"));
     }
 
-    private static CancellationToken Ct => Xunit.TestContext.Current.CancellationToken;
+    private static CancellationToken Ct => TestContext.Current.CancellationToken;
 
     private static HoldedPurchaseDocListItemDto Listed(string id, int day = 1, bool? draft = false) => new()
     {

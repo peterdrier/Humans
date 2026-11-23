@@ -37,7 +37,7 @@ public sealed class HoldedMirrorCatchUpTests
         var catchUp = new HoldedMirrorCatchUp(services.GetRequiredService<IServiceScopeFactory>(), jobs,
             Options.Create(new HoldedClientOptions { ApiKey = "key" }), logger);
 
-        await catchUp.StartAsync(Xunit.TestContext.Current.CancellationToken);
+        await catchUp.StartAsync(TestContext.Current.CancellationToken);
 
         logger.ReceivedCalls().Select(call => call.GetArguments()).Should().Contain(args =>
             (Microsoft.Extensions.Logging.LogLevel)args[0]! == Microsoft.Extensions.Logging.LogLevel.Error && ReferenceEquals(args[3], failure));
@@ -77,7 +77,7 @@ public sealed class HoldedMirrorCatchUpTests
         var catchUp = new HoldedMirrorCatchUp(scopes, jobs,
             Options.Create(new HoldedClientOptions { ApiKey = "key" }), NullLogger<HoldedMirrorCatchUp>.Instance);
 
-        await catchUp.StartAsync(Xunit.TestContext.Current.CancellationToken);
+        await catchUp.StartAsync(TestContext.Current.CancellationToken);
 
         jobs.ReceivedCalls().Count(c => string.Equals(
                 c.GetMethodInfo().Name, nameof(IBackgroundJobClient.Create), StringComparison.Ordinal))

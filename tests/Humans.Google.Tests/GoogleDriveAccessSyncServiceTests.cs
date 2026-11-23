@@ -351,7 +351,7 @@ public sealed class GoogleDriveAccessSyncServiceTests
         _identities.SetStatusFromSyncAsync(alice, "alice@example.org", GoogleEmailStatus.Rejected, Arg.Any<CancellationToken>())
             .Returns(call =>
             {
-                _identityRows.Rows[alice] = new Humans.Google.Domain.WorkspaceIdentityRecord
+                _identityRows.Rows[alice] = new WorkspaceIdentityRecord
                 {
                     UserId = alice,
                     Email = "alice@example.org",

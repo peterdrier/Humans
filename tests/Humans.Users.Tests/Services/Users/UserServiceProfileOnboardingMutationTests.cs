@@ -204,8 +204,8 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
         accountUser.State = hasDeletionHold ? UserState.DeletePending : UserState.Bare;
         var arrival = Clock.GetCurrentInstant();
         accountUser.DeletionRequestedAt = hasDeletionHold ? arrival : null;
-        accountUser.DeletionScheduledFor = hasDeletionHold ? arrival + NodaTime.Duration.FromDays(30) : null;
-        accountUser.DeletionEligibleAfter = hasDeletionHold ? arrival + NodaTime.Duration.FromDays(60) : null;
+        accountUser.DeletionScheduledFor = hasDeletionHold ? arrival + Duration.FromDays(30) : null;
+        accountUser.DeletionEligibleAfter = hasDeletionHold ? arrival + Duration.FromDays(60) : null;
         await Db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var slices = await _service.ContributeForUserAsync(userId, TestContext.Current.CancellationToken);
@@ -297,8 +297,8 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
             {
                 Id = Guid.NewGuid(), UserId = userId, Email = "google@example.com",
                 IsVerified = true, IsPrimary = true, CreatedAt = createdAt,
-                UpdatedAt = createdAt.Plus(NodaTime.Duration.FromHours(2)),
-                VerificationSentAt = createdAt.Plus(NodaTime.Duration.FromHours(1)),
+                UpdatedAt = createdAt.Plus(Duration.FromHours(2)),
+                VerificationSentAt = createdAt.Plus(Duration.FromHours(1)),
             },
             new UserEmail
             {
@@ -495,7 +495,7 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
         var result = await _service.SetDeletionPendingAsync(
             userId,
             now,
-            now.Plus(NodaTime.Duration.FromDays(30)),
+            now.Plus(Duration.FromDays(30)),
             eligibleAfter: null, ct: TestContext.Current.CancellationToken);
 
         result.Should().BeTrue();
@@ -511,7 +511,7 @@ public sealed class UserServiceProfileOnboardingMutationTests : ServiceTestHarne
         var user = await Db.Users.FirstAsync(u => u.Id == userId, TestContext.Current.CancellationToken);
         var now = Clock.GetCurrentInstant();
         user.DeletionRequestedAt = now;
-        user.DeletionScheduledFor = now.Plus(NodaTime.Duration.FromDays(30));
+        user.DeletionScheduledFor = now.Plus(Duration.FromDays(30));
         user.State = UserState.DeletePending;
         await Db.SaveChangesAsync(TestContext.Current.CancellationToken);
 

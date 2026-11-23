@@ -78,7 +78,7 @@ public class FinanceControllerTests
             new FinanceOverviewService(FixedOrgTimeZone.Madrid, _holdedLedger, _finance, _connector, _expenses, _budget,
                 new CashFlowService(_budget, Substitute.For<ITicketService>()), Substitute.For<Humans.Pleo.Contracts.IPleoService>(), Substitute.For<Humans.Stripe.Contracts.IStripeMirrorService>(),
                 Microsoft.Extensions.Options.Options.Create(new SepaOptions()),
-                Substitute.For<Humans.Finance.Data.IFinanceRepository>(), Substitute.For<Humans.AuditLog.Contracts.IAuditLogService>(),
+                Substitute.For<Data.IFinanceRepository>(), Substitute.For<Humans.AuditLog.Contracts.IAuditLogService>(),
                 SystemClock.Instance),
             TestPleo.Booking(), TestPleo.Runner(), SepaRunner,
             NullLogger<FinanceController>.Instance)
@@ -719,7 +719,7 @@ public class FinanceControllerTests
 
         result.Should().BeOfType<RedirectToActionResult>().Subject.ActionName
             .Should().Be(nameof(FinanceController.Creditors));
-        controller.TempData[Humans.Base.Constants.TempDataKeys.ErrorMessage].Should().NotBeNull();
+        controller.TempData[Base.Constants.TempDataKeys.ErrorMessage].Should().NotBeNull();
         await _connector.DidNotReceive().GenerateSepaPayoutAsync(
             Arg.Any<IReadOnlyList<SepaPayoutSelection>>(), Arg.Any<decimal>(), Arg.Any<Guid>(),
             Arg.Any<CancellationToken>());
@@ -1119,7 +1119,7 @@ public class FinanceControllerTests
         var redirect = result.Should().BeOfType<RedirectToActionResult>().Subject;
         redirect.ActionName.Should().Be(nameof(FinanceController.Sepa));
         redirect.RouteValues!["days"].Should().Be(7);
-        var key = succeeded ? Humans.Base.Constants.TempDataKeys.SuccessMessage : Humans.Base.Constants.TempDataKeys.ErrorMessage;
+        var key = succeeded ? Base.Constants.TempDataKeys.SuccessMessage : Base.Constants.TempDataKeys.ErrorMessage;
         controller.TempData[key].Should().Be(succeeded ? "Withdrew it." : "It is booked.");
     }
 
@@ -1136,7 +1136,7 @@ public class FinanceControllerTests
         var redirect = result.Should().BeOfType<RedirectToActionResult>().Subject;
         redirect.ActionName.Should().Be(nameof(FinanceController.Sepa));
         redirect.RouteValues!["days"].Should().Be(7);
-        controller.TempData[Humans.Base.Constants.TempDataKeys.SuccessMessage].Should().Be("Cancelled it.");
+        controller.TempData[Base.Constants.TempDataKeys.SuccessMessage].Should().Be("Cancelled it.");
     }
 
     [HumansFact]
@@ -1398,7 +1398,7 @@ public class FinanceControllerTests
         var urls = Substitute.For<IUrlHelperFactory>();
         urls.GetUrlHelper(Arg.Any<ActionContext>()).Returns(url);
         builder.Services.AddSingleton(urls);
-        builder.Services.AddSingleton<Humans.Base.Interfaces.IOrgTimeZone>(FixedOrgTimeZone.Madrid);
+        builder.Services.AddSingleton<Base.Interfaces.IOrgTimeZone>(FixedOrgTimeZone.Madrid);
         await using var app = builder.Build();
         using var scope = app.Services.CreateScope();
         var services = scope.ServiceProvider;

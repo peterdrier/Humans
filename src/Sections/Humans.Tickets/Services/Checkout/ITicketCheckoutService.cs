@@ -208,7 +208,7 @@ internal sealed record SalesEventSave(
     string BackendKey,
     string? BackendEventRef,
     TicketSalesMode Mode,
-    NodaTime.Instant? SalesCloseAt,
+    Instant? SalesCloseAt,
     int Capacity,
     decimal TicketVatRate,
     IReadOnlyList<TicketSalesWave> Waves,

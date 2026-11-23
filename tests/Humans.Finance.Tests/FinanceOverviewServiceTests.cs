@@ -81,7 +81,7 @@ public class FinanceOverviewServiceTests
     }
 
     private readonly IHoldedService _holded = Substitute.For<IHoldedService>();
-    private readonly Humans.Finance.Data.IFinanceRepository _repo = Substitute.For<Humans.Finance.Data.IFinanceRepository>();
+    private readonly Data.IFinanceRepository _repo = Substitute.For<Data.IFinanceRepository>();
     private readonly IStripeMirrorService _stripe = Substitute.For<IStripeMirrorService>();
     private readonly Humans.AuditLog.Contracts.IAuditLogService _audit = Substitute.For<Humans.AuditLog.Contracts.IAuditLogService>();
 
@@ -101,9 +101,9 @@ public class FinanceOverviewServiceTests
             .Returns([new StripeAccountBalance("acct_store", 1m, 0m, Instant.FromUtc(2026, 11, 1, 0, 0))]);
         return new FinanceOverviewService(FixedOrgTimeZone.Madrid, _holded, Substitute.For<IFinanceService>(),
             Substitute.For<IFinanceAdminService>(), Substitute.For<Humans.Expenses.Contracts.IExpenseReportService>(),
-            Substitute.For<IBudgetService>(), null!, Substitute.For<Humans.Pleo.Contracts.IPleoService>(),
+            Substitute.For<IBudgetService>(), null!, Substitute.For<IPleoService>(),
             _stripe, Microsoft.Extensions.Options.Options.Create(new SepaOptions()),
-            _repo, _audit, NodaTime.SystemClock.Instance);
+            _repo, _audit, SystemClock.Instance);
     }
 
     [HumansFact]

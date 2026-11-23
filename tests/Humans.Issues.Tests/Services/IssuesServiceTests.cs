@@ -189,9 +189,9 @@ public sealed class IssuesServiceTests
     }
 
     [HumansTheory]
-    [Xunit.InlineData(RetentionFailureKind.Shutdown)]
-    [Xunit.InlineData(RetentionFailureKind.DependencyCancellation)]
-    [Xunit.InlineData(RetentionFailureKind.Fault)]
+    [InlineData(RetentionFailureKind.Shutdown)]
+    [InlineData(RetentionFailureKind.DependencyCancellation)]
+    [InlineData(RetentionFailureKind.Fault)]
     public async Task RetentionJob_DistinguishesShutdownFromFaults(RetentionFailureKind kind)
     {
         using var shutdown = new CancellationTokenSource();
@@ -209,7 +209,7 @@ public sealed class IssuesServiceTests
         var logger = new CapturingLogger<CleanupIssuesJob>();
         var job = new CleanupIssuesJob(retention, metrics, logger);
 
-        var error = await Xunit.Record.ExceptionAsync(() => job.ExecuteAsync(shutdown.Token));
+        var error = await Record.ExceptionAsync(() => job.ExecuteAsync(shutdown.Token));
 
         error.Should().BeSameAs(failure);
         await retention.Received(1).PurgeExpiredAsync(shutdown.Token);
@@ -230,7 +230,7 @@ public sealed class IssuesServiceTests
     [HumansFact]
     public async Task RetentionJob_RecordsSuccessAfterThePurgeCompletes()
     {
-        var ct = Xunit.TestContext.Current.CancellationToken;
+        var ct = TestContext.Current.CancellationToken;
         var retention = Substitute.For<IIssuesService>();
         retention.PurgeExpiredAsync(ct).Returns(2);
         var metrics = Substitute.For<IHumansMetrics>();
@@ -943,7 +943,7 @@ public sealed class IssuesServiceTests
     public async Task PostCommentAsync_handler_sends_email_and_notification_to_reporter(
         string? language, string expectedLanguage)
     {
-        using var culture = new Humans.Base.Extensions.CultureScope("fr");
+        using var culture = new Base.Extensions.CultureScope("fr");
         var reporterId = Guid.NewGuid();
         var reporter = SeedUser(reporterId, "Reporter");
         reporter.Email = "reporter@test.com";
@@ -2619,9 +2619,9 @@ public sealed class IssuesServiceTests
         var deleted = await _service.PurgeExpiredAsync(TestContext.Current.CancellationToken);
 
         deleted.Should().Be(3);
-        (await _issuesDb.Issues.AnyAsync(i => i.Id == toPurge, Xunit.TestContext.Current.CancellationToken)).Should().BeFalse();
-        (await _issuesDb.Issues.AnyAsync(i => i.Id == alsoPurgeWontFix, Xunit.TestContext.Current.CancellationToken)).Should().BeFalse();
-        (await _issuesDb.Issues.AnyAsync(i => i.Id == alsoPurgeDuplicate, Xunit.TestContext.Current.CancellationToken)).Should().BeFalse();
+        (await _issuesDb.Issues.AnyAsync(i => i.Id == toPurge, TestContext.Current.CancellationToken)).Should().BeFalse();
+        (await _issuesDb.Issues.AnyAsync(i => i.Id == alsoPurgeWontFix, TestContext.Current.CancellationToken)).Should().BeFalse();
+        (await _issuesDb.Issues.AnyAsync(i => i.Id == alsoPurgeDuplicate, TestContext.Current.CancellationToken)).Should().BeFalse();
     }
 
     [HumansFact]
@@ -2635,7 +2635,7 @@ public sealed class IssuesServiceTests
         var deleted = await _service.PurgeExpiredAsync(TestContext.Current.CancellationToken);
 
         deleted.Should().Be(0);
-        (await _issuesDb.Issues.AnyAsync(i => i.Id == keep, Xunit.TestContext.Current.CancellationToken)).Should().BeTrue();
+        (await _issuesDb.Issues.AnyAsync(i => i.Id == keep, TestContext.Current.CancellationToken)).Should().BeTrue();
     }
 
     [HumansFact]
@@ -2650,9 +2650,9 @@ public sealed class IssuesServiceTests
         var deleted = await _service.PurgeExpiredAsync(TestContext.Current.CancellationToken);
 
         deleted.Should().Be(0);
-        (await _issuesDb.Issues.AnyAsync(i => i.Id == keepOpen, Xunit.TestContext.Current.CancellationToken)).Should().BeTrue();
-        (await _issuesDb.Issues.AnyAsync(i => i.Id == keepInProgress, Xunit.TestContext.Current.CancellationToken)).Should().BeTrue();
-        (await _issuesDb.Issues.AnyAsync(i => i.Id == keepTriage, Xunit.TestContext.Current.CancellationToken)).Should().BeTrue();
+        (await _issuesDb.Issues.AnyAsync(i => i.Id == keepOpen, TestContext.Current.CancellationToken)).Should().BeTrue();
+        (await _issuesDb.Issues.AnyAsync(i => i.Id == keepInProgress, TestContext.Current.CancellationToken)).Should().BeTrue();
+        (await _issuesDb.Issues.AnyAsync(i => i.Id == keepTriage, TestContext.Current.CancellationToken)).Should().BeTrue();
     }
 
     [HumansFact]
@@ -2715,7 +2715,7 @@ public sealed class IssuesServiceTests
         var deleted = await _service.PurgeExpiredAsync(TestContext.Current.CancellationToken);
 
         deleted.Should().Be(1);
-        (await _issuesDb.Issues.AnyAsync(i => i.Id == issueId, Xunit.TestContext.Current.CancellationToken)).Should().BeFalse();
+        (await _issuesDb.Issues.AnyAsync(i => i.Id == issueId, TestContext.Current.CancellationToken)).Should().BeFalse();
     }
 
     [HumansTheory]

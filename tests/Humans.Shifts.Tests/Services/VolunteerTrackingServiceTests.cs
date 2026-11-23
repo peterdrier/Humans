@@ -156,7 +156,7 @@ public class VolunteerTrackingServiceTests
             .Returns(Task.FromCanceled<IReadOnlyList<GeneralAvailability>>(cancellation.Token));
         var service = new VolunteerTrackingService(
             repo, Substitute.For<IShiftManagementRepository>(),
-            new EventCalendarResolver(Substitute.For<ISettingsService>(), Substitute.For<Humans.Shifts.Data.IShiftManagementRepository>()),
+            new EventCalendarResolver(Substitute.For<ISettingsService>(), Substitute.For<IShiftManagementRepository>()),
             Substitute.For<IUserService>(), Substitute.For<ITicketService>(),
             new FakeClock(TestNow), Substitute.For<IAuditLogService>());
 
@@ -978,7 +978,7 @@ public class VolunteerTrackingServiceTests
         settingsService.GetActiveEventSettings().Returns(calendar);
         settingsService.GetEventSettingsByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(ci => calendar is not null && calendar.Id == ci.Arg<Guid>() ? calendar : null);
-        var calendarResolver = new EventCalendarResolver(settingsService, Substitute.For<Humans.Shifts.Data.IShiftManagementRepository>());
+        var calendarResolver = new EventCalendarResolver(settingsService, Substitute.For<IShiftManagementRepository>());
 
         var userService = Substitute.For<IUserService>();
         userService.GetAllUserInfosAsync(Arg.Any<CancellationToken>())

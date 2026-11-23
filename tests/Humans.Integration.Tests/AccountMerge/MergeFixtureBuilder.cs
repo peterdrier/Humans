@@ -201,7 +201,7 @@ public sealed class MergeFixtureBuilder
 
     private MergeFixtureBuilder AddCommPref(Guid userId, MessageCategory category, bool optedOut, Instant? updatedAt)
     {
-        _pendingEmail.Add(db => db.CommunicationPreferences.Add(new Humans.Email.Domain.CommunicationPreference
+        _pendingEmail.Add(db => db.CommunicationPreferences.Add(new Email.Domain.CommunicationPreference
         {
             Id = Guid.NewGuid(),
             UserId = userId,
@@ -240,7 +240,7 @@ public sealed class MergeFixtureBuilder
 
     private MergeFixtureBuilder AddEventParticipation(Guid userId, int year, ParticipationStatus status)
     {
-        _pendingTickets.Add(db => db.EventParticipations.Add(new Humans.Tickets.Domain.EventParticipation
+        _pendingTickets.Add(db => db.EventParticipations.Add(new Tickets.Domain.EventParticipation
         {
             Id = Guid.NewGuid(),
             UserId = userId,
