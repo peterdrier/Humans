@@ -368,7 +368,7 @@ internal sealed class ExpenseReportService(
     internal static (string? Extension, ExpenseError? Refusal) ValidateAttachmentUpload(
         string originalFileName, string contentType, Stream content)
     {
-        if (content is null || content.Length == 0)
+        if (content.Length == 0)
             return (null, ExpenseMutationResult.Failure("Expenses_Flash_SelectFile").Error);
         if (content.Length > AttachmentMaxBytes)
             return (null, ExpenseMutationResult.Failure("Expenses_Validation_FileTooLarge", AttachmentMaxBytes / (1024 * 1024)).Error);
