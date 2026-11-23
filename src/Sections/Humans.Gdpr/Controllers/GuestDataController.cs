@@ -3,6 +3,7 @@ using Humans.Base.Extensions;
 using Humans.Base;
 using Humans.Gdpr.Contracts;
 using Humans.Gdpr.Models;
+using Humans.Gdpr.Services;
 using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;

@@ -2,6 +2,7 @@
   src/Sections/Humans.Governance/**
   src/Sections/Humans.Gdpr/**
   src/Sections/Humans.Gdpr/Contracts/**
+  src/Humans.Base/Gdpr/**
   src/Sections/Humans.Users/Services/AccountDeletionService.cs
   src/Sections/Humans.Users/Services/ProfileService.cs
   src/Sections/Humans.Users/Services/UserService.cs
