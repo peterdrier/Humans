@@ -54,7 +54,7 @@
             }
             @if (Model.Status == SurveyStatus.PendingApproval)
             {
-                <partial name="_SurveyReviewActions" model="@Model.Id!.Value" />
+                <partial name="_SurveyReviewActions" model="@Model.Id!.Value" view-data="@(new ViewDataDictionary(ViewData) { ["ReviewReturnUrl"] = Url.Action("Edit", "SurveyAdmin", new { id = Model.Id }) })" />
             }
             @if (Model.ManagesEverySurvey && Model.Status == SurveyStatus.Open)
             {

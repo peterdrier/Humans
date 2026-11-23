@@ -1,9 +1,11 @@
 @model Guid
+@{ var returnUrl = ViewData["ReviewReturnUrl"] as string; }
 @* Approve or reject a survey pending approval. Callers render this only for a survey in
    PendingApproval; the Manage policy gate keeps it from Board, who read the queue but may not act. *@
 <div class="d-inline" authorize-policy="@Humans.Surveys.Contracts.SurveysPolicies.Manage">
     <form asp-controller="SurveyAdmin" asp-action="Approve" asp-route-id="@Model" method="post" class="d-inline">
         @Html.AntiForgeryToken()
+        <input type="hidden" name="returnUrl" value="@returnUrl" />
         <button type="submit" class="btn btn-success btn-sm">@Localizer["Surveys_Admin_Queue_ApproveAndSend"]</button>
     </form>
     <button type="button" class="btn btn-outline-danger btn-sm" data-bs-toggle="modal" data-bs-target="#rejectModal-@Model">
@@ -14,6 +16,7 @@
             <div class="modal-content">
                 <form asp-controller="SurveyAdmin" asp-action="Reject" asp-route-id="@Model" method="post">
                     @Html.AntiForgeryToken()
+                    <input type="hidden" name="returnUrl" value="@returnUrl" />
                     <div class="modal-header">
                         <h5 class="modal-title">@Localizer["Surveys_Admin_Queue_Reject"]</h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>

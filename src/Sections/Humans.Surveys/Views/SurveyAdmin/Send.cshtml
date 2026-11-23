@@ -71,7 +71,7 @@
         @if (Model.Status == SurveyStatus.PendingApproval)
         {
             <p class="text-muted">This survey is waiting for approval. Approving it opens it and sends the invitations.</p>
-            <partial name="_SurveyReviewActions" model="@Model.Id" />
+            <partial name="_SurveyReviewActions" model="@Model.Id" view-data="@(new ViewDataDictionary(ViewData) { ["ReviewReturnUrl"] = Url.Action("Send", "SurveyAdmin", new { id = Model.Id }) })" />
         }
         else if (Model.Status != SurveyStatus.Open)
         {
