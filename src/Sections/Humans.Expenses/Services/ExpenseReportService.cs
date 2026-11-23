@@ -426,7 +426,7 @@ internal sealed class ExpenseReportService(
             UploadedByUserId = actorUserId,
             UploadedAt = clock.GetCurrentInstant()
         };
-        ExpenseAttachment? replacedAttachment = null;
+        ExpenseAttachment? replacedAttachment;
         try
         {
             var replacement = await repo.ReplaceLineAttachmentAsync(reportId, lineId, attachment, ct,

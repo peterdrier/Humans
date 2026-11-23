@@ -2483,7 +2483,6 @@ internal sealed class Service(
                     entry = await holdedWrite.PostJournalEntryAsync(
                         movement.Date, transfer.SupplierAccountNum, sepa.Value.TreasuryLedgerAccount!.Value,
                         remaining, tag, ct);
-                    remaining -= entryAmount;
                 }
                 catch (Exception ex) when (ex is HoldedTransientException or HoldedPermanentException)
                 {
