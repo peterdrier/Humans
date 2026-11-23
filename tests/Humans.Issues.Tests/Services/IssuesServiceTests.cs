@@ -56,7 +56,7 @@ public sealed class IssuesServiceTests
     private readonly FakeClock _clock = new(Instant.FromUtc(2026, 4, 29, 12, 0));
     private readonly IAuditLogService _auditLog = Substitute.For<IAuditLogService>();
     private readonly IAuditViewerService _auditViewer = Substitute.For<IAuditViewerService>();
-    private readonly InMemoryFileStorage _fileStorage = new();
+    private readonly InMemoryFileStorage _inMemoryFileStorage = new();
 
     /// <summary>
     /// The published section list. A substitute: the service
@@ -116,7 +116,7 @@ public sealed class IssuesServiceTests
         _service = new IssuesApplicationService(
             _repository, _userService, _roleService,
             _emailService, _emailMessages, _notificationService, _notificationInbox, _auditLog, _auditViewer,
-            _clock, _fileStorage, _sectionCatalog, Domain.TestIssueQueues.Shipped(),
+            _clock, _inMemoryFileStorage, _sectionCatalog, Domain.TestIssueQueues.Shipped(),
             _logger);
     }
 
@@ -536,7 +536,7 @@ public sealed class IssuesServiceTests
         var service = new IssuesApplicationService(
             repo, _userService, _roleService,
             _emailService, _emailMessages, _notificationService, _notificationInbox, _auditLog, _auditViewer,
-            _clock, _fileStorage, _sectionCatalog, Domain.TestIssueQueues.Shipped(), _logger);
+            _clock, _inMemoryFileStorage, _sectionCatalog, Domain.TestIssueQueues.Shipped(), _logger);
         var screenshot = PngUpload([1, 2, 3]);
 
         var act = () => service.SubmitIssueAsync(Guid.NewGuid(), IssueCategory.Bug, "Title", "Detail",
@@ -545,8 +545,8 @@ public sealed class IssuesServiceTests
         (await act.Should().ThrowAsync<IOException>()).Which.Should().BeSameAs(failure);
         var saved = await _repository.GetByIdAsync(issueId, TestContext.Current.CancellationToken);
         saved.Should().NotBeNull();
-        _fileStorage.Files.Should().ContainKey(saved.ScreenshotStoragePath!);
-        _fileStorage.Files[saved.ScreenshotStoragePath!].Should().Equal(1, 2, 3);
+        _inMemoryFileStorage.Files.Should().ContainKey(saved.ScreenshotStoragePath!);
+        _inMemoryFileStorage.Files[saved.ScreenshotStoragePath!].Should().Equal(1, 2, 3);
     }
 
     [HumansFact]
@@ -565,7 +565,7 @@ public sealed class IssuesServiceTests
         result.Issue.Should().BeNull();
         result.ErrorKey.Should().Be("Issue_ScreenshotTooLarge");
         (await _issuesDb.Issues.CountAsync(Ct)).Should().Be(0);
-        _fileStorage.Files.Should().BeEmpty();
+        _inMemoryFileStorage.Files.Should().BeEmpty();
     }
 
     [HumansTheory]
@@ -601,7 +601,7 @@ public sealed class IssuesServiceTests
             controller.ModelState.IsValid.Should().BeFalse();
         }
         (await _issuesDb.Issues.CountAsync(Ct)).Should().Be(0);
-        _fileStorage.Files.Should().BeEmpty();
+        _inMemoryFileStorage.Files.Should().BeEmpty();
     }
 
     [HumansFact]
@@ -620,7 +620,7 @@ public sealed class IssuesServiceTests
         result.Issue.Should().BeNull();
         result.ErrorKey.Should().Be("Issue_ScreenshotTypeInvalid");
         (await _issuesDb.Issues.CountAsync(Ct)).Should().Be(0);
-        _fileStorage.Files.Should().BeEmpty();
+        _inMemoryFileStorage.Files.Should().BeEmpty();
     }
 
     [HumansFact]
@@ -1075,7 +1075,7 @@ public sealed class IssuesServiceTests
             ? new IssuesApplicationService(
                 _repository, _userService, _roleService, _emailService,
                 TestIssuesEmails.Create(_ => throw error), _notificationService, _notificationInbox,
-                _auditLog, _auditViewer, _clock, _fileStorage, _sectionCatalog, Domain.TestIssueQueues.Shipped(), _logger)
+                _auditLog, _auditViewer, _clock, _inMemoryFileStorage, _sectionCatalog, Domain.TestIssueQueues.Shipped(), _logger)
             : _service;
         var result = await service.PostCommentAsync(issueId, Admin, Admin.UserId, "Fixed this",
             resolveOnPost: true, ct: TestContext.Current.CancellationToken);
@@ -1310,7 +1310,7 @@ public sealed class IssuesServiceTests
         var service = new IssuesApplicationService(
             repo, _userService, _roleService,
             _emailService, _emailMessages, _notificationService, _notificationInbox, _auditLog, _auditViewer,
-            _clock, _fileStorage, _sectionCatalog, Domain.TestIssueQueues.Shipped(), _logger);
+            _clock, _inMemoryFileStorage, _sectionCatalog, Domain.TestIssueQueues.Shipped(), _logger);
         var ct = TestContext.Current.CancellationToken;
         var assignee = SeedUser();
         await _db.SaveChangesAsync(ct);
@@ -1345,7 +1345,7 @@ public sealed class IssuesServiceTests
         var service = new IssuesApplicationService(
             repo, _userService, _roleService,
             _emailService, _emailMessages, _notificationService, _notificationInbox, _auditLog, _auditViewer,
-            _clock, _fileStorage, _sectionCatalog, Domain.TestIssueQueues.Shipped(), _logger);
+            _clock, _inMemoryFileStorage, _sectionCatalog, Domain.TestIssueQueues.Shipped(), _logger);
 
         var beforeWrite = service.GetActionableCountForViewerAsync(Admin, ct);
         (await service.UpdateStatusAsync(issue.Id, Admin, IssueStatus.Resolved, Admin.UserId, ct)).Succeeded.Should().BeTrue();
@@ -1407,7 +1407,7 @@ public sealed class IssuesServiceTests
         var service = new IssuesApplicationService(
             repo, _userService, _roleService,
             _emailService, _emailMessages, _notificationService, _notificationInbox, _auditLog, _auditViewer,
-            _clock, _fileStorage, _sectionCatalog, Domain.TestIssueQueues.Shipped(), _logger);
+            _clock, _inMemoryFileStorage, _sectionCatalog, Domain.TestIssueQueues.Shipped(), _logger);
 
         switch (operation)
         {
@@ -2352,7 +2352,7 @@ public sealed class IssuesServiceTests
         issue.ScreenshotFileName.Should().Be(fileName);
         issue.ScreenshotStoragePath.Should().StartWith($"uploads/issues/{issue.Id}/").And.EndWith(".png");
         issue.ScreenshotContentType.Should().Be("image/png");
-        _fileStorage.Files[issue.ScreenshotStoragePath!].Should().Equal(bytes);
+        _inMemoryFileStorage.Files[issue.ScreenshotStoragePath!].Should().Equal(bytes);
     }
 
     [HumansFact]
@@ -2367,16 +2367,16 @@ public sealed class IssuesServiceTests
         var bobIssue = await SeedIssueRowAsync(bobId, IssueStatus.Open, "Bob's");
         var aliceKey = $"uploads/issues/{aliceIssue}/a.png";
         var bobKey = $"uploads/issues/{bobIssue}/b.png";
-        _fileStorage.Files[aliceKey] = [1];
-        _fileStorage.Files[bobKey] = [2];
+        _inMemoryFileStorage.Files[aliceKey] = [1];
+        _inMemoryFileStorage.Files[bobKey] = [2];
         (await _issuesDb.Issues.FirstAsync(i => i.Id == aliceIssue, Ct)).ScreenshotStoragePath = aliceKey;
         (await _issuesDb.Issues.FirstAsync(i => i.Id == bobIssue, Ct)).ScreenshotStoragePath = bobKey;
         await _issuesDb.SaveChangesAsync(Ct);
 
         await _service.EraseForUserAsync(aliceId, Ct);
 
-        _fileStorage.Files.Should().NotContainKey(aliceKey);
-        _fileStorage.Files.Should().ContainKey(bobKey);
+        _inMemoryFileStorage.Files.Should().NotContainKey(aliceKey);
+        _inMemoryFileStorage.Files.Should().ContainKey(bobKey);
     }
 
     private async Task<Guid> SeedIssueWithScreenshotAsync(
@@ -2384,7 +2384,7 @@ public sealed class IssuesServiceTests
     {
         var id = await SeedIssueRowAsync(reporterId, IssueStatus.Open, "With screenshot", section);
         var key = $"uploads/issues/{id}/shot.png";
-        _fileStorage.Files[key] = bytes;
+        _inMemoryFileStorage.Files[key] = bytes;
         var row = await _issuesDb.Issues.FirstAsync(i => i.Id == id, Ct);
         row.ScreenshotStoragePath = key;
         row.ScreenshotContentType = contentType;
@@ -2658,7 +2658,7 @@ public sealed class IssuesServiceTests
         var oldResolved = _clock.GetCurrentInstant() - Duration.FromDays(200);
         var issueId = Guid.NewGuid();
         var key = $"uploads/issues/{issueId}/shot.png";
-        _fileStorage.Files[key] = [1, 2, 3];
+        _inMemoryFileStorage.Files[key] = [1, 2, 3];
 
         var reporterId = Guid.NewGuid();
         SeedUser(reporterId, "Reporter").Email = $"{reporterId}@test.com";
@@ -2680,7 +2680,7 @@ public sealed class IssuesServiceTests
         var deleted = await _service.PurgeExpiredAsync(TestContext.Current.CancellationToken);
 
         deleted.Should().Be(1);
-        _fileStorage.Files.Should().NotContainKey(key);
+        _inMemoryFileStorage.Files.Should().NotContainKey(key);
     }
 
     [HumansFact]
