@@ -317,7 +317,6 @@ internal sealed class CalendarService(
                 logger.LogError(ex,
                     "Community calendar contributor {Contributor} failed for window [{From}, {To}); its items are skipped",
                     contributor.GetType().Name, from, to);
-                continue;
             }
         }
 
