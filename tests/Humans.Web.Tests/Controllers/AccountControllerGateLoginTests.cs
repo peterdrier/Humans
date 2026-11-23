@@ -32,7 +32,6 @@ public class AccountControllerGateLoginTests
     private readonly UserManager<User> _userManager;
     private readonly SignInManager<User> _signInManager;
     private readonly IUserWrite _userService = Substitute.For<IUserWrite>();
-    private readonly GateLoginThrottle _throttle;
     private readonly AccountController _controller;
 
     private readonly User _gateUser = new() { Id = SystemUserIds.GateTerminal };
@@ -60,7 +59,7 @@ public class AccountControllerGateLoginTests
         localizer[Arg.Any<string>(), Arg.Any<object[]>()].Returns(ci =>
             new LocalizedString(ci.Arg<string>(), ci.Arg<string>()));
 
-        _throttle = new GateLoginThrottle(
+        var throttle = new GateLoginThrottle(
             new MemoryCache(new MemoryCacheOptions()), _clock);
 
         _controller = new AccountController(
@@ -73,7 +72,7 @@ public class AccountControllerGateLoginTests
             Substitute.For<IExternalLoginService>(),
             Substitute.For<IMagicLinkService>(),
             Substitute.For<IAccountProvisioningService>(),
-            _throttle,
+            throttle,
             new LoginMethodCounter(),
             localizer);
 

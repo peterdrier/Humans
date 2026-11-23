@@ -18,7 +18,6 @@ using Microsoft.Extensions.Options;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
-using Humans.Application.Services.Users;
 
 namespace Humans.Web.Tests.Controllers;
 

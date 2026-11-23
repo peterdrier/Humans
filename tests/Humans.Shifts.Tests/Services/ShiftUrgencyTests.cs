@@ -135,8 +135,6 @@ public class ShiftUrgencyTests
     [HumansFact]
     public void ApplyPeriodDiverseLimit_OnlyBuildShifts_TakesTopN()
     {
-        var es = UrgencyBurn();
-
         var ranked = Enumerable.Range(0, 5).Select(i =>
             MakeUrgentShift(dayOffset: -5 + i, score: 50 - i * 5, remaining: 10))
             .OrderByDescending(u => u.UrgencyScore)
@@ -167,8 +165,6 @@ public class ShiftUrgencyTests
     [HumansFact]
     public void ApplyPeriodDiverseLimit_FewShifts_ReturnsAll()
     {
-        var es = UrgencyBurn();
-
         var ranked = new List<UrgentShiftInfo>
         {
             MakeUrgentShift(dayOffset: -1, score: 50, remaining: 5),
@@ -183,8 +179,6 @@ public class ShiftUrgencyTests
     [HumansFact]
     public void ApplyPeriodDiverseLimit_ResultIsSortedByScoreDescending()
     {
-        var es = UrgencyBurn();
-
         var ranked = new List<UrgentShiftInfo>
         {
             MakeUrgentShift(dayOffset: -3, score: 100, remaining: 10),

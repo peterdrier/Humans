@@ -13,6 +13,8 @@
     -->
     <ProjectReference Include="..\..\Humans.Base\Humans.Base.csproj" />
     <ProjectReference Include="..\Humans.Tickets.Contracts\Humans.Tickets.Contracts.csproj" />
+    <!-- IStripeService reads the Stripe account pretix charges into. Acyclic: Humans.Stripe references no section. -->
+    <ProjectReference Include="..\Humans.Stripe\Humans.Stripe.csproj" />
   </ItemGroup>
 
   <ItemGroup>

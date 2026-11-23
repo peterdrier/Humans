@@ -92,15 +92,14 @@ Docs/                                      Pretix.md (invariants), data-access.m
 
 - **Per-order data shred.** Erasure clears the order's contact fields, but pretix keeps the old
   email in the order log and the Stripe payment details on the payment until its event-wide
-  shredder runs; a per-order shred in the pretix fork is the open fix (debt PRETIX-1).
+  shredder runs; the fix is Humans running that shredder through pretix's API once the post-event hold
+  ends (debt PRETIX-1).
 
 ## 6. Deliberately not done
 
 - **No mirror of Humans' catalogue in pretix.** Two free-price carrier items per event carry
   every price; waves, classes and capacity stay in Humans.
 - **No Humans settings per pretix event.** The event slug comes per order from Tickets.
-- **No fee or payout reconciliation.** pretix takes payments through its own Stripe account,
-  which Humans does not hold; `GetPaymentLedgerAsync` answers null.
 - **No trust in the webhook body.** Tickets re-reads the order; the body names it, nothing more.
 - **No `Contracts/` surface.** The port belongs to Tickets.
 

@@ -18,16 +18,16 @@ internal sealed class AgentAdminStatusService(
     public async Task<AgentAdminStatusReport> GetStatusAsync(CancellationToken cancellationToken)
     {
         var now = clock.GetCurrentInstant();
-        var window24h = now - Duration.FromDays(1);
-        var window7d = now - Duration.FromDays(7);
-        var window30d = now - Duration.FromDays(30);
+        var window24Hours = now - Duration.FromDays(1);
+        var window7Days = now - Duration.FromDays(7);
+        var window30Days = now - Duration.FromDays(30);
 
         // MTD in UTC (matches the rest of admin diagnostics).
         var utcNow = now.InUtc();
         var firstOfMonth = new LocalDate(utcNow.Year, utcNow.Month, 1)
             .AtStartOfDayInZone(DateTimeZone.Utc).ToInstant();
 
-        var startOfWindow = firstOfMonth < window30d ? firstOfMonth : window30d;
+        var startOfWindow = firstOfMonth < window30Days ? firstOfMonth : window30Days;
 
         var rows = await repo.ListMessagesSinceAsync(startOfWindow, cancellationToken);
 
@@ -35,28 +35,28 @@ internal sealed class AgentAdminStatusService(
         var defaultModel = settings1.Model;
 
         // Conversation counts from the parent table — handles convs with no new messages in window.
-        var convCount24h = await repo.CountConversationsInWindowAsync(window24h, now, cancellationToken);
-        var convCount7d = await repo.CountConversationsInWindowAsync(window7d, now, cancellationToken);
-        var convCount30d = await repo.CountConversationsInWindowAsync(window30d, now, cancellationToken);
+        var convCount24Hours = await repo.CountConversationsInWindowAsync(window24Hours, now, cancellationToken);
+        var convCount7Days = await repo.CountConversationsInWindowAsync(window7Days, now, cancellationToken);
+        var convCount30Days = await repo.CountConversationsInWindowAsync(window30Days, now, cancellationToken);
 
-        var usage24h = BuildUsage(rows, window24h, convCount24h);
-        var usage7d = BuildUsage(rows, window7d, convCount7d);
-        var usage30d = BuildUsage(rows, window30d, convCount30d);
+        var usage24Hours = BuildUsage(rows, window24Hours, convCount24Hours);
+        var usage7Days = BuildUsage(rows, window7Days, convCount7Days);
+        var usage30Days = BuildUsage(rows, window30Days, convCount30Days);
 
-        var spend24h = BuildSpend(rows, window24h, defaultModel);
-        var spend7d = BuildSpend(rows, window7d, defaultModel);
-        var spend30d = BuildSpend(rows, window30d, defaultModel);
+        var spend24Hours = BuildSpend(rows, window24Hours, defaultModel);
+        var spend7Days = BuildSpend(rows, window7Days, defaultModel);
+        var spend30Days = BuildSpend(rows, window30Days, defaultModel);
         var spendMtd = BuildSpend(rows, firstOfMonth, defaultModel);
 
-        var refusals7d = rows
-            .Where(r => r.CreatedAt >= window7d && !string.IsNullOrEmpty(r.RefusalReason))
+        var refusals7Days = rows
+            .Where(r => r.CreatedAt >= window7Days && !string.IsNullOrEmpty(r.RefusalReason))
             .GroupBy(r => r.RefusalReason!, StringComparer.Ordinal)
             .Select(g => new AgentRefusalBucket(g.Key, g.Count()))
             .ToList();
-        var refusals7dCount = refusals7d.Sum(b => b.Count);
+        var refusals7DaysCount = refusals7Days.Sum(b => b.Count);
 
-        var topDocs7d = rows
-            .Where(r => r.CreatedAt >= window7d)
+        var topDocs7Days = rows
+            .Where(r => r.CreatedAt >= window7Days)
             .SelectMany(r => r.FetchedDocs ?? Array.Empty<string>())
             .Where(slug => !string.IsNullOrEmpty(slug))
             .GroupBy(CanonicalDocSlug, StringComparer.OrdinalIgnoreCase)
@@ -65,22 +65,22 @@ internal sealed class AgentAdminStatusService(
             .Take(10)
             .ToList();
 
-        var topUsers7d = BuildTopUsers(rows, window7d, settings1, now);
+        var topUsers7Days = BuildTopUsers(rows, window7Days, settings1, now);
 
         var balance1 = await balance.GetBalanceAsync(cancellationToken);
 
         return new AgentAdminStatusReport(
-            Usage24h: usage24h,
-            Usage7d: usage7d,
-            Usage30d: usage30d,
-            Spend24h: spend24h,
-            Spend7d: spend7d,
-            Spend30d: spend30d,
+            Usage24Hours: usage24Hours,
+            Usage7Days: usage7Days,
+            Usage30Days: usage30Days,
+            Spend24Hours: spend24Hours,
+            Spend7Days: spend7Days,
+            Spend30Days: spend30Days,
             SpendMtd: spendMtd,
-            Refusals7dCount: refusals7dCount,
-            Refusals7d: refusals7d,
-            TopDocs7d: topDocs7d,
-            TopUsers7d: topUsers7d,
+            Refusals7DaysCount: refusals7DaysCount,
+            Refusals7Days: refusals7Days,
+            TopDocs7Days: topDocs7Days,
+            TopUsers7Days: topUsers7Days,
             Retention: retention.Snapshot,
             Balance: balance1,
             SettingsStoreWarm: settings1.UpdatedAt != Instant.MinValue);
@@ -156,7 +156,7 @@ internal sealed class AgentAdminStatusService(
 
     private List<AgentTopUser> BuildTopUsers(
         IReadOnlyList<AgentStatusMessageRow> rows, Instant since,
-        AgentSettingsDto settings, Instant now)
+        AgentSettingsDto agentSettings, Instant now)
     {
         // Rate-limit keys: (UserId, LocalDate, Hour) in UTC — see AgentRateLimitHandler.
         var utcNow = now.InUtc();
@@ -176,8 +176,8 @@ internal sealed class AgentAdminStatusService(
             .Select(kv =>
             {
                 var snapshot = rateLimit.Get(kv.Key, today, hour);
-                var dailyRemaining = Math.Max(0, settings.DailyMessageCap - snapshot.MessagesToday);
-                var hourlyRemaining = Math.Max(0, settings.HourlyMessageCap - snapshot.MessagesThisHour);
+                var dailyRemaining = Math.Max(0, agentSettings.DailyMessageCap - snapshot.MessagesToday);
+                var hourlyRemaining = Math.Max(0, agentSettings.HourlyMessageCap - snapshot.MessagesThisHour);
                 return new AgentTopUser(
                     UserId: kv.Key,
                     MessageCount: kv.Value,

@@ -198,7 +198,7 @@ internal sealed partial class WorkgroupService(
         ct = CancellationToken.None;
 
         await AuditAsync(WorkgroupsAuditActions.WorkgroupGoogleGroupSet, workgroup,
-            workgroup.GoogleGroupEmail is { } email ? $"Email group set to {email}" : "Email group cleared", actorUserId);
+            workgroup.GoogleGroupEmail is { } groupEmail ? $"Email group set to {groupEmail}" : "Email group cleared", actorUserId);
         await RequestGoogleSyncAsync(workgroup, ct);
         return new();
     }

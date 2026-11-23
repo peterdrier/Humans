@@ -41,7 +41,7 @@ public sealed class EmailPreviewGalleryTests
             NullLogger<EmailController>.Instance,
             Options.Create(new EmailSettings()));
 
-        var result = controller.EmailPreview(composer, Options.Create(new EmailSettings()), contributors);
+        var result = controller.EmailPreview(composer, contributors);
 
         return (EmailPreviewViewModel)((ViewResult)result).Model!;
     }

@@ -151,7 +151,7 @@ public class CantinaRosterAssemblerTests
             CantinaRosterAssembler.DietaryPriority("Pescatarian"));
     }
 
-    private static DailyPersonRowDto DP(string burnerName) =>
+    private static DailyPersonRowDto Person(string burnerName) =>
         new(
             UserId: Guid.NewGuid(),
             BurnerName: burnerName,
@@ -175,7 +175,7 @@ public class CantinaRosterAssemblerTests
     [HumansFact]
     public void WithSortedPeople_Daily_AlphabeticalByBurnerName()
     {
-        var input = Matrix(new[] { DP("Charlie"), DP("Alice"), DP("Bob") });
+        var input = Matrix(new[] { Person("Charlie"), Person("Alice"), Person("Bob") });
 
         var sorted = CantinaRosterAssembler.WithSortedPeople(input);
 
@@ -188,7 +188,7 @@ public class CantinaRosterAssemblerTests
     public void WithSortedPeople_Daily_CulturalCollation_CaseInsensitive()
     {
         // Cultural collation, not Ordinal: "alice" sorts before "Bob".
-        var input = Matrix(new[] { DP("Bob"), DP("alice") });
+        var input = Matrix(new[] { Person("Bob"), Person("alice") });
 
         var sorted = CantinaRosterAssembler.WithSortedPeople(input);
 
@@ -201,7 +201,7 @@ public class CantinaRosterAssemblerTests
         var empty = Matrix(Array.Empty<DailyPersonRowDto>());
         CantinaRosterAssembler.WithSortedPeople(empty).People.Should().BeEmpty();
 
-        var single = Matrix(new[] { DP("Solo") });
+        var single = Matrix(new[] { Person("Solo") });
         CantinaRosterAssembler.WithSortedPeople(single).People.Should().HaveCount(1);
     }
 }

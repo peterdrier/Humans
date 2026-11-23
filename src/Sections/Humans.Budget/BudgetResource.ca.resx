@@ -153,4 +153,6 @@
   <data name="Budget_CashReserves" xml:space="preserve"><value>Reserves d'efectiu (90%)</value></data>
   <data name="Budget_SpanishTaxes" xml:space="preserve"><value>Impostos espanyols (10%)</value></data>
   <data name="Budget_GroupBuffer" xml:space="preserve"><value>Marge de {0}</value></data>
+  <data name="Budget_Permission_Edit_Title" xml:space="preserve"><value>Editar el pressupost</value></data>
+  <data name="Budget_Permission_Edit_Blurb" xml:space="preserve"><value>Editar les partides de les categories de pressupost de l’equip.</value></data>
 </root>

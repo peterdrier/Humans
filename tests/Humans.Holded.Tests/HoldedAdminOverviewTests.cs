@@ -124,7 +124,6 @@ public sealed class HoldedAdminOverviewTests
         calls[1].ByEndpoint["ListLedgerEntriesAsync"].Should().Be(2);
         calls[1].ByEndpoint["GetUsageAsync"].Should().Be(1);
 
-        var summary = await _service.GetSummaryAsync(ct);
     }
 
     [HumansFact]

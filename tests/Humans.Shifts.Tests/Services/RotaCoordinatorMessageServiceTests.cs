@@ -203,7 +203,7 @@ public sealed class RotaCoordinatorMessageServiceTests
     [HumansFact]
     public async Task SendRotaMessageAsync_ReturnsFailure_WhenNoActiveSignups()
     {
-        var rota = MakeRota(out _);
+        var rota = MakeRota();
         _repo.GetRotaAsync(rota.Id, RotaReadShape.View, Arg.Any<CancellationToken>()).Returns(rota);
 
         var result = await CreateSut().SendRotaMessageAsync(rota.Id, Guid.NewGuid(), "hello", includeShifts: true, Xunit.TestContext.Current.CancellationToken);
@@ -221,7 +221,7 @@ public sealed class RotaCoordinatorMessageServiceTests
     public async Task SendRotaMessageAsync_FansOut_OneEmailPerDistinctUser(string language, string expectedCulture)
     {
         using var actorCulture = new CultureScope("fr");
-        var rota = MakeRota(out _);
+        var rota = MakeRota();
         _repo.GetRotaAsync(rota.Id, RotaReadShape.View, Arg.Any<CancellationToken>()).Returns(rota);
 
         var userA = Guid.NewGuid();
@@ -260,7 +260,7 @@ public sealed class RotaCoordinatorMessageServiceTests
     [HumansFact]
     public async Task SendRotaMessageAsync_PersonalisesShiftListPerRecipient()
     {
-        var rota = MakeRota(out _);
+        var rota = MakeRota();
         _repo.GetRotaAsync(rota.Id, RotaReadShape.View, Arg.Any<CancellationToken>()).Returns(rota);
 
         var userA = Guid.NewGuid();
@@ -281,26 +281,26 @@ public sealed class RotaCoordinatorMessageServiceTests
 
         // The shift list is <li> rows inside the built body; assert on that rather than
         // on a captured request, because the builder is real and has no interface to mock.
-        EmailMessage? captured_A = null;
-        EmailMessage? captured_B = null;
+        EmailMessage? capturedA = null;
+        EmailMessage? capturedB = null;
         _ = _emailService.SendAsync(
             Arg.Do<EmailMessage>(m =>
             {
-                if (string.Equals(m.RecipientEmail, "a@example.com", StringComparison.Ordinal)) captured_A = m;
-                else if (string.Equals(m.RecipientEmail, "b@example.com", StringComparison.Ordinal)) captured_B = m;
+                if (string.Equals(m.RecipientEmail, "a@example.com", StringComparison.Ordinal)) capturedA = m;
+                else if (string.Equals(m.RecipientEmail, "b@example.com", StringComparison.Ordinal)) capturedB = m;
             }),
             Arg.Any<CancellationToken>());
 
         await CreateSut().SendRotaMessageAsync(rota.Id, sender, "hello", includeShifts: true, Xunit.TestContext.Current.CancellationToken);
 
-        captured_A.Should().NotBeNull();
-        ShiftLines(captured_A!).Should().HaveCount(2, "userA has 2 distinct shifts on this rota");
-        ShiftLines(captured_A!)[0].Should().Contain("09:00", "earlier shift must come first");
-        ShiftLines(captured_A!)[1].Should().Contain("18:00");
+        capturedA.Should().NotBeNull();
+        ShiftLines(capturedA!).Should().HaveCount(2, "userA has 2 distinct shifts on this rota");
+        ShiftLines(capturedA!)[0].Should().Contain("09:00", "earlier shift must come first");
+        ShiftLines(capturedA!)[1].Should().Contain("18:00");
 
-        captured_B.Should().NotBeNull();
-        ShiftLines(captured_B!).Should().ContainSingle("userB has only one shift on this rota");
-        ShiftLines(captured_B!)[0].Should().Contain("12:00");
+        capturedB.Should().NotBeNull();
+        ShiftLines(capturedB!).Should().ContainSingle("userB has only one shift on this rota");
+        ShiftLines(capturedB!)[0].Should().Contain("12:00");
     }
 
     [HumansFact]
@@ -308,7 +308,7 @@ public sealed class RotaCoordinatorMessageServiceTests
     {
         // Reply-To is the sending coordinator while From stays shared (Shifts.md). This
         // section's part is passing the sender's address through as SenderEmail.
-        var rota = MakeRota(out _);
+        var rota = MakeRota();
         _repo.GetRotaAsync(rota.Id, RotaReadShape.View, Arg.Any<CancellationToken>()).Returns(rota);
 
         var userA = Guid.NewGuid();
@@ -333,7 +333,7 @@ public sealed class RotaCoordinatorMessageServiceTests
         var prefix = new string('x', prefixLength);
         var message = prefix + tail;
         var expectedSnippet = prefix + expectedTail;
-        var rota = MakeRota(out _);
+        var rota = MakeRota();
         _repo.GetRotaAsync(rota.Id, RotaReadShape.View, Arg.Any<CancellationToken>()).Returns(rota);
 
         var userA = Guid.NewGuid();
@@ -363,7 +363,7 @@ public sealed class RotaCoordinatorMessageServiceTests
     [HumansFact]
     public async Task SendRotaMessageAsync_SkipsRecipientWithNoEmail_DoesNotFail()
     {
-        var rota = MakeRota(out _);
+        var rota = MakeRota();
         _repo.GetRotaAsync(rota.Id, RotaReadShape.View, Arg.Any<CancellationToken>()).Returns(rota);
 
         var withEmail = Guid.NewGuid();
@@ -382,7 +382,7 @@ public sealed class RotaCoordinatorMessageServiceTests
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
                 new Dictionary<Guid, UserInfo> { [sender] = MakeUserInfoWithEmail(sender, "sender@example.com", "Sender") }));
         _userService.GetUserInfosAsync(
-            Arg.Is<IEnumerable<Guid>>(c => c.Contains(withEmail) || c.Contains(noEmail)),
+            Arg.Is<IEnumerable<Guid>>(c => c.Intersect(new[] { withEmail, noEmail }).Any()),
             Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
                 new Dictionary<Guid, UserInfo>
@@ -404,7 +404,7 @@ public sealed class RotaCoordinatorMessageServiceTests
     [Xunit.InlineData(EnqueueFailure.Cancellation)]
     public async Task SendRotaMessageAsync_IsolatesPerRecipientFailures_AndStillAudits(EnqueueFailure failure)
     {
-        var rota = MakeRota(out _);
+        var rota = MakeRota();
         _repo.GetRotaAsync(rota.Id, RotaReadShape.View, Arg.Any<CancellationToken>()).Returns(rota);
 
         var userA = Guid.NewGuid();
@@ -451,7 +451,7 @@ public sealed class RotaCoordinatorMessageServiceTests
     [Xunit.InlineData(EnqueueFailure.Cancellation)]
     public async Task SendRotaMessageAsync_ReturnsFailure_WhenAllRecipientEnqueuesThrow(EnqueueFailure failure)
     {
-        var rota = MakeRota(out _);
+        var rota = MakeRota();
         _repo.GetRotaAsync(rota.Id, RotaReadShape.View, Arg.Any<CancellationToken>()).Returns(rota);
 
         var userA = Guid.NewGuid();
@@ -779,7 +779,7 @@ public sealed class RotaCoordinatorMessageServiceTests
             .Returns([rota1, rota2]);
 
         _userService.GetUserInfosAsync(
-            Arg.Is<IEnumerable<Guid>>(c => c.Contains(userA) && c.Contains(userB)),
+            Arg.Is<IEnumerable<Guid>>(c => c.ToHashSet().IsSupersetOf(new[] { userA, userB })),
             Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
                 new Dictionary<Guid, UserInfo>
@@ -797,7 +797,7 @@ public sealed class RotaCoordinatorMessageServiceTests
     [HumansFact]
     public async Task SendRotaMessageAsync_DropsShiftSection_WhenIncludeShiftsCleared()
     {
-        var rota = MakeRota(out _);
+        var rota = MakeRota();
         _repo.GetRotaAsync(rota.Id, RotaReadShape.View, Arg.Any<CancellationToken>()).Returns(rota);
 
         var userA = Guid.NewGuid();
@@ -987,9 +987,9 @@ public sealed class RotaCoordinatorMessageServiceTests
         return rota;
     }
 
-    private Rota MakeRota(out EventSettings es)
+    private Rota MakeRota()
     {
-        es = new EventSettings
+        var es = new EventSettings
         {
             Id = Guid.NewGuid(),
             IsShiftBrowsingOpen = true,
@@ -1086,7 +1086,7 @@ public sealed class RotaCoordinatorMessageServiceTests
         }
 
         _userService.GetUserInfosAsync(
-            Arg.Is<IEnumerable<Guid>>(c => c.Distinct().Count() == 1 && c.Contains(sender)),
+            Arg.Is<IEnumerable<Guid>>(c => c.ToHashSet().SetEquals(new[] { sender })),
             Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
                 new Dictionary<Guid, UserInfo> { [sender] = senderInfo }));

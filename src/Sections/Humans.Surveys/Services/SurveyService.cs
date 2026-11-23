@@ -648,7 +648,7 @@ internal sealed class SurveyService(
                 var requestedImages = question.InformationImages ?? [];
                 if (requestedImages.Count > MaxInformationImages)
                 {
-                    return await RejectAsync(new("Surveys_Validation_ImagesLimit",
+                    return await RejectImagesAsync(new("Surveys_Validation_ImagesLimit",
                         $"An Information item can have at most {MaxInformationImages} images.", MaxInformationImages));
                 }
 
@@ -658,7 +658,7 @@ internal sealed class SurveyService(
                     if (requested.Upload is { } upload)
                     {
                         var imageError = ValidateInformationImage(upload);
-                        if (imageError is not null) return await RejectAsync(imageError);
+                        if (imageError is not null) return await RejectImagesAsync(imageError);
                         var fileName = DisplayFileName(upload.FileName);
                         // Replacements get a fresh key so a failed database save cannot delete or
                         // overwrite the still-authoritative existing file.
@@ -691,7 +691,7 @@ internal sealed class SurveyService(
                         continue;
                     }
 
-                    return await RejectAsync(new("Surveys_Validation_ImageRequired",
+                    return await RejectImagesAsync(new("Surveys_Validation_ImageRequired",
                         "Select an image file for every image row. " +
                         "If a previous save failed, select the file again."));
                 }
@@ -721,7 +721,7 @@ internal sealed class SurveyService(
             input with { Questions = preparedQuestions },
             newStoragePaths);
 
-        async Task<PreparedInformationImages> RejectAsync(SurveyAuthoringError error)
+        async Task<PreparedInformationImages> RejectImagesAsync(SurveyAuthoringError error)
         {
             await DeleteBestEffortAsync(newStoragePaths, CancellationToken.None);
             return new(input, [], error);

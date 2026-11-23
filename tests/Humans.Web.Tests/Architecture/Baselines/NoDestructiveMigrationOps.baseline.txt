@@ -810,3 +810,15 @@ src/Sections/Humans.Tickets/Data/Migrations/20261121183331_TicketRulesFromLegalR
 # treasuries have synced (or one has, beside the legacy unscoped row). Rolling back means deleting
 # the BankMovements rows first — safe, the state is re-derived by the next sync.
 src/Sections/Humans.Holded/Data/Migrations/20261121152423_HoldedSyncStateScope.cs:DropPrimaryKey(name=PK_holded_sync_states,table=holded_sync_states)#1
+
+# Tickets: ticket_resale_offers.DirectedEmail, DirectedTokenHash and IX_ticket_resale_offers_DirectedTokenHash
+# (the single directed-resale invitation: address and token hash, both nullable). Replaced by the
+# directed_invites jsonb list in peterdrier/Humans#2550, which has merged and carries every invitation.
+# Evidence: pickaxe git log -S 'DirectedTokenHash' and -S 'DirectedEmail =' over origin/main shows only
+# the 2027 checkout work (from cbc8d82c4 through #2550). After #2550 nothing reads them and nothing
+# writes them except erasure, which this PR also removes. There is no ticketing data in production yet.
+# Approval: Peter, 2026-11-21, chose "Yes, drop them in a follow-up" on the project thread's card
+# "Approve dropping the two retired resale invite columns in a separate PR?" (TICKETS-14).
+src/Sections/Humans.Tickets/Data/Migrations/20261121235220_DropRetiredResaleInviteColumns.cs:DropIndex(name=IX_ticket_resale_offers_DirectedTokenHash,table=ticket_resale_offers)#1
+src/Sections/Humans.Tickets/Data/Migrations/20261121235220_DropRetiredResaleInviteColumns.cs:DropColumn(name=DirectedEmail,table=ticket_resale_offers)#1
+src/Sections/Humans.Tickets/Data/Migrations/20261121235220_DropRetiredResaleInviteColumns.cs:DropColumn(name=DirectedTokenHash,table=ticket_resale_offers)#1

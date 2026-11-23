@@ -1,6 +1,5 @@
 using AwesomeAssertions;
 using Humans.Users.Data;
-using Humans.Application.Services.Users.AccountLifecycle;
 using Humans.AuditLog.Contracts;
 using Humans.Auth.Contracts;
 using Humans.Base.Interfaces;

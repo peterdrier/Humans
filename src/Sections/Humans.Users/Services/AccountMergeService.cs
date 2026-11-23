@@ -51,7 +51,7 @@ internal sealed class AccountMergeService(
         {
             ids.Add(r.TargetUserId);
             ids.Add(r.SourceUserId);
-            if (r.ResolvedByUserId is Guid resolvedBy) ids.Add(resolvedBy);
+            if (r.ResolvedByUserId is { } resolvedBy) ids.Add(resolvedBy);
         }
         return ids;
     }
@@ -97,7 +97,7 @@ internal sealed class AccountMergeService(
 
             // 2. Settle the pending email the row-collapse missed. A missing or consumed one is
             //    the desired end state, so the result is ignored.
-            if (pendingEmailIdToVerify is Guid pendingId)
+            if (pendingEmailIdToVerify is { } pendingId)
                 await userRepository.MarkUserEmailVerifiedAsync(pendingId, now, ct);
 
             // 3. Tombstone the archived account LAST: the observable commit point. No wipe —
@@ -163,7 +163,7 @@ internal sealed class AccountMergeService(
             request.Status,
             request.CreatedAt,
             request.ResolvedAt,
-            request.ResolvedByUserId is Guid id && users.TryGetValue(id, out var rb)
+            request.ResolvedByUserId is { } id && users.TryGetValue(id, out var rb)
                 ? rb.BurnerName
                 : null,
             request.AdminNotes);

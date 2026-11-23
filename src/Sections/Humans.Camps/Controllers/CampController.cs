@@ -28,7 +28,7 @@ internal sealed class CampController(
     IStringLocalizer<SharedResource> sharedLocalizer)
     : HumansCampControllerBase(userService, campService, authorizationService)
 {
-    private readonly CampDirectoryPageBuilder directoryPageBuilder = new(campService, campRoleService);
+    private readonly CampDirectoryPageBuilder _directoryPageBuilder = new(campService, campRoleService);
     private readonly ICampManagement _campService = campService;
     private readonly IUserService _userService = userService;
     private readonly IClock _clock = clock;
@@ -45,7 +45,7 @@ internal sealed class CampController(
         }
 
         var user = await GetCurrentUserInfoAsync(ct);
-        var (viewModel, pendingCount) = await directoryPageBuilder.BuildAsync(user, filters, ct);
+        var (viewModel, pendingCount) = await _directoryPageBuilder.BuildAsync(user, filters, ct);
         ViewBag.PendingCount = pendingCount;
 
         return View(viewModel);
