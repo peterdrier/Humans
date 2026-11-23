@@ -271,7 +271,6 @@ public class ServiceTeamOrdersTests
     [HumansFact]
     public async Task GetIndexDataAsync_privileged_reader_lists_departments_it_does_not_coordinate()
     {
-        var viewerId = Guid.NewGuid();
         var otherDeptId = Guid.NewGuid();
         _teams.GetTeamsAsync(Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, TeamInfo>

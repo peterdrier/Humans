@@ -1373,7 +1373,7 @@ public sealed class CampaignServiceTests
         // Campaign A: both source and target hold a grant -> target's survives.
         // Campaign B: only source holds a grant -> it moves to target.
         var campaignA = await SeedActiveCampaignWithCodesAsync(["A-SRC", "A-TGT"]);
-        var campaignB = await SeedActiveCampaignWithCodesAsync(["B-SRC"]);
+        await SeedActiveCampaignWithCodesAsync(["B-SRC"]);
         var source = SeedUser(displayName: "Source");
         var target = SeedUser(displayName: "Target");
         await SaveAllAsync(Xunit.TestContext.Current.CancellationToken);

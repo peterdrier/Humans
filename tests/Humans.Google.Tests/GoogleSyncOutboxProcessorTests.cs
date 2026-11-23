@@ -378,7 +378,7 @@ public class GoogleSyncOutboxProcessorTests : IDisposable
     public async Task ProcessQueuedAsync_WithoutCredentials_LeavesEventsPending()
     {
         _googleClient.IsConfigured.Returns(false);
-        var outboxEvent = await SeedOutboxEventAsync(GoogleSyncOutboxEventTypes.AddUserToTeamResources);
+        await SeedOutboxEventAsync(GoogleSyncOutboxEventTypes.AddUserToTeamResources);
         await _processor.ProcessQueuedAsync(Xunit.TestContext.Current.CancellationToken);
 
         var pending = await _dbContext.GoogleSyncOutboxEvents

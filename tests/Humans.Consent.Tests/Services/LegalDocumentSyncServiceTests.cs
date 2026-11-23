@@ -102,7 +102,7 @@ public sealed class LegalDocumentSyncServiceTests : ConsentTestHarness
         using var shutdown = new CancellationTokenSource();
         StubActiveUser();
         var first = await SeedDocumentAsync("First", "first/", "old");
-        var next = await SeedDocumentAsync("Next", "next/", "old");
+        await SeedDocumentAsync("Next", "next/", "old");
         StubGitHubFolder("first/", "First content", "new-first", "First update");
         StubGitHubFolder("next/", "Next content", "new-next", "Next update");
         _audit.LogAsync(ConsentAuditActions.LegalDocumentVersionPublished, "LegalDocument", first.Id,

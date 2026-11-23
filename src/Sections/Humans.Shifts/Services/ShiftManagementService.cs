@@ -553,7 +553,6 @@ internal sealed class ShiftManagementService(
         if (confirmedCount > 0)
             return RefuseDeletion(shiftId, "Shifts_Delete_ConfirmedSignups", confirmedCount);
 
-        var rotaId = shift.RotaId;
         var removedSignups = shift.ShiftSignups.ToList();
 
         await repo.DeleteShiftCascadeAsync(shiftId);
