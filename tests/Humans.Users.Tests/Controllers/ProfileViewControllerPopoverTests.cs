@@ -1,4 +1,3 @@
-using Humans.Consent.Contracts;
 using Humans.Users.Tests.Infrastructure;
 using Humans.Users.Controllers;
 using Humans.Users.Services;
@@ -31,8 +30,6 @@ namespace Humans.Users.Tests.Controllers;
 
 public class ProfileViewControllerPopoverTests
 {
-    private readonly Dictionary<Guid, ConsentReviewInfo> _reviews = [];
-    private readonly IConsentService _consentService;
     private readonly IUserManagement _userService = Substitute.For<IUserManagement>();
     private readonly IUserEmailService _userEmailService = Substitute.For<IUserEmailService>();
     private readonly IProfilePictureService _profilePictureService = Substitute.For<IProfilePictureService>();
@@ -46,7 +43,6 @@ public class ProfileViewControllerPopoverTests
 
     public ProfileViewControllerPopoverTests()
     {
-        _consentService = ConsentReviewStubs.Create(_reviews);
         var userStore = Substitute.For<IUserStore<User>>();
         var userManager = Substitute.For<UserManager<User>>(
             userStore, null, null, null, null, null, null, null, null);
