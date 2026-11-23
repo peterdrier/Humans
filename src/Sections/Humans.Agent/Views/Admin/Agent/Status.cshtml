@@ -153,7 +153,7 @@
 <div class="card mb-3">
     <div class="card-header">Anthropic balance</div>
     <div class="card-body">
-        @if (report.Balance.BalanceUsd is decimal bal)
+        @if (report.Balance.BalanceUsd is { } bal)
         {
             <p class="mb-0 fs-4">@Usd(bal)</p>
         }

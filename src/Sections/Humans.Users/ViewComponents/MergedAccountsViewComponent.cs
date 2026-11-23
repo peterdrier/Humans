@@ -21,7 +21,7 @@ public sealed class MergedAccountsViewComponent(IUserService userService) : View
         if (info is null) return Content(string.Empty);
 
         var wanted = new HashSet<Guid>(info.MergedUserIds);
-        if (info.MergedToUserId is Guid target) wanted.Add(target);
+        if (info.MergedToUserId is { } target) wanted.Add(target);
         if (wanted.Count == 0) return Content(string.Empty);
 
         // Filtering the warmed snapshot costs no query, and the rows must stay raw.
@@ -37,7 +37,7 @@ public sealed class MergedAccountsViewComponent(IUserService userService) : View
 
         return View("Default", new MergedAccountsViewModel
         {
-            MergedInto = info.MergedToUserId is Guid into ? Row(into) : null,
+            MergedInto = info.MergedToUserId is { } into ? Row(into) : null,
             MergedAt = info.MergedAt?.ToDateTimeUtc(),
             MergedIn = info.MergedUserIds.Select(Row).OrderBy(r => r.MergedAt).ToList(),
         });

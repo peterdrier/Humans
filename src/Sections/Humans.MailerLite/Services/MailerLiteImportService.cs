@@ -322,7 +322,7 @@ internal sealed class MailerLiteImportService(
     private static (IReadOnlyList<SubscriberDecision> ToProcess, int Throttled) ApplyThrottle(
         IReadOnlyList<SubscriberDecision> decisions, int? maxPerOutcome)
     {
-        if (maxPerOutcome is not int limit || limit <= 0)
+        if (maxPerOutcome is not { } limit || limit <= 0)
             return (decisions, 0);
 
         var counts = new Dictionary<SubscriberOutcome, int>();

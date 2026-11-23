@@ -6,7 +6,7 @@
         <i class="fa-solid fa-code-merge me-2"></i>
         This account is a <strong>merge tombstone</strong> — it was folded into
         <vc:human user-id="@Model.MergedInto.UserId" link="Admin" raw="true" popover="false" />
-        @if (Model.MergedAt is DateTime mergedAt)
+        @if (Model.MergedAt is { } mergedAt)
         {
             <text> on @mergedAt.ToString("g") UTC</text>
         }
@@ -24,7 +24,7 @@
             {
                 <li>
                     <vc:human user-id="@account.UserId" link="Admin" raw="true" popover="false" />
-                    @if (account.MergedAt is DateTime at)
+                    @if (account.MergedAt is { } at)
                     {
                         <text> — @at.ToString("g") UTC</text>
                     }
