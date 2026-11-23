@@ -177,7 +177,7 @@ internal sealed class EmailOutboxService(
 
         return messages
             .Where(m => !EmailTestAddress.IsTestAddress(m.RecipientEmail))
-            .GroupBy(m => (Date: m.SentAt!.Value.InUtc().Date, m.TemplateName))
+            .GroupBy(m => (m.SentAt!.Value.InUtc().Date, m.TemplateName))
             .Where(g => g.Key.Date != today && !existingKeys.Contains((g.Key.Date, g.Key.TemplateName)))
             .Select(g => new EmailDailySendCount
             {

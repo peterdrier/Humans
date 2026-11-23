@@ -2599,7 +2599,7 @@ public class SepaBankBookingTests
     /// <summary>The live chart of accounts, as one owed amount per creditor account.</summary>
     private void SeedOwed(decimal owed, params (int Account, decimal Owed)[] others) =>
         _feed.ListAccountingAccountsAsync(Arg.Any<CancellationToken>()).Returns(
-            others.Prepend((Account: Account, Owed: owed))
+            others.Prepend((Account, Owed: owed))
                 .Select(a => new HoldedChartAccountInfo(
                     a.Account, "Creditor", null, null, false, -a.Owed))
                 .ToList());
