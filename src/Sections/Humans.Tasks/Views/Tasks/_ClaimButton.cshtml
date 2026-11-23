@@ -1,0 +1,10 @@
+@* One claim form: "I'll do this", or "Ask to join" when a manager has to approve. *@
+@model ClaimButtonModel
+
+<form action="@Url.Action("Claim", "Tasks", new { id = Model.Task.Id })" method="post" class="d-inline">
+    @Html.AntiForgeryToken()
+    <input type="hidden" name="returnUrl" value="@Model.ReturnUrl" />
+    <button type="submit" class="@(Model.Small ? "btn btn-sm" : "btn") @(Model.Primary ? "btn-primary" : "btn-outline-primary")">
+        @(Model.Task.NeedsApproval ? Localizer["Tasks_AskToJoin"] : Localizer["Tasks_Claim"])
+    </button>
+</form>

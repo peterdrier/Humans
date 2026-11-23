@@ -5,6 +5,7 @@
     ViewData["Title"] = task.Title;
     var teamUrl = task.TeamSlug.Length > 0 ? Url.Action("Team", "Tasks", new { slug = task.TeamSlug }) : null;
     var route = new { id = task.Id };
+    var taskUrl = Url.Action("Details", "Tasks", route)!;
     string? DateText(TaskDateInfo? date) => date?.Resolved?.ToDate();
 }
 
@@ -34,6 +35,45 @@
 
 <div class="row g-4">
     <div class="col-lg-8">
+        @if (Model.Place is { } place)
+        {
+            <div class="card mb-4">
+                <div class="card-body d-flex flex-wrap align-items-center gap-3">
+                    @if (place == MyPlace.CanClaim)
+                    {
+                        <div>
+                            @if (task.NeedsApproval)
+                            {
+                                <div>@Localizer["Tasks_Claim_Approval"]</div>
+                                @if (!string.IsNullOrWhiteSpace(task.ApprovalReason))
+                                {
+                                    <div class="text-muted small">@task.ApprovalReason</div>
+                                }
+                            }
+                            else
+                            {
+                                <div>@Localizer["Tasks_Claim_FreeSlot"]</div>
+                            }
+                        </div>
+                        <div class="ms-sm-auto">
+                            <partial name="_ClaimButton" model="new ClaimButtonModel(task, taskUrl, Small: false, Primary: true)" />
+                        </div>
+                    }
+                    else
+                    {
+                        var requested = place == MyPlace.Requested;
+                        <div>
+                            <i class="fa-solid @(requested ? "fa-hourglass-half" : "fa-check") me-2" aria-hidden="true"></i>@(requested ? Localizer["Tasks_Claim_Waiting"] : Localizer["Tasks_YouAreOn"])
+                        </div>
+                        <form action="@Url.Action(requested ? "Withdraw" : "Release", route)" method="post" class="ms-sm-auto">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="returnUrl" value="@taskUrl" />
+                            <button type="submit" class="btn btn-outline-secondary">@(requested ? Localizer["Tasks_Withdraw"] : Localizer["Tasks_Release"])</button>
+                        </form>
+                    }
+                </div>
+            </div>
+        }
         @if (task.Status == TaskItemStatus.Blocked && !string.IsNullOrWhiteSpace(task.BlockedNote))
         {
             <div class="alert alert-warning" role="status"><strong>@Localizer["Tasks_Task_BlockedBy"]</strong> @task.BlockedNote</div>
@@ -45,6 +85,17 @@
         @if (!string.IsNullOrWhiteSpace(task.Description))
         {
             <div class="mb-4">@Html.SanitizedMarkdown(task.Description)</div>
+        }
+
+        @if (Model.Requests.Count > 0)
+        {
+            <div class="card mb-4" id="requests">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h2 class="h5 mb-0">@Localizer["Tasks_Requests_Title"]</h2>
+                    <span class="text-muted small">@Model.Requests.Count</span>
+                </div>
+                <partial name="_Requests" model="new RequestsViewModel(Model.Requests, ShowTask: false, ReturnUrl: taskUrl)" />
+            </div>
         }
 
         <div class="card mb-4">
@@ -81,7 +132,7 @@
                     <form action="@Url.Action("Assign", route)" method="post" class="d-flex flex-wrap gap-2">
                         @Html.AntiForgeryToken()
                         <div class="flex-grow-1">
-                            <vc:human-search field-name="userId" scope="Name" exclude-user-ids="task.Assignments.Where(a => a.IsConfirmed).Select(a => a.UserId).ToList()" placeholder="@Localizer["Tasks_Task_FindPerson"].Value" />
+                            <vc:human-search field-name="userId" scope="Name" exclude-user-ids="task.Assignments.Select(a => a.UserId).ToList()" placeholder="@Localizer["Tasks_Task_FindPerson"].Value" />
                         </div>
                         <button type="submit" class="btn btn-outline-secondary">@Localizer["Tasks_Task_Assign"]</button>
                     </form>

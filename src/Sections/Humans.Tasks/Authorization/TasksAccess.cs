@@ -3,6 +3,7 @@ using Humans.Base.Extensions;
 using Humans.Permissions.Contracts;
 using Humans.Tasks.Contracts;
 using Humans.Tasks.Domain;
+using Humans.Tasks.Models;
 using Humans.Tasks.Services;
 using Humans.Teams.Contracts;
 using Microsoft.AspNetCore.Authorization;
@@ -53,6 +54,16 @@ internal sealed record TasksAccess(Guid UserId, bool SeesAll, IReadOnlySet<Guid>
     /// </summary>
     public bool CanClaim(TaskInfo task) =>
         CanSee(task) && !task.IsFinished && task.OpenSlots > 0 && task.Assignments.All(a => a.UserId != UserId);
+
+    /// <summary>The person's own part in a task, for the buttons a page shows. Null when they have none and cannot claim.</summary>
+    public MyPlace? PlaceOn(TaskInfo task) =>
+        IsConfirmedOn(task) ? MyPlace.Confirmed
+        : HasRequestOn(task) ? MyPlace.Requested
+        : CanClaim(task) ? MyPlace.CanClaim
+        : null;
+
+    public IReadOnlyDictionary<Guid, MyPlace> PlacesOn(IEnumerable<TaskInfo> tasks) =>
+        tasks.Select(t => (t.Id, Place: PlaceOn(t))).Where(p => p.Place is not null).ToDictionary(p => p.Id, p => p.Place!.Value);
 
     /// <summary>Everyone sees a task that is not hidden. A hidden one shows to its managers, the people confirmed on it, and those who see all.</summary>
     public bool CanSee(TaskInfo task) =>

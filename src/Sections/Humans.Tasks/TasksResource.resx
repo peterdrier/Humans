@@ -151,4 +151,32 @@
   <data name="Tasks_Todo_Requests_Title" xml:space="preserve"><value>Task requests waiting</value></data>
   <data name="Tasks_Todo_Requests_Description" xml:space="preserve"><value>{0} has {1} request(s) waiting for your answer.</value><comment>{0} = team name, {1} = number of waiting requests</comment></data>
   <data name="Tasks_Todo_Requests_Action" xml:space="preserve"><value>Answer requests</value></data>
+  <data name="Tasks_Claim" xml:space="preserve"><value>I'll do this</value></data>
+  <data name="Tasks_AskToJoin" xml:space="preserve"><value>Ask to join</value></data>
+  <data name="Tasks_Release" xml:space="preserve"><value>Leave this task</value></data>
+  <data name="Tasks_Withdraw" xml:space="preserve"><value>Withdraw request</value></data>
+  <data name="Tasks_RequestWaiting" xml:space="preserve"><value>Waiting for approval</value></data>
+  <data name="Tasks_YouAreOn" xml:space="preserve"><value>You're on this task</value></data>
+  <data name="Tasks_Claim_Approval" xml:space="preserve"><value>A manager approves who takes this task.</value></data>
+  <data name="Tasks_Claim_FreeSlot" xml:space="preserve"><value>This task has a free slot.</value></data>
+  <data name="Tasks_Claim_Waiting" xml:space="preserve"><value>Your request is waiting for a manager's answer. You'll get an email.</value></data>
+  <data name="Tasks_Requests_Title" xml:space="preserve"><value>Waiting for approval</value></data>
+  <data name="Tasks_Requests_Approve" xml:space="preserve"><value>Approve</value></data>
+  <data name="Tasks_Requests_Decline" xml:space="preserve"><value>Decline</value></data>
+  <data name="Tasks_Requests_Reason" xml:space="preserve"><value>Reason, sent in the email (optional)</value></data>
+  <data name="Tasks_Col_Join" xml:space="preserve"><value>Join</value></data>
+  <data name="Tasks_Col_Free" xml:space="preserve"><value>Free</value></data>
+  <data name="Tasks_List_Open" xml:space="preserve"><value>Open tasks</value></data>
+  <data name="Tasks_Open_Title" xml:space="preserve"><value>Open tasks</value></data>
+  <data name="Tasks_Open_Subtitle" xml:space="preserve"><value>Tasks that still need people, most needed first.</value></data>
+  <data name="Tasks_Open_Slots" xml:space="preserve"><value>Open slots</value></data>
+  <data name="Tasks_Open_Critical" xml:space="preserve"><value>Critical</value></data>
+  <data name="Tasks_Open_Empty" xml:space="preserve"><value>Every task has its people for now.</value></data>
+  <data name="Tasks_Open_NeedsApproval" xml:space="preserve"><value>Needs approval</value></data>
+  <data name="Tasks_Claimed" xml:space="preserve"><value>You're on {0}.</value></data>
+  <data name="Tasks_Requested" xml:space="preserve"><value>You asked to join {0}. A manager will answer.</value></data>
+  <data name="Tasks_Released" xml:space="preserve"><value>You left {0}.</value></data>
+  <data name="Tasks_Withdrawn" xml:space="preserve"><value>Request withdrawn.</value></data>
+  <data name="Tasks_Approved" xml:space="preserve"><value>Request approved.</value></data>
+  <data name="Tasks_Declined" xml:space="preserve"><value>Request declined.</value></data>
 </root>

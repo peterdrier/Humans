@@ -31,7 +31,21 @@ internal sealed class TasksController(
 
         var visible = (await tasks.GetListedTasksAsync(filter.ToScope(), ct)).Where(access.CanSee).OrderBy(t => t.Title, StringComparer.CurrentCultureIgnoreCase).ToList();
         return View(new TaskListViewModel(
-            visible, await EventsAsync(currentEventId: null, ct), filter, await ManagedTeamsAsync(access, currentTeamId: null, ct)));
+            visible, await EventsAsync(currentEventId: null, ct), filter, await ManagedTeamsAsync(access, currentTeamId: null, ct), access.PlacesOn(visible)));
+    }
+
+    [HttpGet("Open")]
+    public async Task<IActionResult> Open(CancellationToken ct)
+    {
+        if (await AccessAsync(ct) is not { } access) return Unauthorized();
+
+        var open = (await tasks.GetListedTasksAsync(scope: null, ct))
+            .Where(access.CanClaim)
+            .OrderBy(t => TaskPriorityOrder.Rank(t.Priority))
+            .ThenBy(t => t.Title, StringComparer.CurrentCultureIgnoreCase)
+            .ToList();
+        return View(new OpenBoardViewModel(
+            open, open.Sum(t => t.OpenSlots), open.Count(t => t.Priority == SlotPriority.Critical), access.PlacesOn(open)));
     }
 
     [HttpGet("Team/{slug}")]
@@ -140,6 +154,36 @@ internal sealed class TasksController(
         await ChangeAsync(id, ct, (task, access) => access.Manages(task),
             (task, access) => tasks.RemoveDependencyAsync(id, dependsOn, access.UserId, ct), "Tasks_DependencyRemoved");
 
+    // Claim, release and withdraw only ever act on the signed-in person, so seeing the task is the whole check; the
+    // service refuses a full, finished or already-held task in words, which a stale page needs more than a 403.
+    [HttpPost("{id:guid}/Claim")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Claim(Guid id, string? returnUrl, CancellationToken ct) =>
+        await ChangeAsync(id, ct, (_, _) => true, (task, access) => tasks.ClaimAsync(id, access.UserId, ct),
+            task => task.NeedsApproval ? "Tasks_Requested" : "Tasks_Claimed", returnUrl);
+
+    [HttpPost("{id:guid}/Release")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Release(Guid id, string? returnUrl, CancellationToken ct) =>
+        await ChangeAsync(id, ct, (_, _) => true, (task, access) => tasks.ReleaseAsync(id, access.UserId, ct), "Tasks_Released", returnUrl);
+
+    [HttpPost("{id:guid}/Withdraw")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Withdraw(Guid id, string? returnUrl, CancellationToken ct) =>
+        await ChangeAsync(id, ct, (_, _) => true, (task, access) => tasks.WithdrawRequestAsync(id, access.UserId, ct), "Tasks_Withdrawn", returnUrl);
+
+    [HttpPost("{id:guid}/Approve")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Approve(Guid id, Guid userId, string? returnUrl, CancellationToken ct) =>
+        await ChangeAsync(id, ct, (task, access) => access.Manages(task),
+            (task, access) => tasks.ApproveRequestAsync(id, userId, access.UserId, ct), "Tasks_Approved", returnUrl);
+
+    [HttpPost("{id:guid}/Decline")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Decline(Guid id, Guid userId, string? reason, string? returnUrl, CancellationToken ct) =>
+        await ChangeAsync(id, ct, (task, access) => access.Manages(task),
+            (task, access) => tasks.DeclineRequestAsync(id, userId, reason, access.UserId, ct), "Tasks_Declined", returnUrl);
+
     [HttpPost("{id:guid}/Delete")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
@@ -160,20 +204,30 @@ internal sealed class TasksController(
     }
 
     /// <summary>The shape of every small write on a task page: find it, check who may, run it, say what happened.</summary>
+    private Task<IActionResult> ChangeAsync(
+        Guid id, CancellationToken ct,
+        Func<TaskInfo, TasksAccess, bool> allowed,
+        Func<TaskInfo, TasksAccess, Task<TaskResult>> change,
+        string successKey,
+        string? returnUrl = null) =>
+        ChangeAsync(id, ct, allowed, change, _ => successKey, returnUrl);
+
+    /// <summary>The message may take the task's title as <c>{0}</c>. A write posted from a list goes back to that list when <paramref name="returnUrl"/> is local.</summary>
     private async Task<IActionResult> ChangeAsync(
         Guid id, CancellationToken ct,
         Func<TaskInfo, TasksAccess, bool> allowed,
         Func<TaskInfo, TasksAccess, Task<TaskResult>> change,
-        string successKey)
+        Func<TaskInfo, string> successKey,
+        string? returnUrl = null)
     {
         if (await AccessAsync(ct) is not { } access) return Unauthorized();
         if (await tasks.GetTaskAsync(id, ct) is not { } task || !access.CanSee(task)) return NotFound();
         if (!allowed(task, access)) return Forbid();
 
         var result = await change(task, access);
-        if (result.Succeeded) SetSuccess(localizer[successKey].Value);
+        if (result.Succeeded) SetSuccess(localizer[successKey(task), task.Title].Value);
         else SetError(result.Refusal!);
-        return RedirectToAction(nameof(Details), new { id });
+        return Url.IsLocalUrl(returnUrl) ? LocalRedirect(returnUrl!) : RedirectToAction(nameof(Details), new { id });
     }
 
     private Task<TasksAccess?> AccessAsync(CancellationToken ct) => TasksAccess.ForAsync(User, permissions, authorization, ct);
@@ -190,7 +244,8 @@ internal sealed class TasksController(
             .ToList();
         var canAdd = access.Manages(team.Id) && team.IsActive && !team.IsSystemTeam;
         return new TeamPageViewModel(
-            team.Id, team.Name, team.Slug, listed, filter, canAdd, addForm, await EventsAsync(addForm.EventId, ct));
+            team.Id, team.Name, team.Slug, listed, filter, canAdd, addForm, await EventsAsync(addForm.EventId, ct),
+            access.PlacesOn(listed), access.Manages(team.Id) ? RequestsOn(onTeam) : []);
     }
 
     private async Task<TaskPageViewModel> TaskPageAsync(
@@ -224,8 +279,17 @@ internal sealed class TasksController(
             editOpen,
             teamChoices,
             canManage ? await EventsAsync(task.EventId, ct) : [],
-            statusForm ?? new StatusForm { Status = task.Status, BlockedNote = task.BlockedNote });
+            statusForm ?? new StatusForm { Status = task.Status, BlockedNote = task.BlockedNote },
+            access.PlaceOn(task),
+            canManage ? RequestsOn([task]) : []);
     }
+
+    /// <summary>Waiting requests on unfinished tasks, oldest first. Home counts the same set.</summary>
+    private static IReadOnlyList<RequestRow> RequestsOn(IEnumerable<TaskInfo> onTasks) =>
+        [.. onTasks.Where(t => !t.IsFinished)
+            .SelectMany(t => t.Assignments.Where(a => !a.IsConfirmed).Select(a => (Task: t, Assignment: a)))
+            .OrderBy(r => r.Assignment.CreatedAt)
+            .Select(r => new RequestRow(r.Task, r.Assignment.UserId))];
 
     /// <summary>Teams that can hold tasks and that the person manages, plus the task's own team so the form never drops it.</summary>
     private async Task<IReadOnlyList<TeamChoice>> ManagedTeamsAsync(TasksAccess access, Guid? currentTeamId, CancellationToken ct) =>

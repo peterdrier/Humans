@@ -151,4 +151,32 @@
   <data name="Tasks_Todo_Requests_Title" xml:space="preserve"><value>Openstaande taakaanvragen</value></data>
   <data name="Tasks_Todo_Requests_Description" xml:space="preserve"><value>{0} heeft {1} aanvraag/aanvragen die op jouw antwoord wachten.</value></data>
   <data name="Tasks_Todo_Requests_Action" xml:space="preserve"><value>Aanvragen beantwoorden</value></data>
+  <data name="Tasks_Claim" xml:space="preserve"><value>Ik doe dit</value></data>
+  <data name="Tasks_AskToJoin" xml:space="preserve"><value>Vraag om mee te doen</value></data>
+  <data name="Tasks_Release" xml:space="preserve"><value>Verlaat deze taak</value></data>
+  <data name="Tasks_Withdraw" xml:space="preserve"><value>Verzoek intrekken</value></data>
+  <data name="Tasks_RequestWaiting" xml:space="preserve"><value>Wacht op goedkeuring</value></data>
+  <data name="Tasks_YouAreOn" xml:space="preserve"><value>Je zit op deze taak</value></data>
+  <data name="Tasks_Claim_Approval" xml:space="preserve"><value>Een beheerder keurt goed wie deze taak oppakt.</value></data>
+  <data name="Tasks_Claim_FreeSlot" xml:space="preserve"><value>Deze taak heeft een vrije plek.</value></data>
+  <data name="Tasks_Claim_Waiting" xml:space="preserve"><value>Je verzoek wacht op antwoord van een beheerder. Je krijgt een e-mail.</value></data>
+  <data name="Tasks_Requests_Title" xml:space="preserve"><value>Wacht op goedkeuring</value></data>
+  <data name="Tasks_Requests_Approve" xml:space="preserve"><value>Goedkeuren</value></data>
+  <data name="Tasks_Requests_Decline" xml:space="preserve"><value>Afwijzen</value></data>
+  <data name="Tasks_Requests_Reason" xml:space="preserve"><value>Reden, wordt meegestuurd in de e-mail (optioneel)</value></data>
+  <data name="Tasks_Col_Join" xml:space="preserve"><value>Meedoen</value></data>
+  <data name="Tasks_Col_Free" xml:space="preserve"><value>Vrij</value></data>
+  <data name="Tasks_List_Open" xml:space="preserve"><value>Open taken</value></data>
+  <data name="Tasks_Open_Title" xml:space="preserve"><value>Open taken</value></data>
+  <data name="Tasks_Open_Subtitle" xml:space="preserve"><value>Taken waar nog mensen voor nodig zijn, de dringendste eerst.</value></data>
+  <data name="Tasks_Open_Slots" xml:space="preserve"><value>Vrije plekken</value></data>
+  <data name="Tasks_Open_Critical" xml:space="preserve"><value>Kritiek</value></data>
+  <data name="Tasks_Open_Empty" xml:space="preserve"><value>Op dit moment hebben alle taken hun mensen.</value></data>
+  <data name="Tasks_Open_NeedsApproval" xml:space="preserve"><value>Vraagt goedkeuring</value></data>
+  <data name="Tasks_Claimed" xml:space="preserve"><value>Je zit op {0}.</value></data>
+  <data name="Tasks_Requested" xml:space="preserve"><value>Je hebt gevraagd om mee te doen aan {0}. Een beheerder antwoordt.</value></data>
+  <data name="Tasks_Released" xml:space="preserve"><value>Je hebt {0} verlaten.</value></data>
+  <data name="Tasks_Withdrawn" xml:space="preserve"><value>Verzoek ingetrokken.</value></data>
+  <data name="Tasks_Approved" xml:space="preserve"><value>Verzoek goedgekeurd.</value></data>
+  <data name="Tasks_Declined" xml:space="preserve"><value>Verzoek afgewezen.</value></data>
 </root>

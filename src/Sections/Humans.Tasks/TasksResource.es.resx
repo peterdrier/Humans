@@ -151,4 +151,32 @@
   <data name="Tasks_Todo_Requests_Title" xml:space="preserve"><value>Solicitudes de tareas pendientes</value></data>
   <data name="Tasks_Todo_Requests_Description" xml:space="preserve"><value>{0} tiene {1} solicitud(es) esperando tu respuesta.</value></data>
   <data name="Tasks_Todo_Requests_Action" xml:space="preserve"><value>Responder solicitudes</value></data>
+  <data name="Tasks_Claim" xml:space="preserve"><value>Me encargo</value></data>
+  <data name="Tasks_AskToJoin" xml:space="preserve"><value>Pedir unirme</value></data>
+  <data name="Tasks_Release" xml:space="preserve"><value>Dejar esta tarea</value></data>
+  <data name="Tasks_Withdraw" xml:space="preserve"><value>Retirar la solicitud</value></data>
+  <data name="Tasks_RequestWaiting" xml:space="preserve"><value>Esperando aprobación</value></data>
+  <data name="Tasks_YouAreOn" xml:space="preserve"><value>Estás en esta tarea</value></data>
+  <data name="Tasks_Claim_Approval" xml:space="preserve"><value>Un responsable aprueba quién se encarga de esta tarea.</value></data>
+  <data name="Tasks_Claim_FreeSlot" xml:space="preserve"><value>Esta tarea tiene una plaza libre.</value></data>
+  <data name="Tasks_Claim_Waiting" xml:space="preserve"><value>Tu solicitud espera la respuesta de un responsable. Recibirás un correo.</value></data>
+  <data name="Tasks_Requests_Title" xml:space="preserve"><value>Esperando aprobación</value></data>
+  <data name="Tasks_Requests_Approve" xml:space="preserve"><value>Aprobar</value></data>
+  <data name="Tasks_Requests_Decline" xml:space="preserve"><value>Rechazar</value></data>
+  <data name="Tasks_Requests_Reason" xml:space="preserve"><value>Motivo, se envía en el correo (opcional)</value></data>
+  <data name="Tasks_Col_Join" xml:space="preserve"><value>Unirse</value></data>
+  <data name="Tasks_Col_Free" xml:space="preserve"><value>Libres</value></data>
+  <data name="Tasks_List_Open" xml:space="preserve"><value>Tareas abiertas</value></data>
+  <data name="Tasks_Open_Title" xml:space="preserve"><value>Tareas abiertas</value></data>
+  <data name="Tasks_Open_Subtitle" xml:space="preserve"><value>Tareas que aún necesitan gente, las más urgentes primero.</value></data>
+  <data name="Tasks_Open_Slots" xml:space="preserve"><value>Plazas libres</value></data>
+  <data name="Tasks_Open_Critical" xml:space="preserve"><value>Críticas</value></data>
+  <data name="Tasks_Open_Empty" xml:space="preserve"><value>Por ahora todas las tareas tienen a su gente.</value></data>
+  <data name="Tasks_Open_NeedsApproval" xml:space="preserve"><value>Requiere aprobación</value></data>
+  <data name="Tasks_Claimed" xml:space="preserve"><value>Estás en {0}.</value></data>
+  <data name="Tasks_Requested" xml:space="preserve"><value>Has pedido unirte a {0}. Un responsable te responderá.</value></data>
+  <data name="Tasks_Released" xml:space="preserve"><value>Has dejado {0}.</value></data>
+  <data name="Tasks_Withdrawn" xml:space="preserve"><value>Solicitud retirada.</value></data>
+  <data name="Tasks_Approved" xml:space="preserve"><value>Solicitud aprobada.</value></data>
+  <data name="Tasks_Declined" xml:space="preserve"><value>Solicitud rechazada.</value></data>
 </root>
