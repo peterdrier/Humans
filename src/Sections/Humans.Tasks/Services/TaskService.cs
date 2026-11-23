@@ -3,6 +3,7 @@ using Humans.Base.Authorization;
 using Humans.Base.Extensions;
 using Humans.Gdpr.Contracts;
 using Humans.Settings.Contracts;
+using Humans.Tasks.Contracts;
 using Humans.Tasks.Data;
 using Humans.Tasks.Domain;
 using Humans.Teams.Contracts;
@@ -17,7 +18,7 @@ namespace Humans.Tasks.Services;
 /// <see cref="Authorization.TasksAccess"/>. Team names come from <see cref="ITeamService"/> and event names and gate
 /// opening dates from <see cref="ISettingsService"/>.
 /// </summary>
-internal sealed class TaskService(
+internal sealed partial class TaskService(
     ITaskRepository repository,
     ITeamService teams,
     ISettingsService settings,
@@ -25,7 +26,7 @@ internal sealed class TaskService(
     IAuditLogService audit,
     IClock clock,
     IStringLocalizer<TasksResource> localizer,
-    ILogger<TaskService> logger) : ITaskService, IUserDataContributor, IUserMerge
+    ILogger<TaskService> logger) : ITaskService, ITasksWrite, IUserDataContributor, IUserMerge
 {
     internal const string ExportSection = "Tasks";
     internal const string AuditEntityType = "TaskItem";
@@ -340,20 +341,22 @@ internal sealed class TaskService(
         return team is { IsActive: true, IsSystemTeam: false } ? null : "Tasks_Refusal_NoTeam";
     }
 
-    private string? InputRefusal(TaskInput input)
+    private string? InputRefusal(TaskInput input) => InputRefusals(input).Select(r => r.Key).FirstOrDefault();
+
+    /// <summary>Every rule the input breaks, in the order they are checked. Field names are the bulk payload's.</summary>
+    private IEnumerable<(string Field, string Key)> InputRefusals(TaskInput input)
     {
         var title = input.Title?.Trim();
         if (string.IsNullOrEmpty(title))
-            return "Tasks_Refusal_NoTitle";
-        if (title.Length > TitleMaxLength)
-            return "Tasks_Refusal_TitleTooLong";
+            yield return ("title", "Tasks_Refusal_NoTitle");
+        else if (title.Length > TitleMaxLength)
+            yield return ("title", "Tasks_Refusal_TitleTooLong");
         if (input.Description is { Length: > DescriptionMaxLength })
-            return "Tasks_Refusal_DescriptionTooLong";
+            yield return ("description", "Tasks_Refusal_DescriptionTooLong");
         if (input.SlotCount < 1)
-            return "Tasks_Refusal_NoSlots";
+            yield return ("slotCount", "Tasks_Refusal_NoSlots");
         if (input.ApprovalReason is { } reason && input.NeedsApproval && reason.Trim().Length > ReasonMaxLength)
-            return "Tasks_Refusal_ReasonTooLong";
-        return null;
+            yield return ("approvalReason", "Tasks_Refusal_ReasonTooLong");
     }
 
     /// <summary>An event is picked only when new or changed: a task keeps an event that has since been withdrawn.</summary>

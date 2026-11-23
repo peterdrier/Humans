@@ -32,10 +32,11 @@ Hidden tasks (and every task of a hidden team) show only to managers, people on 
 | `/Tasks/Admin` | 1 | Read-only per-team counts and every blocked task with its note |
 | `/Tasks/Open` | 3 | Open-tasks board: free slots, most needed first, claim per row |
 | `/Tasks/Timeline` | 5 | Tasks over time, dependency graph |
+| `POST /api/backdoor/tasks/bulk` | 2 | Backdoor key; loads a whole set of tasks, or checks it with `dryRun` |
 
 ## Later PRs
 
-- **PR 2, bulk load**: one Backdoor endpoint takes a set of tasks (payload-local keys, dependencies by key, dates fixed or relative). All or nothing, dry-run flag, caller needs `Tasks.Manage` on every team. No people, no status.
+- **PR 2, bulk load** (built): `POST /api/backdoor/tasks/bulk` takes a set of tasks (payload-local keys, dependencies by key, dates fixed, a day number, or a date Tasks converts). All or nothing, dry-run flag, every problem listed, caller needs `Tasks.Manage` on every team. No people, no status. Loading a payload twice makes the tasks twice. The Backdoor opening-up (keys for people with `Tasks.Manage` or `TasksAdmin`) is Peter's and had not landed when this was built.
 - **PR 3, claiming**: claim/release; without approval a claim confirms at once, with it a request (takes no slot) a manager approves or declines (optional reason). Overfilling is allowed. Approved/declined emails (`VolunteerUpdates`); waiting requests in Home's things to do. Being on a task never adds team membership.
 - **PR 4**: tasks card on the team page via a named slot in `Humans.Teams.Contracts` (copied from `ITeamRolesPart`).
 - **PR 5**: timeline and dependency graph.
@@ -46,7 +47,7 @@ Cancel keeps the task, marked cancelled, copyable later. Delete removes it and i
 
 ## Cross-section
 
-Permissions (`Tasks.Manage`), Auth (`TasksAdmin`), Teams (names, slugs), Settings (event, gate day), AuditLog (every change), Gdpr/Users (assignments exported and erased; free text stays; merge keeps one row, confirmed wins). Email, Backdoor, Home arrive in PRs 2-3.
+Permissions (`Tasks.Manage`), Auth (`TasksAdmin`), Teams (names, slugs), Settings (event, gate day), AuditLog (every change), Gdpr/Users (assignments exported and erased; free text stays; merge keeps one row, confirmed wins). Backdoor's bulk-load controller calls `ITasksWrite` (PR 2). Email and Home arrive in PR 3.
 
 ## Not in the first version
 

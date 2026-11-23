@@ -253,6 +253,7 @@ public class EndpointAuthorizationTests
             "BackdoorNotificationsController",
             "BackdoorStoreController",
             "BackdoorSurveysController",
+            "BackdoorTasksController",
         };
 
         var anonymous = AllControllerTypes(includeApiControllers: true)
