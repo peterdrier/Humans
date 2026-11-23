@@ -49,6 +49,7 @@ public class SectionRolesTests
         "GrantsAdmin",
         "SurveysAdmin",
         "RolesAdmin",
+        "TasksAdmin",
     ];
 
     [HumansFact]

@@ -936,4 +936,5 @@
   <data name="Todo_Medical_Title" xml:space="preserve"><value>Anything coordinators should know about your health?</value></data>
   <data name="Todo_Medical_Pending" xml:space="preserve"><value>Optional. Only you and the No-Info Admins can see it.</value></data>
   <data name="Nav_Roles" xml:space="preserve"><value>Roles</value></data>
+  <data name="Nav_Tasks" xml:space="preserve"><value>Tasks</value></data>
 </root>

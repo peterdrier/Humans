@@ -1,0 +1,25 @@
+@* The list of tasks on /Tasks and on a team's page. *@
+@model TaskTableModel
+@using Microsoft.AspNetCore.Html
+
+@{
+    Func<TaskInfo, IHtmlContent> titleCell = @<text><a href="@Url.Action("Details", "Tasks", new { id = item.Id })">@item.Title</a>@if (item.IsEffectivelyHidden) { <i class="fa-solid fa-eye-slash text-muted ms-2" title="@Localizer["Tasks_Hidden"]" aria-hidden="true"></i><span class="visually-hidden">@Localizer["Tasks_Hidden"]</span> }@if (item.IsWaiting) { <span class="text-muted small ms-2"><i class="fa-solid fa-hourglass-half" aria-hidden="true"></i> @Localizer["Tasks_WaitingOn"]</span> }</text>;
+    Func<TaskInfo, IHtmlContent> statusCell = @<status-badge value="@item.Status" localizer="@Localizer" />;
+    Func<TaskInfo, IHtmlContent> priorityCell = @<text>@if (item.Priority != SlotPriority.None) { <status-badge value="@item.Priority" /> }</text>;
+    var builder = TableModel.For(Model.Tasks)
+        .Template(Localizer["Tasks_Col_Task"].Value, titleCell, null, t => t.Title);
+    if (Model.ShowTeam)
+    {
+        builder = builder.Link(Localizer["Tasks_Col_Team"].Value, t => t.TeamName,
+            t => t.TeamSlug.Length > 0 ? Url.Action("Team", "Tasks", new { slug = t.TeamSlug }) : null, c => c.SelectFilter());
+    }
+    var table = builder
+        .Template(Localizer["Tasks_Col_Status"].Value, statusCell, c => c.SelectFilter(), t => (int)t.Status)
+        .Template(Localizer["Tasks_Col_Priority"].Value, priorityCell, c => c.SelectFilter(), t => TaskPriorityOrder.Rank(t.Priority))
+        .Column(Localizer["Tasks_Col_Due"].Value, t => t.Due?.Resolved, c => c.Date())
+        .Column(Localizer["Tasks_Col_Slots"].Value, t => Localizer["Tasks_Task_SlotsOf", t.ConfirmedCount, t.SlotCount].Value, c => c.End().NoSort())
+        .Empty(Localizer["Tasks_List_Empty"].Value)
+        .Build();
+}
+
+<partial name="_Table" model="table" />

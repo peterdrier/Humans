@@ -177,6 +177,47 @@ A nudge from a ticketing platform to re-read it. The truth always comes from tha
 **TicketTailor order** / **TicketTailor attendee** (retired):
 The 2026 records synced in from TicketTailor. Kept as history; nothing new is built on them.
 
+## Tasks
+
+> From the 2026-11-22 Tasks design. Code uses these words; screen wording stays within `memory/product/humans-terminology.md`.
+
+**Task**:
+A piece of work with an end. In code the type is `TaskItem`, because `Task` is taken by .NET.
+
+**Team** (of a task):
+What a task belongs to. The screen never says "owner", which reads as a person.
+
+**Slot**:
+One person needed. A task with 4 slots needs 4 people.
+
+**Assign / unassign**:
+A manager puts a person on a task, or takes them off.
+
+**Claim**:
+A person takes a free slot themselves. The button says something like "I'll do this".
+
+**Release**:
+A person gives their own slot back.
+
+**Needs approval**:
+A claim on this task waits for a manager's answer. `NeedsApproval` in code.
+
+**Request**:
+A claim that is waiting for that answer. A manager approves or declines it.
+
+**Priority** (of a task):
+How much the task matters. Same levels as roles.
+_Avoid_: criticality
+
+**Blocked**:
+A status picked by hand: the task is held up by something outside, such as a permit.
+
+**Waiting on**:
+Shown automatically when a task this one depends on is not finished.
+
+**Manager** (of a task):
+Anyone who holds `Tasks.Manage` for the task's team. Not Teams' sub-team manager.
+
 ## Flagged ambiguities
 
 - The same concept has three names across docs and must converge here:
