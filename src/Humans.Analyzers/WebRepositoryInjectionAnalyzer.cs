@@ -19,7 +19,7 @@ public sealed class WebRepositoryInjectionAnalyzer : DiagnosticAnalyzer
     public const string DiagnosticId = "HUM0014";
 
     private const string ControllerBaseFullName = "Microsoft.AspNetCore.Mvc.ControllerBase";
-    private const string IRepositoryFullName = "Humans.Base.Interfaces.Repositories.IRepository";
+    private const string RepositoryInterfaceFullName = "Humans.Base.Interfaces.Repositories.IRepository";
 
     private static readonly LocalizableString Title =
         "Controller injects a repository directly";
@@ -51,7 +51,7 @@ public sealed class WebRepositoryInjectionAnalyzer : DiagnosticAnalyzer
 
     private static void OnCompilationStart(CompilationStartAnalysisContext context)
     {
-        var repositoryMarker = context.Compilation.GetTypeByMetadataName(IRepositoryFullName);
+        var repositoryMarker = context.Compilation.GetTypeByMetadataName(RepositoryInterfaceFullName);
         if (repositoryMarker is null)
             return;
 
