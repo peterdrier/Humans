@@ -16,17 +16,6 @@ using Humans.Users.Data.Repositories;
 
 namespace Humans.Users.Tests.Services;
 
-file sealed class StubAuditLog : IAuditLogService
-{
-    public Task LogAsync(AuditActionDefinition action, string entityType, Guid entityId,
-        string description, string jobName,
-        Guid? relatedEntityId = null, string? relatedEntityType = null) => Task.CompletedTask;
-
-    public Task LogAsync(AuditActionDefinition action, string entityType, Guid entityId,
-        string description, Guid actorUserId,
-        Guid? relatedEntityId = null, string? relatedEntityType = null) => Task.CompletedTask;
-}
-
 /// <summary>
 /// Repositories are in-memory fakes because the real matching uses Npgsql <c>ILike</c>, which the
 /// EF InMemory provider cannot evaluate.
@@ -181,9 +170,6 @@ public class AccountProvisioningServiceTests
             UserEmail? rowToUpdate,
             UserEmail? rowToInsert,
             CancellationToken ct = default) =>
-            throw new NotSupportedException();
-        public Task SetUserEmailGoogleExclusiveAsync(
-            Guid userId, Guid userEmailId, Instant updatedAt, CancellationToken cancellationToken = default) =>
             throw new NotSupportedException();
         public Task AddUserEmailAsync(UserEmail email, CancellationToken ct = default) =>
             throw new NotSupportedException();
@@ -394,7 +380,7 @@ public class AccountProvisioningServiceTests
                 break;
         }
         _userInfoRefresher.RefreshAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>(), Arg.Any<string>(), Arg.Any<string>())
-            .Returns(call => { Transaction.Current.Should().BeNull(); return Task.CompletedTask; });
+            .Returns(_ => { Transaction.Current.Should().BeNull(); return Task.CompletedTask; });
 
         Func<Task> act = () => _service.ReplaceUnverifiedEmailAndProvisionAsync(
             row.UserId, row.Id, row.Email, "Victim", ContactSource.TicketTailor, Xunit.TestContext.Current.CancellationToken);
@@ -758,7 +744,7 @@ public class AccountProvisioningServiceTests
                 ? Task.FromException<bool>(new InvalidOperationException("profile save unavailable"))
                 : Task.FromResult(true));
         _userInfoRefresher.RefreshAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>(), Arg.Any<string>(), Arg.Any<string>())
-            .Returns(call => { Transaction.Current.Should().BeNull(); return Task.CompletedTask; });
+            .Returns(_ => { Transaction.Current.Should().BeNull(); return Task.CompletedTask; });
         _audit.LogAsync(UsersAuditActions.ContactCreated, nameof(User), Arg.Any<Guid>(), Arg.Any<string>(),
             nameof(AccountProvisioningService)).Returns(_ =>
             {

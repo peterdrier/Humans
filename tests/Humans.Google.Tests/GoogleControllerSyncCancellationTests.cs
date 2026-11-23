@@ -147,7 +147,7 @@ public class GoogleControllerSyncCancellationTests
 
             await _syncService.Received(1).GetRecentOutboxEventsAsync(200, ct);
             await _users.Received(1).GetUserInfosAsync(
-                Arg.Is<IEnumerable<Guid>>(ids => ids.Distinct().Count() == 1 && ids.Contains(userId)), ct);
+                Arg.Is<IEnumerable<Guid>>(ids => ids.ToHashSet().SetEquals(new[] { userId })), ct);
             await teams.Received(1).GetTeamsAsync(ct);
             await _resources.Received(1).GetResourcesByTeamIdsAsync(Arg.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(teamId)), ct);
         }

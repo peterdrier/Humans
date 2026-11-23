@@ -224,17 +224,17 @@ public sealed class SettingsAdminControllerTests
     [HumansFact]
     public async Task Index_Post_ActivationConflict_FlashesTheConflictAndRedirectsToTheTab()
     {
-        const string Conflict =
+        const string conflict =
             "Only one event settings row can be Active at a time — deactivate the current one first.";
         _settings.SaveEventSettingsAsync(Arg.Any<EventSettingsInfo>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
-            .Returns(new EventSettingsSaveResult(false, Conflict));
+            .Returns(new EventSettingsSaveResult(false, conflict));
         var sut = BuildSut();
         var id = Guid.NewGuid();
 
         var result = await sut.Index(MakeForm(id, isActive: true), TestContext.Current.CancellationToken);
 
         result.Should().BeOfType<RedirectResult>().Which.Url.Should().Be($"/Settings?event={id}#event");
-        sut.TempData[TempDataKeys.ErrorMessage].Should().Be(Conflict);
+        sut.TempData[TempDataKeys.ErrorMessage].Should().Be(conflict);
     }
 
     [HumansFact]

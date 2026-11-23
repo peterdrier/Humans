@@ -8,7 +8,7 @@ namespace Humans.Web.Tests.Services;
 public class ClientStatsTrackerTests
 {
     private const string WinChrome = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
-    private const string IPhone = "Mozilla/5.0 (iPhone; CPU iPhone OS 17_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.1 Mobile/15E148 Safari/604.1";
+    private const string Iphone = "Mozilla/5.0 (iPhone; CPU iPhone OS 17_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.1 Mobile/15E148 Safari/604.1";
     private const string Googlebot = "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)";
 
     [HumansFact]
@@ -34,7 +34,7 @@ public class ClientStatsTrackerTests
 
         tracker.RecordPageView(WinChrome);
         tracker.RecordPageView(WinChrome);
-        tracker.RecordPageView(IPhone);
+        tracker.RecordPageView(Iphone);
 
         var snap = tracker.GetSnapshot();
         snap.TotalPageViews.Should().Be(3);
@@ -50,8 +50,8 @@ public class ClientStatsTrackerTests
         var tracker = new ClientStatsTracker();
 
         tracker.RecordPageView(WinChrome);
-        tracker.RecordPageView(IPhone);
-        tracker.RecordPageView(IPhone);
+        tracker.RecordPageView(Iphone);
+        tracker.RecordPageView(Iphone);
 
         tracker.GetSnapshot().OperatingSystems[0].Label.Should().Be("iOS");
     }

@@ -68,7 +68,7 @@ public sealed class WorkgroupServiceDocumentTests : WorkgroupsTestHarness
         saved.DispositionByUserId.Should().Be(document.DispositionByUserId);
         (await db.LogEntries.CountAsync(Ct)).Should().Be(0);
         AuditLog.ReceivedCalls().Should().BeEmpty();
-        Notifications.ReceivedCalls().Should().BeEmpty();
+        NotificationCalls().Should().BeEmpty();
     }
 
     private sealed class FailDocumentLogSave : SaveChangesInterceptor
@@ -154,7 +154,7 @@ public sealed class WorkgroupServiceDocumentTests : WorkgroupsTestHarness
         await repository.DidNotReceive().AddLogEntryAsync(Arg.Any<WorkgroupLogEntry>(), cancellation.Token);
         if (!string.Equals(action, "close", StringComparison.Ordinal))
         {
-            Notifications.ReceivedCalls().Should().ContainSingle().Which.GetArguments()
+            NotificationCalls().Should().ContainSingle().Which.GetArguments()
                 .OfType<CancellationToken>().Should().ContainSingle().Which.Should().Be(CancellationToken.None);
         }
         if (string.Equals(action, "deliver", StringComparison.Ordinal))
@@ -182,7 +182,7 @@ public sealed class WorkgroupServiceDocumentTests : WorkgroupsTestHarness
 
         await NewService().PublishDocumentAsync(document.Id, coordinator, Ct);
 
-        var call = Notifications.ReceivedCalls().Single(c => string.Equals(c.GetMethodInfo().Name, "SendAsync", StringComparison.Ordinal));
+        var call = NotificationCalls().Single(c => string.Equals(c.GetMethodInfo().Name, "SendAsync", StringComparison.Ordinal));
         call.GetArguments()[3].Should().Be($"{title}: {group.Name}");
         call.GetArguments()[5].Should().Be(document.Title);
     }

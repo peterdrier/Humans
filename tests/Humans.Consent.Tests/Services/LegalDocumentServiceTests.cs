@@ -36,7 +36,6 @@ public sealed class LegalDocumentServiceTests : IDisposable
     public void Dispose()
     {
         _cache.Dispose();
-        GC.SuppressFinalize(this);
     }
 
     [HumansFact]

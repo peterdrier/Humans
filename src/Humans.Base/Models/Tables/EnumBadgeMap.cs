@@ -30,11 +30,11 @@ public static class EnumBadgeMap
 
     // Static class, no DI: resolved per call so warnings reach the app's fully configured Serilog pipeline, not
     // whatever Log.Logger held at static init. Test-settable only.
-    private static ILogger? LoggerOverride;
+    private static ILogger? _loggerOverride;
 
-    private static ILogger Logger => LoggerOverride ?? Log.ForContext(typeof(EnumBadgeMap));
+    private static ILogger Logger => _loggerOverride ?? Log.ForContext(typeof(EnumBadgeMap));
 
-    internal static void SetLoggerForTests(ILogger value) => LoggerOverride = value;
+    internal static void SetLoggerForTests(ILogger value) => _loggerOverride = value;
 
     /// <summary>
     /// Adds a moved section's badge rows. Called from <c>ISection.Register</c>, so every write

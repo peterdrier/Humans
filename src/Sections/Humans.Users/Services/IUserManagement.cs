@@ -30,7 +30,7 @@ internal interface IUserManagement : IUserService, IUserWrite, IUserMerge
     /// <summary>
     /// The identity half of the GDPR expiry anonymization; returns the prior identity, or null when
     /// the user does not exist. The cross-section cascade is
-    /// <see cref="Humans.Application.Services.Users.AccountLifecycle.AccountDeletionService.AnonymizeExpiredAccountAsync"/>'s.
+    /// <see cref="Humans.Users.Services.AccountDeletionService.AnonymizeExpiredAccountAsync"/>'s.
     /// </summary>
     Task<ExpiredDeletionAnonymizationResult?> ApplyExpiredDeletionAnonymizationAsync(
         Guid userId, CancellationToken ct = default);

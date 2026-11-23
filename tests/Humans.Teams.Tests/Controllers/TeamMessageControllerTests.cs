@@ -47,7 +47,6 @@ public sealed class TeamMessageControllerTests
     private readonly IUserService _users = Substitute.For<IUserService>();
     private readonly ITeamService _teams = Substitute.For<ITeamService>();
     private readonly ITeamResourceService _resources = Substitute.For<ITeamResourceService>();
-    private readonly TeamMessageOptionsProvider _teamOptions;
     private readonly ICommunicationPreferenceService _commPrefs = Substitute.For<ICommunicationPreferenceService>();
     private readonly IEmailService _emailService = Substitute.For<IEmailService>();
     private readonly IEmailMessageFactory _emailMessages = Substitute.For<IEmailMessageFactory>();
@@ -65,9 +64,9 @@ public sealed class TeamMessageControllerTests
         var shared = Substitute.For<IStringLocalizer<Humans.Base.SharedResource>>();
         shared[Arg.Any<string>()].Returns(ci => new LocalizedString(ci.Arg<string>(), ci.Arg<string>()));
 
-        _teamOptions = new TeamMessageOptionsProvider(_teams, _resources, _users, _commPrefs,
+        var teamOptions = new TeamMessageOptionsProvider(_teams, _resources, _users, _commPrefs,
             _emailService, _emailMessages, _audit, _logger);
-        _controller = new TeamMessageController(_users, _teamOptions, localizer, shared);
+        _controller = new TeamMessageController(_users, teamOptions, localizer, shared);
 
         var http = new DefaultHttpContext
         {

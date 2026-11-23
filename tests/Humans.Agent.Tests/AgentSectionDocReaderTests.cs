@@ -65,7 +65,7 @@ public class AgentSectionDocReaderTests
         // fetches "{canonicalKey}.md" verbatim.
         MakeReader(new FakeSource()).KnownSections.Should().OnlyContain(
             key => File.Exists(Path.Combine(root, AgentSectionDocReader.SectionProjectFolder(key), key + ".md")),
-            "every whitelisted key is fetched as src/Sections/Humans.{key}/Docs/{key}.md with exact casing");
+            "every whitelisted key is fetched as src/Sections/Humans.<key>/Docs/<key>.md with exact casing");
     }
 
     /// <summary>

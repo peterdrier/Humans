@@ -244,7 +244,7 @@ public sealed class WorkgroupsAdminControllerTests : WorkgroupsTestHarness
         if (malformed || missingChoice)
         {
             AuditLog.ReceivedCalls().Should().BeEmpty();
-            Notifications.ReceivedCalls().Should().BeEmpty();
+            NotificationCalls().Should().BeEmpty();
             Email.ReceivedCalls().Should().BeEmpty();
         }
     }

@@ -39,7 +39,7 @@ internal sealed class ConsentReviewQueueService(
     // Bulk clear's eligibility is defined as "a row in the queue", so it partitions here too and the two can't
     // drift. Both callers depend on the order.
     private static (List<UserInfo> Pending, List<UserInfo> Flagged) PartitionReviewQueue(
-        IEnumerable<UserInfo> all, IReadOnlyDictionary<Guid, ConsentReviewInfo> reviews)
+        IReadOnlyCollection<UserInfo> all, IReadOnlyDictionary<Guid, ConsentReviewInfo> reviews)
     {
         ConsentReviewInfo ReviewOf(UserInfo u) => reviews.GetValueOrDefault(u.Id) ?? ConsentReviewInfo.None(u.Id);
 

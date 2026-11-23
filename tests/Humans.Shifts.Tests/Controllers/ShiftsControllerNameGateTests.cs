@@ -33,7 +33,6 @@ public class ShiftsControllerNameGateTests
     private readonly IVolunteerTrackingManagement _volunteerTrackingService = Substitute.For<IVolunteerTrackingManagement>();
     private readonly IShiftRowView _shiftView = Substitute.For<IShiftRowView>();
     private readonly ITeamService _teamService = Substitute.For<ITeamService>();
-    private readonly IAuditLogService _auditLogService = Substitute.For<IAuditLogService>();
     private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly IStringLocalizer<ShiftsResource> _localizer = Substitute.For<IStringLocalizer<ShiftsResource>>();
     private readonly IClock _clock = Substitute.For<IClock>();

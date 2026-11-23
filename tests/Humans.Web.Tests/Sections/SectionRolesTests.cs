@@ -49,6 +49,7 @@ public class SectionRolesTests
         "GrantsAdmin",
         "SurveysAdmin",
         "RolesAdmin",
+        "TasksAdmin",
     ];
 
     [HumansFact]
@@ -106,7 +107,7 @@ public class SectionRolesTests
 
         var policy = provider.GetRequiredService<IOptions<AuthorizationOptions>>().Value.GetPolicy(PolicyNames.AnyAdminRole);
         var allowed = policy!.Requirements.Should().ContainSingle().Which
-            .Should().BeOfType<RolesAuthorizationRequirement>().Which.AllowedRoles;
+            .Should().BeOfType<RolesAuthorizationRequirement>().Which.AllowedRoles.ToList();
 
         allowed.Should().BeEquivalentTo(Catalog.Roles.Where(r => r.OpensAdminShell).Select(r => r.Name));
         allowed.Should().Contain([RoleNames.Admin, RoleNames.Board]);

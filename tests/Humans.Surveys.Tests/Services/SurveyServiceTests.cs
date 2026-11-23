@@ -289,7 +289,6 @@ public class SurveyServiceTests
                 invitation.LatestEmailStatus = status;
                 return Task.CompletedTask;
             });
-        var service = CreateService();
         var invitations = CreateInvitations();
 
         (await invitations.SendInvitesAsync(survey.Id, Guid.NewGuid(), ct)).Failed.Should().Be(1);
@@ -1784,7 +1783,6 @@ public class SurveyServiceTests
             .Returns(call => new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
                 users.Where(pair => call.Arg<IEnumerable<Guid>>().Contains(pair.Key))
                     .ToDictionary(pair => pair.Key, pair => pair.Value)));
-        var service = CreateService();
         var invitations = CreateInvitations();
         (await invitations.PreviewAudienceCountAsync(survey.Id, TestContext.Current.CancellationToken)).Should().Be(0);
 
@@ -1933,7 +1931,6 @@ public class SurveyServiceTests
                     "the invitation is unsent until the outbox accepts it");
                 if (fail) throw new InvalidOperationException("outbox unavailable");
             });
-        var service = CreateService(repository: repo);
         var invitations = CreateInvitations(repository: repo);
 
         var first = await invitations.SendInvitesAsync(survey.Id, Guid.NewGuid(), ct);
@@ -4605,7 +4602,7 @@ public class SurveyServiceTests
             .Should().Equal(Enumerable.Range(expectedMin, expectedMax - expectedMin + 1));
         rating.RatingDistribution.Select(bucket => bucket.Count)
             .Should().Equal(Enumerable.Range(expectedMin, expectedMax - expectedMin + 1)
-                .Select(value => answer == value ? 1 : 0));
+                .Select(bucketValue => answer == bucketValue ? 1 : 0));
         rating.RatingAverage.Should().Be(answer);
     }
 
@@ -6061,7 +6058,6 @@ public class SurveyServiceTests
         _userService.GetAllUserInfosAsync(Arg.Any<CancellationToken>()).Returns(new List<UserInfo> { asociado });
         var survey = SurveyWith(SurveyStatus.Draft, SurveyAudienceType.Asociados, null);
         _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
-        var service = CreateService();
         var invitations = CreateInvitations();
 
         (await CreateAudience().IsEligibleAsociadoAsync(userId, TestContext.Current.CancellationToken))
@@ -6082,7 +6078,6 @@ public class SurveyServiceTests
             .Returns(Asociado(survivor));
         _userService.GetUserInfoAsync(survivor, Arg.Any<CancellationToken>())
             .Returns(Asociado(survivor));
-        var service = CreateService();
 
         (await CreateAudience().IsEligibleAsociadoAsync(archived, TestContext.Current.CancellationToken))
             .Should().BeFalse();

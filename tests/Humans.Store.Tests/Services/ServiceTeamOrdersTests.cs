@@ -35,7 +35,6 @@ public class ServiceTeamOrdersTests
     private readonly IStripeService _stripe = Substitute.For<IStripeService>();
     private readonly FakeClock _clock = new(Instant.FromUtc(2026, 3, 14, 12, 0));
     private readonly IHoldedService _holded = Substitute.For<IHoldedService>();
-    private readonly IHoldedWrite _holdedWrite = Substitute.For<IHoldedWrite>();
     private readonly Service _service;
 
     public ServiceTeamOrdersTests()
@@ -271,7 +270,6 @@ public class ServiceTeamOrdersTests
     [HumansFact]
     public async Task GetIndexDataAsync_privileged_reader_lists_departments_it_does_not_coordinate()
     {
-        var viewerId = Guid.NewGuid();
         var otherDeptId = Guid.NewGuid();
         _teams.GetTeamsAsync(Arg.Any<CancellationToken>())
             .Returns(new Dictionary<Guid, TeamInfo>

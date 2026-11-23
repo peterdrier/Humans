@@ -76,7 +76,7 @@ public class ProfileApiControllerTests
     }
 
     private static HumanSearchResult MakeSearchResult(
-        Guid userId, Guid profileId, string burnerName, int score = 0) =>
+        Guid userId, string burnerName, int score = 0) =>
         new(
             UserId: userId,
             BurnerName: burnerName,
@@ -153,7 +153,7 @@ public class ProfileApiControllerTests
             .Returns(new ValueTask<UserInfo?>(MakeUserInfo(targetId, profileId)));
         _userService.SearchUsersAsync(Arg.Any<string>(), Arg.Any<PersonSearchFields>(),
                 Arg.Any<int>(), Arg.Any<CancellationToken>())
-            .Returns(new[] { MakeSearchResult(targetId, profileId, "Target Burner") });
+            .Returns(new[] { MakeSearchResult(targetId, "Target Burner") });
 
         Task<IActionResult> ReadAsync() => action switch
         {
@@ -192,11 +192,10 @@ public class ProfileApiControllerTests
     {
         var viewer = MakeUser(Guid.NewGuid());
         var targetUserId = Guid.NewGuid();
-        var targetProfileId = Guid.NewGuid();
 
         _userService.SearchUsersAsync(Arg.Any<string>(),
                 Arg.Any<PersonSearchFields>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
-            .Returns([MakeSearchResult(targetUserId, targetProfileId, "David")]);
+            .Returns([MakeSearchResult(targetUserId, "David")]);
 
         _contactFieldService.GetViewerAccessLevelAsync(targetUserId, viewer.Id, Arg.Any<CancellationToken>())
             .Returns(ContactFieldVisibility.AllActiveProfiles);
@@ -227,11 +226,10 @@ public class ProfileApiControllerTests
     {
         var viewer = MakeUser(Guid.NewGuid());
         var targetUserId = Guid.NewGuid();
-        var targetProfileId = Guid.NewGuid();
 
         _userService.SearchUsersAsync(Arg.Any<string>(),
                 Arg.Any<PersonSearchFields>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
-            .Returns([MakeSearchResult(targetUserId, targetProfileId, "David")]);
+            .Returns([MakeSearchResult(targetUserId, "David")]);
 
         _contactFieldService.GetViewerAccessLevelAsync(targetUserId, viewer.Id, Arg.Any<CancellationToken>())
             .Returns(ContactFieldVisibility.AllActiveProfiles);
@@ -261,11 +259,10 @@ public class ProfileApiControllerTests
     {
         var viewer = MakeUser(Guid.NewGuid());
         var targetUserId = Guid.NewGuid();
-        var targetProfileId = Guid.NewGuid();
 
         _userService.SearchUsersAsync(Arg.Any<string>(),
                 Arg.Any<PersonSearchFields>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
-            .Returns([MakeSearchResult(targetUserId, targetProfileId, "David")]);
+            .Returns([MakeSearchResult(targetUserId, "David")]);
 
         _contactFieldService.GetViewerAccessLevelAsync(targetUserId, viewer.Id, Arg.Any<CancellationToken>())
             .Returns(ContactFieldVisibility.AllActiveProfiles);
@@ -288,11 +285,10 @@ public class ProfileApiControllerTests
     {
         var viewer = MakeUser(Guid.NewGuid());
         var targetUserId = Guid.NewGuid();
-        var targetProfileId = Guid.NewGuid();
 
         _userService.SearchUsersAsync(Arg.Any<string>(),
                 Arg.Any<PersonSearchFields>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
-            .Returns([MakeSearchResult(targetUserId, targetProfileId, "David")]);
+            .Returns([MakeSearchResult(targetUserId, "David")]);
 
         _contactFieldService.GetViewerAccessLevelAsync(targetUserId, viewer.Id, Arg.Any<CancellationToken>())
             .Returns(ContactFieldVisibility.AllActiveProfiles);
@@ -332,9 +328,9 @@ public class ProfileApiControllerTests
         _userService.SearchUsersAsync(Arg.Any<string>(),
                 Arg.Any<PersonSearchFields>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns([
-                MakeSearchResult(brian, Guid.NewGuid(), "Brian", score: 60),
-                MakeSearchResult(ian, Guid.NewGuid(), "Ian", score: 100),
-                MakeSearchResult(adrian, Guid.NewGuid(), "Adrian", score: 60),
+                MakeSearchResult(brian, "Brian", score: 60),
+                MakeSearchResult(ian, "Ian", score: 100),
+                MakeSearchResult(adrian, "Adrian", score: 60),
             ]);
 
         _contactFieldService.GetViewerAccessLevelAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())

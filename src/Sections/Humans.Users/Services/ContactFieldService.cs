@@ -171,7 +171,7 @@ internal sealed class ContactFieldService(
             return ContactFieldVisibility.BoardOnly;
 
         // Permissions belong to this viewer, not to the scoped service instance.
-        var allTeams = (await teamService.GetTeamsAsync(cancellationToken)).Values;
+        var allTeams = (await teamService.GetTeamsAsync(cancellationToken)).Values.ToList();
         var viewerMemberships = allTeams
             .Select(t => new { TeamInfo = t, Membership = t.Members.FirstOrDefault(m => m.UserId == viewerUserId) })
             .Where(x => x.Membership is not null)

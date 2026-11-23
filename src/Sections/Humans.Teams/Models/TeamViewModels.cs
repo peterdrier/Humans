@@ -298,7 +298,7 @@ internal sealed class TeamRoleDefinitionViewModel
         {
             var assignment = d.Assignments.FirstOrDefault(a => a.SlotIndex == i);
             var priority = i < d.Priorities.Count ? d.Priorities[i] : SlotPriority.None;
-            if (assignment?.AssignedUserId is Guid assignedUserId)
+            if (assignment?.AssignedUserId is { } assignedUserId)
             {
                 assignedUserIds.Add(assignedUserId);
             }

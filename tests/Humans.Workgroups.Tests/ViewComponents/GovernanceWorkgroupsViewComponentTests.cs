@@ -39,7 +39,7 @@ public sealed class GovernanceWorkgroupsViewComponentTests
         var document = new WorkgroupDocumentInfo(Guid.NewGuid(), "Draft", Humans.Workgroups.Domain.WorkgroupDocumentKind.Other,
             "Body", Humans.Workgroups.Domain.WorkgroupDocumentStatus.Published, ["Scope"], now.Minus(Duration.FromHours(1)),
             now.Plus(Duration.FromDays(7)), null, null, null, null, null, now, now, []);
-        WorkgroupInfo Group(string name, bool sensitive) => new(Guid.NewGuid(), name.ToLowerInvariant(), name, "Purpose",
+        WorkgroupInfo NamedGroup(string name, bool sensitive) => new(Guid.NewGuid(), name.ToLowerInvariant(), name, "Purpose",
             "A report", Humans.Workgroups.Domain.WorkgroupDeliverableKind.Report, Humans.Workgroups.Domain.WorkgroupAudience.Board,
             null, Humans.Workgroups.Domain.WorkgroupStatus.Active, null, null, null, null, now, now, null,
             [],
@@ -50,7 +50,7 @@ public sealed class GovernanceWorkgroupsViewComponentTests
             ], [], [document], null, null, null, sensitive);
         var workgroups = Substitute.For<IWorkgroupService>();
         workgroups.GetRegisterAsync(Arg.Any<CancellationToken>())
-            .Returns([Group("Open", false), Group("Secret", true)]);
+            .Returns([NamedGroup("Open", false), NamedGroup("Secret", true)]);
         var component = new GovernanceWorkgroupsViewComponent(
             workgroups, new NodaTime.Testing.FakeClock(now))
         {

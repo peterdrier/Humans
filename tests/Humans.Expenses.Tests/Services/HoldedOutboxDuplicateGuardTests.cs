@@ -174,7 +174,7 @@ public class HoldedOutboxDuplicateGuardTests
         if (outcome is PublishOutcome.TransientFailure or PublishOutcome.PermanentFailure)
         {
             _holded.EnsurePurchaseDocumentApprovedAsync("doc-created", Arg.Any<CancellationToken>())
-                .Returns(async call =>
+                .Returns(async _ =>
                 {
                     await cancellation.CancelAsync();
                     if (outcome == PublishOutcome.TransientFailure)

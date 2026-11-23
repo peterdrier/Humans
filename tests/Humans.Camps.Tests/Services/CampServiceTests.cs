@@ -2823,16 +2823,10 @@ public sealed class CampServiceTests : CampsTestHarness
         public bool Armed { get; set; }
         public override ValueTask<InterceptionResult<int>> SavingChangesAsync(DbContextEventData eventData,
             InterceptionResult<int> result, CancellationToken cancellationToken = default)
-        {
-            if (Armed && beforeCommit) throw failure;
-            return ValueTask.FromResult(result);
-        }
+            => Armed && beforeCommit ? throw failure : ValueTask.FromResult(result);
         public override ValueTask<int> SavedChangesAsync(SaveChangesCompletedEventData eventData,
             int result, CancellationToken cancellationToken = default)
-        {
-            if (Armed && !beforeCommit) throw failure;
-            return ValueTask.FromResult(result);
-        }
+            => Armed && !beforeCommit ? throw failure : ValueTask.FromResult(result);
     }
 
     [HumansTheory]

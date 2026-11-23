@@ -104,7 +104,7 @@ public sealed class TermRenewalReminderJobTests
         var run = new ReminderRun();
         var failure = new IOException("Email enqueue failed");
         run.Email.SendAsync(Arg.Is<EmailMessage>(message => message.UserId == run.First.UserId), Arg.Any<CancellationToken>())
-            .Returns(async call => { await shutdown.CancelAsync(); throw failure; });
+            .Returns(async _ => { await shutdown.CancelAsync(); throw failure; });
 
         var error = await Xunit.Record.ExceptionAsync(() => run.Job.ExecuteAsync(shutdown.Token));
 

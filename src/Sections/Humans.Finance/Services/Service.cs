@@ -1435,10 +1435,10 @@ internal sealed class Service(
                 var lines = g.Select(l => l.Line).ToList();
 
                 // A contact the race created beside the bound one holds only duplicates, so it goes once they do.
-                var deletableIds = lines.SelectMany(l => l.DeletableDocIds).ToHashSet(StringComparer.Ordinal);
+                var memberDeletableIds = lines.SelectMany(l => l.DeletableDocIds).ToHashSet(StringComparer.Ordinal);
                 var orphans = contactsByUser[g.Key]
                     .Where(c => !string.Equals(c, binding?.HoldedContactId, StringComparison.Ordinal))
-                    .Where(c => docsByContact[c].Any() && docsByContact[c].All(d => deletableIds.Contains(d.Id)))
+                    .Where(c => docsByContact[c].Any() && docsByContact[c].All(d => memberDeletableIds.Contains(d.Id)))
                     .Order(StringComparer.Ordinal)
                     .ToList();
 

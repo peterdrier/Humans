@@ -858,7 +858,7 @@ public class FinanceControllerTests
     {
         _finance.GetCreditorLedgerAsync(40000002, Arg.Any<CancellationToken>())
             .Returns(new CreditorLedger(40000002, 0m, 0m, []));
-        ExpenseReportDto Report(int? bookedTo, int days) => new()
+        ExpenseReportDto ReportBookedTo(int? bookedTo, int days) => new()
         {
             Id = Guid.NewGuid(),
             SubmitterUserId = Ana,
@@ -874,9 +874,9 @@ public class FinanceControllerTests
             UpdatedAt = Instant.FromUtc(2026, 3, days, 0, 0),
             Lines = [],
         };
-        var booked = Report(40000002, 1);
-        var unbooked = Report(null, 2);
-        var elsewhere = Report(40000009, 3);
+        var booked = ReportBookedTo(40000002, 1);
+        var unbooked = ReportBookedTo(null, 2);
+        var elsewhere = ReportBookedTo(40000009, 3);
         _expenses.GetReviewQueueAsync(Arg.Any<CancellationToken>()).Returns([booked, unbooked, elsewhere]);
         var member = new ExpenseReconMember(Ana, "Ana", 40000002, 0m, 0m, 0m, 0m, MissingLines: 1,
             UnclaimedPurchaseCount: 0, [], [], ExpenseReconMemberStatus.Off, []);
@@ -953,11 +953,11 @@ public class FinanceControllerTests
     {
         _finance.GetCreditorLedgerAsync(40000002, Arg.Any<CancellationToken>())
             .Returns(new CreditorLedger(40000002, 0m, 0m, []));
-        SepaPayoutTransferRow Transfer(int account, int day) => new(
+        SepaPayoutTransferRow TransferTo(int account, int day) => new(
             Guid.NewGuid(), Guid.NewGuid(), $"f{day}.xml", Instant.FromUtc(2026, 3, day, 9, 0), Ana, Ana, account,
             null, "Ana", "ES**1234", 10m, null, null, null, null, null, null, null);
         _finance.GetSepaTransfersAsync(Arg.Any<CancellationToken>())
-            .Returns(([Transfer(40000002, 1), Transfer(40000003, 5), Transfer(40000002, 9)], (string?)null));
+            .Returns(([TransferTo(40000002, 1), TransferTo(40000003, 5), TransferTo(40000002, 9)], (string?)null));
 
         var model = (await MakeControllerWithHttpContext(Ana).CreditorStatement(40000002))
             .Should().BeOfType<ViewResult>().Subject.Model.Should().BeOfType<CreditorStatementVm>().Subject;
@@ -1319,11 +1319,11 @@ public class FinanceControllerTests
         var generatedBy = Guid.NewGuid();
         var fileId = Guid.NewGuid();
         var unbooked = Transfer(fileId, "f.xml", Stamp(1), generatedBy, Ana, 40000002);
-        SepaPayoutsPageVm PageOf(SepaPayoutTransferRow row) => new(
+        SepaPayoutsPageVm SepaPageWith(SepaPayoutTransferRow row) => new(
             [new(fileId, "f.xml", Stamp(1), generatedBy, [new(row, "Ana")], null)], null, [], null, null, 3);
 
-        var plain = await RenderAsync("Sepa", PageOf(unbooked));
-        var partial = await RenderAsync("Sepa", PageOf(unbooked with { HoldedPaymentRefs = "pay-1,pay-2" }));
+        var plain = await RenderAsync("Sepa", SepaPageWith(unbooked));
+        var partial = await RenderAsync("Sepa", SepaPageWith(unbooked with { HoldedPaymentRefs = "pay-1,pay-2" }));
 
         plain.Should().Contain(">Generated<").And.NotContain("Partially booked");
         partial.Should().Contain("Partially booked").And.Contain("pay-1,pay-2").And.NotContain(">Generated<");

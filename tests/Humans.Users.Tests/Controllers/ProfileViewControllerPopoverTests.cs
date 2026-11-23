@@ -31,7 +31,6 @@ namespace Humans.Users.Tests.Controllers;
 public class ProfileViewControllerPopoverTests
 {
     private readonly IUserManagement _userService = Substitute.For<IUserManagement>();
-    private readonly IUserEmailService _userEmailService = Substitute.For<IUserEmailService>();
     private readonly IProfilePictureService _profilePictureService = Substitute.For<IProfilePictureService>();
     private readonly ITeamService _teamService = Substitute.For<ITeamService>();
     private readonly IShiftService _shiftManagement = Substitute.For<IShiftService>();
@@ -43,20 +42,6 @@ public class ProfileViewControllerPopoverTests
 
     public ProfileViewControllerPopoverTests()
     {
-        var userStore = Substitute.For<IUserStore<User>>();
-        var userManager = Substitute.For<UserManager<User>>(
-            userStore, null, null, null, null, null, null, null, null);
-
-        var contextAccessor = Substitute.For<IHttpContextAccessor>();
-        var claimsFactory = Substitute.For<IUserClaimsPrincipalFactory<User>>();
-        var identityOptions = Substitute.For<IOptions<IdentityOptions>>();
-        identityOptions.Value.Returns(new IdentityOptions());
-        var schemeProvider = Substitute.For<IAuthenticationSchemeProvider>();
-        var userConfirmation = Substitute.For<IUserConfirmation<User>>();
-        var signInManager = Substitute.For<SignInManager<User>>(
-            userManager, contextAccessor, claimsFactory, identityOptions,
-            NullLogger<SignInManager<User>>.Instance, schemeProvider, userConfirmation);
-
         _sharedLocalizer[Arg.Any<string>()].Returns(ci => new LocalizedString(ci.Arg<string>(), ci.Arg<string>()));
 
         _controller = new ProfileViewController(

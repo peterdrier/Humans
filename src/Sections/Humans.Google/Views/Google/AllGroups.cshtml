@@ -22,7 +22,7 @@
         .SelectMany(g => g.ActualSettings.Keys)
         .Distinct()
         .Where(k => !knownKeys.Contains(k))
-        .OrderBy(k => k)
+        .OrderBy(k => k, StringComparer.Ordinal)
         .ToList();
 
     var allSettingKeys = standardKeys.Concat(extraKeys).Concat(deprecatedKeys).ToList();

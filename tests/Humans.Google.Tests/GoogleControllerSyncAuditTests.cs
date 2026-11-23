@@ -142,7 +142,7 @@ public sealed class GoogleControllerSyncAuditTests
         result.Model.Should().BeAssignableTo<IReadOnlyList<UserEmailFlagViolation>>().Subject
             .Select(v => v.UserId).Should().Equal(first, second);
         await _users.Received(1).GetUserInfosAsync(
-            Arg.Is<IEnumerable<Guid>>(ids => ids.Distinct().Count() == 2 && ids.Contains(first) && ids.Contains(second)), token);
+            Arg.Is<IEnumerable<Guid>>(ids => ids.ToHashSet().SetEquals(new[] { first, second })), token);
     }
 
     private GoogleController BuildSut(CancellationToken token) => new(
