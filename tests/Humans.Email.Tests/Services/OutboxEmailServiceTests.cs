@@ -39,7 +39,7 @@ public sealed class OutboxEmailServiceTests : IDisposable
     // A clock and a DbContext-options factory, owned here rather than shared: a harness
     // built around an in-memory UsersDbContext would grant this project
     // InternalsVisibleTo on it.
-    private readonly FakeClock Clock = new(Instant.FromUtc(2026, 3, 1, 12, 0));
+    private readonly FakeClock _clock = new(Instant.FromUtc(2026, 3, 1, 12, 0));
 
     private static DbContextOptions<TContext> NewSectionDbOptions<TContext>()
         where TContext : DbContext =>
@@ -75,7 +75,7 @@ public sealed class OutboxEmailServiceTests : IDisposable
             _immediate,
             _transport,
             _metrics,
-            Clock,
+            _clock,
             _commPrefService,
             NullLogger<OutboxEmailService>.Instance);
     }
@@ -313,7 +313,7 @@ public sealed class OutboxEmailServiceTests : IDisposable
         msg.PlainTextBody.Should().Be("plain-text-stub");
         msg.TemplateName.Should().Be("access_suspended");
         msg.Status.Should().Be(EmailOutboxStatus.Queued);
-        msg.CreatedAt.Should().Be(Clock.GetCurrentInstant());
+        msg.CreatedAt.Should().Be(_clock.GetCurrentInstant());
     }
 
     [HumansFact]

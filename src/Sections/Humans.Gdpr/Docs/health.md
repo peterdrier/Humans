@@ -52,10 +52,12 @@ The shapes imply these and no more:
 
 - **The fan-out seam in Base** (`IUserDataContributor`, `UserDataSlice` in `src/Humans.Base/Gdpr/`),
   so every section owning user-scoped tables implements it without referencing `Humans.Gdpr`.
-- **A `Contracts/` folder** holding the export vocabulary (`GdprExport`), the orchestrator's
-  contract (`IGdprService`) and the one file format (`GdprExportSerializer`).
+- **A `Contracts/` folder** holding the orchestrator's contract (`IGdprService`, whose
+  erasure Users calls) and the envelope its export returns (`GdprExport`).
 - **One internal orchestrator** — the two fan-out loops plus the one account read the
   envelope needs.
+- **One internal file format** (`GdprExportSerializer`) beside the orchestrator. Only this
+  section's download routes write the file, so nothing outside needs it.
 - **Internal controllers that translate only** — the member pair (download, request
   deletion), the profileless-account trio (download, request, cancel), and the two landings
   the membership filter redirects to (status wall, pending deletion with its cancel). The
@@ -73,7 +75,7 @@ cancel-deletion actions map the same failure differently (finding-level, see the
 
 - **Complete or fail.** A contributor that throws is logged and re-thrown, in both halves:
   `src/Sections/Humans.Gdpr/Services/GdprService.cs:50` (export) and
-  `src/Sections/Humans.Gdpr/Services/GdprService.cs:111` (erasure).
+  `src/Sections/Humans.Gdpr/Services/GdprService.cs:117` (erasure).
 - **Portion names are unique in one document**, across contributors and across a
   contributor's two calls. A duplicate throws, naming the portion:
   `src/Sections/Humans.Gdpr/Services/GdprService.cs:74`. The declaration-level counterpart,
@@ -89,20 +91,26 @@ cancel-deletion actions map the same failure differently (finding-level, see the
 - **Erasure runs the identity holder last, and the order comes from the declarations**,
   never a pinned type list: `src/Sections/Humans.Gdpr/Services/GdprService.cs:97`. Exactly
   one contributor claims it: `tests/Humans.Web.Tests/Services/Gdpr/GdprErasureCoverageTests.cs:69`.
+- **An interrupted erasure stops before the next contributor** and propagates, so the
+  cascade stays retryable: `src/Sections/Humans.Gdpr/Services/GdprService.cs:103`.
 - **The fan-out is sequential**: `src/Sections/Humans.Gdpr/Services/GdprService.cs:23`.
 - **`ExportedAt` is an ISO-8601 UTC instant off the injected clock**:
   `src/Sections/Humans.Gdpr/Services/GdprService.cs:88`.
 - **The file is the envelope first, then the portions in contributor order:**
-  `src/Sections/Humans.Gdpr/Contracts/GdprExportSerializer.cs:19`.
+  `src/Sections/Humans.Gdpr/Services/GdprExportSerializer.cs:20`.
 - **No route acts on another person.** No action takes a user id; each resolves the caller:
   `src/Sections/Humans.Gdpr/Controllers/GuestDataController.cs:29`,
-  `src/Sections/Humans.Gdpr/Controllers/MemberDataController.cs:28`,
-  `src/Sections/Humans.Gdpr/Controllers/UserController.cs:64`.
+  `src/Sections/Humans.Gdpr/Controllers/MemberDataController.cs:31`,
+  `src/Sections/Humans.Gdpr/Controllers/UserController.cs:66`.
+- **A deletion request or cancel stops before calling Users when the request is aborted
+  during the account lookup:** `src/Sections/Humans.Gdpr/Controllers/GuestDataController.cs:58`,
+  `src/Sections/Humans.Gdpr/Controllers/MemberDataController.cs:31`,
+  `src/Sections/Humans.Gdpr/Controllers/UserController.cs:66`.
 - **A request-aborted download propagates the cancellation** rather than redirecting with a
   failure flash: `src/Sections/Humans.Gdpr/Controllers/GuestDataController.cs:42` and
-  `src/Sections/Humans.Gdpr/Controllers/MemberDataController.cs:63`.
+  `src/Sections/Humans.Gdpr/Controllers/MemberDataController.cs:70`.
 - **The status wall shows only to a walled account;** anyone else is sent home:
-  `src/Sections/Humans.Gdpr/Controllers/UserController.cs:27`.
+  `src/Sections/Humans.Gdpr/Controllers/UserController.cs:30`.
 - **Every declared category is either erased in full or states a lawful basis**:
   `tests/Humans.Web.Tests/Services/Gdpr/GdprErasureCoverageTests.cs:80`, over instances built
   uninitialised at `tests/Humans.Web.Tests/Services/Gdpr/GdprErasureCoverageTests.cs:32` — so
@@ -132,6 +140,8 @@ cancel-deletion actions map the same failure differently (finding-level, see the
   confirmation email belong to `AccountDeletionService` under Users.
 - **The export does not refuse an undeclared portion.** Dropping it would hand the person
   an incomplete copy; the log line surfaces the erasure gap.
+- **Export is not split off `IGdprService`.** Only this section's controllers call it, but a
+  one-method interface for them is the split Peter declined.
 - **The fan-out is not parallel.** Safe, but buys nothing at this scale and muddies failure
   attribution and log order.
 
@@ -160,3 +170,4 @@ cancel-deletion actions map the same failure differently (finding-level, see the
 | 2 | 2026-09-17 | The section's own rationale for its shape was false, and the target shape had not caught up with erasure moving in | peterdrier/Humans#1723 |
 | 3 | 2026-09-23 | The envelope learned whose account it is and the prose did not; a "logged" check was documented as "enforced" | peterdrier/Humans#1811 |
 | 4 | 2026-10-23 | The section took over the member's subject-rights pages and its docs still said it renders nothing | peterdrier/Humans#2148 |
+| 5 | 2026-11-23 | The export file format was still a public promise after both download routes had moved into the section | peterdrier/Humans#2587 |

@@ -110,10 +110,8 @@ internal sealed class CampSeasonDetailViewModel
     public Guid Id { get; set; }
     public int Year { get; set; }
     public Guid? EventSettingsId { get; set; }
-    public string Name { get; set; } = string.Empty;
     public CampSeasonStatus Status { get; set; }
     public string BlurbLong { get; set; } = string.Empty;
-    public string BlurbShort { get; set; } = string.Empty;
     public string Languages { get; set; } = string.Empty;
     public YesNoMaybe AcceptingMembers { get; set; }
     public YesNoMaybe KidsWelcome { get; set; }
@@ -127,7 +125,6 @@ internal sealed class CampSeasonDetailViewModel
     public SpaceSize? SpaceRequirement { get; set; }
     public SoundZone? SoundZone { get; set; }
     public ElectricalGrid? ElectricalGrid { get; set; }
-    public bool IsNameLocked { get; set; }
 }
 
 internal class CampRegisterViewModel

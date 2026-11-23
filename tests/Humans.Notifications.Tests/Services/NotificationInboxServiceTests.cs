@@ -8,14 +8,12 @@ using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
 
-
 namespace Humans.Notifications.Tests.Services;
 
 public class NotificationInboxServiceTests : IDisposable
 {
     private readonly NotificationsDbContext _dbContext;
     private readonly FakeClock _clock;
-    private readonly NotificationRepository _repo;
     private readonly NotificationInboxService _service;
     private readonly Guid _userId = Guid.NewGuid();
 
@@ -27,9 +25,9 @@ public class NotificationInboxServiceTests : IDisposable
 
         _dbContext = new NotificationsDbContext(options);
         _clock = new FakeClock(Instant.FromUtc(2026, 4, 1, 12, 0));
-        _repo = new NotificationRepository(new TestDbContextFactory<NotificationsDbContext>(options));
+        var repo = new NotificationRepository(new TestDbContextFactory<NotificationsDbContext>(options));
 
-        _service = new NotificationInboxService(_repo, TestSources.Registry, _clock);
+        _service = new NotificationInboxService(repo, TestSources.Registry, _clock);
     }
 
     public void Dispose()

@@ -6,7 +6,7 @@ namespace Humans.Base.Tests.Extensions;
 
 public class LoggerSwitchExtensionsTests
 {
-    private enum SampleEnum { Known, Unknown }
+    private enum SampleEnum { Unknown }
 
     [HumansFact]
     public void SwitchDefaultWarn_logs_a_warning_naming_the_type_value_and_site()

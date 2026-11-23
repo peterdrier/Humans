@@ -61,10 +61,10 @@ public sealed class PretixStripeTests
             .Returns([new StripeAccountCheck(false, "Stripe:MirrorAccounts has no Pretix entry")]);
         var pretix = new FakePretix()
             .On("GET", "/api/v1/organizers/nobodies/events/", HttpStatusCode.OK, new { results = Array.Empty<object>() });
-        var backend = Create(pretix, stripe: _stripe);
+        var platform = Create(pretix, stripe: _stripe);
 
-        (await backend.GetPaymentLedgerAsync(Now - Duration.FromDays(1), Now, Ct)).Should().BeNull();
-        (await backend.CheckAsync(null, Ct)).Should().Contain(new CheckoutBackendFinding(false, "Stripe:MirrorAccounts has no Pretix entry"));
+        (await platform.GetPaymentLedgerAsync(Now - Duration.FromDays(1), Now, Ct)).Should().BeNull();
+        (await platform.CheckAsync(null, Ct)).Should().Contain(new PlatformFinding(false, "Stripe:MirrorAccounts has no Pretix entry"));
     }
 
     [HumansFact]
@@ -75,7 +75,7 @@ public sealed class PretixStripeTests
 
         var status = await Create(pretix, stripe: _stripe).GetStatusAsync($"nowhere2027/{Code}", Ct);
 
-        status.State.Should().Be(CheckoutState.Paid);
+        status.State.Should().Be(PlatformOrderState.Paid);
         status.FeeMinor.Should().Be(1440);
     }
 

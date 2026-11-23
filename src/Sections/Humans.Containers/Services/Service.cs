@@ -475,7 +475,7 @@ internal sealed class Service(
                     : []))
             .ToList();
 
-        return new ContainerAdminOverview(year, campGroups);
+        return new ContainerAdminOverview(campGroups);
     }
 
     private async Task<IReadOnlyList<ContainerDto>> ToDtosAsync(
@@ -509,7 +509,7 @@ internal sealed class Service(
         gallery.AddRange(images
             .Select(i => new ContainerImageDto(i.Id, $"/{i.StoragePath}", i.FileName) { SortOrder = i.SortOrder }));
 
-        return new ContainerDto(c.Id, c.CampId, c.Name, c.Description, gallery, c.CreatedAt, c.UpdatedAt);
+        return new ContainerDto(c.Id, c.CampId, c.Name, c.Description, gallery);
     }
 
     internal static ContainerPlacementDto ToPlacementDto(ContainerPlacement p) => new(
@@ -519,6 +519,5 @@ internal sealed class Service(
         p.PlacementNotes,
         p.PlacementImageStoragePath is not null ? $"/{p.PlacementImageStoragePath}" : null,
         p.PlacementImageFileName,
-        p.CreatedAt,
         p.UpdatedAt);
 }

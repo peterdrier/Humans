@@ -103,11 +103,6 @@ public sealed class TableColumn<TRow>(
     HumanLink humanLink = HumanLink.Public) : ITableColumn
     where TRow : class
 {
-    private static readonly IHtmlContent NullContent =
-        new HtmlString("""<span class="text-muted">—</span>""");
-    private static readonly IHtmlContent CheckContent =
-        new HtmlString("""<i class="fa-solid fa-check text-success" aria-label="yes"></i>""");
-
     public string Header { get; } = header;
     public CellFormat Format { get; } = options.FormatOverride ?? format;
     public string? SortKey => options.SortKeyValue;
@@ -134,11 +129,11 @@ public sealed class TableColumn<TRow>(
             return template!(typed);
 
         if (Format == CellFormat.Human)
-            return NullContent;
+            return CellContent.Null;
 
         var raw = value!(typed);
         if (raw is null)
-            return NullContent;
+            return CellContent.Null;
 
         var content = Format switch
         {
@@ -147,7 +142,7 @@ public sealed class TableColumn<TRow>(
             CellFormat.Currency => Encoded(ToDecimal(raw).ToString("N2", CultureInfo.CurrentUICulture)),
             CellFormat.Number => Encoded(ToDecimal(raw).ToString("#,##0.##", CultureInfo.CurrentUICulture)),
             CellFormat.EnumBadge => Badge((Enum)raw),
-            CellFormat.BoolIcon => (bool)raw ? CheckContent : NullContent,
+            CellFormat.BoolIcon => (bool)raw ? CellContent.Check : CellContent.Null,
             _ => Encoded(raw.ToString() ?? string.Empty),
         };
         if (options.CodeValue)
@@ -194,4 +189,13 @@ public sealed class TableColumn<TRow>(
     private static IHtmlContent Badge(Enum enumValue) =>
         new HtmlString(
             $"""<span class="badge {EnumBadgeMap.For(enumValue)}">{HtmlEncoder.Default.Encode(enumValue.ToString())}</span>""");
+}
+
+// Outside the generic type so every TRow shares one instance.
+file static class CellContent
+{
+    internal static readonly IHtmlContent Null =
+        new HtmlString("""<span class="text-muted">—</span>""");
+    internal static readonly IHtmlContent Check =
+        new HtmlString("""<i class="fa-solid fa-check text-success" aria-label="yes"></i>""");
 }

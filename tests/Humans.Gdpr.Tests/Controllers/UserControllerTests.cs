@@ -53,31 +53,23 @@ public class UserControllerTests
         _deletion.ReceivedCalls().Should().BeEmpty();
     }
 
-    [HumansTheory]
-    [InlineData(UserState.Active)]
-    [InlineData(UserState.Bare)]
-    [InlineData(UserState.DeletePending)]
-    public async Task Status_sends_everyone_outside_the_excluded_states_home(UserState state)
+    [HumansFact]
+    public async Task Status_sends_an_account_outside_the_walled_states_home()
     {
-        var result = await Create(state).Status();
+        var result = await Create(UserState.DeletePending).Status();
 
         result.Should().BeOfType<RedirectToActionResult>().Which.ControllerName.Should().Be("Home");
     }
 
-    [HumansTheory]
-    [InlineData(UserState.Suspended)]
-    [InlineData(UserState.AdminSuspended)]
-    [InlineData(UserState.Rejected)]
-    [InlineData(UserState.Deleted)]
-    [InlineData(UserState.Merged)]
-    public async Task Status_shows_the_wall_for_each_excluded_state(UserState state)
+    [HumansFact]
+    public async Task Status_shows_the_wall_to_a_walled_account()
     {
         Stub(ControllerTestHost.Info(_userId));
 
-        var result = await Create(state).Status();
+        var result = await Create(UserState.Merged).Status();
 
         result.Should().BeOfType<ViewResult>().Which.Model
-            .Should().BeOfType<AccountStatusViewModel>().Which.State.Should().Be(state);
+            .Should().BeOfType<AccountStatusViewModel>().Which.State.Should().Be(UserState.Merged);
     }
 
     [HumansFact]

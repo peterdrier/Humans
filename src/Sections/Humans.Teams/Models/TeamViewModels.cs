@@ -102,16 +102,12 @@ internal sealed class ChildTeamMemberViewModel
 {
     public Guid UserId { get; set; }
     public string ChildTeamName { get; set; } = string.Empty;
-    public string ChildTeamSlug { get; set; } = string.Empty;
-    public bool IsCoordinator { get; set; }
     public string? RoleTitle { get; set; }
 }
 
 internal sealed class TeamMemberViewModel
 {
     public Guid UserId { get; set; }
-    public string Email { get; set; } = string.Empty;
-    public TeamMemberRole Role { get; set; }
     public DateTime JoinedAt { get; set; }
     public bool IsCoordinator { get; set; }
 
@@ -129,11 +125,9 @@ internal sealed class MyTeamsViewModel
 
 internal sealed class MyTeamMembershipViewModel
 {
-    public Guid TeamId { get; set; }
     public string TeamName { get; set; } = string.Empty;
     public string TeamSlug { get; set; } = string.Empty;
     public bool IsSystemTeam { get; set; }
-    public TeamMemberRole Role { get; set; }
     public bool IsCoordinator { get; set; }
     public DateTime JoinedAt { get; set; }
     public bool CanLeave { get; set; }
@@ -143,10 +137,8 @@ internal sealed class MyTeamMembershipViewModel
 internal sealed class TeamJoinRequestSummaryViewModel
 {
     public Guid Id { get; set; }
-    public Guid TeamId { get; set; }
     public string TeamName { get; set; } = string.Empty;
     public string TeamSlug { get; set; } = string.Empty;
-    public TeamJoinRequestStatus Status { get; set; }
     public string StatusBadgeClass { get; set; } = "bg-secondary";
     public DateTime RequestedAt { get; set; }
 }
@@ -306,7 +298,7 @@ internal sealed class TeamRoleDefinitionViewModel
         {
             var assignment = d.Assignments.FirstOrDefault(a => a.SlotIndex == i);
             var priority = i < d.Priorities.Count ? d.Priorities[i] : SlotPriority.None;
-            if (assignment?.AssignedUserId is Guid assignedUserId)
+            if (assignment?.AssignedUserId is { } assignedUserId)
             {
                 assignedUserIds.Add(assignedUserId);
             }

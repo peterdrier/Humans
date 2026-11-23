@@ -1,6 +1,7 @@
 using System.Text;
 using AwesomeAssertions;
 using Humans.Gdpr.Contracts;
+using Humans.Gdpr.Services;
 
 namespace Humans.Gdpr.Tests;
 

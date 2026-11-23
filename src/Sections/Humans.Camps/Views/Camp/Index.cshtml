@@ -35,7 +35,7 @@
             <div class="col-md-12">
                 <label asp-for="Filters.Search" class="form-label">@Localizer["Camps_Index_SearchLabel"]</label>
                 <input type="search" asp-for="Filters.Search" id="camp-name-search" class="form-control"
-                       placeholder="@Localizer["Camps_Index_SearchPlaceholder", Localizer["Camps_Singular"].Value.ToLower()]"
+                       placeholder="@Localizer["Camps_Index_SearchPlaceholder", Localizer["Camps_Singular"].Value.ToLower(System.Globalization.CultureInfo.CurrentUICulture)]"
                        autocomplete="off" />
             </div>
             <div class="col-md-3">

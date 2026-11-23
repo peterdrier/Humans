@@ -112,7 +112,7 @@ public class EventsApiControllerTests
             [new Claim(ClaimTypes.NameIdentifier, userId.ToString())], "test"));
         var burn = BurnFixtures.Burn(year: 2026);
         var settings = new EventGuideSettingsView(Guid.NewGuid(), burn.Id, Instant.MinValue,
-            Instant.MaxValue, Instant.MaxValue, 100, "Europe/Madrid", Instant.MinValue, Instant.MinValue);
+            Instant.MaxValue, Instant.MaxValue, 100, "Europe/Madrid");
         var approved = MakeEvent(null, Guid.NewGuid(), null);
         _guide.GetGuideSettingsAsync(Arg.Any<CancellationToken>()).Returns(call =>
             ReadAsync<EventGuideSettingsView?>(settings, ReadBoundary.Guide, call.Arg<CancellationToken>()));
@@ -462,9 +462,7 @@ public class EventsApiControllerTests
         DurationMinutes: 60,
         IsRecurring: false,
         RecurrenceDays: null,
-        PriorityRank: 0,
-        SubmittedAt: Instant.FromUtc(2026, 7, 1, 0, 0),
-        LastUpdatedAt: Instant.FromUtc(2026, 7, 1, 0, 0));
+        PriorityRank: 0);
 
     private static UserInfo MakeUserInfo(Guid userId, string burnerName)
     {

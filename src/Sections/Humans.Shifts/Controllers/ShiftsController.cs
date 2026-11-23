@@ -31,7 +31,6 @@ internal sealed class ShiftsController(
     ShiftBrowsePageBuilder browsePageBuilder,
     ILogger<ShiftsController> logger) : HumansControllerBase(userService)
 {
-    private readonly IUserService _userService = userService;
 
     [HttpGet("")]
     public async Task<IActionResult> Index(Guid? departmentId, string? fromDate, string? toDate, string? period, string? day = null, [FromQuery(Name = "tags")] List<Guid>? tagIds = null, string? sort = null, [FromQuery(Name = "periods")] List<string>? periods = null)
@@ -59,7 +58,6 @@ internal sealed class ShiftsController(
 
         var model = await browsePageBuilder.BuildAsync(new ShiftBrowsePageRequest(
             es,
-            user.Id,
             userSignups,
             userView.TagPreferences,
             userActiveSignupsForUi,

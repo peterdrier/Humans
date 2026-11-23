@@ -13,6 +13,6 @@ public interface IGrantService : IApplicationService
 }
 
 /// <summary><paramref name="IssuedAt"/> is when the grant was given: a low income price pins the wave on sale then.</summary>
-public sealed record ActiveGrantInfo(Guid GrantId, Guid ProgramId, string ProgramName, Guid? EventSettingsId, NodaTime.Instant IssuedAt);
+public sealed record ActiveGrantInfo(Guid ProgramId, Guid? EventSettingsId, NodaTime.Instant IssuedAt);
 
-public sealed record GrantProgramSummary(Guid ProgramId, string Name, int Year, Guid? EventSettingsId, string EventName);
+public sealed record GrantProgramSummary(Guid ProgramId, string Name, string EventName);

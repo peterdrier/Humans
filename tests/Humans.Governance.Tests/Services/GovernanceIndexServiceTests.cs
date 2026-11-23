@@ -29,12 +29,12 @@ namespace Humans.Governance.Tests.Services;
 
 public sealed class GovernanceIndexServiceTests
 {
-    private readonly IGovernanceManagement Applications = Substitute.For<IGovernanceManagement>();
-    private readonly IApplicationRepository TierApplications = Substitute.For<IApplicationRepository>();
-    private readonly ILegalDocumentService LegalDocuments = Substitute.For<ILegalDocumentService>();
-    private readonly IUserService Users = Substitute.For<IUserService>();
-    private readonly IAssemblyVoteService Votes = Substitute.For<IAssemblyVoteService>();
-    private readonly IRoleAssignmentService Roles = Substitute.For<IRoleAssignmentService>();
+    private readonly IGovernanceManagement _applications = Substitute.For<IGovernanceManagement>();
+    private readonly IApplicationRepository _tierApplications = Substitute.For<IApplicationRepository>();
+    private readonly ILegalDocumentService _legalDocuments = Substitute.For<ILegalDocumentService>();
+    private readonly IUserService _users = Substitute.For<IUserService>();
+    private readonly IAssemblyVoteService _votes = Substitute.For<IAssemblyVoteService>();
+    private readonly IRoleAssignmentService _roles = Substitute.For<IRoleAssignmentService>();
     private readonly HashSet<Guid> _inactive = [];
     private readonly GovernanceBodyRepository _bodies = new(new TestDbContextFactory<GovernanceDbContext>(
         new DbContextOptionsBuilder<GovernanceDbContext>().UseInMemoryDatabase(Guid.NewGuid().ToString()).Options));
@@ -42,17 +42,17 @@ public sealed class GovernanceIndexServiceTests
     private GovernanceIndexService CreateService()
     {
         var clock = new NodaTime.Testing.FakeClock(Instant.FromUtc(2026, 10, 17, 12, 0));
-        LegalDocuments.GetDocumentContentAsync("statutes", Arg.Any<CancellationToken>())
+        _legalDocuments.GetDocumentContentAsync("statutes", Arg.Any<CancellationToken>())
             .Returns(new Dictionary<string, string>(StringComparer.Ordinal));
-        Users.GetAllUserInfosAsync(Arg.Any<CancellationToken>())
+        _users.GetAllUserInfosAsync(Arg.Any<CancellationToken>())
             .Returns((IReadOnlyList<UserInfo>)[]);
-        Users.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
+        _users.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(call => ValueTask.FromResult<IReadOnlyDictionary<Guid, UserInfo>>(call.Arg<IEnumerable<Guid>>().Distinct()
                 .ToDictionary(id => id, id => UserInfo.Create(
                     new User { Id = id, BurnerName = "Member", CreatedAt = clock.GetCurrentInstant() },
                     [], [], _inactive.Contains(id) ? null : UserFixtures.Profile()))));
-        return new GovernanceIndexService(Applications, LegalDocuments, Votes, Roles, Users, BodyLinks(),
-            new GovernanceBodyRosters(TierApplications, Roles, clock));
+        return new GovernanceIndexService(_applications, _legalDocuments, _votes, _roles, _users, BodyLinks(),
+            new GovernanceBodyRosters(_tierApplications, _roles, clock));
     }
 
     private Task StoreLinksAsync(GovernanceBody body, string prefix) =>
@@ -71,9 +71,9 @@ public sealed class GovernanceIndexServiceTests
     public async Task Body_page_shows_links_only_to_members_and_board_or_admin(bool isMember, bool boardOrAdmin, bool expected)
     {
         var viewer = Guid.NewGuid();
-        Users.GetUserInfoAsync(viewer, Arg.Any<CancellationToken>())
+        _users.GetUserInfoAsync(viewer, Arg.Any<CancellationToken>())
             .Returns(UserInfoFixtures.FromUser(new User { Id = viewer, DisplayName = "Viewer", Email = "viewer@example.com" }));
-        TierApplications.GetActiveApprovedTierUserIdsAsync(MembershipTier.Asociado, Arg.Any<LocalDate>(), Arg.Any<CancellationToken>())
+        _tierApplications.GetActiveApprovedTierUserIdsAsync(MembershipTier.Asociado, Arg.Any<LocalDate>(), Arg.Any<CancellationToken>())
             .Returns(isMember ? [viewer, Guid.NewGuid()] : [Guid.NewGuid()]);
         await StoreLinksAsync(GovernanceBody.Asociados, "asociados");
         var authorization = Substitute.For<IAuthorizationService>();
@@ -92,7 +92,7 @@ public sealed class GovernanceIndexServiceTests
     public async Task A_member_who_is_not_Board_or_Admin_cannot_change_a_bodys_links()
     {
         var viewer = Guid.NewGuid();
-        Users.GetUserInfoAsync(viewer, Arg.Any<CancellationToken>())
+        _users.GetUserInfoAsync(viewer, Arg.Any<CancellationToken>())
             .Returns(UserInfoFixtures.FromUser(new User { Id = viewer, DisplayName = "Viewer", Email = "viewer@example.com" }));
         await StoreLinksAsync(GovernanceBody.Asociados, "asociados");
         var authorization = Substitute.For<IAuthorizationService>();
@@ -114,15 +114,15 @@ public sealed class GovernanceIndexServiceTests
         var viewer = Guid.NewGuid();
         var approved = Instant.FromUtc(2026, 9, 12, 0, 0);
         var seated = Instant.FromUtc(2024, 3, 1, 0, 0);
-        Applications.GetUserApplicationsAsync(viewer, Arg.Any<CancellationToken>()).Returns([
+        _applications.GetUserApplicationsAsync(viewer, Arg.Any<CancellationToken>()).Returns([
             new UserApplicationSnapshot(Guid.NewGuid(), viewer, ApplicationStatus.Approved, MembershipTier.Asociado,
-                approved, approved, new LocalDate(2027, 12, 31), "m", null, null, null)]);
-        TierApplications.GetActiveApprovedTierUserIdsAsync(MembershipTier.Asociado, Arg.Any<LocalDate>(), Arg.Any<CancellationToken>())
+                approved, approved, new LocalDate(2027, 12, 31))]);
+        _tierApplications.GetActiveApprovedTierUserIdsAsync(MembershipTier.Asociado, Arg.Any<LocalDate>(), Arg.Any<CancellationToken>())
             .Returns([viewer]);
-        Roles.GetActiveUserIdsInRoleAsync(RoleNames.Board, Arg.Any<CancellationToken>()).Returns([viewer]);
-        Roles.GetByUserIdAsync(viewer, Arg.Any<CancellationToken>()).Returns([
+        _roles.GetActiveUserIdsInRoleAsync(RoleNames.Board, Arg.Any<CancellationToken>()).Returns([viewer]);
+        _roles.GetByUserIdAsync(viewer, Arg.Any<CancellationToken>()).Returns([
             new RoleAssignmentSummarySnapshot(Guid.NewGuid(), viewer, null, "Viewer", RoleNames.Board, seated, null, null,
-                Guid.NewGuid(), null, seated)]);
+                Guid.NewGuid(), null)]);
 
         var data = await CreateService().GetIndexDataAsync(viewer);
 
@@ -136,8 +136,8 @@ public sealed class GovernanceIndexServiceTests
         var viewer = Guid.NewGuid();
         var gone = Guid.NewGuid();
         _inactive.Add(gone);
-        Applications.GetUserApplicationsAsync(viewer, Arg.Any<CancellationToken>()).Returns([]);
-        TierApplications.GetActiveApprovedTierUserIdsAsync(MembershipTier.Asociado, Arg.Any<LocalDate>(), Arg.Any<CancellationToken>())
+        _applications.GetUserApplicationsAsync(viewer, Arg.Any<CancellationToken>()).Returns([]);
+        _tierApplications.GetActiveApprovedTierUserIdsAsync(MembershipTier.Asociado, Arg.Any<LocalDate>(), Arg.Any<CancellationToken>())
             .Returns([viewer, gone]);
         await StoreLinksAsync(GovernanceBody.Asociados, "asociados");
         await StoreLinksAsync(GovernanceBody.Board, "board");
@@ -152,12 +152,12 @@ public sealed class GovernanceIndexServiceTests
     public async Task GetIndexDataAsync_CountsActiveTermsInsteadOfCachedProfileTiers()
     {
         var userId = Guid.NewGuid();
-        Applications.GetUserApplicationsAsync(userId, Arg.Any<CancellationToken>())
+        _applications.GetUserApplicationsAsync(userId, Arg.Any<CancellationToken>())
             .Returns([]);
-        TierApplications.GetActiveApprovedTierUserIdsAsync(
+        _tierApplications.GetActiveApprovedTierUserIdsAsync(
                 MembershipTier.Colaborador, Arg.Any<LocalDate>(), Arg.Any<CancellationToken>())
             .Returns([userId]);
-        TierApplications.GetActiveApprovedTierUserIdsAsync(
+        _tierApplications.GetActiveApprovedTierUserIdsAsync(
                 MembershipTier.Asociado, Arg.Any<LocalDate>(), Arg.Any<CancellationToken>())
             .Returns([userId, Guid.NewGuid()]);
 
@@ -172,12 +172,12 @@ public sealed class GovernanceIndexServiceTests
     public async Task GetIndexDataAsync_ForwardsCancellationToStatutesRead()
     {
         using var cancellation = new CancellationTokenSource();
-        Applications.GetUserApplicationsAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+        _applications.GetUserApplicationsAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns([]);
 
         await CreateService().GetIndexDataAsync(Guid.NewGuid(), cancellation.Token);
 
-        await LegalDocuments.Received(1).GetDocumentContentAsync("statutes", cancellation.Token);
+        await _legalDocuments.Received(1).GetDocumentContentAsync("statutes", cancellation.Token);
     }
 
     private static AssemblyVoteListItem Vote(AssemblyVoteStatus status, int closesOnDay) =>
@@ -189,10 +189,10 @@ public sealed class GovernanceIndexServiceTests
     public async Task GetIndexDataAsync_lists_only_open_votes()
     {
         var userId = Guid.NewGuid();
-        Applications.GetUserApplicationsAsync(userId, Arg.Any<CancellationToken>()).Returns([]);
+        _applications.GetUserApplicationsAsync(userId, Arg.Any<CancellationToken>()).Returns([]);
         var later = Vote(AssemblyVoteStatus.Open, 20);
         var sooner = Vote(AssemblyVoteStatus.Open, 10);
-        Votes.GetVotesForMemberAsync(userId, Arg.Any<CancellationToken>())
+        _votes.GetVotesForMemberAsync(userId, Arg.Any<CancellationToken>())
             .Returns([later, Vote(AssemblyVoteStatus.Closed, 1), sooner, Vote(AssemblyVoteStatus.Cancelled, 5)]);
 
         var data = await CreateService().GetIndexDataAsync(userId);
@@ -206,9 +206,9 @@ public sealed class GovernanceIndexServiceTests
     public async Task GetIndexDataAsync_counts_unvoted_applications_only_for_board_members(bool onBoard, int expected)
     {
         var userId = Guid.NewGuid();
-        Applications.GetUserApplicationsAsync(userId, Arg.Any<CancellationToken>()).Returns([]);
-        Applications.GetUnvotedApplicationCountAsync(userId, Arg.Any<CancellationToken>()).Returns(3);
-        Roles.GetActiveUserIdsInRoleAsync(RoleNames.Board, Arg.Any<CancellationToken>())
+        _applications.GetUserApplicationsAsync(userId, Arg.Any<CancellationToken>()).Returns([]);
+        _applications.GetUnvotedApplicationCountAsync(userId, Arg.Any<CancellationToken>()).Returns(3);
+        _roles.GetActiveUserIdsInRoleAsync(RoleNames.Board, Arg.Any<CancellationToken>())
             .Returns(onBoard ? [userId, Guid.NewGuid()] : [Guid.NewGuid()]);
 
         var data = await CreateService().GetIndexDataAsync(userId);
@@ -220,14 +220,14 @@ public sealed class GovernanceIndexServiceTests
     private static UserApplicationSnapshot Approved(Guid userId, LocalDate? termExpiresAt) =>
         new(Guid.NewGuid(), userId, ApplicationStatus.Approved, MembershipTier.Colaborador,
             Instant.FromUtc(2026, 3, 1, 12, 0), Instant.FromUtc(2026, 3, 8, 12, 0),
-            termExpiresAt, "motivation", null, null, null);
+            termExpiresAt);
 
     [HumansFact]
     public async Task GetIndexDataAsync_carries_the_stored_term_expiry()
     {
         var userId = Guid.NewGuid();
         var stored = new LocalDate(2029, 12, 31);
-        Applications.GetUserApplicationsAsync(userId, Arg.Any<CancellationToken>())
+        _applications.GetUserApplicationsAsync(userId, Arg.Any<CancellationToken>())
             .Returns([Approved(userId, stored)]);
 
         var data = await CreateService().GetIndexDataAsync(userId);
@@ -239,7 +239,7 @@ public sealed class GovernanceIndexServiceTests
     public async Task GetIndexDataAsync_leaves_the_term_expiry_null_when_none_is_stored()
     {
         var userId = Guid.NewGuid();
-        Applications.GetUserApplicationsAsync(userId, Arg.Any<CancellationToken>())
+        _applications.GetUserApplicationsAsync(userId, Arg.Any<CancellationToken>())
             .Returns([Approved(userId, null)]);
 
         var data = await CreateService().GetIndexDataAsync(userId);
@@ -262,8 +262,8 @@ public sealed class GovernanceIndexServiceTests
             if (abandon && cancelAfterViewer) await cancellation.CancelAsync();
             return user;
         }
-        Users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(ReadUserAsync);
-        Applications.GetUserApplicationsAsync(userId, Arg.Any<CancellationToken>()).Returns(call =>
+        _users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(ReadUserAsync);
+        _applications.GetUserApplicationsAsync(userId, Arg.Any<CancellationToken>()).Returns(call =>
         {
             call.Arg<CancellationToken>().ThrowIfCancellationRequested();
             return Task.FromResult<IReadOnlyList<UserApplicationSnapshot>>([]);
@@ -282,8 +282,8 @@ public sealed class GovernanceIndexServiceTests
             NodaTime.SystemClock.Instance);
 
     private GovernanceController CreateController(Guid userId, IAuthorizationService authorization, CancellationToken ct = default) =>
-        new(Users, CreateService(),
-            new GovernanceBoardSeats(Roles, Substitute.For<IRoleAssignmentWrite>(), Users, _bodies,
+        new(_users, CreateService(),
+            new GovernanceBoardSeats(_roles, Substitute.For<IRoleAssignmentWrite>(), _users, _bodies,
                 Substitute.For<IAuditLogService>(),
                 new GovernanceBodySync(_bodies, Substitute.For<IGoogleGroupSync>(), Substitute.For<IGoogleSyncWrite>()),
                 NodaTime.SystemClock.Instance),

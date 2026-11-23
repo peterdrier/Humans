@@ -24,10 +24,6 @@ internal sealed class DuplicateAccountInfo
     public string? MembershipStatus { get; init; }
     public DateTime? LastLogin { get; init; }
     public DateTime? CreatedAt { get; init; }
-    public int TeamCount { get; init; }
-    public int RoleAssignmentCount { get; init; }
     public bool HasProfile { get; init; }
-    public bool IsProfileComplete { get; init; }
-    public List<string> EmailSources { get; init; } = [];
     public List<string> Teams { get; init; } = [];
 }

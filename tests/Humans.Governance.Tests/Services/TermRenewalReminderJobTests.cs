@@ -104,7 +104,7 @@ public sealed class TermRenewalReminderJobTests
         var run = new ReminderRun();
         var failure = new IOException("Email enqueue failed");
         run.Email.SendAsync(Arg.Is<EmailMessage>(message => message.UserId == run.First.UserId), Arg.Any<CancellationToken>())
-            .Returns(async call => { await shutdown.CancelAsync(); throw failure; });
+            .Returns(async _ => { await shutdown.CancelAsync(); throw failure; });
 
         var error = await Xunit.Record.ExceptionAsync(() => run.Job.ExecuteAsync(shutdown.Token));
 
@@ -130,7 +130,7 @@ public sealed class TermRenewalReminderJobTests
 
         public ReminderRun()
         {
-            First = new(Guid.NewGuid(), Guid.NewGuid(), MembershipTier.Colaborador, Now, new LocalDate(2026, 5, 20));
+            First = new(Guid.NewGuid(), Guid.NewGuid(), MembershipTier.Colaborador, new LocalDate(2026, 5, 20));
             Next = First with { Id = Guid.NewGuid(), UserId = Guid.NewGuid() };
             Applications.GetExpiringApplicationsNeedingReminderAsync(Arg.Any<LocalDate>(), Arg.Any<LocalDate>(), Arg.Any<CancellationToken>())
                 .Returns(Task.FromResult<IReadOnlyList<ApplicationRenewalReminderCandidate>>([First, Next]));
@@ -155,7 +155,7 @@ public sealed class TermRenewalReminderJobTests
         var notifications = Substitute.For<INotificationEmitter>();
         var clock = new FakeClock(Instant.FromUtc(2026, 3, 1, 12, 0));
         var candidate = new ApplicationRenewalReminderCandidate(Guid.NewGuid(), Guid.NewGuid(),
-            MembershipTier.Colaborador, clock.GetCurrentInstant(), new LocalDate(2026, 5, 20));
+            MembershipTier.Colaborador, new LocalDate(2026, 5, 20));
         var liveId = Guid.NewGuid();
         applications.GetExpiringApplicationsNeedingReminderAsync(Arg.Any<LocalDate>(), Arg.Any<LocalDate>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<ApplicationRenewalReminderCandidate>>([candidate]));
@@ -193,7 +193,7 @@ public sealed class TermRenewalReminderJobTests
         var notifications = Substitute.For<INotificationEmitter>();
         var clock = new FakeClock(Instant.FromUtc(2026, 3, 1, 12, 0));
         var candidate = new ApplicationRenewalReminderCandidate(Guid.NewGuid(), Guid.NewGuid(),
-            MembershipTier.Colaborador, clock.GetCurrentInstant(), new LocalDate(2026, 5, 20));
+            MembershipTier.Colaborador, new LocalDate(2026, 5, 20));
         applications.GetExpiringApplicationsNeedingReminderAsync(Arg.Any<LocalDate>(), Arg.Any<LocalDate>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<ApplicationRenewalReminderCandidate>>([candidate]));
         applications.GetPendingApplicationUserTiersAsync(Arg.Any<CancellationToken>())
@@ -232,7 +232,7 @@ public sealed class TermRenewalReminderJobTests
         var metrics = Substitute.For<IHumansMetrics>();
         var clock = new FakeClock(Instant.FromUtc(2026, 3, 1, 12, 0));
         var first = new ApplicationRenewalReminderCandidate(Guid.NewGuid(), Guid.NewGuid(),
-            MembershipTier.Colaborador, clock.GetCurrentInstant(), new LocalDate(2026, 5, 20));
+            MembershipTier.Colaborador, new LocalDate(2026, 5, 20));
         var next = first with { Id = Guid.NewGuid(), UserId = Guid.NewGuid() };
         applications.GetExpiringApplicationsNeedingReminderAsync(Arg.Any<LocalDate>(), Arg.Any<LocalDate>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<ApplicationRenewalReminderCandidate>>([first, next]));
@@ -315,7 +315,7 @@ public sealed class TermRenewalReminderJobTests
         var userId = Guid.NewGuid();
         var expiry = new LocalDate(2026, 5, 20);
         var candidate = new ApplicationRenewalReminderCandidate(Guid.NewGuid(), userId,
-            MembershipTier.Colaborador, clock.GetCurrentInstant(), expiry);
+            MembershipTier.Colaborador, expiry);
         applications.GetExpiringApplicationsNeedingReminderAsync(Arg.Any<LocalDate>(), Arg.Any<LocalDate>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<ApplicationRenewalReminderCandidate>>([candidate]));
         applications.GetPendingApplicationUserTiersAsync(Arg.Any<CancellationToken>())

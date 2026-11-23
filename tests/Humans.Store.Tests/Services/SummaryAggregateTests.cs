@@ -28,7 +28,6 @@ public class SummaryAggregateTests
     private readonly IStripeService _stripe = Substitute.For<IStripeService>();
     private readonly FakeClock _clock = new(Instant.FromUtc(2026, 3, 14, 12, 0));
     private readonly IHoldedService _holded = Substitute.For<IHoldedService>();
-    private readonly IHoldedWrite _holdedWrite = Substitute.For<IHoldedWrite>();
     private readonly Service _service;
 
     public SummaryAggregateTests()
@@ -449,7 +448,7 @@ public class SummaryAggregateTests
             Seasons:
             [
                 new CampSeasonInfo(
-                    seasonId, campId, slug, 2026, null, name, string.Empty, string.Empty, [],
+                    seasonId, campId, 2026, null, name, string.Empty, string.Empty, [],
                     CampSeasonStatus.Active, YesNoMaybe.No, YesNoMaybe.No, AdultPlayspacePolicy.No,
                     0, null, null, null, 0, null, null)
             ]);

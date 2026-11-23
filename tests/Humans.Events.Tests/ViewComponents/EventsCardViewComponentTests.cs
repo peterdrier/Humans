@@ -95,15 +95,14 @@ public class EventsCardViewComponentTests
         CategoryId: Guid.NewGuid(), CategorySlug: "music", CategoryName: "Music", CategoryIsSensitive: false,
         VenueName: null, Title: title, Description: description, LocationNote: null, Host: null,
         StartAt: startAt, DurationMinutes: 60, IsRecurring: false, RecurrenceDays: null,
-        PriorityRank: 0, SubmittedAt: startAt, LastUpdatedAt: startAt);
+        PriorityRank: 0);
 
     private void StubSettings() =>
         _events.GetGuideSettingsAsync(Arg.Any<CancellationToken>())
             .Returns(new EventGuideSettingsView(
                 Id: Guid.NewGuid(), EventSettingsId: Guid.NewGuid(),
                 SubmissionOpenAt: Instant.MinValue, SubmissionCloseAt: Instant.MaxValue,
-                GuidePublishAt: Instant.MaxValue, MaxPrintSlots: 0, TimeZoneId: "Europe/Madrid",
-                CreatedAt: Instant.MinValue, UpdatedAt: Instant.MinValue));
+                GuidePublishAt: Instant.MaxValue, MaxPrintSlots: 0, TimeZoneId: "Europe/Madrid"));
 
     [HumansFact]
     public async Task CampScope_Renders_OrderedRows_WithFavouritesMarked()

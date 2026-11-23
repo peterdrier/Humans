@@ -242,7 +242,6 @@ public class EndpointAuthorizationTests
             "BoxOfficeStripeWebhookController",
             "HiEventsWebhookController",
             "PretixWebhookController",
-            "HiEventsWebhookController",
             "CampApiController",
             "ColorPaletteController",
             // API-key authenticated by BackdoorApiKeyAuthFilter, which runs after endpoint authorization.
@@ -253,6 +252,7 @@ public class EndpointAuthorizationTests
             "BackdoorNotificationsController",
             "BackdoorStoreController",
             "BackdoorSurveysController",
+            "BackdoorTasksController",
         };
 
         var anonymous = AllControllerTypes(includeApiControllers: true)

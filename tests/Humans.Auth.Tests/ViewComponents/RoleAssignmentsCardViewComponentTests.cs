@@ -78,7 +78,7 @@ public sealed class RoleAssignmentsCardViewComponentTests
 
     private RoleAssignmentSummarySnapshot Summary(string role, Instant? validTo) => new(
         Guid.NewGuid(), _userId, "m@example.org", "Member", role,
-        Now - Duration.FromDays(30), validTo, null, Guid.NewGuid(), "Actor", Now - Duration.FromDays(30));
+        Now - Duration.FromDays(30), validTo, null, Guid.NewGuid(), "Actor");
 
     private RoleAssignmentsCardViewComponent Build(bool authorized)
     {

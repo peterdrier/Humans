@@ -22,8 +22,8 @@ internal static class PretixTestHost
     };
 
     /// <summary>Over <paramref name="stripe"/>, or a Stripe section with no account configured for pretix.</summary>
-    public static PretixCheckoutBackend Create(FakePretix pretix, PretixSettings? settings = null, IStripeService? stripe = null) =>
-        new(new HttpClient(pretix), Options.Create(settings ?? Settings()), NullLogger<PretixCheckoutBackend>.Instance,
+    public static PretixPlatform Create(FakePretix pretix, PretixSettings? settings = null, IStripeService? stripe = null) =>
+        new(new HttpClient(pretix), Options.Create(settings ?? Settings()), NullLogger<PretixPlatform>.Instance,
             stripe ?? NoStripeAccount());
 
     public static IStripeService NoStripeAccount()

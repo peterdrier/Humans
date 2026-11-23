@@ -186,7 +186,7 @@ public class AuditLogPageRenderTests(HumansTestDatabase database) : IntegrationT
     [HumansFact]
     public void Every_audit_log_call_site_sits_under_a_view_imports_that_binds_it()
     {
-        const string Directive = "@addTagHelper *, Humans.AuditLog";
+        const string directive = "@addTagHelper *, Humans.AuditLog";
         var src = Path.Combine(FindRepoRoot(), "src");
 
         var callSites = Directory
@@ -198,7 +198,7 @@ public class AuditLogPageRenderTests(HumansTestDatabase database) : IntegrationT
 
         callSites.Should().NotBeEmpty("the component would otherwise be dead");
 
-        var unbound = callSites.Where(f => !BindsAuditLog(f, src, Directive)).ToList();
+        var unbound = callSites.Where(f => !BindsAuditLog(f, src, directive)).ToList();
 
         unbound.Should().BeEmpty(
             "a <vc:audit-log> whose assembly never opens Humans.AuditLog's tag helpers ships as "

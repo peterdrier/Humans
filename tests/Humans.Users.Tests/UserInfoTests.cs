@@ -28,7 +28,7 @@ public class UserInfoTests
     {
         var user = MinimalUser();
         user.State = state;
-        var info = UserInfoFactory.Create(user, [], [], hasProfile ? NamedProfile(user.Id, "Name") : null, [], [], []);
+        var info = UserInfoFactory.Create(user, [], [], hasProfile ? NamedProfile(user.Id) : null, [], [], []);
 
         info.IsProfileBrowsable.Should().Be(browsable);
         info.NeedsProfileSetup.Should().Be(needsSetup);
@@ -44,7 +44,7 @@ public class UserInfoTests
         user.BurnerName = "From User";
 
         var info = UserInfoFactory.Create(
-            user, [], [], NamedProfile(userId, "From Profile"), [], [], []);
+            user, [], [], NamedProfile(userId), [], [], []);
 
         info.BurnerName.Should().Be("From User");
     }
@@ -60,7 +60,7 @@ public class UserInfoTests
         user.BurnerName = userBurnerName;
 
         var info = UserInfoFactory.Create(
-            user, [], [], NamedProfile(userId, "From Profile"), [], [], []);
+            user, [], [], NamedProfile(userId), [], [], []);
 
         info.BurnerName.Should().BeEmpty();
     }
@@ -106,7 +106,7 @@ public class UserInfoTests
         user.MergedAt = Instant.FromUtc(2026, 1, 1, 0, 0);
 
         var info = UserInfoFactory.Create(
-            user, [], [], NamedProfile(userId, "Merged"), [], [], []);
+            user, [], [], NamedProfile(userId), [], [], []);
 
         info.IsActive.Should().BeFalse();
     }
@@ -122,7 +122,7 @@ public class UserInfoTests
         user.Email = $"deleted-{userId:N}@deleted.local";
 
         var info = UserInfoFactory.Create(
-            user, [], [], NamedProfile(userId, "Deleted User"), [], [], []);
+            user, [], [], NamedProfile(userId), [], [], []);
 
         info.IsActive.Should().BeFalse();
     }
@@ -135,7 +135,7 @@ public class UserInfoTests
         user.Email = "someone@merged.local";
 
         var info = UserInfoFactory.Create(
-            user, [], [], NamedProfile(userId, "Merged"), [], [], []);
+            user, [], [], NamedProfile(userId), [], [], []);
 
         info.IsActive.Should().BeFalse();
     }
@@ -155,7 +155,7 @@ public class UserInfoTests
         user.Email = "alice@example.com";
 
         var info = UserInfoFactory.Create(
-            user, [], [], NamedProfile(userId, "Deleted User"), [], [], []);
+            user, [], [], NamedProfile(userId), [], [], []);
 
         info.IsGdprAnonymized.Should().BeFalse();
         info.IsTombstone.Should().BeFalse();
@@ -211,7 +211,7 @@ public class UserInfoTests
         user.Email = "real.member@example.com";
 
         var info = UserInfoFactory.Create(
-            user, [], [], NamedProfile(userId, "Deleted User"), [], [], []);
+            user, [], [], NamedProfile(userId), [], [], []);
 
         info.IsGdprAnonymized.Should().BeFalse();
         info.IsTombstone.Should().BeFalse();
@@ -249,7 +249,7 @@ public class UserInfoTests
         var user = MinimalUser(userId);
 
         var info = UserInfoFactory.Create(
-            user, [], [], NamedProfile(userId, "Test"), [], [], []);
+            user, [], [], NamedProfile(userId), [], [], []);
 
         info.IsActive.Should().BeTrue();
     }
@@ -262,12 +262,12 @@ public class UserInfoTests
         user.State = UserState.Rejected;
 
         var info = UserInfoFactory.Create(
-            user, [], [], NamedProfile(userId, "Test"), [], [], []);
+            user, [], [], NamedProfile(userId), [], [], []);
 
         info.IsActive.Should().BeFalse();
     }
 
-    private static Profile NamedProfile(Guid userId, string burnerName) => new()
+    private static Profile NamedProfile(Guid userId) => new()
     {
         Id = Guid.NewGuid(),
         UserId = userId,

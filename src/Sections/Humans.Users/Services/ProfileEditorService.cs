@@ -88,10 +88,10 @@ internal sealed class ProfileEditorService(
 
         return new(true);
 
-        ProfileEditResult Refuse(ProfileEditResult refusal)
+        ProfileEditResult Refuse(ProfileEditResult result)
         {
-            logger.LogWarning("Profile save refused for {UserId}: {ErrorKey}", userId, refusal.ErrorKey);
-            return refusal;
+            logger.LogWarning("Profile save refused for {UserId}: {ErrorKey}", userId, result.ErrorKey);
+            return result;
         }
     }
 

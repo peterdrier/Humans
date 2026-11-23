@@ -18,7 +18,7 @@ namespace Humans.HiEvents.Controllers;
 [Route("HiEvents/Webhook")]
 internal sealed class HiEventsWebhookController(
     IOptions<HiEventsSettings> settings,
-    ITicketCheckoutEvents checkoutEvents,
+    ITicketingPlatformEvents platformEvents,
     ILogger<HiEventsWebhookController> logger) : ControllerBase
 {
     [HttpPost("")]
@@ -49,9 +49,9 @@ internal sealed class HiEventsWebhookController(
             return Ok();
         }
 
-        await checkoutEvents.CheckoutChangedAsync(
-            HiEventsCheckoutBackend.BackendKey,
-            HiEventsCheckoutBackend.ToBackendOrderId(order.EventId, order.OrderId),
+        await platformEvents.PlatformOrderChangedAsync(
+            HiEventsPlatform.PlatformKey,
+            HiEventsPlatform.ToPlatformOrderId(order.EventId, order.OrderId),
             ct);
 
         return Ok();

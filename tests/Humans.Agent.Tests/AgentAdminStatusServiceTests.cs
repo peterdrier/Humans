@@ -40,28 +40,28 @@ public class AgentAdminStatusServiceTests
         var report = await BuildService(db, clock).GetStatusAsync(Xunit.TestContext.Current.CancellationToken);
 
         // 24h: one message, one unique user, prompt=100, output=50, cached=200
-        report.Usage24h.MessageCount.Should().Be(1);
-        report.Usage24h.UniqueUserCount.Should().Be(1);
-        report.Usage24h.PromptTokens.Should().Be(100);
-        report.Usage24h.CachedTokens.Should().Be(200);
+        report.Usage24Hours.MessageCount.Should().Be(1);
+        report.Usage24Hours.UniqueUserCount.Should().Be(1);
+        report.Usage24Hours.PromptTokens.Should().Be(100);
+        report.Usage24Hours.CachedTokens.Should().Be(200);
 
         // 7d: two messages, one unique user
-        report.Usage7d.MessageCount.Should().Be(2);
-        report.Usage7d.UniqueUserCount.Should().Be(1);
+        report.Usage7Days.MessageCount.Should().Be(2);
+        report.Usage7Days.UniqueUserCount.Should().Be(1);
 
         // 30d: three messages, two unique users
-        report.Usage30d.MessageCount.Should().Be(3);
-        report.Usage30d.UniqueUserCount.Should().Be(2);
+        report.Usage30Days.MessageCount.Should().Be(3);
+        report.Usage30Days.UniqueUserCount.Should().Be(2);
 
         // Refusal breakdown (7d) — one rate_limit
-        report.Refusals7dCount.Should().Be(1);
-        report.Refusals7d.Should().ContainSingle(r => r.Reason == "rate_limit" && r.Count == 1);
+        report.Refusals7DaysCount.Should().Be(1);
+        report.Refusals7Days.Should().ContainSingle(r => r.Reason == "rate_limit" && r.Count == 1);
 
         // Top docs over 7d — "agent" fetched once (the 30d-only doc is outside this window)
-        report.TopDocs7d.Should().ContainSingle(d => d.Slug == "agent" && d.Count == 1);
-        report.TopDocs7d.Should().ContainSingle(d => d.Slug == "tickets" && d.Count == 1);
+        report.TopDocs7Days.Should().ContainSingle(d => d.Slug == "agent" && d.Count == 1);
+        report.TopDocs7Days.Should().ContainSingle(d => d.Slug == "tickets" && d.Count == 1);
 
-        report.TopUsers7d.Should().ContainSingle(u => u.UserId == user1 && u.MessageCount == 2);
+        report.TopUsers7Days.Should().ContainSingle(u => u.UserId == user1 && u.MessageCount == 2);
     }
 
     [HumansFact]
@@ -83,10 +83,10 @@ public class AgentAdminStatusServiceTests
 
         var report = await BuildService(db, new FakeClock(now)).GetStatusAsync(Xunit.TestContext.Current.CancellationToken);
 
-        report.TopDocs7d.Should().HaveCount(3);
-        report.TopDocs7d.Should().ContainSingle(d => d.Slug == AgentToolNames.FetchSectionGuide + ":Users" && d.Count == 3);
-        report.TopDocs7d.Should().ContainSingle(d => d.Slug == AgentToolNames.FetchFeatureSpec + ":My-Feature" && d.Count == 2);
-        report.TopDocs7d.Should().ContainSingle(d => d.Slug == AgentToolNames.RouteToIssue && d.Count == 1);
+        report.TopDocs7Days.Should().HaveCount(3);
+        report.TopDocs7Days.Should().ContainSingle(d => d.Slug == AgentToolNames.FetchSectionGuide + ":Users" && d.Count == 3);
+        report.TopDocs7Days.Should().ContainSingle(d => d.Slug == AgentToolNames.FetchFeatureSpec + ":My-Feature" && d.Count == 2);
+        report.TopDocs7Days.Should().ContainSingle(d => d.Slug == AgentToolNames.RouteToIssue && d.Count == 1);
     }
 
     [HumansFact]
@@ -123,11 +123,11 @@ public class AgentAdminStatusServiceTests
         var report = await BuildService(db, clock).GetStatusAsync(Xunit.TestContext.Current.CancellationToken);
 
         // Average/p95 computed only over the two real assistant turns (1000ms, 2000ms).
-        report.Usage24h.AverageTurnMs.Should().Be(1500);
-        report.Usage24h.P95TurnMs.Should().Be(2000);
+        report.Usage24Hours.AverageTurnMs.Should().Be(1500);
+        report.Usage24Hours.P95TurnMs.Should().Be(2000);
 
         // MessageCount still counts every row in the window (raw message volume), unaffected.
-        report.Usage24h.MessageCount.Should().Be(5);
+        report.Usage24Hours.MessageCount.Should().Be(5);
     }
 
     [HumansFact]
@@ -151,9 +151,9 @@ public class AgentAdminStatusServiceTests
 
         var report = await BuildService(db, clock).GetStatusAsync(Xunit.TestContext.Current.CancellationToken);
 
-        report.Usage24h.MessageCount.Should().Be(2);
-        report.Usage24h.AverageTurnMs.Should().Be(0);
-        report.Usage24h.P95TurnMs.Should().Be(0);
+        report.Usage24Hours.MessageCount.Should().Be(2);
+        report.Usage24Hours.AverageTurnMs.Should().Be(0);
+        report.Usage24Hours.P95TurnMs.Should().Be(0);
     }
 
     [HumansFact]

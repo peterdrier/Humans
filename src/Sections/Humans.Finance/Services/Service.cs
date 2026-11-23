@@ -939,7 +939,6 @@ internal sealed class Service(
         var payments = lines.Where(l => l.Debit > 0m).ToList();
 
         return new CreditorStatus(
-            SupplierAccountNum: num,
             Balance: balance,
             OwedToMember: Math.Max(0m, -balance),
             LastPaymentDate: payments.Count == 0
@@ -1416,7 +1415,7 @@ internal sealed class Service(
             var deletable = ok?.Duplicates.Select(d => d.Id).ToList() ?? [];
             var refused = (named?.Duplicates ?? [])
                 .Where(d => !deletableIds.Contains(d.Id))
-                .Select(d => new HoldedDuplicateRefusal(d.Id, d.Total, Refusal(d)
+                .Select(d => new HoldedDuplicateRefusal(d.Id, Refusal(d)
                     ?? (d.Notes is null
                         ? "its notes are not mirrored yet — the next sync reads them"
                         : "notes do not match the push — judge it by hand")))
@@ -1436,10 +1435,10 @@ internal sealed class Service(
                 var lines = g.Select(l => l.Line).ToList();
 
                 // A contact the race created beside the bound one holds only duplicates, so it goes once they do.
-                var deletableIds = lines.SelectMany(l => l.DeletableDocIds).ToHashSet(StringComparer.Ordinal);
+                var memberDeletableIds = lines.SelectMany(l => l.DeletableDocIds).ToHashSet(StringComparer.Ordinal);
                 var orphans = contactsByUser[g.Key]
                     .Where(c => !string.Equals(c, binding?.HoldedContactId, StringComparison.Ordinal))
-                    .Where(c => docsByContact[c].Any() && docsByContact[c].All(d => deletableIds.Contains(d.Id)))
+                    .Where(c => docsByContact[c].Any() && docsByContact[c].All(d => memberDeletableIds.Contains(d.Id)))
                     .Order(StringComparer.Ordinal)
                     .ToList();
 
@@ -1750,8 +1749,7 @@ internal sealed class Service(
                 continue;
 
             unmatched.Add(new SepaBankMovementVm(
-                m.Id, m.Date, m.Amount, m.Description, account, m.Status,
-                files.Count > 1
+                m.Date, m.Amount, m.Description, account, files.Count > 1
                     ? $"{files.Count} payout files total {Euros(Math.Abs(m.Amount))} — settle it in Holded by hand"
                     : files.Count == 1
                         ? "another bank line matches that file's total too — settle it in Holded by hand"

@@ -34,7 +34,7 @@ internal sealed class ProfileEmailsController(
     SignInManager<User> signInManager,
     IOptions<GoogleWorkspaceOptions> googleWorkspaceOptions) : HumansControllerBase(userService)
 {
-    private readonly EmailsViewModelBuilder emailsViewModelBuilder = new(
+    private readonly EmailsViewModelBuilder _emailsViewModelBuilder = new(
         userService, userManager, userEmailService, emailLocks, googleWorkspaceOptions.Value);
     private readonly IUserManagement _userService = userService;
 
@@ -551,6 +551,6 @@ internal sealed class ProfileEmailsController(
 
     private Task<EmailsViewModel> BuildEmailsViewModelAsync(
         User user, CancellationToken ct, bool isAdminContext = false) =>
-        emailsViewModelBuilder.BuildAsync(user, isAdminContext, User.IsInRole(RoleNames.Admin), ct);
+        _emailsViewModelBuilder.BuildAsync(user, isAdminContext, User.IsInRole(RoleNames.Admin), ct);
 
 }

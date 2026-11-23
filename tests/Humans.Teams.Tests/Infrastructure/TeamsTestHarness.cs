@@ -28,7 +28,6 @@ public abstract class TeamsTestHarness : IDisposable
 
     private protected DbContextOptions<UsersDbContext> DbOptions { get; }
     private protected UsersDbContext Db { get; }
-    private protected TestDbContextFactory DbFactory { get; }
 
     // Section contexts are separate in-memory stores: a test seeding across two saves each.
     // Each pair is built on first touch: building one costs an EF service provider.
@@ -63,7 +62,6 @@ public abstract class TeamsTestHarness : IDisposable
             .ConfigureWarnings(w => w.Ignore(InMemoryEventId.TransactionIgnoredWarning))
             .Options;
         Db = new UsersDbContext(DbOptions);
-        DbFactory = new TestDbContextFactory(DbOptions);
 
         _authDb = RegisterSection<AuthDbContext>(o => new(o));
         _googleIntegrationDb = RegisterSection<GoogleIntegrationDbContext>(o => new(o));

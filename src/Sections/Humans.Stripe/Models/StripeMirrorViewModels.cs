@@ -90,7 +90,6 @@ internal sealed record StripePayoutRow(
     string Currency,
     string Status,
     bool Automatic,
-    string? Method,
     string? FailureMessage,
     int LinkedCount,
     decimal LinkedNet)

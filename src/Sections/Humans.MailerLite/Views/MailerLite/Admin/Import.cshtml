@@ -93,7 +93,7 @@
         }
     </text>;
     Func<SubscriberDecision, IHtmlContent> matchedCell = @<text>
-        @if (item.TargetUserId is Guid uid)
+        @if (item.TargetUserId is { } uid)
         {
             <vc:human user-id="@uid" link="Admin" />
         }

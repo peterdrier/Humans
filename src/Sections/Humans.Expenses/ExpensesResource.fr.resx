@@ -305,4 +305,6 @@
   <data name="Expenses_Validation_AmountPrecision" xml:space="preserve"><value>Saisissez un montant avec au maximum deux décimales.</value></data>
   <data name="Expenses_Flash_DraftSavedFollowupFailed" xml:space="preserve"><value>Le brouillon a été enregistré, mais la demande n’a pas pu être terminée. Vérifiez-le avant de continuer.</value></data>
   <data name="Expenses_Flash_DraftOutcomeUnknown" xml:space="preserve"><value>Nous n’avons pas pu confirmer si le brouillon a été enregistré. Vérifiez les notes de frais existantes avant de créer un autre brouillon.</value></data>
+  <data name="Expenses_Permission_Endorse_Title" xml:space="preserve"><value>Valider les notes de frais</value></data>
+  <data name="Expenses_Permission_Endorse_Blurb" xml:space="preserve"><value>Valider, refuser et rejeter des lignes des notes de frais imputées au budget de l’équipe.</value></data>
 </root>

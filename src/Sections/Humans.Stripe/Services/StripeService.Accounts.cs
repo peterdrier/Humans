@@ -7,7 +7,7 @@ using Stripe;
 
 namespace Humans.Stripe.Services;
 
-/// <summary>Live reads of a named mirror account, for a ticket backend that charges into its own Stripe account.</summary>
+/// <summary>Live reads of a named mirror account, for a ticketing platform that charges into its own Stripe account.</summary>
 internal sealed partial class StripeService
 {
     private static readonly Duration SearchLag = Duration.FromHours(2);

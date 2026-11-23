@@ -33,7 +33,7 @@ public sealed class TicketingPreferenceLockTests
         var tickets = Substitute.For<ITicketService>();
         tickets.GetUserTicketHoldingsAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new UserTicketHoldings(0,
-                [new UserTicketHoldingRow(Guid.NewGuid(), "A", null, "TT-1", "Standard", TicketAttendeeStatus.Valid)]));
+                [new UserTicketHoldingRow(Guid.NewGuid(), "A", null, TicketAttendeeStatus.Valid)]));
 
         (await new TicketingPreferenceLock(tickets).GetLockedCategoriesAsync(userId, Ct))
             .Should().Equal(MessageCategory.Ticketing);

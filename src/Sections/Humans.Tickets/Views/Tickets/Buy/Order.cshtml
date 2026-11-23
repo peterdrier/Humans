@@ -44,7 +44,7 @@
                 @foreach (var line in Model.VisibleLines)
                 {
                     <dt>
-                        @if (line.Kind == Humans.Tickets.Contracts.CheckoutLineKind.Ticket)
+                        @if (line.Kind == Humans.Tickets.Contracts.OrderLineKind.Ticket)
                         {
                             @(line.HolderKind == TicketHolderKind.Child ? Localizer["Tickets_Buy_Line_Child"] : Localizer["Tickets_Buy_Line_Ticket"])
                             var priceName = line.ClassLabel ?? line.WaveName;
@@ -58,9 +58,9 @@
                             @string.Format(Localizer["Tickets_Buy_Line_Donation"].Value, line.DonationPurpose ?? Localizer["Tickets_Buy_Purpose_General"].Value)
                             <span class="d-block small text-muted">@Localizer["Tickets_Buy_DonationLineNote"]</span>
                         }
-                        @if (line.AttendeeName is not null)
+                        @if (line.HolderName is not null)
                         {
-                            <span class="d-block small">@line.AttendeeName</span>
+                            <span class="d-block small">@line.HolderName</span>
                         }
                     </dt>
                     <dd>@(Model.IsBuyer ? (line.AmountMinor / 100m).ToEuro() : "")</dd>

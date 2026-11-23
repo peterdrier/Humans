@@ -194,11 +194,7 @@ internal sealed class DuplicateAccountService(
             MembershipStatus = membershipStatus,
             LastLogin = info?.LastLoginAt?.ToDateTimeUtc(),
             CreatedAt = info?.CreatedAt.ToDateTimeUtc(),
-            TeamCount = teamCounts.GetValueOrDefault(userId),
-            RoleAssignmentCount = roleAssignmentCounts.GetValueOrDefault(userId),
-            HasProfile = hasProfile,
-            IsProfileComplete = isProfileComplete,
-            EmailSources = emailSources
+            HasProfile = hasProfile
         };
     }
 }

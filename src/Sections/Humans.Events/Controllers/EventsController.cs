@@ -30,7 +30,7 @@ internal sealed class EventsController(
     ILogger<EventsController> logger,
     IStringLocalizer<EventsResource> localizer) : HumansCampControllerBase(users, camps, authorizationService)
 {
-    private readonly EventGuidePageBuilder guidePageBuilder = new(guide, camps);
+    private readonly EventGuidePageBuilder _guidePageBuilder = new(guide, camps);
 
     [HttpGet("MySubmissions")]
     public async Task<IActionResult> MySubmissions()
@@ -71,7 +71,6 @@ internal sealed class EventsController(
                     Title = e.Title,
                     CategoryName = e.CategoryName,
                     StartAt = ToLocalDateTime(e.StartAt, tz),
-                    DurationMinutes = e.DurationMinutes,
                     Status = e.Status,
                     PriorityRank = e.PriorityRank,
                     CanEdit = e.CanEdit,
@@ -102,10 +101,8 @@ internal sealed class EventsController(
                 {
                     Id = e.Id,
                     Title = e.Title,
-                    VenueName = e.VenueName ?? "—",
                     CategoryName = e.CategoryName,
                     StartAt = ToLocalDateTime(e.StartAt, tz),
-                    DurationMinutes = e.DurationMinutes,
                     Status = e.Status,
                     CanEdit = e.CanEdit,
                     CanWithdraw = e.CanWithdraw
@@ -325,7 +322,7 @@ internal sealed class EventsController(
         var user = await GetCurrentUserInfoAsync(ct);
         if (user == null) return Challenge();
 
-        var model = await guidePageBuilder.BuildScheduleAsync(user.Id, ct);
+        var model = await _guidePageBuilder.BuildScheduleAsync(user.Id, ct);
 
         return View(model);
     }
@@ -338,7 +335,7 @@ internal sealed class EventsController(
         var user = await GetCurrentUserInfoAsync(ct);
         if (user == null) return Challenge();
 
-        var model = await guidePageBuilder.BuildBrowseAsync(user.Id, days, categoryId, venueId, q, favouritesOnly, ct);
+        var model = await _guidePageBuilder.BuildBrowseAsync(user.Id, days, categoryId, venueId, q, favouritesOnly, ct);
 
         return View(model);
     }
@@ -688,8 +685,8 @@ internal sealed class EventsController(
         if (parsed.Errors.Count > 0)
         {
             logger.LogWarning("Bulk CSV validation failed for camp slug {Slug}: {ErrorKeys}",
-                slug, string.Join(", ", parsed.Errors.Select(error => error.Key)));
-            var detail = string.Join(" ", parsed.Errors.Select(error => localizer[error.Key, error.Args].Value));
+                slug, string.Join(", ", parsed.Errors.Select(parseError => parseError.Key)));
+            var detail = string.Join(" ", parsed.Errors.Select(parseError => localizer[parseError.Key, parseError.Args].Value));
             SetError(localizer["Events_Upload_ParseErrorDetail", detail].Value);
             return RedirectToAction(nameof(MySubmissions));
         }

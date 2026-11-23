@@ -941,7 +941,7 @@ public sealed class CampServiceTests : CampsTestHarness
     public void CampSeasonInfo_IsPublic_OnlyForActiveOrFullSeasons(CampSeasonStatus status, bool expected)
     {
         var season = new CampSeasonInfo(
-            Guid.NewGuid(), Guid.NewGuid(), "camp", 2026, null, "Camp", string.Empty, string.Empty,
+            Guid.NewGuid(), Guid.NewGuid(), 2026, null, "Camp", string.Empty, string.Empty,
             [], status, YesNoMaybe.No, YesNoMaybe.No, AdultPlayspacePolicy.No,
             0, null, null, null, 0, null, null);
 
@@ -2823,16 +2823,10 @@ public sealed class CampServiceTests : CampsTestHarness
         public bool Armed { get; set; }
         public override ValueTask<InterceptionResult<int>> SavingChangesAsync(DbContextEventData eventData,
             InterceptionResult<int> result, CancellationToken cancellationToken = default)
-        {
-            if (Armed && beforeCommit) throw failure;
-            return ValueTask.FromResult(result);
-        }
+            => Armed && beforeCommit ? throw failure : ValueTask.FromResult(result);
         public override ValueTask<int> SavedChangesAsync(SaveChangesCompletedEventData eventData,
             int result, CancellationToken cancellationToken = default)
-        {
-            if (Armed && !beforeCommit) throw failure;
-            return ValueTask.FromResult(result);
-        }
+            => Armed && !beforeCommit ? throw failure : ValueTask.FromResult(result);
     }
 
     [HumansTheory]
@@ -3203,7 +3197,6 @@ public sealed class CampServiceTests : CampsTestHarness
                     memberUserId,
                     CampMemberStatus.Active,
                     requestedAt,
-                    requestedAt,
                     HasEarlyEntry: false)
             ]
         };
@@ -3425,7 +3418,6 @@ public sealed class CampServiceTests : CampsTestHarness
         new(
             Guid.NewGuid(),
             campId,
-            "future-pending",
             year,
             NameLockDate: null,
             $"Future Pending {year}",
@@ -3457,7 +3449,7 @@ public sealed class CampServiceTests : CampsTestHarness
             Members =
             [
                 new CampSeasonMemberInfo(
-                    Guid.NewGuid(), userId, status, requestedAt, requestedAt, HasEarlyEntry: false)
+                    Guid.NewGuid(), userId, status, requestedAt, HasEarlyEntry: false)
                 {
                     Roles = roles
                 }

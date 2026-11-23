@@ -25,9 +25,8 @@ public class BudgetAdminControllerTests
         var clock = new FakeClock(Instant.FromUtc(2026, 11, 20, 0, 0));
         var budgets = Substitute.For<IBudgetManagement>();
         var groupId = Guid.NewGuid();
-        var projection = new TicketingProjectionSnapshot(Guid.NewGuid(), groupId,
-            new LocalDate(2026, 3, 1), new LocalDate(2026, 8, 1), 0, 5m, 100m, 10,
-            1.5m, 0.25m, 3m, default, default);
+        var projection = new TicketingProjectionSnapshot(new LocalDate(2026, 3, 1), new LocalDate(2026, 8, 1), 0, 5m, 100m, 10,
+            1.5m, 0.25m, 3m);
         var group = new BudgetGroupDetail(groupId, Guid.NewGuid(), "Tickets", 0,
             false, false, true, projection, []);
         var year = new BudgetYearDetail(group.BudgetYearId, "2026", "Budget", BudgetYearStatus.Active, false, [group]);

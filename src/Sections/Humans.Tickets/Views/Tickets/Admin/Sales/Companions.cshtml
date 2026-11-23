@@ -61,7 +61,7 @@
                         <a asp-action="Ticket" asp-route-orderId="@row.TicketOrderId" asp-route-ticketId="@r.TicketId"><code>@row.TicketBarcode</code></a>
                     </div>
                     <p class="my-2">@r.Note</p>
-                    <form method="post" asp-action="DecideCompanion" asp-route-id="@Model.SalesEventId" asp-route-requestId="@r.Id"
+                    <form method="post" asp-action="DecideCompanion" asp-route-id="@Model.TicketingSettingsId" asp-route-requestId="@r.Id"
                           class="row g-2 align-items-end" authorize-policy="@TicketsPolicies.Manage">
                         @Html.AntiForgeryToken()
                         <div class="col-md-7">

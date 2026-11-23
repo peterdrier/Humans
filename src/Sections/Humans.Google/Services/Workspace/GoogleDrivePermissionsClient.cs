@@ -282,7 +282,7 @@ internal sealed class GoogleDrivePermissionsClient(
         {
             var info = await drive.Drives.Get(driveId).ExecuteAsync(ct);
             return new SharedDriveMetadataResult(
-                new SharedDriveMetadata(info.Id, info.Name),
+                new SharedDriveMetadata(info.Name),
                 Error: null);
         }
         catch (global::Google.GoogleApiException ex)

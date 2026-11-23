@@ -159,16 +159,16 @@ internal sealed class TicketQueryService(
                 rows.Add(new DonationExportRow(o.PurchasedAt, date, o.VendorOrderId, o.BuyerName, o.BuyerEmail, DonationExportRow.SeparateDonation, o.DonationAmount));
         }
 
-        // Orders taken through Humans' own checkout: each donation line is one row, never refunded.
-        var checkoutOrders = new List<TicketCheckoutOrder>();
-        foreach (var salesEvent in await checkout.GetSalesEventsAsync(ct))
-            checkoutOrders.AddRange((await checkout.GetOrdersForSalesEventAsync(salesEvent.Id, ct))
+        // Humans orders, on any ticketing platform: each donation line is one row, never refunded.
+        var humansOrders = new List<TicketCheckoutOrder>();
+        foreach (var ticketing in await checkout.ListTicketingSettingsAsync(ct))
+            humansOrders.AddRange((await checkout.GetOrdersForSettingsAsync(ticketing.Id, ct))
                 .Where(o => o.State == TicketCheckoutOrderState.Paid));
-        foreach (var o in checkoutOrders.OrderBy(o => o.PaidAt))
+        foreach (var o in humansOrders.OrderBy(o => o.PaidAt))
         {
             var paidAt = o.PaidAt ?? o.UpdatedAt;
             var date = paidAt.InZone(OrgZone).Date.ToInvariantDate();
-            foreach (var line in o.Lines.Where(l => l.Kind == CheckoutLineKind.Donation))
+            foreach (var line in o.Lines.Where(l => l.Kind == OrderLineKind.Donation))
                 rows.Add(new DonationExportRow(paidAt, date, o.Reference, o.BuyerName, o.BuyerEmail,
                     $"Donation: {line.DonationPurpose ?? "General"}", line.AmountMinor / 100m));
         }
@@ -188,12 +188,8 @@ internal sealed class TicketQueryService(
         TicketOrder o, string? currentEventId,
         IReadOnlyDictionary<Guid, TicketTransferRequest> transfersByAttendee) => new(
         Id: o.Id,
-        VendorOrderId: o.VendorOrderId,
-        BuyerName: o.BuyerName,
         BuyerEmail: o.BuyerEmail,
         TotalAmount: o.TotalAmount,
-        Currency: o.Currency,
-        DiscountCode: o.DiscountCode,
         PaymentStatus: o.PaymentStatus,
         VendorEventId: o.VendorEventId,
         PurchasedAt: o.PurchasedAt,
@@ -210,7 +206,6 @@ internal sealed class TicketQueryService(
                 AttendeeName: a.AttendeeName,
                 AttendeeEmail: a.AttendeeEmail,
                 TicketTypeName: a.TicketTypeName,
-                Price: a.Price,
                 Status: a.Status,
                 MatchedUserId: a.MatchedUserId,
                 Barcode: a.Barcode,
@@ -523,16 +518,16 @@ internal sealed class TicketQueryService(
         int fallbackTarget, CancellationToken ct = default)
     {
         if (ticketsSold <= 0 || grossRevenue <= 0)
-            return new BreakEvenResult { Target = fallbackTarget, Currency = currency };
+            return new BreakEvenResult { Target = fallbackTarget };
 
         var activeBudgetYear = await budgetService.GetActiveYearAsync(ct);
         if (activeBudgetYear is null)
-            return new BreakEvenResult { Target = fallbackTarget, Currency = currency };
+            return new BreakEvenResult { Target = fallbackTarget };
 
         var summary = budgetService.ComputeBudgetSummary(activeBudgetYear.Groups);
         var plannedExpenses = Math.Abs(summary.TotalExpenses);
         if (plannedExpenses <= 0)
-            return new BreakEvenResult { Target = fallbackTarget, Currency = currency };
+            return new BreakEvenResult { Target = fallbackTarget };
 
         // break-even = sold + ceil((plannedExpenses - revenue) / avgPrice)
         var grossAverageTicketPrice = grossRevenue / ticketsSold;
@@ -553,7 +548,7 @@ internal sealed class TicketQueryService(
             ? $"{currency} {remainingExpenses:N2} remaining expenses / {currency} {grossAverageTicketPrice:N2} gross avg. per ticket = {remainingTicketsToSell:N0} tickets still to sell"
             : null;
 
-        return new BreakEvenResult { Target = target, Detail = detail, Currency = currency };
+        return new BreakEvenResult { Target = target, Detail = detail };
     }
 
     public async Task<CodeTrackingData> GetCodeTrackingDataAsync(string? search, CancellationToken ct = default)
@@ -568,7 +563,6 @@ internal sealed class TicketQueryService(
                 CreatedAt = c.CreatedAt,
                 TotalGrants = c.TotalGrants,
                 Redeemed = c.Redeemed,
-                Unused = c.TotalGrants - c.Redeemed,
                 RedemptionRate = c.TotalGrants > 0
                     ? Math.Round(c.Redeemed * 100m / c.TotalGrants, 1)
                     : 0,
@@ -820,8 +814,6 @@ internal sealed class TicketQueryService(
                 a.Id,
                 a.AttendeeName,
                 a.AttendeeEmail,
-                a.VendorTicketId,
-                a.TicketTypeName,
                 a.Status,
                 CheckedInAt: a.CheckedInAt))
             .ToList();
@@ -855,14 +847,14 @@ internal sealed class TicketQueryService(
         if (hasCurrentEventTicket && settingsService.GetActiveEventSettings() is { } activeEvent)
             events.Add(activeEvent);
 
-        var heldSalesEventIds = (await checkout.GetTicketsForHolderAsync(userId, ct))
+        var heldSettingsIds = (await checkout.GetTicketsForHolderAsync(userId, ct))
             .Where(t => t.State is TicketCheckoutTicketState.Valid or TicketCheckoutTicketState.Offered)
-            .Select(t => t.SalesEventId)
+            .Select(t => t.TicketingSettingsId)
             .Distinct();
-        foreach (var salesEventId in heldSalesEventIds)
+        foreach (var settingsId in heldSettingsIds)
         {
-            if (await checkout.GetSalesEventAsync(salesEventId, ct) is { } salesEvent
-                && await settingsService.GetEventSettingsByIdAsync(salesEvent.EventSettingsId, ct) is { } ev)
+            if (await checkout.GetTicketingSettingsAsync(settingsId, ct) is { } ticketing
+                && await settingsService.GetEventSettingsByIdAsync(ticketing.EventSettingsId, ct) is { } ev)
                 events.Add(ev);
         }
 

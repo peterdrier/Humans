@@ -56,7 +56,7 @@ public sealed class WorkgroupServiceBudgetTests : WorkgroupsTestHarness
             Finance.ReceivedCalls().Should().BeEmpty();
             GoogleSync.ReceivedCalls().Should().BeEmpty();
             AuditLog.ReceivedCalls().Should().BeEmpty();
-            Notifications.ReceivedCalls().Should().BeEmpty();
+            NotificationCalls().Should().BeEmpty();
             Email.ReceivedCalls().Should().BeEmpty();
             (await db.Workgroups.CountAsync(Ct)).Should().Be(bootstrap ? 0 : 1);
             if (!bootstrap) (await db.Workgroups.SingleAsync(Ct)).BudgetAmount.Should().BeNull();
@@ -237,14 +237,14 @@ public sealed class WorkgroupServiceBudgetTests : WorkgroupsTestHarness
     [HumansFact]
     public async Task ListExpenseAccounts_UsesActiveExpenseAccountsFromTheMirror()
     {
-        var expense = new HoldedChartAccountInfo(62900007, "Sound", null, null, false, 0m);
+        var expense = new HoldedChartAccountInfo(62900007, "Sound", null, false, 0m);
         Holded.GetChartAsync(Ct).Returns(Task.FromResult<IReadOnlyList<HoldedChartAccountInfo>>(
         [
-            new(57200001, "Bank", null, null, false, 0m),
-            new(59999999, "Below expenses", null, null, false, 0m),
+            new(57200001, "Bank", null, false, 0m),
+            new(59999999, "Below expenses", null, false, 0m),
             expense,
-            new(62900008, "Archived expense", null, null, true, 0m),
-            new(70000000, "Income", null, null, false, 0m)
+            new(62900008, "Archived expense", null, true, 0m),
+            new(70000000, "Income", null, false, 0m)
         ]));
 
         (await NewService().ListExpenseAccountsAsync(Ct)).Should().Equal(expense);

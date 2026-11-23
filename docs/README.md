@@ -134,6 +134,7 @@ Terse, authoritative invariant docs for each major section: concepts, data model
 | [Onboarding](../src/Sections/Humans.Onboarding/Docs/Onboarding.md) | Pure orchestrator over Profiles, Consent, Teams, and Governance — owns no tables |
 | [Permissions](../src/Sections/Humans.Permissions/Docs/Permissions.md) | May this person do this on this owner: permissions declared by sections, granted by roles (later tasks) and system roles; stores nothing |
 | [Roles](../src/Sections/Humans.Roles/Docs/Roles.md) | Standing responsibilities on an owner (a team today, camps next): slots, holders, and the permission keys they carry |
+| [Tasks](../src/Sections/Humans.Tasks/Docs/Tasks.md) | Pieces of work with an end, hanging on a team: slots, people, dependencies, an optional event |
 | [Pleo](../src/Sections/Humans.Pleo/Docs/Pleo.md) | Read-only mirror of the Pleo card wallet (entries, chart, cardholders, balance), the category → Holded account mapping, and the `/Pleo` admin pages with the wallet reconciliation |
 | [Rideshare](../src/Sections/Humans.Rideshare/Docs/Rideshare.md) | Members-only map board for organizing rides to and from the burn — offers, requests, and a lightweight interest lifecycle, no booking or payment |
 | [Scanner](../src/Sections/Humans.Scanner/Docs/Scanner.md) | In-browser camera tools for barcode decode (`/Scanner/Barcode`) and read-only ticket lookup (`/Scanner/Tickets`); no owned tables |

@@ -8,7 +8,7 @@
 
   <ItemGroup>
     <!--
-      Adapter section: one implementation of Tickets' ITicketCheckoutBackend port, plus the webhook endpoint that
+      Adapter section: one implementation of Tickets' ITicketingPlatform port, plus the webhook endpoint that
       nudges Tickets. No tables and no views. The port lives in the Contracts leaf, so no reference on Humans.Tickets.
     -->
     <ProjectReference Include="..\..\Humans.Base\Humans.Base.csproj" />
