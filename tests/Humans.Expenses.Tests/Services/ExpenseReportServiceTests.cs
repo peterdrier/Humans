@@ -2319,7 +2319,7 @@ public sealed partial class ExpenseReportServiceTests
     {
         // The report belongs to a year that is no longer the active one. Re-resolving its header
         // through the active year would silently move last year's accounting into this year.
-        var (_, _) = SetupActiveYear();
+        SetupActiveYear();
         var member = Guid.NewGuid();
         var admin = Guid.NewGuid();
         var reportId = Guid.NewGuid();
