@@ -273,7 +273,7 @@ public sealed class WorkgroupInputValidationTests : WorkgroupsTestHarness
         {
             (await ctx.LogEntries.AnyAsync(e => e.WorkgroupId == group.Id, Ct)).Should().BeFalse();
             AuditLog.ReceivedCalls().Should().BeEmpty();
-            Notifications.ReceivedCalls().Should().BeEmpty();
+            NotificationCalls().Should().BeEmpty();
             Email.ReceivedCalls().Should().BeEmpty();
         }
     }

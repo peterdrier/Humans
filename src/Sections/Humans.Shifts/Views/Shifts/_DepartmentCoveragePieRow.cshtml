@@ -34,8 +34,8 @@
     {
         var isSelected = Model.FilterDepartmentId == pie.TeamId;
         var pct = Math.Clamp(pie.FillPercent, 0, 100);
-        var requestedDisplay = pie.RequestedHours.ToString("0.#");
-        var filledDisplay = pie.FilledHours.ToString("0.#");
+        var requestedDisplay = pie.RequestedHours.ToString("0.#", System.Globalization.CultureInfo.CurrentCulture);
+        var filledDisplay = pie.FilledHours.ToString("0.#", System.Globalization.CultureInfo.CurrentCulture);
         var ariaLabel = string.Format(
             Localizer["Shifts_PieCoverage_Aria"].Value,
             pie.TeamName, pct, filledDisplay, requestedDisplay);

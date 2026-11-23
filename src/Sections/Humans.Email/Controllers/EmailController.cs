@@ -145,7 +145,6 @@ internal sealed class EmailController(
     [HttpGet("EmailPreview")]
     public IActionResult EmailPreview(
         [FromServices] IEmailBodyComposer bodyComposer,
-        [FromServices] IOptions<EmailSettings> emailSettings,
         [FromServices] IEnumerable<IEmailPreviewContributor> contributors)
     {
         var contributorList = contributors.ToList();

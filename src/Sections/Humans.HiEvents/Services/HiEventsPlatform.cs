@@ -341,7 +341,7 @@ internal sealed class HiEventsPlatform : ITicketingPlatform
         return findings;
     }
 
-    public string? EventRefOf(string platformOrderId) =>
+    public string EventRefOf(string platformOrderId) =>
         ParsePlatformOrderId(platformOrderId).EventId.ToString(CultureInfo.InvariantCulture);
 
     /// <summary>

@@ -78,7 +78,7 @@
     <div id="map-container" class="flex-fill position-relative">
         <div id="map" class="city-map-canvas"
              data-year="@Model.Year"
-             data-is-map-admin="@Model.IsMapAdmin.ToString().ToLower()"
+             data-is-map-admin="@Model.IsMapAdmin.ToString().ToLowerInvariant()"
              data-user-camp-id="@Model.UserCampId"
              data-i18n-save-failed="@ContainersLocalizer["Containers_MapSaveFailed"]"
              data-i18n-clear-failed="@ContainersLocalizer["Containers_MapClearFailed"]"

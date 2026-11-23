@@ -72,7 +72,7 @@ public abstract class TicketsTestHarness : IDisposable
     {
         userService.GetUserInfoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(call => new ValueTask<UserInfo?>(
-                Db.Users.FirstOrDefault(u => u.Id == call.Arg<Guid>()) is { } u ? UserInfoFor(u) : null));
+                Db.Users.FirstOrDefault(user => user.Id == call.Arg<Guid>()) is { } u ? UserInfoFor(u) : null));
 
         userService.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(call =>

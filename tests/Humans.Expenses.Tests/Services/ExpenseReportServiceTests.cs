@@ -887,7 +887,7 @@ public sealed partial class ExpenseReportServiceTests
         var warning = logger.Entries.Single(e => e.Level == LogLevel.Warning);
         warning.Exception.Should().BeNull("a rejected upload is user input, not a system failure");
         warning.Message.Should().Contain(expectedMessage,
-            because: "RunMutationAsync appends the rejection as the {Reason} property");
+            because: "RunMutationAsync appends the rejection as the Reason property");
         warning.Message.Should().Contain(lineId.ToString(),
             because: "the caller's structured identifiers must survive into the warning");
         logger.Entries.Should().NotContain(e => e.Level == LogLevel.Error);

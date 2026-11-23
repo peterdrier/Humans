@@ -1504,4 +1504,5 @@
   <data name="Todo_Medical_Title" xml:space="preserve"><value>Sollten Koordinator*innen etwas über deine Gesundheit wissen?</value></data>
   <data name="Todo_Medical_Pending" xml:space="preserve"><value>Optional. Nur du und die No-Info-Admins können es sehen.</value></data>
   <data name="Nav_Roles" xml:space="preserve"><value>Rollen</value></data>
+  <data name="Nav_Tasks" xml:space="preserve"><value>Aufgaben</value></data>
 </root>

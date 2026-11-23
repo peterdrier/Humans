@@ -150,7 +150,7 @@ public class BackdoorFinanceControllerTests
         json.Should().Contain(allowed.Id.ToString()).And.Contain(current.Id.ToString()).And.Contain(managed.Id.ToString())
             .And.NotContain(denied.Id.ToString()).And.NotContain(historical.Id.ToString());
         await _users.DidNotReceive().GetUserInfosAsync(
-            Arg.Is<IEnumerable<Guid>>(ids => ids.Contains(denied.SubmitterUserId) || ids.Contains(historical.SubmitterUserId)),
+            Arg.Is<IEnumerable<Guid>>(ids => ids.Intersect(new[] { denied.SubmitterUserId, historical.SubmitterUserId }).Any()),
             Arg.Any<CancellationToken>());
         await _expenses.DidNotReceiveWithAnyArgs().GetHoldedTimelineAsync(default!);
     }
@@ -994,7 +994,8 @@ public class BackdoorFinanceControllerTests
         app.MapControllers();
         await app.StartAsync(ct);
 
-        using var client = new HttpClient { BaseAddress = new Uri(app.Urls.Single()) };
+        using var client = new HttpClient();
+        client.BaseAddress = new Uri(app.Urls.Single());
         client.DefaultRequestHeaders.Add(BackdoorApiKeyAuthFilter.ApiKeyHeaderName, "key");
         var body = await client.GetStringAsync("/api/backdoor/finance/expense-reports", ct);
         await app.StopAsync(ct);
