@@ -168,6 +168,19 @@ public sealed class HoldedPublicReadsTests
     }
 
     [HumansFact]
+    public async Task A_negative_purchase_line_finds_its_counterparty_on_the_normal_side()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        await SeedAsync(ct,
+            Line(1, 1, 62900000, "purchase", debit: -0.01m),
+            Line(1, 2, 40000066, "purchase", credit: -0.01m));
+
+        var statement = await _service.GetAccountStatementAsync(62900000, ct);
+
+        statement!.Lines.Should().ContainSingle().Subject.Counterparty!.AccountNum.Should().Be(40000066);
+    }
+
+    [HumansFact]
     public async Task Summary_counts_the_mirror_and_estimates_a_full_resync()
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
