@@ -31,7 +31,6 @@ internal sealed record CrossTabColumn(
 
 internal sealed record CrossTabRow(
     OrderCounterpartyType CounterpartyType,
-    Guid CounterpartyId,
     string CounterpartyName,
     long TotalQty,
     IReadOnlyDictionary<Guid, long> QtyByProduct);

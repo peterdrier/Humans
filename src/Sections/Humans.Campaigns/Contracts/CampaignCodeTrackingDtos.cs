@@ -16,7 +16,6 @@ public record CampaignCodeTrackingSummary(
 }
 
 public record CampaignCodeTrackingGrant(
-    Guid GrantId,
     Guid CampaignId,
     string CampaignTitle,
     Guid UserId,

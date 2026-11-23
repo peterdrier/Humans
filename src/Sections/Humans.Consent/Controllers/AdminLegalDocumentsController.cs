@@ -35,13 +35,11 @@ internal sealed class AdminLegalDocumentsController(
                     Id = d.Id,
                     Name = d.Name,
                     TeamName = d.TeamName,
-                    TeamId = d.TeamId,
                     IsRequired = d.IsRequired,
                     IsActive = d.IsActive,
                     GracePeriodDays = d.GracePeriodDays,
                     CurrentVersion = d.CurrentVersion,
-                    LastSyncedAt = d.LastSyncedAt?.ToDateTimeUtc(),
-                    VersionCount = d.VersionCount
+                    LastSyncedAt = d.LastSyncedAt?.ToDateTimeUtc()
                 }).ToList()
         };
 

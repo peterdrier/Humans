@@ -290,12 +290,8 @@ public sealed class CachingTicketQueryServiceTests
     private static TicketOrderInfo MakeOrder(
         Guid id, Guid? matchedUserId, params TicketAttendeeInfo[] attendees) => new(
             Id: id,
-            VendorOrderId: $"ord_{id:N}",
-            BuyerName: "Buyer",
             BuyerEmail: "buyer@example.com",
             TotalAmount: 100m,
-            Currency: "EUR",
-            DiscountCode: null,
             PaymentStatus: TicketPaymentStatus.Paid,
             VendorEventId: "ev_test",
             PurchasedAt: Instant.FromUtc(2026, 5, 1, 0, 0),
@@ -312,7 +308,6 @@ public sealed class CachingTicketQueryServiceTests
             AttendeeName: "Attendee",
             AttendeeEmail: email,
             TicketTypeName: "Full Week",
-            Price: 50m,
             Status: status,
             MatchedUserId: matchedUserId);
 }

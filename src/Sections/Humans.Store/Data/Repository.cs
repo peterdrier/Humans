@@ -188,7 +188,7 @@ internal sealed class Repository(IDbContextFactory<StoreDbContext> factory) : IS
             .Join(ctx.Products.AsNoTracking(),
                 lo => lo.Line.ProductId, p => p.Id,
                 (lo, p) => new LineContext(
-                    lo.Line.Id, lo.Order.Id, lo.Order.CampSeasonId, lo.Order.State, p.OrderableUntil,
+                    lo.Order.Id, lo.Order.State, p.OrderableUntil,
                     p.Name, lo.Line.Qty, lo.Line.UnitPriceSnapshot))
             .FirstOrDefaultAsync(ct);
         return row;

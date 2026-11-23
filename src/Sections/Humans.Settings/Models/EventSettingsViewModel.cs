@@ -46,7 +46,7 @@ internal sealed class EventSettingsViewModel
     public bool IsActive { get; set; }
 }
 
-internal sealed record EventSettingsFormError(string FieldName, string Message);
+internal sealed record EventSettingsFormError(string Message);
 
 internal sealed record EventSettingsParseResult(
     EventSettingsInfo? Settings,
@@ -105,7 +105,7 @@ internal static class EventSettingsFormMapper
 
         var parsedDate = LocalDatePattern.Iso.Parse(model.GateOpeningDate);
         if (!parsedDate.Success)
-            errors.Add(new EventSettingsFormError(nameof(model.GateOpeningDate), "Invalid date format."));
+            errors.Add(new EventSettingsFormError("Invalid date format."));
 
         Instant? earlyEntryClose = null;
         if (!string.IsNullOrEmpty(model.EarlyEntryClose))
@@ -114,7 +114,7 @@ internal static class EventSettingsFormMapper
             if (parsedInstant.Success)
                 earlyEntryClose = parsedInstant.Value;
             else
-                errors.Add(new EventSettingsFormError(nameof(model.EarlyEntryClose), "Invalid UTC instant format."));
+                errors.Add(new EventSettingsFormError("Invalid UTC instant format."));
         }
 
         var earlyEntryCapacity = ParseDictionary(
@@ -165,7 +165,7 @@ internal static class EventSettingsFormMapper
         }
         catch (JsonException ex)
         {
-            errors.Add(new EventSettingsFormError(fieldName, $"Invalid JSON: {ex.Message}"));
+            errors.Add(new EventSettingsFormError($"Invalid JSON: {ex.Message}"));
             return null;
         }
     }

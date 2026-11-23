@@ -204,12 +204,11 @@ public sealed class BudgetAuthorizationHandlerTests
             0,
             hasBudgetGroup
                 ? new BudgetCategoryGroupSnapshot(
-                    groupId,
                     yearId,
                     "Group",
                     isRestricted,
                     isTicketing,
-                    new BudgetCategoryYearSnapshot(yearId, "2026", "Budget 2026", isDeleted))
+                    new BudgetCategoryYearSnapshot(yearId, "Budget 2026", isDeleted))
                 : null,
             []);
     }

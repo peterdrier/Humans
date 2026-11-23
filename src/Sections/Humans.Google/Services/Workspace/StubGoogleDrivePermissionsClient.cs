@@ -5,7 +5,6 @@ internal sealed class StubGoogleDrivePermissionsClient(ILogger<StubGoogleDrivePe
 {
     private readonly Dictionary<string, StubFile> _filesById = new(StringComparer.Ordinal);
     private readonly Dictionary<string, List<DrivePermission>> _permissionsByFile = new(StringComparer.Ordinal);
-    private readonly Dictionary<string, SharedDriveMetadata> _drivesById = new(StringComparer.Ordinal);
     private readonly Lock _gate = new();
     private long _nextFileId = 1;
     private long _nextPermissionId = 1;
@@ -216,14 +215,6 @@ internal sealed class StubGoogleDrivePermissionsClient(ILogger<StubGoogleDrivePe
         CancellationToken ct = default)
     {
         logger.LogDebug("[STUB] Get shared drive {DriveId}", driveId);
-
-        lock (_gate)
-        {
-            if (_drivesById.TryGetValue(driveId, out var drive))
-            {
-                return Task.FromResult(new SharedDriveMetadataResult(drive, Error: null));
-            }
-        }
 
         return Task.FromResult(new SharedDriveMetadataResult(
             Drive: null,

@@ -46,7 +46,6 @@ internal sealed class DailySales
 
 internal sealed class RecentOrder
 {
-    public Guid Id { get; init; }
     public string BuyerName { get; init; } = string.Empty;
     public int TicketCount { get; init; }
     public decimal Amount { get; init; }
@@ -181,7 +180,6 @@ internal sealed class CampaignCodeSummaryDto
     public Instant CreatedAt { get; init; }
     public int TotalGrants { get; init; }
     public int Redeemed { get; init; }
-    public int Unused { get; init; }
     public decimal RedemptionRate { get; init; }
 }
 
@@ -201,7 +199,6 @@ internal sealed class BreakEvenResult
 {
     public int Target { get; init; }
     public string? Detail { get; init; }
-    public string Currency { get; init; } = "EUR";
 }
 
 [method: JsonConstructor]
@@ -214,7 +211,6 @@ internal sealed record OrderRow()
     public string BuyerEmail { get; init; } = string.Empty;
     public int AttendeeCount { get; init; }
     public decimal TotalAmount { get; init; }
-    public string Currency { get; init; } = "EUR";
     public string? DiscountCode { get; init; }
     public decimal? DiscountAmount { get; init; }
     public decimal DonationAmount { get; init; }
@@ -224,7 +220,6 @@ internal sealed record OrderRow()
     public decimal? StripeFee { get; init; }
     public decimal? ApplicationFee { get; init; }
     public TicketPaymentStatus PaymentStatus { get; init; }
-    public string? VendorDashboardUrl { get; init; }
     public Guid? MatchedUserId { get; init; }
 }
 

@@ -708,7 +708,7 @@ internal sealed class HoldedClient : IHoldedClient
                 return [];
             }
             var name = Prop(l, "name") is JsonValue v && v.TryGetValue<string>(out var n) ? n : "";
-            lines.Add(new HoldedSalesDocumentLineDto(name, units, price, taxPercent));
+            lines.Add(new HoldedSalesDocumentLineDto(units, price, taxPercent));
         }
         return lines;
     }

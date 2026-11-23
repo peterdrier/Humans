@@ -318,9 +318,7 @@ internal sealed class CampaignService(
     private static CampaignGrantSummary ToSummary(CampaignGrant grant) =>
         new(
             grant.Id,
-            grant.CampaignId,
             grant.Campaign.Title,
-            grant.CampaignCodeId,
             grant.Code.Code,
             grant.UserId,
             grant.AssignedAt,
@@ -432,7 +430,6 @@ internal sealed class CampaignService(
                 : string.Empty;
 
             grantRows.Add(new CampaignCodeTrackingGrant(
-                GrantId: row.GrantId,
                 CampaignId: row.CampaignId,
                 CampaignTitle: row.CampaignTitle,
                 UserId: row.UserId,

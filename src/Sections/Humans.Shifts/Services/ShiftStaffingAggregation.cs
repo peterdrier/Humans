@@ -47,7 +47,7 @@ internal static class ShiftStaffingAggregation
                     var sTeamId = sg.Key;
                     var sAgg = AggregateShifts(sg.ToList(), es);
                     subgroups.Add(new SubgroupStaffingRow(
-                        sTeamId, NameOf(sTeamId), SlugOf(sTeamId), IsDirect: false,
+                        NameOf(sTeamId), SlugOf(sTeamId), IsDirect: false,
                         sAgg.Total, sAgg.Filled, sAgg.TotalSlots, sAgg.FilledSlots, sAgg.Remaining,
                         sAgg.Build, sAgg.Event, sAgg.Strike));
                 }
@@ -57,7 +57,7 @@ internal static class ShiftStaffingAggregation
                 {
                     var dAgg = AggregateShifts(directShifts, es);
                     subgroups.Insert(0, new SubgroupStaffingRow(
-                        deptId, "Direct", SlugOf(deptId), IsDirect: true,
+                        "Direct", SlugOf(deptId), IsDirect: true,
                         dAgg.Total, dAgg.Filled, dAgg.TotalSlots, dAgg.FilledSlots, dAgg.Remaining,
                         dAgg.Build, dAgg.Event, dAgg.Strike));
                 }

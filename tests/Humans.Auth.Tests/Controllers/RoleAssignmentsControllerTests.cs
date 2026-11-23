@@ -87,7 +87,7 @@ public sealed class RoleAssignmentsControllerTests
         using var source = new CancellationTokenSource();
         var summary = new RoleAssignmentSummarySnapshot(
             Guid.NewGuid(), TargetId, "m@example.org", "Member", RoleNames.Board,
-            Now - Duration.FromDays(1), null, "n", ActorId, "Actor", Now - Duration.FromDays(1));
+            Now - Duration.FromDays(1), null, "n", ActorId, "Actor");
         _roles.GetFilteredAsync(RoleNames.Board, false, 2, 50, Now, source.Token)
             .Returns(([summary], 51));
 

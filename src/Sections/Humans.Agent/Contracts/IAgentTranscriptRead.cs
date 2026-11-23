@@ -27,7 +27,6 @@ public sealed record AgentConversationTranscriptSnapshot(
 
 public sealed record AgentMessageSnapshot(
     Guid Id,
-    Guid ConversationId,
     AgentRole Role,
     string Content,
     Instant CreatedAt,

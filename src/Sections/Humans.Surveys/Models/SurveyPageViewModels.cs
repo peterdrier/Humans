@@ -79,7 +79,7 @@ internal sealed record SurveyPageOption(string Value, string Label);
 
 internal sealed record SurveyPageGridRow(string Value, string Label);
 
-internal sealed record SurveyPageInformationImage(Guid Id, string Url, string Label, string AltText);
+internal sealed record SurveyPageInformationImage(string Url, string Label, string AltText);
 
 internal sealed record SurveyPreviewNoticeModel(
     Guid SurveyId,

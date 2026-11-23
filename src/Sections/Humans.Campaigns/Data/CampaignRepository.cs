@@ -67,7 +67,6 @@ internal sealed class CampaignRepository(IDbContextFactory<CampaignsDbContext> f
             .Select(g => new CampaignCodeTrackingGrantRow(
                 g.CampaignId,
                 g.Campaign.Title,
-                g.Id,
                 g.UserId,
                 g.Code.Code,
                 g.RedeemedAt))
@@ -153,7 +152,6 @@ internal sealed class CampaignRepository(IDbContextFactory<CampaignsDbContext> f
             .AsNoTracking()
             .Where(g => g.Id == grantId)
             .Select(g => new GrantWithSendContext(
-                g.Id,
                 g.UserId,
                 g.CampaignId,
                 g.Code.Code,

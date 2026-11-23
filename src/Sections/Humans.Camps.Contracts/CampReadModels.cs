@@ -96,7 +96,6 @@ public sealed record CampInfo(
 public sealed record CampSeasonInfo(
     Guid Id,
     Guid CampId,
-    string CampSlug,
     int Year,
     LocalDate? NameLockDate,
     string Name,
@@ -175,7 +174,6 @@ public sealed record CampSeasonMemberInfo(
     Guid UserId,
     CampMemberStatus Status,
     Instant RequestedAt,
-    Instant? ConfirmedAt,
     bool HasEarlyEntry)
 {
     /// <summary>Ordered by role sort order.</summary>

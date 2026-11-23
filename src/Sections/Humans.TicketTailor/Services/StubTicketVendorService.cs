@@ -77,7 +77,6 @@ internal sealed class StubTicketVendorService : ITicketVendorService
             string.Equals(t.Status, "valid", StringComparison.Ordinal));
 
         return Task.FromResult(new VendorEventSummaryDto(
-            EventId: eventId,
             EventName: "Demo Event (Stub)",
             TotalCapacity: 2000,
             TicketsSold: ticketsSold,

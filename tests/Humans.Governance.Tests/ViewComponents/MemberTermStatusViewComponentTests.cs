@@ -35,7 +35,7 @@ public sealed class MemberTermStatusViewComponentTests
         var tierReads = Substitute.For<IGovernanceService>();
         tierReads.GetMembershipTierAsync(userId, Arg.Any<CancellationToken>()).Returns(MembershipTier.Colaborador);
         var application = new UserApplicationSnapshot(Guid.NewGuid(), userId, ApplicationStatus.Approved,
-            MembershipTier.Colaborador, now, now, expiry, "Motivation", null, null, null);
+            MembershipTier.Colaborador, now, now, expiry);
         governance.GetUserApplicationsAsync(userId, Arg.Any<CancellationToken>()).Returns(
         [
             application with { Id = Guid.NewGuid(), TermExpiresAt = expiry.PlusDays(-100) },
