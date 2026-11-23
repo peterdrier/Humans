@@ -1,12 +1,12 @@
-@model (Humans.Tickets.Controllers.BackendsViewModel Page, Humans.Tickets.Services.Checkout.CheckoutBackendInfo Backend)
+@model (Humans.Tickets.Controllers.PlatformsViewModel Page, Humans.Tickets.Services.Checkout.PlatformInfo Platform)
 @{
-    var b = Model.Backend;
+    var p = Model.Platform;
     var site = $"{Context.Request.Scheme}://{Context.Request.Host}";
-    var s = b.Setup;
-    var events = Model.Page.SalesEvents.Where(e => e.BackendKey == b.Key).ToList();
-    var check = Model.Page.Check?.Key == b.Key ? Model.Page.Check : null;
+    var s = p.Setup;
+    var events = Model.Page.AllSettings.Where(e => e.PlatformKey == p.Key).ToList();
+    var check = Model.Page.Check?.Key == p.Key ? Model.Page.Check : null;
 
-    Func<CheckoutBackendSetting, IHtmlContent> valueCell = @<text>
+    Func<PlatformSetting, IHtmlContent> valueCell = @<text>
         @if (!item.IsSet)
         {
             <span class="badge bg-warning text-dark">Missing</span>
@@ -24,14 +24,14 @@
         .Column("Setting", x => x.Name, c => c.Code())
         .Column("Purpose", x => x.Purpose)
         .Template("Value", valueCell, sortBy: x => x.IsSet)
-        .Empty("This backend reads no settings.")
+        .Empty("This platform reads no settings.")
         .Build();
 }
 
-<section class="card mb-4" id="backend-@b.Key">
+<section class="card mb-4" id="platform-@p.Key">
     <div class="card-header d-flex justify-content-between align-items-center">
-        <h2 class="h5 mb-0">@s.DisplayName <code class="small ms-1">@b.Key</code></h2>
-        <span class="badge @(b.IsConfigured ? "bg-success" : "bg-secondary")">@(b.IsConfigured ? "Configured" : "Not configured")</span>
+        <h2 class="h5 mb-0">@s.DisplayName <code class="small ms-1">@p.Key</code></h2>
+        <span class="badge @(p.IsConfigured ? "bg-success" : "bg-secondary")">@(p.IsConfigured ? "Configured" : "Not configured")</span>
     </div>
     <div class="card-body">
         <dl class="row mb-3">
@@ -39,7 +39,7 @@
             <dd class="col-sm-9">@s.Hosting</dd>
             @if (s.AdminUrl is not null)
             {
-                <dt class="col-sm-3">Vendor admin</dt>
+                <dt class="col-sm-3">Platform admin</dt>
                 <dd class="col-sm-9"><a href="@s.AdminUrl" target="_blank" rel="noopener">@s.AdminUrl</a></dd>
             }
             @if (s.WebhookPath is not null)
@@ -57,9 +57,9 @@
                 {
                     <div>
                         @Model.Page.EventName(e.EventSettingsId) <status-badge value="@e.Mode" />
-                        @if (e.BackendEventRef is not null)
+                        @if (e.PlatformEventRef is not null)
                         {
-                            <span class="small">backend event <code>@e.BackendEventRef</code></span>
+                            <span class="small">platform event <code>@e.PlatformEventRef</code></span>
                         }
                     </div>
                 }
@@ -84,10 +84,10 @@
         }
 
         <div authorize-policy="@TicketsPolicies.Manage">
-            <form method="post" asp-controller="TicketsBackendAdmin" asp-action="Check" asp-route-key="@b.Key" class="d-flex flex-wrap gap-2 align-items-end">
+            <form method="post" asp-controller="TicketsPlatformAdmin" asp-action="Check" asp-route-key="@p.Key" class="d-flex flex-wrap gap-2 align-items-end">
                 <div>
-                    <label class="form-label small" for="ref-@b.Key">Event id in the backend (optional)</label>
-                    <input class="form-control form-control-sm" id="ref-@b.Key" name="backendEventRef" value="@(check?.BackendEventRef ?? events.FirstOrDefault()?.BackendEventRef)" />
+                    <label class="form-label small" for="ref-@p.Key">Event id in the platform (optional)</label>
+                    <input class="form-control form-control-sm" id="ref-@p.Key" name="platformEventRef" value="@(check?.PlatformEventRef ?? events.FirstOrDefault()?.PlatformEventRef)" />
                 </div>
                 <button type="submit" class="btn btn-sm btn-outline-secondary">Test connection</button>
             </form>

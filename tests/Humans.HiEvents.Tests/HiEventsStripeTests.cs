@@ -27,11 +27,11 @@ public sealed class HiEventsStripeTests
     public HiEventsStripeTests() =>
         _stripe.CheckAccountAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns([]);
 
-    private HiEventsCheckoutBackend Backend() => new(
+    private HiEventsPlatform Platform() => new(
         new HttpClient(_hiEvents),
         Options.Create(new HiEventsSettings { ApiUrl = "https://tickets.example/api", ApiKey = "key" }),
         new FakeClock(Now),
-        NullLogger<HiEventsCheckoutBackend>.Instance,
+        NullLogger<HiEventsPlatform>.Instance,
         _stripe);
 
     private static StripeLedgerLine Line(string id, string category, long amount, long fee, string? intent = null, int eventId = 7, int orderId = 0) =>
@@ -69,7 +69,7 @@ public sealed class HiEventsStripeTests
         _hiEvents.On("/api/events/7/orders/41", HttpStatusCode.OK, PaidOrder(41, refundedOrder.ToString("N")));
         _hiEvents.On("/api/events/9/orders/5", HttpStatusCode.Forbidden, new { message = "no" });
 
-        var ledger = await Backend().GetPaymentLedgerAsync(Now - Duration.FromDays(1), Now, Ct);
+        var ledger = await Platform().GetPaymentLedgerAsync(Now - Duration.FromDays(1), Now, Ct);
 
         ledger!.Entries.Select(e => (e.Id, e.Kind, e.AmountMinor, e.FeeMinor, e.HumansOrderId)).Should().Equal(
             ("txn_c", PaymentLedgerEntryKind.Charge, 22500L, 340L, (Guid?)HumansOrder),
@@ -82,14 +82,14 @@ public sealed class HiEventsStripeTests
     }
 
     [HumansFact]
-    public async Task Without_the_Stripe_account_there_is_no_ledger_and_a_refusal_is_a_checkout_failure()
+    public async Task Without_the_Stripe_account_there_is_no_ledger_and_a_refusal_is_a_platform_failure()
     {
-        (await Backend().GetPaymentLedgerAsync(Now - Duration.FromDays(1), Now, Ct)).Should().BeNull();
+        (await Platform().GetPaymentLedgerAsync(Now - Duration.FromDays(1), Now, Ct)).Should().BeNull();
 
         _stripe.GetAccountLedgerAsync("HiEvents", Arg.Any<Instant>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>())
             .Returns<StripeAccountLedger?>(_ => throw new InvalidOperationException("Stripe refused reading the HiEvents account"));
-        var read = () => Backend().GetPaymentLedgerAsync(Now - Duration.FromDays(1), Now, Ct);
-        await read.Should().ThrowAsync<TicketCheckoutException>().WithMessage("*refused*");
+        var read = () => Platform().GetPaymentLedgerAsync(Now - Duration.FromDays(1), Now, Ct);
+        await read.Should().ThrowAsync<TicketingPlatformException>().WithMessage("*refused*");
     }
 
     [HumansFact]
@@ -101,9 +101,9 @@ public sealed class HiEventsStripeTests
                 Instant.FromUtc(2027, 1, 2, 9, 58), Arg.Any<CancellationToken>())
             .Returns(340L);
 
-        var status = await Backend().GetStatusAsync("7:42", Ct);
+        var status = await Platform().GetStatusAsync("7:42", Ct);
 
-        status.State.Should().Be(CheckoutState.Paid);
+        status.State.Should().Be(PlatformOrderState.Paid);
         status.FeeMinor.Should().Be(340);
     }
 
@@ -114,7 +114,7 @@ public sealed class HiEventsStripeTests
         _stripe.CheckAccountAsync("HiEvents", Arg.Any<CancellationToken>())
             .Returns([new StripeAccountCheck(false, "STRIPE_HIEVENTS_KEY is unset")]);
 
-        (await Backend().CheckAsync(null, Ct)).Should().Contain(new CheckoutBackendFinding(false, "STRIPE_HIEVENTS_KEY is unset"));
+        (await Platform().CheckAsync(null, Ct)).Should().Contain(new PlatformFinding(false, "STRIPE_HIEVENTS_KEY is unset"));
     }
 
     private sealed class FakeHiEvents : HttpMessageHandler

@@ -16,7 +16,7 @@
         }
         else
         {
-            @string.Join(", ", item.Order.Lines.Where(l => l.Kind == CheckoutLineKind.Ticket).Select(l => l.AttendeeName))
+            @string.Join(", ", item.Order.Lines.Where(l => l.Kind == OrderLineKind.Ticket).Select(l => l.HolderName))
         }
     </text>;
     var table = TableModel.For(Model.Hits)

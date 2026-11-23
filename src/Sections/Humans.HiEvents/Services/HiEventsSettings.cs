@@ -19,7 +19,7 @@ internal sealed class HiEventsSettings
     /// <summary>From <c>HIEVENTS_WEBHOOK_SECRET</c>, never appsettings.</summary>
     public string WebhookSecret { get; set; } = string.Empty;
 
-    /// <summary>Both URLs must be absolute http(s), so a typo stops checkout before any order is made in Hi.Events.</summary>
+    /// <summary>Both URLs must be absolute http(s), so a typo stops sales before any order is made in Hi.Events.</summary>
     public bool IsConfigured => ApiBaseUri is not null && AppBaseUri is not null && !string.IsNullOrEmpty(ApiKey);
 
     /// <summary>Null when <c>ApiUrl</c> is unset or not an absolute http(s) address.</summary>
