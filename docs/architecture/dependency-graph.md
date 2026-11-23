@@ -89,10 +89,13 @@ graph LR
     Backdoor --> Expenses
     Backdoor --> Holded
     Backdoor --> Issues
+    Backdoor --> Permissions
     Backdoor --> Store
     Backdoor --> Surveys
+    Backdoor --> Tasks
     Backdoor -.-> Finance
     Backdoor -.-> Notifications
+    Backdoor -.-> Teams
     BoxOffice -.-> Tickets
     Budget --> Issues
     Budget --> Permissions

@@ -8,6 +8,7 @@
   src/Sections/Humans.Surveys/Contracts/ISurveyAnalysisRead.cs
   src/Sections/Humans.Store/Contracts/IStoreAccountingRead.cs
   src/Sections/Humans.Expenses/Contracts/IExpenseReportService.cs
+  src/Sections/Humans.Tasks/Contracts/ITaskWrite.cs
   src/Sections/Humans.Finance.Contracts/IFinanceService.cs
 -->
 <!-- freshness:flag-on-change
@@ -67,6 +68,7 @@ The machine surface. Every key-authed API an agent talks to lives here, under `/
 | `/api/backdoor/finance/sepa-transfers` | read | Every generated SEPA transfer with its booking state, via `GetSepaTransfersAsync` |
 | `/api/backdoor/finance/expense-recon?year=` | read | `/Finance/ExpenseRecon` as JSON — totals, lines, orphans, members with open transfers — via `IFinanceService.GetExpenseReconAsync`. Finance admins only; carries no IBAN field. The controller orders lines by problem/status/newest date, orphans newest-first, and members warning-first then ordinal name ignoring case |
 | `/api/backdoor/finance/holded-sync` | read | Holded's purchase-document sync state (`IHoldedService.GetPurchaseDocumentsAsync`) plus the docs Finance could not attribute (`IFinanceService.GetUnmatchedAsync`); no creditor-binding count |
+| `/api/backdoor/tasks/bulk` | write | `POST`: loads a whole set of tasks, or checks it with `dryRun`, via `ITaskWrite.BulkLoadAsync`. The key owner needs `Tasks.Manage` on every team the payload names (403 otherwise, nothing loaded; a team that does not exist gets the same 403). Every problem in the payload comes back at once as 422; nothing is created unless there are none. An unknown JSON field is a 400, so a misspelt `dryRun` never loads for real. Loading a payload twice creates the tasks twice. Shape and rules: Tasks' `Docs/Tasks.md` |
 | `/api/backdoor/notifications` | read | The key owner's unread notifications, newest first, and the live meters their roles unlock, via `INotificationInboxRead`. Polling marks nothing read |
 | `/Backdoor` | Admin UI | Allocate, rotate and revoke keys |
 
@@ -122,6 +124,7 @@ Authentication is the `X-Api-Key` header on every `/api/backdoor/*` request. The
 ## Negative Access Rules
 
 - A caller with no `X-Api-Key` header **cannot** reach any endpoint — 401.
+- A key whose owner lacks `Tasks.Manage` on any one team in a bulk-load payload **cannot** load any of it — 403 naming those teams, and a reference that matches no team is named the same way, so the answer never tells an unknown team from an unmanaged one; the payload is not checked further and nothing is created.
 - A caller with an unknown or revoked key **cannot** reach any endpoint — 401, deliberately indistinguishable from the above. There is no "server not configured" status: keys are rows, not environment variables.
 - An admin **cannot** recover a key's plaintext after issue, their own included.
 - A former Admin or Board member **cannot** keep using a key issued while they held the role — 401 from the next request on.
@@ -150,6 +153,7 @@ Authentication is the `X-Api-Key` header on every `/api/backdoor/*` request. The
 - **Finance**: reads creditor accounts, ledgers, the category map, SEPA transfers and the expense reconciliation via `IFinanceService` (`Humans.Finance.Contracts`). `FinancePolicies.Manage`-gated — peterdrier/Humans#1838.
 - **Holded**: `IHoldedService.GetPurchaseDocumentsAsync` for the purchase-document sync state on `holded-sync` (`Humans.Holded`'s `Contracts/` folder, a section reference).
 - **Budget**: `IBudgetService.GetYearByIdAsync` for the budget-year label (e.g. "2026") an expense report is booked to, for the year filter/field — peterdrier/Humans#1838.
+- **Tasks**: loads a set of tasks via `ITaskWrite` (`Humans.Tasks/Contracts`, a section reference). Before calling it the controller checks `Tasks.Manage` on every team in the payload through `IPermissionService` (`Humans.Permissions`), finding each team by slug or id through `ITeamService` (`Humans.Teams.Contracts`) and passing Tasks the id it checked; Tasks holds every other rule. A refusal is logged at Warning.
 - **Notifications**: reads the key owner's unread inbox and meters via `INotificationInboxRead` (the `Humans.Notifications.Contracts` leaf, so Backdoor never references the Notifications section project). Rows are the owner's own; meters follow the owner's roles.
 - **Auth**: `IRoleAssignmentService.GetActiveForUserAsync` supplies one snapshot for both Admin/Board key eligibility and the role claims installed by `BackdoorApiKeyAuthFilter`; the filter performs no second role lookup. `GetActiveUserIdsInRoleAsync` supplies the admin page's recipient list, narrowed to active accounts so the dropdown never offers someone the service would refuse. Each listed key's usable/refused badge reads `BackdoorKeyRow.IsOwnerEligible`, which `ListAsync` computes with the same eligibility test as authentication.
 - **AuditLog**: `IAuditLogService.LogAsync` for the key lifecycle.

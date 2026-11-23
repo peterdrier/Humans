@@ -64,6 +64,7 @@ public sealed class Section : ISection, ISectionRoles, ISectionNav, ISectionAdmi
 
         services.AddScoped<TaskService>();
         services.AddScoped<ITaskService>(sp => sp.GetRequiredService<TaskService>());
+        services.AddScoped<ITaskWrite>(sp => sp.GetRequiredService<TaskService>());
         services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<TaskService>());
         services.AddScoped<IUserMerge>(sp => sp.GetRequiredService<TaskService>());
     }

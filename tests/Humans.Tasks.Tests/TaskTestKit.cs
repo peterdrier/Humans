@@ -145,6 +145,14 @@ internal sealed class FakeTaskRepository : ITaskRepository
         return Task.CompletedTask;
     }
 
+    public Task AddManyAsync(IReadOnlyList<TaskItem> tasks, IReadOnlyList<TaskDependency> dependencies, CancellationToken ct = default)
+    {
+        foreach (var task in tasks)
+            _tasks[task.Id] = Copy(task);
+        _dependencies.AddRange(dependencies);
+        return Task.CompletedTask;
+    }
+
     public Task UpdateAsync(TaskItem task, CancellationToken ct = default)
     {
         _tasks[task.Id] = Copy(task);
