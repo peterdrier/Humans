@@ -180,6 +180,7 @@ graph LR
     Gdpr -.-> Users
     Google --> AuditLog
     Google --> Auth
+    Google --> Permissions
     Google --> Settings
     Google -.-> Email
     Google -.-> Notifications

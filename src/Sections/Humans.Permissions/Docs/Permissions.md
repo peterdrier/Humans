@@ -25,7 +25,7 @@ None. Nothing is stored: every answer is worked out from Auth's system roles and
 
 | Actor | Capabilities |
 |-------|--------------|
-| Any section | Declares permissions; asks `IPermissionService` or authorizes with `PermissionRequirement`. Shifts declares and checks `Shifts.Manage` and `Shifts.Approve`; Budget declares and checks `Budget.Edit`; Expenses declares and checks `Expenses.Endorse` |
+| Any section | Declares permissions; asks `IPermissionService` or authorizes with `PermissionRequirement`. Shifts declares and checks `Shifts.Manage` and `Shifts.Approve`; Budget declares and checks `Budget.Edit`; Expenses declares and checks `Expenses.Endorse`; Google declares and checks `Google.ManageResources` |
 | Owner sections (Teams) | Register an owner kind |
 | Roles, later Tasks; Teams for now | Register a permission source |
 

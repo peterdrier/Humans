@@ -7,7 +7,7 @@ namespace Humans.Google.Services;
 
 internal interface ITeamResourceManagement : ITeamResourceService, IApplicationService
 {
-    /// <summary>TeamsAdmin always can; coordinators only when AllowCoordinatorsToManageResources is on.</summary>
+    /// <summary>TeamsAdmin always can; holders of Google.ManageResources only when AllowCoordinatorsToManageResources is on.</summary>
     Task<bool> CanManageTeamResourcesAsync(Guid teamId, Guid userId, CancellationToken ct = default);
 
     Task<string> GetServiceAccountEmailAsync(CancellationToken ct = default);
