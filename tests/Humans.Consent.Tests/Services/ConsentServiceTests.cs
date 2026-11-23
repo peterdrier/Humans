@@ -510,7 +510,7 @@ public sealed class ConsentServiceTests : ConsentTestHarness
             .Returns(call =>
             {
                 call.ArgAt<CancellationToken>(1).ThrowIfCancellationRequested();
-                return (IReadOnlyList<RequiredDocumentVersionSnapshot>)[];
+                return [];
             });
 
         var result = await _service.SubmitConsentAsync(userId, versionId, true, "127.0.0.1", "Agent", cancellation.Token);

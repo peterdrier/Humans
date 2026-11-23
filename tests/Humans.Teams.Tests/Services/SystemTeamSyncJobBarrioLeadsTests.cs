@@ -273,7 +273,7 @@ public class SystemTeamSyncJobBarrioLeadsTests
         var saved = false;
         _teamService.ApplyMemberRoleChangesAsync(
                 Arg.Any<IReadOnlyCollection<(Guid TeamMemberId, TeamMemberRole Role)>>(), Arg.Any<CancellationToken>())
-            .Returns(_ => { saved = true; return (IReadOnlyList<Guid>)new[] { promote.TeamMemberId, demote.TeamMemberId }; });
+            .Returns(_ => { saved = true; return new[] { promote.TeamMemberId, demote.TeamMemberId }; });
         _auditLogService.LogAsync(TeamsAuditActions.TeamMemberRoleChanged, "Team", promote.TeamId,
                 Arg.Any<string>(), nameof(SystemTeamSyncJob), promote.UserId, nameof(User))
             .Returns(_ =>

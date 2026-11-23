@@ -417,7 +417,7 @@ public sealed class WorkspaceIdentityServiceTests
     [HumansFact]
     public void UserParts_ContributeTheCardsToTheAdminDetailSidebar()
     {
-        IUserPart contribution = ((IUserPart)new Section());
+        IUserPart contribution = new Section();
 
         contribution.Parts().Should().ContainSingle().Which.Slot.Should().Be(UserPartSlots.AdminDetailSidebar);
     }

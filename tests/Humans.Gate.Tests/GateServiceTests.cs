@@ -825,7 +825,7 @@ public class GateServiceTests
             {
                 await aborted.CancelAsync();
                 call.Arg<CancellationToken>().ThrowIfCancellationRequested();
-                return (IReadOnlyList<UrgentShiftInfo>)[];
+                return [];
             });
 
         var act = () => _svc.GetShiftRosterAsync(Guid.NewGuid(), aborted.Token);

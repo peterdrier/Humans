@@ -350,7 +350,7 @@ public class ProfileControllerEditTests
             ("EditableLanguages[1].LanguageCode", "Validation_MaxLength", ["", 10]));
         AssertErrors(new ContactFieldEditViewModel
         {
-            FieldType = (ContactFieldType)0,
+            FieldType = default(ContactFieldType),
             Value = "handle",
             Visibility = ContactFieldVisibility.BoardOnly
         }, ("FieldType", "Validation_InvalidValue", []));

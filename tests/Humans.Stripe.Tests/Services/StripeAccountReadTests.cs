@@ -98,10 +98,10 @@ public sealed class StripeAccountReadTests
             .Should().Equal(
                 ("txn_c", "charge", 22500L, 340L, "pi_new", "42"),
                 ("txn_r", "refund", -5000L, 0L, "pi_old", "41"),
-                ("txn_p", "payout", -17160L, 0L, (string?)null, (string?)null));
+                ("txn_p", "payout", -17160L, 0L, null, null));
         ledger.Lines[0].Payment!.Description.Should().Be("D-42");
         ledger.Payouts.Select(p => (p.Id, p.ContentsNetMinor, p.ContentsCount)).Should().Equal(
-            ("po_1", (long?)17160, 2), ("po_2", (long?)null, 0));
+            ("po_1", 17160, 2), ("po_2", null, 0));
         _requests.Should().OnlyContain(r => r.Method == HttpMethod.Get);
     }
 

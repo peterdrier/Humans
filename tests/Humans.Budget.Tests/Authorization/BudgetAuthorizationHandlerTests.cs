@@ -87,7 +87,7 @@ public sealed class BudgetAuthorizationHandlerTests
             .Returns(call => Permission(call.Arg<CancellationToken>()));
         _permissions.GetOwnersAsync(UserId, BudgetPermissions.Edit, Arg.Any<CancellationToken>())
             .Returns(call => Permission(call.Arg<CancellationToken>())
-                ? (IReadOnlyList<Owner>)[new Owner(TeamOwner.Kind, CoordinatorTeamId)]
+                ? [new Owner(TeamOwner.Kind, CoordinatorTeamId)]
                 : []);
         var handler = new BudgetAuthorizationHandler(_permissions, _users, http);
         var requirement = viewing ? BudgetOperationRequirement.View : BudgetOperationRequirement.Edit;

@@ -100,7 +100,7 @@ public sealed class CachingEventServiceTests
         _inner.GetAllCategoriesAsync(ct).Returns(Task.FromException<IReadOnlyList<EventCategoryManageInfo>>(failure));
         var read = () => _service.GetActiveCategoriesAsync(ct);
         (await read.Should().ThrowAsync<IOException>()).Which.Should().BeSameAs(failure);
-        _inner.GetAllCategoriesAsync(ct).Returns((IReadOnlyList<EventCategoryManageInfo>)[]);
+        _inner.GetAllCategoriesAsync(ct).Returns([]);
         var fresh = Approved("Recovered");
         SeedApproved(fresh);
 

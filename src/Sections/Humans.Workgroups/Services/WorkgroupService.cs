@@ -205,7 +205,7 @@ internal sealed partial class WorkgroupService(
     /// <summary>Same rule as a team's group prefix. Admins paste the full address as often as its local part; only our own domain is accepted.</summary>
     private static WorkgroupMutationResult<string?> ParseGoogleGroupPrefix(string? value)
     {
-        if (string.IsNullOrWhiteSpace(value)) return new((string?)null);
+        if (string.IsNullOrWhiteSpace(value)) return new(null);
 
         var prefix = value.Trim().ToLowerInvariant();
         var at = prefix.IndexOf('@', StringComparison.Ordinal);

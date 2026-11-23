@@ -185,7 +185,7 @@ public class MailerLiteAudienceSyncServiceTests
         _ml.ListGroupsAsync(shutdown.Token).Returns(async _ =>
         {
             await shutdown.CancelAsync();
-            return (IReadOnlyList<MailerLiteGroup>)[];
+            return [];
         });
 
         var act = () => NewService(audience).SyncAllAsync(ct: shutdown.Token);

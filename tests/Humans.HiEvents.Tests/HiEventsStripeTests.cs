@@ -72,11 +72,11 @@ public sealed class HiEventsStripeTests
         var ledger = await Backend().GetPaymentLedgerAsync(Now - Duration.FromDays(1), Now, Ct);
 
         ledger!.Entries.Select(e => (e.Id, e.Kind, e.AmountMinor, e.FeeMinor, e.HumansOrderId)).Should().Equal(
-            ("txn_c", PaymentLedgerEntryKind.Charge, 22500L, 340L, (Guid?)HumansOrder),
-            ("txn_r", PaymentLedgerEntryKind.Refund, -5000L, 0L, (Guid?)refundedOrder),
-            ("txn_r2", PaymentLedgerEntryKind.Refund, -1000L, 0L, (Guid?)refundedOrder),
-            ("txn_x", PaymentLedgerEntryKind.Charge, 1000L, 40L, (Guid?)null),
-            ("txn_p", PaymentLedgerEntryKind.Payout, -17160L, 0L, (Guid?)null));
+            ("txn_c", PaymentLedgerEntryKind.Charge, 22500L, 340L, HumansOrder),
+            ("txn_r", PaymentLedgerEntryKind.Refund, -5000L, 0L, refundedOrder),
+            ("txn_r2", PaymentLedgerEntryKind.Refund, -1000L, 0L, refundedOrder),
+            ("txn_x", PaymentLedgerEntryKind.Charge, 1000L, 40L, null),
+            ("txn_p", PaymentLedgerEntryKind.Payout, -17160L, 0L, null));
         ledger.Payouts.Should().ContainSingle().Which.ContentsNetMinor.Should().Be(17160);
         _hiEvents.Calls.Should().Be(3);
     }

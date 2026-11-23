@@ -74,7 +74,7 @@ public class TransferBookingTests
             2026, [Line(40m, 5)], Catalog, [Booked(5, 40m, oldAccount)], Departments, new YearMonth(2026, 6), FixedOrgTimeZone.Madrid.Zone);
 
         rows.Select(r => (r.TransferAccount, r.Amount)).Should().BeEquivalentTo(
-            [((int?)oldAccount, -40m), ((int?)TransferAccount, 40m)]);
+            [(oldAccount, -40m), (TransferAccount, 40m)]);
     }
 
     [HumansFact]

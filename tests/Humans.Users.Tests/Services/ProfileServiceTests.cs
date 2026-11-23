@@ -452,7 +452,7 @@ public sealed class ProfileServiceTests : ServiceTestHarness
         var existing = await Db.Profiles.AsNoTracking().FirstAsync(p => p.Id == profileId, Xunit.TestContext.Current.CancellationToken);
         var failingRepo = Substitute.For<IUserRepository>();
         failingRepo.GetByUserIdAsync(userId, Arg.Any<CancellationToken>()).Returns(existing);
-        failingRepo.GetProfilePictureLocationAsync(profileId, Arg.Any<CancellationToken>()).Returns(("image/png", (string?)null));
+        failingRepo.GetProfilePictureLocationAsync(profileId, Arg.Any<CancellationToken>()).Returns(("image/png", null));
         failingRepo.UpdateAsync(
                 Arg.Any<Profile>(), Arg.Any<CancellationToken>(), Arg.Any<IReadOnlyList<CVEntry>?>(), Arg.Any<UserNames?>())
             .ThrowsAsync(new InvalidOperationException("Database unavailable"));

@@ -67,7 +67,7 @@ public class FinanceControllerTests
         _finance.GetExpenseReconAsync(Arg.Any<int?>(), Arg.Any<CancellationToken>())
             .Returns(ExpenseRecon.Unavailable(null, "never synced"));
         _finance.GetSepaTransfersAsync(Arg.Any<CancellationToken>())
-            .Returns((Array.Empty<SepaPayoutTransferRow>(), (string?)null));
+            .Returns((Array.Empty<SepaPayoutTransferRow>(), null));
         _connector.GetSepaPayoutsAsync(Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns((Array.Empty<SepaPayoutTransferRow>(), null, [], null, null));
     }
@@ -503,8 +503,7 @@ public class FinanceControllerTests
 
     private void NameThem(params (Guid Id, string Burner)[] people) =>
         _users.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(people.ToDictionary(p => p.Id, p => MakeUserInfo(p.Id, p.Burner))
-                as IReadOnlyDictionary<Guid, UserInfo>);
+            .Returns(people.ToDictionary(p => p.Id, p => MakeUserInfo(p.Id, p.Burner)));
 
     private void Accounts(
         IReadOnlyList<CreditorAccountRow> rows,
@@ -677,7 +676,7 @@ public class FinanceControllerTests
     public async Task Creditors_UnnamedMember_FallsBackToTheirId()
     {
         _users.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
-            .Returns(new Dictionary<Guid, UserInfo>() as IReadOnlyDictionary<Guid, UserInfo>);
+            .Returns(new Dictionary<Guid, UserInfo>());
         Accounts([Row(40000002, "x", -1m, Bound(Ana, 40000002))]);
 
         var page = PageOf(await MakeController().Creditors(sort: null, dir: null));
@@ -957,7 +956,7 @@ public class FinanceControllerTests
             Guid.NewGuid(), Guid.NewGuid(), $"f{day}.xml", Instant.FromUtc(2026, 3, day, 9, 0), Ana, Ana, account,
             null, "Ana", "ES**1234", 10m, null, null, null, null, null, null, null);
         _finance.GetSepaTransfersAsync(Arg.Any<CancellationToken>())
-            .Returns(([Transfer(40000002, 1), Transfer(40000003, 5), Transfer(40000002, 9)], (string?)null));
+            .Returns(([Transfer(40000002, 1), Transfer(40000003, 5), Transfer(40000002, 9)], null));
 
         var model = (await MakeControllerWithHttpContext(Ana).CreditorStatement(40000002))
             .Should().BeOfType<ViewResult>().Subject.Model.Should().BeOfType<CreditorStatementVm>().Subject;

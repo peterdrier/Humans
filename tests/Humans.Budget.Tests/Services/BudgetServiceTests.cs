@@ -908,7 +908,7 @@ public sealed class BudgetServiceTests
             UserInfo.Create(new User { Id = viewerId }, [], [], null));
         var category = new BudgetCategorySnapshot(_yearId, _yearId, "Category", 0m, default, null, 0, null, []);
         budget.GetCategoryByIdAsync(_yearId).Returns(category);
-        budget.GetLineItemCategoryIdAsync(_yearId).Returns((Guid?)_yearId);
+        budget.GetLineItemCategoryIdAsync(_yearId).Returns(_yearId);
         var auth = Substitute.For<IAuthorizationService>();
         auth.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), category, Arg.Any<IEnumerable<IAuthorizationRequirement>>())
             .Returns(allowed ? AuthorizationResult.Success() : AuthorizationResult.Failed());
@@ -959,7 +959,7 @@ public sealed class BudgetServiceTests
             UserInfo.Create(new User { Id = viewerId }, [], [], null));
         var category = new BudgetCategorySnapshot(_yearId, _yearId, "Category", 0m, default, null, 0, null, []);
         budget.GetCategoryByIdAsync(_yearId).Returns(category);
-        budget.GetLineItemCategoryIdAsync(_yearId).Returns((Guid?)_yearId);
+        budget.GetLineItemCategoryIdAsync(_yearId).Returns(_yearId);
         var auth = Substitute.For<IAuthorizationService>();
         auth.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), category, Arg.Any<IEnumerable<IAuthorizationRequirement>>())
             .Returns(AuthorizationResult.Success());

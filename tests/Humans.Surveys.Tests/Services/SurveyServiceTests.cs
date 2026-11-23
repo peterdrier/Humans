@@ -3025,7 +3025,7 @@ public class SurveyServiceTests
             .Returns(Asociado(survivor) with { MergedUserIds = [archived] });
         var reads = 0;
         _repo.GetInvitationsAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(_ =>
-            (IReadOnlyList<SurveyInvitation>)[new SurveyInvitation
+            [new SurveyInvitation
             {
                 Id = Guid.NewGuid(), SurveyId = survey.Id, UserId = archived,
                 Completed = !completedAfterPreparation || ++reads > 1

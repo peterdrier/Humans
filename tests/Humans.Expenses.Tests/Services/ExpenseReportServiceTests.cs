@@ -89,7 +89,7 @@ public sealed partial class ExpenseReportServiceTests
     public ExpenseReportServiceTests()
     {
         _preapprovals.GetGrantsAsync(Arg.Any<CancellationToken>())
-            .Returns(_ => (IReadOnlyList<GrantOption>)_grantStore.Values.ToList());
+            .Returns(_ => _grantStore.Values.ToList());
         _preapprovalWrites.ReleaseAsync(default, default, default, default, Arg.Any<Action<Func<CancellationToken, Task>>>()).ReturnsForAnyArgs(new PreapprovalWriteResult());
         _preapprovalWrites.ConsumeAsync(default, default, default, default, Arg.Any<Action<Func<CancellationToken, Task>>>()).ReturnsForAnyArgs(new PreapprovalWriteResult());
         _expenseRepo = new ExpenseRepository(new TestDbContextFactory<ExpensesDbContext>(_expensesOptions));

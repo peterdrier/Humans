@@ -58,7 +58,7 @@ public class AccountMergeServiceMergeTests
         IReadOnlyList<UserEmail> stored = [email];
         UserInfo Snapshot() => UserInfo.Create(new User { Id = target }, stored, [], null);
         _userService.GetAllUserInfosAsync(Arg.Any<CancellationToken>())
-            .Returns(_ => (IReadOnlyCollection<UserInfo>)[Snapshot()]);
+            .Returns(_ => [Snapshot()]);
         _userService.GetUserInfoAsync(target, Arg.Any<CancellationToken>())
             .Returns(_ => ValueTask.FromResult<UserInfo?>(Snapshot()));
         var services = new ServiceCollection();

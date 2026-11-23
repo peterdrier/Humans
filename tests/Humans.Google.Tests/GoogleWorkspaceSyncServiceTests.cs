@@ -1501,7 +1501,7 @@ public sealed class GoogleWorkspaceSyncServiceTests
             .Returns(async _ =>
             {
                 await cancellation.CancelAsync();
-                return (GoogleClientError?)null;
+                return null;
             });
 
         var act = () => _syncService.EnforceInheritedAccessRestrictionsAsync(ct);
@@ -1564,7 +1564,7 @@ public sealed class GoogleWorkspaceSyncServiceTests
             .Returns(async _ =>
             {
                 await cancellation.CancelAsync();
-                return (GoogleClientError?)null;
+                return null;
             });
 
         var result = await _syncService.RemediateGroupSettingsAsync("group@nobodies.team", ct);

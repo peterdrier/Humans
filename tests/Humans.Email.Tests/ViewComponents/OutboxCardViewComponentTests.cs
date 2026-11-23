@@ -25,7 +25,7 @@ public sealed class OutboxCardViewComponentTests
     [HumansFact]
     public void Parts_ContributeTheCardToTheAdminDetailSlot()
     {
-        IUserPart contribution = ((IUserPart)new Section());
+        IUserPart contribution = new Section();
 
         contribution.Parts().Should().Contain(
             new UserPart(UserPartSlots.AdminDetail, typeof(OutboxCardViewComponent), 200));

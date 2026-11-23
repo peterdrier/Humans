@@ -664,7 +664,7 @@ public sealed class PleoSyncTests
         {
             started.Release();
             await release.WaitAsync();
-            return (IReadOnlyList<JsonElement>)[];
+            return [];
         });
 
         var first = SyncAsync();

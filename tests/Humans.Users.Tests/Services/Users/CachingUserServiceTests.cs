@@ -30,7 +30,7 @@ public class CachingUserServiceTests
         _inner.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(new ValueTask<UserInfo?>(pending.Task));
         var oldRefresh = sut.RefreshUserEmailsAsync(userId, ct);
         _inner.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(new ValueTask<UserInfo?>(current));
-        _inner.GetAllUserInfosAsync(Arg.Any<CancellationToken>()).Returns((IReadOnlyCollection<UserInfo>)[current]);
+        _inner.GetAllUserInfosAsync(Arg.Any<CancellationToken>()).Returns([current]);
         await sut.RefreshAsync(userId, ct);
         pending.SetResult(before);
         await oldRefresh;
@@ -96,7 +96,7 @@ public class CachingUserServiceTests
         var after = new[] { SampleUserInfo(userId, "After"), SampleUserInfo(otherId, "Other after") };
         var committed = false;
         _inner.GetAllUserInfosAsync(Arg.Any<CancellationToken>())
-            .Returns(_ => (IReadOnlyCollection<UserInfo>)(committed ? after : before));
+            .Returns(_ => committed ? after : before);
         var sut = CreateSut();
         (await sut.GetUserInfoAsync(userId, ct))!.BurnerName.Should().Be("Before");
         var failure = new IOException("Write acknowledgement failed");
@@ -146,7 +146,7 @@ public class CachingUserServiceTests
         var after = SampleUserInfo(userId, "After");
         var committed = false;
         _inner.GetAllUserInfosAsync(Arg.Any<CancellationToken>())
-            .Returns(_ => (IReadOnlyCollection<UserInfo>)[committed ? after : before]);
+            .Returns(_ => [committed ? after : before]);
         var sut = CreateSut();
         (await sut.GetUserInfoAsync(userId, ct))!.BurnerName.Should().Be("Before");
         var failure = new IOException("Login tracking unavailable");
@@ -193,7 +193,7 @@ public class CachingUserServiceTests
             .Returns(_ =>
             {
                 stored = [SampleUserInfo(first, "After"), SampleUserInfo(second, "Other after")];
-                return (IReadOnlySet<Guid>)new HashSet<Guid> { first, second };
+                return new HashSet<Guid> { first, second };
             });
         var failure = new IOException("Refresh read failed");
         _inner.GetUserInfoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())

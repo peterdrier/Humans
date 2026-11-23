@@ -357,13 +357,13 @@ public sealed class BoxOfficeCheckoutBackendTests
         var ledger = await Backend().GetPaymentLedgerAsync(Now - Duration.FromDays(1), Now, TestContext.Current.CancellationToken);
 
         ledger!.Entries.Select(e => (e.Id, e.Kind, e.AmountMinor, e.FeeMinor, e.HumansOrderId)).Should().Equal(
-            ("txn_c", PaymentLedgerEntryKind.Charge, 30000L, 450L, (Guid?)paidHere),
-            ("txn_r", PaymentLedgerEntryKind.Refund, -5000L, 0L, (Guid?)refundedLater),
-            ("txn_f", PaymentLedgerEntryKind.Fee, -200L, 0L, (Guid?)null),
-            ("txn_p", PaymentLedgerEntryKind.Payout, -24350L, 0L, (Guid?)null));
+            ("txn_c", PaymentLedgerEntryKind.Charge, 30000L, 450L, paidHere),
+            ("txn_r", PaymentLedgerEntryKind.Refund, -5000L, 0L, refundedLater),
+            ("txn_f", PaymentLedgerEntryKind.Fee, -200L, 0L, null),
+            ("txn_p", PaymentLedgerEntryKind.Payout, -24350L, 0L, null));
         ledger.Payouts.Select(p => (p.Id, p.AmountMinor, p.Status, p.ContentsNetMinor, p.ContentsCount)).Should().Equal(
-            ("po_1", 24350L, "paid", (long?)24350, 3), ("po_2", 1000L, "pending", (long?)null, 0),
-            ("po_3", 700L, "paid", (long?)null, 0));
+            ("po_1", 24350L, "paid", 24350, 3), ("po_2", 1000L, "pending", null, 0),
+            ("po_3", 700L, "paid", null, 0));
         _requests.Should().HaveCount(5).And.OnlyContain(r => r.Method == HttpMethod.Get);
     }
 

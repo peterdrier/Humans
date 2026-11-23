@@ -51,7 +51,7 @@ public sealed class ExpensesControllerPreapprovalTests
         _finance.ListExpenseAccountsAsync(activeOnly: true, Arg.Any<CancellationToken>())
             .Returns([new ExpenseAccountOption(62900001, "acc-1", "Materials", true, true)]);
         _preapprovals.GetGrantsAsync(Arg.Any<CancellationToken>())
-            .Returns(_ => (IReadOnlyList<GrantOption>)_grantStore.Values.ToList());
+            .Returns(_ => _grantStore.Values.ToList());
         _authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), Arg.Any<string>())
             .Returns(AuthorizationResult.Failed());
         _localizer[Arg.Any<string>()].Returns(call => new LocalizedString(call.Arg<string>(), call.Arg<string>()));
@@ -417,7 +417,7 @@ public sealed class ExpensesControllerPreapprovalTests
                 await request.CancelAsync();
                 call.Arg<CancellationToken>().ThrowIfCancellationRequested();
             }
-            return (IReadOnlyList<ExpenseAccountOption>)[];
+            return [];
         });
         var grantReads = 0;
         _preapprovals.GetGrantsAsync(Arg.Any<CancellationToken>()).Returns(async call =>
@@ -429,7 +429,7 @@ public sealed class ExpensesControllerPreapprovalTests
                 await request.CancelAsync();
                 call.Arg<CancellationToken>().ThrowIfCancellationRequested();
             }
-            return (IReadOnlyList<GrantOption>)[];
+            return [];
         });
         var controller = Build(logger);
         controller.HttpContext.RequestAborted = request.Token;

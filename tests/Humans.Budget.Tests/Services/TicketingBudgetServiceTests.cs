@@ -134,7 +134,7 @@ public class TicketingBudgetServiceTests
         _ticketService.GetTicketOrdersAsync(Arg.Any<CancellationToken>()).Returns(call =>
         {
             Read(SyncBoundary.Orders, call.Arg<CancellationToken>());
-            return (IReadOnlyList<TicketOrderInfo>)[BuildOrder(Instant.FromUtc(2026, 3, 2, 8, 0), 100m, 2m, 1m, TicketAttendeeStatus.Valid)];
+            return [BuildOrder(Instant.FromUtc(2026, 3, 2, 8, 0), 100m, 2m, 1m, TicketAttendeeStatus.Valid)];
         });
         _budgetService.SyncTicketingActualsAsync(_yearId, Arg.Any<IReadOnlyList<TicketingWeeklyActualsInput>>(), null,
             Arg.Any<CancellationToken>()).Returns(call =>

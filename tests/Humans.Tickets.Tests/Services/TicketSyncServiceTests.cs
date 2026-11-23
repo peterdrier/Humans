@@ -109,17 +109,17 @@ public sealed class TicketSyncServiceTests : TicketsTestHarness
         _vendorService.GetOrdersAsync(Arg.Any<Instant?>(), Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(call =>
         {
             Read(SyncReadBoundary.Orders, call.Arg<CancellationToken>());
-            return (IReadOnlyList<VendorOrderDto>)[];
+            return [];
         });
         _vendorService.GetIssuedTicketsAsync(Arg.Any<Instant?>(), Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(call =>
         {
             Read(SyncReadBoundary.Tickets, call.Arg<CancellationToken>());
-            return (IReadOnlyList<VendorTicketDto>)[];
+            return [];
         });
         _vendorService.GetCheckInsAsync(Arg.Any<Instant?>(), Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(call =>
         {
             Read(SyncReadBoundary.CheckIns, call.Arg<CancellationToken>());
-            return (IReadOnlyList<VendorCheckInDto>)[];
+            return [];
         });
         _stripeService.GetPaymentDetailsAsync("pi_cancel", Arg.Any<CancellationToken>()).Returns(call =>
         {

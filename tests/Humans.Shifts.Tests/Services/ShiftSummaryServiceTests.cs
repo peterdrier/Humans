@@ -129,7 +129,7 @@ public sealed class ShiftSummaryServiceTests : ShiftsTestHarness
     public async Task BuildSummaryAsync_RotaScope_PreservesCancellationInScopeReads()
     {
         using var cancellation = new CancellationTokenSource();
-        var seeded = await ((IShiftRotaRows)_service).GetRotaRowsAsync(ct: Xunit.TestContext.Current.CancellationToken);
+        var seeded = await _service.GetRotaRowsAsync(ct: Xunit.TestContext.Current.CancellationToken);
         var rows = Substitute.For<IShiftRotaRows>();
         rows.GetRotaRowsAsync(Arg.Any<IReadOnlyCollection<Guid>?>(), Arg.Any<CancellationToken>()).Returns(seeded);
         var services = new ServiceLocatorBuilder()

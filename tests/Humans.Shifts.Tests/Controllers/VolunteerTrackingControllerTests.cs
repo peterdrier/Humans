@@ -211,7 +211,7 @@ public class VolunteerTrackingControllerTests
             {
                 await aborted.CancelAsync();
                 call.Arg<CancellationToken>().ThrowIfCancellationRequested();
-                return (IReadOnlyList<(Guid TeamId, string TeamName)>)[];
+                return [];
             });
         var controller = BuildSut(new User { Id = Guid.NewGuid() });
 

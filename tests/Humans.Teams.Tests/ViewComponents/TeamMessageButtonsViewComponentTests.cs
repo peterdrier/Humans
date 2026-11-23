@@ -94,7 +94,7 @@ public sealed class TeamMessageButtonsViewComponentTests
     [HumansFact]
     public void Parts_ContributeTheButtonsToTheProfileSlot()
     {
-        IUserPart contribution = ((IUserPart)new Section());
+        IUserPart contribution = new Section();
 
         contribution.Parts().Should().Contain(
             new UserPart(UserPartSlots.Profile, typeof(TeamMessageButtonsViewComponent), 200));

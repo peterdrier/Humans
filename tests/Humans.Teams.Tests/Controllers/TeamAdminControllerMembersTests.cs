@@ -631,7 +631,7 @@ public class TeamAdminControllerMembersTests
 
         result.Should().BeOfType<RedirectToActionResult>();
         await teams.Received(1).UpdateRoleDefinitionAsync(roleId, "Updated", null, 1,
-            Arg.Any<List<SlotPriority>>(), 0, authorized ? requested : (bool?)null,
+            Arg.Any<List<SlotPriority>>(), 0, authorized ? requested : null,
             RolePeriod.YearRound, userId, true, 7, Arg.Any<CancellationToken>());
     }
 

@@ -112,7 +112,7 @@ public sealed partial class TicketCheckoutServiceTests
         var emails = new TicketsEmails(Options.Create(new EmailSettings()), localizer, NullLogger<TicketsEmails>.Instance);
 
         _gate.GetAdmittedAsync(Arg.Any<IReadOnlyCollection<string>>(), Arg.Any<CancellationToken>())
-            .Returns(ci => (IReadOnlySet<string>)ci.Arg<IReadOnlyCollection<string>>().Where(_admitted.Contains).ToHashSet(StringComparer.Ordinal));
+            .Returns(ci => ci.Arg<IReadOnlyCollection<string>>().Where(_admitted.Contains).ToHashSet(StringComparer.Ordinal));
         var services = new ServiceCollection();
         services.AddKeyedScoped(CachingTicketQueryService.InnerServiceKey, (_, _) => _holdingsInner);
         _holdings = new CachingTicketQueryService(services.BuildServiceProvider().GetRequiredService<IServiceScopeFactory>(),

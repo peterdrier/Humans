@@ -31,7 +31,7 @@ public class UserPartsTests
     [HumansFact]
     public void Parts_ContributeMyCodesToProfile_AndCampaignCodesToAdminDetail()
     {
-        IUserPart contribution = ((IUserPart)new Section());
+        IUserPart contribution = new Section();
 
         contribution.Parts().Should().BeEquivalentTo(
         [
