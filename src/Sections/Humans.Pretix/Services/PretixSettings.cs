@@ -1,7 +1,7 @@
 namespace Humans.Pretix.Services;
 
 /// <summary>
-/// One pretix organizer. The event slug comes per order from Tickets (<c>CheckoutRequest.BackendEventRef</c>), and
+/// One pretix organizer. The event slug comes per order from Tickets (<c>PlatformOrderRequest.PlatformEventRef</c>), and
 /// each event's carrier items are found by their internal names, so one set of settings serves every event.
 /// </summary>
 internal sealed class PretixSettings

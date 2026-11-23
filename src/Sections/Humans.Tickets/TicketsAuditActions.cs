@@ -35,7 +35,7 @@ internal sealed class TicketsAuditActions : AuditActionContributor
 
     public static readonly AuditActionDefinition TicketCheckoutPaid = new("TicketCheckoutPaid");
 
-    /// <summary>Failed, expired or cancelled, as the backend reported it.</summary>
+    /// <summary>Failed, expired or cancelled, as the platform reported it.</summary>
     public static readonly AuditActionDefinition TicketCheckoutClosed = new("TicketCheckoutClosed");
 
     public static readonly AuditActionDefinition TicketCheckoutRefunded = new("TicketCheckoutRefunded");
@@ -74,7 +74,7 @@ internal sealed class TicketsAuditActions : AuditActionContributor
     /// <summary>An automatic mail to a buyer or holder: payment failed or lapsed, ticket resold or unsold, ticket renamed.</summary>
     public static readonly AuditActionDefinition TicketHolderNotified = new("TicketHolderNotified");
 
-    /// <summary>The evening batch that refunds holders whose returned tickets sold and whose buyers' payments held.</summary>
+    /// <summary>The evening batch that refunds holders whose tickets sold in resale and whose buyers' payments held.</summary>
     public static readonly AuditActionDefinition TicketResaleRefundBatch = new("TicketResaleRefundBatch");
 
     public static readonly AuditActionDefinition TicketScheduledSyncEnabled = new("TicketScheduledSyncEnabled");

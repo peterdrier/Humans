@@ -9,8 +9,8 @@ using NodaTime.Text;
 namespace Humans.Tickets.Jobs;
 
 /// <summary>
-/// The standing financial check: every backend in use, reconciled over the whole sale up to the start of today, so a
-/// refund made late on an old order is caught too: its orders against the backend's list, and its payment account's
+/// The standing financial check: every platform in use, reconciled over the whole sale up to the start of today, so a
+/// refund made late on an old order is caught too: its orders against the platform's list, and its payment account's
 /// fees and payouts where Humans can read them. Changes nothing. Whatever is out of balance or could not be checked is
 /// logged and mailed to the ticketing team in one message, every night until it balances.
 /// </summary>
@@ -25,18 +25,18 @@ internal sealed class TicketReconJob(
 {
     public async Task ExecuteAsync(CancellationToken cancellationToken = default)
     {
-        var salesEvents = await checkout.GetSalesEventsAsync(cancellationToken);
-        if (salesEvents.Count == 0)
+        var allSettings = await checkout.ListTicketingSettingsAsync(cancellationToken);
+        if (allSettings.Count == 0)
             return;
         var zone = orgTimeZone.Zone;
-        // No order is older than the sales setup it was sold under.
-        var from = salesEvents.Min(e => e.CreatedAt);
+        // No order is older than the ticketing settings it was sold under.
+        var from = allSettings.Min(e => e.CreatedAt);
         var today = clock.GetCurrentInstant().InZone(zone).Date;
         var to = today.AtStartOfDayInZone(zone).ToInstant();
         var findings = new List<string>();
-        foreach (var key in await checkout.GetBackendsInUseAsync(cancellationToken))
+        foreach (var key in await checkout.GetPlatformsInUseAsync(cancellationToken))
         {
-            if (await RunAsync(key, "orders", findings, () => checkout.ReconcileBackendAsync(key, from, to, cancellationToken),
+            if (await RunAsync(key, "orders", findings, () => checkout.ReconcilePlatformAsync(key, from, to, cancellationToken),
                     cancellationToken) is { } recon && Finding(recon) is { } orderFinding)
                 findings.Add(orderFinding);
             if (await RunAsync(key, "payments and payouts", findings,
@@ -59,7 +59,7 @@ internal sealed class TicketReconJob(
         }
     }
 
-    /// <summary>One backend failing must not leave the others unchecked; a failure is itself a finding.</summary>
+    /// <summary>One platform failing must not leave the others unchecked; a failure is itself a finding.</summary>
     private async Task<T?> RunAsync<T>(string key, string what, List<string> findings, Func<Task<T?>> run, CancellationToken ct)
         where T : class
     {
@@ -69,7 +69,7 @@ internal sealed class TicketReconJob(
         }
         catch (Exception ex) when (!ct.IsCancellationRequested)
         {
-            logger.LogError(ex, "Ticket reconciliation of {Backend} {What} could not run", key, what);
+            logger.LogError(ex, "Ticket reconciliation of {Platform} {What} could not run", key, what);
             findings.Add($"{key} {what}: could not be checked: {ex.Message}");
             return null;
         }
@@ -77,16 +77,16 @@ internal sealed class TicketReconJob(
 
     private string? Finding(TicketRecon recon)
     {
-        var key = recon.BackendKey;
+        var key = recon.PlatformKey;
         if (recon.Error is not null)
         {
-            logger.LogError("Ticket reconciliation of {Backend} could not run: {Error}", key, recon.Error);
+            logger.LogError("Ticket reconciliation of {Platform} could not run: {Error}", key, recon.Error);
             return $"{key} orders: could not be checked: {recon.Error}";
         }
         if (recon.Balanced)
         {
             logger.LogInformation(
-                "Ticket reconciliation of {Backend} is balanced: {Orders} paid orders, {Tickets} tickets, {Net} net; {Listed} unpaid difference(s) listed",
+                "Ticket reconciliation of {Platform} is balanced: {Orders} paid orders, {Tickets} tickets, {Net} net; {Listed} unpaid difference(s) listed",
                 key, recon.Humans.Orders, recon.Humans.Tickets, recon.Humans.NetMinor, recon.Problems.Count());
             return null;
         }
@@ -94,29 +94,29 @@ internal sealed class TicketReconJob(
         var differing = recon.Problems.Where(r => r.MoneyMoved).ToList();
         var issues = TicketReconLabels.Counted(differing.SelectMany(r => r.Issues).Select(i => i.Label()));
         logger.LogError(
-            "Ticket reconciliation of {Backend} is out of balance: Humans {HumansOrders} paid orders, {HumansTickets} tickets, " +
-            "{HumansNet} net; backend {BackendOrders}, {BackendTickets}, {BackendNet}; {TicketsIssued} tickets issued; " +
+            "Ticket reconciliation of {Platform} is out of balance: Humans {HumansOrders} paid orders, {HumansTickets} tickets, " +
+            "{HumansNet} net; platform {PlatformOrders}, {PlatformTickets}, {PlatformNet}; {TicketsIssued} tickets issued; " +
             "{Problems} order(s) differ: {Issues}",
             key, recon.Humans.Orders, recon.Humans.Tickets, recon.Humans.NetMinor,
-            recon.Backend.Orders, recon.Backend.Tickets, recon.Backend.NetMinor, recon.TicketsIssued, differing.Count, issues);
+            recon.Platform.Orders, recon.Platform.Tickets, recon.Platform.NetMinor, recon.TicketsIssued, differing.Count, issues);
         return $"{key} orders: out of balance; Humans {recon.Humans.Orders} paid orders, {recon.Humans.Tickets} tickets, " +
-               $"{TicketReconLabels.Eur(recon.Humans.NetMinor)} net; backend {recon.Backend.Orders}, {recon.Backend.Tickets}, " +
-               $"{TicketReconLabels.Eur(recon.Backend.NetMinor)} net; {recon.TicketsIssued} tickets issued; " +
+               $"{TicketReconLabels.Eur(recon.Humans.NetMinor)} net; platform {recon.Platform.Orders}, {recon.Platform.Tickets}, " +
+               $"{TicketReconLabels.Eur(recon.Platform.NetMinor)} net; {recon.TicketsIssued} tickets issued; " +
                $"{differing.Count} order(s) differ{(differing.Count == 0 ? "" : $": {issues}")}";
     }
 
     private string? Finding(TicketPaymentRecon recon)
     {
-        var key = recon.BackendKey;
+        var key = recon.PlatformKey;
         if (recon.Error is not null)
         {
-            logger.LogError("Payment reconciliation of {Backend} could not run: {Error}", key, recon.Error);
+            logger.LogError("Payment reconciliation of {Platform} could not run: {Error}", key, recon.Error);
             return $"{key} payments and payouts: could not be checked: {recon.Error}";
         }
         if (recon.Balanced)
         {
             logger.LogInformation(
-                "Payment reconciliation of {Backend} is balanced: {Charged} charged, {Fees} fees, {PaidOut} paid out",
+                "Payment reconciliation of {Platform} is balanced: {Charged} charged, {Fees} fees, {PaidOut} paid out",
                 key, recon.Totals.ChargedMinor, recon.Totals.FeesMinor, recon.Totals.PaidOutMinor);
             return null;
         }
@@ -129,7 +129,7 @@ internal sealed class TicketReconJob(
         if (payouts.Count > 0)
             parts.Add($"{payouts.Count} payout(s) differ: {TicketReconLabels.Counted(payouts.SelectMany(p => p.Issues).Select(i => i.Label()))}");
         var text = string.Join("; ", parts);
-        logger.LogError("Payment reconciliation of {Backend} is out of balance: {Differences}", key, text);
+        logger.LogError("Payment reconciliation of {Platform} is out of balance: {Differences}", key, text);
         return $"{key} payments and payouts: {text}";
     }
 }

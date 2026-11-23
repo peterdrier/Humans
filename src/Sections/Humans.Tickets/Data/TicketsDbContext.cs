@@ -14,7 +14,7 @@ internal sealed class TicketsDbContext(DbContextOptions<TicketsDbContext> option
     public DbSet<TicketSettings> TicketSettings => Set<TicketSettings>();
     public DbSet<TicketTransferRequest> TicketTransferRequests => Set<TicketTransferRequest>();
     public DbSet<EventParticipation> EventParticipations => Set<EventParticipation>();
-    public DbSet<TicketSalesEvent> TicketSalesEvents => Set<TicketSalesEvent>();
+    public DbSet<TicketingSettings> TicketingSettings => Set<TicketingSettings>();
     public DbSet<TicketCheckoutOrder> TicketCheckoutOrders => Set<TicketCheckoutOrder>();
     public DbSet<TicketCheckoutRefund> TicketCheckoutRefunds => Set<TicketCheckoutRefund>();
     public DbSet<TicketCheckoutOrderEvent> TicketCheckoutOrderEvents => Set<TicketCheckoutOrderEvent>();
@@ -32,7 +32,7 @@ internal sealed class TicketsDbContext(DbContextOptions<TicketsDbContext> option
         builder.ApplyConfiguration(new TicketSettingsConfiguration());
         builder.ApplyConfiguration(new TicketTransferRequestConfiguration());
         builder.ApplyConfiguration(new EventParticipationConfiguration());
-        builder.ApplyConfiguration(new TicketSalesEventConfiguration());
+        builder.ApplyConfiguration(new TicketingSettingsConfiguration());
         builder.ApplyConfiguration(new TicketCheckoutOrderConfiguration());
         builder.ApplyConfiguration(new TicketCheckoutRefundConfiguration());
         builder.ApplyConfiguration(new TicketCheckoutOrderEventConfiguration());

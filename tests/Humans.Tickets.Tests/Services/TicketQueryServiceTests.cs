@@ -276,14 +276,14 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
     public async Task Holdings_HumansIssuedTicket_HoldsDeletionUntil30DaysAfterStrike(string state, int year, bool held)
     {
         var userId = Guid.NewGuid();
-        var salesEvent = new TicketSalesEvent { Id = Guid.NewGuid(), EventSettingsId = Guid.NewGuid() };
+        var ticketing = new TicketingSettings { Id = Guid.NewGuid(), EventSettingsId = Guid.NewGuid() };
         _checkout.GetTicketsForHolderAsync(userId, Arg.Any<CancellationToken>()).Returns(
         [
-            new TicketCheckoutTicket { Id = Guid.NewGuid(), SalesEventId = salesEvent.Id, HolderUserId = userId, State = Enum.Parse<TicketCheckoutTicketState>(state) },
+            new TicketCheckoutTicket { Id = Guid.NewGuid(), TicketingSettingsId = ticketing.Id, HolderUserId = userId, State = Enum.Parse<TicketCheckoutTicketState>(state) },
         ]);
-        _checkout.GetSalesEventAsync(salesEvent.Id, Arg.Any<CancellationToken>()).Returns(salesEvent);
-        _shiftManagementService.GetEventSettingsByIdAsync(salesEvent.EventSettingsId, Arg.Any<CancellationToken>())
-            .Returns(new EventSettingsInfo(salesEvent.EventSettingsId, "Nowhere", year, "Europe/Madrid",
+        _checkout.GetTicketingSettingsAsync(ticketing.Id, Arg.Any<CancellationToken>()).Returns(ticketing);
+        _shiftManagementService.GetEventSettingsByIdAsync(ticketing.EventSettingsId, Arg.Any<CancellationToken>())
+            .Returns(new EventSettingsInfo(ticketing.EventSettingsId, "Nowhere", year, "Europe/Madrid",
                 new LocalDate(year, 7, 1), -10, 5, 9, new Dictionary<int, int>(), null, null));
         var service = new TicketQueryService(FixedOrgTimeZone.Madrid, _repo, _transferRepo, _budgetService, _campaignService,
             _userService, _userEmailService, _teamService, Substitute.For<IGovernanceService>(), _shiftManagementService,
@@ -1388,29 +1388,29 @@ public sealed class TicketQueryServiceTests : TicketsTestHarness
     }
 
     [HumansFact]
-    public async Task GetDonationExportDataAsync_IncludesDonationLinesOfPaidCheckoutOrders()
+    public async Task GetDonationExportDataAsync_IncludesDonationLinesOfPaidHumansOrders()
     {
-        var salesEvent = new TicketSalesEvent { Id = Guid.NewGuid() };
+        var ticketing = new TicketingSettings { Id = Guid.NewGuid() };
         TicketCheckoutOrder Order(TicketCheckoutOrderState state, Instant paidAt, params (long Minor, string? Purpose)[] gifts) => new()
         {
             Id = Guid.NewGuid(),
-            SalesEventId = salesEvent.Id,
+            TicketingSettingsId = ticketing.Id,
             BuyerName = "Ana Buyer",
             BuyerEmail = "ana@example.com",
             State = state,
             PaidAt = paidAt,
             Lines =
             [
-                new TicketCheckoutOrderLine { Kind = CheckoutLineKind.Ticket, AmountMinor = 22500, AttendeeName = "Ana Buyer" },
+                new TicketCheckoutOrderLine { Kind = OrderLineKind.Ticket, AmountMinor = 22500, HolderName = "Ana Buyer" },
                 .. gifts.Select(g => new TicketCheckoutOrderLine
-                    { Kind = CheckoutLineKind.Donation, AmountMinor = g.Minor, DonationPurpose = g.Purpose }),
+                    { Kind = OrderLineKind.Donation, AmountMinor = g.Minor, DonationPurpose = g.Purpose }),
             ],
         };
         var paid = Order(TicketCheckoutOrderState.Paid, Instant.FromUtc(2027, 1, 2, 9, 0),
             (17500, null), (2000, "Low income pool"));
         var unpaid = Order(TicketCheckoutOrderState.Pending, Instant.FromUtc(2027, 1, 2, 9, 0), (5000, null));
-        _checkout.GetSalesEventsAsync(Arg.Any<CancellationToken>()).Returns([salesEvent]);
-        _checkout.GetOrdersForSalesEventAsync(salesEvent.Id, Arg.Any<CancellationToken>()).Returns([paid, unpaid]);
+        _checkout.ListTicketingSettingsAsync(Arg.Any<CancellationToken>()).Returns([ticketing]);
+        _checkout.GetOrdersForSettingsAsync(ticketing.Id, Arg.Any<CancellationToken>()).Returns([paid, unpaid]);
 
         var rows = await _service.GetDonationExportDataAsync(Guid.NewGuid());
 

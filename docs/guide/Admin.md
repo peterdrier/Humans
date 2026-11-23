@@ -94,7 +94,7 @@ See [Google](Google.md) for the full Google surface.
 Board can open these pages and read them; every action on them is **Admin only**.
 
 - **Configuration** (`/Debug/Configuration`) lists every auto-discovered setting, classified as critical, recommended, or optional, with sensitive values masked.
-- **API keys** (`/Backdoor`) allocates, rotates and revokes the personal keys that open the `/api/backdoor/*` machine APIs — the log, agent-transcript, issue and survey surfaces. A key goes to one human (a full Admin or a Board member), authenticates as them, and is shown in plaintext exactly once. Board sees the key list; only Admin allocates, rotates and revokes.
+- **API keys** (`/Backdoor`) allocates, rotates and revokes the personal keys that open the `/api/backdoor/*` machine APIs — the log, agent-transcript, issue and survey surfaces. A key goes to one human, authenticates as them, reaches only what they can reach, and is shown in plaintext exactly once. Anyone a Backdoor scope admits makes their own keys there (today that is Admin and Board); keys below Admin and Board expire after 30 days. Board sees every key; only Admin allocates, rotates and revokes someone else's.
 - **Logs** (`/Debug/Logs`) shows recent in-memory Serilog entries for quick triage without shelling in.
 - **HTTP errors** (`/Debug/HttpErrors`) shows recent HTTP error responses for quick diagnosis.
 - **Database** (`/Debug/Database`) shows the database server's version, size, connections and settings, plus per-table row counts, sizes and activity and per-index size and scans.

@@ -2,6 +2,7 @@ using System.ComponentModel.DataAnnotations;
 using System.Security.Claims;
 using System.Text.Json.Serialization;
 using Humans.Backdoor.Filters;
+using Humans.Backdoor.Services;
 using Humans.Base.Controllers;
 using Humans.Base.Extensions;
 using Humans.Issues.Contracts;
@@ -15,6 +16,7 @@ namespace Humans.Backdoor.Controllers;
 [ApiController]
 [Route("api/backdoor/issues")]
 [ServiceFilter(typeof(BackdoorApiKeyAuthFilter))]
+[BackdoorScope(BackdoorScope.Staff)]
 [AllowAnonymous]
 internal sealed class BackdoorIssuesController(
     IIssueTriage issues,

@@ -12,39 +12,39 @@ internal sealed partial class TicketCheckoutService : ITicketGateLookup
             return null;
         if (await repository.GetTicketByBarcodeAsync(barcode.Trim(), ct) is not { } ticket)
             return null;
-        if (await repository.GetSalesEventAsync(ticket.SalesEventId, ct) is not { } salesEvent)
+        if (await repository.GetTicketingSettingsAsync(ticket.TicketingSettingsId, ct) is not { } ticketing)
             return null;
 
         var parent = ticket.ParentTicketId is { } parentId ? await repository.GetTicketAsync(parentId, ct) : null;
-        return ToGateInfo(ticket, parent, salesEvent);
+        return ToGateInfo(ticket, parent, ticketing);
     }
 
     public async Task<IReadOnlyList<IssuedTicketInfo>> GetIssuedTicketsForEventAsync(
         Guid eventSettingsId, CancellationToken ct = default)
     {
-        if (await repository.GetSalesEventForEventAsync(eventSettingsId, ct) is not { } salesEvent)
+        if (await repository.GetTicketingSettingsForEventAsync(eventSettingsId, ct) is not { } ticketing)
             return [];
 
-        var tickets = await repository.GetTicketsForSalesEventAsync(salesEvent.Id, ct);
+        var tickets = await repository.GetTicketsForSettingsAsync(ticketing.Id, ct);
         var byId = tickets.ToDictionary(t => t.Id);
         return tickets
-            .Select(t => ToGateInfo(t, t.ParentTicketId is { } parentId ? byId.GetValueOrDefault(parentId) : null, salesEvent))
+            .Select(t => ToGateInfo(t, t.ParentTicketId is { } parentId ? byId.GetValueOrDefault(parentId) : null, ticketing))
             .ToList();
     }
 
-    private IssuedTicketInfo ToGateInfo(TicketCheckoutTicket ticket, TicketCheckoutTicket? parent, TicketSalesEvent salesEvent)
+    private IssuedTicketInfo ToGateInfo(TicketCheckoutTicket ticket, TicketCheckoutTicket? parent, TicketingSettings ticketing)
     {
         var entryUserId = ticket.HolderUserId ?? parent?.HolderUserId;
 
         var label = ticket.ClassLabel ?? ticket.WaveName;
         var now = clock.GetCurrentInstant();
-        var canStillSell = salesEvent.Mode != TicketSalesMode.Closed && !(salesEvent.SalesCloseAt is { } close && now >= close);
+        var canStillSell = ticketing.Mode != TicketSalesMode.Closed && !(ticketing.SalesCloseAt is { } close && now >= close);
         // A child goes wherever its adult goes: while the adult's offer can sell, the child would be voided with it.
         var inResaleQueue = canStillSell
             && (ticket.State == TicketCheckoutTicketState.Offered || parent?.State == TicketCheckoutTicketState.Offered);
         return new IssuedTicketInfo(
             ticket.Id,
-            salesEvent.EventSettingsId,
+            ticketing.EventSettingsId,
             ticket.Barcode,
             ticket.HolderName,
             ticket.HolderUserId,

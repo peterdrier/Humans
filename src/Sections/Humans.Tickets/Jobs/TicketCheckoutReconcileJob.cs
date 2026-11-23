@@ -13,6 +13,6 @@ internal sealed class TicketCheckoutReconcileJob(
     {
         var changed = await checkout.ReconcileOpenOrdersAsync(cancellationToken);
         if (changed > 0)
-            logger.LogInformation("Checkout reconcile moved {Count} order(s)", changed);
+            logger.LogInformation("Reconcile of open orders moved {Count} order(s)", changed);
     }
 }

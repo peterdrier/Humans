@@ -8,7 +8,7 @@ using Microsoft.Extensions.DependencyInjection;
 namespace Humans.BoxOffice;
 
 /// <summary>
-/// Humans' own ticket checkout: Stripe hosted Checkout behind Tickets' <see cref="ITicketCheckoutBackend"/>, key
+/// Humans' own ticketing platform: Stripe hosted Checkout behind Tickets' <see cref="ITicketingPlatform"/>, key
 /// <c>boxoffice</c>, on its own <c>STRIPE_BOXOFFICE_*</c> variables.
 /// </summary>
 public sealed class Section : ISection, ISectionConfiguration, ISectionAdminNav
@@ -23,8 +23,8 @@ public sealed class Section : ISection, ISectionConfiguration, ISectionAdminNav
             opts.SecretKey = Environment.GetEnvironmentVariable(KeyVariable) ?? string.Empty;
             opts.WebhookSecret = Environment.GetEnvironmentVariable(WebhookSecretVariable) ?? string.Empty;
         });
-        services.AddScoped<BoxOfficeCheckoutBackend>();
-        services.AddScoped<ITicketCheckoutBackend>(sp => sp.GetRequiredService<BoxOfficeCheckoutBackend>());
+        services.AddScoped<BoxOfficePlatform>();
+        services.AddScoped<ITicketingPlatform>(sp => sp.GetRequiredService<BoxOfficePlatform>());
     }
 
     void ISectionConfiguration.DeclareSettings(IConfiguration configuration, ConfigurationRegistry registry)
@@ -34,5 +34,5 @@ public sealed class Section : ISection, ISectionConfiguration, ISectionAdminNav
     }
 
     IEnumerable<AdminNavGroup> ISectionAdminNav.Groups() =>
-        [TicketsBackendAdminNav.Group("Box Office", BoxOfficeCheckoutBackend.BackendKey, "fa-solid fa-cash-register")];
+        [TicketsPlatformAdminNav.Group("Box Office", BoxOfficePlatform.PlatformKey, "fa-solid fa-cash-register")];
 }
