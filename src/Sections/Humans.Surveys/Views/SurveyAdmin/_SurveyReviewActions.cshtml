@@ -1,0 +1,33 @@
+@model Guid
+@* Approve or reject a survey pending approval. Callers render this only for a survey in
+   PendingApproval; the Manage policy gate keeps it from Board, who read the queue but may not act. *@
+<div class="d-inline" authorize-policy="@Humans.Surveys.Contracts.SurveysPolicies.Manage">
+    <form asp-controller="SurveyAdmin" asp-action="Approve" asp-route-id="@Model" method="post" class="d-inline">
+        @Html.AntiForgeryToken()
+        <button type="submit" class="btn btn-success btn-sm">@Localizer["Surveys_Admin_Queue_ApproveAndSend"]</button>
+    </form>
+    <button type="button" class="btn btn-outline-danger btn-sm" data-bs-toggle="modal" data-bs-target="#rejectModal-@Model">
+        @Localizer["Surveys_Admin_Queue_Reject"]
+    </button>
+    <div class="modal fade text-start" id="rejectModal-@Model" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form asp-controller="SurveyAdmin" asp-action="Reject" asp-route-id="@Model" method="post">
+                    @Html.AntiForgeryToken()
+                    <div class="modal-header">
+                        <h5 class="modal-title">@Localizer["Surveys_Admin_Queue_Reject"]</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <label class="form-label" for="note-@Model">@Localizer["Surveys_Admin_Queue_RejectNoteLabel"]</label>
+                        <textarea class="form-control" id="note-@Model" name="note" rows="3" required maxlength="4000">@(ViewData[$"RejectionNote:{Model}"])</textarea>
+                        <div class="form-text text-danger">@Localizer["Surveys_Admin_Queue_RejectNoteRequired"]</div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="submit" class="btn btn-danger">@Localizer["Surveys_Admin_Queue_Reject"]</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>

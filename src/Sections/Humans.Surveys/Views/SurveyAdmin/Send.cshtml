@@ -68,7 +68,12 @@
             </p>
         }
 
-        @if (Model.Status != SurveyStatus.Open)
+        @if (Model.Status == SurveyStatus.PendingApproval)
+        {
+            <p class="text-muted">This survey is waiting for approval. Approving it opens it and sends the invitations.</p>
+            <partial name="_SurveyReviewActions" model="@Model.Id" />
+        }
+        else if (Model.Status != SurveyStatus.Open)
         {
             <p class="text-muted">The survey must be <strong>Open</strong> before invitations can be sent.</p>
             @if (Model.Status == SurveyStatus.Closed && Model.IsAsociadoVote)
