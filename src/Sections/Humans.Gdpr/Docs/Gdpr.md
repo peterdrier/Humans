@@ -35,7 +35,7 @@
 - **`GdprExport`** is the envelope — an ISO-8601 UTC timestamp, the user id (the
   surviving account when asked under a merged-away id, else the id asked with),
   the merged-away ids folded into it, and the merged section bag. Each download
-  route uses `GdprExportSerializer` in Contracts to serialize it to the file.
+  route uses the section-internal `GdprExportSerializer` to serialize it to the file.
 - **Erasure shares the contract *and* the orchestrator.** `IUserDataContributor`
   also carries `ErasureDeclaration` (a static section-name →
   retention-reason table; `null` = erased in full) and `EraseForUserAsync`, so a
@@ -72,8 +72,8 @@ The `/Consent/MyData` page itself is Consent's (`MyDataController`) and links to
 `[AllowBeforeActiveMembership]` — they are the membership gate's redirect targets and the recovery actions
 a non-Active account keeps (`Status` alone carries `Terminal = true`: terminal states are denied everything else).
 
-The export actions resolve `IGdprService` from the `Contracts/` folder and use its shared
-`GdprExportSerializer` for the file download. The serializer writes the envelope
+The export actions resolve `IGdprService` from the `Contracts/` folder and use the internal
+`GdprExportSerializer` (`Services/`) for the file download. The serializer writes the envelope
 fields first, then section slices in contributor order, as indented UTF-8 JSON
 with string enums and null object properties omitted. Erasure has no route of its own — `AccountDeletionService`
 calls `EraseForUserAsync` per merge-chain id from the deletion paths.
@@ -202,8 +202,8 @@ sealed`) behind the public `IGdprService` in `Contracts/`, exposing both
   `Humans.Infrastructure` reference and no `Humans.UI` reference: nothing to
   persist.
 - `src/Sections/Humans.Gdpr/Contracts` — the orchestrator's surface (`IGdprService`,
-  `GdprExport`, `GdprExportSerializer`; namespace `Humans.Gdpr.Contracts`). The
-  orchestrator and controllers stay `internal`.
+  `GdprExport`; namespace `Humans.Gdpr.Contracts`). The
+  orchestrator, the file serializer and the controllers stay `internal`.
 - `src/Humans.Base/Gdpr` — the fan-out seam (`IUserDataContributor`, `UserDataSlice`),
   same namespace. It sits in Base because every data-owning section implements it.
 - `GdprResource` (section root, all supported cultures) holds the section's page copy and

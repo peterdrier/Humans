@@ -97,18 +97,18 @@ cancel-deletion actions map the same failure differently (finding-level, see the
 - **`ExportedAt` is an ISO-8601 UTC instant off the injected clock**:
   `src/Sections/Humans.Gdpr/Services/GdprService.cs:88`.
 - **The file is the envelope first, then the portions in contributor order:**
-  `src/Sections/Humans.Gdpr/Services/GdprExportSerializer.cs:19`.
+  `src/Sections/Humans.Gdpr/Services/GdprExportSerializer.cs:20`.
 - **No route acts on another person.** No action takes a user id; each resolves the caller:
-  `src/Sections/Humans.Gdpr/Controllers/GuestDataController.cs:28`,
-  `src/Sections/Humans.Gdpr/Controllers/MemberDataController.cs:30`,
+  `src/Sections/Humans.Gdpr/Controllers/GuestDataController.cs:29`,
+  `src/Sections/Humans.Gdpr/Controllers/MemberDataController.cs:31`,
   `src/Sections/Humans.Gdpr/Controllers/UserController.cs:66`.
 - **A deletion request or cancel stops before calling Users when the request is aborted
-  during the account lookup:** `src/Sections/Humans.Gdpr/Controllers/GuestDataController.cs:57`,
-  `src/Sections/Humans.Gdpr/Controllers/MemberDataController.cs:30`,
+  during the account lookup:** `src/Sections/Humans.Gdpr/Controllers/GuestDataController.cs:58`,
+  `src/Sections/Humans.Gdpr/Controllers/MemberDataController.cs:31`,
   `src/Sections/Humans.Gdpr/Controllers/UserController.cs:66`.
 - **A request-aborted download propagates the cancellation** rather than redirecting with a
-  failure flash: `src/Sections/Humans.Gdpr/Controllers/GuestDataController.cs:41` and
-  `src/Sections/Humans.Gdpr/Controllers/MemberDataController.cs:69`.
+  failure flash: `src/Sections/Humans.Gdpr/Controllers/GuestDataController.cs:42` and
+  `src/Sections/Humans.Gdpr/Controllers/MemberDataController.cs:70`.
 - **The status wall shows only to a walled account;** anyone else is sent home:
   `src/Sections/Humans.Gdpr/Controllers/UserController.cs:30`.
 - **Every declared category is either erased in full or states a lawful basis**:
