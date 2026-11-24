@@ -128,7 +128,7 @@ public class AccountControllerOAuthReconcileTests
     }
 
     [HumansFact]
-    public async Task ExternalLogin_ProviderNotConfigured_ReturnsToLoginInsteadOfChallenging()
+    public async Task ExternalLogin_ProviderNotConfigured_ReturnsToLogin()
     {
         _schemeProvider.GetSchemeAsync("Google").Returns((AuthenticationScheme?)null);
 
