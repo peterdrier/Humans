@@ -13,7 +13,7 @@ public class AgentShiftViewReadTests
 {
     public static TheoryData<Type> AgentTypesThatReadShiftSignups =>
     [
-        SectionType("Humans.Agent.Services.AgentUserSnapshotProvider"),
+        SectionType("Humans.Agent.Services.AgentUserContextProvider"),
         SectionType("Humans.Agent.Services.AgentToolDispatcher"),
     ];
 

@@ -17,6 +17,7 @@ internal sealed class AgentSettingsConfiguration : IEntityTypeConfiguration<Agen
         builder.Property(s => s.Id).ValueGeneratedNever();
 
         builder.Property(s => s.Model).HasMaxLength(64).IsRequired();
+#pragma warning disable CS0618 // the retired column stays mapped until its drop is approved
         builder.Property(s => s.PreloadConfig).HasConversion<string>().HasMaxLength(16).IsRequired();
         builder.Property(s => s.UpdatedAt).IsRequired();
 
@@ -33,6 +34,7 @@ internal sealed class AgentSettingsConfiguration : IEntityTypeConfiguration<Agen
             RetentionDays = 90,
             UpdatedAt = Instant.FromUtc(2026, 4, 21, 0, 0)
         });
+#pragma warning restore CS0618
 
     }
 }

@@ -121,7 +121,7 @@ public sealed class AnthropicClientTests
             data: {"type":"content_block_stop","index":2}
 
             event: content_block_start
-            data: {"type":"content_block_start","index":3,"content_block":{"type":"tool_use","id":"toolu_1","name":"fetch_section_guide","input":{}}}
+            data: {"type":"content_block_start","index":3,"content_block":{"type":"tool_use","id":"toolu_1","name":"fetch_section_doc","input":{}}}
 
             event: content_block_delta
             data: {"type":"content_block_delta","index":3,"delta":{"type":"input_json_delta","partial_json":"{\"section\":\"Teams\"}"}}
@@ -153,7 +153,7 @@ public sealed class AnthropicClientTests
             new AnthropicThinkingBlock("Look it up.", "sig-1"),
             new AnthropicTextBlock("Checking."),
             new AnthropicRedactedThinkingBlock("opaque"),
-            new AnthropicToolUseBlock(new AnthropicToolCall("toolu_1", "fetch_section_guide", "{\"section\":\"Teams\"}")));
+            new AnthropicToolUseBlock(new AnthropicToolCall("toolu_1", "fetch_section_doc", "{\"section\":\"Teams\"}")));
 
         var replay = new AnthropicMessage("assistant", "ignored", null, null, AssistantContent: content);
         await foreach (var _ in adapter.StreamAsync(new AnthropicRequest("claude-sonnet-5-5", "System", [question, replay], [], 100), ct))

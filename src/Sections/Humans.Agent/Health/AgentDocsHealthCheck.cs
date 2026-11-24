@@ -35,7 +35,7 @@ internal sealed class AgentDocsHealthCheck(
         if (!await TryFetchAsync(SectionsFolder, ProbeSectionDoc, cancellationToken))
             return HealthCheckResult.Degraded(
                 $"agent grounding docs unreachable — {SectionsFolder}/{ProbeSectionDoc}.md could not be fetched from GitHub; " +
-                "fetch_section_guide will return errors and the preload index will be empty");
+                "fetch_section_doc will return errors and the preload index will be empty");
 
         if (!await TryFetchAsync(FeaturesFolder, ProbeFeature, cancellationToken))
             return HealthCheckResult.Degraded(

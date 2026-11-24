@@ -5,17 +5,15 @@ using Xunit;
 
 namespace Humans.Agent.Tests;
 
-public class AgentAbuseDetectorTests
+public class AgentDistressCheckTests
 {
     [HumansTheory]
     [InlineData("how do I join a team?", false)]
     [InlineData("what is my consent status?", false)]
     [InlineData("I want to hurt myself", true)]
     [InlineData("quiero hacerme daño", true)]
-    public void Flags_obvious_self_harm_phrases(string message, bool expectedFlagged)
+    public void Matches_Question_DetectsSelfHarmPhrases(string question, bool expected)
     {
-        var detector = new AgentAbuseDetector();
-        detector.IsFlagged(message, out var reason).Should().Be(expectedFlagged);
-        if (expectedFlagged) reason.Should().NotBeNullOrEmpty();
+        new AgentDistressCheck().Matches(question).Should().Be(expected);
     }
 }
