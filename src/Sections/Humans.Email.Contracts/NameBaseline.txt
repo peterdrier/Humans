@@ -1,0 +1,1 @@
+Humans.Email.Contracts.ICommunicationPreferenceService.GetCountByCategoryAndStateAsync
