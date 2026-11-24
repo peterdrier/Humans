@@ -51,7 +51,7 @@ When a new durable rule surfaces, capture it as a `memory/<bucket>/<name>.md` at
 
 ## A small glossary
 
-Terminology matters here — the full ubiquitous language lives in [`CONTEXT.md`](CONTEXT.md), and where other prose disagrees with it, the prose is wrong.
+Terminology matters here — the full ubiquitous language lives in [`CONTEXT.md`](CONTEXT.md) and the section glossaries it lists, and where other prose disagrees with it, the prose is wrong.
 
 - **you** means the agent reading this file and changing Humans.
 - **Peter / maintainer** means who you are talking to now.

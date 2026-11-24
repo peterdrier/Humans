@@ -59,13 +59,13 @@
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a2c561934e089</value>
   </resheader>
   <data name="Agent_ConversationBackToHistory" xml:space="preserve">
-    <value>Torna alla cronologia</value>
+    <value>Torna alle mie conversazioni</value>
   </data>
   <data name="Agent_ConversationEmpty" xml:space="preserve">
     <value>Nessun messaggio in questa conversazione.</value>
   </data>
   <data name="Agent_ConversationRefusedLabel" xml:space="preserve">
-    <value>L'assistente ha rifiutato di rispondere in questo turno.</value>
+    <value>L'Assistente non ha risposto a questa domanda.</value>
   </data>
   <data name="Agent_ConversationTitle" xml:space="preserve">
     <value>Conversazione con l'assistente</value>
@@ -74,16 +74,16 @@
     <value>{0} chiamata(e) a strumento</value>
   </data>
   <data name="Agent_ConversationTranscript" xml:space="preserve">
-    <value>Trascrizione</value>
+    <value>Messaggi</value>
   </data>
   <data name="Agent_ContextCardCaveat" xml:space="preserve">
-    <value>Questo è il tuo contesto attuale. Se i tuoi ruoli o team sono cambiati da questa conversazione, l'assistente ha visto una versione diversa in quel momento.</value>
+    <value>Questo è ciò che l'Assistente sa di te ora. Se i tuoi ruoli o team sono cambiati da questa conversazione, all'epoca sapeva altro.</value>
   </data>
   <data name="Agent_ContextCardEmpty" xml:space="preserve">
-    <value>Attualmente non viene inviato alcun contesto personale all'assistente.</value>
+    <value>Al momento l'Assistente non sa nulla di te.</value>
   </data>
   <data name="Agent_ContextCardSummary" xml:space="preserve">
-    <value>Il tuo contesto (come l'assistente ti vede ora)</value>
+    <value>Cosa sa l'Assistente di te</value>
   </data>
   <data name="Agent_DetailId" xml:space="preserve">
     <value>ID</value>
@@ -107,7 +107,7 @@
     <value>Inizio</value>
   </data>
   <data name="Agent_HistoryTitle" xml:space="preserve">
-    <value>Assistente — Le mie conversazioni</value>
+    <value>Le mie conversazioni</value>
   </data>
   <data name="Agent_InputPlaceholder" xml:space="preserve">
     <value>Chiedi come funziona il sistema…</value>
@@ -122,7 +122,7 @@
     <value>Invia</value>
   </data>
   <data name="Agent_ViewHistory" xml:space="preserve">
-    <value>Cronologia</value>
+    <value>Le mie conversazioni</value>
   </data>
   <data name="Agent_Help_WidgetButton" xml:space="preserve">
     <value>Aiuto</value>
