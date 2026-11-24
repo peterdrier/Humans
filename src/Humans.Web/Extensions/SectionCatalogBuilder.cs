@@ -76,6 +76,7 @@ internal static class SectionCatalogBuilder
         return new SectionInfo(shipped.Name, shipped.Section.IsActive)
         {
             CanBeSwitchedOff = shipped.Section is { IsActive: true, CanBeSwitchedOff: true },
+            FormerNames = shipped.Section.FormerNames,
             DependsOn = graph[shipped.Name],
             ConsumedWhileInactiveBy = unmetDependencies.GetValueOrDefault(shipped.Name) ?? [],
             Seams = [.. own
@@ -126,7 +127,8 @@ internal sealed class SectionCatalog(
 {
     private readonly Dictionary<string, string> _active = sections
         .Where(s => s.IsActive)
-        .ToDictionary(s => s.Name, s => s.Name, StringComparer.OrdinalIgnoreCase);
+        .SelectMany(s => s.FormerNames.Append(s.Name).Select(name => (Name: name, Canonical: s.Name)))
+        .ToDictionary(n => n.Name, n => n.Canonical, StringComparer.OrdinalIgnoreCase);
 
     public IReadOnlyList<SectionInfo> Sections { get; } = sections;
 

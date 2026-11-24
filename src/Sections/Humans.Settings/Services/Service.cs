@@ -299,7 +299,13 @@ internal sealed class Service(
                 listener.EventSettingsChanged(id);
     }
 
-    private static EventSettingsInfo? ToDto(EventSettings? src, string timeZoneId) => src is null ? null : new EventSettingsInfo(
+    // A stored section name from before a rename reads as the section's current name, so the switch, the form and the
+    // next save all see the section that is meant. A name no section answers to stays as stored.
+    private IReadOnlyList<string> CurrentSectionNames(IEnumerable<string> stored) =>
+        [.. stored.Select(name => sectionCatalog.TryResolve(name, out var current) ? current : name)
+            .Distinct(StringComparer.Ordinal)];
+
+    private EventSettingsInfo? ToDto(EventSettings? src, string timeZoneId) => src is null ? null : new EventSettingsInfo(
         Id: src.Id,
         EventName: src.EventName,
         Year: src.Year,
@@ -315,7 +321,7 @@ internal sealed class Service(
         Status: src.Status,
         EarlyEntryStartOffset: src.EarlyEntryStartOffset,
         IsOffSeason: src.IsOffSeason ?? false,
-        SwitchedOffSections: src.SwitchedOffSections is null ? null : [.. src.SwitchedOffSections]);
+        SwitchedOffSections: src.SwitchedOffSections is null ? null : CurrentSectionNames(src.SwitchedOffSections));
 
     private static EventSettings ToEntity(EventSettingsInfo src) => new()
     {

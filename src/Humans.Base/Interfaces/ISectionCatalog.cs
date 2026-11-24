@@ -26,6 +26,9 @@ public sealed record SectionInfo(string Name, bool IsActive)
     /// <summary><see cref="ISection.CanBeSwitchedOff"/>, and only ever true for an active section.</summary>
     public bool CanBeSwitchedOff { get; init; }
 
+    /// <summary><see cref="ISection.FormerNames"/>: names it shipped under before a rename.</summary>
+    public IReadOnlyList<string> FormerNames { get; init; } = [];
+
     /// <summary>Sections this one consumes, from its real assembly references.</summary>
     public IReadOnlyList<string> DependsOn { get; init; } = [];
 
@@ -87,8 +90,8 @@ public interface ISectionCatalog
     IReadOnlyList<SectionAnnotation> UnmatchedAnnotations { get; }
 
     /// <summary>
-    /// Resolves any casing of a section name to the canonical spelling, false when it names no
-    /// active section. Casing matters to callers that build a path or a cache key from it.
+    /// Resolves any casing of a section name, or of a name it had before a rename, to the canonical spelling; false
+    /// when it names no active section. Casing matters to callers that build a path or a cache key from it.
     /// </summary>
     bool TryResolve(string? name, [NotNullWhen(true)] out string? canonicalName);
 }

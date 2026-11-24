@@ -29,6 +29,12 @@ public interface ISection
     bool CanBeSwitchedOff => true;
 
     /// <summary>
+    /// Names the section shipped under before a rename. Stored data that names a section (an event's switched-off
+    /// list) still resolves to it through <see cref="ISectionCatalog.TryResolve"/>.
+    /// </summary>
+    IReadOnlyList<string> FormerNames => [];
+
+    /// <summary>
     /// Registers the section's repositories, services, jobs, options and authorization handlers. Its authorization
     /// <em>policies</em> register through <see cref="ISectionPolicies"/>; only cross-section policies stay in Shell.
     /// </summary>

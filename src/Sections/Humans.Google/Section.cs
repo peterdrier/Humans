@@ -66,6 +66,8 @@ public sealed class Section :
     private static readonly IReadOnlyList<SectionHelpEntry> HelpEntries =
         [SectionHelpEntry.FromEmbeddedMarkdown(typeof(Section).Assembly, "GoogleSync", 84)];
 
+    public IReadOnlyList<string> FormerNames => ["GoogleIntegration"];
+
     public void Register(IServiceCollection services, IConfiguration configuration)
     {
         EnumBadgeMap.Register(new Dictionary<Enum, string>
