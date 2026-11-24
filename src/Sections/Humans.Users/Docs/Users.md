@@ -550,7 +550,7 @@ Self-service profile functionality lives under `/Profile`, split by shape across
 | `/Users/Emails/Merge` | POST — merge the two accounts when the address is confirmed on another one. With both accounts filled in the person picks which is kept; the browser ends up signed in as the kept account |
 | `/Profile/Me/Emails/SetPrimary`, `/SetVisibility`, `/Delete` | POST — per-row flag/visibility edits and delete (`UserEmailOperations.Edit`) |
 | `/Profile/Me/Emails/ClearPrimary` | POST — self-recovery: drop a single row's `IsPrimary` flag (only surfaced in UI on N>1 violation; auth is self-or-admin). The Google column's Set form posts to Google's `/Google/WorkspaceEmail` |
-| `/Profile/Me/Emails/Link/{provider}`, `/Profile/Me/Emails/Unlink/{id}` | POST — start an OAuth link for the signed-in user / unlink a provider-attached row |
+| `/Profile/Me/Emails/Link/{provider}`, `/Profile/Me/Emails/Unlink/{id}` | POST — start an OAuth link for the signed-in user / unlink a provider-attached row. `Link` returns 404 when the provider is not configured, and the link card is hidden |
 | `/Profile/Me/LinkedAccounts/Unlink` | POST — unlink by `(provider, providerKey)`; enforces the auth-method invariant server-side |
 | `/Profile/{id}/Admin/Emails` | Per-user email diagnostic (`UserEmailOperations.View`: self, UsersAdmin, Admin, Board; Board sees it with every edit control hidden) |
 | `/Profile/{id}/Admin/Emails/Add`, `/SetPrimary`, `/SetVisibility`, `/Delete`, `/Unlink/{emailId}` | POST — admin mirrors of the self-service email edits (`UserEmailOperations.Edit`: self, UsersAdmin, Admin) |

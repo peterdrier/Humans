@@ -34,6 +34,7 @@ public class ProfileEmailsControllerGridTests
     private readonly IUserManagement _userService = Substitute.For<IUserManagement>();
     private readonly UserManager<User> _userManager;
     private readonly SignInManager<User> _signInManager;
+    private readonly IAuthenticationSchemeProvider _schemeProvider;
     private readonly ProfileEmailsController _controller;
     private readonly IStringLocalizer<SharedResource> _sharedLocalizer = Substitute.For<IStringLocalizer<SharedResource>>();
     private readonly Guid _userId = Guid.NewGuid();
@@ -53,6 +54,9 @@ public class ProfileEmailsControllerGridTests
         var identityOptions = Substitute.For<IOptions<IdentityOptions>>();
         identityOptions.Value.Returns(new IdentityOptions());
         var schemeProvider = Substitute.For<IAuthenticationSchemeProvider>();
+        _schemeProvider = schemeProvider;
+        schemeProvider.GetSchemeAsync("Google")
+            .Returns(new AuthenticationScheme("Google", "Google", typeof(IAuthenticationHandler)));
         var userConfirmation = Substitute.For<IUserConfirmation<User>>();
         _signInManager = Substitute.For<SignInManager<User>>(
             _userManager, contextAccessor, claimsFactory, identityOptions,
@@ -75,7 +79,8 @@ public class ProfileEmailsControllerGridTests
             Array.Empty<IUserEmailLock>(),
             _authorizationService,
             _signInManager,
-            Options.Create(new GoogleWorkspaceOptions()));
+            Options.Create(new GoogleWorkspaceOptions()),
+            schemeProvider);
 
         var identity = new ClaimsIdentity([
             new Claim(ClaimTypes.NameIdentifier, _userId.ToString())
@@ -377,6 +382,16 @@ public class ProfileEmailsControllerGridTests
         // Going straight to /Profile/Me/Emails would skip that branch.
         capturedProps.Should().NotBeNull();
         capturedProps!.RedirectUri.Should().Contain("ExternalLoginCallback");
+    }
+
+    [HumansFact]
+    public async Task Link_ProviderNotConfigured_ReturnsNotFound()
+    {
+        _schemeProvider.GetSchemeAsync("Google").Returns((AuthenticationScheme?)null);
+
+        var result = await _controller.Link("Google", returnUrl: null);
+
+        result.Should().BeOfType<NotFoundResult>();
     }
 
     [HumansFact]
