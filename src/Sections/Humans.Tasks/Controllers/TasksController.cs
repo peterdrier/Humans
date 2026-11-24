@@ -179,7 +179,19 @@ internal sealed class TasksController(
     private Task<TasksAccess?> AccessAsync(CancellationToken ct) => TasksAccess.ForAsync(User, permissions, authorization, ct);
 
     /// <summary>A field that did not bind (a malformed date or event id) would otherwise reach the service as "none".</summary>
-    private TaskResult Unreadable() => new(Refusal: localizer["Tasks_Refusal_Unreadable"].Value);
+    private TaskResult Unreadable() => new(Refusal: localizer["Tasks_Refusal_Unreadable", string.Join(", ", ModelState
+        .Where(e => e.Value?.Errors.Count > 0)
+        .Select(e => e.Key[(e.Key.LastIndexOf('.') + 1)..] switch
+        {
+            nameof(TaskForm.StartDate) => localizer["Tasks_Form_Start"].Value,
+            nameof(TaskForm.DueDate) => localizer["Tasks_Form_Due"].Value,
+            nameof(TaskForm.EventId) => localizer["Tasks_Form_Event"].Value,
+            nameof(TaskForm.TeamId) => localizer["Tasks_Form_Team"].Value,
+            nameof(TaskForm.SlotCount) => localizer["Tasks_Form_Slots"].Value,
+            nameof(TaskForm.Priority) => localizer["Tasks_Form_Priority"].Value,
+            "Status" => localizer["Tasks_Col_Status"].Value,
+            var field => field
+        }))].Value);
 
     private async Task<TeamPageViewModel> TeamPageAsync(
         TeamInfo team, TasksAccess access, IReadOnlyList<TaskInfo> onTeam, TaskListFilter filter, TaskForm addForm, CancellationToken ct)
