@@ -8,9 +8,9 @@ internal sealed record BudgetYearSummarySnapshot(
     string Year,
     string Name,
     BudgetYearStatus Status,
-    bool IsDeleted,
+    bool IsArchived,
     IReadOnlyList<BudgetGroupSummarySnapshot> Groups,
-    string? VendorEventId = null);
+    string? PlatformEventId = null);
 
 internal sealed record BudgetGroupSummarySnapshot(
     Guid Id,
@@ -41,7 +41,7 @@ internal sealed record TicketingProjectionUpdateCommand(
     int VatRate,
     decimal StripeFeePercent,
     decimal StripeFeeFixed,
-    decimal TicketTailorFeePercent);
+    decimal PlatformFeePercent);
 
 internal readonly record struct BudgetSaveResult<T>(
     T? Value = null, string? Refusal = null) where T : class;

@@ -217,12 +217,12 @@ internal sealed class BudgetAdminController(
     [HttpPost("Years/{id:guid}/Update")]
     [Authorize(Policy = FinancePolicies.Manage)]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> UpdateYear(Guid id, string year, string name, string? vendorEventId)
+    public async Task<IActionResult> UpdateYear(Guid id, string year, string name, string? platformEventId)
     {
         var (errorResult, user) = await RequireCurrentUserAsync(HttpContext.RequestAborted);
         if (errorResult is not null) return errorResult;
 
-        var result = await budgetService.UpdateYearAsync(id, year, name, vendorEventId, user.Id);
+        var result = await budgetService.UpdateYearAsync(id, year, name, platformEventId, user.Id);
         if (result.Succeeded)
             SetSuccess("Budget year updated.");
         else
@@ -233,21 +233,21 @@ internal sealed class BudgetAdminController(
         return RedirectToAction(nameof(Admin));
     }
 
-    [HttpPost("Years/{id:guid}/Delete")]
+    [HttpPost("Years/{id:guid}/Archive")]
     [Authorize(Policy = FinancePolicies.Manage)]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> DeleteYear(Guid id)
+    public async Task<IActionResult> ArchiveYear(Guid id)
     {
         var (errorResult, user) = await RequireCurrentUserAsync(HttpContext.RequestAborted);
         if (errorResult is not null) return errorResult;
 
-        var result = await budgetService.DeleteYearAsync(id, user.Id);
+        var result = await budgetService.ArchiveYearAsync(id, user.Id);
         if (result.Succeeded)
-            SetSuccess("Budget year deleted.");
+            SetSuccess("Budget year archived.");
         else
         {
             logger.LogWarning("Budget year archive refused for {YearId}, actor {UserId}: {Reason}", id, user.Id, result.Refusal);
-            SetError($"Failed to delete budget year: {result.Refusal}");
+            SetError($"Failed to archive budget year: {result.Refusal}");
         }
         return RedirectToAction(nameof(Admin));
     }
@@ -600,7 +600,7 @@ internal sealed class BudgetAdminController(
                     form.VatRate,
                     form.StripeFeePercent,
                     form.StripeFeeFixed,
-                    form.TicketTailorFeePercent),
+                    form.PlatformFeePercent),
                 user.Id);
             if (result is null) return NotFound();
             if (result.Value.Refusal is { } refusal)
@@ -646,7 +646,7 @@ internal sealed class BudgetAdminController(
 
     private async Task<FinanceOverviewViewModel> BuildFinanceOverviewAsync(BudgetYearDetail year, IReadOnlyList<BudgetYearSummarySnapshot> allYears, CancellationToken ct)
     {
-        var summary = budgetService.ComputeBudgetSummaryWithBuffers(year.Groups.OrderBy(group => group.SortOrder).ToList());
+        var summary = budgetService.ComputeBudgetSummaryWithAvailable(year.Groups.OrderBy(group => group.SortOrder).ToList());
 
         var ticketingGroup = year.Groups.FirstOrDefault(g => g.IsTicketingGroup);
         if (ticketingGroup is not null)
