@@ -600,19 +600,19 @@ internal sealed class TeamRepository(IDbContextFactory<TeamsDbContext> factory) 
         return role;
     }
 
-    public async Task<bool> WithdrawRequestAsync(
+    public async Task<TeamJoinRequestStatus?> WithdrawRequestAsync(
         Guid requestId, Guid userId, Instant now, CancellationToken ct = default)
     {
         await using var db = await factory.CreateDbContextAsync(ct);
         var request = await db.TeamJoinRequests
             .FirstOrDefaultAsync(r => r.Id == requestId && r.UserId == userId, ct);
         if (request is null || request.Status != TeamJoinRequestStatus.Pending)
-            return false;
+            return request?.Status;
 
         request.Status = TeamJoinRequestStatus.Withdrawn;
         request.ResolvedAt = now;
         await db.SaveChangesAsync(ct);
-        return true;
+        return TeamJoinRequestStatus.Pending;
     }
 
     public async Task<bool> RejectRequestAsync(

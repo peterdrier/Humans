@@ -59,5 +59,12 @@ internal static class UserStateEvaluator
         || (user.IdentityEmailColumn is { } email
             && email.EndsWith("@merged.local", StringComparison.OrdinalIgnoreCase));
 
+    /// <summary>A tombstone left by a merge rather than a deletion.</summary>
+    internal static bool IsMergeTombstone(User user) =>
+        user.State == UserState.Merged
+        || user.MergedToUserId is not null
+        || (user.IdentityEmailColumn is { } email
+            && email.EndsWith("@merged.local", StringComparison.OrdinalIgnoreCase));
+
     internal const string DeletedEmailSuffix = "@deleted.local";
 }

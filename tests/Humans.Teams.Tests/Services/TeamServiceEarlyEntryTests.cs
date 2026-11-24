@@ -306,7 +306,12 @@ public sealed class TeamServiceEarlyEntryTests
             "Project", Guid.NewGuid(), _eventId, Xunit.TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeFalse();
-        result.Refusal.Should().Contain("Cannot add a missing, deleted or merged account");
+        result.Refusal.Should().Contain(unavailable switch
+        {
+            "missing" => "does not exist",
+            "merged" => "merged into another",
+            _ => "deleted account"
+        });
         await _repo.DidNotReceive().AddEarlyEntryGrantAsync(Arg.Any<TeamEarlyEntryGrant>(), Arg.Any<CancellationToken>());
         _audit.ReceivedCalls().Should().BeEmpty();
     }
