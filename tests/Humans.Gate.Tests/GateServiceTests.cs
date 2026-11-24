@@ -31,10 +31,7 @@ using NSubstitute.ExceptionExtensions;
 namespace Humans.Gate.Tests;
 
 /// <summary>
-/// Service-level coverage of <see cref="GateService"/> over a real
-/// <see cref="GateRepository"/> (in-memory DB) with stubbed cross-section reads —
-/// admit, dedupe, name-mismatch, child-with-adult, and the Early-Entry cutoff
-/// branches, including that a client "ID confirmed" never overrides a STOP.
+/// Runs <see cref="GateService"/> over a real <see cref="GateRepository"/> on an in-memory DB with stubbed cross-section reads.
 /// </summary>
 public class GateServiceTests
 {
@@ -628,7 +625,7 @@ public class GateServiceTests
     public async Task Gdpr_ContributesScansForGuestAndScanner()
     {
         StubTicket(matchedUserId: GuestId);
-        await RecordAsync(idConfirmed: true);   // GuestUserId = GuestId, ScannedByUserId = AgentId
+        await RecordAsync(idConfirmed: true);
 
         var guestExport = await _svc.ContributeForUserAsync(GuestId, default);
         var scannerExport = await _svc.ContributeForUserAsync(AgentId, default);
