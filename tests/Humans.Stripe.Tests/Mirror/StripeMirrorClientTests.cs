@@ -197,6 +197,32 @@ public sealed class StripeMirrorClientTests
     }
 
     [HumansTheory]
+    [Xunit.InlineData(1)]
+    [Xunit.InlineData(2)]
+    public async Task A_rate_limited_page_is_retried_once(int rateLimited)
+    {
+        using var limited = new HttpResponseMessage();
+        limited.Headers.RetryAfter = new System.Net.Http.Headers.RetryConditionHeaderValue(TimeSpan.Zero);
+        using var ok = new HttpResponseMessage();
+        var left = rateLimited;
+        _http.MakeRequestAsync(Arg.Any<StripeRequest>(), Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            var request = call.Arg<StripeRequest>();
+            _requests.Add(request);
+            return request.Uri.AbsolutePath.EndsWith("/payouts", StringComparison.Ordinal) && left-- > 0
+                ? new StripeResponse(HttpStatusCode.TooManyRequests, limited.Headers,
+                    """{"error":{"type":"invalid_request_error","message":"Request rate limit exceeded."}}""")
+                : new StripeResponse(HttpStatusCode.OK, ok.Headers, Route(request));
+        });
+        var account = new StripeMirrorAccount { Name = "Buses", Id = "acct_b", ApiKey = "sk_org_test" };
+
+        var fetch = () => new StripeMirrorClient(_http).FetchAsync(account, Ct);
+
+        if (rateLimited == 1) (await fetch()).Payouts.Should().HaveCount(2);
+        else await fetch.Should().ThrowAsync<StripeException>().Where(e => e.HttpStatusCode == HttpStatusCode.TooManyRequests);
+    }
+
+    [HumansTheory]
     [Xunit.InlineData("""{"object":"balance","pending":[]}""")]
     [Xunit.InlineData("""{"object":"balance","available":[]}""")]
     [Xunit.InlineData("""{"object":"balance","available":null,"pending":[]}""")]
