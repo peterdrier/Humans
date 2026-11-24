@@ -34,64 +34,61 @@ internal sealed class MagicLinkService(
         await SendSignupLinkAsync(email, returnUrl, ct);
     }
 
-    public async Task<bool> VerifyLoginTokenAsync(Guid userId, string token, CancellationToken ct = default)
+    public async Task<MagicLinkFailure?> VerifyLoginTokenAsync(Guid userId, string token, CancellationToken ct = default)
     {
         if (await userService.GetRawUserInfoAsync(userId, ct) is null)
         {
             logger.LogWarning("Magic link login: user {UserId} not found", userId);
-            return false;
+            return MagicLinkFailure.AccountNotFound;
         }
 
-        var decoded = urlBuilder.UnprotectLoginToken(token);
-        if (decoded is null)
+        var read = urlBuilder.UnprotectLoginToken(token);
+        if (read.Token is not { } decoded)
         {
-            logger.LogWarning(
-                "Magic link login: unreadable token for user {UserId} (malformed, tampered, or signed with a retired key)",
-                userId);
-            return false;
+            logger.LogWarning("Magic link login: unreadable token for user {UserId}: {Problem}", userId, read.Problem);
+            return MagicLinkFailure.Unreadable;
         }
 
         if (!string.Equals(decoded.Payload, userId.ToString(), StringComparison.Ordinal))
         {
             logger.LogWarning("Magic link login: token userId mismatch for {UserId}", userId);
-            return false;
+            return MagicLinkFailure.Unreadable;
         }
 
         if (MinutesSinceExpiry(decoded) is { } minutesAgo)
         {
             logger.LogWarning("Magic link login: token for user {UserId} expired {MinutesAgo} minutes ago",
                 userId, minutesAgo);
-            return false;
+            return MagicLinkFailure.Expired;
         }
 
         if (!await rateLimiter.TryConsumeTokenAsync(token, TokenLifetime))
         {
             logger.LogWarning("Magic link login: token already used for user {UserId}", userId);
-            return false;
+            return MagicLinkFailure.AlreadyUsed;
         }
 
-        return true;
+        return null;
     }
 
-    public string? VerifySignupToken(string token, string? expectedEmail = null)
+    public MagicLinkSignupCheck VerifySignupToken(string token, string? expectedEmail = null)
     {
-        var decoded = urlBuilder.UnprotectSignupToken(token);
-        if (decoded is null)
+        var read = urlBuilder.UnprotectSignupToken(token);
+        if (read.Token is not { } decoded)
         {
-            logger.LogWarning(
-                "Magic link signup: unreadable token for email {Email} (malformed, tampered, or signed with a retired key)",
-                expectedEmail ?? "unknown");
-            return null;
+            logger.LogWarning("Magic link signup: unreadable token for email {Email}: {Problem}",
+                expectedEmail ?? "unknown", read.Problem);
+            return new(null, MagicLinkFailure.Unreadable);
         }
 
         if (MinutesSinceExpiry(decoded) is { } minutesAgo)
         {
             logger.LogWarning("Magic link signup: token for email {Email} expired {MinutesAgo} minutes ago",
                 decoded.Payload, minutesAgo);
-            return null;
+            return new(null, MagicLinkFailure.Expired);
         }
 
-        return decoded.Payload;
+        return new(decoded.Payload, null);
     }
 
     private long? MinutesSinceExpiry(MagicLinkToken decoded)
@@ -100,21 +97,21 @@ internal sealed class MagicLinkService(
         return sinceExpiry < Duration.Zero ? null : (long)sinceExpiry.TotalMinutes;
     }
 
-    public async Task<string?> VerifyAndConsumeSignupTokenAsync(
+    public async Task<MagicLinkSignupCheck> VerifyAndConsumeSignupTokenAsync(
         string token, string? expectedEmail = null, CancellationToken ct = default)
     {
-        var payload = VerifySignupToken(token, expectedEmail);
-        if (payload is null)
-            return null;
+        var check = VerifySignupToken(token, expectedEmail);
+        if (check.Email is null)
+            return check;
 
         if (!await rateLimiter.TryConsumeTokenAsync(token, TokenLifetime))
         {
             logger.LogWarning("Magic link signup: token already used for email {Email}",
                 expectedEmail ?? "unknown");
-            return null;
+            return new(null, MagicLinkFailure.AlreadyUsed);
         }
 
-        return payload;
+        return check;
     }
 
     public void ReleaseSignupToken(string token) => rateLimiter.ReleaseTokenReservation(token);

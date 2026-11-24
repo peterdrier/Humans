@@ -1,5 +1,6 @@
 using System.Globalization;
 using Humans.Base.Extensions;
+using Humans.Auth.Contracts;
 using Humans.Auth.Services;
 using Humans.Auth.Tests.Infrastructure;
 using AwesomeAssertions;
@@ -311,9 +312,9 @@ public sealed class MagicLinkServiceTests
     [HumansFact]
     public void VerifySignupToken_InvalidToken_ReturnsNull()
     {
-        _urlBuilder.UnprotectSignupToken(Arg.Any<string>()).Returns((MagicLinkToken?)null);
+        _urlBuilder.UnprotectSignupToken(Arg.Any<string>()).Returns(MagicLinkRead.Unreadable("token is not Base64url"));
         var result = _service.VerifySignupToken("not-a-valid-token");
-        result.Should().BeNull();
+        result.Should().Be(new MagicLinkSignupCheck(null, MagicLinkFailure.Unreadable));
     }
 
     [HumansFact]
@@ -323,7 +324,7 @@ public sealed class MagicLinkServiceTests
 
         var result = await _service.VerifyLoginTokenAsync(Guid.NewGuid(), "some-token", Xunit.TestContext.Current.CancellationToken);
 
-        result.Should().BeFalse();
+        result.Should().Be(MagicLinkFailure.AccountNotFound);
     }
 
     [HumansFact]
@@ -332,11 +333,11 @@ public sealed class MagicLinkServiceTests
         var userId = Guid.NewGuid();
         var user = new User { Id = userId, UserName = "test@test.com" };
         _userService.GetRawUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(CreateUserInfo(user));
-        _urlBuilder.UnprotectLoginToken("bad-token").Returns((MagicLinkToken?)null);
+        _urlBuilder.UnprotectLoginToken("bad-token").Returns(MagicLinkRead.Unreadable("token is not Base64url"));
 
         var result = await _service.VerifyLoginTokenAsync(userId, "bad-token", Xunit.TestContext.Current.CancellationToken);
 
-        result.Should().BeFalse();
+        result.Should().Be(MagicLinkFailure.Unreadable);
     }
 
     [HumansFact]
@@ -350,7 +351,7 @@ public sealed class MagicLinkServiceTests
 
         var result = await _service.VerifyLoginTokenAsync(userId, "good-token", Xunit.TestContext.Current.CancellationToken);
 
-        result.Should().BeFalse();
+        result.Should().Be(MagicLinkFailure.AlreadyUsed);
     }
 
     [HumansFact]
@@ -363,7 +364,7 @@ public sealed class MagicLinkServiceTests
 
         var result = await _service.VerifyLoginTokenAsync(userId, "old-token", Xunit.TestContext.Current.CancellationToken);
 
-        result.Should().BeFalse();
+        result.Should().Be(MagicLinkFailure.Expired);
         await _rateLimiter.DidNotReceiveWithAnyArgs().TryConsumeTokenAsync(default!, default);
     }
 
@@ -372,7 +373,7 @@ public sealed class MagicLinkServiceTests
     {
         _urlBuilder.UnprotectSignupToken("old-token").Returns(ExpiredToken("new@test.com"));
 
-        _service.VerifySignupToken("old-token").Should().BeNull();
+        _service.VerifySignupToken("old-token").Failure.Should().Be(MagicLinkFailure.Expired);
     }
 
     [HumansFact]
@@ -385,7 +386,7 @@ public sealed class MagicLinkServiceTests
 
         var result = await _service.VerifyLoginTokenAsync(userId, "good-token", Xunit.TestContext.Current.CancellationToken);
 
-        result.Should().BeTrue();
+        result.Should().BeNull();
     }
 
     [HumansTheory]
@@ -403,7 +404,7 @@ public sealed class MagicLinkServiceTests
 
         var result = await _service.VerifyLoginTokenAsync(userId, "merged-token", ct);
 
-        result.Should().Be(!survivorPayload);
+        result.Should().Be(survivorPayload ? MagicLinkFailure.Unreadable : null);
         await _userService.Received(1).GetRawUserInfoAsync(userId, ct);
         if (survivorPayload)
             await _rateLimiter.DidNotReceiveWithAnyArgs().TryConsumeTokenAsync(default!, default);
@@ -451,7 +452,7 @@ public sealed class MagicLinkServiceTests
         var result = await _service.VerifyAndConsumeSignupTokenAsync(
             "good-token", ct: Xunit.TestContext.Current.CancellationToken);
 
-        result.Should().Be("new@test.com");
+        result.Email.Should().Be("new@test.com");
         await _rateLimiter.Received(1).TryConsumeTokenAsync("good-token", Arg.Any<TimeSpan>());
     }
 
@@ -466,18 +467,18 @@ public sealed class MagicLinkServiceTests
         var result = await _service.VerifyAndConsumeSignupTokenAsync(
             "good-token", ct: Xunit.TestContext.Current.CancellationToken);
 
-        result.Should().BeNull();
+        result.Failure.Should().Be(MagicLinkFailure.AlreadyUsed);
     }
 
     [HumansFact]
     public async Task VerifyAndConsumeSignupTokenAsync_InvalidToken_NeverReachesTheReservation()
     {
-        _urlBuilder.UnprotectSignupToken("bad-token").Returns((MagicLinkToken?)null);
+        _urlBuilder.UnprotectSignupToken("bad-token").Returns(MagicLinkRead.Unreadable("token is not Base64url"));
 
         var result = await _service.VerifyAndConsumeSignupTokenAsync(
             "bad-token", ct: Xunit.TestContext.Current.CancellationToken);
 
-        result.Should().BeNull();
+        result.Failure.Should().Be(MagicLinkFailure.Unreadable);
         await _rateLimiter.DidNotReceive().TryConsumeTokenAsync(Arg.Any<string>(), Arg.Any<TimeSpan>());
     }
 
@@ -489,7 +490,7 @@ public sealed class MagicLinkServiceTests
 
         var result = _service.VerifySignupToken("good-token");
 
-        result.Should().Be("new@test.com");
+        result.Email.Should().Be("new@test.com");
         _rateLimiter.ReceivedCalls()
             .Select(c => c.GetMethodInfo().Name)
             .Should().NotContain(nameof(IMagicLinkRateLimiter.TryConsumeTokenAsync));
@@ -505,7 +506,7 @@ public sealed class MagicLinkServiceTests
         _rateLimiter.Received(1).ReleaseTokenReservation("good-token");
     }
 
-    private MagicLinkToken Token(string payload) => new(payload, _clock.GetCurrentInstant() + Duration.FromMinutes(15));
+    private MagicLinkRead Token(string payload) => new(new(payload, _clock.GetCurrentInstant() + Duration.FromMinutes(15)), null);
 
-    private MagicLinkToken ExpiredToken(string payload) => new(payload, _clock.GetCurrentInstant() - Duration.FromMinutes(1));
+    private MagicLinkRead ExpiredToken(string payload) => new(new(payload, _clock.GetCurrentInstant() - Duration.FromMinutes(1)), null);
 }

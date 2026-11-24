@@ -945,15 +945,19 @@
   <data name="MagicLinkSent_Message" xml:space="preserve">
     <value>Nous avons envoyé un lien à cette adresse e-mail depuis humans@nobodies.team. Vérifiez votre boîte de réception (et le dossier spam).</value>
   </data>
-  <data name="MagicLinkError_Title" xml:space="preserve">
-    <value>Lien expiré ou invalide</value>
-  </data>
-  <data name="MagicLinkError_Message" xml:space="preserve">
-    <value>Ce lien de connexion a expiré ou a déjà été utilisé.</value>
-  </data>
   <data name="MagicLinkError_RequestNew" xml:space="preserve">
     <value>Demander un nouveau lien</value>
   </data>
+  <data name="MagicLinkError_Unreadable_Title" xml:space="preserve"><value>Ce lien ne fonctionne pas</value></data>
+  <data name="MagicLinkError_Unreadable_Message" xml:space="preserve"><value>Ce lien n'a pas pu être lu. Ouvrez le lien complet depuis votre e-mail.</value></data>
+  <data name="MagicLinkError_Expired_Title" xml:space="preserve"><value>Ce lien a expiré</value></data>
+  <data name="MagicLinkError_Expired_Message" xml:space="preserve"><value>Les liens fonctionnent pendant 15 minutes après leur envoi.</value></data>
+  <data name="MagicLinkError_Used_Title" xml:space="preserve"><value>Ce lien a déjà été utilisé</value></data>
+  <data name="MagicLinkError_Used_Message" xml:space="preserve"><value>Chaque lien ne fonctionne qu'une fois.</value></data>
+  <data name="MagicLinkError_AccountNotFound_Title" xml:space="preserve"><value>Compte introuvable</value></data>
+  <data name="MagicLinkError_AccountNotFound_Message" xml:space="preserve"><value>Le compte pour lequel ce lien a été envoyé n'existe plus.</value></data>
+  <data name="MagicLinkError_SignupFailed_Title" xml:space="preserve"><value>Nous n'avons pas pu créer votre compte</value></data>
+  <data name="MagicLinkError_SignupFailed_Message" xml:space="preserve"><value>Rien n'a été enregistré. Ouvrez à nouveau le même lien pour réessayer.</value></data>
   <data name="CompleteSignup_Title" xml:space="preserve">
     <value>Finaliser votre inscription</value>
   </data>

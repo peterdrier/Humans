@@ -2,6 +2,9 @@ using AwesomeAssertions;
 using Humans.Auth.Services;
 using Humans.Base.Configuration;
 using Microsoft.AspNetCore.DataProtection;
+using Microsoft.AspNetCore.DataProtection.KeyManagement;
+using Microsoft.Extensions.DependencyInjection;
+using NSubstitute;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.Options;
 using NodaTime;
@@ -15,8 +18,16 @@ public sealed class MagicLinkUrlBuilderTests
     // Real time: the framework protector checks expiry against the system clock.
     private readonly FakeClock _clock = new(SystemClock.Instance.GetCurrentInstant());
 
-    private MagicLinkUrlBuilder Builder(IDataProtectionProvider provider) =>
-        new(provider, Options.Create(new EmailSettings { BaseUrl = "https://test.example.com" }), _clock);
+    private MagicLinkUrlBuilder Builder(IDataProtectionProvider provider, IKeyManager? keys = null) =>
+        new(provider, keys ?? Substitute.For<IKeyManager>(), Options.Create(new EmailSettings { BaseUrl = "https://test.example.com" }), _clock);
+
+    private static ServiceProvider KeyRingServices() =>
+        new ServiceCollection().AddDataProtection()
+            .PersistKeysToFileSystem(Directory.CreateTempSubdirectory("magic-link-keys"))
+            .Services.BuildServiceProvider();
+
+    private MagicLinkUrlBuilder KeyRingBuilder(ServiceProvider services) =>
+        Builder(services.GetRequiredService<IDataProtectionProvider>(), services.GetRequiredService<IKeyManager>());
 
     private static string TokenOf(string url) => QueryHelpers.ParseQuery(new Uri(url).Query)["token"].ToString();
 
@@ -37,7 +48,7 @@ public sealed class MagicLinkUrlBuilderTests
             ? builder.UnprotectLoginToken(token!)
             : builder.UnprotectSignupToken(token!);
 
-        payload.Should().BeNull();
+        payload.Token.Should().BeNull();
     }
 
     [HumansFact]
@@ -47,9 +58,9 @@ public sealed class MagicLinkUrlBuilderTests
         var userId = Guid.NewGuid();
         var expiresAt = _clock.GetCurrentInstant() + Duration.FromMinutes(15);
 
-        builder.UnprotectLoginToken(TokenOf(builder.BuildLoginUrl(userId, null)))
+        builder.UnprotectLoginToken(TokenOf(builder.BuildLoginUrl(userId, null))).Token
             .Should().Be(new MagicLinkToken(userId.ToString(), expiresAt));
-        builder.UnprotectSignupToken(TokenOf(builder.BuildSignupUrl("member@example.com", null)))
+        builder.UnprotectSignupToken(TokenOf(builder.BuildSignupUrl("member@example.com", null))).Token
             .Should().Be(new MagicLinkToken("member@example.com", expiresAt));
     }
 
@@ -60,7 +71,7 @@ public sealed class MagicLinkUrlBuilderTests
         var token = TokenOf(builder.BuildSignupUrl("member@example.com", null));
         _clock.Advance(Duration.FromHours(1));
 
-        builder.UnprotectSignupToken(token)!.Payload.Should().Be("member@example.com");
+        builder.UnprotectSignupToken(token).Token!.Payload.Should().Be("member@example.com");
     }
 
     [HumansTheory]
@@ -78,7 +89,7 @@ public sealed class MagicLinkUrlBuilderTests
 
         var decoded = login ? builder.UnprotectLoginToken(token) : builder.UnprotectSignupToken(token);
 
-        decoded.Should().Be(new MagicLinkToken("payload", Instant.FromDateTimeOffset(expiresAt)));
+        decoded.Token.Should().Be(new MagicLinkToken("payload", Instant.FromDateTimeOffset(expiresAt)));
     }
 
     [HumansTheory]
@@ -104,6 +115,22 @@ public sealed class MagicLinkUrlBuilderTests
             ? builder.UnprotectLoginToken(alternate)
             : builder.UnprotectSignupToken(alternate);
 
-        payload.Should().BeNull();
+        payload.Token.Should().BeNull();
+    }
+
+    [HumansFact]
+    public void An_unreadable_token_says_which_of_its_checks_failed()
+    {
+        using var services = KeyRingServices();
+        var builder = KeyRingBuilder(services);
+        var signup = TokenOf(builder.BuildSignupUrl("member@example.com", null));
+        var bytes = WebEncoders.Base64UrlDecode(signup);
+        bytes[^1] ^= 1;
+        var foreign = TokenOf(Builder(new EphemeralDataProtectionProvider()).BuildSignupUrl("member@example.com", null));
+
+        builder.UnprotectLoginToken(signup).Problem.Should().Be("token is a signup link's");
+        builder.UnprotectSignupToken(WebEncoders.Base64UrlEncode(bytes)).Problem.Should().Be("token fails its integrity check: it was altered");
+        builder.UnprotectSignupToken(foreign).Problem.Should().StartWith("token was signed with key ").And.EndWith(", which is not in the key ring");
+        builder.UnprotectSignupToken(WebEncoders.Base64UrlEncode([1, 2, 3])).Problem.Should().Be("token is not a Data Protection payload");
     }
 }

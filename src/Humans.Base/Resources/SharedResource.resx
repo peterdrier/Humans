@@ -571,9 +571,17 @@
   <data name="GateLogin_Throttled" xml:space="preserve"><value>Sign-in from this network is paused for {0} seconds: too many wrong-password attempts came from here. If that wasn't you, someone sharing this internet connection is trying passwords on this page. Wait it out, then enter the correct password — ask the ticket team if you're not sure of it. The account itself is NOT locked; ticket admins can check or change the password under Tickets → Gate terminal.</value><comment>{0}=seconds remaining</comment></data>
   <data name="MagicLinkSent_Title" xml:space="preserve"><value>Check your email</value></data>
   <data name="MagicLinkSent_Message" xml:space="preserve"><value>We've sent a link to that email address from humans@nobodies.team. Check your inbox (and spam folder).</value></data>
-  <data name="MagicLinkError_Title" xml:space="preserve"><value>Link expired or invalid</value></data>
-  <data name="MagicLinkError_Message" xml:space="preserve"><value>This login link has expired or has already been used.</value></data>
   <data name="MagicLinkError_RequestNew" xml:space="preserve"><value>Request a new link</value></data>
+  <data name="MagicLinkError_Unreadable_Title" xml:space="preserve"><value>This link doesn't work</value></data>
+  <data name="MagicLinkError_Unreadable_Message" xml:space="preserve"><value>This link couldn't be read. Open the complete link from your email.</value></data>
+  <data name="MagicLinkError_Expired_Title" xml:space="preserve"><value>This link has expired</value></data>
+  <data name="MagicLinkError_Expired_Message" xml:space="preserve"><value>Links work for 15 minutes after they are sent.</value></data>
+  <data name="MagicLinkError_Used_Title" xml:space="preserve"><value>This link was already used</value></data>
+  <data name="MagicLinkError_Used_Message" xml:space="preserve"><value>Each link works only once.</value></data>
+  <data name="MagicLinkError_AccountNotFound_Title" xml:space="preserve"><value>Account not found</value></data>
+  <data name="MagicLinkError_AccountNotFound_Message" xml:space="preserve"><value>The account this link was sent for no longer exists.</value></data>
+  <data name="MagicLinkError_SignupFailed_Title" xml:space="preserve"><value>We couldn't create your account</value></data>
+  <data name="MagicLinkError_SignupFailed_Message" xml:space="preserve"><value>Nothing was saved. Open the same link again to try once more.</value></data>
   <data name="CompleteSignup_Title" xml:space="preserve"><value>Complete your signup</value></data>
   <data name="CompleteSignup_BurnerNameLabel" xml:space="preserve"><value>Burner name</value></data>
   <data name="CompleteSignup_BurnerNameHelp" xml:space="preserve"><value>This is the name everyone in Humans sees. Use whatever you go by in the community.</value></data>

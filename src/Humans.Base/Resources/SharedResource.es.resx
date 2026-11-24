@@ -945,15 +945,19 @@
   <data name="MagicLinkSent_Message" xml:space="preserve">
     <value>Hemos enviado un enlace a esa dirección de correo desde humans@nobodies.team. Revisa tu bandeja de entrada (y la carpeta de spam).</value>
   </data>
-  <data name="MagicLinkError_Title" xml:space="preserve">
-    <value>Enlace expirado o inválido</value>
-  </data>
-  <data name="MagicLinkError_Message" xml:space="preserve">
-    <value>Este enlace de inicio de sesión ha expirado o ya ha sido utilizado.</value>
-  </data>
   <data name="MagicLinkError_RequestNew" xml:space="preserve">
     <value>Solicitar un nuevo enlace</value>
   </data>
+  <data name="MagicLinkError_Unreadable_Title" xml:space="preserve"><value>Este enlace no funciona</value></data>
+  <data name="MagicLinkError_Unreadable_Message" xml:space="preserve"><value>No se ha podido leer este enlace. Abre el enlace completo de tu correo.</value></data>
+  <data name="MagicLinkError_Expired_Title" xml:space="preserve"><value>Este enlace ha caducado</value></data>
+  <data name="MagicLinkError_Expired_Message" xml:space="preserve"><value>Los enlaces funcionan durante 15 minutos después de enviarse.</value></data>
+  <data name="MagicLinkError_Used_Title" xml:space="preserve"><value>Este enlace ya se ha usado</value></data>
+  <data name="MagicLinkError_Used_Message" xml:space="preserve"><value>Cada enlace funciona una sola vez.</value></data>
+  <data name="MagicLinkError_AccountNotFound_Title" xml:space="preserve"><value>Cuenta no encontrada</value></data>
+  <data name="MagicLinkError_AccountNotFound_Message" xml:space="preserve"><value>La cuenta para la que se envió este enlace ya no existe.</value></data>
+  <data name="MagicLinkError_SignupFailed_Title" xml:space="preserve"><value>No hemos podido crear tu cuenta</value></data>
+  <data name="MagicLinkError_SignupFailed_Message" xml:space="preserve"><value>No se ha guardado nada. Abre el mismo enlace otra vez para volver a intentarlo.</value></data>
   <data name="CompleteSignup_Title" xml:space="preserve">
     <value>Completa tu registro</value>
   </data>

@@ -945,15 +945,19 @@
   <data name="MagicLinkSent_Message" xml:space="preserve">
     <value>We hebben vanaf humans@nobodies.team een link naar dat e-mailadres gestuurd. Kijk in je inbox (en je spammap).</value>
   </data>
-  <data name="MagicLinkError_Title" xml:space="preserve">
-    <value>Link verlopen of ongeldig</value>
-  </data>
-  <data name="MagicLinkError_Message" xml:space="preserve">
-    <value>Deze inloglink is verlopen of al gebruikt.</value>
-  </data>
   <data name="MagicLinkError_RequestNew" xml:space="preserve">
     <value>Nieuwe link aanvragen</value>
   </data>
+  <data name="MagicLinkError_Unreadable_Title" xml:space="preserve"><value>Deze link werkt niet</value></data>
+  <data name="MagicLinkError_Unreadable_Message" xml:space="preserve"><value>Deze link kon niet worden gelezen. Open de volledige link uit je e-mail.</value></data>
+  <data name="MagicLinkError_Expired_Title" xml:space="preserve"><value>Deze link is verlopen</value></data>
+  <data name="MagicLinkError_Expired_Message" xml:space="preserve"><value>Links werken 15 minuten nadat ze zijn verstuurd.</value></data>
+  <data name="MagicLinkError_Used_Title" xml:space="preserve"><value>Deze link is al gebruikt</value></data>
+  <data name="MagicLinkError_Used_Message" xml:space="preserve"><value>Elke link werkt maar één keer.</value></data>
+  <data name="MagicLinkError_AccountNotFound_Title" xml:space="preserve"><value>Account niet gevonden</value></data>
+  <data name="MagicLinkError_AccountNotFound_Message" xml:space="preserve"><value>Het account waarvoor deze link is verstuurd, bestaat niet meer.</value></data>
+  <data name="MagicLinkError_SignupFailed_Title" xml:space="preserve"><value>We konden je account niet aanmaken</value></data>
+  <data name="MagicLinkError_SignupFailed_Message" xml:space="preserve"><value>Er is niets opgeslagen. Open dezelfde link opnieuw om het nog eens te proberen.</value></data>
   <data name="CompleteSignup_Title" xml:space="preserve">
     <value>Rond je aanmelding af</value>
   </data>

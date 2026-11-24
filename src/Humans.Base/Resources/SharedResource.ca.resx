@@ -945,15 +945,19 @@
   <data name="MagicLinkSent_Message" xml:space="preserve">
     <value>Hem enviat un enllaç a aquesta adreça de correu des de humans@nobodies.team. Revisa la teva safata d’entrada (i la carpeta de correu brossa).</value>
   </data>
-  <data name="MagicLinkError_Title" xml:space="preserve">
-    <value>Enllaç expirat o no vàlid</value>
-  </data>
-  <data name="MagicLinkError_Message" xml:space="preserve">
-    <value>Aquest enllaç d’inici de sessió ha expirat o ja s’ha utilitzat.</value>
-  </data>
   <data name="MagicLinkError_RequestNew" xml:space="preserve">
     <value>Sol·licita un enllaç nou</value>
   </data>
+  <data name="MagicLinkError_Unreadable_Title" xml:space="preserve"><value>Aquest enllaç no funciona</value></data>
+  <data name="MagicLinkError_Unreadable_Message" xml:space="preserve"><value>No s'ha pogut llegir aquest enllaç. Obre l'enllaç complet del teu correu.</value></data>
+  <data name="MagicLinkError_Expired_Title" xml:space="preserve"><value>Aquest enllaç ha caducat</value></data>
+  <data name="MagicLinkError_Expired_Message" xml:space="preserve"><value>Els enllaços funcionen durant 15 minuts després d'enviar-se.</value></data>
+  <data name="MagicLinkError_Used_Title" xml:space="preserve"><value>Aquest enllaç ja s'ha fet servir</value></data>
+  <data name="MagicLinkError_Used_Message" xml:space="preserve"><value>Cada enllaç funciona una sola vegada.</value></data>
+  <data name="MagicLinkError_AccountNotFound_Title" xml:space="preserve"><value>Compte no trobat</value></data>
+  <data name="MagicLinkError_AccountNotFound_Message" xml:space="preserve"><value>El compte per al qual es va enviar aquest enllaç ja no existeix.</value></data>
+  <data name="MagicLinkError_SignupFailed_Title" xml:space="preserve"><value>No hem pogut crear el teu compte</value></data>
+  <data name="MagicLinkError_SignupFailed_Message" xml:space="preserve"><value>No s'ha desat res. Torna a obrir el mateix enllaç per tornar-ho a provar.</value></data>
   <data name="CompleteSignup_Title" xml:space="preserve">
     <value>Completa el teu registre</value>
   </data>

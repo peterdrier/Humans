@@ -945,15 +945,19 @@
   <data name="MagicLinkSent_Message" xml:space="preserve">
     <value>Abbiamo inviato un link a quell'indirizzo email da humans@nobodies.team. Controlla la posta in arrivo (e la cartella spam).</value>
   </data>
-  <data name="MagicLinkError_Title" xml:space="preserve">
-    <value>Link scaduto o non valido</value>
-  </data>
-  <data name="MagicLinkError_Message" xml:space="preserve">
-    <value>Questo link di accesso è scaduto o è già stato utilizzato.</value>
-  </data>
   <data name="MagicLinkError_RequestNew" xml:space="preserve">
     <value>Richiedi un nuovo link</value>
   </data>
+  <data name="MagicLinkError_Unreadable_Title" xml:space="preserve"><value>Questo link non funziona</value></data>
+  <data name="MagicLinkError_Unreadable_Message" xml:space="preserve"><value>Non è stato possibile leggere questo link. Apri il link completo dalla tua email.</value></data>
+  <data name="MagicLinkError_Expired_Title" xml:space="preserve"><value>Questo link è scaduto</value></data>
+  <data name="MagicLinkError_Expired_Message" xml:space="preserve"><value>I link funzionano per 15 minuti dall'invio.</value></data>
+  <data name="MagicLinkError_Used_Title" xml:space="preserve"><value>Questo link è già stato usato</value></data>
+  <data name="MagicLinkError_Used_Message" xml:space="preserve"><value>Ogni link funziona una sola volta.</value></data>
+  <data name="MagicLinkError_AccountNotFound_Title" xml:space="preserve"><value>Account non trovato</value></data>
+  <data name="MagicLinkError_AccountNotFound_Message" xml:space="preserve"><value>L'account per cui è stato inviato questo link non esiste più.</value></data>
+  <data name="MagicLinkError_SignupFailed_Title" xml:space="preserve"><value>Non siamo riusciti a creare il tuo account</value></data>
+  <data name="MagicLinkError_SignupFailed_Message" xml:space="preserve"><value>Non è stato salvato nulla. Apri di nuovo lo stesso link per riprovare.</value></data>
   <data name="CompleteSignup_Title" xml:space="preserve">
     <value>Completa la registrazione</value>
   </data>

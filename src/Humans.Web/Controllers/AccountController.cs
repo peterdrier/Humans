@@ -199,16 +199,16 @@ public class AccountController(
     {
         returnUrl ??= Url.Content("~/");
 
-        if (!await magicLinkService.VerifyLoginTokenAsync(userId, token))
+        if (await magicLinkService.VerifyLoginTokenAsync(userId, token) is { } failure)
         {
-            return View("MagicLinkError");
+            return MagicLinkError(failure);
         }
 
         await userWrite.RecordLoginAsync(userId);
 
         if (!await signIn.SignInAsync(userId))
         {
-            return View("MagicLinkError");
+            return MagicLinkError(MagicLinkFailure.AccountNotFound);
         }
 
         loginMethods.RecordMagicLink();
@@ -221,12 +221,12 @@ public class AccountController(
     public IActionResult MagicLinkSignup(string token, string? email = null, string? returnUrl = null)
     {
         if (string.IsNullOrEmpty(token))
-            return View("MagicLinkError");
+            return MagicLinkError(MagicLinkFailure.Unreadable);
 
-        var verifiedEmail = magicLinkService.VerifySignupToken(token, email);
-        if (verifiedEmail is null)
+        var check = magicLinkService.VerifySignupToken(token, email);
+        if (check.Email is not { } verifiedEmail)
         {
-            return View("MagicLinkError");
+            return MagicLinkError(check.Failure);
         }
 
         ViewData["ReturnUrl"] = returnUrl;
@@ -242,14 +242,14 @@ public class AccountController(
         string? email = null, string? returnUrl = null)
     {
         if (string.IsNullOrEmpty(token))
-            return View("MagicLinkError");
+            return MagicLinkError(MagicLinkFailure.Unreadable);
 
         returnUrl ??= Url.Content("~/");
 
-        var verifiedEmail = magicLinkService.VerifySignupToken(token, email);
-        if (verifiedEmail is null)
+        var check = magicLinkService.VerifySignupToken(token, email);
+        if (check.Email is not { } verifiedEmail)
         {
-            return View("MagicLinkError");
+            return MagicLinkError(check.Failure);
         }
 
         foreach (var (value, field, label) in new[]
@@ -280,9 +280,9 @@ public class AccountController(
 
         // Redeem only once the submission is complete — consuming before the
         // validation re-render above would burn the link on a blank field.
-        var redeemedEmail = await magicLinkService.VerifyAndConsumeSignupTokenAsync(
+        var redemption = await magicLinkService.VerifyAndConsumeSignupTokenAsync(
             token, email, HttpContext.RequestAborted);
-        if (redeemedEmail is null)
+        if (redemption.Email is not { } redeemedEmail)
         {
             // Already redeemed. A resubmit that carries the cookie the first POST set
             // is the person who just signed up, so send them on. Everyone else errors:
@@ -294,7 +294,7 @@ public class AccountController(
             if (User.Identity?.IsAuthenticated == true)
                 return RedirectToLocal(returnUrl);
 
-            return View("MagicLinkError");
+            return MagicLinkError(redemption.Failure);
         }
 
         MagicLinkSignupCompletionResult result;
@@ -327,13 +327,12 @@ public class AccountController(
             throw;
         }
 
-        if (!await TrySignInAsync(result.UserId))
+        if (await SignInNewAccountAsync(result.UserId) is { } signInError)
         {
-            // Provisioning failed and rolled itself back, so the redemption
-            // accomplished nothing. Hand the link back rather than making the
-            // person request a new email over a transient failure.
+            // The redemption accomplished nothing. Hand the link back rather than
+            // making the person request a new email over a transient failure.
             magicLinkService.ReleaseSignupToken(token);
-            return View("MagicLinkError");
+            return View("MagicLinkError", signInError);
         }
 
         loginMethods.RecordMagicLink();
@@ -341,8 +340,22 @@ public class AccountController(
         return RedirectToLocal(returnUrl);
     }
 
-    private async Task<bool> TrySignInAsync(Guid? userId) =>
-        userId is { } id && await signIn.SignInAsync(id);
+    /// <summary>Signs in the account signup just provisioned; returns the error page's reason when that fails.</summary>
+    private async Task<string?> SignInNewAccountAsync(Guid? userId)
+    {
+        // A null id means provisioning failed and rolled itself back.
+        if (userId is not { } id)
+            return "signup-failed";
+        return await signIn.SignInAsync(id) ? null : "account-not-found";
+    }
+
+    private ViewResult MagicLinkError(MagicLinkFailure? failure) => View("MagicLinkError", failure switch
+    {
+        MagicLinkFailure.Expired => "expired",
+        MagicLinkFailure.AlreadyUsed => "used",
+        MagicLinkFailure.AccountNotFound => "account-not-found",
+        _ => "unreadable",
+    });
 
     /// <summary>
     /// Shared gate-terminal sign-in for the laptop at gate (see

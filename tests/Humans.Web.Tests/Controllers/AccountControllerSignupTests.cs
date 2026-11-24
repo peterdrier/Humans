@@ -23,8 +23,8 @@ public sealed class AccountControllerSignupTests
         const string token = "valid-signup-token";
         const string email = "signup@example.com";
         var magicLinks = Substitute.For<IMagicLinkService>();
-        magicLinks.VerifySignupToken(token, email).Returns(email);
-        magicLinks.VerifyAndConsumeSignupTokenAsync(token, email, Arg.Any<CancellationToken>()).Returns(email);
+        magicLinks.VerifySignupToken(token, email).Returns(new MagicLinkSignupCheck(email, null));
+        magicLinks.VerifyAndConsumeSignupTokenAsync(token, email, Arg.Any<CancellationToken>()).Returns(new MagicLinkSignupCheck(email, null));
         var provisioning = Substitute.For<IAccountProvisioningService>();
         provisioning.CompleteMagicLinkSignupAsync(email, Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
                 Arg.Any<CancellationToken>())
@@ -68,7 +68,7 @@ public sealed class AccountControllerSignupTests
         var userId = Guid.NewGuid();
         var signIn = SignIn();
         var magicLinks = Substitute.For<IMagicLinkService>();
-        magicLinks.VerifyLoginTokenAsync(userId, "login-token", Arg.Any<CancellationToken>()).Returns(true);
+        magicLinks.VerifyLoginTokenAsync(userId, "login-token", Arg.Any<CancellationToken>()).Returns((MagicLinkFailure?)null);
         var controller = Controller(signIn, magicLinks, Substitute.For<IAccountProvisioningService>());
 
         await controller.MagicLink(userId, "login-token", "/");
@@ -81,12 +81,15 @@ public sealed class AccountControllerSignupTests
     {
         var userId = Guid.NewGuid();
         var signIn = SignIn();
-        var controller = Controller(signIn, Substitute.For<IMagicLinkService>(),
-            Substitute.For<IAccountProvisioningService>());
+        var magicLinks = Substitute.For<IMagicLinkService>();
+        magicLinks.VerifyLoginTokenAsync(userId, "bad-token", Arg.Any<CancellationToken>()).Returns(MagicLinkFailure.Expired);
+        var controller = Controller(signIn, magicLinks, Substitute.For<IAccountProvisioningService>());
 
         var result = await controller.MagicLink(userId, "bad-token", "/");
 
-        result.Should().BeOfType<ViewResult>().Which.ViewName.Should().Be("MagicLinkError");
+        var view = result.Should().BeOfType<ViewResult>().Which;
+        view.ViewName.Should().Be("MagicLinkError");
+        view.Model.Should().Be("expired");
         await signIn.DidNotReceiveWithAnyArgs().SignInAsync(default);
     }
 
@@ -98,8 +101,8 @@ public sealed class AccountControllerSignupTests
         var userId = Guid.NewGuid();
         var signIn = SignIn();
         var magicLinks = Substitute.For<IMagicLinkService>();
-        magicLinks.VerifySignupToken(token, email).Returns(email);
-        magicLinks.VerifyAndConsumeSignupTokenAsync(token, email, Arg.Any<CancellationToken>()).Returns(email);
+        magicLinks.VerifySignupToken(token, email).Returns(new MagicLinkSignupCheck(email, null));
+        magicLinks.VerifyAndConsumeSignupTokenAsync(token, email, Arg.Any<CancellationToken>()).Returns(new MagicLinkSignupCheck(email, null));
         var provisioning = Substitute.For<IAccountProvisioningService>();
         provisioning.CompleteMagicLinkSignupAsync(email, "Burner", "First", "Last", Arg.Any<CancellationToken>())
             .Returns(new MagicLinkSignupCompletionResult(MagicLinkSignupCompletionOutcome.Created, userId));
