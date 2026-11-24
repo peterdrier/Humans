@@ -200,10 +200,16 @@
   <data name="Users_EmailGrid_BackToAdminDetail" xml:space="preserve"><value>Back to user detail</value></data>
   <data name="Users_EmailGrid_Unlink" xml:space="preserve"><value>Unlink</value></data>
   <data name="Users_EmailGrid_ConfirmUnlink" xml:space="preserve"><value>Unlink this Google account?</value></data>
-  <data name="Users_EmailGrid_UnlinkRejected" xml:space="preserve"><value>Could not unlink — the row is unknown or has no sign-in provider.</value></data>
+  <data name="Users_EmailGrid_ClearPrimaryNotPrimary" xml:space="preserve"><value>Could not clear the primary flag: this email is not flagged primary.</value></data>
+  <data name="Users_EmailGrid_ClearPrimaryOnlyOne" xml:space="preserve"><value>Could not clear the primary flag: this is the only verified primary email.</value></data>
+  <data name="Users_EmailGrid_ClearPrimaryChanged" xml:space="preserve"><value>Could not clear the primary flag: this email changed meanwhile. Reload and check.</value></data>
+  <data name="Users_EmailGrid_UnlinkNoProvider" xml:space="preserve"><value>Could not unlink: there is no sign-in provider on this email.</value></data>
+  <data name="Users_EmailGrid_UnlinkAccountNotFound" xml:space="preserve"><value>Could not unlink: the account no longer exists.</value></data>
+  <data name="Users_EmailGrid_UnlinkLoginNotFound" xml:space="preserve"><value>Could not unlink: this sign-in is no longer linked to the account.</value></data>
+  <data name="Users_EmailGrid_UnlinkLoginRemovalFailed" xml:space="preserve"><value>Could not unlink: removing the sign-in failed. Nothing was changed.</value></data>
+  <data name="Users_EmailGrid_UnlinkRowNotRemoved" xml:space="preserve"><value>The sign-in was unlinked, but its email row could not be removed.</value></data>
   <data name="Users_EmailGrid_SetPrimary" xml:space="preserve"><value>Set primary</value></data>
   <data name="Users_EmailGrid_PrimaryFlagCleared" xml:space="preserve"><value>Primary flag cleared from that row.</value></data>
-  <data name="Users_EmailGrid_ClearPrimaryRejected" xml:space="preserve"><value>Could not clear primary flag — the row is unknown or not currently flagged.</value></data>
   <data name="Users_EmailGrid_Clear" xml:space="preserve"><value>Clear</value></data>
   <data name="Users_EmailGrid_ConfirmClearPrimary" xml:space="preserve"><value>Clear the primary flag from this email row?</value></data>
   <data name="Users_EmailGrid_UnlinkSuccess" xml:space="preserve"><value>Sign-in provider unlinked.</value></data>

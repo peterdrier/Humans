@@ -451,17 +451,19 @@
   <data name="Users_EmailGrid_ConfirmUnlink" xml:space="preserve">
     <value>Scollegare questo account Google?</value>
   </data>
-  <data name="Users_EmailGrid_UnlinkRejected" xml:space="preserve">
-    <value>Impossibile scollegare — riga sconosciuta o senza provider di accesso.</value>
-  </data>
+  <data name="Users_EmailGrid_ClearPrimaryNotPrimary" xml:space="preserve"><value>Impossibile cancellare l'indicatore principale: questa email non è contrassegnata come principale.</value></data>
+  <data name="Users_EmailGrid_ClearPrimaryOnlyOne" xml:space="preserve"><value>Impossibile cancellare l'indicatore principale: è l'unica email principale verificata.</value></data>
+  <data name="Users_EmailGrid_ClearPrimaryChanged" xml:space="preserve"><value>Impossibile cancellare l'indicatore principale: questa email è cambiata nel frattempo. Ricarica e controlla.</value></data>
+  <data name="Users_EmailGrid_UnlinkNoProvider" xml:space="preserve"><value>Impossibile scollegare: questa email non ha un provider di accesso.</value></data>
+  <data name="Users_EmailGrid_UnlinkAccountNotFound" xml:space="preserve"><value>Impossibile scollegare: l'account non esiste più.</value></data>
+  <data name="Users_EmailGrid_UnlinkLoginNotFound" xml:space="preserve"><value>Impossibile scollegare: questo accesso non è più collegato all'account.</value></data>
+  <data name="Users_EmailGrid_UnlinkLoginRemovalFailed" xml:space="preserve"><value>Impossibile scollegare: la rimozione dell'accesso non è riuscita. Non è stato modificato nulla.</value></data>
+  <data name="Users_EmailGrid_UnlinkRowNotRemoved" xml:space="preserve"><value>L'accesso è stato scollegato, ma la sua riga email non è stata rimossa.</value></data>
   <data name="Users_EmailGrid_SetPrimary" xml:space="preserve">
     <value>Imposta come principale</value>
   </data>
   <data name="Users_EmailGrid_PrimaryFlagCleared" xml:space="preserve">
     <value>Indicatore principale cancellato da questa riga.</value>
-  </data>
-  <data name="Users_EmailGrid_ClearPrimaryRejected" xml:space="preserve">
-    <value>Impossibile cancellare l'indicatore principale — riga sconosciuta o non attualmente contrassegnata.</value>
   </data>
   <data name="Users_EmailGrid_Clear" xml:space="preserve">
     <value>Cancella</value>

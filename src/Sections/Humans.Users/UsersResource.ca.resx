@@ -451,17 +451,19 @@
   <data name="Users_EmailGrid_ConfirmUnlink" xml:space="preserve">
     <value>Desvincular aquest compte de Google?</value>
   </data>
-  <data name="Users_EmailGrid_UnlinkRejected" xml:space="preserve">
-    <value>No s'ha pogut desvincular: fila desconeguda o sense proveïdor d'inici de sessió.</value>
-  </data>
+  <data name="Users_EmailGrid_ClearPrimaryNotPrimary" xml:space="preserve"><value>No s'ha pogut esborrar l'indicador principal: aquest correu no està marcat com a principal.</value></data>
+  <data name="Users_EmailGrid_ClearPrimaryOnlyOne" xml:space="preserve"><value>No s'ha pogut esborrar l'indicador principal: és l'únic correu principal verificat.</value></data>
+  <data name="Users_EmailGrid_ClearPrimaryChanged" xml:space="preserve"><value>No s'ha pogut esborrar l'indicador principal: aquest correu ha canviat mentrestant. Recarrega i revisa.</value></data>
+  <data name="Users_EmailGrid_UnlinkNoProvider" xml:space="preserve"><value>No s'ha pogut desvincular: aquest correu no té proveïdor d'inici de sessió.</value></data>
+  <data name="Users_EmailGrid_UnlinkAccountNotFound" xml:space="preserve"><value>No s'ha pogut desvincular: el compte ja no existeix.</value></data>
+  <data name="Users_EmailGrid_UnlinkLoginNotFound" xml:space="preserve"><value>No s'ha pogut desvincular: aquest inici de sessió ja no està vinculat al compte.</value></data>
+  <data name="Users_EmailGrid_UnlinkLoginRemovalFailed" xml:space="preserve"><value>No s'ha pogut desvincular: l'eliminació de l'inici de sessió ha fallat. No s'ha canviat res.</value></data>
+  <data name="Users_EmailGrid_UnlinkRowNotRemoved" xml:space="preserve"><value>S'ha desvinculat l'inici de sessió, però no s'ha pogut eliminar la seva fila de correu.</value></data>
   <data name="Users_EmailGrid_SetPrimary" xml:space="preserve">
     <value>Establir com a principal</value>
   </data>
   <data name="Users_EmailGrid_PrimaryFlagCleared" xml:space="preserve">
     <value>Indicador principal esborrat d'aquesta fila.</value>
-  </data>
-  <data name="Users_EmailGrid_ClearPrimaryRejected" xml:space="preserve">
-    <value>No s'ha pogut esborrar l'indicador principal — la fila és desconeguda o no està marcada actualment.</value>
   </data>
   <data name="Users_EmailGrid_Clear" xml:space="preserve">
     <value>Esborrar</value>

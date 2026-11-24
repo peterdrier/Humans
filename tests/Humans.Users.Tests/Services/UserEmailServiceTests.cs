@@ -781,7 +781,7 @@ public class UserEmailServiceTests
 
         var result = await _service.ClearPrimaryAsync(userId, rowId, actorId, Xunit.TestContext.Current.CancellationToken);
 
-        result.Should().BeTrue();
+        result.Succeeded.Should().BeTrue();
         row.IsPrimary.Should().BeFalse();
         await _repository.Received(1).UpdateUserEmailAsync(row, Arg.Any<CancellationToken>());
         await _auditLogService.Received(1).LogAsync(
@@ -814,7 +814,7 @@ public class UserEmailServiceTests
 
         var result = await _service.ClearPrimaryAsync(userId, rowId, userId, Xunit.TestContext.Current.CancellationToken);
 
-        result.Should().BeFalse();
+        result.ErrorKey.Should().Be("Users_EmailGrid_ClearPrimaryOnlyOne");
         row.IsPrimary.Should().BeTrue();
         await _repository.DidNotReceive().UpdateUserEmailAsync(Arg.Any<UserEmail>(), Arg.Any<CancellationToken>());
         await _userInfoRefresher.DidNotReceive().RefreshAsync(
@@ -852,7 +852,7 @@ public class UserEmailServiceTests
 
         var result = await _service.ClearPrimaryAsync(userId, rowId, userId, Xunit.TestContext.Current.CancellationToken);
 
-        result.Should().BeFalse();
+        result.ErrorKey.Should().Be("Users_EmailGrid_ClearPrimaryOnlyOne");
         row.IsPrimary.Should().BeTrue();
         await _repository.DidNotReceive().UpdateUserEmailAsync(Arg.Any<UserEmail>(), Arg.Any<CancellationToken>());
     }
