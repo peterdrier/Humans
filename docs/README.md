@@ -1,5 +1,7 @@
 # Nobodies Humans — Documentation
 
+Running Humans for another burn? Start with [Running Humans for your burn](adopting-humans.md).
+
 ## Feature Specifications
 
 Business requirements, user stories, data model, and workflows for each feature area.
