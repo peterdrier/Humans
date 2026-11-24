@@ -87,13 +87,13 @@ internal sealed class AgentRepository(AgentDbContext db, IClock clock) : IAgentR
             .ToListAsync(cancellationToken);
 
     public async Task<IReadOnlyList<AgentConversation>> ListAllConversationsAsync(
-        bool refusalsOnly, Guid? userId, int take, int skip,
+        bool unansweredOnly, Guid? userId, int take, int skip,
         CancellationToken cancellationToken)
     {
         IQueryable<AgentConversation> q = db.AgentConversations.AsNoTracking();
 
         if (userId is { } u) q = q.Where(c => c.UserId == u);
-        if (refusalsOnly) q = q.Where(c => c.Messages.Any(m => m.RefusalReason != null));
+        if (unansweredOnly) q = q.Where(c => c.Messages.Any(m => m.Outcome != null));
 
         // arch:db-sort-ok admin page window over conversation history
         return await q.OrderByDescending(c => c.LastMessageAt)
@@ -102,13 +102,13 @@ internal sealed class AgentRepository(AgentDbContext db, IClock clock) : IAgentR
     }
 
     public async Task<IReadOnlyList<AgentConversation>> ListAllConversationsWithMessagesAsync(
-        bool refusalsOnly, bool handoffsOnly, Guid? userId, int take, int skip,
+        bool unansweredOnly, bool handoffsOnly, Guid? userId, int take, int skip,
         CancellationToken cancellationToken)
     {
         IQueryable<AgentConversation> q = db.AgentConversations.AsNoTracking();
 
         if (userId is { } u) q = q.Where(c => c.UserId == u);
-        if (refusalsOnly) q = q.Where(c => c.Messages.Any(m => m.RefusalReason != null));
+        if (unansweredOnly) q = q.Where(c => c.Messages.Any(m => m.Outcome != null));
 
         // arch:db-sort-ok pagination top-N by LastMessageAt
         var ordered = q.OrderByDescending(c => c.LastMessageAt)
@@ -123,7 +123,7 @@ internal sealed class AgentRepository(AgentDbContext db, IClock clock) : IAgentR
         var all = await ordered.ToListAsync(cancellationToken);
         return all
             .Where(c => c.Messages.Any(m => m.HandedOffToFeedbackId != null
-                || m.FetchedDocs.Contains(AgentToolNames.RouteToIssue, StringComparer.Ordinal)))
+                || m.FetchedDocs.Contains(AgentToolNames.Handoff, StringComparer.Ordinal)))
             .Skip(skip).Take(take)
             .ToList();
     }
@@ -171,7 +171,7 @@ internal sealed class AgentRepository(AgentDbContext db, IClock clock) : IAgentR
                 m.Model,
                 m.DurationMs,
                 m.FetchedDocs,
-                m.RefusalReason))
+                m.Outcome))
             .ToListAsync(cancellationToken);
 
     public Task<int> CountConversationsInWindowAsync(

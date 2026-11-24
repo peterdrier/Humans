@@ -63,7 +63,6 @@ public class AgentSettingsServiceTests
             Id = 1,
             Enabled = false,
             Model = "claude-sonnet-4-6",
-            PreloadConfig = AgentPreloadConfig.Tier1,
             DailyMessageCap = 30,
             HourlyMessageCap = 10,
             DailyTokenCap = 50000,

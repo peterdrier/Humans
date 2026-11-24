@@ -12,7 +12,7 @@ using Humans.Users.Contracts;
 
 namespace Humans.Agent.Services;
 
-internal sealed class AgentUserSnapshotProvider(
+internal sealed class AgentUserContextProvider(
     IUserService users,
     IRoleAssignmentService roles,
     ITeamService teams,
@@ -21,9 +21,9 @@ internal sealed class AgentUserSnapshotProvider(
     ITicketService tickets,
     IShiftView shiftView,
     ISettingsService settingsService,
-    IClock clock) : IAgentUserSnapshotProvider
+    IClock clock) : IAgentUserContextProvider
 {
-    public async Task<AgentUserSnapshot> LoadAsync(Guid userId, CancellationToken cancellationToken)
+    public async Task<AgentUserContext> LoadAsync(Guid userId, CancellationToken cancellationToken)
     {
         var user = await users.GetUserInfoAsync(userId, cancellationToken);
         if (user is not null)
@@ -43,7 +43,7 @@ internal sealed class AgentUserSnapshotProvider(
             .Select(r => (r.RoleName, r.ValidTo?.ToIso8601() ?? "—"))
             .ToList();
 
-        return new AgentUserSnapshot(
+        return new AgentUserContext(
             DisplayName: user?.BurnerName ?? string.Empty,
             PreferredLocale: user?.PreferredLanguage ?? "es",
             Tier: tier.ToString(),

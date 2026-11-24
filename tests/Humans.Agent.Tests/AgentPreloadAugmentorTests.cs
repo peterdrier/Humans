@@ -129,7 +129,7 @@ public class AgentPreloadAugmentorTests
 
     /// <summary>
     /// The glossary block is the only place the corpus prints something that looks like a
-    /// <c>fetch_section_guide</c> argument, and the model takes it literally.
+    /// <c>fetch_section_doc</c> argument, and the model takes it literally.
     /// Every heading emitted here must be a key the reader can actually serve.
     /// </summary>
     [HumansFact]
@@ -150,7 +150,7 @@ public class AgentPreloadAugmentorTests
             .ToList();
 
         headings.Should().NotBeEmpty();
-        glossaries.Should().Contain("fetch_section_guide", "the block must say what the headings are for");
+        glossaries.Should().Contain("fetch_section_doc", "the block must say what the headings are for");
         foreach (var heading in headings)
         {
             // Asserted against the key table itself rather than through AgentSectionDocReader,
@@ -158,7 +158,7 @@ public class AgentPreloadAugmentorTests
             // the key through exactly this table before it fetches anything, so the check is the
             // same one, minus a stub GitHub source.
             AgentSectionKeys.TryResolve(heading, out _).Should().BeTrue(
-                $"glossary heading '{heading}' must be a fetch_section_guide key");
+                $"glossary heading '{heading}' must be a fetch_section_doc key");
         }
     }
 

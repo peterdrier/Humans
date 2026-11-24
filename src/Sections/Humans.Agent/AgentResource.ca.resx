@@ -64,7 +64,7 @@
   <data name="Agent_ConversationEmpty" xml:space="preserve">
     <value>No hi ha missatges en aquesta conversa.</value>
   </data>
-  <data name="Agent_ConversationRefusedLabel" xml:space="preserve">
+  <data name="Agent_ConversationUnansweredLabel" xml:space="preserve">
     <value>L'Assistent no va respondre aquesta pregunta.</value>
   </data>
   <data name="Agent_ConversationTitle" xml:space="preserve">
@@ -91,8 +91,8 @@
   <data name="Agent_DetailLocale" xml:space="preserve">
     <value>Idioma</value>
   </data>
-  <data name="Agent_DetailRefusal" xml:space="preserve">
-    <value>Rebuig: {0}</value>
+  <data name="Agent_DetailOutcome" xml:space="preserve">
+    <value>Resultat: {0}</value>
   </data>
   <data name="Agent_HistoryEmpty" xml:space="preserve">
     <value>Encara no hi ha converses.</value>
@@ -133,11 +133,11 @@
   <data name="Agent_Help_Menu_CreateIssue" xml:space="preserve">
     <value>Crear incidència</value>
   </data>
-  <data name="Agent_IssueProposed" xml:space="preserve">
+  <data name="Agent_HandoffDrafted" xml:space="preserve">
     <value>No puc respondre això jo mateix. He redactat una incidència per a l'equip — revisa-la i envia-la, si us plau.</value>
   </data>
   <data name="Agent_SilentTurnFallback" xml:space="preserve"><value>No he pogut preparar una resposta per a això. Podries reformular la pregunta o tornar-ho a intentar?</value></data>
-  <data name="Agent_AbuseRefusal" xml:space="preserve"><value>No et puc ajudar amb això. Si estàs en una situació d’angoixa, contacta amb una persona coordinadora o amb els serveis d’emergència.</value></data>
+  <data name="Agent_DistressReply" xml:space="preserve"><value>No et puc ajudar amb això. Si estàs en una situació d’angoixa, contacta amb una persona coordinadora o amb els serveis d’emergència.</value></data>
   <data name="Agent_HttpError" xml:space="preserve"><value>Error: {0}</value></data>
   <data name="Agent_NetworkError" xml:space="preserve"><value>Error de xarxa.</value></data>
   <data name="Agent_DisabledReply" xml:space="preserve"><value>(L’assistent està desactivat actualment.)</value></data>

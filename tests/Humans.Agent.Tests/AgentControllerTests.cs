@@ -2,7 +2,6 @@ using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.Agent.Controllers;
 using Humans.Base.Constants;
-using Humans.Agent.Domain;
 using Humans.Agent.Models;
 using Humans.Agent.Services;
 using Humans.Users.Contracts;
@@ -177,7 +176,7 @@ public class AgentControllerTests
 
         var settings = Substitute.For<IAgentSettingsService>();
         settings.Current.Returns(new AgentSettingsDto(
-            Enabled: enabled, Model: "m", PreloadConfig: AgentPreloadConfig.Tier1,
+            Enabled: enabled, Model: "m",
             DailyMessageCap: 10, HourlyMessageCap: 5, DailyTokenCap: 50_000,
             RetentionDays: 30, UpdatedAt: Instant.MinValue));
 

@@ -69,7 +69,7 @@
 }
 /* Refusal bubbles dim into the page so the user can tell at a glance which
    turns the agent declined to answer. */
-.agent-msg-refusal {
+.agent-msg-unanswered {
     background: #f8f8f8 !important;
     border: 1px dashed #ccc;
     color: #555;
