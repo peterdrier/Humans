@@ -232,14 +232,20 @@ internal sealed partial class TicketCheckoutService
         return (ticket, offer);
     }
 
-    /// <summary>The link was sent to the signed-in buyer's email, for this event.</summary>
-    private static bool InviteIsFor(TicketResaleOffer offer, string tokenHash, BuyContext context) =>
-        offer.TicketingSettingsId == context.Ticketing.Id && offer.InviteFor(tokenHash) is { } invite
-        && string.Equals(invite.Email, context.Buyer?.Email, StringComparison.OrdinalIgnoreCase);
+    /// <summary>
+    /// Why the link can't buy for the signed-in buyer, or null when it was sent to their email, for this event, and
+    /// resale is selling.
+    /// </summary>
+    private static string? InviteRefusal(TicketResaleOffer? offer, string tokenHash, BuyContext context) =>
+        offer is null || offer.TicketingSettingsId != context.Ticketing.Id || offer.InviteFor(tokenHash) is not { } invite
+            ? "Tickets_Resale_InviteNotFound"
+            : !string.Equals(invite.Email, context.Buyer?.Email, StringComparison.OrdinalIgnoreCase)
+                ? "Tickets_Resale_InviteOtherEmail"
+                : !context.Ticketing.ResaleSelling ? "Tickets_Resale_NotSelling" : null;
 
     /// <summary>The linked offer while it can still sell to this buyer: the link is theirs and the queue is open.</summary>
-    private static TicketResaleOffer? DirectedOfferFor(TicketResaleOffer offer, string tokenHash, BuyContext context) =>
-        context.Ticketing.ResaleSelling && offer.State == TicketResaleOfferState.Open && InviteIsFor(offer, tokenHash, context)
+    private static TicketResaleOffer? DirectedOfferFor(TicketResaleOffer? offer, string tokenHash, BuyContext context) =>
+        offer?.State == TicketResaleOfferState.Open && InviteRefusal(offer, tokenHash, context) is null
             ? offer
             : null;
 

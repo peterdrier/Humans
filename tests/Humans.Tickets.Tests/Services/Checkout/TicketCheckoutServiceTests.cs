@@ -638,7 +638,7 @@ public sealed partial class TicketCheckoutServiceTests
         var cyToken = TokenFor("cy@example.com");
 
         (await _service.StartCheckoutAsync(Buy() with { DirectedToken = boToken }, cy, Ct))
-            .Refusal.Should().Be("Tickets_Resale_InviteInvalid", "a link works only for the address it was sent to");
+            .Refusal.Should().Be("Tickets_Resale_InviteOtherEmail", "a link works only for the address it was sent to");
         var cysOrder = await BuyAndPayAsync(Buy() with { DirectedToken = cyToken }, cy);
 
         cysOrder.Lines.Single().ResaleOfferId.Should().Be(_repo.Offers.Single(o => o.TicketId == mine.Id).Id);
@@ -1070,7 +1070,7 @@ public sealed partial class TicketCheckoutServiceTests
             .Refusal.Should().Be("Tickets_Resale_NotFound");
         (await _service.GetDirectedBuyPageAsync(token, _otherBuyerId, Ct)).Should().BeNull();
         (await _service.StartCheckoutAsync(Buy() with { DirectedToken = token }, _otherBuyerId, Ct))
-            .Refusal.Should().Be("Tickets_Resale_InviteInvalid");
+            .Refusal.Should().Be("Tickets_Resale_InviteNotFound");
 
         var queued = await BuyAndPayAsync(Buy(), _otherBuyerId);
         queued.Lines.Single().ResaleOfferId.Should().Be(_repo.Offers.Single().Id);
@@ -1208,7 +1208,7 @@ public sealed partial class TicketCheckoutServiceTests
         var token = sent.HtmlBody["https://h.example/Tickets/Buy/Resale/".Length..];
         _repo.Offers.Single().Invites.Single().TokenHash.Should().Be(TicketCheckoutService.HashToken(token)).And.NotBe(token);
         (await _service.StartCheckoutAsync(Buy() with { DirectedToken = "wrong" }, _otherBuyerId, Ct))
-            .Refusal.Should().Be("Tickets_Resale_InviteInvalid");
+            .Refusal.Should().Be("Tickets_Resale_InviteNotFound");
 
         var order = await BuyAndPayAsync(Buy() with { DirectedToken = token }, _otherBuyerId);
 
@@ -1236,7 +1236,7 @@ public sealed partial class TicketCheckoutServiceTests
         queued.Lines.Single().ResaleOfferId.Should().Be(_repo.Offers.Single().Id);
         _repo.Offers.Single().DirectedUsedAt.Should().BeNull();
         _repo.Events.Should().NotContain(e => e.Kind == TicketCheckoutOrderEventKind.ResaleInviteUsed);
-        (await _service.GetDirectedBuyPageAsync(token, _otherBuyerId, Ct))!.Unavailable.Should().Be("Tickets_Resale_InviteInvalid");
+        (await _service.GetDirectedBuyPageAsync(token, _otherBuyerId, Ct))!.Unavailable.Should().Be("Tickets_Resale_InviteOtherEmail");
     }
 
     [HumansFact]
@@ -1252,8 +1252,8 @@ public sealed partial class TicketCheckoutServiceTests
         await _service.SetResaleOpenAsync(_ticketing.Id, false, _buyerId, Ct);
 
         (await _service.StartCheckoutAsync(Buy() with { DirectedToken = token }, _otherBuyerId, Ct))
-            .Refusal.Should().Be("Tickets_Resale_InviteInvalid");
-        (await _service.GetDirectedBuyPageAsync(token, _otherBuyerId, Ct))!.Unavailable.Should().Be("Tickets_Resale_InviteInvalid");
+            .Refusal.Should().Be("Tickets_Resale_NotSelling");
+        (await _service.GetDirectedBuyPageAsync(token, _otherBuyerId, Ct))!.Unavailable.Should().Be("Tickets_Resale_NotSelling");
     }
 
     [HumansFact]

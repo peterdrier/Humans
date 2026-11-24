@@ -238,8 +238,8 @@ internal sealed partial class TicketCheckoutService(
             || context.Ticketing.EffectiveSwitches.Resale != ResaleScheme.QueueAndDirected)
             return null;
         var rules = await RulesForAsync(context.Ticketing, ct);
-        if (!InviteIsFor(offer, tokenHash, context) || !context.Ticketing.ResaleSelling)
-            return ToBuyPage(context, rules, "Tickets_Resale_InviteInvalid", directed: true);
+        if (InviteRefusal(offer, tokenHash, context) is { } refusal)
+            return ToBuyPage(context, rules, refusal, directed: true);
         if (DirectedOfferFor(offer, tokenHash, context) is not null)
             return ToBuyPage(context, rules, null, directed: true);
         var stock = await LoadStockAsync(context.Ticketing, context.Now, ct);
@@ -344,9 +344,10 @@ internal sealed partial class TicketCheckoutService(
             var invited = switches.Resale == ResaleScheme.QueueAndDirected
                 ? await repository.GetOfferByTokenHashAsync(tokenHash, ct)
                 : null;
-            if (invited is null || !InviteIsFor(invited, tokenHash, context) || !ticketing.ResaleSelling
-                || !command.ForSelf || others.Count > 0)
-                return StartCheckoutResult.Refused("Tickets_Resale_InviteInvalid");
+            if (InviteRefusal(invited, tokenHash, context) is { } refusal)
+                return StartCheckoutResult.Refused(refusal);
+            if (!command.ForSelf || others.Count > 0)
+                return StartCheckoutResult.Refused("Tickets_Resale_InviteSelfOnly");
             // Gone to someone else first: the link buys the next ticket in the queue, at the resale price like the invitation.
             directed = DirectedOfferFor(invited, tokenHash, context);
             if (directed is not null && await IsAdmittedAsync(directed.TicketId, ct))
