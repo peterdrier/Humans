@@ -2520,13 +2520,13 @@ public class SurveyServiceTests
     };
 
     [HumansFact]
-    public async Task ResolveAnswerContextAsync_returns_null_for_invalid_token()
+    public async Task ResolveAnswerContextAsync_passes_on_the_token_failure()
     {
-        _tokenProvider.Resolve("bad").Returns((Guid?)null);
+        _tokenProvider.Resolve("bad").Returns(((Guid?)null, SurveyLinkFailure.Expired));
 
-        var ctx = await CreateResponses().ResolveAnswerContextAsync("bad", TestContext.Current.CancellationToken);
+        var link = await CreateResponses().ResolveAnswerContextAsync("bad", TestContext.Current.CancellationToken);
 
-        ctx.Should().BeNull();
+        link.Should().Be(SurveyAnswerLink.Failed(SurveyLinkFailure.Expired));
         await _repo.DidNotReceive().GetInvitationByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
     }
 
@@ -2559,12 +2559,12 @@ public class SurveyServiceTests
             },
         };
 
-        _tokenProvider.Resolve("good").Returns(invitation.Id);
+        _tokenProvider.Resolve("good").Returns((invitation.Id, null));
         _repo.GetInvitationByIdAsync(invitation.Id, Arg.Any<CancellationToken>()).Returns(invitation);
         _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
         _repo.GetDraftResponseAsync(survey.Id, userId, Arg.Any<CancellationToken>()).Returns(draft);
 
-        var ctx = await CreateResponses().ResolveAnswerContextAsync("good", TestContext.Current.CancellationToken);
+        var ctx = (await CreateResponses().ResolveAnswerContextAsync("good", TestContext.Current.CancellationToken)).Context;
 
         ctx.Should().NotBeNull();
         ctx.SurveyId.Should().Be(survey.Id);
@@ -2583,29 +2583,29 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
-    public async Task ResolveAnswerContextAsync_returns_null_when_invitation_missing()
+    public async Task ResolveAnswerContextAsync_reports_a_missing_invitation()
     {
         var invitationId = Guid.NewGuid();
-        _tokenProvider.Resolve("orphan").Returns(invitationId);
+        _tokenProvider.Resolve("orphan").Returns((invitationId, null));
         _repo.GetInvitationByIdAsync(invitationId, Arg.Any<CancellationToken>()).Returns((SurveyInvitation?)null);
 
-        var ctx = await CreateResponses().ResolveAnswerContextAsync("orphan", TestContext.Current.CancellationToken);
+        var link = await CreateResponses().ResolveAnswerContextAsync("orphan", TestContext.Current.CancellationToken);
 
-        ctx.Should().BeNull();
+        link.Should().Be(SurveyAnswerLink.Failed(SurveyLinkFailure.InvitationNotFound));
     }
 
     [HumansFact]
-    public async Task ResolveAnswerContextAsync_returns_null_when_invitation_completed()
+    public async Task ResolveAnswerContextAsync_reports_a_completed_invitation_as_answered()
     {
         var survey = SurveyWith(SurveyStatus.Open, SurveyAudienceType.Team, Guid.NewGuid());
         var invitation = InvitationFor(survey.Id, Guid.NewGuid());
         invitation.Completed = true;
-        _tokenProvider.Resolve("spent").Returns(invitation.Id);
+        _tokenProvider.Resolve("spent").Returns((invitation.Id, null));
         _repo.GetInvitationByIdAsync(invitation.Id, Arg.Any<CancellationToken>()).Returns(invitation);
 
-        var ctx = await CreateResponses().ResolveAnswerContextAsync("spent", TestContext.Current.CancellationToken);
+        var link = await CreateResponses().ResolveAnswerContextAsync("spent", TestContext.Current.CancellationToken);
 
-        ctx.Should().BeNull();
+        link.Should().Be(SurveyAnswerLink.Failed(SurveyLinkFailure.AlreadyAnswered));
         await _repo.DidNotReceive().GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>());
     }
 
@@ -2616,14 +2616,14 @@ public class SurveyServiceTests
         survey.IsAsociadoVote = true;
         var userId = Guid.NewGuid();
         var invitation = InvitationFor(survey.Id, userId);
-        _tokenProvider.Resolve("vote").Returns(invitation.Id);
+        _tokenProvider.Resolve("vote").Returns((invitation.Id, null));
         _repo.GetInvitationByIdAsync(invitation.Id, Arg.Any<CancellationToken>()).Returns(invitation);
         _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
             .Returns(Asociado(userId, MembershipTier.Colaborador));
 
-        var ctx = await CreateResponses().ResolveAnswerContextAsync(
-            "vote", TestContext.Current.CancellationToken);
+        var ctx = (await CreateResponses().ResolveAnswerContextAsync(
+            "vote", TestContext.Current.CancellationToken)).Context;
 
         ctx.Should().NotBeNull();
         ctx.IsEligible.Should().BeFalse();

@@ -40,11 +40,10 @@ internal sealed class SurveyController(
                 new { id = preview.SurveyId, culture = preview.Culture });
         }
 
-        var ctx = await responses.ResolveAnswerContextAsync(t, ct);
-        if (ctx is null)
+        var link = await responses.ResolveAnswerContextAsync(t, ct);
+        if (link.Context is not { } ctx)
         {
-            logger.LogWarning("Survey answer link could not be resolved (invalid or expired token).");
-            return View("Closed", new SurveyClosedViewModel { Reason = "invalid" });
+            return LinkFailed(link.Failure);
         }
 
         var editable = ctx.Definition.Editable;
@@ -101,10 +100,10 @@ internal sealed class SurveyController(
             return BadRequest();
         }
 
-        var ctx = await responses.ResolveAnswerContextAsync(model.Token, ct);
-        if (ctx is null)
+        var link = await responses.ResolveAnswerContextAsync(model.Token, ct);
+        if (link.Context is not { } ctx)
         {
-            return View("Closed", new SurveyClosedViewModel { Reason = "invalid" });
+            return LinkFailed(link.Failure);
         }
 
         var editable = ctx.Definition.Editable;
@@ -356,8 +355,8 @@ internal sealed class SurveyController(
             return View("ThankYou", BuildThankYou(await surveyService.GetForEditAsync(done.SurveyId, ct), done.Culture));
         }
 
-        var ctx = await responses.ResolveAnswerContextAsync(t, ct);
-        return View("ThankYou", BuildThankYou(ctx?.Definition));
+        var link = await responses.ResolveAnswerContextAsync(t, ct);
+        return View("ThankYou", BuildThankYou(link.Context?.Definition));
     }
 
     /// <summary>
@@ -423,6 +422,18 @@ internal sealed class SurveyController(
         };
     }
 
+    private ViewResult LinkFailed(SurveyLinkFailure? failure) => View("Closed", new SurveyClosedViewModel
+    {
+        Reason = failure switch
+        {
+            SurveyLinkFailure.Expired => "expired",
+            SurveyLinkFailure.AlreadyAnswered => "answered",
+            SurveyLinkFailure.InvitationNotFound => "invitation-removed",
+            SurveyLinkFailure.SurveyNotFound => "survey-removed",
+            _ => "invalid",
+        },
+    });
+
     /// <summary>The service re-enforces the same rule at submit.</summary>
     private bool IsAnswerable(SurveyDetail definition)
         => SurveyWizardFlow.IsAnswerable(
@@ -433,7 +444,7 @@ internal sealed class SurveyController(
     private async Task<IActionResult> RenderPage(SurveyWizardState state, WizardRoute route, CancellationToken ct)
     {
         var definition = await surveyService.GetForEditAsync(state.SurveyId, ct);
-        if (definition is null) return View("Closed", new SurveyClosedViewModel { Reason = "invalid" });
+        if (definition is null) return View("Closed", new SurveyClosedViewModel { Reason = "survey-removed" });
 
         var editable = definition.Editable;
         if (!IsAnswerable(definition))
@@ -506,7 +517,7 @@ internal sealed class SurveyController(
         switch (result.Outcome)
         {
             case SurveyWizardOutcome.NotFound:
-                return View("Closed", new SurveyClosedViewModel { Reason = "invalid" });
+                return View("Closed", new SurveyClosedViewModel { Reason = "survey-removed" });
 
             case SurveyWizardOutcome.Closed:
                 return View("Closed", new SurveyClosedViewModel { Reason = "closed" });

@@ -15,7 +15,18 @@ public class SurveyInviteTokenTests
         var provider = CreateProvider();
         var id = Guid.NewGuid();
 
-        provider.Resolve(provider.Create(id)).Should().Be(id);
+        provider.Resolve(provider.Create(id)).Should().Be((id, null));
+    }
+
+    [HumansFact]
+    public void Resolve_reports_an_expired_token_as_expired()
+    {
+        var dataProtection = DataProtectionProvider.Create("survey-tests");
+        var expired = dataProtection.CreateProtector("SurveyInvite").ToTimeLimitedDataProtector()
+            .Protect(Guid.NewGuid().ToString(), DateTimeOffset.UtcNow.AddDays(-1));
+
+        new SurveyInviteTokenProvider(dataProtection).Resolve(expired)
+            .Should().Be(((Guid?)null, SurveyLinkFailure.Expired));
     }
 
     [HumansFact]
@@ -25,25 +36,25 @@ public class SurveyInviteTokenTests
         var token = provider.Create(Guid.NewGuid());
         var tampered = token[..^2] + (token[^1] == 'A' ? "BB" : "AA");
 
-        provider.Resolve(tampered).Should().BeNull();
+        provider.Resolve(tampered).Failure.Should().Be(SurveyLinkFailure.Unreadable);
     }
 
     [HumansFact]
     public void Resolve_returns_null_for_garbage()
     {
-        CreateProvider().Resolve("not-a-real-token").Should().BeNull();
+        CreateProvider().Resolve("not-a-real-token").Failure.Should().Be(SurveyLinkFailure.Unreadable);
     }
 
     [HumansFact]
     public void Resolve_returns_null_for_a_missing_token()
     {
         // /Survey/Answer and /Survey/Answer/ThankYou are [AllowAnonymous]; a request with no ?t=
-        // must read as an invalid link, not a 500.
+        // must read as a missing token, not a 500.
         var provider = CreateProvider();
 
-        provider.Resolve(null!).Should().BeNull();
-        provider.Resolve("").Should().BeNull();
-        provider.Resolve("   ").Should().BeNull();
+        provider.Resolve(null!).Failure.Should().Be(SurveyLinkFailure.NoToken);
+        provider.Resolve("").Failure.Should().Be(SurveyLinkFailure.NoToken);
+        provider.Resolve("   ").Failure.Should().Be(SurveyLinkFailure.NoToken);
     }
 
     [HumansFact]
@@ -57,7 +68,7 @@ public class SurveyInviteTokenTests
         var token = previewProvider.Create(surveyId, "fr");
 
         previewProvider.Resolve(token).Should().Be(new SurveyPreviewLink(surveyId, "fr"));
-        inviteProvider.Resolve(token).Should().BeNull();
+        inviteProvider.Resolve(token).InvitationId.Should().BeNull();
         previewProvider.Resolve(inviteProvider.Create(Guid.NewGuid())).Should().BeNull();
     }
 }

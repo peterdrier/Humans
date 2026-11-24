@@ -48,8 +48,8 @@ public sealed class SurveyControllerTests
         var surveyId = Guid.NewGuid();
         var invitationId = Guid.NewGuid();
         responses.ResolveAnswerContextAsync(Token, Arg.Any<CancellationToken>())
-            .Returns(new SurveyAnswerContext(surveyId, invitationId, Guid.NewGuid(),
-                Detail(surveyId, "Thanks!", allowAnonymous: true), [], DraftResponseId: null));
+            .Returns(new SurveyAnswerLink(new SurveyAnswerContext(surveyId, invitationId, Guid.NewGuid(),
+                Detail(surveyId, "Thanks!", allowAnonymous: true), [], DraftResponseId: null), Failure: null));
         var sut = CreateController(surveys, responses, out var session);
         using var services = new ServiceCollection().AddLogging().AddControllers().Services.BuildServiceProvider();
         sut.HttpContext.RequestServices = services;
@@ -100,8 +100,8 @@ public sealed class SurveyControllerTests
         var responses = Substitute.For<ISurveyResponses>();
         var surveyId = Guid.NewGuid();
         responses.ResolveAnswerContextAsync(Token, Arg.Any<CancellationToken>())
-            .Returns(new SurveyAnswerContext(surveyId, Guid.NewGuid(), Guid.NewGuid(),
-                Detail(surveyId, "Thanks!", allowAnonymous: true), [], DraftResponseId: null));
+            .Returns(new SurveyAnswerLink(new SurveyAnswerContext(surveyId, Guid.NewGuid(), Guid.NewGuid(),
+                Detail(surveyId, "Thanks!", allowAnonymous: true), [], DraftResponseId: null), Failure: null));
         var sut = CreateController(surveys, responses, out var session);
         if (bindingFailed) sut.ModelState.AddModelError("Anonymity", "Invalid anonymity choice.");
 
@@ -297,7 +297,7 @@ public sealed class SurveyControllerTests
         var responses = Substitute.For<ISurveyResponses>();
         // A spent token: submit already flipped Completed, so the answer context no longer resolves.
         responses.ResolveAnswerContextAsync(Token, Arg.Any<CancellationToken>())
-            .Returns((SurveyAnswerContext?)null);
+            .Returns(SurveyAnswerLink.Failed(SurveyLinkFailure.AlreadyAnswered));
         surveys.GetForEditAsync(surveyId, Arg.Any<CancellationToken>())
             .Returns(Detail(surveyId, thankYou: "Thanks — see you at the gate."));
         var sut = CreateController(surveys, responses, out var session);
@@ -336,13 +336,13 @@ public sealed class SurveyControllerTests
         var surveys = Substitute.For<ISurveyService>();
         var responses = Substitute.For<ISurveyResponses>();
         responses.ResolveAnswerContextAsync(Token, Arg.Any<CancellationToken>())
-            .Returns(new SurveyAnswerContext(
+            .Returns(new SurveyAnswerLink(new SurveyAnswerContext(
                 surveyId,
                 Guid.NewGuid(),
                 Guid.NewGuid(),
                 Detail(surveyId, thankYou: "Thanks — see you at the gate."),
                 [],
-                DraftResponseId: null));
+                DraftResponseId: null), Failure: null));
         var sut = CreateController(surveys, responses, out _);
 
         var result = await sut.ThankYou(Token, Xunit.TestContext.Current.CancellationToken);
@@ -500,13 +500,13 @@ public sealed class SurveyControllerTests
         var surveys = Substitute.For<ISurveyService>();
         var responses = Substitute.For<ISurveyResponses>();
         responses.ResolveAnswerContextAsync(Token, Arg.Any<CancellationToken>())
-            .Returns(new SurveyAnswerContext(
+            .Returns(new SurveyAnswerLink(new SurveyAnswerContext(
                 surveyId,
                 invitationId,
                 userId,
                 Detail(surveyId, "Thanks!", allowAnonymous: false, isAsociadoVote: true),
                 [],
-                DraftResponseId: null));
+                DraftResponseId: null), Failure: null));
         var sut = CreateController(surveys, responses, out var session);
 
         var result = await sut.Start(
@@ -544,13 +544,13 @@ public sealed class SurveyControllerTests
         var surveys = Substitute.For<ISurveyService>();
         var responses = Substitute.For<ISurveyResponses>();
         responses.ResolveAnswerContextAsync(Token, Arg.Any<CancellationToken>())
-            .Returns(new SurveyAnswerContext(
+            .Returns(new SurveyAnswerLink(new SurveyAnswerContext(
                 surveyId,
                 invitationId,
                 userId,
                 Detail(surveyId, "Thanks!", allowAnonymous: false, isAsociadoVote: true),
                 [new SurveyDraftAnswer(questionId, ["yes"], null, null)],
-                DraftResponseId: Guid.NewGuid()));
+                DraftResponseId: Guid.NewGuid()), Failure: null));
         var sut = CreateController(surveys, responses, out var session);
 
         var result = await sut.Answer(Token, Xunit.TestContext.Current.CancellationToken);
@@ -578,13 +578,13 @@ public sealed class SurveyControllerTests
         var surveys = Substitute.For<ISurveyService>();
         var responses = Substitute.For<ISurveyResponses>();
         responses.ResolveAnswerContextAsync(Token, Arg.Any<CancellationToken>())
-            .Returns(new SurveyAnswerContext(
+            .Returns(new SurveyAnswerLink(new SurveyAnswerContext(
                 surveyId,
                 Guid.NewGuid(),
                 Guid.NewGuid(),
                 Detail(surveyId, "Thanks!", allowAnonymous: true),
                 [],
-                DraftResponseId: draftId));
+                DraftResponseId: draftId), Failure: null));
         var sut = CreateController(surveys, responses, out var session);
 
         var result = await sut.Answer(Token, Xunit.TestContext.Current.CancellationToken);
