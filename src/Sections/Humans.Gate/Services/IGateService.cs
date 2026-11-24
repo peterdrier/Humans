@@ -221,4 +221,6 @@ internal sealed record GateVendorBackfillSnapshot(
     IReadOnlyList<GateVendorBackfillRow> SentAwaitingSync,
     bool MirrorEnabled);
 
-internal sealed record GateVendorBackfillResult(bool MirrorEnabled, IReadOnlyList<GateVendorBackfillRow> Enqueued);
+/// <summary><paramref name="NotPending"/> says why a single requested ticket was not enqueued.</summary>
+internal sealed record GateVendorBackfillResult(
+    bool MirrorEnabled, IReadOnlyList<GateVendorBackfillRow> Enqueued, string? NotPending = null);

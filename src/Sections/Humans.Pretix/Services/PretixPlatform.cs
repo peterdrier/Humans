@@ -239,8 +239,11 @@ internal sealed partial class PretixPlatform(
         EnsureConfigured();
         var (eventSlug, code) = ParsePlatformOrderId(platformOrderId);
         var order = await SendAsync<PretixOrder>(HttpMethod.Get, OrderPath(eventSlug, code), body: null, ct);
-        if (MapStatus(order, logger).State is PlatformOrderState.Paid or PlatformOrderState.Processing)
-            throw new TicketingPlatformException($"pretix order {code} is paid or its payment is settling.");
+        var state = MapStatus(order, logger).State;
+        if (state is PlatformOrderState.Paid or PlatformOrderState.Processing)
+            throw new TicketingPlatformException(state == PlatformOrderState.Paid
+                ? $"pretix order {code} is paid."
+                : $"pretix order {code} has a payment settling.");
         // Expired is cancelled too: pretix still accepts a late payment on an expired order.
         if (!string.Equals(order.Status, "c", StringComparison.Ordinal))
             await CancelOrderAsync(eventSlug, code, ct);
