@@ -5,7 +5,7 @@
 @{
     // Only the three total cards carry the euro sign; the columns below are all euros.
     string Amount(decimal value) => value.ToString("N2", System.Globalization.CultureInfo.CurrentUICulture);
-    ViewData["Title"] = $"Finance - {Model.Year.Name}";
+    ViewData["Title"] = $"Budget - {Model.Year.Name}";
     var year = Model.Year;
     var allYears = Model.AllYears;
     var incomeLabels = Model.IncomeSlices.Select(s => s.Name).ToList();
@@ -51,7 +51,7 @@
         </form>
     }
     <a asp-action="AuditLog" asp-route-yearId="@year.Id" class="btn btn-outline-secondary">
-        <i class="fa-solid fa-clock-rotate-left me-1"></i>Audit Log
+        <i class="fa-solid fa-clock-rotate-left me-1"></i>Budget changes
     </a>
     <a asp-action="Admin" class="btn btn-outline-primary">
         <i class="fa-solid fa-gear me-1"></i>Admin
@@ -122,9 +122,9 @@
 {
     <div class="card">
         <div class="card-body text-center py-4">
-            <empty-state class="mb-2">No groups yet. Add groups in Finance Admin to start building the budget.</empty-state>
+            <empty-state class="mb-2">No groups yet. Add groups in Budget admin to start building the budget.</empty-state>
             <a asp-action="Admin" class="btn btn-outline-primary btn-sm">
-                <i class="fa-solid fa-plus me-1"></i>Go to Finance Admin
+                <i class="fa-solid fa-plus me-1"></i>Go to Budget admin
             </a>
         </div>
     </div>
@@ -267,8 +267,8 @@
                                     </div>
                                     <div class="col-md-2">
                                         <label class="form-label form-label-sm">TT Fee (%)</label>
-                                        <input type="number" name="ticketTailorFeePercent" class="form-control form-control-sm"
-                                               step="0.01" value="@proj.TicketTailorFeePercent" />
+                                        <input type="number" name="platformFeePercent" class="form-control form-control-sm"
+                                               step="0.01" value="@proj.PlatformFeePercent" />
                                     </div>
                                     <div class="col-md-1 d-flex align-items-end" authorize-policy="@FinancePolicies.Manage">
                                         <button type="submit" class="btn btn-primary btn-sm w-100">Save</button>

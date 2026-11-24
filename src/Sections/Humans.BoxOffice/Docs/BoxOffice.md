@@ -12,6 +12,8 @@
 
 # BoxOffice — Section Invariants
 
+Vocabulary: [`CONTEXT.md`](CONTEXT.md).
+
 Humans' own ticketing platform: one implementation of Tickets' `ITicketingPlatform` port, key `boxoffice`, that
 takes payment through Stripe hosted Checkout and refunds through the Stripe API. It owns no tables and no Tickets data:
 Tickets owns the order, the price and the named ticket; this section only turns them into a Stripe Checkout Session

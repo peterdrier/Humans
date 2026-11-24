@@ -11,15 +11,15 @@ internal interface IBudgetManagement : IBudgetService
     Task<IReadOnlyList<BudgetYearSummarySnapshot>> GetAllYearsAsync(bool includeArchived = false, CancellationToken ct = default);
     Task<BudgetSaveResult<BudgetYearDetail>> CreateYearAsync(string year, string name, Guid actorUserId);
     Task<BudgetYearMutationResult> UpdateYearStatusAsync(Guid yearId, BudgetYearStatus status, Guid actorUserId);
-    Task<BudgetYearMutationResult> UpdateYearAsync(Guid yearId, string year, string name, string? vendorEventId, Guid actorUserId);
-    Task<BudgetYearMutationResult> DeleteYearAsync(Guid yearId, Guid actorUserId);
+    Task<BudgetYearMutationResult> UpdateYearAsync(Guid yearId, string year, string name, string? platformEventId, Guid actorUserId);
+    Task<BudgetYearMutationResult> ArchiveYearAsync(Guid yearId, Guid actorUserId);
 
     Task<int> SyncDepartmentsAsync(Guid budgetYearId, Guid actorUserId);
     Task<EnsureTicketingGroupResult> EnsureTicketingGroupAsync(Guid budgetYearId, Guid actorUserId);
 
     Task<TicketingProjectionSaveResult> UpdateTicketingProjectionAsync(Guid budgetGroupId, LocalDate? startDate, LocalDate? eventDate,
         int initialSalesCount, decimal dailySalesRate, decimal averageTicketPrice, int vatRate,
-        decimal stripeFeePercent, decimal stripeFeeFixed, decimal ticketTailorFeePercent, Guid actorUserId,
+        decimal stripeFeePercent, decimal stripeFeeFixed, decimal platformFeePercent, Guid actorUserId,
         bool refreshProjections = false, CancellationToken ct = default);
 
     /// <summary>
@@ -33,7 +33,7 @@ internal interface IBudgetManagement : IBudgetService
         Guid? actorUserId,
         CancellationToken ct = default);
 
-    /// <summary>Remaining ticket count from the same weekly policy as materialized forecasts.</summary>
+    /// <summary>Remaining ticket count from the same weekly policy as materialized projections.</summary>
     Task<int> GetProjectedRemainingTicketsAsync(
         Guid budgetGroupId, CancellationToken ct = default);
 
@@ -56,5 +56,5 @@ internal interface IBudgetManagement : IBudgetService
 
     Task<IReadOnlyList<BudgetAuditLogSnapshot>> GetAuditLogAsync(Guid? budgetYearId, CancellationToken ct = default);
 
-    BudgetSummaryResult ComputeBudgetSummaryWithBuffers(IReadOnlyList<BudgetGroupDetail> groups);
+    BudgetSummaryResult ComputeBudgetSummaryWithAvailable(IReadOnlyList<BudgetGroupDetail> groups);
 }
