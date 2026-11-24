@@ -39,6 +39,7 @@ Words that belong to one section live in that section's own glossary. Words used
 - [Audit](src/Sections/Humans.AuditLog/Docs/CONTEXT.md): the audit log, its entries and the history shown on pages
 - [Auth](src/Sections/Humans.Auth/Docs/CONTEXT.md): signing in, signing up and system roles
 - [Backdoor](src/Sections/Humans.Backdoor/Docs/CONTEXT.md): personal API keys and the Backdoor API
+- [BoxOffice](src/Sections/Humans.BoxOffice/Docs/CONTEXT.md): Humans' own ticketing platform on Stripe
 
 ## Finance
 
