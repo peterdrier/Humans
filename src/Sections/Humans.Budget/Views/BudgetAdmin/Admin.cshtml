@@ -1,9 +1,9 @@
 @model IReadOnlyList<Humans.Budget.Services.BudgetYearSummarySnapshot>
 @{
-    ViewData["Title"] = "Finance Admin";
+    ViewData["Title"] = "Budget admin";
 }
 
-<page-header title="Finance Admin">
+<page-header title="Budget admin">
     <a asp-action="Index" class="btn btn-outline-secondary">
         <i class="fa-solid fa-arrow-left me-1"></i>Back to Finance
     </a>
@@ -53,7 +53,7 @@
             <div>
                 <strong>@budgetYear.Name</strong>
                 <status-badge value="@budgetYear.Status" class="ms-2" />
-                @if (budgetYear.IsDeleted)
+                @if (budgetYear.IsArchived)
                 {
                     <span class="badge bg-dark ms-1">Archived</span>
                 }
@@ -66,14 +66,14 @@
         </div>
         <div class="card-body">
             <div class="mb-3">
-                @if (!budgetYear.IsDeleted && budgetYear.Status != BudgetYearStatus.Closed)
+                @if (!budgetYear.IsArchived && budgetYear.Status != BudgetYearStatus.Closed)
                 {
                     <button class="btn btn-outline-secondary btn-sm" type="button" data-bs-toggle="collapse" data-bs-target="#@yearEditId">
                         <i class="fa-solid fa-pen me-1"></i>Edit Year
                     </button>
                 }
 
-                @if (budgetYear.IsDeleted)
+                @if (budgetYear.IsArchived)
                 {
                     <span class="text-muted small">Archived — budget changes preserved</span>
                 }
@@ -86,7 +86,7 @@
                             <i class="fa-solid fa-play me-1"></i>Activate
                         </button>
                     </form>
-                    <form authorize-policy="@Humans.Finance.Contracts.FinancePolicies.Manage" asp-action="DeleteYear" asp-route-id="@budgetYear.Id" method="post" class="d-inline">
+                    <form authorize-policy="@Humans.Finance.Contracts.FinancePolicies.Manage" asp-action="ArchiveYear" asp-route-id="@budgetYear.Id" method="post" class="d-inline">
                         @Html.AntiForgeryToken()
                         <button type="submit" class="btn btn-outline-danger btn-sm" data-confirm="Archive this budget year? It will be hidden from non-admin views but its budget changes will be preserved.">
                             <i class="fa-solid fa-box-archive me-1"></i>Archive
@@ -112,7 +112,7 @@
                             <i class="fa-solid fa-rotate-left me-1"></i>Reactivate
                         </button>
                     </form>
-                    <form authorize-policy="@Humans.Finance.Contracts.FinancePolicies.Manage" asp-action="DeleteYear" asp-route-id="@budgetYear.Id" method="post" class="d-inline">
+                    <form authorize-policy="@Humans.Finance.Contracts.FinancePolicies.Manage" asp-action="ArchiveYear" asp-route-id="@budgetYear.Id" method="post" class="d-inline">
                         @Html.AntiForgeryToken()
                         <button type="submit" class="btn btn-outline-danger btn-sm" data-confirm="Archive this budget year? It will be hidden from non-admin views but its budget changes will be preserved.">
                             <i class="fa-solid fa-box-archive me-1"></i>Archive
@@ -121,7 +121,7 @@
                 }
             </div>
 
-            @if (!budgetYear.IsDeleted && budgetYear.Status != BudgetYearStatus.Closed)
+            @if (!budgetYear.IsArchived && budgetYear.Status != BudgetYearStatus.Closed)
             {
                 <div id="@yearEditId" class="collapse mb-3">
                     <form authorize-policy="@Humans.Finance.Contracts.FinancePolicies.Manage" asp-action="UpdateYear" asp-route-id="@budgetYear.Id" method="post" class="row g-2 align-items-end p-3 bg-light rounded">
@@ -135,8 +135,8 @@
                             <input type="text" name="name" class="form-control form-control-sm" value="@budgetYear.Name" required />
                         </div>
                         <div class="col-md-3">
-                            <label class="form-label form-label-sm">Ticket Vendor Event ID</label>
-                            <input type="text" name="vendorEventId" class="form-control form-control-sm" value="@budgetYear.VendorEventId" maxlength="256" placeholder="blank = current event" />
+                            <label class="form-label form-label-sm">Ticketing platform event ID</label>
+                            <input type="text" name="platformEventId" class="form-control form-control-sm" value="@budgetYear.PlatformEventId" maxlength="256" placeholder="blank = current event" />
                         </div>
                         <div class="col-md-2">
                             <button type="submit" class="btn btn-primary btn-sm">Save Changes</button>

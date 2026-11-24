@@ -81,7 +81,7 @@ BudgetYear ("2026", "2027-A", ...)
 - Each line item has: description, amount, responsible team (FK → Team), optional notes
 - CapEx/OpEx flag is on `BudgetCategory`, not line items
 - No arbitrary nesting beyond four levels
-- `BudgetYear` supports soft-delete (`IsDeleted`, `DeletedAt`): "deleting" a year archives it instead of removing data, preserving all audit log history. Archived years are hidden from non-admin views but remain visible on the Finance Admin page and in the audit log year filter. They cannot be reactivated; stale status-update submissions leave the current active year and audit history unchanged.
+- `BudgetYear` can be archived (`IsArchived`, `ArchivedAt`) instead of deleted, preserving all audit log history. Archived years are hidden from non-admin views but remain visible on the Budget admin page and in the audit log year filter. They cannot be reactivated; stale status-update submissions leave the current active year and audit history unchanged.
 
 ### Budget changes
 
@@ -206,7 +206,7 @@ Outbound invoices to members/barrios:
 - **Coordinator view** at `/Budget` via BudgetController (#233):
   - Any team coordinator sees all department budgets (non-restricted groups)
   - Can add/edit/delete line items within own department only
-  - Per-category unallocated remainder and progress bar
+  - Per-category available amount and progress bar
   - `IsRestricted` groups hidden from coordinator view
   - Authorization uses resource-based auth via `BudgetAuthorizationHandler` + `BudgetOperationRequirement.Edit`, which calls Teams’ `ITeamService.GetEffectiveBudgetCoordinatorTeamIdsAsync` policy directly (includes active child teams)
   - All changes audit-logged via existing BudgetChange
@@ -255,7 +255,7 @@ Outbound invoices to members/barrios:
     computation; no donation handling or quarter-boundary splitting exists in the sync)
 - **Projections** via `IBudgetManagement.GetProjectedRemainingTicketsAsync`:
   - The overview reads only the remaining ticket count, summed from virtual (non-persisted) weeks from current week to event date (inclusive, including a one-day final week when the event is on Monday). Preview and persisted projections share bounded date arithmetic through the maximum supported event date; neither advances beyond the final day.
-  - Each week projects `DailySalesRate` × days within the sales period (plus the initial burst in the first week), excluding days before Start Date even though labels retain ISO-week bounds. An inverted sales period produces no forecast rows; the nightly sync refreshes average ticket price and fee percentages from actuals, never the daily rate.
+  - Each week projects `DailySalesRate` × days within the sales period (plus the initial burst in the first week), excluding days before Start Date even though labels retain ISO-week bounds. An inverted sales period produces no projection rows; the nightly sync refreshes average ticket price and fee percentages from actuals, never the daily rate.
   - Fees computed on revenue; VAT on revenue at the projection's VAT rate (inclusive
     formula), while the projected Stripe/TicketTailor fee line items carry the assumed 21% fee VAT rate
 - **Budget totals** exclude `IsCashflowOnly` line items from income/expense/profit/charts

@@ -2,7 +2,7 @@
 @using Microsoft.AspNetCore.Html
 @model Humans.Audit.Models.AuditLogListViewModel
 
-<page-header title="Audit Log">
+<page-header title="Audit log">
     <form asp-controller="Monitor" asp-action="CheckDriveActivity" method="post" class="d-inline" id="checkForm"
           authorize-policy="@Humans.Base.Authorization.PolicyNames.AdminOnly">
         @Html.AntiForgeryToken()

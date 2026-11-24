@@ -9,6 +9,8 @@
 
 # Audit Log — Section Invariants
 
+Vocabulary: [`CONTEXT.md`](CONTEXT.md).
+
 Append-only system audit trail: who did what, when, to which entity. Used by every section that performs a privileged or irreversible action. Enforced append-only per design-rules.md, *Append-only entities*.
 
 - **For:** the Board can see what people, admins and automation did to members' records and the association's data, after the fact, without trusting anyone's memory.

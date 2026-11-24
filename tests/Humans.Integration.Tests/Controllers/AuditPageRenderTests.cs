@@ -31,7 +31,7 @@ public class AuditPageRenderTests(HumansTestDatabase database) : IntegrationTest
             response.StatusCode.Should().Be(HttpStatusCode.OK, $"GET {url} must render");
 
             var html = await response.Content.ReadAsStringAsync(ct);
-            html.Should().Contain("Audit Log", $"GET {url} must render its own copy");
+            html.Should().Contain("Audit log", $"GET {url} must render its own copy");
 
             html.Should().NotContain("<page-header", $"GET {url} left <page-header> unbound");
 

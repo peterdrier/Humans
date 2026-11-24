@@ -10,13 +10,13 @@ internal sealed class BudgetYear
     public string Name { get; set; } = string.Empty;
 
     /// <summary>Whose orders count toward this year; null means the current event.</summary>
-    public string? VendorEventId { get; set; }
+    public string? PlatformEventId { get; set; }
 
     public BudgetYearStatus Status { get; set; } = BudgetYearStatus.Draft;
     public Instant CreatedAt { get; init; }
     public Instant UpdatedAt { get; set; }
-    public bool IsDeleted { get; set; }
-    public Instant? DeletedAt { get; set; }
+    public bool IsArchived { get; set; }
+    public Instant? ArchivedAt { get; set; }
     public ICollection<BudgetGroup> Groups { get; } = new List<BudgetGroup>();
     public ICollection<BudgetChange> Changes { get; } = new List<BudgetChange>();
 }

@@ -285,7 +285,7 @@ public class HoldedFinanceServiceTests
             Year: "2026",
             Name: "Camp 2026",
             Status: BudgetYearStatus.Active,
-            IsDeleted: false,
+            IsArchived: false,
             Groups:
             [
                 new BudgetGroupDetail(
@@ -344,7 +344,7 @@ public class HoldedFinanceServiceTests
             Year: "2026",
             Name: "Camp 2026",
             Status: BudgetYearStatus.Active,
-            IsDeleted: false,
+            IsArchived: false,
             Groups:
             [
                 new BudgetGroupDetail(
@@ -1645,7 +1645,7 @@ public class HoldedFinanceServiceTests
         var mappedCat = Guid.NewGuid();
         _budget.GetActiveYearAsync(Arg.Any<CancellationToken>()).Returns(new BudgetYearDetail(
             Id: Guid.NewGuid(), Year: "2026", Name: "Camp 2026",
-            Status: BudgetYearStatus.Active, IsDeleted: false,
+            Status: BudgetYearStatus.Active, IsArchived: false,
             Groups:
             [
                 new BudgetGroupDetail(
@@ -1815,7 +1815,7 @@ public class HoldedFinanceServiceTests
         var catB = Guid.NewGuid();
         _budget.GetActiveYearAsync(Arg.Any<CancellationToken>()).Returns(new BudgetYearDetail(
             Id: Guid.NewGuid(), Year: "2026", Name: "Camp 2026",
-            Status: BudgetYearStatus.Active, IsDeleted: false,
+            Status: BudgetYearStatus.Active, IsArchived: false,
             Groups:
             [
                 new BudgetGroupDetail(
@@ -2218,7 +2218,7 @@ public class HoldedFinanceServiceTests
             Year: "2026",
             Name: "Camp 2026",
             Status: BudgetYearStatus.Active,
-            IsDeleted: false,
+            IsArchived: false,
             Groups:
             [
                 new BudgetGroupDetail(
