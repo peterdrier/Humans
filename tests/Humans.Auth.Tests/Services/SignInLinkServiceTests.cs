@@ -181,7 +181,7 @@ public sealed class SignInLinkServiceTests
     }
 
     [HumansFact]
-    public async Task SendSignInLinkAsync_SignupRateLimited_DoesNotSendEmail()
+    public async Task SendSignInLinkAsync_SignupThrottled_SendsNothing()
     {
         await _service.SendSignInLinkAsync("newperson@example.com", null, Xunit.TestContext.Current.CancellationToken);
         _emailService.ClearReceivedCalls();

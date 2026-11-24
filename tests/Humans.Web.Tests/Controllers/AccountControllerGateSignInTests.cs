@@ -26,7 +26,7 @@ namespace Humans.Web.Tests.Controllers;
 /// Failures are throttled per source IP, never per account: an attacker must not be able to lock out an account whose
 /// username is public.
 /// </summary>
-public class AccountControllerGateLoginTests
+public class AccountControllerGateSignInTests
 {
     private readonly FakeClock _clock = new(Instant.FromUtc(2026, 6, 10, 12, 0));
     private readonly UserManager<User> _userManager;
@@ -36,7 +36,7 @@ public class AccountControllerGateLoginTests
 
     private readonly User _gateUser = new() { Id = SystemUserIds.GateTerminal };
 
-    public AccountControllerGateLoginTests()
+    public AccountControllerGateSignInTests()
     {
         var userStore = Substitute.For<IUserStore<User>>();
         _userManager = Substitute.For<UserManager<User>>(
@@ -140,7 +140,7 @@ public class AccountControllerGateLoginTests
     }
 
     [HumansFact]
-    public async Task GateSignIn_TooManyFailures_ThrottlesBeforeThePasswordCheck()
+    public async Task GateSignIn_TooManyFailures_ThrottlesBeforePasswordCheck()
     {
         SetupGateUser();
         _signInManager.CheckPasswordSignInAsync(_gateUser, Arg.Any<string>(), false)

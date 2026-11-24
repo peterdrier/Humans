@@ -840,7 +840,7 @@ public class AccountProvisioningServiceTests
     [Xunit.InlineData(0, 257)]
     [Xunit.InlineData(1, 257)]
     [Xunit.InlineData(2, 257)]
-    public async Task CompleteSignInLinkSignupAsync_ValidatesNameLengthsBeforeCreatingAccount(int field, int length)
+    public async Task CompleteSignInLinkSignupAsync_ValidatesNameLengthsFirst(int field, int length)
     {
         string[] names = ["Burner", "First", "Last"];
         names[field] = " " + new string('x', length) + " ";
@@ -886,7 +886,7 @@ public class AccountProvisioningServiceTests
     }
 
     [HumansFact]
-    public async Task CompleteSignInLinkSignupAsync_ExistingVerifiedEmailUpdatesLastLogin()
+    public async Task CompleteSignInLinkSignupAsync_ExistingEmail_ReusesAccount()
     {
         var user = new User
         {

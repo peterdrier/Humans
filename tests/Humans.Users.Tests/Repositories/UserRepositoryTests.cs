@@ -67,7 +67,7 @@ public sealed class UserRepositoryTests : IDisposable
     }
 
     [HumansFact]
-    public async Task SetLastSignInAsync_ReturnsFalse_WhenUserDoesNotExist()
+    public async Task SetLastSignInAsync_UnknownUser_ReturnsFalse()
     {
         var result = await _repo.SetLastSignInAsync(
             Guid.NewGuid(), _clock.GetCurrentInstant(), TestContext.Current.CancellationToken);

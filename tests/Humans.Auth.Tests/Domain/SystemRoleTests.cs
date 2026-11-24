@@ -6,7 +6,7 @@ using Humans.Auth.Domain;
 
 namespace Humans.Auth.Tests.Domain;
 
-public sealed class RoleAssignmentTests
+public sealed class SystemRoleTests
 {
     [HumansFact]
     public void IsActive_WithinValidPeriod_ShouldReturnTrue()
