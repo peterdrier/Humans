@@ -658,7 +658,7 @@ public sealed class ServiceTests
 
         result.Succeeded.Should().BeFalse();
         result.ErrorMessage.Should().Contain("Nowhere 2026").And.Contain("2026-06-14 to 2026-07-18");
-        await _repository.DidNotReceiveWithAnyArgs().UpsertEventSettingsAsync(default!, default, default);
+        await _repository.DidNotReceiveWithAnyArgs().UpsertEventSettingsAsync(default!, default);
     }
 
     [HumansFact]
@@ -691,7 +691,7 @@ public sealed class ServiceTests
         var result = await BuildSut().ActivateEventSettingsAsync(next.Id, Actor, TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeTrue();
-        await _repository.DidNotReceiveWithAnyArgs().UpsertEventSettingsAsync(default!, default, default);
+        await _repository.DidNotReceiveWithAnyArgs().UpsertEventSettingsAsync(default!, default);
         await _auditLog.Received(1).LogAsync(
             SettingsAuditActions.EventSettingsUpdated, Arg.Any<string>(), next.Id,
             "Event 'Nowhere 2027' made active; 'Nowhere 2026' set inactive.", Actor);
@@ -715,7 +715,7 @@ public sealed class ServiceTests
         var result = await BuildSut().ActivateEventSettingsAsync(id, Actor, TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeFalse();
-        await _repository.DidNotReceiveWithAnyArgs().SetActiveEventSettingsAsync(default, default, default);
+        await _repository.DidNotReceiveWithAnyArgs().SetActiveEventSettingsAsync(default, default);
         await _auditLog.DidNotReceiveWithAnyArgs().LogAsync(null!, default!, default, default!, default(Guid));
     }
 
@@ -789,7 +789,7 @@ public sealed class ServiceTests
         var result = await BuildSut().SaveTimeZoneAsync("Mars/Olympus", Actor, TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeFalse();
-        await _repository.DidNotReceiveWithAnyArgs().SetValueAsync(default!, default!, default);
+        await _repository.DidNotReceiveWithAnyArgs().SetValueAsync(default!, default!);
         _auditLog.ReceivedCalls().Should().BeEmpty();
     }
 }

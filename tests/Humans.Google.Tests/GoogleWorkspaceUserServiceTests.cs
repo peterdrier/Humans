@@ -3,7 +3,6 @@ using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using Xunit;
 using GoogleWorkspaceUserService = Humans.Google.Services.GoogleWorkspaceUserService;
-using Humans.Google.Services;
 using Humans.Google.Services.Workspace;
 
 namespace Humans.Google.Tests;

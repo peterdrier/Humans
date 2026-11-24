@@ -7,7 +7,6 @@ using Microsoft.AspNetCore.Mvc.ModelBinding.Validation;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Primitives;
 using AwesomeAssertions;
-using Humans.Base.Authorization;
 using Humans.Base.Constants;
 using Humans.Base.Enums;
 using Humans.Google.Contracts;
@@ -109,7 +108,7 @@ public class TeamAdminControllerMembersTests
             Check("definitions", call.Arg<CancellationToken>());
             return Task.FromResult<IReadOnlyList<TeamRoleDefinitionSnapshot>>([]);
         });
-        teams.UpdateTeamPageContentAsync(default, default, default!, default, default, default, default)
+        teams.UpdateTeamPageContentAsync(default, default, default!, default, default, default)
             .ReturnsForAnyArgs(async call =>
             {
                 call.Arg<CancellationToken>().Should().Be(CancellationToken.None);
@@ -632,7 +631,7 @@ public class TeamAdminControllerMembersTests
 
         result.Should().BeOfType<RedirectToActionResult>();
         await teams.Received(1).UpdateRoleDefinitionAsync(roleId, "Updated", null, 1,
-            Arg.Any<List<SlotPriority>>(), 0, authorized ? requested : (bool?)null,
+            Arg.Any<List<SlotPriority>>(), 0, authorized ? requested : null,
             RolePeriod.YearRound, userId, true, 7, Arg.Any<CancellationToken>());
     }
 
@@ -679,7 +678,7 @@ public class TeamAdminControllerMembersTests
         result.Should().BeOfType<RedirectToActionResult>();
         await provisioning.Received(1).ProvisionNobodiesEmailAsync(targetId, "person", actorId, team.Id);
         controller.TempData[TempDataKeys.InfoMessage].Should().Be(warning);
-        await teams.DidNotReceiveWithAnyArgs().GetTeamAsync(default, default);
+        await teams.DidNotReceiveWithAnyArgs().GetTeamAsync(default);
         controller.TempData[TempDataKeys.SuccessMessage].Should().BeNull();
         controller.TempData[TempDataKeys.ErrorMessage].Should().BeNull();
     }

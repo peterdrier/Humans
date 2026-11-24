@@ -4,7 +4,7 @@
    ChromeSlots.WidgetGallery slot, so the section owns its own cards and Debug names nothing here. *@
 
 @functions {
-    private static Microsoft.AspNetCore.Html.IHtmlContent ParamsBlock(params (string Name, string Description)[] entries)
+    private static IHtmlContent ParamsBlock(params (string Name, string Description)[] entries)
     {
         var html = new System.Text.StringBuilder();
         html.Append("<dl class=\"wg-params\">");
@@ -20,7 +20,7 @@
             }
         }
         html.Append("</dl>");
-        return new Microsoft.AspNetCore.Html.HtmlString(html.ToString());
+        return new HtmlString(html.ToString());
     }
 }
 

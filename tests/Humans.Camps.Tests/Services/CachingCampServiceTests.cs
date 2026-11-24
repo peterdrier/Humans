@@ -2,7 +2,6 @@ using Humans.Gdpr.Contracts;
 using AwesomeAssertions;
 using Humans.EarlyEntry.Contracts;
 using Humans.Base.Enums;
-using Humans.Base.Interfaces.Caching;
 using Humans.Base.Extensions;
 using Humans.Settings.Contracts;
 using Microsoft.EntityFrameworkCore;

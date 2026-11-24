@@ -54,7 +54,7 @@
     <partial name="_Table" model="linesTable" />
 </div>
 
-<form authorize-policy="@Humans.Finance.Contracts.FinancePolicies.Manage" id="sepaGenerate" asp-action="GenerateSepa" method="post"
+<form authorize-policy="@FinancePolicies.Manage" id="sepaGenerate" asp-action="GenerateSepa" method="post"
       class="d-flex align-items-center gap-3">
     @Html.AntiForgeryToken()
     <input type="hidden" name="maxPerTransfer" value="@Amount(Model.MaxPerTransfer)" />

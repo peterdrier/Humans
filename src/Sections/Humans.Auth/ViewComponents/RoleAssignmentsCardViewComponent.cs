@@ -1,7 +1,6 @@
 using Humans.Users.Contracts;
 using Humans.Auth.Contracts;
 using Humans.Auth.Models;
-using Humans.Base.Authorization;
 using Humans.Base.Enums;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;

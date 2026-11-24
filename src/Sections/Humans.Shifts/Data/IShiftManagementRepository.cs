@@ -1,6 +1,3 @@
-using Humans.Shifts.Services.Dtos;
-using Humans.Shifts.Services;
-using Humans.Shifts.Contracts;
 using Humans.Shifts.Domain;
 using NodaTime;
 using Humans.Base.Interfaces.Repositories;

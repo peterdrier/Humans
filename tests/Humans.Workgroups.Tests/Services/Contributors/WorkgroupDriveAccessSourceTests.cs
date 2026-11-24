@@ -1,13 +1,9 @@
 using AwesomeAssertions;
 using Humans.Base.Constants;
-using Humans.Base.Enums;
 using Humans.Google.Contracts;
-using Humans.Auth.Contracts;
-using Humans.Users.Contracts;
 using Humans.Workgroups.Domain;
 using Humans.Workgroups.Services.Contributors;
 using Humans.Workgroups.Tests.Infrastructure;
-using NodaTime;
 using NSubstitute;
 
 namespace Humans.Workgroups.Tests.Services.Contributors;

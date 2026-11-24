@@ -163,7 +163,7 @@ public class ProcessAccountDeletionsJobTests : IDisposable
 
         var failure = await run.Should().ThrowAsync<OperationCanceledException>();
         failure.Which.CancellationToken.Should().Be(cancellation.Token);
-        await _emailService.DidNotReceiveWithAnyArgs().SendAsync(default!, default);
+        await _emailService.DidNotReceiveWithAnyArgs().SendAsync(default!);
     }
 
     [HumansFact]

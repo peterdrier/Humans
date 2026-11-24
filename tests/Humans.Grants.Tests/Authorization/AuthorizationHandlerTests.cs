@@ -29,14 +29,14 @@ public sealed class AuthorizationHandlerTests : GrantsTestHarness
     private async Task<bool> ProgramAllowedAsync(ClaimsPrincipal user, ProgramInfo program, ProgramOperationRequirement requirement)
     {
         var context = new AuthorizationHandlerContext([requirement], user, program);
-        await new ProgramAuthorizationHandler(Users, new Microsoft.AspNetCore.Http.HttpContextAccessor()).HandleAsync(context);
+        await new ProgramAuthorizationHandler(Users, new HttpContextAccessor()).HandleAsync(context);
         return context.HasSucceeded;
     }
 
     private async Task<bool> PolicyAllowedAsync(ClaimsPrincipal user)
     {
         var context = new AuthorizationHandlerContext([new ManagesGrantsRequirement()], user, resource: null);
-        await new GrantsPolicyHandler(NewService(), Users, new Microsoft.AspNetCore.Http.HttpContextAccessor()).HandleAsync(context);
+        await new GrantsPolicyHandler(NewService(), Users, new HttpContextAccessor()).HandleAsync(context);
         return context.HasSucceeded;
     }
 

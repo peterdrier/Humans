@@ -40,8 +40,8 @@ public class DevSeedControllerTests
         // Staging with DevAuth on is QA / a preview.
         _environment.EnvironmentName.Returns("Staging");
         SetDevAuthEnabled(true);
-        _serviceProvider.GetService(typeof(Humans.Development.Services.Demo.DemoRunStatus))
-            .Returns(new Humans.Development.Services.Demo.DemoRunStatus());
+        _serviceProvider.GetService(typeof(Services.Demo.DemoRunStatus))
+            .Returns(new Services.Demo.DemoRunStatus());
         var ctrl = BuildSut();
         ctrl.TempData = Substitute.For<ITempDataDictionary>();
 

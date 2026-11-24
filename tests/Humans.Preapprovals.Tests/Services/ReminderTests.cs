@@ -1,6 +1,5 @@
 using System.Transactions;
 using AwesomeAssertions;
-using Humans.AuditLog.Contracts;
 using Humans.Email.Contracts;
 using Humans.Notifications.Contracts;
 using Humans.Preapprovals.Contracts;
@@ -142,7 +141,7 @@ public sealed class ReminderTests : PreapprovalsTestHarness
         }
         await using var db = OpenContext();
         var markers = await db.RemindersSent.ToListAsync(Ct);
-        markers.Should().ContainSingle().Which.Should().BeEquivalentTo(new { GrantId = grant.Id, Kind = ReminderKind.D14, ClaimBy = program.ClaimBy });
+        markers.Should().ContainSingle().Which.Should().BeEquivalentTo(new { GrantId = grant.Id, Kind = ReminderKind.D14, program.ClaimBy });
         var stored = await ReadGrantAsync(grant.Id);
         stored.Status.Should().Be(GrantStatus.Open);
         stored.UpdatedAt.Should().Be(grant.UpdatedAt);

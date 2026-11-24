@@ -51,7 +51,7 @@ public sealed class SurveyRepositoryTests : IDisposable
     {
         var survey = Survey(SurveyStatus.Open);
         var invitation = Invitation(survey.Id, sentAt: Now - Duration.FromDays(7));
-        invitation.LatestEmailStatus = Humans.Base.Enums.EmailOutboxStatus.Queued;
+        invitation.LatestEmailStatus = Base.Enums.EmailOutboxStatus.Queued;
         await _db.Surveys.AddAsync(survey, Xunit.TestContext.Current.CancellationToken);
         await _db.SurveyInvitations.AddAsync(invitation, Xunit.TestContext.Current.CancellationToken);
         await _db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
@@ -63,7 +63,7 @@ public sealed class SurveyRepositoryTests : IDisposable
             Xunit.TestContext.Current.CancellationToken);
         persisted.ReminderSentAt.Should().Be(Now);
         persisted.SentAt.Should().Be(Now - Duration.FromDays(7));
-        persisted.LatestEmailStatus.Should().Be(Humans.Base.Enums.EmailOutboxStatus.Queued);
+        persisted.LatestEmailStatus.Should().Be(Base.Enums.EmailOutboxStatus.Queued);
     }
 
     private static Survey Survey(SurveyStatus status) => new()

@@ -3022,7 +3022,7 @@ public class SurveyServiceTests
             .Returns(Asociado(survivor) with { MergedUserIds = [archived] });
         var reads = 0;
         _repo.GetInvitationsAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(_ =>
-            (IReadOnlyList<SurveyInvitation>)[new SurveyInvitation
+            [new SurveyInvitation
             {
                 Id = Guid.NewGuid(), SurveyId = survey.Id, UserId = archived,
                 Completed = !completedAfterPreparation || ++reads > 1
@@ -5625,10 +5625,10 @@ public class SurveyServiceTests
     }
 
     [HumansTheory]
-    [Xunit.InlineData("open", "Candidate availability can only change after the vote closes.")]
-    [Xunit.InlineData("missing-survey", "Survey not found.")]
-    [Xunit.InlineData("missing-question", "Ranked-choice question not found.")]
-    [Xunit.InlineData("wrong-question-type", "Ranked-choice question not found.")]
+    [InlineData("open", "Candidate availability can only change after the vote closes.")]
+    [InlineData("missing-survey", "Survey not found.")]
+    [InlineData("missing-question", "Ranked-choice question not found.")]
+    [InlineData("wrong-question-type", "Ranked-choice question not found.")]
     public async Task SetRankedAvailabilityAsync_refuses_invalid_targets_without_writes(string target, string reason)
     {
         var survey = SurveyWith(string.Equals(target, "open", StringComparison.Ordinal) ? SurveyStatus.Open : SurveyStatus.Closed, SurveyAudienceType.Asociados, null);

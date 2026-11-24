@@ -820,7 +820,7 @@ public class GateServiceTests
             {
                 await aborted.CancelAsync();
                 call.Arg<CancellationToken>().ThrowIfCancellationRequested();
-                return (IReadOnlyList<UrgentShiftInfo>)[];
+                return [];
             });
 
         var act = () => _svc.GetShiftRosterAsync(Guid.NewGuid(), aborted.Token);
@@ -1003,7 +1003,7 @@ public class GateServiceTests
             await act.Should().ThrowAsync<OperationCanceledException>();
         else
             await act.Should().NotThrowAsync();
-        await vendor.DidNotReceiveWithAnyArgs().CreateCheckInAsync(default!, default, default);
+        await vendor.DidNotReceiveWithAnyArgs().CreateCheckInAsync(default!, default);
     }
 
     [HumansFact]
@@ -1065,7 +1065,7 @@ public class GateServiceTests
         _config["Gate:VendorMirrorEnabled"] = "false";
         _tickets.ClearReceivedCalls();
 
-        foreach (var id in new string?[] { "vt-A", null })
+        foreach (var id in new[] { "vt-A", null })
         {
             var result = await _svc.EnqueueVendorCheckInBackfillAsync(id);
             result.MirrorEnabled.Should().BeFalse();

@@ -1,6 +1,5 @@
 using System.Net;
 using AwesomeAssertions;
-using Humans.Consent.Contracts;
 using Humans.Consent.Data;
 using Humans.Consent.Domain;
 using Humans.Consent.Services;

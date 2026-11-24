@@ -1,4 +1,3 @@
-using Humans.Base.Extensions;
 using Humans.Budget.Contracts;
 using Humans.Budget.Services;
 using Humans.Finance.Contracts;
@@ -10,7 +9,6 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 using NodaTime;
 
-using Humans.Base.Authorization;
 using Humans.Users.Contracts;
 
 namespace Humans.Budget.Controllers;

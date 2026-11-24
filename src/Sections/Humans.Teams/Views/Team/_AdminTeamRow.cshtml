@@ -78,7 +78,7 @@
         }
     </td>
     <td>@Model.CreatedAt.ToDate()</td>
-    <td authorize-policy="@Humans.Teams.Contracts.TeamsPolicies.Read">
+    <td authorize-policy="@TeamsPolicies.Read">
         @if (!Model.IsSystemTeam)
         {
             <div class="d-flex gap-1" role="group">

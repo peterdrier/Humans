@@ -1,7 +1,6 @@
 using Humans.AuditLog.Contracts;
 using Humans.Gdpr.Contracts;
 using Humans.Google.Contracts;
-using Humans.Google.Data;
 using Humans.Google.Domain;
 using Humans.Users.Contracts;
 using NodaTime;

@@ -132,14 +132,14 @@ internal sealed class GrantsAdminController(
     [ValidateAntiForgeryToken]
     public Task<IActionResult> Revoke(Guid programId, Guid grantId, string? reason, CancellationToken ct) =>
         ManageAsync(programId, async actor =>
-            ((GrantMutationResult)await grants.RevokeGrantAsync(programId, grantId, reason, actor, ct), "Grant revoked"), ct);
+            (await grants.RevokeGrantAsync(programId, grantId, reason, actor, ct), "Grant revoked"), ct);
 
     [HttpPost("{programId:guid}/Grants/{grantId:guid}/Resend")]
     [Authorize(Policy = GrantProgramsPolicy.Name)]
     [ValidateAntiForgeryToken]
     public Task<IActionResult> Resend(Guid programId, Guid grantId, CancellationToken ct) =>
         ManageAsync(programId, async actor =>
-            ((GrantMutationResult)await grants.ResendNoticeAsync(programId, grantId, actor, ct), "Notice sent again"), ct);
+            (await grants.ResendNoticeAsync(programId, grantId, actor, ct), "Notice sent again"), ct);
 
     /// <summary>Loads the program and checks the operation against it; 404 and 403 as results.</summary>
     private async Task<(ProgramInfo? Program, IActionResult? Error)> AuthorizedAsync(

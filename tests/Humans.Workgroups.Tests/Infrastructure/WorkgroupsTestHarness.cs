@@ -186,7 +186,7 @@ public abstract class WorkgroupsTestHarness : IDisposable
         {
             Id = Guid.NewGuid(),
             Name = name,
-            Slug = Humans.Base.Helpers.SlugHelper.GenerateSlug(name),
+            Slug = Base.Helpers.SlugHelper.GenerateSlug(name),
             Purpose = "Purpose",
             Deliverable = "A report",
             DeliverableKind = WorkgroupDeliverableKind.Report,

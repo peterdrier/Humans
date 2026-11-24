@@ -19,7 +19,7 @@ namespace Humans.Backdoor.Controllers;
 [ApiController]
 [Route("api/backdoor/tasks")]
 [ServiceFilter(typeof(BackdoorApiKeyAuthFilter))]
-[BackdoorScope(BackdoorScope.Staff)]
+[BackdoorScope(BackdoorScope.Tasks)]
 [AllowAnonymous]
 internal sealed class BackdoorTasksController(
     ITaskWrite tasks,

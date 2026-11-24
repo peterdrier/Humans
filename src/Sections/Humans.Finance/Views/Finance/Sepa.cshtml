@@ -139,7 +139,7 @@ else if (Model.Run is { Result: { } last } finished)
                 </span>
                 @if (file.CanCancel)
                 {
-                    <form authorize-policy="@Humans.Finance.Contracts.FinancePolicies.Manage" asp-action="CancelSepaFile" method="post"
+                    <form authorize-policy="@FinancePolicies.Manage" asp-action="CancelSepaFile" method="post"
                           data-confirm="Are you sure? Cancel the whole file @file.FileName (@file.SummaryTransferCount transfers, @summaryTotal)? Only do this once the bank has rejected the file. Every transfer in it is marked withdrawn, their accounts become payable again, and no member is emailed. This cannot be undone.">
                         @Html.AntiForgeryToken()
                         <input type="hidden" name="fileId" value="@file.FileId" />
@@ -159,7 +159,7 @@ else if (Model.Run is { Result: { } last } finished)
                     <strong>Every unbooked transfer in this file has its Sabadell line</strong>
                     <span class="text-muted">(@file.MatchedUnbookedCount of @file.MatchedUnbookedCount)</span> — check the lines below, then book them all.
                 </div>
-                <form authorize-policy="@Humans.Finance.Contracts.FinancePolicies.Manage" asp-action="BookSepaFileMatches" method="post"
+                <form authorize-policy="@FinancePolicies.Manage" asp-action="BookSepaFileMatches" method="post"
                       data-confirm="Book all @file.MatchedUnbookedCount transfers of @file.FileName, each against the Sabadell line shown on its row? This posts real payments, and a journal entry for anything a member's documents do not cover.">
                     @Html.AntiForgeryToken()
                     <input type="hidden" name="fileId" value="@file.FileId" />
@@ -203,7 +203,7 @@ else if (Model.Run is { Result: { } last } finished)
                     </div>
                     @if (batch.NotProcessableReason is null)
                     {
-                        <form authorize-policy="@Humans.Finance.Contracts.FinancePolicies.Manage" asp-action="BookSepaFile" method="post"
+                        <form authorize-policy="@FinancePolicies.Manage" asp-action="BookSepaFile" method="post"
                               data-confirm="Process @file.FileName against Sabadell line @batch.MovementId (@batch.Amount.ToEuro())? This books every unbooked transfer in the file: real payments, and a journal entry for anything a member's documents do not cover.">
                             @Html.AntiForgeryToken()
                             <input type="hidden" name="fileId" value="@file.FileId" />
@@ -280,7 +280,7 @@ else if (Model.Run is { Result: { } last } finished)
                 {
                     @if (item.Row.CandidateMatchedByText)
                     {
-                        <form authorize-policy="@Humans.Finance.Contracts.FinancePolicies.Manage" asp-action="BookSepaTransfer" method="post"
+                        <form authorize-policy="@FinancePolicies.Manage" asp-action="BookSepaTransfer" method="post"
                               data-confirm="Book @item.Row.Amount.ToEuro() to @item.MemberName against Sabadell line @item.Row.CandidateBankMovementId? This posts real payments, and a journal entry for anything the member's documents do not cover.">
                             @Html.AntiForgeryToken()
                             <input type="hidden" name="transferId" value="@item.Row.TransferId" />
@@ -324,7 +324,7 @@ else if (Model.Run is { Result: { } last } finished)
                 }
                 else
                 {
-                    <form authorize-policy="@Humans.Finance.Contracts.FinancePolicies.Manage" asp-action="WithdrawSepaTransfer" method="post"
+                    <form authorize-policy="@FinancePolicies.Manage" asp-action="WithdrawSepaTransfer" method="post"
                           data-confirm="Withdraw the @item.Row.Amount.ToEuro() transfer to @item.MemberName from @file.FileName? Only do this once the bank has cancelled it: the row is kept as withdrawn, no bank line will be paired with it, and the member is emailed that it was cancelled.">
                         @Html.AntiForgeryToken()
                         <input type="hidden" name="transferId" value="@item.Row.TransferId" />

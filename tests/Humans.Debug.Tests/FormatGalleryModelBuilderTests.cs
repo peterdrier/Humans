@@ -46,7 +46,7 @@ public class FormatGalleryModelBuilderTests
     [Xunit.MemberData(nameof(SupportedCultures.All), MemberType = typeof(SupportedCultures))]
     public void Build_classifies_a_localized_formatter_as_culture_sensitive(string culture)
     {
-        using var scope = new Humans.Base.Extensions.CultureScope(culture);
+        using var scope = new Base.Extensions.CultureScope(culture);
         System.Globalization.CultureInfo.CurrentCulture = System.Globalization.CultureInfo.GetCultureInfo("en");
         var before = System.Globalization.CultureInfo.CurrentCulture;
         var beforeUi = System.Globalization.CultureInfo.CurrentUICulture;

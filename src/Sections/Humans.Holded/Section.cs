@@ -1,6 +1,5 @@
 using Humans.Finance.Contracts;
 using System.Globalization;
-using Humans.Base.Authorization;
 using Humans.Base.Configuration;
 using Humans.Base.Hosting;
 using Humans.Base.Interfaces;
@@ -42,9 +41,9 @@ public sealed class Section : ISection, ISectionAdminNav, ISectionConfiguration,
             opts.BaseUrl = configuration["Holded:BaseUrl"] ?? "https://api.holded.com";
         });
 
-        services.AddSingleton<Services.IHoldedCallLog, Services.HoldedCallLog>();
+        services.AddSingleton<IHoldedCallLog, HoldedCallLog>();
 
-        services.AddHttpClient<Services.IHoldedClient, Services.HoldedClient>((sp, client) =>
+        services.AddHttpClient<IHoldedClient, HoldedClient>((sp, client) =>
         {
             var opts = sp.GetRequiredService<IOptions<HoldedClientOptions>>().Value;
             client.BaseAddress = new Uri(opts.BaseUrl);
@@ -52,14 +51,14 @@ public sealed class Section : ISection, ISectionAdminNav, ISectionConfiguration,
         });
 
         services.AddScoped<IHoldedMirrorRepository, Repository>();
-        services.AddScoped<Services.Service>();
-        services.AddScoped<IHoldedService>(sp => sp.GetRequiredService<Services.Service>());
-        services.AddScoped<Services.IHoldedAdminService>(sp => sp.GetRequiredService<Services.Service>());
+        services.AddScoped<Service>();
+        services.AddScoped<IHoldedService>(sp => sp.GetRequiredService<Service>());
+        services.AddScoped<IHoldedAdminService>(sp => sp.GetRequiredService<Service>());
 
-        services.AddScoped<IHoldedWrite, Services.HoldedWrite>();
+        services.AddScoped<IHoldedWrite, HoldedWrite>();
         services.AddExceptionHandler<Infrastructure.HoldedKeyPermissionExceptionHandler>();
 
-        services.AddScoped<Services.IHoldedNightlySync, Services.HoldedNightlySync>();
+        services.AddScoped<IHoldedNightlySync, HoldedNightlySync>();
 
         services.AddScoped<HoldedSyncJob>();
         services.AddHostedService<HoldedMirrorCatchUp>();

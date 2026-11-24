@@ -74,7 +74,7 @@ public sealed class EmailMessageFactoryTests
     [MemberData(nameof(SupportedCultures.All), MemberType = typeof(SupportedCultures))]
     public void FacilitatedMessage_CapturesCultureBeforeRestoringTheCaller(string culture)
     {
-        using var callerCulture = new Humans.Base.Extensions.CultureScope("en");
+        using var callerCulture = new Base.Extensions.CultureScope("en");
 
         var message = _factory.FacilitatedMessage(Guid.NewGuid(), "a@x.com", "Alice", "Bob", "Hi", false, null, culture);
 

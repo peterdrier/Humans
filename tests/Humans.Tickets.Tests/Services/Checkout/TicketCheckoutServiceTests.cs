@@ -4,7 +4,6 @@ using Humans.Base.Configuration;
 using Humans.Email.Contracts;
 using Humans.Grants.Contracts;
 using Humans.Settings.Contracts;
-using Humans.Testing;
 using Humans.Tickets.Contracts;
 using Humans.Tickets.Data;
 using Humans.Tickets.Services;
@@ -113,7 +112,7 @@ public sealed partial class TicketCheckoutServiceTests
         var emails = new TicketsEmails(Options.Create(new EmailSettings()), localizer, NullLogger<TicketsEmails>.Instance);
 
         _gate.GetAdmittedAsync(Arg.Any<IReadOnlyCollection<string>>(), Arg.Any<CancellationToken>())
-            .Returns(ci => (IReadOnlySet<string>)ci.Arg<IReadOnlyCollection<string>>().Where(_admitted.Contains).ToHashSet(StringComparer.Ordinal));
+            .Returns(ci => ci.Arg<IReadOnlyCollection<string>>().Where(_admitted.Contains).ToHashSet(StringComparer.Ordinal));
         var services = new ServiceCollection();
         services.AddKeyedScoped(CachingTicketQueryService.InnerServiceKey, (_, _) => _holdingsInner);
         _holdings = new CachingTicketQueryService(services.BuildServiceProvider().GetRequiredService<IServiceScopeFactory>(),
@@ -334,8 +333,8 @@ public sealed partial class TicketCheckoutServiceTests
         await PayAsync("cs_1");
 
         _repo.Tickets.Select(t => t.HolderUserId).Should().BeEquivalentTo(new Guid?[] { _buyerId, katie, sarah });
-        await _provisioning.DidNotReceiveWithAnyArgs().FindOrCreateUserByEmailAsync(default!, default, default, default);
-        await _provisioning.DidNotReceiveWithAnyArgs().ReplaceUnverifiedEmailAndProvisionAsync(default, default, default!, default, default, default);
+        await _provisioning.DidNotReceiveWithAnyArgs().FindOrCreateUserByEmailAsync(default!, default, default);
+        await _provisioning.DidNotReceiveWithAnyArgs().ReplaceUnverifiedEmailAndProvisionAsync(default, default, default!, default, default);
     }
 
     [HumansFact]
@@ -758,7 +757,7 @@ public sealed partial class TicketCheckoutServiceTests
     {
         var old = await OfferedTicketAsync();
         await _service.ReconcileOpenOrdersAsync(Ct);
-        await _delivery.DidNotReceiveWithAnyArgs().ResaleUnsoldAsync(default, default);
+        await _delivery.DidNotReceiveWithAnyArgs().ResaleUnsoldAsync(default);
 
         _ticketing.Mode = TicketSalesMode.Closed;
         await _service.ReconcileOpenOrdersAsync(Ct);
@@ -934,7 +933,7 @@ public sealed partial class TicketCheckoutServiceTests
 
         _repo.Orders.Single().TermsVersion.Should().BeNull();
         _repo.Events.Should().NotContain(e => e.Kind == TicketCheckoutOrderEventKind.TermsAccepted);
-        await _rules.DidNotReceiveWithAnyArgs().GetAsync(default!, default, default);
+        await _rules.DidNotReceiveWithAnyArgs().GetAsync(default!);
     }
 
     [HumansFact]
@@ -954,7 +953,7 @@ public sealed partial class TicketCheckoutServiceTests
         _repo.Orders.Should().BeEmpty();
 
         await _service.StartCheckoutAsync(Buy() with { MarketingOptIn = true }, _buyerId, Ct);
-        await _preferences.DidNotReceiveWithAnyArgs().UpdatePreferenceAsync(default, default, default, default!, default);
+        await _preferences.DidNotReceiveWithAnyArgs().UpdatePreferenceAsync(default, default, default, default!);
     }
 
     [HumansFact]
@@ -1319,7 +1318,7 @@ public sealed partial class TicketCheckoutServiceTests
 
         (await _service.InviteBuyersAsync(ticket.Id, _buyerId, ["bo@example.com"], new Uri("https://h.example/r/"), "en", Ct))
             .Refusal.Should().Be("Tickets_Resale_NotOpenYet");
-        await _email.DidNotReceiveWithAnyArgs().SendAsync(default!, default);
+        await _email.DidNotReceiveWithAnyArgs().SendAsync(default!);
     }
 
     [HumansFact]
@@ -1478,7 +1477,7 @@ public sealed partial class TicketCheckoutServiceTests
         (await _service.RenameTicketAsync(ticket.Id, "Bo Smith", "bo@example.com", "Asked nicely", false, _adminId, Ct))
             .Refusal.Should().BeNull();
         ticket.HolderUserId.Should().Be(fresh);
-        await _provisioning.DidNotReceiveWithAnyArgs().FindOrCreateUserByEmailAsync(default!, default!, default, default);
+        await _provisioning.DidNotReceiveWithAnyArgs().FindOrCreateUserByEmailAsync(default!, default!, default);
     }
 
     [HumansFact]
@@ -1490,7 +1489,7 @@ public sealed partial class TicketCheckoutServiceTests
             .Refusal.Should().StartWith("Give a reason");
         (await _service.RenameTicketAsync(ticket.Id, "Cy", "cy@example.com", new string('x', 501), false, _adminId, Ct))
             .Refusal.Should().StartWith("Keep the reason under");
-        await _provisioning.DidNotReceiveWithAnyArgs().FindOrCreateUserByEmailAsync(default!, default!, default, default);
+        await _provisioning.DidNotReceiveWithAnyArgs().FindOrCreateUserByEmailAsync(default!, default!, default);
     }
 
     [HumansFact]
@@ -1505,7 +1504,7 @@ public sealed partial class TicketCheckoutServiceTests
         (await _service.RenameTicketAsync(ticket.Id, "Cy", "cy@example.com", "Asked nicely", false, _adminId, Ct))
             .Refusal.Should().StartWith("Only a full price ticket");
         ticket.HolderUserId.Should().Be(_buyerId);
-        await _provisioning.DidNotReceiveWithAnyArgs().FindOrCreateUserByEmailAsync(default!, default!, default, default);
+        await _provisioning.DidNotReceiveWithAnyArgs().FindOrCreateUserByEmailAsync(default!, default!, default);
 
         (await _service.RenameTicketAsync(ticket.Id, "Ana María García", "ana@example.com", "Typo in the legal name", false, _adminId, Ct))
             .Refusal.Should().BeNull();
@@ -1671,7 +1670,7 @@ public sealed partial class TicketCheckoutServiceTests
         request.State.Should().Be(TicketCompanionRequestState.Approved);
         request.CompanionTicketId.Should().Be(companion.Id);
         request.DecidedByUserId.Should().Be(_adminId);
-        await _provisioning.DidNotReceiveWithAnyArgs().FindOrCreateUserByEmailAsync(default!, default, default, default);
+        await _provisioning.DidNotReceiveWithAnyArgs().FindOrCreateUserByEmailAsync(default!, default, default);
         await _delivery.Received(1).TicketsIssuedAsync(companion.OrderId, Arg.Any<CancellationToken>());
         await _audit.Received(1).LogAsync(TicketsAuditActions.TicketCompanionRequestDecided, Arg.Any<string>(), request.Id,
             Arg.Any<string>(), _adminId, _buyerId, AuditSubjectTypes.User);
@@ -1960,7 +1959,7 @@ public sealed partial class TicketCheckoutServiceTests
         await _service.EraseForUserAsync(_buyerId, Ct);
         await _platform.Received(1).ErasePersonalDataAsync("cs_1", "ana@example.com", Arg.Any<CancellationToken>());
 
-        _platform.ErasePersonalDataAsync(default!, default!, default).ReturnsForAnyArgs<Task>(_ => throw new TicketingPlatformException("down"));
+        _platform.ErasePersonalDataAsync(default!, default!).ReturnsForAnyArgs(_ => throw new TicketingPlatformException("down"));
         var act = () => _service.EraseForUserAsync(_buyerId, Ct);
         await act.Should().ThrowAsync<TicketingPlatformException>();
         _repo.Erased.Should().Be(1);
@@ -2014,7 +2013,7 @@ public sealed partial class TicketCheckoutServiceTests
         await PayAsync("cs_1");
 
         _repo.Tickets.Should().BeEmpty();
-        await _delivery.DidNotReceiveWithAnyArgs().TicketsIssuedAsync(default, default);
+        await _delivery.DidNotReceiveWithAnyArgs().TicketsIssuedAsync(default);
     }
 
     [HumansFact]
@@ -2035,7 +2034,7 @@ public sealed partial class TicketCheckoutServiceTests
         _delivery.ClearReceivedCalls();
 
         await _service.ReconcileOpenOrdersAsync(Ct);
-        await _delivery.DidNotReceiveWithAnyArgs().TicketsIssuedAsync(default, default);
+        await _delivery.DidNotReceiveWithAnyArgs().TicketsIssuedAsync(default);
 
         _clock.Advance(Duration.FromMinutes(31));
         await _service.ReconcileOpenOrdersAsync(Ct);
@@ -2044,7 +2043,7 @@ public sealed partial class TicketCheckoutServiceTests
         await _service.RecordDeliveryAsync(order.Id, TicketCheckoutOrderEventKind.TicketsEmailed, "sent", null, Ct);
         _delivery.ClearReceivedCalls();
         await _service.ReconcileOpenOrdersAsync(Ct);
-        await _delivery.DidNotReceiveWithAnyArgs().TicketsIssuedAsync(default, default);
+        await _delivery.DidNotReceiveWithAnyArgs().TicketsIssuedAsync(default);
     }
 
     [HumansFact]
@@ -2223,7 +2222,7 @@ public sealed partial class TicketCheckoutServiceTests
         var order = _repo.Orders.Single();
         _platform.GetStatusAsync("cs_1", Arg.Any<CancellationToken>())
             .Returns(new PlatformOrderStatus(PlatformOrderState.Expired, null, null, null));
-        _platform.CancelAsync("cs_1", Arg.Any<CancellationToken>()).Returns<Task>(_ => throw new TicketingPlatformException("down"));
+        _platform.CancelAsync("cs_1", Arg.Any<CancellationToken>()).Returns(_ => throw new TicketingPlatformException("down"));
 
         await _service.ReconcileOpenOrdersAsync(Ct);
         order.State.Should().Be(TicketCheckoutOrderState.Pending);

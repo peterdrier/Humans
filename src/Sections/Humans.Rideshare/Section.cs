@@ -1,4 +1,3 @@
-using Humans.Base.Authorization;
 using Humans.Base.Constants;
 using Humans.Base.Hosting;
 using Humans.Base.Interfaces;

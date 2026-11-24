@@ -77,8 +77,8 @@ internal sealed class SurveyPreviewEmailService(
         if (user?.Email is not { } email || string.IsNullOrWhiteSpace(email))
             return (null, "Surveys_PreviewNoEmail");
 
-        var name = user?.BurnerName ?? string.Empty;
-        var culture = user?.PreferredLanguage.IsSupportedCultureCode() == true
+        var name = user.BurnerName;
+        var culture = user.PreferredLanguage.IsSupportedCultureCode()
             ? user.PreferredLanguage
             : survey.DefaultCulture;
         var title = survey.Title.Resolve(culture, survey.DefaultCulture);

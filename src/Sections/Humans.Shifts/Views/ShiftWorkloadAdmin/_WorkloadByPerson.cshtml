@@ -8,7 +8,7 @@
 
 @{
     var table = TableModel.For(Model)
-        .Human("Human", r => r.UserId, HumanLink.Admin, HumanLayout.Text)
+        .Human("Human", r => r.UserId, HumanLink.Admin)
         .Column("Confirmed signups", r => r.ConfirmedSignupCount, c => c.Number().End())
         .Column("Pending signups", r => r.PendingSignupCount, c => c.Number().End())
         .Column("Year-round", r => r.YearRoundHours, c => c.Number().End())

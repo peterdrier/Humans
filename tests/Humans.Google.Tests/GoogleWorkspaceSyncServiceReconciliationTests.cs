@@ -1,7 +1,6 @@
 using Humans.Google.Domain;
 using Humans.Google.Contracts;
 using AwesomeAssertions;
-using Humans.AuditLog.Contracts;
 using Humans.Users.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Google.Services;
@@ -147,7 +146,7 @@ public sealed class GoogleWorkspaceSyncServiceReconciliationTests : GoogleTestHa
             result.InactiveResourceId.Should().Be(inactiveId);
             rows.Single(r => r.Id == selectedOldId).IsActive.Should().BeTrue();
             rows.Single(r => r.Id == inactiveId).IsActive.Should().BeFalse();
-            await _googleGroupSync.DidNotReceiveWithAnyArgs().ReconcileOneAsync(default!, default, default);
+            await _googleGroupSync.DidNotReceiveWithAnyArgs().ReconcileOneAsync(default!, default);
             AuditLog.ReceivedCalls().Should().BeEmpty();
             return;
         }
@@ -159,7 +158,7 @@ public sealed class GoogleWorkspaceSyncServiceReconciliationTests : GoogleTestHa
         reactivated.Url.Should().Be(expectedUrl);
         rows.Single(r => r.Id == selectedOldId).IsActive.Should().BeFalse("only the selected oldest existing group is replaced");
 
-        await _googleGroupSync.DidNotReceiveWithAnyArgs().ReconcileOneAsync(default!, default, default);
+        await _googleGroupSync.DidNotReceiveWithAnyArgs().ReconcileOneAsync(default!, default);
         await AuditLog.Received(1).LogAsync(
             GoogleAuditActions.GoogleResourceDeactivated, TeamGoogleResource.AuditEntityType, selectedOldId,
             Arg.Any<string>(), nameof(GoogleWorkspaceSyncService), teamId, "Team");

@@ -3,7 +3,6 @@ using Humans.Notifications.Services;
 using Humans.Users.Contracts;
 using Humans.Notifications.Models;
 using Microsoft.AspNetCore.Mvc;
-using System.Security.Claims;
 
 namespace Humans.Notifications.ViewComponents;
 
@@ -13,7 +12,7 @@ internal sealed class NotificationBellViewComponent(INotificationInboxService no
     public async Task<IViewComponentResult> InvokeAsync()
     {
         // The chrome slot invokes this component for anonymous visitors too.
-        if (UserClaimsPrincipal?.Identity?.IsAuthenticated != true)
+        if (UserClaimsPrincipal.Identity?.IsAuthenticated != true)
             return Content(string.Empty);
 
         var userId = UserClaimsPrincipal.GetUserId();

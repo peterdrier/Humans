@@ -31,7 +31,6 @@ using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NSubstitute;
 using Humans.Base.Interfaces;
-using Humans.Base.Interfaces.Caching;
 using Humans.Base.Constants;
 using Humans.Governance.Services;
 using Humans.Base.Enums;
@@ -42,7 +41,6 @@ using Humans.Users.Contracts;
 using Humans.Governance.Tests.Infrastructure;
 using Humans.Governance.Data;
 
-using Humans.Teams.Contracts;
 
 namespace Humans.Governance.Tests.Services;
 
@@ -380,9 +378,9 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
     }
 
     [HumansTheory]
-    [Xunit.InlineData(AccountScenario.Merged)]
-    [Xunit.InlineData(AccountScenario.Missing)]
-    [Xunit.InlineData(AccountScenario.Cancelled)]
+    [InlineData(AccountScenario.Merged)]
+    [InlineData(AccountScenario.Missing)]
+    [InlineData(AccountScenario.Cancelled)]
     public async Task TermExpiryCorrection_ResolvesItsAuditActorBeforeChangingRows(AccountScenario account)
     {
         using var request = new CancellationTokenSource();

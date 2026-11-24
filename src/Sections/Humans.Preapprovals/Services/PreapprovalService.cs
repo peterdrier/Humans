@@ -131,14 +131,14 @@ internal sealed partial class PreapprovalService(
 
     internal static string Euros(decimal amount) => amount.ToString("N2", CultureInfo.InvariantCulture) + " €";
     internal Task AuditGrantAsync(
-        AuditActionDefinition action, Domain.PreapprovalGrant grant, string description, Guid actorUserId,
+        AuditActionDefinition action, PreapprovalGrant grant, string description, Guid actorUserId,
         Guid? expenseReportId = null) =>
         auditLog.LogAsync(action, AuditEntityTypes.Grant, grant.Id, description, actorUserId,
             relatedEntityId: expenseReportId ?? grant.ProgramId,
             relatedEntityType: expenseReportId is null ? AuditEntityTypes.Program : AuditEntityTypes.ExpenseReport);
 
     internal Task AuditProgramAsync(
-        AuditActionDefinition action, Domain.PreapprovalProgram program, string description, Guid actorUserId,
+        AuditActionDefinition action, PreapprovalProgram program, string description, Guid actorUserId,
         Guid? relatedUserId = null) =>
         auditLog.LogAsync(action, AuditEntityTypes.Program, program.Id, description, actorUserId,
             relatedEntityId: relatedUserId,

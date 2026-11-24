@@ -37,7 +37,7 @@ public class HiEventsWebhookControllerTests
         var result = await Controller(body, Sign(body)).Receive(TestContext.Current.CancellationToken);
 
         result.Should().BeOfType<OkResult>();
-        await _events.DidNotReceiveWithAnyArgs().PlatformOrderChangedAsync(default!, default!, default);
+        await _events.DidNotReceiveWithAnyArgs().PlatformOrderChangedAsync(default!, default!);
     }
 
     [HumansFact]
@@ -46,7 +46,7 @@ public class HiEventsWebhookControllerTests
         var result = await Controller(OrderBody, Sign("other body")).Receive(TestContext.Current.CancellationToken);
 
         result.Should().BeOfType<UnauthorizedResult>();
-        await _events.DidNotReceiveWithAnyArgs().PlatformOrderChangedAsync(default!, default!, default);
+        await _events.DidNotReceiveWithAnyArgs().PlatformOrderChangedAsync(default!, default!);
     }
 
     [HumansFact]
@@ -55,7 +55,7 @@ public class HiEventsWebhookControllerTests
         var result = await Controller(OrderBody, Sign(OrderBody), secret: "").Receive(TestContext.Current.CancellationToken);
 
         result.Should().BeOfType<StatusCodeResult>().Which.StatusCode.Should().Be(StatusCodes.Status503ServiceUnavailable);
-        await _events.DidNotReceiveWithAnyArgs().PlatformOrderChangedAsync(default!, default!, default);
+        await _events.DidNotReceiveWithAnyArgs().PlatformOrderChangedAsync(default!, default!);
     }
 
     private HiEventsWebhookController Controller(string body, string signature, string secret = Secret)

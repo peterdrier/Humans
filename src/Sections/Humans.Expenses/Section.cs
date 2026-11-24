@@ -9,7 +9,6 @@ using Humans.Expenses.Authorization;
 using Humans.Expenses.Contracts;
 using Humans.Expenses.Data;
 using Humans.Expenses.Jobs;
-using Humans.Expenses.Models;
 using Humans.Expenses.Services;
 using Humans.Expenses.Services.Dtos;
 using Humans.Gdpr.Contracts;

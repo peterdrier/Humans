@@ -281,9 +281,9 @@ public class CampControllerTests
             var data = edit ? ((CampUpdateInput)arguments[0]!).SeasonData : (CampSeasonData)arguments[8]!;
             data.AcceptingMembers.Should().Be(YesNoMaybe.Yes);
             data.KidsWelcome.Should().Be(YesNoMaybe.Yes);
-            data.KidsVisiting.Should().Be((KidsVisitingPolicy)0);
-            data.HasPerformanceSpace.Should().Be((PerformanceSpaceStatus)0);
-            data.AdultPlayspace.Should().Be((AdultPlayspacePolicy)0);
+            data.KidsVisiting.Should().Be(default(KidsVisitingPolicy));
+            data.HasPerformanceSpace.Should().Be(default(PerformanceSpaceStatus));
+            data.AdultPlayspace.Should().Be(default(AdultPlayspacePolicy));
             data.SpaceRequirement.Should().BeNull();
             data.SoundZone.Should().BeNull();
             data.ElectricalGrid.Should().BeNull();

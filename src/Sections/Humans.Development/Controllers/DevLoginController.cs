@@ -1,4 +1,3 @@
-using System.Text;
 using Humans.Base.Configuration;
 using Humans.Auth.Contracts;
 using Humans.Users.Contracts;

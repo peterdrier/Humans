@@ -1,8 +1,6 @@
 using Humans.Events.Services;
 using Humans.Base.Extensions;
 using Humans.Users.Contracts;
-using System.Security.Claims;
-using Humans.Events.Contracts;
 using Humans.Events.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;

@@ -245,8 +245,8 @@ public sealed class CityPlanningApiControllerTests : CityPlanningTestBase
         if (!isAdmin && !isLead)
         {
             result.Should().BeOfType<ForbidResult>();
-            await _containers.DidNotReceiveWithAnyArgs().GetAllAsync(default);
-            await _containers.DidNotReceiveWithAnyArgs().GetPlacementsByYearAsync(default, default);
+            await _containers.DidNotReceiveWithAnyArgs().GetAllAsync();
+            await _containers.DidNotReceiveWithAnyArgs().GetPlacementsByYearAsync(default);
             return;
         }
 
@@ -540,7 +540,7 @@ public sealed class CityPlanningApiControllerTests : CityPlanningTestBase
     public async Task RestoreCampPolygon_NegativeHistoricArea_ReturnsBadRequestWithoutWritingOrBroadcasting()
     {
         var ct = TestContext.Current.CancellationToken;
-        var history = new Humans.CityPlanning.Domain.CampPolygonHistory
+        var history = new Domain.CampPolygonHistory
         {
             CampSeasonId = _campSeasonId,
             GeoJson = Square,
@@ -596,7 +596,7 @@ public sealed class CityPlanningApiControllerTests : CityPlanningTestBase
         result.Should().BeOfType<BadRequestResult>();
         (await CityPlanningDb.CampPolygons.CountAsync(ct)).Should().Be(restore ? 1 : 0);
         (await CityPlanningDb.CampPolygonHistories.CountAsync(ct)).Should().Be(restore ? 1 : 0);
-        await _allClients.DidNotReceiveWithAnyArgs().SendCoreAsync(default!, default!, default);
+        await _allClients.DidNotReceiveWithAnyArgs().SendCoreAsync(default!, default!);
     }
 
     [HumansTheory]
@@ -635,9 +635,9 @@ public sealed class CityPlanningApiControllerTests : CityPlanningTestBase
         var ct = TestContext.Current.CancellationToken;
         var repo = Substitute.For<ICityPlanningRepository>();
         var failure = new ArgumentException("Private persistence failure", nameof(restore));
-        repo.SavePolygonAndAppendHistoryAsync(default, default!, default, default, default!, default, default)
+        repo.SavePolygonAndAppendHistoryAsync(default, default!, default, default, default!, default)
             .ThrowsAsyncForAnyArgs(failure);
-        repo.GetHistoryEntryAsync(default, default, default).ThrowsAsyncForAnyArgs(failure);
+        repo.GetHistoryEntryAsync(default, default).ThrowsAsyncForAnyArgs(failure);
         _service = new CityPlanningService(repo, Clock,
             Options.Create(new CityPlanningOptions { CityPlanningTeamSlug = "city-planning" }),
             _campService, _teamService, Substitute.For<IUserService>(), Substitute.For<IAuditLogService>(), _settings, _containers);
@@ -652,7 +652,7 @@ public sealed class CityPlanningApiControllerTests : CityPlanningTestBase
 
         (await act.Should().ThrowAsync<ArgumentException>()).Which.Should().BeSameAs(failure);
         _logger.ReceivedCalls().Should().BeEmpty();
-        await _allClients.DidNotReceiveWithAnyArgs().SendCoreAsync(default!, default!, default);
+        await _allClients.DidNotReceiveWithAnyArgs().SendCoreAsync(default!, default!);
     }
 
     [HumansFact]

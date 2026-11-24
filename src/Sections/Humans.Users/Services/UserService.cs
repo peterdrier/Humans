@@ -1,4 +1,3 @@
-using Humans.Auth.Contracts;
 using Humans.AuditLog.Contracts;
 using Humans.Base.Extensions;
 using Humans.Base.Interfaces;
@@ -9,7 +8,6 @@ using Humans.Base.Helpers;
 using Humans.Users.Helpers;
 using Humans.Gdpr.Contracts;
 using NodaTime;
-using Humans.Users.Domain;
 using System.ComponentModel.DataAnnotations;
 using Humans.Base.Threading;
 

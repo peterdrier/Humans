@@ -36,12 +36,12 @@ public class NotificationRepositoryTests : IDisposable
         var userId = Guid.NewGuid();
         var notification = CreateNotification(userId);
 
-        await _repo.AddRangeAsync([notification], Xunit.TestContext.Current.CancellationToken);
+        await _repo.AddRangeAsync([notification], TestContext.Current.CancellationToken);
 
         var stored = await _dbContext.Notifications
             .AsNoTracking()
             .Include(n => n.Recipients)
-            .SingleAsync(Xunit.TestContext.Current.CancellationToken);
+            .SingleAsync(TestContext.Current.CancellationToken);
         stored.Title.Should().Be("Test");
         stored.Recipients.Should().ContainSingle(r => r.UserId == userId);
     }
@@ -55,9 +55,9 @@ public class NotificationRepositoryTests : IDisposable
         await _repo.AddRangeAsync([
             CreateNotification(u1),
             CreateNotification(u2)
-        ], Xunit.TestContext.Current.CancellationToken);
+        ], TestContext.Current.CancellationToken);
 
-        (await _dbContext.Notifications.AsNoTracking().CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(2);
+        (await _dbContext.Notifications.AsNoTracking().CountAsync(TestContext.Current.CancellationToken)).Should().Be(2);
     }
 
     [HumansTheory]
@@ -90,12 +90,12 @@ public class NotificationRepositoryTests : IDisposable
         resolved.ResolvedAt = _now;
         await _repo.AddRangeAsync(
             [matching, nonmatching, otherUser, alreadyRead, resolved, otherSource],
-            Xunit.TestContext.Current.CancellationToken);
+            TestContext.Current.CancellationToken);
 
         var result = await _repo.GetInboxAsync(
             userId, search, NotificationInboxFilter.Shifts, [TestSources.TeamUpdate.Name],
             NotificationInboxTab.Unread, _now - Duration.FromDays(7),
-            Xunit.TestContext.Current.CancellationToken);
+            TestContext.Current.CancellationToken);
 
         result.Should().ContainSingle().Which.Notification.Id.Should().Be(matching.Id);
     }
@@ -103,7 +103,7 @@ public class NotificationRepositoryTests : IDisposable
     [HumansFact]
     public async Task ResolveAsync_ReturnsNotFound_ForMissingNotification()
     {
-        var outcome = await _repo.ResolveAsync(Guid.NewGuid(), Guid.NewGuid(), _now, NotificationClass.Actionable, Xunit.TestContext.Current.CancellationToken);
+        var outcome = await _repo.ResolveAsync(Guid.NewGuid(), Guid.NewGuid(), _now, NotificationClass.Actionable, TestContext.Current.CancellationToken);
 
         outcome.Success.Should().BeFalse();
         outcome.NotFound.Should().BeTrue();
@@ -115,9 +115,9 @@ public class NotificationRepositoryTests : IDisposable
         var recipient = Guid.NewGuid();
         var actor = Guid.NewGuid();
         var n = CreateNotification(recipient, NotificationClass.Actionable);
-        await _repo.AddRangeAsync([n], Xunit.TestContext.Current.CancellationToken);
+        await _repo.AddRangeAsync([n], TestContext.Current.CancellationToken);
 
-        var outcome = await _repo.ResolveAsync(n.Id, actor, _now, NotificationClass.Actionable, Xunit.TestContext.Current.CancellationToken);
+        var outcome = await _repo.ResolveAsync(n.Id, actor, _now, NotificationClass.Actionable, TestContext.Current.CancellationToken);
 
         outcome.Success.Should().BeFalse();
         outcome.Forbidden.Should().BeTrue();
@@ -128,13 +128,13 @@ public class NotificationRepositoryTests : IDisposable
     {
         var userId = Guid.NewGuid();
         var n = CreateNotification(userId, NotificationClass.Actionable);
-        await _repo.AddRangeAsync([n], Xunit.TestContext.Current.CancellationToken);
+        await _repo.AddRangeAsync([n], TestContext.Current.CancellationToken);
 
-        var outcome = await _repo.ResolveAsync(n.Id, userId, _now, NotificationClass.Actionable, Xunit.TestContext.Current.CancellationToken);
+        var outcome = await _repo.ResolveAsync(n.Id, userId, _now, NotificationClass.Actionable, TestContext.Current.CancellationToken);
 
         outcome.Success.Should().BeTrue();
 
-        var stored = await _dbContext.Notifications.AsNoTracking().SingleAsync(Xunit.TestContext.Current.CancellationToken);
+        var stored = await _dbContext.Notifications.AsNoTracking().SingleAsync(TestContext.Current.CancellationToken);
         stored.ResolvedAt.Should().Be(_now);
         stored.ResolvedByUserId.Should().Be(userId);
     }
@@ -144,9 +144,9 @@ public class NotificationRepositoryTests : IDisposable
     {
         var userId = Guid.NewGuid();
         var n = CreateNotification(userId, NotificationClass.Actionable);
-        await _repo.AddRangeAsync([n], Xunit.TestContext.Current.CancellationToken);
+        await _repo.AddRangeAsync([n], TestContext.Current.CancellationToken);
 
-        var outcome = await _repo.ResolveAsync(n.Id, userId, _now, NotificationClass.Informational, Xunit.TestContext.Current.CancellationToken);
+        var outcome = await _repo.ResolveAsync(n.Id, userId, _now, NotificationClass.Informational, TestContext.Current.CancellationToken);
 
         outcome.Success.Should().BeFalse();
         outcome.Forbidden.Should().BeTrue();
@@ -157,12 +157,12 @@ public class NotificationRepositoryTests : IDisposable
     {
         var userId = Guid.NewGuid();
         var n = CreateNotification(userId);
-        await _repo.AddRangeAsync([n], Xunit.TestContext.Current.CancellationToken);
+        await _repo.AddRangeAsync([n], TestContext.Current.CancellationToken);
 
-        var outcome = await _repo.ResolveAsync(n.Id, userId, _now, NotificationClass.Informational, Xunit.TestContext.Current.CancellationToken);
+        var outcome = await _repo.ResolveAsync(n.Id, userId, _now, NotificationClass.Informational, TestContext.Current.CancellationToken);
 
         outcome.Success.Should().BeTrue();
-        var stored = await _dbContext.Notifications.AsNoTracking().SingleAsync(Xunit.TestContext.Current.CancellationToken);
+        var stored = await _dbContext.Notifications.AsNoTracking().SingleAsync(TestContext.Current.CancellationToken);
         stored.ResolvedAt.Should().Be(_now);
     }
 
@@ -170,15 +170,15 @@ public class NotificationRepositoryTests : IDisposable
     public async Task MarkAllReadAsync_UpdatesAllUnreadRecipientRows()
     {
         var userId = Guid.NewGuid();
-        await _repo.AddRangeAsync([CreateNotification(userId)], Xunit.TestContext.Current.CancellationToken);
-        await _repo.AddRangeAsync([CreateNotification(userId)], Xunit.TestContext.Current.CancellationToken);
+        await _repo.AddRangeAsync([CreateNotification(userId)], TestContext.Current.CancellationToken);
+        await _repo.AddRangeAsync([CreateNotification(userId)], TestContext.Current.CancellationToken);
 
-        await _repo.MarkAllReadAsync(userId, _now, Xunit.TestContext.Current.CancellationToken);
+        await _repo.MarkAllReadAsync(userId, _now, TestContext.Current.CancellationToken);
 
         var recipients = await _dbContext.NotificationRecipients
             .AsNoTracking()
             .Where(nr => nr.UserId == userId)
-            .ToListAsync(Xunit.TestContext.Current.CancellationToken);
+            .ToListAsync(TestContext.Current.CancellationToken);
         recipients.Should().HaveCount(2).And.OnlyContain(nr => nr.ReadAt == _now);
     }
 
@@ -197,12 +197,12 @@ public class NotificationRepositoryTests : IDisposable
 
         var unresolved = CreateNotification(userId);
 
-        await _repo.AddRangeAsync([old, recent, unresolved], Xunit.TestContext.Current.CancellationToken);
+        await _repo.AddRangeAsync([old, recent, unresolved], TestContext.Current.CancellationToken);
 
-        var deleted = await _repo.DeleteResolvedOlderThanAsync(_now - Duration.FromDays(7), Xunit.TestContext.Current.CancellationToken);
+        var deleted = await _repo.DeleteResolvedOlderThanAsync(_now - Duration.FromDays(7), TestContext.Current.CancellationToken);
 
         deleted.Should().Be(1);
-        (await _dbContext.Notifications.AsNoTracking().CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(2);
+        (await _dbContext.Notifications.AsNoTracking().CountAsync(TestContext.Current.CancellationToken)).Should().Be(2);
     }
 
     [HumansFact]
@@ -214,12 +214,12 @@ public class NotificationRepositoryTests : IDisposable
         var staleInfo = CreateNotification(userId, createdAt: _now - Duration.FromDays(40));
         var staleActionable = CreateNotification(userId, NotificationClass.Actionable, createdAt: _now - Duration.FromDays(40));
 
-        await _repo.AddRangeAsync([staleInfo, staleActionable], Xunit.TestContext.Current.CancellationToken);
+        await _repo.AddRangeAsync([staleInfo, staleActionable], TestContext.Current.CancellationToken);
 
-        var deleted = await _repo.DeleteUnresolvedInformationalOlderThanAsync(cutoff, Xunit.TestContext.Current.CancellationToken);
+        var deleted = await _repo.DeleteUnresolvedInformationalOlderThanAsync(cutoff, TestContext.Current.CancellationToken);
 
         deleted.Should().Be(1);
-        var remaining = await _dbContext.Notifications.AsNoTracking().SingleAsync(Xunit.TestContext.Current.CancellationToken);
+        var remaining = await _dbContext.Notifications.AsNoTracking().SingleAsync(TestContext.Current.CancellationToken);
         remaining.Class.Should().Be(NotificationClass.Actionable);
     }
 
@@ -227,11 +227,11 @@ public class NotificationRepositoryTests : IDisposable
     public async Task GetUnreadBadgeCountsAsync_SplitsByClass()
     {
         var userId = Guid.NewGuid();
-        await _repo.AddRangeAsync([CreateNotification(userId, NotificationClass.Actionable)], Xunit.TestContext.Current.CancellationToken);
-        await _repo.AddRangeAsync([CreateNotification(userId, NotificationClass.Actionable)], Xunit.TestContext.Current.CancellationToken);
-        await _repo.AddRangeAsync([CreateNotification(userId)], Xunit.TestContext.Current.CancellationToken);
+        await _repo.AddRangeAsync([CreateNotification(userId, NotificationClass.Actionable)], TestContext.Current.CancellationToken);
+        await _repo.AddRangeAsync([CreateNotification(userId, NotificationClass.Actionable)], TestContext.Current.CancellationToken);
+        await _repo.AddRangeAsync([CreateNotification(userId)], TestContext.Current.CancellationToken);
 
-        var (actionable, informational) = await _repo.GetUnreadBadgeCountsAsync(userId, Xunit.TestContext.Current.CancellationToken);
+        var (actionable, informational) = await _repo.GetUnreadBadgeCountsAsync(userId, TestContext.Current.CancellationToken);
 
         actionable.Should().Be(2);
         informational.Should().Be(1);
@@ -245,11 +245,11 @@ public class NotificationRepositoryTests : IDisposable
 
         var n = CreateNotification(source);
         n.Recipients.Single().ReadAt = _now;
-        await _repo.AddRangeAsync([n], Xunit.TestContext.Current.CancellationToken);
+        await _repo.AddRangeAsync([n], TestContext.Current.CancellationToken);
 
-        await _repo.ReassignRecipientsToUserAsync(source, target, Xunit.TestContext.Current.CancellationToken);
+        await _repo.ReassignRecipientsToUserAsync(source, target, TestContext.Current.CancellationToken);
 
-        var rows = await _dbContext.NotificationRecipients.AsNoTracking().ToListAsync(Xunit.TestContext.Current.CancellationToken);
+        var rows = await _dbContext.NotificationRecipients.AsNoTracking().ToListAsync(TestContext.Current.CancellationToken);
         rows.Should().ContainSingle();
         rows[0].UserId.Should().Be(target);
         rows[0].NotificationId.Should().Be(n.Id);
@@ -274,11 +274,11 @@ public class NotificationRepositoryTests : IDisposable
         };
         n.Recipients.Add(new NotificationRecipient { NotificationId = n.Id, UserId = source });
         n.Recipients.Add(new NotificationRecipient { NotificationId = n.Id, UserId = target, ReadAt = _now });
-        await _repo.AddRangeAsync([n], Xunit.TestContext.Current.CancellationToken);
+        await _repo.AddRangeAsync([n], TestContext.Current.CancellationToken);
 
-        await _repo.ReassignRecipientsToUserAsync(source, target, Xunit.TestContext.Current.CancellationToken);
+        await _repo.ReassignRecipientsToUserAsync(source, target, TestContext.Current.CancellationToken);
 
-        var rows = await _dbContext.NotificationRecipients.AsNoTracking().ToListAsync(Xunit.TestContext.Current.CancellationToken);
+        var rows = await _dbContext.NotificationRecipients.AsNoTracking().ToListAsync(TestContext.Current.CancellationToken);
         rows.Should().ContainSingle(r => r.NotificationId == n.Id && r.UserId == target);
         rows.Single().ReadAt.Should().Be(_now);
         rows.Should().NotContain(r => r.UserId == source);
@@ -294,11 +294,11 @@ public class NotificationRepositoryTests : IDisposable
         var n = CreateNotification(target, NotificationClass.Actionable);
         n.ResolvedAt = _now;
         n.ResolvedByUserId = source;
-        await _repo.AddRangeAsync([n], Xunit.TestContext.Current.CancellationToken);
+        await _repo.AddRangeAsync([n], TestContext.Current.CancellationToken);
 
-        await _repo.ReassignRecipientsToUserAsync(source, target, Xunit.TestContext.Current.CancellationToken);
+        await _repo.ReassignRecipientsToUserAsync(source, target, TestContext.Current.CancellationToken);
 
-        var resolved = await _dbContext.Notifications.AsNoTracking().SingleAsync(Xunit.TestContext.Current.CancellationToken);
+        var resolved = await _dbContext.Notifications.AsNoTracking().SingleAsync(TestContext.Current.CancellationToken);
         resolved.ResolvedByUserId.Should().Be(target);
         resolved.ResolvedAt.Should().Be(_now);
     }
@@ -310,20 +310,20 @@ public class NotificationRepositoryTests : IDisposable
         var target = Guid.NewGuid();
         var bystander = Guid.NewGuid();
 
-        await _repo.AddRangeAsync([CreateNotification(source)], Xunit.TestContext.Current.CancellationToken);
-        await _repo.AddRangeAsync([CreateNotification(bystander)], Xunit.TestContext.Current.CancellationToken);
+        await _repo.AddRangeAsync([CreateNotification(source)], TestContext.Current.CancellationToken);
+        await _repo.AddRangeAsync([CreateNotification(bystander)], TestContext.Current.CancellationToken);
 
-        await _repo.ReassignRecipientsToUserAsync(source, target, Xunit.TestContext.Current.CancellationToken);
+        await _repo.ReassignRecipientsToUserAsync(source, target, TestContext.Current.CancellationToken);
 
-        var rows = await _dbContext.NotificationRecipients.AsNoTracking().ToListAsync(Xunit.TestContext.Current.CancellationToken);
+        var rows = await _dbContext.NotificationRecipients.AsNoTracking().ToListAsync(TestContext.Current.CancellationToken);
         rows.Should().ContainSingle(r => r.UserId == target);
         rows.Should().ContainSingle(r => r.UserId == bystander);
         rows.Should().NotContain(r => r.UserId == source);
     }
 
     [HumansTheory]
-    [Xunit.InlineData("vote-1", 1)]
-    [Xunit.InlineData(null, 2)]
+    [InlineData("vote-1", 1)]
+    [InlineData(null, 2)]
     public async Task ResolveBySourceAsync_OptionalKeyPreservesOtherRecipientsAndSources(string? key, int expectedResolved)
     {
         var voter = Guid.NewGuid();
@@ -332,7 +332,7 @@ public class NotificationRepositoryTests : IDisposable
         var second = CreateNotification(voter, NotificationClass.Actionable, TestSources.Approval, "vote-2");
         var otherRecipient = CreateNotification(otherVoter, NotificationClass.Actionable, TestSources.Approval, "vote-1");
         var otherSource = CreateNotification(voter, NotificationClass.Actionable, TestSources.Plain, "vote-1");
-        var ct = Xunit.TestContext.Current.CancellationToken;
+        var ct = TestContext.Current.CancellationToken;
         await _repo.AddRangeAsync([first, second, otherRecipient, otherSource], ct);
 
         await _repo.ResolveBySourceAsync(voter, TestSources.Approval.Name, _now, ct, key);
@@ -359,13 +359,13 @@ public class NotificationRepositoryTests : IDisposable
         // Same key, different source — must NOT resolve.
         var diff = CreateNotification(u1, NotificationClass.Informational, TestSources.Approval, "issue-1");
 
-        await _repo.AddRangeAsync([a, b, other, diff], Xunit.TestContext.Current.CancellationToken);
+        await _repo.AddRangeAsync([a, b, other, diff], TestContext.Current.CancellationToken);
 
         await _repo.ResolveBySourceKeyAsync(
-            TestSources.Plain.Name, "issue-1", _now, actor, Xunit.TestContext.Current.CancellationToken);
+            TestSources.Plain.Name, "issue-1", _now, actor, TestContext.Current.CancellationToken);
 
         var byId = await _dbContext.Notifications.AsNoTracking()
-            .ToDictionaryAsync(n => n.Id, Xunit.TestContext.Current.CancellationToken);
+            .ToDictionaryAsync(n => n.Id, TestContext.Current.CancellationToken);
         byId[a.Id].ResolvedAt.Should().Be(_now);
         byId[a.Id].ResolvedByUserId.Should().Be(actor);
         byId[b.Id].ResolvedAt.Should().Be(_now);
@@ -376,7 +376,7 @@ public class NotificationRepositoryTests : IDisposable
     [HumansFact]
     public async Task ResolveBySourceKeyAsync_LeavesNotificationUnresolved_WhenNothingMatches()
     {
-        var ct = Xunit.TestContext.Current.CancellationToken;
+        var ct = TestContext.Current.CancellationToken;
         var notification = CreateNotification(Guid.NewGuid(), NotificationClass.Actionable, TestSources.Plain, "issue-1");
         await _repo.AddRangeAsync([notification], ct);
 
@@ -398,15 +398,15 @@ public class NotificationRepositoryTests : IDisposable
         var resolvedApp = CreateNotification(userId, NotificationClass.Actionable, TestSources.Retired, null);
         resolvedApp.ResolvedAt = _now;
 
-        await _repo.AddRangeAsync([retiredApp, retiredConsent, liveIssue, resolvedApp], Xunit.TestContext.Current.CancellationToken);
+        await _repo.AddRangeAsync([retiredApp, retiredConsent, liveIssue, resolvedApp], TestContext.Current.CancellationToken);
 
         var deleted = await _repo.DeleteUnresolvedBySourcesAsync(
             [TestSources.Retired.Name, TestSources.RetiredToo.Name],
-            Xunit.TestContext.Current.CancellationToken);
+            TestContext.Current.CancellationToken);
 
         deleted.Should().Be(2);
         var remaining = await _dbContext.Notifications.AsNoTracking()
-            .Select(n => n.Id).ToListAsync(Xunit.TestContext.Current.CancellationToken);
+            .Select(n => n.Id).ToListAsync(TestContext.Current.CancellationToken);
         remaining.Should().BeEquivalentTo([liveIssue.Id, resolvedApp.Id]);
     }
 

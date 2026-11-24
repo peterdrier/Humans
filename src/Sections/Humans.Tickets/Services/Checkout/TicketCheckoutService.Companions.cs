@@ -1,5 +1,4 @@
 using Humans.AuditLog.Contracts;
-using Humans.Users.Contracts;
 using Humans.Tickets.Domain.Checkout;
 
 namespace Humans.Tickets.Services.Checkout;

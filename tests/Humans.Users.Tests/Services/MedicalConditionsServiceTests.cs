@@ -3,12 +3,10 @@ using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
 using Humans.Base;
-using Humans.Base.Interfaces;
 using Humans.Users.Contracts;
 using Humans.Users.Controllers;
 using Humans.Users.Data.Repositories;
 using Humans.Users.Services;
-using Humans.Users.Tests.Infrastructure;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -111,7 +109,7 @@ public class MedicalConditionsServiceTests
         var result = await Controller(_actorId).RevealMedical(subjectId, CancellationToken.None);
 
         result.Should().BeOfType<ForbidResult>();
-        await _repo.DidNotReceiveWithAnyArgs().GetByUserIdReadOnlyAsync(default, default);
+        await _repo.DidNotReceiveWithAnyArgs().GetByUserIdReadOnlyAsync(default);
         await _audit.DidNotReceiveWithAnyArgs().LogAsync(default!, default!, default, default!, default(Guid));
     }
 
@@ -126,7 +124,7 @@ public class MedicalConditionsServiceTests
         var reveal = () => Controller(_actorId).RevealMedical(subjectId, aborted.Token);
 
         await reveal.Should().ThrowAsync<OperationCanceledException>();
-        await _repo.DidNotReceiveWithAnyArgs().GetByUserIdReadOnlyAsync(default, default);
+        await _repo.DidNotReceiveWithAnyArgs().GetByUserIdReadOnlyAsync(default);
     }
 
     private ProfileViewController Controller(Guid viewerId)

@@ -1,6 +1,5 @@
 using Humans.Consent.Contracts;
 using System.Globalization;
-using Microsoft.AspNetCore.Mvc.Controllers;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.Extensions.Primitives;
 using Microsoft.Extensions.DependencyInjection;
@@ -14,21 +13,11 @@ using System.Reflection;
 using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.Base.Configuration;
-using Humans.Tickets.Contracts;
 using Humans.AuditLog.Contracts;
-using Humans.Camps.Contracts;
-using Humans.Email.Contracts;
-using Humans.Governance.Contracts;
 using Humans.Onboarding.Contracts;
 using Humans.Users.Contracts;
-using Humans.Settings.Contracts;
-using Humans.Shifts.Contracts;
-using Humans.Teams.Contracts;
 
-using Humans.Users.Tests.Infrastructure;
 using Humans.Base;
-using Humans.Base.Constants;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -36,13 +25,9 @@ using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging.Abstractions;
-using Microsoft.Extensions.Options;
-using NodaTime;
-using NodaTime.Testing;
 using NSubstitute;
 using Xunit;
 
-using Humans.Google.Contracts;
 
 namespace Humans.Users.Tests.Controllers;
 
@@ -365,7 +350,7 @@ public class ProfileControllerEditTests
             ("EditableLanguages[1].LanguageCode", "Validation_MaxLength", ["", 10]));
         AssertErrors(new ContactFieldEditViewModel
         {
-            FieldType = (ContactFieldType)0,
+            FieldType = default(ContactFieldType),
             Value = "handle",
             Visibility = ContactFieldVisibility.BoardOnly
         }, ("FieldType", "Validation_InvalidValue", []));
@@ -486,7 +471,7 @@ public class ProfileControllerEditTests
 
         result.Should().BeOfType<ViewResult>();
         _controller.ModelState[expectedField]!.Errors.Should().ContainSingle().Which.ErrorMessage.Should().Be(errorKey);
-        await _onboardingService.DidNotReceiveWithAnyArgs().ProfileSavedAsync(default, default);
+        await _onboardingService.DidNotReceiveWithAnyArgs().ProfileSavedAsync(default);
     }
 
     [HumansFact]
@@ -511,8 +496,8 @@ public class ProfileControllerEditTests
         result.Should().BeOfType<ViewResult>().Which.Model.Should().BeSameAs(model);
         _controller.ModelState[nameof(ProfileViewModel.NoPriorBurnExperience)]!.Errors.Should().ContainSingle()
             .Which.ErrorMessage.Should().Be("Users_Profile_BurnerCVRequired");
-        await _userService.DidNotReceiveWithAnyArgs().SaveProfileLanguagesAsync(default, default!, default);
-        await _onboardingService.DidNotReceiveWithAnyArgs().ProfileSavedAsync(default, default);
+        await _userService.DidNotReceiveWithAnyArgs().SaveProfileLanguagesAsync(default, default!);
+        await _onboardingService.DidNotReceiveWithAnyArgs().ProfileSavedAsync(default);
     }
 
     [HumansFact]
@@ -554,7 +539,7 @@ public class ProfileControllerEditTests
 
         result.Should().BeOfType<ViewResult>().Which.Model.Should().BeOfType<MedicalViewModel>()
             .Which.UserId.Should().Be(_userId, "a posted id never picks whose reveal list renders");
-        await _userService.DidNotReceiveWithAnyArgs().SaveMedicalConditionsAsync(default, default, default);
+        await _userService.DidNotReceiveWithAnyArgs().SaveMedicalConditionsAsync(default, default);
     }
 
     [HumansFact]

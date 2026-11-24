@@ -1,6 +1,5 @@
 using Humans.Shifts.Contracts;
 using Humans.Shifts.Domain;
-using Humans.Settings.Contracts;
 namespace Humans.Shifts.Services.Dtos;
 
 /// <summary>

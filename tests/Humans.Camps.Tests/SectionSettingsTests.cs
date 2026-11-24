@@ -1,8 +1,5 @@
-using Humans.Camps.Contracts;
 using Humans.Settings.Contracts;
-using Humans.Base.Interfaces;
 using AwesomeAssertions;
-using Humans.Base.Authorization;
 
 namespace Humans.Camps.Tests;
 

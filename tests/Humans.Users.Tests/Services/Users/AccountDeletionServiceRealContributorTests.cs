@@ -5,7 +5,6 @@ using Humans.Auth.Contracts;
 using Humans.Base.Interfaces;
 using Humans.Email.Contracts;
 using Humans.Gdpr.Contracts;
-using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Tickets.Contracts;
 using Humans.Users.Contracts;

@@ -91,7 +91,7 @@ public sealed partial class ExpenseReportServiceTests
     public ExpenseReportServiceTests()
     {
         _preapprovals.GetGrantsAsync(Arg.Any<CancellationToken>())
-            .Returns(_ => (IReadOnlyList<GrantOption>)_grantStore.Values.ToList());
+            .Returns(_ => _grantStore.Values.ToList());
         _preapprovalWrites.ReleaseAsync(default, default, default, default, Arg.Any<Action<Func<CancellationToken, Task>>>()).ReturnsForAnyArgs(new PreapprovalWriteResult());
         _preapprovalWrites.ConsumeAsync(default, default, default, default, Arg.Any<Action<Func<CancellationToken, Task>>>()).ReturnsForAnyArgs(new PreapprovalWriteResult());
         _expenseRepo = new ExpenseRepository(new TestDbContextFactory<ExpensesDbContext>(_expensesOptions));
@@ -354,7 +354,7 @@ public sealed partial class ExpenseReportServiceTests
             .Should().BeOfType<ExpenseReviewViewModel>().Subject;
         model.Reports.Should().HaveCount(3);
         model.Reports.Select(r => r.SubmitterUserId).Should().BeEquivalentTo([namedId, blankId, missingId]);
-        await _userService.DidNotReceiveWithAnyArgs().GetUserInfosAsync(default!, default);
+        await _userService.DidNotReceiveWithAnyArgs().GetUserInfosAsync(default!);
         controller.TempData.Should().BeEmpty();
     }
 
@@ -2320,7 +2320,7 @@ public sealed partial class ExpenseReportServiceTests
     {
         // The report belongs to a year that is no longer the active one. Re-resolving its header
         // through the active year would silently move last year's accounting into this year.
-        var (_, _) = SetupActiveYear();
+        SetupActiveYear();
         var member = Guid.NewGuid();
         var admin = Guid.NewGuid();
         var reportId = Guid.NewGuid();
@@ -4376,7 +4376,7 @@ public sealed partial class ExpenseReportServiceTests
             : (await _sut.AddLineWithResultAsync(id, owner, "Extra", amount, type, ct: ct)).Error;
 
         error.Should().NotBeNull();
-        error!.ResourceKey.Should().Be("Expenses_Validation_AmountPrecision");
+        error.ResourceKey.Should().Be("Expenses_Validation_AmountPrecision");
         var loaded = (await _sut.GetAsync(id, ct))!;
         loaded.Total.Should().Be(10m);
         loaded.Lines.Should().ContainSingle().Which.Description.Should().Be("Original");

@@ -41,7 +41,7 @@ public sealed class CityPlanningHubTests
         await hub.OnConnectedAsync();
         await hub.UpdateCursorAsync(1, 2);
 
-        await _users.DidNotReceiveWithAnyArgs().GetUserInfoAsync(default, default);
+        await _users.DidNotReceiveWithAnyArgs().GetUserInfoAsync(default);
         await ExpectCursorAsync(hub, "Session Human");
         await hub.OnDisconnectedAsync(null);
     }

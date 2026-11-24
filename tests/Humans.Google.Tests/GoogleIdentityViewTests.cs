@@ -19,7 +19,6 @@ using Microsoft.AspNetCore.Mvc.Routing;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
-using NodaTime;
 using NSubstitute;
 
 namespace Humans.Google.Tests;
@@ -86,8 +85,8 @@ public sealed class GoogleIdentityViewTests
         builder.Services.AddLocalization();
         builder.Services.AddAuthorization(options =>
         {
-            options.AddPolicy(Humans.Base.Authorization.PolicyNames.AdminOnly, policy => policy.RequireAssertion(_ => false));
-            options.AddPolicy(Humans.Base.Authorization.PolicyNames.BoardOrAdmin, policy => policy.RequireAssertion(_ => false));
+            options.AddPolicy(Base.Authorization.PolicyNames.AdminOnly, policy => policy.RequireAssertion(_ => false));
+            options.AddPolicy(Base.Authorization.PolicyNames.BoardOrAdmin, policy => policy.RequireAssertion(_ => false));
         });
         builder.Services.AddHttpContextAccessor();
         builder.Services.AddControllersWithViews()

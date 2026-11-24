@@ -1,9 +1,8 @@
-using Humans.Base.Interfaces;
 using Humans.Tickets.Contracts;
 
 namespace Humans.Tickets.Services;
 
-internal interface IEventParticipationManagement : ITicketWrite, IApplicationService
+internal interface IEventParticipationManagement : ITicketWrite
 {
     /// <summary>The member declares they are not attending <paramref name="year"/>. Refused (false) once
     /// they are Attended; a ticket held later overrides the declaration.</summary>

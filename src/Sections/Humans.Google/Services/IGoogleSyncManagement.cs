@@ -1,12 +1,10 @@
 using Humans.Base.Attributes;
-using Humans.Base.Enums;
-using Humans.Base.Interfaces;
 using Humans.Google.Contracts;
 using NodaTime;
 
 namespace Humans.Google.Services;
 
-internal interface IGoogleSyncManagement : IGoogleSyncService, IGoogleSyncWrite, IApplicationService
+internal interface IGoogleSyncManagement : IGoogleSyncService, IGoogleSyncWrite
 {
     /// <summary>Group resources are routed through <see cref="IGoogleGroupSync"/>.</summary>
     [ExternalWrite]

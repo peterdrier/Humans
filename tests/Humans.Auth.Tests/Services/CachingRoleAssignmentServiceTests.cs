@@ -246,10 +246,10 @@ public sealed class CachingRoleAssignmentServiceTests
         (await service.GetActiveUserIdsInRoleAsync(RoleNames.Board, ct)).Should().Equal(board);
         (await service.GetUserIdsWithActiveAssignmentsAsync(ct)).Should().Equal(board);
 
-        await inner.DidNotReceiveWithAnyArgs().HasActiveRoleAsync(default, default!, default);
-        await inner.DidNotReceiveWithAnyArgs().GetActiveUserIdsInRoleAsync(default!, default);
-        await inner.DidNotReceiveWithAnyArgs().GetUserIdsWithActiveAssignmentsAsync(default);
-        await inner.DidNotReceiveWithAnyArgs().HasAnyActiveAssignmentAsync(default, default);
+        await inner.DidNotReceiveWithAnyArgs().HasActiveRoleAsync(default, default!);
+        await inner.DidNotReceiveWithAnyArgs().GetActiveUserIdsInRoleAsync(default!);
+        await inner.DidNotReceiveWithAnyArgs().GetUserIdsWithActiveAssignmentsAsync();
+        await inner.DidNotReceiveWithAnyArgs().HasAnyActiveAssignmentAsync(default);
     }
 
     [HumansFact]

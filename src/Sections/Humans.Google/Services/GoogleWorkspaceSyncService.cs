@@ -7,9 +7,7 @@ using Humans.Base.Enums;
 using Humans.Base.Helpers;
 using Microsoft.Extensions.Options;
 using NodaTime;
-using Humans.Google.Data;
 using Humans.Google.Services.Workspace;
-using Humans.Base.Interfaces;
 
 namespace Humans.Google.Services;
 

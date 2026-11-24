@@ -4,7 +4,6 @@ using System.Security.Claims;
 using Humans.Base.Constants;
 using Humans.CityPlanning.Contracts;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
 
 namespace Humans.CityPlanning.Authorization;
 

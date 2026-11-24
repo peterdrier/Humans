@@ -1,6 +1,4 @@
 using Humans.Base.Extensions;
-using Humans.AuditLog.Contracts;
-using Humans.Notifications.Contracts;
 using Humans.Workgroups.Domain;
 
 namespace Humans.Workgroups.Services;

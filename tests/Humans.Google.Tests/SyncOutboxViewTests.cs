@@ -2,7 +2,6 @@ using Humans.Google.Services;
 using System.Text.Encodings.Web;
 using AwesomeAssertions;
 using Humans.Base.ViewComponents;
-using Humans.Google.Contracts;
 using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;

@@ -99,7 +99,7 @@ public sealed class PleoSyncTests
         row.Currency.Should().Be(currency);
         var detail = await _service.GetEntryViewAsync("currency-entry", ct);
         detail.Should().NotBeNull();
-        detail!.Row.Should().Be(row);
+        detail.Row.Should().Be(row);
     }
 
     private static JsonElement Parse(string json) => JsonDocument.Parse(json).RootElement.Clone();
@@ -344,7 +344,7 @@ public sealed class PleoSyncTests
         await SyncAsync();
 
         (await _service.GetWalletBalanceAsync(ct)).Should()
-            .Be(new Humans.Pleo.Contracts.PleoWalletBalance(10_000m, Instant.FromUtc(2026, 11, 3, 12, 0)));
+            .Be(new PleoWalletBalance(10_000m, Instant.FromUtc(2026, 11, 3, 12, 0)));
     }
 
     [HumansTheory]
@@ -664,7 +664,7 @@ public sealed class PleoSyncTests
         {
             started.Release();
             await release.WaitAsync();
-            return (IReadOnlyList<JsonElement>)[];
+            return [];
         });
 
         var first = SyncAsync();

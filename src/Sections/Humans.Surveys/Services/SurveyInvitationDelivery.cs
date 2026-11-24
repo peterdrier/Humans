@@ -3,7 +3,6 @@ using System.Text;
 using Humans.AuditLog.Contracts;
 using Humans.Base.Enums;
 using Humans.Base.Extensions;
-using Humans.Base.Interfaces;
 using Humans.Email.Contracts;
 using Humans.Surveys.Contracts;
 using Humans.Surveys.Data;
@@ -106,7 +105,7 @@ internal sealed class SurveyInvitationDelivery(
             {
                 var preferredCulture = user.PreferredLanguage;
                 var culture = preferredCulture.IsSupportedCultureCode()
-                    ? preferredCulture!
+                    ? preferredCulture
                     : survey.DefaultCulture;
                 var name = user.BurnerName;
                 var title = survey.Title.Resolve(culture, survey.DefaultCulture);
@@ -241,7 +240,7 @@ internal sealed class SurveyInvitationDelivery(
 
                     var preferredCulture = user.PreferredLanguage;
                     var culture = preferredCulture.IsSupportedCultureCode()
-                        ? preferredCulture!
+                        ? preferredCulture
                         : meta.DefaultCulture;
                     var name = user.BurnerName;
                     var token = tokenProvider.Create(inv.Id);
