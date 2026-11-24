@@ -68,7 +68,7 @@ public sealed class Section : ISection, ISectionAdminNav, ISectionAdminTiles, IS
 
     IEnumerable<AdminTile> ISectionAdminTiles.Tiles() =>
     [
-        new AdminTile("auditlog.total", "Audit events", "fa-solid fa-list-check", TotalAsync, Weight: 100)
+        new AdminTile("auditlog.total", "Audit entries", "fa-solid fa-list-check", TotalAsync, Weight: 100)
     ];
 
     // Page size 1, no filter: TotalCount is the tile.

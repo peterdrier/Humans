@@ -41,18 +41,18 @@ internal sealed class TicketingProjectionUpdateForm
     [BindRequired]
     public decimal StripeFeeFixed { get; init; }
     [BindRequired]
-    public decimal TicketTailorFeePercent { get; init; }
+    public decimal PlatformFeePercent { get; init; }
     public Guid BudgetYearId { get; init; }
 }
 
-internal sealed class CoordinatorBudgetViewModel
+internal sealed class DepartmentBudgetViewModel
 {
     public required BudgetYearDetail Year { get; init; }
     public required HashSet<Guid> EditableTeamIds { get; init; }
     public bool IsFinanceAdmin { get; init; }
 }
 
-internal sealed class CoordinatorCategoryDetailViewModel
+internal sealed class CategoryDetailViewModel
 {
     public required BudgetCategorySnapshot Category { get; init; }
     public bool CanEdit { get; init; }
@@ -68,7 +68,7 @@ internal sealed class BudgetSummaryViewModel
     public decimal NetBalance { get; init; }
     public required IReadOnlyList<BudgetSliceResult> IncomeSlices { get; init; }
     public required IReadOnlyList<BudgetSliceResult> ExpenseSlices { get; init; }
-    public bool IsCoordinator { get; init; }
+    public bool CanEditBudget { get; init; }
 }
 
 /// <summary>A virtual VAT cash flow entry for a line item with VatRate &gt; 0.</summary>

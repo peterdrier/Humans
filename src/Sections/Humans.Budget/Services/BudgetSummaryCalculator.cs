@@ -77,30 +77,30 @@ internal static class BudgetSummaryCalculator
         };
     }
 
-    internal static BudgetSummaryResult ComputeBudgetSummaryWithBuffers(IReadOnlyList<BudgetGroupDetail> groups)
+    internal static BudgetSummaryResult ComputeBudgetSummaryWithAvailable(IReadOnlyList<BudgetGroupDetail> groups)
     {
         var summary = ComputeBudgetSummary(groups);
 
         // Allocated minus line-item total (negative = expense, positive = income).
-        var groupBuffers = groups
+        var groupAvailable = groups
             .Where(g => !g.IsTicketingGroup)
             .Select(g => new
             {
                 Name = string.Format(CultureInfo.CurrentCulture,
-                    Resources.GetString("Budget_GroupBuffer", CultureInfo.CurrentUICulture)!, g.Name),
-                Raw = g.UnallocatedAmount
+                    Resources.GetString("Budget_GroupAvailable", CultureInfo.CurrentUICulture)!, g.Name),
+                Raw = g.AvailableAmount
             })
             .Where(b => b.Raw != 0)
             .ToList();
 
         var allExpenseEntries = summary.ExpenseSlices
             .Select(s => (s.Name, s.Amount, s.BudgetCategoryId))
-            .Concat(groupBuffers.Where(b => b.Raw < 0).Select(b => (b.Name, Amount: Math.Abs(b.Raw), BudgetCategoryId: (Guid?)null)))
+            .Concat(groupAvailable.Where(b => b.Raw < 0).Select(b => (b.Name, Amount: Math.Abs(b.Raw), BudgetCategoryId: (Guid?)null)))
             .ToList();
 
         var allIncomeEntries = summary.IncomeSlices
             .Select(s => (s.Name, s.Amount, s.BudgetCategoryId))
-            .Concat(groupBuffers.Where(b => b.Raw > 0).Select(b => (b.Name, Amount: b.Raw, BudgetCategoryId: (Guid?)null)))
+            .Concat(groupAvailable.Where(b => b.Raw > 0).Select(b => (b.Name, Amount: b.Raw, BudgetCategoryId: (Guid?)null)))
             .ToList();
 
         return new BudgetSummaryResult

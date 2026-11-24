@@ -179,7 +179,7 @@ public class CashFlowServiceTests
     [InlineData(TicketPaymentStatus.Cancelled)]
     public async Task GetGrossTicketRevenueAsync_ConfiguredEvent_ExcludesOtherEventAndUnpaidOrders(TicketPaymentStatus unpaidStatus)
     {
-        var year = new BudgetYearDetail(_yearId, "2026", "2026", BudgetYearStatus.Active, false, [], VendorEventId: "event-2026");
+        var year = new BudgetYearDetail(_yearId, "2026", "2026", BudgetYearStatus.Active, false, [], PlatformEventId: "event-2026");
         var order = Order(100m);
         _tickets.GetTicketOrdersAsync(Arg.Any<CancellationToken>())
             .Returns(new List<TicketOrderInfo>

@@ -46,7 +46,7 @@ internal sealed class BudgetController(
                 return View("NoActiveBudget");
             }
 
-            var model = new CoordinatorBudgetViewModel
+            var model = new DepartmentBudgetViewModel
             {
                 Year = activeYear,
                 EditableTeamIds = editableTeamIds,
@@ -56,7 +56,7 @@ internal sealed class BudgetController(
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            logger.LogError(ex, "Error loading coordinator budget view");
+            logger.LogError(ex, "Error loading department budget view");
             SetError(localizer["Budget_Flash_LoadFailed"].Value);
             return View("NoActiveBudget");
         }
@@ -79,7 +79,7 @@ internal sealed class BudgetController(
             }
 
             var visibleGroups = activeYear.Groups.OrderBy(group => group.SortOrder).ToList();
-            var summary = budgetService.ComputeBudgetSummaryWithBuffers(visibleGroups);
+            var summary = budgetService.ComputeBudgetSummaryWithAvailable(visibleGroups);
 
             var canEditSomewhere = (await permissions.GetOwnersAsync(user.Id, BudgetPermissions.Edit, ct)).Count > 0;
 
@@ -93,7 +93,7 @@ internal sealed class BudgetController(
                     .ThenByDescending(slice => slice.BudgetCategoryId is null ? 0m : slice.Amount).ToList(),
                 ExpenseSlices = summary.ExpenseSlices.OrderBy(slice => slice.BudgetCategoryId is null)
                     .ThenByDescending(slice => slice.BudgetCategoryId is null ? 0m : slice.Amount).ToList(),
-                IsCoordinator = canEditSomewhere || (await authService.AuthorizeAsync(User, FinancePolicies.Manage)).Succeeded
+                CanEditBudget = canEditSomewhere || (await authService.AuthorizeAsync(User, FinancePolicies.Manage)).Succeeded
             };
             return View(model);
         }
@@ -122,7 +122,7 @@ internal sealed class BudgetController(
 
             var canEdit = (await authService.AuthorizeAsync(User, category, BudgetOperationRequirement.Edit)).Succeeded;
 
-            var model = new CoordinatorCategoryDetailViewModel
+            var model = new CategoryDetailViewModel
             {
                 Category = category,
                 CanEdit = canEdit,

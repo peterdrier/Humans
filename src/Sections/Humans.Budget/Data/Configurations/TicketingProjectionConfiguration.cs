@@ -17,7 +17,7 @@ internal sealed class TicketingProjectionConfiguration : IEntityTypeConfiguratio
         builder.Property(p => p.VatRate).IsRequired();
         builder.Property(p => p.StripeFeePercent).HasPrecision(18, 4).IsRequired();
         builder.Property(p => p.StripeFeeFixed).HasPrecision(18, 2).IsRequired();
-        builder.Property(p => p.TicketTailorFeePercent).HasPrecision(18, 4).IsRequired();
+        builder.Property(p => p.PlatformFeePercent).HasPrecision(18, 4).IsRequired();
         builder.Property(p => p.CreatedAt).IsRequired();
         builder.Property(p => p.UpdatedAt).IsRequired();
 

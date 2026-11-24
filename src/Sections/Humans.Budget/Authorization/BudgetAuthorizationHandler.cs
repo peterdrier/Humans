@@ -30,7 +30,7 @@ internal sealed class BudgetAuthorizationHandler(IPermissionService permissions,
             return;
 
         var viewing = requirement == BudgetOperationRequirement.View;
-        if (!viewing && (resource.BudgetGroup?.BudgetYear?.IsDeleted == true || !resource.TeamId.HasValue))
+        if (!viewing && (resource.BudgetGroup?.BudgetYear?.IsArchived == true || !resource.TeamId.HasValue))
             return;
 
         if (context.User.GetUserId() is not { } userId)
