@@ -11,20 +11,20 @@ summary of what it is.
 ## 1. What the section does
 
 Hands a named human a personal key, and lets whatever they run — an agent, a script, a laptop —
-talk to the app as them. An admin allocates a key on one page; the plaintext appears once and
-never again. Every request carrying that key is attributed to the person it was issued to, so a
+talk to the app as them. An admin creates a key on one page; the plaintext appears once and
+never again. Every request carrying that key is attributed to the person who owns it, so a
 machine's writes land in the audit thread with a real name on them.
 
-The key stops working the moment its holder stops being an active Admin or Board member. It is
+The key stops working the moment its owner stops being an active Admin or Board member. It is
 not deleted when that happens — it is refused, so restoring the role or lifting the suspension
 brings it back.
 
 What the key opens is a fixed set of read and write surfaces borrowed from other parts of the
 app: the in-memory log tail, agent conversation transcripts, the issue queue, the feedback
 queue, survey definitions with their responses and aggregates, the Store's accounting export,
-the bookkeeping side of expenses and Holded, and the holder's own notification inbox. None of
+the bookkeeping side of expenses and Holded, and the owner's own notification inbox. None of
 that data is this section's; it owns only the keys. Where the browser would scope or gate a
-page by who is looking, the key is scoped and gated the same way — as its holder.
+page by who is looking, the key is scoped and gated the same way — as its owner.
 
 ## 2. The shapes
 
@@ -33,7 +33,7 @@ listed. The grouping is what makes collapse and duplication visible.
 
 | # | Shape | Where it appears | Notes |
 |---|---|---|---|
-| S1 | **Credential lifecycle** — allocate, rotate, revoke, list | `/Backdoor` | The section's own domain. HTML, cookie-authed, Admin-only |
+| S1 | **Credential lifecycle** — create, rotate, revoke, list | `/Backdoor` | The section's own domain. HTML, cookie-authed, Admin-only |
 | S2 | **Authenticate a machine** — presented secret → a person with roles | one authorization filter | The single gate, class-scoped on every machine controller, so all of S3–S9 hangs off it |
 | S3 | **List a queue or a register, filtered** — parse and clamp query, delegate, sort, project | logs, agent conversations, issues, feedback, surveys, store order lines and payments, expense reports, creditor accounts, category map, SEPA transfers, notifications | One shape |
 | S4 | **Fetch one item in full** — delegate, 404 on missing, project | issue, feedback report, conversation, survey definition and aggregates, expense report, creditor ledger, Holded sync state | One shape |
@@ -98,22 +98,22 @@ Stated so a violation is recognisable; paths are relative to `src/Sections/Human
   401 (`Filters/BackdoorApiKeyAuthFilter.cs:34`, `Filters/BackdoorApiKeyAuthFilter.cs:41`). At
   most one row can match a hash: the unique index at
   `Data/Configurations/BackdoorApiKeyConfiguration.cs:17`.
-- The database never holds a plaintext key: issue and rotate persist only the hash and a
+- The database never holds a plaintext key: create and rotate persist only the hash and a
   12-character prefix (`Services/BackdoorApiKeyService.cs:166`), and resolution looks up by hash
   (`Services/BackdoorApiKeyService.cs:121`).
 - A key authenticates only while its owner is **both** in Admin or Board **and** in
-  `UserState.Active` — the one test at `Services/BackdoorApiKeyService.cs:143`, applied at issue
+  `UserState.Active` — the one test at `Services/BackdoorApiKeyService.cs:143`, applied at creation
   (`Services/BackdoorApiKeyService.cs:48`), at rotate (`Services/BackdoorApiKeyService.cs:88`)
   and on every request (`Services/BackdoorApiKeyService.cs:124`). Failing it refuses the key and
   never revokes it.
 - A rotate revokes the old row and inserts its replacement in one save, or writes neither —
   `Data/BackdoorApiKeyRepository.cs:51`.
-- Issue and revoke each write one audit entry naming the key and its owner
-  (`Services/BackdoorApiKeyService.cs:174`); a rotate is a revoke entry followed by an issue
+- Create and revoke each write one audit entry naming the key and its owner
+  (`Services/BackdoorApiKeyService.cs:174`); a rotate is a revoke entry followed by a create
   entry (`Services/BackdoorApiKeyService.cs:97`).
 - Every issue and feedback write passes the key owner as the acting user
   (`Controllers/BackdoorIssuesController.cs:34`, `Controllers/BackdoorFeedbackController.cs:32`).
-- An issue is read, commented on and patched as its holder — id and roles — through the viewer
+- An issue is read, commented on and patched as its owner — id and roles — through the viewer
   Issues scopes by (`Controllers/BackdoorIssuesController.cs:42`); the notification inbox is read
   for the installed principal (`Controllers/BackdoorNotificationsController.cs:28`).
 - Finance-wide routes pass `FinancePolicies.Manage` and report routes pass Expenses' own
@@ -137,7 +137,7 @@ shaped by it.
 - **Per-key scope.** A key is all-or-nothing across every surface it opens. Nothing in the model
   says a key could be read-only or single-surface, and nothing has asked for it.
 - **Role scoping on the unscoped reads.** Agent, feedback, logs, store and surveys serve every
-  eligible key the same rows; nothing narrows them by the holder's roles, and no spec asks for it.
+  eligible key the same rows; nothing narrows them by the owner's roles, and no spec asks for it.
 
 ## 6. Deliberately not done
 
@@ -146,7 +146,7 @@ shaped by it.
   hash probe at a handful of requests per minute.
 - **No resource set.** Every string on the one page is English admin plumbing, read only by full
   Admins — the same call Debug makes.
-- **No shared base controller for the machine surface.** A controller per served section, over
+- **No shared base controller for the Backdoor API.** A controller per served section, over
   shapes they share, looks like a base class; it would be one, in Base, serving one section, and
   would put the patch pipeline further from the rules it enforces. Collapse within a controller,
   not across them.
@@ -169,12 +169,12 @@ Essential complexity and settled decisions, so later runs stop re-litigating the
 - **The account-state half of eligibility is not redundant with the role half.** Suspension
   moves `users.State` and deliberately leaves role assignments standing, so a role-only test
   would keep authenticating a suspended admin's key.
-- **`CreatedByUserId` is nullable.** Not because issuing is optional, but so GDPR erasure can
+- **`CreatedByUserId` is nullable.** Not because creating a key is optional, but so GDPR erasure can
   detach a deleted admin from a key that still belongs to someone else.
 - **The finance controller re-serializes its own output.** The IBAN scrub turns every result into
   a JSON tree and masks each string, so a field added later cannot forget to — the cost is one
   extra serialization per response on a handful of calls a day.
-- **A finance refusal is a 403, an issue refusal a 404.** Issues hides an id outside the holder's
+- **A finance refusal is a 403, an issue refusal a 404.** Issues hides an id outside the owner's
   queue; the finance-wide routes already disclose that the registers exist, so their report and
   attachment routes say "denied" rather than "missing".
 - **The migrations-history table is `__EFMigrationsHistory_Backdoor`.** One database, one

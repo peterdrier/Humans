@@ -135,21 +135,21 @@
                 bubble.textContent = bubble.dataset.rawMarkdown;
             }
             messagesEl.scrollTop = messagesEl.scrollHeight;
-        } else if (event === 'propose' && parsed.issueProposal) {
-            // Agent called route_to_issue. Open the issue submission modal
-            // pre-filled with the proposal. Preserve any answer the agent
+        } else if (event === 'handoff' && parsed.handoff) {
+            // Agent drafted a handoff. Open the issue submission modal
+            // pre-filled with the draft. Preserve any answer the agent
             // already streamed — only fall back to the canned "I drafted
             // an issue" text when the bubble is empty (escalate-only turn).
             if (!bubble.dataset.rawMarkdown.trim()) {
-                bubble.textContent = panel.dataset.issueProposedText;
+                bubble.textContent = panel.dataset.handoffDraftedText;
             }
             messagesEl.scrollTop = messagesEl.scrollHeight;
-            openIssueModalPrefilled(parsed.issueProposal);
+            openIssueModalPrefilled(parsed.handoff);
         } else if (event === 'final' && parsed.finalizer) {
             const reason = parsed.finalizer.stopReason;
             // Final-frame placeholders are trusted strings — render as plain text.
             if (reason === 'disabled') bubble.textContent = panel.dataset.disabledText;
-            if (reason === 'rate_limited') bubble.textContent = panel.dataset.rateLimitedText;
+            if (reason === 'limit_reached') bubble.textContent = panel.dataset.rateLimitedText;
             // A turn that threw mid-stream ends as a well-formed 'error' finalizer, so neither !resp.ok nor the catch
             // fires: tell the user here. Append to a bubble that already has content so a partial answer survives.
             if (reason === 'error') {

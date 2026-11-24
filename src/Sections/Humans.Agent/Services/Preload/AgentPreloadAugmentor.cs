@@ -39,7 +39,7 @@ internal sealed class AgentPreloadAugmentor(
 
     public string BuildGlossariesMarkdown()
     {
-        // Glossary keys name help-widget pages, but the model uses a heading as a fetch_section_guide argument, so
+        // Glossary keys name help-widget pages, but the model uses a heading as a fetch_section_doc argument, so
         // each block goes under the section key the tool accepts. Pages sharing a key keep their own tables: several
         // define the same term differently, so folding them would duplicate or drop a definition.
         var glossaries = helpContributions
@@ -62,7 +62,7 @@ internal sealed class AgentPreloadAugmentor(
         var sb = new StringBuilder();
         sb.AppendLine("# Section Glossaries");
         sb.AppendLine();
-        sb.AppendLine("Each \"## <key> Glossary\" heading below is a section key you can pass to `fetch_section_guide`.");
+        sb.AppendLine("Each \"## <key> Glossary\" heading below is a section key you can pass to `fetch_section_doc`.");
         sb.AppendLine();
         sb.AppendLine("## Shared Terms");
         sb.AppendLine();

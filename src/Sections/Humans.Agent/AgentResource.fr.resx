@@ -64,7 +64,7 @@
   <data name="Agent_ConversationEmpty" xml:space="preserve">
     <value>Aucun message dans cette conversation.</value>
   </data>
-  <data name="Agent_ConversationRefusedLabel" xml:space="preserve">
+  <data name="Agent_ConversationUnansweredLabel" xml:space="preserve">
     <value>L'Assistant n'a pas répondu à cette question.</value>
   </data>
   <data name="Agent_ConversationTitle" xml:space="preserve">
@@ -91,7 +91,7 @@
   <data name="Agent_DetailLocale" xml:space="preserve">
     <value>Langue</value>
   </data>
-  <data name="Agent_DetailRefusal" xml:space="preserve">
+  <data name="Agent_DetailOutcome" xml:space="preserve">
     <value>Refus : {0}</value>
   </data>
   <data name="Agent_HistoryEmpty" xml:space="preserve">
@@ -133,11 +133,11 @@
   <data name="Agent_Help_Menu_CreateIssue" xml:space="preserve">
     <value>Créer un signalement</value>
   </data>
-  <data name="Agent_IssueProposed" xml:space="preserve">
+  <data name="Agent_HandoffDrafted" xml:space="preserve">
     <value>Je ne peux pas répondre à cela moi-même. J'ai rédigé un signalement pour l'équipe — relis-le et envoie-le, s'il te plaît.</value>
   </data>
   <data name="Agent_SilentTurnFallback" xml:space="preserve"><value>Je n'ai pas réussi à formuler une réponse — peux-tu reformuler ta question ou réessayer ?</value></data>
-  <data name="Agent_AbuseRefusal" xml:space="preserve"><value>Je ne peux pas t’aider avec cela. Si tu es en détresse, contacte une personne coordinatrice ou les services d’urgence.</value></data>
+  <data name="Agent_DistressReply" xml:space="preserve"><value>Je ne peux pas t’aider avec cela. Si tu es en détresse, contacte une personne coordinatrice ou les services d’urgence.</value></data>
   <data name="Agent_HttpError" xml:space="preserve"><value>Erreur : {0}</value></data>
   <data name="Agent_NetworkError" xml:space="preserve"><value>Erreur réseau.</value></data>
   <data name="Agent_DisabledReply" xml:space="preserve"><value>(L’assistant est actuellement désactivé.)</value></data>
