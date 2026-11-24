@@ -74,7 +74,7 @@ public class AgentPageRenderTests(HumansTestDatabase database) : IntegrationTest
         var html = await response.Content.ReadAsStringAsync(ct);
 
         html.Should().Contain("Conversation with the Assistant");         // Agent_ConversationTitle
-        html.Should().Contain("Messages");                               // Agent_ConversationTranscript
+        html.Should().Contain("<h4>Messages</h4>");                      // Agent_ConversationTranscript
         html.Should().Contain("What the Assistant knows about you");       // Agent_ContextCardSummary
         html.Should().Contain("Back to my conversations");                // Agent_ConversationBackToHistory
         html.Should().Contain("hello from the render test");
