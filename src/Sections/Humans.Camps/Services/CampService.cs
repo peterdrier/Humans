@@ -411,15 +411,19 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
         }
         catch
         {
+            var step = "check whether the save committed for";
             try
             {
                 // A failed save may have committed: only remove an unreferenced file.
                 if (await _repo.GetImageForMutationAsync(image.Id, CancellationToken.None) is null)
+                {
+                    step = "delete the file of";
                     await _fileStorage.DeleteAsync(storageKey, CancellationToken.None);
+                }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to verify or clean up camp image upload {ImageId} at {StoragePath}", image.Id, storageKey);
+                _logger.LogError(ex, "Failed to {Step} camp image upload {ImageId} at {StoragePath}", step, image.Id, storageKey);
             }
             throw;
         }
@@ -462,16 +466,20 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
         }
         finally
         {
+            var step = "check whether the row is gone for";
             try
             {
                 if (await _repo.GetImageForMutationAsync(imageId, CancellationToken.None) is null)
+                {
+                    step = "delete the file of";
                     await _fileStorage.DeleteAsync(deletedPath ?? image.StoragePath, CancellationToken.None);
+                }
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex,
-                    "Failed to verify or clean up camp image {ImageId} at {StoragePath}",
-                    imageId, deletedPath ?? image.StoragePath);
+                    "Failed to {Step} camp image {ImageId} at {StoragePath}",
+                    step, imageId, deletedPath ?? image.StoragePath);
             }
         }
     }

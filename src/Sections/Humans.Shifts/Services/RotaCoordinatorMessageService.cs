@@ -262,13 +262,14 @@ internal sealed class RotaCoordinatorMessageService(
         }
 
         if (byUser.Count == 0)
-            return new DispatchSummary(0, 0, 0);
+            return new DispatchSummary(0, 0, 0, 0);
 
         var recipientIds = byUser.Keys;
         var recipientInfos = await userService.GetUserInfosAsync(recipientIds, ct);
 
         var requested = 0;
-        var skipped = 0;
+        var notFound = 0;
+        var noEmail = 0;
         var failed = 0;
 
         foreach (var (userId, entries) in byUser)
@@ -278,7 +279,7 @@ internal sealed class RotaCoordinatorMessageService(
                 logger.LogWarning(
                     "Skipping coordinator-message recipient {UserId} on {ScopeType} {ScopeId}: user not found",
                     userId, logScope.Type, logScope.Id);
-                skipped++;
+                notFound++;
                 continue;
             }
 
@@ -288,7 +289,7 @@ internal sealed class RotaCoordinatorMessageService(
                 logger.LogWarning(
                     "Skipping coordinator-message recipient {UserId} on {ScopeType} {ScopeId}: no email address",
                     userId, logScope.Type, logScope.Id);
-                skipped++;
+                noEmail++;
                 continue;
             }
 
@@ -329,7 +330,7 @@ internal sealed class RotaCoordinatorMessageService(
             }
         }
 
-        return new DispatchSummary(requested, skipped, failed);
+        return new DispatchSummary(requested, notFound, noEmail, failed);
     }
 
     // Chronological, in the rota's timezone.
@@ -377,11 +378,13 @@ internal sealed class RotaCoordinatorMessageService(
 
     private sealed record DispatchSummary(
         int Requested,
-        int Skipped,
+        int UserNotFound,
+        int NoEmail,
         int Failed)
     {
         public string AuditSuffix =>
-            (Skipped > 0 ? $" ({Skipped} skipped: no email or missing user)" : string.Empty)
+            (UserNotFound > 0 ? $" ({UserNotFound} skipped: user not found)" : string.Empty)
+            + (NoEmail > 0 ? $" ({NoEmail} skipped: no email address)" : string.Empty)
             + (Failed > 0 ? $" ({Failed} failed: enqueue error)" : string.Empty);
 
         // A partial dispatch succeeded; only an all-failed dispatch must suppress the success toast.
