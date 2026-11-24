@@ -341,7 +341,7 @@ Every table is owned by exactly one repository; there are no HUM0025
     `ISurveyAnalysisRead` (Surveys) — and formats the result.
     `IBackdoorApiKeyRepository` is the only repository Backdoor's own service
     touches, scoped to its one table, `backdoor_api_keys`. The four consumed
-    interfaces exist solely for this machine surface and carry no other
+    interfaces exist solely for the Backdoor API and carry no other
     caller, so their `###` headings live in the owning section's own
     `Docs/data-access.md`, not here.
 
