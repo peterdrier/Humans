@@ -20,7 +20,7 @@ public class BudgetAdminControllerTests
     [HumansTheory]
     [Xunit.InlineData(false)]
     [Xunit.InlineData(true)]
-    public async Task Ticket_target_keeps_actual_sales_when_the_forecast_is_empty(bool activeYear)
+    public async Task Ticket_target_keeps_actual_sales_when_the_projection_is_empty(bool activeYear)
     {
         var clock = new FakeClock(Instant.FromUtc(2026, 11, 20, 0, 0));
         var budgets = Substitute.For<IBudgetManagement>();
@@ -35,7 +35,7 @@ public class BudgetAdminControllerTests
         budgets.GetAllYearsAsync(ct: Arg.Any<CancellationToken>()).Returns([]);
         budgets.GetActualTicketsSold(group).Returns(50);
         budgets.GetProjectedRemainingTicketsAsync(group.Id, Arg.Any<CancellationToken>()).Returns(0);
-        budgets.ComputeBudgetSummaryWithBuffers(Arg.Any<IReadOnlyList<BudgetGroupDetail>>())
+        budgets.ComputeBudgetSummaryWithAvailable(Arg.Any<IReadOnlyList<BudgetGroupDetail>>())
             .Returns(new BudgetSummaryResult { IncomeSlices = [], ExpenseSlices = [] });
         var finance = Substitute.For<IFinanceService>();
         finance.GetActualsForYearAsync(2026, Arg.Any<CancellationToken>()).Returns([]);

@@ -223,7 +223,7 @@ public class TicketingBudgetServiceTests
         week.TicketCount.Should().Be(3);
         week.Revenue.Should().Be(150m);
         week.StripeFees.Should().Be(3.5m);
-        week.TicketTailorFees.Should().Be(1.5m);
+        week.PlatformFees.Should().Be(1.5m);
     }
 
     [HumansFact]
@@ -292,7 +292,7 @@ public class TicketingBudgetServiceTests
         capturedActuals![0].TicketCount.Should().Be(1);
         capturedActuals[0].Revenue.Should().Be(100m);
         capturedActuals[0].StripeFees.Should().Be(2m);
-        capturedActuals[0].TicketTailorFees.Should().Be(1m);
+        capturedActuals[0].PlatformFees.Should().Be(1m);
     }
 
     [HumansFact]
@@ -320,7 +320,7 @@ public class TicketingBudgetServiceTests
 
         capturedActuals.Should().NotBeNull().And.ContainSingle();
         capturedActuals![0].StripeFees.Should().Be(1m);
-        capturedActuals[0].TicketTailorFees.Should().Be(0.2m);
+        capturedActuals[0].PlatformFees.Should().Be(0.2m);
         capturedActuals[0].Revenue.Should().Be(150m);
     }
 
@@ -386,7 +386,7 @@ public class TicketingBudgetServiceTests
     [HumansFact]
     public async Task SyncActualsAsync_EventWithNoOrdersOfAnyStatus_WritesNothing()
     {
-        // Only another event's orders: the year's event has none (moved VendorEventId / missing state).
+        // Only another event's orders: the year's event has none (moved platform event id / missing state).
         _ticketService.GetTicketOrdersAsync(Arg.Any<CancellationToken>())
             .Returns(new List<TicketOrderInfo>
             {
@@ -463,7 +463,7 @@ public class TicketingBudgetServiceTests
     public async Task SyncActualsAsync_ConfiguredVendorEvent_CountsOnlyThatEventsOrders()
     {
         _budgetService.GetActiveYearAsync(Arg.Any<CancellationToken>()).Returns(
-            new BudgetYearDetail(_yearId, "2026", "2026", BudgetYearStatus.Active, false, [], VendorEventId: "event-2026"));
+            new BudgetYearDetail(_yearId, "2026", "2026", BudgetYearStatus.Active, false, [], PlatformEventId: "event-2026"));
         var purchasedAt = Instant.FromUtc(2026, 3, 3, 10, 0);
         _ticketService.GetTicketOrdersAsync(Arg.Any<CancellationToken>())
             .Returns(new List<TicketOrderInfo>
@@ -486,7 +486,7 @@ public class TicketingBudgetServiceTests
     }
 
     [HumansFact]
-    public async Task UpdateProjectionAndRefreshAsync_RequestsOneAtomicParameterAndForecastUpdate()
+    public async Task UpdateProjectionAndRefreshAsync_RequestsOneAtomicUpdate()
     {
         var groupId = Guid.NewGuid();
         var yearId = Guid.NewGuid();
@@ -502,10 +502,10 @@ public class TicketingBudgetServiceTests
             VatRate: 21,
             StripeFeePercent: 1.4m,
             StripeFeeFixed: 0.25m,
-            TicketTailorFeePercent: 0.5m);
+            PlatformFeePercent: 0.5m);
         _budgetService.UpdateTicketingProjectionAsync(groupId, command.StartDate, command.EventDate,
             command.InitialSalesCount, command.DailySalesRate, command.AverageTicketPrice, command.VatRate,
-            command.StripeFeePercent, command.StripeFeeFixed, command.TicketTailorFeePercent, actorUserId,
+            command.StripeFeePercent, command.StripeFeeFixed, command.PlatformFeePercent, actorUserId,
             refreshProjections: true, TestContext.Current.CancellationToken).Returns(new TicketingProjectionSaveResult(4));
 
         _budgetService.GetYearByIdAsync(yearId, Arg.Any<CancellationToken>()).Returns(
@@ -518,7 +518,7 @@ public class TicketingBudgetServiceTests
         result.Should().Be(new TicketingProjectionSaveResult(4));
         await _budgetService.Received(1).UpdateTicketingProjectionAsync(groupId, command.StartDate, command.EventDate,
             command.InitialSalesCount, command.DailySalesRate, command.AverageTicketPrice, command.VatRate,
-            command.StripeFeePercent, command.StripeFeeFixed, command.TicketTailorFeePercent, actorUserId,
+            command.StripeFeePercent, command.StripeFeeFixed, command.PlatformFeePercent, actorUserId,
             refreshProjections: true, TestContext.Current.CancellationToken);
     }
 

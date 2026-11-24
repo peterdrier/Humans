@@ -81,7 +81,7 @@ BudgetYear ("2026", "2027-A", ...)
 - Each line item has: description, amount, responsible team (FK → Team), optional notes
 - CapEx/OpEx flag is on `BudgetCategory`, not line items
 - No arbitrary nesting beyond four levels
-- `BudgetYear` supports soft-delete (`IsDeleted`, `DeletedAt`): "deleting" a year archives it instead of removing data, preserving all audit log history. Archived years are hidden from non-admin views but remain visible on the Finance Admin page and in the audit log year filter. They cannot be reactivated; stale status-update submissions leave the current active year and audit history unchanged.
+- `BudgetYear` can be archived (`IsArchived`, `ArchivedAt`) instead of deleted, preserving all audit log history. Archived years are hidden from non-admin views but remain visible on the Budget admin page and in the audit log year filter. They cannot be reactivated; stale status-update submissions leave the current active year and audit history unchanged.
 
 ### Budget Audit Log
 
@@ -206,7 +206,7 @@ Outbound invoices to members/barrios:
 - **Coordinator view** at `/Budget` via BudgetController (#233):
   - Any team coordinator sees all department budgets (non-restricted groups)
   - Can add/edit/delete line items within own department only
-  - Per-category unallocated remainder and progress bar
+  - Per-category available amount and progress bar
   - `IsRestricted` groups hidden from coordinator view
   - Authorization uses resource-based auth via `BudgetAuthorizationHandler` + `BudgetOperationRequirement.Edit`, which calls Teams’ `ITeamService.GetEffectiveBudgetCoordinatorTeamIdsAsync` policy directly (includes active child teams)
   - All changes audit-logged via existing BudgetAuditLog

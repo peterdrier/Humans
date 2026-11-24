@@ -31,10 +31,10 @@ Top-level container for a fiscal year.
 | Id | Guid | PK |
 | Year | string | Fiscal year label (unique; e.g. "2026", "2027-A") |
 | Name | string | Display name |
-| VendorEventId | string? | Ticket vendor event whose orders count toward this year; null = the current event. Set from the year editor; no backfill |
+| PlatformEventId | string? | Ticketing platform event whose orders count toward this year; null = the current event. Set from the year editor; no backfill |
 | Status | BudgetYearStatus | Draft, Active, Closed; stored as string |
-| IsDeleted | bool | Soft-delete flag |
-| DeletedAt | Instant? | Set on soft-delete |
+| IsArchived | bool | Archive flag |
+| ArchivedAt | Instant? | Set on archive |
 | CreatedAt | Instant | |
 | UpdatedAt | Instant | |
 
@@ -157,7 +157,7 @@ Projection parameters for a ticketing budget group. One-to-one with `BudgetGroup
 | VatRate | int | VAT percentage on ticket revenue (typically 10) |
 | StripeFeePercent | decimal(18,4) | e.g. 1.5 for 1.5% |
 | StripeFeeFixed | decimal(18,2) | Per-transaction fixed fee in euros |
-| TicketTailorFeePercent | decimal(18,4) | e.g. 3.0 for 3% |
+| PlatformFeePercent | decimal(18,4) | e.g. 3.0 for 3% |
 | CreatedAt | Instant | |
 | UpdatedAt | Instant | |
 
@@ -204,7 +204,7 @@ Stored as string via `HasConversion<string>()`.
 - Authorization’s Edit budget reads retain HTTP request cancellation; callers without an HTTP context use the non-cancellable default.
 
 - The admin year list and the overview, no-active-year and audit-log year choices order year identifiers descending using ordinal comparison. Repository and service year lists impose no display order.
-- Year graph reads impose no group display order. Tree views sort groups themselves; member and admin summary controllers sort them by `SortOrder` before calculation so equal-valued category slices and appended group buffers retain that order.
+- Year graph reads impose no group display order. Tree views sort groups themselves; member and admin summary controllers sort them by `SortOrder` before calculation so equal-valued category slices and appended group available amounts retain that order.
 - Summary slices retain their source `BudgetCategoryId`; synthesized VAT, reserves, taxes and group amounts available have none. Calculations impose no amount order. Member and admin summary controllers order authored categories by descending amount, followed by synthesized slices in their original composition order, without identifying a slice by its localized name.
 
 - The finance overview reads a projected ticket count from the service, using the same weekly calculation as materialization; it does not construct unused weekly display or financial DTOs.
@@ -213,7 +213,7 @@ Stored as string via `HasConversion<string>()`.
 
 - A budget year follows the lifecycle: Draft then Active then Closed. Only one year can be Active at a time — activating a Draft or reactivating a non-archived Closed year auto-closes any currently Active year (`BudgetRepository.UpdateYearStatusAsync`).
 - Saving ticketing projection parameters from the admin form re-materializes that group’s projected revenue and fee rows in the same repository save, with one audit entry covering both. A failed save leaves parameters, projected rows and audit unchanged. Development seeding may save parameters without refreshing projections.
-- A Closed year is read-only: year-metadata rename returns an internal refusal result; other repository mutations, including the ticketing sync pair, refuse with `InvalidOperationException`. Only `UpdateYearStatusAsync` (Reactivate) and `DeleteYearAsync` (archive) act on a Closed year.
+- A Closed year is read-only: year-metadata rename returns an internal refusal result; other repository mutations, including the ticketing sync pair, refuse with `InvalidOperationException`. Only `UpdateYearStatusAsync` (Reactivate) and `ArchiveYearAsync` act on a Closed year.
 - Year status changes, metadata edits and archives return internal results for missing/archived targets and existing lifecycle guards. The admin actions display expected reasons and log Warning with year/actor identifiers; unexpected dependency failures propagate. Refusals write no audit or state changes. Seed activation still throws on refusal. The demo seeder returns a summary of teams created/updated, categories created and line items created; it keeps no separate seed-result payload.
 - Member index, summary and category GETs preserve request cancellation through actor resolution,
   Edit budget scope and page reads. Cancellation does not display a load-failure flash.
@@ -233,7 +233,7 @@ Stored as string via `HasConversion<string>()`.
 - Ticketing groups are hidden from the `/Budget` index for non-finance users (`Index.cshtml` filters `IsTicketingGroup` unless `IsFinanceAdmin`); their aggregates still appear in `/Budget/Summary`, and `/Budget/Category/{id}` returns `Forbid` for non-finance users on any ticketing category.
 - Ticketing actuals write one weekly Stripe fee row per fee-VAT class. `Stripe fees:` holds fees of orders whose `FeeTax` is null (enriched before Stripe's tax bucket was captured — unknown, not zero) at the assumed 21%; `Stripe fees (no fee VAT):` holds captured-zero-tax fees at 0%; `Stripe fees (fee VAT):` holds captured-taxed fees at their gross (fees + `FeeTax`) with `VatRate` = `FeeTax / fees` as a whole percent clamped to 0–21. Line items carry no exact VAT amount, so only that taxed row can carry a few cents of rounding residual. Ticket Tailor fee rows and projected fee rows keep the assumed 21% (Stripe's tax bucket is VAT on Stripe's own fees only). Withheld tax is not a Budget line. The learned `StripeFeePercent` includes `FeeTax`, so projected Stripe rows project the same gross cost.
 - Ticketing actuals sync updates existing weekly Stripe/TicketTailor fee rows when their source amount becomes zero, retaining their identity and recording the sync audit. A new zero fee produces no line item.
-- Ticketing actuals sync (`TicketingBudgetService.SyncActualsAsync`) runs only for the Active budget year; any other year (Draft, Closed, archived) is refused with `InvalidOperationException` and nothing is written. It sums only the paid orders of the active year's event: `BudgetYear.VendorEventId` when configured (set from the year editor on `/Budget/Admin/Years`), otherwise the current ticket event. Budget and Finance's `/Finance/CashFlow` select paid orders through Tickets' `TicketOrderInfo.IsForEvent(..., paidOnly: true)`, which owns the payment-status rule and configured-event/current-event fallback. After summing, every stored auto-generated weekly actuals row (revenue and fee, not `Projected:` rows) whose week is absent from the new input — e.g. a week whose orders were all refunded — is set to 0, never deleted. When the year's event has no orders of any status (e.g. a moved `VendorEventId`), the sync writes nothing and logs a warning; an event whose orders are all refunded still zeroes its weeks. The sync still writes its audit entry.
+- Ticketing actuals sync (`TicketingBudgetService.SyncActualsAsync`) runs only for the Active budget year; any other year (Draft, Closed, archived) is refused with `InvalidOperationException` and nothing is written. It sums only the paid orders of the active year's event: `BudgetYear.PlatformEventId` when configured (set from the year editor on `/Budget/Admin/Years`), otherwise the current ticket event. Budget and Finance's `/Finance/CashFlow` select paid orders through Tickets' `TicketOrderInfo.IsForEvent(..., paidOnly: true)`, which owns the payment-status rule and configured-event/current-event fallback. After summing, every stored auto-generated weekly actuals row (revenue and fee, not `Projected:` rows) whose week is absent from the new input — e.g. a week whose orders were all refunded — is set to 0, never deleted. When the year's event has no orders of any status (e.g. a moved `PlatformEventId`), the sync writes nothing and logs a warning; an event whose orders are all refunded still zeroes its weeks. The sync still writes its audit entry.
 - Ticketing projection updates require all seven financial assumptions (initial sales, daily rate, ticket price, VAT and three fees). Missing values cannot reset projections to zero. They reject malformed dates, counts, rates and fees with 400 after
   resolving the actor, before saving parameters or regenerating projections. Valid zero values
   and empty optional dates remain supported.
@@ -250,9 +250,9 @@ Stored as string via `HasConversion<string>()`.
 - "Sync Departments" creates a category for each department that does not already have one in the selected year.
 - `/Budget/Admin` index shows a consolidated accordion view: groups, categories with budget vs actual comparison, and inline line items. FinanceAdmin sees all summary data inline. Group and category headers share one column grid (Budget; Lines, the line-item sum; remaining; Holded, the booked actual) labelled once per group; only the three total cards carry the euro sign. Expanding a category shows its line items beside its Holded documents. The header carries Budget actions only; Finance pages are reached through Finance's own nav.
 - Category projections own the shared line-item total and available amount used by member/admin views and the summary. Cashflow-only rows never contribute to either amount; available is the signed allocation minus that total. These internal facts do not change the public read contract.
-- The internal `BudgetSummaryCalculator` owns regular and buffered summary calculations, generated localized labels and chart slices; `BudgetService` keeps the existing read contract, mutations and persistence. Both calculations retain Finance’s shared VAT formula.
-- Member and admin group totals and buffered summaries share internal group allocation, line-item and available totals. Group totals retain signed category amounts and exclude cashflow-only lines; member totals still use only the groups visible on that page. Mixed-group favourable variance and Holded figures remain separate calculations.
-- Regular and buffered budget summaries share the chart-slice projection: each slice keeps its input order and amount, and its percentage uses that side’s total (zero when the total is not positive).
+- The internal `BudgetSummaryCalculator` owns regular and with-available summary calculations, generated localized labels and chart slices; `BudgetService` keeps the existing read contract, mutations and persistence. Both calculations retain Finance’s shared VAT formula.
+- Member and admin group totals and with-available summaries share internal group allocation, line-item and available totals. Group totals retain signed category amounts and exclude cashflow-only lines; member totals still use only the groups visible on that page. Mixed-group favourable variance and Holded figures remain separate calculations.
+- Regular and with-available budget summaries share the chart-slice projection: each slice keeps its input order and amount, and its percentage uses that side’s total (zero when the total is not positive).
 - Budget summary chart/table labels for VAT credits and liabilities, cash reserves, Spanish taxes and per-group available amounts use the current UI culture in all supported languages. Authored group/category names and calculated amounts are unchanged.
 - Cash flow (`/Finance/CashFlow`) is Finance's page, computed by Finance from `IBudgetService.GetActiveYearAsync` — see [`Finance.md`](../../Humans.Finance/Docs/Finance.md). Budget's summary and category VAT projections use Finance's shared `VatCalculation` through the existing contracts-leaf reference, as does Finance cash flow.
 - Ticketing sync carries shutdown cancellation through active-year and order reads and the atomic Budget save. Cancellation that interrupts the sync propagates without a completion or Error log; cancellation caught by the bridge or job logs Warning without an exception. Unrelated cancellation and genuine faults retain Error logging and propagate.
