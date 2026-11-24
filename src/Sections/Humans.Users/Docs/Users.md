@@ -22,7 +22,7 @@ aggregate and **Profiles**. They share a project because they share the `UsersDb
 because `CachingUserService` stitches User-owned columns into the unified `UserInfo` read model; the invariants below
 are stated separately, because they are separate invariants.
 
-The agent's `fetch_section_guide` tool reaches this file under the canonical key `Users`, with
+The agent's `fetch_section_doc` tool reaches this file under the canonical key `Users`, with
 `Profiles` and `Profile` as aliases (`AgentSectionKeys`).
 
 ---

@@ -3,7 +3,7 @@ using Humans.Users.Contracts;
 
 namespace Humans.Agent.Models;
 
-internal sealed record AgentUserSnapshot(
+internal sealed record AgentUserContext(
     string DisplayName,
     string PreferredLocale,
     string Tier,

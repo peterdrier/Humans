@@ -240,6 +240,7 @@
   <data name="Enum_AuditAction_HoldedExpenseAccountCreated" xml:space="preserve"><value>Cuenta de gastos de Holded creada</value></data>
   <data name="Enum_AuditAction_HoldedExpenseAccountLinked" xml:space="preserve"><value>Cuenta de gastos de Holded vinculada</value></data>
   <data name="Enum_AuditAction_HoldedExpenseAccountActiveChanged" xml:space="preserve"><value>Estado activo de la cuenta de gastos de Holded cambiado</value></data>
+  <data name="Enum_AuditAction_BackdoorApiKeyCreated" xml:space="preserve"><value>Clave de API interna creada</value></data>
   <data name="Enum_AuditAction_BackdoorApiKeyIssued" xml:space="preserve"><value>Clave de API interna emitida</value></data>
   <data name="Enum_AuditAction_BackdoorApiKeyRevoked" xml:space="preserve"><value>Clave de API interna revocada</value></data>
   <data name="Enum_AuditAction_FeedbackGitHubLinked" xml:space="preserve"><value>Comentarios vinculados a GitHub</value></data>

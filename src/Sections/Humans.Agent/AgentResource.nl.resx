@@ -64,7 +64,7 @@
   <data name="Agent_ConversationEmpty" xml:space="preserve">
     <value>Geen berichten in dit gesprek.</value>
   </data>
-  <data name="Agent_ConversationRefusedLabel" xml:space="preserve">
+  <data name="Agent_ConversationUnansweredLabel" xml:space="preserve">
     <value>De assistent heeft deze vraag niet beantwoord.</value>
   </data>
   <data name="Agent_ConversationTitle" xml:space="preserve">
@@ -91,8 +91,8 @@
   <data name="Agent_DetailLocale" xml:space="preserve">
     <value>Taal</value>
   </data>
-  <data name="Agent_DetailRefusal" xml:space="preserve">
-    <value>Weigering: {0}</value>
+  <data name="Agent_DetailOutcome" xml:space="preserve">
+    <value>Uitkomst: {0}</value>
   </data>
   <data name="Agent_HistoryEmpty" xml:space="preserve">
     <value>Nog geen gesprekken.</value>
@@ -133,11 +133,11 @@
   <data name="Agent_Help_Menu_CreateIssue" xml:space="preserve">
     <value>Melding aanmaken</value>
   </data>
-  <data name="Agent_IssueProposed" xml:space="preserve">
+  <data name="Agent_HandoffDrafted" xml:space="preserve">
     <value>Hier kan ik zelf geen antwoord op geven. Ik heb een melding voor het team opgesteld — bekijk die en dien hem in.</value>
   </data>
   <data name="Agent_SilentTurnFallback" xml:space="preserve"><value>Ik kon daar geen antwoord op samenstellen — kun je het anders formuleren of opnieuw vragen?</value></data>
-  <data name="Agent_AbuseRefusal" xml:space="preserve"><value>Hiermee kan ik je niet helpen. Als je in nood bent, neem dan contact op met een coördinator of met de hulpdiensten.</value></data>
+  <data name="Agent_DistressReply" xml:space="preserve"><value>Hiermee kan ik je niet helpen. Als je in nood bent, neem dan contact op met een coördinator of met de hulpdiensten.</value></data>
   <data name="Agent_HttpError" xml:space="preserve"><value>Fout: {0}</value></data>
   <data name="Agent_NetworkError" xml:space="preserve"><value>Netwerkfout.</value></data>
   <data name="Agent_DisabledReply" xml:space="preserve"><value>(De assistent is momenteel uitgeschakeld.)</value></data>

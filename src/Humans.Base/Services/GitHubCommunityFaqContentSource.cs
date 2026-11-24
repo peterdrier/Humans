@@ -6,25 +6,25 @@ using Humans.Base.Interfaces;
 namespace Humans.Base.Services;
 
 /// <summary>
-/// <see cref="IGuideContentSource"/> bound to the dedicated community knowledge-base repo
-/// (<see cref="CommunityKbSettings"/> — default nobodies-collective/knowledge-base@main),
+/// <see cref="IGuideContentSource"/> bound to the Community FAQ repo
+/// (<see cref="CommunityFaqSettings"/> — default nobodies-collective/knowledge-base@main),
 /// kept separate from the code repo so content ships on its own cadence. Folder-scoped:
 /// the community reader always passes the folder, so the single-arg overload is unused and
 /// throws to make any accidental call obvious.
 /// </summary>
-public sealed class GitHubCommunityKbContentSource : IGuideContentSource
+public sealed class GitHubCommunityFaqContentSource : IGuideContentSource
 {
-    private readonly IOptions<CommunityKbSettings> _settings;
+    private readonly IOptions<CommunityFaqSettings> _settings;
     private readonly GitHubMarkdownReader _reader;
 
-    public GitHubCommunityKbContentSource(
-        IOptions<CommunityKbSettings> settings,
+    public GitHubCommunityFaqContentSource(
+        IOptions<CommunityFaqSettings> settings,
         IOptions<GitHubSettings> gitHubSettings,
-        ILogger<GitHubCommunityKbContentSource> logger)
+        ILogger<GitHubCommunityFaqContentSource> logger)
     {
         _settings = settings;
 
-        var client = new GitHubClient(new ProductHeaderValue("NobodiesHumansKb"));
+        var client = new GitHubClient(new ProductHeaderValue("NobodiesHumansFaq"));
         var token = string.IsNullOrEmpty(settings.Value.AccessToken)
             ? gitHubSettings.Value.AccessToken
             : settings.Value.AccessToken;
@@ -36,7 +36,7 @@ public sealed class GitHubCommunityKbContentSource : IGuideContentSource
     }
 
     public Task<string> GetMarkdownAsync(string fileStem, CancellationToken cancellationToken = default) =>
-        throw new NotSupportedException("Community KB access is folder-scoped; use the folder-parameterized overload.");
+        throw new NotSupportedException("Community FAQ access is folder-scoped; use the folder-parameterized overload.");
 
     public Task<string> GetMarkdownAsync(string folderPath, string fileStem, CancellationToken cancellationToken = default)
     {

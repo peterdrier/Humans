@@ -53,7 +53,7 @@ public sealed class UserRepositoryTests : IDisposable
     }
 
     [HumansFact]
-    public async Task SetLastSignInAsync_StampsLastLoginAt_AndReturnsTrue()
+    public async Task SetLastSignInAsync_StampsLastSignInAt()
     {
         var user = await SeedUserAsync();
         var at = _clock.GetCurrentInstant();

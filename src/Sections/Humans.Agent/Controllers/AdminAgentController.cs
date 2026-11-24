@@ -8,7 +8,7 @@ using Humans.Users.Contracts;
 
 namespace Humans.Agent.Controllers;
 
-/// <summary>Board reads status and transcripts; only Admin changes settings or reloads the knowledge base.</summary>
+/// <summary>Board reads status and transcripts; only Admin changes settings or reloads the Community FAQ.</summary>
 [Authorize(Policy = PolicyNames.BoardOrAdmin)]
 [Route("Agent/Admin")]
 internal sealed class AdminAgentController(
@@ -47,7 +47,6 @@ internal sealed class AdminAgentController(
         {
             s.Enabled = vm.Enabled;
             s.Model = vm.Model;
-            s.PreloadConfig = vm.PreloadConfig;
             s.DailyMessageCap = vm.DailyMessageCap;
             s.HourlyMessageCap = vm.HourlyMessageCap;
             s.DailyTokenCap = vm.DailyTokenCap;
@@ -57,15 +56,15 @@ internal sealed class AdminAgentController(
         return Redirect("/Settings#agent");
     }
 
-    [HttpPost("ReloadKnowledgeBase")]
+    [HttpPost("ReloadCommunityFaq")]
     [Authorize(Policy = PolicyNames.AdminOnly)]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> ReloadKnowledgeBase(CancellationToken ct)
+    public async Task<IActionResult> ReloadCommunityFaq(CancellationToken ct)
     {
         if (await preload.ReloadAllAsync(ct))
-            SetSuccess("Knowledge base reloaded from GitHub.");
+            SetSuccess("Community FAQ reloaded from GitHub.");
         else
-            SetError("Knowledge base reload failed. The previous cached preload corpus was kept.");
+            SetError("Community FAQ reload failed. The previous cached preload corpus was kept.");
         return RedirectToAction(nameof(Status));
     }
 

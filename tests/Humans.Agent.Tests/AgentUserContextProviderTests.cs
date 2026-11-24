@@ -15,7 +15,7 @@ using Humans.Users.Contracts;
 
 namespace Humans.Agent.Tests;
 
-public class AgentUserSnapshotProviderTests
+public class AgentUserContextProviderTests
 {
     [HumansTheory]
     [Xunit.InlineData(UserState.Active)]
@@ -157,7 +157,7 @@ public class AgentUserSnapshotProviderTests
         snapshot.Teams.Should().BeEquivalentTo(memberships);
     }
 
-    private static AgentUserSnapshotProvider MakeProvider(
+    private static AgentUserContextProvider MakeProvider(
         Guid userId,
         EventSettingsInfo? activeEvent,
         IReadOnlyList<ShiftSignupSummary> signups,
@@ -219,7 +219,7 @@ public class AgentUserSnapshotProviderTests
 
         var clock = new FakeClock(Instant.FromUtc(2026, 6, 1, 0, 0));
 
-        return new AgentUserSnapshotProvider(
+        return new AgentUserContextProvider(
             users, roles, teams, Substitute.For<IGovernanceService>(), consents, tickets,
             shiftView, burnSettings, clock);
     }
