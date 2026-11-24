@@ -26,7 +26,7 @@ public class SectionHelpTests
         var entry = Entry("Tickets");
 
         entry.Guide.Should().StartWith("## Tickets");
-        entry.Guide.Should().EndWith("- Order status updates are reflected automatically", "the file's trailing newline is framing, not content");
+        entry.Guide.Should().EndWith("- Ticket data syncs from TicketTailor on a regular schedule", "the file's trailing newline is framing, not content");
         entry.Glossary.Should().StartWith("## Tickets Glossary");
         entry.Glossary.Should().Contain("| **Human** | A member of Nobodies Collective. We say \"humans\", not \"members\" or \"volunteers\". |");
     }

@@ -15,7 +15,7 @@ internal interface ITicketRulesSource
 {
     /// <summary>
     /// The rules as of the last commit changing the folder, cached for a few minutes so the version a buyer is shown is
-    /// the one their checkout records. Null when GitHub cannot be read, the folder has no Spanish or no English text,
+    /// the one their order records. Null when GitHub cannot be read, the folder has no Spanish or no English text,
     /// or holds more than one set of rules
     /// (several suffix-less files). <paramref name="refresh"/> skips the cache, for checking a folder an admin just set.
     /// </summary>

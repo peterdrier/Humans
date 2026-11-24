@@ -11,7 +11,7 @@ namespace Humans.BoxOffice.Services;
 internal sealed class BoxOfficeSettings
 {
     /// <summary>
-    /// STRIPE_BOXOFFICE_KEY, a restricted key (its scopes are listed in <see cref="BoxOfficeCheckoutBackend.Setup"/>).
+    /// STRIPE_BOXOFFICE_KEY, a restricted key (its scopes are listed in <see cref="BoxOfficePlatform.Setup"/>).
     /// Refunds are the one money-out call, capped by Tickets at what the order's tickets cost and by this adapter at what
     /// the charge still holds.
     /// </summary>
@@ -25,16 +25,16 @@ internal sealed class BoxOfficeSettings
 }
 
 /// <summary>
-/// The backend order id is the Stripe Checkout Session id. Payment methods are whatever the Stripe account enables
+/// The platform order id is the Stripe Checkout Session id. Payment methods are whatever the Stripe account enables
 /// for Checkout (card, Klarna, iDEAL); Humans never lists them, so turning one on is a dashboard change.
 /// </summary>
-internal sealed class BoxOfficeCheckoutBackend(
+internal sealed class BoxOfficePlatform(
     IOptions<BoxOfficeSettings> settings,
     IClock clock,
-    ILogger<BoxOfficeCheckoutBackend> logger,
-    IHttpClient? httpClient = null) : ITicketCheckoutBackend
+    ILogger<BoxOfficePlatform> logger,
+    IHttpClient? httpClient = null) : ITicketingPlatform
 {
-    public const string BackendKey = "boxoffice";
+    public const string PlatformKey = "boxoffice";
     internal const string OrderMetadataKey = "humans_ticket_order_id";
     internal const string RefundMetadataKey = "humans_ticket_refund_id";
     internal const string TicketCountMetadataKey = "humans_ticket_count";
@@ -48,7 +48,7 @@ internal sealed class BoxOfficeCheckoutBackend(
 
     private readonly BoxOfficeSettings _settings = settings.Value;
 
-    public string Key => BackendKey;
+    public string Key => PlatformKey;
 
     public bool IsConfigured => _settings.IsConfigured;
 
@@ -56,14 +56,14 @@ internal sealed class BoxOfficeCheckoutBackend(
 
     private StripeClient Client() => _settings.IsConfigured
         ? new StripeClient(_settings.SecretKey, httpClient: httpClient)
-        : throw new TicketCheckoutException("Box Office is not configured: STRIPE_BOXOFFICE_KEY is unset.");
+        : throw new TicketingPlatformException("Box Office is not configured: STRIPE_BOXOFFICE_KEY is unset.");
 
-    public async Task<CheckoutSession> CreateCheckoutAsync(CheckoutRequest request, CancellationToken ct = default)
+    public async Task<PlatformOrderSession> CreateOrderAsync(PlatformOrderRequest request, CancellationToken ct = default)
     {
         if (!string.Equals(request.Currency, "EUR", StringComparison.OrdinalIgnoreCase))
-            throw new TicketCheckoutException($"Box Office charges EUR only, not {request.Currency}.");
+            throw new TicketingPlatformException($"Box Office charges EUR only, not {request.Currency}.");
         if (request.Lines.Any(l => l.AmountMinor < 0) || request.Lines.Sum(l => l.AmountMinor) <= 0)
-            throw new TicketCheckoutException("Box Office needs a positive total and no negative lines.");
+            throw new TicketingPlatformException("Box Office needs a positive total and no negative lines.");
 
         var now = clock.GetCurrentInstant();
         var expiresAt = request.ExpiresAt;
@@ -74,7 +74,7 @@ internal sealed class BoxOfficeCheckoutBackend(
         // Free ticket lines never reach Stripe, so reconciliation reads the ticket count from here.
         var sessionMetadata = new Dictionary<string, string>(metadata, StringComparer.Ordinal)
         {
-            [TicketCountMetadataKey] = request.Lines.Count(l => l.Kind == CheckoutLineKind.Ticket).ToString(CultureInfo.InvariantCulture),
+            [TicketCountMetadataKey] = request.Lines.Count(l => l.Kind == OrderLineKind.Ticket).ToString(CultureInfo.InvariantCulture),
         };
         var language = request.Culture.Split('-')[0];
         var options = new SessionCreateOptions
@@ -96,7 +96,7 @@ internal sealed class BoxOfficeCheckoutBackend(
                     UnitAmount = l.AmountMinor,
                     ProductData = new SessionLineItemPriceDataProductDataOptions
                     {
-                        Name = l.AttendeeName is { } name ? $"{l.Description} ({name})" : l.Description,
+                        Name = l.HolderName is { } name ? $"{l.Description} ({name})" : l.Description,
                     },
                 },
             }).ToList(),
@@ -113,38 +113,38 @@ internal sealed class BoxOfficeCheckoutBackend(
             var session = await new SessionService(Client()).CreateAsync(
                 options, new RequestOptions { IdempotencyKey = $"humans_ticket_checkout_{request.OrderId}" }, ct);
             if (session.Url is null)
-                throw new TicketCheckoutException($"Stripe created session {session.Id} without a payment URL.");
-            return new CheckoutSession(session.Id, new Uri(session.Url));
+                throw new TicketingPlatformException($"Stripe created session {session.Id} without a payment URL.");
+            return new PlatformOrderSession(session.Id, new Uri(session.Url));
         }
         catch (StripeException ex)
         {
-            logger.LogWarning("Stripe refused checkout for order {OrderId}: {Message}", request.OrderId, ex.Message);
-            throw new TicketCheckoutException($"Stripe refused the checkout: {ex.Message}", ex);
+            logger.LogWarning("Stripe refused the Checkout Session for order {OrderId}: {Message}", request.OrderId, ex.Message);
+            throw new TicketingPlatformException($"Stripe refused the Checkout Session: {ex.Message}", ex);
         }
     }
 
-    public async Task<CheckoutStatus> GetStatusAsync(string backendOrderId, CancellationToken ct = default) =>
-        await StatusOfAsync(await GetSessionAsync(backendOrderId, ct), everyRefund: true, ct);
+    public async Task<PlatformOrderStatus> GetStatusAsync(string platformOrderId, CancellationToken ct = default) =>
+        await StatusOfAsync(await GetSessionAsync(platformOrderId, ct), everyRefund: true, ct);
 
     /// <summary>
     /// The session's payment intent and latest charge must be expanded. Without <paramref name="everyRefund"/> the
     /// refunds are read only for a charge that shows some, which misses a refund that failed (it drops out of the
-    /// charge's total): fine for totals, not for <see cref="CheckoutStatus.RefundFailed"/>.
+    /// charge's total): fine for totals, not for <see cref="PlatformOrderStatus.RefundFailed"/>.
     /// </summary>
-    private async Task<CheckoutStatus> StatusOfAsync(Session session, bool everyRefund, CancellationToken ct)
+    private async Task<PlatformOrderStatus> StatusOfAsync(Session session, bool everyRefund, CancellationToken ct)
     {
         var intent = session.PaymentIntent;
         var charge = intent?.LatestCharge;
 
         var state = (session.Status, session.PaymentStatus) switch
         {
-            ("complete", "paid" or "no_payment_required") => CheckoutState.Paid,
-            ("expired", _) => CheckoutState.Expired,
+            ("complete", "paid" or "no_payment_required") => PlatformOrderState.Paid,
+            ("expired", _) => PlatformOrderState.Expired,
             // An async method (a bank debit) failed after the buyer completed the page.
-            ("complete", _) when IsFailed(intent) => CheckoutState.Failed,
+            ("complete", _) when IsFailed(intent) => PlatformOrderState.Failed,
             // A debit settling, or a bank transfer the buyer still has to send: the session can no longer be expired.
-            ("complete", _) => CheckoutState.Processing,
-            _ => CheckoutState.Pending,
+            ("complete", _) => PlatformOrderState.Processing,
+            _ => PlatformOrderState.Pending,
         };
 
         Instant? paidAt = charge is { Paid: true } ? InstantOf(charge.Created) : null;
@@ -153,24 +153,24 @@ internal sealed class BoxOfficeCheckoutBackend(
         var refunds = session.PaymentIntentId is { } paymentIntentId && (everyRefund || charge is { AmountRefunded: > 0 })
             ? await ListRefundsAsync(paymentIntentId, ct)
             : [];
-        return new CheckoutStatus(
+        return new PlatformOrderStatus(
             state,
             charge?.BalanceTransaction?.Fee,
             charge?.PaymentMethodDetails?.Type,
             paidAt,
             refunds.Where(r => StateOf(r) == RefundState.Succeeded).Sum(r => r.Amount),
             refunds.Any(r => StateOf(r) == RefundState.Failed && r.Metadata?.ContainsKey(RefundMetadataKey) == true),
-            charge is { Disputed: true, Id: { } chargeId } ? await DisputedAsync(chargeId, ct) : 0);
+            charge is { Disputed: true, Id: { } chargeId } ? await ChargedBackAsync(chargeId, ct) : 0);
     }
 
-    public string? EventRefOf(string backendOrderId) => null;
+    public string? EventRefOf(string platformOrderId) => null;
 
     /// <summary>
     /// Lists every Checkout Session on the account, since the Stripe account sells tickets only and a session Humans
     /// did not open is exactly what reconciliation must show. Box Office keeps no events, so the event id is ignored.
     /// </summary>
-    public async Task<IReadOnlyList<BackendOrderSummary>> ListOrdersAsync(
-        string? backendEventRef, Instant from, Instant to, CancellationToken ct = default)
+    public async Task<IReadOnlyList<PlatformOrderSummary>> ListOrdersAsync(
+        string? platformEventRef, Instant from, Instant to, CancellationToken ct = default)
     {
         var options = new SessionListOptions
         {
@@ -178,13 +178,13 @@ internal sealed class BoxOfficeCheckoutBackend(
             Limit = 100,
             Expand = ["data.payment_intent.latest_charge"],
         };
-        var orders = new List<BackendOrderSummary>();
+        var orders = new List<PlatformOrderSummary>();
         try
         {
             await foreach (var session in new SessionService(Client()).ListAutoPagingAsync(options, cancellationToken: ct))
             {
                 var status = await StatusOfAsync(session, everyRefund: false, ct);
-                orders.Add(new BackendOrderSummary(
+                orders.Add(new PlatformOrderSummary(
                     session.Id,
                     Guid.TryParse(session.Metadata?.GetValueOrDefault(OrderMetadataKey), out var orderId) ? orderId : null,
                     InstantOf(session.Created),
@@ -193,12 +193,12 @@ internal sealed class BoxOfficeCheckoutBackend(
                     int.TryParse(session.Metadata?.GetValueOrDefault(TicketCountMetadataKey), NumberStyles.None,
                         CultureInfo.InvariantCulture, out var tickets) ? tickets : null,
                     status.RefundedMinor,
-                    status.DisputedMinor));
+                    status.ChargedBackMinor));
             }
         }
         catch (StripeException ex)
         {
-            throw new TicketCheckoutException($"Stripe could not list checkout sessions: {ex.Message}", ex);
+            throw new TicketingPlatformException($"Stripe could not list Checkout Sessions: {ex.Message}", ex);
         }
 
         return orders;
@@ -289,7 +289,7 @@ internal sealed class BoxOfficeCheckoutBackend(
         }
         catch (StripeException ex)
         {
-            throw new TicketCheckoutException($"Stripe could not list the balance: {ex.Message}", ex);
+            throw new TicketingPlatformException($"Stripe could not list the balance: {ex.Message}", ex);
         }
     }
 
@@ -303,13 +303,13 @@ internal sealed class BoxOfficeCheckoutBackend(
     {
         "charge" or "charge_failure" or "partial_capture_reversal" => PaymentLedgerEntryKind.Charge,
         "refund" or "refund_failure" => PaymentLedgerEntryKind.Refund,
-        "dispute" or "dispute_reversal" => PaymentLedgerEntryKind.Dispute,
+        "dispute" or "dispute_reversal" => PaymentLedgerEntryKind.Chargeback,
         "fee" => PaymentLedgerEntryKind.Fee,
         "payout" or "payout_reversal" => PaymentLedgerEntryKind.Payout,
         _ => PaymentLedgerEntryKind.Other,
     };
 
-    private async Task<long> DisputedAsync(string chargeId, CancellationToken ct)
+    private async Task<long> ChargedBackAsync(string chargeId, CancellationToken ct)
     {
         try
         {
@@ -318,7 +318,7 @@ internal sealed class BoxOfficeCheckoutBackend(
         }
         catch (StripeException ex)
         {
-            throw new TicketCheckoutException($"Stripe could not list the disputes of {chargeId}: {ex.Message}", ex);
+            throw new TicketingPlatformException($"Stripe could not list the disputes of {chargeId}: {ex.Message}", ex);
         }
     }
 
@@ -337,7 +337,7 @@ internal sealed class BoxOfficeCheckoutBackend(
         }
         catch (StripeException ex)
         {
-            throw new TicketCheckoutException($"Stripe could not list the refunds of {paymentIntentId}: {ex.Message}", ex);
+            throw new TicketingPlatformException($"Stripe could not list the refunds of {paymentIntentId}: {ex.Message}", ex);
         }
     }
 
@@ -353,10 +353,10 @@ internal sealed class BoxOfficeCheckoutBackend(
         if (request.AmountMinor <= 0)
             return new RefundResult(RefundState.Failed, null, "The refund amount must be positive.");
 
-        var session = await GetSessionAsync(request.BackendOrderId, ct);
+        var session = await GetSessionAsync(request.PlatformOrderId, ct);
         var charge = session.PaymentIntent?.LatestCharge;
         if (charge is not { Paid: true })
-            return new RefundResult(RefundState.Failed, null, "The checkout has no settled payment to refund.");
+            return new RefundResult(RefundState.Failed, null, "The order has no settled payment to refund.");
         // A repeat of a refund whose answer was lost gets that refund's own state, not the cap's refusal.
         var earlier = (await ListRefundsAsync(session.PaymentIntentId!, ct)).FirstOrDefault(r =>
             r.Metadata?.TryGetValue(RefundMetadataKey, out var id) == true
@@ -396,33 +396,33 @@ internal sealed class BoxOfficeCheckoutBackend(
         catch (StripeException ex)
         {
             // No answer from Stripe: the refund may exist, so Tickets keeps it pending and the repeat finds it.
-            throw new TicketCheckoutException($"Stripe did not answer refund {request.RefundId}: {ex.Message}", ex);
+            throw new TicketingPlatformException($"Stripe did not answer refund {request.RefundId}: {ex.Message}", ex);
         }
     }
 
-    public async Task CancelAsync(string backendOrderId, CancellationToken ct = default)
+    public async Task CancelAsync(string platformOrderId, CancellationToken ct = default)
     {
         try
         {
-            await new SessionService(Client()).ExpireAsync(backendOrderId, cancellationToken: ct);
+            await new SessionService(Client()).ExpireAsync(platformOrderId, cancellationToken: ct);
         }
         catch (StripeException)
         {
             // Stripe refuses to expire a session that is no longer open; only one that is or may still be paid is a problem.
-            var session = await GetSessionAsync(backendOrderId, ct);
+            var session = await GetSessionAsync(platformOrderId, ct);
             if (string.Equals(session.Status, "complete", StringComparison.Ordinal) && !IsFailed(session.PaymentIntent))
-                throw new TicketCheckoutException($"Checkout {backendOrderId} is already complete.");
+                throw new TicketingPlatformException($"Checkout Session {platformOrderId} is already complete.");
         }
     }
 
     /// <summary>
-    /// Stripe keeps checkout and payment records as the payment processor under its own legal obligations, and offers
+    /// Stripe keeps Checkout Session and payment records as the payment processor under its own legal obligations, and offers
     /// no way to strip them from a session; Humans holds nothing else here.
     /// </summary>
-    public Task ErasePersonalDataAsync(string backendOrderId, string email, CancellationToken ct = default) =>
+    public Task ErasePersonalDataAsync(string platformOrderId, string email, CancellationToken ct = default) =>
         Task.CompletedTask;
 
-    public CheckoutBackendSetup Setup => new(
+    public PlatformSetup Setup => new(
         "Box Office (Stripe)",
         $"Stripe, Humans' ticket account ({ModeLabel})",
         new Uri(IsTestKey ? "https://dashboard.stripe.com/test/payments" : "https://dashboard.stripe.com/payments"),
@@ -436,7 +436,7 @@ internal sealed class BoxOfficeCheckoutBackend(
         [
             "Webhook events: checkout.session.completed, checkout.session.async_payment_succeeded, checkout.session.async_payment_failed, checkout.session.expired, charge.refunded, refund.updated, refund.failed, charge.dispute.created, charge.dispute.closed, charge.dispute.funds_withdrawn, charge.dispute.funds_reinstated.",
             "Payment methods (card, iDEAL, Klarna) are switched on in the Stripe dashboard; Humans never lists them.",
-            "Needs no event id in the sales setup.",
+            "Needs no event id in the ticketing settings.",
         ]);
 
     private bool IsTestKey => _settings.SecretKey.StartsWith("sk_test_", StringComparison.Ordinal)
@@ -444,13 +444,13 @@ internal sealed class BoxOfficeCheckoutBackend(
 
     private string ModeLabel => !_settings.IsConfigured ? "key unset" : IsTestKey ? "test mode" : "live mode";
 
-    public async Task<IReadOnlyList<CheckoutBackendFinding>> CheckAsync(string? backendEventRef, CancellationToken ct = default)
+    public async Task<IReadOnlyList<PlatformFinding>> CheckAsync(string? platformEventRef, CancellationToken ct = default)
     {
         if (!_settings.IsConfigured)
             return [new(false, $"{Section.KeyVariable} is unset.")];
 
         var client = Client();
-        var findings = new List<CheckoutBackendFinding>
+        var findings = new List<PlatformFinding>
         {
             await ProbeAsync($"Checkout Sessions ({ModeLabel})",
                 () => new SessionService(client).ListAsync(new SessionListOptions { Limit = 1 }, cancellationToken: ct), ct),
@@ -464,12 +464,12 @@ internal sealed class BoxOfficeCheckoutBackend(
         findings.Add(_settings.IsWebhookConfigured
             ? new(true, "Webhook signing secret is set.")
             : new(false, $"{Section.WebhookSecretVariable} is unset: the webhook answers 503 and outcomes arrive only from the return page and the 5-minute poll."));
-        if (!string.IsNullOrWhiteSpace(backendEventRef))
-            findings.Add(new(false, "Box Office takes no event id; clear it in the sales setup."));
+        if (!string.IsNullOrWhiteSpace(platformEventRef))
+            findings.Add(new(false, "Box Office takes no event id; clear it in the ticketing settings."));
         return findings;
     }
 
-    private static async Task<CheckoutBackendFinding> ProbeAsync(string what, Func<Task> read, CancellationToken ct)
+    private static async Task<PlatformFinding> ProbeAsync(string what, Func<Task> read, CancellationToken ct)
     {
         try
         {
@@ -536,7 +536,7 @@ internal sealed class BoxOfficeCheckoutBackend(
         }
         catch (StripeException ex)
         {
-            throw new TicketCheckoutException($"Stripe could not read checkout {sessionId}: {ex.Message}", ex);
+            throw new TicketingPlatformException($"Stripe could not read Checkout Session {sessionId}: {ex.Message}", ex);
         }
     }
 }

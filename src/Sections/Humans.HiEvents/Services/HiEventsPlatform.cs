@@ -18,17 +18,17 @@ namespace Humans.HiEvents.Services;
 /// <summary>
 /// <para>
 /// Talks to the Nobodies fork of Hi.Events, which adds <c>POST /events/{id}/orders/checkout</c>: a reserved order at
-/// caller-set prices with buyer and attendee names filled in, returning a payment link, idempotent by
+/// caller-set prices with buyer and holder names filled in, returning a payment link, idempotent by
 /// <c>external_reference</c> (the Humans order id). Refunds pass the Humans refund id as <c>idempotency_key</c>.
 /// </para>
 /// <para>
-/// A backend order id is <c>{eventId}:{orderId}</c>, because every Hi.Events order route is scoped to its event.
+/// A platform order id is <c>{eventId}:{orderId}</c>, because every Hi.Events order route is scoped to its event.
 /// Transport and unexpected HTTP failures throw <see cref="HttpRequestException"/>.
 /// </para>
 /// </summary>
-internal sealed class HiEventsCheckoutBackend : ITicketCheckoutBackend
+internal sealed class HiEventsPlatform : ITicketingPlatform
 {
-    public const string BackendKey = "hievents";
+    public const string PlatformKey = "hievents";
     /// <summary>The <c>Stripe:MirrorAccounts</c> entry for the account the fork's STRIPE_SECRET_KEY charges into.</summary>
     internal const string StripeAccountName = "HiEvents";
 
@@ -45,14 +45,14 @@ internal sealed class HiEventsCheckoutBackend : ITicketCheckoutBackend
     private readonly HttpClient _http;
     private readonly HiEventsSettings _settings;
     private readonly IClock _clock;
-    private readonly ILogger<HiEventsCheckoutBackend> _logger;
+    private readonly ILogger<HiEventsPlatform> _logger;
     private readonly IStripeService _stripe;
 
-    public HiEventsCheckoutBackend(
+    public HiEventsPlatform(
         HttpClient http,
         IOptions<HiEventsSettings> settings,
         IClock clock,
-        ILogger<HiEventsCheckoutBackend> logger,
+        ILogger<HiEventsPlatform> logger,
         IStripeService stripe)
     {
         _http = http;
@@ -61,7 +61,7 @@ internal sealed class HiEventsCheckoutBackend : ITicketCheckoutBackend
         _logger = logger;
         _stripe = stripe;
 
-        // Never throw here: Tickets resolves every backend together, so a bad setting must only switch this one off.
+        // Never throw here: Tickets resolves every platform together, so a bad setting must only switch this one off.
         if (_settings.ApiBaseUri is { } baseUri)
         {
             _http.BaseAddress = baseUri;
@@ -75,19 +75,19 @@ internal sealed class HiEventsCheckoutBackend : ITicketCheckoutBackend
         _http.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
     }
 
-    public string Key => BackendKey;
+    public string Key => PlatformKey;
 
     public bool IsConfigured => _settings.IsConfigured;
 
-    public async Task<CheckoutSession> CreateCheckoutAsync(CheckoutRequest request, CancellationToken ct = default)
+    public async Task<PlatformOrderSession> CreateOrderAsync(PlatformOrderRequest request, CancellationToken ct = default)
     {
-        if (!int.TryParse(request.BackendEventRef, NumberStyles.None, CultureInfo.InvariantCulture, out var eventId))
-            throw new TicketCheckoutException($"Hi.Events needs a numeric event id, got '{request.BackendEventRef}'.");
+        if (!int.TryParse(request.PlatformEventRef, NumberStyles.None, CultureInfo.InvariantCulture, out var eventId))
+            throw new TicketingPlatformException($"Hi.Events needs a numeric event id, got '{request.PlatformEventRef}'.");
 
         var products = await GetProductsAsync(eventId, ct);
         if (products.FirstOrDefault(IsVisibleCarrier) is { } visible)
         {
-            throw new TicketCheckoutException(
+            throw new TicketingPlatformException(
                 $"Hi.Events product {visible.Id} on event {eventId} must be hidden, or it sells on the event's public page.");
         }
 
@@ -108,44 +108,44 @@ internal sealed class HiEventsCheckoutBackend : ITicketCheckoutBackend
 
         if (response.StatusCode is HttpStatusCode.UnprocessableEntity or HttpStatusCode.Conflict)
         {
-            throw new TicketCheckoutException(
-                $"Hi.Events refused the checkout for order {request.OrderId}: {await response.Content.ReadAsStringAsync(ct)}");
+            throw new TicketingPlatformException(
+                $"Hi.Events refused to create order {request.OrderId}: {await response.Content.ReadAsStringAsync(ct)}");
         }
 
         var order = await ReadOrderAsync(response, ct);
 
         if (!string.Equals(order.Currency, request.Currency, StringComparison.OrdinalIgnoreCase))
         {
-            throw new TicketCheckoutException(
+            throw new TicketingPlatformException(
                 $"Hi.Events event {eventId} sells in {order.Currency}, not {request.Currency}.");
         }
 
         if (ToMinor(order.TotalGross) != request.Lines.Sum(l => l.AmountMinor))
         {
-            throw new TicketCheckoutException(
+            throw new TicketingPlatformException(
                 $"Hi.Events order {order.Id} totals {order.TotalGross}, not the requested lines.");
         }
 
         var paymentUrl = order.PaymentLinkUrl
             ?? throw new HttpRequestException($"Hi.Events order {order.Id} came back without a payment link.");
 
-        return new CheckoutSession(ToBackendOrderId(eventId, order.Id), new Uri(paymentUrl), AdminUrl(eventId, order.Id));
+        return new PlatformOrderSession(ToPlatformOrderId(eventId, order.Id), new Uri(paymentUrl), AdminUrl(eventId, order.Id));
     }
 
-    public async Task<CheckoutStatus> GetStatusAsync(string backendOrderId, CancellationToken ct = default)
+    public async Task<PlatformOrderStatus> GetStatusAsync(string platformOrderId, CancellationToken ct = default)
     {
-        var (eventId, orderId) = ParseBackendOrderId(backendOrderId);
+        var (eventId, orderId) = ParsePlatformOrderId(platformOrderId);
         var order = await GetOrderAsync(eventId, orderId, ct);
         var state = ToState(order);
 
-        return new CheckoutStatus(
+        return new PlatformOrderStatus(
             State: state,
-            FeeMinor: state == CheckoutState.Paid ? await FeeAsync(eventId, order, ct) : null,
+            FeeMinor: state == PlatformOrderState.Paid ? await FeeAsync(eventId, order, ct) : null,
             PaymentMethod: order.PaymentProvider?.ToLowerInvariant(),
             PaidAt: null,
             RefundedMinor: ToMinor(order.TotalRefunded ?? 0m),
             RefundFailed: string.Equals(order.RefundStatus, "REFUND_FAILED", StringComparison.Ordinal),
-            DisputedMinor: ToMinor(order.TotalDisputed ?? 0m));
+            ChargedBackMinor: ToMinor(order.TotalDisputed ?? 0m));
     }
 
     /// <summary>
@@ -162,7 +162,7 @@ internal sealed class HiEventsCheckoutBackend : ITicketCheckoutBackend
 
     public async Task<RefundResult> RefundAsync(RefundRequest request, CancellationToken ct = default)
     {
-        var (eventId, orderId) = ParseBackendOrderId(request.BackendOrderId);
+        var (eventId, orderId) = ParsePlatformOrderId(request.PlatformOrderId);
 
         var body = new RefundBody(
             Amount: request.AmountMinor / 100m,
@@ -176,8 +176,8 @@ internal sealed class HiEventsCheckoutBackend : ITicketCheckoutBackend
         if (response.StatusCode == HttpStatusCode.UnprocessableEntity)
         {
             var reason = await response.Content.ReadAsStringAsync(ct);
-            _logger.LogWarning("Hi.Events declined refund {RefundId} on {BackendOrderId}: {Reason}",
-                request.RefundId, request.BackendOrderId, reason);
+            _logger.LogWarning("Hi.Events declined refund {RefundId} on {PlatformOrderId}: {Reason}",
+                request.RefundId, request.PlatformOrderId, reason);
             return new RefundResult(RefundState.Failed, null, reason);
         }
 
@@ -194,18 +194,18 @@ internal sealed class HiEventsCheckoutBackend : ITicketCheckoutBackend
         };
     }
 
-    public async Task CancelAsync(string backendOrderId, CancellationToken ct = default)
+    public async Task CancelAsync(string platformOrderId, CancellationToken ct = default)
     {
-        var (eventId, orderId) = ParseBackendOrderId(backendOrderId);
+        var (eventId, orderId) = ParsePlatformOrderId(platformOrderId);
         var order = await GetOrderAsync(eventId, orderId, ct);
 
         switch (ToState(order))
         {
-            case CheckoutState.Paid:
-                throw new TicketCheckoutException($"Hi.Events order {backendOrderId} is paid and cannot be cancelled.");
-            case CheckoutState.Processing:
-                throw new TicketCheckoutException($"Hi.Events order {backendOrderId} has a payment on its way and cannot be cancelled.");
-            case CheckoutState.Cancelled:
+            case PlatformOrderState.Paid:
+                throw new TicketingPlatformException($"Hi.Events order {platformOrderId} is paid and cannot be cancelled.");
+            case PlatformOrderState.Processing:
+                throw new TicketingPlatformException($"Hi.Events order {platformOrderId} has a payment on its way and cannot be cancelled.");
+            case PlatformOrderState.Cancelled:
                 return;
         }
 
@@ -219,18 +219,18 @@ internal sealed class HiEventsCheckoutBackend : ITicketCheckoutBackend
     }
 
     /// <summary>
-    /// Hi.Events copies the buyer's email onto every attendee and Humans sends attendees no email of their own, so
+    /// Hi.Events copies the buyer's email onto every holder's attendee record and Humans sends holders no email of their own, so
     /// the person cannot be told apart from the others on the order: the whole order is anonymised. Humans keeps the
     /// legal names it needs; amounts and statuses stay in Hi.Events.
     /// </summary>
-    public async Task ErasePersonalDataAsync(string backendOrderId, string email, CancellationToken ct = default)
+    public async Task ErasePersonalDataAsync(string platformOrderId, string email, CancellationToken ct = default)
     {
-        var (eventId, orderId) = ParseBackendOrderId(backendOrderId);
+        var (eventId, orderId) = ParsePlatformOrderId(platformOrderId);
         using var response = await _http.PostAsync($"events/{eventId}/orders/{orderId}/anonymize", content: null, ct);
         await ReadOrderAsync(response, ct);
     }
 
-    public CheckoutBackendSetup Setup => new(
+    public PlatformSetup Setup => new(
         "Hi.Events",
         Hosting(),
         _settings.AppBaseUri is { } app ? new Uri(app, "manage/events") : null,
@@ -247,7 +247,7 @@ internal sealed class HiEventsCheckoutBackend : ITicketCheckoutBackend
         "/HiEvents/Webhook",
         [
             "Needs the Humans fork (peterdrier/Hi.Events): stock Hi.Events and Hi.Events Cloud have no checkout endpoint that takes Humans' prices.",
-            "Each event needs exactly one TICKET and one GENERAL product, both hidden, without taxes or fees, offline payment off, and the event live. The sales setup's event id is the numeric Hi.Events event id.",
+            "Each event needs exactly one TICKET and one GENERAL product, both hidden, without taxes or fees, offline payment off, and the event live. The event id in the ticketing settings is the numeric Hi.Events event id.",
             "The webhook goes on the order events.",
             "The fork's Stripe webhook must include payment_intent.processing and the charge.dispute.* events, or slow bank payments get cancelled at the hold and chargebacks never reach Humans.",
             $"Fees and payouts reconcile from the Stripe account behind the fork's STRIPE_SECRET_KEY: a Stripe:MirrorAccounts entry named {StripeAccountName} with that account's id and a read-only key (Balance, Balance transactions, Payouts, PaymentIntents, Charges, Refunds, Disputes read).",
@@ -263,18 +263,18 @@ internal sealed class HiEventsCheckoutBackend : ITicketCheckoutBackend
             ? "Hi.Events Cloud (not supported: it lacks the fork's checkout endpoint)"
             : $"Self-hosted at {api.Host}";
 
-    public async Task<IReadOnlyList<CheckoutBackendFinding>> CheckAsync(string? backendEventRef, CancellationToken ct = default)
+    public async Task<IReadOnlyList<PlatformFinding>> CheckAsync(string? platformEventRef, CancellationToken ct = default)
     {
         if (!IsConfigured)
             return [new(false, "HiEvents:ApiUrl and HIEVENTS_API_KEY must be set, and HiEvents:ApiUrl and HiEvents:AppUrl (when set) must be absolute http(s) addresses.")];
 
-        var findings = new List<CheckoutBackendFinding>
+        var findings = new List<PlatformFinding>
         {
             string.IsNullOrEmpty(_settings.WebhookSecret)
                 ? new(false, "HIEVENTS_WEBHOOK_SECRET is unset: the webhook answers 503 and outcomes arrive only from Tickets' poll.")
                 : new(true, "Webhook signing secret is set."),
         };
-        findings.AddRange((await _stripe.CheckAccountAsync(StripeAccountName, ct)).Select(c => new CheckoutBackendFinding(c.Ok, c.Text)));
+        findings.AddRange((await _stripe.CheckAccountAsync(StripeAccountName, ct)).Select(c => new PlatformFinding(c.Ok, c.Text)));
         if (IsCloud)
             findings.Add(new(false, "Hi.Events Cloud cannot sell Humans orders: it has no checkout endpoint taking Humans' prices."));
         try
@@ -288,11 +288,11 @@ internal sealed class HiEventsCheckoutBackend : ITicketCheckoutBackend
                         : new(false, "users/me did not answer a Hi.Events user: check that HiEvents:ApiUrl ends in /api."));
             }
 
-            if (string.IsNullOrWhiteSpace(backendEventRef) || !findings[^1].Ok)
+            if (string.IsNullOrWhiteSpace(platformEventRef) || !findings[^1].Ok)
                 return findings;
-            if (!int.TryParse(backendEventRef, NumberStyles.None, CultureInfo.InvariantCulture, out var eventId))
+            if (!int.TryParse(platformEventRef, NumberStyles.None, CultureInfo.InvariantCulture, out var eventId))
             {
-                findings.Add(new(false, $"The event id must be the numeric Hi.Events event id, not '{backendEventRef}'."));
+                findings.Add(new(false, $"The event id must be the numeric Hi.Events event id, not '{platformEventRef}'."));
                 return findings;
             }
 
@@ -346,8 +346,8 @@ internal sealed class HiEventsCheckoutBackend : ITicketCheckoutBackend
         return findings;
     }
 
-    public string EventRefOf(string backendOrderId) =>
-        ParseBackendOrderId(backendOrderId).EventId.ToString(CultureInfo.InvariantCulture);
+    public string EventRefOf(string platformOrderId) =>
+        ParsePlatformOrderId(platformOrderId).EventId.ToString(CultureInfo.InvariantCulture);
 
     /// <summary>
     /// The Stripe account Hi.Events charges into; null while its mirror account is not configured. A movement's Humans
@@ -365,7 +365,7 @@ internal sealed class HiEventsCheckoutBackend : ITicketCheckoutBackend
         }
         catch (InvalidOperationException ex)
         {
-            throw new TicketCheckoutException(ex.Message, ex);
+            throw new TicketingPlatformException(ex.Message, ex);
         }
         if (stripe is null)
             return null;
@@ -390,7 +390,7 @@ internal sealed class HiEventsCheckoutBackend : ITicketCheckoutBackend
     {
         "charge" or "charge_failure" or "partial_capture_reversal" => PaymentLedgerEntryKind.Charge,
         "refund" or "refund_failure" => PaymentLedgerEntryKind.Refund,
-        "dispute" or "dispute_reversal" => PaymentLedgerEntryKind.Dispute,
+        "dispute" or "dispute_reversal" => PaymentLedgerEntryKind.Chargeback,
         "fee" => PaymentLedgerEntryKind.Fee,
         "payout" or "payout_reversal" => PaymentLedgerEntryKind.Payout,
         _ => PaymentLedgerEntryKind.Other,
@@ -414,17 +414,17 @@ internal sealed class HiEventsCheckoutBackend : ITicketCheckoutBackend
             && int.TryParse(value, NumberStyles.None, CultureInfo.InvariantCulture, out id);
     }
 
-    public async Task<IReadOnlyList<BackendOrderSummary>> ListOrdersAsync(
-        string? backendEventRef, Instant from, Instant to, CancellationToken ct = default)
+    public async Task<IReadOnlyList<PlatformOrderSummary>> ListOrdersAsync(
+        string? platformEventRef, Instant from, Instant to, CancellationToken ct = default)
     {
         if (!IsConfigured)
-            throw new TicketCheckoutException("Hi.Events is not configured.");
-        if (!int.TryParse(backendEventRef, NumberStyles.None, CultureInfo.InvariantCulture, out var eventId))
-            throw new TicketCheckoutException($"Hi.Events needs a numeric event id, got '{backendEventRef}'.");
+            throw new TicketingPlatformException("Hi.Events is not configured.");
+        if (!int.TryParse(platformEventRef, NumberStyles.None, CultureInfo.InvariantCulture, out var eventId))
+            throw new TicketingPlatformException($"Hi.Events needs a numeric event id, got '{platformEventRef}'.");
 
         var range = string.Create(CultureInfo.InvariantCulture,
             $"filter_fields[created_at][gte]={Uri.EscapeDataString(from.ToInvariantTimestamp())}&filter_fields[created_at][lt]={Uri.EscapeDataString(to.ToInvariantTimestamp())}");
-        var orders = new Dictionary<int, BackendOrderSummary>();
+        var orders = new Dictionary<int, PlatformOrderSummary>();
         for (var page = 1; page <= PageSafetyCap; page++)
         {
             using var response = await _http.GetAsync(string.Create(CultureInfo.InvariantCulture,
@@ -434,8 +434,8 @@ internal sealed class HiEventsCheckoutBackend : ITicketCheckoutBackend
             if (meta.LastPage < 1)
                 throw new HttpRequestException("Hi.Events answered an order page with invalid paging.");
             foreach (var order in read.Data ?? [])
-                orders[order.Id] = new BackendOrderSummary(
-                ToBackendOrderId(eventId, order.Id),
+                orders[order.Id] = new PlatformOrderSummary(
+                ToPlatformOrderId(eventId, order.Id),
                 Guid.TryParseExact(order.ExternalReference, "N", out var humansOrderId) ? humansOrderId : null,
                 ParseCreatedAt(order.CreatedAt)
                     ?? throw new HttpRequestException($"Hi.Events order {order.Id} has an unreadable created_at '{order.CreatedAt}'."),
@@ -475,19 +475,19 @@ internal sealed class HiEventsCheckoutBackend : ITicketCheckoutBackend
         }
     }
 
-    private CheckoutState ToState(HiEventsOrder order) => order.Status switch
+    private PlatformOrderState ToState(HiEventsOrder order) => order.Status switch
     {
-        "COMPLETED" when string.Equals(order.PaymentStatus, "PAYMENT_RECEIVED", StringComparison.Ordinal) => CheckoutState.Paid,
-        "COMPLETED" => CheckoutState.Failed,
-        "CANCELLED" => CheckoutState.Cancelled,
+        "COMPLETED" when string.Equals(order.PaymentStatus, "PAYMENT_RECEIVED", StringComparison.Ordinal) => PlatformOrderState.Paid,
+        "COMPLETED" => PlatformOrderState.Failed,
+        "CANCELLED" => PlatformOrderState.Cancelled,
         // The buyer finished a method that settles later (a SEPA debit): the money is on its way, whatever the hold.
-        "RESERVED" or "ABANDONED" when order.PaymentProcessingAt is not null => CheckoutState.Processing,
-        "ABANDONED" => CheckoutState.Expired,
+        "RESERVED" or "ABANDONED" when order.PaymentProcessingAt is not null => PlatformOrderState.Processing,
+        "ABANDONED" => PlatformOrderState.Expired,
         "RESERVED" => DateFormattingExtensions.ParseInvariantTimestamp(order.ReservedUntil) is { } until
-            ? until <= _clock.GetCurrentInstant() ? CheckoutState.Expired : CheckoutState.Pending
+            ? until <= _clock.GetCurrentInstant() ? PlatformOrderState.Expired : PlatformOrderState.Pending
             : throw new HttpRequestException($"Hi.Events order {order.Id} has an unreadable reserved_until '{order.ReservedUntil}'."),
         // Only reachable when offline payment is on for the event, which it must not be; the order is still unpaid.
-        "AWAITING_OFFLINE_PAYMENT" => CheckoutState.Pending,
+        "AWAITING_OFFLINE_PAYMENT" => PlatformOrderState.Pending,
         _ => throw new HttpRequestException($"Hi.Events order {order.Id} has unknown status '{order.Status}'."),
     };
 
@@ -517,23 +517,23 @@ internal sealed class HiEventsCheckoutBackend : ITicketCheckoutBackend
     /// <summary>
     /// Humans owns the catalogue and prices every line, so a Hi.Events event needs just one carrier product per line
     /// kind: one product of type <c>TICKET</c> for ticket lines and one of type <c>GENERAL</c> for donations. Neither may
-    /// carry taxes or fees in Hi.Events, or the order total stops matching the lines and the checkout is refused. Both must
+    /// carry taxes or fees in Hi.Events, or the order total stops matching the lines and the order is refused. Both must
     /// be hidden: the pay page needs the event live, and a visible carrier would sell on its public page at its base price.
     /// </summary>
-    private static CheckoutOrderItem ToItem(CheckoutLine line, int eventId, IReadOnlyList<HiEventsProduct> products)
+    private static CheckoutOrderItem ToItem(PlatformOrderLine line, int eventId, IReadOnlyList<HiEventsProduct> products)
     {
-        var productType = line.Kind == CheckoutLineKind.Ticket ? "TICKET" : "GENERAL";
+        var productType = line.Kind == OrderLineKind.Ticket ? "TICKET" : "GENERAL";
         var carriers = CarriersOf(products, productType);
         if (carriers.Count != 1)
         {
-            throw new TicketCheckoutException(
+            throw new TicketingPlatformException(
                 $"Hi.Events event {eventId} needs exactly one {productType} product to carry {line.Kind} lines; it has {carriers.Count}.");
         }
 
         return new CheckoutOrderItem(
             ProductId: carriers[0].Id,
             Price: line.AmountMinor / 100m,
-            Attendee: line.AttendeeName is null ? null : new CheckoutAttendee(line.AttendeeName));
+            Attendee: line.HolderName is null ? null : new CheckoutAttendee(line.HolderName));
     }
 
     private static List<HiEventsProduct> CarriersOf(IReadOnlyList<HiEventsProduct> products, string productType) =>
@@ -578,7 +578,7 @@ internal sealed class HiEventsCheckoutBackend : ITicketCheckoutBackend
 
     /// <summary>
     /// Hi.Events keeps a buyer's first and last name in 50 characters each. A longer full name is split at a space so
-    /// it still reads whole; past 100 characters the tail is cut, since the ticket's attendee line carries the full
+    /// it still reads whole; past 100 characters the tail is cut, since the ticket line carries the holder's full
     /// legal name.
     /// </summary>
     internal static (string FirstName, string? LastName) SplitBuyerName(string name)
@@ -601,12 +601,12 @@ internal sealed class HiEventsCheckoutBackend : ITicketCheckoutBackend
 
     private static long ToMinor(decimal amount) => (long)decimal.Round(amount * 100m, MidpointRounding.AwayFromZero);
 
-    internal static string ToBackendOrderId(int eventId, int orderId) =>
+    internal static string ToPlatformOrderId(int eventId, int orderId) =>
         string.Create(CultureInfo.InvariantCulture, $"{eventId}:{orderId}");
 
-    internal static (int EventId, int OrderId) ParseBackendOrderId(string backendOrderId)
+    internal static (int EventId, int OrderId) ParsePlatformOrderId(string platformOrderId)
     {
-        var parts = backendOrderId.Split(':');
+        var parts = platformOrderId.Split(':');
         if (parts.Length == 2
             && int.TryParse(parts[0], NumberStyles.None, CultureInfo.InvariantCulture, out var eventId)
             && int.TryParse(parts[1], NumberStyles.None, CultureInfo.InvariantCulture, out var orderId))
@@ -614,7 +614,7 @@ internal sealed class HiEventsCheckoutBackend : ITicketCheckoutBackend
             return (eventId, orderId);
         }
 
-        throw new ArgumentException($"'{backendOrderId}' is not a Hi.Events order id.", nameof(backendOrderId));
+        throw new ArgumentException($"'{platformOrderId}' is not a Hi.Events order id.", nameof(platformOrderId));
     }
 
     private sealed record CheckoutOrderBody(

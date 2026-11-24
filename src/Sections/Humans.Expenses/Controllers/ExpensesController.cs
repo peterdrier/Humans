@@ -1,3 +1,4 @@
+using Humans.Permissions.Contracts;
 using Humans.Base.Interfaces;
 using System.Globalization;
 using Humans.Base.Extensions;
@@ -23,7 +24,7 @@ namespace Humans.Expenses.Controllers;
 [Authorize]
 [Route("Expenses")]
 internal sealed class ExpensesController(
-    ITeamService teams,
+    IPermissionService permissions,
     IUserService userService,
     IExpenseReportManagement service,
     IExpenseReview review,
@@ -36,7 +37,7 @@ internal sealed class ExpensesController(
     ILogger<ExpensesController> logger,
     IStringLocalizer<ExpensesResource> localizer) : HumansControllerBase(userService)
 {
-    private readonly ExpensePageBuilder _pageBuilder = new(teams, orgTimeZone, service, review, budgetService, finance, preapprovals, clock, localizer);
+    private readonly ExpensePageBuilder _pageBuilder = new(permissions, orgTimeZone, service, review, budgetService, finance, preapprovals, clock, localizer);
     private readonly IUserService _userService = userService;
 
     private LocalDate Today => _pageBuilder.Today;

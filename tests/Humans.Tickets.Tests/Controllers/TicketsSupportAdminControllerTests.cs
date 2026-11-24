@@ -17,12 +17,12 @@ namespace Humans.Tickets.Tests.Controllers;
 public class TicketsSupportAdminControllerTests
 {
     private readonly ITicketCheckoutService _checkout = Substitute.For<ITicketCheckoutService>();
-    private readonly TicketSalesEvent _sale = new() { Id = Guid.NewGuid(), EventSettingsId = Guid.NewGuid() };
+    private readonly TicketingSettings _sale = new() { Id = Guid.NewGuid(), EventSettingsId = Guid.NewGuid() };
     private static readonly Instant Now = Instant.FromUtc(2027, 1, 10, 12, 0);
 
     private TicketsSupportAdminController Controller()
     {
-        _checkout.GetSalesEventAsync(_sale.Id, Arg.Any<CancellationToken>()).Returns(_sale);
+        _checkout.GetTicketingSettingsAsync(_sale.Id, Arg.Any<CancellationToken>()).Returns(_sale);
         return new(_checkout, Substitute.For<ISettingsService>(), SystemClock.Instance, Substitute.For<IUserService>());
     }
 
@@ -36,12 +36,12 @@ public class TicketsSupportAdminControllerTests
         var newer = new TicketCheckoutRefund { Id = Guid.NewGuid(), CreatedAt = Now + Duration.FromDays(1) };
         _checkout.RefreshOrderAsync(order.Id, Arg.Any<CancellationToken>()).Returns(order);
         _checkout.GetOrderDetailAsync(order.Id, Arg.Any<CancellationToken>())
-            .Returns(new CheckoutOrderDetail(order, [newer, older], [], [child, adult]));
+            .Returns(new OrderDetail(order, [newer, older], [], [child, adult]));
         var controller = new TicketsSalesAdminController(_checkout, null!, Substitute.For<ISettingsService>(),
             Substitute.For<IGrantService>(), Substitute.For<IOrgTimeZone>(), SystemClock.Instance, Substitute.For<IUserService>());
 
         var result = (ViewResult)await controller.Order(order.Id, TestContext.Current.CancellationToken);
-        var detail = (CheckoutOrderDetail)result.Model!;
+        var detail = (OrderDetail)result.Model!;
 
         detail.Tickets.Should().Equal(adult, child);
         detail.Refunds.Should().Equal(older, newer);
@@ -76,33 +76,33 @@ public class TicketsSupportAdminControllerTests
     }
 
     [HumansFact]
-    public async Task Backends_PresentsKeysInOrdinalOrder()
+    public async Task Platforms_PresentsKeysInOrdinalOrder()
     {
-        _checkout.Backends.Returns([new("z", false, null!), new("a", true, null!)]);
+        _checkout.Platforms.Returns([new("z", false, null!), new("a", true, null!)]);
         var controller = new TicketsSalesAdminController(_checkout, null!, Substitute.For<ISettingsService>(),
             Substitute.For<IGrantService>(), Substitute.For<IOrgTimeZone>(), SystemClock.Instance, Substitute.For<IUserService>());
 
-        var result = (ViewResult)await controller.Backends(TestContext.Current.CancellationToken);
+        var result = (ViewResult)await controller.Platforms(TestContext.Current.CancellationToken);
 
-        ((BackendsViewModel)result.Model!).Backends.Select(backend => backend.Key).Should().Equal("a", "z");
+        ((PlatformsViewModel)result.Model!).Platforms.Select(platform => platform.Key).Should().Equal("a", "z");
     }
 
     [HumansFact]
-    public async Task BackendStatus_OrdersRowsAndStartsReconciliationOnTheOldestLocalDay()
+    public async Task PlatformStatus_OrdersRowsAndStartsReconciliationOnTheOldestLocalDay()
     {
         var older = new TicketCheckoutOrder { Id = Guid.NewGuid(), CreatedAt = Instant.FromUtc(2027, 1, 9, 23, 30) };
         var newer = new TicketCheckoutOrder { Id = Guid.NewGuid(), CreatedAt = Now + Duration.FromDays(1) };
         var oldRefund = new TicketCheckoutRefund { Id = Guid.NewGuid(), CreatedAt = Now };
         var newRefund = new TicketCheckoutRefund { Id = Guid.NewGuid(), CreatedAt = Now + Duration.FromHours(1) };
-        var ledger = new BackendLedger(new("test", true, null!), [older, newer], [], [older, newer],
+        var ledger = new PlatformLedger(new("test", true, null!), [older, newer], [], [older, newer],
             [newRefund, oldRefund], [newRefund, oldRefund]);
-        _checkout.GetBackendLedgerAsync("test", Arg.Any<CancellationToken>()).Returns(ledger);
+        _checkout.GetPlatformLedgerAsync("test", Arg.Any<CancellationToken>()).Returns(ledger);
         var zone = Substitute.For<IOrgTimeZone>();
         zone.Zone.Returns(DateTimeZoneProviders.Tzdb["Europe/Madrid"]);
-        var controller = new TicketsBackendAdminController(_checkout, Substitute.For<ISettingsService>(), zone, Substitute.For<IUserService>());
+        var controller = new TicketsPlatformAdminController(_checkout, Substitute.For<ISettingsService>(), zone, Substitute.For<IUserService>());
 
         var result = (ViewResult)await controller.Index("test", TestContext.Current.CancellationToken);
-        var model = (BackendStatusViewModel)result.Model!;
+        var model = (PlatformStatusViewModel)result.Model!;
 
         model.Ledger.Orders.Should().Equal(newer, older);
         model.Ledger.Stuck.Should().Equal(newer, older);
@@ -116,14 +116,14 @@ public class TicketsSupportAdminControllerTests
     {
         var older = new TicketCheckoutOrder { Id = Guid.NewGuid(), CreatedAt = Now };
         var newer = new TicketCheckoutOrder { Id = Guid.NewGuid(), CreatedAt = Now + Duration.FromHours(1) };
-        _checkout.GetOrdersForSalesEventAsync(_sale.Id, Arg.Any<CancellationToken>()).Returns([older, newer]);
-        _checkout.GetSalesEventAsync(_sale.Id, Arg.Any<CancellationToken>()).Returns(_sale);
+        _checkout.GetOrdersForSettingsAsync(_sale.Id, Arg.Any<CancellationToken>()).Returns([older, newer]);
+        _checkout.GetTicketingSettingsAsync(_sale.Id, Arg.Any<CancellationToken>()).Returns(_sale);
         var controller = new TicketsSalesAdminController(_checkout, null!, Substitute.For<ISettingsService>(),
             Substitute.For<IGrantService>(), Substitute.For<IOrgTimeZone>(), SystemClock.Instance, Substitute.For<IUserService>());
 
         var result = (ViewResult)await controller.Orders(_sale.Id, TestContext.Current.CancellationToken);
 
-        var model = ((TicketSalesEvent, string, IReadOnlyList<TicketCheckoutOrder>))result.Model!;
+        var model = ((TicketingSettings, string, IReadOnlyList<TicketCheckoutOrder>))result.Model!;
         model.Item3.Should().Equal(newer, older);
     }
 
@@ -133,9 +133,9 @@ public class TicketsSupportAdminControllerTests
         var order = new TicketCheckoutOrder { Id = Guid.NewGuid(), BuyerName = "Target person" };
         var older = new TicketCheckoutTicket { Id = Guid.NewGuid(), OrderId = order.Id, IssuedAt = Now };
         var newer = new TicketCheckoutTicket { Id = Guid.NewGuid(), OrderId = order.Id, IssuedAt = Now + Duration.FromHours(1) };
-        _checkout.GetSalesEventsAsync(Arg.Any<CancellationToken>()).Returns([_sale]);
-        _checkout.GetOrdersForSalesEventAsync(_sale.Id, Arg.Any<CancellationToken>()).Returns([order]);
-        _checkout.GetTicketsForSalesEventAsync(_sale.Id, Arg.Any<CancellationToken>()).Returns([newer, older]);
+        _checkout.ListTicketingSettingsAsync(Arg.Any<CancellationToken>()).Returns([_sale]);
+        _checkout.GetOrdersForSettingsAsync(_sale.Id, Arg.Any<CancellationToken>()).Returns([order]);
+        _checkout.GetTicketsForSettingsAsync(_sale.Id, Arg.Any<CancellationToken>()).Returns([newer, older]);
 
         var result = (ViewResult)await Controller().Lookup("Target", TestContext.Current.CancellationToken);
 
@@ -146,14 +146,14 @@ public class TicketsSupportAdminControllerTests
     public async Task Ticket_PresentsDependentsByIssueTimeAndSelectsTheLatestOffer()
     {
         var order = new TicketCheckoutOrder { Id = Guid.NewGuid() };
-        var ticket = new TicketCheckoutTicket { Id = Guid.NewGuid(), SalesEventId = _sale.Id };
+        var ticket = new TicketCheckoutTicket { Id = Guid.NewGuid(), TicketingSettingsId = _sale.Id };
         var older = new TicketCheckoutTicket { Id = Guid.NewGuid(), ParentTicketId = ticket.Id, IssuedAt = Now };
         var newer = new TicketCheckoutTicket { Id = Guid.NewGuid(), ParentTicketId = ticket.Id, IssuedAt = Now + Duration.FromHours(1) };
         var oldOffer = new TicketResaleOffer { Id = Guid.NewGuid(), TicketId = ticket.Id, OfferedAt = Now };
         var newOffer = new TicketResaleOffer { Id = Guid.NewGuid(), TicketId = ticket.Id, OfferedAt = Now + Duration.FromHours(1) };
-        _checkout.GetOrderDetailAsync(order.Id, Arg.Any<CancellationToken>()).Returns(new CheckoutOrderDetail(order, [], [], [ticket]));
-        _checkout.GetTicketsForSalesEventAsync(_sale.Id, Arg.Any<CancellationToken>()).Returns([newer, ticket, older]);
-        _checkout.GetOffersForSalesEventAsync(_sale.Id, Arg.Any<CancellationToken>()).Returns([newOffer, oldOffer]);
+        _checkout.GetOrderDetailAsync(order.Id, Arg.Any<CancellationToken>()).Returns(new OrderDetail(order, [], [], [ticket]));
+        _checkout.GetTicketsForSettingsAsync(_sale.Id, Arg.Any<CancellationToken>()).Returns([newer, ticket, older]);
+        _checkout.GetOffersForSettingsAsync(_sale.Id, Arg.Any<CancellationToken>()).Returns([newOffer, oldOffer]);
 
         var result = (ViewResult)await Controller().Ticket(order.Id, ticket.Id, TestContext.Current.CancellationToken);
 
@@ -168,8 +168,8 @@ public class TicketsSupportAdminControllerTests
         var order = new TicketCheckoutOrder { Id = Guid.NewGuid() };
         var older = new TicketCheckoutRefund { Id = Guid.NewGuid(), OrderId = order.Id, CreatedAt = Now };
         var newer = new TicketCheckoutRefund { Id = Guid.NewGuid(), OrderId = order.Id, CreatedAt = Now + Duration.FromHours(1) };
-        _checkout.GetOrdersForSalesEventAsync(_sale.Id, Arg.Any<CancellationToken>()).Returns([order]);
-        _checkout.GetRefundsForSalesEventAsync(_sale.Id, Arg.Any<CancellationToken>()).Returns([older, newer]);
+        _checkout.GetOrdersForSettingsAsync(_sale.Id, Arg.Any<CancellationToken>()).Returns([order]);
+        _checkout.GetRefundsForSettingsAsync(_sale.Id, Arg.Any<CancellationToken>()).Returns([older, newer]);
 
         var result = (ViewResult)await Controller().Refunds(_sale.Id, null, TestContext.Current.CancellationToken);
 
@@ -183,7 +183,7 @@ public class TicketsSupportAdminControllerTests
         var older = new TicketResaleOffer { Id = Guid.NewGuid(), OfferedAt = Now - Duration.FromHours(1), State = TicketResaleOfferState.Reserved };
         var sold = new TicketResaleOffer { Id = Guid.NewGuid(), OfferedAt = Now, SoldAt = Now, State = TicketResaleOfferState.Sold };
         var withdrawn = new TicketResaleOffer { Id = Guid.NewGuid(), OfferedAt = Now, WithdrawnAt = Now + Duration.FromHours(1), State = TicketResaleOfferState.Withdrawn };
-        _checkout.GetOffersForSalesEventAsync(_sale.Id, Arg.Any<CancellationToken>()).Returns([sold, newer, withdrawn, older]);
+        _checkout.GetOffersForSettingsAsync(_sale.Id, Arg.Any<CancellationToken>()).Returns([sold, newer, withdrawn, older]);
 
         var result = (ViewResult)await Controller().Resale(_sale.Id, TestContext.Current.CancellationToken);
 
@@ -200,16 +200,16 @@ public class TicketsSupportAdminControllerTests
             PaidAt = Now,
             Lines =
             [
-                new() { Kind = CheckoutLineKind.Donation, DonationPurpose = "Z", AmountMinor = 1 },
-                new() { Kind = CheckoutLineKind.Donation, DonationPurpose = "A", AmountMinor = 1 },
+                new() { Kind = OrderLineKind.Donation, DonationPurpose = "Z", AmountMinor = 1 },
+                new() { Kind = OrderLineKind.Donation, DonationPurpose = "A", AmountMinor = 1 },
             ],
         };
         TicketCheckoutTicket Ticket(string label) => new() { Id = Guid.NewGuid(), OrderId = order.Id, WaveName = label };
-        _checkout.GetOrdersForSalesEventAsync(_sale.Id, Arg.Any<CancellationToken>()).Returns([order]);
-        _checkout.GetTicketsForSalesEventAsync(_sale.Id, Arg.Any<CancellationToken>()).Returns([Ticket("Z"), Ticket("B"), Ticket("A"), Ticket("B")]);
-        _checkout.GetRefundsForSalesEventAsync(_sale.Id, Arg.Any<CancellationToken>()).Returns(
+        _checkout.GetOrdersForSettingsAsync(_sale.Id, Arg.Any<CancellationToken>()).Returns([order]);
+        _checkout.GetTicketsForSettingsAsync(_sale.Id, Arg.Any<CancellationToken>()).Returns([Ticket("Z"), Ticket("B"), Ticket("A"), Ticket("B")]);
+        _checkout.GetRefundsForSettingsAsync(_sale.Id, Arg.Any<CancellationToken>()).Returns(
             [new() { OrderId = order.Id, State = RefundState.Failed }, new() { OrderId = order.Id, State = RefundState.Succeeded }]);
-        _checkout.GetOffersForSalesEventAsync(_sale.Id, Arg.Any<CancellationToken>()).Returns(
+        _checkout.GetOffersForSettingsAsync(_sale.Id, Arg.Any<CancellationToken>()).Returns(
             [new() { State = TicketResaleOfferState.Sold }, new() { State = TicketResaleOfferState.Open }]);
 
         var result = (ViewResult)await Controller().Report(_sale.Id, TestContext.Current.CancellationToken);

@@ -15,7 +15,7 @@ see reserve holds). Spec: [`features/stripe-mirror.md`](features/stripe-mirror.m
 
 - **For:** the one place Humans talks to Stripe. Store gets hosted checkout and a verified
   webhook; Tickets gets each payment's fee breakdown; the pretix and Hi.Events adapters read the
-  Stripe accounts those vendors charge into (ledger, fees, key check) for Tickets' reconciliation.
+  Stripe accounts those ticketing platforms charge into (ledger, fees, key check) for Tickets' reconciliation.
 - **Good looks like:** a thin, honest translator. Each call answers, returns `null` for a case
   it checked, or throws — never a silent failure, never a decision about what a payment means.
 - **Deliberate choices:** two Stripe accounts on least-privilege restricted keys; no retries, no
@@ -34,7 +34,7 @@ see reserve holds). Spec: [`features/stripe-mirror.md`](features/stripe-mirror.m
 - A **mirror account** is a `Stripe:MirrorAccounts` entry: a name, its `acct_` id, and a read key (its own
   through `KeyVariable`, or the org read key with `Stripe-Context`). Besides the nightly sweep, the
   **account reads** (`GetAccountLedgerAsync`, `GetAccountPaymentFeeAsync`, `FindAccountPaymentFeeAsync`,
-  `CheckAccountAsync`) read one by name, live: `Pretix` and `HiEvents` are the ticket vendors'
+  `CheckAccountAsync`) read one by name, live: `Pretix` and `HiEvents` are the ticketing platforms'
   accounts. A ledger refusal throws `InvalidOperationException`; a fee read never throws (unknown is null,
   and logged), so a fee never holds up a paid order; the check never throws.
 - A **Checkout Session** is a Stripe-hosted payment page created for one Store order.
@@ -214,7 +214,7 @@ integration uses — see [`memory/code/stripe-restricted-keys.md`](../../../../m
 - Inbound: **Finance** injects `IStripeMirrorService` for the Stripe rows of /Finance's Cash on hand. **Store** injects `IStripeService` for checkout creation, webhook parsing,
   reconciliation and refund read-back with dashboard links (`Service`, `StoreStripeWebhookController`). **Tickets** injects it for
   fee enrichment on `TicketOrder` (`TicketSyncService`). **Pretix** and **HiEvents** inject it for their
-  account reads (`PretixCheckoutBackend`, `HiEventsCheckoutBackend`).
+  account reads (`PretixPlatform`, `HiEventsPlatform`).
 
 ## Architecture
 
@@ -241,7 +241,7 @@ integration uses — see [`memory/code/stripe-restricted-keys.md`](../../../../m
 ## GDPR
 
 The mirror holds buyer names and emails as Stripe records them (billing details, receipt email,
-the ticket vendor's charge metadata). A member's data export includes every row whose buyer email
+the ticket vendor's or ticketing platform's charge metadata). A member's data export includes every row whose buyer email
 is one of their verified addresses (`StripePayments`, from `StripeMirrorService`). Erasure keeps
 them: they are financial records, retained on the fiscal basis in the `ErasureDeclaration`. No
 bulk export of them exists.

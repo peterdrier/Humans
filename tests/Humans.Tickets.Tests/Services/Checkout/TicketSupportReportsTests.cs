@@ -18,10 +18,10 @@ public sealed class TicketSupportReportsTests
         params TicketCheckoutOrderLine[] lines) => new()
         {
             Id = Guid.NewGuid(),
-            SalesEventId = Guid.NewGuid(),
+            TicketingSettingsId = Guid.NewGuid(),
             BuyerName = "Ana García",
             BuyerEmail = "ana@example.com",
-            BackendOrderId = "cs_ABC123",
+            PlatformOrderId = "cs_ABC123",
             State = state,
             PaidAt = state == TicketCheckoutOrderState.Paid ? paidAt ?? Instant.FromUtc(2027, 1, 10, 12, 0) : null,
             TotalMinor = lines.Sum(l => l.AmountMinor),
@@ -30,15 +30,15 @@ public sealed class TicketSupportReportsTests
 
     private static TicketCheckoutOrderLine Line(long amount = 22500) => new()
     {
-        Kind = CheckoutLineKind.Ticket,
+        Kind = OrderLineKind.Ticket,
         Description = "Ticket: Wave 1",
         AmountMinor = amount,
-        AttendeeName = "Ana García",
+        HolderName = "Ana García",
     };
 
     private static TicketCheckoutOrderLine Donation(long amount, string? purpose = null) => new()
     {
-        Kind = CheckoutLineKind.Donation,
+        Kind = OrderLineKind.Donation,
         Description = "Donation",
         AmountMinor = amount,
         DonationPurpose = purpose,
@@ -51,7 +51,7 @@ public sealed class TicketSupportReportsTests
         {
             Id = Guid.NewGuid(),
             OrderId = order.Id,
-            SalesEventId = order.SalesEventId,
+            TicketingSettingsId = order.TicketingSettingsId,
             Kind = kind,
             HolderName = "Bo Smith",
             HolderEmail = "bo@example.com",
@@ -76,7 +76,7 @@ public sealed class TicketSupportReportsTests
     {
         Id = Guid.NewGuid(),
         TicketId = ticket.Id,
-        SalesEventId = ticket.SalesEventId,
+        TicketingSettingsId = ticket.TicketingSettingsId,
         OfferedAt = Instant.FromUtc(2027, 1, day, 9, 0),
         State = state,
         RefundOwedMinor = ticket.PricePaidMinor,
@@ -89,7 +89,7 @@ public sealed class TicketSupportReportsTests
     [InlineData("bo smi")]
     [InlineData("hx7q2k")]
     [InlineData(" cs_abc123 ")]
-    public void Lookup_matches_names_emails_ticket_codes_and_backend_references(string query)
+    public void Lookup_matches_names_emails_ticket_codes_and_platform_references(string query)
     {
         var order = Order(lines: Line());
         TicketSupportReports.Matches(order, [Ticket(order)], query).Should().BeTrue();
@@ -156,7 +156,7 @@ public sealed class TicketSupportReportsTests
     {
         var wave = Order(lines: [Line(), Donation(17500, "Low income pool")]);
         var lowIncome = Order(lines: Line(12500));
-        lowIncome.DisputedMinor = 12500;
+        lowIncome.ChargedBackMinor = 12500;
         var unpaid = Order(TicketCheckoutOrderState.Pending, lines: Line());
         var tickets = new[]
         {
@@ -174,7 +174,7 @@ public sealed class TicketSupportReportsTests
         report.TicketsLive.Should().Be(4);
         report.TicketRevenueMinor.Should().Be(35000);
         report.DonationsMinor.Should().Be(17500);
-        report.DisputedMinor.Should().Be(12500);
+        report.ChargedBackMinor.Should().Be(12500);
         report.ByPrice.Should().BeEquivalentTo(
             [new SalesRow("Child: Under 13", 1, 5000), new SalesRow("Child: Under 6", 1, 0), new SalesRow("Companion", 1, 0),
              new SalesRow("Low income", 1, 12500), new SalesRow("Wave 1", 1, 22500)]);

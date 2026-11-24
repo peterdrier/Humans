@@ -31,12 +31,12 @@ public sealed class IssuedTicketsViewComponent(ISettingsService settings) : View
             return Content(string.Empty);
 
         var events = (await settings.GetAllEventSettingsAsync(ct)).ToDictionary(e => e.Id, e => e.EventName);
-        var eventNames = (await checkout.GetSalesEventsAsync(ct))
+        var eventNames = (await checkout.ListTicketingSettingsAsync(ct))
             .ToDictionary(s => s.Id, s => events.GetValueOrDefault(s.EventSettingsId, string.Empty));
         var rows = tickets
             .OrderByDescending(t => t.IssuedAt).ThenBy(t => t.ParentTicketId is not null)
             .Select(t => new IssuedTicketRow(
-                eventNames.GetValueOrDefault(t.SalesEventId, string.Empty), t.Kind.ToString(), t.State.ToString(), t.Barcode,
+                eventNames.GetValueOrDefault(t.TicketingSettingsId, string.Empty), t.Kind.ToString(), t.State.ToString(), t.Barcode,
                 t.HolderUserId is null ? t.HolderName : null))
             .ToList();
         return View(new IssuedTicketsViewModel(viewMode, rows));

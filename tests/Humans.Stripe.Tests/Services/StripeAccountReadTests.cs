@@ -12,7 +12,7 @@ using Stripe;
 
 namespace Humans.Stripe.Tests.Services;
 
-/// <summary>Live reads of a ticket backend's own Stripe account: its ledger, a payment's fee, and the key check.</summary>
+/// <summary>Live reads of a ticketing platform's own Stripe account: its ledger, a payment's fee, and the key check.</summary>
 public sealed class StripeAccountReadTests
 {
     private static readonly CancellationToken Ct = TestContext.Current.CancellationToken;

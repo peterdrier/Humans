@@ -32,12 +32,12 @@ public sealed class MemberTicketStatusViewComponentTests
         IsOffSeason: isOffSeason);
 
     private MemberTicketStatusViewComponent BuildSut(
-        TicketVendorSettings? vendor = null, TicketSalesEvent? sale = null, TicketCheckoutTicket? held = null,
+        TicketVendorSettings? vendor = null, TicketingSettings? sale = null, TicketCheckoutTicket? held = null,
         IReadOnlyList<BuyPage>? buyPages = null)
     {
         var checkout = Substitute.For<ITicketCheckoutService>();
         checkout.GetBuyPagesAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(buyPages ?? []);
-        checkout.GetSalesEventsAsync(Arg.Any<CancellationToken>()).Returns(sale is null ? [] : [sale]);
+        checkout.ListTicketingSettingsAsync(Arg.Any<CancellationToken>()).Returns(sale is null ? [] : [sale]);
         checkout.GetTicketsForHolderAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(held is null ? [] : [held]);
         var httpContext = new DefaultHttpContext
         {
@@ -100,8 +100,8 @@ public sealed class MemberTicketStatusViewComponentTests
         model.HasTicket.Should().BeFalse();
     }
 
-    private static TicketSalesEvent Sale(TicketSalesMode mode) =>
-        new() { Id = Guid.NewGuid(), EventSettingsId = EventId, BackendKey = "boxoffice", Mode = mode };
+    private static TicketingSettings Sale(TicketSalesMode mode) =>
+        new() { Id = Guid.NewGuid(), EventSettingsId = EventId, PlatformKey = "boxoffice", Mode = mode };
 
     [HumansFact]
     public async Task InvokeAsync_OffSeasonWithASaleOpen_StillOffersTheBuyPage()
@@ -138,7 +138,7 @@ public sealed class MemberTicketStatusViewComponentTests
     {
         _settings.GetActiveEventSettings().Returns(Event(isOffSeason: false));
         var sale = Sale(TicketSalesMode.Closed);
-        var held = new TicketCheckoutTicket { Id = Guid.NewGuid(), SalesEventId = sale.Id, State = TicketCheckoutTicketState.Valid };
+        var held = new TicketCheckoutTicket { Id = Guid.NewGuid(), TicketingSettingsId = sale.Id, State = TicketCheckoutTicketState.Valid };
 
         var result = await BuildSut(sale: sale, held: held).InvokeAsync();
 
@@ -152,8 +152,8 @@ public sealed class MemberTicketStatusViewComponentTests
     public async Task InvokeAsync_TicketOfferedForAnotherEventsOpenSale_StillCounts()
     {
         _settings.GetActiveEventSettings().Returns(Event(isOffSeason: true));
-        var nextYear = new TicketSalesEvent { Id = Guid.NewGuid(), EventSettingsId = Guid.NewGuid(), BackendKey = "boxoffice", Mode = TicketSalesMode.Open };
-        var held = new TicketCheckoutTicket { Id = Guid.NewGuid(), SalesEventId = nextYear.Id, State = TicketCheckoutTicketState.Offered };
+        var nextYear = new TicketingSettings { Id = Guid.NewGuid(), EventSettingsId = Guid.NewGuid(), PlatformKey = "boxoffice", Mode = TicketSalesMode.Open };
+        var held = new TicketCheckoutTicket { Id = Guid.NewGuid(), TicketingSettingsId = nextYear.Id, State = TicketCheckoutTicketState.Offered };
 
         var result = await BuildSut(sale: nextYear, held: held).InvokeAsync();
 

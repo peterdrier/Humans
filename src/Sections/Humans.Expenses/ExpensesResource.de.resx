@@ -305,4 +305,6 @@
   <data name="Expenses_Validation_AmountPrecision" xml:space="preserve"><value>Gib einen Betrag mit höchstens zwei Nachkommastellen ein.</value></data>
   <data name="Expenses_Flash_DraftSavedFollowupFailed" xml:space="preserve"><value>Der Entwurf wurde gespeichert, aber die Anfrage konnte nicht abgeschlossen werden. Prüfe ihn, bevor du fortfährst.</value></data>
   <data name="Expenses_Flash_DraftOutcomeUnknown" xml:space="preserve"><value>Es konnte nicht bestätigt werden, ob der Entwurf gespeichert wurde. Prüfe die vorhandenen Berichte, bevor du einen weiteren Entwurf erstellst.</value></data>
+  <data name="Expenses_Permission_Endorse_Title" xml:space="preserve"><value>Spesen befürworten</value></data>
+  <data name="Expenses_Permission_Endorse_Blurb" xml:space="preserve"><value>Spesenabrechnungen zum Budget des Teams befürworten, ablehnen und einzelne Posten ablehnen.</value></data>
 </root>

@@ -36,7 +36,7 @@ internal interface IEventParticipationRepository : IRepository
 
     /// <summary>
     /// Per year the survivor keeps the higher status (Attended &gt; Ticketed &gt; NoShow &gt; NotAttending) and the
-    /// first check-in. The source's record is removed.
+    /// first arrival. The source's record is removed.
     /// </summary>
     Task ReassignAsync(
         Guid sourceUserId, Guid targetUserId,

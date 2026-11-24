@@ -23,7 +23,7 @@ The machine surface. Every key-authed API an agent talks to lives here, under `/
 
 - A **Backdoor API key** is a credential issued to a *person*, not a service. Its plaintext exists only at the moment of issue; the database keeps a SHA-256 hash and a 12-character display prefix.
 - **Issue / rotate / revoke** are the whole lifecycle. There is no "read the key back" — a lost key is rotated.
-- A **scope** (`BackdoorScope`) names who a key-authed controller serves. Every controller declares one with `[BackdoorScope(...)]`. A person may hold a key when any scope admits their active account, and the key reaches only the controllers whose scope admits them. Today there is one: **Staff** (a full Admin or a Board member), and every controller listed below declares it. A new scope is an enum value plus its test in `BackdoorApiKeyService.AdmitsAsync`; the Tasks bulk-load controller is the first planned one.
+- A **scope** (`BackdoorScope`) names who a key-authed controller serves. Every controller declares one with `[BackdoorScope(...)]`. A person may hold a key when any scope admits their active account, and the key reaches only the controllers whose scope admits them. There are two: **Staff** (a full Admin or a Board member), declared by every controller except tasks; and **Tasks** (holds `Tasks.Manage` on some team, through `IPermissionService`; TasksAdmin and Admin hold it everywhere), declared by the tasks bulk-load controller. A new scope is an enum value plus its test in `BackdoorApiKeyService.AdmitsAsync`.
 - The **machine surface** is the key-authed APIs Backdoor owns. Each is a thin orchestrator over another section's public contracts interface; Backdoor owns no domain data beyond its keys.
 
 ## Data Model

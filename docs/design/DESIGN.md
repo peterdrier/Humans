@@ -64,7 +64,7 @@ Plain Bootstrap forms, grid and cards need no component. A page needs a reusable
 
 ## Words
 
-Short labels, sentence case, no jargon a first-time buyer would not know. Say a thing once: "Supporter ticket, 400 €", not the amount in the label and again in the hint. An error says what to do next. Member-facing strings are localized in every culture; admin pages are exempt.
+Short labels, sentence case, no jargon a first-time buyer would not know. Say a thing once: "VIP ticket, 400 €", not the amount in the label and again in the hint. An error says what to do next. Member-facing strings are localized in every culture; admin pages are exempt.
 
 ## Check your work by looking
 

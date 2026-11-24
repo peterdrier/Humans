@@ -44,7 +44,7 @@ public class TicketBuyControllerTests
     }
 
     private static BuyPage Page(LocalDate gates, params TicketCheckoutOrder[] orders) =>
-        new(new TicketSalesEvent { Id = Guid.NewGuid() }, "Event", null, null, null, false, "Buyer", orders)
+        new(new TicketingSettings { Id = Guid.NewGuid() }, "Event", null, null, null, false, "Buyer", orders)
         { GateOpeningDate = gates };
 
     [HumansFact]
@@ -52,7 +52,7 @@ public class TicketBuyControllerTests
     {
         var eventId = Guid.NewGuid();
         TicketCheckoutTicket Ticket(Instant issued, Guid? holder, Guid? parent = null) => new()
-        { Id = Guid.NewGuid(), SalesEventId = eventId, HolderUserId = holder, ParentTicketId = parent, IssuedAt = issued };
+        { Id = Guid.NewGuid(), TicketingSettingsId = eventId, HolderUserId = holder, ParentTicketId = parent, IssuedAt = issued };
         HeldTicket Held(TicketCheckoutTicket ticket) => new(ticket, "Event", null, null, false, false, false);
         var later = Held(Ticket(Now + Duration.FromDays(1), _userId));
         var laterChild = Held(Ticket(Now, null, later.Ticket.Id));
@@ -60,7 +60,7 @@ public class TicketBuyControllerTests
         var earlierCompanion = Held(Ticket(Now + Duration.FromDays(2), Guid.NewGuid(), earlier.Ticket.Id));
         var ownCompanion = Held(Ticket(Now - Duration.FromDays(1), _userId, Guid.NewGuid()));
         var otherEvent = Held(new TicketCheckoutTicket
-        { Id = Guid.NewGuid(), SalesEventId = Guid.NewGuid(), HolderUserId = _userId, IssuedAt = Now - Duration.FromDays(2) });
+        { Id = Guid.NewGuid(), TicketingSettingsId = Guid.NewGuid(), HolderUserId = _userId, IssuedAt = Now - Duration.FromDays(2) });
         _checkout.GetHeldTicketsAsync(_userId, Arg.Any<CancellationToken>())
             .Returns([later, laterChild, earlier, earlierCompanion, ownCompanion, otherEvent]);
 
@@ -76,7 +76,7 @@ public class TicketBuyControllerTests
         var older = new TicketCheckoutTicket { Id = Guid.NewGuid(), Kind = TicketHolderKind.Adult, IssuedAt = Now };
         var newer = new TicketCheckoutTicket { Id = Guid.NewGuid(), Kind = TicketHolderKind.Adult, IssuedAt = Now + Duration.FromDays(1) };
         var child = new TicketCheckoutTicket { Id = Guid.NewGuid(), Kind = TicketHolderKind.Child, IssuedAt = Now - Duration.FromDays(1) };
-        _checkout.GetOrderDetailAsync(order.Id, Arg.Any<CancellationToken>()).Returns(new CheckoutOrderDetail(order, [], [], []));
+        _checkout.GetOrderDetailAsync(order.Id, Arg.Any<CancellationToken>()).Returns(new OrderDetail(order, [], [], []));
         _checkout.RefreshOrderAsync(order.Id, Arg.Any<CancellationToken>()).Returns(order);
         _checkout.GetTicketsForOrderAsync(order.Id, Arg.Any<CancellationToken>()).Returns([child, newer, older]);
 
@@ -97,7 +97,7 @@ public class TicketBuyControllerTests
         var result = (ViewResult)await Controller().Index(TestContext.Current.CancellationToken);
         var pages = (IReadOnlyList<BuyPage>)result.Model!;
 
-        pages.Select(page => page.SalesEvent.Id).Should().Equal(earlierEvent.SalesEvent.Id, laterEvent.SalesEvent.Id);
+        pages.Select(page => page.Ticketing.Id).Should().Equal(earlierEvent.Ticketing.Id, laterEvent.Ticketing.Id);
         pages[1].Orders.Should().Equal(newer, older);
         laterEvent.Orders.Should().Equal(older, newer);
     }
@@ -150,10 +150,10 @@ public class TicketBuyControllerTests
     }
 
     private void Stored(TicketCheckoutOrder order) =>
-        _checkout.GetOrderDetailAsync(order.Id, Arg.Any<CancellationToken>()).Returns(new CheckoutOrderDetail(order, [], [], []));
+        _checkout.GetOrderDetailAsync(order.Id, Arg.Any<CancellationToken>()).Returns(new OrderDetail(order, [], [], []));
 
     [HumansFact]
-    public async Task Someone_elses_order_is_not_found_and_never_refreshed_from_the_backend()
+    public async Task Someone_elses_order_is_not_found_and_never_refreshed_from_the_platform()
     {
         var order = new TicketCheckoutOrder { Id = Guid.NewGuid(), BuyerUserId = Guid.NewGuid() };
         Stored(order);
@@ -165,7 +165,7 @@ public class TicketBuyControllerTests
     }
 
     [HumansFact]
-    public async Task The_buyer_sees_their_order_refreshed_from_the_backend()
+    public async Task The_buyer_sees_their_order_refreshed_from_the_platform()
     {
         var order = new TicketCheckoutOrder { Id = Guid.NewGuid(), BuyerUserId = ViewerId };
         Stored(order);
