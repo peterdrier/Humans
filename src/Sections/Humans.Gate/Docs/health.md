@@ -51,32 +51,32 @@ reachable flow and is shelved, not structural (see Seams).
   (`Services/GateAdmissionRules.cs:47`); the terminal shows a banner (`Views/Gate/Index.cshtml:19`).
 - A barcode has at most one live admit: unique index on `AdmitDedupeKey`
   (`Data/Configurations/GateScanEventConfiguration.cs:34`), pre-check (`Data/GateRepository.cs:36`);
-  the losing racer records `RejectedDuplicate` (`Services/GateService.cs:176`).
+  the losing racer records `RejectedDuplicate` (`Services/GateService.cs:173`).
 - A client flag never turns a STOP into an admit: the decision is re-evaluated server-side and an
-  override verifies the shared PIN first (`Services/GateService.cs:165`); unset PIN refuses, a
-  failed PIN counts against the terminal-wide throttle (`Services/GateService.cs:208`).
-- Undo needs the shared PIN at the kiosk (`Services/GateService.cs:329`) or `TicketsPolicies.Manage`
+  override verifies the shared PIN first (`Services/GateService.cs:162`); unset PIN refuses, a
+  failed PIN counts against the terminal-wide throttle (`Services/GateService.cs:205`).
+- Undo needs the shared PIN at the kiosk (`Services/GateService.cs:324`) or `TicketsPolicies.Manage`
   plus a reason on the report (`Controllers/GateReportController.cs:46`); it is refused while the
-  vendor holds or may receive the check-in (`Services/GateService.cs:358`), frees the barcode and
-  is audited (`Data/GateRepository.cs:61`, `Services/GateService.cs:365`).
+  vendor holds or may receive the check-in (`Services/GateService.cs:353`), frees the barcode and
+  is audited (`Data/GateRepository.cs:61`, `Services/GateService.cs:360`).
 - Undo reverts Attended only when no other live admit of the guest stands within the event window
-  (`Services/GateService.cs:401`).
+  (`Services/GateService.cs:403`).
 - Scan and undo attribution is the authenticated principal, never the request body
   (`Controllers/GateController.cs:68`, `Controllers/GateController.cs:93`).
 - An admit with a matched guest writes Attended for the active year; a failure there never fails
-  the admit (`Services/GateService.cs:187`).
+  the admit (`Services/GateService.cs:184`).
 - Vendor mirror is best-effort and never retried (`Jobs/GateVendorCheckInJob.cs:16`), off unless
   `Gate:VendorMirrorEnabled` (`Jobs/GateVendorCheckInJob.cs:29`); backfill claims the ledger before
-  enqueueing (`Services/GateService.cs:545`); checkout-issued tickets never mirror
-  (`Services/GateService.cs:499`).
+  enqueueing (`Services/GateService.cs:539`); checkout-issued tickets never mirror
+  (`Services/GateService.cs:498`).
 - Name search never matches email and shows only the ticket's own name
-  (`Services/GateService.cs:293`, `Services/GateService.cs:304`).
+  (`Services/GateService.cs:290`, `Services/GateService.cs:299`).
 - Write routes carry `GateAdmit` (`Controllers/GateController.cs:49`), kiosk reads `ScannerAccess`
   (`Controllers/GateController.cs:22`), the report `TicketsPolicies.Read`
   (`Controllers/GateReportController.cs:16`), staff PINs and settings `TicketsPolicies.Manage`
   (`Controllers/GateController.cs:209`), the backfill page `AdminOnly`
   (`Controllers/GateVendorBackfillAdminController.cs:12`).
-- GDPR: export carries no barcode or other person's ids (`Services/GateService.cs:669`); erasure
+- GDPR: export carries no barcode or other person's ids (`Services/GateService.cs:663`); erasure
   clears `GuestUserId`/`OverrideByUserId` and the PIN row (`Data/GateRepository.cs:93`); merge
   re-points every user column (`Data/GateRepository.cs:113`).
 
@@ -125,3 +125,4 @@ reachable flow and is shelved, not structural (see Seams).
 |---|---|---|---|
 | 1 | 2026-08-31 | First pass: comments/docs/UI copy re-anchored to the shipped shared-PIN security model; dead override-picker client remnants cut; GDPR-erasure, merge, retention and deny-path invariants pinned | peterdrier/Humans#1574 |
 | 2 | 2026-10-27 | Kiosk and docs point at the real cutoff setting; comments stop claiming an age waiver and live per-staffer override authority; export minimization and server-time verdicts pinned | peterdrier/Humans#2168 |
+| 3 | 2026-11-24 | Docs and authorization spec catch up with undo, find by name and the arrivals report; report policies, undo merge re-point and the 30-day arrival window pinned | pending |
