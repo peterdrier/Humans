@@ -44,13 +44,13 @@ internal sealed class BackdoorTasksController(
             return Unauthorized();
 
         var ct = HttpContext.RequestAborted;
-        var (teamIds, unknown, unmanaged) = await ResolveManagedTeamsAsync(model, actorUserId, ct);
-        if (unknown.Count + unmanaged.Count > 0)
+        var (teamIds, denied, unknown) = await ResolveManagedTeamsAsync(model, actorUserId, ct);
+        if (denied.Count > 0)
         {
             logger.LogWarning("Bulk task load by {ActorUserId} refused: no such team {UnknownTeams}; no Tasks.Manage on {UnmanagedTeams}",
-                actorUserId, unknown, unmanaged);
+                actorUserId, unknown, denied.Except(unknown, StringComparer.Ordinal).ToList());
             return StatusCode(StatusCodes.Status403Forbidden,
-                new { error = "No such team, or no Tasks.Manage on it.", teams = unknown.Concat(unmanaged).ToList() });
+                new { error = "No such team, or no Tasks.Manage on it.", teams = denied });
         }
 
         var result = await tasks.BulkLoadAsync(model.ToRequest(teamIds), actorUserId, ct);
@@ -63,28 +63,31 @@ internal sealed class BackdoorTasksController(
     }
 
     /// <summary>
-    /// Each team reference's id, the references that match no team, and those the owner may not manage. The two
-    /// refusals are logged apart but answered the same way, so a key never learns whether a team it cannot manage exists, hidden teams included.
+    /// Each team reference's id, the references the owner may not manage in input order, and which of those match no
+    /// team. The two refusals are logged apart but answered the same way, in the same order, so a key never learns
+    /// whether a team it cannot manage exists, hidden teams included.
     /// </summary>
-    private async Task<(Dictionary<string, Guid> TeamIds, List<string> Unknown, List<string> Unmanaged)> ResolveManagedTeamsAsync(
+    private async Task<(Dictionary<string, Guid> TeamIds, List<string> Denied, List<string> Unknown)> ResolveManagedTeamsAsync(
         ApiBulkTasksModel model, Guid actorUserId, CancellationToken ct)
     {
         var teamIds = new Dictionary<string, Guid>(StringComparer.Ordinal);
+        var denied = new List<string>();
         var unknown = new List<string>();
-        var unmanaged = new List<string>();
         foreach (var reference in model.Tasks.Select(t => t.Team?.Trim()).Where(r => !string.IsNullOrEmpty(r)).Distinct(StringComparer.Ordinal))
         {
             var team = await teams.GetTeamBySlugAsync(reference!, ct)
                 ?? (Guid.TryParse(reference, out var id) ? await teams.GetTeamAsync(id, ct) : null);
-            if (team is null)
-                unknown.Add(reference!);
-            else if (!await permissions.HasAsync(actorUserId, TasksPermissions.Manage, new(TeamOwner.Kind, team.Id), ct))
-                unmanaged.Add(reference!);
+            if (team is null || !await permissions.HasAsync(actorUserId, TasksPermissions.Manage, new(TeamOwner.Kind, team.Id), ct))
+            {
+                denied.Add(reference!);
+                if (team is null)
+                    unknown.Add(reference!);
+            }
             else
                 teamIds[reference!] = team.Id;
         }
 
-        return (teamIds, unknown, unmanaged);
+        return (teamIds, denied, unknown);
     }
 }
 
