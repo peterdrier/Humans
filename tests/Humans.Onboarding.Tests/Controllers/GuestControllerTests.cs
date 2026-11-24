@@ -4,7 +4,6 @@ using System.Text.Encodings.Web;
 using System.Text.RegularExpressions;
 using Humans.Base.Extensions;
 using Humans.Base.ViewComponents;
-using Humans.Onboarding;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.AspNetCore.Mvc.Razor;

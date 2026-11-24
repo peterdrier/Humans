@@ -3,7 +3,6 @@ using Humans.Email.Contracts;
 using Humans.Users.Models;
 using Humans.Base.Helpers;
 using Humans.Auth.Contracts;
-using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
 using Humans.Base.Enums;
 using Humans.Teams.Contracts;

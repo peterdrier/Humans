@@ -1,6 +1,5 @@
 using Humans.Governance.Contracts;
 using Humans.AuditLog.Contracts;
-using Humans.Base.Constants;
 using Humans.Email.Contracts;
 using Humans.Auth.Contracts;
 using Humans.Google.Contracts;
@@ -17,8 +16,8 @@ using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
-
 using Xunit;
+
 
 namespace Humans.Governance.Tests.Infrastructure;
 
@@ -187,7 +186,7 @@ internal sealed class AssemblyVoteServiceFixture : IDisposable
         }
 
         Db.AssemblyVotes.Add(vote);
-        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await Db.SaveChangesAsync(TestContext.Current.CancellationToken);
         Db.ChangeTracker.Clear();
         return vote;
     }
@@ -236,7 +235,7 @@ internal sealed class AssemblyVoteServiceFixture : IDisposable
             NotifiedAt = notified ? Clock.GetCurrentInstant() : null
         };
         Db.AssemblyVoteRosterEntries.Add(roster);
-        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await Db.SaveChangesAsync(TestContext.Current.CancellationToken);
         Db.ChangeTracker.Clear();
         return roster;
     }
@@ -258,7 +257,7 @@ internal sealed class AssemblyVoteServiceFixture : IDisposable
             UpdatedAt = now
         };
         Db.AssemblyBallots.Add(ballot);
-        await Db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await Db.SaveChangesAsync(TestContext.Current.CancellationToken);
         Db.ChangeTracker.Clear();
         return ballot;
     }

@@ -84,7 +84,7 @@ public class ExpenseReportViewTests
                 // Account-wide: other advances and the whole creditor account's payment history.
                 OtherAmount = 17m,
                 Paid = true,
-                PaidOn = new NodaTime.LocalDate(2026, 3, 9),
+                PaidOn = new LocalDate(2026, 3, 9),
                 TotalPaid = 913m,
                 SyncState = ExpenseHoldedSyncState.Pushed,
             },
@@ -233,7 +233,7 @@ public class ExpenseReportViewTests
         builder.Services.AddControllersWithViews()
             .AddApplicationPart(typeof(ExpensesResource).Assembly)
             .AddApplicationPart(typeof(HumanViewComponent).Assembly)
-            .AddApplicationPart(typeof(Humans.AuditLog.ViewComponents.AuditLogViewComponent).Assembly)
+            .AddApplicationPart(typeof(AuditLog.ViewComponents.AuditLogViewComponent).Assembly)
             .AddViewLocalization();
         builder.Services.AddSingleton(users ?? Substitute.For<IUserService>());
         builder.Services.AddSingleton(Substitute.For<Humans.AuditLog.Contracts.IAuditViewerService>());

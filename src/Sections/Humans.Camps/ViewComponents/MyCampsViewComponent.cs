@@ -1,5 +1,4 @@
 using Humans.Base.Enums;
-using Humans.Camps.Models;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Humans.Camps.ViewComponents;

@@ -216,7 +216,7 @@ public class CampAdminControllerTests
         (await controller.SetCampSeasonEeSlotCount(Guid.NewGuid(), 3, TestContext.Current.CancellationToken))
             .Should().BeOfType<RedirectToActionResult>();
 
-        controller.TempData[Humans.Base.Constants.TempDataKeys.ErrorMessage].Should().Be(reason);
+        controller.TempData[Base.Constants.TempDataKeys.ErrorMessage].Should().Be(reason);
         controller.TempData.Should().ContainSingle();
     }
 

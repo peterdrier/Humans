@@ -10,8 +10,6 @@ using Microsoft.Extensions.Options;
 using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.Base.Enums;
-using Humans.Base.Constants;
-using Humans.Governance.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Shifts.Controllers;
 using Humans.Shifts.Domain;
@@ -230,7 +228,7 @@ public class ShiftAdminControllerTests
         await _userService.Received(1).GetUserInfoAsync(UserId, cancellation.Token);
         await _teamService.Received().GetTeamsAsync(cancellation.Token);
         await _permissions.Received().HasAsync(UserId, Arg.Any<string>(), Team(TeamId), cancellation.Token);
-        await _teamService.DidNotReceiveWithAnyArgs().GetTeamAsync(default, default);
+        await _teamService.DidNotReceiveWithAnyArgs().GetTeamAsync(default);
         await _shiftMgmt.Received(1).GetRotasByDepartmentAsync(TeamId, Event.Id, cancellation.Token);
     }
 

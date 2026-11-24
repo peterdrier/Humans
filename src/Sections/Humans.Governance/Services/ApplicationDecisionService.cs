@@ -8,17 +8,14 @@ using NodaTime;
 using Humans.Governance.Services.Dtos;
 using Humans.Base.Extensions;
 using Humans.Base.Interfaces;
-using Humans.Base.Interfaces.Caching;
 using Humans.Governance.Contracts;
 using Humans.Base.Constants;
-using Humans.Base.Enums;
 using MemberApplication = Humans.Governance.Domain.Application;
 using Humans.AuditLog.Contracts;
 using Humans.Email.Contracts;
 using Humans.Notifications.Contracts;
 using Humans.Users.Contracts;
 
-using Humans.Teams.Contracts;
 using System.Globalization;
 using System.Resources;
 

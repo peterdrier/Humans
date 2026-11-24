@@ -26,7 +26,6 @@ using Humans.Teams.Contracts;
 using Humans.Consent.Services;
 using Humans.Consent.Domain;
 using Humans.Consent.Data;
-using Humans.Consent.Contracts;
 using Humans.Email.Contracts;
 using Humans.Users.Contracts;
 
@@ -245,7 +244,7 @@ public sealed class LegalDocumentSyncServiceTests : ConsentTestHarness
         var pendingRepository = Substitute.For<ILegalDocumentRepository>();
         pendingRepository.GetDocumentsAsync(null, Arg.Any<CancellationToken>())
             .Returns(call => _repository.GetDocumentsAsync(null, call.Arg<CancellationToken>()));
-        var email = Substitute.For<Humans.Email.Contracts.IEmailService>();
+        var email = Substitute.For<IEmailService>();
         var recovered = false;
         email.SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>())
             .Returns(call => recovered || completionFails || call.Arg<EmailMessage>().UserId != person.Id

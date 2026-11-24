@@ -44,7 +44,7 @@
                 @foreach (var line in Model.VisibleLines)
                 {
                     <dt>
-                        @if (line.Kind == Humans.Tickets.Contracts.OrderLineKind.Ticket)
+                        @if (line.Kind == OrderLineKind.Ticket)
                         {
                             @(line.HolderKind == TicketHolderKind.Child ? Localizer["Tickets_Buy_Line_Child"] : Localizer["Tickets_Buy_Line_Ticket"])
                             var priceName = line.ClassLabel ?? line.WaveName;

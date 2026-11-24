@@ -51,7 +51,7 @@ public class TicketBuyControllerTests
         var result = await NewController().Order(order.Id, Xunit.TestContext.Current.CancellationToken);
 
         result.Should().BeOfType<NotFoundResult>();
-        await _checkout.DidNotReceiveWithAnyArgs().RefreshOrderAsync(default, default);
+        await _checkout.DidNotReceiveWithAnyArgs().RefreshOrderAsync(default);
     }
 
     [HumansFact]

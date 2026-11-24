@@ -45,7 +45,7 @@ public class AuditLogRepositoryTests
             transaction = Transaction.Current!.Clone();
             await repository.AddAsync(entry, TestContext.Current.CancellationToken);
             Transaction.Current.Should().NotBeNull();
-            Transaction.Current!.TransactionInformation.LocalIdentifier.Should().Be(transaction.TransactionInformation.LocalIdentifier);
+            Transaction.Current.TransactionInformation.LocalIdentifier.Should().Be(transaction.TransactionInformation.LocalIdentifier);
             if (callerCommits) scope.Complete();
         }
         using (transaction)
@@ -61,10 +61,10 @@ public class AuditLogRepositoryTests
     [HumansFact]
     public async Task GetFilteredAsync_LargePageDoesNotWrapToEarlierEntries()
     {
-        await _sut.AddAsync(MakeEntry(TestActions.VolunteerApproved, "User", Guid.NewGuid()), Xunit.TestContext.Current.CancellationToken);
-        var first = await _sut.GetFilteredAsync(null, [], 1, 50, Xunit.TestContext.Current.CancellationToken);
+        await _sut.AddAsync(MakeEntry(TestActions.VolunteerApproved, "User", Guid.NewGuid()), TestContext.Current.CancellationToken);
+        var first = await _sut.GetFilteredAsync(null, [], 1, 50, TestContext.Current.CancellationToken);
         first.Items.Should().ContainSingle();
-        var result = await _sut.GetFilteredAsync(null, [], int.MaxValue, 50, Xunit.TestContext.Current.CancellationToken);
+        var result = await _sut.GetFilteredAsync(null, [], int.MaxValue, 50, TestContext.Current.CancellationToken);
         result.Items.Should().BeEmpty();
         result.TotalCount.Should().Be(1);
         result.AlertCounts.Should().BeEmpty();
@@ -73,7 +73,7 @@ public class AuditLogRepositoryTests
     [HumansFact]
     public async Task GetFilteredAsync_CountsEveryAlertActionOverTheWholeLog()
     {
-        var ct = Xunit.TestContext.Current.CancellationToken;
+        var ct = TestContext.Current.CancellationToken;
         await _sut.AddAsync(MakeEntry(TestActions.AnomalousPermissionDetected, "GoogleResource", Guid.NewGuid()), ct);
         await _sut.AddAsync(MakeEntry(TestActions.AnomalousPermissionDetected, "GoogleResource", Guid.NewGuid()), ct);
         await _sut.AddAsync(MakeEntry(TestActions.MemberSuspended, "User", Guid.NewGuid()), ct);
@@ -96,11 +96,11 @@ public class AuditLogRepositoryTests
     {
         var entry = MakeEntry(TestActions.VolunteerApproved, "User", Guid.NewGuid());
 
-        await _sut.AddAsync(entry, Xunit.TestContext.Current.CancellationToken);
+        await _sut.AddAsync(entry, TestContext.Current.CancellationToken);
 
-        await using var ctx = await _factory.CreateDbContextAsync(Xunit.TestContext.Current.CancellationToken);
+        await using var ctx = await _factory.CreateDbContextAsync(TestContext.Current.CancellationToken);
         var stored = await ctx.AuditLogEntries.AsNoTracking()
-            .FirstOrDefaultAsync(e => e.Id == entry.Id, Xunit.TestContext.Current.CancellationToken);
+            .FirstOrDefaultAsync(e => e.Id == entry.Id, TestContext.Current.CancellationToken);
 
         stored.Should().NotBeNull(
             because: "AddAsync is the sole write path — it must persist immediately without a caller SaveChanges");
@@ -112,7 +112,7 @@ public class AuditLogRepositoryTests
     [HumansFact]
     public async Task GetLegacyGoogleSyncEntriesAsync_ReturnsOnlyResourceRows_Oldest_First()
     {
-        var ct = Xunit.TestContext.Current.CancellationToken;
+        var ct = TestContext.Current.CancellationToken;
         var now = Instant.FromUtc(2026, 5, 12, 10, 0);
 
         await _sut.AddAsync(MakeEntry(TestActions.VolunteerApproved, "User", Guid.NewGuid()), ct);
@@ -138,7 +138,7 @@ public class AuditLogRepositoryTests
         ResourceId = Guid.NewGuid(),
         Success = true,
         Role = "writer",
-        SyncSource = Humans.Base.Enums.GoogleSyncSource.ManualSync,
+        SyncSource = Base.Enums.GoogleSyncSource.ManualSync,
         UserEmail = "a@b.org"
     };
 

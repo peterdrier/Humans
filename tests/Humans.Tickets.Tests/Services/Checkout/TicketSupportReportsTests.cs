@@ -146,7 +146,7 @@ public sealed class TicketSupportReportsTests
         var rows = TicketSupportReports.ResaleQueue([newer, done, older, directed], [first, second, invited, sold], [refund]);
 
         rows.Select(r => (r.Offer, r.Position, r.DirectedLive)).Should().Equal(
-            (directed, (int?)1, true), (older, 2, false), (newer, 3, false), (done, null, false));
+            (directed, 1, true), (older, 2, false), (newer, 3, false), (done, null, false));
         rows[1].Ticket.Should().BeSameAs(first);
         rows[3].Refund.Should().BeSameAs(refund);
     }

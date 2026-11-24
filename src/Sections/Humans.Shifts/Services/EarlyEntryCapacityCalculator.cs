@@ -1,6 +1,3 @@
-using Humans.Shifts.Contracts;
-using Humans.Settings.Contracts;
-
 namespace Humans.Shifts.Services;
 
 internal static class EarlyEntryCapacityCalculator

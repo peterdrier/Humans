@@ -146,10 +146,10 @@ public class CalendarControllerICalTests
                     await _calendar.Received(1).DeleteEventAsync(id, survivor, ct);
                     break;
                 case CalendarEventMutation.CancelOccurrence:
-                    await _calendar.Received(1).CancelOccurrenceAsync(id, start, survivor, ct, null);
+                    await _calendar.Received(1).CancelOccurrenceAsync(id, start, survivor, ct);
                     break;
                 default:
-                    await _calendar.Received(1).OverrideOccurrenceAsync(id, start, Arg.Any<OverrideOccurrenceDto>(), survivor, ct, null);
+                    await _calendar.Received(1).OverrideOccurrenceAsync(id, start, Arg.Any<OverrideOccurrenceDto>(), survivor, ct);
                     break;
             }
         }

@@ -8,10 +8,10 @@ internal sealed class HelpWidgetViewComponent(IAgentSettingsService agent) : Vie
 {
     public IViewComponentResult Invoke()
     {
-        if (UserClaimsPrincipal?.Identity?.IsAuthenticated != true)
+        if (UserClaimsPrincipal.Identity?.IsAuthenticated != true)
             return Content(string.Empty);
 
-        var pagePath = Request?.Path.Value ?? string.Empty;
+        var pagePath = Request.Path.Value ?? string.Empty;
         var agentAvailable = agent.Current.Enabled;
 
         return View(new HelpWidgetModel(pagePath, agentAvailable));

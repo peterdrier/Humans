@@ -4,7 +4,6 @@ using Humans.Web.Extensions;
 using Humans.Base.Constants;
 using Humans.Base.Authorization;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Authorization.Infrastructure;
 
 namespace Humans.Web.Authorization;
 

@@ -11,7 +11,6 @@ using Humans.Base.Controllers;
 using Humans.Base;
 using Humans.Base.Authorization;
 using Humans.Base.Extensions;
-using Humans.Base.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Localization;

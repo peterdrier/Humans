@@ -12,8 +12,6 @@ using NodaTime;
 using Humans.Events.Contracts;
 using Humans.Events.Data;
 using Humans.Users.Contracts;
-using Humans.Base.Constants;
-using Humans.Base.Interfaces;
 using static Humans.Events.Helpers.EventsTimeHelpers;
 using System.Globalization;
 using Humans.Base.Csv;

@@ -340,7 +340,7 @@ public sealed class RideshareControllerTests
     [HumansFact]
     public async Task OfferPost_ARule_RerendersTheFormWithAModelError()
     {
-        using var scope = new Humans.Base.Extensions.CultureScope(Humans.Base.Extensions.CultureCatalog.DefaultCultureCode);
+        using var scope = new Humans.Base.Extensions.CultureScope(Base.Extensions.CultureCatalog.DefaultCultureCode);
         const string key = "Rideshare_Error_PlaceNotFound";
         var resources = new System.Resources.ResourceManager(typeof(RideshareResource));
         var translated = string.Format(CultureInfo.CurrentUICulture,

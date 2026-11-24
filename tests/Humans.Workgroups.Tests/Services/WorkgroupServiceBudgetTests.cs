@@ -1,5 +1,4 @@
 using AwesomeAssertions;
-using Humans.AuditLog.Contracts;
 using Humans.Finance.Contracts;
 using Humans.Holded.Contracts;
 using Humans.Workgroups.Domain;
@@ -51,7 +50,7 @@ public sealed class WorkgroupServiceBudgetTests : WorkgroupsTestHarness
         if (invalid)
         {
             refusal.Should().NotBeNull();
-            refusal!.IsOperatorMessage.Should().BeTrue();
+            refusal.IsOperatorMessage.Should().BeTrue();
             refusal.Key.Should().Contain(refusalFragment!);
             Finance.ReceivedCalls().Should().BeEmpty();
             GoogleSync.ReceivedCalls().Should().BeEmpty();

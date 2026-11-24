@@ -1,6 +1,5 @@
 using Humans.Users.Contracts;
 using Humans.Teams.Contracts;
-using Humans.Camps.Contracts;
 using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.Base.Constants;

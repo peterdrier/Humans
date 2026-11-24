@@ -1,10 +1,9 @@
-using Humans.Base.Interfaces;
 using Humans.Campaigns.Contracts;
 using Humans.Campaigns.Services.Dtos;
 
 namespace Humans.Campaigns.Services;
 
-internal interface ICampaignManagement : ICampaignService, ICampaignWrite, IApplicationService
+internal interface ICampaignManagement : ICampaignService, ICampaignWrite
 {
     /// <summary>Unordered.</summary>
     Task<IReadOnlyList<CampaignGrantSummary>> GetActiveOrCompletedGrantsForUserAsync(

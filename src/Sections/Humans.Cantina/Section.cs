@@ -1,7 +1,6 @@
 using Humans.Base.Extensions;
 using System.Security.Claims;
 using Humans.Base;
-using Humans.Base.Authorization;
 using Humans.Base.Constants;
 using Humans.Base.Hosting;
 using Humans.Base.Interfaces;

@@ -1,7 +1,6 @@
 using AwesomeAssertions;
 using Humans.Base.TagHelpers;
 using Microsoft.AspNetCore.Razor.TagHelpers;
-using Xunit;
 
 namespace Humans.Base.Tests.TagHelpers;
 

@@ -1,5 +1,4 @@
 using NodaTime;
-using Humans.Teams.Contracts;
 namespace Humans.Teams.Domain;
 
 /// <summary>Append-only.</summary>

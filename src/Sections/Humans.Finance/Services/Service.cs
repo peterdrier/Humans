@@ -13,12 +13,10 @@ using Humans.Finance.Domain;
 using Humans.Finance.Models;
 using Humans.Users.Contracts;
 using System.Globalization;
-using System.Text.Json;
 using Microsoft.Extensions.Options;
 using NodaTime;
 using static Humans.Finance.Services.SepaText;
 using Humans.Base.Interfaces;
-using Humans.Base.Constants;
 using System.Text.RegularExpressions;
 using System.Security.Cryptography;
 using System.Text;
@@ -2483,7 +2481,6 @@ internal sealed class Service(
                     entry = await holdedWrite.PostJournalEntryAsync(
                         movement.Date, transfer.SupplierAccountNum, sepa.Value.TreasuryLedgerAccount!.Value,
                         remaining, tag, ct);
-                    remaining -= entryAmount;
                 }
                 catch (Exception ex) when (ex is HoldedTransientException or HoldedPermanentException)
                 {

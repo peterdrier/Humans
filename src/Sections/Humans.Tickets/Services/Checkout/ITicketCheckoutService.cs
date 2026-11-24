@@ -1,4 +1,3 @@
-using Humans.Base.Interfaces;
 using Humans.Tickets.Contracts;
 using Humans.Tickets.Domain.Checkout;
 using NodaTime;
@@ -9,7 +8,7 @@ namespace Humans.Tickets.Services.Checkout;
 /// The checkout lane: Humans prices the order, the event's ticketing platform takes the money. Authorization is the controllers'
 /// job; every method trusts its actor.
 /// </summary>
-internal interface ITicketCheckoutService : ITicketingPlatformEvents, IApplicationService
+internal interface ITicketCheckoutService : ITicketingPlatformEvents
 {
     IReadOnlyList<PlatformInfo> Platforms { get; }
 
@@ -207,7 +206,7 @@ internal sealed record TicketingSettingsSave(
     string PlatformKey,
     string? PlatformEventRef,
     TicketSalesMode Mode,
-    NodaTime.Instant? SalesCloseAt,
+    Instant? SalesCloseAt,
     int Capacity,
     decimal TicketVatRate,
     IReadOnlyList<TicketSalesWave> Waves,

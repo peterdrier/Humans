@@ -2,12 +2,10 @@ using Humans.Base.Extensions;
 using Humans.Base.Interfaces;
 using Humans.AuditLog.Contracts;
 using Humans.Budget.Contracts;
-using Humans.Email.Contracts;
 using Humans.Finance.Contracts;
 using Humans.Gdpr.Contracts;
 using Humans.Holded.Contracts;
 using Humans.Preapprovals.Contracts;
-using Humans.Teams.Contracts;
 using Humans.Expenses.Services.Dtos;
 using Humans.Base.Helpers;
 using Microsoft.Extensions.Options;
@@ -370,7 +368,7 @@ internal sealed class ExpenseReportService(
     internal static (string? Extension, ExpenseError? Refusal) ValidateAttachmentUpload(
         string originalFileName, string contentType, Stream content)
     {
-        if (content is null || content.Length == 0)
+        if (content.Length == 0)
             return (null, ExpenseMutationResult.Failure("Expenses_Flash_SelectFile").Error);
         if (content.Length > AttachmentMaxBytes)
             return (null, ExpenseMutationResult.Failure("Expenses_Validation_FileTooLarge", AttachmentMaxBytes / (1024 * 1024)).Error);
@@ -428,7 +426,7 @@ internal sealed class ExpenseReportService(
             UploadedByUserId = actorUserId,
             UploadedAt = clock.GetCurrentInstant()
         };
-        ExpenseAttachment? replacedAttachment = null;
+        ExpenseAttachment? replacedAttachment;
         try
         {
             var replacement = await repo.ReplaceLineAttachmentAsync(reportId, lineId, attachment, ct,

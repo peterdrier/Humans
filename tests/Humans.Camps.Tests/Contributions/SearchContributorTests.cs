@@ -1,6 +1,5 @@
 using AwesomeAssertions;
 using Humans.Base.Interfaces;
-using Humans.Camps.Contracts;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
 using NSubstitute;

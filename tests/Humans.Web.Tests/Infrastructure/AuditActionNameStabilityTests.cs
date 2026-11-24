@@ -1,7 +1,6 @@
 using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
 using Microsoft.Extensions.DependencyInjection;
-using Xunit;
 
 namespace Humans.Web.Tests.Infrastructure;
 

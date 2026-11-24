@@ -1,7 +1,5 @@
-using Humans.Google.Services;
 using AwesomeAssertions;
 using Humans.Google.Services.Workspace;
-using Humans.Google.Data;
 using Humans.Google.Tests.Infrastructure;
 
 namespace Humans.Google.Tests.Architecture;

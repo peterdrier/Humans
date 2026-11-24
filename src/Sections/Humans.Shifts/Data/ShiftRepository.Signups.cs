@@ -1,5 +1,4 @@
 using Humans.Shifts.Services.Dtos;
-using Humans.Shifts.Services;
 using Humans.Shifts.Contracts;
 using Humans.Shifts.Domain;
 using Humans.Settings.Contracts;

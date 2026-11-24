@@ -4,7 +4,6 @@ using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.Auth.Contracts;
 using Humans.Auth.ViewComponents;
-using Humans.Base.Authorization;
 using Humans.Base.Constants;
 using Humans.Base.Enums;
 using Humans.Base.Interfaces;
@@ -31,7 +30,7 @@ public sealed class RoleAssignmentsCardViewComponentTests
     [HumansFact]
     public void Parts_ContributeTheCardToTheAdminDetailSlot()
     {
-        IUserPart contribution = ((IUserPart)new Section());
+        IUserPart contribution = new Section();
 
         contribution.Parts().Should().BeEquivalentTo(
             [new UserPart(UserPartSlots.AdminDetail, typeof(RoleAssignmentsCardViewComponent), 50)]);

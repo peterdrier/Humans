@@ -60,7 +60,7 @@ public sealed class WorkgroupServiceLifecycleTests : WorkgroupsTestHarness
 
         result.Refusal.Should().BeNull();
         var messages = Email.ReceivedCalls().Select(call => call.GetArguments()[0])
-            .Cast<Humans.Email.Contracts.EmailMessage>().ToList();
+            .Cast<Email.Contracts.EmailMessage>().ToList();
         messages.Select(message => message.UserId).Should().BeEquivalentTo(
             audience == NoticeAudience.Coordinators ? new Guid?[] { survivorId } : [survivorId, otherId]);
         var liveMessage = messages.Should().ContainSingle(message => message.UserId == survivorId).Subject;
@@ -404,7 +404,7 @@ public sealed class WorkgroupServiceLifecycleTests : WorkgroupsTestHarness
     public async Task Refuse_FromAppliedOrReferred_WithReasons_Succeeds(
         string fromName, string? language, string expectedLanguage)
     {
-        using var culture = new Humans.Base.Extensions.CultureScope("fr");
+        using var culture = new Base.Extensions.CultureScope("fr");
         var from = Enum.Parse<WorkgroupStatus>(fromName);
         var coordinator = SeedUser("Coordinator", language: language!);
         var workgroup = await SeedWorkgroupAsync(status: from, coordinatorUserId: coordinator);
@@ -416,7 +416,7 @@ public sealed class WorkgroupServiceLifecycleTests : WorkgroupsTestHarness
         reloaded.Status.Should().Be(WorkgroupStatus.Refused);
         reloaded.Reasons.Should().Be("Duplicates an existing group");
         var message = Email.ReceivedCalls().Should().ContainSingle().Which.GetArguments()[0]
-            .Should().BeOfType<Humans.Email.Contracts.EmailMessage>().Subject;
+            .Should().BeOfType<Email.Contracts.EmailMessage>().Subject;
         message.Subject.Should().EndWith($"#{expectedLanguage}");
         message.RecipientName.Should().Be("Coordinator");
         System.Globalization.CultureInfo.CurrentUICulture.Name.Should().Be("fr");

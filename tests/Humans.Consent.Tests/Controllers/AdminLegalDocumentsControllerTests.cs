@@ -69,7 +69,7 @@ public sealed class AdminLegalDocumentsControllerTests
             Url = Substitute.For<IUrlHelper>()
         };
         var documentId = Guid.NewGuid();
-        var model = new Humans.Consent.Models.LegalDocumentEditViewModel { Id = documentId, Name = "Conduct" };
+        var model = new Models.LegalDocumentEditViewModel { Id = documentId, Name = "Conduct" };
         Func<Task<IActionResult>> run = () => action switch
         {
             LegalDocumentMutation.Create => controller.CreateLegalDocument(model),
@@ -176,7 +176,7 @@ public sealed class AdminLegalDocumentsControllerTests
         };
         controller.ModelState.AddModelError("Name", "Required");
         var id = Guid.NewGuid();
-        var model = new Humans.Consent.Models.LegalDocumentEditViewModel { Id = id };
+        var model = new Models.LegalDocumentEditViewModel { Id = id };
         await request.CancelAsync();
         Func<Task<IActionResult>> run = () => edit
             ? controller.EditLegalDocument(id, model) : controller.CreateLegalDocument(model);

@@ -2,11 +2,10 @@ using Humans.Gdpr.Contracts;
 using NodaTime;
 using Humans.Agent.Contracts;
 using Humans.Agent.Models;
-using Humans.Base.Interfaces;
 
 namespace Humans.Agent.Services;
 
-internal interface IAgentService : IApplicationService, IUserDataContributor, IAgentTranscriptRead
+internal interface IAgentService : IUserDataContributor, IAgentTranscriptRead
 {
     /// <summary>
     /// Deletes conversations older than the configured retention window and records the run for the admin

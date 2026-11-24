@@ -6,7 +6,7 @@
     {
         userId = Model.RecipientId,
     });
-    using var recipientWriter = new System.IO.StringWriter();
+    using var recipientWriter = new StringWriter();
     recipient.WriteTo(recipientWriter, System.Text.Encodings.Web.HtmlEncoder.Default);
     var recipientHtml = new HtmlString(recipientWriter.ToString().Trim());
 }

@@ -1,6 +1,5 @@
 using Humans.Base.Interfaces.Repositories;
 using Humans.Base.Enums;
-using Humans.Google.Contracts;
 using Humans.Google.Domain;
 using NodaTime;
 

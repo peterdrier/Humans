@@ -4,7 +4,6 @@ using Humans.Base.Data;
 using Npgsql;
 using Humans.AuditLog.Contracts;
 using Humans.Auth.Contracts;
-using Humans.EarlyEntry.Contracts;
 using Humans.Settings.Contracts;
 using Humans.Tickets.Contracts;
 using Humans.Users.Contracts;
@@ -14,7 +13,6 @@ using Microsoft.Extensions.Configuration;
 using NSubstitute;
 using NodaTime;
 using Humans.Shifts.Contracts;
-using ShiftManagementService = Humans.Shifts.Services.ShiftManagementService;
 
 namespace Humans.Shifts.Tests.Architecture;
 

@@ -1,6 +1,5 @@
 using Humans.Users.Models;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.Extensions.Hosting;
 // @e2e: board.spec.ts
 // @e2e: profile.spec.ts
 using Humans.Consent.Contracts;

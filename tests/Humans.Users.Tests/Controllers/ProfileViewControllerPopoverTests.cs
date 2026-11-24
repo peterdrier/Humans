@@ -80,7 +80,7 @@ public class ProfileViewControllerPopoverTests
     {
         var userId = Guid.NewGuid();
         _profilePictureService.GetProfilePictureAsync(userId, Arg.Any<CancellationToken>())
-            .Returns(((byte[] Data, string ContentType)?)(new byte[] { 1, 2, 3 }, "image/jpeg"));
+            .Returns((new byte[] { 1, 2, 3 }, "image/jpeg"));
 
         await _controller.Picture(userId, version, TestContext.Current.CancellationToken);
 

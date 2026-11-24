@@ -76,7 +76,7 @@ public class GuideContentServiceTests
     public async Task Refresh_classifies_failures_while_preserving_the_cached_page(GuideRefreshFailure kind)
     {
         var source = new FakeSource { MarkdownFor = _ => "# Original" };
-        var logger = new Humans.Testing.CapturingLogger<GuideContentService>();
+        var logger = new CapturingLogger<GuideContentService>();
         var service = CreateService(source, new StubRenderer(), out _, logger);
         await service.RefreshAllAsync(Xunit.TestContext.Current.CancellationToken);
         logger.Entries.Clear();

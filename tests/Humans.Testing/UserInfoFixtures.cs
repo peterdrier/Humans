@@ -16,5 +16,5 @@ internal static class UserInfoFixtures
         User user,
         IReadOnlyList<UserEmail>? userEmails = null,
         ProfileInfo? profile = null) =>
-        UserInfo.Create(user, userEmails ?? user.UserEmails?.ToList() ?? [], [], profile);
+        UserInfo.Create(user, userEmails ?? user.UserEmails.ToList(), [], profile);
 }

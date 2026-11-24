@@ -4,7 +4,6 @@ using Xunit;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Humans.Auth.Contracts;
-using Humans.Base.Interfaces;
 using Humans.Teams.Contracts;
 using Microsoft.Extensions.Localization;
 using Humans.Users.Data;
@@ -59,7 +58,7 @@ public class AccountMergeServiceMergeTests
         IReadOnlyList<UserEmail> stored = [email];
         UserInfo Snapshot() => UserInfo.Create(new User { Id = target }, stored, [], null);
         _userService.GetAllUserInfosAsync(Arg.Any<CancellationToken>())
-            .Returns(_ => (IReadOnlyCollection<UserInfo>)[Snapshot()]);
+            .Returns(_ => [Snapshot()]);
         _userService.GetUserInfoAsync(target, Arg.Any<CancellationToken>())
             .Returns(_ => ValueTask.FromResult<UserInfo?>(Snapshot()));
         var services = new ServiceCollection();
@@ -555,8 +554,8 @@ public class AccountMergeServiceMergeTests
         merger.ReceivedCalls().Should().BeEmpty();
         _userEmailRepo.ReceivedCalls().Should().BeEmpty();
         _audit.ReceivedCalls().Should().BeEmpty();
-        await _userService.DidNotReceiveWithAnyArgs().AnonymizeForMergeAsync(default, default, default, default);
-        await _mergeRepo.DidNotReceiveWithAnyArgs().UpdateAsync(default!, default);
+        await _userService.DidNotReceiveWithAnyArgs().AnonymizeForMergeAsync(default, default, default);
+        await _mergeRepo.DidNotReceiveWithAnyArgs().UpdateAsync(default!);
     }
 
     [HumansFact]

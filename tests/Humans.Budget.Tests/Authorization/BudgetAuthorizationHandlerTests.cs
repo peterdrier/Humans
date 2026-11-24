@@ -29,7 +29,7 @@ public sealed class BudgetAuthorizationHandlerTests
     {
         _users.GetUserInfoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns(call => UserInfo.Create(new User { Id = call.Arg<Guid>() }, [], [], null));
-        _handler = new BudgetAuthorizationHandler(_permissions, _users, new Microsoft.AspNetCore.Http.HttpContextAccessor());
+        _handler = new BudgetAuthorizationHandler(_permissions, _users, new HttpContextAccessor());
         Holds(UserId);
     }
 
@@ -87,7 +87,7 @@ public sealed class BudgetAuthorizationHandlerTests
             .Returns(call => Permission(call.Arg<CancellationToken>()));
         _permissions.GetOwnersAsync(UserId, BudgetPermissions.Edit, Arg.Any<CancellationToken>())
             .Returns(call => Permission(call.Arg<CancellationToken>())
-                ? (IReadOnlyList<Owner>)[new Owner(TeamOwner.Kind, CoordinatorTeamId)]
+                ? [new Owner(TeamOwner.Kind, CoordinatorTeamId)]
                 : []);
         var handler = new BudgetAuthorizationHandler(_permissions, _users, http);
         var requirement = viewing ? BudgetOperationRequirement.View : BudgetOperationRequirement.Edit;

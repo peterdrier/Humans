@@ -1,6 +1,5 @@
 using NSubstitute;
 using AwesomeAssertions;
-using Humans.Agent.Contracts;
 using Humans.Base.Interfaces;
 using Humans.Agent.Services.Preload;
 using Microsoft.Extensions.Caching.Memory;

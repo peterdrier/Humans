@@ -8,9 +8,9 @@
 }
 
 @section Crumbs {
-    <span authorize-policy="@Humans.Surveys.Contracts.SurveysPolicies.Read"><a asp-controller="Admin" asp-action="Index">@Localizer["Surveys_Admin_Common_AdminBreadcrumb"]</a></span>
+    <span authorize-policy="@SurveysPolicies.Read"><a asp-controller="Admin" asp-action="Index">@Localizer["Surveys_Admin_Common_AdminBreadcrumb"]</a></span>
     <a asp-controller="SurveyAdmin" asp-action="Index">@Localizer["Surveys_Admin_Index_Title"]</a>
-    <span authorize-policy="@Humans.Surveys.Contracts.SurveysPolicies.Manage"><a asp-controller="SurveyAdmin" asp-action="Edit" asp-route-id="@Model.SurveyId">@(string.IsNullOrWhiteSpace(Model.Title) ? untitled : Model.Title)</a></span>
+    <span authorize-policy="@SurveysPolicies.Manage"><a asp-controller="SurveyAdmin" asp-action="Edit" asp-route-id="@Model.SurveyId">@(string.IsNullOrWhiteSpace(Model.Title) ? untitled : Model.Title)</a></span>
     <span>@Localizer["Surveys_Admin_Results_Breadcrumb"]</span>
 }
 
@@ -215,7 +215,7 @@ else
                         @if (Model.Status == SurveyStatus.Closed)
                         {
                             <form asp-action="RankedAvailability" asp-route-id="@Model.SurveyId" method="post"
-                                  authorize-policy="@Humans.Surveys.Contracts.SurveysPolicies.Manage">
+                                  authorize-policy="@SurveysPolicies.Manage">
                                 @Html.AntiForgeryToken()
                                 <input type="hidden" name="questionId" value="@q.QuestionId" />
                                 <fieldset>

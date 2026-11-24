@@ -11,7 +11,6 @@ using Microsoft.EntityFrameworkCore;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
-using Humans.Testing;
 using Xunit;
 
 namespace Humans.Governance.Tests.Services;

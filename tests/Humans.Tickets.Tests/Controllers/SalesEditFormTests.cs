@@ -2,7 +2,6 @@ using AwesomeAssertions;
 using Humans.Tickets.Controllers;
 using Humans.Tickets.Domain.Checkout;
 using NodaTime;
-using Xunit;
 
 namespace Humans.Tickets.Tests.Controllers;
 

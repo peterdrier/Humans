@@ -5,7 +5,6 @@ using AwesomeAssertions;
 using Humans.CityPlanning.Contracts;
 using Humans.Camps.Contracts;
 using Humans.Consent.Contracts;
-using Humans.Governance.Contracts;
 using Humans.Onboarding.Contracts;
 using Humans.Users.Contracts;
 using Humans.Teams.Contracts;

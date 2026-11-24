@@ -262,7 +262,7 @@ public sealed class SurveyControllerTests
         {
             result.Should().BeOfType<BadRequestObjectResult>();
             sut.ModelState.Keys.Should().Contain(field);
-            await responses.DidNotReceiveWithAnyArgs().AdvanceWizardAsync(default!, default, default, default!, default);
+            await responses.DidNotReceiveWithAnyArgs().AdvanceWizardAsync(default!, default, default, default!);
         }
     }
 

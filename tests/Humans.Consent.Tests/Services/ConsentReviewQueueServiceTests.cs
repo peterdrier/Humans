@@ -5,7 +5,6 @@ using Humans.Consent.Data;
 using Humans.Consent.Domain;
 using Humans.Consent.Services;
 using Humans.Governance.Contracts;
-using Humans.Onboarding.Contracts;
 using Humans.Users.Contracts;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
