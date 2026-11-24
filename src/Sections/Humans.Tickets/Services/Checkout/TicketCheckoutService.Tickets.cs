@@ -20,8 +20,8 @@ internal sealed partial class TicketCheckoutService
     private static readonly Duration DeliveryGrace = Duration.FromMinutes(30);
     private static readonly Duration DeliveryRepairWindow = Duration.FromDays(7);
 
-    public async Task<IReadOnlyList<TicketCheckoutTicket>> GetTicketsForOrderAsync(Guid orderId, CancellationToken ct = default) =>
-        (await repository.GetTicketsForOrderAsync(orderId, ct)).OrderBy(t => t.Kind).ThenBy(t => t.IssuedAt).ToList();
+    public Task<IReadOnlyList<TicketCheckoutTicket>> GetTicketsForOrderAsync(Guid orderId, CancellationToken ct = default) =>
+        repository.GetTicketsForOrderAsync(orderId, ct);
 
     public Task<TicketCheckoutTicket?> GetTicketAsync(Guid id, CancellationToken ct = default) =>
         repository.GetTicketAsync(id, ct);
@@ -35,17 +35,17 @@ internal sealed partial class TicketCheckoutService
         return TimelineAsync(orderId, kind, Truncate(detail), actorUserId, ct);
     }
 
-    public async Task<IReadOnlyList<TicketCheckoutTicket>> GetTicketsForHolderAsync(Guid userId, CancellationToken ct = default) =>
-        (await repository.GetTicketsForHolderAsync(userId, ct)).OrderByDescending(t => t.IssuedAt).ToList();
+    public Task<IReadOnlyList<TicketCheckoutTicket>> GetTicketsForHolderAsync(Guid userId, CancellationToken ct = default) =>
+        repository.GetTicketsForHolderAsync(userId, ct);
 
-    public async Task<IReadOnlyList<TicketCheckoutTicket>> GetTicketsForSettingsAsync(Guid settingsId, CancellationToken ct = default) =>
-        (await repository.GetTicketsForSettingsAsync(settingsId, ct)).OrderBy(t => t.IssuedAt).ToList();
+    public Task<IReadOnlyList<TicketCheckoutTicket>> GetTicketsForSettingsAsync(Guid settingsId, CancellationToken ct = default) =>
+        repository.GetTicketsForSettingsAsync(settingsId, ct);
 
-    public async Task<IReadOnlyList<TicketResaleOffer>> GetOffersForSettingsAsync(Guid settingsId, CancellationToken ct = default) =>
-        (await repository.GetOffersForSettingsAsync(settingsId, ct)).OrderBy(o => o.OfferedAt).ToList();
+    public Task<IReadOnlyList<TicketResaleOffer>> GetOffersForSettingsAsync(Guid settingsId, CancellationToken ct = default) =>
+        repository.GetOffersForSettingsAsync(settingsId, ct);
 
-    public async Task<IReadOnlyList<TicketCheckoutRefund>> GetRefundsForSettingsAsync(Guid settingsId, CancellationToken ct = default) =>
-        (await repository.GetRefundsForSettingsAsync(settingsId, ct)).OrderBy(r => r.CreatedAt).ToList();
+    public Task<IReadOnlyList<TicketCheckoutRefund>> GetRefundsForSettingsAsync(Guid settingsId, CancellationToken ct = default) =>
+        repository.GetRefundsForSettingsAsync(settingsId, ct);
 
     public async Task<IReadOnlyList<HeldTicket>> GetHeldTicketsAsync(Guid userId, CancellationToken ct = default)
     {
@@ -62,7 +62,7 @@ internal sealed partial class TicketCheckoutService
             var positions = TicketSupportReports.QueuePositions(offers);
             var eventTickets = ticketing is null ? [] : await repository.GetTicketsForSettingsAsync(group.Key, ct);
             var companionRequests = await repository.GetCompanionRequestsForSettingsAsync(group.Key, ct);
-            foreach (var ticket in group.OrderBy(t => t.IssuedAt))
+            foreach (var ticket in group)
             {
                 var offer = queue.FirstOrDefault(o => o.TicketId == ticket.Id);
                 var hasDependents = eventTickets.Any(t => t.ParentTicketId == ticket.Id && t.State == TicketCheckoutTicketState.Valid);

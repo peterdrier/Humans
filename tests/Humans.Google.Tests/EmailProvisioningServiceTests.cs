@@ -25,6 +25,10 @@ public class EmailProvisioningServiceTests
     [InlineData("schön", "schoen")]
     [InlineData("Ärzte", "aerzte")]
     [InlineData("straße", "strasse")]
+    [InlineData("mu\u0308ller", "mueller")]
+    [InlineData("Scho\u0308n", "schoen")]
+    [InlineData("A\u0308rzte", "aerzte")]
+    [InlineData("STRAẞE", "strasse")]
     public void SanitizeEmailPrefix_TransliteratesGermanCharacters(string input, string expected)
     {
         EmailProvisioningService.SanitizeEmailPrefix(input).Should().Be(expected);

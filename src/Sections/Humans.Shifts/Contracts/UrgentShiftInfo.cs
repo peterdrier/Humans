@@ -1,5 +1,7 @@
 
 using NodaTime;
+using Humans.Settings.Contracts;
+using Humans.Shifts.Domain;
 
 namespace Humans.Shifts.Contracts;
 
@@ -45,6 +47,15 @@ public sealed record ShiftInfo(
     bool IsEarlyEntry)
 {
     public Duration Duration => Duration.FromHours(DurationHours);
+
+    internal Instant GetAbsoluteStart(IEventSettingsInfo eventSettings) =>
+        Shift.ResolveAbsoluteStart(DayOffset, StartTime, IsAllDay, eventSettings);
+
+    internal Instant GetAbsoluteEnd(IEventSettingsInfo eventSettings) =>
+        Shift.ResolveAbsoluteEnd(DayOffset, StartTime, Duration, IsAllDay, eventSettings);
+
+    internal ShiftPeriod GetShiftPeriod(IEventSettingsInfo eventSettings) =>
+        Shift.ResolveShiftPeriod(DayOffset, eventSettings);
 }
 
 /// <summary>Member names match <c>Rota</c>'s so the rota partials bind unchanged.</summary>

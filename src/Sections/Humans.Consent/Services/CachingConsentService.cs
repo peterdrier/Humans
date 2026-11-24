@@ -68,6 +68,7 @@ internal sealed class CachingConsentService(
             var missList = misses.ToList();
             var publish = CreateLoadPublisher();
             var bulk = await inner.GetConsentMapForUsersAsync(missList, ct).ConfigureAwait(false);
+            ct.ThrowIfCancellationRequested();
 
             foreach (var userId in missList)
             {

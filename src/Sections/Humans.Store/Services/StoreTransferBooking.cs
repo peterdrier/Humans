@@ -46,7 +46,7 @@ internal sealed record TransferRow(
 internal sealed record TransferBookedLine(TransferRow Row, TransferOutcome Outcome, string? Error);
 
 internal sealed record TransferPlan(
-    int Year, YearMonth? LastClosedMonth, IReadOnlyList<TransferRow> Rows, string? DepartmentAccountsUnavailable)
+    int Year, YearMonth? LastClosedMonth, IReadOnlyList<TransferRow> Rows, string? Unavailable)
 {
     public IReadOnlyList<TransferRow> Ready { get; } = Rows.Where(r => r.IsReady).ToList();
     public decimal ReadyAmount => Ready.Sum(r => r.Amount);
@@ -87,7 +87,7 @@ internal sealed partial class StoreTransferBooking(
     private DateTimeZone OrgZone => orgTimeZone.Zone;
     private static readonly SemaphoreSlim Gate = new(1, 1);
 
-    [GeneratedRegex(@"^Store transfer (?<y>\d{4}) (?<my>\d{4})-(?<mm>\d{2}) T(?<t>[0-9a-f]{32}) P(?<p>[0-9a-f]{32}):",
+    [GeneratedRegex(@"^Store transfer (?<y>[0-9]{4}) (?<my>[0-9]{4})-(?<mm>0[1-9]|1[0-2]) T(?<t>[0-9a-f]{32}) P(?<p>[0-9a-f]{32}):",
         RegexOptions.ExplicitCapture | RegexOptions.NonBacktracking)]
     private static partial Regex KeyPattern();
 
@@ -207,8 +207,9 @@ internal sealed partial class StoreTransferBooking(
         var lines = await orders.GetOrderLinesAsync(year, ct);
         var catalog = await CatalogAccountsAsync(year, lines, ct);
         var (departments, unavailable) = await DepartmentAccountsAsync(year, ct);
-        var booked = await BookedAsync(await AccountsToReadAsync(catalog, ct), ct);
+        var (booked, ledgerUnavailable) = await BookedAsync(await AccountsToReadAsync(catalog, ct), ct);
         var lastClosed = LastClosedMonth();
+        if (ledgerUnavailable is not null) return new TransferPlan(year, lastClosed, [], ledgerUnavailable);
         return new TransferPlan(year, lastClosed, Plan(year, lines, catalog, booked, departments, lastClosed, OrgZone), unavailable);
     }
 
@@ -229,7 +230,8 @@ internal sealed partial class StoreTransferBooking(
                     return ([], "A Holded ledger sync is running; nothing was booked. Try again in a minute.");
 
             var (departments, _) = await DepartmentAccountsAsync(year, ct);
-            var booked = await BookedAsync(accounts, ct);
+            var (booked, unavailable) = await BookedAsync(accounts, ct);
+            if (unavailable is not null) return ([], unavailable);
             var ready = Plan(year, lines, catalog, booked, departments, LastClosedMonth(), OrgZone)
                 .Where(r => r.IsReady).ToList();
 
@@ -321,7 +323,8 @@ internal sealed partial class StoreTransferBooking(
                 .Where(n => n is >= TransferBlockStart and <= TransferBlockEnd))
             .Distinct().Order().ToList();
 
-    private async Task<IReadOnlyList<BookedLine>> BookedAsync(IReadOnlyList<int> accounts, CancellationToken ct)
+    private async Task<(IReadOnlyList<BookedLine> Lines, string? Unavailable)> BookedAsync(
+        IReadOnlyList<int> accounts, CancellationToken ct)
     {
         var booked = new List<BookedLine>();
         foreach (var account in accounts)
@@ -332,7 +335,14 @@ internal sealed partial class StoreTransferBooking(
                     booked.Add(new BookedLine(key, account, line.Credit - line.Debit,
                         colon < 0 ? "(unknown team)" : line.Description[(colon + 2)..]));
                 }
-        return booked;
+                else if (line.Description?.StartsWith(Prefix, StringComparison.Ordinal) == true)
+                {
+                    logger.LogWarning("Invalid store transfer key on Holded account {Account}, entry {Entry}, line {Line}",
+                        account, line.EntryNumber, line.Line);
+                    return ([], string.Create(CultureInfo.InvariantCulture,
+                        $"Store transfer history is unreadable: account {account}, entry {line.EntryNumber}, line {line.Line} has an invalid transfer key. Nothing was booked."));
+                }
+        return (booked, null);
     }
 
     /// <summary>Team id → its department category's account. Unavailable, with a reason, when the active budget year

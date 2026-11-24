@@ -229,7 +229,7 @@ public class FinanceOverviewServiceTests
     }
 
     [HumansFact]
-    public void BuildSepaInProgress_KeepsUnbookedUnwithdrawn_OldestFirst()
+    public void BuildSepaInProgress_KeepsUnbookedUnwithdrawn()
     {
         static SepaPayoutTransferRow Transfer(decimal amount, long sentAt, Instant? booked = null, Instant? withdrawn = null) =>
             new(Guid.NewGuid(), Guid.NewGuid(), "f.xml", Instant.FromUnixTimeSeconds(sentAt), Guid.NewGuid(),
@@ -240,7 +240,7 @@ public class FinanceOverviewServiceTests
         var open = FinanceOverviewService.BuildSepaInProgress(
             [Transfer(1m, 2), Transfer(2m, 1), Transfer(3m, 0, booked: now), Transfer(4m, 0, withdrawn: now)]);
 
-        open.Select(t => t.Amount).Should().Equal(2m, 1m);
+        open.Select(t => t.Amount).Should().BeEquivalentTo(new[] { 2m, 1m });
     }
 
     [HumansFact]

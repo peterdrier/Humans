@@ -41,7 +41,18 @@ public class PretixPlatformTests
     [HumansFact]
     public async Task Create_PostsHumansPricesAndReturnsPayLinkBackToHumans()
     {
-        var pretix = WithEvent().On("POST", $"{Api}orders/", HttpStatusCode.Created, Order(Code));
+        var pretix = new FakePretix()
+            .On("GET", Api, HttpStatusCode.OK, new { currency = "EUR" })
+            .On("GET", Api + "items/", HttpStatusCode.OK, new
+            {
+                results = new[] { new { id = 7, internal_name = "humans-ticket" } },
+                next = $"https://pretix.test{Api}items/?page=2",
+            })
+            .On("GET", Api + "items/", HttpStatusCode.OK, new
+            {
+                results = new[] { new { id = 8, internal_name = "humans-donation" } },
+            })
+            .On("POST", $"{Api}orders/", HttpStatusCode.Created, Order(Code));
 
         var session = await Create(pretix).CreateOrderAsync(Request(), TestContext.Current.CancellationToken);
 
@@ -679,8 +690,79 @@ public class PretixPlatformTests
         PretixPlatform.OrderCode(first).Should().HaveLength(16)
             .And.MatchRegex("^[ABCDEFGHJKLMNPQRSTUVWXYZ23456789]+$");
     }
+    [HumansTheory]
+    [InlineData("items")]
+    [InlineData("orders")]
+    public async Task ListOrders_RejectsRepeatedResolvedPages(string collection)
+    {
+        var repeated = $"https://pretix.test{Api}{collection}/";
+        if (string.Equals(collection, "orders", StringComparison.Ordinal))
+            repeated += "?created_since=2027-01-01T00%3A00%3A00Z&created_before=2027-02-01T00%3A00%3A00Z&ordering=datetime";
+        var pretix = new FakePretix();
+        if (string.Equals(collection, "orders", StringComparison.Ordinal))
+            pretix.On("GET", Api + "items/", HttpStatusCode.OK, new { results = Array.Empty<object>() });
+        pretix.On("GET", Api + collection + "/", HttpStatusCode.OK,
+                new { results = Array.Empty<object>(), next = repeated })
+            .On("GET", Api + collection + "/", HttpStatusCode.OK, new { results = Array.Empty<object>() });
+        if (string.Equals(collection, "items", StringComparison.Ordinal))
+            pretix.On("GET", Api + "orders/", HttpStatusCode.OK, new { results = Array.Empty<object>() });
+
+        var act = () => Create(pretix).ListOrdersAsync("nowhere2027",
+            Instant.FromUtc(2027, 1, 1, 0, 0), Instant.FromUtc(2027, 2, 1, 0, 0), TestContext.Current.CancellationToken);
+
+        (await act.Should().ThrowAsync<HttpRequestException>()).WithMessage("*repeated*");
+        pretix.Requests.Count(r => string.Equals(r.Route, "GET " + Api + collection + "/", StringComparison.Ordinal))
+            .Should().Be(1);
+    }
+
     [HumansFact]
-    public async Task ListOrders_FollowsPagesCountsTicketItemsAndAddsBackRefundFees()
+    public async Task ListOrders_RefusesAnUnboundedPageSequence()
+    {
+        var pretix = new FakePretix();
+        for (var page = 1; page <= 501; page++)
+            pretix.On("GET", Api + "items/", HttpStatusCode.OK, new
+            {
+                results = Array.Empty<object>(),
+                next = page == 501 ? null : $"https://pretix.test{Api}items/?page={page + 1}",
+            });
+        pretix.On("GET", Api + "orders/", HttpStatusCode.OK, new { results = Array.Empty<object>() });
+
+        var act = () => Create(pretix).ListOrdersAsync("nowhere2027",
+            Instant.FromUtc(2027, 1, 1, 0, 0), Instant.FromUtc(2027, 2, 1, 0, 0), TestContext.Current.CancellationToken);
+
+        (await act.Should().ThrowAsync<HttpRequestException>()).WithMessage("*500-page*");
+        pretix.Requests.Should().HaveCount(500);
+    }
+
+    [HumansTheory]
+    [InlineData("items", "https://attacker.invalid/outside/")]
+    [InlineData("items", "//attacker.invalid/outside/")]
+    [InlineData("items", "http://pretix.test/outside/")]
+    [InlineData("items", "https://pretix.test:444/outside/")]
+    [InlineData("orders", "https://attacker.invalid/outside/")]
+    [InlineData("orders", "//attacker.invalid/outside/")]
+    [InlineData("orders", "http://pretix.test/outside/")]
+    [InlineData("orders", "https://pretix.test:444/outside/")]
+    public async Task ListOrders_RejectsPaginationOutsideTheConfiguredOrigin(string collection, string nextUrl)
+    {
+        var pretix = new FakePretix()
+            .On("GET", Api + "items/", HttpStatusCode.OK,
+                new { results = Array.Empty<object>(), next = string.Equals(collection, "items", StringComparison.Ordinal) ? nextUrl : null })
+            .On("GET", Api + "orders/", HttpStatusCode.OK,
+                new { results = Array.Empty<object>(), next = string.Equals(collection, "orders", StringComparison.Ordinal) ? nextUrl : null })
+            .On("GET", "/outside/", HttpStatusCode.OK, new { results = Array.Empty<object>() });
+
+        var act = () => Create(pretix).ListOrdersAsync("nowhere2027",
+            Instant.FromUtc(2027, 1, 1, 0, 0), Instant.FromUtc(2027, 2, 1, 0, 0), TestContext.Current.CancellationToken);
+
+        await act.Should().ThrowAsync<HttpRequestException>();
+        pretix.Requests.Should().HaveCount(string.Equals(collection, "items", StringComparison.Ordinal) ? 1 : 2);
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ListOrders_FollowsPagesCountsTicketItemsAndAddsBackRefundFees(bool absoluteNext)
     {
         object Listed(string code, string datetime, object apiMeta, object[] fees, object[] refunds, decimal total) => new
         {
@@ -707,7 +789,7 @@ public class PretixPlatformTests
             })
             .On("GET", $"{Api}orders/", HttpStatusCode.OK, new
             {
-                next = $"https://pretix.test{Api}orders/?page=2",
+                next = (absoluteNext ? "https://pretix.test" : "") + $"{Api}orders/?page=2",
                 results = new[] { Listed(Code, "2027-01-05T09:30:00.123456+00:00", new { humans_order_id = OrderId.ToString() }, [], [], 300m) },
             })
             .On("GET", $"{Api}orders/", HttpStatusCode.OK, new

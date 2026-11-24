@@ -129,6 +129,8 @@ group (the number's leading digit): groups 1–5 (equity, assets, banks, debtors
 different section and stays in the *user's* POV (+ means the user is owed money); it is
 untouched by this convention.
 
+Account statements render in date, entry-number and line-number order; entry details render in line-number order. The service returns both line lists unordered and carries their line numbers. Entry links use the first nonempty Holded ID by line number.
+
 ### Counterparty
 
 Each ledger row's counterparty is resolved from the entry's *other* legs on the opposite side by
@@ -138,7 +140,7 @@ raw column alone would pair nothing. Holded's API does not
 return a contra account, so this is derived by grouping the mirror's lines on `EntryNumber`.
 Exactly one opposing line shows that account, linked; more than one (e.g. a purchase invoice:
 expense + VAT + creditor) shows the largest by absolute amount plus "+N more", linked to the
-entry page instead.
+entry page instead. The maximum is selected directly, retaining the first source leg on equal amounts.
 
 **Not this section:** budget attribution. Finance's account map (`/Finance/HoldedAccounts`) and
 unmatched queue (`/Finance/HoldedUnmatched`) read the purchase mirror through `IHoldedService` and

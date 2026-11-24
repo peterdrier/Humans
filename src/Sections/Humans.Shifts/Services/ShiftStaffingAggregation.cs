@@ -1,5 +1,4 @@
 using Humans.Shifts.Contracts;
-using Humans.Shifts.Helpers;
 using Humans.Shifts.Services.Dtos;
 using Humans.Shifts.Models;
 using Humans.Teams.Contracts;

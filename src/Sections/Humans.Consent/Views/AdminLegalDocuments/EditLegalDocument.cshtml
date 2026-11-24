@@ -88,7 +88,7 @@
                                 }
                             </td>
                             <td>
-                                @foreach (var lang in version.Languages)
+                                @foreach (var lang in version.Languages.Order(StringComparer.Ordinal))
                                 {
                                     <span class="badge bg-light text-dark me-1">@lang</span>
                                 }

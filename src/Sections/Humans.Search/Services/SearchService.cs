@@ -17,8 +17,6 @@ internal sealed class SearchService(
         var categories = contributors
             .SelectMany(c => c.Categories())
             .Where(c => c.IsEnabled?.Invoke(services) ?? true)
-            .OrderBy(c => c.Weight)
-            .ThenBy(c => c.Key, StringComparer.Ordinal)
             .ToList();
         var only = categories.FirstOrDefault(c => string.Equals(c.Key, filter, StringComparison.OrdinalIgnoreCase))?.Key;
 
@@ -28,6 +26,7 @@ internal sealed class SearchService(
             var searched = trimmed.Length >= 2 && (only is null || string.Equals(only, category.Key, StringComparison.Ordinal));
             buckets.Add(new SearchBucket(
                 category.Key,
+                category.Weight,
                 category.Label(services),
                 category.IconCssClass,
                 category.ResultComponent,
