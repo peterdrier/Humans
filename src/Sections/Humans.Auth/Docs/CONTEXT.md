@@ -19,7 +19,7 @@ _Avoid_: magic link, login link
 ## System roles
 
 **System role**:
-A role that unlocks a whole section or the whole app: **Admin**, **Board**, and one admin per section (TeamsAdmin, CampsAdmin and so on). Everything else is a **role** from the Roles section, which belongs to a team or camp.
+A role that unlocks a whole section or the whole app: **Admin**, **Board**, and one admin per section (TeamsAdmin, CampsAdmin and so on). Everything else is a **role** from the Roles section, which belongs to a team or camp. One exception: FinanceAdmin runs Budget, Finance and Holded together.
 _Avoid_: role (alone), role assignment
 
 **Assign / revoke**:

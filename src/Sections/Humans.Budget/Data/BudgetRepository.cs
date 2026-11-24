@@ -28,7 +28,7 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
             .AsQueryable();
 
         if (!includeArchived)
-            query = query.Where(y => !y.IsDeleted);
+            query = query.Where(y => !y.IsArchived);
 
         return await query.ToListAsync(ct);
     }
@@ -54,7 +54,7 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
 
         var activeId = await ctx.BudgetYears
             .AsNoTracking()
-            .Where(y => y.Status == BudgetYearStatus.Active && !y.IsDeleted)
+            .Where(y => y.Status == BudgetYearStatus.Active && !y.IsArchived)
             // arch:db-sort-ok deterministic singleton selector
             .OrderBy(y => y.Id)
             .Select(y => (Guid?)y.Id)
@@ -147,7 +147,7 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
         Guid yearId,
         string year,
         string name,
-        string? vendorEventId,
+        string? platformEventId,
         Guid actorUserId,
         Instant now,
         CancellationToken ct = default)
@@ -177,12 +177,12 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
             budgetYear.Name = name;
         }
 
-        if (!string.Equals(budgetYear.VendorEventId, vendorEventId, StringComparison.Ordinal))
+        if (!string.Equals(budgetYear.PlatformEventId, platformEventId, StringComparison.Ordinal))
         {
             AddFieldAudit(ctx, budgetYear.Id, nameof(BudgetYear), budgetYear.Id,
-                nameof(BudgetYear.VendorEventId), budgetYear.VendorEventId, vendorEventId,
+                nameof(BudgetYear.PlatformEventId), budgetYear.PlatformEventId, platformEventId,
                 actorUserId, now);
-            budgetYear.VendorEventId = vendorEventId;
+            budgetYear.PlatformEventId = platformEventId;
         }
 
         budgetYear.UpdatedAt = now;
@@ -200,7 +200,7 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
     {
         await using var ctx = await factory.CreateDbContextAsync(ct);
 
-        var year = await ctx.BudgetYears.FirstOrDefaultAsync(y => y.Id == yearId && !y.IsDeleted, ct);
+        var year = await ctx.BudgetYears.FirstOrDefaultAsync(y => y.Id == yearId && !y.IsArchived, ct);
         if (year is null)
             return new($"Budget year {yearId} not found");
 
@@ -236,7 +236,7 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
         return new();
     }
 
-    public async Task<BudgetYearMutationResult> SoftDeleteYearAsync(
+    public async Task<BudgetYearMutationResult> ArchiveYearAsync(
         Guid yearId,
         Guid actorUserId,
         Instant now,
@@ -251,8 +251,8 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
         if (year.Status == BudgetYearStatus.Active)
             return new("Cannot delete an active budget year. Close it first.");
 
-        year.IsDeleted = true;
-        year.DeletedAt = now;
+        year.IsArchived = true;
+        year.ArchivedAt = now;
         year.Status = BudgetYearStatus.Closed;
         year.UpdatedAt = now;
 
@@ -831,7 +831,7 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
         projection.VatRate = update.VatRate;
         projection.StripeFeePercent = update.StripeFeePercent;
         projection.StripeFeeFixed = update.StripeFeeFixed;
-        projection.TicketTailorFeePercent = update.TicketTailorFeePercent;
+        projection.PlatformFeePercent = update.PlatformFeePercent;
         projection.UpdatedAt = now;
 
         var created = 0;
@@ -905,10 +905,10 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
             }
 
             // Stripe's tax bucket is VAT on Stripe's own fees; it says nothing about Ticket Tailor's.
-            if (week.TicketTailorFees >= 0)
+            if (week.PlatformFees >= 0)
                 lineItemsChanged += UpsertTicketingLineItem(ctx, feesCategory,
                     $"TT fees: {week.WeekLabel}",
-                    -week.TicketTailorFees, week.Monday, AssumedTicketingFeeVatRate, null, now, omitNewZero: true);
+                    -week.PlatformFees, week.Monday, AssumedTicketingFeeVatRate, null, now, omitNewZero: true);
         }
 
         lineItemsChanged += ZeroDroppedActualWeeks(
@@ -920,12 +920,12 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
             var totalRevenue = weeklyActuals.Sum(w => w.Revenue);
             // Gross of fee VAT, so projected Stripe lines project the same cash cost the actuals record.
             var totalStripeFees = weeklyActuals.Sum(w => w.StripeFees + w.StripeFeeTax);
-            var totalTtFees = weeklyActuals.Sum(w => w.TicketTailorFees);
+            var totalPlatformFees = weeklyActuals.Sum(w => w.PlatformFees);
             var totalTickets = weeklyActuals.Sum(w => w.TicketCount);
 
             UpdateProjectionFromActuals(
                 ticketingGroup.TicketingProjection,
-                totalRevenue, totalStripeFees, totalTtFees, totalTickets, now);
+                totalRevenue, totalStripeFees, totalPlatformFees, totalTickets, now);
         }
 
         lineItemsChanged += MaterializeProjectedWeeks(
@@ -1042,7 +1042,7 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
 
     private static void UpdateProjectionFromActuals(
         TicketingProjection projection,
-        decimal totalRevenue, decimal totalStripeFees, decimal totalTtFees, int totalTickets, Instant now)
+        decimal totalRevenue, decimal totalStripeFees, decimal totalPlatformFees, int totalTickets, Instant now)
     {
         if (totalTickets > 0)
             projection.AverageTicketPrice = Math.Round(totalRevenue / totalTickets, 2);
@@ -1050,7 +1050,7 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
         if (totalRevenue > 0)
         {
             projection.StripeFeePercent = Math.Round(totalStripeFees / totalRevenue * 100m, 2);
-            projection.TicketTailorFeePercent = Math.Round(totalTtFees / totalRevenue * 100m, 2);
+            projection.PlatformFeePercent = Math.Round(totalPlatformFees / totalRevenue * 100m, 2);
         }
 
         projection.UpdatedAt = now;
@@ -1093,13 +1093,13 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
                     -Math.Round(week.StripeFees, 2), week.Start, AssumedTicketingFeeVatRate, null, now);
             }
 
-            if (week.TicketTailorFees > 0)
+            if (week.PlatformFees > 0)
             {
                 var feeDescription = $"{TicketingProjectedPrefix}TT fees: {weekLabel}";
                 feeDescriptions.Add(feeDescription);
                 created += UpsertTicketingLineItem(ctx, feesCategory,
                     feeDescription,
-                    -Math.Round(week.TicketTailorFees, 2), week.Start, AssumedTicketingFeeVatRate, null, now);
+                    -Math.Round(week.PlatformFees, 2), week.Start, AssumedTicketingFeeVatRate, null, now);
             }
         }
 

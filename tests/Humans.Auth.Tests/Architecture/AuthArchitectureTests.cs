@@ -10,7 +10,7 @@ namespace Humans.Auth.Tests.Architecture;
 public class AuthArchitectureTests
 {
     [HumansFact]
-    public void ISystemRoleManagement_IRoleAssignmentService_And_IRoleAssignmentWrite_ResolveToSameSingleton()
+    public void Interfaces_ResolveToSameSingleton()
     {
         // The real section registration: the same CachingSystemRoleService
         // singleton must back every interface key, or a write through one face

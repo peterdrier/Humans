@@ -9,7 +9,7 @@ workstream intends to raise or spend, in what categories, and when. Finance admi
 and manage the plan (years, groups, categories); department coordinators fill in the line
 items for their own departments; every member can see a high-level summary. Ticket-sale
 actuals flow in nightly and replace the auto-generated projections (hand-entered line
-items are never touched); projected future ticket weeks are re-forecast from those
+items are never touched); projected future ticket weeks are re-projected from those
 actuals. Every change to the plan is recorded in an append-only audit trail FinanceAdmin
 and Admin can read. Finance's cash-flow page reads this plan to answer "when does the money
 move, and do we run out?", including the VAT the association will settle each quarter.
@@ -21,7 +21,7 @@ move, and do we run out?", including the VAT the association will settle each qu
 | What does the plan look like, for what I'm allowed to see? | `/Budget`, `/Budget/Summary`, `/Budget/Category/{id}`; `/Budget/Admin`, `/Budget/Admin/Years/{id}`, `/Budget/Admin/Categories/{id}` |
 | Change my department's line items (coordinator) | `/Budget/LineItems/*` |
 | Manage the plan tree (admin: year lifecycle, groups, categories, line items) | `/Budget/Admin/Years/*`, `/Budget/Admin/Groups/*`, `/Budget/Admin/Categories/*`, `/Budget/Admin/LineItems/*`, `/Budget/Admin/Years` |
-| Feed ticket actuals in / re-forecast | `/Budget/Admin/TicketingBudget/{yearId}/Sync`, `/Budget/Admin/TicketingProjection/{groupId}/Update`, `/Budget/Admin/Years/{id}/EnsureTicketingGroup`, nightly `budget-ticketing-sync` job |
+| Feed ticket actuals in / re-project | `/Budget/Admin/TicketingBudget/{yearId}/Sync`, `/Budget/Admin/TicketingProjection/{groupId}/Update`, `/Budget/Admin/Years/{id}/EnsureTicketingGroup`, nightly `budget-ticketing-sync` job |
 | When does money move? | `/Finance/CashFlow` — served by Finance ([`Finance.md`](../../Humans.Finance/Docs/Finance.md)) |
 | Who changed what? | `/Budget/Admin/AuditLog/{yearId?}` |
 | Cross-section reads (Expenses, Finance, Tickets, Backdoor; Development's demo seed) | `IBudgetService`, `IBudgetDemoSeeder` (`Contracts/` folder) |
