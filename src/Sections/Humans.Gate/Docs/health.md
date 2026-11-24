@@ -125,4 +125,4 @@ reachable flow and is shelved, not structural (see Seams).
 |---|---|---|---|
 | 1 | 2026-08-31 | First pass: comments/docs/UI copy re-anchored to the shipped shared-PIN security model; dead override-picker client remnants cut; GDPR-erasure, merge, retention and deny-path invariants pinned | peterdrier/Humans#1574 |
 | 2 | 2026-10-27 | Kiosk and docs point at the real cutoff setting; comments stop claiming an age waiver and live per-staffer override authority; export minimization and server-time verdicts pinned | peterdrier/Humans#2168 |
-| 3 | 2026-11-24 | Docs and authorization spec catch up with undo, find by name and the arrivals report; report policies, undo merge re-point and the 30-day arrival window pinned | pending |
+| 3 | 2026-11-24 | Docs and authorization spec catch up with undo, find by name and the arrivals report; report policies, undo merge re-point and the 30-day arrival window pinned | peterdrier/Humans#2604 |
