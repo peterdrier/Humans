@@ -442,8 +442,10 @@
   </data>
   <data name="Login_SetupFailed" xml:space="preserve"><value>We konden je account niet helemaal instellen. Probeer het opnieuw.</value></data>
   <data name="Login_SignInFailed" xml:space="preserve">
-    <value>Inloggen mislukt. Dit kan gebeuren als je te lang hebt gewacht of als je browser cookies blokkeert. Probeer het opnieuw.</value>
+    <value>Inloggen mislukt. Probeer het opnieuw.</value>
   </data>
+  <data name="Login_Cancelled" xml:space="preserve"><value>Het inloggen is bij Google geannuleerd.</value></data>
+  <data name="Login_CookieMissing" xml:space="preserve"><value>Inloggen mislukt: je browser stuurde zijn inlogcookie niet mee toen Google je hierheen terugstuurde. Probeer het opnieuw.</value></data>
   <data name="Login_LockedOut" xml:space="preserve"><value>Dit account is geblokkeerd. Neem contact op met een beheerder als je hulp nodig hebt bij het inloggen.</value></data>
   <data name="AccessDenied_Title" xml:space="preserve">
     <value>Toegang geweigerd</value>
@@ -932,9 +934,9 @@
   <data name="GateLogin_SignIn" xml:space="preserve">
     <value>Inloggen</value>
   </data>
-  <data name="GateLogin_Invalid" xml:space="preserve">
-    <value>Verkeerde gebruikersnaam of verkeerd wachtwoord. De gebruikersnaam is "gate"; het wachtwoord wordt ingesteld door het ticketteam — vraag hen om het huidige wachtwoord.</value>
-  </data>
+  <data name="GateLogin_WrongUsername" xml:space="preserve"><value>Verkeerde gebruikersnaam. De gebruikersnaam is "gate".</value></data>
+  <data name="GateLogin_NoPassword" xml:space="preserve"><value>Vul het wachtwoord in. Het ticketteam stelt het in; vraag hen om het huidige wachtwoord.</value></data>
+  <data name="GateLogin_WrongPassword" xml:space="preserve"><value>Verkeerd wachtwoord. Het ticketteam stelt het in; vraag hen om het huidige wachtwoord.</value></data>
   <data name="GateLogin_Throttled" xml:space="preserve">
     <value>Inloggen vanaf dit netwerk is {0} seconden gepauzeerd: er zijn vanaf hier te veel pogingen met een verkeerd wachtwoord gedaan. Als jij dat niet was, probeert iemand met dezelfde internetverbinding wachtwoorden uit op deze pagina. Wacht tot de pauze voorbij is en voer dan het juiste wachtwoord in — vraag het ticketteam als je het niet zeker weet. Het account zelf is NIET geblokkeerd; ticketbeheerders kunnen het wachtwoord bekijken of wijzigen onder Tickets → Gateterminal.</value>
     <comment>{0}=seconds remaining</comment>

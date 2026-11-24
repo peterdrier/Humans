@@ -442,8 +442,10 @@
   </data>
   <data name="Login_SetupFailed" xml:space="preserve"><value>Nous n’avons pas pu terminer la configuration de votre compte. Veuillez réessayer.</value></data>
   <data name="Login_SignInFailed" xml:space="preserve">
-    <value>Échec de la connexion. Cela peut se produire si vous avez mis trop de temps ou si votre navigateur a bloqué les cookies. Veuillez réessayer.</value>
+    <value>Échec de la connexion. Veuillez réessayer.</value>
   </data>
+  <data name="Login_Cancelled" xml:space="preserve"><value>La connexion a été annulée sur Google.</value></data>
+  <data name="Login_CookieMissing" xml:space="preserve"><value>Échec de la connexion : votre navigateur n'a pas renvoyé son cookie de connexion au retour de Google. Veuillez réessayer.</value></data>
   <data name="Login_LockedOut" xml:space="preserve"><value>Ce compte est verrouillé. Contactez un administrateur si vous avez besoin d’aide pour vous connecter.</value></data>
   <data name="AccessDenied_Title" xml:space="preserve">
     <value>Accès refusé</value>
@@ -932,9 +934,9 @@
   <data name="GateLogin_SignIn" xml:space="preserve">
     <value>Se connecter</value>
   </data>
-  <data name="GateLogin_Invalid" xml:space="preserve">
-    <value>Nom d'utilisateur ou mot de passe incorrect. Le nom d'utilisateur est "gate" ; le mot de passe est défini par l'équipe billetterie — demande-leur le mot de passe actuel.</value>
-  </data>
+  <data name="GateLogin_WrongUsername" xml:space="preserve"><value>Nom d'utilisateur incorrect. Le nom d'utilisateur est "gate".</value></data>
+  <data name="GateLogin_NoPassword" xml:space="preserve"><value>Saisis le mot de passe. L'équipe billetterie le définit ; demande-leur le mot de passe actuel.</value></data>
+  <data name="GateLogin_WrongPassword" xml:space="preserve"><value>Mot de passe incorrect. L'équipe billetterie le définit ; demande-leur le mot de passe actuel.</value></data>
   <data name="GateLogin_Throttled" xml:space="preserve">
     <value>La connexion depuis ce réseau est suspendue pendant {0} secondes : trop de tentatives avec un mauvais mot de passe sont venues d'ici. Si ce n'était pas toi, quelqu'un partageant cette connexion essaie des mots de passe sur cette page. Patiente, puis saisis le bon mot de passe — demande à l'équipe billetterie en cas de doute. Le compte n'est PAS bloqué ; les admins billetterie peuvent vérifier ou changer le mot de passe dans Tickets → Gate terminal.</value>
     <comment>{0}=seconds remaining</comment>

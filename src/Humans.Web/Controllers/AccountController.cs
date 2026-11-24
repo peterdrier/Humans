@@ -388,7 +388,8 @@ public class AccountController(
         if (!isGateUser || string.IsNullOrEmpty(password))
         {
             gateThrottle.RecordFailure(source);
-            ModelState.AddModelError(string.Empty, localizer["GateLogin_Invalid"]);
+            ModelState.AddModelError(string.Empty,
+                localizer[isGateUser ? "GateLogin_NoPassword" : "GateLogin_WrongUsername"]);
             return View();
         }
 
@@ -396,7 +397,7 @@ public class AccountController(
         {
             gateThrottle.RecordFailure(source);
             logger.LogWarning("Gate terminal sign-in failed (wrong password) from {Source}", source);
-            ModelState.AddModelError(string.Empty, localizer["GateLogin_Invalid"]);
+            ModelState.AddModelError(string.Empty, localizer["GateLogin_WrongPassword"]);
             return View();
         }
 

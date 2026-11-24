@@ -190,7 +190,8 @@ builder.Services.AddAuthentication()
                         context.Failure, "Google sign-in failed from {ClientIp}: {Error}", clientIp, failureMessage);
                 }
 
-                context.Response.Redirect("/Account/Login?error=sign-in-failed");
+                var error = isAccessDenied ? "cancelled" : isCorrelationFailure ? "cookie-missing" : "sign-in-failed";
+                context.Response.Redirect($"/Account/Login?error={error}");
                 context.HandleResponse();
                 return Task.CompletedTask;
             }
