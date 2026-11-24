@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using AwesomeAssertions;
+using Humans.Base.Interfaces;
 using Humans.Notifications.Contracts;
 using Humans.Notifications.Services;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -92,6 +93,37 @@ public class NotificationMeterProviderTests
             var meters = await read();
             meters.Should().ContainSingle(m => m.Title == "Healthy section");
         }
+    }
+
+    [HumansFact]
+    public async Task GetMetersForUserAsync_SkipsASectionSwitchedOffForTheEvent()
+    {
+        var viewerId = Guid.NewGuid();
+        var principal = CreatePrincipalWithId(viewerId);
+        var contributor = new FixedMeters(Meter("Queue", 1));
+        // A type in this test assembly belongs to the section "Notifications.Tests".
+        var switchedOff = new Switches(SectionSwitchboard.SectionNameOf(typeof(FixedMeters)));
+
+        var on = await new NotificationMeterProvider([contributor], NullLogger<NotificationMeterProvider>.Instance)
+            .GetMetersForUserAsync(principal, TestContext.Current.CancellationToken);
+        var off = await new NotificationMeterProvider([contributor], NullLogger<NotificationMeterProvider>.Instance, switchedOff)
+            .GetMetersForUserAsync(principal, TestContext.Current.CancellationToken);
+
+        on.Should().ContainSingle(m => m.Title == "Queue");
+        off.Should().BeEmpty();
+    }
+
+    private sealed class FixedMeters(params NotificationMeter[] meters) : INotificationMeterContributor
+    {
+        public Task<IReadOnlyList<NotificationMeter>> GetMetersAsync(
+            ClaimsPrincipal user, Guid viewerId, CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<NotificationMeter>>(meters);
+    }
+
+    private sealed class Switches(params string[] off) : ISectionSwitches
+    {
+        public ValueTask<IReadOnlySet<string>> GetSwitchedOffAsync(CancellationToken cancellationToken = default) =>
+            ValueTask.FromResult<IReadOnlySet<string>>(off.ToHashSet(StringComparer.OrdinalIgnoreCase));
     }
 
     private static NotificationMeter Meter(string title, int priority) =>

@@ -140,6 +140,15 @@ named by `SectionMigrationsHistory.TableFor`.
   is refused before any write (`ServiceTests`). The list applies only while its
   event is the active one; `SectionSwitches` caches the active event's list and
   every event-settings write flushes it.
+- **A stored name survives a section rename.** Reads resolve each stored name
+  through `ISectionCatalog.TryResolve`, which knows `ISection.FormerNames`
+  (Google answers to `GoogleIntegration`), so the switch, the form and the next
+  save all see the current name. A name no section answers to stays as stored.
+- **Beyond nav and pages, an off section also drops out of:** notification
+  meters, the Shifts page banners, the Teams shifts and roles parts, admin
+  sidebar items that point into it (the rest of their group stays), the
+  helper's section index, and notification click-throughs (which fall back to
+  the inbox). Its recurring jobs still run.
 - **Calendar dates must be representable.** Admin saves and seeded activation
   reject gate/offset combinations whose dates, or the following day, fall outside
   BCL date support, before any write.

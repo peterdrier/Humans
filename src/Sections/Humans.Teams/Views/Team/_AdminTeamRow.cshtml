@@ -1,3 +1,4 @@
+@using Humans.Base.Interfaces
 @inject IEnumerable<ITeamShiftsParts> ShiftsParts
 @model Humans.Teams.Models.AdminTeamViewModel
 
@@ -37,7 +38,7 @@
         }
     </td>
     <td>
-        @foreach (var part in ShiftsParts)
+        @foreach (var part in ShiftsParts.SwitchedOn(Context))
         {
             @await Component.InvokeAsync(part.AdminRowCell, new TeamAdminRowShiftsArgs(Model.Id, Model.Slug))
         }

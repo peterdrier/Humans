@@ -1,3 +1,4 @@
+@using Humans.Base.Interfaces
 @inject IAuthorizationService AuthService
 @inject IEnumerable<ITeamShiftsParts> ShiftsParts
 @inject IEnumerable<ITeamRolesPart> RolesParts
@@ -128,7 +129,7 @@
                     { "CanManage", Model.CanCurrentUserManage },
                     { "Slug", Model.Slug }
                 })
-            foreach (var part in RolesParts)
+            foreach (var part in RolesParts.SwitchedOn(Context))
             {
                 @await Component.InvokeAsync(part.Card, new TeamRolesCardArgs(Model.Id))
             }
@@ -361,7 +362,7 @@
         @if (Model.ViewerUserId is { } viewerId && Model.SystemTeamType is null)
         {
             var boxArgs = new TeamShiftsBoxArgs(Model.Id, Model.Slug, Model.ChildTeams.Select(c => c.Id).ToList(), viewerId);
-            foreach (var part in ShiftsParts)
+            foreach (var part in ShiftsParts.SwitchedOn(Context))
             {
                 @await Component.InvokeAsync(part.Box, boxArgs)
             }

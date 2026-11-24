@@ -1,4 +1,5 @@
 using System.Text;
+using Humans.Base.Interfaces;
 using Microsoft.Extensions.Caching.Memory;
 
 namespace Humans.Agent.Services.Preload;
@@ -11,7 +12,8 @@ internal sealed class AgentPreloadCorpusBuilder(
     AgentSectionDocReader sections,
     CommunityFaqReader community,
     IMemoryCache cache,
-    IAgentPreloadAugmentor augmentor) : IAgentPreloadCorpusBuilder
+    IAgentPreloadAugmentor augmentor,
+    ISectionSwitches? switches = null) : IAgentPreloadCorpusBuilder
 {
     private static readonly MemoryCacheEntryOptions HoldForever =
         new() { Priority = CacheItemPriority.NeverRemove };
@@ -19,23 +21,35 @@ internal sealed class AgentPreloadCorpusBuilder(
     private readonly Lock _cacheGate = new();
     private long _cacheGeneration;
 
-    private const string CacheKey = "agent:preload";
+    // The index leaves out sections switched off for the event, so the helper does not explain pages that answer 404.
+    // Keyed on the switched-off set, so switching a section on or off builds a fresh corpus.
+    private static string CacheKey(IReadOnlySet<string> switchedOff) =>
+        switchedOff.Count == 0
+            ? "agent:preload"
+            : $"agent:preload:{string.Join(",", switchedOff.Order(StringComparer.OrdinalIgnoreCase))}";
+
+    private async Task<IReadOnlySet<string>> SwitchedOffAsync(CancellationToken cancellationToken) =>
+        switches is null
+            ? new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+            : await switches.GetSwitchedOffAsync(cancellationToken);
 
     public async Task<string> BuildAsync(CancellationToken cancellationToken = default)
     {
+        var switchedOff = await SwitchedOffAsync(cancellationToken);
+        var cacheKey = CacheKey(switchedOff);
         long generation;
         lock (_cacheGate)
         {
-            if (cache.TryGetValue<string>(CacheKey, out var cached) && cached is not null)
+            if (cache.TryGetValue<string>(cacheKey, out var cached) && cached is not null)
                 return cached;
             generation = _cacheGeneration;
         }
 
-        var (result, isComplete) = await BuildCorpusAsync(cancellationToken);
+        var (result, isComplete) = await BuildCorpusAsync(switchedOff, cancellationToken);
         lock (_cacheGate)
         {
             if (isComplete && generation == _cacheGeneration)
-                cache.Set(CacheKey, result, HoldForever);
+                cache.Set(cacheKey, result, HoldForever);
         }
         return result;
     }
@@ -44,17 +58,19 @@ internal sealed class AgentPreloadCorpusBuilder(
     {
         // Refresh the Community FAQ first so the rebuilt index reflects the latest repo state.
         if (!await community.ReloadAsync(cancellationToken)) return false;
-        var (fresh, isComplete) = await BuildCorpusAsync(cancellationToken);
+        var switchedOff = await SwitchedOffAsync(cancellationToken);
+        var (fresh, isComplete) = await BuildCorpusAsync(switchedOff, cancellationToken);
         if (!isComplete) return false;
         lock (_cacheGate)
         {
             _cacheGeneration++;
-            cache.Set(CacheKey, fresh, HoldForever);
+            cache.Set(CacheKey(switchedOff), fresh, HoldForever);
         }
         return true;
     }
 
-    private async Task<(string Body, bool IsComplete)> BuildCorpusAsync(CancellationToken cancellationToken)
+    private async Task<(string Body, bool IsComplete)> BuildCorpusAsync(
+        IReadOnlySet<string> switchedOff, CancellationToken cancellationToken)
     {
         var isComplete = true;
         var sb = new StringBuilder();
@@ -64,7 +80,7 @@ internal sealed class AgentPreloadCorpusBuilder(
         sb.AppendLine();
         sb.AppendLine("## Section Index");
         sb.AppendLine();
-        foreach (var key in sections.KnownSections)
+        foreach (var key in sections.KnownSections.Where(key => !switchedOff.Contains(key)))
         {
             var body = await sections.ReadAsync(key, cancellationToken);
             if (body is null)
