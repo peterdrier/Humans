@@ -162,7 +162,7 @@ internal sealed class AuditLogService(
             a.SubjectType,
             OccurredAt = a.OccurredAt.ToIso8601(),
             Role = a.ActorUserId is { } actor && allIds.Contains(actor) ? "Actor"
-                : string.Equals(a.SubjectType, AuditSubjectTypes.User, StringComparison.Ordinal) && allIds.Contains(a.SubjectId) ? "Subject"
+                : allIds.Contains(a.SubjectId) ? "Subject"
                 : "Target"
         }).ToList();
 
