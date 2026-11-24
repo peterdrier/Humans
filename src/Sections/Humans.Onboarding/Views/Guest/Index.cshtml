@@ -6,7 +6,7 @@
     {
         userId = Model.UserId,
     });
-    using var viewerWriter = new System.IO.StringWriter();
+    using var viewerWriter = new StringWriter();
     viewer.WriteTo(viewerWriter, System.Text.Encodings.Web.HtmlEncoder.Default);
     var viewerHtml = new Microsoft.AspNetCore.Html.HtmlString(viewerWriter.ToString().Trim());
 }

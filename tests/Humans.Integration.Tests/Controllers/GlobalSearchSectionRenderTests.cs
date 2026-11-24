@@ -4,7 +4,6 @@ using Humans.Camps.Contracts;
 using Humans.Camps.Data;
 using Humans.Camps.Domain;
 using Humans.Camps.Services;
-using Humans.Events.Contracts;
 using Humans.Events.Data;
 using Humans.Events.Domain;
 using Humans.Events.Services;

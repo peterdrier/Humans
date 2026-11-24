@@ -1,7 +1,6 @@
 using Humans.Roles.Contracts;
 using Humans.Base.Interfaces;
 using AwesomeAssertions;
-using Humans.Base.Interfaces.Caching;
 using Humans.Auth.Contracts;
 using Humans.Auth.Data;
 using Humans.Auth.Domain;
@@ -12,7 +11,6 @@ using Humans.Email.Contracts;
 using Humans.Google.Contracts;
 using Humans.Google.Data;
 using Humans.Google.Services;
-using Humans.Settings.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Teams.Data;
 using Humans.Teams.Domain;

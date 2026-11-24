@@ -1,5 +1,4 @@
 using System.Security.Claims;
-using Humans.Consent;
 using Humans.Consent.Contracts;
 using Humans.Onboarding.Services;
 using Humans.Users.Contracts;
@@ -12,7 +11,6 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.Extensions.Localization;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NSubstitute;
@@ -52,7 +50,7 @@ public class OnboardingWidgetControllerConsentsTests
         // doesn't divert tests that exercise the consent flow itself.
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
             .Returns(isStub ? StubUserInfo(userId) : NonStubUserInfo(userId));
-        var ctrl = new OnboardingWidgetController(_userService, _state, _profileEditor, _signups, _shiftMgmt, _burnSettings, _onboardingService, _localizer, Microsoft.Extensions.Logging.Abstractions.NullLogger<OnboardingWidgetController>.Instance);
+        var ctrl = new OnboardingWidgetController(_userService, _state, _profileEditor, _signups, _shiftMgmt, _burnSettings, _onboardingService, _localizer, NullLogger<OnboardingWidgetController>.Instance);
         ctrl.ControllerContext = new ControllerContext
         {
             HttpContext = _http,

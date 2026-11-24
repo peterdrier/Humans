@@ -283,7 +283,7 @@ public class PersonSearchMatcherTests
 
         var match = PersonSearchMatcher.Match(human, "elsewhere", PersonSearchFields.Bio);
         match.Should().NotBeNull();
-        match!.Snippet.Should().Be("Elsewhere 2025");
+        match.Snippet.Should().Be("Elsewhere 2025");
     }
 
     [HumansFact]
@@ -323,7 +323,7 @@ public class PersonSearchMatcherTests
 
         var match = PersonSearchMatcher.Match(human, "handle", fields);
         match.Should().NotBeNull();
-        match!.Snippet.Should().Be("handle-first");
+        match.Snippet.Should().Be("handle-first");
     }
 
     [HumansFact]

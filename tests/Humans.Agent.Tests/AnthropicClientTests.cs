@@ -1,11 +1,11 @@
 using System.Net;
 using System.Text;
 using AwesomeAssertions;
-using global::Anthropic.Core;
+using Anthropic.Core;
 using Humans.Agent.Models;
 using Humans.Agent.Services.Anthropic;
 using Microsoft.Extensions.Logging.Abstractions;
-using ProviderClient = global::Anthropic.AnthropicClient;
+using ProviderClient = Anthropic.AnthropicClient;
 using ClientAdapter = Humans.Agent.Services.Anthropic.AnthropicClient;
 
 namespace Humans.Agent.Tests;
@@ -184,7 +184,7 @@ public sealed class AnthropicClientTests
         };
         using var http = new HttpClient(new FailedResponseHandler(failureKind, failure));
         var provider = new ProviderClient(new ClientOptions { ApiKey = "test-key", HttpClient = http, MaxRetries = 0 });
-        var logger = new Humans.Testing.CapturingLogger<ClientAdapter>();
+        var logger = new CapturingLogger<ClientAdapter>();
         var adapter = new ClientAdapter(provider, logger);
         var tokens = new List<AgentTurnToken>();
 
@@ -211,7 +211,7 @@ public sealed class AnthropicClientTests
         await cancellation.CancelAsync();
         using var http = new HttpClient(new StreamResponseHandler(""));
         var provider = new ProviderClient(new ClientOptions { ApiKey = "test-key", HttpClient = http, MaxRetries = 0 });
-        var logger = new Humans.Testing.CapturingLogger<ClientAdapter>();
+        var logger = new CapturingLogger<ClientAdapter>();
         var adapter = new ClientAdapter(provider, logger);
         var tokens = new List<AgentTurnToken>();
 

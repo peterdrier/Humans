@@ -9,7 +9,6 @@ using Humans.Calendar.Contracts;
 using Humans.Governance.Contracts;
 using Humans.Holded.Contracts;
 using Humans.Settings.Contracts;
-using Humans.Teams.Contracts;
 using Humans.Users.Contracts;
 using Humans.Workgroups.Domain;
 using Humans.Workgroups.Models;

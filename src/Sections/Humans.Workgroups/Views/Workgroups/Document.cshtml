@@ -10,10 +10,10 @@
     {
         userId = d.UpdatedByUserId ?? d.CreatedByUserId ?? Guid.Empty,
     });
-    using var editorWriter = new System.IO.StringWriter();
+    using var editorWriter = new StringWriter();
     editor.WriteTo(editorWriter, System.Text.Encodings.Web.HtmlEncoder.Default);
     // Keep the component's template indentation out of localized sentence punctuation.
-    var editorHtml = new Microsoft.AspNetCore.Html.HtmlString(editorWriter.ToString().Trim());
+    var editorHtml = new HtmlString(editorWriter.ToString().Trim());
 }
 
 @section Crumbs {

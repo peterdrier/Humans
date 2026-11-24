@@ -9,7 +9,7 @@ namespace Humans.Expenses.Services;
 /// Callers authorize report mutations. Ordinary edits require Draft; explicit Finance-correction commands also
 /// accept Submitted and CoordinatorEndorsed. The actor identifies audit attribution, never permission.
 /// </summary>
-internal interface IExpenseReportManagement : IExpenseReportService, IApplicationService
+internal interface IExpenseReportManagement : IExpenseReportService
 {
     Task<IReadOnlyList<ExpenseReportDto>> GetForSubmitterAsync(
         Guid submitterUserId, CancellationToken ct = default);

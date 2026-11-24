@@ -3,7 +3,6 @@ using Humans.Holded.Contracts;
 using Humans.Holded.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace Humans.Holded.Jobs;

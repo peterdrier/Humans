@@ -1,6 +1,4 @@
 using AwesomeAssertions;
-using Humans.Base.Interfaces.Caching;
-using Humans.EarlyEntry.Contracts;
 using Humans.Settings.Contracts;
 using Humans.Base.Enums;
 using Microsoft.EntityFrameworkCore;
@@ -9,7 +7,6 @@ using NodaTime;
 using NSubstitute;
 using Humans.Tickets.Contracts;
 using Humans.Users.Contracts;
-using Humans.AuditLog.Contracts;
 
 using Humans.Teams.Contracts;
 

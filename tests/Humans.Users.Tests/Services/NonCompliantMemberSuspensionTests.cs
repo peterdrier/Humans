@@ -10,8 +10,6 @@ using Humans.Users.Jobs;
 using Humans.AuditLog.Contracts;
 using Humans.Email.Contracts;
 using Humans.Notifications.Contracts;
-using Humans.Governance.Contracts;
-using Humans.Shifts.Contracts;
 using Humans.Users.Contracts;
 using Humans.Users.Services;
 using Humans.Users.Tests.Infrastructure;

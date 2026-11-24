@@ -1,4 +1,3 @@
-using Humans.Shifts.Tests.Infrastructure;
 using Xunit;
 using System.Security.Claims;
 using System.Globalization;
@@ -6,7 +5,6 @@ using Humans.Base.Constants;
 using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
 using Humans.Shifts.Services;
-using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Shifts.Controllers;
 using Humans.Shifts.Models;
@@ -152,11 +150,11 @@ public sealed class ShiftsControllerSettingsTests
     }
 
     [HumansTheory]
-    [Xunit.InlineData("IsShiftBrowsingOpen", false)]
-    [Xunit.InlineData("FirstCrewStartOffset", false)]
-    [Xunit.InlineData("FinishingWeekendStartOffset", false)]
-    [Xunit.InlineData("", false)]
-    [Xunit.InlineData("", true)]
+    [InlineData("IsShiftBrowsingOpen", false)]
+    [InlineData("FirstCrewStartOffset", false)]
+    [InlineData("FinishingWeekendStartOffset", false)]
+    [InlineData("", false)]
+    [InlineData("", true)]
     public async Task Settings_require_posted_browsing_and_sub_period_choices(string omitted, bool clear)
     {
         _burnSettings.GetActiveAsync().Returns(ActiveEvent);

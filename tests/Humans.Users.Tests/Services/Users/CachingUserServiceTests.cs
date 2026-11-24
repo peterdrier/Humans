@@ -12,8 +12,6 @@ using Humans.Users.Contracts;
 using Humans.Users.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
-using Humans.Users.Data.Repositories;
-using Humans.Users.Tests.Infrastructure;
 
 namespace Humans.Users.Tests.Services.Users;
 
@@ -22,7 +20,7 @@ public class CachingUserServiceTests
     [HumansFact]
     public async Task DelayedEmailRefresh_DoesNotRestoreAnOlderAccountState()
     {
-        var ct = Xunit.TestContext.Current.CancellationToken;
+        var ct = TestContext.Current.CancellationToken;
         var userId = Guid.NewGuid();
         var before = SampleUserInfo(userId) with { State = UserState.Active };
         var current = before with { State = UserState.DeletePending };
@@ -32,7 +30,7 @@ public class CachingUserServiceTests
         _inner.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(new ValueTask<UserInfo?>(pending.Task));
         var oldRefresh = sut.RefreshUserEmailsAsync(userId, ct);
         _inner.GetUserInfoAsync(userId, Arg.Any<CancellationToken>()).Returns(new ValueTask<UserInfo?>(current));
-        _inner.GetAllUserInfosAsync(Arg.Any<CancellationToken>()).Returns((IReadOnlyCollection<UserInfo>)[current]);
+        _inner.GetAllUserInfosAsync(Arg.Any<CancellationToken>()).Returns([current]);
         await sut.RefreshAsync(userId, ct);
         pending.SetResult(before);
         await oldRefresh;
@@ -46,7 +44,7 @@ public class CachingUserServiceTests
     [InlineData(true)]
     public async Task OnDemandWarm_DoesNotRestoreAnOlderAccountSnapshot(bool deleted)
     {
-        var ct = Xunit.TestContext.Current.CancellationToken;
+        var ct = TestContext.Current.CancellationToken;
         var userId = Guid.NewGuid();
         var before = SampleUserInfo(userId) with { State = UserState.Active };
         var current = before with { State = UserState.Suspended };
@@ -90,7 +88,7 @@ public class CachingUserServiceTests
     [InlineData("Reassign")]
     public async Task Mutation_UnknownCompletion_DropsAllPotentiallyChangedUsers(string operation)
     {
-        var ct = Xunit.TestContext.Current.CancellationToken;
+        var ct = TestContext.Current.CancellationToken;
         var userId = Guid.NewGuid();
         var otherId = Guid.NewGuid();
         IReadOnlyCollection<Guid> affectedIds = [userId, otherId];
@@ -98,7 +96,7 @@ public class CachingUserServiceTests
         var after = new[] { SampleUserInfo(userId, "After"), SampleUserInfo(otherId, "Other after") };
         var committed = false;
         _inner.GetAllUserInfosAsync(Arg.Any<CancellationToken>())
-            .Returns(_ => (IReadOnlyCollection<UserInfo>)(committed ? after : before));
+            .Returns(_ => committed ? after : before);
         var sut = CreateSut();
         (await sut.GetUserInfoAsync(userId, ct))!.BurnerName.Should().Be("Before");
         var failure = new IOException("Write acknowledgement failed");
@@ -142,13 +140,13 @@ public class CachingUserServiceTests
     [InlineData(true)]
     public async Task RecordLogin_TrackingFailure_DoesNotBlockSignIn_AndEvictsUncertainSnapshot(bool refreshFailure)
     {
-        var ct = Xunit.TestContext.Current.CancellationToken;
+        var ct = TestContext.Current.CancellationToken;
         var userId = Guid.NewGuid();
         var before = SampleUserInfo(userId, "Before");
         var after = SampleUserInfo(userId, "After");
         var committed = false;
         _inner.GetAllUserInfosAsync(Arg.Any<CancellationToken>())
-            .Returns(_ => (IReadOnlyCollection<UserInfo>)[committed ? after : before]);
+            .Returns(_ => [committed ? after : before]);
         var sut = CreateSut();
         (await sut.GetUserInfoAsync(userId, ct))!.BurnerName.Should().Be("Before");
         var failure = new IOException("Login tracking unavailable");
@@ -184,7 +182,7 @@ public class CachingUserServiceTests
     [HumansFact]
     public async Task SuspendProfiles_RefreshFailure_DoesNotLeaveOtherChangedUsersStale()
     {
-        var ct = Xunit.TestContext.Current.CancellationToken;
+        var ct = TestContext.Current.CancellationToken;
         var first = Guid.NewGuid();
         var second = Guid.NewGuid();
         IReadOnlyCollection<UserInfo> stored = [SampleUserInfo(first, "Before"), SampleUserInfo(second, "Other before")];
@@ -195,7 +193,7 @@ public class CachingUserServiceTests
             .Returns(_ =>
             {
                 stored = [SampleUserInfo(first, "After"), SampleUserInfo(second, "Other after")];
-                return (IReadOnlySet<Guid>)new HashSet<Guid> { first, second };
+                return new HashSet<Guid> { first, second };
             });
         var failure = new IOException("Refresh read failed");
         _inner.GetUserInfoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
@@ -245,11 +243,11 @@ public class CachingUserServiceTests
     };
 
     [HumansTheory]
-    [Xunit.InlineData(true)]
-    [Xunit.InlineData(false)]
+    [InlineData(true)]
+    [InlineData(false)]
     public async Task CommittedUserStateWrite_RefreshesWarmCacheAndPreservesRelatedSlices(bool suspend)
     {
-        var ct = Xunit.TestContext.Current.CancellationToken;
+        var ct = TestContext.Current.CancellationToken;
         var user = SampleUser();
         user.BurnerName = "Before";
         user.FirstName = "Legal";
@@ -299,7 +297,7 @@ public class CachingUserServiceTests
     {
         // UserManager.CreateAsync (dev personas, the gate-terminal account) lands through
         // the interceptor; no caller has to signal the new row.
-        var ct = Xunit.TestContext.Current.CancellationToken;
+        var ct = TestContext.Current.CancellationToken;
         _inner.GetAllUserInfosAsync(Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyCollection<UserInfo>>([]));
         var cached = CreateSut();
@@ -329,7 +327,7 @@ public class CachingUserServiceTests
     {
         var userId = Guid.NewGuid();
         var actorId = Guid.NewGuid();
-        var ct = Xunit.TestContext.Current.CancellationToken;
+        var ct = TestContext.Current.CancellationToken;
         var sut = CreateSut();
         await PrimeAsync(sut, SampleUserInfo(userId) with { Profile = null });
         _inner.EnsureStubProfileAsync(userId, null, null, null, ct, actorId).Returns(true);
@@ -343,12 +341,12 @@ public class CachingUserServiceTests
     }
 
     [HumansTheory]
-    [Xunit.InlineData("add")]
-    [Xunit.InlineData("update")]
-    [Xunit.InlineData("remove")]
+    [InlineData("add")]
+    [InlineData("update")]
+    [InlineData("remove")]
     public async Task CommittedEmailWrite_FinishesCacheRefreshDespiteRequestCancellation(string operation)
     {
-        var testCt = Xunit.TestContext.Current.CancellationToken;
+        var testCt = TestContext.Current.CancellationToken;
         var userId = Guid.NewGuid();
         var now = Instant.FromUtc(2026, 1, 1, 0, 0);
         var email = new UserEmailInfo(Guid.NewGuid(), "member@example.com", false, false,
@@ -420,11 +418,11 @@ public class CachingUserServiceTests
 
         var sut = CreateSut();
 
-        var first = await sut.GetUserInfoAsync(userId, Xunit.TestContext.Current.CancellationToken);
+        var first = await sut.GetUserInfoAsync(userId, TestContext.Current.CancellationToken);
         first.Should().BeSameAs(info);
         await _inner.Received(1).GetUserInfoAsync(userId, Arg.Any<CancellationToken>());
 
-        var second = await sut.GetUserInfoAsync(userId, Xunit.TestContext.Current.CancellationToken);
+        var second = await sut.GetUserInfoAsync(userId, TestContext.Current.CancellationToken);
         second.Should().BeSameAs(info);
         // Second call should still be once — dict hit.
         await _inner.Received(1).GetUserInfoAsync(userId, Arg.Any<CancellationToken>());
@@ -439,8 +437,8 @@ public class CachingUserServiceTests
 
         var sut = CreateSut();
 
-        (await sut.GetUserInfoAsync(userId, Xunit.TestContext.Current.CancellationToken)).Should().BeNull();
-        (await sut.GetUserInfoAsync(userId, Xunit.TestContext.Current.CancellationToken)).Should().BeNull();
+        (await sut.GetUserInfoAsync(userId, TestContext.Current.CancellationToken)).Should().BeNull();
+        (await sut.GetUserInfoAsync(userId, TestContext.Current.CancellationToken)).Should().BeNull();
 
         await _inner.Received(2).GetUserInfoAsync(userId, Arg.Any<CancellationToken>());
     }
@@ -453,16 +451,16 @@ public class CachingUserServiceTests
             .Returns(new ValueTask<UserInfo?>(SampleUserInfo(userId)));
 
         var sut = CreateSut();
-        await sut.GetUserInfoAsync(userId, Xunit.TestContext.Current.CancellationToken); // prime
+        await sut.GetUserInfoAsync(userId, TestContext.Current.CancellationToken); // prime
 
         // User has been deleted in the source; inner now returns null.
         _inner.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>((UserInfo?)null));
 
-        await sut.RefreshAsync(userId, Xunit.TestContext.Current.CancellationToken);
+        await sut.RefreshAsync(userId, TestContext.Current.CancellationToken);
 
         // Entry should be tombstoned by ReplaceAsync's null-load path.
-        (await sut.GetUserInfoAsync(userId, Xunit.TestContext.Current.CancellationToken)).Should().BeNull();
+        (await sut.GetUserInfoAsync(userId, TestContext.Current.CancellationToken)).Should().BeNull();
     }
 
     [HumansFact]
@@ -477,15 +475,15 @@ public class CachingUserServiceTests
             .Returns(new ValueTask<UserInfo?>(stale));
 
         var sut = CreateSut();
-        await sut.GetUserInfoAsync(userId, Xunit.TestContext.Current.CancellationToken);
+        await sut.GetUserInfoAsync(userId, TestContext.Current.CancellationToken);
 
         // Source row updated: inner now returns the fresh UserInfo.
         _inner.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(fresh));
 
-        await sut.RefreshAsync(userId, Xunit.TestContext.Current.CancellationToken);
+        await sut.RefreshAsync(userId, TestContext.Current.CancellationToken);
 
-        var hit = await sut.GetUserInfoAsync(userId, Xunit.TestContext.Current.CancellationToken);
+        var hit = await sut.GetUserInfoAsync(userId, TestContext.Current.CancellationToken);
         hit!.BurnerName.Should().Be("After");
     }
 
@@ -518,10 +516,10 @@ public class CachingUserServiceTests
         var sut = CreateSut();
 
         // Prime once so subsequent reads hit the dict.
-        await sut.GetUserInfoAsync(userId, Xunit.TestContext.Current.CancellationToken);
+        await sut.GetUserInfoAsync(userId, TestContext.Current.CancellationToken);
 
         var tasks = Enumerable.Range(0, 32)
-            .Select(_ => Task.Run(async () => await sut.GetUserInfoAsync(userId, Xunit.TestContext.Current.CancellationToken)))
+            .Select(_ => Task.Run(async () => await sut.GetUserInfoAsync(userId, TestContext.Current.CancellationToken)))
             .ToArray();
         var results = await Task.WhenAll(tasks);
 
@@ -541,12 +539,12 @@ public class CachingUserServiceTests
             .Returns([SampleUserInfo(userA.Id), SampleUserInfo(userB.Id)]);
 
         var sut = CreateSut();
-        await ((IHostedService)sut).StartAsync(Xunit.TestContext.Current.CancellationToken);
+        await ((IHostedService)sut).StartAsync(TestContext.Current.CancellationToken);
 
         await _inner.Received(1).GetAllUserInfosAsync(Arg.Any<CancellationToken>());
 
-        var hitA = await sut.GetUserInfoAsync(userA.Id, Xunit.TestContext.Current.CancellationToken);
-        var hitB = await sut.GetUserInfoAsync(userB.Id, Xunit.TestContext.Current.CancellationToken);
+        var hitA = await sut.GetUserInfoAsync(userA.Id, TestContext.Current.CancellationToken);
+        var hitB = await sut.GetUserInfoAsync(userB.Id, TestContext.Current.CancellationToken);
 
         hitA.Should().NotBeNull();
         hitB.Should().NotBeNull();
@@ -564,12 +562,12 @@ public class CachingUserServiceTests
         var sut = CreateSut();
 
         // No StartAsync — cache is cold. The first load-all read drives warmup.
-        var all = await sut.GetAllUserInfosAsync(Xunit.TestContext.Current.CancellationToken);
+        var all = await sut.GetAllUserInfosAsync(TestContext.Current.CancellationToken);
         all.Should().HaveCount(2);
 
         // Subsequent load-all reads do not re-drive warmup.
         await _inner.Received(1).GetAllUserInfosAsync(Arg.Any<CancellationToken>());
-        var again = await sut.GetAllUserInfosAsync(Xunit.TestContext.Current.CancellationToken);
+        var again = await sut.GetAllUserInfosAsync(TestContext.Current.CancellationToken);
         again.Should().HaveCount(2);
         await _inner.Received(1).GetAllUserInfosAsync(Arg.Any<CancellationToken>());
     }
@@ -590,7 +588,7 @@ public class CachingUserServiceTests
         var sut = CreateSut();
 
         // Cold cache — no StartAsync. First call must warm in bulk, not per-id.
-        var result = await sut.GetUserInfosAsync([userA.Id, userB.Id, userC.Id], Xunit.TestContext.Current.CancellationToken);
+        var result = await sut.GetUserInfosAsync([userA.Id, userB.Id, userC.Id], TestContext.Current.CancellationToken);
 
         result.Should().HaveCount(3);
 
@@ -612,7 +610,7 @@ public class CachingUserServiceTests
         var sut = CreateSut();
 
         // Cache is cold — GetUserInfoAsync lazy-fills, no warmup gate.
-        var first = await sut.GetUserInfoAsync(userId, Xunit.TestContext.Current.CancellationToken);
+        var first = await sut.GetUserInfoAsync(userId, TestContext.Current.CancellationToken);
         first.Should().BeSameAs(info);
     }
 
@@ -696,7 +694,7 @@ public class CachingUserServiceTests
             .Returns(new ValueTask<UserInfo?>(fullInfo));
 
         var sut = CreateSut();
-        var result = await sut.GetUserInfoAsync(userId, Xunit.TestContext.Current.CancellationToken);
+        var result = await sut.GetUserInfoAsync(userId, TestContext.Current.CancellationToken);
 
         result.Should().NotBeNull();
         result.Id.Should().Be(userId);
@@ -746,11 +744,11 @@ public class CachingUserServiceTests
             .Returns([info]);
 
         var sut = CreateSut();
-        await ((IHostedService)sut).StartAsync(Xunit.TestContext.Current.CancellationToken);
+        await ((IHostedService)sut).StartAsync(TestContext.Current.CancellationToken);
         _inner.ClearReceivedCalls();
 
         // Warm-cache call should be served from the dict, never delegate.
-        var result = await sut.GetUserInfosAsync([userId], Xunit.TestContext.Current.CancellationToken);
+        var result = await sut.GetUserInfosAsync([userId], TestContext.Current.CancellationToken);
 
         result.Should().ContainKey(userId);
         result[userId].BurnerName.Should().Be("Cached");
@@ -762,7 +760,7 @@ public class CachingUserServiceTests
     [HumansFact]
     public async Task GetUserInfosAsync_DelayedMiss_DoesNotReplaceARefreshedUser()
     {
-        var ct = Xunit.TestContext.Current.CancellationToken;
+        var ct = TestContext.Current.CancellationToken;
         var userId = Guid.NewGuid();
         var pending = new TaskCompletionSource<UserInfo?>(TaskCreationOptions.RunContinuationsAsynchronously);
         _inner.GetAllUserInfosAsync(ct).Returns([]);
@@ -795,10 +793,10 @@ public class CachingUserServiceTests
             .Returns(new ValueTask<UserInfo?>(missInfo));
 
         var sut = CreateSut();
-        await ((IHostedService)sut).StartAsync(Xunit.TestContext.Current.CancellationToken); // warm — primes the hit.
+        await ((IHostedService)sut).StartAsync(TestContext.Current.CancellationToken); // warm — primes the hit.
         _inner.ClearReceivedCalls();
 
-        var result = await sut.GetUserInfosAsync([hitId, missId], Xunit.TestContext.Current.CancellationToken);
+        var result = await sut.GetUserInfosAsync([hitId, missId], TestContext.Current.CancellationToken);
 
         result.Should().HaveCount(2);
         result[hitId].BurnerName.Should().Be("Cached");
@@ -894,7 +892,7 @@ public class CachingUserServiceTests
     {
         _inner.GetUserInfoAsync(info.Id, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(info));
-        await sut.GetUserInfoAsync(info.Id, Xunit.TestContext.Current.CancellationToken);
+        await sut.GetUserInfoAsync(info.Id, TestContext.Current.CancellationToken);
         // SearchUsersAsync / GetAllUserInfos / GetAllParticipationsForYearAsync gate on
         // IsWarmedUp — these search tests seed a single entry directly via
         // GetUserInfoAsync instead of driving a full WarmAllAsync, so flip the flag
@@ -909,7 +907,7 @@ public class CachingUserServiceTests
         var sut = CreateSut();
         await PrimeAsync(sut, BuildSearchableUserInfo(userId, burnerName: "Burner Bob"));
 
-        var results = await sut.SearchUsersAsync("Burner", PersonSearchFields.PublicAll, ct: Xunit.TestContext.Current.CancellationToken);
+        var results = await sut.SearchUsersAsync("Burner", PersonSearchFields.PublicAll, ct: TestContext.Current.CancellationToken);
 
         results.Should().HaveCount(1);
         results[0].UserId.Should().Be(userId);
@@ -932,7 +930,7 @@ public class CachingUserServiceTests
             await PrimeAsync(sut, BuildSearchableUserInfo(id, burnerName: id == exactId ? "Ian" : "Brian"));
 
         var results = await sut.SearchUsersAsync("Ian", PersonSearchFields.PublicAll, limit: 1,
-            ct: Xunit.TestContext.Current.CancellationToken);
+            ct: TestContext.Current.CancellationToken);
 
         results.Should().ContainSingle().Which.UserId.Should().Be(exactId);
     }
@@ -946,7 +944,7 @@ public class CachingUserServiceTests
         await PrimeAsync(sut, BuildSearchableUserInfo(Guid.NewGuid(), burnerName: "Ian"));
         await PrimeAsync(sut, BuildSearchableUserInfo(Guid.NewGuid(), burnerName: "Brian"));
 
-        var results = await sut.SearchUsersAsync("Ian", PersonSearchFields.PublicAll, ct: Xunit.TestContext.Current.CancellationToken);
+        var results = await sut.SearchUsersAsync("Ian", PersonSearchFields.PublicAll, ct: TestContext.Current.CancellationToken);
 
         results.Should().HaveCount(2);
         results.Single(r => string.Equals(r.BurnerName, "Ian", StringComparison.Ordinal)).Score
@@ -960,7 +958,7 @@ public class CachingUserServiceTests
         var sut = CreateSut();
         await PrimeAsync(sut, BuildSearchableUserInfo(Guid.NewGuid(), city: "Barcelona"));
 
-        var results = await sut.SearchUsersAsync("Barcelona", PersonSearchFields.PublicAll, ct: Xunit.TestContext.Current.CancellationToken);
+        var results = await sut.SearchUsersAsync("Barcelona", PersonSearchFields.PublicAll, ct: TestContext.Current.CancellationToken);
 
         results.Should().HaveCount(1);
         results[0].MatchField.Should().Be("City");
@@ -972,7 +970,7 @@ public class CachingUserServiceTests
         var sut = CreateSut();
         await PrimeAsync(sut, BuildSearchableUserInfo(Guid.NewGuid(), bio: "I love fire dancing and community building"));
 
-        var results = await sut.SearchUsersAsync("fire dancing", PersonSearchFields.PublicAll, ct: Xunit.TestContext.Current.CancellationToken);
+        var results = await sut.SearchUsersAsync("fire dancing", PersonSearchFields.PublicAll, ct: TestContext.Current.CancellationToken);
 
         results.Should().HaveCount(1);
         results[0].MatchField.Should().Be("Bio");
@@ -984,7 +982,7 @@ public class CachingUserServiceTests
         var sut = CreateSut();
         await PrimeAsync(sut, BuildSearchableUserInfo(Guid.NewGuid(), city: "Madrid", isSuspended: true));
 
-        var results = await sut.SearchUsersAsync("Madrid", PersonSearchFields.PublicAll, ct: Xunit.TestContext.Current.CancellationToken);
+        var results = await sut.SearchUsersAsync("Madrid", PersonSearchFields.PublicAll, ct: TestContext.Current.CancellationToken);
 
         results.Should().HaveCount(1);
     }
@@ -995,7 +993,7 @@ public class CachingUserServiceTests
         var sut = CreateSut();
         await PrimeAsync(sut, BuildSearchableUserInfo(Guid.NewGuid(), city: "Madrid", isRejected: true));
 
-        var results = await sut.SearchUsersAsync("Madrid", PersonSearchFields.PublicAll, ct: Xunit.TestContext.Current.CancellationToken);
+        var results = await sut.SearchUsersAsync("Madrid", PersonSearchFields.PublicAll, ct: TestContext.Current.CancellationToken);
 
         results.Should().BeEmpty();
     }
@@ -1006,7 +1004,7 @@ public class CachingUserServiceTests
         var sut = CreateSut();
         await PrimeAsync(sut, BuildSearchableUserInfo(Guid.NewGuid(), burnerName: "Match"));
 
-        var results = await sut.SearchUsersAsync("Match", PersonSearchFields.None, ct: Xunit.TestContext.Current.CancellationToken);
+        var results = await sut.SearchUsersAsync("Match", PersonSearchFields.None, ct: TestContext.Current.CancellationToken);
 
         results.Should().BeEmpty();
     }
@@ -1017,7 +1015,7 @@ public class CachingUserServiceTests
         var sut = CreateSut();
         await PrimeAsync(sut, BuildSearchableUserInfo(Guid.NewGuid(), burnerName: "Alice"));
 
-        var results = await sut.SearchUsersAsync("zzzznonexistent", PersonSearchFields.PublicAll, ct: Xunit.TestContext.Current.CancellationToken);
+        var results = await sut.SearchUsersAsync("zzzznonexistent", PersonSearchFields.PublicAll, ct: TestContext.Current.CancellationToken);
 
         results.Should().BeEmpty();
     }
@@ -1028,7 +1026,7 @@ public class CachingUserServiceTests
         var sut = CreateSut();
         await PrimeAsync(sut, BuildSearchableUserInfo(Guid.NewGuid(), city: "Madrid", isSuspended: true));
 
-        var results = await sut.SearchUsersAsync("Madrid", PersonSearchFields.AdminAll, ct: Xunit.TestContext.Current.CancellationToken);
+        var results = await sut.SearchUsersAsync("Madrid", PersonSearchFields.AdminAll, ct: TestContext.Current.CancellationToken);
 
         results.Should().HaveCount(1);
     }
@@ -1041,7 +1039,7 @@ public class CachingUserServiceTests
         var sut = CreateSut();
         await PrimeAsync(sut, BuildSearchableUserInfo(userId, burnerName: "Alice"));
 
-        var results = await sut.SearchUsersAsync(userId.ToString(), PersonSearchFields.AdminAll, ct: Xunit.TestContext.Current.CancellationToken);
+        var results = await sut.SearchUsersAsync(userId.ToString(), PersonSearchFields.AdminAll, ct: TestContext.Current.CancellationToken);
 
         results.Should().HaveCount(1);
         results[0].UserId.Should().Be(userId);
@@ -1055,7 +1053,7 @@ public class CachingUserServiceTests
         var sut = CreateSut();
         await PrimeAsync(sut, BuildSearchableUserInfo(userId, burnerName: "Alice"));
 
-        var results = await sut.SearchUsersAsync(userId.ToString(), PersonSearchFields.PublicAll, ct: Xunit.TestContext.Current.CancellationToken);
+        var results = await sut.SearchUsersAsync(userId.ToString(), PersonSearchFields.PublicAll, ct: TestContext.Current.CancellationToken);
 
         results.Should().HaveCount(1);
         results[0].UserId.Should().Be(userId);
@@ -1071,7 +1069,7 @@ public class CachingUserServiceTests
         var sut = CreateSut();
         await PrimeAsync(sut, BuildSearchableUserInfo(userId, burnerName: "Alice", isRejected: true));
 
-        var results = await sut.SearchUsersAsync(userId.ToString(), PersonSearchFields.PublicAll, ct: Xunit.TestContext.Current.CancellationToken);
+        var results = await sut.SearchUsersAsync(userId.ToString(), PersonSearchFields.PublicAll, ct: TestContext.Current.CancellationToken);
 
         results.Should().BeEmpty();
     }
@@ -1083,7 +1081,7 @@ public class CachingUserServiceTests
         var sut = CreateSut();
         await PrimeAsync(sut, BuildSearchableUserInfo(userId, burnerName: "Alice", hasProfile: false));
 
-        var results = await sut.SearchUsersAsync(userId.ToString(), PersonSearchFields.PublicAll, ct: Xunit.TestContext.Current.CancellationToken);
+        var results = await sut.SearchUsersAsync(userId.ToString(), PersonSearchFields.PublicAll, ct: TestContext.Current.CancellationToken);
 
         results.Should().BeEmpty();
     }
@@ -1097,7 +1095,7 @@ public class CachingUserServiceTests
         var sut = CreateSut();
         await PrimeAsync(sut, BuildSearchableUserInfo(userId, burnerName: "Alice"));
 
-        var results = await sut.SearchUsersAsync(userId.ToString(), PersonSearchFields.ExactName, ct: Xunit.TestContext.Current.CancellationToken);
+        var results = await sut.SearchUsersAsync(userId.ToString(), PersonSearchFields.ExactName, ct: TestContext.Current.CancellationToken);
 
         results.Should().BeEmpty();
     }
@@ -1112,7 +1110,7 @@ public class CachingUserServiceTests
         var sut = CreateSut();
         await PrimeAsync(sut, BuildSearchableUserInfo(userId, burnerName: burner));
 
-        var results = await sut.SearchUsersAsync(burner, PersonSearchFields.ExactName, ct: Xunit.TestContext.Current.CancellationToken);
+        var results = await sut.SearchUsersAsync(burner, PersonSearchFields.ExactName, ct: TestContext.Current.CancellationToken);
 
         results.Should().ContainSingle();
         results[0].UserId.Should().Be(userId);
@@ -1125,7 +1123,7 @@ public class CachingUserServiceTests
         var sut = CreateSut();
         await PrimeAsync(sut, BuildSearchableUserInfo(Guid.NewGuid(), burnerName: "Alice"));
 
-        var results = await sut.SearchUsersAsync(Guid.NewGuid().ToString(), PersonSearchFields.AdminAll, ct: Xunit.TestContext.Current.CancellationToken);
+        var results = await sut.SearchUsersAsync(Guid.NewGuid().ToString(), PersonSearchFields.AdminAll, ct: TestContext.Current.CancellationToken);
 
         results.Should().BeEmpty();
     }
@@ -1139,7 +1137,7 @@ public class CachingUserServiceTests
             burnerName: "Alice",
             emails: [("alice@example.com", true, true)]));
 
-        var results = await sut.SearchUsersAsync("alice@example.com", PersonSearchFields.AdminAll, ct: Xunit.TestContext.Current.CancellationToken);
+        var results = await sut.SearchUsersAsync("alice@example.com", PersonSearchFields.AdminAll, ct: TestContext.Current.CancellationToken);
 
         results.Should().HaveCount(1);
         results[0].MatchField.Should().Be("Email");
@@ -1237,11 +1235,11 @@ public class CachingUserServiceTests
                 EmergencyContactRelationship: null,
                 NoPriorBurnExperience: false,
                 PictureMutation: UserProfilePictureMutation.Set,
-                ProfilePictureContentType: "image/png"), pictureData, Xunit.TestContext.Current.CancellationToken);
+                ProfilePictureContentType: "image/png"), pictureData, TestContext.Current.CancellationToken);
 
         await _inner.Received(1).SaveProfileAsync(
             userId, Arg.Any<UserProfileSaveCommand>(), pictureData, Arg.Any<CancellationToken>());
-        var refreshed = await sut.GetUserInfoAsync(userId, Xunit.TestContext.Current.CancellationToken);
+        var refreshed = await sut.GetUserInfoAsync(userId, TestContext.Current.CancellationToken);
         refreshed.Should().NotBeNull();
         refreshed.BurnerName.Should().Be("New Burner");
         refreshed.Profile.Should().NotBeNull();
@@ -1249,14 +1247,14 @@ public class CachingUserServiceTests
     }
 
     [HumansTheory]
-    [Xunit.InlineData(UserState.Rejected)]
-    [Xunit.InlineData(UserState.Suspended)]
+    [InlineData(UserState.Rejected)]
+    [InlineData(UserState.Suspended)]
     public async Task StateTransitions_RefreshEntry(UserState newState)
     {
         var userId = Guid.NewGuid();
         var sut = CreateSut();
         await PrimeAsync(sut, SampleUserInfo(userId));
-        var ct = Xunit.TestContext.Current.CancellationToken;
+        var ct = TestContext.Current.CancellationToken;
 
         _inner.SetRejectedAsync(userId, Arg.Any<CancellationToken>()).Returns(new OnboardingResult(true));
         _inner.SetSuspensionAsync(userId, true, false, Arg.Any<CancellationToken>()).Returns(new OnboardingResult(true));
@@ -1305,11 +1303,11 @@ public class CachingUserServiceTests
             userId,
             [
                 new ProfileLanguageInfo(Guid.NewGuid(), "es", LanguageProficiency.Native),
-            ], Xunit.TestContext.Current.CancellationToken);
+            ], TestContext.Current.CancellationToken);
 
         result.Saved.Should().BeTrue();
         result.UserId.Should().Be(userId);
-        var refreshed = await sut.GetUserInfoAsync(userId, Xunit.TestContext.Current.CancellationToken);
+        var refreshed = await sut.GetUserInfoAsync(userId, TestContext.Current.CancellationToken);
         refreshed!.Profile.Should().NotBeNull();
         refreshed.Profile!.Languages.Should().ContainSingle(l =>
             l.LanguageCode == "es" && l.Proficiency == LanguageProficiency.Native);
@@ -1347,10 +1345,10 @@ public class CachingUserServiceTests
         _inner.SaveProfileAsync(userId, command, null, Arg.Any<CancellationToken>(), entries)
             .Returns(new UserProfileSaveResult(null, null));
 
-        await sut.SaveProfileAsync(userId, command, ct: Xunit.TestContext.Current.CancellationToken, volunteerHistory: entries);
+        await sut.SaveProfileAsync(userId, command, ct: TestContext.Current.CancellationToken, volunteerHistory: entries);
 
         await _inner.Received(1).SaveProfileAsync(userId, command, null, Arg.Any<CancellationToken>(), entries);
-        var refreshed = await sut.GetUserInfoAsync(userId, Xunit.TestContext.Current.CancellationToken);
+        var refreshed = await sut.GetUserInfoAsync(userId, TestContext.Current.CancellationToken);
         refreshed!.Profile.Should().NotBeNull();
         refreshed.Profile!.VolunteerHistory.Should().ContainSingle(v =>
             v.EventName == "Nowhere 2025" && v.Description == "Sound crew");
@@ -1380,10 +1378,10 @@ public class CachingUserServiceTests
 
         await sut.ApplyUserEmailReconcilePlanAsync(
             signingUserId,
-            new UserEmailReconcilePlanCommand(null, null, null), Xunit.TestContext.Current.CancellationToken);
+            new UserEmailReconcilePlanCommand(null, null, null), TestContext.Current.CancellationToken);
 
-        var signing = await sut.GetUserInfoAsync(signingUserId, Xunit.TestContext.Current.CancellationToken);
-        var displaced = await sut.GetUserInfoAsync(displacedUserId, Xunit.TestContext.Current.CancellationToken);
+        var signing = await sut.GetUserInfoAsync(signingUserId, TestContext.Current.CancellationToken);
+        var displaced = await sut.GetUserInfoAsync(displacedUserId, TestContext.Current.CancellationToken);
 
         signing!.UserEmails.Should().ContainSingle(e => e.Email == "signing@example.com");
         displaced!.UserEmails.Should().ContainSingle(e => e.Email == "survivor@example.com");
@@ -1422,10 +1420,10 @@ public class CachingUserServiceTests
             UpdatedAt = updatedAt,
         }, burnerName: "Target Burner");
 
-        await sut.ReassignAsync(sourceUserId, targetUserId, Guid.NewGuid(), updatedAt, Xunit.TestContext.Current.CancellationToken);
+        await sut.ReassignAsync(sourceUserId, targetUserId, Guid.NewGuid(), updatedAt, TestContext.Current.CancellationToken);
 
-        var source = await sut.GetUserInfoAsync(sourceUserId, Xunit.TestContext.Current.CancellationToken);
-        var target = await sut.GetUserInfoAsync(targetUserId, Xunit.TestContext.Current.CancellationToken);
+        var source = await sut.GetUserInfoAsync(sourceUserId, TestContext.Current.CancellationToken);
+        var target = await sut.GetUserInfoAsync(targetUserId, TestContext.Current.CancellationToken);
         source!.Profile.Should().NotBeNull();
         source.FirstName.Should().Be("Merged");
         target!.Profile.Should().NotBeNull();
@@ -1480,7 +1478,7 @@ public class CachingUserServiceTests
         var (a, b, c, _) = SeedChain();
         var sut = CreateSut();
 
-        var survivor = await sut.GetRawUserInfoAsync(c, Xunit.TestContext.Current.CancellationToken);
+        var survivor = await sut.GetRawUserInfoAsync(c, TestContext.Current.CancellationToken);
 
         survivor!.MergedUserIds.Should().Equal(new[] { a, b }.Order());
     }
@@ -1491,7 +1489,7 @@ public class CachingUserServiceTests
         var (a, b, c, _) = SeedChain();
         var sut = CreateSut();
 
-        var midChain = await sut.GetRawUserInfoAsync(b, Xunit.TestContext.Current.CancellationToken);
+        var midChain = await sut.GetRawUserInfoAsync(b, TestContext.Current.CancellationToken);
 
         midChain!.MergedToUserId.Should().Be(c, "the raw read shows the row as stored");
         midChain.MergedUserIds.Should().Equal(a);
@@ -1503,7 +1501,7 @@ public class CachingUserServiceTests
         var (a, _, _, _) = SeedChain();
         var sut = CreateSut();
 
-        var head = await sut.GetRawUserInfoAsync(a, Xunit.TestContext.Current.CancellationToken);
+        var head = await sut.GetRawUserInfoAsync(a, TestContext.Current.CancellationToken);
 
         head!.MergedUserIds.Should().BeEmpty("nothing was merged into A");
     }
@@ -1514,7 +1512,7 @@ public class CachingUserServiceTests
         var (a, _, c, _) = SeedChain();
         var sut = CreateSut();
 
-        var resolved = await sut.GetUserInfoAsync(a, Xunit.TestContext.Current.CancellationToken);
+        var resolved = await sut.GetUserInfoAsync(a, TestContext.Current.CancellationToken);
 
         resolved!.Id.Should().Be(c, "outside Users a merge chain does not exist");
     }
@@ -1527,7 +1525,7 @@ public class CachingUserServiceTests
         var (a, b, c, _) = SeedChain();
         var sut = CreateSut();
 
-        var infos = await sut.GetUserInfosAsync([a, b, c], Xunit.TestContext.Current.CancellationToken);
+        var infos = await sut.GetUserInfosAsync([a, b, c], TestContext.Current.CancellationToken);
 
         infos.Keys.Should().BeEquivalentTo([a, b, c]);
         infos.Values.Select(i => i.Id).Should().AllBeEquivalentTo(c);
@@ -1542,7 +1540,7 @@ public class CachingUserServiceTests
         var (_, _, _, d) = SeedChain();
         var sut = CreateSut();
 
-        var erased = await sut.GetUserInfoAsync(d, Xunit.TestContext.Current.CancellationToken);
+        var erased = await sut.GetUserInfoAsync(d, TestContext.Current.CancellationToken);
 
         erased!.Id.Should().Be(d);
         erased.State.Should().Be(UserState.Deleted);
@@ -1574,7 +1572,7 @@ public class CachingUserServiceTests
             .Returns(new ValueTask<UserInfo?>(info));
         var sut = CreateSut();
 
-        var live = await sut.GetUserInfoAsync(userId, Xunit.TestContext.Current.CancellationToken);
+        var live = await sut.GetUserInfoAsync(userId, TestContext.Current.CancellationToken);
 
         live!.IsGdprAnonymized.Should().BeFalse();
         live.IsTombstone.Should().BeFalse();
@@ -1586,7 +1584,7 @@ public class CachingUserServiceTests
         var (a, b, c, d) = SeedChain();
         var sut = CreateSut();
 
-        var all = await sut.GetAllUserInfosAsync(Xunit.TestContext.Current.CancellationToken);
+        var all = await sut.GetAllUserInfosAsync(TestContext.Current.CancellationToken);
 
         all.Select(u => u.Id).Should().BeEquivalentTo([c],
             "one entry per living human — merge tombstones and erased rows both drop out");
@@ -1598,14 +1596,14 @@ public class CachingUserServiceTests
     {
         var (_, _, c, _) = SeedChain();
         var sut = CreateSut();
-        await sut.GetUserInfoAsync(c, Xunit.TestContext.Current.CancellationToken);
+        await sut.GetUserInfoAsync(c, TestContext.Current.CancellationToken);
 
         var e = Guid.NewGuid();
         _inner.GetUserInfoAsync(e, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(ChainRow(e, mergedTo: c)));
-        await sut.RefreshAsync(e, Xunit.TestContext.Current.CancellationToken);
+        await sut.RefreshAsync(e, TestContext.Current.CancellationToken);
 
-        (await sut.GetUserInfoAsync(e, Xunit.TestContext.Current.CancellationToken))!
+        (await sut.GetUserInfoAsync(e, TestContext.Current.CancellationToken))!
             .Id.Should().Be(c);
     }
 
@@ -1619,7 +1617,7 @@ public class CachingUserServiceTests
 
         var sut = CreateSut();
 
-        var resolved = await sut.GetUserInfoAsync(a, Xunit.TestContext.Current.CancellationToken);
+        var resolved = await sut.GetUserInfoAsync(a, TestContext.Current.CancellationToken);
 
         resolved!.Id.Should().Be(b, "the walk stops at the first repeat rather than looping");
     }
@@ -1630,7 +1628,7 @@ public class CachingUserServiceTests
         var (a, b, c, d) = SeedChain();
         var sut = CreateSut();
 
-        var all = await sut.GetAllRawUserInfosAsync(Xunit.TestContext.Current.CancellationToken);
+        var all = await sut.GetAllRawUserInfosAsync(TestContext.Current.CancellationToken);
 
         all.Select(u => u.Id).Should().BeEquivalentTo([a, b, c, d]);
     }
@@ -1643,15 +1641,15 @@ public class CachingUserServiceTests
         var (a, b, c, _) = SeedChain();
         var sut = CreateSut();
 
-        (await sut.GetRawUserInfoAsync(c, Xunit.TestContext.Current.CancellationToken))!
+        (await sut.GetRawUserInfoAsync(c, TestContext.Current.CancellationToken))!
             .MergedUserIds.Should().Equal(new[] { a, b }.Order());
 
         var e = Guid.NewGuid();
         _inner.GetUserInfoAsync(e, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(ChainRow(e, mergedTo: c)));
-        await sut.RefreshAsync(e, Xunit.TestContext.Current.CancellationToken);
+        await sut.RefreshAsync(e, TestContext.Current.CancellationToken);
 
-        (await sut.GetRawUserInfoAsync(c, Xunit.TestContext.Current.CancellationToken))!
+        (await sut.GetRawUserInfoAsync(c, TestContext.Current.CancellationToken))!
             .MergedUserIds.Should().Equal(new[] { a, b, e }.Order());
     }
 
@@ -1665,7 +1663,7 @@ public class CachingUserServiceTests
 
         var sut = CreateSut();
 
-        var rowA = await sut.GetRawUserInfoAsync(a, Xunit.TestContext.Current.CancellationToken);
+        var rowA = await sut.GetRawUserInfoAsync(a, TestContext.Current.CancellationToken);
 
         rowA!.MergedUserIds.Should().Equal([b], "the cycle guard stops the walk, it does not hang");
     }
@@ -1678,7 +1676,7 @@ public class CachingUserServiceTests
         var (a, b, c, _) = SeedChain();
         var sut = CreateSut();
 
-        var resolved = await sut.GetUserInfoAsync(a, Xunit.TestContext.Current.CancellationToken);
+        var resolved = await sut.GetUserInfoAsync(a, TestContext.Current.CancellationToken);
 
         resolved!.Id.Should().Be(c);
         resolved.AllUserIds.Should().Equal([c, .. new[] { a, b }.Order()]);
@@ -1690,7 +1688,7 @@ public class CachingUserServiceTests
         var (a, _, _, _) = SeedChain();
         var sut = CreateSut();
 
-        var raw = await sut.GetRawUserInfoAsync(a, Xunit.TestContext.Current.CancellationToken);
+        var raw = await sut.GetRawUserInfoAsync(a, TestContext.Current.CancellationToken);
 
         raw!.AllUserIds.Should().Equal(a);
     }
@@ -1710,16 +1708,16 @@ public class CachingUserServiceTests
             MergedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
         });
 
-        var results = await sut.SearchUsersAsync("Twin", PersonSearchFields.PublicAll, ct: Xunit.TestContext.Current.CancellationToken);
+        var results = await sut.SearchUsersAsync("Twin", PersonSearchFields.PublicAll, ct: TestContext.Current.CancellationToken);
 
         results.Select(r => r.UserId).Should().Equal(survivorId);
     }
 
     [HumansTheory]
-    [Xunit.InlineData("erased")]
-    [Xunit.InlineData("legacy")]
-    [Xunit.InlineData("merged-to-erased")]
-    [Xunit.InlineData("dangling")]
+    [InlineData("erased")]
+    [InlineData("legacy")]
+    [InlineData("merged-to-erased")]
+    [InlineData("dangling")]
     public async Task SearchUsersAsync_ByExactId_DoesNotReturnTerminalAccounts(string kind)
     {
         var erasedId = Guid.NewGuid();
@@ -1743,7 +1741,7 @@ public class CachingUserServiceTests
         }
 
         var results = await sut.SearchUsersAsync(queryId.ToString(), PersonSearchFields.PublicAll,
-            ct: Xunit.TestContext.Current.CancellationToken);
+            ct: TestContext.Current.CancellationToken);
 
         results.Should().BeEmpty();
     }
@@ -1762,7 +1760,7 @@ public class CachingUserServiceTests
             MergedAt = Instant.FromUtc(2026, 1, 1, 0, 0),
         });
 
-        var results = await sut.SearchUsersAsync(archivedId.ToString(), PersonSearchFields.PublicAll, ct: Xunit.TestContext.Current.CancellationToken);
+        var results = await sut.SearchUsersAsync(archivedId.ToString(), PersonSearchFields.PublicAll, ct: TestContext.Current.CancellationToken);
 
         results.Should().ContainSingle().Which.UserId.Should().Be(survivorId);
     }

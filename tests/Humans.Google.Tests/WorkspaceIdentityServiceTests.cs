@@ -1,7 +1,6 @@
 using System.Reflection;
 using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
-using Humans.Base.Authorization;
 using Humans.Base.Enums;
 using Humans.Base.Interfaces;
 using Humans.Google.Contracts;
@@ -16,7 +15,6 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.AspNetCore.Mvc.ViewComponents;
 using Microsoft.AspNetCore.Mvc.ViewFeatures;
-using Microsoft.Extensions.DependencyInjection;
 using NodaTime;
 using NSubstitute;
 
@@ -63,7 +61,7 @@ public sealed class WorkspaceIdentityServiceTests
         var info = UserInfoFixtures.FromUser(user, rows);
         _infos[id] = info;
         if (addresses.FirstOrDefault(a => a.Designated) is { } designated)
-            _repo.Rows[id] = new Humans.Google.Domain.WorkspaceIdentityRecord
+            _repo.Rows[id] = new Domain.WorkspaceIdentityRecord
             {
                 UserId = id,
                 Email = designated.Email,
@@ -422,7 +420,7 @@ public sealed class WorkspaceIdentityServiceTests
     [HumansFact]
     public void UserParts_ContributeTheCardsToTheAdminDetailSidebar()
     {
-        IUserPart contribution = ((IUserPart)new Section());
+        IUserPart contribution = new Section();
 
         contribution.Parts().Should().ContainSingle().Which.Slot.Should().Be(UserPartSlots.AdminDetailSidebar);
     }

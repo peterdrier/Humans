@@ -3,7 +3,6 @@ using System.Globalization;
 using CsvHelper;
 using Humans.Base.Csv;
 using Humans.Base.Extensions;
-using Humans.Events.Contracts;
 using Humans.Events.Services.Dtos;
 using NodaTime;
 using static Humans.Events.Helpers.EventsTimeHelpers;

@@ -3,7 +3,6 @@ using System.Security.Cryptography;
 using System.Text;
 using Humans.Base.Extensions;
 using Humans.Teams.Contracts;
-using Humans.Consent.Contracts;
 using Humans.Consent.Data;
 using Humans.Consent.Domain;
 using Humans.Email.Contracts;

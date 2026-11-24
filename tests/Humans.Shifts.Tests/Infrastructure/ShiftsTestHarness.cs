@@ -1,10 +1,8 @@
-using Humans.EarlyEntry.Contracts;
 using Humans.AuditLog.Contracts;
 using Humans.Auth.Contracts;
 using Humans.Base.Enums;
 using Humans.Notifications.Contracts;
 using Humans.Settings.Contracts;
-using Humans.Shifts.Contracts;
 using Humans.Shifts.Data;
 using Humans.Shifts.Domain;
 using Humans.Shifts.Services;
@@ -163,7 +161,7 @@ public abstract class ShiftsTestHarness : IDisposable
                 return local is null ? null : ToEventSettingsInfo(local);
             });
 
-        return new EventCalendarResolver(settingsService, new Humans.Shifts.Data.ShiftRepository(ShiftsDbFactory, ShiftsDb, Clock));
+        return new EventCalendarResolver(settingsService, new ShiftRepository(ShiftsDbFactory, ShiftsDb, Clock));
     }
 
     private static EventSettingsInfo ToEventSettingsInfo(EventSettings src) => new(

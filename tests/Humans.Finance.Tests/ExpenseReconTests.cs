@@ -12,14 +12,12 @@ using Humans.Finance.Jobs;
 using Humans.Finance.Services;
 using Humans.Holded.Contracts;
 using Humans.Users.Contracts;
-using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NodaTime;
 using NodaTime.Testing;
 using NSubstitute;
-using NSubstitute.ExceptionExtensions;
 using Xunit;
 
 namespace Humans.Finance.Tests;
@@ -136,7 +134,7 @@ public class ExpenseReconTests
         var failed = Line(null, state: ExpenseHoldedSyncState.Failed);
         var queued = Line(null, state: ExpenseHoldedSyncState.Queued);
         var pushedAfterSync = Line("d-late", settled: SyncedAt + Duration.FromHours(1));
-        var atAnotherAmount = Line("d1", amount: 120m);
+        var atAnotherAmount = Line(amount: 120m);
 
         var report = Build([failed, queued, pushedAfterSync, atAnotherAmount], Purchase(amount: 999m));
 

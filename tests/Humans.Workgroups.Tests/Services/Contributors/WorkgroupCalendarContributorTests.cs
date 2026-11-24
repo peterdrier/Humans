@@ -89,7 +89,7 @@ public sealed class WorkgroupCalendarContributorTests : WorkgroupsTestHarness
 
         var items = await NewContributor().GetPublicItemsForWindowAsync(now, now.Plus(Duration.FromDays(7)), Ct);
 
-        items.Should().ContainSingle().Which.Should().Match<Humans.Calendar.Contracts.CalendarFeedItem>(
+        items.Should().ContainSingle().Which.Should().Match<Calendar.Contracts.CalendarFeedItem>(
             i => i.RecurrenceRule == "FREQ=WEEKLY" && i.RecurrenceTimezone == "Europe/Madrid");
     }
 

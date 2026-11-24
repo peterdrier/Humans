@@ -437,7 +437,7 @@ public sealed class VolunteerTrackingExportServiceTests
             {
                 await aborted.CancelAsync();
                 call.Arg<CancellationToken>().ThrowIfCancellationRequested();
-                return (IReadOnlyList<(Guid TeamId, string TeamName)>)[];
+                return [];
             });
         var service = new VolunteerTrackingExportService(repo, shifts, settings, users, _audit);
         Func<Task> read = async () =>

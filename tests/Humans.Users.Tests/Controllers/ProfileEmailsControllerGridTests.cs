@@ -1,4 +1,3 @@
-using Humans.Base.Extensions;
 using System.ComponentModel.DataAnnotations;
 using Microsoft.Extensions.Logging;
 using Xunit;
@@ -7,11 +6,8 @@ using Humans.Users.Models;
 using Humans.Users.Controllers;
 using System.Security.Claims;
 using AwesomeAssertions;
-using Humans.AuditLog.Contracts;
-using Humans.Email.Contracts;
 using Humans.Users.Contracts;
 
-using Humans.Users.Tests.Infrastructure;
 using Humans.Base;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
@@ -126,9 +122,9 @@ public class ProfileEmailsControllerGridTests
     }
 
     [HumansTheory]
-    [Xunit.InlineData(EmailMutation.SetEmailVisibility)]
-    [Xunit.InlineData(EmailMutation.DeleteEmail)]
-    [Xunit.InlineData(EmailMutation.LinkGoogle)]
+    [InlineData(EmailMutation.SetEmailVisibility)]
+    [InlineData(EmailMutation.DeleteEmail)]
+    [InlineData(EmailMutation.LinkGoogle)]
     public async Task Email_mutation_account_preflight_observes_cancellation(EmailMutation action)
     {
         using var request = new CancellationTokenSource();
@@ -178,7 +174,7 @@ public class ProfileEmailsControllerGridTests
         if (serviceRefused)
             await _userEmailService.Received(1).AddEmailAsync(_userId, address, CancellationToken.None, _userId);
         else
-            await _userEmailService.DidNotReceiveWithAnyArgs().AddEmailAsync(default, default!, default, default);
+            await _userEmailService.DidNotReceiveWithAnyArgs().AddEmailAsync(default, default!);
     }
 
     public enum AdminVerificationOutcome { NoPending, Refused, Verified }

@@ -109,7 +109,7 @@ public class DebugControllerTests
     {
         _sectionCatalog.Sections.Returns(
         [
-            new SectionInfo("Shifts", IsActive: true) { ResourceType = typeof(Humans.Shifts.ShiftsResource) },
+            new SectionInfo("Shifts", IsActive: true) { ResourceType = typeof(Shifts.ShiftsResource) },
             new SectionInfo("Debug", IsActive: true),
         ]);
         var factory = new ResourceManagerStringLocalizerFactory(

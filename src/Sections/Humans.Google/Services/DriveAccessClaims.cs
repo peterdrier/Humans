@@ -1,6 +1,4 @@
 using Humans.Google.Contracts;
-using Humans.Google.Data;
-using Humans.Teams.Contracts;
 
 namespace Humans.Google.Services;
 

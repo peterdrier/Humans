@@ -48,7 +48,7 @@ public sealed class UserRepositoryTests : IDisposable
         {
             _dbContext.Entry(user).Property<string?>("GoogleEmail").CurrentValue = googleEmail;
         }
-        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await _dbContext.SaveChangesAsync(TestContext.Current.CancellationToken);
         return user;
     }
 
@@ -58,11 +58,11 @@ public sealed class UserRepositoryTests : IDisposable
         var user = await SeedUserAsync();
         var at = _clock.GetCurrentInstant();
 
-        var result = await _repo.SetLastLoginAsync(user.Id, at, Xunit.TestContext.Current.CancellationToken);
+        var result = await _repo.SetLastLoginAsync(user.Id, at, TestContext.Current.CancellationToken);
 
         result.Should().BeTrue();
         _dbContext.ChangeTracker.Clear();
-        var reloaded = await _dbContext.Users.SingleAsync(u => u.Id == user.Id, Xunit.TestContext.Current.CancellationToken);
+        var reloaded = await _dbContext.Users.SingleAsync(u => u.Id == user.Id, TestContext.Current.CancellationToken);
         reloaded.LastLoginAt.Should().Be(at);
     }
 
@@ -70,7 +70,7 @@ public sealed class UserRepositoryTests : IDisposable
     public async Task SetLastLoginAsync_ReturnsFalse_WhenUserDoesNotExist()
     {
         var result = await _repo.SetLastLoginAsync(
-            Guid.NewGuid(), _clock.GetCurrentInstant(), Xunit.TestContext.Current.CancellationToken);
+            Guid.NewGuid(), _clock.GetCurrentInstant(), TestContext.Current.CancellationToken);
 
         result.Should().BeFalse();
     }
@@ -82,10 +82,10 @@ public sealed class UserRepositoryTests : IDisposable
         var requested = Instant.FromUtc(2026, 4, 1, 0, 0);
         var scheduled = Instant.FromUtc(2026, 5, 1, 0, 0);
 
-        var result = await _repo.SetDeletionPendingAsync(user.Id, requested, scheduled, null, Xunit.TestContext.Current.CancellationToken);
+        var result = await _repo.SetDeletionPendingAsync(user.Id, requested, scheduled, null, TestContext.Current.CancellationToken);
 
         result.Should().BeTrue();
-        var reloaded = await _dbContext.Users.AsNoTracking().FirstAsync(u => u.Id == user.Id, Xunit.TestContext.Current.CancellationToken);
+        var reloaded = await _dbContext.Users.AsNoTracking().FirstAsync(u => u.Id == user.Id, TestContext.Current.CancellationToken);
         reloaded.DeletionRequestedAt.Should().Be(requested);
         reloaded.DeletionScheduledFor.Should().Be(scheduled);
     }
@@ -97,12 +97,12 @@ public sealed class UserRepositoryTests : IDisposable
         user.DeletionRequestedAt = Instant.FromUtc(2026, 4, 1, 0, 0);
         user.DeletionScheduledFor = Instant.FromUtc(2026, 5, 1, 0, 0);
         user.DeletionEligibleAfter = Instant.FromUtc(2026, 6, 1, 0, 0);
-        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await _dbContext.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var result = await _repo.ClearDeletionAsync(user.Id, Xunit.TestContext.Current.CancellationToken);
+        var result = await _repo.ClearDeletionAsync(user.Id, TestContext.Current.CancellationToken);
 
         result.Should().BeTrue();
-        var reloaded = await _dbContext.Users.AsNoTracking().FirstAsync(u => u.Id == user.Id, Xunit.TestContext.Current.CancellationToken);
+        var reloaded = await _dbContext.Users.AsNoTracking().FirstAsync(u => u.Id == user.Id, TestContext.Current.CancellationToken);
         reloaded.DeletionRequestedAt.Should().BeNull();
         reloaded.DeletionScheduledFor.Should().BeNull();
         reloaded.DeletionEligibleAfter.Should().BeNull();
@@ -116,12 +116,12 @@ public sealed class UserRepositoryTests : IDisposable
         AddLogin(user.Id, "Google", "fred-google-sub");
         AddLogin(user.Id, "Microsoft", "fred-ms-sub");
         AddLogin(other.Id, "Google", "other-google-sub");
-        await _dbContext.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+        await _dbContext.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var result = await _repo.ApplyExpiredDeletionAnonymizationAsync(user.Id, Xunit.TestContext.Current.CancellationToken);
+        var result = await _repo.ApplyExpiredDeletionAnonymizationAsync(user.Id, TestContext.Current.CancellationToken);
 
         result.Should().NotBeNull();
-        var remaining = await _dbContext.Set<IdentityUserLogin<Guid>>().ToListAsync(Xunit.TestContext.Current.CancellationToken);
+        var remaining = await _dbContext.Set<IdentityUserLogin<Guid>>().ToListAsync(TestContext.Current.CancellationToken);
         remaining.Should().ContainSingle()
             .Which.UserId.Should().Be(other.Id);
     }
@@ -131,7 +131,7 @@ public sealed class UserRepositoryTests : IDisposable
     {
         var user = await SeedUserAsync();
 
-        var result = await _repo.ApplyExpiredDeletionAnonymizationAsync(user.Id, Xunit.TestContext.Current.CancellationToken);
+        var result = await _repo.ApplyExpiredDeletionAnonymizationAsync(user.Id, TestContext.Current.CancellationToken);
 
         result.Should().NotBeNull();
         result.OriginalBurnerName.Should().Be("Seeded User");
@@ -144,10 +144,10 @@ public sealed class UserRepositoryTests : IDisposable
         var originalEmail = user.IdentityEmailColumn;
         originalEmail.Should().NotBeNullOrEmpty();
 
-        var result = await _repo.ApplyExpiredDeletionAnonymizationAsync(user.Id, Xunit.TestContext.Current.CancellationToken);
+        var result = await _repo.ApplyExpiredDeletionAnonymizationAsync(user.Id, TestContext.Current.CancellationToken);
 
         result.Should().NotBeNull();
-        var reloaded = await _dbContext.Users.AsNoTracking().FirstAsync(u => u.Id == user.Id, Xunit.TestContext.Current.CancellationToken);
+        var reloaded = await _dbContext.Users.AsNoTracking().FirstAsync(u => u.Id == user.Id, TestContext.Current.CancellationToken);
         reloaded.IdentityEmailColumn.Should().Be($"deleted-{user.Id:N}@deleted.local",
             "the legacy Identity email column is scrubbed to a no-PII sentinel on deletion");
         reloaded.IdentityEmailColumn.Should().NotBe(originalEmail);
@@ -163,10 +163,10 @@ public sealed class UserRepositoryTests : IDisposable
         originalEmail.Should().NotBeNullOrEmpty();
         var now = _clock.GetCurrentInstant();
 
-        var result = await _repo.AnonymizeForMergeAsync(source.Id, target.Id, now, Xunit.TestContext.Current.CancellationToken);
+        var result = await _repo.AnonymizeForMergeAsync(source.Id, target.Id, now, TestContext.Current.CancellationToken);
 
         result.Should().BeTrue();
-        var reloaded = await _dbContext.Users.AsNoTracking().FirstAsync(u => u.Id == source.Id, Xunit.TestContext.Current.CancellationToken);
+        var reloaded = await _dbContext.Users.AsNoTracking().FirstAsync(u => u.Id == source.Id, TestContext.Current.CancellationToken);
         reloaded.IdentityEmailColumn.Should().Be($"merged-{source.Id:N}@merged.local",
             "the legacy Identity email column is scrubbed to a no-PII sentinel on the merge tombstone");
         reloaded.IdentityEmailColumn.Should().NotBe(originalEmail);
@@ -181,9 +181,9 @@ public sealed class UserRepositoryTests : IDisposable
         var source = await SeedUserAsync();
         var target = await SeedUserAsync();
 
-        await _repo.AnonymizeForMergeAsync(source.Id, target.Id, _clock.GetCurrentInstant(), Xunit.TestContext.Current.CancellationToken);
+        await _repo.AnonymizeForMergeAsync(source.Id, target.Id, _clock.GetCurrentInstant(), TestContext.Current.CancellationToken);
 
-        var reloaded = await _dbContext.Users.AsNoTracking().FirstAsync(u => u.Id == source.Id, Xunit.TestContext.Current.CancellationToken);
+        var reloaded = await _dbContext.Users.AsNoTracking().FirstAsync(u => u.Id == source.Id, TestContext.Current.CancellationToken);
         reloaded.LockoutEnabled.Should().BeTrue("a merge tombstone cannot sign in");
         reloaded.LockoutEnd.Should().Be(DateTimeOffset.MaxValue);
     }

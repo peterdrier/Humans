@@ -86,7 +86,7 @@ public sealed class CurrentUserEnricher : ILogEventEnricher
 
         // Reading the principal off ASP.NET's HttpContext (not a domain entity nav).
         var user = httpContext.User;
-        if (user?.Identity is null || !user.Identity.IsAuthenticated)
+        if (user.Identity is null || !user.Identity.IsAuthenticated)
             return null;
 
         var claim = user.FindFirst(ClaimTypes.NameIdentifier);

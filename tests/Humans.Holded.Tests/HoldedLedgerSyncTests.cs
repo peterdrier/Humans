@@ -132,7 +132,7 @@ public sealed class HoldedLedgerSyncTests
             .Returns(async Task<IReadOnlyList<HoldedPurchaseDocListItemDto>> (_) => { await PrepareAsync(SyncPath.PurchaseDocs); return []; });
         _client.ListContactsAsync(Arg.Any<CancellationToken>())
             .Returns(async Task<IReadOnlyList<HoldedContactDto>> (_) => { await PrepareAsync(SyncPath.Contacts); return []; });
-        _client.ListBankMovementsAsync("treasury", Today, Today, Arg.Any<CancellationToken>(), null)
+        _client.ListBankMovementsAsync("treasury", Today, Today, Arg.Any<CancellationToken>())
             .Returns(async Task<IReadOnlyList<HoldedBankMovementDto>> (_) => { await PrepareAsync(SyncPath.BankMovements); return []; });
         _client.ListAccountingAccountsAsync(Arg.Any<CancellationToken>())
             .Returns(async Task<IReadOnlyList<HoldedAccountDto>> (_) => { await PrepareAsync(SyncPath.Accounts); return []; });
@@ -490,7 +490,7 @@ public sealed class HoldedLedgerSyncTests
             .Returns([Dto(1, 1, 57200003, june, credit: 10m), Dto(4, 1, 57200003, june, credit: 7m)]);
         (await _service.SyncAccountLedgerAsync(57200003, ct)).Should().BeTrue();
 
-        LedgerCalls().Last().Should().Be((new LocalDate(2020, 1, 1), Today, (int?)57200003));
+        LedgerCalls().Last().Should().Be((new LocalDate(2020, 1, 1), Today, 57200003));
         (await _repo.GetLedgerLinesByAccountNumAsync(57200003, ct: ct)).Select(l => l.EntryNumber)
             .Should().BeEquivalentTo([1, 4]);
         (await _repo.GetLedgerLinesByAccountNumAsync(57200001, ct: ct)).Should().ContainSingle();

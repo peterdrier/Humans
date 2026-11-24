@@ -134,7 +134,7 @@ public sealed class CampaignServiceTests
         repository.GetCampaignIdForGrantAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(call =>
         {
             Read(call.Arg<CancellationToken>());
-            return (Guid?)Guid.NewGuid();
+            return Guid.NewGuid();
         });
         repository.GetByIdAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(call =>
         {

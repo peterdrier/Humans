@@ -1,4 +1,3 @@
-using Humans.Holded.Contracts;
 using NodaTime;
 
 namespace Humans.Holded.Models;

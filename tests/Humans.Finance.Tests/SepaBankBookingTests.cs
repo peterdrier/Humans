@@ -11,7 +11,6 @@ using Humans.Finance.Services;
 using Humans.Holded.Contracts;
 using Humans.Email.Contracts;
 using Humans.Users.Contracts;
-using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -144,7 +143,7 @@ public class SepaBankBookingTests
 
         // Run 2: the tag sum cannot see a purchase payment, so the €10 is read off the synced
         // ledger mirror's payment line, and only the €20 still missing is posted.
-        _write.ClearSubstitute(ClearOptions.All);
+        _write.ClearSubstitute();
         _write.PostJournalEntryAsync(
                 Arg.Any<LocalDate>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<decimal>(),
                 Arg.Any<string>(), Arg.Any<CancellationToken>())
@@ -1149,7 +1148,7 @@ public class SepaBankBookingTests
             reconciledAt: FixedNow));
 
         await MakeService().RunSepaBookingSweepAsync(TestContext.Current.CancellationToken);
-        await _holded.DidNotReceiveWithAnyArgs().SyncBankMovementsAsync(default!, default, default, default, default);
+        await _holded.DidNotReceiveWithAnyArgs().SyncBankMovementsAsync(default!, default, default);
 
         // 03:17 in Madrid: the one run a day that reads the whole window, open transfers or not.
         _clock.Reset(Instant.FromUtc(2026, 5, 2, 1, 17));
@@ -2037,7 +2036,7 @@ public class SepaBankBookingTests
         unavailable.Should().BeNull();
         syncedAt.Should().BeNull();
         error.Should().Contain("bank feed could not be read").And.Contain("not been synced");
-        await _holded.DidNotReceiveWithAnyArgs().SyncBankMovementsAsync(default!, default, default, default, default);
+        await _holded.DidNotReceiveWithAnyArgs().SyncBankMovementsAsync(default!, default, default);
         unmatched.Should().BeEmpty();
         rows.Should().ContainSingle().Which.CanBook.Should().BeFalse();
     }
@@ -2600,7 +2599,7 @@ public class SepaBankBookingTests
     /// <summary>The live chart of accounts, as one owed amount per creditor account.</summary>
     private void SeedOwed(decimal owed, params (int Account, decimal Owed)[] others) =>
         _feed.ListAccountingAccountsAsync(Arg.Any<CancellationToken>()).Returns(
-            others.Prepend((Account: Account, Owed: owed))
+            others.Prepend((Account, Owed: owed))
                 .Select(a => new HoldedChartAccountInfo(
                     a.Account, "Creditor", null, false, -a.Owed))
                 .ToList());

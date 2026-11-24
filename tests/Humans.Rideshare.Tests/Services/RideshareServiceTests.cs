@@ -1,6 +1,5 @@
 using System.Collections;
 using AwesomeAssertions;
-using Humans.AuditLog.Contracts;
 using Humans.Base.Extensions;
 using Humans.Notifications.Contracts;
 using Humans.Rideshare.Domain;
@@ -9,7 +8,6 @@ using Humans.Rideshare.Services;
 using Humans.Rideshare.Services.Routing;
 using Humans.Rideshare.Tests.Infrastructure;
 using Humans.Settings.Contracts;
-using Humans.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Logging;

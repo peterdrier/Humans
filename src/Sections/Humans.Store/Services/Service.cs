@@ -1,10 +1,7 @@
 using Humans.Base.Extensions;
 using Humans.AuditLog.Contracts;
 using Humans.Base.Attributes;
-using Humans.Base.Interfaces;
 using Humans.Camps.Contracts;
-using Humans.Finance.Contracts;
-using Humans.Holded.Contracts;
 using Humans.Settings.Contracts;
 using Humans.Store.Contracts;
 using Humans.Store.Data;
@@ -15,7 +12,6 @@ using Humans.Store.Services.Dtos;
 using Humans.Stripe.Contracts;
 using NodaTime;
 using System.Globalization;
-using System.Text.Json;
 using System.Resources;
 using Humans.Base.Threading;
 
@@ -727,7 +723,7 @@ internal sealed class Service(
         var teamOrders = await repo.GetOrdersForTeamsWithLinesAndPaymentsAsync(departmentIds, year, ct);
         var counterparties = campOrdersInYear
             .Select(o => (Order: o, Type: OrderCounterpartyType.Camp,
-                Id: o.CampSeasonId!.Value, Name: seasonsForYear[o.CampSeasonId.Value].Name))
+                Id: o.CampSeasonId!.Value, seasonsForYear[o.CampSeasonId.Value].Name))
             .Concat(teamOrders.Select(o => (Order: o, Type: OrderCounterpartyType.Team,
                 Id: o.TeamId!.Value, Name: teamNames.GetValueOrDefault(o.TeamId.Value, "(unknown team)"))))
             .ToList();

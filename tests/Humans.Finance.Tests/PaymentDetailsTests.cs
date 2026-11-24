@@ -322,7 +322,7 @@ public class PaymentDetailsTests
     [HumansFact]
     public void Parts_ContributeTheCardToTheAdminDetailSidebarOnly()
     {
-        IUserPart contribution = ((IUserPart)new Section());
+        IUserPart contribution = new Section();
 
         contribution.Parts().Should().ContainSingle()
             .Which.Should().Be(new UserPart(UserPartSlots.AdminDetailSidebar, typeof(PaymentDetailsViewComponent), 100));

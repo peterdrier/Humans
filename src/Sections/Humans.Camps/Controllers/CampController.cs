@@ -1,6 +1,5 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Humans.Base.Enums;
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Localization;

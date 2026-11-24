@@ -1,7 +1,6 @@
 using System.Globalization;
 using System.Resources;
 using Humans.Shifts.Contracts;
-using Humans.Shifts.Domain;
 using NodaTime;
 using Humans.Shifts.Services;
 using Humans.Shifts.Services.Dtos;

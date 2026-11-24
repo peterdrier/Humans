@@ -17,7 +17,7 @@ namespace Humans.HiEvents.Tests;
 
 public class HiEventsPlatformTests
 {
-    private static readonly CancellationToken Ct = Xunit.TestContext.Current.CancellationToken;
+    private static readonly CancellationToken Ct = TestContext.Current.CancellationToken;
     private static readonly Instant Now = Instant.FromUtc(2027, 1, 2, 10, 0);
     private static readonly Guid OrderId = Guid.Parse("11111111-2222-3333-4444-555555555555");
 
@@ -119,8 +119,8 @@ public class HiEventsPlatformTests
     }
 
     [HumansTheory]
-    [Xunit.InlineData(HttpStatusCode.UnprocessableEntity)]
-    [Xunit.InlineData(HttpStatusCode.Conflict)]
+    [InlineData(HttpStatusCode.UnprocessableEntity)]
+    [InlineData(HttpStatusCode.Conflict)]
     public async Task CreateOrder_WhenHiEventsRefuses_Throws(HttpStatusCode status)
     {
         _handler.Enqueue(HttpStatusCode.OK, Products());
@@ -159,8 +159,8 @@ public class HiEventsPlatformTests
     }
 
     [HumansTheory]
-    [Xunit.InlineData(0)]
-    [Xunit.InlineData(2)]
+    [InlineData(0)]
+    [InlineData(2)]
     public async Task CreateOrder_WithoutExactlyOneCarrierProduct_ThrowsBeforeCreatingAnOrder(int ticketProducts)
     {
         _handler.Enqueue(HttpStatusCode.OK, Products(Enumerable.Range(1, ticketProducts).Select(i => ("TICKET", i)).Append(("GENERAL", 200)).ToArray()));
@@ -206,13 +206,13 @@ public class HiEventsPlatformTests
     }
 
     [HumansTheory]
-    [Xunit.InlineData("COMPLETED", "PAYMENT_RECEIVED", null, PlatformOrderState.Paid)]
-    [Xunit.InlineData("CANCELLED", "AWAITING_PAYMENT", null, PlatformOrderState.Cancelled)]
-    [Xunit.InlineData("ABANDONED", "AWAITING_PAYMENT", null, PlatformOrderState.Expired)]
-    [Xunit.InlineData("RESERVED", "AWAITING_PAYMENT", "2027-01-02 10:30:00", PlatformOrderState.Pending)]
-    [Xunit.InlineData("RESERVED", "PAYMENT_FAILED", "2027-01-02 10:30:00", PlatformOrderState.Pending)]
-    [Xunit.InlineData("RESERVED", "AWAITING_PAYMENT", "2027-01-02 09:59:59", PlatformOrderState.Expired)]
-    [Xunit.InlineData("AWAITING_OFFLINE_PAYMENT", "AWAITING_OFFLINE_PAYMENT", null, PlatformOrderState.Pending)]
+    [InlineData("COMPLETED", "PAYMENT_RECEIVED", null, PlatformOrderState.Paid)]
+    [InlineData("CANCELLED", "AWAITING_PAYMENT", null, PlatformOrderState.Cancelled)]
+    [InlineData("ABANDONED", "AWAITING_PAYMENT", null, PlatformOrderState.Expired)]
+    [InlineData("RESERVED", "AWAITING_PAYMENT", "2027-01-02 10:30:00", PlatformOrderState.Pending)]
+    [InlineData("RESERVED", "PAYMENT_FAILED", "2027-01-02 10:30:00", PlatformOrderState.Pending)]
+    [InlineData("RESERVED", "AWAITING_PAYMENT", "2027-01-02 09:59:59", PlatformOrderState.Expired)]
+    [InlineData("AWAITING_OFFLINE_PAYMENT", "AWAITING_OFFLINE_PAYMENT", null, PlatformOrderState.Pending)]
     public async Task GetStatus_MapsHiEventsStatuses(string status, string paymentStatus, string? reservedUntil, PlatformOrderState expected)
     {
         _handler.Enqueue(HttpStatusCode.OK, Order(id: 42, total: 225m, status: status, paymentStatus: paymentStatus,
@@ -359,9 +359,9 @@ public class HiEventsPlatformTests
     }
 
     [HumansTheory]
-    [Xunit.InlineData("RESERVED", "2027-01-02 10:30:00")]
-    [Xunit.InlineData("RESERVED", "2027-01-02 09:00:00")]
-    [Xunit.InlineData("ABANDONED", null)]
+    [InlineData("RESERVED", "2027-01-02 10:30:00")]
+    [InlineData("RESERVED", "2027-01-02 09:00:00")]
+    [InlineData("ABANDONED", null)]
     public async Task GetStatus_APaymentOnItsWay_IsProcessingEvenPastTheHold(string status, string? reservedUntil)
     {
         _handler.Enqueue(HttpStatusCode.OK, Order(id: 42, total: 225m, status: status, reservedUntil: reservedUntil,
@@ -373,8 +373,8 @@ public class HiEventsPlatformTests
     }
 
     [HumansTheory]
-    [Xunit.InlineData("COMPLETED", "PAYMENT_RECEIVED", PlatformOrderState.Paid)]
-    [Xunit.InlineData("CANCELLED", "AWAITING_PAYMENT", PlatformOrderState.Cancelled)]
+    [InlineData("COMPLETED", "PAYMENT_RECEIVED", PlatformOrderState.Paid)]
+    [InlineData("CANCELLED", "AWAITING_PAYMENT", PlatformOrderState.Cancelled)]
     public async Task GetStatus_ASettledOrClosedOrder_IsNotProcessing(string status, string paymentStatus, PlatformOrderState expected)
     {
         _handler.Enqueue(HttpStatusCode.OK, Order(id: 42, total: 225m, status: status, paymentStatus: paymentStatus,
@@ -476,8 +476,8 @@ public class HiEventsPlatformTests
     }
 
     [HumansTheory]
-    [Xunit.InlineData("Ana Buyer", "Ana Buyer", null)]
-    [Xunit.InlineData("María de los Ángeles Fernández de Córdoba y Martínez",
+    [InlineData("Ana Buyer", "Ana Buyer", null)]
+    [InlineData("María de los Ángeles Fernández de Córdoba y Martínez",
         "María de los Ángeles Fernández de Córdoba y", "Martínez")]
     public void SplitBuyerName_KeepsEachPartWithinFiftyCharacters(string name, string first, string? last)
     {

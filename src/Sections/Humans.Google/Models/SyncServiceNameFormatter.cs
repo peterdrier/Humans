@@ -1,5 +1,4 @@
 using Humans.Google.Domain;
-using Humans.Google.Contracts;
 
 namespace Humans.Google.Models;
 

@@ -1,5 +1,4 @@
 using Humans.Base.Extensions;
-using Humans.Budget.Contracts;
 using Humans.Budget.Data;
 using Humans.Tickets.Contracts;
 using NodaTime;

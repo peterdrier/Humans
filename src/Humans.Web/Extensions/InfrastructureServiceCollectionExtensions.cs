@@ -3,8 +3,6 @@ using Humans.Base.Configuration;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Localization;
 using Humans.Base.Interfaces;
-using Humans.Base.Interfaces.Caching;
-using Humans.Base.Caching;
 using Humans.Base.Services;
 using Humans.Web.Services;
 using Humans.Web.Extensions.Infrastructure;

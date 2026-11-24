@@ -20,7 +20,6 @@ using Humans.Finance.Models;
 using Humans.Holded.Contracts;
 using Humans.Email.Contracts;
 using Humans.Users.Contracts;
-using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -163,13 +162,13 @@ public class HoldedFinanceServiceTests
         });
         var service = MakeService();
         var controller = new FinanceController(FixedOrgTimeZone.Madrid, _users, service, service, _holded,
-            Substitute.For<Humans.Expenses.Contracts.IExpenseReportService>(),
+            Substitute.For<IExpenseReportService>(),
             new CashFlowService(_budget, Substitute.For<Humans.Tickets.Contracts.ITicketService>()),
-            new FinanceOverviewService(FixedOrgTimeZone.Madrid, _holded, service, service, Substitute.For<Humans.Expenses.Contracts.IExpenseReportService>(),
+            new FinanceOverviewService(FixedOrgTimeZone.Madrid, _holded, service, service, Substitute.For<IExpenseReportService>(),
                 _budget, new CashFlowService(_budget, Substitute.For<Humans.Tickets.Contracts.ITicketService>()),
                 Substitute.For<Humans.Pleo.Contracts.IPleoService>(), Substitute.For<Humans.Stripe.Contracts.IStripeMirrorService>(),
-                Microsoft.Extensions.Options.Options.Create(new SepaOptions()),
-                Substitute.For<Humans.Finance.Data.IFinanceRepository>(), Substitute.For<Humans.AuditLog.Contracts.IAuditLogService>(),
+                Options.Create(new SepaOptions()),
+                Substitute.For<IFinanceRepository>(), Substitute.For<IAuditLogService>(),
                 SystemClock.Instance),
             TestPleo.Booking(), TestPleo.Runner(),
             new SepaBookingRunner(Substitute.For<IServiceScopeFactory>(), SystemClock.Instance,
@@ -1120,8 +1119,8 @@ public class HoldedFinanceServiceTests
     }
 
     [HumansTheory]
-    [Xunit.InlineData(40000004, "40000004")]
-    [Xunit.InlineData(null, "(unresolved)")]
+    [InlineData(40000004, "40000004")]
+    [InlineData(null, "(unresolved)")]
     public async Task SetCreditorAccountNum_ChangedNumber_IsAuditedUnderTheCallingJob(int? before, string beforeText)
     {
         // Holded can reset a contact's supplier_record, moving the member's account. Every change of the
@@ -1167,7 +1166,7 @@ public class HoldedFinanceServiceTests
             userId, 40000012, "TestJob", TestContext.Current.CancellationToken);
 
         await _audit.DidNotReceiveWithAnyArgs().LogAsync(
-            null!, default!, default, default!, default(string)!, default, default);
+            null!, default!, default, default!, default(string)!);
     }
 
     [HumansFact]
@@ -1194,7 +1193,7 @@ public class HoldedFinanceServiceTests
         await _repo.DidNotReceive().UpsertCreditorContactAsync(
             Arg.Any<HoldedCreditorContact>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>());
         await _audit.DidNotReceiveWithAnyArgs().LogAsync(
-            null!, default!, default, default!, default(string)!, default, default);
+            null!, default!, default, default!, default(string)!);
     }
 
     [HumansFact]
@@ -2329,7 +2328,7 @@ public class HoldedFinanceServiceTests
         await _repo.DidNotReceive().AddSepaPayoutAsync(
             Arg.Any<SepaPayoutFile>(), Arg.Any<IReadOnlyList<SepaPayoutTransfer>>(), Arg.Any<CancellationToken>());
         await _audit.DidNotReceiveWithAnyArgs().LogAsync(
-            default!, default!, default, default!, default(Guid), default, default);
+            default!, default!, default, default!, default(Guid));
     }
 
     [HumansFact]
@@ -3459,7 +3458,7 @@ public class HoldedFinanceServiceTests
         await _audit.Received(1).LogAsync(
             FinanceAuditActions.HoldedExpenseAccountCreated, Service.HoldedExpenseAccount, Guid.Empty,
             Arg.Is<string>(description => description.Contains("62900100") && description.Contains("Workgroups / New")),
-            "Finance", null, null);
+            "Finance");
     }
 
     [HumansFact]

@@ -1,6 +1,5 @@
 using AwesomeAssertions;
 using Humans.Base.Configuration;
-using Humans.Testing;
 using Humans.Tickets.Services.Checkout;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging.Abstractions;

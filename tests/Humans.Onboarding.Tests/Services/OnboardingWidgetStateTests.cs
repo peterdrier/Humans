@@ -1,6 +1,5 @@
 using Humans.Consent.Contracts;
 using Humans.Base.Constants;
-using Humans.Governance.Contracts;
 using Humans.Onboarding.Services;
 using Humans.Settings.Contracts;
 using Humans.Shifts.Contracts;

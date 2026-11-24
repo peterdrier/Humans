@@ -1,5 +1,4 @@
 using Humans.Settings.Contracts;
-using Humans.Base.Interfaces;
 using AwesomeAssertions;
 
 namespace Humans.Settings.Tests;

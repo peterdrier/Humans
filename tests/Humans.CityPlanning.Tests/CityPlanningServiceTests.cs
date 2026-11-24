@@ -718,7 +718,7 @@ public sealed class CityPlanningServiceTests : CityPlanningTestBase
         var settings = await _sut.GetSettingsAsync(TestContext.Current.CancellationToken);
 
         settings.Should().NotBeNull();
-        settings!.Id.Should().Be(Guid.Empty);
+        settings.Id.Should().Be(Guid.Empty);
         settings.Year.Should().Be(2026);
         settings.PlacementState.Should().Be(BarrioPlacementState.Closed);
         settings.PlacementOverride.Should().BeNull();

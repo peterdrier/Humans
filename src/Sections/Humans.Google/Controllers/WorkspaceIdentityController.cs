@@ -1,5 +1,4 @@
 using Humans.Base.Attributes;
-using Humans.Base.Authorization;
 using Humans.Base.Controllers;
 using Humans.Google.Services;
 using Humans.Users.Contracts;

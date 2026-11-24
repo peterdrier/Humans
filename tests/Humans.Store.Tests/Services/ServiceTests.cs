@@ -30,7 +30,6 @@ using Humans.Base.Enums;
 using Humans.Holded.Contracts;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 using NodaTime;
 using NodaTime.Testing;
 using NodaTime.Text;
@@ -1507,7 +1506,7 @@ public class ServiceTests
             CacheToken = typeof(ProductInputModel)
         });
         var context = DefaultModelBindingContext.CreateBindingContext(controller.ControllerContext,
-            new FormValueProvider(BindingSource.Form, new FormCollection(fields), System.Globalization.CultureInfo.InvariantCulture),
+            new FormValueProvider(BindingSource.Form, new FormCollection(fields), CultureInfo.InvariantCulture),
             metadata, bindingInfo: null, modelName: "");
         await binder.BindModelAsync(context);
         var model = (ProductInputModel)context.Result.Model!;
@@ -1743,7 +1742,7 @@ public class ServiceTests
         await _stripeService.Received(1).CreateCheckoutSessionAsync(Arg.Any<Guid>(), Arg.Any<decimal>(),
             Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<string>(), Arg.Any<CancellationToken>(),
             Arg.Any<Guid?>(), Arg.Any<string?>());
-        await _repo.DidNotReceiveWithAnyArgs().UpdateOrderAsync(default!, default);
+        await _repo.DidNotReceiveWithAnyArgs().UpdateOrderAsync(default!);
     }
 
     [HumansFact]
@@ -1802,7 +1801,7 @@ public class ServiceTests
         await _stripeService.Received(1).CreateCheckoutSessionAsync(Arg.Any<Guid>(), Arg.Any<decimal>(),
             Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<string>(), Arg.Any<CancellationToken>(),
             Arg.Any<Guid?>(), Arg.Any<string?>());
-        await _repo.DidNotReceiveWithAnyArgs().UpdateOrderAsync(default!, default);
+        await _repo.DidNotReceiveWithAnyArgs().UpdateOrderAsync(default!);
     }
 
     [HumansFact]
@@ -2090,7 +2089,7 @@ public class ServiceTests
         if (oversized)
         {
             result.Succeeded.Should().BeFalse();
-            result.Refusal.Should().Contain(maximum.ToString(System.Globalization.CultureInfo.InvariantCulture));
+            result.Refusal.Should().Contain(maximum.ToString(CultureInfo.InvariantCulture));
             await _repo.DidNotReceive().AddPaymentAsync(Arg.Any<Payment>(), Arg.Any<CancellationToken>());
             _audit.ReceivedCalls().Should().BeEmpty();
         }

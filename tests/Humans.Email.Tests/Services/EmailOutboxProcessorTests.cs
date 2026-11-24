@@ -435,12 +435,12 @@ public class EmailOutboxProcessorTests : IDisposable
         }
         else
         {
-            await repo.DidNotReceiveWithAnyArgs().MarkFailedAsync(default, default, default!, default, default);
+            await repo.DidNotReceiveWithAnyArgs().MarkFailedAsync(default, default, default!, default);
         }
         if (string.Equals(outcome, "test-address", StringComparison.Ordinal))
         {
             await _transport.DidNotReceiveWithAnyArgs().SendAsync(
-                default!, default, default!, default!, default, default, default, default);
+                default!, default, default!, default!, default);
         }
     }
 
@@ -481,7 +481,7 @@ public class EmailOutboxProcessorTests : IDisposable
 
         error.Should().BeSameAs(failure);
         await repo.Received(1).MarkSentAsync(message.Id, Arg.Any<Instant>(), CancellationToken.None);
-        await repo.DidNotReceiveWithAnyArgs().MarkFailedAsync(default, default, default!, default, default);
+        await repo.DidNotReceiveWithAnyArgs().MarkFailedAsync(default, default, default!, default);
         _metrics.DidNotReceive().RecordJobRun("process_email_outbox", Arg.Any<string>());
     }
 
@@ -503,9 +503,9 @@ public class EmailOutboxProcessorTests : IDisposable
 
         await drain.Should().ThrowAsync<OperationCanceledException>();
         await _transport.DidNotReceiveWithAnyArgs().SendAsync(
-            default!, default, default!, default!, default, default, default, default);
-        await repo.DidNotReceiveWithAnyArgs().MarkSentAsync(default, default, default);
-        await repo.DidNotReceiveWithAnyArgs().MarkFailedAsync(default, default, default!, default, default);
+            default!, default, default!, default!, default);
+        await repo.DidNotReceiveWithAnyArgs().MarkSentAsync(default, default);
+        await repo.DidNotReceiveWithAnyArgs().MarkFailedAsync(default, default, default!, default);
     }
 
     [HumansFact(Timeout = 10000)]

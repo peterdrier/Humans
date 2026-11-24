@@ -6,7 +6,6 @@ using Humans.Holded.Models;
 using Microsoft.Extensions.Options;
 using NodaTime;
 using Humans.Base.Interfaces;
-using static Humans.Holded.Services.HoldedJson;
 
 namespace Humans.Holded.Services;
 

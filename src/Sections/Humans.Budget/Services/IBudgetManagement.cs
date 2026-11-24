@@ -1,13 +1,12 @@
 using Humans.Teams.Contracts;
 using Humans.Budget.Data;
-using Humans.Base.Interfaces;
 using Humans.Budget.Contracts;
 using NodaTime;
 
 namespace Humans.Budget.Services;
 
 /// <summary>An interface rather than the concrete <c>BudgetService</c> because the ticketing bridge's tests substitute it.</summary>
-internal interface IBudgetManagement : IBudgetService, IApplicationService
+internal interface IBudgetManagement : IBudgetService
 {
     Task<IReadOnlyList<BudgetYearSummarySnapshot>> GetAllYearsAsync(bool includeArchived = false, CancellationToken ct = default);
     Task<BudgetSaveResult<BudgetYearDetail>> CreateYearAsync(string year, string name, Guid actorUserId);

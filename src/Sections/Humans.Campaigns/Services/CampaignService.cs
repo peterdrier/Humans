@@ -13,10 +13,8 @@ using Humans.Campaigns.Domain;
 using Humans.Campaigns.Services.Dtos;
 using Humans.Gdpr.Contracts;
 using NodaTime;
-using Humans.Base.Interfaces;
 using System.Globalization;
 using System.Resources;
-using Humans.Base.Enums;
 
 namespace Humans.Campaigns.Services;
 

@@ -3,7 +3,6 @@ using Humans.Auth.Data;
 using Humans.Auth.Domain;
 using AwesomeAssertions;
 using Humans.Consent.Services;
-using Humans.AuditLog.Contracts;
 using Humans.AuditLog.Services;
 using Humans.Budget.Contracts;
 using Humans.Gdpr.Contracts;

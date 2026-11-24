@@ -79,7 +79,7 @@ public class UserEmailServiceTests
             {
                 firstReachedRemoval.SetResult();
                 await releaseFirst.Task.WaitAsync(ct);
-                return (IReadOnlyCollection<string>)[];
+                return [];
             });
 
         var secondScope = NewService();

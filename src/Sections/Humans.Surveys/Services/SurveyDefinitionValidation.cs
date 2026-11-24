@@ -1,4 +1,3 @@
-using System.Text;
 using NodaTime;
 using Humans.Surveys.Contracts;
 using Humans.Surveys.Domain;

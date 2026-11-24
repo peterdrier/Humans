@@ -36,7 +36,7 @@ public sealed class HoldedPurchaseDocSyncTests
             .Returns(ci => Full($"notes {ci.Arg<string>()}"));
     }
 
-    private static CancellationToken Ct => Xunit.TestContext.Current.CancellationToken;
+    private static CancellationToken Ct => TestContext.Current.CancellationToken;
 
     private static HoldedPurchaseDocListItemDto Listed(string id, int day = 1, bool? draft = false) => new()
     {
@@ -122,7 +122,7 @@ public sealed class HoldedPurchaseDocSyncTests
     [HumansFact]
     public async Task Sync_TransientNotesFailure_StopsFetching_AndTheSyncSucceeds()
     {
-        StubList(Listed("a", 2), Listed("b", 1));
+        StubList(Listed("a", 2), Listed("b"));
         _client.GetPurchaseDocumentAsync("a", Arg.Any<CancellationToken>())
             .ThrowsAsync(new HoldedTransientException("timeout"));
 

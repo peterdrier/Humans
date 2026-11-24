@@ -76,7 +76,7 @@ public sealed class SurveyIdentityViewTests
         };
         var html = await RenderAsync("Results", model, users);
         html.Should().NotContain("id=\"respondents\"");
-        await users.DidNotReceiveWithAnyArgs().GetUserInfoAsync(default, default);
+        await users.DidNotReceiveWithAnyArgs().GetUserInfoAsync(default);
     }
 
     private static async Task<string> RenderAsync(string page, object model, IUserService users)
@@ -97,7 +97,7 @@ public sealed class SurveyIdentityViewTests
         var urls = Substitute.For<IUrlHelperFactory>();
         urls.GetUrlHelper(Arg.Any<ActionContext>()).Returns(url);
         builder.Services.AddSingleton(urls);
-        builder.Services.AddSingleton<Humans.Base.Interfaces.IOrgTimeZone>(FixedOrgTimeZone.Madrid);
+        builder.Services.AddSingleton<Base.Interfaces.IOrgTimeZone>(FixedOrgTimeZone.Madrid);
         await using var app = builder.Build();
         using var scope = app.Services.CreateScope();
         var services = scope.ServiceProvider;

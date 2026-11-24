@@ -1,5 +1,4 @@
 using Humans.Grants.Contracts;
-using Humans.AuditLog.Contracts;
 using Humans.Base.Extensions;
 using Humans.Grants.Domain;
 using NodaTime;

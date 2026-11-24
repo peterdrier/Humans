@@ -37,7 +37,7 @@ public sealed class IssuedTicketsViewComponentTests
         var result = await BuildSut().InvokeAsync(Guid.NewGuid(), ProfileCardViewMode.Public);
 
         result.Should().BeOfType<ContentViewComponentResult>().Which.Content.Should().BeEmpty();
-        await _checkout.DidNotReceiveWithAnyArgs().GetTicketsForHolderAsync(default, default);
+        await _checkout.DidNotReceiveWithAnyArgs().GetTicketsForHolderAsync(default);
     }
 
     [HumansFact]

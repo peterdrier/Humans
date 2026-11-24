@@ -1,7 +1,6 @@
 using Humans.Base.Extensions;
 using Humans.Preapprovals.Services;
 using Humans.Users.Contracts;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Authorization;
 
 namespace Humans.Preapprovals.Authorization;

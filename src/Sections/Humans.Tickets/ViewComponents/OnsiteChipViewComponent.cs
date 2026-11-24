@@ -1,4 +1,3 @@
-using Humans.Base.Authorization;
 using Humans.Base.Enums;
 using Humans.Settings.Contracts;
 using Humans.Tickets.Contracts;

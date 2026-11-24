@@ -1,5 +1,3 @@
-using Humans.Camps.Contracts;
-using Humans.Base.Authorization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Humans.Users.Contracts;

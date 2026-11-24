@@ -178,7 +178,7 @@ public sealed class CachingConsentServiceTests
     [InlineData(true)]
     public async Task Reads_AfterMergeChangesUserIds_RebuildEntries(bool bulk)
     {
-        var ct = Xunit.TestContext.Current.CancellationToken;
+        var ct = TestContext.Current.CancellationToken;
         var survivorId = Guid.NewGuid();
         var archivedId = Guid.NewGuid();
         var survivorVersion = Guid.NewGuid();

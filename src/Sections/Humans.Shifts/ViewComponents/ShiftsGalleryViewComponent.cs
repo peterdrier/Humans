@@ -1,7 +1,5 @@
 using Humans.Base.Extensions;
-using System.Security.Claims;
 using Humans.Shifts.Contracts;
-using Humans.Shifts.Domain;
 using Humans.Shifts.Models;
 using Humans.Shifts.Services;
 using Microsoft.AspNetCore.Mvc;

@@ -11,7 +11,6 @@ using Humans.Consent.Domain;
 using Humans.Consent.Jobs;
 using Humans.Consent.Tests.Infrastructure;
 using Humans.Email.Contracts;
-using Humans.Governance.Contracts;
 using Humans.Users.Contracts;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;

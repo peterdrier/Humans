@@ -1,5 +1,4 @@
 using Humans.CityPlanning.Services;
-using Humans.CityPlanning.Contracts;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Humans.CityPlanning.ViewComponents;

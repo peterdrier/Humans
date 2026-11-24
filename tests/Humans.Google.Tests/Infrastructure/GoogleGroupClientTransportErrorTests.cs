@@ -24,7 +24,7 @@ public sealed class GoogleGroupClientTransportErrorTests
     public async Task LookupGroupIdAsync_TransportError_ReturnsStructuredError()
     {
         using var cloudIdentity = new CloudIdentityService(CreateInitializer());
-        var logger = new Humans.Testing.CapturingLogger<GoogleGroupProvisioningClient>();
+        var logger = new CapturingLogger<GoogleGroupProvisioningClient>();
         var client = new GoogleGroupProvisioningClient(
             Options.Create(new GoogleWorkspaceSettings()), logger);
         Inject(client, "_cloudIdentityService", cloudIdentity);
@@ -43,7 +43,7 @@ public sealed class GoogleGroupClientTransportErrorTests
     public async Task ListMembershipsAsync_TransportError_ReturnsStructuredError()
     {
         using var directory = new DirectoryService(CreateInitializer());
-        var logger = new Humans.Testing.CapturingLogger<GoogleGroupMembershipClient>();
+        var logger = new CapturingLogger<GoogleGroupMembershipClient>();
         var client = new GoogleGroupMembershipClient(
             Options.Create(new GoogleWorkspaceSettings()), logger);
         Inject(client, "_directoryService", directory);
@@ -209,8 +209,8 @@ public sealed class GoogleGroupClientTransportErrorTests
             Domain = "example.org",
             ServiceAccountKeyPath = $"/tmp/debt98-missing-{Guid.NewGuid():N}/credentials.json",
         });
-        var groupLogger = new Humans.Testing.CapturingLogger<GoogleDirectoryClient>();
-        var driveLogger = new Humans.Testing.CapturingLogger<GoogleDrivePermissionsClient>();
+        var groupLogger = new CapturingLogger<GoogleDirectoryClient>();
+        var driveLogger = new CapturingLogger<GoogleDrivePermissionsClient>();
 
         async Task<GoogleClientError?> FetchAsync()
         {
@@ -303,7 +303,7 @@ public sealed class GoogleGroupClientTransportErrorTests
             GoogleGroupCredentialOperation.CreateGroup => provisioning.CreateGroupAsync("team@example.org", "Team", "Description", ct),
             GoogleGroupCredentialOperation.LookupGroup => provisioning.LookupGroupIdAsync("team@example.org", ct),
             GoogleGroupCredentialOperation.ReadSettings => provisioning.GetGroupSettingsAsync("team@example.org", ct),
-            GoogleGroupCredentialOperation.WriteSettings => provisioning.UpdateGroupSettingsAsync("team@example.org", Humans.Google.Services.GroupSettingsPolicy.BuildExpected(new Humans.Google.Contracts.GoogleWorkspaceGroupOptions()), ct),
+            GoogleGroupCredentialOperation.WriteSettings => provisioning.UpdateGroupSettingsAsync("team@example.org", Services.GroupSettingsPolicy.BuildExpected(new Contracts.GoogleWorkspaceGroupOptions()), ct),
             GoogleGroupCredentialOperation.ListMembers => membership.ListMembershipsAsync("group", ct),
             GoogleGroupCredentialOperation.CreateMember => membership.CreateMembershipAsync("group", "person@example.org", ct),
             _ => membership.DeleteMembershipAsync("groups/group/memberships/person@example.org", ct),

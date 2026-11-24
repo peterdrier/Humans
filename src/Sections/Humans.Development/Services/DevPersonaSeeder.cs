@@ -1,13 +1,11 @@
 using Humans.Auth.Contracts;
 using System.Security.Cryptography;
 using System.Text;
-using Humans.Base.Extensions;
 using Humans.Camps.Contracts;
 using Humans.Consent.Contracts;
 using Humans.Users.Contracts;
 using Humans.Teams.Contracts;
 using Humans.CityPlanning.Contracts;
-using Humans.Base.Constants;
 using Humans.Base.Enums;
 using Microsoft.Extensions.Options;
 using NodaTime;

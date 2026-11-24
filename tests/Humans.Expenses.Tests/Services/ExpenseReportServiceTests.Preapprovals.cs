@@ -5,7 +5,6 @@ using Xunit;
 using Humans.Expenses.Contracts;
 using Humans.Expenses.Data;
 using Humans.Expenses.Services;
-using Humans.Expenses.Tests.Infrastructure;
 using Humans.Expenses.Services.Dtos;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -35,7 +34,7 @@ public sealed partial class ExpenseReportServiceTests
         var firstId = await CreateSubmittableGrantDraftAsync(owner, grant);
         var nextId = await CreateSubmittableGrantDraftAsync(owner, grant);
         Guid? committedHolder = null;
-        _preapprovals.GetGrantsAsync(Arg.Any<CancellationToken>()).Returns(_ => (IReadOnlyList<GrantOption>)
+        _preapprovals.GetGrantsAsync(Arg.Any<CancellationToken>()).Returns(_ =>
             [grant with { HolderUserId = owner, Status = committedHolder is null ? GrantStatus.Open : GrantStatus.Claimed, ClaimableToday = committedHolder is null }]);
         _preapprovalWrites.ClaimAsync(grant.Id, Arg.Any<Guid>(), owner, ct,
             Arg.Any<Action<Func<CancellationToken, Task>>>()).Returns(call =>

@@ -8,7 +8,6 @@ using AwesomeAssertions;
 using Humans.Base;
 using Humans.Base.Extensions;
 using Humans.Base.ViewComponents;
-using Humans.Events.Contracts;
 using Humans.Events.Models;
 using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Authorization;

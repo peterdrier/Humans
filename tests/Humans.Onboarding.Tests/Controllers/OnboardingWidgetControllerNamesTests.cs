@@ -4,8 +4,6 @@ using Humans.Base.Extensions;
 using Microsoft.AspNetCore.Mvc.ModelBinding.Validation;
 using Microsoft.Extensions.DependencyInjection;
 using System.Security.Claims;
-using Humans.Consent;
-using Humans.Consent.Contracts;
 using Humans.Onboarding.Services;
 using Humans.Users.Contracts;
 using Humans.Settings.Contracts;

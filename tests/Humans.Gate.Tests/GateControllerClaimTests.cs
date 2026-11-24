@@ -1,4 +1,3 @@
-using Hangfire;
 using Humans.Gate.Controllers;
 using Humans.Gate.Services;
 using Humans.Gate.Services.Stores;
