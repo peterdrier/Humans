@@ -17,7 +17,7 @@ using Xunit;
 namespace Humans.Backdoor.Tests.Controllers;
 
 /// <summary>
-/// Unit tests for <see cref="BackdoorIssuesController"/> — the machine surface at
+/// Unit tests for <see cref="BackdoorIssuesController"/> — the Backdoor API at
 /// <c>/api/backdoor/issues</c>. Mocks <see cref="IIssueTriage"/> and drives the controller
 /// directly (no HTTP roundtrip). The auth filter is covered by
 /// <see cref="BackdoorApiKeyAuthFilterTests"/>.

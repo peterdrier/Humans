@@ -137,7 +137,7 @@ The per-turn context reports `UserInfo.State` as `AccountState`, with `Unknown` 
 
 ## Tooling API — `/api/backdoor/agent`
 
-Read-only HTTP surface for QA/prod chat-history review by dev tooling and a dev-side Claude (issue nobodies-collective/Humans#631). The controller lives in `Humans.Backdoor` and reads this section through `Humans.Agent.Contracts.IAgentTranscriptRead`; the section keeps the data and the contract, not the endpoint. One `X-Api-Key` gate for the whole machine surface, resolved to the human it was issued to.
+Read-only HTTP surface for QA/prod chat-history review by dev tooling and a dev-side Claude (issue nobodies-collective/Humans#631). The controller lives in `Humans.Backdoor` and reads this section through `Humans.Agent.Contracts.IAgentTranscriptRead`; the section keeps the data and the contract, not the endpoint. One `X-Api-Key` gate for the whole Backdoor API, resolved to the human who owns the key.
 
 | Endpoint | Purpose |
 |----------|---------|

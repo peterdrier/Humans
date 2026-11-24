@@ -11,7 +11,7 @@ namespace Humans.Backdoor.Controllers;
 [ApiController]
 [Route("api/backdoor/logs")]
 [ServiceFilter(typeof(BackdoorApiKeyAuthFilter))]
-[BackdoorScope(BackdoorScope.Staff)]
+[BackdoorScope(BackdoorScope.AdminAndBoard)]
 [AllowAnonymous]
 internal sealed class BackdoorLogsController(InMemoryLogSink logSink) : ControllerBase
 {

@@ -16,7 +16,7 @@ namespace Humans.Backdoor.Controllers;
 [ApiController]
 [Route("api/backdoor/issues")]
 [ServiceFilter(typeof(BackdoorApiKeyAuthFilter))]
-[BackdoorScope(BackdoorScope.Staff)]
+[BackdoorScope(BackdoorScope.AdminAndBoard)]
 [AllowAnonymous]
 internal sealed class BackdoorIssuesController(
     IIssueTriage issues,
@@ -31,7 +31,7 @@ internal sealed class BackdoorIssuesController(
     private Guid ActorUserId => GetCurrentUserId() ?? Guid.Empty;
 
     /// <summary>
-    /// Passed on every call, so the key reaches exactly the issues its holder reaches in the browser: an id outside
+    /// Passed on every call, so the key reaches exactly the issues its owner reaches in the browser: an id outside
     /// the queue is a 404 to read, comment on and patch.
     /// </summary>
     private IssueViewer Viewer =>
