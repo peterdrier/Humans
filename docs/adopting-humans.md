@@ -23,13 +23,13 @@ One repo word you will see everywhere: a **section**. A section is one self-cont
 | A server | CPU: 2 cores minimum, 4 recommended. RAM: 8 GB minimum, 16 GB recommended |
 | PostgreSQL | Version 16 or newer. The included compose file runs `postgres:16` for you |
 | A domain name | With HTTPS, usually through a reverse proxy (a web server that sits in front of the app and handles HTTPS for it) |
-| A Google OAuth client | Required. These are the credentials that let your site offer "Sign in with Google". No page loads without them |
+| Sign-in | Google sign-in and email magic links are built in. Today the code still expects a Google OAuth client to be configured (see below) |
 | SMTP email | An outgoing mail account, for sign-in links, notifications and reminders |
 | Docker | The easiest way to run the app and the database together |
 
 **Why these numbers?** Humans is multithreaded, so it needs at least 2 cores (on fewer it struggles), and 4 gives it comfortable headroom. Memory is more forgiving than you might expect. Humans keeps a lot of its data cached in memory by design, but for a real burn with a year of data the app uses under 1 GB and PostgreSQL about 300 MB. It could get by on 4 GB. 8 GB is a sensible minimum and 16 GB is recommended, because the server will usually run other things beside Humans, such as a reverse proxy, backups and monitoring.
 
-**Why is Google required?** Members can sign in with Google or with an email magic link (a one-time sign-in link sent by email). Even if most of your people use magic links, the Google client must be configured. Without it the app still starts, but every page fails with an error about the empty `ClientId`. You create the client in the Google Cloud console, and its redirect address is your site's address followed by `/signin-google`.
+**What about Google?** Humans offers two ways to sign in: Google, and an email magic link (a one-time sign-in link sent by email). Nobody has to have a Google account; members can use magic links only. Google is not a design requirement, it is just the only provider our burn has needed so far. One catch today: the code still expects a Google OAuth client to be configured. Without one the app starts, but every page fails with an error about the empty `ClientId`. If you use Google, you create the client in the Google Cloud console, and its redirect address is your site's address followed by `/signin-google`. If your burn would rather not touch Google, making that client optional, or adding another sign-in provider, is a welcome pull request.
 
 **Why is email needed?** Magic links travel by email, so without working SMTP a good share of your members cannot sign in. In practice, treat email as required.
 
@@ -65,7 +65,7 @@ If you would rather run the app from source while developing, start only the dat
 
 ### 4. Sign in once
 
-Open the site and sign in with Google, then enter your name when it asks. This creates your user record, which the next step needs, and the name makes your account Active. Role-gated pages stay closed to an account that is not Active, even for an Admin.
+Open the site and sign in (with Google or a magic link), then enter your name when it asks. This creates your user record, which the next step needs, and the name makes your account Active. Role-gated pages stay closed to an account that is not Active, even for an Admin.
 
 ### 5. Make yourself the first Admin
 
@@ -143,7 +143,7 @@ These are the ones you need for Humans to work at all. They are listed in the or
 
 **What it does.** Signs people in (Google or magic link) and holds role assignments. A role assignment says "this person has this role from this date", with an optional end date. Auth also guards the door: only an account in the Active state gets into the app.
 
-**What you set up.** The Google OAuth client and your first Admin, both covered above.
+**What you set up.** Sign-in (the Google OAuth client, for now) and your first Admin, both covered above.
 
 **Leads to.** A sign-in needs a person to attach to, which is Users.
 
