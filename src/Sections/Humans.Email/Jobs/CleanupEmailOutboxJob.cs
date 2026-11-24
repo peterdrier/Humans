@@ -1,10 +1,12 @@
 using Hangfire;
+using Humans.Base.Attributes;
 using Humans.Base.Interfaces;
 using Humans.Email.Services;
 
 namespace Humans.Email.Jobs;
 
 [DisableConcurrentExecution(timeoutInSeconds: 300)]
+[StaysOnWhenSectionIsOff]
 internal sealed class CleanupEmailOutboxJob(
     IEmailOutboxManagement outbox,
     IHumansMetrics metrics,

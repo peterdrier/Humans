@@ -160,7 +160,8 @@ that only when it requires none.
 
 **What it does not cover.**
 
-- Recurring jobs and outbound integrations of a switched-off section keep running.
+- Outbound integrations a switched-off section's services call on behalf of others keep running. Its own
+  recurring jobs are unscheduled (`SwitchedOffSectionJobs`), except those marked `[StaysOnWhenSectionIsOff]`.
 - Minimal-API endpoints mapped through `ISectionEndpoints` are not MVC actions, so
   the filter does not see them.
 - A URL that is not an `<a>` or `<form>` in a view still leads to the 404: one built

@@ -1,4 +1,5 @@
 using Hangfire;
+using Humans.Base.Attributes;
 using Humans.Base.Interfaces;
 using Humans.Gate.Services;
 using Microsoft.Extensions.Configuration;
@@ -8,6 +9,7 @@ namespace Humans.Gate.Jobs;
 
 /// <summary>Gate scans are attendance data, so they aren't kept indefinitely. <c>Gate:RetentionDays</c> of 0 or less disables the purge.</summary>
 [DisableConcurrentExecution(timeoutInSeconds: 300)]
+[StaysOnWhenSectionIsOff]
 internal sealed class GateRetentionJob(
     IGateService gate,
     IConfiguration configuration,

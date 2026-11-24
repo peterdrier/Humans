@@ -1,10 +1,12 @@
 using Hangfire;
+using Humans.Base.Attributes;
 using Humans.Base.Interfaces;
 using Humans.Notifications.Services;
 
 namespace Humans.Notifications.Jobs;
 
 [DisableConcurrentExecution(timeoutInSeconds: 300)]
+[StaysOnWhenSectionIsOff]
 internal sealed class CleanupNotificationsJob(
     INotificationInboxService notifications,
     IHumansMetrics metrics,

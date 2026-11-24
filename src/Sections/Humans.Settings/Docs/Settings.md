@@ -148,7 +148,9 @@ named by `SectionMigrationsHistory.TableFor`.
   meters, the Shifts page banners, the Teams shifts and roles parts, admin
   sidebar items that point into it (the rest of their group stays), the
   helper's section index, and notification click-throughs (which fall back to
-  the inbox). Its recurring jobs still run.
+  the inbox). Its recurring jobs are unscheduled within a minute and come back
+  when it is switched on, except retention, the email outbox and the legal
+  document sync (`[StaysOnWhenSectionIsOff]`).
 - **Calendar dates must be representable.** Admin saves and seeded activation
   reject gate/offset combinations whose dates, or the following day, fall outside
   BCL date support, before any write.

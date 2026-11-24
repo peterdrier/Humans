@@ -5,8 +5,9 @@ namespace Humans.Base.Interfaces;
 
 /// <summary>
 /// The sections an admin switched off for the active event. Softer than <see cref="ISection.IsActive"/>: a
-/// switched-off section stays composed (services, jobs and data all run, so the sections that consume it keep
-/// working), but its pages answer 404 and nothing it contributes to nav, dashboards or admin renders.
+/// switched-off section stays composed (services and data stay, so the sections that consume it keep working), but
+/// its pages answer 404, nothing it contributes to nav, dashboards or admin renders, and its recurring jobs skip
+/// their runs unless marked <see cref="Humans.Base.Attributes.StaysOnWhenSectionIsOffAttribute"/>.
 /// </summary>
 /// <remarks>Settings owns the list, because it owns the event row the list is stored on.</remarks>
 public interface ISectionSwitches

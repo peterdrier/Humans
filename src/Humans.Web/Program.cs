@@ -179,6 +179,8 @@ var hangfireServerEnabled = builder.Configuration.GetSettingValue(
     configRegistry, "Hangfire:ServerEnabled", "Hangfire", defaultValue: true);
 if (hangfireServerEnabled)
 {
+    // Ahead of the server, so a switched-off section's jobs are unscheduled before the first tick.
+    builder.Services.AddHostedService<SwitchedOffSectionJobs>();
     builder.Services.AddHangfireServer();
 }
 
