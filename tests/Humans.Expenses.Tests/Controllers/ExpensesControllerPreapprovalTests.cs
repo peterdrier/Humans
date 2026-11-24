@@ -602,7 +602,7 @@ public sealed class ExpensesControllerPreapprovalTests
         var grant = Grant("Own", Today.PlusDays(10));
         _reports.CreateDraftAsync(_actorId, _actorId, 0, null, grant.Id, Arg.Any<CancellationToken>())
             .Returns(new ExpenseCreateDraftResult(false,
-                new ExpenseError("Expenses_Validation_PreapprovalNotClaimable", []), null));
+                new ExpenseError("Expenses_Validation_PreapprovalNotTheirs", []), null));
         PutGrant(grant);
 
         var controller = Build();
@@ -612,7 +612,7 @@ public sealed class ExpensesControllerPreapprovalTests
         model.PreapprovalGrantId.Should().Be(grant.Id);
         model.Grants.Should().ContainSingle().Which.Id.Should().Be(grant.Id);
         controller.TempData[TempDataKeys.ErrorMessage].Should().Be(
-            "Expenses_Flash_CreateFailed Expenses_Validation_PreapprovalNotClaimable:");
+            "Expenses_Flash_CreateFailed Expenses_Validation_PreapprovalNotTheirs:");
     }
 
     [HumansTheory]

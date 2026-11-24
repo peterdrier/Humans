@@ -467,7 +467,7 @@ public sealed partial class ExpenseReportServiceTests
         var result = await _sut.CreateDraftAsync(submitter, submitter, CategoryAccountNumber, null, ct: TestContext.Current.CancellationToken);
 
         result.Succeeded.Should().BeFalse();
-        result.Error!.ResourceKey.Should().Be("Expenses_Validation_AccountNotFound");
+        result.Error!.ResourceKey.Should().Be("Expenses_Validation_AccountInactive");
     }
 
     [HumansFact]
