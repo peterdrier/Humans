@@ -28,7 +28,7 @@ internal sealed class GateService(
     IEarlyEntryService earlyEntry,
     ISettingsService settingsService,
     IShiftService shifts,
-    IRoleAssignmentService roles,
+    ISystemRoleService roles,
     ITicketWrite ticketWrite,
     ITicketGateLookup issuedTickets,
     IPasswordHasher<GateStaffPin> pinHasher,

@@ -289,7 +289,7 @@ nobodies-collective/Humans#933.)
   _Cross-section write approved by Peter (2026-07-02, camp-EE-revoke-after-check-in fix)._
   `ITicketWrite.UndoCheckInAsync` reverses it when an admit is undone (Attended → Ticketed, TicketSync,
   `CheckedInAt` cleared); the next ticket sync converges the row.
-- **Auth** — `IRoleAssignmentService.HasActiveRoleAsync` (is this user a supervisor? — now serves
+- **Auth** — `ISystemRoleService.HasActiveRoleAsync` (is this user a supervisor? — now serves
   only the unreachable per-PIN claim/override methods queued under nobodies-collective/Humans#933).
 
 ## Configuration

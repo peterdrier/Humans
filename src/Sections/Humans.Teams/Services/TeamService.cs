@@ -2200,7 +2200,7 @@ internal sealed class TeamService(
 
     private IRoleWrite RoleWrite => serviceProvider.GetRequiredService<IRoleWrite>();
 
-    private IRoleAssignmentService RoleAssignmentService => serviceProvider.GetRequiredService<IRoleAssignmentService>();
+    private ISystemRoleService SystemRoleService => serviceProvider.GetRequiredService<ISystemRoleService>();
 
     // Lazy: Users depends on Teams during service resolution.
 
@@ -2355,10 +2355,10 @@ internal sealed class TeamService(
         Guid userId,
         CancellationToken cancellationToken = default)
     {
-        var isAdmin = await RoleAssignmentService.IsUserAdminAsync(userId, cancellationToken);
+        var isAdmin = await SystemRoleService.IsUserAdminAsync(userId, cancellationToken);
         if (isAdmin) return true;
 
-        var isTeamsAdmin = await RoleAssignmentService.IsUserTeamsAdminAsync(userId, cancellationToken);
+        var isTeamsAdmin = await SystemRoleService.IsUserTeamsAdminAsync(userId, cancellationToken);
         if (isTeamsAdmin) return true;
 
         return await IsUserCoordinatorOfTeamAsync(teamId, userId, cancellationToken);

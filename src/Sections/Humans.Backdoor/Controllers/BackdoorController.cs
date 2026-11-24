@@ -21,7 +21,7 @@ namespace Humans.Backdoor.Controllers;
 [Route("Backdoor")]
 internal sealed class BackdoorController(
     IBackdoorApiKeyService keys,
-    IRoleAssignmentService roles,
+    ISystemRoleService roles,
     IUserService users,
     IAuthorizationService authorization,
     IStringLocalizer<BackdoorResource> localizer) : HumansControllerBase(users)

@@ -57,14 +57,14 @@ public abstract class AuthTestHarness : IDisposable
         return user;
     }
 
-    private protected RoleAssignment SeedRoleAssignment(
+    private protected SystemRole SeedSystemRole(
         Guid userId,
         string roleName,
         Instant validFrom,
         Instant? validTo = null,
         Guid? createdByUserId = null)
     {
-        var assignment = new RoleAssignment
+        var assignment = new SystemRole
         {
             Id = Guid.NewGuid(),
             UserId = userId,
@@ -74,7 +74,7 @@ public abstract class AuthTestHarness : IDisposable
             CreatedAt = Clock.GetCurrentInstant(),
             CreatedByUserId = createdByUserId ?? Guid.NewGuid()
         };
-        AuthDb.RoleAssignments.Add(assignment);
+        AuthDb.SystemRoles.Add(assignment);
         AuthDb.SaveChanges();
         return assignment;
     }

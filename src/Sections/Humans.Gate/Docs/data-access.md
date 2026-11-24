@@ -41,7 +41,7 @@ filtering the cached orders projection in memory — no new interface method),
 `IEarlyEntryService` (cached per-user EE for the too-early rule),
 `ISettingsService` (event timezone / active event), `IShiftService`
 (gate-crew shift roster for the claim screen, via
-`GetBrowseShiftsAsync`), `IRoleAssignmentService` (server-verified supervisor
+`GetBrowseShiftsAsync`), `ISystemRoleService` (server-verified supervisor
 roles for overrides), `ITicketWrite` (participation projection),
 `IAuditLogService` (PIN set/reset audit — never the PIN value), plus
 `IPasswordHasher<GateStaffPin>` and `IClock` (cutoff is always evaluated
@@ -69,7 +69,7 @@ failures / 15 min) and `GateVendorMirrorLedger`
 (`GateVendorMirrorSent:{vendorTicketId}` — 24 h atomic claim so the vendor
 check-in mirror and the backfill page never double-post a non-idempotent
 TicketTailor check-in). Two helpers live outside the section because they
-gate terminal *sign-in*, not gate *admission*: `GateLoginThrottle`
+gate terminal *sign-in*, not gate *admission*: `GateSignInThrottle`
 (`src/Humans.Web/Services/`, `GateLoginFailures:{sourceIp}` — per-IP
 terminal sign-in throttle) and `GateTerminalAccountSeeder`
 (`src/Sections/Humans.Tickets/Services/`), which provisions the shared

@@ -2,34 +2,34 @@
 
 ## Auth
 
-Folder: `src/Sections/Humans.Auth/Services/`, including `MagicLinkService`
+Folder: `src/Sections/Humans.Auth/Services/`, including `SignInLinkService`
 and its two collaborators. **DbContext:** `AuthDbContext`, internal to the
-section. `RoleAssignmentRepository` injects `IDbContextFactory<AuthDbContext>`
+section. `SystemRoleRepository` injects `IDbContextFactory<AuthDbContext>`
 directly. Owns `RoleAssignments`.
 
-`IRoleAssignmentService`, `IRoleAssignmentWrite` and the internal
-`IRoleAssignmentManagement` all alias the same singleton.
-The inner `IRoleAssignmentManagement` is wrapped by
-`Humans.Auth.Services.CachingRoleAssignmentService`
-(Singleton decorator inheriting `TrackedCache<Guid, RoleAssignmentRow>`).
+`ISystemRoleService`, `ISystemRoleWrite` and the internal
+`ISystemRoleManagement` all alias the same singleton.
+The inner `ISystemRoleManagement` is wrapped by
+`Humans.Auth.Services.CachingSystemRoleService`
+(Singleton decorator inheriting `TrackedCache<Guid, SystemRoleRow>`).
 The full `auth_role_assignments` row set is held in memory so
 every active-role read (`GetActiveCountsByRoleAsync`, `GetActiveForUserAsync`,
 `HasActiveRoleAsync` and its `IsUser*` shorthands, `HasAnyActiveAssignmentAsync`,
 `GetActiveUserIdsInRoleAsync`, `GetUserIdsWithActiveAssignmentsAsync`) derives at any
 clock instant without a query. Cached rows carry canonical role names. Invalidation is service-level:
-the inner service clears the decorator's cache (`CachingRoleAssignmentService.Clear()`,
+the inner service clears the decorator's cache (`CachingSystemRoleService.Clear()`,
 the concrete owner, no invalidator interface) right after each of its repository writes,
 merge fold and erasure included (single writer, so no EF interceptor needed).
 
-### RoleAssignmentsController / RoleAssignmentsCardViewComponent
+### SystemRolesController / SystemRolesCardViewComponent
 
-No repository, no table. Both read `IRoleAssignmentService` and write only through
-`IRoleAssignmentWrite` (whose service writes the audit entries); display names come
+No repository, no table. Both read `ISystemRoleService` and write only through
+`ISystemRoleWrite` (whose service writes the audit entries); display names come
 from `IUserService`.
 
-### RoleAssignmentService (Scoped — wrapped by CachingRoleAssignmentService Singleton decorator)
+### SystemRoleService (Scoped — wrapped by CachingSystemRoleService Singleton decorator)
 
-Repository: `IRoleAssignmentRepository`.
+Repository: `ISystemRoleRepository`.
 
 | Table | R/W |
 |-------|-----|
@@ -37,33 +37,33 @@ Repository: `IRoleAssignmentRepository`.
 
 | Cache | Invalidate |
 |-------|------------|
-| `Auth.RoleAssignmentRow` TrackedCache (`CachingRoleAssignmentService`, injected concretely) | yes (wholesale `Clear()` right after each repository write) |
+| `Auth.SystemRoleRow` TrackedCache (`CachingSystemRoleService`, injected concretely) | yes (wholesale `Clear()` right after each repository write) |
 
 Cross-section calls via `IUserService`, `ISystemTeamSync`,
 `IAuditLogService`, `INotificationEmitter`. Implements `IUserDataContributor` for GDPR exports
 and `IUserMerge` for account merges.
 
-### CachingRoleAssignmentService (Singleton, `Humans.Auth.Services`)
+### CachingSystemRoleService (Singleton, `Humans.Auth.Services`)
 
 | Cache | Type | Read | Write | Invalidate |
 |-------|------|------|-------|------------|
-| `TrackedCache<Guid, RoleAssignmentRow>` (`Auth.RoleAssignmentRow`, in-process, no `IMemoryCache`) | Per-Entity (warmed on startup) | yes | yes | yes (wholesale `Clear()`, called by the inner `RoleAssignmentService`) |
+| `TrackedCache<Guid, SystemRoleRow>` (`Auth.SystemRoleRow`, in-process, no `IMemoryCache`) | Per-Entity (warmed on startup) | yes | yes | yes (wholesale `Clear()`, called by the inner `SystemRoleService`) |
 
-Implements `IRoleAssignmentManagement` (hence `IRoleAssignmentService`, `IRoleAssignmentWrite`).
+Implements `ISystemRoleManagement` (hence `ISystemRoleService`, `ISystemRoleWrite`).
 Resolves the keyed Scoped inner per-call via `IServiceScopeFactory`.
 Surfaced on `/Debug/CacheStats`.
 
-### MagicLinkService (Scoped)
+### SignInLinkService (Scoped)
 
 No repository. Uses `IUserEmailService`,
 `IUserService` (`GetRawUserInfoAsync` for token-bound identity checks, `GetUserInfoAsync` for display data),
 `IEmailService`, the section's own `AuthEmails` builder,
-`IMagicLinkRateLimiter`, `IMagicLinkUrlBuilder`. No direct `IMemoryCache` —
-rate-limit/replay sentinels are owned by `IMagicLinkRateLimiter`
+`ISignInLinkRateLimiter`, `ISignInLinkUrlBuilder`. No direct `IMemoryCache` —
+rate-limit/replay sentinels are owned by `ISignInLinkRateLimiter`
 (same section, `Services/`) which writes `magic_link_used:{sha256(token)}`,
 `magic_link_login:{userId}` and `magic_link_signup:{normalizedEmail}` into `IMemoryCache`. Both link types
 redeem through the same `magic_link_used:` sentinel — login tokens on
-`VerifyLoginTokenAsync` (returns `bool`, never the `User`), signup tokens on `VerifyAndConsumeSignupTokenAsync`, which
+`VerifySignInTokenAsync` (returns `bool`, never the `User`), signup tokens on `VerifyAndConsumeSignupTokenAsync`, which
 `ReleaseSignupToken` reverses when provisioning fails —
 and their strings come from different DataProtection purposes, so they cannot
 collide. Survey and unsubscribe tokens have their own providers and never
@@ -71,7 +71,7 @@ reach this limiter.
 
 ### AdminAuthorizationService (Scoped)
 
-Repository: `IRoleAssignmentRepository`.
+Repository: `ISystemRoleRepository`.
 
 | Table | R/W |
 |-------|-----|
@@ -89,13 +89,13 @@ row set incrementally).
 ### AuthMetricsService (Singleton, hosted)
 
 No repository. Polled gauge service: reads
-`IRoleAssignmentManagement.GetActiveCountsByRoleAsync` per scope to feed the
-`humans.role_assignments_active` gauge. No cache.
+`ISystemRoleManagement.GetActiveCountsByRoleAsync` per scope to feed the
+`humans.system_roles_active` gauge. No cache.
 
 ### AuthEmails (Scoped, internal)
 
 No repository. Pure builder — reads `AuthResource` (via
-`IStringLocalizer<AuthResource>`), writes nothing. Returns `EmailMessage` values for `MagicLinkService` to pass to
+`IStringLocalizer<AuthResource>`), writes nothing. Returns `EmailMessage` values for `SignInLinkService` to pass to
 `IEmailService.SendAsync`. Both set `EmailMessage.Urgent` so the outbox
 drains a sign-in link immediately. No DB access, no cache.
 

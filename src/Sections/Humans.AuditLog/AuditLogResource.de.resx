@@ -38,7 +38,8 @@
   <data name="Enum_AuditAction_MemberUnsuspended" xml:space="preserve"><value>Sperre des Mitglieds aufgehoben</value></data>
   <data name="Enum_AuditAction_AccountAnonymized" xml:space="preserve"><value>Konto anonymisiert</value></data>
   <data name="Enum_AuditAction_RoleAssigned" xml:space="preserve"><value>Rolle zugewiesen</value></data>
-  <data name="Enum_AuditAction_RoleEnded" xml:space="preserve"><value>Rolle beendet</value></data>
+  <data name="Enum_AuditAction_RoleEnded" xml:space="preserve"><value>Rolle entzogen</value></data>
+  <data name="Enum_AuditAction_RoleRevoked" xml:space="preserve"><value>Rolle entzogen</value></data>
   <data name="Enum_AuditAction_VolunteerApproved" xml:space="preserve"><value>Freiwilliger zugelassen</value></data>
   <data name="Enum_AuditAction_GoogleResourceAccessGranted" xml:space="preserve"><value>Google-Ressourcenzugriff gewährt</value></data>
   <data name="Enum_AuditAction_GoogleResourceAccessRevoked" xml:space="preserve"><value>Google-Ressourcenzugriff widerrufen</value></data>
@@ -337,8 +338,10 @@
   <data name="AuditLog_NoSubjectVerb_VolunteerApproved" xml:space="preserve"><value>hat zugelassen</value></data>
   <data name="AuditLog_Verb_RoleAssigned" xml:space="preserve"><value>verlieh eine Rolle an</value></data>
   <data name="AuditLog_NoSubjectVerb_RoleAssigned" xml:space="preserve"><value>hat eine Rolle verliehen</value></data>
-  <data name="AuditLog_Verb_RoleEnded" xml:space="preserve"><value>beendete die Rolle von</value></data>
-  <data name="AuditLog_NoSubjectVerb_RoleEnded" xml:space="preserve"><value>hat die Rolle beendet</value></data>
+  <data name="AuditLog_Verb_RoleEnded" xml:space="preserve"><value>entzog die Rolle von</value></data>
+  <data name="AuditLog_Verb_RoleRevoked" xml:space="preserve"><value>entzog die Rolle von</value></data>
+  <data name="AuditLog_NoSubjectVerb_RoleEnded" xml:space="preserve"><value>hat eine Rolle entzogen</value></data>
+  <data name="AuditLog_NoSubjectVerb_RoleRevoked" xml:space="preserve"><value>hat eine Rolle entzogen</value></data>
   <data name="AuditLog_Verb_WorkspaceAccountPasswordReset" xml:space="preserve"><value>änderte das Workspace-Passwort für</value></data>
   <data name="AuditLog_NoSubjectVerb_WorkspaceAccountPasswordReset" xml:space="preserve"><value>hat das Workspace-Passwort geändert</value></data>
   <data name="AuditLog_Verb_WorkspaceAccountBackupCodesGenerated" xml:space="preserve"><value>erstellte Workspace-Sicherungscodes für</value></data>

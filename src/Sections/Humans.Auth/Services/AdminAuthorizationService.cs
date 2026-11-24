@@ -7,7 +7,7 @@ namespace Humans.Auth.Services;
 
 internal sealed class AdminAuthorizationService(
     ICurrentUserContext currentUser,
-    IRoleAssignmentRepository roleAssignments,
+    ISystemRoleRepository systemRoles,
     IClock clock) : IAdminAuthorizationService
 {
     public async Task RequireCurrentUserIsAdminAsync(CancellationToken cancellationToken = default)
@@ -15,7 +15,7 @@ internal sealed class AdminAuthorizationService(
         var userId = currentUser.UserId
             ?? throw new UnauthorizedAccessException("An authenticated user is required.");
 
-        var isAdmin = await roleAssignments.HasActiveRoleAsync(
+        var isAdmin = await systemRoles.HasActiveRoleAsync(
             userId,
             [RoleNames.Admin],
             clock.GetCurrentInstant(),

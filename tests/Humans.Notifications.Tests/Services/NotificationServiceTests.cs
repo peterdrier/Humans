@@ -25,7 +25,7 @@ public class NotificationServiceTests : IDisposable
     private readonly NotificationService _service;
     private readonly NotificationEmitter _emitter;
     private readonly ICommunicationPreferenceService _preferenceService = Substitute.For<ICommunicationPreferenceService>();
-    private readonly IRoleAssignmentService _roleAssignmentService = Substitute.For<IRoleAssignmentService>();
+    private readonly ISystemRoleService _systemRoleService = Substitute.For<ISystemRoleService>();
 
     public NotificationServiceTests()
     {
@@ -43,7 +43,7 @@ public class NotificationServiceTests : IDisposable
             _repo, _preferenceService, _clock,
             NullLogger<NotificationEmitter>.Instance);
         _service = new NotificationService(
-            _emitter, _repo, _roleAssignmentService, NullLogger<NotificationService>.Instance);
+            _emitter, _repo, _systemRoleService, NullLogger<NotificationService>.Instance);
     }
 
     public void Dispose()
@@ -83,7 +83,7 @@ public class NotificationServiceTests : IDisposable
             .Returns(Task.FromException(failure));
         var emitter = new NotificationEmitter(repo, _preferenceService, _clock, NullLogger<NotificationEmitter>.Instance);
         var service = new NotificationService(emitter, repo,
-            _roleAssignmentService, NullLogger<NotificationService>.Instance);
+            _systemRoleService, NullLogger<NotificationService>.Instance);
 
         var act = () => service.ReassignAsync(source, target, Guid.NewGuid(), _clock.GetCurrentInstant(),
             TestContext.Current.CancellationToken);
@@ -99,7 +99,7 @@ public class NotificationServiceTests : IDisposable
         var user1 = Guid.NewGuid();
         var user2 = Guid.NewGuid();
 
-        _roleAssignmentService.GetActiveUserIdsInRoleAsync("Board", Arg.Any<CancellationToken>())
+        _systemRoleService.GetActiveUserIdsInRoleAsync("Board", Arg.Any<CancellationToken>())
             .Returns(duplicateRecipients ? [user1, user2, user1, user2] : [user1, user2]);
 
         await _service.SendToRoleAsync(
@@ -124,7 +124,7 @@ public class NotificationServiceTests : IDisposable
     public async Task SendToRoleAsync_LongCopyFitsStorageAndKeepsOneSharedNotice()
     {
         var holders = new[] { Guid.NewGuid(), Guid.NewGuid() };
-        _roleAssignmentService.GetActiveUserIdsInRoleAsync("Board", Arg.Any<CancellationToken>())
+        _systemRoleService.GetActiveUserIdsInRoleAsync("Board", Arg.Any<CancellationToken>())
             .Returns(holders);
         var title = "Working group applied: " + new string('x', 200);
         var detail = string.Concat(Enumerable.Repeat("🚀", 2000));
@@ -146,7 +146,7 @@ public class NotificationServiceTests : IDisposable
     {
         var suppressed = Guid.NewGuid();
         var allowed = Guid.NewGuid();
-        _roleAssignmentService.GetActiveUserIdsInRoleAsync("Board", Arg.Any<CancellationToken>())
+        _systemRoleService.GetActiveUserIdsInRoleAsync("Board", Arg.Any<CancellationToken>())
             .Returns([suppressed, allowed]);
         _dbContext.CommunicationPreferences.Add(new()
         {
@@ -174,7 +174,7 @@ public class NotificationServiceTests : IDisposable
     public async Task SendToRoleAsync_Actionable_IgnoresInboxPreference(bool preferenceReadFails)
     {
         var holder = Guid.NewGuid();
-        _roleAssignmentService.GetActiveUserIdsInRoleAsync("Board", Arg.Any<CancellationToken>())
+        _systemRoleService.GetActiveUserIdsInRoleAsync("Board", Arg.Any<CancellationToken>())
             .Returns([holder]);
         _dbContext.CommunicationPreferences.Add(new()
         {
@@ -205,7 +205,7 @@ public class NotificationServiceTests : IDisposable
     public async Task SendToRoleAsync_AllHoldersSuppressed_WritesNothing()
     {
         var holder = Guid.NewGuid();
-        _roleAssignmentService.GetActiveUserIdsInRoleAsync("Board", Arg.Any<CancellationToken>())
+        _systemRoleService.GetActiveUserIdsInRoleAsync("Board", Arg.Any<CancellationToken>())
             .Returns([holder]);
         _dbContext.CommunicationPreferences.Add(new()
         {

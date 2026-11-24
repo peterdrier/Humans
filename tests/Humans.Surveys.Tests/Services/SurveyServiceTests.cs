@@ -1468,10 +1468,10 @@ public class SurveyServiceTests
     [InlineData(true)]
     public async Task Active_audiences_use_account_state_instead_of_consent_review(bool shiftParticipants)
     {
-        var active = UserWithLastLogin(Guid.NewGuid(), null);
+        var active = UserWithLastSignIn(Guid.NewGuid(), null);
         var inactive = Enum.GetValues<UserState>()
             .Where(state => state != UserState.Active)
-            .Select(state => UserWithLastLogin(Guid.NewGuid(), null, state)).ToList();
+            .Select(state => UserWithLastSignIn(Guid.NewGuid(), null, state)).ToList();
         inactive.Add(active with { Id = Guid.NewGuid(), IsFake = true });
         _userService.GetAllUserInfosAsync(Arg.Any<CancellationToken>())
             .Returns(new List<UserInfo> { active }.Concat(inactive).ToList());
@@ -1498,9 +1498,9 @@ public class SurveyServiceTests
         if (shiftParticipants) requestedShiftIds.Should().Equal(active.Id);
     }
 
-    private static UserInfo UserWithLastLogin(Guid id, Instant? lastLogin, UserState state = UserState.Active) =>
+    private static UserInfo UserWithLastSignIn(Guid id, Instant? lastSignIn, UserState state = UserState.Active) =>
         UserInfo.Create(
-            new User { Id = id, PreferredLanguage = "en", LastLoginAt = lastLogin, State = state },
+            new User { Id = id, PreferredLanguage = "en", LastSignInAt = lastSignIn, State = state },
             [], [], null);
 
     private UserInfo Asociado(Guid id, MembershipTier tier = MembershipTier.Asociado)
@@ -1514,7 +1514,7 @@ public class SurveyServiceTests
             PreferredLanguage: "en",
             FallbackPictureUrl: null,
             CreatedAt: Instant.MinValue,
-            LastLoginAt: null,
+            LastSignInAt: null,
             DeletionRequestedAt: null,
             DeletionScheduledFor: null,
             DeletionEligibleAfter: null,
@@ -1604,10 +1604,10 @@ public class SurveyServiceTests
         _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
         _userService.GetAllUserInfosAsync(Arg.Any<CancellationToken>()).Returns(new List<UserInfo>
         {
-            UserWithLastLogin(Guid.NewGuid(), cutoff - Duration.FromDays(1)),  // before → excluded
-            UserWithLastLogin(Guid.NewGuid(), cutoff),                         // exactly at → included
-            UserWithLastLogin(Guid.NewGuid(), cutoff + Duration.FromDays(30)), // after → included
-            UserWithLastLogin(Guid.NewGuid(), null),                           // never logged in → excluded
+            UserWithLastSignIn(Guid.NewGuid(), cutoff - Duration.FromDays(1)),  // before → excluded
+            UserWithLastSignIn(Guid.NewGuid(), cutoff),                         // exactly at → included
+            UserWithLastSignIn(Guid.NewGuid(), cutoff + Duration.FromDays(30)), // after → included
+            UserWithLastSignIn(Guid.NewGuid(), null),                           // never logged in → excluded
         });
 
         var count = await CreateInvitations().PreviewAudienceCountAsync(survey.Id, TestContext.Current.CancellationToken);
@@ -1624,12 +1624,12 @@ public class SurveyServiceTests
         _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
         _userService.GetAllUserInfosAsync(Arg.Any<CancellationToken>()).Returns(new List<UserInfo>
         {
-            UserWithLastLogin(Guid.NewGuid(), recentLogin),         // included
-            UserWithLastLogin(Guid.NewGuid(), recentLogin, UserState.Bare),           // mid-onboarding → included
-            UserWithLastLogin(Guid.NewGuid(), recentLogin),                           // legacy null state → included
-            UserWithLastLogin(Guid.NewGuid(), recentLogin, UserState.Rejected),       // status wall → excluded
-            UserWithLastLogin(Guid.NewGuid(), recentLogin, UserState.Suspended),      // status wall → excluded
-            UserWithLastLogin(Guid.NewGuid(), recentLogin, UserState.AdminSuspended), // status wall → excluded
+            UserWithLastSignIn(Guid.NewGuid(), recentLogin),         // included
+            UserWithLastSignIn(Guid.NewGuid(), recentLogin, UserState.Bare),           // mid-onboarding → included
+            UserWithLastSignIn(Guid.NewGuid(), recentLogin),                           // legacy null state → included
+            UserWithLastSignIn(Guid.NewGuid(), recentLogin, UserState.Rejected),       // status wall → excluded
+            UserWithLastSignIn(Guid.NewGuid(), recentLogin, UserState.Suspended),      // status wall → excluded
+            UserWithLastSignIn(Guid.NewGuid(), recentLogin, UserState.AdminSuspended), // status wall → excluded
         });
 
         var count = await CreateInvitations().PreviewAudienceCountAsync(survey.Id, TestContext.Current.CancellationToken);
@@ -1643,7 +1643,7 @@ public class SurveyServiceTests
         var survey = SurveyWith(SurveyStatus.Draft, SurveyAudienceType.LoggedInSince, null);
         _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
         _userService.GetAllUserInfosAsync(Arg.Any<CancellationToken>())
-            .Returns(new List<UserInfo> { UserWithLastLogin(Guid.NewGuid(), Instant.FromUtc(2026, 6, 1, 0, 0)) });
+            .Returns(new List<UserInfo> { UserWithLastSignIn(Guid.NewGuid(), Instant.FromUtc(2026, 6, 1, 0, 0)) });
 
         var count = await CreateInvitations().PreviewAudienceCountAsync(survey.Id, TestContext.Current.CancellationToken);
 
@@ -1659,9 +1659,9 @@ public class SurveyServiceTests
         _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);
         _userService.GetAllUserInfosAsync(Arg.Any<CancellationToken>()).Returns(new List<UserInfo>
         {
-            UserWithLastLogin(recent, cutoff + Duration.FromDays(3)),
-            UserWithLastLogin(stale, cutoff - Duration.FromDays(3)),
-            UserWithLastLogin(never, null),
+            UserWithLastSignIn(recent, cutoff + Duration.FromDays(3)),
+            UserWithLastSignIn(stale, cutoff - Duration.FromDays(3)),
+            UserWithLastSignIn(never, null),
         });
 
         _userService.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
@@ -4231,7 +4231,7 @@ public class SurveyServiceTests
                 state.InvitationId = Guid.NewGuid();
                 _userService.GetUserInfoAsync(actor, Arg.Any<CancellationToken>()).Returns(
                     new ValueTask<UserInfo?>(Asociado(actor)),
-                    new ValueTask<UserInfo?>(UserWithLastLogin(actor, null, UserState.Suspended)));
+                    new ValueTask<UserInfo?>(UserWithLastSignIn(actor, null, UserState.Suspended)));
             }
             else
                 _userService.GetUserInfoAsync(actor, Arg.Any<CancellationToken>()).Returns(
@@ -5071,7 +5071,7 @@ public class SurveyServiceTests
         var sourceId = Guid.NewGuid();
         var requestedId = archivedId ? sourceId : survivorId;
         _userService.GetUserInfoAsync(requestedId, Arg.Any<CancellationToken>())
-            .Returns(UserWithLastLogin(survivorId, null) with { MergedUserIds = [sourceId] });
+            .Returns(UserWithLastSignIn(survivorId, null) with { MergedUserIds = [sourceId] });
         var survey = SurveyWith(SurveyStatus.Closed, null, null);
         survey.Questions = [TextQuestion(Guid.NewGuid(), survey.Id, 1)];
         _repo.GetByIdAsync(survey.Id, Arg.Any<CancellationToken>()).Returns(survey);

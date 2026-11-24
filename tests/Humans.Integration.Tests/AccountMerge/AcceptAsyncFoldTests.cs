@@ -54,7 +54,7 @@ public class AcceptAsyncFoldTests(HumansTestDatabase database) : IntegrationTest
                 + string.Join("; ", result.Errors.Select(e => e.Description)));
         }
 
-        authDb.RoleAssignments.Add(new RoleAssignment
+        authDb.SystemRoles.Add(new SystemRole
         {
             Id = Guid.NewGuid(),
             UserId = adminId,
@@ -499,11 +499,11 @@ public class AcceptAsyncFoldTests(HumansTestDatabase database) : IntegrationTest
         var (sourceId, targetId) = await Factory.SeedMergeFixtureAsync(b =>
         {
             // Both active on sharedRole: source's row drops.
-            b.WithSourceRoleAssignment(sharedRole);
-            b.WithTargetRoleAssignment(sharedRole);
+            b.WithSourceSystemRole(sharedRole);
+            b.WithTargetSystemRole(sharedRole);
 
             // Source-only: re-FKs to target.
-            b.WithSourceRoleAssignment(sourceOnlyRole);
+            b.WithSourceSystemRole(sourceOnlyRole);
         });
         var requestId = await Factory.SeedMergeRequestAsync(sourceId, targetId);
 
@@ -513,7 +513,7 @@ public class AcceptAsyncFoldTests(HumansTestDatabase database) : IntegrationTest
         await using var assertScope = Factory.Services.CreateAsyncScope();
         var authDb = assertScope.ServiceProvider.GetRequiredService<AuthDbContext>();
 
-        var targetRows = await authDb.RoleAssignments
+        var targetRows = await authDb.SystemRoles
             .AsNoTracking()
             .Where(ra => ra.UserId == targetId
                 && (ra.RoleName == sharedRole || ra.RoleName == sourceOnlyRole))
@@ -523,7 +523,7 @@ public class AcceptAsyncFoldTests(HumansTestDatabase database) : IntegrationTest
         targetRows.Should().ContainSingle(ra => string.Equals(ra.RoleName, sharedRole, StringComparison.Ordinal));
         targetRows.Should().ContainSingle(ra => string.Equals(ra.RoleName, sourceOnlyRole, StringComparison.Ordinal));
 
-        var sourceRows = await authDb.RoleAssignments
+        var sourceRows = await authDb.SystemRoles
             .AsNoTracking()
             .Where(ra => ra.UserId == sourceId
                 && (ra.RoleName == sharedRole || ra.RoleName == sourceOnlyRole))

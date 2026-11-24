@@ -59,11 +59,11 @@ internal sealed class UserService(
         await repo.SetPreferredLanguageAsync(userId, preferredLanguage, ct);
     }
 
-    public async Task RecordLoginAsync(Guid userId, CancellationToken ct = default)
+    public async Task RecordSignInAsync(Guid userId, CancellationToken ct = default)
     {
         try
         {
-            await repo.SetLastLoginAsync(userId, clock.GetCurrentInstant(), ct);
+            await repo.SetLastSignInAsync(userId, clock.GetCurrentInstant(), ct);
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
@@ -337,7 +337,7 @@ internal sealed class UserService(
             DeletionScheduledFor = user.DeletionScheduledFor.ToIso8601(),
             DeletionEligibleAfter = user.DeletionEligibleAfter.ToIso8601(),
             CreatedAt = user.CreatedAt.ToIso8601(),
-            LastLoginAt = user.LastLoginAt.ToIso8601()
+            LastSignInAt = user.LastSignInAt.ToIso8601()
         };
 
         var profile = await repo.GetByUserIdReadOnlyAsync(userId, ct);

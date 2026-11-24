@@ -68,11 +68,11 @@
                     <dt class="col-sm-3">@SharedLocalizer["Admin_Joined"]</dt>
                     <dd class="col-sm-9">@Model.CreatedAt.ToDateTime()</dd>
 
-                    <dt class="col-sm-3">@SharedLocalizer["Admin_LastLogin"]</dt>
+                    <dt class="col-sm-3">@SharedLocalizer["Admin_LastSignIn"]</dt>
                     <dd class="col-sm-9">
-                        @if (Model.LastLoginAt.HasValue)
+                        @if (Model.LastSignInAt.HasValue)
                         {
-                            @Model.LastLoginAt.Value.ToDateTime()
+                            @Model.LastSignInAt.Value.ToDateTime()
                         }
                         else
                         {

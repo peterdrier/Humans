@@ -54,10 +54,10 @@ internal sealed class AgentPromptAssembler : IAgentPromptAssembler
         sb.AppendLine(string.Create(CultureInfo.InvariantCulture, $"Tier: {snapshot.Tier}"));
         sb.AppendLine(string.Create(CultureInfo.InvariantCulture, $"AccountState: {snapshot.AccountState?.ToString() ?? "Unknown"}"));
 
-        if (snapshot.RoleAssignments.Count > 0)
+        if (snapshot.SystemRoles.Count > 0)
         {
             sb.AppendLine("Roles:");
-            foreach (var (name, expires) in snapshot.RoleAssignments.OrderBy(r => r.RoleName, StringComparer.Ordinal))
+            foreach (var (name, expires) in snapshot.SystemRoles.OrderBy(r => r.RoleName, StringComparer.Ordinal))
                 sb.AppendLine(string.Create(CultureInfo.InvariantCulture, $"  - {name} (expires {expires})"));
         }
 

@@ -41,7 +41,7 @@ internal interface IBackdoorApiKeyService : IApplicationService
 }
 
 [method: System.Text.Json.Serialization.JsonConstructor]
-internal sealed record BackdoorKeyOwner(Guid UserId, IReadOnlyList<RoleAssignmentSnapshot> Roles);
+internal sealed record BackdoorKeyOwner(Guid UserId, IReadOnlyList<SystemRoleSnapshot> Roles);
 
 internal enum BackdoorKeyError
 {

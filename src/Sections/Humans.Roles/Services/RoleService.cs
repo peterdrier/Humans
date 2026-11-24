@@ -27,7 +27,7 @@ internal sealed class RoleService(
     IEnumerable<IRoleOwner> roleOwners,
     IEnumerable<ISectionPermissions> sectionPermissions,
     IEnumerable<IEntityNameContributor> names,
-    IRoleAssignmentService systemRoles,
+    ISystemRoleService systemRoles,
     IAuditLogService audit,
     IClock clock,
     IStringLocalizer<RolesResource> localizer,

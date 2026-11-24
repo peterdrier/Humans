@@ -39,7 +39,7 @@ First-party, GDPR-compliant surveys: author typed/branching multi-language surve
 | OpensAt / ClosesAt | Instant? | optional open/close window |
 | AudienceType | SurveyAudienceType? | string-converted; null = no audience |
 | AudienceTeamId | Guid? | bare FK → Team (when `AudienceType = Team`) — **FK only**, no nav, no cross-section EF FK constraint |
-| AudienceLoggedInSince | Instant? | cutoff (when `AudienceType = LoggedInSince`); users with `LastLoginAt >= cutoff` match, `null` LastLoginAt never matches |
+| AudienceLoggedInSince | Instant? | cutoff (when `AudienceType = LoggedInSince`); users with `LastSignInAt >= cutoff` match, `null` LastSignInAt never matches |
 | PublicSlug | string? | max 80; shareable answering link; identified surveys require sign-in and current audience access; null = invite-only |
 | PublicStartedCount | int | slug-path "started" funnel counter (no per-person anchor) |
 | CreatedByUserId | Guid | bare FK → User — **FK only**, no nav, resolved via `IUserService` |
@@ -310,7 +310,7 @@ First-party, GDPR-compliant surveys: author typed/branching multi-language surve
 ## Cross-Section Dependencies
 
 - **Audit actions:** declared on `SurveysAuditActions` (`src/Sections/Humans.Surveys/SurveysAuditActions.cs`), one `AuditActionDefinition` each, written through `IAuditLogService`: `SurveyCreated`, `SurveyUpdated`, `SurveyOpened`, `SurveyClosed`, `SurveyInvitesSent`, `SurveyReminderSent`, `SurveySubmittedForApproval`, `SurveyApproved`, `SurveyRejected`, `SurveyResponsesExported`.
-- **Users/Identity:** `IUserService` — resolve active-member ids and `LoggedInSince`-audience ids (`UserInfo.LastLoginAt`), and creator/respondent/recipient display names + preferred languages.
+- **Users/Identity:** `IUserService` — resolve active-member ids and `LoggedInSince`-audience ids (`UserInfo.LastSignInAt`), and creator/respondent/recipient display names + preferred languages.
 - **Teams:** `ITeamService` — `Team`-audience member ids and team display data.
 - **Governance:** `IGovernanceService.GetMembershipTierAsync` / `GetMembershipTiersAsync` — Asociado voting eligibility and the `Asociados` audience.
 - **Tickets:** `ITicketService` — `TicketHolders`-audience recipient ids.

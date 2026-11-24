@@ -46,8 +46,8 @@ internal static class AdminHumanListViewModelBuilder
                 ? rows.OrderBy(r => r.CreatedAt)
                 : rows.OrderByDescending(r => r.CreatedAt),
             "login" => ascending
-                ? rows.OrderBy(r => r.LastLoginAt.HasValue ? 0 : 1).ThenBy(r => r.LastLoginAt)
-                : rows.OrderBy(r => r.LastLoginAt.HasValue ? 0 : 1).ThenByDescending(r => r.LastLoginAt),
+                ? rows.OrderBy(r => r.LastSignInAt.HasValue ? 0 : 1).ThenBy(r => r.LastSignInAt)
+                : rows.OrderBy(r => r.LastSignInAt.HasValue ? 0 : 1).ThenByDescending(r => r.LastSignInAt),
             "status" => ascending
                 ? rows.OrderBy(r => r.StatusLabel, StringComparer.OrdinalIgnoreCase)
                 : rows.OrderByDescending(r => r.StatusLabel, StringComparer.OrdinalIgnoreCase),

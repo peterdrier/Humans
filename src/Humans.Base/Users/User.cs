@@ -34,7 +34,7 @@ public class User : IdentityUser<Guid>
 
     public Instant CreatedAt { get; init; }
 
-    public Instant? LastLoginAt { get; set; }
+    public Instant? LastSignInAt { get; set; }
 
     /// <summary>Owned by Users; the Email override needs this navigation.</summary>
     internal ICollection<UserEmail> UserEmails { get; } = new List<UserEmail>();

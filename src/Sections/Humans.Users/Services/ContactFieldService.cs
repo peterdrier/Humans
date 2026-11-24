@@ -15,7 +15,7 @@ internal sealed class ContactFieldService(
     IUserRepository userRepository,
     IUserService userService,
     ITeamService teamService,
-    IRoleAssignmentService roleAssignmentService,
+    ISystemRoleService systemRoleService,
     IUserInfoSliceRefresher userInfoRefresher,
     IClock clock,
     ILogger<ContactFieldService> logger,
@@ -167,7 +167,7 @@ internal sealed class ContactFieldService(
         if (ownerUserId == viewerUserId)
             return ContactFieldVisibility.BoardOnly;
 
-        if (await roleAssignmentService.IsUserBoardMemberAsync(viewerUserId, cancellationToken))
+        if (await systemRoleService.IsUserBoardMemberAsync(viewerUserId, cancellationToken))
             return ContactFieldVisibility.BoardOnly;
 
         // Permissions belong to this viewer, not to the scoped service instance.

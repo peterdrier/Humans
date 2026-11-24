@@ -293,7 +293,7 @@ Board members are de facto Asociados: they are on the official roster whether or
 ## Invariants
 
 - Only roster rows with `IsOfficial = true` contribute to the official result; indicative ballots are tallied separately and never merged.
-- The roster is written exactly once, at open, from Governance's own `governance_applications` (active Approved Asociado / Colaborador terms), the active Board role holders via `IRoleAssignmentService.GetActiveUserIdsInRoleAsync` (official), and the Volunteers team for `AllMembers`; it is never recomputed. A person appearing in more than one source gets one row, official if any source is official.
+- The roster is written exactly once, at open, from Governance's own `governance_applications` (active Approved Asociado / Colaborador terms), the active Board role holders via `ISystemRoleService.GetActiveUserIdsInRoleAsync` (official), and the Volunteers team for `AllMembers`; it is never recomputed. A person appearing in more than one source gets one row, official if any source is official.
 - A ballot can be cast or changed only while `Status = Open` and `now < ClosesAt`, by the roster member it belongs to. One ballot per roster row; changes bump `Revision` and append history; nothing is ever deleted.
 - List ordering is presentation-owned: member list Open-first then latest closing, admin list latest closing, member task entries latest closing.
 - Content (`Title`, `OfficialText`, options, `Kind`, `RequiredMajority`, audiences, disclosure) is immutable once Open.
@@ -336,7 +336,7 @@ Board members are de facto Asociados: they are on the official roster whether or
 ## Cross-section dependencies
 
 - **Users:** `IUserService` for names, preferred language, active state and the notification address.
-- **Auth:** `IRoleAssignmentService.GetActiveUserIdsInRoleAsync(RoleNames.Board)` for the Board members on the official roster (already a Governance dependency).
+- **Auth:** `ISystemRoleService.GetActiveUserIdsInRoleAsync(RoleNames.Board)` for the Board members on the official roster (already a Governance dependency).
 - **Teams:** `ITeamService` for the Volunteers team membership (`AllMembers` indicative audience).
 - **Email:** `IEmailService.SendAsync` + `GovernanceEmails` messages (opened, reminder, cancelled).
 - **Notifications:** `INotificationEmitter` + `INotificationAutoResolve`; new `GovernanceNotificationSources.AssemblyVoteOpened`.

@@ -32,7 +32,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using Microsoft.Extensions.DependencyInjection;
 using NSubstitute;
-using RoleAssignmentService = Humans.Auth.Services.RoleAssignmentService;
+using SystemRoleService = Humans.Auth.Services.SystemRoleService;
 using TeamService = Humans.Teams.Services.TeamService;
 
 namespace Humans.Teams.Tests.Services;
@@ -97,14 +97,14 @@ public sealed class TeamServiceTests : TeamsTestHarness
 
     public TeamServiceTests()
     {
-        var roleAssignmentService = new RoleAssignmentService(
-            new RoleAssignmentRepository(AuthDbFactory),
+        var systemRoleService = new SystemRoleService(
+            new SystemRoleRepository(AuthDbFactory),
             Substitute.For<IUserService>(),
             AuditLog,
             Notifier,
-            new CachingRoleAssignmentService(
+            new CachingSystemRoleService(
                 Substitute.For<IServiceScopeFactory>(), Clock,
-                NullLogger<CachingRoleAssignmentService>.Instance),
+                NullLogger<CachingSystemRoleService>.Instance),
             new RoleCatalog(new RoleDefinition[]
             {
                 new(RoleNames.Admin, "Admin", "", ""),
@@ -112,7 +112,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
                 new(TeamsRoles.TeamsAdmin, "Teams Admin", "", ""),
             }),
             Clock,
-            NullLogger<RoleAssignmentService>.Instance);
+            NullLogger<SystemRoleService>.Instance);
         _teamResourceService = Substitute.For<ITeamResourceManagement>();
         _teamResourceService
             .GetTeamResourceSummariesAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())
@@ -126,7 +126,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
         var serviceProvider = new ServiceLocatorBuilder()
             .With<ITeamManagement>()
             .With(_teamCache)
-            .With<IRoleAssignmentService>(roleAssignmentService)
+            .With<ISystemRoleService>(systemRoleService)
             .With(_emailService)
             .With(TestTeamsEmails.Create())
             .With(_systemTeamSync)
@@ -148,7 +148,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
             Clock,
             NullLogger<TeamService>.Instance);
         _pages = new TeamPageService(
-            _service, _teamResourceService, roleAssignmentService);
+            _service, _teamResourceService, systemRoleService);
     }
 
     [HumansTheory]
@@ -1768,7 +1768,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
     public async Task RemoveMemberAsync_Coordinator_SyncsCoordinatorsSystemTeam()
     {
         var actor = SeedUser(displayName: "Actor");
-        SeedRoleAssignment(actor.Id, RoleNames.Admin,
+        SeedSystemRole(actor.Id, RoleNames.Admin,
             Clock.GetCurrentInstant() - Duration.FromDays(1));
         var target = SeedUser(displayName: "Target");
         var team = SeedTeam("Alpha");
@@ -2205,7 +2205,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
     public async Task CreateRoleDefinitionAsync_DuplicateName_ReturnsRefusal()
     {
         var actor = SeedUser(displayName: "Actor");
-        SeedRoleAssignment(actor.Id, RoleNames.Admin,
+        SeedSystemRole(actor.Id, RoleNames.Admin,
             Clock.GetCurrentInstant() - Duration.FromDays(1));
         var team = SeedTeam("Alpha");
         SeedTeamRoleDefinition(team.Id, isManagement: false);
@@ -2243,7 +2243,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
     public async Task RoleDefinitionWrites_UndefinedPriority_RejectWithoutChangingDefinition(bool update, int priority)
     {
         var actor = SeedUser(displayName: "Actor");
-        SeedRoleAssignment(actor.Id, RoleNames.Admin,
+        SeedSystemRole(actor.Id, RoleNames.Admin,
             Clock.GetCurrentInstant() - Duration.FromDays(1));
         var team = SeedTeam("Alpha");
         var definition = SeedTeamRoleDefinition(team.Id, isManagement: false);
@@ -2274,7 +2274,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
     public async Task CreateRoleDefinitionAsync_HappyPath_PersistsDefinition()
     {
         var actor = SeedUser(displayName: "Actor");
-        SeedRoleAssignment(actor.Id, RoleNames.Admin,
+        SeedSystemRole(actor.Id, RoleNames.Admin,
             Clock.GetCurrentInstant() - Duration.FromDays(1));
         var team = SeedTeam("Alpha");
         await SaveAllAsync(TestContext.Current.CancellationToken);
@@ -2327,7 +2327,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
     public async Task UpdateRoleDefinitionAsync_RenamingToExistingName_ReturnsRefusal()
     {
         var actor = SeedUser(displayName: "Actor");
-        SeedRoleAssignment(actor.Id, RoleNames.Admin,
+        SeedSystemRole(actor.Id, RoleNames.Admin,
             Clock.GetCurrentInstant() - Duration.FromDays(1));
         var team = SeedTeam("Alpha");
         var first = SeedTeamRoleDefinition(team.Id, isManagement: false);
@@ -2348,7 +2348,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
     public async Task UpdateRoleDefinitionAsync_OmittedManagementChange_PreservesExistingValue()
     {
         var actor = SeedUser(displayName: "Actor");
-        SeedRoleAssignment(actor.Id, RoleNames.Admin,
+        SeedSystemRole(actor.Id, RoleNames.Admin,
             Clock.GetCurrentInstant() - Duration.FromDays(1));
         var team = SeedTeam("Alpha");
         var def = SeedTeamRoleDefinition(team.Id, isManagement: true);
@@ -2368,7 +2368,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
     public async Task UpdateRoleDefinitionAsync_HappyPath_UpdatesAllEditableFields()
     {
         var actor = SeedUser(displayName: "Actor");
-        SeedRoleAssignment(actor.Id, RoleNames.Admin,
+        SeedSystemRole(actor.Id, RoleNames.Admin,
             Clock.GetCurrentInstant() - Duration.FromDays(1));
         var team = SeedTeam("Alpha");
         var def = SeedTeamRoleDefinition(team.Id, isManagement: false);
@@ -2424,7 +2424,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
     public async Task DeleteRoleDefinitionAsync_HappyPath_RemovesDefinition()
     {
         var actor = SeedUser(displayName: "Actor");
-        SeedRoleAssignment(actor.Id, RoleNames.Admin,
+        SeedSystemRole(actor.Id, RoleNames.Admin,
             Clock.GetCurrentInstant() - Duration.FromDays(1));
         var team = SeedTeam("Alpha");
         var def = SeedTeamRoleDefinition(team.Id, isManagement: false);
@@ -2469,7 +2469,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
     public async Task ToggleRoleIsManagementAsync_PromotingWithAssignments_ReturnsRefusal()
     {
         var actor = SeedUser(displayName: "Actor");
-        SeedRoleAssignment(actor.Id, RoleNames.Admin,
+        SeedSystemRole(actor.Id, RoleNames.Admin,
             Clock.GetCurrentInstant() - Duration.FromDays(1));
         var team = SeedTeam("Alpha");
         var def = SeedTeamRoleDefinition(team.Id, isManagement: false);
@@ -2489,7 +2489,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
     public async Task ToggleRoleIsManagementAsync_PromotingWhenAnotherManagementExists_ReturnsRefusal()
     {
         var actor = SeedUser(displayName: "Actor");
-        SeedRoleAssignment(actor.Id, RoleNames.Admin,
+        SeedSystemRole(actor.Id, RoleNames.Admin,
             Clock.GetCurrentInstant() - Duration.FromDays(1));
         var team = SeedTeam("Alpha");
         SeedTeamRoleDefinition(team.Id, isManagement: true);
@@ -2507,7 +2507,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
     public async Task ToggleRoleIsManagementAsync_HappyPathPromote_FlipsIsManagement()
     {
         var actor = SeedUser(displayName: "Actor");
-        SeedRoleAssignment(actor.Id, RoleNames.Admin,
+        SeedSystemRole(actor.Id, RoleNames.Admin,
             Clock.GetCurrentInstant() - Duration.FromDays(1));
         var team = SeedTeam("Alpha");
         var def = SeedTeamRoleDefinition(team.Id, isManagement: false);
@@ -2525,7 +2525,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
     public async Task ToggleRoleIsManagementAsync_HappyPathDemote_FlipsIsManagement()
     {
         var actor = SeedUser(displayName: "Actor");
-        SeedRoleAssignment(actor.Id, RoleNames.Admin,
+        SeedSystemRole(actor.Id, RoleNames.Admin,
             Clock.GetCurrentInstant() - Duration.FromDays(1));
         var team = SeedTeam("Alpha");
         var def = SeedTeamRoleDefinition(team.Id, isManagement: true);
@@ -2663,7 +2663,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
     public async Task GetMyTeamMembershipsAsync_BoardMember_GetsPendingCountsForRegularMemberships()
     {
         var user = SeedUser(displayName: "Board Human");
-        SeedRoleAssignment(
+        SeedSystemRole(
             user.Id,
             RoleNames.Board,
             Clock.GetCurrentInstant() - Duration.FromDays(10));
@@ -3133,7 +3133,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
     public async Task MembershipGrant_InvalidPerson_DoesNotCreateFootprint(bool assignRole, string kind)
     {
         var actor = SeedUser(displayName: "Actor");
-        SeedRoleAssignment(actor.Id, RoleNames.Admin, Clock.GetCurrentInstant() - Duration.FromDays(1));
+        SeedSystemRole(actor.Id, RoleNames.Admin, Clock.GetCurrentInstant() - Duration.FromDays(1));
         var team = SeedTeam("Alpha");
         var definition = SeedTeamRoleDefinition(team.Id, isManagement: true);
         var targetId = Guid.NewGuid();
@@ -3199,7 +3199,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
     public async Task AssignToRoleAsync_MergeAlias_UsesExistingSurvivorMembership()
     {
         var actor = SeedUser(displayName: "Actor");
-        SeedRoleAssignment(actor.Id, RoleNames.Admin, Clock.GetCurrentInstant() - Duration.FromDays(1));
+        SeedSystemRole(actor.Id, RoleNames.Admin, Clock.GetCurrentInstant() - Duration.FromDays(1));
         var target = SeedUser(displayName: "Survivor");
         var team = SeedTeam("Alpha");
         var member = SeedTeamMember(team.Id, target.Id);

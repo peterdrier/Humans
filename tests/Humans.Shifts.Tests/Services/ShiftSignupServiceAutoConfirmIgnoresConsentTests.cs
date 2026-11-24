@@ -48,11 +48,11 @@ public sealed class ShiftSignupServiceAutoConfirmIgnoresConsentTests : ShiftsTes
         };
         _users.GetUserInfoAsync(_userId, Arg.Any<CancellationToken>()).Returns(_userInfo);
         var teamService = Substitute.For<ITeamService>();
-        var roleAssignmentService = Substitute.For<IRoleAssignmentService>();
+        var systemRoleService = Substitute.For<ISystemRoleService>();
         var serviceProvider = new ServiceLocatorBuilder()
             .With(teamService)
             .With(teamService)
-            .With(roleAssignmentService)
+            .With(systemRoleService)
             .With(_users)
             .With<IPermissionService>()
             .Build();

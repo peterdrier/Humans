@@ -13,11 +13,11 @@ namespace Humans.Governance.Services;
 /// <summary>
 /// Board seats are added and ended here; Auth stores them as the Board role, which the rest of the app checks.
 /// Auth audits each seat change. The Board offices (President, …) are stored here and audited here.
-/// The caller authorizes against <c>PolicyNames.RoleAssignmentManage</c>.
+/// The caller authorizes against <c>PolicyNames.SystemRoleManage</c>.
 /// </summary>
 internal sealed class GovernanceBoardSeats(
-    IRoleAssignmentService roles,
-    IRoleAssignmentWrite roleWrite,
+    ISystemRoleService roles,
+    ISystemRoleWrite roleWrite,
     IUserService users,
     IGovernanceBodyRepository repository,
     IAuditLogService audit,
@@ -29,10 +29,10 @@ internal sealed class GovernanceBoardSeats(
     internal const string BoardPositionSlice = "BoardPosition";
 
     /// <summary>Only an active account can take a seat; anything else fails with <see cref="InactiveAccount"/>.</summary>
-    public async Task<RoleAssignmentResult> AddAsync(Guid userId, Guid actorUserId, CancellationToken ct = default)
+    public async Task<SystemRoleResult> AddAsync(Guid userId, Guid actorUserId, CancellationToken ct = default)
     {
         if (await users.GetUserInfoAsync(userId, ct) is not { IsActive: true } member)
-            return new RoleAssignmentResult(false, InactiveAccount);
+            return new SystemRoleResult(false, InactiveAccount);
 
         var result = await roleWrite.AssignRoleAsync(member.Id, RoleNames.Board, actorUserId, notes: null, ct);
         if (result.Success)
@@ -41,15 +41,15 @@ internal sealed class GovernanceBoardSeats(
     }
 
     /// <summary>Ends the active Board seat and drops the office the person held.</summary>
-    public async Task<RoleAssignmentResult> EndAsync(Guid userId, Guid actorUserId, CancellationToken ct = default)
+    public async Task<SystemRoleResult> EndAsync(Guid userId, Guid actorUserId, CancellationToken ct = default)
     {
         var now = clock.GetCurrentInstant();
         var seat = (await roles.GetByUserIdAsync(userId, ct))
             .FirstOrDefault(a => string.Equals(a.RoleName, RoleNames.Board, StringComparison.Ordinal) && a.IsActive(now));
         if (seat is null)
-            return new RoleAssignmentResult(false, "RoleNotActive");
+            return new SystemRoleResult(false, "RoleNotActive");
 
-        var result = await roleWrite.EndRoleAsync(seat.Id, actorUserId, notes: null, ct);
+        var result = await roleWrite.RevokeRoleAsync(seat.Id, actorUserId, notes: null, ct);
         if (result.Success
             && (await repository.GetBoardPositionsAsync(ct)).FirstOrDefault(p => p.UserId == userId) is { } held)
         {
@@ -75,11 +75,11 @@ internal sealed class GovernanceBoardSeats(
     /// Gives an office to a current Board member, who then holds no other; a null user leaves it empty.
     /// Fails with <see cref="NotOnBoard"/> for someone without an active seat.
     /// </summary>
-    public async Task<RoleAssignmentResult> SetPositionAsync(
+    public async Task<SystemRoleResult> SetPositionAsync(
         BoardPosition position, Guid? userId, Guid actorUserId, CancellationToken ct = default)
     {
         if (userId is { } holder && !await roles.IsUserBoardMemberAsync(holder, ct))
-            return new RoleAssignmentResult(false, NotOnBoard);
+            return new SystemRoleResult(false, NotOnBoard);
 
         var rows = await repository.GetBoardPositionsAsync(ct);
         var previousHolder = rows.FirstOrDefault(p => p.Position == position)?.UserId;
@@ -94,15 +94,15 @@ internal sealed class GovernanceBoardSeats(
             await LogPositionAsync(given, $"Board office {position} given{was}", actorUserId);
         }
 
-        return new RoleAssignmentResult(true);
+        return new SystemRoleResult(true);
     }
 
     /// <summary>Empties whatever office the member holds; holding none is a no-op success.</summary>
-    public async Task<RoleAssignmentResult> ClearPositionAsync(Guid userId, Guid actorUserId, CancellationToken ct = default)
+    public async Task<SystemRoleResult> ClearPositionAsync(Guid userId, Guid actorUserId, CancellationToken ct = default)
     {
         var held = (await repository.GetBoardPositionsAsync(ct)).FirstOrDefault(p => p.UserId == userId);
         return held is null
-            ? new RoleAssignmentResult(true)
+            ? new SystemRoleResult(true)
             : await SetPositionAsync(held.Position, null, actorUserId, ct);
     }
 

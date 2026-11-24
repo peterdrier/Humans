@@ -31,11 +31,11 @@ public sealed class ShiftSignupServiceEarlyEntryTests : ShiftsTestHarness
         : base(TestNow)
     {
         var teamService = Substitute.For<ITeamService>();
-        var roleAssignmentService = Substitute.For<IRoleAssignmentService>();
+        var systemRoleService = Substitute.For<ISystemRoleService>();
         var serviceProvider = new ServiceLocatorBuilder()
             .With(teamService)
             .With(teamService)
-            .With(roleAssignmentService)
+            .With(systemRoleService)
             .With<IPermissionService>()
             .Build();
 

@@ -1870,7 +1870,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
             repo.StampNotifiedAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<Instant>(), vote.ClosesAt, Arg.Any<CancellationToken>()).Returns(_ => FailAsync());
             repo.StampReminderSentAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<Instant>(), vote.ClosesAt, Arg.Any<CancellationToken>()).Returns(_ => FailAsync());
         }
-        var effects = new AssemblyVoteService(repo, _fx.Applications, _fx.RoleAssignments, _fx.Teams, _fx.Users,
+        var effects = new AssemblyVoteService(repo, _fx.Applications, _fx.SystemRoles, _fx.Teams, _fx.Users,
             _fx.Email, _fx.Messages, _fx.Notifications, _fx.NotificationResolve, _fx.Audit, _fx.Translation, _fx.Clock, FixedOrgTimeZone.Madrid,
             NullLogger<AssemblyVoteService>.Instance);
         var failures = new List<Exception>();
@@ -1901,7 +1901,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
             .Returns(Task.FromException<IReadOnlyList<AssemblyVote>>(earlier));
         repo.GetLapsedOpenVotesAsync(now, shutdown.Token).Returns(async Task<IReadOnlyList<AssemblyVote>> (_) =>
         { if (shutdownRequested) await shutdown.CancelAsync(); throw later; });
-        var service = new AssemblyVoteService(repo, _fx.Applications, _fx.RoleAssignments, _fx.Teams, _fx.Users,
+        var service = new AssemblyVoteService(repo, _fx.Applications, _fx.SystemRoles, _fx.Teams, _fx.Users,
             _fx.Email, _fx.Messages, _fx.Notifications, _fx.NotificationResolve, _fx.Audit, _fx.Translation, _fx.Clock, FixedOrgTimeZone.Madrid,
             NullLogger<AssemblyVoteService>.Instance);
 
@@ -2029,7 +2029,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         if (lookupFails)
             _fx.Users.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
                 .Returns(ValueTask.FromException<IReadOnlyDictionary<Guid, UserInfo>>(new IOException("Identity lookup unavailable")));
-        var effects = new AssemblyVoteService(_fx.Repository, _fx.Applications, _fx.RoleAssignments, _fx.Teams, _fx.Users,
+        var effects = new AssemblyVoteService(_fx.Repository, _fx.Applications, _fx.SystemRoles, _fx.Teams, _fx.Users,
             _fx.Email, _fx.Messages, _fx.Notifications, _fx.NotificationResolve, _fx.Audit, _fx.Translation, _fx.Clock, FixedOrgTimeZone.Madrid,
             NullLogger<AssemblyVoteService>.Instance);
 
@@ -2823,7 +2823,7 @@ public sealed class AssemblyVoteServiceTests : IDisposable
         else
             repo.GetByIdAsync(vote.Id, ct)
                 .Returns(_ => Task.FromException<AssemblyVote?>(failure), _ => Task.FromResult<AssemblyVote?>(vote));
-        var effects = new AssemblyVoteService(repo, _fx.Applications, _fx.RoleAssignments, _fx.Teams, _fx.Users,
+        var effects = new AssemblyVoteService(repo, _fx.Applications, _fx.SystemRoles, _fx.Teams, _fx.Users,
             _fx.Email, _fx.Messages, _fx.Notifications, _fx.NotificationResolve, _fx.Audit, _fx.Translation, _fx.Clock, FixedOrgTimeZone.Madrid,
             NullLogger<AssemblyVoteService>.Instance);
         var failures = new List<Exception>();

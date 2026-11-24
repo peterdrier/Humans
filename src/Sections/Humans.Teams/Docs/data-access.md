@@ -83,7 +83,7 @@ Repository: `ITeamRepository`.
 Cross-section calls via `IAuditLogService`, `INotificationEmitter`,
 `IAdminAuthorizationService`; lazy-resolved via `IServiceProvider` for
 cycle-breaking: `IGoogleSyncOutboxService` (transactional outbox appends),
-`IGoogleSyncWrite`, `ITeamResourceService`, `IRoleAssignmentService`,
+`IGoogleSyncWrite`, `ITeamResourceService`, `ISystemRoleService`,
 `IEmailService`, `IUserService`, `ISystemTeamSync`. Implements `ITeamManagementService`
 (internal, `: ITeamManagement`), `ITeamSeeding`,
 `IGoogleGroupMembershipSource`, `IUserMerge`,
@@ -126,7 +126,7 @@ snapshot, never the DB. Surfaced on `/Debug/CacheStats`.
 Read-only assemblers — no repository, no cache. `TeamPageService` fans out
 over `ITeamManagementService`, `ITeamResourceService`,
 `IUserService` and Auth’s
-`IRoleAssignmentService`. It owns detail-page visibility, viewer affordances and
+`ISystemRoleService`. It owns detail-page visibility, viewer affordances and
 member/child projections over the cached Teams-owned snapshot, with live
 pending-request reads through `ITeamManagementService`. The My Teams projection
 uses the cached team and user-membership reads for parent names and manageable

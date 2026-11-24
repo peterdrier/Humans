@@ -71,13 +71,13 @@ internal sealed class SurveyAudience(
 
             case SurveyAudienceType.LoggedInSince:
                 {
-                    // Null LastLoginAt never matches (predates tracking). Deliberately no IsApproved filter:
+                    // Null LastSignInAt never matches (predates tracking). Deliberately no IsApproved filter:
                     // mid-onboarding users belong in this audience. Deletion-pending, rejected and suspended
                     // accounts can't reach the survey, so they are never invited.
                     if (loggedInSince is null) return new HashSet<Guid>();
                     var users = await userService.GetAllUserInfosAsync(ct);
                     return users
-                        .Where(u => u.LastLoginAt is { } lastLogin && lastLogin >= loggedInSince.Value)
+                        .Where(u => u.LastSignInAt is { } lastSignIn && lastSignIn >= loggedInSince.Value)
                         .Where(u => !u.IsDeletionPending)
                         .Where(u => u.State is not (UserState.Rejected or UserState.Suspended or UserState.AdminSuspended))
                         .Select(u => u.Id)

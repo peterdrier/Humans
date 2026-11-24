@@ -14,12 +14,12 @@ internal sealed class AuthMetricsService : PolledGaugeService
         : base(scopeFactory, logger)
     {
         HumansMeter.CreateObservableGauge(
-            "humans.role_assignments_active",
-            observeValues: ObserveRoleAssignments,
-            description: "Active role assignments by role");
+            "humans.system_roles_active",
+            observeValues: ObserveSystemRoles,
+            description: "Active system roles by role");
     }
 
-    private IEnumerable<Measurement<int>> ObserveRoleAssignments()
+    private IEnumerable<Measurement<int>> ObserveSystemRoles()
     {
         foreach (var (role, count) in _snapshot)
         {
@@ -30,8 +30,8 @@ internal sealed class AuthMetricsService : PolledGaugeService
     protected override async Task RefreshAsync()
     {
         using var scope = ScopeFactory.CreateScope();
-        var roleAssignmentService = scope.ServiceProvider.GetRequiredService<IRoleAssignmentManagement>();
-        var counts = await roleAssignmentService.GetActiveCountsByRoleAsync();
+        var systemRoleService = scope.ServiceProvider.GetRequiredService<ISystemRoleManagement>();
+        var counts = await systemRoleService.GetActiveCountsByRoleAsync();
         _snapshot = counts.Select(kv => (kv.Key, kv.Value)).ToList();
     }
 }

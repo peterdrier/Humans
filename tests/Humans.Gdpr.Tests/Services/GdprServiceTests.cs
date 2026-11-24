@@ -51,7 +51,7 @@ public class GdprServiceTests
         PreferredLanguage: "en",
         FallbackPictureUrl: null,
         CreatedAt: FixedNow,
-        LastLoginAt: null,
+        LastSignInAt: null,
         DeletionRequestedAt: null,
         DeletionScheduledFor: null,
         DeletionEligibleAfter: null,

@@ -26,7 +26,7 @@ namespace Humans.Governance.Services;
 internal sealed class AssemblyVoteService(
     IAssemblyVoteRepository repository,
     IApplicationRepository applications,
-    IRoleAssignmentService roleAssignments,
+    ISystemRoleService roleAssignments,
     ITeamService teams,
     IUserService users,
     IEmailService email,

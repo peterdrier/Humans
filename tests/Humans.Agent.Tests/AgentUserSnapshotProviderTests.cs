@@ -180,7 +180,7 @@ public class AgentUserSnapshotProviderTests
                         LastName = "Member"
                     },
                     [], [], profile: state == UserState.Bare ? null : UserFixtures.Profile())));
-        var roles = Substitute.For<IRoleAssignmentService>();
+        var roles = Substitute.For<ISystemRoleService>();
         roles.GetActiveForUserAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns([]);
 

@@ -10,13 +10,13 @@ internal sealed class OnsiteRosterService : IOnsiteRosterService
     private readonly ITicketService _participations;
     private readonly ICampService _camps;
     private readonly ITeamService _teams;
-    private readonly IRoleAssignmentService _roles;
+    private readonly ISystemRoleService _roles;
 
     public OnsiteRosterService(
         ITicketService participations,
         ICampService camps,
         ITeamService teams,
-        IRoleAssignmentService roles)
+        ISystemRoleService roles)
     {
         _participations = participations;
         _camps = camps;

@@ -38,7 +38,7 @@ public static class AgentSectionKeys
             ["LegalAndConsent"] = "Consent",
             ["Board"] = "Governance",
             ["UsersAdmin"] = "Users",
-            ["RoleAssignments"] = "Auth",
+            ["SystemRoles"] = "Auth",
             ["LegalDocuments"] = "Consent",
             ["GoogleSync"] = "Google",
             // A barrio is a camp — Camps.md defines them; CityPlanning.md only places them.

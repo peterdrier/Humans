@@ -38,7 +38,8 @@
   <data name="Enum_AuditAction_MemberUnsuspended" xml:space="preserve"><value>Member unsuspended</value></data>
   <data name="Enum_AuditAction_AccountAnonymized" xml:space="preserve"><value>Account anonymized</value></data>
   <data name="Enum_AuditAction_RoleAssigned" xml:space="preserve"><value>Role assigned</value></data>
-  <data name="Enum_AuditAction_RoleEnded" xml:space="preserve"><value>Role ended</value></data>
+  <data name="Enum_AuditAction_RoleEnded" xml:space="preserve"><value>Role revoked</value></data>
+  <data name="Enum_AuditAction_RoleRevoked" xml:space="preserve"><value>Role revoked</value></data>
   <data name="Enum_AuditAction_VolunteerApproved" xml:space="preserve"><value>Volunteer approved</value></data>
   <data name="Enum_AuditAction_GoogleResourceAccessGranted" xml:space="preserve"><value>Google resource access granted</value></data>
   <data name="Enum_AuditAction_GoogleResourceAccessRevoked" xml:space="preserve"><value>Google resource access revoked</value></data>
@@ -337,8 +338,10 @@
   <data name="AuditLog_NoSubjectVerb_VolunteerApproved" xml:space="preserve"><value>approved</value></data>
   <data name="AuditLog_Verb_RoleAssigned" xml:space="preserve"><value>assigned role to</value></data>
   <data name="AuditLog_NoSubjectVerb_RoleAssigned" xml:space="preserve"><value>assigned role</value></data>
-  <data name="AuditLog_Verb_RoleEnded" xml:space="preserve"><value>ended role for</value></data>
-  <data name="AuditLog_NoSubjectVerb_RoleEnded" xml:space="preserve"><value>ended role</value></data>
+  <data name="AuditLog_Verb_RoleEnded" xml:space="preserve"><value>revoked role for</value></data>
+  <data name="AuditLog_Verb_RoleRevoked" xml:space="preserve"><value>revoked role for</value></data>
+  <data name="AuditLog_NoSubjectVerb_RoleEnded" xml:space="preserve"><value>revoked role</value></data>
+  <data name="AuditLog_NoSubjectVerb_RoleRevoked" xml:space="preserve"><value>revoked role</value></data>
   <data name="AuditLog_Verb_WorkspaceAccountPasswordReset" xml:space="preserve"><value>reset Workspace password for</value></data>
   <data name="AuditLog_NoSubjectVerb_WorkspaceAccountPasswordReset" xml:space="preserve"><value>reset Workspace password</value></data>
   <data name="AuditLog_Verb_WorkspaceAccountBackupCodesGenerated" xml:space="preserve"><value>generated Workspace backup codes for</value></data>

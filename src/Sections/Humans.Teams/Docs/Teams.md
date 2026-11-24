@@ -193,7 +193,7 @@ One event-scoped early-entry grant: a human may enter on a date for a named proj
 - **AuditLog:** `IAuditLogService` for every audited action in `TeamsAuditActions`, and `<vc:audit-log>` on the Members page.
 - **Notifications.Contracts:** `INotificationEmitter` for the sources in `TeamsNotificationSources`; `TeamsNotificationMeters` (`INotificationMeterContributor`) pushes Admin's team-join-requests meter, read live from the in-RAM team snapshot.
 - **Users.Contracts:** `IUserService` for member display data, account resolution and the sync's person reads.
-- **Auth:** `IRoleAssignmentService` for role holders, `IAdminAuthorizationService` for actor checks.
+- **Auth:** `ISystemRoleService` for role holders, `IAdminAuthorizationService` for actor checks.
 - **Google:** `IGoogleSyncOutboxService` and `IGoogleSyncWrite` for membership grants, `ITeamResourceService` for a team's linked resources, `IGoogleGroupSync` for the sync's reconciliation pass; Teams implements its `IGoogleGroupMembershipSource` and `IGoogleDriveAccessSource`.
 - **Shifts (through a slot):** Teams declares `ITeamShiftsParts` in `Teams.Contracts`; Shifts fills its `Box` (the team page's shifts card, shown to signed-in members with a profile on non-system teams) and `AdminRowCell` (the admin team list's pending-signups cell). Teams calls no Shifts code.
 - **Roles (through a slot):** Teams declares `ITeamRolesPart` in `Teams.Contracts`; Roles fills its `Card` (the new roles card on the team page, shown to signed-in members beside the old one until the old roles retire).

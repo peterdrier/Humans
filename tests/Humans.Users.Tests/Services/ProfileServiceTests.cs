@@ -86,7 +86,7 @@ public sealed class ProfileServiceTests : ServiceTestHarness
         var userId = Guid.NewGuid();
         await SeedUserAsync(userId);
         var contacts = new ContactFieldService(_userRepository, _userService,
-            Substitute.For<ITeamService>(), Substitute.For<IRoleAssignmentService>(),
+            Substitute.For<ITeamService>(), Substitute.For<ISystemRoleService>(),
             Substitute.For<IUserInfoSliceRefresher>(), Clock, NullLogger<ContactFieldService>.Instance,
             Substitute.For<IStringLocalizer<UsersResource>>());
         var editor = new ProfileEditorService(_userService, contacts, NullLogger<ProfileEditorService>.Instance);

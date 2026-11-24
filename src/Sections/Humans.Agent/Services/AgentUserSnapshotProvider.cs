@@ -14,7 +14,7 @@ namespace Humans.Agent.Services;
 
 internal sealed class AgentUserSnapshotProvider(
     IUserService users,
-    IRoleAssignmentService roles,
+    ISystemRoleService roles,
     ITeamService teams,
     IGovernanceService governance,
     IConsentService consents,
@@ -39,7 +39,7 @@ internal sealed class AgentUserSnapshotProvider(
         var upcomingShifts = await LoadUpcomingShiftsAsync(userId, cancellationToken);
         var tier = await governance.GetMembershipTierAsync(userId, cancellationToken);
 
-        var roleAssignments = activeRoles
+        var systemRoles = activeRoles
             .Select(r => (r.RoleName, r.ValidTo?.ToIso8601() ?? "—"))
             .ToList();
 
@@ -48,7 +48,7 @@ internal sealed class AgentUserSnapshotProvider(
             PreferredLocale: user?.PreferredLanguage ?? "es",
             Tier: tier.ToString(),
             AccountState: user?.State,
-            RoleAssignments: roleAssignments,
+            SystemRoles: systemRoles,
             Teams: teamMemberships,
             PendingConsentDocs: pendingDocs,
             OpenTicketIds: openTickets,

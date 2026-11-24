@@ -8,7 +8,7 @@ namespace Humans.Governance.ViewComponents;
 /// <summary>Renders nothing for a plain Volunteer, which is nearly everyone. A Board seat outranks the tier.</summary>
 public sealed class MembershipTierBadgeViewComponent(
     IGovernanceService governanceService,
-    IRoleAssignmentService roleAssignments,
+    ISystemRoleService roleAssignments,
     IStringLocalizer<GovernanceResource> localizer) : ViewComponent
 {
     public async Task<IViewComponentResult> InvokeAsync(Guid userId)

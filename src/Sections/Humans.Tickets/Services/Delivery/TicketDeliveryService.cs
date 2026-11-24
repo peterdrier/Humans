@@ -302,7 +302,7 @@ internal sealed class TicketDeliveryService(
     /// holder has signed in, the language the order was placed in is the better guess.
     /// </summary>
     private static string CultureOf(UserInfo? holder, TicketCheckoutOrder order) =>
-        SupportedOr(holder is { LastLoginAt: not null } ? holder.PreferredLanguage : order.Culture);
+        SupportedOr(holder is { LastSignInAt: not null } ? holder.PreferredLanguage : order.Culture);
 
     private static string SupportedOr(string? language) =>
         language is not null && language.IsSupportedCultureCode() ? language : CultureCatalog.DefaultCultureCode;
