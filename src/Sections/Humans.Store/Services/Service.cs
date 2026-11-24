@@ -553,9 +553,7 @@ internal sealed class Service(
             var allOrders = new List<OrderDto>();
             foreach (var order in campOrdersBySeason[season.Id])
                 allOrders.Add(await MapOrderAsync(order, productNames, currentPrices, ct, season.Name));
-            var primary = allOrders
-                .OrderByDescending(o => o.BalanceEur)
-                .FirstOrDefault();
+            var primary = allOrders.MaxBy(o => o.BalanceEur);
             IReadOnlyList<OrderDto> orders = primary is null ? [] : [primary];
             counterparties.Add(new CounterpartyOrders(
                 OrderCounterpartyType.Camp,
@@ -1257,17 +1255,6 @@ internal sealed class Service(
                 return null;
             }
         }
-    }
-
-    public async Task RecordStripePaymentAsync(
-        Guid orderId,
-        string paymentIntentId,
-        decimal amountEur,
-        PaymentStatus status = PaymentStatus.Paid,
-        CancellationToken ct = default)
-    {
-        using var mutation = await StripePaymentLock.AcquireAsync(logger, ct);
-        await RecordStripePaymentCoreAsync(orderId, paymentIntentId, amountEur, status, ct);
     }
 
     // Called only while the ingestion lock is held, including from webhook state transitions.

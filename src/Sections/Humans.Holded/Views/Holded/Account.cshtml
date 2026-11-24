@@ -116,7 +116,7 @@
                 }
 
             </text>;
-            var linesTable = TableModel.For(Model.Lines)
+            var linesTable = TableModel.For(Model.Lines.OrderBy(l => l.Date).ThenBy(l => l.EntryNumber).ThenBy(l => l.Line).ToList())
                 .Template("Date", dateCell, o => o.Css("text-nowrap"), sortBy: l => l.Date)
                 .Template("Entry", entryCell, o => o.Css("text-nowrap text-muted small"), sortBy: l => l.EntryNumber)
                 .Template("Counterparty", counterpartyCell, o => o.Css("text-nowrap"), sortBy: l => l.Counterparty?.AccountNum)

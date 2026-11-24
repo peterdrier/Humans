@@ -31,6 +31,33 @@ Dashboard statistics, break-even budget and vendor-capacity reads honor request 
 
 Bulk cache warmups publish through the shared mutation guard. A refresh, deletion, eviction or clear overlapping the load discards the partial attempt and reloads the full snapshot and derived indexes before a read can treat the cache as warmed.
 
+Configured ticket rules must be available before checkout. Successful GitHub reads are cached for ten minutes;
+a failed refresh replaces the cached rules with an unavailable result for one minute. Buy pages and checkout
+report `Tickets_Buy_TermsUnavailable` rather than accepting an older rules version.
+
+Support-page ordering belongs to `TicketsSupportAdminController`: newest refunds first, waiting resale offers by queue
+position followed by newest closed offers, and report tables by count/label, purpose or state. The report calculator
+retains queue-position calculation and paid-day chronology for running totals.
+
+Raw checkout order, holder-ticket, event-ticket, offer and refund reads return repository rows without presentation
+ordering. The admin order list sorts newest first; lookup tickets and dependent-ticket panels sort by issue time.
+Order-detail and delivery-card presentation ordering belongs to their rendering callers.
+
+Operator controllers order companion requests pending-first/newest-first, cancellation refund groups by state,
+and backend lists by key. Backend status pages order orders and stuck orders newest-first and refunds oldest-first;
+the reconciliation start date is the minimum order timestamp in the organisation's zone, independent of row order.
+Cancellation processing still uses oldest-paid-first work order.
+
+Buy-page read models carry the event's gate-opening date. `TicketBuyController` orders public and signed-in sales
+by that date and each normal or directed buy page's order history newest-first; service reads do not choose those
+presentation orders.
+
+Ticket families on “My tickets” are ordered in the controller by the holder ticket's issue time within each event,
+with dependents beside that holder. Order pages and profile child lists choose their own kind/issue-time ordering;
+admin refund rows are oldest-first. Email rendering keeps the recipient card first and orders dependent cards by
+kind and issue time. Checkout reads supply rows without these presentation sorts; audit streams and FIFO
+allocation, settlement and cancellation processing retain their domain ordering.
+
 ## Concepts
 
 - **Ticket Orders** and **Ticket Attendees** are records synced from an external ticket vendor (Ticket Tailor in production, an in-process stub in dev). They are not manually created in the system.
@@ -54,7 +81,7 @@ Bulk cache warmups publish through the shared mutation guard. A refresh, deletio
 
 ### TicketingSettings
 
-**Table:** `ticket_sales_events` — one per Settings event (`EventSettingsId` unique). `Waves`, `PriceRules` and `ChildTypes` (name, under age, price) are jsonb; `VipTotalsMinor` is `bigint[]` and `DonationPurposes` is `text[]`. `Switches` (jsonb, nullable; null reads as the defaults) holds the event's ticketing switches: resale scheme (`Off`, `Queue`, `QueueAndDirected`), tickets for others (`PartnerTickets`), donations, mailing list opt-in, companion tickets (`CompanionTickets`, null reads as on) (see checkout.md). Amounts are minor units (cents) throughout 2027 ticketing.
+**Table:** `ticket_sales_events` — one per Settings event (`EventSettingsId` unique). `Waves`, `PriceRules` and `ChildTypes` (name, under age, price) are jsonb; `VipTotalsMinor` is `bigint[]` and `DonationPurposes` is `text[]`. `Switches` (jsonb, nullable; null reads as the defaults) holds the event's ticketing switches: resale scheme (`Off`, `Queue`, `QueueAndDirected`), tickets for others (`PartnerTickets`), donations, mailing list opt-in, companion tickets (`CompanionTickets`, null reads as on) (see checkout.md). Amounts are minor units (cents) throughout 2027 ticketing. The ticketing settings editor rounds euro inputs to cents away from zero and refuses values outside the signed 64-bit minor-unit range with the existing field error.
 
 ### TicketCheckoutOrder
 
@@ -78,7 +105,7 @@ Bulk cache warmups publish through the shared mutation guard. A refresh, deletio
 
 ### TicketCheckoutOrderEvent
 
-**Table:** `ticket_checkout_order_events` — the order's timeline, append-only (the repository has no update or delete): created, checkout opened, platform refused, state changed, refunded total changed, refund requested and settled, cancelled. `ActorUserId` is the person, null for automation. `Detail` holds amounts, states and platform refs, never names or emails, so erasure leaves it; merge reassigns `ActorUserId`.
+**Table:** `ticket_checkout_order_events` — the order's timeline, append-only (the repository has no update or delete): created, checkout opened, platform refused, state changed, refunded total changed, refund requested and settled, cancelled. `ActorUserId` is the person, null for automation. `Detail` holds amounts, states and platform refs, never names or emails, so erasure leaves it; merge reassigns `ActorUserId`. Checkout timeline details and bounded reasons truncate without splitting a Unicode surrogate pair.
 
 ### TicketOrder
 
@@ -151,6 +178,8 @@ Lifecycle: `Attended` is permanent (only a missing `CheckedInAt` may be filled);
 | Admin | Cancel an event (`/Tickets/Admin/Sales/{id}/Cancel`): every ticket voided, every paid order refunded its ticket lines, every buyer emailed. Trigger a full re-sync (clears the `LastSyncAt` cursor). Open and submit the participation backfill page (`/Tickets/Participation/Backfill`). Download the donor list CSV (`/Tickets/Export/Donations`, audited) |
 
 ## Invariants
+
+- Single-row selection uses the newest approved transfer decision per attendee, the oldest backend order when none is recorded, and the cheapest eligible class price. Direct extrema selectors retain the first source row on equal keys.
 
 - Section-owned resource keys use the `Tickets_` prefix in all supported cultures.
 - The gate credential page links to the Gate admissions terminal and explains that the shared account can record admissions. The kiosk is restricted to Gate and its sign-in/sign-out pages; it cannot browse Scanner or ticket administration.

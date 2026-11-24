@@ -301,11 +301,10 @@ internal sealed class FinanceOverviewService(
             taxesOwed);
     }
 
-    /// <summary>Sent to the bank, not booked and not withdrawn, oldest first.</summary>
+    /// <summary>Sent to the bank, not booked and not withdrawn.</summary>
     internal static IReadOnlyList<FinanceSepaTransferVm> BuildSepaInProgress(
         IReadOnlyList<SepaPayoutTransferRow> transfers) => transfers
         .Where(t => !t.IsBooked && !t.IsWithdrawn)
-        .OrderBy(t => t.GeneratedAt)
         .Select(t => new FinanceSepaTransferVm(t.UserId, t.FileName, t.GeneratedAt, t.Amount))
         .ToList();
 

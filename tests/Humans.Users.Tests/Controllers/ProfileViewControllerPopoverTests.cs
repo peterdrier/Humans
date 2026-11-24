@@ -220,14 +220,14 @@ public class ProfileViewControllerPopoverTests
             CampSeasonStatus.Active, YesNoMaybe.Yes, YesNoMaybe.No,
             AdultPlayspacePolicy.No, 0, null, null, null, 0, null, null);
         _campService.GetCampUserInfoAsync(id, Arg.Any<CancellationToken>())
-            .Returns(new CampUserInfo(season, ["Camp Lead", "Greeter"]));
+            .Returns(new CampUserInfo(season, [("Zulu", 2), ("Greeter", 1), ("alpha", 2), ("Camp Lead", 0), ("Greeter", 3)]));
 
         var result = await _controller.Popover(id, TestContext.Current.CancellationToken);
 
         var vm = result.Should().BeOfType<PartialViewResult>().Subject
             .Model.Should().BeOfType<ProfileSummaryViewModel>().Subject;
         vm.CampName.Should().Be("Camp Funhouse");
-        vm.CampRoles.Should().Equal("Camp Lead", "Greeter");
+        vm.CampRoles.Should().Equal("Camp Lead", "Greeter", "alpha", "Zulu", "Greeter");
     }
 
     [HumansTheory]

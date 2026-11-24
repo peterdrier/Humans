@@ -155,7 +155,7 @@ internal sealed class DevelopmentBudgetSeeder(
         if (budgetYearSummary is null)
         {
             var createdBudgetYear = await budgetService.CreateYearAsync(budgetYearCode, budgetYearName, actorUserId);
-            budgetYearId = createdBudgetYear.Id;
+            budgetYearId = (createdBudgetYear.Value ?? throw new InvalidOperationException(createdBudgetYear.Refusal)).Id;
         }
         else
         {
@@ -193,8 +193,9 @@ internal sealed class DevelopmentBudgetSeeder(
         if (sharedServicesGroup is null)
         {
             var createdGroup = await budgetService.CreateGroupAsync(budgetYearId, "Shared Services", false, actorUserId);
-            sharedServicesGroupId = createdGroup.Id;
-            sharedServicesGroupRestricted = createdGroup.IsRestricted;
+            var savedGroup = createdGroup.Value ?? throw new InvalidOperationException(createdGroup.Refusal);
+            sharedServicesGroupId = savedGroup.Id;
+            sharedServicesGroupRestricted = savedGroup.IsRestricted;
         }
         else
         {

@@ -7,6 +7,7 @@ internal sealed class CampAdminPageBuilder(
     public async Task<CampAdminViewModel> BuildAsync(CancellationToken ct = default)
     {
         var settings = await campService.GetSettingsAsync(ct);
+        var events = settings.Events.OrderByDescending(e => e.GateOpeningDate).ToList();
         // One season per camp: the active event's.
         var allCamps = settings.ActiveEventSettingsId is { } activeEventId
             ? await campService.GetCampsForEventAsync(activeEventId, ct)
@@ -26,11 +27,11 @@ internal sealed class CampAdminPageBuilder(
         {
             ActiveEventName = settings.ActiveEvent?.EventName ?? "No active event",
             HasMissingSpecialRoles = missingSpecialRoles.Count > 0,
-            OpenEventNames = [.. settings.OpenEvents.Select(e => e.EventName)],
+            OpenEventNames = [.. events.Where(e => e.RegistrationOpen).Select(e => e.EventName)],
             TotalCamps = allCamps.Count,
             ActiveCamps = campsWithLeads.Count,
             WithdrawnCamps = withdrawnSeasons,
-            Events = settings.Events,
+            Events = events,
             NameLockDates = settings.NameLockDates,
             AllCampSummaries = summaries,
             PendingCamps = BuildCampCards(allCamps, CampSeasonStatus.Pending)

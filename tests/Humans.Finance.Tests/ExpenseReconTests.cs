@@ -238,7 +238,7 @@ public class ExpenseReconTests
         // 23:30 UTC on 31 Dec is 1 Jan in Madrid, the date the push gives the document.
         only2026.Lines.Should().HaveCount(2);
         only2026.Orphans.Should().BeEmpty();
-        only2026.Years.Should().Equal(2026, 2025);
+        only2026.Years.Should().BeEquivalentTo([2026, 2025]);
         only2025.Lines.Should().BeEmpty();
         only2025.Orphans.Should().ContainSingle();
         only2025.Members.Should().ContainSingle("members are all-time");

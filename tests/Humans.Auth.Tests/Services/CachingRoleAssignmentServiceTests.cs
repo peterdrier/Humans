@@ -210,7 +210,7 @@ public sealed class CachingRoleAssignmentServiceTests
     }
 
     [HumansFact]
-    public async Task GetActiveForUserAsync_ReturnsOnlyActiveRolesForUser_OrderedByRoleName()
+    public async Task GetActiveForUserAsync_ReturnsOnlyActiveRolesForUser()
     {
         var now = Instant.FromUtc(2026, 5, 17, 12, 0);
         var userA = Guid.NewGuid();
@@ -226,7 +226,7 @@ public sealed class CachingRoleAssignmentServiceTests
 
         var roles = await service.GetActiveForUserAsync(userA, Xunit.TestContext.Current.CancellationToken);
 
-        roles.Select(r => r.RoleName).Should().Equal("Board", "Coordinator");
+        roles.Select(r => r.RoleName).Should().BeEquivalentTo("Board", "Coordinator");
     }
 
     [HumansFact]

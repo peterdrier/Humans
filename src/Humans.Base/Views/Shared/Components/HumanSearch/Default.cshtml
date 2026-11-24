@@ -42,12 +42,18 @@
            class="form-control"
            placeholder="@placeholder"
            value="@selectedBurnerName"
+           role="combobox"
+           aria-label="@placeholder"
+           aria-autocomplete="list"
+           aria-controls="@dropdownId"
+           aria-expanded="false"
            autocomplete="off" />
     <input type="hidden"
            id="@hiddenId"
            name="@fieldName"
            value="@selectedValue" />
     <ul id="@dropdownId"
+        role="listbox"
         class="list-group shadow-sm"
         style="display: none; position: fixed; max-height: 260px; overflow-y: auto; z-index: 2000; background: var(--h-bg-card, #fff); border: 1px solid var(--h-border, #ccc); border-radius: 4px;">
     </ul>
@@ -60,6 +66,8 @@
     var dropdown = document.getElementById('@dropdownId');
     var debounceTimer = null;
     var queryVersion = 0;
+    var visibleResults = [];
+    var activeIndex = -1;
     var excludeIds = @Html.Raw(excludeIdsJson);
     var scopeArg = @Html.Raw(scopeJson);
     var allowEmail = @Html.Raw(allowEmailJson);
@@ -80,13 +88,33 @@
     function showDropdown() {
         positionDropdown();
         dropdown.style.display = 'block';
+        textInput.setAttribute('aria-expanded', 'true');
         window.addEventListener('scroll', positionDropdown, true);
         window.addEventListener('resize', positionDropdown);
+    }
+
+    function setActiveOption(index) {
+        activeIndex = index;
+        Array.from(dropdown.children).forEach(function (option, optionIndex) {
+            var active = optionIndex === index;
+            option.classList.toggle('active', active);
+            option.setAttribute('aria-selected', active ? 'true' : 'false');
+        });
+        if (index < 0) {
+            textInput.removeAttribute('aria-activedescendant');
+            return;
+        }
+        var option = dropdown.children[index];
+        textInput.setAttribute('aria-activedescendant', option.id);
+        option.scrollIntoView({ block: 'nearest' });
     }
 
     function hideDropdown() {
         dropdown.style.display = 'none';
         dropdown.innerHTML = '';
+        visibleResults = [];
+        setActiveOption(-1);
+        textInput.setAttribute('aria-expanded', 'false');
         window.removeEventListener('scroll', positionDropdown, true);
         window.removeEventListener('resize', positionDropdown);
     }
@@ -104,12 +132,31 @@
     });
 
     textInput.addEventListener('keydown', function (e) {
-        if (e.key === 'Escape') {
+        if (e.isComposing) return;
+        if (e.key === 'Escape' || e.key === 'Tab') {
             queryVersion++;
             clearTimeout(debounceTimer);
             hideDropdown();
+        } else if ((e.key === 'ArrowDown' || e.key === 'ArrowUp') && visibleResults.length > 0) {
+            e.preventDefault();
+            setActiveOption(e.key === 'ArrowDown'
+                ? Math.min(activeIndex + 1, visibleResults.length - 1)
+                : (activeIndex < 0 ? visibleResults.length - 1 : Math.max(0, activeIndex - 1)));
+        } else if (activeIndex >= 0 && ['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(e.key)) {
+            setActiveOption(-1);
+        } else if (e.key === 'Enter' && activeIndex >= 0) {
+            e.preventDefault();
+            selectResult(visibleResults[activeIndex]);
         }
     });
+
+    function selectResult(result) {
+        queryVersion++;
+        clearTimeout(debounceTimer);
+        hiddenInput.value = result.userId;
+        textInput.value = result.displayName;
+        hideDropdown();
+    }
 
     document.addEventListener('mousedown', function (e) {
         if (textInput.contains(e.target) || dropdown.contains(e.target)) return;
@@ -161,8 +208,12 @@
             hideDropdown();
             return;
         }
-        results.forEach(function (r) {
+        visibleResults = results;
+        results.forEach(function (r, index) {
             var li = document.createElement('li');
+            li.id = dropdown.id + '-option-' + index;
+            li.setAttribute('role', 'option');
+            li.setAttribute('aria-selected', 'false');
             li.className = 'list-group-item list-group-item-action py-2 px-3 d-flex align-items-center gap-2';
             li.style.cursor = 'pointer';
 
@@ -196,10 +247,7 @@
             li.appendChild(textWrap);
             li.addEventListener('mousedown', function (e) {
                 e.preventDefault();
-                queryVersion++;
-                hiddenInput.value = r.userId;
-                textInput.value = r.displayName;
-                hideDropdown();
+                selectResult(r);
             });
             dropdown.appendChild(li);
         });

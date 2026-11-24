@@ -57,7 +57,7 @@ internal sealed class AgentPromptAssembler : IAgentPromptAssembler
         if (snapshot.RoleAssignments.Count > 0)
         {
             sb.AppendLine("Roles:");
-            foreach (var (name, expires) in snapshot.RoleAssignments)
+            foreach (var (name, expires) in snapshot.RoleAssignments.OrderBy(r => r.RoleName, StringComparer.Ordinal))
                 sb.AppendLine(string.Create(CultureInfo.InvariantCulture, $"  - {name} (expires {expires})"));
         }
 

@@ -57,18 +57,19 @@ public sealed class SearchControllerTests
     }
 
     [HumansFact]
-    public async Task Index_SortsEveryBucket_ByScoreDescendingThenSortKeyAscending_KeepingCategoryOrder()
+    public async Task Index_SortsCategoriesByWeightAndKey_AndHitsByScoreAndSortKey()
     {
         SearchHit[] hits = [Hit("beta", 60), Hit("Alpha", 60), Hit("Zulu", 100)];
-        StubResults(new GlobalSearchResults("q", null, [Bucket("Human", hits), Bucket("Team", hits)]));
+        StubResults(new GlobalSearchResults("q", null,
+            [Bucket("Team", hits) with { Weight = 10 }, Bucket("human", hits), Bucket("Human", hits)]));
 
         var vm = await IndexAsync("query", filter: null);
 
-        vm.Buckets.Select(b => b.Key).Should().Equal("Human", "Team");
+        vm.Buckets.Select(b => b.Key).Should().Equal("Human", "human", "Team");
         // SortKey tiebreak is case-insensitive: "Alpha" must beat "beta" despite the lowercase b.
         vm.Buckets.Should().AllSatisfy(b =>
             b.Hits.Select(h => h.SortKey).Should().Equal("Zulu", "Alpha", "beta"));
-        vm.TotalCount.Should().Be(6);
+        vm.TotalCount.Should().Be(9);
     }
 
     [HumansFact]
@@ -147,7 +148,7 @@ public sealed class SearchControllerTests
     }
 
     private static SearchBucket Bucket(string key, params SearchHit[] hits) =>
-        new(key, $"{key} label", "icon", typeof(object), hits);
+        new(key, 0, $"{key} label", "icon", typeof(object), hits);
 
     private static SearchHit Hit(string sortKey, int score) => new(Guid.NewGuid(), sortKey, score);
 }

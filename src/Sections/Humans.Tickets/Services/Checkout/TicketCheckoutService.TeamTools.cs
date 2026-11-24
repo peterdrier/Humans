@@ -266,7 +266,7 @@ internal sealed partial class TicketCheckoutService
                     InFlightMinor: paid.Sum(o => refunds[o.Id].Where(r => r.State is RefundState.Pending or RefundState.ManualRequired).Sum(r => r.AmountMinor)),
                     StillRefundableMinor: paid.Sum(Refundable),
                     DonationsMinor: paid.Sum(o => o.TotalMinor - o.TicketTotalMinor),
-                    RefundsSince: since.GroupBy(r => r.State).OrderBy(g => g.Key)
+                    RefundsSince: since.GroupBy(r => r.State)
                         .Select(g => new RefundStateRow(g.Key, g.Count(), g.Sum(r => r.AmountMinor))).ToList());
             }
         }

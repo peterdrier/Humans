@@ -35,8 +35,6 @@ internal interface ITicketCheckoutService : ITicketingPlatformEvents
 
     Task<StartCheckoutResult> StartCheckoutAsync(StartCheckout command, Guid userId, CancellationToken ct = default);
 
-    Task<IReadOnlyList<TicketCheckoutOrder>> GetOrdersForUserAsync(Guid userId, CancellationToken ct = default);
-
     Task<IReadOnlyList<TicketCheckoutOrder>> GetOrdersForSettingsAsync(Guid settingsId, CancellationToken ct = default);
 
     Task<OrderDetail?> GetOrderDetailAsync(Guid orderId, CancellationToken ct = default);
@@ -222,7 +220,10 @@ internal sealed record TicketingSettingsSave(
 }
 
 /// <summary><paramref name="ResaleOnly"/>: only resale offers are left.</summary>
-internal sealed record PublicSale(string EventName, long PriceMinor, bool ResaleOnly);
+internal sealed record PublicSale(string EventName, long PriceMinor, bool ResaleOnly)
+{
+    public LocalDate GateOpeningDate { get; init; }
+}
 
 /// <summary>
 /// What the buyer sees. <paramref name="Unavailable"/> is a resource key naming why buying is closed to them, null
@@ -238,6 +239,8 @@ internal sealed record BuyPage(
     string BuyerName,
     IReadOnlyList<TicketCheckoutOrder> Orders)
 {
+    public LocalDate GateOpeningDate { get; init; }
+
     /// <summary>
     /// The ticket rules the buyer accepts with each order; null for none, or while they cannot be read (then
     /// <c>Unavailable</c> says so).

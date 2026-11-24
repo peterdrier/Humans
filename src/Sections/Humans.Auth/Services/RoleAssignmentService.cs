@@ -279,7 +279,6 @@ internal sealed class RoleAssignmentService(
         return all
             .Where(ra => ra.IsActive(now))
             .Select(ra => new RoleAssignmentSnapshot(catalog.Canonical(ra.RoleName), ra.ValidTo))
-            .OrderBy(ra => ra.RoleName, StringComparer.Ordinal)
             .ToList();
     }
 

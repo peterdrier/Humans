@@ -18,6 +18,7 @@ internal sealed class MailerLiteClient(IHttpClientFactory httpFactory, IClock cl
     public const string HttpClientName = "mailerlite";
     private const string HumansGroupPrefix = "Humans - ";
     private const int MaxSendAttempts = 3;
+    private const int PageSafetyCap = 500;
 
     // ML's rate-limit window is 60s; used when a 429 carries no Retry-After header.
     private static readonly TimeSpan DefaultRetryAfter = TimeSpan.FromSeconds(60);
@@ -144,13 +145,25 @@ internal sealed class MailerLiteClient(IHttpClientFactory httpFactory, IClock cl
 
     public async Task DeleteSubscriberAsync(string email, CancellationToken ct = default)
     {
-        using var resp = await SendAsync(
-            HttpMethod.Delete, $"/api/subscribers/{Uri.EscapeDataString(email)}", content: null, ct);
-        // 404 = already gone at the remote — success, but the no-TTL snapshot here
-        // can still be holding the address, so the eviction runs either way.
-        if (resp.StatusCode != HttpStatusCode.NotFound)
-            resp.EnsureSuccessStatusCode();
+        using var lookup = await SendAsync(
+            HttpMethod.Get, $"/api/subscribers/{Uri.EscapeDataString(email)}", content: null, ct);
+        if (lookup.StatusCode != HttpStatusCode.NotFound)
+        {
+            lookup.EnsureSuccessStatusCode();
+            var env = await ReadPageAsync<SubscriberSingleEnvelope>(lookup.Content, "subscriber lookup", ct);
+            var subscriber = env?.Data
+                ?? throw new HttpRequestException("MailerLite returned no subscriber for erasure.");
+            if (!string.Equals(subscriber.Email, email, StringComparison.OrdinalIgnoreCase))
+                throw new HttpRequestException("MailerLite subscriber lookup returned another address.");
 
+            // DELETE retains subscriber history; forget schedules permanent removal at MailerLite.
+            using var forgotten = await SendAsync(HttpMethod.Post,
+                $"/api/subscribers/{Uri.EscapeDataString(subscriber.Id)}/forget", content: null, ct);
+            if (forgotten.StatusCode != HttpStatusCode.NotFound)
+                forgotten.EnsureSuccessStatusCode();
+        }
+
+        // A remote 404 is idempotent success, but the no-TTL snapshot may still hold the address.
         await RemoveFromSubscribersCacheAsync(email, ct);
     }
 
@@ -198,18 +211,31 @@ internal sealed class MailerLiteClient(IHttpClientFactory httpFactory, IClock cl
         await PopulateLockedAsync(ct);
     }
 
-    // Throw leaves the prior cache intact; callers retry.
     private async Task PopulateLockedAsync(CancellationToken ct)
     {
-        var subscribers = new List<MailerLiteSubscriber>();
-        await foreach (var s in FetchSubscribersAsync(ct))
-            subscribers.Add(s);
-        var groups = await FetchGroupsAsync(ct);
+        try
+        {
+            var subscribers = new List<MailerLiteSubscriber>();
+            await foreach (var s in FetchSubscribersAsync(ct))
+                subscribers.Add(s);
+            var groups = await FetchGroupsAsync(ct);
+            var summary = SummarizeSubscribers(subscribers);
+            ct.ThrowIfCancellationRequested();
 
-        _subscribers = subscribers;
-        _summary = SummarizeSubscribers(subscribers);
-        _groups = groups;
-        _lastFetchedAt = clock.GetCurrentInstant();
+            _subscribers = subscribers;
+            _summary = summary;
+            _groups = groups;
+            _lastFetchedAt = clock.GetCurrentInstant();
+        }
+        catch
+        {
+            // A failed authoritative read must not leave old data available to import or audience decisions.
+            _subscribers = null;
+            _summary = null;
+            _groups = null;
+            _lastFetchedAt = null;
+            throw;
+        }
     }
 
     private MailerLiteAccountSummary SummarizeSubscribers(IReadOnlyList<MailerLiteSubscriber> subscribers)
@@ -235,7 +261,8 @@ internal sealed class MailerLiteClient(IHttpClientFactory httpFactory, IClock cl
     {
         string? cursor = null;
         var seenCursors = new HashSet<string>(StringComparer.Ordinal);
-        while (true)
+        var seenIds = new HashSet<string>(StringComparer.Ordinal);
+        for (var page = 1; page <= PageSafetyCap; page++)
         {
             // include=groups required — omitting it returns empty GroupIds.
             var url = "/api/subscribers?limit=100&include=groups";
@@ -249,6 +276,8 @@ internal sealed class MailerLiteClient(IHttpClientFactory httpFactory, IClock cl
             {
                 if (s is null)
                     throw new HttpRequestException("MailerLite returned a null subscriber page item.");
+                if (!seenIds.Add(s.Id))
+                    throw new HttpRequestException("MailerLite repeated a subscriber id.");
                 yield return s;
             }
             if (string.IsNullOrEmpty(body.Meta.NextCursor)) yield break;
@@ -256,13 +285,14 @@ internal sealed class MailerLiteClient(IHttpClientFactory httpFactory, IClock cl
                 throw new HttpRequestException("MailerLite repeated a subscriber pagination cursor.");
             cursor = body.Meta.NextCursor;
         }
+        throw new HttpRequestException($"MailerLite subscribers hit the {PageSafetyCap}-page safety cap.");
     }
 
     private async Task<IReadOnlyList<MailerLiteGroup>> FetchGroupsAsync(CancellationToken ct)
     {
         var results = new List<MailerLiteGroup>();
-        int page = 1;
-        while (true)
+        var seenIds = new HashSet<string>(StringComparer.Ordinal);
+        for (var page = 1; page <= PageSafetyCap; page++)
         {
             using var resp = await SendAsync(HttpMethod.Get, $"/api/groups?page={page}&limit=100", content: null, ct);
             resp.EnsureSuccessStatusCode();
@@ -273,11 +303,13 @@ internal sealed class MailerLiteClient(IHttpClientFactory httpFactory, IClock cl
             if (body.Data.Any(group => group is null ||
                 string.IsNullOrWhiteSpace(group.Id) || string.IsNullOrWhiteSpace(group.Name)))
                 throw new HttpRequestException("MailerLite returned an incomplete group page item.");
+            foreach (var group in body.Data)
+                if (!seenIds.Add(group.Id))
+                    throw new HttpRequestException("MailerLite repeated a group id.");
             results.AddRange(body.Data);
-            if (body.Meta.CurrentPage >= body.Meta.LastPage) break;
-            page++;
+            if (body.Meta.CurrentPage >= body.Meta.LastPage) return results;
         }
-        return results;
+        throw new HttpRequestException($"MailerLite groups hit the {PageSafetyCap}-page safety cap.");
     }
 
     private static async Task<T?> ReadPageAsync<T>(HttpContent content, string kind, CancellationToken ct)
@@ -397,6 +429,9 @@ internal sealed class MailerLiteClient(IHttpClientFactory httpFactory, IClock cl
     private sealed record SubscriberListEnvelope(
         [property: JsonPropertyName("data")] IReadOnlyList<MailerLiteSubscriber> Data,
         [property: JsonPropertyName("meta")] SubscriberMeta Meta);
+
+    private sealed record SubscriberSingleEnvelope(
+        [property: JsonPropertyName("data")] MailerLiteSubscriber? Data);
 
     private sealed record SubscriberMeta(
         [property: JsonPropertyName("next_cursor"), JsonRequired] string? NextCursor);

@@ -238,7 +238,7 @@ public sealed partial class TicketCheckoutServiceTests
 
         var ledger = await _service.GetPlatformLedgerAsync("test", TestContext.Current.CancellationToken);
 
-        ledger!.Orders.Should().HaveCount(8).And.BeInDescendingOrder(o => o.CreatedAt);
+        ledger!.Orders.Should().HaveCount(8).And.OnlyContain(order => order.PlatformKey == "test");
         ledger.Stuck.Should().BeEquivalentTo([pastExpiry]);
         ledger.Paid.Should().BeEquivalentTo([paid, refused, retried]);
         ledger.UnsettledRefunds.Should().ContainSingle().Which.AmountMinor.Should().Be(1000);
@@ -283,6 +283,8 @@ public sealed partial class TicketCheckoutServiceTests
     [HumansFact]
     public void Class_price_replaces_the_wave_and_discounts_stack_on_it_never_below_zero()
     {
+        _ticketing.PriceRules.Add(new TicketPriceRule { GrantProgramId = DiscountProgram, Kind = TicketPriceRuleKind.ClassPrice, AmountMinor = 15000, Label = "Higher price" });
+        _ticketing.PriceRules.Add(new TicketPriceRule { GrantProgramId = DiscountProgram, Kind = TicketPriceRuleKind.ClassPrice, AmountMinor = 12500, Label = "Tied price" });
         var price = TicketPrice.For(_ticketing, new LocalDate(2027, 2, 10), [LowIncomeProgram, DiscountProgram])!;
         price.ClassPrice!.Label.Should().Be("Low income");
         price.AmountMinor.Should().Be(7500);
@@ -507,6 +509,7 @@ public sealed partial class TicketCheckoutServiceTests
             .Returns(new PlatformOrderStatus(PlatformOrderState.Pending, null, null, null));
 
         var page = (await _service.GetBuyPagesAsync(_buyerId, Ct)).Single();
+        page.GateOpeningDate.Should().Be(_event.GateOpeningDate);
         page.AlreadyHoldsTicket.Should().BeTrue();
         page.OpenOrder!.Id.Should().Be(started.OrderId!.Value);
 
@@ -2284,6 +2287,23 @@ public sealed partial class TicketCheckoutServiceTests
         held[0].HasDependents.Should().BeTrue();
     }
 
+    [HumansTheory]
+    [InlineData(498, true)]
+    [InlineData(499, false)]
+    [InlineData(500, false)]
+    public async Task Delivery_details_keep_complete_surrogate_pairs_at_the_storage_limit(int prefixLength, bool keepEmoji)
+    {
+        var order = await BuyAndPayAsync(Buy(), _buyerId);
+        var prefix = new string('x', prefixLength);
+        var detail = prefix + "😀tail";
+
+        await _service.RecordDeliveryAsync(order.Id, TicketCheckoutOrderEventKind.TicketsEmailed, detail, null, Ct);
+
+        var recorded = _repo.Events.Single(e => e.Kind == TicketCheckoutOrderEventKind.TicketsEmailed).Detail;
+        var expected = prefix + (keepEmoji ? "😀" : string.Empty);
+        string.Equals(recorded, expected, StringComparison.Ordinal).Should().BeTrue();
+    }
+
     [HumansFact]
     public async Task Delivery_steps_go_on_the_timeline_and_nothing_else_does()
     {
@@ -2313,7 +2333,7 @@ public sealed partial class TicketCheckoutServiceTests
 
         var sales = await _service.GetPublicSalesAsync(Ct);
 
-        sales.Should().ContainSingle().Which.Should().Be(new PublicSale("Nowhere 2027", 22500, ResaleOnly: false));
+        sales.Should().ContainSingle().Which.Should().Be(new PublicSale("Nowhere 2027", 22500, ResaleOnly: false) { GateOpeningDate = _event.GateOpeningDate });
     }
 
     private TicketCheckoutTicket AddTicket(

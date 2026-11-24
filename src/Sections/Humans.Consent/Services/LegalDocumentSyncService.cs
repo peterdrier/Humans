@@ -616,7 +616,7 @@ internal sealed partial class LegalDocumentSyncService(
                     v.EffectiveFrom,
                     v.ChangesSummary,
                     v.RequiresReConsent,
-                    v.Content.Keys.Order(StringComparer.Ordinal).ToList()))
+                    v.Content.Keys.ToList()))
                 .ToList());
     }
 

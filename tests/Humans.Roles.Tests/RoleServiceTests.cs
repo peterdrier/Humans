@@ -100,6 +100,57 @@ public sealed class RoleServiceTests
         result.Succeeded.Should().BeFalse();
     }
 
+    [HumansTheory]
+    [InlineData("link", false, "Roles_Refusal_LinkTooLong")]
+    [InlineData("description", false, "Roles_Refusal_DescriptionTooLong")]
+    [InlineData("priorities", false, "Roles_Refusal_PrioritiesTooLong")]
+    [InlineData("link", true, "Roles_Refusal_LinkTooLong")]
+    [InlineData("description", true, "Roles_Refusal_DescriptionTooLong")]
+    [InlineData("priorities", true, "Roles_Refusal_PrioritiesTooLong")]
+    public async Task SaveAsync_RefusesValuesThatExceedStoredLimits(string field, bool update, string refusal)
+    {
+        Arrange("system:RolesAdmin");
+        var input = field switch
+        {
+            "link" => Input("Planner") with { CustomSlug = new string('a', 101) },
+            "description" => Input("Planner") with { Description = new string('a', 2001) },
+            _ => Input("Planner") with { SlotCount = 51, Priorities = [.. Enumerable.Repeat(SlotPriority.Important, 51)] },
+        };
+        var existing = Role(Cantina, "Existing");
+        if (update) _repository.Seed(existing);
+
+        var result = update
+            ? await _service.UpdateAsync(existing.Id, input, _actor, Ct)
+            : await _service.CreateAsync(Owner(Cantina), input, _actor, Ct);
+
+        result.Refusal.Should().Be(refusal);
+        if (update)
+            existing.Name.Should().Be("Existing");
+        else
+            _repository.Roles.Should().BeEmpty();
+    }
+
+    [HumansTheory]
+    [InlineData("link")]
+    [InlineData("description")]
+    [InlineData("priorities")]
+    [InlineData("unicode-name")]
+    public async Task CreateAsync_AcceptsValuesAtStoredLimits(string field)
+    {
+        Arrange("system:RolesAdmin");
+        var input = field switch
+        {
+            "link" => Input("Planner") with { CustomSlug = new string('a', 100) },
+            "description" => Input("Planner") with { Description = string.Concat(Enumerable.Repeat("😀", 2000)) },
+            "priorities" => Input("Planner") with { SlotCount = 50, Priorities = [.. Enumerable.Repeat(SlotPriority.Important, 50)] },
+            _ => Input("a" + string.Concat(Enumerable.Repeat("😀", 99))),
+        };
+
+        var result = await _service.CreateAsync(Owner(Cantina), input, _actor, Ct);
+
+        result.Succeeded.Should().BeTrue();
+    }
+
     [HumansFact]
     public async Task CreateAsync_MakesASlugAndKeepsPermissionKeys()
     {

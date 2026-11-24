@@ -62,7 +62,7 @@ internal sealed class TicketQueryService(
         var approved = await ticketTransferRepository.GetApprovedAsync(ct);
         var transfersByAttendee = approved
             .GroupBy(t => t.OriginalTicketAttendeeId)
-            .ToDictionary(g => g.Key, g => g.OrderByDescending(t => t.DecidedAt).First());
+            .ToDictionary(g => g.Key, g => g.MaxBy(t => t.DecidedAt)!);
 
         return orders.Select(o => Project(o, currentEventId, transfersByAttendee)).ToList();
     }

@@ -28,23 +28,34 @@ public class TicketRulesSourceTests
     }
 
     [HumansFact]
-    public async Task A_github_failure_keeps_the_last_good_rules_and_an_invalid_folder_drops_them()
+    public async Task A_github_failure_replaces_cached_rules_with_unavailable_until_a_successful_read()
     {
         var source = new ScriptedSource();
         var good = new TicketRules("R", "abc123", new Dictionary<string, string>(StringComparer.Ordinal) { ["es"] = "es", ["en"] = "en" });
 
+        foreach (var (failure, problem) in new (Exception, string)[]
+                 {
+                     (new HttpRequestException("down"), "GitHub could not be reached."),
+                     (new TaskCanceledException("timeout"), "GitHub timed out."),
+                     (new Octokit.ApiException("unavailable", System.Net.HttpStatusCode.ServiceUnavailable), "GitHub refused the request (503).")
+                 })
+        {
+            source.Next = () => Task.FromResult(new TicketRulesRead(good, null));
+            (await source.GetAsync("R", refresh: true)).Rules.Should().BeSameAs(good);
+
+            source.Next = () => throw failure;
+            (await source.GetAsync("R", refresh: true)).Should().Be(TicketRulesRead.Failed(problem));
+            source.Next = () => throw new InvalidOperationException("The unavailable result should be cached.");
+            (await source.GetAsync("R")).Should().Be(TicketRulesRead.Failed(problem));
+        }
+
         source.Next = () => Task.FromResult(new TicketRulesRead(good, null));
         (await source.GetAsync("R", refresh: true)).Rules.Should().BeSameAs(good);
-
-        source.Next = () => throw new HttpRequestException("down");
-        (await source.GetAsync("R", refresh: true)).Rules.Should().BeSameAs(good);
-        source.Next = () => throw new TaskCanceledException("timeout");
-        (await source.GetAsync("R", refresh: true)).Rules.Should().BeSameAs(good);
+        (await source.GetAsync("R")).Rules.Should().BeSameAs(good);
 
         source.Next = () => Task.FromResult(TicketRulesRead.Failed("It has no English file (R-en.md)."));
         (await source.GetAsync("R", refresh: true)).Rules.Should().BeNull();
-        source.Next = () => throw new HttpRequestException("down");
-        (await source.GetAsync("R", refresh: true)).Should().Be(TicketRulesRead.Failed("GitHub could not be reached."));
+        (await source.GetAsync("R")).Problem.Should().Be("It has no English file (R-en.md).");
     }
 
     [HumansFact]

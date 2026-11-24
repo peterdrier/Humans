@@ -1,3 +1,4 @@
+using System.Text;
 using Humans.Roles.Contracts;
 using Humans.Base.Constants;
 using Humans.Google.Contracts;
@@ -2066,7 +2067,7 @@ internal sealed class TeamService(
         if (string.IsNullOrWhiteSpace(name))
             return "Role name cannot be empty";
 
-        if (name.Length > 100)
+        if (name.EnumerateRunes().Count() > 100)
             return "Role name cannot exceed 100 characters";
         return null;
     }
@@ -2081,6 +2082,8 @@ internal sealed class TeamService(
 
         if (priorities.Any(priority => !Enum.IsDefined(priority)))
             return "Each slot priority must be a defined priority value";
+        if (string.Join(",", priorities).Length > 500)
+            return "There are too many slots with these priorities. Reduce the number of slots.";
         if (estimatedHours is < 0)
             return "Estimated hours cannot be negative";
         return null;

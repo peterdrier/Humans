@@ -45,16 +45,40 @@ public class TrackedCacheStartupSafetyTests
         sut.IsWarmedUpExposed.Should().BeTrue("recovery warm succeeded");
     }
 
-    [HumansFact]
-    public async Task StartAsync_propagates_OperationCanceledException_when_token_canceled()
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task StartAsync_propagates_OperationCanceledException_when_token_canceled(bool loaderThrows)
     {
         using var cts = new CancellationTokenSource();
-        var sut = new CancellingCache("test-cache", warmOnStartup: true, cts);
+        var sut = new CancellingCache("test-cache", warmOnStartup: true, cts, loaderThrows);
 
         var act = async () => await ((IHostedService)sut).StartAsync(cts.Token);
 
         await act.Should().ThrowAsync<OperationCanceledException>(
             "shutdown during startup must propagate, not be swallowed");
+        sut.AsReadOnlyDictionary.Should().BeEmpty();
+        sut.IsWarmedUp.Should().BeFalse();
+    }
+
+    [HumansFact]
+    public async Task Warmup_failure_discards_partial_rows_before_retrying_a_changed_source()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var sut = new ThrowingCache("partial-warm", warmOnStartup: true);
+        Func<Task> warm = () => sut.WarmFromOutsideAsync(ct);
+
+        await warm.Should().ThrowAsync<InvalidOperationException>();
+        sut.AsReadOnlyDictionary.Should().BeEmpty();
+        sut.IsWarmedUp.Should().BeFalse();
+        sut.Source.Clear();
+        sut.Source.Add(Guid.NewGuid(), "current row");
+        sut.ShouldThrow = false;
+
+        await warm();
+
+        sut.AsReadOnlyDictionary.Should().BeEquivalentTo(sut.Source);
+        sut.IsWarmedUp.Should().BeTrue();
     }
 
     [HumansFact]
@@ -127,6 +151,7 @@ public class TrackedCacheStartupSafetyTests
     private sealed class ThrowingCache(string name, bool warmOnStartup, ILogger? logger = null)
         : TrackedCache<Guid, string>(name, warmOnStartup, logger ?? NullLogger.Instance)
     {
+        public Dictionary<Guid, string> Source { get; } = new() { [Guid.NewGuid()] = "partial row" };
         public int WarmAttempts;
         public bool ShouldThrow = true;
         public bool IsWarmedUpExposed => IsWarmedUp;
@@ -136,19 +161,21 @@ public class TrackedCacheStartupSafetyTests
         protected override Task WarmAllAsync(Action<Guid, string> publish, CancellationToken ct)
         {
             Interlocked.Increment(ref WarmAttempts);
+            foreach (var (key, value) in Source) publish(key, value);
             if (ShouldThrow)
                 throw new InvalidOperationException("simulated DB unavailable");
             return Task.CompletedTask;
         }
     }
 
-    private sealed class CancellingCache(string name, bool warmOnStartup, CancellationTokenSource cts)
+    private sealed class CancellingCache(string name, bool warmOnStartup, CancellationTokenSource cts, bool loaderThrows)
         : TrackedCache<Guid, string>(name, warmOnStartup, NullLogger.Instance)
     {
         protected override async Task WarmAllAsync(Action<Guid, string> publish, CancellationToken ct)
         {
+            publish(Guid.NewGuid(), "partial row");
             await cts.CancelAsync();
-            ct.ThrowIfCancellationRequested();
+            if (loaderThrows) ct.ThrowIfCancellationRequested();
         }
     }
 }

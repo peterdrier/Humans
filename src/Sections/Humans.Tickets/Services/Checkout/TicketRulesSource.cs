@@ -15,9 +15,9 @@ internal interface ITicketRulesSource
 {
     /// <summary>
     /// The rules as of the last commit changing the folder, cached for a few minutes so the version a buyer is shown is
-    /// the one their order records. When GitHub cannot be read, the folder's last good rules (kept without expiry).
-    /// Without rules, <see cref="TicketRulesRead.Problem"/> says why. <paramref name="refresh"/> skips the cache, for
-    /// checking a folder an admin just set.
+    /// the one their order records. Without rules, <see cref="TicketRulesRead.Problem"/> says why: GitHub could not be
+    /// read, or the folder holds no valid set. <paramref name="refresh"/> skips the cache, for checking a folder an
+    /// admin just set.
     /// </summary>
     Task<TicketRulesRead> GetAsync(string folder, bool refresh = false, CancellationToken ct = default);
 
@@ -37,11 +37,10 @@ internal sealed record TicketRulesRead(TicketRules? Rules, string? Problem)
 internal partial class GitHubTicketRulesSource : ITicketRulesSource
 {
     private const string CacheKeyPrefix = "tickets:rules:";
-    private const string LastGoodKeyPrefix = "tickets:rules:last-good:";
     private static readonly TimeSpan Fresh = TimeSpan.FromMinutes(10);
     private static readonly TimeSpan AfterFailure = TimeSpan.FromMinutes(1);
 
-    // Short, so a hung GitHub fails the buy page over to the last good rules instead of stalling it.
+    // Bound the wait before the buy page reports that the rules are unavailable.
     private static readonly TimeSpan RequestTimeout = TimeSpan.FromSeconds(5);
 
     [GeneratedRegex(@"^(?<name>[^/]+?)(?:-(?<lang>[A-Za-z]{2}))?\.md$", RegexOptions.ExplicitCapture, 1000)]
@@ -73,48 +72,31 @@ internal partial class GitHubTicketRulesSource : ITicketRulesSource
         if (!refresh && _cache.TryGetValue(key, out TicketRulesRead? cached) && cached is not null)
             return cached;
 
-        var lastGoodKey = LastGoodKeyPrefix + folder;
         TicketRulesRead read;
         try
         {
             read = await LoadAsync(folder, ct);
+            if (read.Rules is null)
+                _logger.LogWarning("The ticket rules folder {Folder} is unusable: {Problem}", folder, read.Problem);
         }
         catch (ApiException ex) when (!ct.IsCancellationRequested)
         {
             // Status code only: the message can carry GitHub's HTML error body.
-            _logger.LogWarning("GitHub refused the ticket rules in {Folder}: {StatusCode}; using the last good version", folder, ex.StatusCode);
-            return KeepLastGood(key, lastGoodKey, $"GitHub refused the request ({(int)ex.StatusCode}).");
+            _logger.LogWarning("GitHub refused the ticket rules in {Folder}: {StatusCode}; ticket rules are unavailable", folder, ex.StatusCode);
+            read = TicketRulesRead.Failed($"GitHub refused the request ({(int)ex.StatusCode}).");
         }
         catch (HttpRequestException ex) when (!ct.IsCancellationRequested)
         {
-            _logger.LogWarning("GitHub could not be reached for the ticket rules in {Folder}: {Error}; using the last good version", folder, ex.Message);
-            return KeepLastGood(key, lastGoodKey, "GitHub could not be reached.");
+            _logger.LogWarning("GitHub could not be reached for the ticket rules in {Folder}: {Error}; ticket rules are unavailable", folder, ex.Message);
+            read = TicketRulesRead.Failed("GitHub could not be reached.");
         }
         catch (OperationCanceledException) when (!ct.IsCancellationRequested)
         {
-            _logger.LogWarning("GitHub timed out reading the ticket rules in {Folder}; using the last good version", folder);
-            return KeepLastGood(key, lastGoodKey, "GitHub timed out.");
-        }
-
-        if (read.Rules is null)
-        {
-            _logger.LogWarning("The ticket rules folder {Folder} is unusable: {Problem}", folder, read.Problem);
-            _cache.Remove(lastGoodKey);
-        }
-        else
-        {
-            _cache.Set(lastGoodKey, read.Rules);
+            _logger.LogWarning("GitHub timed out reading the ticket rules in {Folder}; ticket rules are unavailable", folder);
+            read = TicketRulesRead.Failed("GitHub timed out.");
         }
 
         _cache.Set(key, read, read.Rules is null ? AfterFailure : Fresh);
-        return read;
-    }
-
-    private TicketRulesRead KeepLastGood(string key, string lastGoodKey, string problem)
-    {
-        var rules = _cache.Get<TicketRules>(lastGoodKey);
-        var read = rules is null ? TicketRulesRead.Failed(problem) : new TicketRulesRead(rules, null);
-        _cache.Set(key, read, AfterFailure);
         return read;
     }
 

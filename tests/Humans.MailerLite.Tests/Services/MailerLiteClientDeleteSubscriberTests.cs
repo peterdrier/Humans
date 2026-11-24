@@ -16,6 +16,49 @@ public class MailerLiteClientDeleteSubscriberTests
     private const string Erased = "erased@example.org";
 
     [HumansFact]
+    public async Task DeleteSubscriberAsync_UsesPermanentForgetByResolvedId()
+    {
+        var handler = new DeleteHandler(HttpStatusCode.OK);
+        var client = BuildClient(handler);
+
+        await client.DeleteSubscriberAsync(Erased, TestContext.Current.CancellationToken);
+
+        handler.Requests.Should().Equal(
+            (HttpMethod.Get, "/api/subscribers/" + Uri.EscapeDataString(Erased)),
+            (HttpMethod.Post, "/api/subscribers/1/forget"));
+    }
+
+    [HumansFact]
+    public async Task DeleteSubscriberAsync_MissingLookup_EvictsWithoutWriting()
+    {
+        var handler = new DeleteHandler(HttpStatusCode.OK) { LookupStatus = HttpStatusCode.NotFound };
+        var client = BuildClient(handler);
+        await DrainAsync(client);
+
+        await client.DeleteSubscriberAsync(Erased, TestContext.Current.CancellationToken);
+
+        (await SnapshotEmailsAsync(client)).Should().NotContain(Erased);
+        handler.Requests.Should().OnlyContain(r => r.Method == HttpMethod.Get);
+    }
+
+    [HumansTheory]
+    [InlineData("{}")]
+    [InlineData("""{"data":{"id":" ","email":"erased@example.org","status":"active"}}""")]
+    [InlineData("""{"data":{"id":"2","email":"other@example.org","status":"active"}}""")]
+    public async Task DeleteSubscriberAsync_InvalidLookup_PreservesSnapshotAndDoesNotForget(string payload)
+    {
+        var handler = new DeleteHandler(HttpStatusCode.OK) { LookupPayload = payload };
+        var client = BuildClient(handler);
+        await DrainAsync(client);
+
+        var erase = () => client.DeleteSubscriberAsync(Erased, TestContext.Current.CancellationToken);
+
+        (await erase.Should().ThrowAsync<HttpRequestException>()).WithMessage("*subscriber*");
+        handler.Requests.Should().OnlyContain(r => r.Method == HttpMethod.Get);
+        (await SnapshotEmailsAsync(client)).Should().Contain(Erased);
+    }
+
+    [HumansFact]
     public async Task DeleteSubscriberAsync_EvictsFromTheSnapshot()
     {
         var client = BuildClient(new DeleteHandler(HttpStatusCode.NoContent));
@@ -81,10 +124,13 @@ public class MailerLiteClientDeleteSubscriberTests
         warning.Exception.Should().BeNull();
     }
 
-    [HumansFact]
-    public async Task DeleteSubscriberAsync_Failure_PreservesSnapshotAndStatusTotals()
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task DeleteSubscriberAsync_Failure_PreservesSnapshotAndStatusTotals(bool lookupFails)
     {
-        var client = BuildClient(new DeleteHandler(HttpStatusCode.InternalServerError));
+        var client = BuildClient(new DeleteHandler(lookupFails ? HttpStatusCode.OK : HttpStatusCode.InternalServerError)
+        { LookupStatus = lookupFails ? HttpStatusCode.InternalServerError : HttpStatusCode.OK });
         var before = await client.GetAccountSummaryAsync(TestContext.Current.CancellationToken);
 
         var delete = () => client.DeleteSubscriberAsync(Erased, TestContext.Current.CancellationToken);
@@ -111,18 +157,28 @@ public class MailerLiteClientDeleteSubscriberTests
         new(new StubHttpClientFactory(handler), NodaTime.SystemClock.Instance,
             logger ?? Microsoft.Extensions.Logging.Abstractions.NullLogger<MailerLiteClient>.Instance);
 
-    // One subscriber on the first subscribers page, empty thereafter; DELETE answers
-    // with the status under test.
+    // One subscriber on the first subscribers page, empty thereafter; erasure answers with the status under test.
     private sealed class DeleteHandler(HttpStatusCode deleteStatus, string status = "active") : HttpMessageHandler
     {
         private bool _subscribersServed;
+        public HttpStatusCode LookupStatus { get; init; } = HttpStatusCode.OK;
+        public string? LookupPayload { get; init; }
+        public List<(HttpMethod Method, string Path)> Requests { get; } = [];
 
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage req, CancellationToken ct)
         {
-            if (req.Method == HttpMethod.Delete)
-                return Task.FromResult(new HttpResponseMessage(deleteStatus));
-
             var path = req.RequestUri!.AbsolutePath;
+            Requests.Add((req.Method, path));
+            if (req.Method == HttpMethod.Delete || req.Method == HttpMethod.Post)
+                return Task.FromResult(new HttpResponseMessage(deleteStatus));
+            if (string.Equals(path, "/api/subscribers/" + Uri.EscapeDataString(Erased), StringComparison.Ordinal))
+                return Task.FromResult(new HttpResponseMessage(LookupStatus)
+                {
+                    Content = new StringContent(LookupPayload ?? System.Text.Json.JsonSerializer.Serialize(new
+                    {
+                        data = new { id = "1", email = Erased, status },
+                    }), Encoding.UTF8, "application/json"),
+                });
             string body;
             if (path.Contains("/api/groups", StringComparison.Ordinal))
             {
