@@ -27,10 +27,10 @@
 
   <ItemGroup>
     <!--
-      Reference Humans.Analyzers as a real assembly (not as an analyzer plugin).
-      Tests load the DiagnosticAnalyzer types directly and feed them synthetic
-      compilations via AnalyzerTestHarness. They do NOT need the analyzer
-      attached to their own compilation.
+      Humans.Analyzers both ways: as a real assembly, because the tests load the
+      DiagnosticAnalyzer types directly and feed them synthetic compilations via
+      AnalyzerTestHarness, and as an analyzer, so the naming rules check this
+      project's own test names (tests/Directory.Build.props skips it for that).
     -->
     <ProjectReference Include="..\..\src\Humans.Analyzers\Humans.Analyzers.csproj"
                       OutputItemType="Analyzer" ReferenceOutputAssembly="true" />
