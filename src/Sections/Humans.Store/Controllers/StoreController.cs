@@ -310,10 +310,12 @@ internal sealed class StoreController(
                     + (result.PendingCount > 0 ? $", {result.PendingCount} still pending in Stripe." : "."));
             if (result.SettledCount > 0)
                 parts.Add($"{result.SettledCount} pending refund(s) completed.");
-            if (result.CancelledCount > 0)
-                parts.Add($"{result.CancelledCount} refund(s) failed or were cancelled in Stripe and no longer count.");
+            if (result.FailedCount > 0)
+                parts.Add($"{result.FailedCount} refund(s) failed in Stripe and no longer count.");
+            if (result.CanceledCount > 0)
+                parts.Add($"{result.CanceledCount} refund(s) were canceled in Stripe and no longer count.");
             var message = parts.Count == 0 ? "No new Stripe refunds to record." : string.Join(" ", parts);
-            if (result.CancelledCount > 0) SetError(message);
+            if (result.FailedCount + result.CanceledCount > 0) SetError(message);
             else SetSuccess(message);
         }
         return RedirectToAction(nameof(Order), new { id });

@@ -174,9 +174,9 @@ internal sealed class TicketTailorService : ITicketVendorService
 
             yield return body.Data;
             cursor = body.Links.Next is not null ? getId(body.Data[^1]) : null;
-            if (body.Links.Next is not null
-                && (string.IsNullOrWhiteSpace(cursor) || !seenCursors.Add(cursor)))
-                throw new HttpRequestException("TicketTailor pagination returned a missing or repeated cursor.");
+            // Every item's id was checked above, so a next page always has a cursor.
+            if (cursor is not null && !seenCursors.Add(cursor))
+                throw new HttpRequestException($"TicketTailor pagination returned cursor {cursor} a second time.");
         } while (cursor is not null);
     }
 
