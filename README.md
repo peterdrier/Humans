@@ -98,13 +98,12 @@ Defaults live in `src/Humans.Web/appsettings.json`; override them with user secr
 | Setting | Description |
 |---------|-------------|
 | `ConnectionStrings__DefaultConnection` | PostgreSQL connection string |
-| `Authentication__Google__ClientId` | Google OAuth client ID |
-| `Authentication__Google__ClientSecret` | Google OAuth client secret |
 
 ### Optional
 
 | Setting | Description |
 |---------|-------------|
+| `Authentication__Google__ClientId` / `__ClientSecret` | Google OAuth client. Without both, "Sign in with Google" is off and members sign in by email magic link |
 | `Email__Username` / `Email__Password` | SMTP credentials for outbound mail (host and sender are in `appsettings.json`) |
 | `GoogleMaps__ApiKey` | Maps and Places for profile locations and maps |
 | `GoogleWorkspace__ServiceAccountKeyJson` or `__ServiceAccountKeyPath` | Service account for Workspace provisioning and Drive/Groups sync |

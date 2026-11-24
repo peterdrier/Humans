@@ -140,15 +140,21 @@ builder.Services.ConfigureApplicationCookie(options =>
     options.AccessDeniedPath = "/Account/AccessDenied";
 });
 
-builder.Services.AddAuthentication()
-    .AddGoogle(options =>
+// Google sign-in is optional: without a client id and secret it is not registered at all, and the magic link is
+// the only way in. A registered scheme with empty options would fail every request, not just the login page.
+var googleClientId = builder.Configuration.GetOptionalSetting(
+    configRegistry, "Authentication:Google:ClientId", "Authentication", isSensitive: true,
+    importance: ConfigurationImportance.Recommended);
+var googleClientSecret = builder.Configuration.GetOptionalSetting(
+    configRegistry, "Authentication:Google:ClientSecret", "Authentication", isSensitive: true,
+    importance: ConfigurationImportance.Recommended);
+var authentication = builder.Services.AddAuthentication();
+if (!string.IsNullOrEmpty(googleClientId) && !string.IsNullOrEmpty(googleClientSecret))
+{
+    authentication.AddGoogle(options =>
     {
-        options.ClientId = builder.Configuration.GetRequiredSetting(
-                configRegistry, "Authentication:Google:ClientId", "Authentication", isSensitive: true)
-            ?? throw new InvalidOperationException("Google ClientId not configured.");
-        options.ClientSecret = builder.Configuration.GetRequiredSetting(
-                configRegistry, "Authentication:Google:ClientSecret", "Authentication", isSensitive: true)
-            ?? throw new InvalidOperationException("Google ClientSecret not configured.");
+        options.ClientId = googleClientId;
+        options.ClientSecret = googleClientSecret;
         options.Scope.Add("profile");
         options.Scope.Add("email");
         options.SaveTokens = false;
@@ -196,6 +202,7 @@ builder.Services.AddAuthentication()
             }
         };
     });
+}
 
 builder.Services.AddHumansAuthorizationPolicies();
 builder.Services.AddHttpContextAccessor();

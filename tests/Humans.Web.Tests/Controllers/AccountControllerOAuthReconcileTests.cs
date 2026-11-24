@@ -35,6 +35,7 @@ public class AccountControllerOAuthReconcileTests
         Substitute.For<IStringLocalizer<Base.SharedResource>>();
     private readonly FakeClock _clock = new(Instant.FromUtc(2026, 5, 11, 12, 0));
     private readonly Web.Services.LoginMethodCounter _loginMethods = new();
+    private readonly IAuthenticationSchemeProvider _schemeProvider = Substitute.For<IAuthenticationSchemeProvider>();
     private readonly UserManager<User> _userManager;
     private readonly SignInManager<User> _signInManager;
     private readonly AccountController _controller;
@@ -52,7 +53,7 @@ public class AccountControllerOAuthReconcileTests
         var claimsFactory = Substitute.For<IUserClaimsPrincipalFactory<User>>();
         var identityOptions = Substitute.For<IOptions<IdentityOptions>>();
         identityOptions.Value.Returns(new IdentityOptions());
-        var schemeProvider = Substitute.For<IAuthenticationSchemeProvider>();
+        var schemeProvider = _schemeProvider;
         var userConfirmation = Substitute.For<IUserConfirmation<User>>();
 
         _signInManager = Substitute.For<SignInManager<User>>(
@@ -84,7 +85,8 @@ public class AccountControllerOAuthReconcileTests
                     new Microsoft.Extensions.Caching.Memory.MemoryCacheOptions()),
                 _clock),
             _loginMethods,
-            _localizer);
+            _localizer,
+            _schemeProvider);
         _controller.Url = Substitute.For<IUrlHelper>();
         _controller.Url.IsLocalUrl(Arg.Any<string?>()).Returns(false);
         _controller.Url.Content(Arg.Any<string>()).Returns(ci => ci.Arg<string>());
@@ -123,6 +125,18 @@ public class AccountControllerOAuthReconcileTests
         var identity = new ClaimsIdentity(claims, "TestAuth");
         var principal = new ClaimsPrincipal(identity);
         return new ExternalLoginInfo(principal, Provider, ProviderKey, "Google");
+    }
+
+    [HumansFact]
+    public async Task ExternalLogin_ProviderNotConfigured_ReturnsToLoginInsteadOfChallenging()
+    {
+        _schemeProvider.GetSchemeAsync("Google").Returns((AuthenticationScheme?)null);
+
+        var result = await _controller.ExternalLogin("Google", "/Shifts");
+
+        var redirect = result.Should().BeOfType<RedirectToActionResult>().Subject;
+        redirect.ActionName.Should().Be(nameof(AccountController.Login));
+        redirect.RouteValues!["error"].Should().Be("oauth");
     }
 
     [HumansFact]
