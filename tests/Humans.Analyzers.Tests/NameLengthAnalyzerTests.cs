@@ -47,6 +47,9 @@ public class NameLengthAnalyzerTests
     [InlineData("Reassign_MovesScans_AndCarriesPin", true)]
     [InlineData("A_merge_moves_the_pin", true)]
     [InlineData("Reassign_Survivor_HasPin_KeepsIt", true)]
+    [InlineData("Reassign_KeepsPin", false)]
+    [InlineData("ReassignKeepsPin", true)]
+    [InlineData("Reassign__KeepsPin", true)]
     [InlineData("Reassign_SurvivorAlreadyHasTheirOwnPin_KeepsThatPinUnchanged", true)]
     public async Task TestName_OutsideTheShape_IsReported(string name, bool reported)
     {

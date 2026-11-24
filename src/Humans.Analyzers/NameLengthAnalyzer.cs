@@ -48,7 +48,7 @@ public sealed class NameLengthAnalyzer : DiagnosticAnalyzer
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true,
         description:
-            "A test name is Method_Result or Method_Condition_Result in PascalCase: at most three parts, at most " +
+            "A test name is Method_Result or Method_Condition_Result in PascalCase: two or three parts, at most " +
             "ten words, no 'And' after the first part. The asserts list the details; a why goes in a comment.");
 
     public static readonly DiagnosticDescriptor StaleBaselineRule = new(
@@ -189,6 +189,12 @@ public sealed class NameLengthAnalyzer : DiagnosticAnalyzer
         var parts = name.Split('_');
         if (parts.Any(p => p.Length > 0 && char.IsLower(p[0])))
             return "is a lowercase sentence";
+
+        if (parts.Length < 2)
+            return "has no result part";
+
+        if (parts.Any(p => p.Length == 0))
+            return "has an empty part";
 
         if (parts.Length > MaxTestParts)
             return $"has {parts.Length} parts";
