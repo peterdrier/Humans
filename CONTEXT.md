@@ -40,6 +40,7 @@ Words that belong to one section live in that section's own glossary. Words used
 - [Auth](src/Sections/Humans.Auth/Docs/CONTEXT.md): signing in, signing up and system roles
 - [Backdoor](src/Sections/Humans.Backdoor/Docs/CONTEXT.md): personal API keys and the Backdoor API
 - [BoxOffice](src/Sections/Humans.BoxOffice/Docs/CONTEXT.md): Humans' own ticketing platform on Stripe
+- [Budget](src/Sections/Humans.Budget/Docs/CONTEXT.md): budget years, categories, line items and what's available
 
 ## Finance
 

@@ -5,7 +5,7 @@
 @{
     // Only the three total cards carry the euro sign; the columns below are all euros.
     string Amount(decimal value) => value.ToString("N2", System.Globalization.CultureInfo.CurrentUICulture);
-    ViewData["Title"] = $"Finance - {Model.Year.Name}";
+    ViewData["Title"] = $"Budget - {Model.Year.Name}";
     var year = Model.Year;
     var allYears = Model.AllYears;
     var incomeLabels = Model.IncomeSlices.Select(s => s.Name).ToList();
@@ -122,9 +122,9 @@
 {
     <div class="card">
         <div class="card-body text-center py-4">
-            <empty-state class="mb-2">No groups yet. Add groups in Finance Admin to start building the budget.</empty-state>
+            <empty-state class="mb-2">No groups yet. Add groups in Budget admin to start building the budget.</empty-state>
             <a asp-action="Admin" class="btn btn-outline-primary btn-sm">
-                <i class="fa-solid fa-plus me-1"></i>Go to Finance Admin
+                <i class="fa-solid fa-plus me-1"></i>Go to Budget admin
             </a>
         </div>
     </div>

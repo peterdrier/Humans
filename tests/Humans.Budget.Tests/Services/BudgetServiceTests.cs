@@ -2482,7 +2482,7 @@ public sealed class BudgetServiceTests
         slices.Skip(2).Should().OnlyContain(slice => slice.BudgetCategoryId == null);
         slices.Select(slice => slice.Name).Should().Equal(
             "Travel", "VAT Liability", "VAT Liability", "Cash Reserves (90%)", "Spanish Taxes (10%)",
-            "First Buffer", "Middle Buffer", "Last Buffer");
+            "Available in First", "Available in Middle", "Available in Last");
     }
 
     [HumansFact]
@@ -2505,7 +2505,7 @@ public sealed class BudgetServiceTests
 
         summary.IncomeSlices.Select(slice => slice.Name).Should().BeEquivalentTo(["Sales", "VAT Credit"]);
         summary.ExpenseSlices.Select(slice => slice.Name).Should().BeEquivalentTo(
-            ["Ops", "VAT Liability", "Cash Reserves (90%)", "Spanish Taxes (10%)", "Main Buffer"]);
+            ["Ops", "VAT Liability", "Cash Reserves (90%)", "Spanish Taxes (10%)", "Available in Main"]);
         summary.TotalIncome.Should().Be(112.1m);
         summary.TotalExpenses.Should().Be(-22.1m);
         summary.NetBalance.Should().Be(90m);

@@ -64,10 +64,10 @@
   <data name="Budget_ColShare" xml:space="preserve"><value>Percentatge</value></data>
   <data name="Budget_DepartmentDetail" xml:space="preserve"><value>Detall del departament</value></data>
   <data name="Budget_Departments" xml:space="preserve"><value>Departaments</value></data>
-  <data name="Budget_DetailedInLineItems" xml:space="preserve"><value>Detallat en partides</value></data>
-  <data name="Budget_FinanceAdmin" xml:space="preserve"><value>Administració financera</value></data>
+  <data name="Budget_DetailedInLineItems" xml:space="preserve"><value>Previst</value></data>
+  <data name="Budget_FinanceAdmin" xml:space="preserve"><value>Administració del pressupost</value></data>
   <data name="Budget_CategoryCount" xml:space="preserve"><value>({0} categories)</value></data>
-  <data name="Budget_ColLineItems" xml:space="preserve"><value>Partides (€)</value></data>
+  <data name="Budget_ColLineItems" xml:space="preserve"><value>Previst (€)</value></data>
   <data name="Budget_ColType" xml:space="preserve"><value>Tipus</value></data>
   <data name="Budget_Allocated" xml:space="preserve"><value>Assignat (€)</value></data>
   <data name="Budget_Manage" xml:space="preserve"><value>Gestiona</value></data>
@@ -75,7 +75,7 @@
   <data name="Budget_NoGroups" xml:space="preserve"><value>Encara no hi ha grups de pressupost disponibles.</value></data>
   <data name="Budget_Restricted" xml:space="preserve"><value>Restringit</value></data>
   <data name="Budget_TotalAllocated" xml:space="preserve"><value>Total assignat</value></data>
-  <data name="Budget_Unallocated" xml:space="preserve"><value>Sense assignar</value></data>
+  <data name="Budget_Unallocated" xml:space="preserve"><value>Disponible</value></data>
   <data name="Budget_View" xml:space="preserve"><value>Mostra</value></data>
   <data name="Budget_YourDepartment" xml:space="preserve"><value>El teu departament</value></data>
   <data name="Budget_Expenses" xml:space="preserve"><value>Despeses</value></data>
@@ -152,7 +152,7 @@
   <data name="Budget_ExpenditureType_OpEx" xml:space="preserve"><value>Despeses operatives</value></data>
   <data name="Budget_CashReserves" xml:space="preserve"><value>Reserves d'efectiu (90%)</value></data>
   <data name="Budget_SpanishTaxes" xml:space="preserve"><value>Impostos espanyols (10%)</value></data>
-  <data name="Budget_GroupBuffer" xml:space="preserve"><value>Marge de {0}</value></data>
+  <data name="Budget_GroupBuffer" xml:space="preserve"><value>Disponible a {0}</value></data>
   <data name="Budget_Permission_Edit_Title" xml:space="preserve"><value>Editar el pressupost</value></data>
   <data name="Budget_Permission_Edit_Blurb" xml:space="preserve"><value>Editar les partides de les categories de pressupost de l’equip.</value></data>
 </root>

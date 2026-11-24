@@ -64,10 +64,10 @@
   <data name="Budget_ColShare" xml:space="preserve"><value>Part</value></data>
   <data name="Budget_DepartmentDetail" xml:space="preserve"><value>Détail par département</value></data>
   <data name="Budget_Departments" xml:space="preserve"><value>Départements</value></data>
-  <data name="Budget_DetailedInLineItems" xml:space="preserve"><value>Détaillé par lignes</value></data>
-  <data name="Budget_FinanceAdmin" xml:space="preserve"><value>Administration financière</value></data>
+  <data name="Budget_DetailedInLineItems" xml:space="preserve"><value>Prévu</value></data>
+  <data name="Budget_FinanceAdmin" xml:space="preserve"><value>Administration du budget</value></data>
   <data name="Budget_CategoryCount" xml:space="preserve"><value>({0} catégories)</value></data>
-  <data name="Budget_ColLineItems" xml:space="preserve"><value>Lignes (€)</value></data>
+  <data name="Budget_ColLineItems" xml:space="preserve"><value>Prévu (€)</value></data>
   <data name="Budget_ColType" xml:space="preserve"><value>Type</value></data>
   <data name="Budget_Allocated" xml:space="preserve"><value>Alloué (€)</value></data>
   <data name="Budget_Manage" xml:space="preserve"><value>Gérer</value></data>
@@ -75,7 +75,7 @@
   <data name="Budget_NoGroups" xml:space="preserve"><value>Aucun groupe budgétaire disponible pour le moment.</value></data>
   <data name="Budget_Restricted" xml:space="preserve"><value>Restreint</value></data>
   <data name="Budget_TotalAllocated" xml:space="preserve"><value>Total alloué</value></data>
-  <data name="Budget_Unallocated" xml:space="preserve"><value>Non alloué</value></data>
+  <data name="Budget_Unallocated" xml:space="preserve"><value>Disponible</value></data>
   <data name="Budget_View" xml:space="preserve"><value>Voir</value></data>
   <data name="Budget_YourDepartment" xml:space="preserve"><value>Votre département</value></data>
   <data name="Budget_Expenses" xml:space="preserve"><value>Dépenses</value></data>
@@ -152,7 +152,7 @@
   <data name="Budget_ExpenditureType_OpEx" xml:space="preserve"><value>Dépenses de fonctionnement</value></data>
   <data name="Budget_CashReserves" xml:space="preserve"><value>Réserves de trésorerie (90%)</value></data>
   <data name="Budget_SpanishTaxes" xml:space="preserve"><value>Impôts espagnols (10%)</value></data>
-  <data name="Budget_GroupBuffer" xml:space="preserve"><value>Marge de {0}</value></data>
+  <data name="Budget_GroupBuffer" xml:space="preserve"><value>Disponible dans {0}</value></data>
   <data name="Budget_Permission_Edit_Title" xml:space="preserve"><value>Modifier le budget</value></data>
   <data name="Budget_Permission_Edit_Blurb" xml:space="preserve"><value>Modifier les lignes des catégories budgétaires de l’équipe.</value></data>
 </root>
