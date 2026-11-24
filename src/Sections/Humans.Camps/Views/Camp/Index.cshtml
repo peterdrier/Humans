@@ -60,7 +60,7 @@
                     <input asp-for="Filters.AcceptingMembers" class="form-check-input js-auto-submit" type="checkbox" />
                     <label asp-for="Filters.AcceptingMembers" class="form-check-label">@Localizer["Camps_Index_AcceptingMembersFilter"]</label>
                 </div>
-                <div class="form-check">
+                <div class="form-check" authorize-policy="@CampsPolicies.Read">
                     <input asp-for="Filters.ShowLeadPositions" class="form-check-input js-auto-submit" type="checkbox" />
                     <label asp-for="Filters.ShowLeadPositions" class="form-check-label">@Localizer["Camps_Index_ShowLeadPositions"]</label>
                 </div>
