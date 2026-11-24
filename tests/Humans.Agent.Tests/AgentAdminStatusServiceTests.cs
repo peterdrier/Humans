@@ -191,6 +191,22 @@ public class AgentAdminStatusServiceTests
         report.SettingsStoreWarm.Should().BeFalse();
     }
 
+    [HumansFact]
+    public async Task ListAll_LegacyHandoffMarker_CountsAsHandoff()
+    {
+        await using var db = InMemoryDb();
+        var now = Instant.FromUtc(2026, 11, 24, 12, 0);
+        var conv = SeedConversation(db, Guid.NewGuid(), now);
+        SeedMessage(db, conv.Id, now, 0, 0, 0, fetched: [AgentToolNames.LegacyHandoff]);
+        await db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+
+        var rows = await new AgentRepository(db, new FakeClock(now)).ListAllConversationsWithMessagesAsync(
+            unansweredOnly: false, handoffsOnly: true, userId: null, take: 50, skip: 0,
+            Xunit.TestContext.Current.CancellationToken);
+
+        rows.Should().ContainSingle().Which.Id.Should().Be(conv.Id);
+    }
+
     private static AgentAdminStatusService BuildService(
         AgentDbContext db, IClock clock,
         IAgentSettingsService? settings = null,

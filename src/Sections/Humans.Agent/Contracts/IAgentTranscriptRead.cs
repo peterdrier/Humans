@@ -45,5 +45,5 @@ public sealed record AgentMessageSnapshot(
     /// </summary>
     public bool IsHandoff =>
         HandedOffToFeedbackId is not null
-        || FetchedDocs.Contains(AgentToolNames.Handoff, StringComparer.Ordinal);
+        || FetchedDocs.Any(AgentToolNames.IsHandoffMarker);
 }

@@ -9,6 +9,13 @@ internal static class AgentToolNames
     public const string GetShiftDetails = "get_shift_details";
     public const string Handoff = "handoff";
 
+    /// <summary>The handoff marker before the rename. Stored rows keep it until retention purges them.</summary>
+    public const string LegacyHandoff = "route_to_issue";
+
+    public static bool IsHandoffMarker(string doc) =>
+        string.Equals(doc, Handoff, StringComparison.Ordinal)
+        || string.Equals(doc, LegacyHandoff, StringComparison.Ordinal);
+
     public static readonly IReadOnlySet<string> All =
         new HashSet<string>(StringComparer.Ordinal)
         {

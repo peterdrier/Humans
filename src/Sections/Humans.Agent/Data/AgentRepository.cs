@@ -123,7 +123,7 @@ internal sealed class AgentRepository(AgentDbContext db, IClock clock) : IAgentR
         var all = await ordered.ToListAsync(cancellationToken);
         return all
             .Where(c => c.Messages.Any(m => m.HandedOffToFeedbackId != null
-                || m.FetchedDocs.Contains(AgentToolNames.Handoff, StringComparer.Ordinal)))
+                || m.FetchedDocs.Any(AgentToolNames.IsHandoffMarker)))
             .Skip(skip).Take(take)
             .ToList();
     }
