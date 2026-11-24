@@ -67,6 +67,7 @@ This starts:
 
 ## Documentation
 
+- Running Humans for another burn: [docs/adopting-humans.md](docs/adopting-humans.md)
 - Full documentation index: [docs/README.md](docs/README.md)
 - Historical repo stats: [docs/development-stats.md](docs/development-stats.md)
 
