@@ -139,11 +139,6 @@ namespace Humans.Agent.Data.Migrations
                         .HasMaxLength(64)
                         .HasColumnType("character varying(64)");
 
-                    b.Property<string>("PreloadConfig")
-                        .IsRequired()
-                        .HasMaxLength(16)
-                        .HasColumnType("character varying(16)");
-
                     b.Property<int>("RetentionDays")
                         .HasColumnType("integer");
 
@@ -166,7 +161,6 @@ namespace Humans.Agent.Data.Migrations
                             Enabled = false,
                             HourlyMessageCap = 10,
                             Model = "claude-sonnet-4-6",
-                            PreloadConfig = "Tier1",
                             RetentionDays = 90,
                             UpdatedAt = NodaTime.Instant.FromUnixTimeTicks(17767296000000000L)
                         });
