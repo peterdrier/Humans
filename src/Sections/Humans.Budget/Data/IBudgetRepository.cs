@@ -31,7 +31,7 @@ internal interface IBudgetRepository : IRepository
         Guid yearId,
         string year,
         string name,
-        string? vendorEventId,
+        string? platformEventId,
         Guid actorUserId,
         Instant now,
         CancellationToken ct = default);
@@ -47,9 +47,9 @@ internal interface IBudgetRepository : IRepository
         CancellationToken ct = default);
 
     /// <summary>
-    /// Archives (sets <c>IsDeleted</c> and Closed). Refuses Active or missing years.
+    /// Archives (sets <c>IsArchived</c> and Closed). Refuses Active or missing years.
     /// </summary>
-    Task<BudgetYearMutationResult> SoftDeleteYearAsync(
+    Task<BudgetYearMutationResult> ArchiveYearAsync(
         Guid yearId,
         Guid actorUserId,
         Instant now,
@@ -235,7 +235,7 @@ internal sealed record TicketingProjectionUpdate(
     int VatRate,
     decimal StripeFeePercent,
     decimal StripeFeeFixed,
-    decimal TicketTailorFeePercent);
+    decimal PlatformFeePercent);
 
 /// <summary>One completed ISO week, shared by ticket aggregation and persistence.</summary>
 internal sealed record TicketingWeeklyActualsInput(
@@ -244,7 +244,7 @@ internal sealed record TicketingWeeklyActualsInput(
     int TicketCount,
     decimal Revenue,
     decimal StripeFees,
-    decimal TicketTailorFees,
+    decimal PlatformFees,
     decimal StripeFeeTax,
     decimal StripeFeesTaxUnknown,
     decimal StripeFeesUntaxed);

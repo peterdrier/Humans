@@ -37,7 +37,7 @@
   <data name="Backdoor_Subtitle" xml:space="preserve"><value>Personal keys for /api/backdoor/*</value></data>
   <data name="Backdoor_CopyNow" xml:space="preserve"><value>Copy this key now</value></data>
   <data name="Backdoor_CopyNowBody" xml:space="preserve"><value>It is stored only as a hash. This is the only time it is shown.</value></data>
-  <data name="Backdoor_NewKey" xml:space="preserve"><value>Make a key</value></data>
+  <data name="Backdoor_NewKey" xml:space="preserve"><value>Create a key</value></data>
   <data name="Backdoor_Label" xml:space="preserve"><value>Label</value></data>
   <data name="Backdoor_LabelPlaceholder" xml:space="preserve"><value>e.g. laptop agent</value></data>
   <data name="Backdoor_Create" xml:space="preserve"><value>Create</value></data>
@@ -63,7 +63,7 @@
   <data name="Backdoor_Error_LabelRequired" xml:space="preserve"><value>A label is required.</value></data>
   <data name="Backdoor_Error_LabelTooLong" xml:space="preserve"><value>A label must be 100 characters or fewer.</value></data>
   <data name="Backdoor_Error_NotEligible" xml:space="preserve"><value>This account cannot hold a key.</value></data>
-  <data name="Backdoor_Error_NotAllowed" xml:space="preserve"><value>You can only make and change your own keys.</value></data>
+  <data name="Backdoor_Error_NotAllowed" xml:space="preserve"><value>You can only create and change your own keys.</value></data>
   <data name="Backdoor_Error_NotFound" xml:space="preserve"><value>That key no longer exists.</value></data>
   <data name="Backdoor_Error_AlreadyRevoked" xml:space="preserve"><value>That key is already revoked.</value></data>
 </root>

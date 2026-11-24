@@ -1,9 +1,9 @@
 @model Humans.Budget.Contracts.BudgetCategorySnapshot
 @{
-    ViewData["Title"] = $"Finance - {Model.Name}";
+    ViewData["Title"] = $"Budget - {Model.Name}";
     var teams = ViewBag.Teams as IEnumerable<dynamic> ?? [];
     var lineItemTotal = Model.LineItemTotal;
-    var unallocated = Model.UnallocatedAmount;
+    var available = Model.AvailableAmount;
     var group = Model.BudgetGroup;
     var year = group?.BudgetYear;
 
@@ -46,7 +46,7 @@
     <div class="col-md-4">
         <div class="card text-center">
             <div class="card-body">
-                <h6 class="card-subtitle mb-2 text-muted">Total in Line Items</h6>
+                <h6 class="card-subtitle mb-2 text-muted">Planned</h6>
                 <h3 class="card-title mb-0">@lineItemTotal.ToEuro()</h3>
             </div>
         </div>
@@ -54,9 +54,9 @@
     <div class="col-md-4">
         <div class="card text-center">
             <div class="card-body">
-                <h6 class="card-subtitle mb-2 text-muted">Unallocated</h6>
-                <h3 class="card-title mb-0 @(unallocated < 0 ? "text-danger" : "")">
-                    @unallocated.ToEuro()
+                <h6 class="card-subtitle mb-2 text-muted">Available</h6>
+                <h3 class="card-title mb-0 @(available < 0 ? "text-danger" : "")">
+                    @available.ToEuro()
                 </h3>
             </div>
         </div>

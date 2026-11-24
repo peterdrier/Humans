@@ -54,7 +54,7 @@ If you coordinate a team linked to a budget category, you have edit rights on th
 
 ### See your department's budget
 
-Open `/Budget`. You see every non-ticketing group and its categories — coordinators see peer departments for context. Each category shows allocated amount, line-item total, unallocated remainder, and an expenditure-type badge.
+Open `/Budget`. You see every non-ticketing group and its categories — coordinators see peer departments for context. Each category shows allocated amount, line-item total, available amount, and an expenditure-type badge.
 
 Restricted groups (typically the Admin group holding staff and meeting costs) appear with a **Restricted** badge — you can see the group name and category names but cannot drill in. Ticketing groups are hidden from this view entirely; ticketing only shows up as summary aggregates in `/Budget/Summary`.
 
@@ -66,7 +66,7 @@ Every edit is audit-logged. You cannot change the category's allocated amount or
 
 ### Track actuals against your plan
 
-Each category shows budget vs actual with the unallocated remainder. Auto-generated line items (weekly ticket-sales rollups, for example) are marked **Auto** on a lighter row — don't edit those by hand; they are overwritten on the next sync.
+Each category shows budget vs actual with the available amount. Auto-generated line items (weekly ticket-sales rollups, for example) are marked **Auto** on a lighter row — don't edit those by hand; they are overwritten on the next sync.
 
 ## As a Board member / Admin (Finance Admin)
 

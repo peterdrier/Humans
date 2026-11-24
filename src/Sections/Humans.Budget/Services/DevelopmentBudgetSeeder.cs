@@ -160,7 +160,7 @@ internal sealed class DevelopmentBudgetSeeder(
         else
         {
             budgetYearId = budgetYearSummary.Id;
-            if (budgetYearSummary.IsDeleted)
+            if (budgetYearSummary.IsArchived)
             {
                 // An archived demo year is a deliberate operator state: don't resurrect it.
                 return $"Budget demo year '{budgetYearSummary.Name}' is archived; skipped budget seeding.";
@@ -282,7 +282,7 @@ internal sealed class DevelopmentBudgetSeeder(
             vatRate: 10,
             stripeFeePercent: 1.50m,
             stripeFeeFixed: 0.25m,
-            ticketTailorFeePercent: 3.00m,
+            platformFeePercent: 3.00m,
             actorUserId);
         if (projection.Refusal is not null)
             throw new InvalidOperationException(projection.Refusal);

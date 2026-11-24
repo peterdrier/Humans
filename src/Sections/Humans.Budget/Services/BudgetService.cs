@@ -227,7 +227,7 @@ internal sealed class BudgetService(
     public async Task<TicketingProjectionSaveResult> UpdateTicketingProjectionAsync(
         Guid budgetGroupId, LocalDate? startDate, LocalDate? eventDate,
         int initialSalesCount, decimal dailySalesRate, decimal averageTicketPrice, int vatRate,
-        decimal stripeFeePercent, decimal stripeFeeFixed, decimal ticketTailorFeePercent, Guid actorUserId,
+        decimal stripeFeePercent, decimal stripeFeeFixed, decimal platformFeePercent, Guid actorUserId,
         bool refreshProjections = false, CancellationToken ct = default)
     {
         if (VatRateRefusal(vatRate) is { } vatRefusal)
@@ -237,7 +237,7 @@ internal sealed class BudgetService(
              ?? ValidateMoneyAmount(averageTicketPrice)
              ?? ValidateMoneyAmount(stripeFeeFixed)
              ?? ValidateFeePercentage(stripeFeePercent)
-             ?? ValidateFeePercentage(ticketTailorFeePercent)) is { } decimalRefusal)
+             ?? ValidateFeePercentage(platformFeePercent)) is { } decimalRefusal)
             return new(Refusal: decimalRefusal);
 
         var now = clock.GetCurrentInstant();
@@ -252,7 +252,7 @@ internal sealed class BudgetService(
             VatRate: vatRate,
             StripeFeePercent: stripeFeePercent,
             StripeFeeFixed: stripeFeeFixed,
-            TicketTailorFeePercent: ticketTailorFeePercent);
+            PlatformFeePercent: platformFeePercent);
 
         var created = await repository.UpdateTicketingProjectionAsync(
             update, actorUserId, now, ct, refreshProjections ? now.InUtc().Date : null);
@@ -264,8 +264,8 @@ internal sealed class BudgetService(
     public BudgetSummaryResult ComputeBudgetSummary(IReadOnlyList<BudgetGroupDetail> groups) =>
         BudgetSummaryCalculator.ComputeBudgetSummary(groups);
 
-    public BudgetSummaryResult ComputeBudgetSummaryWithBuffers(IReadOnlyList<BudgetGroupDetail> groups) =>
-        BudgetSummaryCalculator.ComputeBudgetSummaryWithBuffers(groups);
+    public BudgetSummaryResult ComputeBudgetSummaryWithAvailable(IReadOnlyList<BudgetGroupDetail> groups) =>
+        BudgetSummaryCalculator.ComputeBudgetSummaryWithAvailable(groups);
 
     // The repository materializes projected weeks, so they never lag one sync behind.
     public async Task<int> SyncTicketingActualsAsync(
@@ -366,7 +366,7 @@ internal sealed class BudgetService(
             year.Year,
             year.Name,
             year.Status,
-            year.IsDeleted,
+            year.IsArchived,
             year.Groups
                 .Select(group => new BudgetGroupSummarySnapshot(
                     group.Id,
@@ -375,7 +375,7 @@ internal sealed class BudgetService(
                     group.IsRestricted,
                     group.IsDepartmentGroup))
                 .ToList(),
-            year.VendorEventId);
+            year.PlatformEventId);
 
     public async Task<BudgetYearDetail?> GetYearByIdAsync(Guid id, CancellationToken ct = default)
     {
@@ -395,11 +395,11 @@ internal sealed class BudgetService(
             year.Year,
             year.Name,
             year.Status,
-            year.IsDeleted,
+            year.IsArchived,
             year.Groups
                 .Select(ToGroupDetail)
                 .ToList(),
-            year.VendorEventId);
+            year.PlatformEventId);
 
     internal static BudgetGroupDetail ToGroupDetail(BudgetGroup group) =>
         new(
@@ -421,7 +421,7 @@ internal sealed class BudgetService(
                     group.TicketingProjection.VatRate,
                     group.TicketingProjection.StripeFeePercent,
                     group.TicketingProjection.StripeFeeFixed,
-                    group.TicketingProjection.TicketTailorFeePercent),
+                    group.TicketingProjection.PlatformFeePercent),
             group.Categories
                 .Select(ToCategoryDetail)
                 .ToList());
@@ -501,7 +501,7 @@ internal sealed class BudgetService(
                         : new BudgetCategoryYearSnapshot(
                             category.BudgetGroup.BudgetYear.Id,
                             category.BudgetGroup.BudgetYear.Name,
-                            category.BudgetGroup.BudgetYear.IsDeleted)),
+                            category.BudgetGroup.BudgetYear.IsArchived)),
             category.LineItems
                 .Select(item => new BudgetCategoryLineItemSnapshot(
                     item.Id,
@@ -570,7 +570,7 @@ internal sealed class BudgetService(
             year,
             name,
             BudgetYearStatus.Draft,
-            IsDeleted: false,
+            IsArchived: false,
             Groups: []));
     }
 
@@ -587,27 +587,27 @@ internal sealed class BudgetService(
         return result;
     }
 
-    public async Task<BudgetYearMutationResult> UpdateYearAsync(Guid yearId, string year, string name, string? vendorEventId, Guid actorUserId)
+    public async Task<BudgetYearMutationResult> UpdateYearAsync(Guid yearId, string year, string name, string? platformEventId, Guid actorUserId)
     {
-        vendorEventId = string.IsNullOrWhiteSpace(vendorEventId) ? null : vendorEventId.Trim();
+        platformEventId = string.IsNullOrWhiteSpace(platformEventId) ? null : platformEventId.Trim();
 
         if ((TextRefusal(year, "Year identifier", 50)
              ?? TextRefusal(name, "Name", 256)
-             ?? TextRefusal(vendorEventId, "Vendor event ID", 256, required: false)) is { } textRefusal)
+             ?? TextRefusal(platformEventId, "Ticketing platform event ID", 256, required: false)) is { } textRefusal)
             return new(Refusal: textRefusal);
 
         var now = clock.GetCurrentInstant();
 
         var result = await repository.UpdateYearAsync(
-            yearId, year, name, vendorEventId, actorUserId, now);
+            yearId, year, name, platformEventId, actorUserId, now);
         return result;
     }
 
-    public async Task<BudgetYearMutationResult> DeleteYearAsync(Guid yearId, Guid actorUserId)
+    public async Task<BudgetYearMutationResult> ArchiveYearAsync(Guid yearId, Guid actorUserId)
     {
         var now = clock.GetCurrentInstant();
 
-        var result = await repository.SoftDeleteYearAsync(yearId, actorUserId, now);
+        var result = await repository.ArchiveYearAsync(yearId, actorUserId, now);
         if (!result.Succeeded) return result;
 
         logger.LogInformation("Archived budget year {YearId}", yearId);

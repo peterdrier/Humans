@@ -2,12 +2,12 @@
 @using Humans.Base.Models.Tables
 @using Microsoft.AspNetCore.Html
 @{
-    ViewData["Title"] = "Budget Audit Log";
+    ViewData["Title"] = "Budget changes";
     var yearId = ViewBag.YearId as Guid?;
     var years = ViewBag.Years as IReadOnlyList<BudgetYearSummarySnapshot> ?? [];
 }
 
-<page-header title="Budget Audit Log">
+<page-header title="Budget changes">
     <a asp-action="Index" class="btn btn-outline-secondary">
         <i class="fa-solid fa-arrow-left me-1"></i>Back to Finance
     </a>
@@ -25,7 +25,7 @@
                         <option value="">All Years</option>
                         @foreach (var y in years.OrderByDescending(y => y.Year, StringComparer.Ordinal))
                         {
-                            <option value="@y.Id" selected="@(yearId == y.Id ? "selected" : null)">@y.Name@(y.IsDeleted ? " (Archived)" : "")</option>
+                            <option value="@y.Id" selected="@(yearId == y.Id ? "selected" : null)">@y.Name@(y.IsArchived ? " (Archived)" : "")</option>
                         }
                     </select>
                 </div>
