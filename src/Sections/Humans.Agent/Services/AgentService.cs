@@ -370,7 +370,7 @@ internal sealed class AgentService : IAgentService
                     if (proposal is not null)
                     {
                         handoff = proposal;
-                        // The handoff slug in FetchedDocs is the handoff marker
+                        // The Handoff tool name in FetchedDocs marks the turn as a handoff
                         // (AgentRepository handoffsOnly / AgentMessageSnapshot.IsHandoff),
                         // so record it only when the proposal actually reaches the user —
                         // failed dispatches must not inflate handoff counts.
@@ -387,7 +387,7 @@ internal sealed class AgentService : IAgentService
 
             sdkMessages.Add(new AnthropicMessage("tool", Text: null, ToolCalls: null, ToolResults: results));
 
-            // handoff handoff: the proposal frame is the terminal output; no synthesis call.
+            // A handoff's proposal frame is the terminal output; no synthesis call.
             if (handoff is not null)
                 break;
 
