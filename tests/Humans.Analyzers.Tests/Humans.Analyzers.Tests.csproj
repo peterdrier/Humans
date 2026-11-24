@@ -32,7 +32,8 @@
       compilations via AnalyzerTestHarness. They do NOT need the analyzer
       attached to their own compilation.
     -->
-    <ProjectReference Include="..\..\src\Humans.Analyzers\Humans.Analyzers.csproj" />
+    <ProjectReference Include="..\..\src\Humans.Analyzers\Humans.Analyzers.csproj"
+                      OutputItemType="Analyzer" ReferenceOutputAssembly="true" />
   </ItemGroup>
 
   <!--

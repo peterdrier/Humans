@@ -1,0 +1,1 @@
+Humans.Gate.Controllers.GateController.StampAndScan

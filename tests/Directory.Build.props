@@ -61,6 +61,16 @@
     <Using Include="Humans.Testing" />
   </ItemGroup>
 
+  <!-- The naming rules (HUM0042-HUM0044) apply to tests too. Every other Humans.Analyzers
+       rule is production-only: the root .editorconfig switches the Humans.Architecture
+       category off under tests/. Humans.Analyzers.Tests attaches it in its own csproj, on the reference it already has. -->
+  <ItemGroup Condition="'$(MSBuildProjectName)' != 'Humans.Analyzers.Tests'">
+    <ProjectReference Include="$(MSBuildThisFileDirectory)..\src\Humans.Analyzers\Humans.Analyzers.csproj"
+                      OutputItemType="Analyzer"
+                      ReferenceOutputAssembly="false"
+                      PrivateAssets="all" />
+  </ItemGroup>
+
   <!-- BannedApiAnalyzers: forbid bare [Fact] and [Theory] in tests. RS0030 suppression
        in test project source is also forbidden by a CI grep step in
        .github/workflows/build.yml. The HumansFact*Attribute / HumansTheory*Attribute

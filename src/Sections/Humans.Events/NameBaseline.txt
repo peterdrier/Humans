@@ -1,0 +1,3 @@
+Humans.Events.Data.IEventRepository.DeleteFavouritesAndPreferenceForUserAsync
+Humans.Events.Data.IEventRepository.SaveEventAndModerationActionAsync
+Humans.Events.Services.IEventManagement.UpdateAndResubmitAsync

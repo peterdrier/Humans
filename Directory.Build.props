@@ -121,4 +121,10 @@
     </PackageReference>
   </ItemGroup>
 
+  <!-- Method names that broke the naming rule when it arrived (HUM0042/HUM0043), one per line.
+       The list only shrinks: a stale line is HUM0044. -->
+  <ItemGroup Condition="Exists('$(MSBuildProjectDirectory)/NameBaseline.txt')">
+    <AdditionalFiles Include="$(MSBuildProjectDirectory)/NameBaseline.txt" />
+  </ItemGroup>
+
 </Project>
