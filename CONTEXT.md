@@ -36,6 +36,7 @@ _Avoid_: director
 Words that belong to one section live in that section's own glossary. Words used across sections stay in this file.
 
 - [Agent](src/Sections/Humans.Agent/Docs/CONTEXT.md): the member help chat (Assistant)
+- [Audit](src/Sections/Humans.AuditLog/Docs/CONTEXT.md): the audit log, its entries and the history shown on pages
 
 ## Finance
 
