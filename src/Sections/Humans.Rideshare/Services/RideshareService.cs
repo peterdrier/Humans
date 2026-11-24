@@ -1,6 +1,6 @@
 using System.Globalization;
 using System.Text.Json;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Base.Extensions;
 using Humans.Base.Threading;
 using Humans.Gdpr.Contracts;
@@ -259,7 +259,7 @@ internal sealed class RideshareService(
             $"inbound {settings.InboundWindowStart.ToInvariantDate()} to {settings.InboundWindowEnd.ToInvariantDate()}; " +
             $"outbound {settings.OutboundWindowStart.ToInvariantDate()} to {settings.OutboundWindowEnd.ToInvariantDate()}");
         await auditLog.LogAsync(
-            RideshareAuditActions.RideshareSettingsUpdated, AuditEntityTypes.RideshareSettings, settings.Id, description, actorUserId);
+            RideshareAuditActions.RideshareSettingsUpdated, RideshareAuditSubjectTypes.RideshareSettings, settings.Id, description, actorUserId);
         return new();
     }
 

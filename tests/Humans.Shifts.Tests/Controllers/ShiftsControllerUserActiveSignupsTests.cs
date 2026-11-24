@@ -2,7 +2,7 @@ using Humans.Shifts.Domain;
 using AwesomeAssertions;
 using System.Security.Claims;
 using Humans.Shifts.Services.Dtos;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Shifts.Services;
 using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;

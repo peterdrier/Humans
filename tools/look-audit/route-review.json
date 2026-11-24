@@ -65,7 +65,7 @@
       "safe": true,
       "reason": "read-only"
     },
-    "/AuditLog": {
+    "/Audit": {
       "safe": true,
       "reason": "read-only"
     },
@@ -145,7 +145,7 @@
       "safe": true,
       "reason": "read-only"
     },
-    "/Budget/Admin/AuditLog": {
+    "/Budget/Admin/Changes": {
       "safe": true,
       "reason": "read-only"
     },

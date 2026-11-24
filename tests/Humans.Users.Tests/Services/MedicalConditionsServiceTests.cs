@@ -1,7 +1,7 @@
 using System.Reflection;
 using System.Security.Claims;
 using AwesomeAssertions;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Base;
 using Humans.Users.Contracts;
 using Humans.Users.Controllers;

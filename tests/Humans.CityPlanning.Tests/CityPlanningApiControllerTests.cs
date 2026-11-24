@@ -7,7 +7,7 @@ using Microsoft.AspNetCore.Authorization;
 using Humans.Base.Extensions;
 using System.Security.Claims;
 using AwesomeAssertions;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Base.Constants;
 using Humans.Base.Enums;
 using Humans.Camps.Contracts;

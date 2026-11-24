@@ -1,0 +1,81 @@
+using Humans.AuditLog.Data;
+using System.Globalization;
+using Humans.Audit.Contracts;
+using Humans.Audit.Data;
+using Humans.Audit.Services;
+using Humans.Audit.ViewComponents;
+using Humans.Base.Authorization;
+using Humans.Base.Hosting;
+using Humans.Base.Interfaces;
+using Humans.Gdpr.Contracts;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Humans.Base.Models;
+using static Humans.Base.Models.AccessLevel;
+using static Humans.Base.Models.AccessMatrixFeature;
+
+[assembly: Humans.Base.Demo.NoDemoStory("Crosscut: filled by the actions other sections' stories take.")]
+
+namespace Humans.Audit;
+
+public sealed class Section : ISection, ISectionAdminNav, ISectionAdminTiles, ISectionChrome, ISectionAccessMatrix
+{
+    IReadOnlyList<AccessMatrixData> ISectionAccessMatrix.AccessMatrices =>
+    [
+        new()
+        {
+            Key = "Audit",
+            SectionName = "Audit",
+            Order = 60,
+            Roles = ["Board", "Admin"],
+            Features =
+            [
+                Of("View the audit log", ("Board", Allowed), ("Admin", Allowed)),
+            ]
+        }
+    ];
+
+    IEnumerable<ChromeComponent> ISectionChrome.Components() =>
+        [new(ChromeSlots.WidgetGallery, typeof(AuditLogGalleryViewComponent))];
+
+    public void Register(IServiceCollection services, IConfiguration configuration)
+    {
+        services.AddSectionDbContext<AuditLogDbContext>(sentinelTable: "audit_log");
+
+        services.AddSingleton<IAuditActionContributor, RetiredAuditActions>();
+        services.AddSingleton<AuditActionRegistry>();
+        // Constructed at startup so a duplicate or over-long action name fails the boot, not the first audit page.
+        services.AddSingleton<IHostedService>(sp => sp.GetRequiredService<AuditActionRegistry>());
+
+        services.AddSingleton<IAuditLogRepository, AuditLogRepository>();
+        services.AddScoped<AuditLogService>();
+        services.AddScoped<IAuditLogService>(sp => sp.GetRequiredService<AuditLogService>());
+        services.AddScoped<IAuditLogReader>(sp => sp.GetRequiredService<AuditLogService>());
+        services.AddScoped<IUserDataContributor>(sp => sp.GetRequiredService<AuditLogService>());
+        // Temporary: goes with the six Google columns.
+        services.AddScoped<ILegacyGoogleSyncAuditReader>(sp => sp.GetRequiredService<AuditLogService>());
+
+        services.AddScoped<AuditViewerService>();
+        services.AddScoped<IAuditViewerService>(sp => sp.GetRequiredService<AuditViewerService>());
+    }
+
+    IEnumerable<AdminNavGroup> ISectionAdminNav.Groups() =>
+    [
+        new("Audit", [
+            new("Audit log", "Audit", "Index", null, null, "fa-solid fa-book-open", PolicyNames.BoardOrAdmin)
+        ])
+    ];
+
+    IEnumerable<AdminTile> ISectionAdminTiles.Tiles() =>
+    [
+        new AdminTile("audit.total", "Audit entries", "fa-solid fa-list-check", TotalAsync, Weight: 100)
+    ];
+
+    // Page size 1, no filter: TotalCount is the tile.
+    private static async ValueTask<AdminTileValue?> TotalAsync(IServiceProvider sp, CancellationToken ct)
+    {
+        var total = (await sp.GetRequiredService<AuditViewerService>().GetPageAsync(null, 1, 1, ct)).TotalCount;
+        return new AdminTileValue(total.ToString("N0", CultureInfo.CurrentCulture), Detail: "every automated action, logged");
+    }
+}

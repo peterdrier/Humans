@@ -1,4 +1,4 @@
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Tickets.Domain.Checkout;
 
 namespace Humans.Tickets.Services.Checkout;
@@ -123,12 +123,12 @@ internal sealed partial class TicketCheckoutService
             (note is null ? string.Empty : $": {note}");
         if (parent is not null)
             await TimelineAsync(parent.OrderId, TicketCheckoutOrderEventKind.CompanionRequestDecided, summary, actorUserId, ct);
-        await auditLog.LogAsync(TicketsAuditActions.TicketCompanionRequestDecided, CompanionRequestAuditEntityType, request.Id,
+        await auditLog.LogAsync(TicketsAuditActions.TicketCompanionRequestDecided, CompanionRequestAuditSubjectType, request.Id,
             summary, actorUserId, request.HolderUserId, AuditSubjectTypes.User);
         return CheckoutMutationResult.Ok;
     }
 
-    internal const string CompanionRequestAuditEntityType = "TicketCompanionRequest";
+    internal const string CompanionRequestAuditSubjectType = "TicketCompanionRequest";
 
     private static bool CanAskCompanion(
         TicketCheckoutTicket ticket, TicketingSettings? ticketing,

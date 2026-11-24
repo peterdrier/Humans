@@ -7,7 +7,7 @@ using System.Text;
 using Humans.Base.Constants;
 using Humans.Base.Extensions;
 using System.Security.Claims;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using AwesomeAssertions;
 using Humans.Campaigns.Controllers;
 using Humans.Campaigns.Models;

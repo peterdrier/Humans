@@ -5,7 +5,7 @@ using Humans.Teams.Contracts;
 using Humans.Tickets.Contracts;
 using Microsoft.Extensions.Hosting;
 using AwesomeAssertions;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Base.Interfaces;
 using Humans.Email.Data;
 using Humans.Email.Services;

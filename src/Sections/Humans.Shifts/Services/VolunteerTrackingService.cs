@@ -1,6 +1,6 @@
 using Humans.Base.Extensions;
 using Humans.Shifts.Contracts;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Shifts.Domain;
 using NodaTime;
 using NodaTime.Text;
@@ -33,7 +33,7 @@ internal sealed class VolunteerTrackingService(
             offsets.Length == 0 ? ShiftsAuditActions.VolunteerAvailabilityCleared : ShiftsAuditActions.VolunteerAvailabilitySet,
             "GeneralAvailability", userId,
             $"EventSettingsId={eventSettingsId}; AvailableDays={offsets.Length}; self-service update", userId,
-            relatedEntityId: eventSettingsId, relatedEntityType: "EventSettings");
+            targetId: eventSettingsId, targetType: "EventSettings");
         return true;
     }
 

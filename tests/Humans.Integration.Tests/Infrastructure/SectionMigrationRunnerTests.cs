@@ -1,7 +1,8 @@
+using Humans.AuditLog.Data;
 using Humans.Shifts.Data;
 using Humans.Camps.Data;
 using Humans.Auth.Data;
-using Humans.AuditLog.Data;
+using Humans.Audit.Data;
 using Humans.Teams.Data;
 using Humans.Email.Data;
 using Humans.Tickets.Data;

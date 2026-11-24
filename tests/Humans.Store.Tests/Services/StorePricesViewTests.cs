@@ -7,8 +7,8 @@ using Humans.Store.Contracts;
 using Humans.Store.Domain;
 using Humans.Store.Services.Dtos;
 using Humans.Store.Services;
-using Humans.AuditLog.Contracts;
-using Humans.AuditLog.ViewComponents;
+using Humans.Audit.Contracts;
+using Humans.Audit.ViewComponents;
 using Microsoft.AspNetCore.Authorization;
 using System.Security.Claims;
 using System.Globalization;
@@ -119,7 +119,7 @@ public class StorePricesViewTests
             100, 0, null, 0, 100);
         var order = new OrderDto(orderId, Guid.NewGuid(), null, OrderCounterpartyType.Camp, "Camp", 2026,
             OrderState.Open, null, null, null, null, null, null, [line], [], 100, 0, 0, 0, 100, now);
-        var history = new AuditEvent(Guid.NewGuid(), now, new AuditActionDefinition(StoreAuditActions.StoreProductPriceChanged.Name),
+        var history = new AuditEntry(Guid.NewGuid(), now, new AuditActionDefinition(StoreAuditActions.StoreProductPriceChanged.Name),
             null, null, "Product", productId, null, null, null, null, null, null, null, "Price history fixture");
 
         var html = await RenderAsync("Order", new OrderViewModel { Order = order }, [history]);
@@ -219,7 +219,7 @@ public class StorePricesViewTests
 
     private static IAuditViewerService? _lastAudit;
 
-    private static async Task<string> RenderAsync(string page, object model, IReadOnlyList<AuditEvent>? history = null, string? viewPath = null)
+    private static async Task<string> RenderAsync(string page, object model, IReadOnlyList<AuditEntry>? history = null, string? viewPath = null)
     {
         var builder = WebApplication.CreateBuilder(new WebApplicationOptions
         {

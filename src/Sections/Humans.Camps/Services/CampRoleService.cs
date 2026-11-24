@@ -1,7 +1,7 @@
 using System.Globalization;
 using System.Resources;
 using Humans.Google.Contracts;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Notifications.Contracts;
 using Humans.Users.Contracts;
 using Microsoft.Extensions.Options;
@@ -228,7 +228,7 @@ internal sealed class CampRoleService(
             await auditLog.LogAsync(
                 CampsAuditActions.CampMemberAddedByLead, nameof(CampMember), campMemberId,
                 "Lead added human as active camp member.", actorUserId,
-                relatedEntityId: memberLookup.UserId, relatedEntityType: AuditSubjectTypes.User);
+                targetId: memberLookup.UserId, targetType: AuditSubjectTypes.User);
         }
 
         await auditLog.LogAsync(
@@ -237,7 +237,7 @@ internal sealed class CampRoleService(
             assignment.Id,
             $"Assigned role '{def.Name}' to member.",
             actorUserId,
-            relatedEntityId: campMemberId, relatedEntityType: nameof(CampMember));
+            targetId: campMemberId, targetType: nameof(CampMember));
 
         // Assignment is committed; request cancellation must not skip its notification.
         try
@@ -286,8 +286,8 @@ internal sealed class CampRoleService(
             assignmentId,
             "Unassigned camp role.",
             actorUserId,
-            relatedEntityId: assignment.CampMemberId,
-            relatedEntityType: nameof(CampMember));
+            targetId: assignment.CampMemberId,
+            targetType: nameof(CampMember));
 
         return true;
     }

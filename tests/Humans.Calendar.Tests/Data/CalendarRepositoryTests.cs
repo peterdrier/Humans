@@ -1,7 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Humans.Calendar.Services;
 using Humans.Calendar.Services.Dtos;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime.Testing;
 using NSubstitute;

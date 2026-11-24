@@ -1,4 +1,4 @@
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Users.Contracts;
 using Humans.Base.Constants;
 using Microsoft.AspNetCore.Identity;

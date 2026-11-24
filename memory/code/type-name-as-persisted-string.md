@@ -8,7 +8,7 @@ tests, a 200 response). They need opposite remedies.
 
 | Reader | What breaks | Remedy |
 |---|---|---|
-| **Persisted** — audit `EntityType` written as `nameof(T)` and later matched by equality | Existing rows carry the old string and become unreachable; tests using `nameof` rename in lockstep and stay green | **Pin it.** A `const string` holding the *existing* value (see `src/Sections/Humans.Store/Services/AuditEntityTypes.cs`); point tests at the const |
+| **Persisted** — audit `SubjectType` written as `nameof(T)` and later matched by equality | Existing rows carry the old string and become unreachable; tests using `nameof` rename in lockstep and stay green | **Pin it.** A `const string` holding the *existing* value (see `src/Sections/Humans.Store/Services/AuditSubjectTypes.cs`); point tests at the const |
 | **Key-forming** — `EnumDisplay` looks up `Enum_{TypeName}_{Value}` in resx | Every non-English locale falls back to the humanized English value, with no missing-key error | **Rename together.** Rename the keys in every culture in the same commit. Don't pin |
 
 **How to apply:** before renaming any entity, enum or DTO:

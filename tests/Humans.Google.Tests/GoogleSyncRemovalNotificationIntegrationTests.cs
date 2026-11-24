@@ -1,6 +1,6 @@
 using Humans.Google.Domain;
 using Humans.Google.Contracts;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Email.Contracts;
 using Humans.Users.Contracts;
 using Humans.Teams.Contracts;

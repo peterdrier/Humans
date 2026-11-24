@@ -1,7 +1,7 @@
 using Humans.Google.Contracts;
 using NodaTime;
 using Humans.Base.Extensions;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Settings.Contracts;
 using Humans.Users.Contracts;
 
@@ -128,7 +128,7 @@ internal sealed class DriveActivityMonitorService(
         {
             await auditLogService.LogAsync(
                 GoogleAuditActions.AnomalousPermissionDetected,
-                TeamGoogleResource.AuditEntityType,
+                TeamGoogleResource.AuditSubjectType,
                 resourceId,
                 description,
                 JobName);

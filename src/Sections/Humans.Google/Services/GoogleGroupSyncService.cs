@@ -1,6 +1,6 @@
 using Humans.Google.Domain;
 using Humans.Google.Contracts;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Users.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Base.Enums;
@@ -231,7 +231,7 @@ internal sealed class GoogleGroupSyncService(
 
             logger.LogInformation("Auto-provisioned Google Group for {GroupKey}", groupKey);
             await auditLogService.LogAsync(
-                GoogleAuditActions.GoogleResourceProvisioned, TeamGoogleResource.AuditEntityType, Guid.Empty,
+                GoogleAuditActions.GoogleResourceProvisioned, TeamGoogleResource.AuditSubjectType, Guid.Empty,
                 $"Auto-provisioned Google Group '{groupKey}' ({create.GroupNumericId})",
                 nameof(GoogleGroupSyncService));
             await TryApplyProvisionedGroupSettingsAsync(groupKey, commitCt);
@@ -587,7 +587,7 @@ internal sealed class GoogleGroupSyncService(
 
         await auditLogService.LogAsync(
             GoogleAuditActions.AnomalousPermissionDetected,
-            TeamGoogleResource.AuditEntityType,
+            TeamGoogleResource.AuditSubjectType,
             Guid.Empty,
             error,
             nameof(GoogleGroupSyncService));
@@ -672,7 +672,7 @@ internal sealed class GoogleGroupSyncService(
 
         await auditLogService.LogAsync(
             GoogleAuditActions.GoogleSyncRetryScheduled,
-            TeamGoogleResource.AuditEntityType,
+            TeamGoogleResource.AuditSubjectType,
             Guid.Empty,
             $"Scheduled retry {retryAttempt}/{MaxScopedRetryAttempts} for {groupKey}: {error}",
             nameof(GoogleGroupSyncService));

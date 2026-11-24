@@ -3,7 +3,7 @@ using System.Security.Cryptography;
 using System.Text;
 using Humans.Auth.Contracts;
 using Humans.Base.Extensions;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.EarlyEntry.Contracts;
 using Humans.Gdpr.Contracts;
 using Humans.Settings.Contracts;
@@ -364,7 +364,7 @@ internal sealed class GateService(
 
         await auditLog.LogAsync(GateAuditActions.GateAdmitUndone, nameof(GateScanEvent), undone.Id,
             $"Undid a gate admit ({undone.Verdict}, {undone.OccurredAt.ToIso8601()}): {reason}", actorUserId,
-            relatedEntityId: undone.GuestUserId, relatedEntityType: undone.GuestUserId is null ? null : AuditSubjectTypes.User);
+            targetId: undone.GuestUserId, targetType: undone.GuestUserId is null ? null : AuditSubjectTypes.User);
 
         // The undo is committed: finish the rollback even if the kiosk disconnects, since a retry finds nothing to undo.
         if (undone.GuestUserId is { } guest)

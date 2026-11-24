@@ -1,4 +1,4 @@
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Base.Extensions;
 using Humans.Gdpr.Contracts;
 using Humans.Governance.Contracts;
@@ -72,7 +72,7 @@ internal sealed class MembershipTierService(
                 GovernanceAuditActions.TierDowngraded, "Profile", userId,
                 $"Membership tier changed to {newTier} for {displayName} due to {tier} term expiry",
                 nameof(Jobs.MembershipTierExpiryJob),
-                relatedEntityId: userId, relatedEntityType: AuditSubjectTypes.User);
+                targetId: userId, targetType: AuditSubjectTypes.User);
             result.Add((userId, newTier));
         }
         return result;

@@ -340,7 +340,7 @@ Board members are de facto Asociados: they are on the official roster whether or
 - **Teams:** `ITeamService` for the Volunteers team membership (`AllMembers` indicative audience).
 - **Email:** `IEmailService.SendAsync` + `GovernanceEmails` messages (opened, reminder, cancelled).
 - **Notifications:** `INotificationEmitter` + `INotificationAutoResolve`; new `GovernanceNotificationSources.AssemblyVoteOpened`.
-- **Audit:** `IAuditLogService.LogAsync` with the `GovernanceAuditActions` definitions listed above (entity-type strings pinned as literals in Governance's `AuditEntityTypes`).
+- **Audit:** `IAuditLogService.LogAsync` with the `GovernanceAuditActions` definitions listed above (entity-type strings pinned as literals in Governance's `GovernanceAuditSubjectTypes`).
 - **GDPR:** `IUserDataContributor`, `ErasureDeclaration`.
 - Nothing new on `Humans.Governance.Contracts`. No other section needs to read votes.
 

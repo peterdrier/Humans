@@ -34,7 +34,7 @@ account state, the teams and the member's mail.
 Owned tables: `legal_documents`, `document_versions`, `consent_records` (append-only, DB
 triggers), `consent_reviews`, `consent_reminders`. Cross-section calls out: Teams (names,
 members), Users (info, merge chains, rejected state for the legacy copy), Governance (required
-teams, completion), Notifications (fan-out), Email (two templates), AuditLog, HumanLifecycle
+teams, completion), Notifications (fan-out), Email (two templates), Audit, HumanLifecycle
 (suspension restore). Calls in: Onboarding (reject record, `Pending` threshold), Governance (required
 versions), Onboarding's widget (embeds the signing step). Config read:
 `GitHubSettings`, `EmailSettings` (reminder windows), `Email:DpoAddress`.

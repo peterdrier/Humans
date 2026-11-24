@@ -3,7 +3,7 @@ using AwesomeAssertions;
 using Humans.Calendar.Controllers;
 using Humans.Calendar.Domain;
 using Humans.Calendar.Data;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using Humans.Calendar.Models;

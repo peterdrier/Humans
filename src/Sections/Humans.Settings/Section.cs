@@ -9,7 +9,7 @@ using Humans.Settings.ViewComponents;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 
 [assembly: Humans.Base.Demo.NoDemoStory("No demo story written yet.")]
 

@@ -1,7 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using AwesomeAssertions;
 using Humans.Calendar.Services.Dtos;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Calendar.Data;
 using Humans.Calendar.Services;
 using Humans.Base.Enums;

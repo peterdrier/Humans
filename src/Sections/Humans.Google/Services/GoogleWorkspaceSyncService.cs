@@ -1,6 +1,6 @@
 using Humans.Google.Domain;
 using Humans.Google.Contracts;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Users.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Base.Enums;
@@ -485,7 +485,7 @@ internal sealed class GoogleWorkspaceSyncService(
 
                     await auditLogService.LogAsync(
                         GoogleAuditActions.GoogleResourceInheritanceDriftCorrected,
-                        TeamGoogleResource.AuditEntityType, resource.Id,
+                        TeamGoogleResource.AuditSubjectType, resource.Id,
                         $"Corrected inherited access drift for Drive folder '{resource.Name}' — re-disabled inherited permissions",
                         "GoogleResourceReconciliationJob");
 
@@ -632,7 +632,7 @@ internal sealed class GoogleWorkspaceSyncService(
             }
 
             await auditLogService.LogAsync(
-                GoogleAuditActions.GoogleResourceSettingsRemediated, TeamGoogleResource.AuditEntityType, Guid.Empty,
+                GoogleAuditActions.GoogleResourceSettingsRemediated, TeamGoogleResource.AuditSubjectType, Guid.Empty,
                 $"Remediated settings for Google Group '{groupEmail}'",
                 nameof(GoogleWorkspaceSyncService));
 
@@ -870,10 +870,10 @@ internal sealed class GoogleWorkspaceSyncService(
                     existingGroup.Id, teamId);
 
                 await auditLogService.LogAsync(
-                    GoogleAuditActions.GoogleResourceDeactivated, TeamGoogleResource.AuditEntityType, existingGroup.Id,
+                    GoogleAuditActions.GoogleResourceDeactivated, TeamGoogleResource.AuditSubjectType, existingGroup.Id,
                     "Deactivated Google Group resource (prefix cleared)",
                     nameof(GoogleWorkspaceSyncService),
-                    relatedEntityId: teamId, relatedEntityType: "Team");
+                    targetId: teamId, targetType: "Team");
             }
             else
             {
@@ -934,17 +934,17 @@ internal sealed class GoogleWorkspaceSyncService(
             if (existingGroup is not null)
             {
                 await auditLogService.LogAsync(
-                    GoogleAuditActions.GoogleResourceDeactivated, TeamGoogleResource.AuditEntityType, existingGroup.Id,
+                    GoogleAuditActions.GoogleResourceDeactivated, TeamGoogleResource.AuditSubjectType, existingGroup.Id,
                     $"Deactivated Google Group resource (prefix changed to '{team.GoogleGroupPrefix}')",
                     nameof(GoogleWorkspaceSyncService),
-                    relatedEntityId: teamId, relatedEntityType: "Team");
+                    targetId: teamId, targetType: "Team");
             }
 
             await auditLogService.LogAsync(
-                GoogleAuditActions.GoogleResourceProvisioned, TeamGoogleResource.AuditEntityType, inactiveForTeam.Id,
+                GoogleAuditActions.GoogleResourceProvisioned, TeamGoogleResource.AuditSubjectType, inactiveForTeam.Id,
                 "Reactivated Google Group resource for team",
                 nameof(GoogleWorkspaceSyncService),
-                relatedEntityId: teamId, relatedEntityType: "Team");
+                targetId: teamId, targetType: "Team");
 
             return GroupLinkResult.Ok();
         }
@@ -954,10 +954,10 @@ internal sealed class GoogleWorkspaceSyncService(
             await resourceRepository.DeactivateAsync(existingGroup.Id, cancellationToken);
 
             await auditLogService.LogAsync(
-                GoogleAuditActions.GoogleResourceDeactivated, TeamGoogleResource.AuditEntityType, existingGroup.Id,
+                GoogleAuditActions.GoogleResourceDeactivated, TeamGoogleResource.AuditSubjectType, existingGroup.Id,
                 $"Deactivated Google Group resource (prefix changed to '{team.GoogleGroupPrefix}')",
                 nameof(GoogleWorkspaceSyncService),
-                relatedEntityId: teamId, relatedEntityType: "Team");
+                targetId: teamId, targetType: "Team");
         }
 
         // ReconcileOneAsync auto-provisions a missing group and syncs membership; its diff carries the numeric id.
@@ -986,10 +986,10 @@ internal sealed class GoogleWorkspaceSyncService(
         await resourceRepository.AddAsync(resource, cancellationToken);
 
         await auditLogService.LogAsync(
-            GoogleAuditActions.GoogleResourceProvisioned, TeamGoogleResource.AuditEntityType, resource.Id,
+            GoogleAuditActions.GoogleResourceProvisioned, TeamGoogleResource.AuditSubjectType, resource.Id,
             $"Linked Google Group '{team.Name}' ({email}) for team",
             nameof(GoogleWorkspaceSyncService),
-            relatedEntityId: teamId, relatedEntityType: "Team");
+            targetId: teamId, targetType: "Team");
 
         return GroupLinkResult.Ok();
     }

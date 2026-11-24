@@ -11,7 +11,7 @@ internal sealed class BudgetDbContext(DbContextOptions<BudgetDbContext> options)
     public DbSet<BudgetGroup> BudgetGroups => Set<BudgetGroup>();
     public DbSet<BudgetCategory> BudgetCategories => Set<BudgetCategory>();
     public DbSet<BudgetLineItem> BudgetLineItems => Set<BudgetLineItem>();
-    public DbSet<BudgetAuditLog> BudgetAuditLogs => Set<BudgetAuditLog>();
+    public DbSet<BudgetChange> BudgetChanges => Set<BudgetChange>();
     public DbSet<TicketingProjection> TicketingProjections => Set<TicketingProjection>();
 
     protected override void OnModelCreating(ModelBuilder builder)
@@ -22,7 +22,7 @@ internal sealed class BudgetDbContext(DbContextOptions<BudgetDbContext> options)
         builder.ApplyConfiguration(new BudgetGroupConfiguration());
         builder.ApplyConfiguration(new BudgetCategoryConfiguration());
         builder.ApplyConfiguration(new BudgetLineItemConfiguration());
-        builder.ApplyConfiguration(new BudgetAuditLogConfiguration());
+        builder.ApplyConfiguration(new BudgetChangeConfiguration());
         builder.ApplyConfiguration(new TicketingProjectionConfiguration());
     }
 }

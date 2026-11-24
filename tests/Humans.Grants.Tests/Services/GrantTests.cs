@@ -2,7 +2,7 @@ using Humans.Grants.Contracts;
 using Humans.Base.Extensions;
 using Humans.Users.Contracts;
 using AwesomeAssertions;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Email.Contracts;
 using Humans.Grants.Domain;
 using Humans.Grants.Services;
@@ -78,7 +78,7 @@ public sealed class GrantTests : GrantsTestHarness
         grant.UserId.Should().Be(fresh);
         grant.ExpiresOn.Should().Be(new LocalDate(2027, 9, 1));
         grant.NotifiedAt.Should().Be(Clock.GetCurrentInstant());
-        await AuditLog.Received(1).LogAsync(GrantsAuditActions.GrantIssued, AuditEntityTypes.Grant, created,
+        await AuditLog.Received(1).LogAsync(GrantsAuditActions.GrantIssued, GrantsAuditSubjectTypes.Grant, created,
             Arg.Any<string>(), actor, fresh, AuditSubjectTypes.User);
         await ReceivedNoticeAsync(GrantsNotificationSources.GrantReceived, fresh);
         await Email.Received(1).SendAsync(Arg.Is<EmailMessage>(m => m.RecipientEmail == $"{fresh}@example.org"), Arg.Any<CancellationToken>());
@@ -116,7 +116,7 @@ public sealed class GrantTests : GrantsTestHarness
             (await service.RevokeGrantAsync(program.Id, grantId, "Withdrew", actor, Ct)).Refusal.Should().BeNull();
 
         foreach (var action in new[] { GrantsAuditActions.GrantIssued, GrantsAuditActions.GrantNoticeResent, GrantsAuditActions.GrantRevoked })
-            await AuditLog.Received(1).LogAsync(action, AuditEntityTypes.Grant, grantId,
+            await AuditLog.Received(1).LogAsync(action, GrantsAuditSubjectTypes.Grant, grantId,
                 Arg.Is<string>(d => d.Contains($"({expectedYear})", StringComparison.Ordinal)),
                 actor, person, AuditSubjectTypes.User);
     }
@@ -241,7 +241,7 @@ public sealed class GrantTests : GrantsTestHarness
         saved.RevokedAt.Should().Be(Clock.GetCurrentInstant());
         saved.RevokedByUserId.Should().Be(actor);
         saved.RevokeReason.Should().Be("Left the crew");
-        await AuditLog.Received(1).LogAsync(GrantsAuditActions.GrantRevoked, AuditEntityTypes.Grant, grant.Id,
+        await AuditLog.Received(1).LogAsync(GrantsAuditActions.GrantRevoked, GrantsAuditSubjectTypes.Grant, grant.Id,
             Arg.Any<string>(), actor, person, AuditSubjectTypes.User);
         await ReceivedNoticeAsync(GrantsNotificationSources.GrantRevoked, person);
         await Email.Received(1).SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>());
@@ -292,7 +292,7 @@ public sealed class GrantTests : GrantsTestHarness
         (await service.ResendNoticeAsync(program.Id, revoked.Id, actor, Ct)).Refusal.Should().NotBeNull();
 
         (await ReadGrantAsync(live.Id)).NotifiedAt.Should().Be(Clock.GetCurrentInstant());
-        await AuditLog.Received(1).LogAsync(GrantsAuditActions.GrantNoticeResent, AuditEntityTypes.Grant, live.Id,
+        await AuditLog.Received(1).LogAsync(GrantsAuditActions.GrantNoticeResent, GrantsAuditSubjectTypes.Grant, live.Id,
             Arg.Any<string>(), actor, person, AuditSubjectTypes.User);
         await ReceivedNoticeAsync(GrantsNotificationSources.GrantReceived, person);
     }

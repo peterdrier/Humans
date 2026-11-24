@@ -1,5 +1,5 @@
 using Humans.Base.Extensions;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using System.Security.Claims;
 using Humans.Camps.Contracts;
 using Humans.Events.Controllers;

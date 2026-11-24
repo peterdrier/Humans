@@ -1,5 +1,5 @@
 using System.ComponentModel.DataAnnotations;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Base.Attributes;
 using Humans.Base.Extensions;
 using Humans.Email.Contracts;
@@ -544,7 +544,7 @@ internal sealed class CampaignService(
             await repository.AddGrantAndSaveAsync(grant, ct);
             await audit.LogAsync(CampaignsAuditActions.CampaignWaveSent, "Campaign", campaignId,
                 $"Assigned grant {grant.Id} in wave to team {teamId}.", actorUserId,
-                relatedEntityId: userId, relatedEntityType: AuditSubjectTypes.User);
+                targetId: userId, targetType: AuditSubjectTypes.User);
             grantedUserIds.Add(userId);
 
             try
@@ -617,7 +617,7 @@ internal sealed class CampaignService(
 
         await audit.LogAsync(CampaignsAuditActions.CampaignGrantResent, "CampaignGrant", grantId,
             $"Started resend for campaign {grant.CampaignId}.", actorUserId,
-            relatedEntityId: grant.UserId, relatedEntityType: AuditSubjectTypes.User);
+            targetId: grant.UserId, targetType: AuditSubjectTypes.User);
 
         try
         {

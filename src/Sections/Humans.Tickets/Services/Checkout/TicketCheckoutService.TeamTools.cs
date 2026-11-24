@@ -1,6 +1,6 @@
 using System.Diagnostics;
 using System.Security.Cryptography;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Tickets.Contracts;
 using Humans.Tickets.Domain.Checkout;
 using NodaTime;
@@ -40,7 +40,7 @@ internal sealed partial class TicketCheckoutService
         if (ticket is not null)
             await TimelineAsync(ticket.OrderId, TicketCheckoutOrderEventKind.ResaleWithdrawn,
                 $"Ticket {barcode} taken out of the resale queue by the ticketing team: {why}", actorUserId, ct);
-        await auditLog.LogAsync(TicketsAuditActions.TicketResaleWithdrawnByTeam, AuditEntityType, ticket?.OrderId ?? offer.Id,
+        await auditLog.LogAsync(TicketsAuditActions.TicketResaleWithdrawnByTeam, AuditSubjectType, ticket?.OrderId ?? offer.Id,
             $"Ticket {barcode} taken out of the resale queue for its holder: {why}",
             actorUserId, offer.HolderUserId, AuditSubjectTypes.User);
         return CheckoutMutationResult.Ok;
@@ -66,7 +66,7 @@ internal sealed partial class TicketCheckoutService
         ticketing.CancelReason = reason.Trim();
         ticketing.UpdatedAt = now;
         await repository.SaveTicketingSettingsAsync(ticketing, ct);
-        await auditLog.LogAsync(TicketsAuditActions.TicketSalesEventCancelled, TicketingSettingsAuditEntityType, ticketing.Id,
+        await auditLog.LogAsync(TicketsAuditActions.TicketSalesEventCancelled, TicketingSettingsAuditSubjectType, ticketing.Id,
             $"Event cancelled (sales were {before}): every ticket is voided and every paid order refunded what its tickets cost. " +
             $"Reason: {ticketing.CancelReason}", actorUserId);
         return CheckoutMutationResult.Ok;
@@ -164,7 +164,7 @@ internal sealed partial class TicketCheckoutService
                     }, ct);
                 refundNote = $"; the {FormatMinor(refundMinor)} {order.Currency} refund failed " +
                     $"({Truncate(result.Refusal ?? "refused")}): the ticketing team must refund it by hand";
-                await auditLog.LogAsync(TicketsAuditActions.TicketCheckoutNeedsAttention, AuditEntityType, order.Id,
+                await auditLog.LogAsync(TicketsAuditActions.TicketCheckoutNeedsAttention, AuditSubjectType, order.Id,
                     $"Cancellation refund{refundNote[1..]}", JobName);
             }
         }

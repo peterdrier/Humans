@@ -1,5 +1,5 @@
 using AwesomeAssertions;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Camps.Contracts;
 using Humans.Settings.Contracts;
 using Humans.Store.Contracts;
@@ -206,7 +206,7 @@ public class ServiceTeamOrdersTests
             Arg.Any<CancellationToken>());
         await _audit.Received(1).LogAsync(
             StoreAuditActions.StoreOrderYearBackfilled,
-            AuditEntityTypes.Order,
+            StoreAuditSubjectTypes.Order,
             orderId,
             Arg.Any<string>(),
             Arg.Any<Guid>(),
@@ -368,7 +368,7 @@ public class ServiceTeamOrdersTests
 
         await _repo.Received(1).DeleteOrderAsync(orderId, Arg.Any<CancellationToken>());
         await _audit.Received(1).LogAsync(
-            StoreAuditActions.StoreOrderDeleted, AuditEntityTypes.Order, orderId,
+            StoreAuditActions.StoreOrderDeleted, StoreAuditSubjectTypes.Order, orderId,
             Arg.Any<string>(), actor,
             Arg.Any<Guid?>(), Arg.Any<string?>());
     }

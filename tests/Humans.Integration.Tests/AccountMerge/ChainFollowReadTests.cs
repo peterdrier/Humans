@@ -3,7 +3,7 @@ using Humans.Auth.Data;
 using Humans.Auth.Domain;
 using AwesomeAssertions;
 using Humans.Consent.Services;
-using Humans.AuditLog.Services;
+using Humans.Audit.Services;
 using Humans.Budget.Contracts;
 using Humans.Gdpr.Contracts;
 using Humans.Base.Constants;
@@ -19,7 +19,7 @@ using Humans.Users.Data;
 namespace Humans.Integration.Tests.AccountMerge;
 
 /// <summary>
-/// Per-user reads on AuditLog, Consent and BudgetAuditLog surface the merged source's rows through
+/// Per-user reads on AuditLog, Consent and BudgetChange surface the merged source's rows through
 /// <c>UserInfo.MergedUserIds</c>.
 /// </summary>
 public class ChainFollowReadTests(HumansTestDatabase database) : IntegrationTestBase(database)
@@ -44,8 +44,8 @@ public class ChainFollowReadTests(HumansTestDatabase database) : IntegrationTest
 
         entries.Should().Contain(
             e => e.Description == description
-                 && e.EntityType == "User"
-                 && e.EntityId == sourceId,
+                 && e.SubjectType == "User"
+                 && e.SubjectId == sourceId,
             "chain-follow surfaces the source-attributed audit entry under target reads");
     }
 
@@ -79,9 +79,9 @@ public class ChainFollowReadTests(HumansTestDatabase database) : IntegrationTest
             "chain-follow surfaces the source-attributed consent record under target reads");
     }
 
-    // Only the GDPR contributor path chain-follows; the year-scoped GetAuditLogAsync is not a per-user read.
+    // Only the GDPR contributor path chain-follows; the year-scoped GetChangesAsync is not a per-user read.
     [HumansFact(Timeout = 30_000)]
-    public async Task BudgetAuditLog_ContributeForUserAsync_FollowsMergedToUserIdChain()
+    public async Task BudgetChange_ContributeForUserAsync_FollowsMergedToUserIdChain()
     {
         var description = $"chain-follow-budget-{Guid.NewGuid():N}";
 
@@ -91,7 +91,7 @@ public class ChainFollowReadTests(HumansTestDatabase database) : IntegrationTest
         {
             var builder = new MergeFixtureBuilder(scope, sourceId, targetId);
             var budgetYearId = builder.SeedBudgetYearNow($"BY-{Guid.NewGuid():N}".Substring(0, 6));
-            builder.WithSourceBudgetAuditLog(budgetYearId, description);
+            builder.WithSourceBudgetChange(budgetYearId, description);
             await builder.SaveAllAsync();
         }
 
@@ -115,7 +115,7 @@ public class ChainFollowReadTests(HumansTestDatabase database) : IntegrationTest
             .Select(o => o.GetType().GetProperty("Description")?.GetValue(o) as string)
             .Where(d => d is not null);
         found.Should().Contain(description,
-            "chain-follow surfaces the source-attributed BudgetAuditLog row under target's GDPR export");
+            "chain-follow surfaces the source-attributed BudgetChange row under target's GDPR export");
     }
 
     private async Task<Guid> SeedAdminUserAsync()

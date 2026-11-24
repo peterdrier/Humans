@@ -20,7 +20,7 @@ internal sealed class BudgetYearConfiguration : IEntityTypeConfiguration<BudgetY
         builder.Property(b => b.DeletedAt);
 
         builder.HasMany(b => b.Groups).WithOne(g => g.BudgetYear).HasForeignKey(g => g.BudgetYearId).OnDelete(DeleteBehavior.Cascade);
-        builder.HasMany(b => b.AuditLogs).WithOne(a => a.BudgetYear).HasForeignKey(a => a.BudgetYearId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasMany(b => b.Changes).WithOne(a => a.BudgetYear).HasForeignKey(a => a.BudgetYearId).OnDelete(DeleteBehavior.Restrict);
 
         builder.HasIndex(b => b.Year).IsUnique();
         builder.HasIndex(b => b.Status);

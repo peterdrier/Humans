@@ -1,4 +1,4 @@
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using AwesomeAssertions;
 using Humans.Base.Enums;
 using Humans.Camps.Contracts;
@@ -259,8 +259,8 @@ public class AccountingReadTests
     [HumansFact]
     public async Task Order_history_is_each_orders_audit_trail_plus_price_changes_to_its_products()
     {
-        AuditEvent At(int day, AuditActionDefinition action, Guid entityId) =>
-            new(Guid.NewGuid(), Instant.FromUtc(2026, 6, day, 0, 0), action, null, null, "x", entityId,
+        AuditEntry At(int day, AuditActionDefinition action, Guid subjectId) =>
+            new(Guid.NewGuid(), Instant.FromUtc(2026, 6, day, 0, 0), action, null, null, "x", subjectId,
                 null, null, null, null, null, null, null, action.Name);
         var removed = At(3, StoreAuditActions.StoreLineRemoved, Guid.NewGuid());
         var added = At(1, StoreAuditActions.StoreLineAdded, Guid.NewGuid());

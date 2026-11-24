@@ -1,0 +1,157 @@
+using Humans.AuditLog.Data;
+using System.Transactions;
+using NSubstitute;
+using Xunit;
+using Humans.Audit.Data;
+using Humans.Audit.Domain;
+using AwesomeAssertions;
+using Microsoft.EntityFrameworkCore;
+using NodaTime;
+using Humans.Audit.Contracts;
+
+namespace Humans.Audit.Tests;
+
+public class AuditLogRepositoryTests
+{
+    private readonly IDbContextFactory<AuditLogDbContext> _factory;
+    private readonly AuditLogRepository _sut;
+
+    public AuditLogRepositoryTests()
+    {
+        var options = new DbContextOptionsBuilder<AuditLogDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString())
+            .Options;
+        _factory = new TestDbContextFactory<AuditLogDbContext>(options);
+        _sut = new AuditLogRepository(_factory);
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task AddAsync_DoesNotEnlistInTheCallersTransaction(bool callerCommits)
+    {
+        var entry = MakeEntry(TestActions.VolunteerApproved, "User", Guid.NewGuid());
+        var factory = Substitute.For<IDbContextFactory<AuditLogDbContext>>();
+        string? auditTransactionId = null;
+        factory.CreateDbContextAsync(Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            auditTransactionId = Transaction.Current?.TransactionInformation.LocalIdentifier;
+            return _factory.CreateDbContextAsync(call.Arg<CancellationToken>());
+        });
+        var repository = new AuditLogRepository(factory);
+        Transaction transaction;
+        using (var scope = new TransactionScope(TransactionScopeOption.Required,
+            TransactionScopeAsyncFlowOption.Enabled))
+        {
+            transaction = Transaction.Current!.Clone();
+            await repository.AddAsync(entry, TestContext.Current.CancellationToken);
+            Transaction.Current.Should().NotBeNull();
+            Transaction.Current.TransactionInformation.LocalIdentifier.Should().Be(transaction.TransactionInformation.LocalIdentifier);
+            if (callerCommits) scope.Complete();
+        }
+        using (transaction)
+        {
+            auditTransactionId.Should().BeNull("audit saves must commit independently of the caller's business transaction");
+            transaction.TransactionInformation.Status.Should().Be(callerCommits ? TransactionStatus.Committed : TransactionStatus.Aborted);
+        }
+        await factory.Received(1).CreateDbContextAsync(TestContext.Current.CancellationToken);
+        await using var context = await _factory.CreateDbContextAsync(TestContext.Current.CancellationToken);
+        (await context.AuditLogEntries.AsNoTracking().SingleAsync(TestContext.Current.CancellationToken)).Id.Should().Be(entry.Id);
+    }
+
+    [HumansFact]
+    public async Task GetFilteredAsync_LargePageDoesNotWrapToEarlierEntries()
+    {
+        await _sut.AddAsync(MakeEntry(TestActions.VolunteerApproved, "User", Guid.NewGuid()), TestContext.Current.CancellationToken);
+        var first = await _sut.GetFilteredAsync(null, [], 1, 50, TestContext.Current.CancellationToken);
+        first.Items.Should().ContainSingle();
+        var result = await _sut.GetFilteredAsync(null, [], int.MaxValue, 50, TestContext.Current.CancellationToken);
+        result.Items.Should().BeEmpty();
+        result.TotalCount.Should().Be(1);
+        result.AlertCounts.Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task GetFilteredAsync_CountsEveryAlertActionOverTheWholeLog()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        await _sut.AddAsync(MakeEntry(TestActions.AnomalousPermissionDetected, "GoogleResource", Guid.NewGuid()), ct);
+        await _sut.AddAsync(MakeEntry(TestActions.AnomalousPermissionDetected, "GoogleResource", Guid.NewGuid()), ct);
+        await _sut.AddAsync(MakeEntry(TestActions.MemberSuspended, "User", Guid.NewGuid()), ct);
+
+        var result = await _sut.GetFilteredAsync(
+            TestActions.MemberSuspended.Name,
+            [TestActions.AnomalousPermissionDetected.Name, TestActions.MemberSuspended.Name],
+            1, 50, ct);
+
+        result.Items.Should().ContainSingle();
+        result.AlertCounts.Should().BeEquivalentTo(new Dictionary<string, int>(StringComparer.Ordinal)
+        {
+            [TestActions.AnomalousPermissionDetected.Name] = 2,
+            [TestActions.MemberSuspended.Name] = 1,
+        });
+    }
+
+    [HumansFact]
+    public async Task AddAsync_PersistsEntry_VisibleOnNextRead()
+    {
+        var entry = MakeEntry(TestActions.VolunteerApproved, "User", Guid.NewGuid());
+
+        await _sut.AddAsync(entry, TestContext.Current.CancellationToken);
+
+        await using var ctx = await _factory.CreateDbContextAsync(TestContext.Current.CancellationToken);
+        var stored = await ctx.AuditLogEntries.AsNoTracking()
+            .FirstOrDefaultAsync(e => e.Id == entry.Id, TestContext.Current.CancellationToken);
+
+        stored.Should().NotBeNull(
+            because: "AddAsync is the sole write path — it must persist immediately without a caller SaveChanges");
+        stored.Action.Should().Be(entry.Action);
+        stored.SubjectType.Should().Be(entry.SubjectType);
+        stored.SubjectId.Should().Be(entry.SubjectId);
+    }
+
+    [HumansFact]
+    public async Task GetLegacyGoogleSyncEntriesAsync_ReturnsOnlyResourceRows_Oldest_First()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var now = Instant.FromUtc(2026, 5, 12, 10, 0);
+
+        await _sut.AddAsync(MakeEntry(TestActions.VolunteerApproved, "User", Guid.NewGuid()), ct);
+        var newer = MakeGoogleSyncEntry(now);
+        var older = MakeGoogleSyncEntry(now - Duration.FromHours(3));
+        await _sut.AddAsync(newer, ct);
+        await _sut.AddAsync(older, ct);
+
+        var result = await _sut.GetLegacyGoogleSyncEntriesAsync(ct);
+
+        // Chronological, and the non-Google row is absent — the one-time migration reads the whole set.
+        result.Select(e => e.Id).Should().Equal([older.Id, newer.Id]);
+    }
+
+    private static AuditLogEntry MakeGoogleSyncEntry(Instant occurredAt) => new()
+    {
+        Id = Guid.NewGuid(),
+        Action = TestActions.GoogleResourceAccessGranted.Name,
+        SubjectType = "GoogleResource",
+        SubjectId = Guid.NewGuid(),
+        Description = "GoogleWorkspaceSyncService: Granted Drive access",
+        OccurredAt = occurredAt,
+        ResourceId = Guid.NewGuid(),
+        Success = true,
+        Role = "writer",
+        SyncSource = Base.Enums.GoogleSyncSource.ManualSync,
+        UserEmail = "a@b.org"
+    };
+
+    private static AuditLogEntry MakeEntry(
+        AuditActionDefinition action, string subjectType, Guid subjectId,
+        Instant? occurredAt = null) => new()
+        {
+            Id = Guid.NewGuid(),
+            Action = action.Name,
+            SubjectType = subjectType,
+            SubjectId = subjectId,
+            Description = $"Test {action}",
+            OccurredAt = occurredAt ?? Instant.FromUtc(2026, 5, 12, 0, 0)
+        };
+}

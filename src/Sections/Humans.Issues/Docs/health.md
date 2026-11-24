@@ -120,7 +120,7 @@ whole reporter list, gated by its one caller: `Index` asks for it only inside
   no delete behaviour, nothing for EF to join across. Display names are stitched in memory via
   `IUserService`. Account deletion anonymises the `User` row in place, but that's moot here:
   the section's own GDPR contributor erases or nulls these ids first.
-- **No `nameof`-derived audit discriminators.** `AuditEntityTypes.Issue` is a literal because
+- **No `nameof`-derived audit discriminators.** `IssuesAuditSubjectTypes.Issue` is a literal because
   it is persisted data.
 - **No per-comment reporter/handler flag.** Sender role is derived by comparing
   `SenderUserId` to `Issue.ReporterUserId`.

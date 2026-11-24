@@ -2,7 +2,7 @@ using System.Transactions;
 using Humans.Base.Extensions;
 using Humans.Users.Services;
 using Humans.Auth.Contracts;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Email.Contracts;
 using Humans.Gdpr.Contracts;
 using Humans.Onboarding.Contracts;

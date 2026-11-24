@@ -18,5 +18,5 @@ internal sealed class BudgetYear
     public bool IsDeleted { get; set; }
     public Instant? DeletedAt { get; set; }
     public ICollection<BudgetGroup> Groups { get; } = new List<BudgetGroup>();
-    public ICollection<BudgetAuditLog> AuditLogs { get; } = new List<BudgetAuditLog>();
+    public ICollection<BudgetChange> Changes { get; } = new List<BudgetChange>();
 }

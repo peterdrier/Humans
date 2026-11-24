@@ -706,7 +706,7 @@ public sealed class WorkgroupServiceMembershipTests : WorkgroupsTestHarness
         // The row is overwritten in place, so the audit entry is the only trace that the
         // members read something else before.
         await AuditLog.Received(1).LogAsync(
-            WorkgroupsAuditActions.WorkgroupLogEntryUpdated, AuditEntityTypes.WorkgroupLogEntry, entryId,
+            WorkgroupsAuditActions.WorkgroupLogEntryUpdated, WorkgroupsAuditSubjectTypes.WorkgroupLogEntry, entryId,
             Arg.Any<string>(), member, Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 
@@ -726,7 +726,7 @@ public sealed class WorkgroupServiceMembershipTests : WorkgroupsTestHarness
                 now.Plus(Duration.FromDays(1)).Plus(Duration.FromHours(1)), null, null, false), Ct);
 
         await AuditLog.Received(1).LogAsync(
-            WorkgroupsAuditActions.WorkgroupMeetingUpdated, AuditEntityTypes.WorkgroupMeeting, meetingId,
+            WorkgroupsAuditActions.WorkgroupMeetingUpdated, WorkgroupsAuditSubjectTypes.WorkgroupMeeting, meetingId,
             Arg.Any<string>(), member, Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 
@@ -743,7 +743,7 @@ public sealed class WorkgroupServiceMembershipTests : WorkgroupsTestHarness
         await NewService().DeleteMeetingAsync(meetingId, member, Ct);
 
         await AuditLog.Received(1).LogAsync(
-            WorkgroupsAuditActions.WorkgroupMeetingDeleted, AuditEntityTypes.WorkgroupMeeting, meetingId,
+            WorkgroupsAuditActions.WorkgroupMeetingDeleted, WorkgroupsAuditSubjectTypes.WorkgroupMeeting, meetingId,
             Arg.Any<string>(), member, Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 
@@ -765,7 +765,7 @@ public sealed class WorkgroupServiceMembershipTests : WorkgroupsTestHarness
         (await replay()).Refusal!.Key
             .Should().Be(WorkgroupErrorKeys.NotFound);
         await AuditLog.Received(1).LogAsync(
-            WorkgroupsAuditActions.WorkgroupMeetingDeleted, AuditEntityTypes.WorkgroupMeeting, meetingId,
+            WorkgroupsAuditActions.WorkgroupMeetingDeleted, WorkgroupsAuditSubjectTypes.WorkgroupMeeting, meetingId,
             Arg.Any<string>(), member, Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 
@@ -789,7 +789,7 @@ public sealed class WorkgroupServiceMembershipTests : WorkgroupsTestHarness
         (await edit()).Refusal!.Key
             .Should().Be(WorkgroupErrorKeys.NotFound);
         await AuditLog.DidNotReceive().LogAsync(
-            WorkgroupsAuditActions.WorkgroupMeetingUpdated, AuditEntityTypes.WorkgroupMeeting, meetingId,
+            WorkgroupsAuditActions.WorkgroupMeetingUpdated, WorkgroupsAuditSubjectTypes.WorkgroupMeeting, meetingId,
             Arg.Any<string>(), member, Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 

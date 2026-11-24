@@ -1,6 +1,6 @@
 using Humans.Base.Extensions;
 using Humans.Base.Interfaces;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Budget.Contracts;
 using Humans.Finance.Contracts;
 using Humans.Gdpr.Contracts;
@@ -105,12 +105,12 @@ internal sealed class ExpenseReportService(
             {
                 await auditLogService.LogAsync(
                     ExpensesAuditActions.ExpenseCreatedOnBehalf,
-                    AuditEntityTypes.Report, report.Id,
+                    ExpensesAuditSubjectTypes.Report, report.Id,
                     $"Created expense report on behalf of {await DescribeMemberAsync(submitterUserId, CancellationToken.None)}."
                     + DescribeGrant(preapprovalGrantId),
                     actorUserId,
-                    relatedEntityId: submitterUserId,
-                    relatedEntityType: AuditSubjectTypes.User);
+                    targetId: submitterUserId,
+                    targetType: AuditSubjectTypes.User);
             }
 
             return ExpenseMutationResult.Success;
@@ -448,11 +448,11 @@ internal sealed class ExpenseReportService(
 
             await auditLogService.LogAsync(
                 ExpensesAuditActions.ExpenseAttachmentUploaded,
-                AuditEntityTypes.Report, reportId,
+                ExpensesAuditSubjectTypes.Report, reportId,
                 $"Attachment uploaded to line {lineId}.",
                 actorUserId,
-                relatedEntityId: report.SubmitterUserId,
-                relatedEntityType: AuditSubjectTypes.User);
+                targetId: report.SubmitterUserId,
+                targetType: AuditSubjectTypes.User);
         }
         catch
         {
@@ -516,11 +516,11 @@ internal sealed class ExpenseReportService(
 
             await auditLogService.LogAsync(
                 ExpensesAuditActions.ExpenseAttachmentRemoved,
-                AuditEntityTypes.Report, reportId,
+                ExpensesAuditSubjectTypes.Report, reportId,
                 $"Attachment removed from line {lineId}.",
                 actorUserId,
-                relatedEntityId: report.SubmitterUserId,
-                relatedEntityType: AuditSubjectTypes.User);
+                targetId: report.SubmitterUserId,
+                targetType: AuditSubjectTypes.User);
             return ExpenseMutationResult.Success;
         }
         finally
@@ -649,12 +649,12 @@ internal sealed class ExpenseReportService(
             // export would miss the row carrying their raw IBAN.
             await auditLogService.LogAsync(
                 isClearing ? ExpensesAuditActions.IbanRemove : ExpensesAuditActions.IbanSet,
-                AuditEntityTypes.Profile,
+                ExpensesAuditSubjectTypes.Profile,
                 submitterUserId,
                 await DescribeIbanChangeAsync(submitterUserId, actorUserId, normalized, ct),
                 actorUserId,
-                relatedEntityId: submitterUserId,
-                relatedEntityType: AuditSubjectTypes.User);
+                targetId: submitterUserId,
+                targetType: AuditSubjectTypes.User);
 
             logger.LogInformation(
                 "IBAN {Action} for user {UserId}",
@@ -697,11 +697,11 @@ internal sealed class ExpenseReportService(
 
         await auditLogService.LogAsync(
             ExpensesAuditActions.ExpensePayeeIbanUpdated,
-            AuditEntityTypes.Report, report.Id,
+            ExpensesAuditSubjectTypes.Report, report.Id,
             $"{description}.",
             actorUserId,
-            relatedEntityId: report.SubmitterUserId,
-            relatedEntityType: AuditSubjectTypes.User);
+            targetId: report.SubmitterUserId,
+            targetType: AuditSubjectTypes.User);
     }
 
     /// <summary>
@@ -835,11 +835,11 @@ internal sealed class ExpenseReportService(
 
         await auditLogService.LogAsync(
             ExpensesAuditActions.ExpenseEditedOnBehalf,
-            AuditEntityTypes.Report, report.Id,
+            ExpensesAuditSubjectTypes.Report, report.Id,
             $"{whatChanged} on behalf of {await DescribeMemberAsync(report.SubmitterUserId, ct)}.",
             actorUserId,
-            relatedEntityId: report.SubmitterUserId,
-            relatedEntityType: AuditSubjectTypes.User);
+            targetId: report.SubmitterUserId,
+            targetType: AuditSubjectTypes.User);
     }
 
     internal static string MaxAmountDetail(decimal? maxAmount) =>
@@ -895,8 +895,8 @@ internal sealed class ExpenseReportService(
         }.Select(a => a.Name).ToList();
 
         var auditEntries = (await auditViewer.GetFilteredAsync(
-            entityType: null,
-            entityId: null,
+            subjectType: null,
+            subjectId: null,
             userId: userId,
             actions: expenseActions,
             limit: 10_000,
@@ -906,8 +906,8 @@ internal sealed class ExpenseReportService(
         foreach (var report in allReports)
         {
             auditEntries.AddRange(await auditViewer.GetFilteredAsync(
-                entityType: AuditEntityTypes.Report,
-                entityId: report.Id,
+                subjectType: ExpensesAuditSubjectTypes.Report,
+                subjectId: report.Id,
                 userId: null,
                 actions: expenseActions,
                 limit: 10_000,
@@ -965,8 +965,8 @@ internal sealed class ExpenseReportService(
             .Select(e => new
             {
                 Action = e.Action.Name,
-                e.EntityType,
-                e.EntityId,
+                e.SubjectType,
+                e.SubjectId,
                 Description = IbanFormatter.MaskAllIn(e.Description),
                 OccurredAt = e.OccurredAt.ToIso8601()
             }).ToList();
@@ -983,17 +983,17 @@ internal sealed class ExpenseReportService(
     }
 
     private static bool IsSubjectAuditEntry(
-        AuditEvent entry, HashSet<Guid> userIds, HashSet<Guid> reportIds) =>
-        (entry.RelatedEntityId is { } relatedId
-            && (entry.RelatedEntityType is null
-                || string.Equals(entry.RelatedEntityType, AuditSubjectTypes.User, StringComparison.Ordinal))
-            && userIds.Contains(relatedId))
-        || (string.Equals(entry.EntityType, AuditSubjectTypes.User, StringComparison.Ordinal)
-            && userIds.Contains(entry.EntityId))
-        || (string.Equals(entry.EntityType, AuditEntityTypes.Profile, StringComparison.Ordinal)
-            && userIds.Contains(entry.EntityId))
-        || (string.Equals(entry.EntityType, AuditEntityTypes.Report, StringComparison.Ordinal)
-            && reportIds.Contains(entry.EntityId));
+        AuditEntry entry, HashSet<Guid> userIds, HashSet<Guid> reportIds) =>
+        (entry.TargetId is { } targetId
+            && (entry.TargetType is null
+                || string.Equals(entry.TargetType, AuditSubjectTypes.User, StringComparison.Ordinal))
+            && userIds.Contains(targetId))
+        || (string.Equals(entry.SubjectType, AuditSubjectTypes.User, StringComparison.Ordinal)
+            && userIds.Contains(entry.SubjectId))
+        || (string.Equals(entry.SubjectType, ExpensesAuditSubjectTypes.Profile, StringComparison.Ordinal)
+            && userIds.Contains(entry.SubjectId))
+        || (string.Equals(entry.SubjectType, ExpensesAuditSubjectTypes.Report, StringComparison.Ordinal)
+            && reportIds.Contains(entry.SubjectId));
 
     private async Task<(ExpenseAddLineResult Result, ExpenseReportDto? Report)> AddLineWithoutAuditAsync(
         Guid reportId, IReadOnlyCollection<ExpenseReportStatus> allowedStatuses,
@@ -1421,14 +1421,14 @@ internal sealed class ExpenseReportService(
 
         await auditLogService.LogAsync(
             ExpensesAuditActions.ExpenseSubmit,
-            AuditEntityTypes.Report, reportId,
+            ExpensesAuditSubjectTypes.Report, reportId,
             (await IsSubmitterAsync(report, actorUserId, ct)
                 ? "Submitted expense report."
                 : $"Submitted expense report on behalf of {await DescribeMemberAsync(report.SubmitterUserId, ct)}.")
             + ExpenseReportService.DescribeGrant(report.PreapprovalGrantId),
             actorUserId,
-            relatedEntityId: report.SubmitterUserId,
-            relatedEntityType: AuditSubjectTypes.User);
+            targetId: report.SubmitterUserId,
+            targetType: AuditSubjectTypes.User);
 
         return ExpenseMutationResult.Success;
     }
@@ -1482,7 +1482,7 @@ internal sealed class ExpenseReportService(
 
         await auditLogService.LogAsync(
             ExpensesAuditActions.ExpenseWithdraw,
-            AuditEntityTypes.Report, reportId,
+            ExpensesAuditSubjectTypes.Report, reportId,
             "Withdrew expense report."
             + (releasesGrant
                 ? $" Released pre-approval {report.PreapprovalGrantId}."

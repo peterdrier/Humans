@@ -54,7 +54,7 @@ internal interface IBudgetManagement : IBudgetService
     Task<BudgetSaveResult> UpdateLineItemAsync(Guid lineItemId, string description, decimal amount, Guid? responsibleTeamId, string? notes, LocalDate? expectedDate, int vatRate, Guid actorUserId);
     Task<BudgetSaveResult> DeleteLineItemAsync(Guid lineItemId, Guid actorUserId);
 
-    Task<IReadOnlyList<BudgetAuditLogSnapshot>> GetAuditLogAsync(Guid? budgetYearId, CancellationToken ct = default);
+    Task<IReadOnlyList<BudgetChangeSnapshot>> GetChangesAsync(Guid? budgetYearId, CancellationToken ct = default);
 
     BudgetSummaryResult ComputeBudgetSummaryWithBuffers(IReadOnlyList<BudgetGroupDetail> groups);
 }

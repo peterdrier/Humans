@@ -11,7 +11,7 @@ using Humans.Base.Interfaces;
 using Humans.Governance.Contracts;
 using Humans.Base.Constants;
 using MemberApplication = Humans.Governance.Domain.Application;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Email.Contracts;
 using Humans.Notifications.Contracts;
 using Humans.Users.Contracts;
@@ -146,7 +146,7 @@ internal sealed class ApplicationDecisionService(
         var decision = approved ? "approved" : "rejected";
         await auditLogService.LogAsync(
             approved ? GovernanceAuditActions.TierApplicationApproved : GovernanceAuditActions.TierApplicationRejected,
-            AuditEntityTypes.Application,
+            GovernanceAuditSubjectTypes.Application,
             application.Id,
             keepsHigherTier
                 ? $"{application.MembershipTier} application {decision}; Asociado tier kept until its term ends"
@@ -295,7 +295,7 @@ internal sealed class ApplicationDecisionService(
 
             await auditLogService.LogAsync(
                 GovernanceAuditActions.TierTermExpiryCorrected,
-                AuditEntityTypes.Application,
+                GovernanceAuditSubjectTypes.Application,
                 application.Id,
                 $"{application.MembershipTier} term expiry {row.StoredExpiry.ToInvariantDate() ?? "null"} -> {row.ExpectedExpiry.ToInvariantDate()}",
                 adminUserId);

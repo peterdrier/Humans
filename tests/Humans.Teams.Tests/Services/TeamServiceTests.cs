@@ -9,7 +9,7 @@ using Humans.Base.Extensions;
 // User.DisplayName is Obsolete; the seeders still set it.
 #pragma warning disable CS0618
 using AwesomeAssertions;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Auth.Contracts;
 using Humans.Auth.Data;
 using Humans.Auth.Services;
@@ -1586,7 +1586,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
             await AuditLog.Received(1).LogAsync(
                 TeamsAuditActions.TeamJoinedDirectly, nameof(Team), team.Id,
                 $"Joined {team.Name} directly", user.Id,
-                relatedEntityId: user.Id, relatedEntityType: nameof(User));
+                targetId: user.Id, targetType: nameof(User));
         }
     }
 
@@ -3553,7 +3553,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
             await AuditLog.Received(1).LogAsync(
                 TeamsAuditActions.TeamMemberRemoved, nameof(Team), team.Id,
                 $"Membership ended when {team.Name} was deactivated", actor,
-                relatedEntityId: userId, relatedEntityType: nameof(User));
+                targetId: userId, targetType: nameof(User));
         }
         AuditLog.ReceivedCalls().Count(c => string.Equals(c.GetMethodInfo().Name, nameof(IAuditLogService.LogAsync), StringComparison.Ordinal))
             .Should().Be(2, "already-left memberships must not receive another removal audit");

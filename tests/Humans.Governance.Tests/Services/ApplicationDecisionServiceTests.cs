@@ -21,7 +21,7 @@ using Humans.Governance.Domain;
 using Humans.Governance.Services.Dtos;
 using NodaTime.Testing;
 using Microsoft.EntityFrameworkCore.Diagnostics;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Governance.Contracts;
 using Humans.Google.Contracts;
 using AwesomeAssertions;
@@ -419,7 +419,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
             {
                 result.Should().BeOfType<RedirectToActionResult>();
                 await _auditLog.Received(1).LogAsync(GovernanceAuditActions.TierTermExpiryCorrected,
-                    AuditEntityTypes.Application, drifted.Id, Arg.Any<string>(), actorId);
+                    GovernanceAuditSubjectTypes.Application, drifted.Id, Arg.Any<string>(), actorId);
             }
             else result.Should().BeOfType<UnauthorizedResult>();
         }
@@ -666,7 +666,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
 
         await _auditLog.Received(1).LogAsync(
             GovernanceAuditActions.TierApplicationApproved,
-            AuditEntityTypes.Application,
+            GovernanceAuditSubjectTypes.Application,
             application.Id,
             "Asociado application approved",
             reviewerId);
@@ -813,7 +813,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         row.GrantedByApplicationId.Should().Be(asociadoApp);
         await _auditLog.Received(1).LogAsync(
             GovernanceAuditActions.TierApplicationApproved,
-            AuditEntityTypes.Application,
+            GovernanceAuditSubjectTypes.Application,
             app.Id,
             "Colaborador application approved; Asociado tier kept until its term ends",
             Arg.Any<Guid>());
@@ -1028,7 +1028,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         persisted!.Status.Should().Be(approve ? ApplicationStatus.Approved : ApplicationStatus.Rejected);
         await _auditLog.Received(1).LogAsync(
             approve ? GovernanceAuditActions.TierApplicationApproved : GovernanceAuditActions.TierApplicationRejected,
-            AuditEntityTypes.Application, app.Id, Arg.Any<string>(), reviewerId,
+            GovernanceAuditSubjectTypes.Application, app.Id, Arg.Any<string>(), reviewerId,
             Arg.Any<Guid?>(), Arg.Any<string?>());
         await _notificationService.Received(1).SendAsync(
             approve ? GovernanceNotificationSources.ApplicationApproved : GovernanceNotificationSources.ApplicationRejected,
@@ -1208,7 +1208,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
 
         await _auditLog.Received(1).LogAsync(
             GovernanceAuditActions.TierApplicationRejected,
-            AuditEntityTypes.Application,
+            GovernanceAuditSubjectTypes.Application,
             application.Id,
             "Colaborador application rejected",
             reviewerId);
@@ -2039,7 +2039,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
             tier.GrantedByApplicationId.Should().Be(grantId);
         }
         await _auditLog.Received(1).LogAsync(
-            GovernanceAuditActions.TierTermExpiryCorrected, AuditEntityTypes.Application, drifted.Id,
+            GovernanceAuditActions.TierTermExpiryCorrected, GovernanceAuditSubjectTypes.Application, drifted.Id,
             Arg.Any<string>(), adminId);
         (await _service.GetTermExpiryDriftAsync(TestContext.Current.CancellationToken)).Should().BeEmpty();
     }

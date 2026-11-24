@@ -35,7 +35,7 @@
     <ProjectReference Include="..\Humans.Governance.Contracts\Humans.Governance.Contracts.csproj" />
     <!-- IGrantService: the active grants a ticket price rule maps to. Acyclic: Grants names no Tickets type. -->
     <ProjectReference Include="..\Humans.Grants\Humans.Grants.csproj" />
-    <ProjectReference Include="..\Humans.AuditLog\Humans.AuditLog.csproj" />
+    <ProjectReference Include="..\Humans.Audit\Humans.Audit.csproj" />
     <!--
       Outbound section references, all acyclic — none of these names a Tickets type.
         Budget    — TicketQueryService reads IBudgetService for the dashboard's break-even figure;

@@ -1,4 +1,4 @@
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Base.Extensions;
 using Humans.Finance.Contracts;
 using Humans.Notifications.Contracts;
@@ -133,16 +133,16 @@ internal sealed partial class PreapprovalService(
     internal Task AuditGrantAsync(
         AuditActionDefinition action, PreapprovalGrant grant, string description, Guid actorUserId,
         Guid? expenseReportId = null) =>
-        auditLog.LogAsync(action, AuditEntityTypes.Grant, grant.Id, description, actorUserId,
-            relatedEntityId: expenseReportId ?? grant.ProgramId,
-            relatedEntityType: expenseReportId is null ? AuditEntityTypes.Program : AuditEntityTypes.ExpenseReport);
+        auditLog.LogAsync(action, PreapprovalsAuditSubjectTypes.Grant, grant.Id, description, actorUserId,
+            targetId: expenseReportId ?? grant.ProgramId,
+            targetType: expenseReportId is null ? PreapprovalsAuditSubjectTypes.Program : PreapprovalsAuditSubjectTypes.ExpenseReport);
 
     internal Task AuditProgramAsync(
         AuditActionDefinition action, PreapprovalProgram program, string description, Guid actorUserId,
         Guid? relatedUserId = null) =>
-        auditLog.LogAsync(action, AuditEntityTypes.Program, program.Id, description, actorUserId,
-            relatedEntityId: relatedUserId,
-            relatedEntityType: relatedUserId is null ? null : AuditSubjectTypes.User);
+        auditLog.LogAsync(action, PreapprovalsAuditSubjectTypes.Program, program.Id, description, actorUserId,
+            targetId: relatedUserId,
+            targetType: relatedUserId is null ? null : AuditSubjectTypes.User);
 
     private DateTimeZone OrgZone => orgTimeZone.Zone;
 

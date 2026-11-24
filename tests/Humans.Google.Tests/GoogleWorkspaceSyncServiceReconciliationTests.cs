@@ -160,10 +160,10 @@ public sealed class GoogleWorkspaceSyncServiceReconciliationTests : GoogleTestHa
 
         await _googleGroupSync.DidNotReceiveWithAnyArgs().ReconcileOneAsync(default!, default);
         await AuditLog.Received(1).LogAsync(
-            GoogleAuditActions.GoogleResourceDeactivated, TeamGoogleResource.AuditEntityType, selectedOldId,
+            GoogleAuditActions.GoogleResourceDeactivated, TeamGoogleResource.AuditSubjectType, selectedOldId,
             Arg.Any<string>(), nameof(GoogleWorkspaceSyncService), teamId, "Team");
         await AuditLog.Received(1).LogAsync(
-            GoogleAuditActions.GoogleResourceProvisioned, TeamGoogleResource.AuditEntityType, inactiveId,
+            GoogleAuditActions.GoogleResourceProvisioned, TeamGoogleResource.AuditSubjectType, inactiveId,
             Arg.Any<string>(), nameof(GoogleWorkspaceSyncService), teamId, "Team");
     }
 

@@ -1,6 +1,6 @@
 using System.Security.Cryptography;
 using System.Text;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Base.Enums;
 using Humans.Base.Extensions;
 using Humans.Email.Contracts;
@@ -137,7 +137,7 @@ internal sealed class SurveyInvitationDelivery(
             }
         }
 
-        await auditLog.LogAsync(SurveysAuditActions.SurveyInvitesSent, AuditEntityTypes.Survey, surveyId,
+        await auditLog.LogAsync(SurveysAuditActions.SurveyInvitesSent, SurveysAuditSubjectTypes.Survey, surveyId,
             $"Processed {invitationsProcessed} invitation(s); {emailsQueued} email(s) queued, {failed} failed.", actorUserId);
 
         return new SendResult(invitationsProcessed, emailsQueued, failed);
@@ -285,8 +285,8 @@ internal sealed class SurveyInvitationDelivery(
         {
             var summary = $"Sent {reminded} survey reminder(s)";
             if (failures.Count > 0) summary += $"; {failures.Count} failed";
-            await auditLog.LogAsync(SurveysAuditActions.SurveyReminderSent, AuditEntityTypes.Survey, Guid.Empty,
-                summary, jobName: AuditEntityTypes.ReminderJob);
+            await auditLog.LogAsync(SurveysAuditActions.SurveyReminderSent, SurveysAuditSubjectTypes.Survey, Guid.Empty,
+                summary, jobName: SurveysAuditSubjectTypes.ReminderJob);
         }
 
         if (failures.Count > 0)

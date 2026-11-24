@@ -2,7 +2,7 @@ using System.Reflection;
 using System.Security.Claims;
 using System.Text.Json;
 using AwesomeAssertions;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Base.Authorization;
 using Humans.Base.Interfaces;
 using Humans.Debug.Controllers;

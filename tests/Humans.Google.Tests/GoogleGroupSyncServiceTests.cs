@@ -1,7 +1,7 @@
 using Humans.Google.Domain;
 using Humans.Google.Contracts;
 using AwesomeAssertions;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Users.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Google.Services;
@@ -168,7 +168,7 @@ public sealed class GoogleGroupSyncServiceTests
         await _provisioningClient.Received(1).CreateGroupAsync(
             "new-group@nobodies.team", Arg.Any<string>(), Arg.Any<string>(), CancellationToken.None);
         await _auditLogService.Received(1).LogAsync(
-            GoogleAuditActions.GoogleResourceProvisioned, TeamGoogleResource.AuditEntityType, Guid.Empty,
+            GoogleAuditActions.GoogleResourceProvisioned, TeamGoogleResource.AuditSubjectType, Guid.Empty,
             Arg.Any<string>(), nameof(GoogleGroupSyncService));
         await _provisioningClient.Received(1).UpdateGroupSettingsAsync(
             "new-group@nobodies.team", Arg.Any<GroupSettingsExpected>(), CancellationToken.None);
@@ -447,7 +447,7 @@ public sealed class GoogleGroupSyncServiceTests
         scheduled.RetryAttempt.Should().Be(1);
         await _auditLogService.Received(1).LogAsync(
             GoogleAuditActions.GoogleSyncRetryScheduled,
-            TeamGoogleResource.AuditEntityType,
+            TeamGoogleResource.AuditSubjectType,
             Guid.Empty,
             Arg.Is<string>(s => s.Contains("Scheduled retry")),
             nameof(GoogleGroupSyncService));
@@ -663,7 +663,7 @@ public sealed class GoogleGroupSyncServiceTests
             .LookupGroupIdAsync(null!, Arg.Any<CancellationToken>());
         await _auditLogService.Received(1).LogAsync(
             GoogleAuditActions.AnomalousPermissionDetected,
-            TeamGoogleResource.AuditEntityType,
+            TeamGoogleResource.AuditSubjectType,
             Guid.Empty,
             Arg.Is<string>(s => s.Contains("collision")),
             nameof(GoogleGroupSyncService));
@@ -899,7 +899,7 @@ public sealed class GoogleGroupSyncServiceTests
         await _membershipClient.Received(1).CreateMembershipAsync(
             "group-new", "alice@nobodies.team", Arg.Any<CancellationToken>());
         await _auditLogService.Received(1).LogAsync(GoogleAuditActions.GoogleResourceProvisioned,
-            TeamGoogleResource.AuditEntityType, Guid.Empty, Arg.Is<string>(text => text.Contains("new-group@nobodies.team")),
+            TeamGoogleResource.AuditSubjectType, Guid.Empty, Arg.Is<string>(text => text.Contains("new-group@nobodies.team")),
             nameof(GoogleGroupSyncService));
     }
 

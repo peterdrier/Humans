@@ -1,7 +1,7 @@
 using Humans.Google.Contracts;
 using Humans.Auth.Contracts;
 using System.Text.RegularExpressions;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Teams.Contracts;
 using Microsoft.Extensions.DependencyInjection;
 using NodaTime;
@@ -114,7 +114,7 @@ internal sealed partial class TeamResourceService(
         return new LinkResourceResult(true, Resource: resource);
     }
 
-    private const string TeamAuditEntityType = "Team";
+    private const string TeamAuditSubjectType = "Team";
 
     public async Task<LinkResourceResult> LinkDriveResourceAsync(
         Guid teamId,
@@ -306,7 +306,7 @@ internal sealed partial class TeamResourceService(
         {
             await auditLogService.LogAsync(
                 GoogleAuditActions.GoogleResourceDeactivated,
-                TeamGoogleResource.AuditEntityType,
+                TeamGoogleResource.AuditSubjectType,
                 resource.Id,
                 $"Resource '{resource.Name}' deactivated because owning team was soft-deleted.",
                 nameof(TeamResourceService));
@@ -392,10 +392,10 @@ internal sealed partial class TeamResourceService(
     private Task AuditResourceChangeAsync(
         AuditActionDefinition action, TeamGoogleResource resource, string description, Guid? actorUserId) =>
         actorUserId is { } actor
-            ? auditLogService.LogAsync(action, TeamGoogleResource.AuditEntityType, resource.Id, description,
-                actor, resource.TeamId, TeamAuditEntityType)
-            : auditLogService.LogAsync(action, TeamGoogleResource.AuditEntityType, resource.Id, description,
-                nameof(TeamResourceService), resource.TeamId, TeamAuditEntityType);
+            ? auditLogService.LogAsync(action, TeamGoogleResource.AuditSubjectType, resource.Id, description,
+                actor, resource.TeamId, TeamAuditSubjectType)
+            : auditLogService.LogAsync(action, TeamGoogleResource.AuditSubjectType, resource.Id, description,
+                nameof(TeamResourceService), resource.TeamId, TeamAuditSubjectType);
 
     public async Task<bool> CanManageTeamResourcesAsync(Guid teamId, Guid userId, CancellationToken ct = default)
     {

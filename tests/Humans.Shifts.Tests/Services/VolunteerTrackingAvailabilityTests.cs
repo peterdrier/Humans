@@ -1,5 +1,5 @@
 using Humans.Shifts.Domain;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using AwesomeAssertions;
 using Humans.Shifts.Services;
 using Humans.Shifts.Tests.Infrastructure;
@@ -52,7 +52,7 @@ public sealed class VolunteerTrackingAvailabilityTests : ShiftsTestHarness
         await AuditLog.Received(1).LogAsync(ShiftsAuditActions.VolunteerAvailabilitySet,
             "GeneralAvailability", userId,
             $"EventSettingsId={esId}; AvailableDays=3; self-service update", userId,
-            relatedEntityId: esId, relatedEntityType: "EventSettings");
+            targetId: esId, targetType: "EventSettings");
     }
 
     [HumansFact]
@@ -91,7 +91,7 @@ public sealed class VolunteerTrackingAvailabilityTests : ShiftsTestHarness
         await AuditLog.Received(1).LogAsync(ShiftsAuditActions.VolunteerAvailabilityCleared,
             "GeneralAvailability", userId,
             $"EventSettingsId={esId}; AvailableDays=0; self-service update", userId,
-            relatedEntityId: esId, relatedEntityType: "EventSettings");
+            targetId: esId, targetType: "EventSettings");
     }
 
     [HumansFact]

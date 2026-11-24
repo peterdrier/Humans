@@ -1,6 +1,6 @@
 using Humans.Camps.Data;
 using Humans.Camps.Domain;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Store.Contracts;
 using Humans.Store.Data;
 using Humans.Store.Domain;
@@ -137,8 +137,8 @@ public class StoreControllerTests(HumansTestDatabase database) : IntegrationTest
             var auditLog = scope.ServiceProvider.GetRequiredService<IAuditLogService>();
             await auditLog.LogAsync(
                 new AuditActionDefinition("StoreProductPriceChanged"),
-                entityType: "StoreProduct",
-                entityId: productId,
+                subjectType: "StoreProduct",
+                subjectId: productId,
                 description: marker,
                 actorUserId: leadId);
         }

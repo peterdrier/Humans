@@ -1,5 +1,5 @@
 using Humans.Cantina.Services.Dtos;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using System.Text.Json;
 using AwesomeAssertions;
 using Humans.Settings.Contracts;

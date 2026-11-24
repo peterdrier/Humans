@@ -1,5 +1,5 @@
 using Humans.CityPlanning.Contracts;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Base.Extensions;
 using Humans.Camps.Contracts;
 using Humans.Containers.Contracts;

@@ -1,5 +1,5 @@
-using Humans.AuditLog.Contracts;
-using Humans.AuditLog.ViewComponents;
+using Humans.Audit.Contracts;
+using Humans.Audit.ViewComponents;
 using Humans.Calendar.Services.Dtos;
 using System.Text.Encodings.Web;
 using AwesomeAssertions;

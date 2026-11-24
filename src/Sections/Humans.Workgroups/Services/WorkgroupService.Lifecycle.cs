@@ -258,7 +258,7 @@ internal sealed partial class WorkgroupService
         ct = CancellationToken.None;
         await AuditAsync(WorkgroupsAuditActions.WorkgroupDispositionRecorded, workgroup,
             $"Recorded {disposition} on '{document.Title}': {note.Trim()}", actorUserId,
-            AuditEntityTypes.WorkgroupDocument, document.Id);
+            WorkgroupsAuditSubjectTypes.WorkgroupDocument, document.Id);
 
         var info = ToInfo(workgroup);
         await NotifyAsync(info.CurrentMemberUserIds(), WorkgroupsNotificationSources.WorkgroupDispositionRecorded,

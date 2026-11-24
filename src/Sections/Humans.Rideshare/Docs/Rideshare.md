@@ -4,7 +4,7 @@
   src/Humans.Base/Constants/RoleNames.cs
   src/Humans.Base/Authorization/PolicyNames.cs
   src/Sections/Humans.Rideshare/RideshareNotificationSources.cs
-  src/Humans.Base/AuditLog/IAuditLogService.cs
+  src/Humans.Base/Audit/IAuditLogService.cs
   src/Sections/Humans.Settings/Contracts/ISettingsService.cs
   src/Sections/Humans.Notifications.Contracts/INotificationEmitter.cs
   src/Humans.Base/Users/IUserService.cs

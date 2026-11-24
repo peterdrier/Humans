@@ -1,4 +1,4 @@
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Email.Contracts;
 using Humans.Base.Caching;
 using Humans.Base.Extensions;
@@ -1364,7 +1364,7 @@ internal sealed class Service(
         "The Holded purchase-document mirror has never synced, so no duplicate can be judged. Run Sync now on /Holded.";
 
     /// <summary>The kept expense line: its id is the one Guid in the story; Holded ids go in the text.</summary>
-    private const string ExpenseLineEntityType = "ExpenseLine";
+    private const string ExpenseLineSubjectType = "ExpenseLine";
 
     public Task<HoldedDuplicatesVm> GetHoldedDuplicatesAsync(CancellationToken ct = default) =>
         BuildDuplicatePlanAsync(ct);
@@ -1521,7 +1521,7 @@ internal sealed class Service(
                         await holdedWrite.DeletePurchaseDocumentByIdAsync(docId, ct);
                         deletedDocs.Add(docId);
                         await audit.LogAsync(
-                            FinanceAuditActions.HoldedDuplicateRemoved, ExpenseLineEntityType, line.LineId,
+                            FinanceAuditActions.HoldedDuplicateRemoved, ExpenseLineSubjectType, line.LineId,
                             $"DELETED duplicate Holded purchase document {docId} ({Euros(line.Amount)}, "
                             + $"'{line.Description}') of {member.ContactName} on creditor account {account}; "
                             + $"kept {line.KeptDocId}.",
@@ -1602,13 +1602,13 @@ internal sealed class Service(
 
 
     // Persisted audit entity type, shared with payout generation: never rename.
-    private const string SepaTransferEntityType = nameof(SepaPayoutTransfer);
+    private const string SepaTransferSubjectType = nameof(SepaPayoutTransfer);
 
     /// <summary>The audit actor for the sweep.</summary>
     private const string SepaBookingJobName = "sepa-bank-booking";
 
     /// <summary>The line has no Guid, so its movement id rides in the description.</summary>
-    private const string SepaBankLineEntityType = "SepaBankLine";
+    private const string SepaBankLineSubjectType = "SepaBankLine";
 
     /// <summary>Below half a cent is zero at two decimal places.</summary>
     private const decimal CentEpsilon = 0.005m;
@@ -1905,7 +1905,7 @@ internal sealed class Service(
                 {
                     await repo.MarkSepaTransferReconciledAsync(row.TransferId, at.Value, completionCt);
                     await audit.LogAsync(
-                        FinanceAuditActions.SepaPayoutTransferBooked, SepaTransferEntityType, row.TransferId,
+                        FinanceAuditActions.SepaPayoutTransferBooked, SepaTransferSubjectType, row.TransferId,
                         $"RECONCILED the Sabadell line {row.HoldedBankMovementId} that booked the SEPA payout "
                         + $"{Euros(row.Amount)} to {row.IbanMasked} on creditor account {row.SupplierAccountNum}.",
                         SepaBookingJobName, row.UserId, AuditSubjectTypes.User);
@@ -1994,7 +1994,7 @@ internal sealed class Service(
                     + "for {Runs} consecutive runs; the rest of the feed is booked without it.", id, runs);
                 if (runs == StuckLineSkipAfterRuns)
                     await audit.LogAsync(
-                        FinanceAuditActions.SepaBankLineSkipped, SepaBankLineEntityType, Guid.Empty,
+                        FinanceAuditActions.SepaBankLineSkipped, SepaBankLineSubjectType, Guid.Empty,
                         $"The SEPA sweep skipped Sabadell line {id}: it has been pending outgoing with no "
                         + $"readable date for {runs} consecutive runs, and blocked every booking until now. "
                         + "The rest of the feed books without it, so it can no longer count as a rival of a "
@@ -2094,7 +2094,7 @@ internal sealed class Service(
         await repo.SaveSepaTransfersWithdrawnAsync([transferId], now, actorUserId, ct);
 
         await audit.LogAsync(
-            FinanceAuditActions.SepaPayoutTransferWithdrawn, SepaTransferEntityType, transferId,
+            FinanceAuditActions.SepaPayoutTransferWithdrawn, SepaTransferSubjectType, transferId,
             $"WITHDRAWN the SEPA payout {Euros(transfer.Amount)} to {transfer.IbanMasked} on creditor account "
             + $"{transfer.SupplierAccountNum} (file {row.FileName}): cancelled at the bank before execution.",
             actorUserId, transfer.UserId, AuditSubjectTypes.User);
@@ -2127,7 +2127,7 @@ internal sealed class Service(
 
         foreach (var r in live)
             await audit.LogAsync(
-                FinanceAuditActions.SepaPayoutTransferWithdrawn, SepaTransferEntityType, r.TransferId,
+                FinanceAuditActions.SepaPayoutTransferWithdrawn, SepaTransferSubjectType, r.TransferId,
                 $"WITHDRAWN the SEPA payout {Euros(r.Amount)} to {r.IbanMasked} on creditor account "
                 + $"{r.SupplierAccountNum}: file {fileName} was cancelled whole, the bank never executed it.",
                 actorUserId, r.UserId, AuditSubjectTypes.User);
@@ -2282,7 +2282,7 @@ internal sealed class Service(
             {
                 await repo.MarkSepaTransferReconciledAsync(row.TransferId, reconciledAt.Value, ct);
                 await audit.LogAsync(
-                    FinanceAuditActions.SepaPayoutTransferBooked, SepaTransferEntityType, row.TransferId,
+                    FinanceAuditActions.SepaPayoutTransferBooked, SepaTransferSubjectType, row.TransferId,
                     $"RECONCILED the Sabadell line {movement.Id} that paid the whole file "
                     + $"{row.FileName}, including this transfer of {Euros(row.Amount)} to "
                     + $"{row.IbanMasked} on creditor account {row.SupplierAccountNum}.",
@@ -2590,10 +2590,10 @@ internal sealed class Service(
         Task AuditBookingAsync(string text) =>
             actorUserId is { } actor
                 ? audit.LogAsync(
-                    FinanceAuditActions.SepaPayoutTransferBooked, SepaTransferEntityType, transfer.Id,
+                    FinanceAuditActions.SepaPayoutTransferBooked, SepaTransferSubjectType, transfer.Id,
                     text, actor, transfer.UserId, AuditSubjectTypes.User)
                 : audit.LogAsync(
-                    FinanceAuditActions.SepaPayoutTransferBooked, SepaTransferEntityType, transfer.Id,
+                    FinanceAuditActions.SepaPayoutTransferBooked, SepaTransferSubjectType, transfer.Id,
                     text, SepaBookingJobName, transfer.UserId, AuditSubjectTypes.User);
 
         string PostingSummary()
@@ -3165,7 +3165,7 @@ internal sealed class Service(
         }
     }
 
-    // Persisted in audit_log.entity_type; pinned so a rename cannot silently orphan old rows.
+    // Persisted in audit_log_entries.SubjectType; pinned so a rename cannot silently orphan old rows.
 
     public SepaPayoutSettings GetSepaPayoutSettings() => sepa.Value.GetPayoutSettings();
 
@@ -3203,7 +3203,7 @@ internal sealed class Service(
         // After the save: a rolled-back write must not leave a ghost audit row.
         foreach (var t in transfers)
             await audit.LogAsync(
-                FinanceAuditActions.SepaPayoutTransfer, SepaTransferEntityType, t.Id,
+                FinanceAuditActions.SepaPayoutTransfer, SepaTransferSubjectType, t.Id,
                 $"SEPA payout {Euros(t.Amount)} to {t.IbanMasked} on creditor account "
                 + $"{t.SupplierAccountNum} (file {fileName}).",
                 actorUserId, t.UserId, AuditSubjectTypes.User);

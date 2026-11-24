@@ -1,7 +1,7 @@
 using System.Reflection;
 using System.Security.Claims;
 using AwesomeAssertions;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Email.Contracts;
 using Humans.Email.Controllers;
 using Humans.Email.Services;

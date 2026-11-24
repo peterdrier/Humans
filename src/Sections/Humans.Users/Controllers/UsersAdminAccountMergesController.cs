@@ -1,5 +1,5 @@
 using Humans.Users.Models;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Base.Controllers;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -70,7 +70,7 @@ internal sealed class UsersAdminAccountMergesController(
         }
 
         var merges = await auditViewer.GetFilteredAsync(
-            AuditSubjectTypes.User, entityId: null, userId: null,
+            AuditSubjectTypes.User, subjectId: null, userId: null,
             actions: [UsersAuditActions.AccountMergeAccepted.Name, UsersAuditActions.AccountMergeFailed.Name],
             limit: RecentMergeCount, ct: ct);
 
@@ -78,14 +78,14 @@ internal sealed class UsersAdminAccountMergesController(
         {
             Rows = rows,
             Recent = merges
-                .Where(e => e.RelatedEntityId.HasValue)
+                .Where(e => e.TargetId.HasValue)
                 .OrderByDescending(e => e.OccurredAt)
                 .Select(e => new RecentMergeRow(
                     e.OccurredAt,
-                    KeptUserId: e.RelatedEntityId!.Value,
-                    MergedAwayUserId: e.EntityId,
+                    KeptUserId: e.TargetId!.Value,
+                    MergedAwayUserId: e.SubjectId,
                     // The account holder is one of the two accounts.
-                    By: e.ActorUserId == e.EntityId || e.ActorUserId == e.RelatedEntityId ? null : e.ActorUserId,
+                    By: e.ActorUserId == e.SubjectId || e.ActorUserId == e.TargetId ? null : e.ActorUserId,
                     Failed: string.Equals(e.Action.Name, UsersAuditActions.AccountMergeFailed.Name, StringComparison.Ordinal),
                     e.Description))
                 .ToList()

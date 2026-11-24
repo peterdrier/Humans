@@ -1,5 +1,5 @@
 using System.Globalization;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.EarlyEntry.Contracts;
 using Humans.Gdpr.Contracts;
 using Humans.Notifications.Contracts;
@@ -329,7 +329,7 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
         await _auditLog.LogAsync(
             CampsAuditActions.CampHistoricalNameAdded, nameof(CampHistoricalName), entry.Id,
             $"Added historical name '{name}'", actorUserId,
-            relatedEntityId: campId, relatedEntityType: nameof(Camp));
+            targetId: campId, targetType: nameof(Camp));
         return CampUpdateResult.Success();
     }
 
@@ -352,7 +352,7 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
         await _auditLog.LogAsync(
             CampsAuditActions.CampHistoricalNameRemoved, nameof(CampHistoricalName), historicalNameId,
             $"Removed historical name '{entry.Name}'", actorUserId,
-            relatedEntityId: scopedCampId, relatedEntityType: nameof(Camp));
+            targetId: scopedCampId, targetType: nameof(Camp));
         return CampUpdateResult.Success();
     }
 
@@ -428,7 +428,7 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
             CampsAuditActions.CampImageUploaded, nameof(CampImage), image.Id,
             $"Uploaded image '{fileName}'",
             actorUserId,
-            relatedEntityId: campId, relatedEntityType: nameof(Camp));
+            targetId: campId, targetType: nameof(Camp));
 
         return CampUpdateResult.Success();
     }
@@ -456,7 +456,7 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
                 CampsAuditActions.CampImageDeleted, nameof(CampImage), imageId,
                 $"Deleted image {imageId}",
                 actorUserId,
-                relatedEntityId: result.Value.CampId, relatedEntityType: nameof(Camp));
+                targetId: result.Value.CampId, targetType: nameof(Camp));
 
             return CampUpdateResult.Success();
         }
@@ -519,7 +519,7 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
         await _auditLog.LogAsync(
             auditAction, nameof(CampMember), member.Id,
             auditMessage, actorUserId,
-            relatedEntityId: member.CampSeason.CampId, relatedEntityType: nameof(Camp));
+            targetId: member.CampSeason.CampId, targetType: nameof(Camp));
     }
 
     public async Task<CampMemberRequestResult> RequestCampMembershipAsync(
@@ -552,7 +552,7 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
                 CampsAuditActions.CampMemberRequested, nameof(CampMember), insert.MemberId,
                 $"Requested membership in camp season {season.Year}",
                 userId,
-                relatedEntityId: campId, relatedEntityType: nameof(Camp));
+                targetId: campId, targetType: nameof(Camp));
         }
 
         return insert.Outcome switch
@@ -600,7 +600,7 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
             CampsAuditActions.CampMemberApproved, nameof(CampMember), member.Id,
             $"Approved camp membership for season {member.CampSeason.Year}",
             approvedByUserId,
-            relatedEntityId: scopedCampId, relatedEntityType: nameof(Camp));
+            targetId: scopedCampId, targetType: nameof(Camp));
 
         await NotifyDecisionAsync(scopedCampId, member.CampSeasonId, member.UserId, member.Id, approved: true);
         return CampMembershipMutationResult.Success();
@@ -666,7 +666,7 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
                 nameof(CampMember), result.MemberId,
                 "Lead added human as active camp member.",
                 actorUserId,
-                relatedEntityId: userId, relatedEntityType: AuditSubjectTypes.User);
+                targetId: userId, targetType: AuditSubjectTypes.User);
         }
 
         return result.MemberId;
@@ -796,7 +796,7 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
                 ? $"Granted Early Entry to member in season {member.CampSeason.Year}."
                 : $"Revoked Early Entry from member in season {member.CampSeason.Year}.",
             actorUserId,
-            relatedEntityId: member.CampSeason.CampId, relatedEntityType: nameof(Camp));
+            targetId: member.CampSeason.CampId, targetType: nameof(Camp));
 
         return SetEarlyEntryOutcome.Success;
     }
@@ -1216,7 +1216,7 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
             await _auditLog.LogAsync(
                 CampsAuditActions.CampSeasonCreated, nameof(CampSeason), newSeason.Id,
                 description, actorId,
-                relatedEntityId: campId, relatedEntityType: nameof(Camp));
+                targetId: campId, targetType: nameof(Camp));
         }
         else
         {
@@ -1224,7 +1224,7 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
             await _auditLog.LogAsync(
                 CampsAuditActions.CampSeasonCreated, nameof(CampSeason), newSeason.Id,
                 description, nameof(CampService),
-                relatedEntityId: campId, relatedEntityType: nameof(Camp));
+                targetId: campId, targetType: nameof(Camp));
         }
 
         return new(newSeason);
@@ -1263,7 +1263,7 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
             CampsAuditActions.CampUpdated, nameof(CampSeason), seasonId,
             $"Updated season {year} details",
             actorUserId,
-            relatedEntityId: campId, relatedEntityType: nameof(Camp));
+            targetId: campId, targetType: nameof(Camp));
 
         return CampUpdateResult.Success();
     }
@@ -1300,7 +1300,7 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
             CampsAuditActions.CampSeasonApproved, nameof(CampSeason), seasonId,
             $"Approved season {year}",
             reviewedByUserId,
-            relatedEntityId: campId, relatedEntityType: nameof(Camp));
+            targetId: campId, targetType: nameof(Camp));
         return new(true);
     }
 
@@ -1336,7 +1336,7 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
             CampsAuditActions.CampSeasonRejected, nameof(CampSeason), seasonId,
             $"Rejected season {year}: {notes}",
             reviewedByUserId,
-            relatedEntityId: campId, relatedEntityType: nameof(Camp));
+            targetId: campId, targetType: nameof(Camp));
 
         await NotifyPendingRequestersOfSeasonClosureAsync(seasonId, campId, year);
         return new(true);
@@ -1378,7 +1378,7 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
             CampsAuditActions.CampSeasonWithdrawn, nameof(CampSeason), seasonId,
             $"Withdrew from season {year}",
             actorUserId,
-            relatedEntityId: campId, relatedEntityType: nameof(Camp));
+            targetId: campId, targetType: nameof(Camp));
 
         await NotifyPendingRequestersOfSeasonClosureAsync(seasonId, campId, year);
 
@@ -1420,7 +1420,7 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
             CampsAuditActions.CampSeasonStatusChanged, nameof(CampSeason), seasonId,
             $"Season {year} status set to Full",
             actorUserId,
-            relatedEntityId: scopedCampId, relatedEntityType: nameof(Camp));
+            targetId: scopedCampId, targetType: nameof(Camp));
 
         return CampUpdateResult.Success();
     }
@@ -1454,7 +1454,7 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
             CampsAuditActions.CampSeasonStatusChanged, nameof(CampSeason), seasonId,
             $"Season {year} status changed from {previousStatus} to {newStatus}",
             actorUserId,
-            relatedEntityId: campId, relatedEntityType: nameof(Camp));
+            targetId: campId, targetType: nameof(Camp));
         return new(true);
     }
 
@@ -1599,7 +1599,7 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
             CampsAuditActions.CampNameChanged, nameof(CampSeason), seasonId,
             $"Name changed from '{oldName}' to '{newName}'",
             actorUserId,
-            relatedEntityId: campId, relatedEntityType: nameof(Camp));
+            targetId: campId, targetType: nameof(Camp));
 
         return CampUpdateResult.Success();
     }
@@ -1659,7 +1659,7 @@ internal sealed class CampService : ICampManagement, ICampLeadDirectory, IUserMe
             nameof(CampSeason), campSeasonId,
             $"EE slot count changed from {oldValue} to {newValue}.",
             actorUserId,
-            relatedEntityId: campId, relatedEntityType: nameof(Camp));
+            targetId: campId, targetType: nameof(Camp));
         return new(true);
     }
 

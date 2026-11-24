@@ -17,7 +17,7 @@ The block below is generated. Do not edit it by hand; run
 ```mermaid
 graph LR
     Agent
-    AuditLog
+    Audit
     Auth
     Backdoor
     BoxOffice
@@ -70,7 +70,7 @@ graph LR
     Tour
     Users
     Workgroups
-    Agent --> AuditLog
+    Agent --> Audit
     Agent --> Auth
     Agent --> Consent
     Agent --> Issues
@@ -103,7 +103,7 @@ graph LR
     Budget -.-> Finance
     Budget -.-> Teams
     Budget -.-> Tickets
-    Calendar --> AuditLog
+    Calendar --> Audit
     Calendar -.-> Teams
     Campaigns -.-> Email
     Campaigns -.-> Notifications
@@ -156,7 +156,7 @@ graph LR
     Events --> Camps
     Events --> Settings
     Events -.-> Email
-    Expenses --> AuditLog
+    Expenses --> Audit
     Expenses --> Budget
     Expenses --> Holded
     Expenses --> Permissions
@@ -178,7 +178,7 @@ graph LR
     Gate --> Shifts
     Gate -.-> Tickets
     Gdpr -.-> Users
-    Google --> AuditLog
+    Google --> Audit
     Google --> Auth
     Google --> Settings
     Google -.-> Email
@@ -203,7 +203,7 @@ graph LR
     HiEvents --> Stripe
     HiEvents -.-> Tickets
     Holded -.-> Finance
-    Issues --> AuditLog
+    Issues --> Audit
     Issues --> Auth
     Issues -.-> Email
     Issues -.-> Notifications
@@ -257,7 +257,7 @@ graph LR
     Shifts -.-> Notifications
     Shifts -.-> Onboarding
     Shifts -.-> Tickets
-    Store --> AuditLog
+    Store --> Audit
     Store --> Budget
     Store --> Holded
     Store --> Settings
@@ -275,7 +275,7 @@ graph LR
     Tasks --> Permissions
     Tasks --> Settings
     Tasks -.-> Teams
-    Teams --> AuditLog
+    Teams --> Audit
     Teams --> Auth
     Teams --> Consent
     Teams --> EarlyEntry
@@ -290,7 +290,7 @@ graph LR
     Teams -.-> Notifications
     Teams -.-> Tickets
     TicketTailor --> Tickets
-    Tickets --> AuditLog
+    Tickets --> Audit
     Tickets --> Auth
     Tickets --> Budget
     Tickets --> Campaigns
@@ -307,7 +307,7 @@ graph LR
     Tickets -.-> Notifications
     Tickets -.-> Teams
     Tickets -.-> Users
-    Users --> AuditLog
+    Users --> Audit
     Users --> Auth
     Users --> Cantina
     Users --> Consent

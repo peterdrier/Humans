@@ -15,7 +15,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using NSubstitute;
 using Humans.Users.Contracts;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.DependencyInjection;
 using System.Security.Claims;
@@ -3066,7 +3066,7 @@ public sealed class CampServiceTests : CampsTestHarness
         saved.Name.Should().Be(name);
         await AuditLog.Received(1).LogAsync(CampsAuditActions.CampHistoricalNameAdded,
             nameof(CampHistoricalName), saved.Id, $"Added historical name '{name}'", TestActorId,
-            relatedEntityId: camp.Id, relatedEntityType: nameof(Camp));
+            targetId: camp.Id, targetType: nameof(Camp));
     }
 
     [HumansTheory]
@@ -3105,7 +3105,7 @@ public sealed class CampServiceTests : CampsTestHarness
         (await CampsDb.CampHistoricalNames.AsNoTracking().AnyAsync(ct)).Should().BeFalse();
         await AuditLog.Received(1).LogAsync(CampsAuditActions.CampHistoricalNameRemoved,
             nameof(CampHistoricalName), name.Id, "Removed historical name 'Old Name'", TestActorId,
-            relatedEntityId: camp.Id, relatedEntityType: nameof(Camp));
+            targetId: camp.Id, targetType: nameof(Camp));
     }
 
     [HumansFact]

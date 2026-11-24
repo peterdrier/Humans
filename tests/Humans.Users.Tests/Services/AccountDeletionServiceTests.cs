@@ -5,7 +5,7 @@ using Humans.Auth.Contracts;
 using Humans.Users.Services;
 using Humans.Users.Tests.Infrastructure;
 using AwesomeAssertions;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Email.Contracts;
 using Humans.Gdpr.Contracts;
 using Humans.Users.Contracts;

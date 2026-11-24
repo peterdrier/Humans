@@ -75,18 +75,18 @@ internal sealed partial class TaskService
 
         foreach (var task in created.Values)
         {
-            await audit.LogAsync(TasksAuditActions.TaskCreated, AuditEntityType, task.Id,
+            await audit.LogAsync(TasksAuditActions.TaskCreated, AuditSubjectType, task.Id,
                 $"Task '{task.Title}' created on {TeamName(task, snapshot)} by bulk load",
-                actorUserId, relatedEntityId: task.OwnerId, relatedEntityType: task.OwnerKind);
+                actorUserId, targetId: task.OwnerId, targetType: task.OwnerKind);
         }
 
         foreach (var plan in ready)
         {
             foreach (var key in DependencyKeys(plan.Source))
             {
-                await audit.LogAsync(TasksAuditActions.TaskDependencyAdded, AuditEntityType, created[plan.Key].Id,
+                await audit.LogAsync(TasksAuditActions.TaskDependencyAdded, AuditSubjectType, created[plan.Key].Id,
                     $"Task '{created[plan.Key].Title}' now waits on '{created[key].Title}'",
-                    actorUserId, relatedEntityId: created[key].Id, relatedEntityType: AuditEntityType);
+                    actorUserId, targetId: created[key].Id, targetType: AuditSubjectType);
             }
         }
 

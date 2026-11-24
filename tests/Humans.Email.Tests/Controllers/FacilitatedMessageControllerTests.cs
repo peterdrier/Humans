@@ -14,7 +14,7 @@ using Microsoft.Extensions.DependencyInjection;
 using System.Reflection;
 using System.Security.Claims;
 using AwesomeAssertions;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Base.Extensions;
 using Humans.Email.Contracts;
 using Humans.Email.Controllers;

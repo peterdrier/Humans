@@ -6,7 +6,7 @@ using Humans.Camps.Contracts;
 using Humans.Teams.Domain;
 using AwesomeAssertions;
 using Humans.Base.Interfaces;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Email.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Base.Enums;

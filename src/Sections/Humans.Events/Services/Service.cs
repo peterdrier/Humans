@@ -1,4 +1,4 @@
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Camps.Contracts;
 using Microsoft.Extensions.Localization;
 using Humans.Events.Services.Dtos;

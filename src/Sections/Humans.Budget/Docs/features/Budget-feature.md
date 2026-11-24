@@ -83,7 +83,7 @@ BudgetYear ("2026", "2027-A", ...)
 - No arbitrary nesting beyond four levels
 - `BudgetYear` supports soft-delete (`IsDeleted`, `DeletedAt`): "deleting" a year archives it instead of removing data, preserving all audit log history. Archived years are hidden from non-admin views but remain visible on the Finance Admin page and in the audit log year filter. They cannot be reactivated; stale status-update submissions leave the current active year and audit history unchanged.
 
-### Budget Audit Log
+### Budget changes
 
 All budget changes are logged:
 - Who made the change
@@ -194,11 +194,11 @@ Outbound invoices to members/barrios:
 ## Implementation Phases
 
 ### V1: Budget Structure & Planning — IMPLEMENTED (PR #50)
-- Data model: BudgetYear, BudgetGroup, BudgetCategory, BudgetLineItem, BudgetAuditLog
+- Data model: BudgetYear, BudgetGroup, BudgetCategory, BudgetLineItem, BudgetChange
 - EF Core migration with HasBudget on Team for department auto-mapping
 - FinanceAdmin role (replaces "Treasurer" in original spec)
 - Budget CRUD at `/Budget/Admin/*` via `BudgetAdminController`
-- Field-level audit trail with old/new values (separate BudgetAuditLog table)
+- Field-level audit trail with old/new values (separate BudgetChange table)
 - Nav link visible to FinanceAdmin + Admin
 - **Exit:** Can recreate 2026 spreadsheet budget in the app
 
@@ -209,7 +209,7 @@ Outbound invoices to members/barrios:
   - Per-category unallocated remainder and progress bar
   - `IsRestricted` groups hidden from coordinator view
   - Authorization uses resource-based auth via `BudgetAuthorizationHandler` + `BudgetOperationRequirement.Edit`, which calls Teams’ `ITeamService.GetEffectiveBudgetCoordinatorTeamIdsAsync` policy directly (includes active child teams)
-  - All changes audit-logged via existing BudgetAuditLog
+  - All changes audit-logged via existing BudgetChange
 - **Public summary** at `/Budget/Summary` (#234):
   - All authenticated members see budget allocation pie chart (Chart.js doughnut)
   - Progress bar showing overall budget utilization

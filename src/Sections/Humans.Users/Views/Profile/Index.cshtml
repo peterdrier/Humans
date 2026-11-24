@@ -58,7 +58,7 @@
             var sentMessageHeaders = $"when:{SharedLocalizer["Common_Date"].Value}"
                                      + $",actor:{SharedLocalizer["Common_Sender"].Value}"
                                      + $",description:{SharedLocalizer["Common_Preview"].Value}";
-            <vc:audit-log entity-type="User" entity-id="@Model.UserId"
+            <vc:audit-log subject-type="User" subject-id="@Model.UserId"
                           actions="FacilitatedMessageSent" limit="50"
                           layout="table" columns="when,actor,description"
                           column-labels="@sentMessageHeaders"

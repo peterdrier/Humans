@@ -1,6 +1,6 @@
 using System.Reflection;
 using AwesomeAssertions;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Base.Enums;
 using Humans.Base.Interfaces;
 using Humans.Google.Contracts;
@@ -176,7 +176,7 @@ public sealed class WorkspaceIdentityServiceTests
         await _audit.Received(1).LogAsync(
             GoogleAuditActions.UserEmailGoogleSet, nameof(User), info.Id,
             "Set Google identity to alice@gmail.com (was alice@example.org)", actor,
-            relatedEntityId: targetRowId, relatedEntityType: nameof(UserEmail));
+            targetId: targetRowId, targetType: nameof(UserEmail));
     }
 
     [HumansFact]

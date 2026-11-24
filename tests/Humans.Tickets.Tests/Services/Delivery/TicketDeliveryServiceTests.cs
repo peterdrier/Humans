@@ -1,6 +1,6 @@
 using AwesomeAssertions;
 using Hangfire;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Base.Configuration;
 using Humans.Email.Contracts;
 using Humans.Settings.Contracts;

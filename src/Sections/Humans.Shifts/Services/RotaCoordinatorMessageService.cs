@@ -1,5 +1,5 @@
 using Humans.Base.Extensions;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Email.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
@@ -145,18 +145,18 @@ internal sealed class RotaCoordinatorMessageService(
     }
 
     private async Task AuditDispatchAsync(
-        AuditActionDefinition action, string entityType, Guid entityId, string description, Guid actorUserId, int requested)
+        AuditActionDefinition action, string subjectType, Guid subjectId, string description, Guid actorUserId, int requested)
     {
         try
         {
-            await auditLogService.LogAsync(action, entityType, entityId, description, actorUserId);
+            await auditLogService.LogAsync(action, subjectType, subjectId, description, actorUserId);
         }
         catch (Exception ex) when (requested > 0)
         {
             // Retrying the dispatch would duplicate email requests already accepted by the outbox.
             logger.LogCritical(ex,
-                "Coordinator message audit failed after {RequestedCount} successful email requests: {Action} on {EntityType} {EntityId}, sender {SenderUserId}",
-                requested, action, entityType, entityId, actorUserId);
+                "Coordinator message audit failed after {RequestedCount} successful email requests: {Action} on {SubjectType} {SubjectId}, sender {SenderUserId}",
+                requested, action, subjectType, subjectId, actorUserId);
         }
     }
 

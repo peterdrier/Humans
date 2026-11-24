@@ -2,7 +2,7 @@ using System.Transactions;
 using Humans.Users.Data;
 using NSubstitute.ExceptionExtensions;
 using AwesomeAssertions;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Users.Contracts;
 using Humans.Users.Services;
 using Humans.Base.Helpers;

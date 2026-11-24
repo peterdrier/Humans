@@ -12,7 +12,7 @@ using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
 using AwesomeAssertions;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Camps.Contracts;
 using Humans.Settings.Contracts;
 using Humans.Store.Contracts;
@@ -473,7 +473,7 @@ public class ServiceTests
             Arg.Any<CancellationToken>());
         await _audit.Received(1).LogAsync(
             StoreAuditActions.StoreOrderYearBackfilled,
-            AuditEntityTypes.Order,
+            StoreAuditSubjectTypes.Order,
             firstOrderId,
             Arg.Any<string>(),
             actorId,
@@ -481,7 +481,7 @@ public class ServiceTests
             Arg.Any<string?>());
         await _audit.Received(1).LogAsync(
             StoreAuditActions.StoreOrderYearBackfilled,
-            AuditEntityTypes.Order,
+            StoreAuditSubjectTypes.Order,
             secondOrderId,
             Arg.Any<string>(),
             actorId,
@@ -534,7 +534,7 @@ public class ServiceTests
         captured.UpdatedAt.Should().Be(_clock.GetCurrentInstant());
 
         await _audit.Received(1).LogAsync(
-            StoreAuditActions.StoreOrderCreated, AuditEntityTypes.Order, orderId,
+            StoreAuditActions.StoreOrderCreated, StoreAuditSubjectTypes.Order, orderId,
             Arg.Any<string>(), actor,
             Arg.Any<Guid?>(), Arg.Any<string?>());
     }
@@ -640,7 +640,7 @@ public class ServiceTests
             Arg.Is<OrderLine>(l => l.OrderId == orderId && l.ProductId == product.Id),
             Arg.Any<CancellationToken>());
         await _audit.Received(1).LogAsync(
-            StoreAuditActions.StoreLineAdded, AuditEntityTypes.OrderLine, Arg.Any<Guid>(),
+            StoreAuditActions.StoreLineAdded, StoreAuditSubjectTypes.OrderLine, Arg.Any<Guid>(),
             Arg.Is<string>(d => d.Contains("past order deadline")), actor,
             Arg.Any<Guid?>(), Arg.Any<string?>());
     }
@@ -672,7 +672,7 @@ public class ServiceTests
         captured.AddedAt.Should().Be(_clock.GetCurrentInstant());
 
         await _audit.Received(1).LogAsync(
-            StoreAuditActions.StoreLineAdded, AuditEntityTypes.OrderLine, captured.Id,
+            StoreAuditActions.StoreLineAdded, StoreAuditSubjectTypes.OrderLine, captured.Id,
             Arg.Any<string>(), actor,
             Arg.Any<Guid?>(), Arg.Any<string?>());
     }
@@ -874,9 +874,9 @@ public class ServiceTests
 
         await _repo.Received(1).RemoveLineAsync(lineId, Arg.Any<CancellationToken>());
         await _audit.Received(1).LogAsync(
-            StoreAuditActions.StoreLineRemoved, AuditEntityTypes.OrderLine, lineId,
+            StoreAuditActions.StoreLineRemoved, StoreAuditSubjectTypes.OrderLine, lineId,
             Arg.Is<string>(d => d.Contains("past order deadline") && d.StartsWith("Removed 3 × 'Ice'", StringComparison.Ordinal)),
-            actor, orderId, AuditEntityTypes.Order);
+            actor, orderId, StoreAuditSubjectTypes.Order);
     }
 
     [HumansFact]
@@ -893,7 +893,7 @@ public class ServiceTests
 
         await _repo.Received(1).RemoveLineAsync(lineId, Arg.Any<CancellationToken>());
         await _audit.Received(1).LogAsync(
-            StoreAuditActions.StoreLineRemoved, AuditEntityTypes.OrderLine, lineId,
+            StoreAuditActions.StoreLineRemoved, StoreAuditSubjectTypes.OrderLine, lineId,
             Arg.Any<string>(), actor,
             Arg.Any<Guid?>(), Arg.Any<string?>());
     }
@@ -971,7 +971,7 @@ public class ServiceTests
 
         await _repo.Received(1).UpdateOrderAsync(order, Arg.Any<CancellationToken>());
         await _audit.Received(1).LogAsync(
-            StoreAuditActions.StoreCounterpartyEdited, AuditEntityTypes.Order, orderId,
+            StoreAuditActions.StoreCounterpartyEdited, StoreAuditSubjectTypes.Order, orderId,
             Arg.Any<string>(), actor,
             Arg.Any<Guid?>(), Arg.Any<string?>());
     }
@@ -1103,7 +1103,7 @@ public class ServiceTests
         captured.UpdatedAt.Should().Be(_clock.GetCurrentInstant());
 
         await _audit.Received(1).LogAsync(
-            StoreAuditActions.StoreProductCreated, AuditEntityTypes.Product, newId,
+            StoreAuditActions.StoreProductCreated, StoreAuditSubjectTypes.Product, newId,
             Arg.Any<string>(), actor,
             Arg.Any<Guid?>(), Arg.Any<string?>());
     }
@@ -1235,7 +1235,7 @@ public class ServiceTests
         captured.CreatedAt.Should().Be(Instant.FromUtc(2026, 1, 1, 0, 0));
 
         await _audit.Received(1).LogAsync(
-            StoreAuditActions.StoreProductUpdated, AuditEntityTypes.Product, existing.Id,
+            StoreAuditActions.StoreProductUpdated, StoreAuditSubjectTypes.Product, existing.Id,
             Arg.Any<string>(), actor,
             Arg.Any<Guid?>(), Arg.Any<string?>());
     }
@@ -1248,7 +1248,7 @@ public class ServiceTests
 
         string? priceDescription = null;
         await _audit.LogAsync(
-            StoreAuditActions.StoreProductPriceChanged, AuditEntityTypes.Product, existing.Id,
+            StoreAuditActions.StoreProductPriceChanged, StoreAuditSubjectTypes.Product, existing.Id,
             Arg.Do<string>(d => priceDescription = d), Arg.Any<Guid>(),
             Arg.Any<Guid?>(), Arg.Any<string?>());
 
@@ -1400,7 +1400,7 @@ public class ServiceTests
         captured.UpdatedAt.Should().Be(_clock.GetCurrentInstant());
 
         await _audit.Received(1).LogAsync(
-            StoreAuditActions.StoreProductDeactivated, AuditEntityTypes.Product, existing.Id,
+            StoreAuditActions.StoreProductDeactivated, StoreAuditSubjectTypes.Product, existing.Id,
             Arg.Any<string>(), actor,
             Arg.Any<Guid?>(), Arg.Any<string?>());
     }
@@ -1431,7 +1431,7 @@ public class ServiceTests
         if (string.Equals(stage, "save", StringComparison.Ordinal))
             _repo.UpdateProductAsync(product, Arg.Any<CancellationToken>()).Returns(Task.FromException(failure));
         if (string.Equals(stage, "audit", StringComparison.Ordinal))
-            _audit.LogAsync(StoreAuditActions.StoreProductDeactivated, AuditEntityTypes.Product, product.Id,
+            _audit.LogAsync(StoreAuditActions.StoreProductDeactivated, StoreAuditSubjectTypes.Product, product.Id,
                 Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<Guid?>(), Arg.Any<string?>())
                 .Returns(Task.FromException(failure));
         var actor = Guid.NewGuid();
@@ -2412,8 +2412,8 @@ public class ServiceTests
                 p.RecordedByUserId == null),
             Arg.Any<CancellationToken>());
         await _audit.Received(1).LogAsync(
-            StoreAuditActions.StorePaymentRecorded, AuditEntityTypes.Payment, Arg.Any<Guid>(),
-            Arg.Any<string>(), "StripeWebhook", orderId, AuditEntityTypes.Order);
+            StoreAuditActions.StorePaymentRecorded, StoreAuditSubjectTypes.Payment, Arg.Any<Guid>(),
+            Arg.Any<string>(), "StripeWebhook", orderId, StoreAuditSubjectTypes.Order);
     }
 
     [HumansFact]
@@ -2474,8 +2474,8 @@ public class ServiceTests
         payment.StripePaymentIntentId.Should().Be("pi_retry");
         payment.AmountEur.Should().Be(42.50m);
         payment.Status.Should().Be(paid ? PaymentStatus.Paid : PaymentStatus.Pending);
-        await _audit.Received(1).LogAsync(StoreAuditActions.StorePaymentRecorded, AuditEntityTypes.Payment,
-            payment.Id, Arg.Any<string>(), "StripeWebhook", orderId, AuditEntityTypes.Order);
+        await _audit.Received(1).LogAsync(StoreAuditActions.StorePaymentRecorded, StoreAuditSubjectTypes.Payment,
+            payment.Id, Arg.Any<string>(), "StripeWebhook", orderId, StoreAuditSubjectTypes.Order);
     }
 
     [HumansFact]
@@ -2512,8 +2512,8 @@ public class ServiceTests
 
         await _repo.Received(1).UpdatePaymentStatusAsync(pending.Id, PaymentStatus.Paid, Arg.Any<CancellationToken>());
         await _audit.Received(1).LogAsync(
-            StoreAuditActions.StorePaymentSettled, AuditEntityTypes.Payment, pending.Id,
-            Arg.Any<string>(), "StripeWebhook", orderId, AuditEntityTypes.Order);
+            StoreAuditActions.StorePaymentSettled, StoreAuditSubjectTypes.Payment, pending.Id,
+            Arg.Any<string>(), "StripeWebhook", orderId, StoreAuditSubjectTypes.Order);
     }
 
     [HumansFact]
@@ -2571,9 +2571,9 @@ public class ServiceTests
         recorded.AmountEur.Should().Be(75m);
         await _repo.Received(1).AddPaymentAsync(Arg.Any<Payment>(), Arg.Any<CancellationToken>());
         await _repo.DidNotReceive().UpdatePaymentStatusAsync(Arg.Any<Guid>(), Arg.Any<PaymentStatus>(), Arg.Any<CancellationToken>());
-        await _audit.Received(1).LogAsync(StoreAuditActions.StorePaymentRecorded, AuditEntityTypes.Payment,
+        await _audit.Received(1).LogAsync(StoreAuditActions.StorePaymentRecorded, StoreAuditSubjectTypes.Payment,
             recorded.Id, Arg.Is<string>(message => status != PaymentStatus.Failed || message.Contains("Failed")),
-            "StripeWebhook", orderId, AuditEntityTypes.Order);
+            "StripeWebhook", orderId, StoreAuditSubjectTypes.Order);
     }
 
     [HumansTheory]
@@ -2646,8 +2646,8 @@ public class ServiceTests
         rows.Should().ContainSingle();
         rows[0].Status.Should().Be(succeeded ? PaymentStatus.Paid : PaymentStatus.Failed);
         rows[0].AmountEur.Should().Be(75m);
-        await _audit.Received(1).LogAsync(StoreAuditActions.StorePaymentRecorded, AuditEntityTypes.Payment,
-            Arg.Any<Guid>(), Arg.Any<string>(), "StripeWebhook", orderId, AuditEntityTypes.Order);
+        await _audit.Received(1).LogAsync(StoreAuditActions.StorePaymentRecorded, StoreAuditSubjectTypes.Payment,
+            Arg.Any<Guid>(), Arg.Any<string>(), "StripeWebhook", orderId, StoreAuditSubjectTypes.Order);
     }
 
     [HumansFact]
@@ -2674,8 +2674,8 @@ public class ServiceTests
 
         await _repo.Received(1).UpdatePaymentStatusAsync(pending.Id, PaymentStatus.Failed, Arg.Any<CancellationToken>());
         await _audit.Received(1).LogAsync(
-            StoreAuditActions.StorePaymentFailed, AuditEntityTypes.Payment, pending.Id,
-            Arg.Any<string>(), "StripeWebhook", orderId, AuditEntityTypes.Order);
+            StoreAuditActions.StorePaymentFailed, StoreAuditSubjectTypes.Payment, pending.Id,
+            Arg.Any<string>(), "StripeWebhook", orderId, StoreAuditSubjectTypes.Order);
     }
 
     [HumansFact]
@@ -2770,8 +2770,8 @@ public class ServiceTests
 
         await _repo.Received(1).DeletePaymentAsync(pending.Id, Arg.Any<CancellationToken>());
         await _audit.Received(1).LogAsync(
-            StoreAuditActions.StorePaymentExpired, AuditEntityTypes.Payment, pending.Id,
-            Arg.Any<string>(), "StripeWebhook", orderId, AuditEntityTypes.Order);
+            StoreAuditActions.StorePaymentExpired, StoreAuditSubjectTypes.Payment, pending.Id,
+            Arg.Any<string>(), "StripeWebhook", orderId, StoreAuditSubjectTypes.Order);
     }
 
     [HumansFact]

@@ -19,7 +19,7 @@ internal sealed class BudgetService(
     ILogger<BudgetService> logger) : IBudgetManagement, IUserDataContributor
 {
     /// <summary>GDPR export JSON key.</summary>
-    internal const string BudgetAuditLog = "BudgetAuditLog";
+    internal const string BudgetChanges = "BudgetChanges";
 
     public async Task<BudgetSaveResult<BudgetGroupDetail>> CreateGroupAsync(
         Guid budgetYearId, string name, bool isRestricted, Guid actorUserId)
@@ -328,7 +328,7 @@ internal sealed class BudgetService(
         // Include audit rows left on accounts merged into this one. Asked with an archived id, the survivor's rows
         // count too.
         var allIds = (await userService.GetUserInfoAsync(userId, ct))?.AllUserIds ?? [userId];
-        var entries = await repository.GetAuditLogEntriesForUserIdsAsync(allIds, ct);
+        var entries = await repository.GetChangesForUserIdsAsync(allIds, ct);
 
         var shaped = entries.Select(bal => new
         {
@@ -338,13 +338,13 @@ internal sealed class BudgetService(
             OccurredAt = bal.OccurredAt.ToIso8601()
         }).ToList();
 
-        return [new UserDataSlice(BudgetAuditLog, shaped)];
+        return [new UserDataSlice(BudgetChanges, shaped)];
     }
 
     private static readonly IReadOnlyDictionary<string, string?> Erasure =
         new Dictionary<string, string?>(StringComparer.Ordinal)
         {
-            [BudgetAuditLog] =
+            [BudgetChanges] =
                 "Retained: append-only accounting audit ledger. Spanish law requires the books " +
                 "and their supporting records be kept 6 years (Código de Comercio Art. 30) and " +
                 "4 years for tax purposes (Ley 58/2003 Art. 66) — GDPR Art. 17(3)(b)."
@@ -520,10 +520,10 @@ internal sealed class BudgetService(
     public Task<Guid?> GetLineItemCategoryIdAsync(Guid id, CancellationToken ct = default) =>
         repository.GetLineItemCategoryIdAsync(id, ct);
 
-    public async Task<IReadOnlyList<BudgetAuditLogSnapshot>> GetAuditLogAsync(Guid? budgetYearId, CancellationToken ct = default)
+    public async Task<IReadOnlyList<BudgetChangeSnapshot>> GetChangesAsync(Guid? budgetYearId, CancellationToken ct = default)
     {
-        var entries = await repository.GetAuditLogAsync(budgetYearId, ct);
-        return entries.Select(e => new BudgetAuditLogSnapshot(
+        var entries = await repository.GetChangesAsync(budgetYearId, ct);
+        return entries.Select(e => new BudgetChangeSnapshot(
             e.EntityType,
             e.FieldName,
             e.OldValue,

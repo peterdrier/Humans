@@ -1,4 +1,4 @@
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Base.Helpers;
 using Humans.Finance.Contracts;
 using Humans.Finance.Data;

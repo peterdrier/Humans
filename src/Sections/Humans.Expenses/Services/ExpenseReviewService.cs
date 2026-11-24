@@ -1,7 +1,7 @@
 using Humans.Base.Authorization;
 using Humans.Permissions.Contracts;
 using Humans.Base.Extensions;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Budget.Contracts;
 using Humans.Email.Contracts;
 using Humans.Preapprovals.Contracts;
@@ -92,7 +92,7 @@ internal sealed class ExpenseReviewService(
 
             await auditLogService.LogAsync(
                 ExpensesAuditActions.ExpenseHoldedRequeued,
-                AuditEntityTypes.Report, reportId,
+                ExpensesAuditSubjectTypes.Report, reportId,
                 "Finance re-queued the Holded push.",
                 actorUserId);
 
@@ -199,7 +199,7 @@ internal sealed class ExpenseReviewService(
 
         await auditLogService.LogAsync(
             ExpensesAuditActions.ExpenseEndorse,
-            AuditEntityTypes.Report, reportId,
+            ExpensesAuditSubjectTypes.Report, reportId,
             (auditReviewerLabel ?? ReviewerLabel(report))
                 + " endorsed expense report." + ExpenseReportService.MaxAmountDetail(maxAmount),
             coordinatorUserId);
@@ -220,7 +220,7 @@ internal sealed class ExpenseReviewService(
 
         await auditLogService.LogAsync(
             ExpensesAuditActions.ExpenseCoordinatorReject,
-            AuditEntityTypes.Report, reportId,
+            ExpensesAuditSubjectTypes.Report, reportId,
             $"{(auditReviewerLabel ?? ReviewerLabel(report))} rejected expense report: {reason}",
             coordinatorUserId);
 
@@ -258,7 +258,7 @@ internal sealed class ExpenseReviewService(
 
         await auditLogService.LogAsync(
             ExpensesAuditActions.ExpenseLineDeclined,
-            AuditEntityTypes.Report, reportId,
+            ExpensesAuditSubjectTypes.Report, reportId,
             $"{(auditReviewerLabel ?? ReviewerLabel(report!))} declined line "
                 + $"\"{line.Description}\" ({line.Amount.ToString("0.00", CultureInfo.InvariantCulture)} EUR): {trimmed}",
             actorUserId);
@@ -290,7 +290,7 @@ internal sealed class ExpenseReviewService(
 
         await auditLogService.LogAsync(
             ExpensesAuditActions.ExpenseLineDeclineUndone,
-            AuditEntityTypes.Report, reportId,
+            ExpensesAuditSubjectTypes.Report, reportId,
             $"{(auditReviewerLabel ?? ReviewerLabel(report!))} undid the decline of line "
                 + $"\"{line.Description}\" ({line.Amount.ToString("0.00", CultureInfo.InvariantCulture)} EUR); "
                 + $"it had been declined: {line.DeclinedReason}",
@@ -312,7 +312,7 @@ internal sealed class ExpenseReviewService(
 
         await auditLogService.LogAsync(
             ExpensesAuditActions.ExpenseReject,
-            AuditEntityTypes.Report, reportId,
+            ExpensesAuditSubjectTypes.Report, reportId,
             $"Finance rejected expense report: {reason}",
             actorUserId);
 
@@ -390,7 +390,7 @@ internal sealed class ExpenseReviewService(
 
             await auditLogService.LogAsync(
                 ExpensesAuditActions.ExpenseApprove,
-                AuditEntityTypes.Report, reportId,
+                ExpensesAuditSubjectTypes.Report, reportId,
                 "Finance approved expense report." + ExpenseReportService.MaxAmountDetail(maxAmount)
                 + (report.PreapprovalGrantId is { } g ? $" Consumed pre-approval {g}." : ""),
                 actorUserId);
@@ -399,7 +399,7 @@ internal sealed class ExpenseReviewService(
             {
                 await auditLogService.LogAsync(
                     ExpensesAuditActions.ExpenseCategoryOverride,
-                    AuditEntityTypes.Report, reportId,
+                    ExpensesAuditSubjectTypes.Report, reportId,
                     $"Account overridden during approval from {report.HoldedAccountNumber} to {overrideBooking.HoldedAccountNumber}"
                     + (overrideBooking.BudgetCategoryId is { } overrideCategory
                         ? $" (budget category {overrideCategory})."

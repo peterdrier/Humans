@@ -1,7 +1,7 @@
 using Humans.Gdpr.Contracts;
 using Humans.Users.Contracts;
 using NodaTime;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Base.Extensions;
 
 namespace Humans.Preapprovals.Services;
@@ -76,9 +76,9 @@ internal sealed partial class PreapprovalService : IUserDataContributor, IUserMe
         foreach (var grantId in dropped)
         {
             await notices.ResolveRequestAsync(grantId, actorUserId, ct);
-            await auditLog.LogAsync(PreapprovalsAuditActions.PreapprovalMergeDroppedApplication, AuditEntityTypes.Grant, grantId,
+            await auditLog.LogAsync(PreapprovalsAuditActions.PreapprovalMergeDroppedApplication, PreapprovalsAuditSubjectTypes.Grant, grantId,
                 $"Duplicate pending application dropped on merge of {mergedFromUserId} into {mergedToUserId}.",
-                actorUserId, relatedEntityId: mergedToUserId, relatedEntityType: AuditSubjectTypes.User);
+                actorUserId, targetId: mergedToUserId, targetType: AuditSubjectTypes.User);
         }
     }
 }

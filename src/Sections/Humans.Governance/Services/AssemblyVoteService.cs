@@ -1,7 +1,7 @@
 using Humans.Governance.Contracts;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Auth.Contracts;
 using Humans.Base.Constants;
 using Humans.Email.Contracts;
@@ -81,7 +81,7 @@ internal sealed class AssemblyVoteService(
         if (viewerIsBoardOrAdmin)
         {
             await audit.LogAsync(
-                GovernanceAuditActions.AssemblyBallotsViewed, AuditEntityTypes.AssemblyVote, voteId,
+                GovernanceAuditActions.AssemblyBallotsViewed, GovernanceAuditSubjectTypes.AssemblyVote, voteId,
                 $"Viewed the individual ballots of assembly vote {voteId} on the results page.",
                 userId);
         }
@@ -159,7 +159,7 @@ internal sealed class AssemblyVoteService(
         }
 
         await audit.LogAsync(
-            GovernanceAuditActions.AssemblyVotePeeked, AuditEntityTypes.AssemblyVote, vote.Id,
+            GovernanceAuditActions.AssemblyVotePeeked, GovernanceAuditSubjectTypes.AssemblyVote, vote.Id,
             $"Peeked at the live tally of open assembly vote {vote.Id}.", adminUserId);
 
         return (await ComputeResultAsync(vote, ct), true);
@@ -176,7 +176,7 @@ internal sealed class AssemblyVoteService(
         if (vote.Status != AssemblyVoteStatus.Closed) return null;
 
         await audit.LogAsync(
-            GovernanceAuditActions.AssemblyBallotsViewed, AuditEntityTypes.AssemblyVote, voteId,
+            GovernanceAuditActions.AssemblyBallotsViewed, GovernanceAuditSubjectTypes.AssemblyVote, voteId,
             $"Listed the individual ballots of assembly vote {voteId}.", actorUserId);
 
         return await DisclosureRowsAsync(voteId, ct);
@@ -313,14 +313,14 @@ internal sealed class AssemblyVoteService(
         foreach (var voteId in rosteredVoteIds)
         {
             await audit.LogAsync(
-                GovernanceAuditActions.AssemblyVoteRosterMerged, AuditEntityTypes.AssemblyVote, voteId,
+                GovernanceAuditActions.AssemblyVoteRosterMerged, GovernanceAuditSubjectTypes.AssemblyVote, voteId,
                 $"Account merge: the merged-away account {mergedFromUserId} was on this "
                 + "vote's roster, and its roster row and any ballot were left as cast. The "
                 + "roster and the ballot record what happened at the vote, so if both "
                 + "accounts voted, that double vote stays visible rather than being tidied "
                 + "away. The merge chain resolves the surviving account to the merged-away "
                 + "id.",
-                actorUserId, voteId, AuditEntityTypes.AssemblyVote);
+                actorUserId, voteId, GovernanceAuditSubjectTypes.AssemblyVote);
         }
     }
 
@@ -361,7 +361,7 @@ internal sealed class AssemblyVoteService(
         await AfterTransitionAsync(
             "auditing the vote opening", vote.Id,
             _ => audit.LogAsync(
-                GovernanceAuditActions.AssemblyVoteOpened, AuditEntityTypes.AssemblyVote, vote.Id,
+                GovernanceAuditActions.AssemblyVoteOpened, GovernanceAuditSubjectTypes.AssemblyVote, vote.Id,
                 $"Opened assembly vote {vote.Id}: {officialCount} official and "
                 + $"{roster.Count - officialCount} indicative roster members.",
                 adminUserId));
@@ -420,7 +420,7 @@ internal sealed class AssemblyVoteService(
         await AfterTransitionAsync(
             "auditing the extension", vote.Id,
             _ => audit.LogAsync(
-                GovernanceAuditActions.AssemblyVoteExtended, AuditEntityTypes.AssemblyVote, vote.Id,
+                GovernanceAuditActions.AssemblyVoteExtended, GovernanceAuditSubjectTypes.AssemblyVote, vote.Id,
                 $"Extended assembly vote {vote.Id} from {previous} to {newClosesAt}.",
                 adminUserId));
 
@@ -466,7 +466,7 @@ internal sealed class AssemblyVoteService(
         await AfterTransitionAsync(
             "auditing the vote cancellation", vote.Id,
             _ => audit.LogAsync(
-                GovernanceAuditActions.AssemblyVoteCancelled, AuditEntityTypes.AssemblyVote, vote.Id,
+                GovernanceAuditActions.AssemblyVoteCancelled, GovernanceAuditSubjectTypes.AssemblyVote, vote.Id,
                 $"Cancelled assembly vote {vote.Id}: {reason}",
                 adminUserId));
 
@@ -982,7 +982,7 @@ internal sealed class AssemblyVoteService(
             // Retry calls collect failures and owe a job audit, including interrupted batches.
             if (failures is not null && notified > 0)
                 await audit.LogAsync(
-                    GovernanceAuditActions.AssemblyVoteOpened, AuditEntityTypes.AssemblyVote, vote.Id,
+                    GovernanceAuditActions.AssemblyVoteOpened, GovernanceAuditSubjectTypes.AssemblyVote, vote.Id,
                     $"Re-sent the opening email for assembly vote {vote.Id} to {notified} roster member(s) "
                     + "the first send never reached.", LapseJobName);
         }
@@ -1225,7 +1225,7 @@ internal sealed class AssemblyVoteService(
             {
                 // The count actually delivered: a send that threw is unstamped and retried.
                 await audit.LogAsync(
-                    GovernanceAuditActions.AssemblyVoteRemindersSent, AuditEntityTypes.AssemblyVote, vote.Id,
+                    GovernanceAuditActions.AssemblyVoteRemindersSent, GovernanceAuditSubjectTypes.AssemblyVote, vote.Id,
                     $"Sent the closing reminder for assembly vote {vote.Id} to {reminded.Count} roster member(s).",
                     LapseJobName);
             }
@@ -1378,7 +1378,7 @@ internal sealed class AssemblyVoteService(
         // never the ballot — audit rows outlive erasure, so a ballot id would re-link the person.
         await audit.LogAsync(
             ballot.Revision == 1 ? GovernanceAuditActions.AssemblyBallotCast : GovernanceAuditActions.AssemblyBallotChanged,
-            AuditEntityTypes.AssemblyVote,
+            GovernanceAuditSubjectTypes.AssemblyVote,
             voteId,
             ballot.Revision == 1
                 ? $"Cast a ballot on assembly vote {voteId} (revision {ballot.Revision})."
@@ -1783,11 +1783,11 @@ internal sealed class AssemblyVoteService(
 
         if (closedByUserId is { } actor)
         {
-            await audit.LogAsync(action, AuditEntityTypes.AssemblyVote, vote.Id, description, actor);
+            await audit.LogAsync(action, GovernanceAuditSubjectTypes.AssemblyVote, vote.Id, description, actor);
         }
         else
         {
-            await audit.LogAsync(action, AuditEntityTypes.AssemblyVote, vote.Id, description, LapseJobName);
+            await audit.LogAsync(action, GovernanceAuditSubjectTypes.AssemblyVote, vote.Id, description, LapseJobName);
         }
 
         await StoreResultAsync(vote, ct);

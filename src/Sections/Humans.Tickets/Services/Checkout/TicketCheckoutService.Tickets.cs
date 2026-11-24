@@ -122,7 +122,7 @@ internal sealed partial class TicketCheckoutService
         await TimelineAsync(ticket.OrderId, TicketCheckoutOrderEventKind.ResaleOffered,
             $"Ticket {ticket.Barcode} put up for resale; {FormatMinor(offer.RefundOwedMinor)} owed if it sells" +
             (dependents.Count > 0 ? $", with {dependents.Count} child ticket(s)" : string.Empty), userId, ct);
-        await auditLog.LogAsync(TicketsAuditActions.TicketResaleOffered, AuditEntityType, ticket.OrderId,
+        await auditLog.LogAsync(TicketsAuditActions.TicketResaleOffered, AuditSubjectType, ticket.OrderId,
             $"Ticket {ticket.Barcode} offered for resale", userId);
         return CheckoutMutationResult.Ok;
     }
@@ -142,7 +142,7 @@ internal sealed partial class TicketCheckoutService
         await repository.UpdateTicketAsync(ticket, ct);
         await TimelineAsync(ticket.OrderId, TicketCheckoutOrderEventKind.ResaleWithdrawn,
             $"Ticket {ticket.Barcode} taken back out of the resale queue", userId, ct);
-        await auditLog.LogAsync(TicketsAuditActions.TicketResaleWithdrawn, AuditEntityType, ticket.OrderId,
+        await auditLog.LogAsync(TicketsAuditActions.TicketResaleWithdrawn, AuditSubjectType, ticket.OrderId,
             $"Ticket {ticket.Barcode} withdrawn from resale", userId);
         return CheckoutMutationResult.Ok;
     }
@@ -390,7 +390,7 @@ internal sealed partial class TicketCheckoutService
     private async Task NeedsAttentionAsync(Guid orderId, string detail, CancellationToken ct)
     {
         await TimelineAsync(orderId, TicketCheckoutOrderEventKind.TicketsIssued, detail, null, ct);
-        await auditLog.LogAsync(TicketsAuditActions.TicketCheckoutNeedsAttention, AuditEntityType, orderId, detail, JobName);
+        await auditLog.LogAsync(TicketsAuditActions.TicketCheckoutNeedsAttention, AuditSubjectType, orderId, detail, JobName);
     }
 
     private async Task CompleteResaleAsync(Guid offerId, TicketCheckoutOrder buyerOrder, CancellationToken ct)
@@ -501,7 +501,7 @@ internal sealed partial class TicketCheckoutService
             FailureReason = Truncate(failureReason),
             CreatedAt = clock.GetCurrentInstant(),
         }, ct);
-        await auditLog.LogAsync(TicketsAuditActions.TicketCheckoutNeedsAttention, AuditEntityType, old.OrderId, detail, JobName);
+        await auditLog.LogAsync(TicketsAuditActions.TicketCheckoutNeedsAttention, AuditSubjectType, old.OrderId, detail, JobName);
         await TimelineAsync(old.OrderId, TicketCheckoutOrderEventKind.RefundSettled, detail, null, ct);
         offer.RefundId = offer.Id;
         await repository.UpdateOfferAsync(offer, ct);
@@ -567,7 +567,7 @@ internal sealed partial class TicketCheckoutService
                 }
             }
             if (started + heldBack > 0)
-                await auditLog.LogAsync(TicketsAuditActions.TicketResaleRefundBatch, TicketingSettingsAuditEntityType, ticketing.Id,
+                await auditLog.LogAsync(TicketsAuditActions.TicketResaleRefundBatch, TicketingSettingsAuditSubjectType, ticketing.Id,
                     $"Evening resale refund batch: {started} refund(s) started, {FormatMinor(startedMinor)} in total; " +
                     $"{heldBack} held back because the buyer's order was refunded or charged back; " +
                     $"{waiting} left for a later batch", JobName);

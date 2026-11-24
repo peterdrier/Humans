@@ -266,4 +266,4 @@ await emailService.SendAsync(emailMessages.WorkspaceCredentials(
 - [Email Management](../../../Humans.Users/Docs/features/preferred-email.md) — UserEmail entity, notification target, Google service email (US-11.7 cross-references this feature)
 - [Google](google-integration.md) — Shared Drives and Groups (separate from user account provisioning)
 - [Email Outbox](../../../Humans.Email/Docs/features/email-outbox.md) — Delivery mechanism for the credentials email
-- [Audit Log](../../../Humans.AuditLog/Docs/features/audit-log.md) — WorkspaceAccountProvisioned action
+- [Audit Log](../../../Humans.Audit/Docs/features/audit-log.md) — WorkspaceAccountProvisioned action

@@ -1,0 +1,74 @@
+@inject Microsoft.Extensions.Localization.IStringLocalizer<AuditResource> Localizer
+@model Humans.Audit.Contracts.AuditEntry
+
+@{
+    var render = Model.RenderStructured();
+    var actorIsPerson = Model.ActorUserId.HasValue && Model.PersonUserId.HasValue
+        && Model.ActorUserId.Value == Model.PersonUserId.Value;
+}
+
+<div class="d-flex align-items-baseline gap-1 small flex-wrap">
+    <span class="text-muted text-nowrap">@Model.OccurredAt.ToInvariantTimestamp()</span>
+    <span class="text-muted">—</span>
+    @if (render.Verb != null)
+    {
+        @if (Model.ActorUserId.HasValue)
+        {
+            <vc:human user-id="@Model.ActorUserId.Value" />
+        }
+        else
+        {
+            <span class="text-muted">@Model.ToSystemActorLabel(Localizer)</span>
+        }
+
+        @* Use a separate translated form when the subject is suppressed. *@
+        var noVisiblePerson = actorIsPerson || !Model.PersonUserId.HasValue;
+        var displayVerb = Model.Action.ToLocalizedAuditVerb(noVisiblePerson, Localizer);
+        <span>@displayVerb</span>
+
+        @if (Model.PersonUserId.HasValue && !actorIsPerson)
+        {
+            <vc:human user-id="@Model.PersonUserId.Value" />
+        }
+
+        @if (Model.TeamId.HasValue && !string.IsNullOrEmpty(Model.TeamName))
+        {
+            <span class="text-muted">@Localizer["Audit_InTeam"]</span>
+            <a asp-controller="Team" asp-action="Details" asp-route-slug="@Model.TeamSlug" class="text-decoration-none">@Model.TeamName</a>
+        }
+
+        @* Tail descriptions (ShiftSignup*); sentence-style (Team*, Role*, Member*) would be redundant. *@
+        @if (render.ShouldRenderDescriptionTail)
+        {
+            <span class="text-muted">— @Model.Description</span>
+        }
+    }
+    else
+    {
+        @* Unmapped: actor · ActionName · subject · in team · "description". *@
+        @if (Model.ActorUserId.HasValue)
+        {
+            <vc:human user-id="@Model.ActorUserId.Value" />
+        }
+        else
+        {
+            <span class="text-muted">@Model.ToSystemActorLabel(Localizer)</span>
+        }
+        <span class="text-muted">·</span>
+        <span>@Model.Action.ToAuditBadgeLabel(Localizer)</span>
+        @if (Model.PersonUserId.HasValue && !actorIsPerson)
+        {
+            <span class="text-muted">·</span>
+            <vc:human user-id="@Model.PersonUserId.Value" />
+        }
+        @if (Model.TeamId.HasValue && !string.IsNullOrEmpty(Model.TeamName))
+        {
+            <span class="text-muted">@Localizer["Audit_InTeam"]</span>
+            <a asp-controller="Team" asp-action="Details" asp-route-slug="@Model.TeamSlug" class="text-decoration-none">@Model.TeamName</a>
+        }
+        @if (!string.IsNullOrWhiteSpace(Model.Description))
+        {
+            <span class="text-muted">— @Model.Description</span>
+        }
+    }
+</div>

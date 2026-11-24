@@ -10,7 +10,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging;
 using AwesomeAssertions;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Camps.Contracts;
 using Humans.Holded.Contracts;
 using Humans.Settings.Contracts;
@@ -252,9 +252,9 @@ public class ServiceIssueInvoiceTests
 
         savedInvoice.Should().NotBeNull();
         await _audit.Received(1).LogAsync(
-            StoreAuditActions.StoreInvoiceIssued, AuditEntityTypes.Invoice, savedInvoice!.Id,
+            StoreAuditActions.StoreInvoiceIssued, StoreAuditSubjectTypes.Invoice, savedInvoice!.Id,
             Arg.Any<string>(), _actor,
-            order.Id, AuditEntityTypes.Order);
+            order.Id, StoreAuditSubjectTypes.Order);
     }
 
     [HumansFact]

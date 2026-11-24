@@ -1,6 +1,6 @@
 using Humans.Base.Caching;
 using AwesomeAssertions;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Budget.Contracts;
 using Humans.Expenses.Contracts;
 using Humans.Finance.Contracts;

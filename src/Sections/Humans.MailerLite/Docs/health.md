@@ -42,7 +42,7 @@ no UI. Nothing outside the section asks MailerLite anything.
 The layout those shapes imply:
 
 - **No cross-section surface.** The section is a leaf: it consumes Users, Tickets, Shifts,
-  AuditLog and the GDPR fan-out, and nothing calls into it. Its only public types are the ones
+  Audit and the GDPR fan-out, and nothing calls into it. Its only public types are the ones
   the host discovers by convention (the `Section` entry point and its siblings).
 - **One port to the remote** — `IMailerLiteService` / `MailerLiteClient`: paged reads held in a
   Singleton snapshot, and exactly the writes shapes 5 and 6 need. Every list write is refused

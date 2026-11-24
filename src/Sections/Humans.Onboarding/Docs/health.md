@@ -22,7 +22,7 @@ It also gives the people who never get a profile — ticket holders, imported ne
 contacts — a page meant for them to land on.
 
 The section stores nothing. Every fact it reads and every change it makes belongs to Users,
-Consent, Teams, Shifts, Settings, Email, Notifications or AuditLog.
+Consent, Teams, Shifts, Settings, Email, Notifications or Audit.
 
 ## 2. The shapes
 
@@ -147,7 +147,7 @@ Base's.
 
 ## Load-bearing weirdness
 
-- **`AuditEntityTypes.Profile` is a literal, not `nameof`.** The entity belongs to Users and
+- **`OnboardingAuditSubjectTypes.Profile` is a literal, not `nameof`.** The entity belongs to Users and
   the string is persisted; `nameof` across the boundary would break on a rename that nobody
   editing this section would see.
 - **`OnboardingResource` is `public` while everything else in the section is `internal`.**

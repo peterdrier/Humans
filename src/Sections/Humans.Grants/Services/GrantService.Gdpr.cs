@@ -1,7 +1,7 @@
 using Humans.Gdpr.Contracts;
 using Humans.Users.Contracts;
 using NodaTime;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Base.Extensions;
 
 namespace Humans.Grants.Services;
@@ -72,8 +72,8 @@ internal sealed partial class GrantService : IUserDataContributor, IUserMerge
     {
         var revoked = await repository.ReassignToUserAsync(mergedFromUserId, mergedToUserId, actorUserId, now, ct);
         foreach (var grantId in revoked)
-            await auditLog.LogAsync(GrantsAuditActions.GrantRevoked, AuditEntityTypes.Grant, grantId,
+            await auditLog.LogAsync(GrantsAuditActions.GrantRevoked, GrantsAuditSubjectTypes.Grant, grantId,
                 $"Duplicate grant revoked on merge of {mergedFromUserId} into {mergedToUserId}.",
-                actorUserId, relatedEntityId: mergedToUserId, relatedEntityType: AuditSubjectTypes.User);
+                actorUserId, targetId: mergedToUserId, targetType: AuditSubjectTypes.User);
     }
 }

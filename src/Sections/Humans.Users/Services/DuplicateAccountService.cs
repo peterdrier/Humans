@@ -1,5 +1,5 @@
 using Humans.Governance.Contracts;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Auth.Contracts;
 using Humans.Base.Helpers;
 using Humans.Teams.Contracts;
@@ -149,16 +149,16 @@ internal sealed class DuplicateAccountService(
             var low = ids[0];
             var high = ids[1];
             var flagged = await auditViewer.GetFilteredAsync(
-                entityType: AuditSubjectTypes.User, entityId: low, userId: null,
+                subjectType: AuditSubjectTypes.User, subjectId: low, userId: null,
                 actions: [UsersAuditActions.DuplicateAccountFlagged.Name], limit: 100, ct: ct);
-            if (flagged.Any(e => e.RelatedEntityId == high))
+            if (flagged.Any(e => e.TargetId == high))
                 continue;
 
             await auditLogService.LogAsync(
                 UsersAuditActions.DuplicateAccountFlagged, AuditSubjectTypes.User, low,
                 $"Flagged as a duplicate-account candidate: shares an email address with {high}.",
                 ScanJobName,
-                relatedEntityId: high, relatedEntityType: AuditSubjectTypes.User);
+                targetId: high, targetType: AuditSubjectTypes.User);
         }
     }
 

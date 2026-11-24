@@ -1,9 +1,10 @@
+using Humans.AuditLog.Data;
 using Humans.Users.Services;
 using Humans.Email.Contracts;
 using Humans.Governance.Contracts;
 using Humans.Auth.Data;
 using Humans.Auth.Domain;
-using Humans.AuditLog.Data;
+using Humans.Audit.Data;
 using Humans.Teams.Data;
 using Humans.Notifications.Data;
 using Humans.Consent.Data;
@@ -119,7 +120,7 @@ public class AcceptAsyncFullFixtureTest(HumansTestDatabase database)
 
             // Append-only, as is the consent record below; chain-follow at read time.
             budgetYearId = builder.SeedBudgetYearNow($"BY-{runTag}".Substring(0, 6));
-            builder.WithSourceBudgetAuditLog(budgetYearId, budgetDescription);
+            builder.WithSourceBudgetChange(budgetYearId, budgetDescription);
 
             documentVersionId = builder.SeedDocumentVersionNow($"Doc-{runTag}".Substring(0, 16));
             builder.WithSourceConsentRecord(documentVersionId);
@@ -208,7 +209,7 @@ public class AcceptAsyncFullFixtureTest(HumansTestDatabase database)
             .Should().Be(1, "audit log is append-only — source row stays for chain-follow");
         (await legalDb.ConsentRecords.AsNoTracking().CountAsync(c => c.UserId == sourceId, TestContext.Current.CancellationToken))
             .Should().BeGreaterThan(0, "consent records are append-only — source rows stay for chain-follow");
-        (await budgetDb.BudgetAuditLogs.AsNoTracking()
+        (await budgetDb.BudgetChanges.AsNoTracking()
                 .CountAsync(b => b.Description == budgetDescription && b.ActorUserId == sourceId, TestContext.Current.CancellationToken))
             .Should().Be(1, "budget audit log is append-only — source row stays for chain-follow");
 

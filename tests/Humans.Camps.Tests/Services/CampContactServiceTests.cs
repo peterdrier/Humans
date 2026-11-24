@@ -1,7 +1,7 @@
 using System.Globalization;
 using System.Resources;
 using AwesomeAssertions;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Base.Extensions;
 using Humans.Email.Contracts;
 using Humans.Users.Contracts;

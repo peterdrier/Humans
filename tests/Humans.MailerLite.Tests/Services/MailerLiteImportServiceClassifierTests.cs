@@ -1,7 +1,7 @@
 using Humans.Email.Contracts;
 using NSubstitute.ExceptionExtensions;
 using AwesomeAssertions;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.MailerLite.Services.Dtos;
 using Humans.MailerLite.Data;
 using Humans.MailerLite.Domain;

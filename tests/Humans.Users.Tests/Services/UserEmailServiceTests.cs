@@ -4,7 +4,7 @@ using Humans.Base.Extensions;
 using Humans.Email.Contracts;
 using Microsoft.Extensions.Options;
 using Humans.Users.Data;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Users.Contracts;
 using Humans.Base.Helpers;
 using Microsoft.AspNetCore.DataProtection;
@@ -1618,7 +1618,7 @@ public class UserEmailServiceTests
         if (result.Succeeded)
             await _auditLogService.Received(1).LogAsync(UsersAuditActions.UserEmailUnlinked,
                 nameof(User), userId, Arg.Is<string>(message => message.Contains("orphan Google")), actorId,
-                relatedEntityId: null, relatedEntityType: null);
+                targetId: null, targetType: null);
         else
             await _auditLogService.DidNotReceive().LogAsync(
                 Arg.Any<AuditActionDefinition>(), Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<string>(),

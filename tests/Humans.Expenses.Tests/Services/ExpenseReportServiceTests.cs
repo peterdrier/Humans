@@ -25,7 +25,7 @@ using Humans.Expenses.Services;
 using Humans.Expenses.Services.Dtos;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Localization;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Base.Enums;
 using Humans.Email.Contracts;
 using Humans.Expenses.Tests.Infrastructure;
@@ -1334,7 +1334,7 @@ public sealed partial class ExpenseReportServiceTests
         loaded.Lines.Single().Attachment!.OriginalFileName.Should().Be("receipt.pdf");
         await _auditLog.Received(1).LogAsync(
             ExpensesAuditActions.ExpenseEditedOnBehalf,
-            AuditEntityTypes.Report, id,
+            ExpensesAuditSubjectTypes.Report, id,
             Arg.Is<string>(description => description.StartsWith("Added line")),
             admin,
             member,
@@ -1426,7 +1426,7 @@ public sealed partial class ExpenseReportServiceTests
         loaded.Total.Should().Be(40m);
         loaded.Lines.Single().AttachmentId.HasValue.Should().Be(withFile);
         await _auditLog.Received(1).LogAsync(
-            ExpensesAuditActions.ExpenseEditedOnBehalf, AuditEntityTypes.Report, id,
+            ExpensesAuditActions.ExpenseEditedOnBehalf, ExpensesAuditSubjectTypes.Report, id,
             Arg.Is<string>(description => description.Contains(member.ToString())),
             admin, member, AuditSubjectTypes.User);
     }
@@ -1452,7 +1452,7 @@ public sealed partial class ExpenseReportServiceTests
         result.Succeeded.Should().BeTrue();
         (await _sut.GetAsync(id, ct))!.Lines.Should().BeEmpty();
         await _auditLog.Received(1).LogAsync(
-            ExpensesAuditActions.ExpenseEditedOnBehalf, AuditEntityTypes.Report, id,
+            ExpensesAuditActions.ExpenseEditedOnBehalf, ExpensesAuditSubjectTypes.Report, id,
             Arg.Is<string>(description => description.Contains(member.ToString())),
             admin, member, AuditSubjectTypes.User);
         await _fileStorage.Received(1).DeleteAsync(
@@ -2243,7 +2243,7 @@ public sealed partial class ExpenseReportServiceTests
         result.MessageKey.Should().Be("Expenses_Iban_Saved");
         await _auditLog.Received(1).LogAsync(
             ExpensesAuditActions.IbanSet,
-            AuditEntityTypes.Profile,
+            ExpensesAuditSubjectTypes.Profile,
             submitter,
             "IBAN set",
             submitter,
@@ -2289,7 +2289,7 @@ public sealed partial class ExpenseReportServiceTests
         // the report and the actor is the admin, so without it the row never reaches its subject.
         await _auditLog.Received(1).LogAsync(
             ExpensesAuditActions.ExpenseCreatedOnBehalf,
-            AuditEntityTypes.Report, id,
+            ExpensesAuditSubjectTypes.Report, id,
             Arg.Is<string>(d => d.Contains("Dani Member")),
             admin,
             member,
@@ -2396,7 +2396,7 @@ public sealed partial class ExpenseReportServiceTests
 
         await _auditLog.Received(4).LogAsync(
             ExpensesAuditActions.ExpenseEditedOnBehalf,
-            AuditEntityTypes.Report, id,
+            ExpensesAuditSubjectTypes.Report, id,
             Arg.Is<string>(d => d.Contains("Dani Member")),
             admin,
             member,
@@ -2423,7 +2423,7 @@ public sealed partial class ExpenseReportServiceTests
 
         await _auditLog.Received(1).LogAsync(
             ExpensesAuditActions.ExpenseEditedOnBehalf,
-            AuditEntityTypes.Report, id,
+            ExpensesAuditSubjectTypes.Report, id,
             Arg.Is<string>(d => d.StartsWith(expectedOpener)),
             admin,
             member,
@@ -2522,7 +2522,7 @@ public sealed partial class ExpenseReportServiceTests
         // only thing tying the row carrying Dani's raw IBAN to Dani's own GDPR export.
         await _auditLog.Received(1).LogAsync(
             ExpensesAuditActions.IbanSet,
-            AuditEntityTypes.Profile,
+            ExpensesAuditSubjectTypes.Profile,
             member,
             "IBAN set for Dani Member to ES9121000418450200051332",
             admin,
@@ -3014,7 +3014,7 @@ public sealed partial class ExpenseReportServiceTests
                 : inner.GetLatestOutboxForReportAsync(reportId, call.Arg<CancellationToken>());
         });
         if (string.Equals(failureStage, "audit", StringComparison.Ordinal))
-            _auditLog.LogAsync(ExpensesAuditActions.ExpenseApprove, AuditEntityTypes.Report, reportId, Arg.Any<string>(), actor)
+            _auditLog.LogAsync(ExpensesAuditActions.ExpenseApprove, ExpensesAuditSubjectTypes.Report, reportId, Arg.Any<string>(), actor)
                 .Returns(Task.FromException(failure));
         var service = new ExpenseReportService(repository, _fileStorage, _budgetService, _userService, _auditLog, Substitute.For<IAuditViewerService>(), _holdedService, _finance, _financeWrite, _preapprovals, _preapprovalWrites, _clock, NullLogger<ExpenseReportService>.Instance, Options.Create(new TravelReimbursementConfig()));
         var serviceReview = new ExpenseReviewService(repository, service, _budgetService, _permissions, _userService, _emailService, TestExpensesEmails.Create(), _auditLog, _preapprovals, _preapprovalWrites, _clock, NullLogger<ExpenseReviewService>.Instance);

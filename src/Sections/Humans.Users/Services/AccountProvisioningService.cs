@@ -1,5 +1,5 @@
 using System.Transactions;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Users.Data.Repositories;
 using Humans.Users.Contracts;
 using Humans.Users.Data;
@@ -51,7 +51,7 @@ internal sealed class AccountProvisioningService(
             await AuditProvisioningAsync(provisioned.Result, provisioned.ProfileBackfilled, email, source);
             await auditLogService.LogAsync(UsersAuditActions.UserEmailDeleted, AuditSubjectTypes.UserEmail, emailId,
                 $"Replaced unverified email {email} with verified import account {provisioned.Result.UserId} from {source}",
-                nameof(AccountProvisioningService), relatedEntityId: userId, relatedEntityType: AuditSubjectTypes.User);
+                nameof(AccountProvisioningService), targetId: userId, targetType: AuditSubjectTypes.User);
             return provisioned.Result;
         }
         finally

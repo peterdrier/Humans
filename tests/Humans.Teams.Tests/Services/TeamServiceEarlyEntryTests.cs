@@ -2,7 +2,7 @@ using Humans.Roles.Contracts;
 using Humans.Users.Contracts;
 using Humans.Settings.Contracts;
 using AwesomeAssertions;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Auth.Contracts;
 using Humans.Google.Contracts;
 using Humans.Notifications.Contracts;

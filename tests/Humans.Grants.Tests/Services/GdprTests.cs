@@ -1,6 +1,6 @@
 using System.Transactions;
 using AwesomeAssertions;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Gdpr.Contracts;
 using Humans.Grants.Services;
 using Humans.Grants.Data;
@@ -219,7 +219,7 @@ public sealed class GdprTests : GrantsTestHarness
         var revoked = grants.Single(g => g.Id == duplicate.Id);
         revoked.RevokedAt.Should().NotBeNull();
         revoked.RevokedByUserId.Should().Be(actor);
-        await AuditLog.Received(1).LogAsync(GrantsAuditActions.GrantRevoked, AuditEntityTypes.Grant, duplicate.Id,
+        await AuditLog.Received(1).LogAsync(GrantsAuditActions.GrantRevoked, GrantsAuditSubjectTypes.Grant, duplicate.Id,
             Arg.Any<string>(), actor, to, AuditSubjectTypes.User);
     }
 }

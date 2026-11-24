@@ -1,4 +1,4 @@
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Gdpr.Contracts;
 using Humans.Google.Contracts;
 using Humans.Google.Domain;
@@ -68,7 +68,7 @@ internal sealed class WorkspaceIdentityService(
                 ? $"Set Google identity to {target.Email}"
                 : $"Set Google identity to {target.Email} (was {previous})",
             actorUserId,
-            relatedEntityId: target.Id, relatedEntityType: AuditSubjectTypes.UserEmail);
+            targetId: target.Id, targetType: AuditSubjectTypes.UserEmail);
         return true;
     }
 

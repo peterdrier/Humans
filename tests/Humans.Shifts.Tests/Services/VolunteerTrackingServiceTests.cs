@@ -1,7 +1,7 @@
 using Humans.Shifts.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Shifts.Domain;
 using AwesomeAssertions;
 using Humans.Settings.Contracts;

@@ -1,4 +1,4 @@
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Tickets.Contracts;
 using Humans.Tickets.Domain.Checkout;
 
@@ -79,10 +79,10 @@ internal sealed partial class TicketCheckoutService
         var description = (overridden ? "Override: " : string.Empty) + $"Ticket {ticket.Barcode} {what}" +
             (samePerson ? string.Empty : $" (from user {fromUserId?.ToString() ?? "none"} to user {holderUserId})") + $": {why}";
         var action = overridden ? TicketsAuditActions.TicketOverride : TicketsAuditActions.TicketCheckoutTicketRenamed;
-        await auditLog.LogAsync(action, AuditEntityType, ticket.OrderId,
+        await auditLog.LogAsync(action, AuditSubjectType, ticket.OrderId,
             description, actorUserId, holderUserId, AuditSubjectTypes.User);
         if (!samePerson && fromUserId is { } previous)
-            await auditLog.LogAsync(action, AuditEntityType, ticket.OrderId,
+            await auditLog.LogAsync(action, AuditSubjectType, ticket.OrderId,
                 description, actorUserId, previous, AuditSubjectTypes.User);
         await TellDeliveryAsync(d => d.TicketRenamedAsync(ticket.Id, ct), ticket.Id);
         return CheckoutMutationResult.Ok;
@@ -119,7 +119,7 @@ internal sealed partial class TicketCheckoutService
 
         var dependents = await VoidWithDependentsAsync(ticket, offer, why, actorUserId,
             refundMinor > 0 ? $"; {FormatMinor(refundMinor)} refunded" : "; no refund: no money goes back", ct);
-        await auditLog.LogAsync(TicketsAuditActions.TicketCheckoutTicketVoided, AuditEntityType, ticket.OrderId,
+        await auditLog.LogAsync(TicketsAuditActions.TicketCheckoutTicketVoided, AuditSubjectType, ticket.OrderId,
             $"Ticket {ticket.Barcode} voided" + (dependents > 0 ? $" with {dependents} dependent ticket(s)" : string.Empty) +
             (offer is not null ? ", withdrawing its resale offer" : string.Empty) +
             (refundMinor > 0 ? $", refunding {FormatMinor(refundMinor)}" : ", with no refund") + $": {why}",
@@ -185,7 +185,7 @@ internal sealed partial class TicketCheckoutService
             holdings.InvalidateHoldings(holderId);
         await TimelineAsync(ticket.OrderId, TicketCheckoutOrderEventKind.Restored,
             $"Ticket {ticket.Barcode} restored by an override: {why} (it was voided: {wasVoided})", actorUserId, ct);
-        await auditLog.LogAsync(TicketsAuditActions.TicketOverride, AuditEntityType, ticket.OrderId,
+        await auditLog.LogAsync(TicketsAuditActions.TicketOverride, AuditSubjectType, ticket.OrderId,
             $"Override: ticket {ticket.Barcode} restored after it was voided ({wasVoided}): {why}",
             actorUserId, ticket.HolderUserId, ticket.HolderUserId is null ? null : AuditSubjectTypes.User);
         return CheckoutMutationResult.Ok;
@@ -299,7 +299,7 @@ internal sealed partial class TicketCheckoutService
         await TimelineAsync(parent.OrderId, TicketCheckoutOrderEventKind.CompanionIssued,
             $"Free companion ticket {companion.Barcode} attached to ticket {parent.Barcode}", actorUserId, ct);
         var overridden = overCapacity && overrideCapacity;
-        await auditLog.LogAsync(overridden ? TicketsAuditActions.TicketOverride : TicketsAuditActions.TicketCompanionIssued, AuditEntityType, order.Id,
+        await auditLog.LogAsync(overridden ? TicketsAuditActions.TicketOverride : TicketsAuditActions.TicketCompanionIssued, AuditSubjectType, order.Id,
             (overridden ? "Override: past capacity, c" : "C") + $"ompanion ticket {companion.Barcode} issued for ticket {parent.Barcode}: {why}",
             actorUserId, parentHolderId, AuditSubjectTypes.User);
         await HandOffToDeliveryAsync(order.Id, ct);

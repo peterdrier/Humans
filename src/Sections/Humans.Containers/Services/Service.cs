@@ -1,6 +1,6 @@
 using System.Text.Json;
 using Humans.Base.Interfaces;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Camps.Contracts;
 using Humans.Containers.Contracts;
 using Humans.Containers.Data;
@@ -69,10 +69,10 @@ internal sealed class Service(
         }
 
         await auditLog.LogAsync(
-            ContainersAuditActions.ContainerCreated, AuditEntityTypes.Container, created.Id,
+            ContainersAuditActions.ContainerCreated, ContainersAuditSubjectTypes.Container, created.Id,
             $"Created container '{created.Name}'",
             actorUserId,
-            relatedEntityId: created.CampId, relatedEntityType: AuditEntityTypes.Camp);
+            targetId: created.CampId, targetType: ContainersAuditSubjectTypes.Camp);
         return new(ToDto(created, await repo.GetImagesAsync([id], CancellationToken.None)));
     }
 
@@ -119,10 +119,10 @@ internal sealed class Service(
         {
             var updated = await repo.UpdateAsync(container, images, removed.Select(i => i.Id).ToList(), ct);
             await auditLog.LogAsync(
-                ContainersAuditActions.ContainerUpdated, AuditEntityTypes.Container, updated.Id,
+                ContainersAuditActions.ContainerUpdated, ContainersAuditSubjectTypes.Container, updated.Id,
                 $"Updated container '{updated.Name}'",
                 actorUserId,
-                relatedEntityId: updated.CampId, relatedEntityType: AuditEntityTypes.Camp);
+                targetId: updated.CampId, targetType: ContainersAuditSubjectTypes.Camp);
             return new(ToDto(updated, await repo.GetImagesAsync([id], CancellationToken.None)));
         }
         finally
@@ -145,10 +145,10 @@ internal sealed class Service(
         {
             deletedPaths = await repo.DeleteAsync(id, ct);
             await auditLog.LogAsync(
-                ContainersAuditActions.ContainerDeleted, AuditEntityTypes.Container, container.Id,
+                ContainersAuditActions.ContainerDeleted, ContainersAuditSubjectTypes.Container, container.Id,
                 $"Deleted container '{container.Name}'",
                 actorUserId,
-                relatedEntityId: container.CampId, relatedEntityType: AuditEntityTypes.Camp);
+                targetId: container.CampId, targetType: ContainersAuditSubjectTypes.Camp);
         }
         finally
         {
@@ -209,10 +209,10 @@ internal sealed class Service(
         var placement = await repo.SavePlacementGeometryAsync(
             containerId, year, geoJson, clock.GetCurrentInstant(), ct);
         await auditLog.LogAsync(
-            ContainersAuditActions.ContainerPlacementSaved, AuditEntityTypes.ContainerPlacement, containerId,
+            ContainersAuditActions.ContainerPlacementSaved, ContainersAuditSubjectTypes.ContainerPlacement, containerId,
             $"Placed container on map for {year}",
             actorUserId,
-            relatedEntityId: containerId, relatedEntityType: AuditEntityTypes.Container);
+            targetId: containerId, targetType: ContainersAuditSubjectTypes.Container);
         return new(ToPlacementDto(placement));
     }
 
@@ -277,10 +277,10 @@ internal sealed class Service(
         }
 
         await auditLog.LogAsync(
-            ContainersAuditActions.ContainerPlacementCleared, AuditEntityTypes.ContainerPlacement, containerId,
+            ContainersAuditActions.ContainerPlacementCleared, ContainersAuditSubjectTypes.ContainerPlacement, containerId,
             $"Cleared container placement for {year}",
             actorUserId,
-            relatedEntityId: containerId, relatedEntityType: AuditEntityTypes.Container);
+            targetId: containerId, targetType: ContainersAuditSubjectTypes.Container);
     }
 
     public async Task<ContainerMutationResult<ContainerPlacementDto>> UpdatePlacementNotesAsync(
@@ -323,10 +323,10 @@ internal sealed class Service(
         {
             await repo.UpsertPlacementAsync(placement, ct);
             await auditLog.LogAsync(
-                ContainersAuditActions.ContainerPlacementNotesUpdated, AuditEntityTypes.ContainerPlacement, containerId,
+                ContainersAuditActions.ContainerPlacementNotesUpdated, ContainersAuditSubjectTypes.ContainerPlacement, containerId,
                 $"Updated placement notes for {year}",
                 actorUserId,
-                relatedEntityId: containerId, relatedEntityType: AuditEntityTypes.Container);
+                targetId: containerId, targetType: ContainersAuditSubjectTypes.Container);
             return new(ToPlacementDto(placement));
         }
         finally

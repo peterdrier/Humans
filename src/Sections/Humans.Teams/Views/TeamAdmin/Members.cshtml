@@ -261,7 +261,7 @@ else
 <partial name="_Pager" model="pagerModel" />
 
 <div class="mt-4">
-    <vc:audit-log entity-type="Team" entity-id="@Model.TeamId"
+    <vc:audit-log subject-type="Team" subject-id="@Model.TeamId"
                   actions="TeamMemberAdded,TeamMemberRemoved,TeamMemberRoleChanged"
                   title="Membership History" limit="20" />
 </div>

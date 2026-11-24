@@ -1,6 +1,6 @@
 using Humans.Google.Contracts;
 using Humans.Base.Helpers;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Users.Contracts;
 using Humans.Teams.Contracts;
 

@@ -12,7 +12,7 @@
   src/Sections/Humans.Users/Controllers/UsersAdminController.cs
   src/Sections/Humans.Consent/Controllers/AdminLegalDocumentsController.cs
   src/Sections/Humans.Notifications/Controllers/NotificationsController.cs
-  src/Sections/Humans.AuditLog/Services/**
+  src/Sections/Humans.Audit/Services/**
   src/Sections/Humans.Notifications/Services/**
   src/Sections/Humans.Users/Services/AccountMergeService.cs
   src/Sections/Humans.Users/Services/DuplicateAccountService.cs
@@ -36,11 +36,11 @@ Admin is layered. **UsersAdmin** does human management — the list, detail, rol
 
 ## Key pages at a glance
 
-- `/Admin` — the admin dashboard: stat tiles contributed by each section (users, teams, shift coverage, audit events, emails, store orders, expense reports, and more) plus live online-now/active-in-the-last-hour/24h counts, wrapped in the admin shell, with a left sidebar listing one row per section, A to Z (Audit, Barrios, Budget, Debug, Events, Google, Governance, Issues, Onboarding, Shifts, Store, Tickets, Users and more); each section's pages show as tabs above the breadcrumb, which reads *Section / Page / Subpage*. Reachable by any admin-shaped role; each tile and sidebar item appears only if you're authorized for it.
+- `/Admin` — the admin dashboard: stat tiles contributed by each section (users, teams, shift coverage, audit entries, emails, store orders, expense reports, and more) plus live online-now/active-in-the-last-hour/24h counts, wrapped in the admin shell, with a left sidebar listing one row per section, A to Z (Audit, Barrios, Budget, Debug, Events, Google, Governance, Issues, Onboarding, Shifts, Store, Tickets, Users and more); each section's pages show as tabs above the breadcrumb, which reads *Section / Page / Subpage*. Reachable by any admin-shaped role; each tile and sidebar item appears only if you're authorized for it.
 - `/Users/Admin` — humans list (Board, UsersAdmin, Admin); filter by `UserState` with values like `?filter=bare`, `?filter=active`, `?filter=suspended`, `?filter=rejected`, and `?filter=deleting`.
 - `/Users/Admin/{id}` — per-human detail, with suspend, unsuspend, reject, add role, and end role.
 - `/Email/Admin/{id}/Outbox` — per-human email outbox.
-- `/AuditLog` — global audit log, filterable and paginated.
+- `/Audit` — global audit log, filterable and paginated.
 - `/Notifications` — your notification inbox.
 - `/Settings#google-sync` — per-service sync mode (Admin only), a tab on the Settings page.
 - `/Debug/Configuration`, `/Debug/Logs`, `/Debug/HttpErrors`, `/Debug/Database`, `/Debug/DbStats`, `/Debug/CacheStats`, `/Debug/DbVersion` — technical diagnostics.
@@ -61,7 +61,7 @@ The Coordinator role does not include global admin access; the domain-specific a
 
 ### Work the dashboard
 
-Open `/Admin` for the dashboard. The stat tiles — users, teams, shift coverage, audit events, and more, plus live online-now / active-1h / active-24h counts — give you a fast read on what's going on. Each tile is contributed by its own section and only shows if you're authorized for it. The left sidebar lists every section you have an admin tool in, alphabetically; pick one and its pages appear as tabs. What you see is scoped to your roles: an Admin sees everything; a Board member sees most sections, read-only apart from the Board's own decisions; a domain admin sees just their own area.
+Open `/Admin` for the dashboard. The stat tiles — users, teams, shift coverage, audit entries, and more, plus live online-now / active-1h / active-24h counts — give you a fast read on what's going on. Each tile is contributed by its own section and only shows if you're authorized for it. The left sidebar lists every section you have an admin tool in, alphabetically; pick one and its pages appear as tabs. What you see is scoped to your roles: an Admin sees everything; a Board member sees most sections, read-only apart from the Board's own decisions; a domain admin sees just their own area.
 
 ### Manage humans
 
@@ -75,7 +75,7 @@ Suspend, unsuspend, reject, and role changes are for UsersAdmin and Admin; Board
 
 ### Read the audit log
 
-`/AuditLog` shows every audit entry — role changes, suspensions, team join decisions, Google sync events, tier application decisions, anomalous Drive permission changes, workspace-account lifecycle, and more. Filter buttons scope to Anomalous Permissions, Access Granted/Revoked, Suspensions, and Roles. The log is **append-only** — database triggers prevent update and delete — and deleted humans show as "Deleted User" rather than disappearing from the trail. Per-human and per-resource audit views are also linked from the human and resource detail pages.
+`/Audit` shows every audit entry — role changes, suspensions, team join decisions, Google sync events, tier application decisions, anomalous Drive permission changes, workspace-account lifecycle, and more. Filter buttons scope to Anomalous Permissions, Access Granted/Revoked, Suspensions, and Roles. The log is **append-only** — database triggers prevent update and delete — and deleted humans show as "Deleted User" rather than disappearing from the trail. Per-human and per-resource audit views are also linked from the human and resource detail pages.
 
 ### Triage the notification inbox
 

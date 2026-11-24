@@ -372,7 +372,7 @@ src/Sections/Humans.Camps/Data/Migrations/20261107081446_DropCampSettingsOpenSea
 # Approval: Peter, 2026-11-12, in the project thread: "approve the 76 key re-creations in #2391".
 # Keys (name on table):
 #   PK_audit_log on audit_log
-src/Sections/Humans.AuditLog/Data/Migrations/20261112195835_RenameTablesToSectionPrefix.cs:DropPrimaryKey(name=PK_audit_log,table=audit_log)#1
+src/Sections/Humans.Audit/Data/Migrations/20261112195835_RenameTablesToSectionPrefix.cs:DropPrimaryKey(name=PK_audit_log,table=audit_log)#1
 
 # Budget: table renames to the section prefix (peterdrier/Humans#2391). EF re-creates each
 # primary and foreign key under the renamed table's name: DropPrimaryKey/DropForeignKey then

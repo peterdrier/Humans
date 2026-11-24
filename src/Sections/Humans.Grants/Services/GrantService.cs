@@ -1,6 +1,6 @@
 using Humans.Email.Contracts;
 using Humans.Grants.Data;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Notifications.Contracts;
 using Humans.Settings.Contracts;
 using Humans.Users.Contracts;
@@ -101,14 +101,14 @@ internal sealed partial class GrantService(
         string.IsNullOrWhiteSpace(text) ? null : text.Trim();
 
     internal Task AuditGrantAsync(AuditActionDefinition action, Grant grant, string description, Guid actorUserId) =>
-        auditLog.LogAsync(action, AuditEntityTypes.Grant, grant.Id, description, actorUserId,
-            relatedEntityId: grant.UserId, relatedEntityType: AuditSubjectTypes.User);
+        auditLog.LogAsync(action, GrantsAuditSubjectTypes.Grant, grant.Id, description, actorUserId,
+            targetId: grant.UserId, targetType: AuditSubjectTypes.User);
 
     internal Task AuditProgramAsync(
         AuditActionDefinition action, GrantProgram program, string description, Guid actorUserId, Guid? relatedUserId = null) =>
-        auditLog.LogAsync(action, AuditEntityTypes.Program, program.Id, description, actorUserId,
-            relatedEntityId: relatedUserId,
-            relatedEntityType: relatedUserId is null ? null : AuditSubjectTypes.User);
+        auditLog.LogAsync(action, GrantsAuditSubjectTypes.Program, program.Id, description, actorUserId,
+            targetId: relatedUserId,
+            targetType: relatedUserId is null ? null : AuditSubjectTypes.User);
 
     private static readonly System.Resources.ResourceManager NoticeResources = new(typeof(GrantsResource));
 

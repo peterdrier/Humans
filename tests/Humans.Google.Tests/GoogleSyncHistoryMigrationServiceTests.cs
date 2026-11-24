@@ -1,6 +1,6 @@
 using Humans.Google.Domain;
 using AwesomeAssertions;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Base.Enums;
 using Humans.Google.Contracts;
 using Humans.Google.Data;
@@ -51,8 +51,8 @@ public sealed class GoogleSyncHistoryMigrationServiceTests : IDisposable
         var resourceId = Guid.NewGuid();
         var audit = Granted(resourceId) with
         {
-            RelatedEntityId = userId,
-            RelatedEntityType = "User",
+            TargetId = userId,
+            TargetType = "User",
             Description = "GoogleGroupSyncService: Granted Google Group access to a@b.org (Docs)",
             Role = "MEMBER",
             SyncSource = GoogleSyncSource.ScheduledSync,
@@ -191,8 +191,8 @@ public sealed class GoogleSyncHistoryMigrationServiceTests : IDisposable
         OccurredAt: Noon,
         Description: "GoogleWorkspaceSyncService: Granted Drive access",
         ResourceId: resourceId,
-        RelatedEntityId: null,
-        RelatedEntityType: null,
+        TargetId: null,
+        TargetType: null,
         UserEmail: "a@b.org",
         Role: "writer",
         SyncSource: GoogleSyncSource.ManualSync,

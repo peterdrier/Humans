@@ -1,6 +1,6 @@
 using Humans.Containers.Contracts;
 using AwesomeAssertions;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Base.Enums;
 using Humans.Camps.Contracts;
 using Humans.CityPlanning.Contracts;

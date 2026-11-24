@@ -13,14 +13,14 @@ public sealed class EmailProjectReferenceTests
     [HumansFact]
     public void EmailContracts_ReferencesOnlyBaseAuditLogAndUsersContracts() =>
         ProjectReferencesOf("Humans.Email.Contracts").Should().BeSubsetOf(
-            ["Humans.AuditLog", "Humans.Base", "Humans.Users.Contracts"],
+            ["Humans.Audit", "Humans.Base", "Humans.Users.Contracts"],
             because: "Email is a crosscut: its contracts leaf may lose section references, never gain one (AuditLog is there for the audit action definitions it publishes)");
 
     [HumansFact]
     public void Email_ReferencesOnlyItsCurrentSectionContracts() =>
         ProjectReferencesOf("Humans.Email").Should().BeSubsetOf(
             [
-                "Humans.AuditLog", "Humans.Base", "Humans.Email.Contracts",
+                "Humans.Audit", "Humans.Base", "Humans.Email.Contracts",
                 "Humans.Gdpr", "Humans.Settings", "Humans.Users.Contracts"
             ],
             because: "Email is a crosscut: it may lose section references, never gain one");

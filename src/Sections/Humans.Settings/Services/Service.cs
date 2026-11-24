@@ -1,4 +1,4 @@
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Settings.Contracts;
 using Humans.Settings.Data;
 using Humans.Settings.Domain;
@@ -69,7 +69,7 @@ internal sealed class Service(
             await NotifyChangeListenersAsync(eventIds);
         }
         await auditLog.LogAsync(
-            SettingsAuditActions.EventSettingsUpdated, AuditEntityTypes.EventTimeZone, Guid.Empty,
+            SettingsAuditActions.EventSettingsUpdated, SettingsAuditSubjectTypes.EventTimeZone, Guid.Empty,
             $"Event timezone changed from {previous} to {timeZoneId}.", actorUserId);
 
         return new(true);
@@ -125,7 +125,7 @@ internal sealed class Service(
             + $"build starts day {settings.BuildStartOffset}, event ends day {settings.EventEndOffset}, "
             + $"strike ends day {settings.StrikeEndOffset}, status {settings.Status}.";
         await auditLog.LogAsync(
-            SettingsAuditActions.EventSettingsUpdated, AuditEntityTypes.EventSettings, settings.Id, description, actorUserId);
+            SettingsAuditActions.EventSettingsUpdated, SettingsAuditSubjectTypes.EventSettings, settings.Id, description, actorUserId);
 
         return new(true);
     }
@@ -171,7 +171,7 @@ internal sealed class Service(
             ? $"Event '{target.EventName}' made active; no event was active before."
             : $"Event '{target.EventName}' made active; {string.Join(", ", previous)} set inactive.";
         await auditLog.LogAsync(
-            SettingsAuditActions.EventSettingsUpdated, AuditEntityTypes.EventSettings, target.Id, description, actorUserId);
+            SettingsAuditActions.EventSettingsUpdated, SettingsAuditSubjectTypes.EventSettings, target.Id, description, actorUserId);
 
         return new(true);
     }

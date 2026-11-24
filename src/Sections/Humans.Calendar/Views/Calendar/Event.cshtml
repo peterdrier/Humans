@@ -126,7 +126,7 @@
         }
     </p>
 
-    <vc:audit-log entity-type="@AuditEntityTypes.CalendarEvent" entity-id="@Model.Event.Id"
+    <vc:audit-log subject-type="@CalendarAuditSubjectTypes.CalendarEvent" subject-id="@Model.Event.Id"
         title="@Localizer["Calendar_ChangeHistory"].Value"
         empty-text="@Localizer["Calendar_NoAuditHistory"].Value" limit="50" />
 

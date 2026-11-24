@@ -2,7 +2,7 @@ using Humans.Users.Contracts;
 using Microsoft.Extensions.Logging;
 using AwesomeAssertions;
 using NSubstitute.ExceptionExtensions;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Notifications.Contracts;
 using Humans.Workgroups.Domain;
 using Humans.Workgroups.Services;
@@ -74,7 +74,7 @@ public sealed class WorkgroupServiceRhythmTests : WorkgroupsTestHarness
         if (hasAnotherLanguage)
         {
             await AuditLog.Received(1).LogAsync(WorkgroupsAuditActions.WorkgroupUpdateDueNotified,
-                AuditEntityTypes.Workgroup, group.Id,
+                WorkgroupsAuditSubjectTypes.Workgroup, group.Id,
                 Arg.Is<string>(description => description.Contains("1 coordinator", StringComparison.Ordinal)),
                 WorkgroupService.WorkgroupRhythmJobName);
         }
@@ -149,7 +149,7 @@ public sealed class WorkgroupServiceRhythmTests : WorkgroupsTestHarness
         await NewService().RunDailyRhythmAsync(Ct);
 
         await AuditLog.Received(1).LogAsync(
-            WorkgroupsAuditActions.WorkgroupUpdateDueNotified, AuditEntityTypes.Workgroup, workgroup.Id,
+            WorkgroupsAuditActions.WorkgroupUpdateDueNotified, WorkgroupsAuditSubjectTypes.Workgroup, workgroup.Id,
             Arg.Any<string>(), WorkgroupService.WorkgroupRhythmJobName);
         await Notifications.Received(1).SendAsync(
             WorkgroupsNotificationSources.WorkgroupReportingDue, Arg.Any<NotificationClass>(), Arg.Any<NotificationPriority>(),
@@ -170,7 +170,7 @@ public sealed class WorkgroupServiceRhythmTests : WorkgroupsTestHarness
         // Only a meeting that has actually started counts as a sign of life: a group cannot
         // put the nudge off by scheduling something three months out.
         await AuditLog.Received(1).LogAsync(
-            WorkgroupsAuditActions.WorkgroupUpdateDueNotified, AuditEntityTypes.Workgroup, workgroup.Id,
+            WorkgroupsAuditActions.WorkgroupUpdateDueNotified, WorkgroupsAuditSubjectTypes.Workgroup, workgroup.Id,
             Arg.Any<string>(), WorkgroupService.WorkgroupRhythmJobName);
     }
 
@@ -197,7 +197,7 @@ public sealed class WorkgroupServiceRhythmTests : WorkgroupsTestHarness
         // whole of it. Going quiet is not the section's to notice; ending a group is the
         // Board's decision, taken on the Board's own reading of the register.
         await AuditLog.Received(1).LogAsync(
-            WorkgroupsAuditActions.WorkgroupUpdateDueNotified, AuditEntityTypes.Workgroup, workgroup.Id,
+            WorkgroupsAuditActions.WorkgroupUpdateDueNotified, WorkgroupsAuditSubjectTypes.Workgroup, workgroup.Id,
             Arg.Any<string>(), WorkgroupService.WorkgroupRhythmJobName);
 
         await using var ctx = OpenContext();
@@ -216,7 +216,7 @@ public sealed class WorkgroupServiceRhythmTests : WorkgroupsTestHarness
         await NewService().RunDailyRhythmAsync(Ct);
 
         await AuditLog.Received(1).LogAsync(
-            WorkgroupsAuditActions.WorkgroupApplicationOverdue, AuditEntityTypes.Workgroup, workgroup.Id,
+            WorkgroupsAuditActions.WorkgroupApplicationOverdue, WorkgroupsAuditSubjectTypes.Workgroup, workgroup.Id,
             Arg.Any<string>(), WorkgroupService.WorkgroupRhythmJobName);
 
         await using var ctx = OpenContext();
@@ -255,7 +255,7 @@ public sealed class WorkgroupServiceRhythmTests : WorkgroupsTestHarness
 
         await act.Should().NotThrowAsync();
         await AuditLog.Received(1).LogAsync(
-            WorkgroupsAuditActions.WorkgroupUpdateDueNotified, AuditEntityTypes.Workgroup, alsoQuiet.Id,
+            WorkgroupsAuditActions.WorkgroupUpdateDueNotified, WorkgroupsAuditSubjectTypes.Workgroup, alsoQuiet.Id,
             Arg.Any<string>(), WorkgroupService.WorkgroupRhythmJobName);
     }
 

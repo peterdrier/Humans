@@ -19,7 +19,7 @@ internal sealed record BudgetGroupSummarySnapshot(
     bool IsRestricted,
     bool IsDepartmentGroup);
 
-internal sealed record BudgetAuditLogSnapshot(
+internal sealed record BudgetChangeSnapshot(
     string EntityType,
     string? FieldName,
     string? OldValue,

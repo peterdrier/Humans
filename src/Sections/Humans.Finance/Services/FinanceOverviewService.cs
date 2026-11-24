@@ -2,7 +2,7 @@ using System.Globalization;
 using Humans.Base.Interfaces;
 using Humans.Budget.Contracts;
 using Humans.Expenses.Contracts;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Finance.Contracts;
 using Humans.Finance.Data;
 using Humans.Finance.Models;

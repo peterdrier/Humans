@@ -1,5 +1,5 @@
 using AwesomeAssertions;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using NSubstitute;
 using Humans.Calendar.Data;
 using Humans.Calendar.Domain;

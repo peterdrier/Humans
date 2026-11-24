@@ -36,7 +36,7 @@ All Drive resources are on **Shared Drives only** (no personal My Drive), and th
 - **Workspace accounts** (`/Google/Accounts`) — every `@nobodies.team` account, with link-to-human search.
 - **Sync audit** — per-human (`/Google/Human/{id}`) and per-resource (`/Google/Resource/{id}`).
 - **Team resources** (`/Google/Teams/{slug}/Resources`) — where coordinators link, unlink, and sync a team's Drive folders, files, and Groups.
-- **Drive activity** — anomalous changes land in `/AuditLog` under the "Anomalous Permissions" filter.
+- **Drive activity** — anomalous changes land in `/Audit` under the "Anomalous Permissions" filter.
 
 ## As a [Volunteer](Glossary.md#volunteer)
 
@@ -95,7 +95,7 @@ From `/Google`, **Check Group Settings** lists every group whose settings (who-c
 
 ### Monitor Drive activity
 
-The hourly `DriveActivityMonitorJob` queries the Drive Activity API for permission changes made by anyone other than the service account and logs each as `AnomalousPermissionDetected`. Review at `/AuditLog` with the **Anomalous Permissions** filter; you can also trigger a check on demand from that page.
+The hourly `DriveActivityMonitorJob` queries the Drive Activity API for permission changes made by anyone other than the service account and logs each as `AnomalousPermissionDetected`. Review at `/Audit` with the **Anomalous Permissions** filter; you can also trigger a check on demand from that page.
 
 ### Retry failed sync events
 

@@ -117,8 +117,8 @@ public sealed class ReminderTests : PreapprovalsTestHarness
             return Task.CompletedTask;
         });
         var auditAfterCommit = false;
-        AuditLog.LogAsync(PreapprovalsAuditActions.PreapprovalReminderSent, AuditEntityTypes.Grant, grant.Id,
-            Arg.Any<string>(), PreapprovalDeadlineReminders.ReminderJobName, program.Id, AuditEntityTypes.Program).Returns(_ =>
+        AuditLog.LogAsync(PreapprovalsAuditActions.PreapprovalReminderSent, PreapprovalsAuditSubjectTypes.Grant, grant.Id,
+            Arg.Any<string>(), PreapprovalDeadlineReminders.ReminderJobName, program.Id, PreapprovalsAuditSubjectTypes.Program).Returns(_ =>
         {
             auditAfterCommit = Transaction.Current is null
                 && transaction?.TransactionInformation.Status == TransactionStatus.Committed;
@@ -132,8 +132,8 @@ public sealed class ReminderTests : PreapprovalsTestHarness
             Arg.Any<string>(), Arg.Is<IReadOnlyList<Guid>>(r => r.Single() == person), Arg.Any<string?>(), Arg.Any<string?>(),
             Arg.Any<string?>(), Arg.Any<string?>(), PreapprovalNotices.FileBySourceKey(grant.Id), Arg.Any<CancellationToken>());
         await Email.Received(1).SendAsync(Arg.Is<EmailMessage>(m => m.TemplateName == "preapproval_deadline_reminder" && m.Culture == "fr"), Arg.Any<CancellationToken>());
-        await AuditLog.Received(1).LogAsync(PreapprovalsAuditActions.PreapprovalReminderSent, AuditEntityTypes.Grant, grant.Id,
-            Arg.Is<string>(d => d.StartsWith("14-day", StringComparison.Ordinal)), PreapprovalDeadlineReminders.ReminderJobName, program.Id, AuditEntityTypes.Program);
+        await AuditLog.Received(1).LogAsync(PreapprovalsAuditActions.PreapprovalReminderSent, PreapprovalsAuditSubjectTypes.Grant, grant.Id,
+            Arg.Is<string>(d => d.StartsWith("14-day", StringComparison.Ordinal)), PreapprovalDeadlineReminders.ReminderJobName, program.Id, PreapprovalsAuditSubjectTypes.Program);
 
         using (transaction)
         {
@@ -237,8 +237,8 @@ public sealed class ReminderTests : PreapprovalsTestHarness
         var markers = await db.RemindersSent.ToListAsync(Ct);
         markers.Should().ContainSingle().Which.GrantId.Should().Be(ok.Id);
         await AuditLog.DidNotReceive().LogAsync(PreapprovalsAuditActions.PreapprovalReminderSent,
-            AuditEntityTypes.Grant, failed.Id, Arg.Any<string>(), PreapprovalDeadlineReminders.ReminderJobName,
-            program.Id, AuditEntityTypes.Program);
+            PreapprovalsAuditSubjectTypes.Grant, failed.Id, Arg.Any<string>(), PreapprovalDeadlineReminders.ReminderJobName,
+            program.Id, PreapprovalsAuditSubjectTypes.Program);
 
         recovered = true;
         await NewReminders().SendDeadlineRemindersAsync(Ct);

@@ -1,5 +1,5 @@
 using Humans.Governance.Contracts;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Auth.Contracts;
 using AwesomeAssertions;
 using Humans.Teams.Contracts;
@@ -146,7 +146,7 @@ public sealed class DuplicateAccountServiceTests
             MakeInfo(a, emails: [Email(a, "dup@foo.com", verified: true, primary: true)]),
             MakeInfo(b, emails: [Email(b, "dup@foo.com", verified: true, primary: true)]));
         _auditViewer.GetFilteredAsync(nameof(User), low, null, Arg.Any<IReadOnlyList<string>?>(), Arg.Any<int>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromResult<IReadOnlyList<AuditEvent>>(
+            .Returns(Task.FromResult<IReadOnlyList<AuditEntry>>(
             [
                 new(Guid.NewGuid(), Now, UsersAuditActions.DuplicateAccountFlagged, null, null, nameof(User), low,
                     null, null, null, null, null, high, nameof(User), "already flagged")

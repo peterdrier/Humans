@@ -1,7 +1,7 @@
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.DependencyInjection;
 using AwesomeAssertions;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Settings.Contracts;
 using Humans.Settings.Data;
 using Humans.Settings.Domain;
@@ -379,7 +379,7 @@ public sealed class ServiceTests
         await BuildSut().SaveEventSettingsAsync(dto, Actor, TestContext.Current.CancellationToken);
 
         await _auditLog.Received(1).LogAsync(
-            SettingsAuditActions.EventSettingsUpdated, AuditEntityTypes.EventSettings, id,
+            SettingsAuditActions.EventSettingsUpdated, SettingsAuditSubjectTypes.EventSettings, id,
             Arg.Is<string>(d => d.Contains("Nowhere 2027") && d.Contains("2027-07-08")),
             Actor, Arg.Any<Guid?>(), Arg.Any<string?>());
     }
@@ -776,7 +776,7 @@ public sealed class ServiceTests
         result.Succeeded.Should().BeTrue();
         await _repository.Received(1).SetValueAsync(SettingKeys.EventTimeZoneId, "Atlantic/Canary", Arg.Any<CancellationToken>());
         await _auditLog.Received(1).LogAsync(
-            SettingsAuditActions.EventSettingsUpdated, AuditEntityTypes.EventTimeZone, Guid.Empty,
+            SettingsAuditActions.EventSettingsUpdated, SettingsAuditSubjectTypes.EventTimeZone, Guid.Empty,
             Arg.Is<string>(d => d.Contains("Europe/Madrid") && d.Contains("Atlantic/Canary")),
             Actor, Arg.Any<Guid?>(), Arg.Any<string?>());
         _listenerOne.Received(1).EventSettingsChanged(first);

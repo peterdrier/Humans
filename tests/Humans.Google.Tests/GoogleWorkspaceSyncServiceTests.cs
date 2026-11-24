@@ -2,7 +2,7 @@ using Humans.Google.Domain;
 using Humans.Google.Tests.Infrastructure;
 using Humans.Google.Contracts;
 using AwesomeAssertions;
-using Humans.AuditLog.Contracts;
+using Humans.Audit.Contracts;
 using Humans.Users.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Google.Services;
@@ -1510,7 +1510,7 @@ public sealed class GoogleWorkspaceSyncServiceTests
         await _drivePermissions.Received(1).SetInheritedPermissionsDisabledAsync("first", true, CancellationToken.None);
         await _auditLogService.Received(1).LogAsync(
             GoogleAuditActions.GoogleResourceInheritanceDriftCorrected,
-            TeamGoogleResource.AuditEntityType, TestDriveFolderResourceId, Arg.Any<string>(), "GoogleResourceReconciliationJob");
+            TeamGoogleResource.AuditSubjectType, TestDriveFolderResourceId, Arg.Any<string>(), "GoogleResourceReconciliationJob");
         await _drivePermissions.DidNotReceive().GetFileAsync("next", Arg.Any<CancellationToken>());
     }
 
@@ -1552,7 +1552,7 @@ public sealed class GoogleWorkspaceSyncServiceTests
         await _groupProvisioning.DidNotReceiveWithAnyArgs().UpdateGroupSettingsAsync(default!, default!);
         await _auditLogService.DidNotReceive().LogAsync(
             GoogleAuditActions.GoogleResourceSettingsRemediated,
-            TeamGoogleResource.AuditEntityType, Guid.Empty, Arg.Any<string>(), nameof(GoogleWorkspaceSyncService));
+            TeamGoogleResource.AuditSubjectType, Guid.Empty, Arg.Any<string>(), nameof(GoogleWorkspaceSyncService));
     }
 
     [HumansFact]
@@ -1574,7 +1574,7 @@ public sealed class GoogleWorkspaceSyncServiceTests
             "group@nobodies.team", Arg.Any<GroupSettingsExpected>(), CancellationToken.None);
         await _auditLogService.Received(1).LogAsync(
             GoogleAuditActions.GoogleResourceSettingsRemediated,
-            TeamGoogleResource.AuditEntityType, Guid.Empty, Arg.Any<string>(), nameof(GoogleWorkspaceSyncService));
+            TeamGoogleResource.AuditSubjectType, Guid.Empty, Arg.Any<string>(), nameof(GoogleWorkspaceSyncService));
     }
 
     private static Dictionary<Guid, TeamInfo> ExpectedMemberTeam() => new()
