@@ -83,7 +83,7 @@ public class AccountController(
             return RedirectToAction(nameof(Login), new { returnUrl, error = "oauth" });
         }
 
-        // Already signed in means this callback links a Google account, not a sign-in —
+        // Already signed in means this callback links a provider account, not a sign-in —
         // skip ExternalLoginSignInAsync so Identity cannot overwrite the session cookie with another account.
         var wasAuthenticated = IsAuthenticated();
         var result = wasAuthenticated
@@ -107,7 +107,7 @@ public class AccountController(
         {
             case ExternalLoginOutcome.SignedIn:
                 if (!wasAuthenticated)
-                    loginMethods.RecordGoogle();
+                    loginMethods.RecordProvider(info.LoginProvider);
                 return RedirectToLocal(returnUrl);
 
             case ExternalLoginOutcome.LinkToCurrentUserFailed:

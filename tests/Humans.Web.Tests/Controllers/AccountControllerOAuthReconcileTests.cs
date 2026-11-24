@@ -161,7 +161,7 @@ public class AccountControllerOAuthReconcileTests
         await _userService.Received(1).EnsureStubProfileAsync(userId, null, null, null,
             Arg.Any<CancellationToken>(), userId);
 
-        _loginMethods.Google.Should().Be(1);
+        _loginMethods.Providers.Should().ContainKey("Google").WhoseValue.Should().Be(1);
         _loginMethods.MagicLink.Should().Be(0);
     }
 
@@ -303,7 +303,7 @@ public class AccountControllerOAuthReconcileTests
             Arg.Any<User>(), Arg.Any<bool>(), Arg.Any<string?>());
 
         // ...and linking is not a sign-in, so the dashboard tally doesn't move.
-        _loginMethods.Google.Should().Be(0);
+        _loginMethods.Providers.Should().BeEmpty();
     }
 
     [HumansFact]
@@ -343,7 +343,7 @@ public class AccountControllerOAuthReconcileTests
         await _userEmailService.DidNotReceiveWithAnyArgs()
             .ReconcileOAuthIdentityAsync(default, default!, default!, default!, default);
         await _userService.DidNotReceiveWithAnyArgs().RecordLoginAsync(default);
-        _loginMethods.Google.Should().Be(0);
+        _loginMethods.Providers.Should().BeEmpty();
     }
 
     [HumansFact]
@@ -382,7 +382,7 @@ public class AccountControllerOAuthReconcileTests
             userAId, Provider, ProviderKey, "usera@google.test",
             claimEmailVerified: true, Arg.Any<CancellationToken>());
         await _userService.Received(1).RecordLoginAsync(userAId, Arg.Any<CancellationToken>());
-        _loginMethods.Google.Should().Be(0);
+        _loginMethods.Providers.Should().BeEmpty();
     }
 
     [HumansTheory]

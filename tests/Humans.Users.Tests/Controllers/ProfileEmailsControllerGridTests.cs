@@ -34,7 +34,6 @@ public class ProfileEmailsControllerGridTests
     private readonly IUserManagement _userService = Substitute.For<IUserManagement>();
     private readonly UserManager<User> _userManager;
     private readonly SignInManager<User> _signInManager;
-    private readonly IAuthenticationSchemeProvider _schemeProvider;
     private readonly ProfileEmailsController _controller;
     private readonly IStringLocalizer<SharedResource> _sharedLocalizer = Substitute.For<IStringLocalizer<SharedResource>>();
     private readonly Guid _userId = Guid.NewGuid();
@@ -54,13 +53,12 @@ public class ProfileEmailsControllerGridTests
         var identityOptions = Substitute.For<IOptions<IdentityOptions>>();
         identityOptions.Value.Returns(new IdentityOptions());
         var schemeProvider = Substitute.For<IAuthenticationSchemeProvider>();
-        _schemeProvider = schemeProvider;
-        schemeProvider.GetSchemeAsync("Google")
-            .Returns(new AuthenticationScheme("Google", "Google", typeof(IAuthenticationHandler)));
         var userConfirmation = Substitute.For<IUserConfirmation<User>>();
         _signInManager = Substitute.For<SignInManager<User>>(
             _userManager, contextAccessor, claimsFactory, identityOptions,
             NullLogger<SignInManager<User>>.Instance, schemeProvider, userConfirmation);
+        _signInManager.GetExternalAuthenticationSchemesAsync()
+            .Returns([new AuthenticationScheme("Google", "Google", typeof(IAuthenticationHandler))]);
 
         var localizer = Substitute.For<IStringLocalizer<UsersResource>>();
         localizer[Arg.Any<string>()].Returns(ci => new LocalizedString(ci.Arg<string>(), ci.Arg<string>()));
@@ -79,8 +77,7 @@ public class ProfileEmailsControllerGridTests
             Array.Empty<IUserEmailLock>(),
             _authorizationService,
             _signInManager,
-            Options.Create(new GoogleWorkspaceOptions()),
-            schemeProvider);
+            Options.Create(new GoogleWorkspaceOptions()));
 
         var identity = new ClaimsIdentity([
             new Claim(ClaimTypes.NameIdentifier, _userId.ToString())
@@ -387,7 +384,7 @@ public class ProfileEmailsControllerGridTests
     [HumansFact]
     public async Task Link_ProviderNotConfigured_ReturnsNotFound()
     {
-        _schemeProvider.GetSchemeAsync("Google").Returns((AuthenticationScheme?)null);
+        _signInManager.GetExternalAuthenticationSchemesAsync().Returns([]);
 
         var result = await _controller.Link("Google", returnUrl: null);
 

@@ -5,7 +5,6 @@ using Humans.Base.Attributes;
 using Humans.Base.Controllers;
 using System.Globalization;
 using Humans.Users.Authorization;
-using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -33,8 +32,7 @@ internal sealed class ProfileEmailsController(
     IEnumerable<IUserEmailLock> emailLocks,
     IAuthorizationService authorizationService,
     SignInManager<User> signInManager,
-    IOptions<GoogleWorkspaceOptions> googleWorkspaceOptions,
-    IAuthenticationSchemeProvider authSchemes) : HumansControllerBase(userService)
+    IOptions<GoogleWorkspaceOptions> googleWorkspaceOptions) : HumansControllerBase(userService)
 {
     private readonly EmailsViewModelBuilder _emailsViewModelBuilder = new(
         userService, userManager, userEmailService, emailLocks, googleWorkspaceOptions.Value);
@@ -206,8 +204,8 @@ internal sealed class ProfileEmailsController(
         if (!authz.Succeeded)
             return Forbid();
 
-        // An instance without this provider configured has no handler to challenge.
-        if (await authSchemes.GetSchemeAsync(provider) is null)
+        var providers = await signInManager.GetExternalAuthenticationSchemesAsync();
+        if (!providers.Any(p => string.Equals(p.Name, provider, StringComparison.Ordinal)))
             return NotFound();
 
         // Round-trip through ExternalLoginCallback so its link-while-signed-in branch runs.

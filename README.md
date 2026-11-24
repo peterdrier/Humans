@@ -103,7 +103,7 @@ Defaults live in `src/Humans.Web/appsettings.json`; override them with user secr
 
 | Setting | Description |
 |---------|-------------|
-| `Authentication__Google__ClientId` / `__ClientSecret` | Google OAuth client. Without both, "Sign in with Google" is off and members sign in by email magic link |
+| `Authentication__Google__ClientId` / `__ClientSecret` | Google OAuth client. Without both, "Sign in with Google" is off and members sign in by email magic link. Other providers: "Adding a sign-in provider" in `src/Sections/Humans.Auth/Docs/Auth.md` |
 | `Email__Username` / `Email__Password` | SMTP credentials for outbound mail (host and sender are in `appsettings.json`) |
 | `GoogleMaps__ApiKey` | Maps and Places for profile locations and maps |
 | `GoogleWorkspace__ServiceAccountKeyJson` or `__ServiceAccountKeyPath` | Service account for Workspace provisioning and Drive/Groups sync |

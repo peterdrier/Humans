@@ -140,69 +140,7 @@ builder.Services.ConfigureApplicationCookie(options =>
     options.AccessDeniedPath = "/Account/AccessDenied";
 });
 
-// Google sign-in is optional: without a client id and secret it is not registered at all, and the magic link is
-// the only way in. A registered scheme with empty options would fail every request, not just the login page.
-var googleClientId = builder.Configuration.GetOptionalSetting(
-    configRegistry, "Authentication:Google:ClientId", "Authentication", isSensitive: true,
-    importance: ConfigurationImportance.Recommended);
-var googleClientSecret = builder.Configuration.GetOptionalSetting(
-    configRegistry, "Authentication:Google:ClientSecret", "Authentication", isSensitive: true,
-    importance: ConfigurationImportance.Recommended);
-var authentication = builder.Services.AddAuthentication();
-if (!string.IsNullOrEmpty(googleClientId) && !string.IsNullOrEmpty(googleClientSecret))
-{
-    authentication.AddGoogle(options =>
-    {
-        options.ClientId = googleClientId;
-        options.ClientSecret = googleClientSecret;
-        options.Scope.Add("profile");
-        options.Scope.Add("email");
-        options.SaveTokens = false;
-        // MapJsonKey surfaces Google's email_verified as a claim.
-        Microsoft.AspNetCore.Authentication.ClaimActionCollectionMapExtensions
-            .MapJsonKey(options.ClaimActions, "email_verified", "email_verified", "boolean");
-        options.Events = new Microsoft.AspNetCore.Authentication.OAuth.OAuthEvents
-        {
-            OnRemoteFailure = context =>
-            {
-                var logger = context.HttpContext.RequestServices.GetRequiredService<ILoggerFactory>()
-                    .CreateLogger("GoogleOAuth");
-
-                var failureMessage = context.Failure?.Message ?? string.Empty;
-                var isCorrelationFailure = failureMessage.Contains("Correlation", StringComparison.OrdinalIgnoreCase);
-                var isAccessDenied = failureMessage.Contains("access_denied", StringComparison.OrdinalIgnoreCase)
-                    || failureMessage.Contains("denied by the resource owner", StringComparison.OrdinalIgnoreCase);
-
-                var clientIp = context.HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
-
-                // Warning + client IP so /Debug/Logs traces user-reported sign-in issues.
-                if (isAccessDenied)
-                {
-                    logger.LogWarning(
-                        "Google sign-in cancelled by user (access_denied) from {ClientIp}", clientIp);
-                }
-                else if (isCorrelationFailure)
-                {
-                    logger.LogWarning(
-                        "Google sign-in correlation cookie missing from {ClientIp} (stale or duplicate request)", clientIp);
-                }
-                else if (context.Failure is OperationCanceledException)
-                {
-                    // User closed tab / network dropped mid-callback.
-                }
-                else
-                {
-                    logger.LogWarning(
-                        context.Failure, "Google sign-in failed from {ClientIp}: {Error}", clientIp, failureMessage);
-                }
-
-                context.Response.Redirect("/Account/Login?error=sign-in-failed");
-                context.HandleResponse();
-                return Task.CompletedTask;
-            }
-        };
-    });
-}
+builder.Services.AddAuthentication().AddSignInProviders(builder.Configuration, configRegistry);
 
 builder.Services.AddHumansAuthorizationPolicies();
 builder.Services.AddHttpContextAccessor();

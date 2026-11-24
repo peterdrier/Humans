@@ -37,7 +37,7 @@ Bulk cache warmups publish through the shared mutation guard. A refresh, deletio
 ## Concepts
 
 - **Role Assignment** is a temporal assignment of a role name (e.g. `Admin`, `Board`, `TeamsAdmin`, `UsersAdmin`, `ConsentCoordinator`, …) to a human, with a `ValidFrom` and optional `ValidTo`. `RoleAssignmentClaimsTransformation` reads active assignments on every request (from Auth's in-memory role-assignment cache, no per-user claims cache) and projects them into ASP.NET role claims so `[Authorize(Roles = ...)]`, `[Authorize(Policy = …)]`, and `User.IsInRole()` work. The same transformation also stamps the stored `UserState` claim — the single source of truth for access (`UserState == Active`, i.e. the user entered their legal name, grants full app access).
-- **Google sign-in is optional.** `Program.cs` registers the Google scheme only when both `Authentication:Google:ClientId` and `ClientSecret` are set (both `Recommended`, not `Critical`, in the configuration registry). Without them the login page shows only the magic link, and a POST to `/Account/ExternalLogin` naming an unregistered provider returns to `/Account/Login?error=oauth` instead of challenging. The "Link Google account" card on `/Profile/Me/Emails` is hidden too, and its `Link` POST returns 404 for an unregistered provider.
+- **Sign-in providers are pluggable.** External providers (Google today) are registered in `Extensions/SignInProviderExtensions.cs` in the Shell, each only when its `Authentication:<Provider>:ClientId` and `ClientSecret` are set. Setting them turns a provider on; leaving them empty turns it off, and the magic link always works. The login page shows a button for each registered provider, and `/Profile/Me/Emails` shows a link-account card for each. A POST naming an unregistered provider returns to `/Account/Login?error=oauth` (`ExternalLogin`) or 404 (`Link`) instead of challenging. See "Adding a sign-in provider" below.
 - **Magic Link Auth** is the email-based login/signup flow handled by `MagicLinkService` + `AccountController`. Users enter an email address; the system sends a Data-Protection-token-protected link. Login links verify a user id; signup links carry the email address. Both token types require canonical Base64url spelling before validation: whitespace, padding and alternate trailing bits are rejected so equivalent protected bytes cannot bypass the token-text SHA-256 replay key. Both token types are single-use, consumed into the same replay-protected 15-minute cache: **login** tokens on `VerifyLoginTokenAsync` (returns `bool`; the controller signs in by id through Users' `IUserSignInService.SignInAsync`), **signup** tokens on `VerifyAndConsumeSignupTokenAsync` at the POST that redeems them. The signup GET reads the token without consuming it (form prefill, so a scanner following the link cannot burn it). This is the guarantee the shipped signup email makes in all supported cultures. Signup sends are rate-limited to 1 per 60 seconds per address; login-link sends are rate-limited to 1 per 60 seconds per user via an exclusive per-user cache reservation taken before profile lookup or email enqueue (in-memory only; the cooldown does not survive a restart, by decision 2026-10-20).
 - **Access gating** — `MembershipRequiredFilter` (a global `IAsyncActionFilter`) routes authenticated users by their stored `UserState`: only `Active` reaches the app; `Bare` → `/OnboardingWidget`, `DeletePending` → `/Gdpr/Deletion`, and `Suspended`/`AdminSuspended`/`Rejected` → `/Gdpr/Status`. `Deleted`/`Merged` accounts are walled off first — only `[AllowAnonymous]` endpoints and an action marked `[AllowBeforeActiveMembership(Terminal = true)]` (Gdpr's status wall) reach them. It passes through endpoints carrying `[AllowAnonymous]` (except `Home/Index`, the public landing and the member dashboard on one route, which still routes a signed-in user by state) and the controllers and actions a non-Active recoverable user must still reach, which their own sections mark with `[AllowBeforeActiveMembership]` (`Humans.Base.Attributes`): the onboarding surface, the redirect targets, own-profile maintenance. The Shell lists none of them. Role-gated app controllers require `UserState == Active` before their role policies matter. It also passes a Backdoor-API-key-authenticated request straight through — a machine principal never carries the `UserState` claim this gate reads, and there is no onboarding page to redirect a JSON client to (see `src/Sections/Humans.Backdoor/Docs/Backdoor.md`).
 
@@ -47,8 +47,8 @@ All under `/Account`. Anti-forgery on every POST.
 
 | Verb | Action | Auth | Purpose |
 |------|--------|------|---------|
-| GET | `Login` | anonymous | Renders login page (Google OAuth + magic-link request); Open Graph link-preview tags describe the area `returnUrl` points at (`LoginLinkPreview`) |
-| POST | `ExternalLogin` | anonymous | Initiates external (Google) OAuth challenge |
+| GET | `Login` | anonymous | Renders login page (a button per registered sign-in provider + magic-link request); Open Graph link-preview tags describe the area `returnUrl` points at (`LoginLinkPreview`) |
+| POST | `ExternalLogin` | anonymous | Initiates the named provider's OAuth challenge |
 | GET | `ExternalLoginCallback` | anonymous | Handles OAuth return: signs in, links to existing account by verified email, recovers a locked-out source account by re-linking to an active one, or creates a new account |
 | POST | `MagicLinkRequest` | anonymous | Sends a magic link (login or signup) — always shows "check your email" (no enumeration) |
 | GET | `MagicLinkConfirm` | anonymous | Landing page that defers token consumption to a user-clicked POST (defeats email security scanners) |
@@ -60,7 +60,7 @@ All under `/Account`. Anti-forgery on every POST.
 | POST | `Logout` | (any) | Sign-out and redirect to `Home/Index` |
 | GET | `AccessDenied` | (any) | Renders the access-denied page |
 
-Successful Google and magic-link sign-ins (including magic-link signup) bump Shell's in-memory `LoginMethodCounter`, shown as the "Sign-in method" dial on `/Admin`. Nothing is stored — a restart zeroes it. Linking a Google account while signed in, the gate terminal, and dev logins are not counted.
+Successful provider and magic-link sign-ins (including magic-link signup) bump Shell's in-memory `LoginMethodCounter`, per provider,, shown as the "Sign-in method" dial on `/Admin`. Nothing is stored — a restart zeroes it. Linking a provider account while signed in, the gate terminal, and dev logins are not counted.
 
 ### Role-assignment admin routes
 
@@ -73,6 +73,15 @@ Successful Google and magic-link sign-ins (including magic-link signup) bump She
 | `POST /Auth/Admin/{id}/Roles/{roleId}/End` | End an assignment (`UsersPolicies.Manage`; per-role `RoleAssignmentManage` check) |
 
 Reached from the Roles item of the Users admin sidebar group and the Role Assignments card on `/Users/Admin/{id}`; both POSTs redirect back to the member's admin detail.
+
+### Adding a sign-in provider
+
+Any provider with an ASP.NET Core authentication handler works (Facebook, Microsoft, Auth0 or Keycloak through OpenID Connect, …). Everything after the handler is provider-neutral: the callback matches the person by the provider's email claim and records the provider name and key on the email row.
+
+1. Add the handler's NuGet package to `Humans.Web` (for example `Microsoft.AspNetCore.Authentication.OpenIdConnect`).
+2. In `AddSignInProviders`, copy the Google block: read the credentials with `ReadCredentials(configuration, registry, "<Provider>")`, call the handler's `Add…` method only when they are set, and set `Events.OnRemoteFailure = ReturnToLoginOnFailureAsync`. The scheme name is what members see on the buttons, unless the handler sets a `DisplayName`.
+3. Make sure the handler maps the `email` claim. To let the provider sign in to an existing account that matches by email, it must also emit `email_verified` (OpenID Connect providers do; Google needs the `MapJsonKey` line). Without it the provider can still sign up new people and sign in accounts it is already linked to.
+4. Register the handler's callback URL with the provider (`https://<your-host>` plus its `CallbackPath`: `/signin-google`, `/signin-facebook`, `/signin-oidc`; give each OpenID Connect provider its own scheme name and path), and set the two settings. The login button, link-account card and `/Admin` counter pick it up with no other change.
 
 ## Data Model
 
@@ -158,8 +167,8 @@ Reached from the Roles item of the Users admin sidebar group and the Role Assign
 - Magic-link signup sends are rate-limited to 1 email per 60 seconds per target inbox: Gmail dot, plus-tag and googlemail aliases share a reservation; non-Gmail plus-addresses remain distinct. Message destinations and signup-token addresses retain the entered form. The reservation is released on downstream send failure so the caller can retry.
 - Verified-email resolution goes through `IUserEmailService.FindByAddressAsync` (aliased, verified only) — never through raw `DbContext.UserEmails` queries. Unverified rows are ignored (their auto-link would bypass the merge-request review gate).
 - Every sign-in path signs in with `isPersistent: true`, and the Identity application cookie carries a **14-day sliding** lifetime (`ExpireTimeSpan` + `SlidingExpiration` in `Program.cs`): a visit inside the window extends it, 14 days away requires re-login. Session-scoped cookies (`isPersistent: false`) have no `Expires` and die on browser close. Cookie lifetime is **not** a revocation mechanism and doesn't need to be short: `MembershipRequiredFilter` re-checks `UserState` on every request, `RoleAssignmentClaimsTransformation` re-derives roles on every request from the in-memory role-assignment cache, and Identity's security-stamp validation invalidates server-side. DataProtection keys persist to the DB, so cookies also survive container restarts.
-- Google OAuth remote failures (missing/expired correlation cookie, user-cancelled consent, browser cookie restrictions) are handled by an `OnRemoteFailure` handler on the Google authentication options in `Program.cs` that logs at Warning and redirects to `/Account/Login?error=sign-in-failed`; the unhandled `CorrelationException` would otherwise propagate as a 500. The login view reads `Request.Query["error"]` and renders a localized dismissible alert.
-- Google account-setup failures return to Login with the localized `Login_SetupFailed` validation message.
+- Provider remote failures (missing/expired correlation cookie, user-cancelled consent, browser cookie restrictions) are handled by the shared `OnRemoteFailure` handler in `SignInProviderExtensions.cs` that logs at Warning and redirects to `/Account/Login?error=sign-in-failed`; the unhandled `CorrelationException` would otherwise propagate as a 500. The login view reads `Request.Query["error"]` and renders a localized dismissible alert.
+- Provider account-setup failures return to Login with the localized `Login_SetupFailed` validation message.
 
 ## Negative Access Rules
 
