@@ -53,7 +53,7 @@
     <value>&lt;p&gt;Benvingut/da a Nobodies!&lt;/p&gt;&lt;p&gt;Fes clic a l’enllaç següent per crear el teu compte:&lt;/p&gt;&lt;p&gt;&lt;a href="{0}"&gt;Crea el teu compte&lt;/a&gt;&lt;/p&gt;&lt;p&gt;Aquest enllaç expira en 15 minuts i només es pot fer servir una vegada.&lt;/p&gt;&lt;p&gt;Si no has sol·licitat això, pots ignorar aquest correu.&lt;/p&gt;</value>
   </data>
   <data name="Auth_Roles_Title" xml:space="preserve">
-    <value>Assignacions de rols</value>
+    <value>Rols del sistema</value>
   </data>
   <data name="Auth_Roles_All" xml:space="preserve">
     <value>Tots</value>
@@ -74,13 +74,13 @@
     <value>Vàlid fins a</value>
   </data>
   <data name="Auth_Roles_Assignments" xml:space="preserve">
-    <value>Assignacions de rols</value>
+    <value>Rols del sistema</value>
   </data>
   <data name="Auth_Roles_AddRole" xml:space="preserve">
-    <value>Afegir rol</value>
+    <value>Assignar rol del sistema</value>
   </data>
   <data name="Auth_Roles_Ended" xml:space="preserve">
-    <value>Finalitzat</value>
+    <value>Revocat</value>
   </data>
   <data name="Auth_Roles_From" xml:space="preserve">
     <value>Des de</value>
@@ -89,16 +89,16 @@
     <value>fins a</value>
   </data>
   <data name="Auth_Roles_EndConfirm" xml:space="preserve">
-    <value>Finalitzar aquesta assignació de rol?</value>
+    <value>Revocar aquest rol del sistema?</value>
   </data>
   <data name="Auth_Roles_End" xml:space="preserve">
-    <value>Finalitzar</value>
+    <value>Revocar</value>
   </data>
   <data name="Auth_Roles_NoAssignments" xml:space="preserve">
-    <value>Sense assignacions de rols.</value>
+    <value>Sense rols del sistema.</value>
   </data>
   <data name="Auth_AddRole_Title" xml:space="preserve">
-    <value>Afegir rol</value>
+    <value>Assignar rol del sistema</value>
   </data>
   <data name="Auth_AddRole_SelectRole" xml:space="preserve">
     <value>Selecciona un rol...</value>
@@ -109,6 +109,6 @@
   <data name="Auth_AddRole_NotesPlaceholder" xml:space="preserve">
     <value>Motiu de la assignació</value>
   </data>
-  <data name="Auth_Notification_RoleAssigned" xml:space="preserve"><value>Se t'ha assignat el rol {0}</value><comment>{0}=role name</comment></data>
-  <data name="Auth_Notification_RoleEnded" xml:space="preserve"><value>La teva assignació al rol {0} ha finalitzat</value><comment>{0}=role name</comment></data>
+  <data name="Auth_Notification_RoleAssigned" xml:space="preserve"><value>Se t'ha assignat el rol del sistema {0}</value><comment>{0}=role name</comment></data>
+  <data name="Auth_Notification_RoleEnded" xml:space="preserve"><value>Se t'ha revocat el rol del sistema {0}</value><comment>{0}=role name</comment></data>
 </root>

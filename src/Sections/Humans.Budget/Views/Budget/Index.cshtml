@@ -1,6 +1,6 @@
 @using Microsoft.AspNetCore.Html
 @using Humans.Base.Models.Tables
-@model Humans.Budget.Models.CoordinatorBudgetViewModel
+@model Humans.Budget.Models.DepartmentBudgetViewModel
 @{
     ViewData["Title"] = Localizer["Budget_TitleYear", Model.Year.Name].Value;
     var groups = Model.Year.Groups
@@ -9,7 +9,7 @@
         .ToList();
     var totalAllocated = groups.Sum(group => group.AllocatedAmount);
     var totalLineItems = groups.Sum(group => group.LineItemTotal);
-    var unallocated = totalAllocated - totalLineItems;
+    var available = totalAllocated - totalLineItems;
 }
 
 @section Crumbs {
@@ -24,7 +24,7 @@
     @if (Model.IsFinanceAdmin)
     {
         <a asp-controller="BudgetAdmin" asp-action="Index" class="btn btn-outline-primary">
-            <i class="fa-solid fa-gear me-1"></i>@Localizer["Budget_FinanceAdmin"] <i class="fa-solid fa-lock auth-lock-icon"></i>
+            <i class="fa-solid fa-gear me-1"></i>@Localizer["Budget_BudgetAdmin"] <i class="fa-solid fa-lock auth-lock-icon"></i>
         </a>
     }
 </page-header>
@@ -42,7 +42,7 @@
     <div class="col-md-4">
         <div class="card text-center">
             <div class="card-body">
-                <h6 class="card-subtitle mb-2 text-muted">@Localizer["Budget_DetailedInLineItems"]</h6>
+                <h6 class="card-subtitle mb-2 text-muted">@Localizer["Budget_Planned"]</h6>
                 <h3 class="card-title mb-0">@totalLineItems.ToEuro()</h3>
             </div>
         </div>
@@ -50,9 +50,9 @@
     <div class="col-md-4">
         <div class="card text-center">
             <div class="card-body">
-                <h6 class="card-subtitle mb-2 text-muted">@Localizer["Budget_Unallocated"]</h6>
-                <h3 class="card-title mb-0 @(unallocated < 0 ? "text-danger" : "")">
-                    @unallocated.ToEuro()
+                <h6 class="card-subtitle mb-2 text-muted">@Localizer["Budget_Available"]</h6>
+                <h3 class="card-title mb-0 @(available < 0 ? "text-danger" : "")">
+                    @available.ToEuro()
                 </h3>
             </div>
         </div>
@@ -100,10 +100,10 @@
                             <span class="badge bg-success ms-1">@Localizer["Budget_YourDepartment"]</span>
                         }
                     </text>;
-                    Func<BudgetCategoryDetail, IHtmlContent> unallocatedCell = @<text>
-                        @{ var cellUnallocated = item.UnallocatedAmount; }
-                        <span class="@(cellUnallocated < 0 ? "text-danger" : "")">
-                            @cellUnallocated.ToEuro()
+                    Func<BudgetCategoryDetail, IHtmlContent> availableCell = @<text>
+                        @{ var cellAvailable = item.AvailableAmount; }
+                        <span class="@(cellAvailable < 0 ? "text-danger" : "")">
+                            @cellAvailable.ToEuro()
                         </span>
                     </text>;
                     Func<BudgetCategoryDetail, IHtmlContent> expenditureTypeCell = @<text>
@@ -128,8 +128,8 @@
                     var groupTable = TableModel.For(group.Categories.OrderBy(c => c.SortOrder).ToList())
                         .Template(Localizer["Budget_ColCategory"].Value, categoryNameCell)
                         .Column(Localizer["Budget_Allocated"].Value, c => c.AllocatedAmount, c => c.Currency().End())
-                        .Column(Localizer["Budget_ColLineItems"].Value, c => c.LineItemTotal, c => c.Currency().End())
-                        .Template(Localizer["Budget_Unallocated"].Value, unallocatedCell, c => c.End())
+                        .Column(Localizer["Budget_ColPlanned"].Value, c => c.LineItemTotal, c => c.Currency().End())
+                        .Template(Localizer["Budget_Available"].Value, availableCell, c => c.End())
                         .Template(Localizer["Budget_ColType"].Value, expenditureTypeCell)
                         .Template("", actionsCell, c => c.NoSort().End())
                         .Build();

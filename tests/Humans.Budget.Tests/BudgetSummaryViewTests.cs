@@ -52,7 +52,7 @@ public class BudgetSummaryViewTests
         using var inputCulture = new CultureScope("en");
         CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo(language);
         var id = Guid.NewGuid();
-        var model = new CoordinatorCategoryDetailViewModel
+        var model = new CategoryDetailViewModel
         {
             Category = new BudgetCategorySnapshot(id, Guid.NewGuid(), "Category", 100m,
                 ExpenditureType.OpEx, null, 0, null,

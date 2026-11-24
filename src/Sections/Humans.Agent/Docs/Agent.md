@@ -10,6 +10,8 @@
 
 # Agent — Section Invariants
 
+Vocabulary: [`CONTEXT.md`](CONTEXT.md).
+
 Conversational helper backed by Anthropic Claude. Available to any authenticated, consented user when `AgentSettings.Enabled = true`.
 
 Section-guide, feature-spec and community-KB readers log expected GitHub API/transport failures and independent timeouts at Warning without exception objects. Unexpected failures log at Error with their original exception. Null/empty fallbacks, explicit not-found handling, cache preservation and requested cancellation are unchanged.
@@ -170,7 +172,7 @@ Missing, unknown or revoked key → 401. Unknown id → 404. Mutations (deletion
 
 `AgentService` owns stored history lists, member/admin transcript projections, the ownership-checked member conversation view, admin prompt-preview reconstruction and merge-chain GDPR export. Prompt previews keep replay rules aligned with turns, propagate cancellation and tolerate vendor token-count failures. Ownership mismatch still returns null; transcript shapes, export ordering, user-context tail generation and cancellation are unchanged. No DI registration or public contract is added.
 
-**Owning services:** `AgentService` (orchestrator), `AgentSettingsService`, `AgentToolDispatcher`, `AgentUserSnapshotProvider`, `AgentAbuseDetector`, `AgentPromptAssembler`, `AgentPreloadCorpusBuilder`, `AgentPreloadAugmentor`, `AnthropicClient`. `AgentPreloadAugmentor` collects each section's `ISectionHelp` glossary contribution (only `SectionHelpContent.Faq` still lives in `Humans.Base`) and implements internal `IAgentPreloadAugmentor` beside it in `Services/Preload/`; `AgentConversationRetentionJob` lives under `Jobs/` and calls internal `IAgentService`, its registration and schedule contributed via `Section.cs`.
+**Owning services:** `AgentService`, `AgentSettingsService`, `AgentToolDispatcher`, `AgentUserSnapshotProvider`, `AgentAbuseDetector`, `AgentPromptAssembler`, `AgentPreloadCorpusBuilder`, `AgentPreloadAugmentor`, `AnthropicClient`. `AgentPreloadAugmentor` collects each section's `ISectionHelp` glossary contribution (only `SectionHelpContent.Faq` still lives in `Humans.Base`) and implements internal `IAgentPreloadAugmentor` beside it in `Services/Preload/`; `AgentConversationRetentionJob` lives under `Jobs/` and calls internal `IAgentService`, its registration and schedule contributed via `Section.cs`.
 **Owned tables:** `agent_conversations`, `agent_messages`, `agent_settings`.
 **Status:** the section lives in its own project, `src/Sections/Humans.Agent`, with its cross-section surface in the project's own `Contracts/` folder. Everything except `Section`, `AgentResource`, the generated migrations, and the `Contracts/` types (`AgentSectionKeys`, `AgentRole`, `IAgentTranscriptRead` + its snapshot records) is `internal`, enforced at build time by HUM0034. Retention wiring: `tests/Humans.Agent.Tests/AgentArchitectureTests.cs`; page rendering: `tests/Humans.Integration.Tests/Controllers/AgentPageRenderTests.cs`. Retention stays on internal `IAgentService`; widget and health probes read `IAgentSettingsService.Current.Enabled`. The internal preload augmentor stays beside its implementation. These paths reuse the existing scoped services and singleton preload registration; no separate public availability or retention alias remains. **No cross-section FK or nav at the EF level** — `agent_conversations.UserId` and `agent_messages.HandedOffToFeedbackId` are bare Guid columns.
 

@@ -17,6 +17,8 @@
 
 # Backdoor — Section Invariants
 
+Vocabulary: [`CONTEXT.md`](CONTEXT.md).
+
 The Backdoor API. Every key-authed API an agent talks to lives here, under `/api/backdoor/*`, gated by one personal key per human.
 
 ## Concepts
