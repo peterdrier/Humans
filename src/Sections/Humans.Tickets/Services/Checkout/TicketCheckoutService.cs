@@ -117,8 +117,8 @@ internal sealed partial class TicketCheckoutService(
         if (existing?.CancelledAt is not null)
             return new("The event is cancelled; its ticketing settings can no longer change.");
         if (save.TermsFolder is { } newFolder && !string.Equals(newFolder, existing?.TermsFolder, StringComparison.Ordinal)
-            && await rulesSource.GetAsync(newFolder, refresh: true, ct) is null)
-            return new($"The legal repo has no Spanish and English ticket rules in {newFolder}, or GitHub could not be read. " +
+            && await rulesSource.GetAsync(newFolder, refresh: true, ct) is { Problem: { } problem })
+            return new($"The ticket rules in {newFolder} can't be used. {problem} " +
                 "The folder needs one name.md (Spanish) and name-en.md (English), and no other markdown without a language suffix.");
         var clash = await repository.GetTicketingSettingsForEventAsync(save.EventSettingsId, ct);
         if (clash is not null && clash.Id != existing?.Id)
@@ -248,7 +248,7 @@ internal sealed partial class TicketCheckoutService(
     }
 
     private async Task<TicketRules?> RulesForAsync(TicketingSettings ticketing, CancellationToken ct) =>
-        ticketing.TermsFolder is { } folder ? await rulesSource.GetAsync(folder, ct: ct) : null;
+        ticketing.TermsFolder is { } folder ? (await rulesSource.GetAsync(folder, ct: ct)).Rules : null;
 
     /// <summary>
     /// A ticket in resale sells at the resale price, so a page that can only sell one (directed, resale only, or fresh
@@ -317,7 +317,7 @@ internal sealed partial class TicketCheckoutService(
         {
             if (!command.AcceptTerms)
                 return StartCheckoutResult.Refused("Tickets_Buy_TermsRequired");
-            terms = await rulesSource.GetAsync(termsFolder, ct: ct);
+            terms = (await rulesSource.GetAsync(termsFolder, ct: ct)).Rules;
             if (terms is null)
                 return StartCheckoutResult.Refused("Tickets_Buy_TermsUnavailable");
             // The buyer accepts the text they were shown; rules changed since then are shown again first. The folder

@@ -84,8 +84,10 @@ internal sealed partial class TicketCheckoutService
         var request = await repository.GetCompanionRequestAsync(requestId, ct);
         if (request is null)
             return new("That request does not exist.");
+        if (request.State == TicketCompanionRequestState.Withdrawn)
+            return new("That request was withdrawn.");
         if (request.State != TicketCompanionRequestState.Pending)
-            return new("That request was already answered or withdrawn.");
+            return new($"That request was already {(request.State == TicketCompanionRequestState.Approved ? "approved" : "declined")}.");
         note = string.IsNullOrWhiteSpace(note) ? null : note.Trim();
         if (note?.Length > MaxCompanionNoteLength)
             return new($"Keep the note under {MaxCompanionNoteLength} characters.");

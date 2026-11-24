@@ -64,5 +64,6 @@
   <data name="Backdoor_Error_LabelTooLong" xml:space="preserve"><value>La etiqueta debe tener 100 caracteres o menos.</value></data>
   <data name="Backdoor_Error_NotEligible" xml:space="preserve"><value>Esta cuenta no puede tener una clave.</value></data>
   <data name="Backdoor_Error_NotAllowed" xml:space="preserve"><value>Solo puedes crear y cambiar tus propias claves.</value></data>
-  <data name="Backdoor_Error_NotFound" xml:space="preserve"><value>Esa clave ya no existe o ya está revocada.</value></data>
+  <data name="Backdoor_Error_NotFound" xml:space="preserve"><value>Esa clave ya no existe.</value></data>
+  <data name="Backdoor_Error_AlreadyRevoked" xml:space="preserve"><value>Esa clave ya está revocada.</value></data>
 </root>

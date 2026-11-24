@@ -64,5 +64,6 @@
   <data name="Backdoor_Error_LabelTooLong" xml:space="preserve"><value>L'etiqueta ha de tenir 100 caràcters o menys.</value></data>
   <data name="Backdoor_Error_NotEligible" xml:space="preserve"><value>Aquest compte no pot tenir una clau.</value></data>
   <data name="Backdoor_Error_NotAllowed" xml:space="preserve"><value>Només pots crear i canviar les teves pròpies claus.</value></data>
-  <data name="Backdoor_Error_NotFound" xml:space="preserve"><value>Aquesta clau ja no existeix o ja està revocada.</value></data>
+  <data name="Backdoor_Error_NotFound" xml:space="preserve"><value>Aquesta clau ja no existeix.</value></data>
+  <data name="Backdoor_Error_AlreadyRevoked" xml:space="preserve"><value>Aquesta clau ja està revocada.</value></data>
 </root>

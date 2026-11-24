@@ -882,8 +882,8 @@ public sealed partial class TicketCheckoutServiceTests
         child.PricePaidMinor.Should().Be(5000);
     }
 
-    private TicketRules RulesAt(string version) =>
-        new("TicketRules/2027", version, new Dictionary<string, string>(StringComparer.Ordinal) { ["es"] = "# Normas", ["en"] = "# Rules" });
+    private static TicketRulesRead RulesAt(string version) =>
+        new(new TicketRules("TicketRules/2027", version, new Dictionary<string, string>(StringComparer.Ordinal) { ["es"] = "# Normas", ["en"] = "# Rules" }), null);
 
     [HumansFact]
     public async Task Ticket_rules_from_the_legal_repo_are_shown_accepted_on_every_checkout_and_their_version_kept_on_the_order()
@@ -919,7 +919,7 @@ public sealed partial class TicketCheckoutServiceTests
         (await _service.StartCheckoutAsync(Buy() with { AcceptTerms = true, TermsFolder = "TicketRules/2026", TermsVersion = "abc123" }, _buyerId, Ct))
             .Refusal.Should().Be("Tickets_Buy_TermsChanged");
 
-        _rules.GetAsync("TicketRules/2027", Arg.Any<bool>(), Arg.Any<CancellationToken>()).Returns((TicketRules?)null);
+        _rules.GetAsync("TicketRules/2027", Arg.Any<bool>(), Arg.Any<CancellationToken>()).Returns(TicketRulesRead.Failed("GitHub could not be reached."));
         (await _service.GetBuyPagesAsync(_buyerId, Ct)).Single().Unavailable.Should().Be("Tickets_Buy_TermsUnavailable");
         (await _service.StartCheckoutAsync(Buy() with { AcceptTerms = true, TermsFolder = "TicketRules/2027", TermsVersion = "abc123" }, _buyerId, Ct))
             .Refusal.Should().Be("Tickets_Buy_TermsUnavailable");
@@ -993,7 +993,9 @@ public sealed partial class TicketCheckoutServiceTests
         { TermsFolder = folder };
 
         (await _service.SaveTicketingSettingsAsync(Save("../secrets"), _buyerId, Ct)).Refusal.Should().Contain("path in the legal repo");
-        (await _service.SaveTicketingSettingsAsync(Save("TicketRules/2027"), _buyerId, Ct)).Refusal.Should().Contain("no Spanish and English");
+        _rules.GetAsync("TicketRules/2027", Arg.Any<bool>(), Arg.Any<CancellationToken>())
+            .Returns(TicketRulesRead.Failed("It has no English file (NORMAS-en.md)."));
+        (await _service.SaveTicketingSettingsAsync(Save("TicketRules/2027"), _buyerId, Ct)).Refusal.Should().Contain("It has no English file");
 
         _rules.GetAsync("TicketRules/2027", Arg.Any<bool>(), Arg.Any<CancellationToken>()).Returns(RulesAt("abc123"));
         (await _service.SaveTicketingSettingsAsync(Save("TicketRules/2027"), _buyerId, Ct)).Refusal.Should().BeNull();

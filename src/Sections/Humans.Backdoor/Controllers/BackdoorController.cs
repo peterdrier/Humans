@@ -65,8 +65,8 @@ internal sealed class BackdoorController(
         var (userMissing, actor) = await RequireCurrentUserAsync(ct);
         if (userMissing is not null) return userMissing;
 
-        if (!await MayHandleKeyAsync(id, actor.Id, ct))
-            return RedirectAfter(BackdoorKeyIssueResult.Failed(BackdoorKeyError.NotFound));
+        if (await KeyAccessErrorAsync(id, actor.Id, ct) is { } denied)
+            return RedirectAfter(BackdoorKeyIssueResult.Failed(denied));
 
         var result = await keys.RotateAsync(id, actor.Id, ct);
         return RedirectAfter(result);
@@ -79,10 +79,10 @@ internal sealed class BackdoorController(
         var (userMissing, actor) = await RequireCurrentUserAsync(ct);
         if (userMissing is not null) return userMissing;
 
-        if (await MayHandleKeyAsync(id, actor.Id, ct) && await keys.RevokeAsync(id, actor.Id, ct))
-            SetSuccess(localizer["Backdoor_Revoked"]);
+        if ((await KeyAccessErrorAsync(id, actor.Id, ct) ?? await keys.RevokeAsync(id, actor.Id, ct)) is { } error)
+            SetError(localizer[$"Backdoor_Error_{error}"]);
         else
-            SetError(localizer["Backdoor_Error_NotFound"]);
+            SetSuccess(localizer["Backdoor_Revoked"]);
 
         return RedirectToAction(nameof(Index));
     }
@@ -112,9 +112,12 @@ internal sealed class BackdoorController(
     private async Task<bool> MayHandleKeysOfAsync(Guid ownerUserId, Guid actorUserId) =>
         ownerUserId == actorUserId || await IsAdminAsync();
 
-    private async Task<bool> MayHandleKeyAsync(Guid keyId, Guid actorUserId, CancellationToken ct) =>
-        (await keys.ListAsync(ct)).FirstOrDefault(k => k.Id == keyId) is { } key
-        && await MayHandleKeysOfAsync(key.UserId, actorUserId);
+    private async Task<BackdoorKeyError?> KeyAccessErrorAsync(Guid keyId, Guid actorUserId, CancellationToken ct)
+    {
+        if ((await keys.ListAsync(ct)).FirstOrDefault(k => k.Id == keyId) is not { } key)
+            return BackdoorKeyError.NotFound;
+        return await MayHandleKeysOfAsync(key.UserId, actorUserId) ? null : BackdoorKeyError.NotAllowed;
+    }
 
     private async Task<BackdoorKeysViewModel> BuildViewModelAsync(
         Guid me, string? newPlaintextKey, CancellationToken ct)

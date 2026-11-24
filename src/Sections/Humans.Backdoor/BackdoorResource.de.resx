@@ -64,5 +64,6 @@
   <data name="Backdoor_Error_LabelTooLong" xml:space="preserve"><value>Die Bezeichnung darf höchstens 100 Zeichen lang sein.</value></data>
   <data name="Backdoor_Error_NotEligible" xml:space="preserve"><value>Dieses Konto darf keinen Schlüssel haben.</value></data>
   <data name="Backdoor_Error_NotAllowed" xml:space="preserve"><value>Du kannst nur deine eigenen Schlüssel erstellen und ändern.</value></data>
-  <data name="Backdoor_Error_NotFound" xml:space="preserve"><value>Dieser Schlüssel existiert nicht mehr oder ist bereits widerrufen.</value></data>
+  <data name="Backdoor_Error_NotFound" xml:space="preserve"><value>Dieser Schlüssel existiert nicht mehr.</value></data>
+  <data name="Backdoor_Error_AlreadyRevoked" xml:space="preserve"><value>Dieser Schlüssel ist bereits widerrufen.</value></data>
 </root>

@@ -569,7 +569,7 @@ internal sealed partial class TicketCheckoutService
             if (started + heldBack > 0)
                 await auditLog.LogAsync(TicketsAuditActions.TicketResaleRefundBatch, TicketingSettingsAuditEntityType, ticketing.Id,
                     $"Evening resale refund batch: {started} refund(s) started, {FormatMinor(startedMinor)} in total; " +
-                    $"{heldBack} held back because the buyer's order was refunded or charged back; " +
+                    $"{heldBack} held back, each with its own entry saying why; " +
                     $"{waiting} left for a later batch", JobName);
             batch = new(batch.Started + started, batch.StartedMinor + startedMinor, batch.HeldBack + heldBack, batch.Waiting + waiting);
         }

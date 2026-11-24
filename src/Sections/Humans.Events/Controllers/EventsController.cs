@@ -367,8 +367,8 @@ internal sealed class EventsController(
 
     private void ValidateRecurrenceDays(bool isRecurring, string? days, EventSettingsInfo settings)
     {
-        if (!isRecurring || EventRecurrenceDays.HasOnlyEventOffsets(days, settings.EventEndOffset)) return;
-        logger.LogWarning("Event form rejected: recurrence days are outside the configured calendar or invalid");
+        if (!isRecurring || EventRecurrenceDays.OffsetProblem(days, settings.EventEndOffset) is not { } problem) return;
+        logger.LogWarning("Event form rejected: recurrence {Problem}", problem);
         ModelState.AddModelError(nameof(IndividualEventFormViewModel.RecurrenceDays),
             localizer["Events_RecurrenceDaysInvalid"].Value);
     }
