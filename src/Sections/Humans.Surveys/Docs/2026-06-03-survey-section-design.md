@@ -326,7 +326,7 @@ Anonymous and completion-tracked responses export their answers with **no** user
 
 ### 13.3 Analysis API (key-authed, read-only) — the "Claude reads the responses" surface
 
-Mirrors the rest of the machine surface exactly (`X-Api-Key` header; **401** when the header is missing, or the key is unknown or revoked), so the tooling and the `/triage`-style skill story are consistent. Since nobodies-collective/Humans#1128 the controller lives in `Humans.Backdoor` and reads this section through `ISurveyAnalysisRead`.
+Mirrors the rest of the Backdoor API exactly (`X-Api-Key` header; **401** when the header is missing, or the key is unknown or revoked), so the tooling and the `/triage`-style skill story are consistent. Since nobodies-collective/Humans#1128 the controller lives in `Humans.Backdoor` and reads this section through `ISurveyAnalysisRead`.
 
 | Route | Purpose |
 |-------|---------|
