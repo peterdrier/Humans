@@ -164,9 +164,10 @@ internal sealed class Service(
 
         var byAccount = spend.Where(e => m.HoldedCodeOf(e) is not null)
             .GroupBy(e => m.HoldedCodeOf(e)!, StringComparer.Ordinal)
-            .Select(g => new PleoSpendTotal(g.Key,
-                m.AccountsByCode.TryGetValue(g.Key, out var a) ? $"{g.Key} · {a.Name}" : g.Key,
-                g.Count(), SpendOf(g), m.CodeProblem(g.Key)))
+            .Select(g => m.AccountsByCode.TryGetValue(g.Key, out var a)
+                ? new PleoSpendTotal(g.Key, $"{g.Key} · {a.Name}", g.Count(), SpendOf(g),
+                    a.Archived ? "archived in Pleo's chart" : null)
+                : new PleoSpendTotal(g.Key, g.Key, g.Count(), SpendOf(g), "missing from Pleo's chart"))
             .ToList();
         var unmappedRows = spend.Where(e => m.HoldedCodeOf(e) is null).ToList();
         var noReceiptRows = spend.Where(e => e.ReceiptCount == 0).ToList();
@@ -365,7 +366,11 @@ internal sealed class Service(
 
     public async Task<PleoSyncOutcome> SyncAsync(CancellationToken ct = default)
     {
-        if (!client.IsConfigured) return PleoSyncOutcome.NotConfigured;
+        if (!client.IsConfigured)
+        {
+            logger.LogInformation("{Missing} not set; skipping Pleo sync", client.MissingSettings);
+            return PleoSyncOutcome.NotConfigured;
+        }
         if (!await SyncGate.WaitAsync(0, ct)) return PleoSyncOutcome.Busy;
         try
         {

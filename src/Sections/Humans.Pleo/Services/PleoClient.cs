@@ -36,8 +36,16 @@ internal sealed class PleoClient : IPleoClient
         _http.BaseAddress ??= new Uri(_options.BaseUrl);
     }
 
-    public bool IsConfigured =>
-        !string.IsNullOrWhiteSpace(_options.ApiKey) && !string.IsNullOrWhiteSpace(_options.CompanyId);
+    public bool IsConfigured => MissingSettings is null;
+
+    public string? MissingSettings =>
+        (string.IsNullOrWhiteSpace(_options.ApiKey), string.IsNullOrWhiteSpace(_options.CompanyId)) switch
+        {
+            (true, true) => "PLEO_API_KEY and PLEO_COMPANY_ID",
+            (true, false) => "PLEO_API_KEY",
+            (false, true) => "PLEO_COMPANY_ID",
+            _ => null
+        };
 
     private string Company => Uri.EscapeDataString(_options.CompanyId);
 
