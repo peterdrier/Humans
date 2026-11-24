@@ -115,9 +115,10 @@
   <data name="Google_Identity_Updated" xml:space="preserve">
     <value>Google-service-e-mailadres bijgewerkt. De synchronisatie wordt opnieuw geprobeerd met het nieuwe e-mailadres.</value>
   </data>
-  <data name="Google_Identity_SetRejected" xml:space="preserve">
-    <value>Kon het Google-service-e-mailadres niet instellen — de rij is onbekend of niet geverifieerd.</value>
-  </data>
+  <data name="Google_Identity_Refused_AccountNotFound" xml:space="preserve"><value>Het Google-service-e-mailadres kon niet worden ingesteld: dat account bestaat niet meer.</value></data>
+  <data name="Google_Identity_Refused_NotTheirEmail" xml:space="preserve"><value>Het Google-service-e-mailadres kon niet worden ingesteld: dat adres staat niet op dit account.</value></data>
+  <data name="Google_Identity_Refused_Unverified" xml:space="preserve"><value>Het Google-service-e-mailadres kon niet worden ingesteld: verifieer dat adres eerst.</value></data>
+  <data name="Google_Identity_Refused_NobodiesAddressWins" xml:space="preserve"><value>Het Google-service-e-mailadres kon niet worden ingesteld: een geverifieerd @nobodies.team-adres is altijd de Google-identiteit.</value></data>
   <data name="Google_Identity_Google" xml:space="preserve">
     <value>Google</value>
   </data>

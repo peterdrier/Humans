@@ -115,9 +115,10 @@
   <data name="Google_Identity_Updated" xml:space="preserve">
     <value>Google-Service-E-Mail aktualisiert. Die Synchronisation wird mit der neuen E-Mail wiederholt.</value>
   </data>
-  <data name="Google_Identity_SetRejected" xml:space="preserve">
-    <value>Google-Service-E-Mail konnte nicht gesetzt werden — Zeile unbekannt oder nicht verifiziert.</value>
-  </data>
+  <data name="Google_Identity_Refused_AccountNotFound" xml:space="preserve"><value>Die Google-Dienst-E-Mail konnte nicht festgelegt werden: Dieses Konto existiert nicht mehr.</value></data>
+  <data name="Google_Identity_Refused_NotTheirEmail" xml:space="preserve"><value>Die Google-Dienst-E-Mail konnte nicht festgelegt werden: Diese Adresse gehört nicht zu diesem Konto.</value></data>
+  <data name="Google_Identity_Refused_Unverified" xml:space="preserve"><value>Die Google-Dienst-E-Mail konnte nicht festgelegt werden: Bestätige diese Adresse zuerst.</value></data>
+  <data name="Google_Identity_Refused_NobodiesAddressWins" xml:space="preserve"><value>Die Google-Dienst-E-Mail konnte nicht festgelegt werden: Eine bestätigte @nobodies.team-Adresse ist immer die Google-Identität.</value></data>
   <data name="Google_Identity_Google" xml:space="preserve">
     <value>Google</value>
   </data>

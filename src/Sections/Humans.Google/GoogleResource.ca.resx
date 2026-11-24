@@ -115,9 +115,10 @@
   <data name="Google_Identity_Updated" xml:space="preserve">
     <value>Correu de servei de Google actualitzat. La sincronització es reintentarà amb el correu nou.</value>
   </data>
-  <data name="Google_Identity_SetRejected" xml:space="preserve">
-    <value>No s'ha pogut establir el correu de servei de Google: fila desconeguda o no verificada.</value>
-  </data>
+  <data name="Google_Identity_Refused_AccountNotFound" xml:space="preserve"><value>No s'ha pogut establir el correu del servei de Google: aquest compte ja no existeix.</value></data>
+  <data name="Google_Identity_Refused_NotTheirEmail" xml:space="preserve"><value>No s'ha pogut establir el correu del servei de Google: aquesta adreça no és en aquest compte.</value></data>
+  <data name="Google_Identity_Refused_Unverified" xml:space="preserve"><value>No s'ha pogut establir el correu del servei de Google: primer verifica aquesta adreça.</value></data>
+  <data name="Google_Identity_Refused_NobodiesAddressWins" xml:space="preserve"><value>No s'ha pogut establir el correu del servei de Google: una adreça @nobodies.team verificada sempre és la identitat de Google.</value></data>
   <data name="Google_Identity_Google" xml:space="preserve">
     <value>Google</value>
   </data>

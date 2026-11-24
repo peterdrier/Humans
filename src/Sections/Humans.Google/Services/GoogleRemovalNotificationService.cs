@@ -39,8 +39,8 @@ internal sealed class GoogleRemovalNotificationService(
         {
             // Expected, but logged so an incident investigation can see suppressed notifications.
             logger.LogWarning(
-                "Suppressing Google removal notification for {Email} — no UserEmail row matches " +
-                "(orphan, deleted user, or self-unlink)", removedEmail);
+                "Suppressing Google removal notification for {Email}: no verified UserEmail row matches",
+                removedEmail);
             return;
         }
 

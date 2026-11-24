@@ -71,19 +71,27 @@ internal sealed class GoogleGroupProvisioningClient(
 
             // The resource name in the operation response is of the form
             // "groups/{id}" — strip the prefix to get the numeric id.
-            if (!operation.Response.TryGetValue("name", out var nameObj) ||
-                nameObj is not string resourceName ||
-                !resourceName.StartsWith("groups/", StringComparison.Ordinal) ||
-                resourceName.Length <= "groups/".Length ||
-                resourceName["groups/".Length..].Any(c => c == '/' || char.IsWhiteSpace(c)))
+            operation.Response.TryGetValue("name", out var nameObj);
+            var nameProblem = nameObj switch
+            {
+                null => "has no 'name' field",
+                not string => $"has a 'name' field that is {nameObj.GetType().Name}, not text",
+                string name when !name.StartsWith("groups/", StringComparison.Ordinal) ||
+                    name.Length <= "groups/".Length ||
+                    name["groups/".Length..].Any(c => c == '/' || char.IsWhiteSpace(c))
+                    => $"has 'name' {name}, not groups/{{id}}",
+                _ => null
+            };
+            if (nameProblem is not null)
             {
                 logger.LogWarning(
-                    "Cloud Identity groups.create response for {Email} missing or malformed 'name' field",
-                    groupEmail);
+                    "Cloud Identity groups.create response for {Email} {Problem}", groupEmail, nameProblem);
                 return new GroupCreateResult(
                     GroupNumericId: null,
-                    Error: new GoogleClientError(0, "groups.create response did not include a 'name' field"));
+                    Error: new GoogleClientError(0, $"groups.create response {nameProblem}"));
             }
+
+            var resourceName = (string)nameObj!;
 
             var numericId = resourceName["groups/".Length..];
             return new GroupCreateResult(numericId, Error: null);

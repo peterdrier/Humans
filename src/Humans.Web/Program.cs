@@ -178,7 +178,7 @@ builder.Services.AddAuthentication()
                 else if (isCorrelationFailure)
                 {
                     logger.LogWarning(
-                        "Google sign-in correlation cookie missing from {ClientIp} (stale or duplicate request)", clientIp);
+                        "Google sign-in correlation cookie missing from {ClientIp}", clientIp);
                 }
                 else if (context.Failure is OperationCanceledException)
                 {
@@ -608,8 +608,7 @@ foreach (var resourceType in SectionDiscoveryExtensions.SectionResourceTypes())
         if (policy is null)
         {
             app.Logger.LogError(
-                "AUTHORIZATION BROKEN: PolicyNames.{Name} has no registered policy. Its " +
-                "owning section may be missing, or its Policies contribution failed to register.",
+                "AUTHORIZATION BROKEN: no section registered a policy for PolicyNames.{Name}.",
                 name);
         }
     }

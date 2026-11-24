@@ -166,7 +166,7 @@ public sealed class WorkspaceIdentityServiceTests
         var actor = Guid.NewGuid();
         var targetRowId = info.UserEmails.Single(e => string.Equals(e.Email, "alice@gmail.com", StringComparison.Ordinal)).Id;
 
-        (await _sut.SetAsync(info.Id, "alice@gmail.com", actor, Ct)).Should().BeTrue();
+        (await _sut.SetAsync(info.Id, "alice@gmail.com", actor, Ct)).Should().BeNull();
 
         (await _sut.GetWorkspaceIdentityAsync(info.Id, Ct)).Should()
             .Be(new WorkspaceIdentity("alice@gmail.com", GoogleEmailStatus.Unknown));
@@ -184,10 +184,10 @@ public sealed class WorkspaceIdentityServiceTests
             new Addr("pending@example.org", Verified: false),
             new Addr("alice@nobodies.team"));
 
-        (await _sut.SetAsync(info.Id, "pending@example.org", info.Id, Ct)).Should().BeFalse();
-        (await _sut.SetAsync(info.Id, "stranger@example.org", info.Id, Ct)).Should().BeFalse();
+        (await _sut.SetAsync(info.Id, "pending@example.org", info.Id, Ct)).Should().Be(WorkspaceIdentityRefusal.Unverified);
+        (await _sut.SetAsync(info.Id, "stranger@example.org", info.Id, Ct)).Should().Be(WorkspaceIdentityRefusal.NotTheirEmail);
         // A verified @nobodies.team address locks the identity to the Workspace account.
-        (await _sut.SetAsync(info.Id, "alice@example.org", info.Id, Ct)).Should().BeFalse();
+        (await _sut.SetAsync(info.Id, "alice@example.org", info.Id, Ct)).Should().Be(WorkspaceIdentityRefusal.NobodiesAddressWins);
 
         _repo.Rows.Should().BeEmpty();
         await _audit.DidNotReceiveWithAnyArgs().LogAsync(null!, default!, default, default!, default(Guid));
@@ -200,7 +200,7 @@ public sealed class WorkspaceIdentityServiceTests
         var archivedId = Guid.NewGuid();
         _infos[archivedId] = info;
 
-        (await _sut.SetAsync(archivedId, "alice@example.org", info.Id, Ct)).Should().BeFalse();
+        (await _sut.SetAsync(archivedId, "alice@example.org", info.Id, Ct)).Should().Be(WorkspaceIdentityRefusal.AccountNotFound);
         _repo.Rows.Should().BeEmpty();
     }
 
@@ -213,7 +213,7 @@ public sealed class WorkspaceIdentityServiceTests
         var info = Seed(new Addr("alice@example.org", Primary: true));
         await _repo.UpsertAsync(info.Id, "alice@example.org", before, Instant.MinValue, Ct);
 
-        (await _sut.SetAsync(info.Id, "alice@example.org", info.Id, Ct)).Should().BeTrue();
+        (await _sut.SetAsync(info.Id, "alice@example.org", info.Id, Ct)).Should().BeNull();
 
         _repo.Rows[info.Id].Status.Should().Be(after);
     }
@@ -282,7 +282,7 @@ public sealed class WorkspaceIdentityServiceTests
         await _sut.SetStatusFromSyncAsync(info.Id, "alice+burn@example.org", GoogleEmailStatus.Valid, Ct);
         _repo.Rows[info.Id].DriveEmail.Should().Be("alice@example.org");
 
-        (await _sut.SetAsync(info.Id, "alice@gmail.com", info.Id, Ct)).Should().BeTrue();
+        (await _sut.SetAsync(info.Id, "alice@gmail.com", info.Id, Ct)).Should().BeNull();
         _repo.Rows[info.Id].DriveEmail.Should().BeNull();
         (await _sut.GetDriveEmailsAsync(Ct)).Should().BeEmpty();
     }
@@ -369,7 +369,7 @@ public sealed class WorkspaceIdentityServiceTests
     {
         var info = Seed(new Addr("alice@example.org", Primary: true), new Addr("alice@gmail.com"));
         var identities = Substitute.For<IWorkspaceIdentityManagement>();
-        identities.SetAsync(info.Id, "alice@gmail.com", info.Id, Arg.Any<CancellationToken>()).Returns(true);
+        identities.SetAsync(info.Id, "alice@gmail.com", info.Id, Arg.Any<CancellationToken>()).Returns((WorkspaceIdentityRefusal?)null);
         var rowId = info.UserEmails.Single(e => string.Equals(e.Email, "alice@gmail.com", StringComparison.Ordinal)).Id;
 
         var result = await Controller(identities, info.Id).Set(rowId, Ct);
