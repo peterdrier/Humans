@@ -8,7 +8,7 @@ namespace Humans.Backdoor.Filters;
 
 /// <summary>
 /// Installs the key's owner (id and active roles) as the request principal. A missing header and an unknown or revoked
-/// key are both 401, deliberately indistinguishable. A good key whose holder the controller's
+/// key are both 401, deliberately indistinguishable. A good key whose owner the controller's
 /// <see cref="BackdoorScopeAttribute"/> does not admit is 403, and so is a controller declaring no scope. Controllers carrying it are <c>[AllowAnonymous]</c>: the
 /// authenticated-by-default fallback policy runs before MVC filters and would reject the request first. That same
 /// attribute is what lets the key's principal, which carries no account-state claim, past the Shell's membership gates.

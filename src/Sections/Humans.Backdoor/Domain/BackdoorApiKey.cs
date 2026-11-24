@@ -19,21 +19,21 @@ internal sealed class BackdoorApiKey
     /// <summary>Leading characters of the plaintext, for identification in the admin list.</summary>
     public string DisplayPrefix { get; set; } = string.Empty;
 
-    /// <summary>What the holder calls this key ("triage laptop", "CI"). Free text.</summary>
+    /// <summary>What the owner calls this key ("triage laptop", "CI"). Free text.</summary>
     public string Label { get; set; } = string.Empty;
 
     public Instant CreatedAt { get; set; }
 
     /// <summary>
     /// Nullable so GDPR erasure can detach a deleted admin from a key that belongs to someone else. The audit log keeps
-    /// who issued what.
+    /// who created what.
     /// </summary>
     public Guid? CreatedByUserId { get; set; }
 
     /// <summary>Stamped on every authenticated request, so dormant keys are visible.</summary>
     public Instant? LastUsedAt { get; set; }
 
-    /// <summary>Null for a key that never lapses (Admin and Board holders). Past it, the key authenticates nothing.</summary>
+    /// <summary>Null for a key that never lapses (Admin and Board owners). Past it, the key authenticates nothing.</summary>
     public Instant? ExpiresAt { get; set; }
 
     public Instant? RevokedAt { get; set; }

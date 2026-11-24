@@ -7,7 +7,7 @@ internal sealed class BackdoorKeysViewModel
     /// <summary>Every key for Admin and Board; only the viewer's own for anyone else.</summary>
     public IReadOnlyList<BackdoorKeyListItem> Keys { get; init; } = [];
 
-    /// <summary>Who an Admin may allocate a key to. Empty for anyone else, who only makes their own.</summary>
+    /// <summary>Who an Admin may create a key for. Empty for anyone else, who only makes their own.</summary>
     public IReadOnlyList<BackdoorKeyCandidate> EligibleUsers { get; init; } = [];
 
     /// <summary>Shown once: survives exactly one redirect, in TempData. Null on a plain page load.</summary>
