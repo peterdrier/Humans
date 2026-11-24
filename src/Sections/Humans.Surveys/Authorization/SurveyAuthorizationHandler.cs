@@ -2,7 +2,6 @@ using Humans.Base.Extensions;
 using Humans.Surveys.Contracts;
 using Humans.Surveys.Services;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
 using Humans.Users.Contracts;
 
 namespace Humans.Surveys.Authorization;

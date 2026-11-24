@@ -1,4 +1,3 @@
-using Humans.Teams;
 using Microsoft.Extensions.Localization;
 using Humans.Roles.Contracts;
 using System.Globalization;
@@ -10,8 +9,6 @@ using Humans.Base.Extensions;
 // User.DisplayName is Obsolete; the seeders still set it.
 #pragma warning disable CS0618
 using AwesomeAssertions;
-using Humans.Base.Caching;
-using Humans.Base.Interfaces.Caching;
 using Humans.AuditLog.Contracts;
 using Humans.Auth.Contracts;
 using Humans.Auth.Data;
@@ -19,14 +16,11 @@ using Humans.Auth.Services;
 using Humans.Base.Constants;
 using Humans.Base.Enums;
 using Humans.Email.Contracts;
-using Humans.EarlyEntry.Contracts;
 using Humans.Notifications.Contracts;
 using Humans.Google.Contracts;
 using Humans.Google.Data;
 using Humans.Google.Services;
-using Humans.Settings.Contracts;
 using Humans.Teams.Contracts;
-using Humans.Teams.Models;
 using Humans.Teams.Data;
 using Humans.Teams.Domain;
 using Humans.Teams.Services;
@@ -34,7 +28,6 @@ using Humans.Teams.Tests.Infrastructure;
 using Humans.Users.Contracts;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
-using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging.Abstractions;
 using NodaTime;
 using Microsoft.Extensions.DependencyInjection;
@@ -3363,7 +3356,7 @@ public sealed class TeamServiceTests : TeamsTestHarness
 
         result.Succeeded.Should().BeTrue();
         result.WasCoordinator.Should().BeTrue();
-        (await _service.GetUserCoordinatedTeamIdsAsync(user.Id, Xunit.TestContext.Current.CancellationToken))
+        (await _service.GetUserCoordinatedTeamIdsAsync(user.Id, TestContext.Current.CancellationToken))
             .Should().NotContain(team.Id);
     }
 

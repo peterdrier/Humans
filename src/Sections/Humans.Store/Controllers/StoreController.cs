@@ -4,7 +4,6 @@ using Humans.Store.Contracts;
 using Humans.Store.Domain;
 using Humans.Store.Services;
 using Humans.Store.Services.Dtos;
-using Humans.Base.Authorization;
 using Humans.Store.Authorization;
 using Humans.Store.Models;
 using Humans.Base.Controllers;

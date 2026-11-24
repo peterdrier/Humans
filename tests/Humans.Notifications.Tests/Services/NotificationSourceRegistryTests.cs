@@ -2,7 +2,6 @@ using AwesomeAssertions;
 using Humans.Email.Contracts;
 using Humans.Notifications.Contracts;
 using Humans.Notifications.Services;
-using Xunit;
 
 namespace Humans.Notifications.Tests.Services;
 

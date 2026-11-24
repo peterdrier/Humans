@@ -407,7 +407,7 @@
                         ("trail", "<code>IHtmlContent?</code> — the rendered <code>Crumbs</code> section; <code>_Layout</code> supplies it")
                     )
                     <div class="wg-card-example">
-                        @{ var breadcrumbDemo = new Microsoft.AspNetCore.Html.HtmlString("<a href='#'>Teams</a><a href='#'>Fire safety</a><span>Edit</span>"); }
+                        @{ var breadcrumbDemo = new HtmlString("<a href='#'>Teams</a><a href='#'>Fire safety</a><span>Edit</span>"); }
                         <vc:breadcrumb trail="@breadcrumbDemo" />
                     </div>
                 </div>

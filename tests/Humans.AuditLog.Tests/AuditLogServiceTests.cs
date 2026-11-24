@@ -73,7 +73,7 @@ public class AuditLogServiceTests : IDisposable
             TestActions.VolunteerApproved, nameof(User), entityId,
             "Auto-approved", "SystemTeamSyncJob");
 
-        var entry = await _dbContext.AuditLogEntries.AsNoTracking().SingleAsync(Xunit.TestContext.Current.CancellationToken);
+        var entry = await _dbContext.AuditLogEntries.AsNoTracking().SingleAsync(TestContext.Current.CancellationToken);
         entry.Action.Should().Be(TestActions.VolunteerApproved.Name);
         entry.EntityType.Should().Be("User");
         entry.EntityId.Should().Be(entityId);
@@ -92,7 +92,7 @@ public class AuditLogServiceTests : IDisposable
             TestActions.MemberSuspended, nameof(User), entityId,
             "Suspended for inactivity", actorId);
 
-        var entry = await _dbContext.AuditLogEntries.AsNoTracking().SingleAsync(Xunit.TestContext.Current.CancellationToken);
+        var entry = await _dbContext.AuditLogEntries.AsNoTracking().SingleAsync(TestContext.Current.CancellationToken);
         entry.ActorUserId.Should().Be(actorId);
         entry.Action.Should().Be(TestActions.MemberSuspended.Name);
         entry.EntityType.Should().Be("User");
@@ -111,7 +111,7 @@ public class AuditLogServiceTests : IDisposable
             "Assigned Board role", "TestJob");
 
         // Each entry is persisted immediately through the repository; the caller never calls SaveChanges.
-        (await _dbContext.AuditLogEntries.AsNoTracking().CountAsync(Xunit.TestContext.Current.CancellationToken)).Should().Be(1);
+        (await _dbContext.AuditLogEntries.AsNoTracking().CountAsync(TestContext.Current.CancellationToken)).Should().Be(1);
     }
 
     [HumansTheory]

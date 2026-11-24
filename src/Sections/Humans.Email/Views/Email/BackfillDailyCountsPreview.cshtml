@@ -1,7 +1,7 @@
 @model Humans.Email.Models.BackfillDailyCountsViewModel
 @{
     ViewData["Title"] = "Backfill Daily Send Counts";
-    ViewData[Humans.Base.ViewComponents.AdminNavComposition.ParentKey] = nameof(EmailController.EmailOutbox);
+    ViewData[AdminNavComposition.ParentKey] = nameof(EmailController.EmailOutbox);
 }
 
 <page-header title="Backfill Daily Send Counts">

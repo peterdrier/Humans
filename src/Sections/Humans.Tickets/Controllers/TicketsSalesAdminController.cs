@@ -34,7 +34,7 @@ internal sealed class TicketsSalesAdminController(
         var events = await settings.GetAllEventSettingsAsync(ct);
         var allSettings = await checkout.ListTicketingSettingsAsync(ct);
         return View("~/Views/Tickets/Admin/Sales/Index.cshtml", new SalesAdminIndexViewModel(
-            allSettings, events, checkout.Platforms, clock.GetCurrentInstant().InZone(orgTimeZone.Zone).Date));
+            allSettings, events, PlatformsForDisplay, clock.GetCurrentInstant().InZone(orgTimeZone.Zone).Date));
     }
 
     [HttpGet("Platforms")]
@@ -74,7 +74,8 @@ internal sealed class TicketsSalesAdminController(
         var ticketing = await checkout.GetTicketingSettingsAsync(id, ct);
         if (ticketing is null)
             return NotFound();
-        var orders = await checkout.GetOrdersForSettingsAsync(id, ct);
+        IReadOnlyList<TicketCheckoutOrder> orders = (await checkout.GetOrdersForSettingsAsync(id, ct))
+            .OrderByDescending(order => order.CreatedAt).ToList();
         var eventName = (await settings.GetEventSettingsByIdAsync(ticketing.EventSettingsId, ct))?.EventName
             ?? ticketing.EventSettingsId.ToString();
         return View("~/Views/Tickets/Admin/Sales/Orders.cshtml", (ticketing, eventName, orders));
@@ -87,7 +88,13 @@ internal sealed class TicketsSalesAdminController(
         if (await checkout.RefreshOrderAsync(id, ct) is null)
             return NotFound();
         var detail = await checkout.GetOrderDetailAsync(id, ct);
-        return View("~/Views/Tickets/Admin/Sales/Order.cshtml", detail!);
+        if (detail is null)
+            return NotFound();
+        return View("~/Views/Tickets/Admin/Sales/Order.cshtml", detail with
+        {
+            Tickets = detail.Tickets.OrderBy(ticket => ticket.Kind).ThenBy(ticket => ticket.IssuedAt).ToList(),
+            Refunds = detail.Refunds.OrderBy(refund => refund.CreatedAt).ToList(),
+        });
     }
 
     [HttpPost("Order/{id:guid}/Refund")]
@@ -160,11 +167,14 @@ internal sealed class TicketsSalesAdminController(
     private static LocalDate? ReconDate(string? value) =>
         value is not null && LocalDatePattern.Iso.Parse(value) is { Success: true } parsed ? parsed.Value : null;
 
+    private IReadOnlyList<PlatformInfo> PlatformsForDisplay =>
+        checkout.Platforms.OrderBy(platform => platform.Key, StringComparer.Ordinal).ToList();
+
     private async Task<PlatformsViewModel> PlatformsModelAsync(CancellationToken ct) =>
-        new(checkout.Platforms, await checkout.ListTicketingSettingsAsync(ct), await settings.GetAllEventSettingsAsync(ct), null);
+        new(PlatformsForDisplay, await checkout.ListTicketingSettingsAsync(ct), await settings.GetAllEventSettingsAsync(ct), null);
 
     private async Task<SalesEditViewModel> EditModelAsync(SalesEditForm form, string? error, CancellationToken ct) =>
-        new(form, error, await settings.GetAllEventSettingsAsync(ct), await grants.GetProgramSummariesAsync(ct), checkout.Platforms,
+        new(form, error, await settings.GetAllEventSettingsAsync(ct), await grants.GetProgramSummariesAsync(ct), PlatformsForDisplay,
             orgTimeZone.Zone);
 }
 
@@ -377,7 +387,9 @@ internal sealed class SalesEditForm
     {
         minor = 0;
         if (!decimal.TryParse(text?.Trim(), NumberStyles.Number, CultureInfo.InvariantCulture, out var eur)) return false;
-        minor = (long)Math.Round(eur * 100m, MidpointRounding.AwayFromZero);
+        var rounded = Math.Round(eur, 2, MidpointRounding.AwayFromZero);
+        if (rounded < long.MinValue / 100m || rounded > long.MaxValue / 100m) return false;
+        minor = (long)(rounded * 100m);
         return true;
     }
 

@@ -217,9 +217,9 @@ internal sealed class EmailProvisioningService(
     /// <summary>Null for an invalid Workspace username; empty on blank input.</summary>
     internal static string? SanitizeEmailPrefix(string prefix)
     {
-        var trimmed = prefix.Trim();
+        var trimmed = prefix.Trim().Normalize(NormalizationForm.FormC);
 
-        // German-specific mappings (must be applied before NFD stripping)
+        // NFC makes decomposed umlauts match these mappings before NFD stripping.
         var sb = new StringBuilder(trimmed.Length);
         foreach (var ch in trimmed)
         {
@@ -231,7 +231,7 @@ internal sealed class EmailProvisioningService(
                 'Ö' => "oe",
                 'ä' => "ae",
                 'Ä' => "ae",
-                'ß' => "ss",
+                'ß' or 'ẞ' => "ss",
                 _ => null
             };
 

@@ -82,11 +82,14 @@ public sealed class LegalDocumentServiceTests : IDisposable
         result.Should().BeEmpty();
     }
 
-    [HumansFact]
-    public async Task GetDocumentContentAsync_CancelledFetchDoesNotPopulateFailureCache()
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task GetDocumentContentAsync_CancelledFetchDoesNotPopulateFailureCache(bool returnAfterCancellation)
     {
         using var cancellation = new CancellationTokenSource();
         _connector.CancelDuringFetch = cancellation;
+        _connector.ReturnAfterCancellation = returnAfterCancellation;
 
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
             _service.GetDocumentContentAsync("statutes", cancellation.Token));
@@ -360,6 +363,7 @@ public sealed class LegalDocumentServiceTests : IDisposable
         public bool ThrowOnFetch { get; set; }
         public bool CancelFetch { get; set; }
         public CancellationTokenSource? CancelDuringFetch { get; set; }
+        public bool ReturnAfterCancellation { get; set; }
         public CancellationToken LastFetchToken { get; private set; }
 
         public Task<IReadOnlyDictionary<string, string>> DiscoverLanguageFilesAsync(
@@ -380,7 +384,7 @@ public sealed class LegalDocumentServiceTests : IDisposable
             if (CancelDuringFetch is not null)
             {
                 await CancelDuringFetch.CancelAsync();
-                ct.ThrowIfCancellationRequested();
+                if (!ReturnAfterCancellation) ct.ThrowIfCancellationRequested();
             }
             if (CancelFetch)
                 throw new OperationCanceledException();

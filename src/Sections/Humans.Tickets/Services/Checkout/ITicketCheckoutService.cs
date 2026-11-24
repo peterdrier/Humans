@@ -1,4 +1,3 @@
-using Humans.Base.Interfaces;
 using Humans.Tickets.Contracts;
 using Humans.Tickets.Domain.Checkout;
 using NodaTime;
@@ -9,7 +8,7 @@ namespace Humans.Tickets.Services.Checkout;
 /// The checkout lane: Humans prices the order, the event's ticketing platform takes the money. Authorization is the controllers'
 /// job; every method trusts its actor.
 /// </summary>
-internal interface ITicketCheckoutService : ITicketingPlatformEvents, IApplicationService
+internal interface ITicketCheckoutService : ITicketingPlatformEvents
 {
     IReadOnlyList<PlatformInfo> Platforms { get; }
 
@@ -35,8 +34,6 @@ internal interface ITicketCheckoutService : ITicketingPlatformEvents, IApplicati
     Task<BuyPage?> GetDirectedBuyPageAsync(string token, Guid userId, CancellationToken ct = default);
 
     Task<StartCheckoutResult> StartCheckoutAsync(StartCheckout command, Guid userId, CancellationToken ct = default);
-
-    Task<IReadOnlyList<TicketCheckoutOrder>> GetOrdersForUserAsync(Guid userId, CancellationToken ct = default);
 
     Task<IReadOnlyList<TicketCheckoutOrder>> GetOrdersForSettingsAsync(Guid settingsId, CancellationToken ct = default);
 
@@ -207,7 +204,7 @@ internal sealed record TicketingSettingsSave(
     string PlatformKey,
     string? PlatformEventRef,
     TicketSalesMode Mode,
-    NodaTime.Instant? SalesCloseAt,
+    Instant? SalesCloseAt,
     int Capacity,
     decimal TicketVatRate,
     IReadOnlyList<TicketSalesWave> Waves,
@@ -223,7 +220,10 @@ internal sealed record TicketingSettingsSave(
 }
 
 /// <summary><paramref name="ResaleOnly"/>: only resale offers are left.</summary>
-internal sealed record PublicSale(string EventName, long PriceMinor, bool ResaleOnly);
+internal sealed record PublicSale(string EventName, long PriceMinor, bool ResaleOnly)
+{
+    public LocalDate GateOpeningDate { get; init; }
+}
 
 /// <summary>
 /// What the buyer sees. <paramref name="Unavailable"/> is a resource key naming why buying is closed to them, null
@@ -239,6 +239,8 @@ internal sealed record BuyPage(
     string BuyerName,
     IReadOnlyList<TicketCheckoutOrder> Orders)
 {
+    public LocalDate GateOpeningDate { get; init; }
+
     /// <summary>
     /// The ticket rules the buyer accepts with each order; null for none, or while they cannot be read (then
     /// <c>Unavailable</c> says so).

@@ -17,7 +17,7 @@ namespace Humans.HiEvents.Tests;
 
 public class HiEventsPlatformTests
 {
-    private static readonly CancellationToken Ct = Xunit.TestContext.Current.CancellationToken;
+    private static readonly CancellationToken Ct = TestContext.Current.CancellationToken;
     private static readonly Instant Now = Instant.FromUtc(2027, 1, 2, 10, 0);
     private static readonly Guid OrderId = Guid.Parse("11111111-2222-3333-4444-555555555555");
 
@@ -31,10 +31,36 @@ public class HiEventsPlatformTests
         return stripe;
     }
 
+    [HumansTheory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task Check_propagates_caller_cancellation_but_reports_timeouts(bool cancelCaller)
+    {
+        using var caller = new CancellationTokenSource();
+        if (cancelCaller) await caller.CancelAsync();
+        _handler.Failure = new TaskCanceledException("probe cancelled", null, caller.Token);
+
+        var check = () => Platform().CheckAsync(null, caller.Token);
+
+        if (cancelCaller)
+            await check.Should().ThrowAsync<OperationCanceledException>();
+        else
+            (await check()).Should().Contain(f => !f.Ok && f.Text.Contains("could not be read"));
+    }
+
     [HumansFact]
     public async Task CreateOrder_PostsFixedPricesAndNamesAndReturnsThePaymentLink()
     {
-        _handler.Enqueue(HttpStatusCode.OK, Products());
+        _handler.Enqueue(HttpStatusCode.OK, new
+        {
+            data = new[] { new { id = 100, product_type = "TICKET", is_hidden = true } },
+            meta = new { last_page = 2, total = 2 },
+        });
+        _handler.Enqueue(HttpStatusCode.OK, new
+        {
+            data = new[] { new { id = 200, product_type = "GENERAL", is_hidden = true } },
+            meta = new { last_page = 2, total = 2 },
+        });
         _handler.Enqueue(HttpStatusCode.Created, Order(id: 42, total: 1000m, paymentLink: "https://tickets.example/pay/42"));
 
         var session = await Platform().CreateOrderAsync(Request(
@@ -45,9 +71,10 @@ public class HiEventsPlatformTests
         session.PaymentUrl.Should().Be(new Uri("https://tickets.example/pay/42"));
         session.AdminUrl.Should().Be(new Uri("https://tickets.example/manage/event/7/orders#order-42"));
 
-        _handler.Requests.Should().HaveCount(2);
-        _handler.Requests[0].Request.RequestUri!.ToString().Should().Be("https://tickets.example/api/events/7/products?per_page=100");
-        var (request, body) = _handler.Requests[1];
+        _handler.Requests.Should().HaveCount(3);
+        _handler.Requests[0].Request.RequestUri!.ToString().Should().Be("https://tickets.example/api/events/7/products?per_page=100&page=1");
+        _handler.Requests[1].Request.RequestUri!.Query.Should().Contain("page=2");
+        var (request, body) = _handler.Requests[2];
         request.Method.Should().Be(HttpMethod.Post);
         request.RequestUri!.ToString().Should().Be("https://tickets.example/api/events/7/orders/checkout");
         request.Headers.Authorization!.ToString().Should().Be("Bearer key");
@@ -92,8 +119,8 @@ public class HiEventsPlatformTests
     }
 
     [HumansTheory]
-    [Xunit.InlineData(HttpStatusCode.UnprocessableEntity)]
-    [Xunit.InlineData(HttpStatusCode.Conflict)]
+    [InlineData(HttpStatusCode.UnprocessableEntity)]
+    [InlineData(HttpStatusCode.Conflict)]
     public async Task CreateOrder_WhenHiEventsRefuses_Throws(HttpStatusCode status)
     {
         _handler.Enqueue(HttpStatusCode.OK, Products());
@@ -132,8 +159,8 @@ public class HiEventsPlatformTests
     }
 
     [HumansTheory]
-    [Xunit.InlineData(0)]
-    [Xunit.InlineData(2)]
+    [InlineData(0)]
+    [InlineData(2)]
     public async Task CreateOrder_WithoutExactlyOneCarrierProduct_ThrowsBeforeCreatingAnOrder(int ticketProducts)
     {
         _handler.Enqueue(HttpStatusCode.OK, Products(Enumerable.Range(1, ticketProducts).Select(i => ("TICKET", i)).Append(("GENERAL", 200)).ToArray()));
@@ -148,13 +175,22 @@ public class HiEventsPlatformTests
     [HumansFact]
     public async Task CreateOrder_WithAVisibleCarrierProduct_ThrowsBeforeCreatingAnOrder()
     {
-        _handler.Enqueue(HttpStatusCode.OK, Products(("TICKET", 100), ("GENERAL", VisibleProductId)));
+        _handler.Enqueue(HttpStatusCode.OK, new
+        {
+            data = new[] { new { id = 100, product_type = "TICKET", is_hidden = true } },
+            meta = new { last_page = 2, total = 2 },
+        });
+        _handler.Enqueue(HttpStatusCode.OK, new
+        {
+            data = new[] { new { id = VisibleProductId, product_type = "GENERAL", is_hidden = false } },
+            meta = new { last_page = 2, total = 2 },
+        });
 
         var act = () => Platform().CreateOrderAsync(Request(
             new PlatformOrderLine(OrderLineKind.Ticket, "General", 22500, 0.10m, "Ana")), Ct);
 
         (await act.Should().ThrowAsync<TicketingPlatformException>()).WithMessage("*must be hidden*");
-        _handler.Requests.Should().ContainSingle();
+        _handler.Requests.Should().HaveCount(2).And.OnlyContain(r => r.Request.Method == HttpMethod.Get);
     }
 
     [HumansFact]
@@ -170,13 +206,13 @@ public class HiEventsPlatformTests
     }
 
     [HumansTheory]
-    [Xunit.InlineData("COMPLETED", "PAYMENT_RECEIVED", null, PlatformOrderState.Paid)]
-    [Xunit.InlineData("CANCELLED", "AWAITING_PAYMENT", null, PlatformOrderState.Cancelled)]
-    [Xunit.InlineData("ABANDONED", "AWAITING_PAYMENT", null, PlatformOrderState.Expired)]
-    [Xunit.InlineData("RESERVED", "AWAITING_PAYMENT", "2027-01-02 10:30:00", PlatformOrderState.Pending)]
-    [Xunit.InlineData("RESERVED", "PAYMENT_FAILED", "2027-01-02 10:30:00", PlatformOrderState.Pending)]
-    [Xunit.InlineData("RESERVED", "AWAITING_PAYMENT", "2027-01-02 09:59:59", PlatformOrderState.Expired)]
-    [Xunit.InlineData("AWAITING_OFFLINE_PAYMENT", "AWAITING_OFFLINE_PAYMENT", null, PlatformOrderState.Pending)]
+    [InlineData("COMPLETED", "PAYMENT_RECEIVED", null, PlatformOrderState.Paid)]
+    [InlineData("CANCELLED", "AWAITING_PAYMENT", null, PlatformOrderState.Cancelled)]
+    [InlineData("ABANDONED", "AWAITING_PAYMENT", null, PlatformOrderState.Expired)]
+    [InlineData("RESERVED", "AWAITING_PAYMENT", "2027-01-02 10:30:00", PlatformOrderState.Pending)]
+    [InlineData("RESERVED", "PAYMENT_FAILED", "2027-01-02 10:30:00", PlatformOrderState.Pending)]
+    [InlineData("RESERVED", "AWAITING_PAYMENT", "2027-01-02 09:59:59", PlatformOrderState.Expired)]
+    [InlineData("AWAITING_OFFLINE_PAYMENT", "AWAITING_OFFLINE_PAYMENT", null, PlatformOrderState.Pending)]
     public async Task GetStatus_MapsHiEventsStatuses(string status, string paymentStatus, string? reservedUntil, PlatformOrderState expected)
     {
         _handler.Enqueue(HttpStatusCode.OK, Order(id: 42, total: 225m, status: status, paymentStatus: paymentStatus,
@@ -323,9 +359,9 @@ public class HiEventsPlatformTests
     }
 
     [HumansTheory]
-    [Xunit.InlineData("RESERVED", "2027-01-02 10:30:00")]
-    [Xunit.InlineData("RESERVED", "2027-01-02 09:00:00")]
-    [Xunit.InlineData("ABANDONED", null)]
+    [InlineData("RESERVED", "2027-01-02 10:30:00")]
+    [InlineData("RESERVED", "2027-01-02 09:00:00")]
+    [InlineData("ABANDONED", null)]
     public async Task GetStatus_APaymentOnItsWay_IsProcessingEvenPastTheHold(string status, string? reservedUntil)
     {
         _handler.Enqueue(HttpStatusCode.OK, Order(id: 42, total: 225m, status: status, reservedUntil: reservedUntil,
@@ -337,8 +373,8 @@ public class HiEventsPlatformTests
     }
 
     [HumansTheory]
-    [Xunit.InlineData("COMPLETED", "PAYMENT_RECEIVED", PlatformOrderState.Paid)]
-    [Xunit.InlineData("CANCELLED", "AWAITING_PAYMENT", PlatformOrderState.Cancelled)]
+    [InlineData("COMPLETED", "PAYMENT_RECEIVED", PlatformOrderState.Paid)]
+    [InlineData("CANCELLED", "AWAITING_PAYMENT", PlatformOrderState.Cancelled)]
     public async Task GetStatus_ASettledOrClosedOrder_IsNotProcessing(string status, string paymentStatus, PlatformOrderState expected)
     {
         _handler.Enqueue(HttpStatusCode.OK, Order(id: 42, total: 225m, status: status, paymentStatus: paymentStatus,
@@ -440,12 +476,34 @@ public class HiEventsPlatformTests
     }
 
     [HumansTheory]
-    [Xunit.InlineData("Ana Buyer", "Ana Buyer", null)]
-    [Xunit.InlineData("María de los Ángeles Fernández de Córdoba y Martínez",
+    [InlineData("Ana Buyer", "Ana Buyer", null)]
+    [InlineData("María de los Ángeles Fernández de Córdoba y Martínez",
         "María de los Ángeles Fernández de Córdoba y", "Martínez")]
     public void SplitBuyerName_KeepsEachPartWithinFiftyCharacters(string name, string first, string? last)
     {
         HiEventsPlatform.SplitBuyerName(name).Should().Be((first, last));
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void SplitBuyerName_PreservesUnicodeAtBothPartBoundaries(bool truncateLast)
+    {
+        var first = truncateLast ? "Buyer" : new string('a', 49) + "𐐀";
+        var last = truncateLast ? new string('b', 49) + "𐐀" : "Family";
+        var name = first + " " + last + (truncateLast ? "tail" : "");
+
+        var actual = HiEventsPlatform.SplitBuyerName(name);
+        string.Equals(actual.FirstName, first, StringComparison.Ordinal).Should().BeTrue();
+        string.Equals(actual.LastName, last, StringComparison.Ordinal).Should().BeTrue();
+    }
+
+    [HumansFact]
+    public void SplitBuyerName_KeepsFiftyUnicodeCharactersInOnePart()
+    {
+        var name = string.Concat(Enumerable.Repeat("𐐀", 50));
+
+        HiEventsPlatform.SplitBuyerName(name).Should().Be((name, (string?)null));
     }
 
     [HumansFact]
@@ -462,7 +520,16 @@ public class HiEventsPlatformTests
     {
         _handler.Enqueue(HttpStatusCode.OK, new { data = new { id = 1 } });
         _handler.Enqueue(HttpStatusCode.OK, new { data = new { id = 7, status = "LIVE" } });
-        _handler.Enqueue(HttpStatusCode.OK, Products());
+        _handler.Enqueue(HttpStatusCode.OK, new
+        {
+            data = new[] { new { id = 100, product_type = "TICKET", is_hidden = true } },
+            meta = new { last_page = 2, total = 2 },
+        });
+        _handler.Enqueue(HttpStatusCode.OK, new
+        {
+            data = new[] { new { id = 200, product_type = "GENERAL", is_hidden = true } },
+            meta = new { last_page = 2, total = 2 },
+        });
         _handler.Enqueue(HttpStatusCode.UnprocessableEntity, new { message = "items required" });
 
         var findings = await Platform().CheckAsync("7", Ct);
@@ -470,7 +537,7 @@ public class HiEventsPlatformTests
         findings.Where(f => !f.Ok).Select(f => f.Text).Should().ContainSingle()
             .Which.Should().Contain("HIEVENTS_WEBHOOK_SECRET");
         _handler.Requests.Select(r => $"{r.Request.Method} {r.Request.RequestUri!.AbsolutePath}").Should().Equal(
-            "GET /api/users/me", "GET /api/events/7", "GET /api/events/7/products",
+            "GET /api/users/me", "GET /api/events/7", "GET /api/events/7/products", "GET /api/events/7/products",
             "POST /api/events/7/orders/checkout");
         _handler.Requests[^1].Body.Should().Be("{}");
     }
@@ -591,6 +658,29 @@ public class HiEventsPlatformTests
         await act.Should().ThrowAsync<HttpRequestException>();
     }
 
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Paging_StopsAtTheSafetyCap(bool products)
+    {
+        if (products)
+        {
+            _handler.Enqueue(HttpStatusCode.OK, new { data = new { id = 1 } });
+            _handler.Enqueue(HttpStatusCode.OK, new { data = new { id = 7, status = "LIVE" } });
+        }
+        for (var page = 1; page <= 501; page++)
+            _handler.Enqueue(HttpStatusCode.OK, new { data = Array.Empty<object>(), meta = new { last_page = 501, total = 0 } });
+
+        if (products)
+            (await Platform().CheckAsync("7", Ct)).Should().Contain(f => !f.Ok && f.Text.Contains("500-page"));
+        else
+        {
+            var act = () => Platform().ListOrdersAsync("7", Now, Now + Duration.FromDays(1), Ct);
+            (await act.Should().ThrowAsync<HttpRequestException>()).WithMessage("*500-page*");
+        }
+        _handler.Requests.Should().HaveCount(products ? 502 : 500);
+    }
+
     [HumansFact]
     public async Task ListOrders_APageWithoutItsPaging_Throws()
     {
@@ -668,6 +758,7 @@ public class HiEventsPlatformTests
         data = (products.Length == 0 ? [("TICKET", 100), ("GENERAL", 200)] : products)
             .Select(p => new { id = p.Id, product_type = p.Type, title = $"Carrier {p.Id}", is_hidden = p.Id != VisibleProductId })
             .ToArray(),
+        meta = new { last_page = 1, total = products.Length == 0 ? 2 : products.Length },
     };
 
     private static object RefundAnswer(string refundId, string status) => new
@@ -710,6 +801,7 @@ public class HiEventsPlatformTests
     private sealed class RecordingHandler : HttpMessageHandler
     {
         private readonly Queue<HttpResponseMessage> _responses = new();
+        public Exception? Failure { get; set; }
 
         public List<(HttpRequestMessage Request, string? Body)> Requests { get; } = [];
 
@@ -724,6 +816,7 @@ public class HiEventsPlatformTests
 
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
         {
+            if (Failure is { } failure) throw failure;
             var body = request.Content is null ? null : await request.Content.ReadAsStringAsync(ct);
             Requests.Add((request, body));
             return _responses.Dequeue();

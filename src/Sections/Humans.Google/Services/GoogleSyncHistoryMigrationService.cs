@@ -1,6 +1,5 @@
 using Humans.AuditLog.Contracts;
 using Humans.Google.Contracts;
-using Humans.Google.Data;
 using Humans.Google.Domain;
 
 namespace Humans.Google.Services;

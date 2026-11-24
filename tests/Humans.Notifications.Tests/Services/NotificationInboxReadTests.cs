@@ -20,7 +20,7 @@ public sealed class NotificationInboxReadTests
 
     public NotificationInboxReadTests()
     {
-        _contributor.GetMetersAsync(default!, default, default).ReturnsForAnyArgs([]);
+        _contributor.GetMetersAsync(default!, default).ReturnsForAnyArgs([]);
         _sut = new NotificationInboxRead(
             _inbox, new NotificationMeterProvider([_contributor], NullLogger<NotificationMeterProvider>.Instance));
     }

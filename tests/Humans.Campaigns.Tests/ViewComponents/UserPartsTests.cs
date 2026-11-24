@@ -1,7 +1,6 @@
 using Humans.Users.Contracts;
 using System.Security.Claims;
 using AwesomeAssertions;
-using Humans.Base.Authorization;
 using Humans.Base.Enums;
 using Humans.Base.Interfaces;
 using Humans.Campaigns.Services;
@@ -32,7 +31,7 @@ public class UserPartsTests
     [HumansFact]
     public void Parts_ContributeMyCodesToProfile_AndCampaignCodesToAdminDetail()
     {
-        IUserPart contribution = ((IUserPart)new Section());
+        IUserPart contribution = new Section();
 
         contribution.Parts().Should().BeEquivalentTo(
         [

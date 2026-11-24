@@ -1,6 +1,5 @@
 using Humans.Governance.Domain;
 using Microsoft.EntityFrameworkCore;
-using NodaTime;
 
 namespace Humans.Governance.Data;
 

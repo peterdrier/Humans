@@ -67,7 +67,9 @@ internal sealed class VolunteerTrackingXlsxBuilder
         var dayCount = model.Days.Count;
         var lastCol = dayCount + 1;
         var row = startRow;
-        foreach (var group in model.Groups)
+        foreach (var group in model.Groups
+                     .OrderByDescending(group => group.TotalHours)
+                     .ThenBy(group => group.TeamName, StringComparer.OrdinalIgnoreCase))
         {
             var bannerRange = sheet.Range(row, 1, row, lastCol);
             sheet.Cell(row, 1).Value = $"{group.TeamName} ({group.Humans.Count} humans)";
@@ -77,7 +79,9 @@ internal sealed class VolunteerTrackingXlsxBuilder
             bannerRange.Style.Font.FontColor = XLColor.White;
             row++;
 
-            foreach (var human in group.Humans)
+            foreach (var human in group.Humans
+                         .OrderBy(human => human.FirstShiftDay)
+                         .ThenBy(human => human.PlayaName, StringComparer.OrdinalIgnoreCase))
             {
                 sheet.Cell(row, 1).Value = human.PlayaName;
                 for (var i = 0; i < human.Cells.Count; i++)

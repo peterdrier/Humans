@@ -1,6 +1,5 @@
 using Humans.EarlyEntry.Contracts;
 using Humans.EarlyEntry.Models;
-using Humans.Base.Authorization;
 using Humans.Base.Controllers;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;

@@ -83,8 +83,8 @@ public sealed class EmailPreviewServiceTests
         var environment = Substitute.For<Microsoft.Extensions.Hosting.IHostEnvironment>();
         environment.EnvironmentName.Returns("Production");
         var composer = new BrandedEmailBodyComposer(
-            Microsoft.Extensions.Options.Options.Create(new Humans.Base.Configuration.EmailSettings()), environment);
-        var html = Humans.Base.Extensions.SanitizedMarkdownRenderer.Render(
+            Microsoft.Extensions.Options.Options.Create(new Base.Configuration.EmailSettings()), environment);
+        var html = Base.Extensions.SanitizedMarkdownRenderer.Render(
             "| Name | Shift |\n| --- | --- |\n| Alice | [Gate](https://humans.example/shift) |");
 
         var body = composer.Compose(html);
@@ -96,12 +96,12 @@ public sealed class EmailPreviewServiceTests
     [HumansFact]
     public void RenderMarkdown_UsesTheCallersCultureForThePlaceholderFooter()
     {
-        var callerCulture = Humans.Base.Extensions.CultureCatalog.CanonicalLegalCultureCode;
-        using var culture = new Humans.Base.Extensions.CultureScope(callerCulture);
+        var callerCulture = Base.Extensions.CultureCatalog.CanonicalLegalCultureCode;
+        using var culture = new Base.Extensions.CultureScope(callerCulture);
         var environment = Substitute.For<Microsoft.Extensions.Hosting.IHostEnvironment>();
         environment.EnvironmentName.Returns("Production");
         var composer = new BrandedEmailBodyComposer(
-            Microsoft.Extensions.Options.Options.Create(new Humans.Base.Configuration.EmailSettings()), environment);
+            Microsoft.Extensions.Options.Options.Create(new Base.Configuration.EmailSettings()), environment);
 
         var preview = new EmailPreviewService(composer).RenderMarkdown("Subject", "Hi", MessageCategory.Governance);
 

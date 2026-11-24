@@ -3,7 +3,6 @@ using Humans.Base.Helpers;
 using Humans.AuditLog.Contracts;
 using Humans.Users.Contracts;
 using Humans.Teams.Contracts;
-using Humans.Base.Interfaces;
 
 namespace Humans.Google.Services;
 

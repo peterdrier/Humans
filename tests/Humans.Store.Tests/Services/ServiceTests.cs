@@ -30,7 +30,6 @@ using Humans.Base.Enums;
 using Humans.Holded.Contracts;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 using NodaTime;
 using NodaTime.Testing;
 using NodaTime.Text;
@@ -1507,7 +1506,7 @@ public class ServiceTests
             CacheToken = typeof(ProductInputModel)
         });
         var context = DefaultModelBindingContext.CreateBindingContext(controller.ControllerContext,
-            new FormValueProvider(BindingSource.Form, new FormCollection(fields), System.Globalization.CultureInfo.InvariantCulture),
+            new FormValueProvider(BindingSource.Form, new FormCollection(fields), CultureInfo.InvariantCulture),
             metadata, bindingInfo: null, modelName: "");
         await binder.BindModelAsync(context);
         var model = (ProductInputModel)context.Result.Model!;
@@ -1743,7 +1742,7 @@ public class ServiceTests
         await _stripeService.Received(1).CreateCheckoutSessionAsync(Arg.Any<Guid>(), Arg.Any<decimal>(),
             Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<string>(), Arg.Any<CancellationToken>(),
             Arg.Any<Guid?>(), Arg.Any<string?>());
-        await _repo.DidNotReceiveWithAnyArgs().UpdateOrderAsync(default!, default);
+        await _repo.DidNotReceiveWithAnyArgs().UpdateOrderAsync(default!);
     }
 
     [HumansFact]
@@ -1802,7 +1801,7 @@ public class ServiceTests
         await _stripeService.Received(1).CreateCheckoutSessionAsync(Arg.Any<Guid>(), Arg.Any<decimal>(),
             Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<string>(), Arg.Any<CancellationToken>(),
             Arg.Any<Guid?>(), Arg.Any<string?>());
-        await _repo.DidNotReceiveWithAnyArgs().UpdateOrderAsync(default!, default);
+        await _repo.DidNotReceiveWithAnyArgs().UpdateOrderAsync(default!);
     }
 
     [HumansFact]
@@ -2030,27 +2029,6 @@ public class ServiceTests
             Arg.Is<CancellationToken>(token => !token.CanBeCanceled), Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 
-    [HumansFact]
-    public async Task RecordStripePaymentAsync_inserts_payment_when_payment_intent_id_is_new()
-    {
-        var orderId = Guid.NewGuid();
-        var paymentIntentId = "pi_test_abc123";
-        _repo.StripePaymentIntentExistsAsync(paymentIntentId, Arg.Any<CancellationToken>())
-            .Returns(false);
-
-        await _service.RecordStripePaymentAsync(orderId, paymentIntentId, 42.50m, ct: TestContext.Current.CancellationToken);
-
-        await _repo.Received(1).AddPaymentAsync(
-            Arg.Is<Payment>(p =>
-                p.OrderId == orderId &&
-                p.AmountEur == 42.50m &&
-                p.Method == PaymentMethod.Stripe &&
-                p.StripePaymentIntentId == paymentIntentId &&
-                p.MethodName == PaymentMethod.Stripe &&
-                p.RecordedByUserId == null),
-            Arg.Any<CancellationToken>());
-    }
-
     [HumansTheory]
     [InlineData("record", false)]
     [InlineData("record", true)]
@@ -2111,7 +2089,7 @@ public class ServiceTests
         if (oversized)
         {
             result.Succeeded.Should().BeFalse();
-            result.Refusal.Should().Contain(maximum.ToString(System.Globalization.CultureInfo.InvariantCulture));
+            result.Refusal.Should().Contain(maximum.ToString(CultureInfo.InvariantCulture));
             await _repo.DidNotReceive().AddPaymentAsync(Arg.Any<Payment>(), Arg.Any<CancellationToken>());
             _audit.ReceivedCalls().Should().BeEmpty();
         }
@@ -2374,14 +2352,17 @@ public class ServiceTests
     };
 
     [HumansFact]
-    public async Task RecordStripePaymentAsync_no_ops_when_payment_intent_id_already_exists()
+    public async Task CompletedCheckout_no_ops_when_payment_intent_id_already_exists()
     {
         var orderId = Guid.NewGuid();
         var paymentIntentId = "pi_test_dup";
         _repo.StripePaymentIntentExistsAsync(paymentIntentId, Arg.Any<CancellationToken>())
             .Returns(true);
 
-        await _service.RecordStripePaymentAsync(orderId, paymentIntentId, 42.50m, ct: TestContext.Current.CancellationToken);
+        await _service.HandleStripeCheckoutWebhookEventAsync(new StoreCheckoutWebhookEvent(
+            "evt_duplicate", StoreCheckoutEventKind.CheckoutSessionCompleted,
+            new StoreCheckoutSessionData("cs_duplicate", orderId, paymentIntentId, 42.50m, PaymentStatus: "paid")),
+            TestContext.Current.CancellationToken);
 
         await _repo.DidNotReceive().AddPaymentAsync(Arg.Any<Payment>(), Arg.Any<CancellationToken>());
         await _audit.DidNotReceive().LogAsync(
@@ -2391,33 +2372,21 @@ public class ServiceTests
     }
 
     [HumansFact]
-    public async Task RecordStripePaymentAsync_emits_audit_log_with_job_actor()
+    public async Task CompletedCheckout_skips_non_positive_amounts()
     {
         var orderId = Guid.NewGuid();
         _repo.StripePaymentIntentExistsAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(false);
 
-        await _service.RecordStripePaymentAsync(orderId, "pi_x", 10m, ct: TestContext.Current.CancellationToken);
+        await _service.HandleStripeCheckoutWebhookEventAsync(new StoreCheckoutWebhookEvent(
+            "evt_zero", StoreCheckoutEventKind.CheckoutSessionCompleted,
+            new StoreCheckoutSessionData("cs_zero", orderId, "pi_x", 0m, PaymentStatus: "paid")),
+            TestContext.Current.CancellationToken);
 
-        await _audit.Received(1).LogAsync(
-            StoreAuditActions.StorePaymentRecorded,
-            AuditEntityTypes.Payment,
-            Arg.Any<Guid>(),
-            Arg.Any<string>(),
-            "StripeWebhook",
-            orderId,
-            AuditEntityTypes.Order);
-    }
-
-    [HumansFact]
-    public async Task RecordStripePaymentAsync_rejects_non_positive_amounts()
-    {
-        var orderId = Guid.NewGuid();
-        _repo.StripePaymentIntentExistsAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
-            .Returns(false);
-
-        Func<Task> act = () => _service.RecordStripePaymentAsync(orderId, "pi_x", 0m, ct: TestContext.Current.CancellationToken);
-        await act.Should().ThrowAsync<ArgumentOutOfRangeException>();
+        await _repo.DidNotReceive().AddPaymentAsync(Arg.Any<Payment>(), Arg.Any<CancellationToken>());
+        await _audit.DidNotReceive().LogAsync(
+            Arg.Any<AuditActionDefinition>(), Arg.Any<string>(), Arg.Any<Guid>(),
+            Arg.Any<string>(), Arg.Any<string>(), Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 
     [HumansFact]
@@ -2437,8 +2406,14 @@ public class ServiceTests
                 p.OrderId == orderId &&
                 p.StripePaymentIntentId == "pi_checkout" &&
                 p.AmountEur == 42.50m &&
-                p.Status == PaymentStatus.Paid),
+                p.Status == PaymentStatus.Paid &&
+                p.Method == PaymentMethod.Stripe &&
+                p.MethodName == PaymentMethod.Stripe &&
+                p.RecordedByUserId == null),
             Arg.Any<CancellationToken>());
+        await _audit.Received(1).LogAsync(
+            StoreAuditActions.StorePaymentRecorded, AuditEntityTypes.Payment, Arg.Any<Guid>(),
+            Arg.Any<string>(), "StripeWebhook", orderId, AuditEntityTypes.Order);
     }
 
     [HumansFact]

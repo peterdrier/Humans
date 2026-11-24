@@ -1,10 +1,7 @@
 using Humans.Base.Extensions;
 using Humans.AuditLog.Contracts;
 using Humans.Base.Attributes;
-using Humans.Base.Interfaces;
 using Humans.Camps.Contracts;
-using Humans.Finance.Contracts;
-using Humans.Holded.Contracts;
 using Humans.Settings.Contracts;
 using Humans.Store.Contracts;
 using Humans.Store.Data;
@@ -15,7 +12,6 @@ using Humans.Store.Services.Dtos;
 using Humans.Stripe.Contracts;
 using NodaTime;
 using System.Globalization;
-using System.Text.Json;
 using System.Resources;
 using Humans.Base.Threading;
 
@@ -557,9 +553,7 @@ internal sealed class Service(
             var allOrders = new List<OrderDto>();
             foreach (var order in campOrdersBySeason[season.Id])
                 allOrders.Add(await MapOrderAsync(order, productNames, currentPrices, ct, season.Name));
-            var primary = allOrders
-                .OrderByDescending(o => o.BalanceEur)
-                .FirstOrDefault();
+            var primary = allOrders.MaxBy(o => o.BalanceEur);
             IReadOnlyList<OrderDto> orders = primary is null ? [] : [primary];
             counterparties.Add(new CounterpartyOrders(
                 OrderCounterpartyType.Camp,
@@ -729,7 +723,7 @@ internal sealed class Service(
         var teamOrders = await repo.GetOrdersForTeamsWithLinesAndPaymentsAsync(departmentIds, year, ct);
         var counterparties = campOrdersInYear
             .Select(o => (Order: o, Type: OrderCounterpartyType.Camp,
-                Id: o.CampSeasonId!.Value, Name: seasonsForYear[o.CampSeasonId.Value].Name))
+                Id: o.CampSeasonId!.Value, seasonsForYear[o.CampSeasonId.Value].Name))
             .Concat(teamOrders.Select(o => (Order: o, Type: OrderCounterpartyType.Team,
                 Id: o.TeamId!.Value, Name: teamNames.GetValueOrDefault(o.TeamId.Value, "(unknown team)"))))
             .ToList();
@@ -1259,17 +1253,6 @@ internal sealed class Service(
                 return null;
             }
         }
-    }
-
-    public async Task RecordStripePaymentAsync(
-        Guid orderId,
-        string paymentIntentId,
-        decimal amountEur,
-        PaymentStatus status = PaymentStatus.Paid,
-        CancellationToken ct = default)
-    {
-        using var mutation = await StripePaymentLock.AcquireAsync(logger, ct);
-        await RecordStripePaymentCoreAsync(orderId, paymentIntentId, amountEur, status, ct);
     }
 
     // Called only while the ingestion lock is held, including from webhook state transitions.

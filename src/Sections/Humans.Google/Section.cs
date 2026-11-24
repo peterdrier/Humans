@@ -12,7 +12,6 @@ using Humans.Email.Contracts;
 using Humans.Gdpr.Contracts;
 using Humans.Google.Authorization;
 using Humans.Google.Contracts;
-using Humans.Google.Data;
 using Humans.Google.Health;
 using Humans.Google.Jobs;
 using Humans.Google.Services;
@@ -29,7 +28,7 @@ using Humans.Base.Models;
 using static Humans.Base.Models.AccessLevel;
 using static Humans.Base.Models.AccessMatrixFeature;
 
-[assembly: Humans.Base.Demo.NoDemoStory("Mirrors Google Workspace: demo people must never reach real Google.")]
+[assembly: NoDemoStory("Mirrors Google Workspace: demo people must never reach real Google.")]
 
 namespace Humans.Google;
 

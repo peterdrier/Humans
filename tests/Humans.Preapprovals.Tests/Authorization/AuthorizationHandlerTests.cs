@@ -30,7 +30,7 @@ public sealed class AuthorizationHandlerTests : PreapprovalsTestHarness
     private async Task<bool> PolicyAllowedAsync(ClaimsPrincipal user, IAuthorizationRequirement requirement)
     {
         var context = new AuthorizationHandlerContext([requirement], user, resource: null);
-        await new PreapprovalsPolicyHandler(NewService(), new Microsoft.AspNetCore.Http.HttpContextAccessor()).HandleAsync(context);
+        await new PreapprovalsPolicyHandler(NewService(), new HttpContextAccessor()).HandleAsync(context);
         return context.HasSucceeded;
     }
 
@@ -42,7 +42,7 @@ public sealed class AuthorizationHandlerTests : PreapprovalsTestHarness
         using var request = new CancellationTokenSource();
         var http = new HttpContextAccessor { HttpContext = new DefaultHttpContext { RequestAborted = request.Token } };
         var userId = Guid.NewGuid();
-        var preapprovals = NSubstitute.Substitute.For<IPreapprovalManagement>();
+        var preapprovals = Substitute.For<IPreapprovalManagement>();
         var observed = CancellationToken.None;
         void Read(bool manager, CancellationToken ct)
         {
@@ -53,12 +53,12 @@ public sealed class AuthorizationHandlerTests : PreapprovalsTestHarness
             }
             ct.ThrowIfCancellationRequested();
         }
-        preapprovals.ManagesAnyProgramAsync(userId, NSubstitute.Arg.Any<CancellationToken>()).Returns(call =>
+        preapprovals.ManagesAnyProgramAsync(userId, Arg.Any<CancellationToken>()).Returns(call =>
         {
             Read(true, call.Arg<CancellationToken>());
             return false;
         });
-        preapprovals.HasAnythingForUserAsync(userId, NSubstitute.Arg.Any<CancellationToken>()).Returns(call =>
+        preapprovals.HasAnythingForUserAsync(userId, Arg.Any<CancellationToken>()).Returns(call =>
         {
             Read(false, call.Arg<CancellationToken>());
             return true;

@@ -1,7 +1,6 @@
 using Humans.Governance.Contracts;
 using Humans.Users.Models;
 using Humans.Teams.Contracts;
-using Humans.Base.Enums;
 using Microsoft.AspNetCore.Mvc;
 using Humans.Users.Contracts;
 using Humans.Auth.Contracts;

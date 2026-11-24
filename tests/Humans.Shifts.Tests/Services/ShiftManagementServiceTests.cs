@@ -11,15 +11,11 @@ using Humans.Base.Enums;
 using Humans.Base.Extensions;
 using Humans.Shifts.Data;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Infrastructure;
-using Microsoft.EntityFrameworkCore.Diagnostics;
-using Microsoft.Extensions.Caching.Memory;
 using NodaTime;
 using NSubstitute;
 using Humans.Permissions.Contracts;
 using Humans.Base.Authorization;
 using Humans.Users.Contracts;
-using Humans.AuditLog.Contracts;
 
 using Humans.Shifts.Models;
 
@@ -399,14 +395,14 @@ public sealed class ShiftManagementServiceTests : ShiftsTestHarness
         var locator = Substitute.For<IServiceProvider>();
         var service = new ShiftManagementService(
             new ShiftRepository(ShiftsDbFactory, ShiftsDb, Clock), AuditLog,
-            locator, new EventCalendarResolver(Substitute.For<Humans.Settings.Contracts.ISettingsService>(), Substitute.For<Humans.Shifts.Data.IShiftManagementRepository>()), Clock,
+            locator, new EventCalendarResolver(Substitute.For<Humans.Settings.Contracts.ISettingsService>(), Substitute.For<IShiftManagementRepository>()), Clock,
             Microsoft.Extensions.Logging.Abstractions.NullLogger<ShiftManagementService>.Instance);
         locator.GetService(typeof(IShiftRotaRows)).Returns(service);
 
         var found = await service.GetShiftByIdAsync(shift.Id, Xunit.TestContext.Current.CancellationToken);
 
         found.Should().NotBeNull();
-        found!.Shift.Id.Should().Be(shift.Id);
+        found.Shift.Id.Should().Be(shift.Id);
         found.Shift.DayOffset.Should().Be(2);
         found.Rota.Id.Should().Be(rota.Id);
         found.Rota.TeamId.Should().Be(rota.TeamId);

@@ -99,6 +99,7 @@ internal sealed class StripeMirrorClient(IHttpClient? httpClient = null) : IStri
         Action<JsonElement>? validateItem = null)
     {
         var items = new List<T>();
+        var seenIds = new HashSet<string>(StringComparer.Ordinal);
         string? after = null;
         for (var n = 1; n <= PageSafetyCap; n++)
         {
@@ -114,6 +115,8 @@ internal sealed class StripeMirrorClient(IHttpClient? httpClient = null) : IStri
             foreach (var item in data.EnumerateArray())
             {
                 RequireMirrorFields(item, what, ["id"], []);
+                if (!seenIds.Add(item.GetProperty("id").GetString()!))
+                    throw new InvalidOperationException($"Stripe {what}: repeated item id.");
                 validateItem?.Invoke(item);
             }
             items.AddRange(list.Data);

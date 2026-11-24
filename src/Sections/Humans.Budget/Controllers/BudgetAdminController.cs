@@ -1,4 +1,3 @@
-using Humans.Base.Extensions;
 using Humans.Budget.Contracts;
 using Humans.Budget.Services;
 using Humans.Finance.Contracts;
@@ -10,7 +9,6 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 using NodaTime;
 
-using Humans.Base.Authorization;
 using Humans.Users.Contracts;
 
 namespace Humans.Budget.Controllers;
@@ -171,15 +169,15 @@ internal sealed class BudgetAdminController(
         var (errorResult, user) = await RequireCurrentUserAsync(HttpContext.RequestAborted);
         if (errorResult is not null) return errorResult;
 
-        if (string.IsNullOrWhiteSpace(year) || string.IsNullOrWhiteSpace(name))
-        {
-            SetError("Year identifier and name are required.");
-            return RedirectToAction(nameof(Admin));
-        }
-
         try
         {
-            await budgetService.CreateYearAsync(year, name, user.Id);
+            var result = await budgetService.CreateYearAsync(year, name, user.Id);
+            if (result.Refusal is { } refusal)
+            {
+                logger.LogWarning("Budget CreateYear refused for {EntityId}, actor {ActorId}: {Reason}", year, user.Id, refusal);
+                SetError(refusal);
+                return RedirectToAction(nameof(Admin));
+            }
             SetSuccess($"Budget year '{name}' created.");
             return RedirectToAction(nameof(Admin));
         }
@@ -270,7 +268,13 @@ internal sealed class BudgetAdminController(
 
         try
         {
-            await budgetService.CreateGroupAsync(budgetYearId, name, isRestricted, user.Id);
+            var result = await budgetService.CreateGroupAsync(budgetYearId, name, isRestricted, user.Id);
+            if (result.Refusal is { } refusal)
+            {
+                logger.LogWarning("Budget CreateGroup refused for {EntityId}, actor {ActorId}: {Reason}", budgetYearId, user.Id, refusal);
+                SetError(refusal);
+                return RedirectToAction(nameof(Admin));
+            }
             SetSuccess($"Group '{name}' created.");
             return RedirectToAction(nameof(Admin));
         }

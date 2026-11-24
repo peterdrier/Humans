@@ -1,3 +1,4 @@
+using NodaTime;
 using System.Globalization;
 using System.Net;
 using Humans.Base.Extensions;
@@ -17,14 +18,14 @@ internal sealed class ShiftsEmails(
     public EmailMessage CoordinatorRotaMessage(CoordinatorRotaMessageRequest request)
     {
         ArgumentNullException.ThrowIfNull(request);
-        if (request.ShiftLines is null) throw new ArgumentNullException(nameof(request), "ShiftLines must not be null.");
+        if (request.Shifts is null) throw new ArgumentNullException(nameof(request), "Shifts must not be null.");
         return Localized(request.Culture, () =>
         {
             var sanitizedMessage = SanitizedMarkdownRenderer.Render(request.MessageText);
 
-            var shiftListHtml = request.ShiftLines.Count == 0
+            var shiftListHtml = request.Shifts.Count == 0
                 ? NoShifts()
-                : "<ul>" + string.Concat(request.ShiftLines.Select(line => $"<li>{Encode(line)}</li>")) + "</ul>";
+                : ShiftListHtml(request.Shifts);
             var shiftSectionHtml = ShiftSection(
                 request.IncludeShifts, "Shifts_Email_CoordinatorRotaMessage_ShiftsIntro", shiftListHtml);
 
@@ -52,17 +53,20 @@ internal sealed class ShiftsEmails(
 
             // Empty groups fall back as the per-rota template does.
             string shiftGroupsHtml;
-            if (request.ShiftGroups.Count == 0 || request.ShiftGroups.All(g => g.ShiftLines.Count == 0))
+            if (request.ShiftGroups.Count == 0 || request.ShiftGroups.All(g => g.Shifts.Count == 0))
             {
                 shiftGroupsHtml = NoShifts();
             }
             else
             {
-                shiftGroupsHtml = string.Concat(request.ShiftGroups.Select(g =>
+                shiftGroupsHtml = string.Concat(request.ShiftGroups
+                    .OrderBy(g => g.RotaName, StringComparer.OrdinalIgnoreCase)
+                    .ThenBy(g => g.RotaName, StringComparer.Ordinal)
+                    .Select(g =>
                 {
-                    var lines = g.ShiftLines.Count == 0
+                    var lines = g.Shifts.Count == 0
                         ? string.Empty
-                        : "<ul>" + string.Concat(g.ShiftLines.Select(line => $"<li>{Encode(line)}</li>")) + "</ul>";
+                        : ShiftListHtml(g.Shifts);
                     return $"<p><strong>{Encode(g.RotaName)}</strong></p>{lines}";
                 }));
             }
@@ -87,6 +91,18 @@ internal sealed class ShiftsEmails(
     /// <summary>Nothing when the shift list is opted out: a bare lead-in over no list reads worse than no section.</summary>
     private string ShiftSection(bool include, string introKey, string listHtml) =>
         include ? $"<p>{Encode(L(introKey))}</p>{listHtml}" : string.Empty;
+
+    private static string ShiftListHtml(IReadOnlyList<(ZonedDateTime Start, bool IsAllDay)> shifts) =>
+        "<ul>" + string.Concat(shifts.OrderBy(shift => shift.Start.ToInstant()).Select(shift =>
+        {
+            var local = shift.Start.LocalDateTime;
+            // Invariant culture: stable parseable shape for short ops notices.
+            var date = DateFormattingExtensions.OpsNoticeDatePattern.Format(local.Date);
+            var line = shift.IsAllDay
+                ? date
+                : $"{date} @ {DateFormattingExtensions.TimeOfDayPattern.Format(local.TimeOfDay)}";
+            return $"<li>{Encode(line)}</li>";
+        })) + "</ul>";
 
     private string NoShifts() =>
         $"<p><em>{Encode(L("Shifts_Email_CoordinatorRotaMessage_NoShifts"))}</em></p>";

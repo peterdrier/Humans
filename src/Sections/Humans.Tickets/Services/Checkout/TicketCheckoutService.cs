@@ -63,7 +63,7 @@ internal sealed partial class TicketCheckoutService(
     private static partial Regex TermsFolderPattern();
 
     public IReadOnlyList<PlatformInfo> Platforms =>
-        _platforms.Select(b => new PlatformInfo(b.Key, b.IsConfigured, b.Setup)).OrderBy(b => b.Key, StringComparer.Ordinal).ToList();
+        _platforms.Select(b => new PlatformInfo(b.Key, b.IsConfigured, b.Setup)).ToList();
 
     public async Task<IReadOnlyList<PlatformFinding>?> CheckPlatformAsync(
         string key, string? platformEventRef, CancellationToken ct = default) =>
@@ -194,7 +194,7 @@ internal sealed partial class TicketCheckoutService(
 
     public async Task<IReadOnlyList<BuyPage>> GetBuyPagesAsync(Guid userId, CancellationToken ct = default)
     {
-        var pages = new List<(LocalDate GatesOpen, BuyPage Page)>();
+        var pages = new List<BuyPage>();
         foreach (var ticketing in await repository.ListTicketingSettingsAsync(ct))
         {
             if (ticketing.Mode == TicketSalesMode.Closed)
@@ -203,15 +203,15 @@ internal sealed partial class TicketCheckoutService(
                 continue;
             if (ticketing.Mode == TicketSalesMode.InvitedOnly && !context.Invited)
                 continue;
-            pages.Add((context.Event.GateOpeningDate, ToBuyPage(context, await RulesForAsync(ticketing, ct), null, directed: false)));
+            pages.Add(ToBuyPage(context, await RulesForAsync(ticketing, ct), null, directed: false));
         }
-        return pages.OrderBy(p => p.GatesOpen).Select(p => p.Page).ToList();
+        return pages;
     }
 
     public async Task<IReadOnlyList<PublicSale>> GetPublicSalesAsync(CancellationToken ct = default)
     {
         var now = clock.GetCurrentInstant();
-        var sales = new List<(LocalDate GatesOpen, PublicSale Sale)>();
+        var sales = new List<PublicSale>();
         foreach (var ticketing in await repository.ListTicketingSettingsAsync(ct))
         {
             if (ticketing.Mode is TicketSalesMode.Closed or TicketSalesMode.InvitedOnly
@@ -220,10 +220,12 @@ internal sealed partial class TicketCheckoutService(
                 || await settings.GetEventSettingsByIdAsync(ticketing.EventSettingsId, ct) is not { } evt
                 || TicketPrice.Public(ticketing, now.InZone(evt.TimeZone).Date) is not { } price)
                 continue;
-            sales.Add((evt.GateOpeningDate,
-                new PublicSale(evt.EventName, price.AmountMinor, ticketing.Mode == TicketSalesMode.ResaleOnly)));
+            sales.Add(new PublicSale(evt.EventName, price.AmountMinor, ticketing.Mode == TicketSalesMode.ResaleOnly)
+            {
+                GateOpeningDate = evt.GateOpeningDate,
+            });
         }
-        return sales.OrderBy(s => s.GatesOpen).Select(s => s.Sale).ToList();
+        return sales;
     }
 
     /// <summary>
@@ -260,8 +262,9 @@ internal sealed partial class TicketCheckoutService(
         context.PublicPrice,
         directedRefusal ?? context.Unavailable ?? (context.Ticketing.TermsFolder is not null && rules is null ? "Tickets_Buy_TermsUnavailable" : null),
         context.AlreadyHoldsTicket, context.Buyer?.FullName ?? string.Empty,
-        context.UserOrders.Where(o => o.TicketingSettingsId == context.Ticketing.Id).OrderByDescending(o => o.CreatedAt).ToList())
+        context.UserOrders.Where(o => o.TicketingSettingsId == context.Ticketing.Id).ToList())
     {
+        GateOpeningDate = context.Event.GateOpeningDate,
         Terms = rules,
         AskMarketing = context.AskMarketing,
         OffersOthers = context.Ticketing.EffectiveSwitches.PartnerTickets && context.Ticketing.Mode != TicketSalesMode.InvitedOnly,
@@ -477,18 +480,15 @@ internal sealed partial class TicketCheckoutService(
         }
     }
 
-    public async Task<IReadOnlyList<TicketCheckoutOrder>> GetOrdersForUserAsync(Guid userId, CancellationToken ct = default) =>
-        (await repository.GetOrdersForUserAsync(userId, ct)).OrderByDescending(o => o.CreatedAt).ToList();
-
-    public async Task<IReadOnlyList<TicketCheckoutOrder>> GetOrdersForSettingsAsync(Guid settingsId, CancellationToken ct = default) =>
-        (await repository.GetOrdersForSettingsAsync(settingsId, ct)).OrderByDescending(o => o.CreatedAt).ToList();
+    public Task<IReadOnlyList<TicketCheckoutOrder>> GetOrdersForSettingsAsync(Guid settingsId, CancellationToken ct = default) =>
+        repository.GetOrdersForSettingsAsync(settingsId, ct);
 
     public async Task<OrderDetail?> GetOrderDetailAsync(Guid orderId, CancellationToken ct = default)
     {
         var order = await repository.GetOrderAsync(orderId, ct);
         if (order is null)
             return null;
-        var refunds = (await repository.GetRefundsAsync(orderId, ct)).OrderBy(r => r.CreatedAt).ToList();
+        var refunds = await repository.GetRefundsAsync(orderId, ct);
         var timeline = (await repository.GetOrderEventsAsync(orderId, ct)).OrderBy(e => e.At).ToList();
         return new OrderDetail(order, refunds, timeline, await GetTicketsForOrderAsync(orderId, ct));
     }
@@ -1079,7 +1079,14 @@ internal sealed partial class TicketCheckoutService(
             ActorUserId = actorUserId,
         }, ct);
 
-    private static string Truncate(string text, int max = 500) => text.Length <= max ? text : text[..max];
+    private static string Truncate(string text, int max = 500)
+    {
+        if (text.Length <= max) return text;
+        var length = max;
+        if (char.IsHighSurrogate(text[length - 1]) && char.IsLowSurrogate(text[length]))
+            length--;
+        return text[..length];
+    }
 
     private void MarkPaid(TicketCheckoutOrder order, long? feeMinor, string? method, Instant paidAt)
     {

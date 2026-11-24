@@ -1,8 +1,6 @@
 using Humans.Base.Enums;
 using Humans.Base.Extensions;
 using Humans.Gdpr.Contracts;
-using Humans.Google.Contracts;
-using Humans.Google.Data;
 using Humans.Google.Domain;
 using Humans.Users.Contracts;
 using Microsoft.Extensions.DependencyInjection;

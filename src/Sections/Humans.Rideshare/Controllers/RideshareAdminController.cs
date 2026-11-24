@@ -1,5 +1,4 @@
 using Humans.Rideshare.Contracts;
-using Humans.Base.Authorization;
 using Humans.Base.Controllers;
 using Humans.Rideshare.Models;
 using Humans.Rideshare.Services;

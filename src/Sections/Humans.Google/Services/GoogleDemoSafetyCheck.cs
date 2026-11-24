@@ -1,5 +1,4 @@
 using Humans.Base.Demo;
-using Humans.Google.Contracts;
 using Humans.Google.Domain;
 
 namespace Humans.Google.Services;

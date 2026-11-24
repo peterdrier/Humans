@@ -13,6 +13,87 @@ public class MailerLiteClientRetryTests
         """{"data":[{"id":"42","name":"Humans - Test","created_at":"2026-01-01 00:00:00","active_count":0,"unsubscribed_count":0,"unconfirmed_count":0,"bounced_count":0,"junk_count":0}],"meta":{"current_page":1,"last_page":1}}""";
 
     [HumansTheory]
+    [Xunit.InlineData(false, false)]
+    [Xunit.InlineData(false, true)]
+    [Xunit.InlineData(true, false)]
+    [Xunit.InlineData(true, true)]
+    public async Task RefreshAsync_RejectsRepeatedIdentitiesAndDiscardsSnapshot(bool subscribers, bool acrossPages)
+    {
+        const string emptySubscribers = """{"data":[],"meta":{"next_cursor":null}}""";
+        const string subscriberPage = """{"data":[{"id":"sub-1","email":"alice@example.org","status":"active"}],"meta":{"next_cursor":null}}""";
+        var handler = new ScriptedHandler();
+        handler.EnqueueJson(HttpStatusCode.OK, emptySubscribers);
+        handler.EnqueueJson(HttpStatusCode.OK, HumansGroupPage);
+        var client = NewClient(handler);
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        _ = await client.GetAccountSummaryAsync(ct);
+        var item = System.Text.Json.Nodes.JsonNode.Parse(subscribers ? subscriberPage : HumansGroupPage)!["data"]![0]!.ToJsonString();
+        var data = acrossPages ? $"[{item}]" : $"[{item},{item}]";
+        var firstMeta = subscribers
+            ? (acrossPages ? """{"next_cursor":"next"}""" : """{"next_cursor":null}""")
+            : (acrossPages ? """{"current_page":1,"last_page":2}""" : """{"current_page":1,"last_page":1}""");
+        if (!subscribers) handler.EnqueueJson(HttpStatusCode.OK, emptySubscribers);
+        handler.EnqueueJson(HttpStatusCode.OK, $$"""{"data":{{data}},"meta":{{firstMeta}}}""");
+        if (acrossPages)
+        {
+            var lastMeta = subscribers ? """{"next_cursor":null}""" : """{"current_page":2,"last_page":2}""";
+            handler.EnqueueJson(HttpStatusCode.OK, $$"""{"data":[{{item}}],"meta":{{lastMeta}}}""");
+        }
+        if (subscribers) handler.EnqueueJson(HttpStatusCode.OK, HumansGroupPage);
+
+        var refresh = () => client.RefreshAsync(ct);
+
+        (await refresh.Should().ThrowAsync<HttpRequestException>()).WithMessage("*repeated*id*");
+        client.LastFetchedAt.Should().BeNull();
+        handler.Clear();
+        handler.EnqueueJson(HttpStatusCode.OK, emptySubscribers);
+        handler.EnqueueJson(HttpStatusCode.OK, HumansGroupPage);
+        (await client.ListGroupsAsync(ct)).Should().ContainSingle().Which.Id.Should().Be("42");
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(false)]
+    [Xunit.InlineData(true)]
+    public async Task RefreshAsync_BoundsPaginationAndRecoversWithoutTheOldSnapshot(bool subscribers)
+    {
+        const string terminalSubscribers = """{"data":[],"meta":{"next_cursor":null}}""";
+        var handler = new ScriptedHandler();
+        handler.EnqueueJson(HttpStatusCode.OK, terminalSubscribers);
+        handler.EnqueueJson(HttpStatusCode.OK, HumansGroupPage);
+        var client = NewClient(handler);
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        _ = await client.ListGroupsAsync(ct);
+        if (!subscribers) handler.EnqueueJson(HttpStatusCode.OK, terminalSubscribers);
+        for (var page = 1; page <= 501; page++)
+        {
+            var json = subscribers
+                ? System.Text.Json.JsonSerializer.Serialize(new
+                {
+                    data = Array.Empty<object>(),
+                    meta = new { next_cursor = page == 501 ? null : $"cursor-{page}" },
+                })
+                : System.Text.Json.JsonSerializer.Serialize(new
+                {
+                    data = Array.Empty<object>(),
+                    meta = new { current_page = page, last_page = 501 },
+                });
+            handler.EnqueueJson(HttpStatusCode.OK, json);
+        }
+        if (subscribers) handler.EnqueueJson(HttpStatusCode.OK, HumansGroupPage);
+
+        var refresh = () => client.RefreshAsync(ct);
+
+        (await refresh.Should().ThrowAsync<HttpRequestException>()).WithMessage("*500-page*");
+        handler.Calls.Should().Be(subscribers ? 502 : 503);
+        client.LastFetchedAt.Should().BeNull();
+        handler.Clear();
+        handler.EnqueueJson(HttpStatusCode.OK, terminalSubscribers);
+        handler.EnqueueJson(HttpStatusCode.OK, HumansGroupPage);
+        (await client.ListGroupsAsync(ct)).Should().ContainSingle().Which.Id.Should().Be("42");
+        client.LastFetchedAt.Should().NotBeNull();
+    }
+
+    [HumansTheory]
     [Xunit.InlineData("null-subscribers")]
     [Xunit.InlineData("null-groups")]
     [Xunit.InlineData("null-subscriber-item")]
@@ -27,15 +108,14 @@ public class MailerLiteClientRetryTests
     [Xunit.InlineData("missing-subscriber-cursor")]
     [Xunit.InlineData("mistyped-subscriber-cursor")]
     [Xunit.InlineData("mistyped-group-page")]
-    public async Task RefreshAsync_RejectsInvalidPaginationAndPreservesSnapshot(string shape)
+    public async Task RefreshAsync_RejectsInvalidPaginationAndDiscardsSnapshot(string shape)
     {
         const string subscriberPage = """{"data":[{"id":"sub-1","email":"alice@example.org","status":"active"}],"meta":{"next_cursor":null}}""";
         var handler = new ScriptedHandler();
         handler.EnqueueJson(HttpStatusCode.OK, subscriberPage);
         handler.EnqueueJson(HttpStatusCode.OK, HumansGroupPage);
         var client = NewClient(handler);
-        var original = await client.GetAccountSummaryAsync(Xunit.TestContext.Current.CancellationToken);
-        var fetchedAt = client.LastFetchedAt;
+        _ = await client.GetAccountSummaryAsync(Xunit.TestContext.Current.CancellationToken);
 
         if (string.Equals(shape, "null-subscribers", StringComparison.Ordinal))
             handler.EnqueueJson(HttpStatusCode.OK, "null");
@@ -73,13 +153,7 @@ public class MailerLiteClientRetryTests
         var act = async () => await client.RefreshAsync(Xunit.TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<HttpRequestException>();
-        (await client.GetAccountSummaryAsync(Xunit.TestContext.Current.CancellationToken)).Should().BeSameAs(original);
-        client.LastFetchedAt.Should().Be(fetchedAt);
-        var emails = new List<string>();
-        await foreach (var subscriber in client.ListSubscribersAsync(Xunit.TestContext.Current.CancellationToken))
-            emails.Add(subscriber.Email);
-        emails.Should().ContainSingle().Which.Should().Be("alice@example.org");
-        (await client.ListGroupsAsync(Xunit.TestContext.Current.CancellationToken)).Should().ContainSingle(g => g.Id == "42");
+        await AssertUnavailableThenRecoverAsync(client, handler);
     }
 
     [HumansTheory]
@@ -98,15 +172,14 @@ public class MailerLiteClientRetryTests
     [Xunit.InlineData("subscribed_at", "42", "subscriber.subscribed_at must be a timestamp string or null")]
     [Xunit.InlineData("unsubscribed_at", "true", "subscriber.unsubscribed_at must be a timestamp string or null")]
     [Xunit.InlineData("opted_in_at", "{}", "subscriber.opted_in_at must be a timestamp string or null")]
-    public async Task RefreshAsync_RejectsInvalidSubscriberAndPreservesSnapshot(string field, string? jsonValue, string error)
+    public async Task RefreshAsync_RejectsInvalidSubscriberAndDiscardsSnapshot(string field, string? jsonValue, string error)
     {
         var handler = new ScriptedHandler();
         handler.EnqueueJson(HttpStatusCode.OK,
             """{"data":[{"id":"sub-1","email":"alice@example.org","status":"active","groups":["42"]}],"meta":{"next_cursor":null}}""");
         handler.EnqueueJson(HttpStatusCode.OK, HumansGroupPage);
         var client = NewClient(handler);
-        var original = await client.GetAccountSummaryAsync(Xunit.TestContext.Current.CancellationToken);
-        var fetchedAt = client.LastFetchedAt;
+        _ = await client.GetAccountSummaryAsync(Xunit.TestContext.Current.CancellationToken);
         var payload = System.Text.Json.Nodes.JsonNode.Parse(
             """{"id":"sub-2","email":"bob@example.org","status":"active"}""")!.AsObject();
         if (jsonValue is null) payload.Remove(field);
@@ -120,15 +193,7 @@ public class MailerLiteClientRetryTests
         var failure = (await act.Should().ThrowAsync<HttpRequestException>()).Which;
         failure.InnerException.Should().BeOfType<System.Text.Json.JsonException>().Which.Message
             .Should().Be(error);
-        (await client.GetAccountSummaryAsync(Xunit.TestContext.Current.CancellationToken)).Should().BeSameAs(original);
-        client.LastFetchedAt.Should().Be(fetchedAt);
-        var emails = new List<string>();
-        await foreach (var subscriber in client.ListSubscribersAsync(Xunit.TestContext.Current.CancellationToken))
-        {
-            emails.Add(subscriber.Email);
-            subscriber.GroupIds.Should().Equal("42");
-        }
-        emails.Should().ContainSingle().Which.Should().Be("alice@example.org");
+        await AssertUnavailableThenRecoverAsync(client, handler);
     }
 
     [HumansFact]
@@ -229,6 +294,35 @@ public class MailerLiteClientRetryTests
             "a 429 with no Retry-After must fall back to ML's 60s rate-limit window");
     }
 
+    private static async Task AssertUnavailableThenRecoverAsync(MailerLiteClient client, ScriptedHandler handler)
+    {
+        handler.Clear();
+        client.LastFetchedAt.Should().BeNull();
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var summaryRead = async () => await client.GetAccountSummaryAsync(ct);
+        await summaryRead.Should().ThrowAsync<HttpRequestException>();
+        var groupRead = async () => await client.ListGroupsAsync(ct);
+        await groupRead.Should().ThrowAsync<HttpRequestException>();
+        var subscriberRead = async () =>
+        {
+            await foreach (var _ in client.ListSubscribersAsync(ct)) { }
+        };
+        await subscriberRead.Should().ThrowAsync<HttpRequestException>();
+
+        handler.EnqueueJson(HttpStatusCode.OK,
+            """{"data":[{"id":"sub-new","email":"new@example.org","status":"unsubscribed","groups":["84"]}],"meta":{"next_cursor":null}}""");
+        handler.EnqueueJson(HttpStatusCode.OK, HumansGroupPage.Replace("42", "84", StringComparison.Ordinal));
+        var summary = await client.GetAccountSummaryAsync(ct);
+        summary.ActiveCount.Should().Be(0);
+        summary.UnsubscribedCount.Should().Be(1);
+        (await client.ListGroupsAsync(ct)).Should().ContainSingle(g => g.Id == "84");
+        var emails = new List<string>();
+        await foreach (var subscriber in client.ListSubscribersAsync(ct))
+            emails.Add(subscriber.Email);
+        emails.Should().Equal("new@example.org");
+        client.LastFetchedAt.Should().NotBeNull();
+    }
+
     private static MailerLiteClient NewClient(HttpMessageHandler handler, ILogger<MailerLiteClient>? logger = null) =>
         new(new StubHttpClientFactory(handler),
             NodaTime.SystemClock.Instance,
@@ -264,6 +358,8 @@ public class MailerLiteClientRetryTests
     {
         private readonly Queue<HttpResponseMessage> _responses = new();
         public int Calls { get; private set; }
+
+        public void Clear() => _responses.Clear();
 
         public void EnqueueJson(HttpStatusCode status, string body)
             => _responses.Enqueue(new HttpResponseMessage(status)

@@ -1,6 +1,5 @@
 using Microsoft.Extensions.Localization;
 using Humans.Base.Extensions;
-using Humans.Events.Contracts;
 using Humans.Events.Domain;
 using Humans.Events.Services.Dtos;
 using NodaTime;

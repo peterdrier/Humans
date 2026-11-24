@@ -46,7 +46,7 @@ public sealed class GoogleNotificationMetersTests : IDisposable
         var meters = await _sut.GetMetersAsync(Viewer(RoleNames.Board), Guid.NewGuid(), TestContext.Current.CancellationToken);
 
         meters.Should().BeEmpty();
-        await _sync.DidNotReceiveWithAnyArgs().GetFailedSyncEventCountAsync(default);
+        await _sync.DidNotReceiveWithAnyArgs().GetFailedSyncEventCountAsync();
     }
 
     private static ClaimsPrincipal Viewer(string role) =>

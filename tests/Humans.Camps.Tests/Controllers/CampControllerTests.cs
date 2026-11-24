@@ -281,9 +281,9 @@ public class CampControllerTests
             var data = edit ? ((CampUpdateInput)arguments[0]!).SeasonData : (CampSeasonData)arguments[8]!;
             data.AcceptingMembers.Should().Be(YesNoMaybe.Yes);
             data.KidsWelcome.Should().Be(YesNoMaybe.Yes);
-            data.KidsVisiting.Should().Be((KidsVisitingPolicy)0);
-            data.HasPerformanceSpace.Should().Be((PerformanceSpaceStatus)0);
-            data.AdultPlayspace.Should().Be((AdultPlayspacePolicy)0);
+            data.KidsVisiting.Should().Be(default(KidsVisitingPolicy));
+            data.HasPerformanceSpace.Should().Be(default(PerformanceSpaceStatus));
+            data.AdultPlayspace.Should().Be(default(AdultPlayspacePolicy));
             data.SpaceRequirement.Should().BeNull();
             data.SoundZone.Should().BeNull();
             data.ElectricalGrid.Should().BeNull();
@@ -1785,6 +1785,30 @@ public class CampControllerTests
         {
             CollectLeaves(property.GetValue(obj), $"{path}.{property.Name}", leaves, seen);
         }
+    }
+
+    [HumansFact]
+    public async Task Register_get_and_post_choose_latest_gate_among_open_events()
+    {
+        var actor = Guid.NewGuid();
+        var older = Event2026 with { GateOpeningDate = new LocalDate(2026, 7, 1) };
+        var newer = Event2027 with { Year = 2026, RegistrationOpen = true, GateOpeningDate = new LocalDate(2026, 10, 1), RegistrationInfo = "Autumn" };
+        _camps.GetSettingsAsync(Arg.Any<CancellationToken>()).Returns(new CampSettingsInfo(2026, [2026])
+        {
+            Events = [older, newer, Event2029 with { GateOpeningDate = new LocalDate(2029, 7, 1) }]
+        });
+        _users.GetUserInfoAsync(actor, Arg.Any<CancellationToken>()).Returns(MakeUserInfo(actor));
+        _camps.CreateCampAsync(default, default!, default!, default!, null, null, false, 0, default!, null, Guid.Empty)
+            .ReturnsForAnyArgs(new CampWriteResult<Camp>(null, "Camps_Flash_SeasonNotOpen"));
+        _campsLocalizer["Camps_Flash_SeasonNotOpen", Arg.Any<object[]>()]
+            .Returns(new LocalizedString("Camps_Flash_SeasonNotOpen", "Registration closed"));
+        var controller = BuildController(actor);
+
+        (await controller.Register()).Should().BeOfType<ViewResult>().Which.ViewData["RegistrationInfo"].Should().Be("Autumn");
+        await controller.Register(new CampRegisterViewModel { Name = "Camp" });
+
+        var creation = _camps.ReceivedCalls().Should().ContainSingle(c => c.GetMethodInfo().Name == nameof(ICampManagement.CreateCampAsync)).Which;
+        creation.GetArguments()[10].Should().Be(newer.EventSettingsId);
     }
 
     private void StubCampReadModel(IReadOnlyList<CampInfo> camps)

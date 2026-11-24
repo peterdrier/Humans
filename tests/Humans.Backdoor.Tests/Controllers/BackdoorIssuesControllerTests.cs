@@ -1,7 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.Text.Json;
 using AwesomeAssertions;
-using Humans.AuditLog.Contracts;
 using Humans.Backdoor.Controllers;
 using Humans.Backdoor.Filters;
 using Humans.Base.Constants;
@@ -89,7 +88,7 @@ public class BackdoorIssuesControllerTests
 
         result.Should().BeOfType<BadRequestObjectResult>();
         await _issues.DidNotReceiveWithAnyArgs().CreateIssueAsync(
-            default, default, default!, default!, default, default, default, default);
+            default, default, default!, default!, default);
     }
 
     public BackdoorIssuesControllerTests()

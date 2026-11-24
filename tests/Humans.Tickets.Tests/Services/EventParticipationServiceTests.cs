@@ -5,7 +5,6 @@ using Humans.Budget.Contracts;
 using Humans.Campaigns.Contracts;
 using Humans.Governance.Contracts;
 using Humans.Teams.Contracts;
-using Humans.Base.Authorization;
 using Humans.Base.Constants;
 using Humans.Base.Enums;
 using Humans.Base.Interfaces;

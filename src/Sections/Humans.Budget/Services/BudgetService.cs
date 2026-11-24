@@ -5,10 +5,8 @@ using Humans.Budget.Data;
 using Humans.Teams.Contracts;
 using Humans.Budget.Domain;
 using Humans.Gdpr.Contracts;
-using Humans.Finance.Contracts;
 using NodaTime;
 using Humans.Users.Contracts;
-using Humans.Base.Interfaces;
 
 namespace Humans.Budget.Services;
 
@@ -23,9 +21,12 @@ internal sealed class BudgetService(
     /// <summary>GDPR export JSON key.</summary>
     internal const string BudgetAuditLog = "BudgetAuditLog";
 
-    public async Task<BudgetGroupDetail> CreateGroupAsync(
+    public async Task<BudgetSaveResult<BudgetGroupDetail>> CreateGroupAsync(
         Guid budgetYearId, string name, bool isRestricted, Guid actorUserId)
     {
+        if (TextRefusal(name, "Name", 256) is { } textRefusal)
+            return new(Refusal: textRefusal);
+
         var now = clock.GetCurrentInstant();
 
         var group = await repository.CreateGroupAsync(
@@ -34,12 +35,15 @@ internal sealed class BudgetService(
         logger.LogInformation(
             "Created budget group '{Name}' in year {YearId}", name, budgetYearId);
 
-        return ToGroupDetail(group);
+        return new(ToGroupDetail(group));
     }
 
     public async Task<BudgetSaveResult<BudgetGroupDetail>> UpdateGroupAsync(
         Guid groupId, string name, int sortOrder, bool isRestricted, Guid actorUserId)
     {
+        if (TextRefusal(name, "Name", 256) is { } textRefusal)
+            return new(Refusal: textRefusal);
+
         var now = clock.GetCurrentInstant();
 
         var ok = await repository.UpdateGroupAsync(
@@ -65,6 +69,9 @@ internal sealed class BudgetService(
         Guid budgetGroupId, string name, decimal allocatedAmount,
         ExpenditureType expenditureType, Guid? teamId, Guid actorUserId)
     {
+        if (TextRefusal(name, "Name", 256) is { } textRefusal)
+            return new(Refusal: textRefusal);
+
         if (ValidateMoneyAmount(allocatedAmount) is { } refusal)
             return new(Refusal: refusal);
 
@@ -83,6 +90,9 @@ internal sealed class BudgetService(
         Guid categoryId, string name, decimal allocatedAmount,
         ExpenditureType expenditureType, Guid actorUserId)
     {
+        if (TextRefusal(name, "Name", 256) is { } textRefusal)
+            return new(Refusal: textRefusal);
+
         if (ValidateMoneyAmount(allocatedAmount) is { } refusal)
             return new(Refusal: refusal);
 
@@ -112,6 +122,10 @@ internal sealed class BudgetService(
         Guid? responsibleTeamId, string? notes, LocalDate? expectedDate,
         int vatRate, Guid actorUserId)
     {
+        if ((TextRefusal(description, "Description", 500)
+             ?? TextRefusal(notes, "Notes", 2000, required: false)) is { } textRefusal)
+            return new(Refusal: textRefusal);
+
         if (ValidateMoneyAmount(amount) is { } refusal)
             return new(Refusal: refusal);
 
@@ -143,6 +157,10 @@ internal sealed class BudgetService(
         Guid? responsibleTeamId, string? notes, LocalDate? expectedDate,
         int vatRate, Guid actorUserId)
     {
+        if ((TextRefusal(description, "Description", 500)
+             ?? TextRefusal(notes, "Notes", 2000, required: false)) is { } textRefusal)
+            return new(Refusal: textRefusal);
+
         if (ValidateMoneyAmount(amount) is { } refusal)
             return new(Refusal: refusal);
 
@@ -164,6 +182,15 @@ internal sealed class BudgetService(
         if (!ok)
             return new(Refusal: $"Budget line item {lineItemId} not found");
         return new();
+    }
+
+    private static string? TextRefusal(string? value, string label, int maxLength, bool required = true)
+    {
+        if (required && string.IsNullOrWhiteSpace(value))
+            return $"{label} is required.";
+        return value is not null && value.EnumerateRunes().Count() > maxLength
+            ? $"{label} must be at most {maxLength} characters."
+            : null;
     }
 
     private static string? ValidateMoneyAmount(decimal amount)
@@ -514,8 +541,12 @@ internal sealed class BudgetService(
             .Sum(week => week.Tickets) ?? 0;
     }
 
-    public async Task<BudgetYearDetail> CreateYearAsync(string year, string name, Guid actorUserId)
+    public async Task<BudgetSaveResult<BudgetYearDetail>> CreateYearAsync(string year, string name, Guid actorUserId)
     {
+        if ((TextRefusal(year, "Year identifier", 50)
+             ?? TextRefusal(name, "Name", 256)) is { } textRefusal)
+            return new(Refusal: textRefusal);
+
         var now = clock.GetCurrentInstant();
 
         var teamRefs = await GetBudgetableTeamsAsync();
@@ -534,13 +565,13 @@ internal sealed class BudgetService(
             "Created budget year {Year} ({Name}) with {TeamCount} department categories",
             year, name, teamRefs.Count);
 
-        return new BudgetYearDetail(
+        return new(new BudgetYearDetail(
             draft.Id,
             year,
             name,
             BudgetYearStatus.Draft,
             IsDeleted: false,
-            Groups: []);
+            Groups: []));
     }
 
     public async Task<BudgetYearMutationResult> UpdateYearStatusAsync(Guid yearId, BudgetYearStatus status, Guid actorUserId)
@@ -558,10 +589,17 @@ internal sealed class BudgetService(
 
     public async Task<BudgetYearMutationResult> UpdateYearAsync(Guid yearId, string year, string name, string? vendorEventId, Guid actorUserId)
     {
+        vendorEventId = string.IsNullOrWhiteSpace(vendorEventId) ? null : vendorEventId.Trim();
+
+        if ((TextRefusal(year, "Year identifier", 50)
+             ?? TextRefusal(name, "Name", 256)
+             ?? TextRefusal(vendorEventId, "Vendor event ID", 256, required: false)) is { } textRefusal)
+            return new(Refusal: textRefusal);
+
         var now = clock.GetCurrentInstant();
 
         var result = await repository.UpdateYearAsync(
-            yearId, year, name, string.IsNullOrWhiteSpace(vendorEventId) ? null : vendorEventId.Trim(), actorUserId, now);
+            yearId, year, name, vendorEventId, actorUserId, now);
         return result;
     }
 

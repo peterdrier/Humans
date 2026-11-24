@@ -175,7 +175,7 @@ internal sealed class SurveyBuilderViewModel
     public bool ManagesEverySurvey { get; set; }
 
     /// <summary>Computed from the stored survey and its Submit authorization on every render.</summary>
-    [Microsoft.AspNetCore.Mvc.ModelBinding.BindNever]
+    [BindNever]
     public bool CanSubmit { get; set; }
 
     public bool IsNew => Id is null;

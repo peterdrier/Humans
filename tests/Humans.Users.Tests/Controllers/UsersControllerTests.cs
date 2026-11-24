@@ -5,7 +5,6 @@ using Humans.Teams.Contracts;
 using Humans.Users.Controllers;
 using Humans.Users.Models;
 using Humans.Users.Services;
-using Humans.Users.Tests.Infrastructure;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using NSubstitute;

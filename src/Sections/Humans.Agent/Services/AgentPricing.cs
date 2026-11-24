@@ -40,11 +40,10 @@ internal static class AgentPricing
     {
         if (string.IsNullOrWhiteSpace(model)) return null;
         // Longest matching prefix wins, so claude-opus-4-5 never falls through to claude-opus-4.
-        return PricesByModelPrefix
-            .Where(p => model.StartsWith(p.Key, StringComparison.OrdinalIgnoreCase))
-            .OrderByDescending(p => p.Key.Length)
-            .Select(p => p.Value)
-            .FirstOrDefault();
+        var prefix = PricesByModelPrefix.Keys
+            .Where(key => model.StartsWith(key, StringComparison.OrdinalIgnoreCase))
+            .MaxBy(key => key.Length);
+        return prefix is null ? null : PricesByModelPrefix[prefix];
     }
 
     /// <summary><paramref name="promptTokens"/> excludes cache reads, which Anthropic reports separately.</summary>

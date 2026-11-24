@@ -2,9 +2,7 @@ using Humans.Users.Contracts;
 using System.Security.Claims;
 using Humans.Shifts.Contracts;
 using Humans.Base.Constants;
-using Humans.Base.Authorization;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
 
 namespace Humans.Shifts.Authorization;
 

@@ -1,6 +1,5 @@
 using System.Net;
 using Humans.Base.Constants;
-using Humans.Consent.Contracts;
 using Humans.Consent.Domain;
 using Humans.Consent.Data;
 using Humans.Consent.Services;
@@ -50,7 +49,7 @@ public class HumansWebApplicationFactory(string connectionString)
     internal StubMailerLiteService MailerLiteServiceStub { get; } = new();
 
     /// <summary>Isolated from parallel factories.</summary>
-    internal Humans.Base.Logging.InMemoryLogSink LogSink { get; } = new();
+    internal Base.Logging.InMemoryLogSink LogSink { get; } = new();
 
     public IReadOnlyList<ServiceDescriptor> RegisteredServices { get; private set; } = [];
 
@@ -94,7 +93,7 @@ public class HumansWebApplicationFactory(string connectionString)
 
         builder.ConfigureTestServices(services =>
         {
-            services.RemoveAll<Humans.Base.Logging.InMemoryLogSink>();
+            services.RemoveAll<Base.Logging.InMemoryLogSink>();
             services.AddSingleton(LogSink);
 
             // No-op email: nothing here may send real mail.
@@ -214,9 +213,9 @@ public class HumansWebApplicationFactory(string connectionString)
 
         using var scope = Services.CreateScope();
         var eventId = Guid.NewGuid();
-        await scope.ServiceProvider.GetRequiredService<Humans.Settings.Contracts.IEventSettingsSeeding>()
+        await scope.ServiceProvider.GetRequiredService<Settings.Contracts.IEventSettingsSeeding>()
             .CreateActiveEventAsync(
-                new Humans.Settings.Contracts.EventSettingsInfo(
+                new Settings.Contracts.EventSettingsInfo(
                     Id: eventId,
                     EventName: "Integration Test Burn",
                     Year: ActiveEventYear,

@@ -14,7 +14,6 @@ using Humans.Users.Contracts;
 using Humans.Workgroups.Data;
 using Humans.Workgroups.Domain;
 using NodaTime;
-using Humans.Base.Interfaces;
 using Humans.Calendar.Contracts;
 using System.Globalization;
 using Humans.Gdpr.Contracts;
@@ -206,7 +205,7 @@ internal sealed partial class WorkgroupService(
     /// <summary>Same rule as a team's group prefix. Admins paste the full address as often as its local part; only our own domain is accepted.</summary>
     private static WorkgroupMutationResult<string?> ParseGoogleGroupPrefix(string? value)
     {
-        if (string.IsNullOrWhiteSpace(value)) return new((string?)null);
+        if (string.IsNullOrWhiteSpace(value)) return new(null);
 
         var prefix = value.Trim().ToLowerInvariant();
         var at = prefix.IndexOf('@', StringComparison.Ordinal);
@@ -1042,7 +1041,7 @@ internal sealed partial class WorkgroupService(
         WorkgroupCommentDisposition disposition,
         string? response,
         Guid actorUserId,
-        NodaTime.Instant now)
+        Instant now)
     {
         comment.Disposition = disposition;
         comment.Response = Trimmed(response);
@@ -1476,7 +1475,7 @@ internal sealed partial class WorkgroupService(
         {
             try
             {
-                var culture = System.Globalization.CultureInfo.GetCultureInfo(group.Key);
+                var culture = CultureInfo.GetCultureInfo(group.Key);
                 var title = $"{NoticeResources.GetString(titleKey, culture)}: {w.Name}";
                 var ids = group.Select(person => person.Id).ToList();
                 await notificationEmitter.SendAsync(source, NotificationClass.Informational, NotificationPriority.Normal,

@@ -1,16 +1,15 @@
 using Humans.Teams.Contracts;
 using Humans.Budget.Data;
-using Humans.Base.Interfaces;
 using Humans.Budget.Contracts;
 using NodaTime;
 
 namespace Humans.Budget.Services;
 
 /// <summary>An interface rather than the concrete <c>BudgetService</c> because the ticketing bridge's tests substitute it.</summary>
-internal interface IBudgetManagement : IBudgetService, IApplicationService
+internal interface IBudgetManagement : IBudgetService
 {
     Task<IReadOnlyList<BudgetYearSummarySnapshot>> GetAllYearsAsync(bool includeArchived = false, CancellationToken ct = default);
-    Task<BudgetYearDetail> CreateYearAsync(string year, string name, Guid actorUserId);
+    Task<BudgetSaveResult<BudgetYearDetail>> CreateYearAsync(string year, string name, Guid actorUserId);
     Task<BudgetYearMutationResult> UpdateYearStatusAsync(Guid yearId, BudgetYearStatus status, Guid actorUserId);
     Task<BudgetYearMutationResult> UpdateYearAsync(Guid yearId, string year, string name, string? vendorEventId, Guid actorUserId);
     Task<BudgetYearMutationResult> DeleteYearAsync(Guid yearId, Guid actorUserId);
@@ -41,7 +40,7 @@ internal interface IBudgetManagement : IBudgetService, IApplicationService
     /// <summary>Through completed weeks, from the revenue line items' notes.</summary>
     int GetActualTicketsSold(BudgetGroupDetail ticketingGroup);
 
-    Task<BudgetGroupDetail> CreateGroupAsync(Guid budgetYearId, string name, bool isRestricted, Guid actorUserId);
+    Task<BudgetSaveResult<BudgetGroupDetail>> CreateGroupAsync(Guid budgetYearId, string name, bool isRestricted, Guid actorUserId);
     Task<BudgetSaveResult<BudgetGroupDetail>> UpdateGroupAsync(Guid groupId, string name, int sortOrder, bool isRestricted, Guid actorUserId);
     Task<BudgetSaveResult<BudgetGroupDetail>> DeleteGroupAsync(Guid groupId, Guid actorUserId);
 

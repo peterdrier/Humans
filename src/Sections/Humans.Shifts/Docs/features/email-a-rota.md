@@ -110,8 +110,8 @@ Thank you,
 - `SenderName`, `SenderEmail` — signature + Reply-To attribution.
 - `RotaName` — subject + body context.
 - `MessageText` — coordinator's Markdown body, sanitized on render.
-- `ShiftLines` — pre-formatted, chronologically sorted, recipient-scoped shift labels.
-- `IncludeShifts` — false drops the whole shift section. Distinct from an empty `ShiftLines`, which still prints the "no shifts yet" note.
+- `Shifts` — recipient-scoped shifts (zoned start plus all-day flag); `ShiftsEmails` orders and formats them.
+- `IncludeShifts` — false drops the whole shift section. Distinct from an empty `Shifts`, which still prints the "no shifts yet" note.
 - `Culture` — recipient's preferred language for template rendering.
 
 ## Authorization

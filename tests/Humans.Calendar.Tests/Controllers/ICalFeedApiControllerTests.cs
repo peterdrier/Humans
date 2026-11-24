@@ -37,7 +37,7 @@ public class ICalFeedApiControllerTests
         _users.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(user));
         var tokens = Substitute.For<ICalendarFeedTokenService>();
-        tokens.GetAsync(userId, Arg.Any<CancellationToken>()).Returns((Guid?)token);
+        tokens.GetAsync(userId, Arg.Any<CancellationToken>()).Returns(token);
         var result = await CreateController(tokens).GetFeed(userId, token, Xunit.TestContext.Current.CancellationToken);
 
         var file = result.Should().BeOfType<FileContentResult>().Subject;

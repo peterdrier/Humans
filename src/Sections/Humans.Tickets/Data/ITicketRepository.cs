@@ -1,5 +1,4 @@
 using Humans.Tickets.Contracts;
-using Humans.Tickets.Services;
 using NodaTime;
 using Humans.Base.Interfaces.Repositories;
 using Humans.Tickets.Domain;

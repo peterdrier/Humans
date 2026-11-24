@@ -1,4 +1,3 @@
-using Humans.AuditLog.Contracts;
 using Humans.Base.Extensions;
 using Humans.Base.Threading;
 using Humans.Notifications.Contracts;

@@ -1,7 +1,6 @@
 using Humans.Base.Extensions;
 using Humans.Base.Attributes;
 using Humans.Base.Controllers;
-using Humans.Consent.Contracts;
 using Humans.Users.Contracts;
 using Humans.Settings.Contracts;
 using Humans.Shifts.Contracts;

@@ -12,7 +12,6 @@ using Humans.Auth.Contracts;
 using Humans.Auth.Data;
 using Humans.Auth.Domain;
 using Humans.Auth.Services;
-using Humans.AuditLog.Contracts;
 using Humans.Base.Constants;
 using Humans.Notifications.Contracts;
 using NSubstitute;
@@ -22,7 +21,6 @@ using Humans.Camps.Contracts;
 using Humans.Users.Contracts;
 
 
-using Humans.Teams.Contracts;
 
 namespace Humans.Auth.Tests.Services;
 
@@ -185,7 +183,7 @@ public sealed class RoleAssignmentServiceTests : AuthTestHarness
     [InlineData("lookup-fails")]
     public async Task RoleChanges_NotifyInTheRecipientsLanguage(string language)
     {
-        using var actorCulture = new Humans.Base.Extensions.CultureScope("en");
+        using var actorCulture = new CultureScope("en");
         var userId = Guid.NewGuid();
         var actorId = Guid.NewGuid();
         await SeedUserAsync(userId, "Target");

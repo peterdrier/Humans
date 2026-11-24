@@ -1,7 +1,6 @@
 using Humans.Tickets.Contracts;
 using CsvHelper;
 using Humans.Base.Csv;
-using Humans.Campaigns.Domain;
 using Humans.Campaigns.Models;
 using Humans.Campaigns.Services;
 using Humans.Base.Authorization;

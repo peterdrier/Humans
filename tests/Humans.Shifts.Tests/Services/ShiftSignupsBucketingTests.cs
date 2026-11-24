@@ -1,7 +1,6 @@
 using Humans.Shifts.Services.Dtos;
 using Humans.Shifts.ViewComponents;
 using AwesomeAssertions;
-using Xunit;
 using Humans.Base.Extensions;
 using Humans.Shifts.Domain;
 using Humans.Shifts.Contracts;

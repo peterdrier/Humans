@@ -72,7 +72,7 @@ public class MailerLiteImportServiceClassifierTests
         var state = await harness.Repository.GetSyncStateAsync(MailerLiteSyncKeys.Reconciliation,
             Xunit.TestContext.Current.CancellationToken);
         state.Should().NotBeNull();
-        state!.Summary.Should().Be(result.FormatSummary());
+        state.Summary.Should().Be(result.FormatSummary());
         await harness.Audit.Received(1).LogAsync(
             MailerLiteAuditActions.MailerLiteReconciliationCompleted, "MailerLite", state.Id,
             result.FormatSummary(), actorUserId: actor);

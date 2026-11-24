@@ -3,7 +3,6 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 using Humans.Holded.Contracts;
-using NodaTime;
 using NodaTime.Text;
 
 namespace Humans.Holded.Services;

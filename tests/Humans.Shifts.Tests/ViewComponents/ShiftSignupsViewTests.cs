@@ -4,8 +4,6 @@ using System.Resources;
 using AwesomeAssertions;
 using Humans.Base.ViewComponents;
 using System.Text.Encodings.Web;
-using Humans.Users.Domain;
-using Humans.Shifts.Contracts;
 using Humans.Shifts.Models;
 using Humans.Users.Contracts;
 using Humans.Base.Extensions;

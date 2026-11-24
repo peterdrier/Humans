@@ -6,7 +6,6 @@ using Humans.Settings.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Tickets.Contracts;
-using Humans.Base.Enums;
 using NodaTime;
 using Humans.Agent.Models;
 using Humans.Users.Contracts;
@@ -94,22 +93,18 @@ internal sealed class AgentUserSnapshotProvider(
             .Where(s => s.SignupBlockId is not null)
             .GroupBy(s => s.SignupBlockId!.Value))
         {
-            var dates = group
-                .Select(s => s.Date)
-                .OrderBy(d => d)
-                .ToList();
             var label = RotaLabel(group.First());
             // Block signups are created in one transaction so they share a status;
             // pick the earliest so a partially-bailed range still surfaces
             // something meaningful.
-            var status = group.OrderBy(s => s.Date).First().Status;
+            var earliest = group.MinBy(s => s.Date)!;
             entries.Add(new UpcomingShiftEntry(
                 Key: group.Key,
                 Label: label,
-                StartDate: dates[0],
-                EndDate: dates[^1],
-                DayCount: dates.Distinct().Count(),
-                Status: status));
+                StartDate: earliest.Date,
+                EndDate: group.Max(s => s.Date),
+                DayCount: group.Select(s => s.Date).Distinct().Count(),
+                Status: earliest.Status));
         }
 
         // Unsorted: AgentPromptAssembler sorts at render time.

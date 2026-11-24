@@ -287,7 +287,7 @@ internal sealed class TicketDeliveryService(
     }
 
     private TicketCard Card(TicketCheckoutTicket ticket) =>
-        new(ticket.HolderName, ticket.Kind.ToString(), ticket.Barcode, codeImages.ImageUrl(ticket.Barcode));
+        new(ticket.HolderName, ticket.Kind, ticket.Barcode, codeImages.ImageUrl(ticket.Barcode)) { IssuedAt = ticket.IssuedAt };
 
     private string BaseUrl => emailSettings.Value.BaseUrl.TrimEnd('/');
 

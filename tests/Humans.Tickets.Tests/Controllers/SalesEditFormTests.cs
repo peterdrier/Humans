@@ -78,4 +78,46 @@ public sealed class SalesEditFormTests
 
         form.ToSave(null, Madrid).Error.Should().Be("Wave 'Wave 2' needs a last day.");
     }
+
+    [HumansTheory]
+    [InlineData("wave")]
+    [InlineData("vip")]
+    [InlineData("rule")]
+    [InlineData("child")]
+    public void Unrepresentable_amounts_are_refused_in_every_amount_field(string field)
+    {
+        foreach (var amount in new[] { "92233720368547758.08", "79228162514264337593543950335" })
+        {
+            var form = new SalesEditForm
+            {
+                Waves = string.Equals(field, "wave", StringComparison.Ordinal) ? [new() { Name = "Wave", EndsOn = "2027-01-31", Price = amount }] : [],
+                VipLevels = string.Equals(field, "vip", StringComparison.Ordinal) ? [new() { Total = amount }] : [],
+                PriceRules = string.Equals(field, "rule", StringComparison.Ordinal)
+                    ? [new() { GrantProgramId = LowIncome, Kind = TicketPriceRuleKind.ClassPrice, Label = "Class", Amount = amount }] : [],
+                ChildTypes = string.Equals(field, "child", StringComparison.Ordinal) ? [new() { Name = "Child", UnderAge = 12, Price = amount }] : [],
+            };
+
+            var (save, error) = form.ToSave(null, Madrid);
+
+            save.Should().BeNull();
+            error.Should().NotBeNullOrEmpty();
+        }
+    }
+
+    [HumansTheory]
+    [InlineData("92233720368547758.07", long.MaxValue)]
+    [InlineData("92233720368547758.074", long.MaxValue)]
+    [InlineData("1.005", 101L)]
+    public void Representable_prices_keep_away_from_zero_cent_rounding(string amount, long expected)
+    {
+        var form = new SalesEditForm
+        {
+            Waves = [new() { Name = "Wave", EndsOn = "2027-01-31", Price = amount }],
+        };
+
+        var (save, error) = form.ToSave(null, Madrid);
+
+        error.Should().BeNull();
+        save!.Waves.Single().PriceMinor.Should().Be(expected);
+    }
 }

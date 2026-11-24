@@ -1,5 +1,4 @@
 using Humans.Grants.Contracts;
-using Humans.Base.Enums;
 using Humans.Base.Extensions;
 using Humans.Users.Contracts;
 using AwesomeAssertions;
@@ -375,7 +374,7 @@ public sealed class GrantTests : GrantsTestHarness
         Users.GetUserInfoAsync(person, Arg.Any<CancellationToken>()).Returns(_ =>
         {
             if (++lookups == 1) throw failure;
-            return new ValueTask<Humans.Users.Contracts.UserInfo?>(snapshot);
+            return new ValueTask<UserInfo?>(snapshot);
         });
 
         var result = await NewService().ResendNoticeAsync(program.Id, grant.Id, actor, Ct);

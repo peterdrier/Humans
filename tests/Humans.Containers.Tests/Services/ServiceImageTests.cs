@@ -157,7 +157,7 @@ public sealed class ServiceImageTests
     [HumansFact]
     public async Task CreateAsync_ImageRuleMessage_CarriesTheImageLimit()
     {
-        using var culture = new Humans.Base.Extensions.CultureScope("en");
+        using var culture = new Base.Extensions.CultureScope("en");
         var refusal = await _sut.CreateAsync(actorUserId: Guid.NewGuid(), data: new ContainerData(
             CampId: CampId,
             Name: "Test",

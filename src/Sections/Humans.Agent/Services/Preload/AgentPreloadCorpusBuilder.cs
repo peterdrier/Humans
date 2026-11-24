@@ -1,6 +1,5 @@
 using System.Text;
 using Microsoft.Extensions.Caching.Memory;
-using Humans.Agent.Contracts;
 using Humans.Agent.Domain;
 
 namespace Humans.Agent.Services.Preload;
@@ -17,13 +16,6 @@ internal sealed class AgentPreloadCorpusBuilder(
 {
     private static readonly IReadOnlyList<string> Tier1Sections =
         ["Onboarding", "Teams", "Consent", "Governance", "Shifts", "Tickets", "Users", "Auth"];
-
-    // Keep in step with AgentSectionKeys.All — a section the reader can serve but
-    // that never appears in this index is one the agent has no reason to ask for.
-    private static readonly IReadOnlyList<string> Tier2Sections =
-        ["Onboarding", "Teams", "Consent", "Governance", "Shifts", "Tickets", "Users", "Auth",
-         "Budget", "Camps", "CityPlanning", "Campaigns", "Google",
-         "Events", "Guide", "Store", "Scanner", "Gate", "Calendar", "Cantina", "Containers", "Issues"];
 
     private static readonly MemoryCacheEntryOptions HoldForever =
         new() { Priority = CacheItemPriority.NeverRemove };
@@ -74,7 +66,7 @@ internal sealed class AgentPreloadCorpusBuilder(
 
     private async Task<(string Body, bool IsComplete)> BuildCorpusAsync(AgentPreloadConfig config, CancellationToken cancellationToken)
     {
-        var sections1 = config == AgentPreloadConfig.Tier1 ? Tier1Sections : Tier2Sections;
+        IEnumerable<string> sectionKeys = config == AgentPreloadConfig.Tier1 ? Tier1Sections : sections.KnownSections;
         var isComplete = true;
         var sb = new StringBuilder();
         sb.AppendLine("# Nobodies Collective — System Knowledge");
@@ -83,7 +75,7 @@ internal sealed class AgentPreloadCorpusBuilder(
         sb.AppendLine();
         sb.AppendLine("## Section Index");
         sb.AppendLine();
-        foreach (var key in sections1)
+        foreach (var key in sectionKeys)
         {
             var body = await sections.ReadAsync(key, cancellationToken);
             if (body is null)

@@ -2,7 +2,6 @@ using Humans.Events.Services;
 using Humans.Camps.Contracts;
 using Humans.Settings.Contracts;
 using Humans.Events.Domain;
-using Humans.Base.Authorization;
 using Humans.Base.Controllers;
 using Humans.Events.Filters;
 using Humans.Events.Models;

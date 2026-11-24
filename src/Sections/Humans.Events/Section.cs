@@ -1,7 +1,5 @@
-using Humans.Base.Extensions;
 using Humans.Events.Domain;
 using Humans.Base.Models.Tables;
-using NodaTime;
 using Humans.Base.Authorization;
 using Humans.Base.Constants;
 using Humans.Base.Hosting;

@@ -134,7 +134,7 @@ public sealed class ExternalLoginServiceTests : ServiceTestHarness
 
         (await _userManager.FindByLoginAsync(Provider, providerKey))!.Id.Should().Be(userB.Id);
         (await _userManager.GetLoginsAsync(userA)).Should().BeEmpty();
-        await _userService.DidNotReceiveWithAnyArgs().RecordLoginAsync(default, default);
+        await _userService.DidNotReceiveWithAnyArgs().RecordLoginAsync(default);
         await _userEmailService.DidNotReceiveWithAnyArgs()
             .ReconcileOAuthIdentityAsync(default, default!, default!, default!, default);
     }

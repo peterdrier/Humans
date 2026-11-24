@@ -379,52 +379,6 @@ body.admin-shell .staffing {
     padding: 18px 22px;
 }
 
-body.admin-shell .dept-row {
-    display: grid;
-    grid-template-columns: 120px 1fr 60px;
-    gap: 14px;
-    align-items: center;
-    padding: 8px 0;
-    font-family: var(--h-font-body);
-    font-size: 0.85rem;
-}
-
-body.admin-shell .dept-row .name {
-    color: var(--h-aged-ink);
-    font-family: var(--h-font-display);
-    font-weight: 500;
-}
-
-body.admin-shell .dept-row .track {
-    height: 10px;
-    background: var(--h-parchment-dark);
-    border-radius: 5px;
-    overflow: hidden;
-    position: relative;
-}
-
-body.admin-shell .dept-row .track > div {
-    height: 100%;
-    background: var(--h-gold);
-    border-radius: 5px;
-}
-
-body.admin-shell .dept-row .track.low > div {
-    background: var(--h-amber);
-}
-
-body.admin-shell .dept-row .track.crit > div {
-    background: var(--h-rust);
-}
-
-body.admin-shell .dept-row .num {
-    text-align: right;
-    color: var(--h-sepia);
-    font-family: var(--h-font-display);
-    font-style: italic;
-    font-size: 0.82rem;
-}
-
 /* ── Activity feed ────────────────────────────────────────────────────── */
 
 body.admin-shell .activity-item {

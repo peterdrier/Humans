@@ -1,4 +1,3 @@
-using Humans.Base.Interfaces;
 using Humans.Gdpr.Contracts;
 using Humans.Tickets.Contracts;
 using Humans.Tickets.Services.Dtos;
@@ -7,7 +6,7 @@ using NodaTime;
 namespace Humans.Tickets.Services;
 
 /// <summary>Tickets-internal; other sections depend on <see cref="ITicketService"/>.</summary>
-internal interface ITicketManagement : ITicketService, IApplicationService
+internal interface ITicketManagement : ITicketService
 {
     Task<TicketDashboardStats> GetDashboardStatsAsync(CancellationToken ct = default);
 

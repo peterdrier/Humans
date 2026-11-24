@@ -1,7 +1,6 @@
 using AwesomeAssertions;
 using Humans.Events.Services;
 using Humans.Events.Services.Dtos;
-using Humans.Events.Contracts;
 using Humans.Integration.Tests.Infrastructure;
 using Microsoft.Extensions.DependencyInjection;
 using NodaTime;

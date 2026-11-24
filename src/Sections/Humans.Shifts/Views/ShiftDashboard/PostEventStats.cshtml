@@ -1,5 +1,4 @@
 @using Humans.Base.Interfaces
-@using Humans.Base.Models
 @model Humans.Shifts.Models.PostEventStats
 
 @{
@@ -43,7 +42,7 @@
         <div class="card">
             <div class="card-header fw-semibold">Department Breakdown</div>
             @{
-                Func<Humans.Shifts.Models.PostEventDepartmentRow, IHtmlContent> departmentCell = @<text>
+                Func<PostEventDepartmentRow, IHtmlContent> departmentCell = @<text>
                     @if (item.DepartmentSlug is not null)
                     {
                         <a asp-controller="ShiftAdmin" asp-action="Index"
@@ -57,7 +56,7 @@
                     }
 
                 </text>;
-                Func<Humans.Shifts.Models.PostEventDepartmentRow, IHtmlContent> completionCell = @<text>
+                Func<PostEventDepartmentRow, IHtmlContent> completionCell = @<text>
                     @if (item.TotalConfirmed + item.TotalNoShow > 0)
                     {
                         <span class="badge @CompletionBadgeClass(item.CompletionPct)">@item.CompletionPct%</span>
@@ -68,7 +67,7 @@
                     }
 
                 </text>;
-                Func<Humans.Shifts.Models.PostEventDepartmentRow, IHtmlContent> setUpCell = @<text>
+                Func<PostEventDepartmentRow, IHtmlContent> setUpCell = @<text>
                     @if (item.Build.TotalConfirmed + item.Build.TotalNoShow > 0)
                     {
                         <span class="badge @CompletionBadgeClass(item.Build.CompletionPct)" title="@item.Build.TotalConfirmed confirmed, @item.Build.TotalNoShow no-shows">
@@ -81,7 +80,7 @@
                     }
 
                 </text>;
-                Func<Humans.Shifts.Models.PostEventDepartmentRow, IHtmlContent> eventCell = @<text>
+                Func<PostEventDepartmentRow, IHtmlContent> eventCell = @<text>
                     @if (item.Event.TotalConfirmed + item.Event.TotalNoShow > 0)
                     {
                         <span class="badge @CompletionBadgeClass(item.Event.CompletionPct)" title="@item.Event.TotalConfirmed confirmed, @item.Event.TotalNoShow no-shows">
@@ -94,7 +93,7 @@
                     }
 
                 </text>;
-                Func<Humans.Shifts.Models.PostEventDepartmentRow, IHtmlContent> strikeCell = @<text>
+                Func<PostEventDepartmentRow, IHtmlContent> strikeCell = @<text>
                     @if (item.Strike.TotalConfirmed + item.Strike.TotalNoShow > 0)
                     {
                         <span class="badge @CompletionBadgeClass(item.Strike.CompletionPct)" title="@item.Strike.TotalConfirmed confirmed, @item.Strike.TotalNoShow no-shows">

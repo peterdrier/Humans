@@ -412,8 +412,8 @@ transfer row id, which never changes.
 ### Character handling
 
 `SepaText.Normalize` folds text into the restricted subset Sabadell accepts —
-`a-z A-Z 0-9 / - ? : ( ) . , ' +` and space. Accents decompose (Ñ→N, Ç→C, Á→A); Ø, Æ, Œ, ß, Ł, Þ, Ð
-map by hand; anything left over becomes a space, runs collapse. Names cap at 70, remittance at 140.
+`a-z A-Z 0-9 / - ? : ( ) . , ' +` and space. Accents decompose (Ñ→N, Ç→C, Á→A); Ø, Æ, Œ, ß, ẞ, Ł, Þ, Ð
+map by hand, preserving letter case; anything left over becomes a space, runs collapse. Names cap at 70, remittance at 140.
 XML-reserved characters are escaped by the writer, not stripped.
 
 ## Generation refusals

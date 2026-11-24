@@ -1,6 +1,5 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Humans.Base.Enums;
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Localization;
@@ -54,7 +53,7 @@ internal sealed class CampController(
     /// <summary>New camps register for the open event with the latest gate opening; null when none is open.</summary>
     private async Task<CampEventRegistration?> PopulateRegisterSeasonAsync(CancellationToken ct)
     {
-        var registrationEvent = (await _campService.GetSettingsAsync(ct)).OpenEvents.FirstOrDefault();
+        var registrationEvent = (await _campService.GetSettingsAsync(ct)).OpenEvents.MaxBy(e => e.GateOpeningDate);
         ViewData["SeasonYear"] = registrationEvent?.Year ?? 0;
         ViewData["RegistrationInfo"] = registrationEvent is null
             ? null
@@ -274,7 +273,7 @@ internal sealed class CampController(
             return currentUserError;
         }
 
-        var registrationEvent = (await _campService.GetSettingsAsync(ct)).OpenEvents.FirstOrDefault();
+        var registrationEvent = (await _campService.GetSettingsAsync(ct)).OpenEvents.MaxBy(e => e.GateOpeningDate);
         if (registrationEvent is null)
         {
             SetError(campsLocalizer["Camps_Flash_RegistrationClosed"].Value);

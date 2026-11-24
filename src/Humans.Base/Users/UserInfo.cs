@@ -134,9 +134,7 @@ public sealed record UserInfo(
 
             return UserEmails
                 .Where(e => e.IsVerified)
-                .OrderByDescending(e => e.IsPrimary)
-                .Select(e => e.Email)
-                .FirstOrDefault() ?? IdentityEmailColumn;
+                .MaxBy(e => e.IsPrimary)?.Email ?? IdentityEmailColumn;
         }
     }
 

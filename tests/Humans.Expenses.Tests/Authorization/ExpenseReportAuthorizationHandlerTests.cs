@@ -136,7 +136,7 @@ public sealed class ExpenseReportAuthorizationHandlerTests
         _preapprovals.GetGrantsAsync(Arg.Any<CancellationToken>()).Returns(call =>
         {
             Read("Grant", call.Arg<CancellationToken>());
-            return (IReadOnlyList<GrantOption>)[ManagedGrant(grantId, CoordinatorId)];
+            return [ManagedGrant(grantId, CoordinatorId)];
         });
         _budgetService.GetCategoryByIdAsync(CategoryId, Arg.Any<CancellationToken>()).Returns(call =>
         {
@@ -687,5 +687,5 @@ public sealed class ExpenseReportAuthorizationHandlerTests
 
     private void StubManagedGrant(Guid grantId, Guid manager) =>
         _preapprovals.GetGrantsAsync(Arg.Any<CancellationToken>())
-            .Returns((IReadOnlyList<GrantOption>)[ManagedGrant(grantId, manager)]);
+            .Returns([ManagedGrant(grantId, manager)]);
 }

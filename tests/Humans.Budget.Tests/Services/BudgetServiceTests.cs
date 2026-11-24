@@ -526,7 +526,8 @@ public sealed class BudgetServiceTests
     public async Task YearStatus_InvalidOrMissingBinding_DoesNotResetActiveYear(bool malformed, bool missingStatus, bool viewerExists)
     {
         _teamService.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo>());
-        var year = await _service.CreateYearAsync("2026", "Budget 2026", Guid.NewGuid());
+        var createdYear = await _service.CreateYearAsync("2026", "Budget 2026", Guid.NewGuid());
+        var year = createdYear.Value!;
         await _service.UpdateYearStatusAsync(year.Id, BudgetYearStatus.Active, Guid.NewGuid());
         var (controller, _, _) = CreateAdminController(viewerExists, _service);
         if (malformed) controller.ModelState.AddModelError("status", "Invalid value.");
@@ -911,7 +912,7 @@ public sealed class BudgetServiceTests
             UserInfo.Create(new User { Id = viewerId }, [], [], null));
         var category = new BudgetCategorySnapshot(_yearId, _yearId, "Category", 0m, default, null, 0, null, []);
         budget.GetCategoryByIdAsync(_yearId).Returns(category);
-        budget.GetLineItemCategoryIdAsync(_yearId).Returns((Guid?)_yearId);
+        budget.GetLineItemCategoryIdAsync(_yearId).Returns(_yearId);
         var auth = Substitute.For<IAuthorizationService>();
         auth.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), category, Arg.Any<IEnumerable<IAuthorizationRequirement>>())
             .Returns(allowed ? AuthorizationResult.Success() : AuthorizationResult.Failed());
@@ -962,7 +963,7 @@ public sealed class BudgetServiceTests
             UserInfo.Create(new User { Id = viewerId }, [], [], null));
         var category = new BudgetCategorySnapshot(_yearId, _yearId, "Category", 0m, default, null, 0, null, []);
         budget.GetCategoryByIdAsync(_yearId).Returns(category);
-        budget.GetLineItemCategoryIdAsync(_yearId).Returns((Guid?)_yearId);
+        budget.GetLineItemCategoryIdAsync(_yearId).Returns(_yearId);
         var auth = Substitute.For<IAuthorizationService>();
         auth.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), category, Arg.Any<IEnumerable<IAuthorizationRequirement>>())
             .Returns(AuthorizationResult.Success());
@@ -1005,7 +1006,7 @@ public sealed class BudgetServiceTests
         var redirect = result.Should().BeOfType<RedirectToActionResult>().Subject;
         redirect.ActionName.Should().Be(nameof(BudgetController.CategoryDetail));
         redirect.RouteValues!["id"].Should().Be(_yearId);
-        var message = controller.TempData[Humans.Base.Constants.TempDataKeys.ErrorMessage].Should().BeOfType<string>().Subject;
+        var message = controller.TempData[Base.Constants.TempDataKeys.ErrorMessage].Should().BeOfType<string>().Subject;
         message.Should().NotContain(failure.Message).And.NotContain("{0}");
         message.Should().Be(resources.GetString(errorKey, culture));
         _ = localizer.Received(1)[errorKey];
@@ -1114,8 +1115,8 @@ public sealed class BudgetServiceTests
         var redirect = result.Should().BeOfType<RedirectToActionResult>().Subject;
         redirect.ActionName.Should().Be(update ? nameof(BudgetAdminController.CategoryDetail) : nameof(BudgetAdminController.YearDetail));
         redirect.RouteValues!["id"].Should().Be(_yearId);
-        controller.TempData[Humans.Base.Constants.TempDataKeys.ErrorMessage].Should().Be(refusal);
-        controller.TempData.ContainsKey(Humans.Base.Constants.TempDataKeys.SuccessMessage).Should().BeFalse();
+        controller.TempData[Base.Constants.TempDataKeys.ErrorMessage].Should().Be(refusal);
+        controller.TempData.ContainsKey(Base.Constants.TempDataKeys.SuccessMessage).Should().BeFalse();
     }
 
     [HumansTheory]
@@ -1184,8 +1185,8 @@ public sealed class BudgetServiceTests
             ? await controller.UpdateLineItem(_yearId, "Item", 1.005m, null, null, null, 0, _yearId)
             : await controller.CreateLineItem(_yearId, "Item", 1.005m, null, null, null, 0);
         result.Should().BeOfType<RedirectToActionResult>();
-        controller.TempData[Humans.Base.Constants.TempDataKeys.ErrorMessage].Should().Be(refusal);
-        controller.TempData.ContainsKey(Humans.Base.Constants.TempDataKeys.SuccessMessage).Should().BeFalse();
+        controller.TempData[Base.Constants.TempDataKeys.ErrorMessage].Should().Be(refusal);
+        controller.TempData.ContainsKey(Base.Constants.TempDataKeys.SuccessMessage).Should().BeFalse();
     }
 
     [HumansTheory]
@@ -1508,7 +1509,8 @@ public sealed class BudgetServiceTests
         };
         _teamService.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(teams);
 
-        var year = await _service.CreateYearAsync("2026", "Budget 2026", Guid.NewGuid());
+        var createdYear = await _service.CreateYearAsync("2026", "Budget 2026", Guid.NewGuid());
+        var year = createdYear.Value!;
 
         year.Year.Should().Be("2026");
         year.Name.Should().Be("Budget 2026");
@@ -2101,7 +2103,7 @@ public sealed class BudgetServiceTests
     [MemberData(nameof(SupportedCultures.All), MemberType = typeof(SupportedCultures))]
     public async Task SyncTicketingActualsAsync_materializes_projected_weeks_when_projection_is_valid(string culture)
     {
-        using var scope = new Humans.Base.Extensions.CultureScope(culture);
+        using var scope = new CultureScope(culture);
         CultureInfo.CurrentCulture = CultureInfo.GetCultureInfo("en");
         var (groupId, _, revenueCatId, _) = await SeedTicketingYearAsync();
         await ConfigureProjectionAsync(groupId,
@@ -2630,6 +2632,146 @@ public sealed class BudgetServiceTests
         };
 
         await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("*closed*");
+    }
+
+    [HumansTheory]
+    [InlineData("Year", false, 50)]
+    [InlineData("Year", true, 50)]
+    [InlineData("YearName", false, 256)]
+    [InlineData("YearName", true, 256)]
+    [InlineData("VendorEventId", true, 256)]
+    [InlineData("Group", false, 256)]
+    [InlineData("Group", true, 256)]
+    [InlineData("Category", false, 256)]
+    [InlineData("Category", true, 256)]
+    [InlineData("Description", false, 500)]
+    [InlineData("Description", true, 500)]
+    [InlineData("Notes", false, 2000)]
+    [InlineData("Notes", true, 2000)]
+    public async Task Invalid_manual_text_is_refused_before_repository_access(string field, bool update, int limit)
+    {
+        var repository = Substitute.For<IBudgetRepository>();
+        var service = new BudgetServiceImpl(repository, _teamService, _userService, _clock,
+            NullLogger<BudgetServiceImpl>.Instance);
+        var inputs = field is "Notes" or "VendorEventId"
+            ? new[] { new string('x', limit + 1) }
+            : new[] { "", "   ", new string('x', limit + 1) };
+        foreach (var text in inputs)
+        {
+            var year = field is "Year" ? text : "2026";
+            var name = field is "YearName" or "Group" or "Category" ? text : "Valid";
+            var description = field is "Description" ? text : "Valid";
+            var notes = field is "Notes" ? text : null;
+            var refusal = field switch
+            {
+                "Year" or "YearName" or "VendorEventId" => update
+                    ? (await service.UpdateYearAsync(_yearId, year, name, field is "VendorEventId" ? text : null, _yearId)).Refusal
+                    : (await service.CreateYearAsync(year, name, _yearId)).Refusal,
+                "Group" => update
+                    ? (await service.UpdateGroupAsync(_yearId, name, 0, false, _yearId)).Refusal
+                    : (await service.CreateGroupAsync(_yearId, name, false, _yearId)).Refusal,
+                "Category" => update
+                    ? (await service.UpdateCategoryAsync(_yearId, name, 1m, ExpenditureType.OpEx, _yearId)).Refusal
+                    : (await service.CreateCategoryAsync(_yearId, name, 1m, ExpenditureType.OpEx, null, _yearId)).Refusal,
+                _ => update
+                    ? (await service.UpdateLineItemAsync(_yearId, description, 1m, null, notes, null, 0, _yearId)).Refusal
+                    : (await service.CreateLineItemAsync(_yearId, description, 1m, null, notes, null, 0, _yearId)).Refusal
+            };
+            refusal.Should().NotBeNullOrEmpty();
+        }
+        repository.ReceivedCalls().Should().BeEmpty();
+        _teamService.ReceivedCalls().Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task Manual_text_at_storage_limits_is_preserved_on_create_and_update()
+    {
+        _teamService.GetTeamsAsync(Arg.Any<CancellationToken>()).Returns(new Dictionary<Guid, TeamInfo>());
+        var identifier = new string('y', 50);
+        var name = new string('n', 256);
+        var description = string.Concat(Enumerable.Repeat("😀", 500));
+        var notes = new string('t', 2000);
+        var createdYear = await _service.CreateYearAsync(identifier, name, _yearId);
+        createdYear.Refusal.Should().BeNull();
+        var yearId = createdYear.Value!.Id;
+        var createdGroup = await _service.CreateGroupAsync(yearId, name, false, _yearId);
+        createdGroup.Refusal.Should().BeNull();
+        var groupId = createdGroup.Value!.Id;
+        var createdCategory = await _service.CreateCategoryAsync(groupId, name, 1m, ExpenditureType.OpEx, null, _yearId);
+        createdCategory.Refusal.Should().BeNull();
+        var categoryId = createdCategory.Value!.Id;
+        (await _service.CreateLineItemAsync(categoryId, description, 1m, null, notes, null, 0, _yearId)).Refusal.Should().BeNull();
+        await using var db = await _budgetDbFactory.CreateDbContextAsync(TestContext.Current.CancellationToken);
+        var line = await db.BudgetLineItems.AsNoTracking().SingleAsync(TestContext.Current.CancellationToken);
+        line.Description.Should().Be(description);
+        line.Notes.Should().Be(notes);
+        (await _service.UpdateYearAsync(yearId, identifier, name, "  " + name + "  ", _yearId)).Refusal.Should().BeNull();
+        (await _service.UpdateGroupAsync(groupId, name, 0, false, _yearId)).Refusal.Should().BeNull();
+        (await _service.UpdateCategoryAsync(categoryId, name, 2m, ExpenditureType.OpEx, _yearId)).Refusal.Should().BeNull();
+        (await _service.UpdateLineItemAsync(line.Id, description, 2m, null, notes, null, 0, _yearId)).Refusal.Should().BeNull();
+        var savedYear = await db.BudgetYears.AsNoTracking().SingleAsync(TestContext.Current.CancellationToken);
+        savedYear.Year.Should().Be(identifier);
+        savedYear.Name.Should().Be(name);
+        savedYear.VendorEventId.Should().Be(name);
+        (await db.BudgetGroups.AsNoTracking().SingleAsync(g => g.Id == groupId, TestContext.Current.CancellationToken)).Name.Should().Be(name);
+        (await db.BudgetCategories.AsNoTracking().SingleAsync(c => c.Id == categoryId, TestContext.Current.CancellationToken)).Name.Should().Be(name);
+        (await db.BudgetLineItems.AsNoTracking().SingleAsync(TestContext.Current.CancellationToken)).Amount.Should().Be(2m);
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Creation_forms_display_expected_text_refusals(bool group)
+    {
+        var (controller, budget, userId) = CreateAdminController(true);
+        const string reason = "Name must be at most 256 characters.";
+        budget.CreateYearAsync("2026", "Too long", userId).Returns(new BudgetSaveResult<BudgetYearDetail>(Refusal: reason));
+        budget.CreateGroupAsync(_yearId, "Too long", false, userId).Returns(new BudgetSaveResult<BudgetGroupDetail>(Refusal: reason));
+
+        var response = group
+            ? await controller.CreateGroup(_yearId, "Too long", false)
+            : await controller.CreateYear("2026", "Too long");
+
+        response.Should().BeOfType<RedirectToActionResult>().Which.ActionName.Should().Be(nameof(BudgetAdminController.Admin));
+        controller.TempData.Values.Should().Contain(reason);
+        controller.TempData.Values.Should().NotContain(v => v is string && ((string)v).Contains("created.", StringComparison.Ordinal));
+    }
+
+    [HumansTheory]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public async Task Line_item_text_over_column_limits_is_refused_without_writes(bool update, bool longNotes)
+    {
+        var category = await SeedCategoryAsync();
+        var item = new BudgetLineItem
+        {
+            Id = Guid.NewGuid(),
+            BudgetCategoryId = category.Id,
+            Description = "Original",
+            Notes = "Original notes",
+            Amount = 10m
+        };
+        await using (var db = await _budgetDbFactory.CreateDbContextAsync(TestContext.Current.CancellationToken))
+        {
+            db.BudgetLineItems.Add(item);
+            await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+        }
+        var description = longNotes ? "Valid" : new string('x', 501);
+        var notes = longNotes ? new string('x', 2001) : "Valid";
+
+        var result = update
+            ? await _service.UpdateLineItemAsync(item.Id, description, 20m, null, notes, null, 0, Guid.NewGuid())
+            : await _service.CreateLineItemAsync(category.Id, description, 20m, null, notes, null, 0, Guid.NewGuid());
+
+        result.Refusal.Should().NotBeNullOrEmpty();
+        await using var saved = await _budgetDbFactory.CreateDbContextAsync(TestContext.Current.CancellationToken);
+        var unchanged = (await saved.BudgetLineItems.ToListAsync(TestContext.Current.CancellationToken)).Should().ContainSingle().Which;
+        unchanged.Description.Should().Be("Original");
+        unchanged.Notes.Should().Be("Original notes");
+        unchanged.Amount.Should().Be(10m);
+        (await saved.BudgetAuditLogs.CountAsync(TestContext.Current.CancellationToken)).Should().Be(0);
     }
 
     private async Task<BudgetCategory> SeedCategoryAsync(bool isRestricted = false, bool isTicketingGroup = false)

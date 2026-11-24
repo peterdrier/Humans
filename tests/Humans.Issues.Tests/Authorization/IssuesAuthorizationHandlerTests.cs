@@ -15,7 +15,7 @@ namespace Humans.Issues.Tests.Authorization;
 
 public sealed class IssuesAuthorizationHandlerTests
 {
-    private readonly IssuesAuthorizationHandler _handler = new(Tests.Domain.TestIssueQueues.Shipped());
+    private readonly IssuesAuthorizationHandler _handler = new(Domain.TestIssueQueues.Shipped());
 
     public static TheoryData<string[], string?, bool> IssueAuthorizationCases => new()
     {
