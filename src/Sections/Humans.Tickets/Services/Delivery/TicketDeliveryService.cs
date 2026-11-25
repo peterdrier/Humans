@@ -93,7 +93,7 @@ internal sealed class TicketDeliveryService(
     public async Task<CheckoutMutationResult> ResendAsync(Guid orderId, Guid actorUserId, CancellationToken ct = default)
     {
         var detail = await checkout.GetOrderDetailAsync(orderId, ct);
-        if (detail?.Tickets.Any(t => t.State is TicketCheckoutTicketState.Valid or TicketCheckoutTicketState.Offered) != true)
+        if (detail?.Tickets.Any(t => t.IsHeld) != true)
             return new("Only a paid order with a live ticket can be resent.");
         var sent = await SendAsync(orderId, fresh: true, ct);
         if (sent is null)
@@ -221,7 +221,7 @@ internal sealed class TicketDeliveryService(
         }
 
         var tickets = detail.Tickets
-            .Where(t => t.State is TicketCheckoutTicketState.Valid or TicketCheckoutTicketState.Offered)
+            .Where(t => t.IsHeld)
             .ToList();
         var baseUrl = BaseUrl;
         var buyer = await users.GetUserInfoAsync(order.BuyerUserId, ct);

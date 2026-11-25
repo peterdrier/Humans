@@ -98,7 +98,7 @@ internal sealed partial class TicketCheckoutService
         var ticket = await repository.GetTicketAsync(ticketId, ct);
         if (ticket is null)
             return new("That ticket does not exist.");
-        if (ticket.State is not (TicketCheckoutTicketState.Valid or TicketCheckoutTicketState.Offered))
+        if (!ticket.IsHeld)
             return new($"The ticket is already {ticket.State}.");
         if (ticket.ParentTicketId is { } parentId && (await repository.GetTicketAsync(parentId, ct))?.State == TicketCheckoutTicketState.Offered)
             return new("The adult's ticket is in the resale queue and its refund includes this one: withdraw it from the queue first.");
@@ -242,7 +242,7 @@ internal sealed partial class TicketCheckoutService
         if (holderRefusal is not null)
             return (new(holderRefusal), null);
         if (holderUserId is { } companionId && (companionId == parentHolderId || eventTickets.Any(t =>
-                t.HolderUserId == companionId && t.State is TicketCheckoutTicketState.Valid or TicketCheckoutTicketState.Offered)))
+                t.HolderUserId == companionId && t.IsHeld)))
             return (new("That person already holds a ticket for this event."), null);
         var parentOrder = await repository.GetOrderAsync(parent.OrderId, ct);
         var order = new TicketCheckoutOrder

@@ -1047,7 +1047,7 @@ internal sealed partial class TicketCheckoutService(
         var now = clock.GetCurrentInstant();
         var held = await repository.GetTicketsForHolderAsync(userId, ct);
         foreach (var ticket in held.Concat(await ChildrenOfAsync(held, ct))
-                     .Where(t => t.State is TicketCheckoutTicketState.Valid or TicketCheckoutTicketState.Offered))
+                     .Where(t => t.IsHeld))
         {
             ticket.State = TicketCheckoutTicketState.Void;
             ticket.VoidedAt = now;
@@ -1192,7 +1192,7 @@ internal sealed partial class TicketCheckoutService(
     {
         if ((await repository.GetTicketsForHolderAsync(userId, ct)).Any(t =>
                 t.TicketingSettingsId == settingsId && t.Kind != TicketHolderKind.Child
-                && t.State is TicketCheckoutTicketState.Valid or TicketCheckoutTicketState.Offered))
+                && t.IsHeld))
             return true;
         return (await repository.GetOrdersForUserAsync(userId, ct)).Any(o =>
             o.TicketingSettingsId == settingsId && o.State != TicketCheckoutOrderState.Paid && o.HoldsTickets(now)
@@ -1208,7 +1208,7 @@ internal sealed partial class TicketCheckoutService(
     private async Task<Stock> LoadStockAsync(TicketingSettings ticketing, Instant now, CancellationToken ct)
     {
         var tickets = await repository.GetTicketsForSettingsAsync(ticketing.Id, ct);
-        var sold = tickets.Count(t => t.State is TicketCheckoutTicketState.Valid or TicketCheckoutTicketState.Offered);
+        var sold = tickets.Count(t => t.IsHeld);
         var pending = (await repository.GetOrdersForSettingsAsync(ticketing.Id, ct))
             .Where(o => o.State != TicketCheckoutOrderState.Paid && o.HoldsTickets(now))
             .Sum(o => o.Lines.Count(l => l.Kind == OrderLineKind.Ticket && l.ResaleOfferId is null));

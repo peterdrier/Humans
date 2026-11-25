@@ -65,6 +65,9 @@ internal interface ITicketCheckoutService : ITicketingPlatformEvents
     /// <summary>Every ticket the person holds or held, any event and state, newest first.</summary>
     Task<IReadOnlyList<TicketCheckoutTicket>> GetTicketsForHolderAsync(Guid userId, CancellationToken ct = default);
 
+    /// <summary>Held tickets for the active event or an unclosed sale; all events when none is active.</summary>
+    Task<int> GetHeldTicketCountAsync(Guid userId, CancellationToken ct = default);
+
     Task<IReadOnlyList<TicketCheckoutTicket>> GetTicketsForSettingsAsync(Guid settingsId, CancellationToken ct = default);
 
     /// <summary>The resale queue and its history, oldest offer first.</summary>

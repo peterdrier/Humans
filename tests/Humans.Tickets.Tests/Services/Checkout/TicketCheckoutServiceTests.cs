@@ -597,6 +597,56 @@ public sealed partial class TicketCheckoutServiceTests
     private static CancellationToken Ct => TestContext.Current.CancellationToken;
 
     [HumansTheory]
+    [InlineData("Valid", 1)]
+    [InlineData("Offered", 1)]
+    [InlineData("Resold", 0)]
+    [InlineData("Void", 0)]
+    public async Task GetHeldTicketCountAsync_TicketState_MatchesBuyPage(string state, int count)
+    {
+        _repo.Tickets.Add(new TicketCheckoutTicket
+        {
+            Id = Guid.NewGuid(),
+            TicketingSettingsId = _ticketing.Id,
+            HolderUserId = _buyerId,
+            State = Enum.Parse<TicketCheckoutTicketState>(state),
+        });
+
+        (await _service.GetHeldTicketCountAsync(_buyerId, Ct)).Should().Be(count);
+        (await _service.GetBuyPagesAsync(_buyerId, Ct)).Single().AlreadyHoldsTicket.Should().Be(count > 0);
+    }
+
+    [HumansTheory]
+    [InlineData(true, 4)]
+    [InlineData(false, 6)]
+    public async Task GetHeldTicketCountAsync_EventScope_CountsRelevantEvents(bool active, int count)
+    {
+        _ticketing.Mode = TicketSalesMode.Closed;
+        if (!active)
+            _settings.GetActiveEventSettings().Returns((EventSettingsInfo?)null);
+        var previous = new TicketingSettings { Id = Guid.NewGuid(), EventSettingsId = Guid.NewGuid(), Mode = TicketSalesMode.Closed };
+        var upcoming = new TicketingSettings { Id = Guid.NewGuid(), EventSettingsId = Guid.NewGuid(), Mode = TicketSalesMode.Open };
+        _repo.Settings.AddRange([previous, upcoming]);
+        foreach (var (sale, tickets) in new[] { (_ticketing, 1), (previous, 2), (upcoming, 3) })
+            for (var i = 0; i < tickets; i++)
+                _repo.Tickets.Add(new TicketCheckoutTicket
+                {
+                    Id = Guid.NewGuid(),
+                    TicketingSettingsId = sale.Id,
+                    HolderUserId = _buyerId,
+                    State = TicketCheckoutTicketState.Valid,
+                });
+        _repo.Tickets.Add(new TicketCheckoutTicket
+        {
+            Id = Guid.NewGuid(),
+            TicketingSettingsId = upcoming.Id,
+            HolderUserId = _otherBuyerId,
+            State = TicketCheckoutTicketState.Valid,
+        });
+
+        (await _service.GetHeldTicketCountAsync(_buyerId, Ct)).Should().Be(count);
+    }
+
+    [HumansTheory]
     [InlineData(true)]
     [InlineData(false)]
     public async Task GetBuyOrderAsync_Viewer_ReturnsPermittedData(bool buyer)
