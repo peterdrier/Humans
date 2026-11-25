@@ -95,12 +95,18 @@ internal sealed class TicketBuyController(
     [HttpPost("")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Start(
-        Guid settingsId, bool forSelf, string?[]? otherEmails, long? vipTotalMinor, decimal? donation,
+        Guid settingsId, bool forSelf, string?[]? otherEmails, long? vipTotalMinor, string? donation,
         string? donationPurpose, string?[]? childNames, string?[]? childTypes, bool acceptTerms, string? termsFolder, string? termsVersion,
         bool marketingOptIn, string? directedToken, CancellationToken ct)
     {
         var (errorResult, user) = await RequireCurrentUserAsync(ct);
         if (errorResult is not null) return errorResult;
+
+        if (!ModelState.IsValid)
+        {
+            logger.LogWarning("Rejected malformed checkout form for {UserId}", user.Id);
+            return BadRequest(ModelState);
+        }
 
         IActionResult Back(string key, string? argument = null)
         {
@@ -110,11 +116,19 @@ internal sealed class TicketBuyController(
                 : RedirectToAction(nameof(Resale), new { token = directedToken });
         }
 
-        if (donation > MaxDonation)
+        var donationEuro = 0m;
+        if (!string.IsNullOrWhiteSpace(donation)
+            && !decimal.TryParse(donation.Trim(), NumberStyles.AllowLeadingSign | NumberStyles.AllowDecimalPoint,
+                CultureInfo.InvariantCulture, out donationEuro))
+        {
+            logger.LogWarning("Rejected malformed checkout donation for {UserId}", user.Id);
+            return Back("Tickets_Buy_Invalid");
+        }
+        if (donationEuro > MaxDonation)
             return Back("Tickets_Buy_DonationTooLarge");
         var returnBase = new Uri(Url.Action(nameof(Order), "TicketBuy", new { id = Guid.Empty }, Request.Scheme, Request.Host.Value)!
             .Replace(Guid.Empty.ToString(), string.Empty, StringComparison.Ordinal));
-        var donationMinor = donation is > 0 ? (long)Math.Round(donation.Value * 100m, MidpointRounding.AwayFromZero) : 0;
+        var donationMinor = donationEuro > 0 ? (long)Math.Round(donationEuro * 100m, MidpointRounding.AwayFromZero) : 0;
 
         var result = await checkout.StartCheckoutAsync(new StartCheckout(
             settingsId, forSelf, vipTotalMinor, donationMinor, donationPurpose,

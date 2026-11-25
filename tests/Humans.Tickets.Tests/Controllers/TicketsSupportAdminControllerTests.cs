@@ -25,6 +25,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Primitives;
 using System.Reflection;
 using Humans.Tickets.Services;
+using Humans.Base.Extensions;
+using Microsoft.AspNetCore.Mvc.Routing;
 
 namespace Humans.Tickets.Tests.Controllers;
 
@@ -182,8 +184,98 @@ public class TicketsSupportAdminControllerTests
         }
     }
 
+    [HumansTheory]
+    [InlineData("en", "donation", "1.005", 101L, false)]
+    [InlineData("es", "donation", "1.005", 101L, false)]
+    [InlineData("de", "donation", "1.005", 101L, false)]
+    [InlineData("it", "donation", "1.005", 101L, false)]
+    [InlineData("fr", "donation", "1.005", 101L, false)]
+    [InlineData("ca", "donation", "1.005", 101L, false)]
+    [InlineData("nl", "donation", "1.005", 101L, false)]
+    [InlineData("en", "donation", "bad", null, false)]
+    [InlineData("en", "donation", "79228162514264337593543950336", null, false)]
+    [InlineData("en", "donation", "1,23", null, false)]
+    [InlineData("en", "donation", "100000", 10000000L, false)]
+    [InlineData("en", "donation", "100000.01", null, false)]
+    [InlineData("en", "donation", "-1", 0L, false)]
+    [InlineData("en", "vipTotalMinor", "bad", null, true)]
+    [InlineData("en", "vipTotalMinor", "9223372036854775808", null, true)]
+    [InlineData("en", "forSelf", "bad", null, true)]
+    [InlineData("en", "acceptTerms", "bad", null, true)]
+    [InlineData("en", "marketingOptIn", "bad", null, true)]
+    [InlineData("en", "settingsId", "bad", null, true)]
+    [InlineData("en", "donation", null, 0L, false)]
+    [InlineData("en", "donation", "", 0L, false)]
+    [InlineData("en", "forSelf", null, 101L, false)]
+    [InlineData("en", "marketingOptIn", null, 101L, false)]
+    public async Task Start_CartForm_DispatchesValidInputs(
+        string cultureName, string field, string? posted, long? expectedMinor, bool badBinding)
+    {
+        using var culture = new CultureScope(cultureName);
+        var actorId = Guid.NewGuid();
+        var users = Substitute.For<IUserService>();
+        users.GetUserInfoAsync(actorId, Arg.Any<CancellationToken>()).Returns(UserFixtures.MakeUserInfo(actorId));
+        var localizer = Substitute.For<IStringLocalizer<TicketsResource>>();
+        localizer[Arg.Any<string>()].Returns(call => new LocalizedString(call.Arg<string>(), call.Arg<string>()));
+        var controller = new TicketBuyController(_checkout, Substitute.For<IMagicLinkService>(), Substitute.For<IEarlyEntryService>(),
+            users, localizer, NullLogger<TicketBuyController>.Instance);
+        var registrations = new ServiceCollection().AddLogging();
+        registrations.AddControllers();
+        using var services = registrations.BuildServiceProvider();
+        var http = new DefaultHttpContext
+        {
+            RequestServices = services,
+            User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, actorId.ToString())], "Test")),
+        };
+        controller.ControllerContext = new ControllerContext { HttpContext = http };
+        controller.TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>());
+        controller.Url = Substitute.For<IUrlHelper>();
+        controller.Url.Action(Arg.Any<UrlActionContext>()).Returns($"https://humans.example/Tickets/Buy/Order/{Guid.Empty}");
+        StartCheckout? cart = null;
+        _checkout.StartCheckoutAsync(Arg.Any<StartCheckout>(), actorId, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            cart = call.Arg<StartCheckout>();
+            return new StartCheckoutResult(Guid.NewGuid(), null, null);
+        });
+        var fields = new Dictionary<string, StringValues>(StringComparer.Ordinal)
+        {
+            ["settingsId"] = Guid.NewGuid().ToString(),
+            ["forSelf"] = "true",
+            ["acceptTerms"] = "true",
+            ["marketingOptIn"] = "true",
+            ["donation"] = "1.005",
+            ["otherEmails"] = new StringValues(["first@example.test", "second@example.test"]),
+            ["childNames"] = new StringValues(["Child One", "Child Two"]),
+            ["childTypes"] = new StringValues(["Junior", "Teen"]),
+        };
+        if (posted is null) fields.Remove(field);
+        else fields[field] = posted;
+        var method = typeof(TicketBuyController).GetMethod(nameof(TicketBuyController.Start))!;
+        var args = new List<object?>();
+        foreach (var parameter in method.GetParameters())
+            args.Add(parameter.ParameterType == typeof(CancellationToken) ? TestContext.Current.CancellationToken
+                : await BindParameterAsync(controller, parameter, fields, CultureInfo.CurrentCulture));
+
+        var result = await (Task<IActionResult>)method.Invoke(controller, [.. args])!;
+
+        if (badBinding) result.Should().BeOfType<BadRequestObjectResult>();
+        else result.Should().BeOfType<RedirectToActionResult>();
+        if (expectedMinor is { } minor)
+        {
+            cart.Should().NotBeNull();
+            cart!.DonationMinor.Should().Be(minor);
+            cart.OtherEmails.Should().Equal("first@example.test", "second@example.test");
+            cart.Children.Should().Equal(new ChildEntry("Child One", "Junior"), new ChildEntry("Child Two", "Teen"));
+            cart.ForSelf.Should().Be(!string.Equals(field, "forSelf", StringComparison.Ordinal) || posted is not null);
+            cart.MarketingOptIn.Should().Be(!string.Equals(field, "marketingOptIn", StringComparison.Ordinal) || posted is not null);
+            await _checkout.Received(1).StartCheckoutAsync(cart, actorId, CancellationToken.None);
+        }
+        else
+            _checkout.ReceivedCalls().Should().BeEmpty();
+    }
+
     private static async Task<object?> BindParameterAsync(
-        Controller controller, ParameterInfo parameter, Dictionary<string, StringValues> fields)
+        Controller controller, ParameterInfo parameter, Dictionary<string, StringValues> fields, CultureInfo? culture = null)
     {
         var services = controller.HttpContext.RequestServices;
         var metadata = ((ModelMetadataProvider)services.GetRequiredService<IModelMetadataProvider>()).GetMetadataForParameter(parameter);
@@ -199,7 +291,7 @@ public class TicketsSupportAdminControllerTests
             ParameterInfo = parameter,
         };
         var bound = await services.GetRequiredService<ParameterBinder>().BindModelAsync(controller.ControllerContext, binder,
-            new FormValueProvider(BindingSource.Form, new FormCollection(fields), CultureInfo.InvariantCulture),
+            new FormValueProvider(BindingSource.Form, new FormCollection(fields), culture ?? CultureInfo.InvariantCulture),
             descriptor, metadata, value: null);
         return bound.IsModelSet ? bound.Model : parameter.ParameterType.IsValueType ? Activator.CreateInstance(parameter.ParameterType) : null;
     }
