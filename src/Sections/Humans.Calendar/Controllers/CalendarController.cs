@@ -60,9 +60,9 @@ internal sealed class CalendarController : HumansControllerBase
         var model = await BuildMonthViewAsync(year, month, teamId, ct);
         if (model is null) return BadRequest();
 
-        // A merged-away viewer gets no feed card rather than a broken calendar. GET never mints a token.
+        // An unavailable viewer gets no feed card rather than a broken calendar. GET never mints a token.
         var user = await GetCurrentUserInfoAsync(ct);
-        if (user is null) return View(model);
+        if (user is null || user.IsTombstone) return View(model);
         var token = await _feedTokens.GetAsync(user.Id, ct);
         return View(token is { } t
             ? model with { ICalUrl = $"{Request.Scheme}://{Request.Host}/api/ical/{user.Id}/{t}.ics" }
@@ -73,8 +73,8 @@ internal sealed class CalendarController : HumansControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> CreateIcal(CancellationToken ct)
     {
-        var (errorResult, user) = await ResolveCurrentUserOrChallengeAsync(ct);
-        if (errorResult is not null) return errorResult;
+        var user = await GetCurrentUserInfoAsync(ct);
+        if (user is null || user.IsTombstone) return Challenge();
 
         await _feedTokens.EnsureAsync(user.Id, ct);
         return RedirectToAction(nameof(Index));
@@ -84,8 +84,8 @@ internal sealed class CalendarController : HumansControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> RegenerateIcal(CancellationToken ct)
     {
-        var (errorResult, user) = await ResolveCurrentUserOrChallengeAsync(ct);
-        if (errorResult is not null) return errorResult;
+        var user = await GetCurrentUserInfoAsync(ct);
+        if (user is null || user.IsTombstone) return Challenge();
 
         await _feedTokens.RotateAsync(user.Id, ct);
         SetSuccess(_localizer["Calendar_IcalRegenerated"].Value);
