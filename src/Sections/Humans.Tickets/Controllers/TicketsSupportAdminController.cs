@@ -7,6 +7,7 @@ using Humans.Tickets.Services.Checkout;
 using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 using NodaTime;
 
 namespace Humans.Tickets.Controllers;
@@ -22,7 +23,8 @@ internal sealed class TicketsSupportAdminController(
     ITicketCheckoutService checkout,
     ISettingsService settings,
     IClock clock,
-    IUserService userService) : HumansControllerBase(userService)
+    IUserService userService,
+    ILogger<TicketsSupportAdminController> logger) : HumansControllerBase(userService)
 {
     [HttpGet("Lookup")]
     public async Task<IActionResult> Lookup(string? q, CancellationToken ct)
@@ -226,11 +228,17 @@ internal sealed class TicketsSupportAdminController(
     [HttpPost("Order/{orderId:guid}/Ticket/{ticketId:guid}/Void")]
     [Authorize(Policy = TicketsPolicies.Manage)]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Void(Guid orderId, Guid ticketId, string? reason, decimal? refund, bool noRefund, CancellationToken ct)
+    public async Task<IActionResult> Void(Guid orderId, Guid ticketId, string? reason, string? refund, [BindRequired] bool noRefund, CancellationToken ct)
     {
-        var refundMinor = noRefund || refund is not { } euros ? 0 : (long)Math.Round(euros * 100m, MidpointRounding.AwayFromZero);
-        if (!noRefund && refundMinor <= 0)
+        if (!ModelState.IsValid)
         {
+            logger.LogWarning("Rejected malformed ticket void for {TicketId} by {UserId}", ticketId, GetCurrentUserId());
+            return BadRequest(ModelState);
+        }
+        var refundMinor = 0L;
+        if (!noRefund && (!SalesEditForm.TryMinor(refund, out refundMinor) || refundMinor <= 0))
+        {
+            logger.LogWarning("Rejected void refund amount for ticket {TicketId} by {UserId}", ticketId, GetCurrentUserId());
             SetError("Enter the amount to refund, or choose 'No refund' to void without one. Nothing was voided.");
             return RedirectToAction(nameof(Ticket), new { orderId, ticketId });
         }

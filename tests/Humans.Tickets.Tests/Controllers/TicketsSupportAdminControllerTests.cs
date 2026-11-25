@@ -18,6 +18,11 @@ using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging.Abstractions;
 using System.Security.Claims;
+using System.Globalization;
+using Microsoft.AspNetCore.Mvc.Controllers;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Primitives;
 
 namespace Humans.Tickets.Tests.Controllers;
 
@@ -26,6 +31,98 @@ public class TicketsSupportAdminControllerTests
     private readonly ITicketCheckoutService _checkout = Substitute.For<ITicketCheckoutService>();
     private readonly TicketingSettings _sale = new() { Id = Guid.NewGuid(), EventSettingsId = Guid.NewGuid() };
     private static readonly Instant Now = Instant.FromUtc(2027, 1, 10, 12, 0);
+
+    [HumansTheory]
+    [InlineData(false, "79228162514264337593543950335", null, null, false)]
+    [InlineData(true, "79228162514264337593543950335", "false", null, false)]
+    [InlineData(false, "92233720368547758.08", null, null, false)]
+    [InlineData(true, "92233720368547758.08", "false", null, false)]
+    [InlineData(false, "bad", null, null, false)]
+    [InlineData(true, "bad", "false", null, false)]
+    [InlineData(false, "0.004", null, null, false)]
+    [InlineData(true, "-1", "false", null, false)]
+    [InlineData(false, null, null, null, true)]
+    [InlineData(true, "1", null, null, true)]
+    [InlineData(true, "1", "bad", null, true)]
+    [InlineData(false, "1.005", null, 101L, false)]
+    [InlineData(true, "1.005", "false", 101L, false)]
+    [InlineData(false, "92233720368547758.074", null, long.MaxValue, false)]
+    [InlineData(true, null, "true", 0L, false)]
+    [InlineData(true, "bad", "true", 0L, false)]
+    public async Task Refund_MonetaryInput_DispatchesValidAmount(
+        bool voiding, string? amount, string? noRefund, long? expectedMinor, bool badBinding)
+    {
+        var actorId = Guid.NewGuid();
+        var users = Substitute.For<IUserService>();
+        users.GetUserInfoAsync(actorId, Arg.Any<CancellationToken>())
+            .Returns(new ValueTask<UserInfo?>(UserInfo.Create(new User { Id = actorId }, [], [], null)));
+        Controller controller = voiding
+            ? new TicketsSupportAdminController(_checkout, Substitute.For<ISettingsService>(), SystemClock.Instance, users, NullLogger<TicketsSupportAdminController>.Instance)
+            : new TicketsSalesAdminController(_checkout, null!, Substitute.For<ISettingsService>(),
+                Substitute.For<IGrantService>(), Substitute.For<IOrgTimeZone>(), SystemClock.Instance, users, NullLogger<TicketsSalesAdminController>.Instance);
+        var http = new DefaultHttpContext
+        {
+            User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, actorId.ToString())], "Test")),
+        };
+        controller.ControllerContext = new ControllerContext { HttpContext = http };
+        controller.TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>());
+        _checkout.RefundAsync(Arg.Any<Guid>(), Arg.Any<long>(), Arg.Any<string>(), actorId, Arg.Any<CancellationToken>())
+            .Returns(CheckoutMutationResult.Ok);
+        _checkout.VoidTicketAsync(Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<long>(), actorId, Arg.Any<CancellationToken>())
+            .Returns(CheckoutMutationResult.Ok);
+        var registrations = new ServiceCollection().AddLogging();
+        registrations.AddControllers();
+        using var services = registrations.BuildServiceProvider();
+        http.RequestServices = services;
+        controller.Url = Substitute.For<IUrlHelper>();
+        var method = controller.GetType().GetMethod(voiding ? "Void" : "Refund")!;
+        var fields = new Dictionary<string, StringValues>(StringComparer.Ordinal);
+        if (amount is not null) fields[voiding ? "refund" : "amount"] = amount;
+        if (noRefund is not null) fields["noRefund"] = noRefund;
+        var args = new List<object?>();
+        foreach (var parameter in method.GetParameters())
+        {
+            if (parameter.Name is "amount" or "refund" or "noRefund")
+            {
+                var metadata = ((ModelMetadataProvider)services.GetRequiredService<IModelMetadataProvider>())
+                    .GetMetadataForParameter(parameter);
+                var binder = services.GetRequiredService<IModelBinderFactory>().CreateBinder(new ModelBinderFactoryContext
+                {
+                    Metadata = metadata,
+                    CacheToken = parameter
+                });
+                var descriptor = new ControllerParameterDescriptor
+                {
+                    Name = parameter.Name,
+                    ParameterType = parameter.ParameterType,
+                    ParameterInfo = parameter
+                };
+                var bound = await services.GetRequiredService<ParameterBinder>().BindModelAsync(controller.ControllerContext, binder,
+                    new FormValueProvider(BindingSource.Form, new FormCollection(fields), CultureInfo.InvariantCulture),
+                    descriptor, metadata, value: null);
+                args.Add(bound.IsModelSet ? bound.Model : parameter.ParameterType.IsValueType ? Activator.CreateInstance(parameter.ParameterType) : null);
+            }
+            else
+                args.Add(parameter.Name is "ct" ? Xunit.TestContext.Current.CancellationToken
+                    : parameter.Name is "reason" ? "Returned" : Guid.NewGuid());
+        }
+
+        var result = await (Task<IActionResult>)method.Invoke(controller, [.. args])!;
+
+        if (badBinding)
+            result.Should().BeOfType<BadRequestObjectResult>();
+        else
+            result.Should().BeOfType<RedirectToActionResult>();
+        if (expectedMinor is { } minor)
+        {
+            if (voiding)
+                await _checkout.Received(1).VoidTicketAsync(Arg.Any<Guid>(), "Returned", minor, actorId, CancellationToken.None);
+            else
+                await _checkout.Received(1).RefundAsync(Arg.Any<Guid>(), minor, "Returned", actorId, CancellationToken.None);
+        }
+        else
+            _checkout.ReceivedCalls().Should().BeEmpty();
+    }
 
     [HumansTheory]
     [InlineData("cancel")]
@@ -61,8 +158,8 @@ public class TicketsSupportAdminControllerTests
                 Substitute.For<IEarlyEntryService>(), users, Substitute.For<IStringLocalizer<TicketsResource>>(),
                 NullLogger<TicketBuyController>.Instance),
             "refund" => new TicketsSalesAdminController(_checkout, null!, Substitute.For<ISettingsService>(),
-                Substitute.For<IGrantService>(), Substitute.For<IOrgTimeZone>(), SystemClock.Instance, users),
-            _ => new TicketsSupportAdminController(_checkout, Substitute.For<ISettingsService>(), SystemClock.Instance, users),
+                Substitute.For<IGrantService>(), Substitute.For<IOrgTimeZone>(), SystemClock.Instance, users, NullLogger<TicketsSalesAdminController>.Instance),
+            _ => new TicketsSupportAdminController(_checkout, Substitute.For<ISettingsService>(), SystemClock.Instance, users, NullLogger<TicketsSupportAdminController>.Instance),
         };
         var http = new DefaultHttpContext
         {
@@ -75,8 +172,8 @@ public class TicketsSupportAdminControllerTests
         var result = controller switch
         {
             TicketBuyController buyer => await buyer.Cancel(Guid.NewGuid(), false, request.Token),
-            TicketsSalesAdminController sales => await sales.Refund(Guid.NewGuid(), 10m, "Returned", request.Token),
-            TicketsSupportAdminController support => await support.Void(Guid.NewGuid(), Guid.NewGuid(), "Returned", 10m, false, request.Token),
+            TicketsSalesAdminController sales => await sales.Refund(Guid.NewGuid(), "10", "Returned", request.Token),
+            TicketsSupportAdminController support => await support.Void(Guid.NewGuid(), Guid.NewGuid(), "Returned", "10", false, request.Token),
             _ => throw new InvalidOperationException(),
         };
 
@@ -89,7 +186,7 @@ public class TicketsSupportAdminControllerTests
     private TicketsSupportAdminController Controller()
     {
         _checkout.GetTicketingSettingsAsync(_sale.Id, Arg.Any<CancellationToken>()).Returns(_sale);
-        return new(_checkout, Substitute.For<ISettingsService>(), SystemClock.Instance, Substitute.For<IUserService>());
+        return new(_checkout, Substitute.For<ISettingsService>(), SystemClock.Instance, Substitute.For<IUserService>(), NullLogger<TicketsSupportAdminController>.Instance);
     }
 
     [HumansFact]
@@ -103,7 +200,7 @@ public class TicketsSupportAdminControllerTests
         _checkout.GetOrderDetailAsync(order.Id, Arg.Any<CancellationToken>())
             .Returns(new OrderDetail(order, [newer, older], [], [child, adult]));
         var controller = new TicketsSalesAdminController(_checkout, null!, Substitute.For<ISettingsService>(),
-            Substitute.For<IGrantService>(), Substitute.For<IOrgTimeZone>(), SystemClock.Instance, Substitute.For<IUserService>());
+            Substitute.For<IGrantService>(), Substitute.For<IOrgTimeZone>(), SystemClock.Instance, Substitute.For<IUserService>(), NullLogger<TicketsSalesAdminController>.Instance);
 
         var result = (ViewResult)await controller.Order(order.Id, TestContext.Current.CancellationToken);
         var detail = (OrderDetail)result.Model!;
@@ -145,7 +242,7 @@ public class TicketsSupportAdminControllerTests
     {
         _checkout.Platforms.Returns([new("z", false, null!), new("a", true, null!)]);
         var controller = new TicketsSalesAdminController(_checkout, null!, Substitute.For<ISettingsService>(),
-            Substitute.For<IGrantService>(), Substitute.For<IOrgTimeZone>(), SystemClock.Instance, Substitute.For<IUserService>());
+            Substitute.For<IGrantService>(), Substitute.For<IOrgTimeZone>(), SystemClock.Instance, Substitute.For<IUserService>(), NullLogger<TicketsSalesAdminController>.Instance);
 
         var result = (ViewResult)await controller.Platforms(TestContext.Current.CancellationToken);
 
@@ -184,7 +281,7 @@ public class TicketsSupportAdminControllerTests
         _checkout.GetOrdersForSettingsAsync(_sale.Id, Arg.Any<CancellationToken>()).Returns([older, newer]);
         _checkout.GetTicketingSettingsAsync(_sale.Id, Arg.Any<CancellationToken>()).Returns(_sale);
         var controller = new TicketsSalesAdminController(_checkout, null!, Substitute.For<ISettingsService>(),
-            Substitute.For<IGrantService>(), Substitute.For<IOrgTimeZone>(), SystemClock.Instance, Substitute.For<IUserService>());
+            Substitute.For<IGrantService>(), Substitute.For<IOrgTimeZone>(), SystemClock.Instance, Substitute.For<IUserService>(), NullLogger<TicketsSalesAdminController>.Instance);
 
         var result = (ViewResult)await controller.Orders(_sale.Id, TestContext.Current.CancellationToken);
 

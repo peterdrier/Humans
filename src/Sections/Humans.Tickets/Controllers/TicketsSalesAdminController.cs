@@ -11,6 +11,7 @@ using Humans.Tickets.Services.Delivery;
 using Humans.Users.Contracts;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 using NodaTime;
 using NodaTime.Text;
 
@@ -26,7 +27,8 @@ internal sealed class TicketsSalesAdminController(
     IGrantService grants,
     IOrgTimeZone orgTimeZone,
     IClock clock,
-    IUserService userService) : HumansControllerBase(userService)
+    IUserService userService,
+    ILogger<TicketsSalesAdminController> logger) : HumansControllerBase(userService)
 {
     [HttpGet("")]
     public async Task<IActionResult> Index(CancellationToken ct)
@@ -97,14 +99,26 @@ internal sealed class TicketsSalesAdminController(
     [HttpPost("Order/{id:guid}/Refund")]
     [Authorize(Policy = TicketsPolicies.Manage)]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Refund(Guid id, decimal amount, string? reason, CancellationToken ct)
+    public async Task<IActionResult> Refund(Guid id, [BindRequired] string? amount, string? reason, CancellationToken ct)
     {
         var (errorResult, user) = await RequireCurrentUserAsync(ct);
         if (errorResult is not null) return errorResult;
 
+        if (!ModelState.IsValid)
+        {
+            logger.LogWarning("Rejected malformed refund form for order {OrderId} by {UserId}", id, user.Id);
+            return BadRequest(ModelState);
+        }
+        if (!SalesEditForm.TryMinor(amount, out var amountMinor) || amountMinor <= 0)
+        {
+            logger.LogWarning("Rejected refund amount for order {OrderId} by {UserId}", id, user.Id);
+            SetError("Enter a valid positive refund amount. Nothing was refunded.");
+            return RedirectToAction(nameof(Order), new { id });
+        }
+
         // A disconnected browser must not interrupt the refund and its local bookkeeping.
         var result = await checkout.RefundAsync(
-            id, (long)Math.Round(amount * 100m, MidpointRounding.AwayFromZero), reason ?? string.Empty, user.Id, CancellationToken.None);
+            id, amountMinor, reason ?? string.Empty, user.Id, CancellationToken.None);
         if (result.Succeeded)
             SetSuccess("Refund sent.");
         else
@@ -381,7 +395,7 @@ internal sealed class SalesEditForm
 
     private static bool Blank(params string?[] values) => values.All(string.IsNullOrWhiteSpace);
 
-    private static bool TryMinor(string? text, out long minor)
+    internal static bool TryMinor(string? text, out long minor)
     {
         minor = 0;
         if (!decimal.TryParse(text?.Trim(), NumberStyles.Number, CultureInfo.InvariantCulture, out var eur)) return false;

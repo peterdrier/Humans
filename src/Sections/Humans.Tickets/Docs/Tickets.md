@@ -179,6 +179,8 @@ Lifecycle: `Attended` is permanent (only a missing `CheckedInAt` may be filled);
 
 ## Invariants
 
+- Admin refund and ticket-void forms reuse the bounded invariant-culture euro parser used for ticket prices. Amounts round to cents away from zero before range checking and conversion, so malformed, nonpositive or unrepresentable refunds never reach checkout. Binding failures return 400 with a Warning; semantic amount refusals warn and show operator feedback. Refund requires an amount and voiding requires an explicit refund/no-refund choice. Explicit no-refund voids ignore the unused amount. The service still enforces the order's refundable cap.
+
 - Reconciliation keeps its status read cancellable and checks shutdown between orders. Once expiry cancellation or the paid claim starts, its order save, reservation release, timeline, audit and fulfillment finish independently of shutdown. Paid-order financial mirror updates likewise finish their bookkeeping after the commit boundary; refund replays retain their own between-refund checkpoints.
 
 - Buyer and admin order GETs read persisted state without platform calls or fulfillment. Verified webhooks and the five-minute reconcile job own status refresh, ticket issuance and refund settlement. The job also uses bulk platform reconciliation to find paid orders with refund or chargeback differences or missing fees, then refreshes only those orders. After a missed webhook, a page can show the previous state until reconciliation completes; reopening a page never mutates the order.
