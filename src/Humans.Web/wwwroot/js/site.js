@@ -532,14 +532,27 @@ function showToast(message, type) {
 // Source is read as .value for inputs/textareas, otherwise textContent; data-copied is optional.
 document.addEventListener('click', function (e) {
     var trigger = e.target.closest('[data-copy]');
-    if (!trigger || !navigator.clipboard) return;
+    if (!trigger) return;
     var source = document.querySelector(trigger.getAttribute('data-copy'));
     if (!source) return;
+    function copyFailed() {
+        console.warn('Clipboard copy failed');
+        var container = document.getElementById('toastContainer');
+        if (container) showToast(container.dataset.copyError, 'danger');
+    }
+    if (!navigator.clipboard || typeof navigator.clipboard.writeText !== 'function') {
+        copyFailed();
+        return;
+    }
     var isField = source.tagName === 'INPUT' || source.tagName === 'TEXTAREA';
-    navigator.clipboard.writeText((isField ? source.value : source.textContent) || '').then(function () {
-        var message = trigger.getAttribute('data-copied');
-        if (message) showToast(message);
-    });
+    try {
+        navigator.clipboard.writeText((isField ? source.value : source.textContent) || '').then(function () {
+            var message = trigger.getAttribute('data-copied');
+            if (message) showToast(message);
+        }).catch(copyFailed);
+    } catch {
+        copyFailed();
+    }
 });
 
 // Human profile popover (lazy-loaded on first hover or keyboard focus)
