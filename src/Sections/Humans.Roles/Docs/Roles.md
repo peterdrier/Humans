@@ -56,7 +56,7 @@ The holder is a user, not a team member. Unassigning deletes the row; the audit 
 - Who manages an owner's roles: Admin, RolesAdmin, and holders of the coordinator role on that owner or an ancestor, counted only on active, non-system owners. Never a parent or a sibling. Holding a narrow role never lets anyone manage roles.
 - A permission key goes on a role only if a section declares it, it applies to the owner's kind, and, for a top-level-only permission, the owner is top level. The shared add/edit form orders eligible permissions by title; the service returns them unordered.
 - Creates and edits refuse names and normalized custom links over 100 characters, descriptions over 2000 characters, and slot priorities whose comma-separated representation exceeds 500 characters. Names and descriptions count Unicode characters. These checks precede persistence and leave refused edits untouched.
-- One slot per person per role; an assign takes the lowest open slot.
+- One slot per person per role; an assign takes the lowest open slot. Assignment refuses missing or tombstoned people after authorizing the actor and resolves archived IDs to the survivor before checking duplicates, asking the owner, storing the holder and linking the audit entry.
 - Owner lists and team cards select the most urgent open-slot priority directly by the shared priority rank; a fully filled role has no open-priority badge.
 - Before an assign, Roles asks the owner's section (`IRoleOwner.EnsureMemberAsync`), which may refuse or add the member. Teams refuses system and inactive teams.
 - Every create, edit, delete, assign and unassign is audited by Roles. An edit that changes the permission list says so in the audit text.

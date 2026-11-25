@@ -11,6 +11,7 @@ using Humans.Permissions.Contracts;
 using Humans.Roles.Contracts;
 using Humans.Roles.Data;
 using Humans.Roles.Domain;
+using Humans.Users.Contracts;
 using Microsoft.Extensions.Localization;
 using NodaTime;
 
@@ -28,6 +29,7 @@ internal sealed class RoleService(
     IEnumerable<ISectionPermissions> sectionPermissions,
     IEnumerable<IEntityNameContributor> names,
     IRoleAssignmentService systemRoles,
+    IUserService users,
     IAuditLogService audit,
     IClock clock,
     IStringLocalizer<RolesResource> localizer,
@@ -231,6 +233,10 @@ internal sealed class RoleService(
         var owner = OwnerOf(role);
         if (!await CanTouchAsync(owner, role.IsCoordinator, actorUserId, ct))
             return Refuse(T("Roles_Refusal_NotAllowed"));
+        var person = await users.GetUserInfoAsync(userId, ct);
+        if (person is null || person.IsTombstone)
+            return Refuse(T("Roles_Refusal_NoPerson"));
+        userId = person.Id;
         if (role.Assignments.Any(a => a.UserId == userId))
             return Refuse(T("Roles_Refusal_AlreadyHolds"));
 

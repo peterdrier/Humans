@@ -8,6 +8,7 @@ using Humans.Roles.Data;
 using Humans.Roles.Domain;
 using Humans.Roles.Services;
 using Humans.Teams.Contracts;
+using Humans.Users.Contracts;
 using Microsoft.Extensions.Localization;
 using NodaTime;
 using NodaTime.Testing;
@@ -46,11 +47,15 @@ public sealed class RoleServiceTests
     private readonly FakeRepository _repository = new();
     private readonly FakeOwner _owner = new();
     private readonly IRoleAssignmentService _systemRoles = Substitute.For<IRoleAssignmentService>();
+    private readonly IUserService _users = Substitute.For<IUserService>();
+    private readonly IAuditLogService _audit = Substitute.For<IAuditLogService>();
     private readonly RoleService _service;
 
     public RoleServiceTests()
     {
         _systemRoles.GetActiveForUserAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns([]);
+        _users.GetUserInfoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(call => UserFixtures.MakeUserInfo(call.Arg<Guid>()));
         _service = new RoleService(
             _repository,
             [new Teams()],
@@ -58,7 +63,8 @@ public sealed class RoleServiceTests
             [new Declares(ShiftsManage, BudgetEdit)],
             [],
             _systemRoles,
-            Substitute.For<IAuditLogService>(),
+            _users,
+            _audit,
             new FakeClock(Instant.FromUtc(2026, 11, 21, 12, 0)),
             new KeyLocalizer(),
             new KeyLocalizerFactory());
@@ -205,6 +211,66 @@ public sealed class RoleServiceTests
 
         _owner.Asked.Should().Equal((Cantina, person));
         result.Role!.Holders.Should().Contain(h => h.UserId == person && h.Slot == 1);
+    }
+
+    [HumansTheory]
+    [InlineData("missing")]
+    [InlineData("deleted")]
+    [InlineData("local")]
+    public async Task Assign_UnavailablePerson_RefusesBeforeOwnerMutation(string kind)
+    {
+        Arrange("coordinator:Production");
+        var role = Role(Cantina, "Shift planner");
+        _repository.Seed(role);
+        var personId = Guid.NewGuid();
+        var person = (await _users.GetUserInfoAsync(personId, Ct))!;
+        UserInfo? unavailable = kind switch
+        {
+            "missing" => null,
+            "deleted" => person with { State = UserState.Deleted },
+            _ => person with { IdentityEmailColumn = "erased@gdpr.local" },
+        };
+        _users.GetUserInfoAsync(personId, Arg.Any<CancellationToken>()).Returns(unavailable);
+
+        var result = await _service.AssignAsync(role.Id, personId, _actor, Ct);
+
+        result.Refusal.Should().Be("Roles_Refusal_NoPerson");
+        role.Assignments.Should().BeEmpty();
+        _owner.Asked.Should().BeEmpty();
+        _audit.ReceivedCalls().Should().BeEmpty();
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Assign_ArchivedId_UsesSurvivor(bool alreadyAssigned)
+    {
+        Arrange("coordinator:Production");
+        var role = Role(Cantina, "Shift planner", slots: 2);
+        _repository.Seed(role);
+        var archivedId = Guid.NewGuid();
+        var survivorId = Guid.NewGuid();
+        var survivor = (await _users.GetUserInfoAsync(survivorId, Ct))!;
+        _users.GetUserInfoAsync(archivedId, Arg.Any<CancellationToken>()).Returns(survivor);
+        if (alreadyAssigned)
+            role.Assignments.Add(new RoleAssignment { Id = Guid.NewGuid(), RoleId = role.Id, UserId = survivorId, Slot = 0 });
+
+        var result = await _service.AssignAsync(role.Id, archivedId, _actor, Ct);
+
+        if (alreadyAssigned)
+        {
+            result.Refusal.Should().Be("Roles_Refusal_AlreadyHolds");
+            _owner.Asked.Should().BeEmpty();
+            _audit.ReceivedCalls().Should().BeEmpty();
+        }
+        else
+        {
+            result.Succeeded.Should().BeTrue();
+            _owner.Asked.Should().Equal((Cantina, survivorId));
+            await _audit.Received(1).LogAsync(RolesAuditActions.HolderAdded, RoleService.AuditEntityType, role.Id,
+                Arg.Any<string>(), _actor, survivorId, AuditSubjectTypes.User);
+        }
+        role.Assignments.Should().NotBeEmpty().And.OnlyContain(a => a.UserId == survivorId);
     }
 
     [HumansFact]
