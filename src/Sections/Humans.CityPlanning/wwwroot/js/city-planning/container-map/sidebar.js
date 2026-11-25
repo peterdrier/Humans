@@ -33,10 +33,6 @@ export function markPlaced(id) {
     render();
 }
 
-export function markUnplaced(_id) {
-    render();
-}
-
 export function setActiveId(id) {
     _activeId = id;
     render();
