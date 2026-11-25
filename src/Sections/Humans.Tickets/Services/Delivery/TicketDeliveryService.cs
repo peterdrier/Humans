@@ -118,11 +118,11 @@ internal sealed class TicketDeliveryService(
             return;
 
         var holder = await users.GetUserInfoAsync(holderId, ct);
-        if ((holder?.Email ?? ticket.HolderEmail) is not { } address)
+        if (holder is null || holder.IsTombstone || (holder.Email ?? ticket.HolderEmail) is not { } address)
             return;
         var baseUrl = BaseUrl;
         await email.SendAsync(emails.JoinInvitation(
-            holderId, address, ticket.HolderName, eventName,
+            holder.Id, address, ticket.HolderName, eventName,
             new Uri($"{baseUrl}/Profile"), new Uri($"{baseUrl}/Shifts"),
             DeliveryIdFor("ticket_join_invitation", ticket.Id), CultureOf(holder, detail.Order)), ct);
         await auditLog.LogAsync(TicketsAuditActions.TicketJoinInvitationSent, TicketCheckoutService.AuditEntityType, orderId,

@@ -315,6 +315,7 @@ Lifecycle: `Attended` is permanent (only a missing `CheckedInAt` may be filled);
 
 ## Triggers
 
+- Delayed volunteer invitations require a resolved, non-tombstoned holder account. A stored ticket address cannot make a missing or tombstoned account eligible; a live merge uses the survivor’s email identity so preferences apply to that human.
 - When a paid order's tickets are issued, checkout calls `ITicketDelivery.TicketsIssuedAsync`, which enqueues a Hangfire job (retried on failure) that sends a `ticket_issued` email per valid or offered ticket with an email, to its holder, carrying any child ticket without an email that rides on it (holder's language once signed in, else the order's; System category), a `ticket_order_receipt` to the buyer (order's language; System), both with a delivery id derived from the ticket or order so a repeated call reuses the outbox row; one `TicketDeliverySent` audit row counting the mails handed to Email and any ticket skipped for lack of an address; and a Hangfire job per non-child ticket two days later that sends `ticket_join_invitation` (VolunteerUpdates category, so the opt-out applies and is never locked) only if the ticket is still `Valid`, audited `TicketJoinInvitationSent`.
 
 - `TicketSyncJob` stays internal to the section; registration and scheduling use its runtime type through `ISectionJobs`.
