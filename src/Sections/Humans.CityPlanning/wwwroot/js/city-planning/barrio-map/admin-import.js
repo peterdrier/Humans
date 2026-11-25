@@ -41,15 +41,18 @@ function formatArea(sqm) {
 }
 
 function buildCampLookup(state) {
-    const lookup = new Map();
-    for (const p of state.campPolygons ?? []) {
-        lookup.set(p.campName.toLowerCase(),  { campSeasonId: p.campSeasonId, campName: p.campName, currentAreaSqm: p.areaSqm });
-        lookup.set(p.campSlug.toLowerCase(),  { campSeasonId: p.campSeasonId, campName: p.campName, currentAreaSqm: p.areaSqm });
+    const lookup = { names: new Map(), slugs: new Map() };
+    function addSeason(season, currentAreaSqm) {
+        const camp = { campSeasonId: season.campSeasonId, campName: season.campName, currentAreaSqm };
+        for (const [index, value] of [[lookup.names, season.campName], [lookup.slugs, season.campSlug]]) {
+            const key = value.toLowerCase();
+            if (!key) continue;
+            if (!index.has(key)) index.set(key, new Map());
+            index.get(key).set(camp.campSeasonId, camp);
+        }
     }
-    for (const s of state.campSeasonsWithoutPolygon ?? []) {
-        lookup.set(s.campName.toLowerCase(), { campSeasonId: s.campSeasonId, campName: s.campName, currentAreaSqm: null });
-        lookup.set(s.campSlug.toLowerCase(), { campSeasonId: s.campSeasonId, campName: s.campName, currentAreaSqm: null });
-    }
+    for (const p of state.campPolygons ?? []) addSeason(p, p.areaSqm);
+    for (const s of state.campSeasonsWithoutPolygon ?? []) addSeason(s, null);
     return lookup;
 }
 
@@ -63,11 +66,17 @@ function matchFeatures(features, lookup) {
         const props = feature.properties ?? {};
         const name  = (props.campName ?? '').toLowerCase();
         const slug  = (props.campSlug ?? '').toLowerCase();
-        const camp  = lookup.get(name) || lookup.get(slug);
+        const byName = lookup.names.get(name);
+        const bySlug = lookup.slugs.get(slug);
+        // Supplied identifiers must agree; neither names nor slugs are unique identities.
+        const candidates = byName && bySlug
+            ? [...byName.values()].filter(camp => bySlug.has(camp.campSeasonId))
+            : [...(byName?.values() ?? bySlug?.values() ?? [])];
+        const camp = candidates.length === 1 ? candidates[0] : null;
         const label = props.campName || props.campSlug || '(unnamed feature)';
 
         if (!camp) {
-            unrecognized.push(label);
+            unrecognized.push(byName || bySlug ? `${label} (ambiguous or conflicting camp identifiers)` : label);
             continue;
         }
 

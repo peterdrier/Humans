@@ -219,6 +219,7 @@ Broadcasts `CampPolygonUpdated(campSeasonId, geoJson, areaSqm, soundZone, campNa
 ## Triggers
 
 - Polygon-save notes are limited to 512 characters; MVC returns the shared maximum-length validation message in the viewer’s culture.
+- Bulk GeoJSON import matches names and slugs in separate case-insensitive indexes. A feature must resolve to exactly one season; supplied identifiers that both match must agree. Duplicate names can be disambiguated by a slug, while ambiguous or conflicting matches are listed as unrecognized and never saved. Empty identifiers never match.
 - Saving a polygon creates a CampPolygonHistory entry with note `"Saved"`, or the note the client supplied — the bulk import sends `"Imported {timestamp}"`.
 - Restoring a historical version overwrites the current polygon with the restored version and appends a history entry for it (note: `"Restored from {timestamp}"`).
 - SignalR broadcasts `CampPolygonUpdated` to all connected clients after every save. Broadcast preparation (including camp detail lookup) and delivery failures are logged while returning the saved polygon; an aborted request instead propagates cancellation.
