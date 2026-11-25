@@ -185,6 +185,9 @@ public class EmailOutboxProcessorTests : IDisposable
     {
         await SeedMessageAsync(EmailOutboxStatus.Queued);
         var smtp = Substitute.For<MailKit.Net.Smtp.ISmtpClient>();
+        MimeKit.MimeMessage? attemptedMessage = null;
+        smtp.When(client => client.SendAsync(Arg.Any<MailKit.ISendRequest>(), Arg.Any<CancellationToken>()))
+            .Do(call => attemptedMessage = call.ArgAt<MailKit.ISendRequest>(0).Message);
         var failure = new IOException("SMTP connection closed");
         if (sendFails)
             smtp.SendAsync(Arg.Any<MailKit.ISendRequest>(), Arg.Any<CancellationToken>())
@@ -214,6 +217,9 @@ public class EmailOutboxProcessorTests : IDisposable
         row.NextRetryAt.HasValue.Should().Be(sendFails);
         await smtp.Received(1).SendAsync(Arg.Any<MailKit.ISendRequest>(), Arg.Any<CancellationToken>());
         smtp.Received(1).Dispose();
+        attemptedMessage.Should().NotBeNull();
+        var writeDisposedMessage = () => attemptedMessage!.WriteTo(Stream.Null);
+        writeDisposedMessage.Should().Throw<ObjectDisposedException>();
     }
 
     [HumansFact]

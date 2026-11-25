@@ -33,6 +33,8 @@ Run the applicable checks from `AGENTS.md` (build, the section's tests, `dotnet 
 
 Assess the issue, the diff and the surrounding code independently of the author's narrative. Check whether the change solves the underlying problem and fits the architecture: section data ownership, layers, and public surface.
 
+Check the words too. Every new or changed name, screen string, doc line and comment uses the settled term for its concept. Shared terms are in the root [`CONTEXT.md`](CONTEXT.md); each section's own terms are in `src/Sections/Humans.<Section>/Docs/CONTEXT.md`, listed under *Section glossaries* in the root file. A term listed under _Avoid_ is a finding: name the glossary entry and the word to use. A section with no glossary yet has nothing to check against.
+
 ## 4. Give security a distinct pass
 
 In this repository, trace roles, policies and authorization handlers through controllers, view components, API endpoints, Hangfire jobs, exports and downloads, including the deny paths in the section's invariant doc. Check personal data (profiles, contact details, IBANs, medical and dietary info) reaching logs, emails, audit descriptions, agent prompts or previews; IBANs stay masked except where the audit rule allows. New personal data needs a GDPR export contributor and a deletion path. Check table ownership (no section touches another's tables) and migration behavior against the data already in QA and prod.

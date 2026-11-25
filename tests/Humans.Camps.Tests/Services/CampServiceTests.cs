@@ -1103,9 +1103,11 @@ public sealed class CampServiceTests : CampsTestHarness
         await _service.CloseSeasonAsync(e2026.Id, Guid.NewGuid(), ct);
 
         (await _service.GetSettingsAsync(ct)).OpenSeasons.Should().Equal(2027);
-        (await _service.GetRegistrationByEventAsync(ct)).Should().Equal(
-            new CampEventRegistration(e2027.Id, e2027.EventName, 2027, true),
-            new CampEventRegistration(e2026.Id, e2026.EventName, 2026, false));
+        (await _service.GetRegistrationByEventAsync(ct)).Should().BeEquivalentTo(new[]
+        {
+            new CampEventRegistration(e2027.Id, e2027.EventName, 2027, true) { GateOpeningDate = e2027.GateOpeningDate },
+            new CampEventRegistration(e2026.Id, e2026.EventName, 2026, false) { GateOpeningDate = e2026.GateOpeningDate }
+        });
     }
 
     [HumansFact]
@@ -3259,7 +3261,7 @@ public sealed class CampServiceTests : CampsTestHarness
         info.Season.Should().NotBeNull();
         info.Season!.CampId.Should().Be(camp.Id);
         info.Season.Year.Should().Be(2026);
-        info.Roles.Should().ContainSingle().Which.Should().Be(regularDef.Name);
+        info.Roles.Should().ContainSingle().Which.Should().Be((regularDef.Name, regularDef.SortOrder));
     }
 
     [HumansFact]
@@ -3284,7 +3286,7 @@ public sealed class CampServiceTests : CampsTestHarness
 
         info.Season.Should().NotBeNull();
         info.Season!.Year.Should().Be(2026);
-        info.Roles.Should().Equal("Camp Lead", "Greeter");
+        info.Roles.Should().Equal(("Camp Lead", 0), ("Greeter", 1));
     }
 
     [HumansFact]
@@ -3447,7 +3449,7 @@ public sealed class CampServiceTests : CampsTestHarness
                 new CampSeasonMemberInfo(
                     Guid.NewGuid(), userId, status, requestedAt, HasEarlyEntry: false)
                 {
-                    Roles = roles
+                    Roles = roles.Select((name, index) => (name, index)).ToList()
                 }
             ]
         };

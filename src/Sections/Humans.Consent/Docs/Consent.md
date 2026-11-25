@@ -177,6 +177,8 @@ Document archival uses the shared `data-confirm` handler: each click prompts onc
 
 - Consent registers the external `github` health check for the legal-document repository in `GitHubSettings`. It reports repository access, authentication and rate limits; it does not probe Guide's source. Configured probes observe the framework timeout/abort token, and caller cancellation propagates without logging an availability failure or starting an already-canceled request.
 
+- Legal-content and single/bulk consent-set reads check caller cancellation after fetching and before cache publication. A fetch that returns data after cancellation cannot populate those caches; the next read retries. Successful consent submissions still finish their detached cache refresh.
+
 - A replacement consent-snapshot reload cannot publish across an intervening cache mutation. The affected alias is evicted for source retry, so an older reload cannot overwrite a newer signature refresh or restore an evicted snapshot.
 
 - Review notes and rejection reasons are limited to 4,000 Unicode characters before any review write or audit. Oversized text that would be written returns `ReviewTextTooLong`; existing rejection preconditions retain precedence, and valid text is stored without truncation. The operator queue shows the limit and specific refusal feedback.
@@ -189,7 +191,7 @@ Document archival uses the shared `data-confirm` handler: each click prompts onc
 - `ConsentService.GetRequiredConsentRowsForUserAsync` owns required-document row shaping; the cache delegates to it. It selects each document's latest effective version, omits future-only documents, and returns unsigned rows first, then ordinal title order.
 
 - The admin GitHub-folder preview renders pasted URL parts as text. It preserves the full URL until the server validates the configured repository and branch and normalizes the folder path.
-- The admin legal-document controller orders the document list by team name, then document name, using ordinal comparison. The service returns document data without display ordering.
+- The admin legal-document controller orders the document list by team name, then document name, using ordinal comparison. The version editor orders language badges ordinally. The service returns document and version-language data without display ordering.
 
 - Legal-document create, edit, archive, manual sync and version-summary actions resolve their actor through Users before mutation. Merged sessions use the surviving account for audit attribution; missing accounts receive Unauthorized. Account lookup uses request cancellation, while document writes and sync retain their non-cancellable mutation boundary.
 

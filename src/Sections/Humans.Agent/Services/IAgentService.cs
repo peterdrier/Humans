@@ -30,7 +30,7 @@ internal interface IAgentService : IUserDataContributor, IAgentTranscriptRead
         Guid userId, Guid conversationId, CancellationToken cancellationToken);
 
     Task<IReadOnlyList<AgentConversationListSnapshot>> ListAllConversationsForAdminAsync(
-        bool refusalsOnly, Guid? userId, int take, int skip,
+        bool unansweredOnly, Guid? userId, int take, int skip,
         CancellationToken cancellationToken);
 
     /// <summary>Regenerated with the current code and state, never stored. Null when the conversation is missing.</summary>

@@ -63,7 +63,6 @@ public class AgentConversationRetentionTests
         settings.Current.Returns(new AgentSettingsDto(
             Enabled: true,
             Model: "test-model",
-            PreloadConfig: default,
             DailyMessageCap: 30,
             HourlyMessageCap: 10,
             DailyTokenCap: 50_000,
@@ -75,10 +74,10 @@ public class AgentConversationRetentionTests
         return new AgentService(
             settings,
             Substitute.For<IAgentRateLimitStore>(),
-            Substitute.For<IAgentAbuseDetector>(),
+            Substitute.For<IAgentDistressCheck>(),
             repo,
             runStore,
-            Substitute.For<IAgentUserSnapshotProvider>(),
+            Substitute.For<IAgentUserContextProvider>(),
             Substitute.For<IAgentPreloadCorpusBuilder>(),
             Substitute.For<IAgentPromptAssembler>(),
             Substitute.For<IAgentToolDispatcher>(),

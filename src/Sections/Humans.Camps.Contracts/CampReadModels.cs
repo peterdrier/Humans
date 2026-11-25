@@ -14,7 +14,7 @@ public sealed record CampSettingsInfo(
     /// <summary>Settings' active event; null before one exists.</summary>
     public Guid? ActiveEventSettingsId { get; init; }
 
-    /// <summary>Every non-deleted Settings event, latest gate opening first.</summary>
+    /// <summary>Every non-deleted Settings event; callers choose display order.</summary>
     public IReadOnlyList<CampEventRegistration> Events { get; init; } = [];
 
     /// <summary>Latest seasons' name lock date per open event.</summary>
@@ -24,13 +24,16 @@ public sealed record CampSettingsInfo(
     public CampEventRegistration? ActiveEvent =>
         Events.FirstOrDefault(e => e.EventSettingsId == ActiveEventSettingsId);
 
-    /// <summary>Events open for camp registration, latest gate opening first.</summary>
+    /// <summary>Events open for camp registration; callers choose display order.</summary>
     public IReadOnlyList<CampEventRegistration> OpenEvents => [.. Events.Where(e => e.RegistrationOpen)];
 }
 
 /// <summary>A Settings event and whether camp registration is open for it.</summary>
 public sealed record CampEventRegistration(Guid EventSettingsId, string EventName, int Year, bool RegistrationOpen)
 {
+    /// <summary>Gate opening date for event selection and presentation ordering.</summary>
+    public LocalDate GateOpeningDate { get; init; }
+
     /// <summary>Markdown shown at the top of the Register page while this event takes registrations.</summary>
     public string? RegistrationInfo { get; init; }
 }
@@ -62,7 +65,7 @@ public sealed record CampInfo(
     public IReadOnlyList<CampImageSummary> Images { get; init; } = [];
 
     /// <summary>The latest season by year, whatever its status.</summary>
-    public CampSeasonInfo? Active => Seasons.OrderByDescending(s => s.Year).FirstOrDefault();
+    public CampSeasonInfo? Active => Seasons.MaxBy(s => s.Year);
 
     public CampSeasonInfo? GetSeasonForEvent(Guid eventSettingsId, bool fallbackToLatestSeason = false) =>
         Seasons.FirstOrDefault(s => s.EventSettingsId == eventSettingsId)
@@ -87,9 +90,7 @@ public sealed record CampInfo(
     public Guid? GetLeadSeasonIdForYear(Guid userId, int year) =>
         Seasons
             .Where(season => season.Year == year && season.IsLead(userId))
-            .OrderBy(season => season.Id)
-            .Select(season => (Guid?)season.Id)
-            .FirstOrDefault();
+            .MinBy(season => season.Id)?.Id;
 
 }
 
@@ -176,8 +177,8 @@ public sealed record CampSeasonMemberInfo(
     Instant RequestedAt,
     bool HasEarlyEntry)
 {
-    /// <summary>Ordered by role sort order.</summary>
-    public IReadOnlyList<string> Roles { get; init; } = [];
+    /// <summary>Active role names and priorities; callers choose display order.</summary>
+    public IReadOnlyList<(string Name, int SortOrder)> Roles { get; init; } = [];
 }
 
 /// <summary>
@@ -186,7 +187,7 @@ public sealed record CampSeasonMemberInfo(
 /// </summary>
 public sealed record CampUserInfo(
     CampSeasonInfo? Season,
-    IReadOnlyList<string> Roles)
+    IReadOnlyList<(string Name, int SortOrder)> Roles)
 {
     public static readonly CampUserInfo None = new(null, []);
 

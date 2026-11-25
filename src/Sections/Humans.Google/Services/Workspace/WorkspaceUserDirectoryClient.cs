@@ -42,6 +42,7 @@ internal sealed class WorkspaceUserDirectoryClient(
         var accounts = new List<WorkspaceUserAccount>();
         string? pageToken = null;
         var seenPageTokens = new HashSet<string>(StringComparer.Ordinal);
+        var pagesRead = 0;
 
         do
         {
@@ -55,6 +56,9 @@ internal sealed class WorkspaceUserDirectoryClient(
             var response = await request.ExecuteAsync(ct);
 
             pageToken = response.NextPageToken;
+            if (++pagesRead >= 500 && !string.IsNullOrEmpty(pageToken))
+                throw new InvalidOperationException("Google accounts exceeded the page limit.");
+
             if (!string.IsNullOrEmpty(pageToken) && !seenPageTokens.Add(pageToken))
                 throw new InvalidOperationException("Google accounts returned a repeated page token.");
 

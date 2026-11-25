@@ -106,4 +106,7 @@
   <data name="Roles_Role_Unassign" xml:space="preserve"><value>Rimuovi</value></data>
   <data name="Roles_Saved" xml:space="preserve"><value>{0} salvato.</value></data>
   <data name="Roles_Unassigned" xml:space="preserve"><value>Persona rimossa da {0}.</value></data>
+  <data name="Roles_Refusal_LinkTooLong" xml:space="preserve"><value>Un link personalizzato non può superare i 100 caratteri.</value></data>
+  <data name="Roles_Refusal_DescriptionTooLong" xml:space="preserve"><value>La descrizione di un ruolo non può superare i 2000 caratteri.</value></data>
+  <data name="Roles_Refusal_PrioritiesTooLong" xml:space="preserve"><value>Ci sono troppi posti con queste priorità. Riduci il numero di posti.</value></data>
 </root>

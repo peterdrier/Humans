@@ -52,9 +52,7 @@ public class User : IdentityUser<Guid>
 
             return UserEmails
                 .Where(e => e.IsVerified)
-                .OrderByDescending(e => e.IsPrimary)
-                .Select(e => e.Email)
-                .FirstOrDefault() ?? base.Email;
+                .MaxBy(e => e.IsPrimary)?.Email ?? base.Email;
         }
         set => base.Email = value;
     }

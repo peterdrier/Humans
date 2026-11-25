@@ -64,6 +64,7 @@ internal sealed class FakePretix : HttpMessageHandler
     private readonly Dictionary<string, Queue<(HttpStatusCode Status, string Body)>> _routes = new(StringComparer.Ordinal);
 
     public List<(string Route, string? Body)> Requests { get; } = [];
+    public Exception? Failure { get; init; }
 
     public FakePretix On(string method, string path, HttpStatusCode status, object body)
     {
@@ -79,6 +80,7 @@ internal sealed class FakePretix : HttpMessageHandler
 
     protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
     {
+        if (Failure is { } failure) throw failure;
         var route = $"{request.Method} {request.RequestUri!.AbsolutePath}";
         var body = request.Content is null ? null : await request.Content.ReadAsStringAsync(ct);
         Requests.Add((route, body));

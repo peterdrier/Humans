@@ -1,6 +1,5 @@
 using System.Text;
 using Microsoft.Extensions.Caching.Memory;
-using Humans.Agent.Domain;
 
 namespace Humans.Agent.Services.Preload;
 
@@ -14,75 +13,58 @@ internal sealed class AgentPreloadCorpusBuilder(
     IMemoryCache cache,
     IAgentPreloadAugmentor augmentor) : IAgentPreloadCorpusBuilder
 {
-    private static readonly IReadOnlyList<string> Tier1Sections =
-        ["Onboarding", "Teams", "Consent", "Governance", "Shifts", "Tickets", "Users", "Auth"];
-
-    // Keep in step with AgentSectionKeys.All — a section the reader can serve but
-    // that never appears in this index is one the agent has no reason to ask for.
-    private static readonly IReadOnlyList<string> Tier2Sections =
-        ["Onboarding", "Teams", "Consent", "Governance", "Shifts", "Tickets", "Users", "Auth",
-         "Budget", "Camps", "CityPlanning", "Campaigns", "Google",
-         "Events", "Guide", "Store", "Scanner", "Gate", "Calendar", "Cantina", "Containers", "Issues"];
-
     private static readonly MemoryCacheEntryOptions HoldForever =
         new() { Priority = CacheItemPriority.NeverRemove };
 
     private readonly Lock _cacheGate = new();
     private long _cacheGeneration;
 
-    public async Task<string> BuildAsync(AgentPreloadConfig config, CancellationToken cancellationToken = default)
+    private const string CacheKey = "agent:preload";
+
+    public async Task<string> BuildAsync(CancellationToken cancellationToken = default)
     {
-        var cacheKey = $"agent:preload:{config}";
         long generation;
         lock (_cacheGate)
         {
-            if (cache.TryGetValue<string>(cacheKey, out var cached) && cached is not null)
+            if (cache.TryGetValue<string>(CacheKey, out var cached) && cached is not null)
                 return cached;
             generation = _cacheGeneration;
         }
 
-        var (result, isComplete) = await BuildCorpusAsync(config, cancellationToken);
+        var (result, isComplete) = await BuildCorpusAsync(cancellationToken);
         lock (_cacheGate)
         {
             if (isComplete && generation == _cacheGeneration)
-                cache.Set(cacheKey, result, HoldForever);
+                cache.Set(CacheKey, result, HoldForever);
         }
         return result;
     }
 
     public async Task<bool> ReloadAllAsync(CancellationToken cancellationToken = default)
     {
-        // Refresh the KB source first so the rebuilt index reflects the latest repo state,
-        // then rebuild + atomically overwrite every tier's cached corpus (reload + swap).
+        // Refresh the Community FAQ first so the rebuilt index reflects the latest repo state.
         if (!await community.ReloadAsync(cancellationToken)) return false;
-        var corpora = new Dictionary<AgentPreloadConfig, string>();
-        foreach (var config in Enum.GetValues<AgentPreloadConfig>())
-        {
-            var (fresh, isComplete) = await BuildCorpusAsync(config, cancellationToken);
-            if (!isComplete) return false;
-            corpora.Add(config, fresh);
-        }
+        var (fresh, isComplete) = await BuildCorpusAsync(cancellationToken);
+        if (!isComplete) return false;
         lock (_cacheGate)
         {
             _cacheGeneration++;
-            foreach (var (config, fresh) in corpora)
-                cache.Set($"agent:preload:{config}", fresh, HoldForever);
+            cache.Set(CacheKey, fresh, HoldForever);
         }
         return true;
     }
 
-    private async Task<(string Body, bool IsComplete)> BuildCorpusAsync(AgentPreloadConfig config, CancellationToken cancellationToken)
+    private async Task<(string Body, bool IsComplete)> BuildCorpusAsync(CancellationToken cancellationToken)
     {
-        var sections1 = config == AgentPreloadConfig.Tier1 ? Tier1Sections : Tier2Sections;
         var isComplete = true;
         var sb = new StringBuilder();
         sb.AppendLine("# Nobodies Collective — System Knowledge");
         sb.AppendLine();
-        sb.AppendLine("Below is the section index for the Humans system: each entry has a section key and a one-line summary. The full invariants doc for any section is fetched on demand via the `fetch_section_guide` tool — do NOT answer substantive questions from this index alone.");
+        sb.AppendLine("Below is the section index for the Humans system: each entry has a section key and a one-line summary. The full section doc for any section is fetched on demand via the `fetch_section_doc` tool — do NOT answer substantive questions from this index alone.");
         sb.AppendLine();
         sb.AppendLine("## Section Index");
         sb.AppendLine();
-        foreach (var key in sections1)
+        foreach (var key in sections.KnownSections)
         {
             var body = await sections.ReadAsync(key, cancellationToken);
             if (body is null)

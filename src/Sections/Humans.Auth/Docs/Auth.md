@@ -28,6 +28,8 @@
 
 # Auth — Section Invariants
 
+Vocabulary: [`CONTEXT.md`](CONTEXT.md).
+
 Role assignments (temporal), magic-link login/signup, claims transformation.
 
 Bulk cache warmups publish through the shared mutation guard. A refresh, deletion, eviction or clear overlapping the load discards the partial attempt and reloads the full snapshot and derived indexes before a read can treat the cache as warmed.
@@ -109,8 +111,8 @@ Reached from the Roles item of the Users admin sidebar group and the Role Assign
 | StoreAdmin | Store | Store-domain superset: catalog, orders, payments, invoices, treasury sync; FinanceAdmin retains parallel access for accounting workflows |
 | EventsAdmin | Events | Approve, reject, and request edits on event guide submissions |
 | CantinaAdmin | Cantina | Read-only cantina weekly/daily roster (on-site cohort, dietary breakdown, allergy/intolerance rollups); sees dietary preferences but never medical conditions — excluded at the DTO boundary |
-| ConsentCoordinator | Consent | Safety gate for onboarding consent checks |
-| ShiftsAdmin | Shifts (was `VolunteerCoordinator`) | Facilitation contact for onboarding |
+| ConsentCoordinator | Consent | Legacy, being retired. Clears or flags new humans; the review is an annotation and never gates admission |
+| ShiftsAdmin | Shifts (was `VolunteerCoordinator`) | System-wide shift management (rotas, departments, approvals); also the facilitation contact for onboarding |
 | RideshareAdmin | Rideshare | Rideshare settings (event's destination + travel windows), season statistics, and the operational day roster; confers nothing outside Rideshare |
 | GrantsAdmin | Grants | Creates grant programs, names their managers, and issues, revokes and resends on any program; confers nothing outside Grants |
 | SurveysAdmin | Surveys | Approves or rejects submitted surveys, edits any survey, opens and closes them, sends invitations and downloads results; confers nothing outside Surveys |
@@ -147,7 +149,7 @@ Reached from the Roles item of the Users admin sidebar group and the Role Assign
 
 - Role assignments are temporal: a new assignment is always added (never "resurrected" by clearing `ValidTo`). `RevokeAllActiveAsync(userId)` stamps `ValidTo = now` on every currently-active row in one write.
 - `RoleAssignmentClaimsTransformation` reads only `auth_role_assignments` (not legacy `AspNetUserRoles`). It holds no claims cache: it derives the claims on every request from Auth's in-memory row cache and Users' `UserInfo` cache, so an Auth write shows on the very next request without anyone evicting anything.
-- The row cache is cleared right after each repository write, so later reads never see the pre-write row set.
+- The row cache is cleared right after each repository write, so later reads never see the pre-write row set. Active-role reads are unordered; rendering consumers choose their display order.
 - Magic-link tokens are single-use: once a token is redeemed — a login token on `VerifyLoginTokenAsync`, a signup token on `VerifyAndConsumeSignupTokenAsync` — it is reserved in the replay cache for the remainder of its 15-minute lifetime and cannot be used again. Replay keys use a SHA-256 digest of the complete token rather than a truncated prefix. Distinct tokens sharing a prefix have independent reservations, and releasing a failed signup’s token leaves the other reservation held. Survey and unsubscribe links use their own token providers and do not redeem through here — they stay reusable by design.
 - Missing magic-link tokens are invalid input: the token reader returns no payload rather than letting Data Protection's null-argument failure escape the login POST.
 - Existing-account login emails use the resolved recipient’s preferred language, independently of the requesting browser. Signup emails retain the requesting culture; template scopes restore the caller’s culture.

@@ -2,7 +2,7 @@
 
 <div class="card mb-4">
     <div class="card-header">
-        <h6 class="mb-0"><i class="fa-solid fa-clock me-1"></i> @Localizer["ShiftsSummary_Title"]</h6>
+        <h6 class="mb-0"><i class="fa-solid fa-clock me-1"></i> @Localizer["Shifts_Summary_Title"]</h6>
     </div>
     <div class="card-body">
         @if (Model.TotalSlots > 0)
@@ -16,29 +16,29 @@
                 </div>
             </div>
             <div class="d-flex justify-content-between align-items-center mb-2">
-                <span>@string.Format(Localizer["ShiftsSummary_SlotsFilled"].Value, Model.ConfirmedCount, Model.TotalSlots)</span>
-                <span>@string.Format(Localizer["ShiftsSummary_HumansSignedUp"].Value, Model.UniqueVolunteerCount)</span>
+                <span>@string.Format(Localizer["Shifts_Summary_SlotsFilled"].Value, Model.ConfirmedCount, Model.TotalSlots)</span>
+                <span>@string.Format(Localizer["Shifts_Summary_HumansSignedUp"].Value, Model.UniqueVolunteerCount)</span>
             </div>
             @if (Model.PendingCount > 0)
             {
                 <a href="@Model.ShiftsUrl" class="badge bg-warning text-dark text-decoration-none">
-                    @string.Format(Localizer["ShiftsSummary_PendingCount"].Value, Model.PendingCount)
+                    @string.Format(Localizer["Shifts_Summary_PendingCount"].Value, Model.PendingCount)
                 </a>
             }
         }
         else
         {
-            <empty-state class="mb-0">@Localizer["ShiftsSummary_NoShifts"]</empty-state>
+            <empty-state class="mb-0">@Localizer["Shifts_Summary_NoShifts"]</empty-state>
         }
         @if (Model.IncludesSubTeamCount > 0)
         {
             <small class="text-muted d-block mt-1">
-                <i class="fa-solid fa-sitemap me-1"></i>@string.Format(Localizer["ShiftsSummary_IncludesSubTeams"].Value, Model.IncludesSubTeamCount)
+                <i class="fa-solid fa-sitemap me-1"></i>@string.Format(Localizer["Shifts_Summary_IncludesSubTeams"].Value, Model.IncludesSubTeamCount)
             </small>
         }
         @if (Model.CanManageShifts)
         {
-            <a href="@Model.ShiftsUrl" class="btn btn-sm btn-outline-primary mt-2 w-100">@Localizer["ShiftsSummary_ManageShifts"] <i class="fa-solid fa-lock auth-lock-icon"></i></a>
+            <a href="@Model.ShiftsUrl" class="btn btn-sm btn-outline-primary mt-2 w-100">@Localizer["Shifts_Summary_ManageShifts"] <i class="fa-solid fa-lock auth-lock-icon"></i></a>
         }
     </div>
 </div>

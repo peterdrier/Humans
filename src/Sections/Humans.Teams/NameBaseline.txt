@@ -1,0 +1,4 @@
+Humans.Teams.Data.ITeamRepository.GetActiveCoordinatorUserIdsForTeamAsync
+Humans.Teams.Data.ITeamRepository.GetActiveManagementRoleHolderUserIdsByTeamAsync
+Humans.Teams.Data.ITeamRepository.GetEarlyEntryGrantsForEnabledTeamsAsync
+Humans.Teams.Services.TeamService.ApproveRequestWithMemberAndOutboxAsync

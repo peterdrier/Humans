@@ -1,16 +1,16 @@
 <!-- freshness:triggers
   src/Sections/Humans.Agent/**
-  src/Humans.Base/Services/GitHubCommunityKbContentSource.cs
+  src/Humans.Base/Services/GitHubCommunityFaqContentSource.cs
 -->
 <!-- freshness:flag-on-change
-  Agent user stories and acceptance criteria: the grounded-answer flow, the tool catalog (fetch_section_guide / fetch_feature_spec / fetch_community_faq / route_to_issue), community-KB grounding consulted before refusal, and the admin reload/prompt-preview surface — review when the agent feature's services, tools, preload/community-KB readers, or controllers change.
+  Agent user stories and acceptance criteria: the grounded-answer flow, the tool catalog (fetch_section_doc / fetch_feature_spec / fetch_community_faq / handoff), Community FAQ grounding consulted before declining, and the admin reload/prompt-preview surface — review when the agent feature's services, tools, preload/Community FAQ readers, or controllers change.
 -->
 
 # 40. Agent Section
 
 ## Business Context
 
-Humans have questions about Nobodies operations that today are absorbed by coordinators or the issues widget. The Assistant answers grounded questions ("why is my consent check pending?", "what's the difference between Colaborador and Asociado?") using our own docs and the user's live state. It does NOT take actions on the user's behalf — it explains, cites, and proposes an issue draft via `route_to_issue` when it can't answer; the user reviews and submits.
+Humans have questions about Nobodies operations that today are absorbed by coordinators or the issues widget. The Assistant answers grounded questions ("why is my consent check pending?", "what's the difference between Colaborador and Asociado?") using our own docs and the user's live state. It does NOT take actions on the user's behalf — it explains, cites, and proposes an issue draft via `handoff` when it can't answer; the user reviews and submits.
 
 ## User Stories
 
@@ -22,7 +22,7 @@ As a **signed-in human** I want to **type a question about how the system works*
 - An "AI Terms" link below the composer opens `/Legal/agent-chat`. There is no explicit consent gate — opening the panel and sending a message constitutes use; the linked Terms describe what's sent, retention, admin visibility, and rights.
 - Personal context reports the account’s canonical state; consent-coordinator review does not determine Volunteer admission or access.
 - Response streams token-by-token within 2s of submission (SSE).
-- When the docs don't cover the question, the agent calls `route_to_issue` with a proposed `{title, category, description}`. The server emits an `AgentIssueProposal` SSE frame; the client opens the Issues submission modal pre-filled. The user reviews and submits via `POST /Issues` — no row is written server-side from the agent.
+- When the docs don't cover the question, the agent calls `handoff` with a drafted `{title, category, description}`. The server emits an `AgentHandoff` SSE frame; the client opens the Issues submission modal pre-filled. The user reviews and submits via `POST /Issues` — no row is written server-side from the agent.
 
 ### US-40.2 — See my past conversations
 As a **signed-in human** I want to **review my previous agent conversations** so that **I can find an earlier answer or pick up a thread**.
@@ -32,12 +32,12 @@ As a **signed-in human** I want to **review my previous agent conversations** so
 - `GET /Agent/Conversation/{id}` (singular) shows the transcript. No user-initiated delete endpoint — retention purges old conversations on the daily schedule. The plural-form `/Agent/Conversations/{id}` is the admin diagnostic view (see US-40.3).
 
 ### US-40.3 — Admin reviews agent behavior
-As an **Admin** I want to **see all agent conversations and refusals** so that **I can spot-check quality and feed corrections back into docs**.
+As an **Admin** I want to **see all agent conversations and unanswered turns** so that **I can spot-check quality and feed corrections back into docs**.
 
 **Acceptance:**
-- `/Agent/Conversations` adapts to the role: regular users see only their own (a fixed most-recent window, no paging); Admins and Board members see all conversations with a Human column, filters for refusals-only, handoffs-only, and per-user, and Older/Newer paging (zero-based `page` query param, preserving the active filters).
+- `/Agent/Conversations` adapts to the role: regular users see only their own (a fixed most-recent window, no paging); Admins and Board members see all conversations with a Human column, filters for unanswered-only, handoffs-only, and per-user, and Older/Newer paging (zero-based `page` query param, preserving the active filters).
 - `/Agent/Conversations/{id}` shows additional Admin and Board-only details (token counts, tool invocations, "Show what would be sent to Anthropic" link).
-- `/Settings#agent` (Admin only; Board cannot save) exposes `Enabled`, `Model`, caps, `PreloadConfig` (Tier1/Tier2), posting to `/Agent/Admin/Settings`.
+- `/Settings#agent` (Admin only; Board cannot save) exposes `Enabled`, `Model` and caps, posting to `/Agent/Admin/Settings`.
 
 ### US-40.4 — Admin disables under abuse
 As an **Admin** I want to **disable the agent globally with one setting change** so that **I can react to abuse or provider outages immediately**.
@@ -46,10 +46,10 @@ As an **Admin** I want to **disable the agent globally with one setting change**
 - Setting `Enabled = false` hides the Assistant menu item and returns 503 from `/Agent/Ask` within the next request (store refreshes on write).
 
 ### US-40.5 — Admin sees operational status
-As an **Admin** I want to **see usage, spend, refusals, and Anthropic balance on one page** so that **I can run the agent safely without drilling into individual conversations**.
+As an **Admin** I want to **see usage, spend, unanswered turns, and Anthropic balance on one page** so that **I can run the agent safely without drilling into individual conversations**.
 
 **Acceptance:**
-- `/Agent/Admin/Status` (Board or Admin, read-only) renders read-only panels: system state, usage (24h / 7d / 30d — conversations, messages, unique users, prompt/output/cached tokens, cache-hit ratio, avg + P95 turn duration), spend (24h / 7d / 30d / MTD, broken into input / output / cache-read USD), Anthropic balance, refusals (last 7d count + per-reason breakdown linking to `/Agent/Conversations?refusalsOnly=true`), top-fetched-docs (last 7d), top-users (last 7d, with daily/hourly remaining capacity), retention-job last-run + delete count.
+- `/Agent/Admin/Status` (Board or Admin, read-only) renders read-only panels: system state, usage (24h / 7d / 30d — conversations, messages, unique users, prompt/output/cached tokens, cache-hit ratio, avg + P95 turn duration), spend (24h / 7d / 30d / MTD, broken into input / output / cache-read USD), Anthropic balance, unanswered turns (last 7d count + per-outcome breakdown linking to `/Agent/Conversations?unansweredOnly=true`), top-fetched-docs (last 7d), top-users (last 7d, with daily/hourly remaining capacity), retention-job last-run + delete count.
 - Spend USD is estimated from `AgentMessage` token counts × hard-coded per-model rates (Anthropic published; one model at a time). Cache-write folds into Input at the standard input rate — called out in the panel footer.
 - Anthropic balance reads via an opt-in admin API key (`Anthropic__AdminApiKey`). When unset, the panel shows "balance unavailable — see Anthropic Console" with a link; never an error. Anthropic does not currently publish a balance endpoint, so the panel surfaces "balance unavailable" until they do — the wiring is in place to populate it when the endpoint ships.
 - No form posts on the page. Settings stays the actions surface.
@@ -62,10 +62,10 @@ Reference: `src/Sections/Humans.Agent/Domain/Agent*.cs`. Key entities: `AgentCon
 ## Workflows
 
 ### Turn workflow
-`User submits` → `enabled gate` → `rate-limit check` → `abuse check` → `prompt assembly` → `Anthropic streaming call (with cached prefix)` → `[tool loop, max 3; cap hit triggers one final tool-withheld call so the model synthesizes an answer; a max_tokens cutoff mid tool-call JSON continues the loop rather than dropping the call]` → `empty-reply fallback if the loop still produced no prose` → `persist messages (turn-wide token totals across all loop iterations)` → `stream finalizer`. If the turn throws or the client disconnects at any point after the user message is persisted, a fallback assistant message (`RefusalReason = "error"`) is written and the accumulated usage is billed, so no user message is ever left without a reply (nobodies-collective/Humans#963, #990).
+`User submits` → `enabled gate` → `rate-limit check` → `distress check` → `prompt assembly` → `Anthropic streaming call (with cached prefix)` → `[tool loop, max 3; cap hit triggers one final tool-withheld call so the model synthesizes an answer; a max_tokens cutoff mid tool-call JSON continues the loop rather than dropping the call]` → `empty-reply fallback if the loop still produced no prose` → `persist messages (turn-wide token totals across all loop iterations)` → `stream finalizer`. If the turn throws or the client disconnects at any point after the user message is persisted, a fallback assistant message (`Outcome = "error"`) is written and the accumulated usage is billed, so no user message is ever left without a reply (nobodies-collective/Humans#963, #990).
 
-### Handoff workflow (propose-only)
-Tool call `route_to_issue` with `{title, category, description}` → dispatcher returns a proposal-marker without DB writes → `AgentService.ParseIssueProposalArgs` decodes the args → `AgentService` yields an `AgentIssueProposal` SSE frame → client opens the Issues modal pre-filled → user submits via `POST /Issues`. The agent never writes Issue rows itself.
+### Handoff workflow (draft only)
+Tool call `handoff` with `{title, category, description}` → dispatcher returns a marker without DB writes → `AgentService.ParseHandoffArgs` decodes the args → `AgentService` yields an `AgentHandoff` SSE frame → client opens the Issues modal pre-filled → user submits via `POST /Issues`. The agent never writes Issue rows itself.
 
 ### Retention workflow
 `AgentConversationRetentionJob` (daily 03:15 UTC) deletes `AgentConversation` rows older than `AgentSettings.RetentionDays` (default 90). Messages cascade-delete.

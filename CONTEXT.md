@@ -31,6 +31,17 @@ _Avoid_: director
 **Homed** vs **Owns**:
 *Homed* is where a service's code lives (namespace / controller proximity); *owns* is table ownership. An Orchestrator may be **homed** in a section's lane for controller-wiring convenience while **owning** no lane. "Which lane is X in?" must be answered as homed-or-owns, never conflated.
 
+## Section glossaries
+
+Words that belong to one section live in that section's own glossary. Words used across sections stay in this file.
+
+- [Agent](src/Sections/Humans.Agent/Docs/CONTEXT.md): the member help chat (Assistant)
+- [Audit](src/Sections/Humans.AuditLog/Docs/CONTEXT.md): the audit log, its entries and the history shown on pages
+- [Auth](src/Sections/Humans.Auth/Docs/CONTEXT.md): signing in, signing up and system roles
+- [Backdoor](src/Sections/Humans.Backdoor/Docs/CONTEXT.md): personal API keys and the Backdoor API
+- [BoxOffice](src/Sections/Humans.BoxOffice/Docs/CONTEXT.md): Humans' own ticketing platform on Stripe
+- [Budget](src/Sections/Humans.Budget/Docs/CONTEXT.md): budget years, categories, line items and what's available
+
 ## Finance
 
 **Reconciliation** (recon):
@@ -224,7 +235,6 @@ Anyone who holds `Tasks.Manage` for the task's team. Not Teams' sub-team manager
   - **Crosscut** ← "horizontal" (hard-rules), "cross-cutting service" (design-rules), "leaf" (memory atoms).
   - **Section** ← "vertical" / "vertical slice" (hard-rules), "section" (design-rules / atoms).
   - **Orchestrator** ← "director" (memory atoms).
-- `AgentService` is labelled "orchestrator" in `Agent.md` but owns `agent_*` tables → by this glossary it is a **Section**, not an Orchestrator. The label is wrong.
 - **EventParticipation** reads as an Events concept but its EF config lives in `Configurations/Shifts/` → the `event_participations` table is owned by the **Shifts** Lane. Name is a smell; ownership follows the config. (Surfaced 2026-05-25 grill — confirm the true owner with Peter.)
 - Headwords above are the grill's opinionated picks; final naming is Peter's (hand-edit).
 - **Orphan** is *not* a role. It named the instinct "this could stand alone instead of being bolted onto User" (the merge-id mistake). Resolved: cross-lane needs go to an **Orchestrator** (e.g. an Audit orchestrator that gathers merged ids and calls Audit *with* the list), keeping the Crosscut pure. Don't re-introduce "orphan" as a role.

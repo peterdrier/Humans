@@ -15,8 +15,8 @@ internal sealed class CommunityFaqReader(
     ILogger<CommunityFaqReader> logger)
 {
     internal const string FolderPath = "docs/community-kb";
-    private const string IndexCacheKey = "agent:community-kb:index";
-    private const string DocCacheKeyPrefix = "agent:community-kb:doc:";
+    private const string IndexCacheKey = "agent:community-faq:index";
+    private const string DocCacheKeyPrefix = "agent:community-faq:doc:";
 
     // Not evictable under memory pressure. Restart is the refresh.
     private static readonly MemoryCacheEntryOptions HoldForever =
@@ -46,7 +46,7 @@ internal sealed class CommunityFaqReader(
         {
             var expected = ex is ApiException or HttpRequestException or IOException or TimeoutException or OperationCanceledException;
             logger.Log(expected ? LogLevel.Warning : LogLevel.Error, expected ? null : ex,
-                "Failed to list community KB folder {Folder}; returning empty index: {Reason}", FolderPath, ex.Message);
+                "Failed to list Community FAQ folder {Folder}; returning empty index: {Reason}", FolderPath, ex.Message);
             return ([], false);
         }
 
@@ -100,7 +100,7 @@ internal sealed class CommunityFaqReader(
         {
             var expected = ex is ApiException or HttpRequestException or IOException or TimeoutException or OperationCanceledException;
             logger.Log(expected ? LogLevel.Warning : LogLevel.Error, expected ? null : ex,
-                "Community KB reload: listing {Folder} failed; keeping existing cache: {Reason}", FolderPath, ex.Message);
+                "Community FAQ reload: listing {Folder} failed; keeping existing cache: {Reason}", FolderPath, ex.Message);
             return false;
         }
 
@@ -117,7 +117,7 @@ internal sealed class CommunityFaqReader(
             {
                 var expected = ex is ApiException or HttpRequestException or IOException or TimeoutException or OperationCanceledException;
                 logger.Log(expected ? LogLevel.Warning : LogLevel.Error, expected ? null : ex,
-                    "Community KB reload: fetch failed for {Stem}; keeping existing cache: {Reason}", stem, ex.Message);
+                    "Community FAQ reload: fetch failed for {Stem}; keeping existing cache: {Reason}", stem, ex.Message);
                 return false;
             }
             documents.Add(stem, body);
@@ -158,14 +158,14 @@ internal sealed class CommunityFaqReader(
         }
         catch (NotFoundException)
         {
-            logger.LogWarning("Community KB file {Stem} not found on GitHub ({Folder})", stem, FolderPath);
+            logger.LogWarning("Community FAQ file {Stem} not found on GitHub ({Folder})", stem, FolderPath);
             return null;
         }
         catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
         {
             var expected = ex is ApiException or HttpRequestException or IOException or TimeoutException or OperationCanceledException;
             logger.Log(expected ? LogLevel.Warning : LogLevel.Error, expected ? null : ex,
-                "Failed to fetch community KB file {Stem} from GitHub; returning null: {Reason}", stem, ex.Message);
+                "Failed to fetch Community FAQ file {Stem} from GitHub; returning null: {Reason}", stem, ex.Message);
             return null;
         }
     }
@@ -206,7 +206,7 @@ internal sealed class CommunityFaqReader(
 
     /// <summary>
     /// The topic's declared <c>## Keywords</c> line, so the index shows terms the Overview hides. Never derived from
-    /// the prose: keyword extraction belongs to the offline KB pipeline. "" when the file declares none.
+    /// the prose: keyword extraction belongs to the offline FAQ pipeline. "" when the file declares none.
     /// </summary>
     internal static string ExtractKeywords(string[] lines)
     {

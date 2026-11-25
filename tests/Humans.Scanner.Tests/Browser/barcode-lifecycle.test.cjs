@@ -18,7 +18,7 @@ function stream() {
 function scanner({ native = true, slowPlay = false } = {}) {
     const button = () => ({ disabled: false, handlers: {}, addEventListener(event, handler) { this.handlers[event] = handler; } });
     const startButton = button(), stopButton = button();
-    const cameraRequests = [], detects = [], frames = new Map(), hits = [], decodes = [];
+    const cameraRequests = [], detects = [], frames = new Map(), hits = [], formats = [], decodes = [];
     const module = deferred(), play = deferred();
     const video = { srcObject: null, play: () => slowPlay ? play.promise : Promise.resolve() };
     const status = { textContent: '' };
@@ -28,7 +28,7 @@ function scanner({ native = true, slowPlay = false } = {}) {
     if (native) window.BarcodeDetector = class {
         detect() { const call = deferred(); detects.push(call); return call.promise; }
     };
-    const zxing = { BrowserMultiFormatReader: class {
+    const zxing = { BarcodeFormat: { 0: "AZTEC", 4: "CODE_128", 11: "QR_CODE" }, BrowserMultiFormatReader: class {
         decodeFromStream(media, preview, callback) {
             const call = deferred();
             const controls = { stops: 0, stop() { this.stops++; media.track.stop(); preview.srcObject = null; } };
@@ -52,13 +52,13 @@ function scanner({ native = true, slowPlay = false } = {}) {
     vm.createContext(context);
     vm.runInContext(source, context);
     context.initBarcodeScanner({ startButton, stopButton, video, status, error,
-        results: null, resultsEmpty: null, onHit: value => hits.push(value),
+        results: null, resultsEmpty: null, onHit: (value, format) => { hits.push(value); formats.push(format); },
         labels: { starting: 'Starting', stopped: 'Stopped', running: 'Running', pathNative: 'Native', pathZxing: 'ZXing', errorCamera: 'Camera failed', errorNoDecoder: 'Decoder failed' } });
     return {
-        cameraRequests, detects, frames, hits, decodes, video, status, error, startButton, stopButton, play,
+        cameraRequests, detects, frames, hits, formats, decodes, video, status, error, startButton, stopButton, play,
         start: () => startButton.handlers.click(), stop: () => stopButton.handlers.click(),
         pagehide: () => windowHandlers.pagehide(),
-        loadModule: () => module.resolve(zxing),
+        loadModule: (defaultExport = false) => module.resolve(defaultExport ? { default: zxing } : zxing),
         frame: () => { const [id, callback] = frames.entries().next().value; frames.delete(id); return callback(); },
     };
 }
@@ -166,3 +166,20 @@ test('a current camera failure shows its error and restores stopped controls', a
     assert.equal(s.error.textContent, 'Camera failed'); assert.equal(s.status.textContent, 'Stopped');
     assert.equal(s.startButton.disabled, false); assert.equal(s.stopButton.disabled, true);
 });
+
+for (const [format, expected, defaultExport] of [
+    [0, 'AZTEC', false], [4, 'CODE_128', false], [11, 'QR_CODE', false],
+    [999, 'UNKNOWN', false], [11, 'QR_CODE', true],
+]) {
+    test(`ZXing format ${format} resolves to ${expected} with default export ${defaultExport}`, async () => {
+        const s = scanner({ native: false }); const starting = s.start();
+        s.cameraRequests[0].resolve(stream()); s.loadModule(defaultExport); await settle();
+        s.decodes[0].resolve(s.decodes[0].controls); await starting;
+
+        s.decodes[0].callback({ getText: () => 'CURRENT', getBarcodeFormat: () => format });
+
+        assert.equal(s.hits[0], 'CURRENT');
+        assert.equal(s.formats[0], expected);
+        s.stop();
+    });
+}

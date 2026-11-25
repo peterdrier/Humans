@@ -35,7 +35,8 @@ internal sealed class TicketBuyController(
         var (errorResult, user) = await RequireCurrentUserAsync(ct);
         if (errorResult is not null) return errorResult;
 
-        var pages = await checkout.GetBuyPagesAsync(user.Id, ct);
+        var pages = (await checkout.GetBuyPagesAsync(user.Id, ct))
+            .OrderBy(page => page.GateOpeningDate).Select(ForDisplay).ToList();
         return View("~/Views/Tickets/Buy/Index.cshtml", pages);
     }
 
@@ -49,7 +50,8 @@ internal sealed class TicketBuyController(
     {
         if (User.Identity?.IsAuthenticated == true)
             return RedirectToAction(nameof(Index));
-        return View("~/Views/Tickets/Buy/Public.cshtml", await checkout.GetPublicSalesAsync(ct));
+        var sales = (await checkout.GetPublicSalesAsync(ct)).OrderBy(sale => sale.GateOpeningDate).ToList();
+        return View("~/Views/Tickets/Buy/Public.cshtml", sales);
     }
 
     [HttpPost("Public")]
@@ -84,8 +86,11 @@ internal sealed class TicketBuyController(
         if (page is null)
             return NotFound();
         ViewData["DirectedToken"] = token;
-        return View("~/Views/Tickets/Buy/Index.cshtml", new[] { page });
+        return View("~/Views/Tickets/Buy/Index.cshtml", new[] { ForDisplay(page) });
     }
+
+    private static BuyPage ForDisplay(BuyPage page) =>
+        page with { Orders = page.Orders.OrderByDescending(order => order.CreatedAt).ToList() };
 
     [HttpPost("")]
     [ValidateAntiForgeryToken]
@@ -142,7 +147,14 @@ internal sealed class TicketBuyController(
 
         // Children ride on the adult's entry, so the viewer's own Early Entry applies to every ticket listed.
         ViewData["EarlyEntryDate"] = (await earlyEntry.GetForUserAsync(user.Id, ct))?.EarliestEntryDate;
-        return View("~/Views/Tickets/Buy/Mine.cshtml", await checkout.GetHeldTicketsAsync(user.Id, ct));
+        var held = await checkout.GetHeldTicketsAsync(user.Id, ct);
+        var tickets = held.GroupBy(row => row.Ticket.TicketingSettingsId)
+            .SelectMany(evt => evt.GroupBy(row => row.Ticket.HolderUserId == user.Id
+                    ? row.Ticket.Id : row.Ticket.ParentTicketId ?? row.Ticket.Id)
+                .OrderBy(family => family.First(row => row.Ticket.Id == family.Key).Ticket.IssuedAt)
+                .SelectMany(family => family.OrderBy(row => row.Ticket.Id != family.Key)))
+            .ToList();
+        return View("~/Views/Tickets/Buy/Mine.cshtml", tickets);
     }
 
     [HttpPost("Mine/{ticketId:guid}/Offer")]
@@ -210,7 +222,8 @@ internal sealed class TicketBuyController(
             return NotFound();
         var order = await checkout.RefreshOrderAsync(id, ct) ?? detail.Order;
 
-        var tickets = await checkout.GetTicketsForOrderAsync(order.Id, ct);
+        var tickets = (await checkout.GetTicketsForOrderAsync(order.Id, ct))
+            .OrderBy(ticket => ticket.Kind).ThenBy(ticket => ticket.IssuedAt).ToList();
         return View("~/Views/Tickets/Buy/Order.cshtml", new TicketBuyOrderViewModel(order, tickets, user.Id));
     }
 

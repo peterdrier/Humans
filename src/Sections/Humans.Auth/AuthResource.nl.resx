@@ -53,7 +53,7 @@
     <value>&lt;p&gt;Welkom bij Nobodies!&lt;/p&gt;&lt;p&gt;Klik op de link hieronder om je account aan te maken:&lt;/p&gt;&lt;p&gt;&lt;a href="{0}"&gt;Je account aanmaken&lt;/a&gt;&lt;/p&gt;&lt;p&gt;Deze link verloopt over 15 minuten en kan maar één keer worden gebruikt.&lt;/p&gt;&lt;p&gt;Als je dit niet hebt aangevraagd, kun je deze e-mail negeren.&lt;/p&gt;</value>
   </data>
   <data name="Auth_Roles_Title" xml:space="preserve">
-    <value>Roltoewijzingen</value>
+    <value>Systeemrollen</value>
   </data>
   <data name="Auth_Roles_All" xml:space="preserve">
     <value>Alle</value>
@@ -74,13 +74,13 @@
     <value>Geldig tot</value>
   </data>
   <data name="Auth_Roles_Assignments" xml:space="preserve">
-    <value>Roltoewijzingen</value>
+    <value>Systeemrollen</value>
   </data>
   <data name="Auth_Roles_AddRole" xml:space="preserve">
-    <value>Rol toevoegen</value>
+    <value>Systeemrol toewijzen</value>
   </data>
   <data name="Auth_Roles_Ended" xml:space="preserve">
-    <value>Beëindigd</value>
+    <value>Ingetrokken</value>
   </data>
   <data name="Auth_Roles_From" xml:space="preserve">
     <value>Van</value>
@@ -89,16 +89,16 @@
     <value>tot</value>
   </data>
   <data name="Auth_Roles_EndConfirm" xml:space="preserve">
-    <value>Deze roltoewijzing beëindigen?</value>
+    <value>Deze systeemrol intrekken?</value>
   </data>
   <data name="Auth_Roles_End" xml:space="preserve">
-    <value>Beëindigen</value>
+    <value>Intrekken</value>
   </data>
   <data name="Auth_Roles_NoAssignments" xml:space="preserve">
-    <value>Geen roltoewijzingen.</value>
+    <value>Geen systeemrollen.</value>
   </data>
   <data name="Auth_AddRole_Title" xml:space="preserve">
-    <value>Rol toevoegen</value>
+    <value>Systeemrol toewijzen</value>
   </data>
   <data name="Auth_AddRole_SelectRole" xml:space="preserve">
     <value>Selecteer een rol...</value>
@@ -109,6 +109,6 @@
   <data name="Auth_AddRole_NotesPlaceholder" xml:space="preserve">
     <value>Reden voor toewijzing</value>
   </data>
-  <data name="Auth_Notification_RoleAssigned" xml:space="preserve"><value>Je hebt de rol {0} gekregen</value><comment>{0}=role name</comment></data>
-  <data name="Auth_Notification_RoleEnded" xml:space="preserve"><value>Je toewijzing voor de rol {0} is beëindigd</value><comment>{0}=role name</comment></data>
+  <data name="Auth_Notification_RoleAssigned" xml:space="preserve"><value>Je hebt de systeemrol {0} gekregen</value><comment>{0}=role name</comment></data>
+  <data name="Auth_Notification_RoleEnded" xml:space="preserve"><value>Je systeemrol {0} is ingetrokken</value><comment>{0}=role name</comment></data>
 </root>

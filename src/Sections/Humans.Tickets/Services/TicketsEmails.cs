@@ -62,7 +62,9 @@ internal sealed class TicketsEmails(
             var boughtBy = ticket.BuyerName is { } buyer
                 ? $"<p>{Lf("Tickets_Delivery_Ticket_BoughtBy", Encode(buyer))}</p>"
                 : string.Empty;
-            var cards = string.Concat(ticket.Tickets.Select(card => $"""
+            var orderedCards = ticket.Tickets.Take(1).Concat(ticket.Tickets.Skip(1)
+                .OrderBy(card => card.Kind).ThenBy(card => card.IssuedAt));
+            var cards = string.Concat(orderedCards.Select(card => $"""
                 <div style="border: 2px dashed #c9a96e; border-radius: 12px; padding: 20px; margin: 20px 0; text-align: center; background: #ffffff;">
                     <div style="font-size: 12px; letter-spacing: 0.15em; text-transform: uppercase; color: #8b7355;">{eventName}</div>
                     <div style="font-family: Georgia, serif; font-size: 24px; color: #3d2b1f; margin: 6px 0 2px 0;">{Encode(card.HolderName)}</div>
@@ -273,7 +275,10 @@ internal sealed record IssuedTicketMail(
     Guid? DeliveryId);
 
 /// <summary><paramref name="Kind"/> names a <c>Tickets_Delivery_Kind_*</c> key.</summary>
-internal sealed record TicketCard(string HolderName, string Kind, string Barcode, Uri CodeImageUrl);
+internal sealed record TicketCard(string HolderName, TicketHolderKind Kind, string Barcode, Uri CodeImageUrl)
+{
+    public NodaTime.Instant IssuedAt { get; init; }
+}
 
 internal sealed record OrderReceiptMail(
     Guid BuyerUserId,

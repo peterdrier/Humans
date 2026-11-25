@@ -31,7 +31,7 @@ public class AgentAdminStatusServiceTests
             prompt: 100, output: 50, cached: 200, fetched: ["agent", "tickets"]);
         // 7d window (and 30d): one message at now-5d
         SeedMessage(db, convA.Id, now - Duration.FromDays(5),
-            prompt: 1000, output: 500, cached: 0, refusalReason: "rate_limit");
+            prompt: 1000, output: 500, cached: 0, outcome: "rate_limit");
         // 30d-only: one message at now-25d
         SeedMessage(db, convB.Id, now - Duration.FromDays(25),
             prompt: 200, output: 100, cached: 0, fetched: ["agent"]);
@@ -53,9 +53,9 @@ public class AgentAdminStatusServiceTests
         report.Usage30Days.MessageCount.Should().Be(3);
         report.Usage30Days.UniqueUserCount.Should().Be(2);
 
-        // Refusal breakdown (7d) — one rate_limit
-        report.Refusals7DaysCount.Should().Be(1);
-        report.Refusals7Days.Should().ContainSingle(r => r.Reason == "rate_limit" && r.Count == 1);
+        // Outcome breakdown (7d) — one rate_limit
+        report.Unanswered7DaysCount.Should().Be(1);
+        report.Outcomes7Days.Should().ContainSingle(r => r.Outcome == "rate_limit" && r.Count == 1);
 
         // Top docs over 7d — "agent" fetched once (the 30d-only doc is outside this window)
         report.TopDocs7Days.Should().ContainSingle(d => d.Slug == "agent" && d.Count == 1);
@@ -72,31 +72,31 @@ public class AgentAdminStatusServiceTests
         var conversation = SeedConversation(db, Guid.NewGuid(), now);
         SeedMessage(db, conversation.Id, now, prompt: 10, output: 5, cached: 0, fetched:
         [
-            AgentToolNames.FetchSectionGuide + ":Profile",
-            AgentToolNames.FetchSectionGuide + ":Users",
-            AgentToolNames.FetchSectionGuide + ":users",
+            AgentToolNames.FetchSectionDoc + ":Profile",
+            AgentToolNames.FetchSectionDoc + ":Users",
+            AgentToolNames.FetchSectionDoc + ":users",
             AgentToolNames.FetchFeatureSpec + ":My-Feature",
             AgentToolNames.FetchFeatureSpec + ":my-feature",
-            AgentToolNames.RouteToIssue,
+            AgentToolNames.Handoff,
         ]);
         await db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         var report = await BuildService(db, new FakeClock(now)).GetStatusAsync(Xunit.TestContext.Current.CancellationToken);
 
         report.TopDocs7Days.Should().HaveCount(3);
-        report.TopDocs7Days.Should().ContainSingle(d => d.Slug == AgentToolNames.FetchSectionGuide + ":Users" && d.Count == 3);
+        report.TopDocs7Days.Should().ContainSingle(d => d.Slug == AgentToolNames.FetchSectionDoc + ":Users" && d.Count == 3);
         report.TopDocs7Days.Should().ContainSingle(d => d.Slug == AgentToolNames.FetchFeatureSpec + ":My-Feature" && d.Count == 2);
-        report.TopDocs7Days.Should().ContainSingle(d => d.Slug == AgentToolNames.RouteToIssue && d.Count == 1);
+        report.TopDocs7Days.Should().ContainSingle(d => d.Slug == AgentToolNames.Handoff && d.Count == 1);
     }
 
     [HumansFact]
-    public async Task Latency_panel_excludes_user_rows_and_zero_duration_refusals()
+    public async Task GetStatus_Latency_ExcludesUserAndUnansweredRows()
     {
         // User rows carry no duration at all, and
-        // refusal/error rows (rate_limited, abuse_flag, "error" traces) are
+        // unanswered rows (limit reached, distress reply, failed) are
         // structural zeros — none of them represent a timed provider turn. Mixing
         // them into AverageTurnMs/P95TurnMs dilutes both toward roughly half the
-        // real figure. Only completed (non-refused) assistant rows should count.
+        // real figure. Only answered assistant rows should count.
         await using var db = InMemoryDb();
         var now = Instant.FromUtc(2026, 5, 17, 12, 0);
         var clock = new FakeClock(now);
@@ -110,14 +110,14 @@ public class AgentAdminStatusServiceTests
         SeedMessage(db, conv.Id, now - Duration.FromMinutes(20), prompt: 10, output: 5, cached: 0,
             role: AgentRole.Assistant, durationMs: 2000);
 
-        // Dilution sources: a user row (no duration concept) and refusal/error assistant
+        // Dilution sources: a user row (no duration concept) and unanswered assistant
         // rows (DurationMs stamped 0 because the turn never reached/finished the provider).
         SeedMessage(db, conv.Id, now - Duration.FromMinutes(31), prompt: 10, output: 0, cached: 0,
             role: AgentRole.User, durationMs: 0);
         SeedMessage(db, conv.Id, now - Duration.FromMinutes(10), prompt: 0, output: 0, cached: 0,
-            role: AgentRole.Assistant, refusalReason: "rate_limited", durationMs: 0);
+            role: AgentRole.Assistant, outcome: AgentTurnOutcome.LimitReached, durationMs: 0);
         SeedMessage(db, conv.Id, now - Duration.FromMinutes(5), prompt: 5, output: 3, cached: 0,
-            role: AgentRole.Assistant, refusalReason: "error", durationMs: 0);
+            role: AgentRole.Assistant, outcome: AgentTurnOutcome.Failed, durationMs: 0);
         await db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         var report = await BuildService(db, clock).GetStatusAsync(Xunit.TestContext.Current.CancellationToken);
@@ -134,7 +134,7 @@ public class AgentAdminStatusServiceTests
     public async Task Latency_panel_reports_zero_when_the_window_holds_no_completed_turn()
     {
         // Decoupling MessageCount from the duration sample made an empty sample reachable
-        // with a positive message count: a window of nothing but user rows and refusals.
+        // with a positive message count: a window of nothing but user rows and unanswered turns.
         // Averaging that empty sample throws, so the guard reads durations, not messages.
         await using var db = InMemoryDb();
         var now = Instant.FromUtc(2026, 5, 17, 12, 0);
@@ -146,7 +146,7 @@ public class AgentAdminStatusServiceTests
         SeedMessage(db, conv.Id, now - Duration.FromMinutes(20), prompt: 10, output: 0, cached: 0,
             role: AgentRole.User, durationMs: 0);
         SeedMessage(db, conv.Id, now - Duration.FromMinutes(10), prompt: 0, output: 0, cached: 0,
-            role: AgentRole.Assistant, refusalReason: "rate_limited", durationMs: 0);
+            role: AgentRole.Assistant, outcome: AgentTurnOutcome.LimitReached, durationMs: 0);
         await db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
 
         var report = await BuildService(db, clock).GetStatusAsync(Xunit.TestContext.Current.CancellationToken);
@@ -183,12 +183,28 @@ public class AgentAdminStatusServiceTests
         // Default store snapshot has UpdatedAt = MinValue until LoadAsync.
         var settings = Substitute.For<IAgentSettingsService>();
         settings.Current.Returns(new AgentSettingsDto(
-            Enabled: false, Model: "claude-sonnet-4-6", PreloadConfig: AgentPreloadConfig.Tier1,
+            Enabled: false, Model: "claude-sonnet-4-6",
             DailyMessageCap: 30, HourlyMessageCap: 10, DailyTokenCap: 50_000,
             RetentionDays: 90, UpdatedAt: Instant.MinValue));
 
         var report = await BuildService(db, clock, settings: settings).GetStatusAsync(Xunit.TestContext.Current.CancellationToken);
         report.SettingsStoreWarm.Should().BeFalse();
+    }
+
+    [HumansFact]
+    public async Task ListAll_LegacyHandoffMarker_CountsAsHandoff()
+    {
+        await using var db = InMemoryDb();
+        var now = Instant.FromUtc(2026, 11, 24, 12, 0);
+        var conv = SeedConversation(db, Guid.NewGuid(), now);
+        SeedMessage(db, conv.Id, now, 0, 0, 0, fetched: [AgentToolNames.LegacyHandoff]);
+        await db.SaveChangesAsync(Xunit.TestContext.Current.CancellationToken);
+
+        var rows = await new AgentRepository(db, new FakeClock(now)).ListAllConversationsWithMessagesAsync(
+            unansweredOnly: false, handoffsOnly: true, userId: null, take: 50, skip: 0,
+            Xunit.TestContext.Current.CancellationToken);
+
+        rows.Should().ContainSingle().Which.Id.Should().Be(conv.Id);
     }
 
     private static AgentAdminStatusService BuildService(
@@ -208,7 +224,7 @@ public class AgentAdminStatusServiceTests
     {
         var settings = Substitute.For<IAgentSettingsService>();
         settings.Current.Returns(new AgentSettingsDto(
-            Enabled: true, Model: "claude-sonnet-4-6", PreloadConfig: AgentPreloadConfig.Tier1,
+            Enabled: true, Model: "claude-sonnet-4-6",
             DailyMessageCap: 30, HourlyMessageCap: 10, DailyTokenCap: 50_000,
             RetentionDays: 90, UpdatedAt: Instant.FromUtc(2026, 5, 1, 0, 0)));
         return settings;
@@ -239,7 +255,7 @@ public class AgentAdminStatusServiceTests
 
     private static void SeedMessage(AgentDbContext db, Guid conversationId,
         Instant createdAt, int prompt, int output, int cached,
-        string[]? fetched = null, string? refusalReason = null,
+        string[]? fetched = null, string? outcome = null,
         AgentRole role = AgentRole.Assistant, int durationMs = 1200)
     {
         db.AgentMessages.Add(new AgentMessage
@@ -255,7 +271,7 @@ public class AgentAdminStatusServiceTests
             Model = "claude-sonnet-4-6",
             DurationMs = durationMs,
             FetchedDocs = fetched ?? [],
-            RefusalReason = refusalReason,
+            Outcome = outcome,
         });
     }
 

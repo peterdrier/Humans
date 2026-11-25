@@ -5,7 +5,6 @@ using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
 using Humans.Shifts.Domain;
 using NodaTime;
-using Humans.Shifts.Helpers;
 using Humans.Shifts.Services.Dtos;
 using Humans.Users.Contracts;
 
@@ -66,7 +65,7 @@ internal sealed class RotaCoordinatorMessageService(
                 RotaName: rota.Name,
                 MessageText: messageText,
                 // One rota, so exactly one group, or none when the coordinator left the shift list out.
-                ShiftLines: shiftGroups.Count == 0 ? [] : shiftGroups[0].ShiftLines,
+                Shifts: shiftGroups.Count == 0 ? [] : shiftGroups[0].Shifts,
                 IncludeShifts: includeShifts,
                 Culture: language),
             enqueue: (req, token) => emailService.SendAsync(emailMessages.CoordinatorRotaMessage(req), token),
@@ -204,7 +203,6 @@ internal sealed class RotaCoordinatorMessageService(
 
         var rotas = (await rotaRows.GetRotaRowsAsync(ct: ct))
             .Where(r => r.Rota.EventSettingsId == calendar.Id && r.Rota.TeamId == teamId)
-            .OrderBy(r => r.Rota.Name, StringComparer.Ordinal)
             .ToList();
         if (rotas.Count == 0) return [];
 
@@ -236,7 +234,7 @@ internal sealed class RotaCoordinatorMessageService(
             .ToList();
 
     /// <summary>
-    /// Shared by the per-rota and team paths: dedupes signups by user across rotas, formats each rota in its own
+    /// Shared by the per-rota and team paths: dedupes signups by user across rotas, resolves starts in each rota's own
     /// timezone, and isolates per-recipient failures.
     /// </summary>
     private async Task<DispatchSummary> DispatchToRecipientsAsync<TRequest>(
@@ -299,12 +297,11 @@ internal sealed class RotaCoordinatorMessageService(
                     .Select(g =>
                     {
                         var group = g.First().Group;
-                        var lines = BuildShiftLines(
-                            g.Select(e => e.Signup).ToList(),
-                            group.EventSettings);
-                        return new CoordinatorRotaShiftGroup(group.RotaName, lines);
+                        var shifts = g.Select(e => (
+                            Start: e.Signup.Shift.GetAbsoluteStart(group.EventSettings).InZone(group.EventSettings.TimeZone),
+                            e.Signup.Shift.IsAllDay)).ToList();
+                        return new CoordinatorRotaShiftGroup(group.RotaName, shifts);
                     })
-                    .OrderBy(g => g.RotaName, StringComparer.OrdinalIgnoreCase)
                     .ToList()
                 : [];
 
@@ -330,32 +327,6 @@ internal sealed class RotaCoordinatorMessageService(
         }
 
         return new DispatchSummary(requested, skipped, failed);
-    }
-
-    // Chronological, in the rota's timezone.
-    private static IReadOnlyList<string> BuildShiftLines(
-        IReadOnlyList<ActiveSignup> userSignups,
-        BurnSettingsInfo eventSettings)
-    {
-        var tz = eventSettings.TimeZone;
-        return userSignups
-            .Select(s => new
-            {
-                s.Shift.IsAllDay,
-                ZonedStart = s.Shift.GetAbsoluteStart(eventSettings).InZone(tz)
-            })
-            .OrderBy(x => x.ZonedStart.ToInstant())
-            .Select(x => FormatShiftLine(x.ZonedStart, x.IsAllDay))
-            .ToList();
-    }
-
-    private static string FormatShiftLine(ZonedDateTime zoned, bool isAllDay)
-    {
-        var local = zoned.LocalDateTime;
-        // Invariant culture: stable parseable shape for short ops notices.
-        return isAllDay
-            ? DateFormattingExtensions.OpsNoticeDatePattern.Format(local.Date)
-            : $"{DateFormattingExtensions.OpsNoticeDatePattern.Format(local.Date)} @ {DateFormattingExtensions.TimeOfDayPattern.Format(local.TimeOfDay)}";
     }
 
     private static string Truncate(string text, int max)

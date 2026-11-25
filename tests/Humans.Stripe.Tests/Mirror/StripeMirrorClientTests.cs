@@ -65,6 +65,43 @@ public sealed class StripeMirrorClientTests
     public enum MirrorList { Transactions, Payouts }
 
     [HumansTheory]
+    [Xunit.InlineData("transactions", false)]
+    [Xunit.InlineData("transactions", true)]
+    [Xunit.InlineData("payouts", false)]
+    [Xunit.InlineData("payouts", true)]
+    [Xunit.InlineData("payout-breakdown", false)]
+    [Xunit.InlineData("payout-breakdown", true)]
+    public async Task Repeated_item_IDs_cannot_complete_a_mirror_fetch(string consumer, bool acrossPages)
+    {
+        var targetCalls = 0;
+        string? repeatedItem = null;
+        Respond(r =>
+        {
+            var path = r.Uri.AbsolutePath;
+            var query = Uri.UnescapeDataString(r.Uri.Query);
+            var isTarget = consumer switch
+            {
+                "payouts" => path.EndsWith("/payouts", StringComparison.Ordinal),
+                "payout-breakdown" => query.Contains("payout=po_1", StringComparison.Ordinal),
+                _ => path.EndsWith("/balance_transactions", StringComparison.Ordinal)
+                    && !query.Contains("payout=", StringComparison.Ordinal),
+            };
+            if (!isTarget) return Route(r);
+            targetCalls++;
+            repeatedItem ??= JsonNode.Parse(Route(r))!["data"]!.AsArray()[0]!.ToJsonString();
+            return acrossPages
+                ? List(targetCalls == 1, repeatedItem)
+                : List(false, repeatedItem, repeatedItem);
+        });
+        var account = new StripeMirrorAccount { Name = "Tickets", Id = "acct_t", ApiKey = "sk_org_test" };
+
+        var act = () => new StripeMirrorClient(_http).FetchAsync(account, Ct);
+
+        (await act.Should().ThrowAsync<InvalidOperationException>()).WithMessage("*repeated*id*");
+        targetCalls.Should().Be(acrossPages ? 2 : 1);
+    }
+
+    [HumansTheory]
     [Xunit.InlineData(MirrorList.Transactions, "id")]
     [Xunit.InlineData(MirrorList.Transactions, "type")]
     [Xunit.InlineData(MirrorList.Transactions, "status")]
