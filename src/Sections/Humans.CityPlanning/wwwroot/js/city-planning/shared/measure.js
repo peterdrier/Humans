@@ -179,6 +179,9 @@ export function clearAllMeasurements() {
  *   transitioning into measure mode (e.g. to exit a conflicting edit/selection mode).
  */
 export function wireMeasureButtons({ beforeEnter } = {}) {
+    document.addEventListener('keydown', e => {
+        if (e.key === 'Escape' && isMeasuring()) exitMeasureMode();
+    });
     document.getElementById('measure-btn')?.addEventListener('click', () => {
         if (isMeasuring()) { exitMeasureMode(); return; }
         beforeEnter?.();

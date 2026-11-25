@@ -174,6 +174,7 @@ Broadcasts `CampPolygonUpdated(campSeasonId, geoJson, areaSqm, soundZone, campNa
 - Authorization’s city-planning membership reads retain HTTP request cancellation; callers without an HTTP context use the non-cancellable default.
 
 - Only one CampPolygon per CampSeason (unique constraint on `CampSeasonId`).
+- Escape cancellation belongs to the shared ruler controls on all three maps: it exits measure mode and discards pending points/previews while retaining completed lines. Escape while idle has no ruler effect.
 - Clearing ruler measurements removes completed lines and any pending first point or preview on all three maps. An active ruler remains ready for a fresh first point; old pointer movement cannot revive the cleared measurement.
 - The overview ruler becomes usable when the map loads. Layer toggles enable only after their data loads: a failed state request leaves the ruler usable, and a failed container request preserves the loaded barrio/limit layers and limit toggle. Failed HTTP responses are rejected before interpreting their bodies as map data.
 - Camp geometry readers normalize accepted bare Polygon/MultiPolygon geometry into Features for all three maps, editing, history previews and overlap checks. Feature IDs/properties and geometry coordinates, including holes and altitude, are preserved; stored GeoJSON is unchanged.

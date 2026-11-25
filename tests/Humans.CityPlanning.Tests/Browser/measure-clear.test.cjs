@@ -5,7 +5,7 @@ const { resolve } = require('node:path');
 const vm = require('node:vm');
 
 function ruler() {
-    const sources = {}, events = {}, buttons = {};
+    const sources = {}, events = {}, buttons = {}, keys = {};
     const button = id => buttons[id] ??= { classList: { add() {}, remove() {}, toggle() {} }, setAttribute() {},
         addEventListener(event, handler) { this[event] = handler; } };
     const map = {
@@ -16,7 +16,7 @@ function ruler() {
         off: (event, handler) => events[event]?.delete(handler),
     };
     const context = {
-        document: { documentElement: {}, getElementById: button },
+        document: { documentElement: {}, getElementById: button, addEventListener: (event, handler) => { keys[event] = handler; } },
         getComputedStyle: () => ({ getPropertyValue: () => '' }),
         crypto: { randomUUID: () => 'measurement' },
         turf: { point: coordinates => coordinates, distance: () => 10 },
@@ -30,6 +30,7 @@ function ruler() {
     return {
         sources, enter: () => button('measure-btn').click(), clear: () => button('clear-measurements-btn').click(),
         click: (lng, lat) => emit('click', lng, lat), move: (lng, lat) => emit('mousemove', lng, lat),
+        key: key => keys.keydown?.({ key }),
         active: () => context.isMeasuring(), moves: () => events.mousemove?.size ?? 0,
     };
 }
@@ -82,4 +83,39 @@ test('a normal two-point measurement exits measure mode', () => {
     assert.equal(ui.active(), false);
     assert.equal(ui.sources['measure-line'].features.length, 1);
     assert.equal(ui.moves(), 0);
+});
+
+test('Escape cancels a pending ruler while retaining completed measurements', () => {
+    const ui = pendingRuler(); ui.key('Escape');
+    assert.equal(ui.active(), false);
+    assert.equal(ui.moves(), 0);
+    assert.equal(ui.sources['measure-preview-line'].features.length, 0);
+    assert.equal(ui.sources['measure-line'].features.length, 1);
+    assert.equal(ui.sources['measure-points'].features.length, 2);
+});
+
+test('Escape exits measure mode before the first point', () => {
+    const ui = ruler(); ui.enter(); ui.key('Escape');
+    assert.equal(ui.active(), false);
+    assert.equal(ui.sources['measure-points'].features.length, 0);
+});
+
+test('reopening after Escape starts with a fresh first point', () => {
+    const ui = pendingRuler(); ui.key('Escape'); ui.enter(); ui.click(5, 5);
+    assert.equal(ui.active(), true);
+    assert.equal(ui.sources['measure-line'].features.length, 1);
+    assert.equal(ui.sources['measure-points'].features.length, 3);
+});
+
+test('Escape while idle leaves completed measurements untouched', () => {
+    const ui = ruler(); ui.enter(); ui.click(0, 0); ui.click(1, 1);
+    const lines = ui.sources['measure-line']; ui.key('Escape');
+    assert.equal(ui.active(), false);
+    assert.equal(ui.sources['measure-line'], lines);
+});
+
+test('other keys leave the pending ruler active', () => {
+    const ui = pendingRuler(); ui.key('Enter');
+    assert.equal(ui.active(), true);
+    assert.equal(ui.sources['measure-preview-line'].features.length, 1);
 });
