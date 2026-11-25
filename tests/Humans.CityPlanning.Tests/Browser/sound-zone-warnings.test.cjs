@@ -51,3 +51,14 @@ test('Surprise and unassigned camps remain exempt from sound-zone warnings', () 
         assert.equal(mismatch([{ sound_zone: 'blue' }], campZone), false);
     }
 });
+
+for (const value of [42, true, [], {}]) {
+    test(`non-string ${JSON.stringify(value)} sound metadata cannot break warnings`, () => {
+        assert.equal(mismatch([{ SoundZone: value }], 4), false);
+        assert.equal(mismatch([{ sound_zone: value }], 4), false);
+    });
+}
+
+test('warnings use a valid legacy label when the current label has an unusable type', () => {
+    assert.equal(mismatch([{ SoundZone: 42, sound_zone: 'blue' }], 4), true);
+});

@@ -2,7 +2,7 @@
 import { appState } from './state.js';
 import { CONFIG } from './config.js';
 import { parseCampFeature } from '../shared/camp-geometry.js';
-import { SOUND_ZONE_NAMES } from '../shared/sound-zone-colors.js';
+import { SOUND_ZONE_NAMES, getOverlaySoundZone } from '../shared/sound-zone-colors.js';
 
 export const SIZE_RATIO_UPPER = 1.5;
 export const SIZE_RATIO_LOWER = 0.5;
@@ -23,7 +23,7 @@ export function getSoundZoneOutOfRange(feature, campSoundZone) {
     let bestZoneNames = null;
     let bestArea = 0;
     for (const zf of features) {
-        const zoneNames = zf.properties?.SoundZone || zf.properties?.sound_zone;
+        const zoneNames = getOverlaySoundZone(zf);
         if (!zoneNames) continue;
         try {
             const intersection = turf.intersect(turf.featureCollection([feature, zf]));
