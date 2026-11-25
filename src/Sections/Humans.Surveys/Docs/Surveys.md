@@ -243,7 +243,8 @@ First-party, GDPR-compliant surveys: author typed/branching multi-language surve
   all authored conditional questions for inspection, and never creates an invitation, response, draft,
   reminder, completion, or funnel event. The final Submit control is disabled.
 - **Preview email reuses the real invitation pipeline without joining its ledger.** It targets the
-  rehearsing user's own canonical notification email and uses
+  rehearsing user's own canonical notification email and account ID, refusing missing or tombstoned
+  accounts with the existing preview refusal before rendering or queueing, and uses
   `SurveysEmails.SurveyInvitation` + `IEmailService.SendAsync`. Its seven-day signed token has a
   distinct Data Protection purpose, retains the recipient's resolved culture, and redirects
   `/Survey/Answer` to the protected preview route; no `SurveyInvitation` row is created.
