@@ -1253,7 +1253,7 @@
 
     // Scroll to fragment on page load (for newly created rotas)
     if (window.location.hash) {
-        var target = document.querySelector(window.location.hash);
+        var target = document.getElementById(window.location.hash.slice(1));
         if (target) {
             setTimeout(function() { target.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 100);
         }
