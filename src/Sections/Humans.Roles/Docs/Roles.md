@@ -50,6 +50,8 @@ The holder is a user, not a team member. Unassigning deletes the row; the audit 
 
 ## Invariants
 
+- Add/edit forms require explicit slot count, sort order, period, public visibility and coordinator flags. Binding errors (including malformed optional hours or priorities) never reach create/update: after resolving the actor and route owner (plus the role for edits), owner managers receive HTTP 400 with a Warning and non-managers receive 403. Valid writes retain service-owned coordinator authorization. Zero sort order, false flags, blank optional hours, an empty permission selection and default None priorities for new slots retain their form semantics.
+
 - A role has one owner, of a kind a section registers.
 - Name is unique per owner, ignoring case. Slug and custom slug are unique per owner across both, checked by the service (the database enforces uniqueness on ids only). Links use slugs, never the id.
 - At most one coordinator role per owner. Only Admin and RolesAdmin create, edit, fill, empty or delete it, and whether a role is the coordinator role changes only while it is empty.
