@@ -363,6 +363,10 @@ document.addEventListener('click', function (e) {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ timeZone: tz })
+            }).then(function (response) {
+                if (!response.ok) console.warn('Browser timezone report refused:', response.status);
+            }).catch(function () {
+                console.warn('Browser timezone report failed');
             });
         }
     } catch (_) { /* Intl not supported — fall back to server default */ }
