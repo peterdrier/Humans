@@ -24,7 +24,7 @@ function controls({ placed = [], active = null, own = null } = {}) {
     const state = { activeCampSeasonId: active,
         campMap: { campPolygons: placed.map(campSeasonId => ({ campSeasonId })), campSeasonsWithoutPolygon: [] },
         map: { getSource: () => ({ setData() {} }) } };
-    const connection = { on: (name, handler) => { events[name] = handler; }, start: async () => {} };
+    const connection = { on: (name, handler) => { events[name] = handler; }, onreconnected() {}, start: () => new Promise(() => {}) };
     const context = {
         appState: state, CONFIG: { USER_CAMP_SEASON_ID: own, IS_PLACEMENT_OPEN: false },
         document: { getElementById: id => elements[id] ?? null },

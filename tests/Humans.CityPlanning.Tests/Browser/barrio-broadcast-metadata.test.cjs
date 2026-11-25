@@ -15,7 +15,7 @@ function client({ known = true, placed = false } = {}) {
             campSeasonsWithoutPolygon: known && !placed ? [season] : [] },
         map: { getSource: name => ({ setData: data => { sources[name] = data; } }) },
     };
-    const connection = { on: (name, handler) => { handlers[name] = handler; }, start: async () => {} };
+    const connection = { on: (name, handler) => { handlers[name] = handler; }, onreconnected() {}, start: () => new Promise(() => {}) };
     const context = {
         appState: state, CONFIG: { USER_CAMP_SEASON_ID: 'A' }, SOUND_ZONE_NAMES: {},
         signalR: { HubConnectionBuilder: function () {
