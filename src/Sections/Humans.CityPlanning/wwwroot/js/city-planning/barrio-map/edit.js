@@ -127,20 +127,30 @@ export function setEditingControlsVisible(visible) {
         return;
     }
     saveBtn?.classList.add('d-none');
-    updateAddMyBarrioVisibility();
+    updateAddControls();
     const addMyBarrioVisible = document.getElementById('add-my-barrio-btn')?.classList.contains('d-none') === false;
-    const addBarrioPresent   = !!document.getElementById('add-barrio-container');
+    const addBarrioPresent = document.getElementById('add-barrio-container')?.classList.contains('d-none') === false;
     if (!addMyBarrioVisible && !addBarrioPresent) toolbar.classList.add('d-none');
 }
 
-export function updateAddMyBarrioVisibility() {
+export function updateAddControls() {
+    const select = document.getElementById('add-barrio-select');
+    let hasUnmapped = false;
+    if (select) {
+        const placed = new Set(appState.campMap.campPolygons.map(p => p.campSeasonId));
+        for (const option of [...select.options]) {
+            if (option.value && placed.has(option.value)) option.remove();
+        }
+        hasUnmapped = [...select.options].some(option => option.value);
+        document.getElementById('add-barrio-container')?.classList.toggle('d-none', !hasUnmapped);
+    }
+
     const btn = document.getElementById('add-my-barrio-btn');
-    if (!btn) return;
     const hasPolygon = appState.campMap.campPolygons.some(p => p.campSeasonId === CONFIG.USER_CAMP_SEASON_ID);
-    const show = CONFIG.IS_PLACEMENT_OPEN && CONFIG.USER_CAMP_SEASON_ID && !hasPolygon;
-    btn.classList.toggle('d-none', !show);
-    if (show) {
-        document.getElementById('main-toolbar')?.classList.remove('d-none');
+    const showOwn = btn && CONFIG.IS_PLACEMENT_OPEN && CONFIG.USER_CAMP_SEASON_ID && !hasPolygon;
+    btn?.classList.toggle('d-none', !showOwn);
+    if (!appState.activeCampSeasonId) {
+        document.getElementById('main-toolbar')?.classList.toggle('d-none', !showOwn && !hasUnmapped);
     }
 }
 

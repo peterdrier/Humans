@@ -5,7 +5,7 @@ import { parseLimitZoneGeom } from './geometry.js';
 import { DRAW_STYLES, generateRainbowPattern, generateCrosshatchPattern, generateDashedHorizontalPattern, renderMap } from './layers.js';
 import {
     onCampPolygonClick, exitEditMode, onDrawChange, onDrawRender, onDrawDelete,
-    setEditingControlsVisible, updateAddMyBarrioVisibility,
+    setEditingControlsVisible, updateAddControls,
 } from './edit.js';
 import { initSignalR } from './signalr.js';
 import { MarqueeDirectSelectMode } from './marquee-direct-select.js';
@@ -75,7 +75,7 @@ async function init() {
     appState.campMap = await (await fetch('/api/city-planning/state')).json();
     appState.limitZoneGeom = parseLimitZoneGeom(appState.campMap.limitZoneGeoJson);
     renderMap(onCampPolygonClick);
-    updateAddMyBarrioVisibility();
+    updateAddControls();
     initSignalR();
 }
 

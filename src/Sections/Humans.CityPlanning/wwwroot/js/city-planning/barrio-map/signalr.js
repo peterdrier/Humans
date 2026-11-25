@@ -1,7 +1,7 @@
 import { appState } from './state.js';
 import { CONFIG } from './config.js';
 import { buildCampPolygonFeatures, invalidateParsedFeature } from './geometry.js';
-import { updateAddMyBarrioVisibility } from './edit.js';
+import { updateAddControls } from './edit.js';
 
 export function initSignalR() {
     const { map } = appState;
@@ -29,7 +29,7 @@ export function initSignalR() {
         if (src) {
             src.setData({ type: 'FeatureCollection', features: buildCampPolygonFeatures(appState.campMap.campPolygons) });
         }
-        updateAddMyBarrioVisibility();
+        updateAddControls();
     });
 
     appState.connection.on('CursorMoved', (connectionId, userName, lat, lng) => {

@@ -22,7 +22,7 @@ function client({ known = true, placed = false } = {}) {
             this.withUrl = this.withAutomaticReconnect = () => this;
             this.build = () => connection;
         } },
-        updateAddMyBarrioVisibility() {}, console,
+        updateAddControls() {}, console,
     };
     vm.createContext(context);
     for (const file of ['../shared/camp-geometry.js', 'geometry.js', 'signalr.js']) {
