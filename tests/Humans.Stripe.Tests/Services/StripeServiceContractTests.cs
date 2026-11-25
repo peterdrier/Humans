@@ -22,6 +22,28 @@ namespace Humans.Stripe.Tests.Services;
 /// </summary>
 public class StripeServiceContractTests
 {
+    [HumansTheory]
+    [InlineData("")]
+    [InlineData(" \t")]
+    [InlineData("rk_test_bad suffix")]
+    [InlineData("rk_test_secret\r\nhidden")]
+    public async Task ApiKeys_Unusable_DisableCalls(string key)
+    {
+        using var assertions = new AwesomeAssertions.Execution.AssertionScope();
+        var settings = new StripeSettings { TicketsKey = key, StoreKey = key, WebhookRegistrarKey = key };
+        var http = Substitute.For<IHttpClient>();
+        var service = new StripeService(Options.Create(settings), new CapturingLogger<StripeService>(), http);
+        service.IsConfigured.Should().BeFalse();
+        service.IsStoreCheckoutConfigured.Should().BeFalse();
+        settings.IsWebhookRegistrarConfigured.Should().BeFalse();
+        (await service.GetPaymentDetailsAsync("pi_test_x", TestContext.Current.CancellationToken)).Should().BeNull();
+        (await service.ListStoreCheckoutSessionsAsync(TestContext.Current.CancellationToken)).Should().BeNull();
+        var create = () => service.CreateCheckoutSessionAsync(Guid.NewGuid(), 1m, "https://humans.test/success", "https://humans.test/cancel",
+            null, "Order", TestContext.Current.CancellationToken);
+        await create.Should().ThrowAsync<InvalidOperationException>().WithMessage("Stripe Store key is not configured.");
+        http.ReceivedCalls().Should().BeEmpty();
+    }
+
     private const string TestWebhookSecret = "whsec_test_humans_section_doctor_secret";
 
     private static (StripeService Service, CapturingLogger<StripeService> Log) Build(

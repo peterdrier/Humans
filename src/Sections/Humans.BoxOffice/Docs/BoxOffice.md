@@ -74,6 +74,8 @@ None. The section owns no tables. The Checkout Session is the record of the paym
 
 ## Invariants
 
+- The checkout API key must be nonempty and contain no whitespace, matching Stripe.net client validation. An unusable key makes the platform unconfigured; order operations refuse through `TicketingPlatformException` before SDK construction, reporting returns null, and connection checks report configuration without Stripe calls or key text. Webhook signing secrets retain their separate validation.
+
 - Charges EUR only; a non-EUR request, a negative line or a non-positive total throws `TicketingPlatformException` before
   any Stripe call. The adapter never changes an amount.
 - Session expiry is clamped to 31 minutes .. 23 hours from now, inside Stripe's 30 minutes .. 24 hours.
@@ -94,7 +96,7 @@ None. The section owns no tables. The Checkout Session is the record of the paym
 
 | Variable | Purpose |
 |---|---|
-| `STRIPE_BOXOFFICE_KEY` | Restricted key on the ticket Stripe account: Checkout Sessions write, PaymentIntents, Charges and Disputes read, Refunds write. Unset means `IsConfigured` is false and Tickets takes no orders on this platform |
+| `STRIPE_BOXOFFICE_KEY` | Restricted key on the ticket Stripe account: Checkout Sessions write, PaymentIntents, Charges and Disputes read, Refunds write. Unset or whitespace-containing means `IsConfigured` is false and Tickets takes no orders on this platform |
 | `STRIPE_BOXOFFICE_WEBHOOK_SECRET` | Signing secret of the endpoint `https://<host>/BoxOffice/StripeWebhook` subscribed to `checkout.session.completed`, `checkout.session.async_payment_succeeded`, `checkout.session.async_payment_failed`, `checkout.session.expired`, `charge.refunded`, `refund.updated`, `refund.failed`, `charge.dispute.created`, `charge.dispute.closed`, `charge.dispute.funds_withdrawn`, `charge.dispute.funds_reinstated`. Without it, Tickets still learns outcomes from the return page and its 5-minute poll |
 
 Fees, payouts and read probes require a `Stripe:MirrorAccounts` entry named `BoxOffice`, with this same account's id and a key with Balance transactions, Payouts, PaymentIntents, Charges, Refunds and Disputes read. The Checkout Session probe uses the actual checkout key separately. `KeyVariable` must select a key for the same live or test account used by checkout. The checkout key can also serve as that entry's own key when it has those read scopes. Missing configuration is shown by the platform connection test.

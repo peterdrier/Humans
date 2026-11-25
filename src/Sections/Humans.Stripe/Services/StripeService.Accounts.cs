@@ -169,7 +169,7 @@ internal sealed partial class StripeService
             return [new(false, $"Stripe:MirrorAccounts has no {accountName} entry: its Stripe fees and payouts are not reconciled.")];
         var keyName = account.UsesOrgKey ? StripeMirrorConfiguration.OrgKeyVariable : account.KeyVariable!;
         if (Reader(accountName) is not var (client, request))
-            return [new(false, $"{keyName} is unset: the {accountName} account's Stripe fees and payouts are not reconciled.")];
+            return [new(false, $"{keyName} is unset or contains whitespace: the {accountName} account's Stripe fees and payouts are not reconciled.")];
 
         var mode = account.ApiKey.StartsWith("sk_test_", StringComparison.Ordinal) || account.ApiKey.StartsWith("rk_test_", StringComparison.Ordinal)
             ? "test mode"
@@ -185,6 +185,11 @@ internal sealed partial class StripeService
         ];
         if (checkoutApiKey is not null)
         {
+            if (!StripeSettings.IsUsableApiKey(checkoutApiKey))
+            {
+                findings.Add(new(false, "Checkout key is empty or contains whitespace."));
+                return findings;
+            }
             var checkoutClient = new StripeClient(checkoutApiKey, httpClient: httpClient);
             var checkoutMode = checkoutApiKey.StartsWith("sk_test_", StringComparison.Ordinal)
                 || checkoutApiKey.StartsWith("rk_test_", StringComparison.Ordinal) ? "test mode" : "live mode";
