@@ -6,7 +6,10 @@
     var returnUrl = Url.Action("Open", "Tasks")!;
     Func<TaskInfo, IHtmlContent> titleCell = @<text><a href="@Url.Action("Details", "Tasks", new { id = item.Id })">@item.Title</a>@if (item.NeedsApproval) { <span class="text-muted small ms-2"><i class="fa-solid fa-user-check" aria-hidden="true"></i> @Localizer["Tasks_Open_NeedsApproval"]</span> }@if (item.IsWaiting) { <span class="text-muted small ms-2"><i class="fa-solid fa-hourglass-half" aria-hidden="true"></i> @Localizer["Tasks_WaitingOn"]</span> }</text>;
     Func<TaskInfo, IHtmlContent> priorityCell = @<text>@if (item.Priority != SlotPriority.None) { <status-badge value="@item.Priority" /> }</text>;
-    Func<TaskInfo, IHtmlContent> claimCell = @<partial name="_ClaimButton" model="new ClaimButtonModel(item, returnUrl, Small: true, Primary: false)" />;
+    Func<TaskInfo, IHtmlContent> claimCell = @<text>@if (Model.Places.TryGetValue(item.Id, out var place))
+        {
+            <partial name="_ClaimButton" model="new ClaimButtonModel(item, returnUrl, Small: true, Primary: false, place)" />
+        }</text>;
     var table = TableModel.For(Model.Tasks)
         .Template(Localizer["Tasks_Col_Task"].Value, titleCell, null, t => t.Title)
         .Link(Localizer["Tasks_Col_Team"].Value, t => t.TeamName,

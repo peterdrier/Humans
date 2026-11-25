@@ -65,9 +65,12 @@ internal sealed record TasksAccess(Guid UserId, bool SeesAll, IReadOnlySet<Guid>
     public IReadOnlyDictionary<Guid, MyPlace> PlacesOn(IEnumerable<TaskInfo> tasks) =>
         tasks.Select(t => (t.Id, Place: PlaceOn(t))).Where(p => p.Place is not null).ToDictionary(p => p.Id, p => p.Place!.Value);
 
-    /// <summary>Everyone sees a task that is not hidden. A hidden one shows to its managers, the people confirmed on it, and those who see all.</summary>
+    /// <summary>
+    /// Everyone sees a task that is not hidden. A hidden one shows to its managers, the people on it or asking to join
+    /// it (so they can take the request back), and those who see all.
+    /// </summary>
     public bool CanSee(TaskInfo task) =>
-        !task.IsEffectivelyHidden || SeesAll || Manages(task) || IsConfirmedOn(task);
+        !task.IsEffectivelyHidden || SeesAll || Manages(task) || task.Assignments.Any(a => a.UserId == UserId);
 
     /// <summary>
     /// A hidden team's tasks page is found only by those who see all, its managers, and people confirmed on one of

@@ -8,18 +8,7 @@
     Func<TaskInfo, IHtmlContent> priorityCell = @<text>@if (item.Priority != SlotPriority.None) { <status-badge value="@item.Priority" /> }</text>;
     Func<TaskInfo, IHtmlContent> placeCell = @<text>@if (Model.Places.TryGetValue(item.Id, out var place))
         {
-            if (place == MyPlace.CanClaim)
-            {
-                <partial name="_ClaimButton" model="new ClaimButtonModel(item, Model.ReturnUrl, Small: true, Primary: false)" />
-            }
-            else if (place == MyPlace.Requested)
-            {
-                <span class="text-muted small"><i class="fa-solid fa-hourglass-half" aria-hidden="true"></i> @Localizer["Tasks_RequestWaiting"]</span>
-            }
-            else
-            {
-                <span class="text-muted small"><i class="fa-solid fa-check" aria-hidden="true"></i> @Localizer["Tasks_YouAreOn"]</span>
-            }
+            <partial name="_ClaimButton" model="new ClaimButtonModel(item, Model.ReturnUrl, Small: true, Primary: false, place)" />
         }</text>;
     var builder = TableModel.For(Model.Tasks)
         .Template(Localizer["Tasks_Col_Task"].Value, titleCell, null, t => t.Title);

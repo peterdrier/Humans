@@ -2,7 +2,7 @@
 
 @{
     ViewData["Title"] = Localizer["Tasks_List_Title"].Value;
-    var here = Url.Action("Index", "Tasks")!;
+    var here = Url.Action("Index", "Tasks") + Context.Request.QueryString;
 }
 
 <page-header title="@(Localizer["Tasks_List_Title"].Value)">

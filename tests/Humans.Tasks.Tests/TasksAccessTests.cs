@@ -58,7 +58,7 @@ public sealed class TasksAccessTests
     [InlineData(Who.Human, false, false, true)]
     [InlineData(Who.Human, true, false, false)]
     [InlineData(Who.Human, false, true, false)]
-    [InlineData(Who.RequestedOnly, true, false, false)]
+    [InlineData(Who.RequestedOnly, true, false, true)]
     [InlineData(Who.ConfirmedOnTask, true, false, true)]
     [InlineData(Who.ConfirmedOnTask, false, true, true)]
     [InlineData(Who.Manager, true, false, true)]

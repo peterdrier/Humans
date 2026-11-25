@@ -26,7 +26,7 @@ Pieces of work with an end, hanging on a team. A task is to a role (standing res
 | `GET /Tasks` | All tasks the viewer may see, filters; listed tasks by default. Links a manager to each team they manage. In the main nav. | Signed-in members |
 | `GET /Tasks/Team/{slug}` | A team's tasks; add form for managers, starting on the active event | Signed-in members |
 | `GET /Tasks/{id}` | One task: description, dates, people, waiting-on, the viewer's claim state; managers edit, assign, link, delete and see the requests card | Anyone who can see it; 404 otherwise |
-| `GET /Tasks/Open` | The open-tasks board: every task the viewer may claim (`TasksAccess.CanClaim`: listed, not done or cancelled, a free slot, not already on or asked), most needed first, then title; open-slot and critical tiles; a claim button on each row. Linked from `/Tasks` and team pages | Signed-in members |
+| `GET /Tasks/Open` | The open-tasks board: every listed task the viewer can see with a free slot, most needed first, then title; open-slot and critical tiles; each row shows the viewer's place (claim button, waiting, or on it). Linked from `/Tasks` and team pages | Signed-in members |
 | `POST /Tasks/{id}/Claim`, `/Release`, `/Withdraw` | The caller's own claim (or request), release, withdrawal. The controller checks only that the task is visible (404 otherwise); the service refuses every state case in words | Anyone who can see the task |
 | `POST /Tasks/{id}/Approve`, `/Decline` (`userId`, decline `reason`) | Answer a request | `Tasks.Manage` on the task's team; 403 otherwise, 404 first when hidden |
 | `GET /Tasks/Admin` | Read-only per-team counts and every blocked task with its note. The admin sidebar's Tasks group. English only (admin page). | TasksAdmin, Board, Admin (`TasksPolicies.Read`) |
@@ -56,24 +56,24 @@ Pieces of work with an end, hanging on a team. A task is to a role (standing res
 - `DeclineRequestAsync(taskId, userId, reason?, actor)`: deletes the request; the person may ask again. The optional reason (200 characters at most, trimmed, blank counts as none) is carried only into the email and the audit entry; no column holds it. Emails the person.
 - Approve and decline need a request row (state Requested) and never remove or change a confirmed place. A manager who assigns someone who already asked is told they are already on the task; approving is the way.
 - Claiming, assigning or approving never makes anyone a team member: Tasks calls no write on Teams.
-- Needs-approval, stored since PR 1, takes effect only here, at claim time. Turning it off later does not confirm existing requests.
+- Needs-approval takes effect only here, at claim time. Turning it off later does not confirm existing requests.
 - A manager's unassign removes only a confirmed place; a request is answered with approve or decline, so its email is never skipped.
 
 ### Claim states on the pages
 
-`TasksAccess.PlaceOn(task)` gives the viewer's state (`MyPlace`): **CanClaim** shows "I'll do this", or "Ask to join" with the approval reason when the task needs approval; **Requested** shows "waiting for approval" and Withdraw; **Confirmed** shows "you're on this task" and Leave. No state (full, finished, or not visible) shows nothing: no disabled button. The task page has the card; `/Tasks`, team pages and the board have a Join column. Leaving a hidden task goes back to `/Tasks`, since the task may drop out of sight.
+`TasksAccess.PlaceOn(task)` gives the viewer's state (`MyPlace`): **CanClaim** shows "I'll do this", or "Ask to join" with the approval reason when the task needs approval (on list rows too); **Requested** shows "waiting for approval" and Withdraw; **Confirmed** shows "you're on this task" and Leave. No state (full, finished, or not visible) shows nothing: no disabled button. The task page has the card; `/Tasks`, team pages and the board have a Join column. Leaving a hidden task goes back to `/Tasks`, since the task may drop out of sight.
 
 ### The requests card
 
-The waiting requests (state Requested) on unfinished tasks, oldest first, each with `<vc:human>`, Approve and Decline (optional reason, 200 characters). On the task page and on the team page (`#requests`, with the task named on each row), and only for viewers who manage the task's team: TasksAdmin and Admin through `Tasks.Manage` everywhere. Home's entry counts the same set and links to the team page. The People list and every slot count show confirmed people only.
+The waiting requests (state Requested, `TaskInfo.WaitingRequests`), oldest first, done and cancelled tasks included since they still owe an answer, each with `<vc:human>`, Approve and Decline (optional reason, 200 characters). On the task page and on the team page (`#requests`, with the task named on each row), and only for viewers who manage the task's team: TasksAdmin and Admin through `Tasks.Manage` everywhere. Home's entry counts the same set and links to the team page. The People list and every slot count show confirmed people only.
 
 ### The two emails
 
-`TasksEmails` (`Services/TasksEmails.cs`) builds the approved and the declined email, category `VolunteerUpdates`, templates `task_request_approved` and `task_request_declined`, in the recipient's preferred language (English when unsupported), with HTML-encoded substitutions and a link to `/Tasks/{id}`. Copy lives in `TasksResource` under `Tasks_Email_*` in all seven cultures. `TasksEmailPreviews` puts the samples in the gallery at `/Email/EmailPreview`. Email only sends: `TaskService` calls `IEmailService.SendAsync` after the change is saved and audited. A failed or impossible send (no effective address) is logged and never undoes the answer. Nothing else in Tasks sends email: claim, release, request and withdraw send none.
+`TasksEmails` (`Services/TasksEmails.cs`) builds the approved and the declined email, category `VolunteerUpdates`, templates `task_request_approved` and `task_request_declined`, in the recipient's preferred language (English when unsupported), with HTML-encoded substitutions and a link to `/Tasks/{id}`. Copy lives in `TasksResource` under `Tasks_Email_*` in all seven cultures. `TasksEmailPreviews` puts the samples in the gallery at `/Email/EmailPreview`. Email only sends: `TaskService` calls `IEmailService.SendAsync` after the change is saved and audited. A failed send is logged and never undoes the answer. Nothing else in Tasks sends email: claim, release, request and withdraw send none.
 
 ### Home
 
-`Section` implements `ISectionThingsToDo`: one entry per team with waiting requests on unfinished tasks, for people who hold `Tasks.Manage` on that team (`IPermissionService.GetOwnersAsync`; that already includes every team for TasksAdmin and Admin, and a team's coordinators). Key `tasks-requests-{teamId}`, linking to `/Tasks/Team/{slug}`. Requests on done or cancelled tasks are not counted; requests on hidden tasks are, because the viewer manages them.
+`Section` implements `ISectionThingsToDo`: one entry per team with waiting requests (`TaskInfo.WaitingRequests`), for people who hold `Tasks.Manage` on that team (`IPermissionService.GetOwnersAsync`; that already includes every team for TasksAdmin and Admin, and a team's coordinators). Key `tasks-requests-{teamId}`, linking to `/Tasks/Team/{slug}`. Requests on done, cancelled and hidden tasks are counted: they still owe an answer, and the viewer manages them.
 
 ## Data Model
 
@@ -107,7 +107,7 @@ The waiting requests (state Requested) on unfinished tasks, oldest first, each w
 - A person is on a task at most once (confirmed or requested), and must exist to be assigned.
 - Only confirmed people fill slots. Open slots are slots minus confirmed, never below zero; overfilling by claiming races, approving or assigning is allowed and shows as 5 of 4.
 - An event is picked only if it exists and is not withdrawn; a task keeps an event withdrawn later.
-- Hidden tasks, and every task of a hidden team, show only to managers of the team, people confirmed on them, TasksAdmin, Board and Admin. A hidden task a viewer cannot see is "a hidden task" in waiting-on lists, without its status.
+- Hidden tasks, and every task of a hidden team, show only to managers of the team, people confirmed on them or asking to join them, TasksAdmin, Board and Admin. A hidden task a viewer cannot see is "a hidden task" in waiting-on lists, without its status.
 - A done or cancelled task is never shown as waiting.
 - A hidden team's tasks page (`/Tasks/Team/{slug}`) is found only by TasksAdmin, Board, Admin, the team's managers and people confirmed on one of its tasks; 404 for everyone else.
 - Services are auth-free: controllers build `TasksAccess` (`Authorization/TasksAccess.cs`) from `IPermissionService` and the `TasksPolicies.Read` policy, and check it before every write and filter every read. Tests: `tests/Humans.Tasks.Tests/TasksAccessTests.cs`.
@@ -118,13 +118,13 @@ The waiting requests (state Requested) on unfinished tasks, oldest first, each w
 
 ## Negative Access Rules
 
-- A member **cannot** see a hidden task, or any task of a hidden team, unless they manage its team, are confirmed on it, or are TasksAdmin, Board or Admin. `/Tasks/{id}` answers 404.
+- A member **cannot** see a hidden task, or any task of a hidden team, unless they manage its team, are on it or asking to join it, or are TasksAdmin, Board or Admin. `/Tasks/{id}` answers 404.
 - A member **cannot** create, edit, assign, unassign, link, hide, cancel or delete tasks without `Tasks.Manage` on the task's team.
 - A key holder **cannot** bulk-load a payload that names a team where they lack `Tasks.Manage`, or a team that does not exist: the same 403 for both, and nothing is checked or created, even for the other teams.
 - A bulk load **cannot** put people or a status on a task, or link to a task outside the payload.
 - A manager **cannot** touch tasks of a parent or sibling team, and **cannot** move a task to a team they do not manage.
 - A person confirmed on a task **cannot** cancel it, edit it, or change who is on it.
-- A person only requested on a task **cannot** set its status and does not see it if hidden.
+- A person only requested on a task **cannot** set its status; they still see it when hidden, so they can withdraw.
 - A member **cannot** claim a task they cannot see, a done or cancelled task, a full one, or one they are already on or have asked to join (`TasksAccess.CanClaim` for the button, the service for the state rules).
 - A member **cannot** approve or decline requests, release someone else's place, or withdraw someone else's request: approve and decline need `Tasks.Manage` on the task's team; release and withdraw act only on the caller's own row.
 - A manager **cannot** approve or decline a request that does not exist, and approving or declining never touches a confirmed place.
@@ -156,7 +156,7 @@ The waiting requests (state Requested) on unfinished tasks, oldest first, each w
 
 **Owning services:** `TaskService`
 **Owned tables:** `task_items`, `task_assignments`, `task_dependencies`
-**Status:** (A) Migrated: new section, 2026-11-22 (PR 1 of 5); bulk load (PR 2); claiming, requests, emails, Home entries and the open-tasks board (PR 3).
+**Status:** (A) Migrated: new section, 2026-11-22; bulk load; claiming, requests, emails, Home entries and the open-tasks board.
 
 ### Public contract
 

@@ -97,9 +97,9 @@ public sealed class Section : ISection, ISectionRoles, ISectionNav, ISectionAdmi
             return [];
 
         var waiting = (await services.GetRequiredService<ITaskService>().GetTasksAsync(ct))
-            .Where(t => !t.IsFinished && managed.Contains(t.Owner.Id))
+            .Where(t => managed.Contains(t.Owner.Id))
             .GroupBy(t => t.Owner.Id)
-            .Select(g => (TeamId: g.Key, g.First().TeamName, g.First().TeamSlug, Count: g.Sum(t => t.Assignments.Count(a => !a.IsConfirmed))))
+            .Select(g => (TeamId: g.Key, g.First().TeamName, g.First().TeamSlug, Count: g.Sum(t => t.WaitingRequests.Count())))
             .Where(t => t.Count > 0)
             .ToList();
         if (waiting.Count == 0)

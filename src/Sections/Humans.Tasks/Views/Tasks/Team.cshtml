@@ -20,7 +20,7 @@
 </page-header>
 
 @{
-    var teamUrl = Url.Action("Team", "Tasks", new { slug = Model.TeamSlug })!;
+    var teamUrl = Url.Action("Team", "Tasks", new { slug = Model.TeamSlug }) + Context.Request.QueryString;
 }
 
 @if (Model.Requests.Count > 0)

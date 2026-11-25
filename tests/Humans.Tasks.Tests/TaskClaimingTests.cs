@@ -299,17 +299,6 @@ public sealed class TaskClaimingTests
     }
 
     [HumansFact]
-    public async Task Approve_SendsNoEmail_ToAPersonWithNoAddress()
-    {
-        var task = await _kit.CreateAsync(Input(needsApproval: true));
-        await ClaimAsync(task.Id);
-
-        (await _kit.Service.ApproveRequestAsync(task.Id, _sam, _kit.Actor, Ct)).Succeeded.Should().BeTrue();
-
-        _kit.SentEmails.Should().BeEmpty();
-    }
-
-    [HumansFact]
     public async Task Decline_RemovesTheRequest_SendsTheReasonByEmailAndAuditsIt_AndThePersonMayAskAgain()
     {
         _kit.GiveEmail(_sam, "sam@example.com");

@@ -15,12 +15,12 @@ Pieces of work with an end, hanging on a team: a **Task** is to a Role (standing
 | Who | Can |
 |---|---|
 | Signed-in human | See non-hidden tasks |
-| Confirmed on a task | Set status to do/in progress/blocked/done; still see it if hidden |
+| Confirmed on a task | Set status to do/in progress/blocked/done; still see it if hidden (so does someone asking to join) |
 | Manager (`Tasks.Manage` on the team, inherited down sub-teams; coordinators hold it) | Create, edit, assign, unassign, set dependencies, hide, cancel, delete; move a task needs both teams |
 | `TasksAdmin` / Admin | The same on every team |
 | Board | See everything, hidden included; no change rights |
 
-Hidden tasks (and every task of a hidden team) show only to managers, people on them, `TasksAdmin`, Board and Admin.
+Hidden tasks (and every task of a hidden team) show only to managers, people on them or asking to join, `TasksAdmin`, Board and Admin.
 
 ## Pages
 
@@ -37,7 +37,7 @@ Hidden tasks (and every task of a hidden team) show only to managers, people on 
 ## Later PRs
 
 - **PR 2, bulk load** (built): `POST /api/backdoor/tasks/bulk` takes a set of tasks (payload-local keys, dependencies by key, dates fixed, a day number, or a date Tasks converts). All or nothing, dry-run flag, every problem listed, caller needs `Tasks.Manage` on every team. No people, no status. Loading a payload twice makes the tasks twice. The Backdoor opening-up (keys for people with `Tasks.Manage` or `TasksAdmin`) is Peter's and had not landed when this was built.
-- **PR 3, claiming** (built): claim/release; without approval a claim confirms at once, with it a request (takes no slot) a manager approves or declines (optional reason). Overfilling is allowed. Approved/declined emails (`VolunteerUpdates`); waiting requests in Home's things to do. Being on a task never adds team membership. The open-tasks board `/Tasks/Open` lists what the viewer may claim; the task page shows the viewer's state (claim, waiting with withdraw, on it with leave); managers answer requests in a requests card on the task and team pages, which only they see.
+- **PR 3, claiming** (built): claim/release; without approval a claim confirms at once, with it a request (takes no slot) a manager approves or declines (optional reason). Overfilling is allowed. Approved/declined emails (`VolunteerUpdates`); waiting requests in Home's things to do. Being on a task never adds team membership. The open-tasks board `/Tasks/Open` lists every visible task with a free slot, each row showing the viewer's place; the task page shows the viewer's state (claim, waiting with withdraw, on it with leave); managers answer requests in a requests card on the task and team pages, which only they see.
 - **PR 4**: tasks card on the team page via a named slot in `Humans.Teams.Contracts` (copied from `ITeamRolesPart`).
 - **PR 5**: timeline and dependency graph.
 

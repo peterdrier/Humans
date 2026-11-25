@@ -117,12 +117,12 @@ public sealed class TasksThingsToDoTests
     }
 
     [HumansFact]
-    public async Task RequestsOnADoneOrCancelledTask_AreNotCounted()
+    public async Task RequestsOnADoneTask_AreStillCounted_SinceTheyOweAnAnswer()
     {
         var done = await RequestAsync(Production, "Old");
         await _kit.SetStatusAsync(done, Humans.Tasks.Domain.TaskItemStatus.Done);
 
-        (await EntriesAsync(_manager, Production)).Should().BeEmpty();
+        (await EntriesAsync(_manager, Production)).Should().ContainSingle();
     }
 
     [HumansFact]

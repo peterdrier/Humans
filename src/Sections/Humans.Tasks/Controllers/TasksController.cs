@@ -40,7 +40,7 @@ internal sealed class TasksController(
         if (await AccessAsync(ct) is not { } access) return Unauthorized();
 
         var open = (await tasks.GetListedTasksAsync(scope: null, ct))
-            .Where(access.CanClaim)
+            .Where(t => access.CanSee(t) && !t.IsFinished && t.OpenSlots > 0)
             .OrderBy(t => TaskPriorityOrder.Rank(t.Priority))
             .ThenBy(t => t.Title, StringComparer.CurrentCultureIgnoreCase)
             .ToList();
@@ -284,10 +284,10 @@ internal sealed class TasksController(
             canManage ? RequestsOn([task]) : []);
     }
 
-    /// <summary>Waiting requests on unfinished tasks, oldest first. Home counts the same set.</summary>
+    /// <summary>Waiting requests, oldest first.</summary>
     private static IReadOnlyList<RequestRow> RequestsOn(IEnumerable<TaskInfo> onTasks) =>
-        [.. onTasks.Where(t => !t.IsFinished)
-            .SelectMany(t => t.Assignments.Where(a => !a.IsConfirmed).Select(a => (Task: t, Assignment: a)))
+        [.. onTasks
+            .SelectMany(t => t.WaitingRequests.Select(a => (Task: t, Assignment: a)))
             .OrderBy(r => r.Assignment.CreatedAt)
             .Select(r => new RequestRow(r.Task, r.Assignment.UserId))];
 

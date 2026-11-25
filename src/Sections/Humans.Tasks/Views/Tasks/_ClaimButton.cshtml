@@ -1,10 +1,25 @@
-@* One claim form: "I'll do this", or "Ask to join" when a manager has to approve. *@
+@* One claim form: "I'll do this", or "Ask to join" when a manager has to approve. A list row with no claim to make shows the viewer's place instead. *@
 @model ClaimButtonModel
 
-<form action="@Url.Action("Claim", "Tasks", new { id = Model.Task.Id })" method="post" class="d-inline">
-    @Html.AntiForgeryToken()
-    <input type="hidden" name="returnUrl" value="@Model.ReturnUrl" />
-    <button type="submit" class="@(Model.Small ? "btn btn-sm" : "btn") @(Model.Primary ? "btn-primary" : "btn-outline-primary")">
-        @(Model.Task.NeedsApproval ? Localizer["Tasks_AskToJoin"] : Localizer["Tasks_Claim"])
-    </button>
-</form>
+@if (Model.Place == MyPlace.Requested)
+{
+    <span class="text-muted small"><i class="fa-solid fa-hourglass-half" aria-hidden="true"></i> @Localizer["Tasks_RequestWaiting"]</span>
+}
+else if (Model.Place == MyPlace.Confirmed)
+{
+    <span class="text-muted small"><i class="fa-solid fa-check" aria-hidden="true"></i> @Localizer["Tasks_YouAreOn"]</span>
+}
+else
+{
+    <form action="@Url.Action("Claim", "Tasks", new { id = Model.Task.Id })" method="post" class="d-inline">
+        @Html.AntiForgeryToken()
+        <input type="hidden" name="returnUrl" value="@Model.ReturnUrl" />
+        <button type="submit" class="@(Model.Small ? "btn btn-sm" : "btn") @(Model.Primary ? "btn-primary" : "btn-outline-primary")">
+            @(Model.Task.NeedsApproval ? Localizer["Tasks_AskToJoin"] : Localizer["Tasks_Claim"])
+        </button>
+    </form>
+    @if (Model.Small && Model.Task.NeedsApproval && !string.IsNullOrWhiteSpace(Model.Task.ApprovalReason))
+    {
+        <div class="text-muted small">@Model.Task.ApprovalReason</div>
+    }
+}

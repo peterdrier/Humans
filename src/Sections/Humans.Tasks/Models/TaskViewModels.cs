@@ -39,8 +39,11 @@ internal enum MyPlace { CanClaim, Requested, Confirmed }
 internal sealed record TaskTableModel(
     IReadOnlyList<TaskInfo> Tasks, bool ShowTeam, IReadOnlyDictionary<Guid, MyPlace> Places, string ReturnUrl);
 
-/// <summary>A claim form for one task. <paramref name="Primary"/> marks the page's main action; the rest recede.</summary>
-internal sealed record ClaimButtonModel(TaskInfo Task, string ReturnUrl, bool Small, bool Primary);
+/// <summary>
+/// A claim form for one task, or the viewer's <paramref name="Place"/> on it when that is not
+/// <see cref="MyPlace.CanClaim"/>. <paramref name="Primary"/> marks the page's main action; the rest recede.
+/// </summary>
+internal sealed record ClaimButtonModel(TaskInfo Task, string ReturnUrl, bool Small, bool Primary, MyPlace Place = MyPlace.CanClaim);
 
 /// <summary>A request waiting for a manager's answer, with the task it is on.</summary>
 internal sealed record RequestRow(TaskInfo Task, Guid UserId);
@@ -71,7 +74,7 @@ internal sealed record TaskListViewModel(
     IReadOnlyList<TeamChoice> ManagedTeams,
     IReadOnlyDictionary<Guid, MyPlace> Places);
 
-/// <summary>The open-tasks board: every task the viewer may claim, most needed first.</summary>
+/// <summary>The open-tasks board: every task the viewer can see with a free slot, most needed first.</summary>
 internal sealed record OpenBoardViewModel(
     IReadOnlyList<TaskInfo> Tasks, int OpenSlots, int CriticalCount, IReadOnlyDictionary<Guid, MyPlace> Places);
 

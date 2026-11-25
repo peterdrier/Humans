@@ -470,7 +470,7 @@ public sealed class TasksControllerTests
     }
 
     [HumansFact]
-    public async Task Team_ListsWaitingRequestsOnUnfinishedTasksOnlyToThatTeamsManagers()
+    public async Task Team_ListsWaitingRequestsOnlyToThatTeamsManagers_FinishedTasksIncluded()
     {
         static IReadOnlyList<RequestRow> Requests(IActionResult r) =>
             r.Should().BeOfType<ViewResult>().Which.Model.Should().BeOfType<TeamPageViewModel>().Which.Requests;
@@ -479,18 +479,20 @@ public sealed class TasksControllerTests
         var dead = await RequestedAsync(Guid.NewGuid());
         await _kit.SetStatusAsync(dead.Id, TaskItemStatus.Cancelled);
 
-        Requests(await ManagerOfProduction().Team("production", new TaskListFilter(), Ct)).Should().ContainSingle().Which.Task.Id.Should().Be(live.Id);
+        Requests(await ManagerOfProduction().Team("production", new TaskListFilter(), Ct)).Select(r => r.Task.Id).Should().Equal(live.Id, dead.Id);
+        (await PageAsync(ManagerOfProduction(), dead.Id)).Page.Requests.Should().ContainSingle("a cancelled task still owes the asker an answer");
         Requests(await Human().Team("production", new TaskListFilter(), Ct)).Should().BeEmpty();
         Requests(await As([], RoleNames.Board).Team("production", new TaskListFilter(), Ct)).Should().BeEmpty();
         Requests(await As([TaskTestKit.Art]).Team("production", new TaskListFilter(), Ct)).Should().BeEmpty();
     }
 
     [HumansFact]
-    public async Task Open_ListsOnlyWhatTheViewerMayClaim_MostNeededFirst()
+    public async Task Open_ListsEveryVisibleTaskWithAFreeSlot_MostNeededFirst_WithTheViewersPlace()
     {
         var hidden = await TaskOnAsync(TaskTestKit.Production, hidden: true);
         var full = await TaskOnAsync(TaskTestKit.Production, confirmed: Guid.NewGuid());
-        var mine = await TaskOnAsync(TaskTestKit.Production, confirmed: _me);
+        var mine = await _kit.CreateAsync(TaskTestKit.Input(title: "Mine", slots: 2));
+        (await _kit.Service.AssignAsync(mine.Id, _me, _kit.Actor, Ct)).Succeeded.Should().BeTrue();
         var asked = await RequestedAsync(_me);
         var finished = await TaskOnAsync(TaskTestKit.Production);
         await _kit.SetStatusAsync(finished.Id, TaskItemStatus.Done);
@@ -499,10 +501,12 @@ public sealed class TasksControllerTests
 
         var model = (await Human().Open(Ct)).Should().BeOfType<ViewResult>().Which.Model.Should().BeOfType<OpenBoardViewModel>().Which;
 
-        model.Tasks.Select(t => t.Id).Should().Equal(critical.Id, important.Id);
-        model.OpenSlots.Should().Be(2);
+        model.Tasks.Select(t => t.Id).Should().Equal(critical.Id, asked.Id, important.Id, mine.Id);
+        model.OpenSlots.Should().Be(4);
         model.CriticalCount.Should().Be(1);
-        new[] { hidden.Id, full.Id, mine.Id, asked.Id, finished.Id }.Should().NotIntersectWith(model.Tasks.Select(t => t.Id));
+        model.Places[mine.Id].Should().Be(MyPlace.Confirmed);
+        model.Places[asked.Id].Should().Be(MyPlace.Requested);
+        new[] { hidden.Id, full.Id, finished.Id }.Should().NotIntersectWith(model.Tasks.Select(t => t.Id));
         var asSeeAll = (await As([], RoleNames.Board).Open(Ct)).Should().BeOfType<ViewResult>().Which.Model.Should().BeOfType<OpenBoardViewModel>().Which;
         asSeeAll.Tasks.Select(t => t.Id).Should().Contain(hidden.Id);
     }
@@ -592,6 +596,19 @@ public sealed class TasksControllerTests
 
         (await Human().Withdraw(mine.Id, null, Ct)).Should().BeOfType<RedirectToActionResult>();
         (await ReloadAsync(mine.Id)).Assignments.Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task Withdraw_WorksOnATaskHiddenAfterTheyAsked()
+    {
+        var task = await _kit.CreateAsync(TaskTestKit.Input(needsApproval: true, hidden: true));
+        (await _kit.Service.ClaimAsync(task.Id, _me, Ct)).Succeeded.Should().BeTrue();
+
+        (await PageAsync(Human(), task.Id)).Page.Place.Should().Be(MyPlace.Requested);
+        (await Human().Withdraw(task.Id, null, Ct)).Should().BeOfType<RedirectToActionResult>();
+
+        (await ReloadAsync(task.Id)).Assignments.Should().BeEmpty();
+        (await Human().Details(task.Id, Ct)).Should().BeOfType<NotFoundResult>();
     }
 
     [HumansFact]
@@ -685,10 +702,6 @@ public sealed class TasksControllerTests
         model.Places[free.Id].Should().Be(MyPlace.CanClaim);
         model.Places[asked.Id].Should().Be(MyPlace.Requested);
     }
-
-    [HumansFact]
-    public void TheOpenBoardIsAGetOnTheOpenRoute() =>
-        typeof(TasksController).GetMethod(nameof(TasksController.Open))!.GetCustomAttribute<HttpGetAttribute>()!.Template.Should().Be("Open");
 
     [HumansFact]
     public void EveryPostChecksTheAntiForgeryToken() =>

@@ -135,15 +135,11 @@ internal sealed partial class TaskService
     {
         try
         {
-            var person = await users.GetUserInfoAsync(userId, ct);
-            if (person is null || string.IsNullOrWhiteSpace(person.Email))
-            {
-                logger.LogWarning("Skipping the task request answer email for {UserId} on task {TaskId}: no effective email", userId, task.Id);
-                return;
-            }
+            var person = await users.GetUserInfoAsync(userId, ct)
+                ?? throw new InvalidOperationException($"No user {userId} for a request on task {task.Id}");
 
             var request = new TaskAnswerEmail(
-                person.Id, person.Email, person.BurnerName, task.Id, task.Title, TeamName(task, snapshot), reason,
+                person.Id, person.Email!, person.BurnerName, task.Id, task.Title, TeamName(task, snapshot), reason,
                 person.PreferredLanguage.IsSupportedCultureCode() ? person.PreferredLanguage : CultureCatalog.DefaultCultureCode);
             await email.SendAsync(approved ? emails.RequestApproved(request) : emails.RequestDeclined(request), ct);
         }

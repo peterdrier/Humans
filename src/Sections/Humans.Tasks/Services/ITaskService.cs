@@ -158,6 +158,9 @@ internal sealed record TaskInfo(
     /// <summary>Slots minus confirmed people, never below zero. Requests take no slot.</summary>
     public int OpenSlots => Math.Max(0, SlotCount - ConfirmedCount);
 
+    /// <summary>Requests waiting for a manager's answer, oldest first, on a finished task too: it still owes an answer.</summary>
+    public IEnumerable<TaskAssignmentInfo> WaitingRequests => Assignments.Where(a => !a.IsConfirmed).OrderBy(a => a.CreatedAt);
+
     /// <summary>An unfinished task with something it waits on not finished. A cancelled task holds nothing up.</summary>
     public bool IsWaiting => !IsFinished && WaitingOn.Any(l => l.Status is not (TaskItemStatus.Done or TaskItemStatus.Cancelled));
 
