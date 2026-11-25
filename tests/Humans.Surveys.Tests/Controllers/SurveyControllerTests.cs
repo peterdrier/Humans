@@ -1,3 +1,4 @@
+using Humans.Testing;
 using Humans.Governance.Contracts;
 using Humans.Shifts.Contracts;
 using Humans.Teams.Contracts;
@@ -659,7 +660,7 @@ public sealed class SurveyControllerTests
         out ISession session,
         Guid? userId = null)
     {
-        var localizer = Substitute.For<IStringLocalizer<SurveysResource>>();
+        var localizer = Substitute.For<IStringLocalizer<SurveysResource>>().AddFormatting();
         localizer["Surveys_ThankYouFallback"]
             .Returns(new LocalizedString("Surveys_ThankYouFallback", "Thanks!"));
         session = new InMemorySession();

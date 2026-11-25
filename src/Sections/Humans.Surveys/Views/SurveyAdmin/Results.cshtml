@@ -34,7 +34,7 @@ else
 <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-4">
     <div>
         <strong>@Localizer["Surveys_Admin_Results_QuestionResultsLabel"]</strong>
-        <span class="text-muted">@string.Format(Localizer["Surveys_Admin_Results_ResponseCount"].Value, Model.SelectedResponseCount)</span>
+        <span class="text-muted">@Localizer["Surveys_Admin_Results_ResponseCount", Model.SelectedResponseCount]</span>
     </div>
     <div class="btn-group" role="group" aria-label="@Localizer["Surveys_Admin_Results_FilterAriaLabel"]">
         <a asp-action="Results" asp-route-id="@Model.SurveyId" asp-route-scope="@SurveyResultsScope.Unique"
@@ -392,7 +392,7 @@ else
                 <div class="accordion-item">
                     <h3 class="accordion-header" id="@headingId">
                         <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#@collapseId" aria-expanded="false" aria-controls="@collapseId">
-                            @string.Format(Localizer["Surveys_Admin_Results_BallotLabel"].Value, i + 1)
+                            @Localizer["Surveys_Admin_Results_BallotLabel", i + 1]
                         </button>
                     </h3>
                     <div id="@collapseId" class="accordion-collapse collapse" aria-labelledby="@headingId" data-bs-parent="#unattributed-ballots">

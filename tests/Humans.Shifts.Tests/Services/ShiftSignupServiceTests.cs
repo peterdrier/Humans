@@ -1,3 +1,4 @@
+using Humans.Testing;
 using Humans.Permissions.Contracts;
 using Humans.Base.Authorization;
 using Humans.Shifts.Services.Dtos;
@@ -68,7 +69,7 @@ public sealed class ShiftSignupServiceTests : ShiftsTestHarness
     private readonly ShiftSignupService _service;
     private readonly ITeamService _teamService;
     private readonly IRoleAssignmentService _roleAssignmentService;
-    private readonly IStringLocalizer<ShiftsResource> _localizer = Substitute.For<IStringLocalizer<ShiftsResource>>();
+    private readonly IStringLocalizer<ShiftsResource> _localizer = Substitute.For<IStringLocalizer<ShiftsResource>>().AddFormatting();
     private readonly IUserService _users = Substitute.For<IUserService>();
 
     private static readonly Instant TestNow = Instant.FromUtc(2026, 6, 15, 12, 0);

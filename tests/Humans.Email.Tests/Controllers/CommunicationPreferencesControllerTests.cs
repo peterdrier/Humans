@@ -1,3 +1,4 @@
+using Humans.Testing;
 using System.Globalization;
 using System.Reflection;
 using System.Security.Claims;
@@ -27,7 +28,7 @@ public class CommunicationPreferencesControllerTests
     private readonly Guid _userId = Guid.NewGuid();
     private readonly IUserService _userService = Substitute.For<IUserService>();
     private readonly ICommunicationPreferenceManagement _commPrefService = Substitute.For<ICommunicationPreferenceManagement>();
-    private readonly IStringLocalizer<EmailResource> _localizer = Substitute.For<IStringLocalizer<EmailResource>>();
+    private readonly IStringLocalizer<EmailResource> _localizer = Substitute.For<IStringLocalizer<EmailResource>>().AddFormatting();
     private readonly CommunicationPreferencesController _controller;
 
     public CommunicationPreferencesControllerTests()

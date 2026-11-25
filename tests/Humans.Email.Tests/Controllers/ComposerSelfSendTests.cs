@@ -1,3 +1,4 @@
+using Humans.Testing;
 using System.Reflection;
 using System.Security.Claims;
 using AwesomeAssertions;
@@ -31,7 +32,7 @@ public sealed class ComposerSelfSendTests
 
     private ComposerSelfSendService BuildService()
     {
-        var localizer = Substitute.For<IStringLocalizer<EmailResource>>();
+        var localizer = Substitute.For<IStringLocalizer<EmailResource>>().AddFormatting();
         localizer["Email_ComposerSelfTest_Subject"].Returns(new LocalizedString("s", "[Test] {0}"));
         localizer["Email_ComposerSelfTest_DefaultSubject"].Returns(new LocalizedString("d", "[Test] Preview"));
         return new ComposerSelfSendService(

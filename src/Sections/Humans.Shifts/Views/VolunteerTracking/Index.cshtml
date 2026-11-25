@@ -31,7 +31,7 @@
         <div class="card-body">
             <div class="text-muted small mb-2">
                 <i class="fa-regular fa-calendar-day me-1"></i>
-                @string.Format(Localizer["Shifts_VolTrack_AsOfToday"].Value, Model.Today.ToDate())
+                @Localizer["Shifts_VolTrack_AsOfToday", Model.Today.ToDate()]
             </div>
             <div class="row g-3 align-items-center mb-3">
                 <div class="col-md-3">

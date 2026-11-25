@@ -29,7 +29,7 @@ internal sealed class ComposerSelfSendService(
 
         var fullSubject = string.IsNullOrWhiteSpace(subject)
             ? localizer["Email_ComposerSelfTest_DefaultSubject"].Value
-            : string.Format(CultureInfo.CurrentCulture, localizer["Email_ComposerSelfTest_Subject"].Value, subject.Trim());
+            : localizer["Email_ComposerSelfTest_Subject", subject.Trim()];
 
         // Closing the composer must not interrupt sending after the account read.
         await emailService.SendAsync(new EmailMessage(

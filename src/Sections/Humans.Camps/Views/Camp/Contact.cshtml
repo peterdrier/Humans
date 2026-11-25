@@ -1,6 +1,6 @@
 @model Humans.Camps.Models.CampContactViewModel
 @{
-    ViewData["Title"] = string.Format(Localizer["Camps_Contact_Title"].Value, Model.CampName);
+    ViewData["Title"] = Localizer["Camps_Contact_Title", Model.CampName].Value;
 }
 
 @section Crumbs {
@@ -9,7 +9,7 @@
     <span>@Localizer["Camps_Contact_Breadcrumb"]</span>
 }
 
-<page-header title="@(string.Format(Localizer["Camps_Contact_Heading"].Value, Model.CampName))" />
+<page-header title="@(Localizer["Camps_Contact_Heading", Model.CampName])" />
 
 
 <div class="card">

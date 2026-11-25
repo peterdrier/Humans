@@ -33,7 +33,7 @@
                         <i class="fa-solid fa-clock"></i>
                     </div>
                     <div class="flex-grow-1">
-                        @Html.Raw(string.Format(SharedLocalizer["Dashboard_TermExpiresSoon"].Value, Model.TermExpiresAt?.ToDate()))
+                        @Html.Raw(SharedLocalizer["Dashboard_TermExpiresSoon", Model.TermExpiresAt?.ToDate() ?? string.Empty])
                         <br /><small class="text-muted">@SharedLocalizer["Dashboard_MembershipTier"]: @Model.MembershipTier</small>
                     </div>
                     @if (Model.HasPendingApplication)
@@ -73,7 +73,7 @@
                         <span class="badge bg-primary ms-2">@Model.MembershipTier</span>
                         @if (Model.TermExpiresAt.HasValue)
                         {
-                            <br /><small class="text-muted">@Html.Raw(string.Format(SharedLocalizer["Dashboard_TermExpires"].Value, Model.TermExpiresAt.Value.ToDate()))</small>
+                            <br /><small class="text-muted">@Html.Raw(SharedLocalizer["Dashboard_TermExpires", Model.TermExpiresAt.Value.ToDate()])</small>
                         }
                     </div>
                 </div>

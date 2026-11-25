@@ -1,3 +1,4 @@
+using Humans.Testing;
 using Humans.Users.Data;
 using Humans.Auth.Contracts;
 using Humans.Gdpr.Contracts;
@@ -53,7 +54,7 @@ public sealed class DeletionConfirmationLeavesNoOutboxRowTests : IDisposable
         _emailDb = new EmailDbContext(options);
 
         // The builder is sealed, so it is built for real over a stub localizer rather than mocked.
-        var localizer = Substitute.For<IStringLocalizer<UsersResource>>();
+        var localizer = Substitute.For<IStringLocalizer<UsersResource>>().AddFormatting();
         localizer[Arg.Any<string>()].Returns(ci =>
             new LocalizedString(ci.Arg<string>(), ci.Arg<string>() + " {0}"));
         var usersEmails = new UsersEmails(

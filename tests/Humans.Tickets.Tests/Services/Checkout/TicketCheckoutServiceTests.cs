@@ -1,3 +1,4 @@
+using Humans.Testing;
 using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
 using Humans.Base.Configuration;
@@ -106,7 +107,7 @@ public sealed partial class TicketCheckoutServiceTests
         var other = new User { Id = _otherBuyerId, BurnerName = "Moth", FirstName = "Bo", LastName = "Smith", Email = "bo@example.com" };
         _users.GetUserInfoAsync(_otherBuyerId, Arg.Any<CancellationToken>())
             .Returns(UserInfo.Create(other, [], [], UserFixtures.Profile()));
-        var localizer = Substitute.For<IStringLocalizer<TicketsResource>>();
+        var localizer = Substitute.For<IStringLocalizer<TicketsResource>>().AddFormatting();
         localizer[Arg.Any<string>()].Returns(ci => new LocalizedString(ci.Arg<string>(), ci.Arg<string>()));
         localizer["Tickets_Resale_Email_Invite_Body"].Returns(new LocalizedString("body", "{2}"));
         var emails = new TicketsEmails(Options.Create(new EmailSettings()), localizer, NullLogger<TicketsEmails>.Instance);

@@ -1,3 +1,4 @@
+using Humans.Testing;
 using System.Security.Claims;
 using Humans.Users.Contracts;
 using Humans.Email.Contracts;
@@ -29,7 +30,7 @@ public class GuestAccountControllerTests
     private readonly ICommunicationPreferenceLock _lock = Substitute.For<ICommunicationPreferenceLock>();
     private readonly IDataProtectionProvider _dataProtection = new EphemeralDataProtectionProvider();
     private readonly IClock _clock = Substitute.For<IClock>();
-    private readonly IStringLocalizer<EmailResource> _localizer = Substitute.For<IStringLocalizer<EmailResource>>();
+    private readonly IStringLocalizer<EmailResource> _localizer = Substitute.For<IStringLocalizer<EmailResource>>().AddFormatting();
 
     private GuestAccountController BuildSut(User user)
     {

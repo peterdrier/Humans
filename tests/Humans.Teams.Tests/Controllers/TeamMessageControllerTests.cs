@@ -1,3 +1,4 @@
+using Humans.Testing;
 using Xunit;
 using System.Globalization;
 using System.Resources;
@@ -59,9 +60,9 @@ public sealed class TeamMessageControllerTests
 
     public TeamMessageControllerTests()
     {
-        var localizer = Substitute.For<IStringLocalizer<TeamsResource>>();
+        var localizer = Substitute.For<IStringLocalizer<TeamsResource>>().AddFormatting();
         localizer[Arg.Any<string>()].Returns(ci => new LocalizedString(ci.Arg<string>(), ci.Arg<string>()));
-        var shared = Substitute.For<IStringLocalizer<Base.SharedResource>>();
+        var shared = Substitute.For<IStringLocalizer<Base.SharedResource>>().AddFormatting();
         shared[Arg.Any<string>()].Returns(ci => new LocalizedString(ci.Arg<string>(), ci.Arg<string>()));
 
         var teamOptions = new TeamMessageOptionsProvider(_teams, _resources, _users, _commPrefs,

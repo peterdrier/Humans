@@ -722,11 +722,7 @@ internal sealed class EventsController(
         logger.LogInformation(
             "Bulk upload by user {UserId} for camp {CampId}: {Created} created, {Updated} updated.",
             userId, campId, result.CreatedCount, result.UpdatedCount);
-        SetSuccess(string.Format(
-            System.Globalization.CultureInfo.CurrentCulture,
-            localizer["Events_UploadComplete"].Value,
-            result.CreatedCount,
-            result.UpdatedCount));
+        SetSuccess(localizer["Events_UploadComplete", result.CreatedCount, result.UpdatedCount]);
         return RedirectToAction(nameof(MySubmissions));
     }
 
@@ -736,7 +732,7 @@ internal sealed class EventsController(
         ResolveCampName(camp, eventSettingsId)!;
 
     private string FormatEventFeedback(string resourceKey, string title) =>
-        string.Format(localizer[resourceKey].Value, title);
+        localizer[resourceKey, title];
 
     private async Task<CampEventFormViewModel> BuildBarrioFormAsync(string slug, CampInfo camp, EventSettingsInfo burn, CancellationToken ct = default)
     {

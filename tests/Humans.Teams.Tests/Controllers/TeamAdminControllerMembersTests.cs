@@ -1,3 +1,4 @@
+using Humans.Testing;
 using Humans.Settings.Contracts;
 using System.Security.Claims;
 using System.Globalization;
@@ -128,7 +129,7 @@ public class TeamAdminControllerMembersTests
             User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, userId.ToString())], "test"))
         };
         var controller = new TeamAdminController(teams, resources, users, Substitute.For<IEmailProvisioningService>(),
-            auth, NullLogger<TeamAdminController>.Instance, Substitute.For<IStringLocalizer<TeamsResource>>(), Substitute.For<ITicketService>(), Substitute.For<ISettingsService>())
+            auth, NullLogger<TeamAdminController>.Instance, Substitute.For<IStringLocalizer<TeamsResource>>().AddFormatting(), Substitute.For<ITicketService>(), Substitute.For<ISettingsService>())
         {
             ControllerContext = new ControllerContext { HttpContext = http },
             TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>()),
@@ -189,7 +190,7 @@ public class TeamAdminControllerMembersTests
         if (ajax) http.Request.Headers.XRequestedWith = "XMLHttpRequest";
         var controller = new TeamAdminController(teams, Substitute.For<ITeamResourceService>(), users,
             Substitute.For<IEmailProvisioningService>(), authorization, NullLogger<TeamAdminController>.Instance,
-            Substitute.For<IStringLocalizer<TeamsResource>>(), Substitute.For<ITicketService>(), Substitute.For<ISettingsService>())
+            Substitute.For<IStringLocalizer<TeamsResource>>().AddFormatting(), Substitute.For<ITicketService>(), Substitute.For<ISettingsService>())
         {
             ControllerContext = new ControllerContext { HttpContext = http },
             TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>()),
@@ -236,7 +237,7 @@ public class TeamAdminControllerMembersTests
         var authorization = Substitute.For<IAuthorizationService>();
         authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), team, Arg.Any<IEnumerable<IAuthorizationRequirement>>())
             .Returns(AuthorizationResult.Success());
-        var localizer = Substitute.For<IStringLocalizer<TeamsResource>>();
+        var localizer = Substitute.For<IStringLocalizer<TeamsResource>>().AddFormatting();
         localizer["Teams_TeamAdmin_ProvideRejectionReason"].Returns(
             new LocalizedString("Teams_TeamAdmin_ProvideRejectionReason", "Translated reason required"));
         var http = new DefaultHttpContext
@@ -288,7 +289,7 @@ public class TeamAdminControllerMembersTests
             User = new ClaimsPrincipal(new ClaimsIdentity(
                 [new Claim(ClaimTypes.NameIdentifier, userId.ToString())], "test"))
         };
-        var localizer = Substitute.For<IStringLocalizer<TeamsResource>>();
+        var localizer = Substitute.For<IStringLocalizer<TeamsResource>>().AddFormatting();
         localizer[Arg.Any<string>()].Returns(call => new LocalizedString(call.Arg<string>(), call.Arg<string>()));
         var controller = new TeamAdminController(teams, Substitute.For<ITeamResourceService>(),
             users, Substitute.For<IEmailProvisioningService>(), authorization, NullLogger<TeamAdminController>.Instance,
@@ -358,7 +359,7 @@ public class TeamAdminControllerMembersTests
         var logger = Substitute.For<ILogger<TeamAdminController>>();
         var controller = new TeamAdminController(teams, Substitute.For<ITeamResourceService>(), users,
             Substitute.For<IEmailProvisioningService>(), authorization, logger,
-            Substitute.For<IStringLocalizer<TeamsResource>>(), Substitute.For<ITicketService>(), Substitute.For<ISettingsService>())
+            Substitute.For<IStringLocalizer<TeamsResource>>().AddFormatting(), Substitute.For<ITicketService>(), Substitute.For<ISettingsService>())
         {
             ControllerContext = new ControllerContext { HttpContext = http },
             TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>())
@@ -439,7 +440,7 @@ public class TeamAdminControllerMembersTests
         };
         var controller = new TeamAdminController(teams, Substitute.For<ITeamResourceService>(),
             users, Substitute.For<IEmailProvisioningService>(), authorization, NullLogger<TeamAdminController>.Instance,
-            Substitute.For<IStringLocalizer<TeamsResource>>(), Substitute.For<ITicketService>(), Substitute.For<ISettingsService>())
+            Substitute.For<IStringLocalizer<TeamsResource>>().AddFormatting(), Substitute.For<ITicketService>(), Substitute.For<ISettingsService>())
         {
             ControllerContext = new ControllerContext { HttpContext = http, ActionDescriptor = new ControllerActionDescriptor() },
             TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>())
@@ -517,7 +518,7 @@ public class TeamAdminControllerMembersTests
         var controller = new TeamAdminController(teams, Substitute.For<ITeamResourceService>(),
             users,
             Substitute.For<IEmailProvisioningService>(), authorization, NullLogger<TeamAdminController>.Instance,
-            Substitute.For<IStringLocalizer<TeamsResource>>(), Substitute.For<ITicketService>(), Substitute.For<ISettingsService>())
+            Substitute.For<IStringLocalizer<TeamsResource>>().AddFormatting(), Substitute.For<ITicketService>(), Substitute.For<ISettingsService>())
         {
             ControllerContext = new ControllerContext { HttpContext = http },
             TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>()),
@@ -614,7 +615,7 @@ public class TeamAdminControllerMembersTests
         };
         var controller = new TeamAdminController(teams, Substitute.For<ITeamResourceService>(), users,
             Substitute.For<IEmailProvisioningService>(), authorization, NullLogger<TeamAdminController>.Instance,
-            Substitute.For<IStringLocalizer<TeamsResource>>(), Substitute.For<ITicketService>(), Substitute.For<ISettingsService>())
+            Substitute.For<IStringLocalizer<TeamsResource>>().AddFormatting(), Substitute.For<ITicketService>(), Substitute.For<ISettingsService>())
         {
             ControllerContext = new ControllerContext { HttpContext = http },
             TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>())
@@ -666,7 +667,7 @@ public class TeamAdminControllerMembersTests
         };
         var controller = new TeamAdminController(teams, Substitute.For<ITeamResourceService>(),
             users, provisioning, authorization,
-            NullLogger<TeamAdminController>.Instance, Substitute.For<IStringLocalizer<TeamsResource>>(),
+            NullLogger<TeamAdminController>.Instance, Substitute.For<IStringLocalizer<TeamsResource>>().AddFormatting(),
             Substitute.For<ITicketService>(), Substitute.For<ISettingsService>())
         {
             ControllerContext = new ControllerContext { HttpContext = http },
@@ -729,7 +730,7 @@ public class TeamAdminControllerMembersTests
         {
             User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, actorId.ToString())], "Test"))
         };
-        var localizer = Substitute.For<IStringLocalizer<TeamsResource>>();
+        var localizer = Substitute.For<IStringLocalizer<TeamsResource>>().AddFormatting();
         localizer["Teams_RemoveMember_Permission"].Returns(new LocalizedString("Teams_RemoveMember_Permission", reason));
         var controller = new TeamAdminController(teams, Substitute.For<ITeamResourceService>(),
             users, Substitute.For<IEmailProvisioningService>(), authorization,
@@ -792,7 +793,7 @@ public class TeamAdminControllerMembersTests
         resources.GetTeamResourcesAsync(team.Id, Arg.Any<CancellationToken>()).Returns([]);
         var controller = new TeamAdminController(teams, resources, users,
             Substitute.For<IEmailProvisioningService>(), authorization, NullLogger<TeamAdminController>.Instance,
-            Substitute.For<IStringLocalizer<TeamsResource>>(), Substitute.For<ITicketService>(), Substitute.For<ISettingsService>())
+            Substitute.For<IStringLocalizer<TeamsResource>>().AddFormatting(), Substitute.For<ITicketService>(), Substitute.For<ISettingsService>())
         {
             ControllerContext = new ControllerContext
             {
@@ -835,7 +836,7 @@ public class TeamAdminControllerMembersTests
         };
         var controller = new TeamAdminController(teams, Substitute.For<ITeamResourceService>(), users,
             Substitute.For<IEmailProvisioningService>(), authorization, NullLogger<TeamAdminController>.Instance,
-            Substitute.For<IStringLocalizer<TeamsResource>>(), Substitute.For<ITicketService>(), Substitute.For<ISettingsService>())
+            Substitute.For<IStringLocalizer<TeamsResource>>().AddFormatting(), Substitute.For<ITicketService>(), Substitute.For<ISettingsService>())
         {
             ControllerContext = new ControllerContext { HttpContext = http },
             TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>()),

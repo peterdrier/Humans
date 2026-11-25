@@ -1,3 +1,4 @@
+using Humans.Testing;
 using System.Globalization;
 using Humans.Base.Configuration;
 using Humans.Teams.Services;
@@ -27,7 +28,7 @@ internal static class TestTeamsEmails
 
     public static TeamsEmails Create()
     {
-        var localizer = Substitute.For<IStringLocalizer<TeamsResource>>();
+        var localizer = Substitute.For<IStringLocalizer<TeamsResource>>().AddFormatting();
         localizer[Arg.Any<string>()].Returns(call =>
         {
             var key = call.Arg<string>();

@@ -54,7 +54,7 @@ internal sealed class FacilitatedMessageController(
         var viewModel = new SendMessageViewModel
         {
             RecipientId = id,
-            PageTitle = string.Format(localizer["Email_SendMessage_Title"].Value, targetInfo.BurnerName),
+            PageTitle = localizer["Email_SendMessage_Title", targetInfo.BurnerName],
             SenderEmail = currentUser.Email ?? string.Empty,
         };
 
@@ -86,7 +86,7 @@ internal sealed class FacilitatedMessageController(
         }
 
         model.RecipientId = id;
-        model.PageTitle = string.Format(localizer["Email_SendMessage_Title"].Value, targetUser.BurnerName);
+        model.PageTitle = localizer["Email_SendMessage_Title", targetUser.BurnerName];
         model.SenderEmail = currentUser.Email ?? string.Empty;
 
         if (!ModelState.IsValid)
@@ -130,9 +130,7 @@ internal sealed class FacilitatedMessageController(
                 targetUser.Id, currentUser.Id, model.IncludeContactInfo);
         }
 
-        SetSuccess(string.Format(
-            localizer["Email_SendMessage_Success"].Value,
-            targetUser.BurnerName));
+        SetSuccess(localizer["Email_SendMessage_Success", targetUser.BurnerName]);
 
         return RedirectToProfile(id);
     }

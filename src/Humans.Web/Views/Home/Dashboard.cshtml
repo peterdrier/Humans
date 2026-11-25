@@ -13,7 +13,7 @@
                       css-class="me-3" />
             <div>
                 <h1 class="mb-1">
-                    @Html.Raw(string.Format(Localizer["Dashboard_Welcome"].Value, Html.Encode(Model.DisplayName)))
+                    @Html.Raw(Localizer["Dashboard_Welcome", Html.Encode(Model.DisplayName)])
                     <vc:user-parts slot="@Humans.Base.Interfaces.UserPartSlots.DashboardHeading" user-id="@Model.UserId" view-mode="@ProfileCardViewMode.Self" />
                 </h1>
                 <p class="text-muted mb-0">@Localizer["Dashboard_Subtitle"]</p>

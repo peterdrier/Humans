@@ -1,3 +1,4 @@
+using Humans.Testing;
 using Xunit;
 using System.Globalization;
 using System.Resources;
@@ -52,9 +53,9 @@ public sealed class FacilitatedMessageControllerTests
 
     public FacilitatedMessageControllerTests()
     {
-        var localizer = Substitute.For<IStringLocalizer<EmailResource>>();
+        var localizer = Substitute.For<IStringLocalizer<EmailResource>>().AddFormatting();
         localizer[Arg.Any<string>()].Returns(ci => new LocalizedString(ci.Arg<string>(), ci.Arg<string>()));
-        var shared = Substitute.For<IStringLocalizer<Base.SharedResource>>();
+        var shared = Substitute.For<IStringLocalizer<Base.SharedResource>>().AddFormatting();
         shared[Arg.Any<string>()].Returns(ci => new LocalizedString(ci.Arg<string>(), ci.Arg<string>()));
 
         _controller = new FacilitatedMessageController(

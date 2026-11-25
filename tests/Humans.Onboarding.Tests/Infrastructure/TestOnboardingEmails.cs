@@ -1,3 +1,4 @@
+using Humans.Testing;
 using System.Globalization;
 using Humans.Base.Configuration;
 using Humans.Onboarding.Services;
@@ -27,7 +28,7 @@ internal static class TestOnboardingEmails
 
     public static OnboardingEmails Create()
     {
-        var localizer = Substitute.For<IStringLocalizer<OnboardingResource>>();
+        var localizer = Substitute.For<IStringLocalizer<OnboardingResource>>().AddFormatting();
         localizer[Arg.Any<string>()].Returns(call =>
         {
             var key = call.Arg<string>();

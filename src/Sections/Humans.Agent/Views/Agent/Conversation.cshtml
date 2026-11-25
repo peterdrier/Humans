@@ -82,9 +82,7 @@ else
                     @if (isAssistant && msg.FetchedDocs is { Length: > 0 })
                     {
                         @* Collapsed when >1 call. `open` is boolean, so emit it conditionally. *@
-                        var toolSummary = string.Format(System.Globalization.CultureInfo.CurrentCulture,
-                            Localizer["Agent_ConversationToolCallsSummary"].Value,
-                            msg.FetchedDocs.Length);
+                        var toolSummary = Localizer["Agent_ConversationToolCallsSummary", msg.FetchedDocs.Length].Value;
                         if (msg.FetchedDocs.Length == 1)
                         {
                             <details class="agent-tool-calls mt-2" open>

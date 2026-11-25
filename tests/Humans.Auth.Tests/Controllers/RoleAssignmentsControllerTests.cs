@@ -1,3 +1,4 @@
+using Humans.Testing;
 using System.Reflection;
 using System.Security.Claims;
 using AwesomeAssertions;
@@ -45,7 +46,7 @@ public sealed class RoleAssignmentsControllerTests
     public RoleAssignmentsControllerTests()
     {
         _clock.GetCurrentInstant().Returns(Now);
-        var localizer = Substitute.For<IStringLocalizer<SharedResource>>();
+        var localizer = Substitute.For<IStringLocalizer<SharedResource>>().AddFormatting();
         localizer[Arg.Any<string>()].Returns(c => new LocalizedString(c.Arg<string>(), c.Arg<string>() + " {0}"));
         _localizer = localizer;
         GivenAuthorization(RoleNames.Board, succeeds: true);
