@@ -35,7 +35,7 @@ export function initInteraction(map, onSave, onSelect) {
     map.on('move', repositionHandle);
     map.on('zoom', repositionHandle);
 
-    // Rotation handle events (document-level to capture outside map bounds)
+    // Document release also finishes drags that leave the map canvas.
     rotationHandle.addEventListener('mousedown', onHandleMouseDown);
     document.addEventListener('mousemove', onDocumentMouseMove);
     document.addEventListener('mouseup', onDocumentMouseUp);
@@ -190,6 +190,7 @@ function onDocumentMouseMove(e) {
 }
 
 async function onDocumentMouseUp() {
+    if (_isDragging) return onMapMouseUp();
     if (!_isRotating) return;
     _isRotating = false;
     renderPending();
