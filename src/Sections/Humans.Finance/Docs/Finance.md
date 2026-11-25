@@ -217,7 +217,7 @@ Every `/Finance/*` route except the one below is gated on `FinancePolicies.Read`
 
 ### Settings tab
 
-`POST /Finance/StripeLinks` (`FinancePolicies.Manage`) saves the Finance tab of `/Settings` (`FinanceSettingsTabViewComponent`, contributed through `ISectionSettings` with the same policy) and redirects back to `/Settings#finance`.
+`POST /Finance/StripeLinks` (`FinancePolicies.Manage`) saves the Finance tab of `/Settings` (`FinanceSettingsTabViewComponent`, contributed through `ISectionSettings` with the same policy) and redirects back to `/Settings#finance`. Every posted ledger account must occur in the settings list, including rows posted with a blank Stripe choice. Zero is an ordinary invalid account when absent from that list, never a sentinel that can hide another invalid row. Any invalid ledger or Stripe choice refuses the entire replacement before persistence or success audit; blank choices still unlink and already-linked Stripe accounts remain saveable.
 
 ### Member payment details
 
