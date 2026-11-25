@@ -71,7 +71,7 @@ Pieces of work with an end, hanging on a team. A task is to a role (standing res
 - Blocked needs a note; leaving blocked clears it. The approval reason is dropped when needs-approval is off.
 - A due date never precedes the start date (resolved dates).
 - A task cannot wait on itself, and a dependency circle is refused.
-- A person is on a task at most once, and must exist to be assigned. Approving requests arrives with claiming.
+- A person is on a task at most once. Assignment rejects missing or tombstoned accounts and resolves archived ids to the surviving account before checking duplicates, storing the assignment and linking its audit entry. Approving requests arrives with claiming.
 - An event is picked only if it exists and is not withdrawn; a task keeps an event withdrawn later.
 - Hidden tasks, and every task of a hidden team, show only to managers of the team, people confirmed on them, TasksAdmin, Board and Admin. A hidden task a viewer cannot see is "a hidden task" in waiting-on lists, without its status.
 - A done or cancelled task is never shown as waiting.
