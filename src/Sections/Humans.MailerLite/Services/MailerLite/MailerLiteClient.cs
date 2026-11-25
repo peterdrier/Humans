@@ -339,6 +339,9 @@ internal sealed class MailerLiteClient(IHttpClientFactory httpFactory, IClock cl
         for (var attempt = 1; ; attempt++)
         {
             using var req = new HttpRequestMessage(method, url);
+            var destination = req.RequestUri is { IsAbsoluteUri: true } ? req.RequestUri : http.BaseAddress;
+            if (destination is null || destination.Scheme is not ("http" or "https"))
+                throw new HttpRequestException("MailerLite:BaseUrl must be an absolute HTTP(S) URL.");
             if (content is not null) req.Content = content;
             HttpResponseMessage resp;
             try

@@ -4,6 +4,9 @@ using AwesomeAssertions;
 using Humans.MailerLite.Services.MailerLite;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using Humans.MailerLite.Services;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Humans.MailerLite.Tests.Services;
 
@@ -11,6 +14,48 @@ public class MailerLiteClientRetryTests
 {
     private const string HumansGroupPage =
         """{"data":[{"id":"42","name":"Humans - Test","created_at":"2026-01-01 00:00:00","active_count":0,"unsubscribed_count":0,"unconfirmed_count":0,"bounced_count":0,"junk_count":0}],"meta":{"current_page":1,"last_page":1}}""";
+
+    [HumansTheory]
+    [Xunit.InlineData("not a URI", false)]
+    [Xunit.InlineData("", false)]
+    [Xunit.InlineData("/relative", false)]
+    [Xunit.InlineData("ftp://mailerlite.example", false)]
+    [Xunit.InlineData("https://mailerlite.example", true)]
+    [Xunit.InlineData("http://mailerlite.example", true)]
+    public async Task Register_Endpoint_ReportsApiFailure(string baseUrl, bool valid)
+    {
+        var services = new ServiceCollection();
+        new Section().Register(services, new ConfigurationBuilder().AddInMemoryCollection(
+            new Dictionary<string, string?>(StringComparer.Ordinal) { ["MailerLite:BaseUrl"] = baseUrl }).Build());
+        services.Configure<MailerLiteOptions>(o => o.ApiKey = "test-key");
+        services.AddSingleton<NodaTime.IClock>(NodaTime.SystemClock.Instance);
+        var handler = new ScriptedHandler();
+        handler.EnqueueJson(HttpStatusCode.OK, """{"data":[],"meta":{"next_cursor":null}}""");
+        handler.EnqueueJson(HttpStatusCode.OK, HumansGroupPage);
+        handler.EnqueueJson(HttpStatusCode.OK,
+            """{"data":{"id":"43","name":"Humans - Added","created_at":"2026-01-01 00:00:00","active_count":0,"unsubscribed_count":0,"unconfirmed_count":0,"bounced_count":0,"junk_count":0}}""");
+        services.AddHttpClient(MailerLiteClient.HttpClientName).ConfigurePrimaryHttpMessageHandler(() => handler);
+        using var provider = services.BuildServiceProvider();
+
+        var client = provider.GetRequiredService<IMailerLiteService>();
+        var read = () => client.ListGroupsAsync(Xunit.TestContext.Current.CancellationToken);
+        var write = () => client.CreateGroupAsync("Humans - Added", Xunit.TestContext.Current.CancellationToken);
+
+        client.LastFetchedAt.Should().BeNull();
+        if (valid)
+        {
+            (await read()).Should().ContainSingle().Which.Id.Should().Be("42");
+            (await write()).Id.Should().Be("43");
+            client.LastFetchedAt.Should().NotBeNull();
+        }
+        else
+        {
+            await read.Should().ThrowAsync<HttpRequestException>().WithMessage("*absolute HTTP(S)*");
+            await write.Should().ThrowAsync<HttpRequestException>().WithMessage("*absolute HTTP(S)*");
+            client.LastFetchedAt.Should().BeNull();
+        }
+        handler.Calls.Should().Be(valid ? 3 : 0);
+    }
 
     [HumansTheory]
     [Xunit.InlineData(false, false)]

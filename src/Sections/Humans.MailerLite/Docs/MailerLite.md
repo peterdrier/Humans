@@ -46,6 +46,8 @@ The section owns `mailerlite_sync_states` (`MailerLiteDbContext`, nobodies-colle
 
 All routes are `AdminOnly`.
 
+An invalid `MailerLite:BaseUrl` does not prevent client resolution. Reads and writes reject missing or non-HTTP(S) endpoints with `HttpRequestException` before sending a request, so the dashboard uses its existing API-unavailable handling. Failed reads publish no cache snapshot; writes report failure.
+
 ## Actors & Roles
 
 | Actor | Capabilities |

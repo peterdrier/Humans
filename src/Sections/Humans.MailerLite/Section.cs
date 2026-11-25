@@ -46,7 +46,9 @@ public sealed class Section : ISection, ISectionAdminNav, ISectionConfiguration,
         services.AddHttpClient(MailerLiteClient.HttpClientName, (sp, http) =>
         {
             var opts = sp.GetRequiredService<IOptions<MailerLiteOptions>>().Value;
-            http.BaseAddress = new Uri(opts.BaseUrl);
+            if (Uri.TryCreate(opts.BaseUrl, UriKind.Absolute, out var baseAddress)
+                && baseAddress.Scheme is "http" or "https")
+                http.BaseAddress = baseAddress;
             http.Timeout = TimeSpan.FromSeconds(30);
             http.DefaultRequestHeaders.Authorization =
                 new AuthenticationHeaderValue("Bearer", opts.ApiKey);
