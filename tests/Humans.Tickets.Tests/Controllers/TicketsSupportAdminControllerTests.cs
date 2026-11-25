@@ -192,6 +192,7 @@ public class TicketsSupportAdminControllerTests
     [InlineData("fr", "donation", "1.005", 101L, false)]
     [InlineData("ca", "donation", "1.005", 101L, false)]
     [InlineData("nl", "donation", "1.005", 101L, false)]
+    [InlineData("en", "donation", "1.005e0", 101L, false)]
     [InlineData("en", "donation", "bad", null, false)]
     [InlineData("en", "donation", "79228162514264337593543950336", null, false)]
     [InlineData("en", "donation", "1,23", null, false)]

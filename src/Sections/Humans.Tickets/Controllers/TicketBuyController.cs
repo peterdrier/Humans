@@ -118,7 +118,7 @@ internal sealed class TicketBuyController(
 
         var donationEuro = 0m;
         if (!string.IsNullOrWhiteSpace(donation)
-            && !decimal.TryParse(donation.Trim(), NumberStyles.AllowLeadingSign | NumberStyles.AllowDecimalPoint,
+            && !decimal.TryParse(donation.Trim(), NumberStyles.Float,
                 CultureInfo.InvariantCulture, out donationEuro))
         {
             logger.LogWarning("Rejected malformed checkout donation for {UserId}", user.Id);

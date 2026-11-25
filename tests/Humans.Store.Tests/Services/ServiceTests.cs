@@ -2012,13 +2012,13 @@ public class ServiceTests
             Url = url
         };
 
-        (await controller.Pay(order.Id, 10.01m, TestContext.Current.CancellationToken))
+        (await controller.Pay(order.Id, "10.01", TestContext.Current.CancellationToken))
             .Should().BeOfType<RedirectToActionResult>();
         controller.TempData["ErrorMessage"].Should().Be(localizer["Store_PaymentAboveBalance", 10m].Value);
         await _stripeService.DidNotReceiveWithAnyArgs().CreateCheckoutSessionAsync(default, default,
             default!, default!, default, default!);
 
-        (await controller.Pay(order.Id, 5m, TestContext.Current.CancellationToken))
+        (await controller.Pay(order.Id, "5", TestContext.Current.CancellationToken))
             .Should().BeOfType<RedirectToActionResult>();
         controller.TempData["ErrorMessage"].Should().Be(localizer["Store_CheckoutFailed"].Value);
         controller.TempData["ErrorMessage"]!.ToString().Should().NotContain("Private Stripe diagnostic");
