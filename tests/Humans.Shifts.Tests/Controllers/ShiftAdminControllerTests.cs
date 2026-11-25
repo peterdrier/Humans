@@ -961,6 +961,38 @@ public class ShiftAdminControllerTests
     }
 
     [HumansFact]
+    public async Task EmailRota_ArchivedRecipients_PreviewsOneLiveHuman()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var rota = MakeRota(TeamId);
+        var archivedId = Guid.NewGuid();
+        var survivorId = Guid.NewGuid();
+        var deletedId = Guid.NewGuid();
+        _shiftMgmt.GetRotaAsync(rota.Id, Arg.Any<CancellationToken>()).Returns(ToInfo(rota));
+        _rotaRows.GetRotaRowsAsync(Arg.Any<IReadOnlyCollection<Guid>?>(), Arg.Any<CancellationToken>())
+            .Returns([new ShiftAdminRota(ToInfo(rota), [new ShiftAdminShift(ToShiftInfo(MakeShift(rota)),
+                new[] { archivedId, survivorId, deletedId }.Select(id => new ShiftAdminSignup(Guid.NewGuid(), id, null,
+                    SignupStatus.Confirmed, Instant.MinValue)).ToList())])]);
+        var survivor = MakeUserInfo(survivorId) with { BurnerName = "Human", IdentityEmailColumn = "human@example.org" };
+        _userService.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, UserInfo>
+            {
+                [archivedId] = survivor,
+                [survivorId] = survivor,
+                [deletedId] = MakeUserInfo(deletedId) with { BurnerName = "Deleted", State = UserState.Deleted }
+            });
+        var controller = BuildSut();
+
+        var get = await controller.EmailRota(Slug, rota.Id, ct);
+        get.Should().BeOfType<ViewResult>().Which.Model.Should().BeOfType<EmailRotaViewModel>()
+            .Which.RecipientNames.Should().Equal("Human");
+        controller.ModelState.AddModelError(nameof(EmailRotaViewModel.Message), "required");
+        var post = await controller.EmailRota(Slug, rota.Id, new EmailRotaViewModel());
+        post.Should().BeOfType<ViewResult>().Which.Model.Should().BeOfType<EmailRotaViewModel>()
+            .Which.RecipientNames.Should().Equal("Human");
+    }
+
+    [HumansFact]
     public async Task EmailTeamRotas_RefreshIntent_RepreviewsSelection_WithoutSending()
     {
         _rotaMessenger.GetTeamRotasRecipientPreviewAsync(
