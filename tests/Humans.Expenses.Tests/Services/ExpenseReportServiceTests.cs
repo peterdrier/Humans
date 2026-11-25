@@ -2922,6 +2922,30 @@ public sealed partial class ExpenseReportServiceTests
         loaded!.MaxAmount.Should().Be(25m);
     }
 
+    [HumansTheory]
+    [InlineData(UserState.Deleted)]
+    [InlineData(UserState.Merged)]
+    public async Task ApproveAsync_TombstoneSubmitter_KeepsApprovalWithoutEmail(UserState state)
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var (_, category) = SetupActiveYear();
+        var submitter = Guid.NewGuid();
+        var reportId = Guid.NewGuid();
+        var actor = Guid.NewGuid();
+        await SeedReportWithStatusAsync(reportId, submitter, category.Id, Guid.NewGuid(), ExpenseReportStatus.Submitted);
+        _userService.GetUserInfoAsync(submitter, Arg.Any<CancellationToken>()).Returns(UserInfo.Create(
+            new User { Id = submitter, BurnerName = "Submitter", Email = "submitter@example.org", State = state },
+            [], [], null));
+
+        var result = await _review.ApproveWithResultAsync(reportId, actor, null, null, ct);
+
+        result.Succeeded.Should().BeTrue();
+        (await _sut.GetAsync(reportId, ct))!.Status.Should().Be(ExpenseReportStatus.Approved);
+        _emailService.ReceivedCalls().Should().BeEmpty();
+        await _auditLog.Received(1).LogAsync(ExpensesAuditActions.ExpenseApprove, "ExpenseReport", reportId,
+            Arg.Any<string>(), actor);
+    }
+
     [HumansFact]
     public async Task ApproveAsync_WithABlankMaxAmount_ClearsTheCoordinatorsCap()
     {
