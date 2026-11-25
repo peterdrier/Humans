@@ -460,20 +460,13 @@ internal sealed class CampaignService(
     public async Task<WaveSendPreview> PreviewWaveSendAsync(Guid campaignId, Guid teamId,
         CancellationToken ct = default)
     {
-        var activeTeamUserIds = await GetActiveTeamUserIdsAsync(teamId, ct);
-
-        var alreadyGrantedSet = await repository.GetAlreadyGrantedUserIdsAsync(campaignId, ct);
-
-        var notGranted = activeTeamUserIds
-            .Where(id => !alreadyGrantedSet.Contains(id))
-            .ToList();
-
-        var eligibleCount = notGranted.Count;
+        var (recipients, alreadyGrantedCount) = await GetWaveRecipientsAsync(campaignId, teamId, ct);
+        var eligibleCount = recipients.Count;
         var availableCodes = await repository.CountAvailableCodesAsync(campaignId, ct);
 
         return new WaveSendPreview(
             EligibleCount: eligibleCount,
-            AlreadyGrantedExcluded: activeTeamUserIds.Count(alreadyGrantedSet.Contains),
+            AlreadyGrantedExcluded: alreadyGrantedCount,
             CodesAvailable: availableCodes,
             CodesRemainingAfterSend: availableCodes - eligibleCount);
     }
@@ -487,17 +480,11 @@ internal sealed class CampaignService(
         if (campaign.Status != CampaignStatus.Active)
             return new CampaignSendWaveResult(false, "NotActive");
 
-        var activeTeamUserIds = await GetActiveTeamUserIdsAsync(teamId, ct);
-        var alreadyGrantedSet = await repository.GetAlreadyGrantedUserIdsAsync(campaignId, ct);
-
-        var eligibleUserIds = activeTeamUserIds
-            .Where(id => !alreadyGrantedSet.Contains(id))
-            .ToList();
+        var (users, _) = await GetWaveRecipientsAsync(campaignId, teamId, ct);
+        var eligibleUserIds = users.Keys.ToList();
 
         if (eligibleUserIds.Count == 0)
             return new CampaignSendWaveResult(true, SentCount: 0);
-
-        var users = await userService.GetUserInfosAsync(eligibleUserIds, ct);
 
         var availableCodes = await repository.GetAvailableCodesAsync(
             campaignId, eligibleUserIds.Count, ct);
@@ -517,21 +504,7 @@ internal sealed class CampaignService(
             var userId = eligibleUserIds[i];
             var code = availableCodes[i];
 
-            if (!users.TryGetValue(userId, out var user))
-            {
-                logger.LogWarning(
-                    "User {UserId} eligible for campaign {CampaignId} but lookup returned no row; skipping",
-                    userId, campaignId);
-                continue;
-            }
-
-            if (user.Email is not { Length: > 0 } recipientEmail)
-            {
-                logger.LogWarning(
-                    "User {UserId} has no notification email for campaign {CampaignId}; skipping",
-                    userId, campaignId);
-                continue;
-            }
+            var user = users[userId];
 
             var grant = new CampaignGrant
             {
@@ -550,7 +523,7 @@ internal sealed class CampaignService(
             try
             {
                 await emailService.SendAsync(emailMessages.CampaignCode(
-                    BuildCampaignCodeRequest(campaign, user, recipientEmail, code.Code)),
+                    BuildCampaignCodeRequest(campaign, user, user.Email!, code.Code)),
                     ct);
             }
             catch (OperationCanceledException) when (ct.IsCancellationRequested)
@@ -648,10 +621,37 @@ internal sealed class CampaignService(
         logger.LogInformation("Resent campaign email for grant {GrantId}", grantId);
     }
 
-    private async Task<List<Guid>> GetActiveTeamUserIdsAsync(Guid teamId, CancellationToken ct)
+    private async Task<(IReadOnlyDictionary<Guid, UserInfo> Recipients, int AlreadyGrantedCount)> GetWaveRecipientsAsync(
+        Guid campaignId, Guid teamId, CancellationToken ct)
     {
         var team = await teamService.GetTeamAsync(teamId, ct);
-        return team?.Members.Select(tm => tm.UserId).ToList() ?? [];
+        var teamUserIds = team?.Members.Select(tm => tm.UserId).ToList() ?? [];
+        var alreadyGranted = await repository.GetAlreadyGrantedUserIdsAsync(campaignId, ct);
+        var candidates = teamUserIds.Where(id => !alreadyGranted.Contains(id)).ToList();
+        var recipients = new Dictionary<Guid, UserInfo>();
+        if (candidates.Count > 0)
+        {
+            var users = await userService.GetUserInfosAsync(candidates, ct);
+            foreach (var userId in candidates)
+            {
+                if (!users.TryGetValue(userId, out var user))
+                {
+                    logger.LogWarning(
+                        "User {UserId} eligible for campaign {CampaignId} but lookup returned no row; skipping",
+                        userId, campaignId);
+                    continue;
+                }
+                if (user.Email is not { Length: > 0 })
+                {
+                    logger.LogWarning(
+                        "User {UserId} has no notification email for campaign {CampaignId}; skipping",
+                        userId, campaignId);
+                    continue;
+                }
+                recipients.Add(userId, user);
+            }
+        }
+        return (recipients, teamUserIds.Count(alreadyGranted.Contains));
     }
 
     private static CampaignCodeEmailRequest BuildCampaignCodeRequest(

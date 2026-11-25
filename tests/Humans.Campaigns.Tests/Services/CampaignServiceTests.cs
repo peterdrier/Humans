@@ -1241,6 +1241,48 @@ public sealed class CampaignServiceTests
     }
 
     [HumansFact]
+    public async Task SendWaveAsync_UndeliverableMembers_UsesDeliverableCount()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var campaign = await SeedActiveCampaignWithCodesAsync(["GRANTED", "AVAILABLE"]);
+        var recipient = SeedUser(displayName: "Recipient");
+        var noEmail = SeedUser(displayName: "No email");
+        _people[noEmail.Id] = noEmail with { IdentityEmailColumn = null };
+        var granted = SeedUser(displayName: "Already granted");
+        var team = SeedTeam("Mixed recipients");
+        SeedTeamMember(team.Id, Guid.NewGuid());
+        SeedTeamMember(team.Id, noEmail.Id);
+        SeedTeamMember(team.Id, recipient.Id);
+        SeedTeamMember(team.Id, granted.Id);
+        var assigned = await _campaignsDb.CampaignCodes.SingleAsync(c => c.Code == "GRANTED", ct);
+        _campaignsDb.CampaignGrants.Add(new CampaignGrant
+        {
+            Id = Guid.NewGuid(),
+            CampaignId = campaign.Id,
+            CampaignCodeId = assigned.Id,
+            UserId = granted.Id,
+            AssignedAt = _clock.GetCurrentInstant()
+        });
+        await SaveAllAsync(ct);
+
+        var preview = await _service.PreviewWaveSendAsync(campaign.Id, team.Id, ct);
+        preview.EligibleCount.Should().Be(1);
+        preview.AlreadyGrantedExcluded.Should().Be(1);
+        preview.CodesAvailable.Should().Be(1);
+        preview.CodesRemainingAfterSend.Should().Be(0);
+
+        var result = await _service.SendWaveAsync(_actorId, campaign.Id, team.Id, ct);
+
+        result.Success.Should().BeTrue();
+        result.SentCount.Should().Be(1);
+        (await _campaignsDb.CampaignGrants.CountAsync(ct)).Should().Be(2);
+        await _emailService.Received(1).SendAsync(Arg.Is<EmailMessage>(message =>
+            message.UserId == recipient.Id && message.HtmlBody.Contains("AVAILABLE")), Arg.Any<CancellationToken>());
+        ((IReadOnlyList<Guid>)_notifications.ReceivedCalls().Should().ContainSingle().Subject.GetArguments()[4]!)
+            .Should().Equal(recipient.Id);
+    }
+
+    [HumansFact]
     public async Task PreviewWaveSendAsync_ReturnsCorrectCounts()
     {
         var campaign = await SeedActiveCampaignWithCodesAsync(["P1", "P2", "P3", "P4", "P5"]);
