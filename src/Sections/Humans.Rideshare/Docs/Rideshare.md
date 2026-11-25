@@ -238,7 +238,7 @@ a map board lets people spot each other by eye. No booking, no payment, no autom
 - The trip snapshot carries the accepted-seat count computed from accepted interests; remaining capacity, season seats-filled totals, and day-roster display and sorting reuse it.
 - The cached snapshot leaves display ordering to the board, Mine, map and day-roster builders. Creation time breaks display ties; day-roster riders remain chronological.
 
-- **The list works independently of the map.** Interest forms remain usable from the server-rendered cards when the map library, WebGL, map load or board data request fails.
+- **The list works independently of the map.** Interest forms remain usable from the server-rendered cards when the map library, WebGL, map load or board data request fails. Failed initialization or board requests show localized guidance to use that list. The board rejects unsuccessful HTTP responses and malformed FeatureCollections before rendering ride layers; a valid empty collection remains an empty map.
 - **Map popup dates follow the UI culture.** GeoJSON retains ISO departure/desired dates and provides display labels from the same formatter as the list; popups escape and render those labels.
 - **Avatar initials are whole graphemes.** A map-popup initial keeps the name's first Unicode grapheme (combining accents, joined emoji); names and initials are HTML-escaped.
 - **Expected refusals log without stacks.** Not-found, forbidden and rule refusals in the member and admin controllers log at Warning with the action (or event) and the reason or rule key, never the exception.
