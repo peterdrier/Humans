@@ -69,9 +69,11 @@ internal sealed class GuestAccountController(
             if (!CanUpdatePreference(category))
                 return BadRequest(localizer["Email_CommPrefs_AlwaysOnCategoryCannotChange"].Value);
 
-            if (!await commPrefService.UpdatePreferenceAsync(
-                    userId.Value, category, optedOut: !emailEnabled, inboxEnabled: alertEnabled, GetPreferenceUpdateSource(fromToken),
-                    actorUserId: fromToken ? null : userId))
+            var outcome = await commPrefService.UpdatePreferenceAsync(
+                userId.Value, category, optedOut: !emailEnabled, inboxEnabled: alertEnabled, GetPreferenceUpdateSource(fromToken),
+                actorUserId: fromToken ? null : userId);
+            if (outcome == PreferenceUpdateOutcome.UserUnavailable) return Unauthorized();
+            if (outcome == PreferenceUpdateOutcome.Locked)
                 return BadRequest(localizer["Email_CommPrefs_TicketingLockedCannotChange"].Value);
 
             return Ok();

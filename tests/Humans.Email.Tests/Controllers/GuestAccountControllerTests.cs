@@ -31,11 +31,22 @@ public class GuestAccountControllerTests
     private readonly IClock _clock = Substitute.For<IClock>();
     private readonly IStringLocalizer<EmailResource> _localizer = Substitute.For<IStringLocalizer<EmailResource>>();
 
+    [HumansFact]
+    public async Task UpdatePreference_UnavailableAccount_ReturnsUnauthorized()
+    {
+        var controller = BuildSut(new User { Id = Guid.NewGuid() });
+        _commPrefService.UpdatePreferenceAsync(Arg.Any<Guid>(), Arg.Any<MessageCategory>(), Arg.Any<bool>(),
+            Arg.Any<bool>(), Arg.Any<string>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>())
+            .Returns(PreferenceUpdateOutcome.UserUnavailable);
+
+        Assert.IsType<UnauthorizedResult>(await controller.UpdatePreference(MessageCategory.Marketing, false, false, utoken: null));
+    }
+
     private GuestAccountController BuildSut(User user)
     {
         _localizer[Arg.Any<string>()].Returns(call => new LocalizedString(call.ArgAt<string>(0), call.ArgAt<string>(0)));
         _commPrefService.UpdatePreferenceAsync(Arg.Any<Guid>(), Arg.Any<MessageCategory>(), Arg.Any<bool>(),
-            Arg.Any<bool>(), Arg.Any<string>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>()).Returns(true);
+            Arg.Any<bool>(), Arg.Any<string>(), Arg.Any<Guid?>(), Arg.Any<CancellationToken>()).Returns(PreferenceUpdateOutcome.Success);
 
         _userService.GetUserInfoAsync(user.Id, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(UserInfo.Create(user, [], [], profile: null)));

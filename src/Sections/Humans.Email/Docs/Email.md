@@ -98,7 +98,7 @@ spikes seen in Google Postmaster, since `email_outbox_messages` is pruned after
 
 **Unique index:** `(UserId, Category)`.
 
-**Preference ownership:** reads, writes, resets, merges and GDPR paths use only `email_communication_preferences`. Production `GET https://humans.nobodies.team/api/data-migrations` reported `{"key":"email.communication-preferences","pending":0,"done":true}` on 2026-11-03. The copy, fallback and Users projections/export are retired; Users' legacy table is dropped. Historical null `OptedOut` rows read as category defaults. New resets delete the row. Single-user reads still resolve merged-away ids forward; writes use the raw id.
+**Preference ownership:** reads, writes, resets, merges and GDPR paths use only `email_communication_preferences`. Production `GET https://humans.nobodies.team/api/data-migrations` reported `{"key":"email.communication-preferences","pending":0,"done":true}` on 2026-11-03. The copy, fallback and Users projections/export are retired; Users' legacy table is dropped. Historical null `OptedOut` rows read as category defaults. New resets delete the row. Single-user reads and upserts resolve merged-away ids forward; explicit resets keep their raw key. Upserts refuse missing or tombstoned accounts before locks, persistence or audit. Member/guest updates check survivor locks (400 when locked, 401 when unavailable). Channel-only unsubscribe and MailerLite writes remain ungated and preserve inbox state and subscription time.
 
 ### MessageCategory
 
