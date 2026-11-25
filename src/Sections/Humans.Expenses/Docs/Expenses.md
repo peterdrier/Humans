@@ -155,6 +155,8 @@ The submitter-facing `/Expenses/{id}` detail view localizes report labels and st
 
 ## Invariants
 
+- Receipt/invoice entry, proof entry, line editing and reviewer-cap forms carry MVC invariant-field metadata for their HTML number inputs. Dot-decimal amounts bind unchanged in every supported culture; blank caps remain null. Permission checks, whole-cent validation and pre-approval cap rules retain their existing owners.
+
 - Attachment downloads distinguish absent bytes from storage failure: missing files return no download, while I/O or access failures propagate. Holded publishing retries failed reads through its existing outbox backoff.
 
 - Copied IBANs may contain Unicode whitespace (including no-break spaces, tabs and wrapped lines); validation and storage use the compact uppercase identifier. Checksum and allowed-character checks still apply. Masked displays remove presentation separators before choosing the visible prefix and suffix.
