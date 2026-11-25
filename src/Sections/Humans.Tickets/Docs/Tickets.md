@@ -179,6 +179,8 @@ Lifecycle: `Attended` is permanent (only a missing `CheckedInAt` may be filled);
 
 ## Invariants
 
+- Checkout refunds observe cancellation before an attempt starts, then finish the platform mutation, saved outcome, timeline and order refresh independently of request or job cancellation. Initial status reads retain the caller token. Settlement replays use the same protected mutation boundary and stop before the next refund when cancellation is requested.
+
 - Single-row selection uses the newest approved transfer decision per attendee, the oldest backend order when none is recorded, and the cheapest eligible class price. Direct extrema selectors retain the first source row on equal keys.
 
 - Section-owned resource keys use the `Tickets_` prefix in all supported cultures.

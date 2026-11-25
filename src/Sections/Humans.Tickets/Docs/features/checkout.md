@@ -37,6 +37,7 @@ Rules every platform follows:
 - **Chargebacks.** `ChargedBackMinor` is what the buyer's bank has taken back and the event has not won. Each change goes on
   the timeline and to the audit log as needing attention; tickets stay valid until the ticketing team decides. It comes
   off what can still be refunded, and the order's tickets cannot be offered for resale while it stands.
+- **Refund cancellation.** Cancellation is checked before each attempt. A started platform refund and its local completion finish independently of request abort or job shutdown. The initial read-only status fetch stays cancellable; settlement replays finish their saved outcome and timeline before cancellation stops the next refund.
 - **Refund outcome.** `RefundedMinor` moves only once money went back. On every status read Tickets settles its
   `Pending` and `ManualRequired` refunds, oldest first. A pending refund the platform knows by id is repeated under that
   id and takes the state the platform answers (`RefundFailed` may follow only the newest refund); one whose call got no

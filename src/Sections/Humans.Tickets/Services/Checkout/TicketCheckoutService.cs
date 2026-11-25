@@ -730,9 +730,11 @@ internal sealed partial class TicketCheckoutService(
         var changed = false;
         foreach (var refund in refunds.Where(r => r.State is RefundState.Pending or RefundState.ManualRequired))
         {
+            ct.ThrowIfCancellationRequested();
+            // A replay may still mutate the platform; finish this refund before honoring shutdown on the next one.
             var own = refund is { State: RefundState.Pending, PlatformRefundId: not null }
                 && order.PlatformOrderId is not null && PlatformFor(order.PlatformKey) is { } platform
-                ? await OwnRefundStateAsync(platform, order, refund, ct)
+                ? await OwnRefundStateAsync(platform, order, refund, CancellationToken.None)
                 : null;
             if (own is { State: RefundState.Succeeded }
                 || (refund.State == RefundState.ManualRequired && refund.AmountMinor <= covered))
@@ -749,9 +751,9 @@ internal sealed partial class TicketCheckoutService(
             {
                 continue;
             }
-            await repository.UpdateRefundAsync(refund, ct);
+            await repository.UpdateRefundAsync(refund, CancellationToken.None);
             await TimelineAsync(order.Id, TicketCheckoutOrderEventKind.RefundSettled,
-                $"Refund of {FormatMinor(refund.AmountMinor)} {order.Currency} {refund.State} per {order.PlatformKey}", null, ct);
+                $"Refund of {FormatMinor(refund.AmountMinor)} {order.Currency} {refund.State} per {order.PlatformKey}", null, CancellationToken.None);
             changed = true;
         }
         return changed;
@@ -837,6 +839,9 @@ internal sealed partial class TicketCheckoutService(
         ITicketingPlatform platform, TicketCheckoutOrder order, TicketCheckoutRefund refund, Guid? actorUserId,
         CancellationToken ct, bool resend = false)
     {
+        ct.ThrowIfCancellationRequested();
+        // Finish the vendor attempt, its saved result and order refresh once a refund starts.
+        ct = CancellationToken.None;
         var amountMinor = refund.AmountMinor;
         RefundResult result;
         try
