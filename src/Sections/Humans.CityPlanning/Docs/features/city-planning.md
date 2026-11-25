@@ -35,7 +35,7 @@ City Planning organizes the physical layout of the event site across these phase
 ## User Stories
 
 ### Main map
-- **US-38.1: Read-only overview** — Any authenticated user sees official zones and barrio polygons always visible. Containers and barrio zones (limit zone) can be toggled on/off. Measure tool available.
+- **US-38.1: Read-only overview** — Any authenticated user sees official zones and barrio polygons always visible. Containers and barrio zones (limit zone) can be toggled on/off once loaded. The ruler works independently of state/container requests; a failed container load preserves the loaded map and limit toggle.
 - **US-38.2: Navigation shortcuts** — Map admins always see links to the barrio placement map and container placement map. Barrio leads see the barrio placement link while barrio placement is Open or Changeable, and the container placement link when `IsContainerPlacementOpen`.
 
 ### Barrio placement map

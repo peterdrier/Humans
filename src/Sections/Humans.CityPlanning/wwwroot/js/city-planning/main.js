@@ -1,6 +1,7 @@
 // Shows official zones and camps always; containers and camp limits are togglable.
 
 import { CONFIG } from './config.js';
+import { loadContainers } from './container-map/api.js';
 import { initMeasure, wireMeasureButtons } from './shared/measure.js';
 import { addOfficialZonesLayers } from './shared/official-zones-layer.js';
 import { SOUND_ZONE_FILL_EXPR, SOUND_ZONE_LINE_EXPR } from './shared/sound-zone-colors.js';
@@ -23,8 +24,11 @@ async function init() {
 
     await new Promise(resolve => map.on('load', resolve));
     initMeasure(map);
+    wireMeasureButtons();
 
-    const state = await fetch('/api/city-planning/state').then(r => r.json());
+    const stateResponse = await fetch('/api/city-planning/state');
+    if (!stateResponse.ok) throw new Error(`Failed to load map state: ${stateResponse.status}`);
+    const state = await stateResponse.json();
 
     addOfficialZonesLayers(map, state.officialZonesGeoJson);
 
@@ -62,10 +66,12 @@ async function init() {
         LAYER_GROUPS.campLimits = ['limit-zone-fill', 'limit-zone-line'];
     }
 
+    wireToggle('toggle-camp-limits', LAYER_GROUPS.campLimits, map);
+
     const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
     const containerColor = css('--container-fill') || '#8b7355';
 
-    const containersResp = await fetch(`/api/city-planning/containers/${CONFIG.YEAR}`).then(r => r.json());
+    const containersResp = await loadContainers(CONFIG.YEAR);
     const placedFeatures = containersResp
         .filter(c => c.locationGeoJson)
         .map(c => {
@@ -84,10 +90,7 @@ async function init() {
         paint: { 'text-color': '#ffffff', 'text-halo-color': '#000000', 'text-halo-width': 1 },
     });
 
-    wireToggle('toggle-containers',  LAYER_GROUPS.containers,  map);
-    wireToggle('toggle-camp-limits', LAYER_GROUPS.campLimits,  map);
-
-    wireMeasureButtons();
+    wireToggle('toggle-containers', LAYER_GROUPS.containers, map);
 }
 
 function wireToggle(btnId, layerIds, map) {
@@ -96,6 +99,7 @@ function wireToggle(btnId, layerIds, map) {
         if (btn) btn.disabled = true;
         return;
     }
+    btn.disabled = false;
     let visible = false;
     btn.addEventListener('click', () => {
         visible = !visible;
