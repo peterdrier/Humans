@@ -25,7 +25,7 @@ function client({ known = true, placed = false } = {}) {
         updateAddMyBarrioVisibility() {}, console,
     };
     vm.createContext(context);
-    for (const file of ['geometry.js', 'signalr.js']) {
+    for (const file of ['../shared/camp-geometry.js', 'geometry.js', 'signalr.js']) {
         const source = readFileSync(resolve(root, file), 'utf8')
             .replace(/^import[^\n]*;\s*$/gm, '').replaceAll('export ', '');
         vm.runInContext(source, context);

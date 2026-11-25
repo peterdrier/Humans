@@ -1,6 +1,7 @@
 // Editing mode: toolbar state, draw label updates, popup, button handlers.
 import { appState } from './state.js';
 import { CONFIG } from './config.js';
+import { parseCampFeature } from '../shared/camp-geometry.js';
 import { isOutsideZone, overlapsOtherCamps, getSoundZoneOutOfRange, SIZE_RATIO_UPPER, SIZE_RATIO_LOWER } from './geometry.js';
 import { setActivePolygonDim } from './layers.js';
 import { isMeasuring } from '../shared/measure.js';
@@ -68,7 +69,7 @@ export function startEditing(campSeasonId) {
 
     const poly = appState.campMap.campPolygons.find(p => p.campSeasonId === campSeasonId);
     if (poly) {
-        const f = JSON.parse(poly.geoJson);
+        const f = parseCampFeature(poly.geoJson);
         if (!f.id) f.id = 'active-polygon';
         appState.draw.add(f);
         appState.draw.changeMode('direct_select', { featureId: f.id });
@@ -285,7 +286,7 @@ export async function loadHistory(campSeasonId, canEdit = false) {
             btn.addEventListener('click', () => {
                 appState.previewCampSeasonId = id;
                 appState.draw.deleteAll();
-                appState.draw.add(JSON.parse(decodeURIComponent(btn.dataset.geojson)));
+                appState.draw.add(parseCampFeature(decodeURIComponent(btn.dataset.geojson)));
             });
         });
         list.querySelectorAll('.restore-btn').forEach(btn => {

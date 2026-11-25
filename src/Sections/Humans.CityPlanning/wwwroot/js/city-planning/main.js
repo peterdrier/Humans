@@ -1,6 +1,7 @@
 // Shows official zones and camps always; containers and camp limits are togglable.
 
 import { CONFIG } from './config.js';
+import { parseCampFeature } from './shared/camp-geometry.js';
 import { loadContainers } from './container-map/api.js';
 import { initMeasure, wireMeasureButtons } from './shared/measure.js';
 import { addOfficialZonesLayers } from './shared/official-zones-layer.js';
@@ -35,7 +36,7 @@ async function init() {
     const campFeatures = (state.campPolygons ?? [])
         .filter(p => p.geoJson)
         .map(p => {
-            const f = JSON.parse(p.geoJson);
+            const f = parseCampFeature(p.geoJson);
             if (!f.properties) f.properties = {};
             f.properties.campName  = p.campName;
             f.properties.soundZone = p.soundZone;

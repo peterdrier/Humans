@@ -1,6 +1,7 @@
 // Pure spatial helpers. Depend on turf (global) and shared state for context.
 import { appState } from './state.js';
 import { CONFIG } from './config.js';
+import { parseCampFeature } from '../shared/camp-geometry.js';
 import { SOUND_ZONE_NAMES } from '../shared/sound-zone-colors.js';
 
 export const SIZE_RATIO_UPPER = 1.5;
@@ -47,7 +48,7 @@ export function parseLimitZoneGeom(geoJson) {
 
 export function buildCampPolygonFeatures(campPolygons) {
     const features = campPolygons.map(p => {
-        const f = JSON.parse(p.geoJson);
+        const f = parseCampFeature(p.geoJson);
         const spaceReq = p.spaceRequirementSqm ?? null;
         const spaceOutOfRange = spaceReq && p.areaSqm
             ? (p.areaSqm > spaceReq * SIZE_RATIO_UPPER || p.areaSqm < spaceReq * SIZE_RATIO_LOWER)
@@ -86,7 +87,7 @@ function getCachedFeature(p) {
     // Lazily cache the parsed feature on the polygon entry. SignalR handlers
     // null this out when they overwrite geoJson so the cache stays in sync.
     if (!p._parsedFeature) {
-        try { p._parsedFeature = JSON.parse(p.geoJson); }
+        try { p._parsedFeature = parseCampFeature(p.geoJson); }
         catch { p._parsedFeature = null; }
     }
     return p._parsedFeature;
