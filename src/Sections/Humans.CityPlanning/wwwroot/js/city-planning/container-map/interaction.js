@@ -89,7 +89,7 @@ export function deactivate() {
 }
 
 function onContainerMouseDown(e) {
-    if (!_activeContainer) return;
+    if (!_activeContainer || e.originalEvent.button !== 0) return;
     const featureId = e.features?.[0]?.properties?.id;
     if (featureId && featureId !== _activeContainer.id) return;
 
@@ -169,7 +169,7 @@ async function onMapMouseUp() {
 }
 
 function onHandleMouseDown(e) {
-    if (!_activeContainer) return;
+    if (!_activeContainer || e.button !== 0) return;
     _isRotating = true;
     e.preventDefault();
     e.stopPropagation();
