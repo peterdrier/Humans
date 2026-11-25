@@ -36,7 +36,7 @@ public sealed class PleoClientTests
         var client = provider.GetRequiredService<IPleoClient>();
         var read = () => client.SearchEntriesAsync(Xunit.TestContext.Current.CancellationToken);
 
-        client.IsConfigured.Should().BeTrue();
+        client.IsConfigured.Should().Be(valid);
         if (valid)
             (await read()).Should().BeEmpty();
         else
@@ -44,9 +44,33 @@ public sealed class PleoClientTests
         calls.Should().Be(valid ? 1 : 0);
     }
 
-    private static PleoClient Make(Func<HttpRequestMessage, HttpResponseMessage> respond) =>
+    private static PleoClient Make(Func<HttpRequestMessage, HttpResponseMessage> respond, string apiKey = "test-key", string companyId = "company-1") =>
         new(new HttpClient(new StubHandler(respond)) { BaseAddress = new Uri("https://external.pleo.io") },
-            Options.Create(new PleoClientOptions { ApiKey = "test-key", CompanyId = "company-1" }));
+            Options.Create(new PleoClientOptions { ApiKey = apiKey, CompanyId = companyId }));
+
+    [HumansTheory]
+    [Xunit.InlineData("", "company-1")]
+    [Xunit.InlineData(" \t", "company-1")]
+    [Xunit.InlineData("test-key", "")]
+    [Xunit.InlineData("test-key", " \t")]
+    public async Task Api_IncompleteConfiguration_RefusesBeforeHttp(string apiKey, string companyId)
+    {
+        using var assertions = new AwesomeAssertions.Execution.AssertionScope();
+        var calls = 0;
+        var client = Make(_ =>
+        {
+            calls++;
+            return Json(Page("", false, null));
+        }, apiKey, companyId);
+        client.IsConfigured.Should().BeFalse();
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        Func<Task>[] operations = [() => client.SearchEntriesAsync(ct), () => client.GetBalanceAsync(ct)];
+
+        foreach (var operation in operations)
+            await operation.Should().ThrowAsync<PleoPermanentException>()
+                .WithMessage("PLEO_API_KEY and Pleo:CompanyId must both be set.");
+        calls.Should().Be(0);
+    }
 
     private static HttpResponseMessage Json(string body) =>
         new(HttpStatusCode.OK) { Content = new StringContent(body, Encoding.UTF8, "application/json") };

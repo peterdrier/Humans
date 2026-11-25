@@ -39,7 +39,9 @@ internal sealed class PleoClient : IPleoClient
             _http.BaseAddress = baseAddress;
     }
 
-    public bool IsConfigured =>
+    public bool IsConfigured => _http.BaseAddress is { Scheme: "http" or "https" } && HasCredentials;
+
+    private bool HasCredentials =>
         !string.IsNullOrWhiteSpace(_options.ApiKey) && !string.IsNullOrWhiteSpace(_options.CompanyId);
 
     private string Company => Uri.EscapeDataString(_options.CompanyId);
@@ -189,6 +191,9 @@ internal sealed class PleoClient : IPleoClient
 
     private async Task<JsonElement> SendAsync(string endpoint, Func<HttpRequestMessage> make, CancellationToken ct)
     {
+        if (!HasCredentials)
+            throw new PleoPermanentException("PLEO_API_KEY and Pleo:CompanyId must both be set.");
+
         using var req = make();
         req.Headers.Authorization = new AuthenticationHeaderValue("Basic",
             Convert.ToBase64String(Encoding.UTF8.GetBytes(_options.ApiKey + ":")));
