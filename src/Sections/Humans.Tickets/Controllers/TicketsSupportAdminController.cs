@@ -127,10 +127,15 @@ internal sealed class TicketsSupportAdminController(
     [HttpPost("{id:guid}/Resale/Open")]
     [Authorize(Policy = TicketsPolicies.Manage)]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> SetResaleOpen(Guid id, bool open, CancellationToken ct)
+    public async Task<IActionResult> SetResaleOpen(Guid id, [BindRequired] bool open, CancellationToken ct)
     {
         var (errorResult, user) = await RequireCurrentUserAsync(ct);
         if (errorResult is not null) return errorResult;
+        if (!ModelState.IsValid)
+        {
+            logger.LogWarning("Rejected malformed resale control for sale {SaleId} by {ActorUserId}", id, user.Id);
+            return BadRequest(ModelState);
+        }
 
         var result = await checkout.SetResaleOpenAsync(id, open, user.Id, ct);
         if (result.Succeeded)
@@ -156,10 +161,15 @@ internal sealed class TicketsSupportAdminController(
     [HttpPost("{id:guid}/Companions/{requestId:guid}")]
     [Authorize(Policy = TicketsPolicies.Manage)]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> DecideCompanion(Guid id, Guid requestId, bool approve, string? note, CancellationToken ct)
+    public async Task<IActionResult> DecideCompanion(Guid id, Guid requestId, [BindRequired] bool approve, string? note, CancellationToken ct)
     {
         var (errorResult, user) = await RequireCurrentUserAsync(ct);
         if (errorResult is not null) return errorResult;
+        if (!ModelState.IsValid)
+        {
+            logger.LogWarning("Rejected malformed companion decision for request {RequestId} by {ActorUserId}", requestId, user.Id);
+            return BadRequest(ModelState);
+        }
 
         var result = await checkout.DecideCompanionRequestAsync(requestId, approve, note, user.Id, ct);
         if (result.Succeeded)

@@ -23,6 +23,8 @@ using Microsoft.AspNetCore.Mvc.Controllers;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Primitives;
+using System.Reflection;
+using Humans.Tickets.Services;
 
 namespace Humans.Tickets.Tests.Controllers;
 
@@ -84,23 +86,7 @@ public class TicketsSupportAdminControllerTests
         {
             if (parameter.Name is "amount" or "refund" or "noRefund")
             {
-                var metadata = ((ModelMetadataProvider)services.GetRequiredService<IModelMetadataProvider>())
-                    .GetMetadataForParameter(parameter);
-                var binder = services.GetRequiredService<IModelBinderFactory>().CreateBinder(new ModelBinderFactoryContext
-                {
-                    Metadata = metadata,
-                    CacheToken = parameter
-                });
-                var descriptor = new ControllerParameterDescriptor
-                {
-                    Name = parameter.Name,
-                    ParameterType = parameter.ParameterType,
-                    ParameterInfo = parameter
-                };
-                var bound = await services.GetRequiredService<ParameterBinder>().BindModelAsync(controller.ControllerContext, binder,
-                    new FormValueProvider(BindingSource.Form, new FormCollection(fields), CultureInfo.InvariantCulture),
-                    descriptor, metadata, value: null);
-                args.Add(bound.IsModelSet ? bound.Model : parameter.ParameterType.IsValueType ? Activator.CreateInstance(parameter.ParameterType) : null);
+                args.Add(await BindParameterAsync(controller, parameter, fields));
             }
             else
                 args.Add(parameter.Name is "ct" ? Xunit.TestContext.Current.CancellationToken
@@ -122,6 +108,100 @@ public class TicketsSupportAdminControllerTests
         }
         else
             _checkout.ReceivedCalls().Should().BeEmpty();
+    }
+
+    [HumansTheory]
+    [InlineData("SetResaleOpen", null, null)]
+    [InlineData("SetResaleOpen", "bad", null)]
+    [InlineData("SetResaleOpen", "true", true)]
+    [InlineData("SetResaleOpen", "false", false)]
+    [InlineData("DecideCompanion", null, null)]
+    [InlineData("DecideCompanion", "bad", null)]
+    [InlineData("DecideCompanion", "true", true)]
+    [InlineData("DecideCompanion", "false", false)]
+    [InlineData("ScheduledSync", null, false)]
+    [InlineData("ScheduledSync", "bad", null)]
+    [InlineData("ScheduledSync", "true", true)]
+    [InlineData("ScheduledSync", "false", false)]
+    public async Task Command_BooleanInput_DispatchesOnlyValidForms(string action, string? posted, bool? expected)
+    {
+        var actorId = Guid.NewGuid();
+        var users = Substitute.For<IUserService>();
+        users.GetUserInfoAsync(actorId, Arg.Any<CancellationToken>()).Returns(UserFixtures.MakeUserInfo(actorId));
+        var sync = Substitute.For<ITicketSyncService>();
+        var scheduledSync = string.Equals(action, "ScheduledSync", StringComparison.Ordinal);
+        Controller controller = scheduledSync
+            ? new TicketController(null!, sync, null!, null!, users, NullLogger<TicketController>.Instance)
+            : new TicketsSupportAdminController(_checkout, Substitute.For<ISettingsService>(), SystemClock.Instance,
+                users, NullLogger<TicketsSupportAdminController>.Instance);
+        var registrations = new ServiceCollection().AddLogging();
+        registrations.AddControllers();
+        using var services = registrations.BuildServiceProvider();
+        var http = new DefaultHttpContext
+        {
+            RequestServices = services,
+            User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, actorId.ToString())], "Test")),
+        };
+        controller.ControllerContext = new ControllerContext { HttpContext = http };
+        controller.TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>());
+        controller.Url = Substitute.For<IUrlHelper>();
+        _checkout.SetResaleOpenAsync(Arg.Any<Guid>(), Arg.Any<bool>(), actorId, Arg.Any<CancellationToken>())
+            .Returns(CheckoutMutationResult.Ok);
+        _checkout.DecideCompanionRequestAsync(Arg.Any<Guid>(), Arg.Any<bool>(), Arg.Any<string?>(), actorId, Arg.Any<CancellationToken>())
+            .Returns(CheckoutMutationResult.Ok);
+        var method = controller.GetType().GetMethod(action)!;
+        var command = method.GetParameters().Single(p => p.ParameterType == typeof(bool));
+        var fields = new Dictionary<string, StringValues>(StringComparer.Ordinal);
+        if (posted is not null) fields[command.Name!] = posted;
+        var args = new List<object?>();
+        foreach (var parameter in method.GetParameters())
+            args.Add(parameter == command ? await BindParameterAsync(controller, parameter, fields)
+                : parameter.ParameterType == typeof(Guid) ? Guid.NewGuid()
+                : parameter.ParameterType == typeof(CancellationToken) ? TestContext.Current.CancellationToken : null);
+
+        var result = await (Task<IActionResult>)method.Invoke(controller, [.. args])!;
+
+        if (expected is not { } value)
+        {
+            result.Should().BeOfType<BadRequestObjectResult>();
+            _checkout.ReceivedCalls().Should().BeEmpty();
+            sync.ReceivedCalls().Should().BeEmpty();
+        }
+        else if (scheduledSync)
+        {
+            result.Should().BeOfType<RedirectResult>();
+            await sync.Received(1).SetScheduledSyncEnabledAsync(value, actorId, Arg.Any<CancellationToken>());
+        }
+        else
+        {
+            result.Should().BeOfType<RedirectToActionResult>();
+            if (string.Equals(action, "SetResaleOpen", StringComparison.Ordinal))
+                await _checkout.Received(1).SetResaleOpenAsync(Arg.Any<Guid>(), value, actorId, Arg.Any<CancellationToken>());
+            else
+                await _checkout.Received(1).DecideCompanionRequestAsync(Arg.Any<Guid>(), value, null, actorId, Arg.Any<CancellationToken>());
+        }
+    }
+
+    private static async Task<object?> BindParameterAsync(
+        Controller controller, ParameterInfo parameter, Dictionary<string, StringValues> fields)
+    {
+        var services = controller.HttpContext.RequestServices;
+        var metadata = ((ModelMetadataProvider)services.GetRequiredService<IModelMetadataProvider>()).GetMetadataForParameter(parameter);
+        var binder = services.GetRequiredService<IModelBinderFactory>().CreateBinder(new ModelBinderFactoryContext
+        {
+            Metadata = metadata,
+            CacheToken = parameter,
+        });
+        var descriptor = new ControllerParameterDescriptor
+        {
+            Name = parameter.Name!,
+            ParameterType = parameter.ParameterType,
+            ParameterInfo = parameter,
+        };
+        var bound = await services.GetRequiredService<ParameterBinder>().BindModelAsync(controller.ControllerContext, binder,
+            new FormValueProvider(BindingSource.Form, new FormCollection(fields), CultureInfo.InvariantCulture),
+            descriptor, metadata, value: null);
+        return bound.IsModelSet ? bound.Model : parameter.ParameterType.IsValueType ? Activator.CreateInstance(parameter.ParameterType) : null;
     }
 
     [HumansTheory]

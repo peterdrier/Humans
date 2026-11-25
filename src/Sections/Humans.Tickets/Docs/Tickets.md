@@ -180,6 +180,7 @@ Lifecycle: `Attended` is permanent (only a missing `CheckedInAt` may be filled);
 ## Invariants
 
 - Admin refund and ticket-void forms reuse the bounded invariant-culture euro parser used for ticket prices. Amounts round to cents away from zero before range checking and conversion, so malformed, nonpositive or unrepresentable refunds never reach checkout. Binding failures return 400 with a Warning; semantic amount refusals warn and show operator feedback. Refund requires an amount and voiding requires an explicit refund/no-refund choice. Explicit no-refund voids ignore the unused amount. The service still enforces the order's refundable cap.
+- Resale open/pause and companion decisions require an explicit true/false command. These actions and the scheduled-sync setting return 400 with a Warning before mutation when binding fails. A missing scheduled-sync checkbox still means off; missing resale or companion commands never become an implicit pause or decline.
 
 - Reconciliation keeps its status read cancellable and checks shutdown between orders. Once expiry cancellation or the paid claim starts, its order save, reservation release, timeline, audit and fulfillment finish independently of shutdown. Paid-order financial mirror updates likewise finish their bookkeeping after the commit boundary; refund replays retain their own between-refund checkpoints.
 
