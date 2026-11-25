@@ -167,6 +167,8 @@ export function isMeasuring() { return _active; }
 
 export function clearAllMeasurements() {
     _measurements = [];
+    _pending = null;
+    detachMouseMove();
     renderMeasurements();
     updateClearBtn();
 }

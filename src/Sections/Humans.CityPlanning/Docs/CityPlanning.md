@@ -174,6 +174,7 @@ Broadcasts `CampPolygonUpdated(campSeasonId, geoJson, areaSqm, soundZone, campNa
 - Authorization’s city-planning membership reads retain HTTP request cancellation; callers without an HTTP context use the non-cancellable default.
 
 - Only one CampPolygon per CampSeason (unique constraint on `CampSeasonId`).
+- Clearing ruler measurements removes completed lines and any pending first point or preview on all three maps. An active ruler remains ready for a fresh first point; old pointer movement cannot revive the cleared measurement.
 - The overview ruler becomes usable when the map loads. Layer toggles enable only after their data loads: a failed state request leaves the ruler usable, and a failed container request preserves the loaded barrio/limit layers and limit toggle. Failed HTTP responses are rejected before interpreting their bodies as map data.
 - Camp geometry readers normalize accepted bare Polygon/MultiPolygon geometry into Features for all three maps, editing, history previews and overlap checks. Feature IDs/properties and geometry coordinates, including holes and altitude, are preserved; stored GeoJSON is unchanged.
 - Barrio editing and history-preview labels support Polygon and MultiPolygon geometry. Save eligibility and render-change detection share the same complete-ring check; incomplete parts cannot enable Save. Area and spatial warnings use the full feature, while edge lengths cover every ring, including holes. Pending saves retain their disabled button.
