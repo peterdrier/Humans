@@ -191,7 +191,7 @@ Account merges preserve the survivor’s payment-details row, including an expli
 
 IBAN normalization removes Unicode whitespace and uppercases the identifier, including no-break spaces and line-wrapped copies. SEPA output uses the same normalization; direct masking removes presentation separators before retaining its prefix and suffix.
 
-Payment-detail reads, sets and clears resolve merged member IDs through `IUserService` before selecting the row. A write through an archived source ID updates the survivor's row rather than recreating source details. IBAN reveals audit that same resolved owner; the requested source ID never substitutes for the owner of the data revealed.
+Payment-detail reads, sets and clears resolve merged member IDs through `IUserService` before selecting the row. A write through an archived source ID updates the survivor's row rather than recreating source details. Sets and clears refuse missing or tombstoned accounts, so neither can recreate erased payment details. IBAN reveals audit that same resolved owner; the requested source ID never substitutes for the owner of the data revealed.
 
 ### HoldedMatchStatus
 
