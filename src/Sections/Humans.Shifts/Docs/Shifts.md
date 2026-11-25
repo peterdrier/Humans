@@ -250,6 +250,8 @@ A team's coordinator role holds both, and a holding reaches every sub-team below
 
 ## Invariants
 
+- Operator shift create/edit and event-slot forms carry MVC invariant-field metadata for fractional duration hours, including hidden all-day edit values. Added time slots carry their indexed duration key, and removing a slot renumbers that metadata with its field names. Dot-decimal hours bind unchanged in every supported culture; authorization, invalid-edit redisplay and service duration limits are unchanged.
+
 - The internal `ShiftStaffingAggregation` owns dashboard slot totals, period totals and department/subgroup rows. Dashboard reads and post-event statistics share its parent-team grouping rule; repository reads, cache handling and display ordering remain with their existing owners.
 
 - The department admin index reuses the complete team snapshot returned by department authorization when composing its page; it does not reload the same team by id. Its access decision and page controls share the same two permission checks. NoInfo still cannot manage shifts unless it also holds `Shifts.Manage` on the team.

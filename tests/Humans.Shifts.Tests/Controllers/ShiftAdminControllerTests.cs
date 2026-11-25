@@ -1,3 +1,9 @@
+using System.Text.RegularExpressions;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Mvc.Razor;
+using Microsoft.AspNetCore.Mvc.Rendering;
+using Microsoft.AspNetCore.Mvc.Routing;
+using Microsoft.AspNetCore.Routing;
 using Humans.Consent.Contracts;
 using Microsoft.Extensions.Primitives;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
@@ -1135,6 +1141,88 @@ public class ShiftAdminControllerTests
         ctrl.TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>());
         ctrl.Url = Substitute.For<IUrlHelper>();
         return ctrl;
+    }
+
+    [HumansTheory]
+    [MemberData(nameof(SupportedCultures.All), MemberType = typeof(SupportedCultures))]
+    public async Task DurationForms_PostedValues_PreserveHours(string language)
+    {
+        using var culture = new CultureScope(language);
+        using var assertions = new AwesomeAssertions.Execution.AssertionScope();
+        var rota = MakeRota(TeamId);
+        var timed = MakeShift(rota);
+        timed.Duration = Duration.FromHours(4.5);
+        var allDay = MakeShift(rota);
+        allDay.IsAllDay = true;
+        allDay.Duration = Duration.FromHours(4.5);
+        var model = new ShiftAdminViewModel
+        {
+            Department = MakeTeam(TeamId, Slug),
+            EventSettings = Event,
+            CanManageShifts = true,
+            Rotas =
+            [
+                new(ToInfo(rota), [new(ToShiftInfo(timed), []), new(ToShiftInfo(allDay), [])]),
+                new(ToInfo(MakeRota(TeamId)), []),
+            ],
+        };
+        var builder = WebApplication.CreateBuilder(new WebApplicationOptions
+        {
+            ApplicationName = typeof(ShiftAdminControllerTests).Assembly.GetName().Name,
+            EnvironmentName = "Testing",
+        });
+        builder.Services.AddLocalization();
+        builder.Services.AddHttpContextAccessor();
+        builder.Services.AddControllersWithViews().AddApplicationPart(typeof(ShiftsResource).Assembly)
+            .AddApplicationPart(typeof(Humans.Base.ViewComponents.HumanViewComponent).Assembly);
+        var url = Substitute.For<IUrlHelper>();
+        url.Action(Arg.Any<UrlActionContext>()).Returns("/");
+        var urls = Substitute.For<IUrlHelperFactory>();
+        urls.GetUrlHelper(Arg.Any<ActionContext>()).Returns(url);
+        builder.Services.AddSingleton(urls);
+        await using var app = builder.Build();
+        using var scope = app.Services.CreateScope();
+        var services = scope.ServiceProvider;
+        var view = services.GetRequiredService<IRazorViewEngine>().GetView(null, "/Views/ShiftAdmin/Index.cshtml", isMainPage: false);
+        view.Success.Should().BeTrue();
+        var http = new DefaultHttpContext { RequestServices = services };
+        var route = new RouteData();
+        route.Values["controller"] = "ShiftAdmin";
+        route.Values["action"] = "Index";
+        var action = new ActionContext(http, route, new Microsoft.AspNetCore.Mvc.Abstractions.ActionDescriptor());
+        var data = new ViewDataDictionary(services.GetRequiredService<IModelMetadataProvider>(), new ModelStateDictionary()) { Model = model };
+        using var writer = new StringWriter(CultureInfo.InvariantCulture);
+        await view.View!.RenderAsync(new ViewContext(action, view.View!, data,
+            new TempDataDictionary(http, Substitute.For<ITempDataProvider>()), writer, new HtmlHelperOptions()));
+        var tested = 0;
+        foreach (Match form in Regex.Matches(writer.ToString(), "<form\\b[^>]*>.*?</form>", RegexOptions.Singleline | RegexOptions.NonBacktracking))
+        {
+            var inputs = Regex.Matches(form.Value, "<input\\b[^>]*>", RegexOptions.NonBacktracking)
+                .Cast<Match>().Select(input => Regex.Matches(input.Value, "(?<name>[\\w-]+)=\"(?<value>[^\"]*)\"", RegexOptions.NonBacktracking)
+                    .Cast<Match>().ToDictionary(a => a.Groups["name"].Value, a => a.Groups["value"].Value, StringComparer.Ordinal)).ToList();
+            var fields = new Dictionary<string, StringValues>(StringComparer.Ordinal);
+            foreach (var input in inputs.Where(i => i.ContainsKey("name")))
+            {
+                var name = input["name"];
+                fields[name] = StringValues.Concat(fields.GetValueOrDefault(name), input.GetValueOrDefault("value", ""));
+            }
+            foreach (var input in inputs.Where(i => i.GetValueOrDefault("name") is "DurationHours" or "TimeSlots[0].DurationHours"))
+            {
+                var name = input["name"];
+                input["value"].Should().BeOneOf("4", "4.5");
+                fields[name] = "4.5";
+                var metadata = services.GetRequiredService<IModelMetadataProvider>().GetMetadataForType(typeof(double));
+                var binder = services.GetRequiredService<IModelBinderFactory>().CreateBinder(new ModelBinderFactoryContext { Metadata = metadata });
+                var binding = DefaultModelBindingContext.CreateBindingContext(action,
+                    new FormValueProvider(BindingSource.Form, new FormCollection(fields), CultureInfo.CurrentCulture),
+                    metadata, bindingInfo: null, modelName: name);
+                await binder.BindModelAsync(binding);
+                binding.Result.IsModelSet.Should().BeTrue();
+                binding.Result.Model.Should().Be(4.5d, $"{name} must preserve fractional hours in {language}");
+                tested++;
+            }
+        }
+        tested.Should().Be(5);
     }
 
     private static Rota MakeRota(Guid teamId) => new()
