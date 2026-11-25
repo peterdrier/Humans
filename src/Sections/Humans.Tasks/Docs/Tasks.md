@@ -78,7 +78,7 @@ Pieces of work with an end, hanging on a team. A task is to a role (standing res
 - A hidden team's tasks page (`/Tasks/Team/{slug}`) is found only by TasksAdmin, Board, Admin, the team's managers and people confirmed on one of its tasks; 404 for everyone else.
 - Services are auth-free: controllers build `TasksAccess` (`Authorization/TasksAccess.cs`) from `IPermissionService` and the `TasksPolicies.Read` policy, and check it before every write and filter every read. Tests: `tests/Humans.Tasks.Tests/TasksAccessTests.cs`.
 - Every create (bulk or form), update, status change, delete, assign, unassign and dependency change is audited (`TasksAuditActions`, entity type `TaskItem`). Every refusal is logged at Warning.
-- A form field that does not bind (a malformed date or event) refuses the write and shows the form again with what was typed; so does a refused status change.
+- Add/edit forms require explicit priority, slot count, date modes, approval and visibility flags; status changes require an explicit status. Missing required values and malformed fields refuse the write, log a Warning and show the form again with what was typed. Explicit false flags and the None priority remain valid. A refused status change preserves the existing status and blocked note.
 - GDPR: export lists the person's tasks with state and date; erasure removes their places and requests; a merge moves them to the survivor, keeping one row, confirmed winning. Task text is not tied to a person and stays.
 - Demo story: `Services/Demo/TasksDemoStory.cs`, after Teams.
 
