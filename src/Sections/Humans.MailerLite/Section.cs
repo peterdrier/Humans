@@ -50,8 +50,10 @@ public sealed class Section : ISection, ISectionAdminNav, ISectionConfiguration,
                 && baseAddress.Scheme is "http" or "https")
                 http.BaseAddress = baseAddress;
             http.Timeout = TimeSpan.FromSeconds(30);
-            http.DefaultRequestHeaders.Authorization =
-                new AuthenticationHeaderValue("Bearer", opts.ApiKey);
+            if (!AuthenticationHeaderValue.TryParse($"Bearer {opts.ApiKey}", out var authorization)
+                || opts.ApiVersion.AsSpan().ContainsAny('\r', '\n'))
+                throw new HttpRequestException("MailerLite:ApiKey and MailerLite:ApiVersion must be valid HTTP header values.");
+            http.DefaultRequestHeaders.Authorization = authorization;
             http.DefaultRequestHeaders.Add("X-Version", opts.ApiVersion);
             http.DefaultRequestHeaders.Accept.Add(
                 new MediaTypeWithQualityHeaderValue("application/json"));

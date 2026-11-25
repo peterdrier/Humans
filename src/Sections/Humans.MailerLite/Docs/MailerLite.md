@@ -48,6 +48,8 @@ All routes are `AdminOnly`.
 
 An invalid `MailerLite:BaseUrl` does not prevent client resolution. Reads and writes reject missing or non-HTTP(S) endpoints with `HttpRequestException` before sending a request, so the dashboard uses its existing API-unavailable handling. Failed reads publish no cache snapshot; writes report failure.
 
+Malformed `MailerLite:ApiKey` or `MailerLite:ApiVersion` headers also fail at the API-call boundary with `HttpRequestException`, before any request. The diagnostic names the settings and omits the raw parsing exception and header values, so a failed dashboard read reports unavailable without exposing credentials.
+
 ## Actors & Roles
 
 | Actor | Capabilities |

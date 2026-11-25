@@ -22,12 +22,22 @@ public class MailerLiteClientRetryTests
     [Xunit.InlineData("ftp://mailerlite.example", false)]
     [Xunit.InlineData("https://mailerlite.example", true)]
     [Xunit.InlineData("http://mailerlite.example", true)]
-    public async Task Register_Endpoint_ReportsApiFailure(string baseUrl, bool valid)
+    [Xunit.InlineData("https://mailerlite.example", false, "ApiKey", "key\r\nnext")]
+    [Xunit.InlineData("https://mailerlite.example", false, "ApiKey", "key\nnext")]
+    [Xunit.InlineData("https://mailerlite.example", false, "ApiKey", "key\rnext")]
+    [Xunit.InlineData("https://mailerlite.example", false, "ApiVersion", "2038-01-01\r\nnext")]
+    [Xunit.InlineData("https://mailerlite.example", false, "ApiVersion", "2038-01-01\nnext")]
+    [Xunit.InlineData("https://mailerlite.example", false, "ApiVersion", "2038-01-01\rnext")]
+    public async Task Register_Configuration_ReportsApiFailure(string baseUrl, bool valid, string? field = null, string? value = null)
     {
         var services = new ServiceCollection();
         new Section().Register(services, new ConfigurationBuilder().AddInMemoryCollection(
             new Dictionary<string, string?>(StringComparer.Ordinal) { ["MailerLite:BaseUrl"] = baseUrl }).Build());
-        services.Configure<MailerLiteOptions>(o => o.ApiKey = "test-key");
+        services.Configure<MailerLiteOptions>(o =>
+        {
+            o.ApiKey = string.Equals(field, "ApiKey", StringComparison.Ordinal) ? value! : "test-key";
+            if (string.Equals(field, "ApiVersion", StringComparison.Ordinal)) o.ApiVersion = value!;
+        });
         services.AddSingleton<NodaTime.IClock>(NodaTime.SystemClock.Instance);
         var handler = new ScriptedHandler();
         handler.EnqueueJson(HttpStatusCode.OK, """{"data":[],"meta":{"next_cursor":null}}""");
@@ -44,14 +54,24 @@ public class MailerLiteClientRetryTests
         client.LastFetchedAt.Should().BeNull();
         if (valid)
         {
+            using var http = provider.GetRequiredService<IHttpClientFactory>().CreateClient(MailerLiteClient.HttpClientName);
+            http.DefaultRequestHeaders.Authorization.Should().Be(new AuthenticationHeaderValue("Bearer", "test-key"));
             (await read()).Should().ContainSingle().Which.Id.Should().Be("42");
             (await write()).Id.Should().Be("43");
             client.LastFetchedAt.Should().NotBeNull();
         }
         else
         {
-            await read.Should().ThrowAsync<HttpRequestException>().WithMessage("*absolute HTTP(S)*");
-            await write.Should().ThrowAsync<HttpRequestException>().WithMessage("*absolute HTTP(S)*");
+            var message = field is null ? "*absolute HTTP(S)*" : "*HTTP header*";
+            var readFailure = await read.Should().ThrowAsync<HttpRequestException>().WithMessage(message);
+            var writeFailure = await write.Should().ThrowAsync<HttpRequestException>().WithMessage(message);
+            if (value is not null)
+            {
+                readFailure.Which.ToString().Should().NotContain(value);
+                writeFailure.Which.ToString().Should().NotContain(value);
+                readFailure.Which.InnerException.Should().BeNull();
+                writeFailure.Which.InnerException.Should().BeNull();
+            }
             client.LastFetchedAt.Should().BeNull();
         }
         handler.Calls.Should().Be(valid ? 3 : 0);
