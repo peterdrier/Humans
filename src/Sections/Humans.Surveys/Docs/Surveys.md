@@ -274,6 +274,8 @@ First-party, GDPR-compliant surveys: author typed/branching multi-language surve
 - **Single-repo ownership.** Only `SurveyRepository` touches the six `survey_*` tables; a `survey_*` table appears in no other repository.
 - **Cross-domain refs are bare `Guid` FK columns** — no navigation properties, no `[Obsolete]` navs, and no cross-section EF FK constraints. Display data (creator/respondent names, recipient languages/emails) is stitched into DTOs by the service via other sections' `I<Section>Service` contracts.
 
+- All five public slug actions reuse the authoring/lookup slug validator before accessing wizard sessions or services. Blank, overlong and reserved slugs return 404; the controller keeps no separate reserved-word list.
+
 ## Negative Access Rules
 
 - Code outside `SurveyRepository` (and `SurveyService` above it) **cannot** read/write `survey_*` tables; other sections **cannot** inject `ISurveyRepository` — it is `internal` (HUM0034), so cross-section injection does not compile.
