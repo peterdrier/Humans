@@ -21,7 +21,7 @@
         .Template(Localizer["Tasks_Col_Status"].Value, statusCell, c => c.SelectFilter(), t => (int)t.Status)
         .Template(Localizer["Tasks_Col_Priority"].Value, priorityCell, c => c.SelectFilter(), t => TaskPriorityOrder.Rank(t.Priority))
         .Column(Localizer["Tasks_Col_Due"].Value, t => t.Due?.Resolved, c => c.Date())
-        .Column(Localizer["Tasks_Col_Slots"].Value, t => Localizer["Tasks_Task_SlotsOf", t.ConfirmedCount, t.SlotCount].Value, c => c.End().NoSort())
+        .Column(Localizer["Tasks_Col_Slots"].Value, t => Localizer["Tasks_Task_SlotsOf", t.ConfirmedCount, t.SlotCount].Value, c => c.End().NoSort().Css("text-nowrap"))
         .Empty(Localizer["Tasks_List_Empty"].Value);
     if (Model.Places.Count > 0)
     {

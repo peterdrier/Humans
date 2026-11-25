@@ -16,7 +16,7 @@
             t => t.TeamSlug.Length > 0 ? Url.Action("Team", "Tasks", new { slug = t.TeamSlug }) : null, c => c.SelectFilter())
         .Template(Localizer["Tasks_Col_Priority"].Value, priorityCell, c => c.SelectFilter(), t => TaskPriorityOrder.Rank(t.Priority))
         .Column(Localizer["Tasks_Col_Due"].Value, t => t.Due?.Resolved, c => c.Date())
-        .Column(Localizer["Tasks_Col_Free"].Value, t => Localizer["Tasks_Task_SlotsOf", t.OpenSlots, t.SlotCount].Value, c => c.End().NoSort())
+        .Column(Localizer["Tasks_Col_Free"].Value, t => Localizer["Tasks_Task_SlotsOf", t.OpenSlots, t.SlotCount].Value, c => c.End().NoSort().Css("text-nowrap"))
         .Template(Localizer["Tasks_Col_Join"].Value, claimCell, c => c.End().NoSort())
         .Empty(Localizer["Tasks_Open_Empty"].Value)
         .Build();

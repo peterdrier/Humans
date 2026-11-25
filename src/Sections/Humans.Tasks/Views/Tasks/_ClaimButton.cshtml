@@ -3,18 +3,18 @@
 
 @if (Model.Place == MyPlace.Requested)
 {
-    <span class="text-muted small"><i class="fa-solid fa-hourglass-half" aria-hidden="true"></i> @Localizer["Tasks_RequestWaiting"]</span>
+    <span class="text-muted small text-nowrap"><i class="fa-solid fa-hourglass-half" aria-hidden="true"></i> @Localizer["Tasks_RequestWaiting"]</span>
 }
 else if (Model.Place == MyPlace.Confirmed)
 {
-    <span class="text-muted small"><i class="fa-solid fa-check" aria-hidden="true"></i> @Localizer["Tasks_YouAreOn"]</span>
+    <span class="text-muted small text-nowrap"><i class="fa-solid fa-check" aria-hidden="true"></i> @Localizer["Tasks_YouAreOn"]</span>
 }
 else
 {
     <form action="@Url.Action("Claim", "Tasks", new { id = Model.Task.Id })" method="post" class="d-inline">
         @Html.AntiForgeryToken()
         <input type="hidden" name="returnUrl" value="@Model.ReturnUrl" />
-        <button type="submit" class="@(Model.Small ? "btn btn-sm" : "btn") @(Model.Primary ? "btn-primary" : "btn-outline-primary")">
+        <button type="submit" class="@(Model.Small ? "btn btn-sm text-nowrap" : "btn") @(Model.Primary ? "btn-primary" : "btn-outline-primary")">
             @(Model.Task.NeedsApproval ? Localizer["Tasks_AskToJoin"] : Localizer["Tasks_Claim"])
         </button>
     </form>
