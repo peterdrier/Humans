@@ -97,6 +97,8 @@ Stored as string (`HasConversion<string>()`, max length 20).
 
 ## Invariants
 
+- The code-generation number field carries MVC invariant-field metadata, so a dot-decimal fixed discount binds unchanged in every supported request culture. Integer percentage discounts, explicit zero, permission checks and service validation retain their existing behavior.
+
 - Wave preview and sending share recipient preparation: members already granted a code are excluded, and a missing user or missing email is warned and skipped before counting required codes. Only deliverable recipients consume available codes, so an undeliverable member cannot cause a false shortage or displace the next free code.
 
 - Code-tracking summaries carry campaign creation time without display ordering. Tickets owns newest-campaign ordering and its report tie-breakers; grant counts and redemption matching are independent of summary order.
