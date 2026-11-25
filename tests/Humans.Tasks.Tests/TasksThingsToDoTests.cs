@@ -45,7 +45,7 @@ public sealed class TasksThingsToDoTests
     }
 
     [HumansFact]
-    public async Task AManager_SeesTheirTeamsWaitingRequests_WithACountAndALinkToTheTeamPage()
+    public async Task Manager_SeesTheirTeamsRequests()
     {
         await RequestAsync(Production, "Bar");
         var second = await RequestAsync(Production, "Stage");
@@ -70,7 +70,7 @@ public sealed class TasksThingsToDoTests
     }
 
     [HumansFact]
-    public async Task TasksAdminAndAdmin_HoldTheManagePermissionOnEveryTeam_SoSeeEveryTeamsRequests()
+    public async Task Admins_SeeEveryTeamsRequests()
     {
         await RequestAsync(Production, "Bar");
         await RequestAsync(Art, "Mural");
@@ -81,7 +81,7 @@ public sealed class TasksThingsToDoTests
     }
 
     [HumansFact]
-    public async Task AMemberWhoManagesNothing_SeesNothing_EvenWhenRequestsWait()
+    public async Task NonManager_SeesNothing()
     {
         await RequestAsync(Production, "Bar");
 
@@ -89,7 +89,7 @@ public sealed class TasksThingsToDoTests
     }
 
     [HumansFact]
-    public async Task ASignedOutCaller_SeesNothing_AndNothingIsAsked()
+    public async Task SignedOutCaller_SeesNothing()
     {
         await RequestAsync(Production, "Bar");
 
@@ -117,7 +117,7 @@ public sealed class TasksThingsToDoTests
     }
 
     [HumansFact]
-    public async Task RequestsOnADoneTask_AreStillCounted_SinceTheyOweAnAnswer()
+    public async Task Requests_OnDoneTask_StillCounted()
     {
         var done = await RequestAsync(Production, "Old");
         await _kit.SetStatusAsync(done, Humans.Tasks.Domain.TaskItemStatus.Done);

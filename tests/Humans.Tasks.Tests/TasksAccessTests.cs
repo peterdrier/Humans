@@ -128,7 +128,7 @@ public sealed class TasksAccessTests
     [InlineData(Who.Manager, true, false, true)]
     [InlineData(Who.ManagerOfOtherTeam, true, false, false)]
     [InlineData(Who.SeesAll, true, false, true)]
-    public void CanClaim_ShowsOnlyOnATheyCanSeeWithAFreeSlotThatTheyAreNotAlreadyOn(Who who, bool hidden, bool teamHidden, bool expected) =>
+    public void CanClaim_OnlyForVisibleFreeTaskNotAlreadyOn(Who who, bool hidden, bool teamHidden, bool expected) =>
         Access(who).CanClaim(Task(who, hidden, teamHidden)).Should().Be(expected);
 
     [HumansTheory]
@@ -141,7 +141,7 @@ public sealed class TasksAccessTests
         Access(Who.Human).CanClaim(Task(Who.Human) with { Status = (TaskItemStatus)status }).Should().Be(expected);
 
     [HumansFact]
-    public void CanClaim_NeverOnAFullTask_ButARequestDoesNotFillOne()
+    public void CanClaim_FullTask_IsFalse()
     {
         var full = Task(Who.Human) with { Assignments = [new TaskAssignmentInfo(Guid.NewGuid(), IsConfirmed: true, Instant.MinValue)] };
         var onlyRequested = Task(Who.Human) with { Assignments = [new TaskAssignmentInfo(Guid.NewGuid(), IsConfirmed: false, Instant.MinValue)] };

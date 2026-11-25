@@ -18,7 +18,7 @@ public sealed class TasksEmailsTests
 
     [HumansTheory]
     [MemberData(nameof(SupportedCultures.All), MemberType = typeof(SupportedCultures))]
-    public void Approved_IsLocalizedEncodedAndVolunteerUpdates(string culture)
+    public void Approved_RendersLocalizedEncodedBody(string culture)
     {
         var request = Request(culture);
 
@@ -49,7 +49,7 @@ public sealed class TasksEmailsTests
 
     [HumansTheory]
     [MemberData(nameof(SupportedCultures.Translated), MemberType = typeof(SupportedCultures))]
-    public void EveryTranslationDiffersFromEnglish(string culture)
+    public void Translations_DifferFromEnglish(string culture)
     {
         var english = _kit.Emails.RequestApproved(Request("en"));
         var translated = _kit.Emails.RequestApproved(Request(culture));
@@ -63,7 +63,7 @@ public sealed class TasksEmailsTests
     }
 
     [HumansFact]
-    public void TheGallery_HasASampleForEveryTemplateTheBuilderCanMake()
+    public void Gallery_HasSampleForEveryTemplate()
     {
         var persona = new EmailPreviewPersona("en", "Sam", "sam@example.com");
 

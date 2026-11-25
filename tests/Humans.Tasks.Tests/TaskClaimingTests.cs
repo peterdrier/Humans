@@ -41,7 +41,7 @@ public sealed class TaskClaimingTests
             actor, subject, AuditSubjectTypes.User);
 
     [HumansFact]
-    public async Task Claim_WithoutApproval_ConfirmsAtOnceAndTakesASlot()
+    public async Task Claim_WithoutApproval_TakesSlotAtOnce()
     {
         var task = await _kit.CreateAsync(Input(slots: 2));
 
@@ -55,7 +55,7 @@ public sealed class TaskClaimingTests
     }
 
     [HumansFact]
-    public async Task Claim_OnATaskThatNeedsApproval_MakesARequestThatTakesNoSlot()
+    public async Task Claim_NeedingApproval_MakesRequestWithoutSlot()
     {
         var task = await _kit.CreateAsync(Input(slots: 1, needsApproval: true, reason: "chainsaw licence"));
 
@@ -117,7 +117,7 @@ public sealed class TaskClaimingTests
     }
 
     [HumansFact]
-    public async Task Claim_IsRefusedWhenAlreadyOnOrAlreadyAskedAndTheTaskIsUnchanged()
+    public async Task Claim_WhenAlreadyOnOrAsked_IsRefused()
     {
         var plain = await _kit.CreateAsync(Input(slots: 3));
         var gated = await _kit.CreateAsync(Input(slots: 3, needsApproval: true));
@@ -135,7 +135,7 @@ public sealed class TaskClaimingTests
         (await ClaimAsync(Guid.NewGuid())).Refusal.Should().Be("Tasks_Refusal_NoTask");
 
     [HumansFact]
-    public async Task Claim_TwoClaimsAtTheSameMoment_BothLand_AsNoOneLocks()
+    public async Task Claim_ConcurrentClaims_BothLand()
     {
         var task = await _kit.CreateAsync(Input(slots: 1));
         // Hold both writes until both have read the task with its one free slot.
@@ -174,7 +174,7 @@ public sealed class TaskClaimingTests
     }
 
     [HumansFact]
-    public async Task Release_GivesBackTheConfirmedPlace_AndFreesTheSlot()
+    public async Task Release_FreesTheConfirmedSlot()
     {
         var task = await _kit.CreateAsync(Input(slots: 1));
         await ClaimAsync(task.Id);
@@ -188,7 +188,7 @@ public sealed class TaskClaimingTests
     }
 
     [HumansFact]
-    public async Task Release_IsRefusedWithoutAConfirmedPlace_AndLeavesARequestAlone()
+    public async Task Release_WithoutConfirmedPlace_LeavesRequestAlone()
     {
         var gated = await _kit.CreateAsync(Input(needsApproval: true));
         var other = await _kit.CreateAsync();
@@ -212,7 +212,7 @@ public sealed class TaskClaimingTests
     }
 
     [HumansFact]
-    public async Task Withdraw_TakesBackTheRequest_AndSendsNothing()
+    public async Task Withdraw_TakesBackRequestSilently()
     {
         var task = await _kit.CreateAsync(Input(needsApproval: true));
         await ClaimAsync(task.Id);
@@ -226,7 +226,7 @@ public sealed class TaskClaimingTests
     }
 
     [HumansFact]
-    public async Task Withdraw_IsRefusedWithoutARequest_AndNeverRemovesAConfirmedPlace()
+    public async Task Withdraw_WithoutRequest_KeepsConfirmedPlace()
     {
         var task = await _kit.CreateAsync(Input(slots: 2));
         await ClaimAsync(task.Id);
@@ -237,7 +237,7 @@ public sealed class TaskClaimingTests
     }
 
     [HumansFact]
-    public async Task Approve_ConfirmsTheRequest_AuditsIt_AndEmailsThePersonInTheirLanguage()
+    public async Task Approve_ConfirmsRequest_EmailsInTheirLanguage()
     {
         _kit.GiveEmail(_sam, "sam@example.com", language: "es");
         var task = await _kit.CreateAsync(Input(title: "Welfare tent", slots: 2, needsApproval: true));
@@ -273,7 +273,7 @@ public sealed class TaskClaimingTests
     }
 
     [HumansFact]
-    public async Task Approve_IsRefusedWithoutARequest_AndSendsNothing()
+    public async Task Approve_WithoutRequest_SendsNothing()
     {
         var task = await _kit.CreateAsync(Input(slots: 2));
         await _kit.Service.AssignAsync(task.Id, _sam, _kit.Actor, Ct);
@@ -299,7 +299,7 @@ public sealed class TaskClaimingTests
     }
 
     [HumansFact]
-    public async Task Decline_RemovesTheRequest_SendsTheReasonByEmailAndAuditsIt_AndThePersonMayAskAgain()
+    public async Task Decline_RemovesRequest_PersonMayAskAgain()
     {
         _kit.GiveEmail(_sam, "sam@example.com");
         var task = await _kit.CreateAsync(Input(title: "Welfare tent", slots: 1, needsApproval: true, reason: "first aid"));
@@ -318,7 +318,7 @@ public sealed class TaskClaimingTests
     }
 
     [HumansFact]
-    public async Task Decline_WithoutAReason_SendsAnEmailWithNoReasonLine()
+    public async Task Decline_WithoutReason_EmailHasNoReasonLine()
     {
         _kit.GiveEmail(_sam, "sam@example.com");
         var task = await _kit.CreateAsync(Input(needsApproval: true));
@@ -334,7 +334,7 @@ public sealed class TaskClaimingTests
     }
 
     [HumansFact]
-    public async Task Decline_IsRefusedWhenTheReasonIsTooLong_AndChangesNothing()
+    public async Task Decline_TooLongReason_ChangesNothing()
     {
         _kit.GiveEmail(_sam, "sam@example.com");
         var task = await _kit.CreateAsync(Input(needsApproval: true));
@@ -348,7 +348,7 @@ public sealed class TaskClaimingTests
     }
 
     [HumansFact]
-    public async Task Decline_IsRefusedWithoutARequest_AndNeverRemovesAConfirmedPlace()
+    public async Task Decline_WithoutRequest_KeepsConfirmedPlace()
     {
         _kit.GiveEmail(_sam, "sam@example.com");
         var task = await _kit.CreateAsync(Input(slots: 2));
@@ -386,7 +386,7 @@ public sealed class TaskClaimingTests
     }
 
     [HumansFact]
-    public async Task AnAssignedPerson_CannotAlsoClaim_AndAManagersAssignRefusesSomeoneWhoAlreadyAsked()
+    public async Task Assign_WhenPersonAlreadyAsked_IsRefused()
     {
         var task = await _kit.CreateAsync(Input(slots: 3, needsApproval: true));
         await ClaimAsync(task.Id);
@@ -395,7 +395,7 @@ public sealed class TaskClaimingTests
     }
 
     [HumansFact]
-    public async Task Unassign_RefusesARequest_SoDeclineIsTheOnlyWayAndItsEmailIsNeverSkipped()
+    public async Task Unassign_OnARequest_IsRefused()
     {
         var task = await _kit.CreateAsync(Input(slots: 3, needsApproval: true));
         await ClaimAsync(task.Id);

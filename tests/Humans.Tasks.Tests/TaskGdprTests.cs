@@ -35,7 +35,7 @@ public sealed class TaskGdprTests
     }
 
     [HumansFact]
-    public async Task Export_ShowsAClaimedPlaceAndAWaitingRequest_AndNothingAfterADecline_NorTheDeclineReason()
+    public async Task Export_OmitsDeclinedRequests()
     {
         var plain = await _kit.CreateAsync(Input(title: "Plain", slots: 2));
         var gated = await _kit.CreateAsync(Input(title: "Gated", slots: 2, needsApproval: true));
@@ -53,7 +53,7 @@ public sealed class TaskGdprTests
     }
 
     [HumansFact]
-    public async Task Erasure_RemovesClaimedPlacesAndWaitingRequests()
+    public async Task Erasure_RemovesEveryClaimRow()
     {
         var plain = await _kit.CreateAsync(Input(slots: 2));
         var gated = await _kit.CreateAsync(Input(slots: 2, needsApproval: true));
@@ -69,7 +69,7 @@ public sealed class TaskGdprTests
     }
 
     [HumansFact]
-    public async Task ConfirmRequest_AndRemoveRequest_TouchOnlyARequestRow()
+    public async Task RequestChanges_TouchOnlyRequestRows()
     {
         var (repository, factory) = Repository();
         var task = Guid.NewGuid();

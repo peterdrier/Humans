@@ -470,7 +470,7 @@ public sealed class TasksControllerTests
     }
 
     [HumansFact]
-    public async Task Team_ListsWaitingRequestsOnlyToThatTeamsManagers_FinishedTasksIncluded()
+    public async Task Team_ListsRequestsOnlyToManagers()
     {
         static IReadOnlyList<RequestRow> Requests(IActionResult r) =>
             r.Should().BeOfType<ViewResult>().Which.Model.Should().BeOfType<TeamPageViewModel>().Which.Requests;
@@ -487,7 +487,7 @@ public sealed class TasksControllerTests
     }
 
     [HumansFact]
-    public async Task Open_ListsEveryVisibleTaskWithAFreeSlot_MostNeededFirst_WithTheViewersPlace()
+    public async Task Open_ListsFreeTasks_MostNeededFirst()
     {
         var hidden = await TaskOnAsync(TaskTestKit.Production, hidden: true);
         var full = await TaskOnAsync(TaskTestKit.Production, confirmed: Guid.NewGuid());
@@ -512,7 +512,7 @@ public sealed class TasksControllerTests
     }
 
     [HumansFact]
-    public async Task Claim_TakesTheSlotAtOnce_OrMakesARequestWhenApprovalIsNeeded()
+    public async Task Claim_TakesSlotOrMakesRequest()
     {
         var plain = await TaskOnAsync(TaskTestKit.Production);
         var guarded = await _kit.CreateAsync(TaskTestKit.Input(needsApproval: true));
@@ -527,7 +527,7 @@ public sealed class TasksControllerTests
     }
 
     [HumansFact]
-    public async Task Claim_AHiddenTaskIsNotFound_AndAFullOrFinishedOneIsRefusedInWords()
+    public async Task Claim_HiddenTask_IsNotFound()
     {
         var hidden = await TaskOnAsync(TaskTestKit.Production, hidden: true);
         var full = await TaskOnAsync(TaskTestKit.Production, confirmed: Guid.NewGuid());
@@ -549,7 +549,7 @@ public sealed class TasksControllerTests
     }
 
     [HumansFact]
-    public async Task Claim_ComesBackToALocalPageAndNeverToAnotherSite()
+    public async Task Claim_ReturnUrl_StaysOnThisSite()
     {
         var first = await TaskOnAsync(TaskTestKit.Production);
         var second = await TaskOnAsync(TaskTestKit.Production);
@@ -575,7 +575,7 @@ public sealed class TasksControllerTests
     }
 
     [HumansFact]
-    public async Task Release_AHiddenTaskIsNotFoundForSomeoneNotOnIt()
+    public async Task Release_HiddenTask_IsNotFound()
     {
         var hidden = await TaskOnAsync(TaskTestKit.Production, hidden: true, confirmed: Guid.NewGuid());
 
@@ -638,7 +638,7 @@ public sealed class TasksControllerTests
     }
 
     [HumansFact]
-    public async Task Approve_AHiddenTaskIsNotFoundForAManagerOfAnotherTeam()
+    public async Task Approve_OtherTeamsTask_IsNotFound()
     {
         var asker = Guid.NewGuid();
         var task = await _kit.CreateAsync(TaskTestKit.Input(hidden: true, needsApproval: true));
@@ -648,7 +648,7 @@ public sealed class TasksControllerTests
     }
 
     [HumansFact]
-    public async Task Decline_NeedsManage_AndAnswersWithTheReason()
+    public async Task Decline_WithoutManage_IsForbidden()
     {
         var asker = Guid.NewGuid();
         _kit.GiveEmail(asker, "asker@example.org");
@@ -666,7 +666,7 @@ public sealed class TasksControllerTests
     }
 
     [HumansFact]
-    public async Task Decline_ATooLongReasonIsRefusedAndTheRequestStays()
+    public async Task Decline_TooLongReason_KeepsRequest()
     {
         var asker = Guid.NewGuid();
         var task = await RequestedAsync(asker);
