@@ -319,6 +319,8 @@ The Consent Coordinator review queue (`GET /Consent/ReviewQueue`, `POST /Consent
 
 ## Invariants
 
+- Adding a Board seat resolves an active member, then asks Auth to grant that exact account. Auth's `UserUnavailable` refusal maps to the existing inactive-account result and HTTP 404; it never triggers a body sync.
+
 - The internal `AssemblyVotePresentation` owns the plain-text acta and the Madrid closing-time conversion shared with roster emails. Result loading, embargo/disclosure decisions and audits remain in `AssemblyVoteService`; the internal result reader resolves closer names.
 
 - Assembly-vote administration (including peek and ballot disclosure) and term-expiry correction resolve their actor through Users before proceeding. Merged sessions audit the surviving account; missing accounts receive Challenge for vote administration and Unauthorized for term correction. Actor lookup cancellation propagates before service calls. Existing mutation tokens, frozen rosters and member ballot eligibility are unchanged.
