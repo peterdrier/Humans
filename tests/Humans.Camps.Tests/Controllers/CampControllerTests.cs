@@ -50,6 +50,56 @@ public class CampControllerTests
     public enum ContactViewer { Other, Lead, CampsAdmin, Admin }
 
     [HumansTheory]
+    [InlineData(null)]
+    [InlineData("bad")]
+    [InlineData("true")]
+    [InlineData("false")]
+    public async Task Contact_ExplicitSharingChoice_ControlsDelivery(string? choice)
+    {
+        var registrations = new ServiceCollection().AddLogging();
+        registrations.AddControllers();
+        using var services = registrations.BuildServiceProvider();
+        var senderId = Guid.NewGuid();
+        var camp = MakeCamp("alpha", "Alpha Camp", CampSeasonStatus.Active, Guid.NewGuid());
+        _camps.GetCampBySlugAsync(camp.Slug, Arg.Any<CancellationToken>()).Returns(camp);
+        _camps.GetSettingsAsync(Arg.Any<CancellationToken>()).Returns(Settings2026());
+        _users.GetUserInfoAsync(senderId, Arg.Any<CancellationToken>()).Returns(UserInfo.Create(
+            new User { Id = senderId, Email = "sender@example.com", BurnerName = "Sender" }, [], [], null));
+        _campsLocalizer[Arg.Any<string>()].Returns(call => new LocalizedString(call.Arg<string>(), call.Arg<string>()));
+        _contacts.SendFacilitatedMessageAsync(Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<string>(),
+            Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(), Arg.Any<bool>(),
+            Arg.Any<IReadOnlyList<Guid>>(), Arg.Any<string>()).Returns(new CampContactResult(true, false));
+        var controller = BuildController(senderId);
+        controller.HttpContext.RequestServices = services;
+        var fields = new Dictionary<string, StringValues>(StringComparer.Ordinal) { ["Message"] = "Hello" };
+        if (choice is not null) fields["IncludeContactInfo"] = choice;
+        var metadata = services.GetRequiredService<IModelMetadataProvider>().GetMetadataForType(typeof(CampContactViewModel));
+        var binder = services.GetRequiredService<IModelBinderFactory>().CreateBinder(new ModelBinderFactoryContext { Metadata = metadata });
+        var binding = DefaultModelBindingContext.CreateBindingContext(controller.ControllerContext,
+            new FormValueProvider(BindingSource.Form, new FormCollection(fields), CultureInfo.InvariantCulture),
+            metadata, bindingInfo: null, modelName: "");
+        await binder.BindModelAsync(binding);
+        var model = (CampContactViewModel)binding.Result.Model!;
+        services.GetRequiredService<IObjectModelValidator>().Validate(controller.ControllerContext, null, "", model);
+
+        var result = await controller.Contact(camp.Slug, model);
+
+        if (bool.TryParse(choice, out var includeContactInfo))
+        {
+            result.Should().BeOfType<RedirectToActionResult>();
+            await _contacts.Received(1).SendFacilitatedMessageAsync(camp.Id, camp.ContactEmail, "Alpha Camp",
+                senderId, "Sender", "sender@example.com", "Hello", includeContactInfo,
+                Arg.Any<IReadOnlyList<Guid>>(), $"/Barrios/{camp.Slug}");
+        }
+        else
+        {
+            result.Should().BeOfType<ViewResult>().Which.Model.Should().BeSameAs(model);
+            controller.ModelState["IncludeContactInfo"]!.Errors.Should().HaveCount(choice is null ? 1 : 2);
+            _contacts.ReceivedCalls().Should().BeEmpty();
+        }
+    }
+
+    [HumansTheory]
     [InlineData(ContactSurface.Form)]
     [InlineData(ContactSurface.Redisplay)]
     [InlineData(ContactSurface.Send)]

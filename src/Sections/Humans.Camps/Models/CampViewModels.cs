@@ -251,6 +251,7 @@ internal sealed class CampContactViewModel
     [StringLength(2000, ErrorMessage = "Validation_MaxLength")]
     public string Message { get; set; } = string.Empty;
 
+    [BindRequired]
     public bool IncludeContactInfo { get; set; } = true;
 }
 
