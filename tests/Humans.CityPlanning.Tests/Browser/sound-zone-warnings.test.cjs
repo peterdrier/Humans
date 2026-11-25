@@ -6,7 +6,7 @@ const vm = require('node:vm');
 const root = resolve(__dirname, '../../../src/Sections/Humans.CityPlanning/wwwroot/js/city-planning');
 
 function mismatch(properties, campZone, collection = true) {
-    const features = properties.map(props => ({ type: 'Feature', geometry: { type: 'Polygon', coordinates: [] }, properties: props }));
+    const features = properties.map(props => ({ type: 'Feature', geometry: { type: 'Polygon', coordinates: [[[0, 0], [2, 0], [2, 2], [0, 0]]] }, properties: props }));
     const context = {
         appState: { campMap: { limitZoneGeoJson: JSON.stringify(collection ? { type: 'FeatureCollection', features } : features[0]) } },
         CONFIG: {},

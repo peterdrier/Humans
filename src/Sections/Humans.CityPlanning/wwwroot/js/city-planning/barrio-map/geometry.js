@@ -19,7 +19,7 @@ export function getSoundZoneOutOfRange(feature, campSoundZone) {
     if (!appState.campMap?.limitZoneGeoJson) return false;
     let limitZoneData;
     try { limitZoneData = JSON.parse(appState.campMap.limitZoneGeoJson); } catch { return false; }
-    const features = limitZoneData.type === 'FeatureCollection' ? limitZoneData.features : [limitZoneData];
+    const features = getAreaFeatures(limitZoneData);
     let bestZoneNames = null;
     let bestArea = 0;
     for (const zf of features) {
@@ -36,15 +36,34 @@ export function getSoundZoneOutOfRange(feature, campSoundZone) {
     return !bestZoneNames.split('_').includes(campZoneName);
 }
 
+function getAreaFeatures(data) {
+    if (data.type === 'FeatureCollection') return data.features.flatMap(getAreaFeatures);
+    const feature = data.type === 'Feature' ? data : { type: 'Feature', properties: {}, geometry: data };
+    const polygons = [];
+    function collect(geometry) {
+        if (!geometry) return;
+        if (geometry.type === 'GeometryCollection') {
+            geometry.geometries.forEach(collect);
+        } else if (geometry.type === 'Polygon' && geometry.coordinates.length > 0) {
+            polygons.push(geometry.coordinates);
+        } else if (geometry.type === 'MultiPolygon') {
+            polygons.push(...geometry.coordinates.filter(rings => rings.length > 0));
+        }
+    }
+    collect(feature.geometry);
+    if (polygons.length === 0) return [];
+    return [{ ...feature, geometry: {
+        type: polygons.length === 1 ? 'Polygon' : 'MultiPolygon',
+        coordinates: polygons.length === 1 ? polygons[0] : polygons,
+    } }];
+}
+
 export function parseLimitZoneGeom(geoJson) {
     if (!geoJson) return null;
-    const lz = JSON.parse(geoJson);
-    if (lz.type === 'FeatureCollection') {
-        if (lz.features.length === 0) return null;
-        if (lz.features.length === 1) return lz.features[0];
-        return turf.union(lz);
-    }
-    return lz;
+    const features = getAreaFeatures(JSON.parse(geoJson));
+    if (features.length === 0) return null;
+    if (features.length === 1) return features[0];
+    return turf.union(turf.featureCollection(features));
 }
 
 export function buildCampPolygonFeatures(campPolygons) {
