@@ -137,6 +137,8 @@ One event-scoped early-entry grant: a human may enter on a date for a named proj
 
 ## Invariants
 
+- Role create/edit forms require explicit public visibility and period. Team edits require explicit active and early-entry flags; page edits require both publication flags. Missing required values or malformed fields refuse the mutation and log a Warning. Explicit false flags and YearRound remain valid. Conditional settings and unchecked management checkboxes retain their omission semantics.
+
 - A team has at most one role flagged `IsManagement`. Only TeamsAdmin or Admin set or clear the flag; the edit controller authorizes that field through `TeamsPolicies.Manage` and omits it for other editors. The internal update command accepts a nullable management value: null preserves the current stored flag, so no caller-supplied privilege boolean reaches the service. Toggling management on refuses a role that has assignees.
 - Editing a role into or out of management promotes or demotes its assignees' `TeamMemberRole` in the same save, audits the definition change, then reconciles each affected human's Coordinators system-team membership.
 - A role's slot count cannot shrink past an occupied slot; empty trailing slots may go. Undefined slot priorities, priorities whose comma-separated representation exceeds the existing 500-character column, and negative estimated hours are refused before anything is written. Role names use the database's 100-Unicode-character limit. Refused creates and edits leave roles and audit history untouched.
