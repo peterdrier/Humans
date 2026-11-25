@@ -596,6 +596,80 @@ public sealed partial class TicketCheckoutServiceTests
 
     private static CancellationToken Ct => TestContext.Current.CancellationToken;
 
+    [HumansTheory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task GetBuyOrderAsync_Viewer_ReturnsPermittedData(bool buyer)
+    {
+        var ownLine = new TicketCheckoutOrderLine { Kind = OrderLineKind.Ticket, HolderUserId = _otherBuyerId, AmountMinor = 22500 };
+        var otherLine = new TicketCheckoutOrderLine { Kind = OrderLineKind.Ticket, HolderUserId = _buyerId, AmountMinor = 22500 };
+        var donation = new TicketCheckoutOrderLine { Kind = OrderLineKind.Donation, AmountMinor = 1000 };
+        var order = new TicketCheckoutOrder
+        {
+            Id = Guid.NewGuid(),
+            BuyerUserId = _buyerId,
+            BuyerEmail = "buyer@example.org",
+            TicketingSettingsId = _ticketing.Id,
+            PlatformKey = "test",
+            PlatformOrderId = "cs_1",
+            State = TicketCheckoutOrderState.Paid,
+            TotalMinor = 46000,
+            PaymentUrl = "https://pay.example/cs_1",
+            Lines = [ownLine, otherLine, donation],
+        };
+        _repo.Orders.Add(order);
+        var ownTicket = new TicketCheckoutTicket { Id = Guid.NewGuid(), OrderId = order.Id, HolderUserId = _otherBuyerId };
+        var otherTicket = new TicketCheckoutTicket { Id = Guid.NewGuid(), OrderId = order.Id, HolderUserId = _buyerId };
+        _repo.Tickets.AddRange([ownTicket, otherTicket]);
+        _platform.GetStatusAsync("cs_1", Arg.Any<CancellationToken>())
+            .Returns(new PlatformOrderStatus(PlatformOrderState.Paid, null, null, Now, RefundedMinor: 1000));
+
+        var result = (await _service.GetBuyOrderAsync(order.Id, buyer ? _buyerId : _otherBuyerId, Ct))!;
+
+        result.IsBuyer.Should().Be(buyer);
+        result.Lines.Should().Equal(buyer ? [ownLine, otherLine, donation] : [ownLine]);
+        result.Tickets.Should().Equal(buyer ? [ownTicket, otherTicket] : [ownTicket]);
+        result.TotalMinor.Should().Be(buyer ? 46000 : 0);
+        result.TicketTotalMinor.Should().Be(buyer ? 45000 : 0);
+        result.RefundedMinor.Should().Be(buyer ? 1000 : 0);
+        result.PaymentUrl.Should().Be(buyer ? order.PaymentUrl : null);
+        order.Lines.Should().Equal(ownLine, otherLine, donation);
+        _repo.Tickets.Should().Equal(ownTicket, otherTicket);
+        await _platform.Received(1).GetStatusAsync("cs_1", Ct);
+    }
+
+    [HumansFact]
+    public async Task GetBuyOrderAsync_UnrelatedViewer_DoesNotRefresh()
+    {
+        await _service.StartCheckoutAsync(Buy(), _buyerId, Ct);
+
+        (await _service.GetBuyOrderAsync(_repo.Orders.Single().Id, _otherBuyerId, Ct)).Should().BeNull();
+
+        await _platform.DidNotReceiveWithAnyArgs().GetStatusAsync(default!);
+    }
+
+    [HumansFact]
+    public async Task GetBuyOrderAsync_MissingOrder_ReturnsNull()
+    {
+        (await _service.GetBuyOrderAsync(Guid.NewGuid(), _buyerId, Ct)).Should().BeNull();
+
+        await _platform.DidNotReceiveWithAnyArgs().GetStatusAsync(default!);
+    }
+
+    [HumansFact]
+    public async Task GetBuyOrderAsync_NewPayment_ReturnsIssuedTickets()
+    {
+        await _service.StartCheckoutAsync(Buy(), _buyerId, Ct);
+        var order = _repo.Orders.Single();
+        _platform.GetStatusAsync(order.PlatformOrderId!, Arg.Any<CancellationToken>())
+            .Returns(new PlatformOrderStatus(PlatformOrderState.Paid, 0, "card", Now));
+
+        var result = (await _service.GetBuyOrderAsync(order.Id, _buyerId, Ct))!;
+
+        result.State.Should().Be(TicketCheckoutOrderState.Paid);
+        result.Tickets.Should().ContainSingle().Which.HolderUserId.Should().Be(_buyerId);
+    }
+
     private async Task<TicketCheckoutOrder> BuyAndPayAsync(StartCheckout command, Guid userId)
     {
         var result = await _service.StartCheckoutAsync(command, userId, Ct);

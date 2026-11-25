@@ -217,14 +217,12 @@ internal sealed class TicketBuyController(
         var (errorResult, user) = await RequireCurrentUserAsync(ct);
         if (errorResult is not null) return errorResult;
 
-        // Checked before the refresh, so only the order's own people make it call the ticketing platform.
-        if (await checkout.GetOrderDetailAsync(id, ct) is not { } detail || !CanSee(detail.Order, user.Id))
+        if (await checkout.GetBuyOrderAsync(id, user.Id, ct) is not { } order)
             return NotFound();
-        var order = await checkout.RefreshOrderAsync(id, ct) ?? detail.Order;
-
-        var tickets = (await checkout.GetTicketsForOrderAsync(order.Id, ct))
-            .OrderBy(ticket => ticket.Kind).ThenBy(ticket => ticket.IssuedAt).ToList();
-        return View("~/Views/Tickets/Buy/Order.cshtml", new TicketBuyOrderViewModel(order, tickets, user.Id));
+        return View("~/Views/Tickets/Buy/Order.cshtml", order with
+        {
+            Tickets = order.Tickets.OrderBy(ticket => ticket.Kind).ThenBy(ticket => ticket.IssuedAt).ToList(),
+        });
     }
 
     [HttpPost("Order/{id:guid}/Cancel")]
@@ -243,19 +241,4 @@ internal sealed class TicketBuyController(
         }
         return startAgain && result.Refusal is null ? RedirectToAction(nameof(Index)) : RedirectToAction(nameof(Order), new { id });
     }
-
-    /// <summary>The buyer sees the whole order; a holder sees only their own ticket line.</summary>
-    private static bool CanSee(TicketCheckoutOrder order, Guid userId) =>
-        order.BuyerUserId == userId || order.Lines.Any(l => l.HolderUserId == userId);
-}
-
-internal sealed record TicketBuyOrderViewModel(TicketCheckoutOrder Order, IReadOnlyList<TicketCheckoutTicket> Tickets, Guid ViewerId)
-{
-    public bool IsBuyer => Order.BuyerUserId == ViewerId;
-
-    public IEnumerable<TicketCheckoutOrderLine> VisibleLines =>
-        IsBuyer ? Order.Lines : Order.Lines.Where(l => l.HolderUserId == ViewerId);
-
-    public IEnumerable<TicketCheckoutTicket> VisibleTickets =>
-        IsBuyer ? Tickets : Tickets.Where(t => t.HolderUserId == ViewerId);
 }

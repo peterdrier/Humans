@@ -493,6 +493,25 @@ internal sealed partial class TicketCheckoutService(
         return new OrderDetail(order, refunds, timeline, await GetTicketsForOrderAsync(orderId, ct));
     }
 
+    public async Task<BuyOrder?> GetBuyOrderAsync(Guid orderId, Guid viewerId, CancellationToken ct = default)
+    {
+        var order = await repository.GetOrderAsync(orderId, ct);
+        if (order is null)
+            return null;
+        var isBuyer = order.BuyerUserId == viewerId;
+        if (!isBuyer && !order.Lines.Any(line => line.HolderUserId == viewerId))
+            return null;
+
+        // Only the order's own people may trigger a platform refresh.
+        await RefreshAsync(order, ct);
+        var tickets = await repository.GetTicketsForOrderAsync(orderId, ct);
+        return new BuyOrder(order.Id, order.Reference, order.State, order.IsOpen, isBuyer,
+            isBuyer ? order.TotalMinor : 0, isBuyer ? order.TicketTotalMinor : 0, isBuyer ? order.RefundedMinor : 0,
+            isBuyer ? order.PaymentUrl : null,
+            order.Lines.Where(line => isBuyer || line.HolderUserId == viewerId).ToList(),
+            tickets.Where(ticket => isBuyer || ticket.HolderUserId == viewerId).ToList());
+    }
+
     public async Task PlatformOrderChangedAsync(string platformKey, string platformOrderId, CancellationToken ct = default)
     {
         var order = await repository.GetOrderByPlatformIdAsync(platformKey, platformOrderId, ct);
