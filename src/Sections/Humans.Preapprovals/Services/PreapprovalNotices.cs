@@ -117,7 +117,7 @@ internal sealed class PreapprovalNotices(
         }
     }
 
-    internal Task EmailAsync(GrantInfo info, PreapprovalNoticeKind kind, string? detail, CancellationToken ct,
+    internal Task<bool> EmailAsync(GrantInfo info, PreapprovalNoticeKind kind, string? detail, CancellationToken ct,
         decimal? previousAmount = null, bool propagateFailures = false) =>
         EmailAsync([info.BeneficiaryUserId], info, kind, detail, MemberUrl(info.ProgramId), ct, previousAmount, propagateFailures);
 
@@ -131,12 +131,13 @@ internal sealed class PreapprovalNotices(
             ManageUrl(info.ProgramId), ct);
     }
 
-    private async Task EmailAsync(
+    private async Task<bool> EmailAsync(
         IReadOnlyList<Guid> recipientUserIds, GrantInfo info, PreapprovalNoticeKind kind, string? detail,
         string url, CancellationToken ct, decimal? previousAmount = null, bool propagateFailures = false)
     {
         var ids = recipientUserIds.Distinct().ToList();
-        if (ids.Count == 0) return;
+        if (ids.Count == 0) return false;
+        var requested = false;
         try
         {
             var infos = await users.GetUserInfosAsync(ids, ct);
@@ -146,17 +147,24 @@ internal sealed class PreapprovalNotices(
             {
                 try
                 {
-                    var address = person?.Email;
+                    if (person is null || person.IsTombstone)
+                    {
+                        logger.LogWarning("Skipping pre-approval {Kind} email for unavailable user {UserId} on grant {GrantId}",
+                            kind, id, info.Id);
+                        continue;
+                    }
+                    var address = person.Email;
                     if (string.IsNullOrWhiteSpace(address))
                     {
                         logger.LogWarning("Skipping pre-approval {Kind} email for {UserId} on grant {GrantId}: no effective email",
                             kind, id, info.Id);
                         continue;
                     }
-                    var language = person?.PreferredLanguage;
+                    var language = person.PreferredLanguage;
                     await email.SendAsync(emailFactory.Notice(new PreapprovalNoticeRequest(
-                        person?.Id ?? id, address, person?.BurnerName, kind, info.ProgramName, info.Label, info.MaxAmount, info.ClaimBy,
+                        person.Id, address, person.BurnerName, kind, info.ProgramName, info.Label, info.MaxAmount, info.ClaimBy,
                         url, detail, language.IsSupportedCultureCode() ? language : CultureCatalog.DefaultCultureCode, previousAmount)), ct);
+                    requested = true;
                 }
                 catch (OperationCanceledException) when (ct.IsCancellationRequested)
                 {
@@ -177,6 +185,7 @@ internal sealed class PreapprovalNotices(
         {
             logger.LogError(ex, "Failed to queue the pre-approval {Kind} email for grant {GrantId}", kind, info.Id);
         }
+        return requested;
     }
 
     internal async Task SafeAsync(Func<Task> action, string what, Guid grantId)

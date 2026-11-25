@@ -1,6 +1,7 @@
 using System.Transactions;
 using AwesomeAssertions;
 using Humans.Email.Contracts;
+using Humans.Users.Contracts;
 using Humans.Notifications.Contracts;
 using Humans.Preapprovals.Contracts;
 using Humans.Preapprovals.Domain;
@@ -17,6 +18,48 @@ namespace Humans.Preapprovals.Tests.Services;
 public sealed class ReminderTests : PreapprovalsTestHarness
 {
     public enum ShutdownBoundary { LaterRead, BetweenGrants, NoEarlierFailure }
+
+    [HumansTheory]
+    [Xunit.InlineData(UserState.Deleted)]
+    [Xunit.InlineData(UserState.Merged)]
+    public async Task Run_TombstoneBeneficiary_StampsOnlyAvailableRecipient(UserState state)
+    {
+        var program = await SeedProgramAsync(claimBy: Today.PlusDays(10));
+        var unavailable = SeedUser("Archived beneficiary");
+        var unavailableGrant = await SeedGrantAsync(program, unavailable);
+        var available = SeedUser("Live beneficiary");
+        var availableGrant = await SeedGrantAsync(program, available);
+        var person = (await Users.GetUserInfoAsync(unavailable, Ct))! with { State = state };
+        Users.GetUserInfosAsync(Arg.Is<IEnumerable<Guid>>(ids => ids.Contains(unavailable)), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, UserInfo> { [unavailable] = person });
+
+        await NewReminders().SendDeadlineRemindersAsync(Ct);
+
+        await using var stored = OpenContext();
+        var marker = (await stored.RemindersSent.ToListAsync(Ct)).Should().ContainSingle().Subject;
+        marker.GrantId.Should().Be(availableGrant.Id);
+        var message = (EmailMessage)Email.ReceivedCalls().Should().ContainSingle().Subject.GetArguments()[0]!;
+        message.UserId.Should().Be(available);
+        await AuditLog.DidNotReceive().LogAsync(PreapprovalsAuditActions.PreapprovalReminderSent,
+            AuditEntityTypes.Grant, unavailableGrant.Id, Arg.Any<string>(), Arg.Any<string>(),
+            Arg.Any<Guid?>(), Arg.Any<string?>());
+        (await ReadGrantAsync(unavailableGrant.Id)).Status.Should().Be(GrantStatus.Open);
+    }
+
+    [HumansFact]
+    public async Task Run_MissingBeneficiary_LeavesReminderUnstamped()
+    {
+        var program = await SeedProgramAsync(claimBy: Today.PlusDays(10));
+        var grant = await SeedGrantAsync(program, Guid.NewGuid());
+
+        await NewReminders().SendDeadlineRemindersAsync(Ct);
+
+        await using var stored = OpenContext();
+        (await stored.RemindersSent.CountAsync(Ct)).Should().Be(0);
+        Email.ReceivedCalls().Should().BeEmpty();
+        AuditLog.ReceivedCalls().Should().BeEmpty();
+        (await ReadGrantAsync(grant.Id)).Status.Should().Be(GrantStatus.Open);
+    }
 
     [HumansTheory]
     [Xunit.InlineData(ShutdownBoundary.LaterRead)]

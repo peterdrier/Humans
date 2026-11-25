@@ -22,6 +22,50 @@ namespace Humans.Preapprovals.Tests.Services;
 public sealed class GrantTests : PreapprovalsTestHarness
 {
     [HumansTheory]
+    [InlineData(UserState.Deleted)]
+    [InlineData(UserState.Merged)]
+    public async Task ChangeAmount_TombstoneBeneficiary_SkipsEmail(UserState state)
+    {
+        var program = await SeedProgramAsync();
+        var beneficiary = SeedUser("Beneficiary");
+        var grant = await SeedGrantAsync(program, beneficiary);
+        var person = (await Users.GetUserInfoAsync(beneficiary, Ct))! with { State = state };
+        Users.GetUserInfosAsync(Arg.Is<IEnumerable<Guid>>(ids => ids.Contains(beneficiary)), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, UserInfo> { [beneficiary] = person });
+
+        var result = await NewService().ChangeAmountAsync(program.Id, grant.Id, 400m, SeedUser("Actor"), Ct);
+
+        result.Refusal.Should().BeNull();
+        (await ReadGrantAsync(grant.Id)).MaxAmount.Should().Be(400m);
+        Email.ReceivedCalls().Should().BeEmpty();
+        await AuditLog.Received(1).LogAsync(PreapprovalsAuditActions.PreapprovalGrantAmountChanged,
+            AuditEntityTypes.Grant, grant.Id, Arg.Any<string>(), Arg.Any<Guid>(), program.Id, AuditEntityTypes.Program);
+    }
+
+    [HumansTheory]
+    [InlineData(UserState.Deleted)]
+    [InlineData(UserState.Merged)]
+    public async Task Apply_TombstoneManager_EmailsAvailableManager(UserState state)
+    {
+        var unavailable = SeedUser("Archived manager");
+        var available = SeedUser("Live manager");
+        var program = await SeedProgramAsync(managers: [unavailable, available]);
+        var person = (await Users.GetUserInfoAsync(unavailable, Ct))! with { State = state };
+        var live = (await Users.GetUserInfoAsync(available, Ct))!;
+        Users.GetUserInfosAsync(Arg.Is<IEnumerable<Guid>>(ids => ids.Contains(unavailable)), Arg.Any<CancellationToken>())
+            .Returns(call => new Dictionary<Guid, UserInfo> { [unavailable] = person, [available] = live }
+                .Where(pair => call.Arg<IEnumerable<Guid>>().Contains(pair.Key))
+                .ToDictionary(pair => pair.Key, pair => pair.Value));
+
+        var result = await NewService().ApplyAsync(program.Id, SeedUser("Applicant"), "Application note", null, Ct);
+
+        result.Refusal.Should().BeNull();
+        var message = (EmailMessage)Email.ReceivedCalls().Should().ContainSingle().Subject.GetArguments()[0]!;
+        message.UserId.Should().Be(available);
+        (await ReadGrantAsync(result.Value)).Status.Should().Be(GrantStatus.Applied);
+    }
+
+    [HumansTheory]
     [InlineData("issue", null)]
     [InlineData("issue", UserState.Deleted)]
     [InlineData("issue", UserState.Merged)]

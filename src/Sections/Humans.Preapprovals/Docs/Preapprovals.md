@@ -193,8 +193,9 @@ Admin pages live under the section's URL space, not `/Admin`; they are localizat
 - Every state change, program edit, manager add/remove and amount change writes an audit
   entry (`PreapprovalsAuditActions.Preapproval*`), related to the program, the expense report, or the
   affected user. Program fields and manager changes save together or not at all.
-- Notices and emails go in the recipient's culture, once per person across merged ids. Audit
-  text is invariant.
+- Notices and emails go in the recipient's culture, once per person across merged ids. Emails
+  skip missing or tombstoned beneficiaries and managers without undoing committed changes or
+  blocking other recipients. Audit text is invariant.
 - Issue / approve: `PreapprovalFileBy` notification (Actionable, source key
   `pre-grant:{id}`) and `preapproval_issued` email to the beneficiary. Claim resolves the
   notification; release re-raises it.
@@ -208,7 +209,8 @@ Admin pages live under the section's URL space, not `/Admin`; they are localizat
 - Nightly `preapprovals-reminders` (05:00): 14-day and 3-day reminders to Open holders,
   once per `(grant, kind, deadline)`, audited under job name `PreapprovalRemindersJob`. A failed
   notification or email leaves no sent marker; the pass finishes the other grants, then fails
-  so Hangfire retries. A shutdown checkpoint precedes each grant: cancellation rolls back the
+  so Hangfire retries. An unavailable email recipient is skipped without a sent marker or success
+  audit; only a requested email send can complete the reminder transaction. A shutdown checkpoint precedes each grant: cancellation rolls back the
   active reminder transaction and stops later grants, keeping earlier failures in an aggregate
   with the cancellation; with no earlier failure it propagates with a stack-free Warning.
   Delivery and marker writes keep the job token inside their transaction; the post-commit audit
