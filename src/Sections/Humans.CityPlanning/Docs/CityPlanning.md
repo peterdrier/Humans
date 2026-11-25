@@ -174,6 +174,7 @@ Broadcasts `CampPolygonUpdated(campSeasonId, geoJson, areaSqm, soundZone, campNa
 - Authorization’s city-planning membership reads retain HTTP request cancellation; callers without an HTTP context use the non-cancellable default.
 
 - Only one CampPolygon per CampSeason (unique constraint on `CampSeasonId`).
+- Barrio-map Delete/Backspace shortcuts leave input, textarea, select and editable content to their native editing behavior; typing in Help or issue forms cannot remove map vertices. Map-focused deletion retains the minimum-polygon guard.
 - Barrio history displays only the latest requested camp season. Switching barrios clears prior preview/restore controls immediately; late success or failure cannot overwrite a newer request or reopen a dismissed panel. One panel-close handler clears history previews while preserving active edits.
 - CampPolygonHistory is append-only — edits and restores always create a new history entry (design-rules.md, *Append-only entities*).
 - Barrio placement has one effective state, computed on every read by `CityPlanningService`: the manual override when set (true = Open, false = Closed); otherwise the schedule, by today's date in the active event's time zone (`EventSettingsInfo.TimeZoneId`) against `GateOpeningDate` + offset — **Open** from the opening day through the closing day, **Changeable** through the changeable-until day, then **Closed**. No opening day, no active event, or a row for another year than the active event's means Closed unless forced open. No job flips anything: the date decides at read time.
