@@ -16,11 +16,10 @@
       Adapter section: Humans' own ticketing platform, one implementation of Tickets' ITicketingPlatform
       port. It takes payment through Stripe hosted Checkout on its own key and webhook, so it owns its
       Stripe settings rather than borrowing the Stripe section's Store or mirror keys. No tables.
-      Account reporting reads go through the Stripe section's service; Tickets names nothing here.
+      Tickets names nothing here; the only edge is this section onto the Tickets.Contracts leaf.
     -->
     <ProjectReference Include="..\..\Humans.Base\Humans.Base.csproj" />
     <ProjectReference Include="..\Humans.Tickets.Contracts\Humans.Tickets.Contracts.csproj" />
-    <ProjectReference Include="..\Humans.Stripe\Humans.Stripe.csproj" />
   </ItemGroup>
 
   <ItemGroup>

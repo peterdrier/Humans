@@ -35,9 +35,8 @@ internal sealed class BoxOfficeStripeWebhookController(
         var sessionIds = await platform.ParseWebhookAsync(body, Request.Headers["Stripe-Signature"].ToString(), ct);
         if (sessionIds is null)
             return BadRequest();
-        // A verified webhook can trigger platform writes; finish each order despite a disconnected sender.
         foreach (var sessionId in sessionIds)
-            await platformEvents.PlatformOrderChangedAsync(BoxOfficePlatform.PlatformKey, sessionId, CancellationToken.None);
+            await platformEvents.PlatformOrderChangedAsync(BoxOfficePlatform.PlatformKey, sessionId, ct);
 
         return Ok();
     }

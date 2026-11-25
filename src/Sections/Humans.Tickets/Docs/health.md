@@ -31,7 +31,7 @@ them.
 | "Does this human hold a ticket" | `ITicketService` (`GetTicketOrdersAsync`, `GetUserTicketHoldingsAsync`) | One projection per question; holdings rows are vendor tickets, and Humans-issued tickets feed only the post-event deletion hold |
 | Ticketing settings | `/Tickets/Admin/Sales`, `/Tickets/Admin/Sales/Edit/{id}`, `SaveTicketingSettingsAsync`, `SetResaleOpenAsync`, `/Tickets/Admin/Platforms/{key}` | One set of ticketing settings per event; the switches live on them |
 | Buy | `/Tickets/Buy`, `/Tickets/Buy/Public`, `/Tickets/Buy/Resale/{token}`, `StartCheckoutAsync`, `/Tickets/Buy/Order/{id}` | One checkout path; partners, children, VIP tickets and donations are lines on one order |
-| Ticketing platforms | `ITicketingPlatform`, `ITicketingPlatformEvents`, `PlatformOrderChangedAsync`, `ReconcileOpenOrdersAsync` | The port the adapter sections implement; webhooks and the reconcile both land in one refresh |
+| Ticketing platforms | `ITicketingPlatform`, `ITicketingPlatformEvents`, `PlatformOrderChangedAsync`, `RefreshOrderAsync` | The port the adapter sections implement; webhooks and the reconcile both land in one refresh |
 | Keep orders true | `ReconcileOpenOrdersAsync`, `TicketCheckoutReconcileJob` | One sweep: open orders, unsettled refunds, crash repair, resale queue, cancelled events |
 | My tickets | `/Tickets/Buy/Mine`, `GetHeldTicketsAsync`, `<vc:issued-tickets>`, `/Tickets/Code/{token}` | Offer, withdraw, invite, cancel invite, ask for a companion |
 | Resale | `OfferForResaleAsync`, `InviteBuyersAsync`, `RunResaleRefundBatchAsync`, `TicketResaleRefundJob`, `/Tickets/Admin/Sales/{id}/Resale` | Queue plus directed offers; one evening refund batch |

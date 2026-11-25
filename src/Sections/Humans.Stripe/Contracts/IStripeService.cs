@@ -79,9 +79,7 @@ public interface IStripeService : IApplicationService
     /// PaymentIntent behind it. Null when that account or its key is not configured. A Stripe refusal throws
     /// <see cref="InvalidOperationException"/>; an unreachable Stripe throws <see cref="HttpRequestException"/>.
     /// </summary>
-    /// <remarks><paramref name="sourceOrderIdKey"/> optionally names metadata holding a Humans order id on an expanded charge, refund or dispute. A valid id avoids a PaymentIntent lookup.</remarks>
-    Task<StripeAccountLedger?> GetAccountLedgerAsync(
-        string accountName, Instant from, Instant to, CancellationToken ct = default, string? sourceOrderIdKey = null);
+    Task<StripeAccountLedger?> GetAccountLedgerAsync(string accountName, Instant from, Instant to, CancellationToken ct = default);
 
     /// <summary>
     /// What Stripe kept, in minor units, on a PaymentIntent of the named account. Null when unknown: the account is
@@ -99,9 +97,8 @@ public interface IStripeService : IApplicationService
     Task<long?> FindAccountPaymentFeeAsync(
         string accountName, IReadOnlyDictionary<string, string> metadata, Instant createdSince, CancellationToken ct = default);
 
-    /// <summary>One finding per read scope <see cref="GetAccountLedgerAsync"/> needs on the named account. Throws only for caller cancellation.</summary>
-    /// <remarks>A non-null <paramref name="checkoutApiKey"/> also checks Checkout Session read access with that direct account key, independently of the reporting key. The key is never included in findings.</remarks>
-    Task<IReadOnlyList<StripeAccountCheck>> CheckAccountAsync(string accountName, CancellationToken ct = default, string? checkoutApiKey = null);
+    /// <summary>One finding per read scope <see cref="GetAccountLedgerAsync"/> needs on the named account. Never throws.</summary>
+    Task<IReadOnlyList<StripeAccountCheck>> CheckAccountAsync(string accountName, CancellationToken ct = default);
 }
 
 /// <summary>A Stripe account's movements and payouts for a period, all amounts in minor units.</summary>
@@ -110,16 +107,11 @@ public sealed record StripeAccountLedger(IReadOnlyList<StripeLedgerLine> Lines, 
 /// <summary>
 /// One balance transaction. <paramref name="ReportingCategory"/> is Stripe's (<c>charge</c>, <c>refund</c>,
 /// <c>dispute</c>, <c>payout</c>, <c>fee</c>, …). <paramref name="AmountMinor"/> is signed; the balance moves by amount
-/// minus <paramref name="FeeMinor"/>. <paramref name="Payment"/> is the PaymentIntent behind a charge, refund or dispute,
-/// omitted when the requested source metadata already supplied <see cref="SourceOrderId"/>.
+/// minus <paramref name="FeeMinor"/>. <paramref name="Payment"/> is the PaymentIntent behind a charge, refund or dispute.
 /// </summary>
 public sealed record StripeLedgerLine(
     string Id, Instant CreatedAt, string ReportingCategory, long AmountMinor, long FeeMinor, string? Description,
-    StripeLedgerPayment? Payment)
-{
-    /// <summary>The order id on the movement's source when the caller requested a metadata key; takes precedence over Payment.</summary>
-    public Guid? SourceOrderId { get; init; }
-}
+    StripeLedgerPayment? Payment);
 
 /// <summary>A PaymentIntent's id, description and metadata: how a vendor names its own order on it.</summary>
 public sealed record StripeLedgerPayment(string PaymentIntentId, string? Description, IReadOnlyDictionary<string, string> Metadata);

@@ -184,12 +184,6 @@ Lifecycle: `Attended` is permanent (only a missing `CheckedInAt` may be filled);
 - Resale open/pause and companion decisions require an explicit true/false command. These actions and the scheduled-sync setting return 400 with a Warning before mutation when binding fails. A missing scheduled-sync checkbox still means off; missing resale or companion commands never become an implicit pause or decline.
 - Buyer checkout rejects binding errors before creating an order. Donations use the HTML number field's invariant dot-decimal format (including exponent notation) in every request culture, without grouping separators; invalid or unrepresentable amounts refuse checkout instead of becoming zero. Blank or missing donations remain zero, nonpositive amounts retain their zero behavior, the existing donation cap applies before conversion, and cents round away from zero. Optional checkboxes, friend addresses and paired child fields retain their form semantics.
 
-- Reconciliation keeps its status read cancellable and checks shutdown between orders. Once expiry cancellation or the paid claim starts, its order save, reservation release, timeline, audit and fulfillment finish independently of shutdown. Paid-order financial mirror updates likewise finish their bookkeeping after the commit boundary; refund replays retain their own between-refund checkpoints.
-
-- Buyer and admin order GETs read persisted state without platform calls or fulfillment. Verified webhooks and the five-minute reconcile job own status refresh, ticket issuance and refund settlement. The job also uses bulk platform reconciliation to find paid orders with refund or chargeback differences or missing fees, then refreshes only those orders. After a missed webhook, a page can show the previous state until reconciliation completes; reopening a page never mutates the order.
-
-- Buyer cancellation, admin refunds and ticket voiding retain request cancellation for actor lookup, then call checkout with `CancellationToken.None` so vendor writes and local completion survive a browser disconnect. Verified adapter webhooks also finish their checkout update independently of the sender. Write-capable checkout methods and the webhook contract carry `ExternalWrite`; GET reads retain their request tokens and jobs retain their shutdown tokens.
-
 - Checkout refunds observe cancellation before an attempt starts, then finish the platform mutation, saved outcome, timeline and order refresh independently of request or job cancellation. Initial status reads retain the caller token. Settlement replays use the same protected mutation boundary and stop before the next refund when cancellation is requested.
 
 - Single-row selection uses the newest approved transfer decision per attendee, the oldest backend order when none is recorded, and the cheapest eligible class price. Direct extrema selectors retain the first source row on equal keys.
@@ -276,7 +270,7 @@ Lifecycle: `Attended` is permanent (only a missing `CheckedInAt` may be filled);
 | `/Tickets/Export/AccountantReport` | GET | `TicketsPolicies.Manage` | CSV of monthly ticket income for the accountant: gross split into taxable ticket income, 10% VAT, VIP + standalone donations, fees, and refunded gross by purchase month |
 | `/Tickets/Export/Donations` | GET | `AdminOnly` | CSV donor list for the accountant: one row per donation on a paid order (type `VIP ticket` = amount above the threshold over live seats, `Separate donation` = TicketTailor donation line, or `Donation: <purpose>` = a donation line on a paid Humans order) — purchase date in Europe/Madrid (same bucketing as the monthly report), order id, buyer name, email, type, amount, plus a total row. Every download writes a `TicketDonationsExported` audit entry (actor, donation row count, total). Spec: `Docs/features/accountant-donor-list.md` |
 | `/Tickets/Buy` | GET + POST | `[Authorize]` | One section per selling event; the POST names its `settingsId`: own ticket at the member's price, optional other people already in Humans (by verified email) at the public price, a VIP ticket, donation; POST redirects to the platform's payment page |
-| `/Tickets/Buy/Order/{id}` | GET | `[Authorize]` | The checkout service checks buyer/holder access to the persisted order; its buyer-page read returns all lines and tickets to the buyer, only the holder's own lines and tickets otherwise, with totals and payment URL withheld; anyone else 404 |
+| `/Tickets/Buy/Order/{id}` | GET | `[Authorize]` | The checkout service checks buyer/holder access before refreshing the platform; its buyer-page read returns all lines and tickets to the buyer, only the holder's own lines and tickets otherwise, with totals and payment URL withheld; anyone else 404 |
 | `/Tickets/Buy/Order/{id}/Cancel` | POST | `[Authorize]` | The buyer abandons an unpaid order |
 | `/Tickets/Buy/Public` | GET + POST | Anonymous | Signed-out way in: events on sale at today's public price, and an email form that sends the Auth sign-in or sign-up link returning to `/Tickets/Buy`; the POST never says whether the address has an account. A signed-out `/Tickets/Buy` redirects here |
 | `/Tickets/Buy/Mine` | GET | `[Authorize]` | The member's live Humans-issued tickets with their QR codes, resale queue position and actions |
@@ -290,7 +284,7 @@ Lifecycle: `Attended` is permanent (only a missing `CheckedInAt` may be filled);
 | `/Tickets/Admin/Sales/Edit/{id?}` | GET + POST | Read / `TicketsPolicies.Manage` | Edit an event's ticketing settings (audited `TicketSalesEventSaved`) |
 | `/Tickets/Admin/Sales/{id}/Orders` | GET | `TicketsPolicies.Read` | Orders and totals for one event |
 | `/Tickets/Admin/Sales/Recon` | GET | `TicketsPolicies.Read` | Reconciliation of one or every platform in use for a date range: both sides' paid totals and each differing order; for a platform whose payment account Humans reads, its movements, fees, fees not on a payment and payouts, with each differing one. Reads the platforms, changes nothing |
-| `/Tickets/Admin/Sales/Order/{id}` | GET | `TicketsPolicies.Read` | One persisted order with lines and refunds; no platform mutation on GET |
+| `/Tickets/Admin/Sales/Order/{id}` | GET | `TicketsPolicies.Read` | One order with lines and refunds, refreshed from the platform |
 | `/Tickets/Admin/Sales/Order/{id}/Refund` | POST | `TicketsPolicies.Manage` | Refund an exact amount through the order's platform, capped at the ticket lines net of earlier refunds (audited `TicketCheckoutRefunded`) |
 | `/Tickets/Admin/Sales/Order/{id}/Resend` | POST | `TicketsPolicies.Manage` | Queue every ticket email and the receipt of a paid order again (audited `TicketDeliveryResent`) |
 | `/Tickets/Code/{token}` | GET | `[AllowAnonymous]` | PNG QR of the barcode in a Humans-minted token; what the ticket email's image loads. 404 for any other token |
@@ -479,5 +473,3 @@ discovers the declaration through DI and holds no list of sections; dropping the
 sends this section's stored issues to the Admin-only queue.
 
 
-
-Ticketing adapters share `PaymentLedgerEntry.KindOf` for Stripe reporting-category classification: charges, refunds, chargebacks, fees, payouts and other movements, including failure/reversal categories. Order attribution remains each adapter's responsibility.

@@ -134,8 +134,8 @@ sold under is read (`EventRefOf`), beside the events their ticketing settings se
    for other people" below), a VIP ticket (shown as the ticket plus a donation) and a donation.
    They read the ticket rules on the page and tick them on every order (the version goes on the order; no Consent signing) and may opt in to the mailing list
    (asked only while they have no Marketing choice on record), then continue to the platform's payment page.
-3. The platform returns them to `/Tickets/Buy/Order/{id}`, which reads the persisted state and splits ticket and donation
-   subtotals. Verified webhooks and the 5-minute reconcile job refresh status and fulfill paid orders; loading the buyer or admin order page never does. A missed webhook can leave the page showing its previous state until reconciliation. The job also compares paid orders through the existing bulk platform read and refreshes those with refund or chargeback differences or missing fees, without individually fetching unchanged paid orders whose fees are known. The move to `Paid` is one conditional update,
+3. The platform returns them to `/Tickets/Buy/Order/{id}`, which refreshes the status and splits ticket and donation
+   subtotals. The webhook and the 5-minute reconcile job catch the rest. The move to `Paid` is one conditional update,
    so of several callers seeing the same payment only one fulfils it. Tickets then flags anyone on the order who meanwhile
    came to hold another ticket (a lapsed order that paid late) for the team, on the timeline and as a
    `TicketCheckoutNeedsAttention` audit entry, issues one `ticket_checkout_tickets` row per ticket line (unique per order

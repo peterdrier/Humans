@@ -12,8 +12,6 @@
 
 # BoxOffice — Section Invariants
 
-Webhook body reads and signature/event parsing retain request cancellation. Once verified, each order update calls Tickets with `CancellationToken.None`: refreshing an order can mutate its platform, and a disconnected sender must not interrupt that work or its local completion.
-
 Vocabulary: [`CONTEXT.md`](CONTEXT.md).
 
 Humans' own ticketing platform: one implementation of Tickets' `ITicketingPlatform` port, key `boxoffice`, that
@@ -35,7 +33,7 @@ and paid out to the bank reconciles against Humans' orders per period, with a dr
 Stripe account, apart from the Store's Stripe integration. API refunds are allowed here as the one money-out exception.
 This section stores nothing: every order, refund, ticket and timeline entry lives in Tickets' tables
 (`ticket_checkout_orders`, `ticket_checkout_refunds`, `ticket_checkout_tickets`, `ticket_checkout_order_events`), the
-same for every platform.
+same for all three platforms.
 
 **Out of scope.** Stripe products, prices, coupons and invoices; erasing data inside
 Stripe, which keeps it as the payment processor.
@@ -49,13 +47,13 @@ Stripe, which keeps it as the payment processor.
   `client_reference_id` and the `humans_ticket_order_id` metadata on the session and its PaymentIntent.
 - Payment methods are whatever the Stripe account enables for Checkout (card, Klarna, iDEAL). The locale follows the
   buyer's culture where Stripe has it; Catalan falls back to Stripe's choice.
-- Status is read from the session with its PaymentIntent and latest charge: `complete` + `paid` (or
+- Status is read from the session with its PaymentIntent, latest charge and balance transaction: `complete` + `paid` (or
   `no_payment_required`, a session made outside Humans) is Paid, `expired` is Expired, a completed session whose PaymentIntent is `canceled` or back at `requires_payment_method`
   (an async debit that failed) is Failed, any other completed session is Processing (a SEPA debit or bank transfer
   still settling, which Stripe no longer lets anyone expire), and an open session is Pending. 3-D Secure and other
   buyer actions happen on Stripe's page while the session is open. A charge with Stripe disputes reports the amount of
   those that hold money (not `won`, not a `warning_*` inquiry) as `ChargedBackMinor`.
-  Fee is the balance transaction's total fee, read through `IStripeService.GetAccountPaymentFeeAsync` on the `BoxOffice` account; unknown fees stay null and never block a paid order; refunded total is the sum of the PaymentIntent's `succeeded` refunds (Stripe's `amount_refunded` also counts pending ones), so dashboard refunds are
+  Fee is the balance transaction's total fee; refunded total is the sum of the PaymentIntent's `succeeded` refunds (Stripe's `amount_refunded` also counts pending ones), so dashboard refunds are
   seen too. `RefundFailed` is set when one of Humans' refunds on it failed or was cancelled; Tickets then repeats each pending refund by id, and a repeat answers that refund's own state.
 - A refund request first looks for a refund carrying its Humans refund id and answers with that one's state, so a
   repeat after a lost answer is never refused by the cap.
@@ -87,19 +85,17 @@ None. The section owns no tables. The Checkout Session is the record of the paym
   charge, refund or dispute names the sessions of its PaymentIntent; anything else names none. An invalid signature
   answers 400, so a wrong secret shows as failed deliveries in Stripe.
 - Cancelling expires the session; Stripe refusing that is an error only when the session is complete and not failed.
-- `Setup` shows variables only as set or missing, and test or live mode from the checkout key prefix. `CheckAsync` uses `IStripeService.CheckAccountAsync` on the named `BoxOffice` account for balance transaction, PaymentIntent and payout read probes, plus a Checkout Session probe using the actual checkout key, each its own finding, and reports a missing webhook secret; it cannot test write permissions without a write.
+- `Setup` shows both variables only as set or missing, and test or live mode from the key prefix. `CheckAsync` lists one Checkout Session, balance transaction and payout (each its own finding, so a key missing a read the reconciliation needs shows before deploy) and reports a missing webhook secret; it cannot test the refund permission without refunding.
 - Backend setup checks propagate caller cancellation instead of reporting a vendor failure; independent transport timeouts remain diagnostic findings.
 - `ListOrdersAsync` lists every Checkout Session created in the period, whatever made it, since the account sells tickets only. Each session carries `humans_ticket_count` (ticket lines, free ones included) for reconciliation; one without it has no count. Refunds are read only for a charge that shows some. `EventRefOf` is always null.
-- `GetPaymentLedgerAsync` reads balance transactions and payouts through `IStripeService.GetAccountLedgerAsync` on the named `BoxOffice` account. Unconfigured reporting returns null; Stripe refusals throw `TicketingPlatformException`. The connector reads `humans_ticket_order_id` from expanded charge/refund/dispute metadata first, otherwise from the PaymentIntent. A valid source id avoids retrieving an older PaymentIntent. `PaymentLedgerEntry.KindOf` supplies the shared reporting-category classification for Box Office, pretix and Hi.Events. Payout contents retain the connector's settled-automatic-only rule; manual or still-reconciling payouts have no contents total.
+- `GetPaymentLedgerAsync` lists the account's balance transactions created in the period (kind from Stripe's `reporting_category`) and its payouts. A movement's order is the `humans_ticket_order_id` on its charge, refund or dispute, else on its PaymentIntent: those created from a day before the period are listed once, older ones read one by one. An automatic payout's contents are its balance transactions (`payout=`); a manual payout's are not listed.
 
 ## Settings
 
 | Variable | Purpose |
 |---|---|
-| `STRIPE_BOXOFFICE_KEY` | Restricted key on the ticket Stripe account: Checkout Sessions write, PaymentIntents, Charges and Disputes read, Refunds write. Unset or whitespace-containing means `IsConfigured` is false and Tickets takes no orders on this platform |
+| `STRIPE_BOXOFFICE_KEY` | Restricted key on the ticket Stripe account: Checkout Sessions write, PaymentIntents, Charges, Disputes, Balance transactions and Payouts read, Refunds write. Unset or whitespace-containing means `IsConfigured` is false and Tickets takes no orders on this platform |
 | `STRIPE_BOXOFFICE_WEBHOOK_SECRET` | Signing secret of the endpoint `https://<host>/BoxOffice/StripeWebhook` subscribed to `checkout.session.completed`, `checkout.session.async_payment_succeeded`, `checkout.session.async_payment_failed`, `checkout.session.expired`, `charge.refunded`, `refund.updated`, `refund.failed`, `charge.dispute.created`, `charge.dispute.closed`, `charge.dispute.funds_withdrawn`, `charge.dispute.funds_reinstated`. Without it, Tickets still learns outcomes from the return page and its 5-minute poll |
-
-Fees, payouts and read probes require a `Stripe:MirrorAccounts` entry named `BoxOffice`, with this same account's id and a key with Balance transactions, Payouts, PaymentIntents, Charges, Refunds and Disputes read. The Checkout Session probe uses the actual checkout key separately. `KeyVariable` must select a key for the same live or test account used by checkout. The checkout key can also serve as that entry's own key when it has those read scopes. Missing configuration is shown by the platform connection test.
 
 Tickets' `/Tickets/Admin/Sales` shows whether the platform is configured.
 
@@ -120,7 +116,7 @@ Tickets' `/Tickets/Admin/Sales` shows whether the platform is configured.
 
 - **Tickets**: implements `ITicketingPlatform`, calls `ITicketingPlatformEvents`, both from the `Humans.Tickets.Contracts` leaf.
 - **Base**: configuration registry.
-- **Stripe**: `IStripeService` owns the named account reporting reads (ledger, fees and read probes). Existing payment-lifecycle calls still use Box Office's restricted key and SDK client.
+- **Stripe** (section): none. Box Office uses its own key and Stripe.NET client, not `IStripeService`.
 
 ## Architecture
 
@@ -137,9 +133,9 @@ Tickets' `/Tickets/Admin/Sales` shows whether the platform is configured.
 
 ### For (A) Migrated sections
 
-- No repository and no DbContext. Account reporting reads use `IStripeService`; payment-lifecycle calls retain the existing Stripe.NET client.
+- No repository and no DbContext: the service reads and writes Stripe through Stripe.NET only.
 - No caching decorator: every call exists to see Stripe's current state.
-- Cross-section calls: `ITicketingPlatformEvents` from the webhook; `IStripeService` for account reporting.
+- Cross-section calls: `ITicketingPlatformEvents` from the webhook.
 - Architecture enforcement: the anonymous webhook is allow-listed in
-  `tests/Humans.Web.Tests/Authorization/EndpointAuthorizationTests.cs`; the project references Base,
-  `Humans.Tickets.Contracts` and `Humans.Stripe`.
+  `tests/Humans.Web.Tests/Authorization/EndpointAuthorizationTests.cs`; the project references only Base and
+  `Humans.Tickets.Contracts`.

@@ -21,7 +21,7 @@ internal sealed partial class StripeService
         : null;
 
     public async Task<StripeAccountLedger?> GetAccountLedgerAsync(
-        string accountName, Instant from, Instant to, CancellationToken ct = default, string? sourceOrderIdKey = null)
+        string accountName, Instant from, Instant to, CancellationToken ct = default)
     {
         using var _ = logger.TimeOperation();
         if (Reader(accountName) is not var (client, request))
@@ -53,17 +53,15 @@ internal sealed partial class StripeService
             var lines = new List<StripeLedgerLine>();
             foreach (var t in transactions)
             {
-                var (intentId, sourceMetadata) = t.Source switch
+                var intentId = t.Source switch
                 {
-                    Charge c => (c.PaymentIntentId, c.Metadata),
-                    Refund r => (r.PaymentIntentId, r.Metadata),
-                    Dispute d => (d.PaymentIntentId, d.Metadata),
-                    _ => (null, null),
+                    Charge c => c.PaymentIntentId,
+                    Refund r => r.PaymentIntentId,
+                    Dispute d => d.PaymentIntentId,
+                    _ => null,
                 };
                 StripeLedgerPayment? payment = null;
-                Guid? sourceOrderId = sourceOrderIdKey is not null
-                    && Guid.TryParse(sourceMetadata?.GetValueOrDefault(sourceOrderIdKey), out var id) ? id : null;
-                if (intentId is not null && sourceOrderId is null)
+                if (intentId is not null)
                 {
                     if (!intents.TryGetValue(intentId, out var intent))
                         intents[intentId] = intent = await new PaymentIntentService(client).GetAsync(intentId, null, request, ct);
@@ -72,8 +70,7 @@ internal sealed partial class StripeService
                 }
 
                 lines.Add(new StripeLedgerLine(t.Id, InstantOf(t.Created), t.ReportingCategory ?? "", t.Amount, t.Fee,
-                    t.Description, payment)
-                { SourceOrderId = sourceOrderId });
+                    t.Description, payment));
             }
 
             var payouts = new List<StripeLedgerPayout>();
@@ -161,8 +158,7 @@ internal sealed partial class StripeService
         }
     }
 
-    public async Task<IReadOnlyList<StripeAccountCheck>> CheckAccountAsync(
-        string accountName, CancellationToken ct = default, string? checkoutApiKey = null)
+    public async Task<IReadOnlyList<StripeAccountCheck>> CheckAccountAsync(string accountName, CancellationToken ct = default)
     {
         var account = Account(accountName);
         if (account is null)
@@ -174,33 +170,18 @@ internal sealed partial class StripeService
         var mode = account.ApiKey.StartsWith("sk_test_", StringComparison.Ordinal) || account.ApiKey.StartsWith("rk_test_", StringComparison.Ordinal)
             ? "test mode"
             : "live mode";
-        List<StripeAccountCheck> findings =
+        return
         [
             await ProbeAsync(keyName, $"Balance transactions ({mode})",
-                () => new BalanceTransactionService(client).ListAsync(new BalanceTransactionListOptions { Limit = 1 }, request, ct), ct),
+                () => new BalanceTransactionService(client).ListAsync(new BalanceTransactionListOptions { Limit = 1 }, request, ct)),
             await ProbeAsync(keyName, "Payouts",
-                () => new PayoutService(client).ListAsync(new PayoutListOptions { Limit = 1 }, request, ct), ct),
+                () => new PayoutService(client).ListAsync(new PayoutListOptions { Limit = 1 }, request, ct)),
             await ProbeAsync(keyName, "PaymentIntents",
-                () => new PaymentIntentService(client).ListAsync(new PaymentIntentListOptions { Limit = 1 }, request, ct), ct),
+                () => new PaymentIntentService(client).ListAsync(new PaymentIntentListOptions { Limit = 1 }, request, ct)),
         ];
-        if (checkoutApiKey is not null)
-        {
-            if (!StripeSettings.IsUsableApiKey(checkoutApiKey))
-            {
-                findings.Add(new(false, "Checkout key is empty or contains whitespace."));
-                return findings;
-            }
-            var checkoutClient = new StripeClient(checkoutApiKey, httpClient: httpClient);
-            var checkoutMode = checkoutApiKey.StartsWith("sk_test_", StringComparison.Ordinal)
-                || checkoutApiKey.StartsWith("rk_test_", StringComparison.Ordinal) ? "test mode" : "live mode";
-            findings.Add(await ProbeAsync("Checkout key", $"Checkout Sessions ({checkoutMode})",
-                () => new global::Stripe.Checkout.SessionService(checkoutClient).ListAsync(
-                    new global::Stripe.Checkout.SessionListOptions { Limit = 1 }, cancellationToken: ct), ct));
-        }
-        return findings;
     }
 
-    private static async Task<StripeAccountCheck> ProbeAsync(string keyName, string what, Func<Task> read, CancellationToken ct)
+    private static async Task<StripeAccountCheck> ProbeAsync(string keyName, string what, Func<Task> read)
     {
         try
         {
@@ -210,10 +191,6 @@ internal sealed partial class StripeService
         catch (StripeException ex)
         {
             return new(false, $"Stripe refused {keyName} reading {what} ({(int)ex.HttpStatusCode} {ex.StripeError?.Code ?? ex.StripeError?.Type ?? "error"}).");
-        }
-        catch (OperationCanceledException) when (ct.IsCancellationRequested)
-        {
-            throw;
         }
         catch (Exception ex) when (ex is HttpRequestException or OperationCanceledException)
         {

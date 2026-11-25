@@ -1,6 +1,5 @@
 using System.Globalization;
 using System.Text.Json;
-using Humans.Stripe.Contracts;
 using Humans.Tickets.Contracts;
 using Microsoft.Extensions.Options;
 using NodaTime;
@@ -33,11 +32,9 @@ internal sealed class BoxOfficePlatform(
     IOptions<BoxOfficeSettings> settings,
     IClock clock,
     ILogger<BoxOfficePlatform> logger,
-    IStripeService stripe,
     IHttpClient? httpClient = null) : ITicketingPlatform
 {
     public const string PlatformKey = "boxoffice";
-    internal const string StripeAccountName = "BoxOffice";
     internal const string OrderMetadataKey = "humans_ticket_order_id";
     internal const string RefundMetadataKey = "humans_ticket_refund_id";
     internal const string TicketCountMetadataKey = "humans_ticket_count";
@@ -127,14 +124,14 @@ internal sealed class BoxOfficePlatform(
     }
 
     public async Task<PlatformOrderStatus> GetStatusAsync(string platformOrderId, CancellationToken ct = default) =>
-        await StatusOfAsync(await GetSessionAsync(platformOrderId, ct), includeDetails: true, ct);
+        await StatusOfAsync(await GetSessionAsync(platformOrderId, ct), everyRefund: true, ct);
 
     /// <summary>
-    /// The session's payment intent and latest charge must be expanded. Without <paramref name="includeDetails"/> the
+    /// The session's payment intent and latest charge must be expanded. Without <paramref name="everyRefund"/> the
     /// refunds are read only for a charge that shows some, which misses a refund that failed (it drops out of the
-    /// charge's total): fine for totals, not for <see cref="PlatformOrderStatus.RefundFailed"/>. Summaries also omit fee enrichment.
+    /// charge's total): fine for totals, not for <see cref="PlatformOrderStatus.RefundFailed"/>.
     /// </summary>
-    private async Task<PlatformOrderStatus> StatusOfAsync(Session session, bool includeDetails, CancellationToken ct)
+    private async Task<PlatformOrderStatus> StatusOfAsync(Session session, bool everyRefund, CancellationToken ct)
     {
         var intent = session.PaymentIntent;
         var charge = intent?.LatestCharge;
@@ -153,13 +150,12 @@ internal sealed class BoxOfficePlatform(
         Instant? paidAt = charge is { Paid: true } ? InstantOf(charge.Created) : null;
         // charge.amount_refunded counts a refund from the moment it is created, pending included, and a failed one
         // drops back out: read the refunds themselves so only money that went back counts.
-        var refunds = session.PaymentIntentId is { } paymentIntentId && (includeDetails || charge is { AmountRefunded: > 0 })
+        var refunds = session.PaymentIntentId is { } paymentIntentId && (everyRefund || charge is { AmountRefunded: > 0 })
             ? await ListRefundsAsync(paymentIntentId, ct)
             : [];
         return new PlatformOrderStatus(
             state,
-            includeDetails && charge is { Paid: true } && session.PaymentIntentId is { } intentId
-                ? await stripe.GetAccountPaymentFeeAsync(StripeAccountName, intentId, ct) : null,
+            charge?.BalanceTransaction?.Fee,
             charge?.PaymentMethodDetails?.Type,
             paidAt,
             refunds.Where(r => StateOf(r) == RefundState.Succeeded).Sum(r => r.Amount),
@@ -187,7 +183,7 @@ internal sealed class BoxOfficePlatform(
         {
             await foreach (var session in new SessionService(Client()).ListAutoPagingAsync(options, cancellationToken: ct))
             {
-                var status = await StatusOfAsync(session, includeDetails: false, ct);
+                var status = await StatusOfAsync(session, everyRefund: false, ct);
                 orders.Add(new PlatformOrderSummary(
                     session.Id,
                     Guid.TryParse(session.Metadata?.GetValueOrDefault(OrderMetadataKey), out var orderId) ? orderId : null,
@@ -208,33 +204,110 @@ internal sealed class BoxOfficePlatform(
         return orders;
     }
 
+    /// <summary>
+    /// The ticket Stripe account's balance transactions and payouts. A movement is tied to its order through the
+    /// PaymentIntent's metadata: read from the payment itself where it carries it, else from the PaymentIntents created
+    /// a day before the period onwards, else one by one (a refund or chargeback on an older payment).
+    /// </summary>
     public async Task<PaymentLedger?> GetPaymentLedgerAsync(Instant from, Instant to, CancellationToken ct = default)
     {
-        if (!IsConfigured)
-            return null;
-        StripeAccountLedger? account;
+        var client = Client();
         try
         {
-            account = await stripe.GetAccountLedgerAsync(StripeAccountName, from, to, ct, OrderMetadataKey);
-        }
-        catch (InvalidOperationException ex)
-        {
-            throw new TicketingPlatformException(ex.Message, ex);
-        }
-        if (account is null)
-            return null;
+            var period = new DateRangeOptions { GreaterThanOrEqual = from.ToDateTimeUtc(), LessThan = to.ToDateTimeUtc() };
+            var transactions = new List<BalanceTransaction>();
+            await foreach (var t in new BalanceTransactionService(client).ListAutoPagingAsync(
+                               new BalanceTransactionListOptions { Created = period, Limit = 100, Expand = ["data.source"] },
+                               cancellationToken: ct))
+                transactions.Add(t);
 
-        return new PaymentLedger(account.Lines.Select(line => new PaymentLedgerEntry(
-            line.Id, line.CreatedAt, PaymentLedgerEntry.KindOf(line.ReportingCategory), line.AmountMinor, line.FeeMinor,
-            line.SourceOrderId ?? OrderIdIn(line.Payment?.Metadata), line.Description)).ToList(),
-            account.Payouts.Select(p => new PaymentPayout(
-                p.Id, p.CreatedAt, p.ArrivalAt, p.AmountMinor, p.Status, p.ContentsNetMinor, p.ContentsCount)).ToList());
+            var orderOfIntent = new Dictionary<string, Guid?>(StringComparer.Ordinal);
+            await foreach (var intent in new PaymentIntentService(client).ListAutoPagingAsync(
+                               new PaymentIntentListOptions
+                               {
+                                   Created = new DateRangeOptions
+                                   {
+                                       GreaterThanOrEqual = (from - Duration.FromDays(1)).ToDateTimeUtc(),
+                                       LessThan = to.ToDateTimeUtc(),
+                                   },
+                                   Limit = 100,
+                               },
+                               cancellationToken: ct))
+                orderOfIntent[intent.Id] = OrderIdIn(intent.Metadata);
+
+            var entries = new List<PaymentLedgerEntry>();
+            foreach (var t in transactions)
+            {
+                var (intentId, metadata) = t.Source switch
+                {
+                    Charge c => (c.PaymentIntentId, c.Metadata),
+                    Refund r => (r.PaymentIntentId, r.Metadata),
+                    Dispute d => (d.PaymentIntentId, d.Metadata),
+                    _ => (null, null),
+                };
+                var orderId = OrderIdIn(metadata);
+                if (orderId is null && intentId is not null)
+                {
+                    if (!orderOfIntent.TryGetValue(intentId, out orderId))
+                    {
+                        orderId = OrderIdIn((await new PaymentIntentService(client).GetAsync(intentId, cancellationToken: ct)).Metadata);
+                        orderOfIntent[intentId] = orderId;
+                    }
+                }
+
+                entries.Add(new PaymentLedgerEntry(
+                    t.Id, InstantOf(t.Created), KindOf(t), t.Amount, t.Fee, orderId, t.Description));
+            }
+
+            var payouts = new List<PaymentPayout>();
+            await foreach (var payout in new PayoutService(client).ListAutoPagingAsync(
+                               new PayoutListOptions { Created = period, Limit = 100 }, cancellationToken: ct))
+            {
+                long? contentsNet = null;
+                var contentsCount = 0;
+                // Stripe lists what a payout contains only for automatic payouts, and in full only once it has
+                // finished reconciling them; before that a partial list would read as a mismatch.
+                if (payout.Automatic && string.Equals(payout.ReconciliationStatus, "completed", StringComparison.Ordinal))
+                {
+                    contentsNet = 0;
+                    await foreach (var t in new BalanceTransactionService(client).ListAutoPagingAsync(
+                                       new BalanceTransactionListOptions { Payout = payout.Id, Limit = 100 }, cancellationToken: ct))
+                    {
+                        if (string.Equals(t.Type, "payout", StringComparison.Ordinal))
+                            continue;
+                        contentsNet += t.Net;
+                        contentsCount++;
+                    }
+                }
+
+                payouts.Add(new PaymentPayout(
+                    payout.Id, InstantOf(payout.Created), InstantOf(payout.ArrivalDate), payout.Amount, payout.Status,
+                    contentsNet, contentsCount));
+            }
+
+            return new PaymentLedger(entries, payouts);
+        }
+        catch (StripeException ex)
+        {
+            throw new TicketingPlatformException($"Stripe could not list the balance: {ex.Message}", ex);
+        }
     }
 
-    private static Guid? OrderIdIn(IReadOnlyDictionary<string, string>? metadata) =>
+    private static Guid? OrderIdIn(IDictionary<string, string>? metadata) =>
         metadata is not null && metadata.TryGetValue(OrderMetadataKey, out var value) && Guid.TryParse(value, out var id) ? id : null;
 
     private static Instant InstantOf(DateTime utc) => Instant.FromDateTimeUtc(DateTime.SpecifyKind(utc, DateTimeKind.Utc));
+
+    /// <summary>By Stripe's reporting category, which groups its many transaction types the way its reports do.</summary>
+    private static PaymentLedgerEntryKind KindOf(BalanceTransaction t) => t.ReportingCategory switch
+    {
+        "charge" or "charge_failure" or "partial_capture_reversal" => PaymentLedgerEntryKind.Charge,
+        "refund" or "refund_failure" => PaymentLedgerEntryKind.Refund,
+        "dispute" or "dispute_reversal" => PaymentLedgerEntryKind.Chargeback,
+        "fee" => PaymentLedgerEntryKind.Fee,
+        "payout" or "payout_reversal" => PaymentLedgerEntryKind.Payout,
+        _ => PaymentLedgerEntryKind.Other,
+    };
 
     private async Task<long> ChargedBackAsync(string chargeId, CancellationToken ct)
     {
@@ -354,7 +427,7 @@ internal sealed class BoxOfficePlatform(
         $"Stripe, Humans' ticket account ({ModeLabel})",
         new Uri(IsTestKey ? "https://dashboard.stripe.com/test/payments" : "https://dashboard.stripe.com/payments"),
         [
-            new(Section.KeyVariable, "Restricted key: Checkout Sessions write, PaymentIntents, Charges and Disputes read, Refunds write",
+            new(Section.KeyVariable, "Restricted key: Checkout Sessions write, PaymentIntents, Charges, Disputes, Balance transactions and Payouts read, Refunds write",
                 IsSecret: true, _settings.IsConfigured, null),
             new(Section.WebhookSecretVariable, "Signing secret of the webhook endpoint below", IsSecret: true,
                 _settings.IsWebhookConfigured, null),
@@ -364,7 +437,6 @@ internal sealed class BoxOfficePlatform(
             "Webhook events: checkout.session.completed, checkout.session.async_payment_succeeded, checkout.session.async_payment_failed, checkout.session.expired, charge.refunded, refund.updated, refund.failed, charge.dispute.created, charge.dispute.closed, charge.dispute.funds_withdrawn, charge.dispute.funds_reinstated.",
             "Payment methods (card, iDEAL, Klarna) are switched on in the Stripe dashboard; Humans never lists them.",
             "Needs no event id in the ticketing settings.",
-            "Fees, payouts and read probes use Stripe:MirrorAccounts entry BoxOffice, with this same Stripe account's id and a read key. KeyVariable must name a key for the same live or test account used by checkout.",
         ]);
 
     private bool IsTestKey => _settings.SecretKey.StartsWith("sk_test_", StringComparison.Ordinal)
@@ -377,8 +449,17 @@ internal sealed class BoxOfficePlatform(
         if (!_settings.IsConfigured)
             return [new(false, $"{Section.KeyVariable} is unset or contains whitespace.")];
 
-        var findings = (await stripe.CheckAccountAsync(StripeAccountName, ct, checkoutApiKey: _settings.SecretKey))
-            .Select(f => new PlatformFinding(f.Ok, f.Text)).ToList();
+        var client = Client();
+        var findings = new List<PlatformFinding>
+        {
+            await ProbeAsync($"Checkout Sessions ({ModeLabel})",
+                () => new SessionService(client).ListAsync(new SessionListOptions { Limit = 1 }, cancellationToken: ct), ct),
+            // The reconciliation reads these; without them a missing scope shows only as the nightly alert.
+            await ProbeAsync("Balance transactions",
+                () => new BalanceTransactionService(client).ListAsync(new BalanceTransactionListOptions { Limit = 1 }, cancellationToken: ct), ct),
+            await ProbeAsync("Payouts",
+                () => new PayoutService(client).ListAsync(new PayoutListOptions { Limit = 1 }, cancellationToken: ct), ct),
+        };
 
         findings.Add(_settings.IsWebhookConfigured
             ? new(true, "Webhook signing secret is set.")
@@ -386,6 +467,27 @@ internal sealed class BoxOfficePlatform(
         if (!string.IsNullOrWhiteSpace(platformEventRef))
             findings.Add(new(false, "Box Office takes no event id; clear it in the ticketing settings."));
         return findings;
+    }
+
+    private static async Task<PlatformFinding> ProbeAsync(string what, Func<Task> read, CancellationToken ct)
+    {
+        try
+        {
+            await read();
+            return new(true, $"The key reads {what}.");
+        }
+        catch (StripeException ex)
+        {
+            return new(false, $"Stripe refused the key reading {what} ({(int)ex.HttpStatusCode} {ex.StripeError?.Code ?? ex.StripeError?.Type ?? "error"}).");
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception ex) when (ex is HttpRequestException or OperationCanceledException)
+        {
+            return new(false, $"Stripe could not be reached: {ex.Message}");
+        }
     }
 
     /// <summary>
@@ -430,7 +532,7 @@ internal sealed class BoxOfficePlatform(
         try
         {
             return await new SessionService(Client()).GetAsync(sessionId,
-                new SessionGetOptions { Expand = ["payment_intent.latest_charge"] }, cancellationToken: ct);
+                new SessionGetOptions { Expand = ["payment_intent.latest_charge.balance_transaction"] }, cancellationToken: ct);
         }
         catch (StripeException ex)
         {

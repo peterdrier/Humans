@@ -3,27 +3,11 @@ using Humans.Tickets.Contracts;
 using Humans.Tickets.Domain.Checkout;
 using Humans.Tickets.Services.Checkout;
 using NodaTime;
-using Xunit;
 
 namespace Humans.Tickets.Tests.Services.Checkout;
 
 public sealed class TicketPaymentReconTests
 {
-    [HumansTheory]
-    [InlineData("charge", PaymentLedgerEntryKind.Charge)]
-    [InlineData("charge_failure", PaymentLedgerEntryKind.Charge)]
-    [InlineData("partial_capture_reversal", PaymentLedgerEntryKind.Charge)]
-    [InlineData("refund", PaymentLedgerEntryKind.Refund)]
-    [InlineData("refund_failure", PaymentLedgerEntryKind.Refund)]
-    [InlineData("dispute", PaymentLedgerEntryKind.Chargeback)]
-    [InlineData("dispute_reversal", PaymentLedgerEntryKind.Chargeback)]
-    [InlineData("fee", PaymentLedgerEntryKind.Fee)]
-    [InlineData("payout", PaymentLedgerEntryKind.Payout)]
-    [InlineData("payout_reversal", PaymentLedgerEntryKind.Payout)]
-    [InlineData("adjustment", PaymentLedgerEntryKind.Other)]
-    public void KindOf_ReportingCategory_ClassifiesMovement(string category, PaymentLedgerEntryKind kind) =>
-        PaymentLedgerEntry.KindOf(category).Should().Be(kind);
-
     private const string Key = "boxoffice";
     private static readonly Instant From = Instant.FromUtc(2027, 1, 1, 0, 0);
     private static readonly Instant To = Instant.FromUtc(2027, 2, 1, 0, 0);

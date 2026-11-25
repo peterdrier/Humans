@@ -1,5 +1,4 @@
 using Humans.Tickets.Contracts;
-using Humans.Base.Attributes;
 using Humans.Tickets.Domain.Checkout;
 using NodaTime;
 
@@ -34,26 +33,26 @@ internal interface ITicketCheckoutService : ITicketingPlatformEvents
     /// <summary>The buy page for an invited buyer's link; null when the link names no offer.</summary>
     Task<BuyPage?> GetDirectedBuyPageAsync(string token, Guid userId, CancellationToken ct = default);
 
-    [ExternalWrite]
     Task<StartCheckoutResult> StartCheckoutAsync(StartCheckout command, Guid userId, CancellationToken ct = default);
 
     Task<IReadOnlyList<TicketCheckoutOrder>> GetOrdersForSettingsAsync(Guid settingsId, CancellationToken ct = default);
 
     Task<OrderDetail?> GetOrderDetailAsync(Guid orderId, CancellationToken ct = default);
 
-    /// <summary>Returns the persisted order only for its buyer or a holder, including only what that viewer may see.</summary>
+    /// <summary>Refreshes an order only for its buyer or a holder, returning only what that viewer may see.</summary>
     Task<BuyOrder?> GetBuyOrderAsync(Guid orderId, Guid viewerId, CancellationToken ct = default);
+
+    /// <summary>Asks the order's platform for its state and applies it. Null when the order does not exist.</summary>
+    Task<TicketCheckoutOrder?> RefreshOrderAsync(Guid orderId, CancellationToken ct = default);
 
     /// <summary>
     /// Refunds an exact amount of a paid order's ticket lines through its platform. Never more than the ticket lines
     /// cost, counting every earlier refund that did not fail: donations are not refunded.
     /// </summary>
-    [ExternalWrite]
     Task<CheckoutMutationResult> RefundAsync(
         Guid orderId, long amountMinor, string reason, Guid actorUserId, CancellationToken ct = default);
 
     /// <summary>The buyer abandons an unpaid order.</summary>
-    [ExternalWrite]
     Task<CheckoutMutationResult> CancelAsync(Guid orderId, Guid userId, CancellationToken ct = default);
 
     Task<IReadOnlyList<TicketCheckoutTicket>> GetTicketsForOrderAsync(Guid orderId, CancellationToken ct = default);
@@ -107,7 +106,6 @@ internal interface ITicketCheckoutService : ITicketingPlatformEvents
     /// <paramref name="refundMinor"/> of its order first; zero voids with no refund, said so on the timeline and audit.
     /// A refund the platform declines leaves the ticket valid.
     /// </summary>
-    [ExternalWrite]
     Task<CheckoutMutationResult> VoidTicketAsync(
         Guid ticketId, string reason, long refundMinor, Guid actorUserId, CancellationToken ct = default);
 
@@ -156,11 +154,9 @@ internal interface ITicketCheckoutService : ITicketingPlatformEvents
         Guid requestId, bool approve, string? note, Guid actorUserId, CancellationToken ct = default);
 
     /// <summary>Refreshes every open order and sweeps the resale queue; returns how many changed.</summary>
-    [ExternalWrite]
     Task<int> ReconcileOpenOrdersAsync(CancellationToken ct = default);
 
     /// <summary>The evening batch of resale refunds to holders whose tickets sold and whose buyers' payments held.</summary>
-    [ExternalWrite]
     Task<ResaleRefundBatch> RunResaleRefundBatchAsync(CancellationToken ct = default);
 
     /// <summary>

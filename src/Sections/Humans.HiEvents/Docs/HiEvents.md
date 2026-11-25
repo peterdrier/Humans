@@ -9,8 +9,6 @@
 
 # HiEvents — Section Invariants
 
-Webhook body reads retain request cancellation. After signature and order validation, the call into Tickets uses `CancellationToken.None`: refreshing the order can mutate its platform, and a disconnected sender must not interrupt that work or its local completion.
-
 The Hi.Events ticketing platform for 2027 ticket sales: one implementation of Tickets' `ITicketingPlatform` port (key
 `hievents`), plus the webhook that tells Tickets an order changed. Hi.Events only takes the payment; Humans owns the
 price, the named ticket and the QR code.
@@ -147,5 +145,3 @@ keeps the names it needs. A failure throws, so Tickets retries before tombstonin
 **Owning services:** `HiEventsPlatform`
 **Owned tables:** None, adapter over Tickets' port.
 **Status:** (A) Migrated, the adapter shape: no tables, an empty `Contracts/`, one webhook controller.
-
-Stripe reporting categories use Tickets' shared `PaymentLedgerEntry.KindOf` classification, also used by Box Office. Vendor-specific order attribution stays in this adapter.

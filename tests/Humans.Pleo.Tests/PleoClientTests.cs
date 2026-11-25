@@ -68,7 +68,7 @@ public sealed class PleoClientTests
 
         foreach (var operation in operations)
             await operation.Should().ThrowAsync<PleoPermanentException>()
-                .WithMessage("PLEO_API_KEY and Pleo:CompanyId must both be set.");
+                .WithMessage("PLEO_API_KEY and PLEO_COMPANY_ID must both be set.");
         calls.Should().Be(0);
     }
 

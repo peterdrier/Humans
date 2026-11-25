@@ -73,8 +73,8 @@ internal sealed class CalendarController : HumansControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> CreateIcal(CancellationToken ct)
     {
-        var user = await GetCurrentUserInfoAsync(ct);
-        if (user is null || user.IsTombstone) return Challenge();
+        var (errorResult, user) = await ResolveCurrentUserOrChallengeAsync(ct);
+        if (errorResult is not null) return errorResult;
 
         await _feedTokens.EnsureAsync(user.Id, ct);
         return RedirectToAction(nameof(Index));
@@ -84,8 +84,8 @@ internal sealed class CalendarController : HumansControllerBase
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> RegenerateIcal(CancellationToken ct)
     {
-        var user = await GetCurrentUserInfoAsync(ct);
-        if (user is null || user.IsTombstone) return Challenge();
+        var (errorResult, user) = await ResolveCurrentUserOrChallengeAsync(ct);
+        if (errorResult is not null) return errorResult;
 
         await _feedTokens.RotateAsync(user.Id, ct);
         SetSuccess(_localizer["Calendar_IcalRegenerated"].Value);

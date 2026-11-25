@@ -137,7 +137,7 @@ One event-scoped early-entry grant: a human may enter on a date for a named proj
 
 ## Invariants
 
-- Role create/edit forms require explicit public visibility and period. Team edits require explicit active and early-entry flags; page edits require both publication flags. Missing required values or malformed fields refuse the mutation and log a Warning. Explicit false flags and YearRound remain valid. Conditional settings and unchecked management checkboxes retain their omission semantics.
+- Role create/edit forms require explicit public visibility and period. Team edits require explicit active and early-entry flags (a system team's form posts its stored active flag hidden, which the service ignores); page edits require both publication flags. Missing required values or malformed fields refuse the mutation and log a Warning. Explicit false flags and YearRound remain valid. Conditional settings and unchecked management checkboxes retain their omission semantics.
 
 - A team has at most one role flagged `IsManagement`. Only TeamsAdmin or Admin set or clear the flag; the edit controller authorizes that field through `TeamsPolicies.Manage` and omits it for other editors. The internal update command accepts a nullable management value: null preserves the current stored flag, so no caller-supplied privilege boolean reaches the service. Toggling management on refuses a role that has assignees.
 - Editing a role into or out of management promotes or demotes its assignees' `TeamMemberRole` in the same save, audits the definition change, then reconciles each affected human's Coordinators system-team membership.

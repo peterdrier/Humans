@@ -192,7 +192,7 @@ internal sealed class PleoClient : IPleoClient
     private async Task<JsonElement> SendAsync(string endpoint, Func<HttpRequestMessage> make, CancellationToken ct)
     {
         if (!HasCredentials)
-            throw new PleoPermanentException("PLEO_API_KEY and Pleo:CompanyId must both be set.");
+            throw new PleoPermanentException("PLEO_API_KEY and PLEO_COMPANY_ID must both be set.");
 
         using var req = make();
         req.Headers.Authorization = new AuthenticationHeaderValue("Basic",

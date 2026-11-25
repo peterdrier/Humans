@@ -252,10 +252,9 @@ internal sealed class TicketsSupportAdminController(
             SetError("Enter the amount to refund, or choose 'No refund' to void without one. Nothing was voided.");
             return RedirectToAction(nameof(Ticket), new { orderId, ticketId });
         }
-        // Voiding can refund at the platform; finish the refund and ticket changes after a disconnect.
         return await ActAsync(orderId, ticketId,
             noRefund ? "Ticket voided with no refund." : "Ticket voided and the refund sent; it shows on the order and the refund list.",
-            (actor, _) => checkout.VoidTicketAsync(ticketId, reason ?? string.Empty, refundMinor, actor, CancellationToken.None), ct);
+            (actor, c) => checkout.VoidTicketAsync(ticketId, reason ?? string.Empty, refundMinor, actor, c), ct);
     }
 
     [HttpPost("Order/{orderId:guid}/Ticket/{ticketId:guid}/Restore")]

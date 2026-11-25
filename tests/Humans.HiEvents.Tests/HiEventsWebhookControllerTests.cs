@@ -20,21 +20,13 @@ public class HiEventsWebhookControllerTests
 
     private readonly ITicketingPlatformEvents _events = Substitute.For<ITicketingPlatformEvents>();
 
-    [HumansTheory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public async Task SignedOrderEvent_NudgesTicketsWithThePlatformOrderId(bool abort)
+    [HumansFact]
+    public async Task SignedOrderEvent_NudgesTicketsWithThePlatformOrderId()
     {
-        using var request = new CancellationTokenSource();
-        _events.PlatformOrderChangedAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(async call =>
-        {
-            if (abort) await request.CancelAsync();
-            call.ArgAt<CancellationToken>(2).ThrowIfCancellationRequested();
-        });
-        var result = await Controller(OrderBody, Sign(OrderBody)).Receive(request.Token);
+        var result = await Controller(OrderBody, Sign(OrderBody)).Receive(TestContext.Current.CancellationToken);
 
         result.Should().BeOfType<OkResult>();
-        await _events.Received(1).PlatformOrderChangedAsync("hievents", "7:42", CancellationToken.None);
+        await _events.Received(1).PlatformOrderChangedAsync("hievents", "7:42", Arg.Any<CancellationToken>());
     }
 
     [HumansFact]

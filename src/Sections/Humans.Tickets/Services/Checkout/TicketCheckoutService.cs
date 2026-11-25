@@ -502,6 +502,8 @@ internal sealed partial class TicketCheckoutService(
         if (!isBuyer && !order.Lines.Any(line => line.HolderUserId == viewerId))
             return null;
 
+        // Only the order's own people may trigger a platform refresh.
+        await RefreshAsync(order, ct);
         var tickets = await repository.GetTicketsForOrderAsync(orderId, ct);
         return new BuyOrder(order.Id, order.Reference, order.State, order.IsOpen, isBuyer,
             isBuyer ? order.TotalMinor : 0, isBuyer ? order.TicketTotalMinor : 0, isBuyer ? order.RefundedMinor : 0,
@@ -522,12 +524,20 @@ internal sealed partial class TicketCheckoutService(
         await RefreshAsync(order, ct);
     }
 
+    public async Task<TicketCheckoutOrder?> RefreshOrderAsync(Guid orderId, CancellationToken ct = default)
+    {
+        var order = await repository.GetOrderAsync(orderId, ct);
+        if (order is null)
+            return null;
+        await RefreshAsync(order, ct);
+        return order;
+    }
+
     public async Task<int> ReconcileOpenOrdersAsync(CancellationToken ct = default)
     {
         var changed = 0;
         foreach (var order in await repository.GetOpenOrdersAsync(ct))
         {
-            ct.ThrowIfCancellationRequested();
             try
             {
                 if (await RefreshAsync(order, ct))
@@ -540,7 +550,6 @@ internal sealed partial class TicketCheckoutService(
         }
         foreach (var orderId in await UnsettledRefundOrdersAsync(ct))
         {
-            ct.ThrowIfCancellationRequested();
             try
             {
                 if (await repository.GetOrderAsync(orderId, ct) is { } paid && await RefreshAsync(paid, ct))
@@ -549,36 +558,6 @@ internal sealed partial class TicketCheckoutService(
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
                 logger.LogWarning(ex, "Refund settlement of order {OrderId} failed; next run retries", orderId);
-            }
-        }
-        // Order GETs never refresh: catch dashboard refunds and chargebacks even when their webhook was missed.
-        var allOrders = await AllOrdersAsync(await repository.ListTicketingSettingsAsync(ct), ct);
-        foreach (var platformOrders in allOrders
-                     .Where(o => o.State == TicketCheckoutOrderState.Paid && o.PlatformOrderId is not null)
-                     .GroupBy(o => o.PlatformKey, StringComparer.Ordinal))
-        {
-            var recon = await ReconcilePlatformAsync(platformOrders.Key, platformOrders.Min(o => o.CreatedAt),
-                clock.GetCurrentInstant() + Duration.FromTicks(1), ct);
-            if (recon is null) continue;
-            if (recon.Error is { } error)
-            {
-                logger.LogWarning("Paid-order catch-up could not read {Platform}: {Error}", platformOrders.Key, error);
-                continue;
-            }
-            foreach (var paid in recon.Rows.Where(row => row.Order is { State: TicketCheckoutOrderState.Paid } order
-                         && ((order.FeeMinor is null && row.Platform?.State == PlatformOrderState.Paid)
-                             || row.Issues.Any(issue => issue is TicketReconIssue.RefundMismatch or TicketReconIssue.ChargebackMismatch)))
-                         .Select(row => row.Order!).DistinctBy(order => order.Id))
-            {
-                ct.ThrowIfCancellationRequested();
-                try
-                {
-                    if (await RefreshAsync(paid, ct)) changed++;
-                }
-                catch (Exception ex) when (ex is not OperationCanceledException)
-                {
-                    logger.LogWarning(ex, "Financial refresh of paid order {OrderId} failed; next run retries", paid.Id);
-                }
             }
         }
         changed += await RepairPaidAsync(ct);
@@ -606,9 +585,6 @@ internal sealed partial class TicketCheckoutService(
             // The platform never accepted it; once its hold lapses it is plainly expired.
             if (order.State != TicketCheckoutOrderState.Created || order.ExpiresAt > now)
                 return false;
-            ct.ThrowIfCancellationRequested();
-            // Commit expiry and reservation release as one unit after its cancellation checkpoint.
-            ct = CancellationToken.None;
             order.State = TicketCheckoutOrderState.Expired;
             order.UpdatedAt = now;
             await repository.UpdateOrderAsync(order, ct);
@@ -625,7 +601,6 @@ internal sealed partial class TicketCheckoutService(
         }
 
         var status = await platform.GetStatusAsync(order.PlatformOrderId, ct);
-        ct.ThrowIfCancellationRequested();
         var before = (order.State, order.RefundedMinor, order.FeeMinor, order.ChargedBackMinor);
         var newState = status.State switch
         {
@@ -642,29 +617,25 @@ internal sealed partial class TicketCheckoutService(
             newState = TicketCheckoutOrderState.Paid;
 
         var wasOpen = order.IsOpen;
-        // A started cancellation and its local outcome must finish together despite shutdown.
         if (wasOpen && newState == TicketCheckoutOrderState.Pending && order.ExpiresAt <= now)
         {
             // Tickets owns the hold: once it lapses the platform must stop taking money for it.
-            ct = CancellationToken.None;
             if (await TryCancelAtPlatformAsync(platform, order, ct))
                 newState = TicketCheckoutOrderState.Expired;
         }
-        else if (wasOpen && newState is TicketCheckoutOrderState.Expired or TicketCheckoutOrderState.Failed)
+        else if (wasOpen && newState is TicketCheckoutOrderState.Expired or TicketCheckoutOrderState.Failed
+                 && !await TryCancelAtPlatformAsync(platform, order, ct))
         {
             // Some platforms still take payment on an order they call expired: it stays open until the cancel lands.
-            ct = CancellationToken.None;
-            if (!await TryCancelAtPlatformAsync(platform, order, ct))
-                newState = order.State;
+            newState = order.State;
         }
 
         var becamePaid = newState == TicketCheckoutOrderState.Paid && order.State != TicketCheckoutOrderState.Paid;
         var late = becamePaid && !wasOpen;
         if (becamePaid)
         {
-            // The webhook and the reconcile job can see the same payment at once: only the
+            // The webhook, the return page and the reconcile job can all see the same payment at once: only the
             // caller whose conditional update moves the row to Paid goes on to fulfil it.
-            ct = CancellationToken.None;
             if (!await repository.TryClaimPaidAsync(order.Id, status.PaidAt ?? now, ct))
                 return false;
             MarkPaid(order, status.FeeMinor, status.PaymentMethod, status.PaidAt ?? now);
@@ -687,9 +658,6 @@ internal sealed partial class TicketCheckoutService(
         if (before == (order.State, order.RefundedMinor, order.FeeMinor, order.ChargedBackMinor))
             return refundsSettled;
 
-        ct.ThrowIfCancellationRequested();
-        // Once the mirror update commits, finish its timeline, audit and fulfillment independently of shutdown.
-        ct = CancellationToken.None;
         order.UpdatedAt = now;
         await repository.UpdateOrderAsync(order, ct);
 
