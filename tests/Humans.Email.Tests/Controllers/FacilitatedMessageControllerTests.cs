@@ -170,6 +170,50 @@ public sealed class FacilitatedMessageControllerTests
         log[2]!.ToString().Should().Contain(_targetId.ToString()).And.Contain(_viewerId.ToString());
     }
 
+    [HumansTheory]
+    [InlineData(null)]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Post_MissingContactChoice_RefusesRelay(bool? includeContact)
+    {
+        using var services = new ServiceCollection().AddLogging().AddControllers().Services.BuildServiceProvider();
+        _controller.HttpContext.RequestServices = services;
+        _controller.Url = Substitute.For<IUrlHelper>();
+        var fields = new Dictionary<string, Microsoft.Extensions.Primitives.StringValues>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["Message"] = "Hello"
+        };
+        if (includeContact is { } choice) fields["IncludeContactInfo"] = choice ? "true" : "false";
+        var metadata = services.GetRequiredService<IModelMetadataProvider>().GetMetadataForType(typeof(SendMessageViewModel));
+        var binder = services.GetRequiredService<IModelBinderFactory>().CreateBinder(new ModelBinderFactoryContext { Metadata = metadata });
+        var binding = DefaultModelBindingContext.CreateBindingContext(_controller.ControllerContext,
+            new FormValueProvider(BindingSource.Form, new FormCollection(fields), CultureInfo.InvariantCulture),
+            metadata, bindingInfo: null, modelName: "");
+        await binder.BindModelAsync(binding);
+        var model = (SendMessageViewModel)binding.Result.Model!;
+        services.GetRequiredService<Microsoft.AspNetCore.Mvc.ModelBinding.Validation.IObjectModelValidator>()
+            .Validate(_controller.ControllerContext, binding.ValidationState, "", model);
+
+        var result = await _controller.SendMessage(_targetId, model, Ct);
+
+        if (includeContact is null)
+        {
+            result.Should().BeOfType<ViewResult>().Which.Model.Should().BeSameAs(model);
+            _controller.ModelState[nameof(SendMessageViewModel.IncludeContactInfo)]!.Errors.Should().ContainSingle();
+            _emailService.ReceivedCalls().Should().BeEmpty();
+            _audit.ReceivedCalls().Should().BeEmpty();
+        }
+        else
+        {
+            _controller.ModelState.IsValid.Should().BeTrue();
+            result.Should().BeOfType<RedirectToActionResult>();
+            _emailMessages.Received(1).FacilitatedMessage(Arg.Any<Guid?>(), Arg.Any<string>(), Arg.Any<string>(),
+                Arg.Any<string>(), Arg.Any<string>(), includeContact.Value,
+                Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>());
+            await _emailService.Received(1).SendAsync(Arg.Any<EmailMessage>(), Arg.Any<CancellationToken>());
+        }
+    }
+
     [HumansFact]
     public async Task Get_ShowsTheComposerForAnotherMember()
     {

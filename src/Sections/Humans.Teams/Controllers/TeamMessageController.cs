@@ -16,7 +16,8 @@ internal sealed class TeamMessageController(
     IUserService userService,
     ITeamMessageOptionsProvider teamOptions,
     IStringLocalizer<TeamsResource> localizer,
-    IStringLocalizer<SharedResource> sharedLocalizer) : HumansControllerBase(userService)
+    IStringLocalizer<SharedResource> sharedLocalizer,
+    ILogger<TeamMessageController> logger) : HumansControllerBase(userService)
 {
     private const string ProfileController = "ProfileView";
     private const string ViewProfileAction = "ViewProfile";
@@ -55,7 +56,11 @@ internal sealed class TeamMessageController(
 
         PopulateModel(model, context, team);
         if (!ModelState.IsValid)
+        {
+            logger.LogWarning("Rejected invalid team-message form from user {UserId} to user {RecipientId} as team {TeamId}",
+                currentUser.Id, context.Recipient!.Id, team.TeamId);
             return View(model);
+        }
 
         if (!await teamOptions.SendAsync(context, team, model.Message, model.IncludeContactInfo))
         {

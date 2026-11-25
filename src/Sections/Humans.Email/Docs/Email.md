@@ -221,6 +221,7 @@ The communication-preference routes moved from Users in decomposition commit 14 
 
 - Legacy unsubscribe confirmation renders the token-resolved user through Human with no profile link or popover. The internal token result carries identity and category, without a copied display name; invalid, expired, category-aware and erased-account handling remain token-validator-owned.
 
+- Personal facilitated-message forms require an explicit contact-sharing choice, including false. Missing or malformed choices redisplay a localized field error before queueing or auditing, rather than falling back to the checked default and disclosing the sender’s address.
 - The facilitated-message composer renders its recipient breadcrumb and localized heading through Human using the recipient ID. Its model carries only a plain-text page title, and the form does not post a copied recipient name; delivery still resolves names and addresses from Users.
 
 - Member and guest preference updates observe request cancellation while resolving the account or unsubscribe token. Cancellation propagates before any preference write; channel updates retain their detached mutation token.

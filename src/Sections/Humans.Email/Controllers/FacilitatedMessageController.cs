@@ -91,7 +91,11 @@ internal sealed class FacilitatedMessageController(
         model.SenderEmail = currentUser.Email ?? string.Empty;
 
         if (!ModelState.IsValid)
+        {
+            logger.LogWarning("Rejected invalid facilitated-message form from user {UserId} to user {RecipientId}",
+                currentUser.Id, targetUser.Id);
             return View(model);
+        }
 
         var request = FacilitatedMessageRequestBuilder.TryBuild(sender, targetUser, model);
         if (request is null)
