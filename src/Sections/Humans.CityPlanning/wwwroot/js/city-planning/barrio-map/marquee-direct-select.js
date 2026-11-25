@@ -16,20 +16,25 @@ function updateMarqueeEl(el, start, cur) {
 
 function selectVerticesInRect(mode, state, rect) {
     const freshFeature = mode.getFeature(state.featureId);
-    if (!Array.isArray(freshFeature?.coordinates?.[0])) return;
-    const coords    = freshFeature.coordinates[0];
+    if (freshFeature?.type !== 'Polygon' && freshFeature?.type !== 'MultiPolygon') return;
+    const coordinates = freshFeature.getCoordinates();
+    const multi = freshFeature.type === 'MultiPolygon';
+    const polygons = multi ? coordinates : [coordinates];
     const featureId = state.featureId;
     const newSelected = [];
 
-    // MapboxDraw's Polygon strips the closing duplicate from its internal coordinates,
-    // so coords here has NO closing coord — every entry
-    // is a real, unique point that MapboxDraw renders as a handle.
-    for (let i = 0; i < coords.length; i++) {
-        const pt = mode.map.project(coords[i]);
-        if (pt.x >= rect.minX && pt.x <= rect.maxX && pt.y >= rect.minY && pt.y <= rect.maxY) {
-            newSelected.push({ feature_id: featureId, coord_path: `0.${i}` });
-        }
-    }
+    polygons.forEach((rings, polygonIndex) => {
+        rings.forEach((ring, ringIndex) => {
+            // The public accessor closes rings; the duplicate has no separate vertex handle.
+            for (let i = 0; i < ring.length - 1; i++) {
+                const pt = mode.map.project(ring[i]);
+                if (pt.x >= rect.minX && pt.x <= rect.maxX && pt.y >= rect.minY && pt.y <= rect.maxY) {
+                    const path = multi ? `${polygonIndex}.${ringIndex}.${i}` : `${ringIndex}.${i}`;
+                    newSelected.push({ feature_id: featureId, coord_path: path });
+                }
+            }
+        });
+    });
 
     let combined = state.marqueeShift
         ? [...(state.selectedCoordPaths ?? []).map(p => ({ feature_id: featureId, coord_path: p })), ...newSelected]

@@ -177,7 +177,7 @@ Minimal read-only map. Fetches `/api/city-planning/state` and renders layers. No
 | `edit.js` | Edit mode lifecycle, draw event handlers, popup, history offcanvas |
 | `signalr.js` | SignalR connection, cursor broadcast, polygon update handler |
 | `config.js` | Server-rendered config values read from DOM data attributes |
-| `marquee-direct-select.js` | Custom MapboxDraw `direct_select` mode adding marquee (drag-box) vertex selection |
+| `marquee-direct-select.js` | Custom MapboxDraw `direct_select` mode adding marquee (drag-box) vertex selection across all rings and polygon parts; Shift extends the selection |
 | `admin-import.js` | Admin-page bulk GeoJSON import: parse, name-match camps, preview, then `PUT` each polygon |
 
 The distance measuring tool lives in the shared module (`/js/city-planning/shared/measure.js`) and is imported directly by both maps.

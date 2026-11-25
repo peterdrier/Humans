@@ -175,6 +175,7 @@ Broadcasts `CampPolygonUpdated(campSeasonId, geoJson, areaSqm, soundZone, campNa
 
 - Only one CampPolygon per CampSeason (unique constraint on `CampSeasonId`).
 - The overview ruler becomes usable when the map loads. Layer toggles enable only after their data loads: a failed state request leaves the ruler usable, and a failed container request preserves the loaded barrio/limit layers and limit toggle. Failed HTTP responses are rejected before interpreting their bodies as map data.
+- Barrio marquee selection covers every ring and polygon part, including holes and MultiPolygons, using the drawing library’s coordinate paths. Closing duplicate points are excluded; Shift extends the selection without duplicate vertices.
 - Barrio-map Delete/Backspace shortcuts leave input, textarea, select and editable content to their native editing behavior; typing in Help or issue forms cannot remove map vertices. Map-focused deletion retains the minimum-polygon guard.
 - Barrio history displays only the latest requested camp season. Switching barrios clears prior preview/restore controls immediately; late success or failure cannot overwrite a newer request or reopen a dismissed panel. One panel-close handler clears history previews while preserving active edits.
 - CampPolygonHistory is append-only — edits and restores always create a new history entry (design-rules.md, *Append-only entities*).
