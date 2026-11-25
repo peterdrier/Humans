@@ -594,8 +594,9 @@ internal sealed class CampaignService(
 
         try
         {
-            var user = await userService.GetUserInfoAsync(grant.UserId, ct)
-                ?? throw new InvalidOperationException($"User {grant.UserId} for grant {grantId} not found.");
+            var user = await userService.GetUserInfoAsync(grant.UserId, ct);
+            if (user is null || user.IsTombstone)
+                throw new InvalidOperationException($"User {grant.UserId} for grant {grantId} is unavailable.");
             if (user.Email is not { Length: > 0 } recipientEmail)
                 throw new InvalidOperationException(
                     $"No notification email resolved for user {grant.UserId} when resending grant {grantId}.");
@@ -625,20 +626,25 @@ internal sealed class CampaignService(
         Guid campaignId, Guid teamId, CancellationToken ct)
     {
         var team = await teamService.GetTeamAsync(teamId, ct);
-        var teamUserIds = team?.Members.Select(tm => tm.UserId).ToList() ?? [];
+        var teamUserIds = team?.Members.Select(tm => tm.UserId).Distinct().ToList() ?? [];
         var alreadyGranted = await repository.GetAlreadyGrantedUserIdsAsync(campaignId, ct);
-        var candidates = teamUserIds.Where(id => !alreadyGranted.Contains(id)).ToList();
         var recipients = new Dictionary<Guid, UserInfo>();
-        if (candidates.Count > 0)
+        var grantedHumans = new HashSet<Guid>();
+        if (teamUserIds.Count > 0)
         {
-            var users = await userService.GetUserInfosAsync(candidates, ct);
-            foreach (var userId in candidates)
+            var users = await userService.GetUserInfosAsync(teamUserIds, ct);
+            foreach (var userId in teamUserIds)
             {
-                if (!users.TryGetValue(userId, out var user))
+                if (!users.TryGetValue(userId, out var user) || user.IsTombstone)
                 {
                     logger.LogWarning(
-                        "User {UserId} eligible for campaign {CampaignId} but lookup returned no row; skipping",
+                        "User {UserId} is unavailable for campaign {CampaignId}; skipping",
                         userId, campaignId);
+                    continue;
+                }
+                if (user.AllUserIds.Any(alreadyGranted.Contains))
+                {
+                    grantedHumans.Add(user.Id);
                     continue;
                 }
                 if (user.Email is not { Length: > 0 })
@@ -648,10 +654,10 @@ internal sealed class CampaignService(
                         userId, campaignId);
                     continue;
                 }
-                recipients.Add(userId, user);
+                recipients.TryAdd(user.Id, user);
             }
         }
-        return (recipients, teamUserIds.Count(alreadyGranted.Contains));
+        return (recipients, grantedHumans.Count);
     }
 
     private static CampaignCodeEmailRequest BuildCampaignCodeRequest(
