@@ -44,10 +44,11 @@ internal sealed class PretixWebhookController(
             || string.IsNullOrEmpty(notification.Event) || string.IsNullOrEmpty(notification.Code))
             return Ok();
 
+        // A verified webhook can trigger platform writes; finish the order despite a disconnected sender.
         await platformEvents.PlatformOrderChangedAsync(
             PretixPlatform.PlatformKey,
             PretixPlatform.FormatPlatformOrderId(notification.Event, notification.Code),
-            ct);
+            CancellationToken.None);
         return Ok();
     }
 

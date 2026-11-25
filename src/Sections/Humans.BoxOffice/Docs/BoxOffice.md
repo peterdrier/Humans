@@ -12,6 +12,8 @@
 
 # BoxOffice — Section Invariants
 
+Webhook body reads and signature/event parsing retain request cancellation. Once verified, each order update calls Tickets with `CancellationToken.None`: refreshing an order can mutate its platform, and a disconnected sender must not interrupt that work or its local completion.
+
 Vocabulary: [`CONTEXT.md`](CONTEXT.md).
 
 Humans' own ticketing platform: one implementation of Tickets' `ITicketingPlatform` port, key `boxoffice`, that

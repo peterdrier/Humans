@@ -664,6 +664,7 @@ public sealed partial class TicketCheckoutServiceTests
             PlatformOrderId = "cs_1",
             State = TicketCheckoutOrderState.Paid,
             TotalMinor = 46000,
+            RefundedMinor = 1000,
             PaymentUrl = "https://pay.example/cs_1",
             Lines = [ownLine, otherLine, donation],
         };
@@ -685,7 +686,7 @@ public sealed partial class TicketCheckoutServiceTests
         result.PaymentUrl.Should().Be(buyer ? order.PaymentUrl : null);
         order.Lines.Should().Equal(ownLine, otherLine, donation);
         _repo.Tickets.Should().Equal(ownTicket, otherTicket);
-        await _platform.Received(1).GetStatusAsync("cs_1", Ct);
+        await _platform.DidNotReceiveWithAnyArgs().GetStatusAsync(default!);
     }
 
     [HumansFact]
@@ -706,14 +707,49 @@ public sealed partial class TicketCheckoutServiceTests
         await _platform.DidNotReceiveWithAnyArgs().GetStatusAsync(default!);
     }
 
+    [HumansTheory]
+    [InlineData(0L, 0L, false)]
+    [InlineData(5000L, 0L, false)]
+    [InlineData(0L, 5000L, false)]
+    [InlineData(0L, 0L, true)]
+    public async Task ReconcileOpenOrdersAsync_PaidFinancialChange_RefreshesOrder(long refunded, long chargedBack, bool missingFee)
+    {
+        var order = await BuyAndPayAsync(Buy(), _buyerId);
+        if (missingFee) order.FeeMinor = null;
+        _ticketing.PlatformEventRef = "event";
+        _platform.EventRefOf(order.PlatformOrderId!).Returns("event");
+        _platform.ListOrdersAsync("event", Arg.Any<Instant>(), Arg.Any<Instant>(), Arg.Any<CancellationToken>())
+            .Returns([new PlatformOrderSummary(order.PlatformOrderId!, order.Id, order.CreatedAt,
+                PlatformOrderState.Paid, order.TotalMinor, 1, refunded, chargedBack)]);
+        _platform.GetStatusAsync(order.PlatformOrderId!, Arg.Any<CancellationToken>())
+            .Returns(new PlatformOrderStatus(PlatformOrderState.Paid, 0, "card", Now,
+                RefundedMinor: refunded, ChargedBackMinor: chargedBack));
+        _platform.ClearReceivedCalls();
+
+        await _service.ReconcileOpenOrdersAsync(Ct);
+
+        order.RefundedMinor.Should().Be(refunded);
+        order.ChargedBackMinor.Should().Be(chargedBack);
+        order.FeeMinor.Should().Be(0);
+        var calls = _platform.ReceivedCalls().Count(call => string.Equals(call.GetMethodInfo().Name,
+            nameof(ITicketingPlatform.GetStatusAsync), StringComparison.Ordinal));
+        calls.Should().Be(refunded > 0 || chargedBack > 0 || missingFee ? 1 : 0);
+    }
+
     [HumansFact]
-    public async Task GetBuyOrderAsync_NewPayment_ReturnsIssuedTickets()
+    public async Task GetBuyOrderAsync_NewPayment_WaitsForWebhook()
     {
         await _service.StartCheckoutAsync(Buy(), _buyerId, Ct);
         var order = _repo.Orders.Single();
         _platform.GetStatusAsync(order.PlatformOrderId!, Arg.Any<CancellationToken>())
             .Returns(new PlatformOrderStatus(PlatformOrderState.Paid, 0, "card", Now));
 
+        var pending = (await _service.GetBuyOrderAsync(order.Id, _buyerId, Ct))!;
+        pending.State.Should().Be(TicketCheckoutOrderState.Pending);
+        pending.Tickets.Should().BeEmpty();
+        await _platform.DidNotReceiveWithAnyArgs().GetStatusAsync(default!);
+
+        await _service.PlatformOrderChangedAsync(order.PlatformKey, order.PlatformOrderId!, Ct);
         var result = (await _service.GetBuyOrderAsync(order.Id, _buyerId, Ct))!;
 
         result.State.Should().Be(TicketCheckoutOrderState.Paid);
@@ -1885,6 +1921,40 @@ public sealed partial class TicketCheckoutServiceTests
     }
 
     [HumansFact]
+    public async Task ReconcileOpenOrdersAsync_ShutdownDuringCancellation_ReleasesReservation()
+    {
+        await OfferedTicketAsync();
+        var first = await _service.StartCheckoutAsync(Buy(), _otherBuyerId, Ct);
+        first.Refusal.Should().BeNull();
+        _ticketing.Mode = TicketSalesMode.Open;
+        var laterBuyer = Human("later@example.com", "Later", "Buyer");
+        var later = await _service.StartCheckoutAsync(Buy(), laterBuyer, Ct);
+        later.Refusal.Should().BeNull();
+        var order = _repo.Orders.Single(o => o.Id == first.OrderId);
+        var laterOrder = _repo.Orders.Single(o => o.Id == later.OrderId);
+        _platform.GetStatusAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+            .Returns(new PlatformOrderStatus(PlatformOrderState.Pending, null, null, null));
+        using var shutdown = new CancellationTokenSource();
+        _platform.CancelAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(async call =>
+        {
+            await shutdown.CancelAsync();
+            call.ArgAt<CancellationToken>(1).ThrowIfCancellationRequested();
+        });
+        _platform.ClearReceivedCalls();
+        _clock.Advance(Duration.FromHours(2));
+
+        var reconcile = () => _service.ReconcileOpenOrdersAsync(shutdown.Token);
+        await reconcile.Should().ThrowAsync<OperationCanceledException>();
+
+        order.State.Should().Be(TicketCheckoutOrderState.Expired);
+        _repo.Offers.Single().State.Should().Be(TicketResaleOfferState.Open);
+        _repo.Offers.Single().ReservedByOrderId.Should().BeNull();
+        laterOrder.State.Should().Be(TicketCheckoutOrderState.Pending);
+        await _platform.Received(1).CancelAsync(order.PlatformOrderId!, CancellationToken.None);
+        await _platform.DidNotReceive().GetStatusAsync(laterOrder.PlatformOrderId!, Arg.Any<CancellationToken>());
+    }
+
+    [HumansFact]
     public async Task A_lapsed_hold_is_closed_at_the_platform_and_a_late_payment_still_issues_flagged_tickets()
     {
         var offerTicket = await OfferedTicketAsync();
@@ -1970,7 +2040,7 @@ public sealed partial class TicketCheckoutServiceTests
 
         if (replay)
         {
-            var refresh = () => _service.RefreshOrderAsync(order.Id, caller.Token);
+            var refresh = () => _service.PlatformOrderChangedAsync(order.PlatformKey, order.PlatformOrderId!, caller.Token);
             await refresh.Should().ThrowAsync<OperationCanceledException>();
             _repo.Refunds[1].Refund.State.Should().Be(RefundState.Pending);
             await _platform.Received(1).GetStatusAsync(order.PlatformOrderId!, caller.Token);
@@ -2035,7 +2105,7 @@ public sealed partial class TicketCheckoutServiceTests
             .Returns<RefundResult>(_ => throw new TicketingPlatformException("timeout"));
 
         await _service.RefundAsync(order.Id, 5000, "ours", Guid.NewGuid(), Ct);
-        await _service.RefreshOrderAsync(order.Id, Ct);
+        await _service.PlatformOrderChangedAsync(order.PlatformKey, order.PlatformOrderId!, Ct);
 
         _repo.Refunds.Single().Refund.State.Should().Be(RefundState.Pending);
     }
@@ -2046,7 +2116,7 @@ public sealed partial class TicketCheckoutServiceTests
         var order = await BuyAndPayAsync(Buy(), _buyerId);
         _platform.GetStatusAsync("cs_1", Arg.Any<CancellationToken>())
             .Returns(new PlatformOrderStatus(PlatformOrderState.Paid, 0, "card", Now, ChargedBackMinor: 25000));
-        await _service.RefreshOrderAsync(order.Id, Ct);
+        await _service.PlatformOrderChangedAsync(order.PlatformKey, order.PlatformOrderId!, Ct);
         var ticket = _repo.Tickets.Single(t => t.OrderId == order.Id);
 
         (await _service.GetOrderDetailAsync(order.Id, Ct))!.RefundableMinor.Should().Be(0);
@@ -2121,11 +2191,11 @@ public sealed partial class TicketCheckoutServiceTests
             .Returns(new PlatformOrderStatus(PlatformOrderState.Paid, 0, "card", Now, ChargedBackMinor: 25000));
 
         await _service.ReconcileOpenOrdersAsync(Ct);
-        await _service.RefreshOrderAsync(order.Id, Ct);
+        await _service.PlatformOrderChangedAsync(order.PlatformKey, order.PlatformOrderId!, Ct);
         order.ChargedBackMinor.Should().Be(25000);
         _platform.GetStatusAsync("cs_1", Arg.Any<CancellationToken>())
             .Returns(new PlatformOrderStatus(PlatformOrderState.Paid, 0, "card", Now));
-        await _service.RefreshOrderAsync(order.Id, Ct);
+        await _service.PlatformOrderChangedAsync(order.PlatformKey, order.PlatformOrderId!, Ct);
 
         await _audit.Received(2).LogAsync(TicketsAuditActions.TicketCheckoutNeedsAttention, Arg.Any<string>(), order.Id,
             Arg.Any<string>(), Arg.Any<string>());

@@ -548,21 +548,29 @@ public sealed class BoxOfficePlatformTests
         };
     }
 
-    [HumansFact]
-    public async Task Webhook_answers_503_while_unset_400_on_a_bad_signature_and_nudges_Tickets_once_verified()
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Webhook_answers_503_while_unset_400_on_a_bad_signature_and_nudges_Tickets_once_verified(bool abort)
     {
         var events = Substitute.For<ITicketingPlatformEvents>();
         var body = Event("checkout.session.expired", """{"id":"cs_9","object":"checkout.session"}""");
-        var ct = TestContext.Current.CancellationToken;
+        using var request = new CancellationTokenSource();
+        var ct = request.Token;
 
         var unset = await Webhook(Platform(), events, body, Sign(body)).Receive(ct);
         var forged = await Webhook(Platform(WebhookSecret), events, body, "t=1,v1=bad").Receive(ct);
         await events.DidNotReceiveWithAnyArgs().PlatformOrderChangedAsync(default!, default!);
+        events.PlatformOrderChangedAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(async call =>
+        {
+            if (abort) await request.CancelAsync();
+            call.ArgAt<CancellationToken>(2).ThrowIfCancellationRequested();
+        });
         var verified = await Webhook(Platform(WebhookSecret), events, body, Sign(body)).Receive(ct);
 
         unset.Should().BeOfType<StatusCodeResult>().Which.StatusCode.Should().Be(StatusCodes.Status503ServiceUnavailable);
         forged.Should().BeOfType<BadRequestResult>();
         verified.Should().BeOfType<OkResult>();
-        await events.Received(1).PlatformOrderChangedAsync("boxoffice", "cs_9", Arg.Any<CancellationToken>());
+        await events.Received(1).PlatformOrderChangedAsync("boxoffice", "cs_9", CancellationToken.None);
     }
 }

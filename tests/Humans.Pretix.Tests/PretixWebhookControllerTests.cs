@@ -23,13 +23,21 @@ public class PretixWebhookControllerTests
     private static PretixWebhookController.PretixNotification Paid(string organizer = "nobodies") =>
         new(organizer, "nowhere2027", "ABC23");
 
-    [HumansFact]
-    public async Task MatchingSecret_NudgesTicketsWithThePlatformOrderId()
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task MatchingSecret_NudgesTicketsWithThePlatformOrderId(bool abort)
     {
-        var result = await Controller().Receive("s3cret", Paid(), TestContext.Current.CancellationToken);
+        using var request = new CancellationTokenSource();
+        _events.PlatformOrderChangedAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(async call =>
+        {
+            if (abort) await request.CancelAsync();
+            call.ArgAt<CancellationToken>(2).ThrowIfCancellationRequested();
+        });
+        var result = await Controller().Receive("s3cret", Paid(), request.Token);
 
         result.Should().BeOfType<OkResult>();
-        await _events.Received(1).PlatformOrderChangedAsync("pretix", "nowhere2027/ABC23", Arg.Any<CancellationToken>());
+        await _events.Received(1).PlatformOrderChangedAsync("pretix", "nowhere2027/ABC23", CancellationToken.None);
     }
 
     [HumansFact]

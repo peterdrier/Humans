@@ -84,9 +84,6 @@ internal sealed class TicketsSalesAdminController(
     [HttpGet("Order/{id:guid}")]
     public async Task<IActionResult> Order(Guid id, CancellationToken ct)
     {
-        // Picks up refunds made in the platform's own dashboard.
-        if (await checkout.RefreshOrderAsync(id, ct) is null)
-            return NotFound();
         var detail = await checkout.GetOrderDetailAsync(id, ct);
         if (detail is null)
             return NotFound();
@@ -105,8 +102,9 @@ internal sealed class TicketsSalesAdminController(
         var (errorResult, user) = await RequireCurrentUserAsync(ct);
         if (errorResult is not null) return errorResult;
 
+        // A disconnected browser must not interrupt the refund and its local bookkeeping.
         var result = await checkout.RefundAsync(
-            id, (long)Math.Round(amount * 100m, MidpointRounding.AwayFromZero), reason ?? string.Empty, user.Id, ct);
+            id, (long)Math.Round(amount * 100m, MidpointRounding.AwayFromZero), reason ?? string.Empty, user.Id, CancellationToken.None);
         if (result.Succeeded)
             SetSuccess("Refund sent.");
         else

@@ -232,7 +232,8 @@ internal sealed class TicketBuyController(
         var (errorResult, user) = await RequireCurrentUserAsync(ct);
         if (errorResult is not null) return errorResult;
 
-        var result = await checkout.CancelAsync(id, user.Id, ct);
+        // Finish platform cancellation and reservation release even if the buyer leaves.
+        var result = await checkout.CancelAsync(id, user.Id, CancellationToken.None);
         if (result.Refusal is { } refusal)
         {
             if (string.Equals(refusal, "Tickets_Buy_OrderNotFound", StringComparison.Ordinal))

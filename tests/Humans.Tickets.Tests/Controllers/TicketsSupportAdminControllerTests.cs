@@ -11,6 +11,13 @@ using Microsoft.AspNetCore.Mvc;
 using NodaTime;
 using NSubstitute;
 using Xunit;
+using Humans.Auth.Contracts;
+using Humans.EarlyEntry.Contracts;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc.ViewFeatures;
+using Microsoft.Extensions.Localization;
+using Microsoft.Extensions.Logging.Abstractions;
+using System.Security.Claims;
 
 namespace Humans.Tickets.Tests.Controllers;
 
@@ -19,6 +26,65 @@ public class TicketsSupportAdminControllerTests
     private readonly ITicketCheckoutService _checkout = Substitute.For<ITicketCheckoutService>();
     private readonly TicketingSettings _sale = new() { Id = Guid.NewGuid(), EventSettingsId = Guid.NewGuid() };
     private static readonly Instant Now = Instant.FromUtc(2027, 1, 10, 12, 0);
+
+    [HumansTheory]
+    [InlineData("cancel")]
+    [InlineData("refund")]
+    [InlineData("void")]
+    public async Task Mutation_RequestAborted_FinishesCheckout(string action)
+    {
+        using var request = new CancellationTokenSource();
+        var actorId = Guid.NewGuid();
+        var users = Substitute.For<IUserService>();
+        CancellationToken lookupToken = default, writeToken = default;
+        users.GetUserInfoAsync(actorId, Arg.Any<CancellationToken>()).Returns(call =>
+        {
+            lookupToken = call.ArgAt<CancellationToken>(1);
+            return new ValueTask<UserInfo?>(UserInfo.Create(new User { Id = actorId }, [], [], null));
+        });
+        CheckoutMutationResult Complete(CancellationToken token)
+        {
+            writeToken = token;
+            request.Cancel();
+            token.ThrowIfCancellationRequested();
+            return CheckoutMutationResult.Ok;
+        }
+        _checkout.CancelAsync(Arg.Any<Guid>(), actorId, Arg.Any<CancellationToken>())
+            .Returns(call => Complete(call.ArgAt<CancellationToken>(2)));
+        _checkout.RefundAsync(Arg.Any<Guid>(), Arg.Any<long>(), Arg.Any<string>(), actorId, Arg.Any<CancellationToken>())
+            .Returns(call => Complete(call.ArgAt<CancellationToken>(4)));
+        _checkout.VoidTicketAsync(Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<long>(), actorId, Arg.Any<CancellationToken>())
+            .Returns(call => Complete(call.ArgAt<CancellationToken>(4)));
+        Controller controller = action switch
+        {
+            "cancel" => new TicketBuyController(_checkout, Substitute.For<IMagicLinkService>(),
+                Substitute.For<IEarlyEntryService>(), users, Substitute.For<IStringLocalizer<TicketsResource>>(),
+                NullLogger<TicketBuyController>.Instance),
+            "refund" => new TicketsSalesAdminController(_checkout, null!, Substitute.For<ISettingsService>(),
+                Substitute.For<IGrantService>(), Substitute.For<IOrgTimeZone>(), SystemClock.Instance, users),
+            _ => new TicketsSupportAdminController(_checkout, Substitute.For<ISettingsService>(), SystemClock.Instance, users),
+        };
+        var http = new DefaultHttpContext
+        {
+            User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, actorId.ToString())], "Test")),
+            RequestAborted = request.Token,
+        };
+        controller.ControllerContext = new ControllerContext { HttpContext = http };
+        controller.TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>());
+
+        var result = controller switch
+        {
+            TicketBuyController buyer => await buyer.Cancel(Guid.NewGuid(), false, request.Token),
+            TicketsSalesAdminController sales => await sales.Refund(Guid.NewGuid(), 10m, "Returned", request.Token),
+            TicketsSupportAdminController support => await support.Void(Guid.NewGuid(), Guid.NewGuid(), "Returned", 10m, false, request.Token),
+            _ => throw new InvalidOperationException(),
+        };
+
+        result.Should().BeOfType<RedirectToActionResult>();
+        lookupToken.Should().Be(request.Token);
+        writeToken.CanBeCanceled.Should().BeFalse();
+        request.IsCancellationRequested.Should().BeTrue();
+    }
 
     private TicketsSupportAdminController Controller()
     {
@@ -34,7 +100,6 @@ public class TicketsSupportAdminControllerTests
         var child = new TicketCheckoutTicket { Id = Guid.NewGuid(), Kind = TicketHolderKind.Child, IssuedAt = Now - Duration.FromDays(1) };
         var older = new TicketCheckoutRefund { Id = Guid.NewGuid(), CreatedAt = Now };
         var newer = new TicketCheckoutRefund { Id = Guid.NewGuid(), CreatedAt = Now + Duration.FromDays(1) };
-        _checkout.RefreshOrderAsync(order.Id, Arg.Any<CancellationToken>()).Returns(order);
         _checkout.GetOrderDetailAsync(order.Id, Arg.Any<CancellationToken>())
             .Returns(new OrderDetail(order, [newer, older], [], [child, adult]));
         var controller = new TicketsSalesAdminController(_checkout, null!, Substitute.For<ISettingsService>(),

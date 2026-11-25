@@ -11,6 +11,8 @@
 
 # Pretix — Section Invariants
 
+After validating the webhook secret, organizer and order identity, the call into Tickets uses `CancellationToken.None`: refreshing the order can mutate its platform, and a disconnected sender must not interrupt that work or its local completion.
+
 The pretix ticketing platform behind Tickets' `ITicketingPlatform` port: Humans sets the price, pretix takes the payment.
 
 ## Purpose

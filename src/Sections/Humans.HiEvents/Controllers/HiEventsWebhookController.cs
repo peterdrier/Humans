@@ -49,10 +49,11 @@ internal sealed class HiEventsWebhookController(
             return Ok();
         }
 
+        // A verified webhook can trigger platform writes; finish the order despite a disconnected sender.
         await platformEvents.PlatformOrderChangedAsync(
             HiEventsPlatform.PlatformKey,
             HiEventsPlatform.ToPlatformOrderId(order.EventId, order.OrderId),
-            ct);
+            CancellationToken.None);
 
         return Ok();
     }

@@ -9,6 +9,8 @@
 
 # HiEvents — Section Invariants
 
+Webhook body reads retain request cancellation. After signature and order validation, the call into Tickets uses `CancellationToken.None`: refreshing the order can mutate its platform, and a disconnected sender must not interrupt that work or its local completion.
+
 The Hi.Events ticketing platform for 2027 ticket sales: one implementation of Tickets' `ITicketingPlatform` port (key
 `hievents`), plus the webhook that tells Tickets an order changed. Hi.Events only takes the payment; Humans owns the
 price, the named ticket and the QR code.

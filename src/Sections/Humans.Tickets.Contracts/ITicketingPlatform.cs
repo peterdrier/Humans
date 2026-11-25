@@ -309,5 +309,6 @@ public sealed class TicketingPlatformException(string message, Exception? inner 
 /// </summary>
 public interface ITicketingPlatformEvents : IApplicationService
 {
+    [ExternalWrite]
     Task PlatformOrderChangedAsync(string platformKey, string platformOrderId, CancellationToken ct = default);
 }
