@@ -62,6 +62,8 @@ internal sealed class TicketsSalesAdminController(
         if (errorResult is not null) return errorResult;
 
         var (save, parseError) = form.ToSave(id, orgTimeZone.Zone);
+        if (parseError is not null)
+            logger.LogWarning("Rejected ticketing settings form for {SettingsId} by {UserId}: {Refusal}", id, user.Id, parseError);
         var result = save is null ? new CheckoutMutationResult(parseError) : await checkout.SaveTicketingSettingsAsync(save, user.Id, ct);
         if (!result.Succeeded)
             return View("~/Views/Tickets/Admin/Sales/Edit.cshtml", await EditModelAsync(form, result.Refusal, ct));
@@ -330,7 +332,7 @@ internal sealed class SalesEditForm
             close = parsed.Value.InZoneLeniently(zone).ToInstant();
         }
 
-        if (!decimal.TryParse(TicketVatPercent, NumberStyles.Number, CultureInfo.InvariantCulture, out var vatPercent))
+        if (!decimal.TryParse(TicketVatPercent, NumberStyles.Float, CultureInfo.InvariantCulture, out var vatPercent))
             return (null, "Ticket VAT is a percentage, e.g. 10.");
 
         var waves = new List<TicketSalesWave>();
@@ -398,7 +400,7 @@ internal sealed class SalesEditForm
     internal static bool TryMinor(string? text, out long minor)
     {
         minor = 0;
-        if (!decimal.TryParse(text?.Trim(), NumberStyles.Number, CultureInfo.InvariantCulture, out var eur)) return false;
+        if (!decimal.TryParse(text?.Trim(), NumberStyles.Float, CultureInfo.InvariantCulture, out var eur)) return false;
         var rounded = Math.Round(eur, 2, MidpointRounding.AwayFromZero);
         if (rounded < long.MinValue / 100m || rounded > long.MaxValue / 100m) return false;
         minor = (long)(rounded * 100m);
