@@ -281,6 +281,112 @@ public class TicketsSupportAdminControllerTests
             _checkout.ReceivedCalls().Should().BeEmpty();
     }
 
+    public enum SettingsField
+    {
+        None, EventSettingsId, PlatformKey, Mode, Capacity, TicketVatPercent, Resale,
+        PartnerTickets, Donations, MailingListOptIn, CompanionTickets, PriceRuleKind
+    }
+
+    [HumansTheory]
+    [InlineData(SettingsField.None, null)]
+    [InlineData(SettingsField.EventSettingsId, null)]
+    [InlineData(SettingsField.PlatformKey, null)]
+    [InlineData(SettingsField.Mode, null)]
+    [InlineData(SettingsField.Capacity, null)]
+    [InlineData(SettingsField.TicketVatPercent, null)]
+    [InlineData(SettingsField.Resale, null)]
+    [InlineData(SettingsField.PartnerTickets, null)]
+    [InlineData(SettingsField.Donations, null)]
+    [InlineData(SettingsField.MailingListOptIn, null)]
+    [InlineData(SettingsField.CompanionTickets, null)]
+    [InlineData(SettingsField.PriceRuleKind, null)]
+    [InlineData(SettingsField.EventSettingsId, "bad")]
+    [InlineData(SettingsField.Mode, "999")]
+    [InlineData(SettingsField.Capacity, "bad")]
+    [InlineData(SettingsField.Resale, "999")]
+    [InlineData(SettingsField.PartnerTickets, "bad")]
+    [InlineData(SettingsField.Donations, "bad")]
+    [InlineData(SettingsField.MailingListOptIn, "bad")]
+    [InlineData(SettingsField.CompanionTickets, "bad")]
+    [InlineData(SettingsField.PriceRuleKind, "999")]
+    public async Task Edit_MalformedSettings_RefusesSave(SettingsField field, string? posted)
+    {
+        var actorId = Guid.NewGuid();
+        var eventId = Guid.NewGuid();
+        var grantId = Guid.NewGuid();
+        var users = Substitute.For<IUserService>();
+        users.GetUserInfoAsync(actorId, Arg.Any<CancellationToken>())
+            .Returns(UserInfo.Create(new User { Id = actorId }, [], [], null));
+        var zone = Substitute.For<IOrgTimeZone>();
+        zone.Zone.Returns(DateTimeZone.Utc);
+        var controller = new TicketsSalesAdminController(_checkout, null!, Substitute.For<ISettingsService>(),
+            Substitute.For<IGrantService>(), zone, SystemClock.Instance, users, NullLogger<TicketsSalesAdminController>.Instance);
+        var registrations = new ServiceCollection().AddLogging();
+        registrations.AddControllers();
+        using var services = registrations.BuildServiceProvider();
+        var http = new DefaultHttpContext
+        {
+            RequestServices = services,
+            User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, actorId.ToString())], "Test"))
+        };
+        controller.ControllerContext = new ControllerContext { HttpContext = http };
+        controller.TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>());
+        controller.Url = Substitute.For<IUrlHelper>();
+        var rulePrefix = $"{nameof(SalesEditForm.PriceRules)}[0].";
+        var fields = new Dictionary<string, StringValues>(StringComparer.OrdinalIgnoreCase)
+        {
+            [nameof(SalesEditForm.EventSettingsId)] = eventId.ToString(),
+            [nameof(SalesEditForm.PlatformKey)] = "boxoffice",
+            [nameof(SalesEditForm.Mode)] = nameof(TicketSalesMode.Closed),
+            [nameof(SalesEditForm.Capacity)] = "0",
+            [nameof(SalesEditForm.TicketVatPercent)] = "0",
+            [nameof(SalesEditForm.Resale)] = nameof(ResaleScheme.Off),
+            [nameof(SalesEditForm.PartnerTickets)] = "false",
+            [nameof(SalesEditForm.Donations)] = "false",
+            [nameof(SalesEditForm.MailingListOptIn)] = "false",
+            [nameof(SalesEditForm.CompanionTickets)] = "false",
+            [rulePrefix + nameof(SalesEditForm.PriceRuleRow.GrantProgramId)] = grantId.ToString(),
+            [rulePrefix + nameof(SalesEditForm.PriceRuleRow.Kind)] = nameof(TicketPriceRuleKind.Discount),
+            [rulePrefix + nameof(SalesEditForm.PriceRuleRow.Amount)] = "12.34",
+            [rulePrefix + nameof(SalesEditForm.PriceRuleRow.Label)] = "Discount"
+        };
+        if (field != SettingsField.None)
+        {
+            var key = field == SettingsField.PriceRuleKind ? rulePrefix + nameof(SalesEditForm.PriceRuleRow.Kind) : field.ToString();
+            if (posted is null) fields.Remove(key);
+            else fields[key] = posted;
+        }
+        _checkout.SaveTicketingSettingsAsync(Arg.Any<TicketingSettingsSave>(), actorId, Arg.Any<CancellationToken>())
+            .Returns(CheckoutMutationResult.Ok);
+        var method = typeof(TicketsSalesAdminController).GetMethods().Single(m => string.Equals(m.Name, nameof(TicketsSalesAdminController.Edit), StringComparison.Ordinal)
+            && m.GetParameters().Any(p => p.ParameterType == typeof(SalesEditForm)));
+        var parameter = method.GetParameters().Single(p => p.ParameterType == typeof(SalesEditForm));
+        var form = (SalesEditForm)(await BindParameterAsync(controller, parameter, fields))!;
+
+        var result = await controller.Edit(Guid.NewGuid(), form, Xunit.TestContext.Current.CancellationToken);
+
+        if (field != SettingsField.None)
+        {
+            result.Should().BeOfType<BadRequestObjectResult>();
+            _checkout.ReceivedCalls().Should().BeEmpty();
+            return;
+        }
+        result.Should().BeOfType<RedirectToActionResult>();
+        var save = _checkout.ReceivedCalls().Should().ContainSingle().Which.GetArguments()[0]
+            .Should().BeOfType<TicketingSettingsSave>().Subject;
+        save.EventSettingsId.Should().Be(eventId);
+        save.Capacity.Should().Be(0);
+        save.TicketVatRate.Should().Be(0m);
+        save.Mode.Should().Be(TicketSalesMode.Closed);
+        save.Switches!.Resale.Should().Be(ResaleScheme.Off);
+        save.Switches.PartnerTickets.Should().BeFalse();
+        save.Switches.Donations.Should().BeFalse();
+        save.Switches.MailingListOptIn.Should().BeFalse();
+        save.Switches.CompanionTickets.Should().BeFalse();
+        save.PriceRules.Should().ContainSingle().Which.Kind.Should().Be(TicketPriceRuleKind.Discount);
+        save.PriceRules.Single().AmountMinor.Should().Be(1234L);
+    }
+
     private static async Task<object?> BindParameterAsync(
         Controller controller, ParameterInfo parameter, Dictionary<string, StringValues> fields, CultureInfo? culture = null)
     {

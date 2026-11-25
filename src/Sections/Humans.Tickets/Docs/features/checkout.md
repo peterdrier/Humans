@@ -122,6 +122,7 @@ sold under is read (`EventRefOf`), beside the events their ticketing settings se
    (a path in the legal GitHub repo, see "Ticket rules" below) and the ticketing switches (below). The form edits waves,
    price rules and VIP totals as rows, the VAT as a percentage and sales close in the organisation's time zone.
    Prices, VAT and refund/void amounts use invariant HTML-number syntax: dot decimals or exponent notation, never grouping separators.
+   Missing mandatory settings or malformed typed fields return 400 before saving; explicit zero/false values remain valid. Optional text, blank spare rows and disabled wave-pin amounts retain their form semantics.
    **Early sales** (and test purchases): mode `InvitedOnly` sells only to members holding an active grant in a program
    with an `EarlyAccess` rule (e.g. asociados and colaboradores in a wave zero, or a few testers), with the rule's
    amount off while the mode lasts (none when left empty; someone in several early access programs gets the largest

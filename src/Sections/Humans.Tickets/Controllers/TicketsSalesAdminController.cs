@@ -61,6 +61,12 @@ internal sealed class TicketsSalesAdminController(
         var (errorResult, user) = await RequireCurrentUserAsync(ct);
         if (errorResult is not null) return errorResult;
 
+        if (!ModelState.IsValid)
+        {
+            logger.LogWarning("Rejected malformed ticketing settings form for {SettingsId} by {UserId}", id, user.Id);
+            return BadRequest(ModelState);
+        }
+
         var (save, parseError) = form.ToSave(id, orgTimeZone.Zone);
         if (parseError is not null)
             logger.LogWarning("Rejected ticketing settings form for {SettingsId} by {UserId}: {Refusal}", id, user.Id, parseError);
@@ -237,25 +243,35 @@ internal sealed record SalesEditViewModel(
 /// </summary>
 internal sealed class SalesEditForm
 {
+    [BindRequired]
     public Guid EventSettingsId { get; set; }
+    [BindRequired]
     public string PlatformKey { get; set; } = string.Empty;
     public string? PlatformEventRef { get; set; }
+    [BindRequired]
     public TicketSalesMode Mode { get; set; }
 
     /// <summary>Local date and time in the organisation's time zone, as a datetime-local input posts it.</summary>
     public string? SalesCloseAt { get; set; }
 
+    [BindRequired]
     public int Capacity { get; set; } = 3000;
+    [BindRequired]
     public string? TicketVatPercent { get; set; } = "10";
     public List<WaveRow> Waves { get; set; } = [];
     public List<VipRow> VipLevels { get; set; } = [];
     public List<PriceRuleRow> PriceRules { get; set; } = [];
     public List<ChildTypeRow> ChildTypes { get; set; } = [];
     public List<DonationPurposeRow> DonationPurposes { get; set; } = [];
+    [BindRequired]
     public ResaleScheme Resale { get; set; } = ResaleScheme.QueueAndDirected;
+    [BindRequired]
     public bool PartnerTickets { get; set; } = true;
+    [BindRequired]
     public bool Donations { get; set; } = true;
+    [BindRequired]
     public bool MailingListOptIn { get; set; } = true;
+    [BindRequired]
     public bool CompanionTickets { get; set; } = true;
     public string? TermsFolder { get; set; }
 
@@ -286,6 +302,7 @@ internal sealed class SalesEditForm
     internal sealed class PriceRuleRow
     {
         public Guid? GrantProgramId { get; set; }
+        [BindRequired]
         public TicketPriceRuleKind Kind { get; set; }
         public string? Amount { get; set; }
         public string? Label { get; set; }
