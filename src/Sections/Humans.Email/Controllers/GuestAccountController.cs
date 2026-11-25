@@ -92,7 +92,7 @@ internal sealed class GuestAccountController(
     {
         var user = await GetCurrentUserInfoAsync(ct);
         if (user is not null)
-            return user.IsGdprAnonymized ? (null, null, false) : (user.Id, null, false);
+            return user.IsTombstone ? (null, null, false) : (user.Id, null, false);
 
         if (string.IsNullOrEmpty(utoken))
             return (null, null, false);

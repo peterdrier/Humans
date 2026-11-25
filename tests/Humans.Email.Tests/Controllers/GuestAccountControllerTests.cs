@@ -194,19 +194,35 @@ public class GuestAccountControllerTests
     }
 
     [HumansTheory]
-    [InlineData(false, false)]
-    [InlineData(false, true)]
-    [InlineData(true, false)]
-    [InlineData(true, true)]
-    public async Task CommunicationPreferences_ErasedAccount_IsRefused(bool signedIn, bool update)
+    [InlineData(false, false, "anonymized")]
+    [InlineData(false, true, "anonymized")]
+    [InlineData(true, false, "anonymized")]
+    [InlineData(true, true, "anonymized")]
+    [InlineData(false, false, "deleted")]
+    [InlineData(false, true, "deleted")]
+    [InlineData(true, false, "deleted")]
+    [InlineData(true, true, "deleted")]
+    [InlineData(false, false, "local")]
+    [InlineData(false, true, "local")]
+    [InlineData(true, false, "local")]
+    [InlineData(true, true, "local")]
+    public async Task CommunicationPreferences_ErasedAccount_IsRefused(bool signedIn, bool update, string kind)
     {
         var userId = Guid.NewGuid();
-        var controller = BuildSut(new User
+        var user = new User
         {
             Id = userId,
             DisplayName = "Deleted User",
             Email = $"deleted-{userId:N}@deleted.local"
-        });
+        };
+        if (string.Equals(kind, "deleted", StringComparison.Ordinal))
+        {
+            user.Email = null;
+            user.State = UserState.Deleted;
+        }
+        else if (string.Equals(kind, "local", StringComparison.Ordinal))
+            user.Email = "erased@gdpr.local";
+        var controller = BuildSut(user);
         if (!signedIn)
             controller.HttpContext.User = new ClaimsPrincipal(new ClaimsIdentity());
         _commPrefService.ValidateUnsubscribeToken("pre-erasure-token")

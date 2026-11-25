@@ -176,7 +176,7 @@ The communication-preference routes moved from Users in decomposition commit 14 
 
 - A queued personal facilitated message retains its success redirect if auditing fails afterward. The failure logs Critical with sender, recipient and contact-sharing details for reconciliation; queueing failures still propagate.
 
-- Missing or empty unsubscribe tokens are invalid before Data Protection or user reads, including the new-category validator. The anonymous one-click path refuses a missing token rather than surfacing a token-decoding exception.
+- Missing or empty unsubscribe tokens are invalid before Data Protection or user reads, including the new-category validator. The anonymous one-click path refuses a missing token rather than surfacing a token-decoding exception. Both token formats and the guest page's signed-in path reject the resolved account when `UserInfo.IsTombstone` is true, including stored Deleted/Merged states and legacy `.local` sentinels. A merged ID that resolves to a living survivor remains valid.
 
 - An absent, empty or whitespace-only `Email:SmtpHost` selects the logging stub outside production. Production always selects SMTP and still boots: a missing host fails at send time with an `Email:SmtpHost` diagnostic, so persisted messages follow normal outbox failure/retry handling rather than being marked sent by the stub. The health check reports SMTP as unconfigured. A nonblank host selects SMTP in every environment.
 - SMTP transport owns and disposes each MIME message and its body after the attempt, including send and disconnect failures; cleanup does not change delivery acceptance or retry decisions.
