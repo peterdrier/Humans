@@ -6,9 +6,9 @@
 
 # Holded (section) — Section Invariants
 
-Malformed or non-HTTP(S) API base URLs do not prevent client construction. The transport owns endpoint parsing;
-reads and writes fail as `HoldedPermanentException` before sending a request when no valid endpoint is available.
-Invalid configuration never returns empty data, reports a successful write, or selects a fallback endpoint. Valid HTTP(S) endpoints retain their behavior.
+Malformed or non-HTTP(S) API base URLs and missing or malformed API keys do not prevent client construction.
+`IsConfigured` requires a usable effective HTTP(S) base address and authorization header, so financial consumers retain their existing defer behavior for invalid configuration. Direct reads and writes fail as `HoldedPermanentException` before HTTP, retry delays or call logging when either is unusable; key refusals include no key value. The transport owns validation, including a supplied HttpClient base-address override.
+Invalid configuration never returns empty data, reports a successful write, or selects a fallback endpoint. Valid endpoints and keys retain their behavior.
 
 ## Purpose
 

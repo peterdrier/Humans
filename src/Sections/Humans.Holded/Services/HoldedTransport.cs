@@ -43,7 +43,11 @@ internal sealed class HoldedTransport
             _http.BaseAddress = baseAddress;
     }
 
-    public bool IsConfigured => !string.IsNullOrWhiteSpace(_options.ApiKey);
+    public bool IsConfigured => _http.BaseAddress is { Scheme: "http" or "https" } && Authorization is not null;
+
+    private AuthenticationHeaderValue? Authorization =>
+        !string.IsNullOrWhiteSpace(_options.ApiKey)
+        && AuthenticationHeaderValue.TryParse($"Bearer {_options.ApiKey}", out var header) ? header : null;
 
     /// <summary>Throws at pageSafetyCap rather than returning a truncated list: these feed replace-semantics
     /// reconciliation, so a short fetch would delete rows that still exist in Holded.</summary>
@@ -113,7 +117,8 @@ internal sealed class HoldedTransport
     }
 
     private void AttachAuth(HttpRequestMessage req) =>
-        req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _options.ApiKey);
+        req.Headers.Authorization = Authorization
+            ?? throw new HoldedPermanentException("HOLDED_API_KEY_V2 must be nonblank and valid in an HTTP authorization header.");
 
     public async Task<HttpResponseMessage> SendAsync(
         HttpRequestMessage req, CancellationToken ct,
