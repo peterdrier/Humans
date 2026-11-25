@@ -32,14 +32,14 @@ internal sealed class FacilitatedMessageController(
     public async Task<IActionResult> SendMessage(Guid id, CancellationToken ct)
     {
         var currentUser = await GetCurrentUserInfoAsync(ct);
-        if (currentUser is null)
+        if (currentUser is null || currentUser.IsTombstone)
             return NotFound();
 
         if (currentUser.Id == id)
             return RedirectToProfile(id);
 
         var targetInfo = await UserService.GetUserInfoAsync(id, ct);
-        if (targetInfo is null)
+        if (targetInfo is null || targetInfo.IsTombstone)
             return NotFound();
         id = targetInfo.Id;
         if (currentUser.Id == id)
@@ -66,14 +66,15 @@ internal sealed class FacilitatedMessageController(
     public async Task<IActionResult> SendMessage(Guid id, SendMessageViewModel model, CancellationToken ct)
     {
         var currentUser = await GetCurrentUserInfoAsync(ct);
-        if (currentUser is null)
+        if (currentUser is null || currentUser.IsTombstone)
             return NotFound();
 
         if (currentUser.Id == id)
             return RedirectToProfile(id);
 
         var participants = await UserService.GetUserInfosAsync([id, currentUser.Id], ct);
-        if (!participants.TryGetValue(id, out var targetUser))
+        if (!participants.TryGetValue(id, out var targetUser) || targetUser.IsTombstone
+            || !participants.TryGetValue(currentUser.Id, out var sender) || sender.IsTombstone)
             return NotFound();
         id = targetUser.Id;
         if (currentUser.Id == id)
@@ -91,9 +92,6 @@ internal sealed class FacilitatedMessageController(
 
         if (!ModelState.IsValid)
             return View(model);
-
-        if (!participants.TryGetValue(currentUser.Id, out var sender))
-            return NotFound();
 
         var request = FacilitatedMessageRequestBuilder.TryBuild(sender, targetUser, model);
         if (request is null)

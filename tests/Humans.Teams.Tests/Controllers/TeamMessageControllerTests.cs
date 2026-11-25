@@ -44,6 +44,8 @@ namespace Humans.Teams.Tests.Controllers;
 /// </summary>
 public sealed class TeamMessageControllerTests
 {
+    public enum RelayAction { Get, Post }
+    public enum Participant { Sender, Recipient }
     private readonly IUserService _users = Substitute.For<IUserService>();
     private readonly ITeamService _teams = Substitute.For<ITeamService>();
     private readonly ITeamResourceService _resources = Substitute.For<ITeamResourceService>();
@@ -189,6 +191,52 @@ public sealed class TeamMessageControllerTests
         var result = await _controller.SendMessage(Guid.NewGuid(), _targetId, Ct);
 
         result.Should().BeOfType<ForbidResult>();
+    }
+
+    [HumansTheory]
+    [InlineData(RelayAction.Get, Participant.Sender)]
+    [InlineData(RelayAction.Get, Participant.Recipient)]
+    [InlineData(RelayAction.Post, Participant.Sender)]
+    [InlineData(RelayAction.Post, Participant.Recipient)]
+    public async Task Compose_TombstoneParticipant_RefusesRelay(RelayAction action, Participant participant)
+    {
+        var sender = Info(_viewerId, "Sender", "sender@example.org");
+        var recipient = Info(_targetId, "Recipient", "recipient@example.org");
+        if (participant == Participant.Sender) sender = sender with { State = UserState.Deleted };
+        else recipient = recipient with { State = UserState.Deleted };
+        _users.GetUserInfoAsync(_viewerId, Arg.Any<CancellationToken>()).Returns(sender);
+        _users.GetUserInfoAsync(_targetId, Arg.Any<CancellationToken>()).Returns(recipient);
+
+        var result = action == RelayAction.Get
+            ? await _controller.SendMessage(_teamId, _targetId, Ct)
+            : await _controller.SendMessage(_teamId, _targetId, new TeamSendMessageViewModel { Message = "Hello" }, Ct);
+
+        result.Should().BeOfType<NotFoundResult>();
+        _emailService.ReceivedCalls().Should().BeEmpty();
+        _audit.ReceivedCalls().Should().BeEmpty();
+        _teams.ReceivedCalls().Should().BeEmpty();
+        _commPrefs.ReceivedCalls().Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task Send_TombstoneContext_RefusesQueue()
+    {
+        var provider = new TeamMessageOptionsProvider(_teams, _resources, _users, _commPrefs,
+            _emailService, _emailMessages, _audit, _logger);
+        var team = new TeamMessageOption(_teamId, "Team", "team@example.org");
+        foreach (var participant in Enum.GetValues<Participant>())
+        {
+            var sender = Info(_viewerId, "Sender", "sender@example.org");
+            var recipient = Info(_targetId, "Recipient", "recipient@example.org");
+            if (participant == Participant.Sender) sender = sender with { State = UserState.Merged };
+            else recipient = recipient with { State = UserState.Deleted };
+
+            var result = await provider.SendAsync(new TeamMessageContext(sender, recipient, [team]), team, "Hello", false);
+
+            result.Should().BeFalse();
+        }
+        _emailService.ReceivedCalls().Should().BeEmpty();
+        _audit.ReceivedCalls().Should().BeEmpty();
     }
 
     [HumansFact]

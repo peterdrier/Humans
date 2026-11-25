@@ -40,6 +40,8 @@ namespace Humans.Email.Tests.Controllers;
 /// </summary>
 public sealed class FacilitatedMessageControllerTests
 {
+    public enum RelayAction { Get, Post }
+    public enum Participant { Sender, Recipient }
     private readonly IUserService _users = Substitute.For<IUserService>();
     private readonly IEmailService _emailService = Substitute.For<IEmailService>();
     private readonly IEmailMessageFactory _emailMessages = Substitute.For<IEmailMessageFactory>();
@@ -88,6 +90,64 @@ public sealed class FacilitatedMessageControllerTests
             null, null, email, [], [], null);
 
     private static CancellationToken Ct => TestContext.Current.CancellationToken;
+
+    [HumansTheory]
+    [InlineData(RelayAction.Get, Participant.Sender)]
+    [InlineData(RelayAction.Get, Participant.Recipient)]
+    [InlineData(RelayAction.Post, Participant.Sender)]
+    [InlineData(RelayAction.Post, Participant.Recipient)]
+    public async Task Compose_TombstoneParticipant_RefusesRelay(RelayAction action, Participant participant)
+    {
+        var sender = Info(_viewerId, "Sender", "sender@example.org");
+        var recipient = Info(_targetId, "Recipient", "recipient@example.org");
+        if (participant == Participant.Sender) sender = sender with { State = UserState.Deleted };
+        else recipient = recipient with { State = UserState.Deleted };
+        _users.GetUserInfoAsync(_viewerId, Arg.Any<CancellationToken>()).Returns(sender);
+        _users.GetUserInfoAsync(_targetId, Arg.Any<CancellationToken>()).Returns(recipient);
+        _users.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, UserInfo> { [_viewerId] = sender, [_targetId] = recipient });
+
+        var result = action == RelayAction.Get
+            ? await _controller.SendMessage(_targetId, Ct)
+            : await _controller.SendMessage(_targetId, new SendMessageViewModel { Message = "Hello" }, Ct);
+
+        result.Should().BeOfType<NotFoundResult>();
+        _emailService.ReceivedCalls().Should().BeEmpty();
+        _audit.ReceivedCalls().Should().BeEmpty();
+        _commPrefs.ReceivedCalls().Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task Post_UnavailableSenderSnapshot_RefusesRelay()
+    {
+        _users.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(new Dictionary<Guid, UserInfo>
+            {
+                [_viewerId] = Info(_viewerId, "Sender", "sender@example.org") with { State = UserState.Merged },
+                [_targetId] = Info(_targetId, "Recipient", "recipient@example.org")
+            });
+
+        var result = await _controller.SendMessage(_targetId, new SendMessageViewModel { Message = "Hello" }, Ct);
+
+        result.Should().BeOfType<NotFoundResult>();
+        _emailService.ReceivedCalls().Should().BeEmpty();
+        _audit.ReceivedCalls().Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public void Builder_TombstoneParticipant_RefusesRequest()
+    {
+        foreach (var participant in Enum.GetValues<Participant>())
+        {
+            var sender = Info(_viewerId, "Sender", "sender@example.org");
+            var recipient = Info(_targetId, "Recipient", "recipient@example.org");
+            if (participant == Participant.Sender) sender = sender with { State = UserState.Deleted };
+            else recipient = recipient with { State = UserState.Deleted };
+
+            FacilitatedMessageRequestBuilder.TryBuild(sender, recipient, new SendMessageViewModel { Message = "Hello" })
+                .Should().BeNull();
+        }
+    }
 
     [HumansFact]
     public async Task Post_AuditFailureAfterQueueing_KeepsSuccessAndLogsCritical()
