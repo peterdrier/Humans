@@ -118,6 +118,11 @@
                             var label = EventDurationFormatter.Format(mins, Localizer);
                             <option value="@mins" selected="@(mins == (Model.IsAllDay ? 60 : Model.DurationMinutes) ? "selected" : null)">@label</option>
                         }
+                        @if (!Model.IsAllDay && Model.DurationMinutes is >= 15 and <= 1440
+                            && (Model.DurationMinutes > 480 || Model.DurationMinutes % 15 != 0))
+                        {
+                            <option value="@Model.DurationMinutes" selected>@EventDurationFormatter.Format(Model.DurationMinutes, Localizer)</option>
+                        }
                     </select>
                     <span asp-validation-for="DurationMinutes" class="text-danger"></span>
                 </div>

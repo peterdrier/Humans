@@ -42,6 +42,7 @@ seconds-precision UTC format, for both approved and moderation projections.
 - **Recurring events** have `IsRecurring = true` and a comma-separated `RecurrenceDays` field encoding integer day offsets from gate-opening date. Individual, barrio and moderator forms reject malformed, repeated or out-of-window offsets before saving, and `SubmitEventAsync`, `UpdateAndResubmitAsync` and `AdminUpdateAsync` refuse them too; each selected offset must be within `0..EventEndOffset`. Storage preserves the complete selection without a separate character cap. An empty selection retains the authored-start fallback, and non-recurring forms ignore recurrence input.
 - The entity, cached event projection, and approved-event contract share one occurrence-expansion implementation. It preserves stored offset order, ignores malformed tokens, applies an optional day filter only to recurring events, and resolves each occurrence at the event's local start time using lenient timezone conversion. Without a gate date or timezone, every consumer falls back to the authored start instant, even for a day-filtered recurring event.
 - Member-facing event duration labels use the shared `EventDurationFormatter` and `EventsResource` short-unit keys, so submission forms, browse results, and the dashboard card display the active culture consistently.
+- Duration selectors retain any accepted current value outside their standard 15-minute choices, so unrelated edits preserve nonstandard durations.
 - Individual and moderator forms preserve the timed duration when toggling all-day. Editing an all-day event starts with a 60-minute timed fallback; the server encodes all-day as midnight plus 1440 minutes, independently of that selection.
 
 ## Data Model
@@ -61,7 +62,7 @@ seconds-precision UTC format, for both approved and moderation projections.
 | SubmitterUserId | Guid | FK only → User (Users section) |
 | EventSettingsId | Guid? | Bare id of Settings' `settings_events` row the entry belongs to; stamped from `EventGuideSettings.EventSettingsId` on submit and bulk import. Nullable storage retained for legacy rows; configured guide reads require an exact event id |
 | StartAt | Instant | NodaTime; UTC |
-| DurationMinutes | int | 15–1440 on the individual and admin forms (1440 = the all-day encoding); 15–480 in 15-minute steps on the barrio form and bulk CSV |
+| DurationMinutes | int | 15–1440 on the individual and admin forms (1440 = the all-day encoding); 15–480 on the barrio form; bulk CSV requires 15-minute steps |
 | IsRecurring | bool | |
 | RecurrenceDays | string? | comma-separated day offsets, e.g. "0,1,2" |
 | LocationNote | string? | max 120 |
