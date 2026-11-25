@@ -80,13 +80,12 @@ internal sealed class RoleForm
         PermissionKeys = [.. role.PermissionKeys],
     };
 
-    /// <summary>New slots start at no priority; extra priorities beyond the slot count are dropped.</summary>
     public RoleInput ToInput() => new(
         Name,
         CustomSlug,
         Description,
         SlotCount,
-        [.. Enumerable.Range(0, Math.Max(SlotCount, 0)).Select(i => i < Priorities.Count ? Priorities[i] : SlotPriority.None)],
+        Priorities,
         SortOrder,
         Period,
         EstimatedHours,

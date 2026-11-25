@@ -1,11 +1,3 @@
 version: 1
 next_id: 2
-inbox:
-  - added: 2026-11-25
-    id: ROLES-1
-    what: >-
-      RoleForm.ToInput materializes SlotCount priorities before RoleService authorization
-      and its 500-character priorities storage check. An arbitrary positive Int32 count
-      passes binding and can exhaust memory before refusal. Validate bounds before
-      padding while preserving default None priorities for new slots.
-    review: panel
+inbox: []

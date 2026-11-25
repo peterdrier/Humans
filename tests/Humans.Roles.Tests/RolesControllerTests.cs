@@ -37,6 +37,19 @@ public sealed class RolesControllerTests
         RolesController.OwnerLabel(child, [parent, child]).Should().Be(expected);
     }
 
+    [HumansTheory]
+    [InlineData(101)]
+    [InlineData(int.MaxValue)]
+    public void ToInput_LargeSlotCount_PreservesPostedPriorities(int slots)
+    {
+        var form = new RoleForm { Name = "Planner", SlotCount = slots, Priorities = [SlotPriority.Important] };
+
+        var input = form.ToInput();
+
+        input.SlotCount.Should().Be(slots);
+        input.Priorities.Should().Equal(SlotPriority.Important);
+    }
+
     public static IEnumerable<object?[]> GetFormCases()
     {
         foreach (var editing in new[] { false, true })
@@ -124,14 +137,15 @@ public sealed class RolesControllerTests
             result.Should().BeOfType<RedirectResult>(string.Join("; ", controller.ModelState
                 .SelectMany(entry => entry.Value!.Errors.Select(error => $"{entry.Key}: {error.ErrorMessage}"))));
             var expectedHours = string.Equals(field, "EstimatedHours", StringComparison.Ordinal) ? (int?)null : 6;
+            var expectedPriorities = string.Equals(field, "Priorities", StringComparison.Ordinal) ? 0 : 1;
             if (editing)
                 await roles.Received(1).UpdateAsync(role.Id, Arg.Is<RoleInput>(input => input.SlotCount == 3
                     && input.Period == RolePeriod.Event && !input.IsPublic && !input.IsCoordinator && input.SortOrder == 0
-                    && input.EstimatedHours == expectedHours && input.Priorities.Count == 3), actorId, Arg.Any<CancellationToken>());
+                    && input.EstimatedHours == expectedHours && input.Priorities.Count == expectedPriorities), actorId, Arg.Any<CancellationToken>());
             else
                 await roles.Received(1).CreateAsync(owner.Owner, Arg.Is<RoleInput>(input => input.SlotCount == 3
                     && input.Period == RolePeriod.Event && !input.IsPublic && !input.IsCoordinator && input.SortOrder == 0
-                    && input.EstimatedHours == expectedHours && input.Priorities.Count == 3), actorId, Arg.Any<CancellationToken>());
+                    && input.EstimatedHours == expectedHours && input.Priorities.Count == expectedPriorities), actorId, Arg.Any<CancellationToken>());
         }
         else
         {

@@ -137,6 +137,82 @@ public sealed class RoleServiceTests
     }
 
     [HumansTheory]
+    [InlineData(101, false)]
+    [InlineData(101, true)]
+    [InlineData(int.MaxValue, false)]
+    [InlineData(int.MaxValue, true)]
+    public async Task SaveAsync_OversizedSlotCount_RefusesBeforePadding(int slots, bool update)
+    {
+        Arrange("system:RolesAdmin");
+        var input = Input("Planner") with { SlotCount = slots, Priorities = [] };
+        var existing = Role(Cantina, "Existing");
+        if (update) _repository.Seed(existing);
+
+        var result = update
+            ? await _service.UpdateAsync(existing.Id, input, _actor, Ct)
+            : await _service.CreateAsync(Owner(Cantina), input, _actor, Ct);
+
+        result.Refusal.Should().Be("Roles_Refusal_PrioritiesTooLong");
+        if (update)
+        {
+            existing.SlotCount.Should().Be(1);
+            existing.Priorities.Should().Equal(SlotPriority.Important);
+        }
+        else
+            _repository.Roles.Should().BeEmpty();
+    }
+
+    [HumansTheory]
+    [InlineData("empty", false)]
+    [InlineData("empty", true)]
+    [InlineData("partial", false)]
+    [InlineData("partial", true)]
+    [InlineData("surplus", false)]
+    [InlineData("surplus", true)]
+    public async Task SaveAsync_PostedPriorities_NormalizesAfterValidation(string selection, bool update)
+    {
+        Arrange("system:RolesAdmin");
+        var (slots, priorities, expected) = selection switch
+        {
+            "empty" => (100, Array.Empty<SlotPriority>(), Enumerable.Repeat(SlotPriority.None, 100).ToArray()),
+            "partial" => (3, new[] { SlotPriority.Important }, new[] { SlotPriority.Important, SlotPriority.None, SlotPriority.None }),
+            _ => (1, new[] { SlotPriority.Critical, SlotPriority.Important }, new[] { SlotPriority.Critical }),
+        };
+        var input = Input("Planner") with { SlotCount = slots, Priorities = priorities };
+        var existing = Role(Cantina, "Existing");
+        if (update) _repository.Seed(existing);
+
+        var result = update
+            ? await _service.UpdateAsync(existing.Id, input, _actor, Ct)
+            : await _service.CreateAsync(Owner(Cantina), input, _actor, Ct);
+
+        result.Succeeded.Should().BeTrue();
+        result.Role!.Priorities.Should().Equal(expected);
+        _repository.Roles.Single().Priorities.Should().Equal(expected);
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task SaveAsync_UnknownPriority_Refuses(bool update)
+    {
+        Arrange("system:RolesAdmin");
+        var input = Input("Planner") with { SlotCount = 3, Priorities = [(SlotPriority)99] };
+        var existing = Role(Cantina, "Existing");
+        if (update) _repository.Seed(existing);
+
+        var result = update
+            ? await _service.UpdateAsync(existing.Id, input, _actor, Ct)
+            : await _service.CreateAsync(Owner(Cantina), input, _actor, Ct);
+
+        result.Refusal.Should().Be("Roles_Refusal_Priorities");
+        if (update)
+            existing.Name.Should().Be("Existing");
+        else
+            _repository.Roles.Should().BeEmpty();
+    }
+
+    [HumansTheory]
     [InlineData("link")]
     [InlineData("description")]
     [InlineData("priorities")]
