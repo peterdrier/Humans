@@ -82,7 +82,7 @@ public sealed class SystemRoleRepositoryTests : IDisposable
     }
 
     [HumansFact]
-    public async Task GetByIdAsync_ReturnsReadOnlyAssignment_WithoutCrossDomainNavs()
+    public async Task GetById_ReturnsReadOnlyRow()
     {
         var assignment = await SeedAssignmentAsync(
             Guid.NewGuid(), RoleNames.Admin,
@@ -95,7 +95,7 @@ public sealed class SystemRoleRepositoryTests : IDisposable
     }
 
     [HumansFact]
-    public async Task GetByUserIdAsync_ReturnsAssignmentsOrderedByValidFromDesc()
+    public async Task GetByUserId_ReturnsNewestFirst()
     {
         var userId = Guid.NewGuid();
         var old = await SeedAssignmentAsync(userId, RoleNames.Board,
@@ -111,7 +111,7 @@ public sealed class SystemRoleRepositoryTests : IDisposable
     }
 
     [HumansFact]
-    public async Task GetFilteredAsync_FiltersByRoleAndActive_WithPagination()
+    public async Task GetFiltered_AppliesFiltersWithPaging()
     {
         var now = _clock.GetCurrentInstant();
         // Three Board, two ended (inactive), one Admin
@@ -161,7 +161,7 @@ public sealed class SystemRoleRepositoryTests : IDisposable
     }
 
     [HumansFact]
-    public async Task HasOverlappingAssignmentAsync_EndedRow_DoesNotOverlapOpenEndedRangeFromNow()
+    public async Task HasOverlappingAssignment_EndedRow_NoOverlap()
     {
         var userId = Guid.NewGuid();
         var now = _clock.GetCurrentInstant();
@@ -175,7 +175,7 @@ public sealed class SystemRoleRepositoryTests : IDisposable
     }
 
     [HumansFact]
-    public async Task HasOverlappingAssignmentAsync_NotYetStarted_OverlapsOpenEndedRangeFromNow()
+    public async Task HasOverlappingAssignment_NotYetStarted_Overlaps()
     {
         var userId = Guid.NewGuid();
         var now = _clock.GetCurrentInstant();

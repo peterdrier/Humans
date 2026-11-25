@@ -55,7 +55,7 @@ public class SystemRoleClaimsTransformationTests
     [InlineData(UserState.AdminSuspended)]
     [InlineData(UserState.DeletePending)]
     [InlineData(UserState.Rejected)]
-    public async Task Transform_stamps_UserState_claim_matching_stored_state(UserState state)
+    public async Task Transform_StampsStoredUserState(UserState state)
     {
         var userId = Guid.NewGuid();
         _userService.GetRawUserInfoAsync(userId, Arg.Any<CancellationToken>())
@@ -73,7 +73,7 @@ public class SystemRoleClaimsTransformationTests
     }
 
     [HumansFact]
-    public async Task Transform_stamps_Merged_for_a_tombstone_never_the_survivors_state()
+    public async Task Transform_Tombstone_StampsMerged()
     {
         // The cross-section read resolves a merge tombstone forward to its survivor; used here it would admit a
         // tombstone principal as the surviving member. The raw read keeps UserState.Merged.
@@ -93,7 +93,7 @@ public class SystemRoleClaimsTransformationTests
     }
 
     [HumansFact]
-    public async Task Transform_omits_UserState_claim_when_UserInfo_is_null()
+    public async Task Transform_NullUserInfo_OmitsStateClaim()
     {
         var userId = Guid.NewGuid();
         _userService.GetRawUserInfoAsync(userId, Arg.Any<CancellationToken>())
@@ -107,7 +107,7 @@ public class SystemRoleClaimsTransformationTests
     }
 
     [HumansFact]
-    public async Task Transform_adds_role_claims_from_auth_service_active_roles()
+    public async Task Transform_AddsActiveRoleClaims()
     {
         var userId = Guid.NewGuid();
         _userService.GetRawUserInfoAsync(userId, Arg.Any<CancellationToken>())
@@ -127,7 +127,7 @@ public class SystemRoleClaimsTransformationTests
     }
 
     [HumansFact]
-    public async Task Transform_reflects_a_state_or_role_change_on_the_very_next_request()
+    public async Task Transform_Change_AppliesOnNextRequest()
     {
         // No per-user claims cache: both inputs are caches their owners keep current, so changes show next request.
         var userId = Guid.NewGuid();

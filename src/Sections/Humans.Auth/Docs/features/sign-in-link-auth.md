@@ -187,7 +187,7 @@ The DataProtection token carries no server-side state, so single-use is enforced
 
 **Login tokens (existing users):** consumed inside `VerifySignInTokenAsync`, on the POST to `/Account/SignInLink`. It returns `bool`, not the user; `AccountController` signs in by id through `IUserSignInService.SignInAsync`, as it does for the signup result's `UserId`.
 
-**Signup tokens (new users):** consumed inside `VerifyAndConsumeSignupTokenAsync`, called from `AccountController.CompleteSignup`. Two placement rules matter:
+**Signup tokens (new users):** consumed inside `ConsumeSignupTokenAsync`, called from `AccountController.CompleteSignup`. Two placement rules matter:
 
 - The signup **GET** reads the token through `VerifySignupToken`, which does *not* consume — it only unprotects, to pre-fill the form. Consuming on a GET would let an email-security scanner burn the link, the same hazard `SignInLinkConfirm` exists to avoid on the login side.
 - The **POST** consumes *after* field validation, not before. The validation branch re-renders the form with the same token, so consuming first would lock out anyone who submitted with a field blank.

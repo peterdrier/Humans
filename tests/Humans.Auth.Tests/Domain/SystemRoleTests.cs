@@ -63,7 +63,7 @@ public sealed class SystemRoleTests
     }
 
     [HumansFact]
-    public void IsActive_WithNoExpiration_ShouldReturnTrueAfterValidFrom()
+    public void IsActive_NoExpiration_TrueAfterValidFrom()
     {
         var now = Instant.FromUtc(2030, 1, 15, 12, 0);
         var assignment = new SystemRole
@@ -123,7 +123,7 @@ public sealed class SystemRoleTests
     [InlineData(10, true)]
     [InlineData(20, false)]
     [InlineData(21, false)]
-    public void SystemRoleRow_IsActiveAt_AgreesWithIsActive_AtTheBoundaries(int daysFromValidFrom, bool expected)
+    public void IsActiveAt_AtBoundaries_MatchesIsActive(int daysFromValidFrom, bool expected)
     {
         var validFrom = Instant.FromUtc(2024, 1, 1, 0, 0);
         var validTo = validFrom + Duration.FromDays(20);

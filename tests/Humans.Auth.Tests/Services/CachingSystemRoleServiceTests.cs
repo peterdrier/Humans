@@ -14,7 +14,7 @@ namespace Humans.Auth.Tests.Services;
 /// <summary>
 /// Pass-throughs are covered by <c>SystemRoleServiceTests</c>. <c>GetFilteredAsync</c> is stubbed with
 /// <c>Arg.Any</c> so a change to the warm path fails readably, not as a null-tuple crash; the warm
-/// call's shape is asserted only in <see cref="WarmsByAskingInnerForEveryRow"/>.
+/// call's shape is asserted only in <see cref="Warm_LoadsEveryRowFromInner"/>.
 /// </summary>
 public sealed class CachingSystemRoleServiceTests
 {
@@ -102,7 +102,7 @@ public sealed class CachingSystemRoleServiceTests
     }
 
     [HumansFact]
-    public async Task GetActiveCountsByRoleAsync_GroupsActiveRowsByRoleName()
+    public async Task GetActiveCountsByRole_GroupsByRoleName()
     {
         var now = Instant.FromUtc(2026, 5, 17, 12, 0);
         var (service, _) = BuildService(
@@ -125,7 +125,7 @@ public sealed class CachingSystemRoleServiceTests
     }
 
     [HumansFact]
-    public async Task GetActiveCountsByRoleAsync_OpenEndedAssignmentsCountAsActive()
+    public async Task GetActiveCountsByRole_OpenEnded_CountsAsActive()
     {
         var now = Instant.FromUtc(2026, 5, 17, 12, 0);
         var (service, _) = BuildService(
@@ -138,7 +138,7 @@ public sealed class CachingSystemRoleServiceTests
     }
 
     [HumansFact]
-    public async Task WarmsByAskingInnerForEveryRow()
+    public async Task Warm_LoadsEveryRowFromInner()
     {
         var now = Instant.FromUtc(2026, 5, 17, 12, 0);
         var (service, inner) = BuildService([Active("Board", now)], new FakeClock(now));
@@ -253,7 +253,7 @@ public sealed class CachingSystemRoleServiceTests
     }
 
     [HumansFact]
-    public void Section_read_and_write_interfaces_share_the_cached_service()
+    public void Interfaces_ShareCachedService()
     {
         var services = new ServiceCollection().AddLogging();
         services.AddSingleton<IClock>(new FakeClock(Instant.FromUtc(2026, 10, 7, 0, 0)));

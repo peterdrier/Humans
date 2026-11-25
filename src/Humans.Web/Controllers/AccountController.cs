@@ -280,7 +280,7 @@ public class AccountController(
 
         // Redeem only once the submission is complete — consuming before the
         // validation re-render above would burn the link on a blank field.
-        var redeemedEmail = await signInLinkService.VerifyAndConsumeSignupTokenAsync(
+        var redeemedEmail = await signInLinkService.ConsumeSignupTokenAsync(
             token, email, HttpContext.RequestAborted);
         if (redeemedEmail is null)
         {

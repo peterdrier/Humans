@@ -111,7 +111,7 @@ public class AccountControllerGateSignInTests
     }
 
     [HumansFact]
-    public async Task GateSignIn_WrongPassword_ReturnsViewWithError_AndDoesNotSignIn()
+    public async Task GateSignIn_WrongPassword_ShowsError()
     {
         SetupGateUser();
         _signInManager.CheckPasswordSignInAsync(_gateUser, "wrong", false)
@@ -211,7 +211,7 @@ public class AccountControllerGateSignInTests
     }
 
     [HumansFact]
-    public async Task GateSignIn_Success_SignsInPersistent_AndRedirectsToGateTerminal()
+    public async Task GateSignIn_Success_SignsInPersistent()
     {
         SetupGateUser();
         _signInManager.CheckPasswordSignInAsync(_gateUser, "correct", false)
@@ -230,7 +230,7 @@ public class AccountControllerGateSignInTests
     }
 
     [HumansFact]
-    public async Task GateSignIn_UsernameIsCaseInsensitiveAndTrimmed()
+    public async Task GateSignIn_UsernameIsNormalized()
     {
         SetupGateUser();
         _signInManager.CheckPasswordSignInAsync(_gateUser, "correct", false)

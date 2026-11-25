@@ -75,7 +75,7 @@ public sealed class SignInLinkRateLimiterTests : IDisposable
     }
 
     [HumansFact]
-    public async Task TokensSharingAPrefix_HaveIndependentRedemptionAndRelease()
+    public async Task SharedPrefixTokens_RedeemIndependently()
     {
         const string first = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-one";
         const string second = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-two";
@@ -89,7 +89,7 @@ public sealed class SignInLinkRateLimiterTests : IDisposable
     }
 
     [HumansFact]
-    public async Task UserSendReservations_AreExclusivePerUserAndReleaseOnlyTheFailedUser()
+    public async Task UserSendReservations_AreExclusivePerUser()
     {
         var first = Guid.NewGuid();
         var second = Guid.NewGuid();
@@ -108,7 +108,7 @@ public sealed class SignInLinkRateLimiterTests : IDisposable
     [InlineData("first.last@gmail.com", "firstlast@gmail.com")]
     [InlineData("firstlast+signup@gmail.com", "FIRSTLAST@googlemail.com")]
     [InlineData("Member@example.org", "member@example.org")]
-    public async Task SignupSendReservations_ShareInboxCooldownAndRelease(string first, string alias)
+    public async Task SignupSendReservations_ShareInboxCooldown(string first, string alias)
     {
         var cooldown = TimeSpan.FromSeconds(60);
         (await _limiter.ReserveSignupSendAsync(first, cooldown)).Should().Be(0);

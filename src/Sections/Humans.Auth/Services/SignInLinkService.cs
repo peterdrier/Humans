@@ -100,7 +100,7 @@ internal sealed class SignInLinkService(
         return sinceExpiry < Duration.Zero ? null : (long)sinceExpiry.TotalMinutes;
     }
 
-    public async Task<string?> VerifyAndConsumeSignupTokenAsync(
+    public async Task<string?> ConsumeSignupTokenAsync(
         string token, string? expectedEmail = null, CancellationToken ct = default)
     {
         var payload = VerifySignupToken(token, expectedEmail);

@@ -24,7 +24,7 @@ public sealed class AccountControllerSignupTests
         const string email = "signup@example.com";
         var signInLinks = Substitute.For<ISignInLinkService>();
         signInLinks.VerifySignupToken(token, email).Returns(email);
-        signInLinks.VerifyAndConsumeSignupTokenAsync(token, email, Arg.Any<CancellationToken>()).Returns(email);
+        signInLinks.ConsumeSignupTokenAsync(token, email, Arg.Any<CancellationToken>()).Returns(email);
         var provisioning = Substitute.For<IAccountProvisioningService>();
         provisioning.CompleteSignInLinkSignupAsync(email, Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>(),
                 Arg.Any<CancellationToken>())
@@ -57,7 +57,7 @@ public sealed class AccountControllerSignupTests
         controller.ViewData["BurnerName"].Should().Be(names[0]);
         controller.ViewData["FirstName"].Should().Be(names[1]);
         controller.ViewData["LastName"].Should().Be(names[2]);
-        await signInLinks.DidNotReceive().VerifyAndConsumeSignupTokenAsync(
+        await signInLinks.DidNotReceive().ConsumeSignupTokenAsync(
             Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<CancellationToken>());
         provisioning.ReceivedCalls().Should().BeEmpty();
     }
@@ -99,7 +99,7 @@ public sealed class AccountControllerSignupTests
         var signIn = SignIn();
         var signInLinks = Substitute.For<ISignInLinkService>();
         signInLinks.VerifySignupToken(token, email).Returns(email);
-        signInLinks.VerifyAndConsumeSignupTokenAsync(token, email, Arg.Any<CancellationToken>()).Returns(email);
+        signInLinks.ConsumeSignupTokenAsync(token, email, Arg.Any<CancellationToken>()).Returns(email);
         var provisioning = Substitute.For<IAccountProvisioningService>();
         provisioning.CompleteSignInLinkSignupAsync(email, "Burner", "First", "Last", Arg.Any<CancellationToken>())
             .Returns(new SignInLinkSignupResult(SignInLinkSignupOutcome.Created, userId));

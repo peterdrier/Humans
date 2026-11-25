@@ -867,7 +867,7 @@ public class AccountProvisioningServiceTests
     }
 
     [HumansFact]
-    public async Task CompleteSignInLinkSignupAsync_CreatesUserEmailAndStubProfile()
+    public async Task CompleteSignInLinkSignup_CreatesStubProfile()
     {
         var result = await _service.CompleteSignInLinkSignupAsync(
             "magic@example.com", " Magic Human ", " Legal ", " Surname ", Xunit.TestContext.Current.CancellationToken);
@@ -919,7 +919,7 @@ public class AccountProvisioningServiceTests
     [HumansTheory]
     [Xunit.InlineData(false)]
     [Xunit.InlineData(true)]
-    public async Task CompleteSignInLinkSignupAsync_AddVerifiedEmailFailureRollsBackUser(bool refusal)
+    public async Task CompleteSignInLinkSignup_EmailFailure_RollsBackUser(bool refusal)
     {
         _userEmailFake.ThrowOnAddVerified = !refusal;
         _userEmailFake.RefuseAddVerified = refusal;

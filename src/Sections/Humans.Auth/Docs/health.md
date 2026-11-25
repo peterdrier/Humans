@@ -53,7 +53,7 @@ own shape is a candidate for removal.
 | S4 | *Render the admin list / one row* | `GetFilteredAsync`, `GetByIdAsync` | The only paged, display-stitched shape |
 | S5 | *Change who holds what* | `AssignRoleAsync`, `RevokeRoleAsync`, `RevokeAllActiveAsync` | The invariant-bearing shape; the overlap check is the repository's, asked only from inside `AssignRoleAsync` |
 | S6 | *Flush a cache on my behalf* | — (gone 2026-10-21, HUM0028) | Was `InvalidateClaimsCacheForUser` and `InvalidateRoleAssignmentCache` — see §3 |
-| S7 | *Sign this person in from an emailed link* | `SendSignInLinkAsync`, `VerifySignInTokenAsync`, `VerifySignupToken`, `VerifyAndConsumeSignupTokenAsync`, `ReleaseSignupToken` | `ISignInLinkService`; the signup members split read (form prefill), redemption, and un-redemption when provisioning fails |
+| S7 | *Sign this person in from an emailed link* | `SendSignInLinkAsync`, `VerifySignInTokenAsync`, `VerifySignupToken`, `ConsumeSignupTokenAsync`, `ReleaseSignupToken` | `ISignInLinkService`; the signup members split read (form prefill), redemption, and un-redemption when provisioning fails |
 | S8 | *Stop this request unless it is a full Admin* | `RequireCurrentUserIsAdminAsync` | `IAdminAuthorizationService` |
 | S9 | *May this principal manage this role name?* | `SystemRoleOperationRequirement` + its handler | ASP.NET resource-based, Shell-invoked |
 | S10 | *Who is the current user?* | `ICurrentUserContext.UserId` | Declared here, implemented in Shell |

@@ -64,7 +64,7 @@ public sealed class SignInLinkServiceTests
 
     [HumansTheory]
     [Xunit.MemberData(nameof(SupportedCultures.All), MemberType = typeof(SupportedCultures))]
-    public async Task SendSignInLinkAsync_ExistingUserByUserEmail_SendsLoginLink(string recipientCulture)
+    public async Task SendSignInLink_ExistingUserEmail_SendsLink(string recipientCulture)
     {
         using var culture = new CultureScope("en");
         var userId = Guid.NewGuid();
@@ -103,7 +103,7 @@ public sealed class SignInLinkServiceTests
     }
 
     [HumansFact]
-    public async Task SendSignInLinkAsync_ExistingUserByVerifiedUserEmail_SendsLoginLink()
+    public async Task SendSignInLink_VerifiedUserEmail_SendsLink()
     {
         var userId = Guid.NewGuid();
         var user = new User
@@ -213,7 +213,7 @@ public sealed class SignInLinkServiceTests
     }
 
     [HumansFact]
-    public async Task SendSignInLinkAsync_OverlappingAliasesForTheSameUser_EnqueueOnlyOnce()
+    public async Task SendSignInLink_SameUserAliases_SendsOnce()
     {
         var ct = Xunit.TestContext.Current.CancellationToken;
         var userId = Guid.NewGuid();
@@ -410,7 +410,7 @@ public sealed class SignInLinkServiceTests
     }
 
     [HumansFact]
-    public async Task SendSignInLinkAsync_MergedIdentity_BindsLinkToOriginalIdAndResolvesDisplayData()
+    public async Task SendSignInLink_MergedIdentity_BindsOriginalId()
     {
         var userId = Guid.NewGuid();
         var survivorId = Guid.NewGuid();
@@ -448,7 +448,7 @@ public sealed class SignInLinkServiceTests
     {
         _urlBuilder.UnprotectSignupToken("good-token").Returns(Token("new@test.com"));
 
-        var result = await _service.VerifyAndConsumeSignupTokenAsync(
+        var result = await _service.ConsumeSignupTokenAsync(
             "good-token", ct: Xunit.TestContext.Current.CancellationToken);
 
         result.Should().Be("new@test.com");
@@ -463,18 +463,18 @@ public sealed class SignInLinkServiceTests
         _urlBuilder.UnprotectSignupToken("good-token").Returns(Token("new@test.com"));
         _rateLimiter.TryConsumeTokenAsync("good-token", Arg.Any<TimeSpan>()).Returns(false);
 
-        var result = await _service.VerifyAndConsumeSignupTokenAsync(
+        var result = await _service.ConsumeSignupTokenAsync(
             "good-token", ct: Xunit.TestContext.Current.CancellationToken);
 
         result.Should().BeNull();
     }
 
     [HumansFact]
-    public async Task VerifyAndConsumeSignupTokenAsync_InvalidToken_NeverReachesTheReservation()
+    public async Task ConsumeSignupToken_InvalidToken_SkipsReservation()
     {
         _urlBuilder.UnprotectSignupToken("bad-token").Returns((SignInLinkToken?)null);
 
-        var result = await _service.VerifyAndConsumeSignupTokenAsync(
+        var result = await _service.ConsumeSignupTokenAsync(
             "bad-token", ct: Xunit.TestContext.Current.CancellationToken);
 
         result.Should().BeNull();
@@ -482,7 +482,7 @@ public sealed class SignInLinkServiceTests
     }
 
     [HumansFact]
-    public void VerifySignupToken_DoesNotConsume_SoScannersCannotBurnTheLink()
+    public void VerifySignupToken_DoesNotConsume()
     {
         // The GET that renders the signup form decodes only; redemption is the POST's job.
         _urlBuilder.UnprotectSignupToken("good-token").Returns(Token("new@test.com"));

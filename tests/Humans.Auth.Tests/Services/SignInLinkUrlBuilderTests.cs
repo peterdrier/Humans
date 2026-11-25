@@ -29,7 +29,7 @@ public sealed class SignInLinkUrlBuilderTests
     [InlineData(false, "%")]
     [InlineData(true, "a")]
     [InlineData(false, "a")]
-    public void Missing_or_malformed_token_is_invalid(bool login, string? token)
+    public void Unprotect_MalformedToken_IsInvalid(bool login, string? token)
     {
         var builder = Builder(new EphemeralDataProtectionProvider());
 
@@ -41,7 +41,7 @@ public sealed class SignInLinkUrlBuilderTests
     }
 
     [HumansFact]
-    public void Generated_tokens_resolve_their_payloads_and_expiry()
+    public void Unprotect_GeneratedToken_ResolvesPayload()
     {
         var builder = Builder(new EphemeralDataProtectionProvider());
         var userId = Guid.NewGuid();
@@ -54,7 +54,7 @@ public sealed class SignInLinkUrlBuilderTests
     }
 
     [HumansFact]
-    public void Expired_token_still_decodes_so_it_can_be_told_apart_from_a_forged_one()
+    public void Unprotect_ExpiredToken_StillDecodes()
     {
         var builder = Builder(new EphemeralDataProtectionProvider());
         var token = TokenOf(builder.BuildSignupUrl("member@example.com", null));
@@ -66,7 +66,7 @@ public sealed class SignInLinkUrlBuilderTests
     [HumansTheory]
     [InlineData(true)]
     [InlineData(false)]
-    public void Tokens_issued_by_the_framework_time_limited_protector_still_redeem(bool login)
+    public void Unprotect_FrameworkToken_StillRedeems(bool login)
     {
         // Links already in inboxes at deploy were issued by ToTimeLimitedDataProtector.
         var provider = new EphemeralDataProtectionProvider();
@@ -84,7 +84,7 @@ public sealed class SignInLinkUrlBuilderTests
     [HumansTheory]
     [InlineData(true)]
     [InlineData(false)]
-    public void Alternate_encoding_of_a_valid_token_is_invalid(bool login)
+    public void Unprotect_AlternateEncoding_IsInvalid(bool login)
     {
         var provider = new EphemeralDataProtectionProvider();
         var builder = Builder(provider);

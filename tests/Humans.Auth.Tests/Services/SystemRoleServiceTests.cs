@@ -60,7 +60,7 @@ public sealed class SystemRoleServiceTests : AuthTestHarness
     }
 
     [HumansFact]
-    public async Task AssignRoleAsync_EvictsRowCache_AndWritesAudit()
+    public async Task AssignRole_EvictsRowCache()
     {
         // The row cache is a Singleton holding every auth_role_assignments row; a write
         // that skips the eviction leaves every reader on stale roles until restart.
@@ -83,7 +83,7 @@ public sealed class SystemRoleServiceTests : AuthTestHarness
     }
 
     [HumansFact]
-    public async Task RevokeRoleAsync_EvictsRowCache_AndWritesAudit()
+    public async Task RevokeRole_EvictsRowCache()
     {
         var userId = Guid.NewGuid();
         var revokerId = Guid.NewGuid();
@@ -124,7 +124,7 @@ public sealed class SystemRoleServiceTests : AuthTestHarness
     }
 
     [HumansFact]
-    public async Task RevokeRoleAsync_AppendedNotesOverColumnLimit_RefusedAndRoleStaysActive()
+    public async Task RevokeRole_NotesOverLimit_IsRefused()
     {
         var ct = TestContext.Current.CancellationToken;
         var userId = Guid.NewGuid();
@@ -274,7 +274,7 @@ public sealed class SystemRoleServiceTests : AuthTestHarness
     }
 
     [HumansFact]
-    public async Task AssignRoleAsync_AfterEnd_WritesANewRow_AndLeavesTheEndedOneEnded()
+    public async Task AssignRole_AfterRevoke_WritesNewRow()
     {
         var userId = Guid.NewGuid();
         var adminId = Guid.NewGuid();
@@ -457,7 +457,7 @@ public sealed class SystemRoleServiceTests : AuthTestHarness
     }
 
     [HumansFact]
-    public async Task ReassignAsync_EvictsRowCache_SoTheSurvivorHoldsTheMovedRoles()
+    public async Task Reassign_EvictsRowCache()
     {
         // The merge fold reaches this service directly (IUserMerge), not through the
         // caching decorator, so the service itself must drop the row cache.
@@ -477,7 +477,7 @@ public sealed class SystemRoleServiceTests : AuthTestHarness
     }
 
     [HumansFact]
-    public async Task ReassignAsync_DropsASourceRowThatMatchesTheSurvivorUnderAFormerName()
+    public async Task Reassign_FormerNameDuplicate_IsDropped()
     {
         // A merge between deploy and the rename migration: the survivor already holds the role under its current
         // name, the archived account under the former one. Comparing raw names would leave two active rows for one
@@ -527,7 +527,7 @@ public sealed class SystemRoleServiceTests : AuthTestHarness
     }
 
     [HumansFact]
-    public async Task RowStoredUnderAFormerName_ReadsAsTheCurrentRole()
+    public async Task FormerNameRow_ReadsAsCurrentRole()
     {
         // Between deploy and the data migration, rows still carry the old name; nobody may lose the role meanwhile.
         var userId = Guid.NewGuid();
@@ -560,7 +560,7 @@ public sealed class SystemRoleServiceTests : AuthTestHarness
     }
 
     [HumansFact]
-    public async Task RewriteFormerNamesAsync_RewritesEveryFormerNameRow_AndIsIdempotent()
+    public async Task RewriteFormerNames_RewritesEveryRow()
     {
         var campsUser = Guid.NewGuid();
         var usersUser = Guid.NewGuid();

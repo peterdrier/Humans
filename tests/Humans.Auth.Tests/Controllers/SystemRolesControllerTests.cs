@@ -82,7 +82,7 @@ public sealed class SystemRolesControllerTests
             .Returns(succeeds ? AuthorizationResult.Success() : AuthorizationResult.Failed());
 
     [HumansFact]
-    public async Task Roles_ForwardsFilterAndRendersTheRosterView()
+    public async Task Roles_RendersFilteredRoster()
     {
         using var source = new CancellationTokenSource();
         var summary = new SystemRoleSummarySnapshot(
@@ -104,7 +104,7 @@ public sealed class SystemRolesControllerTests
     }
 
     [HumansFact]
-    public async Task AddRoleGet_ListsTheAssignableRoles_AndPreservesCancellation()
+    public async Task AddRoleGet_ListsAssignableRoles()
     {
         GivenKnownUsers();
         using var source = new CancellationTokenSource();
@@ -125,7 +125,7 @@ public sealed class SystemRolesControllerTests
     }
 
     [HumansFact]
-    public async Task AddRolePost_AssignsAsTheSignedInActor_ThenRedirectsToTheMemberDetail()
+    public async Task AddRolePost_AssignsAsSignedInActor()
     {
         GivenKnownUsers();
         GivenAuthorization(TeamsRoles.TeamsAdmin, succeeds: true);
@@ -143,7 +143,7 @@ public sealed class SystemRolesControllerTests
     }
 
     [HumansFact]
-    public async Task Board_is_neither_assigned_nor_ended_here_but_in_Governance()
+    public async Task Board_IsManagedInGovernance()
     {
         GivenKnownUsers();
         var seatId = Guid.NewGuid();
@@ -161,7 +161,7 @@ public sealed class SystemRolesControllerTests
     }
 
     [HumansFact]
-    public async Task AddRolePost_IsForbidden_WhenTheRoleIsOutsideTheActorsAuthority()
+    public async Task AddRolePost_OutsideAuthority_IsForbidden()
     {
         GivenKnownUsers();
         GivenAuthorization(RoleNames.Admin, succeeds: false);
@@ -175,7 +175,7 @@ public sealed class SystemRolesControllerTests
     }
 
     [HumansFact]
-    public async Task AddRolePost_RedisplaysTheForm_WhenNoRoleIsChosen()
+    public async Task AddRolePost_NoRole_RedisplaysForm()
     {
         GivenKnownUsers();
         var controller = BuildController();
@@ -189,7 +189,7 @@ public sealed class SystemRolesControllerTests
     }
 
     [HumansFact]
-    public async Task EndRole_EndsAsTheSignedInActor_ThenRedirectsToTheAssigneesDetail()
+    public async Task RevokeRole_RevokesAsSignedInActor()
     {
         GivenKnownUsers();
         var roleId = Guid.NewGuid();
@@ -216,7 +216,7 @@ public sealed class SystemRolesControllerTests
     }
 
     [HumansFact]
-    public async Task EndRole_IsNotFound_AndWritesNothing_WhenTheRoleIsOutsideTheActorsAuthority()
+    public async Task RevokeRole_OutsideAuthority_IsNotFound()
     {
         GivenKnownUsers();
         var roleId = Guid.NewGuid();
@@ -236,7 +236,7 @@ public sealed class SystemRolesControllerTests
     [Xunit.InlineData(false, true)]
     [Xunit.InlineData(true, false)]
     [Xunit.InlineData(true, true)]
-    public async Task Mutation_preflight_stops_at_cancelled_lookup(bool endRole, bool actorLookup)
+    public async Task Mutation_CancelledLookup_Stops(bool endRole, bool actorLookup)
     {
         GivenKnownUsers();
         using var request = new CancellationTokenSource();
@@ -289,7 +289,7 @@ public sealed class SystemRolesControllerTests
     }
 
     [HumansFact]
-    public void Authorization_BoardReadsTheRoster_OnlyUsersAdminOrAdminWrite_AndEveryPostIsAntiForgeryProtected()
+    public void Authorization_BoardReads_AdminsWrite()
     {
         typeof(SystemRolesController).GetCustomAttribute<AuthorizeAttribute>(inherit: false)!
             .Policy.Should().Be(UsersPolicies.Read);

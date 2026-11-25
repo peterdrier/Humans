@@ -87,7 +87,7 @@ public sealed class SystemRoleAuthorizationHandlerTests
     }
 
     [HumansFact]
-    public void Assignable_FollowsTheSameRule_InCatalogOrder_LeavingBoardToGovernance()
+    public void Assignable_FollowsRuleInCatalogOrder()
     {
         var catalog = TestRoles.Catalog();
 

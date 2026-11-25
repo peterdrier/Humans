@@ -25,7 +25,7 @@ public interface ISignInLinkService : IApplicationService
     /// Consumes the token, so it works once: call it at redemption, never on a GET. Returns null if expired,
     /// invalid or already redeemed; <paramref name="expectedEmail"/> is only for logging.
     /// </summary>
-    Task<string?> VerifyAndConsumeSignupTokenAsync(
+    Task<string?> ConsumeSignupTokenAsync(
         string token, string? expectedEmail = null, CancellationToken ct = default);
 
     /// <summary>

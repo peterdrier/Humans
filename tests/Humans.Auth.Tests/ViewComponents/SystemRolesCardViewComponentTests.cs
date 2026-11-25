@@ -53,7 +53,7 @@ public sealed class SystemRolesCardViewComponentTests
     }
 
     [HumansFact]
-    public async Task StillRenders_ForAnAdmin_WhenTheMemberHoldsNoRole()
+    public async Task Invoke_MemberWithoutRoles_RendersForAdmin()
     {
         _roles.GetByUserIdAsync(_userId, Arg.Any<CancellationToken>()).Returns([]);
 
