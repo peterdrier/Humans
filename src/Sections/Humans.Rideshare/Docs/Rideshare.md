@@ -367,4 +367,8 @@ keeping unavailable routing from blocking a save (see Invariants). Expected tran
 failures retain their reason; unexpected faults log Error with the original exception and retain the null fallback.
 Caller cancellation propagates without a provider-failure log.
 
+The route-provider base URL must be absolute HTTP(S). Malformed or unsupported URLs leave the client endpoint unset,
+so service resolution still succeeds; geocoding and directions warn and return null without sending a request or
+choosing a fallback endpoint. Known-point offers can still save without route geometry.
+
 `RideshareService` owns express, accept, decline and withdraw operations, including posting-owner checks, request compatibility and accepted-seat calculations. It receives the same static mutation lock used by offer/request edits and cancellations, so the shared boundary still covers every read/check/write through persistence; notifications remain after release. Posting updates and snapshot projection reuse its capacity calculations. Actor checks, refusal order, timestamps, cancellation and notice recipients are unchanged.
