@@ -263,6 +263,7 @@ internal sealed class CampController(
 
         if (!ModelState.IsValid)
         {
+            logger.LogWarning("Rejected malformed camp registration");
             await PopulateRegisterSeasonAsync(ct);
             return View(model);
         }
@@ -487,6 +488,7 @@ internal sealed class CampController(
 
         if (!ModelState.IsValid)
         {
+            logger.LogWarning("Rejected malformed camp update for camp {CampId} by user {UserId}", camp.Id, user.Id);
             await PopulateEditReadOnlyFieldsAsync(model, camp, HttpContext.RequestAborted);
             return View(model);
         }

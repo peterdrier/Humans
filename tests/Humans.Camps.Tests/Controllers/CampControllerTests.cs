@@ -181,6 +181,11 @@ public class CampControllerTests
     }
 
     [HumansTheory]
+    [InlineData(false, "IsSwissCamp")]
+    [InlineData(true, "IsSwissCamp")]
+    [InlineData(false, "TimesAtNowhere")]
+    [InlineData(true, "TimesAtNowhere")]
+    [InlineData(true, "HideHistoricalNames")]
     [InlineData(false, "AcceptingMembers")]
     [InlineData(false, "KidsWelcome")]
     [InlineData(false, "KidsVisiting")]
@@ -238,6 +243,7 @@ public class CampControllerTests
             ["Languages"] = "en",
             ["SeasonId"] = camp.Seasons[0].Id.ToString(),
             ["MemberCount"] = memberCount,
+            ["IsSwissCamp"] = "false",
             ["TimesAtNowhere"] = timesAtNowhere.ToString(CultureInfo.InvariantCulture),
             ["AcceptingMembers"] = "0",
             ["KidsWelcome"] = "0",
@@ -248,6 +254,7 @@ public class CampControllerTests
             ["SoundZone"] = "",
             ["ElectricalGrid"] = ""
         };
+        if (edit) fields["HideHistoricalNames"] = "false";
         if (omitted.Length > 0) fields.Remove(omitted);
         var type = edit ? typeof(CampEditViewModel) : typeof(CampRegisterViewModel);
         var metadata = services.GetRequiredService<IModelMetadataProvider>().GetMetadataForType(type);
@@ -278,6 +285,8 @@ public class CampControllerTests
             controller.ModelState.IsValid.Should().BeTrue();
             var arguments = writes.Should().ContainSingle().Which.GetArguments();
             (edit ? ((CampUpdateInput)arguments[0]!).TimesAtNowhere : (int)arguments[7]!).Should().Be(timesAtNowhere);
+            (edit ? ((CampUpdateInput)arguments[0]!).IsSwissCamp : (bool)arguments[6]!).Should().BeFalse();
+            if (edit) ((CampUpdateInput)arguments[0]!).HideHistoricalNames.Should().BeFalse();
             var data = edit ? ((CampUpdateInput)arguments[0]!).SeasonData : (CampSeasonData)arguments[8]!;
             data.AcceptingMembers.Should().Be(YesNoMaybe.Yes);
             data.KidsWelcome.Should().Be(YesNoMaybe.Yes);

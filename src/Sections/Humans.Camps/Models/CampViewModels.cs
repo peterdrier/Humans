@@ -139,8 +139,9 @@ internal class CampRegisterViewModel
     [StringLength(64, ErrorMessage = "Validation_MaxLength")]
     public string ContactPhone { get; set; } = string.Empty;
     public List<string> Links { get; set; } = [];
+    [BindRequired]
     public bool IsSwissCamp { get; set; }
-    public bool HideHistoricalNames { get; set; }
+    [BindRequired]
     [Range(0, int.MaxValue, ErrorMessage = "Validation_Range")]
     public int TimesAtNowhere { get; set; }
     public string? HistoricalNames { get; set; }
@@ -180,6 +181,9 @@ internal class CampRegisterViewModel
 
 internal sealed class CampEditViewModel : CampRegisterViewModel
 {
+    [BindRequired]
+    public bool HideHistoricalNames { get; set; }
+
     public Guid CampId { get; set; }
     public string Slug { get; set; } = string.Empty;
     public Guid SeasonId { get; set; }
