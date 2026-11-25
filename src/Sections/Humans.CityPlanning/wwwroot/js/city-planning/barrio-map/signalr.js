@@ -19,7 +19,11 @@ export function initSignalR() {
             invalidateParsedFeature(appState.campMap.campPolygons[idx]);
             // soundZone and campName are CampSeason properties — they don't change on polygon save
         } else {
-            appState.campMap.campPolygons.push({ campSeasonId, geoJson, areaSqm, soundZone: soundZone ?? -1, campName: campName ?? '', campSlug: '' });
+            const season = appState.campMap.campSeasonsWithoutPolygon?.find(s => s.campSeasonId === campSeasonId);
+            appState.campMap.campPolygons.push({
+                ...season, campSeasonId, geoJson, areaSqm,
+                soundZone: soundZone ?? -1, campName: campName ?? '', campSlug: season?.campSlug ?? '',
+            });
         }
         const src = map.getSource('camp-polygons');
         if (src) {

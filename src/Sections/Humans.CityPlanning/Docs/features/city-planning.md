@@ -186,7 +186,7 @@ The distance measuring tool lives in the shared module (`/js/city-planning/share
 1. Page loads → `GET /api/city-planning/state` fetches settings + all polygons
 2. Map renders via `renderMap()` using fetched data
 3. Edit actions call `PUT /api/city-planning/camp-polygons/{id}`
-4. Server broadcasts `CampPolygonUpdated` via SignalR → all clients re-render that polygon
+4. Server broadcasts `CampPolygonUpdated` via SignalR → all clients re-render that polygon, retaining loaded season metadata for first placements so camp links and size warnings remain available
 
 **Visual encoding (sound zones — barrio map):**
 
