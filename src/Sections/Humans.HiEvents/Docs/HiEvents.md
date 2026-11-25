@@ -145,3 +145,5 @@ keeps the names it needs. A failure throws, so Tickets retries before tombstonin
 **Owning services:** `HiEventsPlatform`
 **Owned tables:** None, adapter over Tickets' port.
 **Status:** (A) Migrated, the adapter shape: no tables, an empty `Contracts/`, one webhook controller.
+
+Stripe reporting categories use Tickets' shared `PaymentLedgerEntry.KindOf` classification, also used by Box Office. Vendor-specific order attribution stays in this adapter.

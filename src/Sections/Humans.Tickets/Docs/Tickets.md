@@ -465,3 +465,5 @@ discovers the declaration through DI and holds no list of sections; dropping the
 sends this section's stored issues to the Admin-only queue.
 
 
+
+Ticketing adapters share `PaymentLedgerEntry.KindOf` for Stripe reporting-category classification: charges, refunds, chargebacks, fees, payouts and other movements, including failure/reversal categories. Order attribution remains each adapter's responsibility.

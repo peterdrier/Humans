@@ -16,6 +16,11 @@ Wraps the Stripe SDK using the keys in `IOptions<StripeSettings>`:
 `ListStoreCheckoutSessionsAsync`, and `ParseStoreCheckoutEvent`, which verifies
 the webhook signature against `StoreWebhookSecret`. Holds no cache.
 
+Named account reads use `StripeMirrorOptions`: `GetAccountLedgerAsync`, `GetAccountPaymentFeeAsync`,
+`FindAccountPaymentFeeAsync` and `CheckAccountAsync`, consumed by Box Office, pretix and Hi.Events.
+The ledger's optional source metadata key preserves Box Office's order attribution; the key check
+optionally probes Checkout Sessions and propagates caller cancellation.
+
 ### StripeMirrorService (Scoped, implements `IStripeMirrorAdminService` and the public `IStripeMirrorService`)
 
 Repository: `IStripeMirrorRepository`.

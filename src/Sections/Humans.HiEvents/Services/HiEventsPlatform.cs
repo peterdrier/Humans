@@ -377,24 +377,13 @@ internal sealed class HiEventsPlatform : ITicketingPlatform
             Guid? humansOrderId = null;
             if (line.Payment is { } payment && !orderOf.TryGetValue(payment.PaymentIntentId, out humansOrderId))
                 orderOf[payment.PaymentIntentId] = humansOrderId = await HumansOrderOfAsync(payment.Metadata, ct);
-            entries.Add(new PaymentLedgerEntry(line.Id, line.CreatedAt, KindOf(line.ReportingCategory),
+            entries.Add(new PaymentLedgerEntry(line.Id, line.CreatedAt, PaymentLedgerEntry.KindOf(line.ReportingCategory),
                 line.AmountMinor, line.FeeMinor, humansOrderId, line.Description));
         }
 
         return new PaymentLedger(entries, stripe.Payouts.Select(p => new PaymentPayout(
             p.Id, p.CreatedAt, p.ArrivalAt, p.AmountMinor, p.Status, p.ContentsNetMinor, p.ContentsCount)).ToList());
     }
-
-    /// <summary>By Stripe's reporting category, as Box Office reads its own account.</summary>
-    private static PaymentLedgerEntryKind KindOf(string reportingCategory) => reportingCategory switch
-    {
-        "charge" or "charge_failure" or "partial_capture_reversal" => PaymentLedgerEntryKind.Charge,
-        "refund" or "refund_failure" => PaymentLedgerEntryKind.Refund,
-        "dispute" or "dispute_reversal" => PaymentLedgerEntryKind.Chargeback,
-        "fee" => PaymentLedgerEntryKind.Fee,
-        "payout" or "payout_reversal" => PaymentLedgerEntryKind.Payout,
-        _ => PaymentLedgerEntryKind.Other,
-    };
 
     private async Task<Guid?> HumansOrderOfAsync(IReadOnlyDictionary<string, string> metadata, CancellationToken ct)
     {

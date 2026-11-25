@@ -110,3 +110,5 @@ Per event: the two carrier items, the `returnurl` plugin with Humans' return URL
 - No repository and no `DbContext`: pretix's API is the store.
 - **Decorator decision:** no caching decorator. Every call reads pretix, which is the truth for the order.
 - **Cross-section calls:** `ITicketingPlatformEvents` (the webhook's nudge) and `TicketsPlatformAdminNav` (the admin row), both from the `Humans.Tickets.Contracts` leaf; `IStripeService` (the Stripe account reads).
+
+Stripe reporting categories use Tickets' shared `PaymentLedgerEntry.KindOf` classification, also used by Box Office. Vendor-specific order attribution stays in this adapter.

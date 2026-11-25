@@ -86,7 +86,8 @@ public sealed class StripeAccountReadTests
         Answer("/v1/payment_intents/pi_old", Intent("pi_old", "41"));
         Answer("/v1/payouts", List("/v1/payouts",
             """{"id":"po_1","object":"payout","amount":17160,"arrival_date":1798934400,"automatic":true,"status":"paid","reconciliation_status":"completed","created":1798884300}""",
-            """{"id":"po_2","object":"payout","amount":900,"arrival_date":1798934400,"automatic":true,"status":"in_transit","reconciliation_status":"in_progress","created":1798884400}"""));
+            """{"id":"po_2","object":"payout","amount":900,"arrival_date":1798934400,"automatic":true,"status":"in_transit","reconciliation_status":"in_progress","created":1798884400}""",
+            """{"id":"po_3","object":"payout","amount":1000,"arrival_date":1798934400,"automatic":false,"status":"pending","reconciliation_status":"not_applicable","created":1798884400}"""));
         Answer("/v1/balance_transactions", List("/v1/balance_transactions",
             """{"id":"txn_c","object":"balance_transaction","type":"charge","net":22160}""",
             """{"id":"txn_r","object":"balance_transaction","type":"refund","net":-5000}""",
@@ -101,8 +102,40 @@ public sealed class StripeAccountReadTests
                 ("txn_p", "payout", -17160L, 0L, null, null));
         ledger.Lines[0].Payment!.Description.Should().Be("D-42");
         ledger.Payouts.Select(p => (p.Id, p.ContentsNetMinor, p.ContentsCount)).Should().Equal(
-            ("po_1", 17160, 2), ("po_2", null, 0));
+            ("po_1", 17160, 2), ("po_2", null, 0), ("po_3", null, 0));
         _requests.Should().OnlyContain(r => r.Method == HttpMethod.Get);
+    }
+
+    [HumansTheory]
+    [InlineData("charge", true)]
+    [InlineData("refund", true)]
+    [InlineData("dispute", true)]
+    [InlineData("charge", false)]
+    [InlineData("refund", false)]
+    [InlineData("dispute", false)]
+    public async Task GetAccountLedgerAsync_SourceReference_PreservesAttribution(string sourceType, bool valid)
+    {
+        var orderId = Guid.NewGuid();
+        Answer("/v1/balance_transactions", List("/v1/balance_transactions", $$$$"""
+            {"id":"txn_1","object":"balance_transaction","reporting_category":"{{{{sourceType}}}}","created":1798884000,
+             "source":{"id":"source_1","object":"{{{{sourceType}}}}","payment_intent":"pi_old",
+              "metadata":{"humans_ticket_order_id":"{{{{(valid ? orderId.ToString() : "invalid")}}}}"}}}
+            """));
+        Answer("/v1/payment_intents", List("/v1/payment_intents"));
+        if (!valid)
+            Answer("/v1/payment_intents/pi_old", Intent("pi_old", "42"));
+        Answer("/v1/payouts", List("/v1/payouts"));
+
+        var line = (await Service(OwnKey()).GetAccountLedgerAsync("HiEvents", Now - Duration.FromDays(1), Now, Ct,
+            sourceOrderIdKey: "humans_ticket_order_id"))!.Lines.Single();
+
+        line.SourceOrderId.Should().Be(valid ? orderId : null);
+        if (valid)
+            line.Payment.Should().BeNull();
+        else
+            line.Payment!.Metadata["order_id"].Should().Be("42");
+        _requests.Count(r => string.Equals(r.Uri.AbsolutePath, "/v1/payment_intents/pi_old", StringComparison.Ordinal))
+            .Should().Be(valid ? 0 : 1);
     }
 
     [HumansFact]
@@ -202,5 +235,44 @@ public sealed class StripeAccountReadTests
             balance => balance.Should().Match<StripeAccountCheck>(c => c.Ok && c.Text.Contains("STRIPE_HIEVENTS_KEY reads Balance transactions (test mode)")),
             payouts => payouts.Should().Match<StripeAccountCheck>(c => !c.Ok && c.Text.Contains("Payouts") && c.Text.Contains("403")),
             intents => intents.Should().Match<StripeAccountCheck>(c => c.Ok && c.Text.Contains("PaymentIntents")));
+    }
+
+    [HumansFact]
+    public async Task CheckAccountAsync_CheckoutRequested_ReadsCheckout()
+    {
+        foreach (var path in new[] { "/v1/balance_transactions", "/v1/payouts", "/v1/payment_intents", "/v1/checkout/sessions" })
+            Answer(path, List(path));
+
+        var reporting = new StripeMirrorAccount { Name = "HiEvents", Id = "acct_reporting", ApiKey = "rk_org_reporting" };
+        var findings = await Service(reporting).CheckAccountAsync("HiEvents", Ct, checkoutApiKey: "rk_test_boxoffice");
+
+        findings.Should().HaveCount(4).And.OnlyContain(f => f.Ok);
+        findings.Last().Text.Should().Contain("Checkout Sessions (test mode)");
+        _requests.Select(r => r.Uri.AbsolutePath).Should().Equal(
+            "/v1/balance_transactions", "/v1/payouts", "/v1/payment_intents", "/v1/checkout/sessions");
+        _requests.Take(3).Should().OnlyContain(r =>
+            string.Equals(r.AuthorizationHeader.ToString(), "Bearer rk_org_reporting", StringComparison.Ordinal)
+            && string.Equals(r.StripeHeaders["Stripe-Context"], "acct_reporting", StringComparison.Ordinal));
+        _requests.Last().AuthorizationHeader.ToString().Should().Be("Bearer rk_test_boxoffice");
+        _requests.Last().StripeHeaders.Should().NotContainKey("Stripe-Context");
+        findings.Should().NotContain(f => f.Text.Contains("rk_test_boxoffice", StringComparison.Ordinal));
+    }
+
+    [HumansTheory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task CheckAccountAsync_Cancellation_PreservesCallerIntent(bool cancelCaller)
+    {
+        using var caller = new CancellationTokenSource();
+        if (cancelCaller) await caller.CancelAsync();
+        _http.MakeRequestAsync(Arg.Any<StripeRequest>(), Arg.Any<CancellationToken>())
+            .Returns<StripeResponse>(_ => throw new TaskCanceledException("probe cancelled", null, caller.Token));
+
+        var check = () => Service(OwnKey()).CheckAccountAsync("HiEvents", caller.Token, checkoutApiKey: "rk_test_boxoffice");
+
+        if (cancelCaller)
+            await check.Should().ThrowAsync<OperationCanceledException>();
+        else
+            (await check()).Should().HaveCount(4).And.OnlyContain(f => !f.Ok && f.Text.Contains("could not be reached"));
     }
 }

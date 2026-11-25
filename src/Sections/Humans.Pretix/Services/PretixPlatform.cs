@@ -404,7 +404,7 @@ internal sealed partial class PretixPlatform(
                 slugs ??= await EventSlugsAsync(ct);
                 orderOf[payment.PaymentIntentId] = humansOrderId = await HumansOrderOfAsync(payment, slugs, ct);
             }
-            entries.Add(new PaymentLedgerEntry(line.Id, line.CreatedAt, KindOf(line.ReportingCategory),
+            entries.Add(new PaymentLedgerEntry(line.Id, line.CreatedAt, PaymentLedgerEntry.KindOf(line.ReportingCategory),
                 line.AmountMinor, line.FeeMinor, humansOrderId, line.Description));
         }
 
@@ -425,17 +425,6 @@ internal sealed partial class PretixPlatform(
         EnsureSuccess(response, "read order");
         return HumansOrderId(Deserialize<PretixOrder>(response.Body));
     }
-
-    /// <summary>By Stripe's reporting category, as Box Office reads its own account.</summary>
-    private static PaymentLedgerEntryKind KindOf(string reportingCategory) => reportingCategory switch
-    {
-        "charge" or "charge_failure" or "partial_capture_reversal" => PaymentLedgerEntryKind.Charge,
-        "refund" or "refund_failure" => PaymentLedgerEntryKind.Refund,
-        "dispute" or "dispute_reversal" => PaymentLedgerEntryKind.Chargeback,
-        "fee" => PaymentLedgerEntryKind.Fee,
-        "payout" or "payout_reversal" => PaymentLedgerEntryKind.Payout,
-        _ => PaymentLedgerEntryKind.Other,
-    };
 
     /// <summary>The organizer's event slugs, by the capitalised form pretix writes on a payment.</summary>
     private async Task<Dictionary<string, string>> EventSlugsAsync(CancellationToken ct)

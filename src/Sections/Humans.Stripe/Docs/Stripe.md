@@ -8,13 +8,12 @@
 
 # Stripe — Section Invariants
 
-The payments connector. Wraps the Stripe.NET SDK behind `IStripeService` so no other
-production assembly names a Stripe type. Also holds a read-only **mirror** of every Stripe
+The payments connector. Wraps Stripe account reporting and Store payment operations behind `IStripeService` with owned boundary records. Also holds a read-only **mirror** of every Stripe
 account's ledger and the `/Stripe` pages over it (recon: find an order, match payouts,
 see reserve holds). Spec: [`features/stripe-mirror.md`](features/stripe-mirror.md).
 
-- **For:** the one place Humans talks to Stripe. Store gets hosted checkout and a verified
-  webhook; Tickets gets each payment's fee breakdown; the pretix and Hi.Events adapters read the
+- **For:** Stripe account reporting and Store payment operations. Store gets hosted checkout and a verified
+  webhook; Tickets gets each payment's fee breakdown; the Box Office, pretix and Hi.Events adapters read the
   Stripe accounts those ticketing platforms charge into (ledger, fees, key check) for Tickets' reconciliation.
 - **Good looks like:** a thin, honest translator. Each call answers, returns `null` for a case
   it checked, or throws — never a silent failure, never a decision about what a payment means.
@@ -106,7 +105,7 @@ integration uses — see [`memory/code/stripe-restricted-keys.md`](../../../../m
   (`StripeAccountLedger`, `StripeLedgerLine`, `StripeLedgerPayment`, `StripeLedgerPayout`, `StripeAccountCheck`) — verified by
   `StripeConnectorArchitectureTests.IStripeService_ExposesNoStripeSdkTypesOnItsPublicSurface`,
   which walks nested generics and arrays.
-- `Humans.Stripe` is the only production project with a `Stripe.net` package reference.
+- Account reporting uses this section's SDK client. Box Office retains its existing SDK payment-lifecycle calls; no SDK type crosses `IStripeService`.
 - Everything but `Contracts/` and `Section` is `internal sealed` (HUM0034).
 - Webhook parsing rejects malformed JSON, unsupported payload shapes, missing event identity/type/data, and checkout events carrying a non-session object. These return null with a Warning, including when the signature is valid; diagnostics do not log payload contents. Signature verification still precedes deserialization, and unrelated well-formed event types remain ignorable.
 - Checkout Session creation is `[ExternalWrite]`; a state-changing caller detaches request
@@ -245,3 +244,9 @@ the ticket vendor's or ticketing platform's charge metadata). A member's data ex
 is one of their verified addresses (`StripePayments`, from `StripeMirrorService`). Erasure keeps
 them: they are financial records, retained on the fiscal basis in the `ErasureDeclaration`. No
 bulk export of them exists.
+
+### Ticketing account reporting
+
+- Box Office reads ledger movements, payouts, payment fees and read-scope probes through the named `BoxOffice` mirror account. Its existing SDK payment-lifecycle calls remain outside this connector.
+- `GetAccountLedgerAsync` can read a Humans order id from a caller-named metadata key on an expanded charge, refund or dispute. A valid id is returned as `StripeLedgerLine.SourceOrderId` and avoids a PaymentIntent lookup; missing or malformed ids keep the existing PaymentIntent read.
+- `CheckAccountAsync` optionally probes Checkout Session read access with the caller's direct checkout key, independently of the named reporting account's key; the credential never appears in a finding. Caller cancellation propagates; independent transport timeouts remain diagnostic findings. These probes never test write permissions.
