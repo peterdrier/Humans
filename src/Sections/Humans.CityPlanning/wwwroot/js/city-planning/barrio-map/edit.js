@@ -99,9 +99,8 @@ export function onDrawChange() {
 let lastRenderedPolyKey = null;
 export function onDrawRender() {
     const features = appState.draw.getAll().features;
-    const poly = features.find(f =>
-        f.geometry.type === 'Polygon' && (f.geometry.coordinates[0]?.length ?? 0) >= 4);
-    const key = poly ? JSON.stringify(poly.geometry.coordinates) : '';
+    const poly = getAreaFeature(features);
+    const key = poly ? JSON.stringify(poly.geometry) : '';
     if (key === lastRenderedPolyKey) return;
     lastRenderedPolyKey = key;
     updateSaveButton();
@@ -152,18 +151,25 @@ export function clearDrawLabel() {
     map.getSource('draw-warning-overlap')?.setData({ type: 'FeatureCollection', features: [] });
 }
 
+function getAreaFeature(features) {
+    return features.find(f => {
+        const { type, coordinates } = f.geometry;
+        const polygons = type === 'Polygon' ? [coordinates] : type === 'MultiPolygon' ? coordinates : [];
+        return polygons.length > 0 && polygons.every(rings =>
+            rings.length > 0 && rings.every(ring => ring.length >= 4));
+    });
+}
+
 export function updateSaveButton() {
     const { map, draw } = appState;
     const features = draw.getAll().features;
-    const hasValidPolygon = features.some(f =>
-        f.geometry.type === 'Polygon' && (f.geometry.coordinates[0]?.length ?? 0) >= 4);
-    const editing = hasValidPolygon && appState.activeCampSeasonId;
+    const poly = getAreaFeature(features);
+    const editing = poly && appState.activeCampSeasonId;
     const saveButton = document.getElementById('save-btn');
     saveButton.disabled = !editing || saveButton.dataset.saving === 'true';
     document.getElementById('cancel-btn')?.classList.toggle('d-none', !appState.activeCampSeasonId);
 
-    if (hasValidPolygon) {
-        const poly     = features[0];
+    if (poly) {
         const area     = turf.area(poly);
         const centroid = turf.centroid(poly);
         const outside  = isOutsideZone(poly);
@@ -195,13 +201,17 @@ export function updateSaveButton() {
         centroid.properties = { label: Math.round(area).toLocaleString() + ' m²' + warnings.join('') };
         map.getSource('draw-label').setData({ type: 'FeatureCollection', features: [centroid] });
 
-        const coords = poly.geometry.coordinates[0];
+        const polygons = poly.geometry.type === 'Polygon' ? [poly.geometry.coordinates] : poly.geometry.coordinates;
         const edgeFeatures = [];
-        for (let i = 0; i < coords.length - 1; i++) {
-            const lengthM = turf.length(turf.lineString([coords[i], coords[i + 1]]), { units: 'meters' });
-            const mid = turf.midpoint(turf.point(coords[i]), turf.point(coords[i + 1]));
-            mid.properties = { label: Math.round(lengthM) + ' m' };
-            edgeFeatures.push(mid);
+        for (const rings of polygons) {
+            for (const coords of rings) {
+                for (let i = 0; i < coords.length - 1; i++) {
+                    const lengthM = turf.length(turf.lineString([coords[i], coords[i + 1]]), { units: 'meters' });
+                    const mid = turf.midpoint(turf.point(coords[i]), turf.point(coords[i + 1]));
+                    mid.properties = { label: Math.round(lengthM) + ' m' };
+                    edgeFeatures.push(mid);
+                }
+            }
         }
         map.getSource('draw-edge-labels').setData({ type: 'FeatureCollection', features: edgeFeatures });
     } else {
