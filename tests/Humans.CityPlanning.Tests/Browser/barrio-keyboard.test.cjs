@@ -9,20 +9,29 @@ const main = readFileSync(resolve(__dirname,
 const shortcut = main.slice(main.indexOf("document.addEventListener('keydown'"),
     main.indexOf("document.getElementById('add-my-barrio-btn')"));
 
-function editor({ active = true, vertices = 5 } = {}) {
+function editor({ active = true, vertices = 5, mode = 'direct_select' } = {}) {
     let keydown, deletions = 0, prevented = 0;
     const context = {
+        MapboxDraw: { modes: { direct_select: { onTrash: () => deletions++ } } },
         appState: {
             activeCampSeasonId: active ? 'camp-A' : null,
             draw: {
+                getMode: () => mode,
                 getAll: () => ({ features: [{ geometry: { type: 'Polygon', coordinates: [Array(vertices)] } }] }),
-                trash: () => deletions++,
+                trash: () => mode !== 'direct_select' ? deletions++ : context.MarqueeDirectSelectMode.onTrash.call({}, {
+                    feature: { type: 'Polygon', getCoordinates: () => [Array(vertices)] },
+                    selectedCoordPaths: ['0.0'],
+                }),
             },
         },
         isMeasuring: () => false,
         document: { addEventListener: (event, callback) => { assert.equal(event, 'keydown'); keydown = callback; } },
     };
-    vm.createContext(context); vm.runInContext(shortcut, context);
+    vm.createContext(context);
+    const modeSource = readFileSync(resolve(__dirname,
+        '../../../src/Sections/Humans.CityPlanning/wwwroot/js/city-planning/barrio-map/marquee-direct-select.js'), 'utf8')
+        .replace('export const MarqueeDirectSelectMode', 'globalThis.MarqueeDirectSelectMode');
+    vm.runInContext(modeSource, context); vm.runInContext(shortcut, context);
     return {
         press(key, tagName = 'CANVAS', isContentEditable = false) {
             const target = {
@@ -64,3 +73,14 @@ test('Backspace without an active camp retains its native behavior', () => {
     assert.equal(ui.deletions(), 0);
     assert.equal(ui.prevented(), 0);
 });
+
+for (const mode of ['simple_select', 'draw_polygon']) {
+    test(`${mode} retains the shortcut minimum guard outside vertex editing`, () => {
+        const ui = editor({ mode, vertices: 4 }); ui.press('Backspace');
+        assert.equal(ui.deletions(), 0);
+    });
+    test(`${mode} retains its native trash operation for larger drafts`, () => {
+        const ui = editor({ mode }); ui.press('Backspace');
+        assert.equal(ui.deletions(), 1);
+    });
+}

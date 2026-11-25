@@ -88,8 +88,10 @@ document.addEventListener('keydown', e => {
     if ((e.key === 'Delete' || e.key === 'Backspace') && appState.activeCampSeasonId) {
         if (e.target?.closest('input, textarea, select') || e.target?.isContentEditable) return;
         e.preventDefault();
-        const poly = appState.draw.getAll().features.find(f => f.geometry.type === 'Polygon');
-        if (poly && poly.geometry.coordinates[0].length <= 4) return;
+        if (appState.draw.getMode() !== 'direct_select') {
+            const poly = appState.draw.getAll().features.find(f => f.geometry.type === 'Polygon');
+            if (poly && poly.geometry.coordinates[0].length <= 4) return;
+        }
         appState.draw.trash();
     }
 });

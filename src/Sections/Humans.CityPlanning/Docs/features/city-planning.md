@@ -41,7 +41,7 @@ City Planning organizes the physical layout of the event site across these phase
 ### Barrio placement map
 - **US-38.3: View the Barrio Map** — Barrio leads and map admins see all placed barrios on a full-screen aerial map, color-coded by sound zone, with name labels and warning indicators
 - **US-38.4: Place My Barrio** — Camp leads draw their polygon while barrio placement is Open; area and edge lengths shown in real time
-- **US-38.5: Adjust an Existing Barrio** — Camp leads (own polygon, while Open or Changeable) and map admins (any polygon, always) can edit vertices, reposition, and reshape Polygon or MultiPolygon placements. Area warnings cover the full shape; edge-length labels cover every part and hole. Delete/Backspace removes map vertices only outside form controls and editable content
+- **US-38.5: Adjust an Existing Barrio** — Camp leads (own polygon, while Open or Changeable) and map admins (any polygon, always) can edit vertices, reposition, and reshape Polygon or MultiPolygon placements. Area warnings cover the full shape; edge-length labels cover every part and hole. Delete/Backspace removes map vertices only outside form controls and editable content; a deletion cannot collapse any outer ring below three vertices
 - **US-38.6: Out-of-Bounds and Overlap Warnings** — Red crosshatch when outside the limit zone; orange stripes when overlapping another barrio; ⚠️ prepended to labels
 - **US-38.7: View Polygon History** — Full version history per polygon; map admins can restore any past version
 - **US-38.8: Real-Time Collaborative View** — Remote cursors visible live; polygon saves broadcast to all connected clients via SignalR

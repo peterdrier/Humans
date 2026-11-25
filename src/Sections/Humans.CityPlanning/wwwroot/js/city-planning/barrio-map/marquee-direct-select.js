@@ -121,6 +121,21 @@ export const MarqueeDirectSelectMode = {
         state.marqueeEl    = null;
     },
 
+    onTrash(state) {
+        const feature = state.feature;
+        if (feature.type === 'Polygon' || feature.type === 'MultiPolygon') {
+            const multi = feature.type === 'MultiPolygon';
+            const coordinates = feature.getCoordinates();
+            const polygons = multi ? coordinates : [coordinates];
+            for (let i = 0; i < polygons.length; i++) {
+                const prefix = multi ? `${i}.0.` : '0.';
+                const removed = state.selectedCoordPaths.filter(path => path.startsWith(prefix)).length;
+                if (polygons[i][0].length - 1 - removed < 3) return;
+            }
+        }
+        return DirectSelectMode.onTrash.call(this, state);
+    },
+
     onStop(state) {
         // Guard: clean up if user exits edit mode mid-drag
         this.map.dragPan.enable();
