@@ -76,6 +76,10 @@ export function selectPlacedContainer(container) {
     _map.easeTo({ center: [_currentCenter.lng, _currentCenter.lat], zoom: Math.max				(_map.getZoom(), 19), duration: 300 });
 }
 
+export function getActiveContainerId() {
+    return _activeContainer?.id ?? null;
+}
+
 export function deactivate() {
     resetGesture();
     _activeContainer = null;

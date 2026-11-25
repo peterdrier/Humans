@@ -28,8 +28,8 @@ export function setContainers(containers) {
     render();
 }
 
-export function markPlaced(_id) {
-    _activeId = null;
+export function markPlaced(id) {
+    if (_activeId === id) _activeId = null;
     render();
 }
 
