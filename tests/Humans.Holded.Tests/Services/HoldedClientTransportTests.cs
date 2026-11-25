@@ -7,11 +7,56 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using NodaTime;
 using NodaTime.Testing;
+using Humans.Base.Interfaces;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Humans.Holded.Tests.Services;
 
 public class HoldedClientTransportTests
 {
+    [HumansTheory]
+    [Xunit.InlineData("not a URI", false)]
+    [Xunit.InlineData("", false)]
+    [Xunit.InlineData("/relative", false)]
+    [Xunit.InlineData("ftp://holded.example", false)]
+    [Xunit.InlineData("https://holded.example", true)]
+    [Xunit.InlineData("http://holded.example", true)]
+    public async Task Register_Endpoint_ResolvesBeforeValidation(string baseUrl, bool valid)
+    {
+        var services = new ServiceCollection();
+        new Section().Register(services, new ConfigurationBuilder().AddInMemoryCollection(
+            new Dictionary<string, string?>(StringComparer.Ordinal) { ["Holded:BaseUrl"] = baseUrl }).Build());
+        services.Configure<HoldedClientOptions>(o => o.ApiKey = "test-key");
+        services.AddSingleton<IClock>(new FakeClock(Instant.FromUtc(2026, 8, 10, 12, 0)));
+        services.AddSingleton<IOrgTimeZone>(FixedOrgTimeZone.Madrid);
+        var calls = 0;
+        services.AddHttpClient<IHoldedClient, HoldedClient>().ConfigurePrimaryHttpMessageHandler(() => new StubHandler(request =>
+        {
+            calls++;
+            request.RequestUri!.Host.Should().Be("holded.example");
+            return Respond(HttpStatusCode.OK, request.Method == HttpMethod.Get ? """{"items":[]}""" : """{"id":"account-1"}""");
+        }));
+        using var provider = services.BuildServiceProvider();
+
+        var client = provider.GetRequiredService<IHoldedClient>();
+        var read = () => client.ListExpenseAccountsAsync(Xunit.TestContext.Current.CancellationToken);
+        var write = () => client.CreateExpenseAccountAsync(60000000, "Test account", Xunit.TestContext.Current.CancellationToken);
+
+        client.IsConfigured.Should().BeTrue();
+        if (valid)
+        {
+            (await read()).Should().BeEmpty();
+            (await write()).Should().Be("account-1");
+        }
+        else
+        {
+            await read.Should().ThrowAsync<HoldedPermanentException>().WithMessage("*absolute HTTP(S)*");
+            await write.Should().ThrowAsync<HoldedPermanentException>().WithMessage("*absolute HTTP(S)*");
+        }
+        calls.Should().Be(valid ? 2 : 0);
+    }
+
     private static HoldedClient Make(StubHandler handler, HoldedCallLog? log = null, FakeClock? clock = null) =>
         new(
             new HttpClient(handler) { BaseAddress = new Uri("https://api.holded.com") },

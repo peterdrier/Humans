@@ -37,8 +37,10 @@ internal sealed class HoldedTransport
         _callLog = callLog;
         _clock = clock;
 
-        if (_http.BaseAddress is null && !string.IsNullOrEmpty(_options.BaseUrl))
-            _http.BaseAddress = new Uri(_options.BaseUrl);
+        // Endpoint mistakes must not stop DI; operations fail at the send boundary.
+        if (_http.BaseAddress is null && Uri.TryCreate(_options.BaseUrl, UriKind.Absolute, out var baseAddress)
+            && baseAddress.Scheme is "http" or "https")
+            _http.BaseAddress = baseAddress;
     }
 
     public bool IsConfigured => !string.IsNullOrWhiteSpace(_options.ApiKey);
@@ -117,6 +119,10 @@ internal sealed class HoldedTransport
         HttpRequestMessage req, CancellationToken ct,
         [CallerMemberName] string caller = "")
     {
+        var destination = req.RequestUri is { IsAbsoluteUri: true } ? req.RequestUri : _http.BaseAddress;
+        if (destination is null || destination.Scheme is not ("http" or "https"))
+            throw new HoldedPermanentException("Holded:BaseUrl must be an absolute HTTP(S) URL.");
+
         AttachAuth(req);
         using var _ = _logger.TimeOperation(operation: caller);
         var resp = await SendOnceAsync(req, caller, ct);

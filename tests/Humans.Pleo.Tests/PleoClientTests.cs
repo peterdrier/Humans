@@ -4,11 +4,46 @@ using AwesomeAssertions;
 using Humans.Pleo.Services;
 using Microsoft.Extensions.Options;
 using Microsoft.AspNetCore.WebUtilities;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Humans.Pleo.Tests;
 
 public sealed class PleoClientTests
 {
+    [HumansTheory]
+    [Xunit.InlineData("not a URI", false)]
+    [Xunit.InlineData("", false)]
+    [Xunit.InlineData("/relative", false)]
+    [Xunit.InlineData("ftp://pleo.example", false)]
+    [Xunit.InlineData("https://pleo.example", true)]
+    [Xunit.InlineData("http://pleo.example", true)]
+    public async Task Register_Endpoint_ResolvesBeforeValidation(string baseUrl, bool valid)
+    {
+        var services = new ServiceCollection();
+        new Section().Register(services, new ConfigurationBuilder().AddInMemoryCollection(
+            new Dictionary<string, string?>(StringComparer.Ordinal) { ["Pleo:BaseUrl"] = baseUrl }).Build());
+        services.Configure<PleoClientOptions>(o => { o.ApiKey = "test-key"; o.CompanyId = "company-1"; });
+        var calls = 0;
+        services.AddHttpClient<IPleoClient, PleoClient>().ConfigurePrimaryHttpMessageHandler(() => new StubHandler(request =>
+        {
+            calls++;
+            request.RequestUri!.Host.Should().Be("pleo.example");
+            return Json(Page("", false, null));
+        }));
+        using var provider = services.BuildServiceProvider();
+
+        var client = provider.GetRequiredService<IPleoClient>();
+        var read = () => client.SearchEntriesAsync(Xunit.TestContext.Current.CancellationToken);
+
+        client.IsConfigured.Should().BeTrue();
+        if (valid)
+            (await read()).Should().BeEmpty();
+        else
+            await read.Should().ThrowAsync<PleoPermanentException>().WithMessage("*absolute HTTP(S)*");
+        calls.Should().Be(valid ? 1 : 0);
+    }
+
     private static PleoClient Make(Func<HttpRequestMessage, HttpResponseMessage> respond) =>
         new(new HttpClient(new StubHandler(respond)) { BaseAddress = new Uri("https://external.pleo.io") },
             Options.Create(new PleoClientOptions { ApiKey = "test-key", CompanyId = "company-1" }));

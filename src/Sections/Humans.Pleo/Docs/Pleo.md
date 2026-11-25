@@ -8,6 +8,10 @@
 
 # Pleo — Section Invariants
 
+Malformed or non-HTTP(S) API base URLs do not prevent client construction. The client owns endpoint parsing;
+API operations fail as `PleoPermanentException` before sending a request when no valid endpoint is available.
+Invalid configuration never returns an empty ledger or selects a fallback endpoint. Valid HTTP(S) endpoints retain their behavior.
+
 A read-only mirror of the Pleo card wallet and the `/Pleo` admin pages over it. Step one of getting Pleo spend into
 Holded: Peter reviews the mirror here before anything is booked. Nothing is written to Pleo or to Holded; Finance
 books the spend from what `IPleoService` serves (step two, `/Finance/Pleo`).

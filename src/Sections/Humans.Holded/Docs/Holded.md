@@ -6,6 +6,10 @@
 
 # Holded (section) — Section Invariants
 
+Malformed or non-HTTP(S) API base URLs do not prevent client construction. The transport owns endpoint parsing;
+reads and writes fail as `HoldedPermanentException` before sending a request when no valid endpoint is available.
+Invalid configuration never returns empty data, reports a successful write, or selects a fallback endpoint. Valid HTTP(S) endpoints retain their behavior.
+
 ## Purpose
 
 Holded (the company) is a SaaS vendor that holds the association's accounting books and records.
