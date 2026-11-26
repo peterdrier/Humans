@@ -1,7 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk.Razor">
 
   <PropertyGroup>
-    <!-- MVC views/controllers, not Blazor components. -->
     <AddRazorSupportForMvc>true</AddRazorSupportForMvc>
   </PropertyGroup>
 
@@ -39,8 +38,6 @@
       the build with NU1010 under Central Package Management. Identity's IPasswordHasher (the
       staff-PIN hasher) and IMemoryCache arrive through the framework reference Sdk.Razor
       already adds.
-      Hangfire covers the enqueue sites and the two jobs themselves
-      (Jobs/GateRetentionJob, Jobs/GateVendorCheckInJob).
     -->
     <PackageReference Include="Hangfire.Core" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" />
@@ -50,7 +47,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- The section owns its documentation; keep it visible in Solution Explorer. -->
     <None Include="**\*.md" />
   </ItemGroup>
 

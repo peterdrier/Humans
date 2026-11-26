@@ -6,8 +6,9 @@ Folder: `src/Sections/Humans.Gate/`, its own project. **DbContext:**
 `GateDbContext`. `GateRepository` injects `IDbContextFactory<GateDbContext>`
 directly. Owns `gate_scan_events`, `gate_settings`, `gate_staff_pins`. Gate
 admissions: barcode scan evaluation, append-only scan/verdict recording,
-personal staff claim PINs, supervisor overrides, leaderboard, and a
-best-effort vendor check-in mirror back to TicketTailor.
+undo of an admit, find by name, the arrivals report, supervisor overrides,
+leaderboard, a best-effort vendor check-in mirror back to TicketTailor, and
+personal staff claim PINs (dormant).
 
 `GateDbContext` declares real `DbSet<GateScanEvent>` /
 `DbSet<GateSettings>` / `DbSet<GateStaffPin>` properties (table names come
@@ -31,23 +32,26 @@ its original admit timestamp; the admin controller holds no ledger or job-client
 |-------|-----|
 | gate_scan_events | R/W (append-only verdict log; admit dedupe via unique index on `AdmitDedupeKey`; retention purge; merge reassignment) |
 | gate_settings | R/W (singleton row — general-entry cutoff, minor-age threshold (stored and edited; nothing reads it yet)) |
-| gate_staff_pins | R/W (per-staffer PIN hash via `IPasswordHasher<GateStaffPin>`; `AdminEnrolled` flag gates override authority) |
-| tickets_event_participations | W via `ITicketWrite.RecordParticipationAsync` (**not** a foreign table access — an admit projects an `Attended` participation row through the owning Tickets service, so consumed camp EE can't be revoked) |
+| gate_staff_pins | R/W (per-staffer PIN hash via `IPasswordHasher<GateStaffPin>`; `AdminEnrolled` flag applies only to the dormant claim path) |
+| tickets_event_participations | W via `ITicketWrite.RecordParticipationAsync` and `ITicketWrite.UndoCheckInAsync` (**not** a foreign table access — an admit projects an `Attended` participation row through the owning Tickets service, so consumed camp EE can't be revoked) |
 
-Checkout-issued tickets come from `ITicketGateLookup` (Tickets, live, no cache). `GateAdmissionReads` serves
+Checkout-issued tickets come from `ITicketGateLookup` (Tickets, live, no cache): `GetIssuedTicketsForEventAsync` and `FindIssuedTicketAsync`. `GateAdmissionReads` serves
 `IGateAdmissions` (admitted codes) to Tickets from `gate_scan_events`.
 Cross-section calls via `ITicketService` (barcode → attendee resolved by
 filtering the cached orders projection in memory — no new interface method),
 `IEarlyEntryService` (cached per-user EE for the too-early rule),
 `ISettingsService` (event timezone / active event), `IShiftService`
 (gate-crew shift roster for the claim screen, via
-`GetBrowseShiftsAsync`), `ISystemRoleService` (server-verified supervisor
-roles for overrides), `ITicketWrite` (participation projection),
-`IAuditLogService` (PIN set/reset audit — never the PIN value), plus
+`GetBrowseShiftsAsync`), `IUserService` (`SearchUsersAsync`, find by name),
+`ISystemRoleService` (supervisor roles, used only by the dormant
+`AuthorizeOverrideAsync` / `IsSupervisorAsync` path; live overrides and undo
+verify the shared `Gate:SupervisorPin`), `ITicketWrite` (participation
+projection and check-in undo), `IAuditLogService` (PIN set/reset audit, never
+the PIN value, and `GateAdmitUndone`), plus
 `IPasswordHasher<GateStaffPin>` and `IClock` (cutoff is always evaluated
 against the server clock, never a device clock). Implements `IGateService`,
 `IUserMerge` (re-points `GuestUserId` / `ScannedByUserId` /
-`OverrideByUserId` on merge), `IUserDataContributor` (GDPR slice under the
+`OverrideByUserId` / `UndoneByUserId` on merge), `IUserDataContributor` (GDPR slice under the
 export key declared as `GateService.GateScans` — data-minimized:
 verdict/time/role/lane, no barcode, no other person's identifiers). No
 `IMemoryCache`.
@@ -69,7 +73,7 @@ failures / 15 min) and `GateVendorMirrorLedger`
 (`GateVendorMirrorSent:{vendorTicketId}` — 24 h atomic claim so the vendor
 check-in mirror and the backfill page never double-post a non-idempotent
 TicketTailor check-in). Two helpers live outside the section because they
-gate terminal *sign-in*, not gate *admission*: `GateSignInThrottle`
+gate terminal *sign-in*, not gate *admission*: `GateLoginThrottle`
 (`src/Humans.Web/Services/`, `GateLoginFailures:{sourceIp}` — per-IP
 terminal sign-in throttle) and `GateTerminalAccountSeeder`
 (`src/Sections/Humans.Tickets/Services/`), which provisions the shared

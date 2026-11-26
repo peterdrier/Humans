@@ -31,10 +31,7 @@ using NSubstitute.ExceptionExtensions;
 namespace Humans.Gate.Tests;
 
 /// <summary>
-/// Service-level coverage of <see cref="GateService"/> over a real
-/// <see cref="GateRepository"/> (in-memory DB) with stubbed cross-section reads —
-/// admit, dedupe, name-mismatch, child-with-adult, and the Early-Entry cutoff
-/// branches, including that a client "ID confirmed" never overrides a STOP.
+/// Runs <see cref="GateService"/> over a real <see cref="GateRepository"/> on an in-memory DB with stubbed cross-section reads.
 /// </summary>
 public class GateServiceTests
 {
@@ -628,7 +625,7 @@ public class GateServiceTests
     public async Task Gdpr_ContributesScansForGuestAndScanner()
     {
         StubTicket(matchedUserId: GuestId);
-        await RecordAsync(idConfirmed: true);   // GuestUserId = GuestId, ScannedByUserId = AgentId
+        await RecordAsync(idConfirmed: true);
 
         var guestExport = await _svc.ContributeForUserAsync(GuestId, default);
         var scannerExport = await _svc.ContributeForUserAsync(AgentId, default);
@@ -707,11 +704,12 @@ public class GateServiceTests
     }
 
     [HumansFact]
-    public async Task Merge_RepointsScannerAndOverride_AndCarriesThePinToAPinlessSurvivor()
+    public async Task Merge_RepointsUserLinksToPinlessSurvivor()
     {
         StubTicket(matchedUserId: GuestId);
         await RecordAsync(idConfirmed: true, overrideEarly: true, pin: SupervisorPin);
         await _svc.AdminSetPinAsync(AgentId, "2580", Guid.NewGuid()); // AdminEnrolled = true
+        (await _svc.UndoAdmitAtGateAsync(Barcode, SupervisorPin, AgentId)).Outcome.Should().Be(GateUndoOutcome.Undone);
         var survivor = Guid.NewGuid();
 
         await _svc.ReassignAsync(AgentId, survivor, actorUserId: Guid.NewGuid(), _clock.GetCurrentInstant(), default);
@@ -719,6 +717,7 @@ public class GateServiceTests
         var row = await _gateDb.GateScanEvents.AsNoTracking().SingleAsync(Xunit.TestContext.Current.CancellationToken);
         row.ScannedByUserId.Should().Be(survivor);
         row.OverrideByUserId.Should().Be(survivor);
+        row.UndoneByUserId.Should().Be(survivor);
         var pin = await _gateDb.GateStaffPins.AsNoTracking().SingleAsync(Xunit.TestContext.Current.CancellationToken);
         pin.UserId.Should().Be(survivor);
         pin.AdminEnrolled.Should().BeTrue(); // enrolment provenance travels with the PIN
@@ -1358,8 +1357,10 @@ public class GateServiceTests
         (await _svc.GetLeaderboardAsync(Instant.MinValue)).TotalAdmitted.Should().Be(0);
     }
 
-    [HumansFact]
-    public async Task Undo_KeepsArrival_WhenAnotherAdmitOfTheGuestStands()
+    [HumansTheory]
+    [Xunit.InlineData(30, false)]
+    [Xunit.InlineData(31, true)]
+    public async Task Undo_KeepsArrival_WhenGuestHasAdmitWithin30Days(int daysEarlier, bool reverts)
     {
         StubIssued(holder: GuestId);
         await RecordIssuedAsync();
@@ -1371,13 +1372,13 @@ public class GateServiceTests
             Verdict = GateVerdict.Admitted,
             GuestUserId = GuestId,
             ScannedByUserId = AgentId,
-            OccurredAt = _clock.GetCurrentInstant(),
+            OccurredAt = _clock.GetCurrentInstant() - Duration.FromDays(daysEarlier),
         });
         await _gateDb.SaveChangesAsync(Ct);
 
         (await _svc.UndoAdmitAtGateAsync(IssuedBarcode, SupervisorPin, AgentId)).Outcome.Should().Be(GateUndoOutcome.Undone);
 
-        await _users.DidNotReceive().UndoCheckInAsync(Arg.Any<Guid>(), Arg.Any<int>(), Arg.Any<CancellationToken>());
+        await _users.Received(reverts ? 1 : 0).UndoCheckInAsync(GuestId, Arg.Any<int>(), Arg.Any<CancellationToken>());
     }
 
     [HumansTheory]

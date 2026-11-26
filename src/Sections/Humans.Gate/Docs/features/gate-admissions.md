@@ -9,18 +9,10 @@
 
 # Gate Admissions — gate ticket scanning that decides entry
 
-> Status: **SHIPPED** (peterdrier/Humans#1066 plus follow-ups) — this design draft is kept for the
-> rationale. The posture change and the new public surface were signed off by Peter
-> (attendance-gateway posture 2026-07-02). The authoritative current-state doc is
-> [`Gate.md`](../Gate.md); where this draft and shipped behaviour
-> disagree, that doc wins. Notable post-draft changes: personal staff/supervisor PINs were
-> shipped, then disabled (peterdrier/Humans#1075) in favour of a shared override PIN
-> (`Gate:SupervisorPin`, peterdrier/Humans#1079); scans attribute to the shared gate account (no
-> claim step); an admit writes the guest's Attended participation row (peterdrier/Humans#1081); a
-> mirror ledger + one-off vendor check-in backfill page recover unsent vendor check-ins
-> (peterdrier/Humans#1080–#1083). Type/namespace names below (e.g. `Humans.Domain.Entities.*`,
-> `Humans.Infrastructure.*`) are the draft-era layout and no longer exist — the section now
-> owns its types under `Humans.Gate.*`.
+> Status: **SHIPPED**. This draft is kept for the rationale. The authoritative current-state doc is
+> [`Gate.md`](../Gate.md); where this draft and shipped behaviour disagree, that doc wins.
+> Type/namespace names below (e.g. `Humans.Domain.Entities.*`, `Humans.Infrastructure.*`) are the
+> draft-era layout and no longer exist; the section now owns its types under `Humans.Gate.*`.
 
 ## Why
 
@@ -77,20 +69,11 @@ but the decision to admit-and-record from inside Humans is yours to bless.
   neutral flash, keyboard-wedge auto-submit).
 - Service + unit tests; a Gate architecture test; GDPR-contributor wiring tests.
 
-## Remaining / open (for Peter)
+## Remaining / open
 
-- **Posture sign-off** + approval of the new public surface (`ITicketVendorService.CreateCheckInAsync`,
-  the Gate section interfaces).
-- **Runtime smoke test** — built but not run here; the Razor views + JS flow need a live
-  smoke test against a DB before merge.
-- **Localization** — gate views use plain English (staff/ops tool); wire `@Localizer` if wanted.
-- **Hardening to consider** — a dedicated `GateAdmit` policy (stronger than read-only
-  `ScannerAccess`), a chromeless kiosk layout. _Both shipped: `GateAdmit` gates the
-  write actions and the terminal uses the chromeless `_GateLayout`._
 - **Name-mismatch fix link** — on a `RejectedNameMismatch`, auto-email the holder's
   per-attendee email (`TicketAttendee.AttendeeEmail`, the custom-field email, not
-  the buyer email) a link to fix the name (sign-in / create account). The old
-  ticket transfer flow it once pointed at is gone.
+  the buyer email) a link to fix the name (sign-in / create account).
 
 ## Admission precedence (`GateAdmissionRules.Evaluate`)
 
@@ -149,45 +132,3 @@ barcode and confirm a green verdict before opening.
   admit, leaderboard tally.
 - `GateArchitectureTests` — namespace, repository-only DB access, read-interface
   ticket reads.
-
-## Peer review — folded in vs. required-before-go-live
-
-Two independent reviews (correctness/architecture + security/privacy/ops) ran on this slice. Folded in already:
-
-- `scannedByUserId` removed from the wire DTO (`GateDecisionInput`) — now a server-derived
-  parameter on `RecordDecisionAsync`, so audit attribution can't be forged from the request body.
-- Gate added to the section index and the repository-ownership map.
-
-**Controller MUST enforce when the UI lands (do not merge the UI without these):**
-
-- `ScannerAccess` (or a stronger dedicated `GateAdmit`) policy on every endpoint; anti-CSRF on POSTs.
-- `scannedByUserId` taken from the authenticated session, never the request body.
-- `ChildWithAdult` (the ID-waiver path) gated behind a server-verified supervisor PIN and recorded with the supervisor's id.
-- Agent view-model projected to **name + verdict only** — keep `EarlyEntrySource`,
-  `PreviousAdmitByUserId`, and internal GUIDs server-side (don't serialize them to the tablet).
-
-**GDPR / data-lifecycle follow-ups (before this is the live system of record):**
-
-- Implement `IUserMerge` for Gate (re-FK `GuestUserId` / `ScannedByUserId` on account merge) — otherwise a merge orphans gate rows.
-- Implement `IUserDataContributor` so gate entries appear in DSAR exports (the DI test discovers contributors by reflection; only DI forwarding is needed).
-- Define a retention period + anonymization/purge job and record the lawful basis (this is attendance/movement data).
-
-**Test notes:**
-
-- The dedupe's atomic unique-index backstop can't be exercised by the EF in-memory test provider; the explicit pre-check path *is* tested.
-- Unrelated pre-existing failure on `main` (confirmed on clean `upstream/main`, not introduced here): `ShiftSignupServiceEarlyEntryTests.SignUpRangeAsync_WarnsWhenLaterEarlyEntryDayIsFull`.
-
-## Open decisions for Peter (all since resolved)
-
-1. Bless the attendance-gateway posture change (new `Gate` section). _Done —
-   signed off 2026-07-02._
-2. Approve the deferred new surface: `ITicketVendorService.CreateCheckInAsync`
-   (+ impls) and the `ITicketManagement` seam Gate calls for the writeback mirror.
-   _Done — shipped._
-3. Confirm `gate_scan_events` retention / GDPR basis (it's a movement record).
-   _Done — `GateRetentionJob` purges after `Gate:RetentionDays` (default 365)._
-4. Whether to add a PIN-gated supervisor override for the AMBER / name-mismatch
-   paths (currently strict: stop + async fix link). _Done, after iteration —
-   shipped as per-staffer enrolled PINs, then replaced by the shared override PIN
-   (`Gate:SupervisorPin`) on the too-early / unconfirmed-EE / child-waiver paths
-   (peterdrier/Humans#1075 / peterdrier/Humans#1079)._
