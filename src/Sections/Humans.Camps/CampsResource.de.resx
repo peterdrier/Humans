@@ -146,7 +146,6 @@
   <data name="Camps_Index_AcceptingMembersFilter" xml:space="preserve"><value>Nimmt Mitglieder auf</value></data>
   <data name="Camps_Index_AllOption" xml:space="preserve"><value>Alle</value></data>
   <data name="Camps_Index_BarrioGuide" xml:space="preserve"><value>Barrio-Guide 2026</value></data>
-  <data name="Camps_Index_FilterButton" xml:space="preserve"><value>Filtern</value></data>
   <data name="Camps_Index_KidsWelcomeFilter" xml:space="preserve"><value>Kinder willkommen</value></data>
   <data name="Camps_Index_NoFilterResults" xml:space="preserve"><value>Keine {0} für die ausgewählten Filter gefunden.</value></data>
   <data name="Camps_Index_NoSearchResults" xml:space="preserve"><value>Keine {0} entsprechen deiner Suche.</value></data>

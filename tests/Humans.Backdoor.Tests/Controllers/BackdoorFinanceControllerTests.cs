@@ -1,3 +1,5 @@
+using Humans.Backdoor.Authentication;
+using Microsoft.AspNetCore.Authentication;
 using System.Security.Claims;
 using System.Text.Json;
 using AwesomeAssertions;
@@ -197,7 +199,7 @@ public class BackdoorFinanceControllerTests
         };
         if (userId is { } id)
             httpContext.User = new ClaimsPrincipal(new ClaimsIdentity(
-                [new Claim(ClaimTypes.NameIdentifier, id.ToString())], BackdoorApiKeyAuthFilter.AuthenticationScheme));
+                [new Claim(ClaimTypes.NameIdentifier, id.ToString())], BackdoorApiKeyHandler.SchemeName));
         _sut.ControllerContext = new ControllerContext { HttpContext = httpContext };
     }
 
@@ -982,7 +984,7 @@ public class BackdoorFinanceControllerTests
         SetReportViewer(userId, report);
         var keys = Substitute.For<IBackdoorApiKeyService>();
         keys.ResolveOwnerAsync("key", Arg.Any<CancellationToken>()).Returns(new BackdoorKeyOwner(userId, []));
-        keys.AdmitsAsync(Arg.Any<BackdoorKeyOwner>(), BackdoorScope.AdminAndBoard, Arg.Any<CancellationToken>()).Returns(true);
+        keys.AdmitsAsync(userId, BackdoorScope.AdminAndBoard, Arg.Any<CancellationToken>()).Returns(true);
 
         var builder = WebApplication.CreateSlimBuilder();
         builder.WebHost.UseUrls("http://127.0.0.1:0");
@@ -993,6 +995,8 @@ public class BackdoorFinanceControllerTests
                 apm.FeatureProviders.Remove(apm.FeatureProviders.OfType<ControllerFeatureProvider>().Single());
                 apm.FeatureProviders.Add(new FinanceControllerOnly());
             });
+        builder.Services.AddAuthentication()
+            .AddScheme<AuthenticationSchemeOptions, BackdoorApiKeyHandler>(BackdoorApiKeyHandler.SchemeName, null);
         builder.Services.AddSingleton(keys).AddScoped<BackdoorApiKeyAuthFilter>()
             .AddSingleton(_expenses).AddSingleton(_finance).AddSingleton(_holded).AddSingleton(_budget).AddSingleton(_auth)
             .AddSingleton(_users);
@@ -1002,7 +1006,7 @@ public class BackdoorFinanceControllerTests
 
         using var client = new HttpClient();
         client.BaseAddress = new Uri(app.Urls.Single());
-        client.DefaultRequestHeaders.Add(BackdoorApiKeyAuthFilter.ApiKeyHeaderName, "key");
+        client.DefaultRequestHeaders.Add(BackdoorApiKeyHandler.HeaderName, "key");
         var body = await client.GetStringAsync("/api/backdoor/finance/expense-reports", ct);
         await app.StopAsync(ct);
 

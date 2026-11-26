@@ -146,7 +146,6 @@
   <data name="Camps_Index_AcceptingMembersFilter" xml:space="preserve"><value>Accepta membres</value></data>
   <data name="Camps_Index_AllOption" xml:space="preserve"><value>Tots</value></data>
   <data name="Camps_Index_BarrioGuide" xml:space="preserve"><value>Guia de Barrio 2026</value></data>
-  <data name="Camps_Index_FilterButton" xml:space="preserve"><value>Filtra</value></data>
   <data name="Camps_Index_KidsWelcomeFilter" xml:space="preserve"><value>Nens benvinguts</value></data>
   <data name="Camps_Index_NoFilterResults" xml:space="preserve"><value>No s'ha trobat cap {0} per als filtres seleccionats.</value></data>
   <data name="Camps_Index_NoSearchResults" xml:space="preserve"><value>Cap {0} coincideix amb la teva cerca.</value></data>
