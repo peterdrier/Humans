@@ -211,6 +211,27 @@ public sealed class McpEndpointTests : IAsyncDisposable
     }
 
     [HumansFact]
+    public async Task Decide_DenyWithReplayedAllow_Refused()
+    {
+        var ct = Xunit.TestContext.Current.CancellationToken;
+        var baseUri = await StartAsync(ct);
+        using var http = new HttpClient(new HttpClientHandler { AllowAutoRedirect = false, CookieContainer = new() });
+        var authorize = AuthorizeUri(baseUri, Challenge(NewVerifier()));
+        var html = await (await http.GetAsync(authorize, ct)).Content.ReadAsStringAsync(ct);
+        var antiforgery = Regex.Match(html, "name=\"__RequestVerificationToken\" type=\"hidden\" value=\"(?<token>[^\"]+)\"", RegexOptions.ExplicitCapture, TimeSpan.FromSeconds(1)).Groups["token"].Value;
+        var form = Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(authorize.Query)
+            .Select(p => new KeyValuePair<string, string>(p.Key, p.Value.ToString()))
+            .Append(new("decision", "allow"))
+            .Append(new("decision", "deny"))
+            .Append(new("__RequestVerificationToken", antiforgery));
+
+        var response = await http.PostAsync(new Uri(baseUri, "/" + Section.AuthorizePath), new FormUrlEncodedContent(form), ct);
+
+        response.Headers.Location!.Query.Should().Contain("error=access_denied");
+        (await _oauth.GetConnectionsAsync(ct)).Should().BeEmpty();
+    }
+
+    [HumansFact]
     public async Task Authorize_PersonNoScopeAdmits_Forbidden()
     {
         var ct = Xunit.TestContext.Current.CancellationToken;

@@ -35,14 +35,17 @@ internal sealed class BackdoorOAuthController(
         if (!AsksForThisServer(request)) return Refuse(Errors.InvalidTarget);
 
         return View(new BackdoorAuthorizeViewModel(
-            client.DisplayName,
+            client.ClientName,
             new Uri(client.RedirectUri).Host,
-            Request.Query.Select(p => new KeyValuePair<string, string>(p.Key, p.Value.ToString())).ToList()));
+            Request.Query
+                .Where(p => !FormFields.Contains(p.Key))
+                .Select(p => new KeyValuePair<string, string>(p.Key, p.Value.ToString()))
+                .ToList()));
     }
 
     [HttpPost("")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Decide(string? decision, CancellationToken ct)
+    public async Task<IActionResult> Decide(CancellationToken ct)
     {
         var (request, client) = ReadRequest();
         if (request is null || client is null) return BadRequest();
@@ -50,7 +53,10 @@ internal sealed class BackdoorOAuthController(
         var userId = GetCurrentUserId();
         if (userId is null) return Forbid();
 
-        if (!string.Equals(decision, "allow", StringComparison.Ordinal)) return Refuse(Errors.AccessDenied);
+        // A replayed or crafted second value must never turn a Deny into an Allow.
+        var decision = Request.Form[DecisionField];
+        if (decision.Count != 1 || !string.Equals(decision[0], "allow", StringComparison.Ordinal))
+            return Refuse(Errors.AccessDenied);
         if (!AsksForThisServer(request)) return Refuse(Errors.InvalidTarget);
 
         var identity = await connections.ApproveAsync(userId.Value, client, Section.McpResource(Request), ct);
@@ -58,6 +64,12 @@ internal sealed class BackdoorOAuthController(
 
         return SignIn(new ClaimsPrincipal(identity), OpenIddictServerAspNetCoreDefaults.AuthenticationScheme);
     }
+
+    private const string DecisionField = "decision";
+
+    /// <summary>The page's own form fields, never replayed from the query.</summary>
+    private static readonly HashSet<string> FormFields =
+        new([DecisionField, "__RequestVerificationToken"], StringComparer.OrdinalIgnoreCase);
 
     private (OpenIddictRequest? Request, BackdoorOAuthClient? Client) ReadRequest()
     {

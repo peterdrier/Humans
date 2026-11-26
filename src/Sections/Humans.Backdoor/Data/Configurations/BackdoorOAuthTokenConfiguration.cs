@@ -16,7 +16,6 @@ internal sealed class BackdoorOAuthTokenConfiguration : IEntityTypeConfiguration
         builder.Property(t => t.Status).HasMaxLength(50).IsRequired();
         builder.Property(t => t.ReferenceId).HasMaxLength(100);
 
-        // Deleting a connection takes its tokens with it.
         builder.HasOne<BackdoorOAuthConnection>()
             .WithMany()
             .HasForeignKey(t => t.ConnectionId)

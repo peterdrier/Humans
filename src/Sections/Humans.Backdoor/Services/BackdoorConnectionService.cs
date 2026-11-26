@@ -16,6 +16,7 @@ namespace Humans.Backdoor.Services;
 internal sealed class BackdoorConnectionService(
     IBackdoorOAuthRepository repository,
     IOpenIddictAuthorizationManager authorizations,
+    IOpenIddictTokenManager tokens,
     IBackdoorApiKeyService keys,
     INotificationEmitter notifications,
     IAuditLogService audit,
@@ -58,7 +59,7 @@ internal sealed class BackdoorConnectionService(
             BackdoorAuditActions.BackdoorConnectionApproved,
             AuditEntityTypes.BackdoorConnection,
             connectionId,
-            $"Sign in with Humans: {client.DisplayName} connected",
+            $"Sign in with Humans: {client.ClientName} connected",
             userId,
             relatedEntityId: userId,
             relatedEntityType: AuditSubjectTypes.User);
@@ -67,7 +68,7 @@ internal sealed class BackdoorConnectionService(
             BackdoorNotificationSources.ConnectionApproved,
             NotificationClass.Informational,
             NotificationPriority.Normal,
-            localizer["Backdoor_Connection_Notification_Title", client.DisplayName],
+            localizer["Backdoor_Connection_Notification_Title", client.ClientName],
             [userId],
             body: localizer["Backdoor_Connection_Notification_Body"],
             actionUrl: "/Backdoor",
@@ -82,7 +83,7 @@ internal sealed class BackdoorConnectionService(
         [.. (await repository.GetConnectionsAsync(ct))
             .Where(c => string.Equals(c.Status, Statuses.Valid, StringComparison.Ordinal))
             .Select(c => new BackdoorConnectionRow(
-                c.Id, c.UserId, BackdoorOAuthClients.Find(c.ClientId)?.DisplayName ?? c.ClientId, c.CreatedAt))];
+                c.Id, c.UserId, BackdoorOAuthClients.Find(c.ClientId)?.ClientName ?? c.ClientId, c.CreatedAt))];
 
     public async Task<bool> RevokeAsync(Guid connectionId, Guid actorUserId, CancellationToken ct = default)
     {
@@ -98,23 +99,26 @@ internal sealed class BackdoorConnectionService(
             BackdoorAuditActions.BackdoorConnectionRevoked,
             AuditEntityTypes.BackdoorConnection,
             connectionId,
-            $"Sign in with Humans: {BackdoorOAuthClients.Find(connection.ClientId)?.DisplayName ?? connection.ClientId} connection revoked",
+            $"Sign in with Humans: {BackdoorOAuthClients.Find(connection.ClientId)?.ClientName ?? connection.ClientId} connection revoked",
             actorUserId,
             relatedEntityId: connection.UserId,
             relatedEntityType: AuditSubjectTypes.User);
         return true;
     }
 
-    /// <summary>The token rows go too, so nothing under the connection is left marked usable.</summary>
+    /// <summary>
+    /// Through OpenIddict's managers, so status changes have one writer, the stores. The tokens go too, so nothing
+    /// under the connection is left marked usable.
+    /// </summary>
     private async Task RevokeWithTokensAsync(IReadOnlyCollection<Guid> connectionIds, CancellationToken ct)
     {
-        await repository.SetConnectionStatusAsync(connectionIds, Statuses.Revoked, ct);
-        var tokenIds = (await repository.GetTokensAsync(ct))
-            .Where(t => t.ConnectionId is { } c && connectionIds.Contains(c))
-            .Select(t => t.Id)
-            .ToList();
-        if (tokenIds.Count > 0)
-            await repository.SetTokenStatusAsync(tokenIds, Statuses.Revoked, ct);
+        foreach (var id in connectionIds)
+        {
+            var identifier = OAuthStoreValues.FormatId(id)!;
+            if (await authorizations.FindByIdAsync(identifier, ct) is { } authorization)
+                await authorizations.TryRevokeAsync(authorization, ct);
+            await tokens.RevokeByAuthorizationIdAsync(identifier, ct);
+        }
     }
 
     public async Task<IReadOnlyList<UserDataSlice>> ContributeForUserAsync(Guid userId, CancellationToken ct)
@@ -124,7 +128,7 @@ internal sealed class BackdoorConnectionService(
             .OrderByDescending(c => c.CreatedAt)
             .Select(c => new
             {
-                Client = BackdoorOAuthClients.Find(c.ClientId)?.DisplayName ?? c.ClientId,
+                Client = BackdoorOAuthClients.Find(c.ClientId)?.ClientName ?? c.ClientId,
                 c.Status,
                 CreatedAt = c.CreatedAt.ToIso8601(),
             })

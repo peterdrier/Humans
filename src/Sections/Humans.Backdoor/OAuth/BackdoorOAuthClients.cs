@@ -8,7 +8,7 @@ namespace Humans.Backdoor.OAuth;
 /// An app that may ask a person to "Sign in with Humans". Public: no secret, since it runs on people's devices. What
 /// binds the id to the app is the return address, which a sign-in is only ever sent back to.
 /// </summary>
-internal sealed record BackdoorOAuthClient(string ClientId, string DisplayName, string RedirectUri);
+internal sealed record BackdoorOAuthClient(string ClientId, string ClientName, string RedirectUri);
 
 /// <summary>The clients, registered in code. Nobody registers one at run time.</summary>
 internal static class BackdoorOAuthClients

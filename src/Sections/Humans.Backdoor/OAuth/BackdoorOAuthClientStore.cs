@@ -68,7 +68,7 @@ internal sealed class BackdoorOAuthClientStore : IOpenIddictApplicationStore<Bac
         new(ConsentTypes.Explicit);
 
     public ValueTask<string?> GetDisplayNameAsync(BackdoorOAuthClient application, CancellationToken cancellationToken) =>
-        new(application.DisplayName);
+        new(application.ClientName);
 
     public ValueTask<ImmutableDictionary<CultureInfo, string>> GetDisplayNamesAsync(
         BackdoorOAuthClient application, CancellationToken cancellationToken) =>
