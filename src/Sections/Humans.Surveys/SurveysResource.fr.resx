@@ -407,4 +407,11 @@
   <data name="Surveys_Admin_Results_ColumnShare" xml:space="preserve"><value>Part</value></data>
   <data name="Surveys_Admin_Results_AskedWhen" xml:space="preserve"><value>posée si {0}</value></data>
   <data name="Surveys_Validation_PromptRequired" xml:space="preserve"><value>Chaque question doit avoir un titre.</value></data>
+  <data name="Surveys_Admin_Builder_AskForComment" xml:space="preserve"><value>Demander un commentaire</value></data>
+  <data name="Surveys_Admin_Builder_Field_CommentPrompt" xml:space="preserve"><value>Invitation au commentaire</value></data>
+  <data name="Surveys_Admin_Builder_CommentOptions" xml:space="preserve"><value>Demander quand ils choisissent</value></data>
+  <data name="Surveys_Admin_Builder_CommentOptionsHelp" xml:space="preserve"><value>N’en choisissez aucune pour demander après n’importe quel choix.</value></data>
+  <data name="Surveys_Answer_CommentDefault" xml:space="preserve"><value>Quelque chose à ajouter ?</value></data>
+  <data name="Surveys_Validation_CommentOptionUnknown" xml:space="preserve"><value>Un commentaire ne peut être demandé que sur les options de la question elle-même.</value></data>
+  <data name="Surveys_Admin_Results_Comments" xml:space="preserve"><value>Commentaires</value></data>
 </root>

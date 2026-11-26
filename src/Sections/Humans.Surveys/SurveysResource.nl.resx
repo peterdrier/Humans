@@ -421,4 +421,11 @@
   <data name="Surveys_Admin_Results_ColumnShare" xml:space="preserve"><value>Aandeel</value></data>
   <data name="Surveys_Admin_Results_AskedWhen" xml:space="preserve"><value>gevraagd bij {0}</value></data>
   <data name="Surveys_Validation_PromptRequired" xml:space="preserve"><value>Elke vraag heeft een titel nodig.</value></data>
+  <data name="Surveys_Admin_Builder_AskForComment" xml:space="preserve"><value>Om een opmerking vragen</value></data>
+  <data name="Surveys_Admin_Builder_Field_CommentPrompt" xml:space="preserve"><value>Vraag bij de opmerking</value></data>
+  <data name="Surveys_Admin_Builder_CommentOptions" xml:space="preserve"><value>Vragen bij keuze voor</value></data>
+  <data name="Surveys_Admin_Builder_CommentOptionsHelp" xml:space="preserve"><value>Kies er geen om na elke keuze te vragen.</value></data>
+  <data name="Surveys_Answer_CommentDefault" xml:space="preserve"><value>Wil je nog iets toevoegen?</value></data>
+  <data name="Surveys_Validation_CommentOptionUnknown" xml:space="preserve"><value>Een opmerking kan alleen worden gevraagd bij de eigen opties van de vraag.</value></data>
+  <data name="Surveys_Admin_Results_Comments" xml:space="preserve"><value>Opmerkingen</value></data>
 </root>

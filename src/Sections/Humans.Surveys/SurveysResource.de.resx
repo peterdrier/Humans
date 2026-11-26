@@ -407,4 +407,11 @@
   <data name="Surveys_Admin_Results_ColumnShare" xml:space="preserve"><value>Anteil</value></data>
   <data name="Surveys_Admin_Results_AskedWhen" xml:space="preserve"><value>gefragt bei {0}</value></data>
   <data name="Surveys_Validation_PromptRequired" xml:space="preserve"><value>Jede Frage braucht einen Titel.</value></data>
+  <data name="Surveys_Admin_Builder_AskForComment" xml:space="preserve"><value>Um einen Kommentar bitten</value></data>
+  <data name="Surveys_Admin_Builder_Field_CommentPrompt" xml:space="preserve"><value>Kommentar-Aufforderung</value></data>
+  <data name="Surveys_Admin_Builder_CommentOptions" xml:space="preserve"><value>Fragen, wenn gewählt wird</value></data>
+  <data name="Surveys_Admin_Builder_CommentOptionsHelp" xml:space="preserve"><value>Keine wählen, um nach jeder Auswahl zu fragen.</value></data>
+  <data name="Surveys_Answer_CommentDefault" xml:space="preserve"><value>Möchtest du etwas ergänzen?</value></data>
+  <data name="Surveys_Validation_CommentOptionUnknown" xml:space="preserve"><value>Ein Kommentar kann nur zu den eigenen Optionen der Frage erbeten werden.</value></data>
+  <data name="Surveys_Admin_Results_Comments" xml:space="preserve"><value>Kommentare</value></data>
 </root>

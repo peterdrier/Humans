@@ -795,6 +795,7 @@ internal sealed class SurveyService(
             Help = Copy(q.HelpText),
             MinLabel = Copy(q.RatingMinLabel),
             MaxLabel = Copy(q.RatingMaxLabel),
+            CommentPrompt = Copy(q.Comment?.Prompt ?? LocalizedText.Empty),
             Options = q.Options.Select(o => new { Option = o, Label = Copy(o.Label) }).ToList(),
             GridRows = (q.GridRows ?? []).Select(row => new { Row = row, Label = Copy(row.Label) }).ToList(),
             InformationImages = (q.InformationImages ?? []).Select(image => new
@@ -815,7 +816,7 @@ internal sealed class SurveyService(
         };
         foreach (var q in questions)
         {
-            allTexts.AddRange([q.Prompt, q.Help, q.MinLabel, q.MaxLabel]);
+            allTexts.AddRange([q.Prompt, q.Help, q.MinLabel, q.MaxLabel, q.CommentPrompt]);
             allTexts.AddRange(q.Options.Select(o => o.Label));
             allTexts.AddRange(q.GridRows.Select(row => row.Label));
             allTexts.AddRange(q.InformationImages.Select(image => image.Label));
@@ -852,6 +853,9 @@ internal sealed class SurveyService(
                 HelpText = new LocalizedText(q.Help),
                 RatingMinLabel = new LocalizedText(q.MinLabel),
                 RatingMaxLabel = new LocalizedText(q.MaxLabel),
+                Comment = q.Question.Comment is { } comment
+                    ? new SurveyCommentSettings(new LocalizedText(q.CommentPrompt), comment.OptionValues)
+                    : null,
                 Options = q.Options.Select(o => o.Option with { Label = new LocalizedText(o.Label) }).ToList(),
                 GridRows = q.GridRows.Select(row => row.Row with { Label = new LocalizedText(row.Label) }).ToList(),
                 InformationImages = q.InformationImages.Select(image => image.Image with

@@ -21,8 +21,9 @@ internal static class SurveyAnswerNormalization
         if (rating is { } ratingValue && (ratingValue < (question.RatingMin ?? 1) || ratingValue > (question.RatingMax ?? 5)))
             return (answer, "The rating is outside the question's range.");
 
-        var text = question.Type is SurveyQuestionType.ShortText or SurveyQuestionType.LongText
-            && !string.IsNullOrWhiteSpace(answer.TextValue) ? answer.TextValue : null;
+        var takesText = question.Type is SurveyQuestionType.ShortText or SurveyQuestionType.LongText
+            || question.Comment?.IsTriggeredBy(choices) == true;
+        var text = takesText && !string.IsNullOrWhiteSpace(answer.TextValue) ? answer.TextValue : null;
         if (text is not null && text.EnumerateRunes().Count() > 4000)
             return (answer, "A text answer must be 4000 characters or fewer.");
 

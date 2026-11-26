@@ -4656,6 +4656,44 @@ public class SurveyServiceTests
     }
 
     [HumansFact]
+    public async Task CreateAsync_CommentOnUnknownOption_IsRejected()
+    {
+        var question = Q("Agree?", SurveyQuestionType.SingleChoice, 1, 1, new OptionInput(null, 0, "yes", L("Yes")))
+            with { Comment = new SurveyCommentSettings(LocalizedText.Empty, ["no"]) };
+
+        var result = await CreateService().CreateAsync(Input(question), Guid.NewGuid(), TestContext.Current.CancellationToken);
+
+        result.Error!.Key.Should().Be("Surveys_Validation_CommentOptionUnknown");
+    }
+
+    [HumansFact]
+    public async Task GetResultsAsync_ChoiceComments_GroupByChoice()
+    {
+        var surveyId = Guid.NewGuid();
+        var choiceId = Guid.NewGuid();
+        var survey = SurveyWith(SurveyStatus.Closed, null, null);
+        typeof(Survey).GetProperty(nameof(Survey.Id))!.SetValue(survey, surveyId);
+        var choice = ChoiceQuestion(choiceId, surveyId, SurveyQuestionType.SingleChoice, 1, ("yes", "Yes", 1), ("no", "No", 2));
+        choice.Comment = new SurveyCommentSettings(LocalizedText.Empty, []);
+        survey.Questions = new List<SurveyQuestion> { choice };
+        _repo.GetByIdAsync(surveyId, Arg.Any<CancellationToken>()).Returns(survey);
+        var now = _clock.GetCurrentInstant();
+        SurveyResponse Answer(string value, string? text)
+        {
+            var answer = ChoiceAnswer(choiceId, value);
+            answer.TextValue = text;
+            return SubmittedResponse(surveyId, ResponseAnonymity.Anonymous, SurveyInputMethod.Slug, now, null, answer);
+        }
+        _repo.GetResponsesForResultsAsync(surveyId, Arg.Any<CancellationToken>())
+            .Returns(new List<SurveyResponse> { Answer("no", "too dear"), Answer("yes", "fine"), Answer("yes", null) });
+
+        var result = await CreateResults().GetResultsAsync(surveyId, TestContext.Current.CancellationToken);
+
+        result!.Questions.Single().FreeTextByParentChoice.Select(g => (g.Label, string.Join("|", g.Texts)))
+            .Should().Equal(("Yes", "fine"), ("No", "too dear"));
+    }
+
+    [HumansFact]
     public async Task GetResultsAsync_RespondentAnswers_FollowSurveyOrder()
     {
         var surveyId = Guid.NewGuid();

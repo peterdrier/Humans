@@ -20,7 +20,8 @@ internal static class SurveyCsvExportBuilder
         {
             var header = new List<object?> { "response_id", "anonymity", "input_method", "submitted_at", "user_id", "user_name" };
             var used = header.Cast<string>().Select(HeaderKey).ToHashSet(StringComparer.OrdinalIgnoreCase);
-            header.AddRange(export.Questions.Select(q => (object?)QuestionHeader(q, export.Questions, used)));
+            header.AddRange(export.Questions.SelectMany(q =>
+                SurveyResponsesMarkdownBuilder.ColumnHeaders(q).Select((h, i) => (object?)(i == 0 ? QuestionHeader(q, export.Questions, used) : h))));
             csv.WriteRow(header.ToArray());
 
             foreach (var row in export.Rows)
@@ -39,7 +40,7 @@ internal static class SurveyCsvExportBuilder
 
                 foreach (var q in export.Questions)
                 {
-                    cells.Add(byQuestion.TryGetValue(q.QuestionId, out var answer) ? SurveyResponsesMarkdownBuilder.CellValue(q, answer) : string.Empty);
+                    cells.AddRange(SurveyResponsesMarkdownBuilder.Cells(q, byQuestion.GetValueOrDefault(q.QuestionId)));
                 }
 
                 csv.WriteRow(cells.ToArray());

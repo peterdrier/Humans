@@ -421,4 +421,11 @@
   <data name="Surveys_Admin_Results_ColumnShare" xml:space="preserve"><value>Porcentaje</value></data>
   <data name="Surveys_Admin_Results_AskedWhen" xml:space="preserve"><value>se pregunta si {0}</value></data>
   <data name="Surveys_Validation_PromptRequired" xml:space="preserve"><value>Cada pregunta necesita un título.</value></data>
+  <data name="Surveys_Admin_Builder_AskForComment" xml:space="preserve"><value>Pedir un comentario</value></data>
+  <data name="Surveys_Admin_Builder_Field_CommentPrompt" xml:space="preserve"><value>Texto del comentario</value></data>
+  <data name="Surveys_Admin_Builder_CommentOptions" xml:space="preserve"><value>Pedir cuando elijan</value></data>
+  <data name="Surveys_Admin_Builder_CommentOptionsHelp" xml:space="preserve"><value>No elijas ninguna para pedirlo tras cualquier opción.</value></data>
+  <data name="Surveys_Answer_CommentDefault" xml:space="preserve"><value>¿Algo que añadir?</value></data>
+  <data name="Surveys_Validation_CommentOptionUnknown" xml:space="preserve"><value>Solo se puede pedir un comentario sobre las opciones de la propia pregunta.</value></data>
+  <data name="Surveys_Admin_Results_Comments" xml:space="preserve"><value>Comentarios</value></data>
 </root>

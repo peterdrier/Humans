@@ -2,6 +2,18 @@
 
 @{
     var nextAnswerIndex = 0;
+
+    void RenderComment(SurveyPageQuestion q, int answerIndex)
+    {
+        if (!q.AsksForComment) return;
+        var shown = q.SelectedOptionValues.Count > 0
+            && (q.CommentOptionValues.Count == 0 || q.SelectedOptionValues.Any(v => q.CommentOptionValues.Contains(v, StringComparer.Ordinal)));
+        var prompt = string.IsNullOrWhiteSpace(q.CommentPrompt) ? Localizer["Surveys_Answer_CommentDefault"].Value : q.CommentPrompt;
+        <div class="survey-comment mt-2" data-comment-options="@string.Join("\n", q.CommentOptionValues)" hidden="@(shown ? null : "hidden")">
+            <label class="form-label small" for="q@(answerIndex)_comment">@prompt</label>
+            <textarea class="form-control" rows="2" id="q@(answerIndex)_comment" name="Answers[@answerIndex].TextValue">@q.TextValue</textarea>
+        </div>
+    }
 }
 
 @for (var i = 0; i < Model.Questions.Count; i++)
@@ -116,6 +128,7 @@
                         <label class="form-check-label" for="q@(answerIndex)_@opt.Value">@opt.Label</label>
                     </div>
                 }
+                RenderComment(q, answerIndex);
                 break;
 
             case SurveyQuestionType.MultiChoice:
@@ -129,6 +142,7 @@
                         <label class="form-check-label" for="q@(answerIndex)_@opt.Value">@opt.Label</label>
                     </div>
                 }
+                RenderComment(q, answerIndex);
                 break;
 
             case SurveyQuestionType.ShortText:
@@ -300,6 +314,14 @@
 }
 
 <script>
+document.addEventListener('change', function (event) {
+    const fieldset = event.target.closest('fieldset');
+    const comment = fieldset && fieldset.querySelector('.survey-comment');
+    if (!comment || !event.target.classList.contains('form-check-input')) return;
+    const triggers = comment.dataset.commentOptions ? comment.dataset.commentOptions.split('\n') : [];
+    const picked = Array.from(fieldset.querySelectorAll('.form-check-input:checked')).map(input => input.value);
+    comment.hidden = !picked.some(value => triggers.length === 0 || triggers.includes(value));
+});
 document.addEventListener('change', function (event) {
     const table = event.target.closest('.survey-ranked-choice');
     if (!table || !event.target.classList.contains('ranked-selection')) return;

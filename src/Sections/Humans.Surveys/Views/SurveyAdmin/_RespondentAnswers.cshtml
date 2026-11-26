@@ -37,6 +37,10 @@
         else if (answer.SelectedLabels.Count > 0)
         {
             @string.Join(", ", answer.SelectedLabels)
+            @if (!string.IsNullOrEmpty(answer.TextValue))
+            {
+                <div class="text-muted mt-1"><i class="fa-regular fa-comment me-2" aria-hidden="true"></i>@answer.TextValue</div>
+            }
         }
         else if (answer.RatingValue is { } rating)
         {

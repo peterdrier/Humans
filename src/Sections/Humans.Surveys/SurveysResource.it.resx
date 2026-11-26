@@ -407,4 +407,11 @@
   <data name="Surveys_Admin_Results_ColumnShare" xml:space="preserve"><value>Quota</value></data>
   <data name="Surveys_Admin_Results_AskedWhen" xml:space="preserve"><value>chiesta se {0}</value></data>
   <data name="Surveys_Validation_PromptRequired" xml:space="preserve"><value>Ogni domanda deve avere un titolo.</value></data>
+  <data name="Surveys_Admin_Builder_AskForComment" xml:space="preserve"><value>Chiedi un commento</value></data>
+  <data name="Surveys_Admin_Builder_Field_CommentPrompt" xml:space="preserve"><value>Testo del commento</value></data>
+  <data name="Surveys_Admin_Builder_CommentOptions" xml:space="preserve"><value>Chiedi quando scelgono</value></data>
+  <data name="Surveys_Admin_Builder_CommentOptionsHelp" xml:space="preserve"><value>Non sceglierne nessuna per chiederlo dopo qualsiasi scelta.</value></data>
+  <data name="Surveys_Answer_CommentDefault" xml:space="preserve"><value>Qualcosa da aggiungere?</value></data>
+  <data name="Surveys_Validation_CommentOptionUnknown" xml:space="preserve"><value>Un commento può essere chiesto solo sulle opzioni della domanda stessa.</value></data>
+  <data name="Surveys_Admin_Results_Comments" xml:space="preserve"><value>Commenti</value></data>
 </root>

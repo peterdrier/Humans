@@ -407,4 +407,11 @@
   <data name="Surveys_Admin_Results_ColumnShare" xml:space="preserve"><value>Percentatge</value></data>
   <data name="Surveys_Admin_Results_AskedWhen" xml:space="preserve"><value>es pregunta si {0}</value></data>
   <data name="Surveys_Validation_PromptRequired" xml:space="preserve"><value>Cada pregunta necessita un títol.</value></data>
+  <data name="Surveys_Admin_Builder_AskForComment" xml:space="preserve"><value>Demanar un comentari</value></data>
+  <data name="Surveys_Admin_Builder_Field_CommentPrompt" xml:space="preserve"><value>Text del comentari</value></data>
+  <data name="Surveys_Admin_Builder_CommentOptions" xml:space="preserve"><value>Demanar quan triïn</value></data>
+  <data name="Surveys_Admin_Builder_CommentOptionsHelp" xml:space="preserve"><value>No en triïs cap per demanar-ho després de qualsevol opció.</value></data>
+  <data name="Surveys_Answer_CommentDefault" xml:space="preserve"><value>Alguna cosa a afegir?</value></data>
+  <data name="Surveys_Validation_CommentOptionUnknown" xml:space="preserve"><value>Només es pot demanar un comentari sobre les opcions de la mateixa pregunta.</value></data>
+  <data name="Surveys_Admin_Results_Comments" xml:space="preserve"><value>Comentaris</value></data>
 </root>
