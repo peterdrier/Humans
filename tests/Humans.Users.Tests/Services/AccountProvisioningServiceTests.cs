@@ -80,12 +80,9 @@ public class AccountProvisioningServiceTests
         public Task<IReadOnlyDictionary<Guid, IReadOnlyList<(string Provider, string ProviderKey)>>>
             GetExternalLoginsByUserIdsAsync(IReadOnlyCollection<Guid> userIds, CancellationToken ct = default) =>
             throw new NotSupportedException();
-        public Task<IReadOnlyList<ContactField>> GetContactFieldsByUserIdReadOnlyAsync(
-            Guid userId, CancellationToken ct = default) =>
-            throw new NotSupportedException();
         public Task<IReadOnlyList<ContactField>> GetAllContactFieldsAsync(CancellationToken ct = default) =>
             throw new NotSupportedException();
-        public Task<IReadOnlyList<ContactField>> GetContactFieldsByUserIdForMutationAsync(
+        public Task<IReadOnlyList<ContactField>> GetContactFieldsByUserIdAsync(
             Guid userId, CancellationToken ct = default) =>
             throw new NotSupportedException();
         public Task BatchSaveAsync(
@@ -132,16 +129,13 @@ public class AccountProvisioningServiceTests
             throw new NotSupportedException();
         public Task<bool> SetRejectedAsync(Guid userId, CancellationToken ct = default) =>
             throw new NotSupportedException();
-        public Task<IReadOnlyList<UserEmail>> GetUserEmailsByUserIdReadOnlyAsync(
+        public Task<IReadOnlyList<UserEmail>> GetUserEmailsByUserIdAsync(
             Guid userId, CancellationToken ct = default) =>
             throw new NotSupportedException();
-        public Task<IReadOnlyList<UserEmail>> GetUserEmailsByUserIdForMutationAsync(
-            Guid userId, CancellationToken ct = default) =>
-            throw new NotSupportedException();
-        public Task<UserEmail?> GetUserEmailByIdAndUserIdAsync(
+        public Task<UserEmail?> GetUserEmailForUserAsync(
             Guid emailId, Guid userId, CancellationToken ct = default) =>
             throw new NotSupportedException();
-        public Task<UserEmail?> GetUserEmailByIdReadOnlyAsync(Guid emailId, CancellationToken ct = default) =>
+        public Task<UserEmail?> GetUserEmailByIdAsync(Guid emailId, CancellationToken ct = default) =>
             throw new NotSupportedException();
         public Task<IReadOnlyList<UserEmail>> GetUserEmailsByAddressAsync(
             string normalizedEmail, string? alternateEmail, CancellationToken ct = default) =>
@@ -151,10 +145,10 @@ public class AccountProvisioningServiceTests
             throw new NotSupportedException();
         public Task<IReadOnlyList<UserEmail>> GetAllUserEmailsAsync(CancellationToken ct = default) =>
             throw new NotSupportedException();
-        public Task<IReadOnlyList<Guid>> GetUserIdsHavingAnyUserEmailAsync(
+        public Task<IReadOnlyList<Guid>> GetUserIdsWithEmailsAsync(
             IReadOnlyCollection<Guid> userIds, CancellationToken ct = default) =>
             throw new NotSupportedException();
-        public Task RemoveAllUserEmailsForUserAndSaveAsync(Guid userId, CancellationToken ct = default) =>
+        public Task RemoveUserEmailsAsync(Guid userId, CancellationToken ct = default) =>
             throw new NotSupportedException();
         public Task<bool> MarkUserEmailVerifiedAsync(
             Guid emailId, Instant now, CancellationToken ct = default) =>
