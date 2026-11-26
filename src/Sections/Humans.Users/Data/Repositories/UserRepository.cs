@@ -56,7 +56,7 @@ internal sealed partial class UserRepository : IUserRepository
         return true;
     }
 
-    public async Task<bool> SetLastLoginAsync(
+    public async Task<bool> SetLastSignInAsync(
         Guid userId, Instant at, CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);
@@ -64,7 +64,7 @@ internal sealed partial class UserRepository : IUserRepository
         if (user is null)
             return false;
 
-        user.LastLoginAt = at;
+        user.LastSignInAt = at;
         await ctx.SaveChangesAsync(ct);
         return true;
     }

@@ -23,7 +23,7 @@ public sealed class CachingTeamServiceGetTeamDetailTests : IDisposable
 {
     private readonly ServiceProvider _serviceProvider;
     private readonly ITeamManagementService _innerTeamService;
-    private readonly IRoleAssignmentService _roleAssignmentService;
+    private readonly ISystemRoleService _systemRoleService;
     private readonly TeamPageService _pages;
 
     public CachingTeamServiceGetTeamDetailTests()
@@ -42,7 +42,7 @@ public sealed class CachingTeamServiceGetTeamDetailTests : IDisposable
             .Returns(call => Task.FromResult<IReadOnlyDictionary<Guid, TeamInfo>>(
                 call.Arg<IReadOnlyDictionary<Guid, TeamReadSnapshot>>()
                     .ToDictionary(pair => pair.Key, pair => pair.Value.Team)));
-        _roleAssignmentService = Substitute.For<IRoleAssignmentService>();
+        _systemRoleService = Substitute.For<ISystemRoleService>();
         var userService = Substitute.For<IUserService>();
 
         userService
@@ -52,7 +52,7 @@ public sealed class CachingTeamServiceGetTeamDetailTests : IDisposable
         var services = new ServiceCollection();
         services.AddSingleton(userService);
         services.AddSingleton(userService);
-        services.AddSingleton(_roleAssignmentService);
+        services.AddSingleton(_systemRoleService);
         services.AddKeyedScoped<ITeamManagementService>(
             CachingTeamService.InnerServiceKey,
             (_, _) => _innerTeamService);
@@ -64,7 +64,7 @@ public sealed class CachingTeamServiceGetTeamDetailTests : IDisposable
         _pages = new TeamPageService(
             service,
             Substitute.For<Humans.Google.Contracts.ITeamResourceService>(),
-            _roleAssignmentService);
+            _systemRoleService);
     }
 
     [HumansTheory]
@@ -144,9 +144,9 @@ public sealed class CachingTeamServiceGetTeamDetailTests : IDisposable
         _innerTeamService
             .GetUserPendingRequestAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns((TeamJoinRequestSnapshot?)null);
-        _roleAssignmentService.IsUserBoardMemberAsync(memberId, Arg.Any<CancellationToken>()).Returns(false);
-        _roleAssignmentService.IsUserAdminAsync(memberId, Arg.Any<CancellationToken>()).Returns(false);
-        _roleAssignmentService.IsUserTeamsAdminAsync(memberId, Arg.Any<CancellationToken>()).Returns(false);
+        _systemRoleService.IsUserBoardMemberAsync(memberId, Arg.Any<CancellationToken>()).Returns(false);
+        _systemRoleService.IsUserAdminAsync(memberId, Arg.Any<CancellationToken>()).Returns(false);
+        _systemRoleService.IsUserTeamsAdminAsync(memberId, Arg.Any<CancellationToken>()).Returns(false);
 
         var result = await _pages.GetTeamDetailAsync("alpha", memberId, Xunit.TestContext.Current.CancellationToken);
 
@@ -182,9 +182,9 @@ public sealed class CachingTeamServiceGetTeamDetailTests : IDisposable
         _innerTeamService
             .GetUserPendingRequestAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
             .Returns((TeamJoinRequestSnapshot?)null);
-        _roleAssignmentService.IsUserBoardMemberAsync(viewerId, Arg.Any<CancellationToken>()).Returns(false);
-        _roleAssignmentService.IsUserAdminAsync(viewerId, Arg.Any<CancellationToken>()).Returns(false);
-        _roleAssignmentService.IsUserTeamsAdminAsync(viewerId, Arg.Any<CancellationToken>()).Returns(false);
+        _systemRoleService.IsUserBoardMemberAsync(viewerId, Arg.Any<CancellationToken>()).Returns(false);
+        _systemRoleService.IsUserAdminAsync(viewerId, Arg.Any<CancellationToken>()).Returns(false);
+        _systemRoleService.IsUserTeamsAdminAsync(viewerId, Arg.Any<CancellationToken>()).Returns(false);
 
         var result = await _pages.GetTeamDetailAsync("department", viewerId, Xunit.TestContext.Current.CancellationToken);
 
@@ -209,9 +209,9 @@ public sealed class CachingTeamServiceGetTeamDetailTests : IDisposable
         child.IsPromotedToDirectory = true;
         SeedTeams(root, hiddenChild, hiddenParent, child);
         var viewer = Guid.NewGuid();
-        _roleAssignmentService.IsUserAdminAsync(viewer, Arg.Any<CancellationToken>()).Returns(string.Equals(role, RoleNames.Admin, StringComparison.Ordinal));
-        _roleAssignmentService.IsUserBoardMemberAsync(viewer, Arg.Any<CancellationToken>()).Returns(string.Equals(role, RoleNames.Board, StringComparison.Ordinal));
-        _roleAssignmentService.IsUserTeamsAdminAsync(viewer, Arg.Any<CancellationToken>()).Returns(string.Equals(role, TeamsRoles.TeamsAdmin, StringComparison.Ordinal));
+        _systemRoleService.IsUserAdminAsync(viewer, Arg.Any<CancellationToken>()).Returns(string.Equals(role, RoleNames.Admin, StringComparison.Ordinal));
+        _systemRoleService.IsUserBoardMemberAsync(viewer, Arg.Any<CancellationToken>()).Returns(string.Equals(role, RoleNames.Board, StringComparison.Ordinal));
+        _systemRoleService.IsUserTeamsAdminAsync(viewer, Arg.Any<CancellationToken>()).Returns(string.Equals(role, TeamsRoles.TeamsAdmin, StringComparison.Ordinal));
         Guid? userId = string.Equals(role, "anonymous", StringComparison.Ordinal) ? null : viewer;
 
         var rootPage = await _pages.GetTeamDetailAsync(root.Slug, userId, Xunit.TestContext.Current.CancellationToken);

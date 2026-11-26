@@ -55,7 +55,7 @@ public class AccountProvisioningServiceTests
             throw new NotSupportedException();
         public Task<bool> SetPreferredLanguageAsync(Guid userId, string preferredLanguage, CancellationToken ct = default) =>
             throw new NotSupportedException();
-        public Task<bool> SetLastLoginAsync(Guid userId, Instant at, CancellationToken ct = default) =>
+        public Task<bool> SetLastSignInAsync(Guid userId, Instant at, CancellationToken ct = default) =>
             throw new NotSupportedException();
         public Task<bool> SetMarkedFakeAsync(Guid userId, Instant at, CancellationToken ct = default) =>
             throw new NotSupportedException();
@@ -802,7 +802,7 @@ public class AccountProvisioningServiceTests
             if (imported)
                 await _service.FindOrCreateUserByEmailAsync("retry@example.org", "Retry Human", ContactSource.TicketTailor, ct);
             else
-                await _service.CompleteMagicLinkSignupAsync("retry@example.org", "Retry Human", "First", "Last", ct);
+                await _service.CompleteSignInLinkSignupAsync("retry@example.org", "Retry Human", "First", "Last", ct);
         }
 
         Func<Task> first = ProvisionAsync;
@@ -834,17 +834,17 @@ public class AccountProvisioningServiceTests
     [Xunit.InlineData(0, 257)]
     [Xunit.InlineData(1, 257)]
     [Xunit.InlineData(2, 257)]
-    public async Task CompleteMagicLinkSignupAsync_ValidatesNameLengthsBeforeCreatingAccount(int field, int length)
+    public async Task CompleteSignInLinkSignupAsync_ValidatesNameLengthsFirst(int field, int length)
     {
         string[] names = ["Burner", "First", "Last"];
         names[field] = " " + new string('x', length) + " ";
 
-        var result = await _service.CompleteMagicLinkSignupAsync(
+        var result = await _service.CompleteSignInLinkSignupAsync(
             "length@example.com", names[0], names[1], names[2], Xunit.TestContext.Current.CancellationToken);
 
         if (length > 256)
         {
-            result.Outcome.Should().Be(MagicLinkSignupCompletionOutcome.Failed);
+            result.Outcome.Should().Be(SignInLinkSignupOutcome.Failed);
             result.UserId.Should().BeNull();
             _userRepo.Count.Should().Be(0);
             _userEmailFake.All.Should().BeEmpty();
@@ -854,22 +854,22 @@ public class AccountProvisioningServiceTests
         }
         else
         {
-            result.Outcome.Should().Be(MagicLinkSignupCompletionOutcome.Created);
+            result.Outcome.Should().Be(SignInLinkSignupOutcome.Created);
             await _userService.Received(1).EnsureStubProfileAsync(
                 result.UserId!.Value, names[0].Trim(), names[1].Trim(), names[2].Trim(), Arg.Any<CancellationToken>());
         }
     }
 
     [HumansFact]
-    public async Task CompleteMagicLinkSignupAsync_CreatesUserEmailAndStubProfile()
+    public async Task CompleteSignInLinkSignup_CreatesStubProfile()
     {
-        var result = await _service.CompleteMagicLinkSignupAsync(
+        var result = await _service.CompleteSignInLinkSignupAsync(
             "magic@example.com", " Magic Human ", " Legal ", " Surname ", Xunit.TestContext.Current.CancellationToken);
 
-        result.Outcome.Should().Be(MagicLinkSignupCompletionOutcome.Created);
+        result.Outcome.Should().Be(SignInLinkSignupOutcome.Created);
         result.UserId.Should().NotBeNull();
         StoredUser(result.UserId!.Value).BurnerName.Should().Be("Magic Human");
-        StoredUser(result.UserId!.Value).LastLoginAt.Should().Be(_clock.GetCurrentInstant());
+        StoredUser(result.UserId!.Value).LastSignInAt.Should().Be(_clock.GetCurrentInstant());
         _userEmailFake.All.Should().ContainSingle(ue =>
             ue.UserId == result.UserId
             && ue.Email == "magic@example.com"
@@ -880,7 +880,7 @@ public class AccountProvisioningServiceTests
     }
 
     [HumansFact]
-    public async Task CompleteMagicLinkSignupAsync_ExistingVerifiedEmailUpdatesLastLogin()
+    public async Task CompleteSignInLinkSignupAsync_ExistingEmail_ReusesAccount()
     {
         var user = new User
         {
@@ -900,28 +900,28 @@ public class AccountProvisioningServiceTests
             UpdatedAt = _clock.GetCurrentInstant(),
         });
 
-        var result = await _service.CompleteMagicLinkSignupAsync(
+        var result = await _service.CompleteSignInLinkSignupAsync(
             "existing@example.com", "Ignored", "Ignored", "Ignored", Xunit.TestContext.Current.CancellationToken);
 
-        result.Outcome.Should().Be(MagicLinkSignupCompletionOutcome.ExistingUser);
+        result.Outcome.Should().Be(SignInLinkSignupOutcome.ExistingUser);
         result.UserId.Should().Be(user.Id);
         // The login stamp goes through the rule's single owner.
-        await _userService.Received(1).RecordLoginAsync(user.Id, Arg.Any<CancellationToken>());
+        await _userService.Received(1).RecordSignInAsync(user.Id, Arg.Any<CancellationToken>());
         await _userManager.DidNotReceive().CreateAsync(Arg.Any<User>());
     }
 
     [HumansTheory]
     [Xunit.InlineData(false)]
     [Xunit.InlineData(true)]
-    public async Task CompleteMagicLinkSignupAsync_AddVerifiedEmailFailureRollsBackUser(bool refusal)
+    public async Task CompleteSignInLinkSignup_EmailFailure_RollsBackUser(bool refusal)
     {
         _userEmailFake.ThrowOnAddVerified = !refusal;
         _userEmailFake.RefuseAddVerified = refusal;
 
-        var result = await _service.CompleteMagicLinkSignupAsync(
+        var result = await _service.CompleteSignInLinkSignupAsync(
             "rollback@example.com", "Rollback", "First", "Last", Xunit.TestContext.Current.CancellationToken);
 
-        result.Outcome.Should().Be(MagicLinkSignupCompletionOutcome.Failed);
+        result.Outcome.Should().Be(SignInLinkSignupOutcome.Failed);
         result.UserId.Should().BeNull();
         _userRepo.Count.Should().Be(0);
         await _userManager.Received(1).DeleteAsync(Arg.Any<User>());

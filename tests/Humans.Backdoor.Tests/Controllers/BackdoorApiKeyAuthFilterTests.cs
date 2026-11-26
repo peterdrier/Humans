@@ -115,7 +115,7 @@ public class BackdoorApiKeyAuthFilterTests
         var ownerId = Guid.NewGuid();
         _keys.ResolveOwnerAsync("right-key", Arg.Any<CancellationToken>())
             .Returns(new BackdoorKeyOwner(ownerId,
-                [new RoleAssignmentSnapshot("Board", null), new RoleAssignmentSnapshot("Admin", null)]));
+                [new SystemRoleSnapshot("Board", null), new SystemRoleSnapshot("Admin", null)]));
         var ctx = MakeContext(headerKey: "right-key");
 
         await Filter().OnAuthorizationAsync(ctx);

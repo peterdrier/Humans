@@ -29,6 +29,8 @@ Tickets answers who may come to the event, what they paid, and how the money rec
 
 Dashboard statistics, break-even budget and vendor-capacity reads honor request cancellation through the page builder and service decorator. Requested cancellation propagates; an unrelated vendor-capacity failure retains the zero-capacity fallback. The local stale-sync recovery save uses the same request token.
 
+Checkout methods that write to a ticketing platform carry `[ExternalWrite]`, except `RefreshOrderAsync` (TICKETS-18). Buyer cancel, admin refund, ticket void and the BoxOffice, Hi.Events and pretix webhooks call them with `CancellationToken.None` after the actor lookup or signature check, so a disconnect cannot leave a platform change unrecorded here. The buyer and admin order GETs still call `RefreshOrderAsync` with the request token, and it can cancel or resend a refund at the platform, so that tear remains open there.
+
 Bulk cache warmups publish through the shared mutation guard. A refresh, deletion, eviction or clear overlapping the load discards the partial attempt and reloads the full snapshot and derived indexes before a read can treat the cache as warmed.
 
 Configured ticket rules must be available before checkout. Successful GitHub reads are cached for ten minutes;
@@ -350,7 +352,7 @@ Outbound (what Tickets injects; the project references are the authority — `Hu
 - **Teams:** `ITeamService.GetTeamAsync(SystemTeamIds.Volunteers)` for the Volunteers cohort used by the Who-Hasn't-Bought list; `GetTeamsAsync` for team labels on the report and the onsite roster.
 - **Shifts:** `ISettingsService.GetActiveEventSettings` — the narrow read-only supplier of the active year (`EventSettingsInfo`) for `EventParticipation` derivation, the backfill page, the who-hasn't-bought report and the onsite roster; do not reach for `IShiftManagement`.
 - **Camps:** `ICampService.GetCampsForYearAsync` for camp labels on the onsite roster.
-- **Auth:** `IRoleAssignmentService.GetActiveForUserAsync` for role labels on the onsite roster.
+- **Auth:** `ISystemRoleService.GetActiveForUserAsync` for role labels on the onsite roster.
 - **Budget:** `IBudgetService` — `GetActiveYearAsync` + `ComputeBudgetSummary` feed the dashboard's break-even calculation. The Tickets→Budget bridge is Budget's: `Humans.Budget.Services.TicketingBudgetService` reads through `ITicketService` and writes through Budget's `IBudgetManagement`.
 - **EarlyEntry:** `IEarlyEntryService.GetForUserAsync` — the viewer's own earliest entry date on the holder-facing stub surfaces (see Invariants).
 - **Stripe:** `IStripeService.GetPaymentDetailsAsync` populates `PaymentMethod` / `PaymentMethodDetail` / `StripeFee` / `ApplicationFee` / `FeeTax` / `WithheldTax` per order. Configured via `STRIPE_TICKETS_KEY`; if `IsConfigured` is false, enrichment is skipped silently and the dashboard's fee breakdown stays empty.
@@ -456,7 +458,7 @@ The Tickets→Budget bridge is Budget's: `Humans.Budget.Services.TicketingBudget
 
 ### Touch-and-clean guidance
 
-- New cross-section data needs always go through the owning section's interface — `ICampaignService` / `ICampaignWrite`, `IUserService` / `IUserWrite`, `IUserEmailService`, `ITeamService`, `ISettingsService`, `IBudgetService`, `ICampService`, `IRoleAssignmentService`, `IEarlyEntryService`. The `MatchedUser` nav properties have been stripped from both entities; do not re-add them. Pass `MatchedUserId` to `<vc:human>` for display.
+- New cross-section data needs always go through the owning section's interface — `ICampaignService` / `ICampaignWrite`, `IUserService` / `IUserWrite`, `IUserEmailService`, `ITeamService`, `ISettingsService`, `IBudgetService`, `ICampService`, `ISystemRoleService`, `IEarlyEntryService`. The `MatchedUser` nav properties have been stripped from both entities; do not re-add them. Pass `MatchedUserId` to `<vc:human>` for display.
 - No Tickets service holds an `IMemoryCache` directly; the per-event `Tickets.VendorEventSummary` slice and both tracked ticket slices live in `TrackedCache` instances on the two caching decorators. The inner services (`TicketQueryService`, `TicketSyncService`, `AttendeeContactImportService`) are cache-free and never evict; each decorator evicts its own slices on its own pass-throughs. A new service that writes cached ticket rows becomes another keyed inner the query decorator fronts, never a caller of an eviction seam. Do not push `IMemoryCache` into controllers, view components, or other domain services.
 - `CachingTicketQueryService.GetDashboardStatsAsync` is a pass-through to the inner, so dashboard statistics are computed on each render; on-demand staleness during sync windows is currently acceptable.
 - When extending the Tickets→Budget bridge, remember it lives in Budget: source new read data from `ITicketService` (adding methods there only if the existing `GetTicketOrdersAsync` read model is insufficient), and edit `TicketingBudgetService` in `src/Sections/Humans.Budget/Services/`. Projection/line-item writes stay Budget-owned.

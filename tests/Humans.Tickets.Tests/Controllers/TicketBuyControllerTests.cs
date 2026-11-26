@@ -29,7 +29,7 @@ public class TicketBuyControllerTests
         var users = Substitute.For<IUserService>();
         users.GetUserInfoAsync(_userId, Arg.Any<CancellationToken>()).Returns(
             new UserInfo(_userId, "Buyer", false, "en", null, Now, Now, null, null, null, null, null, null, null, null, [], [], null));
-        return new TicketBuyController(_checkout, Substitute.For<IMagicLinkService>(), Substitute.For<IEarlyEntryService>(),
+        return new TicketBuyController(_checkout, Substitute.For<ISignInLinkService>(), Substitute.For<IEarlyEntryService>(),
             users, Substitute.For<IStringLocalizer<TicketsResource>>().AddFormatting(), NullLogger<TicketBuyController>.Instance)
         {
             ControllerContext = new ControllerContext
@@ -141,7 +141,7 @@ public class TicketBuyControllerTests
         {
             User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, ViewerId.ToString())], "test")),
         };
-        return new TicketBuyController(_checkout, Substitute.For<IMagicLinkService>(), Substitute.For<IEarlyEntryService>(), users,
+        return new TicketBuyController(_checkout, Substitute.For<ISignInLinkService>(), Substitute.For<IEarlyEntryService>(), users,
             Substitute.For<IStringLocalizer<TicketsResource>>().AddFormatting(), NullLogger<TicketBuyController>.Instance)
         {
             ControllerContext = new ControllerContext { HttpContext = http },

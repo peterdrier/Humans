@@ -80,7 +80,7 @@ The holder is a user, not a team member. Unassigning deletes the row; the audit 
 
 ## Cross-Section Dependencies
 
-- **Auth**: `IRoleAssignmentService.GetActiveForUserAsync` for Admin and RolesAdmin.
+- **Auth**: `ISystemRoleService.GetActiveForUserAsync` for Admin and RolesAdmin.
 - **Permissions**: owner kinds (`IOwnerKind`) for the tree, section declarations (`ISectionPermissions`) for key checks. Roles registers itself as an `IPermissionSource`.
 - **Owner sections**: found through DI (`IRoleOwner`, `IOwnerKind`, `IEntityNameContributor` for owner names). Roles references none of them.
 - **Teams.Contracts**: `RolePeriod` and `SlotPriority`, shared with Teams' old roles until those retire; Roles fills the team page's `ITeamRolesPart` slot.

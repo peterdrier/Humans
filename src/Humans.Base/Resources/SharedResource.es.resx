@@ -747,7 +747,7 @@
   <data name="Admin_RoleNotActive" xml:space="preserve">
     <value>Esta asignación de rol no está activa actualmente.</value>
   </data>
-  <data name="Admin_RoleEnded" xml:space="preserve">
+  <data name="Admin_RoleRevoked" xml:space="preserve">
     <value>Rol “{0}” finalizado para {1}.</value>
     <comment>{0} = role name, {1} = user display name</comment>
   </data>
@@ -830,7 +830,7 @@
   <data name="Admin_Joined" xml:space="preserve">
     <value>Incorporación</value>
   </data>
-  <data name="Admin_LastLogin" xml:space="preserve">
+  <data name="Admin_LastSignIn" xml:space="preserve">
     <value>Último acceso</value>
   </data>
   <data name="Admin_Never" xml:space="preserve">
@@ -910,56 +910,56 @@
   <data name="Camp_Plural" xml:space="preserve">
     <value>Barrios</value>
   </data>
-  <data name="Login_MagicLink_Title" xml:space="preserve">
+  <data name="Login_SignInLink_Title" xml:space="preserve">
     <value>O iniciar sesión con correo</value>
   </data>
-  <data name="Login_MagicLink_Placeholder" xml:space="preserve">
+  <data name="Login_SignInLink_Placeholder" xml:space="preserve">
     <value>tu@email.com</value>
   </data>
-  <data name="Login_MagicLink_Submit" xml:space="preserve">
+  <data name="Login_SignInLink_Submit" xml:space="preserve">
     <value>Enviarme un enlace de inicio de sesión</value>
   </data>
-  <data name="GateLogin_Title" xml:space="preserve">
+  <data name="GateSignIn_Title" xml:space="preserve">
     <value>Terminal de puerta</value>
   </data>
-  <data name="GateLogin_Description" xml:space="preserve">
+  <data name="GateSignIn_Description" xml:space="preserve">
     <value>Inicia sesión en el portátil compartido de puerta para consultar entradas. Pide las credenciales al equipo de entradas.</value>
   </data>
-  <data name="GateLogin_Username" xml:space="preserve">
+  <data name="GateSignIn_Username" xml:space="preserve">
     <value>Nombre de usuario</value>
   </data>
-  <data name="GateLogin_Password" xml:space="preserve">
+  <data name="GateSignIn_Password" xml:space="preserve">
     <value>Contraseña</value>
   </data>
-  <data name="GateLogin_SignIn" xml:space="preserve">
+  <data name="GateSignIn_SignIn" xml:space="preserve">
     <value>Iniciar sesión</value>
   </data>
-  <data name="GateLogin_WrongUsername" xml:space="preserve"><value>Nombre de usuario incorrecto. El nombre de usuario es "gate".</value></data>
-  <data name="GateLogin_NoPassword" xml:space="preserve"><value>Introduce la contraseña. La establece el equipo de entradas; pídeles la actual.</value></data>
-  <data name="GateLogin_WrongPassword" xml:space="preserve"><value>Contraseña incorrecta. La establece el equipo de entradas; pídeles la actual.</value></data>
-  <data name="GateLogin_Throttled" xml:space="preserve">
+  <data name="GateSignIn_WrongUsername" xml:space="preserve"><value>Nombre de usuario incorrecto. El nombre de usuario es "gate".</value></data>
+  <data name="GateSignIn_NoPassword" xml:space="preserve"><value>Introduce la contraseña. La establece el equipo de entradas; pídeles la actual.</value></data>
+  <data name="GateSignIn_WrongPassword" xml:space="preserve"><value>Contraseña incorrecta. La establece el equipo de entradas; pídeles la actual.</value></data>
+  <data name="GateSignIn_Throttled" xml:space="preserve">
     <value>El inicio de sesión desde esta red está pausado durante {0} segundos: se hicieron demasiados intentos con contraseña incorrecta desde aquí. Si no fuiste tú, alguien que comparte esta conexión está probando contraseñas en esta página. Espera, y luego introduce la contraseña correcta — pregunta al equipo de entradas si no estás seguro. La cuenta NO está bloqueada; los administradores de entradas pueden comprobar o cambiar la contraseña en Tickets → Gate terminal.</value>
     <comment>{0}=seconds remaining</comment>
   </data>
-  <data name="MagicLinkSent_Title" xml:space="preserve">
+  <data name="SignInLinkSent_Title" xml:space="preserve">
     <value>Revisa tu correo</value>
   </data>
-  <data name="MagicLinkSent_Message" xml:space="preserve">
+  <data name="SignInLinkSent_Message" xml:space="preserve">
     <value>Hemos enviado un enlace a esa dirección de correo desde humans@nobodies.team. Revisa tu bandeja de entrada (y la carpeta de spam).</value>
   </data>
-  <data name="MagicLinkError_RequestNew" xml:space="preserve">
+  <data name="SignInLinkError_RequestNew" xml:space="preserve">
     <value>Solicitar un nuevo enlace</value>
   </data>
-  <data name="MagicLinkError_Unreadable_Title" xml:space="preserve"><value>Este enlace no funciona</value></data>
-  <data name="MagicLinkError_Unreadable_Message" xml:space="preserve"><value>No se ha podido leer este enlace. Abre el enlace completo de tu correo.</value></data>
-  <data name="MagicLinkError_Expired_Title" xml:space="preserve"><value>Este enlace ha caducado</value></data>
-  <data name="MagicLinkError_Expired_Message" xml:space="preserve"><value>Los enlaces funcionan durante 15 minutos después de enviarse.</value></data>
-  <data name="MagicLinkError_Used_Title" xml:space="preserve"><value>Este enlace ya se ha usado</value></data>
-  <data name="MagicLinkError_Used_Message" xml:space="preserve"><value>Cada enlace funciona una sola vez.</value></data>
-  <data name="MagicLinkError_AccountNotFound_Title" xml:space="preserve"><value>Cuenta no encontrada</value></data>
-  <data name="MagicLinkError_AccountNotFound_Message" xml:space="preserve"><value>La cuenta para la que se envió este enlace ya no existe.</value></data>
-  <data name="MagicLinkError_SignupFailed_Title" xml:space="preserve"><value>No hemos podido crear tu cuenta</value></data>
-  <data name="MagicLinkError_SignupFailed_Message" xml:space="preserve"><value>No se ha guardado nada. Abre el mismo enlace otra vez para volver a intentarlo.</value></data>
+  <data name="SignInLinkError_Unreadable_Title" xml:space="preserve"><value>Este enlace no funciona</value></data>
+  <data name="SignInLinkError_Unreadable_Message" xml:space="preserve"><value>No se ha podido leer este enlace. Abre el enlace completo de tu correo.</value></data>
+  <data name="SignInLinkError_Expired_Title" xml:space="preserve"><value>Este enlace ha caducado</value></data>
+  <data name="SignInLinkError_Expired_Message" xml:space="preserve"><value>Los enlaces funcionan durante 15 minutos después de enviarse.</value></data>
+  <data name="SignInLinkError_Used_Title" xml:space="preserve"><value>Este enlace ya se ha usado</value></data>
+  <data name="SignInLinkError_Used_Message" xml:space="preserve"><value>Cada enlace funciona una sola vez.</value></data>
+  <data name="SignInLinkError_AccountNotFound_Title" xml:space="preserve"><value>Cuenta no encontrada</value></data>
+  <data name="SignInLinkError_AccountNotFound_Message" xml:space="preserve"><value>La cuenta para la que se envió este enlace ya no existe.</value></data>
+  <data name="SignInLinkError_SignupFailed_Title" xml:space="preserve"><value>No hemos podido crear tu cuenta</value></data>
+  <data name="SignInLinkError_SignupFailed_Message" xml:space="preserve"><value>No se ha guardado nada. Abre el mismo enlace otra vez para volver a intentarlo.</value></data>
   <data name="CompleteSignup_Title" xml:space="preserve">
     <value>Completa tu registro</value>
   </data>
@@ -987,19 +987,19 @@
   <data name="CompleteSignup_Submit" xml:space="preserve">
     <value>Crear cuenta</value>
   </data>
-  <data name="MagicLinkSent_BackToLogin" xml:space="preserve">
+  <data name="SignInLinkSent_BackToLogin" xml:space="preserve">
     <value>Volver al inicio de sesión</value>
   </data>
-  <data name="MagicLinkSent_Expiry" xml:space="preserve">
+  <data name="SignInLinkSent_Expiry" xml:space="preserve">
     <value>Tu enlace expira a las {0}.</value>
   </data>
-  <data name="MagicLinkConfirm_Title" xml:space="preserve">
+  <data name="SignInLinkConfirm_Title" xml:space="preserve">
     <value>Iniciar sesión</value>
   </data>
-  <data name="MagicLinkConfirm_Message" xml:space="preserve">
+  <data name="SignInLinkConfirm_Message" xml:space="preserve">
     <value>Haz clic en el botón de abajo para iniciar sesión en tu cuenta.</value>
   </data>
-  <data name="MagicLinkConfirm_SignIn" xml:space="preserve">
+  <data name="SignInLinkConfirm_SignIn" xml:space="preserve">
     <value>Iniciar sesión</value>
   </data>
   <data name="Todo_Title" xml:space="preserve">

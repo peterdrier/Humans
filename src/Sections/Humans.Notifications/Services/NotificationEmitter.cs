@@ -7,7 +7,7 @@ using NodaTime;
 
 namespace Humans.Notifications.Services;
 
-/// <summary>Must not inject ITeamService or IRoleAssignmentService: both inject this.</summary>
+/// <summary>Must not inject ITeamService or ISystemRoleService: both inject this.</summary>
 internal sealed class NotificationEmitter(
     INotificationRepository repo,
     ICommunicationPreferenceService preferenceService,

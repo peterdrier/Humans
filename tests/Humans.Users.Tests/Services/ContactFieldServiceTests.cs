@@ -24,7 +24,7 @@ namespace Humans.Users.Tests.Services;
 public sealed class ContactFieldServiceTests : ServiceTestHarness
 {
     private readonly ITeamService _teamService;
-    private readonly IRoleAssignmentService _roleAssignmentService;
+    private readonly ISystemRoleService _systemRoleService;
     private readonly IUserManagement _userService;
     private readonly IUserInfoSliceRefresher _userInfoRefresher = Substitute.For<IUserInfoSliceRefresher>();
     private readonly ContactFieldService _service;
@@ -33,13 +33,13 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
         : base(Instant.FromUtc(2024, 1, 15, 12, 0, 0))
     {
         _teamService = Substitute.For<ITeamService>();
-        _roleAssignmentService = Substitute.For<IRoleAssignmentService>();
+        _systemRoleService = Substitute.For<ISystemRoleService>();
         _userService = Substitute.For<IUserManagement>();
 
         var repository = new UserRepository(DbFactory, Clock);
 
         _service = new ContactFieldService(
-            repository, _userService, _teamService, _roleAssignmentService,
+            repository, _userService, _teamService, _systemRoleService,
             _userInfoRefresher,
             Clock, NullLogger<ContactFieldService>.Instance,
             new StringLocalizer<UsersResource>(new ResourceManagerStringLocalizerFactory(
@@ -119,7 +119,7 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
         var options = new DbContextOptionsBuilder<UsersDbContext>(DbOptions)
             .AddInterceptors(new ContactSaveCompletion(cancellation, lostAcknowledgement ? failure : null)).Options;
         var service = new ContactFieldService(new UserRepository(new TestDbContextFactory(options), Clock),
-            cache, _teamService, _roleAssignmentService, cache, Clock, NullLogger<ContactFieldService>.Instance,
+            cache, _teamService, _systemRoleService, cache, Clock, NullLogger<ContactFieldService>.Instance,
             new StringLocalizer<UsersResource>(new ResourceManagerStringLocalizerFactory(
                 Options.Create(new LocalizationOptions()), NullLoggerFactory.Instance)));
         var save = () => service.SaveContactFieldsAsync(profile.UserId,
@@ -196,7 +196,7 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
     {
         var ownerId = Guid.NewGuid();
         var viewerId = Guid.NewGuid();
-        _roleAssignmentService.IsUserBoardMemberAsync(viewerId, Arg.Any<CancellationToken>())
+        _systemRoleService.IsUserBoardMemberAsync(viewerId, Arg.Any<CancellationToken>())
             .Returns(true);
 
         var result = await _service.GetViewerAccessLevelAsync(ownerId, viewerId, TestContext.Current.CancellationToken);
@@ -209,7 +209,7 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
     {
         var ownerId = Guid.NewGuid();
         var viewerId = Guid.NewGuid();
-        _roleAssignmentService.IsUserBoardMemberAsync(viewerId, Arg.Any<CancellationToken>())
+        _systemRoleService.IsUserBoardMemberAsync(viewerId, Arg.Any<CancellationToken>())
             .Returns(false);
         SetupTeams((viewerId, TeamMemberRole.Coordinator, Guid.NewGuid(), SystemTeamType.None));
 
@@ -225,7 +225,7 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
         var viewerId = Guid.NewGuid();
         var sharedTeamId = Guid.NewGuid();
 
-        _roleAssignmentService.IsUserBoardMemberAsync(viewerId, Arg.Any<CancellationToken>())
+        _systemRoleService.IsUserBoardMemberAsync(viewerId, Arg.Any<CancellationToken>())
             .Returns(false);
         SetupTeams(
             (viewerId, TeamMemberRole.Member, sharedTeamId, SystemTeamType.None),
@@ -242,7 +242,7 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
         var ownerId = Guid.NewGuid();
         var viewerId = Guid.NewGuid();
 
-        _roleAssignmentService.IsUserBoardMemberAsync(viewerId, Arg.Any<CancellationToken>())
+        _systemRoleService.IsUserBoardMemberAsync(viewerId, Arg.Any<CancellationToken>())
             .Returns(false);
         SetupTeams(
             (viewerId, TeamMemberRole.Member, Guid.NewGuid(), SystemTeamType.None),
@@ -261,7 +261,7 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
         var viewerId = Guid.NewGuid();
         var volunteersTeamId = Guid.NewGuid();
 
-        _roleAssignmentService.IsUserBoardMemberAsync(viewerId, Arg.Any<CancellationToken>())
+        _systemRoleService.IsUserBoardMemberAsync(viewerId, Arg.Any<CancellationToken>())
             .Returns(false);
         SetupTeams(
             (viewerId, TeamMemberRole.Member, volunteersTeamId, SystemTeamType.Volunteers),
@@ -282,7 +282,7 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
         var sharedTeamId = Guid.NewGuid();
         var volunteersTeamId = Guid.NewGuid();
 
-        _roleAssignmentService.IsUserBoardMemberAsync(viewerId, Arg.Any<CancellationToken>())
+        _systemRoleService.IsUserBoardMemberAsync(viewerId, Arg.Any<CancellationToken>())
             .Returns(false);
         SetupTeams(
             (viewerId, TeamMemberRole.Member, volunteersTeamId, SystemTeamType.Volunteers),
@@ -324,7 +324,7 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
         var teamId = Guid.NewGuid();
         if (privilege == ContactFieldVisibility.BoardOnly)
         {
-            _roleAssignmentService.IsUserBoardMemberAsync(privilegedViewerId, Arg.Any<CancellationToken>())
+            _systemRoleService.IsUserBoardMemberAsync(privilegedViewerId, Arg.Any<CancellationToken>())
                 .Returns(true);
             SetupEmptyTeams();
         }
@@ -361,7 +361,7 @@ public sealed class ContactFieldServiceTests : ServiceTestHarness
         StubUserInfo(ownerId, profile);
 
         // Viewer is just a regular member (no shared teams)
-        _roleAssignmentService.IsUserBoardMemberAsync(viewerId, Arg.Any<CancellationToken>())
+        _systemRoleService.IsUserBoardMemberAsync(viewerId, Arg.Any<CancellationToken>())
             .Returns(false);
         SetupEmptyTeams();
 

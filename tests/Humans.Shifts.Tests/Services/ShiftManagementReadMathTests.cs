@@ -43,7 +43,7 @@ public sealed class ShiftManagementReadMathTests : ShiftsTestHarness
             .With(teamService)
             .With(userService)
             .With(userService)
-            .With(Substitute.For<IRoleAssignmentService>())
+            .With(Substitute.For<ISystemRoleService>())
             .Build();
 
         _service = new ShiftManagementService(

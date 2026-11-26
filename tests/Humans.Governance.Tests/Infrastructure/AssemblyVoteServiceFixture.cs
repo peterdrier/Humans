@@ -30,7 +30,7 @@ internal sealed class AssemblyVoteServiceFixture : IDisposable
     public readonly FakeClock Clock = new(Instant.FromUtc(2026, 9, 1, 12, 0));
     public readonly IAuditLogService Audit = Substitute.For<IAuditLogService>();
     public readonly IApplicationRepository Applications = Substitute.For<IApplicationRepository>();
-    public readonly IRoleAssignmentService RoleAssignments = Substitute.For<IRoleAssignmentService>();
+    public readonly ISystemRoleService SystemRoles = Substitute.For<ISystemRoleService>();
     public readonly ITeamService Teams = Substitute.For<ITeamService>();
     public readonly IUserService Users = Substitute.For<IUserService>();
     public readonly IEmailService Email = Substitute.For<IEmailService>();
@@ -58,7 +58,7 @@ internal sealed class AssemblyVoteServiceFixture : IDisposable
         Applications.GetActiveApprovedTierUserIdsAsync(
                 Arg.Any<MembershipTier>(), Arg.Any<LocalDate>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<Guid>>([]));
-        RoleAssignments.GetActiveUserIdsInRoleAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
+        SystemRoles.GetActiveUserIdsInRoleAsync(Arg.Any<string>(), Arg.Any<CancellationToken>())
             .Returns(Task.FromResult<IReadOnlyList<Guid>>([]));
         Users.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
             .Returns(new ValueTask<IReadOnlyDictionary<Guid, UserInfo>>(
@@ -67,7 +67,7 @@ internal sealed class AssemblyVoteServiceFixture : IDisposable
         Service = new AssemblyVoteService(
             Repository,
             Applications,
-            RoleAssignments,
+            SystemRoles,
             Teams,
             Users,
             Email,

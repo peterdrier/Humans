@@ -16,7 +16,7 @@ namespace Humans.Backdoor.Services;
 
 internal sealed class BackdoorApiKeyService(
     IBackdoorApiKeyRepository repository,
-    IRoleAssignmentService roles,
+    ISystemRoleService roles,
     IPermissionService permissions,
     IUserService users,
     IAuditLogService audit,

@@ -40,16 +40,16 @@
   <resheader name="writer">
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
-  <data name="Auth_Email_MagicLinkLogin_Subject" xml:space="preserve">
+  <data name="Auth_Email_SignInLink_Subject" xml:space="preserve">
     <value>Je inloglink voor Nobodies</value>
   </data>
-  <data name="Auth_Email_MagicLinkLogin_Body" xml:space="preserve">
+  <data name="Auth_Email_SignInLink_Body" xml:space="preserve">
     <value>&lt;p&gt;Hoi {0},&lt;/p&gt;&lt;p&gt;Klik op de link hieronder om in te loggen:&lt;/p&gt;&lt;p&gt;&lt;a href="{1}"&gt;Inloggen bij Nobodies&lt;/a&gt;&lt;/p&gt;&lt;p&gt;Deze link verloopt over 15 minuten en kan maar één keer worden gebruikt.&lt;/p&gt;&lt;p&gt;Als je dit niet hebt aangevraagd, kun je deze e-mail negeren.&lt;/p&gt;</value>
   </data>
-  <data name="Auth_Email_MagicLinkSignup_Subject" xml:space="preserve">
+  <data name="Auth_Email_SignInLinkSignup_Subject" xml:space="preserve">
     <value>Welkom bij Nobodies — bevestig je e-mailadres</value>
   </data>
-  <data name="Auth_Email_MagicLinkSignup_Body" xml:space="preserve">
+  <data name="Auth_Email_SignInLinkSignup_Body" xml:space="preserve">
     <value>&lt;p&gt;Welkom bij Nobodies!&lt;/p&gt;&lt;p&gt;Klik op de link hieronder om je account aan te maken:&lt;/p&gt;&lt;p&gt;&lt;a href="{0}"&gt;Je account aanmaken&lt;/a&gt;&lt;/p&gt;&lt;p&gt;Deze link verloopt over 15 minuten en kan maar één keer worden gebruikt.&lt;/p&gt;&lt;p&gt;Als je dit niet hebt aangevraagd, kun je deze e-mail negeren.&lt;/p&gt;</value>
   </data>
   <data name="Auth_Roles_Title" xml:space="preserve">
@@ -110,5 +110,5 @@
     <value>Reden voor toewijzing</value>
   </data>
   <data name="Auth_Notification_RoleAssigned" xml:space="preserve"><value>Je hebt de systeemrol {0} gekregen</value><comment>{0}=role name</comment></data>
-  <data name="Auth_Notification_RoleEnded" xml:space="preserve"><value>Je systeemrol {0} is ingetrokken</value><comment>{0}=role name</comment></data>
+  <data name="Auth_Notification_RoleRevoked" xml:space="preserve"><value>Je systeemrol {0} is ingetrokken</value><comment>{0}=role name</comment></data>
 </root>

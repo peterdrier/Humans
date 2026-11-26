@@ -1,0 +1,95 @@
+using Humans.Auth.Contracts;
+using System.Security.Claims;
+using Humans.Base.Authorization;
+using Microsoft.AspNetCore.Authentication;
+using Humans.Users.Contracts;
+
+namespace Humans.Web.Authorization;
+
+/// <summary>
+/// Syncs active system roles to Identity role claims and stamps the user's stored
+/// <see cref="UserState"/> as a claim, the single source of truth for app access.
+/// Runs per authenticated request and derives the claims fresh each time: both inputs
+/// are served from in-memory caches (Users' <c>UserInfo</c>, Auth's system-role rows)
+/// that their owners keep current, so a per-user claims cache bought nothing but staleness.
+/// </summary>
+public class SystemRoleClaimsTransformation(
+    ISystemRoleService systemRoles,
+    IUserService userService) : IClaimsTransformation
+{
+    /// <summary>Carries the user's stored <see cref="UserState"/> enum name.</summary>
+    /// <remarks>Defined on <see cref="RoleChecks"/> so section views can read it.</remarks>
+    public const string UserStateClaimType = RoleChecks.UserStateClaimType;
+
+    public const string ActiveClaimValue = "true";
+    public const string ClaimsAddedMarkerType = "SystemRoleClaimsAdded";
+
+    /// <summary>The stored <see cref="UserState"/> stamped on the principal, or null if absent.</summary>
+    public static UserState? GetUserState(ClaimsPrincipal principal) => RoleChecks.GetUserState(principal);
+
+    /// <summary>True when the principal's stored state grants full app access.</summary>
+    public static bool IsActive(ClaimsPrincipal principal) => RoleChecks.IsActiveMember(principal);
+
+    public async Task<ClaimsPrincipal> TransformAsync(ClaimsPrincipal principal)
+    {
+        if (principal.Identity?.IsAuthenticated != true)
+        {
+            return principal;
+        }
+
+        var userIdClaim = principal.FindFirst(ClaimTypes.NameIdentifier);
+        if (userIdClaim is null || !Guid.TryParse(userIdClaim.Value, out var userId))
+        {
+            return principal;
+        }
+
+        // Skip duplicate claims on repeat calls within the same request.
+        if (principal.HasClaim(c => string.Equals(c.Type, ClaimsAddedMarkerType, StringComparison.Ordinal)
+            && string.Equals(c.Value, ActiveClaimValue, StringComparison.Ordinal)))
+        {
+            return principal;
+        }
+
+        var claims = await LoadClaimsAsync(userId);
+
+        var identity = new ClaimsIdentity();
+        foreach (var claim in claims)
+        {
+            identity.AddClaim(claim);
+        }
+
+        identity.AddClaim(new Claim(ClaimsAddedMarkerType, ActiveClaimValue));
+
+        principal.AddIdentity(identity);
+
+        return principal;
+    }
+
+    private async Task<List<Claim>> LoadClaimsAsync(Guid userId)
+    {
+        var claims = new List<Claim>();
+
+        // Stored UserState is the single access source. GetRawUserInfoAsync seeds legacy
+        // null-State rows on first read, so State is populated here.
+        //
+        // Raw, deliberately: the cross-section read resolves a merge tombstone forward to
+        // the surviving account, and stamping that survivor's Active state on a principal
+        // carrying the tombstone's id would admit the holder as the surviving member.
+        // Sign-in already blocks it (AnonymizeForMergeAsync locks the account out and
+        // rotates the security stamp), but Backdoor API-key and dev-login principals reach
+        // this path too. UserState.Merged must keep flowing.
+        var userInfo = await userService.GetRawUserInfoAsync(userId);
+        if (userInfo?.State is { } state)
+        {
+            claims.Add(new Claim(UserStateClaimType, state.ToString()));
+        }
+
+        var activeRoles = await systemRoles.GetActiveForUserAsync(userId);
+        foreach (var role in activeRoles)
+        {
+            claims.Add(new Claim(ClaimTypes.Role, role.RoleName));
+        }
+
+        return claims;
+    }
+}
