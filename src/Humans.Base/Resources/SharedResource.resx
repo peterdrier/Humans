@@ -246,11 +246,11 @@
   <data name="LinkPreview_Consent_Description" xml:space="preserve"><value>Your consents and the policies behind them.</value></data>
   <data name="LinkPreview_Welcome_Title" xml:space="preserve"><value>Welcome</value></data>
   <data name="LinkPreview_Welcome_Description" xml:space="preserve"><value>Get set up on Humans.</value></data>
-  <data name="Login_SignInWithGoogle" xml:space="preserve"><value>Sign in with Google</value></data>
+  <data name="Login_SignInWithProvider" xml:space="preserve"><value>Sign in with {0}</value></data>
   <data name="Login_SetupFailed" xml:space="preserve"><value>We couldn't finish setting up your account. Please try again.</value></data>
   <data name="Login_SignInFailed" xml:space="preserve"><value>Sign-in failed. Please try again.</value></data>
-  <data name="Login_Cancelled" xml:space="preserve"><value>Sign-in was cancelled at Google.</value></data>
-  <data name="Login_CookieMissing" xml:space="preserve"><value>Sign-in failed: your browser did not send back its sign-in cookie when Google returned you here. Please try again.</value></data>
+  <data name="Login_Cancelled" xml:space="preserve"><value>Sign-in was cancelled at the sign-in provider.</value></data>
+  <data name="Login_CookieMissing" xml:space="preserve"><value>Sign-in failed: your browser did not send back its sign-in cookie when the sign-in provider returned you here. Please try again.</value></data>
   <data name="Login_LockedOut" xml:space="preserve"><value>This account is locked. Contact an admin if you need help signing in.</value></data>
   <data name="AccessDenied_Title" xml:space="preserve"><value>Access Denied</value></data>
   <data name="AccessDenied_Description" xml:space="preserve"><value>You do not have permission to access this page.</value></data>

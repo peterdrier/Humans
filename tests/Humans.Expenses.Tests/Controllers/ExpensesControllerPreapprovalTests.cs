@@ -103,7 +103,7 @@ public sealed class ExpensesControllerPreapprovalTests
         _authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(),
             Arg.Any<IEnumerable<IAuthorizationRequirement>>())
             .Returns(permitted ? AuthorizationResult.Success() : AuthorizationResult.Failed());
-        _reports.SubmitWithResultAsync(report.Id, _actorId, Arg.Any<CancellationToken>())
+        _reports.SubmitAsync(report.Id, _actorId, Arg.Any<CancellationToken>())
             .Returns(ExpenseMutationResult.Success);
 
         var result = await Build().Submit(report.Id);
@@ -111,36 +111,29 @@ public sealed class ExpensesControllerPreapprovalTests
         if (permitted)
         {
             result.Should().BeOfType<RedirectToActionResult>();
-            await _reports.Received(1).SubmitWithResultAsync(report.Id, _actorId, CancellationToken.None);
+            await _reports.Received(1).SubmitAsync(report.Id, _actorId, CancellationToken.None);
         }
         else
         {
             result.Should().BeOfType<ForbidResult>();
-            await _reports.DidNotReceiveWithAnyArgs().SubmitWithResultAsync(default, default);
+            await _reports.DidNotReceiveWithAnyArgs().SubmitAsync(default, default);
         }
     }
 
     [HumansTheory]
-    [Xunit.InlineData("Edit", false, true)]
-    [Xunit.InlineData("Edit", true, true)]
-    [Xunit.InlineData("Edit", true, false)]
-    [Xunit.InlineData("AddLine", false, true)]
-    [Xunit.InlineData("AddLine", true, true)]
-    [Xunit.InlineData("AddLine", true, false)]
-    [Xunit.InlineData("UpdateLine", false, true)]
-    [Xunit.InlineData("UpdateLine", true, true)]
-    [Xunit.InlineData("UpdateLine", true, false)]
-    [Xunit.InlineData("RemoveLine", false, true)]
-    [Xunit.InlineData("RemoveLine", true, true)]
-    [Xunit.InlineData("RemoveLine", true, false)]
-    [Xunit.InlineData("AttachFile", false, true)]
-    [Xunit.InlineData("AttachFile", true, true)]
-    [Xunit.InlineData("AttachFile", true, false)]
-    [Xunit.InlineData("RemoveAttachment", false, true)]
-    [Xunit.InlineData("RemoveAttachment", true, true)]
-    [Xunit.InlineData("RemoveAttachment", true, false)]
-    public async Task Edits_AuthorizeBeforeDispatch_AndSelectTheCorrectionCommand(
-        string action, bool financeAccess, bool permitted)
+    [Xunit.InlineData("Edit", true)]
+    [Xunit.InlineData("Edit", false)]
+    [Xunit.InlineData("AddLine", true)]
+    [Xunit.InlineData("AddLine", false)]
+    [Xunit.InlineData("UpdateLine", true)]
+    [Xunit.InlineData("UpdateLine", false)]
+    [Xunit.InlineData("RemoveLine", true)]
+    [Xunit.InlineData("RemoveLine", false)]
+    [Xunit.InlineData("AttachFile", true)]
+    [Xunit.InlineData("AttachFile", false)]
+    [Xunit.InlineData("RemoveAttachment", true)]
+    [Xunit.InlineData("RemoveAttachment", false)]
+    public async Task Edits_AuthorizeBeforeDispatch(string action, bool permitted)
     {
         var report = ReviewRow(null) with { Status = ExpenseReportStatus.Draft };
         var lineId = Guid.NewGuid();
@@ -148,31 +141,17 @@ public sealed class ExpensesControllerPreapprovalTests
         _authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(),
             Arg.Any<IEnumerable<IAuthorizationRequirement>>())
             .Returns(permitted ? AuthorizationResult.Success() : AuthorizationResult.Failed());
-        _authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), FinancePolicies.Manage)
-            .Returns(financeAccess ? AuthorizationResult.Success() : AuthorizationResult.Failed());
-        _reports.UpdateDraftWithResultAsync(report.Id, _actorId, 62900001, "Updated", null, Arg.Any<CancellationToken>())
+        _reports.UpdateHeaderAsync(report.Id, _actorId, 62900001, "Updated", null, Arg.Any<CancellationToken>())
             .Returns(ExpenseMutationResult.Success);
-        _reports.UpdateHeaderForFinanceCorrectionWithResultAsync(report.Id, _actorId, 62900001, "Updated", null, Arg.Any<CancellationToken>())
-            .Returns(ExpenseMutationResult.Success);
-        _reports.AddLineWithResultAsync(report.Id, _actorId, "Item", 10m, ExpenseLineType.Receipt, null, null, Arg.Any<CancellationToken>())
+        _reports.AddLineAsync(report.Id, _actorId, "Item", 10m, ExpenseLineType.Receipt, null, null, Arg.Any<CancellationToken>())
             .Returns(new ExpenseAddLineResult(true, null, lineId));
-        _reports.AddLineForFinanceCorrectionWithResultAsync(report.Id, _actorId, "Item", 10m, ExpenseLineType.Receipt, null, null, Arg.Any<CancellationToken>())
-            .Returns(new ExpenseAddLineResult(true, null, lineId));
-        _reports.UpdateLineWithResultAsync(report.Id, _actorId, lineId, "Updated", 20m, Arg.Any<CancellationToken>())
+        _reports.UpdateLineAsync(report.Id, _actorId, lineId, "Updated", 20m, Arg.Any<CancellationToken>())
             .Returns(ExpenseMutationResult.Success);
-        _reports.UpdateLineForFinanceCorrectionWithResultAsync(report.Id, _actorId, lineId, "Updated", 20m, Arg.Any<CancellationToken>())
+        _reports.RemoveLineAsync(report.Id, _actorId, lineId, Arg.Any<CancellationToken>())
             .Returns(ExpenseMutationResult.Success);
-        _reports.RemoveLineWithResultAsync(report.Id, _actorId, lineId, Arg.Any<CancellationToken>())
-            .Returns(ExpenseMutationResult.Success);
-        _reports.RemoveLineForFinanceCorrectionWithResultAsync(report.Id, _actorId, lineId, Arg.Any<CancellationToken>())
-            .Returns(ExpenseMutationResult.Success);
-        _reports.AttachFileToLineWithResultAsync(report.Id, _actorId, lineId, "receipt.pdf", "application/pdf", Arg.Any<Stream>(), Arg.Any<CancellationToken>())
-            .Returns(ExpenseMutationResult.Success);
-        _reports.AttachFileToLineForFinanceCorrectionWithResultAsync(report.Id, _actorId, lineId, "receipt.pdf", "application/pdf", Arg.Any<Stream>(), Arg.Any<CancellationToken>())
+        _reports.AttachFileToLineAsync(report.Id, _actorId, lineId, "receipt.pdf", "application/pdf", Arg.Any<Stream>(), Arg.Any<CancellationToken>())
             .Returns(ExpenseMutationResult.Success);
         _reports.RemoveAttachmentFromLineAsync(report.Id, _actorId, lineId, Arg.Any<CancellationToken>())
-            .Returns(ExpenseMutationResult.Success);
-        _reports.RemoveAttachmentFromLineForFinanceCorrectionAsync(report.Id, _actorId, lineId, Arg.Any<CancellationToken>())
             .Returns(ExpenseMutationResult.Success);
         using var content = new MemoryStream([1, 2, 3]);
         var upload = new FormFile(content, 0, content.Length, "file", "receipt.pdf")
@@ -191,18 +170,12 @@ public sealed class ExpensesControllerPreapprovalTests
         };
         var commands = new[]
         {
-            "UpdateDraftWithResultAsync",
-            "UpdateHeaderForFinanceCorrectionWithResultAsync",
-            "AddLineWithResultAsync",
-            "AddLineForFinanceCorrectionWithResultAsync",
-            "UpdateLineWithResultAsync",
-            "UpdateLineForFinanceCorrectionWithResultAsync",
-            "RemoveLineWithResultAsync",
-            "RemoveLineForFinanceCorrectionWithResultAsync",
-            "AttachFileToLineWithResultAsync",
-            "AttachFileToLineForFinanceCorrectionWithResultAsync",
+            "UpdateHeaderAsync",
+            "AddLineAsync",
+            "UpdateLineAsync",
+            "RemoveLineAsync",
+            "AttachFileToLineAsync",
             "RemoveAttachmentFromLineAsync",
-            "RemoveAttachmentFromLineForFinanceCorrectionAsync",
         };
         var mutations = _reports.ReceivedCalls()
             .Where(call => commands.Contains(call.GetMethodInfo().Name, StringComparer.Ordinal)).ToList();
@@ -215,12 +188,12 @@ public sealed class ExpensesControllerPreapprovalTests
         result.Should().BeOfType<RedirectToActionResult>();
         var expectedCommand = action switch
         {
-            "Edit" => financeAccess ? "UpdateHeaderForFinanceCorrectionWithResultAsync" : "UpdateDraftWithResultAsync",
-            "AddLine" => financeAccess ? "AddLineForFinanceCorrectionWithResultAsync" : "AddLineWithResultAsync",
-            "UpdateLine" => financeAccess ? "UpdateLineForFinanceCorrectionWithResultAsync" : "UpdateLineWithResultAsync",
-            "RemoveLine" => financeAccess ? "RemoveLineForFinanceCorrectionWithResultAsync" : "RemoveLineWithResultAsync",
-            "AttachFile" => financeAccess ? "AttachFileToLineForFinanceCorrectionWithResultAsync" : "AttachFileToLineWithResultAsync",
-            "RemoveAttachment" => financeAccess ? "RemoveAttachmentFromLineForFinanceCorrectionAsync" : "RemoveAttachmentFromLineAsync",
+            "Edit" => "UpdateHeaderAsync",
+            "AddLine" => "AddLineAsync",
+            "UpdateLine" => "UpdateLineAsync",
+            "RemoveLine" => "RemoveLineAsync",
+            "AttachFile" => "AttachFileToLineAsync",
+            "RemoveAttachment" => "RemoveAttachmentFromLineAsync",
             _ => throw new InvalidOperationException(action)
         };
         mutations.Should().ContainSingle();
@@ -617,29 +590,20 @@ public sealed class ExpensesControllerPreapprovalTests
     }
 
     [HumansTheory]
-    [Xunit.InlineData(false, false, true)]
-    [Xunit.InlineData(true, false, true)]
-    [Xunit.InlineData(false, true, true)]
-    [Xunit.InlineData(true, true, true)]
-    [Xunit.InlineData(false, false, false)]
-    [Xunit.InlineData(true, false, false)]
-    public async Task LineReview_AuthorizesBeforeDispatch_AndSelectsTheDecisionWindow(
-        bool undo, bool financeAccess, bool permitted)
+    [Xunit.InlineData(false, true)]
+    [Xunit.InlineData(true, true)]
+    [Xunit.InlineData(false, false)]
+    [Xunit.InlineData(true, false)]
+    public async Task LineReview_AuthorizesBeforeDispatch(bool undo, bool permitted)
     {
         var report = ReviewRow(null) with { SubmitterUserId = Guid.NewGuid() };
         var lineId = Guid.NewGuid();
         _reports.GetAsync(report.Id, Arg.Any<CancellationToken>()).Returns(report);
         _authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), Arg.Any<IEnumerable<IAuthorizationRequirement>>())
             .Returns(permitted ? AuthorizationResult.Success() : AuthorizationResult.Failed());
-        _authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), FinancePolicies.Manage)
-            .Returns(financeAccess ? AuthorizationResult.Success() : AuthorizationResult.Failed());
-        _review.DeclineLineWithResultAsync(report.Id, _actorId, lineId, "Missing invoice", Arg.Any<CancellationToken>())
+        _review.DeclineLineAsync(report.Id, _actorId, lineId, "Missing invoice", Arg.Any<CancellationToken>())
             .Returns(ExpenseMutationResult.Success);
-        _review.DeclineLineForFinanceReviewWithResultAsync(report.Id, _actorId, lineId, "Missing invoice", Arg.Any<CancellationToken>())
-            .Returns(ExpenseMutationResult.Success);
-        _review.UndoDeclineLineWithResultAsync(report.Id, _actorId, lineId, Arg.Any<CancellationToken>())
-            .Returns(ExpenseMutationResult.Success);
-        _review.UndoDeclineLineForFinanceReviewWithResultAsync(report.Id, _actorId, lineId, Arg.Any<CancellationToken>())
+        _review.UndoDeclineLineAsync(report.Id, _actorId, lineId, Arg.Any<CancellationToken>())
             .Returns(ExpenseMutationResult.Success);
         var controller = Build();
 
@@ -657,14 +621,10 @@ public sealed class ExpensesControllerPreapprovalTests
         }
         result.Should().BeOfType<RedirectToActionResult>();
         decisions.Should().ContainSingle();
-        if (undo && financeAccess)
-            await _review.Received(1).UndoDeclineLineForFinanceReviewWithResultAsync(report.Id, _actorId, lineId, CancellationToken.None);
-        else if (undo)
-            await _review.Received(1).UndoDeclineLineWithResultAsync(report.Id, _actorId, lineId, CancellationToken.None);
-        else if (financeAccess)
-            await _review.Received(1).DeclineLineForFinanceReviewWithResultAsync(report.Id, _actorId, lineId, "Missing invoice", CancellationToken.None);
+        if (undo)
+            await _review.Received(1).UndoDeclineLineAsync(report.Id, _actorId, lineId, CancellationToken.None);
         else
-            await _review.Received(1).DeclineLineWithResultAsync(report.Id, _actorId, lineId, "Missing invoice", CancellationToken.None);
+            await _review.Received(1).DeclineLineAsync(report.Id, _actorId, lineId, "Missing invoice", CancellationToken.None);
     }
 
     [HumansTheory]
@@ -683,9 +643,9 @@ public sealed class ExpensesControllerPreapprovalTests
             .Returns(permitted ? AuthorizationResult.Success() : AuthorizationResult.Failed());
         _authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), FinancePolicies.Manage)
             .Returns(financeAccess ? AuthorizationResult.Success() : AuthorizationResult.Failed());
-        _review.CoordinatorEndorseWithResultAsync(report.Id, _actorId, null, Arg.Any<CancellationToken>(), Arg.Any<string?>())
+        _review.CoordinatorEndorseAsync(report.Id, _actorId, null, Arg.Any<CancellationToken>(), Arg.Any<string?>())
             .Returns(ExpenseMutationResult.Success);
-        _review.CoordinatorRejectWithResultAsync(report.Id, _actorId, "Missing invoice", Arg.Any<CancellationToken>(), Arg.Any<string?>())
+        _review.CoordinatorRejectAsync(report.Id, _actorId, "Missing invoice", Arg.Any<CancellationToken>(), Arg.Any<string?>())
             .Returns(ExpenseMutationResult.Success);
         var controller = Build();
 
@@ -696,16 +656,16 @@ public sealed class ExpensesControllerPreapprovalTests
         if (!permitted)
         {
             result.Should().BeOfType<ForbidResult>();
-            await _review.DidNotReceiveWithAnyArgs().CoordinatorEndorseWithResultAsync(default, default, null);
-            await _review.DidNotReceiveWithAnyArgs().CoordinatorRejectWithResultAsync(default, default, "");
+            await _review.DidNotReceiveWithAnyArgs().CoordinatorEndorseAsync(default, default, null);
+            await _review.DidNotReceiveWithAnyArgs().CoordinatorRejectAsync(default, default, "");
             return;
         }
         result.Should().BeOfType<RedirectToActionResult>();
         var label = financeAccess ? "Finance admin" : null;
         if (string.Equals(action, "Endorse", StringComparison.Ordinal))
-            await _review.Received(1).CoordinatorEndorseWithResultAsync(report.Id, _actorId, null, CancellationToken.None, label);
+            await _review.Received(1).CoordinatorEndorseAsync(report.Id, _actorId, null, CancellationToken.None, label);
         else
-            await _review.Received(1).CoordinatorRejectWithResultAsync(report.Id, _actorId, "Missing invoice", CancellationToken.None, label);
+            await _review.Received(1).CoordinatorRejectAsync(report.Id, _actorId, "Missing invoice", CancellationToken.None, label);
     }
 
     [HumansTheory]

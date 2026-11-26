@@ -38,7 +38,8 @@ public sealed class AccountControllerSignupTests
             null!, Substitute.For<IUserService>(), Substitute.For<IUserWrite>(), SystemClock.Instance,
             FixedOrgTimeZone.Madrid,
             NullLogger<AccountController>.Instance, Substitute.For<IExternalLoginService>(), signInLinks,
-            provisioning, null!, new SignInMethodCounter(), localizer)
+            provisioning, null!, new SignInMethodCounter(), localizer,
+            Substitute.For<Microsoft.AspNetCore.Authentication.IAuthenticationSchemeProvider>())
         {
             ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() }
         };
@@ -129,7 +130,8 @@ public sealed class AccountControllerSignupTests
         var controller = new AccountController(
             signIn, Substitute.For<IUserService>(), Substitute.For<IUserWrite>(),
             SystemClock.Instance, FixedOrgTimeZone.Madrid, NullLogger<AccountController>.Instance, Substitute.For<IExternalLoginService>(),
-            signInLinks, provisioning, null!, new SignInMethodCounter(), localizer)
+            signInLinks, provisioning, null!, new SignInMethodCounter(), localizer,
+            Substitute.For<Microsoft.AspNetCore.Authentication.IAuthenticationSchemeProvider>())
         {
             ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() },
             Url = Substitute.For<IUrlHelper>()

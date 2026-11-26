@@ -74,7 +74,8 @@ public class AccountControllerGateSignInTests
             Substitute.For<IAccountProvisioningService>(),
             throttle,
             new SignInMethodCounter(),
-            localizer);
+            localizer,
+            schemeProvider);
 
         var tempDataProvider = Substitute.For<ITempDataProvider>();
         _controller.TempData = new TempDataDictionaryFactory(tempDataProvider)

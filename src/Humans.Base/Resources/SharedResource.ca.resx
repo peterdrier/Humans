@@ -437,15 +437,15 @@
   <data name="LinkPreview_Welcome_Description" xml:space="preserve">
     <value>Configura el teu compte a Humans.</value>
   </data>
-  <data name="Login_SignInWithGoogle" xml:space="preserve">
-    <value>Inicia la sessió amb Google</value>
+  <data name="Login_SignInWithProvider" xml:space="preserve">
+    <value>Inicia la sessió amb {0}</value>
   </data>
   <data name="Login_SetupFailed" xml:space="preserve"><value>No hem pogut acabar de configurar el teu compte. Torna-ho a provar.</value></data>
   <data name="Login_SignInFailed" xml:space="preserve">
     <value>Error d'inici de sessió. Si us plau, torna-ho a provar.</value>
   </data>
-  <data name="Login_Cancelled" xml:space="preserve"><value>L'inici de sessió es va cancel·lar a Google.</value></data>
-  <data name="Login_CookieMissing" xml:space="preserve"><value>Error d'inici de sessió: el teu navegador no ha retornat la galeta d'inici de sessió en tornar de Google. Si us plau, torna-ho a provar.</value></data>
+  <data name="Login_Cancelled" xml:space="preserve"><value>L'inici de sessió es va cancel·lar al proveïdor d'inici de sessió.</value></data>
+  <data name="Login_CookieMissing" xml:space="preserve"><value>Error d'inici de sessió: el teu navegador no ha retornat la galeta d'inici de sessió en tornar del proveïdor d'inici de sessió. Si us plau, torna-ho a provar.</value></data>
   <data name="Login_LockedOut" xml:space="preserve"><value>Aquest compte està bloquejat. Contacta amb un administrador si necessites ajuda per iniciar sessió.</value></data>
   <data name="AccessDenied_Title" xml:space="preserve">
     <value>Accés denegat</value>

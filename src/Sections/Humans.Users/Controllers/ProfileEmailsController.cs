@@ -204,6 +204,10 @@ internal sealed class ProfileEmailsController(
         if (!authz.Succeeded)
             return Forbid();
 
+        var providers = await signInManager.GetExternalAuthenticationSchemesAsync();
+        if (!providers.Any(p => string.Equals(p.Name, provider, StringComparison.Ordinal)))
+            return NotFound();
+
         // Round-trip through ExternalLoginCallback so its link-while-signed-in branch runs.
         var resolvedReturnUrl = returnUrl ?? Url.Action(nameof(Emails)) ?? "/Profile/Me/Emails";
         var redirectUrl = Url.Action("ExternalLoginCallback", "Account", new { returnUrl = resolvedReturnUrl })

@@ -437,15 +437,15 @@
   <data name="LinkPreview_Welcome_Description" xml:space="preserve">
     <value>Configurez votre compte sur Humans.</value>
   </data>
-  <data name="Login_SignInWithGoogle" xml:space="preserve">
-    <value>Se connecter avec Google</value>
+  <data name="Login_SignInWithProvider" xml:space="preserve">
+    <value>Se connecter avec {0}</value>
   </data>
   <data name="Login_SetupFailed" xml:space="preserve"><value>Nous n’avons pas pu terminer la configuration de votre compte. Veuillez réessayer.</value></data>
   <data name="Login_SignInFailed" xml:space="preserve">
     <value>Échec de la connexion. Veuillez réessayer.</value>
   </data>
-  <data name="Login_Cancelled" xml:space="preserve"><value>La connexion a été annulée sur Google.</value></data>
-  <data name="Login_CookieMissing" xml:space="preserve"><value>Échec de la connexion : votre navigateur n'a pas renvoyé son cookie de connexion au retour de Google. Veuillez réessayer.</value></data>
+  <data name="Login_Cancelled" xml:space="preserve"><value>La connexion a été annulée chez le fournisseur de connexion.</value></data>
+  <data name="Login_CookieMissing" xml:space="preserve"><value>Échec de la connexion : votre navigateur n'a pas renvoyé son cookie de connexion au retour du fournisseur de connexion. Veuillez réessayer.</value></data>
   <data name="Login_LockedOut" xml:space="preserve"><value>Ce compte est verrouillé. Contactez un administrateur si vous avez besoin d’aide pour vous connecter.</value></data>
   <data name="AccessDenied_Title" xml:space="preserve">
     <value>Accès refusé</value>

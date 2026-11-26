@@ -55,7 +55,7 @@ public class BackdoorApiKeyServiceTests
 
         result.Succeeded.Should().BeTrue();
         stored!.ExpiresAt.Should().Be(Now + BackdoorApiKeyService.ShortKeyLifetime);
-        (await _sut.AdmitsAsync(new BackdoorKeyOwner(_owner, []), BackdoorScope.AdminAndBoard)).Should().BeFalse();
+        (await _sut.AdmitsAsync(_owner, BackdoorScope.AdminAndBoard)).Should().BeFalse();
     }
 
     private void MakeEligible(

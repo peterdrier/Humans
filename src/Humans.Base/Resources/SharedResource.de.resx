@@ -437,15 +437,15 @@
   <data name="LinkPreview_Welcome_Description" xml:space="preserve">
     <value>Richte dich auf Humans ein.</value>
   </data>
-  <data name="Login_SignInWithGoogle" xml:space="preserve">
-    <value>Mit Google anmelden</value>
+  <data name="Login_SignInWithProvider" xml:space="preserve">
+    <value>Mit {0} anmelden</value>
   </data>
   <data name="Login_SetupFailed" xml:space="preserve"><value>Wir konnten die Einrichtung deines Kontos nicht abschließen. Bitte versuche es erneut.</value></data>
   <data name="Login_SignInFailed" xml:space="preserve">
     <value>Anmeldung fehlgeschlagen. Bitte versuche es erneut.</value>
   </data>
-  <data name="Login_Cancelled" xml:space="preserve"><value>Die Anmeldung wurde bei Google abgebrochen.</value></data>
-  <data name="Login_CookieMissing" xml:space="preserve"><value>Anmeldung fehlgeschlagen: Dein Browser hat sein Anmelde-Cookie nicht zurückgeschickt, als Google dich hierher zurückgeleitet hat. Bitte versuche es erneut.</value></data>
+  <data name="Login_Cancelled" xml:space="preserve"><value>Die Anmeldung wurde beim Anmeldeanbieter abgebrochen.</value></data>
+  <data name="Login_CookieMissing" xml:space="preserve"><value>Anmeldung fehlgeschlagen: Dein Browser hat sein Anmelde-Cookie nicht zurückgeschickt, als der Anmeldeanbieter dich hierher zurückgeleitet hat. Bitte versuche es erneut.</value></data>
   <data name="Login_LockedOut" xml:space="preserve"><value>Dieses Konto ist gesperrt. Wende dich an einen Administrator, wenn du Hilfe bei der Anmeldung benötigst.</value></data>
   <data name="AccessDenied_Title" xml:space="preserve">
     <value>Zugriff verweigert</value>
