@@ -79,6 +79,27 @@ public class PaymentDetailsTests
         (await _sut.GetIbanAsync(survivor, Ct)).Should().Be(value);
     }
 
+    [HumansTheory]
+    [Xunit.InlineData(false, false)]
+    [Xunit.InlineData(false, true)]
+    [Xunit.InlineData(true, false)]
+    [Xunit.InlineData(true, true)]
+    public async Task SetIban_Tombstone_DoesNotRecreateErasedDetails(bool legacy, bool clear)
+    {
+        var id = Guid.NewGuid();
+        SeedUser(id);
+        await _sut.SetIbanAsync(id, Iban, Ct);
+        await _sut.EraseForUserAsync(id, Ct);
+        var person = (await _users.GetUserInfoAsync(id, Ct))!;
+        person = legacy ? person with { IdentityEmailColumn = "erased@gdpr.local" } : person with { State = UserState.Deleted };
+        _users.GetUserInfoAsync(id, Arg.Any<CancellationToken>()).Returns(person);
+
+        var saved = await _sut.SetIbanAsync(id, clear ? null : OtherIban, Ct);
+
+        saved.Should().BeFalse();
+        (await _repo.GetAsync(id, Ct)).Should().BeNull();
+    }
+
     [HumansFact]
     public async Task RevealIban_ThroughMergedId_AuditsTheOwnerOfTheRevealedDetails()
     {

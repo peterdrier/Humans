@@ -180,4 +180,7 @@
   <data name="CityPlanning_GenericCamp" xml:space="preserve">
     <value>Camp</value>
   </data>
+  <data name="CityPlanning_MapRefreshFailed" xml:space="preserve">
+    <value>Could not refresh map placements. Reload the page to see the latest changes.</value>
+  </data>
 </root>

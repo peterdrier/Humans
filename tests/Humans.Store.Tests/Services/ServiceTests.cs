@@ -1457,6 +1457,62 @@ public class ServiceTests
     }
 
     [HumansTheory]
+    [InlineData(null)]
+    [InlineData("0")]
+    [InlineData("400.50")]
+    public async Task SaveSettings_OmittedThreshold_RefusesWithoutWriting(string? threshold)
+    {
+        var actor = Guid.NewGuid();
+        var users = Substitute.For<IUserService>();
+        users.GetUserInfoAsync(actor, Arg.Any<CancellationToken>()).Returns(
+            UserInfo.Create(new User { Id = actor }, [], [], null));
+        using var services = new ServiceCollection().AddLogging().AddControllers().Services.BuildServiceProvider();
+        var http = new DefaultHttpContext
+        {
+            RequestServices = services,
+            User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, actor.ToString())], "test"))
+        };
+        var controller = new StoreAdminController(_service, _catalog, users)
+        {
+            ControllerContext = new ControllerContext { HttpContext = http },
+            TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>())
+        };
+        var fields = new Dictionary<string, StringValues>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["StripeGatewayTreasuryId"] = "gateway"
+        };
+        if (threshold is not null) fields["SimplifiedInvoiceThresholdEur"] = threshold;
+        var metadata = services.GetRequiredService<IModelMetadataProvider>().GetMetadataForType(typeof(StoreSettingsViewModel));
+        var binder = services.GetRequiredService<IModelBinderFactory>().CreateBinder(new ModelBinderFactoryContext { Metadata = metadata });
+        var binding = DefaultModelBindingContext.CreateBindingContext(controller.ControllerContext,
+            new FormValueProvider(BindingSource.Form, new FormCollection(fields), CultureInfo.InvariantCulture),
+            metadata, bindingInfo: null, modelName: "");
+        await binder.BindModelAsync(binding);
+        var model = (StoreSettingsViewModel)binding.Result.Model!;
+        services.GetRequiredService<IObjectModelValidator>().Validate(controller.ControllerContext, binding.ValidationState, "", model);
+        var ct = TestContext.Current.CancellationToken;
+
+        (await controller.SaveSettings(model, ct)).Should().BeOfType<RedirectResult>().Which.Url.Should().Be("/Settings#store");
+
+        if (threshold is null)
+        {
+            controller.ModelState[nameof(StoreSettingsViewModel.SimplifiedInvoiceThresholdEur)]!.Errors.Should().ContainSingle();
+            await _repo.DidNotReceiveWithAnyArgs().SaveSettingsAsync(default!);
+            _audit.ReceivedCalls().Should().BeEmpty();
+        }
+        else
+        {
+            controller.ModelState.IsValid.Should().BeTrue();
+            var expected = decimal.Parse(threshold, CultureInfo.InvariantCulture);
+            await _repo.Received(1).SaveSettingsAsync(
+                Arg.Is<StoreSettings>(settings => settings.SimplifiedInvoiceThresholdEur == expected
+                    && settings.StripeGatewayTreasuryId == "gateway"), ct);
+            await _audit.Received(1).LogAsync(StoreAuditActions.StoreSettingsUpdated, StoreAuditSubjectTypes.Settings, Guid.Empty,
+                Arg.Any<string>(), actor);
+        }
+    }
+
+    [HumansTheory]
     [InlineData("UnitPriceEur")]
     [InlineData("VatRatePercent")]
     [InlineData("IsActive")]
@@ -2012,13 +2068,13 @@ public class ServiceTests
             Url = url
         };
 
-        (await controller.Pay(order.Id, 10.01m, TestContext.Current.CancellationToken))
+        (await controller.Pay(order.Id, "10.01", TestContext.Current.CancellationToken))
             .Should().BeOfType<RedirectToActionResult>();
         controller.TempData["ErrorMessage"].Should().Be(localizer["Store_PaymentAboveBalance", 10m].Value);
         await _stripeService.DidNotReceiveWithAnyArgs().CreateCheckoutSessionAsync(default, default,
             default!, default!, default, default!);
 
-        (await controller.Pay(order.Id, 5m, TestContext.Current.CancellationToken))
+        (await controller.Pay(order.Id, "5", TestContext.Current.CancellationToken))
             .Should().BeOfType<RedirectToActionResult>();
         controller.TempData["ErrorMessage"].Should().Be(localizer["Store_CheckoutFailed"].Value);
         controller.TempData["ErrorMessage"]!.ToString().Should().NotContain("Private Stripe diagnostic");

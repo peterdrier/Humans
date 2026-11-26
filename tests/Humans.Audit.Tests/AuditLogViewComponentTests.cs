@@ -47,7 +47,7 @@ public class AuditLogViewComponentTests
     }
 
     [HumansFact]
-    public async Task Since_drops_entries_recorded_before_the_cutoff()
+    public async Task InvokeAsync_Since_DropsEarlierEntries()
     {
         var kept = Entry(Noon.Plus(Duration.FromDays(2)), "after the cutoff");
         _viewer.GetFilteredAsync("StoreProduct", Arg.Any<Guid?>(), Arg.Any<Guid?>(),

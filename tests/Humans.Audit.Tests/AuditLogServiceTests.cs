@@ -419,7 +419,7 @@ public class AuditLogServiceTests : IDisposable
     }
 
     [HumansFact]
-    public async Task ContributeForUserAsync_MergedIds_ExportsActorSubjectAndTargetRows()
+    public async Task ContributeForUserAsync_MergedIds_ExportsEveryRoleRow()
     {
         var userId = Guid.NewGuid();
         var source = Guid.NewGuid();

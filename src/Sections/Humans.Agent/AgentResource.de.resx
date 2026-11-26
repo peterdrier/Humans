@@ -64,7 +64,7 @@
   <data name="Agent_ConversationEmpty" xml:space="preserve">
     <value>Keine Nachrichten in diesem Gespräch.</value>
   </data>
-  <data name="Agent_ConversationRefusedLabel" xml:space="preserve">
+  <data name="Agent_ConversationUnansweredLabel" xml:space="preserve">
     <value>Der Assistent hat diese Frage nicht beantwortet.</value>
   </data>
   <data name="Agent_ConversationTitle" xml:space="preserve">
@@ -91,8 +91,8 @@
   <data name="Agent_DetailLocale" xml:space="preserve">
     <value>Sprache</value>
   </data>
-  <data name="Agent_DetailRefusal" xml:space="preserve">
-    <value>Ablehnung: {0}</value>
+  <data name="Agent_DetailOutcome" xml:space="preserve">
+    <value>Ergebnis: {0}</value>
   </data>
   <data name="Agent_HistoryEmpty" xml:space="preserve">
     <value>Noch keine Gespräche.</value>
@@ -133,11 +133,11 @@
   <data name="Agent_Help_Menu_CreateIssue" xml:space="preserve">
     <value>Problem melden</value>
   </data>
-  <data name="Agent_IssueProposed" xml:space="preserve">
+  <data name="Agent_HandoffDrafted" xml:space="preserve">
     <value>Das kann ich selbst nicht beantworten. Ich habe einen Vorgang für das Team entworfen — bitte prüfe und sende ihn ab.</value>
   </data>
   <data name="Agent_SilentTurnFallback" xml:space="preserve"><value>Ich konnte dazu keine Antwort zusammenstellen — kannst du die Frage umformulieren oder es noch einmal versuchen?</value></data>
-  <data name="Agent_AbuseRefusal" xml:space="preserve"><value>Dabei kann ich dir nicht helfen. Wenn du in einer Notlage bist, wende dich bitte an eine koordinierende Person oder den Rettungsdienst.</value></data>
+  <data name="Agent_DistressReply" xml:space="preserve"><value>Dabei kann ich dir nicht helfen. Wenn du in einer Notlage bist, wende dich bitte an eine koordinierende Person oder den Rettungsdienst.</value></data>
   <data name="Agent_HttpError" xml:space="preserve"><value>Fehler: {0}</value></data>
   <data name="Agent_NetworkError" xml:space="preserve"><value>Netzwerkfehler.</value></data>
   <data name="Agent_DisabledReply" xml:space="preserve"><value>(Der Assistent ist derzeit deaktiviert.)</value></data>

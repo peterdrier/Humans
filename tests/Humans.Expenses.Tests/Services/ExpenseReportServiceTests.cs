@@ -103,6 +103,8 @@ public sealed partial class ExpenseReportServiceTests
         _fileStorage = Substitute.For<IFileStorage>();
         _budgetService = Substitute.For<IBudgetService>();
         _userService = Substitute.For<IUserService>();
+        _userService.GetUserInfoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+            .Returns(call => UserInfo.Create(new User { Id = call.Arg<Guid>() }, [], [], null));
 
         _sut = new ExpenseReportService(_expenseRepo, _fileStorage, _budgetService, _userService, _auditLog, Substitute.For<IAuditViewerService>(), _holdedService, _finance, _financeWrite, _preapprovals, _preapprovalWrites, _clock, NullLogger<ExpenseReportService>.Instance, Options.Create(new TravelReimbursementConfig()));
         _review = new ExpenseReviewService(_expenseRepo, _sut, _budgetService, _permissions, _userService, _emailService, TestExpensesEmails.Create(), _auditLog, _preapprovals, _preapprovalWrites, _clock, NullLogger<ExpenseReviewService>.Instance);
@@ -401,6 +403,61 @@ public sealed partial class ExpenseReportServiceTests
         result.OutcomeUncertain.Should().Be(string.Equals(failureStage, "unverifiable", StringComparison.Ordinal));
         await using var verify = new ExpensesDbContext(_expensesOptions);
         (await verify.ExpenseReports.CountAsync(ct)).Should().Be(string.Equals(failureStage, "before", StringComparison.Ordinal) ? 0 : 1);
+    }
+
+    [HumansTheory]
+    [InlineData(null, null)]
+    [InlineData(UserState.Deleted, null)]
+    [InlineData(UserState.Merged, null)]
+    [InlineData(UserState.Bare, "erased@gdpr.local")]
+    [InlineData(UserState.Bare, "erased@deleted.local")]
+    [InlineData(null, null, true)]
+    public async Task CreateDraft_UnavailableSubmitter_Refuses(UserState? state, string? identityEmail, bool withGrant = false)
+    {
+        SetupActiveYear();
+        var submitterId = Guid.NewGuid();
+        var person = state is null ? null : UserInfo.Create(new User { Id = submitterId }, [], [], null)
+            with
+        { State = state.Value, IdentityEmailColumn = identityEmail };
+        _userService.GetUserInfoAsync(submitterId, Arg.Any<CancellationToken>()).Returns(person);
+
+        var result = await _sut.CreateDraftAsync(submitterId, Guid.NewGuid(), CategoryAccountNumber, "Project X",
+            preapprovalGrantId: withGrant ? Guid.NewGuid() : null, ct: TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeFalse();
+        result.Error!.ResourceKey.Should().Be("Expenses_Validation_SubmitterUnavailable");
+        result.ReportId.Should().BeNull();
+        result.OutcomeUncertain.Should().BeFalse();
+        await using var db = new ExpensesDbContext(_expensesOptions);
+        (await db.ExpenseReports.CountAsync(TestContext.Current.CancellationToken)).Should().Be(0);
+        _auditLog.ReceivedCalls().Should().BeEmpty();
+        _preapprovalWrites.ReceivedCalls().Should().BeEmpty();
+    }
+
+    [HumansTheory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task CreateDraft_ArchivedSubmitter_UsesSurvivor(bool onBehalf)
+    {
+        SetupActiveYear();
+        var archivedId = Guid.NewGuid();
+        var survivorId = Guid.NewGuid();
+        var actorId = onBehalf ? Guid.NewGuid() : archivedId;
+        var person = UserInfo.Create(new User { Id = survivorId }, [], [], null) with { MergedUserIds = [archivedId] };
+        _userService.GetUserInfoAsync(archivedId, Arg.Any<CancellationToken>()).Returns(person);
+        _userService.GetUserInfoAsync(survivorId, Arg.Any<CancellationToken>()).Returns(person);
+
+        var result = await _sut.CreateDraftAsync(archivedId, actorId, CategoryAccountNumber, "Project X",
+            ct: TestContext.Current.CancellationToken);
+
+        result.Succeeded.Should().BeTrue();
+        var report = (await _sut.GetAsync(result.ReportId!.Value, TestContext.Current.CancellationToken))!;
+        report.SubmitterUserId.Should().Be(survivorId);
+        if (onBehalf)
+            await _auditLog.Received(1).LogAsync(ExpensesAuditActions.ExpenseCreatedOnBehalf,
+                ExpensesAuditSubjectTypes.Report, report.Id, Arg.Any<string>(), actorId, survivorId, AuditSubjectTypes.User);
+        else
+            _auditLog.ReceivedCalls().Should().BeEmpty();
     }
 
     [HumansFact]
@@ -2865,6 +2922,30 @@ public sealed partial class ExpenseReportServiceTests
         loaded!.MaxAmount.Should().Be(25m);
     }
 
+    [HumansTheory]
+    [InlineData(UserState.Deleted)]
+    [InlineData(UserState.Merged)]
+    public async Task ApproveAsync_TombstoneSubmitter_KeepsApprovalWithoutEmail(UserState state)
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var (_, category) = SetupActiveYear();
+        var submitter = Guid.NewGuid();
+        var reportId = Guid.NewGuid();
+        var actor = Guid.NewGuid();
+        await SeedReportWithStatusAsync(reportId, submitter, category.Id, Guid.NewGuid(), ExpenseReportStatus.Submitted);
+        _userService.GetUserInfoAsync(submitter, Arg.Any<CancellationToken>()).Returns(UserInfo.Create(
+            new User { Id = submitter, BurnerName = "Submitter", Email = "submitter@example.org", State = state },
+            [], [], null));
+
+        var result = await _review.ApproveWithResultAsync(reportId, actor, null, null, ct);
+
+        result.Succeeded.Should().BeTrue();
+        (await _sut.GetAsync(reportId, ct))!.Status.Should().Be(ExpenseReportStatus.Approved);
+        _emailService.ReceivedCalls().Should().BeEmpty();
+        await _auditLog.Received(1).LogAsync(ExpensesAuditActions.ExpenseApprove, "ExpenseReport", reportId,
+            Arg.Any<string>(), actor);
+    }
+
     [HumansFact]
     public async Task ApproveAsync_WithABlankMaxAmount_ClearsTheCoordinatorsCap()
     {
@@ -4050,9 +4131,12 @@ public sealed partial class ExpenseReportServiceTests
         var tombstoneId = Guid.NewGuid();
         var survivorId = Guid.NewGuid();
         _userService.GetUserInfoAsync(tombstoneId, Arg.Any<CancellationToken>())
-            .Returns(WrapInUserInfo(survivorId, UserFixtures.Profile(), firstName: "Maria", lastName: "Garcia"));
+            .Returns(WrapInUserInfo(tombstoneId, UserFixtures.Profile(), firstName: "Maria", lastName: "Garcia"));
         _finance.GetIbanAsync(tombstoneId, Arg.Any<CancellationToken>()).Returns("ES9121000418450200051332");
         var reportId = await SeedApprovedReportWithAttachmentAsync(tombstoneId);
+        _userService.GetUserInfoAsync(tombstoneId, Arg.Any<CancellationToken>())
+            .Returns(WrapInUserInfo(survivorId, UserFixtures.Profile(), firstName: "Maria", lastName: "Garcia"));
+        (await _sut.GetAsync(reportId, TestContext.Current.CancellationToken))!.SubmitterUserId.Should().Be(tombstoneId);
         var line = (await _sut.GetAsync(reportId, TestContext.Current.CancellationToken))!.Lines[0];
 
         _financeWrite.EnsureCreditorContactAsync(

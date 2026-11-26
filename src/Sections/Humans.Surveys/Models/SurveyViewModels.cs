@@ -265,7 +265,9 @@ internal sealed class SurveyBuilderViewModel
 internal sealed class SurveyQuestionBuilderViewModel
 {
     public Guid? Id { get; set; }
+    [BindRequired]
     public int PageNumber { get; set; } = 1;
+    [BindRequired]
     public SurveyQuestionType Type { get; set; } = SurveyQuestionType.SingleChoice;
     public Dictionary<string, string> Prompt { get; set; } = new(StringComparer.OrdinalIgnoreCase);
     public Dictionary<string, string> HelpText { get; set; } = new(StringComparer.OrdinalIgnoreCase);
@@ -275,8 +277,11 @@ internal sealed class SurveyQuestionBuilderViewModel
     public Dictionary<string, string> RatingMinLabel { get; set; } = new(StringComparer.OrdinalIgnoreCase);
     public Dictionary<string, string> RatingMaxLabel { get; set; } = new(StringComparer.OrdinalIgnoreCase);
     public GridSelectionMode? GridSelectionMode { get; set; }
+    [BindRequired]
     public bool RankedAllowEqualRanks { get; set; } = true;
+    [BindRequired]
     public bool RankedAllowReject { get; set; }
+    [BindRequired]
     public BranchCombine ShowIfCombine { get; set; } = BranchCombine.All;
     public List<SurveyBranchClauseBuilderViewModel> ShowIfClauses { get; set; } = [];
     public List<SurveyOptionBuilderViewModel> Options { get; set; } = [];
@@ -376,6 +381,7 @@ internal sealed class SurveyInformationImageBuilderViewModel
 internal sealed class SurveyBranchClauseBuilderViewModel
 {
     public Guid? QuestionId { get; set; }
+    [BindRequired]
     public BranchOperator Operator { get; set; } = BranchOperator.Is;
     public List<string> OptionValues { get; set; } = [];
 

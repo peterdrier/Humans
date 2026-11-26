@@ -198,6 +198,11 @@ internal sealed class TicketController(
     {
         var (userError, user) = await ResolveCurrentUserOrUnauthorizedAsync(HttpContext.RequestAborted);
         if (userError is not null) return userError;
+        if (!ModelState.IsValid)
+        {
+            logger.LogWarning("Rejected malformed scheduled ticket sync setting by {ActorUserId}", user.Id);
+            return BadRequest(ModelState);
+        }
 
         await ticketSyncService.SetScheduledSyncEnabledAsync(enabled, user.Id, HttpContext.RequestAborted);
         SetSuccess(enabled ? "Scheduled ticket sync turned on." : "Scheduled ticket sync turned off.");

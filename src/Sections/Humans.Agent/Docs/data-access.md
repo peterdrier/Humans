@@ -31,9 +31,9 @@ The preload readers and the corpus builder cache their file-content reads in `IM
 and re-sets the corpus entries — the section/feature reader caches clear
 only on process restart): `AgentSectionDocReader` (`agent:section:{key}`),
 `AgentFeatureSpecReader` (`agent:feature:index`, `agent:feature:{stem}`),
-`CommunityFaqReader` (`agent:community-kb:index`,
-`agent:community-kb:doc:{stem}`), `AgentPreloadCorpusBuilder`
-(`agent:preload:{config}`). `AgentPreloadAugmentor` itself is pure
+`CommunityFaqReader` (`agent:community-faq:index`,
+`agent:community-faq:doc:{stem}`), `AgentPreloadCorpusBuilder`
+(`agent:preload`). `AgentPreloadAugmentor` itself is pure
 static-content formatting — no cache, no DB.
 `AgentToolDispatcher` also reads `IAuditViewerService`, `IShiftView`,
 `ISettingsService` for its tool surface.
@@ -49,7 +49,7 @@ Repository: `IAgentRepository`.
 | AgentSettings | R (via `IAgentSettingsService`) |
 
 Section-internal collaborators: `IAgentSettingsService`, `IAgentRateLimitStore`,
-`IAgentAbuseDetector`, `IAgentRetentionRunStore`, `IAgentUserSnapshotProvider`,
+`IAgentDistressCheck`, `IAgentRetentionRunStore`, `IAgentUserContextProvider`,
 `IAgentPreloadCorpusBuilder`, `IAgentPromptAssembler`, `IAgentToolDispatcher`,
 `IAnthropicClient`. Cross-section calls via `IUserService` (GDPR export display name).
 Implements internal `IAgentService` (including retention and `IUserDataContributor`) and public `IAgentTranscriptRead`
@@ -76,7 +76,7 @@ sub-windows computed in memory. No cache.
 Static class — hard-coded per-1M-token Anthropic pricing for agent spend
 estimates. No DI, no DB access.
 
-### AgentSettingsService / AgentPromptAssembler / AgentToolDispatcher / AgentUserSnapshotProvider / AgentAbuseDetector
+### AgentSettingsService / AgentPromptAssembler / AgentToolDispatcher / AgentUserContextProvider / AgentDistressCheck
 
 Live under `src/Sections/Humans.Agent/Services/`. The settings
 service is the only one that touches `AgentSettings` directly (via
@@ -87,7 +87,7 @@ adapters or fan-out over public service interfaces (`ITeamService`,
 `IUserService`, `IRoleAssignmentService`, `IConsentService`,
 `ITicketService`, `IShiftView`,
 `ISettingsService`, `IAuditViewerService`, etc.) for the agent's
-tool-dispatch and user-snapshot surfaces. No `IMemoryCache`.
+tool-dispatch and user-context surfaces. No `IMemoryCache`.
 
 ### AnthropicClient (`Services/Anthropic/`)
 

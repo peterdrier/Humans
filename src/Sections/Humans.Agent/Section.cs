@@ -46,7 +46,7 @@ public sealed class Section :
         services.AddSectionDbContext<AgentDbContext>(sentinelTable: "agent_conversations");
 
         services.Configure<AnthropicOptions>(configuration.GetSection(AnthropicOptions.SectionName));
-        services.Configure<CommunityKbSettings>(configuration.GetSection(CommunityKbSettings.SectionName));
+        services.Configure<CommunityFaqSettings>(configuration.GetSection(CommunityFaqSettings.SectionName));
 
         services.AddSingleton<IAgentSettingsStore, AgentSettingsStore>();
         services.AddSingleton<IAgentRateLimitStore, AgentRateLimitStore>();
@@ -55,7 +55,7 @@ public sealed class Section :
         services.AddScoped<IAgentRepository, AgentRepository>();
         services.AddScoped<AgentSettingsService>();
         services.AddScoped<IAgentSettingsService>(sp => sp.GetRequiredService<AgentSettingsService>());
-        services.AddScoped<IAgentUserSnapshotProvider, AgentUserSnapshotProvider>();
+        services.AddScoped<IAgentUserContextProvider, AgentUserContextProvider>();
         services.AddScoped<IAgentAdminStatusService, AgentAdminStatusService>();
 
         services.AddScoped<IAgentAnthropicBalanceProvider, AnthropicBalanceProvider>();
@@ -63,15 +63,15 @@ public sealed class Section :
         // Stateless readers over the shared IMemoryCache; IGuideContentSource is a singleton, so capturing it is safe.
         services.AddSingleton<AgentSectionDocReader>();
         services.AddSingleton<AgentFeatureSpecReader>();
-        services.AddSingleton<GitHubCommunityKbContentSource>();
+        services.AddSingleton<GitHubCommunityFaqContentSource>();
         services.AddSingleton<CommunityFaqReader>(sp => new CommunityFaqReader(
-            sp.GetRequiredService<GitHubCommunityKbContentSource>(),
+            sp.GetRequiredService<GitHubCommunityFaqContentSource>(),
             sp.GetRequiredService<IMemoryCache>(),
             sp.GetRequiredService<ILogger<CommunityFaqReader>>()));
         services.AddSingleton<IAgentPreloadAugmentor, AgentPreloadAugmentor>();
         services.AddSingleton<IAgentPreloadCorpusBuilder, AgentPreloadCorpusBuilder>();
         services.AddSingleton<IAgentPromptAssembler, AgentPromptAssembler>();
-        services.AddSingleton<IAgentAbuseDetector, AgentAbuseDetector>();
+        services.AddSingleton<IAgentDistressCheck, AgentDistressCheck>();
         services.AddSingleton<IAnthropicClient, AnthropicClient>();
 
         services.AddScoped<IAgentToolDispatcher, AgentToolDispatcher>();
@@ -114,10 +114,10 @@ public sealed class Section :
             importance: ConfigurationImportance.Recommended);
         configuration.GetOptionalSetting(registry, "Anthropic:DefaultModel", "Anthropic");
 
-        configuration.GetOptionalSetting(registry, "CommunityKb:Owner", "Community KB");
-        configuration.GetOptionalSetting(registry, "CommunityKb:Repository", "Community KB");
-        configuration.GetOptionalSetting(registry, "CommunityKb:Branch", "Community KB");
-        configuration.GetOptionalSetting(registry, "CommunityKb:AccessToken", "Community KB", isSensitive: true);
+        configuration.GetOptionalSetting(registry, "CommunityFaq:Owner", "Community FAQ");
+        configuration.GetOptionalSetting(registry, "CommunityFaq:Repository", "Community FAQ");
+        configuration.GetOptionalSetting(registry, "CommunityFaq:Branch", "Community FAQ");
+        configuration.GetOptionalSetting(registry, "CommunityFaq:AccessToken", "Community FAQ", isSensitive: true);
     }
 
     void ISectionHealthChecks.AddHealthChecks(IHealthChecksBuilder builder, IConfiguration configuration)

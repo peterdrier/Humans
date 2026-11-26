@@ -305,12 +305,12 @@ public class AgentToolDispatcherTests
         shift with { Id = Guid.NewGuid(), SignupBlockId = signupBlockId, Status = status };
 
     [HumansFact]
-    public async Task RouteToIssue_returns_proposal_marker_without_creating_anything()
+    public async Task Dispatch_Handoff_ReturnsProposalMarker()
     {
         var dispatcher = MakeDispatcher();
 
         var result = await dispatcher.DispatchAsync(
-            new AnthropicToolCall("t1", AgentToolNames.RouteToIssue,
+            new AnthropicToolCall("t1", AgentToolNames.Handoff,
                 """{"title":"Calendar feature","category":"Feature","description":"User asked about calendar; not implemented yet."}"""),
             userId: Guid.Parse("22222222-2222-2222-2222-222222222222"),
             TestContext.Current.CancellationToken);
@@ -325,13 +325,13 @@ public class AgentToolDispatcherTests
     [InlineData("{\"title\":42}")]
     [InlineData("{\"description\":[]}")]
     [InlineData("{\"category\":true}")]
-    public async Task RouteToIssue_reports_an_error_for_malformed_arguments(string arguments)
+    public async Task Dispatch_MalformedHandoff_ReturnsError(string arguments)
     {
         var logger = Substitute.For<ILogger<AgentToolDispatcher>>();
         var dispatcher = MakeDispatcher(logger: logger);
 
         var result = await dispatcher.DispatchAsync(
-            new AnthropicToolCall("t1", AgentToolNames.RouteToIssue,
+            new AnthropicToolCall("t1", AgentToolNames.Handoff,
                 arguments),
             userId: Guid.Parse("22222222-2222-2222-2222-222222222222"),
             TestContext.Current.CancellationToken);
@@ -379,12 +379,12 @@ public class AgentToolDispatcherTests
     /// ended in an empty reply to the user.
     /// </summary>
     [HumansFact]
-    public async Task FetchSectionGuide_miss_lists_the_valid_section_keys()
+    public async Task Dispatch_UnknownSection_ListsValidKeys()
     {
         var dispatcher = MakeDispatcher();
 
         var result = await dispatcher.DispatchAsync(
-            new AnthropicToolCall("t1", AgentToolNames.FetchSectionGuide, """{"section":"NotASection"}"""),
+            new AnthropicToolCall("t1", AgentToolNames.FetchSectionDoc, """{"section":"NotASection"}"""),
             userId: Guid.NewGuid(),
             TestContext.Current.CancellationToken);
 
@@ -482,7 +482,7 @@ public class AgentToolDispatcherTests
 
     [HumansTheory]
     [InlineData(AgentToolNames.FetchFeatureSpec, "{\"name\":42}")]
-    [InlineData(AgentToolNames.FetchSectionGuide, "{\"section\":[]}")]
+    [InlineData(AgentToolNames.FetchSectionDoc, "{\"section\":[]}")]
     [InlineData(AgentToolNames.FetchCommunityFaq, "{\"topic\":{}}")]
     [InlineData(AgentToolNames.GetShiftDetails, "{\"shiftId\":true}")]
     [InlineData(AgentToolNames.GetAuditHistory, "null")]

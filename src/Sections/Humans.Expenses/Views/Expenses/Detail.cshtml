@@ -276,6 +276,7 @@
                             @Html.AntiForgeryToken()
                             <div class="mb-2">
                                 <label class="form-label" for="endorse-max">@Localizer["Expenses_MaxAmount"]</label>
+                                <input type="hidden" name="__Invariant" value="MaxAmount" />
                                 <input type="number" class="form-control" id="endorse-max" name="MaxAmount"
                                        step="0.01" min="0.01"
                                        value="@(r.MaxAmount?.ToString("F2", System.Globalization.CultureInfo.InvariantCulture))">
@@ -311,6 +312,7 @@
                             @Html.AntiForgeryToken()
                             <div class="mb-2">
                                 <label class="form-label" for="approve-max">@Localizer["Expenses_MaxAmount"]</label>
+                                <input type="hidden" name="__Invariant" value="MaxAmount" />
                                 <input type="number" class="form-control" id="approve-max" name="MaxAmount"
                                        step="0.01" min="0.01"
                                        value="@(r.MaxAmount?.ToString("F2", System.Globalization.CultureInfo.InvariantCulture))"

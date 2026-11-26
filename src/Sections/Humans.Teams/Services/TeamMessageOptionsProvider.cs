@@ -42,12 +42,12 @@ internal sealed class TeamMessageOptionsProvider(
     public async Task<TeamMessageContext> GetContextAsync(Guid viewerId, Guid recipientId, CancellationToken ct = default)
     {
         var sender = await users.GetUserInfoAsync(viewerId, ct);
-        if (sender is null)
+        if (sender is null || sender.IsTombstone)
             return new(null, null, [], TeamMessageRefusal.MissingUser);
         if (sender.Id == recipientId || sender.AllUserIds.Contains(recipientId))
             return new(sender, sender, [], TeamMessageRefusal.Self);
         var recipient = await users.GetUserInfoAsync(recipientId, ct);
-        if (recipient is null)
+        if (recipient is null || recipient.IsTombstone)
             return new(sender, null, [], TeamMessageRefusal.MissingUser);
         if (sender.Id == recipient.Id)
             return new(sender, recipient, [], TeamMessageRefusal.Self);
@@ -58,11 +58,12 @@ internal sealed class TeamMessageOptionsProvider(
 
     public async Task<bool> SendAsync(TeamMessageContext context, TeamMessageOption team, string message, bool includeContactInfo)
     {
-        if (context.Refusal is not null || context.Sender is not { } sender || context.Recipient is not { } recipient
+        if (context.Refusal is not null || context.Sender is not { } sender || sender.IsTombstone
+            || context.Recipient is not { } recipient || recipient.IsTombstone
             || string.IsNullOrWhiteSpace(recipient.Email) || string.IsNullOrWhiteSpace(sender.Email))
         {
             logger.LogWarning("Team message refused for sender {SenderUserId} and recipient {RecipientUserId}: {Reason}",
-                context.Sender?.Id, context.Recipient?.Id, context.Refusal?.ToString() ?? "Missing email address");
+                context.Sender?.Id, context.Recipient?.Id, context.Refusal?.ToString() ?? "Unavailable participant or email address");
             return false;
         }
 

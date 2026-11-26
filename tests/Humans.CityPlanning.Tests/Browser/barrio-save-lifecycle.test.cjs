@@ -9,14 +9,14 @@ const main = fs.readFileSync(path.join(root, 'main.js'), 'utf8');
 const edit = fs.readFileSync(path.join(root, 'edit.js'), 'utf8');
 const handler = main.slice(main.indexOf("document.getElementById('save-btn')?.addEventListener"),
     main.indexOf("document.getElementById('cancel-btn')?.addEventListener"));
-const update = edit.slice(edit.indexOf('export function updateSaveButton()'), edit.indexOf('// --- History ---'))
+const update = edit.slice(edit.indexOf('function getAreaFeature('), edit.indexOf('// --- History ---'))
     .replace('export function', 'function');
 const polygon = x => ({ type: 'Feature', geometry: { type: 'Polygon', coordinates: [[[x, 0], [2, 0], [2, 2], [x, 0]]] }, properties: {} });
-function editor() {
+function editor(initialFeatures = [polygon(0)]) {
     let save;
     const requests = [], alerts = [];
     const button = { disabled: false, dataset: {}, addEventListener: (_, callback) => save = callback };
-    const state = { activeCampSeasonId: 'A', features: [polygon(0)], exits: 0,
+    const state = { activeCampSeasonId: 'A', features: initialFeatures, exits: 0,
         map: { getSource: () => ({ setData() {} }) } };
     state.draw = { getAll: () => ({ features: state.features }) };
     const context = {
@@ -96,3 +96,15 @@ for (const network of [false, true]) {
         assert.deepEqual(e.alerts, ['Localized save failure']);
     });
 }
+
+test('MultiPolygon edits can save their complete geometry', async () => {
+    const part = polygon(0).geometry.coordinates;
+    const feature = { type: 'Feature', properties: {}, geometry: { type: 'MultiPolygon', coordinates: [part, part] } };
+    const e = editor([feature]); e.update();
+    assert.equal(e.button.disabled, false);
+    const saving = e.save();
+    const sent = JSON.parse(e.requests[0].options.body);
+    assert.deepEqual(JSON.parse(sent.geoJson), feature);
+    e.requests[0].resolve({ ok: true }); await saving;
+    assert.equal(e.state.exits, 1);
+});

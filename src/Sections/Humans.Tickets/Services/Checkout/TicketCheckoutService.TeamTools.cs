@@ -112,7 +112,7 @@ internal sealed partial class TicketCheckoutService
     private async Task<bool> CancelOrderAsync(
         TicketingSettings ticketing, TicketCheckoutOrder order, CancellationState state, CancellationToken ct)
     {
-        var live = state.Tickets[order.Id].Where(IsLive).ToList();
+        var live = state.Tickets[order.Id].Where(t => t.IsHeld).ToList();
         var offers = state.Offers.Where(o => live.Any(t => t.Id == o.TicketId)
             && o.State is TicketResaleOfferState.Open or TicketResaleOfferState.Reserved).ToList();
         if (offers.Any(o => o.State == TicketResaleOfferState.Reserved))
@@ -184,9 +184,6 @@ internal sealed partial class TicketCheckoutService
         return true;
     }
 
-    private static bool IsLive(TicketCheckoutTicket t) =>
-        t.State is TicketCheckoutTicketState.Valid or TicketCheckoutTicketState.Offered;
-
     private async Task<CancellationState> LoadCancellationAsync(TicketingSettings ticketing, CancellationToken ct) =>
         new(ticketing,
             await repository.GetOrdersForSettingsAsync(ticketing.Id, ct),
@@ -244,7 +241,7 @@ internal sealed partial class TicketCheckoutService
         /// that the cancellation has not asked for.
         /// </summary>
         public IReadOnlyList<TicketCheckoutOrder> ToDo => Paid
-            .Where(o => o.CancellationEmailedAt is null || tickets[o.Id].Any(IsLive) || (Refundable(o) > 0 && !HasCancelRefund(o)))
+            .Where(o => o.CancellationEmailedAt is null || tickets[o.Id].Any(t => t.IsHeld) || (Refundable(o) > 0 && !HasCancelRefund(o)))
             .OrderBy(o => o.PaidAt)
             .ToList();
 
@@ -258,7 +255,7 @@ internal sealed partial class TicketCheckoutService
                     ticketing.CancelledAt, ticketing.CancelledByUserId, ticketing.CancelReason,
                     PaidOrders: paid.Count,
                     ToDo: ToDo.Count,
-                    LiveTickets: paid.Sum(o => tickets[o.Id].Count(IsLive)),
+                    LiveTickets: paid.Sum(o => tickets[o.Id].Count(t => t.IsHeld)),
                     TicketMoneyMinor: paid.Sum(o => o.TicketTotalMinor),
                     ChargedBackMinor: paid.Sum(o => o.ChargedBackMinor),
                     RefundedMinor: paid.Sum(o => Math.Max(o.RefundedMinor,

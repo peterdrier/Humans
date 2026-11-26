@@ -396,6 +396,11 @@ internal sealed class SystemTeamSyncJob(
             {
                 if (!addedUsersWithEmails.TryGetValue(userId, out var user))
                     continue;
+                if (user.IsTombstone)
+                {
+                    logger.LogWarning("Skipping added-to-team welcome for unavailable user {UserId} team {TeamId}", userId, team.Id);
+                    continue;
+                }
 
                 try
                 {

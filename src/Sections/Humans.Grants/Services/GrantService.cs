@@ -121,12 +121,13 @@ internal sealed partial class GrantService(
         AnnounceAsync(grant, program, GrantNoticeKind.Revoked, GrantsNotificationSources.GrantRevoked, ct);
 
     private async Task AnnounceAsync(
-        Grant grant, GrantProgram program, GrantNoticeKind kind, NotificationSourceDefinition source, CancellationToken ct)
+        Grant grant, GrantProgram program, GrantNoticeKind kind, NotificationSourceDefinition source, CancellationToken ct,
+        UserInfo? person = null, bool recipientLookupAttempted = false)
     {
         // Each step is best-effort on its own: one channel's outage never suppresses the other.
-        UserInfo? person = null;
-        await BestEffortAsync("recipient lookup", kind, grant.Id,
-            async () => person = await users.GetUserInfoAsync(grant.UserId, ct), ct);
+        if (!recipientLookupAttempted)
+            await BestEffortAsync("recipient lookup", kind, grant.Id,
+                async () => person = await users.GetUserInfoAsync(grant.UserId, ct), ct);
         var culture = CultureOf(person);
         var expiresOn = grant.ExpiresOn ?? program.GrantsExpireOn;
 
@@ -137,9 +138,9 @@ internal sealed partial class GrantService(
         {
             // Reuse a successful lookup; email still gets its independent attempt after a lookup failure.
             var recipient = person ?? await users.GetUserInfoAsync(grant.UserId, ct);
-            if (recipient is null || string.IsNullOrWhiteSpace(recipient.Email))
+            if (recipient is null || recipient.IsTombstone || string.IsNullOrWhiteSpace(recipient.Email))
             {
-                logger.LogWarning("Skipping grant {Kind} email for {UserId} on grant {GrantId}: no effective email",
+                logger.LogWarning("Skipping grant {Kind} email for {UserId} on grant {GrantId}: unavailable recipient or no effective email",
                     kind, grant.UserId, grant.Id);
                 return;
             }

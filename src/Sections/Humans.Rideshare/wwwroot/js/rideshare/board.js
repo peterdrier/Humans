@@ -16,7 +16,10 @@ document.querySelectorAll('.js-take-btn').forEach(btn =>
     btn.addEventListener('click', () => openTake(btn.dataset.requestId, Number(btn.dataset.partySize))));
 
 const el = document.getElementById('map');
-if (el) init(el).catch(err => console.error('Rideshare board init failed:', err));
+if (el) init(el).catch(err => {
+    console.error('Rideshare board init failed:', err);
+    showToast(el.dataset.mapLoadFailed, 'danger');
+});
 
 async function init(el) {
     const cfg = el.dataset;
@@ -35,8 +38,13 @@ async function init(el) {
     map.addControl(new maplibregl.NavigationControl(), 'top-right');
     await new Promise(resolve => map.on('load', resolve));
 
-    const collection = await fetch(cfg.boardUrl, { headers: { Accept: 'application/geo+json' } }).then(r => r.json());
-    const features = collection.features ?? [];
+    const response = await fetch(cfg.boardUrl, { headers: { Accept: 'application/geo+json' } });
+    if (!response.ok) throw new Error(`Rideshare board request failed: ${response.status}`);
+    const collection = await response.json();
+    if (collection?.type !== 'FeatureCollection' || !Array.isArray(collection.features)) {
+        throw new Error('Rideshare board response is not a FeatureCollection');
+    }
+    const features = collection.features;
     const byKind = kind => ({ type: 'FeatureCollection', features: features.filter(f => f.properties?.kind === kind) });
     const tripById = new Map(features.filter(f => f.properties?.kind === 'trip').map(f => [f.properties.id, f]));
 

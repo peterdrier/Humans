@@ -46,10 +46,14 @@ public sealed class Section : ISection, ISectionAdminNav, ISectionConfiguration,
         services.AddHttpClient(MailerLiteClient.HttpClientName, (sp, http) =>
         {
             var opts = sp.GetRequiredService<IOptions<MailerLiteOptions>>().Value;
-            http.BaseAddress = new Uri(opts.BaseUrl);
+            if (Uri.TryCreate(opts.BaseUrl, UriKind.Absolute, out var baseAddress)
+                && baseAddress.Scheme is "http" or "https")
+                http.BaseAddress = baseAddress;
             http.Timeout = TimeSpan.FromSeconds(30);
-            http.DefaultRequestHeaders.Authorization =
-                new AuthenticationHeaderValue("Bearer", opts.ApiKey);
+            if (!AuthenticationHeaderValue.TryParse($"Bearer {opts.ApiKey}", out var authorization)
+                || opts.ApiVersion.AsSpan().ContainsAny('\r', '\n'))
+                throw new HttpRequestException("MailerLite:ApiKey and MailerLite:ApiVersion must be valid HTTP header values.");
+            http.DefaultRequestHeaders.Authorization = authorization;
             http.DefaultRequestHeaders.Add("X-Version", opts.ApiVersion);
             http.DefaultRequestHeaders.Accept.Add(
                 new MediaTypeWithQualityHeaderValue("application/json"));

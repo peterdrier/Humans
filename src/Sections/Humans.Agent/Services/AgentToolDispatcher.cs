@@ -43,14 +43,14 @@ internal sealed class AgentToolDispatcher(
             lookup = call.Name switch
             {
                 AgentToolNames.FetchFeatureSpec => ReadStringArgument(args, "name"),
-                AgentToolNames.FetchSectionGuide => ReadStringArgument(args, "section"),
+                AgentToolNames.FetchSectionDoc => ReadStringArgument(args, "section"),
                 AgentToolNames.FetchCommunityFaq => ReadStringArgument(args, "topic"),
                 AgentToolNames.GetShiftDetails => ReadStringArgument(args, "shiftId"),
                 _ => "",
             };
             if (string.Equals(call.Name, AgentToolNames.GetAuditHistory, StringComparison.Ordinal))
                 auditLimit = ParseAuditHistoryLimit(args);
-            if (string.Equals(call.Name, AgentToolNames.RouteToIssue, StringComparison.Ordinal))
+            if (string.Equals(call.Name, AgentToolNames.Handoff, StringComparison.Ordinal))
             {
                 // AgentService reads these strings to build the proposal after confirmation.
                 _ = ReadStringArgument(args, "title");
@@ -76,7 +76,7 @@ internal sealed class AgentToolDispatcher(
                             string.Create(CultureInfo.InvariantCulture, $"Feature spec not found: {name}."),
                             await features.KnownStemsAsync(cancellationToken));
                 }
-            case AgentToolNames.FetchSectionGuide:
+            case AgentToolNames.FetchSectionDoc:
                 {
                     var key = lookup;
                     var body = await sections.ReadAsync(key, cancellationToken);
@@ -107,7 +107,7 @@ internal sealed class AgentToolDispatcher(
                         return new AnthropicToolResult(call.Id, "shiftId must be a valid GUID.", IsError: true);
                     return await DispatchGetShiftDetailsAsync(call.Id, userId, shiftKey, cancellationToken);
                 }
-            case AgentToolNames.RouteToIssue:
+            case AgentToolNames.Handoff:
                 {
                     // No DB write: AgentService emits the proposal frame. This result just tells the model the turn
                     // is over.

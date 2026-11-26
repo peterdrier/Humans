@@ -6,7 +6,7 @@ namespace Humans.Audit.Tests;
 public class SectionAccessMatrixTests
 {
     [HumansFact]
-    public void Pins_the_Audit_matrix()
+    public void AccessMatrix_Audit_MatchesPinnedRows()
     {
         var matrix = ((ISectionAccessMatrix)new Section()).AccessMatrices
             .Single(m => string.Equals(m.Key, "Audit", StringComparison.Ordinal));

@@ -71,6 +71,11 @@ internal sealed class ExpenseReportService(
         Guid? attemptedId = null;
         var result = await RunMutationAsync(logger, ct, async () =>
         {
+            var submitter = await userService.GetUserInfoAsync(submitterUserId, ct);
+            if (submitter is null || submitter.IsTombstone)
+                return ExpenseMutationResult.Failure("Expenses_Validation_SubmitterUnavailable");
+            submitterUserId = submitter.Id;
+
             var (resolved, refusal) = preapprovalGrantId is { } grantId
                 ? await ResolveGrantBookingAsync(grantId, submitterUserId, heldGrantId: null, ct)
                 : await ResolveBookingAsync(holdedAccountNumber, pinnedYearId: null, ct);

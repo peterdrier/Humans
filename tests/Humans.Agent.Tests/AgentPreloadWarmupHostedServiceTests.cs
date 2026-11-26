@@ -6,7 +6,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using Xunit;
-using Humans.Agent.Domain;
 using Humans.Agent.Services;
 
 namespace Humans.Agent.Tests;
@@ -22,7 +21,7 @@ public class AgentPreloadWarmupHostedServiceTests
         var started = new TaskCompletionSource<CancellationToken>(TaskCreationOptions.RunContinuationsAsynchronously);
         var resume = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var corpus = Substitute.For<IAgentPreloadCorpusBuilder>();
-        corpus.BuildAsync(Arg.Any<AgentPreloadConfig>(), Arg.Any<CancellationToken>())
+        corpus.BuildAsync(Arg.Any<CancellationToken>())
             .Returns(async call =>
             {
                 var token = call.Arg<CancellationToken>();
@@ -47,15 +46,15 @@ public class AgentPreloadWarmupHostedServiceTests
         await warming;
 
         readToken.Should().Be(shutdown.Token);
-        await corpus.Received(1).BuildAsync(Arg.Any<AgentPreloadConfig>(), Arg.Any<CancellationToken>());
+        await corpus.Received(1).BuildAsync(Arg.Any<CancellationToken>());
         source.ListCalls.Should().Be(0);
     }
 
     [HumansFact]
-    public async Task WarmCachesAsync_builds_every_tier_and_lists_community_topics()
+    public async Task WarmCaches_PrimesContentCaches()
     {
         var corpus = Substitute.For<IAgentPreloadCorpusBuilder>();
-        corpus.BuildAsync(Arg.Any<AgentPreloadConfig>(), Arg.Any<CancellationToken>())
+        corpus.BuildAsync(Arg.Any<CancellationToken>())
             .Returns("corpus");
 
         var source = new ListCountingSource();
@@ -69,8 +68,7 @@ public class AgentPreloadWarmupHostedServiceTests
 
         await AgentPreloadWarmupHostedService.WarmCachesAsync(sp, TestContext.Current.CancellationToken);
 
-        await corpus.Received(1).BuildAsync(AgentPreloadConfig.Tier1, Arg.Any<CancellationToken>());
-        await corpus.Received(1).BuildAsync(AgentPreloadConfig.Tier2, Arg.Any<CancellationToken>());
+        await corpus.Received(1).BuildAsync(Arg.Any<CancellationToken>());
         source.ListCalls.Should().Be(1);
     }
 
@@ -78,7 +76,7 @@ public class AgentPreloadWarmupHostedServiceTests
     public async Task WarmAsync_swallows_exceptions()
     {
         var corpus = Substitute.For<IAgentPreloadCorpusBuilder>();
-        corpus.BuildAsync(Arg.Any<AgentPreloadConfig>(), Arg.Any<CancellationToken>())
+        corpus.BuildAsync(Arg.Any<CancellationToken>())
             .Returns<string>(_ => throw new InvalidOperationException("github down"));
 
         var community = new CommunityFaqReader(new ListCountingSource(),

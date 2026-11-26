@@ -1,4 +1,3 @@
-using Humans.Agent.Domain;
 using Humans.Agent.Services;
 using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
@@ -15,8 +14,6 @@ internal sealed class AdminAgentSettingsViewModel
     /// <summary>Display only; never bound from the form.</summary>
     [BindNever]
     public AgentModelOptions ModelOptions { get; set; } = new([], LiveListAvailable: false);
-    [BindRequired]
-    public AgentPreloadConfig PreloadConfig { get; set; }
     [BindRequired]
     public int DailyMessageCap { get; set; }
     [BindRequired]

@@ -76,6 +76,9 @@ Numeric offsets must also fit the requested day or full seven-day window within 
 - Dietary save and decline actions honour request cancellation while resolving the
   account, before saving. Once started, either mutation finishes independently of
   the browser request; mutation failures retain the form's existing error handling.
+  Both writes resolve archived IDs to the survivor and refuse missing or tombstoned
+  accounts before storing answers or an opt-out. Refusals report save failure without
+  recreating erased data or claiming success.
 
 - Roster exports and health reveals resolve the signed-in account before loading
   personal rows and audit the surviving account ID after a merge. Missing accounts

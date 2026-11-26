@@ -671,7 +671,7 @@ Git Bash.)
      (proven: Teams, reversed by 4b-2k).
    - **Decide the leaf-vs-`Domain/` question per enum, not per section.** Budget moved both of
      its enums because both appeared in contract signatures. Issues' two split: `IssueCategory`
-     is named by `Humans.Agent`'s `route_to_issue` proposal, so it went to the leaf;
+     is named by `Humans.Agent`'s `handoff` draft, so it went to the leaf;
      `IssueStatus` has no consumer outside the section and turned `internal` in `Domain/`
      beside the entities. Grep each enum's out-of-section references separately (proven:
      Issues).
@@ -925,7 +925,7 @@ Git Bash.)
      whole connector (interface, DTOs, options, client, balance provider, NuGet reference) moves
      in. The test is not "is it an external API" but **whose types are in its signatures** — a
      connector serving one section and shaped by that section's model belongs to it (proven:
-     Agent; contrast Stripe, which Store left behind, and `GitHubCommunityKbContentSource`, whose
+     Agent; contrast Stripe, which Store left behind, and `GitHubCommunityFaqContentSource`, whose
      signatures name only `string`).
      - **…and check what the connector uses *from Base*, not only what it exposes.** The
        instinct after deciding the connector moves in is that the section must therefore
@@ -966,7 +966,7 @@ Git Bash.)
      are not Guide's: the signatures name only `string`, and the consumers are
      elsewhere (the Agent section's `AgentSectionDocReader` / `AgentFeatureSpecReader` /
      `CommunityFaqReader` over `docs/sections`, the section `Docs/features/` spec corpus and `docs/community-kb`,
-     its `AgentDocsHealthCheck`, and Base's `GitHubCommunityKbContentSource`, which
+     its `AgentDocsHealthCheck`, and Base's `GitHubCommunityFaqContentSource`, which
      *implements* the same interface against a different repo). Taking it in would have forced
      a contracts leaf, made Base and another section consume a section's contracts for a plain
      string fetch, and split `GuideSettings` from the type binding it. Left in

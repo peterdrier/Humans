@@ -297,6 +297,52 @@ public sealed class GrantTests : GrantsTestHarness
         await ReceivedNoticeAsync(GrantsNotificationSources.GrantReceived, person);
     }
 
+    [HumansTheory]
+    [Xunit.InlineData(null)]
+    [Xunit.InlineData(UserState.Deleted)]
+    [Xunit.InlineData(UserState.Merged)]
+    public async Task Resend_UnavailableRecipient_PreservesNotificationStamp(UserState? state)
+    {
+        var person = SeedUser();
+        var snapshot = Xunit.Assert.IsType<UserInfo>(await Users.GetUserInfoAsync(person, Ct));
+        var program = await SeedProgramAsync();
+        var grant = await SeedGrantAsync(program, person);
+        Users.GetUserInfoAsync(person, Arg.Any<CancellationToken>())
+            .Returns(state is { } value ? snapshot with { State = value } : null);
+        Clock.Advance(Duration.FromDays(2));
+
+        var result = await NewService().ResendNoticeAsync(program.Id, grant.Id, SeedUser("Manager"), Ct);
+
+        result.Refusal.Should().NotBeNull();
+        (await ReadGrantAsync(grant.Id)).NotifiedAt.Should().Be(grant.NotifiedAt);
+        AuditLog.ReceivedCalls().Should().BeEmpty();
+        Notifications.ReceivedCalls().Should().BeEmpty();
+        Email.ReceivedCalls().Should().BeEmpty();
+    }
+
+    [HumansTheory]
+    [Xunit.InlineData(UserState.Deleted)]
+    [Xunit.InlineData(UserState.Merged)]
+    public async Task Revoke_TombstoneRecipient_SavesWithoutEmail(UserState state)
+    {
+        var person = SeedUser();
+        var snapshot = Xunit.Assert.IsType<UserInfo>(await Users.GetUserInfoAsync(person, Ct));
+        var program = await SeedProgramAsync();
+        var grant = await SeedGrantAsync(program, person);
+        var actor = SeedUser("Manager");
+        Users.GetUserInfoAsync(person, Arg.Any<CancellationToken>()).Returns(snapshot with { State = state });
+
+        var result = await NewService().RevokeGrantAsync(program.Id, grant.Id, "No longer eligible", actor, Ct);
+
+        result.Refusal.Should().BeNull();
+        var saved = await ReadGrantAsync(grant.Id);
+        saved.RevokedAt.Should().Be(Clock.GetCurrentInstant());
+        saved.RevokedByUserId.Should().Be(actor);
+        Email.ReceivedCalls().Should().BeEmpty();
+        await AuditLog.Received(1).LogAsync(GrantsAuditActions.GrantRevoked, GrantsAuditSubjectTypes.Grant, grant.Id,
+            Arg.Any<string>(), actor, person, AuditSubjectTypes.User);
+    }
+
     [HumansFact]
     public async Task NoticeFailure_IsLogged_NotThrown_GrantStands()
     {

@@ -1464,12 +1464,15 @@ internal sealed partial class WorkgroupService(
             return 0;
         }
         // In-app notices are keyed by user id: deliver to the live id the read resolved to.
-        var recipients = recipientUserIds.Select(id =>
+        var recipients = recipientUserIds.Select(id => people.GetValueOrDefault(id))
+            .OfType<UserInfo>()
+            .Where(person => !person.IsTombstone)
+            .DistinctBy(person => person.Id)
+            .Select(person =>
         {
-            var person = people.GetValueOrDefault(id);
-            var language = person?.PreferredLanguage;
-            return (Id: person?.Id ?? id, Language: language.IsSupportedCultureCode() ? language! : "en");
-        }).DistinctBy(person => person.Id);
+            var language = person.PreferredLanguage;
+            return (person.Id, Language: language.IsSupportedCultureCode() ? language! : "en");
+        });
         var dispatched = 0;
         foreach (var group in recipients.GroupBy(person => person.Language, StringComparer.OrdinalIgnoreCase))
         {
@@ -1548,10 +1551,10 @@ internal sealed partial class WorkgroupService(
         {
             infos.TryGetValue(id, out var info);
             var address = info?.Email;
-            if (info is null || string.IsNullOrWhiteSpace(address))
+            if (info is null || info.IsTombstone || string.IsNullOrWhiteSpace(address))
             {
                 logger.LogWarning(
-                    "Skipping workgroup {Kind} email for {UserId} on {WorkgroupId}: no effective email",
+                    "Skipping workgroup {Kind} email for {UserId} on {WorkgroupId}: unavailable recipient or no effective email",
                     kind, id, w.Id);
                 continue;
             }

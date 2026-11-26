@@ -20,7 +20,7 @@ public class BudgetAdminControllerTests
     [HumansTheory]
     [Xunit.InlineData(false)]
     [Xunit.InlineData(true)]
-    public async Task Ticket_target_keeps_actual_sales_when_the_projection_is_empty(bool activeYear)
+    public async Task TicketTarget_EmptyProjection_PreservesActualSales(bool activeYear)
     {
         var clock = new FakeClock(Instant.FromUtc(2026, 11, 20, 0, 0));
         var budgets = Substitute.For<IBudgetManagement>();

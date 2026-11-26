@@ -48,6 +48,49 @@ public sealed class WorkgroupServiceRhythmTests : WorkgroupsTestHarness
     }
 
     [HumansTheory]
+    [Xunit.InlineData(null, false)]
+    [Xunit.InlineData(UserState.Deleted, false)]
+    [Xunit.InlineData(UserState.Merged, false)]
+    [Xunit.InlineData(null, true)]
+    [Xunit.InlineData(UserState.Deleted, true)]
+    [Xunit.InlineData(UserState.Merged, true)]
+    public async Task UpdateNudge_UnavailableCoordinator_CountsOnlyLiveRecipients(UserState? state, bool hasLiveCoordinator)
+    {
+        var unavailable = SeedUser("Unavailable");
+        var live = SeedUser("Live coordinator");
+        var snapshot = Xunit.Assert.IsType<UserInfo>(await Users.GetUserInfoAsync(unavailable, Ct));
+        var liveInfo = Xunit.Assert.IsType<UserInfo>(await Users.GetUserInfoAsync(live, Ct));
+        var people = new Dictionary<Guid, UserInfo> { [live] = liveInfo };
+        if (state is { } value) people[unavailable] = snapshot with { State = value };
+        Users.GetUserInfosAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
+            .Returns(call => call.Arg<IEnumerable<Guid>>().Where(people.ContainsKey).ToDictionary(id => id, id => people[id]));
+        var group = await SeedWorkgroupAsync(coordinatorUserId: unavailable,
+            registeredAt: Clock.GetCurrentInstant().Minus(Duration.FromDays(30)));
+        if (hasLiveCoordinator) await AddMemberAsync(group.Id, live, WorkgroupMemberRole.Coordinator);
+
+        await NewService().RunDailyRhythmAsync(Ct);
+
+        if (hasLiveCoordinator)
+        {
+            await Notifications.Received(1).SendAsync(WorkgroupsNotificationSources.WorkgroupReportingDue,
+                Arg.Any<NotificationClass>(), Arg.Any<NotificationPriority>(), Arg.Any<string>(),
+                Arg.Is<IReadOnlyList<Guid>>(ids => ids.Count == 1 && ids[0] == live),
+                Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(), Arg.Any<string?>(),
+                Arg.Any<CancellationToken>());
+            await AuditLog.Received(1).LogAsync(WorkgroupsAuditActions.WorkgroupUpdateDueNotified,
+                WorkgroupsAuditSubjectTypes.Workgroup, group.Id,
+                Arg.Is<string>(description => description.Contains("1 coordinator", StringComparison.Ordinal)),
+                WorkgroupService.WorkgroupRhythmJobName);
+        }
+        else
+        {
+            Notifications.ReceivedCalls().Should().BeEmpty();
+            await AuditLog.DidNotReceive().LogAsync(WorkgroupsAuditActions.WorkgroupUpdateDueNotified,
+                Arg.Any<string>(), Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<string>());
+        }
+    }
+
+    [HumansTheory]
     [Xunit.InlineData(false)]
     [Xunit.InlineData(true)]
     public async Task UpdateNudge_FailedLanguage_DoesNotSuppressOthersOrOverstateDelivery(bool hasAnotherLanguage)

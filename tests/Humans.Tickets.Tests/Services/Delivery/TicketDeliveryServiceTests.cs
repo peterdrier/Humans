@@ -264,6 +264,45 @@ public sealed class TicketDeliveryServiceTests
     }
 
     [HumansTheory]
+    [Xunit.InlineData(null)]
+    [Xunit.InlineData(UserState.Deleted)]
+    [Xunit.InlineData(UserState.Merged)]
+    public async Task JoinInvitation_UnavailableHolder_SkipsStoredAddress(UserState? state)
+    {
+        var ticket = Ticket(PartnerId, "Ben Partner", "snapshot@example.com");
+        Tickets(ticket);
+        var holder = Xunit.Assert.IsType<UserInfo>(await _users.GetUserInfoAsync(PartnerId));
+        _users.GetUserInfoAsync(PartnerId, Arg.Any<CancellationToken>())
+            .Returns(state is { } value ? holder with { State = value } : null);
+
+        await Create().SendJoinInvitationAsync(_order.Id, ticket.Id);
+
+        _sent.Should().BeEmpty();
+        _audit.ReceivedCalls().Should().BeEmpty();
+    }
+
+    [HumansFact]
+    public async Task JoinInvitation_MergedHolder_UsesSurvivorIdentity()
+    {
+        var ticket = Ticket(PartnerId, "Ben Partner", "snapshot@example.com");
+        Tickets(ticket);
+        var holder = Xunit.Assert.IsType<UserInfo>(await _users.GetUserInfoAsync(PartnerId));
+        var survivorId = Guid.NewGuid();
+        _users.GetUserInfoAsync(PartnerId, Arg.Any<CancellationToken>())
+            .Returns(holder with { Id = survivorId, MergedUserIds = [PartnerId] });
+
+        await Create().SendJoinInvitationAsync(_order.Id, ticket.Id);
+
+        var message = _sent.Should().ContainSingle().Subject;
+        message.UserId.Should().Be(survivorId);
+        message.RecipientEmail.Should().Be(holder.Email);
+        message.Category.Should().Be(MessageCategory.VolunteerUpdates);
+        message.DeliveryId.Should().Be(TicketDeliveryService.DeliveryIdFor("ticket_join_invitation", ticket.Id));
+        await _audit.Received(1).LogAsync(TicketsAuditActions.TicketJoinInvitationSent, Arg.Any<string>(), _order.Id,
+            Arg.Any<string>(), Arg.Any<string>(), ticket.Id, "TicketCheckoutTicket");
+    }
+
+    [HumansTheory]
     [Xunit.InlineData(nameof(TicketCheckoutTicketState.Void))]
     [Xunit.InlineData(nameof(TicketCheckoutTicketState.Resold))]
     [Xunit.InlineData(nameof(TicketCheckoutTicketState.Offered))]

@@ -26,12 +26,12 @@ internal interface IAgentRepository : IRepository
     Task<IReadOnlyList<AgentConversation>> ListConversationsForUserWithMessagesAsync(Guid userId, CancellationToken cancellationToken);
 
     Task<IReadOnlyList<AgentConversation>> ListAllConversationsAsync(
-        bool refusalsOnly, Guid? userId, int take, int skip,
+        bool unansweredOnly, Guid? userId, int take, int skip,
         CancellationToken cancellationToken);
 
     /// <summary>Messages eagerly loaded, so callers compute per-conversation aggregates without N+1.</summary>
     Task<IReadOnlyList<AgentConversation>> ListAllConversationsWithMessagesAsync(
-        bool refusalsOnly, bool handoffsOnly, Guid? userId, int take, int skip,
+        bool unansweredOnly, bool handoffsOnly, Guid? userId, int take, int skip,
         CancellationToken cancellationToken);
 
     Task<int> PurgeConversationsOlderThanAsync(Instant cutoff, CancellationToken cancellationToken);

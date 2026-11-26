@@ -19,7 +19,7 @@ internal sealed class BackdoorAgentController(IAgentTranscriptRead agent, IUserS
 {
     [HttpGet("conversations")]
     public async Task<IActionResult> List(
-        [FromQuery] bool refusalsOnly = false,
+        [FromQuery] bool unansweredOnly = false,
         [FromQuery] bool handoffsOnly = false,
         [FromQuery] Guid? userId = null,
         [FromQuery] int take = 50,
@@ -30,7 +30,7 @@ internal sealed class BackdoorAgentController(IAgentTranscriptRead agent, IUserS
         if (skip < 0) skip = 0;
 
         var rows = await agent.ListAllConversationsForAdminWithMessagesAsync(
-            refusalsOnly, handoffsOnly, userId, take, skip, ct);
+            unansweredOnly, handoffsOnly, userId, take, skip, ct);
         var resolved = await ResolveUsersAsync(rows.Select(c => c.UserId), ct);
         return Ok(rows.Select(r => ToSummary(r, resolved)));
     }
@@ -53,7 +53,7 @@ internal sealed class BackdoorAgentController(IAgentTranscriptRead agent, IUserS
             StartedAt = conv.StartedAt.ToDateTimeUtc(),
             LastMessageAt = conv.LastMessageAt.ToDateTimeUtc(),
             conv.MessageCount,
-            RefusalCount = conv.Messages.Count(m => m.RefusalReason is not null),
+            UnansweredCount = conv.Messages.Count(m => m.Outcome is not null),
             HandoffCount = conv.Messages.Count(m => m.IsHandoff),
             Messages = conv.Messages.OrderBy(m => m.CreatedAt).Select(ToMessageDto)
         });
@@ -101,7 +101,7 @@ internal sealed class BackdoorAgentController(IAgentTranscriptRead agent, IUserS
             StartedAt = c.StartedAt.ToDateTimeUtc(),
             LastMessageAt = c.LastMessageAt.ToDateTimeUtc(),
             c.MessageCount,
-            RefusalCount = c.Messages.Count(m => m.RefusalReason is not null),
+            UnansweredCount = c.Messages.Count(m => m.Outcome is not null),
             HandoffCount = c.Messages.Count(m => m.IsHandoff),
             LastUserMessagePreview = preview
         };
@@ -114,7 +114,7 @@ internal sealed class BackdoorAgentController(IAgentTranscriptRead agent, IUserS
         m.Content,
         CreatedAt = m.CreatedAt.ToDateTimeUtc(),
         m.Model,
-        m.RefusalReason,
+        m.Outcome,
         m.HandedOffToFeedbackId,
         m.FetchedDocs
     };

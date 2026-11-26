@@ -75,6 +75,7 @@ Issues is the only in-app reporting path.
 - When an issue is assigned, the new assignee is notified
 - Emails are queued via the email outbox (`OutboxEmailService`) and localized in the recipient's preferred language (en/es/de/fr/it/ca/nl)
 - Once a submission, comment, status or assignment change is saved, its notifications, email and submitted-alert resolution finish even if the browser disconnects. Reads and persistence before that save retain request cancellation. Cancellation exceptions from detached email follow-ups are logged without failing the saved reply or skipping inbox notices and resolution; a failed notification language group is logged while later groups continue. Actionable badge counts query current rows on each read, including after routing changes, retention or erasure.
+- Comment emails skip missing or tombstoned reporter accounts without undoing the saved reply or resolution. Live merge survivors remain deliverable.
 - Effective notification email comes from the resolved reporter’s `UserInfo.Email`, alongside the same snapshot’s name and culture, so verified-email and forwarding rules apply
 
 ### US-28.5: Conversation Thread

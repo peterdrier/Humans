@@ -17,13 +17,18 @@ internal sealed class ComposerSelfSendService(
 {
     public const string TemplateName = "composer_self_test";
 
-    /// <summary>Returns the address queued to, or null (nothing queued) when the member has no notification address.</summary>
+    /// <summary>Returns the queued address, or null when the account cannot receive a self-test.</summary>
     public async Task<string?> SendToSelfAsync(
         Guid userId, string? subject, string? markdownBody, CancellationToken ct = default)
     {
         var user = await userService.GetUserInfoAsync(userId, ct);
-        var email = user?.Email;
-        if (user is null || string.IsNullOrWhiteSpace(email))
+        if (user is null || user.IsTombstone)
+        {
+            logger.LogWarning("Refused composer self-test for unavailable user {UserId}", userId);
+            return null;
+        }
+        var email = user.Email;
+        if (string.IsNullOrWhiteSpace(email))
             return null;
         userId = user.Id;
 

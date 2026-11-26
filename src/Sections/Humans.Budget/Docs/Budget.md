@@ -197,6 +197,8 @@ Stored as string via `HasConversion<string>()`.
 
 ## Invariants
 
+- Decimal number inputs render dot-decimal values and carry MVC invariant-field metadata in every supported culture: member/admin line amounts, category allocations, and ticketing projection rates, prices and fees. Display amounts remain localized; signed amounts, service precision/range checks and permission gates are unchanged.
+
 - Category authorization resolves the cookie identity through `IUserService` and checks `Budget.Edit` for the surviving account. Missing accounts and holdings only on a stale alias grant no Edit budget access. Both reads retain request cancellation; FinanceAdmin/Admin bypasses and deleted-year, restricted-group and ticketing-group exclusions are unchanged.
 
 - Member and finance-admin mutation actions forward request cancellation through account lookup before writes. Member line-item actions also cancel line-item and category-authorization reads; the internal line-item read forwards its token to the repository. Financial writes, ticketing projection refreshes and ticketing sync retain their existing non-cancellable mutation boundaries.

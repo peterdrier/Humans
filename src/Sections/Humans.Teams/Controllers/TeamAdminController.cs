@@ -553,6 +553,7 @@ internal sealed class TeamAdminController(
 
         if (!ModelState.IsValid)
         {
+            logger.LogWarning("Rejected malformed team page update for team {TeamId} by user {UserId}", team.Id, user.Id);
             await PopulateEditTeamPageModelAsync(model, team, HttpContext.RequestAborted);
             return View(model);
         }

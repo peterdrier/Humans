@@ -140,6 +140,27 @@ public class FinanceOverviewServiceTests
             Arg.Any<Guid?>(), Arg.Any<string?>());
     }
 
+    [HumansTheory]
+    [InlineData(null, false)]
+    [InlineData("acct_store", false)]
+    [InlineData("acct_typo", false)]
+    [InlineData(null, true)]
+    [InlineData("acct_store", true)]
+    [InlineData("acct_typo", true)]
+    public async Task SaveStripeLinks_ZeroAccount_RefusesBeforeReplacingLinks(string? account, bool includeOtherInvalid)
+    {
+        var service = LinkService();
+        var links = new Dictionary<int, string?> { [0] = account, [44100001] = "acct_store" };
+        if (includeOtherInvalid) links[44100004] = "acct_store";
+
+        var refusal = await service.SaveStripeLinksAsync(links, Guid.NewGuid(), TestContext.Current.CancellationToken);
+
+        refusal.Should().NotBeNull();
+        await _repo.DidNotReceive().ReplaceStripeLedgerLinksAsync(
+            Arg.Any<IReadOnlyDictionary<int, string>>(), Arg.Any<CancellationToken>());
+        _audit.ReceivedCalls().Should().BeEmpty();
+    }
+
     [HumansFact]
     public void CashAccounts_SortsEachGroupWithBanksBeforeStripe()
     {

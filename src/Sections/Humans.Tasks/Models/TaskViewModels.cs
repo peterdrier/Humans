@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Humans.Tasks.Domain;
 using Humans.Tasks.Services;
 using Humans.Teams.Contracts;
@@ -85,6 +86,7 @@ internal sealed record TaskPageViewModel(
 /// <summary>What the status form posts.</summary>
 internal sealed class StatusForm
 {
+    [BindRequired]
     public TaskItemStatus Status { get; set; }
 
     public string? BlockedNote { get; set; }
@@ -98,13 +100,19 @@ internal sealed class TaskForm
     public string? Description { get; set; }
     public Guid? EventId { get; set; }
     public DateOnly? StartDate { get; set; }
+    [BindRequired]
     public bool StartRelative { get; set; }
     public DateOnly? DueDate { get; set; }
+    [BindRequired]
     public bool DueRelative { get; set; }
+    [BindRequired]
     public SlotPriority Priority { get; set; } = SlotPriority.Important;
+    [BindRequired]
     public int SlotCount { get; set; } = 1;
+    [BindRequired]
     public bool NeedsApproval { get; set; }
     public string? ApprovalReason { get; set; }
+    [BindRequired]
     public bool IsHidden { get; set; }
 
     public static TaskForm From(TaskInfo task) => new()
