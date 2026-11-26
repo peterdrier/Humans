@@ -1,3 +1,4 @@
+using Humans.Testing;
 using Microsoft.AspNetCore.Mvc.ModelBinding.Validation;
 using System.Globalization;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
@@ -468,7 +469,7 @@ public sealed class WorkgroupsAdminControllerTests : WorkgroupsTestHarness
                 new Claim(ClaimTypes.NameIdentifier, actor.ToString()),
                 new Claim(ClaimTypes.Role, RoleNames.Board)], "test"))
         };
-        var localizer = Substitute.For<IStringLocalizer<WorkgroupsResource>>();
+        var localizer = Substitute.For<IStringLocalizer<WorkgroupsResource>>().AddFormatting();
         localizer[Arg.Any<string>(), Arg.Any<object[]>()]
             .Returns(call => new LocalizedString(call.Arg<string>(), errorMessage));
         return new WorkgroupsAdminController(service ?? NewService(), Users, localizer, Clock,

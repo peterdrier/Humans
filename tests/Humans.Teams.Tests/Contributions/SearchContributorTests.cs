@@ -1,3 +1,4 @@
+using Humans.Testing;
 using AwesomeAssertions;
 using Humans.Base.Interfaces;
 using Humans.Teams.Contracts;
@@ -17,7 +18,7 @@ public sealed class SearchContributorTests
         var id = Guid.NewGuid();
         var service = Substitute.For<ITeamService>();
         service.SearchAsync("Kitchen", int.MaxValue, Arg.Any<CancellationToken>()).Returns(Task.FromResult<IReadOnlyList<TeamSearchHit>>([new TeamSearchHit(id, "Kitchen", 80)]));
-        var localizer = Substitute.For<IStringLocalizer<TeamsResource>>();
+        var localizer = Substitute.For<IStringLocalizer<TeamsResource>>().AddFormatting();
         localizer["Teams_Search_Category"].Returns(new LocalizedString("Teams_Search_Category", "Teams"));
         var services = new ServiceCollection().AddSingleton(service).AddSingleton(localizer).BuildServiceProvider();
 

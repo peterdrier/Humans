@@ -1,3 +1,4 @@
+using Humans.Testing;
 using Humans.Base.Extensions;
 using Microsoft.AspNetCore.Mvc.Controllers;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
@@ -350,7 +351,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
             RequestAborted = request.Token,
             User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, actorId.ToString())], "test"))
         };
-        var localizer = Substitute.For<IStringLocalizer<GovernanceResource>>();
+        var localizer = Substitute.For<IStringLocalizer<GovernanceResource>>().AddFormatting();
         localizer[Arg.Any<string>()].Returns(call => new LocalizedString(call.Arg<string>(), call.Arg<string>()));
         var applications = new GovernanceApplicationsController(_service, CreateTierService(), _userService, localizer,
             NullLogger<GovernanceApplicationsController>.Instance, _clock)
@@ -420,7 +421,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
             User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, cookieId.ToString())], "test"))
         };
         var controller = new GovernanceApplicationsController(_service, CreateTierService(), _userService,
-            Substitute.For<IStringLocalizer<GovernanceResource>>(),
+            Substitute.For<IStringLocalizer<GovernanceResource>>().AddFormatting(),
             NullLogger<GovernanceApplicationsController>.Instance, _clock)
         {
             ControllerContext = new ControllerContext { HttpContext = http },
@@ -1530,7 +1531,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
             User = new ClaimsPrincipal(new ClaimsIdentity(
                 [new Claim(ClaimTypes.NameIdentifier, viewerId.ToString())], "Test"))
         };
-        var localizer = Substitute.For<IStringLocalizer<GovernanceResource>>();
+        var localizer = Substitute.For<IStringLocalizer<GovernanceResource>>().AddFormatting();
         localizer[Arg.Any<string>()].Returns(call => new LocalizedString(call.Arg<string>(), call.Arg<string>()));
         var controller = new GovernanceBoardVotingController(_userService, _service,
             NullLogger<GovernanceBoardVotingController>.Instance, localizer)
@@ -1604,7 +1605,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         }
         _userService.GetUserInfoAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>()).Returns(ReadUserAsync);
         var controller = new GovernanceBoardVotingController(_userService, _service,
-            NullLogger<GovernanceBoardVotingController>.Instance, Substitute.For<IStringLocalizer<GovernanceResource>>())
+            NullLogger<GovernanceBoardVotingController>.Instance, Substitute.For<IStringLocalizer<GovernanceResource>>().AddFormatting())
         {
             ControllerContext = new ControllerContext
             {
@@ -1634,7 +1635,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(UserInfoFixtures.FromUser(new User { Id = userId })));
         var controller = new GovernanceApplicationsController(_service, CreateTierService(), _userService,
-            Substitute.For<IStringLocalizer<GovernanceResource>>(), NullLogger<GovernanceApplicationsController>.Instance, _clock)
+            Substitute.For<IStringLocalizer<GovernanceResource>>().AddFormatting(), NullLogger<GovernanceApplicationsController>.Instance, _clock)
         {
             ControllerContext = new ControllerContext
             {
@@ -1665,7 +1666,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(UserInfoFixtures.FromUser(new User { Id = userId })));
         var controller = new GovernanceApplicationsController(_service, CreateTierService(), _userService,
-            Substitute.For<IStringLocalizer<GovernanceResource>>(), NullLogger<GovernanceApplicationsController>.Instance, _clock)
+            Substitute.For<IStringLocalizer<GovernanceResource>>().AddFormatting(), NullLogger<GovernanceApplicationsController>.Instance, _clock)
         {
             ControllerContext = new ControllerContext
             {
@@ -1701,7 +1702,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
             return new ValueTask<UserInfo?>(UserInfoFixtures.FromUser(new User { Id = viewerId }));
         });
         var controller = new GovernanceApplicationsController(_service, CreateTierService(), _userService,
-            Substitute.For<IStringLocalizer<GovernanceResource>>(), NullLogger<GovernanceApplicationsController>.Instance, _clock)
+            Substitute.For<IStringLocalizer<GovernanceResource>>().AddFormatting(), NullLogger<GovernanceApplicationsController>.Instance, _clock)
         {
             ControllerContext = new ControllerContext
             {
@@ -1806,7 +1807,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         _userService.GetUserInfoAsync(userId, Arg.Any<CancellationToken>())
             .Returns(new ValueTask<UserInfo?>(UserInfoFixtures.FromUser(new User { Id = userId })));
         var controller = new GovernanceApplicationsController(_service, CreateTierService(), _userService,
-            Substitute.For<IStringLocalizer<GovernanceResource>>(), NullLogger<GovernanceApplicationsController>.Instance, _clock)
+            Substitute.For<IStringLocalizer<GovernanceResource>>().AddFormatting(), NullLogger<GovernanceApplicationsController>.Instance, _clock)
         {
             ControllerContext = new ControllerContext
             {
@@ -1840,7 +1841,7 @@ public sealed class ApplicationDecisionServiceTests : IDisposable
         app.Motivation = motivation;
         await SaveAllAsync(TestContext.Current.CancellationToken);
         var controller = new GovernanceApplicationsController(_service, CreateTierService(), _userService,
-            Substitute.For<IStringLocalizer<GovernanceResource>>(), NullLogger<GovernanceApplicationsController>.Instance, _clock)
+            Substitute.For<IStringLocalizer<GovernanceResource>>().AddFormatting(), NullLogger<GovernanceApplicationsController>.Instance, _clock)
         {
             ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() }
         };

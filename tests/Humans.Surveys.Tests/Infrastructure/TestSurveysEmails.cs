@@ -1,3 +1,4 @@
+using Humans.Testing;
 using System.Globalization;
 using Humans.Base.Configuration;
 using Humans.Surveys.Services;
@@ -32,7 +33,7 @@ internal static class TestSurveysEmails
 
     public static SurveysEmails Create()
     {
-        var localizer = Substitute.For<IStringLocalizer<SurveysResource>>();
+        var localizer = Substitute.For<IStringLocalizer<SurveysResource>>().AddFormatting();
         localizer[Arg.Any<string>()].Returns(call =>
         {
             var key = call.Arg<string>();

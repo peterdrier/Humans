@@ -1,3 +1,4 @@
+using Humans.Testing;
 using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.Auth.Contracts;
@@ -29,7 +30,7 @@ public class TicketBuyControllerTests
         users.GetUserInfoAsync(_userId, Arg.Any<CancellationToken>()).Returns(
             new UserInfo(_userId, "Buyer", false, "en", null, Now, Now, null, null, null, null, null, null, null, null, [], [], null));
         return new TicketBuyController(_checkout, Substitute.For<IMagicLinkService>(), Substitute.For<IEarlyEntryService>(),
-            users, Substitute.For<IStringLocalizer<TicketsResource>>(), NullLogger<TicketBuyController>.Instance)
+            users, Substitute.For<IStringLocalizer<TicketsResource>>().AddFormatting(), NullLogger<TicketBuyController>.Instance)
         {
             ControllerContext = new ControllerContext
             {
@@ -141,7 +142,7 @@ public class TicketBuyControllerTests
             User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, ViewerId.ToString())], "test")),
         };
         return new TicketBuyController(_checkout, Substitute.For<IMagicLinkService>(), Substitute.For<IEarlyEntryService>(), users,
-            Substitute.For<IStringLocalizer<TicketsResource>>(), NullLogger<TicketBuyController>.Instance)
+            Substitute.For<IStringLocalizer<TicketsResource>>().AddFormatting(), NullLogger<TicketBuyController>.Instance)
         {
             ControllerContext = new ControllerContext { HttpContext = http },
             TempData = new TempDataDictionary(http, Substitute.For<ITempDataProvider>()),

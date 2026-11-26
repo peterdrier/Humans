@@ -11,7 +11,7 @@
 <div class="row">
     <div class="col-12" style="max-width: 560px; margin: 0 auto;">
         <div class="text-center mb-4">
-            <div class="text-muted text-uppercase small" id="stepLabel">@string.Format(Localizer["Shifts_ShiftInfo_StepOf"].Value, 1, 3)</div>
+            <div class="text-muted text-uppercase small" id="stepLabel">@Localizer["Shifts_ShiftInfo_StepOf", 1, 3]</div>
             <h1 class="h4 mt-1 mb-1" id="stepTitle">@Localizer["Shifts_ShiftInfo_SkillsTitle"]</h1>
             <p class="text-muted small" id="stepSubtitle">@Localizer["Shifts_ShiftInfo_SkillsSubtitle"]</p>
             <div class="d-flex justify-content-center gap-2 mt-3" id="progressDots">
@@ -180,19 +180,19 @@
     {
         new
         {
-            label = string.Format(Localizer["Shifts_ShiftInfo_StepOf"].Value, 1, 3),
+            label = Localizer["Shifts_ShiftInfo_StepOf", 1, 3].Value,
             title = Localizer["Shifts_ShiftInfo_SkillsTitle"].Value,
             subtitle = Localizer["Shifts_ShiftInfo_SkillsSubtitle"].Value,
         },
         new
         {
-            label = string.Format(Localizer["Shifts_ShiftInfo_StepOf"].Value, 2, 3),
+            label = Localizer["Shifts_ShiftInfo_StepOf", 2, 3].Value,
             title = Localizer["Shifts_ShiftInfo_WorkStyleTitle"].Value,
             subtitle = Localizer["Shifts_ShiftInfo_WorkStyleSubtitle"].Value,
         },
         new
         {
-            label = string.Format(Localizer["Shifts_ShiftInfo_StepOf"].Value, 3, 3),
+            label = Localizer["Shifts_ShiftInfo_StepOf", 3, 3].Value,
             title = Localizer["Shifts_ShiftInfo_LanguagesTitle"].Value,
             subtitle = Localizer["Shifts_ShiftInfo_LanguagesSubtitle"].Value,
         },

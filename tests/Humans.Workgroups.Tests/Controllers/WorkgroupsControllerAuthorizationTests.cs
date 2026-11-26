@@ -1,3 +1,4 @@
+using Humans.Testing;
 using Humans.Calendar.Contracts;
 using Humans.Calendar;
 using Humans.Governance.Contracts;
@@ -40,7 +41,7 @@ namespace Humans.Workgroups.Tests.Controllers;
 /// </summary>
 public sealed class WorkgroupsControllerAuthorizationTests : WorkgroupsTestHarness
 {
-    private readonly IStringLocalizer<WorkgroupsResource> _localizer = Substitute.For<IStringLocalizer<WorkgroupsResource>>();
+    private readonly IStringLocalizer<WorkgroupsResource> _localizer = Substitute.For<IStringLocalizer<WorkgroupsResource>>().AddFormatting();
     private readonly ILogger<WorkgroupsController> _logger = Substitute.For<ILogger<WorkgroupsController>>();
 
     [HumansTheory]
@@ -705,7 +706,7 @@ public sealed class WorkgroupsControllerAuthorizationTests : WorkgroupsTestHarne
 
     private static IStringLocalizer<CalendarResource> CalendarLocalizer()
     {
-        var localizer = Substitute.For<IStringLocalizer<CalendarResource>>();
+        var localizer = Substitute.For<IStringLocalizer<CalendarResource>>().AddFormatting();
         localizer[Arg.Any<string>()].Returns(c => new LocalizedString((string)c[0], (string)c[0]));
         return localizer;
     }

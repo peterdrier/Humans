@@ -39,7 +39,7 @@
                         <span class="text-warning-emphasis fw-semibold">Manual override: forced open.</span>
                         if (settings.OpenedAt.HasValue)
                         {
-                            <span class="text-muted ms-1">@string.Format(Localizer["CityPlanning_Admin_OpenedAt"].Value, settings.OpenedAt.Value.ToDateTime())</span>
+                            <span class="text-muted ms-1">@Localizer["CityPlanning_Admin_OpenedAt", settings.OpenedAt.Value.ToDateTime()]</span>
                         }
                     }
                     else if (settings.PlacementOverride == false)
@@ -47,7 +47,7 @@
                         <span class="text-warning-emphasis fw-semibold">Manual override: forced closed.</span>
                         if (settings.ClosedAt.HasValue)
                         {
-                            <span class="text-muted ms-1">@string.Format(Localizer["CityPlanning_Admin_ClosedAt"].Value, settings.ClosedAt.Value.ToDateTime())</span>
+                            <span class="text-muted ms-1">@Localizer["CityPlanning_Admin_ClosedAt", settings.ClosedAt.Value.ToDateTime()]</span>
                         }
                     }
                     else

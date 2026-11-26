@@ -50,7 +50,7 @@
                 }
                 @if (!string.IsNullOrEmpty(msg.Outcome))
                 {
-                    <div class="alert alert-warning mt-2 mb-0 py-1">@string.Format(Localizer["Agent_DetailOutcome"].Value, msg.Outcome)</div>
+                    <div class="alert alert-warning mt-2 mb-0 py-1">@Localizer["Agent_DetailOutcome", msg.Outcome]</div>
                 }
                 @if (Model.IsAdminView && msg.HandedOffToFeedbackId.HasValue)
                 {

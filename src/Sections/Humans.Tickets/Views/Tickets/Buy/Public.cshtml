@@ -18,7 +18,7 @@
             {
                 <div class="mb-4">
                     <h2 class="h3 mb-1">@sale.EventName</h2>
-                    <div class="buy-total">@string.Format(Localizer["Tickets_Public_PriceToday"].Value, (sale.PriceMinor / 100m).ToEuro())</div>
+                    <div class="buy-total">@Localizer["Tickets_Public_PriceToday", (sale.PriceMinor / 100m).ToEuro()]</div>
                     @if (sale.ResaleOnly)
                     {
                         <div class="small text-muted">@Localizer["Tickets_Public_ResaleOnly"]</div>

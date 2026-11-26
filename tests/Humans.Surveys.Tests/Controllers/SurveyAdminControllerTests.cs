@@ -1,3 +1,4 @@
+using Humans.Testing;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.AspNetCore.Mvc.ModelBinding.Validation;
 using Microsoft.Extensions.DependencyInjection;
@@ -301,7 +302,7 @@ public sealed class SurveyAdminControllerTests
         var authorization = Substitute.For<IAuthorizationService>();
         authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object>(), Arg.Any<IEnumerable<IAuthorizationRequirement>>())
             .Returns(AuthorizationResult.Success());
-        var localizer = Substitute.For<IStringLocalizer<SurveysResource>>();
+        var localizer = Substitute.For<IStringLocalizer<SurveysResource>>().AddFormatting();
         localizer[Arg.Any<string>()].Returns(call => new LocalizedString(call.Arg<string>(), call.Arg<string>()));
         localizer[Arg.Any<string>(), Arg.Any<object[]>()].Returns(call => new LocalizedString(call.Arg<string>(), call.Arg<string>()));
         var http = new DefaultHttpContext
@@ -932,7 +933,7 @@ public sealed class SurveyAdminControllerTests
             Substitute.For<ITeamService>(),
             users,
             Substitute.For<IAuthorizationService>(),
-            Substitute.For<IStringLocalizer<SurveysResource>>(),
+            Substitute.For<IStringLocalizer<SurveysResource>>().AddFormatting(),
             logger)
         {
             ControllerContext = new ControllerContext { HttpContext = http },
@@ -1024,7 +1025,7 @@ public sealed class SurveyAdminControllerTests
 
     private static IStringLocalizer<SurveysResource> SpanishLocalizer()
     {
-        var localizer = Substitute.For<IStringLocalizer<SurveysResource>>();
+        var localizer = Substitute.For<IStringLocalizer<SurveysResource>>().AddFormatting();
         var resources = new ResourceManager(typeof(SurveysResource));
         var culture = CultureInfo.GetCultureInfo("es");
         localizer[Arg.Any<string>()].Returns(ci => new LocalizedString(ci.Arg<string>(), resources.GetString(ci.Arg<string>(), culture)!));
@@ -1058,7 +1059,7 @@ public sealed class SurveyAdminControllerTests
             teams ?? Substitute.For<ITeamService>(),
             users,
             authorizationService ?? Substitute.For<IAuthorizationService>(),
-            localizer ?? Substitute.For<IStringLocalizer<SurveysResource>>(),
+            localizer ?? Substitute.For<IStringLocalizer<SurveysResource>>().AddFormatting(),
             NullLogger<SurveyAdminController>.Instance)
         {
             ControllerContext = new ControllerContext { HttpContext = http },

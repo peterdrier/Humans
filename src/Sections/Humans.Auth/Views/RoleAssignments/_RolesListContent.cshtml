@@ -2,7 +2,7 @@
 @model Humans.Auth.Models.AdminRoleAssignmentListViewModel
 
 <page-header title="@(Localizer["Auth_Roles_Title"].Value)">
-    <span class="text-muted">@string.Format(SharedLocalizer["Admin_TotalCount"].Value, Model.TotalCount)</span>
+    <span class="text-muted">@SharedLocalizer["Admin_TotalCount", Model.TotalCount]</span>
 </page-header>
 
 <div class="card mb-4">

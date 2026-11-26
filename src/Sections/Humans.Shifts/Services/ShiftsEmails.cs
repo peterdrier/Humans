@@ -30,14 +30,14 @@ internal sealed class ShiftsEmails(
                 request.IncludeShifts, "Shifts_Email_CoordinatorRotaMessage_ShiftsIntro", shiftListHtml);
 
             return new EmailMessage(request.RecipientEmail, request.RecipientName, request.RecipientUserId,
-                Lf("Shifts_Email_CoordinatorRotaMessage_Subject", request.RotaName),
-                Lf("Shifts_Email_CoordinatorRotaMessage_Body",
+                localizer["Shifts_Email_CoordinatorRotaMessage_Subject", request.RotaName],
+                localizer["Shifts_Email_CoordinatorRotaMessage_Body",
                     Encode(request.RecipientName),
                     Encode(request.SenderName),
                     Encode(request.RotaName),
                     sanitizedMessage,
                     shiftSectionHtml,
-                    SenderLine(request.SenderName, request.SenderEmail)),
+                    SenderLine(request.SenderName, request.SenderEmail)],
                 "coordinator_rota_message", MessageCategory.VolunteerUpdates,
                 ReplyTo: request.SenderEmail);
         });
@@ -75,14 +75,14 @@ internal sealed class ShiftsEmails(
                 request.IncludeShifts, "Shifts_Email_CoordinatorTeamRotasMessage_ShiftsIntro", shiftGroupsHtml);
 
             return new EmailMessage(request.RecipientEmail, request.RecipientName, request.RecipientUserId,
-                Lf("Shifts_Email_CoordinatorTeamRotasMessage_Subject", request.TeamName),
-                Lf("Shifts_Email_CoordinatorTeamRotasMessage_Body",
+                localizer["Shifts_Email_CoordinatorTeamRotasMessage_Subject", request.TeamName],
+                localizer["Shifts_Email_CoordinatorTeamRotasMessage_Body",
                     Encode(request.RecipientName),
                     Encode(request.SenderName),
                     Encode(request.TeamName),
                     sanitizedMessage,
                     shiftGroupsHtml,
-                    SenderLine(request.SenderName, request.SenderEmail)),
+                    SenderLine(request.SenderName, request.SenderEmail)],
                 "coordinator_team_rotas_message", MessageCategory.VolunteerUpdates,
                 ReplyTo: request.SenderEmail);
         });
@@ -114,9 +114,6 @@ internal sealed class ShiftsEmails(
             : $"<p><strong>{Encode(senderName)}</strong></p>";
 
     private string L(string key) => localizer[key].Value;
-
-    private string Lf(string key, params object[] args) =>
-        string.Format(CultureInfo.CurrentCulture, localizer[key].Value, args);
 
     private static string Encode(string text) => WebUtility.HtmlEncode(text);
 

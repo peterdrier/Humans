@@ -1,3 +1,4 @@
+using Humans.Testing;
 using System.Security.Claims;
 using AwesomeAssertions;
 using Humans.AuditLog.Contracts;
@@ -179,7 +180,7 @@ public sealed class GovernanceBoardSeatsTests
             new GovernanceBodyLinksService(_repo, Substitute.For<Humans.Teams.Contracts.ITeamService>(), Substitute.For<ITeamResourceService>(),
                 _audit, new GovernanceBodySync(_repo, _groupSync, Substitute.For<IGoogleSyncWrite>()), new FakeClock(Now)),
             authorization,
-            Substitute.For<IStringLocalizer<GovernanceResource>>())
+            Substitute.For<IStringLocalizer<GovernanceResource>>().AddFormatting())
         {
             ControllerContext = new ControllerContext
             {

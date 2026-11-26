@@ -42,7 +42,7 @@
             {
                 <form asp-action="Leave" asp-route-slug="@item.TeamSlug" method="post" class="d-inline">
                     @Html.AntiForgeryToken()
-                    <button type="submit" class="btn btn-sm btn-outline-danger" data-confirm="@string.Format(Localizer["Teams_MyTeams_LeaveConfirm"].Value, item.TeamName)">
+                    <button type="submit" class="btn btn-sm btn-outline-danger" data-confirm="@Localizer["Teams_MyTeams_LeaveConfirm", item.TeamName]">
                         @Localizer["Teams_MyTeams_Leave"]
                     </button>
                 </form>
