@@ -48,7 +48,7 @@ internal interface ISurveyService : IApplicationService
     Task<SurveySubmitResult> SubmitForApprovalAsync(Guid surveyId, Guid actorUserId, CancellationToken ct = default);
 
     /// <summary>Transitions PendingApproval → Open and sends the invitation wave in the same step. Surveys Admin/Admin only, enforced here.</summary>
-    Task<SurveyReviewResult> ApproveAndSendAsync(Guid surveyId, SurveyViewer viewer, CancellationToken ct = default);
+    Task<SurveyReviewResult> ApproveAsync(Guid surveyId, SurveyViewer viewer, CancellationToken ct = default);
 
     /// <summary>Transitions PendingApproval → Draft, recording the reviewer's note. Surveys Admin/Admin only, enforced here.</summary>
     Task<SurveyReviewResult> RejectAsync(Guid surveyId, SurveyViewer viewer, string note, CancellationToken ct = default);

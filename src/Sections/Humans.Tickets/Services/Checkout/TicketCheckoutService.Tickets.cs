@@ -391,7 +391,7 @@ internal sealed partial class TicketCheckoutService
         if (rows.Count > 1)
             return (null, "the address is unverified on more than one account");
         var provisioned = rows.Count == 1
-            ? await provisioning.ReplaceUnverifiedEmailAndProvisionAsync(rows[0].UserId, rows[0].Id, address, displayName: null, ContactSource.Manual, ct)
+            ? await provisioning.ReplaceUnverifiedEmailAsync(rows[0].UserId, rows[0].Id, address, displayName: null, ContactSource.Manual, ct)
             : await provisioning.FindOrCreateUserByEmailAsync(address, displayName: null, ContactSource.Manual, ct);
         return (provisioned.UserId, null);
     }

@@ -515,7 +515,7 @@ public sealed class TeamRepositoryTests : IDisposable
             });
         await _dbContext.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var grants = await _repo.GetEarlyEntryGrantsForEnabledTeamsAsync(TestContext.Current.CancellationToken);
+        var grants = await _repo.GetEarlyEntryGrantsAsync(TestContext.Current.CancellationToken);
 
         grants.Should().ContainSingle().Which.TeamId.Should().Be(active.Id);
     }

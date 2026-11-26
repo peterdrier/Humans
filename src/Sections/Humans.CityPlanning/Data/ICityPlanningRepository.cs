@@ -27,7 +27,7 @@ internal interface ICityPlanningRepository : IRepository
         Guid campSeasonId, Guid historyId, CancellationToken ct = default);
 
     /// <summary>Upserts the polygon and appends a history row in one unit of work. Returns the polygon, detached.</summary>
-    Task<CampPolygon> SavePolygonAndAppendHistoryAsync(
+    Task<CampPolygon> SavePolygonAsync(
         Guid campSeasonId,
         string geoJson,
         double areaSqm,

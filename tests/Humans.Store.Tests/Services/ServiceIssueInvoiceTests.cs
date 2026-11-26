@@ -165,7 +165,7 @@ public class ServiceIssueInvoiceTests
                 Status = PaymentStatus.Paid,
             });
         }
-        _repo.GetOrderWithLinesAndPaymentsAsync(order.Id, Arg.Any<CancellationToken>()).Returns(order);
+        _repo.GetOrderWithLinesAsync(order.Id, Arg.Any<CancellationToken>()).Returns(order);
         _repo.GetAllProductsForYearAsync(product.Year, Arg.Any<CancellationToken>())
             .Returns(new List<Product> { product });
         _repo.GetProductsByIdsAsync(Arg.Any<IReadOnlyCollection<Guid>>(), Arg.Any<CancellationToken>())

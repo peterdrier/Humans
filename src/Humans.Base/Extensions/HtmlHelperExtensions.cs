@@ -6,7 +6,7 @@ namespace Humans.Base.Extensions;
 
 public static class HtmlHelperExtensions
 {
-    public static string AntiForgeryTokenHtmlForJavaScript(this IHtmlHelper html)
+    public static string AntiForgeryTokenForScript(this IHtmlHelper html)
     {
         ArgumentNullException.ThrowIfNull(html);
 

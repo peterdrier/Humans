@@ -635,7 +635,7 @@ public sealed class CityPlanningApiControllerTests : CityPlanningTestBase
         var ct = TestContext.Current.CancellationToken;
         var repo = Substitute.For<ICityPlanningRepository>();
         var failure = new ArgumentException("Private persistence failure", nameof(restore));
-        repo.SavePolygonAndAppendHistoryAsync(default, default!, default, default, default!, default)
+        repo.SavePolygonAsync(default, default!, default, default, default!, default)
             .ThrowsAsyncForAnyArgs(failure);
         repo.GetHistoryEntryAsync(default, default).ThrowsAsyncForAnyArgs(failure);
         _service = new CityPlanningService(repo, Clock,

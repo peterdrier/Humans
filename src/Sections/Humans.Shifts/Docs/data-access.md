@@ -63,7 +63,7 @@ lazy-resolves the read surfaces `ITeamService`, `IUserService`,
 each request. `GetCoordinatorTeamIdsAsync` has no
 cache of its own: Teams' singleton decorator answers it from RAM. Implements
 `IUserMerge`. Also exposes the Cantina-gating predicates
-(`HasQualifyingCantinaSignupAsync`, `GetOnSiteUserIdsForDayAsync`).
+(`HasQualifyingCantinaSignupAsync`, `GetOnSiteUserIdsAsync`).
 
 **Shift Summary by Camp.** `BuildSummaryAsync` assembles the
 read-only by-camp shift summary: confirmed signup totals come from

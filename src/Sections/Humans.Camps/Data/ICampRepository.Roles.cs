@@ -25,7 +25,7 @@ internal partial interface ICampRepository
 
     Task<CampRoleAssignment?> GetAssignmentByIdAsync(Guid assignmentId, CancellationToken ct = default);
 
-    Task<int> CountAssignmentsForSeasonAndDefinitionAsync(Guid campSeasonId, Guid definitionId, CancellationToken ct = default);
+    Task<int> CountRoleAssignmentsAsync(Guid campSeasonId, Guid definitionId, CancellationToken ct = default);
 
     Task<bool> AssignmentExistsAsync(Guid campSeasonId, Guid definitionId, Guid campMemberId, CancellationToken ct = default);
 

@@ -48,8 +48,8 @@ internal interface ICampaignRepository : IRepository
     /// <summary>Not yet granted.</summary>
     Task<int> CountAvailableCodesAsync(Guid campaignId, CancellationToken ct = default);
 
-    /// <summary>With campaign and code. Unordered. Read-only.</summary>
-    Task<IReadOnlyList<CampaignGrant>> GetActiveOrCompletedGrantsForUserAsync(
+    /// <summary>Grants in Active or Completed campaigns only. With campaign and code. Unordered. Read-only.</summary>
+    Task<IReadOnlyList<CampaignGrant>> GetGrantsForUserAsync(
         Guid userId, CancellationToken ct = default);
 
     /// <summary>With campaign and code. Read-only.</summary>
@@ -66,7 +66,7 @@ internal interface ICampaignRepository : IRepository
         Guid campaignId, CancellationToken ct = default);
 
     /// <summary>Commits immediately, one grant at a time.</summary>
-    Task AddGrantAndSaveAsync(CampaignGrant grant, CancellationToken ct = default);
+    Task AddGrantAsync(CampaignGrant grant, CancellationToken ct = default);
 
     /// <summary>
     /// One grant per redemption, so N orders with the same code redeem N grants. Active and Completed campaigns only;

@@ -611,7 +611,7 @@ internal sealed partial class CampRepository : ICampRepository
         return assignments.Count;
     }
 
-    public async Task<IReadOnlyList<Guid>> GetPendingRequesterUserIdsForSeasonAsync(
+    public async Task<IReadOnlyList<Guid>> GetPendingRequesterIdsAsync(
         Guid campSeasonId, CancellationToken ct = default)
     {
         await using var ctx = await _factory.CreateDbContextAsync(ct);

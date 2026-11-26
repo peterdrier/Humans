@@ -254,7 +254,7 @@ public class MailerLiteAdminControllerTests
                 Enumerable.Range(0, 7)
                     .Select(_ => MakeUserInfoWithContactSource(ContactSource.MailerLite))
                     .ToList()));
-        _prefs.GetCountByCategoryAndStateAsync(
+        _prefs.GetCountAsync(
                 Arg.Any<MessageCategory>(), Arg.Any<bool>(), Arg.Any<CancellationToken>())
             .Returns(3);
         var ctrl = BuildSut();
@@ -294,8 +294,8 @@ public class MailerLiteAdminControllerTests
         else
             _importService.ComputeDriftAsync(request.Token).ThrowsAsync(timeout);
         _userService.GetAllUserInfosAsync(request.Token).Returns(Array.Empty<UserInfo>());
-        _prefs.GetCountByCategoryAndStateAsync(MessageCategory.Marketing, false, request.Token).Returns(7);
-        _prefs.GetCountByCategoryAndStateAsync(MessageCategory.Marketing, true, request.Token).Returns(3);
+        _prefs.GetCountAsync(MessageCategory.Marketing, false, request.Token).Returns(7);
+        _prefs.GetCountAsync(MessageCategory.Marketing, true, request.Token).Returns(3);
         _audienceSync.ComputeAllStatsAsync(request.Token).Returns(Array.Empty<AudienceStats>());
         var ctrl = BuildSut();
         Func<Task<IActionResult>> read = () => ctrl.Index(request.Token);

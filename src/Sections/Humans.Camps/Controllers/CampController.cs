@@ -993,7 +993,7 @@ internal sealed class CampController(
         AssignCampRoleOutcome outcome;
         try
         {
-            outcome = await _campService.AddMemberAndAssignRoleInActiveSeasonAsync(
+            outcome = await _campService.AddMemberWithRoleAsync(
                 camp.Id, roleDefinitionId, userId, user.Id, ct, eventSettingsId);
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)

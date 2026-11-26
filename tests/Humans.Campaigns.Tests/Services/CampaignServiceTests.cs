@@ -644,7 +644,7 @@ public sealed class CampaignServiceTests
             .GenerateAsync(Arg.Any<TicketDiscountCodeRequest>(), Arg.Any<CancellationToken>())
             .Returns(["CODE-A", "CODE-B"]);
 
-        var result = await _service.GenerateAndImportDiscountCodesAsync(
+        var result = await _service.GenerateDiscountCodesAsync(
             _actorId,
             campaign.Id, 2, "Fixed", 10m, Xunit.TestContext.Current.CancellationToken);
 
@@ -672,7 +672,7 @@ public sealed class CampaignServiceTests
             .GenerateAsync(Arg.Any<TicketDiscountCodeRequest>(), Arg.Any<CancellationToken>())
             .Returns(["CODE-A", "CODE-B"]);
 
-        var result = await _service.GenerateAndImportDiscountCodesAsync(
+        var result = await _service.GenerateDiscountCodesAsync(
             _actorId,
             campaign.Id, 2, "Fixed", 10m, Xunit.TestContext.Current.CancellationToken);
 
@@ -690,7 +690,7 @@ public sealed class CampaignServiceTests
     {
         var campaign = await SeedCampaignAsync(CampaignStatus.Active);
 
-        var result = await _service.GenerateAndImportDiscountCodesAsync(
+        var result = await _service.GenerateDiscountCodesAsync(
             _actorId,
             campaign.Id, 2, "Fixed", 10m, Xunit.TestContext.Current.CancellationToken);
 
@@ -708,7 +708,7 @@ public sealed class CampaignServiceTests
     {
         var campaign = await SeedCampaignAsync();
 
-        var result = await _service.GenerateAndImportDiscountCodesAsync(
+        var result = await _service.GenerateDiscountCodesAsync(
             _actorId,
             campaign.Id, 2, discountType, 10m, Xunit.TestContext.Current.CancellationToken);
 

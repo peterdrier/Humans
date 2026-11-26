@@ -376,7 +376,7 @@ internal sealed class DriveActivityMonitorService(
         {
             // The bare id is the UserInfo ExternalLogin ProviderKey.
             var googleUserId = personName["people/".Length..];
-            var byProviderKey = await GetGoogleUserInfoByProviderKeyAsync(resolution, cancellationToken);
+            var byProviderKey = await GetGoogleUserInfoAsync(resolution, cancellationToken);
             if (byProviderKey.TryGetValue(googleUserId, out var userInfo))
             {
                 resolved = userInfo.Email;
@@ -395,7 +395,7 @@ internal sealed class DriveActivityMonitorService(
         return personName;
     }
 
-    private async Task<IReadOnlyDictionary<string, UserInfo>> GetGoogleUserInfoByProviderKeyAsync(
+    private async Task<IReadOnlyDictionary<string, UserInfo>> GetGoogleUserInfoAsync(
         PersonNameResolution resolution, CancellationToken cancellationToken)
     {
         if (resolution.GoogleUserInfoByProviderKey is not null)
@@ -410,7 +410,7 @@ internal sealed class DriveActivityMonitorService(
 
         try
         {
-            resolution.GoogleUserInfoByProviderKey = await LoadGoogleUserInfoByProviderKeyAsync(cancellationToken);
+            resolution.GoogleUserInfoByProviderKey = await LoadGoogleUserInfoAsync(cancellationToken);
             return resolution.GoogleUserInfoByProviderKey;
         }
         catch (OperationCanceledException)
@@ -431,7 +431,7 @@ internal sealed class DriveActivityMonitorService(
     /// A provider key claimed by two humans resolves to neither: the raw id is the honest
     /// answer, and naming the wrong human in an anomaly entry is the failure to avoid.
     /// </summary>
-    private async Task<IReadOnlyDictionary<string, UserInfo>> LoadGoogleUserInfoByProviderKeyAsync(CancellationToken cancellationToken)
+    private async Task<IReadOnlyDictionary<string, UserInfo>> LoadGoogleUserInfoAsync(CancellationToken cancellationToken)
     {
         var userInfos = await userService.GetAllUserInfosAsync(cancellationToken);
         var result = new Dictionary<string, UserInfo>(StringComparer.Ordinal);

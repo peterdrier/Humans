@@ -544,7 +544,7 @@ internal sealed class GoogleController(
         var currentUser = await GetCurrentUserInfoAsync(HttpContext.RequestAborted);
         if (currentUser is null) return Unauthorized();
 
-        var result = await googleAdminService.ResetPasswordAndGenerate2FaAsync(
+        var result = await googleAdminService.IssueRecoveryCredentialsAsync(
             email, currentUser.Id);
 
         if (result.Success && !string.IsNullOrEmpty(result.TempPassword))

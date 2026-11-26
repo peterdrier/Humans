@@ -46,7 +46,7 @@ public class ServiceStripeRefundCheckTests
             Lines = [],
             Payments = payments.ToList(),
         };
-        _repo.GetOrderWithLinesAndPaymentsAsync(order.Id, Arg.Any<CancellationToken>()).Returns(order);
+        _repo.GetOrderWithLinesAsync(order.Id, Arg.Any<CancellationToken>()).Returns(order);
         return order;
     }
 

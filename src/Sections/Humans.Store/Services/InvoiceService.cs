@@ -38,7 +38,7 @@ internal sealed class InvoiceService(
     /// <summary>What issuing would invoice, and why it may not yet; null for an order that can't be invoiced at all.</summary>
     public async Task<StoreInvoicePlan?> GetInvoicePlanAsync(Guid orderId, CancellationToken ct = default)
     {
-        var order = await repo.GetOrderWithLinesAndPaymentsAsync(orderId, ct);
+        var order = await repo.GetOrderWithLinesAsync(orderId, ct);
         if (order is null || order.TeamId is not null || order.State != OrderState.Open || order.Lines.Count == 0)
             return null;
         var totals = BalanceCalculator.Compute(order, await orders.LoadCurrentPricesAsync(order.Year, ct));
@@ -90,7 +90,7 @@ internal sealed class InvoiceService(
     [ExternalWrite]
     private async Task<AdminMutationResult> IssueInvoiceCoreAsync(Guid orderId, Guid actorUserId, CancellationToken ct = default)
     {
-        var order = await repo.GetOrderWithLinesAndPaymentsAsync(orderId, ct);
+        var order = await repo.GetOrderWithLinesAsync(orderId, ct);
         if (order is null)
             return Refuse(orderId, actorUserId, "Order not found.");
         if (order.TeamId is not null)
@@ -430,7 +430,7 @@ internal sealed class InvoiceService(
     [ExternalWrite]
     public async Task<InvoiceBookingState> BookAsync(Guid orderId, Guid actorUserId, CancellationToken ct = default)
     {
-        var order = await repo.GetOrderWithLinesAndPaymentsAsync(orderId, ct);
+        var order = await repo.GetOrderWithLinesAsync(orderId, ct);
         var invoice = order?.IssuedInvoiceId is null ? null
             : (await repo.GetInvoicesForOrdersAsync([orderId], ct)).SingleOrDefault();
         if (order is null || invoice is null) return InvoiceBookingState.NotBooked;
@@ -617,7 +617,7 @@ internal sealed class InvoiceService(
             }
             else
             {
-                var (amount, created) = await StripeAmountAndCreatedAsync(p, legs.Select(l => l.Payment).ToList(), ct);
+                var (amount, created) = await GetStripePaymentAsync(p, legs.Select(l => l.Payment).ToList(), ct);
                 if (created is null)
                     return (lines, waiting, $"Stripe would not say when {Describe(p)} was made.");
                 if (amount != p.AmountEur)
@@ -640,7 +640,7 @@ internal sealed class InvoiceService(
 
     /// <summary>A charge's line is the charge's gross at its creation second; a refund's is the refund's, read from
     /// Stripe by its id, since a refund recorded by hand carries the entry time, not Stripe's.</summary>
-    private async Task<(decimal Amount, Instant? Created)> StripeAmountAndCreatedAsync(
+    private async Task<(decimal Amount, Instant? Created)> GetStripePaymentAsync(
         Payment p, IReadOnlyList<Payment> orderPayments, CancellationToken ct)
     {
         if (p.AmountEur < 0m)

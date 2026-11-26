@@ -959,7 +959,7 @@ internal sealed class BudgetRepository(IDbContextFactory<BudgetDbContext> factor
             .ToListAsync(ct);
     }
 
-    public async Task<IReadOnlyList<BudgetAuditLog>> GetAuditLogEntriesForUserIdsAsync(
+    public async Task<IReadOnlyList<BudgetAuditLog>> GetAuditEntriesForUsersAsync(
         IReadOnlyCollection<Guid> userIds, CancellationToken ct = default)
     {
         if (userIds.Count == 0)

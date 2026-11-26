@@ -22,7 +22,7 @@ internal sealed class LegalDocumentSyncRunner(
 {
     private const string FailureMessage = "Failed to complete legal document sync or notification batches.";
 
-    public async Task SyncAndNotifyAsync(CancellationToken cancellationToken = default)
+    public async Task SyncAsync(CancellationToken cancellationToken = default)
     {
         var failures = new List<Exception>();
         try

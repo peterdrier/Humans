@@ -62,7 +62,7 @@ internal sealed class TeamRepository(IDbContextFactory<TeamsDbContext> factory) 
             .ToListAsync(ct);
     }
 
-    public async Task<IReadOnlyDictionary<Guid, IReadOnlySet<Guid>>> GetActiveManagementRoleHolderUserIdsByTeamAsync(
+    public async Task<IReadOnlyDictionary<Guid, IReadOnlySet<Guid>>> GetManagerUserIdsByTeamAsync(
         CancellationToken ct = default)
     {
         await using var db = await factory.CreateDbContextAsync(ct);
@@ -493,7 +493,7 @@ internal sealed class TeamRepository(IDbContextFactory<TeamsDbContext> factory) 
         await db.SaveChangesAsync(ct);
     }
 
-    public async Task<IReadOnlyList<Guid>> GetActiveCoordinatorUserIdsForTeamAsync(
+    public async Task<IReadOnlyList<Guid>> GetCoordinatorUserIdsAsync(
         Guid teamId, CancellationToken ct = default)
     {
         await using var db = await factory.CreateDbContextAsync(ct);
@@ -818,7 +818,7 @@ internal sealed class TeamRepository(IDbContextFactory<TeamsDbContext> factory) 
         return memberships.Select(m => (m.Id, m.TeamId)).ToList();
     }
 
-    public async Task<IReadOnlyList<TeamEarlyEntryGrant>> GetEarlyEntryGrantsForEnabledTeamsAsync(CancellationToken ct = default)
+    public async Task<IReadOnlyList<TeamEarlyEntryGrant>> GetEarlyEntryGrantsAsync(CancellationToken ct = default)
     {
         await using var db = await factory.CreateDbContextAsync(ct);
         return await db.TeamEarlyEntryGrants

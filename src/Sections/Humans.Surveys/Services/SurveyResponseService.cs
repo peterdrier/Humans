@@ -361,7 +361,7 @@ internal sealed class SurveyResponseService(
                         Answers = MapAnswers(responseId, visibleAnswers),
                     };
                     // Anonymous leaves the invitation's Completed flag untouched (no link, even to participation).
-                    await repo.AddResponseWithAnswersAndSaveAsync(response, ct);
+                    await repo.AddFinalResponseAsync(response, ct);
                     break;
                 }
         }

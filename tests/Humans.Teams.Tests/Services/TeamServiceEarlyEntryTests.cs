@@ -120,7 +120,7 @@ public sealed class TeamServiceEarlyEntryTests
     {
         var teamId = Guid.NewGuid();
         var userId = Guid.NewGuid();
-        _repo.GetEarlyEntryGrantsForEnabledTeamsAsync(Arg.Any<CancellationToken>())
+        _repo.GetEarlyEntryGrantsAsync(Arg.Any<CancellationToken>())
             .Returns(new List<TeamEarlyEntryGrant>
             {
                 Grant(teamId, userId, "Flaming Lotus", new LocalDate(2026, 7, 5), teamName: "Pyro")
@@ -137,7 +137,7 @@ public sealed class TeamServiceEarlyEntryTests
     [HumansFact]
     public async Task GetEarlyEntriesAsync_NoGrants_ReturnsEmpty()
     {
-        _repo.GetEarlyEntryGrantsForEnabledTeamsAsync(Arg.Any<CancellationToken>())
+        _repo.GetEarlyEntryGrantsAsync(Arg.Any<CancellationToken>())
             .Returns(new List<TeamEarlyEntryGrant>());
 
         var entries = await _service.GetEarlyEntriesAsync(Xunit.TestContext.Current.CancellationToken);
@@ -155,7 +155,7 @@ public sealed class TeamServiceEarlyEntryTests
         other.EventSettingsId = Guid.NewGuid(); // Same entry date/year, different event.
         var legacy = Grant(Guid.NewGuid(), Guid.NewGuid());
         legacy.EventSettingsId = null;
-        _repo.GetEarlyEntryGrantsForEnabledTeamsAsync(Arg.Any<CancellationToken>()).Returns([current, other, legacy]);
+        _repo.GetEarlyEntryGrantsAsync(Arg.Any<CancellationToken>()).Returns([current, other, legacy]);
         if (noActiveEvent)
             _settings.GetActiveEventSettings().Returns((EventSettingsInfo?)null);
 
@@ -188,7 +188,7 @@ public sealed class TeamServiceEarlyEntryTests
         var first = Grant(Guid.NewGuid(), Guid.NewGuid());
         var second = Grant(Guid.NewGuid(), Guid.NewGuid());
         second.EventSettingsId = Guid.NewGuid();
-        _repo.GetEarlyEntryGrantsForEnabledTeamsAsync(Arg.Any<CancellationToken>()).Returns([first, second]);
+        _repo.GetEarlyEntryGrantsAsync(Arg.Any<CancellationToken>()).Returns([first, second]);
         var active = _settings.GetActiveEventSettings();
         _settings.GetActiveEventSettings()
             .Returns(active, active! with { Id = second.EventSettingsId.Value });

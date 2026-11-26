@@ -30,7 +30,7 @@ internal sealed class TicketSyncService(
 {
     private readonly TicketVendorSettings _settings = settings.Value;
 
-    public async Task<TicketSyncResult> SyncOrdersAndAttendeesAsync(CancellationToken ct = default)
+    public async Task<TicketSyncResult> SyncAsync(CancellationToken ct = default)
     {
         if (!_settings.IsConfigured)
         {

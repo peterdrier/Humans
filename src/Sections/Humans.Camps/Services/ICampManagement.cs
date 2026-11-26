@@ -104,7 +104,7 @@ internal interface ICampManagement : ICampService, IEarlyEntryProvider
         CancellationToken cancellationToken = default, Guid? eventSettingsId = null);
 
     /// <summary>Idempotent add as an active member, then the role assignment, in one operation. Caller authorizes.</summary>
-    Task<AssignCampRoleOutcome> AddMemberAndAssignRoleInActiveSeasonAsync(
+    Task<AssignCampRoleOutcome> AddMemberWithRoleAsync(
         Guid campId, Guid roleDefinitionId, Guid userId, Guid actorUserId,
         CancellationToken cancellationToken = default, Guid? eventSettingsId = null);
 

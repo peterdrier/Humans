@@ -25,8 +25,8 @@ internal interface ITeamRepository : IRepository
     /// <summary>Active and inactive, with active members. Detached.</summary>
     Task<IReadOnlyList<Team>> GetAllWithMembersAsync(CancellationToken ct = default);
 
-    /// <summary>Teams with no management role holder are omitted.</summary>
-    Task<IReadOnlyDictionary<Guid, IReadOnlySet<Guid>>> GetActiveManagementRoleHolderUserIdsByTeamAsync(
+    /// <summary>Active holders only. Teams with no management role holder are omitted.</summary>
+    Task<IReadOnlyDictionary<Guid, IReadOnlySet<Guid>>> GetManagerUserIdsByTeamAsync(
         CancellationToken ct = default);
 
     /// <summary>
@@ -177,7 +177,8 @@ internal interface ITeamRepository : IRepository
 
     Task RemoveRoleDefinitionAsync(TeamRoleDefinition definition, CancellationToken ct = default);
 
-    Task<IReadOnlyList<Guid>> GetActiveCoordinatorUserIdsForTeamAsync(
+    /// <summary>Active coordinators only.</summary>
+    Task<IReadOnlyList<Guid>> GetCoordinatorUserIdsAsync(
         Guid teamId, CancellationToken ct = default);
 
     /// <summary>Also removes their role assignments. Returns the number of memberships closed.</summary>
@@ -187,7 +188,7 @@ internal interface ITeamRepository : IRepository
         Guid userId, CancellationToken ct = default);
 
     /// <summary>Only teams with EarlyEntryEnabled. Detached.</summary>
-    Task<IReadOnlyList<TeamEarlyEntryGrant>> GetEarlyEntryGrantsForEnabledTeamsAsync(CancellationToken ct = default);
+    Task<IReadOnlyList<TeamEarlyEntryGrant>> GetEarlyEntryGrantsAsync(CancellationToken ct = default);
 
     /// <summary>Ordered by project then date. Detached.</summary>
     Task<IReadOnlyList<TeamEarlyEntryGrant>> GetEarlyEntryGrantsForTeamAsync(Guid teamId, CancellationToken ct = default);
