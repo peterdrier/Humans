@@ -28,4 +28,4 @@ _Avoid_: end, remove, unassign
 
 ## Retiring
 
-ConsentCoordinator and ShiftsNoInfo are legacy system roles being retired: their access moves to the owning section's admin or to Roles-section roles. Don't build on them.
+ShiftsNoInfo was retired on 2026-11-26 with no replacement yet; its rows stay as history and grant nothing. ConsentCoordinator was renamed ConsentAdmin, the Consent section's admin.

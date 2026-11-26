@@ -11,7 +11,7 @@ public class GuideRolePrivilegeMapTests
     [HumansTheory]
     [InlineData("Camps Admin", GuideTestRoles.CampsAdmin)]
     [InlineData("camps admin", GuideTestRoles.CampsAdmin)]
-    [InlineData("Consent Coordinator", GuideTestRoles.ConsentCoordinator)]
+    [InlineData("Consent Admin", GuideTestRoles.ConsentAdmin)]
     [InlineData("Camp Lead", GuideRolePrivilegeMap.CampLead)]
     public void TryResolve_KnownTitle_ReturnsSystemRole(string displayName, string expectedRole)
     {

@@ -81,7 +81,7 @@ verbatim; the nav entry is the section's own "Early Entry" group. The route is n
   components answer for the user they are invoked with, so who may see another member's EE
   there is the invoking page's gate, not this section's. The gate card is the deliberate
   staff-facing exception.
-- A human without Admin, Board or EarlyEntryAdmin **cannot** reach `/Shifts/Admin/EarlyEntry`; Shifts Admin and Shifts NoInfo alone no longer can.
+- A human without Admin, Board or EarlyEntryAdmin **cannot** reach `/Shifts/Admin/EarlyEntry`; Shifts Admin alone no longer can.
 - The section exposes no write path, so no write **cannot**-clause applies.
 
 ## Triggers

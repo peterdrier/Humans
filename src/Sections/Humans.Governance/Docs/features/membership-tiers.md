@@ -114,7 +114,7 @@ MembershipTierRecord
 
 No row means Volunteer. Account merges keep the survivor's recorded tier first, otherwise the source's, preserving the granting application and term metadata. Explicit Volunteer rows remain authoritative.
 
-Tier is **not** a RoleAssignment. Roles (Admin, Board, ConsentCoordinator, ShiftsAdmin) are tracked separately via RoleAssignment.
+Tier is **not** a RoleAssignment. Roles (Admin, Board, ConsentAdmin, ShiftsAdmin) are tracked separately via RoleAssignment.
 
 ### Application Changes
 ```
@@ -172,7 +172,7 @@ Application created → Board Voting → Approve/Reject
 ## Business Rules
 
 1. **Everyone starts as Volunteer** — tier selection is optional
-2. **Volunteer doesn't require an Application** — a legal name plus the required consents is sufficient. The Consent Coordinator's clear/flag review is an independent audit annotation and does not gate admission (admission never reads `ConsentCheckStatus`)
+2. **Volunteer doesn't require an Application** — a legal name plus the required consents is sufficient. The Consent Admin's clear/flag review is an independent audit annotation and does not gate admission (admission never reads `ConsentCheckStatus`)
 3. **No inline application** — initial profile setup only links to the application route
 4. **Applications use the dedicated route** — profile edit is just profile data
 5. **Asociados are not in the Colaboradores body** — separate bodies
@@ -187,5 +187,5 @@ Application created → Board Voting → Approve/Reject
 - [Onboarding Pipeline](../../../Humans.Onboarding/Docs/features/onboarding-pipeline.md) — How tier selection fits into the signup flow
 - [Tier Applications](asociado-applications.md) — Application entity and state machine
 - [Board Voting](board-voting.md) — How the Board decides on tier applications
-- [Coordinator Roles](../../../Humans.Shifts/Docs/features/coordinator-roles.md) — Consent Coordinator review (audit annotation, Volunteer only)
+- [Coordinator Roles](../../../Humans.Shifts/Docs/features/coordinator-roles.md) — Consent Admin review (audit annotation, Volunteer only)
 - [Teams](../../../Humans.Teams/Docs/features/Teams-feature.md) — the Volunteers system team

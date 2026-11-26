@@ -29,7 +29,7 @@ tables (Same-Rule-Different-Spelling, Enforcement Gaps, Canonical Policy Names),
 | Controller | Scope | Roles | Source |
 |---|---|---|---|
 | `AdminController` (`src/Humans.Web`) | Class | `[Route("Admin")]` only — no class-level `[Authorize]` | — |
-| `AdminController.Index` | Action | `Admin, Board, UsersAdmin, TeamsAdmin, CampsAdmin, TicketsAdmin, EventsAdmin, FinanceAdmin, StoreAdmin, CantinaAdmin, RideshareAdmin, GrantsAdmin, SurveysAdmin, ShiftsNoInfo, ShiftsAdmin, ConsentCoordinator` | `PolicyNames.AnyAdminRole` (the only action left on the gutted dashboard controller) |
+| `AdminController.Index` | Action | `Admin, Board, UsersAdmin, TeamsAdmin, CampsAdmin, TicketsAdmin, EventsAdmin, FinanceAdmin, StoreAdmin, CantinaAdmin, RideshareAdmin, GrantsAdmin, SurveysAdmin, ShiftsAdmin, ConsentAdmin` | `PolicyNames.AnyAdminRole` (the only action left on the gutted dashboard controller) |
 
 `/Admin/*` is a nav holder, not a section — each admin surface's controller lives in the section it acts on (see Per-Section Inventories above). The admin shell's sidebar groups and tabs come from sections' `ISectionAdminNav` contributions, each item filtered by its own policy (`AdminNavItems`, see §2 Shared Components); only the dashboard link is `AnyAdminRole`-gated.
 
@@ -265,14 +265,14 @@ These actions rely on `if` checks + early return/forbid instead of `[Authorize(P
 
 **Board can see everything and change nothing.** A section with its own admin role owns a `<Section>Policies` class in its Contracts with a `Read` and a `Manage` constant: `Read` (section admin, Board, Admin) gates the GETs, nav items and tiles; `Manage` (section admin, Admin) gates every POST, the create/edit forms and the personal-data exports. `BoardReadsEverythingTests` pins `Read = Manage + Board` for every such class and fails any write endpoint whose role gates all admit Board, outside the writes Board makes by design (Governance, workgroups, legal documents) and the audited reveals.
 
-`PolicyNames` in Base keeps only what no one section owns: `AdminOnly`, `AnyAdminRole`, `BoardOnly`, `BoardOrAdmin`, `AppAccess`, `ScannerAccess`, `GateAdmit`, `ReviewQueueAccess`, `ConsentCoordinatorBoardOrAdmin`, `SystemRoleManage`, plus `CityPlanningMapAdmin` and `ExpenseReportView`, which have not moved yet. Shell's `AuthorizationPolicyExtensions.AddHumansAuthorizationPolicies` registers the platform ones (`AdminOnly`, `AnyAdminRole`, `BoardOnly`, `BoardOrAdmin`, `AppAccess`, `SystemRoleManage`); Tickets registers `ScannerAccess` and `GateAdmit` (Gate, Scanner and the onsite roster all depend on Tickets), and Consent registers `ReviewQueueAccess`; every other policy is registered by its owning section's `ISectionPolicies`, discovered by `SectionDiscoveryExtensions.DiscoverImplementations<ISectionPolicies>()` and applied additively through `services.Configure<AuthorizationOptions>`.
+`PolicyNames` in Base keeps only what no one section owns: `AdminOnly`, `AnyAdminRole`, `BoardOnly`, `BoardOrAdmin`, `AppAccess`, `ScannerAccess`, `GateAdmit`, `ReviewQueueAccess`, `ConsentAdminBoardOrAdmin`, `SystemRoleManage`, plus `CityPlanningMapAdmin` and `ExpenseReportView`, which have not moved yet. Shell's `AuthorizationPolicyExtensions.AddHumansAuthorizationPolicies` registers the platform ones (`AdminOnly`, `AnyAdminRole`, `BoardOnly`, `BoardOrAdmin`, `AppAccess`, `SystemRoleManage`); Tickets registers `ScannerAccess` and `GateAdmit` (Gate, Scanner and the onsite roster all depend on Tickets), and Consent registers `ReviewQueueAccess`; every other policy is registered by its owning section's `ISectionPolicies`, discovered by `SectionDiscoveryExtensions.DiscoverImplementations<ISectionPolicies>()` and applied additively through `services.Configure<AuthorizationOptions>`.
 
 | Owning section | Policies registered in its `Section.cs` |
 |---|---|
 | Camps | `CampsPolicies.Read`, `CampsPolicies.Manage`, `CampsPolicies.Compliance` |
 | Cantina | `CantinaPolicies.Read`, `CantinaPolicies.Manage` |
 | CityPlanning | `CityPlanningMapAdmin` |
-| Consent | `ConsentCoordinatorBoardOrAdmin` |
+| Consent | `ConsentAdminBoardOrAdmin` |
 | Events | `EventsPolicies.Read`, `EventsPolicies.Manage` |
 | Expenses | `ExpenseReportView` |
 | Finance | `FinancePolicies.Read`, `FinancePolicies.Manage` (also gate Budget admin, Holded, Pleo, the Stripe mirror and the expense decisions) |
@@ -292,7 +292,7 @@ These actions rely on `if` checks + early return/forbid instead of `[Authorize(P
 | `BoardOrAdmin` | Board, Admin | Board's own decisions (Governance, workgroups, legal documents) and the operator tooling reads |
 | `UsersPolicies.Read` | UsersAdmin, Board, Admin | Human admin pages, the admin cards on a profile, Google's per-human page |
 | `UsersPolicies.Manage` | UsersAdmin, Admin | Suspend, unsuspend, reject, role assignment, Workspace email and provisioning |
-| `UsersPolicies.MedicalDataViewer` | ShiftsNoInfo, Board, Admin | The audited medical reveal |
+| `UsersPolicies.MedicalDataViewer` | Board, Admin | The audited medical reveal |
 | `TeamsPolicies.Read` | TeamsAdmin, Board, Admin | Teams summary, team settings form, Google resource sync |
 | `TeamsPolicies.Manage` | TeamsAdmin, Admin | Create and edit teams; deleting a team is `AdminOnly` |
 | `CampsPolicies.Read` | CampsAdmin, Board, Admin | Camps admin overview and roles |
@@ -317,13 +317,13 @@ These actions rely on `if` checks + early return/forbid instead of `[Authorize(P
 | `SurveysPolicies.Manage` | SurveysAdmin, Admin | Approve, reject, open, close, send, ranked availability |
 | `StorePolicies.Read` | StoreAdmin, FinanceAdmin, Board, Admin | |
 | `StorePolicies.Manage` | StoreAdmin, FinanceAdmin, Admin | Catalog changes and payment repairs; also `StoreRoles.CanAdministerStore` |
-| `ReviewQueueAccess` | ConsentCoordinator, Board, Admin | Untouched until the review queue is retired |
-| `ConsentCoordinatorBoardOrAdmin` | ConsentCoordinator, Board, Admin | Same |
-| `ShiftsPolicies.Read` | ShiftsAdmin, ShiftsNoInfo, Board, Admin | Volunteer tracking, workload, post-event stats |
-| `ShiftsPolicies.Manage` | ShiftsAdmin, ShiftsNoInfo, Admin | Voluntell from the dashboard, the volunteer-tracking export |
+| `ReviewQueueAccess` | ConsentAdmin, Board, Admin | Untouched until the review queue is retired |
+| `ConsentAdminBoardOrAdmin` | ConsentAdmin, Board, Admin | Same |
+| `ShiftsPolicies.Read` | ShiftsAdmin, Board, Admin | Volunteer tracking, workload, post-event stats |
+| `ShiftsPolicies.Manage` | ShiftsAdmin, Admin | Voluntell from the dashboard, the volunteer-tracking export |
 | `ShiftsPolicies.ManageVolunteers` | ShiftsAdmin, Admin | Rota moves and the volunteer-tracking grid; also `ShiftsRoles.IsVolunteerManager` |
 | `ShiftsPolicies.DepartmentRead` | `ShiftsPolicies.Read` OR any team coordinator | Composite (`IsAnyTeamManagerOrCoordinatorHandler`); the dashboard and shift summaries |
-| `ShiftsPolicies.PrivilegedSignupApprover` | ShiftsNoInfo, Admin | Also `ShiftsRoles.IsPrivilegedSignupApprover` |
+| `ShiftsPolicies.PrivilegedSignupApprover` | Admin | Also `ShiftsRoles.IsPrivilegedSignupApprover` |
 | `AppAccess` | `UserState == Active` | The single nav-visibility gate |
 | `SystemRoleManage` | Resource-based (target role name) | Wraps Auth's `SystemRoleOperationRequirement.Manage` — see §6 |
 | `PreapprovalsManage` | Admin, Board, FinanceAdmin OR a manager of any program | Section-local, composite (`PreapprovalsPolicyHandler`) |
@@ -438,18 +438,17 @@ The only authorization files left in `src/Humans.Web/` are `Authorization/Author
 
 ### Roles
 
-Only `Admin` and `Board` are `RoleNames` constants in Base. Every other role is a `<Section>Roles` constant in its owning section's Contracts, declared through `ISectionRoles` and composed into Auth's `RoleCatalog`; six carry a former name (`HumanAdmin`, `CampAdmin`, `TicketAdmin`, `VolunteerCoordinator`, `NoInfoAdmin`, `EETeamAdmin`) that the `auth.role-renames` data migration retires.
+Only `Admin` and `Board` are `RoleNames` constants in Base. Every other role is a `<Section>Roles` constant in its owning section's Contracts, declared through `ISectionRoles` and composed into Auth's `RoleCatalog`; six carry a former name (`HumanAdmin`, `CampAdmin`, `TicketAdmin`, `VolunteerCoordinator`, `EETeamAdmin`, `ConsentCoordinator`) that the `auth.role-renames` data migration retires.
 
 | Role | Stored value |
 |---|---|
 | `Admin` | `"Admin"` |
 | `Board` | `"Board"` |
-| `ConsentCoordinator` | `"ConsentCoordinator"` |
+| `ConsentAdmin` | `"ConsentAdmin"` |
 | `ShiftsAdmin` | `"ShiftsAdmin"` |
 | `TeamsAdmin` | `"TeamsAdmin"` |
 | `CampsAdmin` | `"CampsAdmin"` |
 | `TicketsAdmin` | `"TicketsAdmin"` |
-| `ShiftsNoInfo` | `"ShiftsNoInfo"` |
 | `EventsAdmin` | `"EventsAdmin"` |
 | `UsersAdmin` | `"UsersAdmin"` |
 | `FinanceAdmin` | `"FinanceAdmin"` |

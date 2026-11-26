@@ -33,7 +33,7 @@ Humans is a large application, and most people meeting it are volunteers for an 
 
 Where it points them depends on what the association needs right now. The shifts step exists because staffing shifts was the pressing need; off-season the better destination may simply be what is going on. Shifts stays one possible destination, not the definition of done.
 
-> **Three-concerns split.** `OnboardingService` is the *intake funnel only* (signup → profile → consents → first-team admission, plus signup reject). The Consent Coordinator review queue is Consent's (`/Consent/ReviewQueue`), next to the `consent_reviews` table it writes. Sibling services own the other workflow stages so onboarding stays narrow:
+> **Three-concerns split.** `OnboardingService` is the *intake funnel only* (signup → profile → consents → first-team admission, plus signup reject). The Consent Admin review queue is Consent's (`/Consent/ReviewQueue`), next to the `consent_reviews` table it writes. Sibling services own the other workflow stages so onboarding stays narrow:
 >
 > - **Lifecycle state-machine** (suspend/unsuspend, future re-consent suspensions and term-renewals) → `IHumanLifecycleService`.
 > - **Board voting** → Governance's `ApplicationDecisionService`, injected by its own `GovernanceBoardVotingController` (Governance owns the `governance_applications` + `governance_board_votes` tables; OnboardingService carries no delegating wrappers).
@@ -42,10 +42,10 @@ Where it points them depends on what the association needs right now. The shifts
 
 ## Concepts
 
-- **Onboarding** is the process a new human goes through to become an active Volunteer: sign up via Google OAuth, complete their profile, and consent to all required legal documents. Once both are done, admission to the Volunteers team is automatic — no Consent Coordinator approval is required for entry.
+- **Onboarding** is the process a new human goes through to become an active Volunteer: sign up via Google OAuth, complete their profile, and consent to all required legal documents. Once both are done, admission to the Volunteers team is automatic — no Consent Admin approval is required for entry.
 - The **access gate** is the stored `User.State` (`UserState`): the full application is reachable only when state is `Active` — i.e. the user has entered their legal name. `MembershipRequiredFilter` routes everyone else by state (`Bare` → name entry, `DeletePending` → cancel-deletion screen, `Suspended`/`Rejected`/`Deleted`/`Merged` → the account-status wall). A controller or action a non-`Active` account must still reach carries `[AllowBeforeActiveMembership]` in its own section. Access is **not** derived from Volunteers-team membership, and roles do not bypass the gate. A Backdoor-API-key-authenticated machine request skips the gate entirely — it carries no `UserState` claim (`src/Sections/Humans.Backdoor/Docs/Backdoor.md`).
 - **Profileless accounts** are authenticated users with no Profile record (e.g., ticket holders, newsletter subscribers created by imports). With no legal name they are `UserState.Bare` and are routed to name entry, not to the Guest dashboard — `Guest` is not exempt from `NameRequiredFilter`. `/Guest` is reachable only by typing the URL, and only once a name is on file.
-- The **Consent Coordinator review** (Consent's `consent_reviews`, read as `ConsentReviewInfo` through `IConsentService`, written through `IConsentWrite`) is a pure audit/annotation track. When all required consents are signed, its `Status` flips to `Pending` and the human appears in Consent's review queue. CC Clear / Flag still flip the review's `IsApproved` (Clear → true, Flag → false) for the annotation, but they have **no membership or access side-effects** — neither admission nor access depends on the status or `IsApproved`. Reject (the review's `RejectedAt` plus `UserState.Rejected`) is the only CC action that changes access.
+- The **Consent Admin review** (Consent's `consent_reviews`, read as `ConsentReviewInfo` through `IConsentService`, written through `IConsentWrite`) is a pure audit/annotation track. When all required consents are signed, its `Status` flips to `Pending` and the human appears in Consent's review queue. CC Clear / Flag still flip the review's `IsApproved` (Clear → true, Flag → false) for the annotation, but they have **no membership or access side-effects** — neither admission nor access depends on the status or `IsApproved`. Reject (the review's `RejectedAt` plus `UserState.Rejected`) is the only CC action that changes access.
 
 ## Data Model
 
@@ -78,8 +78,8 @@ Board voting is Governance's: `/Governance/BoardVoting`. Onboarding does not con
 |-------|--------------|
 | Unauthenticated visitor | Sign up via Google OAuth (or magic link) |
 | Authenticated human (pre-approval) | Complete profile, sign legal documents, submit a tier application (optional), file an issue (the Help widget renders pre-approval, so `Issues` is exempt from the membership gate) |
-| ConsentCoordinator | Reject signups from Consent's review queue, which calls `IOnboardingIntake.RejectSignupAsync` (`PolicyNames.ConsentCoordinatorBoardOrAdmin`) |
-| Board, Admin | All ConsentCoordinator capabilities. Board voting on Colaborador/Asociado tier applications is Board+Admin only (`PolicyNames.BoardOrAdmin` / `PolicyNames.BoardOnly`). |
+| ConsentAdmin | Reject signups from Consent's review queue, which calls `IOnboardingIntake.RejectSignupAsync` (`PolicyNames.ConsentAdminBoardOrAdmin`) |
+| Board, Admin | All ConsentAdmin capabilities. Board voting on Colaborador/Asociado tier applications is Board+Admin only (`PolicyNames.BoardOrAdmin` / `PolicyNames.BoardOnly`). |
 | UsersAdmin | No review-queue access; can reject a signup from the human admin page (`UsersPolicies.Manage`). |
 
 ## Invariants
@@ -114,7 +114,7 @@ Board voting is Governance's: `/Governance/BoardVoting`. Onboarding does not con
 
 ## Negative Access Rules
 
-- ConsentCoordinator **cannot** cast Board votes on tier applications and **cannot** finalize tier-application Approve/Reject decisions (Board+Admin only via `GovernanceBoardVotingController.Vote` / `Finalize`).
+- ConsentAdmin **cannot** cast Board votes on tier applications and **cannot** finalize tier-application Approve/Reject decisions (Board+Admin only via `GovernanceBoardVotingController.Vote` / `Finalize`).
 - Regular humans still onboarding **cannot** access most of the application (teams, shifts, budget, tickets, governance, etc.) until they enter their legal name (`UserState.Active`).
 - Profileless accounts **cannot** access the Home dashboard, City Planning, Budget, Shifts, Governance, or any member-only features. They are redirected to the name form, not to the Guest dashboard — `NameRequiredFilter` runs before `MembershipRequiredFilter` and does not exempt `Guest`. **Exception:** profileless mid-widget users see the priority-shift list rendered inside `/OnboardingWidget` Step 2; direct navigation to `/Shifts` still routes them through the membership filter as today.
 
@@ -167,6 +167,6 @@ Board voting is Governance's: `/Governance/BoardVoting`. Onboarding does not con
 
 Onboarding owns the `Onboarding` issue queue, with no page-path aliases (the review queue is Consent's): it implements `IIssueQueueOwner` (Issues' `Contracts/`
 folder) on its `Section` entry point, declaring the queue key and the roles that handle
-issues filed against it — `ConsentCoordinator, ShiftsAdmin, UsersAdmin`, plus `Admin`, which handles every queue. Issues
+issues filed against it — `ConsentAdmin, ShiftsAdmin, UsersAdmin`, plus `Admin`, which handles every queue. Issues
 discovers the declaration through DI and holds no list of sections; dropping the seam
 sends this section's stored issues to the Admin-only queue.

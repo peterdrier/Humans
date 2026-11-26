@@ -113,7 +113,7 @@ public sealed class Section :
     IEnumerable<DataMigration> ISectionDataMigrations.Migrations() =>
     [
         new(RoleRenamesKey, "Auth",
-            "Rewrite system roles stored under a former role name (HumanAdmin, CampAdmin, TicketAdmin, NoInfoAdmin, VolunteerCoordinator, EETeamAdmin) to the current name",
+            "Rewrite system roles stored under a former role name (HumanAdmin, CampAdmin, TicketAdmin, VolunteerCoordinator, EETeamAdmin, ConsentCoordinator) to the current name",
             "RoleDefinition.FormerNames on each renamed role and the former-name reads in SystemRoleService",
             StatusAsync, ApplyAsync),
     ];
